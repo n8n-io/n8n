@@ -182,47 +182,74 @@ describe('License', () => {
 	});
 
 	describe('init', () => {
-		test('in single-main setup, should enable renewal', async () => {
-			config.set('multiMainSetup.enabled', false);
+		describe('in single-main setup', () => {
+			describe('with `license.autoRenewEnabled` enabled', () => {
+				it('should enable renewal', async () => {
+					config.set('multiMainSetup.enabled', false);
 
-			await new License(mock(), mock(), mock(), mock(), mock()).init();
+					await new License(mock(), mock(), mock(), mock(), mock()).init();
 
-			expect(LicenseManager).toHaveBeenCalledWith(
-				expect.objectContaining({ autoRenewEnabled: true, renewOnInit: true }),
-			);
+					expect(LicenseManager).toHaveBeenCalledWith(
+						expect.objectContaining({ autoRenewEnabled: true, renewOnInit: true }),
+					);
+				});
+			});
+
+			describe('with `license.autoRenewEnabled` disabled', () => {
+				it('should disable renewal', async () => {
+					config.set('license.autoRenewEnabled', false);
+
+					await new License(mock(), mock(), mock(), mock(), mock()).init();
+
+					expect(LicenseManager).toHaveBeenCalledWith(
+						expect.objectContaining({ autoRenewEnabled: false, renewOnInit: false }),
+					);
+				});
+			});
 		});
 
-		test('in multi-main setup, should disable renewal if unset', async () => {
-			config.set('multiMainSetup.enabled', true);
-			config.set('multiMainSetup.instanceType', 'unset');
+		describe('in multi-main setup', () => {
+			describe('with `license.autoRenewEnabled` disabled', () => {
+				test.each(['unset', 'leader', 'follower'])(
+					'if %s status, should disable removal',
+					async (status) => {
+						config.set('multiMainSetup.enabled', true);
+						config.set('multiMainSetup.instanceType', status);
+						config.set('license.autoRenewEnabled', false);
 
-			await new License(mock(), mock(), mock(), mock(), mock()).init();
+						await new License(mock(), mock(), mock(), mock(), mock()).init();
 
-			expect(LicenseManager).toHaveBeenCalledWith(
-				expect.objectContaining({ autoRenewEnabled: false, renewOnInit: false }),
-			);
-		});
+						expect(LicenseManager).toHaveBeenCalledWith(
+							expect.objectContaining({ autoRenewEnabled: false, renewOnInit: false }),
+						);
+					},
+				);
+			});
 
-		test('in multi-main setup, should enable renewal if leader', async () => {
-			config.set('multiMainSetup.enabled', true);
-			config.set('multiMainSetup.instanceType', 'leader');
+			describe('with `license.autoRenewEnabled` enabled', () => {
+				test.each(['unset', 'follower'])('if %s status, should disable removal', async (status) => {
+					config.set('multiMainSetup.enabled', true);
+					config.set('multiMainSetup.instanceType', status);
+					config.set('license.autoRenewEnabled', false);
 
-			await new License(mock(), mock(), mock(), mock(), mock()).init();
+					await new License(mock(), mock(), mock(), mock(), mock()).init();
 
-			expect(LicenseManager).toHaveBeenCalledWith(
-				expect.objectContaining({ autoRenewEnabled: true, renewOnInit: true }),
-			);
-		});
+					expect(LicenseManager).toHaveBeenCalledWith(
+						expect.objectContaining({ autoRenewEnabled: false, renewOnInit: false }),
+					);
+				});
 
-		test('in multi-main setup, should disable renewal if follower', async () => {
-			config.set('multiMainSetup.enabled', true);
-			config.set('multiMainSetup.instanceType', 'follower');
+				it('if leader status, should enable renewal', async () => {
+					config.set('multiMainSetup.enabled', true);
+					config.set('multiMainSetup.instanceType', 'leader');
 
-			await new License(mock(), mock(), mock(), mock(), mock()).init();
+					await new License(mock(), mock(), mock(), mock(), mock()).init();
 
-			expect(LicenseManager).toHaveBeenCalledWith(
-				expect.objectContaining({ autoRenewEnabled: false, renewOnInit: false }),
-			);
+					expect(LicenseManager).toHaveBeenCalledWith(
+						expect.objectContaining({ autoRenewEnabled: true, renewOnInit: true }),
+					);
+				});
+			});
 		});
 	});
 });

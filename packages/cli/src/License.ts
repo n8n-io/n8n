@@ -47,16 +47,18 @@ export class License {
 	private renewalEnabled(instanceType: N8nInstanceType) {
 		if (instanceType !== 'main') return false;
 
+		const autoRenewEnabled = config.getEnv('license.autoRenewEnabled');
+
 		/**
 		 * In multi-main setup, all mains start off with `unset` status and so renewal disabled.
 		 * On becoming leader or follower, each will enable or disable renewal, respectively.
 		 * This ensures the mains do not cause a 429 (too many requests) on license init.
 		 */
 		if (config.getEnv('multiMainSetup.enabled')) {
-			return config.getEnv('multiMainSetup.instanceType') === 'leader';
+			return autoRenewEnabled && config.getEnv('multiMainSetup.instanceType') === 'leader';
 		}
 
-		return config.getEnv('license.autoRenewEnabled');
+		return autoRenewEnabled;
 	}
 
 	async init(instanceType: N8nInstanceType = 'main') {
