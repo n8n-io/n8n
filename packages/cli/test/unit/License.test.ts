@@ -175,3 +175,54 @@ describe('License', () => {
 		expect(mainPlan).toBeUndefined();
 	});
 });
+
+describe('License', () => {
+	beforeEach(() => {
+		config.load(config.default);
+	});
+
+	describe('init', () => {
+		test('in single-main setup, should enable renewal', async () => {
+			config.set('multiMainSetup.enabled', false);
+
+			await new License(mock(), mock(), mock(), mock(), mock()).init();
+
+			expect(LicenseManager).toHaveBeenCalledWith(
+				expect.objectContaining({ autoRenewEnabled: true, renewOnInit: true }),
+			);
+		});
+
+		test('in multi-main setup, should disable renewal if unset', async () => {
+			config.set('multiMainSetup.enabled', true);
+			config.set('multiMainSetup.instanceType', 'unset');
+
+			await new License(mock(), mock(), mock(), mock(), mock()).init();
+
+			expect(LicenseManager).toHaveBeenCalledWith(
+				expect.objectContaining({ autoRenewEnabled: false, renewOnInit: false }),
+			);
+		});
+
+		test('in multi-main setup, should enable renewal if leader', async () => {
+			config.set('multiMainSetup.enabled', true);
+			config.set('multiMainSetup.instanceType', 'leader');
+
+			await new License(mock(), mock(), mock(), mock(), mock()).init();
+
+			expect(LicenseManager).toHaveBeenCalledWith(
+				expect.objectContaining({ autoRenewEnabled: true, renewOnInit: true }),
+			);
+		});
+
+		test('in multi-main setup, should disable renewal if follower', async () => {
+			config.set('multiMainSetup.enabled', true);
+			config.set('multiMainSetup.instanceType', 'follower');
+
+			await new License(mock(), mock(), mock(), mock(), mock()).init();
+
+			expect(LicenseManager).toHaveBeenCalledWith(
+				expect.objectContaining({ autoRenewEnabled: false, renewOnInit: false }),
+			);
+		});
+	});
+});

@@ -41,6 +41,27 @@ export class License {
 		private readonly usageMetricsService: UsageMetricsService,
 	) {}
 
+	/**
+	 * Whether this instance should renew the license - on init and periodically.
+	 */
+	private renewalEnabled() {
+		const isSingleMain = !config.getEnv('multiMainSetup.enabled');
+
+		if (isSingleMain) {
+			return (
+				config.getEnv('generic.instanceType') === 'main' &&
+				config.getEnv('license.autoRenewEnabled')
+			);
+		}
+
+		/**
+		 * In multi-main setup, all mains start off with `unset` status and renewal disabled.
+		 * On becoming leader or follower, each will enable or disable renewal, respectively.
+		 * This ensures the mains do not cause a 429 (too many requests) on license init.
+		 */
+		return config.getEnv('multiMainSetup.instanceType') === 'leader';
+	}
+
 	async init(instanceType: N8nInstanceType = 'main') {
 		if (this.manager) {
 			this.logger.warn('License manager already initialized or shutting down');
@@ -53,7 +74,6 @@ export class License {
 
 		const isMainInstance = instanceType === 'main';
 		const server = config.getEnv('license.serverUrl');
-		const autoRenewEnabled = isMainInstance && config.getEnv('license.autoRenewEnabled');
 		const offlineMode = !isMainInstance;
 		const autoRenewOffset = config.getEnv('license.autoRenewOffset');
 		const saveCertStr = isMainInstance
@@ -66,13 +86,15 @@ export class License {
 			? async () => await this.usageMetricsService.collectUsageMetrics()
 			: async () => [];
 
+		const renewalEnabled = this.renewalEnabled();
+
 		try {
 			this.manager = new LicenseManager({
 				server,
 				tenantId: config.getEnv('license.tenantId'),
 				productIdentifier: `n8n-${N8N_VERSION}`,
-				autoRenewEnabled,
-				renewOnInit: autoRenewEnabled,
+				autoRenewEnabled: renewalEnabled,
+				renewOnInit: renewalEnabled,
 				autoRenewOffset,
 				offlineMode,
 				logger: this.logger,
@@ -126,7 +148,7 @@ export class License {
 
 			if (this.orchestrationService.isMultiMainSetupEnabled && !isMultiMainLicensed) {
 				this.logger.debug(
-					'[Multi-main setup] License changed with no support for multi-main setup - no new followers will be allowed to init. To restore multi-main setup, please upgrade to a license that supporst this feature.',
+					'[Multi-main setup] License changed with no support for multi-main setup - no new followers will be allowed to init. To restore multi-main setup, please upgrade to a license that supports this feature.',
 				);
 			}
 		}
@@ -334,5 +356,10 @@ export class License {
 
 	isWithinUsersLimit() {
 		return this.getUsersLimit() === UNLIMITED_LICENSE_QUOTA;
+	}
+
+	async reinit() {
+		this.manager?.reset();
+		await this.init();
 	}
 }
