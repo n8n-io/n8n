@@ -9,7 +9,6 @@
 		:shareable="isShareable"
 		:initialize="initialize"
 		:disabled="readOnlyEnv"
-		@click:add="addWorkflow"
 		@update:filters="onFiltersUpdated"
 	>
 		<template #header>
@@ -25,7 +24,7 @@
 						data-test-id="resources-list-add"
 						@click="addWorkflow"
 					>
-						{{ $locale.baseText(`workflows.add`) }}
+						{{ addWorkflowButtonText }}
 					</n8n-button>
 				</div>
 				<template #content>
@@ -275,6 +274,11 @@ const WorkflowsView = defineComponent({
 				!!this.allWorkflows.length ||
 				!!this.projectsStore.myProjects.length
 			);
+		},
+		addWorkflowButtonText() {
+			return this.projectsStore.currentProject
+				? this.$locale.baseText('workflows.project.add')
+				: this.$locale.baseText('workflows.add');
 		},
 	},
 	watch: {
