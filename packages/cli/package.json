@@ -90,9 +90,9 @@
     "ts-essentials": "^7.0.3"
   },
   "dependencies": {
-    "@langchain/community": "0.0.44",
-    "@langchain/core": "0.1.41",
-    "@langchain/openai": "0.0.16",
+    "@langchain/community": "0.0.53",
+    "@langchain/core": "0.1.61",
+    "@langchain/openai": "0.0.28",
     "@n8n/client-oauth2": "workspace:*",
     "@n8n/localtunnel": "2.1.0",
     "@n8n/n8n-nodes-langchain": "workspace:*",
@@ -138,7 +138,7 @@
     "json-diff": "1.0.6",
     "jsonschema": "1.4.1",
     "jsonwebtoken": "9.0.2",
-    "langchain": "0.1.25",
+    "langchain": "0.1.36",
     "ldapts": "4.2.6",
     "lodash": "4.17.21",
     "luxon": "3.3.0",
