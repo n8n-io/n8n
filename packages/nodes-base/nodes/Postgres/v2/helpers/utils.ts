@@ -147,7 +147,7 @@ export function addWhereClauses(
 		replacementIndex = replacementIndex + 1;
 
 		let valueReplacement = '';
-		if (clause.condition !== 'IS NULL') {
+		if (clause.condition !== 'IS NULL' && clause.condition !== 'IS NOT NULL') {
 			valueReplacement = ` $${replacementIndex}`;
 			values.push(clause.value);
 			replacementIndex = replacementIndex + 1;
