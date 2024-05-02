@@ -69,13 +69,15 @@ config.validate({
 const userManagement = config.get('userManagement');
 if (userManagement.jwtRefreshTimeoutHours >= userManagement.jwtSessionDurationHours) {
 	console.warn(
-		'N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS needs to smaller than N8N_USER_MANAGEMENT_JWT_DURATION_HOURS. Setting N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS to 0 for now.',
+		'N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS needs to be smaller than N8N_USER_MANAGEMENT_JWT_DURATION_HOURS. Setting N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS to 0 for now.',
 	);
 
 	config.set('userManagement.jwtRefreshTimeoutHours', 0);
 }
 
 import colors from 'picocolors';
+import { findSchemaEnvVars } from './utils';
+
 const executionProcess = config.getEnv('executions.process');
 if (executionProcess) {
 	console.error(
@@ -93,6 +95,18 @@ if (executionProcess === 'own') {
 		),
 	);
 	process.exit(-1);
+}
+
+const schemaEnvVars = findSchemaEnvVars(schema);
+const processN8nEnvVars = Object.keys(process.env).filter((env) => env.startsWith('N8N'));
+const unknownN8nEnvVars = processN8nEnvVars.filter((i) => !schemaEnvVars.includes(i));
+
+if (unknownN8nEnvVars.length > 0) {
+	const _var = unknownN8nEnvVars.length > 1 ? 'variables' : 'variable';
+	console.warn(
+		colors.bold(colors.yellow(`Unknown N8N-prefixed environment ${_var} detected:`)),
+		unknownN8nEnvVars.join(', '),
+	);
 }
 
 setGlobalState({
