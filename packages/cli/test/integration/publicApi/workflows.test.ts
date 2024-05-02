@@ -7,7 +7,7 @@ import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import { ExecutionService } from '@/executions/execution.service';
 
 import { randomApiKey } from '../shared/random';
@@ -22,7 +22,7 @@ let owner: User;
 let member: User;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
-let workflowRunner: ActiveWorkflowRunner;
+let workflowRunner: ActiveWorkflowManager;
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 const license = testServer.license;
@@ -42,7 +42,7 @@ beforeAll(async () => {
 
 	await utils.initNodeTypes();
 
-	workflowRunner = Container.get(ActiveWorkflowRunner);
+	workflowRunner = Container.get(ActiveWorkflowManager);
 
 	await workflowRunner.init();
 });

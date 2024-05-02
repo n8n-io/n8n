@@ -4,7 +4,7 @@ import { NodeApiError, NodeOperationError, Workflow } from 'n8n-workflow';
 import type { IWebhookData, WorkflowActivateMode } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/ActiveExecutions';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import { ExternalHooks } from '@/ExternalHooks';
 import { Push } from '@/push';
 import { SecretsHelper } from '@/SecretsHelpers';
@@ -47,7 +47,7 @@ Object.assign(loader.loadedNodes, {
 const webhookService = mockInstance(WebhookService);
 const externalHooks = mockInstance(ExternalHooks);
 
-let runner: ActiveWorkflowRunner;
+let runner: ActiveWorkflowManager;
 
 let createActiveWorkflow: () => Promise<WorkflowEntity>;
 let createInactiveWorkflow: () => Promise<WorkflowEntity>;
@@ -55,7 +55,7 @@ let createInactiveWorkflow: () => Promise<WorkflowEntity>;
 beforeAll(async () => {
 	await testDb.init();
 
-	runner = Container.get(ActiveWorkflowRunner);
+	runner = Container.get(ActiveWorkflowManager);
 
 	const owner = await createOwner();
 	createActiveWorkflow = async () => await createWorkflow({ active: true }, owner);
