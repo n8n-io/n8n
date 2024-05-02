@@ -390,6 +390,7 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useAIStore } from '@/stores/ai.store';
 import { useStorage } from '@/composables/useStorage';
+import { isJSPlumbEndpointElement } from '@/utils/typeGuards';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -774,6 +775,9 @@ export default defineComponent({
 		},
 		hasSeenAIAssistantExperiment(): boolean {
 			return useStorage(AI_ASSISTANT_LOCAL_STORAGE_KEY).value === 'true';
+		},
+		shouldShowNextStepDialog(): boolean {
+			return true; //!this.hasSeenAIAssistantExperiment;
 		}
 	},
 	data() {
@@ -1220,18 +1224,19 @@ export default defineComponent({
 		},
 		async onCanvasAddButtonCLick(event: PointerEvent) {
 			if (event) {
-				if (this.hasSeenAIAssistantExperiment) {
-					this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON);
+				if (this.shouldShowNextStepDialog) {
+					const newNodeButton = (event.target as HTMLElement).closest('button');
+					if (newNodeButton) {
+						this.aiStore.latestConnectionInfo = null;
+						this.aiStore.openNextStepPopup(
+							this.$locale.baseText('nextStepPopup.title.firstStep'),
+							newNodeButton,
+						);
+					}
 					return;
 				}
-				const newNodeButton = (event.target as HTMLElement).closest('button');
-				if (newNodeButton) {
-					this.aiStore.latestConnectionInfo = null;
-					this.aiStore.openNextStepPopup(
-						this.$locale.baseText('nextStepPopup.title.firstStep'),
-						newNodeButton,
-					);
-				}
+				this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON);
+				return;
 			}
 		},
 		onNextStepSelected(action: string) {
@@ -2945,7 +2950,8 @@ export default defineComponent({
 				const endpointId = `${connection.parameters.nodeId}-output${connection.parameters.index}`;
 				const endpoint = connection.instance.getEndpoint(endpointId);
 				// First, show node creator if endpoint is not a plus endpoint
-				if (!endpoint?.endpoint?.canvas || this.hasSeenAIAssistantExperiment) {
+				// or if the AI Assistant experiment doesn't need to shown to user
+				if (!endpoint?.endpoint?.canvas || !this.shouldShowNextStepDialog) {
 					this.insertNodeAfterSelected({
 						sourceId: connection.parameters.nodeId,
 						index: connection.parameters.index,
@@ -2957,36 +2963,41 @@ export default defineComponent({
 				}
 				// Else render the popup
 				const endpointElement: HTMLElement = endpoint.endpoint.canvas;
-				const newConnectionInfo: AIAssistantConnectionInfo = {
-					sourceId: connection.parameters.nodeId,
-					index: connection.parameters.index,
-					eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
-					outputType: endpoint.scope as ConnectionTypes,
-					endpointUuid: endpoint.uuid,
-					stepName: endpoint.__meta.nodeName,
-				};
-				this.aiStore.latestConnectionInfo = newConnectionInfo;
 				// Use observer to trigger the popup once the endpoint is rendered back again
-				// after connection drag is aborted
-				// This will trigger a class change on the 'plus-endpoint' elements (remove 'dragging' class)
+				// after connection drag is aborted (so we can get it's position and dimensions)
 				const observer = new MutationObserver((mutations) => {
-					mutations.forEach((mutation) => {
-						const target = mutation.target as HTMLElement;
-						if (target.classList.contains('plus-endpoint')) {
-							setTimeout(() => {
-								this.aiStore.openNextStepPopup(
-									this.$locale.baseText('nextStepPopup.title.nextStep'),
-									endpointElement,
-								);
-								observer.disconnect();
-							}, 0);
-						}
+					// Find the mutation in which the current endpoint becomes visible again
+					const endpointMutation = mutations.find((mutation) => {
+						const target = mutation.target;
+						return (
+							isJSPlumbEndpointElement(target) &&
+							target.jtk.endpoint.uuid === endpoint.uuid &&
+							target.style.display === 'block'
+						);
 					});
+					if (endpointMutation) {
+						// When found, display the popup
+						const newConnectionInfo: AIAssistantConnectionInfo = {
+							sourceId: connection.parameters.nodeId,
+							index: connection.parameters.index,
+							eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
+							outputType: endpoint.scope as ConnectionTypes,
+							endpointUuid: endpoint.uuid,
+							stepName: endpoint.__meta.nodeName,
+						};
+						this.aiStore.latestConnectionInfo = newConnectionInfo;
+						this.aiStore.openNextStepPopup(
+							this.$locale.baseText('nextStepPopup.title.nextStep'),
+							endpointElement,
+						);
+						observer.disconnect();
+						return;
+					}
 				});
 				observer.observe(this.$refs.nodeViewRef as HTMLElement, {
 					attributes: true,
+					attributeFilter: ['style'],
 					subtree: true,
-					attributeFilter: ['class'],
 				});
 			} catch (e) {
 				console.error(e);
@@ -3502,16 +3513,7 @@ export default defineComponent({
 				.forEach((endpoint) => setTimeout(() => endpoint.instance.revalidate(endpoint.element), 0));
 		},
 		onPlusEndpointClick(endpoint: Endpoint) {
-			if (this.hasSeenAIAssistantExperiment) {
-				this.insertNodeAfterSelected({
-					sourceId: endpoint .__meta.nodeId,
-					index: endpoint .__meta.index,
-					eventSource: NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
-					outputType: endpoint .scope as ConnectionTypes,
-					endpointUuid: endpoint .uuid,
-					stepName: endpoint .__meta.nodeName,
-				});
-			} else {
+			if (this.shouldShowNextStepDialog) {
 				if (endpoint?.__meta) {
 					this.aiStore.latestConnectionInfo = {
 						sourceId: endpoint .__meta.nodeId,
@@ -3527,6 +3529,15 @@ export default defineComponent({
 						endpointElement,
 					);
 				}
+			} else {
+				this.insertNodeAfterSelected({
+					sourceId: endpoint .__meta.nodeId,
+					index: endpoint .__meta.index,
+					eventSource: NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
+					outputType: endpoint .scope as ConnectionTypes,
+					endpointUuid: endpoint .uuid,
+					stepName: endpoint .__meta.nodeName,
+				});
 			}
 		},
 		onAddInputEndpointClick(endpoint: Endpoint) {

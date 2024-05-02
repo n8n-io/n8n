@@ -1,4 +1,4 @@
-import type { Component } from 'vue';
+import type { Component, Ref } from 'vue';
 export interface ChatOptions {
 	webhookUrl: string;
 	webhookConfig?: {
@@ -29,4 +29,5 @@ export interface ChatOptions {
 	>;
 	theme?: {};
 	messageComponents?: Record<string, Component>;
+	disabled?: Ref<boolean>;
 }

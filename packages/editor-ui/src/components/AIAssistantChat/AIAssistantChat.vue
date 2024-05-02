@@ -22,6 +22,7 @@ const aiStore = useAIStore();
 const messages: Ref<ChatMessage[]> = ref([]);
 const waitingForResponse = ref(false);
 const currentSessionId = ref<string>(String(Date.now()));
+const disableChat = ref(false);
 
 const userName = computed(() => usersStore.currentUser?.firstName ?? 'there');
 const latestConnectionInfo = computed(() => aiStore.latestConnectionInfo);
@@ -101,6 +102,7 @@ const initialMessages: Ref<ChatMessage[]> = ref([
 ]);
 
 const sendMessage = async (message: string) => {
+	disableChat.value = true;
 	messages.value.push({
 		id: String(messages.value.length + 1),
 		sender: 'user',
@@ -143,6 +145,7 @@ const chatOptions: ChatOptions = {
 	messageComponents: {
 		QuickReplies,
 	},
+	disabled: disableChat,
 };
 
 const chatConfig: Chat = {

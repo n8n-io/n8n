@@ -2,9 +2,10 @@
 // eslint-disable-next-line import/no-unresolved
 import IconSend from 'virtual:icons/mdi/send';
 import { computed, onMounted, ref } from 'vue';
-import { useI18n, useChat } from '@n8n/chat/composables';
+import { useI18n, useChat, useOptions } from '@n8n/chat/composables';
 import { chatEventBus } from '@n8n/chat/event-buses';
 
+const { options } = useOptions();
 const chatStore = useChat();
 const { waitingForResponse } = chatStore;
 const { t } = useI18n();
@@ -13,8 +14,10 @@ const chatTextArea = ref(null);
 const input = ref('');
 
 const isSubmitDisabled = computed(() => {
-	return input.value === '' || waitingForResponse.value;
+	return input.value === '' || waitingForResponse.value || options.disabled?.value === true;
 });
+
+const isInputDisabled = computed(() => options.disabled?.value === true);
 
 onMounted(() => {
 	chatEventBus.on('focusInput', () => {
@@ -51,6 +54,7 @@ async function onSubmitKeydown(event: KeyboardEvent) {
 			ref="chatTextArea"
 			v-model="input"
 			rows="1"
+			:disabled="isInputDisabled"
 			:placeholder="t('inputPlaceholder')"
 			@keydown.enter="onSubmitKeydown"
 		/>
