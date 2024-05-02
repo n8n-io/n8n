@@ -14,14 +14,14 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	const workflowStore = useWorkflowsStore();
 
 	const usersForWorkflows = ref<ActiveUsersForWorkflows>({});
-	const removeEventListener = ref<(() => void) | null>(null);
+	const pushStoreEventListenerRemovalFn = ref<(() => void) | null>(null);
 
 	const getUsersForCurrentWorkflow = computed(() => {
-		return usersForWorkflows.value[workflowStore.workflowId];
+		return usersForWorkflows.value[workflowStore.workflowId] ?? [];
 	});
 
 	function initialize() {
-		removeEventListener.value = pushStore.addEventListener((event) => {
+		pushStoreEventListenerRemovalFn.value = pushStore.addEventListener((event) => {
 			if (event.type === 'activeWorkflowUsersChanged') {
 				const activeWorkflowId = workflowStore.workflowId;
 				if (event.data.workflowId === activeWorkflowId) {
@@ -32,8 +32,8 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	}
 
 	function terminate() {
-		if (typeof removeEventListener.value === 'function') {
-			removeEventListener.value();
+		if (typeof pushStoreEventListenerRemovalFn.value === 'function') {
+			pushStoreEventListenerRemovalFn.value();
 		}
 	}
 

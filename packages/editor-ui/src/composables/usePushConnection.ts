@@ -42,11 +42,7 @@ import type { useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-
-export interface PushMessageQueueItem {
-	message: IPushData;
-	retriesLeft: number;
-}
+import type { PushMessageQueueItem } from '@/types';
 
 export function usePushConnection({ router }: { router: ReturnType<typeof useRouter> }) {
 	const workflowHelpers = useWorkflowHelpers({ router });
