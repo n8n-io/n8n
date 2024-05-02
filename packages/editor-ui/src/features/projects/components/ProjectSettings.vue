@@ -80,16 +80,26 @@ const onCancel = () => {
 };
 
 const onSubmit = async () => {
-	if (isDirty.value && projectsStore.currentProject) {
-		await projectsStore.updateProject({
-			id: projectsStore.currentProject.id,
-			name: formData.value.name,
-			relations: formData.value.relations.map((r: ProjectRelation) => ({
-				userId: r.id,
-				role: r.role,
-			})),
-		});
-		isDirty.value = false;
+	try {
+		if (isDirty.value && projectsStore.currentProject) {
+			await projectsStore.updateProject({
+				id: projectsStore.currentProject.id,
+				name: formData.value.name,
+				relations: formData.value.relations.map((r: ProjectRelation) => ({
+					userId: r.id,
+					role: r.role,
+				})),
+			});
+			isDirty.value = false;
+			toast.showMessage({
+				title: locale.baseText('projects.settings.save.successful.title', {
+					interpolate: { projectName: formData.value.name ?? '' },
+				}),
+				type: 'success',
+			});
+		}
+	} catch (error) {
+		toast.showError(error, locale.baseText('projects.settings.save.error.title'));
 	}
 };
 

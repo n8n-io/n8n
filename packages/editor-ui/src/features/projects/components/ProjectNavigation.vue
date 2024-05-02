@@ -7,6 +7,7 @@ import { VIEWS } from '@/constants';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import type { ProjectListItem } from '@/features/projects/projects.types';
 import { hasPermission } from '@/rbac/permissions';
+import { useToast } from '@/composables/useToast';
 
 type Props = {
 	collapsed: boolean;
@@ -17,6 +18,7 @@ const props = defineProps<Props>();
 const route = useRoute();
 const router = useRouter();
 const locale = useI18n();
+const toast = useToast();
 const projectsStore = useProjectsStore();
 
 const isCreatingProject = ref(false);
@@ -32,6 +34,7 @@ const addProject = ref<IMenuItem>({
 	id: 'addProject',
 	label: locale.baseText('projects.menu.addProject'),
 	icon: 'plus',
+	disabled: isCreatingProject.value,
 });
 
 const activeTab = computed(() => {
@@ -75,8 +78,14 @@ const addProjectClicked = async () => {
 			name: locale.baseText('projects.settings.newProjectName'),
 		});
 		await router.push({ name: VIEWS.PROJECT_SETTINGS, params: { projectId: newProject.id } });
+		toast.showMessage({
+			title: locale.baseText('projects.settings.save.successful.title', {
+				interpolate: { projectName: newProject.name ?? '' },
+			}),
+			type: 'success',
+		});
 	} catch (error) {
-		console.error(error);
+		toast.showError(error, locale.baseText('projects.error.title'));
 	} finally {
 		isCreatingProject.value = false;
 		addProject.value.isLoading = false;
