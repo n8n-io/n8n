@@ -29,7 +29,7 @@ async function main() {
 
 	registerSuites(bench);
 
-	// await bench.warmup(); // @TODO: Restore
+	await bench.warmup();
 
 	log('Set config', toOneLineJson(benchConfig));
 

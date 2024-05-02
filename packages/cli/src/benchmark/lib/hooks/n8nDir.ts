@@ -21,7 +21,7 @@ export function n8nDir() {
 
 	writeFileSync(
 		path.join(tempN8nDir, 'config'),
-		JSON.stringify({ encryptionKey: 'temp_encryption_key', instanceId: 'temp-123' }),
+		JSON.stringify({ encryptionKey: 'temp-encryption-key', instanceId: 'temp-123' }),
 		'utf-8',
 	);
 

@@ -5,10 +5,8 @@ import { collectSuites } from '../lib';
 import type { Suites } from '../lib';
 
 async function exists(filePath: string) {
-	const fullPath = path.resolve('src', 'benchmark', filePath);
-
 	try {
-		await fs.access(fullPath);
+		await fs.access(filePath);
 		return true;
 	} catch {
 		return false;
@@ -25,10 +23,11 @@ async function toSuitesList(suites: Suites) {
 
 		for (let i = 0; i < suite.tasks.length; i++) {
 			const suiteName = suite.tasks[i].name.replace(suite.name, '').trim();
-			const workflowPath = `./suites/workflows/${suiteId}-${i + 1}.json`;
+			const relativeWorkflowPath = `./suites/workflows/${suiteId}-${i + 1}.json`;
+			const absoluteWorkflowPath = path.resolve('src', 'benchmark', relativeWorkflowPath);
 
-			list += (await exists(workflowPath))
-				? `- [${suiteName}](${workflowPath})\n`
+			list += (await exists(absoluteWorkflowPath))
+				? `- [${suiteName}](${relativeWorkflowPath})\n`
 				: `- ${suiteName}\n`;
 		}
 	}

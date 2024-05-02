@@ -1457,13 +1457,13 @@ export const schema = {
 			env: 'N8N_BENCHMARK_STOP_ON_ERROR',
 		},
 		warmupTime: {
-			doc: 'Length of time (ms) during which to repeatedly run a benchmarking task for warmup',
+			doc: 'Length of time (ms) during which to repeatedly run each benchmarking task for warmup',
 			format: Number,
 			default: 100,
 			env: 'N8N_BENCHMARK_WARMUP_TIME',
 		},
 		warmupIterations: {
-			doc: 'Number of times to run a benchmarking task for warmup, even if `N8N_BENCHMARK_WARMUP_TIME` is exceeded',
+			doc: 'Number of times to run each benchmarking task for warmup, even if `N8N_BENCHMARK_WARMUP_TIME` is exceeded',
 			format: Number,
 			default: 5,
 			env: 'N8N_BENCHMARK_WARMUP_ITERATIONS',
