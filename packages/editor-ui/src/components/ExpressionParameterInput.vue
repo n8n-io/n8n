@@ -48,9 +48,7 @@ const telemetry = useTelemetry();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 
-const hoveringItemNumber = computed(() => ndvStore.hoveringItemNumber);
 const isDragging = computed(() => ndvStore.isDraggableDragging);
-const noInputData = computed(() => ndvStore.hasInputData);
 
 function focus() {
 	if (inlineInput.value) {
@@ -166,9 +164,7 @@ defineExpose({ focus });
 			:editor-state="editorState"
 			:segments="segments"
 			:is-read-only="isReadOnly"
-			:no-input-data="noInputData"
 			:visible="isFocused"
-			:hovering-item-number="hoveringItemNumber"
 		/>
 	</div>
 </template>

@@ -6,20 +6,19 @@ import type { Segment } from '@/types/expressions';
 import ExpressionOutput from './ExpressionOutput.vue';
 import InlineExpressionTip from './InlineExpressionTip.vue';
 import { outputTheme } from './theme';
+import { computed, onBeforeUnmount } from 'vue';
+import { useNDVStore } from '@/stores/ndv.store';
 
 interface InlineExpressionEditorOutputProps {
 	segments: Segment[];
-	hoveringItemNumber: number;
 	unresolvedExpression?: string;
 	editorState?: EditorState;
 	selection?: SelectionRange;
 	visible?: boolean;
-	noInputData?: boolean;
 }
 
 withDefaults(defineProps<InlineExpressionEditorOutputProps>(), {
 	visible: false,
-	noInputData: false,
 	editorState: undefined,
 	selection: undefined,
 	unresolvedExpression: undefined,
@@ -27,19 +26,78 @@ withDefaults(defineProps<InlineExpressionEditorOutputProps>(), {
 
 const i18n = useI18n();
 const theme = outputTheme();
+const ndvStore = useNDVStore();
+
+const hoveringItem = computed(() => ndvStore.getHoveringItem);
+const hoveringItemIndex = computed(() => hoveringItem.value?.itemIndex);
+const isHoveringItem = computed(() => Boolean(hoveringItem.value));
+const itemsLength = computed(() => ndvStore.ndvInputDataWithPinnedData.length);
+const isItemSelectable = computed(() => !isHoveringItem.value && itemsLength.value > 1);
+
+const itemIndex = computed(() => hoveringItemIndex.value ?? ndvStore.expressionOutputItemIndex);
+const itemNumber = computed(() => (itemIndex.value + 1).toString());
+const canSelectPrevItem = computed(
+	() => !isHoveringItem.value && ndvStore.expressionOutputItemIndex > 0,
+);
+const canSelectNextItem = computed(
+	() => !isHoveringItem.value && ndvStore.expressionOutputItemIndex < itemsLength.value - 1,
+);
+
+function nextItem() {
+	ndvStore.expressionOutputItemIndex = ndvStore.expressionOutputItemIndex + 1;
+}
+
+function prevItem() {
+	ndvStore.expressionOutputItemIndex = ndvStore.expressionOutputItemIndex - 1;
+}
+
+onBeforeUnmount(() => {
+	ndvStore.expressionOutputItemIndex = 0;
+});
 </script>
 
 <template>
 	<div :class="visible ? $style.dropdown : $style.hidden">
-		<n8n-text v-if="!noInputData" size="small" compact :class="$style.header">
-			{{ i18n.baseText('parameterInput.resultForItem') }} {{ hoveringItemNumber }}
-		</n8n-text>
+		<div :class="$style.header">
+			<n8n-text bold size="small" compact>
+				{{ i18n.baseText('parameterInput.result') }}
+			</n8n-text>
+			<div v-if="isItemSelectable" :class="$style.item">
+				<n8n-icon color="text-base" icon="eye" size="small" />
+				<n8n-text size="small" color="text-base" compact>
+					{{
+						i18n.baseText('parameterInput.itemN', {
+							interpolate: { num: itemNumber },
+						})
+					}}
+				</n8n-text>
+				<div>
+					<n8n-icon-button
+						text
+						type="tertiary"
+						icon="chevron-left"
+						size="mini"
+						:disabled="!canSelectPrevItem"
+						@click="prevItem"
+					/>
+					<n8n-icon-button
+						text
+						type="tertiary"
+						icon="chevron-right"
+						size="mini"
+						:disabled="!canSelectNextItem"
+						@click="nextItem"
+					/>
+				</div>
+			</div>
+		</div>
 		<n8n-text :class="$style.body">
 			<ExpressionOutput
 				data-test-id="inline-expression-editor-output"
 				:segments="segments"
 				:extensions="theme"
-			></ExpressionOutput>
+			>
+			</ExpressionOutput>
 		</n8n-text>
 		<div :class="$style.footer">
 			<InlineExpressionTip
@@ -83,10 +141,21 @@ const theme = outputTheme();
 	}
 
 	.header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: var(--spacing-2xs);
+		min-height: 36px;
 		color: var(--color-text-dark);
 		font-weight: var(--font-weight-bold);
 		padding-left: var(--spacing-2xs);
 		padding-top: var(--spacing-2xs);
+	}
+
+	.item {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-4xs);
 	}
 
 	.body {

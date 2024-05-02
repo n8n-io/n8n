@@ -1240,6 +1240,7 @@ export interface NDVState {
 	focusedInputPath: string;
 	mappingTelemetry: { [key: string]: string | number | boolean };
 	hoveringItem: null | TargetItem;
+	expressionOutputItemIndex: number;
 	draggable: {
 		isDragging: boolean;
 		type: string;

@@ -47,6 +47,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 		focusedInputPath: '',
 		mappingTelemetry: {},
 		hoveringItem: null,
+		expressionOutputItemIndex: 0,
 		draggable: {
 			isDragging: false,
 			type: '',
@@ -79,14 +80,20 @@ export const useNDVStore = defineStore(STORES.NDV, {
 				return [];
 			}
 
-			return executionData.data?.resultData?.runData?.[inputNodeName]?.[inputRunIndex]?.data
-				?.main?.[inputBranchIndex];
+			return (
+				executionData.data?.resultData?.runData?.[inputNodeName]?.[inputRunIndex]?.data?.main?.[
+					inputBranchIndex
+				] ?? []
+			);
+		},
+		ndvInputDataWithPinnedData(): INodeExecutionData[] {
+			const data = this.ndvInputData;
+			return this.ndvInputNodeName
+				? useWorkflowsStore().pinDataByNodeName(this.ndvInputNodeName) ?? data
+				: data;
 		},
 		hasInputData(): boolean {
-			const data = this.ndvInputData;
-			const pinData =
-				this.ndvInputNodeName && useWorkflowsStore().pinDataByNodeName(this.ndvInputNodeName);
-			return !!(data && data.length > 0) || !!(pinData && pinData.length > 0);
+			return this.ndvInputDataWithPinnedData.length > 0;
 		},
 		getPanelDisplayMode() {
 			return (panel: NodePanelType) => this[panel].displayMode;
