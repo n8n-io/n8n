@@ -2565,7 +2565,10 @@ export interface IN8nUISettings {
 	ai: {
 		enabled: boolean;
 		provider: string;
-		errorDebugging: boolean;
+		features: {
+			errorDebugging: boolean;
+			generateCurl: boolean;
+		};
 	};
 	workflowHistory: {
 		pruneTime: number;

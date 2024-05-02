@@ -39,6 +39,7 @@ import {
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 	SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
 	SETUP_CREDENTIALS_MODAL_KEY,
+	GENERATE_CURL_MODAL_KEY,
 } from '@/constants';
 import type {
 	CloudUpdateLinkSourceType,
@@ -133,8 +134,16 @@ export const useUIStore = defineStore(STORES.UI, {
 			},
 			[IMPORT_CURL_MODAL_KEY]: {
 				open: false,
-				curlCommand: '',
-				httpNodeParameters: '',
+				data: {
+					curlCommand: '',
+				},
+			},
+			[GENERATE_CURL_MODAL_KEY]: {
+				open: false,
+				data: {
+					service: '',
+					request: '',
+				},
 			},
 			[LOG_STREAM_MODAL_KEY]: {
 				open: false,
@@ -264,12 +273,6 @@ export const useUIStore = defineStore(STORES.UI, {
 				return workflowsStore.getNodeByName(this.lastSelectedNode);
 			}
 			return null;
-		},
-		getCurlCommand(): string | undefined {
-			return this.modals[IMPORT_CURL_MODAL_KEY].curlCommand;
-		},
-		getHttpNodeParameters(): string | undefined {
-			return this.modals[IMPORT_CURL_MODAL_KEY].httpNodeParameters;
 		},
 		areExpressionsDisabled(): boolean {
 			return this.currentView === VIEWS.DEMO;
@@ -542,18 +545,21 @@ export const useUIStore = defineStore(STORES.UI, {
 				curlCommand: payload.command,
 			};
 		},
-		setHttpNodeParameters(payload: { name: string; parameters: string }): void {
-			this.modals[payload.name] = {
-				...this.modals[payload.name],
-				httpNodeParameters: payload.parameters,
-			};
-		},
 		toggleSidebarMenuCollapse(): void {
 			this.sidebarMenuCollapsed = !this.sidebarMenuCollapsed;
 		},
 		async getCurlToJson(curlCommand: string): Promise<CurlToJSONResponse> {
 			const rootStore = useRootStore();
-			return await getCurlToJson(rootStore.getRestApiContext, curlCommand);
+			const parameters = await getCurlToJson(rootStore.getRestApiContext, curlCommand);
+
+			// Normalize placeholder values
+			if (parameters['parameters.url']) {
+				parameters['parameters.url'] = parameters['parameters.url']
+					.replaceAll('%7B', '{')
+					.replaceAll('%7D', '}');
+			}
+
+			return parameters;
 		},
 		async goToUpgrade(
 			source: CloudUpdateLinkSourceType,

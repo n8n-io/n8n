@@ -150,10 +150,16 @@ export function hasSharing(
 
 export declare namespace AIRequest {
 	export type DebugError = AuthenticatedRequest<{}, {}, AIDebugErrorPayload>;
+	export type GenerateCurl = AuthenticatedRequest<{}, {}, AIGenerateCurlPayload>;
 }
 
 export interface AIDebugErrorPayload {
 	error: NodeError;
+}
+
+export interface AIGenerateCurlPayload {
+	service: string;
+	request: string;
 }
 
 // ----------------------------------

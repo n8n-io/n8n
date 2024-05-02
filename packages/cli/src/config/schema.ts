@@ -1356,11 +1356,27 @@ export const schema = {
 			default: 'openai',
 			env: 'N8N_AI_PROVIDER',
 		},
-		openAIApiKey: {
-			doc: 'Enable AI features using OpenAI API key',
-			format: String,
-			default: '',
-			env: 'N8N_AI_OPENAI_API_KEY',
+		openAI: {
+			apiKey: {
+				doc: 'Enable AI features using OpenAI API key',
+				format: String,
+				default: '',
+				env: 'N8N_AI_OPENAI_API_KEY',
+			},
+			model: {
+				doc: 'OpenAI model to use',
+				format: String,
+				default: 'gpt-4-turbo',
+				env: 'N8N_AI_OPENAI_MODEL',
+			},
+		},
+		pinecone: {
+			apiKey: {
+				doc: 'Enable AI features using Pinecone API key',
+				format: String,
+				default: '',
+				env: 'N8N_AI_PINECONE_API_KEY',
+			},
 		},
 	},
 
