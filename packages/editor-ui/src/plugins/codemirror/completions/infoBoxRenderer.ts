@@ -206,11 +206,15 @@ const renderExamples = (examples: DocMetadataExample[]) => {
 	examplesTitle.textContent = i18n.baseText('codeNodeEditor.examples');
 	examplesContainer.appendChild(examplesTitle);
 
+	const examplesList = document.createElement('div');
+	examplesList.classList.add('autocomplete-info-examples-list');
+
 	for (const example of examples) {
 		const renderedExample = renderExample(example);
-		examplesContainer.appendChild(renderedExample);
+		examplesList.appendChild(renderedExample);
 	}
 
+	examplesContainer.appendChild(examplesList);
 	return examplesContainer;
 };
 

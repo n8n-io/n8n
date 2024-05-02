@@ -156,6 +156,8 @@
 		font-size: var(--font-size-2xs);
 
 		.autocomplete-info-example {
+			border-radius: var(--border-radius-base);
+			border: 1px solid var(--color-foreground-light);
 			color: var(--color-text-base);
 			margin-top: var(--spacing-xs);
 		}
@@ -213,10 +215,12 @@
 		code {
 			background: inherit;
 		}
+	}
 
-		.autocomplete-info-example {
-			padding: 0 var(--spacing-xs);
-		}
+	.autocomplete-info-examples-list {
+		border-radius: var(--border-radius-base);
+		border: 1px solid var(--color-foreground-light);
+		margin: 0 var(--spacing-xs);
 	}
 
 	.autocomplete-info-example {
@@ -227,15 +231,12 @@
 		color: var(--color-text-base);
 		display: block;
 		padding: var(--spacing-3xs) var(--spacing-2xs);
-		border-radius: var(--border-radius-base);
-		border: 1px solid var(--color-foreground-light);
 		font-size: 0.688rem; // Equals 11px. Add a new token in _tokens.scss if this size is needed elsewhere
 		font-family: var(--font-family-monospace);
 		line-height: var(--font-line-height-compact);
 
-		word-break: break-word;
+		word-break: break-all;
 		white-space: pre-wrap;
-		word-wrap: break-word;
 	}
 
 	.autocomplete-info-example-comment {
@@ -254,10 +255,6 @@
 		color: var(--color-text-dark);
 		font-size: var(--font-size-3xs);
 		font-weight: var(--font-weight-bold);
-	}
-
-	.autocomplete-info-examples-list {
-		list-style: none;
 	}
 
 	&.cm-completionInfo-left-narrow,
