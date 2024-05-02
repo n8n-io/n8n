@@ -133,7 +133,7 @@ const onOptionSelected = (option: string) => {
 	color: var(--color-text-dark);
 
 	&:hover {
-		background: var(--color-background-light);
+		background: var(--color-background-base);
 		font-weight: var(--font-weight-bold);
 	}
 

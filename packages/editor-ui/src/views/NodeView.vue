@@ -316,6 +316,7 @@ import type {
 	NodeCreatorOpenSource,
 	AddedNodesAndConnections,
 	ToggleNodeCreatorOptions,
+	AIAssistantConnectionInfo,
 } from '@/Interface';
 
 import { type Route, type RawLocation, useRouter } from 'vue-router';
@@ -2931,13 +2932,52 @@ export default defineComponent({
 					}
 					return;
 				}
-
-				this.insertNodeAfterSelected({
+				// When connection is aborted, we want to show the 'Next step' popup
+				const endpointId = `${connection.parameters.nodeId}-output${connection.parameters.index}`;
+				const endpoint = connection.instance.getEndpoint(endpointId);
+				// First, show node creator if endpoint is not a plus endpoint
+				if (!endpoint?.endpoint?.canvas) {
+					this.insertNodeAfterSelected({
+						sourceId: connection.parameters.nodeId,
+						index: connection.parameters.index,
+						eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
+						connection,
+						outputType: connection.parameters.type,
+					});
+					return;
+				}
+				// Else render the popup
+				const endpointElement: HTMLElement = endpoint.endpoint.canvas;
+				const newConnectionInfo: AIAssistantConnectionInfo = {
 					sourceId: connection.parameters.nodeId,
 					index: connection.parameters.index,
 					eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
-					connection,
-					outputType: connection.parameters.type,
+					outputType: endpoint.scope as ConnectionTypes,
+					endpointUuid: endpoint.uuid,
+					stepName: endpoint.__meta.nodeName,
+				};
+				this.aiStore.latestConnectionInfo = newConnectionInfo;
+				// Use observer to trigger the popup once the endpoint is rendered back again
+				// after connection drag is aborted
+				// This will trigger a class change on the 'plus-endpoint' elements (remove 'dragging' class)
+				const observer = new MutationObserver((mutations) => {
+					mutations.forEach((mutation) => {
+						const target = mutation.target as HTMLElement;
+						if (target.classList.contains('plus-endpoint')) {
+							setTimeout(() => {
+								this.aiStore.openNextStepPopup(
+									this.$locale.baseText('nextStepPopup.title.nextStep'),
+									endpointElement,
+								);
+								observer.disconnect();
+							}, 0);
+						}
+					});
+				});
+				observer.observe(this.$refs.nodeViewRef as HTMLElement, {
+					attributes: true,
+					subtree: true,
+					attributeFilter: ['class'],
 				});
 			} catch (e) {
 				console.error(e);
