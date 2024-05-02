@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, watch, onBeforeMount } from 'vue';
+import { computed, ref, watch, onBeforeMount, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { deepCopy } from 'n8n-workflow';
 import { useUsersStore } from '@/stores/users.store';
@@ -28,6 +28,7 @@ const projectRoles = ref<Array<{ label: string; value: ProjectRole }>>([
 	{ value: 'project:admin', label: locale.baseText('projects.settings.role.admin') },
 	{ value: 'project:editor', label: locale.baseText('projects.settings.role.editor') },
 ]);
+const nameInput = ref<HTMLInputElement | null>(null);
 
 const usersList = computed(() =>
 	usersStore.allUsers.filter((user: IUser) => {
@@ -116,13 +117,25 @@ const onConfirmDelete = async (transferId?: string) => {
 	}
 };
 
+const selectProjectNameIfMatchesDefault = () => {
+	if (
+		nameInput.value &&
+		formData.value.name === locale.baseText('projects.settings.newProjectName')
+	) {
+		nameInput.value.focus();
+		nameInput.value.select();
+	}
+};
+
 watch(
 	() => projectsStore.currentProject,
-	() => {
+	async () => {
 		formData.value.name = projectsStore.currentProject?.name ?? '';
 		formData.value.relations = projectsStore.currentProject?.relations
 			? deepCopy(projectsStore.currentProject.relations)
 			: [];
+		await nextTick();
+		selectProjectNameIfMatchesDefault();
 	},
 	{ immediate: true },
 );
@@ -140,7 +153,14 @@ onBeforeMount(async () => {
 		<form @submit.prevent="onSubmit">
 			<fieldset>
 				<label for="name">{{ locale.baseText('projects.settings.name') }}</label>
-				<N8nInput id="name" v-model="formData.name" type="text" name="name" @input="onNameInput" />
+				<N8nInput
+					id="name"
+					ref="nameInput"
+					v-model="formData.name"
+					type="text"
+					name="name"
+					@input="onNameInput"
+				/>
 			</fieldset>
 			<fieldset>
 				<label for="projectMembers">{{
