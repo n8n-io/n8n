@@ -2,8 +2,6 @@ import { plainToInstance } from 'class-transformer';
 
 import { AuthService } from '@/auth/auth.service';
 import { User } from '@db/entities/User';
-import { SharedCredentials } from '@db/entities/SharedCredentials';
-import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { GlobalScope, Delete, Get, RestController, Patch, Licensed } from '@/decorators';
 import {
 	ListQuery,
@@ -29,7 +27,6 @@ import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { Project } from '@/databases/entities/Project';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { In } from '@n8n/typeorm';
 import { ProjectService } from '@/services/project.service';
 
 @RestController('/users')
