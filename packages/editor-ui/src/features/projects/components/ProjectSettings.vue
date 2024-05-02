@@ -25,8 +25,8 @@ const formData = ref<Pick<Project, 'name' | 'relations'>>({
 	relations: [],
 });
 const projectRoles = ref<Array<{ label: string; value: ProjectRole }>>([
-	{ value: 'project:admin', label: locale.baseText('projects.settings.role.admin') },
 	{ value: 'project:editor', label: locale.baseText('projects.settings.role.editor') },
+	{ value: 'project:admin', label: locale.baseText('projects.settings.role.admin') },
 ]);
 const nameInput = ref<HTMLInputElement | null>(null);
 
@@ -52,7 +52,7 @@ const onAddMember = (userId: string) => {
 	const { id, firstName, lastName, email } = user;
 	const relation = { id, firstName, lastName, email } as ProjectRelation;
 
-	relation.role = 'project:admin';
+	relation.role = 'project:editor';
 
 	formData.value.relations.push(relation);
 };
@@ -198,7 +198,7 @@ onBeforeMount(async () => {
 				>
 					<template #actions="{ user }">
 						<N8nSelect
-							:model-value="user?.role || 'project:admin'"
+							:model-value="user?.role || 'project:editor'"
 							size="small"
 							@update:model-value="onRoleAction(user, $event)"
 						>
