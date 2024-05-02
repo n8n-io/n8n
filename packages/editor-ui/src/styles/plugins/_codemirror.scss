@@ -97,7 +97,7 @@
 .autocomplete-info-container {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-s);
+	gap: var(--spacing-xs);
 	padding: var(--spacing-xs) 0;
 	height: 100%;
 	overflow-y: auto;
@@ -130,9 +130,8 @@
 
 	.autocomplete-info-header {
 		padding: 0 var(--spacing-xs);
-		color: var(--color-text-dark);
-		font-size: var(--font-size-xs);
-		font-weight: var(--font-weight-bold);
+		color: var(--color-text-base);
+		font-size: var(--font-size-2xs);
 		font-family: var(--font-family-monospace);
 		line-height: var(--font-line-height-compact);
 	}
@@ -149,11 +148,11 @@
 
 	.autocomplete-info-description {
 		padding: 0 var(--spacing-xs);
-		color: var(--color-text-dark);
+		color: var(--color-text-base);
 		font-size: var(--font-size-2xs);
 
 		.autocomplete-info-example {
-			color: var(--color-text-dark);
+			color: var(--color-text-base);
 			margin-top: var(--spacing-xs);
 		}
 
@@ -189,7 +188,7 @@
 	}
 
 	.autocomplete-info-arg-description {
-		color: var(--color-text-dark);
+		color: var(--color-text-base);
 		margin-left: var(--spacing-4xs);
 		font-size: var(--font-size-2xs);
 
@@ -217,13 +216,16 @@
 	}
 
 	.autocomplete-info-example {
-		color: var(--color-text-dark);
+		color: var(--color-text-base);
 	}
 
 	.autocomplete-info-example code {
 		color: var(--color-text-base);
 		display: block;
-		font-size: var(--font-size-3xs);
+		padding: var(--spacing-3xs) var(--spacing-2xs);
+		border-radius: var(--border-radius-base);
+		border: 1px solid var(--color-foreground-light);
+		font-size: 0.688rem; // Equals 11px. Add a new token in _tokens.scss if this size is needed elsewhere
 		font-family: var(--font-family-monospace);
 		line-height: var(--font-line-height-compact);
 
@@ -241,7 +243,7 @@
 	}
 
 	.autocomplete-info-section-title {
-		margin-bottom: var(--spacing-3xs);
+		margin: var(--spacing-3xs) 0;
 		padding: 0 var(--spacing-xs) var(--spacing-3xs) var(--spacing-xs);
 		border-bottom: 1px solid var(--color-autocomplete-section-header-border);
 		text-transform: uppercase;
@@ -271,6 +273,6 @@
 	}
 
 	&.cm-completionInfo-right {
-		background-color: var(--color-background-light);
+		background-color: var(--color-background-light-base);
 	}
 }
