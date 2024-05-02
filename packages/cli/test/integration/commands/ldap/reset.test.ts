@@ -17,7 +17,7 @@ import { EntityNotFoundError } from '@n8n/typeorm';
 import { Push } from '@/push';
 import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
-import { createTeamProject, getPersonalProject } from '../../shared/db/projects';
+import { createTeamProject, findProject, getPersonalProject } from '../../shared/db/projects';
 import { WaitTracker } from '@/WaitTracker';
 import { getLdapSynchronizations, saveLdapSynchronization } from '@/Ldap/helpers';
 import { createLdapConfig } from '../../shared/ldap';
@@ -82,6 +82,7 @@ describe('--deleteWorkflowsAndCredentials', () => {
 		// ARRANGE
 		//
 		const member = await createLdapUser({ role: 'global:member' }, nanoid());
+		const memberProject = await getPersonalProject(member);
 		const workflow = await createWorkflow({}, member);
 		const credential = await saveCredential(randomCredentialPayload(), {
 			user: member,
@@ -105,6 +106,7 @@ describe('--deleteWorkflowsAndCredentials', () => {
 		//
 		// LDAP user is deleted
 		await expect(getUserById(member.id)).rejects.toThrowError(EntityNotFoundError);
+		await expect(findProject(memberProject.id)).rejects.toThrowError(EntityNotFoundError);
 		await expect(
 			Container.get(WorkflowRepository).findOneBy({ id: workflow.id }),
 		).resolves.toBeNull();
@@ -196,6 +198,7 @@ describe('--userId', () => {
 		// ARRANGE
 		//
 		const member = await createLdapUser({ role: 'global:member' }, nanoid());
+		const memberProject = await getPersonalProject(member);
 		const workflow = await createWorkflow({}, member);
 		const credential = await saveCredential(randomCredentialPayload(), {
 			user: member,
@@ -220,6 +223,7 @@ describe('--userId', () => {
 		//
 		// LDAP user is deleted
 		await expect(getUserById(member.id)).rejects.toThrowError(EntityNotFoundError);
+		await expect(findProject(memberProject.id)).rejects.toThrowError(EntityNotFoundError);
 
 		// Their workflow and credential have been migrated to the normal user.
 		await expect(
@@ -271,6 +275,7 @@ describe('--projectId', () => {
 		// ARRANGE
 		//
 		const member = await createLdapUser({ role: 'global:member' }, nanoid());
+		const memberProject = await getPersonalProject(member);
 		const workflow = await createWorkflow({}, member);
 		const credential = await saveCredential(randomCredentialPayload(), {
 			user: member,
@@ -295,6 +300,7 @@ describe('--projectId', () => {
 		//
 		// LDAP user is deleted
 		await expect(getUserById(member.id)).rejects.toThrowError(EntityNotFoundError);
+		await expect(findProject(memberProject.id)).rejects.toThrowError(EntityNotFoundError);
 
 		// Their workflow and credential have been migrated to the normal user.
 		await expect(
@@ -325,6 +331,7 @@ describe('--projectId', () => {
 		// ARRANGE
 		//
 		const member = await createLdapUser({ role: 'global:member' }, nanoid());
+		const memberProject = await getPersonalProject(member);
 		const workflow = await createWorkflow({}, member);
 		const credential = await saveCredential(randomCredentialPayload(), {
 			user: member,
@@ -350,6 +357,7 @@ describe('--projectId', () => {
 		//
 		// LDAP user is deleted
 		await expect(getUserById(member.id)).rejects.toThrowError(EntityNotFoundError);
+		await expect(findProject(memberProject.id)).rejects.toThrowError(EntityNotFoundError);
 
 		// Their workflow and credential have been migrated to the team project.
 		await expect(

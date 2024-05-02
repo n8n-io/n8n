@@ -113,6 +113,7 @@ export class Reset extends BaseCommand {
 		await Container.get(AuthProviderSyncHistoryRepository).delete({ providerType: 'ldap' });
 		await Container.get(AuthIdentityRepository).delete({ providerType: 'ldap' });
 		await Container.get(UserRepository).deleteMany(ldapIdentities.map((i) => i.userId));
+		await Container.get(ProjectRepository).delete({ id: In(personalProjectIds) });
 		await Container.get(SettingsRepository).delete({ key: LDAP_FEATURE_NAME });
 		await Container.get(SettingsRepository).insert({
 			key: LDAP_FEATURE_NAME,
