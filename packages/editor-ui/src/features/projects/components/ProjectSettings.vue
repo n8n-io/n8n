@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, watch, onBeforeMount } from 'vue';
+import { computed, ref, watch, onBeforeMount, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { deepCopy } from 'n8n-workflow';
 import { useUsersStore } from '@/stores/users.store';
@@ -25,9 +25,10 @@ const formData = ref<Pick<Project, 'name' | 'relations'>>({
 	relations: [],
 });
 const projectRoles = ref<Array<{ label: string; value: ProjectRole }>>([
-	{ value: 'project:admin', label: locale.baseText('projects.settings.role.admin') },
 	{ value: 'project:editor', label: locale.baseText('projects.settings.role.editor') },
+	{ value: 'project:admin', label: locale.baseText('projects.settings.role.admin') },
 ]);
+const nameInput = ref<HTMLInputElement | null>(null);
 
 const usersList = computed(() =>
 	usersStore.allUsers.filter((user: IUser) => {
@@ -51,7 +52,7 @@ const onAddMember = (userId: string) => {
 	const { id, firstName, lastName, email } = user;
 	const relation = { id, firstName, lastName, email } as ProjectRelation;
 
-	relation.role = 'project:admin';
+	relation.role = 'project:editor';
 
 	formData.value.relations.push(relation);
 };
@@ -79,16 +80,26 @@ const onCancel = () => {
 };
 
 const onSubmit = async () => {
-	if (isDirty.value && projectsStore.currentProject) {
-		await projectsStore.updateProject({
-			id: projectsStore.currentProject.id,
-			name: formData.value.name,
-			relations: formData.value.relations.map((r: ProjectRelation) => ({
-				userId: r.id,
-				role: r.role,
-			})),
-		});
-		isDirty.value = false;
+	try {
+		if (isDirty.value && projectsStore.currentProject) {
+			await projectsStore.updateProject({
+				id: projectsStore.currentProject.id,
+				name: formData.value.name,
+				relations: formData.value.relations.map((r: ProjectRelation) => ({
+					userId: r.id,
+					role: r.role,
+				})),
+			});
+			isDirty.value = false;
+			toast.showMessage({
+				title: locale.baseText('projects.settings.save.successful.title', {
+					interpolate: { projectName: formData.value.name ?? '' },
+				}),
+				type: 'success',
+			});
+		}
+	} catch (error) {
+		toast.showError(error, locale.baseText('projects.settings.save.error.title'));
 	}
 };
 
@@ -116,13 +127,25 @@ const onConfirmDelete = async (transferId?: string) => {
 	}
 };
 
+const selectProjectNameIfMatchesDefault = () => {
+	if (
+		nameInput.value &&
+		formData.value.name === locale.baseText('projects.settings.newProjectName')
+	) {
+		nameInput.value.focus();
+		nameInput.value.select();
+	}
+};
+
 watch(
 	() => projectsStore.currentProject,
-	() => {
+	async () => {
 		formData.value.name = projectsStore.currentProject?.name ?? '';
 		formData.value.relations = projectsStore.currentProject?.relations
 			? deepCopy(projectsStore.currentProject.relations)
 			: [];
+		await nextTick();
+		selectProjectNameIfMatchesDefault();
 	},
 	{ immediate: true },
 );
@@ -140,7 +163,14 @@ onBeforeMount(async () => {
 		<form @submit.prevent="onSubmit">
 			<fieldset>
 				<label for="name">{{ locale.baseText('projects.settings.name') }}</label>
-				<N8nInput id="name" v-model="formData.name" type="text" name="name" @input="onNameInput" />
+				<N8nInput
+					id="name"
+					ref="nameInput"
+					v-model="formData.name"
+					type="text"
+					name="name"
+					@input="onNameInput"
+				/>
 			</fieldset>
 			<fieldset>
 				<label for="projectMembers">{{
@@ -168,7 +198,7 @@ onBeforeMount(async () => {
 				>
 					<template #actions="{ user }">
 						<N8nSelect
-							:model-value="user?.role || 'project:admin'"
+							:model-value="user?.role || 'project:editor'"
 							size="small"
 							@update:model-value="onRoleAction(user, $event)"
 						>

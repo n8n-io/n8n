@@ -13,6 +13,19 @@
 		<template #header>
 			<ProjectTabs />
 		</template>
+		<template #add-button="{ disabled }">
+			<div>
+				<n8n-button
+					size="large"
+					block
+					:disabled="disabled"
+					data-test-id="resources-list-add"
+					@click="addCredential"
+				>
+					{{ addCredentialButtonText }}
+				</n8n-button>
+			</div>
+		</template>
 		<template #default="{ data }">
 			<CredentialCard data-test-id="resources-list-item" class="mb-2xs" :data="data" />
 		</template>
@@ -60,6 +73,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import ProjectTabs from '@/features/projects/components/ProjectTabs.vue';
 
 type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
@@ -88,6 +102,7 @@ export default defineComponent({
 			useUIStore,
 			useSourceControlStore,
 			useExternalSecretsStore,
+			useProjectsStore,
 		),
 		allCredentials(): ICredentialsResponse[] {
 			return this.credentialsStore.allCredentials;
@@ -97,6 +112,11 @@ export default defineComponent({
 		},
 		credentialTypesById(): ICredentialTypeMap {
 			return this.credentialsStore.credentialTypesById;
+		},
+		addCredentialButtonText() {
+			return this.projectsStore.currentProject
+				? this.$locale.baseText('credentials.project.add')
+				: this.$locale.baseText('credentials.add');
 		},
 	},
 	watch: {

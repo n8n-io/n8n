@@ -36,10 +36,10 @@ const selectPlaceholder = computed(
 );
 const filteredProjects = computed(() =>
 	props.projects
-		.filter((project) =>
-			project.name?.toLowerCase().includes(filter.value.toLowerCase()) && Array.isArray(model.value)
-				? !model.value?.find((p) => p.id === project.id)
-				: true,
+		.filter(
+			(project) =>
+				project.name?.toLowerCase().includes(filter.value.toLowerCase()) &&
+				(Array.isArray(model.value) ? !model.value?.find((p) => p.id === project.id) : true),
 		)
 		.sort((a, b) => (a.name && b.name ? a.name.localeCompare(b.name) : 0)),
 );

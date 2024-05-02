@@ -35,6 +35,19 @@
 				<template #header>
 					<div :class="$style['filters-row']">
 						<div :class="$style.filters">
+							<n8n-input
+								ref="search"
+								:model-value="filtersModel.search"
+								:class="[$style['search'], 'mr-2xs']"
+								:placeholder="i18n.baseText(`${resourceKey}.search.placeholder`)"
+								clearable
+								data-test-id="resources-list-search"
+								@update:model-value="onSearch"
+							>
+								<template #prefix>
+									<n8n-icon icon="search" />
+								</template>
+							</n8n-input>
 							<ResourceFiltersDropdown
 								v-if="showFiltersDropdown"
 								:keys="filterKeys"
@@ -59,19 +72,6 @@
 									/>
 								</n8n-select>
 							</div>
-							<n8n-input
-								ref="search"
-								:model-value="filtersModel.search"
-								:class="[$style['search'], 'mr-2xs']"
-								:placeholder="i18n.baseText(`${resourceKey}.search.placeholder`)"
-								clearable
-								data-test-id="resources-list-search"
-								@update:model-value="onSearch"
-							>
-								<template #prefix>
-									<n8n-icon icon="search" />
-								</template>
-							</n8n-input>
 						</div>
 						<slot name="add-button" :disabled="disabled">
 							<n8n-button
