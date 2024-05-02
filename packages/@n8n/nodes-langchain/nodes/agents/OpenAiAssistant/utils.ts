@@ -33,9 +33,7 @@ export function formatToOpenAITool(tool: StructuredTool): OpenAIClient.Chat.Chat
 	};
 }
 
-export function formatToOpenAIAssistantTool(
-	tool: StructuredTool,
-): OpenAIClient.Beta.AssistantCreateParams.AssistantToolsFunction {
+export function formatToOpenAIAssistantTool(tool: StructuredTool): OpenAIClient.Beta.AssistantTool {
 	return {
 		type: 'function',
 		function: {
