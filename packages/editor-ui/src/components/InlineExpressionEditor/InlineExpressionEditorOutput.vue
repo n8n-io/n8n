@@ -28,14 +28,13 @@ const i18n = useI18n();
 const theme = outputTheme();
 const ndvStore = useNDVStore();
 
+const hideTableHoverHint = computed(() => ndvStore.isTableHoverOnboarded);
 const hoveringItem = computed(() => ndvStore.getHoveringItem);
 const hoveringItemIndex = computed(() => hoveringItem.value?.itemIndex);
 const isHoveringItem = computed(() => Boolean(hoveringItem.value));
 const itemsLength = computed(() => ndvStore.ndvInputDataWithPinnedData.length);
-const isItemSelectable = computed(() => !isHoveringItem.value && itemsLength.value > 1);
-
 const itemIndex = computed(() => hoveringItemIndex.value ?? ndvStore.expressionOutputItemIndex);
-const itemNumber = computed(() => (itemIndex.value + 1).toString());
+const itemNumber = computed(() => itemIndex.value.toString());
 const canSelectPrevItem = computed(
 	() => !isHoveringItem.value && ndvStore.expressionOutputItemIndex > 0,
 );
@@ -57,20 +56,21 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<div :class="visible ? $style.dropdown : $style.hidden">
+	<div v-if="visible" :class="$style.dropdown" title="">
 		<div :class="$style.header">
 			<n8n-text bold size="small" compact>
 				{{ i18n.baseText('parameterInput.result') }}
 			</n8n-text>
-			<div v-if="isItemSelectable" :class="$style.item">
-				<n8n-icon color="text-base" icon="eye" size="small" />
-				<n8n-text size="small" color="text-base" compact>
+
+			<div :class="$style.item">
+				<n8n-text size="small" :color="isHoveringItem ? 'secondary' : 'text-base'" compact>
 					{{
 						i18n.baseText('parameterInput.itemN', {
 							interpolate: { num: itemNumber },
 						})
 					}}
 				</n8n-text>
+
 				<div>
 					<n8n-icon-button
 						text
@@ -80,14 +80,20 @@ onBeforeUnmount(() => {
 						:disabled="!canSelectPrevItem"
 						@click="prevItem"
 					/>
-					<n8n-icon-button
-						text
-						type="tertiary"
-						icon="chevron-right"
-						size="mini"
-						:disabled="!canSelectNextItem"
-						@click="nextItem"
-					/>
+					<n8n-tooltip placement="right" :disabled="hideTableHoverHint">
+						<template #content>
+							<div>{{ i18n.baseText('parameterInput.hoverTableItemTip') }}</div>
+						</template>
+
+						<n8n-icon-button
+							text
+							type="tertiary"
+							icon="chevron-right"
+							size="mini"
+							:disabled="!canSelectNextItem"
+							@click="nextItem"
+						/>
+					</n8n-tooltip>
 				</div>
 			</div>
 		</div>
@@ -110,10 +116,6 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss" module>
-.hidden {
-	display: none;
-}
-
 .dropdown {
 	display: flex;
 	flex-direction: column;
@@ -145,7 +147,6 @@ onBeforeUnmount(() => {
 		justify-content: space-between;
 		align-items: center;
 		gap: var(--spacing-2xs);
-		min-height: 36px;
 		color: var(--color-text-dark);
 		font-weight: var(--font-weight-bold);
 		padding-left: var(--spacing-2xs);

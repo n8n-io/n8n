@@ -10,6 +10,7 @@ import { useStorage } from '@/composables/useStorage';
 import {
 	LOCAL_STORAGE_AUTOCOMPLETE_IS_ONBOARDED,
 	LOCAL_STORAGE_MAPPING_IS_ONBOARDED,
+	LOCAL_STORAGE_TABLE_HOVER_IS_ONBOARDED,
 	STORES,
 } from '@/constants';
 import type { INodeExecutionData, INodeIssues } from 'n8n-workflow';
@@ -56,6 +57,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			activeTarget: null,
 		},
 		isMappingOnboarded: useStorage(LOCAL_STORAGE_MAPPING_IS_ONBOARDED).value === 'true',
+		isTableHoverOnboarded: useStorage(LOCAL_STORAGE_TABLE_HOVER_IS_ONBOARDED).value === 'true',
 		isAutocompleteOnboarded: useStorage(LOCAL_STORAGE_AUTOCOMPLETE_IS_ONBOARDED).value === 'true',
 		highlightDraggables: false,
 	}),
@@ -244,6 +246,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			this.mappingTelemetry = {};
 		},
 		setHoveringItem(item: null | NDVState['hoveringItem']): void {
+			if (item) this.setTableHoverOnboarded();
 			this.hoveringItem = item;
 		},
 		setNDVBranchIndex(e: { pane: 'input' | 'output'; branchIndex: number }): void {
@@ -255,6 +258,10 @@ export const useNDVStore = defineStore(STORES.NDV, {
 		setMappingOnboarded() {
 			this.isMappingOnboarded = true;
 			useStorage(LOCAL_STORAGE_MAPPING_IS_ONBOARDED).value = 'true';
+		},
+		setTableHoverOnboarded() {
+			this.isTableHoverOnboarded = true;
+			useStorage(LOCAL_STORAGE_TABLE_HOVER_IS_ONBOARDED).value = 'true';
 		},
 		setAutocompleteOnboarded() {
 			this.isAutocompleteOnboarded = true;

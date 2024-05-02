@@ -1229,6 +1229,7 @@
 	"parameterInput.learnMore": "Learn more",
 	"parameterInput.result": "Result",
 	"parameterInput.itemN": "Item {num}",
+	"parameterInput.hoverTableItemTip": "You can also do this by hovering over input/output items in the table view",
 	"parameterInput.emptyString": "[empty]",
 	"parameterInput.customApiCall": "Custom API Call",
 	"parameterInput.error": "ERROR",

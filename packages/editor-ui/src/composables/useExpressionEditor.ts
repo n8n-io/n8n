@@ -385,13 +385,11 @@ export const useExpressionEditor = ({
 	});
 
 	watch(
-		[
-			() => workflowsStore.getWorkflowExecution,
-			() => workflowsStore.getWorkflowRunData,
-			targetItem,
-		],
+		[() => workflowsStore.getWorkflowExecution, () => workflowsStore.getWorkflowRunData],
 		debouncedUpdateSegments,
 	);
+
+	watch(targetItem, updateSegments);
 
 	watch(resolvableSegments, updateHighlighting);
 
