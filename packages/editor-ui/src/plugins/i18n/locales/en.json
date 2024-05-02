@@ -391,6 +391,8 @@
 	"codeNodeEditor.tabs.code": "Code",
 	"codeNodeEditor.examples": "Examples",
 	"codeNodeEditor.parameters": "Parameters",
+	"codeNodeEditor.optional": "optional",
+	"codeNodeEditor.defaultsTo": "Defaults to {default}.",
 	"collectionParameter.choose": "Choose...",
 	"collectionParameter.noProperties": "No properties",
 	"credentialEdit.credentialConfig.accountConnected": "Account connected",

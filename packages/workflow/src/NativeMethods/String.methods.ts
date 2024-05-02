@@ -44,6 +44,7 @@ export const stringMethods: NativeDoc = {
 					},
 					{
 						name: 'stringN',
+						variadic: true,
 						optional: true,
 						description: 'The Nth string to append',
 						type: 'string',
@@ -406,14 +407,13 @@ export const stringMethods: NativeDoc = {
 				section: 'edit',
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/split',
-				returnType: 'Array',
+				returnType: 'string[]',
 				args: [
 					{
 						name: 'separator',
 						optional: true,
 						description:
 							'The string (or regular expression) to use for splitting. If omitted, an array with the original string is returned.',
-						default: '""',
 						type: 'string',
 					},
 					{

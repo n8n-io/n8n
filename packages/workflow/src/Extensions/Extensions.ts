@@ -16,6 +16,7 @@ export type DocMetadataArgument = {
 	name: string;
 	type?: string;
 	optional?: boolean;
+	variadic?: boolean;
 	description?: string;
 	default?: string;
 };
