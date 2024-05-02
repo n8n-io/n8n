@@ -2,7 +2,6 @@ import { Reset } from '@/commands/ldap/reset';
 import { Config } from '@oclif/core';
 
 import * as testDb from '../../shared/testDb';
-import { nanoid } from 'nanoid';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { mockInstance } from '../../../shared/mocking';
 import { InternalHooks } from '@/InternalHooks';
@@ -22,6 +21,7 @@ import { WaitTracker } from '@/WaitTracker';
 import { getLdapSynchronizations, saveLdapSynchronization } from '@/Ldap/helpers';
 import { createLdapConfig } from '../../shared/ldap';
 import { LdapService } from '@/Ldap/ldap.service';
+import { v4 as uuid } from 'uuid';
 
 const oclifConfig = new Config({ root: __dirname });
 
@@ -61,12 +61,12 @@ test('fails if neither `--userId` nor `--projectId` nor `--deleteWorkflowsAndCre
 });
 
 test.each([
-	[`--userId=${nanoid()}`, `--projectId=${nanoid()}`, '--deleteWorkflowsAndCredentials'],
+	[`--userId=${uuid()}`, `--projectId=${uuid()}`, '--deleteWorkflowsAndCredentials'],
 
-	[`--userId=${nanoid()}`, `--projectId=${nanoid()}`],
-	[`--userId=${nanoid()}`, '--deleteWorkflowsAndCredentials'],
+	[`--userId=${uuid()}`, `--projectId=${uuid()}`],
+	[`--userId=${uuid()}`, '--deleteWorkflowsAndCredentials'],
 
-	['--deleteWorkflowsAndCredentials', `--projectId=${nanoid()}`],
+	['--deleteWorkflowsAndCredentials', `--projectId=${uuid()}`],
 ])(
 	'fails if more than one of `--userId`, `--projectId`, `--deleteWorkflowsAndCredentials` are passed',
 	async (...argv) => {
@@ -81,7 +81,7 @@ describe('--deleteWorkflowsAndCredentials', () => {
 		//
 		// ARRANGE
 		//
-		const member = await createLdapUser({ role: 'global:member' }, nanoid());
+		const member = await createLdapUser({ role: 'global:member' }, uuid());
 		const memberProject = await getPersonalProject(member);
 		const workflow = await createWorkflow({}, member);
 		const credential = await saveCredential(randomCredentialPayload(), {
@@ -176,7 +176,7 @@ describe('--deleteWorkflowsAndCredentials', () => {
 
 describe('--userId', () => {
 	test('fails if the user does not exist', async () => {
-		const userId = nanoid();
+		const userId = uuid();
 		await expect(resetLDAP([`--userId=${userId}`])).rejects.toThrowError(
 			`Could not find the user with the ID ${userId} or their personalProject.`,
 		);
@@ -186,7 +186,7 @@ describe('--userId', () => {
 		//
 		// ARRANGE
 		//
-		const member = await createLdapUser({ role: 'global:member' }, nanoid());
+		const member = await createLdapUser({ role: 'global:member' }, uuid());
 
 		await expect(resetLDAP([`--userId=${member.id}`])).rejects.toThrowError(
 			`Can't migrate workflows and credentials to the user with the ID ${member.id}. That user was created via LDAP and will be deleted as well.`,
@@ -197,7 +197,7 @@ describe('--userId', () => {
 		//
 		// ARRANGE
 		//
-		const member = await createLdapUser({ role: 'global:member' }, nanoid());
+		const member = await createLdapUser({ role: 'global:member' }, uuid());
 		const memberProject = await getPersonalProject(member);
 		const workflow = await createWorkflow({}, member);
 		const credential = await saveCredential(randomCredentialPayload(), {
@@ -252,7 +252,7 @@ describe('--userId', () => {
 
 describe('--projectId', () => {
 	test('fails if the project does not exist', async () => {
-		const projectId = nanoid();
+		const projectId = uuid();
 		await expect(resetLDAP([`--projectId=${projectId}`])).rejects.toThrowError(
 			`Could not find the project with the ID ${projectId}.`,
 		);
@@ -262,7 +262,7 @@ describe('--projectId', () => {
 		//
 		// ARRANGE
 		//
-		const member = await createLdapUser({ role: 'global:member' }, nanoid());
+		const member = await createLdapUser({ role: 'global:member' }, uuid());
 		const memberProject = await getPersonalProject(member);
 
 		await expect(resetLDAP([`--projectId=${memberProject.id}`])).rejects.toThrowError(
@@ -274,7 +274,7 @@ describe('--projectId', () => {
 		//
 		// ARRANGE
 		//
-		const member = await createLdapUser({ role: 'global:member' }, nanoid());
+		const member = await createLdapUser({ role: 'global:member' }, uuid());
 		const memberProject = await getPersonalProject(member);
 		const workflow = await createWorkflow({}, member);
 		const credential = await saveCredential(randomCredentialPayload(), {
@@ -330,7 +330,7 @@ describe('--projectId', () => {
 		//
 		// ARRANGE
 		//
-		const member = await createLdapUser({ role: 'global:member' }, nanoid());
+		const member = await createLdapUser({ role: 'global:member' }, uuid());
 		const memberProject = await getPersonalProject(member);
 		const workflow = await createWorkflow({}, member);
 		const credential = await saveCredential(randomCredentialPayload(), {
