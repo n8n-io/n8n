@@ -9,6 +9,7 @@
 		:shareable="isShareable"
 		:initialize="initialize"
 		:disabled="readOnlyEnv"
+		@click:add="addWorkflow"
 		@update:filters="onFiltersUpdated"
 	>
 		<template #header>
