@@ -225,14 +225,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return workflow.value.connections.hasOwnProperty(nodeName);
 	}
 
-	function isNodeInOutgoingNodeConnections(firstNode: string, secondNode: string): boolean {
-		const firstNodeConnections = outgoingConnectionsByNodeName(firstNode);
+	function isNodeInOutgoingNodeConnections(rootNodeName: string, searchNodeName: string): boolean {
+		const firstNodeConnections = outgoingConnectionsByNodeName(rootNodeName);
 		if (!firstNodeConnections?.main?.[0]) return false;
 
 		const connections = firstNodeConnections.main[0];
-		if (connections.some((node) => node.node === secondNode)) return true;
+		if (connections.some((node) => node.node === searchNodeName)) return true;
 
-		return connections.some((node) => isNodeInOutgoingNodeConnections(node.node, secondNode));
+		return connections.some((node) => isNodeInOutgoingNodeConnections(node.node, searchNodeName));
 	}
 
 	function getWorkflowById(id: string): IWorkflowDb {
@@ -302,13 +302,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	// This has the advantage that it is very fast and does not cause problems with vuex
 	// when the workflow replaces the node-parameters.
 	function getNodes(): INodeUi[] {
-		const returnNodes: INodeUi[] = [];
-
-		for (const node of workflow.value.nodes) {
-			returnNodes.push(Object.assign({}, node));
-		}
-
-		return returnNodes;
+		return workflow.value.nodes.map((node) => ({ ...node }));
 	}
 
 	function getWorkflow(nodes: INodeUi[], connections: IConnections, copyData?: boolean): Workflow {
@@ -585,7 +579,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function setWorkflowExecutionRunData(workflowResultData: IRunExecutionData) {
 		if (workflowExecutionData.value) {
-			workflowExecutionData.value.data = workflowResultData;
+			workflowExecutionData.value = {
+				...workflowExecutionData.value,
+				data: workflowResultData,
+			};
 		}
 	}
 
@@ -615,7 +612,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	function addWorkflowTagIds(tags: string[]) {
 		workflow.value = {
 			...workflow.value,
-			tags: [...new Set([...(workflow.value.tags || []), ...tags])] as IWorkflowDb['tags'],
+			tags: [...new Set([...(workflow.value.tags ?? []), ...tags])] as IWorkflowDb['tags'],
 		};
 	}
 
@@ -642,13 +639,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	function setWorkflow(value: IWorkflowDb): void {
 		workflow.value = {
 			...value,
-			...(!workflow.value.hasOwnProperty('active') ? { active: false } : {}),
-			...(!workflow.value.hasOwnProperty('connections') ? { connections: {} } : {}),
-			...(!workflow.value.hasOwnProperty('createdAt') ? { createdAt: -1 } : {}),
-			...(!workflow.value.hasOwnProperty('updatedAt') ? { updatedAt: -1 } : {}),
-			...(!workflow.value.hasOwnProperty('id') ? { id: PLACEHOLDER_EMPTY_WORKFLOW_ID } : {}),
-			...(!workflow.value.hasOwnProperty('nodes') ? { nodes: [] } : {}),
-			...(!workflow.value.hasOwnProperty('settings') ? { settings: { ...defaults.settings } } : {}),
+			...(!value.hasOwnProperty('active') ? { active: false } : {}),
+			...(!value.hasOwnProperty('connections') ? { connections: {} } : {}),
+			...(!value.hasOwnProperty('createdAt') ? { createdAt: -1 } : {}),
+			...(!value.hasOwnProperty('updatedAt') ? { updatedAt: -1 } : {}),
+			...(!value.hasOwnProperty('id') ? { id: PLACEHOLDER_EMPTY_WORKFLOW_ID } : {}),
+			...(!value.hasOwnProperty('nodes') ? { nodes: [] } : {}),
+			...(!value.hasOwnProperty('settings') ? { settings: { ...defaults.settings } } : {}),
 		};
 	}
 
