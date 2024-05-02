@@ -6,8 +6,8 @@ import { prepareOutput } from '../../../v2/helpers/utils';
 describe('Google BigQuery v2 Utils', () => {
 	it('should prepareOutput', () => {
 		const thisArg = mock<IExecuteFunctions>({
-			getNode: () => ({typeVersion: 2.1} as INode),
-			helpers: mock({ constructExecutionMetaData })
+			getNode: () => ({ typeVersion: 2.1 }) as INode,
+			helpers: mock({ constructExecutionMetaData }),
 		});
 		const response: IDataObject = {
 			kind: 'bigquery#getQueryResultsResponse',
