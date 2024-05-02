@@ -508,6 +508,7 @@ export class SourceControlImportService {
 					projectRepository.create({
 						id: owner.teamId,
 						name: owner.teamName,
+						type: 'team',
 					}),
 				);
 			}
@@ -519,7 +520,9 @@ export class SourceControlImportService {
 
 		const errorOwner = owner as ResourceOwner;
 		throw new ApplicationError(
-			`Unknown resource owner type "${typeof errorOwner !== 'string' ? errorOwner.type : 'UNKNOWN'}" found when importing from source controller`,
+			`Unknown resource owner type "${
+				typeof errorOwner !== 'string' ? errorOwner.type : 'UNKNOWN'
+			}" found when importing from source controller`,
 		);
 	}
 }
