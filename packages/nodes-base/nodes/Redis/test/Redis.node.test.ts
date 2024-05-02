@@ -20,17 +20,17 @@ describe('Redis Node', () => {
 				host: 'redis.domain',
 				port: 1234,
 				database: 0,
-			})
+			});
 			expect(createClient).toHaveBeenCalledWith({
 				database: 0,
 				password: undefined,
 				socket: {
-					host: "redis.domain",
+					host: 'redis.domain',
 					port: 1234,
 					tls: false,
 				},
 			});
-		})
+		});
 
 		it('should configure TLS', () => {
 			setupRedisClient({
@@ -38,12 +38,12 @@ describe('Redis Node', () => {
 				port: 1234,
 				database: 0,
 				ssl: true,
-			})
+			});
 			expect(createClient).toHaveBeenCalledWith({
 				database: 0,
 				password: undefined,
 				socket: {
-					host: "redis.domain",
+					host: 'redis.domain',
 					port: 1234,
 					tls: true,
 				},
