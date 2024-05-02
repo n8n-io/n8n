@@ -24,6 +24,10 @@ const renderFunctionHeader = (doc?: DocMetadata) => {
 				argSpan.textContent += '?';
 			}
 
+			if (arg.variadic) {
+				argSpan.textContent = '...' + argSpan.textContent;
+			}
+
 			argSpan.classList.add('autocomplete-info-arg');
 			argsSpan.appendChild(argSpan);
 
@@ -38,6 +42,11 @@ const renderFunctionHeader = (doc?: DocMetadata) => {
 		const closeBracketsSpan = document.createElement('span');
 		closeBracketsSpan.textContent = ')';
 		header.appendChild(closeBracketsSpan);
+
+		const returnTypeSpan = document.createElement('span');
+		returnTypeSpan.textContent = ': ' + doc.returnType;
+		returnTypeSpan.classList.add('autocomplete-info-return');
+		header.appendChild(returnTypeSpan);
 	}
 	return header;
 };
@@ -70,8 +79,9 @@ const renderDescription = ({
 	const descriptionBody = document.createElement('div');
 	descriptionBody.classList.add('autocomplete-info-description');
 	const descriptionText = document.createElement('p');
+	const separator = !description.endsWith('.') && docUrl ? '. ' : ' ';
 	descriptionText.innerHTML = sanitizeHtml(
-		description.replace(/`(.*?)`/g, '<code>$1</code>') + ' ',
+		description.replace(/`(.*?)`/g, '<code>$1</code>') + separator,
 	);
 	descriptionBody.appendChild(descriptionText);
 
@@ -114,24 +124,40 @@ const renderArgs = (args: DocMetadataArgument[]) => {
 		const argItem = document.createElement('li');
 		const argName = document.createElement('span');
 		argName.classList.add('autocomplete-info-arg-name');
-		argName.textContent = arg.name;
-		if (arg.optional === true && !arg.name.endsWith('?')) argName.textContent += '?';
-
-		argItem.appendChild(argName);
+		argName.textContent = arg.name.replaceAll('?', '');
+		const tags = [];
 
 		if (arg.type) {
-			const argType = document.createElement('span');
-			argType.classList.add('autocomplete-info-arg-type');
-			argType.textContent = `: ${arg.type}`;
-			argItem.appendChild(argType);
+			tags.push(arg.type);
 		}
+
+		if (arg.optional || arg.name.endsWith('?')) {
+			tags.push(i18n.baseText('codeNodeEditor.optional'));
+		}
+
+		if (args.length > 0) {
+			argName.textContent += ` (${tags.join(', ')})`;
+		}
+
+		argName.textContent += ':';
+		argItem.appendChild(argName);
 
 		if (arg.description) {
 			const argDescription = document.createElement('span');
 			argDescription.classList.add('autocomplete-info-arg-description');
-			argDescription.innerHTML = `- ${sanitizeHtml(
+
+			if (arg.default && !arg.description.toLowerCase().includes('default')) {
+				const separator = arg.description.endsWith('.') ? ' ' : '. ';
+				arg.description +=
+					separator +
+					i18n.baseText('codeNodeEditor.defaultsTo', {
+						interpolate: { default: arg.default },
+					});
+			}
+
+			argDescription.innerHTML = sanitizeHtml(
 				arg.description.replace(/`(.*?)`/g, '<code>$1</code>'),
-			)}`;
+			);
 
 			argItem.appendChild(argDescription);
 		}

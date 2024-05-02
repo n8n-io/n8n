@@ -764,7 +764,7 @@ quote.doc = {
 			name: 'mark',
 			optional: true,
 			description: 'The type of quotation mark to use',
-			default: "'\"'",
+			default: '"',
 			type: 'string',
 		},
 	],

@@ -222,6 +222,8 @@ export const extensions = ({
 
 	const fnToDoc = Object.entries(expressionExtensions.functions).reduce<FnToDoc>(
 		(acc, [fnName, fn]) => {
+			// Extension methods docs have no extra info over the info box for now, hide
+			delete fn.doc?.docURL;
 			return { ...acc, [fnName]: { doc: fn.doc } };
 		},
 		{},
