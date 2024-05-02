@@ -103,7 +103,7 @@ const onDelete = () => {
 				:disabled="!isValid"
 				data-test-id="project-settings-delete-confirm-button"
 				@click.stop.prevent="onDelete"
-				>{{ locale.baseText('projects.settings.title.deleteProject') }}</N8nButton
+				>{{ locale.baseText('projects.settings.danger.deleteProject') }}</N8nButton
 			>
 		</template>
 	</el-dialog>
