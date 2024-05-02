@@ -60,13 +60,13 @@ describe('Projects', () => {
 		projects.getMenuItems().should('have.length', 1);
 		projects.getProjectTabs().should('have.length', 3);
 
-		cy.get('input[name="name"]').type(' no.1');
+		cy.get('input[name="name"]').type('Development');
 		projects.addProjectMember(INSTANCE_MEMBERS[0].email);
 
 		cy.intercept('PATCH', '/rest/projects/*').as('projectSettingsSave');
 		projects.getProjectSettingsSaveButton().click();
 		cy.wait('@projectSettingsSave').then((interception) => {
-			expect(interception.request.body).to.have.property('name').and.to.contain('My project no.1');
+			expect(interception.request.body).to.have.property('name').and.to.equal('Development');
 			expect(interception.request.body).to.have.property('relations').to.have.lengthOf(2);
 		});
 
