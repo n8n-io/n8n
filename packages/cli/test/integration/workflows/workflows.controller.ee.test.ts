@@ -14,7 +14,7 @@ import type { SaveCredentialFunction } from '../shared/types';
 import { makeWorkflow } from '../shared/utils/';
 import { randomCredentialPayload } from '../shared/random';
 import { affixRoleToSaveCredential, shareCredentialWithUsers } from '../shared/db/credentials';
-import { createUser } from '../shared/db/users';
+import { createUser, createUserShell } from '../shared/db/users';
 import { createWorkflow, getWorkflowSharing, shareWorkflowWithUsers } from '../shared/db/workflows';
 import { License } from '@/License';
 import { UserManagementMailer } from '@/UserManagement/email';
@@ -129,6 +129,24 @@ describe('PUT /workflows/:id', () => {
 
 		const sharedWorkflows = await getWorkflowSharing(workflow);
 		expect(sharedWorkflows).toHaveLength(1);
+	});
+
+	test('PUT /workflows/:id/share should allow sharing with pending users', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const memberShell = await createUserShell('global:member');
+		const memberShellPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
+			memberShell.id,
+		);
+
+		const response = await authOwnerAgent
+			.put(`/workflows/${workflow.id}/share`)
+			.send({ shareWithIds: [memberShellPersonalProject.id] });
+
+		expect(response.statusCode).toBe(200);
+
+		const sharedWorkflows = await getWorkflowSharing(workflow);
+		expect(sharedWorkflows).toHaveLength(2);
+		expect(mailer.notifyWorkflowShared).toHaveBeenCalledTimes(1);
 	});
 
 	test('PUT /workflows/:id/share should allow sharing with multiple users', async () => {

@@ -25,15 +25,12 @@ export class EnterpriseCredentialsService {
 		const em = entityManager ?? this.sharedCredentialsRepository.manager;
 
 		const projects = await em.find(Project, {
-			select: { projectRelations: { userId: true } },
-			where: { id: In(shareWithIds), projectRelations: { role: 'project:personalOwner' } },
-			relations: { projectRelations: { user: true } },
+			where: { id: In(shareWithIds), type: 'personal' },
 		});
 
 		const newSharedCredentials = projects
 			// We filter by role === 'project:personalOwner' above and there should
 			// always only be one owner.
-			.filter((project) => !project.projectRelations[0].user.isPending)
 			.map((project) =>
 				this.sharedCredentialsRepository.create({
 					credentialsId: credential.id,
