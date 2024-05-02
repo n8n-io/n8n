@@ -13,12 +13,13 @@ export class GoogleBigQuery extends VersionedNodeType {
 			group: ['input'],
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			description: 'Consume Google BigQuery API',
-			defaultVersion: 2,
+			defaultVersion: 2.1,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new GoogleBigQueryV1(baseDescription),
 			2: new GoogleBigQueryV2(baseDescription),
+			2.1: new GoogleBigQueryV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);
