@@ -44,22 +44,19 @@ export class License {
 	/**
 	 * Whether this instance should renew the license - on init and periodically.
 	 */
-	private renewalEnabled() {
-		const isSingleMain = !config.getEnv('multiMainSetup.enabled');
-
-		if (isSingleMain) {
-			return (
-				config.getEnv('generic.instanceType') === 'main' &&
-				config.getEnv('license.autoRenewEnabled')
-			);
-		}
+	private renewalEnabled(instanceType: N8nInstanceType) {
+		if (instanceType !== 'main') return false;
 
 		/**
-		 * In multi-main setup, all mains start off with `unset` status and renewal disabled.
+		 * In multi-main setup, all mains start off with `unset` status and so renewal disabled.
 		 * On becoming leader or follower, each will enable or disable renewal, respectively.
 		 * This ensures the mains do not cause a 429 (too many requests) on license init.
 		 */
-		return config.getEnv('multiMainSetup.instanceType') === 'leader';
+		if (config.getEnv('multiMainSetup.enabled')) {
+			return config.getEnv('multiMainSetup.instanceType') === 'leader';
+		}
+
+		return config.getEnv('license.autoRenewEnabled');
 	}
 
 	async init(instanceType: N8nInstanceType = 'main') {
@@ -86,7 +83,7 @@ export class License {
 			? async () => await this.usageMetricsService.collectUsageMetrics()
 			: async () => [];
 
-		const renewalEnabled = this.renewalEnabled();
+		const renewalEnabled = this.renewalEnabled(instanceType);
 
 		try {
 			this.manager = new LicenseManager({
