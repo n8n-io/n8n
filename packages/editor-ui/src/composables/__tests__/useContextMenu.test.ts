@@ -1,8 +1,7 @@
 import type { INodeUi } from '@/Interface';
 import { useContextMenu } from '@/composables/useContextMenu';
-import { BASIC_CHAIN_NODE_TYPE, NO_OP_NODE_TYPE, STICKY_NODE_TYPE, STORES } from '@/constants';
+import { BASIC_CHAIN_NODE_TYPE, NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
 import { faker } from '@faker-js/faker';
-import { createTestingPinia } from '@pinia/testing';
 import { createPinia, setActivePinia } from 'pinia';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';

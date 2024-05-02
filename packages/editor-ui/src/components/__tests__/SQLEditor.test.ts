@@ -9,7 +9,7 @@ import { waitFor } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
 import { useRouter } from 'vue-router';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { INodeUi } from '@/Interface';
+import type { INodeUi } from '@/Interface';
 
 const EXPRESSION_OUTPUT_TEST_ID = 'inline-expression-editor-output';
 

@@ -414,7 +414,7 @@ describe('useWorkflowsStore', () => {
 		it('should convert data to array if it is not', async () => {
 			const node = { name: 'TestNode' } as INodeUi;
 			const data = { json: 'testData' } as unknown as INodeExecutionData;
-			workflowsStore.pinData({ node, data: data as any });
+			workflowsStore.pinData({ node, data: data as unknown as INodeExecutionData[] });
 			expect(Array.isArray(workflowsStore.workflow.pinData?.[node.name])).toBe(true);
 		});
 
