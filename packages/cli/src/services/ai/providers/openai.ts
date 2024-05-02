@@ -1,17 +1,42 @@
-import { ChatOpenAI } from '@langchain/openai';
+import { ChatOpenAI, OpenAIEmbeddings } from '@langchain/openai';
 import type { BaseMessageChunk, BaseMessageLike } from '@langchain/core/messages';
 import type { N8nAIProvider } from '@/types/ai.types';
+import type { BaseChatModelCallOptions } from '@langchain/core/language_models/chat_models';
+import { zodToJsonSchema } from 'zod-to-json-schema';
+import type { ZodSchema } from 'zod';
 
 export class AIProviderOpenAI implements N8nAIProvider {
-	private model: ChatOpenAI;
+	public model: ChatOpenAI;
 
-	constructor(options: { apiKey: string }) {
+	public embeddings: OpenAIEmbeddings;
+
+	constructor({ openAIApiKey, modelName }: { openAIApiKey: string; modelName: string }) {
 		this.model = new ChatOpenAI({
-			openAIApiKey: options.apiKey,
-			modelName: 'gpt-3.5-turbo-16k',
+			openAIApiKey,
+			modelName,
 			timeout: 60000,
 			maxRetries: 2,
-			temperature: 0.2,
+			temperature: 0,
+		});
+
+		this.embeddings = new OpenAIEmbeddings({
+			openAIApiKey,
+			modelName: 'text-embedding-3-small',
+		});
+	}
+
+	modelWithOutputParser<T extends ZodSchema>(schema: T) {
+		return this.model.bind({
+			functions: [
+				{
+					name: 'output_formatter',
+					description: 'Should always be used to properly format output',
+					parameters: zodToJsonSchema(schema),
+				},
+			],
+			function_call: {
+				name: 'output_formatter',
+			},
 		});
 	}
 
@@ -31,8 +56,8 @@ export class AIProviderOpenAI implements N8nAIProvider {
 		return data.content;
 	}
 
-	async prompt(messages: BaseMessageLike[]) {
-		const data = await this.model.invoke(messages);
+	async invoke(messages: BaseMessageLike[], options?: BaseChatModelCallOptions) {
+		const data = await this.model.invoke(messages, options);
 
 		return this.mapResponse(data);
 	}
