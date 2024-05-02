@@ -249,6 +249,7 @@ import {
 	DRAG_EVENT_DATA_KEY,
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	TIME,
+	AI_ASSISTANT_LOCAL_STORAGE_KEY,
 } from '@/constants';
 
 import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
@@ -388,6 +389,7 @@ import { tryToParseNumber } from '@/utils/typesUtils';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useAIStore } from '@/stores/ai.store';
+import { useStorage } from '@/composables/useStorage';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -770,6 +772,9 @@ export default defineComponent({
 		isNextStepPopupVisible(): boolean {
 			return this.aiStore.nextStepPopupConfig.open;
 		},
+		hasSeenAIAssistantExperiment(): boolean {
+			return useStorage(AI_ASSISTANT_LOCAL_STORAGE_KEY).value === 'true';
+		}
 	},
 	data() {
 		return {
@@ -1215,6 +1220,10 @@ export default defineComponent({
 		},
 		async onCanvasAddButtonCLick(event: PointerEvent) {
 			if (event) {
+				if (this.hasSeenAIAssistantExperiment) {
+					this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON);
+					return;
+				}
 				const newNodeButton = (event.target as HTMLElement).closest('button');
 				if (newNodeButton) {
 					this.aiStore.latestConnectionInfo = null;
@@ -2936,7 +2945,7 @@ export default defineComponent({
 				const endpointId = `${connection.parameters.nodeId}-output${connection.parameters.index}`;
 				const endpoint = connection.instance.getEndpoint(endpointId);
 				// First, show node creator if endpoint is not a plus endpoint
-				if (!endpoint?.endpoint?.canvas) {
+				if (!endpoint?.endpoint?.canvas || this.hasSeenAIAssistantExperiment) {
 					this.insertNodeAfterSelected({
 						sourceId: connection.parameters.nodeId,
 						index: connection.parameters.index,
@@ -3493,20 +3502,31 @@ export default defineComponent({
 				.forEach((endpoint) => setTimeout(() => endpoint.instance.revalidate(endpoint.element), 0));
 		},
 		onPlusEndpointClick(endpoint: Endpoint) {
-			if (endpoint?.__meta) {
-				this.aiStore.latestConnectionInfo = {
+			if (this.hasSeenAIAssistantExperiment) {
+				this.insertNodeAfterSelected({
 					sourceId: endpoint .__meta.nodeId,
 					index: endpoint .__meta.index,
 					eventSource: NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
 					outputType: endpoint .scope as ConnectionTypes,
 					endpointUuid: endpoint .uuid,
 					stepName: endpoint .__meta.nodeName,
-				};
-				const endpointElement = endpoint.endpoint.canvas;
-				this.aiStore.openNextStepPopup(
-					this.$locale.baseText('nextStepPopup.title.nextStep'),
-					endpointElement,
-				);
+				});
+			} else {
+				if (endpoint?.__meta) {
+					this.aiStore.latestConnectionInfo = {
+						sourceId: endpoint .__meta.nodeId,
+						index: endpoint .__meta.index,
+						eventSource: NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
+						outputType: endpoint .scope as ConnectionTypes,
+						endpointUuid: endpoint .uuid,
+						stepName: endpoint .__meta.nodeName,
+					};
+					const endpointElement = endpoint.endpoint.canvas;
+					this.aiStore.openNextStepPopup(
+						this.$locale.baseText('nextStepPopup.title.nextStep'),
+						endpointElement,
+					);
+				}
 			}
 		},
 		onAddInputEndpointClick(endpoint: Endpoint) {

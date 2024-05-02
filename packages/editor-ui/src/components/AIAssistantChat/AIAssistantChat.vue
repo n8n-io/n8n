@@ -11,6 +11,8 @@ import { DateTime } from 'luxon';
 import { useAIStore } from '@/stores/ai.store';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import { onMounted } from 'vue';
+import { AI_ASSISTANT_EXPERIMENT_URLS, AI_ASSISTANT_LOCAL_STORAGE_KEY } from '@/constants';
+import { useStorage } from '@/composables/useStorage';
 
 const locale = useI18n();
 
@@ -58,11 +60,21 @@ const thanksResponses: ChatMessage[] = [
 					label: locale.baseText('aiAssistantChat.response.quickReply.giveFeedback'),
 					key: 'give_feedback',
 				},
+				{
+					label: locale.baseText('aiAssistantChat.response.quickReply.signUp'),
+					key: 'sign_up',
+				},
 			],
 			onReplySelected: ({ key }: { key: string; label: string }) => {
-				if (key === 'close') {
-					aiStore.assistantChatOpen = false;
+				switch (key) {
+					case 'give_feedback':
+						window.open(AI_ASSISTANT_EXPERIMENT_URLS.FEEDBACK_FORM, '_blank');
+						break;
+					case 'sign_up':
+						window.open(AI_ASSISTANT_EXPERIMENT_URLS.SIGN_UP, '_blank');
+						break;
 				}
+				aiStore.assistantChatOpen = false;
 			},
 		},
 	},
@@ -156,6 +168,7 @@ onMounted(() => {
 	chatEventBus.on('close', () => {
 		aiStore.assistantChatOpen = false;
 	});
+	useStorage(AI_ASSISTANT_LOCAL_STORAGE_KEY).value = 'true';
 });
 </script>
 

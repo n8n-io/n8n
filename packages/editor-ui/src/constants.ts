@@ -794,3 +794,10 @@ export const INSECURE_CONNECTION_WARNING = `
 	</ul>
 </div>
 </body>`;
+
+export const AI_ASSISTANT_EXPERIMENT_URLS = {
+	FEEDBACK_FORM: 'https://n8n.io',
+	SIGN_UP: 'https://n8n.io',
+};
+
+export const AI_ASSISTANT_LOCAL_STORAGE_KEY = 'N8N_AI_ASSISTANT_EXPERIMENT';
