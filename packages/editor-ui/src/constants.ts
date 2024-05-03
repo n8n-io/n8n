@@ -797,8 +797,8 @@ export const INSECURE_CONNECTION_WARNING = `
 </body>`;
 
 export const AI_ASSISTANT_EXPERIMENT_URLS = {
-	FEEDBACK_FORM: 'https://n8n.io',
-	SIGN_UP: 'https://n8n.io',
+	FEEDBACK_FORM: 'https://chat.arro.co/to4639rATEMV',
+	SIGN_UP: 'https://adore.app.n8n.cloud/form/4704cce3-4cef-4dc8-b67f-8a510c5d561a',
 };
 
 export const AI_ASSISTANT_LOCAL_STORAGE_KEY = 'N8N_AI_ASSISTANT_EXPERIMENT';

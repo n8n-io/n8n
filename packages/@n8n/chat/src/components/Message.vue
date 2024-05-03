@@ -84,8 +84,15 @@ const messageComponents = options.messageComponents ?? {};
 		word-wrap: break-word;
 	}
 
+	// Default message gap is half of the spacing
 	+ .chat-message {
 		margin-top: var(--chat--message--margin-bottom, calc(var(--chat--spacing) * 0.5));
+	}
+
+	// Spacing between messages from different senders is double the individual message gap
+	&.chat-message-from-user + &.chat-message-from-bot,
+	&.chat-message-from-bot + &.chat-message-from-user {
+		margin-top: var(--chat--spacing);
 	}
 
 	&.chat-message-from-bot {

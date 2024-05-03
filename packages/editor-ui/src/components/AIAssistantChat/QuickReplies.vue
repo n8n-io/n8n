@@ -50,7 +50,7 @@ function onButtonClick(action: QuickReply) {
 	display: flex;
 	flex-direction: column;
 	width: fit-content;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing-4xs);
 }
 .hint {
 	color: var(--color-text-base);

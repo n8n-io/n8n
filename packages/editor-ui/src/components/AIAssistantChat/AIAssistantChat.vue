@@ -11,10 +11,16 @@ import { DateTime } from 'luxon';
 import { useAIStore } from '@/stores/ai.store';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import { onMounted } from 'vue';
-import { AI_ASSISTANT_EXPERIMENT_URLS, AI_ASSISTANT_LOCAL_STORAGE_KEY } from '@/constants';
+import {
+	AI_ASSISTANT_EXPERIMENT_URLS,
+	AI_ASSISTANT_LOCAL_STORAGE_KEY,
+	MODAL_CONFIRM,
+} from '@/constants';
 import { useStorage } from '@/composables/useStorage';
+import { useMessage } from '@/composables/useMessage';
 
 const locale = useI18n();
+const { confirm } = useMessage();
 
 const usersStore = useUsersStore();
 const aiStore = useAIStore();
@@ -103,6 +109,7 @@ const initialMessages: Ref<ChatMessage[]> = ref([
 
 const sendMessage = async (message: string) => {
 	disableChat.value = true;
+	waitingForResponse.value = true;
 	messages.value.push({
 		id: String(messages.value.length + 1),
 		sender: 'user',
@@ -110,19 +117,17 @@ const sendMessage = async (message: string) => {
 		createdAt: new Date().toISOString(),
 	});
 	// Random integer between 5 and 10
-	const randomDelay = Math.floor(Math.random() * 6) + 5;
-	// Message response timeout will be between 500ms and a second
-	const responseTimeout = randomDelay * 100;
 	thanksResponses.forEach((response, index) => {
-		waitingForResponse.value = true;
 		// Push each response with a delay of 500ms
 		setTimeout(
 			() => {
 				messages.value.push(response);
-				waitingForResponse.value = false;
 				chatEventBus.emit('scrollToBottom');
+				if (index === thanksResponses.length - 1) {
+					waitingForResponse.value = false;
+				}
 			},
-			responseTimeout * (index + 1),
+			1500 * (index + 1),
 		);
 	});
 	chatEventBus.emit('scrollToBottom');
@@ -168,11 +173,23 @@ provide(ChatOptionsSymbol, chatOptions);
 
 onMounted(() => {
 	chatEventBus.emit('focusInput');
-	chatEventBus.on('close', () => {
-		aiStore.assistantChatOpen = false;
+	chatEventBus.on('close', async () => {
+		const closeConfirmed = await onBeforeClose();
+		if (closeConfirmed) {
+			aiStore.assistantChatOpen = false;
+		}
 	});
 	useStorage(AI_ASSISTANT_LOCAL_STORAGE_KEY).value = 'true';
 });
+
+async function onBeforeClose() {
+	const confirmModal = await confirm(locale.baseText('aiAssistantChat.closeChatConfirmation'), {
+		confirmButtonText: locale.baseText('aiAssistantChat.closeChatConfirmation.confirm'),
+		cancelButtonText: locale.baseText('aiAssistantChat.closeChatConfirmation.cancel'),
+	});
+
+	return confirmModal === MODAL_CONFIRM;
+}
 </script>
 
 <template>

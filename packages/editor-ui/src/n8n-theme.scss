@@ -173,10 +173,10 @@
 
 	// Using native css variable enables us to use this value in JS
 	--header-height: 65;
-	--chat-width: 400;
+	--chat-width: 350;
 
 	// n8n-chat customizations
-	--chat--spacing: var(--spacing-s);
+	--chat--spacing: var(--spacing-2xs);
 
 	--chat--header-height: calc(var(--header-height) * 1px);
 	--chat--header--padding: 0 var(--spacing-xs);
