@@ -58,7 +58,7 @@ export class ImportWorkflowsCommand extends BaseCommand {
 			description: 'The ID of the user to assign the imported workflows to',
 		}),
 		projectId: Flags.string({
-			description: 'The ID of the project to assign the imported credential to',
+			description: 'The ID of the project to assign the imported workflows to',
 		}),
 	};
 

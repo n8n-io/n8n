@@ -18,6 +18,17 @@ export class ProjectRelationRepository extends Repository<ProjectRelation> {
 		});
 	}
 
+	async getPersonalProjectsForUsers(userIds: string[]) {
+		const projectRelations = await this.find({
+			where: {
+				userId: In(userIds),
+				role: 'project:personalOwner',
+			},
+		});
+
+		return projectRelations.map((pr) => pr.projectId);
+	}
+
 	/**
 	 * Find the role of a user in a project.
 	 */
