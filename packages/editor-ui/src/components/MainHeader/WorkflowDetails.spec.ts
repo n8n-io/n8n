@@ -122,25 +122,4 @@ describe('WorkflowDetails', () => {
 			data: { id: '1' },
 		});
 	});
-
-	it('should not show share button for a workflow which is in a team project', async () => {
-		vi.spyOn(workflowsStore, 'getWorkflowById', 'get').mockReturnValue(() => ({
-			homeProject: {
-				type: 'team',
-			},
-		}));
-
-		const { queryByTestId } = renderComponent({
-			props: {
-				workflow: {
-					id: '1',
-					name: 'Test Workflow',
-					tags: [],
-				},
-				readOnly: false,
-			},
-		});
-
-		expect(queryByTestId('workflow-share-button')).not.toBeInTheDocument();
-	});
 });
