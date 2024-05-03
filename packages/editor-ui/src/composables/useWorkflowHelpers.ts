@@ -82,15 +82,50 @@ export function resolveParameter(
 		inputRunIndex?: number;
 		inputBranchIndex?: number;
 		additionalKeys?: IWorkflowDataProxyAdditionalKeys;
+		isForCredential?: boolean;
 	} = {},
 ): IDataObject | null {
 	let itemIndex = opts?.targetItem?.itemIndex || 0;
 
+	const workflow = getCurrentWorkflow();
+
+	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
+		$execution: {
+			id: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+			mode: 'test',
+			resumeUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+			resumeFormUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+		},
+		$vars: useEnvironmentsStore().variablesAsObject,
+
+		// deprecated
+		$executionId: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+		$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+
+		...opts.additionalKeys,
+	};
+
+	if (opts.isForCredential) {
+		// node-less expression resolution
+		return workflow.expression.getParameterValue(
+			parameter,
+			null,
+			0,
+			itemIndex,
+			'',
+			[],
+			'manual',
+			additionalKeys,
+			undefined,
+			false,
+			undefined,
+			'',
+		) as IDataObject;
+	}
+
 	const inputName = NodeConnectionType.Main;
 	const activeNode = useNDVStore().activeNode;
 	let contextNode = activeNode;
-
-	const workflow = getCurrentWorkflow();
 
 	if (activeNode) {
 		contextNode = workflow.getParentMainInputNode(activeNode);
@@ -158,22 +193,6 @@ export function resolveParameter(
 	if (_connectionInputData === null) {
 		_connectionInputData = [];
 	}
-
-	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-		$execution: {
-			id: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-			mode: 'test',
-			resumeUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-			resumeFormUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-		},
-		$vars: useEnvironmentsStore().variablesAsObject,
-
-		// deprecated
-		$executionId: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-		$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-
-		...opts.additionalKeys,
-	};
 
 	if (activeNode?.type === HTTP_REQUEST_NODE_TYPE) {
 		const EMPTY_RESPONSE = { statusCode: 200, headers: {}, body: {} };
@@ -793,6 +812,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 			inputBranchIndex?: number;
 			c?: number;
 			additionalKeys?: IWorkflowDataProxyAdditionalKeys;
+			isForCredential?: boolean;
 		} = {},
 		stringifyObject = true,
 	) {
