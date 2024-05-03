@@ -773,11 +773,11 @@ export default defineComponent({
 		isNextStepPopupVisible(): boolean {
 			return this.aiStore.nextStepPopupConfig.open;
 		},
-		hasSeenAIAssistantExperiment(): boolean {
-			return useStorage(AI_ASSISTANT_LOCAL_STORAGE_KEY).value === 'true';
-		},
 		shouldShowNextStepDialog(): boolean {
-			return true; //!this.hasSeenAIAssistantExperiment;
+			const userHasSeenAIAssistantExperiment = useStorage(AI_ASSISTANT_LOCAL_STORAGE_KEY).value === 'true';
+			const experimentEnabled = this.aiStore.isAssistantExperimentEnabled;
+			const isCloudDeployment = this.settingsStore.isCloudDeployment;
+			return isCloudDeployment && experimentEnabled && !userHasSeenAIAssistantExperiment;
 		}
 	},
 	data() {

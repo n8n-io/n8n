@@ -6,6 +6,8 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { computed, reactive, ref } from 'vue';
 import type { Ref } from 'vue';
 import type { AIAssistantConnectionInfo, XYPosition } from '@/Interface';
+import { usePostHog } from './posthog.store';
+import { AI_ASSISTANT_EXPERIMENT } from '@/constants';
 
 const CURRENT_POPUP_HEIGHT = 94;
 
@@ -24,6 +26,7 @@ const getPopupCenterPosition = (relativeElement: HTMLElement) => {
 export const useAIStore = defineStore('ai', () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
+	const posthogStore = usePostHog();
 
 	const assistantChatOpen = ref(false);
 	const nextStepPopupConfig = reactive({
@@ -34,6 +37,9 @@ export const useAIStore = defineStore('ai', () => {
 	const latestConnectionInfo: Ref<AIAssistantConnectionInfo | null> = ref(null);
 	const isErrorDebuggingEnabled = computed(() => settingsStore.settings.ai.features.errorDebugging);
 	const isGenerateCurlEnabled = computed(() => settingsStore.settings.ai.features.generateCurl);
+	const isAssistantExperimentEnabled = computed(
+		() => posthogStore.getVariant(AI_ASSISTANT_EXPERIMENT.name) === AI_ASSISTANT_EXPERIMENT.variant,
+	);
 
 	function openNextStepPopup(title: string, relativeElement: HTMLElement) {
 		nextStepPopupConfig.open = true;
@@ -63,5 +69,6 @@ export const useAIStore = defineStore('ai', () => {
 		latestConnectionInfo,
 		generateCurl,
 		isGenerateCurlEnabled,
+		isAssistantExperimentEnabled,
 	};
 });

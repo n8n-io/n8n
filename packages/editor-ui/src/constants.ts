@@ -643,7 +643,17 @@ export const ASK_AI_EXPERIMENT = {
 
 export const TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT = '017_template_credential_setup_v2';
 
-export const EXPERIMENTS_TO_TRACK = [ASK_AI_EXPERIMENT.name, TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT];
+export const AI_ASSISTANT_EXPERIMENT = {
+	name: '19_ai_assistant_experiment',
+	control: 'control',
+	variant: 'variant',
+};
+
+export const EXPERIMENTS_TO_TRACK = [
+	ASK_AI_EXPERIMENT.name,
+	TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT,
+	AI_ASSISTANT_EXPERIMENT.name,
+];
 
 export const MFA_AUTHENTICATION_REQUIRED_ERROR_CODE = 998;
 
