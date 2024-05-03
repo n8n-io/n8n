@@ -14,9 +14,11 @@ import { MfaService } from '@/Mfa/mfa.service';
 import { Push } from '@/push';
 import { CacheService } from '@/services/cache/cache.service';
 import { PasswordUtility } from '@/services/password.utility';
+import Container from 'typedi';
+import { Logger } from '@/Logger';
 
 if (!inE2ETests) {
-	console.error('E2E endpoints only allowed during E2E tests');
+	Container.get(Logger).error('E2E endpoints only allowed during E2E tests');
 	process.exit(1);
 }
 
@@ -149,7 +151,9 @@ export class E2EController {
 					`DELETE FROM ${table}; DELETE FROM sqlite_sequence WHERE name=${table};`,
 				);
 			} catch (error) {
-				console.warn('Dropping Table for E2E Reset error: ', error);
+				Container.get(Logger).warn('Dropping Table for E2E Reset error', {
+					error: error as Error,
+				});
 			}
 		}
 	}
