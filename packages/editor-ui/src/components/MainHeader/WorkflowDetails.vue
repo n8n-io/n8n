@@ -251,6 +251,27 @@ async function onSaveButtonClick() {
 	});
 
 	if (saved) {
+		// If the workflow was new, show a message
+		if (!id || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(id)) {
+			let toastTitle = locale.baseText('workflows.create.personal.toast.title');
+			let toastText = locale.baseText('workflows.create.personal.toast.text');
+			if (projectsStore.currentProject) {
+				toastTitle = locale.baseText('workflows.create.project.toast.title', {
+					interpolate: { projectName: projectsStore.currentProject.name ?? '' },
+				});
+
+				toastText = locale.baseText('workflows.create.project.toast.text', {
+					interpolate: { projectName: projectsStore.currentProject.name ?? '' },
+				});
+			}
+
+			toast.showMessage({
+				title: toastTitle,
+				message: toastText,
+				type: 'success',
+			});
+		}
+
 		await settingsStore.fetchPromptsData();
 
 		if (route.name === VIEWS.EXECUTION_DEBUG) {

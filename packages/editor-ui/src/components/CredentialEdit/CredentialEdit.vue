@@ -828,6 +828,24 @@ export default defineComponent({
 					credentialDetails,
 					this.projectsStore.currentProjectId,
 				);
+
+				let toastTitle = this.$locale.baseText('credentials.create.personal.toast.title');
+				let toastText = this.$locale.baseText('credentials.create.personal.toast.text');
+				if (this.projectsStore.currentProject) {
+					toastTitle = this.$locale.baseText('credentials.create.project.toast.title', {
+						interpolate: { projectName: this.projectsStore.currentProject.name ?? '' },
+					});
+
+					toastText = this.$locale.baseText('credentials.create.project.toast.text', {
+						interpolate: { projectName: this.projectsStore.currentProject.name ?? '' },
+					});
+				}
+
+				this.showMessage({
+					title: toastTitle,
+					message: toastText,
+					type: 'success',
+				});
 			} else {
 				if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
 					credentialDetails.sharedWithProjects = this.credentialData
