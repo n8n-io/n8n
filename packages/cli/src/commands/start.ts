@@ -76,7 +76,7 @@ export class Start extends BaseCommand {
 		const editorUrl = Container.get(UrlService).baseUrl;
 
 		open(editorUrl, { wait: true }).catch(() => {
-			console.log(
+			this.logger.info(
 				`\nWas not able to open URL in browser. Please open manually by visiting:\n${editorUrl}\n`,
 			);
 		});
@@ -339,7 +339,7 @@ export class Start extends BaseCommand {
 	}
 
 	async catch(error: Error) {
-		console.log(error.stack);
+		if (error.stack) this.logger.error(error.stack);
 		await this.exitWithCrash('Exiting due to an error.', error);
 	}
 }

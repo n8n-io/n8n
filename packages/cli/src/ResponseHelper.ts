@@ -10,6 +10,8 @@ import { Readable } from 'node:stream';
 
 import { inDevelopment } from '@/constants';
 import { ResponseError } from './errors/response-errors/abstract/response.error';
+import Container from 'typedi';
+import { Logger } from './Logger';
 
 export function sendSuccessResponse(
 	res: Response,
@@ -83,7 +85,7 @@ export function sendErrorResponse(res: Response, error: Error) {
 
 	if (isResponseError(error)) {
 		if (inDevelopment) {
-			console.error(picocolors.red(error.httpStatusCode), error.message);
+			Container.get(Logger).error(picocolors.red([error.httpStatusCode, error.message].join(' ')));
 		}
 
 		//render custom 404 page for form triggers
@@ -112,7 +114,7 @@ export function sendErrorResponse(res: Response, error: Error) {
 
 	if (error instanceof NodeApiError) {
 		if (inDevelopment) {
-			console.error(picocolors.red(error.name), error.message);
+			Container.get(Logger).error([picocolors.red(error.name), error.message].join(' '));
 		}
 
 		Object.assign(response, error);
