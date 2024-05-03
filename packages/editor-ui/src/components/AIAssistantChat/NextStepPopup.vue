@@ -83,7 +83,7 @@ const onOptionSelected = (option: string) => {
 	min-width: 190px;
 	font-size: var(--font-size-2xs);
 	background: var(--color-background-xlight);
-	box-shadow: 0px 6px 16px 0px #441c170f;
+	filter: drop-shadow(0px 6px 16px #441c170f);
 	border: var(--border-width-base) var(--border-style-base) var(--color-foreground-light);
 	border-radius: var(--border-radius-base);
 
