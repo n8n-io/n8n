@@ -165,10 +165,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			});
 		}
 
-		const useRetrieval = assistantTools.some((tool) => tool.type === 'retrieval');
+		const useRetrieval = assistantTools.some((tool) => tool.type === 'file_search');
 		if (useRetrieval) {
 			nativeToolsParsed.push({
-				type: 'retrieval',
+				type: 'file_search',
 			});
 		}
 

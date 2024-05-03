@@ -10,7 +10,6 @@ import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import helmet from 'helmet';
-import { engine as expressHandlebars } from 'express-handlebars';
 import { type Class, InstanceSettings } from 'n8n-core';
 import type { IN8nUISettings } from 'n8n-workflow';
 
@@ -21,14 +20,7 @@ import config from '@/config';
 import { Queue } from '@/Queue';
 
 import { WorkflowsController } from '@/workflows/workflows.controller';
-import {
-	EDITOR_UI_DIST_DIR,
-	inDevelopment,
-	inE2ETests,
-	N8N_VERSION,
-	TEMPLATES_DIR,
-	Time,
-} from '@/constants';
+import { EDITOR_UI_DIST_DIR, inDevelopment, inE2ETests, N8N_VERSION, Time } from '@/constants';
 import { CredentialsController } from '@/credentials/credentials.controller';
 import type { APIRequest, CurlHelper } from '@/requests';
 import { registerController } from '@/decorators';
@@ -94,10 +86,6 @@ export class Server extends AbstractServer {
 
 	constructor() {
 		super('main');
-
-		this.app.engine('handlebars', expressHandlebars({ defaultLayout: false }));
-		this.app.set('view engine', 'handlebars');
-		this.app.set('views', TEMPLATES_DIR);
 
 		this.testWebhooksEnabled = true;
 		this.webhooksEnabled = !config.getEnv('endpoints.disableProductionWebhooksOnMainProcess');
