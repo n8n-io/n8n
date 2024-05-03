@@ -60,7 +60,6 @@ export class CredentialsController {
 	@Get('/:credentialId')
 	@ProjectScope('credential:read')
 	async getOne(req: CredentialRequest.Get) {
-		debugger;
 		if (this.license.isSharingEnabled()) {
 			const credentials = await this.enterpriseCredentialsService.getOne(
 				req.user,
