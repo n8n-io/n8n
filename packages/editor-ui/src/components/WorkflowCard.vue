@@ -126,12 +126,11 @@ export default defineComponent({
 					label: this.$locale.baseText('workflows.item.open'),
 					value: WORKFLOW_LIST_ITEM_ACTIONS.OPEN,
 				},
+				{
+					label: this.$locale.baseText('workflows.item.share'),
+					value: WORKFLOW_LIST_ITEM_ACTIONS.SHARE,
+				},
 			];
-
-			actions.push({
-				label: this.$locale.baseText('workflows.item.share'),
-				value: WORKFLOW_LIST_ITEM_ACTIONS.SHARE,
-			});
 
 			if (!this.readOnly) {
 				actions.push({
