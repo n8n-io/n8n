@@ -177,6 +177,27 @@ describe('FilterParameter', () => {
 									leftValue: 'true',
 									operator: { operation: 'true', type: 'boolean' },
 								},
+								{
+									id: '3',
+									leftValue: '',
+									operator: { operation: 'false', type: 'boolean' },
+								},
+
+								{
+									id: '4',
+									leftValue: 0,
+									operator: { operation: 'false', type: 'boolean' },
+								},
+								{
+									id: '5',
+									leftValue: 1,
+									operator: { operation: 'true', type: 'boolean' },
+								},
+								{
+									id: '6',
+									leftValue: 'a string',
+									operator: { operation: 'true', type: 'boolean' },
+								},
 							],
 							options: { typeValidation: 'loose' },
 						}),
@@ -194,14 +215,14 @@ describe('FilterParameter', () => {
 										id: '1',
 										leftValue: 'a string',
 										rightValue: 15,
-										operator: { operation: 'equals', type: 'boolean' },
+										operator: { operation: 'equals', type: 'number' },
 									},
 								],
 								options: { typeValidation: 'loose' },
 							}),
 						),
 					).toThrowError(
-						"Conversion error: the string 'a string' can't be converted to a boolean [condition 0, item 0]",
+						"Conversion error: the string 'a string' can't be converted to a number [condition 0, item 0]",
 					);
 				});
 			});

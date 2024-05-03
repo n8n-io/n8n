@@ -22,7 +22,7 @@
 				/>
 			</div>
 
-			<ImportParameter
+			<ImportCurlParameter
 				v-else-if="parameter.type === 'curlImport'"
 				:is-read-only="isReadOnly"
 				@value-changed="valueChanged"
@@ -175,7 +175,7 @@ import { defineAsyncComponent, defineComponent, onErrorCaptured, ref } from 'vue
 
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 
-import ImportParameter from '@/components/ImportParameter.vue';
+import ImportCurlParameter from '@/components/ImportCurlParameter.vue';
 import MultipleParameter from '@/components/MultipleParameter.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
@@ -208,7 +208,7 @@ export default defineComponent({
 		ParameterInputFull,
 		FixedCollectionParameter,
 		CollectionParameter,
-		ImportParameter,
+		ImportCurlParameter,
 		ResourceMapper,
 		FilterConditions,
 		AssignmentCollection,
