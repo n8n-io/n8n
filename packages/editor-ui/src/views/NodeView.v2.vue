@@ -1,25 +1,29 @@
 <script setup lang="ts">
 import { computed, onMounted, useCssModule } from 'vue';
-import { useRoute } from 'vue-router';
-import { useWorkflowsStoreV2 } from '@/stores/workflows.store.v2';
+import { useRoute, useRouter } from 'vue-router';
 import WorkflowCanvas from '@/components/canvas/WorkflowCanvas.vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { useI18n } from '@/composables/useI18n';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRunWorkflow } from '@/composables/useRunWorkflow';
 
 const $style = useCssModule();
 
+const router = useRouter();
 const route = useRoute();
 const locale = useI18n();
 
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
-const workflowsStoreV2 = useWorkflowsStoreV2();
+const workflowsStore = useWorkflowsStore();
+
+const { runWorkflow } = useRunWorkflow({ router });
 
 const workflowId = computed<string>(() => route.params.workflowId as string);
-const workflow = computed(() => workflowsStoreV2.workflowsById[workflowId.value]);
-const workflowObject = computed(() => workflowsStoreV2.getWorkflowObject(workflowId.value));
+const workflow = computed(() => workflowsStore.workflow);
+const workflowObject = computed(() => workflowsStore.getCurrentWorkflow());
 
 const workflowRunning = computed(() => uiStore.isActionActive('workflowRunning'));
 const runButtonText = computed(() => {
@@ -36,11 +40,11 @@ onMounted(() => {
 
 async function initialize() {
 	await nodeTypesStore.getNodeTypes();
-	await workflowsStoreV2.fetchWorkflow(workflowId.value);
+	await workflowsStore.fetchWorkflow(workflowId.value);
 }
 
 async function onRunWorkflow() {
-	await workflowsStoreV2.runWorkflow(workflowId.value, {});
+	await runWorkflow({});
 }
 </script>
 
