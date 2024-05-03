@@ -8,14 +8,15 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { createClient } from 'redis';
+import { type RedisClientOptions, createClient } from 'redis';
 export type RedisClientType = ReturnType<typeof createClient>;
 
 export function setupRedisClient(credentials: ICredentialDataDecryptedObject): RedisClientType {
-	const redisOptions = {
+	const redisOptions: RedisClientOptions = {
 		socket: {
 			host: credentials.host as string,
 			port: credentials.port as number,
+			tls: credentials.ssl === true,
 		},
 		database: credentials.database as number,
 		password: (credentials.password as string) || undefined,

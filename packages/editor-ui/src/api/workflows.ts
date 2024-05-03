@@ -28,7 +28,9 @@ export async function getActiveWorkflows(context: IRestApiContext) {
 }
 
 export async function getActiveExecutions(context: IRestApiContext, filter: IDataObject) {
-	return await makeRestApiRequest(context, 'GET', '/executions/active', { filter });
+	const output = await makeRestApiRequest(context, 'GET', '/executions', { filter });
+
+	return output.results;
 }
 
 export async function getExecutions(

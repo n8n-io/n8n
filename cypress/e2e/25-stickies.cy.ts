@@ -243,6 +243,20 @@ describe('Canvas Actions', () => {
 				expect($el).to.have.css('z-index', '-158');
 			});
 	});
+
+	it('Empty sticky should not error when activating workflow', () => {
+		workflowPage.actions.addSticky();
+
+		workflowPage.getters.stickies().should('have.length', 1);
+
+		workflowPage.getters.stickies().dblclick();
+
+		workflowPage.actions.clearSticky();
+
+		workflowPage.actions.addNodeToCanvas('Schedule Trigger');
+
+		workflowPage.actions.activateWorkflow();
+	});
 });
 
 type Position = {

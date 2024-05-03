@@ -4,6 +4,7 @@ import type * as express from 'express';
 import type FormData from 'form-data';
 import type { PathLike } from 'fs';
 import type { IncomingHttpHeaders } from 'http';
+import type { SecureContextOptions } from 'tls';
 import type { Readable } from 'stream';
 import type { URLSearchParams } from 'url';
 
@@ -547,6 +548,8 @@ export interface IRequestOptions {
 
 	/** Max number of redirects to follow @default 21 */
 	maxRedirects?: number;
+
+	agentOptions?: SecureContextOptions;
 }
 
 export interface PaginationOptions {
@@ -1484,6 +1487,7 @@ export interface INodeCredentialTestRequest {
 export interface INodeCredentialDescription {
 	name: string;
 	required?: boolean;
+	displayName?: string;
 	displayOptions?: ICredentialsDisplayOptions;
 	testedBy?: ICredentialTestRequest | string; // Name of a function inside `loadOptions.credentialTest`
 }
@@ -2127,7 +2131,7 @@ export interface WorkflowTestData {
 			[key: string]: any[][];
 		};
 	};
-	nock: {
+	nock?: {
 		baseUrl: string;
 		mocks: Array<{
 			method: string;
@@ -2561,7 +2565,10 @@ export interface IN8nUISettings {
 	ai: {
 		enabled: boolean;
 		provider: string;
-		errorDebugging: boolean;
+		features: {
+			errorDebugging: boolean;
+			generateCurl: boolean;
+		};
 	};
 	workflowHistory: {
 		pruneTime: number;

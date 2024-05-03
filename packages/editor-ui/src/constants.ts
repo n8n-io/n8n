@@ -50,6 +50,7 @@ export const ONBOARDING_CALL_SIGNUP_MODAL_KEY = 'onboardingCallSignup';
 export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
 export const COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY = 'communityPackageManageConfirm';
 export const IMPORT_CURL_MODAL_KEY = 'importCurl';
+export const GENERATE_CURL_MODAL_KEY = 'generateCurl';
 export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
 export const SOURCE_CONTROL_PUSH_MODAL_KEY = 'sourceControlPush';
 export const SOURCE_CONTROL_PULL_MODAL_KEY = 'sourceControlPull';
@@ -597,6 +598,7 @@ export const enum STORES {
 	WORKFLOWS = 'workflows',
 	WORKFLOWS_V2 = 'workflowsV2',
 	WORKFLOWS_EE = 'workflowsEE',
+	EXECUTIONS = 'executions',
 	NDV = 'ndv',
 	TEMPLATES = 'templates',
 	NODE_TYPES = 'nodeTypes',
