@@ -55,7 +55,7 @@ import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 import type { Component } from 'vue';
 import type { Scope } from '@n8n/permissions';
 import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
-import { Connection } from '@jsplumb/core';
+import type { Connection } from '@jsplumb/core';
 
 export * from 'n8n-design-system/types';
 

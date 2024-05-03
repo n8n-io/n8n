@@ -774,11 +774,12 @@ export default defineComponent({
 			return this.aiStore.nextStepPopupConfig.open;
 		},
 		shouldShowNextStepDialog(): boolean {
-			const userHasSeenAIAssistantExperiment = useStorage(AI_ASSISTANT_LOCAL_STORAGE_KEY).value === 'true';
+			const userHasSeenAIAssistantExperiment =
+				useStorage(AI_ASSISTANT_LOCAL_STORAGE_KEY).value === 'true';
 			const experimentEnabled = this.aiStore.isAssistantExperimentEnabled;
 			const isCloudDeployment = this.settingsStore.isCloudDeployment;
 			return isCloudDeployment && experimentEnabled && !userHasSeenAIAssistantExperiment;
-		}
+		},
 	},
 	data() {
 		return {
@@ -3516,12 +3517,12 @@ export default defineComponent({
 			if (this.shouldShowNextStepDialog) {
 				if (endpoint?.__meta) {
 					this.aiStore.latestConnectionInfo = {
-						sourceId: endpoint .__meta.nodeId,
-						index: endpoint .__meta.index,
+						sourceId: endpoint.__meta.nodeId,
+						index: endpoint.__meta.index,
 						eventSource: NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
-						outputType: endpoint .scope as ConnectionTypes,
-						endpointUuid: endpoint .uuid,
-						stepName: endpoint .__meta.nodeName,
+						outputType: endpoint.scope as ConnectionTypes,
+						endpointUuid: endpoint.uuid,
+						stepName: endpoint.__meta.nodeName,
 					};
 					const endpointElement = endpoint.endpoint.canvas;
 					this.aiStore.openNextStepPopup(
@@ -3531,12 +3532,12 @@ export default defineComponent({
 				}
 			} else {
 				this.insertNodeAfterSelected({
-					sourceId: endpoint .__meta.nodeId,
-					index: endpoint .__meta.index,
+					sourceId: endpoint.__meta.nodeId,
+					index: endpoint.__meta.index,
 					eventSource: NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
-					outputType: endpoint .scope as ConnectionTypes,
-					endpointUuid: endpoint .uuid,
-					stepName: endpoint .__meta.nodeName,
+					outputType: endpoint.scope as ConnectionTypes,
+					endpointUuid: endpoint.uuid,
+					stepName: endpoint.__meta.nodeName,
 				});
 			}
 		},
