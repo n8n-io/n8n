@@ -320,7 +320,7 @@ export abstract class BaseCommand extends Command {
 			const forceShutdownTimer = setTimeout(async () => {
 				// In case that something goes wrong with shutdown we
 				// kill after timeout no matter what
-				console.log(`process exited after ${this.gracefulShutdownTimeoutInS}s`);
+				this.logger.info(`process exited after ${this.gracefulShutdownTimeoutInS}s`);
 				const errorMsg = `Shutdown timed out after ${this.gracefulShutdownTimeoutInS} seconds`;
 				await this.exitWithCrash(errorMsg, new Error(errorMsg));
 			}, this.gracefulShutdownTimeoutInS * 1000);
