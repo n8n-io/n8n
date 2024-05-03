@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import * as aiApi from '@/api/ai';
-import type { DebugErrorPayload } from '@/api/ai';
+import type { DebugErrorPayload, GenerateCurlPayload } from '@/api/ai';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { computed, reactive, ref } from 'vue';
@@ -33,6 +33,8 @@ export const useAIStore = defineStore('ai', () => {
 	});
 	const latestConnectionInfo: Ref<AIAssistantConnectionInfo | null> = ref(null);
 	const isErrorDebuggingEnabled = computed(() => settingsStore.settings.ai.errorDebugging);
+	const isErrorDebuggingEnabled = computed(() => settingsStore.settings.ai.features.errorDebugging);
+	const isGenerateCurlEnabled = computed(() => settingsStore.settings.ai.features.generateCurl);
 
 	function openNextStepPopup(title: string, relativeElement: HTMLElement) {
 		nextStepPopupConfig.open = true;
@@ -48,6 +50,10 @@ export const useAIStore = defineStore('ai', () => {
 		return await aiApi.debugError(rootStore.getRestApiContext, payload);
 	}
 
+	async function generateCurl(payload: GenerateCurlPayload) {
+		return await aiApi.generateCurl(rootStore.getRestApiContext, payload);
+	}
+
 	return {
 		isErrorDebuggingEnabled,
 		debugError,
@@ -56,5 +62,7 @@ export const useAIStore = defineStore('ai', () => {
 		openNextStepPopup,
 		closeNextStepPopup,
 		latestConnectionInfo,
+		generateCurl,
+		isGenerateCurlEnabled,
 	};
 });
