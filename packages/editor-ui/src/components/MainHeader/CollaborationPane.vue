@@ -54,6 +54,7 @@ const onDocumentVisibilityChange = () => {
 };
 
 onMounted(() => {
+	collaborationStore.initialize();
 	startHeartbeat();
 	document.addEventListener('visibilitychange', onDocumentVisibilityChange);
 });
@@ -61,6 +62,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
 	document.removeEventListener('visibilitychange', onDocumentVisibilityChange);
 	stopHeartbeat();
+	collaborationStore.terminate();
 });
 </script>
 
