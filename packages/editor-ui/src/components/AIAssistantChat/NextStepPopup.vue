@@ -2,9 +2,11 @@
 import { useAIStore } from '@/stores/ai.store';
 import { useI18n } from '@/composables/useI18n';
 import { computed } from 'vue';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 const aiStore = useAIStore();
 const locale = useI18n();
+const telemetry = useTelemetry();
 
 const emit = defineEmits<{ (event: 'optionSelected', option: string): void }>();
 
@@ -48,6 +50,7 @@ const onOptionSelected = (option: string) => {
 	if (option === 'choose') {
 		emit('optionSelected', option);
 	} else if (option === 'generate') {
+		telemetry.track('User clicked generate AI button', {}, { withPostHog: true });
 		aiStore.assistantChatOpen = true;
 	}
 	close();

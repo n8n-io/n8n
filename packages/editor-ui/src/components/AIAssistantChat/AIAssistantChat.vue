@@ -18,8 +18,10 @@ import {
 } from '@/constants';
 import { useStorage } from '@/composables/useStorage';
 import { useMessage } from '@/composables/useMessage';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 const locale = useI18n();
+const telemetry = useTelemetry();
 const { confirm } = useMessage();
 
 const usersStore = useUsersStore();
@@ -116,6 +118,7 @@ const sendMessage = async (message: string) => {
 		text: message,
 		createdAt: new Date().toISOString(),
 	});
+	trackUserMessage(message);
 	// Random integer between 5 and 10
 	thanksResponses.forEach((response, index) => {
 		// Push each response with a delay of 500ms
@@ -131,6 +134,10 @@ const sendMessage = async (message: string) => {
 		);
 	});
 	chatEventBus.emit('scrollToBottom');
+};
+
+const trackUserMessage = (message: string) => {
+	telemetry.track('User responded in AI chat', { prompt: message, chatMode: 'nextStepAssistant' });
 };
 
 const chatOptions: ChatOptions = {
