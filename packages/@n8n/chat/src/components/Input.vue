@@ -70,6 +70,7 @@ async function onSubmitKeydown(event: KeyboardEvent) {
 	justify-content: center;
 	align-items: center;
 	width: 100%;
+	background: white;
 
 	textarea {
 		font-family: inherit;

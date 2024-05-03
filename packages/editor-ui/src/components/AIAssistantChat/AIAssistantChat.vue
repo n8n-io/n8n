@@ -119,9 +119,8 @@ const sendMessage = async (message: string) => {
 		createdAt: new Date().toISOString(),
 	});
 	trackUserMessage(message);
-	// Random integer between 5 and 10
 	thanksResponses.forEach((response, index) => {
-		// Push each response with a delay of 500ms
+		// Push each response with a delay of 1500ms
 		setTimeout(
 			() => {
 				messages.value.push(response);

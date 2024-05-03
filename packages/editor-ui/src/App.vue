@@ -192,7 +192,7 @@ export default defineComponent({
 	transition: all 0.2s ease-in-out;
 
 	&.open {
-		width: 400px;
+		width: $chat-width;
 	}
 }
 </style>
