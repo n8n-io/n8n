@@ -121,26 +121,28 @@ describe('WorkflowCard', () => {
 				name: projectName,
 			},
 		});
-		const { getByRole } = renderComponent({ props: { data } });
+		const { getByRole, getByTestId } = renderComponent({ props: { data } });
 
 		const heading = getByRole('heading');
-		const span = heading.querySelector('span');
+		const badge = getByTestId('card-badge');
 
-		expect(heading).toBeInTheDocument();
 		expect(heading).toHaveTextContent(data.name);
-		expect(heading).toContain(span);
-		expect(span).toHaveTextContent(projectName);
+		expect(badge).toHaveTextContent(projectName);
 	});
 
-	it('should render name only', () => {
-		const data = createWorkflow();
-		const { getByRole } = renderComponent({ props: { data } });
+	it('should render name and personal project name', () => {
+		const projectName = 'John Doe <john@n8n.io>';
+		const data = createWorkflow({
+			homeProject: {
+				name: projectName,
+			},
+		});
+		const { getByRole, getByTestId } = renderComponent({ props: { data } });
 
 		const heading = getByRole('heading');
-		const span = heading.querySelector('span');
+		const badge = getByTestId('card-badge');
 
-		expect(heading).toBeInTheDocument();
 		expect(heading).toHaveTextContent(data.name);
-		expect(span).toBeNull();
+		expect(badge).toHaveTextContent('John Doe');
 	});
 });
