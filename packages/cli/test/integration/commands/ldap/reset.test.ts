@@ -46,10 +46,6 @@ beforeAll(async () => {
 	await testDb.init();
 });
 
-beforeEach(async () => {
-	await testDb.truncate([]);
-});
-
 afterAll(async () => {
 	await testDb.terminate();
 });
