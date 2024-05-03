@@ -45,8 +45,11 @@ export const useProjectsStore = defineStore('projects', () => {
 		personalProject.value = await projectsApi.getPersonalProject(rootStore.getRestApiContext);
 	};
 
+	const fetchProject = async (id: string) =>
+		await projectsApi.getProject(rootStore.getRestApiContext, id);
+
 	const getProject = async (id: string) => {
-		currentProject.value = await projectsApi.getProject(rootStore.getRestApiContext, id);
+		currentProject.value = await fetchProject(id);
 	};
 
 	const createProject = async (project: ProjectCreateRequest): Promise<Project> => {
@@ -103,6 +106,7 @@ export const useProjectsStore = defineStore('projects', () => {
 		getAllProjects,
 		getMyProjects,
 		getPersonalProject,
+		fetchProject,
 		getProject,
 		createProject,
 		updateProject,

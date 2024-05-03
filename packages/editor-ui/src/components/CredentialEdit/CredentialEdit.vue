@@ -437,21 +437,17 @@ export default defineComponent({
 					label: this.$locale.baseText('credentialEdit.credentialEdit.connection'),
 					position: 'top',
 				},
-			];
-
-			if (this.showSharingMenu) {
-				menuItems.push({
+				{
 					id: 'sharing',
 					label: this.$locale.baseText('credentialEdit.credentialEdit.sharing'),
 					position: 'top',
-				});
-			}
-
-			menuItems.push({
-				id: 'details',
-				label: this.$locale.baseText('credentialEdit.credentialEdit.details'),
-				position: 'top',
-			});
+				},
+				{
+					id: 'details',
+					label: this.$locale.baseText('credentialEdit.credentialEdit.details'),
+					position: 'top',
+				},
+			];
 
 			return menuItems;
 		},
@@ -477,7 +473,7 @@ export default defineComponent({
 			return !this.$route.params.projectId;
 		},
 		showSharingContent(): boolean {
-			return this.activeTab === 'sharing' && !!this.credentialType && this.showSharingMenu;
+			return this.activeTab === 'sharing' && !!this.credentialType;
 		},
 	},
 	async mounted() {

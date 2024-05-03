@@ -32,13 +32,35 @@
 					}}
 				</n8n-info-tip>
 				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]" :class="$style.content">
-					<ProjectSharing
-						v-model="sharedWithProjects"
-						:home-project="workflow.homeProject"
-						:projects="projects"
-						:readonly="!workflowPermissions.share"
-						:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
-					/>
+					<div>
+						<ProjectSharing
+							v-model="sharedWithProjects"
+							:home-project="workflow.homeProject"
+							:projects="projects"
+							:readonly="!workflowPermissions.share"
+							:static="isHomeTeamProject"
+							:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
+						/>
+						<n8n-info-tip v-if="isHomeTeamProject" :bold="false" class="mt-s">
+							<i18n-t keypath="workflows.shareModal.info.members" tag="span">
+								<template #projectName>
+									{{ workflow.homeProject?.name }}
+								</template>
+								<template #members>
+									<strong>
+										{{
+											$locale.baseText('workflows.shareModal.info.members.number', {
+												interpolate: {
+													number: String(numberOfMembersInHomeTeamProject),
+												},
+												adjustToNumber: numberOfMembersInHomeTeamProject,
+											})
+										}}
+									</strong>
+								</template>
+							</i18n-t>
+						</n8n-info-tip>
+					</div>
 					<template #fallback>
 						<n8n-text>
 							<i18n-t
@@ -78,7 +100,11 @@
 				<n8n-text v-show="isDirty" color="text-light" size="small" class="mr-xs">
 					{{ $locale.baseText('workflows.shareModal.changesHint') }}
 				</n8n-text>
+				<n8n-button v-if="isHomeTeamProject" type="secondary" @click="modalBus.emit('close')">
+					{{ $locale.baseText('generic.close') }}
+				</n8n-button>
 				<n8n-button
+					v-else
 					v-show="workflowPermissions.share"
 					:loading="loading"
 					:disabled="!isDirty"
@@ -121,7 +147,11 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import { isNavigationFailure } from 'vue-router';
 import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
 import { useProjectsStore } from '@/features/projects/projects.store';
-import type { ProjectListItem, ProjectSharingData } from '@/features/projects/projects.types';
+import type {
+	ProjectListItem,
+	ProjectSharingData,
+	Project,
+} from '@/features/projects/projects.types';
 
 export default defineComponent({
 	name: 'WorkflowShareModal',
@@ -155,6 +185,7 @@ export default defineComponent({
 			modalBus: createEventBus(),
 			sharedWithProjects: [...(workflow.sharedWithProjects || [])] as ProjectSharingData[],
 			EnterpriseEditionFeature,
+			teamProject: null as Project | null,
 		};
 	},
 	computed: {
@@ -173,6 +204,12 @@ export default defineComponent({
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
 		},
 		modalTitle(): string {
+			if (this.isHomeTeamProject) {
+				return this.$locale.baseText('workflows.shareModal.title.static', {
+					interpolate: { projectName: this.workflow.homeProject?.name ?? '' },
+				});
+			}
+
 			return this.$locale.baseText(
 				this.isSharingEnabled
 					? (this.uiStore.contextBasedTranslationKeys.workflows.sharing.title as BaseTextKey)
@@ -206,6 +243,12 @@ export default defineComponent({
 				(project) => project.id !== this.workflow.homeProject?.id,
 			);
 		},
+		isHomeTeamProject(): boolean {
+			return this.workflow.homeProject?.type === 'team';
+		},
+		numberOfMembersInHomeTeamProject(): number {
+			return this.teamProject?.relations.length ?? 0;
+		},
 	},
 	watch: {
 		sharedWithProjects: {
@@ -215,8 +258,8 @@ export default defineComponent({
 			deep: true,
 		},
 	},
-	mounted() {
-		void this.initialize();
+	async mounted() {
+		await this.initialize();
 	},
 	methods: {
 		async onSave() {
@@ -297,6 +340,10 @@ export default defineComponent({
 
 				if (this.workflow.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 					await this.workflowsStore.fetchWorkflow(this.workflow.id);
+				}
+
+				if (this.isHomeTeamProject && this.workflow.homeProject) {
+					this.teamProject = await this.projectsStore.fetchProject(this.workflow.homeProject.id);
 				}
 			}
 

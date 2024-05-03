@@ -212,14 +212,6 @@ const isWorkflowHistoryButtonDisabled = computed(() => {
 	return isNewWorkflow.value;
 });
 
-const showShareButton = computed(() => {
-	const workflow = workflowsStore.getWorkflowById(props.workflow.id);
-	return (
-		(workflow && workflow.homeProject?.type !== 'team') ||
-		(isNewWorkflow.value && !projectsStore.currentProject)
-	);
-});
-
 watch(
 	() => props.workflow.id,
 	() => {
@@ -620,7 +612,6 @@ function goToUpgrade() {
 				<div :class="$style.group">
 					<CollaborationPane />
 					<N8nButton
-						v-if="showShareButton"
 						type="secondary"
 						data-test-id="workflow-share-button"
 						@click="onShareButtonClick"

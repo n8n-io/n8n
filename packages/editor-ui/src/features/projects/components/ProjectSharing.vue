@@ -14,6 +14,7 @@ type Props = {
 	projects: ProjectListItem[];
 	homeProject?: ProjectSharingData;
 	readonly?: boolean;
+	static?: boolean;
 	placeholder?: string;
 };
 
@@ -92,6 +93,7 @@ watch(
 <template>
 	<div>
 		<N8nSelect
+			v-if="!props.static"
 			:model-value="selectedProject"
 			data-test-id="project-sharing-select"
 			:filterable="true"
