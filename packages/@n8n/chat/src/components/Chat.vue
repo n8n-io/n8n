@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// eslint-disable-next-line import/no-unresolved
+import Close from 'virtual:icons/mdi/close';
 import { computed, nextTick, onMounted } from 'vue';
 import Layout from '@n8n/chat/components/Layout.vue';
 import GetStarted from '@n8n/chat/components/GetStarted.vue';
@@ -7,7 +9,6 @@ import MessagesList from '@n8n/chat/components/MessagesList.vue';
 import Input from '@n8n/chat/components/Input.vue';
 import { useI18n, useChat, useOptions } from '@n8n/chat/composables';
 import { chatEventBus } from '@n8n/chat/event-buses';
-import Close from 'virtual:icons/mdi/close';
 
 const { t } = useI18n();
 const chatStore = useChat();

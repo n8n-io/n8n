@@ -1,5 +1,5 @@
-import { useOptions } from '@n8n/chat/composables/useOptions';
 import { isRef } from 'vue';
+import { useOptions } from '@n8n/chat/composables/useOptions';
 
 export function useI18n() {
 	const { options } = useOptions();
