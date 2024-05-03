@@ -1228,7 +1228,7 @@
 	"parameterInput.dragTipAfterPill": "from the left to use it here.",
 	"parameterInput.learnMore": "Learn more",
 	"parameterInput.result": "Result",
-	"parameterInput.itemN": "Item {num}",
+	"parameterInput.item": "Item",
 	"parameterInput.hoverTableItemTip": "You can also do this by hovering over input/output items in the table view",
 	"parameterInput.emptyString": "[empty]",
 	"parameterInput.customApiCall": "Custom API Call",

@@ -8,6 +8,7 @@ import InlineExpressionTip from './InlineExpressionTip.vue';
 import { outputTheme } from './theme';
 import { computed, onBeforeUnmount } from 'vue';
 import { useNDVStore } from '@/stores/ndv.store';
+import { N8nTooltip } from 'n8n-design-system/components';
 
 interface InlineExpressionEditorOutputProps {
 	segments: Segment[];
@@ -34,20 +35,10 @@ const hoveringItemIndex = computed(() => hoveringItem.value?.itemIndex);
 const isHoveringItem = computed(() => Boolean(hoveringItem.value));
 const itemsLength = computed(() => ndvStore.ndvInputDataWithPinnedData.length);
 const itemIndex = computed(() => hoveringItemIndex.value ?? ndvStore.expressionOutputItemIndex);
-const itemNumber = computed(() => itemIndex.value.toString());
-const canSelectPrevItem = computed(
-	() => !isHoveringItem.value && ndvStore.expressionOutputItemIndex > 0,
-);
-const canSelectNextItem = computed(
-	() => !isHoveringItem.value && ndvStore.expressionOutputItemIndex < itemsLength.value - 1,
-);
+const max = computed(() => Math.max(itemsLength.value - 1, 0));
 
-function nextItem() {
-	ndvStore.expressionOutputItemIndex = ndvStore.expressionOutputItemIndex + 1;
-}
-
-function prevItem() {
-	ndvStore.expressionOutputItemIndex = ndvStore.expressionOutputItemIndex - 1;
+function updateItemIndex(index: number) {
+	ndvStore.expressionOutputItemIndex = index;
 }
 
 onBeforeUnmount(() => {
@@ -64,37 +55,25 @@ onBeforeUnmount(() => {
 
 			<div :class="$style.item">
 				<n8n-text size="small" :color="isHoveringItem ? 'secondary' : 'text-base'" compact>
-					{{
-						i18n.baseText('parameterInput.itemN', {
-							interpolate: { num: itemNumber },
-						})
-					}}
+					{{ i18n.baseText('parameterInput.item') }}
 				</n8n-text>
 
-				<div>
-					<n8n-icon-button
-						text
-						type="tertiary"
-						icon="chevron-left"
-						size="mini"
-						:disabled="!canSelectPrevItem"
-						@click="prevItem"
-					/>
-					<n8n-tooltip placement="right" :disabled="hideTableHoverHint">
-						<template #content>
-							<div>{{ i18n.baseText('parameterInput.hoverTableItemTip') }}</div>
-						</template>
+				<N8nTooltip placement="right" :disabled="hideTableHoverHint">
+					<template #content>
+						<div>{{ i18n.baseText('parameterInput.hoverTableItemTip') }}</div>
+					</template>
 
-						<n8n-icon-button
-							text
-							type="tertiary"
-							icon="chevron-right"
-							size="mini"
-							:disabled="!canSelectNextItem"
-							@click="nextItem"
-						/>
-					</n8n-tooltip>
-				</div>
+					<N8nInputNumber
+						size="mini"
+						controls-position="right"
+						:class="$style.input"
+						:min="0"
+						:max="max"
+						:model-value="itemIndex"
+						:disabled="isHoveringItem || itemsLength === 0"
+						@update:model-value="updateItemIndex"
+					></N8nInputNumber>
+				</N8nTooltip>
 			</div>
 		</div>
 		<n8n-text :class="$style.body">
@@ -156,7 +135,7 @@ onBeforeUnmount(() => {
 	.item {
 		display: flex;
 		align-items: center;
-		gap: var(--spacing-4xs);
+		gap: var(--spacing-2xs);
 	}
 
 	.body {
@@ -167,6 +146,10 @@ onBeforeUnmount(() => {
 		&:first-child {
 			padding-top: var(--spacing-2xs);
 		}
+	}
+
+	.input {
+		max-width: 60px;
 	}
 }
 </style>
