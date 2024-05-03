@@ -179,12 +179,12 @@ export = {
 			await replaceInvalidCredentials(updateData);
 			addNodeIds(updateData);
 
-			const workflowRunner = Container.get(ActiveWorkflowManager);
+			const workflowManager = Container.get(ActiveWorkflowManager);
 
 			if (sharedWorkflow.workflow.active) {
 				// When workflow gets saved always remove it as the triggers could have been
 				// changed and so the changes would not take effect
-				await workflowRunner.remove(id);
+				await workflowManager.remove(id);
 			}
 
 			try {
@@ -197,7 +197,7 @@ export = {
 
 			if (sharedWorkflow.workflow.active) {
 				try {
-					await workflowRunner.add(sharedWorkflow.workflowId, 'update');
+					await workflowManager.add(sharedWorkflow.workflowId, 'update');
 				} catch (error) {
 					if (error instanceof Error) {
 						return res.status(400).json({ message: error.message });
@@ -268,10 +268,10 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			const workflowRunner = Container.get(ActiveWorkflowManager);
+			const activeWorkflowManager = Container.get(ActiveWorkflowManager);
 
 			if (sharedWorkflow.workflow.active) {
-				await workflowRunner.remove(sharedWorkflow.workflowId);
+				await activeWorkflowManager.remove(sharedWorkflow.workflowId);
 
 				await setWorkflowAsInactive(sharedWorkflow.workflow);
 
