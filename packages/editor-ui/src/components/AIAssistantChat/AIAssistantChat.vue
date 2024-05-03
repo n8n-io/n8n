@@ -208,7 +208,7 @@ async function onBeforeClose() {
 .container {
 	height: 100%;
 	background-color: var(--color-background-light);
-	box-shadow: 0px 8px 24px 0px #41424412;
+	filter: drop-shadow(0px 8px 24px #41424412);
 	border-left: 1px solid var(--color-foreground-dark);
 	overflow: hidden;
 }
