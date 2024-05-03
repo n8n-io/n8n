@@ -238,7 +238,6 @@ export const createInfoBoxRenderer =
 		if (doc.description) {
 			const descriptionBody = renderDescription({
 				description: doc.description,
-				docUrl: doc.docURL,
 				example: hasArgs && hasExamples ? examples[0] : undefined,
 			});
 			tooltipContainer.appendChild(descriptionBody);
