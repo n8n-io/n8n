@@ -171,7 +171,9 @@ export class WorkflowsController {
 		await this.externalHooks.run('workflow.afterCreate', [savedWorkflow]);
 		void this.internalHooks.onWorkflowCreated(req.user, newWorkflow, false);
 
-		return savedWorkflowWithMetaData;
+		const scopes = await this.workflowService.getWorkflowScopes(req.user, savedWorkflow.id);
+
+		return { ...savedWorkflowWithMetaData, scopes };
 	}
 
 	@Get('/', { middlewares: listQueryMiddleware })
@@ -277,7 +279,9 @@ export class WorkflowsController {
 			// shouldn't be returned to the frontend
 			delete workflowWithMetaData.shared;
 
-			return workflowWithMetaData;
+			const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
+
+			return { ...workflowWithMetaData, scopes };
 		}
 
 		// sharing disabled
@@ -299,7 +303,9 @@ export class WorkflowsController {
 			);
 		}
 
-		return workflow;
+		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
+
+		return { ...workflow, scopes };
 	}
 
 	@Patch('/:workflowId')
@@ -329,7 +335,9 @@ export class WorkflowsController {
 			isSharingEnabled ? forceSave : true,
 		);
 
-		return updatedWorkflow;
+		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
+
+		return { ...updatedWorkflow, scopes };
 	}
 
 	@Delete('/:workflowId')

@@ -1,6 +1,9 @@
 import type { ProjectRelation, ProjectRole } from '@/databases/entities/ProjectRelation';
-import type { CredentialSharingRole } from '@/databases/entities/SharedCredentials';
-import type { WorkflowSharingRole } from '@/databases/entities/SharedWorkflow';
+import type {
+	CredentialSharingRole,
+	SharedCredentials,
+} from '@/databases/entities/SharedCredentials';
+import type { SharedWorkflow, WorkflowSharingRole } from '@/databases/entities/SharedWorkflow';
 import type { GlobalRole, User } from '@/databases/entities/User';
 import {
 	GLOBAL_ADMIN_SCOPES,
@@ -186,10 +189,24 @@ export class RoleService {
 			throw new ApplicationError('Cannot detect if entity is a workflow or credential.');
 		}
 
-		const globalScopes = this.getRoleScopes(user.role).filter((s) =>
-			s.startsWith('active' in entity ? 'workflow:' : 'credential:'),
+		entity.scopes = this.combineResourceScopes(
+			'active' in entity ? 'workflow' : 'credential',
+			user,
+			shared,
+			userProjectRelations,
 		);
-		const scopesSet: Set<Scope> = new Set();
+
+		return entity;
+	}
+
+	combineResourceScopes(
+		type: 'workflow' | 'credential',
+		user: User,
+		shared: SharedCredentials[] | SharedWorkflow[],
+		userProjectRelations: ProjectRelation[],
+	): Scope[] {
+		const globalScopes = this.getRoleScopes(user.role, [type]);
+		const scopesSet: Set<Scope> = new Set(globalScopes);
 		for (const sharedEntity of shared) {
 			const pr = userProjectRelations.find(
 				(p) => p.projectId === (sharedEntity.projectId ?? sharedEntity.project.id),
@@ -208,9 +225,6 @@ export class RoleService {
 			);
 			mergedScopes.forEach((s) => scopesSet.add(s));
 		}
-
-		entity.scopes = [...scopesSet];
-
-		return entity;
+		return [...scopesSet].sort();
 	}
 }

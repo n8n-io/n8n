@@ -32,6 +32,7 @@ const testServer = utils.setupTestServer({ endpointGroups: ['credentials'] });
 let owner: User;
 let ownerPersonalProject: Project;
 let member: User;
+let memberPersonalProject: Project;
 let secondMember: User;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
@@ -47,6 +48,7 @@ beforeAll(async () => {
 	owner = await createUser({ role: 'global:owner' });
 	ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
 	member = await createUser({ role: 'global:member' });
+	memberPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(member.id);
 	secondMember = await createUser({ role: 'global:member' });
 
 	saveCredential = affixRoleToSaveCredential('credential:owner');
@@ -133,7 +135,9 @@ describe('GET /credentials', () => {
 
 			// Team cred
 			expect(cred1.id).toBe(savedCredential1.id);
-			expect(cred1.scopes).toEqual(['credential:read', 'credential:update', 'credential:delete']);
+			expect(cred1.scopes).toEqual(
+				['credential:read', 'credential:update', 'credential:delete'].sort(),
+			);
 
 			// Shared cred
 			expect(cred2.id).toBe(savedCredential2.id);
@@ -158,12 +162,9 @@ describe('GET /credentials', () => {
 
 			// Shared cred
 			expect(cred2.id).toBe(savedCredential2.id);
-			expect(cred2.scopes).toEqual([
-				'credential:read',
-				'credential:update',
-				'credential:delete',
-				'credential:share',
-			]);
+			expect(cred2.scopes).toEqual(
+				['credential:read', 'credential:update', 'credential:delete', 'credential:share'].sort(),
+			);
 		}
 
 		{
@@ -178,25 +179,29 @@ describe('GET /credentials', () => {
 
 			// Team cred
 			expect(cred1.id).toBe(savedCredential1.id);
-			expect(cred1.scopes).toEqual([
-				'credential:create',
-				'credential:read',
-				'credential:update',
-				'credential:delete',
-				'credential:list',
-				'credential:share',
-			]);
+			expect(cred1.scopes).toEqual(
+				[
+					'credential:create',
+					'credential:read',
+					'credential:update',
+					'credential:delete',
+					'credential:list',
+					'credential:share',
+				].sort(),
+			);
 
 			// Shared cred
 			expect(cred2.id).toBe(savedCredential2.id);
-			expect(cred2.scopes).toEqual([
-				'credential:create',
-				'credential:read',
-				'credential:update',
-				'credential:delete',
-				'credential:list',
-				'credential:share',
-			]);
+			expect(cred2.scopes).toEqual(
+				[
+					'credential:create',
+					'credential:read',
+					'credential:update',
+					'credential:delete',
+					'credential:list',
+					'credential:share',
+				].sort(),
+			);
 		}
 	});
 });
@@ -205,15 +210,19 @@ describe('POST /credentials', () => {
 	test('should create cred', async () => {
 		const payload = randomCredentialPayload();
 
-		const response = await authOwnerAgent.post('/credentials').send(payload);
+		const response = await authMemberAgent.post('/credentials').send(payload);
 
 		expect(response.statusCode).toBe(200);
 
-		const { id, name, type, data: encryptedData } = response.body.data;
+		const { id, name, type, data: encryptedData, scopes } = response.body.data;
 
 		expect(name).toBe(payload.name);
 		expect(type).toBe(payload.type);
 		expect(encryptedData).not.toBe(payload.data);
+
+		expect(scopes).toEqual(
+			['credential:read', 'credential:update', 'credential:delete', 'credential:share'].sort(),
+		);
 
 		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
 
@@ -226,7 +235,7 @@ describe('POST /credentials', () => {
 			where: { credentialsId: credential.id },
 		});
 
-		expect(sharedCredential.project.id).toBe(ownerPersonalProject.id);
+		expect(sharedCredential.project.id).toBe(memberPersonalProject.id);
 		expect(sharedCredential.credentials.name).toBe(payload.name);
 	});
 
@@ -456,10 +465,21 @@ describe('PATCH /credentials/:id', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const { id, name, type, data: encryptedData } = response.body.data;
+		const { id, name, type, data: encryptedData, scopes } = response.body.data;
 
 		expect(name).toBe(patchPayload.name);
 		expect(type).toBe(patchPayload.type);
+
+		expect(scopes).toEqual(
+			[
+				'credential:create',
+				'credential:read',
+				'credential:update',
+				'credential:delete',
+				'credential:list',
+				'credential:share',
+			].sort(),
+		);
 
 		expect(encryptedData).not.toBe(patchPayload.data);
 

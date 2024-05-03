@@ -60,8 +60,9 @@ export class CredentialsController {
 	@Get('/:credentialId')
 	@ProjectScope('credential:read')
 	async getOne(req: CredentialRequest.Get) {
+		debugger;
 		if (this.license.isSharingEnabled()) {
-			return await this.enterpriseCredentialsService.getOne(
+			const credentials = await this.enterpriseCredentialsService.getOne(
 				req.user,
 				req.params.credentialId,
 				// TODO: editor-ui is always sending this, maybe we can just rely on the
@@ -69,15 +70,29 @@ export class CredentialsController {
 				// to do so.
 				req.query.includeData === 'true',
 			);
+
+			const scopes = await this.credentialsService.getCredentialScopes(
+				req.user,
+				req.params.credentialId,
+			);
+
+			return { ...credentials, scopes };
 		}
 
 		// non-enterprise
 
-		return await this.credentialsService.getOne(
+		const credentials = await this.credentialsService.getOne(
 			req.user,
 			req.params.credentialId,
 			req.query.includeData === 'true',
 		);
+
+		const scopes = await this.credentialsService.getCredentialScopes(
+			req.user,
+			req.params.credentialId,
+		);
+
+		return { ...credentials, scopes };
 	}
 
 	// TODO: Write at least test cases for the failure paths.
@@ -127,7 +142,9 @@ export class CredentialsController {
 			public_api: false,
 		});
 
-		return credential;
+		const scopes = await this.credentialsService.getCredentialScopes(req.user, credential.id);
+
+		return { ...credential, scopes };
 	}
 
 	@Patch('/:credentialId')
@@ -179,7 +196,9 @@ export class CredentialsController {
 			credential_id: credential.id,
 		});
 
-		return { ...rest };
+		const scopes = await this.credentialsService.getCredentialScopes(req.user, credential.id);
+
+		return { ...rest, scopes };
 	}
 
 	@Delete('/:credentialId')
