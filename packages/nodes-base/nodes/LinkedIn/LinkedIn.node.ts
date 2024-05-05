@@ -172,11 +172,22 @@ export class LinkedIn implements INodeType {
 							);
 
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
-							this.helpers.assertBinaryData(i, binaryPropertyName);
+							const imageMetadata = this.helpers.assertBinaryData(i, binaryPropertyName);
 
 							const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 							const { uploadUrl, image } = registerObject.value;
-							await linkedInApiRequest.call(this, 'POST', uploadUrl as string, buffer, true);
+
+							const headers = {};
+							Object.assign(headers, { 'Content-Type': imageMetadata.mimeType });
+
+							await linkedInApiRequest.call(
+								this,
+								'POST',
+								uploadUrl as string,
+								buffer,
+								true,
+								headers,
+							);
 
 							const imageBody = {
 								content: {
