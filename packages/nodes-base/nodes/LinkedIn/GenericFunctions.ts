@@ -52,6 +52,9 @@ export async function linkedInApiRequest(
 	if (binary) {
 		delete options.json;
 		options.encoding = null;
+		if (Object.keys(_headers as object).length > 0) {
+			Object.assign(options.headers as object, _headers);
+		}
 	}
 
 	if (Object.keys(body as IDataObject).length === 0) {
