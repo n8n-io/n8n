@@ -205,7 +205,10 @@ export class FrontendService {
 			ai: {
 				enabled: config.getEnv('ai.enabled'),
 				provider: config.getEnv('ai.provider'),
-				errorDebugging: !!config.getEnv('ai.openAIApiKey'),
+				features: {
+					errorDebugging: !!config.getEnv('ai.openAI.apiKey'),
+					generateCurl: !!config.getEnv('ai.openAI.apiKey'),
+				},
 			},
 			workflowHistory: {
 				pruneTime: -1,

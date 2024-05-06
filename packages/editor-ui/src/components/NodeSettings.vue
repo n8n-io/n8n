@@ -207,7 +207,6 @@ import {
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 	CUSTOM_NODES_DOCS_URL,
 	MAIN_NODE_PANEL_WIDTH,
-	IMPORT_CURL_MODAL_KEY,
 	SHOULD_CLEAR_NODE_OUTPUTS,
 } from '@/constants';
 
@@ -232,6 +231,7 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import type { EventBus } from 'n8n-design-system';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { importCurlEventBus } from '@/event-bus';
 import { useToast } from '@/composables/useToast';
 
 export default defineComponent({
@@ -266,9 +266,6 @@ export default defineComponent({
 			useWorkflowsStore,
 			useWorkflowsEEStore,
 		),
-		isCurlImportModalOpen(): boolean {
-			return this.uiStore.isModalOpen(IMPORT_CURL_MODAL_KEY);
-		},
 		isReadOnly(): boolean {
 			return this.readOnly || this.hasForeignCredential;
 		},
@@ -454,28 +451,6 @@ export default defineComponent({
 		node(newNode, oldNode) {
 			this.setNodeValues();
 		},
-		isCurlImportModalOpen(newValue, oldValue) {
-			if (newValue === false) {
-				let parameters = this.uiStore.getHttpNodeParameters || '';
-
-				if (!parameters) return;
-
-				try {
-					parameters = JSON.parse(parameters) as {
-						[key: string]: unknown;
-					};
-
-					//@ts-ignore
-					this.valueChanged({
-						node: this.node.name,
-						name: 'parameters',
-						value: parameters,
-					});
-
-					this.uiStore.setHttpNodeParameters({ name: IMPORT_CURL_MODAL_KEY, parameters: '' });
-				} catch {}
-			}
-		},
 	},
 	mounted() {
 		this.populateHiddenIssuesSet();
@@ -484,11 +459,22 @@ export default defineComponent({
 		this.eventBus?.on('openSettings', this.openSettings);
 
 		this.nodeHelpers.updateNodeParameterIssues(this.node as INodeUi, this.nodeType);
+		importCurlEventBus.on('setHttpNodeParameters', this.setHttpNodeParameters);
 	},
 	beforeUnmount() {
 		this.eventBus?.off('openSettings', this.openSettings);
+		importCurlEventBus.off('setHttpNodeParameters', this.setHttpNodeParameters);
 	},
 	methods: {
+		setHttpNodeParameters(parameters: Record<string, unknown>) {
+			try {
+				this.valueChanged({
+					node: this.node.name,
+					name: 'parameters',
+					value: parameters,
+				});
+			} catch {}
+		},
 		onSwitchSelectedNode(node: string) {
 			this.$emit('switchSelectedNode', node);
 		},
