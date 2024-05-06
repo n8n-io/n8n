@@ -77,7 +77,10 @@ export class MultiMainSetup extends EventEmitter {
 
 			config.set('multiMainSetup.instanceType', 'follower');
 
-			this.emit('leader-stepdown'); // lost leadership - stop triggers, pollers, pruning
+			/**
+			 * Lost leadership - stop triggers, pollers, pruning, wait tracking, license renewal
+			 */
+			this.emit('leader-stepdown');
 
 			await this.tryBecomeLeader();
 		}
@@ -97,7 +100,10 @@ export class MultiMainSetup extends EventEmitter {
 
 			await this.redisPublisher.setExpiration(this.leaderKey, this.leaderKeyTtl);
 
-			this.emit('leader-takeover'); // gained leadership - start triggers, pollers, pruning, wait-tracking
+			/**
+			 * Gained leadership - start triggers, pollers, pruning, wait-tracking, license renewal
+			 */
+			this.emit('leader-takeover');
 		} else {
 			config.set('multiMainSetup.instanceType', 'follower');
 		}
