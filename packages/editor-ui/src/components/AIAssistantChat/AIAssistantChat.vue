@@ -129,6 +129,8 @@ const sendMessage = async (message: string) => {
 				chatEventBus.emit('scrollToBottom');
 				if (index === thanksResponses.length - 1) {
 					waitingForResponse.value = false;
+					// Once last message is sent, disable the experiment
+					useStorage(AI_ASSISTANT_LOCAL_STORAGE_KEY).value = 'true';
 				}
 			},
 			1500 * (index + 1),
@@ -183,7 +185,6 @@ onMounted(() => {
 			aiStore.assistantChatOpen = false;
 		}
 	});
-	useStorage(AI_ASSISTANT_LOCAL_STORAGE_KEY).value = 'true';
 });
 
 async function onBeforeClose() {
