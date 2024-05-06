@@ -36,9 +36,22 @@ const isHoveringItem = computed(() => Boolean(hoveringItem.value));
 const itemsLength = computed(() => ndvStore.ndvInputDataWithPinnedData.length);
 const itemIndex = computed(() => hoveringItemIndex.value ?? ndvStore.expressionOutputItemIndex);
 const max = computed(() => Math.max(itemsLength.value - 1, 0));
+const isItemIndexEditable = computed(() => !isHoveringItem.value && itemsLength.value > 0);
+const canSelectNextItem = computed(
+	() => isItemIndexEditable && itemIndex.value < itemsLength.value - 1,
+);
+const canSelectPrevItem = computed(() => isItemIndexEditable && itemIndex.value !== 0);
 
 function updateItemIndex(index: number) {
 	ndvStore.expressionOutputItemIndex = index;
+}
+
+function nextItem() {
+	ndvStore.expressionOutputItemIndex = ndvStore.expressionOutputItemIndex + 1;
+}
+
+function prevItem() {
+	ndvStore.expressionOutputItemIndex = ndvStore.expressionOutputItemIndex - 1;
 }
 
 onBeforeUnmount(() => {
@@ -58,22 +71,40 @@ onBeforeUnmount(() => {
 					{{ i18n.baseText('parameterInput.item') }}
 				</n8n-text>
 
-				<N8nTooltip placement="right" :disabled="hideTableHoverHint">
-					<template #content>
-						<div>{{ i18n.baseText('parameterInput.hoverTableItemTip') }}</div>
-					</template>
-
+				<div :class="$style.controls">
 					<N8nInputNumber
 						size="mini"
-						controls-position="right"
+						:controls="false"
 						:class="$style.input"
 						:min="0"
 						:max="max"
 						:model-value="itemIndex"
-						:disabled="isHoveringItem || itemsLength === 0"
+						:disabled="!isItemIndexEditable"
 						@update:model-value="updateItemIndex"
 					></N8nInputNumber>
-				</N8nTooltip>
+					<N8nIconButton
+						icon="chevron-left"
+						type="tertiary"
+						text
+						size="mini"
+						:disabled="!canSelectPrevItem"
+						@click="prevItem"
+					></N8nIconButton>
+
+					<N8nTooltip placement="right" :disabled="hideTableHoverHint">
+						<template #content>
+							<div>{{ i18n.baseText('parameterInput.hoverTableItemTip') }}</div>
+						</template>
+						<N8nIconButton
+							icon="chevron-right"
+							type="tertiary"
+							text
+							size="mini"
+							:disabled="!canSelectNextItem"
+							@click="nextItem"
+						></N8nIconButton>
+					</N8nTooltip>
+				</div>
 			</div>
 		</div>
 		<n8n-text :class="$style.body">
@@ -112,7 +143,6 @@ onBeforeUnmount(() => {
 		background-color: var(--color-code-background);
 	}
 
-	.header,
 	.body {
 		padding: var(--spacing-3xs);
 	}
@@ -128,14 +158,14 @@ onBeforeUnmount(() => {
 		gap: var(--spacing-2xs);
 		color: var(--color-text-dark);
 		font-weight: var(--font-weight-bold);
-		padding-left: var(--spacing-2xs);
+		padding: 0 var(--spacing-2xs);
 		padding-top: var(--spacing-2xs);
 	}
 
 	.item {
 		display: flex;
 		align-items: center;
-		gap: var(--spacing-2xs);
+		gap: var(--spacing-4xs);
 	}
 
 	.body {
@@ -148,8 +178,27 @@ onBeforeUnmount(() => {
 		}
 	}
 
+	.controls {
+		display: flex;
+		align-items: center;
+	}
+
 	.input {
-		max-width: 60px;
+		--input-height: 22px;
+		--input-width: 32px;
+		--disabled-color: var(--color-secondary);
+		--input-border-top-left-radius: var(--border-radius-base);
+		--input-border-bottom-left-radius: var(--border-radius-base);
+		--input-border-top-right-radius: var(--border-radius-base);
+		--input-border-bottom-right-radius: var(--border-radius-base);
+		max-width: var(--input-width);
+		line-height: calc(var(--input-height) - var(--spacing-4xs));
+
+		:global(.el-input__inner) {
+			height: var(--input-height);
+			min-height: var(--input-height);
+			line-height: var(--input-height);
+		}
 	}
 }
 </style>
