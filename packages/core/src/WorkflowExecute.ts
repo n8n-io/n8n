@@ -833,7 +833,7 @@ export class WorkflowExecute {
 				this.status = 'canceled';
 				this.abortController.abort();
 				const fullRunData = this.getFullRunData(startedAt);
-				setTimeout(() => resolve(fullRunData), 10);
+				void this.executeHook('workflowExecuteAfter', [fullRunData]);
 			});
 
 			// eslint-disable-next-line complexity
