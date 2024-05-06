@@ -157,7 +157,7 @@
 
 		.autocomplete-info-example {
 			border-radius: var(--border-radius-base);
-			border: 1px solid var(--color-foreground-light);
+			border: 1px solid var(--color-infobox-examples-border-color);
 			color: var(--color-text-base);
 			margin-top: var(--spacing-xs);
 		}
@@ -218,9 +218,9 @@
 	}
 
 	.autocomplete-info-examples-list {
+		margin: var(--spacing-xs) var(--spacing-xs) 0 var(--spacing-xs);
 		border-radius: var(--border-radius-base);
-		border: 1px solid var(--color-foreground-light);
-		margin: 0 var(--spacing-xs);
+		border: 1px solid var(--color-infobox-examples-border-color);
 	}
 
 	.autocomplete-info-example {
@@ -274,6 +274,6 @@
 	}
 
 	&.cm-completionInfo-right {
-		background-color: var(--color-background-light-base);
+		background-color: var(--color-infobox-background);
 	}
 }
