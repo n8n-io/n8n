@@ -27,6 +27,9 @@ import { ProjectService } from '@/services/project.service';
 const testServer = utils.setupTestServer({
 	endpointGroups: ['credentials'],
 	enabledFeatures: ['feat:sharing'],
+	quotas: {
+		'quota:maxTeamProjects': -1,
+	},
 });
 
 let owner: User;

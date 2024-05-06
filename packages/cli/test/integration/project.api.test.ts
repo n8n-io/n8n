@@ -38,6 +38,9 @@ const testServer = utils.setupTestServer({
 		'feat:projectRole:editor',
 		'feat:projectRole:viewer',
 	],
+	quotas: {
+		'quota:maxTeamProjects': -1,
+	},
 });
 
 // The `ActiveWorkflowRunner` keeps the event loop alive, which in turn leads to jest not shutting down cleanly.
