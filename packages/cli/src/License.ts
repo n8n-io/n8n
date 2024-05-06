@@ -333,7 +333,7 @@ export class License {
 	}
 
 	getTeamProjectLimit() {
-		return this.getFeatureValue(LICENSE_QUOTAS.TEAM_PROJECT_LIMIT) ?? UNLIMITED_LICENSE_QUOTA;
+		return this.getFeatureValue(LICENSE_QUOTAS.TEAM_PROJECT_LIMIT) ?? 0;
 	}
 
 	getPlanName(): string {

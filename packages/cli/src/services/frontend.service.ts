@@ -187,7 +187,7 @@ export class FrontendService {
 				advancedPermissions: false,
 				projects: {
 					team: {
-						limit: -1,
+						limit: 0,
 					},
 				},
 			},
