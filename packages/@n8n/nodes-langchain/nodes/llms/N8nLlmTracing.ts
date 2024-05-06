@@ -1,11 +1,18 @@
 import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
 import { getModelNameForTiktoken } from '@langchain/core/language_models/base';
 import { encodingForModel } from '@langchain/core/utils/tiktoken';
-import type { Serialized } from '@langchain/core/load/serializable';
+import type {
+	Serialized,
+	SerializedNotImplemented,
+	SerializedSecret,
+} from '@langchain/core/load/serializable';
 import type { LLMResult } from '@langchain/core/outputs';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 import { pick } from 'lodash';
+import type { BaseMessage } from '@langchain/core/messages';
+import type { SerializedFields } from '@langchain/core/dist/load/map_keys';
+import { logAiEvent } from '../../utils/helpers';
 
 type TokensUsageParser = (llmOutput: LLMResult['llmOutput']) => {
 	completionTokens: number;
@@ -13,6 +20,13 @@ type TokensUsageParser = (llmOutput: LLMResult['llmOutput']) => {
 	totalTokens: number;
 };
 
+type LastInput = {
+	index: number;
+	messages: BaseMessage[] | string[] | string;
+	options: SerializedSecret | SerializedNotImplemented | SerializedFields;
+};
+
+const TIKTOKEN_ESTIMATE_MODEL = 'gpt-3.5-turbo';
 export class N8nLlmTracing extends BaseCallbackHandler {
 	name = 'N8nLlmTracing';
 
@@ -20,14 +34,18 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 
 	connectionType = NodeConnectionType.AiLanguageModel;
 
-	lastIndex = 0;
-
 	promptTokensEstimate = 0;
 
 	completionTokensEstimate = 0;
 
+	lastInput: LastInput = {
+		index: 0,
+		messages: [],
+		options: {},
+	};
+
 	options = {
-		// Default(OpenAI style) parser
+		// Default(OpenAI format) parser
 		tokensUsageParser: (llmOutput: LLMResult['llmOutput']) => {
 			const completionTokens = (llmOutput?.tokenUsage?.completionTokens as number) ?? 0;
 			const promptTokens = (llmOutput?.tokenUsage?.promptTokens as number) ?? 0;
@@ -55,7 +73,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 	}
 
 	async estimateTokensFromStringList(list: string[]) {
-		const embeddingModel = getModelNameForTiktoken('gpt-3.5-turbo');
+		const embeddingModel = getModelNameForTiktoken(TIKTOKEN_ESTIMATE_MODEL);
 		const encoder = await encodingForModel(embeddingModel);
 
 		const encodedListLength = await Promise.all(
@@ -67,9 +85,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 
 	async handleLLMEnd(output: LLMResult) {
 		output.generations = output.generations.map((gen) =>
-			gen.map((g) => {
-				return pick(g, ['text', 'generationInfo']);
-			}),
+			gen.map((g) => pick(g, ['text', 'generationInfo'])),
 		);
 
 		const tokenUsageEstimate = {
@@ -96,20 +112,37 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			response: { generations: output.generations },
 		};
 
+		// If the LLM response contains actual tokens usage, otherwise fallback to the estimate
 		if (tokenUsage.completionTokens > 0) {
 			response.tokenUsage = tokenUsage;
 		} else {
 			response.tokenUsageEstimate = tokenUsageEstimate;
 		}
 
-		this.executionFunctions.addOutputData(this.connectionType, this.lastIndex, [
+		const parsedMessages =
+			typeof this.lastInput.messages === 'string'
+				? this.lastInput.messages
+				: this.lastInput.messages.map((message) => {
+						if (typeof message === 'string') return message;
+						if (typeof message?.toJSON === 'function') return message.toJSON();
+
+						return message;
+					});
+
+		this.executionFunctions.addOutputData(this.connectionType, this.lastInput.index, [
 			[{ json: { ...response } }],
 		]);
+		void logAiEvent(this.executionFunctions, 'n8n.ai.llm.generated', {
+			messages: parsedMessages,
+			options: this.lastInput.options,
+			response,
+		});
 	}
 
 	async handleLLMStart(llm: Serialized, prompts: string[]) {
 		const estimatedTokens = await this.estimateTokensFromStringList(prompts);
 
+		const options = llm.type === 'constructor' ? llm.kwargs : llm;
 		const { index } = this.executionFunctions.addInputData(
 			this.connectionType,
 			[
@@ -118,15 +151,20 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 						json: {
 							messages: prompts,
 							estimatedTokens,
-							options: llm.type === 'constructor' ? llm.kwargs : llm,
+							options,
 						},
 					},
 				],
 			],
-			this.lastIndex + 1,
+			this.lastInput.index + 1,
 		);
 
-		this.lastIndex = index;
+		// Save the last input for later use when processing `handleLLMEnd` event
+		this.lastInput = {
+			index,
+			options,
+			messages: prompts,
+		};
 		this.promptTokensEstimate = estimatedTokens;
 	}
 }
