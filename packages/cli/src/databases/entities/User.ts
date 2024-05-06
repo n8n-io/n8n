@@ -20,6 +20,7 @@ import type { IPersonalizationSurveyAnswers } from '@/Interfaces';
 import type { AuthIdentity } from './AuthIdentity';
 import { ownerPermissions, memberPermissions, adminPermissions } from '@/permissions/roles';
 import { hasScope, type ScopeOptions, type Scope } from '@n8n/permissions';
+import type { Passkeys } from './Passkeys';
 
 export type GlobalRole = 'global:owner' | 'global:admin' | 'global:member';
 export type AssignableRole = Exclude<GlobalRole, 'global:owner'>;
@@ -78,6 +79,9 @@ export class User extends WithTimestamps implements IUser {
 
 	@OneToMany('AuthIdentity', 'user')
 	authIdentities: AuthIdentity[];
+
+	@OneToMany('Passkeys', 'user')
+	passkeys: Passkeys[];
 
 	@OneToMany('SharedWorkflow', 'user')
 	sharedWorkflows: SharedWorkflow[];

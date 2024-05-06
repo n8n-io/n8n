@@ -1,15 +1,17 @@
+/* eslint-disable import/no-extraneous-dependencies */
 import { Delete, Get, Patch, Post, RestController } from '@/decorators';
 import { AuthenticatedRequest, MFA } from '@/requests';
 import { MfaService } from '@/Mfa/mfa.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import * as SimpleWebAuthnServer from '@simplewebauthn/server';
-import { isoUint8Array } from '@simplewebauthn/server/helpers';
+import { isoUint8Array, isoBase64URL } from '@simplewebauthn/server/helpers';
 
 import { Response } from 'express';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import type { CredentialDeviceType } from '@simplewebauthn/server/script/deps';
 import { AuthService } from '@/auth/auth.service';
 import { UserService } from '@/services/user.service';
+import { PasskeyRepository } from '@/databases/repositories/passkey.repository';
 
 let challenge = '';
 
@@ -21,7 +23,7 @@ let credentialDevicetype: CredentialDeviceType;
 
 let credentialBackedup: boolean;
 
-let securityKeys: Array<{
+const securityKeys: Array<{
 	rawId: string;
 	id: string;
 	credentialId: Uint8Array;
@@ -37,6 +39,7 @@ export class MFAController {
 		private userRepository: UserRepository,
 		private authService: AuthService,
 		private userService: UserService,
+		private passkeyRepository: PasskeyRepository,
 	) {}
 
 	@Get('/security-keys')
@@ -49,6 +52,7 @@ export class MFAController {
 
 	@Delete('/security-keys/:id')
 	async deleteSecurityKeys(req: AuthenticatedRequest, res: Response) {
+		//@ts-ignore
 		const index = securityKeys.findIndex((securityKey) => securityKey.id === req.params.id);
 		securityKeys.splice(index, 1);
 		return;
@@ -56,6 +60,7 @@ export class MFAController {
 
 	@Patch('/security-keys/:id')
 	async updateSecurityKeyName(req: AuthenticatedRequest, res: Response) {
+		//@ts-ignore
 		const index = securityKeys.findIndex((securityKey) => securityKey.id === req.params.id);
 		//@ts-ignore
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -67,6 +72,8 @@ export class MFAController {
 	async getChallenge(req: AuthenticatedRequest, res: Response) {
 		// const challenge = Math.random().toString(36).substring(2);
 
+		const passkeys = await this.passkeyRepository.find({ where: { userId: req.user.id } });
+
 		const options = await SimpleWebAuthnServer.generateRegistrationOptions({
 			rpName: 'n8n',
 			rpID: 'localhost',
@@ -75,8 +82,8 @@ export class MFAController {
 			// Don't prompt users for additional information about the authenticator
 			// (Recommended for smoother UX)
 			attestationType: 'none',
-			excludeCredentials: securityKeys.map((securityKey) => ({
-				id: securityKey.credentialId,
+			excludeCredentials: passkeys.map((passkey) => ({
+				id: Uint8Array.from(Buffer.from(passkey.id, 'hex')),
 				type: 'public-key',
 			})),
 			// attestationFormat: 'fido-u2f',
@@ -147,6 +154,20 @@ export class MFAController {
 
 			await this.userRepository.update(req.user.id, { mfaEnabled: true });
 
+			console.log('tjos os executed');
+
+			await this.passkeyRepository.save({
+				id: isoBase64URL.fromBuffer(credentialID),
+				publicKey: credentialPublicKey,
+				userId: req.user.id,
+				deviceType: credentialDeviceType,
+				counter,
+				backedUp: credentialBackedUp,
+				//@ts-ignore
+				transports: req.body.response.transports,
+			});
+
+			//@ts-ignore
 			securityKeys.push({
 				id: isoUint8Array.toHex(credentialID),
 				credentialId: credentialID,
@@ -160,8 +181,10 @@ export class MFAController {
 
 	@Get('/start-authentication', { skipAuth: true })
 	async startAuthentication(req: AuthenticatedRequest, res: Response) {
-		const allowCredentials = securityKeys.map((securityKey) => ({
-			id: securityKey.credentialId,
+		const passkeys = await this.passkeyRepository.find({ where: { userId: req.user.id } });
+
+		const allowCredentials = passkeys.map((passkey) => ({
+			id: isoBase64URL.toBuffer(passkey.id),
 			type: 'public-key',
 			transport: [],
 		})) as PublicKeyCredentialDescriptor[];

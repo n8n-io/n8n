@@ -21,6 +21,7 @@ const timestampSyntax = {
 
 export const jsonColumnType = dbType === 'sqlite' ? 'simple-json' : 'json';
 export const datetimeColumnType = dbType === 'postgresdb' ? 'timestamptz' : 'datetime';
+export const ByteColumnType = dbType === 'sqlite' ? 'blob' : 'bytea';
 
 const tsColumnOptions: ColumnOptions = {
 	precision: 3,
