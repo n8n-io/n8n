@@ -17,8 +17,7 @@
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc",
-    "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && gulp build:icons && gulp build:translations && pnpm build:metadata",
-    "build:translations": "gulp build:translations",
+    "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && pnpm n8n-copy-icons && pnpm n8n-generate-translations && pnpm build:metadata",
     "build:metadata": "pnpm n8n-generate-known && pnpm n8n-generate-ui-types",
     "format": "prettier --write . --ignore-path ../../.prettierignore",
     "lint": "eslint . --quiet && node ./scripts/validate-load-options-methods.js",
@@ -834,7 +833,6 @@
     "@types/uuid": "^8.3.2",
     "@types/xml2js": "^0.4.14",
     "eslint-plugin-n8n-nodes-base": "^1.16.0",
-    "gulp": "^4.0.0",
     "n8n-core": "workspace:*"
   },
   "dependencies": {
