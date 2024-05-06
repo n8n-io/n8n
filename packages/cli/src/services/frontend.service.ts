@@ -185,6 +185,11 @@ export class FrontendService {
 				workflowHistory: false,
 				workerView: false,
 				advancedPermissions: false,
+				projects: {
+					team: {
+						limit: -1,
+					},
+				},
 			},
 			mfa: {
 				enabled: false,
@@ -210,11 +215,6 @@ export class FrontendService {
 			workflowHistory: {
 				pruneTime: -1,
 				licensePruneTime: -1,
-			},
-			projects: {
-				team: {
-					limit: -1,
-				},
 			},
 		};
 	}
@@ -321,7 +321,7 @@ export class FrontendService {
 
 		this.settings.binaryDataMode = config.getEnv('binaryDataManager.mode');
 
-		this.settings.projects.team.limit = this.license.getTeamProjectLimit();
+		this.settings.enterprise.projects.team.limit = this.license.getTeamProjectLimit();
 
 		return this.settings;
 	}

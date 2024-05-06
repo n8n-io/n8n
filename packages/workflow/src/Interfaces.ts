@@ -2552,6 +2552,11 @@ export interface IN8nUISettings {
 		workflowHistory: boolean;
 		workerView: boolean;
 		advancedPermissions: boolean;
+		projects: {
+			team: {
+				limit: number;
+			};
+		};
 	};
 	hideUsagePage: boolean;
 	license: {
@@ -2577,11 +2582,6 @@ export interface IN8nUISettings {
 	workflowHistory: {
 		pruneTime: number;
 		licensePruneTime: number;
-	};
-	projects: {
-		team: {
-			limit: number;
-		};
 	};
 }
 
