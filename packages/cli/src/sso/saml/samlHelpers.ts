@@ -108,13 +108,11 @@ export async function createUserFromSamlAttributes(attributes: SamlUserAttribute
 	user.password = await Container.get(PasswordUtility).hash(generatePassword());
 	authIdentity.providerId = attributes.userPrincipalName;
 	authIdentity.providerType = 'saml';
-	authIdentity.user = user;
 	const resultAuthIdentity = await Container.get(AuthIdentityRepository).save(authIdentity, {
 		transaction: false,
 	});
 	if (!resultAuthIdentity) throw new AuthError('Could not create AuthIdentity');
-	user.authIdentities = [authIdentity];
-	const resultUser = await Container.get(UserRepository).save(user, { transaction: false });
+	const { user: resultUser } = await Container.get(UserRepository).createUserWithProject(user);
 	if (!resultUser) throw new AuthError('Could not create User');
 	return resultUser;
 }
