@@ -7,7 +7,7 @@ import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import { ExecutionService } from '@/executions/execution.service';
 
 import { randomApiKey } from '../shared/random';
@@ -22,7 +22,7 @@ let owner: User;
 let member: User;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
-let workflowRunner: ActiveWorkflowRunner;
+let activeWorkflowManager: ActiveWorkflowManager;
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 const license = testServer.license;
@@ -42,9 +42,9 @@ beforeAll(async () => {
 
 	await utils.initNodeTypes();
 
-	workflowRunner = Container.get(ActiveWorkflowRunner);
+	activeWorkflowManager = Container.get(ActiveWorkflowManager);
 
-	await workflowRunner.init();
+	await activeWorkflowManager.init();
 });
 
 beforeEach(async () => {
@@ -62,7 +62,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-	await workflowRunner?.removeAll();
+	await activeWorkflowManager?.removeAll();
 });
 
 const testWithAPIKey =
@@ -517,7 +517,7 @@ describe('POST /workflows/:id/activate', () => {
 		expect(sharedWorkflow?.workflow.active).toBe(true);
 
 		// check whether the workflow is on the active workflow runner
-		expect(await workflowRunner.isActive(workflow.id)).toBe(true);
+		expect(await activeWorkflowManager.isActive(workflow.id)).toBe(true);
 	});
 
 	test('should set non-owned workflow as active when owner', async () => {
@@ -561,7 +561,7 @@ describe('POST /workflows/:id/activate', () => {
 		expect(sharedWorkflow?.workflow.active).toBe(true);
 
 		// check whether the workflow is on the active workflow runner
-		expect(await workflowRunner.isActive(workflow.id)).toBe(true);
+		expect(await activeWorkflowManager.isActive(workflow.id)).toBe(true);
 	});
 });
 
@@ -615,7 +615,7 @@ describe('POST /workflows/:id/deactivate', () => {
 		// check whether the workflow is deactivated in the database
 		expect(sharedWorkflow?.workflow.active).toBe(false);
 
-		expect(await workflowRunner.isActive(workflow.id)).toBe(false);
+		expect(await activeWorkflowManager.isActive(workflow.id)).toBe(false);
 	});
 
 	test('should deactivate non-owned workflow when owner', async () => {
@@ -660,7 +660,7 @@ describe('POST /workflows/:id/deactivate', () => {
 
 		expect(sharedWorkflow?.workflow.active).toBe(false);
 
-		expect(await workflowRunner.isActive(workflow.id)).toBe(false);
+		expect(await activeWorkflowManager.isActive(workflow.id)).toBe(false);
 	});
 });
 

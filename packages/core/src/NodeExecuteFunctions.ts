@@ -3319,7 +3319,7 @@ export function copyInputItems(items: INodeExecutionData[], properties: string[]
 /**
  * Returns the execute functions the poll nodes have access to.
  */
-// TODO: Check if I can get rid of: additionalData, and so then maybe also at ActiveWorkflowRunner.add
+// TODO: Check if I can get rid of: additionalData, and so then maybe also at ActiveWorkflowManager.add
 export function getExecutePollFunctions(
 	workflow: Workflow,
 	node: INode,
@@ -3382,7 +3382,7 @@ export function getExecutePollFunctions(
 /**
  * Returns the execute functions the trigger nodes have access to.
  */
-// TODO: Check if I can get rid of: additionalData, and so then maybe also at ActiveWorkflowRunner.add
+// TODO: Check if I can get rid of: additionalData, and so then maybe also at ActiveWorkflowManager.add
 export function getExecuteTriggerFunctions(
 	workflow: Workflow,
 	node: INode,

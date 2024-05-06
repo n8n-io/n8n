@@ -4,7 +4,7 @@ import { NodeApiError, NodeOperationError, Workflow } from 'n8n-workflow';
 import type { IWebhookData, WorkflowActivateMode } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/ActiveExecutions';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import { ExternalHooks } from '@/ExternalHooks';
 import { Push } from '@/push';
 import { SecretsHelper } from '@/SecretsHelpers';
@@ -47,7 +47,7 @@ Object.assign(loader.loadedNodes, {
 const webhookService = mockInstance(WebhookService);
 const externalHooks = mockInstance(ExternalHooks);
 
-let runner: ActiveWorkflowRunner;
+let activeWorkflowManager: ActiveWorkflowManager;
 
 let createActiveWorkflow: () => Promise<WorkflowEntity>;
 let createInactiveWorkflow: () => Promise<WorkflowEntity>;
@@ -55,7 +55,7 @@ let createInactiveWorkflow: () => Promise<WorkflowEntity>;
 beforeAll(async () => {
 	await testDb.init();
 
-	runner = Container.get(ActiveWorkflowRunner);
+	activeWorkflowManager = Container.get(ActiveWorkflowManager);
 
 	const owner = await createOwner();
 	createActiveWorkflow = async () => await createWorkflow({ active: true }, owner);
@@ -64,7 +64,7 @@ beforeAll(async () => {
 
 afterEach(async () => {
 	await testDb.truncate(['Workflow', 'Webhook']);
-	await runner.removeAll();
+	await activeWorkflowManager.removeAll();
 	jest.restoreAllMocks();
 });
 
@@ -74,18 +74,18 @@ afterAll(async () => {
 
 describe('init()', () => {
 	it('should load workflows into memory', async () => {
-		await runner.init();
+		await activeWorkflowManager.init();
 
-		expect(runner.allActiveInMemory()).toHaveLength(0);
+		expect(activeWorkflowManager.allActiveInMemory()).toHaveLength(0);
 
 		await createActiveWorkflow();
-		await runner.init();
+		await activeWorkflowManager.init();
 
-		expect(runner.allActiveInMemory()).toHaveLength(1);
+		expect(activeWorkflowManager.allActiveInMemory()).toHaveLength(1);
 	});
 
 	it('should call external hook', async () => {
-		await runner.init();
+		await activeWorkflowManager.init();
 
 		const [hook, arg] = externalHooks.run.mock.calls[0];
 
@@ -100,7 +100,7 @@ describe('init()', () => {
 			.spyOn(Workflow.prototype, 'checkIfWorkflowCanBeActivated')
 			.mockReturnValue(true);
 
-		await runner.init();
+		await activeWorkflowManager.init();
 
 		expect(checkSpy).toHaveBeenCalledTimes(2);
 	});
@@ -110,17 +110,17 @@ describe('isActive()', () => {
 	it('should return `true` for active workflow in storage', async () => {
 		const dbWorkflow = await createActiveWorkflow();
 
-		await runner.init();
+		await activeWorkflowManager.init();
 
-		await expect(runner.isActive(dbWorkflow.id)).resolves.toBe(true);
+		await expect(activeWorkflowManager.isActive(dbWorkflow.id)).resolves.toBe(true);
 	});
 
 	it('should return `false` for inactive workflow in storage', async () => {
 		const dbWorkflow = await createInactiveWorkflow();
 
-		await runner.init();
+		await activeWorkflowManager.init();
 
-		await expect(runner.isActive(dbWorkflow.id)).resolves.toBe(false);
+		await expect(activeWorkflowManager.isActive(dbWorkflow.id)).resolves.toBe(false);
 	});
 });
 
@@ -129,13 +129,13 @@ describe('add()', () => {
 		test.each(['activate', 'update'])(
 			"should add webhooks, triggers and pollers for workflow in '%s' activation mode",
 			async (mode: WorkflowActivateMode) => {
-				await runner.init();
+				await activeWorkflowManager.init();
 
 				const dbWorkflow = await createActiveWorkflow();
-				const addWebhooksSpy = jest.spyOn(runner, 'addWebhooks');
-				const addTriggersAndPollersSpy = jest.spyOn(runner, 'addTriggersAndPollers');
+				const addWebhooksSpy = jest.spyOn(activeWorkflowManager, 'addWebhooks');
+				const addTriggersAndPollersSpy = jest.spyOn(activeWorkflowManager, 'addTriggersAndPollers');
 
-				await runner.add(dbWorkflow.id, mode);
+				await activeWorkflowManager.add(dbWorkflow.id, mode);
 
 				const [argWorkflow] = addWebhooksSpy.mock.calls[0];
 				const [_, _argWorkflow] = addTriggersAndPollersSpy.mock.calls[0];
@@ -158,10 +158,10 @@ describe('removeAll()', () => {
 		await createActiveWorkflow();
 		await createActiveWorkflow();
 
-		await runner.init();
-		await runner.removeAll();
+		await activeWorkflowManager.init();
+		await activeWorkflowManager.removeAll();
 
-		expect(runner.allActiveInMemory()).toHaveLength(0);
+		expect(activeWorkflowManager.allActiveInMemory()).toHaveLength(0);
 	});
 });
 
@@ -170,8 +170,8 @@ describe('remove()', () => {
 		it('should remove all webhooks of a workflow from database', async () => {
 			const dbWorkflow = await createActiveWorkflow();
 
-			await runner.init();
-			await runner.remove(dbWorkflow.id);
+			await activeWorkflowManager.init();
+			await activeWorkflowManager.remove(dbWorkflow.id);
 
 			expect(webhookService.deleteWorkflowWebhooks).toHaveBeenCalledTimes(1);
 		});
@@ -183,18 +183,21 @@ describe('remove()', () => {
 				.spyOn(WebhookHelpers, 'getWorkflowWebhooks')
 				.mockReturnValue([mock<IWebhookData>({ path: 'some-path' })]);
 
-			await runner.init();
-			await runner.remove(dbWorkflow.id);
+			await activeWorkflowManager.init();
+			await activeWorkflowManager.remove(dbWorkflow.id);
 
 			expect(deleteWebhookSpy).toHaveBeenCalledTimes(1);
 		});
 
 		it('should stop running triggers and pollers', async () => {
 			const dbWorkflow = await createActiveWorkflow();
-			const removeTriggersAndPollersSpy = jest.spyOn(runner, 'removeWorkflowTriggersAndPollers');
+			const removeTriggersAndPollersSpy = jest.spyOn(
+				activeWorkflowManager,
+				'removeWorkflowTriggersAndPollers',
+			);
 
-			await runner.init();
-			await runner.remove(dbWorkflow.id);
+			await activeWorkflowManager.init();
+			await activeWorkflowManager.remove(dbWorkflow.id);
 
 			expect(removeTriggersAndPollersSpy).toHaveBeenCalledTimes(1);
 		});
@@ -208,9 +211,9 @@ describe('executeErrorWorkflow()', () => {
 
 		const executeSpy = jest.spyOn(AdditionalData, 'executeErrorWorkflow');
 
-		await runner.init();
+		await activeWorkflowManager.init();
 
-		runner.executeErrorWorkflow(
+		activeWorkflowManager.executeErrorWorkflow(
 			new NodeOperationError(node, 'Something went wrong'),
 			dbWorkflow,
 			'trigger',
@@ -222,16 +225,16 @@ describe('executeErrorWorkflow()', () => {
 	it('should be called on failure to activate due to 401', async () => {
 		const dbWorkflow = await createActiveWorkflow();
 		const [node] = dbWorkflow.nodes;
-		const executeSpy = jest.spyOn(runner, 'executeErrorWorkflow');
+		const executeSpy = jest.spyOn(activeWorkflowManager, 'executeErrorWorkflow');
 
-		jest.spyOn(runner, 'add').mockImplementation(() => {
+		jest.spyOn(activeWorkflowManager, 'add').mockImplementation(() => {
 			throw new NodeApiError(node, {
 				httpCode: '401',
 				message: 'Authorization failed - please check your credentials',
 			});
 		});
 
-		await runner.init();
+		await activeWorkflowManager.init();
 
 		expect(executeSpy).toHaveBeenCalledTimes(1);
 		const [error, _dbWorkflow] = executeSpy.mock.calls[0];
@@ -270,7 +273,7 @@ describe('addWebhooks()', () => {
 		jest.spyOn(Workflow.prototype, 'checkIfWorkflowCanBeActivated').mockReturnValue(true);
 		jest.spyOn(Workflow.prototype, 'createWebhookIfNotExists').mockResolvedValue(undefined);
 
-		await runner.addWebhooks(workflow, additionalData, 'trigger', 'init');
+		await activeWorkflowManager.addWebhooks(workflow, additionalData, 'trigger', 'init');
 
 		expect(webhookService.storeWebhook).toHaveBeenCalledTimes(1);
 	});
