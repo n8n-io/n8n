@@ -169,9 +169,6 @@ const chatConfig: Chat = {
 	initialMessages,
 	currentSessionId,
 	waitingForResponse,
-	async loadPreviousSession(): Promise<string | undefined> {
-		return '';
-	},
 };
 
 provide(ChatSymbol, chatConfig);
