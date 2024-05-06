@@ -57,6 +57,7 @@ export type IFormInput = {
 		disabled?: boolean;
 		labelSize?: 'small' | 'medium' | 'large';
 		labelAlignment?: 'left' | 'right' | 'center';
+		tooltipText?: string;
 	};
 	shouldDisplay?: (values: { [key: string]: unknown }) => boolean;
 };
