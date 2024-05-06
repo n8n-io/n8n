@@ -7,6 +7,8 @@ import * as testDb from '../shared/testDb';
 import { createUser } from '../shared/db/users';
 import { createWorkflow, shareWorkflowWithUsers } from '../shared/db/workflows';
 import { ProjectService } from '@/services/project.service';
+import { LicenseMocker } from '../shared/license';
+import { License } from '@/License';
 
 let owner: User;
 let member: User;
@@ -19,6 +21,11 @@ beforeAll(async () => {
 	owner = await createUser({ role: 'global:owner' });
 	member = await createUser({ role: 'global:member' });
 	anotherMember = await createUser({ role: 'global:member' });
+	let license: LicenseMocker;
+	license = new LicenseMocker();
+	license.mock(Container.get(License));
+	license.enable('feat:sharing');
+	license.setQuota('quota:maxTeamProjects', -1);
 	workflowSharingService = Container.get(WorkflowSharingService);
 	projectService = Container.get(ProjectService);
 });

@@ -10,13 +10,18 @@ import {
 	Delete,
 } from '@/decorators';
 import { ProjectRequest } from '@/requests';
-import { ProjectService } from '@/services/project.service';
+import {
+	ProjectService,
+	TeamProjectOverQuotaError,
+	UnlicensedProjectRoleError,
+} from '@/services/project.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { combineScopes } from '@n8n/permissions';
 import type { Scope } from '@n8n/permissions';
 import { RoleService } from '@/services/role.service';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { In, Not } from '@n8n/typeorm';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 @RestController('/projects')
 export class ProjectController {
@@ -35,7 +40,14 @@ export class ProjectController {
 	@GlobalScope('project:create')
 	@Licensed('feat:advancedPermissions')
 	async createProject(req: ProjectRequest.Create): Promise<Project> {
-		return await this.projectsService.createTeamProject(req.body.name, req.user);
+		try {
+			return await this.projectsService.createTeamProject(req.body.name, req.user);
+		} catch (e) {
+			if (e instanceof TeamProjectOverQuotaError) {
+				throw new BadRequestError(e.message);
+			}
+			throw e;
+		}
 	}
 
 	@Get('/my-projects')
@@ -158,7 +170,14 @@ export class ProjectController {
 			await this.projectsService.updateProject(req.body.name, req.params.projectId);
 		}
 		if (req.body.relations) {
-			await this.projectsService.syncProjectRelations(req.params.projectId, req.body.relations);
+			try {
+				await this.projectsService.syncProjectRelations(req.params.projectId, req.body.relations);
+			} catch (e) {
+				if (e instanceof UnlicensedProjectRoleError) {
+					throw new BadRequestError(e.message);
+				}
+				throw e;
+			}
 		}
 	}
 
