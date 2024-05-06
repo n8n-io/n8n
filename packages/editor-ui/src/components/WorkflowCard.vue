@@ -2,7 +2,7 @@
 	<n8n-card :class="$style.cardLink" @click="onClick">
 		<template #header>
 			<n8n-heading tag="h2" bold :class="$style.cardHeading" data-test-id="workflow-card-name">
-				{{ data.name }}<span v-if="data.homeProject?.name"> - {{ data.homeProject.name }}</span>
+				{{ data.name }}
 			</n8n-heading>
 		</template>
 		<div :class="$style.cardDescription">
@@ -30,6 +30,7 @@
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
+				<ProjectCardBadge :resource="data" :personal-project="projectsStore.personalProject" />
 				<WorkflowActivator
 					class="mr-s"
 					:workflow-active="data.active"
@@ -50,6 +51,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
 import type { IWorkflowDb, IUser, ITag } from '@/Interface';
 import { DUPLICATE_MODAL_KEY, MODAL_CONFIRM, VIEWS, WORKFLOW_SHARE_MODAL_KEY } from '@/constants';
 import { useMessage } from '@/composables/useMessage';
@@ -67,6 +69,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import TimeAgo from '@/components/TimeAgo.vue';
 import type { ProjectSharingData } from '@/features/projects/projects.types';
 import { useProjectsStore } from '@/features/projects/projects.store';
+import ProjectCardBadge from '@/features/projects/components/ProjectCardBadge.vue';
 
 export const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -79,10 +82,11 @@ export default defineComponent({
 	components: {
 		TimeAgo,
 		WorkflowActivator,
+		ProjectCardBadge,
 	},
 	props: {
 		data: {
-			type: Object,
+			type: Object as PropType<IWorkflowDb>,
 			required: true,
 			default: (): IWorkflowDb => ({
 				id: '',
@@ -122,14 +126,11 @@ export default defineComponent({
 					label: this.$locale.baseText('workflows.item.open'),
 					value: WORKFLOW_LIST_ITEM_ACTIONS.OPEN,
 				},
-			];
-
-			if (this.data.homeProject?.type !== 'team') {
-				actions.push({
+				{
 					label: this.$locale.baseText('workflows.item.share'),
 					value: WORKFLOW_LIST_ITEM_ACTIONS.SHARE,
-				});
-			}
+				},
+			];
 
 			if (!this.readOnly) {
 				actions.push({

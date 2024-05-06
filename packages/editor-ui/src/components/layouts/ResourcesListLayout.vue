@@ -431,7 +431,6 @@ export default defineComponent({
 	flex-direction: row;
 	align-items: center;
 	justify-content: space-between;
-	margin-bottom: var(--spacing-s);
 }
 
 .filters {

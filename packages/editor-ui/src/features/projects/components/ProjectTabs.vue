@@ -79,6 +79,6 @@ watch(
 
 <style module lang="scss">
 .projectTabs {
-	padding: var(--spacing-m) 0 var(--spacing-2xl);
+	padding: var(--spacing-2xs) 0 var(--spacing-l);
 }
 </style>

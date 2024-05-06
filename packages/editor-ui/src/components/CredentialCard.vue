@@ -20,6 +20,7 @@
 			</n8n-text>
 		</div>
 		<template #append>
+			<ProjectCardBadge :resource="data" :personal-project="projectsStore.personalProject" />
 			<div ref="cardActions" :class="$style.cardActions">
 				<n8n-action-toggle :actions="actions" theme="dark" @action="onAction" @click.stop />
 			</div>
@@ -29,6 +30,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
 import type { ICredentialsResponse, IUser } from '@/Interface';
 import type { ICredentialType } from 'n8n-workflow';
 import { MODAL_CONFIRM } from '@/constants';
@@ -45,6 +47,7 @@ import TimeAgo from '@/components/TimeAgo.vue';
 import type { ProjectSharingData } from '@/features/projects/projects.types';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import type { CredentialScope } from '@n8n/permissions';
+import ProjectCardBadge from '@/features/projects/components/ProjectCardBadge.vue';
 
 export const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -55,10 +58,11 @@ export default defineComponent({
 	components: {
 		TimeAgo,
 		CredentialIcon,
+		ProjectCardBadge,
 	},
 	props: {
 		data: {
-			type: Object,
+			type: Object as PropType<ICredentialsResponse>,
 			required: true,
 			default: (): ICredentialsResponse => ({
 				id: '',

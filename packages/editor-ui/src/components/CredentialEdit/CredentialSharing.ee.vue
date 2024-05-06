@@ -58,8 +58,28 @@
 				:projects="projects"
 				:home-project="homeProject"
 				:readonly="!credentialPermissions.share"
+				:static="isHomeTeamProject"
 				:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
 			/>
+			<n8n-info-tip v-if="isHomeTeamProject" :bold="false" class="mt-s">
+				<i18n-t keypath="credentials.shareModal.info.members" tag="span">
+					<template #projectName>
+						{{ homeProject?.name }}
+					</template>
+					<template #members>
+						<strong>
+							{{
+								$locale.baseText('credentials.shareModal.info.members.number', {
+									interpolate: {
+										number: String(numberOfMembersInHomeTeamProject),
+									},
+									adjustToNumber: numberOfMembersInHomeTeamProject,
+								})
+							}}
+						</strong>
+					</template>
+				</i18n-t>
+			</n8n-info-tip>
 		</div>
 	</div>
 </template>
@@ -78,7 +98,11 @@ import { useUsageStore } from '@/stores/usage.store';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
 import { useProjectsStore } from '@/features/projects/projects.store';
-import type { ProjectListItem, ProjectSharingData } from '@/features/projects/projects.types';
+import type {
+	ProjectListItem,
+	ProjectSharingData,
+	Project,
+} from '@/features/projects/projects.types';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import type { PermissionsMap } from '@/permissions';
 import type { CredentialScope } from '@n8n/permissions';
@@ -120,6 +144,7 @@ export default defineComponent({
 	data() {
 		return {
 			sharedWithProjects: [...(this.credential?.sharedWithProjects ?? [])] as ProjectSharingData[],
+			teamProject: null as Project | null,
 		};
 	},
 	computed: {
@@ -165,6 +190,12 @@ export default defineComponent({
 				this.credential?.homeProject ?? (this.credentialData?.homeProject as ProjectSharingData)
 			);
 		},
+		isHomeTeamProject(): boolean {
+			return this.homeProject?.type === 'team';
+		},
+		numberOfMembersInHomeTeamProject(): number {
+			return this.teamProject?.relations.length ?? 0;
+		},
 	},
 	watch: {
 		sharedWithProjects: {
@@ -176,6 +207,10 @@ export default defineComponent({
 	},
 	async mounted() {
 		await Promise.all([this.usersStore.fetchUsers(), this.projectsStore.getAllProjects()]);
+
+		if (this.homeProject && this.isHomeTeamProject) {
+			this.teamProject = await this.projectsStore.fetchProject(this.homeProject.id);
+		}
 	},
 	methods: {
 		goToUsersSettings() {

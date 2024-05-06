@@ -34,7 +34,7 @@ export default defineComponent({
 	grid-template-rows: auto 1fr;
 	box-sizing: border-box;
 	align-content: start;
-	padding: var(--spacing-2xl) var(--spacing-2xl) 0;
+	padding: var(--spacing-l) var(--spacing-2xl) 0;
 }
 
 .content {
