@@ -75,12 +75,7 @@
 import type { IAiData, IAiDataContent } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type {
-	IDataObject,
-	INodeExecutionData,
-	INodeTypeDescription,
-	NodeConnectionType,
-} from 'n8n-workflow';
+import type { INodeExecutionData, INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
 import { computed } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import AiRunContentBlock from './AiRunContentBlock.vue';
@@ -109,7 +104,8 @@ const consumedTokensSum = computed(() => {
 	// eslint-disable-next-line @typescript-eslint/no-use-before-define
 	const tokenUsage = outputRun.value?.data?.reduce(
 		(acc: TokenUsageData, curr: INodeExecutionData) => {
-			const tokenUsageData = (curr.json?.tokenUsage ?? curr.json?.tokenUsageEstimate) as TokenUsageData;
+			const tokenUsageData = (curr.json?.tokenUsage ??
+				curr.json?.tokenUsageEstimate) as TokenUsageData;
 
 			if (!tokenUsageData) return acc;
 
