@@ -5,17 +5,18 @@ const {
 	promises: { writeFile },
 } = require('fs');
 const path = require('path');
+const { packageDir } = require('./common');
 
 const ALLOWED_HEADER_KEYS = ['displayName', 'description'];
 const PURPLE_ANSI_COLOR_CODE = 35;
 
 function getNodeTranslationPaths() {
-	const nodeDistPaths = require('./package.json').n8n.nodes;
+	const nodeDistPaths = require(`${packageDir}/package.json`).n8n.nodes;
 	const { N8N_DEFAULT_LOCALE: locale } = process.env;
 
 	return nodeDistPaths.reduce((acc, cur) => {
 		const nodeTranslationPath = path.join(
-			__dirname,
+			packageDir,
 			cur.split('/').slice(1, -1).join('/'),
 			'translations',
 			locale,
@@ -90,7 +91,7 @@ if (!locale || locale === 'en') {
 
 const nodeTranslationPaths = getNodeTranslationPaths();
 const headers = getHeaders(nodeTranslationPaths);
-const headersDistPath = path.join(__dirname, 'dist', 'nodes', 'headers.js');
+const headersDistPath = path.join(packageDir, 'dist', 'nodes', 'headers.js');
 
 writeDistFile(headers, headersDistPath);
 
