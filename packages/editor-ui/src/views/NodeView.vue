@@ -2954,7 +2954,7 @@ export default defineComponent({
 				const endpointId = `${connection.parameters.nodeId}-output${connection.parameters.index}`;
 				const endpoint = connection.instance.getEndpoint(endpointId);
 				// First, show node creator if endpoint is not a plus endpoint
-				// or if the AI Assistant experiment doesn't need to shown to user
+				// or if the AI Assistant experiment doesn't need to be shown to user
 				if (!endpoint?.endpoint?.canvas || !this.shouldShowNextStepDialog) {
 					this.insertNodeAfterSelected({
 						sourceId: connection.parameters.nodeId,
@@ -2985,7 +2985,7 @@ export default defineComponent({
 							sourceId: connection.parameters.nodeId,
 							index: connection.parameters.index,
 							eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
-							outputType: endpoint.scope as ConnectionTypes,
+							outputType: connection.parameters.type,
 							endpointUuid: endpoint.uuid,
 							stepName: endpoint.__meta.nodeName,
 						};
@@ -3523,7 +3523,7 @@ export default defineComponent({
 						sourceId: endpoint.__meta.nodeId,
 						index: endpoint.__meta.index,
 						eventSource: NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
-						outputType: endpoint.scope as ConnectionTypes,
+						outputType: endpoint.scope as NodeConnectionType,
 						endpointUuid: endpoint.uuid,
 						stepName: endpoint.__meta.nodeName,
 					};

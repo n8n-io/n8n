@@ -36,31 +36,33 @@ const userName = computed(() => usersStore.currentUser?.firstName ?? 'there');
 const latestConnectionInfo = computed(() => aiStore.latestConnectionInfo);
 
 const chatTitle = locale.baseText('aiAssistantChat.title');
+const nowMilliseconds = () => String(DateTime.now().toMillis());
+const nowIsoString = () => new Date().toISOString();
 const thanksResponses: ChatMessage[] = [
 	{
-		id: String(DateTime.now().toMillis()),
+		id: nowMilliseconds(),
 		sender: 'bot',
 		text: locale.baseText('aiAssistantChat.response.message1'),
-		createdAt: new Date().toISOString(),
+		createdAt: nowIsoString(),
 	},
 	{
-		id: String(DateTime.now().toMillis()),
+		id: nowMilliseconds(),
 		sender: 'bot',
 		text: locale.baseText('aiAssistantChat.response.message2'),
-		createdAt: new Date().toISOString(),
+		createdAt: nowIsoString(),
 	},
 	{
-		id: String(DateTime.now().toMillis()),
+		id: nowMilliseconds(),
 		sender: 'bot',
 		text: '🙏',
 		createdAt: new Date().toISOString(),
 	},
 	{
-		id: String(DateTime.now().toMillis()),
+		id: nowMilliseconds(),
 		type: 'component',
 		key: 'QuickReplies',
 		sender: 'user',
-		createdAt: new Date().toISOString(),
+		createdAt: nowIsoString(),
 		transparent: true,
 		arguments: {
 			suggestions: [
@@ -167,10 +169,6 @@ const chatConfig: Chat = {
 	waitingForResponse,
 	async loadPreviousSession(): Promise<string | undefined> {
 		return '';
-	},
-	async startNewSession(): Promise<void> {
-		// eslint-disable-next-line no-console
-		console.log('Starting new session');
 	},
 };
 

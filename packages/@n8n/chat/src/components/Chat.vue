@@ -51,14 +51,14 @@ onMounted(async () => {
 				<h1>
 					{{ t('title') }}
 				</h1>
-				<div
+				<button
 					v-if="showCloseButton"
 					class="chat-close-button"
 					:title="t('closeButtonTooltip')"
 					@click="closeChat"
 				>
 					<Close height="18" width="18" />
-				</div>
+				</button>
 			</div>
 			<p v-if="t('subtitle')">{{ t('subtitle') }}</p>
 		</template>
@@ -80,6 +80,8 @@ onMounted(async () => {
 
 .chat-close-button {
 	display: flex;
+	border: none;
+	background: none;
 	cursor: pointer;
 
 	&:hover {
@@ -87,4 +89,3 @@ onMounted(async () => {
 	}
 }
 </style>
-`;

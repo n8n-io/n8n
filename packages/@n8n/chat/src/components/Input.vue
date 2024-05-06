@@ -10,7 +10,7 @@ const chatStore = useChat();
 const { waitingForResponse } = chatStore;
 const { t } = useI18n();
 
-const chatTextArea = ref(null);
+const chatTextArea = ref<HTMLTextAreaElement | null>(null);
 const input = ref('');
 
 const isSubmitDisabled = computed(() => {
@@ -22,7 +22,7 @@ const isInputDisabled = computed(() => options.disabled?.value === true);
 onMounted(() => {
 	chatEventBus.on('focusInput', () => {
 		if (chatTextArea.value) {
-			(chatTextArea.value as HTMLTextAreaElement).focus();
+			chatTextArea.value.focus();
 		}
 	});
 });
