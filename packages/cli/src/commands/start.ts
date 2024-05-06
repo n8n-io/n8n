@@ -12,7 +12,7 @@ import { jsonParse } from 'n8n-workflow';
 
 import config from '@/config';
 import { ActiveExecutions } from '@/ActiveExecutions';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import { Server } from '@/Server';
 import { EDITOR_UI_DIST_DIR, LICENSE_FEATURES } from '@/constants';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
@@ -57,7 +57,7 @@ export class Start extends BaseCommand {
 		}),
 	};
 
-	protected activeWorkflowRunner: ActiveWorkflowRunner;
+	protected activeWorkflowManager: ActiveWorkflowManager;
 
 	protected server = Container.get(Server);
 
@@ -92,14 +92,14 @@ export class Start extends BaseCommand {
 
 		try {
 			// Stop with trying to activate workflows that could not be activated
-			this.activeWorkflowRunner.removeAllQueuedWorkflowActivations();
+			this.activeWorkflowManager.removeAllQueuedWorkflowActivations();
 
 			Container.get(WaitTracker).stopTracking();
 
 			await this.externalHooks?.run('n8n.stop', []);
 
 			if (Container.get(OrchestrationService).isMultiMainSetupEnabled) {
-				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
+				await this.activeWorkflowManager.removeAllTriggerAndPollerBasedWorkflows();
 
 				await Container.get(OrchestrationService).shutdown();
 			}
@@ -171,7 +171,7 @@ export class Start extends BaseCommand {
 		}
 
 		await super.init();
-		this.activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
+		this.activeWorkflowManager = Container.get(ActiveWorkflowManager);
 
 		await this.initLicense();
 
@@ -212,11 +212,11 @@ export class Start extends BaseCommand {
 		orchestrationService.multiMainSetup
 			.on('leader-stepdown', async () => {
 				await this.license.reinit(); // to disable renewal
-				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
+				await this.activeWorkflowManager.removeAllTriggerAndPollerBasedWorkflows();
 			})
 			.on('leader-takeover', async () => {
 				await this.license.reinit(); // to enable renewal
-				await this.activeWorkflowRunner.addAllTriggerAndPollerBasedWorkflows();
+				await this.activeWorkflowManager.addAllTriggerAndPollerBasedWorkflows();
 			});
 	}
 
@@ -286,7 +286,7 @@ export class Start extends BaseCommand {
 		await this.initPruning();
 
 		// Start to get active workflows and run their triggers
-		await this.activeWorkflowRunner.init();
+		await this.activeWorkflowManager.init();
 
 		const editorUrl = Container.get(UrlService).baseUrl;
 		this.log(`\nEditor is now accessible via:\n${editorUrl}`);
