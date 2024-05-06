@@ -107,10 +107,9 @@ type TokenUsageData = {
 };
 const consumedTokensSum = computed(() => {
 	// eslint-disable-next-line @typescript-eslint/no-use-before-define
-	const consumedTokensSum1 = outputRun.value?.data?.reduce(
+	const tokenUsage = outputRun.value?.data?.reduce(
 		(acc: TokenUsageData, curr: INodeExecutionData) => {
-			const response = curr.json?.response as IDataObject;
-			const tokenUsageData = (response?.llmOutput as IDataObject)?.tokenUsage as TokenUsageData;
+			const tokenUsageData = (curr.json?.tokenUsage ?? curr.json?.tokenUsageEstimate) as TokenUsageData;
 
 			if (!tokenUsageData) return acc;
 
@@ -127,7 +126,7 @@ const consumedTokensSum = computed(() => {
 		},
 	);
 
-	return consumedTokensSum1;
+	return tokenUsage;
 });
 
 function extractRunMeta(run: IAiDataContent) {
