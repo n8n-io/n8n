@@ -5,7 +5,7 @@ import type { INode } from 'n8n-workflow';
 
 import type { User } from '@db/entities/User';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
 
 import { mockInstance } from '../../shared/mocking';
@@ -29,7 +29,7 @@ let authMemberAgent: SuperAgentTest;
 let authAnotherMemberAgent: SuperAgentTest;
 let saveCredential: SaveCredentialFunction;
 
-const activeWorkflowRunner = mockInstance(ActiveWorkflowRunner);
+const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 
 const sharingSpy = jest.spyOn(License.prototype, 'isSharingEnabled').mockReturnValue(true);
 const testServer = utils.setupTestServer({
@@ -54,8 +54,8 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	activeWorkflowRunner.add.mockReset();
-	activeWorkflowRunner.remove.mockReset();
+	activeWorkflowManager.add.mockReset();
+	activeWorkflowManager.remove.mockReset();
 
 	await testDb.truncate(['Workflow', 'SharedWorkflow', 'WorkflowHistory']);
 });
@@ -1152,7 +1152,7 @@ describe('PATCH /workflows/:id - activate workflow', () => {
 		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
 
 		expect(response.statusCode).toBe(200);
-		expect(activeWorkflowRunner.add).toBeCalled();
+		expect(activeWorkflowManager.add).toBeCalled();
 
 		const {
 			data: { id, versionId, active },
@@ -1174,8 +1174,8 @@ describe('PATCH /workflows/:id - activate workflow', () => {
 		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
 
 		expect(response.statusCode).toBe(200);
-		expect(activeWorkflowRunner.add).not.toBeCalled();
-		expect(activeWorkflowRunner.remove).toBeCalled();
+		expect(activeWorkflowManager.add).not.toBeCalled();
+		expect(activeWorkflowManager.remove).toBeCalled();
 
 		const {
 			data: { id, versionId, active },

@@ -3,7 +3,7 @@ import { v4 as uuid } from 'uuid';
 import config from '@/config';
 import { SettingsRepository } from '@db/repositories/settings.repository';
 import { UserRepository } from '@db/repositories/user.repository';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { License } from '@/License';
 import { LICENSE_FEATURES, inE2ETests } from '@/constants';
@@ -87,7 +87,7 @@ export class E2EController {
 		license: License,
 		private readonly settingsRepo: SettingsRepository,
 		private readonly userRepo: UserRepository,
-		private readonly workflowRunner: ActiveWorkflowRunner,
+		private readonly workflowRunner: ActiveWorkflowManager,
 		private readonly mfaService: MfaService,
 		private readonly cacheService: CacheService,
 		private readonly push: Push,

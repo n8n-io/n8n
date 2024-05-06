@@ -58,7 +58,7 @@ interface QueuedActivation {
 }
 
 @Service()
-export class ActiveWorkflowRunner {
+export class ActiveWorkflowManager {
 	private queuedActivations: { [workflowId: string]: QueuedActivation } = {};
 
 	constructor(
