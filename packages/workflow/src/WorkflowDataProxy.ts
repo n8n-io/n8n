@@ -164,7 +164,9 @@ export class WorkflowDataProxy {
 		const that = this;
 		const node = this.workflow.nodes[nodeName];
 
-		return new Proxy(node.parameters, {
+		// `node` is `undefined` only in expressions in credentials
+
+		return new Proxy(node?.parameters ?? {}, {
 			has: () => true,
 			ownKeys(target) {
 				return Reflect.ownKeys(target);
