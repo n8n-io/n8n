@@ -17,11 +17,8 @@ class BenchmarkEnvironment extends NodeEnvironment {
 
 	async teardown() {
 		console.log('[benchmarking] env teardown');
-		try {
-			await this.benchmark();
-		} catch (e) {
-			console.log('[benchmarking] Caught error at teardown', e);
-		}
+
+		await this.benchmark();
 
 		await super.teardown();
 	}
