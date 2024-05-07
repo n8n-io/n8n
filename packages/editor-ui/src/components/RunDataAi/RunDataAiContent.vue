@@ -31,7 +31,7 @@
 						{{
 							$locale.baseText('runData.aiContentBlock.tokens', {
 								interpolate: {
-									count: consumedTokensSum?.totalTokens.toString()!,
+									count: formatTokenUsageCount(consumedTokensSum?.totalTokens ?? 0),
 								},
 							})
 						}}
@@ -42,7 +42,7 @@
 									{{
 										$locale.baseText('runData.aiContentBlock.tokens', {
 											interpolate: {
-												count: consumedTokensSum?.promptTokens.toString()!,
+												count: formatTokenUsageCount(consumedTokensSum?.promptTokens ?? 0),
 											},
 										})
 									}}
@@ -53,7 +53,7 @@
 									{{
 										$locale.baseText('runData.aiContentBlock.tokens', {
 											interpolate: {
-												count: consumedTokensSum?.completionTokens.toString()!,
+												count: formatTokenUsageCount(consumedTokensSum?.completionTokens ?? 0),
 											},
 										})
 									}}
@@ -100,6 +100,7 @@ type TokenUsageData = {
 	promptTokens: number;
 	totalTokens: number;
 };
+
 const consumedTokensSum = computed(() => {
 	// eslint-disable-next-line @typescript-eslint/no-use-before-define
 	const tokenUsage = outputRun.value?.data?.reduce(
@@ -125,6 +126,13 @@ const consumedTokensSum = computed(() => {
 	return tokenUsage;
 });
 
+const usingTokensEstimates = computed(() => {
+	return outputRun.value?.data?.some((d) => d.json?.tokenUsageEstimate);
+});
+
+function formatTokenUsageCount(count: number) {
+	return usingTokensEstimates.value ? `~${count}` : count.toString();
+}
 function extractRunMeta(run: IAiDataContent) {
 	const uiNode = workflowsStore.getNodeByName(props.inputData.node);
 	const nodeType = nodeTypesStore.getNodeType(uiNode?.type ?? '');
