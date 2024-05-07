@@ -1455,7 +1455,7 @@
 	"runData.aiContentBlock.tokens.completion": "Completion:",
 	"saveButton.save": "@:_reusableBaseText.save",
 	"saveButton.saved": "Saved",
-	"saveButton.hint": "Save workflow",
+	"saveWorkflowButton.hint": "Save workflow",
 	"saveButton.saving": "Saving",
 	"settings": "Settings",
 	"settings.communityNodes": "Community nodes",
