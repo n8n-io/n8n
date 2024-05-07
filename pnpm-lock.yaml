@@ -1484,7 +1484,7 @@ importers:
     devDependencies:
       '@codspeed/tinybench-plugin':
         specifier: ^3.1.0
-        version: 3.1.0(tinybench@2.8.0)
+        version: 3.1.0(tinybench@2.5.1)
       '@types/amqplib':
         specifier: ^0.10.1
         version: 0.10.1
@@ -1569,9 +1569,6 @@ importers:
       n8n-core:
         specifier: workspace:*
         version: link:../core
-      tinybench:
-        specifier: ^2.8.0
-        version: 2.8.0
 
   packages/workflow:
     dependencies:
@@ -4735,14 +4732,14 @@ packages:
       - debug
     dev: true
 
-  /@codspeed/tinybench-plugin@3.1.0(tinybench@2.8.0):
+  /@codspeed/tinybench-plugin@3.1.0(tinybench@2.5.1):
     resolution: {integrity: sha512-yl0WzzUGIXkZzWaw7+2U+xGkuIal1Rs9hS09DtlDZGGAcGRoMMU5d2vyCS8nBrna4hrPQZ5Sx/hIKerO+lqWaw==}
     peerDependencies:
       tinybench: ^2.3.0
     dependencies:
       '@codspeed/core': 3.1.0
       stack-trace: 1.0.0-pre2
-      tinybench: 2.8.0
+      tinybench: 2.5.1
     transitivePeerDependencies:
       - debug
     dev: true
@@ -15024,6 +15021,14 @@ packages:
       path-exists: 4.0.0
     dev: true
 
+  /find-up@6.3.0:
+    resolution: {integrity: sha512-v2ZsoEuVHYy8ZIlYqwPe/39Cy+cFDzp4dXPaxNvkEuouymu+2Jbz0PxpKarJHYJTmv2HWT3O382qY8l4jMWthw==}
+    engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
+    dependencies:
+      locate-path: 7.2.0
+      path-exists: 5.0.0
+    dev: true
+
   /first-match@0.0.1:
     resolution: {integrity: sha512-VvKbnaxrC0polTFDC+teKPTdl2mn6B/KUW+WB3C9RzKDeNwbzfLdnUz3FxC+tnjvus6bI0jWrWicQyVIPdS37A==}
     dev: false
@@ -23208,8 +23213,8 @@ packages:
     resolution: {integrity: sha512-+FbBPE1o9QAYvviau/qC5SE3caw21q3xkvWKBtja5vgqOWIHHJ3ioaq1VPfn/Szqctz2bU/oYeKd9/z5BL+PVg==}
     dev: true
 
-  /tinybench@2.8.0:
-    resolution: {integrity: sha512-1/eK7zUnIklz4JUUlL+658n58XO2hHLQfSk1Zf2LKieUjxidN16eKFEoDEfjHc3ohofSSqK3X5yO6VGb6iW8Lw==}
+  /tinybench@2.5.1:
+    resolution: {integrity: sha512-65NKvSuAVDP/n4CqH+a9w2kTlLReS9vhsAP06MWx+/89nMinJyB2icyl58RIcqCmIggpojIGeuJGhjU1aGMBSg==}
     dev: true
 
   /tinypool@0.8.2:
@@ -24293,7 +24298,7 @@ packages:
       picocolors: 1.0.0
       std-env: 3.6.0
       strip-literal: 2.0.0
-      tinybench: 2.8.0
+      tinybench: 2.5.1
       tinypool: 0.8.2
       vite: 5.1.6(sass@1.64.1)
       vite-node: 1.3.1
