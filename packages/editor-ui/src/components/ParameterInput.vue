@@ -415,7 +415,7 @@
 				:disabled="isReadOnly || remoteParameterOptionsLoading"
 				:title="displayTitle"
 				:placeholder="i18n.baseText('parameterInput.select')"
-				@update:model-value="valueChanged"
+				@update:model-value="valueChangedMultiOptions"
 				@keydown.stop
 				@focus="setFocus"
 				@blur="onBlur"
@@ -1184,6 +1184,14 @@ function valueChangedDebounced(value: NodeParameterValueType | {} | Date) {
 function onUpdateTextInput(value: string) {
 	valueChanged(value);
 	onTextInputChange(value);
+}
+
+function valueChangedMultiOptions(value: string[]): void {
+	if (remoteParameterOptionsLoading.value) {
+		return;
+	}
+
+	valueChanged(value);
 }
 
 function valueChanged(value: NodeParameterValueType | {} | Date) {
