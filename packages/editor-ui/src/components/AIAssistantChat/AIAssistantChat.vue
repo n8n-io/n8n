@@ -19,6 +19,7 @@ import {
 import { useStorage } from '@/composables/useStorage';
 import { useMessage } from '@/composables/useMessage';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { onBeforeUnmount } from 'vue';
 
 const locale = useI18n();
 const telemetry = useTelemetry();
@@ -180,12 +181,11 @@ provide(ChatOptionsSymbol, chatOptions);
 
 onMounted(() => {
 	chatEventBus.emit('focusInput');
-	chatEventBus.on('close', async () => {
-		const closeConfirmed = await onBeforeClose();
-		if (closeConfirmed) {
-			aiStore.assistantChatOpen = false;
-		}
-	});
+	chatEventBus.on('close', onBeforeClose);
+});
+
+onBeforeUnmount(() => {
+	chatEventBus.off('close', onBeforeClose);
 });
 
 async function onBeforeClose() {
@@ -194,7 +194,9 @@ async function onBeforeClose() {
 		cancelButtonText: locale.baseText('aiAssistantChat.closeChatConfirmation.cancel'),
 	});
 
-	return confirmModal === MODAL_CONFIRM;
+	if (confirmModal === MODAL_CONFIRM) {
+		aiStore.assistantChatOpen = false;
+	}
 }
 </script>
 
