@@ -19,6 +19,9 @@ const { options } = useOptions();
 const showCloseButton = computed(() => options.mode === 'window' && options.showWindowCloseButton);
 
 async function getStarted() {
+	if (!chatStore.startNewSession) {
+		return;
+	}
 	void chatStore.startNewSession();
 	void nextTick(() => {
 		chatEventBus.emit('scrollToBottom');
@@ -26,6 +29,9 @@ async function getStarted() {
 }
 
 async function initialize() {
+	if (!chatStore.loadPreviousSession) {
+		return;
+	}
 	await chatStore.loadPreviousSession();
 	void nextTick(() => {
 		chatEventBus.emit('scrollToBottom');
