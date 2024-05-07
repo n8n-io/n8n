@@ -37,6 +37,7 @@ import type { useRouter } from 'vue-router';
 import { isEmpty } from '@/utils/typesUtils';
 import { useI18n } from '@/composables/useI18n';
 import { get } from 'lodash-es';
+import { useExecutionsStore } from '@/stores/executions.store';
 
 export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof useRouter> }) {
 	const nodeHelpers = useNodeHelpers();
@@ -48,6 +49,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	const rootStore = useRootStore();
 	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
+	const executionsStore = useExecutionsStore();
 
 	// Starts to execute a workflow on server
 	async function runWorkflowApi(runData: IStartRunData): Promise<IExecutionPushResponse> {
@@ -332,7 +334,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		pinData: IPinData | undefined,
 		workflow: Workflow,
 	): { runData: IRunData | undefined; startNodeNames: string[] } {
-		const startNodeNames: string[] = [];
+		const startNodeNames = new Set<string>();
 		let newRunData: IRunData | undefined;
 
 		if (runData !== null && Object.keys(runData).length !== 0) {
@@ -358,7 +360,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 						// When we hit a node which has no data we stop and set it
 						// as a start node the execution from and then go on with other
 						// direct input nodes
-						startNodeNames.push(parentNode);
+						startNodeNames.add(parentNode);
 						break;
 					}
 					if (runData[parentNode] && !runData[parentNode]?.[0]?.error) {
@@ -374,7 +376,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			}
 		}
 
-		return { runData: newRunData, startNodeNames };
+		return { runData: newRunData, startNodeNames: [...startNodeNames] };
 	}
 
 	async function stopCurrentExecution() {
@@ -384,10 +386,10 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		}
 
 		try {
-			await workflowsStore.stopCurrentExecution(executionId);
+			await executionsStore.stopCurrentExecution(executionId);
 		} catch (error) {
 			// Execution stop might fail when the execution has already finished. Let's treat this here.
-			const execution = await this.workflowsStore.getExecution(executionId);
+			const execution = await workflowsStore.getExecution(executionId);
 
 			if (execution === undefined) {
 				// execution finished but was not saved (e.g. due to low connectivity)

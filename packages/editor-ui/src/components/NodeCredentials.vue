@@ -561,6 +561,7 @@ export default defineComponent({
 			return !KEEP_AUTH_IN_NDV_FOR_NODES.includes(this.node.type || '') && isRequired;
 		},
 		getCredentialsFieldLabel(credentialType: INodeCredentialDescription): string {
+			if (credentialType.displayName) return credentialType.displayName;
 			const credentialTypeName = this.credentialTypeNames[credentialType.name];
 			const isCredentialOnlyNode = this.node.type.startsWith(CREDENTIAL_ONLY_NODE_PREFIX);
 

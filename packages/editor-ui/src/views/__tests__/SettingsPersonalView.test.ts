@@ -57,16 +57,37 @@ describe('SettingsPersonalView', () => {
 		expect(getByTestId('change-password-link')).toBeInTheDocument();
 	});
 
-	it('should disable email and pw change when SAML login is enabled', async () => {
-		vi.spyOn(settingsStore, 'isSamlLoginEnabled', 'get').mockReturnValue(true);
-		vi.spyOn(settingsStore, 'isDefaultAuthenticationSaml', 'get').mockReturnValue(true);
+	describe('when external auth is enabled, email and password change', () => {
+		beforeEach(() => {
+			vi.spyOn(settingsStore, 'isSamlLoginEnabled', 'get').mockReturnValue(true);
+			vi.spyOn(settingsStore, 'isDefaultAuthenticationSaml', 'get').mockReturnValue(true);
+			vi.spyOn(settingsStore, 'isMfaFeatureEnabled', 'get').mockReturnValue(true);
+		});
 
-		const { queryByTestId, getAllByRole } = renderComponent({ pinia });
-		await waitAllPromises();
+		it('should not be disabled for the instance owner', async () => {
+			vi.spyOn(usersStore, 'isInstanceOwner', 'get').mockReturnValue(true);
 
-		expect(
-			getAllByRole('textbox').find((el) => el.getAttribute('type') === 'email'),
-		).toBeDisabled();
-		expect(queryByTestId('change-password-link')).not.toBeInTheDocument();
+			const { queryByTestId, getAllByRole } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			expect(
+				getAllByRole('textbox').find((el) => el.getAttribute('type') === 'email'),
+			).toBeEnabled();
+			expect(queryByTestId('change-password-link')).toBeInTheDocument();
+			expect(queryByTestId('mfa-section')).toBeInTheDocument();
+		});
+
+		it('should be disabled for members', async () => {
+			vi.spyOn(usersStore, 'isInstanceOwner', 'get').mockReturnValue(false);
+
+			const { queryByTestId, getAllByRole } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			expect(
+				getAllByRole('textbox').find((el) => el.getAttribute('type') === 'email'),
+			).toBeDisabled();
+			expect(queryByTestId('change-password-link')).not.toBeInTheDocument();
+			expect(queryByTestId('mfa-section')).not.toBeInTheDocument();
+		});
 	});
 });

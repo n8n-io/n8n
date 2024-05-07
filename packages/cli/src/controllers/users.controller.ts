@@ -11,7 +11,7 @@ import {
 	UserRoleChangePayload,
 	UserSettingsUpdatePayload,
 } from '@/requests';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import type { PublicUser, ITelemetryUserDeletionData } from '@/Interfaces';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
@@ -36,7 +36,7 @@ export class UsersController {
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly userRepository: UserRepository,
-		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
+		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly authService: AuthService,
 		private readonly userService: UserService,
 	) {}
@@ -264,7 +264,7 @@ export class UsersController {
 				ownedSharedWorkflows.map(async ({ workflow }) => {
 					if (workflow.active) {
 						// deactivate before deleting
-						await this.activeWorkflowRunner.remove(workflow.id);
+						await this.activeWorkflowManager.remove(workflow.id);
 					}
 					return workflow;
 				}),

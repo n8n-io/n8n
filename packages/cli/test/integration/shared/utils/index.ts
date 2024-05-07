@@ -29,7 +29,7 @@ export { setupTestServer } from './testServer';
 /**
  * Initialize node types.
  */
-export async function initActiveWorkflowRunner() {
+export async function initActiveWorkflowManager() {
 	mockInstance(OrchestrationService, {
 		isMultiMainSetupEnabled: false,
 		shouldAddWebhooks: jest.fn().mockReturnValue(true),
@@ -37,10 +37,10 @@ export async function initActiveWorkflowRunner() {
 
 	mockInstance(Push);
 	mockInstance(ExecutionService);
-	const { ActiveWorkflowRunner } = await import('@/ActiveWorkflowRunner');
-	const workflowRunner = Container.get(ActiveWorkflowRunner);
-	await workflowRunner.init();
-	return workflowRunner;
+	const { ActiveWorkflowManager } = await import('@/ActiveWorkflowManager');
+	const activeWorkflowManager = Container.get(ActiveWorkflowManager);
+	await activeWorkflowManager.init();
+	return activeWorkflowManager;
 }
 
 /**

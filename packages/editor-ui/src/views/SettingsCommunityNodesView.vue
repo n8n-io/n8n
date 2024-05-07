@@ -60,7 +60,6 @@ import {
 } from '@/constants';
 import CommunityPackageCard from '@/components/CommunityPackageCard.vue';
 import { useToast } from '@/composables/useToast';
-import { pushConnection } from '@/mixins/pushConnection';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 
 import { useCommunityNodesStore } from '@/stores/communityNodes.store';
@@ -69,6 +68,9 @@ import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
 import { defineComponent } from 'vue';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useRouter } from 'vue-router';
+import { usePushConnection } from '@/composables/usePushConnection';
+import { usePushConnectionStore } from '@/stores/pushConnection.store';
 
 const PACKAGE_COUNT_THRESHOLD = 31;
 
@@ -77,15 +79,15 @@ export default defineComponent({
 	components: {
 		CommunityPackageCard,
 	},
-	mixins: [pushConnection],
-	setup(props, ctx) {
+	setup() {
+		const router = useRouter();
+		const pushConnection = usePushConnection({ router });
 		const externalHooks = useExternalHooks();
 
 		return {
 			externalHooks,
 			...useToast(),
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...pushConnection.setup?.(props, ctx),
+			pushConnection,
 		};
 	},
 	data() {
@@ -93,10 +95,12 @@ export default defineComponent({
 			loading: false,
 		};
 	},
-	async mounted() {
+	beforeMount() {
+		this.pushConnection.initialize();
 		// The push connection is needed here to receive `reloadNodeType` and `removeNodeType` events when community nodes are installed, updated, or removed.
 		this.pushStore.pushConnect();
-
+	},
+	async mounted() {
 		try {
 			this.loading = true;
 			await this.communityNodesStore.fetchInstalledPackages();
@@ -142,9 +146,10 @@ export default defineComponent({
 	},
 	beforeUnmount() {
 		this.pushStore.pushDisconnect();
+		this.pushConnection.terminate();
 	},
 	computed: {
-		...mapStores(useCommunityNodesStore, useSettingsStore, useUIStore),
+		...mapStores(useCommunityNodesStore, useSettingsStore, useUIStore, usePushConnectionStore),
 		getEmptyStateDescription(): string {
 			const packageCount = this.communityNodesStore.availablePackageCount;
 

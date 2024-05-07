@@ -111,16 +111,19 @@ describe('Workflow Actions', () => {
 		// This happens when users click save button from workflow name input
 		// In this case blur on the input saves the workflow and then click on the button saves it again
 		WorkflowPage.actions.visit();
-		WorkflowPage.getters.workflowNameInput().invoke('val').then((oldName) => {
-			WorkflowPage.getters.workflowNameInputContainer().click();
-			WorkflowPage.getters.workflowNameInput().type('{selectall}');
-			WorkflowPage.getters.workflowNameInput().type('Test');
-			WorkflowPage.getters.saveButton().click();
-			WorkflowPage.getters.workflowNameInput().should('have.value', 'Test');
-			cy.visit(WorkflowPages.url);
-			// There should be no workflow with the old name (duplicate save)
-			WorkflowPages.getters.workflowCards().contains(String(oldName)).should('not.exist');
-		});
+		WorkflowPage.getters
+			.workflowNameInput()
+			.invoke('val')
+			.then((oldName) => {
+				WorkflowPage.getters.workflowNameInputContainer().click();
+				WorkflowPage.getters.workflowNameInput().type('{selectall}');
+				WorkflowPage.getters.workflowNameInput().type('Test');
+				WorkflowPage.getters.saveButton().click();
+				WorkflowPage.getters.workflowNameInput().should('have.value', 'Test');
+				cy.visit(WorkflowPages.url);
+				// There should be no workflow with the old name (duplicate save)
+				WorkflowPages.getters.workflowCards().contains(String(oldName)).should('not.exist');
+			});
 	});
 
 	it('should copy nodes', () => {
@@ -252,7 +255,6 @@ describe('Workflow Actions', () => {
 
 	it('should keep endpoint click working when switching between execution and editor tab', () => {
 		cy.intercept('GET', '/rest/executions?filter=*').as('getExecutions');
-		cy.intercept('GET', '/rest/executions/active?filter=*').as('getActiveExecutions');
 
 		WorkflowPage.actions.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
@@ -263,7 +265,7 @@ describe('Workflow Actions', () => {
 		cy.get('body').type('{esc}');
 
 		executionsTab.actions.switchToExecutionsTab();
-		cy.wait(['@getExecutions', '@getActiveExecutions']);
+		cy.wait(['@getExecutions']);
 		cy.wait(500);
 		executionsTab.actions.switchToEditorTab();
 

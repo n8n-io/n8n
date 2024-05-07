@@ -465,7 +465,7 @@ export default defineComponent({
 						[
 							{
 								json: {
-									pushRef: `test-${currentUser.id || 'unknown'}`,
+									sessionId: `test-${currentUser.id || 'unknown'}`,
 									action: 'sendMessage',
 									[inputKey]: message,
 								},

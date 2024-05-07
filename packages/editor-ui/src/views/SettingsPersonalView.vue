@@ -32,7 +32,7 @@
 				/>
 			</div>
 		</div>
-		<div v-if="!signInWithLdap && !signInWithSaml">
+		<div v-if="isPersonalSecurityEnabled">
 			<div class="mb-s">
 				<n8n-heading size="large">{{ i18n.baseText('settings.personal.security') }}</n8n-heading>
 			</div>
@@ -43,7 +43,7 @@
 					}}</n8n-link>
 				</n8n-input-label>
 			</div>
-			<div v-if="isMfaFeatureEnabled">
+			<div v-if="isMfaFeatureEnabled" data-test-id="mfa-section">
 				<div class="mb-xs">
 					<n8n-input-label :label="$locale.baseText('settings.personal.mfa.section.title')" />
 					<n8n-text :bold="false" :class="$style.infoText">
@@ -171,7 +171,7 @@ export default defineComponent({
 					required: true,
 					autocomplete: 'given-name',
 					capitalize: true,
-					disabled: this.isLDAPFeatureEnabled && this.signInWithLdap,
+					disabled: this.isExternalAuthEnabled,
 				},
 			},
 			{
@@ -183,7 +183,7 @@ export default defineComponent({
 					required: true,
 					autocomplete: 'family-name',
 					capitalize: true,
-					disabled: this.isLDAPFeatureEnabled && this.signInWithLdap,
+					disabled: this.isExternalAuthEnabled,
 				},
 			},
 			{
@@ -196,7 +196,7 @@ export default defineComponent({
 					validationRules: [{ name: 'VALID_EMAIL' }],
 					autocomplete: 'email',
 					capitalize: true,
-					disabled: (this.isLDAPFeatureEnabled && this.signInWithLdap) || this.signInWithSaml,
+					disabled: !this.isPersonalSecurityEnabled,
 				},
 			},
 		];
@@ -206,16 +206,15 @@ export default defineComponent({
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
 		},
-		signInWithLdap(): boolean {
-			return this.currentUser?.signInType === 'ldap';
+		isExternalAuthEnabled(): boolean {
+			const isLdapEnabled =
+				this.settingsStore.settings.enterprise.ldap && this.currentUser?.signInType === 'ldap';
+			const isSamlEnabled =
+				this.settingsStore.isSamlLoginEnabled && this.settingsStore.isDefaultAuthenticationSaml;
+			return isLdapEnabled || isSamlEnabled;
 		},
-		isLDAPFeatureEnabled(): boolean {
-			return this.settingsStore.settings.enterprise.ldap;
-		},
-		signInWithSaml(): boolean {
-			return (
-				this.settingsStore.isSamlLoginEnabled && this.settingsStore.isDefaultAuthenticationSaml
-			);
+		isPersonalSecurityEnabled(): boolean {
+			return this.usersStore.isInstanceOwner || !this.isExternalAuthEnabled;
 		},
 		mfaDisabled(): boolean {
 			return !this.usersStore.mfaEnabled;
