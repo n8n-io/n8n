@@ -123,6 +123,7 @@ export function getTriggerName(eventName: string) {
 		tranferStateChange: 'transfers#state-change',
 		transferActiveCases: 'transfers#active-cases',
 		balanceCredit: 'balances#credit',
+		balanceUpdate: 'balances#update',
 	};
 	return events[eventName];
 }

@@ -6,6 +6,20 @@ export interface DebugErrorPayload {
 	error: Error;
 }
 
+export interface DebugErrorResponse {
+	message: string;
+}
+
+export interface GenerateCurlPayload {
+	service: string;
+	request: string;
+}
+
+export interface GenerateCurlResponse {
+	curl: string;
+	metadata: object;
+}
+
 export async function generateCodeForPrompt(
 	ctx: IRestApiContext,
 	{
@@ -36,11 +50,23 @@ export async function generateCodeForPrompt(
 export const debugError = async (
 	context: IRestApiContext,
 	payload: DebugErrorPayload,
-): Promise<{ message: string }> => {
+): Promise<DebugErrorResponse> => {
 	return await makeRestApiRequest(
 		context,
 		'POST',
 		'/ai/debug-error',
+		payload as unknown as IDataObject,
+	);
+};
+
+export const generateCurl = async (
+	context: IRestApiContext,
+	payload: GenerateCurlPayload,
+): Promise<GenerateCurlResponse> => {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		'/ai/generate-curl',
 		payload as unknown as IDataObject,
 	);
 };

@@ -17,7 +17,7 @@ import type { Variables } from '@db/entities/Variables';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { WorkflowTagMapping } from '@db/entities/WorkflowTagMapping';
 import type { TagEntity } from '@db/entities/TagEntity';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import { In } from '@n8n/typeorm';
 import { isUniqueConstraintError } from '@/ResponseHelper';
 import type { SourceControlWorkflowVersionId } from './types/sourceControlWorkflowVersionId';
@@ -45,7 +45,7 @@ export class SourceControlImportService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly variablesService: VariablesService,
-		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
+		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly tagRepository: TagRepository,
 		instanceSettings: InstanceSettings,
 	) {
@@ -203,7 +203,7 @@ export class SourceControlImportService {
 	}
 
 	public async importWorkflowFromWorkFolder(candidates: SourceControlledFile[], userId: string) {
-		const workflowRunner = this.activeWorkflowRunner;
+		const workflowRunner = this.activeWorkflowManager;
 		const candidateIds = candidates.map((c) => c.id);
 		const existingWorkflows = await Container.get(WorkflowRepository).findByIds(candidateIds, {
 			fields: ['id', 'name', 'versionId', 'active'],

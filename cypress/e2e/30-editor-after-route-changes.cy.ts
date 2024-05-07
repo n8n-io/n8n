@@ -136,10 +136,9 @@ describe('Editor actions should work', () => {
 
 	it('after switching between Editor and Executions', () => {
 		cy.intercept('GET', '/rest/executions?filter=*').as('getExecutions');
-		cy.intercept('GET', '/rest/executions/active?filter=*').as('getActiveExecutions');
 
 		executionsTab.actions.switchToExecutionsTab();
-		cy.wait(['@getExecutions', '@getActiveExecutions']);
+		cy.wait(['@getExecutions']);
 		cy.wait(500);
 		executionsTab.actions.switchToEditorTab();
 		editWorkflowAndDeactivate();
@@ -149,7 +148,6 @@ describe('Editor actions should work', () => {
 	it('after switching between Editor and Debug', () => {
 		cy.intercept('GET', '/rest/executions?filter=*').as('getExecutions');
 		cy.intercept('GET', '/rest/executions/*').as('getExecution');
-		cy.intercept('GET', '/rest/executions/active?filter=*').as('getActiveExecutions');
 		cy.intercept('POST', '/rest/workflows/run').as('postWorkflowRun');
 
 		editWorkflowAndDeactivate();
@@ -157,7 +155,7 @@ describe('Editor actions should work', () => {
 		cy.wait(['@postWorkflowRun']);
 
 		executionsTab.actions.switchToExecutionsTab();
-		cy.wait(['@getExecutions', '@getActiveExecutions']);
+		cy.wait(['@getExecutions']);
 
 		executionsTab.getters.executionListItems().should('have.length', 1).first().click();
 		cy.wait(['@getExecution']);
