@@ -16,11 +16,11 @@ export function useTitleChange() {
 			icon = '▶️';
 		}
 
-		window.document.title = prependBeta(`n8n - ${icon} ${workflow}`);
+		window.document.title = prependBeta(`Acclaro - ${icon} ${workflow}`);
 	};
 
 	const titleReset = () => {
-		window.document.title = prependBeta('n8n - Workflow Automation');
+		window.document.title = prependBeta('Acclaro - Workflow Automation');
 	};
 
 	return {

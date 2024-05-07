@@ -503,7 +503,7 @@ export default defineComponent({
 		img {
 			position: relative;
 			left: 1px;
-			height: 20px;
+			height: 30px;
 		}
 	}
 
