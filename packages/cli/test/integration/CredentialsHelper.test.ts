@@ -22,6 +22,10 @@ beforeAll(async () => {
 	member = await createMember();
 });
 
+afterAll(async () => {
+	await testDb.terminate();
+});
+
 describe('CredentialsHelper', () => {
 	describe('credentialOwnedBySuperUsers', () => {
 		test.each([
