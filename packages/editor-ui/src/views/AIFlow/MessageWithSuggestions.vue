@@ -1,20 +1,26 @@
 <template>
-	<div :class="$style.container">
-		<div
-			v-for="(suggestion, index) in suggestions"
-			:key="suggestion.key"
-			:class="$style.sugestions"
-		>
-			<p :class="$style.messageTitle">#{{ index + 1 }} {{ suggestion.title }}</p>
-			<p :class="$style.messageDescription">{{ suggestion.description }}</p>
-			<!-- For now render only description -->
-			<ul :class="$style.messageTodos">
+	<div>
+		<div v-for="(suggestion, index) in suggestions" :key="suggestion.key" :class="$style.container">
+			<div>
+				<Message
+					v-for="initialMessage in initialMessages"
+					:key="initialMessage.id"
+					:message="initialMessage"
+				/>
+				<p :class="$style.messageTitle">#{{ index + 1 }} {{ suggestion.title }}</p>
+				<p :class="$style.messageDescription">{{ suggestion.description }}</p>
+				<code v-if="suggestion.codeSnippet" :class="$style.messageDescription">{{
+					suggestion.codeSnippet
+				}}</code>
+				<!-- For now render only description -->
+				<!-- <ul :class="$style.messageTodos">
 				<li v-for="todo in suggestion.todos" :key="todo.title">
 					<input :id="'todo-' + index + '-' + todo.title" type="checkbox" />
 					<label :for="'todo-' + index + '-' + todo.title">{{ todo.title }}</label>
 					<p>{{ todo.description }}</p>
 				</li>
-			</ul>
+			</ul> -->
+			</div>
 		</div>
 	</div>
 </template>
@@ -51,6 +57,10 @@ defineProps<{
 	flex-direction: column;
 	gap: 1rem;
 }
+.sugestions {
+	margin-top: 5px;
+}
+
 .messageTodos {
 	list-style-type: none;
 	display: flex;

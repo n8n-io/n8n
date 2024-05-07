@@ -1105,6 +1105,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 					? { ...node.parameters, ...updateInformation.value }
 					: updateInformation.value;
 
+			console.log('this is the new parameters');
+			console.log(newParameters);
+
 			this.updateNodeAtIndex(nodeIndex, {
 				parameters: newParameters as INodeParameters,
 			});

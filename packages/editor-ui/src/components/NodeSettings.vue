@@ -465,6 +465,8 @@ export default defineComponent({
 						[key: string]: unknown;
 					};
 
+					console.log(parameters);
+
 					//@ts-ignore
 					this.valueChanged({
 						node: this.node.name,

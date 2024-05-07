@@ -31,9 +31,13 @@ const errorSuggestionsSchema = z.object({
 			title: z.string().describe('The title of the suggestion'),
 			description: z.string().describe('Concise description of the suggestion'),
 			key: z.string(),
-			todos: suggestionTodos,
 			followUpQuestion: z.string().describe('The follow-up question to be asked to the user'),
 			followUpAction: z.string().describe('The follow-up action to be taken by the user'),
+			codeSnippet: z.string().optional().describe('The code snippet to be provided to the user'),
+			userUsingWrongRunMode: z
+				.boolean()
+				.optional()
+				.describe('Whether the user is using the wrong run mode'),
 		}),
 	),
 });
@@ -76,19 +80,37 @@ export class AIController {
 	async debugChat(req: AIRequest.DebugChat, res: express.Response) {
 		const { sessionId, text, schemas, nodes, parameters, error } = req.body;
 
-		let chatMessageHistory = memorySessions.get(sessionId);
-		if (!chatMessageHistory) {
-			chatMessageHistory = new ChatMessageHistory();
-			memorySessions.set(sessionId, chatMessageHistory);
+		const systemMessage = SystemMessagePromptTemplate.fromTemplate(`
 
-			const messages =
-				SystemMessagePromptTemplate.fromTemplate(`You're an assistant n8n expert assistant. Your role is to help users with n8n-related questions.
-			You can answer questions, provide suggestions, and help users troubleshoot issues. You can also
-			ask questions to gather more information. Please provide a concise yet detailed, helpful suggestions. Always provide only one suggestion which is actionable and most relevant for the user. If you know the specific node parameter that might be causing the issue, you can provide a suggestion on how to fix it.
-			Make sure to end the suggestion with a follow-up question that should be answered by the user. This question should be in the format of 'Would you like...?'. For example: 'Would you like me to provide more information on this?
-			When suggesting fixes to expressions which are referencing other nodes(or input data), carefully check the provided schema, if the node contains the referenced data.
-			Also, please provide a short follow-up answer that will be used as user's next step in the conversation.
-			It should be in the form: 'Yes, help me ...' and must start with 'Yes, help me'. For example: 'Yes, help me fix this issue'
+				You're an assistant n8n expert assistant. Your role is to help users fix issues with coding in the n8n code node.
+
+				Provide two suggestions. Each suggestion should include: title, description and a code snippet.
+
+				If the suggestion is related to a wrong run mode, do not provide a code snippet.
+
+				Provide a follow up action responding the follow-up question affirmatively. For example: Yes, I would like to try this solution.
+
+				Make sure to end the suggestion with a follow-up question that should be answered by the user. For example: Would you like to try the solution in the code node?
+
+				The code node uses $now and $today to work with dates. Both methods are wrapper around the Luxon library
+
+				$now:	A Luxon object containing the current timestamp. Equivalent to DateTime.now().
+
+				$today: A Luxon object containing the current timestamp, rounded down to the day.
+
+				The code node does not allow the use of import or require.
+
+				The code node does not allow to make http requests or accessing the file system.
+
+				There are two modes:
+
+				Run Once for All Items: this is the default. When your workflow runs, the code in the code node executes once, regardless of how many input items there are. In this mode you can access all input items using "items"
+
+				Run Once for Each Item: choose this if you want your code to run for every input item. In this mode you can access each input item using "item"
+
+				When mode is Run Once for each item, the code node cannot access the items to reference the input data.
+
+				When suggesting fixes to expressions which are referencing other nodes(or input data), carefully check the provided schema, if the node contains the referenced data.
 
 			## Workflow context
 
@@ -98,23 +120,26 @@ export class AIController {
 			### All workflow nodes schemas:
 				{schemas}
 
-			### Current node parameters:
-				{parameters}
+			### Run mode: {runMode}
+
+			### Language: {language}
+
+			### User Provided Code: {code}
+
 			`);
 
-			const formattedMessage = await messages.format({
-				nodes,
-				schemas: JSON.stringify(schemas),
-				parameters: JSON.stringify(parameters),
-			});
-
-			await chatMessageHistory.addMessage(formattedMessage);
-		}
+		const systemMessageFormatted = await systemMessage.format({
+			nodes,
+			schemas: JSON.stringify(schemas),
+			runMode: parameters!.runMode,
+			language: parameters!.language,
+			code: parameters!.code,
+		});
 
 		const model = new ChatOpenAI({
-			temperature: 0.8,
+			temperature: 0,
 			openAIApiKey: process.env.N8N_AI_OPENAI_API_KEY,
-			modelName: 'gpt-4-turbo-2024-04-09',
+			modelName: 'gpt-4',
 			streaming: true,
 		});
 
@@ -131,27 +156,26 @@ export class AIController {
 
 		const outputParser = new JsonOutputFunctionsParser();
 
+		// messages.inputVariables;
+
 		const prompt = ChatPromptTemplate.fromMessages([
-			new MessagesPlaceholder('history'),
+			systemMessageFormatted,
 			['human', '{question} \n\n Error: {error}'],
 		]);
 
 		const chain = prompt.pipe(modelWithOutputParser).pipe(outputParser);
 
-		const chainWithHistory = new RunnableWithMessageHistory({
-			runnable: chain,
-			getMessageHistory: async () => chatMessageHistory,
-			inputMessagesKey: 'question',
-			historyMessagesKey: 'history',
-		});
+		// const chainWithHistory = new RunnableWithMessageHistory({
+		// 	runnable: chain,
+		// 	getMessageHistory: async () => chatMessageHistory,
+		// 	inputMessagesKey: 'question',
+		// 	historyMessagesKey: 'history',
+		// });
 
-		const chainStream = await chainWithHistory.stream(
-			{
-				question: text ?? 'Please suggest solutions for the error below',
-				error: JSON.stringify(error),
-			},
-			{ configurable: { sessionId } },
-		);
+		const chainStream = await chain.stream({
+			question: text ?? 'Please suggest solutions for the error below',
+			error: JSON.stringify(error),
+		});
 
 		try {
 			for await (const output of chainStream) {

@@ -12,6 +12,7 @@ import { useNDVStore } from './ndv.store';
 import { useWorkflowsStore } from './workflows.store';
 import { useDataSchema } from '@/composables/useDataSchema';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
+import { codeNodeEditorEventBus } from '@/event-bus';
 
 export const useAIStore = defineStore('ai', () => {
 	const rootStore = useRootStore();
@@ -22,6 +23,8 @@ export const useAIStore = defineStore('ai', () => {
 	const chatTitle = ref('');
 
 	const userName = computed(() => usersStore.currentUser?.firstName ?? 'there');
+
+	const eventBus = codeNodeEditorEventBus;
 
 	const initialMessages = ref<ChatMessage[]>([
 		{
@@ -126,6 +129,15 @@ export const useAIStore = defineStore('ai', () => {
 			// If last message is a component, then show the follow-up actions
 			if (lastMessage.type === 'component') {
 				const followUpQuestion: string = lastMessage.arguments.suggestions[0].followUpQuestion;
+				// const suggestedCode: string = lastMessage.arguments.suggestions[0].codeSnippet;
+				// messages.value.push({
+				// 	createdAt: new Date().toISOString(),
+				// 	sender: 'bot',
+				// 	type: 'text',
+				// 	id: Math.random().toString(),
+				// 	text: '```javascript' + suggestedCode,
+				// });
+
 				// TODO: Think about using MessageWithActions instead of text + QuickReplies
 				messages.value.push({
 					createdAt: new Date().toISOString(),
@@ -137,7 +149,7 @@ export const useAIStore = defineStore('ai', () => {
 				const followUpActions = lastMessage.arguments.suggestions.map((suggestion) => {
 					return {
 						label: suggestion.followUpAction,
-						key: suggestion.followUpAction,
+						key: 'test_code',
 					};
 				});
 				followUpActions.push({ label: 'No, try another suggestion', key: 'ask_question' });
@@ -151,7 +163,28 @@ export const useAIStore = defineStore('ai', () => {
 					id: newMessageId,
 					arguments: {
 						suggestions: followUpActions,
-						async onReplySelected({ label }: { action: string; label: string }) {
+						async onReplySelected({ label, key }: { action: string; label: string }) {
+							console.log(label);
+							console.log(key);
+							if (key === 'test_code') {
+								const currentNode = useNDVStore().activeNode;
+
+								// properties: {
+								// 	parameters: {
+								// 		...node.parameters,
+								// 		[nodeAuthField.name]: type,
+								// 	},
+								eventBus.emit('updateCodeContent');
+
+								// useWorkflowsStore().updateNodeProperties({
+								// 	name: currentNode?.name,
+								// 	properties: {
+								// 		parameters: { jsCode: 'suggestedCode' },
+								// 	},
+								// });
+								return;
+							}
+
 							await sendMessage(label);
 							// Remove the quick replies so only user message is shown
 							messages.value = messages.value.filter((message) => {
@@ -166,6 +199,9 @@ export const useAIStore = defineStore('ai', () => {
 		}
 
 		const parsedMessage = jsonParse<Record<string, unknown>>(messageChunk);
+
+		console.log(parsedMessage);
+
 		if (getLastMessage()?.sender !== 'bot') {
 			messages.value.push({
 				createdAt: new Date().toISOString(),

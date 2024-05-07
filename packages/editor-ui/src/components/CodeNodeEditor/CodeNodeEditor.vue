@@ -196,6 +196,8 @@ export default defineComponent({
 		if (!this.isReadOnly) codeNodeEditorEventBus.off('error-line-number', this.highlightLine);
 	},
 	mounted() {
+		codeNodeEditorEventBus.on('updateCodeContent', (code: string) => this.onReplaceCode(code));
+
 		if (!this.isReadOnly) codeNodeEditorEventBus.on('error-line-number', this.highlightLine);
 
 		const { isReadOnly, language } = this;
