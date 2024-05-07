@@ -14,7 +14,7 @@
     "url": "git+https://github.com/n8n-io/n8n.git"
   },
   "scripts": {
-    "benchmark": "jest --config benchmark.config.js --runInBand",
+    "benchmark": "jest --config benchmark.config.js",
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc",
