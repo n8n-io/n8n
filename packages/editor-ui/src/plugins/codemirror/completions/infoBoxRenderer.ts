@@ -35,16 +35,18 @@ const renderFunctionHeader = (doc?: DocMetadata) => {
 				const separatorSpan = document.createElement('span');
 				separatorSpan.textContent = ', ';
 				argsSpan.appendChild(separatorSpan);
+			} else {
+				argSpan.textContent += ')';
 			}
 		});
 		header.appendChild(argsSpan);
 
-		const closeBracketsSpan = document.createElement('span');
-		closeBracketsSpan.textContent = ')';
-		header.appendChild(closeBracketsSpan);
+		const preTypeInfo = document.createElement('span');
+		preTypeInfo.textContent = !doc.args || doc.args.length === 0 ? '): ' : ': ';
+		header.appendChild(preTypeInfo);
 
 		const returnTypeSpan = document.createElement('span');
-		returnTypeSpan.textContent = ': ' + doc.returnType;
+		returnTypeSpan.textContent = doc.returnType;
 		returnTypeSpan.classList.add('autocomplete-info-return');
 		header.appendChild(returnTypeSpan);
 	}
@@ -120,7 +122,7 @@ const renderArgs = (args: DocMetadataArgument[]) => {
 	const argsList = document.createElement('ul');
 	argsList.classList.add('autocomplete-info-args');
 
-	for (const arg of args) {
+	for (const arg of args.filter((a) => a.name !== '...')) {
 		const argItem = document.createElement('li');
 		const argName = document.createElement('span');
 		argName.classList.add('autocomplete-info-arg-name');
@@ -139,7 +141,9 @@ const renderArgs = (args: DocMetadataArgument[]) => {
 			argName.textContent += ` (${tags.join(', ')})`;
 		}
 
-		argName.textContent += ':';
+		if (arg.description) {
+			argName.textContent += ':';
+		}
 		argItem.appendChild(argName);
 
 		if (arg.description) {
@@ -223,6 +227,7 @@ export const createInfoBoxRenderer =
 	() => {
 		const tooltipContainer = document.createElement('div');
 		tooltipContainer.setAttribute('tabindex', '-1');
+		tooltipContainer.setAttribute('title', '');
 		tooltipContainer.classList.add('autocomplete-info-container');
 
 		if (!doc) return null;

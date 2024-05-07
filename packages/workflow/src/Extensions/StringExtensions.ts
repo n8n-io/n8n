@@ -532,7 +532,7 @@ toTitleCase.doc = {
 urlEncode.doc = {
 	name: 'urlEncode',
 	description:
-		'"Encodes the string so that it can be used in a URL. Spaces and special characters are replaced with codes of the form <code>%XX</code>.',
+		'Encodes the string so that it can be used in a URL. Spaces and special characters are replaced with codes of the form <code>%XX</code>.',
 	section: 'edit',
 	args: [
 		{

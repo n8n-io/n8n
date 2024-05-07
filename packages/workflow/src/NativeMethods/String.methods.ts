@@ -166,7 +166,7 @@ export const stringMethods: NativeDoc = {
 			doc: {
 				name: 'match',
 				description:
-					'Matches the string against a <a href=”https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions”>regular expression</a>. Returns an array containing the first match, or all matches if the <code>g</code> flag is set in the regular expression. Returns <code>null</code> if no matches are found. \n\nFor checking whether text is present, consider <code>includes()</code> instead.',
+					'Matches the string against a <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions">regular expression</a>. Returns an array containing the first match, or all matches if the <code>g</code> flag is set in the regular expression. Returns <code>null</code> if no matches are found. \n\nFor checking whether text is present, consider <code>includes()</code> instead.',
 				examples: [
 					{
 						example: '"rock and roll".match(/r[^ ]*/g)',
@@ -187,13 +187,13 @@ export const stringMethods: NativeDoc = {
 				section: 'query',
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/match',
-				returnType: 'Array',
+				returnType: 'string[]',
 				args: [
 					{
 						name: 'regexp',
 						optional: false,
 						description:
-							'A <a href=”https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions”>regular expression</a> with the pattern to look for. Will look for multiple matches if the <code>g</code> flag is present (see examples).',
+							'A <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions">regular expression</a> with the pattern to look for. Will look for multiple matches if the <code>g</code> flag is present (see examples).',
 						type: 'RegExp',
 					},
 				],
@@ -250,7 +250,7 @@ export const stringMethods: NativeDoc = {
 						name: 'pattern',
 						optional: false,
 						description:
-							'The pattern in the string to replace. Can be a string to match or a <a href=”https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions”>regular expression</a>.',
+							'The pattern in the string to replace. Can be a string to match or a <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions">regular expression</a>.',
 						type: 'string|RegExp',
 					},
 					{
@@ -312,7 +312,7 @@ export const stringMethods: NativeDoc = {
 						name: 'pattern',
 						optional: false,
 						description:
-							'The pattern in the string to replace. Can be a string to match or a <a href=”https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions”>regular expression</a>.',
+							'The pattern in the string to replace. Can be a string to match or a <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions">regular expression</a>.',
 						type: 'string|RegExp',
 					},
 					{
@@ -329,7 +329,7 @@ export const stringMethods: NativeDoc = {
 			doc: {
 				name: 'search',
 				description:
-					'Returns the index (position) of the first occurrence of a pattern within the string, or -1 if not found. The pattern is specified using a <a href=”https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions”>regular expression</a>. To use text instead, see <code>indexOf()</code>.',
+					'Returns the index (position) of the first occurrence of a pattern within the string, or -1 if not found. The pattern is specified using a <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions">regular expression</a>. To use text instead, see <code>indexOf()</code>.',
 				examples: [
 					{
 						example: '"Neat n8n node".search(/n[^ ]*/)',
@@ -352,7 +352,7 @@ export const stringMethods: NativeDoc = {
 						name: 'regexp',
 						optional: false,
 						description:
-							'A <a href=”https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions”>regular expression</a> with the pattern to look for',
+							'A <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions">regular expression</a> with the pattern to look for',
 						type: 'RegExp',
 					},
 				],
