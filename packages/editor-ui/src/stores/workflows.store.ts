@@ -57,7 +57,7 @@ import type {
 	ITaskData,
 	IWorkflowSettings,
 } from 'n8n-workflow';
-import { deepCopy, NodeHelpers, Workflow } from 'n8n-workflow';
+import { deepCopy, NodeHelpers, Workflow, ErrorReporterProxy as EventReporter } from 'n8n-workflow';
 import { findLast } from 'lodash-es';
 
 import { useRootStore } from '@/stores/n8nRoot.store';
@@ -82,7 +82,6 @@ import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { getCredentialOnlyNodeTypeName } from '@/utils/credentialOnlyNodes';
 import { i18n } from '@/plugins/i18n';
-import { ErrorReporterProxy as EventReporter } from 'n8n-workflow';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
