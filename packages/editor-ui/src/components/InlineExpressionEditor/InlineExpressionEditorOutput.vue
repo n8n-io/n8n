@@ -37,10 +37,10 @@ const itemsLength = computed(() => ndvStore.ndvInputDataWithPinnedData.length);
 const itemIndex = computed(() => hoveringItemIndex.value ?? ndvStore.expressionOutputItemIndex);
 const max = computed(() => Math.max(itemsLength.value - 1, 0));
 const isItemIndexEditable = computed(() => !isHoveringItem.value && itemsLength.value > 0);
+const canSelectPrevItem = computed(() => isItemIndexEditable.value && itemIndex.value !== 0);
 const canSelectNextItem = computed(
-	() => isItemIndexEditable && itemIndex.value < itemsLength.value - 1,
+	() => isItemIndexEditable.value && itemIndex.value < itemsLength.value - 1,
 );
-const canSelectPrevItem = computed(() => isItemIndexEditable && itemIndex.value !== 0);
 
 function updateItemIndex(index: number) {
 	ndvStore.expressionOutputItemIndex = index;
@@ -67,7 +67,7 @@ onBeforeUnmount(() => {
 			</n8n-text>
 
 			<div :class="$style.item">
-				<n8n-text size="small" :color="isHoveringItem ? 'secondary' : 'text-base'" compact>
+				<n8n-text size="small" color="text-base" compact>
 					{{ i18n.baseText('parameterInput.item') }}
 				</n8n-text>
 
@@ -75,11 +75,10 @@ onBeforeUnmount(() => {
 					<N8nInputNumber
 						size="mini"
 						:controls="false"
-						:class="$style.input"
+						:class="[$style.input, { [$style.hovering]: isHoveringItem }]"
 						:min="0"
 						:max="max"
 						:model-value="itemIndex"
-						:disabled="!isItemIndexEditable"
 						@update:model-value="updateItemIndex"
 					></N8nInputNumber>
 					<N8nIconButton
@@ -185,8 +184,7 @@ onBeforeUnmount(() => {
 
 	.input {
 		--input-height: 22px;
-		--input-width: 32px;
-		--disabled-color: var(--color-secondary);
+		--input-width: 26px;
 		--input-border-top-left-radius: var(--border-radius-base);
 		--input-border-bottom-left-radius: var(--border-radius-base);
 		--input-border-top-right-radius: var(--border-radius-base);
@@ -194,10 +192,16 @@ onBeforeUnmount(() => {
 		max-width: var(--input-width);
 		line-height: calc(var(--input-height) - var(--spacing-4xs));
 
+		&.hovering {
+			--input-font-color: var(--color-secondary);
+		}
+
 		:global(.el-input__inner) {
 			height: var(--input-height);
 			min-height: var(--input-height);
 			line-height: var(--input-height);
+			text-align: center;
+			padding: 0 var(--spacing-4xs);
 		}
 	}
 }
