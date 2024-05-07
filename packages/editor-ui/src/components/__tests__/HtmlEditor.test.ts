@@ -17,9 +17,6 @@ const DEFAULT_SETUP = {
 };
 
 describe('HtmlEditor.vue', () => {
-	const originalRangeGetBoundingClientRect = Range.prototype.getBoundingClientRect;
-	const originalRangeGetClientRects = Range.prototype.getClientRects;
-
 	const pinia = createTestingPinia({
 		initialState: {
 			[STORES.SETTINGS]: {
@@ -28,20 +25,6 @@ describe('HtmlEditor.vue', () => {
 		},
 	});
 	setActivePinia(pinia);
-
-	beforeAll(() => {
-		Range.prototype.getBoundingClientRect = vi.fn();
-		Range.prototype.getClientRects = () => ({
-			item: vi.fn(),
-			length: 0,
-			[Symbol.iterator]: vi.fn(),
-		});
-	});
-
-	afterAll(() => {
-		Range.prototype.getBoundingClientRect = originalRangeGetBoundingClientRect;
-		Range.prototype.getClientRects = originalRangeGetClientRects;
-	});
 
 	afterAll(() => {
 		vi.clearAllMocks();

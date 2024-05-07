@@ -82,7 +82,7 @@ function onBlur(event?: FocusEvent | KeyboardEvent) {
 			segments.value,
 			props.modelValue,
 			workflowsStore.workflowId,
-			ndvStore.sessionId,
+			ndvStore.pushRef,
 			ndvStore.activeNode?.type ?? '',
 		);
 

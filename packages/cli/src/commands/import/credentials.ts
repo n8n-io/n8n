@@ -64,67 +64,25 @@ export class ImportCredentialsCommand extends BaseCommand {
 			}
 		}
 
-		let totalImported = 0;
-
-		const cipher = Container.get(Cipher);
 		const user = flags.userId ? await this.getAssignee(flags.userId) : await this.getOwner();
 
-		if (flags.separate) {
-			let { input: inputPath } = flags;
-
-			if (process.platform === 'win32') {
-				inputPath = inputPath.replace(/\\/g, '/');
-			}
-
-			const files = await glob('*.json', {
-				cwd: inputPath,
-				absolute: true,
-			});
-
-			totalImported = files.length;
-
-			await Db.getConnection().transaction(async (transactionManager) => {
-				this.transactionManager = transactionManager;
-				for (const file of files) {
-					const credential = jsonParse<ICredentialsEncrypted>(
-						fs.readFileSync(file, { encoding: 'utf8' }),
-					);
-					if (typeof credential.data === 'object') {
-						// plain data / decrypted input. Should be encrypted first.
-						credential.data = cipher.encrypt(credential.data);
-					}
-					await this.storeCredential(credential, user);
-				}
-			});
-
-			this.reportSuccess(totalImported);
-			return;
-		}
-
-		const credentials = jsonParse<ICredentialsEncrypted[]>(
-			fs.readFileSync(flags.input, { encoding: 'utf8' }),
-		);
-
-		totalImported = credentials.length;
-
-		if (!Array.isArray(credentials)) {
-			throw new ApplicationError(
-				'File does not seem to contain credentials. Make sure the credentials are contained in an array.',
-			);
-		}
+		const credentials = await this.readCredentials(flags.input, flags.separate);
 
 		await Db.getConnection().transaction(async (transactionManager) => {
 			this.transactionManager = transactionManager;
+
+			const result = await this.checkRelations(credentials, flags.userId);
+
+			if (!result.success) {
+				throw new ApplicationError(result.message);
+			}
+
 			for (const credential of credentials) {
-				if (typeof credential.data === 'object') {
-					// plain data / decrypted input. Should be encrypted first.
-					credential.data = cipher.encrypt(credential.data);
-				}
 				await this.storeCredential(credential, user);
 			}
 		});
 
-		this.reportSuccess(totalImported);
+		this.reportSuccess(credentials.length);
 	}
 
 	async catch(error: Error) {
@@ -141,19 +99,24 @@ export class ImportCredentialsCommand extends BaseCommand {
 	}
 
 	private async storeCredential(credential: Partial<CredentialsEntity>, user: User) {
-		if (!credential.nodesAccess) {
-			credential.nodesAccess = [];
-		}
 		const result = await this.transactionManager.upsert(CredentialsEntity, credential, ['id']);
-		await this.transactionManager.upsert(
-			SharedCredentials,
-			{
-				credentialsId: result.identifiers[0].id as string,
-				userId: user.id,
-				role: 'credential:owner',
-			},
-			['credentialsId', 'userId'],
-		);
+
+		const sharingExists = await this.transactionManager.existsBy(SharedCredentials, {
+			credentialsId: credential.id,
+			role: 'credential:owner',
+		});
+
+		if (!sharingExists) {
+			await this.transactionManager.upsert(
+				SharedCredentials,
+				{
+					credentialsId: result.identifiers[0].id as string,
+					userId: user.id,
+					role: 'credential:owner',
+				},
+				['credentialsId', 'userId'],
+			);
+		}
 	}
 
 	private async getOwner() {
@@ -165,6 +128,84 @@ export class ImportCredentialsCommand extends BaseCommand {
 		return owner;
 	}
 
+	private async checkRelations(credentials: ICredentialsEncrypted[], userId?: string) {
+		if (!userId) {
+			return {
+				success: true as const,
+				message: undefined,
+			};
+		}
+
+		for (const credential of credentials) {
+			if (credential.id === undefined) {
+				continue;
+			}
+
+			if (!(await this.credentialExists(credential.id))) {
+				continue;
+			}
+
+			const ownerId = await this.getCredentialOwner(credential.id);
+			if (!ownerId) {
+				continue;
+			}
+
+			if (ownerId !== userId) {
+				return {
+					success: false as const,
+					message: `The credential with id "${credential.id}" is already owned by the user with the id "${ownerId}". It can't be re-owned by the user with the id "${userId}"`,
+				};
+			}
+		}
+
+		return {
+			success: true as const,
+			message: undefined,
+		};
+	}
+
+	private async readCredentials(path: string, separate: boolean): Promise<ICredentialsEncrypted[]> {
+		const cipher = Container.get(Cipher);
+
+		if (process.platform === 'win32') {
+			path = path.replace(/\\/g, '/');
+		}
+
+		let credentials: ICredentialsEncrypted[];
+
+		if (separate) {
+			const files = await glob('*.json', {
+				cwd: path,
+				absolute: true,
+			});
+
+			credentials = files.map((file) =>
+				jsonParse<ICredentialsEncrypted>(fs.readFileSync(file, { encoding: 'utf8' })),
+			);
+		} else {
+			const credentialsUnchecked = jsonParse<ICredentialsEncrypted[]>(
+				fs.readFileSync(path, { encoding: 'utf8' }),
+			);
+
+			if (!Array.isArray(credentialsUnchecked)) {
+				throw new ApplicationError(
+					'File does not seem to contain credentials. Make sure the credentials are contained in an array.',
+				);
+			}
+
+			credentials = credentialsUnchecked;
+		}
+
+		return credentials.map((credential) => {
+			if (typeof credential.data === 'object') {
+				// plain data / decrypted input. Should be encrypted first.
+				credential.data = cipher.encrypt(credential.data);
+			}
+
+			return credential;
+		});
+	}
+
 	private async getAssignee(userId: string) {
 		const user = await Container.get(UserRepository).findOneBy({ id: userId });
 
@@ -173,5 +214,18 @@ export class ImportCredentialsCommand extends BaseCommand {
 		}
 
 		return user;
+	}
+
+	private async getCredentialOwner(credentialsId: string) {
+		const sharedCredential = await this.transactionManager.findOneBy(SharedCredentials, {
+			credentialsId,
+			role: 'credential:owner',
+		});
+
+		return sharedCredential?.userId;
+	}
+
+	private async credentialExists(credentialId: string) {
+		return await this.transactionManager.existsBy(CredentialsEntity, { id: credentialId });
 	}
 }

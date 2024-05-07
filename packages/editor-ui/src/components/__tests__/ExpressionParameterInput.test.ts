@@ -47,4 +47,20 @@ describe('ExpressionParameterInput', () => {
 		await userEvent.click(baseElement);
 		expect(emitted('blur')).toHaveLength(1);
 	});
+
+	describe('in read-only mode', () => {
+		test('it should render a read-only expression input', async () => {
+			const { container } = renderComponent({
+				props: {
+					modelValue: '={{$json.foo}}',
+					isReadOnly: true,
+				},
+			});
+
+			const editor = container.querySelector('.cm-content') as HTMLDivElement;
+			expect(editor).toBeInTheDocument();
+			expect(editor.getAttribute('contenteditable')).toEqual('false');
+			expect(editor.getAttribute('aria-readonly')).toEqual('true');
+		});
+	});
 });

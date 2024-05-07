@@ -12,6 +12,7 @@ import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { BaseRetriever } from '@langchain/core/retrievers';
 import { getTemplateNoticeField } from '../../../utils/sharedFields';
 import { getPromptInputByType } from '../../../utils/helpers';
+import { getTracingConfig } from '../../../utils/tracing';
 
 export class ChainRetrievalQa implements INodeType {
 	description: INodeTypeDescription = {
@@ -159,25 +160,34 @@ export class ChainRetrievalQa implements INodeType {
 
 		// Run for each item
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			let query;
+			try {
+				let query;
 
-			if (this.getNode().typeVersion <= 1.2) {
-				query = this.getNodeParameter('query', itemIndex) as string;
-			} else {
-				query = getPromptInputByType({
-					ctx: this,
-					i: itemIndex,
-					inputKey: 'text',
-					promptTypeKey: 'promptType',
-				});
+				if (this.getNode().typeVersion <= 1.2) {
+					query = this.getNodeParameter('query', itemIndex) as string;
+				} else {
+					query = getPromptInputByType({
+						ctx: this,
+						i: itemIndex,
+						inputKey: 'text',
+						promptTypeKey: 'promptType',
+					});
+				}
+
+				if (query === undefined) {
+					throw new NodeOperationError(this.getNode(), 'The ‘query‘ parameter is empty.');
+				}
+
+				const response = await chain.withConfig(getTracingConfig(this)).invoke({ query });
+				returnData.push({ json: { response } });
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
+					continue;
+				}
+
+				throw error;
 			}
-
-			if (query === undefined) {
-				throw new NodeOperationError(this.getNode(), 'The ‘query‘ parameter is empty.');
-			}
-
-			const response = await chain.call({ query });
-			returnData.push({ json: { response } });
 		}
 		return await this.prepareOutputData(returnData);
 	}

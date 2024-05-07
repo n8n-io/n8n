@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { discordApiMultiPartRequest, discordApiRequest } from '../../transport';
 import {
@@ -153,7 +153,7 @@ export async function execute(
 		};
 
 		if (embeds) {
-			body.embeds = prepareEmbeds.call(this, embeds, i);
+			body.embeds = prepareEmbeds.call(this, embeds);
 		}
 
 		try {
@@ -166,11 +166,39 @@ export async function execute(
 					extractValue: true,
 				}) as string;
 
+				if (isOAuth2) {
+					try {
+						await discordApiRequest.call(this, 'GET', `/guilds/${guildId}/members/${userId}`);
+					} catch (error) {
+						if (error instanceof NodeApiError && error.httpCode === '404') {
+							throw new NodeOperationError(
+								this.getNode(),
+								`User with the id ${userId} is not a member of the selected guild`,
+								{
+									itemIndex: i,
+								},
+							);
+						}
+
+						throw new NodeOperationError(this.getNode(), error, {
+							itemIndex: i,
+						});
+					}
+				}
+
 				channelId = (
 					(await discordApiRequest.call(this, 'POST', '/users/@me/channels', {
 						recipient_id: userId,
 					})) as IDataObject
 				).id as string;
+
+				if (!channelId) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'Could not create a channel to send direct message to',
+						{ itemIndex: i },
+					);
+				}
 			}
 
 			if (sendTo === 'channel') {
@@ -179,11 +207,13 @@ export async function execute(
 				}) as string;
 			}
 
-			if (!channelId) {
-				throw new NodeOperationError(this.getNode(), 'Channel ID is required');
+			if (isOAuth2 && sendTo !== 'user') {
+				await checkAccessToChannel.call(this, channelId, userGuilds, i);
 			}
 
-			if (isOAuth2) await checkAccessToChannel.call(this, channelId, userGuilds, i);
+			if (!channelId) {
+				throw new NodeOperationError(this.getNode(), 'Channel ID is required', { itemIndex: i });
+			}
 
 			let response: IDataObject[] = [];
 

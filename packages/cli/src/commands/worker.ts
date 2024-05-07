@@ -29,6 +29,7 @@ import { OrchestrationWorkerService } from '@/services/orchestration/worker/orch
 import type { WorkerJobStatusSummary } from '@/services/orchestration/worker/types';
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { BaseCommand } from './BaseCommand';
+import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -366,6 +367,11 @@ export class Worker extends BaseCommand {
 				process.exit(2);
 			} else {
 				this.logger.error('Error from queue: ', error);
+
+				if (error.message.includes('job stalled more than maxStalledCount')) {
+					throw new MaxStalledCountError(error);
+				}
+
 				throw error;
 			}
 		});

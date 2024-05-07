@@ -68,7 +68,6 @@ export default defineComponent({
 				updatedAt: '',
 				type: '',
 				name: '',
-				nodesAccess: [],
 				sharedWith: [],
 				ownedBy: {} as IUser,
 			}),

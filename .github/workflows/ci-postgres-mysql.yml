@@ -84,7 +84,7 @@ jobs:
           key: ${{ github.sha }}:db-tests
 
       - name: Start MySQL
-        uses: isbang/compose-action@v1.5.1
+        uses: isbang/compose-action@v2.0.0
         with:
           compose-file: ./.github/docker-compose.yml
           services: |
@@ -117,7 +117,7 @@ jobs:
           key: ${{ github.sha }}:db-tests
 
       - name: Start Postgres
-        uses: isbang/compose-action@v1.5.1
+        uses: isbang/compose-action@v2.0.0
         with:
           compose-file: ./.github/docker-compose.yml
           services: |

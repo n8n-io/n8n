@@ -53,3 +53,11 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - run: docker buildx imagetools create -t ghcr.io/${{ github.repository_owner }}/n8n:${{ github.event.inputs.release-channel }} ghcr.io/${{ github.repository_owner }}/n8n:${{ github.event.inputs.version }}
+
+  update-docs:
+    name: Update latest and next in the docs
+    runs-on: ubuntu-latest
+    needs: [release-to-npm, release-to-docker-hub]
+    steps:
+      - continue-on-error: true
+        run: curl -u docsWorkflows:${{ secrets.N8N_WEBHOOK_DOCS_PASSWORD }} --request GET 'https://internal.users.n8n.cloud/webhook/update-latest-next'

@@ -48,11 +48,10 @@ const simpleWebhookCall = (options: SimpleWebhookCallOptions) => {
 	}
 
 	if (responseCode) {
-		cy.getByTestId('parameter-input-responseCode')
-			.find('.parameter-input')
-			.find('input')
-			.clear()
-			.type(responseCode.toString());
+		cy.get('.param-options').click();
+		getVisibleSelect().contains('Response Code').click();
+		cy.get('.parameter-item-wrapper > .parameter-input-list-wrapper').children().click();
+		getVisibleSelect().contains('201').click();
 	}
 
 	if (respondWith) {

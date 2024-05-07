@@ -139,6 +139,7 @@ export interface IUpdateInformation {
 		| INodeParameters; // with null makes problems in NodeSettings.vue
 	node?: string;
 	oldValue?: string | number;
+	type?: 'optionsOrderChanged';
 }
 
 export interface INodeUpdatePropertiesInformation {
@@ -446,6 +447,7 @@ export type IPushData =
 	| PushDataExecutionStarted
 	| PushDataExecuteAfter
 	| PushDataExecuteBefore
+	| PushDataNodeDescriptionUpdated
 	| PushDataConsoleMessage
 	| PushDataReloadNodeType
 	| PushDataRemoveNodeType
@@ -457,67 +459,72 @@ export type IPushData =
 	| PushDataWorkflowFailedToActivate
 	| PushDataWorkflowUsersChanged;
 
-type PushDataActiveWorkflowAdded = {
+export type PushDataActiveWorkflowAdded = {
 	data: IActiveWorkflowAdded;
 	type: 'workflowActivated';
 };
 
-type PushDataActiveWorkflowRemoved = {
+export type PushDataActiveWorkflowRemoved = {
 	data: IActiveWorkflowRemoved;
 	type: 'workflowDeactivated';
 };
 
-type PushDataWorkflowFailedToActivate = {
+export type PushDataWorkflowFailedToActivate = {
 	data: IWorkflowFailedToActivate;
 	type: 'workflowFailedToActivate';
 };
 
-type PushDataExecutionRecovered = {
+export type PushDataExecutionRecovered = {
 	data: IPushDataExecutionRecovered;
 	type: 'executionRecovered';
 };
 
-type PushDataExecutionFinished = {
+export type PushDataExecutionFinished = {
 	data: IPushDataExecutionFinished;
 	type: 'executionFinished';
 };
 
-type PushDataExecutionStarted = {
+export type PushDataExecutionStarted = {
 	data: IPushDataExecutionStarted;
 	type: 'executionStarted';
 };
 
-type PushDataExecuteAfter = {
+export type PushDataExecuteAfter = {
 	data: IPushDataNodeExecuteAfter;
 	type: 'nodeExecuteAfter';
 };
 
-type PushDataExecuteBefore = {
+export type PushDataExecuteBefore = {
 	data: IPushDataNodeExecuteBefore;
 	type: 'nodeExecuteBefore';
 };
 
-type PushDataConsoleMessage = {
+export type PushDataNodeDescriptionUpdated = {
+	data: {};
+	type: 'nodeDescriptionUpdated';
+};
+
+export type PushDataConsoleMessage = {
 	data: IPushDataConsoleMessage;
 	type: 'sendConsoleMessage';
 };
 
-type PushDataReloadNodeType = {
+export type PushDataReloadNodeType = {
 	data: IPushDataReloadNodeType;
 	type: 'reloadNodeType';
 };
 
-type PushDataRemoveNodeType = {
+export type PushDataRemoveNodeType = {
 	data: IPushDataRemoveNodeType;
 	type: 'removeNodeType';
 };
 
-type PushDataTestWebhook = {
+export type PushDataTestWebhook = {
 	data: IPushDataTestWebhook;
 	type: 'testWebhookDeleted' | 'testWebhookReceived';
 };
 
-type PushDataWorkerStatusMessage = {
+export type PushDataWorkerStatusMessage = {
 	data: IPushDataWorkerStatusMessage;
 	type: 'sendWorkerStatusMessage';
 };
@@ -687,7 +694,8 @@ export type IPersonalizationLatestVersion = IPersonalizationSurveyAnswersV4;
 export type IPersonalizationSurveyVersions =
 	| IPersonalizationSurveyAnswersV1
 	| IPersonalizationSurveyAnswersV2
-	| IPersonalizationSurveyAnswersV3;
+	| IPersonalizationSurveyAnswersV3
+	| IPersonalizationSurveyAnswersV4;
 
 export type Roles = typeof ROLE;
 export type IRole = Roles[keyof Roles];
@@ -1101,7 +1109,7 @@ export interface RootState {
 	n8nMetadata: {
 		[key: string]: string | number | undefined;
 	};
-	sessionId: string;
+	pushRef: string;
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
 	instanceId: string;
@@ -1145,7 +1153,7 @@ export interface IRootState {
 	nodeViewOffsetPosition: XYPosition;
 	nodeViewMoveInProgress: boolean;
 	selectedNodes: INodeUi[];
-	sessionId: string;
+	pushRef: string;
 	urlBaseEditor: string;
 	urlBaseWebhook: string;
 	workflow: IWorkflowDb;
@@ -1213,7 +1221,7 @@ export interface TargetItem {
 export interface NDVState {
 	activeNodeName: string | null;
 	mainPanelDimensions: { [key: string]: { [key: string]: number } };
-	sessionId: string;
+	pushRef: string;
 	input: {
 		displayMode: IRunDataDisplayMode;
 		nodeName?: string;
@@ -1280,7 +1288,6 @@ export interface UIState {
 	selectedNodes: INodeUi[];
 	nodeViewInitialized: boolean;
 	addFirstStepOnLoad: boolean;
-	executionSidebarAutoRefresh: boolean;
 	bannersHeight: number;
 	bannerStack: BannerName[];
 	theme: ThemeOption;
@@ -1427,7 +1434,7 @@ export interface CommunityNodesState {
 
 export interface IRestApiContext {
 	baseUrl: string;
-	sessionId: string;
+	pushRef: string;
 }
 
 export interface IZoomConfig {

@@ -27,7 +27,7 @@
 							}}
 						</n8n-tooltip>
 					</li>
-					<li v-if="(consumedTokensSum?.totalTokens ?? 0) > 0">
+					<li v-if="(consumedTokensSum?.totalTokens ?? 0) > 0" :class="$style.tokensUsage">
 						{{
 							$locale.baseText('runData.aiContentBlock.tokens', {
 								interpolate: {
@@ -196,5 +196,10 @@ const runMeta = computed(() => {
 	& > li:not(:first-child) {
 		padding-left: var(--spacing-3xs);
 	}
+}
+.tokensUsage {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-3xs);
 }
 </style>
