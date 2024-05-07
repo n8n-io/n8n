@@ -34,6 +34,10 @@ describe('Workflow History Manager', () => {
 		license.getWorkflowHistoryPruneLimit.mockReturnValue(-1);
 	});
 
+	afterAll(async () => {
+		await testDb.terminate();
+	});
+
 	test('should prune on interval', () => {
 		const pruneSpy = jest.spyOn(manager, 'prune');
 		const currentCount = pruneSpy.mock.calls.length;
