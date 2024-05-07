@@ -97,7 +97,9 @@ export const setupTestServer = ({
 
 	// eslint-disable-next-line complexity
 	beforeAll(async () => {
+		console.time('testDb.init');
 		await testDb.init();
+		console.timeEnd('testDb.init');
 
 		config.set('userManagement.jwtSecret', 'My JWT secret');
 		config.set('userManagement.isInstanceOwnerSetUp', true);
