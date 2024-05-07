@@ -140,7 +140,11 @@ const sendMessage = async (message: string) => {
 };
 
 const trackUserMessage = (message: string) => {
-	telemetry.track('User responded in AI chat', { prompt: message, chatMode: 'nextStepAssistant' });
+	telemetry.track('User responded in AI chat', {
+		prompt: message,
+		chatMode: 'nextStepAssistant',
+		initialMessage: initialMessageText.value,
+	});
 };
 
 const chatOptions: ChatOptions = {
