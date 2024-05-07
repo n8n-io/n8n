@@ -38,7 +38,7 @@ export class SlackV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: [2, 2.1],
+			version: [2, 2.1, 2.2],
 			defaults: {
 				name: 'Slack',
 			},
@@ -1041,11 +1041,12 @@ export class SlackV2 implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						const body: IDataObject = {};
 						const fileBody: IDataObject = {};
-						/*if (options.channelIds) {
-							body.channels = (options.channelIds as string[]).join(',');
-						}*/
+
 						if (options.channelIds) {
-							body.channel_id = (options.channelIds as string[]).join(',');
+							body.channels = (options.channelIds as string[]).join(',');
+						}
+						if (options.channelId) {
+							body.channel_id = options.channelId as string;
 						}
 						if (options.initialComment) {
 							body.initial_comment = options.initialComment as string;
@@ -1053,8 +1054,13 @@ export class SlackV2 implements INodeType {
 						if (options.threadTs) {
 							body.thread_ts = options.threadTs as string;
 						}
+						if (options.title) {
+							if (nodeVersion <= 2.1) {
+								body.title = options.title as string;
+							}
+						}
 
-						if (this.getNodeParameter('binaryData', i)) {
+						if (this.getNodeParameter('binaryData', i, false) || nodeVersion > 2.1) {
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 							const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 
@@ -1065,49 +1071,66 @@ export class SlackV2 implements INodeType {
 								uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
 							}
 
-							const uploadUrl = await slackApiRequest.call(
-								this,
-								'GET',
-								'/files.getUploadURLExternal',
-								{},
-								{
-									filename: options.fileName ? options.fileName : binaryData.fileName,
-									length: binaryData.fileSizeRaw,
-								},
-							);
+							if (nodeVersion <= 2.1) {
+								body.file = {
+									value: uploadData,
+									options: {
+										filename: binaryData.fileName,
+										contentType: binaryData.mimeType,
+									},
+								};
 
-							fileBody.file = {
-								value: uploadData,
-								options: {
-									filename: binaryData.fileName,
-									contentType: binaryData.mimeType,
-								},
-							};
-
-							await slackApiRequest.call(
-								this,
-								'POST',
-								uploadUrl.upload_url,
-								{},
-								qs,
-								{ 'Content-Type': 'multipart/form-data' },
-								{ formData: fileBody },
-							);
-
-							body.files = [
-								{
-									id: uploadUrl.file_id,
-									title: options.title ? options.title : binaryData.fileName,
-								},
-							];
-
-							responseData = await slackApiRequest.call(
-								this,
-								'POST',
-								'/files.completeUploadExternal',
-								body,
-							);
-							responseData = responseData;
+								responseData = await slackApiRequest.call(
+									this,
+									'POST',
+									'/files.upload',
+									{},
+									qs,
+									{ 'Content-Type': 'multipart/form-data' },
+									{ formData: body },
+								);
+								responseData = responseData.file;
+							} else {
+								fileBody.file = {
+									value: uploadData,
+									options: {
+										filename: binaryData.fileName,
+										contentType: binaryData.mimeType,
+									},
+								};
+								const uploadUrl = await slackApiRequest.call(
+									this,
+									'GET',
+									'/files.getUploadURLExternal',
+									{},
+									{
+										filename: options.fileName ? options.fileName : binaryData.fileName,
+										length: binaryData.fileSizeRaw,
+									},
+								);
+								await slackApiRequest.call(
+									this,
+									'POST',
+									uploadUrl.upload_url,
+									{},
+									qs,
+									{ 'Content-Type': 'multipart/form-data' },
+									{ formData: fileBody },
+								);
+								body.files = [
+									{
+										id: uploadUrl.file_id,
+										title: options.title ? options.title : binaryData.fileName,
+									},
+								];
+								responseData = await slackApiRequest.call(
+									this,
+									'POST',
+									'/files.completeUploadExternal',
+									body,
+								);
+								responseData = responseData.files;
+							}
 						} else {
 							const fileContent = this.getNodeParameter('fileContent', i) as string;
 							body.content = fileContent;
