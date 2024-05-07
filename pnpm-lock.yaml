@@ -186,6 +186,15 @@ importers:
         specifier: 1.6.7
         version: 1.6.7(debug@3.2.7)
 
+  packages/@n8n/config:
+    dependencies:
+      reflect-metadata:
+        specifier: 0.2.2
+        version: 0.2.2
+      typedi:
+        specifier: 0.10.0
+        version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
+
   packages/@n8n/imap:
     dependencies:
       iconv-lite:
@@ -492,6 +501,9 @@ importers:
       '@n8n/client-oauth2':
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
+      '@n8n/config':
+        specifier: workspace:*
+        version: link:../@n8n/config
       '@n8n/localtunnel':
         specifier: 2.1.0
         version: 2.1.0
@@ -703,8 +715,8 @@ importers:
         specifier: 2.5.1
         version: 2.5.1
       reflect-metadata:
-        specifier: 0.2.1
-        version: 0.2.1
+        specifier: 0.2.2
+        version: 0.2.2
       replacestream:
         specifier: 4.0.3
         version: 4.0.3
@@ -6696,7 +6708,7 @@ packages:
       mkdirp: 2.1.3
       mysql2: 3.9.7
       pg: 8.11.3
-      reflect-metadata: 0.2.1
+      reflect-metadata: 0.2.2
       sha.js: 2.4.11
       sqlite3: 5.1.7
       tarn: 3.0.2
@@ -6784,7 +6796,7 @@ packages:
       mkdirp: 2.1.3
       pg: 8.11.3
       redis: 4.6.12
-      reflect-metadata: 0.2.1
+      reflect-metadata: 0.2.2
       sha.js: 2.4.11
       sqlite3: 5.1.7
       tarn: 3.0.2
@@ -21381,8 +21393,8 @@ packages:
       - react-native
     dev: true
 
-  /reflect-metadata@0.2.1:
-    resolution: {integrity: sha512-i5lLI6iw9AU3Uu4szRNPPEkomnkjRTaVt9hy/bn5g/oSzekBSMeLZblcjP74AW0vBabqERLLIrz+gR8QYR54Tw==}
+  /reflect-metadata@0.2.2:
+    resolution: {integrity: sha512-urBwgfrvVP/eAyXx4hluJivBKzuEbSQs9rKWCrCkbSxNv8mxPcUZKeuoF3Uy4mJl3Lwprp6yy5/39VWigZ4K6Q==}
     dev: false
 
   /reftools@1.1.9:

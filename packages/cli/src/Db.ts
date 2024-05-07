@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 import { Container } from 'typedi';
+import { GlobalConfig } from '@n8n/config';
 import type { EntityManager } from '@n8n/typeorm';
 import { DataSource as Connection } from '@n8n/typeorm';
 import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
-import config from '@/config';
 import { inTest } from '@/constants';
 import { wrapMigration } from '@db/utils/migrationHelpers';
 import type { Migration } from '@db/types';
@@ -49,7 +49,7 @@ export async function transaction<T>(fn: (entityManager: EntityManager) => Promi
 }
 
 export async function setSchema(conn: Connection) {
-	const schema = config.getEnv('database.postgresdb.schema');
+	const schema = Container.get(GlobalConfig).database.postgresdb.schema;
 	const searchPath = ['public'];
 	if (schema !== 'public') {
 		await conn.query(`CREATE SCHEMA IF NOT EXISTS ${schema}`);
@@ -61,7 +61,7 @@ export async function setSchema(conn: Connection) {
 export async function init(): Promise<void> {
 	if (connectionState.connected) return;
 
-	const dbType = config.getEnv('database.type');
+	const dbType = Container.get(GlobalConfig).database.type;
 	const connectionOptions = getConnectionOptions();
 
 	connection = new Connection(connectionOptions);

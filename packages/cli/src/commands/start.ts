@@ -9,6 +9,7 @@ import { pipeline } from 'stream/promises';
 import replaceStream from 'replacestream';
 import glob from 'fast-glob';
 import { jsonParse } from 'n8n-workflow';
+import { GlobalConfig } from '@n8n/config';
 
 import config from '@/config';
 import { ActiveExecutions } from '@/ActiveExecutions';
@@ -240,9 +241,10 @@ export class Start extends BaseCommand {
 			});
 		}
 
-		const dbType = config.getEnv('database.type');
+		const globalConfig = Container.get(GlobalConfig);
+		const dbType = globalConfig.database.type;
 		if (dbType === 'sqlite') {
-			const shouldRunVacuum = config.getEnv('database.sqlite.executeVacuumOnStartup');
+			const shouldRunVacuum = globalConfig.database.sqlite.executeVacuumOnStartup;
 			if (shouldRunVacuum) {
 				await Container.get(ExecutionRepository).query('VACUUM;');
 			}

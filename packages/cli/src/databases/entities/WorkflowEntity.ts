@@ -5,13 +5,12 @@ import type { IBinaryKeyData, INode, IPairedItemData } from 'n8n-workflow';
 
 import { Column, Entity, Index, JoinColumn, JoinTable, ManyToMany, OneToMany } from '@n8n/typeorm';
 
-import config from '@/config';
 import type { TagEntity } from './TagEntity';
 import type { SharedWorkflow } from './SharedWorkflow';
 import type { WorkflowStatistics } from './WorkflowStatistics';
 import type { WorkflowTagMapping } from './WorkflowTagMapping';
 import { objectRetriever, sqlite } from '../utils/transformers';
-import { WithTimestampsAndStringId, jsonColumnType } from './AbstractEntity';
+import { WithTimestampsAndStringId, dbType, jsonColumnType } from './AbstractEntity';
 import type { IWorkflowDb } from '@/Interfaces';
 
 @Entity()
@@ -78,7 +77,7 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	statistics: WorkflowStatistics[];
 
 	@Column({
-		type: config.getEnv('database.type') === 'sqlite' ? 'text' : 'json',
+		type: dbType === 'sqlite' ? 'text' : 'json',
 		nullable: true,
 		transformer: sqlite.jsonColumn,
 	})

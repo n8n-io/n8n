@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { Container } from 'typedi';
 import { Command } from '@oclif/core';
 import { ExitError } from '@oclif/core/lib/errors';
+import { GlobalConfig } from '@n8n/config';
 import { ApplicationError, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
 import { BinaryDataService, InstanceSettings, ObjectStoreService } from 'n8n-core';
 import type { AbstractServer } from '@/AbstractServer';
@@ -78,7 +79,8 @@ export abstract class BaseCommand extends Command {
 				await this.exitWithCrash('There was an error running database migrations', error),
 		);
 
-		const dbType = config.getEnv('database.type');
+		const globalConfig = Container.get(GlobalConfig);
+		const dbType = globalConfig.database.type;
 
 		if (['mysqldb', 'mariadb'].includes(dbType)) {
 			this.logger.warn(

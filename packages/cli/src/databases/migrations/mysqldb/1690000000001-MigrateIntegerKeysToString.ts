@@ -1,14 +1,12 @@
 import type { MigrationContext, IrreversibleMigration } from '@db/types';
-import config from '@/config';
 
 const COLLATION_57 = 'utf8mb4_general_ci';
 const COLLATION_80 = 'utf8mb4_0900_ai_ci';
 
 export class MigrateIntegerKeysToString1690000000001 implements IrreversibleMigration {
-	async up({ queryRunner, tablePrefix }: MigrationContext) {
-		const databaseType = config.get('database.type');
+	async up({ queryRunner, tablePrefix, dbType }: MigrationContext) {
 		let collation: string;
-		if (databaseType === 'mariadb') {
+		if (dbType === 'mariadb') {
 			collation = COLLATION_57;
 		} else {
 			const dbVersionQuery = (await queryRunner.query('SELECT @@version')) as  // eslint-disable-next-line @typescript-eslint/naming-convention

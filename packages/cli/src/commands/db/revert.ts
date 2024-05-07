@@ -1,4 +1,5 @@
 import { Command, Flags } from '@oclif/core';
+import { GlobalConfig } from '@n8n/config';
 import type { DataSourceOptions as ConnectionOptions } from '@n8n/typeorm';
 import { DataSource as Connection } from '@n8n/typeorm';
 import { Container } from 'typedi';
@@ -7,7 +8,6 @@ import { setSchema } from '@/Db';
 import { getConnectionOptions } from '@db/config';
 import type { Migration } from '@db/types';
 import { wrapMigration } from '@db/utils/migrationHelpers';
-import config from '@/config';
 
 // This function is extracted to make it easier to unit test it.
 // Mocking turned into a mess due to this command using typeorm and the db
@@ -17,7 +17,8 @@ export async function main(
 	logger: Logger,
 	DataSource: typeof Connection,
 ) {
-	const dbType = config.getEnv('database.type');
+	const globalConfig = Container.get(GlobalConfig);
+	const dbType = globalConfig.database.type;
 
 	(connectionOptions.migrations as Migration[]).forEach(wrapMigration);
 

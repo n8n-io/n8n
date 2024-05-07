@@ -34,6 +34,7 @@ import { License } from '@/License';
 import { EventsService } from '@/services/events.service';
 import { NodeTypes } from '@/NodeTypes';
 import { Telemetry } from '@/telemetry';
+import { GlobalConfig } from '@n8n/config';
 
 function userToPayload(user: User): {
 	userId: string;
@@ -54,6 +55,7 @@ function userToPayload(user: User): {
 @Service()
 export class InternalHooks {
 	constructor(
+		private readonly globalConfig: GlobalConfig,
 		private readonly telemetry: Telemetry,
 		private readonly nodeTypes: NodeTypes,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
@@ -88,7 +90,7 @@ export class InternalHooks {
 
 		const info = {
 			version_cli: N8N_VERSION,
-			db_type: config.getEnv('database.type'),
+			db_type: this.globalConfig.database.type,
 			n8n_version_notifications_enabled: config.getEnv('versionNotifications.enabled'),
 			n8n_disable_production_main_process: config.getEnv(
 				'endpoints.disableProductionWebhooksOnMainProcess',

@@ -1,3 +1,5 @@
+import { Container } from 'typedi';
+import { GlobalConfig } from '@n8n/config';
 import type { IRun, WorkflowExecuteMode } from 'n8n-workflow';
 import {
 	QueryFailedError,
@@ -18,10 +20,11 @@ import { OwnershipService } from '@/services/ownership.service';
 import { mockInstance } from '../../shared/mocking';
 
 describe('EventsService', () => {
-	const dbType = config.getEnv('database.type');
 	const fakeUser = mock<User>({ id: 'abcde-fghij' });
 	const ownershipService = mockInstance(OwnershipService);
 	const userService = mockInstance(UserService);
+	const globalConfig = Container.get(GlobalConfig);
+	const dbType = globalConfig.database.type;
 
 	const entityManager = mock<EntityManager>();
 	const dataSource = mock<DataSource>({
@@ -40,7 +43,7 @@ describe('EventsService', () => {
 
 	const eventsService = new EventsService(
 		mock(),
-		new WorkflowStatisticsRepository(dataSource),
+		new WorkflowStatisticsRepository(dataSource, globalConfig),
 		ownershipService,
 	);
 

@@ -43,6 +43,7 @@ import { ExecutionDataRepository } from './executionData.repository';
 import { Logger } from '@/Logger';
 import type { ExecutionSummaries } from '@/executions/execution.types';
 import { PostgresLiveRowsRetrievalError } from '@/errors/postgres-live-rows-retrieval.error';
+import { GlobalConfig } from '@n8n/config';
 
 export interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;
@@ -111,6 +112,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	constructor(
 		dataSource: DataSource,
+		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly executionDataRepository: ExecutionDataRepository,
 		private readonly binaryDataService: BinaryDataService,
@@ -453,7 +455,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			status: Not('crashed'),
 		};
 
-		const dbType = config.getEnv('database.type');
+		const dbType = this.globalConfig.database.type;
 		if (dbType === 'sqlite') {
 			// This is needed because of issue in TypeORM <> SQLite:
 			// https://github.com/typeorm/typeorm/issues/2286
@@ -667,7 +669,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async getLiveExecutionRowsOnPostgres() {
-		const tableName = `${config.getEnv('database.tablePrefix')}execution_entity`;
+		const tableName = `${this.globalConfig.database.tablePrefix}execution_entity`;
 
 		const pgSql = `SELECT n_live_tup as result FROM pg_stat_all_tables WHERE relname = '${tableName}';`;
 
