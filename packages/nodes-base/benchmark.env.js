@@ -18,8 +18,6 @@ class BenchmarkEnvironment extends NodeEnvironment {
 		await this.benchmark();
 
 		await super.teardown();
-
-		process.exit(0); // prevent actual test run
 	}
 
 	getVmContext() {
