@@ -7,12 +7,12 @@ class BenchmarkEnvironment extends NodeEnvironment {
 		super(config, context);
 		this.testPath = context.testPath;
 		this.docblockPragmas = context.docblockPragmas;
-		this.setupBenchmark();
 	}
 
 	async setup() {
-		console.log('[benchmarking] env setup');
 		await super.setup();
+		console.log('[benchmarking] env setup');
+		this.setupBenchmark();
 	}
 
 	async teardown() {
@@ -37,6 +37,7 @@ class BenchmarkEnvironment extends NodeEnvironment {
 		await this.bench.warmup();
 		console.log('[benchmarking] bench run');
 		await this.bench.run();
+		console.log(this.bench.results[0]);
 	}
 
 	async handleTestEvent(event) {
