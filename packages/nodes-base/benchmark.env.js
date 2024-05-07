@@ -43,7 +43,7 @@ class BenchmarkEnvironment extends NodeEnvironment {
 	async handleTestEvent(event) {
 		if (event.name === 'add_test') {
 			console.log('[benchmarking] add test', event.testName);
-			// this.bench.add(event.testName, event.fn);
+			this.bench.add(event.testName, event.fn);
 		}
 	}
 }
