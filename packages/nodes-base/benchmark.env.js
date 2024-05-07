@@ -1,6 +1,5 @@
 const NodeEnvironment = require('jest-environment-node').TestEnvironment;
 const { Bench } = require('tinybench');
-const { withCodSpeed } = require('@codspeed/tinybench-plugin');
 
 class BenchmarkEnvironment extends NodeEnvironment {
 	constructor(config, context) {
@@ -25,7 +24,7 @@ class BenchmarkEnvironment extends NodeEnvironment {
 	}
 
 	setupBenchmark() {
-		this.bench = withCodSpeed(new Bench());
+		this.bench = new Bench();
 	}
 
 	async benchmark() {
