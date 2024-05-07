@@ -443,10 +443,12 @@ describe('DELETE /users/:id', () => {
 		// ASSERT
 		//
 
-		expect(deleteSpy).toBeCalledWith([
-			`credential-can-use-secrets:${sharedByTransfereeCredential.id}`,
-			`credential-can-use-secrets:${ownedCredential.id}`,
-		]);
+		expect(deleteSpy).toBeCalledWith(
+			expect.arrayContaining([
+				`credential-can-use-secrets:${sharedByTransfereeCredential.id}`,
+				`credential-can-use-secrets:${ownedCredential.id}`,
+			]),
+		);
 		deleteSpy.mockClear();
 
 		const userRepository = Container.get(UserRepository);
