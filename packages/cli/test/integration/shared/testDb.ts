@@ -27,15 +27,25 @@ export async function init() {
 
 		config.set('database.postgresdb.database', testDbName);
 	} else if (dbType === 'mysqldb' || dbType === 'mariadb') {
+		console.time('connect');
 		const bootstrapMysql = await new Connection(getBootstrapDBOptions('mysqldb')).initialize();
+		console.timeEnd('connect');
+		console.time('create db');
 		await bootstrapMysql.query(`CREATE DATABASE ${testDbName} DEFAULT CHARACTER SET utf8mb4`);
+		console.timeEnd('create db');
+		console.time('destroy');
 		await bootstrapMysql.destroy();
+		console.timeEnd('destroy');
 
 		config.set('database.mysqldb.database', testDbName);
 	}
 
+	console.time('Db.init()');
 	await Db.init();
+	console.timeEnd('Db.init()');
+	console.time('Db.migrate()');
 	await Db.migrate();
+	console.timeEnd('Db.migrate()');
 }
 
 /**

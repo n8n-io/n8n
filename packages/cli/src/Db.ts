@@ -66,7 +66,9 @@ export async function init(): Promise<void> {
 
 	connection = new Connection(connectionOptions);
 	Container.set(Connection, connection);
+	console.time('connection.initialize()');
 	await connection.initialize();
+	console.timeEnd('connection.initialize()');
 
 	if (dbType === 'postgresdb') {
 		await setSchema(connection);
@@ -77,7 +79,9 @@ export async function init(): Promise<void> {
 
 export async function migrate() {
 	(connection.options.migrations as Migration[]).forEach(wrapMigration);
+	console.time('runMigrations');
 	await connection.runMigrations({ transaction: 'each' });
+	console.timeEnd('runMigrations');
 	connectionState.migrated = true;
 }
 
