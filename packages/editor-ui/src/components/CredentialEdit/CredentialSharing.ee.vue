@@ -20,16 +20,6 @@
 				@click:button="goToUpgrade"
 			/>
 		</div>
-		<div v-else-if="isDefaultUser">
-			<n8n-action-box
-				:heading="$locale.baseText('credentialEdit.credentialSharing.isDefaultUser.title')"
-				:description="
-					$locale.baseText('credentialEdit.credentialSharing.isDefaultUser.description')
-				"
-				:button-text="$locale.baseText('credentialEdit.credentialSharing.isDefaultUser.button')"
-				@click:button="goToUsersSettings"
-			/>
-		</div>
 		<div v-else>
 			<n8n-info-tip v-if="!credentialPermissions.share" :bold="false" class="mb-s">
 				{{
@@ -37,21 +27,6 @@
 						interpolate: { credentialOwnerName },
 					})
 				}}
-			</n8n-info-tip>
-			<n8n-info-tip
-				v-if="
-					credentialPermissions.read &&
-					credentialPermissions.share &&
-					!credentialPermissions.isOwner
-				"
-				class="mb-s"
-				:bold="false"
-			>
-				<i18n-t keypath="credentialEdit.credentialSharing.info.reader">
-					<template v-if="!isCredentialSharedWithCurrentUser" #notShared>
-						{{ $locale.baseText('credentialEdit.credentialSharing.info.notShared') }}
-					</template>
-				</i18n-t>
 			</n8n-info-tip>
 			<ProjectSharing
 				v-model="sharedWithProjects"
@@ -95,7 +70,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useUsageStore } from '@/stores/usage.store';
-import { EnterpriseEditionFeature, VIEWS } from '@/constants';
+import { EnterpriseEditionFeature } from '@/constants';
 import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import type {
@@ -164,9 +139,6 @@ export default defineComponent({
 				},
 			];
 		},
-		isDefaultUser(): boolean {
-			return this.usersStore.isDefaultUser;
-		},
 		isSharingEnabled(): boolean {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
 		},
@@ -213,10 +185,6 @@ export default defineComponent({
 		}
 	},
 	methods: {
-		goToUsersSettings() {
-			void this.$router.push({ name: VIEWS.USERS_SETTINGS });
-			this.modalBus.emit('close');
-		},
 		goToUpgrade() {
 			void this.uiStore.goToUpgrade('credential_sharing', 'upgrade-credentials-sharing');
 		},

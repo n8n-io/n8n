@@ -18,11 +18,6 @@
 					}}
 				</n8n-text>
 			</div>
-			<div v-else-if="isDefaultUser" :class="$style.container">
-				<n8n-text>
-					{{ $locale.baseText('workflows.shareModal.isDefaultUser.description') }}
-				</n8n-text>
-			</div>
 			<div v-else :class="$style.container">
 				<n8n-info-tip v-if="!workflowPermissions.share" :bold="false" class="mb-s">
 					{{
@@ -87,11 +82,6 @@
 							uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.button,
 						)
 					}}
-				</n8n-button>
-			</div>
-			<div v-else-if="isDefaultUser" :class="$style.actionButtons">
-				<n8n-button @click="goToUsersSettings">
-					{{ $locale.baseText('workflows.shareModal.isDefaultUser.button') }}
 				</n8n-button>
 			</div>
 			<enterprise-edition
@@ -200,9 +190,6 @@ export default defineComponent({
 			useWorkflowsEEStore,
 			useProjectsStore,
 		),
-		isDefaultUser(): boolean {
-			return this.usersStore.isDefaultUser;
-		},
 		isSharingEnabled(): boolean {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
 		},
