@@ -41,6 +41,7 @@ import {
 	NodeHelpers,
 	NodeConnectionType,
 	ApplicationError,
+	NodeExecutionOutput,
 } from 'n8n-workflow';
 import get from 'lodash/get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
@@ -1059,23 +1060,12 @@ export class WorkflowExecute {
 									this.abortController.signal,
 								);
 
-								if (runNodeData && runNodeData.data) {
-									const runData: INodeExecutionData[][] = [];
+								nodeSuccessData = runNodeData.data;
 
-									for (const entry of runNodeData.data) {
-										if (!Array.isArray(entry)) {
-											runData.push(entry.data);
-
-											if (entry.warnings) {
-												executionWarnings.push(...entry.warnings);
-											}
-										} else {
-											runData.push(entry);
-										}
-									}
-									nodeSuccessData = runData;
-								} else {
-									nodeSuccessData = null;
+								if (nodeSuccessData instanceof NodeExecutionOutput) {
+									// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+									const warnings: string[] = nodeSuccessData.getWarnings();
+									executionWarnings.push(...warnings);
 								}
 
 								if (nodeSuccessData && executionData.node.onError === 'continueErrorOutput') {

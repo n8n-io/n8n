@@ -392,7 +392,7 @@ export interface IGetExecuteTriggerFunctions {
 }
 
 export interface IRunNodeResponse {
-	data: Array<INodeExecutionData[] | NodeExecutionOutput> | null | undefined;
+	data: INodeExecutionData[][] | NodeExecutionOutput | null | undefined;
 	closeFunction?: CloseFunction;
 }
 export interface IGetExecuteFunctions {
@@ -1422,19 +1422,26 @@ export interface SupplyData {
 	closeFunction?: CloseFunction;
 }
 
-export type NodeExecutionOutput = {
-	data: INodeExecutionData[];
-	warnings?: string[];
-};
+export class NodeExecutionOutput extends Array {
+	private warnings: string[];
+
+	constructor(data: INodeExecutionData[][], warnings: string[] = []) {
+		super();
+		this.push(...data);
+		this.warnings = warnings;
+	}
+
+	public getWarnings(): string[] {
+		return this.warnings;
+	}
+}
 
 export interface INodeType {
 	description: INodeTypeDescription;
 	supplyData?(this: IAllExecuteFunctions, itemIndex: number): Promise<SupplyData>;
 	execute?(
 		this: IExecuteFunctions,
-	): Promise<
-		Array<INodeExecutionData[] | NodeExecutionOutput> | NodeExecutionWithMetadata[][] | null
-	>;
+	): Promise<INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null>;
 	poll?(this: IPollFunctions): Promise<INodeExecutionData[][] | null>;
 	trigger?(this: ITriggerFunctions): Promise<ITriggerResponse | undefined>;
 	webhook?(this: IWebhookFunctions): Promise<IWebhookResponseData>;
@@ -1751,8 +1758,18 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 		  }
 		| boolean;
 	extendsCredential?: string;
+	hints?: NodeHint[];
 	__loadOptionsMethods?: string[]; // only for validation during build
 }
+
+export type NodeHint = {
+	message: string;
+	// display: string | IDisplayOptions;
+	display: string;
+	type: 'warning' | 'error';
+	location: 'outputPanel' | 'inputPanel' | 'node';
+	when: 'beforeExecution' | 'afterExecution' | 'always';
+};
 
 export interface INodeHookDescription {
 	method: string;
