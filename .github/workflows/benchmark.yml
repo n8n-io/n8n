@@ -16,9 +16,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4.1.1
 
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
-
       - run: corepack enable
 
       - uses: actions/setup-node@v4.0.1
