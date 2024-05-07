@@ -2,17 +2,19 @@ const NodeEnvironment = require('jest-environment-node').TestEnvironment;
 const { Bench } = require('tinybench');
 const { withCodSpeed } = require('@codspeed/tinybench-plugin');
 
+console.log('[benchmarking] potatoes');
+
 class BenchmarkEnvironment extends NodeEnvironment {
 	constructor(config, context) {
 		super(config, context);
 		this.testPath = context.testPath;
 		this.docblockPragmas = context.docblockPragmas;
+		this.setupBenchmark();
 	}
 
 	async setup() {
-		await super.setup();
 		console.log('[benchmarking] env setup');
-		this.setupBenchmark();
+		await super.setup();
 	}
 
 	async teardown() {
