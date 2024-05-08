@@ -1,3 +1,4 @@
+import type { Component, Ref } from 'vue';
 export interface ChatOptions {
 	webhookUrl: string;
 	webhookConfig?: {
@@ -6,6 +7,7 @@ export interface ChatOptions {
 	};
 	target?: string | Element;
 	mode?: 'window' | 'fullscreen';
+	showWindowCloseButton?: boolean;
 	showWelcomeScreen?: boolean;
 	loadPreviousSession?: boolean;
 	chatInputKey?: string;
@@ -21,8 +23,11 @@ export interface ChatOptions {
 			footer: string;
 			getStarted: string;
 			inputPlaceholder: string;
+			closeButtonTooltip: string;
 			[message: string]: string;
 		}
 	>;
 	theme?: {};
+	messageComponents?: Record<string, Component>;
+	disabled?: Ref<boolean>;
 }
