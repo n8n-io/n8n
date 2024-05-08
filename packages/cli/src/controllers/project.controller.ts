@@ -36,6 +36,11 @@ export class ProjectController {
 		return await this.projectsService.getAccessibleProjects(req.user);
 	}
 
+	@Get('/count')
+	async getProjectCounts() {
+		return await this.projectsService.getProjectCounts();
+	}
+
 	@Post('/')
 	@GlobalScope('project:create')
 	@Licensed('feat:advancedPermissions')

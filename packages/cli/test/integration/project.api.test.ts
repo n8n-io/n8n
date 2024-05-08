@@ -131,6 +131,25 @@ describe('GET /projects/', () => {
 	});
 });
 
+describe('GET /projects/count', () => {
+	test('should return correct number of projects', async () => {
+		const [firstUser] = await Promise.all([
+			createUser(),
+			createUser(),
+			createUser(),
+			createUser(),
+			createTeamProject(),
+			createTeamProject(),
+			createTeamProject(),
+		]);
+
+		const resp = await testServer.authAgentFor(firstUser).get('/projects/count');
+
+		expect(resp.body.data.personal).toBe(4);
+		expect(resp.body.data.team).toBe(3);
+	});
+});
+
 describe('GET /projects/my-projects', () => {
 	test('member should get all projects they are apart of', async () => {
 		//
