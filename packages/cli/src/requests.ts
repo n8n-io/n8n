@@ -8,7 +8,6 @@ import type {
 	INodeParameters,
 	INodeTypeNameVersion,
 	IUser,
-	NodeError,
 } from 'n8n-workflow';
 
 import { Expose } from 'class-transformer';
@@ -156,12 +155,7 @@ export function hasSharing(
 // ----------------------------------
 
 export declare namespace AIRequest {
-	export type DebugError = AuthenticatedRequest<{}, {}, AIDebugErrorPayload>;
 	export type GenerateCurl = AuthenticatedRequest<{}, {}, AIGenerateCurlPayload>;
-}
-
-export interface AIDebugErrorPayload {
-	error: NodeError;
 }
 
 export interface AIGenerateCurlPayload {

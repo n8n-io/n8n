@@ -1,9 +1,11 @@
 name: Chromatic
 
 on:
-  schedule:
-    - cron: '0 0 * * *'
   workflow_dispatch:
+  pull_request:
+    paths:
+      - packages/design-system/**
+      - .github/workflows/chromatic.yml
 
 jobs:
   chromatic:

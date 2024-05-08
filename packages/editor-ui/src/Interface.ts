@@ -253,6 +253,12 @@ export interface IWorkflowToShare extends IWorkflowDataUpdate {
 	meta?: WorkflowMetadata;
 }
 
+export interface NewWorkflowResponse {
+	name: string;
+	onboardingFlowEnabled?: boolean;
+	defaultSettings: IWorkflowSettings;
+}
+
 export interface IWorkflowTemplateNode
 	extends Pick<INodeUi, 'name' | 'type' | 'position' | 'parameters' | 'typeVersion' | 'webhookId'> {
 	// The credentials in a template workflow have a different type than in a regular workflow
