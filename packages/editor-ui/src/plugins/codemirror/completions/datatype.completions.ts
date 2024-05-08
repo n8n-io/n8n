@@ -22,8 +22,10 @@ import {
 	LUXON_SECTIONS,
 	METHODS_SECTION,
 	OBJECT_RECOMMENDED_OPTIONS,
+	OTHER_METHODS_SECTION,
 	OTHER_SECTION,
 	PROPERTIES_SECTION,
+	RECOMMENDED_METHODS_SECTION,
 	RECOMMENDED_SECTION,
 	STRING_RECOMMENDED_OPTIONS,
 	STRING_SECTIONS,
@@ -377,7 +379,9 @@ const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
 			...extensions({ typeName: 'object' }),
 		]),
 		recommended: OBJECT_RECOMMENDED_OPTIONS,
+		recommendedSection: RECOMMENDED_METHODS_SECTION,
 		propSection: FIELDS_SECTION,
+		methodsSection: OTHER_METHODS_SECTION,
 		excludeRecommended: true,
 	});
 };

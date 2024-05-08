@@ -13,6 +13,11 @@ export const RECOMMENDED_SECTION: CompletionSection = withSectionHeader({
 	rank: 0,
 });
 
+export const RECOMMENDED_METHODS_SECTION: CompletionSection = withSectionHeader({
+	name: i18n.baseText('codeNodeEditor.completer.section.recommendedMethods'),
+	rank: 0,
+});
+
 export const PREVIOUS_NODES_SECTION: CompletionSection = withSectionHeader({
 	name: i18n.baseText('codeNodeEditor.completer.section.prevNodes'),
 	rank: 1,
@@ -31,6 +36,11 @@ export const METHODS_SECTION: CompletionSection = withSectionHeader({
 export const METADATA_SECTION: CompletionSection = withSectionHeader({
 	name: i18n.baseText('codeNodeEditor.completer.section.metadata'),
 	rank: 4,
+});
+
+export const OTHER_METHODS_SECTION: CompletionSection = withSectionHeader({
+	name: i18n.baseText('codeNodeEditor.completer.section.otherMethods'),
+	rank: 100,
 });
 
 export const OTHER_SECTION: CompletionSection = withSectionHeader({
