@@ -45,16 +45,6 @@ const isLoadingErrorDebugging = ref(false);
 const errorDebuggingMessage = ref('');
 const errorDebuggingFeedback = ref<'positive' | 'negative' | undefined>();
 
-const isErrorDebuggingEnabled = computed(() => {
-	return aiStore.isErrorDebuggingEnabled;
-});
-
-const showErrorDebuggingButton = computed(() => {
-	return (
-		isErrorDebuggingEnabled.value && !(isLoadingErrorDebugging.value || errorDebuggingMessage.value)
-	);
-});
-
 const displayCause = computed(() => {
 	return JSON.stringify(props.error.cause).length < MAX_DISPLAY_DATA_SIZE;
 });
@@ -428,17 +418,9 @@ function copySuccess() {
 	<div class="node-error-view">
 		<div class="node-error-view__header">
 			<div class="node-error-view__header-message">
-				<div :class="showErrorDebuggingButton ? 'mt-4xs' : ''">
+				<div>
 					{{ getErrorMessage() }}
 				</div>
-				<N8nButton
-					v-if="showErrorDebuggingButton"
-					type="tertiary"
-					size="small"
-					@click="onDebugError"
-				>
-					{{ i18n.baseText('nodeErrorView.debugError.button') }}
-				</N8nButton>
 			</div>
 			<div
 				v-if="error.description || error.context?.descriptionKey"
