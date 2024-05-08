@@ -2,7 +2,6 @@ import { Service } from 'typedi';
 import config from '@/config';
 import type { INodeType, N8nAIProviderType, NodeError } from 'n8n-workflow';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
-import { debugErrorPromptTemplate } from '@/services/ai/prompts/debugError';
 import type { BaseMessageLike } from '@langchain/core/messages';
 import { AIProviderOpenAI } from '@/services/ai/providers/openai';
 import type { BaseChatModelCallOptions } from '@langchain/core/language_models/chat_models';
@@ -70,22 +69,6 @@ export class AIService {
 		}
 
 		return await this.provider.invoke(messages, options);
-	}
-
-	async debugError(error: NodeError, nodeType?: INodeType) {
-		this.checkRequirements();
-
-		const chain = debugErrorPromptTemplate.pipe(this.provider.model);
-		const result = await chain.invoke({
-			nodeType: nodeType?.description.displayName ?? 'n8n Node',
-			error: JSON.stringify(error),
-			properties: JSON.stringify(
-				summarizeNodeTypeProperties(nodeType?.description.properties ?? []),
-			),
-			documentationUrl: nodeType?.description.documentationUrl ?? N8N_DOCS_URL,
-		});
-
-		return this.provider.mapResponse(result);
 	}
 
 	validateCurl(result: { curl: string }) {
