@@ -36,6 +36,7 @@ describe('Test Read Binary File Node', () => {
 										directory: __dirname,
 										fileName: 'image.jpg',
 										fileSize: '1.04 kB',
+										fileSizeRaw: 1045,
 									},
 								},
 							},
