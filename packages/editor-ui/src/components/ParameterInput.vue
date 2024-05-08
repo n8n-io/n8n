@@ -1187,6 +1187,10 @@ function onUpdateTextInput(value: string) {
 }
 
 function valueChanged(value: NodeParameterValueType | {} | Date) {
+	if (remoteParameterOptionsLoading.value) {
+		return;
+	}
+
 	if (props.parameter.name === 'nodeCredentialType') {
 		activeCredentialType.value = value as string;
 	}
