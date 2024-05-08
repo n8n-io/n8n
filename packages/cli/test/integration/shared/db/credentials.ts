@@ -9,14 +9,16 @@ import type { CredentialPayload } from '../types';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import type { Project } from '@/databases/entities/Project';
 
-async function encryptCredentialData(credential: CredentialsEntity) {
+export async function encryptCredentialData(
+	credential: CredentialsEntity,
+): Promise<ICredentialsDb> {
 	const { createCredentialsFromCredentialsEntity } = await import('@/CredentialsHelper');
 	const coreCredential = createCredentialsFromCredentialsEntity(credential, true);
 
 	// @ts-ignore
 	coreCredential.setData(credential.data);
 
-	return coreCredential.getDataToSave() as ICredentialsDb;
+	return Object.assign(credential, coreCredential.getDataToSave());
 }
 
 const emptyAttributes = {
@@ -60,9 +62,7 @@ export async function saveCredential(
 
 	Object.assign(newCredential, credentialPayload);
 
-	const encryptedData = await encryptCredentialData(newCredential);
-
-	Object.assign(newCredential, encryptedData);
+	await encryptCredentialData(newCredential);
 
 	const savedCredential = await Container.get(CredentialsRepository).save(newCredential);
 

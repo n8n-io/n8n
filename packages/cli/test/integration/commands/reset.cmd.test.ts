@@ -11,7 +11,7 @@ import { createMember, createUser } from '../shared/db/users';
 import { createWorkflow } from '../shared/db/workflows';
 import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
 import { getPersonalProject } from '../shared/db/projects';
-import { saveCredential } from '../shared/db/credentials';
+import { encryptCredentialData, saveCredential } from '../shared/db/credentials';
 import { randomCredentialPayload } from '../shared/random';
 import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
@@ -53,7 +53,7 @@ test('user-management:reset should reset DB to default user state', async () => 
 
 	// dangling credentials should also be re-owned
 	const danglingCredential = await Container.get(CredentialsRepository).save(
-		Object.assign(new CredentialsEntity(), randomCredentialPayload()),
+		await encryptCredentialData(Object.assign(new CredentialsEntity(), randomCredentialPayload())),
 	);
 
 	// mark instance as set up
