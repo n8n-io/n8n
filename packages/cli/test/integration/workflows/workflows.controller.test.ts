@@ -462,7 +462,7 @@ describe('GET /workflows', () => {
 		});
 
 		const teamProject = await createTeamProject(undefined, member1);
-		await linkUserToProject(member2, teamProject, 'project:viewer');
+		await linkUserToProject(member2, teamProject, 'project:editor');
 
 		const credential = await saveCredential(randomCredentialPayload(), {
 			user: owner,
@@ -528,7 +528,12 @@ describe('GET /workflows', () => {
 
 			// Team workflow
 			expect(wf1.id).toBe(savedWorkflow1.id);
-			expect(wf1.scopes).toEqual(['workflow:read']);
+			expect(wf1.scopes).toEqual([
+				'workflow:delete',
+				'workflow:execute',
+				'workflow:read',
+				'workflow:update',
+			]);
 
 			// Shared workflow
 			expect(wf2.id).toBe(savedWorkflow2.id);

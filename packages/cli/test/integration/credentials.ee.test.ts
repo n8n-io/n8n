@@ -196,7 +196,7 @@ describe('GET /credentials', () => {
 		// ARRANGE
 		//
 		const project1 = await projectService.createTeamProject('Team Project', member);
-		await projectService.addUser(project1.id, anotherMember.id, 'project:viewer');
+		await projectService.addUser(project1.id, anotherMember.id, 'project:editor');
 		// anotherMember should see this one
 		const credential1 = await saveCredential(randomCredentialPayload(), { project: project1 });
 

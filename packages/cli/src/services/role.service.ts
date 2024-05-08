@@ -13,7 +13,6 @@ import {
 import {
 	PERSONAL_PROJECT_OWNER_SCOPES,
 	PROJECT_EDITOR_SCOPES,
-	PROJECT_VIEWER_SCOPES,
 	REGULAR_PROJECT_ADMIN_SCOPES,
 } from '@/permissions/project-roles';
 import {
@@ -40,7 +39,6 @@ const PROJECT_SCOPE_MAP: Record<ProjectRole, Scope[]> = {
 	'project:admin': REGULAR_PROJECT_ADMIN_SCOPES,
 	'project:personalOwner': PERSONAL_PROJECT_OWNER_SCOPES,
 	'project:editor': PROJECT_EDITOR_SCOPES,
-	'project:viewer': PROJECT_VIEWER_SCOPES,
 };
 
 const CREDENTIALS_SHARING_SCOPE_MAP: Record<CredentialSharingRole, Scope[]> = {
@@ -51,9 +49,6 @@ const CREDENTIALS_SHARING_SCOPE_MAP: Record<CredentialSharingRole, Scope[]> = {
 const WORKFLOW_SHARING_SCOPE_MAP: Record<WorkflowSharingRole, Scope[]> = {
 	'workflow:owner': WORKFLOW_SHARING_OWNER_SCOPES,
 	'workflow:editor': WORKFLOW_SHARING_EDITOR_SCOPES,
-
-	// Not sure why this exists?
-	'workflow:user': [],
 };
 
 interface AllMaps {
@@ -92,12 +87,10 @@ const ROLE_NAMES: Record<
 	'project:personalOwner': 'Project Owner',
 	'project:admin': 'Project Admin',
 	'project:editor': 'Project Editor',
-	'project:viewer': 'Project Viewer',
 	'credential:user': 'Credential User',
 	'credential:owner': 'Credential Owner',
 	'workflow:owner': 'Workflow Owner',
 	'workflow:editor': 'Workflow Editor',
-	'workflow:user': 'Workflow User',
 };
 
 @Service()
@@ -237,8 +230,6 @@ export class RoleService {
 				return this.license.isProjectRoleAdminLicensed();
 			case 'project:editor':
 				return this.license.isProjectRoleEditorLicensed();
-			case 'project:viewer':
-				return this.license.isProjectRoleViewerLicensed();
 			case 'global:admin':
 				return this.license.isAdvancedPermissionsLicensed();
 			default:

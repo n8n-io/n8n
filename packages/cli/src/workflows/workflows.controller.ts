@@ -418,7 +418,7 @@ export class WorkflowsController {
 		let newShareeIds: string[] = [];
 		await Db.transaction(async (trx) => {
 			const currentPersonalProjectIDs = workflow.shared
-				.filter((sw) => sw.role === 'workflow:user' || sw.role === 'workflow:editor')
+				.filter((sw) => sw.role === 'workflow:editor')
 				.map((sw) => sw.projectId);
 			const newPersonalProjectIDs = shareWithIds;
 

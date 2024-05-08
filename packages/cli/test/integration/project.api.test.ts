@@ -243,7 +243,7 @@ describe('GET /projects/my-projects', () => {
 			createTeamProject(),
 		]);
 
-		await linkUserToProject(ownerUser, teamProject3, 'project:viewer');
+		await linkUserToProject(ownerUser, teamProject3, 'project:editor');
 
 		const [ownerProject, personalProject1, personalProject2, personalProject3] = await Promise.all([
 			getPersonalProject(ownerUser),
@@ -314,7 +314,7 @@ describe('GET /projects/my-projects', () => {
 			[
 				teamProject3,
 				{
-					role: 'project:viewer',
+					role: 'project:editor',
 					scopes: [
 						'project:list',
 						'project:create',
@@ -578,7 +578,7 @@ describe('PATCH /projects/:projectId', () => {
 	});
 
 	test('should not add from a project adding user with an unlicensed role', async () => {
-		testServer.license.disable('feat:projectRole:viewer');
+		testServer.license.disable('feat:projectRole:editor');
 		const [testUser1, testUser2, testUser3] = await Promise.all([
 			createUser(),
 			createUser(),
@@ -586,7 +586,7 @@ describe('PATCH /projects/:projectId', () => {
 		]);
 		const teamProject = await createTeamProject(undefined, testUser2);
 
-		await linkUserToProject(testUser1, teamProject, 'project:editor');
+		await linkUserToProject(testUser1, teamProject, 'project:admin');
 
 		const memberAgent = testServer.authAgentFor(testUser2);
 
@@ -595,7 +595,6 @@ describe('PATCH /projects/:projectId', () => {
 			relations: [
 				{ userId: testUser2.id, role: 'project:admin' },
 				{ userId: testUser1.id, role: 'project:editor' },
-				{ userId: testUser3.id, role: 'project:viewer' },
 			] as Array<{
 				userId: string;
 				role: ProjectRole;
@@ -608,13 +607,13 @@ describe('PATCH /projects/:projectId', () => {
 
 		expect(tpRelations.find((p) => p.userId === testUser1.id)).not.toBeUndefined();
 		expect(tpRelations.find((p) => p.userId === testUser2.id)).not.toBeUndefined();
-		expect(tpRelations.find((p) => p.userId === testUser1.id)?.role).toBe('project:editor');
+		expect(tpRelations.find((p) => p.userId === testUser1.id)?.role).toBe('project:admin');
 		expect(tpRelations.find((p) => p.userId === testUser2.id)?.role).toBe('project:admin');
 		expect(tpRelations.find((p) => p.userId === testUser3.id)).toBeUndefined();
 	});
 
 	test("should not edit a relation of a project when changing a user's role to an unlicensed role", async () => {
-		testServer.license.disable('feat:projectRole:viewer');
+		testServer.license.disable('feat:projectRole:editor');
 		const [testUser1, testUser2, testUser3] = await Promise.all([
 			createUser(),
 			createUser(),
@@ -622,8 +621,8 @@ describe('PATCH /projects/:projectId', () => {
 		]);
 		const teamProject = await createTeamProject(undefined, testUser2);
 
-		await linkUserToProject(testUser1, teamProject, 'project:editor');
-		await linkUserToProject(testUser3, teamProject, 'project:editor');
+		await linkUserToProject(testUser1, teamProject, 'project:admin');
+		await linkUserToProject(testUser3, teamProject, 'project:admin');
 
 		const memberAgent = testServer.authAgentFor(testUser2);
 
@@ -632,7 +631,7 @@ describe('PATCH /projects/:projectId', () => {
 			relations: [
 				{ userId: testUser2.id, role: 'project:admin' },
 				{ userId: testUser1.id, role: 'project:editor' },
-				{ userId: testUser3.id, role: 'project:viewer' },
+				{ userId: testUser3.id, role: 'project:editor' },
 			] as Array<{
 				userId: string;
 				role: ProjectRole;
@@ -645,9 +644,9 @@ describe('PATCH /projects/:projectId', () => {
 
 		expect(tpRelations.find((p) => p.userId === testUser1.id)).not.toBeUndefined();
 		expect(tpRelations.find((p) => p.userId === testUser2.id)).not.toBeUndefined();
-		expect(tpRelations.find((p) => p.userId === testUser1.id)?.role).toBe('project:editor');
+		expect(tpRelations.find((p) => p.userId === testUser1.id)?.role).toBe('project:admin');
 		expect(tpRelations.find((p) => p.userId === testUser2.id)?.role).toBe('project:admin');
-		expect(tpRelations.find((p) => p.userId === testUser3.id)?.role).toBe('project:editor');
+		expect(tpRelations.find((p) => p.userId === testUser3.id)?.role).toBe('project:admin');
 	});
 
 	test("should  edit a relation of a project when changing a user's role to an licensed role but unlicensed roles are present", async () => {
@@ -724,7 +723,7 @@ describe('GET /project/:projectId', () => {
 			createTeamProject(),
 		]);
 
-		await linkUserToProject(testUser1, teamProject1, 'project:viewer');
+		await linkUserToProject(testUser1, teamProject1, 'project:editor');
 		await linkUserToProject(ownerUser, teamProject2, 'project:editor');
 		await linkUserToProject(testUser2, teamProject2, 'project:editor');
 
@@ -742,7 +741,7 @@ describe('GET /project/:projectId', () => {
 			email: testUser1.email,
 			firstName: testUser1.firstName,
 			lastName: testUser1.lastName,
-			role: 'project:viewer',
+			role: 'project:editor',
 		});
 		expect(resp.body.data.relations).toContainEqual({
 			id: testUser2.id,
