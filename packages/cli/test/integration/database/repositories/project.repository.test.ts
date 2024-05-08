@@ -1,9 +1,11 @@
 import Container from 'typedi';
-import { createOwner } from '../../shared/db/users';
+import { createMember, createOwner } from '../../shared/db/users';
 import * as testDb from '../../shared/testDb';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { EntityNotFoundError } from '@n8n/typeorm';
 import { createTeamProject } from '../../shared/db/projects';
+import { AuthIdentity } from '@/databases/entities/AuthIdentity';
+import { UserRepository } from '@/databases/repositories/user.repository';
 
 describe('ProjectRepository', () => {
 	beforeAll(async () => {
@@ -111,6 +113,43 @@ describe('ProjectRepository', () => {
 			// ASSERT
 			//
 			await expect(promise).rejects.toThrowError(EntityNotFoundError);
+		});
+	});
+
+	describe('update personal project name', () => {
+		// TypeORM enters an infinite loop if you create entities with circular
+		// references and pass this to the `Repository.create` function.
+		//
+		// This actually happened in combination with SAML.
+		// `samlHelpers.updateUserFromSamlAttributes` and
+		// `samlHelpers.createUserFromSamlAttributes` would create a User and an
+		// AuthIdentity and assign them to one another. Then it would call
+		// `UserRepository.save(user)`. This would then call the UserSubscriber in
+		// `database/entities/Project.ts` which would pass the circular User into
+		// `UserRepository.create` and cause the infinite loop.
+		//
+		// This test simulates that behavior and makes sure the UserSubscriber
+		// checks if the entity is already a user and does not pass it into
+		// `UserRepository.create` in that case.
+		test('do not pass a User instance with circular references into `UserRepository.create`', async () => {
+			//
+			// ARRANGE
+			//
+			const user = await createMember();
+
+			const authIdentity = new AuthIdentity();
+			authIdentity.providerId = user.email;
+			authIdentity.providerType = 'saml';
+			authIdentity.user = user;
+
+			user.firstName = `updated ${user.firstName}`;
+			user.authIdentities = [];
+			user.authIdentities.push(authIdentity);
+
+			//
+			// ACT & ASSERT
+			//
+			await expect(Container.get(UserRepository).save(user)).resolves.not.toThrow();
 		});
 	});
 });

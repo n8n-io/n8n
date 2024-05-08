@@ -50,9 +50,10 @@ export class UserSubscriber implements EntitySubscriberInterface<User> {
 					fields.includes('email')
 				) {
 					const oldUser = event.databaseEntity;
-					const name = Container.get(UserRepository)
-						.create(newUserData)
-						.createPersonalProjectName();
+					const name =
+						newUserData instanceof User
+							? newUserData.createPersonalProjectName()
+							: Container.get(UserRepository).create(newUserData).createPersonalProjectName();
 
 					const project = await Container.get(ProjectRepository).getPersonalProjectForUser(
 						oldUser.id,
