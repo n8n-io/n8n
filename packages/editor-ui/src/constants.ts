@@ -50,6 +50,7 @@ export const ONBOARDING_CALL_SIGNUP_MODAL_KEY = 'onboardingCallSignup';
 export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
 export const COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY = 'communityPackageManageConfirm';
 export const IMPORT_CURL_MODAL_KEY = 'importCurl';
+export const GENERATE_CURL_MODAL_KEY = 'generateCurl';
 export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
 export const SOURCE_CONTROL_PUSH_MODAL_KEY = 'sourceControlPush';
 export const SOURCE_CONTROL_PULL_MODAL_KEY = 'sourceControlPull';
@@ -646,7 +647,17 @@ export const ASK_AI_EXPERIMENT = {
 
 export const TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT = '017_template_credential_setup_v2';
 
-export const EXPERIMENTS_TO_TRACK = [ASK_AI_EXPERIMENT.name, TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT];
+export const AI_ASSISTANT_EXPERIMENT = {
+	name: '19_ai_assistant_experiment',
+	control: 'control',
+	variant: 'variant',
+};
+
+export const EXPERIMENTS_TO_TRACK = [
+	ASK_AI_EXPERIMENT.name,
+	TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT,
+	AI_ASSISTANT_EXPERIMENT.name,
+];
 
 export const MFA_AUTHENTICATION_REQUIRED_ERROR_CODE = 998;
 
@@ -798,3 +809,10 @@ export const INSECURE_CONNECTION_WARNING = `
 	</ul>
 </div>
 </body>`;
+
+export const AI_ASSISTANT_EXPERIMENT_URLS = {
+	FEEDBACK_FORM: 'https://chat.arro.co/to4639rATEMV',
+	SIGN_UP: 'https://adore.app.n8n.cloud/form/4704cce3-4cef-4dc8-b67f-8a510c5d561a',
+};
+
+export const AI_ASSISTANT_LOCAL_STORAGE_KEY = 'N8N_AI_ASSISTANT_EXPERIMENT';

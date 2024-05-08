@@ -66,14 +66,15 @@ import { defineComponent } from 'vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import CredentialCard from '@/components/CredentialCard.vue';
 import type { ICredentialType } from 'n8n-workflow';
-import { CREDENTIAL_SELECT_MODAL_KEY } from '@/constants';
+import { CREDENTIAL_SELECT_MODAL_KEY, EnterpriseEditionFeature } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import useEnvironmentsStore from '@/stores/environments.ee.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import ProjectTabs from '@/features/projects/components/ProjectTabs.vue';
 
 type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
@@ -148,6 +149,10 @@ export default defineComponent({
 			});
 		},
 		async initialize() {
+			const isVarsEnabled = useSettingsStore().isEnterpriseFeatureEnabled(
+				EnterpriseEditionFeature.Variables,
+			);
+
 			const loadPromises = [
 				this.credentialsStore.fetchAllCredentials(
 					this.$route?.params?.projectId as string | undefined,
@@ -155,6 +160,7 @@ export default defineComponent({
 				this.credentialsStore.fetchCredentialTypes(false),
 				this.externalSecretsStore.fetchAllSecrets(),
 				this.nodeTypesStore.loadNodeTypesIfNotLoaded(),
+				isVarsEnabled ? useEnvironmentsStore().fetchAllVariables() : Promise.resolve(), // for expression resolution
 			];
 
 			await Promise.all(loadPromises);

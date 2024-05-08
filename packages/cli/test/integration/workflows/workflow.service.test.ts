@@ -1,6 +1,6 @@
 import Container from 'typedi';
 import { mock } from 'jest-mock-extended';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
@@ -14,7 +14,7 @@ import { createOwner } from '../shared/db/users';
 import { createWorkflow } from '../shared/db/workflows';
 
 let workflowService: WorkflowService;
-const activeWorkflowRunner = mockInstance(ActiveWorkflowRunner);
+const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 const orchestrationService = mockInstance(OrchestrationService);
 mockInstance(MessageEventBus);
 mockInstance(Telemetry);
@@ -33,7 +33,7 @@ beforeAll(async () => {
 		mock(),
 		orchestrationService,
 		mock(),
-		activeWorkflowRunner,
+		activeWorkflowManager,
 	);
 });
 
@@ -51,8 +51,8 @@ describe('update()', () => {
 		const owner = await createOwner();
 		const workflow = await createWorkflow({ active: true }, owner);
 
-		const removeSpy = jest.spyOn(activeWorkflowRunner, 'remove');
-		const addSpy = jest.spyOn(activeWorkflowRunner, 'add');
+		const removeSpy = jest.spyOn(activeWorkflowManager, 'remove');
+		const addSpy = jest.spyOn(activeWorkflowManager, 'add');
 
 		await workflowService.update(owner, workflow, workflow.id);
 
@@ -70,8 +70,8 @@ describe('update()', () => {
 		const owner = await createOwner();
 		const workflow = await createWorkflow({ active: true }, owner);
 
-		const removeSpy = jest.spyOn(activeWorkflowRunner, 'remove');
-		const addSpy = jest.spyOn(activeWorkflowRunner, 'add');
+		const removeSpy = jest.spyOn(activeWorkflowManager, 'remove');
+		const addSpy = jest.spyOn(activeWorkflowManager, 'add');
 
 		workflow.active = false;
 		await workflowService.update(owner, workflow, workflow.id);

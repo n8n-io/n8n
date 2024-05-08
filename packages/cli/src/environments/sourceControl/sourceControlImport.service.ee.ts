@@ -17,7 +17,7 @@ import type { Variables } from '@db/entities/Variables';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { WorkflowTagMapping } from '@db/entities/WorkflowTagMapping';
 import type { TagEntity } from '@db/entities/TagEntity';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import { In } from '@n8n/typeorm';
 import { isUniqueConstraintError } from '@/ResponseHelper';
 import type { SourceControlWorkflowVersionId } from './types/sourceControlWorkflowVersionId';
@@ -49,7 +49,7 @@ export class SourceControlImportService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly variablesService: VariablesService,
-		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
+		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly tagRepository: TagRepository,
 		instanceSettings: InstanceSettings,
 	) {
@@ -209,7 +209,7 @@ export class SourceControlImportService {
 	public async importWorkflowFromWorkFolder(candidates: SourceControlledFile[], userId: string) {
 		const personalProject =
 			await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(userId);
-		const workflowRunner = this.activeWorkflowRunner;
+		const workflowManager = this.activeWorkflowManager;
 		const candidateIds = candidates.map((c) => c.id);
 		const existingWorkflows = await Container.get(WorkflowRepository).findByIds(candidateIds, {
 			fields: ['id', 'name', 'versionId', 'active'],
@@ -263,10 +263,10 @@ export class SourceControlImportService {
 					try {
 						// remove active pre-import workflow
 						this.logger.debug(`Deactivating workflow id ${existingWorkflow.id}`);
-						await workflowRunner.remove(existingWorkflow.id);
+						await workflowManager.remove(existingWorkflow.id);
 						// try activating the imported workflow
 						this.logger.debug(`Reactivating workflow id ${existingWorkflow.id}`);
-						await workflowRunner.add(existingWorkflow.id, 'activate');
+						await workflowManager.add(existingWorkflow.id, 'activate');
 						// update the versionId of the workflow to match the imported workflow
 					} catch (error) {
 						this.logger.error(`Failed to activate workflow ${existingWorkflow.id}`, error as Error);

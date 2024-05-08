@@ -16,9 +16,9 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import type { Route, RouteLocationRaw } from 'vue-router';
+import type { RouteLocation, RouteLocationRaw } from 'vue-router';
+import { useRouter } from 'vue-router';
 import { mapStores } from 'pinia';
-import { pushConnection } from '@/mixins/pushConnection';
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
 import TabBar from '@/components/MainHeader/TabBar.vue';
 import {
@@ -33,6 +33,7 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExecutionsStore } from '@/stores/executions.store';
+import { usePushConnection } from '@/composables/usePushConnection';
 
 export default defineComponent({
 	name: 'MainHeader',
@@ -40,11 +41,12 @@ export default defineComponent({
 		WorkflowDetails,
 		TabBar,
 	},
-	mixins: [pushConnection],
-	setup(props, ctx) {
+	setup() {
+		const router = useRouter();
+		const pushConnection = usePushConnection({ router });
+
 		return {
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...pushConnection.setup?.(props, ctx),
+			pushConnection,
 		};
 	},
 	data() {
@@ -99,12 +101,18 @@ export default defineComponent({
 			this.syncTabsWithRoute(to, from);
 		},
 	},
+	beforeMount() {
+		this.pushConnection.initialize();
+	},
 	mounted() {
 		this.dirtyState = this.uiStore.stateIsDirty;
 		this.syncTabsWithRoute(this.$route);
 	},
+	beforeUnmount() {
+		this.pushConnection.terminate();
+	},
 	methods: {
-		syncTabsWithRoute(to: Route, from?: Route): void {
+		syncTabsWithRoute(to: RouteLocation, from?: RouteLocation): void {
 			if (
 				to.name === VIEWS.EXECUTION_HOME ||
 				to.name === VIEWS.WORKFLOW_EXECUTIONS ||

@@ -2,7 +2,8 @@ import { Request } from 'express';
 import { v4 as uuid } from 'uuid';
 import config from '@/config';
 import { SettingsRepository } from '@db/repositories/settings.repository';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { UserRepository } from '@db/repositories/user.repository';
+import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { License } from '@/License';
 import { LICENSE_FEATURES, inE2ETests } from '@/constants';
@@ -13,10 +14,11 @@ import { MfaService } from '@/Mfa/mfa.service';
 import { Push } from '@/push';
 import { CacheService } from '@/services/cache/cache.service';
 import { PasswordUtility } from '@/services/password.utility';
-import { UserRepository } from '@/databases/repositories/user.repository';
+import Container from 'typedi';
+import { Logger } from '@/Logger';
 
 if (!inE2ETests) {
-	console.error('E2E endpoints only allowed during E2E tests');
+	Container.get(Logger).error('E2E endpoints only allowed during E2E tests');
 	process.exit(1);
 }
 
@@ -89,7 +91,7 @@ export class E2EController {
 	constructor(
 		license: License,
 		private readonly settingsRepo: SettingsRepository,
-		private readonly workflowRunner: ActiveWorkflowRunner,
+		private readonly workflowRunner: ActiveWorkflowManager,
 		private readonly mfaService: MfaService,
 		private readonly cacheService: CacheService,
 		private readonly push: Push,
@@ -154,7 +156,9 @@ export class E2EController {
 					`DELETE FROM ${table}; DELETE FROM sqlite_sequence WHERE name=${table};`,
 				);
 			} catch (error) {
-				console.warn('Dropping Table for E2E Reset error: ', error);
+				Container.get(Logger).warn('Dropping Table for E2E Reset error', {
+					error: error as Error,
+				});
 			}
 		}
 	}

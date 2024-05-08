@@ -360,7 +360,7 @@ export class SamlService {
 		if (!attributes) {
 			throw new AuthError('SAML Authentication failed. Invalid SAML response.');
 		}
-		if (!attributes.email && missingAttributes.length > 0) {
+		if (missingAttributes.length > 0) {
 			throw new AuthError(
 				`SAML Authentication failed. Invalid SAML response (missing attributes: ${missingAttributes.join(
 					', ',

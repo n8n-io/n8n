@@ -621,9 +621,6 @@ describe('PATCH /credentials/:id', () => {
 				.patch(`/credentials/${savedCredential.id}`)
 				.send(invalidPayload);
 
-			if (response.statusCode === 500) {
-				console.log(response.statusCode, response.body);
-			}
 			expect(response.statusCode).toBe(400);
 		}
 	});

@@ -11,7 +11,7 @@ import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMapping.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
@@ -46,7 +46,7 @@ export class WorkflowService {
 		private readonly workflowHistoryService: WorkflowHistoryService,
 		private readonly orchestrationService: OrchestrationService,
 		private readonly externalHooks: ExternalHooks,
-		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
+		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly roleService: RoleService,
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly projectService: ProjectService,
@@ -141,7 +141,7 @@ export class WorkflowService {
 		 * will take effect only on removing and re-adding.
 		 */
 		if (workflow.active) {
-			await this.activeWorkflowRunner.remove(workflowId);
+			await this.activeWorkflowManager.remove(workflowId);
 		}
 
 		const workflowSettings = workflowUpdateData.settings ?? {};
@@ -221,7 +221,7 @@ export class WorkflowService {
 			// When the workflow is supposed to be active add it again
 			try {
 				await this.externalHooks.run('workflow.activate', [updatedWorkflow]);
-				await this.activeWorkflowRunner.add(workflowId, workflow.active ? 'update' : 'activate');
+				await this.activeWorkflowManager.add(workflowId, workflow.active ? 'update' : 'activate');
 			} catch (error) {
 				// If workflow could not be activated set it again to inactive
 				// and revert the versionId change so UI remains consistent
@@ -260,7 +260,7 @@ export class WorkflowService {
 
 		if (workflow.active) {
 			// deactivate before deleting
-			await this.activeWorkflowRunner.remove(workflowId);
+			await this.activeWorkflowManager.remove(workflowId);
 		}
 
 		const idsForDeletion = await this.executionRepository

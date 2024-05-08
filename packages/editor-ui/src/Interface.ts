@@ -56,6 +56,7 @@ import type { Component } from 'vue';
 import type { Scope } from '@n8n/permissions';
 import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
 import type { ProjectSharingData } from '@/features/projects/projects.types';
+import type { Connection } from '@jsplumb/core';
 
 export * from 'n8n-design-system/types';
 
@@ -450,6 +451,7 @@ export type IPushData =
 	| PushDataExecutionStarted
 	| PushDataExecuteAfter
 	| PushDataExecuteBefore
+	| PushDataNodeDescriptionUpdated
 	| PushDataConsoleMessage
 	| PushDataReloadNodeType
 	| PushDataRemoveNodeType
@@ -461,67 +463,72 @@ export type IPushData =
 	| PushDataWorkflowFailedToActivate
 	| PushDataWorkflowUsersChanged;
 
-type PushDataActiveWorkflowAdded = {
+export type PushDataActiveWorkflowAdded = {
 	data: IActiveWorkflowAdded;
 	type: 'workflowActivated';
 };
 
-type PushDataActiveWorkflowRemoved = {
+export type PushDataActiveWorkflowRemoved = {
 	data: IActiveWorkflowRemoved;
 	type: 'workflowDeactivated';
 };
 
-type PushDataWorkflowFailedToActivate = {
+export type PushDataWorkflowFailedToActivate = {
 	data: IWorkflowFailedToActivate;
 	type: 'workflowFailedToActivate';
 };
 
-type PushDataExecutionRecovered = {
+export type PushDataExecutionRecovered = {
 	data: IPushDataExecutionRecovered;
 	type: 'executionRecovered';
 };
 
-type PushDataExecutionFinished = {
+export type PushDataExecutionFinished = {
 	data: IPushDataExecutionFinished;
 	type: 'executionFinished';
 };
 
-type PushDataExecutionStarted = {
+export type PushDataExecutionStarted = {
 	data: IPushDataExecutionStarted;
 	type: 'executionStarted';
 };
 
-type PushDataExecuteAfter = {
+export type PushDataExecuteAfter = {
 	data: IPushDataNodeExecuteAfter;
 	type: 'nodeExecuteAfter';
 };
 
-type PushDataExecuteBefore = {
+export type PushDataExecuteBefore = {
 	data: IPushDataNodeExecuteBefore;
 	type: 'nodeExecuteBefore';
 };
 
-type PushDataConsoleMessage = {
+export type PushDataNodeDescriptionUpdated = {
+	data: {};
+	type: 'nodeDescriptionUpdated';
+};
+
+export type PushDataConsoleMessage = {
 	data: IPushDataConsoleMessage;
 	type: 'sendConsoleMessage';
 };
 
-type PushDataReloadNodeType = {
+export type PushDataReloadNodeType = {
 	data: IPushDataReloadNodeType;
 	type: 'reloadNodeType';
 };
 
-type PushDataRemoveNodeType = {
+export type PushDataRemoveNodeType = {
 	data: IPushDataRemoveNodeType;
 	type: 'removeNodeType';
 };
 
-type PushDataTestWebhook = {
+export type PushDataTestWebhook = {
 	data: IPushDataTestWebhook;
 	type: 'testWebhookDeleted' | 'testWebhookReceived';
 };
 
-type PushDataWorkerStatusMessage = {
+export type PushDataWorkerStatusMessage = {
 	data: IPushDataWorkerStatusMessage;
 	type: 'sendWorkerStatusMessage';
 };
@@ -1890,4 +1897,18 @@ export type SuggestedTemplatesWorkflowPreview = {
 	description: string;
 	preview: IWorkflowData;
 	nodes: Array<Pick<ITemplatesNode, 'id' | 'displayName' | 'icon' | 'defaults' | 'iconData'>>;
+};
+
+export type NewConnectionInfo = {
+	sourceId: string;
+	index: number;
+	eventSource: NodeCreatorOpenSource;
+	connection?: Connection;
+	nodeCreatorView?: string;
+	outputType?: NodeConnectionType;
+	endpointUuid?: string;
+};
+
+export type AIAssistantConnectionInfo = NewConnectionInfo & {
+	stepName: string;
 };

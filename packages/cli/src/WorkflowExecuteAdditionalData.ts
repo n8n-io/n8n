@@ -637,7 +637,10 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						]);
 					} catch (error) {
 						ErrorReporter.error(error);
-						console.error('There was a problem running hook "workflow.postExecute"', error);
+						Container.get(Logger).error(
+							'There was a problem running hook "workflow.postExecute"',
+							error,
+						);
 					}
 				}
 			},

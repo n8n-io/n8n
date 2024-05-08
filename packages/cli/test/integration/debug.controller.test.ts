@@ -1,5 +1,5 @@
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import { mockInstance } from '../shared/mocking';
 import { randomName } from './shared/random';
 import { generateNanoId } from '@/databases/utils/generators';
@@ -12,7 +12,7 @@ import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee'
 
 describe('DebugController', () => {
 	const workflowRepository = mockInstance(WorkflowRepository);
-	const activeWorkflowRunner = mockInstance(ActiveWorkflowRunner);
+	const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 
 	let testServer = setupTestServer({ endpointGroups: ['debug'] });
 	let ownerAgent: SuperAgentTest;
@@ -34,8 +34,8 @@ describe('DebugController', () => {
 
 			workflowRepository.findIn.mockResolvedValue(triggersAndPollers);
 			workflowRepository.findWebhookBasedActiveWorkflows.mockResolvedValue(webhooks);
-			activeWorkflowRunner.allActiveInMemory.mockReturnValue([workflowId]);
-			activeWorkflowRunner.getAllWorkflowActivationErrors.mockResolvedValue(activationErrors);
+			activeWorkflowManager.allActiveInMemory.mockReturnValue([workflowId]);
+			activeWorkflowManager.getAllWorkflowActivationErrors.mockResolvedValue(activationErrors);
 
 			jest.spyOn(OrchestrationService.prototype, 'instanceId', 'get').mockReturnValue(instanceId);
 			jest.spyOn(MultiMainSetup.prototype, 'fetchLeaderKey').mockResolvedValue(leaderKey);
