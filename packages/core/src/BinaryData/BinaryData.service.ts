@@ -51,7 +51,6 @@ export class BinaryDataService {
 		if (!manager) {
 			const { size } = await stat(filePath);
 			binaryData.fileSize = prettyBytes(size);
-			binaryData.fileSizeRaw = size;
 			binaryData.data = await readFile(filePath, { encoding: BINARY_ENCODING });
 
 			return binaryData;
@@ -71,7 +70,6 @@ export class BinaryDataService {
 
 		binaryData.id = this.createBinaryDataId(fileId);
 		binaryData.fileSize = prettyBytes(fileSize);
-		binaryData.fileSizeRaw = fileSize;
 		binaryData.data = this.mode; // clear binary data from memory
 
 		return binaryData;
@@ -89,7 +87,6 @@ export class BinaryDataService {
 			const buffer = await this.toBuffer(bufferOrStream);
 			binaryData.data = buffer.toString(BINARY_ENCODING);
 			binaryData.fileSize = prettyBytes(buffer.length);
-			binaryData.fileSizeRaw = buffer.length;
 
 			return binaryData;
 		}
@@ -108,7 +105,6 @@ export class BinaryDataService {
 
 		binaryData.id = this.createBinaryDataId(fileId);
 		binaryData.fileSize = prettyBytes(fileSize);
-		binaryData.fileSizeRaw = fileSize;
 		binaryData.data = this.mode; // clear binary data from memory
 
 		return binaryData;

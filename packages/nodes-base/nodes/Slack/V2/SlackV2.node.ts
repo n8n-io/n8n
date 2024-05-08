@@ -1064,11 +1064,15 @@ export class SlackV2 implements INodeType {
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 							const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 
+							let fileSize: number;
 							let uploadData: Buffer | Readable;
 							if (binaryData.id) {
 								uploadData = await this.helpers.getBinaryStream(binaryData.id);
+								const metadata = await this.helpers.getBinaryMetadata(binaryData.id);
+								fileSize = metadata.fileSize;
 							} else {
 								uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
+								fileSize = uploadData.length;
 							}
 
 							if (nodeVersion <= 2.1) {
@@ -1098,6 +1102,7 @@ export class SlackV2 implements INodeType {
 										contentType: binaryData.mimeType,
 									},
 								};
+
 								const uploadUrl = await slackApiRequest.call(
 									this,
 									'GET',
@@ -1105,7 +1110,7 @@ export class SlackV2 implements INodeType {
 									{},
 									{
 										filename: options.fileName ? options.fileName : binaryData.fileName,
-										length: binaryData.fileSizeRaw,
+										length: fileSize,
 									},
 								);
 								await slackApiRequest.call(
