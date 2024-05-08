@@ -115,7 +115,7 @@ export class User extends WithTimestamps implements IUser {
 	@AfterLoad()
 	@AfterUpdate()
 	computeIsPending(): void {
-		this.isPending = this.password === null;
+		this.isPending = this.password === null && this.role !== 'global:owner';
 	}
 
 	/**
