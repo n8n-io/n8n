@@ -1,0 +1,199 @@
+{
+  "meta": {
+    "instanceId": "ca3a9f557a83da7b16a4b98e4416f86df95e81d1c230244707807229ffaf7a25"
+  },
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "021ab2a5-a21e-4b6a-a40b-a396fe486df9",
+      "name": "No Operation, do nothing",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "SjB76PkH2zf2sYxX"
+      },
+      "id": "35ece1bc-71af-40a8-8cd6-3c7d076d122e",
+      "name": "Execute Update Workflow",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        1740,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "PrestaShop_Body",
+              "value": "={{ $('Get Full Json').item.json.PrestaShop_Body }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a9884d8d-994f-48b4-b8d1-6a02e01f13df",
+      "name": "Set7",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        1520,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.status }}",
+              "operation": "equal",
+              "value2": 200
+            },
+            {
+              "value1": "={{ $json.data.products.length }}",
+              "operation": "isEmpty"
+            }
+          ]
+        }
+      },
+      "id": "012e9aa0-2392-4b9f-98d5-38e79f8de126",
+      "name": "IF4",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1300,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.prod.gosharpei.com/api/products/{{ $('PrestaShop').item.json.body.id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "authentication",
+              "value": "={{ $('PrestaShop').item.json.headers.authentication }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1a540842-267b-4987-b0a7-1a82edd8778b",
+      "name": "Get Product by Remote ID",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1100,
+        0
+      ],
+      "alwaysOutputData": false,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  PrestaShop_Body: items[0].json\n};\n"
+      },
+      "id": "d7672d47-b806-481a-9e05-e45396a59280",
+      "name": "Get Full Json",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "5e39a3fb-9a6a-4544-9457-27a8800a9d45",
+        "options": {}
+      },
+      "id": "15dd08f1-f6e3-4f54-b982-fd29c1d30f41",
+      "name": "PrestaShop",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        700,
+        0
+      ],
+      "webhookId": "5e39a3fb-9a6a-4544-9457-27a8800a9d45"
+    }
+  ],
+  "connections": {
+    "Set7": {
+      "main": [
+        [
+          {
+            "node": "Execute Update Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF4": {
+      "main": [
+        [
+          {
+            "node": "Set7",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Product by Remote ID": {
+      "main": [
+        [
+          {
+            "node": "IF4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Full Json": {
+      "main": [
+        [
+          {
+            "node": "Get Product by Remote ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PrestaShop": {
+      "main": [
+        [
+          {
+            "node": "Get Full Json",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
