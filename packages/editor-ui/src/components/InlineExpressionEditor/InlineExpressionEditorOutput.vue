@@ -73,6 +73,7 @@ onBeforeUnmount(() => {
 
 				<div :class="$style.controls">
 					<N8nInputNumber
+						data-test-id="inline-expression-editor-item-input"
 						size="mini"
 						:controls="false"
 						:class="[$style.input, { [$style.hovering]: isHoveringItem }]"
@@ -82,6 +83,7 @@ onBeforeUnmount(() => {
 						@update:model-value="updateItemIndex"
 					></N8nInputNumber>
 					<N8nIconButton
+						data-test-id="inline-expression-editor-item-prev"
 						icon="chevron-left"
 						type="tertiary"
 						text
@@ -95,6 +97,7 @@ onBeforeUnmount(() => {
 							<div>{{ i18n.baseText('parameterInput.hoverTableItemTip') }}</div>
 						</template>
 						<N8nIconButton
+							data-test-id="inline-expression-editor-item-next"
 							icon="chevron-right"
 							type="tertiary"
 							text
