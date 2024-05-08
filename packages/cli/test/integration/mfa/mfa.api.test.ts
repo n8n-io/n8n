@@ -28,10 +28,6 @@ beforeEach(async () => {
 	config.set('userManagement.disabled', false);
 });
 
-afterAll(async () => {
-	await testDb.terminate();
-});
-
 describe('Enable MFA setup', () => {
 	describe('Step one', () => {
 		test('GET /qr should fail due to unauthenticated user', async () => {
@@ -236,6 +232,7 @@ describe('Change password with MFA enabled', () => {
 		expect(response.statusCode).toBe(404);
 	});
 
+	// TODO: this test needs 2 seconds to shut down
 	test('POST /change-password should update password', async () => {
 		const { user, rawSecret } = await createUserWithMfaEnabled();
 

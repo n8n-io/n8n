@@ -28,6 +28,7 @@ afterEach(async () => {
 });
 
 describe('POST /owner/setup', () => {
+	// TODO: takes a second to close
 	test('should create owner and enable isInstanceOwnerSetUp', async () => {
 		const newOwnerData = {
 			email: randomEmail(),
@@ -77,6 +78,7 @@ describe('POST /owner/setup', () => {
 		expect(isInstanceOwnerSetUpSetting).toBe(true);
 	});
 
+	// TODO: depends on former test
 	test('should create owner with lowercased email', async () => {
 		const newOwnerData = {
 			email: randomEmail().toUpperCase(),
