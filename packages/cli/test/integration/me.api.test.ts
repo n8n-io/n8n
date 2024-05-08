@@ -356,13 +356,11 @@ const VALID_PATCH_ME_PAYLOADS = [
 		email: randomEmail(),
 		firstName: randomName(),
 		lastName: randomName(),
-		password: randomValidPassword(),
 	},
 	{
 		email: randomEmail().toUpperCase(),
 		firstName: randomName(),
 		lastName: randomName(),
-		password: randomValidPassword(),
 	},
 ];
 
