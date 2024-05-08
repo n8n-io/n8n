@@ -4,15 +4,23 @@ import type { useNDVStore } from '@/stores/ndv.store';
 import type { CompletionResult } from '@codemirror/autocomplete';
 import { createTestingPinia } from '@pinia/testing';
 import { faker } from '@faker-js/faker';
-
-let mockNdvState: Partial<ReturnType<typeof useNDVStore>>;
-let mockCompletionResult: Partial<CompletionResult>;
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
+import type { useNodeTypesStore } from '../../stores/nodeTypes.store';
+
+let mockNdvState: Partial<ReturnType<typeof useNDVStore>>;
+let mockNodeTypesState: Partial<ReturnType<typeof useNodeTypesStore>>;
+let mockCompletionResult: Partial<CompletionResult>;
 
 vi.mock('@/stores/ndv.store', () => {
 	return {
 		useNDVStore: vi.fn(() => mockNdvState),
+	};
+});
+
+vi.mock('@/stores/nodeTypes.store', () => {
+	return {
+		useNodeTypesStore: vi.fn(() => mockNodeTypesState),
 	};
 });
 
@@ -44,6 +52,9 @@ describe('ParameterInput.vue', () => {
 				type: 'test',
 				typeVersion: 1,
 			},
+		};
+		mockNodeTypesState = {
+			allNodeTypes: [],
 		};
 	});
 
@@ -120,5 +131,33 @@ describe('ParameterInput.vue', () => {
 		await userEvent.type(input, 'foo');
 
 		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 'foo' })]);
+	});
+
+	test('should not reset the value of a multi-select with loadOptionsMethod on load', async () => {
+		mockNodeTypesState.getNodeParameterOptions = vi.fn(async () => [
+			{ name: 'ID', value: 'id' },
+			{ name: 'Title', value: 'title' },
+			{ name: 'Description', value: 'description' },
+		]);
+
+		const { emitted, container } = renderComponent(ParameterInput, {
+			pinia: createTestingPinia(),
+			props: {
+				path: 'columns',
+				parameter: {
+					displayName: 'Columns',
+					name: 'columns',
+					type: 'multiOptions',
+					typeOptions: { loadOptionsMethod: 'getColumnsMultiOptions' },
+				},
+				modelValue: ['id', 'title'],
+			},
+		});
+
+		const input = container.querySelector('input') as HTMLInputElement;
+		expect(input).toBeInTheDocument();
+
+		// Nothing should be emitted
+		expect(emitted('update')).toBeUndefined();
 	});
 });
