@@ -1,13 +1,48 @@
 diff --git a/dist/index.cjs.js b/dist/index.cjs.js
-index a75964e40eaeff15df33fabd3c0bef20e9b1e5dd..12f44d6539797c3a78965fea16511d5c46fdef1e 100644
+index a75964e40eaeff15df33fabd3c0bef20e9b1e5dd..1027aaeda158016ba632bfb09a3d2bbd8af81c81 100644
 --- a/dist/index.cjs.js
 +++ b/dist/index.cjs.js
-@@ -108,7 +108,7 @@ function withCodSpeed(bench) {
+@@ -67,6 +67,7 @@ function isCodSpeedBenchOptions(options) {
+   return "uri" in options;
+ }
+ function withCodSpeed(bench) {
++  console.log("[CodSpeed patch - withCodSpeed] Start");
+   if (!core.Measurement.isInstrumented()) {
+     const rawRun = bench.run;
+     bench.run = async () => {
+@@ -77,6 +78,7 @@ function withCodSpeed(bench) {
+     };
+     return bench;
+   }
++  console.log("[CodSpeed patch - withCodSpeed] overloading add");
+   const rawAdd = bench.add;
+   bench.add = (name, fn, opts) => {
+     const callingFile = getCallingFile();
+@@ -85,9 +87,13 @@ function withCodSpeed(bench) {
+     return rawAdd.bind(bench)(name, fn, options);
+   };
+   const rootCallingFile = getCallingFile();
++  console.log("[CodSpeed patch - withCodSpeed] rootCallingFile", rootCallingFile);
++  console.log("[CodSpeed patch - withCodSpeed] overloading run");
+   bench.run = async () => {
+     console.log(`[CodSpeed] running with @codspeed/tinybench v${"3.1.0"}`);
++    console.log("[CodSpeed patch - run] calling setupCore");
+     core.setupCore();
++    console.log("[CodSpeed patch - run] finished setupCore");
+     for (const task of bench.tasks) {
+       const uri = isCodSpeedBenchOptions(task.opts) ? task.opts.uri : `${rootCallingFile}::${task.name}`;
+       await task.opts.beforeAll?.call(task);
+@@ -108,10 +114,13 @@ function withCodSpeed(bench) {
        await task.opts.afterAll?.call(task);
        console.log(`    \u2714 Measured ${uri}`);
      }
--    core.teardownCore();
-+    // core.teardownCore();
++    console.log("[CodSpeed patch - run] calling teardownCore");
+     core.teardownCore();
++    console.log("[CodSpeed patch - run] finished teardownCore");
      console.log(`[CodSpeed] Done running ${bench.tasks.length} benches.`);
      return bench.tasks;
    };
++  console.log("[CodSpeed patch] End of withCodSpeed");
+   return bench;
+ }
+ function getCallingFile() {
