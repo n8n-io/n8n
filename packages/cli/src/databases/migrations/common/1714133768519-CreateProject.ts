@@ -48,7 +48,7 @@ export class CreateProject1714133768519 implements ReversibleMigration {
 		await createTable(table.project).withColumns(
 			column('id').varchar(36).primary.notNull,
 			column('name').varchar(255).notNull,
-			column('type').varchar(36),
+			column('type').varchar(36).notNull,
 		).withTimestamps;
 
 		await createTable(table.projectRelation)
