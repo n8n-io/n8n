@@ -27,7 +27,7 @@ import type { GlobalRole } from '@/databases/entities/User';
 import type { Scope } from '@n8n/permissions';
 import { CacheService } from '@/services/cache/cache.service';
 import { mockInstance } from '../shared/mocking';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 
 const testServer = utils.setupTestServer({
@@ -45,7 +45,7 @@ const testServer = utils.setupTestServer({
 
 // The `ActiveWorkflowRunner` keeps the event loop alive, which in turn leads to jest not shutting down cleanly.
 // We don't need it for the tests here, so we can mock it and make the tests exit cleanly.
-mockInstance(ActiveWorkflowRunner);
+mockInstance(ActiveWorkflowManager);
 
 beforeEach(async () => {
 	await testDb.truncate(['User', 'Project']);
