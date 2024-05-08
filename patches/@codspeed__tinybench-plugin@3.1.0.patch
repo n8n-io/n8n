@@ -1,0 +1,13 @@
+diff --git a/dist/index.cjs.js b/dist/index.cjs.js
+index a75964e40eaeff15df33fabd3c0bef20e9b1e5dd..12f44d6539797c3a78965fea16511d5c46fdef1e 100644
+--- a/dist/index.cjs.js
++++ b/dist/index.cjs.js
+@@ -108,7 +108,7 @@ function withCodSpeed(bench) {
+       await task.opts.afterAll?.call(task);
+       console.log(`    \u2714 Measured ${uri}`);
+     }
+-    core.teardownCore();
++    // core.teardownCore();
+     console.log(`[CodSpeed] Done running ${bench.tasks.length} benches.`);
+     return bench.tasks;
+   };

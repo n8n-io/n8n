@@ -19,6 +19,9 @@ overrides:
   typescript: ^5.4.2
 
 patchedDependencies:
+  '@codspeed/tinybench-plugin@3.1.0':
+    hash: zxx4ad2o6p45r7suvxq2e63zbm
+    path: patches/@codspeed__tinybench-plugin@3.1.0.patch
   '@sentry/cli@2.17.0':
     hash: nchnoezkq6p37qaiku3vrpwraq
     path: patches/@sentry__cli@2.17.0.patch
@@ -1484,7 +1487,7 @@ importers:
     devDependencies:
       '@codspeed/tinybench-plugin':
         specifier: ^3.1.0
-        version: 3.1.0(tinybench@2.5.1)
+        version: 3.1.0(patch_hash=zxx4ad2o6p45r7suvxq2e63zbm)(tinybench@2.5.1)
       '@types/amqplib':
         specifier: ^0.10.1
         version: 0.10.1
@@ -4732,7 +4735,7 @@ packages:
       - debug
     dev: true
 
-  /@codspeed/tinybench-plugin@3.1.0(tinybench@2.5.1):
+  /@codspeed/tinybench-plugin@3.1.0(patch_hash=zxx4ad2o6p45r7suvxq2e63zbm)(tinybench@2.5.1):
     resolution: {integrity: sha512-yl0WzzUGIXkZzWaw7+2U+xGkuIal1Rs9hS09DtlDZGGAcGRoMMU5d2vyCS8nBrna4hrPQZ5Sx/hIKerO+lqWaw==}
     peerDependencies:
       tinybench: ^2.3.0
@@ -4743,6 +4746,7 @@ packages:
     transitivePeerDependencies:
       - debug
     dev: true
+    patched: true
 
   /@colors/colors@1.5.0:
     resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}

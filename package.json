@@ -95,7 +95,8 @@
       "pyodide@0.23.4": "patches/pyodide@0.23.4.patch",
       "@types/express-serve-static-core@4.17.43": "patches/@types__express-serve-static-core@4.17.43.patch",
       "@types/ws@8.5.4": "patches/@types__ws@8.5.4.patch",
-      "vite-plugin-checker@0.6.4": "patches/vite-plugin-checker@0.6.4.patch"
+      "vite-plugin-checker@0.6.4": "patches/vite-plugin-checker@0.6.4.patch",
+      "@codspeed/tinybench-plugin@3.1.0": "patches/@codspeed__tinybench-plugin@3.1.0.patch"
     }
   }
 }
