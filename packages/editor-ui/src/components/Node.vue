@@ -98,7 +98,7 @@
 
 				<NodeIcon
 					class="node-icon"
-					:node-type="nodeType"
+					:node-type="iconNodeType"
 					:size="40"
 					:shrink="false"
 					:color-default="iconColorDefault"
@@ -186,6 +186,8 @@ import {
 	MANUAL_TRIGGER_NODE_TYPE,
 	NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS,
 	NOT_DUPLICATABE_NODE_TYPES,
+	SIMULATE_NODE_TYPE,
+	SIMULATE_TRIGGER_NODE_TYPE,
 	WAIT_TIME_UNLIMITED,
 } from '@/constants';
 import { nodeBase } from '@/mixins/nodeBase';
@@ -585,6 +587,25 @@ export default defineComponent({
 				this.contextMenu.target.value.source === 'node-button' &&
 				this.contextMenu.target.value.node.name === this.data?.name
 			);
+		},
+		iconNodeType() {
+			if (
+				this.data?.type === SIMULATE_NODE_TYPE ||
+				this.data?.type === SIMULATE_TRIGGER_NODE_TYPE
+			) {
+				const icon = this.data.parameters?.icon as string;
+				const iconNodeType = this.workflow.expression.getSimpleParameterValue(
+					this.data,
+					icon,
+					'internal',
+					{},
+				);
+				if (iconNodeType && typeof iconNodeType === 'string') {
+					return this.nodeTypesStore.getNodeType(iconNodeType);
+				}
+			}
+
+			return this.nodeType;
 		},
 	},
 	watch: {
