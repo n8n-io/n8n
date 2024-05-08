@@ -4,11 +4,7 @@ import { WithTimestamps } from './AbstractEntity';
 import { Project } from './Project';
 
 // personalOwner is only used for personal projects
-export type ProjectRole =
-	| 'project:personalOwner'
-	| 'project:admin'
-	| 'project:editor'
-	| 'project:viewer';
+export type ProjectRole = 'project:personalOwner' | 'project:admin' | 'project:editor';
 
 @Entity()
 export class ProjectRelation extends WithTimestamps {

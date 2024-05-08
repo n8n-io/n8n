@@ -83,12 +83,6 @@ beforeAll(async () => {
 			scopes: Container.get(RoleService).getRoleScopes('project:editor'),
 			licensed: false,
 		},
-		{
-			name: 'Project Viewer',
-			role: 'project:viewer',
-			scopes: Container.get(RoleService).getRoleScopes('project:viewer'),
-			licensed: false,
-		},
 	];
 	expectedCredentialRoles = [
 		{
@@ -115,12 +109,6 @@ beforeAll(async () => {
 			name: 'Workflow Editor',
 			role: 'workflow:editor',
 			scopes: Container.get(RoleService).getRoleScopes('workflow:editor'),
-			licensed: true,
-		},
-		{
-			name: 'Workflow User',
-			role: 'workflow:user',
-			scopes: Container.get(RoleService).getRoleScopes('workflow:user'),
 			licensed: true,
 		},
 	];

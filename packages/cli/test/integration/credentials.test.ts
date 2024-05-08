@@ -112,7 +112,7 @@ describe('GET /credentials', () => {
 		});
 
 		const teamProject = await createTeamProject(undefined, member1);
-		await linkUserToProject(member2, teamProject, 'project:viewer');
+		await linkUserToProject(member2, teamProject, 'project:editor');
 
 		const [savedCredential1, savedCredential2] = await Promise.all([
 			saveCredential(randomCredentialPayload(), { project: teamProject }),
@@ -158,7 +158,7 @@ describe('GET /credentials', () => {
 
 			// Team cred
 			expect(cred1.id).toBe(savedCredential1.id);
-			expect(cred1.scopes).toEqual(['credential:read']);
+			expect(cred1.scopes).toEqual(['credential:delete', 'credential:read', 'credential:update']);
 
 			// Shared cred
 			expect(cred2.id).toBe(savedCredential2.id);
