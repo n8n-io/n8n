@@ -415,7 +415,7 @@
 				:disabled="isReadOnly || remoteParameterOptionsLoading"
 				:title="displayTitle"
 				:placeholder="i18n.baseText('parameterInput.select')"
-				@update:model-value="valueChangedMultiOptions"
+				@update:model-value="valueChanged"
 				@keydown.stop
 				@focus="setFocus"
 				@blur="onBlur"
@@ -1186,15 +1186,11 @@ function onUpdateTextInput(value: string) {
 	onTextInputChange(value);
 }
 
-function valueChangedMultiOptions(value: string[]): void {
+function valueChanged(value: NodeParameterValueType | {} | Date) {
 	if (remoteParameterOptionsLoading.value) {
 		return;
 	}
 
-	valueChanged(value);
-}
-
-function valueChanged(value: NodeParameterValueType | {} | Date) {
 	if (props.parameter.name === 'nodeCredentialType') {
 		activeCredentialType.value = value as string;
 	}
