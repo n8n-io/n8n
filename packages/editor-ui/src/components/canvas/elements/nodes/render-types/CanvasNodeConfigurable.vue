@@ -1,19 +1,14 @@
 <script lang="ts" setup>
-import { computed, useCssModule } from 'vue';
-import type { INodeTypeDescription } from 'n8n-workflow';
-import type { CanvasElementData } from '@/types';
-import { NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS } from '@/constants';
+import { computed, inject, useCssModule } from 'vue';
+import { CanvasNodeKey, NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS } from '@/constants';
 import { useNodeConnections } from '@/composables/useNodeConnections';
 
-const props = defineProps<{
-	nodeType: INodeTypeDescription;
-	data: CanvasElementData;
-}>();
+const node = inject(CanvasNodeKey);
 
 const $style = useCssModule();
 
-const inputs = computed(() => props.data.inputs);
-const outputs = computed(() => props.data.outputs);
+const inputs = computed(() => node?.data.value.inputs ?? []);
+const outputs = computed(() => node?.data.value.outputs ?? []);
 
 const { nonMainInputs, requiredNonMainInputs } = useNodeConnections({
 	inputs,

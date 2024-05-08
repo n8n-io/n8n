@@ -1,5 +1,7 @@
 import type { NodeCreatorOpenSource } from './Interface';
 import { NodeConnectionType } from 'n8n-workflow';
+import { CanvasNodeHandleInjectionData, CanvasNodeInjectionData } from '@/types';
+import { InjectionKey } from 'vue';
 
 export const MAX_WORKFLOW_SIZE = 1024 * 1024 * 16; // Workflow size limit in bytes
 export const MAX_EXPECTED_REQUEST_SIZE = 2048; // Expected maximum workflow request metadata (i.e. headers) size in bytes
@@ -473,7 +475,12 @@ export const enum VIEWS {
 	WORKER_VIEW = 'WorkerView',
 }
 
-export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
+export const EDITABLE_CANVAS_VIEWS = [
+	VIEWS.WORKFLOW,
+	VIEWS.NEW_WORKFLOW,
+	VIEWS.EXECUTION_DEBUG,
+	VIEWS.WORKFLOW_V2,
+];
 
 export const enum FAKE_DOOR_FEATURES {
 	ENVIRONMENTS = 'environments',
@@ -797,3 +804,11 @@ export const INSECURE_CONNECTION_WARNING = `
 	</ul>
 </div>
 </body>`;
+
+/**
+ * Injection Keys
+ */
+
+export const CanvasNodeKey = 'canvasNode' as unknown as InjectionKey<CanvasNodeInjectionData>;
+export const CanvasNodeHandleKey =
+	'canvasNodeHandle' as unknown as InjectionKey<CanvasNodeHandleInjectionData>;

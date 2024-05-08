@@ -1,27 +1,26 @@
 <script lang="ts" setup>
-import { computed, useCssModule } from 'vue';
-import type { INodeTypeDescription } from 'n8n-workflow';
-import type { CanvasElementData } from '@/types';
+import { computed, inject, useCssModule } from 'vue';
 import { useNodeConnections } from '@/composables/useNodeConnections';
+import { CanvasNodeKey } from '@/constants';
 
-const props = defineProps<{
-	nodeType: INodeTypeDescription;
-	data: CanvasElementData;
-}>();
+const node = inject(CanvasNodeKey);
 
 const $style = useCssModule();
 
-const inputs = computed(() => props.data.inputs);
-const outputs = computed(() => props.data.outputs);
+const inputs = computed(() => node?.data.value.inputs ?? []);
+const outputs = computed(() => node?.data.value.outputs ?? []);
 
 const { mainOutputs } = useNodeConnections({
 	inputs,
 	outputs,
 });
 
-/**
- * Styles
- */
+const classes = computed(() => {
+	return {
+		[$style.canvasNode]: true,
+		[$style.selected]: node?.selected.value,
+	};
+});
 
 const styles = computed(() => {
 	return {
@@ -31,7 +30,7 @@ const styles = computed(() => {
 </script>
 
 <template>
-	<div :class="$style.canvasNode" :style="styles">
+	<div :class="classes" :style="styles">
 		<slot />
 	</div>
 </template>
@@ -46,5 +45,9 @@ const styles = computed(() => {
 	background: var(--canvas-node--background, var(--color-canvas-node-background));
 	border: 2px solid var(--canvas-node--border-color, var(--color-foreground-xdark));
 	border-radius: var(--border-radius-large);
+}
+
+.selected {
+	box-shadow: 0 0 0 4px var(--color-canvas-selected);
 }
 </style>

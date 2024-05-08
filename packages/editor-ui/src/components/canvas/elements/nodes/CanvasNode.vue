@@ -1,7 +1,6 @@
 <script lang="ts" setup>
-import { Handle, Position } from '@vue-flow/core';
-import { NodeToolbar } from '@vue-flow/node-toolbar';
-import { computed, useCssModule } from 'vue';
+import { Position } from '@vue-flow/core';
+import { computed, provide, toRef, useCssModule } from 'vue';
 import type {
 	CanvasElementData,
 	CanvasConnectionPort,
@@ -13,11 +12,13 @@ import CanvasNodeToolbar from '@/components/canvas/elements/nodes/CanvasNodeTool
 import CanvasNodeRenderer from '@/components/canvas/elements/nodes/CanvasNodeRenderer.vue';
 import HandleRenderer from '@/components/canvas/elements/handles/HandleRenderer.vue';
 import { useNodeConnections } from '@/composables/useNodeConnections';
+import { CanvasNodeKey } from '@/constants';
 
 const $style = useCssModule();
 
 const props = defineProps<{
 	data: CanvasElementData;
+	selected: boolean;
 }>();
 
 const inputs = computed(() => props.data.inputs);
@@ -25,15 +26,15 @@ const outputs = computed(() => props.data.outputs);
 
 const nodeTypesStore = useNodeTypesStore();
 
-const nodeType = computed(() => {
-	return nodeTypesStore.getNodeType(props.data.type, props.data.typeVersion);
-});
-
 const { mainInputs, nonMainInputs, mainOutputs, nonMainOutputs, requiredNonMainInputs } =
 	useNodeConnections({
 		inputs,
 		outputs,
 	});
+
+const nodeType = computed(() => {
+	return nodeTypesStore.getNodeType(props.data.type, props.data.typeVersion);
+});
 
 /**
  * Inputs
@@ -76,6 +77,19 @@ const mapEndpointWithPosition =
 			},
 		};
 	};
+
+/**
+ * Provide
+ */
+
+const data = toRef(props, 'data');
+const selected = toRef(props, 'selected');
+
+provide(CanvasNodeKey, {
+	data,
+	selected,
+	nodeType,
+});
 </script>
 
 <template>
@@ -83,7 +97,6 @@ const mapEndpointWithPosition =
 		<template v-for="source in outputsWithPosition" :key="`${source.type}/${source.index}`">
 			<HandleRenderer
 				mode="output"
-				:source="true"
 				:type="source.type"
 				:label="source.label"
 				:index="source.index"
@@ -95,7 +108,6 @@ const mapEndpointWithPosition =
 		<template v-for="target in inputsWithPosition" :key="`${target.type}/${target.index}`">
 			<HandleRenderer
 				mode="input"
-				:source="false"
 				:type="target.type"
 				:label="target.label"
 				:index="target.index"
@@ -111,7 +123,7 @@ const mapEndpointWithPosition =
 			:data="data"
 		/>
 
-		<CanvasNodeRenderer v-if="nodeType" :node-type="nodeType" :data="data">
+		<CanvasNodeRenderer v-if="nodeType">
 			<NodeIcon :node-type="nodeType" :size="40" :shrink="false" />
 			<!--			:color-default="iconColorDefault"-->
 			<!--			:disabled="data.disabled"-->

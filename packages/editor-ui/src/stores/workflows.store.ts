@@ -288,6 +288,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		getPastChatMessages(): string[] {
 			return Array.from(new Set(this.chatMessages));
 		},
+		triggerNodes(): INodeUi[] {
+			const nodeTypesStore = useNodeTypesStore();
+			return this.workflow.nodes.filter(
+				(node) => node.type === START_NODE_TYPE || nodeTypesStore.isTriggerNode(node.type),
+			);
+		},
 	},
 	actions: {
 		getPinDataSize(pinData: Record<string, string | INodeExecutionData[]> = {}): number {
@@ -1063,6 +1069,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 					});
 				}
 			}
+		},
+
+		setNodePosition(id: string, position: INodeUi['position']): void {
+			const node = this.workflow.nodes.find((node) => node.id === id);
+			if (!node) return;
+
+			this.setNodeValue({ name: node.name, key: 'position', value: position });
 		},
 
 		setNodeValue(updateInformation: IUpdateInformation): void {

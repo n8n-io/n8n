@@ -1,12 +1,5 @@
 <script lang="ts" setup>
 import { useCssModule } from 'vue';
-import type { INodeTypeDescription } from 'n8n-workflow';
-import type { CanvasElementData } from '@/types';
-
-defineProps<{
-	nodeType: INodeTypeDescription;
-	data: CanvasElementData;
-}>();
 
 const $style = useCssModule();
 </script>

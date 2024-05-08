@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { h, useCssModule } from 'vue';
+import { computed, h, provide, toRef, useCssModule } from 'vue';
 import type { CanvasConnectionPort, CanvasElementPortWithPosition } from '@/types';
 
 import { Handle } from '@vue-flow/core';
@@ -7,10 +7,10 @@ import { NodeConnectionType } from 'n8n-workflow';
 import CanvasHandleMainInput from '@/components/canvas/elements/handles/render-types/CanvasHandleMainInput.vue';
 import CanvasHandleMainOutput from '@/components/canvas/elements/handles/render-types/CanvasHandleMainOutput.vue';
 import CanvasHandleNonMain from '@/components/canvas/elements/handles/render-types/CanvasHandleNonMain.vue';
+import { CanvasNodeHandleKey } from '@/constants';
 
 const props = defineProps<{
 	mode: 'output' | 'input';
-	source?: boolean;
 	label?: string;
 	type: CanvasConnectionPort['type'];
 	index: CanvasConnectionPort['index'];
@@ -19,6 +19,16 @@ const props = defineProps<{
 }>();
 
 const $style = useCssModule();
+
+const handleType = computed(() => (props.mode === 'input' ? 'source' : 'target'));
+
+const isConnectableStart = computed(() => {
+	return props.mode === 'output';
+});
+
+const isConnectableEnd = computed(() => {
+	return props.mode === 'input';
+});
 
 const Render = (renderProps: { label?: string }) => {
 	let Component;
@@ -35,15 +45,27 @@ const Render = (renderProps: { label?: string }) => {
 
 	return h(Component, renderProps);
 };
+
+/**
+ * Provide
+ */
+
+const label = toRef(props, 'label');
+
+provide(CanvasNodeHandleKey, {
+	label,
+});
 </script>
 
 <template>
 	<Handle
 		:id="`${mode}s/${type}/${index}`"
 		:class="[$style.handle]"
-		:type="source ? 'source' : 'target'"
+		:type="handleType"
 		:position="position"
 		:style="offset"
+		:connectable-start="isConnectableStart"
+		:connectable-end="isConnectableEnd"
 	>
 		<Render :label="label" />
 	</Handle>

@@ -9,11 +9,13 @@ import type {
 } from '@/types';
 import { mapLegacyConnections, normalizeElementEndpoints } from '@/utils/canvasUtilsV2';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { NodeHelpers, Workflow } from 'n8n-workflow';
+import type { Workflow } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 import { useI18n } from '@/composables/useI18n';
 import type { IWorkflowDb } from '@/Interface';
 
 const props = defineProps<{
+	id?: string;
 	workflow: IWorkflowDb;
 	workflowObject: Workflow;
 }>();
@@ -111,30 +113,39 @@ const connections = computed<CanvasConnection[]>(() => {
 	);
 
 	return mappedConnections.map((connection) => {
-		const pinData = props.workflow.pinData?.[connection.data?.fromNodeName ?? ''];
-
-		let label: string | undefined;
-		if (pinData?.length) {
-			label = locale.baseText('ndv.output.items', {
-				adjustToNumber: pinData.length,
-				interpolate: { count: String(pinData.length) },
-			});
-		}
+		const type = getConnectionType(connection);
+		const label = getConnectionLabel(connection);
 
 		return {
 			...connection,
-			type: 'canvas-edge',
-			updatable: true,
+			type,
 			label,
 		};
 	});
 });
+
+function getConnectionType(_: CanvasConnection): string {
+	return 'canvas-edge';
+}
+
+function getConnectionLabel(connection: CanvasConnection): string {
+	const pinData = props.workflow.pinData?.[connection.data?.fromNodeName ?? ''];
+
+	if (pinData?.length) {
+		return locale.baseText('ndv.output.items', {
+			adjustToNumber: pinData.length,
+			interpolate: { count: String(pinData.length) },
+		});
+	}
+
+	return '';
+}
 </script>
 
 <template>
 	<div :class="$style.wrapper">
 		<div :class="$style.canvas">
-			<Canvas v-if="workflow" :elements="elements" :connections="connections" />
+			<Canvas v-if="workflow" :elements="elements" :connections="connections" v-bind="$attrs" />
 		</div>
 		<slot />
 	</div>

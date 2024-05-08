@@ -1,15 +1,14 @@
 <script lang="ts" setup>
-import { useCssModule } from 'vue';
+import { inject, useCssModule } from 'vue';
+import { CanvasNodeHandleKey } from '@/constants';
 
-defineProps<{
-	label?: string;
-}>();
+const handle = inject(CanvasNodeHandleKey);
 
 const $style = useCssModule();
 </script>
 <template>
 	<div :class="$style.handle">
-		<div :class="$style.label">{{ label }}</div>
+		<div :class="$style.label">{{ handle?.label }}</div>
 	</div>
 </template>
 

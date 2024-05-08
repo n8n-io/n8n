@@ -1,15 +1,11 @@
 <script lang="ts" setup>
-import { h } from 'vue';
+import { h, inject } from 'vue';
 import CanvasNodeDefault from '@/components/canvas/elements/nodes/render-types/CanvasNodeDefault.vue';
 import CanvasNodeConfiguration from '@/components/canvas/elements/nodes/render-types/CanvasNodeConfiguration.vue';
 import CanvasNodeConfigurable from '@/components/canvas/elements/nodes/render-types/CanvasNodeConfigurable.vue';
-import type { CanvasElementData } from '@/types';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import { CanvasNodeKey } from '@/constants';
 
-const props = defineProps<{
-	nodeType: INodeTypeDescription;
-	data: CanvasElementData;
-}>();
+const node = inject(CanvasNodeKey);
 
 const slots = defineSlots<{
 	default?: () => unknown;
@@ -17,7 +13,7 @@ const slots = defineSlots<{
 
 const Render = () => {
 	let Component;
-	switch (props.data.renderType) {
+	switch (node?.data.value.renderType) {
 		case 'configurable':
 			Component = CanvasNodeConfigurable;
 			break;
@@ -34,14 +30,7 @@ const Render = () => {
 			Component = CanvasNodeDefault;
 	}
 
-	return h(
-		Component,
-		{
-			nodeType: props.nodeType,
-			data: props.data,
-		},
-		slots.default,
-	);
+	return h(Component, slots.default);
 };
 </script>
 

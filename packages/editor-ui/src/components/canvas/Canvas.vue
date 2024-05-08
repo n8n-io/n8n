@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import type { CanvasConnection, CanvasElement } from '@/types';
-import type { EdgeChange, NodeChange } from '@vue-flow/core';
+import type { NodeDragEvent, Connection } from '@vue-flow/core';
 import { useVueFlow, VueFlow, PanelPosition } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
@@ -11,7 +11,7 @@ import { useCssModule } from 'vue';
 
 const $style = useCssModule();
 
-defineEmits(['update:modelValue']);
+const emit = defineEmits(['update:modelValue', 'update:node:position', 'create:connection']);
 
 const props = withDefaults(
 	defineProps<{
@@ -28,18 +28,20 @@ const props = withDefaults(
 	},
 );
 
-const { onInit, setViewport } = useVueFlow({ id: props.id });
+const { onInit } = useVueFlow({ id: props.id });
 
 onInit((instance) => {
 	console.log(instance);
 });
 
-function onNodesChange(e: NodeChange[]) {
-	console.log('onNodesChange', e);
+function onNodeDragStop(e: NodeDragEvent) {
+	e.nodes.forEach((node) => {
+		emit('update:node:position', node.id, node.position);
+	});
 }
 
-function onConnectionsChange(e: EdgeChange[]) {
-	console.log('onConnectionsChange', e);
+function onConnect(e: Connection) {
+	emit('create:connection', e);
 }
 </script>
 
@@ -52,9 +54,9 @@ function onConnectionsChange(e: EdgeChange[]) {
 		fit-view-on-init
 		pan-on-scroll
 		:min-zoom="0.2"
-		:max-zoom="4"
-		@nodes-change="onNodesChange"
-		@edges-change="onConnectionsChange"
+		:max-zoom="2"
+		@node-drag-stop="onNodeDragStop"
+		@connect="onConnect"
 	>
 		<template #node-canvas-node="canvasNodeProps">
 			<CanvasNode v-bind="canvasNodeProps" />
@@ -71,6 +73,8 @@ function onConnectionsChange(e: EdgeChange[]) {
 		<Controls :class="$style.canvasControls" :position="controlsPosition"></Controls>
 	</VueFlow>
 </template>
+
+<style lang="scss" module></style>
 
 <style lang="scss">
 .vue-flow__controls {

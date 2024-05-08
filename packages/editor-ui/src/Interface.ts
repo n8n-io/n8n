@@ -1295,6 +1295,7 @@ export interface UIState {
 	pendingNotificationsForViews: {
 		[key in VIEWS]?: NotificationOptions[];
 	};
+	isCreateNodeActive: boolean;
 }
 
 export type IFakeDoor = {
@@ -1871,7 +1872,7 @@ export type AddedNodesAndConnections = {
 export type ToggleNodeCreatorOptions = {
 	createNodeActive: boolean;
 	source?: NodeCreatorOpenSource;
-	nodeCreatorView?: string;
+	nodeCreatorView?: NodeFilterType;
 };
 
 export type AppliedThemeOption = 'light' | 'dark';
