@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "1.39.0",
+  "version": "1.41.0",
   "description": "",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -13,7 +13,7 @@
     "clean": "rimraf dist .turbo",
     "dev": "pnpm run watch",
     "typecheck": "tsc",
-    "build": "tsc -p tsconfig.build.json && gulp build:icons && pnpm build:metadata",
+    "build": "tsc -p tsconfig.build.json && pnpm n8n-copy-icons && pnpm build:metadata",
     "build:metadata": "pnpm n8n-generate-known && pnpm n8n-generate-ui-types",
     "format": "prettier nodes credentials --write",
     "lint": "eslint nodes credentials",
@@ -127,7 +127,6 @@
     "@types/json-schema": "^7.0.15",
     "@types/temp": "^0.9.1",
     "eslint-plugin-n8n-nodes-base": "^1.16.0",
-    "gulp": "^4.0.2",
     "n8n-core": "workspace:*"
   },
   "dependencies": {

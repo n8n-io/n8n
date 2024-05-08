@@ -202,14 +202,18 @@ export default defineComponent({
 				? this.modelValue.value
 				: this.modelValue;
 
-			if (!this.activeNode || !this.isValueExpression || typeof value !== 'string') {
+			if (
+				!this.isForCredential &&
+				(!this.activeNode || !this.isValueExpression || typeof value !== 'string')
+			) {
 				return { ok: false, error: new Error() };
 			}
 
 			try {
-				let opts;
+				let opts = { isForCredential: this.isForCredential };
 				if (this.ndvStore.isInputParentOfActiveNode) {
 					opts = {
+						...opts,
 						targetItem: this.targetItem ?? undefined,
 						inputNodeName: this.ndvStore.ndvInputNodeName,
 						inputRunIndex: this.ndvStore.ndvInputRunIndex,

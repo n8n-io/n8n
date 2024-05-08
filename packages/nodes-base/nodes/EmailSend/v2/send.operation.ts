@@ -210,6 +210,10 @@ function configureTransport(credentials: IDataObject, options: EmailSendOptions)
 		secure: credentials.secure as boolean,
 	};
 
+	if (typeof credentials.hostName === 'string' && credentials.hostName) {
+		connectionOptions.name = credentials.hostName;
+	}
+
 	if (credentials.user || credentials.password) {
 		connectionOptions.auth = {
 			user: credentials.user as string,

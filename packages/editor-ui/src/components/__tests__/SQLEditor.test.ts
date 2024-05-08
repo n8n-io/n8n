@@ -9,6 +9,8 @@ import { waitFor } from '@testing-library/vue';
 import { userEvent } from '@testing-library/user-event';
 import { setActivePinia } from 'pinia';
 import { useRouter } from 'vue-router';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { INodeUi } from '@/Interface';
 
 const EXPRESSION_OUTPUT_TEST_ID = 'inline-expression-editor-output';
 
@@ -23,44 +25,50 @@ async function focusEditor(container: Element) {
 	await waitFor(() => expect(container.querySelector('.cm-line')).toBeInTheDocument());
 	await userEvent.click(container.querySelector('.cm-line') as Element);
 }
+const nodes = [
+	{
+		id: '1',
+		typeVersion: 1,
+		name: 'Test Node',
+		position: [0, 0],
+		type: 'test',
+		parameters: {},
+	},
+] as INodeUi[];
+
+const mockResolveExpression = () => {
+	const mock = vi.fn();
+	vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockReturnValueOnce({
+		...workflowHelpers.useWorkflowHelpers({ router: useRouter() }),
+		resolveExpression: mock,
+	});
+
+	return mock;
+};
 
 describe('SqlEditor.vue', () => {
-	const pinia = createTestingPinia({
-		initialState: {
-			[STORES.SETTINGS]: {
-				settings: SETTINGS_STORE_DEFAULT_STATE.settings,
-			},
-			[STORES.NDV]: {
-				activeNodeName: 'Test Node',
-			},
-			[STORES.WORKFLOWS]: {
-				workflow: {
-					nodes: [
-						{
-							id: '1',
-							typeVersion: 1,
-							name: 'Test Node',
-							position: [0, 0],
-							type: 'test',
-							parameters: {},
-						},
-					],
-					connections: {},
+	beforeEach(() => {
+		const pinia = createTestingPinia({
+			initialState: {
+				[STORES.SETTINGS]: {
+					settings: SETTINGS_STORE_DEFAULT_STATE.settings,
+				},
+				[STORES.NDV]: {
+					activeNodeName: 'Test Node',
+				},
+				[STORES.WORKFLOWS]: {
+					workflow: {
+						nodes,
+						connections: {},
+					},
 				},
 			},
-		},
-	});
-	setActivePinia(pinia);
-
-	const mockResolveExpression = () => {
-		const mock = vi.fn();
-		vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockReturnValueOnce({
-			...workflowHelpers.useWorkflowHelpers({ router: useRouter() }),
-			resolveExpression: mock,
 		});
+		setActivePinia(pinia);
 
-		return mock;
-	};
+		const workflowsStore = useWorkflowsStore();
+		vi.mocked(workflowsStore).getNodeByName.mockReturnValue(nodes[0]);
+	});
 
 	afterAll(() => {
 		vi.clearAllMocks();

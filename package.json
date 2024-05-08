@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.39.0",
+  "version": "1.41.0",
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
@@ -66,7 +66,7 @@
     "ts-jest": "^29.1.1",
     "tsc-alias": "^1.8.7",
     "tsc-watch": "^6.0.4",
-    "turbo": "1.10.12",
+    "turbo": "1.13.3",
     "typescript": "*",
     "vite": "^5.1.6",
     "vite-plugin-checker": "^0.6.4",

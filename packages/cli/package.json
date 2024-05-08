@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "1.39.0",
+  "version": "1.41.0",
   "description": "n8n Workflow Automation Tool",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -93,6 +93,7 @@
     "@langchain/community": "0.0.53",
     "@langchain/core": "0.1.61",
     "@langchain/openai": "0.0.28",
+    "@langchain/pinecone": "^0.0.3",
     "@n8n/client-oauth2": "workspace:*",
     "@n8n/localtunnel": "2.1.0",
     "@n8n/n8n-nodes-langchain": "workspace:*",
@@ -100,6 +101,7 @@
     "@n8n/typeorm": "0.3.20-9",
     "@n8n_io/license-sdk": "2.10.0",
     "@oclif/core": "3.18.1",
+    "@pinecone-database/pinecone": "2.1.0",
     "@rudderstack/rudder-sdk-node": "2.0.7",
     "@sentry/integrations": "7.87.0",
     "@sentry/node": "7.87.0",
@@ -128,6 +130,7 @@
     "fast-glob": "3.2.12",
     "flatted": "3.2.7",
     "formidable": "3.5.1",
+    "fuse.js": "^7.0.0",
     "google-timezones-json": "1.1.0",
     "handlebars": "4.7.8",
     "helmet": "7.1.0",
@@ -181,6 +184,8 @@
     "ws": "8.14.2",
     "xml2js": "0.6.2",
     "xmllint-wasm": "3.0.1",
-    "yamljs": "0.3.0"
+    "yamljs": "0.3.0",
+    "zod": "3.22.4",
+    "zod-to-json-schema": "3.22.4"
   }
 }

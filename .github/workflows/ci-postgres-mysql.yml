@@ -7,6 +7,7 @@ on:
   pull_request:
     paths:
       - packages/cli/src/databases/**
+      - .github/workflows/ci-postgres-mysql.yml
 
 concurrency:
   group: db-${{ github.event.pull_request.number || github.ref }}
@@ -92,7 +93,7 @@ jobs:
 
       - name: Test MySQL
         working-directory: packages/cli
-        run: pnpm test:mysql
+        run: pnpm test:mysql --testTimeout 20000
 
   postgres:
     name: Postgres
