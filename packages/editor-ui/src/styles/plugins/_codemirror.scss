@@ -128,6 +128,15 @@
 	max-width: 320px !important;
 	height: 100%;
 
+	a {
+		color: var(--color-text-dark);
+
+		&:hover,
+		&:active {
+			text-decoration: underline;
+		}
+	}
+
 	.autocomplete-info-header {
 		padding: 0 var(--spacing-xs);
 		color: var(--color-text-base);
@@ -143,6 +152,7 @@
 	.autocomplete-info-arg {
 		color: var(--color-text-base);
 		font-weight: var(--font-weight-regular);
+		padding: 0;
 		display: inline-block;
 	}
 

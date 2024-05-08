@@ -220,6 +220,8 @@ export const extensions = ({
 
 	const fnToDoc = Object.entries(expressionExtensions.functions).reduce<FnToDoc>(
 		(acc, [fnName, fn]) => {
+			// Extension method docs do not have more info than info box, do not show
+			delete fn.doc?.docURL;
 			return { ...acc, [fnName]: { doc: fn.doc } };
 		},
 		{},
