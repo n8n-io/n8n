@@ -57,7 +57,7 @@ import type {
 	IWorkflowSettings,
 	INodeType,
 } from 'n8n-workflow';
-import { deepCopy, NodeHelpers, Workflow, ErrorReporterProxy as EventReporter } from 'n8n-workflow';
+import { deepCopy, NodeHelpers, Workflow } from 'n8n-workflow';
 import { findLast } from 'lodash-es';
 
 import { useRootStore } from '@/stores/n8nRoot.store';
@@ -1287,7 +1287,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const rootStore = useRootStore();
 
 		if (data.settings === null) {
-			EventReporter.info('Detected workflow payload with settings as null');
 			data.settings = undefined;
 		}
 
@@ -1303,7 +1302,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const rootStore = useRootStore();
 
 		if (startRunData.workflowData.settings === null) {
-			EventReporter.info('Detected workflow payload with settings as null');
 			startRunData.workflowData.settings = undefined;
 		}
 
