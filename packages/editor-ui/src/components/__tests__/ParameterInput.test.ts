@@ -4,13 +4,13 @@ import type { useNDVStore } from '@/stores/ndv.store';
 import type { CompletionResult } from '@codemirror/autocomplete';
 import { createTestingPinia } from '@pinia/testing';
 import { faker } from '@faker-js/faker';
+import { waitFor } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
+import type { useNodeTypesStore } from '../../stores/nodeTypes.store';
 
 let mockNdvState: Partial<ReturnType<typeof useNDVStore>>;
 let mockNodeTypesState: Partial<ReturnType<typeof useNodeTypesStore>>;
 let mockCompletionResult: Partial<CompletionResult>;
-import { waitFor } from '@testing-library/vue';
-import userEvent from '@testing-library/user-event';
-import { useNodeTypesStore } from '../../stores/nodeTypes.store';
 
 vi.mock('@/stores/ndv.store', () => {
 	return {
