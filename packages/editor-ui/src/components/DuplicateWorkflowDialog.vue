@@ -56,12 +56,13 @@ import TagsDropdown from '@/components/TagsDropdown.vue';
 import Modal from '@/components/Modal.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { IWorkflowDataUpdate } from '@/Interface';
+import type { IWorkflowDataUpdate, IWorkflowDb } from '@/Interface';
 import { useUsersStore } from '@/stores/users.store';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRouter } from 'vue-router';
+import { useProjectsStore } from '@/features/projects/projects.store';
 
 export default defineComponent({
 	name: 'DuplicateWorkflow',
@@ -95,7 +96,29 @@ export default defineComponent({
 		this.focusOnNameInput();
 	},
 	computed: {
-		...mapStores(useCredentialsStore, useUsersStore, useSettingsStore, useWorkflowsStore),
+		...mapStores(
+			useCredentialsStore,
+			useUsersStore,
+			useSettingsStore,
+			useWorkflowsStore,
+			useProjectsStore,
+		),
+		workflow(): IWorkflowDb {
+			return this.workflowsStore.workflowsById[this.data.id];
+		},
+		telemetrySharingRole(): string {
+			if (this.workflow.homeProject?.id === this.projectsStore.personalProject?.id) {
+				return 'owner';
+			} else if (
+				this.workflow.sharedWithProjects?.some(
+					(project) => project.id === this.projectsStore.personalProject?.id,
+				)
+			) {
+				return 'sharee';
+			} else {
+				return 'member';
+			}
+		},
 	},
 	watch: {
 		isActive(active) {
@@ -171,8 +194,7 @@ export default defineComponent({
 					this.$telemetry.track('User duplicated workflow', {
 						old_workflow_id: currentWorkflowId,
 						workflow_id: this.data.id,
-						// Hardcoding a value as this needs to be updated in the future anyways
-						sharing_role: 'unknown',
+						sharing_role: this.telemetrySharingRole,
 					});
 				}
 			} catch (error) {
