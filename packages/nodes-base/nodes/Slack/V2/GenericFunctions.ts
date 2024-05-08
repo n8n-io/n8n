@@ -29,7 +29,7 @@ export async function slackApiRequest(
 		},
 		body,
 		qs: query,
-		uri: `https://slack.com/api${resource}`,
+		uri: resource.startsWith('https') ? resource : `https://slack.com/api${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);
@@ -78,6 +78,7 @@ export async function slackApiRequest(
 				},
 			);
 		}
+
 		throw new NodeOperationError(
 			this.getNode(),
 			'Slack error response: ' + JSON.stringify(response.error),
