@@ -5,9 +5,7 @@ import { FailedDependencyError } from '@/errors/response-errors/failed-dependenc
 
 @RestController('/ai')
 export class AIController {
-	constructor(
-		private readonly aiService: AIService,
-	) {}
+	constructor(private readonly aiService: AIService) {}
 
 	/**
 	 * Generate CURL request and additional HTTP Node metadata for given service and request

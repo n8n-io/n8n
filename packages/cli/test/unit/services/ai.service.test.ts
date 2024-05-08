@@ -1,5 +1,4 @@
-import type { INode, INodeType } from 'n8n-workflow';
-import { ApplicationError, jsonParse, NodeOperationError } from 'n8n-workflow';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
 import { AIService } from '@/services/ai.service';
 import config from '@/config';
 import {

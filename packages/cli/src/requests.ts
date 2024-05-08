@@ -8,7 +8,6 @@ import type {
 	INodeParameters,
 	INodeTypeNameVersion,
 	IUser,
-	NodeError,
 } from 'n8n-workflow';
 
 import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length } from 'class-validator';
