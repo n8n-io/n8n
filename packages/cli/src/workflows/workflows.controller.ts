@@ -8,7 +8,7 @@ import * as WorkflowHelpers from '@/WorkflowHelpers';
 import type { IWorkflowResponse } from '@/Interfaces';
 import config from '@/config';
 import { Delete, Get, Patch, Post, ProjectScope, Put, RestController } from '@/decorators';
-import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { TagRepository } from '@db/repositories/tag.repository';
@@ -432,7 +432,7 @@ export class WorkflowsController {
 				[currentPersonalProjectIDs, (id) => id],
 			);
 
-			await this.sharedWorkflowRepository.delete({
+			await trx.delete(SharedWorkflow, {
 				workflowId,
 				projectId: In(toUnshare),
 			});
