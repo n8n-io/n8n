@@ -2568,7 +2568,6 @@ export interface IN8nUISettings {
 		enabled: boolean;
 		provider: string;
 		features: {
-			errorDebugging: boolean;
 			generateCurl: boolean;
 		};
 	};
