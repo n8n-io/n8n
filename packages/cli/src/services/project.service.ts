@@ -1,4 +1,4 @@
-import { Project } from '@/databases/entities/Project';
+import { Project, type ProjectType } from '@/databases/entities/Project';
 import { ProjectRelation } from '@/databases/entities/ProjectRelation';
 import type { ProjectRole } from '@/databases/entities/ProjectRelation';
 import type { User } from '@/databases/entities/User';
@@ -335,5 +335,12 @@ export class ProjectService {
 				},
 			},
 		});
+	}
+
+	async getProjectCounts(): Promise<Record<ProjectType, number>> {
+		return {
+			personal: await this.projectRepository.count({ where: { type: 'personal' } }),
+			team: await this.projectRepository.count({ where: { type: 'team' } }),
+		};
 	}
 }
