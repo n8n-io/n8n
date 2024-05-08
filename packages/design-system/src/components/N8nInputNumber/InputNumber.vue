@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { InputSize } from '@/types';
+import type { InputSize } from '@/types';
 import { ElInputNumber } from 'element-plus';
 import { computed } from 'vue';
 
