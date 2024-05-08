@@ -15,6 +15,7 @@ import { RunnableWithMessageHistory } from '@langchain/core/runnables';
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { JsonOutputFunctionsParser } from 'langchain/output_parsers';
+import { Unauthorized } from 'express-openapi-validator/dist/openapi.validator';
 
 const memorySessions = new Map<string, ChatMessageHistory>();
 
@@ -76,7 +77,7 @@ export class AIController {
 		}
 	}
 
-	@Post('/debug-chat')
+	@Post('/debug-chat', { skipAuth: true })
 	async debugChat(req: AIRequest.DebugChat, res: express.Response) {
 		const { sessionId, text, schemas, nodes, parameters, error } = req.body;
 
