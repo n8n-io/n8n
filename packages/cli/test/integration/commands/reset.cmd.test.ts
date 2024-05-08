@@ -17,7 +17,6 @@ import { SharedCredentialsRepository } from '@/databases/repositories/sharedCred
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
-import config from '@/config';
 
 beforeAll(async () => {
 	mockInstance(InternalHooks);
@@ -34,11 +33,8 @@ afterAll(async () => {
 	await testDb.terminate();
 });
 
-// TODO: figure out why this tests fails on mysqldb
 // eslint-disable-next-line n8n-local-rules/no-skipped-tests
-const testFn = config.getEnv('database.type') === 'mysqldb' ? test.skip : test;
-
-testFn('user-management:reset should reset DB to default user state', async () => {
+test('user-management:reset should reset DB to default user state', async () => {
 	//
 	// ARRANGE
 	//

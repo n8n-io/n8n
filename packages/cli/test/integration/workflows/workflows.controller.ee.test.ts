@@ -71,11 +71,7 @@ beforeEach(async () => {
 	activeWorkflowManager.add.mockReset();
 	activeWorkflowManager.remove.mockReset();
 
-	console.log('before truncate');
-	console.time('testDb.truncate()');
 	await testDb.truncate(['Workflow', 'SharedWorkflow', 'WorkflowHistory']);
-	console.timeEnd('testDb.truncate()');
-	console.log('after truncate');
 });
 
 afterEach(() => {

@@ -26,7 +26,6 @@ import * as utils from '@/utils';
 import { listQueryMiddleware } from '@/middlewares';
 import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
 import { In } from '@n8n/typeorm';
-import { SharedCredentials } from '@/databases/entities/SharedCredentials';
 
 @RestController('/credentials')
 export class CredentialsController {
@@ -276,7 +275,7 @@ export class CredentialsController {
 				[currentPersonalProjectIDs, (id) => id],
 			);
 
-			const deleteResult = await trx.delete(SharedCredentials, {
+			const deleteResult = await this.sharedCredentialsRepository.delete({
 				credentialsId: credentialId,
 				projectId: In(toUnshare),
 			});
