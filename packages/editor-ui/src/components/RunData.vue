@@ -152,6 +152,17 @@
 		</div>
 		<slot name="before-data" />
 
+		<div v-if="paneType === 'output'">
+			<n8n-callout
+				:class="$style.warningCallout"
+				theme="info"
+				v-for="warning in executionWarnings"
+				:key="warning"
+			>
+				<n8n-text v-html="warning" size="small"></n8n-text>
+			</n8n-callout>
+		</div>
+
 		<div
 			v-if="maxOutputIndex > 0 && branches.length > 1"
 			:class="$style.tabs"
@@ -205,18 +216,6 @@
 				:is-area-active="isPaneActive"
 				@focus="activatePane"
 			/>
-		</div>
-
-		<div
-			:class="$style.itemsCount"
-			v-if="paneType === 'output' && hasNodeRun && !hasRunError && runWarnings.length"
-		>
-			<div style="display: flex; align-items: center; gap: 10px">
-				<n8n-icon :class="$style.statusIcon" icon="info-circle" size="medium" color="text-light" />
-				<div style="display: flex; flex-direction: column; gap: 5px">
-					<n8n-text v-for="warning in runWarnings" :key="warning" v-html="warning"></n8n-text>
-				</div>
-			</div>
 		</div>
 
 		<div ref="dataContainer" :class="$style.dataContainer" data-test-id="ndv-data-container">
@@ -836,7 +835,7 @@ export default defineComponent({
 		hasRunError(): boolean {
 			return Boolean(this.node && this.workflowRunData?.[this.node.name]?.[this.runIndex]?.error);
 		},
-		runWarnings(): string[] {
+		executionWarnings(): string[] {
 			const warnings =
 				this.node && this.workflowRunData?.[this.node.name]?.[this.runIndex]?.warnings;
 			return warnings || [];
@@ -1804,6 +1803,12 @@ export default defineComponent({
 .uiBlocker {
 	border-top-left-radius: 0;
 	border-bottom-left-radius: 0;
+}
+
+.warningCallout {
+	margin-bottom: var(--spacing-xs);
+	margin-left: var(--spacing-s);
+	margin-right: var(--spacing-s);
 }
 </style>
 
