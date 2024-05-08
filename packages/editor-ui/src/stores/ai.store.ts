@@ -35,7 +35,6 @@ export const useAIStore = defineStore('ai', () => {
 		position: [0, 0] as XYPosition,
 	});
 	const latestConnectionInfo: Ref<AIAssistantConnectionInfo | null> = ref(null);
-	const isErrorDebuggingEnabled = computed(() => settingsStore.settings.ai.features.errorDebugging);
 	const isGenerateCurlEnabled = computed(() => settingsStore.settings.ai.features.generateCurl);
 	const isAssistantExperimentEnabled = computed(
 		() => posthogStore.getVariant(AI_ASSISTANT_EXPERIMENT.name) === AI_ASSISTANT_EXPERIMENT.variant,
@@ -60,7 +59,6 @@ export const useAIStore = defineStore('ai', () => {
 	}
 
 	return {
-		isErrorDebuggingEnabled,
 		debugError,
 		assistantChatOpen,
 		nextStepPopupConfig,
