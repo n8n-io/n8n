@@ -41,7 +41,7 @@ export class MeController {
 	@Patch('/')
 	async updateCurrentUser(req: MeRequest.UserUpdate, res: Response): Promise<PublicUser> {
 		const { id: userId, email: currentEmail } = req.user;
-		const payload = plainToInstance(UserUpdatePayload, req.body);
+		const payload = plainToInstance(UserUpdatePayload, req.body, { excludeExtraneousValues: true });
 
 		const { email } = payload;
 		if (!email) {
@@ -227,7 +227,9 @@ export class MeController {
 	 */
 	@Patch('/settings')
 	async updateCurrentUserSettings(req: MeRequest.UserSettingsUpdate): Promise<User['settings']> {
-		const payload = plainToInstance(UserSettingsUpdatePayload, req.body);
+		const payload = plainToInstance(UserSettingsUpdatePayload, req.body, {
+			excludeExtraneousValues: true,
+		});
 		const { id } = req.user;
 
 		await this.userService.updateSettings(id, payload);
