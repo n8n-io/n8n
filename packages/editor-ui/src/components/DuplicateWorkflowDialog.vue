@@ -62,7 +62,6 @@ import { createEventBus } from 'n8n-design-system/utils';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRouter } from 'vue-router';
-import { useProjectsStore } from '@/features/projects/projects.store';
 
 export default defineComponent({
 	name: 'DuplicateWorkflow',
@@ -96,13 +95,7 @@ export default defineComponent({
 		this.focusOnNameInput();
 	},
 	computed: {
-		...mapStores(
-			useCredentialsStore,
-			useUsersStore,
-			useSettingsStore,
-			useWorkflowsStore,
-			useProjectsStore,
-		),
+		...mapStores(useCredentialsStore, useUsersStore, useSettingsStore, useWorkflowsStore),
 	},
 	watch: {
 		isActive(active) {
