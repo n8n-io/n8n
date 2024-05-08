@@ -34,6 +34,10 @@ beforeEach(async () => {
 	await testDb.truncate(['Workflow', 'SharedWorkflow', 'WorkflowHistory']);
 });
 
+afterAll(async () => {
+	await testDb.terminate();
+});
+
 describe('WorkflowSharingService', () => {
 	describe('getSharedWorkflowIds', () => {
 		it('should show all workflows to owners', async () => {

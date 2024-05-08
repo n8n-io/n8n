@@ -8,6 +8,10 @@ beforeAll(async () => {
 	await testDb.init();
 });
 
+afterAll(async () => {
+	await testDb.terminate();
+});
+
 describe('sso/saml/samlHelpers', () => {
 	describe('createUserFromSamlAttributes', () => {
 		test('Creates personal project for user', async () => {

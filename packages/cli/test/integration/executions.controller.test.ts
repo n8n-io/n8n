@@ -5,11 +5,16 @@ import { createMember, createOwner } from './shared/db/users';
 import { createWorkflow, shareWorkflowWithUsers } from './shared/db/workflows';
 import * as testDb from './shared/testDb';
 import { setupTestServer } from './shared/utils';
+import { mockInstance } from '../shared/mocking';
+import { WaitTracker } from '@/WaitTracker';
 
 const testServer = setupTestServer({ endpointGroups: ['executions'] });
 
 let owner: User;
 let member: User;
+
+// This is necessary for the tests to shutdown cleanly.
+mockInstance(WaitTracker);
 
 const saveExecution = async ({ belongingTo }: { belongingTo: User }) => {
 	const workflow = await createWorkflow({}, belongingTo);
