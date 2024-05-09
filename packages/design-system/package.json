@@ -41,11 +41,13 @@
     "@vitejs/plugin-vue": "^5.0.4",
     "@vue/test-utils": "^2.4.3",
     "@vue/tsconfig": "^0.5.1",
-    "autoprefixer": "^10.4.14",
+    "autoprefixer": "^10.4.19",
     "core-js": "^3.31.0",
     "jsdom": "^23.0.1",
+    "postcss": "^8.4.38",
     "sass": "^1.64.1",
-    "sass-loader": "^13.3.2"
+    "sass-loader": "^13.3.2",
+    "tailwindcss": "^3.4.3"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^1.2.36",
