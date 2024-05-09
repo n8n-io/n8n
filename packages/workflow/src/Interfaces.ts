@@ -1424,16 +1424,16 @@ export interface SupplyData {
 }
 
 export class NodeExecutionOutput extends Array {
-	private warnings: string[];
+	private hints: NodeExecutionHint[];
 
-	constructor(data: INodeExecutionData[][], warnings: string[] = []) {
+	constructor(data: INodeExecutionData[][], hints: NodeExecutionHint[] = []) {
 		super();
 		this.push(...data);
-		this.warnings = warnings;
+		this.hints = hints;
 	}
 
-	public getWarnings(): string[] {
-		return this.warnings;
+	public getHints(): NodeExecutionHint[] {
+		return this.hints;
 	}
 }
 
@@ -1771,6 +1771,8 @@ export type NodeHint = {
 	whenToDisplay?: 'always' | 'beforeExecution' | 'afterExecution';
 };
 
+export type NodeExecutionHint = Omit<NodeHint, 'whenToDisplay' | 'displayCondition'>;
+
 export interface INodeHookDescription {
 	method: string;
 }
@@ -1952,7 +1954,7 @@ export interface ITaskData {
 	data?: ITaskDataConnections;
 	inputOverride?: ITaskDataConnections;
 	error?: ExecutionError;
-	warnings?: string[];
+	hints?: NodeExecutionHint[];
 	source: Array<ISourceData | null>; // Is an array as nodes have multiple inputs
 	metadata?: ITaskMetadata;
 }

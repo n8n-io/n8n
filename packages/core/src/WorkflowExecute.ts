@@ -34,6 +34,7 @@ import type {
 	WorkflowExecuteMode,
 	CloseFunction,
 	StartNodeData,
+	NodeExecutionHint,
 } from 'n8n-workflow';
 import {
 	LoggerProxy as Logger,
@@ -804,7 +805,7 @@ export class WorkflowExecute {
 		// Variables which hold temporary data for each node-execution
 		let executionData: IExecuteData;
 		let executionError: ExecutionBaseError | undefined;
-		let executionWarnings: string[] = [];
+		let executionHints: NodeExecutionHint[] = [];
 		let executionNode: INode;
 		let nodeSuccessData: INodeExecutionData[][] | null | undefined;
 		let runIndex: number;
@@ -895,7 +896,7 @@ export class WorkflowExecute {
 
 					nodeSuccessData = null;
 					executionError = undefined;
-					executionWarnings = [];
+					executionHints = [];
 					executionData =
 						this.runExecutionData.executionData!.nodeExecutionStack.shift() as IExecuteData;
 					executionNode = executionData.node;
@@ -1064,8 +1065,9 @@ export class WorkflowExecute {
 
 								if (nodeSuccessData instanceof NodeExecutionOutput) {
 									// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-									const warnings: string[] = nodeSuccessData.getWarnings();
-									executionWarnings.push(...warnings);
+									const hints: NodeExecutionHint[] = nodeSuccessData.getHints();
+									// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+									executionHints.push(...hints);
 								}
 
 								if (nodeSuccessData && executionData.node.onError === 'continueErrorOutput') {
@@ -1303,7 +1305,7 @@ export class WorkflowExecute {
 					}
 
 					taskData = {
-						warnings: executionWarnings,
+						hints: executionHints,
 						startTime,
 						executionTime: new Date().getTime() - startTime,
 						source: !executionData.source ? [] : executionData.source.main,

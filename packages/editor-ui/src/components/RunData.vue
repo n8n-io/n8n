@@ -834,14 +834,11 @@ export default defineComponent({
 		hasRunError(): boolean {
 			return Boolean(this.node && this.workflowRunData?.[this.node.name]?.[this.runIndex]?.error);
 		},
-		executionWarnings(): NodeHint[] {
+		executionHints(): NodeHint[] {
 			if (this.hasNodeRun) {
-				const warnings =
-					this.node && this.workflowRunData?.[this.node.name]?.[this.runIndex]?.warnings;
+				const hints = this.node && this.workflowRunData?.[this.node.name]?.[this.runIndex]?.hints;
 
-				if (warnings) {
-					return warnings.map((warning) => ({ message: warning }));
-				}
+				if (hints) return hints;
 			}
 
 			return [];
@@ -1138,9 +1135,9 @@ export default defineComponent({
 				const workflowNode = workflow.getNode(this.node.name);
 
 				if (workflowNode) {
-					const executionWarnings = this.executionWarnings;
+					const executionHints = this.executionHints;
 					const nodeHints = NodeHelpers.getNodeHints(workflow, workflowNode, this.nodeType);
-					return executionWarnings.concat(nodeHints).filter(this.shouldHintBeDisplayed);
+					return executionHints.concat(nodeHints).filter(this.shouldHintBeDisplayed);
 				}
 			}
 			return [];

@@ -57,7 +57,15 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	}
 
 	if (operation === 'search') {
-		return new NodeExecutionOutput([returnData], [NODE_RAN_MULTIPLE_TIMES_WARNING]);
+		return new NodeExecutionOutput(
+			[returnData],
+			[
+				{
+					message: NODE_RAN_MULTIPLE_TIMES_WARNING,
+					location: 'outputPane',
+				},
+			],
+		);
 	}
 
 	return [returnData];
