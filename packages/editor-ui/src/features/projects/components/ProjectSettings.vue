@@ -200,7 +200,7 @@ onBeforeMount(async () => {
 					:delete-label="$locale.baseText('workflows.shareModal.list.delete')"
 				>
 					<template #actions="{ user }">
-						<div class="flex">
+						<div class="flex gap-3">
 							<N8nSelect
 								:model-value="user?.role || rolesStore.processedProjectRoles[0]"
 								size="small"
