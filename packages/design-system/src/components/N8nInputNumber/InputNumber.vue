@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { InputSize } from '@/types';
 import { ElInputNumber } from 'element-plus';
-import { computed } from 'vue';
 
 type InputNumberProps = {
 	size?: InputSize;
@@ -11,11 +10,9 @@ type InputNumberProps = {
 	precision?: number;
 };
 
-const props = defineProps<InputNumberProps>();
-
-const elSize = computed(() => props.size as 'small' | 'large');
+defineProps<InputNumberProps>();
 </script>
 
 <template>
-	<ElInputNumber :size="elSize" v-bind="{ ...$props, ...$attrs }" />
+	<ElInputNumber v-bind="{ ...$props, ...$attrs }" />
 </template>
