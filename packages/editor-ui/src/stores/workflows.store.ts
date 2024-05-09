@@ -3,7 +3,6 @@ import {
 	DEFAULT_NEW_WORKFLOW_NAME,
 	DUPLICATE_POSTFFIX,
 	ERROR_TRIGGER_NODE_TYPE,
-	EnterpriseEditionFeature,
 	MAX_WORKFLOW_NAME_LENGTH,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	START_NODE_TYPE,
@@ -55,9 +54,8 @@ import type {
 	ITaskData,
 	IWorkflowSettings,
 	INodeType,
-	IUser,
 } from 'n8n-workflow';
-import { deepCopy, NodeHelpers, Workflow, ErrorReporterProxy as EventReporter } from 'n8n-workflow';
+import { deepCopy, NodeHelpers, Workflow } from 'n8n-workflow';
 import { findLast } from 'lodash-es';
 
 import { useRootStore } from '@/stores/n8nRoot.store';
@@ -75,7 +73,6 @@ import { i18n } from '@/plugins/i18n';
 
 import { computed, ref } from 'vue';
 import { useProjectsStore } from '@/features/projects/projects.store';
-import { ErrorReporterProxy as EventReporter } from 'n8n-workflow';
 import { useSettingsStore } from './settings.store';
 import { useUsersStore } from './users.store';
 
@@ -358,20 +355,20 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		);
 	}
 
-		async function fetchAllWorkflows(projectId?: string): Promise<IWorkflowDb[]> {
-			const rootStore = useRootStore();
+	async function fetchAllWorkflows(projectId?: string): Promise<IWorkflowDb[]> {
+		const rootStore = useRootStore();
 
-			const filter = {
-				projectId,
-			};
+		const filter = {
+			projectId,
+		};
 
-			const workflows = await workflowsApi.getWorkflows(
-				rootStore.getRestApiContext,
-				isEmpty(filter) ? undefined : filter,
-			);
-			setWorkflows(workflows);
-			return workflows;
-		}
+		const workflows = await workflowsApi.getWorkflows(
+			rootStore.getRestApiContext,
+			isEmpty(filter) ? undefined : filter,
+		);
+		setWorkflows(workflows);
+		return workflows;
+	}
 
 	async function fetchWorkflow(id: string): Promise<IWorkflowDb> {
 		const rootStore = useRootStore();
@@ -571,18 +568,20 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflow.value.active = active;
 	}
 
-async function getDuplicateCurrentWorkflowName(currentWorkflowName: string): Promise<string> {
-	if (
-		currentWorkflowName &&
-		currentWorkflowName.length + DUPLICATE_POSTFFIX.length >= MAX_WORKFLOW_NAME_LENGTH
-	) {
-		return currentWorkflowName;
-	}
+	async function getDuplicateCurrentWorkflowName(currentWorkflowName: string): Promise<string> {
+		if (
+			currentWorkflowName &&
+			currentWorkflowName.length + DUPLICATE_POSTFFIX.length >= MAX_WORKFLOW_NAME_LENGTH
+		) {
+			return currentWorkflowName;
+		}
 
 		let newName = `${currentWorkflowName}${DUPLICATE_POSTFFIX}`;
 		try {
 			const rootStore = useRootStore();
-			const newWorkflow = await workflowsApi.getNewWorkflow(rootStore.getRestApiContext, { name: newName });
+			const newWorkflow = await workflowsApi.getNewWorkflow(rootStore.getRestApiContext, {
+				name: newName,
+			});
 			newName = newWorkflow.name;
 		} catch (e) {}
 		return newName;
@@ -1327,23 +1326,23 @@ async function getDuplicateCurrentWorkflowName(currentWorkflowName: string): Pro
 			startRunData.workflowData.settings = undefined;
 		}
 
-			try {
-				return await makeRestApiRequest(
-					rootStore.getRestApiContext,
-					'POST',
-					`/workflows/${startRunData.workflowData.id}/run`,
-					startRunData as unknown as IDataObject,
-				);
-			} catch (error) {
-				if (error.response?.status === 413) {
-					throw new ResponseError(i18n.baseText('workflowRun.showError.payloadTooLarge'), {
-						errorCode: 413,
-						httpStatusCode: 413,
-					});
-				}
-				throw error;
+		try {
+			return await makeRestApiRequest(
+				rootStore.getRestApiContext,
+				'POST',
+				`/workflows/${startRunData.workflowData.id}/run`,
+				startRunData as unknown as IDataObject,
+			);
+		} catch (error) {
+			if (error.response?.status === 413) {
+				throw new ResponseError(i18n.baseText('workflowRun.showError.payloadTooLarge'), {
+					errorCode: 413,
+					httpStatusCode: 413,
+				});
 			}
-		},
+			throw error;
+		}
+	}
 
 	async function removeTestWebhook(targetWorkflowId: string): Promise<boolean> {
 		const rootStore = useRootStore();
