@@ -171,8 +171,7 @@ export default defineComponent({
 					this.$telemetry.track('User duplicated workflow', {
 						old_workflow_id: currentWorkflowId,
 						workflow_id: this.data.id,
-						// Hardcoding a value as this needs to be updated in the future anyways
-						sharing_role: 'unknown',
+						sharing_role: this.workflowHelpers.getWorkflowProjectRole(this.data.id),
 					});
 				}
 			} catch (error) {

@@ -40,6 +40,8 @@
 							:readonly="!workflowPermissions.share"
 							:static="isHomeTeamProject"
 							:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
+							@project-added="onProjectAdded"
+							@project-removed="onProjectRemoved"
 						/>
 						<n8n-info-tip v-if="isHomeTeamProject" :bold="false" class="mt-s">
 							<i18n-t keypath="workflows.shareModal.info.members" tag="span">
@@ -143,6 +145,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
+import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { isNavigationFailure } from 'vue-router';
 import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
@@ -262,6 +265,18 @@ export default defineComponent({
 		await this.initialize();
 	},
 	methods: {
+		onProjectAdded(project: ProjectSharingData) {
+			this.trackTelemetry('User selected sharee to add', {
+				project_id_sharer: this.workflow.homeProject?.id,
+				project_id_sharee: project.id,
+			});
+		},
+		onProjectRemoved(project: ProjectSharingData) {
+			this.trackTelemetry('User selected sharee to remove', {
+				project_id_sharer: this.workflow.homeProject?.id,
+				project_id_sharee: project.id,
+			});
+		},
 		async onSave() {
 			if (this.loading) {
 				return;
@@ -330,6 +345,12 @@ export default defineComponent({
 				}
 			});
 			this.modalBus.emit('close');
+		},
+		trackTelemetry(eventName: string, data: ITelemetryTrackProperties) {
+			this.$telemetry.track(eventName, {
+				workflow_id: this.workflow.id,
+				...data,
+			});
 		},
 		goToUpgrade() {
 			void this.uiStore.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');

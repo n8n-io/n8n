@@ -940,7 +940,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 			if (error.errorCode === 100) {
 				telemetry.track('User attempted to save locked workflow', {
 					workflowId: currentWorkflow,
-					sharing_role: workflowPermissions.value.isOwner ? 'owner' : 'sharee',
+					sharing_role: getWorkflowProjectRole(currentWorkflow),
 				});
 
 				const url = router.resolve({
@@ -1182,6 +1182,22 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		});
 	}
 
+	function getWorkflowProjectRole(workflowId: string): 'owner' | 'sharee' | 'member' {
+		const workflow = workflowsStore.workflowsById[workflowId];
+
+		if (workflow.homeProject?.id === projectsStore.personalProject?.id) {
+			return 'owner';
+		} else if (
+			workflow.sharedWithProjects?.some(
+				(project) => project.id === projectsStore.personalProject?.id,
+			)
+		) {
+			return 'sharee';
+		} else {
+			return 'member';
+		}
+	}
+
 	return {
 		resolveParameter,
 		resolveRequiredParameters,
@@ -1207,5 +1223,6 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		dataHasChanged,
 		removeForeignCredentialsFromWorkflow,
 		workflowPermissions,
+		getWorkflowProjectRole,
 	};
 }

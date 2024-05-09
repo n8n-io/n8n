@@ -22,6 +22,10 @@ const props = defineProps<Props>();
 const model = defineModel<(ProjectSharingData | null) | ProjectSharingData[]>({
 	required: true,
 });
+const emit = defineEmits<{
+	(event: 'projectAdded', value: ProjectSharingData): void;
+	(event: 'projectRemoved', value: ProjectSharingData): void;
+}>();
 
 const selectedProject = ref(Array.isArray(model.value) ? '' : model.value?.id ?? '');
 const filter = ref('');
@@ -61,6 +65,7 @@ const onProjectSelected = (projectId: string) => {
 	} else {
 		model.value = project;
 	}
+	emit('projectAdded', project);
 };
 
 const onRoleAction = (project: ProjectSharingData, role: string) => {
@@ -75,6 +80,7 @@ const onRoleAction = (project: ProjectSharingData, role: string) => {
 
 	if (role === 'remove') {
 		model.value = model.value.filter((p) => p.id !== project.id);
+		emit('projectRemoved', project);
 	}
 };
 
