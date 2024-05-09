@@ -75,13 +75,13 @@ export class Telemetry {
 		});
 		useTelemetryStore().init(this);
 
-		this.identify(instanceId, userId, projectId, versionCli);
+		this.identify(instanceId, userId, versionCli, projectId);
 
 		this.flushPageEvents();
 		this.track('Session started', { session_id: rootStore.pushRef });
 	}
 
-	identify(instanceId: string, userId?: string, projectId?: string, versionCli?: string) {
+	identify(instanceId: string, userId?: string, versionCli?: string, projectId?: string) {
 		const settingsStore = useSettingsStore();
 		const traits: { instance_id: string; version_cli?: string; user_cloud_id?: string } = {
 			instance_id: instanceId,
@@ -92,7 +92,10 @@ export class Telemetry {
 			traits.user_cloud_id = settingsStore.settings?.n8nMetadata?.userId ?? '';
 		}
 		if (userId) {
-			this.rudderStack.identify(`${instanceId}#${userId}#${projectId}`, traits);
+			this.rudderStack.identify(
+				`${instanceId}#${userId}${projectId ? '#' + projectId : ''}`,
+				traits,
+			);
 		} else {
 			this.rudderStack.reset();
 		}
