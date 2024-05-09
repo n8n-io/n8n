@@ -1,7 +1,7 @@
 import type { NodeCreatorOpenSource } from './Interface';
 import { NodeConnectionType } from 'n8n-workflow';
-import { CanvasNodeHandleInjectionData, CanvasNodeInjectionData } from '@/types';
-import { InjectionKey } from 'vue';
+import type { CanvasNodeHandleInjectionData, CanvasNodeInjectionData } from '@/types';
+import type { InjectionKey } from 'vue';
 
 export const MAX_WORKFLOW_SIZE = 1024 * 1024 * 16; // Workflow size limit in bytes
 export const MAX_EXPECTED_REQUEST_SIZE = 2048; // Expected maximum workflow request metadata (i.e. headers) size in bytes

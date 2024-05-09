@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import { computed, inject, useCssModule } from 'vue';
-import { svg } from '@jsplumb/browser-ui';
 import { CanvasNodeHandleKey } from '@/constants';
 
 const handle = inject(CanvasNodeHandleKey);
@@ -36,7 +35,7 @@ const label = computed(() => handle?.label.value ?? '');
 	<div :class="$style.handle">
 		<div :class="$style.label">{{ label }}</div>
 		<div :class="$style.circle" />
-		<!-- @TODO Determine whether handle is connected -->
+		<!-- @TODO Determine whether handle is connected and find a way to make it work without pointer-events: none -->
 		<!--		<svg :class="$style.plus" viewBox="0 0 70 24">-->
 		<!--			<line x1="0" y1="12" x2="46" y2="12" stroke="var(&#45;&#45;color-foreground-xdark)" />-->
 		<!--			<rect-->
