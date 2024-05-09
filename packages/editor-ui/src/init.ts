@@ -83,7 +83,11 @@ export async function initializeAuthenticatedFeatures() {
 			console.error('Failed to initialize cloud plan store:', e);
 		}
 	}
-	await Promise.all([projectsStore.getMyProjects(), projectsStore.getPersonalProject()]);
+	await Promise.all([
+		projectsStore.getMyProjects(),
+		projectsStore.getPersonalProject(),
+		projectsStore.getProjectsCount(),
+	]);
 
 	authenticatedFeaturesInitialized = true;
 }

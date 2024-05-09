@@ -8,6 +8,7 @@ import type {
 	ProjectCreateRequest,
 	ProjectListItem,
 	ProjectUpdateRequest,
+	ProjectsCount,
 } from '@/features/projects/projects.types';
 
 export const useProjectsStore = defineStore('projects', () => {
@@ -18,6 +19,11 @@ export const useProjectsStore = defineStore('projects', () => {
 	const myProjects = ref<ProjectListItem[]>([]);
 	const personalProject = ref<Project | null>(null);
 	const currentProject = ref<Project | null>(null);
+	const projectsCount = ref<ProjectsCount>({
+		personal: 0,
+		team: 0,
+		public: 0,
+	});
 
 	const currentProjectId = computed(
 		() =>
@@ -77,6 +83,10 @@ export const useProjectsStore = defineStore('projects', () => {
 		myProjects.value = myProjects.value.filter((p) => p.id !== projectId);
 	};
 
+	const getProjectsCount = async () => {
+		projectsCount.value = await projectsApi.getProjectsCount(rootStore.getRestApiContext);
+	};
+
 	watch(
 		route,
 		async (newRoute) => {
@@ -111,5 +121,6 @@ export const useProjectsStore = defineStore('projects', () => {
 		createProject,
 		updateProject,
 		deleteProject,
+		getProjectsCount,
 	};
 });

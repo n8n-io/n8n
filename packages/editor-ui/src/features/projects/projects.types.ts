@@ -26,3 +26,4 @@ export type ProjectCreateRequest = { name: string };
 export type ProjectUpdateRequest = Pick<Project, 'id' | 'name'> & {
 	relations: ProjectRelationPayload[];
 };
+export type ProjectsCount = Record<ProjectType, number>;
