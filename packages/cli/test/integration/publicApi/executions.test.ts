@@ -1,6 +1,6 @@
 import type { SuperAgentTest } from 'supertest';
 import type { User } from '@db/entities/User';
-import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import type { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 
 import { randomApiKey } from '../shared/random';
 import * as utils from '../shared/utils/';
@@ -24,7 +24,7 @@ let user2: User;
 let authOwnerAgent: SuperAgentTest;
 let authUser1Agent: SuperAgentTest;
 let authUser2Agent: SuperAgentTest;
-let workflowRunner: ActiveWorkflowRunner;
+let workflowRunner: ActiveWorkflowManager;
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
@@ -37,7 +37,7 @@ beforeAll(async () => {
 	await utils.initBinaryDataService();
 	await utils.initNodeTypes();
 
-	workflowRunner = await utils.initActiveWorkflowRunner();
+	workflowRunner = await utils.initActiveWorkflowManager();
 });
 
 beforeEach(async () => {

@@ -85,7 +85,7 @@ const isReadOnlyEnvironment = computed(() => {
 });
 
 const triggerNodes = computed<INodeUi[]>(() => {
-	return workflowsStore.triggerNodes;
+	return workflowsStore.workflowTriggerNodes;
 });
 
 const isCanvasAddButtonVisible = computed(() => {

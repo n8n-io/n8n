@@ -66,7 +66,7 @@ describe('RedisService', () => {
 
 		const mockHandler = jest.fn();
 		mockHandler.mockImplementation((stream: string, id: string, message: string[]) => {
-			console.log('Received message', stream, id, message);
+			Container.get(Logger).info('Received message', { stream, id, message });
 		});
 		consumer.addMessageHandler('some handler', mockHandler);
 

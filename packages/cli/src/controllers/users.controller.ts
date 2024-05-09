@@ -11,7 +11,7 @@ import {
 	UserRoleChangePayload,
 	UserSettingsUpdatePayload,
 } from '@/requests';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import type { PublicUser, ITelemetryUserDeletionData } from '@/Interfaces';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
@@ -36,7 +36,7 @@ export class UsersController {
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly userRepository: UserRepository,
-		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
+		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly authService: AuthService,
 		private readonly userService: UserService,
 	) {}
@@ -117,7 +117,9 @@ export class UsersController {
 	@Patch('/:id/settings')
 	@GlobalScope('user:update')
 	async updateUserSettings(req: UserRequest.UserSettingsUpdate) {
-		const payload = plainToInstance(UserSettingsUpdatePayload, req.body);
+		const payload = plainToInstance(UserSettingsUpdatePayload, req.body, {
+			excludeExtraneousValues: true,
+		});
 
 		const id = req.params.id;
 
@@ -264,7 +266,7 @@ export class UsersController {
 				ownedSharedWorkflows.map(async ({ workflow }) => {
 					if (workflow.active) {
 						// deactivate before deleting
-						await this.activeWorkflowRunner.remove(workflow.id);
+						await this.activeWorkflowManager.remove(workflow.id);
 					}
 					return workflow;
 				}),
@@ -293,7 +295,9 @@ export class UsersController {
 		const { NO_ADMIN_ON_OWNER, NO_USER, NO_OWNER_ON_OWNER } =
 			UsersController.ERROR_MESSAGES.CHANGE_ROLE;
 
-		const payload = plainToInstance(UserRoleChangePayload, req.body);
+		const payload = plainToInstance(UserRoleChangePayload, req.body, {
+			excludeExtraneousValues: true,
+		});
 		await validateEntity(payload);
 
 		const targetUser = await this.userRepository.findOne({

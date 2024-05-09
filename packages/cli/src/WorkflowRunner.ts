@@ -211,13 +211,16 @@ export class WorkflowRunner {
 							]);
 						} catch (error) {
 							ErrorReporter.error(error);
-							console.error('There was a problem running hook "workflow.postExecute"', error);
+							this.logger.error('There was a problem running hook "workflow.postExecute"', error);
 						}
 					}
 				})
 				.catch((error) => {
 					ErrorReporter.error(error);
-					console.error('There was a problem running internal hook "onWorkflowPostExecute"', error);
+					this.logger.error(
+						'There was a problem running internal hook "onWorkflowPostExecute"',
+						error,
+					);
 				});
 		}
 
@@ -411,7 +414,7 @@ export class WorkflowRunner {
 		try {
 			job = await this.jobQueue.add(jobData, jobOptions);
 
-			console.log(`Started with job ID: ${job.id.toString()} (Execution ID: ${executionId})`);
+			this.logger.info(`Started with job ID: ${job.id.toString()} (Execution ID: ${executionId})`);
 
 			hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerMain(
 				data.executionMode,

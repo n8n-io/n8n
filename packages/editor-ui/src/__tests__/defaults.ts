@@ -143,7 +143,6 @@ export const defaultSettings: IN8nUISettings = {
 	ai: {
 		enabled: false,
 		provider: '',
-		errorDebugging: false,
 	},
 	workflowHistory: {
 		pruneTime: 0,
