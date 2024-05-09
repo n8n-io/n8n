@@ -34,6 +34,10 @@ beforeAll(async () => {
 		orchestrationService,
 		mock(),
 		activeWorkflowManager,
+		mock(),
+		mock(),
+		mock(),
+		mock(),
 	);
 });
 

@@ -338,9 +338,6 @@ export class ProjectService {
 	}
 
 	async getProjectCounts(): Promise<Record<ProjectType, number>> {
-		return {
-			personal: await this.projectRepository.count({ where: { type: 'personal' } }),
-			team: await this.projectRepository.count({ where: { type: 'team' } }),
-		};
+		return await this.projectRepository.getProjectCounts();
 	}
 }
