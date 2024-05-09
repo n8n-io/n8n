@@ -152,16 +152,14 @@
 		</div>
 		<slot name="before-data" />
 
-		<div v-if="paneType === 'output'">
-			<n8n-callout
-				:class="$style.warningCallout"
-				theme="info"
-				v-for="warning in executionWarnings"
-				:key="warning"
-			>
-				<n8n-text v-html="warning" size="small"></n8n-text>
-			</n8n-callout>
-		</div>
+		<n8n-callout
+			v-for="hint in getNodeHints()"
+			:key="hint.message"
+			:class="$style.hintCallout"
+			:theme="hint.type || 'info'"
+		>
+			<n8n-text v-html="hint.message" size="small"></n8n-text>
+		</n8n-callout>
 
 		<div
 			v-if="maxOutputIndex > 0 && branches.length > 1"
@@ -568,6 +566,7 @@ import type {
 	INodeTypeDescription,
 	IRunData,
 	IRunExecutionData,
+	NodeHint,
 } from 'n8n-workflow';
 import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 
@@ -835,10 +834,17 @@ export default defineComponent({
 		hasRunError(): boolean {
 			return Boolean(this.node && this.workflowRunData?.[this.node.name]?.[this.runIndex]?.error);
 		},
-		executionWarnings(): string[] {
-			const warnings =
-				this.node && this.workflowRunData?.[this.node.name]?.[this.runIndex]?.warnings;
-			return warnings || [];
+		executionWarnings(): NodeHint[] {
+			if (this.hasNodeRun) {
+				const warnings =
+					this.node && this.workflowRunData?.[this.node.name]?.[this.runIndex]?.warnings;
+
+				if (warnings) {
+					return warnings.map((warning) => ({ message: warning }));
+				}
+			}
+
+			return [];
 		},
 		workflowExecution(): IExecutionResponse | null {
 			return this.workflowsStore.getWorkflowExecution;
@@ -1095,6 +1101,46 @@ export default defineComponent({
 				if (workflowNode) {
 					const outputs = NodeHelpers.getNodeOutputs(workflow, workflowNode, this.nodeType);
 					return outputs;
+				}
+			}
+			return [];
+		},
+		shouldHintBeDisplayed(hint: NodeHint): boolean {
+			const { location, whenToDisplay } = hint;
+			if (location) {
+				if (location === 'ndv') {
+					return true;
+				}
+				if (location === 'inputPane' && this.paneType === 'input') {
+					return true;
+				}
+
+				if (location === 'outputPane' && this.paneType === 'output') {
+					return true;
+				}
+
+				return false;
+			}
+
+			if (whenToDisplay === 'afterExecution' && !this.hasNodeRun) {
+				return false;
+			}
+
+			if (whenToDisplay === 'beforeExecution' && this.hasNodeRun) {
+				return false;
+			}
+
+			return true;
+		},
+		getNodeHints(): NodeHint[] {
+			if (this.node && this.nodeType) {
+				const workflow = this.workflowsStore.getCurrentWorkflow();
+				const workflowNode = workflow.getNode(this.node.name);
+
+				if (workflowNode) {
+					const executionWarnings = this.executionWarnings;
+					const nodeHints = NodeHelpers.getNodeHints(workflow, workflowNode, this.nodeType);
+					return executionWarnings.concat(nodeHints).filter(this.shouldHintBeDisplayed);
 				}
 			}
 			return [];
@@ -1805,7 +1851,7 @@ export default defineComponent({
 	border-bottom-left-radius: 0;
 }
 
-.warningCallout {
+.hintCallout {
 	margin-bottom: var(--spacing-xs);
 	margin-left: var(--spacing-s);
 	margin-right: var(--spacing-s);

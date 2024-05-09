@@ -1765,11 +1765,10 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 
 export type NodeHint = {
 	message: string;
-	// display: string | IDisplayOptions;
-	display: string;
-	type: 'warning' | 'error';
-	location: 'outputPanel' | 'inputPanel' | 'node';
-	when: 'beforeExecution' | 'afterExecution' | 'always';
+	type?: 'info' | 'warning' | 'danger';
+	location?: 'outputPane' | 'inputPane' | 'ndv';
+	displayCondition?: string;
+	whenToDisplay?: 'always' | 'beforeExecution' | 'afterExecution';
 };
 
 export interface INodeHookDescription {
