@@ -32,12 +32,16 @@
 	}
 
 	@include mixins.e((increase, decrease)) {
+		--disabled-color: var(--color-text-light);
 		position: absolute;
 		z-index: 1;
 		top: 1px;
+		bottom: 1px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 		width: var.$input-height;
 		height: auto;
-		text-align: center;
 		background: var.$background-color-base;
 		color: var(--color-text-dark);
 		cursor: pointer;
@@ -59,13 +63,15 @@
 
 	@include mixins.e(increase) {
 		right: 1px;
-		border-radius: 0 var(--border-radius-base) var(--border-radius-base) 0;
+		border-radius: 0 var.$input-number-control-border-radius var.$input-number-control-border-radius
+			0;
 		border-left: var(--border-base);
 	}
 
 	@include mixins.e(decrease) {
 		left: 1px;
-		border-radius: var(--border-radius-base) 0 0 var(--border-radius-base);
+		border-radius: var.$input-number-control-border-radius 0 0
+			var.$input-number-control-border-radius;
 		border-right: var(--border-base);
 	}
 
@@ -82,7 +88,7 @@
 	}
 
 	@include mixins.m(medium) {
-		line-height: #{var.$input-medium-height - 2};
+		line-height: #{var.$input-medium-height - 4};
 
 		@include mixins.e((increase, decrease)) {
 			width: var.$input-medium-height;
@@ -114,7 +120,7 @@
 	}
 
 	@include mixins.m(mini) {
-		line-height: #{var.$input-mini-height - 2};
+		line-height: #{var.$input-mini-height - 4};
 
 		@include mixins.e((increase, decrease)) {
 			width: var.$input-mini-height;
@@ -134,20 +140,33 @@
 	@include mixins.when(without-controls) {
 		.el-input__inner {
 			text-align: left;
-			padding-left: 12px;
-			padding-right: 12px;
+			padding-left: var(--spacing-2xs);
+			padding-right: var(--spacing-2xs);
 		}
 	}
 
 	@include mixins.when(controls-right) {
 		.el-input__inner {
-			padding-left: 15px;
-			padding-right: #{var.$input-height + 10};
+			padding-left: var(--spacing-2xs);
+			padding-right: #{var.$input-height + 4};
+		}
+
+		&.el-input-number--medium .el-input__inner {
+			padding-right: #{var.$input-medium-height + 4};
+		}
+
+		&.el-input-number--small .el-input__inner {
+			padding-right: #{var.$input-small-height + 4};
+		}
+
+		&.el-input-number--mini .el-input__inner {
+			padding-left: var(--spacing-4xs);
+			padding-right: #{var.$input-mini-height + 4};
 		}
 
 		@include mixins.e((increase, decrease)) {
-			height: auto;
-			line-height: #{(var.$input-height - 2) * 0.5};
+			height: calc((100% - 1px) / 2);
+			bottom: auto;
 
 			[class*='el-icon'] {
 				transform: scale(0.8);
@@ -155,7 +174,7 @@
 		}
 
 		@include mixins.e(increase) {
-			border-radius: 0 var(--border-radius-base) 0 0;
+			border-radius: 0 var.$input-number-control-border-radius 0 0;
 			border-bottom: var(--border-base);
 		}
 
@@ -166,28 +185,7 @@
 			left: auto;
 			border-right: none;
 			border-left: var(--border-base);
-			border-radius: 0 0 var(--border-radius-base) 0;
-		}
-
-		&[class*='medium'] {
-			[class*='increase'],
-			[class*='decrease'] {
-				line-height: #{(var.$input-medium-height - 2) * 0.5};
-			}
-		}
-
-		&[class*='small'] {
-			[class*='increase'],
-			[class*='decrease'] {
-				line-height: #{(var.$input-small-height - 2) * 0.5};
-			}
-		}
-
-		&[class*='mini'] {
-			[class*='increase'],
-			[class*='decrease'] {
-				line-height: #{(var.$input-mini-height - 2) * 0.5};
-			}
+			border-radius: 0 0 var.$input-number-control-border-radius 0;
 		}
 	}
 }
