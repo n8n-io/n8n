@@ -1,10 +1,9 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { NodeExecutionOutput, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import type { AirtableType } from './node.type';
 
 import * as record from './record/Record.resource';
 import * as base from './base/Base.resource';
-import { NODE_RAN_MULTIPLE_TIMES_WARNING } from '../../../../utils/constants';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	let returnData: INodeExecutionData[] = [];
@@ -54,18 +53,6 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			error.description = `${error.description}. Consider using 'Typecast' option`;
 		}
 		throw error;
-	}
-
-	if (operation === 'search') {
-		return new NodeExecutionOutput(
-			[returnData],
-			[
-				{
-					message: NODE_RAN_MULTIPLE_TIMES_WARNING,
-					location: 'outputPane',
-				},
-			],
-		);
 	}
 
 	return [returnData];
