@@ -75,7 +75,7 @@ describe('Resource Locator', () => {
 
 		ndv.actions.setInvalidExpression({ fieldName: 'fieldId' });
 
-		ndv.getters.inputDataContainer().click(); // remove focus from input, hide expression preview
+		ndv.getters.inputPanel().click(); // remove focus from input, hide expression preview
 
 		ndv.getters.resourceLocatorInput('rlc').click();
 
