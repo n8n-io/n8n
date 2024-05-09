@@ -23,6 +23,7 @@ import type {
 	INodeTypeData,
 	INodeTypes,
 	ICredentialTestFunctions,
+	IDataObject,
 } from 'n8n-workflow';
 import {
 	VersionedNodeType,
@@ -54,6 +55,9 @@ const mockNodesData: INodeTypeData = {
 };
 
 const mockNodeTypes: INodeTypes = {
+	getKnownTypes(): IDataObject {
+		return {};
+	},
 	getByName(nodeType: string): INodeType | IVersionedNodeType {
 		return mockNodesData[nodeType]?.type;
 	},

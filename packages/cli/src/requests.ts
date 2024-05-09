@@ -8,9 +8,9 @@ import type {
 	INodeParameters,
 	INodeTypeNameVersion,
 	IUser,
-	NodeError,
 } from 'n8n-workflow';
 
+import { Expose } from 'class-transformer';
 import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length } from 'class-validator';
 import { NoXss } from '@db/utils/customValidators';
 import type { PublicUser, SecretsProvider, SecretsProviderState } from '@/Interfaces';
@@ -25,14 +25,17 @@ import type { ProjectRole } from './databases/entities/ProjectRelation';
 import type { Scope } from '@n8n/permissions';
 
 export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'lastName'> {
+	@Expose()
 	@IsEmail()
 	email: string;
 
+	@Expose()
 	@NoXss()
 	@IsString({ message: 'First name must be of type string.' })
 	@Length(1, 32, { message: 'First name must be $constraint1 to $constraint2 characters long.' })
 	firstName: string;
 
+	@Expose()
 	@NoXss()
 	@IsString({ message: 'Last name must be of type string.' })
 	@Length(1, 32, { message: 'Last name must be $constraint1 to $constraint2 characters long.' })
@@ -40,16 +43,19 @@ export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'la
 }
 
 export class UserSettingsUpdatePayload {
+	@Expose()
 	@IsBoolean({ message: 'userActivated should be a boolean' })
 	@IsOptional()
 	userActivated: boolean;
 
+	@Expose()
 	@IsBoolean({ message: 'allowSSOManualLogin should be a boolean' })
 	@IsOptional()
 	allowSSOManualLogin?: boolean;
 }
 
 export class UserRoleChangePayload {
+	@Expose()
 	@IsIn(['global:admin', 'global:member'])
 	newRoleName: AssignableRole;
 }
@@ -170,12 +176,7 @@ export function hasSharing(
 // ----------------------------------
 
 export declare namespace AIRequest {
-	export type DebugError = AuthenticatedRequest<{}, {}, AIDebugErrorPayload>;
 	export type GenerateCurl = AuthenticatedRequest<{}, {}, AIGenerateCurlPayload>;
-}
-
-export interface AIDebugErrorPayload {
-	error: NodeError;
 }
 
 export interface AIGenerateCurlPayload {
