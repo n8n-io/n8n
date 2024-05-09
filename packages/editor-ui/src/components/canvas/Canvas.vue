@@ -40,8 +40,8 @@ function onNodeDragStop(e: NodeDragEvent) {
 	});
 }
 
-function onConnect(e: Connection) {
-	emit('create:connection', e);
+function onConnect(...args: unknown[]) {
+	emit('create:connection', args[0] as Connection);
 }
 </script>
 

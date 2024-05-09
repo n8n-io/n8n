@@ -20,7 +20,7 @@ const props = defineProps<{
 
 const $style = useCssModule();
 
-const handleType = computed(() => (props.mode === 'input' ? 'source' : 'target'));
+const handleType = computed(() => (props.mode === 'input' ? 'target' : 'source'));
 
 const isConnectableStart = computed(() => {
 	return props.mode === 'output';

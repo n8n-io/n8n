@@ -22,7 +22,6 @@ const ChangePasswordView = async () => await import('./views/ChangePasswordView.
 const ErrorView = async () => await import('./views/ErrorView.vue');
 const ForgotMyPasswordView = async () => await import('./views/ForgotMyPasswordView.vue');
 const MainHeader = async () => await import('@/components/MainHeader/MainHeader.vue');
-const MainHeaderV2 = async () => await import('@/components/MainHeaderV2/MainHeaderV2.vue');
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
 const NodeView = async () => await import('@/views/NodeView.vue');
 const NodeViewV2 = async () => await import('@/views/NodeView.v2.vue');
@@ -390,11 +389,16 @@ export const routes = [
 		name: VIEWS.WORKFLOW_V2,
 		components: {
 			default: NodeViewV2,
-			header: MainHeaderV2,
+			header: MainHeader,
 			sidebar: MainSidebar,
 		},
 		meta: {
-			middleware: ['authenticated'],
+			middleware: ['authenticated', 'custom'],
+			middlewareOptions: {
+				custom: () => {
+					return !!localStorage.getItem('features.nodeViewV2');
+				},
+			},
 		},
 	},
 	{

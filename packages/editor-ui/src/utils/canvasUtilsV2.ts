@@ -1,6 +1,7 @@
 import type { IConnections, INodeTypeDescription } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { CanvasConnection, CanvasConnectionPortType, CanvasConnectionPort } from '@/types';
+import { v4 as uuid } from 'uuid';
 
 export function mapLegacyConnections(
 	legacyConnections: IConnections,
@@ -72,4 +73,19 @@ export function normalizeElementEndpoints(
 			...(required ? { required } : {}),
 		};
 	});
+}
+
+export function getUniqueNodeName(name: string, existingNames: Set<string>): string {
+	if (!existingNames.has(name)) {
+		return name;
+	}
+
+	for (let i = 1; i < 100; i++) {
+		const newName = `${name} ${i}`;
+		if (!existingNames.has(newName)) {
+			return newName;
+		}
+	}
+
+	return `${name} ${uuid()}`;
 }

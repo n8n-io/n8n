@@ -1,17 +1,30 @@
 <script lang="ts" setup>
-import { useCssModule } from 'vue';
+import { computed, inject, useCssModule } from 'vue';
+import { CanvasNodeKey } from '@/constants';
+
+const node = inject(CanvasNodeKey);
 
 const $style = useCssModule();
+
+const label = computed(() => node?.label.value ?? '');
+
+const classes = computed(() => {
+	return {
+		[$style.node]: true,
+		[$style.selected]: node?.selected.value,
+	};
+});
 </script>
 
 <template>
-	<div :class="$style.canvasNodeConfiguration">
+	<div :class="classes">
 		<slot />
+		<div v-if="label" :class="$style.label">{{ label }}</div>
 	</div>
 </template>
 
 <style lang="scss" module>
-.canvasNodeConfiguration {
+.node {
 	width: 75px;
 	height: 75px;
 	display: flex;
@@ -20,5 +33,19 @@ const $style = useCssModule();
 	background: var(--canvas-node--background, var(--node-type-supplemental-background));
 	border: 2px solid var(--canvas-node--border-color, var(--color-foreground-dark));
 	border-radius: 50%;
+}
+
+.selected {
+	box-shadow: 0 0 0 4px var(--color-canvas-selected);
+}
+
+.label {
+	top: 100%;
+	position: absolute;
+	font-size: var(--font-size-m);
+	text-align: center;
+	width: 100%;
+	min-width: 200px;
+	margin-top: var(--spacing-2xs);
 }
 </style>

@@ -13,14 +13,11 @@ import CanvasNodeRenderer from '@/components/canvas/elements/nodes/CanvasNodeRen
 import HandleRenderer from '@/components/canvas/elements/handles/HandleRenderer.vue';
 import { useNodeConnections } from '@/composables/useNodeConnections';
 import { CanvasNodeKey } from '@/constants';
+import type { NodeProps } from '@vue-flow/core';
 
 const $style = useCssModule();
 
-const props = defineProps<{
-	data: CanvasElementData;
-	label: string;
-	selected: boolean;
-}>();
+const props = defineProps<NodeProps<CanvasElementData>>();
 
 const inputs = computed(() => props.data.inputs);
 const outputs = computed(() => props.data.outputs);
@@ -84,10 +81,12 @@ const mapEndpointWithPosition =
  */
 
 const data = toRef(props, 'data');
+const label = toRef(props, 'label');
 const selected = toRef(props, 'selected');
 
 provide(CanvasNodeKey, {
 	data,
+	label,
 	selected,
 	nodeType,
 });
@@ -128,7 +127,6 @@ provide(CanvasNodeKey, {
 			<NodeIcon :node-type="nodeType" :size="40" :shrink="false" />
 			<!--			:color-default="iconColorDefault"-->
 			<!--			:disabled="data.disabled"-->
-			<div :class="$style.canvasNodeLabel">{{ label }}</div>
 		</CanvasNodeRenderer>
 	</div>
 </template>
@@ -141,16 +139,6 @@ provide(CanvasNodeKey, {
 			opacity: 1;
 		}
 	}
-}
-
-.canvasNodeLabel {
-	top: 100%;
-	position: absolute;
-	font-size: var(--font-size-m);
-	text-align: center;
-	width: 100%;
-	min-width: 200px;
-	margin-top: var(--spacing-2xs);
 }
 
 .canvasNodeToolbar {

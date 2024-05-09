@@ -7,6 +7,7 @@ const node = inject(CanvasNodeKey);
 
 const $style = useCssModule();
 
+const label = computed(() => node?.label.value ?? '');
 const inputs = computed(() => node?.data.value.inputs ?? []);
 const outputs = computed(() => node?.data.value.outputs ?? []);
 
@@ -15,8 +16,15 @@ const { nonMainInputs, requiredNonMainInputs } = useNodeConnections({
 	outputs,
 });
 
+const classes = computed(() => {
+	return {
+		[$style.node]: true,
+		[$style.selected]: node?.selected.value,
+	};
+});
+
 const styles = computed(() => {
-	const styles: {
+	const stylesObject: {
 		[key: string]: string | number;
 	} = {};
 
@@ -28,21 +36,22 @@ const styles = computed(() => {
 			spacerCount = requiredNonMainInputsCount > 0 && optionalNonMainInputsCount > 0 ? 1 : 0;
 		}
 
-		styles['--configurable-node-input-count'] = nonMainInputs.value.length + spacerCount;
+		stylesObject['--configurable-node-input-count'] = nonMainInputs.value.length + spacerCount;
 	}
 
-	return styles;
+	return stylesObject;
 });
 </script>
 
 <template>
-	<div :class="$style.canvasNodeConfiguration" :style="styles">
+	<div :class="classes" :style="styles">
 		<slot />
+		<div :class="$style.label">{{ label }}</div>
 	</div>
 </template>
 
 <style lang="scss" module>
-.canvasNodeConfiguration {
+.node {
 	--configurable-node-min-input-count: 4;
 	--configurable-node-input-width: 65px;
 
@@ -57,5 +66,20 @@ const styles = computed(() => {
 	background: var(--canvas-node--background, var(--color-canvas-node-background));
 	border: 2px solid var(--canvas-node--border-color, var(--color-foreground-xdark));
 	border-radius: var(--border-radius-large);
+}
+
+.label {
+	top: 100%;
+	font-size: var(--font-size-m);
+	text-align: center;
+	margin-left: var(--spacing-s);
+	max-width: calc(
+		var(--node-width) - var(--configurable-node-icon-offset) - var(--configurable-node-icon-size) -
+			2 * var(--spacing-s)
+	);
+}
+
+.selected {
+	box-shadow: 0 0 0 4px var(--color-canvas-selected);
 }
 </style>

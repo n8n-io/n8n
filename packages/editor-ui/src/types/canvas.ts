@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-redundant-type-constituents */
 import type { ConnectionTypes, INodeTypeDescription } from 'n8n-workflow';
 import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
-import type { DefaultEdge, Node, Position } from '@vue-flow/core';
+import type { DefaultEdge, Node, NodeProps, Position } from '@vue-flow/core';
 import type { INodeUi } from '@/Interface';
 import type { ComputedRef, Ref } from 'vue';
 
@@ -49,7 +49,8 @@ export interface CanvasPlugin {
 
 export interface CanvasNodeInjectionData {
 	data: Ref<CanvasElementData>;
-	selected: Ref<boolean>;
+	label: Ref<NodeProps['label']>;
+	selected: Ref<NodeProps['selected']>;
 	nodeType: ComputedRef<INodeTypeDescription | null>;
 }
 

@@ -19,12 +19,10 @@ import useWorkflowsEEStore from '@/stores/workflows.ee.store';
 import { useTagsStore } from '@/stores/tags.store';
 import type { Connection } from '@vue-flow/core';
 import type { CanvasElement } from '@/types';
-import CanvasAddButton from '@/views/CanvasAddButton.vue';
 import {
+	EnterpriseEditionFeature,
 	AI_NODE_CREATOR_VIEW,
 	REGULAR_NODE_CREATOR_VIEW,
-	START_NODE_TYPE,
-	STICKY_NODE_TYPE,
 	TRIGGER_NODE_CREATOR_VIEW,
 	VIEWS,
 } from '@/constants';
@@ -33,18 +31,17 @@ import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
-import {
-	type ConnectionTypes,
-	type INodeOutputConfiguration,
-	type INodeTypeDescription,
-	type INodeTypeNameVersion,
-	type ITelemetryTrackProperties,
-	NodeConnectionType,
-	NodeHelpers,
-} from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
 import { v4 as uuid } from 'uuid';
-import { useSegment } from '@/stores/segment.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import useEnvironmentsStore from '@/stores/environments.ee.store';
+import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useCollaborationStore } from '@/stores/collaboration.store';
+import { getUniqueNodeName } from '@/utils/canvasUtilsV2';
 
 const NodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -66,6 +63,12 @@ const workflowsEEStore = useWorkflowsEEStore();
 const tagsStore = useTagsStore();
 const sourceControlStore = useSourceControlStore();
 const nodeCreatorStore = useNodeCreatorStore();
+const settingsStore = useSettingsStore();
+const credentialsStore = useCredentialsStore();
+const environmentsStore = useEnvironmentsStore();
+const externalSecretsStore = useExternalSecretsStore();
+const rootStore = useRootStore();
+const collaborationStore = useCollaborationStore();
 
 const { runWorkflow } = useRunWorkflow({ router });
 
@@ -104,15 +107,50 @@ onMounted(() => {
 async function initialize() {
 	isLoading.value = true;
 
-	await nodeTypesStore.getNodeTypes();
-	await workflowsStore.fetchWorkflow(workflowId.value);
+	const loadPromises: Array<Promise<unknown>> = [
+		nodeTypesStore.getNodeTypes(),
+		workflowsStore.fetchWorkflow(workflowId.value),
+	];
+
+	if (!settingsStore.isPreviewMode && !isDemoRoute.value) {
+		loadPromises.push(
+			workflowsStore.fetchActiveWorkflows(),
+			credentialsStore.fetchAllCredentials(),
+			credentialsStore.fetchCredentialTypes(true),
+		);
+
+		if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Variables)) {
+			loadPromises.push(environmentsStore.fetchAllVariables());
+		}
+
+		if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.ExternalSecrets)) {
+			loadPromises.push(externalSecretsStore.fetchAllSecrets());
+		}
+	}
+
+	try {
+		await Promise.all(loadPromises);
+	} catch (error) {
+		return toast.showError(
+			error,
+			i18n.baseText('nodeView.showError.mounted1.title'),
+			i18n.baseText('nodeView.showError.mounted1.message') + ':',
+		);
+	}
 
 	initializeEditableWorkflow(workflowId.value);
+
+	if (window.parent) {
+		window.parent.postMessage(
+			JSON.stringify({ command: 'n8nReady', version: rootStore.versionCli }),
+			'*',
+		);
+	}
 
 	isLoading.value = false;
 }
 
-// @TODO Move this to the store
+// @TODO Maybe move this to the store
 function initializeEditableWorkflow(id: string) {
 	const targetWorkflow = workflowsStore.workflowsById[id];
 
@@ -148,22 +186,25 @@ function initializeEditableWorkflow(id: string) {
 	workflowsStore.setWorkflowTagIds(tagIds || []);
 	tagsStore.upsertTags(tags);
 
+	// @TODO Figure out a better way to handle this. Maybe show a message on why the state becomes dirty
 	// if (!this.credentialsUpdated) {
 	// 	this.uiStore.stateIsDirty = false;
 	// }
-	// this.canvasStore.zoomToFit();
-	// void this.externalHooks.run('workflow.open', {
-	// 	workflowId: workflow.id,
-	// 	workflowName: workflow.name,
-	// });
+
+	void externalHooks.run('workflow.open', {
+		workflowId: workflow.value.id,
+		workflowName: workflow.value.name,
+	});
+
+	// @TODO Figure out a better way to handle this
 	// if (selectedExecution?.workflowId !== workflow.id) {
 	// 	this.executionsStore.activeExecution = null;
 	// 	workflowsStore.currentWorkflowExecutions = [];
 	// } else {
 	// 	this.executionsStore.activeExecution = selectedExecution;
 	// }
-	// this.canvasStore.stopLoading();
-	// this.collaborationStore.notifyWorkflowOpened(workflow.id);
+
+	collaborationStore.notifyWorkflowOpened(workflow.value.id);
 }
 
 async function onRunWorkflow() {
@@ -187,31 +228,77 @@ function onNodePositionUpdate(id: string, position: CanvasElement['position']) {
  */
 function onCreateNodeConnection(connection: Connection) {
 	// Output
-	const targetNodeId = connection.target;
-	const targetNodeName = workflowsStore.getNodeById(targetNodeId)?.name ?? '';
-	const [, targetType, targetIndex] = (connection.targetHandle ?? '').split('/');
+	const sourceNodeId = connection.source;
+	const sourceNode = workflowsStore.getNodeById(sourceNodeId);
+	const sourceNodeName = sourceNode?.name ?? '';
+	const [, sourceType, sourceIndex] = (connection.sourceHandle ?? '').split('/');
 
 	// Input
-	const sourceNodeId = connection.source;
-	const sourceNodeName = workflowsStore.getNodeById(sourceNodeId)?.name ?? '';
-	const [, sourceType, sourceIndex] = (connection.sourceHandle ?? '').split('/');
+	const targetNodeId = connection.target;
+	const targetNode = workflowsStore.getNodeById(targetNodeId);
+	const targetNodeName = targetNode?.name ?? '';
+	const [, targetType, targetIndex] = (connection.targetHandle ?? '').split('/');
+
+	if (sourceNode && targetNode && !checkIfNodeConnectionIsAllowed(sourceNode, targetNode)) {
+		return;
+	}
 
 	workflowsStore.addConnection({
 		connection: [
-			{
-				node: targetNodeName,
-				type: targetType,
-				index: parseInt(targetIndex, 10),
-			},
 			{
 				node: sourceNodeName,
 				type: sourceType,
 				index: parseInt(sourceIndex, 10),
 			},
+			{
+				node: targetNodeName,
+				type: targetType,
+				index: parseInt(targetIndex, 10),
+			},
 		],
 	});
 
 	uiStore.stateIsDirty = true;
+}
+
+// @TODO Figure out a way to improve this
+function checkIfNodeConnectionIsAllowed(sourceNode: INodeUi, targetNode: INodeUi): boolean {
+	// const targetNodeType = nodeTypesStore.getNodeType(
+	// 	targetNode.type,
+	// 	targetNode.typeVersion,
+	// );
+	//
+	// if (targetNodeType?.inputs?.length) {
+	// 	const workflow = this.workflowHelpers.getCurrentWorkflow();
+	// 	const workflowNode = workflow.getNode(targetNode.name);
+	// 	let inputs: Array<ConnectionTypes | INodeInputConfiguration> = [];
+	// 	if (targetNodeType) {
+	// 		inputs = NodeHelpers.getNodeInputs(workflow, workflowNode, targetNodeType);
+	// 	}
+	//
+	// 	for (const input of inputs || []) {
+	// 		if (typeof input === 'string' || input.type !== targetInfoType || !input.filter) {
+	// 			// No filters defined or wrong connection type
+	// 			continue;
+	// 		}
+	//
+	// 		if (input.filter.nodes.length) {
+	// 			if (!input.filter.nodes.includes(sourceNode.type)) {
+	// 				this.dropPrevented = true;
+	// 				this.showToast({
+	// 					title: this.$locale.baseText('nodeView.showError.nodeNodeCompatible.title'),
+	// 					message: this.$locale.baseText('nodeView.showError.nodeNodeCompatible.message', {
+	// 						interpolate: { sourceNodeName: sourceNode.name, targetNodeName: targetNode.name },
+	// 					}),
+	// 					type: 'error',
+	// 					duration: 5000,
+	// 				});
+	// 				return false;
+	// 			}
+	// 		}
+	// 	}
+	// }
+	return true;
 }
 
 function onToggleNodeCreator({
@@ -268,7 +355,7 @@ async function onAddNodes(
 ) {
 	let currentPosition = position;
 	for (const { type, name, position: nodePosition, isAutoAdd, openDetail } of nodes) {
-		await addNode(
+		const node = await addNode(
 			{
 				name,
 				type,
@@ -282,27 +369,27 @@ async function onAddNodes(
 			},
 		);
 
-		// 	const lastAddedNode = editableWorkflow.value.nodes[editableWorkflow.value.nodes.length - 1];
-		// 	currentPosition = [
-		// 		lastAddedNode.position[0] + NodeViewUtils.NODE_SIZE * 2 + NodeViewUtils.GRID_SIZE,
-		// 		lastAddedNode.position[1],
-		// 	];
-		// }
-		//
-		// const newNodesOffset = editableWorkflow.value.nodes.length - nodes.length;
-		// for (const { from, to } of connections) {
-		// 	const fromNode = editableWorkflow.value.nodes[newNodesOffset + from.nodeIndex];
-		// 	const toNode = editableWorkflow.value.nodes[newNodesOffset + to.nodeIndex];
-		//
-		// 	// this.connectTwoNodes(
-		// 	// 	fromNode.name,
-		// 	// 	from.outputIndex ?? 0,
-		// 	// 	toNode.name,
-		// 	// 	to.inputIndex ?? 0,
-		// 	// 	NodeConnectionType.Main,
-		// 	// );
+		const lastAddedNode = editableWorkflow.value.nodes[editableWorkflow.value.nodes.length - 1];
+		currentPosition = [
+			lastAddedNode.position[0] + NodeViewUtils.NODE_SIZE * 2 + NodeViewUtils.GRID_SIZE,
+			lastAddedNode.position[1],
+		];
 	}
 
+	const newNodesOffset = editableWorkflow.value.nodes.length - nodes.length;
+	for (const { from, to } of connections) {
+		const fromNode = editableWorkflow.value.nodes[newNodesOffset + from.nodeIndex];
+		const toNode = editableWorkflow.value.nodes[newNodesOffset + to.nodeIndex];
+
+		onCreateNodeConnection({
+			source: fromNode.id,
+			sourceHandle: `outputs/${NodeConnectionType.Main}/${from.outputIndex ?? 0}`,
+			target: toNode.id,
+			targetHandle: `inputs/${NodeConnectionType.Main}/${to.inputIndex ?? 0}`,
+		});
+	}
+
+	// @TODO Implement this
 	// const lastAddedNode = editableWorkflow.value.nodes[editableWorkflow.value.nodes.length - 1];
 	// const workflow = editableWorkflowObject.value;
 	// const lastNodeInputs = workflow.getParentNodesByDepth(lastAddedNode.name, 1);
@@ -334,7 +421,7 @@ type AddNodeOptions = {
 	isAutoAdd?: boolean;
 };
 
-async function addNode(node: AddNodeData, options: AddNodeOptions) {
+async function addNode(node: AddNodeData, options: AddNodeOptions): Promise<INodeUi | undefined> {
 	if (!checkIfEditingIsAllowed()) {
 		return;
 	}
@@ -344,7 +431,16 @@ async function addNode(node: AddNodeData, options: AddNodeOptions) {
 		return;
 	}
 
+	/**
+	 * @TODO Check if maximum node type limit reached
+	 */
+
+	newNodeData.name = getUniqueNodeName(newNodeData.name, workflowsStore.canvasNames);
+
 	workflowsStore.addNode(newNodeData);
+
+	// @TODO Figure out why this is needed and if we can do better...
+	// this.matchCredentials(node);
 
 	// const lastSelectedNode = uiStore.getLastSelectedNode;
 	// const lastSelectedNodeOutputIndex = uiStore.lastSelectedNodeOutputIndex;
@@ -424,6 +520,8 @@ async function addNode(node: AddNodeData, options: AddNodeOptions) {
 	// 	);
 	// }
 	// this.historyStore.stopRecordingUndo();
+
+	return newNodeData;
 }
 
 async function createNodeWithDefaultCredentials(node: Partial<INodeUi>) {
@@ -443,10 +541,43 @@ async function createNodeWithDefaultCredentials(node: Partial<INodeUi>) {
 		name: node.name ?? (nodeTypeDescription.defaults.name as string),
 		type: nodeTypeDescription.name,
 		typeVersion: nodeVersion,
-		position: [0, 0],
+		position: node.position ?? [0, 0],
 		parameters: {},
 	};
 
+	/**
+	 * @TODO Implement this
+	 */
+
+	// // Load the default parameter values because only values which differ
+	// // from the defaults get saved
+	// if (nodeType !== null) {
+	// 	let nodeParameters = null;
+	// 	try {
+	// 		nodeParameters = NodeHelpers.getNodeParameters(
+	// 			nodeType.properties,
+	// 			node.parameters,
+	// 			true,
+	// 			false,
+	// 			node,
+	// 		);
+	// 	} catch (e) {
+	// 		console.error(
+	// 			this.$locale.baseText('nodeView.thereWasAProblemLoadingTheNodeParametersOfNode') +
+	// 			`: "${node.name}"`,
+	// 		);
+	// 		console.error(e);
+	// 	}
+	// 	node.parameters = nodeParameters !== null ? nodeParameters : {};
+	//
+	// 	// if it's a webhook and the path is empty set the UUID as the default path
+	// 	if (
+	// 		[WEBHOOK_NODE_TYPE, FORM_TRIGGER_NODE_TYPE].includes(node.type) &&
+	// 		node.parameters.path === ''
+	// 	) {
+	// 		node.parameters.path = node.webhookId as string;
+	// 	}
+	// }
 	// const credentialPerType = nodeTypeData.credentials
 	// 	?.map((type) => credentialsStore.getUsableCredentialByType(type.name))
 	// 	.flat();
@@ -514,6 +645,9 @@ async function createNodeWithDefaultCredentials(node: Partial<INodeUi>) {
 	return newNodeData;
 }
 
+/**
+ * @TODO Implement if needed
+ */
 // async loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
 // 	const allNodes: INodeTypeDescription[] = this.nodeTypesStore.allNodeTypes;
 //
@@ -539,6 +673,9 @@ async function createNodeWithDefaultCredentials(node: Partial<INodeUi>) {
 // }
 // }
 
+/**
+ * @TODO Probably not needed and can be merged into addNode
+ */
 async function injectNode(
 	nodeTypeName: string,
 	options: AddNodeOptions = {},

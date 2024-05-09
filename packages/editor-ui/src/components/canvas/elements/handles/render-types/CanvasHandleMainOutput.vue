@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { inject, useCssModule } from 'vue';
+import { computed, inject, useCssModule } from 'vue';
 import { svg } from '@jsplumb/browser-ui';
 import { CanvasNodeHandleKey } from '@/constants';
 
@@ -29,10 +29,12 @@ const handle = inject(CanvasNodeHandleKey);
 // return group;
 
 const $style = useCssModule();
+
+const label = computed(() => handle?.label.value ?? '');
 </script>
 <template>
 	<div :class="$style.handle">
-		<div :class="$style.label">{{ handle?.label }}</div>
+		<div :class="$style.label">{{ label }}</div>
 		<div :class="$style.circle" />
 		<!-- @TODO Determine whether handle is connected -->
 		<!--		<svg :class="$style.plus" viewBox="0 0 70 24">-->
