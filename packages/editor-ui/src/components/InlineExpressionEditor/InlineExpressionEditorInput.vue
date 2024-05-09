@@ -20,7 +20,7 @@ import { removeExpressionPrefix } from '@/utils/expressions';
 import { createEventBus, type EventBus } from 'n8n-design-system/utils';
 import type { IDataObject } from 'n8n-workflow';
 import { inputTheme } from './theme';
-import { cursorTooltipField } from '@/plugins/codemirror/tooltips/InfoBoxTooltip';
+import { infoBoxTooltips } from '@/plugins/codemirror/tooltips/InfoBoxTooltip';
 
 type Props = {
 	modelValue: string;
@@ -57,7 +57,7 @@ const extensions = computed(() => [
 	history(),
 	expressionInputHandler(),
 	EditorView.lineWrapping,
-	cursorTooltipField,
+	infoBoxTooltips(),
 ]);
 const editorValue = ref<string>(removeExpressionPrefix(props.modelValue));
 const {

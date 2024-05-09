@@ -244,7 +244,8 @@
 	max-width: 320px;
 
 	.autocomplete-info-container {
-		height: min(250px, 50vh);
+		height: auto;
+		max-height: min(250px, 50vh);
 	}
 }
 
