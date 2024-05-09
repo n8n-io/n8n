@@ -3,6 +3,7 @@ import {
 	DEFAULT_NEW_WORKFLOW_NAME,
 	DUPLICATE_POSTFFIX,
 	ERROR_TRIGGER_NODE_TYPE,
+	EnterpriseEditionFeature,
 	MAX_WORKFLOW_NAME_LENGTH,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	START_NODE_TYPE,
@@ -54,6 +55,7 @@ import type {
 	ITaskData,
 	IWorkflowSettings,
 	INodeType,
+	IUser,
 } from 'n8n-workflow';
 import { deepCopy, NodeHelpers, Workflow, ErrorReporterProxy as EventReporter } from 'n8n-workflow';
 import { findLast } from 'lodash-es';
@@ -74,6 +76,8 @@ import { i18n } from '@/plugins/i18n';
 import { computed, ref } from 'vue';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import { ErrorReporterProxy as EventReporter } from 'n8n-workflow';
+import { useSettingsStore } from './settings.store';
+import { useUsersStore } from './users.store';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -365,9 +369,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				rootStore.getRestApiContext,
 				isEmpty(filter) ? undefined : filter,
 			);
-			this.setWorkflows(workflows);
+			setWorkflows(workflows);
 			return workflows;
-		},
+		}
 
 	async function fetchWorkflow(id: string): Promise<IWorkflowDb> {
 		const rootStore = useRootStore();
@@ -376,44 +380,38 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return workflow;
 	}
 
-		async function getNewWorkflowData(name?: string, projectId?: string): Promise<INewWorkflowData> {
-			let workflowData = {
-				name: '',
-				onboardingFlowEnabled: false,
-				settings: { ...defaults.settings },
+	async function getNewWorkflowData(name?: string, projectId?: string): Promise<INewWorkflowData> {
+		let workflowData = {
+			name: '',
+			onboardingFlowEnabled: false,
+			settings: { ...defaults.settings },
+		};
+		try {
+			const rootStore = useRootStore();
+
+			const data: IDataObject = {
+				name,
+				projectId,
 			};
-			try {
-				const rootStore = useRootStore();
 
-				const data: IDataObject = {
-					name,
-					projectId,
-				};
+			workflowData = await workflowsApi.getNewWorkflow(
+				rootStore.getRestApiContext,
+				isEmpty(data) ? undefined : data,
+			);
+		} catch (e) {
+			// in case of error, default to original name
+			workflowData.name = name || DEFAULT_NEW_WORKFLOW_NAME;
+		}
 
-				workflowData = await workflowsApi.getNewWorkflow(
-					rootStore.getRestApiContext,
-					isEmpty(data) ? undefined : data,
-				);
-			} catch (e) {
-				// in case of error, default to original name
-				workflowData.name = name || DEFAULT_NEW_WORKFLOW_NAME;
-			}
+		setWorkflowName({ newName: workflowData.name, setStateDirty: false });
 
-			this.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
-
-			return workflowData;
-		},
+		return workflowData;
+	}
 
 	function resetWorkflow() {
 		const usersStore = useUsersStore();
 		const settingsStore = useSettingsStore();
 		workflow.value = createEmptyWorkflow();
-		if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
-			workflow.value = {
-				...workflow.value,
-				ownedBy: usersStore.currentUser as IUser,
-			};
-		}
 	}
 
 	function resetState() {
