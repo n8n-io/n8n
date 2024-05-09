@@ -10,6 +10,8 @@ import { MessageEventBusDestination } from './MessageEventBusDestination.ee';
 import { isLogStreamingEnabled } from '../MessageEventBus/MessageEventBusHelper';
 import { eventMessageGenericDestinationTestEvent } from '../EventMessageClasses/EventMessageGeneric';
 import type { MessageEventBus, MessageWithCallback } from '../MessageEventBus/MessageEventBus';
+import Container from 'typedi';
+import { Logger } from '@/Logger';
 export const isMessageEventBusDestinationSyslogOptions = (
 	candidate: unknown,
 ): candidate is MessageEventBusDestinationSyslogOptions => {
@@ -63,7 +65,7 @@ export class MessageEventBusDestinationSyslog
 		});
 		this.logger.debug(`MessageEventBusDestinationSyslog with id ${this.getId()} initialized`);
 		this.client.on('error', function (error) {
-			console.error(error);
+			Container.get(Logger).error(`${error.message}`);
 		});
 	}
 

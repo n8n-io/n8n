@@ -607,6 +607,7 @@ export function getParameterResolveOrder(
  * @param {boolean} [dataIsResolved=false] If nodeValues are already fully resolved (so that all default values got added already)
  * @param {INodeParameters} [nodeValuesRoot] The root node-parameter-data
  */
+// eslint-disable-next-line complexity
 export function getNodeParameters(
 	nodePropertiesArray: INodeProperties[],
 	nodeValues: INodeParameters | null,
@@ -995,7 +996,7 @@ export function getNodeWebhooks(
 		) as boolean;
 		const path = getNodeWebhookPath(workflowId, node, nodeWebhookPath, isFullPath, restartWebhook);
 
-		const httpMethod = workflow.expression.getSimpleParameterValue(
+		const webhookMethods = workflow.expression.getSimpleParameterValue(
 			node,
 			webhookDescription.httpMethod,
 			mode,
@@ -1004,7 +1005,7 @@ export function getNodeWebhooks(
 			'GET',
 		);
 
-		if (httpMethod === undefined) {
+		if (webhookMethods === undefined) {
 			// TODO: Use a proper logger
 			console.error(
 				`The webhook "${path}" for node "${node.name}" in workflow "${workflowId}" could not be added because the httpMethod is not defined.`,
@@ -1017,15 +1018,20 @@ export function getNodeWebhooks(
 			webhookId = node.webhookId;
 		}
 
-		returnData.push({
-			httpMethod: httpMethod.toString() as IHttpRequestMethods,
-			node: node.name,
-			path,
-			webhookDescription,
-			workflowId,
-			workflowExecuteAdditionalData: additionalData,
-			webhookId,
-		});
+		String(webhookMethods)
+			.split(',')
+			.forEach((httpMethod) => {
+				if (!httpMethod) return;
+				returnData.push({
+					httpMethod: httpMethod.trim() as IHttpRequestMethods,
+					node: node.name,
+					path,
+					webhookDescription,
+					workflowId,
+					workflowExecuteAdditionalData: additionalData,
+					webhookId,
+				});
+			});
 	}
 
 	return returnData;
@@ -1388,6 +1394,7 @@ function isINodeParameterResourceLocator(value: unknown): value is INodeParamete
  * @param {INodeParameters} nodeValues The values of the node
  * @param {string} path The path to the properties
  */
+// eslint-disable-next-line complexity
 export function getParameterIssues(
 	nodeProperties: INodeProperties,
 	nodeValues: INodeParameters,

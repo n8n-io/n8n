@@ -4,6 +4,7 @@ import type * as express from 'express';
 import type FormData from 'form-data';
 import type { PathLike } from 'fs';
 import type { IncomingHttpHeaders } from 'http';
+import type { SecureContextOptions } from 'tls';
 import type { Readable } from 'stream';
 import type { URLSearchParams } from 'url';
 
@@ -19,6 +20,7 @@ import type { WorkflowHooks } from './WorkflowHooks';
 import type { NodeOperationError } from './errors/node-operation.error';
 import type { NodeApiError } from './errors/node-api.error';
 import type { AxiosProxyConfig } from 'axios';
+import type { CallbackManager as CallbackManagerLC } from '@langchain/core/callbacks/manager';
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
@@ -546,6 +548,8 @@ export interface IRequestOptions {
 
 	/** Max number of redirects to follow @default 21 */
 	maxRedirects?: number;
+
+	agentOptions?: SecureContextOptions;
 }
 
 export interface PaginationOptions {
@@ -811,6 +815,7 @@ export interface FunctionsBase {
 	getInstanceId(): string;
 	getChildNodes(nodeName: string): NodeTypeAndVersion[];
 	getParentNodes(nodeName: string): NodeTypeAndVersion[];
+	getKnownNodeTypes(): IDataObject;
 	getMode?: () => WorkflowExecuteMode;
 	getActivationMode?: () => WorkflowActivateMode;
 
@@ -842,6 +847,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		executeWorkflow(
 			workflowInfo: IExecuteWorkflowInfo,
 			inputData?: INodeExecutionData[],
+			parentCallbackManager?: CallbackManager,
 		): Promise<any>;
 		getInputConnectionData(
 			inputName: ConnectionTypes,
@@ -881,6 +887,8 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 				getBinaryDataBuffer(itemIndex: number, propertyName: string): Promise<Buffer>;
 				copyInputItems(items: INodeExecutionData[], properties: string[]): IDataObject[];
 			};
+
+		getParentCallbackManager(): CallbackManager | undefined;
 	};
 
 export interface IExecuteSingleFunctions extends BaseExecutionFunctions {
@@ -1480,6 +1488,7 @@ export interface INodeCredentialTestRequest {
 export interface INodeCredentialDescription {
 	name: string;
 	required?: boolean;
+	displayName?: string;
 	displayOptions?: ICredentialsDisplayOptions;
 	testedBy?: ICredentialTestRequest | string; // Name of a function inside `loadOptions.credentialTest`
 }
@@ -1826,11 +1835,12 @@ export interface IWebhookResponseData {
 }
 
 export type WebhookResponseData = 'allEntries' | 'firstEntryJson' | 'firstEntryBinary' | 'noData';
-export type WebhookResponseMode = 'onReceived' | 'lastNode';
+export type WebhookResponseMode = 'onReceived' | 'lastNode' | 'responseNode';
 
 export interface INodeTypes {
 	getByName(nodeType: string): INodeType | IVersionedNodeType;
 	getByNameAndVersion(nodeType: string, version?: number): INodeType;
+	getKnownTypes(): IDataObject;
 }
 
 export type LoadingDetails = {
@@ -2028,6 +2038,7 @@ export interface IWorkflowExecuteAdditionalData {
 			loadedWorkflowData?: IWorkflowBase;
 			loadedRunData?: any;
 			parentWorkflowSettings?: IWorkflowSettings;
+			parentCallbackManager?: CallbackManager;
 		},
 	) => Promise<any>;
 	executionId?: string;
@@ -2059,6 +2070,7 @@ export interface IWorkflowExecuteAdditionalData {
 			nodeType?: string;
 		},
 	) => Promise<void>;
+	parentCallbackManager?: CallbackManager;
 }
 
 export type WorkflowExecuteMode =
@@ -2121,7 +2133,7 @@ export interface WorkflowTestData {
 			[key: string]: any[][];
 		};
 	};
-	nock: {
+	nock?: {
 		baseUrl: string;
 		mocks: Array<{
 			method: string;
@@ -2335,7 +2347,8 @@ export type FieldType =
 	| 'array'
 	| 'object'
 	| 'options'
-	| 'url';
+	| 'url'
+	| 'jwt';
 
 export type ValidationResult = {
 	valid: boolean;
@@ -2554,7 +2567,9 @@ export interface IN8nUISettings {
 	ai: {
 		enabled: boolean;
 		provider: string;
-		errorDebugging: boolean;
+		features: {
+			generateCurl: boolean;
+		};
 	};
 	workflowHistory: {
 		pruneTime: number;
@@ -2583,3 +2598,5 @@ export type BannerName =
 export type Functionality = 'regular' | 'configuration-node' | 'pairedItem';
 
 export type Result<T, E> = { ok: true; result: T } | { ok: false; error: E };
+
+export type CallbackManager = CallbackManagerLC;

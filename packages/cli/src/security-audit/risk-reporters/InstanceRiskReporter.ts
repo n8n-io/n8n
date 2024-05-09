@@ -14,10 +14,14 @@ import { getN8nPackageJson, inDevelopment } from '@/constants';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { RiskReporter, Risk, n8n } from '@/security-audit/types';
 import { isApiEnabled } from '@/PublicApi';
+import { Logger } from '@/Logger';
 
 @Service()
 export class InstanceRiskReporter implements RiskReporter {
-	constructor(private readonly instanceSettings: InstanceSettings) {}
+	constructor(
+		private readonly instanceSettings: InstanceSettings,
+		private readonly logger: Logger,
+	) {}
 
 	async report(workflows: WorkflowEntity[]) {
 		const unprotectedWebhooks = this.getUnprotectedWebhookNodes(workflows);
@@ -174,7 +178,7 @@ export class InstanceRiskReporter implements RiskReporter {
 			versions = await this.getNextVersions(localVersion).then((v) => this.removeIconData(v));
 		} catch (error) {
 			if (inDevelopment) {
-				console.error('Failed to fetch n8n versions. Skipping outdated instance report...');
+				this.logger.error('Failed to fetch n8n versions. Skipping outdated instance report...');
 			}
 			return null;
 		}

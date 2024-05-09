@@ -4,7 +4,7 @@ import {
 	WorkflowOperationError,
 } from 'n8n-workflow';
 import { Container, Service } from 'typedi';
-import type { IExecutionsStopData, IWorkflowExecutionDataProcess } from '@/Interfaces';
+import type { ExecutionStopResult, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { OwnershipService } from '@/services/ownership.service';
@@ -29,15 +29,18 @@ export class WaitTracker {
 		private readonly workflowRunner: WorkflowRunner,
 		readonly orchestrationService: OrchestrationService,
 	) {
-		const { isLeader, isMultiMainSetupEnabled, multiMainSetup } = orchestrationService;
+		const { isSingleMainSetup, isLeader, multiMainSetup } = orchestrationService;
+
+		if (isSingleMainSetup) {
+			this.startTracking();
+			return;
+		}
 
 		if (isLeader) this.startTracking();
 
-		if (isMultiMainSetupEnabled) {
-			multiMainSetup
-				.on('leader-takeover', () => this.startTracking())
-				.on('leader-stepdown', () => this.stopTracking());
-		}
+		multiMainSetup
+			.on('leader-takeover', () => this.startTracking())
+			.on('leader-stepdown', () => this.stopTracking());
 	}
 
 	startTracking() {
@@ -96,7 +99,7 @@ export class WaitTracker {
 		}
 	}
 
-	async stopExecution(executionId: string): Promise<IExecutionsStopData> {
+	async stopExecution(executionId: string): Promise<ExecutionStopResult> {
 		if (this.waitingExecutions[executionId] !== undefined) {
 			// The waiting execution was already scheduled to execute.
 			// So stop timer and remove.

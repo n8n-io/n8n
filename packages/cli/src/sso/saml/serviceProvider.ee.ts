@@ -2,21 +2,21 @@
 import { Container } from 'typedi';
 import type { ServiceProviderInstance } from 'samlify';
 import { UrlService } from '@/services/url.service';
-import { SamlUrls } from './constants';
 import type { SamlPreferences } from './types/samlPreferences';
 
 let serviceProviderInstance: ServiceProviderInstance | undefined;
 
 export function getServiceProviderEntityId(): string {
-	return Container.get(UrlService).getInstanceBaseUrl() + SamlUrls.restMetadata;
+	return Container.get(UrlService).getInstanceBaseUrl() + '/rest/sso/saml/metadata';
 }
 
 export function getServiceProviderReturnUrl(): string {
-	return Container.get(UrlService).getInstanceBaseUrl() + SamlUrls.restAcs;
+	return Container.get(UrlService).getInstanceBaseUrl() + '/rest/sso/saml/acs';
 }
 
 export function getServiceProviderConfigTestReturnUrl(): string {
-	return Container.get(UrlService).getInstanceBaseUrl() + SamlUrls.configTestReturn;
+	// TODO: what is this URL?
+	return Container.get(UrlService).getInstanceBaseUrl() + '/config/test/return';
 }
 
 // TODO:SAML: make these configurable for the end user

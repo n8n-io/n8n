@@ -5,12 +5,13 @@ import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { License } from '@/License';
 import { Logger } from '@/Logger';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import { Push } from '@/push';
 import { TestWebhooks } from '@/TestWebhooks';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
+// eslint-disable-next-line complexity
 export async function handleCommandMessageMain(messageString: string) {
 	const queueModeId = config.getEnv('redis.queueModeId');
 	const isMainInstance = config.getEnv('generic.instanceType') === 'main';
@@ -92,7 +93,7 @@ export async function handleCommandMessageMain(messageString: string) {
 				const { workflowId } = message.payload;
 
 				try {
-					await Container.get(ActiveWorkflowRunner).add(workflowId, 'activate', undefined, {
+					await Container.get(ActiveWorkflowManager).add(workflowId, 'activate', undefined, {
 						shouldPublish: false, // prevent leader re-publishing message
 					});
 
@@ -133,10 +134,10 @@ export async function handleCommandMessageMain(messageString: string) {
 
 				const { workflowId } = message.payload;
 
-				const activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
+				const activeWorkflowManager = Container.get(ActiveWorkflowManager);
 
-				await activeWorkflowRunner.removeActivationError(workflowId);
-				await activeWorkflowRunner.removeWorkflowTriggersAndPollers(workflowId);
+				await activeWorkflowManager.removeActivationError(workflowId);
+				await activeWorkflowManager.removeWorkflowTriggersAndPollers(workflowId);
 
 				push.broadcast('workflowDeactivated', { workflowId });
 

@@ -223,14 +223,17 @@ export const keysToLowercase = <T>(headers: T) => {
  * @param privateKey - The private key to format.
  * @returns The formatted private key.
  */
-export function formatPrivateKey(privateKey: string): string {
+export function formatPrivateKey(privateKey: string, keyIsPublic = false): string {
+	let regex = /(PRIVATE KEY|CERTIFICATE)/;
+	if (keyIsPublic) {
+		regex = /(PUBLIC KEY)/;
+	}
 	if (!privateKey || /\n/.test(privateKey)) {
 		return privateKey;
 	}
 	let formattedPrivateKey = '';
 	const parts = privateKey.split('-----').filter((item) => item !== '');
 	parts.forEach((part) => {
-		const regex = /(PRIVATE KEY|CERTIFICATE)/;
 		if (regex.test(part)) {
 			formattedPrivateKey += `-----${part}-----`;
 		} else {

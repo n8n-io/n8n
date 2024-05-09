@@ -59,7 +59,14 @@ const getSqliteConnectionOptions = (): SqliteConnectionOptions | SqlitePooledCon
 		migrations: sqliteMigrations,
 	};
 	if (poolSize > 0) {
-		return { type: 'sqlite-pooled', poolSize, enableWAL: true, ...commonOptions };
+		return {
+			type: 'sqlite-pooled',
+			poolSize,
+			enableWAL: true,
+			acquireTimeout: 60_000,
+			destroyTimeout: 5_000,
+			...commonOptions,
+		};
 	} else {
 		return {
 			type: 'sqlite',

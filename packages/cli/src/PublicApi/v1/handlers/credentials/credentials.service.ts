@@ -16,6 +16,7 @@ import type { CredentialRequest } from '@/requests';
 import { Container } from 'typedi';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { InternalHooks } from '@/InternalHooks';
 
 export async function getCredentials(credentialId: string): Promise<ICredentialsDb | null> {
 	return await Container.get(CredentialsRepository).findOneBy({ id: credentialId });
@@ -50,6 +51,13 @@ export async function saveCredential(
 	encryptedData: ICredentialsDb,
 ): Promise<CredentialsEntity> {
 	await Container.get(ExternalHooks).run('credentials.create', [encryptedData]);
+	void Container.get(InternalHooks).onUserCreatedCredentials({
+		user,
+		credential_name: credential.name,
+		credential_type: credential.type,
+		credential_id: credential.id,
+		public_api: true,
+	});
 
 	return await Db.transaction(async (transactionManager) => {
 		const savedCredential = await transactionManager.save<CredentialsEntity>(credential);
@@ -70,8 +78,17 @@ export async function saveCredential(
 	});
 }
 
-export async function removeCredential(credentials: CredentialsEntity): Promise<ICredentialsDb> {
+export async function removeCredential(
+	user: User,
+	credentials: CredentialsEntity,
+): Promise<ICredentialsDb> {
 	await Container.get(ExternalHooks).run('credentials.delete', [credentials.id]);
+	void Container.get(InternalHooks).onUserDeletedCredentials({
+		user,
+		credential_name: credentials.name,
+		credential_type: credentials.type,
+		credential_id: credentials.id,
+	});
 	return await Container.get(CredentialsRepository).remove(credentials);
 }
 
@@ -141,6 +158,7 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 	// object in the JSON Schema definition. This allows us
 	// to later validate that only this properties are set in
 	// the credentials sent in the API call.
+	// eslint-disable-next-line complexity
 	properties.forEach((property) => {
 		if (property.required) {
 			requiredFields.push(property.name);

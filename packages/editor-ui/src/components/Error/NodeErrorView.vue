@@ -1,9 +1,7 @@
 <script lang="ts" setup>
-import Feedback from '@/components/Feedback.vue';
 import { useI18n } from '@/composables/useI18n';
 import type { PropType } from 'vue';
-import { computed, ref } from 'vue';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { computed } from 'vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useToast } from '@/composables/useToast';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -19,9 +17,7 @@ import type {
 	NodeOperationError,
 } from 'n8n-workflow';
 import { sanitizeHtml } from '@/utils/htmlUtils';
-import { useAIStore } from '@/stores/ai.store';
 import { MAX_DISPLAY_DATA_SIZE } from '@/constants';
-import VueMarkdown from 'vue-markdown-render';
 import type { BaseTextKey } from '@/plugins/i18n';
 
 const props = defineProps({
@@ -34,26 +30,10 @@ const props = defineProps({
 const clipboard = useClipboard();
 const toast = useToast();
 const i18n = useI18n();
-const telemetry = useTelemetry();
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const rootStore = useRootStore();
-const aiStore = useAIStore();
-
-const isLoadingErrorDebugging = ref(false);
-const errorDebuggingMessage = ref('');
-const errorDebuggingFeedback = ref<'positive' | 'negative' | undefined>();
-
-const isErrorDebuggingEnabled = computed(() => {
-	return aiStore.isErrorDebuggingEnabled;
-});
-
-const showErrorDebuggingButton = computed(() => {
-	return (
-		isErrorDebuggingEnabled.value && !(isLoadingErrorDebugging.value || errorDebuggingMessage.value)
-	);
-});
 
 const displayCause = computed(() => {
 	return JSON.stringify(props.error.cause).length < MAX_DISPLAY_DATA_SIZE;
@@ -82,6 +62,10 @@ const n8nVersion = computed(() => {
 	}
 
 	return rootStore.versionCli + ` (${instanceType})`;
+});
+
+const hasManyInputItems = computed(() => {
+	return ndvStore.ndvInputData.length > 1;
 });
 
 const nodeDefaultName = computed(() => {
@@ -121,36 +105,6 @@ const prepareRawMessages = computed(() => {
 	});
 	return returnData;
 });
-
-async function onDebugError() {
-	try {
-		isLoadingErrorDebugging.value = true;
-		const { message } = await aiStore.debugError({ error: props.error });
-		errorDebuggingMessage.value = message;
-	} catch (error) {
-		toast.showError(error, i18n.baseText('generic.error'));
-	} finally {
-		isLoadingErrorDebugging.value = false;
-	}
-}
-
-async function onDebugErrorRegenerate() {
-	errorDebuggingMessage.value = '';
-	errorDebuggingFeedback.value = undefined;
-	await onDebugError();
-	telemetry.track('User regenerated error debugging AI hint', {
-		node_type: props.error.node?.type,
-		error_title: props.error.message,
-	});
-}
-
-async function onErrorDebuggingFeedback(feedback: 'positive' | 'negative') {
-	telemetry.track('User responded error debugging AI hint', {
-		helpful: feedback === 'positive',
-		node_type: props.error.node?.type,
-		error_title: props.error.message,
-	});
-}
 
 function nodeVersionTag(nodeType: NodeError['node']): string {
 	if (!nodeType || ('hidden' in nodeType && nodeType.hidden)) {
@@ -214,33 +168,48 @@ function getErrorDescription(): string {
 	);
 }
 
+function addItemIndexSuffix(message: string): string {
+	let itemIndexSuffix = '';
+
+	const ITEM_INDEX_SUFFIX_TEXT = '[item ';
+
+	if (
+		hasManyInputItems.value &&
+		!message.includes(ITEM_INDEX_SUFFIX_TEXT) &&
+		props.error?.context?.itemIndex !== undefined
+	) {
+		itemIndexSuffix = ` [item ${props.error.context.itemIndex}]`;
+	}
+
+	return message + itemIndexSuffix;
+}
+
 function getErrorMessage(): string {
 	const baseErrorMessage = '';
+	let message = '';
 
 	const isSubNodeError =
 		props.error.name === 'NodeOperationError' &&
 		(props.error as NodeOperationError).functionality === 'configuration-node';
 
 	if (isSubNodeError) {
-		const baseErrorMessageSubNode = i18n.baseText('nodeErrorView.errorSubNode', {
+		message = i18n.baseText('nodeErrorView.errorSubNode', {
 			interpolate: { node: props.error.node.name },
 		});
-		return baseErrorMessageSubNode;
+	} else if (
+		props.error.message === props.error.description ||
+		!props.error.context?.messageTemplate
+	) {
+		message = baseErrorMessage + props.error.message;
+	} else {
+		const parameterName = parameterDisplayName(props.error.context.parameter as string);
+
+		message =
+			baseErrorMessage +
+			(props.error.context.messageTemplate as string).replace(/%%PARAMETER%%/g, parameterName);
 	}
 
-	if (props.error.message === props.error.description) {
-		return baseErrorMessage;
-	}
-	if (!props.error.context?.messageTemplate) {
-		return baseErrorMessage + props.error.message;
-	}
-
-	const parameterName = parameterDisplayName(props.error.context.parameter as string);
-
-	return (
-		baseErrorMessage +
-		(props.error.context.messageTemplate as string).replace(/%%PARAMETER%%/g, parameterName)
-	);
+	return addItemIndexSuffix(message);
 }
 
 function parameterDisplayName(path: string, fullPath = true) {
@@ -400,17 +369,9 @@ function copySuccess() {
 	<div class="node-error-view">
 		<div class="node-error-view__header">
 			<div class="node-error-view__header-message">
-				<div :class="showErrorDebuggingButton ? 'mt-4xs' : ''">
+				<div>
 					{{ getErrorMessage() }}
 				</div>
-				<N8nButton
-					v-if="showErrorDebuggingButton"
-					type="tertiary"
-					size="small"
-					@click="onDebugError"
-				>
-					{{ i18n.baseText('nodeErrorView.debugError.button') }}
-				</N8nButton>
 			</div>
 			<div
 				v-if="error.description || error.context?.descriptionKey"
@@ -418,26 +379,6 @@ function copySuccess() {
 				v-html="getErrorDescription()"
 			></div>
 		</div>
-
-		<N8nCard
-			v-if="isLoadingErrorDebugging || errorDebuggingMessage"
-			class="node-error-view__debugging mb-s"
-		>
-			<span v-if="isLoadingErrorDebugging">
-				<N8nSpinner class="mr-3xs" />
-				{{ i18n.baseText('nodeErrorView.debugError.loading') }}
-			</span>
-			<VueMarkdown v-else :source="errorDebuggingMessage" />
-
-			<div v-if="errorDebuggingMessage" class="node-error-view__feedback-toolbar">
-				<Feedback v-model="errorDebuggingFeedback" @update:model-value="onErrorDebuggingFeedback" />
-				<N8nTooltip :content="i18n.baseText('nodeErrorView.debugError.feedback.reload')">
-					<span class="node-error-view__feedback-button" @click="onDebugErrorRegenerate">
-						<FontAwesomeIcon icon="sync-alt" />
-					</span>
-				</N8nTooltip>
-			</div>
-		</N8nCard>
 
 		<div class="node-error-view__info">
 			<div class="node-error-view__info-header">

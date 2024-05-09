@@ -1,10 +1,9 @@
-import type { XYPosition } from '@/Interface';
+import type { ActionDropdownItem, XYPosition } from '@/Interface';
 import { NOT_DUPLICATABE_NODE_TYPES, STICKY_NODE_TYPE } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { IActionDropdownItem } from 'n8n-design-system/src/components/N8nActionDropdown/ActionDropdown.vue';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
 import { getMousePosition } from '../utils/nodeViewUtils';
@@ -34,7 +33,7 @@ export type ContextMenuAction =
 const position = ref<XYPosition>([0, 0]);
 const isOpen = ref(false);
 const target = ref<ContextMenuTarget>({ source: 'canvas' });
-const actions = ref<IActionDropdownItem[]>([]);
+const actions = ref<ActionDropdownItem[]>([]);
 const actionCallback = ref<ContextMenuActionCallback>(() => {});
 
 export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) => {
@@ -147,7 +146,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 				...selectionActions,
 			];
 		} else {
-			const menuActions: IActionDropdownItem[] = [
+			const menuActions: ActionDropdownItem[] = [
 				!onlyStickies && {
 					id: 'toggle_activation',
 					label: nodes.every((node) => node.disabled)
@@ -183,7 +182,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 					shortcut: { keys: ['Del'] },
 					disabled: isReadOnly.value,
 				},
-			].filter(Boolean) as IActionDropdownItem[];
+			].filter(Boolean) as ActionDropdownItem[];
 
 			if (nodes.length === 1) {
 				const singleNodeActions = onlyStickies

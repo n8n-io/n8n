@@ -24,6 +24,7 @@ import type {
 	ExecutionStatus,
 	ExecutionError,
 	EventNamesAiNodesType,
+	CallbackManager,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -636,7 +637,10 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						]);
 					} catch (error) {
 						ErrorReporter.error(error);
-						console.error('There was a problem running hook "workflow.postExecute"', error);
+						Container.get(Logger).error(
+							'There was a problem running hook "workflow.postExecute"',
+							error,
+						);
 					}
 				}
 			},
@@ -754,6 +758,7 @@ async function executeWorkflow(
 		loadedWorkflowData?: IWorkflowBase;
 		loadedRunData?: IWorkflowExecutionDataProcess;
 		parentWorkflowSettings?: IWorkflowSettings;
+		parentCallbackManager?: CallbackManager;
 	},
 ): Promise<Array<INodeExecutionData[] | null> | IWorkflowExecuteProcess> {
 	const internalHooks = Container.get(InternalHooks);
@@ -815,6 +820,7 @@ async function executeWorkflow(
 			workflowData,
 		);
 		additionalDataIntegrated.executionId = executionId;
+		additionalDataIntegrated.parentCallbackManager = options.parentCallbackManager;
 
 		// Make sure we pass on the original executeWorkflow function we received
 		// This one already contains changes to talk to parent process

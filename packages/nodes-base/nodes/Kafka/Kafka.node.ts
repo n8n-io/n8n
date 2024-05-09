@@ -51,7 +51,7 @@ export class Kafka implements INodeType {
 				name: 'sendInputData',
 				type: 'boolean',
 				default: true,
-				description: 'Whether to send the the data the node receives as JSON to Kafka',
+				description: 'Whether to send the data the node receives as JSON to Kafka',
 			},
 			{
 				displayName: 'Message',

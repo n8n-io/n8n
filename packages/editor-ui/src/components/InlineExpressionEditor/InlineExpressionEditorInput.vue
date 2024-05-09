@@ -25,14 +25,14 @@ type Props = {
 	modelValue: string;
 	path: string;
 	rows?: number;
-	isReadonly?: boolean;
+	isReadOnly?: boolean;
 	additionalData?: IDataObject;
 	eventBus?: EventBus;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	rows: 5,
-	isReadonly: false,
+	isReadOnly: false,
 	additionalData: () => ({}),
 	eventBus: () => createEventBus(),
 });
@@ -70,7 +70,7 @@ const {
 	editorRef: root,
 	editorValue,
 	extensions,
-	isReadOnly: props.isReadonly,
+	isReadOnly: props.isReadOnly,
 	autocompleteTelemetry: { enabled: true, parameterPath: props.path },
 	additionalData: props.additionalData,
 });

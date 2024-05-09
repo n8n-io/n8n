@@ -59,6 +59,12 @@ describe('Test HTTP Request Node', () => {
 			completed: true,
 			userId: 26,
 		});
+		nock(baseUrl).get('/todos/1').reply(200, {
+			id: 1,
+			todo: 'Do something nice for someone I care about',
+			completed: true,
+			userId: 26,
+		});
 		nock(baseUrl).matchHeader('Authorization', 'Bearer 12345').get('/todos/3').reply(200, {
 			id: 3,
 			todo: 'Watch a classic movie',

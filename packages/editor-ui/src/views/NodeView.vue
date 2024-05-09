@@ -40,7 +40,7 @@
 						:show-tooltip="!containsTrigger && showTriggerMissingTooltip"
 						:position="canvasStore.canvasAddButtonPosition"
 						data-test-id="canvas-add-button"
-						@click="showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON)"
+						@click="onCanvasAddButtonCLick"
 						@hook:mounted="canvasStore.setRecenteredCanvasAddButtonPosition"
 					/>
 					<Node
@@ -118,6 +118,9 @@
 			</Suspense>
 			<Suspense>
 				<ContextMenu @action="onContextMenuAction" />
+			</Suspense>
+			<Suspense>
+				<NextStepPopup v-show="isNextStepPopupVisible" @option-selected="onNextStepSelected" />
 			</Suspense>
 			<div v-if="!isReadOnlyRoute && !readOnlyEnv" class="workflow-execute-wrapper">
 				<span
@@ -246,6 +249,7 @@ import {
 	DRAG_EVENT_DATA_KEY,
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	TIME,
+	AI_ASSISTANT_LOCAL_STORAGE_KEY,
 } from '@/constants';
 
 import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
@@ -266,6 +270,7 @@ import Node from '@/components/Node.vue';
 import Sticky from '@/components/Sticky.vue';
 import CanvasAddButton from './CanvasAddButton.vue';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
+import NextStepPopup from '@/components/AIAssistantChat/NextStepPopup.vue';
 import { v4 as uuid } from 'uuid';
 import type {
 	IConnection,
@@ -294,6 +299,7 @@ import {
 	TelemetryHelpers,
 } from 'n8n-workflow';
 import type {
+	NewConnectionInfo,
 	ICredentialsResponse,
 	IExecutionResponse,
 	IWorkflowDb,
@@ -311,6 +317,7 @@ import type {
 	NodeCreatorOpenSource,
 	AddedNodesAndConnections,
 	ToggleNodeCreatorOptions,
+	AIAssistantConnectionInfo,
 } from '@/Interface';
 
 import { type Route, type RawLocation, useRouter } from 'vue-router';
@@ -376,10 +383,14 @@ import { usePinnedData } from '@/composables/usePinnedData';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useDeviceSupport } from 'n8n-design-system';
 import { useDebounce } from '@/composables/useDebounce';
+import { useExecutionsStore } from '@/stores/executions.store';
 import { useCanvasPanning } from '@/composables/useCanvasPanning';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
+import { useAIStore } from '@/stores/ai.store';
+import { useStorage } from '@/composables/useStorage';
+import { isJSPlumbEndpointElement } from '@/utils/typeGuards';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -410,6 +421,7 @@ export default defineComponent({
 		CanvasControls,
 		ContextMenu,
 		SetupWorkflowCredentialsButton,
+		NextStepPopup,
 	},
 	async beforeRouteLeave(to, from, next) {
 		if (
@@ -604,6 +616,8 @@ export default defineComponent({
 			useCollaborationStore,
 			usePushConnectionStore,
 			useSourceControlStore,
+			useExecutionsStore,
+			useAIStore,
 		),
 		nativelyNumberSuffixedDefaults(): string[] {
 			return this.nodeTypesStore.nativelyNumberSuffixedDefaults;
@@ -756,6 +770,16 @@ export default defineComponent({
 		isReadOnlyRoute() {
 			return this.$route?.meta?.readOnlyCanvas === true;
 		},
+		isNextStepPopupVisible(): boolean {
+			return this.aiStore.nextStepPopupConfig.open;
+		},
+		shouldShowNextStepDialog(): boolean {
+			const userHasSeenAIAssistantExperiment =
+				useStorage(AI_ASSISTANT_LOCAL_STORAGE_KEY).value === 'true';
+			const experimentEnabled = this.aiStore.isAssistantExperimentEnabled;
+			const isCloudDeployment = this.settingsStore.isCloudDeployment;
+			return isCloudDeployment && experimentEnabled && !userHasSeenAIAssistantExperiment;
+		},
 	},
 	data() {
 		return {
@@ -804,6 +828,7 @@ export default defineComponent({
 		this.resetWorkspace();
 		this.canvasStore.initInstance(this.nodeViewRef as HTMLElement);
 		this.titleReset();
+
 		window.addEventListener('message', this.onPostMessageReceived);
 
 		this.clipboard.onPaste.value = this.onClipboardPasteEvent;
@@ -978,6 +1003,7 @@ export default defineComponent({
 		if (!this.isDemo) {
 			this.pushStore.pushConnect();
 		}
+		this.collaborationStore.initialize();
 	},
 	beforeUnmount() {
 		// Make sure the event listeners get removed again else we
@@ -991,6 +1017,7 @@ export default defineComponent({
 		if (!this.isDemo) {
 			this.pushStore.pushDisconnect();
 		}
+		this.collaborationStore.terminate();
 
 		this.resetWorkspace();
 		this.instance.unbind();
@@ -1199,6 +1226,33 @@ export default defineComponent({
 				}
 			}
 		},
+		async onCanvasAddButtonCLick(event: PointerEvent) {
+			if (event) {
+				if (this.shouldShowNextStepDialog) {
+					const newNodeButton = (event.target as HTMLElement).closest('button');
+					if (newNodeButton) {
+						this.aiStore.latestConnectionInfo = null;
+						this.aiStore.openNextStepPopup(
+							this.$locale.baseText('nextStepPopup.title.firstStep'),
+							newNodeButton,
+						);
+					}
+					return;
+				}
+				this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON);
+				return;
+			}
+		},
+		onNextStepSelected(action: string) {
+			if (action === 'choose') {
+				const lastConnectionInfo = this.aiStore.latestConnectionInfo as NewConnectionInfo;
+				if (lastConnectionInfo === null) {
+					this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON);
+				} else {
+					this.insertNodeAfterSelected(lastConnectionInfo);
+				}
+			}
+		},
 		showTriggerCreator(source: NodeCreatorOpenSource) {
 			if (this.createNodeActive) return;
 			this.nodeCreatorStore.setSelectedView(TRIGGER_NODE_CREATOR_VIEW);
@@ -1328,7 +1382,7 @@ export default defineComponent({
 			this.resetWorkspace();
 
 			this.workflowsStore.currentWorkflowExecutions = [];
-			this.workflowsStore.activeWorkflowExecution = null;
+			this.executionsStore.activeExecution = null;
 
 			let data: IWorkflowTemplate | undefined;
 			try {
@@ -1380,7 +1434,7 @@ export default defineComponent({
 		async openWorkflow(workflow: IWorkflowDb) {
 			this.canvasStore.startLoading();
 
-			const selectedExecution = this.workflowsStore.activeWorkflowExecution;
+			const selectedExecution = this.executionsStore.activeExecution;
 
 			this.resetWorkspace();
 
@@ -1427,10 +1481,10 @@ export default defineComponent({
 				workflowName: workflow.name,
 			});
 			if (selectedExecution?.workflowId !== workflow.id) {
-				this.workflowsStore.activeWorkflowExecution = null;
+				this.executionsStore.activeExecution = null;
 				this.workflowsStore.currentWorkflowExecutions = [];
 			} else {
-				this.workflowsStore.activeWorkflowExecution = selectedExecution;
+				this.executionsStore.activeExecution = selectedExecution;
 			}
 			this.canvasStore.stopLoading();
 			this.collaborationStore.notifyWorkflowOpened(workflow.id);
@@ -1444,6 +1498,7 @@ export default defineComponent({
 			// Save the location of the mouse click
 			this.lastClickPosition = this.getMousePositionWithinNodeView(e);
 			if (e instanceof MouseEvent && e.button === 1) {
+				this.aiStore.closeNextStepPopup();
 				this.moveCanvasKeyPressed = true;
 			}
 
@@ -1470,6 +1525,7 @@ export default defineComponent({
 		},
 		async keyDown(e: KeyboardEvent) {
 			this.contextMenu.close();
+			this.aiStore.closeNextStepPopup();
 
 			const ctrlModifier = this.deviceSupport.isCtrlKeyPressed(e) && !e.shiftKey && !e.altKey;
 			const shiftModifier = e.shiftKey && !e.altKey && !this.deviceSupport.isCtrlKeyPressed(e);
@@ -1935,7 +1991,65 @@ export default defineComponent({
 			});
 		},
 		async stopExecution() {
-			await this.stopCurrentExecution();
+			const executionId = this.workflowsStore.activeExecutionId;
+			if (executionId === null) {
+				return;
+			}
+
+			try {
+				this.stopExecutionInProgress = true;
+				await this.executionsStore.stopCurrentExecution(executionId);
+			} catch (error) {
+				// Execution stop might fail when the execution has already finished. Let's treat this here.
+				const execution = await this.workflowsStore.getExecution(executionId);
+
+				if (execution === undefined) {
+					// execution finished but was not saved (e.g. due to low connectivity)
+
+					this.workflowsStore.finishActiveExecution({
+						executionId,
+						data: { finished: true, stoppedAt: new Date() },
+					});
+					this.workflowsStore.executingNode.length = 0;
+					this.uiStore.removeActiveAction('workflowRunning');
+
+					this.titleSet(this.workflowsStore.workflowName, 'IDLE');
+					this.showMessage({
+						title: this.$locale.baseText('nodeView.showMessage.stopExecutionCatch.unsaved.title'),
+						message: this.$locale.baseText(
+							'nodeView.showMessage.stopExecutionCatch.unsaved.message',
+						),
+						type: 'success',
+					});
+				} else if (execution?.finished) {
+					// execution finished before it could be stopped
+
+					const executedData = {
+						data: execution.data,
+						finished: execution.finished,
+						mode: execution.mode,
+						startedAt: execution.startedAt,
+						stoppedAt: execution.stoppedAt,
+					} as IRun;
+					const pushData = {
+						data: executedData,
+						executionId,
+						retryOf: execution.retryOf,
+					} as IPushDataExecutionFinished;
+					this.workflowsStore.finishActiveExecution(pushData);
+					this.titleSet(execution.workflowData.name, 'IDLE');
+					this.workflowsStore.executingNode.length = 0;
+					this.workflowsStore.setWorkflowExecutionData(executedData as IExecutionResponse);
+					this.uiStore.removeActiveAction('workflowRunning');
+					this.showMessage({
+						title: this.$locale.baseText('nodeView.showMessage.stopExecutionCatch.title'),
+						message: this.$locale.baseText('nodeView.showMessage.stopExecutionCatch.message'),
+						type: 'success',
+					});
+				} else {
+					this.showError(error, this.$locale.baseText('nodeView.showError.stopExecution.title'));
+				}
+			}
 			this.stopExecutionInProgress = false;
 			void this.workflowHelpers.getWorkflowDataToSave().then((workflowData) => {
 				const trackProps = {
@@ -2762,15 +2876,7 @@ export default defineComponent({
 
 			return filter;
 		},
-		insertNodeAfterSelected(info: {
-			sourceId: string;
-			index: number;
-			eventSource: NodeCreatorOpenSource;
-			connection?: Connection;
-			nodeCreatorView?: string;
-			outputType?: NodeConnectionType;
-			endpointUuid?: string;
-		}) {
+		insertNodeAfterSelected(info: NewConnectionInfo) {
 			const type = info.outputType ?? NodeConnectionType.Main;
 			// Get the node and set it as active that new nodes
 			// which get created get automatically connected
@@ -2844,13 +2950,58 @@ export default defineComponent({
 					}
 					return;
 				}
-
-				this.insertNodeAfterSelected({
-					sourceId: connection.parameters.nodeId,
-					index: connection.parameters.index,
-					eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
-					connection,
-					outputType: connection.parameters.type,
+				// When connection is aborted, we want to show the 'Next step' popup
+				const endpointId = `${connection.parameters.nodeId}-output${connection.parameters.index}`;
+				const endpoint = connection.instance.getEndpoint(endpointId);
+				// First, show node creator if endpoint is not a plus endpoint
+				// or if the AI Assistant experiment doesn't need to be shown to user
+				if (!endpoint?.endpoint?.canvas || !this.shouldShowNextStepDialog) {
+					this.insertNodeAfterSelected({
+						sourceId: connection.parameters.nodeId,
+						index: connection.parameters.index,
+						eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
+						connection,
+						outputType: connection.parameters.type,
+					});
+					return;
+				}
+				// Else render the popup
+				const endpointElement: HTMLElement = endpoint.endpoint.canvas;
+				// Use observer to trigger the popup once the endpoint is rendered back again
+				// after connection drag is aborted (so we can get it's position and dimensions)
+				const observer = new MutationObserver((mutations) => {
+					// Find the mutation in which the current endpoint becomes visible again
+					const endpointMutation = mutations.find((mutation) => {
+						const target = mutation.target;
+						return (
+							isJSPlumbEndpointElement(target) &&
+							target.jtk.endpoint.uuid === endpoint.uuid &&
+							target.style.display === 'block'
+						);
+					});
+					if (endpointMutation) {
+						// When found, display the popup
+						const newConnectionInfo: AIAssistantConnectionInfo = {
+							sourceId: connection.parameters.nodeId,
+							index: connection.parameters.index,
+							eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
+							outputType: connection.parameters.type,
+							endpointUuid: endpoint.uuid,
+							stepName: endpoint.__meta.nodeName,
+						};
+						this.aiStore.latestConnectionInfo = newConnectionInfo;
+						this.aiStore.openNextStepPopup(
+							this.$locale.baseText('nextStepPopup.title.nextStep'),
+							endpointElement,
+						);
+						observer.disconnect();
+						return;
+					}
+				});
+				observer.observe(this.$refs.nodeViewRef as HTMLElement, {
+					attributes: true,
+					attributeFilter: ['style'],
+					subtree: true,
 				});
 			} catch (e) {
 				console.error(e);
@@ -3366,13 +3517,30 @@ export default defineComponent({
 				.forEach((endpoint) => setTimeout(() => endpoint.instance.revalidate(endpoint.element), 0));
 		},
 		onPlusEndpointClick(endpoint: Endpoint) {
-			if (endpoint?.__meta) {
+			if (this.shouldShowNextStepDialog) {
+				if (endpoint?.__meta) {
+					this.aiStore.latestConnectionInfo = {
+						sourceId: endpoint.__meta.nodeId,
+						index: endpoint.__meta.index,
+						eventSource: NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
+						outputType: endpoint.scope as NodeConnectionType,
+						endpointUuid: endpoint.uuid,
+						stepName: endpoint.__meta.nodeName,
+					};
+					const endpointElement = endpoint.endpoint.canvas;
+					this.aiStore.openNextStepPopup(
+						this.$locale.baseText('nextStepPopup.title.nextStep'),
+						endpointElement,
+					);
+				}
+			} else {
 				this.insertNodeAfterSelected({
 					sourceId: endpoint.__meta.nodeId,
 					index: endpoint.__meta.index,
 					eventSource: NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
 					outputType: endpoint.scope as ConnectionTypes,
 					endpointUuid: endpoint.uuid,
+					stepName: endpoint.__meta.nodeName,
 				});
 			}
 		},
@@ -3484,14 +3652,14 @@ export default defineComponent({
 			this.resetWorkspace();
 			this.workflowData = await this.workflowsStore.getNewWorkflowData();
 			this.workflowsStore.currentWorkflowExecutions = [];
-			this.workflowsStore.activeWorkflowExecution = null;
+			this.executionsStore.activeExecution = null;
 
 			this.uiStore.stateIsDirty = false;
 			this.canvasStore.setZoomLevel(1, [0, 0]);
 			await this.tryToAddWelcomeSticky();
 			this.uiStore.nodeViewInitialized = true;
 			this.historyStore.reset();
-			this.workflowsStore.activeWorkflowExecution = null;
+			this.executionsStore.activeExecution = null;
 			this.canvasStore.stopLoading();
 		},
 		async tryToAddWelcomeSticky(): Promise<void> {
@@ -4583,7 +4751,7 @@ export default defineComponent({
 						});
 					}
 				} else if (json?.command === 'setActiveExecution') {
-					this.workflowsStore.activeWorkflowExecution = json.execution;
+					this.executionsStore.activeExecution = json.execution;
 				}
 			} catch (e) {}
 		},
@@ -5174,3 +5342,4 @@ export default defineComponent({
 	);
 }
 </style>
+, IRun, IPushDataExecutionFinished

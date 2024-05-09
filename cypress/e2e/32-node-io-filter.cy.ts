@@ -23,18 +23,18 @@ describe('Node IO Filter', () => {
 
 		searchInput.filter(':focus').should('exist');
 		ndv.getters.pagination().find('li').should('have.length', 3);
-		cy.get('.highlight').should('not.exist');
+		ndv.getters.outputDataContainer().find('mark').should('not.exist');
 
 		searchInput.type('ar');
 		ndv.getters.pagination().find('li').should('have.length', 2);
-		cy.get('.highlight').its('length').should('be.gt', 0);
+		ndv.getters.outputDataContainer().find('mark').its('length').should('be.gt', 0);
 
 		searchInput.type('i');
 		ndv.getters.pagination().should('not.exist');
-		cy.get('.highlight').its('length').should('be.gt', 0);
+		ndv.getters.outputDataContainer().find('mark').its('length').should('be.gt', 0);
 	});
 
-	it.only('should filter input/output data separately', () => {
+	it('should filter input/output data separately', () => {
 		workflowPage.getters.canvasNodes().eq(1).dblclick();
 		cy.wait(500);
 		ndv.getters.outputDataContainer().should('be.visible');

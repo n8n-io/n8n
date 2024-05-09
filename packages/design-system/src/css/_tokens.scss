@@ -192,6 +192,7 @@
 	--color-table-row-background: var(--color-background-xlight);
 	--color-table-row-even-background: var(--color-background-light);
 	--color-table-row-hover-background: var(--color-primary-tint-3);
+	--color-table-row-highlight-background: var(--color-warning-tint-1);
 
 	// Notification
 	--color-notification-background: var(--color-background-xlight);
@@ -266,6 +267,14 @@
 
 	// Input Triple
 	--color-background-input-triple: var(--color-background-light);
+
+	// Node error
+	--color-node-error-output-text-color: var(--color-danger);
+
+	// MFA Recovery codes
+	--color-mfa-recovery-code-background: var(--color-background-base);
+	--color-mfa-recovery-code-color: var(--prim-gray-490);
+	--color-mfa-lose-access-text-color: var(--color-danger);
 
 	// Various
 	--color-avatar-accent-1: var(--prim-gray-120);
