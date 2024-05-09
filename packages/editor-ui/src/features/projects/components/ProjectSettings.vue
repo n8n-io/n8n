@@ -7,14 +7,17 @@ import type { IUser } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import ProjectTabs from '@/features/projects/components/ProjectTabs.vue';
-import type { Project, ProjectRole, ProjectRelation } from '@/features/projects/projects.types';
+import type { Project, ProjectRelation } from '@/features/projects/projects.types';
 import { useToast } from '@/composables/useToast';
 import { VIEWS } from '@/constants';
 import ProjectDeleteDialog from '@/features/projects/components/ProjectDeleteDialog.vue';
+import { useRolesStore } from '@/stores/roles.store';
+import type { ProjectRole } from '@/types/roles.types';
 
 const usersStore = useUsersStore();
 const locale = useI18n();
 const projectsStore = useProjectsStore();
+const rolesStore = useRolesStore();
 const toast = useToast();
 const router = useRouter();
 const dialogVisible = ref(false);
@@ -24,10 +27,10 @@ const formData = ref<Pick<Project, 'name' | 'relations'>>({
 	name: '',
 	relations: [],
 });
-const projectRoles = ref<Array<{ label: string; value: ProjectRole }>>([
-	{ value: 'project:editor', label: locale.baseText('projects.settings.role.editor') },
-	{ value: 'project:admin', label: locale.baseText('projects.settings.role.admin') },
-]);
+const projectRoleTranslations = ref<{ [key: string]: string }>({
+	'project:editor': locale.baseText('projects.settings.role.editor'),
+	'project:admin': locale.baseText('projects.settings.role.admin'),
+});
 const nameInput = ref<HTMLInputElement | null>(null);
 
 const usersList = computed(() =>
@@ -151,7 +154,7 @@ watch(
 );
 
 onBeforeMount(async () => {
-	await usersStore.fetchUsers();
+	await Promise.all([usersStore.fetchUsers(), rolesStore.fetchRoles()]);
 });
 </script>
 
@@ -197,23 +200,30 @@ onBeforeMount(async () => {
 					:delete-label="$locale.baseText('workflows.shareModal.list.delete')"
 				>
 					<template #actions="{ user }">
-						<N8nSelect
-							:model-value="user?.role || 'project:editor'"
-							size="small"
-							@update:model-value="onRoleAction(user, $event)"
-						>
-							<N8nOption
-								v-for="role in projectRoles"
-								:key="role.value"
-								:value="role.value"
-								:label="role.label"
+						<div class="flex">
+							<N8nSelect
+								:model-value="user?.role || rolesStore.processedProjectRoles[0]"
+								size="small"
+								@update:model-value="onRoleAction(user, $event)"
+							>
+								<N8nOption
+									v-for="role in rolesStore.processedProjectRoles"
+									:key="role.role"
+									:value="role.role"
+									:label="projectRoleTranslations[role.role]"
+									:disabled="!role.licensed"
+								>
+									{{ projectRoleTranslations[role.role] }}
+								</N8nOption>
+							</N8nSelect>
+							<N8nButton
+								type="tertiary"
+								square
+								icon="trash"
+								data-test-id="project-user-remove"
+								@click="onRoleAction(user, 'remove')"
 							/>
-							<N8nOption value="remove">
-								<N8nText color="danger">{{
-									$locale.baseText('projects.settings.removeAccess')
-								}}</N8nText>
-							</N8nOption>
-						</N8nSelect>
+						</div>
 					</template>
 				</N8nUsersList>
 			</fieldset>

@@ -1,12 +1,8 @@
 import type { Scope } from '@n8n/permissions';
 import type { IUserResponse } from '@/Interface';
+import type { ProjectRole } from '@/types/roles.types';
 
 export type ProjectType = 'personal' | 'team' | 'public';
-export type ProjectRole =
-	| 'project:personalOwner'
-	| 'project:admin'
-	| 'project:editor'
-	| 'project:viewer';
 export type ProjectRelation = Pick<IUserResponse, 'id' | 'email' | 'firstName' | 'lastName'> & {
 	role: ProjectRole;
 };
