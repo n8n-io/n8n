@@ -571,22 +571,22 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflow.value.active = active;
 	}
 
-	async function getDuplicateCurrentWorkflowName(currentWorkflowName: string): Promise<string> {
-		if (
-			currentWorkflowName &&
-			currentWorkflowName.length + DUPLICATE_POSTFFIX.length >= MAX_WORKFLOW_NAME_LENGTH
-		) {
-			return currentWorkflowName;
-		}
+async function getDuplicateCurrentWorkflowName(currentWorkflowName: string): Promise<string> {
+	if (
+		currentWorkflowName &&
+		currentWorkflowName.length + DUPLICATE_POSTFFIX.length >= MAX_WORKFLOW_NAME_LENGTH
+	) {
+		return currentWorkflowName;
+	}
 
-			let newName = `${currentWorkflowName}${DUPLICATE_POSTFFIX}`;
-			try {
-				const rootStore = useRootStore();
-				const newWorkflow = await workflowsApi.getNewWorkflow(rootStore.getRestApiContext, { name: newName });
-				newName = newWorkflow.name;
-			} catch (e) {}
-			return newName;
-		},
+		let newName = `${currentWorkflowName}${DUPLICATE_POSTFFIX}`;
+		try {
+			const rootStore = useRootStore();
+			const newWorkflow = await workflowsApi.getNewWorkflow(rootStore.getRestApiContext, { name: newName });
+			newName = newWorkflow.name;
+		} catch (e) {}
+		return newName;
+	}
 
 	function setWorkflowExecutionData(workflowResultData: IExecutionResponse | null) {
 		workflowExecutionData.value = workflowResultData;
