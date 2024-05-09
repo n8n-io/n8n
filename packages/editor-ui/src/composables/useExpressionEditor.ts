@@ -105,7 +105,7 @@ export const useExpressionEditor = ({
 			const { from, to, text, token } = segment;
 
 			if (token === 'Resolvable') {
-				const { resolved, error, fullError } = resolve(text, hoveringItem.value);
+				const { resolved, error, fullError } = resolve(text, targetItem.value);
 				acc.push({
 					kind: 'resolvable',
 					from,
@@ -253,7 +253,7 @@ export const useExpressionEditor = ({
 		return end !== undefined && expressionExtensionNames.value.has(end);
 	}
 
-	function resolve(resolvable: string, hoverItem: TargetItem | null) {
+	function resolve(resolvable: string, target: TargetItem | null) {
 		const result: { resolved: unknown; error: boolean; fullError: Error | null } = {
 			resolved: undefined,
 			error: false,
@@ -268,7 +268,7 @@ export const useExpressionEditor = ({
 				let opts;
 				if (ndvStore.isInputParentOfActiveNode) {
 					opts = {
-						targetItem: hoverItem ?? undefined,
+						targetItem: target ?? undefined,
 						inputNodeName: ndvStore.ndvInputNodeName,
 						inputRunIndex: ndvStore.ndvInputRunIndex,
 						inputBranchIndex: ndvStore.ndvInputBranchIndex,
@@ -306,8 +306,21 @@ export const useExpressionEditor = ({
 		return result;
 	}
 
-	const hoveringItem = computed(() => {
-		return ndvStore.hoveringItem;
+	const targetItem = computed<TargetItem | null>(() => {
+		if (ndvStore.hoveringItem) {
+			return ndvStore.hoveringItem;
+		}
+
+		if (ndvStore.expressionOutputItemIndex && ndvStore.ndvInputNodeName) {
+			return {
+				nodeName: ndvStore.ndvInputNodeName,
+				runIndex: ndvStore.ndvInputRunIndex ?? 0,
+				outputIndex: ndvStore.ndvInputBranchIndex ?? 0,
+				itemIndex: ndvStore.expressionOutputItemIndex,
+			};
+		}
+
+		return null;
 	});
 
 	const resolvableSegments = computed<Resolvable[]>(() => {
@@ -372,13 +385,11 @@ export const useExpressionEditor = ({
 	});
 
 	watch(
-		[
-			() => workflowsStore.getWorkflowExecution,
-			() => workflowsStore.getWorkflowRunData,
-			() => ndvStore.hoveringItemNumber,
-		],
+		[() => workflowsStore.getWorkflowExecution, () => workflowsStore.getWorkflowRunData],
 		debouncedUpdateSegments,
 	);
+
+	watch(targetItem, updateSegments);
 
 	watch(resolvableSegments, updateHighlighting);
 
