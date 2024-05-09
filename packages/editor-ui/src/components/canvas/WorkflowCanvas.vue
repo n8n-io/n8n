@@ -98,7 +98,7 @@ const elements = computed<CanvasElement[]>(() => [
 
 		return {
 			id: node.id,
-			label: 'node',
+			label: node.name,
 			type: 'canvas-node',
 			position: { x: node.position[0], y: node.position[1] },
 			data,

@@ -18,6 +18,7 @@ const $style = useCssModule();
 
 const props = defineProps<{
 	data: CanvasElementData;
+	label: string;
 	selected: boolean;
 }>();
 
@@ -127,6 +128,7 @@ provide(CanvasNodeKey, {
 			<NodeIcon :node-type="nodeType" :size="40" :shrink="false" />
 			<!--			:color-default="iconColorDefault"-->
 			<!--			:disabled="data.disabled"-->
+			<div :class="$style.canvasNodeLabel">{{ label }}</div>
 		</CanvasNodeRenderer>
 	</div>
 </template>
@@ -139,6 +141,16 @@ provide(CanvasNodeKey, {
 			opacity: 1;
 		}
 	}
+}
+
+.canvasNodeLabel {
+	top: 100%;
+	position: absolute;
+	font-size: var(--font-size-m);
+	text-align: center;
+	width: 100%;
+	min-width: 200px;
+	margin-top: var(--spacing-2xs);
 }
 
 .canvasNodeToolbar {
