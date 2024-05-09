@@ -396,7 +396,7 @@ export const routes = [
 			middleware: ['authenticated', 'custom'],
 			middlewareOptions: {
 				custom: () => {
-					return !!localStorage.getItem('features.nodeViewV2');
+					return !!localStorage.getItem('features.NodeViewV2');
 				},
 			},
 		},
