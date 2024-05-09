@@ -206,7 +206,6 @@ export class FrontendService {
 				enabled: config.getEnv('ai.enabled'),
 				provider: config.getEnv('ai.provider'),
 				features: {
-					errorDebugging: !!config.getEnv('ai.openAI.apiKey'),
 					generateCurl: !!config.getEnv('ai.openAI.apiKey'),
 				},
 			},
