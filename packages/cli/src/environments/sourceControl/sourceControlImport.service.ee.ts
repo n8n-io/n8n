@@ -504,13 +504,22 @@ export class SourceControlImportService {
 				where: { id: owner.teamId },
 			});
 			if (!teamProject) {
-				teamProject = await projectRepository.save(
-					projectRepository.create({
-						id: owner.teamId,
-						name: owner.teamName,
-						type: 'team',
-					}),
-				);
+				try {
+					teamProject = await projectRepository.save(
+						projectRepository.create({
+							id: owner.teamId,
+							name: owner.teamName,
+							type: 'team',
+						}),
+					);
+				} catch (e) {
+					teamProject = await projectRepository.findOne({
+						where: { id: owner.teamId },
+					});
+					if (!teamProject) {
+						throw e;
+					}
+				}
 			}
 
 			return teamProject;
