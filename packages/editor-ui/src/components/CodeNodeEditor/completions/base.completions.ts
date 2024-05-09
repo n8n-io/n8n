@@ -85,6 +85,10 @@ export const baseCompletions = defineComponent({
 					info: this.$locale.baseText('codeNodeEditor.completer.$today'),
 				},
 				{
+					label: `${prefix}nodeVersion`,
+					info: this.$locale.baseText('codeNodeEditor.completer.$nodeVersion'),
+				},
+				{
 					label: `${prefix}jmespath()`,
 					info: this.$locale.baseText('codeNodeEditor.completer.$jmespath'),
 				},

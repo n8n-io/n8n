@@ -516,6 +516,7 @@ export const MAPPING_PARAMS = [
 	'$resumeWebhookUrl',
 	'$runIndex',
 	'$today',
+	'$nodeVersion',
 	'$vars',
 	'$workflow',
 ];

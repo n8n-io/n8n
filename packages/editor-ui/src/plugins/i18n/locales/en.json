@@ -217,6 +217,7 @@
 	"codeNodeEditor.completer.$prevNode.runIndex": "The run of the node providing input data to the current one",
 	"codeNodeEditor.completer.$runIndex": "The index of the current run of this node",
 	"codeNodeEditor.completer.$today": "A timestamp representing the current day (at midnight, as a Luxon object)",
+	"codeNodeEditor.completer.$nodeVersion": "The type version of the current node",
 	"codeNodeEditor.completer.$vars": "The variables defined in your instance",
 	"codeNodeEditor.completer.$vars.varName": "Variable set on this n8n instance. All variables evaluate to strings.",
 	"codeNodeEditor.completer.$secrets": "The external secrets connected to your instance",
