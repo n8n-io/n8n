@@ -213,7 +213,7 @@ export class Wise implements INodeType {
 
 						const profileId = this.getNodeParameter('profileId', i);
 						const borderlessAccountId = this.getNodeParameter('borderlessAccountId', i);
-						const format = this.getNodeParameter('format', i) as 'json' | 'csv' | 'pdf';
+						const format = this.getNodeParameter('format', i) as 'json' | 'csv' | 'pdf' | 'xml';
 						const endpoint = `v3/profiles/${profileId}/borderless-accounts/${borderlessAccountId}/statement.${format}`;
 
 						const qs = {

@@ -5,8 +5,10 @@ import {
 	getDomainBase,
 	getDomainPath,
 } from '@/TelemetryHelpers';
-import type { IWorkflowBase } from '@/index';
+import { ApplicationError, STICKY_NODE_TYPE, type IWorkflowBase } from '@/index';
 import { nodeTypes } from './ExpressionExtensions/Helpers';
+import { mock } from 'jest-mock-extended';
+import * as nodeHelpers from '@/NodeHelpers';
 
 describe('getDomainBase should return protocol plus domain', () => {
 	test('in valid URLs', () => {
@@ -762,6 +764,16 @@ describe('generateNodesGraph', () => {
 			},
 			webhookNodeNames: [],
 		});
+	});
+
+	test('should not fail on error to resolve a node parameter for sticky node type', () => {
+		const workflow = mock<IWorkflowBase>({ nodes: [{ type: STICKY_NODE_TYPE }] });
+
+		jest.spyOn(nodeHelpers, 'getNodeParameters').mockImplementationOnce(() => {
+			throw new ApplicationError('Could not find property option');
+		});
+
+		expect(() => generateNodesGraph(workflow, nodeTypes)).not.toThrow();
 	});
 });
 

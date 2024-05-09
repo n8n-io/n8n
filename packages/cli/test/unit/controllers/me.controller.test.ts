@@ -87,27 +87,28 @@ describe('MeController', () => {
 				id: '123',
 				password: 'password',
 				authIdentities: [],
-				role: 'global:owner',
+				role: 'global:member',
 			});
 			const reqBody = { email: 'valid@email.com', firstName: 'John', lastName: 'Potato' };
-			const req = mock<MeRequest.UserUpdate>({ user, body: reqBody, browserId });
+			const req = mock<MeRequest.UserUpdate>({ user, browserId });
+			req.body = reqBody;
 			const res = mock<Response>();
 			userRepository.findOneOrFail.mockResolvedValue(user);
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 
 			// Add invalid data to the request payload
-			Object.assign(reqBody, { id: '0', role: '42' });
+			Object.assign(reqBody, { id: '0', role: 'global:owner' });
 
 			await controller.updateCurrentUser(req, res);
 
 			expect(userService.update).toHaveBeenCalled();
 
-			const updatedUser = userService.update.mock.calls[0][1];
-			expect(updatedUser.email).toBe(reqBody.email);
-			expect(updatedUser.firstName).toBe(reqBody.firstName);
-			expect(updatedUser.lastName).toBe(reqBody.lastName);
-			expect(updatedUser.id).not.toBe('0');
-			expect(updatedUser.role).not.toBe('42');
+			const updatePayload = userService.update.mock.calls[0][1];
+			expect(updatePayload.email).toBe(reqBody.email);
+			expect(updatePayload.firstName).toBe(reqBody.firstName);
+			expect(updatePayload.lastName).toBe(reqBody.lastName);
+			expect(updatePayload.id).toBeUndefined();
+			expect(updatePayload.role).toBeUndefined();
 		});
 
 		it('should throw BadRequestError if beforeUpdate hook throws BadRequestError', async () => {

@@ -61,23 +61,13 @@ import { ref, useCssModule, useAttrs, computed } from 'vue';
 import { ElDropdown, ElDropdownMenu, ElDropdownItem, type Placement } from 'element-plus';
 import N8nIcon from '../N8nIcon';
 import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
-import type { KeyboardShortcut } from '../../types';
+import type { ActionDropdownItem } from '../../types';
 import type { IconSize } from '@/types/icon';
-
-interface IActionDropdownItem {
-	id: string;
-	label: string;
-	icon?: string;
-	divided?: boolean;
-	disabled?: boolean;
-	shortcut?: KeyboardShortcut;
-	customClass?: string;
-}
 
 const TRIGGER = ['click', 'hover'] as const;
 
 interface ActionDropdownProps {
-	items: IActionDropdownItem[];
+	items: ActionDropdownItem[];
 	placement?: Placement;
 	activatorIcon?: string;
 	activatorSize?: IconSize;
@@ -99,7 +89,7 @@ const $attrs = useAttrs();
 const testIdPrefix = $attrs['data-test-id'];
 
 const $style = useCssModule();
-const getItemClasses = (item: IActionDropdownItem): Record<string, boolean> => {
+const getItemClasses = (item: ActionDropdownItem): Record<string, boolean> => {
 	return {
 		[$style.itemContainer]: true,
 		[$style.disabled]: !!item.disabled,

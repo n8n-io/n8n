@@ -1,4 +1,4 @@
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 
 import type { SuperAgentTest } from 'supertest';
 import * as utils from './shared/utils/';
@@ -6,7 +6,7 @@ import { createUser } from './shared/db/users';
 import { mockInstance } from '../shared/mocking';
 
 describe('Auth Middleware', () => {
-	mockInstance(ActiveWorkflowRunner);
+	mockInstance(ActiveWorkflowManager);
 
 	const testServer = utils.setupTestServer({
 		endpointGroups: ['me', 'auth', 'owner', 'users', 'invitations'],

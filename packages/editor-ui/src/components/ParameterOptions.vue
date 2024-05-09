@@ -203,6 +203,7 @@ export default defineComponent({
 <style lang="scss" module>
 .container {
 	display: flex;
+	min-height: 22px;
 }
 
 .loader {

@@ -180,7 +180,7 @@ export class MessageEventBusDestinationWebhook
 				try {
 					JSON.parse(this.jsonQuery);
 				} catch {
-					console.log('JSON parameter need to be an valid JSON');
+					this.logger.error('JSON parameter need to be an valid JSON');
 				}
 				this.axiosRequestOptions.params = jsonParse(this.jsonQuery);
 			}
@@ -198,7 +198,7 @@ export class MessageEventBusDestinationWebhook
 				try {
 					JSON.parse(this.jsonHeaders);
 				} catch {
-					console.log('JSON parameter need to be an valid JSON');
+					this.logger.error('JSON parameter need to be an valid JSON');
 				}
 				this.axiosRequestOptions.headers = jsonParse(this.jsonHeaders);
 			}

@@ -334,7 +334,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		pinData: IPinData | undefined,
 		workflow: Workflow,
 	): { runData: IRunData | undefined; startNodeNames: string[] } {
-		const startNodeNames: string[] = [];
+		const startNodeNames = new Set<string>();
 		let newRunData: IRunData | undefined;
 
 		if (runData !== null && Object.keys(runData).length !== 0) {
@@ -360,7 +360,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 						// When we hit a node which has no data we stop and set it
 						// as a start node the execution from and then go on with other
 						// direct input nodes
-						startNodeNames.push(parentNode);
+						startNodeNames.add(parentNode);
 						break;
 					}
 					if (runData[parentNode] && !runData[parentNode]?.[0]?.error) {
@@ -376,7 +376,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			}
 		}
 
-		return { runData: newRunData, startNodeNames };
+		return { runData: newRunData, startNodeNames: [...startNodeNames] };
 	}
 
 	async function stopCurrentExecution() {

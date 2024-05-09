@@ -140,7 +140,7 @@ const {
 	editorRef: sqlEditor,
 	editorValue,
 	extensions,
-	skipSegments: ['Statement', 'CompositeIdentifier', 'Parens'],
+	skipSegments: ['Statement', 'CompositeIdentifier', 'Parens', 'Brackets'],
 	isReadOnly: props.isReadOnly,
 });
 const ndvStore = useNDVStore();

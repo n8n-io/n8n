@@ -1,3 +1,4 @@
+import type { SecureContextOptions } from 'tls';
 import type {
 	IDataObject,
 	INodeExecutionData,
@@ -8,6 +9,8 @@ import type {
 import set from 'lodash/set';
 
 import FormData from 'form-data';
+import type { HttpSslAuthCredentials } from './interfaces';
+import { formatPrivateKey } from '../../utils/utilities';
 
 export type BodyParameter = {
 	name: string;
@@ -192,5 +195,20 @@ export const prepareRequestBody = async (
 		return formData;
 	} else {
 		return await reduceAsync(parameters, defaultReducer);
+	}
+};
+
+export const setAgentOptions = (
+	requestOptions: IRequestOptions,
+	sslCertificates: HttpSslAuthCredentials | undefined,
+) => {
+	if (sslCertificates) {
+		const agentOptions: SecureContextOptions = {};
+		if (sslCertificates.ca) agentOptions.ca = formatPrivateKey(sslCertificates.ca);
+		if (sslCertificates.cert) agentOptions.cert = formatPrivateKey(sslCertificates.cert);
+		if (sslCertificates.key) agentOptions.key = formatPrivateKey(sslCertificates.key);
+		if (sslCertificates.passphrase)
+			agentOptions.passphrase = formatPrivateKey(sslCertificates.passphrase);
+		requestOptions.agentOptions = agentOptions;
 	}
 };

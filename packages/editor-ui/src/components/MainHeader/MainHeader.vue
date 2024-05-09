@@ -2,12 +2,12 @@
 	<div>
 		<div :class="{ 'main-header': true, expanded: !uiStore.sidebarMenuCollapsed }">
 			<div v-show="!hideMenuBar" class="top-menu">
-				<WorkflowDetails :read-only="readOnly" />
+				<WorkflowDetails v-if="workflow?.name" :workflow="workflow" :read-only="readOnly" />
 				<TabBar
 					v-if="onWorkflowPage"
 					:items="tabBarItems"
-					:active-tab="activeHeaderTab"
-					@select="onTabSelected"
+					:model-value="activeHeaderTab"
+					@update:model-value="onTabSelected"
 				/>
 			</div>
 		</div>
@@ -16,9 +16,9 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import type { Route, RouteLocationRaw } from 'vue-router';
+import type { RouteLocation, RouteLocationRaw } from 'vue-router';
+import { useRouter } from 'vue-router';
 import { mapStores } from 'pinia';
-import { pushConnection } from '@/mixins/pushConnection';
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
 import TabBar from '@/components/MainHeader/TabBar.vue';
 import {
@@ -27,12 +27,13 @@ import {
 	STICKY_NODE_TYPE,
 	VIEWS,
 } from '@/constants';
-import type { INodeUi, ITabBarItem } from '@/Interface';
+import type { INodeUi, ITabBarItem, IWorkflowDb } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExecutionsStore } from '@/stores/executions.store';
+import { usePushConnection } from '@/composables/usePushConnection';
 
 export default defineComponent({
 	name: 'MainHeader',
@@ -40,11 +41,12 @@ export default defineComponent({
 		WorkflowDetails,
 		TabBar,
 	},
-	mixins: [pushConnection],
-	setup(props, ctx) {
+	setup() {
+		const router = useRouter();
+		const pushConnection = usePushConnection({ router });
+
 		return {
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...pushConnection.setup?.(props, ctx),
+			pushConnection,
 		};
 	},
 	data() {
@@ -75,6 +77,9 @@ export default defineComponent({
 		hideMenuBar(): boolean {
 			return Boolean(this.activeNode && this.activeNode.type !== STICKY_NODE_TYPE);
 		},
+		workflow(): IWorkflowDb {
+			return this.workflowsStore.workflow;
+		},
 		workflowName(): string {
 			return this.workflowsStore.workflowName;
 		},
@@ -96,12 +101,18 @@ export default defineComponent({
 			this.syncTabsWithRoute(to, from);
 		},
 	},
+	beforeMount() {
+		this.pushConnection.initialize();
+	},
 	mounted() {
 		this.dirtyState = this.uiStore.stateIsDirty;
 		this.syncTabsWithRoute(this.$route);
 	},
+	beforeUnmount() {
+		this.pushConnection.terminate();
+	},
 	methods: {
-		syncTabsWithRoute(to: Route, from?: Route): void {
+		syncTabsWithRoute(to: RouteLocation, from?: RouteLocation): void {
 			if (
 				to.name === VIEWS.EXECUTION_HOME ||
 				to.name === VIEWS.WORKFLOW_EXECUTIONS ||

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '../../composables/useI18n';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import N8nTooltip from '../N8nTooltip';
 import { ElTag } from 'element-plus';
@@ -20,7 +20,7 @@ defineEmits<{
 	(event: 'tooltipClick', $e: MouseEvent): void;
 }>();
 
-const i18n = useI18n();
+const { t } = useI18n();
 </script>
 
 <template>
@@ -44,7 +44,7 @@ const i18n = useI18n();
 					v-if="isTrigger"
 					icon="bolt"
 					size="xs"
-					:title="i18n.baseText('nodeCreator.nodeItem.triggerIconTitle')"
+					:title="t('nodeCreator.nodeItem.triggerIconTitle')"
 					:class="$style.triggerIcon"
 				/>
 				<N8nTooltip
