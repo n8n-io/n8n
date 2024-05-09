@@ -1286,20 +1286,20 @@ async function getDuplicateCurrentWorkflowName(currentWorkflowName: string): Pro
 		// make sure that the new ones are not active
 		sendData.active = false;
 
-			const rootStore = useRootStore();
-			const projectStore = useProjectsStore();
+		const rootStore = useRootStore();
+		const projectStore = useProjectsStore();
 
-			if (projectStore.currentProjectId) {
-				(sendData as unknown as IDataObject).projectId = projectStore.currentProjectId;
-			}
+		if (projectStore.currentProjectId) {
+			(sendData as unknown as IDataObject).projectId = projectStore.currentProjectId;
+		}
 
-			return await makeRestApiRequest(
-				rootStore.getRestApiContext,
-				'POST',
-				'/workflows',
-				sendData as unknown as IDataObject,
-			);
-		},
+		return await makeRestApiRequest(
+			rootStore.getRestApiContext,
+			'POST',
+			'/workflows',
+			sendData as unknown as IDataObject,
+		);
+	}
 
 	async function updateWorkflow(
 		id: string,
