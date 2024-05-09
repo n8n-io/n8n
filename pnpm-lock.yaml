@@ -10563,7 +10563,6 @@ packages:
       path-browserify: 1.0.1
     dev: true
 
-<<<<<<< HEAD
   /@vue-flow/background@1.3.0(@vue-flow/core@1.33.5)(vue@3.4.21):
     resolution: {integrity: sha512-fu/8s9wzSOQIitnSTI10XT3bzTtagh4h8EF2SWwtlDklOZjAaKy75lqv4htHa3wigy/r4LGCOGwLw3Pk88/AxA==}
     peerDependencies:
@@ -10618,17 +10617,6 @@ packages:
       '@vue-flow/core': 1.33.5(vue@3.4.21)
     dev: false
 
-  /@vue/compiler-core@3.3.4:
-    resolution: {integrity: sha512-cquyDNvZ6jTbf/+x+AgM2Arrp6G4Dzbb0R64jiG804HRMfRiFXWI6kqUVqZ6ZR0bQhIoQjB4+2bhNtVwndW15g==}
-    dependencies:
-      '@babel/parser': 7.23.6
-      '@vue/shared': 3.3.4
-      estree-walker: 2.0.2
-      source-map-js: 1.0.2
-    dev: false
-
-=======
->>>>>>> master
   /@vue/compiler-core@3.4.21:
     resolution: {integrity: sha512-MjXawxZf2SbZszLPYxaFCjxfibYrzr3eYbKxwpLR9EQN+oaziSu3qKVbwBERj1IFIB8OLUewxB5m/BFzi613og==}
     dependencies:
