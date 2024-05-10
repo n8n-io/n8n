@@ -11,6 +11,7 @@ describe('Projects', () => {
 	beforeEach(() => {
 		cy.resetDatabase();
 		cy.enableFeature('advancedPermissions');
+		cy.changeQuota('maxTeamProjects', -1);
 	});
 
 	it('should handle workflows and credentials', () => {
