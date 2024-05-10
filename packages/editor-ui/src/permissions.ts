@@ -43,11 +43,7 @@ export const getCredentialPermissions = (
 		]),
 	);
 
-export const getWorkflowPermissions = (
-	user: IUser | null,
-	project: Project | null,
-	workflow: IWorkflowDb,
-): PermissionsMap<WorkflowScope> =>
+export const getWorkflowPermissions = (workflow: IWorkflowDb): PermissionsMap<WorkflowScope> =>
 	mapScopesToPermissions(
 		[
 			'workflow:create',
@@ -58,11 +54,7 @@ export const getWorkflowPermissions = (
 			'workflow:share',
 			'workflow:execute',
 		],
-		new Set([
-			...(user?.globalScopes ?? []),
-			...(project?.scopes ?? []),
-			...(workflow?.scopes ?? []),
-		]),
+		new Set(workflow?.scopes ?? []),
 	);
 
 export const getProjectPermissions = (

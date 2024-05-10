@@ -223,11 +223,7 @@ export default defineComponent({
 			return this.usersStore.currentUser;
 		},
 		workflowPermissions(): PermissionsMap<WorkflowScope> {
-			return getWorkflowPermissions(
-				this.usersStore.currentUser,
-				this.projectsStore.currentProject || this.projectsStore.personalProject,
-				this.workflow,
-			);
+			return getWorkflowPermissions(this.workflow);
 		},
 		workflowOwnerName(): string {
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflow.id}`);

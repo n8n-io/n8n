@@ -297,7 +297,7 @@ describe('permissions', () => {
 
 	it('getWorkflowPermissions', () => {
 		expect(
-			getWorkflowPermissions(null, null, {
+			getWorkflowPermissions({
 				scopes: [
 					'workflow:create',
 					'workflow:read',
@@ -308,80 +308,6 @@ describe('permissions', () => {
 					'workflow:execute',
 				],
 			} as IWorkflowDb),
-		).toEqual({
-			create: true,
-			read: true,
-			update: true,
-			delete: true,
-			list: true,
-			share: true,
-			execute: true,
-		});
-
-		expect(
-			getWorkflowPermissions(
-				{
-					globalScopes: ['workflow:read', 'workflow:list'],
-				} as IUser,
-				null,
-				{
-					scopes: [
-						'workflow:create',
-						'workflow:read',
-						'workflow:update',
-						'workflow:delete',
-						'workflow:list',
-						'workflow:share',
-						'workflow:execute',
-					],
-				} as IWorkflowDb,
-			),
-		).toEqual({
-			create: true,
-			read: true,
-			update: true,
-			delete: true,
-			list: true,
-			share: true,
-			execute: true,
-		});
-
-		expect(
-			getWorkflowPermissions(
-				{
-					globalScopes: ['workflow:read', 'workflow:list'],
-				} as IUser,
-				null,
-				{} as IWorkflowDb,
-			),
-		).toEqual({
-			create: false,
-			read: true,
-			update: false,
-			delete: false,
-			list: true,
-			share: false,
-			execute: false,
-		});
-
-		expect(
-			getWorkflowPermissions(
-				{
-					globalScopes: ['workflow:read', 'workflow:list'],
-				} as IUser,
-				{
-					scopes: [
-						'workflow:create',
-						'workflow:read',
-						'workflow:update',
-						'workflow:delete',
-						'workflow:list',
-						'workflow:share',
-						'workflow:execute',
-					],
-				} as Project,
-				{} as IWorkflowDb,
-			),
 		).toEqual({
 			create: true,
 			read: true,
