@@ -152,7 +152,7 @@ describe('permissions', () => {
 
 	it('getCredentialPermissions', () => {
 		expect(
-			getCredentialPermissions(null, null, {
+			getCredentialPermissions({
 				scopes: [
 					'credential:create',
 					'credential:read',
@@ -162,129 +162,6 @@ describe('permissions', () => {
 					'credential:share',
 				],
 			} as ICredentialsResponse),
-		).toEqual({
-			create: true,
-			read: true,
-			update: true,
-			delete: true,
-			list: true,
-			share: true,
-		});
-
-		expect(
-			getCredentialPermissions(
-				{
-					globalScopes: ['credential:read', 'credential:list'],
-				} as IUser,
-				null,
-				{
-					scopes: [
-						'credential:create',
-						'credential:read',
-						'credential:update',
-						'credential:delete',
-						'credential:list',
-						'credential:share',
-					],
-				} as ICredentialsResponse,
-			),
-		).toEqual({
-			create: true,
-			read: true,
-			update: true,
-			delete: true,
-			list: true,
-			share: true,
-		});
-
-		expect(
-			getCredentialPermissions(
-				{
-					globalScopes: ['credential:read', 'credential:list'],
-				} as IUser,
-				{
-					scopes: ['credential:read', 'credential:list'],
-				} as Project,
-				{
-					scopes: [
-						'credential:create',
-						'credential:read',
-						'credential:update',
-						'credential:delete',
-						'credential:list',
-						'credential:share',
-					],
-				} as ICredentialsResponse,
-			),
-		).toEqual({
-			create: true,
-			read: true,
-			update: true,
-			delete: true,
-			list: true,
-			share: true,
-		});
-
-		expect(
-			getCredentialPermissions(
-				{
-					globalScopes: ['credential:read', 'credential:list'],
-				} as IUser,
-				null,
-				{} as Project,
-			),
-		).toEqual({
-			create: false,
-			read: true,
-			update: false,
-			delete: false,
-			list: true,
-			share: false,
-		});
-
-		expect(
-			getCredentialPermissions(
-				{
-					globalScopes: ['credential:read', 'credential:list'],
-				} as IUser,
-				{
-					scopes: [
-						'credential:create',
-						'credential:read',
-						'credential:update',
-						'credential:delete',
-						'credential:list',
-						'credential:share',
-					],
-				} as Project,
-				{} as ICredentialsResponse,
-			),
-		).toEqual({
-			create: true,
-			read: true,
-			update: true,
-			delete: true,
-			list: true,
-			share: true,
-		});
-
-		expect(
-			getCredentialPermissions(
-				{
-					globalScopes: [
-						'credential:create',
-						'credential:read',
-						'credential:update',
-						'credential:delete',
-						'credential:list',
-						'credential:share',
-					],
-				} as IUser,
-				null,
-				{
-					scopes: ['credential:read', 'credential:list'],
-				} as ICredentialsResponse,
-			),
 		).toEqual({
 			create: true,
 			read: true,

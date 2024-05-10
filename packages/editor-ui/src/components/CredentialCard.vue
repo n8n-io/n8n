@@ -94,9 +94,7 @@ export default defineComponent({
 			return this.credentialsStore.getCredentialTypeByName(this.data.type);
 		},
 		credentialPermissions(): PermissionsMap<CredentialScope> | null {
-			return !this.currentUser
-				? null
-				: getCredentialPermissions(this.currentUser, this.projectsStore.currentProject, this.data);
+			return !this.currentUser ? null : getCredentialPermissions(this.data);
 		},
 		actions(): Array<{ label: string; value: string }> {
 			if (!this.credentialPermissions) {
