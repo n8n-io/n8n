@@ -13,7 +13,7 @@ import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMapping.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
@@ -41,7 +41,7 @@ export class WorkflowService {
 		private readonly workflowHistoryService: WorkflowHistoryService,
 		private readonly orchestrationService: OrchestrationService,
 		private readonly externalHooks: ExternalHooks,
-		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
+		private readonly activeWorkflowManager: ActiveWorkflowManager,
 	) {}
 
 	async getMany(sharedWorkflowIds: string[], options?: ListQuery.Options) {
@@ -120,7 +120,7 @@ export class WorkflowService {
 		 * will take effect only on removing and re-adding.
 		 */
 		if (shared.workflow.active) {
-			await this.activeWorkflowRunner.remove(workflowId);
+			await this.activeWorkflowManager.remove(workflowId);
 		}
 
 		const workflowSettings = workflow.settings ?? {};
@@ -200,7 +200,7 @@ export class WorkflowService {
 			// When the workflow is supposed to be active add it again
 			try {
 				await this.externalHooks.run('workflow.activate', [updatedWorkflow]);
-				await this.activeWorkflowRunner.add(
+				await this.activeWorkflowManager.add(
 					workflowId,
 					shared.workflow.active ? 'update' : 'activate',
 				);
@@ -245,7 +245,7 @@ export class WorkflowService {
 
 		if (sharedWorkflow.workflow.active) {
 			// deactivate before deleting
-			await this.activeWorkflowRunner.remove(workflowId);
+			await this.activeWorkflowManager.remove(workflowId);
 		}
 
 		const idsForDeletion = await this.executionRepository

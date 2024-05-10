@@ -55,6 +55,7 @@ import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 import type { Component } from 'vue';
 import type { Scope } from '@n8n/permissions';
 import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
+import type { Connection } from '@jsplumb/core';
 
 export * from 'n8n-design-system/types';
 
@@ -250,6 +251,12 @@ export interface IWorkflowDataUpdate {
 
 export interface IWorkflowToShare extends IWorkflowDataUpdate {
 	meta?: WorkflowMetadata;
+}
+
+export interface NewWorkflowResponse {
+	name: string;
+	onboardingFlowEnabled?: boolean;
+	defaultSettings: IWorkflowSettings;
 }
 
 export interface IWorkflowTemplateNode
@@ -1246,6 +1253,7 @@ export interface NDVState {
 	focusedInputPath: string;
 	mappingTelemetry: { [key: string]: string | number | boolean };
 	hoveringItem: null | TargetItem;
+	expressionOutputItemIndex: number;
 	draggable: {
 		isDragging: boolean;
 		type: string;
@@ -1254,6 +1262,7 @@ export interface NDVState {
 		activeTarget: { id: string; stickyPosition: null | XYPosition } | null;
 	};
 	isMappingOnboarded: boolean;
+	isTableHoverOnboarded: boolean;
 	isAutocompleteOnboarded: boolean;
 	highlightDraggables: boolean;
 }
@@ -1893,4 +1902,18 @@ export type SuggestedTemplatesWorkflowPreview = {
 	description: string;
 	preview: IWorkflowData;
 	nodes: Array<Pick<ITemplatesNode, 'id' | 'displayName' | 'icon' | 'defaults' | 'iconData'>>;
+};
+
+export type NewConnectionInfo = {
+	sourceId: string;
+	index: number;
+	eventSource: NodeCreatorOpenSource;
+	connection?: Connection;
+	nodeCreatorView?: string;
+	outputType?: NodeConnectionType;
+	endpointUuid?: string;
+};
+
+export type AIAssistantConnectionInfo = NewConnectionInfo & {
+	stepName: string;
 };

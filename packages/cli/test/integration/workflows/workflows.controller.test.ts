@@ -8,7 +8,7 @@ import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { ListQuery } from '@/requests';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 import { mockInstance } from '../../shared/mocking';
@@ -32,7 +32,7 @@ const license = testServer.license;
 
 const { objectContaining, arrayContaining, any } = expect;
 
-const activeWorkflowRunnerLike = mockInstance(ActiveWorkflowRunner);
+const activeWorkflowManagerLike = mockInstance(ActiveWorkflowManager);
 
 beforeAll(async () => {
 	owner = await createOwner();
@@ -574,7 +574,7 @@ describe('PATCH /workflows/:id', () => {
 		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
 
 		expect(response.statusCode).toBe(200);
-		expect(activeWorkflowRunnerLike.add).toBeCalled();
+		expect(activeWorkflowManagerLike.add).toBeCalled();
 
 		const {
 			data: { id, versionId, active },
@@ -596,8 +596,8 @@ describe('PATCH /workflows/:id', () => {
 		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
 
 		expect(response.statusCode).toBe(200);
-		expect(activeWorkflowRunnerLike.add).not.toBeCalled();
-		expect(activeWorkflowRunnerLike.remove).toBeCalled();
+		expect(activeWorkflowManagerLike.add).not.toBeCalled();
+		expect(activeWorkflowManagerLike.remove).toBeCalled();
 
 		const {
 			data: { id, versionId, active },

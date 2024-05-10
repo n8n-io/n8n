@@ -88,6 +88,10 @@ const classes = computed(() => {
 	color: var(--color-primary);
 }
 
+.secondary {
+	color: var(--color-secondary);
+}
+
 .text-dark {
 	color: var(--color-text-dark);
 }

@@ -379,6 +379,7 @@ export class I18nClass {
 		$request: this.baseText('codeNodeEditor.completer.$request'),
 		$response: this.baseText('codeNodeEditor.completer.$response'),
 		$pageCount: this.baseText('codeNodeEditor.completer.$pageCount'),
+		$nodeVersion: this.baseText('codeNodeEditor.completer.$nodeVersion'),
 	} as const satisfies Record<string, string | undefined>;
 
 	proxyVars: Record<string, string | undefined> = {
