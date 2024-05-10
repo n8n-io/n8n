@@ -11,6 +11,8 @@ describe('Projects', () => {
 	beforeEach(() => {
 		cy.resetDatabase();
 		cy.enableFeature('advancedPermissions');
+		cy.enableFeature('projectRole:admin');
+		cy.enableFeature('projectRole:editor');
 		cy.changeQuota('maxTeamProjects', -1);
 	});
 
