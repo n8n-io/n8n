@@ -8,15 +8,14 @@ type Props = {
 };
 
 const props = defineProps<Props>();
-
+const visible = defineModel<boolean>();
 const uiStore = useUIStore();
+const locale = useI18n();
 
 const goToUpgrade = async () => {
 	await uiStore.goToUpgrade('rbac', 'upgrade-rbac');
+	visible.value = false;
 };
-
-const visible = defineModel<boolean>();
-const locale = useI18n();
 </script>
 <template>
 	<el-dialog
