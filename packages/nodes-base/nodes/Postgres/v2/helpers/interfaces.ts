@@ -16,7 +16,7 @@ export type ColumnInfo = {
 	data_type: string;
 	is_nullable: string;
 	udt_name?: string;
-	column_default?: string;
+	column_default?: string | null;
 	is_generated?: 'ALWAYS' | 'NEVER';
 	identity_generation?: 'ALWAYS' | 'NEVER';
 };

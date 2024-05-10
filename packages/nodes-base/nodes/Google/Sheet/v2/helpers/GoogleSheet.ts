@@ -476,7 +476,7 @@ export class GoogleSheet {
 
 		const keyIndex = columnNames.indexOf(indexKey);
 
-		if (keyIndex === -1) {
+		if (keyIndex === -1 && !upsert) {
 			throw new NodeOperationError(
 				this.executeFunctions.getNode(),
 				`Could not find column for key "${indexKey}"`,
@@ -612,7 +612,7 @@ export class GoogleSheet {
 	/**
 	 * Looks for a specific value in a column and if it gets found it returns the whole row
 	 *
-	 * @param {string[][]} inputData Data to to check for lookup value in
+	 * @param {string[][]} inputData Data to check for lookup value in
 	 * @param {number} keyRowIndex Index of the row which contains the keys
 	 * @param {number} dataStartRowIndex Index of the first row which contains data
 	 * @param {ILookupValues[]} lookupValues The lookup values which decide what data to return

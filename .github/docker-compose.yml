@@ -15,11 +15,11 @@ services:
         hard: 46677
 
   postgres:
-    image: postgres:11
+    image: postgres:16
     restart: always
     environment:
       - POSTGRES_DB=n8n
-      - POSTGRES_USER=root
+      - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password
     ports:
       - 5432:5432

@@ -3,6 +3,8 @@ import { getVisibleSelect } from '../utils';
 import { MANUAL_TRIGGER_NODE_DISPLAY_NAME } from '../constants';
 import { NDV, WorkflowPage } from '../pages';
 import { NodeCreator } from '../pages/features/node-creator';
+import { clickCreateNewCredential } from '../composables/ndv';
+import { setCredentialValues } from '../composables/modals/credential-modal';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -323,7 +325,7 @@ describe('NDV', () => {
 
 		ndv.actions.setInvalidExpression({ fieldName: 'fieldId', delay: 200 });
 
-		ndv.getters.nodeParameters().click(); // remove focus from input, hide expression preview
+		ndv.getters.inputPanel().click(); // remove focus from input, hide expression preview
 
 		ndv.getters.parameterInput('remoteOptions').click();
 
@@ -633,7 +635,7 @@ describe('NDV', () => {
 		ndv.getters.nodeRunErrorIndicator().should('exist');
 	});
 
-	it('Should handle mismatched option attributes', () => {
+	it('Should clear mismatched collection parameters', () => {
 		workflowPage.actions.addInitialNodeToCanvas('LDAP', {
 			keepNdvOpen: true,
 			action: 'Create a new entry',
@@ -654,6 +656,21 @@ describe('NDV', () => {
 		ndv.actions.setRLCValue('documentId', TEST_DOC_ID);
 		ndv.actions.changeNodeOperation('Update Row');
 		ndv.getters.resourceLocatorInput('documentId').find('input').should('have.value', TEST_DOC_ID);
+	});
+
+	it('Should not clear resource/operation after credential change', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Discord', {
+			keepNdvOpen: true,
+			action: 'Delete a message',
+		});
+
+		clickCreateNewCredential();
+		setCredentialValues({
+			botToken: 'sk_test_123',
+		});
+
+		ndv.getters.parameterInput('resource').find('input').should('have.value', 'Message');
+		ndv.getters.parameterInput('operation').find('input').should('have.value', 'Delete');
 	});
 
 	it('Should open appropriate node creator after clicking on connection hint link', () => {
@@ -694,5 +711,32 @@ describe('NDV', () => {
 			ndv.getters.triggerPanelExecuteButton().should('contain', 'Test step');
 			workflowPage.getters.successToast().should('exist');
 		});
+	});
+
+	it('should allow selecting item for expressions', () => {
+		workflowPage.actions.visit();
+
+		cy.createFixtureWorkflow('Test_workflow_3.json', `My test workflow`);
+		workflowPage.actions.openNode('Set');
+
+		ndv.actions.typeIntoParameterInput('value', '='); // switch to expressions
+		ndv.actions.typeIntoParameterInput('value', '{{', {
+			parseSpecialCharSequences: false,
+		});
+		ndv.actions.typeIntoParameterInput('value', '$json.input[0].count');
+		ndv.getters.inlineExpressionEditorOutput().should('have.text', '0');
+
+		ndv.actions.expressionSelectNextItem();
+		ndv.getters.inlineExpressionEditorOutput().should('have.text', '1');
+		ndv.getters.inlineExpressionEditorItemInput().should('have.value', '1');
+		ndv.getters.inlineExpressionEditorItemNextButton().should('be.disabled');
+
+		ndv.actions.expressionSelectPrevItem();
+		ndv.getters.inlineExpressionEditorOutput().should('have.text', '0');
+		ndv.getters.inlineExpressionEditorItemInput().should('have.value', '0');
+		ndv.getters.inlineExpressionEditorItemPrevButton().should('be.disabled');
+
+		ndv.actions.expressionSelectItem(1);
+		ndv.getters.inlineExpressionEditorOutput().should('have.text', '1');
 	});
 });

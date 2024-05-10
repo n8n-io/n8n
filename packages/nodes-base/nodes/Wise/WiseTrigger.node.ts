@@ -66,6 +66,11 @@ export class WiseTrigger implements INodeType {
 						description: 'Triggered every time a balance account is credited',
 					},
 					{
+						name: 'Balance Update',
+						value: 'balanceUpdate',
+						description: 'Triggered every time a balance account is credited or debited',
+					},
+					{
 						name: 'Transfer Active Case',
 						value: 'transferActiveCases',
 						description: "Triggered every time a transfer's list of active cases is updated",

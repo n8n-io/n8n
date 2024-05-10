@@ -6,7 +6,7 @@ export interface Chat {
 	messages: Ref<ChatMessage[]>;
 	currentSessionId: Ref<string | null>;
 	waitingForResponse: Ref<boolean>;
-	loadPreviousSession: () => Promise<string | undefined>;
-	startNewSession: () => Promise<void>;
+	loadPreviousSession?: () => Promise<string | undefined>;
+	startNewSession?: () => Promise<void>;
 	sendMessage: (text: string) => Promise<void>;
 }

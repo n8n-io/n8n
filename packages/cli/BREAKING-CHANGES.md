@@ -2,6 +2,16 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 1.40.0
+
+### What changed?
+
+The default value for the `DB_POSTGRESDB_USER` environment variable was switched from `root` to `postgres`.
+
+### When is action necessary?
+
+If your Postgres connection is relying on the old default value `root` for the `DB_POSTGRESDB_USER` environment variable, you must now explicitly set `DB_POSTGRESDB_USER` to `root` in your environment.
+
 ## 1.37.0
 
 ### What changed?

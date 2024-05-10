@@ -417,7 +417,7 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 				// json body
 				Object.assign(httpNodeParameters, {
 					specifyBody: 'json',
-					jsonBody: JSON.stringify(json),
+					jsonBody: JSON.stringify(json, null, 2),
 				});
 			} else {
 				// key-value body

@@ -133,6 +133,11 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 		section: METHODS_SECTION,
 		info: i18n.rootVars.$min,
 	},
+	{
+		label: '$nodeVersion',
+		section: METADATA_SECTION,
+		info: i18n.rootVars.$nodeVersion,
+	},
 ];
 
 export const STRING_RECOMMENDED_OPTIONS = [

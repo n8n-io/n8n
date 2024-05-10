@@ -10,6 +10,7 @@ import type {
 import {
 	mispApiRequest,
 	mispApiRequestAllItems,
+	mispApiRestSearch,
 	throwOnEmptyUpdate,
 	throwOnInvalidUrl,
 	throwOnMissingSharingGroup,
@@ -28,6 +29,8 @@ import {
 	galaxyOperations,
 	noticelistFields,
 	noticelistOperations,
+	objectOperations,
+	objectFields,
 	organisationFields,
 	organisationOperations,
 	tagFields,
@@ -92,6 +95,10 @@ export class Misp implements INodeType {
 						value: 'noticelist',
 					},
 					{
+						name: 'Object',
+						value: 'object',
+					},
+					{
 						name: 'Organisation',
 						value: 'organisation',
 					},
@@ -122,6 +129,8 @@ export class Misp implements INodeType {
 			...galaxyFields,
 			...noticelistOperations,
 			...noticelistFields,
+			...objectOperations,
+			...objectFields,
 			...organisationOperations,
 			...organisationFields,
 			...tagOperations,
@@ -233,6 +242,12 @@ export class Misp implements INodeType {
 						// ----------------------------------------
 
 						responseData = await mispApiRequestAllItems.call(this, '/attributes');
+					} else if (operation === 'search') {
+						// ----------------------------------------
+						//            attribute: search
+						// ----------------------------------------
+
+						responseData = await mispApiRestSearch.call(this, 'attributes', i);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//            attribute: update
@@ -300,6 +315,12 @@ export class Misp implements INodeType {
 						// ----------------------------------------
 
 						responseData = await mispApiRequestAllItems.call(this, '/events');
+					} else if (operation === 'search') {
+						// ----------------------------------------
+						//            event: search
+						// ----------------------------------------
+
+						responseData = await mispApiRestSearch.call(this, 'events', i);
 					} else if (operation === 'publish') {
 						// ----------------------------------------
 						//              event: publish
@@ -499,6 +520,17 @@ export class Misp implements INodeType {
 							Noticelist: unknown;
 						}>;
 						responseData = responseData.map((entry) => entry.Noticelist);
+					}
+				} else if (resource === 'object') {
+					// **********************************************************************
+					//                                    object
+					// **********************************************************************
+					if (operation === 'search') {
+						// ----------------------------------------
+						//            attribute: search
+						// ----------------------------------------
+
+						responseData = await mispApiRestSearch.call(this, 'objects', i);
 					}
 				} else if (resource === 'organisation') {
 					// **********************************************************************

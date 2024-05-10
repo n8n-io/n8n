@@ -48,13 +48,14 @@ return [ {json: { output } } ];`;
 const defaultCodeSupplyData = `const { WikipediaQueryRun } = require('langchain/tools');
 return new WikipediaQueryRun();`;
 
+const langchainModules = ['langchain', '@langchain/*'];
 export const vmResolver = makeResolverFromLegacyOptions({
 	external: {
-		modules: external ? ['langchain', ...external.split(',')] : ['langchain'],
+		modules: external ? [...langchainModules, ...external.split(',')] : [...langchainModules],
 		transitive: false,
 	},
 	resolve(moduleName, parentDirname) {
-		if (moduleName.match(/^langchain\//)) {
+		if (moduleName.match(/^langchain\//) ?? moduleName.match(/^@langchain\//)) {
 			return require.resolve(`@n8n/n8n-nodes-langchain/node_modules/${moduleName}.cjs`, {
 				paths: [parentDirname],
 			});
@@ -88,6 +89,8 @@ function getSandbox(
 	context.getExecutionCancelSignal = this.getExecutionCancelSignal;
 	// eslint-disable-next-line @typescript-eslint/unbound-method
 	context.getNodeOutputs = this.getNodeOutputs;
+	// eslint-disable-next-line @typescript-eslint/unbound-method
+	context.executeWorkflow = this.executeWorkflow;
 	// eslint-disable-next-line @typescript-eslint/unbound-method
 	context.logger = this.logger;
 
