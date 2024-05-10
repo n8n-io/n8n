@@ -341,7 +341,7 @@ extract.doc = {
 format.doc = {
 	name: 'format',
 	description:
-		'Converts the DateTime to a string, using the format specified. <a href="https://moment.github.io/luxon/#/formatting?id=table-of-tokens">Formatting guide</a>. For common formats, <code>toLocaleString()</code> may be easier.',
+		'Converts the DateTime to a string, using the format specified. <a target="_blank" href="https://moment.github.io/luxon/#/formatting?id=table-of-tokens">Formatting guide</a>. For common formats, <code>toLocaleString()</code> may be easier.',
 	examples: [
 		{
 			example: "dt = '2024-04-30T18:49'.toDateTime()\ndt.format('dd/LL/yyyy')",
@@ -366,7 +366,7 @@ format.doc = {
 		{
 			name: 'fmt',
 			description:
-				'The <a href="https://moment.github.io/luxon/#/formatting?id=table-of-tokens">format</a> of the string to return ',
+				'The <a target="_blank" href="https://moment.github.io/luxon/#/formatting?id=table-of-tokens">format</a> of the string to return ',
 			default: "'yyyy-MM-dd'",
 			type: 'string',
 		},
@@ -453,7 +453,7 @@ minus.doc = {
 		{
 			name: 'n',
 			description:
-				'The number of units to subtract. Or use a Luxon <a href=”https://moment.github.io/luxon/api-docs/index.html#duration”>Duration</a> object to subtract multiple units at once.',
+				'The number of units to subtract. Or use a Luxon <a target="_blank" href=”https://moment.github.io/luxon/api-docs/index.html#duration”>Duration</a> object to subtract multiple units at once.',
 			type: 'number | object',
 		},
 		{
@@ -487,7 +487,7 @@ plus.doc = {
 		{
 			name: 'n',
 			description:
-				'The number of units to add. Or use a Luxon <a href=”https://moment.github.io/luxon/api-docs/index.html#duration”>Duration</a> object to add multiple units at once.',
+				'The number of units to add. Or use a Luxon <a target="_blank" href=”https://moment.github.io/luxon/api-docs/index.html#duration”>Duration</a> object to add multiple units at once.',
 			type: 'number | object',
 		},
 		{
