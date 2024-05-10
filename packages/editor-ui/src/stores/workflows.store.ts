@@ -57,7 +57,7 @@ import type {
 	IWorkflowSettings,
 	INodeType,
 } from 'n8n-workflow';
-import { deepCopy, NodeHelpers, Workflow, ErrorReporterProxy as EventReporter } from 'n8n-workflow';
+import { deepCopy, NodeHelpers, Workflow } from 'n8n-workflow';
 import { findLast } from 'lodash-es';
 
 import { useRootStore } from '@/stores/n8nRoot.store';
