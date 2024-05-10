@@ -134,7 +134,7 @@ export const luxonStaticDocs: Required<NativeDoc> = {
 				returnType: 'DateTime',
 				args: [
 					{ name: 'date', type: 'Date' },
-					{ name: 'options', optional: true, type: 'object' },
+					{ name: 'options', optional: true, type: 'Object' },
 				],
 			},
 		},
@@ -157,7 +157,7 @@ export const luxonStaticDocs: Required<NativeDoc> = {
 					{
 						name: 'options',
 						optional: true,
-						type: 'object',
+						type: 'Object',
 						description: i18n.baseText(
 							'codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromMillis.args.opts',
 						),
@@ -187,7 +187,7 @@ export const luxonStaticDocs: Required<NativeDoc> = {
 					{
 						name: 'options',
 						optional: true,
-						type: 'object',
+						type: 'Object',
 						description: i18n.baseText(
 							'codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromSeconds.args.opts',
 						),
@@ -203,8 +203,8 @@ export const luxonStaticDocs: Required<NativeDoc> = {
 				returnType: 'DateTime',
 				hidden: true,
 				args: [
-					{ name: 'obj', type: 'object' },
-					{ name: 'options', optional: true, type: 'object' },
+					{ name: 'obj', type: 'Object' },
+					{ name: 'options', optional: true, type: 'Object' },
 				],
 			},
 		},
@@ -215,8 +215,27 @@ export const luxonStaticDocs: Required<NativeDoc> = {
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimefromiso',
 				returnType: 'DateTime',
 				args: [
-					{ name: 'text', type: 'string' },
-					{ name: 'options', optional: true, type: 'object' },
+					{
+						name: 'isoString',
+						type: 'string',
+						description: i18n.baseText(
+							'codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromISO.args.isoString',
+						),
+					},
+					{
+						name: 'options',
+						optional: true,
+						type: 'Object',
+						description: i18n.baseText(
+							'codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromISO.args.opts',
+						),
+					},
+				],
+				examples: [
+					{
+						example: "DateTime.fromISO('2024-05-10T14:15:59.493Z')",
+						evaluated: '2024-05-10T14:15',
+					},
 				],
 			},
 		},
@@ -228,7 +247,7 @@ export const luxonStaticDocs: Required<NativeDoc> = {
 				returnType: 'DateTime',
 				args: [
 					{ name: 'text', type: 'string' },
-					{ name: 'options', optional: true, type: 'object' },
+					{ name: 'options', optional: true, type: 'Object' },
 				],
 			},
 		},
@@ -240,7 +259,7 @@ export const luxonStaticDocs: Required<NativeDoc> = {
 				returnType: 'DateTime',
 				args: [
 					{ name: 'text', type: 'string' },
-					{ name: 'options', optional: true, type: 'object' },
+					{ name: 'options', optional: true, type: 'Object' },
 				],
 			},
 		},
@@ -253,7 +272,7 @@ export const luxonStaticDocs: Required<NativeDoc> = {
 				args: [
 					{ name: 'text', type: 'string' },
 					{ name: 'fmt', type: 'string' },
-					{ name: 'options', optional: true, type: 'object' },
+					{ name: 'options', optional: true, type: 'Object' },
 				],
 			},
 		},
@@ -265,7 +284,7 @@ export const luxonStaticDocs: Required<NativeDoc> = {
 				returnType: 'DateTime',
 				args: [
 					{ name: 'text', type: 'string' },
-					{ name: 'options', optional: true, type: 'object' },
+					{ name: 'options', optional: true, type: 'Object' },
 				],
 			},
 		},
@@ -316,12 +335,12 @@ export const luxonStaticDocs: Required<NativeDoc> = {
 			doc: {
 				name: 'fromFormatExplain',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimefromformatexplain',
-				returnType: 'object',
+				returnType: 'Object',
 				hidden: true,
 				args: [
 					{ name: 'text', type: 'string' },
 					{ name: 'fmt', type: 'string' },
-					{ name: 'options', optional: true, type: 'object' },
+					{ name: 'options', optional: true, type: 'Object' },
 				],
 			},
 		},
@@ -334,7 +353,7 @@ export const luxonStaticDocs: Required<NativeDoc> = {
 				args: [
 					{ name: 'text', type: 'string' },
 					{ name: 'fmt', type: 'string' },
-					{ name: 'options', optional: true, type: 'object' },
+					{ name: 'options', optional: true, type: 'Object' },
 				],
 			},
 		},
@@ -342,12 +361,12 @@ export const luxonStaticDocs: Required<NativeDoc> = {
 			doc: {
 				name: 'fromStringExplain',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimefromstringexplain',
-				returnType: 'object',
+				returnType: 'Object',
 				hidden: true,
 				args: [
 					{ name: 'text', type: 'string' },
 					{ name: 'fmt', type: 'string' },
-					{ name: 'options', optional: true, type: 'object' },
+					{ name: 'options', optional: true, type: 'Object' },
 				],
 			},
 		},
@@ -358,9 +377,14 @@ export const luxonStaticDocs: Required<NativeDoc> = {
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimemax',
 				returnType: 'DateTime | undefined',
 				args: [
-					{ name: 'dateTime1', type: 'DateTime' },
-					{ name: 'dateTime2', type: 'DateTime' },
-					{ name: 'dateTimeN', type: 'DateTime' },
+					{
+						name: 'dateTimes',
+						variadic: true,
+						type: 'DateTime',
+						description: i18n.baseText(
+							'codeNodeEditor.completer.luxon.dateTimeStaticMethods.max.args.dateTimes',
+						),
+					},
 				],
 				examples: [
 					{
@@ -378,9 +402,14 @@ export const luxonStaticDocs: Required<NativeDoc> = {
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimemin',
 				returnType: 'DateTime | undefined',
 				args: [
-					{ name: 'dateTime1', type: 'DateTime' },
-					{ name: 'dateTime2', type: 'DateTime' },
-					{ name: 'dateTimeN', type: 'DateTime' },
+					{
+						name: 'dateTimes',
+						variadic: true,
+						type: 'DateTime',
+						description: i18n.baseText(
+							'codeNodeEditor.completer.luxon.dateTimeStaticMethods.min.args.dateTimes',
+						),
+					},
 				],
 				examples: [
 					{
