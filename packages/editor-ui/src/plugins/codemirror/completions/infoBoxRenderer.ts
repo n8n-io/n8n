@@ -138,7 +138,7 @@ const renderArg = (arg: DocMetadataArgument): HTMLElement => {
 		const argDescription = document.createElement('span');
 		argDescription.classList.add('autocomplete-info-arg-description');
 
-		if (arg.default && !arg.description.toLowerCase().includes('default')) {
+		if (arg.default && arg.optional && !arg.description.toLowerCase().includes('default')) {
 			const separator = arg.description.endsWith('.') ? ' ' : '. ';
 			arg.description +=
 				separator +

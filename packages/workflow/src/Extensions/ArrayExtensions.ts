@@ -470,7 +470,7 @@ intersection.doc = {
 			name: 'otherArray',
 			optional: false,
 			description: 'The array to compare to the base array',
-			type: 'array',
+			type: 'Array',
 		},
 	],
 	docURL:
@@ -488,13 +488,13 @@ merge.doc = {
 			evaluated: "{ name: 'Nathan', age: 42, city: 'Berlin', country: 'Germany' }",
 		},
 	],
-	returnType: 'object',
+	returnType: 'Object',
 	args: [
 		{
 			name: 'otherArray',
 			optional: false,
 			description: 'The array to merge into the base array',
-			type: 'array',
+			type: 'Array',
 		},
 	],
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-merge',
@@ -517,21 +517,10 @@ pluck.doc = {
 	returnType: 'Array',
 	args: [
 		{
-			name: 'fieldName1',
+			name: 'fieldNames',
 			optional: false,
-			description: 'The first key to retrieve the value of',
-			type: 'string',
-		},
-		{
-			name: 'fieldName2',
-			optional: true,
-			description: 'The second key to retrieve the value of',
-			type: 'string',
-		},
-		{
-			name: 'fieldNameN',
-			optional: true,
-			description: 'The Nth key to retrieve the value of',
+			variadic: true,
+			description: 'The keys to retrieve the value of',
 			type: 'string',
 		},
 	],
@@ -625,21 +614,10 @@ unique.doc = {
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-unique',
 	args: [
 		{
-			name: 'fieldName1',
+			name: 'fieldNames',
 			optional: false,
-			description: 'The first object key to check for equality',
-			type: 'any',
-		},
-		{
-			name: 'fieldName2',
-			optional: true,
-			description: 'The second object key to check for equality',
-			type: 'any',
-		},
-		{
-			name: 'fieldNameN',
-			optional: true,
-			description: 'The Nth object key to check for equality',
+			variadic: true,
+			description: 'The object keys to check for equality',
 			type: 'any',
 		},
 	],
@@ -677,21 +655,10 @@ append.doc = {
 	returnType: 'Array',
 	args: [
 		{
-			name: 'elem1',
+			name: 'elements',
 			optional: false,
-			description: 'The first element to append',
-			type: 'any',
-		},
-		{
-			name: 'elem2',
-			optional: true,
-			description: 'The second element to append',
-			type: 'any',
-		},
-		{
-			name: 'elemN',
-			optional: true,
-			description: 'The Nth element to append',
+			variadic: true,
+			description: 'The elements to append, in order',
 			type: 'any',
 		},
 	],

@@ -34,20 +34,9 @@ export const arrayMethods: NativeDoc = {
 				returnType: 'Array',
 				args: [
 					{
-						name: 'array2',
-						description: 'The first array to be joined on the end of the base array',
-						type: 'Array',
-					},
-					{
-						name: 'array3',
-						optional: true,
-						description: 'The second array to be joined on to the end of the base array',
-						type: 'Array',
-					},
-					{
-						name: 'arrayN',
-						optional: true,
-						description: 'The Nth array to be joined on to the end of the base array',
+						name: 'arrays',
+						variadic: true,
+						description: 'The arrays to be joined on the end of the base array, in order',
 						type: 'Array',
 					},
 				],
@@ -64,7 +53,6 @@ export const arrayMethods: NativeDoc = {
 						evaluated: '[33, 40]',
 						description: 'Keep ages over 18 (using arrow function notation)',
 					},
-					{ example: "names = ['Nathan', 'Bob', 'Sebastian']" },
 					{
 						example: "['Nathan', 'Bob', 'Sebastian'].filter(name => name.length < 5)",
 						evaluated: "['Bob']",
@@ -89,8 +77,8 @@ export const arrayMethods: NativeDoc = {
 					{
 						name: 'function',
 						description:
-							'A function to run for each array element. If it returns <code>true</code>, the element will be kept. Consider using <a href=”https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/Arrow_functions”>arrow function notation</a> to save space.',
-						type: '(element, index?, array?, this?) => boolean',
+							'A function to run for each array element. If it returns <code>true</code>, the element will be kept. Consider using <a target="_blank" href=”https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/Arrow_functions”>arrow function notation</a> to save space.',
+						type: 'Function',
 						default: 'item => true',
 						args: [
 							{
@@ -105,7 +93,7 @@ export const arrayMethods: NativeDoc = {
 								type: 'number',
 							},
 							{
-								name: 'Array',
+								name: 'array',
 								optional: true,
 								description: 'The array being processed. Rarely needed.',
 								type: 'Array',
@@ -133,7 +121,6 @@ export const arrayMethods: NativeDoc = {
 						evaluated: '33',
 						description: 'Find first age over 18 (using arrow function notation)',
 					},
-					{ example: 'names =' },
 					{
 						example: "['Nathan', 'Bob', 'Sebastian'].find(name => name.length < 5)",
 						evaluated: "'Bob'",
@@ -148,13 +135,13 @@ export const arrayMethods: NativeDoc = {
 				],
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/find',
-				returnType: 'Array|undefined',
+				returnType: 'Array | undefined',
 				args: [
 					{
 						name: 'function',
 						description:
-							'A function to run for each array element. As soon as it returns <code>true</code>, that element will be returned. Consider using <a href=”https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/Arrow_functions”>arrow function notation</a> to save space.',
-						type: '(element, index?, array?, this?) => boolean',
+							'A function to run for each array element. As soon as it returns <code>true</code>, that element will be returned. Consider using <a target="_blank" href=”https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/Arrow_functions”>arrow function notation</a> to save space.',
+						type: 'Function',
 						default: 'item => true',
 						args: [
 							{
@@ -169,7 +156,7 @@ export const arrayMethods: NativeDoc = {
 								type: 'number',
 							},
 							{
-								name: 'Array',
+								name: 'array',
 								optional: true,
 								description: 'The array being processed. Rarely needed.',
 								type: 'Array',
@@ -205,7 +192,7 @@ export const arrayMethods: NativeDoc = {
 				description: 'Returns the value of the last element that passes the test `fn`.',
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/findLast',
-				returnType: 'Element|undefined',
+				returnType: 'any | undefined',
 				args: [{ name: 'fn', type: 'Function' }],
 			},
 		},
@@ -329,8 +316,8 @@ export const arrayMethods: NativeDoc = {
 					{
 						name: 'function',
 						description:
-							'A function to run for each array element. In the new array, the output of this function takes the place of the element. Consider using <a href=”https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/Arrow_functions”>arrow function notation</a> to save space.',
-						type: '(element, index?, array?, this?) => any',
+							'A function to run for each array element. In the new array, the output of this function takes the place of the element. Consider using <a target="_blank" href=”https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/Arrow_functions”>arrow function notation</a> to save space.',
+						type: 'Function',
 						default: 'item => item',
 						args: [
 							{
@@ -345,7 +332,7 @@ export const arrayMethods: NativeDoc = {
 								type: 'number',
 							},
 							{
-								name: 'Array',
+								name: 'array',
 								optional: true,
 								description: 'The array being processed. Rarely needed.',
 								type: 'Array',
@@ -386,8 +373,8 @@ export const arrayMethods: NativeDoc = {
 					{
 						name: 'function',
 						description:
-							'A function to run for each array element. Takes the accumulated result and the current element, and returns a new accumulated result. Consider using <a href=”https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/Arrow_functions”>arrow function notation</a> to save space.',
-						type: '(prevResult, currentElem, index?, array?) => any',
+							'A function to run for each array element. Takes the accumulated result and the current element, and returns a new accumulated result. Consider using <a target="_blank" href=”https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/Arrow_functions”>arrow function notation</a> to save space.',
+						type: 'Function',
 						default: 'item => item',
 						args: [
 							{
@@ -408,7 +395,7 @@ export const arrayMethods: NativeDoc = {
 								type: 'number',
 							},
 							{
-								name: 'Array',
+								name: 'array',
 								optional: true,
 								description: 'The array being processed. Rarely needed.',
 								type: 'Array',
@@ -586,21 +573,10 @@ export const arrayMethods: NativeDoc = {
 						type: 'number',
 					},
 					{
-						name: 'elem1',
+						name: 'elements',
 						optional: true,
-						description: 'The first new element to be added',
-						type: 'any',
-					},
-					{
-						name: 'elem2',
-						optional: true,
-						description: 'The second new element to be added',
-						type: 'any',
-					},
-					{
-						name: 'elemN',
-						optional: true,
-						description: 'The Nth new element to be added',
+						variadic: true,
+						description: 'The elements to be added, in order',
 						type: 'any',
 					},
 				],

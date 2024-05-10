@@ -136,7 +136,7 @@ compact.doc = {
 	description:
 		'Removes all fields that have empty values, i.e. are <code>null</code> or <code>""</code>',
 	examples: [{ example: "({ x: null, y: 2, z: '' }).compact()", evaluated: '{ y: 2 }' }],
-	returnType: 'object',
+	returnType: 'Object',
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-compact',
 };
 
@@ -185,7 +185,7 @@ removeField.doc = {
 			evaluated: "{ city: 'hanoi' }",
 		},
 	],
-	returnType: 'object',
+	returnType: 'Object',
 	args: [
 		{
 			name: 'key',
@@ -216,7 +216,7 @@ removeFieldsContaining.doc = {
 			evaluated: "{ name: 'Mr Nathan', city: 'hanoi', age: 42 }",
 		},
 	],
-	returnType: 'object',
+	returnType: 'Object',
 	args: [
 		{
 			name: 'value',
@@ -247,7 +247,7 @@ keepFieldsContaining.doc = {
 			evaluated: "{ name: 'Mr Nathan', city: 'hanoi' }",
 		},
 	],
-	returnType: 'object',
+	returnType: 'Object',
 	args: [
 		{
 			name: 'value',
