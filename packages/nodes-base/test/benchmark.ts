@@ -13,8 +13,7 @@ async function main() {
 	const nodeTypes = setup(tests);
 	const bench = withCodSpeed(new Bench({ time: 0, iterations: 1 })); // @TODO temp config
 
-	// for (const test of tests) {
-	for (const test of tests.slice(0, 1)) {
+	for (const test of tests) {
 		bench.add(test.description, async () => {
 			await executeWorkflow(test, nodeTypes);
 		});
