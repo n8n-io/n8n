@@ -22,6 +22,7 @@ import { RoleService } from '@/services/role.service';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { In, Not } from '@n8n/typeorm';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { InternalHooks } from '@/InternalHooks';
 
 @RestController('/projects')
 export class ProjectController {
@@ -29,6 +30,7 @@ export class ProjectController {
 		private readonly projectsService: ProjectService,
 		private readonly roleService: RoleService,
 		private readonly projectRepository: ProjectRepository,
+		private readonly internalHooks: InternalHooks,
 	) {}
 
 	@Get('/')
@@ -46,7 +48,14 @@ export class ProjectController {
 	@Licensed('feat:advancedPermissions')
 	async createProject(req: ProjectRequest.Create): Promise<Project> {
 		try {
-			return await this.projectsService.createTeamProject(req.body.name, req.user);
+			const project = await this.projectsService.createTeamProject(req.body.name, req.user);
+
+			void this.internalHooks.onTeamProjectCreated({
+				user_id: req.user.id,
+				role: req.user.role,
+			});
+
+			return project;
 		} catch (e) {
 			if (e instanceof TeamProjectOverQuotaError) {
 				throw new BadRequestError(e.message);
@@ -183,6 +192,13 @@ export class ProjectController {
 				}
 				throw e;
 			}
+
+			void this.internalHooks.onTeamProjectUpdated({
+				user_id: req.user.id,
+				role: req.user.role,
+				members: req.body.relations.map(({ userId, role }) => ({ user_id: userId, role })),
+				project_id: req.params.projectId,
+			});
 		}
 	}
 
@@ -191,6 +207,14 @@ export class ProjectController {
 	async deleteProject(req: ProjectRequest.Delete) {
 		await this.projectsService.deleteProject(req.user, req.params.projectId, {
 			migrateToProject: req.query.transferId,
+		});
+
+		void this.internalHooks.onTeamProjectDeleted({
+			user_id: req.user.id,
+			role: req.user.role,
+			project_id: req.params.projectId,
+			removal_type: req.query.transferId !== undefined ? 'transfer' : 'delete',
+			target_project_id: req.query.transferId,
 		});
 	}
 }

@@ -55,7 +55,7 @@ export = {
 			);
 
 			await Container.get(ExternalHooks).run('workflow.afterCreate', [createdWorkflow]);
-			void Container.get(InternalHooks).onWorkflowCreated(req.user, createdWorkflow, true);
+			void Container.get(InternalHooks).onWorkflowCreated(req.user, createdWorkflow, project, true);
 
 			return res.json(createdWorkflow);
 		},

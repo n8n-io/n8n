@@ -38,6 +38,7 @@ import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { ProjectService } from '@/services/project.service';
 import { ApplicationError } from 'n8n-workflow';
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
+import type { Project } from '@/databases/entities/Project';
 
 @RestController('/workflows')
 export class WorkflowsController {
@@ -107,11 +108,12 @@ export class WorkflowsController {
 			}
 		}
 
+		let project: Project | null;
 		const savedWorkflow = await Db.transaction(async (transactionManager) => {
 			const workflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
 			const { projectId } = req.body;
-			const project =
+			project =
 				projectId === undefined
 					? await this.projectRepository.getPersonalProjectForUser(req.user.id, transactionManager)
 					: await this.projectService.getProjectWithScope(
@@ -169,7 +171,7 @@ export class WorkflowsController {
 		delete savedWorkflowWithMetaData.shared;
 
 		await this.externalHooks.run('workflow.afterCreate', [savedWorkflow]);
-		void this.internalHooks.onWorkflowCreated(req.user, newWorkflow, false);
+		void this.internalHooks.onWorkflowCreated(req.user, newWorkflow, project!, false);
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, savedWorkflow.id);
 

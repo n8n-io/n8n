@@ -142,4 +142,13 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 			})
 		).map((s) => s.credentialsId);
 	}
+
+	async findCredentialOwningProject(credentialsId: string) {
+		return (
+			await this.findOne({
+				where: { credentialsId, role: 'credential:owner' },
+				relations: { project: true },
+			})
+		)?.project;
+	}
 }

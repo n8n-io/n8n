@@ -35,4 +35,11 @@ export class ProjectRepository extends Repository<Project> {
 			],
 		});
 	}
+
+	async getProjectCounts() {
+		return {
+			personal: await this.count({ where: { type: 'personal' } }),
+			team: await this.count({ where: { type: 'team' } }),
+		};
+	}
 }
