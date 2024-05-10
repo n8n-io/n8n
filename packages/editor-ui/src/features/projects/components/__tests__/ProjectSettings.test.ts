@@ -9,6 +9,8 @@ import { useProjectsStore } from '@/features/projects/projects.store';
 import { VIEWS } from '@/constants';
 import { useUsersStore } from '@/stores/users.store';
 import { createProjectListItem } from '@/__tests__/data/projects';
+import { useSettingsStore } from '@/stores/settings.store';
+import type { IN8nUISettings } from 'n8n-workflow';
 
 vi.mock('vue-router', () => {
 	const params = {};
@@ -32,6 +34,7 @@ let router: ReturnType<typeof useRouter>;
 let route: ReturnType<typeof useRoute>;
 let projectsStore: ReturnType<typeof useProjectsStore>;
 let usersStore: ReturnType<typeof useUsersStore>;
+let settingsStore: ReturnType<typeof useSettingsStore>;
 
 describe('ProjectSettings', () => {
 	beforeEach(() => {
@@ -41,17 +44,30 @@ describe('ProjectSettings', () => {
 		router = useRouter();
 		projectsStore = useProjectsStore();
 		usersStore = useUsersStore();
+		settingsStore = useSettingsStore();
 
 		vi.spyOn(usersStore, 'fetchUsers').mockImplementation(async () => await Promise.resolve());
 		vi.spyOn(projectsStore, 'getAllProjects').mockImplementation(
 			async () => await Promise.resolve(),
 		);
 		vi.spyOn(projectsStore, 'teamProjects', 'get').mockReturnValue(teamProjects);
+		vi.spyOn(settingsStore, 'settings', 'get').mockReturnValue({
+			enterprise: {
+				projects: {
+					team: {
+						limit: -1,
+					},
+				},
+			},
+		} as IN8nUISettings);
 		projectsStore.setCurrentProject({
 			id: '123',
 			type: 'team',
 			name: 'Test Project',
 			relations: [],
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+			scopes: [],
 		});
 	});
 
