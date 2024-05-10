@@ -135,6 +135,7 @@ export class SlackTrigger implements INodeType {
 				displayName: 'Channel to Watch',
 				name: 'channelId',
 				type: 'resourceLocator',
+				required: true,
 				default: { mode: 'list', value: '' },
 				placeholder: 'Select a channel...',
 				description:
@@ -239,7 +240,7 @@ export class SlackTrigger implements INodeType {
 				this: ILoadOptionsFunctions,
 				filter?: string,
 			): Promise<INodeListSearchResult> {
-				const qs = { types: 'public_channel,private_channel', limit: 1000 };
+				const qs = { types: 'public_channel,private_channel' };
 				const channels = (await slackApiRequestAllItems.call(
 					this,
 					'channels',
@@ -333,22 +334,25 @@ export class SlackTrigger implements INodeType {
 		const eventType = req.body.event.type as string;
 
 		if (
-			eventType === 'message' &&
 			!filters.includes('file_share') &&
-			!filters.includes('any_event')
+			!filters.includes('any_event') &&
+			!filters.includes(eventType)
 		) {
 			return {};
 		}
 
+		const eventChannel = req.body.event.channel ?? req.body.event.item.channel;
+
+		// Check for single channel
 		if (!watchWorkspace) {
 			if (
-				req.body.event.channel !==
-				(this.getNodeParameter('channelId', {}, { extractValue: true }) as string)
+				eventChannel !== (this.getNodeParameter('channelId', {}, { extractValue: true }) as string)
 			) {
 				return {};
 			}
 		}
 
+		// Check if user should be ignored
 		if (options.userIds) {
 			const userIds = options.userIds as string[];
 			if (userIds.includes(req.body.event.user)) {
@@ -368,7 +372,7 @@ export class SlackTrigger implements INodeType {
 					req.body.event.user_resolved = await getUserInfo.call(this, req.body.event.user);
 				}
 			}
-			const eventChannel = req.body.event.channel ?? req.body.event.item.channel;
+
 			if (eventChannel) {
 				const channel = await getChannelInfo.call(this, eventChannel);
 				const channelResolved = channel;
