@@ -109,11 +109,6 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 		info: i18n.rootVars.$today,
 	},
 	{
-		label: '$nodeVersion',
-		section: METADATA_SECTION,
-		info: i18n.rootVars.$nodeVersion,
-	},
-	{
 		label: '$vars',
 		section: METADATA_SECTION,
 		info: i18n.rootVars.$vars,
@@ -137,6 +132,11 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 		label: '$min()',
 		section: METHODS_SECTION,
 		info: i18n.rootVars.$min,
+	},
+	{
+		label: '$nodeVersion',
+		section: METADATA_SECTION,
+		info: i18n.rootVars.$nodeVersion,
 	},
 ];
 

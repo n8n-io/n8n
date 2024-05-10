@@ -373,13 +373,13 @@ export class I18nClass {
 		$min: this.baseText('codeNodeEditor.completer.$min'),
 		$runIndex: this.baseText('codeNodeEditor.completer.$runIndex'),
 		$today: this.baseText('codeNodeEditor.completer.$today'),
-		$nodeVersion: this.baseText('codeNodeEditor.completer.$nodeVersion'),
 		$vars: this.baseText('codeNodeEditor.completer.$vars'),
 		$workflow: this.baseText('codeNodeEditor.completer.$workflow'),
 		DateTime: this.baseText('codeNodeEditor.completer.dateTime'),
 		$request: this.baseText('codeNodeEditor.completer.$request'),
 		$response: this.baseText('codeNodeEditor.completer.$response'),
 		$pageCount: this.baseText('codeNodeEditor.completer.$pageCount'),
+		$nodeVersion: this.baseText('codeNodeEditor.completer.$nodeVersion'),
 	} as const satisfies Record<string, string | undefined>;
 
 	proxyVars: Record<string, string | undefined> = {

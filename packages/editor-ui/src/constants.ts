@@ -516,9 +516,9 @@ export const MAPPING_PARAMS = [
 	'$resumeWebhookUrl',
 	'$runIndex',
 	'$today',
-	'$nodeVersion',
 	'$vars',
 	'$workflow',
+	'$nodeVersion',
 ];
 
 export const DEFAULT_STICKY_HEIGHT = 160;
