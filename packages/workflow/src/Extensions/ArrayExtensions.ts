@@ -1,6 +1,6 @@
 import { ExpressionError } from '../errors/expression.error';
 import { ExpressionExtensionError } from '../errors/expression-extension.error';
-import type { ExtensionMap } from './Extensions';
+import type { Extension, ExtensionMap } from './Extensions';
 import { compact as oCompact } from './ObjectExtensions';
 import deepEqual from 'deep-equal';
 
@@ -511,10 +511,13 @@ toJsonString.doc = {
 	returnType: 'string',
 };
 
+const removeDuplicates: Extension = unique.bind({});
+removeDuplicates.doc = { ...unique.doc, hidden: true };
+
 export const arrayExtensions: ExtensionMap = {
 	typeName: 'Array',
 	functions: {
-		removeDuplicates: unique,
+		removeDuplicates,
 		unique,
 		first,
 		last,
