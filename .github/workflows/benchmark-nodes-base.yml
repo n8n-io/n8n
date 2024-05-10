@@ -3,7 +3,6 @@ name: Benchmark nodes-base
 on:
   pull_request:
     paths:
-      - 'packages/cli/**'
       - 'packages/core/**'
       - 'packages/workflow/**'
       - 'packages/nodes-base/**'
