@@ -122,12 +122,8 @@ function nodeVersionTag(nodeType: NodeError['node']): string {
 	});
 }
 
-function replacePlaceholders(parameter: string, message: string): string {
-	const parameterName = parameterDisplayName(parameter, false);
-	const parameterFullName = parameterDisplayName(parameter, true);
-	return message
-		.replace(/%%PARAMETER%%/g, parameterName)
-		.replace(/%%PARAMETER_FULL%%/g, parameterFullName);
+function prepareDescription(description: string): string {
+	return sanitizeHtml(description.replace(/`(.*?)`/g, '<code>$1</code>'));
 }
 
 function getErrorDescription(): string {
@@ -136,7 +132,7 @@ function getErrorDescription(): string {
 		(props.error as NodeOperationError).functionality === 'configuration-node';
 
 	if (isSubNodeError) {
-		return sanitizeHtml(
+		return prepareDescription(
 			props.error.description +
 				i18n.baseText('pushConnection.executionError.openNode', {
 					interpolate: { node: props.error.node.name },
@@ -150,7 +146,7 @@ function getErrorDescription(): string {
 			runIndex: (props.error.context.runIndex as string) ?? '0',
 			itemIndex: (props.error.context.itemIndex as string) ?? '0',
 		};
-		return sanitizeHtml(
+		return prepareDescription(
 			i18n.baseText(
 				`nodeErrorView.description.${props.error.context.descriptionKey as string}` as BaseTextKey,
 				{ interpolate },
@@ -159,11 +155,11 @@ function getErrorDescription(): string {
 	}
 
 	if (!props.error.context?.descriptionTemplate) {
-		return sanitizeHtml(props.error.description ?? '');
+		return prepareDescription(props.error.description ?? '');
 	}
 
 	const parameterName = parameterDisplayName(props.error.context.parameter as string);
-	return sanitizeHtml(
+	return prepareDescription(
 		(props.error.context.descriptionTemplate as string).replace(/%%PARAMETER%%/g, parameterName),
 	);
 }
@@ -214,7 +210,7 @@ function getErrorMessage(): string {
 
 function parameterDisplayName(path: string, fullPath = true) {
 	try {
-		const params = parameterName(parameters.value, path.split('.'));
+		const params = getParameterName(parameters.value, path.split('.'));
 		if (!params.length) {
 			throw new Error();
 		}
@@ -228,7 +224,7 @@ function parameterDisplayName(path: string, fullPath = true) {
 	}
 }
 
-function parameterName(
+function getParameterName(
 	params: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>,
 	pathParts: string[],
 ): Array<INodeProperties | INodePropertyCollection> {
@@ -257,14 +253,14 @@ function parameterName(
 	if (currentParameter.hasOwnProperty('options')) {
 		return [
 			currentParameter,
-			...parameterName((currentParameter as INodeProperties).options!, pathParts),
+			...getParameterName((currentParameter as INodeProperties).options!, pathParts),
 		];
 	}
 
 	if (currentParameter.hasOwnProperty('values')) {
 		return [
 			currentParameter,
-			...parameterName((currentParameter as INodePropertyCollection).values, pathParts),
+			...getParameterName((currentParameter as INodePropertyCollection).values, pathParts),
 		];
 	}
 
