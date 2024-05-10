@@ -186,6 +186,22 @@ importers:
         specifier: 1.6.7
         version: 1.6.7(debug@3.2.7)
 
+  packages/@n8n/codemirror-lang:
+    dependencies:
+      '@codemirror/language':
+        specifier: '*'
+        version: 6.9.3
+      '@lezer/highlight':
+        specifier: '*'
+        version: 1.1.1
+      '@lezer/lr':
+        specifier: ^1.4.0
+        version: 1.4.0
+    devDependencies:
+      '@lezer/generator':
+        specifier: ^1.7.0
+        version: 1.7.0
+
   packages/@n8n/imap:
     dependencies:
       iconv-lite:
@@ -1116,6 +1132,9 @@ importers:
       '@n8n/chat':
         specifier: workspace:*
         version: link:../@n8n/chat
+      '@n8n/codemirror-lang':
+        specifier: workspace:*
+        version: link:../@n8n/codemirror-lang
       '@n8n/codemirror-lang-sql':
         specifier: ^1.0.2
         version: 1.0.2(@codemirror/view@6.22.3)(@lezer/common@1.1.0)
@@ -1137,9 +1156,6 @@ importers:
       codemirror-lang-html-n8n:
         specifier: ^1.0.0
         version: 1.0.0
-      codemirror-lang-n8n-expression:
-        specifier: ^0.3.0
-        version: 0.3.0(@codemirror/state@6.3.3)(@codemirror/view@6.22.3)(@lezer/common@1.1.0)
       dateformat:
         specifier: ^3.0.3
         version: 3.0.3
@@ -4700,8 +4716,8 @@ packages:
       '@codemirror/view': 6.22.3
       '@lezer/common': 1.1.0
       '@lezer/highlight': 1.1.1
-      '@lezer/lr': 1.2.3
-      style-mod: 4.0.0
+      '@lezer/lr': 1.4.0
+      style-mod: 4.1.0
     dev: false
 
   /@codemirror/lint@6.4.2:
@@ -6422,14 +6438,21 @@ packages:
 
   /@lezer/common@1.1.0:
     resolution: {integrity: sha512-XPIN3cYDXsoJI/oDWoR2tD++juVrhgIago9xyKhZ7IhGlzdDM9QgC8D8saKNCz5pindGcznFr2HBSsEQSWnSjw==}
-    dev: false
 
   /@lezer/css@1.1.1:
     resolution: {integrity: sha512-mSjx+unLLapEqdOYDejnGBokB5+AiJKZVclmud0MKQOKx3DLJ5b5VTCstgDDknR6iIV4gVrN6euzsCnj0A2gQA==}
     dependencies:
       '@lezer/highlight': 1.1.1
-      '@lezer/lr': 1.2.3
+      '@lezer/lr': 1.4.0
     dev: false
+
+  /@lezer/generator@1.7.0:
+    resolution: {integrity: sha512-IJ16tx3biLKlCXUzcK4v8S10AVa2BSM2rB12rtAL6f1hL2TS/HQQlGCoWRvanlL2J4mCYEEIv9uG7n4kVMkVDA==}
+    hasBin: true
+    dependencies:
+      '@lezer/common': 1.1.0
+      '@lezer/lr': 1.4.0
+    dev: true
 
   /@lezer/highlight@1.1.1:
     resolution: {integrity: sha512-duv9D23O9ghEDnnUDmxu+L8pJy4nYo4AbCOHIudUhscrLSazqeJeK1V50EU6ZufWF1zv0KJwu/frFRyZWXxHBQ==}
@@ -6442,34 +6465,33 @@ packages:
     dependencies:
       '@lezer/common': 1.1.0
       '@lezer/highlight': 1.1.1
-      '@lezer/lr': 1.2.3
+      '@lezer/lr': 1.4.0
     dev: false
 
   /@lezer/javascript@1.0.2:
     resolution: {integrity: sha512-IjOVeIRhM8IuafWNnk+UzRz7p4/JSOKBNINLYLsdSGuJS9Ju7vFdc82AlTt0jgtV5D8eBZf4g0vK4d3ttBNz7A==}
     dependencies:
       '@lezer/highlight': 1.1.1
-      '@lezer/lr': 1.2.3
+      '@lezer/lr': 1.4.0
     dev: false
 
   /@lezer/json@1.0.0:
     resolution: {integrity: sha512-zbAuUY09RBzCoCA3lJ1+ypKw5WSNvLqGMtasdW6HvVOqZoCpPr8eWrsGnOVWGKGn8Rh21FnrKRVlJXrGAVUqRw==}
     dependencies:
       '@lezer/highlight': 1.1.1
-      '@lezer/lr': 1.2.3
+      '@lezer/lr': 1.4.0
     dev: false
 
-  /@lezer/lr@1.2.3:
-    resolution: {integrity: sha512-qpB7rBzH8f6Mzjv2AVZRahcm+2Cf7nbIH++uXbvVOL1yIRvVWQ3HAM/saeBLCyz/togB7LGo76qdJYL1uKQlqA==}
+  /@lezer/lr@1.4.0:
+    resolution: {integrity: sha512-Wst46p51km8gH0ZUmeNrtpRYmdlRHUpN1DQd3GFAyKANi8WVz8c2jHYTf1CVScFaCjQw1iO3ZZdqGDxQPRErTg==}
     dependencies:
       '@lezer/common': 1.1.0
-    dev: false
 
   /@lezer/python@1.1.5:
     resolution: {integrity: sha512-h0DVr6IfrmKUbTc5PeetaC87IZYoHyn5JogsVYW5mRDpVRyEsvaLBMLyEN4Ufc2BKp1c9y2Pkr8ZNLxS8dTLsQ==}
     dependencies:
       '@lezer/highlight': 1.1.1
-      '@lezer/lr': 1.2.3
+      '@lezer/lr': 1.4.0
     dev: false
 
   /@mdx-js/react@3.0.1(@types/react@18.0.27)(react@18.2.0):
@@ -6593,7 +6615,7 @@ packages:
       '@codemirror/language': 6.9.3
       '@codemirror/state': 6.3.3
       '@lezer/highlight': 1.1.1
-      '@lezer/lr': 1.2.3
+      '@lezer/lr': 1.4.0
     transitivePeerDependencies:
       - '@codemirror/view'
       - '@lezer/common'
@@ -9240,7 +9262,7 @@ packages:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.4.21(typescript@5.4.2)
-      vue-component-type-helpers: 2.0.16
+      vue-component-type-helpers: 2.0.17
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -12377,20 +12399,7 @@ packages:
       '@lezer/css': 1.1.1
       '@lezer/highlight': 1.1.1
       '@lezer/html': 1.3.0
-      '@lezer/lr': 1.2.3
-    dev: false
-
-  /codemirror-lang-n8n-expression@0.3.0(@codemirror/state@6.3.3)(@codemirror/view@6.22.3)(@lezer/common@1.1.0):
-    resolution: {integrity: sha512-lY3qD+FB0/JCotK9hV40YhE+jC98iyC8L667pnguq7gxgIU3Kgy2RHy+PAxz/GpLR7BYtUMyVumZU7dJnjiXbw==}
-    dependencies:
-      '@codemirror/autocomplete': 6.11.1(@codemirror/language@6.9.3)(@codemirror/state@6.3.3)(@codemirror/view@6.22.3)(@lezer/common@1.1.0)
-      '@codemirror/language': 6.9.3
-      '@lezer/highlight': 1.1.1
-      '@lezer/lr': 1.2.3
-    transitivePeerDependencies:
-      - '@codemirror/state'
-      - '@codemirror/view'
-      - '@lezer/common'
+      '@lezer/lr': 1.4.0
     dev: false
 
   /cohere-ai@6.2.2:
@@ -22735,10 +22744,6 @@ packages:
     resolution: {integrity: sha512-PdHt7hHUJKxvTCgbKX9C1V/ftOcjJQgz8BZwNfV5c4B6dcGqlpelTbJ999jBGZ2jYiPAwcX5dP6oBwVlBlUbxw==}
     dev: false
 
-  /style-mod@4.0.0:
-    resolution: {integrity: sha512-OPhtyEjyyN9x3nhPsu76f52yUGXiZcgvsrFVtvTkyGRQJ0XK+GPc6ov1z+lRpbeabka+MYEQxOYRnt5nF30aMw==}
-    dev: false
-
   /style-mod@4.1.0:
     resolution: {integrity: sha512-Ca5ib8HrFn+f+0n4N4ScTIA9iTOQ7MaGS1ylHcoVqW9J7w2w8PzN6g9gKmTYgGEBH8e120+RCmhpje6jC5uGWA==}
     dev: false
@@ -24339,8 +24344,8 @@ packages:
     resolution: {integrity: sha512-0vOfAtI67UjeO1G6UiX5Kd76CqaQ67wrRZiOe7UAb9Jm6GzlUr/fC7CV90XfwapJRjpCMaZFhv1V0ajWRmE9Dg==}
     dev: true
 
-  /vue-component-type-helpers@2.0.16:
-    resolution: {integrity: sha512-qisL/iAfdO++7w+SsfYQJVPj6QKvxp4i1MMxvsNO41z/8zu3KuAw9LkhKUfP/kcOWGDxESp+pQObWppXusejCA==}
+  /vue-component-type-helpers@2.0.17:
+    resolution: {integrity: sha512-2car49m8ciqg/JjgMBkx7o/Fd2A7fHESxNqL/2vJYFLXm4VwYO4yH0rexOi4a35vwNgDyvt17B07Vj126l9rAQ==}
     dev: true
 
   /vue-demi@0.14.5(vue@3.4.21):
