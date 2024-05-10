@@ -380,13 +380,10 @@ export class SlackTrigger implements INodeType {
 			}
 		}
 
-		let responseData: IDataObject = {};
-
 		if (
 			req.body.event.subtype === 'file_share' &&
 			(filters.includes('file_share') || filters.includes('any_event'))
 		) {
-			responseData = req.body.event.files;
 			if (this.getNodeParameter('downloadFiles', false) as boolean) {
 				for (let i = 0; i < req.body.event.files.length; i++) {
 					const file = (await downloadFile.call(
@@ -401,15 +398,13 @@ export class SlackTrigger implements INodeType {
 					);
 				}
 			}
-		} else {
-			responseData = req.body.event;
 		}
 
 		return {
 			workflowData: [
 				[
 					{
-						json: responseData,
+						json: req.body.event,
 						binary: Object.keys(binaryData).length ? binaryData : undefined,
 					},
 				],
