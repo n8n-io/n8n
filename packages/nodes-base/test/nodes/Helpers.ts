@@ -38,7 +38,10 @@ import { executeWorkflow } from './ExecuteWorkflow';
 
 import { FAKE_CREDENTIALS_DATA } from './FakeCredentialsMap';
 
-const baseDir = path.resolve(__dirname, '../..');
+const baseDir = path.resolve(
+	__dirname,
+	process.env.NODE_ENV === 'benchmark' ? '../../..' : '../..',
+);
 
 const getFakeDecryptedCredentials = (
 	nodeCredentials: INodeCredentialsDetails,
@@ -193,6 +196,10 @@ class NodeTypes implements INodeTypes {
 		return this.nodeTypes[nodeType].type;
 	}
 
+	getKnownTypes(): IDataObject {
+		return knownNodes;
+	}
+
 	addNode(nodeTypeName: string, nodeType: INodeType | IVersionedNodeType) {
 		const loadedNode = {
 			[nodeTypeName]: {
@@ -255,7 +262,10 @@ export function setup(testData: WorkflowTestData[] | WorkflowTestData) {
 				level: 'warning',
 			});
 		}
-		const sourcePath = loadInfo.sourcePath.replace(/^dist\//, './').replace(/\.js$/, '.ts');
+		const sourcePath =
+			process.env.NODE_ENV === 'benchmark'
+				? loadInfo.sourcePath
+				: loadInfo.sourcePath.replace(/^dist\//, './').replace(/\.js$/, '.ts');
 		const nodeSourcePath = path.join(baseDir, sourcePath);
 		const credential = new (require(nodeSourcePath)[loadInfo.className])() as ICredentialType;
 		credentialTypes.addCredential(credentialName, credential);
@@ -270,7 +280,10 @@ export function setup(testData: WorkflowTestData[] | WorkflowTestData) {
 		if (!loadInfo) {
 			throw new ApplicationError(`Unknown node type: ${nodeName}`, { level: 'warning' });
 		}
-		const sourcePath = loadInfo.sourcePath.replace(/^dist\//, './').replace(/\.js$/, '.ts');
+		const sourcePath =
+			process.env.NODE_ENV === 'benchmark'
+				? loadInfo.sourcePath
+				: loadInfo.sourcePath.replace(/^dist\//, './').replace(/\.js$/, '.ts');
 		const nodeSourcePath = path.join(baseDir, sourcePath);
 		const node = new (require(nodeSourcePath)[loadInfo.className])() as INodeType;
 		nodeTypes.addNode(nodeName, node);
@@ -373,6 +386,9 @@ export const workflowToTests = (workflowFiles: string[]) => {
 				);
 			}
 		});
+
+		if (process.env.NODE_ENV === 'benchmark') workflowData.pinData = {};
+
 		if (workflowData.pinData === undefined) {
 			throw new ApplicationError('Workflow data does not contain pinData', { level: 'warning' });
 		}

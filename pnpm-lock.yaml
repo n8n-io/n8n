@@ -184,7 +184,7 @@ importers:
     dependencies:
       axios:
         specifier: 1.6.7
-        version: 1.6.7(debug@3.2.7)
+        version: 1.6.7(debug@4.3.4)
 
   packages/@n8n/imap:
     dependencies:
@@ -527,7 +527,7 @@ importers:
         version: 1.11.0
       axios:
         specifier: 1.6.7
-        version: 1.6.7(debug@3.2.7)
+        version: 1.6.7(debug@4.3.4)
       basic-auth:
         specifier: 2.0.1
         version: 2.0.1
@@ -864,7 +864,7 @@ importers:
         version: 1.11.0
       axios:
         specifier: 1.6.7
-        version: 1.6.7(debug@3.2.7)
+        version: 1.6.7(debug@4.3.4)
       concat-stream:
         specifier: 2.0.0
         version: 2.0.0
@@ -1121,7 +1121,7 @@ importers:
         version: 10.5.0(vue@3.4.21)
       axios:
         specifier: 1.6.7
-        version: 1.6.7(debug@3.2.7)
+        version: 1.6.7(debug@4.3.4)
       chart.js:
         specifier: ^4.4.0
         version: 4.4.0
@@ -1482,6 +1482,9 @@ importers:
         specifier: 0.6.2
         version: 0.6.2
     devDependencies:
+      '@codspeed/tinybench-plugin':
+        specifier: ^3.1.0
+        version: 3.1.0(tinybench@2.8.0)
       '@types/amqplib':
         specifier: ^0.10.1
         version: 0.10.1
@@ -1566,6 +1569,9 @@ importers:
       n8n-core:
         specifier: workspace:*
         version: link:../core
+      tinybench:
+        specifier: ^2.8.0
+        version: 2.8.0
 
   packages/workflow:
     dependencies:
@@ -1583,7 +1589,7 @@ importers:
         version: 0.15.2
       axios:
         specifier: 1.6.7
-        version: 1.6.7(debug@3.2.7)
+        version: 1.6.7(debug@4.3.4)
       callsites:
         specifier: 3.1.0
         version: 3.1.0
@@ -4709,6 +4715,29 @@ packages:
       style-mod: 4.1.0
       w3c-keyname: 2.2.6
     dev: false
+
+  /@codspeed/core@3.1.0:
+    resolution: {integrity: sha512-oYd7X46QhnRkgRbZkqAoX9i3Fwm17FpunK4Ee5RdrvRYR0Xr93ewH8/O5g6uyTPDOOqDEv1v2KRYtWhVgN+2VQ==}
+    dependencies:
+      axios: 1.6.7
+      find-up: 6.3.0
+      form-data: 4.0.0
+      node-gyp-build: 4.7.0
+    transitivePeerDependencies:
+      - debug
+    dev: true
+
+  /@codspeed/tinybench-plugin@3.1.0(tinybench@2.8.0):
+    resolution: {integrity: sha512-yl0WzzUGIXkZzWaw7+2U+xGkuIal1Rs9hS09DtlDZGGAcGRoMMU5d2vyCS8nBrna4hrPQZ5Sx/hIKerO+lqWaw==}
+    peerDependencies:
+      tinybench: ^2.3.0
+    dependencies:
+      '@codspeed/core': 3.1.0
+      stack-trace: 1.0.0-pre2
+      tinybench: 2.8.0
+    transitivePeerDependencies:
+      - debug
+    dev: true
 
   /@colors/colors@1.5.0:
     resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}
@@ -11483,12 +11512,11 @@ packages:
   /axios@1.6.7:
     resolution: {integrity: sha512-/hDJGff6/c7u0hDkvkGxR/oy6CbCs8ziCsC7SqmhjfozqiJGc8Z11wrv9z9lYfY4K8l+H9TpjcMDX0xOZmx+RA==}
     dependencies:
-      follow-redirects: 1.15.6(debug@3.2.7)
+      follow-redirects: 1.15.6(debug@4.3.4)
       form-data: 4.0.0
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
       - debug
-    dev: false
 
   /axios@1.6.7(debug@3.2.7):
     resolution: {integrity: sha512-/hDJGff6/c7u0hDkvkGxR/oy6CbCs8ziCsC7SqmhjfozqiJGc8Z11wrv9z9lYfY4K8l+H9TpjcMDX0xOZmx+RA==}
@@ -14901,6 +14929,14 @@ packages:
       path-exists: 4.0.0
     dev: true
 
+  /find-up@6.3.0:
+    resolution: {integrity: sha512-v2ZsoEuVHYy8ZIlYqwPe/39Cy+cFDzp4dXPaxNvkEuouymu+2Jbz0PxpKarJHYJTmv2HWT3O382qY8l4jMWthw==}
+    engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
+    dependencies:
+      locate-path: 7.2.0
+      path-exists: 5.0.0
+    dev: true
+
   /first-match@0.0.1:
     resolution: {integrity: sha512-VvKbnaxrC0polTFDC+teKPTdl2mn6B/KUW+WB3C9RzKDeNwbzfLdnUz3FxC+tnjvus6bI0jWrWicQyVIPdS37A==}
     dev: false
@@ -18117,6 +18153,13 @@ packages:
       p-locate: 5.0.0
     dev: true
 
+  /locate-path@7.2.0:
+    resolution: {integrity: sha512-gvVijfZvn7R+2qyPX8mAuKcFGDf6Nc61GdvGafQsHL0sBIxfKzA+usWn4GFC/bk+QdwPUD4kWFJLhElipq+0VA==}
+    engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
+    dependencies:
+      p-locate: 6.0.0
+    dev: true
+
   /lodash-es@4.17.21:
     resolution: {integrity: sha512-mKnC+QJ9pWVzv+C4/U3rRsHapFfHvQFoFB92e52xeyGMcX6/OlIl78je1u8vePzYZSkkogMPJ2yjxxsb89cxyw==}
     dev: false
@@ -19222,7 +19265,6 @@ packages:
   /node-gyp-build@4.7.0:
     resolution: {integrity: sha512-PbZERfeFdrHQOOXiAKOY0VPbykZy90ndPKk0d+CFDegTKmWp1VgOTz2xACVbr1BjCWxrQp68CXtvNsveFhqDJg==}
     hasBin: true
-    dev: false
 
   /node-gyp@8.4.1:
     resolution: {integrity: sha512-olTJRgUtAb/hOXG0E93wZDs5YiJlgbXxTwQAFHyNlRsXQnYzUaF2aGgujZbw+hR8aF4ZG/rST57bWMWD16jr9w==}
@@ -19750,6 +19792,13 @@ packages:
     dependencies:
       yocto-queue: 0.1.0
 
+  /p-limit@4.0.0:
+    resolution: {integrity: sha512-5b0R4txpzjPWVw/cXXUResoD4hb6U/x9BH08L7nw+GN1sezDzPdxeRvpc9c433fZhBan/wusjbCsqwqm4EIBIQ==}
+    engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
+    dependencies:
+      yocto-queue: 1.0.0
+    dev: true
+
   /p-limit@5.0.0:
     resolution: {integrity: sha512-/Eaoq+QyLSiXQ4lyYV23f14mZRQcXnxfHrN0vCai+ak9G0pp9iEQukIIZq5NccEvwRB8PUnZT0KsOoDCINS1qQ==}
     engines: {node: '>=18'}
@@ -19775,6 +19824,13 @@ packages:
     engines: {node: '>=10'}
     dependencies:
       p-limit: 3.1.0
+    dev: true
+
+  /p-locate@6.0.0:
+    resolution: {integrity: sha512-wPrq66Llhl7/4AGC6I+cqxT07LhXvWL08LNXz1fENOw0Ap4sRZZ/gZpTTJ5jpurzzzfS2W/Ge9BY3LgLjCShcw==}
+    engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
+    dependencies:
+      p-limit: 4.0.0
     dev: true
 
   /p-map@4.0.0:
@@ -19913,6 +19969,11 @@ packages:
   /path-exists@4.0.0:
     resolution: {integrity: sha512-ak9Qy5Q7jYb2Wwcey5Fpvg2KoAc/ZIhLSLOSBmRmygPsGwkVVt0fZa0qrtMz+m6tJTAHfZQ8FnmB4MG4LWy7/w==}
     engines: {node: '>=8'}
+
+  /path-exists@5.0.0:
+    resolution: {integrity: sha512-RjhtfwJOxzcFmNOi6ltcbcu4Iu+FL3zEj83dk4kAS+fVpTxXLO1b38RvJgT/0QwvV/L3aY9TAnyv0EOqW4GoMQ==}
+    engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
+    dev: true
 
   /path-is-absolute@1.0.1:
     resolution: {integrity: sha512-AVbw3UJ2e9bq64vSaS9Am0fje1Pa8pbGqTTsmXfaIiMpnr5DlDhfJOuLj9Sf95ZPVDAUerDfEk88MPmPe7UCQg==}
@@ -22420,6 +22481,11 @@ packages:
     resolution: {integrity: sha512-KGzahc7puUKkzyMt+IqAep+TVNbKP+k2Lmwhub39m1AsTSkaDutx56aDCo+HLDzf/D26BIHTJWNiTG1KAJiQCg==}
     dev: false
 
+  /stack-trace@1.0.0-pre2:
+    resolution: {integrity: sha512-2ztBJRek8IVofG9DBJqdy2N5kulaacX30Nz7xmkYF6ale9WBVmIy6mFBchvGX7Vx/MyjBhx+Rcxqrj+dbOnQ6A==}
+    engines: {node: '>=16'}
+    dev: true
+
   /stack-utils@2.0.6:
     resolution: {integrity: sha512-XlkWvfIm6RmsWtNJx+uqtKLS8eqFbxUg0ZzLXqY0caEy9l7hruX8IpiDnjsLavoBgqCCR71TqWO8MaXYheJ3RQ==}
     engines: {node: '>=10'}
@@ -23060,6 +23126,10 @@ packages:
 
   /tinybench@2.5.1:
     resolution: {integrity: sha512-65NKvSuAVDP/n4CqH+a9w2kTlLReS9vhsAP06MWx+/89nMinJyB2icyl58RIcqCmIggpojIGeuJGhjU1aGMBSg==}
+    dev: true
+
+  /tinybench@2.8.0:
+    resolution: {integrity: sha512-1/eK7zUnIklz4JUUlL+658n58XO2hHLQfSk1Zf2LKieUjxidN16eKFEoDEfjHc3ohofSSqK3X5yO6VGb6iW8Lw==}
     dev: true
 
   /tinypool@0.8.2:

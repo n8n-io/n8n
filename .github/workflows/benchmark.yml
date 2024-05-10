@@ -1,0 +1,47 @@
+name: Benchmark
+
+on:
+  pull_request:
+    paths:
+      - 'packages/cli/**'
+      - 'packages/core/**'
+      - 'packages/workflow/**'
+      - 'packages/nodes-base/**'
+  workflow_dispatch:
+
+jobs:
+  benchmark:
+    name: Benchmark
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.1.1
+
+      - run: corepack enable
+
+      - uses: actions/setup-node@v4.0.1
+        with:
+          node-version: 18.x
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build
+        if: ${{ inputs.cacheKey == '' }}
+        run: pnpm build:backend
+
+      - name: Restore cached build artifacts
+        if: ${{ inputs.cacheKey != '' }}
+        uses: actions/cache/restore@v4.0.0
+        with:
+          path: ./packages/**/dist
+          key: ${{ inputs.cacheKey }}
+
+      - name: Build benchmarks
+        working-directory: packages/nodes-base
+        run: pnpm benchmark:build
+
+      - name: Benchmark nodes-base
+        uses: CodSpeedHQ/action@v2
+        with:
+          working-directory: packages/nodes-base
+          run: pnpm benchmark:run
