@@ -518,6 +518,7 @@ export const MAPPING_PARAMS = [
 	'$today',
 	'$vars',
 	'$workflow',
+	'$nodeVersion',
 ];
 
 export const DEFAULT_STICKY_HEIGHT = 160;
