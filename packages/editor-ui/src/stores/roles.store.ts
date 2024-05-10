@@ -28,6 +28,14 @@ export const useRolesStore = defineStore('roles', () => {
 			.filter((role) => role.role !== 'project:personalOwner'),
 	);
 
+	const processedCredentialRoles = computed<RoleMap['credential']>(() =>
+		roles.value.credential.filter((role) => role.role !== 'credential:owner'),
+	);
+
+	const processedWorkflowRoles = computed<RoleMap['workflow']>(() =>
+		roles.value.workflow.filter((role) => role.role !== 'workflow:owner'),
+	);
+
 	const fetchRoles = async () => {
 		roles.value = await rolesApi.getRoles(rootStore.getRestApiContext);
 	};
@@ -35,6 +43,8 @@ export const useRolesStore = defineStore('roles', () => {
 	return {
 		roles,
 		processedProjectRoles,
+		processedCredentialRoles,
+		processedWorkflowRoles,
 		fetchRoles,
 	};
 });

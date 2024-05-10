@@ -31,6 +31,7 @@
 			<ProjectSharing
 				v-model="sharedWithProjects"
 				:projects="projects"
+				:roles="credentialRoles"
 				:home-project="homeProject"
 				:readonly="!credentialPermissions.share"
 				:static="isHomeTeamProject"
@@ -82,6 +83,8 @@ import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import type { PermissionsMap } from '@/permissions';
 import type { CredentialScope } from '@n8n/permissions';
 import type { EventBus } from 'n8n-design-system/utils';
+import { useRolesStore } from '@/stores/roles.store';
+import type { RoleMap } from '@/types/roles.types';
 
 export default defineComponent({
 	name: 'CredentialSharing',
@@ -130,6 +133,7 @@ export default defineComponent({
 			useUIStore,
 			useSettingsStore,
 			useProjectsStore,
+			useRolesStore,
 		),
 		usersListActions(): IUserListAction[] {
 			return [
@@ -167,6 +171,19 @@ export default defineComponent({
 		},
 		numberOfMembersInHomeTeamProject(): number {
 			return this.teamProject?.relations.length ?? 0;
+		},
+		credentialRoleTranslations(): Record<string, string> {
+			return {
+				'credential:user': this.$locale.baseText('credentialEdit.credentialSharing.role.user'),
+			};
+		},
+		credentialRoles(): RoleMap['credential'] {
+			return this.rolesStore.processedCredentialRoles.map(({ role, scopes, licensed }) => ({
+				role,
+				name: this.credentialRoleTranslations[role],
+				scopes,
+				licensed,
+			}));
 		},
 	},
 	watch: {

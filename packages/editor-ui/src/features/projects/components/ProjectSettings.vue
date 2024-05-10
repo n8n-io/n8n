@@ -154,7 +154,7 @@ watch(
 );
 
 onBeforeMount(async () => {
-	await Promise.all([usersStore.fetchUsers(), rolesStore.fetchRoles()]);
+	await usersStore.fetchUsers();
 });
 </script>
 
