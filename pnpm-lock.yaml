@@ -194,6 +194,9 @@ importers:
       '@lezer/highlight':
         specifier: '*'
         version: 1.1.1
+      '@lezer/lr':
+        specifier: ^1.4.0
+        version: 1.4.0
     devDependencies:
       '@lezer/generator':
         specifier: ^1.7.0
@@ -4713,7 +4716,7 @@ packages:
       '@codemirror/view': 6.22.3
       '@lezer/common': 1.1.0
       '@lezer/highlight': 1.1.1
-      '@lezer/lr': 1.0.0
+      '@lezer/lr': 1.4.0
       style-mod: 4.1.0
     dev: false
 
@@ -6440,7 +6443,7 @@ packages:
     resolution: {integrity: sha512-mSjx+unLLapEqdOYDejnGBokB5+AiJKZVclmud0MKQOKx3DLJ5b5VTCstgDDknR6iIV4gVrN6euzsCnj0A2gQA==}
     dependencies:
       '@lezer/highlight': 1.1.1
-      '@lezer/lr': 1.2.3
+      '@lezer/lr': 1.4.0
     dev: false
 
   /@lezer/generator@1.7.0:
@@ -6462,46 +6465,33 @@ packages:
     dependencies:
       '@lezer/common': 1.1.0
       '@lezer/highlight': 1.1.1
-      '@lezer/lr': 1.2.3
+      '@lezer/lr': 1.4.0
     dev: false
 
   /@lezer/javascript@1.0.2:
     resolution: {integrity: sha512-IjOVeIRhM8IuafWNnk+UzRz7p4/JSOKBNINLYLsdSGuJS9Ju7vFdc82AlTt0jgtV5D8eBZf4g0vK4d3ttBNz7A==}
     dependencies:
       '@lezer/highlight': 1.1.1
-      '@lezer/lr': 1.2.3
+      '@lezer/lr': 1.4.0
     dev: false
 
   /@lezer/json@1.0.0:
     resolution: {integrity: sha512-zbAuUY09RBzCoCA3lJ1+ypKw5WSNvLqGMtasdW6HvVOqZoCpPr8eWrsGnOVWGKGn8Rh21FnrKRVlJXrGAVUqRw==}
     dependencies:
       '@lezer/highlight': 1.1.1
-      '@lezer/lr': 1.2.3
-    dev: false
-
-  /@lezer/lr@1.0.0:
-    resolution: {integrity: sha512-k6DEqBh4HxqO/cVGedb6Ern6LS7K6IOzfydJ5WaqCR26v6UR9sIFyb6PS+5rPUs/mXgnBR/QQCW7RkyjSCMoQA==}
-    dependencies:
-      '@lezer/common': 1.1.0
-    dev: false
-
-  /@lezer/lr@1.2.3:
-    resolution: {integrity: sha512-qpB7rBzH8f6Mzjv2AVZRahcm+2Cf7nbIH++uXbvVOL1yIRvVWQ3HAM/saeBLCyz/togB7LGo76qdJYL1uKQlqA==}
-    dependencies:
-      '@lezer/common': 1.1.0
+      '@lezer/lr': 1.4.0
     dev: false
 
   /@lezer/lr@1.4.0:
     resolution: {integrity: sha512-Wst46p51km8gH0ZUmeNrtpRYmdlRHUpN1DQd3GFAyKANi8WVz8c2jHYTf1CVScFaCjQw1iO3ZZdqGDxQPRErTg==}
     dependencies:
       '@lezer/common': 1.1.0
-    dev: true
 
   /@lezer/python@1.1.5:
     resolution: {integrity: sha512-h0DVr6IfrmKUbTc5PeetaC87IZYoHyn5JogsVYW5mRDpVRyEsvaLBMLyEN4Ufc2BKp1c9y2Pkr8ZNLxS8dTLsQ==}
     dependencies:
       '@lezer/highlight': 1.1.1
-      '@lezer/lr': 1.2.3
+      '@lezer/lr': 1.4.0
     dev: false
 
   /@mdx-js/react@3.0.1(@types/react@18.0.27)(react@18.2.0):
@@ -6625,7 +6615,7 @@ packages:
       '@codemirror/language': 6.9.3
       '@codemirror/state': 6.3.3
       '@lezer/highlight': 1.1.1
-      '@lezer/lr': 1.2.3
+      '@lezer/lr': 1.4.0
     transitivePeerDependencies:
       - '@codemirror/view'
       - '@lezer/common'
@@ -12409,7 +12399,7 @@ packages:
       '@lezer/css': 1.1.1
       '@lezer/highlight': 1.1.1
       '@lezer/html': 1.3.0
-      '@lezer/lr': 1.2.3
+      '@lezer/lr': 1.4.0
     dev: false
 
   /cohere-ai@6.2.2:
