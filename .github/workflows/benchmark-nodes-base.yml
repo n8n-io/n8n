@@ -1,4 +1,4 @@
-name: Benchmark
+name: Benchmark nodes-base
 
 on:
   pull_request:
