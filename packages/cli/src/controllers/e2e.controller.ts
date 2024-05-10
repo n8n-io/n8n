@@ -6,10 +6,10 @@ import { UserRepository } from '@db/repositories/user.repository';
 import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { License } from '@/License';
-import { LICENSE_FEATURES, inE2ETests } from '@/constants';
+import { LICENSE_FEATURES, LICENSE_QUOTAS, UNLIMITED_LICENSE_QUOTA, inE2ETests } from '@/constants';
 import { Patch, Post, RestController } from '@/decorators';
 import type { UserSetupPayload } from '@/requests';
-import type { BooleanLicenseFeature, IPushDataType } from '@/Interfaces';
+import type { BooleanLicenseFeature, IPushDataType, NumericLicenseFeature } from '@/Interfaces';
 import { MfaService } from '@/Mfa/mfa.service';
 import { Push } from '@/push';
 import { CacheService } from '@/services/cache/cache.service';
@@ -88,6 +88,14 @@ export class E2EController {
 		[LICENSE_FEATURES.PROJECT_ROLE_VIEWER]: false,
 	};
 
+	private numericFeatures: Record<NumericLicenseFeature, number> = {
+		[LICENSE_QUOTAS.TRIGGER_LIMIT]: -1,
+		[LICENSE_QUOTAS.VARIABLES_LIMIT]: -1,
+		[LICENSE_QUOTAS.USERS_LIMIT]: -1,
+		[LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT]: -1,
+		[LICENSE_QUOTAS.TEAM_PROJECT_LIMIT]: 0,
+	};
+
 	constructor(
 		license: License,
 		private readonly settingsRepo: SettingsRepository,
@@ -101,6 +109,9 @@ export class E2EController {
 	) {
 		license.isFeatureEnabled = (feature: BooleanLicenseFeature) =>
 			this.enabledFeatures[feature] ?? false;
+		// eslint-disable-next-line @typescript-eslint/unbound-method
+		license.getFeatureValue<NumericLicenseFeature> = (feature: NumericLicenseFeature) =>
+			this.numericFeatures[feature] ?? UNLIMITED_LICENSE_QUOTA;
 	}
 
 	@Post('/reset', { skipAuth: true })
@@ -122,6 +133,12 @@ export class E2EController {
 	setFeature(req: Request<{}, {}, { feature: BooleanLicenseFeature; enabled: boolean }>) {
 		const { enabled, feature } = req.body;
 		this.enabledFeatures[feature] = enabled;
+	}
+
+	@Patch('/quota', { skipAuth: true })
+	setQuota(req: Request<{}, {}, { feature: NumericLicenseFeature; value: number }>) {
+		const { value, feature } = req.body;
+		this.numericFeatures[feature] = value;
 	}
 
 	@Patch('/queue-mode', { skipAuth: true })

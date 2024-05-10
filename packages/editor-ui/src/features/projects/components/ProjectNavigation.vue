@@ -1,16 +1,17 @@
 <script lang="ts" setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { IMenuItem } from 'n8n-design-system/types';
 import { useI18n } from '@/composables/useI18n';
 import { VIEWS } from '@/constants';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import type { ProjectListItem } from '@/features/projects/projects.types';
-import { hasPermission } from '@/rbac/permissions';
 import { useToast } from '@/composables/useToast';
+import { useUIStore } from '@/stores/ui.store';
 
 type Props = {
 	collapsed: boolean;
+	planName?: string;
 };
 
 const props = defineProps<Props>();
@@ -20,22 +21,26 @@ const router = useRouter();
 const locale = useI18n();
 const toast = useToast();
 const projectsStore = useProjectsStore();
+const uiStore = useUIStore();
 
 const isCreatingProject = ref(false);
-const home = ref<IMenuItem>({
+const isComponentMounted = ref(false);
+const home = computed<IMenuItem>(() => ({
 	id: 'home',
 	label: locale.baseText('projects.menu.home'),
 	icon: 'home',
 	route: {
 		to: { name: VIEWS.HOMEPAGE },
 	},
-});
-const addProject = ref<IMenuItem>({
+}));
+const addProject = computed<IMenuItem>(() => ({
 	id: 'addProject',
 	label: locale.baseText('projects.menu.addProject'),
 	icon: 'plus',
-	disabled: isCreatingProject.value,
-});
+	disabled:
+		!isComponentMounted.value || isCreatingProject.value || !projectsStore.canCreateProjects,
+	isLoading: isCreatingProject.value,
+}));
 
 const activeTab = computed(() => {
 	let routes = [VIEWS.HOMEPAGE, VIEWS.WORKFLOWS, VIEWS.CREDENTIALS];
@@ -70,8 +75,6 @@ const homeClicked = () => {};
 const projectClicked = () => {};
 const addProjectClicked = async () => {
 	isCreatingProject.value = true;
-	addProject.value.isLoading = true;
-	addProject.value.disabled = true;
 
 	try {
 		const newProject = await projectsStore.createProject({
@@ -88,14 +91,8 @@ const addProjectClicked = async () => {
 		toast.showError(error, locale.baseText('projects.error.title'));
 	} finally {
 		isCreatingProject.value = false;
-		addProject.value.isLoading = false;
-		addProject.value.disabled = false;
 	}
 };
-
-const canCreateProjects = computed(() => {
-	return hasPermission(['rbac'], { rbac: { scope: 'project:create' } });
-});
 
 const displayProjects = computed(() => {
 	return projectsStore.myProjects
@@ -112,6 +109,15 @@ const displayProjects = computed(() => {
 			return 0;
 		});
 });
+
+const goToUpgrade = async () => {
+	await uiStore.goToUpgrade('rbac', 'upgrade-rbac');
+};
+
+onMounted(async () => {
+	await nextTick();
+	isComponentMounted.value = true;
+});
 </script>
 
 <template>
@@ -126,7 +132,13 @@ const displayProjects = computed(() => {
 				data-test-id="project-home-menu-item"
 			/>
 		</ElMenu>
-		<hr v-if="displayProjects.length || canCreateProjects" class="mt-m mb-m" />
+		<hr
+			v-if="
+				displayProjects.length ||
+				(projectsStore.hasPermissionToCreateProjects && projectsStore.teamProjectsAvailable)
+			"
+			class="mt-m mb-m"
+		/>
 		<ElMenu v-if="displayProjects.length" :collapse="props.collapsed" :class="$style.projectItems">
 			<N8nMenuItem
 				v-for="project in displayProjects"
@@ -139,16 +151,46 @@ const displayProjects = computed(() => {
 				data-test-id="project-menu-item"
 			/>
 		</ElMenu>
-		<ElMenu v-if="canCreateProjects" :collapse="props.collapsed" class="pl-xs pr-xs">
-			<N8nMenuItem
-				:item="addProject"
-				:compact="props.collapsed"
-				:handle-select="addProjectClicked"
-				mode="tabs"
-				data-test-id="add-project-menu-item"
-			/>
-		</ElMenu>
-		<hr v-if="displayProjects.length || canCreateProjects" class="mt-m mb-m" />
+		<N8nTooltip placement="right" :disabled="projectsStore.canCreateProjects">
+			<ElMenu
+				v-if="projectsStore.hasPermissionToCreateProjects && projectsStore.teamProjectsAvailable"
+				:collapse="props.collapsed"
+				class="pl-xs pr-xs"
+			>
+				<N8nMenuItem
+					:item="addProject"
+					:compact="props.collapsed"
+					:handle-select="addProjectClicked"
+					mode="tabs"
+					data-test-id="add-project-menu-item"
+				/>
+			</ElMenu>
+			<template #content>
+				<i18n-t keypath="projects.create.limitReached">
+					<template #planName>{{ props.planName }}</template>
+					<template #limit>
+						{{
+							locale.baseText('projects.create.limit', {
+								adjustToNumber: projectsStore.teamProjectsLimit,
+								interpolate: { num: String(projectsStore.teamProjectsLimit) },
+							})
+						}}
+					</template>
+					<template #link>
+						<a :class="$style.upgradeLink" href="#" @click="goToUpgrade">
+							{{ locale.baseText('projects.create.limitReached.link') }}
+						</a>
+					</template>
+				</i18n-t>
+			</template>
+		</N8nTooltip>
+		<hr
+			v-if="
+				displayProjects.length ||
+				(projectsStore.hasPermissionToCreateProjects && projectsStore.teamProjectsAvailable)
+			"
+			class="mt-m mb-m"
+		/>
 	</div>
 </template>
 
@@ -165,6 +207,11 @@ const displayProjects = computed(() => {
 	height: 100%;
 	padding: 0 var(--spacing-xs) var(--spacing-s);
 	overflow: auto;
+}
+
+.upgradeLink {
+	color: var(--color-primary);
+	cursor: pointer;
 }
 </style>
 

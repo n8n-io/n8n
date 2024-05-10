@@ -1,18 +1,16 @@
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue';
 import { useI18n } from '@/composables/useI18n';
-import type {
-	ProjectListItem,
-	ProjectRole,
-	ProjectSharingData,
-} from '@/features/projects/projects.types';
+import type { ProjectListItem, ProjectSharingData } from '@/features/projects/projects.types';
 import ProjectSharingInfo from '@/features/projects/components/ProjectSharingInfo.vue';
+import type { RoleMap } from '@/types/roles.types';
 
 const locale = useI18n();
 
 type Props = {
 	projects: ProjectListItem[];
 	homeProject?: ProjectSharingData;
+	roles?: RoleMap['workflow' | 'credential' | 'project'];
 	readonly?: boolean;
 	static?: boolean;
 	placeholder?: string;
@@ -29,9 +27,6 @@ const emit = defineEmits<{
 
 const selectedProject = ref(Array.isArray(model.value) ? '' : model.value?.id ?? '');
 const filter = ref('');
-const projectRoles = ref<Array<{ label: string; value: ProjectRole }>>([
-	{ value: 'project:editor', label: locale.baseText('projects.settings.role.editor') },
-]);
 const selectPlaceholder = computed(
 	() =>
 		props.placeholder ??
@@ -139,24 +134,23 @@ watch(
 			>
 				<ProjectSharingInfo :project="project" />
 				<N8nSelect
+					v-if="props.roles?.length"
 					:class="$style.projectRoleSelect"
-					:model-value="'project:editor'"
+					:model-value="props.roles[0]"
 					:disabled="props.readonly"
 					size="small"
 					@update:model-value="onRoleAction(project, $event)"
 				>
-					<N8nOption
-						v-for="role in projectRoles"
-						:key="role.value"
-						:value="role.value"
-						:label="role.label"
-					/>
-					<N8nOption value="remove">
-						<N8nText color="danger">{{
-							locale.baseText('projects.settings.removeAccess')
-						}}</N8nText>
-					</N8nOption>
+					<N8nOption v-for="role in roles" :key="role.role" :value="role.role" :label="role.name" />
 				</N8nSelect>
+				<N8nButton
+					v-if="!props.readonly"
+					type="tertiary"
+					square
+					icon="trash"
+					data-test-id="project-sharing-remove"
+					@click="onRoleAction(project, 'remove')"
+				/>
 			</li>
 		</ul>
 	</div>

@@ -5,6 +5,7 @@ import type {
 	ProjectCreateRequest,
 	ProjectListItem,
 	ProjectUpdateRequest,
+	ProjectsCount,
 } from '@/features/projects/projects.types';
 
 export const getAllProjects = async (context: IRestApiContext): Promise<ProjectListItem[]> => {
@@ -51,4 +52,8 @@ export const deleteProject = async (
 		`/projects/${projectId}`,
 		transferId ? { transferId } : {},
 	);
+};
+
+export const getProjectsCount = async (context: IRestApiContext): Promise<ProjectsCount> => {
+	return await makeRestApiRequest(context, 'GET', '/projects/count');
 };

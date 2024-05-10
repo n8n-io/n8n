@@ -1,3 +1,4 @@
+import { within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { getDropdownItems } from '@/__tests__/utils';
@@ -30,6 +31,16 @@ describe('ProjectSharing', () => {
 				props: {
 					projects: personalProjects,
 					modelValue: [personalProjects[0]],
+					roles: [
+						{
+							role: 'project:admin',
+							name: 'Admin',
+						},
+						{
+							role: 'project:editor',
+							name: 'Editor',
+						},
+					],
 				},
 			});
 
@@ -53,14 +64,15 @@ describe('ProjectSharing', () => {
 		projectSelectDropdownItems = await getDropdownItems(projectSelect);
 		expect(projectSelectDropdownItems).toHaveLength(1);
 
-		// Remove the project (first from the list)
 		let actionDropDownItems = await getDropdownItems(
 			getAllByTestId('project-sharing-list-item')[0],
 		);
 		expect(actionDropDownItems).toHaveLength(2);
 
-		// Click on the remove action which is the second item in the dropdown
-		await userEvent.click(actionDropDownItems[1]);
+		// Click on the remove button
+		await userEvent.click(
+			within(getAllByTestId('project-sharing-list-item')[0]).getByTestId('project-sharing-remove'),
+		);
 		expect(emitted()['update:modelValue']).toEqual([
 			[[expect.any(Object), expect.any(Object)]],
 			[[expect.any(Object)]],
@@ -71,11 +83,13 @@ describe('ProjectSharing', () => {
 		projectSelectDropdownItems = await getDropdownItems(projectSelect);
 		expect(projectSelectDropdownItems).toHaveLength(2);
 
-		// Remove the last selected project
 		actionDropDownItems = await getDropdownItems(getAllByTestId('project-sharing-list-item')[0]);
 		expect(actionDropDownItems).toHaveLength(2);
 
-		await userEvent.click(actionDropDownItems[1]);
+		// Remove the last selected project
+		await userEvent.click(
+			within(getAllByTestId('project-sharing-list-item')[0]).getByTestId('project-sharing-remove'),
+		);
 		expect(emitted()['update:modelValue']).toEqual([
 			[[expect.any(Object), expect.any(Object)]],
 			[[expect.any(Object)]],

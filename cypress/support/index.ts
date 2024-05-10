@@ -30,6 +30,7 @@ declare global {
 			disableFeature(feature: string): void;
 			enableQueueMode(): void;
 			disableQueueMode(): void;
+			changeQuota(feature: string, value: number): void;
 			waitForLoad(waitForIntercepts?: boolean): void;
 			grantBrowserPermissions(...permissions: string[]): void;
 			readClipboard(): Chainable<string>;

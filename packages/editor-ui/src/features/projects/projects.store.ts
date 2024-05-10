@@ -8,16 +8,25 @@ import type {
 	ProjectCreateRequest,
 	ProjectListItem,
 	ProjectUpdateRequest,
+	ProjectsCount,
 } from '@/features/projects/projects.types';
+import { useSettingsStore } from '@/stores/settings.store';
+import { hasPermission } from '@/rbac/permissions';
 
 export const useProjectsStore = defineStore('projects', () => {
 	const route = useRoute();
 	const rootStore = useRootStore();
+	const settingsStore = useSettingsStore();
 
 	const projects = ref<ProjectListItem[]>([]);
 	const myProjects = ref<ProjectListItem[]>([]);
 	const personalProject = ref<Project | null>(null);
 	const currentProject = ref<Project | null>(null);
+	const projectsCount = ref<ProjectsCount>({
+		personal: 0,
+		team: 0,
+		public: 0,
+	});
 
 	const currentProjectId = computed(
 		() =>
@@ -28,6 +37,24 @@ export const useProjectsStore = defineStore('projects', () => {
 	const isProjectHome = computed(() => route.path.includes('home'));
 	const personalProjects = computed(() => projects.value.filter((p) => p.type === 'personal'));
 	const teamProjects = computed(() => projects.value.filter((p) => p.type === 'team'));
+	const teamProjectsLimit = computed(() => settingsStore.settings.enterprise.projects.team.limit);
+	const teamProjectsAvailable = computed<boolean>(
+		() => settingsStore.settings.enterprise.projects.team.limit !== 0,
+	);
+	const hasUnlimitedProjects = computed<boolean>(
+		() => settingsStore.settings.enterprise.projects.team.limit === -1,
+	);
+	const teamProjectLimitExceeded = computed<boolean>(
+		() => projectsCount.value.team >= teamProjectsLimit.value,
+	);
+	const canCreateProjects = computed<boolean>(
+		() =>
+			hasUnlimitedProjects.value ||
+			(teamProjectsAvailable.value && !teamProjectLimitExceeded.value),
+	);
+	const hasPermissionToCreateProjects = computed(() =>
+		hasPermission(['rbac'], { rbac: { scope: 'project:create' } }),
+	);
 
 	const setCurrentProject = (project: Project | null) => {
 		currentProject.value = project;
@@ -54,6 +81,7 @@ export const useProjectsStore = defineStore('projects', () => {
 
 	const createProject = async (project: ProjectCreateRequest): Promise<Project> => {
 		const newProject = await projectsApi.createProject(rootStore.getRestApiContext, project);
+		await getProjectsCount();
 		myProjects.value = [...myProjects.value, newProject as unknown as ProjectListItem];
 		return newProject;
 	};
@@ -74,7 +102,12 @@ export const useProjectsStore = defineStore('projects', () => {
 
 	const deleteProject = async (projectId: string, transferId?: string): Promise<void> => {
 		await projectsApi.deleteProject(rootStore.getRestApiContext, projectId, transferId);
+		await getProjectsCount();
 		myProjects.value = myProjects.value.filter((p) => p.id !== projectId);
+	};
+
+	const getProjectsCount = async () => {
+		projectsCount.value = await projectsApi.getProjectsCount(rootStore.getRestApiContext);
 	};
 
 	watch(
@@ -102,6 +135,11 @@ export const useProjectsStore = defineStore('projects', () => {
 		isProjectHome,
 		personalProjects,
 		teamProjects,
+		teamProjectsLimit,
+		hasUnlimitedProjects,
+		canCreateProjects,
+		hasPermissionToCreateProjects,
+		teamProjectsAvailable,
 		setCurrentProject,
 		getAllProjects,
 		getMyProjects,
@@ -111,5 +149,6 @@ export const useProjectsStore = defineStore('projects', () => {
 		createProject,
 		updateProject,
 		deleteProject,
+		getProjectsCount,
 	};
 });

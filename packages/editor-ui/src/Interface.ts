@@ -1834,7 +1834,8 @@ export type CloudUpdateLinkSourceType =
 	| 'variables'
 	| 'community-nodes'
 	| 'workflow-history'
-	| 'worker-view';
+	| 'worker-view'
+	| 'rbac';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -1853,7 +1854,8 @@ export type UTMCampaign =
 	| 'upgrade-community-nodes'
 	| 'upgrade-workflow-history'
 	| 'upgrade-advanced-permissions'
-	| 'upgrade-worker-view';
+	| 'upgrade-worker-view'
+	| 'upgrade-rbac';
 
 export type N8nBanners = {
 	[key in BannerName]: {

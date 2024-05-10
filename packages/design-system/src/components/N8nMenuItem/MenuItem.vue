@@ -24,7 +24,7 @@
 					getInitials(item.label)
 				}}</span>
 			</template>
-			<n8n-menu-item
+			<N8nMenuItem
 				v-for="child in availableChildren"
 				:key="child.id"
 				:item="child"

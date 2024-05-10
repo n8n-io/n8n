@@ -18,11 +18,6 @@
 					}}
 				</n8n-text>
 			</div>
-			<div v-else-if="isDefaultUser" :class="$style.container">
-				<n8n-text>
-					{{ $locale.baseText('workflows.shareModal.isDefaultUser.description') }}
-				</n8n-text>
-			</div>
 			<div v-else :class="$style.container">
 				<n8n-info-tip v-if="!workflowPermissions.share" :bold="false" class="mb-s">
 					{{
@@ -37,6 +32,7 @@
 							v-model="sharedWithProjects"
 							:home-project="workflow.homeProject"
 							:projects="projects"
+							:roles="workflowRoles"
 							:readonly="!workflowPermissions.share"
 							:static="isHomeTeamProject"
 							:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
@@ -87,11 +83,6 @@
 							uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.button,
 						)
 					}}
-				</n8n-button>
-			</div>
-			<div v-else-if="isDefaultUser" :class="$style.actionButtons">
-				<n8n-button @click="goToUsersSettings">
-					{{ $locale.baseText('workflows.shareModal.isDefaultUser.button') }}
 				</n8n-button>
 			</div>
 			<enterprise-edition
@@ -155,6 +146,8 @@ import type {
 	ProjectSharingData,
 	Project,
 } from '@/features/projects/projects.types';
+import { useRolesStore } from '@/stores/roles.store';
+import type { RoleMap } from '@/types/roles.types';
 
 export default defineComponent({
 	name: 'WorkflowShareModal',
@@ -199,10 +192,8 @@ export default defineComponent({
 			useWorkflowsStore,
 			useWorkflowsEEStore,
 			useProjectsStore,
+			useRolesStore,
 		),
-		isDefaultUser(): boolean {
-			return this.usersStore.isDefaultUser;
-		},
 		isSharingEnabled(): boolean {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
 		},
@@ -251,6 +242,19 @@ export default defineComponent({
 		},
 		numberOfMembersInHomeTeamProject(): number {
 			return this.teamProject?.relations.length ?? 0;
+		},
+		workflowRoleTranslations(): Record<string, string> {
+			return {
+				'workflow:editor': this.$locale.baseText('workflows.shareModal.role.editor'),
+			};
+		},
+		workflowRoles(): RoleMap['workflow'] {
+			return this.rolesStore.processedWorkflowRoles.map(({ role, scopes, licensed }) => ({
+				role,
+				name: this.workflowRoleTranslations[role],
+				scopes,
+				licensed,
+			}));
 		},
 	},
 	watch: {
