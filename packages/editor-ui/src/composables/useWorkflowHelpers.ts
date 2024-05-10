@@ -6,7 +6,6 @@ import {
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
-import { computed } from 'vue';
 
 import type {
 	IConnections,
@@ -50,16 +49,12 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 import { get, isEqual } from 'lodash-es';
 
-import type { PermissionsMap } from '@/permissions';
-import type { WorkflowScope } from '@n8n/permissions';
-import { getWorkflowPermissions } from '@/permissions';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getSourceItems } from '@/utils/pairedItemUtils';
 import { v4 as uuid } from 'uuid';
@@ -485,7 +480,6 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 	const rootStore = useRootStore();
 	const templatesStore = useTemplatesStore();
 	const workflowsStore = useWorkflowsStore();
-	const usersStore = useUsersStore();
 	const uiStore = useUIStore();
 	const nodeHelpers = useNodeHelpers();
 	const projectsStore = useProjectsStore();
@@ -494,14 +488,6 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 	const message = useMessage();
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
-
-	const workflowPermissions = computed<PermissionsMap<WorkflowScope>>(() => {
-		return getWorkflowPermissions(
-			usersStore.currentUser,
-			projectsStore.currentProject,
-			workflowsStore.workflow,
-		);
-	});
 
 	function getNodeTypesMaxCount() {
 		const nodes = workflowsStore.allNodes;
@@ -1225,7 +1211,6 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		updateNodePositions,
 		dataHasChanged,
 		removeForeignCredentialsFromWorkflow,
-		workflowPermissions,
 		getWorkflowProjectRole,
 	};
 }
