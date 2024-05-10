@@ -53,9 +53,15 @@ function toFloat(value: number) {
 	return value;
 }
 
-type DateTimeFormat = 'ms' | 's' | 'excel';
+type DateTimeFormat = 'ms' | 's' | 'us' | 'excel';
 function toDateTime(value: number, extraArgs: [DateTimeFormat]) {
 	const [valueFormat = 'ms'] = extraArgs;
+
+	if (!['ms', 's', 'us', 'excel'].includes(valueFormat)) {
+		throw new ExpressionExtensionError(
+			`Unsupported format '${String(valueFormat)}'. toDateTime() supports 'ms', 's', 'us' and 'excel'.`,
+		);
+	}
 
 	switch (valueFormat) {
 		// Excel format is days since 1900
@@ -70,6 +76,8 @@ function toDateTime(value: number, extraArgs: [DateTimeFormat]) {
 		}
 		case 's':
 			return DateTime.fromSeconds(value);
+		case 'us':
+			return DateTime.fromMillis(value / 1000);
 		case 'ms':
 		default:
 			return DateTime.fromMillis(value);
@@ -107,7 +115,7 @@ isOdd.doc = {
 format.doc = {
 	name: 'format',
 	description:
-		'Returns a formatted string of a number based on the given `LanguageCode` and `FormatOptions`. When no arguments are given, transforms the number in a like format `1.234`.',
+		'Returns a formatted string of a number based on the given `LanguageCode` and `FormatOptions`. When no arguments are given, transforms the number in a format like `1.234`.',
 	returnType: 'string',
 	args: [
 		{ name: 'locales?', type: 'LanguageCode' },
@@ -137,7 +145,7 @@ toBoolean.doc = {
 toDateTime.doc = {
 	name: 'toDateTime',
 	description:
-		"Converts a number to a DateTime. Defaults to milliseconds. Format can be 'ms' (milliseconds), 's' (seconds) or 'excel' (Excel 1900 format).",
+		"Converts a number to a DateTime. Defaults to milliseconds. Format can be 'ms' (milliseconds), 's' (seconds), 'us' (microseconds) or 'excel' (Excel 1900 format).",
 	section: 'cast',
 	returnType: 'DateTime',
 	args: [{ name: 'format?', type: 'string' }],

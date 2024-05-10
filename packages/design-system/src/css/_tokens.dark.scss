@@ -72,7 +72,7 @@
 	--color-sticky-background-7: var(--prim-gray-740);
 	--color-sticky-border-7: var(--prim-gray-670);
 
-	// Expressions and autocomplete
+	// Expressions, autocomplete, infobox
 	--color-valid-resolvable-foreground: var(--prim-color-alt-a-tint-300);
 	--color-valid-resolvable-background: var(--prim-color-alt-a-alpha-025);
 	--color-invalid-resolvable-foreground: var(--prim-color-alt-c-tint-250);
@@ -83,6 +83,8 @@
 	--color-expression-syntax-example: var(--prim-gray-670);
 	--color-autocomplete-item-selected: var(--prim-color-secondary-tint-200);
 	--color-autocomplete-section-header-border: var(--prim-gray-540);
+	--color-infobox-background: var(--prim-gray-780);
+	--color-infobox-examples-border-color: var(--prim-gray-670);
 
 	// Code
 	--color-code-tags-string: var(--prim-color-alt-f-tint-150);
