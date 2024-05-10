@@ -184,7 +184,7 @@ importers:
     dependencies:
       axios:
         specifier: 1.6.7
-        version: 1.6.7(debug@4.3.4)
+        version: 1.6.7(debug@3.2.7)
 
   packages/@n8n/imap:
     dependencies:
@@ -527,7 +527,7 @@ importers:
         version: 1.11.0
       axios:
         specifier: 1.6.7
-        version: 1.6.7(debug@4.3.4)
+        version: 1.6.7(debug@3.2.7)
       basic-auth:
         specifier: 2.0.1
         version: 2.0.1
@@ -864,7 +864,7 @@ importers:
         version: 1.11.0
       axios:
         specifier: 1.6.7
-        version: 1.6.7(debug@4.3.4)
+        version: 1.6.7(debug@3.2.7)
       concat-stream:
         specifier: 2.0.0
         version: 2.0.0
@@ -1121,7 +1121,7 @@ importers:
         version: 10.5.0(vue@3.4.21)
       axios:
         specifier: 1.6.7
-        version: 1.6.7(debug@4.3.4)
+        version: 1.6.7(debug@3.2.7)
       chart.js:
         specifier: ^4.4.0
         version: 4.4.0
@@ -1589,7 +1589,7 @@ importers:
         version: 0.15.2
       axios:
         specifier: 1.6.7
-        version: 1.6.7(debug@4.3.4)
+        version: 1.6.7(debug@3.2.7)
       callsites:
         specifier: 3.1.0
         version: 3.1.0
@@ -1633,6 +1633,9 @@ importers:
         specifier: 0.6.2
         version: 0.6.2
     devDependencies:
+      '@codspeed/tinybench-plugin':
+        specifier: ^3.1.0
+        version: 3.1.0(tinybench@2.8.0)
       '@types/deep-equal':
         specifier: ^1.0.1
         version: 1.0.1
@@ -1654,6 +1657,9 @@ importers:
       '@types/xml2js':
         specifier: ^0.4.14
         version: 0.4.14
+      tinybench:
+        specifier: ^2.8.0
+        version: 2.8.0
 
 packages:
 
@@ -9249,7 +9255,7 @@ packages:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.4.21(typescript@5.4.2)
-      vue-component-type-helpers: 2.0.16
+      vue-component-type-helpers: 2.0.17
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -11512,7 +11518,7 @@ packages:
   /axios@1.6.7:
     resolution: {integrity: sha512-/hDJGff6/c7u0hDkvkGxR/oy6CbCs8ziCsC7SqmhjfozqiJGc8Z11wrv9z9lYfY4K8l+H9TpjcMDX0xOZmx+RA==}
     dependencies:
-      follow-redirects: 1.15.6(debug@4.3.4)
+      follow-redirects: 1.15.6(debug@3.2.7)
       form-data: 4.0.0
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -14976,7 +14982,6 @@ packages:
         optional: true
     dependencies:
       debug: 3.2.7(supports-color@5.5.0)
-    dev: false
 
   /follow-redirects@1.15.6(debug@4.3.4):
     resolution: {integrity: sha512-wWN62YITEaOpSK584EZXJafH1AGpO8RVgElfkuXbTOrPX4fIfOyEpW/CsiNd8JdYrAoOvafRTOEnvsO++qCqFA==}
@@ -23124,10 +23129,6 @@ packages:
     resolution: {integrity: sha512-+FbBPE1o9QAYvviau/qC5SE3caw21q3xkvWKBtja5vgqOWIHHJ3ioaq1VPfn/Szqctz2bU/oYeKd9/z5BL+PVg==}
     dev: true
 
-  /tinybench@2.5.1:
-    resolution: {integrity: sha512-65NKvSuAVDP/n4CqH+a9w2kTlLReS9vhsAP06MWx+/89nMinJyB2icyl58RIcqCmIggpojIGeuJGhjU1aGMBSg==}
-    dev: true
-
   /tinybench@2.8.0:
     resolution: {integrity: sha512-1/eK7zUnIklz4JUUlL+658n58XO2hHLQfSk1Zf2LKieUjxidN16eKFEoDEfjHc3ohofSSqK3X5yO6VGb6iW8Lw==}
     dev: true
@@ -24213,7 +24214,7 @@ packages:
       picocolors: 1.0.0
       std-env: 3.6.0
       strip-literal: 2.0.0
-      tinybench: 2.5.1
+      tinybench: 2.8.0
       tinypool: 0.8.2
       vite: 5.1.6(sass@1.64.1)
       vite-node: 1.3.1
@@ -24321,8 +24322,8 @@ packages:
     resolution: {integrity: sha512-0vOfAtI67UjeO1G6UiX5Kd76CqaQ67wrRZiOe7UAb9Jm6GzlUr/fC7CV90XfwapJRjpCMaZFhv1V0ajWRmE9Dg==}
     dev: true
 
-  /vue-component-type-helpers@2.0.16:
-    resolution: {integrity: sha512-qisL/iAfdO++7w+SsfYQJVPj6QKvxp4i1MMxvsNO41z/8zu3KuAw9LkhKUfP/kcOWGDxESp+pQObWppXusejCA==}
+  /vue-component-type-helpers@2.0.17:
+    resolution: {integrity: sha512-2car49m8ciqg/JjgMBkx7o/Fd2A7fHESxNqL/2vJYFLXm4VwYO4yH0rexOi4a35vwNgDyvt17B07Vj126l9rAQ==}
     dev: true
 
   /vue-demi@0.14.5(vue@3.4.21):

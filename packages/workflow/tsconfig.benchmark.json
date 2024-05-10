@@ -1,0 +1,13 @@
+{
+	"extends": ["./tsconfig.json", "../../tsconfig.build.json"],
+	"compilerOptions": {
+		"outDir": "dist",
+		"tsBuildInfoFile": "dist/benchmark.tsbuildinfo",
+		"baseUrl": ".",
+		"paths": {
+			"@/*": ["./src/*"]
+		}
+	},
+	"include": ["test/**/*.ts"],
+	"exclude": ["test/**/*.test.ts"]
+}
