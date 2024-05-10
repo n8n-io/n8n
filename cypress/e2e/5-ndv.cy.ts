@@ -325,7 +325,7 @@ describe('NDV', () => {
 
 		ndv.actions.setInvalidExpression({ fieldName: 'fieldId', delay: 200 });
 
-		ndv.getters.nodeParameters().click(); // remove focus from input, hide expression preview
+		ndv.getters.inputPanel().click(); // remove focus from input, hide expression preview
 
 		ndv.getters.parameterInput('remoteOptions').click();
 
@@ -711,5 +711,32 @@ describe('NDV', () => {
 			ndv.getters.triggerPanelExecuteButton().should('contain', 'Test step');
 			workflowPage.getters.successToast().should('exist');
 		});
+	});
+
+	it('should allow selecting item for expressions', () => {
+		workflowPage.actions.visit();
+
+		cy.createFixtureWorkflow('Test_workflow_3.json', `My test workflow`);
+		workflowPage.actions.openNode('Set');
+
+		ndv.actions.typeIntoParameterInput('value', '='); // switch to expressions
+		ndv.actions.typeIntoParameterInput('value', '{{', {
+			parseSpecialCharSequences: false,
+		});
+		ndv.actions.typeIntoParameterInput('value', '$json.input[0].count');
+		ndv.getters.inlineExpressionEditorOutput().should('have.text', '0');
+
+		ndv.actions.expressionSelectNextItem();
+		ndv.getters.inlineExpressionEditorOutput().should('have.text', '1');
+		ndv.getters.inlineExpressionEditorItemInput().should('have.value', '1');
+		ndv.getters.inlineExpressionEditorItemNextButton().should('be.disabled');
+
+		ndv.actions.expressionSelectPrevItem();
+		ndv.getters.inlineExpressionEditorOutput().should('have.text', '0');
+		ndv.getters.inlineExpressionEditorItemInput().should('have.value', '0');
+		ndv.getters.inlineExpressionEditorItemPrevButton().should('be.disabled');
+
+		ndv.actions.expressionSelectItem(1);
+		ndv.getters.inlineExpressionEditorOutput().should('have.text', '1');
 	});
 });

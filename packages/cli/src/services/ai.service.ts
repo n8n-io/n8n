@@ -1,12 +1,10 @@
 import { Service } from 'typedi';
 import config from '@/config';
-import type { INodeType, N8nAIProviderType, NodeError } from 'n8n-workflow';
+import type { N8nAIProviderType } from 'n8n-workflow';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
-import { debugErrorPromptTemplate } from '@/services/ai/prompts/debugError';
 import type { BaseMessageLike } from '@langchain/core/messages';
 import { AIProviderOpenAI } from '@/services/ai/providers/openai';
 import type { BaseChatModelCallOptions } from '@langchain/core/language_models/chat_models';
-import { summarizeNodeTypeProperties } from '@/services/ai/utils/summarizeNodeTypeProperties';
 import { Pinecone } from '@pinecone-database/pinecone';
 import type { z } from 'zod';
 import apiKnowledgebase from '@/services/ai/resources/api-knowledgebase.json';
@@ -18,8 +16,6 @@ import {
 import { generateCurlSchema } from '@/services/ai/schemas/generateCurl';
 import { PineconeStore } from '@langchain/pinecone';
 import Fuse from 'fuse.js';
-import { N8N_DOCS_URL } from '@/constants';
-
 interface APIKnowledgebaseService {
 	id: string;
 	title: string;
@@ -70,22 +66,6 @@ export class AIService {
 		}
 
 		return await this.provider.invoke(messages, options);
-	}
-
-	async debugError(error: NodeError, nodeType?: INodeType) {
-		this.checkRequirements();
-
-		const chain = debugErrorPromptTemplate.pipe(this.provider.model);
-		const result = await chain.invoke({
-			nodeType: nodeType?.description.displayName ?? 'n8n Node',
-			error: JSON.stringify(error),
-			properties: JSON.stringify(
-				summarizeNodeTypeProperties(nodeType?.description.properties ?? []),
-			),
-			documentationUrl: nodeType?.description.documentationUrl ?? N8N_DOCS_URL,
-		});
-
-		return this.provider.mapResponse(result);
 	}
 
 	validateCurl(result: { curl: string }) {

@@ -7,7 +7,7 @@ import type {
 	SerializedSecret,
 } from '@langchain/core/load/serializable';
 import type { LLMResult } from '@langchain/core/outputs';
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 import { pick } from 'lodash';
 import type { BaseMessage } from '@langchain/core/messages';
@@ -166,5 +166,28 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			messages: prompts,
 		};
 		this.promptTokensEstimate = estimatedTokens;
+	}
+
+	async handleLLMError(
+		error: IDataObject | Error,
+		runId: string,
+		parentRunId?: string | undefined,
+	) {
+		// Filter out non-x- headers to avoid leaking sensitive information in logs
+		if (typeof error === 'object' && error?.hasOwnProperty('headers')) {
+			const errorWithHeaders = error as { headers: Record<string, unknown> };
+
+			Object.keys(errorWithHeaders.headers).forEach((key) => {
+				if (!key.startsWith('x-')) {
+					delete errorWithHeaders.headers[key];
+				}
+			});
+		}
+
+		void logAiEvent(this.executionFunctions, 'n8n.ai.llm.error', {
+			error: Object.keys(error).length === 0 ? error.toString() : error,
+			runId,
+			parentRunId,
+		});
 	}
 }
