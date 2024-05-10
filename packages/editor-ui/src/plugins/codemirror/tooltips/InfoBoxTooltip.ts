@@ -1,25 +1,25 @@
-import { EditorView, Tooltip, keymap, showTooltip } from '@codemirror/view';
-import { EditorState, Extension, StateEffect, StateField } from '@codemirror/state';
-import { javascriptLanguage } from '@codemirror/lang-javascript';
-import { createInfoBoxRenderer } from '../completions/infoBoxRenderer';
-import { stringExtensions } from 'n8n-workflow/src/Extensions/StringExtensions';
-import { SyntaxNode, Tree } from '@lezer/common';
-import { ROOT_DOLLAR_COMPLETIONS } from '../completions/constants';
 import { completionStatus } from '@codemirror/autocomplete';
-import { resolveParameter } from '../../../composables/useWorkflowHelpers';
-import { stringMethods } from 'n8n-workflow/src/NativeMethods/String.methods';
-import { DocMetadata } from 'n8n-workflow';
-import { numberExtensions } from 'n8n-workflow/src/Extensions/NumberExtensions';
-import { numberMethods } from 'n8n-workflow/src/NativeMethods/Number.methods';
-import { booleanExtensions } from 'n8n-workflow/src/Extensions/BooleanExtensions';
-import { booleanMethods } from 'n8n-workflow/src/NativeMethods/Boolean.methods';
-import { DateTime } from 'luxon';
-import { arrayExtensions } from 'n8n-workflow/src/Extensions/ArrayExtensions';
-import { arrayMethods } from 'n8n-workflow/src/NativeMethods/Array.methods';
-import { dateExtensions } from 'n8n-workflow/src/Extensions/DateExtensions';
-import { objectExtensions } from 'n8n-workflow/src/Extensions/ObjectExtensions';
-import { objectMethods } from 'n8n-workflow/src/NativeMethods/Object.Methods';
+import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { syntaxTree } from '@codemirror/language';
+import { type EditorState, type Extension, StateEffect, StateField } from '@codemirror/state';
+import { EditorView, type Tooltip, keymap, showTooltip } from '@codemirror/view';
+import type { SyntaxNode } from '@lezer/common';
+import { DateTime } from 'luxon';
+import type { DocMetadata } from 'n8n-workflow';
+import { arrayExtensions } from 'n8n-workflow/src/Extensions/ArrayExtensions';
+import { booleanExtensions } from 'n8n-workflow/src/Extensions/BooleanExtensions';
+import { dateExtensions } from 'n8n-workflow/src/Extensions/DateExtensions';
+import { numberExtensions } from 'n8n-workflow/src/Extensions/NumberExtensions';
+import { objectExtensions } from 'n8n-workflow/src/Extensions/ObjectExtensions';
+import { stringExtensions } from 'n8n-workflow/src/Extensions/StringExtensions';
+import { arrayMethods } from 'n8n-workflow/src/NativeMethods/Array.methods';
+import { booleanMethods } from 'n8n-workflow/src/NativeMethods/Boolean.methods';
+import { numberMethods } from 'n8n-workflow/src/NativeMethods/Number.methods';
+import { objectMethods } from 'n8n-workflow/src/NativeMethods/Object.Methods';
+import { stringMethods } from 'n8n-workflow/src/NativeMethods/String.methods';
+import { resolveParameter } from '../../../composables/useWorkflowHelpers';
+import { ROOT_DOLLAR_COMPLETIONS } from '../completions/constants';
+import { createInfoBoxRenderer } from '../completions/infoBoxRenderer';
 
 function docToTooltip(index: number, doc?: DocMetadata): Tooltip | null {
 	if (doc) {
@@ -170,10 +170,19 @@ function getInfoBoxTooltip(state: EditorState): Tooltip | null {
 				create: () => {
 					const element = document.createElement('div');
 					element.classList.add('cm-cursorInfo');
-					const info = (result.info as any)();
-					if (info) {
-						element.appendChild(info);
+					const info = result.info;
+					if (typeof info === 'string') {
+						element.textContent = info;
+					} else if (typeof info === 'function') {
+						const infoResult = info(result);
+
+						if (infoResult instanceof Node) {
+							element.appendChild(infoResult);
+						} else if (infoResult && 'dom' in infoResult) {
+							element.appendChild(infoResult.dom);
+						}
 					}
+
 					return { dom: element };
 				},
 			};
@@ -215,7 +224,7 @@ const closeInfoBoxEffect = StateEffect.define<null>();
 
 export const infoBoxTooltips = (): Extension[] => {
 	return [
-		infoBoxTooltipField,
+		infoBoxTooltipField.extension,
 		EditorView.focusChangeEffect.of((_, focus) => {
 			if (!focus) {
 				return closeInfoBoxEffect.of(null);
