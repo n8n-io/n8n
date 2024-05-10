@@ -1185,10 +1185,13 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 	function getWorkflowProjectRole(workflowId: string): 'owner' | 'sharee' | 'member' {
 		const workflow = workflowsStore.workflowsById[workflowId];
 
-		if (workflow.homeProject?.id === projectsStore.personalProject?.id) {
+		if (
+			workflow?.homeProject?.id === projectsStore.personalProject?.id ||
+			workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID
+		) {
 			return 'owner';
 		} else if (
-			workflow.sharedWithProjects?.some(
+			workflow?.sharedWithProjects?.some(
 				(project) => project.id === projectsStore.personalProject?.id,
 			)
 		) {
