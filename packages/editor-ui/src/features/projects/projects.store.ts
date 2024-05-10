@@ -37,7 +37,7 @@ export const useProjectsStore = defineStore('projects', () => {
 	const isProjectHome = computed(() => route.path.includes('home'));
 	const personalProjects = computed(() => projects.value.filter((p) => p.type === 'personal'));
 	const teamProjects = computed(() => projects.value.filter((p) => p.type === 'team'));
-
+	const teamProjectsLimit = computed(() => settingsStore.settings.enterprise.projects.team.limit);
 	const teamProjectsAvailable = computed<boolean>(
 		() => settingsStore.settings.enterprise.projects.team.limit !== 0,
 	);
@@ -45,10 +45,12 @@ export const useProjectsStore = defineStore('projects', () => {
 		() => settingsStore.settings.enterprise.projects.team.limit === -1,
 	);
 	const teamProjectLimitExceeded = computed<boolean>(
-		() => projectsCount.value.team >= settingsStore.settings.enterprise.projects.team.limit,
+		() => projectsCount.value.team >= teamProjectsLimit.value,
 	);
 	const canCreateProjects = computed<boolean>(
-		() => hasUnlimitedProjects.value || !teamProjectLimitExceeded.value,
+		() =>
+			hasUnlimitedProjects.value ||
+			(teamProjectsAvailable.value && !teamProjectLimitExceeded.value),
 	);
 	const hasPermissionToCreateProjects = computed(() =>
 		hasPermission(['rbac'], { rbac: { scope: 'project:create' } }),
@@ -133,6 +135,7 @@ export const useProjectsStore = defineStore('projects', () => {
 		isProjectHome,
 		personalProjects,
 		teamProjects,
+		teamProjectsLimit,
 		hasUnlimitedProjects,
 		canCreateProjects,
 		hasPermissionToCreateProjects,

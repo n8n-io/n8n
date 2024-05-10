@@ -7,9 +7,11 @@ import { VIEWS } from '@/constants';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import type { ProjectListItem } from '@/features/projects/projects.types';
 import { useToast } from '@/composables/useToast';
+import { useUIStore } from '@/stores/ui.store';
 
 type Props = {
 	collapsed: boolean;
+	planName?: string;
 };
 
 const props = defineProps<Props>();
@@ -19,6 +21,7 @@ const router = useRouter();
 const locale = useI18n();
 const toast = useToast();
 const projectsStore = useProjectsStore();
+const uiStore = useUIStore();
 
 const isCreatingProject = ref(false);
 const isComponentMounted = ref(false);
@@ -107,6 +110,10 @@ const displayProjects = computed(() => {
 		});
 });
 
+const goToUpgrade = async () => {
+	await uiStore.goToUpgrade('rbac', 'upgrade-rbac');
+};
+
 onMounted(async () => {
 	await nextTick();
 	isComponentMounted.value = true;
@@ -144,19 +151,39 @@ onMounted(async () => {
 				data-test-id="project-menu-item"
 			/>
 		</ElMenu>
-		<ElMenu
-			v-if="projectsStore.hasPermissionToCreateProjects && projectsStore.teamProjectsAvailable"
-			:collapse="props.collapsed"
-			class="pl-xs pr-xs"
-		>
-			<N8nMenuItem
-				:item="addProject"
-				:compact="props.collapsed"
-				:handle-select="addProjectClicked"
-				mode="tabs"
-				data-test-id="add-project-menu-item"
-			/>
-		</ElMenu>
+		<N8nTooltip placement="right" :disabled="projectsStore.canCreateProjects">
+			<ElMenu
+				v-if="projectsStore.hasPermissionToCreateProjects && projectsStore.teamProjectsAvailable"
+				:collapse="props.collapsed"
+				class="pl-xs pr-xs"
+			>
+				<N8nMenuItem
+					:item="addProject"
+					:compact="props.collapsed"
+					:handle-select="addProjectClicked"
+					mode="tabs"
+					data-test-id="add-project-menu-item"
+				/>
+			</ElMenu>
+			<template #content>
+				<i18n-t keypath="projects.create.limitReached">
+					<template #planName>{{ props.planName }}</template>
+					<template #limit>
+						{{
+							locale.baseText('projects.create.limit', {
+								adjustToNumber: projectsStore.teamProjectsLimit,
+								interpolate: { num: String(projectsStore.teamProjectsLimit) },
+							})
+						}}
+					</template>
+					<template #link>
+						<a :class="$style.upgradeLink" href="#" @click="goToUpgrade">
+							{{ locale.baseText('projects.create.limitReached.link') }}
+						</a>
+					</template>
+				</i18n-t>
+			</template>
+		</N8nTooltip>
 		<hr
 			v-if="
 				displayProjects.length ||
@@ -180,6 +207,11 @@ onMounted(async () => {
 	height: 100%;
 	padding: 0 var(--spacing-xs) var(--spacing-s);
 	overflow: auto;
+}
+
+.upgradeLink {
+	color: var(--color-primary);
+	cursor: pointer;
 }
 </style>
 

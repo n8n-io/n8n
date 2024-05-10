@@ -20,7 +20,10 @@
 				<div :class="$style.logo">
 					<img :src="logoPath" data-test-id="n8n-logo" :class="$style.icon" alt="n8n" />
 				</div>
-				<ProjectNavigation :collapsed="isCollapsed" />
+				<ProjectNavigation
+					:collapsed="isCollapsed"
+					:plan-name="cloudPlanStore.currentPlanData?.displayName"
+				/>
 			</template>
 
 			<template #beforeLowerMenu>
