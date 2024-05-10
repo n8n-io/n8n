@@ -10,10 +10,13 @@ import type {
 	ProjectUpdateRequest,
 	ProjectsCount,
 } from '@/features/projects/projects.types';
+import { useSettingsStore } from '@/stores/settings.store';
+import { hasPermission } from '@/rbac/permissions';
 
 export const useProjectsStore = defineStore('projects', () => {
 	const route = useRoute();
 	const rootStore = useRootStore();
+	const settingsStore = useSettingsStore();
 
 	const projects = ref<ProjectListItem[]>([]);
 	const myProjects = ref<ProjectListItem[]>([]);
@@ -34,6 +37,22 @@ export const useProjectsStore = defineStore('projects', () => {
 	const isProjectHome = computed(() => route.path.includes('home'));
 	const personalProjects = computed(() => projects.value.filter((p) => p.type === 'personal'));
 	const teamProjects = computed(() => projects.value.filter((p) => p.type === 'team'));
+
+	const teamProjectsAvailable = computed<boolean>(
+		() => settingsStore.settings.enterprise.projects.team.limit !== 0,
+	);
+	const hasUnlimitedProjects = computed<boolean>(
+		() => settingsStore.settings.enterprise.projects.team.limit === -1,
+	);
+	const teamProjectLimitExceeded = computed<boolean>(
+		() => projectsCount.value.team >= settingsStore.settings.enterprise.projects.team.limit,
+	);
+	const canCreateProjects = computed<boolean>(
+		() => hasUnlimitedProjects.value || !teamProjectLimitExceeded.value,
+	);
+	const hasPermissionToCreateProjects = computed(() =>
+		hasPermission(['rbac'], { rbac: { scope: 'project:create' } }),
+	);
 
 	const setCurrentProject = (project: Project | null) => {
 		currentProject.value = project;
@@ -60,6 +79,7 @@ export const useProjectsStore = defineStore('projects', () => {
 
 	const createProject = async (project: ProjectCreateRequest): Promise<Project> => {
 		const newProject = await projectsApi.createProject(rootStore.getRestApiContext, project);
+		await getProjectsCount();
 		myProjects.value = [...myProjects.value, newProject as unknown as ProjectListItem];
 		return newProject;
 	};
@@ -80,6 +100,7 @@ export const useProjectsStore = defineStore('projects', () => {
 
 	const deleteProject = async (projectId: string, transferId?: string): Promise<void> => {
 		await projectsApi.deleteProject(rootStore.getRestApiContext, projectId, transferId);
+		await getProjectsCount();
 		myProjects.value = myProjects.value.filter((p) => p.id !== projectId);
 	};
 
@@ -112,6 +133,10 @@ export const useProjectsStore = defineStore('projects', () => {
 		isProjectHome,
 		personalProjects,
 		teamProjects,
+		hasUnlimitedProjects,
+		canCreateProjects,
+		hasPermissionToCreateProjects,
+		teamProjectsAvailable,
 		setCurrentProject,
 		getAllProjects,
 		getMyProjects,
