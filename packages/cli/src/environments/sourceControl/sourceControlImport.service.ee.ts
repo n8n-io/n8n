@@ -218,72 +218,140 @@ export class SourceControlImportService {
 			candidateIds,
 			{ select: ['workflowId', 'role', 'projectId'] },
 		);
-		const importWorkflowsResult = await Promise.all(
-			candidates.map(async (candidate) => {
-				this.logger.debug(`Parsing workflow file ${candidate.file}`);
-				const importedWorkflow = jsonParse<IWorkflowToImport & { owner: string }>(
-					await fsReadFile(candidate.file, { encoding: 'utf8' }),
-				);
-				if (!importedWorkflow?.id) {
-					return;
-				}
-				const existingWorkflow = existingWorkflows.find((e) => e.id === importedWorkflow.id);
-				importedWorkflow.active = existingWorkflow?.active ?? false;
-				this.logger.debug(`Updating workflow id ${importedWorkflow.id ?? 'new'}`);
-				const upsertResult = await Container.get(WorkflowRepository).upsert(
-					{ ...importedWorkflow },
-					['id'],
-				);
-				if (upsertResult?.identifiers?.length !== 1) {
-					throw new ApplicationError('Failed to upsert workflow', {
-						extra: { workflowId: importedWorkflow.id ?? 'new' },
-					});
-				}
+		const importWorkflowsResult = [];
 
-				const isOwnedLocally = allSharedWorkflows.some(
-					(w) => w.workflowId === importedWorkflow.id && w.role === 'workflow:owner',
+		// Due to SQLite concurrency issues, we cannot save all workflows at once
+		// as project creation might cause constraint issues.
+		// We must iterate over the array and run the whole process workflow by workflow
+		for (const candidate of candidates) {
+			this.logger.debug(`Parsing workflow file ${candidate.file}`);
+			const importedWorkflow = jsonParse<IWorkflowToImport & { owner: string }>(
+				await fsReadFile(candidate.file, { encoding: 'utf8' }),
+			);
+			if (!importedWorkflow?.id) {
+				continue;
+			}
+			const existingWorkflow = existingWorkflows.find((e) => e.id === importedWorkflow.id);
+			importedWorkflow.active = existingWorkflow?.active ?? false;
+			this.logger.debug(`Updating workflow id ${importedWorkflow.id ?? 'new'}`);
+			const upsertResult = await Container.get(WorkflowRepository).upsert({ ...importedWorkflow }, [
+				'id',
+			]);
+			if (upsertResult?.identifiers?.length !== 1) {
+				throw new ApplicationError('Failed to upsert workflow', {
+					extra: { workflowId: importedWorkflow.id ?? 'new' },
+				});
+			}
+
+			const isOwnedLocally = allSharedWorkflows.some(
+				(w) => w.workflowId === importedWorkflow.id && w.role === 'workflow:owner',
+			);
+
+			if (!isOwnedLocally) {
+				const remoteOwnerProject: Project | null = importedWorkflow.owner
+					? await this.findOrCreateOwnerProject(importedWorkflow.owner)
+					: null;
+
+				await Container.get(SharedWorkflowRepository).upsert(
+					{
+						workflowId: importedWorkflow.id,
+						projectId: remoteOwnerProject?.id ?? personalProject.id,
+						role: 'workflow:owner',
+					},
+					['workflowId', 'projectId'],
 				);
+			}
 
-				if (!isOwnedLocally) {
-					const remoteOwnerProject: Project | null = importedWorkflow.owner
-						? await this.findOrCreateOwnerProject(importedWorkflow.owner)
-						: null;
-
-					await Container.get(SharedWorkflowRepository).upsert(
-						{
-							workflowId: importedWorkflow.id,
-							projectId: remoteOwnerProject?.id ?? personalProject.id,
-							role: 'workflow:owner',
-						},
-						['workflowId', 'projectId'],
+			if (existingWorkflow?.active) {
+				try {
+					// remove active pre-import workflow
+					this.logger.debug(`Deactivating workflow id ${existingWorkflow.id}`);
+					await workflowManager.remove(existingWorkflow.id);
+					// try activating the imported workflow
+					this.logger.debug(`Reactivating workflow id ${existingWorkflow.id}`);
+					await workflowManager.add(existingWorkflow.id, 'activate');
+					// update the versionId of the workflow to match the imported workflow
+				} catch (error) {
+					this.logger.error(`Failed to activate workflow ${existingWorkflow.id}`, error as Error);
+				} finally {
+					await Container.get(WorkflowRepository).update(
+						{ id: existingWorkflow.id },
+						{ versionId: importedWorkflow.versionId },
 					);
 				}
+			}
 
-				if (existingWorkflow?.active) {
-					try {
-						// remove active pre-import workflow
-						this.logger.debug(`Deactivating workflow id ${existingWorkflow.id}`);
-						await workflowManager.remove(existingWorkflow.id);
-						// try activating the imported workflow
-						this.logger.debug(`Reactivating workflow id ${existingWorkflow.id}`);
-						await workflowManager.add(existingWorkflow.id, 'activate');
-						// update the versionId of the workflow to match the imported workflow
-					} catch (error) {
-						this.logger.error(`Failed to activate workflow ${existingWorkflow.id}`, error as Error);
-					} finally {
-						await Container.get(WorkflowRepository).update(
-							{ id: existingWorkflow.id },
-							{ versionId: importedWorkflow.versionId },
-						);
-					}
-				}
+			importWorkflowsResult.push({
+				id: importedWorkflow.id ?? 'unknown',
+				name: candidate.file,
+			});
+		}
+		// await Promise.all(
+		// 	candidates.map(async (candidate) => {
+		// 		this.logger.debug(`Parsing workflow file ${candidate.file}`);
+		// 		const importedWorkflow = jsonParse<IWorkflowToImport & { owner: string }>(
+		// 			await fsReadFile(candidate.file, { encoding: 'utf8' }),
+		// 		);
+		// 		if (!importedWorkflow?.id) {
+		// 			return;
+		// 		}
+		// 		const existingWorkflow = existingWorkflows.find((e) => e.id === importedWorkflow.id);
+		// 		importedWorkflow.active = existingWorkflow?.active ?? false;
+		// 		this.logger.debug(`Updating workflow id ${importedWorkflow.id ?? 'new'}`);
+		// 		const upsertResult = await Container.get(WorkflowRepository).upsert(
+		// 			{ ...importedWorkflow },
+		// 			['id'],
+		// 		);
+		// 		if (upsertResult?.identifiers?.length !== 1) {
+		// 			throw new ApplicationError('Failed to upsert workflow', {
+		// 				extra: { workflowId: importedWorkflow.id ?? 'new' },
+		// 			});
+		// 		}
 
-				return {
-					id: importedWorkflow.id ?? 'unknown',
-					name: candidate.file,
-				};
-			}),
-		);
+		// 		const isOwnedLocally = allSharedWorkflows.some(
+		// 			(w) => w.workflowId === importedWorkflow.id && w.role === 'workflow:owner',
+		// 		);
+
+		// 		if (!isOwnedLocally) {
+		// 			const remoteOwnerProject: Project | null = importedWorkflow.owner
+		// 				? await this.findOrCreateOwnerProject(importedWorkflow.owner)
+		// 				: null;
+
+		// 			await Container.get(SharedWorkflowRepository).upsert(
+		// 				{
+		// 					workflowId: importedWorkflow.id,
+		// 					projectId: remoteOwnerProject?.id ?? personalProject.id,
+		// 					role: 'workflow:owner',
+		// 				},
+		// 				['workflowId', 'projectId'],
+		// 			);
+		// 		}
+
+		// 		if (existingWorkflow?.active) {
+		// 			try {
+		// 				// remove active pre-import workflow
+		// 				this.logger.debug(`Deactivating workflow id ${existingWorkflow.id}`);
+		// 				await workflowManager.remove(existingWorkflow.id);
+		// 				// try activating the imported workflow
+		// 				this.logger.debug(`Reactivating workflow id ${existingWorkflow.id}`);
+		// 				await workflowManager.add(existingWorkflow.id, 'activate');
+		// 				// update the versionId of the workflow to match the imported workflow
+		// 			} catch (error) {
+		// 				this.logger.error(`Failed to activate workflow ${existingWorkflow.id}`, error as Error);
+		// 			} finally {
+		// 				await Container.get(WorkflowRepository).update(
+		// 					{ id: existingWorkflow.id },
+		// 					{ versionId: importedWorkflow.versionId },
+		// 				);
+		// 			}
+		// 		}
+
+		// 		return {
+		// 			id: importedWorkflow.id ?? 'unknown',
+		// 			name: candidate.file,
+		// 		};
+		// 	}),
+		// );
 		return importWorkflowsResult.filter((e) => e !== undefined) as Array<{
 			id: string;
 			name: string;
