@@ -51,17 +51,14 @@ export const getWorkflowPermissions = (workflow: IWorkflowDb): PermissionsMap<Wo
 		new Set(workflow?.scopes ?? []),
 	);
 
-export const getProjectPermissions = (
-	user: IUser | null,
-	project: Project | null,
-): PermissionsMap<ProjectScope> =>
+export const getProjectPermissions = (project: Project | null): PermissionsMap<ProjectScope> =>
 	mapScopesToPermissions(
 		['project:create', 'project:read', 'project:update', 'project:delete', 'project:list'],
-		new Set([...(user?.globalScopes ?? []), ...(project?.scopes ?? [])]),
+		new Set(project?.scopes ?? []),
 	);
 
 export const getVariablesPermissions = (user: IUser | null): PermissionsMap<VariableScope> =>
 	mapScopesToPermissions(
 		['variable:create', 'variable:read', 'variable:update', 'variable:delete', 'variable:list'],
-		new Set([...(user?.globalScopes ?? [])]),
+		new Set(user?.globalScopes ?? []),
 	);

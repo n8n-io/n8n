@@ -5,14 +5,12 @@ import { useRoute } from 'vue-router';
 import { VIEWS } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
 import { useProjectsStore } from '../projects.store';
-import { useUsersStore } from '@/stores/users.store';
 import { getProjectPermissions } from '@/permissions';
 
 const locale = useI18n();
 const route = useRoute();
 
 const projectsStore = useProjectsStore();
-const usersStore = useUsersStore();
 
 const selectedTab = ref<RouteRecordName | null | undefined>('');
 const options = computed(() => {
@@ -49,10 +47,7 @@ const options = computed(() => {
 		},
 	];
 
-	if (
-		projectId &&
-		getProjectPermissions(usersStore.currentUser, projectsStore.currentProject).update
-	) {
+	if (projectId && getProjectPermissions(projectsStore.currentProject).update) {
 		tabs.push({
 			label: locale.baseText('projects.settings'),
 			value: VIEWS.PROJECT_SETTINGS,

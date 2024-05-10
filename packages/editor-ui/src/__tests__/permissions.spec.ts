@@ -50,7 +50,7 @@ describe('permissions', () => {
 
 	it('getProjectPermissions', () => {
 		expect(
-			getProjectPermissions(null, {
+			getProjectPermissions({
 				scopes: [
 					'project:create',
 					'project:read',
@@ -59,88 +59,6 @@ describe('permissions', () => {
 					'project:list',
 				],
 			} as Project),
-		).toEqual({
-			create: true,
-			read: true,
-			update: true,
-			delete: true,
-			list: true,
-		});
-
-		expect(
-			getProjectPermissions(
-				{
-					globalScopes: [
-						'project:create',
-						'project:read',
-						'project:update',
-						'project:delete',
-						'project:list',
-					],
-				} as IUser,
-				null,
-			),
-		).toEqual({
-			create: true,
-			read: true,
-			update: true,
-			delete: true,
-			list: true,
-		});
-
-		expect(
-			getProjectPermissions(
-				{
-					globalScopes: ['project:read', 'project:list'],
-				} as IUser,
-				null,
-			),
-		).toEqual({
-			create: false,
-			read: true,
-			update: false,
-			delete: false,
-			list: true,
-		});
-
-		expect(
-			getProjectPermissions(
-				{
-					globalScopes: ['project:read', 'project:list'],
-				} as IUser,
-				{
-					scopes: [
-						'project:create',
-						'project:read',
-						'project:update',
-						'project:delete',
-						'project:list',
-					],
-				} as Project,
-			),
-		).toEqual({
-			create: true,
-			read: true,
-			update: true,
-			delete: true,
-			list: true,
-		});
-
-		expect(
-			getProjectPermissions(
-				{
-					globalScopes: [
-						'project:create',
-						'project:read',
-						'project:update',
-						'project:delete',
-						'project:list',
-					],
-				} as IUser,
-				{
-					scopes: ['project:read', 'project:list'],
-				} as Project,
-			),
 		).toEqual({
 			create: true,
 			read: true,
