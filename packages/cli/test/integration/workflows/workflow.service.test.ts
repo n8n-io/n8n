@@ -46,10 +46,6 @@ afterEach(async () => {
 	jest.restoreAllMocks();
 });
 
-afterAll(async () => {
-	await testDb.terminate();
-});
-
 describe('update()', () => {
 	test('should remove and re-add to active workflows on `active: true` payload', async () => {
 		const owner = await createOwner();
