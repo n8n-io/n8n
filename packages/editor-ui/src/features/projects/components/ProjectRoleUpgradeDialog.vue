@@ -46,9 +46,3 @@ const goToUpgrade = async () => {
 		</template>
 	</el-dialog>
 </template>
-
-<style lang="scss" module>
-.operation {
-	padding: 0 0 var(--spacing-l) var(--spacing-l);
-}
-</style>
