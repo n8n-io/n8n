@@ -11,16 +11,20 @@ import type { Project, ProjectRelation } from '@/features/projects/projects.type
 import { useToast } from '@/composables/useToast';
 import { VIEWS } from '@/constants';
 import ProjectDeleteDialog from '@/features/projects/components/ProjectDeleteDialog.vue';
+import ProjectRoleUpgradeDialog from '@/features/projects/components/ProjectRoleUpgradeDialog.vue';
 import { useRolesStore } from '@/stores/roles.store';
 import type { ProjectRole } from '@/types/roles.types';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 
 const usersStore = useUsersStore();
 const locale = useI18n();
 const projectsStore = useProjectsStore();
 const rolesStore = useRolesStore();
+const cloudPlanStore = useCloudPlanStore();
 const toast = useToast();
 const router = useRouter();
 const dialogVisible = ref(false);
+const upgradeDialogVisible = ref(false);
 
 const isDirty = ref(false);
 const formData = ref<Pick<Project, 'name' | 'relations'>>({
@@ -46,6 +50,12 @@ const usersList = computed(() =>
 const projects = computed(() =>
 	projectsStore.teamProjects.filter((project) => project.id !== projectsStore.currentProjectId),
 );
+const projectRoles = computed(() =>
+	rolesStore.processedProjectRoles.map((role) => ({
+		...role,
+		name: projectRoleTranslations.value[role.role],
+	})),
+);
 
 const onAddMember = (userId: string) => {
 	isDirty.value = true;
@@ -55,7 +65,7 @@ const onAddMember = (userId: string) => {
 	const { id, firstName, lastName, email } = user;
 	const relation = { id, firstName, lastName, email } as ProjectRelation;
 
-	relation.role = 'project:editor';
+	relation.role = projectRoles.value[0].role;
 
 	formData.value.relations.push(relation);
 };
@@ -202,18 +212,25 @@ onBeforeMount(async () => {
 					<template #actions="{ user }">
 						<div class="flex gap-3">
 							<N8nSelect
-								:model-value="user?.role || rolesStore.processedProjectRoles[0]"
+								:model-value="user?.role || projectRoles[0].role"
 								size="small"
 								@update:model-value="onRoleAction(user, $event)"
 							>
 								<N8nOption
-									v-for="role in rolesStore.processedProjectRoles"
+									v-for="role in projectRoles"
 									:key="role.role"
 									:value="role.role"
-									:label="projectRoleTranslations[role.role]"
+									:label="role.name"
 									:disabled="!role.licensed"
 								>
-									{{ projectRoleTranslations[role.role] }}
+									{{ role.name
+									}}<span
+										v-if="!role.licensed"
+										:class="$style.upgrade"
+										@click="upgradeDialogVisible = true"
+									>
+										&nbsp;-&nbsp;{{ locale.baseText('generic.upgrade') }}
+									</span>
 								</N8nOption>
 							</N8nSelect>
 							<N8nButton
@@ -270,6 +287,11 @@ onBeforeMount(async () => {
 			:projects="projects"
 			@confirm-delete="onConfirmDelete"
 		/>
+		<ProjectRoleUpgradeDialog
+			v-model="upgradeDialogVisible"
+			:limit="projectsStore.teamProjectsLimit"
+			:plan-name="cloudPlanStore.currentPlanData?.displayName"
+		/>
 	</div>
 </template>
 
@@ -311,5 +333,9 @@ onBeforeMount(async () => {
 	flex-direction: row-reverse;
 	justify-content: flex-start;
 	align-items: center;
+}
+
+.upgrade {
+	cursor: pointer;
 }
 </style>
