@@ -2,7 +2,7 @@ import glob from 'fast-glob';
 import Bench from 'tinybench';
 import { withCodSpeed } from '@codspeed/tinybench-plugin';
 import { setup, workflowToTests as toTests } from './nodes/Helpers';
-import { executeWorkflow } from './nodes/ExecuteWorkflow';
+import { performExecution, setupExecution } from './nodes/ExecuteWorkflow';
 
 async function main() {
 	const filePaths = await glob('nodes/**/*.workflow.json');
@@ -14,8 +14,18 @@ async function main() {
 	const bench = withCodSpeed(new Bench({ time: 0, iterations: 1 })); // @TODO temp config
 
 	for (const test of tests) {
+		const { waitPromise, additionalData, executionMode, workflowInstance, nodeExecutionOrder } =
+			await setupExecution(test, nodeTypes);
+
 		bench.add(test.description, async () => {
-			await executeWorkflow(test, nodeTypes);
+			await performExecution(
+				waitPromise,
+				additionalData,
+				executionMode,
+				test,
+				workflowInstance,
+				nodeExecutionOrder,
+			);
 		});
 	}
 
