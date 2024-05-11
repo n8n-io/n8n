@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="500"
+   height="500"
+   viewBox="0 0 132.29166 132.29167"
+   version="1.1"
+   id="svg1"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1" />
+  <g
+     id="layer1">
+    <g
+       id="g6"
+       style="fill:#000080">
+      <rect
+         style="fill:#000080;fill-opacity:1;stroke-width:0.26393"
+         id="rect6"
+         width="132.29167"
+         height="83.977058"
+         x="-2.8902838e-05"
+         y="21.799683" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:800;font-stretch:normal;font-size:72.7083px;font-family:'Open Sans';-inkscape-font-specification:'Open Sans Ultra-Bold';fill:#ffffff;fill-opacity:1;stroke-width:0.852046"
+         x="-0.37989494"
+         y="84.592102"
+         id="text6"
+         transform="scale(0.93325439,1.0715192)"><tspan
+           id="tspan6"
+           style="font-style:normal;font-variant:normal;font-weight:800;font-stretch:normal;font-family:'Open Sans';-inkscape-font-specification:'Open Sans Ultra-Bold';stroke-width:0.852046"
+           x="-0.37989494"
+           y="84.592102">SQL</tspan></text>
+    </g>
+  </g>
+</svg>

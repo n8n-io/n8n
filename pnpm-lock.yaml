@@ -184,7 +184,7 @@ importers:
     dependencies:
       axios:
         specifier: 1.6.7
-        version: 1.6.7(debug@3.2.7)
+        version: 1.6.7(debug@4.3.4)
 
   packages/@n8n/imap:
     dependencies:
@@ -527,7 +527,7 @@ importers:
         version: 1.11.0
       axios:
         specifier: 1.6.7
-        version: 1.6.7(debug@3.2.7)
+        version: 1.6.7(debug@4.3.4)
       basic-auth:
         specifier: 2.0.1
         version: 2.0.1
@@ -864,7 +864,7 @@ importers:
         version: 1.11.0
       axios:
         specifier: 1.6.7
-        version: 1.6.7(debug@3.2.7)
+        version: 1.6.7(debug@4.3.4)
       concat-stream:
         specifier: 2.0.0
         version: 2.0.0
@@ -1121,7 +1121,7 @@ importers:
         version: 10.5.0(vue@3.4.21)
       axios:
         specifier: 1.6.7
-        version: 1.6.7(debug@3.2.7)
+        version: 1.6.7(debug@4.3.4)
       chart.js:
         specifier: ^4.4.0
         version: 4.4.0
@@ -1298,6 +1298,9 @@ importers:
       '@n8n/vm2':
         specifier: 3.9.20
         version: 3.9.20
+      alasql:
+        specifier: ^4.3.3
+        version: 4.3.3
       amqplib:
         specifier: 0.10.3
         version: 0.10.3
@@ -1583,7 +1586,7 @@ importers:
         version: 0.15.2
       axios:
         specifier: 1.6.7
-        version: 1.6.7(debug@3.2.7)
+        version: 1.6.7(debug@4.3.4)
       callsites:
         specifier: 3.1.0
         version: 3.1.0
@@ -11084,6 +11087,17 @@ packages:
       uri-js: 4.4.1
     dev: false
 
+  /alasql@4.3.3:
+    resolution: {integrity: sha512-IP64TOG+zBTPA41OB2NJVkM3urEIhvZtYwtPFC/1QSH7nCzwShIwWfxwyOhTK7yzF/ZaNGEpc3Eexyzb2nUbFg==}
+    engines: {node: '>=15'}
+    hasBin: true
+    dependencies:
+      cross-fetch: 4.0.0
+      yargs: 16.2.0
+    transitivePeerDependencies:
+      - encoding
+    dev: false
+
   /amqplib@0.10.3:
     resolution: {integrity: sha512-UHmuSa7n8vVW/a5HGh2nFPqAEr8+cD4dEZ6u9GjP91nHfr1a54RyAKyra7Sb5NH7NBKOUlyQSMXIp0qAixKexw==}
     engines: {node: '>=10'}
@@ -11483,7 +11497,7 @@ packages:
   /axios@1.6.7:
     resolution: {integrity: sha512-/hDJGff6/c7u0hDkvkGxR/oy6CbCs8ziCsC7SqmhjfozqiJGc8Z11wrv9z9lYfY4K8l+H9TpjcMDX0xOZmx+RA==}
     dependencies:
-      follow-redirects: 1.15.6(debug@3.2.7)
+      follow-redirects: 1.15.6(debug@4.3.4)
       form-data: 4.0.0
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -12764,6 +12778,14 @@ packages:
 
   /cross-fetch@3.1.8(encoding@0.1.13):
     resolution: {integrity: sha512-cvA+JwZoU0Xq+h6WkMvAUqPEYy92Obet6UdKLfW60qn99ftItKjB5T+BkyWOFWe2pUyfQ+IJHmpOTznqk1M6Kg==}
+    dependencies:
+      node-fetch: 2.7.0(encoding@0.1.13)
+    transitivePeerDependencies:
+      - encoding
+    dev: false
+
+  /cross-fetch@4.0.0:
+    resolution: {integrity: sha512-e4a5N8lVvuLgAWgnCrLr2PP0YyDOTHa9H/Rj54dirp61qXnNq46m82bRhNqIA5VccJtWBvPTFRV3TtvHUKPB1g==}
     dependencies:
       node-fetch: 2.7.0(encoding@0.1.13)
     transitivePeerDependencies:
@@ -24932,6 +24954,19 @@ packages:
   /yargs-parser@21.1.1:
     resolution: {integrity: sha512-tVpsJW7DdjecAiFpbIB1e3qxIQsE6NoPc5/eTdrbbIC4h0LVsWhnoa3g+m2HclBIujHzsxZ4VJVA+GUuc2/LBw==}
     engines: {node: '>=12'}
+
+  /yargs@16.2.0:
+    resolution: {integrity: sha512-D1mvvtDG0L5ft/jGWkLpG1+m0eQxOfaBvTNELraWj22wSVUMWxZUvYgJYcKh6jGGIkJFhH4IZPQhR4TKpc8mBw==}
+    engines: {node: '>=10'}
+    dependencies:
+      cliui: 7.0.4
+      escalade: 3.1.1
+      get-caller-file: 2.0.5
+      require-directory: 2.1.1
+      string-width: 4.2.3
+      y18n: 5.0.8
+      yargs-parser: 20.2.9
+    dev: false
 
   /yargs@17.0.1:
     resolution: {integrity: sha512-xBBulfCc8Y6gLFcrPvtqKz9hz8SO0l1Ni8GgDekvBX2ro0HRQImDGnikfc33cgzcYUSncapnNcZDjVFIH3f6KQ==}
