@@ -52,91 +52,108 @@
 
 <script lang="ts">
 import { useToast } from '@/composables/useToast';
-import { workflowActivate } from '@/mixins/workflowActivate';
-import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowActive } from '@/mixins/useWorkflowActivate';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { mapStores } from 'pinia';
 import { defineComponent } from 'vue';
 import { getActivatableTriggerNodes } from '@/utils/nodeTypesUtils';
+import { computed } from 'vue';
+import { useI18n } from '@/composables/useI18n';
 
 export default defineComponent({
 	name: 'WorkflowActivator',
-	mixins: [workflowActivate],
 	props: ['workflowActive', 'workflowId'],
-	setup(props, ctx) {
-		return {
-			...useToast(),
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowActivate.setup?.(props, ctx),
-		};
-	},
-	computed: {
-		...mapStores(useUIStore, useWorkflowsStore),
-		nodesIssuesExist(): boolean {
-			return this.workflowsStore.nodesIssuesExist;
-		},
-		isWorkflowActive(): boolean {
-			const activeWorkflows = this.workflowsStore.activeWorkflows;
-			return activeWorkflows.includes(this.workflowId);
-		},
-		couldNotBeStarted(): boolean {
-			return this.workflowActive === true && this.isWorkflowActive !== this.workflowActive;
-		},
-		getActiveColor(): string {
-			if (this.couldNotBeStarted) {
+	async setup(props) {
+		const workflowActive = useWorkflowActive();
+		const toast = useToast();
+		const i18 = useI18n();
+		const workflowsStore = useWorkflowsStore();
+
+		//computed
+
+		const nodesIssuesExist = computed(() => workflowsStore.nodesIssuesExist);
+
+		const isWorkflowActive = computed(() => {
+			const activeWorkflows = workflowsStore.activeWorkflows;
+			return activeWorkflows.includes(props.workflowId);
+		});
+
+		const couldNotBeStarted = computed(() => {
+			return props.workflowActive === true && isWorkflowActive.value !== props.workflowActive;
+		});
+
+		const isCurrentWorkflow = computed(
+			() => workflowsStore.workflowId === workflowsStore.workflowId,
+		);
+
+		const getActiveColor = computed(() => {
+			if (couldNotBeStarted.value) {
 				return '#ff4949';
 			}
 			return '#13ce66';
-		},
-		isCurrentWorkflow(): boolean {
-			return this.workflowsStore.workflowId === this.workflowId;
-		},
-		disabled(): boolean {
-			const isNewWorkflow = !this.workflowId;
-			if (isNewWorkflow || this.isCurrentWorkflow) {
-				return !this.workflowActive && !this.containsTrigger;
+		});
+
+		const disabled = computed(() => {
+			const isNewWorkflow = !props.workflowId;
+			if (isNewWorkflow || isCurrentWorkflow.value) {
+				return !props.workflowActive && !containsTrigger.value;
 			}
 
 			return false;
-		},
-		containsTrigger(): boolean {
-			const foundTriggers = getActivatableTriggerNodes(this.workflowsStore.workflowTriggerNodes);
+		});
+
+		const containsTrigger = computed(() => {
+			const foundTriggers = getActivatableTriggerNodes(workflowsStore.workflowTriggerNodes);
 			return foundTriggers.length > 0;
-		},
-	},
-	methods: {
-		async activeChanged(newActiveState: boolean) {
-			return await this.updateWorkflowActivation(this.workflowId, newActiveState);
-		},
-		async displayActivationError() {
+		});
+
+		//methods
+
+		const activeChanged = async (newActiveState: boolean) => {
+			return await workflowActive.updateWorkflowActivation(props.workflowId, newActiveState);
+		};
+
+		const displayActivationError = async () => {
 			let errorMessage: string;
 			try {
-				const errorData = await this.workflowsStore.getActivationError(this.workflowId);
+				const errorData = await workflowsStore.getActivationError(props.workflowId);
 
 				if (errorData === undefined) {
-					errorMessage = this.$locale.baseText(
+					errorMessage = i18.baseText(
 						'workflowActivator.showMessage.displayActivationError.message.errorDataUndefined',
 					);
 				} else {
-					errorMessage = this.$locale.baseText(
+					errorMessage = i18.baseText(
 						'workflowActivator.showMessage.displayActivationError.message.errorDataNotUndefined',
 						{ interpolate: { message: errorData } },
 					);
 				}
 			} catch (error) {
-				errorMessage = this.$locale.baseText(
+				errorMessage = i18.baseText(
 					'workflowActivator.showMessage.displayActivationError.message.catchBlock',
 				);
 			}
 
-			this.showMessage({
-				title: this.$locale.baseText('workflowActivator.showMessage.displayActivationError.title'),
+			toast.showMessage({
+				title: i18.baseText('workflowActivator.showMessage.displayActivationError.title'),
 				message: errorMessage,
 				type: 'warning',
 				duration: 0,
 				dangerouslyUseHTMLString: true,
 			});
-		},
+		};
+
+		return {
+			nodesIssuesExist,
+			isWorkflowActive,
+			couldNotBeStarted,
+			getActiveColor,
+			isCurrentWorkflow,
+			containsTrigger,
+			disabled,
+			activeChanged,
+			displayActivationError,
+			...{ updatingWorkflowActivation: workflowActive.updatingWorkflowActivation },
+		};
 	},
 });
 </script>
