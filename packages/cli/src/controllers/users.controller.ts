@@ -117,7 +117,9 @@ export class UsersController {
 	@Patch('/:id/settings')
 	@GlobalScope('user:update')
 	async updateUserSettings(req: UserRequest.UserSettingsUpdate) {
-		const payload = plainToInstance(UserSettingsUpdatePayload, req.body);
+		const payload = plainToInstance(UserSettingsUpdatePayload, req.body, {
+			excludeExtraneousValues: true,
+		});
 
 		const id = req.params.id;
 
@@ -293,7 +295,9 @@ export class UsersController {
 		const { NO_ADMIN_ON_OWNER, NO_USER, NO_OWNER_ON_OWNER } =
 			UsersController.ERROR_MESSAGES.CHANGE_ROLE;
 
-		const payload = plainToInstance(UserRoleChangePayload, req.body);
+		const payload = plainToInstance(UserRoleChangePayload, req.body, {
+			excludeExtraneousValues: true,
+		});
 		await validateEntity(payload);
 
 		const targetUser = await this.userRepository.findOne({

@@ -1,9 +1,8 @@
 import type { INodeUi } from '@/Interface';
 import { useContextMenu } from '@/composables/useContextMenu';
-import { BASIC_CHAIN_NODE_TYPE, NO_OP_NODE_TYPE, STICKY_NODE_TYPE, STORES } from '@/constants';
+import { BASIC_CHAIN_NODE_TYPE, NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
 import { faker } from '@faker-js/faker';
-import { createTestingPinia } from '@pinia/testing';
-import { setActivePinia } from 'pinia';
+import { createPinia, setActivePinia } from 'pinia';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -27,21 +26,18 @@ describe('useContextMenu', () => {
 	const selectedNodes = nodes.slice(0, 2);
 
 	beforeAll(() => {
-		setActivePinia(
-			createTestingPinia({
-				initialState: {
-					[STORES.UI]: { selectedNodes },
-					[STORES.WORKFLOWS]: { workflow: { nodes } },
-				},
-			}),
-		);
+		setActivePinia(createPinia());
 		sourceControlStore = useSourceControlStore();
-		uiStore = useUIStore();
-		workflowsStore = useWorkflowsStore();
-		vi.spyOn(uiStore, 'isReadOnlyView', 'get').mockReturnValue(false);
 		vi.spyOn(sourceControlStore, 'preferences', 'get').mockReturnValue({
 			branchReadOnly: false,
 		} as never);
+
+		uiStore = useUIStore();
+		uiStore.selectedNodes = selectedNodes;
+		vi.spyOn(uiStore, 'isReadOnlyView', 'get').mockReturnValue(false);
+
+		workflowsStore = useWorkflowsStore();
+		workflowsStore.workflow.nodes = nodes;
 		vi.spyOn(workflowsStore, 'getCurrentWorkflow').mockReturnValue({
 			nodes,
 			getNode: (_: string) => {
