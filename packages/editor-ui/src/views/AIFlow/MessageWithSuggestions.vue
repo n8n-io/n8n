@@ -7,7 +7,7 @@
 					:key="initialMessage.id"
 					:message="initialMessage"
 				/>
-				<p :class="$style.messageTitle">#{{ index + 1 }} {{ suggestion.title }}</p>
+				<p :class="$style.messageTitle"># {{ suggestion.title }}</p>
 				<p :class="$style.messageDescription">{{ suggestion.description }}</p>
 				<code v-if="suggestion.codeSnippet" :class="$style.messageDescription">{{
 					suggestion.codeSnippet

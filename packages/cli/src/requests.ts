@@ -173,7 +173,7 @@ export type Schema = { type: SchemaType; key?: string; value: string | Schema[];
 export interface AIDebugChatPayload {
 	text?: string;
 	sessionId: string;
-	error?: NodeError;
+	error?: NodeError & { text?: string };
 	schemas?: Array<{ node_name: string; schema: Schema }>;
 	nodes?: string[];
 	parameters?: IDataObject;

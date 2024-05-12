@@ -127,9 +127,11 @@ export const useAIStore = defineStore('ai', () => {
 		if (messageChunk === '__END__') {
 			const lastMessage = getLastMessage();
 			// If last message is a component, then show the follow-up actions
+
 			if (lastMessage.type === 'component') {
+				console.log(lastMessage.arguments);
 				const followUpQuestion: string = lastMessage.arguments.suggestions[0].followUpQuestion;
-				// const suggestedCode: string = lastMessage.arguments.suggestions[0].codeSnippet;
+				const suggestedCode: string = lastMessage.arguments.suggestions[0].codeSnippet;
 				// messages.value.push({
 				// 	createdAt: new Date().toISOString(),
 				// 	sender: 'bot',
@@ -146,13 +148,15 @@ export const useAIStore = defineStore('ai', () => {
 					id: Math.random().toString(),
 					text: followUpQuestion,
 				});
-				const followUpActions = lastMessage.arguments.suggestions.map((suggestion) => {
-					return {
-						label: suggestion.followUpAction,
-						key: 'test_code',
-					};
-				});
-				followUpActions.push({ label: 'No, try another suggestion', key: 'ask_question' });
+
+				let affirmativeAction = lastMessage.arguments.suggestions[0].codeSnippet
+					? { key: 'import_code', label: 'Yes, Import the code' }
+					: { ley: 'update_run_mode', label: 'Yes, update the run mode' };
+
+				const followUpActions = [
+					affirmativeAction,
+					{ key: 'another_suggestion', label: 'No, try another suggestion' },
+				];
 				const newMessageId = Math.random().toString();
 				messages.value.push({
 					createdAt: new Date().toISOString(),
@@ -164,24 +168,20 @@ export const useAIStore = defineStore('ai', () => {
 					arguments: {
 						suggestions: followUpActions,
 						async onReplySelected({ label, key }: { action: string; label: string }) {
-							console.log(label);
-							console.log(key);
-							if (key === 'test_code') {
-								const currentNode = useNDVStore().activeNode;
+							if (key === 'import_code') {
+								eventBus.emit('updateCodeContent', suggestedCode);
 
-								// properties: {
-								// 	parameters: {
-								// 		...node.parameters,
-								// 		[nodeAuthField.name]: type,
-								// 	},
-								eventBus.emit('updateCodeContent');
+								messages.value.push({
+									createdAt: new Date().toISOString(),
+									sender: 'bot',
+									type: 'text',
+									id: Math.random().toString(),
+									text: 'Perfect, I inserted the code. Feel free to execute the the node again.',
+								});
 
-								// useWorkflowsStore().updateNodeProperties({
-								// 	name: currentNode?.name,
-								// 	properties: {
-								// 		parameters: { jsCode: 'suggestedCode' },
-								// 	},
-								// });
+								await nextTick();
+								await nextTick();
+								chatEventBus.emit('scrollToBottom');
 								return;
 							}
 
@@ -193,6 +193,8 @@ export const useAIStore = defineStore('ai', () => {
 						},
 					},
 				});
+				await nextTick();
+				await nextTick();
 				chatEventBus.emit('scrollToBottom');
 			}
 			return;
@@ -200,7 +202,15 @@ export const useAIStore = defineStore('ai', () => {
 
 		const parsedMessage = jsonParse<Record<string, unknown>>(messageChunk);
 
-		console.log(parsedMessage);
+		const suggestions = [
+			{
+				...parsedMessage.suggestion,
+				key: 'testingricardo',
+				followUpQuestion: 'Would you like to try this solution?',
+			},
+		];
+
+		console.log(suggestions);
 
 		if (getLastMessage()?.sender !== 'bot') {
 			messages.value.push({
@@ -210,7 +220,7 @@ export const useAIStore = defineStore('ai', () => {
 				type: 'component',
 				id: Math.random().toString(),
 				arguments: {
-					...parsedMessage,
+					suggestions,
 				},
 			});
 			chatEventBus.emit('scrollToBottom');
@@ -220,7 +230,7 @@ export const useAIStore = defineStore('ai', () => {
 		const lastMessage = getLastMessage();
 
 		if (lastMessage.type === 'component') {
-			lastMessage.arguments = parsedMessage;
+			lastMessage.arguments = { suggestions };
 			await nextTick();
 			await nextTick();
 			chatEventBus.emit('scrollToBottom');
@@ -250,9 +260,22 @@ export const useAIStore = defineStore('ai', () => {
 
 		const currentNodeParameters = currentNode?.parameters ?? {};
 		const currentUser = usersStore.currentUser ?? ({} as IUser);
+		const activeNode = useNDVStore().activeNode?.id;
+
+		const digestMessage = async (message) => {
+			const msgUint8 = new TextEncoder().encode(message); // encode as (utf-8) Uint8Array
+			const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8); // hash the message
+			const hashArray = Array.from(new Uint8Array(hashBuffer)); // convert buffer to byte array
+			const hashHex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join(''); // convert bytes to hex string
+			return hashHex;
+		};
+
 		// return;
+
+		const errorId = await digestMessage(error.message);
+
 		messages.value = [];
-		currentSessionId.value = `${currentUser.id}-${error.timestamp}`;
+		currentSessionId.value = `${currentUser.id}-${activeNode}-${errorId}`;
 		chatTitle.value = error.message;
 		delete error.stack;
 		chatEventBus.emit('open');
