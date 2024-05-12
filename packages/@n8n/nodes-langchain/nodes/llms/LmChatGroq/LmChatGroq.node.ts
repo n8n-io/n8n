@@ -8,8 +8,8 @@ import {
 } from 'n8n-workflow';
 
 import { ChatGroq } from '@langchain/groq';
-import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatGroq implements INodeType {
 	description: INodeTypeDescription = {
@@ -142,10 +142,11 @@ export class LmChatGroq implements INodeType {
 			modelName,
 			maxTokens: options.maxTokensToSample,
 			temperature: options.temperature,
+			callbacks: [new N8nLlmTracing(this)],
 		});
 
 		return {
-			response: logWrapper(model, this),
+			response: model,
 		};
 	}
 }
