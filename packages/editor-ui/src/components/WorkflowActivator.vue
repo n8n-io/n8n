@@ -52,7 +52,7 @@
 
 <script lang="ts">
 import { useToast } from '@/composables/useToast';
-import { useWorkflowActive } from '@/mixins/useWorkflowActivate';
+import { useWorkflowActive } from '@/composables/useWorkflowActivate';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { defineComponent } from 'vue';
 import { getActivatableTriggerNodes } from '@/utils/nodeTypesUtils';

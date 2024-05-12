@@ -165,7 +165,7 @@ import {
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/constants';
-import { workflowActivate } from '@/mixins/workflowActivate';
+import { useWorkflowActive } from '@/composables/useWorkflowActivate';
 import { dataPinningEventBus } from '@/event-bus';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -189,7 +189,6 @@ export default defineComponent({
 		NDVDraggablePanels,
 		TriggerPanel,
 	},
-	mixins: [workflowActivate],
 	props: {
 		readOnly: {
 			type: Boolean,
@@ -216,10 +215,9 @@ export default defineComponent({
 			nodeHelpers,
 			pinnedData,
 			workflowHelpers,
+			...useWorkflowActive(),
 			...useDeviceSupport(),
 			...useMessage(),
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowActivate.setup?.(props, ctx),
 		};
 	},
 	data() {
