@@ -140,6 +140,10 @@ export class WorkflowExecute {
 		return this.processRunExecutionData(workflow);
 	}
 
+	static isAbortError(e?: ExecutionBaseError) {
+		return e?.message === 'AbortError';
+	}
+
 	forceInputNodeExecution(workflow: Workflow): boolean {
 		return workflow.settings.executionOrder !== 'v1';
 	}
@@ -834,7 +838,6 @@ export class WorkflowExecute {
 				this.abortController.abort();
 				const fullRunData = this.getFullRunData(startedAt);
 				void this.executeHook('workflowExecuteAfter', [fullRunData]);
-				setTimeout(() => resolve(fullRunData), 10);
 			});
 
 			// eslint-disable-next-line complexity
@@ -1323,12 +1326,14 @@ export class WorkflowExecute {
 
 							// Add the execution data again so that it can get restarted
 							this.runExecutionData.executionData!.nodeExecutionStack.unshift(executionData);
-
-							await this.executeHook('nodeExecuteAfter', [
-								executionNode.name,
-								taskData,
-								this.runExecutionData,
-							]);
+							// Only execute the nodeExecuteAfter hook if the node did not get aborted
+							if (!WorkflowExecute.isAbortError(executionError)) {
+								await this.executeHook('nodeExecuteAfter', [
+									executionNode.name,
+									taskData,
+									this.runExecutionData,
+								]);
+							}
 
 							break;
 						}
@@ -1770,8 +1775,10 @@ export class WorkflowExecute {
 		}
 
 		this.moveNodeMetadata();
-
-		await this.executeHook('workflowExecuteAfter', [fullRunData, newStaticData]);
+		// Prevent from running the hook if the error is an abort error as it was already handled
+		if (!WorkflowExecute.isAbortError(executionError)) {
+			await this.executeHook('workflowExecuteAfter', [fullRunData, newStaticData]);
+		}
 
 		if (closeFunction) {
 			try {
