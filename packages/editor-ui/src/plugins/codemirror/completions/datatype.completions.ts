@@ -328,7 +328,7 @@ const customObjectOptions = (input: AutocompleteInput<IDataObject>): Completion[
 		return inputOptions(base);
 	} else if (base === '$prevNode') {
 		return prevNodeOptions();
-	} else if (/^\$\([^\(\)]+\)$/.test(base)) {
+	} else if (/^\$\(['"][\S\s]+['"]\)$/.test(base)) {
 		return nodeRefOptions(base);
 	} else if (base === '$response') {
 		return responseOptions();
