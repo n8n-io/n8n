@@ -166,7 +166,7 @@ export class ProjectService {
 		const limit = this.license.getTeamProjectLimit();
 		if (
 			limit !== UNLIMITED_LICENSE_QUOTA &&
-			limit >= (await this.projectRepository.count({ where: { type: 'team' } }))
+			limit <= (await this.projectRepository.count({ where: { type: 'team' } }))
 		) {
 			throw new TeamProjectOverQuotaError(limit);
 		}

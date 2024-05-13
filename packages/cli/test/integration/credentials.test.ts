@@ -279,7 +279,7 @@ describe('POST /credentials', () => {
 		//
 		// ARRANGE
 		//
-		const project = await Container.get(ProjectService).createTeamProject('Team Project', owner);
+		const project = await createTeamProject('Team Project', owner);
 
 		//
 		// ACT
