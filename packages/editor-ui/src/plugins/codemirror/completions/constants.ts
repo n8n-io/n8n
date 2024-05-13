@@ -341,7 +341,7 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 	{
 		label: '$nodeVersion',
 		section: METADATA_SECTION,
-		info: i18n.rootVars.$nodeVersion,
+		info: i18n.baseText('codeNodeEditor.completer.$nodeVersion'),
 	},
 ];
 
