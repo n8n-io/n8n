@@ -29,9 +29,18 @@ export const numberMethods: NativeDoc = {
 		toString: {
 			doc: {
 				name: 'toString',
-				description: 'returns a string representing this number value.',
+				description: 'Returns a string representing this number value.',
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/toString',
+				returnType: 'string',
+			},
+		},
+		toLocaleString: {
+			doc: {
+				name: 'toLocaleString',
+				description: 'Returns a string with a language-sensitive representation of this number.',
+				docURL:
+					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/toLocaleString',
 				returnType: 'string',
 			},
 		},

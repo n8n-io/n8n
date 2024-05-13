@@ -73,6 +73,7 @@ describe('Data mapping', () => {
 		ndv.actions.mapToParameter('value');
 
 		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.input[0].count }}');
+		ndv.getters.inlineExpressionEditorInput().type('{esc}');
 		ndv.getters.parameterExpressionPreview('value').should('include.text', '0');
 
 		ndv.getters.inputTbodyCell(1, 0).realHover();
