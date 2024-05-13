@@ -273,7 +273,7 @@ const WorkflowsView = defineComponent({
 			return (
 				!!this.$route.params.projectId ||
 				!!this.allWorkflows.length ||
-				!!this.projectsStore.myProjects.length
+				this.projectsStore.myProjects.length > 1
 			);
 		},
 		addWorkflowButtonText() {
