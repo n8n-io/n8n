@@ -286,20 +286,10 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 				description: i18n.baseText('codeNodeEditor.completer.$max'),
 				args: [
 					{
-						name: 'num1',
-						description: i18n.baseText('codeNodeEditor.completer.$max.args.num1'),
+						name: 'numbers',
+						description: i18n.baseText('codeNodeEditor.completer.$max.args.numbers'),
 						type: 'number',
-					},
-					{
-						name: 'num2',
-						description: i18n.baseText('codeNodeEditor.completer.$max.args.num2'),
-						type: 'number',
-					},
-					{
-						name: 'numN',
-						optional: true,
-						description: i18n.baseText('codeNodeEditor.completer.$max.args.numN'),
-						type: 'number',
+						variadic: true,
 					},
 				],
 				examples: [{ example: '$max(1, 5, 42, 0.5)', evaluated: '42' }],
@@ -317,19 +307,9 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 				description: i18n.baseText('codeNodeEditor.completer.$min'),
 				args: [
 					{
-						name: 'num1',
-						description: i18n.baseText('codeNodeEditor.completer.$max.args.num1'),
-						type: 'number',
-					},
-					{
-						name: 'num2',
-						description: i18n.baseText('codeNodeEditor.completer.$max.args.num2'),
-						type: 'number',
-					},
-					{
-						name: 'numN',
-						optional: true,
-						description: i18n.baseText('codeNodeEditor.completer.$max.args.numN'),
+						name: 'numbers',
+						description: i18n.baseText('codeNodeEditor.completer.$max.args.numbers'),
+						variadic: true,
 						type: 'number',
 					},
 				],
