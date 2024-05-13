@@ -3,7 +3,7 @@ import { Service } from 'typedi';
 import {
 	ApplicationError,
 	BINARY_ENCODING,
-	IDataObject,
+	type IDataObject,
 	type ExecutionError,
 	type IExecuteResponsePromiseData,
 } from 'n8n-workflow';
