@@ -3463,7 +3463,7 @@ describe('NodeHelpers', () => {
 			expect(hints).toHaveLength(1);
 			expect(hints[0].message).toEqual('TEST HINT');
 		});
-		test('should not include hint id displayCondition false', () => {
+		test('should not include hint if displayCondition is false', () => {
 			const testType = {
 				hints: [
 					{
@@ -3495,7 +3495,7 @@ describe('NodeHelpers', () => {
 
 			expect(hints).toHaveLength(0);
 		});
-		test('should include hint id displayCondition true', () => {
+		test('should include hint if displayCondition is true', () => {
 			const testType = {
 				hints: [
 					{
