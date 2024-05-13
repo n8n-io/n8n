@@ -21,12 +21,23 @@
 			/>
 		</div>
 		<div v-else>
-			<n8n-info-tip v-if="!credentialPermissions.share" :bold="false" class="mb-s">
+			<n8n-info-tip
+				v-if="!credentialPermissions.share && !isHomeTeamProject"
+				:bold="false"
+				class="mb-s"
+			>
 				{{
 					$locale.baseText('credentialEdit.credentialSharing.info.sharee', {
 						interpolate: { credentialOwnerName },
 					})
 				}}
+			</n8n-info-tip>
+			<n8n-info-tip
+				v-if="credentialPermissions.share && !isHomeTeamProject"
+				:bold="false"
+				class="mb-s"
+			>
+				{{ $locale.baseText('credentialEdit.credentialSharing.info.owner') }}
 			</n8n-info-tip>
 			<ProjectSharing
 				v-model="sharedWithProjects"

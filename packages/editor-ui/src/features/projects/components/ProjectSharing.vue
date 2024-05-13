@@ -144,10 +144,10 @@ watch(
 					<N8nOption v-for="role in roles" :key="role.role" :value="role.role" :label="role.name" />
 				</N8nSelect>
 				<N8nButton
-					v-if="!props.readonly"
 					type="tertiary"
 					square
 					icon="trash"
+					:disabled="props.readonly"
 					data-test-id="project-sharing-remove"
 					@click="onRoleAction(project, 'remove')"
 				/>

@@ -6,6 +6,7 @@ import { defineStore } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { i18n } from '@/plugins/i18n';
 import type { ProjectSharingData } from '@/features/projects/projects.types';
+import { splitName } from '@/features/projects/projects.utils';
 
 export const useWorkflowsEEStore = defineStore(STORES.WORKFLOWS_EE, {
 	state() {
@@ -18,9 +19,9 @@ export const useWorkflowsEEStore = defineStore(STORES.WORKFLOWS_EE, {
 				fallback = i18n.baseText('workflows.shareModal.info.sharee.fallback'),
 			): string => {
 				const workflow = useWorkflowsStore().getWorkflowById(workflowId);
-				return workflow?.ownedBy?.firstName
-					? `${workflow.ownedBy.firstName} ${workflow.ownedBy.lastName} (${workflow.ownedBy.email})`
-					: fallback;
+				const { firstName, lastName, email } = splitName(workflow.homeProject?.name ?? '');
+
+				return workflow?.homeProject?.name ? `${firstName} ${lastName} (${email})` : fallback;
 			};
 		},
 	},

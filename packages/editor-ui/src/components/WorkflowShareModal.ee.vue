@@ -19,7 +19,11 @@
 				</n8n-text>
 			</div>
 			<div v-else :class="$style.container">
-				<n8n-info-tip v-if="!workflowPermissions.share" :bold="false" class="mb-s">
+				<n8n-info-tip
+					v-if="!workflowPermissions.share && !isHomeTeamProject"
+					:bold="false"
+					class="mb-s"
+				>
 					{{
 						$locale.baseText('workflows.shareModal.info.sharee', {
 							interpolate: { workflowOwnerName },
