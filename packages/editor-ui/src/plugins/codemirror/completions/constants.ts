@@ -321,7 +321,11 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 	{
 		label: '$nodeVersion',
 		section: METADATA_SECTION,
-		info: i18n.baseText('codeNodeEditor.completer.$nodeVersion'),
+		info: createInfoBoxRenderer({
+			name: '$nodeVersion',
+			returnType: 'number',
+			description: i18n.baseText('codeNodeEditor.completer.$nodeVersion'),
+		}),
 	},
 ];
 
