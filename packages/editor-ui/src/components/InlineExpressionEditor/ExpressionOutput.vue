@@ -103,6 +103,9 @@ onMounted(() => {
 			],
 		}),
 	});
+
+	highlighter.addColor(editor.value as EditorView, resolvedSegments.value);
+	highlighter.removeColor(editor.value as EditorView, plaintextSegments.value);
 });
 
 onBeforeUnmount(() => {

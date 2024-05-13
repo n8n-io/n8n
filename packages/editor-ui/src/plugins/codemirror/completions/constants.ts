@@ -1,6 +1,7 @@
 import type { Completion, CompletionSection } from '@codemirror/autocomplete';
 import { i18n } from '@/plugins/i18n';
 import { withSectionHeader } from './utils';
+import { createInfoBoxRenderer } from './infoBoxRenderer';
 
 export const FIELDS_SECTION: CompletionSection = withSectionHeader({
 	name: i18n.baseText('codeNodeEditor.completer.section.fields'),
@@ -51,87 +52,239 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 	{
 		label: '$json',
 		section: RECOMMENDED_SECTION,
-		info: i18n.rootVars.$json,
+		info: createInfoBoxRenderer({
+			name: '$json',
+			returnType: 'object',
+			description: i18n.rootVars.$json,
+			docURL: 'https://docs.n8n.io/data/data-structure/',
+		}),
 	},
 	{
 		label: '$binary',
 		section: RECOMMENDED_SECTION,
-		info: i18n.rootVars.$binary,
+		info: createInfoBoxRenderer({
+			name: '$binary',
+			returnType: 'object',
+			description: i18n.rootVars.$binary,
+		}),
 	},
 	{
 		label: '$now',
 		section: RECOMMENDED_SECTION,
-		info: i18n.rootVars.$now,
+		info: createInfoBoxRenderer({
+			name: '$now',
+			returnType: 'DateTime',
+			description: i18n.rootVars.$now,
+		}),
 	},
 	{
 		label: '$if()',
 		section: RECOMMENDED_SECTION,
-		info: i18n.rootVars.$if,
+		info: createInfoBoxRenderer(
+			{
+				name: '$if',
+				returnType: 'boolean',
+				description: i18n.rootVars.$if,
+				args: [
+					{
+						name: 'condition',
+						optional: false,
+						type: 'boolean',
+					},
+					{
+						name: 'valueIfTrue',
+						optional: false,
+						type: 'any',
+					},
+					{
+						name: 'valueIfFalse',
+						optional: false,
+						type: 'any',
+					},
+				],
+			},
+			true,
+		),
 	},
 	{
 		label: '$ifEmpty()',
 		section: RECOMMENDED_SECTION,
-		info: i18n.rootVars.$ifEmpty,
+		info: createInfoBoxRenderer(
+			{
+				name: '$ifEmpty',
+				returnType: 'boolean',
+				description: i18n.rootVars.$ifEmpty,
+				args: [
+					{
+						name: 'value',
+						optional: false,
+						type: 'any',
+					},
+					{
+						name: 'valueIfEmpty',
+						optional: false,
+						type: 'any',
+					},
+				],
+			},
+			true,
+		),
 	},
 	{
 		label: '$execution',
 		section: METADATA_SECTION,
-		info: i18n.rootVars.$execution,
+		info: createInfoBoxRenderer({
+			name: '$execution',
+			returnType: 'object',
+			description: i18n.rootVars.$execution,
+		}),
 	},
 	{
 		label: '$itemIndex',
 		section: METADATA_SECTION,
-		info: i18n.rootVars.$itemIndex,
+		info: createInfoBoxRenderer({
+			name: '$itemIndex',
+			returnType: 'number',
+			description: i18n.rootVars.$itemIndex,
+		}),
 	},
 	{
 		label: '$input',
 		section: METADATA_SECTION,
-		info: i18n.rootVars.$input,
+		info: createInfoBoxRenderer({
+			name: '$input',
+			returnType: 'object',
+			description: i18n.rootVars.$input,
+		}),
 	},
 	{
 		label: '$parameter',
 		section: METADATA_SECTION,
-		info: i18n.rootVars.$parameter,
+		info: createInfoBoxRenderer({
+			name: '$parameter',
+			returnType: 'object',
+			description: i18n.rootVars.$parameter,
+		}),
 	},
 	{
 		label: '$prevNode',
 		section: METADATA_SECTION,
-		info: i18n.rootVars.$prevNode,
+		info: createInfoBoxRenderer({
+			name: '$prevNode',
+			returnType: 'object',
+			description: i18n.rootVars.$prevNode,
+		}),
 	},
 	{
 		label: '$runIndex',
 		section: METADATA_SECTION,
-		info: i18n.rootVars.$runIndex,
+		info: createInfoBoxRenderer({
+			name: '$runIndex',
+			returnType: 'number',
+			description: i18n.rootVars.$runIndex,
+		}),
 	},
 	{
 		label: '$today',
 		section: METADATA_SECTION,
-		info: i18n.rootVars.$today,
+		info: createInfoBoxRenderer({
+			name: '$today',
+			returnType: 'DateTime',
+			description: i18n.rootVars.$today,
+		}),
 	},
 	{
 		label: '$vars',
 		section: METADATA_SECTION,
-		info: i18n.rootVars.$vars,
+		info: createInfoBoxRenderer({
+			name: '$vars',
+			returnType: 'object',
+			description: i18n.rootVars.$vars,
+		}),
 	},
 	{
 		label: '$workflow',
 		section: METADATA_SECTION,
-		info: i18n.rootVars.$workflow,
+		info: createInfoBoxRenderer({
+			name: '$workflow',
+			returnType: 'object',
+			description: i18n.rootVars.$workflow,
+		}),
 	},
 	{
 		label: '$jmespath()',
 		section: METHODS_SECTION,
-		info: i18n.rootVars.$jmespath,
+		info: createInfoBoxRenderer(
+			{
+				name: '$jmespath',
+				returnType: 'any',
+				description: i18n.rootVars.$jmespath,
+			},
+			true,
+		),
 	},
 	{
 		label: '$max()',
 		section: METHODS_SECTION,
-		info: i18n.rootVars.$max,
+		info: createInfoBoxRenderer(
+			{
+				name: '$max',
+				returnType: 'number',
+				description: i18n.rootVars.$max,
+				args: [
+					{
+						name: 'number1',
+						optional: false,
+						type: 'number',
+					},
+					{
+						name: 'number2',
+						optional: true,
+						type: 'number',
+					},
+					{
+						name: 'numberN',
+						optional: true,
+						type: 'number',
+					},
+				],
+			},
+			true,
+		),
 	},
 	{
 		label: '$min()',
 		section: METHODS_SECTION,
-		info: i18n.rootVars.$min,
+		info: createInfoBoxRenderer(
+			{
+				name: '$min',
+				returnType: 'number',
+				description: i18n.rootVars.$min,
+				args: [
+					{
+						name: 'number1',
+						optional: false,
+						type: 'number',
+					},
+					{
+						name: 'number2',
+						optional: true,
+						type: 'number',
+					},
+					{
+						name: 'numberN',
+						optional: true,
+						type: 'number',
+					},
+				],
+			},
+			true,
+		),
+	},
+	{
+		label: '$nodeVersion',
+		section: METADATA_SECTION,
+		info: i18n.rootVars.$nodeVersion,
 	},
 ];
 
@@ -143,7 +296,6 @@ export const STRING_RECOMMENDED_OPTIONS = [
 	'length',
 ];
 
-export const DATE_RECOMMENDED_OPTIONS = ['format()', 'minus()', 'plus()', 'extract()'];
 export const LUXON_RECOMMENDED_OPTIONS = ['format()', 'minus()', 'plus()', 'diff()', 'extract()'];
 export const OBJECT_RECOMMENDED_OPTIONS = ['keys()', 'values()', 'isEmpty()', 'hasField()'];
 export const ARRAY_RECOMMENDED_OPTIONS = ['length', 'last()', 'includes()', 'map()', 'filter()'];

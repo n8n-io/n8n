@@ -7,6 +7,7 @@ import {
 	type Ref,
 	toValue,
 	watch,
+	onMounted,
 } from 'vue';
 
 import { ensureSyntaxTree } from '@codemirror/language';
@@ -24,7 +25,7 @@ import {
 	getResolvableState,
 	isEmptyExpression,
 } from '@/utils/expressions';
-import { completionStatus } from '@codemirror/autocomplete';
+import { closeCompletion, completionStatus } from '@codemirror/autocomplete';
 import {
 	Compartment,
 	EditorState,
@@ -105,7 +106,7 @@ export const useExpressionEditor = ({
 			const { from, to, text, token } = segment;
 
 			if (token === 'Resolvable') {
-				const { resolved, error, fullError } = resolve(text, hoveringItem.value);
+				const { resolved, error, fullError } = resolve(text, targetItem.value);
 				acc.push({
 					kind: 'resolvable',
 					from,
@@ -158,6 +159,19 @@ export const useExpressionEditor = ({
 		debouncedUpdateSegments();
 	}
 
+	function blur() {
+		if (editor.value) {
+			editor.value.contentDOM.blur();
+			closeCompletion(editor.value);
+		}
+	}
+
+	function blurOnClickOutside(event: MouseEvent) {
+		if (event.target && !editor.value?.dom.contains(event.target as Node)) {
+			blur();
+		}
+	}
+
 	watch(editorRef, () => {
 		const parent = toValue(editorRef);
 
@@ -176,6 +190,10 @@ export const useExpressionEditor = ({
 				EditorView.focusChangeEffect.of((_, newHasFocus) => {
 					hasFocus.value = newHasFocus;
 					selection.value = state.selection.ranges[0];
+					if (!newHasFocus) {
+						autocompleteStatus.value = null;
+						debouncedUpdateSegments();
+					}
 					return null;
 				}),
 				EditorView.contentAttributes.of({ 'data-gramm': 'false' }), // disable grammarly
@@ -231,7 +249,12 @@ export const useExpressionEditor = ({
 		});
 	});
 
+	onMounted(() => {
+		document.addEventListener('click', blurOnClickOutside);
+	});
+
 	onBeforeUnmount(() => {
+		document.removeEventListener('click', blurOnClickOutside);
 		editor.value?.destroy();
 	});
 
@@ -253,7 +276,7 @@ export const useExpressionEditor = ({
 		return end !== undefined && expressionExtensionNames.value.has(end);
 	}
 
-	function resolve(resolvable: string, hoverItem: TargetItem | null) {
+	function resolve(resolvable: string, target: TargetItem | null) {
 		const result: { resolved: unknown; error: boolean; fullError: Error | null } = {
 			resolved: undefined,
 			error: false,
@@ -268,7 +291,7 @@ export const useExpressionEditor = ({
 				let opts;
 				if (ndvStore.isInputParentOfActiveNode) {
 					opts = {
-						targetItem: hoverItem ?? undefined,
+						targetItem: target ?? undefined,
 						inputNodeName: ndvStore.ndvInputNodeName,
 						inputRunIndex: ndvStore.ndvInputRunIndex,
 						inputBranchIndex: ndvStore.ndvInputBranchIndex,
@@ -306,8 +329,21 @@ export const useExpressionEditor = ({
 		return result;
 	}
 
-	const hoveringItem = computed(() => {
-		return ndvStore.hoveringItem;
+	const targetItem = computed<TargetItem | null>(() => {
+		if (ndvStore.hoveringItem) {
+			return ndvStore.hoveringItem;
+		}
+
+		if (ndvStore.expressionOutputItemIndex && ndvStore.ndvInputNodeName) {
+			return {
+				nodeName: ndvStore.ndvInputNodeName,
+				runIndex: ndvStore.ndvInputRunIndex ?? 0,
+				outputIndex: ndvStore.ndvInputBranchIndex ?? 0,
+				itemIndex: ndvStore.expressionOutputItemIndex,
+			};
+		}
+
+		return null;
 	});
 
 	const resolvableSegments = computed<Resolvable[]>(() => {
@@ -372,13 +408,11 @@ export const useExpressionEditor = ({
 	});
 
 	watch(
-		[
-			() => workflowsStore.getWorkflowExecution,
-			() => workflowsStore.getWorkflowRunData,
-			() => ndvStore.hoveringItemNumber,
-		],
+		[() => workflowsStore.getWorkflowExecution, () => workflowsStore.getWorkflowRunData],
 		debouncedUpdateSegments,
 	);
+
+	watch(targetItem, updateSegments);
 
 	watch(resolvableSegments, updateHighlighting);
 
