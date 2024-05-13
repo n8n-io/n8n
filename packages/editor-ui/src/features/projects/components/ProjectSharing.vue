@@ -134,7 +134,7 @@ watch(
 			>
 				<ProjectSharingInfo :project="project" />
 				<N8nSelect
-					v-if="props.roles?.length"
+					v-if="props.roles?.length && !props.static"
 					:class="$style.projectRoleSelect"
 					:model-value="props.roles[0]"
 					:disabled="props.readonly"
@@ -144,6 +144,7 @@ watch(
 					<N8nOption v-for="role in roles" :key="role.role" :value="role.role" :label="role.name" />
 				</N8nSelect>
 				<N8nButton
+					v-if="!props.static"
 					type="tertiary"
 					square
 					icon="trash"

@@ -45,7 +45,7 @@
 				:roles="credentialRoles"
 				:home-project="homeProject"
 				:readonly="!credentialPermissions.share"
-				:static="isHomeTeamProject"
+				:static="isHomeTeamProject || !credentialPermissions.share"
 				:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
 			/>
 			<n8n-info-tip v-if="isHomeTeamProject" :bold="false" class="mt-s">

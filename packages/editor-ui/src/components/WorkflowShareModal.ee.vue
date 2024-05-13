@@ -38,7 +38,7 @@
 							:projects="projects"
 							:roles="workflowRoles"
 							:readonly="!workflowPermissions.share"
-							:static="isHomeTeamProject"
+							:static="isHomeTeamProject || !workflowPermissions.share"
 							:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
 							@project-added="onProjectAdded"
 							@project-removed="onProjectRemoved"
