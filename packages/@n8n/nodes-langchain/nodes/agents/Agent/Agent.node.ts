@@ -289,7 +289,7 @@ export class Agent implements INodeType {
 						name: 'Tools Agent',
 						value: 'toolsAgent',
 						description:
-							'Utilized unified Tooling interface to select the appropriate tools and argument for execution',
+							'Utilized unified Tool calling interface to select the appropriate tools and argument for execution',
 					},
 				],
 				default: 'conversationalAgent',
