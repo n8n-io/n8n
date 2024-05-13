@@ -7,6 +7,7 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	INodeProperties,
 } from 'n8n-workflow';
 import { getTemplateNoticeField } from '../../../utils/sharedFields';
 import { promptTypeOptions, textInput } from '../../../utils/descriptions';
@@ -101,6 +102,7 @@ function getInputs(
 				filter: {
 					nodes: [
 						'@n8n/n8n-nodes-langchain.lmChatAnthropic',
+						'@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
 						'@n8n/n8n-nodes-langchain.lmChatMistralCloud',
 						'@n8n/n8n-nodes-langchain.lmChatOpenAi',
 						'@n8n/n8n-nodes-langchain.lmChatGroq',
@@ -183,13 +185,57 @@ function getInputs(
 	return [NodeConnectionType.Main, ...getInputData(specialInputs)];
 }
 
+const agentTypeProperty: INodeProperties = {
+	displayName: 'Agent',
+	name: 'agent',
+	type: 'options',
+	noDataExpression: true,
+	options: [
+		{
+			name: 'Conversational Agent',
+			value: 'conversationalAgent',
+			description:
+				'Selects tools to accomplish its task and uses memory to recall previous conversations',
+		},
+		{
+			name: 'OpenAI Functions Agent',
+			value: 'openAiFunctionsAgent',
+			description:
+				"Utilizes OpenAI's Function Calling feature to select the appropriate tool and arguments for execution",
+		},
+		{
+			name: 'Plan and Execute Agent',
+			value: 'planAndExecuteAgent',
+			description:
+				'Plan and execute agents accomplish an objective by first planning what to do, then executing the sub tasks',
+		},
+		{
+			name: 'ReAct Agent',
+			value: 'reActAgent',
+			description: 'Strategically select tools to accomplish a given task',
+		},
+		{
+			name: 'SQL Agent',
+			value: 'sqlAgent',
+			description: 'Answers questions about data in an SQL database',
+		},
+		{
+			name: 'Tools Agent',
+			value: 'toolsAgent',
+			description:
+				'Utilized unified Tool calling interface to select the appropriate tools and argument for execution',
+		},
+	],
+	default: '',
+};
+
 export class Agent implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AI Agent',
 		name: 'agent',
 		icon: 'fa:robot',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
 		description: 'Generates an action plan and executes it. Can use external tools.',
 		subtitle:
 			"={{ {	toolsAgent: 'Tools Agent', conversationalAgent: 'Conversational Agent', openAiFunctionsAgent: 'OpenAI Functions Agent', reActAgent: 'ReAct Agent', sqlAgent: 'SQL Agent', planAndExecuteAgent: 'Plan and Execute Agent' }[$parameter.agent] }}",
@@ -251,48 +297,17 @@ export class Agent implements INodeType {
 					},
 				},
 			},
+			// Make Conversational Agent the default agent for versions 1.5 and below
 			{
-				displayName: 'Agent',
-				name: 'agent',
-				type: 'options',
-				noDataExpression: true,
-				options: [
-					{
-						name: 'Conversational Agent',
-						value: 'conversationalAgent',
-						description:
-							'Selects tools to accomplish its task and uses memory to recall previous conversations',
-					},
-					{
-						name: 'OpenAI Functions Agent',
-						value: 'openAiFunctionsAgent',
-						description:
-							"Utilizes OpenAI's Function Calling feature to select the appropriate tool and arguments for execution",
-					},
-					{
-						name: 'Plan and Execute Agent',
-						value: 'planAndExecuteAgent',
-						description:
-							'Plan and execute agents accomplish an objective by first planning what to do, then executing the sub tasks',
-					},
-					{
-						name: 'ReAct Agent',
-						value: 'reActAgent',
-						description: 'Strategically select tools to accomplish a given task',
-					},
-					{
-						name: 'SQL Agent',
-						value: 'sqlAgent',
-						description: 'Answers questions about data in an SQL database',
-					},
-					{
-						name: 'Tools Agent',
-						value: 'toolsAgent',
-						description:
-							'Utilized unified Tool calling interface to select the appropriate tools and argument for execution',
-					},
-				],
+				...agentTypeProperty,
+				displayOptions: { show: { '@version': [{ _cnd: { lte: 1.5 } }] } },
 				default: 'conversationalAgent',
+			},
+			// Make Tools Agent the default agent for versions 1.6 and above
+			{
+				...agentTypeProperty,
+				displayOptions: { show: { '@version': [{ _cnd: { gte: 1.6 } }] } },
+				default: 'toolsAgent',
 			},
 			{
 				...promptTypeOptions,

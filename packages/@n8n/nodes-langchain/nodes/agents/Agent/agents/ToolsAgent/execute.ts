@@ -46,7 +46,7 @@ export async function toolsAgentExecute(
 	this.logger.verbose('Executing Tools Agent');
 	const model = await this.getInputConnectionData(NodeConnectionType.AiLanguageModel, 0);
 
-	if (!isChatInstance(model)) {
+	if (!isChatInstance(model) || !model.bindTools) {
 		throw new NodeOperationError(
 			this.getNode(),
 			'Tools Agent requires Chat Model which supports Tools calling',
