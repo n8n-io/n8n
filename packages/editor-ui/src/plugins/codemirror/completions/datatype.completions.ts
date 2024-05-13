@@ -1247,17 +1247,12 @@ export const objectGlobalOptions = () => {
 			description: i18n.baseText('codeNodeEditor.completer.globalObject.assign'),
 			args: [
 				{
-					name: 'object1',
+					name: 'target',
 					type: 'object',
 				},
 				{
-					name: 'object2',
-					optional: true,
-					type: 'object',
-				},
-				{
-					name: 'objectN',
-					optional: true,
+					name: 'sources',
+					variadic: true,
 					type: 'object',
 				},
 			],
@@ -1324,7 +1319,7 @@ export const objectGlobalOptions = () => {
 				},
 			],
 			description: i18n.baseText('codeNodeEditor.completer.globalObject.values'),
-			returnType: 'any[]',
+			returnType: 'Array',
 			docURL:
 				'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/values',
 		},

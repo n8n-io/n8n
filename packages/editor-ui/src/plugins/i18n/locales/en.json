@@ -266,7 +266,7 @@
 	"codeNodeEditor.completer.item.json": "Returns the JSON data the item contains.",
 	"codeNodeEditor.completer.math": "Mathematical utility methods",
 	"codeNodeEditor.completer.globalObject": "Methods to manipulate JavaScript Objects",
-	"codeNodeEditor.completer.globalObject.assign": "Copy of the object containing all enumerable own properties",
+	"codeNodeEditor.completer.globalObject.assign": "Merge all enumerable object properties into a target object. Returns the modified target object.",
 	"codeNodeEditor.completer.globalObject.entries": "The object's keys and values",
 	"codeNodeEditor.completer.globalObject.keys": "The object's keys",
 	"codeNodeEditor.completer.globalObject.values": "The object's values",
