@@ -32,8 +32,10 @@ export const numberMethods: NativeDoc = {
 				description:
 					'Converts the number to a string. For more formatting options, see <code>toLocaleString()</code>.',
 				examples: [
-					{ example: '(500000.125).toString()', evaluated: "'500000.125'" },
-					{ example: '(500000.125).toString(16)', evaluated: "'7a120.2'" },
+					{ example: '(2).toString()', evaluated: "'2'" },
+					{ example: '(50.125).toString()', evaluated: "'50.125'" },
+					{ example: '(5).toString(2)', evaluated: "'101'" },
+					{ example: '(412).toString(16)', evaluated: "'19c'" },
 				],
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/toString',
