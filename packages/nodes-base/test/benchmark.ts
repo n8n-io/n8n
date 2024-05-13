@@ -11,7 +11,7 @@ async function main() {
 
 	const tests = toTests(filePaths);
 	const nodeTypes = setup(tests);
-	const bench = withCodSpeed(new Bench({ time: 0, iterations: 1 })); // @TODO temp config
+	const bench = withCodSpeed(new Bench());
 
 	for (const test of tests) {
 		const { waitPromise, additionalData, executionMode, workflowInstance, nodeExecutionOrder } =
