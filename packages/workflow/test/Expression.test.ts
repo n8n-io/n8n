@@ -3,15 +3,12 @@
  */
 
 import { DateTime, Duration, Interval } from 'luxon';
-import { Workflow } from '@/Workflow';
-import * as Helpers from './Helpers';
 import type { ExpressionTestEvaluation, ExpressionTestTransform } from './ExpressionFixtures/base';
 import { baseFixtures } from './ExpressionFixtures/base';
-import type { INodeExecutionData } from '@/Interfaces';
 import { extendSyntax } from '@/Extensions/ExpressionExtension';
 import { ExpressionError } from '@/errors/expression.error';
 import { setDifferEnabled, setEvaluator } from '@/ExpressionEvaluatorProxy';
-import { workflow } from './ExpressionExtensions/Helpers';
+import { evaluate } from './evaluate';
 
 setDifferEnabled(true);
 
@@ -19,28 +16,6 @@ for (const evaluator of ['tmpl', 'tournament'] as const) {
 	setEvaluator(evaluator);
 	describe(`Expression (with ${evaluator})`, () => {
 		describe('getParameterValue()', () => {
-			const nodeTypes = Helpers.NodeTypes();
-			const workflow = new Workflow({
-				id: '1',
-				nodes: [
-					{
-						name: 'node',
-						typeVersion: 1,
-						type: 'test.set',
-						id: 'uuid-1234',
-						position: [0, 0],
-						parameters: {},
-					},
-				],
-				connections: {},
-				active: false,
-				nodeTypes,
-			});
-			const expression = workflow.expression;
-
-			const evaluate = (value: string) =>
-				expression.getParameterValue(value, null, 0, 0, 'node', [], 'manual', {});
-
 			it('should not be able to use global built-ins from denylist', () => {
 				expect(evaluate('={{document}}')).toEqual({});
 				expect(evaluate('={{window}}')).toEqual({});
@@ -173,13 +148,6 @@ for (const evaluator of ['tmpl', 'tournament'] as const) {
 		});
 
 		describe('Test all expression value fixtures', () => {
-			const expression = workflow.expression;
-
-			const evaluate = (value: string, data: INodeExecutionData[]) => {
-				const itemIndex = data.length === 0 ? -1 : 0;
-				return expression.getParameterValue(value, null, 0, itemIndex, 'node', data, 'manual', {});
-			};
-
 			for (const t of baseFixtures) {
 				if (!t.tests.some((test) => test.type === 'evaluation')) {
 					continue;
