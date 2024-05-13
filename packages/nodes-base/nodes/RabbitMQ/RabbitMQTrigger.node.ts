@@ -66,6 +66,20 @@ export class RabbitMQTrigger implements INodeType {
 				placeholder: 'Add Option',
 				options: [
 					{
+						displayName: 'Assert Exchange',
+						name: 'assertExchange',
+						type: 'boolean',
+						default: true,
+						description: 'Whether to assert the exchange exists before sending',
+					},
+					{
+						displayName: 'Assert Queue',
+						name: 'assertQueue',
+						type: 'boolean',
+						default: true,
+						description: 'Whether to assert the queue exists before sending',
+					},
+					{
 						displayName: 'Content Is Binary',
 						name: 'contentIsBinary',
 						type: 'boolean',
