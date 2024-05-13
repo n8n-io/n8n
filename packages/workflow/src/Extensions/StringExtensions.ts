@@ -445,7 +445,7 @@ toDate.doc = {
 toDateTime.doc = {
 	name: 'toDateTime',
 	description:
-		'Converts the string to a DateTime. Useful for further transformation. Supported formats for the string are ISO 8601, HTTP, RFC2822, SQL and Unix timestamp in milliseconds. To parse other formats, use <a target="_blank" href=”https://moment.github.io/luxon/api-docs/index.html#datetimefromformat”> <code>DateTime.fromFormat()</code></a>.',
+		'Converts the string to a <a target="_blank" href="https://moment.github.io/luxon/api-docs/">Luxon</a> DateTime. Useful for further transformation. Supported formats for the string are ISO 8601, HTTP, RFC2822, SQL and Unix timestamp in milliseconds. To parse other formats, use <a target="_blank" href=”https://moment.github.io/luxon/api-docs/index.html#datetimefromformat”> <code>DateTime.fromFormat()</code></a>.',
 	section: 'cast',
 	returnType: 'DateTime',
 	docURL:
