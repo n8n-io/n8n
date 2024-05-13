@@ -847,6 +847,7 @@ const regexes = {
 
 	numberLiteral: /\((\d+)\.?(\d*)\)\.(.*)/, // (123). or (123.4).
 	singleQuoteStringLiteral: /('.*')\.([^'{\s])*/, // 'abc'.
+	booleanLiteral: /(true|false)\.([^'{\s])*/, // true.
 	doubleQuoteStringLiteral: /(".*")\.([^"{\s])*/, // "abc".
 	dateLiteral: /\(?new Date\(\(?.*?\)\)?\.(.*)/, // new Date(). or (new Date()).
 	arrayLiteral: /\(?(\[.*\])\)?\.(.*)/, // [1, 2, 3].

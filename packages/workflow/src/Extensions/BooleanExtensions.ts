@@ -1,4 +1,4 @@
-import type { ExtensionMap } from './Extensions';
+import type { Extension, ExtensionMap } from './Extensions';
 
 export function toBoolean(value: boolean) {
 	return value;
@@ -8,20 +8,25 @@ export function toInt(value: boolean) {
 	return value ? 1 : 0;
 }
 
-export function toFloat(value: boolean) {
-	return value ? 1 : 0;
-}
-
 export function toDateTime() {
 	return undefined;
 }
 
-toInt.doc = {
-	name: 'toInt',
-	description: 'Converts a boolean to an integer. `false` is 0, `true` is 1.',
+const toFloat = toInt;
+const toNumber: Extension = toInt.bind({});
+
+toNumber.doc = {
+	name: 'toNumber',
+	description:
+		'Converts <code>true</code> to <code>1</code> and <code>false</code> to <code>0</code>.',
+	examples: [
+		{ example: 'true.toNumber()', evaluated: '1' },
+		{ example: 'false.toNumber()', evaluated: '0' },
+	],
 	section: 'cast',
-	returnType: 'boolean',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/booleans/#boolean-toInt',
+	returnType: 'number',
+	docURL:
+		'https://docs.n8n.io/code/builtin/data-transformation-functions/booleans/#boolean-toNumber',
 };
 
 export const booleanExtensions: ExtensionMap = {
@@ -30,6 +35,7 @@ export const booleanExtensions: ExtensionMap = {
 		toBoolean,
 		toInt,
 		toFloat,
+		toNumber,
 		toDateTime,
 	},
 };
