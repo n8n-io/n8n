@@ -396,16 +396,43 @@ describe('POST /projects/', () => {
 		}).not.toThrow();
 	});
 
-	test('should fail to create a team project if at quota', async () => {
-		testServer.license.setQuota('quota:maxTeamProjects', 3);
-		await Promise.all([createTeamProject(), createTeamProject(), createTeamProject()]);
+	test('should allow to create a team projects if below the quota', async () => {
+		testServer.license.setQuota('quota:maxTeamProjects', 1);
 		const ownerUser = await createOwner();
 		const ownerAgent = testServer.authAgentFor(ownerUser);
 
-		const resp = await ownerAgent.post('/projects/').send({ name: 'Test Team Project' });
-		expect(resp.status).toBe(400);
+		await ownerAgent.post('/projects/').send({ name: 'Test Team Project' }).expect(200);
+		expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(1);
+	});
 
-		expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(3);
+	test('should fail to create a team project if at quota', async () => {
+		testServer.license.setQuota('quota:maxTeamProjects', 1);
+		await Promise.all([createTeamProject()]);
+		const ownerUser = await createOwner();
+		const ownerAgent = testServer.authAgentFor(ownerUser);
+
+		await ownerAgent.post('/projects/').send({ name: 'Test Team Project' }).expect(400, {
+			code: 400,
+			message:
+				'Attempted to create a new project but quota is already exhausted. You may have a maximum of 1 team projects.',
+		});
+
+		expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(1);
+	});
+
+	test('should fail to create a team project if above the quota', async () => {
+		testServer.license.setQuota('quota:maxTeamProjects', 1);
+		await Promise.all([createTeamProject(), createTeamProject()]);
+		const ownerUser = await createOwner();
+		const ownerAgent = testServer.authAgentFor(ownerUser);
+
+		await ownerAgent.post('/projects/').send({ name: 'Test Team Project' }).expect(400, {
+			code: 400,
+			message:
+				'Attempted to create a new project but quota is already exhausted. You may have a maximum of 1 team projects.',
+		});
+
+		expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(2);
 	});
 });
 
