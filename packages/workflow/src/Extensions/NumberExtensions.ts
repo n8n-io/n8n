@@ -111,7 +111,7 @@ floor.doc = {
 isEven.doc = {
 	name: 'isEven',
 	description:
-		"Returns <code>true</code> if the number is even. Throws an error if the number isn't a whole number.",
+		"Returns <code>true</code> if the number is even or <code>false</code> if not. Throws an error if the number isn't a whole number.",
 	examples: [
 		{ example: '(33).isEven()', evaluated: 'false' },
 		{ example: '(42).isEven()', evaluated: 'true' },
@@ -123,7 +123,7 @@ isEven.doc = {
 isOdd.doc = {
 	name: 'isOdd',
 	description:
-		"Returns <code>true</code> if the number is odd. Throws an error if the number isn't a whole number.",
+		"Returns <code>true</code> if the number is odd or <code>false</code> if not. Throws an error if the number isn't a whole number.",
 	examples: [
 		{ example: '(33).isOdd()', evaluated: 'true' },
 		{ example: '(42).isOdd()', evaluated: 'false' },
@@ -166,8 +166,7 @@ format.doc = {
 
 round.doc = {
 	name: 'round',
-	description:
-		'Returns the number rounded to the nearest whole number (or specified number of decimal places)',
+	description: 'Rounds the number to the nearest integer (or decimal place)',
 	examples: [
 		{ example: '(1.256).round()', evaluated: '1' },
 		{ example: '(1.256).round(1)', evaluated: '1.3' },
@@ -189,10 +188,11 @@ round.doc = {
 toBoolean.doc = {
 	name: 'toBoolean',
 	description:
-		'Converts the number to a boolean value. <code>0</code> becomes <code>false</code>; everything else becomes <code>true</code>.',
+		'Returns <code>false</code> for <code>0</code> and <code>true</code> for any other number (including negative numbers).',
 	examples: [
 		{ example: '(12).toBoolean()', evaluated: 'true' },
 		{ example: '(0).toBoolean()', evaluated: 'false' },
+		{ example: '(-1.3).toBoolean()', evaluated: 'true' },
 	],
 	section: 'cast',
 	returnType: 'boolean',
@@ -203,7 +203,7 @@ toBoolean.doc = {
 toDateTime.doc = {
 	name: 'toDateTime',
 	description:
-		"Converts a numerical timestamp into a DateTime. The format of the timestamp must be specified if it's not in milliseconds. Uses the time zone in n8n (or in the workflow's settings).",
+		'Converts a numerical timestamp into a <a target="_blank" href="https://moment.github.io/luxon/api-docs/">Luxon</a> DateTime. The format of the timestamp must be specified if it\'s not in milliseconds. Uses the timezone specified in workflow settings if available; otherwise, it defaults to the timezone set for the instance.',
 	examples: [
 		{ example: "(1708695471).toDateTime('s')", evaluated: '2024-02-23T14:37:51.000+01:00' },
 		{ example: "(1708695471000).toDateTime('ms')", evaluated: '2024-02-23T14:37:51.000+01:00' },
@@ -217,7 +217,7 @@ toDateTime.doc = {
 			name: 'format',
 			optional: true,
 			description:
-				'The type of timestamp to convert. Options are <code>ms</code> (for Unix timestamp in milliseconds), <code>s</code> (for Unix timestamp in seconds) or <code>excel</code> (for days since 1900).',
+				'The type of timestamp to convert. Options are <code>ms</code> (for Unix timestamp in milliseconds), <code>s</code> (for Unix timestamp in seconds), <code>us</code> (for Unix timestamp in microseconds) or <code>excel</code> (for days since 1900).',
 			default: '"ms"',
 			type: 'string',
 		},
@@ -243,6 +243,7 @@ isInteger.doc = {
 	examples: [
 		{ example: '(4).isInteger()', evaluated: 'true' },
 		{ example: '(4.12).isInteger()', evaluated: 'false' },
+		{ example: '(-4).isInteger()', evaluated: 'true' },
 	],
 	returnType: 'boolean',
 	docURL:

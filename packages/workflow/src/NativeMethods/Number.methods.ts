@@ -30,7 +30,7 @@ export const numberMethods: NativeDoc = {
 			doc: {
 				name: 'toString',
 				description:
-					'Converts the number to a simple textual representation. For more formatting options, see <code>toLocaleString()</code>.',
+					'Converts the number to a string. For more formatting options, see <code>toLocaleString()</code>.',
 				examples: [
 					{ example: '(500000.125).toString()', evaluated: "'500000.125'" },
 					{ example: '(500000.125).toString(16)', evaluated: "'7a120.2'" },
@@ -39,7 +39,7 @@ export const numberMethods: NativeDoc = {
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/toString',
 				args: [
 					{
-						name: 'radix',
+						name: 'base',
 						optional: true,
 						description:
 							'The base to use. Must be an integer between 2 and 36. E.g. base <code>2</code> is binary and base <code>16</code> is hexadecimal.',
@@ -54,7 +54,7 @@ export const numberMethods: NativeDoc = {
 			doc: {
 				name: 'toLocaleString',
 				description:
-					"Returns a localised string representing the number, i.e. in the language and format corresponding to its locale. Defaults to the system's locale if none specified.",
+					"Returns a localized string representing the number, i.e. in the language and format corresponding to its locale. Defaults to the system's locale if none specified.",
 				examples: [
 					{
 						example: '(500000.125).toLocaleString()',
@@ -70,11 +70,11 @@ export const numberMethods: NativeDoc = {
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/toLocaleString',
 				args: [
 					{
-						name: 'locales',
+						name: 'locale(s)',
 						optional: true,
 						description:
-							'The locale to assign, e.g. \'en-GB\' for British English or \'pt-BR\' for Brazilian Portuguese. See <a target="_blank" href="https://www.localeplanet.com/icu/">full list</a> (unofficial). Also accepts an array of locales. Defaults to the system locale if not specified.',
-						type: 'string|array<string>',
+							'The locale to use, e.g. \'en-GB\' for British English or \'pt-BR\' for Brazilian Portuguese. See <a target="_blank" href="https://www.localeplanet.com/icu/">full list</a> (unofficial). Also accepts an <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl#locales_argument">array of locales</a>. Defaults to the system locale if not specified.',
+						type: 'string | string[]',
 					},
 					{
 						name: 'options',

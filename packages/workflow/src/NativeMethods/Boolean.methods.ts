@@ -7,7 +7,7 @@ export const booleanMethods: NativeDoc = {
 			doc: {
 				name: 'toString',
 				description:
-					"Converts <code>true</code> to the string 'true' and <code>false</code> to the string 'false' ",
+					"Converts <code>true</code> to the string <code>'true'</code> and <code>false</code> to the string <code>'false'</code>.",
 				examples: [
 					{ example: 'true.toString()', evaluated: "'true'" },
 					{ example: 'false.toString()', evaluated: "'false'" },

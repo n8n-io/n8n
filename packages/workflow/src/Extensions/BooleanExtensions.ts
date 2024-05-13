@@ -17,7 +17,8 @@ const toNumber: Extension = toInt.bind({});
 
 toNumber.doc = {
 	name: 'toNumber',
-	description: 'Converts <code>true</code> to 1 and <code>false</code> to 0',
+	description:
+		'Converts <code>true</code> to <code>1</code> and <code>false</code> to <code>0</code>.',
 	examples: [
 		{ example: 'true.toNumber()', evaluated: '1' },
 		{ example: 'false.toNumber()', evaluated: '0' },
