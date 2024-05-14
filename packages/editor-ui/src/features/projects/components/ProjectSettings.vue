@@ -403,12 +403,6 @@ onBeforeMount(async () => {
 	padding: var(--spacing-l) var(--spacing-2xl) 0;
 }
 
-.buttons {
-	display: flex;
-	justify-content: flex-end;
-	align-items: center;
-}
-
 .upgrade {
 	cursor: pointer;
 }
