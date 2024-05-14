@@ -70,6 +70,16 @@ export class CredentialsService {
 		let projectRelations: ProjectRelation[] | undefined = undefined;
 		if (options.includeScopes) {
 			projectRelations = await this.projectService.getProjectRelationsForUser(user);
+			if (options.listQueryOptions?.filter?.projectId && user.hasGlobalScope('credential:list')) {
+				// Only instance owners and admins have the credential:list scope
+				// Those users should be able to use _all_ credentials within their workflows.
+				const projectRelation = projectRelations.find(
+					(relation) => relation.projectId === options.listQueryOptions?.filter?.projectId,
+				);
+				if (projectRelation?.role === 'project:personalOwner') {
+					delete options.listQueryOptions?.filter?.projectId;
+				}
+			}
 		}
 
 		if (returnAll) {
