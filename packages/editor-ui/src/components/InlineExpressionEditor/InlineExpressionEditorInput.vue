@@ -140,7 +140,12 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<div ref="root" :class="$style.editor" data-test-id="inline-expression-editor-input"></div>
+	<div
+		ref="root"
+		title=""
+		:class="$style.editor"
+		data-test-id="inline-expression-editor-input"
+	></div>
 </template>
 
 <style lang="scss" module>
