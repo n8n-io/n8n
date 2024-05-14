@@ -50,7 +50,7 @@
     "axios": "1.6.7",
     "chart.js": "^4.4.0",
     "codemirror-lang-html-n8n": "^1.0.0",
-    "codemirror-lang-n8n-expression": "^0.3.0",
+    "@n8n/codemirror-lang": "workspace:*",
     "dateformat": "^3.0.3",
     "email-providers": "^2.0.1",
     "esprima-next": "5.8.4",
