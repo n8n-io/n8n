@@ -485,7 +485,6 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 				title: i18n.baseText('nodeCreator.aiPanel.langchainAiNodes'),
 				icon: 'robot',
 				description: i18n.baseText('nodeCreator.aiPanel.nodesForAi'),
-				tag: i18n.baseText('nodeCreator.aiPanel.newTag'),
 			},
 		});
 
