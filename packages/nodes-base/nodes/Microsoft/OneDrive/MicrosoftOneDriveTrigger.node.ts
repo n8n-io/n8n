@@ -148,11 +148,7 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 				}));
 			}
 
-			if (this.getMode() === 'manual') {
-				return [this.helpers.returnJsonArray(responseData)];
-			} else {
-				return [this.helpers.returnJsonArray(responseData)];
-			}
+			return [this.helpers.returnJsonArray(responseData)];
 		} catch (error) {
 			if (this.getMode() === 'manual' || !workflowData.lastTimeChecked) {
 				throw error;
