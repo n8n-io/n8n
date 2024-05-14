@@ -146,7 +146,7 @@ urlEncode.doc = {
 		"Generates a URL parameter string from the Object's keys and values. Only top-level keys are supported.",
 	examples: [
 		{
-			example: "({ name:'Mr Nathan', city: 'hanoi' }).urlEncode()",
+			example: "({ name: 'Mr Nathan', city: 'hanoi' }).urlEncode()",
 			evaluated: "'name=Mr+Nathan&city=hanoi'",
 		},
 	],
@@ -263,7 +263,7 @@ keepFieldsContaining.doc = {
 keys.doc = {
 	name: 'keys',
 	description:
-		"Returns an array with all the field names (keys) the object contains. The same as JavaScript's <code>Object.keys(obj)</code>.",
+		"Returns an array with all the field names (keys) the Object contains. The same as JavaScript's <code>Object.keys(obj)</code>.",
 	examples: [{ example: "({ name: 'Mr Nathan', age: 42 }).keys()", evaluated: "['name', 'age']" }],
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-keys',
 	returnType: 'Array',
