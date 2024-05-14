@@ -42,6 +42,17 @@ const isScriptingNode = (nodeName: string, workflow: Workflow) => {
 	return node && SCRIPTING_NODE_TYPES.includes(node.type);
 };
 
+const createReadOnlyProxy = <T extends object>(target: T, handler: ProxyHandler<T> = {}): T => {
+	return new Proxy(target, {
+		has: () => true,
+		set: () => false,
+		deleteProperty: () => false,
+		defineProperty: () => false,
+		isExtensible: () => false,
+		...handler,
+	});
+};
+
 export class WorkflowDataProxy {
 	private runExecutionData: IRunExecutionData | null;
 
@@ -104,10 +115,9 @@ export class WorkflowDataProxy {
 			);
 		}
 
-		return new Proxy(
+		return createReadOnlyProxy(
 			{},
 			{
-				has: () => true,
 				ownKeys(target) {
 					if (Reflect.ownKeys(target).length === 0) {
 						// Target object did not get set yet
@@ -137,10 +147,9 @@ export class WorkflowDataProxy {
 	private selfGetter() {
 		const that = this;
 
-		return new Proxy(
+		return createReadOnlyProxy(
 			{},
 			{
-				has: () => true,
 				ownKeys(target) {
 					return Reflect.ownKeys(target);
 				},
@@ -166,8 +175,7 @@ export class WorkflowDataProxy {
 
 		// `node` is `undefined` only in expressions in credentials
 
-		return new Proxy(node?.parameters ?? {}, {
-			has: () => true,
+		return createReadOnlyProxy(node?.parameters ?? {}, {
 			ownKeys(target) {
 				return Reflect.ownKeys(target);
 			},
@@ -365,10 +373,9 @@ export class WorkflowDataProxy {
 		const that = this;
 		const node = this.workflow.nodes[nodeName];
 
-		return new Proxy(
+		return createReadOnlyProxy(
 			{ binary: undefined, data: undefined, json: undefined },
 			{
-				has: () => true,
 				get(target, name, receiver) {
 					if (name === 'isProxy') return true;
 					name = name.toString();
@@ -414,14 +421,14 @@ export class WorkflowDataProxy {
 
 						if (['data', 'json'].includes(name)) {
 							// JSON-Data
-							return executionData[that.itemIndex].json;
+							return createReadOnlyProxy(executionData[that.itemIndex].json);
 						}
 						if (name === 'binary') {
 							// Binary-Data
 							const returnData: IDataObject = {};
 
 							if (!executionData[that.itemIndex].binary) {
-								return returnData;
+								return createReadOnlyProxy(returnData);
 							}
 
 							const binaryKeyData = executionData[that.itemIndex].binary!;
@@ -439,7 +446,7 @@ export class WorkflowDataProxy {
 								}
 							}
 
-							return returnData;
+							return createReadOnlyProxy(returnData);
 						}
 					} else if (name === 'context') {
 						return that.nodeContextGetter(nodeName);
@@ -466,10 +473,9 @@ export class WorkflowDataProxy {
 	 */
 	private envGetter() {
 		const that = this;
-		return new Proxy(
+		return createReadOnlyProxy(
 			{},
 			{
-				has: () => true,
 				get(_, name) {
 					if (name === 'isProxy') return true;
 
@@ -497,10 +503,9 @@ export class WorkflowDataProxy {
 		const allowedValues = ['name', 'outputIndex', 'runIndex'];
 		const that = this;
 
-		return new Proxy(
+		return createReadOnlyProxy(
 			{},
 			{
-				has: () => true,
 				ownKeys() {
 					return allowedValues;
 				},
@@ -545,10 +550,9 @@ export class WorkflowDataProxy {
 		const allowedValues = ['active', 'id', 'name'];
 		const that = this;
 
-		return new Proxy(
+		return createReadOnlyProxy(
 			{},
 			{
-				has: () => true,
 				ownKeys() {
 					return allowedValues;
 				},
@@ -588,10 +592,9 @@ export class WorkflowDataProxy {
 	 */
 	private nodeGetter() {
 		const that = this;
-		return new Proxy(
+		return createReadOnlyProxy(
 			{},
 			{
-				has: () => true,
 				get(_, name) {
 					if (name === 'isProxy') return true;
 
@@ -965,10 +968,9 @@ export class WorkflowDataProxy {
 					}
 				};
 
-				return new Proxy(
+				return createReadOnlyProxy(
 					{},
 					{
-						has: () => true,
 						ownKeys() {
 							return [
 								'pairedItem',
@@ -1106,8 +1108,7 @@ export class WorkflowDataProxy {
 				);
 			},
 
-			$input: new Proxy({} as ProxyInput, {
-				has: () => true,
+			$input: createReadOnlyProxy({} as ProxyInput, {
 				ownKeys() {
 					return ['all', 'context', 'first', 'item', 'last', 'params'];
 				},
