@@ -134,7 +134,7 @@ isNotEmpty.doc = {
 compact.doc = {
 	name: 'compact',
 	description:
-		'Removes all fields that have empty values, i.e. are <code>null</code> or <code>""</code>',
+		'Removes all fields that have empty values, i.e. are <code>null</code>, <code>undefined</code>, <code>"nil"</code> or <code>""</code>',
 	examples: [{ example: "({ x: null, y: 2, z: '' }).compact()", evaluated: '{ y: 2 }' }],
 	returnType: 'Object',
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-compact',
