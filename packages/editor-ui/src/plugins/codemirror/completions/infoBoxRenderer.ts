@@ -110,7 +110,7 @@ const renderDescription = ({
 	return descriptionBody;
 };
 
-const renderArg = (arg: DocMetadataArgument): HTMLElement => {
+const renderArg = (arg: DocMetadataArgument) => {
 	const argItem = document.createElement('li');
 	const argName = document.createElement('span');
 	argName.classList.add('autocomplete-info-arg-name');
@@ -159,7 +159,7 @@ const renderArg = (arg: DocMetadataArgument): HTMLElement => {
 	return argItem;
 };
 
-const renderArgList = (args: DocMetadataArgument[]): HTMLElement => {
+const renderArgList = (args: DocMetadataArgument[]) => {
 	const argsList = document.createElement('ul');
 	argsList.classList.add('autocomplete-info-args');
 
@@ -170,7 +170,7 @@ const renderArgList = (args: DocMetadataArgument[]): HTMLElement => {
 	return argsList;
 };
 
-const renderArgs = (args: DocMetadataArgument[]): HTMLElement => {
+const renderArgs = (args: DocMetadataArgument[]) => {
 	const argsContainer = document.createElement('div');
 	argsContainer.classList.add('autocomplete-info-args-container');
 

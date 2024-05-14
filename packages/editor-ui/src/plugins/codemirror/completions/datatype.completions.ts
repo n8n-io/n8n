@@ -467,12 +467,12 @@ const stringOptions = (input: AutocompleteInput<string>): Completion[] => {
 
 	if (resolved && validateFieldType('string', resolved, 'number').valid) {
 		const recommended = ['toNumber()'];
-		const timestampFormat = isPlausableTimestamp(Number(resolved));
+		const timestampUnit = toTimestampUnit(Number(resolved));
 
-		if (timestampFormat) {
+		if (timestampUnit) {
 			return applySections({
 				options,
-				recommended: [...recommended, { label: 'toDateTime()', args: [`'${timestampFormat}'`] }],
+				recommended: [...recommended, { label: 'toDateTime()', args: [`'${timestampUnit}'`] }],
 				sections: STRING_SECTIONS,
 			});
 		}
@@ -556,7 +556,7 @@ const isWithinMargin = (ts: number, now: number, margin: number): boolean => {
 	return ts > now - margin && ts < now + margin;
 };
 
-const isPlausableTimestamp = (ts: number): false | 'ms' | 's' | 'us' => {
+const toTimestampUnit = (ts: number): null | 'ms' | 's' | 'us' => {
 	const nowMillis = Date.now();
 	const marginMillis = 946_707_779_000; // 30y
 
@@ -572,7 +572,7 @@ const isPlausableTimestamp = (ts: number): false | 'ms' | 's' | 'us' => {
 		return 'us';
 	}
 
-	return false;
+	return null;
 };
 
 const numberOptions = (input: AutocompleteInput<number>): Completion[] => {
@@ -584,11 +584,11 @@ const numberOptions = (input: AutocompleteInput<number>): Completion[] => {
 	const ONLY_INTEGER = ['isEven()', 'isOdd()'];
 
 	if (Number.isInteger(resolved)) {
-		const timestampFormat = isPlausableTimestamp(resolved);
-		if (timestampFormat) {
+		const timestampUnit = toTimestampUnit(resolved);
+		if (timestampUnit) {
 			return applySections({
 				options,
-				recommended: [{ label: 'toDateTime()', args: [`'${timestampFormat}'`] }],
+				recommended: [{ label: 'toDateTime()', args: [`'${timestampUnit}'`] }],
 			});
 		}
 
