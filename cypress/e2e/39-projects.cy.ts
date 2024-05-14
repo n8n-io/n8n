@@ -19,7 +19,6 @@ describe('Projects', () => {
 	it('should handle workflows and credentials', () => {
 		cy.signin(INSTANCE_ADMIN);
 		cy.visit(workflowsPage.url);
-		projects.getProjectTabs().should('have.length', 2);
 		workflowsPage.getters.workflowCards().should('not.have.length');
 
 		workflowsPage.getters.newWorkflowButtonCard().click();
@@ -32,6 +31,8 @@ describe('Projects', () => {
 		});
 
 		projects.getHomeButton().click();
+		projects.getProjectTabs().should('have.length', 2);
+
 		projects.getProjectTabCredentials().click();
 		credentialsPage.getters.credentialCards().should('not.have.length');
 

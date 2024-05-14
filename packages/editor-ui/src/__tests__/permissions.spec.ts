@@ -50,7 +50,7 @@ describe('permissions', () => {
 
 	it('getProjectPermissions', () => {
 		expect(
-			getProjectPermissions(null, {
+			getProjectPermissions({
 				scopes: [
 					'project:create',
 					'project:read',
@@ -66,93 +66,11 @@ describe('permissions', () => {
 			delete: true,
 			list: true,
 		});
-
-		expect(
-			getProjectPermissions(
-				{
-					globalScopes: [
-						'project:create',
-						'project:read',
-						'project:update',
-						'project:delete',
-						'project:list',
-					],
-				} as IUser,
-				null,
-			),
-		).toEqual({
-			create: true,
-			read: true,
-			update: true,
-			delete: true,
-			list: true,
-		});
-
-		expect(
-			getProjectPermissions(
-				{
-					globalScopes: ['project:read', 'project:list'],
-				} as IUser,
-				null,
-			),
-		).toEqual({
-			create: false,
-			read: true,
-			update: false,
-			delete: false,
-			list: true,
-		});
-
-		expect(
-			getProjectPermissions(
-				{
-					globalScopes: ['project:read', 'project:list'],
-				} as IUser,
-				{
-					scopes: [
-						'project:create',
-						'project:read',
-						'project:update',
-						'project:delete',
-						'project:list',
-					],
-				} as Project,
-			),
-		).toEqual({
-			create: true,
-			read: true,
-			update: true,
-			delete: true,
-			list: true,
-		});
-
-		expect(
-			getProjectPermissions(
-				{
-					globalScopes: [
-						'project:create',
-						'project:read',
-						'project:update',
-						'project:delete',
-						'project:list',
-					],
-				} as IUser,
-				{
-					scopes: ['project:read', 'project:list'],
-				} as Project,
-			),
-		).toEqual({
-			create: true,
-			read: true,
-			update: true,
-			delete: true,
-			list: true,
-		});
 	});
 
 	it('getCredentialPermissions', () => {
 		expect(
-			getCredentialPermissions(null, null, {
+			getCredentialPermissions({
 				scopes: [
 					'credential:create',
 					'credential:read',
@@ -170,134 +88,11 @@ describe('permissions', () => {
 			list: true,
 			share: true,
 		});
-
-		expect(
-			getCredentialPermissions(
-				{
-					globalScopes: ['credential:read', 'credential:list'],
-				} as IUser,
-				null,
-				{
-					scopes: [
-						'credential:create',
-						'credential:read',
-						'credential:update',
-						'credential:delete',
-						'credential:list',
-						'credential:share',
-					],
-				} as ICredentialsResponse,
-			),
-		).toEqual({
-			create: true,
-			read: true,
-			update: true,
-			delete: true,
-			list: true,
-			share: true,
-		});
-
-		expect(
-			getCredentialPermissions(
-				{
-					globalScopes: ['credential:read', 'credential:list'],
-				} as IUser,
-				{
-					scopes: ['credential:read', 'credential:list'],
-				} as Project,
-				{
-					scopes: [
-						'credential:create',
-						'credential:read',
-						'credential:update',
-						'credential:delete',
-						'credential:list',
-						'credential:share',
-					],
-				} as ICredentialsResponse,
-			),
-		).toEqual({
-			create: true,
-			read: true,
-			update: true,
-			delete: true,
-			list: true,
-			share: true,
-		});
-
-		expect(
-			getCredentialPermissions(
-				{
-					globalScopes: ['credential:read', 'credential:list'],
-				} as IUser,
-				null,
-				{} as Project,
-			),
-		).toEqual({
-			create: false,
-			read: true,
-			update: false,
-			delete: false,
-			list: true,
-			share: false,
-		});
-
-		expect(
-			getCredentialPermissions(
-				{
-					globalScopes: ['credential:read', 'credential:list'],
-				} as IUser,
-				{
-					scopes: [
-						'credential:create',
-						'credential:read',
-						'credential:update',
-						'credential:delete',
-						'credential:list',
-						'credential:share',
-					],
-				} as Project,
-				{} as ICredentialsResponse,
-			),
-		).toEqual({
-			create: true,
-			read: true,
-			update: true,
-			delete: true,
-			list: true,
-			share: true,
-		});
-
-		expect(
-			getCredentialPermissions(
-				{
-					globalScopes: [
-						'credential:create',
-						'credential:read',
-						'credential:update',
-						'credential:delete',
-						'credential:list',
-						'credential:share',
-					],
-				} as IUser,
-				null,
-				{
-					scopes: ['credential:read', 'credential:list'],
-				} as ICredentialsResponse,
-			),
-		).toEqual({
-			create: true,
-			read: true,
-			update: true,
-			delete: true,
-			list: true,
-			share: true,
-		});
 	});
 
 	it('getWorkflowPermissions', () => {
 		expect(
-			getWorkflowPermissions(null, null, {
+			getWorkflowPermissions({
 				scopes: [
 					'workflow:create',
 					'workflow:read',
@@ -308,80 +103,6 @@ describe('permissions', () => {
 					'workflow:execute',
 				],
 			} as IWorkflowDb),
-		).toEqual({
-			create: true,
-			read: true,
-			update: true,
-			delete: true,
-			list: true,
-			share: true,
-			execute: true,
-		});
-
-		expect(
-			getWorkflowPermissions(
-				{
-					globalScopes: ['workflow:read', 'workflow:list'],
-				} as IUser,
-				null,
-				{
-					scopes: [
-						'workflow:create',
-						'workflow:read',
-						'workflow:update',
-						'workflow:delete',
-						'workflow:list',
-						'workflow:share',
-						'workflow:execute',
-					],
-				} as IWorkflowDb,
-			),
-		).toEqual({
-			create: true,
-			read: true,
-			update: true,
-			delete: true,
-			list: true,
-			share: true,
-			execute: true,
-		});
-
-		expect(
-			getWorkflowPermissions(
-				{
-					globalScopes: ['workflow:read', 'workflow:list'],
-				} as IUser,
-				null,
-				{} as IWorkflowDb,
-			),
-		).toEqual({
-			create: false,
-			read: true,
-			update: false,
-			delete: false,
-			list: true,
-			share: false,
-			execute: false,
-		});
-
-		expect(
-			getWorkflowPermissions(
-				{
-					globalScopes: ['workflow:read', 'workflow:list'],
-				} as IUser,
-				{
-					scopes: [
-						'workflow:create',
-						'workflow:read',
-						'workflow:update',
-						'workflow:delete',
-						'workflow:list',
-						'workflow:share',
-						'workflow:execute',
-					],
-				} as Project,
-				{} as IWorkflowDb,
-			),
 		).toEqual({
 			create: true,
 			read: true,

@@ -425,8 +425,6 @@ export default defineComponent({
 			}
 
 			return getCredentialPermissions(
-				this.currentUser,
-				this.projectsStore.currentProject || this.projectsStore.personalProject,
 				(this.credentialId ? this.currentCredential : this.credentialData) as ICredentialsResponse,
 			);
 		},
@@ -1134,6 +1132,16 @@ export default defineComponent({
 					};
 				}
 			}
+
+			const { currentProject, personalProject } = this.projectsStore;
+			const scopes = currentProject?.scopes ?? personalProject?.scopes ?? [];
+			const homeProject = currentProject ?? personalProject ?? {};
+
+			this.credentialData = {
+				...this.credentialData,
+				scopes,
+				homeProject,
+			};
 		},
 	},
 });

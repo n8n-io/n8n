@@ -15,7 +15,7 @@ const processedName = computed(() => splitName(props.project.name ?? ''));
 	<div :class="$style.projectInfo">
 		<div>
 			<N8nAvatar :first-name="processedName.firstName" :last-name="processedName.lastName" />
-			<div>
+			<div class="flex flex-col">
 				<p v-if="processedName.firstName || processedName.lastName">
 					{{ processedName.firstName }} {{ processedName.lastName }}
 				</p>

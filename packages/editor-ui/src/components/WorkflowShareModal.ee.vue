@@ -19,7 +19,11 @@
 				</n8n-text>
 			</div>
 			<div v-else :class="$style.container">
-				<n8n-info-tip v-if="!workflowPermissions.share" :bold="false" class="mb-s">
+				<n8n-info-tip
+					v-if="!workflowPermissions.share && !isHomeTeamProject"
+					:bold="false"
+					class="mb-s"
+				>
 					{{
 						$locale.baseText('workflows.shareModal.info.sharee', {
 							interpolate: { workflowOwnerName },
@@ -34,7 +38,7 @@
 							:projects="projects"
 							:roles="workflowRoles"
 							:readonly="!workflowPermissions.share"
-							:static="isHomeTeamProject"
+							:static="isHomeTeamProject || !workflowPermissions.share"
 							:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
 							@project-added="onProjectAdded"
 							@project-removed="onProjectRemoved"
@@ -223,11 +227,7 @@ export default defineComponent({
 			return this.usersStore.currentUser;
 		},
 		workflowPermissions(): PermissionsMap<WorkflowScope> {
-			return getWorkflowPermissions(
-				this.usersStore.currentUser,
-				this.projectsStore.currentProject || this.projectsStore.personalProject,
-				this.workflow,
-			);
+			return getWorkflowPermissions(this.workflow);
 		},
 		workflowOwnerName(): string {
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflow.id}`);

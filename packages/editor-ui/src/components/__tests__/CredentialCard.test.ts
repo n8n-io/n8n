@@ -5,8 +5,21 @@ import CredentialCard from '@/components/CredentialCard.vue';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
+import type { ICredentialsResponse } from '@/Interface';
+import type { ProjectSharingData } from '@/features/projects/projects.types';
 
 const renderComponent = createComponentRenderer(CredentialCard);
+
+const createCredential = (overrides = {}): ICredentialsResponse => ({
+	id: '',
+	createdAt: '',
+	updatedAt: '',
+	type: '',
+	name: '',
+	sharedWithProjects: [],
+	homeProject: {} as ProjectSharingData,
+	...overrides,
+});
 
 describe('CredentialCard', () => {
 	let uiStore: ReturnType<typeof useUIStore>;
@@ -22,42 +35,34 @@ describe('CredentialCard', () => {
 	});
 
 	it('should render name and home project name', () => {
-		const props = {
-			data: {
-				id: '1',
-				name: 'Test name',
-				homeProject: {
-					name: 'Test Project',
-				},
-				createdAt: new Date().toISOString(),
+		const projectName = 'Test Project';
+		const data = createCredential({
+			homeProject: {
+				name: projectName,
 			},
-		};
-		const { getByRole } = renderComponent({ props });
+		});
+		const { getByRole, getByTestId } = renderComponent({ props: { data } });
 
 		const heading = getByRole('heading');
-		const span = heading.querySelector('span');
+		const badge = getByTestId('card-badge');
 
-		expect(heading).toBeInTheDocument();
-		expect(heading).toHaveTextContent(props.data.name);
-		expect(heading).toContain(span);
-		expect(span).toHaveTextContent(props.data.homeProject.name);
+		expect(heading).toHaveTextContent(data.name);
+		expect(badge).toHaveTextContent(projectName);
 	});
 
-	it('should render name only', () => {
-		const props = {
-			data: {
-				id: '1',
-				name: 'Test name',
-				createdAt: new Date().toISOString(),
+	it('should render name and personal project name', () => {
+		const projectName = 'John Doe <john@n8n.io>';
+		const data = createCredential({
+			homeProject: {
+				name: projectName,
 			},
-		};
-		const { getByRole } = renderComponent({ props });
+		});
+		const { getByRole, getByTestId } = renderComponent({ props: { data } });
 
 		const heading = getByRole('heading');
-		const span = heading.querySelector('span');
+		const badge = getByTestId('card-badge');
 
-		expect(heading).toBeInTheDocument();
-		expect(heading).toHaveTextContent(props.data.name);
-		expect(span).toBeNull();
+		expect(heading).toHaveTextContent(data.name);
+		expect(badge).toHaveTextContent('John Doe');
 	});
 });

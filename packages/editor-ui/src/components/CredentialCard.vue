@@ -5,7 +5,7 @@
 		</template>
 		<template #header>
 			<n8n-heading tag="h2" bold :class="$style.cardHeading">
-				{{ data.name }}<span v-if="data.homeProject?.name"> - {{ data.homeProject.name }}</span>
+				{{ data.name }}
 			</n8n-heading>
 		</template>
 		<div :class="$style.cardDescription">
@@ -94,9 +94,7 @@ export default defineComponent({
 			return this.credentialsStore.getCredentialTypeByName(this.data.type);
 		},
 		credentialPermissions(): PermissionsMap<CredentialScope> | null {
-			return !this.currentUser
-				? null
-				: getCredentialPermissions(this.currentUser, this.projectsStore.currentProject, this.data);
+			return !this.currentUser ? null : getCredentialPermissions(this.data);
 		},
 		actions(): Array<{ label: string; value: string }> {
 			if (!this.credentialPermissions) {

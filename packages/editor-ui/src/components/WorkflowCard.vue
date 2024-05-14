@@ -118,7 +118,7 @@ export default defineComponent({
 			return this.usersStore.currentUser || ({} as IUser);
 		},
 		workflowPermissions(): PermissionsMap<WorkflowScope> {
-			return getWorkflowPermissions(this.currentUser, this.projectsStore.currentProject, this.data);
+			return getWorkflowPermissions(this.data);
 		},
 		actions(): Array<{ label: string; value: string }> {
 			const actions = [

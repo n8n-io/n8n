@@ -19,12 +19,10 @@ const mapScopesToPermissions = (scopes: Scope[], scopeSet: Set<Scope>): Permissi
 			...permissions,
 			[scope.split(':')[1]]: scopeSet.has(scope),
 		}),
-		{},
+		{} as PermissionsMap<Scope>,
 	);
 
 export const getCredentialPermissions = (
-	user: IUser | null,
-	project: Project | null,
 	credential: ICredentialsResponse,
 ): PermissionsMap<CredentialScope> =>
 	mapScopesToPermissions(
@@ -36,18 +34,10 @@ export const getCredentialPermissions = (
 			'credential:list',
 			'credential:share',
 		],
-		new Set([
-			...(user?.globalScopes ?? []),
-			...(project?.scopes ?? []),
-			...(credential?.scopes ?? []),
-		]),
+		new Set(credential?.scopes ?? []),
 	);
 
-export const getWorkflowPermissions = (
-	user: IUser | null,
-	project: Project | null,
-	workflow: IWorkflowDb,
-): PermissionsMap<WorkflowScope> =>
+export const getWorkflowPermissions = (workflow: IWorkflowDb): PermissionsMap<WorkflowScope> =>
 	mapScopesToPermissions(
 		[
 			'workflow:create',
@@ -58,24 +48,17 @@ export const getWorkflowPermissions = (
 			'workflow:share',
 			'workflow:execute',
 		],
-		new Set([
-			...(user?.globalScopes ?? []),
-			...(project?.scopes ?? []),
-			...(workflow?.scopes ?? []),
-		]),
+		new Set(workflow?.scopes ?? []),
 	);
 
-export const getProjectPermissions = (
-	user: IUser | null,
-	project: Project | null,
-): PermissionsMap<ProjectScope> =>
+export const getProjectPermissions = (project: Project | null): PermissionsMap<ProjectScope> =>
 	mapScopesToPermissions(
 		['project:create', 'project:read', 'project:update', 'project:delete', 'project:list'],
-		new Set([...(user?.globalScopes ?? []), ...(project?.scopes ?? [])]),
+		new Set(project?.scopes ?? []),
 	);
 
 export const getVariablesPermissions = (user: IUser | null): PermissionsMap<VariableScope> =>
 	mapScopesToPermissions(
 		['variable:create', 'variable:read', 'variable:update', 'variable:delete', 'variable:list'],
-		new Set([...(user?.globalScopes ?? [])]),
+		new Set(user?.globalScopes ?? []),
 	);

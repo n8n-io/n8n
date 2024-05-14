@@ -127,11 +127,7 @@ const onExecutionsTab = computed(() => {
 });
 
 const workflowPermissions = computed<PermissionsMap<WorkflowScope>>(() => {
-	return getWorkflowPermissions(
-		usersStore.currentUser,
-		projectsStore.currentProject ?? projectsStore.personalProject,
-		props.workflow,
-	);
+	return getWorkflowPermissions(props.workflow);
 });
 
 const workflowMenuItems = computed<ActionDropdownItem[]>(() => {

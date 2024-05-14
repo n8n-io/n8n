@@ -384,7 +384,6 @@ import type { WorkflowScope } from '@n8n/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useProjectsStore } from '@/features/projects/projects.store';
 
 export default defineComponent({
 	name: 'WorkflowSettings',
@@ -463,7 +462,6 @@ export default defineComponent({
 			useSourceControlStore,
 			useWorkflowsStore,
 			useWorkflowsEEStore,
-			useProjectsStore,
 		),
 		readOnlyEnv(): boolean {
 			return this.sourceControlStore.preferences.branchReadOnly;
@@ -491,11 +489,7 @@ export default defineComponent({
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflowId}`, fallback);
 		},
 		workflowPermissions(): PermissionsMap<WorkflowScope> {
-			return getWorkflowPermissions(
-				this.currentUser,
-				this.projectsStore.currentProject,
-				this.workflow,
-			);
+			return getWorkflowPermissions(this.workflow);
 		},
 	},
 	async mounted() {

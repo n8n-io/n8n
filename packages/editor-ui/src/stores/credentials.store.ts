@@ -36,6 +36,7 @@ import { useNodeTypesStore } from './nodeTypes.store';
 import { useSettingsStore } from './settings.store';
 import { isEmpty } from '@/utils/typesUtils';
 import type { ProjectSharingData } from '@/features/projects/projects.types';
+import { splitName } from '@/features/projects/projects.utils';
 
 const DEFAULT_CREDENTIAL_NAME = 'Unnamed credential';
 const DEFAULT_CREDENTIAL_POSTFIX = 'account';
@@ -180,8 +181,10 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 		},
 		getCredentialOwnerName() {
 			return (credential: ICredentialsResponse | IUsedCredential | undefined): string => {
-				return credential?.ownedBy?.firstName
-					? `${credential.ownedBy.firstName} ${credential.ownedBy.lastName} (${credential.ownedBy.email})`
+				const { firstName, lastName, email } = splitName(credential?.homeProject?.name ?? '');
+
+				return credential?.homeProject?.name
+					? `${firstName} ${lastName} (${email})`
 					: i18n.baseText('credentialEdit.credentialSharing.info.sharee.fallback');
 			};
 		},
