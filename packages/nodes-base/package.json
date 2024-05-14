@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && pnpm n8n-copy-icons && pnpm n8n-generate-translations && pnpm build:metadata",
     "build:metadata": "pnpm n8n-generate-known && pnpm n8n-generate-ui-types",
-    "format": "prettier --write . --ignore-path ../../.prettierignore",
+    "format": "biome format --write nodes credentials utils test scripts",
     "lint": "eslint . --quiet && node ./scripts/validate-load-options-methods.js",
     "lintfix": "eslint . --fix",
     "watch": "tsc-watch -p tsconfig.build.json --onCompilationComplete \"tsc-alias -p tsconfig.build.json\" --onSuccess \"pnpm n8n-generate-ui-types\"",

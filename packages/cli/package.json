@@ -17,7 +17,7 @@
     "dev": "concurrently -k -n \"TypeScript,Node\" -c \"yellow.bold,cyan.bold\" \"npm run watch\" \"nodemon\"",
     "dev:worker": "concurrently -k -n \"TypeScript,Node\" -c \"yellow.bold,cyan.bold\" \"npm run watch\" \"nodemon worker\"",
     "dev:webhook": "concurrently -k -n \"TypeScript,Node\" -c \"yellow.bold,cyan.bold\" \"npm run watch\" \"nodemon webhook\"",
-    "format": "prettier --write . --ignore-path ../../.prettierignore",
+    "format": "biome format --write src test bin scripts templates",
     "lint": "eslint . --quiet",
     "lintfix": "eslint . --fix",
     "start": "run-script-os",

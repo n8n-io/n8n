@@ -8,6 +8,7 @@
   },
   "packageManager": "pnpm@9.6.0",
   "scripts": {
+    "prepare": "lefthook install",
     "preinstall": "node scripts/block-npm-install.js",
     "build": "turbo run build",
     "build:backend": "turbo run build:backend",
@@ -19,6 +20,7 @@
     "clean": "turbo run clean --parallel",
     "reset": "node scripts/ensure-zx.mjs && zx scripts/reset.mjs",
     "format": "turbo run format && node scripts/format.mjs",
+    "format:biome": "pnpm --filter=!@n8n/chat --filter=!n8n-design-system --filter=!n8n-editor-ui format",
     "lint": "turbo run lint",
     "lintfix": "turbo run lintfix",
     "lint:backend": "turbo run lint:backend",
@@ -38,6 +40,7 @@
     "worker": "./packages/cli/bin/n8n worker"
   },
   "devDependencies": {
+    "@biomejs/biome": "^1.9.0",
     "@n8n_io/eslint-config": "workspace:*",
     "@types/jest": "^29.5.3",
     "@types/supertest": "^6.0.2",
@@ -46,6 +49,7 @@
     "jest-expect-message": "^1.1.3",
     "jest-mock": "^29.6.2",
     "jest-mock-extended": "^3.0.4",
+    "lefthook": "^1.7.15",
     "nock": "^13.3.2",
     "nodemon": "^3.0.1",
     "p-limit": "^3.1.0",

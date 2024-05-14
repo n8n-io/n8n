@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json && pnpm n8n-copy-icons && pnpm build:metadata",
     "build:metadata": "pnpm n8n-generate-known && pnpm n8n-generate-ui-types",
-    "format": "prettier nodes credentials --write",
+    "format": "biome format --write nodes credentials utils",
     "lint": "eslint nodes credentials --quiet",
     "lintfix": "eslint nodes credentials --fix",
     "watch": "tsc-watch -p tsconfig.build.json --onCompilationComplete \"tsc-alias -p tsconfig.build.json\" --onSuccess \"pnpm n8n-generate-ui-types\"",

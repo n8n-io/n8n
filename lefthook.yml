@@ -1,0 +1,6 @@
+pre-commit:
+  commands:
+    check:
+      glob: 'packages/**/*.{js,ts,json}'
+      run: ./node_modules/.bin/biome check --write --no-errors-on-unmatched --files-ignore-unknown=true --colors=off {staged_files}
+      stage_fixed: true

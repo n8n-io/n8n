@@ -7,7 +7,7 @@
     "test:e2e:ui": "scripts/run-e2e.js ui",
     "test:e2e:dev": "scripts/run-e2e.js dev",
     "test:e2e:all": "scripts/run-e2e.js all",
-    "format": "prettier --write . --ignore-path ../.prettierignore",
+    "format": "biome format --write .",
     "lint": "eslint . --quiet",
     "lintfix": "eslint . --fix",
     "develop": "cd ..; pnpm dev",

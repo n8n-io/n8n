@@ -1,0 +1,109 @@
+{
+	"$schema": "https://biomejs.dev/schemas/1.7.3/schema.json",
+	"vcs": { "clientKind": "git", "enabled": true },
+	"formatter": {
+		"enabled": true,
+		"formatWithErrors": false,
+		"indentStyle": "tab",
+		"indentWidth": 2,
+		"lineEnding": "lf",
+		"lineWidth": 100,
+		"attributePosition": "auto",
+		"ignore": [
+			"**/coverage",
+			"**/dist",
+			"**/package.json",
+			"**/pnpm-lock.yaml",
+			"packages/editor-ui/index.html",
+			"packages/nodes-base/nodes/**/test",
+			"packages/cli/templates/form-trigger.handlebars",
+			"cypress/fixtures",
+			"**/CHANGELOG.md"
+		]
+	},
+	"organizeImports": { "enabled": false },
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"complexity": {
+				"noBannedTypes": "error",
+				"noUselessConstructor": "error",
+				"noUselessThisAlias": "error",
+				"noUselessTypeConstraint": "error",
+				"noVoid": "error",
+				"useArrowFunction": "off",
+				"useLiteralKeys": "error",
+				"useOptionalChain": "warn"
+			},
+			"correctness": {
+				"noInvalidUseBeforeDeclaration": "error",
+				"noPrecisionLoss": "error",
+				"noUnusedVariables": "off"
+			},
+			"style": {
+				"noDefaultExport": "error",
+				"noNamespace": "off",
+				"useAsConstAssertion": "error",
+				"useBlockStatements": "off",
+				"useConsistentArrayType": {
+					"level": "error",
+					"options": { "syntax": "shorthand" }
+				},
+				"useConst": "error",
+				"useDefaultParameterLast": "error",
+				"useImportType": "off",
+				"useNamingConvention": {
+					"level": "error",
+					"options": { "strictCase": false }
+				}
+			},
+			"suspicious": {
+				"noConfusingVoidType": "error",
+				"noDoubleEquals": "error",
+				"noDuplicateClassMembers": "error",
+				"noEmptyBlockStatements": "error",
+				"noExplicitAny": "warn",
+				"noExtraNonNullAssertion": "error",
+				"noMisleadingInstantiator": "error",
+				"noRedeclare": "error",
+				"noUnsafeDeclarationMerging": "error",
+				"useAwait": "error"
+			}
+		},
+		"ignore": ["node_modules/**", "dist/**"]
+	},
+	"javascript": {
+		"formatter": {
+			"jsxQuoteStyle": "double",
+			"quoteProperties": "asNeeded",
+			"trailingCommas": "all",
+			"semicolons": "always",
+			"arrowParentheses": "always",
+			"bracketSpacing": true,
+			"bracketSameLine": false,
+			"quoteStyle": "single",
+			"attributePosition": "auto"
+		}
+	},
+	"overrides": [
+		{
+			"include": ["**/*.test.ts"],
+			"linter": {
+				"rules": {
+					"complexity": { "useOptionalChain": "off" },
+					"correctness": { "noInvalidUseBeforeDeclaration": "off" },
+					"style": {
+						"noDefaultExport": "off",
+						"noNonNullAssertion": "off",
+						"useConst": "off",
+						"useNamingConvention": {
+							"level": "off",
+							"options": { "strictCase": false }
+						}
+					},
+					"suspicious": { "noEmptyBlockStatements": "off" }
+				}
+			}
+		}
+	]
+}

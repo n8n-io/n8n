@@ -13,7 +13,7 @@
     "dev": "pnpm watch",
     "build": "tsc --noEmit",
     "build-node-dev": "tsc",
-    "format": "prettier --write . --ignore-path ../../.prettierignore",
+    "format": "biome format --write src bin commands templates",
     "lint": "eslint . --quiet",
     "lintfix": "eslint . --fix",
     "prepack": "echo \"Building project...\" && rm -rf dist && tsc -b",

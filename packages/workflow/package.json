@@ -18,7 +18,7 @@
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
-    "format": "prettier --write . --ignore-path ../../.prettierignore",
+    "format": "biome format --write src test",
     "lint": "eslint . --quiet",
     "lintfix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
