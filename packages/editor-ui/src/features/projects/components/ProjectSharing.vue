@@ -146,6 +146,7 @@ watch(
 				<N8nButton
 					v-if="!props.static"
 					type="tertiary"
+					native-type="button"
 					square
 					icon="trash"
 					:disabled="props.readonly"
