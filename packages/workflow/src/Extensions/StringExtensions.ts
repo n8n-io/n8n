@@ -5,8 +5,9 @@ import { titleCase } from 'title-case';
 import type { Extension, ExtensionMap } from './Extensions';
 import { transliterate } from 'transliteration';
 import { ExpressionExtensionError } from '../errors/expression-extension.error';
-import type { DateTime } from 'luxon';
+import { DateTime } from 'luxon';
 import { tryToParseDateTime } from '../TypeValidation';
+import { toDateTime as numberToDateTime } from './NumberExtensions';
 
 export const SupportedHashAlgorithms = [
 	'md5',
@@ -216,8 +217,22 @@ function toDate(value: string): Date {
 	return date;
 }
 
-function toDateTime(value: string): DateTime {
+function toDateTime(value: string, extraArgs: [string]): DateTime {
 	try {
+		const [valueFormat] = extraArgs;
+
+		if (valueFormat) {
+			if (
+				valueFormat === 'ms' ||
+				valueFormat === 's' ||
+				valueFormat === 'us' ||
+				valueFormat === 'excel'
+			) {
+				return numberToDateTime(Number(value), [valueFormat]);
+			}
+			return DateTime.fromFormat(value, valueFormat);
+		}
+
 		return tryToParseDateTime(value);
 	} catch (error) {
 		throw new ExpressionExtensionError('cannot convert to Luxon DateTime');
@@ -454,7 +469,17 @@ toDateTime.doc = {
 		{ example: '"2024-03-29T18:06:31.798+01:00".toDateTime()' },
 		{ example: '"Fri, 29 Mar 2024 18:08:01 +0100".toDateTime()' },
 		{ example: '"20240329".toDateTime()' },
-		{ example: '"1711732132990".toDateTime()' },
+		{ example: '"1711732132990".toDateTime("ms")' },
+		{ example: '"31-01-2024".toDateTime("dd-MM-yyyy")' },
+	],
+	args: [
+		{
+			name: 'format',
+			optional: true,
+			description:
+				'The format of the date string. Options are <code>ms</code> (for Unix timestamp in milliseconds), <code>s</code> (for Unix timestamp in seconds), <code>us</code> (for Unix timestamp in microseconds) or <code>excel</code> (for days since 1900). Custom formats can be specified using <a href="https://moment.github.io/luxon/#/formatting?id=table-of-tokens">Luxon tokens</a>.',
+			type: 'string',
+		},
 	],
 };
 
