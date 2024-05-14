@@ -214,6 +214,13 @@ export default defineComponent({
 			const defaultSettingsRoute = this.findFirstAccessibleSettingsRoute();
 			const regularItems: IMenuItem[] = [
 				{
+					id: 'cloud-admin',
+					position: 'bottom',
+					label: 'Admin Panel',
+					icon: 'cloud',
+					available: this.settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
+				},
+				{
 					// Link to in-app templates, available if custom templates are enabled
 					id: 'templates',
 					icon: 'box-open',
@@ -250,13 +257,6 @@ export default defineComponent({
 					label: this.$locale.baseText('mainSidebar.executions'),
 					position: 'bottom',
 					route: { to: { name: VIEWS.EXECUTIONS } },
-				},
-				{
-					id: 'cloud-admin',
-					position: 'bottom',
-					label: 'Admin Panel',
-					icon: 'cloud',
-					available: this.settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
 				},
 				{
 					id: 'settings',

@@ -216,18 +216,24 @@ watch(
 	},
 );
 
-async function onSaveButtonClick() {
-	// If the workflow is saving, do not allow another save
-	if (isWorkflowSaving.value) {
-		return;
-	}
-
+function getWorkflowId(): string | undefined {
 	let id: string | undefined = undefined;
 	if (props.workflow.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 		id = props.workflow.id;
 	} else if (route.params.name && route.params.name !== 'new') {
 		id = route.params.name as string;
 	}
+
+	return id;
+}
+
+async function onSaveButtonClick() {
+	// If the workflow is saving, do not allow another save
+	if (isWorkflowSaving.value) {
+		return;
+	}
+
+	const id = getWorkflowId();
 
 	const name = props.workflow.name;
 	const tags = props.workflow.tags as string[];
@@ -239,26 +245,7 @@ async function onSaveButtonClick() {
 	});
 
 	if (saved) {
-		// If the workflow was new, show a message
-		if (!id || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(id)) {
-			let toastTitle = locale.baseText('workflows.create.personal.toast.title');
-			let toastText = locale.baseText('workflows.create.personal.toast.text');
-			if (projectsStore.currentProject) {
-				toastTitle = locale.baseText('workflows.create.project.toast.title', {
-					interpolate: { projectName: projectsStore.currentProject.name ?? '' },
-				});
-
-				toastText = locale.baseText('workflows.create.project.toast.text', {
-					interpolate: { projectName: projectsStore.currentProject.name ?? '' },
-				});
-			}
-
-			toast.showMessage({
-				title: toastTitle,
-				message: toastText,
-				type: 'success',
-			});
-		}
+		showCreateWorkflowSuccessToast(id);
 
 		await settingsStore.fetchPromptsData();
 
@@ -362,9 +349,11 @@ async function onNameSubmit({
 	}
 
 	uiStore.addActiveAction('workflowSaving');
+	const id = getWorkflowId();
 	const saved = await workflowHelpers.saveCurrentWorkflow({ name });
 	if (saved) {
 		isNameEditEnabled.value = false;
+		showCreateWorkflowSuccessToast(id);
 	}
 	uiStore.removeActiveAction('workflowSaving');
 	onSubmit(saved);
@@ -540,6 +529,28 @@ async function onWorkflowMenuSelect(action: string): Promise<void> {
 
 function goToUpgrade() {
 	void uiStore.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
+}
+
+function showCreateWorkflowSuccessToast(id?: string) {
+	if (!id || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(id)) {
+		let toastTitle = locale.baseText('workflows.create.personal.toast.title');
+		let toastText = locale.baseText('workflows.create.personal.toast.text');
+		if (projectsStore.currentProject) {
+			toastTitle = locale.baseText('workflows.create.project.toast.title', {
+				interpolate: { projectName: projectsStore.currentProject.name ?? '' },
+			});
+
+			toastText = locale.baseText('workflows.create.project.toast.text', {
+				interpolate: { projectName: projectsStore.currentProject.name ?? '' },
+			});
+		}
+
+		toast.showMessage({
+			title: toastTitle,
+			message: toastText,
+			type: 'success',
+		});
+	}
 }
 </script>
 

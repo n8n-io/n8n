@@ -32,7 +32,7 @@ const badgeIcon = computed(() => {
 	if (props.resource.sharedWithProjects?.length && props.resource.homeProject?.type !== 'team') {
 		return 'user-friends';
 	} else if (props.resource.homeProject?.type === 'team') {
-		return 'folder-open';
+		return 'archive';
 	} else {
 		return '';
 	}

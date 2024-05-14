@@ -2148,7 +2148,7 @@
 	"workflows.concurrentChanges.confirmMessage.cancelButtonText": "Cancel",
 	"workflows.concurrentChanges.confirmMessage.confirmButtonText": "Overwrite and Save",
 	"workflows.create.personal.toast.title": "Workflow successfully created",
-	"workflows.create.personal.toast.text": "This workflow is currently private to you. View sharing options.",
+	"workflows.create.personal.toast.text": "This workflow is currently private to you.",
 	"workflows.create.project.toast.title": "Workflow successfully created in {projectName}",
 	"workflows.create.project.toast.text": "All members from {projectName} will have access to this workflow.",
 	"importCurlModal.title": "Import cURL command",
