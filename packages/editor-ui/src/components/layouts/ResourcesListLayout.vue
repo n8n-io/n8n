@@ -335,6 +335,9 @@ export default defineComponent({
 			this.$emit('sort', newValue);
 			this.sendSortingTelemetry();
 		},
+		'$route.params.projectId'() {
+			this.resetFilters();
+		},
 	},
 	mounted() {
 		void this.onMounted();
