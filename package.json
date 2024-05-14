@@ -38,9 +38,6 @@
     "test:e2e:dev": "scripts/run-e2e.js dev",
     "test:e2e:all": "scripts/run-e2e.js all"
   },
-  "dependencies": {
-    "n8n": "workspace:*"
-  },
   "devDependencies": {
     "@n8n_io/eslint-config": "workspace:*",
     "@ngneat/falso": "^6.4.0",
