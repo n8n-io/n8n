@@ -44,7 +44,6 @@ const props = withDefaults(defineProps<ButtonProps>(), {
 	active: false,
 	square: false,
 	element: 'button',
-	nativeType: 'submit',
 });
 
 watchEffect(() => {
