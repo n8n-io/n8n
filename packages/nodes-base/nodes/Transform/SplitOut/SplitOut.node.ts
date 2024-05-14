@@ -26,6 +26,14 @@ export class SplitOut implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		hints: [
+			{
+				message: "The field used in 'Fields To Split Out' not present in input item",
+				displayCondition:
+					'={{ !$parameter.fieldToSplitOut.split(",").map(f => f.trim()).every(f => $json[f]) }} ',
+				location: 'outputPane',
+			},
+		],
 		properties: [
 			{
 				displayName: 'Fields To Split Out',

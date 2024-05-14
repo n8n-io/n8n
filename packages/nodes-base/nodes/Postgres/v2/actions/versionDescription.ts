@@ -23,6 +23,15 @@ export const versionDescription: INodeTypeDescription = {
 			testedBy: 'postgresConnectionTest',
 		},
 	],
+	hints: [
+		{
+			message:
+				'This node has many input items you may consider enabling "Execute Once" in node\'s settings.',
+			displayCondition: '={{ $parameter["operation"] === "select" && $input.all().length > 1 }}',
+			location: 'outputPane',
+			whenToDisplay: 'beforeExecution',
+		},
+	],
 	properties: [
 		{
 			displayName: 'Resource',
