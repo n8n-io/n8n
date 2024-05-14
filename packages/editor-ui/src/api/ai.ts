@@ -97,3 +97,27 @@ export const debugChat = async (
 		console.error('Error:', response.status);
 	}
 };
+
+export const applyCodeSuggestion = async (
+	context: IRestApiContext,
+	payload: { sessionId: string },
+): Promise<void> => {
+	const headers = {
+		'Content-Type': 'application/json',
+	};
+	const response = await fetch(`${context.baseUrl}/ai/debug-chat/apply-code-suggestion`, {
+		headers,
+		method: 'POST',
+		credentials: 'include',
+		body: JSON.stringify(payload),
+	});
+
+	// console.log('fetch response', await response.json());
+
+	if (response.ok && response.body) {
+		const body = await response.json();
+		return body.data.codeSnippet;
+	} else {
+		console.error('Error:', response.status);
+	}
+};

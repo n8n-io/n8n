@@ -131,7 +131,7 @@ export const useAIStore = defineStore('ai', () => {
 			if (lastMessage.type === 'component') {
 				console.log(lastMessage.arguments);
 				const followUpQuestion: string = lastMessage.arguments.suggestions[0].followUpQuestion;
-				const suggestedCode: string = lastMessage.arguments.suggestions[0].codeSnippet;
+				const suggestedCode: string = lastMessage.arguments.suggestions[0].codeDiff;
 				// messages.value.push({
 				// 	createdAt: new Date().toISOString(),
 				// 	sender: 'bot',
@@ -149,8 +149,10 @@ export const useAIStore = defineStore('ai', () => {
 					text: followUpQuestion,
 				});
 
-				let affirmativeAction = lastMessage.arguments.suggestions[0].codeSnippet
-					? { key: 'import_code', label: 'Yes, Import the code' }
+				console.log(lastMessage.arguments.suggestions[0].codeDiff);
+
+				let affirmativeAction = lastMessage.arguments.suggestions[0].codeDiff
+					? { key: 'import_code', label: 'Yes, apply the change' }
 					: { ley: 'update_run_mode', label: 'Yes, update the run mode' };
 
 				const followUpActions = [
@@ -169,6 +171,19 @@ export const useAIStore = defineStore('ai', () => {
 						suggestions: followUpActions,
 						async onReplySelected({ label, key }: { action: string; label: string }) {
 							if (key === 'import_code') {
+								waitingForResponse.value = true;
+
+								await nextTick();
+								await nextTick();
+
+								chatEventBus.emit('scrollToBottom');
+
+								const suggestedCode = await aiApi.applyCodeSuggestion(rootStore.getRestApiContext, {
+									sessionId: currentSessionId.value,
+								});
+
+								waitingForResponse.value = false;
+
 								eventBus.emit('updateCodeContent', suggestedCode);
 
 								messages.value.push({
@@ -207,6 +222,9 @@ export const useAIStore = defineStore('ai', () => {
 				...parsedMessage.suggestion,
 				key: 'testingricardo',
 				followUpQuestion: 'Would you like to try this solution?',
+				codeDiff: parsedMessage.suggestion.codeDiff
+					? '```diff\n' + parsedMessage.suggestion.codeDiff + '\n```'
+					: '',
 			},
 		];
 
