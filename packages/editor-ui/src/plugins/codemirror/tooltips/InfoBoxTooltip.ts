@@ -2,7 +2,7 @@ import { completionStatus } from '@codemirror/autocomplete';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { syntaxTree } from '@codemirror/language';
 import { type EditorState, type Extension, StateEffect, StateField } from '@codemirror/state';
-import { EditorView, type Tooltip, keymap, showTooltip } from '@codemirror/view';
+import { EditorView, type Tooltip, keymap, showTooltip, hoverTooltip } from '@codemirror/view';
 import type { SyntaxNode } from '@lezer/common';
 import { DateTime } from 'luxon';
 import type { DocMetadata } from 'n8n-workflow';
@@ -21,7 +21,12 @@ import { resolveParameter } from '../../../composables/useWorkflowHelpers';
 import { ROOT_DOLLAR_COMPLETIONS } from '../completions/constants';
 import { createInfoBoxRenderer } from '../completions/infoBoxRenderer';
 
-function docToTooltip(index: number, doc?: DocMetadata): Tooltip | null {
+function docToTooltip(
+	index: number,
+	activeArgIndex: number,
+	doc?: DocMetadata,
+	isFunction = true,
+): Tooltip | null {
 	if (doc) {
 		return {
 			pos: index,
@@ -29,7 +34,7 @@ function docToTooltip(index: number, doc?: DocMetadata): Tooltip | null {
 			create: () => {
 				const element = document.createElement('div');
 				element.classList.add('cm-cursorInfo');
-				const info = createInfoBoxRenderer(doc, true)();
+				const info = createInfoBoxRenderer(doc, isFunction, activeArgIndex)();
 				if (info) {
 					element.appendChild(info);
 				}
@@ -41,20 +46,38 @@ function docToTooltip(index: number, doc?: DocMetadata): Tooltip | null {
 	return null;
 }
 
-function findCallExpression(node: SyntaxNode): SyntaxNode | null {
-	if (node.name === ')') {
-		return null;
-	}
-
-	if (node.name === 'CallExpression') {
+function findNearestParentOfType(type: string, node: SyntaxNode): SyntaxNode | null {
+	if (node.name === type) {
 		return node;
 	}
 
 	if (node.parent) {
-		return findCallExpression(node.parent);
+		return findNearestParentOfType(type, node.parent);
 	}
 
 	return null;
+}
+
+function findActiveArgIndex(node: SyntaxNode, index: number) {
+	let currentIndex = 1;
+	let argIndex = 0;
+	let child: SyntaxNode | null = null;
+
+	do {
+		child = node.childAfter(currentIndex);
+
+		if (child) {
+			currentIndex = child.to;
+
+			if (index >= child.from && index <= child.to) {
+				return argIndex;
+			}
+
+			if (child.name !== ',' && child.name !== '(') argIndex++;
+		}
+	} while (child);
+
+	return -1;
 }
 
 function getInfoBoxTooltip(state: EditorState): Tooltip | null {
@@ -67,7 +90,7 @@ function getInfoBoxTooltip(state: EditorState): Tooltip | null {
 		return null;
 	}
 
-	const read = (node?: SyntaxNode | null) => (node ? state.sliceDoc(node.from, node.to) : '');
+	const read = (n?: SyntaxNode | null) => (n ? state.sliceDoc(n.from, n.to) : '');
 	const resolvable = read(node);
 	const jsCode = resolvable.replace(/^{{\s*(.*)\s*}}$/, '$1');
 	const prefixLength = resolvable.indexOf(jsCode);
@@ -78,16 +101,19 @@ function getInfoBoxTooltip(state: EditorState): Tooltip | null {
 		return null;
 	}
 
-	const readJs = (node?: SyntaxNode | null) => (node ? jsCode.slice(node.from, node.to) : '');
-	const jsNode = javascriptLanguage.parser.parse(jsCode).resolveInner(jsIndex, -1);
+	const readJs = (n?: SyntaxNode | null) => (n ? jsCode.slice(n.from, n.to) : '');
+	const jsNode = javascriptLanguage.parser.parse(jsCode).resolveInner(jsIndex, 0);
 
-	const callExpression = findCallExpression(jsNode);
+	const argList = findNearestParentOfType('ArgList', jsNode);
 
-	if (!callExpression || callExpression.from > jsAnchor || callExpression.to < jsAnchor) {
+	if (!argList || argList.from > jsAnchor || argList.to < jsAnchor) {
 		return null;
 	}
+	const callExpression = findNearestParentOfType('CallExpression', argList);
 
-	const subject = callExpression.firstChild;
+	const argIndex = findActiveArgIndex(argList, jsIndex);
+
+	const subject = callExpression?.firstChild;
 
 	switch (subject?.name) {
 		case 'MemberExpression': {
@@ -106,14 +132,14 @@ function getInfoBoxTooltip(state: EditorState): Tooltip | null {
 					const doc =
 						stringExtensions.functions[methodName]?.doc ?? stringMethods.functions[methodName]?.doc;
 
-					return docToTooltip(index, doc);
+					return docToTooltip(index, argIndex, doc);
 				}
 
 				if (typeof resolved === 'number') {
 					const doc =
 						numberExtensions.functions[methodName]?.doc ?? numberMethods.functions[methodName]?.doc;
 
-					return docToTooltip(index, doc);
+					return docToTooltip(index, argIndex, doc);
 				}
 
 				if (typeof resolved === 'boolean') {
@@ -121,19 +147,19 @@ function getInfoBoxTooltip(state: EditorState): Tooltip | null {
 						booleanExtensions.functions[methodName]?.doc ??
 						booleanMethods.functions[methodName]?.doc;
 
-					return docToTooltip(index, doc);
+					return docToTooltip(index, argIndex, doc);
 				}
 
 				if (Array.isArray(resolved)) {
 					const doc =
 						arrayExtensions.functions[methodName]?.doc ?? arrayMethods.functions[methodName]?.doc;
 
-					return docToTooltip(index, doc);
+					return docToTooltip(index, argIndex, doc);
 				}
 
 				if (DateTime.isDateTime(resolved)) {
 					const doc = dateExtensions.functions[methodName]?.doc;
-					return docToTooltip(index, doc);
+					return docToTooltip(index, argIndex, doc);
 				}
 
 				if (resolved instanceof Date) {
@@ -141,14 +167,14 @@ function getInfoBoxTooltip(state: EditorState): Tooltip | null {
 						return null;
 					}
 					const doc = dateExtensions.functions[methodName]?.doc;
-					return docToTooltip(index, doc);
+					return docToTooltip(index, argIndex, doc);
 				}
 
 				if (resolved && typeof resolved === 'object') {
 					const doc =
 						objectExtensions.functions[methodName]?.doc ?? objectMethods.functions[methodName]?.doc;
 
-					return docToTooltip(index, doc);
+					return docToTooltip(index, argIndex, doc);
 				}
 			} catch (error) {
 				return null;
@@ -192,7 +218,7 @@ function getInfoBoxTooltip(state: EditorState): Tooltip | null {
 	}
 }
 
-const infoBoxTooltipField = StateField.define<{
+const cursorInfoBoxTooltip = StateField.define<{
 	tooltip: Tooltip | null;
 }>({
 	create() {
@@ -220,11 +246,144 @@ const infoBoxTooltipField = StateField.define<{
 	provide: (f) => showTooltip.compute([f], (state) => state.field(f).tooltip),
 });
 
+const hoverInfoBoxTooltip = hoverTooltip(async (view, pos, side) => {
+	const node = syntaxTree(view.state).resolveInner(pos, -1);
+
+	if (node.name !== 'Resolvable') {
+		return null;
+	}
+
+	const read = (n?: SyntaxNode | null) => (n ? view.state.sliceDoc(n.from, n.to) : '');
+	const resolvable = read(node);
+	const jsCode = resolvable.replace(/^{{\s*(.*)\s*}}$/, '$1');
+	const prefixLength = resolvable.indexOf(jsCode);
+	const jsPos = pos - node.from - prefixLength;
+	const jsNode = javascriptLanguage.parser.parse(jsCode).resolveInner(jsPos, 0);
+
+	const start = node.from;
+	const end = node.to;
+
+	if ((start === pos && side < 0) || (end === pos && side > 0)) return null;
+
+	const readJs = (n?: SyntaxNode | null) => (n ? jsCode.slice(n.from, n.to) : '');
+
+	console.log(readJs(jsNode), jsNode.name);
+
+	switch (jsNode?.name) {
+		case 'PropertyName': {
+			const callExpression = findNearestParentOfType('CallExpression', jsNode);
+			const subject = callExpression?.firstChild;
+			const propName = readJs(jsNode);
+			const currentPropertyIsFunctionCall =
+				subject && subject.lastChild?.from === jsNode.from && subject.lastChild?.to === jsNode.to;
+
+			try {
+				if (currentPropertyIsFunctionCall) {
+					const base = readJs(jsNode.parent?.firstChild);
+					const resolved = resolveParameter(`={{ ${base} }}`);
+
+					if (typeof resolved === 'string') {
+						const doc =
+							stringExtensions.functions[propName]?.doc ?? stringMethods.functions[propName]?.doc;
+
+						return docToTooltip(pos, -1, doc);
+					}
+
+					if (typeof resolved === 'number') {
+						const doc =
+							numberExtensions.functions[propName]?.doc ?? numberMethods.functions[propName]?.doc;
+
+						return docToTooltip(pos, -1, doc);
+					}
+
+					if (typeof resolved === 'boolean') {
+						const doc =
+							booleanExtensions.functions[propName]?.doc ?? booleanMethods.functions[propName]?.doc;
+
+						return docToTooltip(pos, -1, doc);
+					}
+
+					if (Array.isArray(resolved)) {
+						const doc =
+							arrayExtensions.functions[propName]?.doc ?? arrayMethods.functions[propName]?.doc;
+
+						return docToTooltip(pos, -1, doc);
+					}
+
+					if (DateTime.isDateTime(resolved)) {
+						const doc = dateExtensions.functions[propName]?.doc;
+						return docToTooltip(pos, -1, doc);
+					}
+
+					if (resolved instanceof Date) {
+						if (propName !== 'toDateTime') {
+							return null;
+						}
+						const doc = dateExtensions.functions[propName]?.doc;
+						return docToTooltip(pos, -1, doc);
+					}
+
+					if (resolved && typeof resolved === 'object') {
+						const doc =
+							objectExtensions.functions[propName]?.doc ?? objectMethods.functions[propName]?.doc;
+
+						return docToTooltip(pos, -1, doc);
+					}
+				} else {
+					const parent = readJs(jsNode.parent);
+					const resolved = resolveParameter(`={{ ${parent} }}`);
+
+					return docToTooltip(pos, -1, { name: propName, returnType: typeof resolved }, false);
+				}
+			} catch (error) {
+				return null;
+			}
+		}
+		case 'VariableName': {
+			const isFunction = jsNode.nextSibling?.name === 'ArgList';
+			const label = isFunction ? readJs(jsNode) + '()' : readJs(jsNode);
+			const result = ROOT_DOLLAR_COMPLETIONS.find((comp) => comp.label === label);
+
+			if (!result) {
+				return null;
+			}
+
+			view.dispatch({ effects: closeInfoBoxEffect.of(null) });
+			return {
+				pos: jsNode.from + prefixLength + node.from,
+				end: jsNode.to + prefixLength + node.from,
+				above: true,
+				create: () => {
+					const element = document.createElement('div');
+					element.classList.add('cm-cursorInfo');
+					const info = result.info;
+					if (typeof info === 'string') {
+						element.textContent = info;
+					} else if (typeof info === 'function') {
+						const infoResult = info(result);
+
+						if (infoResult instanceof Node) {
+							element.appendChild(infoResult);
+						} else if (infoResult && 'dom' in infoResult) {
+							element.appendChild(infoResult.dom);
+						}
+					}
+
+					return { dom: element };
+				},
+			};
+		}
+		default:
+			return null;
+	}
+});
+
 const closeInfoBoxEffect = StateEffect.define<null>();
 
 export const infoBoxTooltips = (): Extension[] => {
 	return [
-		infoBoxTooltipField.extension,
+		cursorInfoBoxTooltip,
+		hoverInfoBoxTooltip,
 		EditorView.focusChangeEffect.of((_, focus) => {
 			if (!focus) {
 				return closeInfoBoxEffect.of(null);
@@ -235,7 +394,7 @@ export const infoBoxTooltips = (): Extension[] => {
 			{
 				key: 'Escape',
 				run: (view) => {
-					const state = view.state.field(infoBoxTooltipField, false);
+					const state = view.state.field(cursorInfoBoxTooltip, false);
 					if (!state?.tooltip) return false;
 
 					view.dispatch({ effects: closeInfoBoxEffect.of(null) });

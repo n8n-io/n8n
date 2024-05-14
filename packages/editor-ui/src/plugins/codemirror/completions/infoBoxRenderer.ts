@@ -2,7 +2,7 @@ import type { DocMetadata, DocMetadataArgument, DocMetadataExample } from 'n8n-w
 import { sanitizeHtml } from '@/utils/htmlUtils';
 import { i18n } from '@/plugins/i18n';
 
-const renderFunctionHeader = (doc?: DocMetadata) => {
+const renderFunctionHeader = (doc?: DocMetadata, highlightArgIndex?: number) => {
 	const header = document.createElement('div');
 	if (doc) {
 		const functionNameSpan = document.createElement('span');
@@ -17,7 +17,8 @@ const renderFunctionHeader = (doc?: DocMetadata) => {
 		const argsSpan = document.createElement('span');
 		doc.args?.forEach((arg, index, array) => {
 			const optional = arg.optional && !arg.name.endsWith('?');
-			const argSpan = document.createElement('span');
+			const argSpan = document.createElement(highlightArgIndex === index ? 'strong' : 'span');
+			argSpan.classList.add('autocomplete-info-arg');
 			argSpan.textContent = arg.name;
 
 			if (optional) {
@@ -28,7 +29,6 @@ const renderFunctionHeader = (doc?: DocMetadata) => {
 				argSpan.textContent = '...' + argSpan.textContent;
 			}
 
-			argSpan.classList.add('autocomplete-info-arg');
 			argsSpan.appendChild(argSpan);
 
 			if (index !== array.length - 1) {
@@ -110,7 +110,7 @@ const renderDescription = ({
 	return descriptionBody;
 };
 
-const renderArgs = (args: DocMetadataArgument[]) => {
+const renderArgs = (args: DocMetadataArgument[], highlightArgIndex?: number) => {
 	const argsContainer = document.createElement('div');
 	argsContainer.classList.add('autocomplete-info-args-container');
 
@@ -122,9 +122,9 @@ const renderArgs = (args: DocMetadataArgument[]) => {
 	const argsList = document.createElement('ul');
 	argsList.classList.add('autocomplete-info-args');
 
-	for (const arg of args.filter((a) => a.name !== '...')) {
+	for (const [index, arg] of args.filter((a) => a.name !== '...').entries()) {
 		const argItem = document.createElement('li');
-		const argName = document.createElement('span');
+		const argName = document.createElement(index === highlightArgIndex ? 'strong' : 'span');
 		argName.classList.add('autocomplete-info-arg-name');
 		argName.textContent = arg.name.replaceAll('?', '');
 		const tags = [];
@@ -223,7 +223,7 @@ const renderExamples = (examples: DocMetadataExample[]) => {
 };
 
 export const createInfoBoxRenderer =
-	(doc?: DocMetadata, isFunction = false) =>
+	(doc?: DocMetadata, isFunction = false, highlightArgIndex?: number) =>
 	() => {
 		const tooltipContainer = document.createElement('div');
 		tooltipContainer.setAttribute('tabindex', '-1');
@@ -236,7 +236,9 @@ export const createInfoBoxRenderer =
 		const hasArgs = args && args.length > 0;
 		const hasExamples = examples && examples.length > 0;
 
-		const header = isFunction ? renderFunctionHeader(doc) : renderPropHeader(doc);
+		const header = isFunction
+			? renderFunctionHeader(doc, highlightArgIndex)
+			: renderPropHeader(doc);
 		header.classList.add('autocomplete-info-header');
 		tooltipContainer.appendChild(header);
 
@@ -250,7 +252,7 @@ export const createInfoBoxRenderer =
 		}
 
 		if (hasArgs) {
-			const argsContainer = renderArgs(args);
+			const argsContainer = renderArgs(args, highlightArgIndex);
 			tooltipContainer.appendChild(argsContainer);
 		}
 
