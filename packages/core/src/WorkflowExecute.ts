@@ -43,6 +43,7 @@ import {
 	NodeConnectionType,
 	ApplicationError,
 	NodeExecutionOutput,
+	sleep,
 } from 'n8n-workflow';
 import get from 'lodash/get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
@@ -1069,6 +1070,8 @@ export class WorkflowExecute {
 								const didContinueOnFail = nodeSuccessData?.at(0)?.at(0)?.json.error !== undefined;
 
 								while (didContinueOnFail && tryIndex !== maxTries - 1) {
+									await sleep(waitBetweenTries);
+
 									runNodeData = await workflow.runNode(
 										executionData,
 										this.runExecutionData,
@@ -1078,6 +1081,7 @@ export class WorkflowExecute {
 										this.mode,
 										this.abortController.signal,
 									);
+
 									tryIndex++;
 								}
 
