@@ -123,9 +123,11 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 					}) as string
 				).replace('%21', '!');
 				const folderPath = await getPath.call(this, folderId);
-				responseData = responseData.filter((item: IDataObject) =>
-					((item.parentReference as IDataObject).path as string).startsWith(folderPath),
-				);
+
+				responseData = responseData.filter((item: IDataObject) => {
+					const path = (item.parentReference as IDataObject)?.path as string;
+					return typeof path === 'string' && path.startsWith(folderPath);
+				});
 			}
 			responseData = responseData.filter((item: IDataObject) => item[eventResource]);
 			if (!responseData?.length) {
@@ -147,7 +149,7 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 			}
 
 			if (this.getMode() === 'manual') {
-				return [this.helpers.returnJsonArray(responseData[0])];
+				return [this.helpers.returnJsonArray(responseData)];
 			} else {
 				return [this.helpers.returnJsonArray(responseData)];
 			}
