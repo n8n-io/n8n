@@ -64,7 +64,15 @@ describe('WorkflowDataProxy', () => {
 			expect(proxy.$('Rename').all().length).toEqual(5);
 		});
 		test('$("NodeName").item', () => {
-			expect(proxy.$('Rename').item).toEqual({ json: { data: 105 }, pairedItem: { item: 0 } });
+			expect(proxy.$('Rename').item).toEqual({
+				json: {
+					data: 105,
+					nested: {
+						data: 106,
+					},
+				},
+				pairedItem: { item: 0 },
+			});
 		});
 		test('$("NodeNameEarlier").item', () => {
 			expect(proxy.$('Function').item).toEqual({
@@ -282,5 +290,30 @@ describe('WorkflowDataProxy', () => {
 				done();
 			}
 		});
+	});
+
+	test('is read-only', () => {
+		const fixture = loadFixture('base');
+		const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'End');
+
+		expect(() => (proxy.$json.data = 2)).toThrow(TypeError);
+		expect(proxy.$json.data).toEqual(105);
+
+		expect(() => {
+			if (proxy.$binary) {
+				proxy.$binary.data = { data: 'foo', mimeType: 'text/plain' };
+			}
+		}).toThrow(TypeError);
+		expect(proxy.$binary).toEqual({});
+
+		expect(() => (proxy.$('Rename').item.json.data = 2)).toThrow(TypeError);
+		expect(() => (proxy.$('Rename').item.json.nested.data = 2)).toThrow(TypeError);
+		expect(proxy.$('Rename').item.json).toEqual({ data: 105, nested: { data: 106 } });
+
+		expect(() => (proxy.$parameter.value2 = 'foo')).toThrow(TypeError);
+		expect(proxy.$parameter.value2).toEqual('default-value2');
+
+		expect(() => (proxy.$('Rename').all()[1].json.data = 2)).toThrow(TypeError);
+		expect(proxy.$('Rename').all()[1].json).toEqual({ data: 160 });
 	});
 });

@@ -42,15 +42,28 @@ const isScriptingNode = (nodeName: string, workflow: Workflow) => {
 	return node && SCRIPTING_NODE_TYPES.includes(node.type);
 };
 
-const createReadOnlyProxy = <T extends object>(target: T, handler: ProxyHandler<T> = {}): T => {
+const createReadOnlyProxy = <T>(target: T, handler: ProxyHandler<object> = {}): T => {
+	if (typeof target !== 'object' || !target) {
+		return target;
+	}
+
 	return new Proxy(target, {
+		...handler,
 		has: () => true,
 		set: () => false,
 		deleteProperty: () => false,
 		defineProperty: () => false,
 		isExtensible: () => false,
-		...handler,
-	});
+		get: (t, name, receiver) => {
+			const result = handler.get ? handler.get(t, name, receiver) : Reflect.get(t, name, receiver);
+
+			if (result && typeof result === 'object') {
+				return createReadOnlyProxy(result);
+			}
+
+			return result;
+		},
+	}) as T;
 };
 
 export class WorkflowDataProxy {
@@ -421,14 +434,14 @@ export class WorkflowDataProxy {
 
 						if (['data', 'json'].includes(name)) {
 							// JSON-Data
-							return createReadOnlyProxy(executionData[that.itemIndex].json);
+							return executionData[that.itemIndex].json;
 						}
 						if (name === 'binary') {
 							// Binary-Data
 							const returnData: IDataObject = {};
 
 							if (!executionData[that.itemIndex].binary) {
-								return createReadOnlyProxy(returnData);
+								return returnData;
 							}
 
 							const binaryKeyData = executionData[that.itemIndex].binary!;
@@ -446,7 +459,7 @@ export class WorkflowDataProxy {
 								}
 							}
 
-							return createReadOnlyProxy(returnData);
+							return returnData;
 						}
 					} else if (name === 'context') {
 						return that.nodeContextGetter(nodeName);
@@ -633,7 +646,7 @@ export class WorkflowDataProxy {
 				executionData = that.getNodeExecutionData(nodeName, false, branchIndex, runIndex);
 			}
 
-			return executionData;
+			return createReadOnlyProxy(executionData);
 		};
 
 		// replacing proxies with the actual data.

@@ -64,7 +64,7 @@
 							"main": [
 								[
 									{
-										"json": { "data": 105 },
+										"json": { "data": 105, "nested": { "data": 106 } },
 										"pairedItem": { "item": 0 }
 									},
 									{
