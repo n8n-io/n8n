@@ -1054,7 +1054,7 @@ export class WorkflowExecute {
 									workflowId: workflow.id,
 								});
 
-								const runNodeData = await workflow.runNode(
+								let runNodeData = await workflow.runNode(
 									executionData,
 									this.runExecutionData,
 									runIndex,
@@ -1065,6 +1065,21 @@ export class WorkflowExecute {
 								);
 
 								nodeSuccessData = runNodeData.data;
+
+								const didContinueOnFail = nodeSuccessData?.at(0)?.at(0)?.json.error !== undefined;
+
+								while (didContinueOnFail && tryIndex !== maxTries - 1) {
+									runNodeData = await workflow.runNode(
+										executionData,
+										this.runExecutionData,
+										runIndex,
+										this.additionalData,
+										NodeExecuteFunctions,
+										this.mode,
+										this.abortController.signal,
+									);
+									tryIndex++;
+								}
 
 								if (nodeSuccessData instanceof NodeExecutionOutput) {
 									// eslint-disable-next-line @typescript-eslint/no-unsafe-call
