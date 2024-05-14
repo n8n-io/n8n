@@ -15,6 +15,14 @@ import ProjectRoleUpgradeDialog from '@/features/projects/components/ProjectRole
 import { useRolesStore } from '@/stores/roles.store';
 import type { ProjectRole } from '@/types/roles.types';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import { useTelemetry } from '@/composables/useTelemetry';
+
+type FormDataDiff = {
+	name?: string;
+	role?: ProjectRelation[];
+	memberAdded?: ProjectRelation[];
+	memberRemoved?: ProjectRelation[];
+};
 
 const usersStore = useUsersStore();
 const locale = useI18n();
@@ -23,6 +31,7 @@ const rolesStore = useRolesStore();
 const cloudPlanStore = useCloudPlanStore();
 const toast = useToast();
 const router = useRouter();
+const telemetry = useTelemetry();
 const dialogVisible = ref(false);
 const upgradeDialogVisible = ref(false);
 
@@ -92,9 +101,76 @@ const onCancel = () => {
 	isDirty.value = false;
 };
 
+const makeFormDataDiff = (): FormDataDiff => {
+	const diff: FormDataDiff = {};
+	if (!projectsStore.currentProject) {
+		return diff;
+	}
+
+	if (formData.value.name !== projectsStore.currentProject.name) {
+		diff.name = formData.value.name ?? '';
+	}
+
+	if (formData.value.relations.length !== projectsStore.currentProject.relations.length) {
+		diff.memberAdded = formData.value.relations.filter(
+			(r: ProjectRelation) => !projectsStore.currentProject?.relations.find((cr) => cr.id === r.id),
+		);
+		diff.memberRemoved = projectsStore.currentProject.relations.filter(
+			(cr: ProjectRelation) => !formData.value.relations.find((r) => r.id === cr.id),
+		);
+	}
+
+	diff.role = formData.value.relations.filter((r: ProjectRelation) => {
+		const currentRelation = projectsStore.currentProject?.relations.find((cr) => cr.id === r.id);
+		return currentRelation?.role !== r.role && !diff.memberAdded?.find((ar) => ar.id === r.id);
+	});
+
+	return diff;
+};
+
+const sendTelemetry = (diff: FormDataDiff) => {
+	if (diff.name) {
+		telemetry.track('User changed project name', {
+			project_id: projectsStore.currentProject?.id,
+			name: diff.name,
+		});
+	}
+
+	if (diff.memberAdded) {
+		diff.memberAdded.forEach((r) => {
+			telemetry.track('User added member to project', {
+				project_id: projectsStore.currentProject?.id,
+				target_user_id: r.id,
+				role: r.role,
+			});
+		});
+	}
+
+	if (diff.memberRemoved) {
+		diff.memberRemoved.forEach((r) => {
+			telemetry.track('User removed member from project', {
+				project_id: projectsStore.currentProject?.id,
+				target_user_id: r.id,
+			});
+		});
+	}
+
+	if (diff.role) {
+		diff.role.forEach((r) => {
+			telemetry.track('User changed member role on project', {
+				project_id: projectsStore.currentProject?.id,
+				target_user_id: r.id,
+				role: r.role,
+			});
+		});
+	}
+};
+
 const onSubmit = async () => {
 	try {
 		if (isDirty.value && projectsStore.currentProject) {
+			const diff = makeFormDataDiff();
+
 			await projectsStore.updateProject({
 				id: projectsStore.currentProject.id,
 				name: formData.value.name,
@@ -103,6 +179,7 @@ const onSubmit = async () => {
 					role: r.role,
 				})),
 			});
+			sendTelemetry(diff);
 			isDirty.value = false;
 			toast.showMessage({
 				title: locale.baseText('projects.settings.save.successful.title', {
@@ -235,6 +312,7 @@ onBeforeMount(async () => {
 							</N8nSelect>
 							<N8nButton
 								type="tertiary"
+								native-type="button"
 								square
 								icon="trash"
 								data-test-id="project-user-remove"
@@ -244,28 +322,27 @@ onBeforeMount(async () => {
 					</template>
 				</N8nUsersList>
 			</fieldset>
-			<fieldset>
-				<div :class="$style.buttons">
+			<fieldset class="flex justify-end items-center">
+				<div>
+					<small v-if="isDirty" class="mr-2xs">{{
+						locale.baseText('projects.settings.message.unsavedChanges')
+					}}</small>
 					<N8nButton
 						:disabled="!isDirty"
-						type="primary"
-						data-test-id="project-settings-save-button"
-						>{{ locale.baseText('projects.settings.button.save') }}</N8nButton
+						type="secondary"
+						native-type="button"
+						class="mr-2xs"
+						data-test-id="project-settings-cancel-button"
+						@click.stop.prevent="onCancel"
+						>{{ locale.baseText('projects.settings.button.cancel') }}</N8nButton
 					>
-					<div>
-						<small v-if="isDirty" class="mr-2xs">{{
-							locale.baseText('projects.settings.message.unsavedChanges')
-						}}</small>
-						<N8nButton
-							:disabled="!isDirty"
-							type="secondary"
-							class="mr-2xs"
-							data-test-id="project-settings-cancel-button"
-							@click.stop.prevent="onCancel"
-							>{{ locale.baseText('projects.settings.button.cancel') }}</N8nButton
-						>
-					</div>
 				</div>
+				<N8nButton
+					:disabled="!isDirty"
+					type="primary"
+					data-test-id="project-settings-save-button"
+					>{{ locale.baseText('projects.settings.button.save') }}</N8nButton
+				>
 			</fieldset>
 			<fieldset>
 				<hr class="mb-2xl" />
@@ -274,6 +351,7 @@ onBeforeMount(async () => {
 				<br />
 				<N8nButton
 					type="tertiary"
+					native-type="button"
 					class="mt-s"
 					data-test-id="project-settings-delete-button"
 					@click.stop.prevent="onDelete"
@@ -327,11 +405,7 @@ onBeforeMount(async () => {
 
 .buttons {
 	display: flex;
-	// TODO: Remove this once the button component does not use 'type' prop
-	// Button component should use 'variant' instead of 'type'
-	// so we can use 'type' for defining the button type so the form element does not mix them up
-	flex-direction: row-reverse;
-	justify-content: flex-start;
+	justify-content: flex-end;
 	align-items: center;
 }
 

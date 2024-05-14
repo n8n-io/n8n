@@ -6,6 +6,7 @@
 		:aria-disabled="ariaDisabled"
 		:aria-busy="ariaBusy"
 		:href="href"
+		:type="props.nativeType"
 		aria-live="polite"
 		v-bind="$attrs"
 	>
@@ -41,6 +42,7 @@ const props = withDefaults(defineProps<ButtonProps>(), {
 	active: false,
 	square: false,
 	element: 'button',
+	nativeType: 'submit',
 });
 
 watchEffect(() => {
