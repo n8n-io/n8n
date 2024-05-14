@@ -689,20 +689,25 @@ export const variablesOptions = () => {
 export const responseOptions = () => {
 	return [
 		{
-			name: 'headers',
-			returnType: 'object',
-			docURL: 'https://docs.n8n.io/code/builtin/http-node-variables/',
-			description: i18n.baseText('codeNodeEditor.completer.$response.headers'),
-		},
-		{
 			name: 'statusCode',
 			returnType: 'number',
 			docURL: 'https://docs.n8n.io/code/builtin/http-node-variables/',
 			description: i18n.baseText('codeNodeEditor.completer.$response.statusCode'),
 		},
 		{
+			name: 'statusMessage',
+			returnType: 'string',
+			description: i18n.baseText('codeNodeEditor.completer.$response.statusMessage'),
+		},
+		{
+			name: 'headers',
+			returnType: 'Object',
+			docURL: 'https://docs.n8n.io/code/builtin/http-node-variables/',
+			description: i18n.baseText('codeNodeEditor.completer.$response.headers'),
+		},
+		{
 			name: 'body',
-			returnType: 'object',
+			returnType: 'Object',
 			docURL: 'https://docs.n8n.io/code/builtin/http-node-variables/',
 			description: i18n.baseText('codeNodeEditor.completer.$response.body'),
 		},
@@ -1038,9 +1043,9 @@ export const itemOptions = () => {
 export const binaryOptions = () => {
 	return [
 		{
-			name: 'fileName',
-			returnType: 'string',
-			description: i18n.baseText('codeNodeEditor.completer.binary.fileName'),
+			name: 'id',
+			returnType: 'String',
+			description: i18n.baseText('codeNodeEditor.completer.binary.id'),
 		},
 		{
 			name: 'fileExtension',
@@ -1048,14 +1053,29 @@ export const binaryOptions = () => {
 			description: i18n.baseText('codeNodeEditor.completer.binary.fileExtension'),
 		},
 		{
+			name: 'fileName',
+			returnType: 'string',
+			description: i18n.baseText('codeNodeEditor.completer.binary.fileName'),
+		},
+		{
 			name: 'fileSize',
 			returnType: 'string',
 			description: i18n.baseText('codeNodeEditor.completer.binary.fileSize'),
 		},
 		{
+			name: 'fileType',
+			returnType: 'String',
+			description: i18n.baseText('codeNodeEditor.completer.binary.fileType'),
+		},
+		{
 			name: 'mimeType',
 			returnType: 'string',
 			description: i18n.baseText('codeNodeEditor.completer.binary.mimeType'),
+		},
+		{
+			name: 'directory',
+			returnType: 'String',
+			description: i18n.baseText('codeNodeEditor.completer.binary.directory'),
 		},
 	].map((doc) => createCompletionOption({ name: doc.name, doc }));
 };
