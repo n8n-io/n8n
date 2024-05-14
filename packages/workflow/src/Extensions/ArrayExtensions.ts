@@ -597,7 +597,7 @@ union.doc = {
 
 unique.doc = {
 	name: 'unique',
-	description: 'Removes any duplicate elements from an array',
+	description: 'Removes any duplicate elements from the array',
 	examples: [
 		{ example: "['quick', 'brown', 'quick'].unique()", evaluated: "['quick', 'brown']" },
 		{
