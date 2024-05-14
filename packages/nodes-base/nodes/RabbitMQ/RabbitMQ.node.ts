@@ -454,7 +454,7 @@ export class RabbitMQ implements INodeType {
 						);
 						headers = additionalHeaders;
 					}
-					//const args = options.arguments as Options.Publish;
+
 					queuePromises.push(
 						channel.sendToQueue(queue, Buffer.from(message), {
 							headers,
