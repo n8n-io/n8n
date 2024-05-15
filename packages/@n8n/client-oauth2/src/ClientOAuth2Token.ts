@@ -10,6 +10,7 @@ export interface ClientOAuth2TokenData extends Record<string, string | undefined
 	expires_in?: string;
 	scope?: string | undefined;
 }
+
 /**
  * General purpose client token generator.
  */
@@ -77,7 +78,7 @@ export class ClientOAuth2Token {
 		const clientId = options.clientId;
 		const clientSecret = options.clientSecret;
 		const headers = { ...DEFAULT_HEADERS };
-		const body: Record<string, any> = {
+		const body: Record<string, string> = {
 			refresh_token: this.refreshToken,
 			grant_type: 'refresh_token',
 		};
@@ -93,8 +94,8 @@ export class ClientOAuth2Token {
 			{
 				url: options.accessTokenUri,
 				method: 'POST',
-				headers: headers,
-				body: body,
+				headers,
+				body,
 			},
 			options,
 		);
