@@ -30,7 +30,7 @@ const workflowSharingModal = new WorkflowSharingModal();
 const ndv = new NDV();
 
 describe('Sharing', { disableAutoLogin: true }, () => {
-	before(() => cy.enableFeature('sharing', true));
+	before(() => cy.enableFeature('sharing'));
 
 	let workflowW2Url = '';
 	it('should create C1, W1, W2, share W1 with U3, as U2', () => {
