@@ -2,7 +2,15 @@ import { completionStatus } from '@codemirror/autocomplete';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { syntaxTree } from '@codemirror/language';
 import { type EditorState, type Extension, StateEffect, StateField } from '@codemirror/state';
-import { EditorView, type Tooltip, keymap, showTooltip, hoverTooltip } from '@codemirror/view';
+import {
+	EditorView,
+	type Tooltip,
+	keymap,
+	showTooltip,
+	hoverTooltip,
+	closeHoverTooltips,
+	hasHoverTooltips,
+} from '@codemirror/view';
 import type { SyntaxNode } from '@lezer/common';
 import { DateTime } from 'luxon';
 import type { DocMetadata } from 'n8n-workflow';
@@ -389,6 +397,11 @@ export const infoBoxTooltips = (): Extension[] => {
 				return closeInfoBoxEffect.of(null);
 			}
 			return null;
+		}),
+		EditorView.updateListener.of((update) => {
+			if (update.docChanged && hasHoverTooltips(update.state)) {
+				update.view.dispatch({ effects: closeHoverTooltips });
+			}
 		}),
 		keymap.of([
 			{
