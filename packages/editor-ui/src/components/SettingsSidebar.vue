@@ -166,7 +166,7 @@ export default defineComponent({
 		},
 		canAccessApiSettings(): boolean {
 			return (
-				useSettingsStore().isPublicApiEnabled && this.canUserAccessRouteByName(VIEWS.API_SETTINGS)
+				this.settingsStore.isPublicApiEnabled && this.canUserAccessRouteByName(VIEWS.API_SETTINGS)
 			);
 		},
 		canAccessLdapSettings(): boolean {
