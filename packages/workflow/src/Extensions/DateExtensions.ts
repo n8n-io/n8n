@@ -426,7 +426,7 @@ toDateTime.doc = {
 	examples: [
 		{
 			example: "jsDate = new Date('2024-03-30T18:49')\njsDate.toDateTime().plus(5, 'days')",
-			evaluated: '2024-05-05T18:49',
+			evaluated: '[DateTime: 2024-05-05T18:49:00.000-00:00]',
 		},
 	],
 	returnType: 'DateTime',
@@ -440,11 +440,11 @@ minus.doc = {
 	examples: [
 		{
 			example: "dt = '2024-03-30T18:49'.toDateTime()\ndt.minus(7, 'days')",
-			evaluated: '2024-04-23T18:49',
+			evaluated: '[DateTime: 2024-04-23T18:49:00.000-00:00]',
 		},
 		{
 			example: "dt = '2024-03-30T18:49'.toDateTime()\ndt.minus(4, 'years')",
-			evaluated: '2020-04-30T18:49',
+			evaluated: '[DateTime: 2020-04-30T18:49:00.000-00:00]',
 		},
 	],
 	section: 'edit',
@@ -474,11 +474,11 @@ plus.doc = {
 	examples: [
 		{
 			example: "dt = '2024-03-30T18:49'.toDateTime()\ndt.plus(7, 'days')",
-			evaluated: '2024-04-07T18:49',
+			evaluated: '[DateTime: 2024-04-07T18:49:00.000-00:00]',
 		},
 		{
 			example: "dt = '2024-03-30T18:49'.toDateTime()\ndt.plus(4, 'years')",
-			evaluated: '2028-03-30T18:49',
+			evaluated: '[DateTime: 2028-03-30T18:49:00.000-00:00]',
 		},
 	],
 	section: 'edit',
@@ -512,8 +512,8 @@ diffTo.doc = {
 		},
 		{
 			example:
-				"dt1 = '2024-03-30T18:49:07.234'.toDateTime();\ndt2 = '2025-01-01T00:00:00.000'.toDateTime();\ndt1.diffTo(dt2, ['months', 'days'])",
-			evaluated: '{ months: , days: }',
+				"dt1 = '2025-01-01T00:00:00.000'.toDateTime();\ndt2 = '2024-03-30T18:49:07.234'.toDateTime();\ndt1.diffTo(dt2, ['months', 'days'])",
+			evaluated: '{ months: 9, days: 1.21 }',
 		},
 	],
 	section: 'compare',
