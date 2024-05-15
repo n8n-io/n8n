@@ -67,7 +67,10 @@ export const luxonStaticDocs: Required<NativeDoc> = {
 					},
 				],
 				examples: [
-					{ example: 'DateTime.local(1982, 12, 3)', evaluated: '1982-12-03T00:00:00.000-05:00' },
+					{
+						example: 'DateTime.local(1982, 12, 3)',
+						evaluated: '[DateTime: 1982-12-03T00:00:00.000-05:00]',
+					},
 				],
 			},
 		},
@@ -123,7 +126,12 @@ export const luxonStaticDocs: Required<NativeDoc> = {
 						),
 					},
 				],
-				examples: [{ example: 'DateTime.utc(1982, 12, 3)', evaluated: '1982-12-03T00:00:00.000Z' }],
+				examples: [
+					{
+						example: 'DateTime.utc(1982, 12, 3)',
+						evaluated: '[DateTime: 1982-12-03T00:00:00.000Z]',
+					},
+				],
 			},
 		},
 		fromJSDate: {
@@ -164,7 +172,10 @@ export const luxonStaticDocs: Required<NativeDoc> = {
 					},
 				],
 				examples: [
-					{ example: 'DateTime.fromMillis(1711838940000)', evaluated: '2024-03-30T18:49' },
+					{
+						example: 'DateTime.fromMillis(1711838940000)',
+						evaluated: '[DateTime: 2024-03-30T18:49:00.000-00:00]',
+					},
 				],
 			},
 		},
@@ -193,7 +204,12 @@ export const luxonStaticDocs: Required<NativeDoc> = {
 						),
 					},
 				],
-				examples: [{ example: 'DateTime.fromSeconds(1711838940)', evaluated: '2024-03-30T18:49' }],
+				examples: [
+					{
+						example: 'DateTime.fromSeconds(1711838940)',
+						evaluated: '[DateTime: 2024-03-30T18:49:00.000-00:00]',
+					},
+				],
 			},
 		},
 		fromObject: {
@@ -234,7 +250,7 @@ export const luxonStaticDocs: Required<NativeDoc> = {
 				examples: [
 					{
 						example: "DateTime.fromISO('2024-05-10T14:15:59.493Z')",
-						evaluated: '2024-05-10T14:15',
+						evaluated: '[DateTime: 2024-05-10T14:15:59.493Z]',
 					},
 				],
 			},
@@ -375,7 +391,7 @@ export const luxonStaticDocs: Required<NativeDoc> = {
 				name: 'max',
 				description: i18n.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.max'),
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimemax',
-				returnType: 'DateTime | undefined',
+				returnType: 'DateTime',
 				args: [
 					{
 						name: 'dateTimes',
@@ -390,7 +406,7 @@ export const luxonStaticDocs: Required<NativeDoc> = {
 					{
 						example:
 							"DateTime.max('2024-03-30T18:49'.toDateTime(), '2025-03-30T18:49'.toDateTime())",
-						evaluated: '2025-03-30T18:49',
+						evaluated: '[DateTime: 2025-03-30T18:49:00.000-00:00]',
 					},
 				],
 			},
@@ -400,7 +416,7 @@ export const luxonStaticDocs: Required<NativeDoc> = {
 				name: 'min',
 				description: i18n.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.min'),
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimemin',
-				returnType: 'DateTime | undefined',
+				returnType: 'DateTime',
 				args: [
 					{
 						name: 'dateTimes',
@@ -415,7 +431,7 @@ export const luxonStaticDocs: Required<NativeDoc> = {
 					{
 						example:
 							"DateTime.min('2024-03-30T18:49'.toDateTime(), '2025-03-30T18:49'.toDateTime())",
-						evaluated: '2024-03-30T18:49',
+						evaluated: '[DateTime: 2024-03-30T18:49:00.000-00:00]',
 					},
 				],
 			},

@@ -387,7 +387,7 @@ isBetween.doc = {
 			evaluated: 'true',
 		},
 	],
-	section: 'query',
+	section: 'compare',
 	returnType: 'boolean',
 	args: [
 		{

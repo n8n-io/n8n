@@ -367,8 +367,8 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 				returnType: 'Duration',
 				args: [
 					{ name: 'other', type: 'DateTime' },
-					{ name: 'unit', type: 'string|string[]' },
-					{ name: 'opts', type: 'Object' },
+					{ name: 'unit', type: 'string | string[]' },
+					{ name: 'options', type: 'Object' },
 				],
 			},
 		},
@@ -380,8 +380,8 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimediffnow',
 				returnType: 'Duration',
 				args: [
-					{ name: 'unit', type: 'string|string[]' },
-					{ name: 'opts', type: 'Object' },
+					{ name: 'unit', type: 'string | string[]' },
+					{ name: 'options', type: 'Object' },
 				],
 			},
 		},
@@ -401,7 +401,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 						type: 'string',
 					},
 					{
-						name: 'opts',
+						name: 'options',
 						optional: true,
 						description: i18n.baseText(
 							'codeNodeEditor.completer.luxon.instanceMethods.endOf.args.opts',
@@ -413,7 +413,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 				examples: [
 					{
 						example: "dt = '2024-03-30T18:49'.toDateTime()\ndt.endOf('month')",
-						evaluated: '2024-03-31T23:59',
+						evaluated: '[DateTime: 2024-03-31T23:59:00.000-00:00]',
 					},
 				],
 			},
@@ -495,7 +495,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 				hidden: true,
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimeresolvedlocaleoptions',
 				returnType: 'Object',
-				args: [{ name: 'opts', type: 'Object' }],
+				args: [{ name: 'options', type: 'Object' }],
 			},
 		},
 		set: {
@@ -518,7 +518,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 				examples: [
 					{
 						example: "dt = '2024-03-30T18:49'.toDateTime()\ndt.set({ year:1982, month:10 })",
-						evaluated: '1982-10-20T18:49',
+						evaluated: '[DateTime: 1982-10-20T18:49:00.000-00:00]',
 					},
 				],
 			},
@@ -569,12 +569,23 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 						type: 'string',
 					},
 					{
-						name: 'opts',
+						name: 'options',
 						optional: true,
 						description: i18n.baseText(
 							'codeNodeEditor.completer.luxon.instanceMethods.setZone.args.opts',
 						),
 						type: 'Object',
+					},
+				],
+				examples: [
+					{
+						example:
+							"dt = '2024-01-01T00:00:00.000+02:00'.toDateTime()\ndt.setZone('America/Buenos_Aires')",
+						evaluated: '[DateTime: 2023-12-31T19:00:00.000-03:00]',
+					},
+					{
+						example: "dt = '2024-01-01T00:00:00.000+02:00'.toDateTime()\ndt.setZone('UTC+7')",
+						evaluated: '[DateTime: 2024-01-01T05:00:00.000+07:00]',
 					},
 				],
 			},
@@ -595,7 +606,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 						type: 'string',
 					},
 					{
-						name: 'opts',
+						name: 'options',
 						optional: true,
 						description: i18n.baseText(
 							'codeNodeEditor.completer.luxon.instanceMethods.startOf.args.opts',
@@ -606,7 +617,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 				examples: [
 					{
 						example: "'2024-03-20T18:49'.toDateTime().startOf('month')",
-						evaluated: '2024-03-01T00:00',
+						evaluated: '[DateTime: 2024-03-01T00:00:00.000-00:00]',
 					},
 				],
 			},
@@ -629,7 +640,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 				returnType: 'string',
 				args: [
 					{ name: 'fmt', type: 'string' },
-					{ name: 'opts', type: 'Object' },
+					{ name: 'options', type: 'Object' },
 				],
 			},
 		},
@@ -651,7 +662,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 				returnType: 'string',
 				args: [
 					{
-						name: 'opts',
+						name: 'options',
 						optional: true,
 						description: i18n.baseText(
 							'codeNodeEditor.completer.luxon.instanceMethods.toISO.args.opts',
@@ -659,7 +670,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 						type: 'Object',
 					},
 				],
-				examples: [{ example: '$now.toISO()', evaluated: '2024-04-05T18:44:55.525+02:00' }],
+				examples: [{ example: '$now.toISO()', evaluated: "'2024-04-05T18:44:55.525+02:00'" }],
 			},
 		},
 		toISODate: {
@@ -669,7 +680,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 				hidden: true,
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimetoisodate',
 				returnType: 'string',
-				args: [{ name: 'opts', type: 'Object' }],
+				args: [{ name: 'options', type: 'Object' }],
 			},
 		},
 		toISOTime: {
@@ -679,7 +690,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 				hidden: true,
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimetoisotime',
 				returnType: 'string',
-				args: [{ name: 'opts', type: 'Object' }],
+				args: [{ name: 'options', type: 'Object' }],
 			},
 		},
 		toISOWeekDate: {
@@ -719,7 +730,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 				examples: [
 					{
 						example: "dt = '2024-01-01T00:00:00.000Z'.toDateTime()\ndt.toLocal()",
-						evaluated: '2024-01-01T01:00:00.000+01:00',
+						evaluated: '[DateTime: 2024-01-01T01:00:00.000+01:00]',
 						description: i18n.baseText(
 							'codeNodeEditor.completer.luxon.instanceMethods.toLocal.example',
 						),
@@ -736,7 +747,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 				returnType: 'string',
 				args: [
 					{ name: 'formatOpts', type: 'any' },
-					{ name: 'opts', type: 'Object' },
+					{ name: 'options', type: 'Object' },
 				],
 			},
 		},
@@ -842,7 +853,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 				hidden: true,
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimetoobject',
 				returnType: 'Object',
-				args: [{ name: 'opts', type: 'any' }],
+				args: [{ name: 'options', type: 'any' }],
 			},
 		},
 		toRelative: {
@@ -928,7 +939,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 				section: 'format',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimetostring',
 				returnType: 'string',
-				examples: [{ example: '$now.toString()', evaluated: '2024-04-05T18:44:55.525+02:00' }],
+				examples: [{ example: '$now.toString()', evaluated: "'2024-04-05T18:44:55.525+02:00'" }],
 			},
 		},
 		toUnixInteger: {
@@ -958,7 +969,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 						type: 'string',
 					},
 					{
-						name: 'opts',
+						name: 'options',
 						optional: true,
 						description: i18n.baseText(
 							'codeNodeEditor.completer.luxon.instanceMethods.toUTC.args.opts',
@@ -968,13 +979,8 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 				],
 				examples: [
 					{
-						example:
-							"dt = '2024-01-01T00:00:00.000+02:00'.toDateTime()\ndt.setZone('America/Buenos_aires')",
-						evaluated: '2023-12-31T19:00:00.000-03:00',
-					},
-					{
-						example: "dt = '2024-01-01T00:00:00.000+02:00'.toDateTime()\ndt.setZone('UTC+7')",
-						evaluated: '2024-01-01T05:00:00.000+07:00',
+						example: "dt = '2024-01-01T00:00:00.000+02:00'.toDateTime()\ndt.toUTC()",
+						evaluated: '[DateTime: 2023-12-31T22:00:00.000Z]',
 					},
 				],
 			},
