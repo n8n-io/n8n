@@ -1535,15 +1535,14 @@ export interface IWorkflowIssues {
 export type NodeIconColor = 'blue' | 'red';
 export type Icon = `fa:${string}` | `file:${string}` | `node:${string}`;
 export type Themed<T> = T | { light: T; dark: T };
-export type ThemedIcon = Themed<Icon>;
 
 export interface INodeTypeBaseDescription {
 	displayName: string;
 	name: string;
-	icon?: ThemedIcon;
+	icon?: Themed<Icon>;
 	iconColor?: NodeIconColor;
 	iconUrl?: Themed<string>;
-	badgeIconUrl?: Themed<string>;
+	badgeIconUrl?: string;
 	group: string[];
 	description: string;
 	documentationUrl?: string;
