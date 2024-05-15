@@ -22,6 +22,7 @@ import config from '@/config';
 import type { WorkflowWithSharingsMetaDataAndCredentials } from '@/workflows/workflows.types';
 import type { Project } from '@/databases/entities/Project';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { createTag } from '../shared/db/tags';
 
 let owner: User;
 let ownerPersonalProject: Project;
@@ -71,7 +72,7 @@ beforeEach(async () => {
 	activeWorkflowManager.add.mockReset();
 	activeWorkflowManager.remove.mockReset();
 
-	await testDb.truncate(['Workflow', 'SharedWorkflow', 'WorkflowHistory']);
+	await testDb.truncate(['Workflow', 'SharedWorkflow', 'WorkflowHistory', 'Tag']);
 });
 
 afterEach(() => {
@@ -322,6 +323,17 @@ describe('GET /workflows/:id', () => {
 		expect(responseWorkflow.sharedWithProjects).toHaveLength(0);
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		expect((responseWorkflow as any).shared).toBeUndefined();
+	});
+
+	test('should return tags', async () => {
+		const tag = await createTag({ name: 'A' });
+		const workflow = await createWorkflow({ tags: [tag] }, owner);
+
+		const response = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
+
+		expect(response.body.data).toMatchObject({
+			tags: [expect.objectContaining({ id: tag.id, name: tag.name })],
+		});
 	});
 
 	test('GET should return shared workflow with user data', async () => {
