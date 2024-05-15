@@ -1,11 +1,11 @@
-import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { IAuthenticateGeneric, ICredentialType, INodeProperties, Icon } from 'n8n-workflow';
 
 export class CarbonBlackApi implements ICredentialType {
 	name = 'carbonBlackApi';
 
 	displayName = 'Carbon Black API';
 
-	icon = 'file:icons/vmware.svg';
+	icon: Icon = 'file:icons/vmware.svg';
 
 	documentationUrl = 'carbonblack';
 

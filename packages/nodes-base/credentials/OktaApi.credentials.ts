@@ -3,6 +3,7 @@ import type {
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
+	Icon,
 } from 'n8n-workflow';
 
 export class OktaApi implements ICredentialType {
@@ -12,7 +13,7 @@ export class OktaApi implements ICredentialType {
 
 	documentationUrl = 'okta';
 
-	icon = 'file:icons/Okta.svg';
+	icon: Icon = 'file:icons/Okta.svg';
 
 	httpRequestNode = {
 		name: 'Okta',

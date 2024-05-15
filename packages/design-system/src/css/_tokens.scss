@@ -79,7 +79,7 @@
 	--color-canvas-background-l: 99%;
 	--color-canvas-dot: var(--prim-gray-120);
 	--color-canvas-read-only-line: var(--prim-gray-30);
-	--color-canvas-node-background: var(--prim-gray-0);
+	--color-canvas-node-background: var(--color-background-xlight);
 	--color-canvas-node-pinned-border: var(--color-secondary);
 	--color-canvas-selected: var(--prim-gray-70);
 	--node-type-main-color: var(--prim-gray-490);
@@ -105,6 +105,11 @@
 	--color-sticky-border-6: var(--prim-color-secondary-tint-300);
 	--color-sticky-background-7: var(--prim-gray-10);
 	--color-sticky-border-7: var(--prim-gray-120);
+
+	// NodeIcon
+	--color-node-icon-1: red;
+	--color-node-icon-2: var(--prim-color-alt-b-tint-150);
+	--color-node-icon-3: var(--prim-color-alt-c-tint-300);
 
 	// Expressions, autocomplete, infobox
 	--color-valid-resolvable-foreground: var(--prim-color-alt-a);

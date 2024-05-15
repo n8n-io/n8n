@@ -5,6 +5,7 @@ import type {
 	ICredentialType,
 	IHttpRequestHelper,
 	INodeProperties,
+	Icon,
 } from 'n8n-workflow';
 
 export class Auth0ManagementApi implements ICredentialType {
@@ -14,7 +15,7 @@ export class Auth0ManagementApi implements ICredentialType {
 
 	documentationUrl = 'auth0management';
 
-	icon = 'file:icons/Auth0.svg';
+	icon: Icon = 'file:icons/Auth0.svg';
 
 	httpRequestNode = {
 		name: 'Auth0',

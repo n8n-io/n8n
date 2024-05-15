@@ -9,6 +9,7 @@ import type {
 	IHttpRequestOptions,
 	INodeProperties,
 	IRequestOptions,
+	Icon,
 } from 'n8n-workflow';
 import { isObjectEmpty } from 'n8n-workflow';
 
@@ -134,7 +135,7 @@ export class Aws implements ICredentialType {
 
 	documentationUrl = 'aws';
 
-	icon = 'file:icons/AWS.svg';
+	icon: Icon = 'file:icons/AWS.svg';
 
 	properties: INodeProperties[] = [
 		{

@@ -5,6 +5,7 @@ import type {
 	ICredentialType,
 	IHttpRequestHelper,
 	INodeProperties,
+	Icon,
 } from 'n8n-workflow';
 
 export class CrowdStrikeOAuth2Api implements ICredentialType {
@@ -14,7 +15,7 @@ export class CrowdStrikeOAuth2Api implements ICredentialType {
 
 	documentationUrl = 'crowdstrike';
 
-	icon = 'file:icons/CrowdStrike.svg';
+	icon: Icon = 'file:icons/CrowdStrike.svg';
 
 	httpRequestNode = {
 		name: 'CrowdStrike',

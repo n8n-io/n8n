@@ -5,6 +5,7 @@ import type {
 	ICredentialType,
 	IHttpRequestHelper,
 	INodeProperties,
+	Icon,
 } from 'n8n-workflow';
 
 export class CiscoUmbrellaApi implements ICredentialType {
@@ -14,7 +15,7 @@ export class CiscoUmbrellaApi implements ICredentialType {
 
 	documentationUrl = 'ciscoumbrella';
 
-	icon = 'file:icons/Cisco.svg';
+	icon: Icon = 'file:icons/Cisco.svg';
 
 	httpRequestNode = {
 		name: 'Cisco Umbrella',

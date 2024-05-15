@@ -299,7 +299,7 @@ type ICredentialHttpRequestNode = {
 export interface ICredentialType {
 	name: string;
 	displayName: string;
-	icon?: string;
+	icon?: Icon;
 	iconUrl?: string;
 	extends?: string[];
 	properties: INodeProperties[];
@@ -1532,12 +1532,18 @@ export interface IWorkflowIssues {
 	[key: string]: INodeIssues;
 }
 
+export type NodeIconColor = '1' | '2' | '3';
+export type Icon = `fa:${string}` | `file:${string}` | `node:${string}`;
+export type Themed<T> = T | { light: T; dark: T };
+export type ThemedIcon = Themed<Icon>;
+
 export interface INodeTypeBaseDescription {
 	displayName: string;
 	name: string;
-	icon?: string;
-	iconUrl?: string;
-	badgeIconUrl?: string;
+	icon?: ThemedIcon;
+	iconColor?: NodeIconColor;
+	iconUrl?: Themed<string>;
+	badgeIconUrl?: Themed<string>;
 	group: string[];
 	description: string;
 	documentationUrl?: string;

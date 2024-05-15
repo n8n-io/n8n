@@ -1,11 +1,11 @@
-import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { IAuthenticateGeneric, ICredentialType, INodeProperties, Icon } from 'n8n-workflow';
 
 export class QRadarApi implements ICredentialType {
 	name = 'qRadarApi';
 
 	displayName = 'QRadar API';
 
-	icon = 'file:icons/IBM.svg';
+	icon: Icon = 'file:icons/IBM.svg';
 
 	documentationUrl = 'qradar';
 
