@@ -1,5 +1,5 @@
 <template>
-	<div class="container">
+	<div :class="$style.container">
 		<el-col class="notags" :span="16">
 			<div class="icon">🗄️</div>
 			<div>
@@ -25,7 +25,7 @@ export default defineComponent({
 });
 </script>
 
-<style lang="scss" scoped>
+<style lang="scss" module>
 $--footer-spacing: 45px;
 
 .container {
@@ -34,7 +34,9 @@ $--footer-spacing: 45px;
 	align-items: center;
 	margin-top: $--footer-spacing;
 }
+</style>
 
+<style lang="scss" scoped>
 .notags {
 	word-break: normal;
 	text-align: center;

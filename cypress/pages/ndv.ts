@@ -40,6 +40,12 @@ export class NDV extends BasePage {
 			this.getters.inputTableRow(row).find('td').eq(col),
 		inlineExpressionEditorInput: () => cy.getByTestId('inline-expression-editor-input'),
 		inlineExpressionEditorOutput: () => cy.getByTestId('inline-expression-editor-output'),
+		inlineExpressionEditorItemInput: () =>
+			cy.getByTestId('inline-expression-editor-item-input').find('input'),
+		inlineExpressionEditorItemPrevButton: () =>
+			cy.getByTestId('inline-expression-editor-item-prev'),
+		inlineExpressionEditorItemNextButton: () =>
+			cy.getByTestId('inline-expression-editor-item-next'),
 		nodeParameters: () => cy.getByTestId('node-parameters'),
 		parameterInput: (parameterName: string) => cy.getByTestId(`parameter-input-${parameterName}`),
 		parameterInputIssues: (parameterName: string) =>
@@ -289,6 +295,15 @@ export class NDV extends BasePage {
 				.contains(new RegExp(`^${operation}$`))
 				.click({ force: true });
 			this.getters.parameterInput('operation').find('input').should('have.value', operation);
+		},
+		expressionSelectItem: (index: number) => {
+			this.getters.inlineExpressionEditorItemInput().type(`{selectall}${index}`);
+		},
+		expressionSelectNextItem: () => {
+			this.getters.inlineExpressionEditorItemNextButton().click();
+		},
+		expressionSelectPrevItem: () => {
+			this.getters.inlineExpressionEditorItemPrevButton().click();
 		},
 	};
 }
