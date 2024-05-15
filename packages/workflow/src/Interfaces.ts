@@ -1532,7 +1532,7 @@ export interface IWorkflowIssues {
 	[key: string]: INodeIssues;
 }
 
-export type NodeIconColor = '1' | '2' | '3';
+export type NodeIconColor = 'blue' | 'red';
 export type Icon = `fa:${string}` | `file:${string}` | `node:${string}`;
 export type Themed<T> = T | { light: T; dark: T };
 export type ThemedIcon = Themed<Icon>;

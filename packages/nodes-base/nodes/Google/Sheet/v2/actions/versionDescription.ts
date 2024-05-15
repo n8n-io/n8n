@@ -7,7 +7,7 @@ import * as spreadsheet from './spreadsheet/SpreadSheet.resource';
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Google Sheets',
 	name: 'googleSheets',
-	icon: { light: 'file:googleSheets.svg', dark: 'file:googleSheetsDark.svg' },
+	icon: 'file:googleSheets.svg',
 	group: ['input', 'output'],
 	version: [3, 4, 4.1, 4.2, 4.3],
 	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
