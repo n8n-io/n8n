@@ -265,6 +265,7 @@ export class WorkflowsController {
 				workflowId,
 				req.user,
 				['workflow:read'],
+				{ includeTags: !config.getEnv('workflowTagsDisabled') },
 			);
 
 			if (!workflow) {

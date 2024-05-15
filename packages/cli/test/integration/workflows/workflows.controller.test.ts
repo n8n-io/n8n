@@ -371,6 +371,17 @@ describe('GET /workflows/:id', () => {
 		const { pinData } = workflowRetrievalResponse.body.data as { pinData: IPinData };
 		expect(pinData).toMatchObject(MOCK_PINDATA);
 	});
+
+	test('should return tags', async () => {
+		const tag = await createTag({ name: 'A' });
+		const workflow = await createWorkflow({ tags: [tag] }, owner);
+
+		const response = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
+
+		expect(response.body.data).toMatchObject({
+			tags: [expect.objectContaining({ id: tag.id, name: tag.name })],
+		});
+	});
 });
 
 describe('GET /workflows', () => {
