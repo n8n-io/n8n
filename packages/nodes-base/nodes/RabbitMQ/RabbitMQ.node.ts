@@ -268,7 +268,7 @@ export class RabbitMQ implements INodeType {
 						name: 'arguments',
 						placeholder: 'Add Argument',
 						description:
-							'Arguments to add, See <a href="https://amqp-node.github.io/amqplib/channel_api.html#channel_publish" target="_blank">here</a> for valid options.',
+							'Arguments to add, See <a href="https://amqp-node.github.io/amqplib/channel_api.html#channel_publish" target="_blank">here</a> for valid options',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: true,
