@@ -813,6 +813,14 @@ export default defineComponent({
 				nodesAccess: [],
 			};
 
+			if (
+				this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing) &&
+				this.credentialData.sharedWithProjects
+			) {
+				credentialDetails.sharedWithProjects = this.credentialData
+					.sharedWithProjects as ProjectSharingData[];
+			}
+
 			let credential;
 
 			const isNewCredential = this.mode === 'new' && !this.credentialId;
