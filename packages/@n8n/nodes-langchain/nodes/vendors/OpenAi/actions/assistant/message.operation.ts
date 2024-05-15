@@ -212,12 +212,14 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		// Construct a new thread from the chat history to map the memory
 		if (chatMessages.length) {
 			const first32Messages = chatMessages.slice(0, 32);
+			// There is a undocumented limit of 32 messages per thread when creating a thread with messages
 			const mappedMessages: OpenAIClient.Beta.Threads.ThreadCreateParams.Message[] =
 				first32Messages.map(mapChatMessageToThreadMessage);
 
 			thread = await client.beta.threads.create({ messages: mappedMessages });
 			const overLimitMessages = chatMessages.slice(32).map(mapChatMessageToThreadMessage);
 
+			// Send the remaining messages that exceed the limit of 32 sequentially
 			for (const message of overLimitMessages) {
 				await client.beta.threads.messages.create(thread.id, message);
 			}
