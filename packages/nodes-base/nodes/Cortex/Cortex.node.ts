@@ -216,8 +216,6 @@ export class Cortex implements INodeType {
 								'',
 								options,
 							)) as IJob;
-
-							continue;
 						} else {
 							const observableValue = this.getNodeParameter('observableValue', i) as string;
 
