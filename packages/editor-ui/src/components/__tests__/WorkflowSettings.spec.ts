@@ -42,7 +42,7 @@ describe('WorkflowSettingsVue', () => {
 
 		vi.spyOn(workflowsStore, 'workflowName', 'get').mockReturnValue('Test Workflow');
 		vi.spyOn(workflowsStore, 'workflowId', 'get').mockReturnValue('1');
-		vi.spyOn(workflowsStore, 'workflow', 'get').mockReturnValue({
+		vi.spyOn(workflowsStore, 'getWorkflowById').mockReturnValue({
 			id: '1',
 			name: 'Test Workflow',
 			active: true,
