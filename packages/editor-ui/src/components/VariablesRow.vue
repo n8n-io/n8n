@@ -214,7 +214,7 @@ function focusFirstInput() {
 						</n8n-button>
 					</div>
 					<template #content>
-						{{ i18n.baseText('variables.row.button.edit.onlyOwnerCanSave') }}
+						{{ i18n.baseText('variables.row.button.edit.onlyRoleCanEdit') }}
 					</template>
 				</n8n-tooltip>
 				<n8n-tooltip :disabled="permissions.delete" placement="top">
@@ -229,7 +229,7 @@ function focusFirstInput() {
 						</n8n-button>
 					</div>
 					<template #content>
-						{{ i18n.baseText('variables.row.button.delete.onlyOwnerCanDelete') }}
+						{{ i18n.baseText('variables.row.button.delete.onlyRoleCanDelete') }}
 					</template>
 				</n8n-tooltip>
 			</div>
