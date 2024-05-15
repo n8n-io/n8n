@@ -775,12 +775,6 @@ export default defineComponent({
 		isReadOnlyRoute() {
 			return this.$route?.meta?.readOnlyCanvas === true;
 		},
-		currentProjectId(): string | undefined {
-			const projectId = this.workflowsStore.getWorkflowById(this.currentWorkflow)?.homeProject?.id;
-			return (
-				projectId ?? this.projectsStore.currentProjectId ?? this.projectsStore.personalProject?.id
-			);
-		},
 		isNextStepPopupVisible(): boolean {
 			return this.aiStore.nextStepPopupConfig.open;
 		},
@@ -4674,7 +4668,12 @@ export default defineComponent({
 			await this.credentialsStore.fetchCredentialTypes(true);
 		},
 		async loadCredentials(): Promise<void> {
-			await this.credentialsStore.fetchAllCredentials(this.currentProjectId);
+			const workflow = this.workflowsStore.getWorkflowById(this.currentWorkflow);
+			const projectId =
+				workflow?.homeProject?.type === 'personal'
+					? this.projectsStore.personalProject?.id
+					: workflow?.homeProject?.id;
+			await this.credentialsStore.fetchAllCredentials(projectId);
 		},
 		async loadVariables(): Promise<void> {
 			await this.environmentsStore.fetchAllVariables();
