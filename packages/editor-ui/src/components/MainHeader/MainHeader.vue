@@ -78,7 +78,7 @@ export default defineComponent({
 			return Boolean(this.activeNode && this.activeNode.type !== STICKY_NODE_TYPE);
 		},
 		workflow(): IWorkflowDb {
-			return this.workflowsStore.workflow;
+			return this.workflowsStore.getWorkflowById(this.currentWorkflow);
 		},
 		workflowName(): string {
 			return this.workflowsStore.workflowName;
