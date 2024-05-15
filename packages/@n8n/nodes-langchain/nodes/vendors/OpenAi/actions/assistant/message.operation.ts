@@ -13,6 +13,8 @@ import type {
 } from 'n8n-workflow';
 
 import type { BufferWindowMemory } from 'langchain/memory';
+import omit from 'lodash/omit';
+import type { BaseMessage } from '@langchain/core/messages';
 import { formatToOpenAIAssistantTool } from '../../helpers/utils';
 import { assistantRLC } from '../descriptions';
 
@@ -78,26 +80,11 @@ const properties: INodeProperties[] = [
 				type: 'string',
 			},
 			{
-				displayName: 'Delete Thread After Execution',
-				name: 'deleteThread',
-				default: false,
-				description: 'Whether to delete the thread after the assistant responded',
-				type: 'boolean',
-			},
-			{
 				displayName: 'Max Retries',
 				name: 'maxRetries',
 				default: 2,
 				description: 'Maximum number of retries to attempt',
 				type: 'number',
-			},
-			{
-				displayName: 'Thread ID',
-				name: 'threadId',
-				placeholder: 'e.g. thread_TV1u2u3u...',
-				default: '',
-				description: 'The ID of the thread to use',
-				type: 'string',
 			},
 			{
 				displayName: 'Timeout',
@@ -131,6 +118,12 @@ const displayOptions = {
 };
 
 export const description = updateDisplayOptions(displayOptions, properties);
+const mapChatMessageToThreadMessage = (
+	message: BaseMessage,
+): OpenAIClient.Beta.Threads.ThreadCreateParams.Message => ({
+	role: message._getType() === 'ai' ? 'assistant' : 'user',
+	content: message.content.toString(),
+});
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const credentials = await this.getCredentials('openAiApi');
@@ -156,10 +149,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const options = this.getNodeParameter('options', i, {}) as {
 		baseURL?: string;
-		deleteThread?: boolean;
 		maxRetries: number;
 		timeout: number;
-		threadId?: string;
 		preserveOriginalTools?: boolean;
 	};
 
@@ -214,37 +205,48 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		signal: this.getExecutionCancelSignal(),
 		timeout: options.timeout ?? 10000,
 	};
+	let thread: OpenAIClient.Beta.Threads.Thread;
 	if (memory) {
-		if (memory.chatHistory.lc_kwargs?.threadId) {
-			chainValues.threadId = memory.chatHistory.lc_kwargs?.threadId;
-			console.log('🚀 ~ execute ~ chainValues.threadId:', chainValues.threadId);
+		const chatMessages = await memory.chatHistory.getMessages();
+
+		// Construct a new thread from the chat history to map the memory
+		if (chatMessages.length) {
+			console.log('🚀 ~ execute ~ chatMessages.length:', chatMessages.length);
+			const first32Messages = chatMessages.slice(0, 32);
+			const mappedMessages: OpenAIClient.Beta.Threads.ThreadCreateParams.Message[] =
+				first32Messages.map(mapChatMessageToThreadMessage);
+
+			const startTimeMs = Date.now();
+			thread = await client.beta.threads.create({ messages: mappedMessages });
+			const overLimitMessages = chatMessages.slice(32).map(mapChatMessageToThreadMessage);
+			console.log('🚀 ~ execute ~ overLimitMessages:', overLimitMessages.length);
+			for (const message of overLimitMessages) {
+				await client.beta.threads.messages.create(thread.id, message);
+			}
+			// await Promise.all(
+			// 	overLimitMessages.map(async (message, index) => {
+			// 		const result = await client.beta.threads.messages.create(thread.id, message);
+			// 		console.log('Processed message', index, 'with id', result.id);
+			// 		return result;
+			// 	}),
+			// );
+			const endTimeMs = Date.now();
+			const messages = await client.beta.threads.messages.list(thread.id);
+			console.log('🚀 ~ execute ~ messages:', JSON.stringify(messages, null, 2));
+			console.log('🚀 ~ execute ~ endTimeMs - startTimeMs:', endTimeMs - startTimeMs);
+			chainValues.threadId = thread.id;
 		}
 	}
 
-	// console.log('🚀 ~ execute ~ chainValues:', chainValues);
 	const response = await agentExecutor.withConfig(getTracingConfig(this)).invoke(chainValues);
 	if (memory) {
-		await memory.saveContext({ input, wat2: 123 }, { output: response.output, wat: 123 });
-		memory.chatHistory.lc_kwargs = { threadId: response.threadId };
-		// console.log('🚀 ~ execute ~ vars:', memory);
-	}
-	const workflowData = this.getWorkflowStaticData('node');
-	console.log('🚀 ~ execute ~ workflowData:', workflowData);
-	workflowData.test = new Date().toISOString();
-	// if (response.threadId) {
-	// 	// const existingThread = false; //?? (await client.beta.threads.retrieve(response.threadId));
-	// 	// if (!existingThread) {
-	// 		// console.log('🚀 ~ execute ~ client.beta.threads.runs:', client.beta.threads.runs);
-	// 		// existingThread = client.beta.threads.runs
-	// 	// }
+		await memory.saveContext({ input }, { output: response.output });
 
-	// 	if (options.deleteThread) {
-	// 		await client.beta.threads.del(response.threadId);
-	// 		delete workflowData.threadId;
-	// 	} else {
-	// 		workflowData.threadId = response.threadId;
-	// 	}
-	// }
+		if (response.threadId && response.runId) {
+			const threadRun = await client.beta.threads.runs.retrieve(response.threadId, response.runId);
+			response.usage = threadRun.usage;
+		}
+	}
 
 	if (
 		options.preserveOriginalTools !== false &&
@@ -255,6 +257,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			tools: assistantTools,
 		});
 	}
-
-	return [{ json: response, pairedItem: { item: i } }];
+	const filteredResponse = omit(response, ['signal', 'timeout']);
+	return [{ json: filteredResponse, pairedItem: { item: i } }];
 }
