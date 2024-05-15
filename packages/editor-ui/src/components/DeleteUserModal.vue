@@ -31,9 +31,16 @@
 					</el-radio>
 					<div v-if="operation === 'transfer'" :class="$style.optionInput">
 						<n8n-text color="text-dark">{{
-							$locale.baseText('projects.settings.delete.question.transfer.title')
+							$locale.baseText('settings.users.transferWorkflowsAndCredentials.user')
 						}}</n8n-text>
-						<ProjectSharing v-model="selectedProject" class="pt-2xs" :projects="projects" />
+						<ProjectSharing
+							v-model="selectedProject"
+							class="pt-2xs"
+							:projects="projects"
+							:placeholder="
+								$locale.baseText('settings.users.transferWorkflowsAndCredentials.placeholder')
+							"
+						/>
 					</div>
 					<el-radio v-model="operation" label="delete" @update:model-value="operation = 'delete'">
 						<n8n-text color="text-dark">{{
