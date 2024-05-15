@@ -1,16 +1,8 @@
 import { completionStatus } from '@codemirror/autocomplete';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { syntaxTree } from '@codemirror/language';
-import { type EditorState, type Extension, StateEffect, StateField } from '@codemirror/state';
-import {
-	EditorView,
-	type Tooltip,
-	keymap,
-	showTooltip,
-	hoverTooltip,
-	closeHoverTooltips,
-	hasHoverTooltips,
-} from '@codemirror/view';
+import { StateEffect, StateField, type EditorState, type Extension } from '@codemirror/state';
+import { EditorView, hoverTooltip, keymap, showTooltip, type Tooltip } from '@codemirror/view';
 import type { SyntaxNode } from '@lezer/common';
 import { DateTime } from 'luxon';
 import type { DocMetadata } from 'n8n-workflow';
@@ -254,137 +246,141 @@ const cursorInfoBoxTooltip = StateField.define<{
 	provide: (f) => showTooltip.compute([f], (state) => state.field(f).tooltip),
 });
 
-const hoverInfoBoxTooltip = hoverTooltip(async (view, pos, side) => {
-	const node = syntaxTree(view.state).resolveInner(pos, -1);
+const hoverInfoBoxTooltip = hoverTooltip(
+	async (view, pos, side) => {
+		const node = syntaxTree(view.state).resolveInner(pos, -1);
 
-	if (node.name !== 'Resolvable') {
-		return null;
-	}
-
-	const read = (n?: SyntaxNode | null) => (n ? view.state.sliceDoc(n.from, n.to) : '');
-	const resolvable = read(node);
-	const jsCode = resolvable.replace(/^{{\s*(.*)\s*}}$/, '$1');
-	const prefixLength = resolvable.indexOf(jsCode);
-	const jsPos = pos - node.from - prefixLength;
-	const jsNode = javascriptLanguage.parser.parse(jsCode).resolveInner(jsPos, 0);
-
-	const start = node.from;
-	const end = node.to;
-
-	if ((start === pos && side < 0) || (end === pos && side > 0)) return null;
-
-	const readJs = (n?: SyntaxNode | null) => (n ? jsCode.slice(n.from, n.to) : '');
-
-	console.log(readJs(jsNode), jsNode.name);
-
-	switch (jsNode?.name) {
-		case 'PropertyName': {
-			const callExpression = findNearestParentOfType('CallExpression', jsNode);
-			const subject = callExpression?.firstChild;
-			const propName = readJs(jsNode);
-			const currentPropertyIsFunctionCall =
-				subject && subject.lastChild?.from === jsNode.from && subject.lastChild?.to === jsNode.to;
-
-			try {
-				if (currentPropertyIsFunctionCall) {
-					const base = readJs(jsNode.parent?.firstChild);
-					const resolved = resolveParameter(`={{ ${base} }}`);
-
-					if (typeof resolved === 'string') {
-						const doc =
-							stringExtensions.functions[propName]?.doc ?? stringMethods.functions[propName]?.doc;
-
-						return docToTooltip(pos, -1, doc);
-					}
-
-					if (typeof resolved === 'number') {
-						const doc =
-							numberExtensions.functions[propName]?.doc ?? numberMethods.functions[propName]?.doc;
-
-						return docToTooltip(pos, -1, doc);
-					}
-
-					if (typeof resolved === 'boolean') {
-						const doc =
-							booleanExtensions.functions[propName]?.doc ?? booleanMethods.functions[propName]?.doc;
-
-						return docToTooltip(pos, -1, doc);
-					}
-
-					if (Array.isArray(resolved)) {
-						const doc =
-							arrayExtensions.functions[propName]?.doc ?? arrayMethods.functions[propName]?.doc;
-
-						return docToTooltip(pos, -1, doc);
-					}
-
-					if (DateTime.isDateTime(resolved)) {
-						const doc = dateExtensions.functions[propName]?.doc;
-						return docToTooltip(pos, -1, doc);
-					}
-
-					if (resolved instanceof Date) {
-						if (propName !== 'toDateTime') {
-							return null;
-						}
-						const doc = dateExtensions.functions[propName]?.doc;
-						return docToTooltip(pos, -1, doc);
-					}
-
-					if (resolved && typeof resolved === 'object') {
-						const doc =
-							objectExtensions.functions[propName]?.doc ?? objectMethods.functions[propName]?.doc;
-
-						return docToTooltip(pos, -1, doc);
-					}
-				} else {
-					const parent = readJs(jsNode.parent);
-					const resolved = resolveParameter(`={{ ${parent} }}`);
-
-					return docToTooltip(pos, -1, { name: propName, returnType: typeof resolved }, false);
-				}
-			} catch (error) {
-				return null;
-			}
-		}
-		case 'VariableName': {
-			const isFunction = jsNode.nextSibling?.name === 'ArgList';
-			const label = isFunction ? readJs(jsNode) + '()' : readJs(jsNode);
-			const result = ROOT_DOLLAR_COMPLETIONS.find((comp) => comp.label === label);
-
-			if (!result) {
-				return null;
-			}
-
-			view.dispatch({ effects: closeInfoBoxEffect.of(null) });
-			return {
-				pos: jsNode.from + prefixLength + node.from,
-				end: jsNode.to + prefixLength + node.from,
-				above: true,
-				create: () => {
-					const element = document.createElement('div');
-					element.classList.add('cm-cursorInfo');
-					const info = result.info;
-					if (typeof info === 'string') {
-						element.textContent = info;
-					} else if (typeof info === 'function') {
-						const infoResult = info(result);
-
-						if (infoResult instanceof Node) {
-							element.appendChild(infoResult);
-						} else if (infoResult && 'dom' in infoResult) {
-							element.appendChild(infoResult.dom);
-						}
-					}
-
-					return { dom: element };
-				},
-			};
-		}
-		default:
+		if (node.name !== 'Resolvable') {
 			return null;
-	}
-});
+		}
+
+		const read = (n?: SyntaxNode | null) => (n ? view.state.sliceDoc(n.from, n.to) : '');
+		const resolvable = read(node);
+		const jsCode = resolvable.replace(/^{{\s*(.*)\s*}}$/, '$1');
+		const prefixLength = resolvable.indexOf(jsCode);
+		const jsPos = pos - node.from - prefixLength;
+		const jsNode = javascriptLanguage.parser.parse(jsCode).resolveInner(jsPos, 0);
+
+		const start = node.from;
+		const end = node.to;
+
+		if ((start === pos && side < 0) || (end === pos && side > 0)) return null;
+
+		const readJs = (n?: SyntaxNode | null) => (n ? jsCode.slice(n.from, n.to) : '');
+
+		console.log(readJs(jsNode), jsNode.name);
+
+		switch (jsNode?.name) {
+			case 'PropertyName': {
+				const callExpression = findNearestParentOfType('CallExpression', jsNode);
+				const subject = callExpression?.firstChild;
+				const propName = readJs(jsNode);
+				const currentPropertyIsFunctionCall =
+					subject && subject.lastChild?.from === jsNode.from && subject.lastChild?.to === jsNode.to;
+
+				try {
+					if (currentPropertyIsFunctionCall) {
+						const base = readJs(jsNode.parent?.firstChild);
+						const resolved = resolveParameter(`={{ ${base} }}`);
+
+						if (typeof resolved === 'string') {
+							const doc =
+								stringExtensions.functions[propName]?.doc ?? stringMethods.functions[propName]?.doc;
+
+							return docToTooltip(pos, -1, doc);
+						}
+
+						if (typeof resolved === 'number') {
+							const doc =
+								numberExtensions.functions[propName]?.doc ?? numberMethods.functions[propName]?.doc;
+
+							return docToTooltip(pos, -1, doc);
+						}
+
+						if (typeof resolved === 'boolean') {
+							const doc =
+								booleanExtensions.functions[propName]?.doc ??
+								booleanMethods.functions[propName]?.doc;
+
+							return docToTooltip(pos, -1, doc);
+						}
+
+						if (Array.isArray(resolved)) {
+							const doc =
+								arrayExtensions.functions[propName]?.doc ?? arrayMethods.functions[propName]?.doc;
+
+							return docToTooltip(pos, -1, doc);
+						}
+
+						if (DateTime.isDateTime(resolved)) {
+							const doc = dateExtensions.functions[propName]?.doc;
+							return docToTooltip(pos, -1, doc);
+						}
+
+						if (resolved instanceof Date) {
+							if (propName !== 'toDateTime') {
+								return null;
+							}
+							const doc = dateExtensions.functions[propName]?.doc;
+							return docToTooltip(pos, -1, doc);
+						}
+
+						if (resolved && typeof resolved === 'object') {
+							const doc =
+								objectExtensions.functions[propName]?.doc ?? objectMethods.functions[propName]?.doc;
+
+							return docToTooltip(pos, -1, doc);
+						}
+					} else {
+						const parent = readJs(jsNode.parent);
+						const resolved = resolveParameter(`={{ ${parent} }}`);
+
+						return docToTooltip(pos, -1, { name: propName, returnType: typeof resolved }, false);
+					}
+				} catch (error) {
+					return null;
+				}
+			}
+			case 'VariableName': {
+				const isFunction = jsNode.nextSibling?.name === 'ArgList';
+				const label = isFunction ? readJs(jsNode) + '()' : readJs(jsNode);
+				const result = ROOT_DOLLAR_COMPLETIONS.find((comp) => comp.label === label);
+
+				if (!result) {
+					return null;
+				}
+
+				view.dispatch({ effects: closeInfoBoxEffect.of(null) });
+				return {
+					pos: jsNode.from + prefixLength + node.from,
+					end: jsNode.to + prefixLength + node.from,
+					above: true,
+					create: () => {
+						const element = document.createElement('div');
+						element.classList.add('cm-cursorInfo');
+						const info = result.info;
+						if (typeof info === 'string') {
+							element.textContent = info;
+						} else if (typeof info === 'function') {
+							const infoResult = info(result);
+
+							if (infoResult instanceof Node) {
+								element.appendChild(infoResult);
+							} else if (infoResult && 'dom' in infoResult) {
+								element.appendChild(infoResult.dom);
+							}
+						}
+
+						return { dom: element };
+					},
+				};
+			}
+			default:
+				return null;
+		}
+	},
+	{ hideOnChange: true, hoverTime: 500 },
+);
 
 const closeInfoBoxEffect = StateEffect.define<null>();
 
@@ -397,11 +393,6 @@ export const infoBoxTooltips = (): Extension[] => {
 				return closeInfoBoxEffect.of(null);
 			}
 			return null;
-		}),
-		EditorView.updateListener.of((update) => {
-			if (update.docChanged && hasHoverTooltips(update.state)) {
-				update.view.dispatch({ effects: closeHoverTooltips });
-			}
 		}),
 		keymap.of([
 			{
