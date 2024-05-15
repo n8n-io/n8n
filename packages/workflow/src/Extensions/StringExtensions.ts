@@ -217,9 +217,9 @@ function toDate(value: string): Date {
 	return date;
 }
 
-export function toDateTime(value: string, extraArgs: [string]): DateTime {
+export function toDateTime(value: string, extraArgs?: [string]): DateTime {
 	try {
-		const [valueFormat] = extraArgs;
+		const [valueFormat] = extraArgs ?? [];
 
 		if (valueFormat) {
 			if (
