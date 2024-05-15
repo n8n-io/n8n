@@ -65,6 +65,7 @@ const projectRoles = computed(() =>
 		name: projectRoleTranslations.value[role.role],
 	})),
 );
+const firstLicensedRole = computed(() => projectRoles.value.find((role) => role.licensed)?.role);
 
 const onAddMember = (userId: string) => {
 	isDirty.value = true;
@@ -74,7 +75,9 @@ const onAddMember = (userId: string) => {
 	const { id, firstName, lastName, email } = user;
 	const relation = { id, firstName, lastName, email } as ProjectRelation;
 
-	relation.role = projectRoles.value[0].role;
+	if (firstLicensedRole.value) {
+		relation.role = firstLicensedRole.value;
+	}
 
 	formData.value.relations.push(relation);
 };
