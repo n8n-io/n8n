@@ -53,7 +53,7 @@
 		}
 	}
 
-	&:focus {
+	&:focus:not(:active, .active) {
 		color: $button-focus-font-color unquote($important);
 		border-color: $button-focus-border-color unquote($important);
 		background-color: $button-focus-background-color unquote($important);
@@ -119,16 +119,16 @@
 	--button-background-color: var(--color-button-secondary-background);
 
 	--button-hover-font-color: var(--color-button-secondary-hover-active-focus-font);
-	--button-hover-border-color: var(--color-button-secondary-hover-active-border);
+	--button-hover-border-color: var(--color-button-secondary-hover-active-focus-border);
 	--button-hover-background-color: var(--color-button-secondary-hover-background);
 
 	--button-active-font-color: var(--color-button-secondary-hover-active-focus-font);
-	--button-active-border-color: var(--color-button-secondary-hover-active-border);
-	--button-active-background-color: var(--color-button-secondary-active-background);
+	--button-active-border-color: var(--color-button-secondary-hover-active-focus-border);
+	--button-active-background-color: var(--color-button-secondary-active-focus-background);
 
 	--button-focus-font-color: var(--color-button-secondary-hover-active-focus-font);
-	--button-focus-border-color: var(--color-button-secondary-border);
-	--button-focus-background-color: var(--color-button-secondary-background);
+	--button-focus-border-color: var(--color-button-secondary-hover-active-focus-border);
+	--button-focus-background-color: var(--color-button-secondary-active-focus-background);
 	--button-focus-outline-color: var(--color-button-secondary-focus-outline);
 
 	--button-disabled-font-color: var(--color-button-secondary-disabled-font);
