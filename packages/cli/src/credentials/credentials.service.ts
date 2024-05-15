@@ -77,6 +77,7 @@ export class CredentialsService {
 					(relation) => relation.projectId === options.listQueryOptions?.filter?.projectId,
 				);
 				if (projectRelation?.role === 'project:personalOwner') {
+					// Will not affect team projects as these have admins, not owners.
 					delete options.listQueryOptions?.filter?.projectId;
 				}
 			}
@@ -103,6 +104,16 @@ export class CredentialsService {
 			});
 
 			return credentials;
+		}
+
+		if (typeof options.listQueryOptions?.filter?.projectId === 'string') {
+			const project = await this.projectService.getProject(
+				options.listQueryOptions.filter.projectId,
+			);
+			if (project?.type === 'personal') {
+				const currentUsersPersonalProject = await this.projectService.getPersonalProject(user);
+				options.listQueryOptions.filter.projectId = currentUsersPersonalProject?.id;
+			}
 		}
 
 		const ids = await this.sharedCredentialsRepository.getCredentialIdsByUserAndRole([user.id], {
