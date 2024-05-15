@@ -92,11 +92,13 @@ import type {
 	NodeExecutionWithMetadata,
 	NodeHelperFunctions,
 	NodeParameterValueType,
+	NodeTypeAndVersion,
 	PaginationOptions,
 	RequestHelperFunctions,
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
+	CallbackManager,
 } from 'n8n-workflow';
 import {
 	ExpressionError,
@@ -272,6 +274,7 @@ const getBeforeRedirectFn =
 		}
 	};
 
+// eslint-disable-next-line complexity
 export async function parseRequestObject(requestObject: IRequestOptions) {
 	// This function is a temporary implementation
 	// That translates all http requests done via
@@ -494,7 +497,7 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 	}
 
 	const host = getHostFromRequestObject(requestObject);
-	const agentOptions: AgentOptions = {};
+	const agentOptions: AgentOptions = { ...requestObject.agentOptions };
 	if (host) {
 		agentOptions.servername = host;
 	}
@@ -502,6 +505,7 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 		agentOptions.rejectUnauthorized = false;
 		agentOptions.secureOptions = crypto.constants.SSL_OP_LEGACY_SERVER_CONNECT;
 	}
+
 	axiosConfig.httpsAgent = new Agent(agentOptions);
 
 	axiosConfig.beforeRedirect = getBeforeRedirectFn(agentOptions, axiosConfig);
@@ -515,8 +519,9 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 		if (typeof requestObject.proxy === 'string') {
 			try {
 				const url = new URL(requestObject.proxy);
+				const host = url.hostname.startsWith('[') ? url.hostname.slice(1, -1) : url.hostname;
 				axiosConfig.proxy = {
-					host: url.hostname,
+					host,
 					port: parseInt(url.port, 10),
 					protocol: url.protocol,
 				};
@@ -541,8 +546,9 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 					const [userpass, hostport] = requestObject.proxy.split('@');
 					const [username, password] = userpass.split(':');
 					const [hostname, port] = hostport.split(':');
+					const host = hostname.startsWith('[') ? hostname.slice(1, -1) : hostname;
 					axiosConfig.proxy = {
-						host: hostname,
+						host,
 						port: parseInt(port, 10),
 						protocol: 'http',
 						auth: {
@@ -810,7 +816,7 @@ export async function proxyRequestToAxios(
 					statusCode: response.status,
 					statusMessage: response.statusText,
 					request: response.request,
-			  }
+				}
 			: body;
 	} catch (error) {
 		const { config, response } = error;
@@ -847,6 +853,11 @@ export async function proxyRequestToAxios(
 				error.message = `${response.status as number} - ${JSON.stringify(responseData)}`;
 				throw Object.assign(error, {
 					statusCode: response.status,
+					/**
+					 * Axios adds `status` when serializing, causing `status` to be available only to the client.
+					 * Hence we add it explicitly to allow the backend to use it when resolving expressions.
+					 */
+					status: response.status,
 					error: responseData,
 					response: pick(response, ['headers', 'status', 'statusText']),
 				});
@@ -859,6 +870,7 @@ export async function proxyRequestToAxios(
 	}
 }
 
+// eslint-disable-next-line complexity
 function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequestConfig {
 	// Destructure properties with the same name first.
 	const { headers, method, timeout, auth, proxy, url } = n8nRequest;
@@ -1060,7 +1072,7 @@ export function assertBinaryData(
 		binaryPropertyData = binaryData.data as IBinaryData;
 	} else {
 		// binaryMode: separate
-		const binaryKeyData = inputData.main[inputIndex]![itemIndex]!.binary;
+		const binaryKeyData = inputData.main[inputIndex]![itemIndex].binary;
 
 		if (binaryKeyData === undefined) {
 			throw new NodeOperationError(
@@ -1199,6 +1211,7 @@ export async function copyBinaryFile(
  * Takes a buffer and converts it into the format n8n uses. It encodes the binary data as
  * base64 and adds metadata.
  */
+// eslint-disable-next-line complexity
 async function prepareBinaryData(
 	binaryData: Buffer | Readable,
 	executionId: string,
@@ -1971,7 +1984,7 @@ export function getAdditionalKeys(
 						getAll(): Record<string, string> {
 							return getAllWorkflowExecutionMetadata(runExecutionData);
 						},
-				  }
+					}
 				: undefined,
 		},
 		$vars: additionalData.variables,
@@ -2143,7 +2156,7 @@ export function cleanupParameterData(inputData: NodeParameterValueType): void {
 		(Object.keys(inputData) as Key[]).forEach((key) => {
 			const value = inputData[key];
 			if (typeof value === 'object') {
-				if (value instanceof DateTime) {
+				if (DateTime.isDateTime(value)) {
 					// Is a special luxon date so convert to string
 					inputData[key] = value.toString();
 				} else {
@@ -2561,7 +2574,6 @@ const addExecutionDataFunctions = async (
 	taskData = taskData!;
 
 	if (data instanceof Error) {
-		// TODO: Or "failed", what is the difference
 		taskData.executionStatus = 'error';
 		taskData.error = data;
 	} else {
@@ -2830,7 +2842,35 @@ const getCommonWorkflowFunctions = (
 		active: workflow.active,
 	}),
 	getWorkflowStaticData: (type) => workflow.getStaticData(type, node),
+	getChildNodes: (nodeName: string) => {
+		const output: NodeTypeAndVersion[] = [];
+		const nodes = workflow.getChildNodes(nodeName);
 
+		for (const nodeName of nodes) {
+			const node = workflow.nodes[nodeName];
+			output.push({
+				name: node.name,
+				type: node.type,
+				typeVersion: node.typeVersion,
+			});
+		}
+		return output;
+	},
+	getParentNodes: (nodeName: string) => {
+		const output: NodeTypeAndVersion[] = [];
+		const nodes = workflow.getParentNodes(nodeName);
+
+		for (const nodeName of nodes) {
+			const node = workflow.nodes[nodeName];
+			output.push({
+				name: node.name,
+				type: node.type,
+				typeVersion: node.typeVersion,
+			});
+		}
+		return output;
+	},
+	getKnownNodeTypes: () => workflow.nodeTypes.getKnownTypes(),
 	getRestApiUrl: () => additionalData.restApiUrl,
 	getInstanceBaseUrl: () => additionalData.instanceBaseUrl,
 	getInstanceId: () => Container.get(InstanceSettings).instanceId,
@@ -2892,6 +2932,7 @@ const getRequestHelperFunctions = (
 
 	return {
 		httpRequest,
+		// eslint-disable-next-line complexity
 		async requestWithAuthenticationPaginated(
 			this: IExecuteFunctions,
 			requestOptions: IRequestOptions,
@@ -3236,7 +3277,7 @@ const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions =>
 				? new NodeOperationError(node, error, {
 						message: `The file "${String(filePath)}" could not be accessed.`,
 						level: 'warning',
-				  })
+					})
 				: error;
 		}
 		if (isFilePathBlocked(filePath as string)) {
@@ -3310,7 +3351,7 @@ export function copyInputItems(items: INodeExecutionData[], properties: string[]
 /**
  * Returns the execute functions the poll nodes have access to.
  */
-// TODO: Check if I can get rid of: additionalData, and so then maybe also at ActiveWorkflowRunner.add
+// TODO: Check if I can get rid of: additionalData, and so then maybe also at ActiveWorkflowManager.add
 export function getExecutePollFunctions(
 	workflow: Workflow,
 	node: INode,
@@ -3373,7 +3414,7 @@ export function getExecutePollFunctions(
 /**
  * Returns the execute functions the trigger nodes have access to.
  */
-// TODO: Check if I can get rid of: additionalData, and so then maybe also at ActiveWorkflowRunner.add
+// TODO: Check if I can get rid of: additionalData, and so then maybe also at ActiveWorkflowManager.add
 export function getExecuteTriggerFunctions(
 	workflow: Workflow,
 	node: INode,
@@ -3486,6 +3527,7 @@ export function getExecuteFunctions(
 			async executeWorkflow(
 				workflowInfo: IExecuteWorkflowInfo,
 				inputData?: INodeExecutionData[],
+				parentCallbackManager?: CallbackManager,
 			): Promise<any> {
 				return await additionalData
 					.executeWorkflow(workflowInfo, additionalData, {
@@ -3493,6 +3535,7 @@ export function getExecuteFunctions(
 						inputData,
 						parentWorkflowSettings: workflow.settings,
 						node,
+						parentCallbackManager,
 					})
 					.then(
 						async (result) =>
@@ -3717,6 +3760,7 @@ export function getExecuteFunctions(
 					msg,
 				});
 			},
+			getParentCallbackManager: () => additionalData.parentCallbackManager,
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node) as IExecuteFunctions;
 }

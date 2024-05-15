@@ -22,7 +22,7 @@ export function getMetadataFiltersValues(
 }
 
 export function isChatInstance(model: unknown): model is BaseChatModel {
-	const namespace = (model as BaseLLM | BaseChatModel).lc_namespace;
+	const namespace = (model as BaseLLM | BaseChatModel)?.lc_namespace ?? [];
 
 	return namespace.includes('chat_models');
 }

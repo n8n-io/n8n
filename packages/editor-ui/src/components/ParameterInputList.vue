@@ -18,14 +18,14 @@
 					:node-values="nodeValues"
 					:path="getPath(parameter.name)"
 					:is-read-only="isReadOnly"
-					@valueChanged="valueChanged"
+					@value-changed="valueChanged"
 				/>
 			</div>
 
-			<ImportParameter
+			<ImportCurlParameter
 				v-else-if="parameter.type === 'curlImport'"
 				:is-read-only="isReadOnly"
-				@valueChanged="valueChanged"
+				@value-changed="valueChanged"
 			/>
 
 			<n8n-notice
@@ -49,7 +49,7 @@
 				class="multi-parameter"
 			>
 				<n8n-icon-button
-					v-if="hideDelete !== true && !isReadOnly"
+					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
 					type="tertiary"
 					text
 					size="mini"
@@ -74,7 +74,7 @@
 							:node-values="nodeValues"
 							:path="getPath(parameter.name)"
 							:is-read-only="isReadOnly"
-							@valueChanged="valueChanged"
+							@value-changed="valueChanged"
 						/>
 						<FixedCollectionParameter
 							v-else-if="parameter.type === 'fixedCollection'"
@@ -83,7 +83,7 @@
 							:node-values="nodeValues"
 							:path="getPath(parameter.name)"
 							:is-read-only="isReadOnly"
-							@valueChanged="valueChanged"
+							@value-changed="valueChanged"
 						/>
 					</template>
 					<template #fallback>
@@ -106,7 +106,7 @@
 				:dependent-parameters-values="getDependentParametersValues(parameter)"
 				input-size="small"
 				label-size="small"
-				@valueChanged="valueChanged"
+				@value-changed="valueChanged"
 			/>
 			<FilterConditions
 				v-else-if="parameter.type === 'filter'"
@@ -115,7 +115,7 @@
 				:path="getPath(parameter.name)"
 				:node="node"
 				:read-only="isReadOnly"
-				@valueChanged="valueChanged"
+				@value-changed="valueChanged"
 			/>
 			<AssignmentCollection
 				v-else-if="parameter.type === 'assignmentCollection'"
@@ -124,14 +124,14 @@
 				:path="getPath(parameter.name)"
 				:node="node"
 				:is-read-only="isReadOnly"
-				@valueChanged="valueChanged"
+				@value-changed="valueChanged"
 			/>
 			<div
 				v-else-if="displayNodeParameter(parameter) && credentialsParameterIndex !== index"
 				class="parameter-item"
 			>
 				<n8n-icon-button
-					v-if="hideDelete !== true && !isReadOnly"
+					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
 					type="tertiary"
 					text
 					size="mini"
@@ -175,7 +175,7 @@ import { defineAsyncComponent, defineComponent, onErrorCaptured, ref } from 'vue
 
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 
-import ImportParameter from '@/components/ImportParameter.vue';
+import ImportCurlParameter from '@/components/ImportCurlParameter.vue';
 import MultipleParameter from '@/components/MultipleParameter.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
@@ -208,7 +208,7 @@ export default defineComponent({
 		ParameterInputFull,
 		FixedCollectionParameter,
 		CollectionParameter,
-		ImportParameter,
+		ImportCurlParameter,
 		ResourceMapper,
 		FilterConditions,
 		AssignmentCollection,

@@ -13,7 +13,7 @@ export function getStatusUsingPreviousExecutionStatusMethod(
 	} else if (execution.finished) {
 		return 'success';
 	} else if (execution.stoppedAt !== null) {
-		return 'failed';
+		return 'error';
 	} else {
 		return 'unknown';
 	}
@@ -22,9 +22,4 @@ export function getStatusUsingPreviousExecutionStatusMethod(
 export function isAdvancedExecutionFiltersEnabled(): boolean {
 	const license = Container.get(License);
 	return license.isAdvancedExecutionFiltersEnabled();
-}
-
-export function isDebugInEditorLicensed(): boolean {
-	const license = Container.get(License);
-	return license.isDebugInEditorLicensed();
 }

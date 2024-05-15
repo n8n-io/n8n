@@ -32,7 +32,7 @@
 						:model-value="getSelectedId(credentialTypeDescription.name)"
 						:placeholder="getSelectPlaceholder(credentialTypeDescription.name, issues)"
 						size="small"
-						@update:modelValue="
+						@update:model-value="
 							(value) =>
 								onCredentialSelected(
 									credentialTypeDescription.name,
@@ -369,7 +369,7 @@ export default defineComponent({
 			return issues.length && this.getSelectedName(type)
 				? this.$locale.baseText('nodeCredentials.selectedCredentialUnavailable', {
 						interpolate: { name: this.getSelectedName(type) },
-				  })
+					})
 				: this.$locale.baseText('nodeCredentials.selectCredential');
 		},
 		credentialInputWrapperStyle(credentialType: string) {
@@ -561,6 +561,7 @@ export default defineComponent({
 			return !KEEP_AUTH_IN_NDV_FOR_NODES.includes(this.node.type || '') && isRequired;
 		},
 		getCredentialsFieldLabel(credentialType: INodeCredentialDescription): string {
+			if (credentialType.displayName) return credentialType.displayName;
 			const credentialTypeName = this.credentialTypeNames[credentialType.name];
 			const isCredentialOnlyNode = this.node.type.startsWith(CREDENTIAL_ONLY_NODE_PREFIX);
 

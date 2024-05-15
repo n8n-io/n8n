@@ -6,7 +6,7 @@ export function createExpressionTelemetryPayload(
 	segments: Segment[],
 	value: string,
 	workflowId: string,
-	sessionId: string,
+	pushRef: string,
 	activeNodeType: string,
 	eventSource = 'ndv',
 ) {
@@ -17,7 +17,7 @@ export function createExpressionTelemetryPayload(
 		empty_expression: value === '=' || value === '={{}}' || !value,
 		workflow_id: workflowId,
 		source: eventSource,
-		session_id: sessionId,
+		push_ref: pushRef,
 		is_transforming_data: resolvables.some((r) => isTransformingData(r.resolvable)),
 		has_parameter: value.includes('$parameter'),
 		has_mapping: hasExpressionMapping(value),

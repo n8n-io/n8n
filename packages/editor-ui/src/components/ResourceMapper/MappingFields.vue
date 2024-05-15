@@ -300,7 +300,7 @@ defineExpose({
 					:custom-actions="parameterActions"
 					:loading="props.refreshInProgress"
 					:loading-message="fetchingFieldsLabel"
-					@update:modelValue="onParameterActionSelected"
+					@update:model-value="onParameterActionSelected"
 				/>
 			</template>
 		</n8n-input-label>
@@ -388,7 +388,7 @@ defineExpose({
 				size="small"
 				:teleported="teleported"
 				:disabled="addFieldOptions.length == 0"
-				@update:modelValue="addField"
+				@update:model-value="addField"
 			>
 				<n8n-option
 					v-for="item in addFieldOptions"

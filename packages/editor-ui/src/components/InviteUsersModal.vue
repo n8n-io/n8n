@@ -186,7 +186,7 @@ export default defineComponent({
 			return this.showInviteUrls
 				? this.usersStore.allUsers.filter((user) =>
 						this.showInviteUrls!.find((invite) => invite.user.id === user.id),
-				  )
+					)
 				: [];
 		},
 		isAdvancedPermissionsEnabled(): boolean {

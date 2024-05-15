@@ -164,7 +164,7 @@ export class InvitationController {
 
 		const updatedUser = await this.userRepository.save(invitee, { transaction: false });
 
-		this.authService.issueCookie(res, updatedUser);
+		this.authService.issueCookie(res, updatedUser, req.browserId);
 
 		void this.internalHooks.onUserSignup(updatedUser, {
 			user_type: 'email',

@@ -23,7 +23,7 @@
 					<el-radio
 						:model-value="operation"
 						label="transfer"
-						@update:modelValue="() => setOperation('transfer')"
+						@update:model-value="() => setOperation('transfer')"
 					>
 						<n8n-text color="text-dark">{{
 							$locale.baseText('settings.users.transferWorkflowsAndCredentials')
@@ -36,14 +36,14 @@
 								:model-value="transferId"
 								:ignore-ids="ignoreIds"
 								:current-user-id="usersStore.currentUserId"
-								@update:modelValue="setTransferId"
+								@update:model-value="setTransferId"
 							/>
 						</n8n-input-label>
 					</div>
 					<el-radio
 						:model-value="operation"
 						label="delete"
-						@update:modelValue="() => setOperation('delete')"
+						@update:model-value="() => setOperation('delete')"
 					>
 						<n8n-text color="text-dark">{{
 							$locale.baseText('settings.users.deleteWorkflowsAndCredentials')
@@ -58,7 +58,7 @@
 							<n8n-input
 								:model-value="deleteConfirmText"
 								:placeholder="$locale.baseText('settings.users.deleteConfirmationText')"
-								@update:modelValue="setConfirmText"
+								@update:model-value="setConfirmText"
 							/>
 						</n8n-input-label>
 					</div>

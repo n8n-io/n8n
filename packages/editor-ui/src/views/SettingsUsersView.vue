@@ -57,10 +57,10 @@
 				:is-saml-login-enabled="ssoStore.isSamlLoginEnabled"
 				@delete="onDelete"
 				@reinvite="onReinvite"
-				@copyInviteLink="onCopyInviteLink"
-				@copyPasswordResetLink="onCopyPasswordResetLink"
-				@allowSSOManualLogin="onAllowSSOManualLogin"
-				@disallowSSOManualLogin="onDisallowSSOManualLogin"
+				@copy-invite-link="onCopyInviteLink"
+				@copy-password-reset-link="onCopyPasswordResetLink"
+				@allow-s-s-o-manual-login="onAllowSSOManualLogin"
+				@disallow-s-s-o-manual-login="onDisallowSSOManualLogin"
 			>
 				<template #actions="{ user }">
 					<n8n-select
@@ -68,7 +68,7 @@
 						:model-value="user?.role || 'global:member'"
 						:disabled="!canUpdateRole"
 						data-test-id="user-role-select"
-						@update:modelValue="onRoleChange(user, $event)"
+						@update:model-value="onRoleChange(user, $event)"
 					>
 						<n8n-option
 							v-for="role in userRoles"
@@ -323,4 +323,3 @@ export default defineComponent({
 	left: calc(50% + 100px);
 }
 </style>
-IRole,

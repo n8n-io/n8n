@@ -15,7 +15,7 @@
 				:is-read-only="false"
 				:show-options="true"
 				:is-value-expression="isValueExpression"
-				@update:modelValue="optionSelected"
+				@update:model-value="optionSelected"
 				@menu-expanded="onMenuExpanded"
 			/>
 		</template>
@@ -34,7 +34,7 @@
 			:event-bus="eventBus"
 			@focus="onFocus"
 			@blur="onBlur"
-			@textInput="valueChanged"
+			@text-input="valueChanged"
 			@update="valueChanged"
 		/>
 		<div v-if="showRequiredErrors" :class="$style.errors">

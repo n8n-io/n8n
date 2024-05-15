@@ -567,7 +567,7 @@ export function useNodeHelpers() {
 
 		let data: ITaskDataConnections | undefined = taskData.data;
 		if (paneType === 'input' && taskData.inputOverride) {
-			data = taskData.inputOverride!;
+			data = taskData.inputOverride;
 		}
 
 		if (!data) {
@@ -582,16 +582,7 @@ export function useNodeHelpers() {
 		outputIndex: number,
 		connectionType: ConnectionTypes = NodeConnectionType.Main,
 	): INodeExecutionData[] {
-		if (
-			!connectionsData ||
-			!connectionsData.hasOwnProperty(connectionType) ||
-			connectionsData[connectionType] === undefined ||
-			connectionsData[connectionType].length < outputIndex ||
-			connectionsData[connectionType][outputIndex] === null
-		) {
-			return [];
-		}
-		return connectionsData[connectionType][outputIndex] as INodeExecutionData[];
+		return connectionsData?.[connectionType]?.[outputIndex] ?? [];
 	}
 
 	function getBinaryData(
@@ -608,11 +599,12 @@ export function useNodeHelpers() {
 
 		const runData: IRunData | null = workflowRunData;
 
-		if (!runData?.[node]?.[runIndex]?.data) {
+		const runDataOfNode = runData?.[node]?.[runIndex]?.data;
+		if (!runDataOfNode) {
 			return [];
 		}
 
-		const inputData = getInputData(runData[node][runIndex].data!, outputIndex, connectionType);
+		const inputData = getInputData(runDataOfNode, outputIndex, connectionType);
 
 		if (mode === 'combined') {
 			// In combined mode the binary data does get saved in json
@@ -621,8 +613,9 @@ export function useNodeHelpers() {
 
 		const returnData: IBinaryKeyData[] = [];
 		for (let i = 0; i < inputData.length; i++) {
-			if (inputData[i].hasOwnProperty('binary') && inputData[i].binary !== undefined) {
-				returnData.push(inputData[i].binary!);
+			const binaryDataInIdx = inputData[i]?.binary;
+			if (binaryDataInIdx !== undefined) {
+				returnData.push(binaryDataInIdx);
 			}
 		}
 

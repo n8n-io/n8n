@@ -16,6 +16,7 @@ export class ExecutionDataRecoveryService {
 		private readonly executionRepository: ExecutionRepository,
 	) {}
 
+	// eslint-disable-next-line complexity
 	async recoverExecutionData(
 		executionId: string,
 		messages: EventMessageTypes[],
@@ -155,7 +156,7 @@ export class ExecutionDataRecoveryService {
 			}
 
 			if (applyToDb) {
-				const newStatus = executionEntry.status === 'failed' ? 'failed' : 'crashed';
+				const newStatus = executionEntry.status === 'error' ? 'error' : 'crashed';
 				await this.executionRepository.updateExistingExecution(executionId, {
 					data: executionData,
 					status: newStatus,

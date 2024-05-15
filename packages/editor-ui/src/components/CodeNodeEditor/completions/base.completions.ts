@@ -92,6 +92,10 @@ export const baseCompletions = defineComponent({
 					label: `${prefix}runIndex`,
 					info: this.$locale.baseText('codeNodeEditor.completer.$runIndex'),
 				},
+				{
+					label: `${prefix}nodeVersion`,
+					info: this.$locale.baseText('codeNodeEditor.completer.$nodeVersion'),
+				},
 			];
 
 			const options: Completion[] = TOP_LEVEL_COMPLETIONS_IN_BOTH_MODES.map(addVarType);

@@ -7,6 +7,7 @@ import {
 	type Ref,
 	toValue,
 	watch,
+	onMounted,
 } from 'vue';
 
 import { ensureSyntaxTree } from '@codemirror/language';
@@ -24,8 +25,14 @@ import {
 	getResolvableState,
 	isEmptyExpression,
 } from '@/utils/expressions';
-import { completionStatus } from '@codemirror/autocomplete';
-import { Compartment, EditorState, type Extension } from '@codemirror/state';
+import { closeCompletion, completionStatus } from '@codemirror/autocomplete';
+import {
+	Compartment,
+	EditorState,
+	type SelectionRange,
+	type Extension,
+	EditorSelection,
+} from '@codemirror/state';
 import { EditorView, type ViewUpdate } from '@codemirror/view';
 import { debounce, isEqual } from 'lodash-es';
 import { useRouter } from 'vue-router';
@@ -59,6 +66,7 @@ export const useExpressionEditor = ({
 	const editor = ref<EditorView>();
 	const hasFocus = ref(false);
 	const segments = ref<Segment[]>([]);
+	const selection = ref<SelectionRange>(EditorSelection.cursor(0)) as Ref<SelectionRange>;
 	const customExtensions = ref<Compartment>(new Compartment());
 	const readOnlyExtensions = ref<Compartment>(new Compartment());
 	const telemetryExtensions = ref<Compartment>(new Compartment());
@@ -98,7 +106,7 @@ export const useExpressionEditor = ({
 			const { from, to, text, token } = segment;
 
 			if (token === 'Resolvable') {
-				const { resolved, error, fullError } = resolve(text, hoveringItem.value);
+				const { resolved, error, fullError } = resolve(text, targetItem.value);
 				acc.push({
 					kind: 'resolvable',
 					from,
@@ -108,7 +116,7 @@ export const useExpressionEditor = ({
 					// For some reason, expressions that resolve to a number 0 are breaking preview in the SQL editor
 					// This fixes that but as as TODO we should figure out why this is happening
 					resolved: String(resolved),
-					state: getResolvableState(fullError ?? error, completionStatus !== null),
+					state: getResolvableState(fullError ?? error, autocompleteStatus.value !== null),
 					error: fullError,
 				});
 
@@ -131,13 +139,37 @@ export const useExpressionEditor = ({
 		highlighter.addColor(editor.value, resolvableSegments.value);
 	}
 
-	const debouncedUpdateSegments = debounce(updateSegments, 200);
-	function onEditorUpdate(viewUpdate: ViewUpdate) {
-		if (!viewUpdate.docChanged || !editor.value) return;
+	function updateSelection(viewUpdate: ViewUpdate) {
+		const currentSelection = selection.value;
+		const newSelection = viewUpdate.state.selection.ranges[0];
 
+		if (!currentSelection?.eq(newSelection)) {
+			selection.value = newSelection;
+		}
+	}
+
+	const debouncedUpdateSegments = debounce(updateSegments, 200);
+
+	function onEditorUpdate(viewUpdate: ViewUpdate) {
 		autocompleteStatus.value = completionStatus(viewUpdate.view.state);
+		updateSelection(viewUpdate);
+
+		if (!viewUpdate.docChanged) return;
 
 		debouncedUpdateSegments();
+	}
+
+	function blur() {
+		if (editor.value) {
+			editor.value.contentDOM.blur();
+			closeCompletion(editor.value);
+		}
+	}
+
+	function blurOnClickOutside(event: MouseEvent) {
+		if (event.target && !editor.value?.dom.contains(event.target as Node)) {
+			blur();
+		}
 	}
 
 	watch(editorRef, () => {
@@ -157,6 +189,11 @@ export const useExpressionEditor = ({
 				EditorView.updateListener.of(onEditorUpdate),
 				EditorView.focusChangeEffect.of((_, newHasFocus) => {
 					hasFocus.value = newHasFocus;
+					selection.value = state.selection.ranges[0];
+					if (!newHasFocus) {
+						autocompleteStatus.value = null;
+						debouncedUpdateSegments();
+					}
 					return null;
 				}),
 				EditorView.contentAttributes.of({ 'data-gramm': 'false' }), // disable grammarly
@@ -166,7 +203,7 @@ export const useExpressionEditor = ({
 		if (editor.value) {
 			editor.value.destroy();
 		}
-		editor.value = new EditorView({ parent, state });
+		editor.value = new EditorView({ parent, state, scrollTo: EditorView.scrollIntoView(0) });
 		debouncedUpdateSegments();
 	});
 
@@ -212,7 +249,12 @@ export const useExpressionEditor = ({
 		});
 	});
 
+	onMounted(() => {
+		document.addEventListener('click', blurOnClickOutside);
+	});
+
 	onBeforeUnmount(() => {
+		document.removeEventListener('click', blurOnClickOutside);
 		editor.value?.destroy();
 	});
 
@@ -234,7 +276,7 @@ export const useExpressionEditor = ({
 		return end !== undefined && expressionExtensionNames.value.has(end);
 	}
 
-	function resolve(resolvable: string, hoverItem: TargetItem | null) {
+	function resolve(resolvable: string, target: TargetItem | null) {
 		const result: { resolved: unknown; error: boolean; fullError: Error | null } = {
 			resolved: undefined,
 			error: false,
@@ -249,7 +291,7 @@ export const useExpressionEditor = ({
 				let opts;
 				if (ndvStore.isInputParentOfActiveNode) {
 					opts = {
-						targetItem: hoverItem ?? undefined,
+						targetItem: target ?? undefined,
 						inputNodeName: ndvStore.ndvInputNodeName,
 						inputRunIndex: ndvStore.ndvInputRunIndex,
 						inputBranchIndex: ndvStore.ndvInputBranchIndex,
@@ -287,8 +329,21 @@ export const useExpressionEditor = ({
 		return result;
 	}
 
-	const hoveringItem = computed(() => {
-		return ndvStore.hoveringItem;
+	const targetItem = computed<TargetItem | null>(() => {
+		if (ndvStore.hoveringItem) {
+			return ndvStore.hoveringItem;
+		}
+
+		if (ndvStore.expressionOutputItemIndex && ndvStore.ndvInputNodeName) {
+			return {
+				nodeName: ndvStore.ndvInputNodeName,
+				runIndex: ndvStore.ndvInputRunIndex ?? 0,
+				outputIndex: ndvStore.ndvInputBranchIndex ?? 0,
+				itemIndex: ndvStore.expressionOutputItemIndex,
+			};
+		}
+
+		return null;
 	});
 
 	const resolvableSegments = computed<Resolvable[]>(() => {
@@ -353,20 +408,19 @@ export const useExpressionEditor = ({
 	});
 
 	watch(
-		[
-			() => workflowsStore.getWorkflowExecution,
-			() => workflowsStore.getWorkflowRunData,
-			() => ndvStore.hoveringItemNumber,
-		],
+		[() => workflowsStore.getWorkflowExecution, () => workflowsStore.getWorkflowRunData],
 		debouncedUpdateSegments,
 	);
+
+	watch(targetItem, updateSegments);
 
 	watch(resolvableSegments, updateHighlighting);
 
 	function setCursorPosition(pos: number | 'lastExpression' | 'end'): void {
 		if (pos === 'lastExpression') {
 			const END_OF_EXPRESSION = ' }}';
-			pos = Math.max(readEditorValue().lastIndexOf(END_OF_EXPRESSION), 0);
+			const endOfLastExpression = readEditorValue().lastIndexOf(END_OF_EXPRESSION);
+			pos = endOfLastExpression !== -1 ? endOfLastExpression : editor.value?.state.doc.length ?? 0;
 		} else if (pos === 'end') {
 			pos = editor.value?.state.doc.length ?? 0;
 		}
@@ -389,6 +443,7 @@ export const useExpressionEditor = ({
 	return {
 		editor,
 		hasFocus,
+		selection,
 		segments: {
 			all: segments,
 			html: htmlSegments,

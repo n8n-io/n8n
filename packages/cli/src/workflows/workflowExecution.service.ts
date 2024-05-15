@@ -99,7 +99,7 @@ export class WorkflowExecutionService {
 			destinationNode,
 		}: WorkflowRequest.ManualRunPayload,
 		user: User,
-		sessionId?: string,
+		pushRef?: string,
 	) {
 		const pinnedTrigger = this.selectPinnedActivatorStarter(
 			workflowData,
@@ -122,7 +122,7 @@ export class WorkflowExecutionService {
 				workflowData,
 				additionalData,
 				runData,
-				sessionId,
+				pushRef,
 				destinationNode,
 			);
 
@@ -138,7 +138,7 @@ export class WorkflowExecutionService {
 			executionMode: 'manual',
 			runData,
 			pinData,
-			sessionId,
+			pushRef,
 			startNodes,
 			workflowData,
 			userId: user.id,

@@ -79,7 +79,7 @@ const onActiveChange = (value: string) => {
 			:model-value="color"
 			:name="name"
 			type="text"
-			@update:modelValue="onInput"
+			@update:model-value="onInput"
 		/>
 	</span>
 </template>

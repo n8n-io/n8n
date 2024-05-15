@@ -8,21 +8,22 @@ import {
 	NodeOperationError,
 	NodeConnectionType,
 } from 'n8n-workflow';
-
-import { parseSchema } from 'json-schema-to-zod';
 import { z } from 'zod';
 import type { JSONSchema7 } from 'json-schema';
 import { StructuredOutputParser } from 'langchain/output_parsers';
 import { OutputParserException } from '@langchain/core/output_parsers';
 import get from 'lodash/get';
-import { logWrapper } from '../../../utils/logWrapper';
+import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
+import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
+import { makeResolverFromLegacyOptions } from '@n8n/vm2';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { logWrapper } from '../../../utils/logWrapper';
 
 const STRUCTURED_OUTPUT_KEY = '__structured__output';
 const STRUCTURED_OUTPUT_OBJECT_KEY = '__structured__output__object';
 const STRUCTURED_OUTPUT_ARRAY_KEY = '__structured__output__array';
 
-class N8nStructuredOutputParser<T extends z.ZodTypeAny> extends StructuredOutputParser<T> {
+export class N8nStructuredOutputParser<T extends z.ZodTypeAny> extends StructuredOutputParser<T> {
 	async parse(text: string): Promise<z.infer<T>> {
 		try {
 			const parsed = (await super.parse(text)) as object;
@@ -39,26 +40,19 @@ class N8nStructuredOutputParser<T extends z.ZodTypeAny> extends StructuredOutput
 		}
 	}
 
-	static fromZedJsonSchema(
-		schema: JSONSchema7,
+	static async fromZedJsonSchema(
+		sandboxedSchema: JavaScriptSandbox,
 		nodeVersion: number,
-	): StructuredOutputParser<z.ZodType<object, z.ZodTypeDef, object>> {
-		// Make sure to remove the description from root schema
-		const { description, ...restOfSchema } = schema;
-
-		const zodSchemaString = parseSchema(restOfSchema as JSONSchema7);
-
-		// TODO: This is obviously not great and should be replaced later!!!
-		// eslint-disable-next-line @typescript-eslint/no-implied-eval
-		const itemSchema = new Function('z', `return (${zodSchemaString})`)(z) as z.ZodSchema<object>;
+	): Promise<StructuredOutputParser<z.ZodType<object, z.ZodTypeDef, object>>> {
+		const zodSchema = (await sandboxedSchema.runCode()) as z.ZodSchema<object>;
 
 		let returnSchema: z.ZodSchema<object>;
 		if (nodeVersion === 1) {
 			returnSchema = z.object({
 				[STRUCTURED_OUTPUT_KEY]: z
 					.object({
-						[STRUCTURED_OUTPUT_OBJECT_KEY]: itemSchema.optional(),
-						[STRUCTURED_OUTPUT_ARRAY_KEY]: z.array(itemSchema).optional(),
+						[STRUCTURED_OUTPUT_OBJECT_KEY]: zodSchema.optional(),
+						[STRUCTURED_OUTPUT_ARRAY_KEY]: z.array(zodSchema).optional(),
 					})
 					.describe(
 						`Wrapper around the output data. It can only contain ${STRUCTURED_OUTPUT_OBJECT_KEY} or ${STRUCTURED_OUTPUT_ARRAY_KEY} but never both.`,
@@ -80,7 +74,7 @@ class N8nStructuredOutputParser<T extends z.ZodTypeAny> extends StructuredOutput
 			});
 		} else {
 			returnSchema = z.object({
-				output: itemSchema.optional(),
+				output: zodSchema.optional(),
 			});
 		}
 
@@ -166,18 +160,64 @@ export class OutputParserStructured implements INodeType {
 			if (itemSchema.type === undefined) {
 				itemSchema = {
 					type: 'object',
-					properties: itemSchema.properties || (itemSchema as { [key: string]: JSONSchema7 }),
+					properties: itemSchema.properties ?? (itemSchema as { [key: string]: JSONSchema7 }),
 				};
 			}
 		} catch (error) {
 			throw new NodeOperationError(this.getNode(), 'Error during parsing of JSON Schema.');
 		}
 
-		const nodeVersion = this.getNode().typeVersion;
-		const parser = N8nStructuredOutputParser.fromZedJsonSchema(itemSchema, nodeVersion);
+		const vmResolver = makeResolverFromLegacyOptions({
+			external: {
+				modules: ['json-schema-to-zod', 'zod'],
+				transitive: false,
+			},
+			resolve(moduleName, parentDirname) {
+				if (moduleName === 'json-schema-to-zod') {
+					return require.resolve(
+						'@n8n/n8n-nodes-langchain/node_modules/json-schema-to-zod/dist/cjs/jsonSchemaToZod.js',
+						{
+							paths: [parentDirname],
+						},
+					);
+				}
+				if (moduleName === 'zod') {
+					return require.resolve('@n8n/n8n-nodes-langchain/node_modules/zod.cjs', {
+						paths: [parentDirname],
+					});
+				}
+				return;
+			},
+			builtin: [],
+		});
+		const context = getSandboxContext.call(this, itemIndex);
+		// Make sure to remove the description from root schema
+		const { description, ...restOfSchema } = itemSchema;
+		const sandboxedSchema = new JavaScriptSandbox(
+			context,
+			`
+				const { z } = require('zod');
+				const { parseSchema } = require('json-schema-to-zod');
+				const zodSchema = parseSchema(${JSON.stringify(restOfSchema)});
+				const itemSchema = new Function('z', 'return (' + zodSchema + ')')(z)
+				return itemSchema
+			`,
+			itemIndex,
+			this.helpers,
+			{ resolver: vmResolver },
+		);
 
-		return {
-			response: logWrapper(parser, this),
-		};
+		const nodeVersion = this.getNode().typeVersion;
+		try {
+			const parser = await N8nStructuredOutputParser.fromZedJsonSchema(
+				sandboxedSchema,
+				nodeVersion,
+			);
+			return {
+				response: logWrapper(parser, this),
+			};
+		} catch (error) {
+			throw new NodeOperationError(this.getNode(), 'Error during parsing of JSON Schema.');
+		}
 	}
 }

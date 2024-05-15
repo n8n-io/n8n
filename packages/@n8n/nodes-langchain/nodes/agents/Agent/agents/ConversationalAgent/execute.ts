@@ -1,9 +1,5 @@
-import {
-	type IExecuteFunctions,
-	type INodeExecutionData,
-	NodeConnectionType,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import { initializeAgentExecutorWithOptions } from 'langchain/agents';
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
@@ -16,13 +12,13 @@ import {
 	getOptionalOutputParsers,
 	getConnectedTools,
 } from '../../../../../utils/helpers';
+import { getTracingConfig } from '../../../../../utils/tracing';
 
 export async function conversationalAgentExecute(
 	this: IExecuteFunctions,
 	nodeVersion: number,
 ): Promise<INodeExecutionData[][]> {
 	this.logger.verbose('Executing Conversational Agent');
-
 	const model = await this.getInputConnectionData(NodeConnectionType.AiLanguageModel, 0);
 
 	if (!isChatInstance(model)) {
@@ -83,34 +79,45 @@ export async function conversationalAgentExecute(
 
 	const items = this.getInputData();
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-		let input;
+		try {
+			let input;
 
-		if (this.getNode().typeVersion <= 1.2) {
-			input = this.getNodeParameter('text', itemIndex) as string;
-		} else {
-			input = getPromptInputByType({
-				ctx: this,
-				i: itemIndex,
-				inputKey: 'text',
-				promptTypeKey: 'promptType',
-			});
+			if (this.getNode().typeVersion <= 1.2) {
+				input = this.getNodeParameter('text', itemIndex) as string;
+			} else {
+				input = getPromptInputByType({
+					ctx: this,
+					i: itemIndex,
+					inputKey: 'text',
+					promptTypeKey: 'promptType',
+				});
+			}
+
+			if (input === undefined) {
+				throw new NodeOperationError(this.getNode(), 'The ‘text parameter is empty.');
+			}
+
+			if (prompt) {
+				input = (await prompt.invoke({ input })).value;
+			}
+
+			let response = await agentExecutor
+				.withConfig(getTracingConfig(this))
+				.invoke({ input, outputParsers });
+
+			if (outputParser) {
+				response = { output: await outputParser.parse(response.output as string) };
+			}
+
+			returnData.push({ json: response });
+		} catch (error) {
+			if (this.continueOnFail()) {
+				returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
+				continue;
+			}
+
+			throw error;
 		}
-
-		if (input === undefined) {
-			throw new NodeOperationError(this.getNode(), 'The ‘text parameter is empty.');
-		}
-
-		if (prompt) {
-			input = (await prompt.invoke({ input })).value;
-		}
-
-		let response = await agentExecutor.call({ input, outputParsers });
-
-		if (outputParser) {
-			response = { output: await outputParser.parse(response.output as string) };
-		}
-
-		returnData.push({ json: response });
 	}
 
 	return await this.prepareOutputData(returnData);

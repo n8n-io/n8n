@@ -8,6 +8,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import type {
 	PgpDatabase,
+	PostgresNodeOptions,
 	QueriesRunner,
 	QueryValues,
 	QueryWithValues,
@@ -95,7 +96,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	runQueries: QueriesRunner,
 	items: INodeExecutionData[],
-	nodeOptions: IDataObject,
+	nodeOptions: PostgresNodeOptions,
 	_db?: PgpDatabase,
 ): Promise<INodeExecutionData[]> {
 	const queries: QueryWithValues[] = [];
