@@ -165,7 +165,9 @@ export default defineComponent({
 			return this.canUserAccessRouteByName(VIEWS.COMMUNITY_NODES);
 		},
 		canAccessApiSettings(): boolean {
-			return this.canUserAccessRouteByName(VIEWS.API_SETTINGS);
+			return (
+				this.settingsStore.isPublicApiEnabled && this.canUserAccessRouteByName(VIEWS.API_SETTINGS)
+			);
 		},
 		canAccessLdapSettings(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.LDAP_SETTINGS);
