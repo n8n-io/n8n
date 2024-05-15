@@ -4,7 +4,7 @@ import { OpenAIAssistantRunnable } from 'langchain/experimental/openai_assistant
 import type { OpenAIToolType } from 'langchain/dist/experimental/openai_assistant/schema';
 import { OpenAI as OpenAIClient } from 'openai';
 
-import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -12,10 +12,12 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
+import type { BufferWindowMemory } from 'langchain/memory';
 import { formatToOpenAIAssistantTool } from '../../helpers/utils';
 import { assistantRLC } from '../descriptions';
 
 import { getConnectedTools } from '../../../../../utils/helpers';
+import { getTracingConfig } from '../../../../../utils/tracing';
 
 const properties: INodeProperties[] = [
 	assistantRLC,
@@ -186,10 +188,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			});
 		}
 
-		const useRetrieval = assistantTools.some((tool) => tool.type === 'retrieval');
+		const useRetrieval = assistantTools.some((tool) => tool.type === 'file_search');
 		if (useRetrieval) {
 			nativeToolsParsed.push({
-				type: 'retrieval',
+				type: 'file_search',
 			});
 		}
 
@@ -203,31 +205,46 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		tools: tools ?? [],
 	});
 
+	const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
+		| BufferWindowMemory
+		| undefined;
+
 	const chainValues: IDataObject = {
 		content: input,
 		signal: this.getExecutionCancelSignal(),
 		timeout: options.timeout ?? 10000,
 	};
-
-	if (options.threadId) {
-		chainValues.threadId = options.threadId;
-	} else {
-		const workflowData = this.getWorkflowStaticData('node');
-		if (workflowData.threadId) {
-			chainValues.threadId = workflowData.threadId;
-		} else {
-			chainValues.threadId = (await client.beta.threads.create()).id;
-			workflowData.threadId = chainValues.threadId;
+	if (memory) {
+		if (memory.chatHistory.lc_kwargs?.threadId) {
+			chainValues.threadId = memory.chatHistory.lc_kwargs?.threadId;
+			console.log('🚀 ~ execute ~ chainValues.threadId:', chainValues.threadId);
 		}
 	}
 
-	const response = await agentExecutor.invoke(chainValues);
-
-	if (options.deleteThread && response.threadId) {
-		await client.beta.threads.del(response.threadId);
-		const workflowData = this.getWorkflowStaticData('node');
-		delete workflowData.threadId;
+	// console.log('🚀 ~ execute ~ chainValues:', chainValues);
+	const response = await agentExecutor.withConfig(getTracingConfig(this)).invoke(chainValues);
+	if (memory) {
+		await memory.saveContext({ input, wat2: 123 }, { output: response.output, wat: 123 });
+		memory.chatHistory.lc_kwargs = { threadId: response.threadId };
+		// console.log('🚀 ~ execute ~ vars:', memory);
 	}
+	const workflowData = this.getWorkflowStaticData('node');
+	console.log('🚀 ~ execute ~ workflowData:', workflowData);
+	workflowData.test = new Date().toISOString();
+	// if (response.threadId) {
+	// 	// const existingThread = false; //?? (await client.beta.threads.retrieve(response.threadId));
+	// 	// if (!existingThread) {
+	// 		// console.log('🚀 ~ execute ~ client.beta.threads.runs:', client.beta.threads.runs);
+	// 		// existingThread = client.beta.threads.runs
+	// 	// }
+
+	// 	if (options.deleteThread) {
+	// 		await client.beta.threads.del(response.threadId);
+	// 		delete workflowData.threadId;
+	// 	} else {
+	// 		workflowData.threadId = response.threadId;
+	// 	}
+	// }
 
 	if (
 		options.preserveOriginalTools !== false &&

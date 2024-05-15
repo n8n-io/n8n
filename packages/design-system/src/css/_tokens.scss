@@ -59,6 +59,7 @@
 	--color-background-dark: var(--prim-gray-820);
 	--color-background-medium: var(--prim-gray-120);
 	--color-background-base: var(--prim-gray-40);
+	--color-background-light-base: var(--prim-gray-25);
 	--color-background-light: var(--prim-gray-10);
 	--color-background-xlight: var(--prim-gray-0);
 
@@ -105,7 +106,7 @@
 	--color-sticky-background-7: var(--prim-gray-10);
 	--color-sticky-border-7: var(--prim-gray-120);
 
-	// Expressions and autocomplete
+	// Expressions, autocomplete, infobox
 	--color-valid-resolvable-foreground: var(--prim-color-alt-a);
 	--color-valid-resolvable-background: var(--prim-color-alt-a-tint-500);
 	--color-invalid-resolvable-foreground: var(--prim-color-alt-c);
@@ -116,6 +117,8 @@
 	--color-expression-syntax-example: var(--prim-gray-40);
 	--color-autocomplete-item-selected: var(--color-secondary);
 	--color-autocomplete-section-header-border: var(--color-foreground-light);
+	--color-infobox-background: var(--color-background-light-base);
+	--color-infobox-examples-border-color: var(--color-foreground-light);
 
 	// Code
 	--color-code-tags-string: var(--prim-color-alt-f);
@@ -192,6 +195,7 @@
 	--color-table-row-background: var(--color-background-xlight);
 	--color-table-row-even-background: var(--color-background-light);
 	--color-table-row-hover-background: var(--color-primary-tint-3);
+	--color-table-row-highlight-background: var(--color-warning-tint-1);
 
 	// Notification
 	--color-notification-background: var(--color-background-xlight);
@@ -266,6 +270,14 @@
 
 	// Input Triple
 	--color-background-input-triple: var(--color-background-light);
+
+	// Node error
+	--color-node-error-output-text-color: var(--color-danger);
+
+	// MFA Recovery codes
+	--color-mfa-recovery-code-background: var(--color-background-base);
+	--color-mfa-recovery-code-color: var(--prim-gray-490);
+	--color-mfa-lose-access-text-color: var(--color-danger);
 
 	// Various
 	--color-avatar-accent-1: var(--prim-gray-120);

@@ -539,7 +539,6 @@ describe('PUT /credentials/:id/share', () => {
 function validateMainCredentialData(credential: ListQuery.Credentials.WithOwnedByAndSharedWith) {
 	expect(typeof credential.name).toBe('string');
 	expect(typeof credential.type).toBe('string');
-	expect(typeof credential.nodesAccess[0].nodeType).toBe('string');
 	expect(credential.ownedBy).toBeDefined();
 	expect(Array.isArray(credential.sharedWith)).toBe(true);
 }

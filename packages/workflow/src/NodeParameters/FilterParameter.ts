@@ -32,9 +32,15 @@ function parseSingleFilterValue(
 	type: FilterOperatorType,
 	strict = false,
 ): ValidationResult {
-	return type === 'any' || value === null || value === undefined
-		? ({ valid: true, newValue: value } as ValidationResult)
-		: validateFieldType('filter', value, type, { strict, parseStrings: true });
+	if (type === 'any' || value === null || value === undefined) {
+		return { valid: true, newValue: value } as ValidationResult;
+	}
+
+	if (type === 'boolean' && !strict) {
+		return { valid: true, newValue: Boolean(value) };
+	}
+
+	return validateFieldType('filter', value, type, { strict, parseStrings: true });
 }
 
 const withIndefiniteArticle = (noun: string): string => {
@@ -121,6 +127,7 @@ function parseRegexPattern(pattern: string): RegExp {
 	return regex;
 }
 
+// eslint-disable-next-line complexity
 export function executeFilterCondition(
 	condition: FilterConditionValue,
 	filterOptions: FilterOptionsValue,

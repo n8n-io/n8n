@@ -32,7 +32,7 @@ export default defineComponent({
 			default: '',
 		},
 		nodeType: {},
-		sessionId: {
+		pushRef: {
 			type: String,
 		},
 	},
@@ -135,7 +135,7 @@ export default defineComponent({
 				this.$telemetry.track('User clicked ndv link', {
 					node_type: this.activeNode.type,
 					workflow_id: this.workflowsStore.workflowId,
-					session_id: this.sessionId,
+					push_ref: this.pushRef,
 					pane: NodeConnectionType.Main,
 					type: 'docs',
 				});

@@ -205,7 +205,9 @@ export class FrontendService {
 			ai: {
 				enabled: config.getEnv('ai.enabled'),
 				provider: config.getEnv('ai.provider'),
-				errorDebugging: !!config.getEnv('ai.openAIApiKey'),
+				features: {
+					generateCurl: !!config.getEnv('ai.openAI.apiKey'),
+				},
 			},
 			workflowHistory: {
 				pruneTime: -1,
@@ -225,8 +227,8 @@ export class FrontendService {
 		this.writeStaticJSON('credentials', credentials);
 	}
 
-	getSettings(sessionId?: string): IN8nUISettings {
-		void this.internalHooks.onFrontendSettingsAPI(sessionId);
+	getSettings(pushRef?: string): IN8nUISettings {
+		void this.internalHooks.onFrontendSettingsAPI(pushRef);
 
 		const restEndpoint = config.getEnv('endpoints.rest');
 

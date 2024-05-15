@@ -55,7 +55,7 @@
 					<TriggerPanel
 						v-if="showTriggerPanel"
 						:node-name="activeNode.name"
-						:session-id="sessionId"
+						:push-ref="pushRef"
 						@execute="onNodeExecute"
 						@activate="onWorkflowActivate"
 					/>
@@ -66,7 +66,7 @@
 						:run-index="inputRun"
 						:linked-runs="linked"
 						:current-node-name="inputNodeName"
-						:session-id="sessionId"
+						:push-ref="pushRef"
 						:read-only="readOnly || hasForeignCredential"
 						:is-production-execution-preview="isProductionExecutionPreview"
 						:is-pane-active="isInputPaneActive"
@@ -88,7 +88,7 @@
 						:can-link-runs="canLinkRuns"
 						:run-index="outputRun"
 						:linked-runs="linked"
-						:session-id="sessionId"
+						:push-ref="pushRef"
 						:is-read-only="readOnly || hasForeignCredential"
 						:block-u-i="blockUi && isTriggerNode && !isExecutableTriggerNode"
 						:is-production-execution-preview="isProductionExecutionPreview"
@@ -107,7 +107,7 @@
 					<NodeSettings
 						:event-bus="settingsEventBus"
 						:dragging="isDragging"
-						:session-id="sessionId"
+						:push-ref="pushRef"
 						:node-type="activeNodeType"
 						:foreign-credentials="foreignCredentials"
 						:read-only="readOnly"
@@ -249,8 +249,8 @@ export default defineComponent({
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore, useSettingsStore),
-		sessionId(): string {
-			return this.ndvStore.sessionId;
+		pushRef(): string {
+			return this.ndvStore.pushRef;
 		},
 		workflowRunning(): boolean {
 			return this.uiStore.isActionActive('workflowRunning');
@@ -485,7 +485,7 @@ export default defineComponent({
 				this.avgOutputRowHeight = 0;
 				this.avgInputRowHeight = 0;
 
-				setTimeout(() => this.ndvStore.setNDVSessionId(), 0);
+				setTimeout(() => this.ndvStore.setNDVPushRef(), 0);
 				void this.externalHooks.run('dataDisplay.nodeTypeChanged', {
 					nodeSubtitle: this.nodeHelpers.getNodeSubtitle(
 						node,
@@ -503,7 +503,7 @@ export default defineComponent({
 						this.$telemetry.track('User opened node modal', {
 							node_type: this.activeNodeType ? this.activeNodeType.name : '',
 							workflow_id: this.workflowsStore.workflowId,
-							session_id: this.sessionId,
+							push_ref: this.pushRef,
 							is_editable: !this.hasForeignCredential,
 							parameters_pane_position: this.mainPanelPosition,
 							input_first_connector_runs: this.maxInputRun,
@@ -604,7 +604,7 @@ export default defineComponent({
 				this.$telemetry.track('User clicked ndv link', {
 					node_type: this.activeNode.type,
 					workflow_id: this.workflowsStore.workflowId,
-					session_id: this.sessionId,
+					push_ref: this.pushRef,
 					pane: NodeConnectionType.Main,
 					type: 'i-wish-this-node-would',
 				});
@@ -624,7 +624,7 @@ export default defineComponent({
 				start_position: this.mainPanelPosition,
 				end_position: e.position,
 				node_type: this.activeNodeType ? this.activeNodeType.name : '',
-				session_id: this.sessionId,
+				push_ref: this.pushRef,
 				workflow_id: this.workflowsStore.workflowId,
 			});
 			this.mainPanelPosition = e.position;
@@ -646,7 +646,7 @@ export default defineComponent({
 		trackLinking(pane: string) {
 			this.$telemetry.track('User changed ndv run linking', {
 				node_type: this.activeNodeType ? this.activeNodeType.name : '',
-				session_id: this.sessionId,
+				push_ref: this.pushRef,
 				linked: this.linked,
 				pane,
 			});
@@ -719,12 +719,12 @@ export default defineComponent({
 			await this.externalHooks.run('dataDisplay.nodeEditingFinished');
 			this.$telemetry.track('User closed node modal', {
 				node_type: this.activeNodeType ? this.activeNodeType.name : '',
-				session_id: this.sessionId,
+				push_ref: this.pushRef,
 				workflow_id: this.workflowsStore.workflowId,
 			});
 			this.triggerWaitingWarningEnabled = false;
 			this.ndvStore.activeNodeName = null;
-			this.ndvStore.resetNDVSessionId();
+			this.ndvStore.resetNDVPushRef();
 		},
 		onRunOutputIndexChange(run: number) {
 			this.runOutputIndex = run;
@@ -739,7 +739,7 @@ export default defineComponent({
 		},
 		trackRunChange(run: number, pane: string) {
 			this.$telemetry.track('User changed ndv run dropdown', {
-				session_id: this.sessionId,
+				push_ref: this.pushRef,
 				run_index: run,
 				node_type: this.activeNodeType ? this.activeNodeType.name : '',
 				pane,
@@ -752,7 +752,7 @@ export default defineComponent({
 
 			this.$telemetry.track('User changed ndv input dropdown', {
 				node_type: this.activeNode ? this.activeNode.type : '',
-				session_id: this.sessionId,
+				push_ref: this.pushRef,
 				workflow_id: this.workflowsStore.workflowId,
 				selection_value: index,
 				input_node_type: this.inputNode ? this.inputNode.type : '',

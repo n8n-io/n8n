@@ -142,7 +142,7 @@ export default defineComponent({
 		nodeName: {
 			type: String,
 		},
-		sessionId: {
+		pushRef: {
 			type: String,
 		},
 	},
@@ -225,10 +225,17 @@ export default defineComponent({
 				return undefined;
 			}
 
-			return this.workflowHelpers.getWebhookExpressionValue(
+			const httpMethod = this.workflowHelpers.getWebhookExpressionValue(
 				this.nodeType.webhooks[0],
 				'httpMethod',
+				false,
 			);
+
+			if (Array.isArray(httpMethod)) {
+				return httpMethod.join(', ');
+			}
+
+			return httpMethod;
 		},
 		webhookTestUrl(): string | undefined {
 			if (!this.node || !this.nodeType?.webhooks?.length) {
@@ -409,7 +416,7 @@ export default defineComponent({
 		openWebhookUrl() {
 			this.$telemetry.track('User clicked ndv link', {
 				workflow_id: this.workflowsStore.workflowId,
-				session_id: this.sessionId,
+				push_ref: this.pushRef,
 				pane: 'input',
 				type: 'open-chat',
 			});
@@ -431,7 +438,7 @@ export default defineComponent({
 				} else if (target.dataset.key === 'executions') {
 					this.$telemetry.track('User clicked ndv link', {
 						workflow_id: this.workflowsStore.workflowId,
-						session_id: this.sessionId,
+						push_ref: this.pushRef,
 						pane: 'input',
 						type: 'open-executions-log',
 					});

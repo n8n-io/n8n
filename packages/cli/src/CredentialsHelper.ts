@@ -23,6 +23,7 @@ import type {
 	INodeTypes,
 	IWorkflowExecuteAdditionalData,
 	IExecuteData,
+	IDataObject,
 } from 'n8n-workflow';
 import { ICredentialsHelper, NodeHelpers, Workflow, ApplicationError } from 'n8n-workflow';
 
@@ -57,6 +58,9 @@ const mockNodesData: INodeTypeData = {
 };
 
 const mockNodeTypes: INodeTypes = {
+	getKnownTypes(): IDataObject {
+		return {};
+	},
 	getByName(nodeType: string): INodeType | IVersionedNodeType {
 		return mockNodesData[nodeType]?.type;
 	},
@@ -268,7 +272,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 		return new Credentials(
 			{ id: credential.id, name: credential.name },
 			credential.type,
-			credential.nodesAccess,
 			credential.data,
 		);
 	}
@@ -483,9 +486,9 @@ export function createCredentialsFromCredentialsEntity(
 	credential: CredentialsEntity,
 	encrypt = false,
 ): Credentials {
-	const { id, name, type, nodesAccess, data } = credential;
+	const { id, name, type, data } = credential;
 	if (encrypt) {
-		return new Credentials({ id: null, name }, type, nodesAccess);
+		return new Credentials({ id: null, name }, type);
 	}
-	return new Credentials({ id, name }, type, nodesAccess, data);
+	return new Credentials({ id, name }, type, data);
 }

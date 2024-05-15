@@ -6,9 +6,16 @@ import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 
 import { mockInstance } from '../../shared/mocking';
 import * as testDb from '../shared/testDb';
-import { getAllCredentials } from '../shared/db/credentials';
+import { getAllCredentials, getAllSharedCredentials } from '../shared/db/credentials';
+import { createMember, createOwner } from '../shared/db/users';
 
 const oclifConfig = new Config({ root: __dirname });
+
+async function importCredential(argv: string[]) {
+	const importer = new ImportCredentialsCommand(argv, oclifConfig);
+	await importer.init();
+	await importer.run();
+}
 
 beforeAll(async () => {
 	mockInstance(InternalHooks);
@@ -17,7 +24,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['Credentials']);
+	await testDb.truncate(['Credentials', 'SharedCredentials', 'User']);
 });
 
 afterAll(async () => {
@@ -25,26 +32,202 @@ afterAll(async () => {
 });
 
 test('import:credentials should import a credential', async () => {
-	const before = await getAllCredentials();
-	expect(before.length).toBe(0);
-	const importer = new ImportCredentialsCommand(
-		['--input=./test/integration/commands/importCredentials/credentials.json'],
-		oclifConfig,
-	);
-	const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => {
-		throw new Error('process.exit');
+	//
+	// ARRANGE
+	//
+	const owner = await createOwner();
+
+	//
+	// ACT
+	//
+	await importCredential([
+		'--input=./test/integration/commands/importCredentials/credentials.json',
+	]);
+
+	//
+	// ASSERT
+	//
+	const after = {
+		credentials: await getAllCredentials(),
+		sharings: await getAllSharedCredentials(),
+	};
+	expect(after).toMatchObject({
+		credentials: [expect.objectContaining({ id: '123', name: 'cred-aws-test' })],
+		sharings: [
+			expect.objectContaining({ credentialsId: '123', userId: owner.id, role: 'credential:owner' }),
+		],
+	});
+});
+
+test('import:credentials should import a credential from separated files', async () => {
+	//
+	// ARRANGE
+	//
+	const owner = await createOwner();
+
+	//
+	// ACT
+	//
+	// import credential the first time, assigning it to the owner
+	await importCredential([
+		'--separate',
+		'--input=./test/integration/commands/importCredentials/separate',
+	]);
+
+	//
+	// ASSERT
+	//
+	const after = {
+		credentials: await getAllCredentials(),
+		sharings: await getAllSharedCredentials(),
+	};
+
+	expect(after).toMatchObject({
+		credentials: [
+			expect.objectContaining({
+				id: '123',
+				name: 'cred-aws-test',
+			}),
+		],
+		sharings: [
+			expect.objectContaining({
+				credentialsId: '123',
+				userId: owner.id,
+				role: 'credential:owner',
+			}),
+		],
+	});
+});
+
+test('`import:credentials --userId ...` should fail if the credential exists already and is owned by somebody else', async () => {
+	//
+	// ARRANGE
+	//
+	const owner = await createOwner();
+	const member = await createMember();
+
+	// import credential the first time, assigning it to the owner
+	await importCredential([
+		'--input=./test/integration/commands/importCredentials/credentials.json',
+		`--userId=${owner.id}`,
+	]);
+
+	// making sure the import worked
+	const before = {
+		credentials: await getAllCredentials(),
+		sharings: await getAllSharedCredentials(),
+	};
+	expect(before).toMatchObject({
+		credentials: [expect.objectContaining({ id: '123', name: 'cred-aws-test' })],
+		sharings: [
+			expect.objectContaining({
+				credentialsId: '123',
+				userId: owner.id,
+				role: 'credential:owner',
+			}),
+		],
 	});
 
-	await importer.init();
-	try {
-		await importer.run();
-	} catch (error) {
-		expect(error.message).toBe('process.exit');
-	}
-	const after = await getAllCredentials();
-	expect(after.length).toBe(1);
-	expect(after[0].name).toBe('cred-aws-test');
-	expect(after[0].id).toBe('123');
-	expect(after[0].nodesAccess).toStrictEqual([]);
-	mockExit.mockRestore();
+	//
+	// ACT
+	//
+
+	// Import again while updating the name we try to assign the
+	// credential to another user.
+	await expect(
+		importCredential([
+			'--input=./test/integration/commands/importCredentials/credentials-updated.json',
+			`--userId=${member.id}`,
+		]),
+	).rejects.toThrowError(
+		`The credential with id "123" is already owned by the user with the id "${owner.id}". It can't be re-owned by the user with the id "${member.id}"`,
+	);
+
+	//
+	// ASSERT
+	//
+	const after = {
+		credentials: await getAllCredentials(),
+		sharings: await getAllSharedCredentials(),
+	};
+
+	expect(after).toMatchObject({
+		credentials: [
+			expect.objectContaining({
+				id: '123',
+				// only the name was updated
+				name: 'cred-aws-test',
+			}),
+		],
+		sharings: [
+			expect.objectContaining({
+				credentialsId: '123',
+				userId: owner.id,
+				role: 'credential:owner',
+			}),
+		],
+	});
+});
+
+test("only update credential, don't create or update owner if `--userId` is not passed", async () => {
+	//
+	// ARRANGE
+	//
+	await createOwner();
+	const member = await createMember();
+
+	// import credential the first time, assigning it to a member
+	await importCredential([
+		'--input=./test/integration/commands/importCredentials/credentials.json',
+		`--userId=${member.id}`,
+	]);
+
+	// making sure the import worked
+	const before = {
+		credentials: await getAllCredentials(),
+		sharings: await getAllSharedCredentials(),
+	};
+	expect(before).toMatchObject({
+		credentials: [expect.objectContaining({ id: '123', name: 'cred-aws-test' })],
+		sharings: [
+			expect.objectContaining({
+				credentialsId: '123',
+				userId: member.id,
+				role: 'credential:owner',
+			}),
+		],
+	});
+
+	//
+	// ACT
+	//
+	// Import again only updating the name and omitting `--userId`
+	await importCredential([
+		'--input=./test/integration/commands/importCredentials/credentials-updated.json',
+	]);
+
+	//
+	// ASSERT
+	//
+	const after = {
+		credentials: await getAllCredentials(),
+		sharings: await getAllSharedCredentials(),
+	};
+
+	expect(after).toMatchObject({
+		credentials: [
+			expect.objectContaining({
+				id: '123',
+				// only the name was updated
+				name: 'cred-aws-prod',
+			}),
+		],
+		sharings: [
+			expect.objectContaining({
+				credentialsId: '123',
+				userId: member.id,
+				role: 'credential:owner',
+			}),
+		],
+	});
 });

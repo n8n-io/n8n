@@ -192,7 +192,6 @@ export const issueFields: INodeProperties[] = [
 		default: 50,
 		typeOptions: {
 			minValue: 1,
-			maxValue: 300,
 		},
 		displayOptions: {
 			show: {
