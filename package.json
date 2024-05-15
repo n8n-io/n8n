@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.41.0",
+  "version": "1.42.0",
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
@@ -37,9 +37,6 @@
     "test:e2e:ui": "scripts/run-e2e.js ui",
     "test:e2e:dev": "scripts/run-e2e.js dev",
     "test:e2e:all": "scripts/run-e2e.js all"
-  },
-  "dependencies": {
-    "n8n": "workspace:*"
   },
   "devDependencies": {
     "@n8n_io/eslint-config": "workspace:*",

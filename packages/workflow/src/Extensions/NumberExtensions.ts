@@ -62,7 +62,7 @@ function toFloat(value: number) {
 }
 
 type DateTimeFormat = 'ms' | 's' | 'us' | 'excel';
-function toDateTime(value: number, extraArgs: [DateTimeFormat]) {
+export function toDateTime(value: number, extraArgs: [DateTimeFormat]) {
 	const [valueFormat = 'ms'] = extraArgs;
 
 	if (!['ms', 's', 'us', 'excel'].includes(valueFormat)) {

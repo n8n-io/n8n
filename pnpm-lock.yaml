@@ -44,10 +44,6 @@ patchedDependencies:
 importers:
 
   .:
-    dependencies:
-      n8n:
-        specifier: workspace:*
-        version: link:packages/cli
     devDependencies:
       '@n8n_io/eslint-config':
         specifier: workspace:*
