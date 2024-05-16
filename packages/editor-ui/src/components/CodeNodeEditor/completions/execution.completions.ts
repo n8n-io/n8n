@@ -1,6 +1,7 @@
 import { defineComponent } from 'vue';
 import { addVarType, escape } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
+import { sanitizeHtml } from '@/utils/htmlUtils';
 
 export const executionCompletions = defineComponent({
 	methods: {
@@ -22,7 +23,7 @@ export const executionCompletions = defineComponent({
 				// This is being loaded from the locales file. This could
 				// cause an XSS of some kind but multiple other locales strings
 				// do the same thing.
-				wrapper.innerHTML = text;
+				wrapper.innerHTML = sanitizeHtml(text);
 				return () => wrapper;
 			};
 
@@ -46,25 +47,25 @@ export const executionCompletions = defineComponent({
 				{
 					label: `${matcher}.customData.set("key", "value")`,
 					info: buildLinkNode(
-						this.$locale.baseText('codeNodeEditor.completer.$execution.customData.set()'),
+						this.$locale.baseText('codeNodeEditor.completer.$execution.customData.set'),
 					),
 				},
 				{
 					label: `${matcher}.customData.get("key")`,
 					info: buildLinkNode(
-						this.$locale.baseText('codeNodeEditor.completer.$execution.customData.get()'),
+						this.$locale.baseText('codeNodeEditor.completer.$execution.customData.get'),
 					),
 				},
 				{
 					label: `${matcher}.customData.setAll({})`,
 					info: buildLinkNode(
-						this.$locale.baseText('codeNodeEditor.completer.$execution.customData.setAll()'),
+						this.$locale.baseText('codeNodeEditor.completer.$execution.customData.setAll'),
 					),
 				},
 				{
 					label: `${matcher}.customData.getAll()`,
 					info: buildLinkNode(
-						this.$locale.baseText('codeNodeEditor.completer.$execution.customData.getAll()'),
+						this.$locale.baseText('codeNodeEditor.completer.$execution.customData.getAll'),
 					),
 				},
 			];

@@ -6,6 +6,7 @@ import type { INodeUi } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { escapeMappingString } from '@/utils/mappingUtils';
+import { sanitizeHtml } from '@/utils/htmlUtils';
 
 function getAutoCompletableNodeNames(nodes: INodeUi[]) {
 	return nodes
@@ -54,6 +55,12 @@ export const baseCompletions = defineComponent({
 
 			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
 
+			const renderInfo = (description: string) => () => {
+				const info = document.createElement('span');
+				info.innerHTML = sanitizeHtml(description);
+				return info;
+			};
+
 			const TOP_LEVEL_COMPLETIONS_IN_BOTH_MODES: Completion[] = [
 				{
 					label: `${prefix}execution`,
@@ -96,7 +103,7 @@ export const baseCompletions = defineComponent({
 					label: `${prefix}nodeVersion`,
 					info: this.$locale.baseText('codeNodeEditor.completer.$nodeVersion'),
 				},
-			];
+			].map((item) => ({ ...item, info: renderInfo(item.info) }));
 
 			const options: Completion[] = TOP_LEVEL_COMPLETIONS_IN_BOTH_MODES.map(addVarType);
 
