@@ -10,29 +10,35 @@ import type {
 } from 'luxon';
 import type { ExtensionMap } from './Extensions';
 import { convertToDateTime } from './utils';
+import { toDateTime as stringToDateTime } from './StringExtensions';
 
-type DurationUnit =
-	| 'milliseconds'
-	| 'seconds'
-	| 'minutes'
-	| 'hours'
-	| 'days'
-	| 'weeks'
-	| 'months'
-	| 'quarter'
-	| 'years';
-type DatePart =
-	| 'day'
-	| 'week'
-	| 'month'
-	| 'year'
-	| 'hour'
-	| 'minute'
-	| 'second'
-	| 'millisecond'
-	| 'weekNumber'
-	| 'yearDayNumber'
-	| 'weekday';
+const durationUnits = [
+	'milliseconds',
+	'seconds',
+	'minutes',
+	'hours',
+	'days',
+	'weeks',
+	'months',
+	'quarters',
+	'years',
+] as const;
+type DurationUnit = (typeof durationUnits)[number];
+
+const dateParts = [
+	'day',
+	'week',
+	'month',
+	'year',
+	'hour',
+	'minute',
+	'second',
+	'millisecond',
+	'weekNumber',
+	'yearDayNumber',
+	'weekday',
+] as const;
+type DatePart = (typeof dateParts)[number];
 
 const DURATION_MAP: Record<string, DurationUnit> = {
 	day: 'days',
@@ -71,6 +77,16 @@ const DATETIMEUNIT_MAP: Record<string, DateTimeUnit> = {
 
 function isDateTime(date: unknown): date is DateTime {
 	return date ? DateTime.isDateTime(date) : false;
+}
+
+function toDateTime(date: string | Date | DateTime): DateTime {
+	if (isDateTime(date)) return date;
+
+	if (typeof date === 'string') {
+		return stringToDateTime(date);
+	}
+
+	return DateTime.fromJSDate(date);
 }
 
 function generateDurationObject(durationValue: number, unit: DurationUnit): DurationObjectUnits {
@@ -216,10 +232,37 @@ function plus(
 	return DateTime.fromJSDate(date).plus(duration).toJSDate();
 }
 
-function toDateTime(date: Date | DateTime): DateTime {
-	if (isDateTime(date)) return date;
+function diffTo(date: DateTime, args: [string | Date | DateTime, DurationUnit | DurationUnit[]]) {
+	const [otherDate, unit = 'days'] = args;
+	let units = Array.isArray(unit) ? unit : [unit];
 
-	return DateTime.fromJSDate(date);
+	if (units.length === 0) {
+		units = ['days'];
+	}
+
+	const allowedUnitSet = new Set([...dateParts, ...durationUnits]);
+	const errorUnit = units.find((u) => !allowedUnitSet.has(u));
+
+	if (errorUnit) {
+		throw new ExpressionExtensionError(
+			`Unsupported unit '${String(errorUnit)}'. Supported: ${durationUnits
+				.map((u) => `'${u}'`)
+				.join(', ')}.`,
+		);
+	}
+
+	const diffResult = date.diff(toDateTime(otherDate), units);
+
+	if (units.length > 1) {
+		return diffResult.toObject();
+	}
+
+	return diffResult.as(units[0]);
+}
+
+function diffToNow(date: DateTime, args: [DurationUnit | DurationUnit[]]) {
+	const [unit] = args;
+	return diffTo(date, [DateTime.now(), unit]);
 }
 
 function toInt(date: Date | DateTime): number {
@@ -237,7 +280,7 @@ function toBoolean() {
 
 endOfMonth.doc = {
 	name: 'endOfMonth',
-	returnType: 'Date',
+	returnType: 'DateTime',
 	hidden: true,
 	description: 'Transforms a date to the last possible moment that lies within the month.',
 	section: 'edit',
@@ -267,37 +310,98 @@ beginningOf.doc = {
 	description: 'Transform a Date to the start of the given time period. Default unit is `week`.',
 	section: 'edit',
 	hidden: true,
-	returnType: 'Date',
+	returnType: 'DateTime',
 	args: [{ name: 'unit?', type: 'DurationUnit' }],
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-beginningOf',
 };
 
 extract.doc = {
 	name: 'extract',
-	description: 'Extracts the part defined in `datePart` from a Date. Default unit is `week`.',
+	description:
+		'Extracts a part of the date or time, e.g. the month, as a number. To extract textual names instead, see <code>format()</code>.',
+	examples: [
+		{ example: "dt = '2024-03-30T18:49'.toDateTime()\ndt.extract('month')", evaluated: '3' },
+		{ example: "dt = '2024-03-30T18:49'.toDateTime()\ndt.extract('hour')", evaluated: '18' },
+	],
 	section: 'query',
 	returnType: 'number',
-	args: [{ name: 'datePart?', type: 'DurationUnit' }],
+	args: [
+		{
+			name: 'unit',
+			optional: true,
+			description:
+				'The part of the date or time to return. One of: <code>year</code>, <code>month</code>, <code>week</code>, <code>day</code>, <code>hour</code>, <code>minute</code>, <code>second</code>',
+			default: '"week"',
+			type: 'string',
+		},
+	],
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-extract',
 };
 
 format.doc = {
 	name: 'format',
-	description: 'Formats a Date in the given structure.',
+	description:
+		'Converts the DateTime to a string, using the format specified. <a target="_blank" href="https://moment.github.io/luxon/#/formatting?id=table-of-tokens">Formatting guide</a>. For common formats, <code>toLocaleString()</code> may be easier.',
+	examples: [
+		{
+			example: "dt = '2024-04-30T18:49'.toDateTime()\ndt.format('dd/LL/yyyy')",
+			evaluated: "'30/04/2024'",
+		},
+		{
+			example: "dt = '2024-04-30T18:49'.toDateTime()\ndt.format('dd LLL yy')",
+			evaluated: "'30 Apr 24'",
+		},
+		{
+			example: "dt = '2024-04-30T18:49'.toDateTime()\ndt.setLocale('fr').format('dd LLL yyyy')",
+			evaluated: "'30 avr. 2024'",
+		},
+		{
+			example: "dt = '2024-04-30T18:49'.toDateTime()\ndt.format(\"HH 'hours and' mm 'minutes'\")",
+			evaluated: "'18 hours and 49 minutes'",
+		},
+	],
 	returnType: 'string',
 	section: 'format',
-	args: [{ name: 'fmt', default: "'yyyy-MM-dd'", type: 'TimeFormat' }],
+	args: [
+		{
+			name: 'fmt',
+			description:
+				'The <a target="_blank" href="https://moment.github.io/luxon/#/formatting?id=table-of-tokens">format</a> of the string to return ',
+			default: "'yyyy-MM-dd'",
+			type: 'string',
+		},
+	],
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-format',
 };
 
 isBetween.doc = {
 	name: 'isBetween',
-	description: 'Checks if a Date is between two given dates.',
-	section: 'query',
+	description: 'Returns <code>true</code> if the DateTime lies between the two moments specified',
+	examples: [
+		{
+			example: "dt = '2024-03-30T18:49'.toDateTime()\ndt.isBetween('2020-06-01', '2025-06-01')",
+			evaluated: 'true',
+		},
+		{
+			example: "dt = '2024-03-30T18:49'.toDateTime()\ndt.isBetween('2020', '2025')",
+			evaluated: 'true',
+		},
+	],
+	section: 'compare',
 	returnType: 'boolean',
 	args: [
-		{ name: 'date1', type: 'Date|string' },
-		{ name: 'date2', type: 'Date|string' },
+		{
+			name: 'date1',
+			description:
+				'The moment that the base DateTime must be after. Can be an ISO date string or a Luxon DateTime.',
+			type: 'string | DateTime',
+		},
+		{
+			name: 'date2',
+			description:
+				'The moment that the base DateTime must be before. Can be an ISO date string or a Luxon DateTime.',
+			type: 'string | DateTime',
+		},
 	],
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-isBetween',
 };
@@ -317,7 +421,14 @@ isInLast.doc = {
 
 toDateTime.doc = {
 	name: 'toDateTime',
-	description: 'Convert a JavaScript Date to a Luxon DateTime.',
+	description:
+		'Converts a JavaScript Date to a Luxon DateTime. The DateTime contains the same information, but is easier to manipulate.',
+	examples: [
+		{
+			example: "jsDate = new Date('2024-03-30T18:49')\njsDate.toDateTime().plus(5, 'days')",
+			evaluated: '[DateTime: 2024-05-05T18:49:00.000Z]',
+		},
+	],
 	returnType: 'DateTime',
 	hidden: true,
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-toDateTime',
@@ -325,26 +436,133 @@ toDateTime.doc = {
 
 minus.doc = {
 	name: 'minus',
-	description: 'Subtracts a given time period from a Date. Default unit is `milliseconds`.',
+	description: 'Subtracts a given period of time from the DateTime',
+	examples: [
+		{
+			example: "dt = '2024-03-30T18:49'.toDateTime()\ndt.minus(7, 'days')",
+			evaluated: '[DateTime: 2024-04-23T18:49:00.000Z]',
+		},
+		{
+			example: "dt = '2024-03-30T18:49'.toDateTime()\ndt.minus(4, 'years')",
+			evaluated: '[DateTime: 2020-04-30T18:49:00.000Z]',
+		},
+	],
 	section: 'edit',
-	returnType: 'Date',
+	returnType: 'DateTime',
 	args: [
-		{ name: 'n', type: 'number' },
-		{ name: 'unit?', type: 'DurationUnit' },
+		{
+			name: 'n',
+			description:
+				'The number of units to subtract. Or use a Luxon <a target="_blank" href=”https://moment.github.io/luxon/api-docs/index.html#duration”>Duration</a> object to subtract multiple units at once.',
+			type: 'number | object',
+		},
+		{
+			name: 'unit',
+			optional: true,
+			description:
+				'The units of the number. One of: <code>years</code>, <code>months</code>, <code>weeks</code>, <code>days</code>, <code>hours</code>, <code>minutes</code>, <code>seconds</code>, <code>milliseconds</code>',
+			default: '"milliseconds"',
+			type: 'string',
+		},
 	],
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-minus',
 };
 
 plus.doc = {
 	name: 'plus',
-	description: 'Adds a given time period to a Date. Default unit is `milliseconds`.',
+	description: 'Adds a given period of time to the DateTime',
+	examples: [
+		{
+			example: "dt = '2024-03-30T18:49'.toDateTime()\ndt.plus(7, 'days')",
+			evaluated: '[DateTime: 2024-04-07T18:49:00.000Z]',
+		},
+		{
+			example: "dt = '2024-03-30T18:49'.toDateTime()\ndt.plus(4, 'years')",
+			evaluated: '[DateTime: 2028-03-30T18:49:00.000Z]',
+		},
+	],
 	section: 'edit',
-	returnType: 'Date',
+	returnType: 'DateTime',
 	args: [
-		{ name: 'n', type: 'number' },
-		{ name: 'unit?', type: 'DurationUnit' },
+		{
+			name: 'n',
+			description:
+				'The number of units to add. Or use a Luxon <a target="_blank" href=”https://moment.github.io/luxon/api-docs/index.html#duration”>Duration</a> object to add multiple units at once.',
+			type: 'number | object',
+		},
+		{
+			name: 'unit',
+			optional: true,
+			description:
+				'The units of the number. One of: <code>years</code>, <code>months</code>, <code>weeks</code>, <code>days</code>, <code>hours</code>, <code>minutes</code>, <code>seconds</code>, <code>milliseconds</code>',
+			default: '"milliseconds"',
+			type: 'string',
+		},
 	],
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-plus',
+};
+
+diffTo.doc = {
+	name: 'diffTo',
+	description: 'Returns the difference between two DateTimes, in the given unit(s)',
+	examples: [
+		{
+			example: "dt = '2025-01-01'.toDateTime()\ndt.diffTo('2024-03-30T18:49:07.234', 'days')",
+			evaluated: '276.21',
+		},
+		{
+			example:
+				"dt1 = '2025-01-01T00:00:00.000'.toDateTime();\ndt2 = '2024-03-30T18:49:07.234'.toDateTime();\ndt1.diffTo(dt2, ['months', 'days'])",
+			evaluated: '{ months: 9, days: 1.21 }',
+		},
+	],
+	section: 'compare',
+	returnType: 'number | Record<DurationUnit, number>',
+	args: [
+		{
+			name: 'otherDateTime',
+			default: '$now',
+			description:
+				'The moment to subtract the base DateTime from. Can be an ISO date string or a Luxon DateTime.',
+			type: 'string | DateTime',
+		},
+		{
+			name: 'unit',
+			default: "'days'",
+			description:
+				'The unit, or array of units, to return the result in. Possible values: <code>years</code>, <code>months</code>, <code>weeks</code>, <code>days</code>, <code>hours</code>, <code>minutes</code>, <code>seconds</code>, <code>milliseconds</code>.',
+			type: 'string | string[]',
+		},
+	],
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-diffTo',
+};
+
+diffToNow.doc = {
+	name: 'diffToNow',
+	description:
+		'Returns the difference between the current moment and the DateTime, in the given unit(s). For a textual representation, use <code>toRelative()</code> instead.',
+	examples: [
+		{
+			example: "dt = '2023-03-30T18:49:07.234'.toDateTime()\ndt.diffToNow('days')",
+			evaluated: '371.9',
+		},
+		{
+			example: "dt = '2023-03-30T18:49:07.234.toDateTime()\ndt.diffToNow(['months', 'days'])",
+			evaluated: '{ months: 12, days: 5.9 }',
+		},
+	],
+	section: 'compare',
+	returnType: 'number | Record<DurationUnit, number>',
+	args: [
+		{
+			name: 'unit',
+			description:
+				'The unit, or array of units, to return the result in. Possible values: <code>years</code>, <code>months</code>, <code>weeks</code>, <code>days</code>, <code>hours</code>, <code>minutes</code>, <code>seconds</code>, <code>milliseconds</code>.',
+			default: "'days'",
+			type: 'string | string[]',
+		},
+	],
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-diffToNow',
 };
 
 export const dateExtensions: ExtensionMap = {
@@ -361,6 +579,8 @@ export const dateExtensions: ExtensionMap = {
 		plus,
 		format,
 		toDateTime,
+		diffTo,
+		diffToNow,
 		toInt,
 		toFloat,
 		toBoolean,
