@@ -26,9 +26,9 @@
 					>
 						<div>
 							{{ option.label }}
-							<span :class="$style.external"
-								><N8nIcon icon="external-link-alt" size="small"
-							/></span>
+							<span :class="$style.external">
+								<N8nIcon icon="external-link-alt" size="xsmall" />
+							</span>
 						</div>
 					</a>
 
@@ -38,7 +38,7 @@
 						:data-test-id="`tab-${option.value}`"
 						@click="() => handleTabClick(option.value)"
 					>
-						<N8nIcon v-if="option.icon" :icon="option.icon" size="medium" />
+						<N8nIcon v-if="option.icon" :icon="option.icon" size="small" />
 						<span v-if="option.label">{{ option.label }}</span>
 					</div>
 				</n8n-tooltip>
@@ -131,6 +131,7 @@ const scrollRight = () => scroll(50);
 	color: var(--color-text-base);
 	font-weight: var(--font-weight-bold);
 	display: flex;
+	align-items: center;
 	width: 100%;
 	position: absolute;
 	overflow-x: scroll;
@@ -162,7 +163,7 @@ const scrollRight = () => scroll(50);
 	border-bottom: var(--color-primary) 2px solid;
 }
 
-.alignRight {
+.alignRight:not(.alignRight + .alignRight) {
 	margin-left: auto;
 }
 
@@ -172,15 +173,11 @@ const scrollRight = () => scroll(50);
 
 	&:hover {
 		color: var(--color-primary);
-
-		.external {
-			display: inline-block;
-		}
 	}
 }
 
 .external {
-	display: none;
+	display: inline-block;
 	margin-left: var(--spacing-5xs);
 }
 
