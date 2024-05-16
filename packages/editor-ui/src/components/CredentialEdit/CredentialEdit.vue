@@ -832,7 +832,12 @@ export default defineComponent({
 				);
 
 				let toastTitle = this.$locale.baseText('credentials.create.personal.toast.title');
-				let toastText = this.$locale.baseText('credentials.create.personal.toast.text');
+				let toastText = '';
+
+				if (!credentialDetails.sharedWithProjects) {
+					toastText = this.$locale.baseText('credentials.create.personal.toast.text');
+				}
+
 				if (this.projectsStore.currentProject) {
 					toastTitle = this.$locale.baseText('credentials.create.project.toast.title', {
 						interpolate: { projectName: this.projectsStore.currentProject.name ?? '' },
