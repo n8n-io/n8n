@@ -27,6 +27,7 @@ import { listQueryMiddleware } from '@/middlewares';
 import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
 import { In } from '@n8n/typeorm';
 import { SharedCredentials } from '@/databases/entities/SharedCredentials';
+import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 
 @RestController('/credentials')
 export class CredentialsController {
@@ -39,6 +40,7 @@ export class CredentialsController {
 		private readonly internalHooks: InternalHooks,
 		private readonly userManagementMailer: UserManagementMailer,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
+		private readonly projectRelationRepository: ProjectRelationRepository,
 	) {}
 
 	@Get('/', { middlewares: listQueryMiddleware })
@@ -299,9 +301,14 @@ export class CredentialsController {
 			sharees_removed: amountRemoved,
 		});
 
+		const projectsRelations = await this.projectRelationRepository.findBy({
+			projectId: In(newShareeIds),
+			role: 'project:personalOwner',
+		});
+
 		await this.userManagementMailer.notifyCredentialsShared({
 			sharer: req.user,
-			newShareeIds,
+			newShareeIds: projectsRelations.map((pr) => pr.userId),
 			credentialsName: credential.name,
 		});
 	}
