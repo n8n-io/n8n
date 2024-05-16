@@ -113,8 +113,30 @@ export class CredentialsController {
 		}
 
 		const mergedCredentials = deepCopy(credentials);
+		const decryptedData = this.credentialsService.decrypt(storedCredential);
+
+		// Let's check if it's a credential within a personal project
+		// That the current user does not own.
+		// In this scenario, we need to override the payload with the db information
+		storedCredential.shared.forEach((sharedCredentials) => {
+			if (sharedCredentials.role === 'credential:owner') {
+				if (sharedCredentials.project.type === 'personal') {
+					// Find the owner of this personal project
+					sharedCredentials.project.projectRelations.forEach((projectRelation) => {
+						if (
+							projectRelation.role === 'project:personalOwner' &&
+							projectRelation.user.id !== req.user.id
+						) {
+							// If we realize that the current user does not own this credential
+							// We replace the payload with the stored decrypted data
+							mergedCredentials.data = decryptedData;
+						}
+					});
+				}
+			}
+		});
+
 		if (mergedCredentials.data && storedCredential) {
-			const decryptedData = this.credentialsService.decrypt(storedCredential);
 			mergedCredentials.data = this.credentialsService.unredact(
 				mergedCredentials.data,
 				decryptedData,
