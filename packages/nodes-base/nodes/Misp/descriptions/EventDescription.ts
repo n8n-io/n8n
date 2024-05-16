@@ -1,4 +1,15 @@
 import type { INodeProperties } from 'n8n-workflow';
+import { updateDisplayOptions } from '../../../utils/utilities';
+import { searchProperties } from './common.descriptions';
+
+const searchDisplayOptions = {
+	show: {
+		resource: ['event'],
+		operation: ['search'],
+	},
+};
+
+const searchDescription = updateDisplayOptions(searchDisplayOptions, searchProperties);
 
 export const eventOperations: INodeProperties[] = [
 	{
@@ -36,6 +47,11 @@ export const eventOperations: INodeProperties[] = [
 				name: 'Publish',
 				value: 'publish',
 				action: 'Publish an event',
+			},
+			{
+				name: 'Search',
+				value: 'search',
+				action: 'Get a filtered list of events',
 			},
 			{
 				name: 'Unpublish',
@@ -294,6 +310,11 @@ export const eventFields: INodeProperties[] = [
 			},
 		},
 	},
+
+	// ----------------------------------------
+	//              event: search
+	// ----------------------------------------
+	...searchDescription,
 
 	// ----------------------------------------
 	//              event: update

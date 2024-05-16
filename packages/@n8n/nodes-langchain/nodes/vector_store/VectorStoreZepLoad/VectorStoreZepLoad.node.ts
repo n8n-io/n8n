@@ -5,9 +5,9 @@ import {
 	type INodeTypeDescription,
 	type SupplyData,
 } from 'n8n-workflow';
-import type { IZepConfig } from 'langchain/vectorstores/zep';
-import { ZepVectorStore } from 'langchain/vectorstores/zep';
-import type { Embeddings } from 'langchain/embeddings/base';
+import type { IZepConfig } from '@langchain/community/vectorstores/zep';
+import { ZepVectorStore } from '@langchain/community/vectorstores/zep';
+import type { Embeddings } from '@langchain/core/embeddings';
 import { metadataFilterField } from '../../../utils/sharedFields';
 import { getMetadataFiltersValues } from '../../../utils/helpers';
 import { logWrapper } from '../../../utils/logWrapper';

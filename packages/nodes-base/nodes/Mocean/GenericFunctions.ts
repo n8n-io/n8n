@@ -1,4 +1,10 @@
-import type { IExecuteFunctions, IHookFunctions, IDataObject, JsonObject } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IHookFunctions,
+	IDataObject,
+	JsonObject,
+	IHttpRequestMethods,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 /**
@@ -7,7 +13,7 @@ import { NodeApiError } from 'n8n-workflow';
  */
 export async function moceanApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject,
 	query?: IDataObject,

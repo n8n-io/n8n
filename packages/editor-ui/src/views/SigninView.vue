@@ -12,8 +12,8 @@
 			v-if="showMfaView"
 			:report-error="reportError"
 			@submit="onMFASubmitted"
-			@onBackClick="onBackClick"
-			@onFormChanged="onFormChanged"
+			@on-back-click="onBackClick"
+			@on-form-changed="onFormChanged"
 		/>
 	</div>
 </template>

@@ -5,7 +5,7 @@ export async function getSingleton(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	resourceName: string,
 ): Promise<any> {
-	return await cockpitApiRequest.call(this, 'get', `/singletons/get/${resourceName}`);
+	return await cockpitApiRequest.call(this, 'GET', `/singletons/get/${resourceName}`);
 }
 
 export async function getAllSingletonNames(

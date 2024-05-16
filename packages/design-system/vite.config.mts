@@ -1,6 +1,7 @@
 import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
 import { defineConfig, mergeConfig } from 'vite';
+import checker from 'vite-plugin-checker';
 import { type UserConfig } from 'vitest';
 import { defineConfig as defineVitestConfig } from 'vitest/config';
 
@@ -28,13 +29,19 @@ export const vitestConfig = defineVitestConfig({
 	},
 }) as UserConfig;
 
+const plugins = [vue()];
+if (process.env.ENABLE_TYPE_CHECKING === 'true') {
+	plugins.push(checker({ vueTsc: true }));
+}
+
 export default mergeConfig(
 	defineConfig({
-		plugins: [vue()],
+		plugins,
 		resolve: {
 			alias: {
 				'@': resolve(__dirname, 'src'),
 				'n8n-design-system': resolve(__dirname, 'src'),
+				lodash: 'lodash-es',
 			},
 		},
 		build: {

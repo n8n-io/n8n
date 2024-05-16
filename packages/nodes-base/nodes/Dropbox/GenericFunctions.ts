@@ -1,6 +1,11 @@
-import type { OptionsWithUri } from 'request';
-
-import type { IDataObject, IExecuteFunctions, IHookFunctions, JsonObject } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IHookFunctions,
+	IHttpRequestMethods,
+	IRequestOptions,
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 /**
@@ -9,14 +14,14 @@ import { NodeApiError } from 'n8n-workflow';
  */
 export async function dropboxApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: object,
 	query: IDataObject = {},
-	headers: object = {},
+	headers: IDataObject = {},
 	option: IDataObject = {},
 ): Promise<any> {
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers,
 		method,
 		qs: query,
@@ -47,7 +52,7 @@ export async function dropboxApiRequest(
 export async function dropboxpiRequestAllItems(
 	this: IExecuteFunctions | IHookFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 
 	body: any = {},

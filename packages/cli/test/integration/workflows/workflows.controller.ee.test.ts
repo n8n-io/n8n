@@ -5,8 +5,7 @@ import type { INode } from 'n8n-workflow';
 
 import type { User } from '@db/entities/User';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-import { Push } from '@/push';
+import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
 
 import { mockInstance } from '../../shared/mocking';
@@ -20,6 +19,7 @@ import { createUser } from '../shared/db/users';
 import { createWorkflow, getWorkflowSharing, shareWorkflowWithUsers } from '../shared/db/workflows';
 import { License } from '@/License';
 import { UserManagementMailer } from '@/UserManagement/email';
+import config from '@/config';
 
 let owner: User;
 let member: User;
@@ -29,8 +29,7 @@ let authMemberAgent: SuperAgentTest;
 let authAnotherMemberAgent: SuperAgentTest;
 let saveCredential: SaveCredentialFunction;
 
-const activeWorkflowRunner = mockInstance(ActiveWorkflowRunner);
-mockInstance(Push);
+const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 
 const sharingSpy = jest.spyOn(License.prototype, 'isSharingEnabled').mockReturnValue(true);
 const testServer = utils.setupTestServer({
@@ -55,8 +54,8 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	activeWorkflowRunner.add.mockReset();
-	activeWorkflowRunner.remove.mockReset();
+	activeWorkflowManager.add.mockReset();
+	activeWorkflowManager.remove.mockReset();
 
 	await testDb.truncate(['Workflow', 'SharedWorkflow', 'WorkflowHistory']);
 });
@@ -151,7 +150,7 @@ describe('PUT /workflows/:id', () => {
 
 		const secondSharedWorkflows = await getWorkflowSharing(workflow);
 		expect(secondSharedWorkflows).toHaveLength(2);
-		expect(mailer.notifyWorkflowShared).toHaveBeenCalledTimes(1);
+		expect(mailer.notifyWorkflowShared).toHaveBeenCalledTimes(2);
 	});
 
 	test('PUT /workflows/:id/share should allow sharing by the owner of the workflow', async () => {
@@ -226,6 +225,20 @@ describe('PUT /workflows/:id', () => {
 		const sharedWorkflows = await getWorkflowSharing(workflow);
 		expect(sharedWorkflows).toHaveLength(1);
 		expect(mailer.notifyWorkflowShared).toHaveBeenCalledTimes(0);
+	});
+
+	test('should not call internal hooks listener for email sent if emailing is disabled', async () => {
+		config.set('userManagement.emails.mode', '');
+
+		const workflow = await createWorkflow({}, owner);
+
+		const response = await authOwnerAgent
+			.put(`/workflows/${workflow.id}/share`)
+			.send({ shareWithIds: [member.id] });
+
+		expect(response.statusCode).toBe(200);
+
+		config.set('userManagement.emails.mode', 'smtp');
 	});
 });
 
@@ -1139,7 +1152,7 @@ describe('PATCH /workflows/:id - activate workflow', () => {
 		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
 
 		expect(response.statusCode).toBe(200);
-		expect(activeWorkflowRunner.add).toBeCalled();
+		expect(activeWorkflowManager.add).toBeCalled();
 
 		const {
 			data: { id, versionId, active },
@@ -1161,8 +1174,8 @@ describe('PATCH /workflows/:id - activate workflow', () => {
 		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
 
 		expect(response.statusCode).toBe(200);
-		expect(activeWorkflowRunner.add).not.toBeCalled();
-		expect(activeWorkflowRunner.remove).toBeCalled();
+		expect(activeWorkflowManager.add).not.toBeCalled();
+		expect(activeWorkflowManager.remove).toBeCalled();
 
 		const {
 			data: { id, versionId, active },

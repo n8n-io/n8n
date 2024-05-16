@@ -118,7 +118,8 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useVersionsStore } from '@/stores/versions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import ExecutionsUsage from '@/components/ExecutionsUsage.vue';
+import { useTemplatesStore } from '@/stores/templates.store';
+import ExecutionsUsage from '@/components/executions/ExecutionsUsage.vue';
 import BecomeTemplateCreatorCta from '@/components/BecomeTemplateCreatorCta/BecomeTemplateCreatorCta.vue';
 import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
 import { hasPermission } from '@/rbac/permissions';
@@ -162,11 +163,10 @@ export default defineComponent({
 			useCloudPlanStore,
 			useSourceControlStore,
 			useBecomeTemplateCreatorStore,
+			useTemplatesStore,
 		),
 		logoPath(): string {
-			if (this.isCollapsed) return this.basePath + 'n8n-logo-collapsed.svg';
-
-			return this.basePath + this.uiStore.logo;
+			return this.basePath + (this.isCollapsed ? 'static/logo/collapsed.svg' : this.uiStore.logo);
 		},
 		hasVersionUpdates(): boolean {
 			return (
@@ -217,7 +217,7 @@ export default defineComponent({
 							tooltip: {
 								content: this.$locale.baseText('mainSidebar.workflows.readOnlyEnv.tooltip'),
 							},
-					  }
+						}
 					: undefined,
 			};
 
@@ -225,12 +225,27 @@ export default defineComponent({
 			const regularItems: IMenuItem[] = [
 				workflows,
 				{
+					// Link to in-app templates, available if custom templates are enabled
 					id: 'templates',
 					icon: 'box-open',
 					label: this.$locale.baseText('mainSidebar.templates'),
 					position: 'top',
-					available: this.settingsStore.isTemplatesEnabled,
+					available:
+						this.settingsStore.isTemplatesEnabled && this.templatesStore.hasCustomTemplatesHost,
 					route: { to: { name: VIEWS.TEMPLATES } },
+				},
+				{
+					// Link to website templates, available if custom templates are not enabled
+					id: 'templates',
+					icon: 'box-open',
+					label: this.$locale.baseText('mainSidebar.templates'),
+					position: 'top',
+					available:
+						this.settingsStore.isTemplatesEnabled && !this.templatesStore.hasCustomTemplatesHost,
+					link: {
+						href: this.templatesStore.websiteTemplateRepositoryURL,
+						target: '_blank',
+					},
 				},
 				{
 					id: 'credentials',
@@ -371,6 +386,12 @@ export default defineComponent({
 				workflow_id: this.workflowsStore.workflowId,
 			});
 		},
+		trackTemplatesClick() {
+			this.$telemetry.track('User clicked on templates', {
+				role: this.usersStore.currentUserCloudInfo?.role,
+				active_workflow_count: this.workflowsStore.activeWorkflows.length,
+			});
+		},
 		async onUserActionToggle(action: string) {
 			switch (action) {
 				case 'logout':
@@ -402,6 +423,14 @@ export default defineComponent({
 		},
 		async handleSelect(key: string) {
 			switch (key) {
+				case 'templates':
+					if (
+						this.settingsStore.isTemplatesEnabled &&
+						!this.templatesStore.hasCustomTemplatesHost
+					) {
+						this.trackTemplatesClick();
+					}
+					break;
 				case 'about': {
 					this.trackHelpItemClick('about');
 					this.uiStore.openModal(ABOUT_MODAL_KEY);

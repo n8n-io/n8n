@@ -320,7 +320,7 @@ export class CommunityPackagesService {
 	) {
 		const isUpdate = 'installedPackage' in options;
 		const command = isUpdate
-			? `npm update ${packageName}`
+			? `npm install ${packageName}@latest`
 			: `npm install ${packageName}${options.version ? `@${options.version}` : ''}`;
 
 		try {

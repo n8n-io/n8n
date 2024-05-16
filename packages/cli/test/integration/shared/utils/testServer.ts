@@ -8,19 +8,21 @@ import { URL } from 'url';
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import type { User } from '@db/entities/User';
-import { issueJWT } from '@/auth/jwt';
 import { registerController } from '@/decorators';
-import { rawBodyReader, bodyParser, setupAuthMiddlewares } from '@/middlewares';
+import { rawBodyReader, bodyParser } from '@/middlewares';
 import { PostHogClient } from '@/posthog';
+import { Push } from '@/push';
 import { License } from '@/License';
 import { Logger } from '@/Logger';
 import { InternalHooks } from '@/InternalHooks';
 
 import { mockInstance } from '../../../shared/mocking';
 import * as testDb from '../../shared/testDb';
-import { AUTHLESS_ENDPOINTS, PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
+import { PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
 import type { SetupProps, TestServer } from '../types';
 import { LicenseMocker } from '../license';
+import { AuthService } from '@/auth/auth.service';
+import type { APIRequest } from '@/requests';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -42,11 +44,12 @@ function prefix(pathSegment: string) {
 	};
 }
 
+const browserId = 'test-browser-id';
 function createAgent(app: express.Application, options?: { auth: boolean; user: User }) {
 	const agent = request.agent(app);
 	void agent.use(prefix(REST_PATH_SEGMENT));
 	if (options?.auth && options?.user) {
-		const { token } = issueJWT(options.user);
+		const token = Container.get(AuthService).issueJWT(options.user, browserId);
 		agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
 	}
 	return agent;
@@ -66,18 +69,22 @@ function publicApiAgent(
 
 export const setupTestServer = ({
 	endpointGroups,
-	applyAuth = true,
 	enabledFeatures,
 	quotas,
 }: SetupProps): TestServer => {
 	const app = express();
 	app.use(rawBodyReader);
 	app.use(cookieParser());
+	app.use((req: APIRequest, _, next) => {
+		req.browserId = browserId;
+		next();
+	});
 
 	// Mock all telemetry and logging
 	mockInstance(Logger);
 	mockInstance(InternalHooks);
 	mockInstance(PostHogClient);
+	mockInstance(Push);
 
 	const testServer: TestServer = {
 		app,
@@ -88,6 +95,7 @@ export const setupTestServer = ({
 		license: new LicenseMocker(),
 	};
 
+	// eslint-disable-next-line complexity
 	beforeAll(async () => {
 		await testDb.init();
 
@@ -102,15 +110,11 @@ export const setupTestServer = ({
 			});
 		}
 
-		const enablePublicAPI = endpointGroups?.includes('publicApi');
-		if (applyAuth && !enablePublicAPI) {
-			setupAuthMiddlewares(app, AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT);
-		}
-
 		if (!endpointGroups) return;
 
 		app.use(bodyParser);
 
+		const enablePublicAPI = endpointGroups?.includes('publicApi');
 		if (enablePublicAPI) {
 			const { loadPublicApiVersions } = await import('@/PublicApi');
 			const { apiRouters } = await loadPublicApiVersions(PUBLIC_API_REST_PATH_SEGMENT);
@@ -121,8 +125,8 @@ export const setupTestServer = ({
 			for (const group of endpointGroups) {
 				switch (group) {
 					case 'credentials':
-						const { credentialsController } = await import('@/credentials/credentials.controller');
-						app.use(`/${REST_PATH_SEGMENT}/credentials`, credentialsController);
+						const { CredentialsController } = await import('@/credentials/credentials.controller');
+						registerController(app, CredentialsController);
 						break;
 
 					case 'workflows':

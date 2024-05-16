@@ -2,12 +2,13 @@ import type { IBinaryData, IDataObject, IExecuteFunctions, INodeExecutionData } 
 import { NodeOperationError, BINARY_ENCODING } from 'n8n-workflow';
 import type { WorkBook, WritingOptions } from 'xlsx';
 import { utils as xlsxUtils, write as xlsxWrite } from 'xlsx';
-import { flattenObject } from '@utils/utilities';
 
 import get from 'lodash/get';
 import iconv from 'iconv-lite';
 
 import { getDocument as readPDF, version as pdfJsVersion } from 'pdfjs-dist';
+import type { DocumentInitParameters } from 'pdfjs-dist/types/src/display/api';
+import { flattenObject } from '@utils/utilities';
 
 export type JsonToSpreadsheetBinaryFormat = 'csv' | 'html' | 'rtf' | 'ods' | 'xls' | 'xlsx';
 
@@ -26,6 +27,7 @@ export type JsonToBinaryOptions = {
 	mimeType?: string;
 	dataIsBase64?: boolean;
 	itemIndex?: number;
+	format?: boolean;
 };
 
 type PdfDocument = Awaited<ReturnType<Awaited<typeof readPDF>>['promise']>;
@@ -102,7 +104,11 @@ export async function createBinaryFromJson(
 
 		if (typeof value === 'object') {
 			options.mimeType = 'application/json';
-			valueAsString = JSON.stringify(value);
+			if (options.format) {
+				valueAsString = JSON.stringify(value, null, 2);
+			} else {
+				valueAsString = JSON.stringify(value);
+			}
 		}
 
 		buffer = iconv.encode(valueAsString, options.encoding || 'utf8', {
@@ -152,11 +158,12 @@ export async function extractDataFromPDF(
 ) {
 	const binaryData = this.helpers.assertBinaryData(itemIndex, binaryPropertyName);
 
-	const params: { password?: string; url?: URL; data?: ArrayBuffer } = { password };
+	const params: DocumentInitParameters = { password, isEvalSupported: false };
 
 	if (binaryData.id) {
-		const binaryPath = this.helpers.getBinaryPath(binaryData.id);
-		params.url = new URL(`file://${binaryPath}`);
+		params.data = await this.helpers.binaryToBuffer(
+			await this.helpers.getBinaryStream(binaryData.id),
+		);
 	} else {
 		params.data = Buffer.from(binaryData.data, BINARY_ENCODING).buffer;
 	}

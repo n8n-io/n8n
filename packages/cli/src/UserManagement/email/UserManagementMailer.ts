@@ -1,12 +1,22 @@
+import { Container, Service } from 'typedi';
 import { existsSync } from 'fs';
 import { readFile } from 'fs/promises';
 import Handlebars from 'handlebars';
 import { join as pathJoin } from 'path';
-import { Container, Service } from 'typedi';
+import { ApplicationError } from 'n8n-workflow';
+
 import config from '@/config';
+import type { User } from '@db/entities/User';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { UserRepository } from '@db/repositories/user.repository';
+import { InternalHooks } from '@/InternalHooks';
+import { Logger } from '@/Logger';
+import { UrlService } from '@/services/url.service';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { toError } from '@/utils';
+
 import type { InviteEmailData, PasswordResetData, SendEmailResult } from './Interfaces';
 import { NodeMailer } from './NodeMailer';
-import { ApplicationError } from 'n8n-workflow';
 
 type Template = HandlebarsTemplateDelegate<unknown>;
 type TemplateName = 'invite' | 'passwordReset' | 'workflowShared' | 'credentialsShared';
@@ -39,7 +49,11 @@ export class UserManagementMailer {
 
 	private mailer: NodeMailer | undefined;
 
-	constructor() {
+	constructor(
+		private readonly userRepository: UserRepository,
+		private readonly logger: Logger,
+		private readonly urlService: UrlService,
+	) {
 		this.isEmailSetUp =
 			config.getEnv('userManagement.emails.mode') === 'smtp' &&
 			config.getEnv('userManagement.emails.smtp.host') !== '';
@@ -83,48 +97,109 @@ export class UserManagementMailer {
 	}
 
 	async notifyWorkflowShared({
-		recipientEmails,
-		workflowName,
-		baseUrl,
-		workflowId,
-		sharerFirstName,
+		sharer,
+		newShareeIds,
+		workflow,
 	}: {
-		recipientEmails: string[];
-		workflowName: string;
-		baseUrl: string;
-		workflowId: string;
-		sharerFirstName: string;
+		sharer: User;
+		newShareeIds: string[];
+		workflow: WorkflowEntity;
 	}) {
+		if (!this.mailer) return;
+
+		const recipients = await this.userRepository.getEmailsByIds(newShareeIds);
+
+		if (recipients.length === 0) return;
+
+		const emailRecipients = recipients.map(({ email }) => email);
+
 		const populateTemplate = await getTemplate('workflowShared', 'workflowShared.html');
 
-		const result = await this.mailer?.sendMail({
-			emailRecipients: recipientEmails,
-			subject: `${sharerFirstName} has shared an n8n workflow with you`,
-			body: populateTemplate({ workflowName, workflowUrl: `${baseUrl}/workflow/${workflowId}` }),
-		});
+		const baseUrl = this.urlService.getInstanceBaseUrl();
 
-		return result ?? { emailSent: false };
+		try {
+			const result = await this.mailer.sendMail({
+				emailRecipients,
+				subject: `${sharer.firstName} has shared an n8n workflow with you`,
+				body: populateTemplate({
+					workflowName: workflow.name,
+					workflowUrl: `${baseUrl}/workflow/${workflow.id}`,
+				}),
+			});
+
+			if (!result) return { emailSent: false };
+
+			this.logger.info('Sent workflow shared email successfully', { sharerId: sharer.id });
+
+			void Container.get(InternalHooks).onUserTransactionalEmail({
+				user_id: sharer.id,
+				message_type: 'Workflow shared',
+				public_api: false,
+			});
+
+			return result;
+		} catch (e) {
+			void Container.get(InternalHooks).onEmailFailed({
+				user: sharer,
+				message_type: 'Workflow shared',
+				public_api: false,
+			});
+
+			const error = toError(e);
+
+			throw new InternalServerError(`Please contact your administrator: ${error.message}`);
+		}
 	}
 
 	async notifyCredentialsShared({
-		sharerFirstName,
+		sharer,
+		newShareeIds,
 		credentialsName,
-		recipientEmails,
-		baseUrl,
 	}: {
-		sharerFirstName: string;
+		sharer: User;
+		newShareeIds: string[];
 		credentialsName: string;
-		recipientEmails: string[];
-		baseUrl: string;
 	}) {
+		if (!this.mailer) return;
+
+		const recipients = await this.userRepository.getEmailsByIds(newShareeIds);
+
+		if (recipients.length === 0) return;
+
+		const emailRecipients = recipients.map(({ email }) => email);
+
 		const populateTemplate = await getTemplate('credentialsShared', 'credentialsShared.html');
 
-		const result = await this.mailer?.sendMail({
-			emailRecipients: recipientEmails,
-			subject: `${sharerFirstName} has shared an n8n credential with you`,
-			body: populateTemplate({ credentialsName, credentialsListUrl: `${baseUrl}/credentials` }),
-		});
+		const baseUrl = this.urlService.getInstanceBaseUrl();
 
-		return result ?? { emailSent: false };
+		try {
+			const result = await this.mailer.sendMail({
+				emailRecipients,
+				subject: `${sharer.firstName} has shared an n8n credential with you`,
+				body: populateTemplate({ credentialsName, credentialsListUrl: `${baseUrl}/credentials` }),
+			});
+
+			if (!result) return { emailSent: false };
+
+			this.logger.info('Sent credentials shared email successfully', { sharerId: sharer.id });
+
+			void Container.get(InternalHooks).onUserTransactionalEmail({
+				user_id: sharer.id,
+				message_type: 'Credentials shared',
+				public_api: false,
+			});
+
+			return result;
+		} catch (e) {
+			void Container.get(InternalHooks).onEmailFailed({
+				user: sharer,
+				message_type: 'Credentials shared',
+				public_api: false,
+			});
+
+			const error = toError(e);
+
+			throw new InternalServerError(`Please contact your administrator: ${error.message}`);
+		}
 	}
 }

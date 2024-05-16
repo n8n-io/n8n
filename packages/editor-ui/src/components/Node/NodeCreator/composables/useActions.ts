@@ -18,6 +18,8 @@ import {
 	NODE_CREATOR_OPEN_SOURCES,
 	NO_OP_NODE_TYPE,
 	OPEN_AI_ASSISTANT_NODE_TYPE,
+	OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE,
+	OPEN_AI_NODE_TYPE,
 	QA_CHAIN_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	SPLIT_IN_BATCHES_NODE_TYPE,
@@ -161,6 +163,18 @@ export const useActions = () => {
 		};
 	}
 
+	/**
+	 * Checks if added nodes contain trigger followed by another node
+	 * In this case, we should connect the trigger with the following node
+	 */
+	function shouldConnectWithExistingTrigger(addedNodes: AddedNode[]): boolean {
+		if (addedNodes.length === 2) {
+			const isTriggerNode = useNodeTypesStore().isTriggerNode(addedNodes[0].type);
+			return isTriggerNode;
+		}
+		return false;
+	}
+
 	function shouldPrependManualTrigger(addedNodes: AddedNode[]): boolean {
 		const { selectedView, openSource } = useNodeCreatorStore();
 		const { workflowTriggerNodes } = useWorkflowsStore();
@@ -188,6 +202,7 @@ export const useActions = () => {
 			AGENT_NODE_TYPE,
 			BASIC_CHAIN_NODE_TYPE,
 			OPEN_AI_ASSISTANT_NODE_TYPE,
+			OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE,
 		];
 
 		const isChatTriggerMissing =
@@ -225,9 +240,18 @@ export const useActions = () => {
 				from: { nodeIndex: 0 },
 				to: { nodeIndex: 1 },
 			});
+		} else if (shouldConnectWithExistingTrigger(addedNodes)) {
+			connections.push({
+				from: { nodeIndex: 0 },
+				to: { nodeIndex: 1 },
+			});
 		}
 
 		addedNodes.forEach((node, index) => {
+			if (node.type === OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE) {
+				node.type = OPEN_AI_NODE_TYPE;
+			}
+
 			nodes.push(node);
 
 			switch (node.type) {

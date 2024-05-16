@@ -1,5 +1,5 @@
 import { Service } from 'typedi';
-import { In } from 'typeorm';
+import { In } from '@n8n/typeorm';
 
 import type { User } from '@db/entities/User';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';

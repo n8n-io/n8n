@@ -1,6 +1,13 @@
 import type { IWorkflowDb } from '@/Interfaces';
 import type { AuthenticatedRequest } from '@/requests';
-import type { INode, IConnections, IWorkflowSettings, IRunData, IPinData } from 'n8n-workflow';
+import type {
+	INode,
+	IConnections,
+	IWorkflowSettings,
+	IRunData,
+	IPinData,
+	StartNodeData,
+} from 'n8n-workflow';
 
 export declare namespace WorkflowRequest {
 	type CreateUpdatePayload = Partial<{
@@ -19,7 +26,7 @@ export declare namespace WorkflowRequest {
 		workflowData: IWorkflowDb;
 		runData: IRunData;
 		pinData: IPinData;
-		startNodes?: string[];
+		startNodes?: StartNodeData[];
 		destinationNode?: string;
 	};
 

@@ -81,3 +81,13 @@ export function convertToUnixFormat(interval: IDataObject) {
 	}
 	interval.expression = expression.join(' ');
 }
+
+export const addFallbackValue = <T>(enabled: boolean, fallback: T) => {
+	if (enabled) {
+		return (value: T) => {
+			if (!value) return fallback;
+			return value;
+		};
+	}
+	return (value: T) => value;
+};

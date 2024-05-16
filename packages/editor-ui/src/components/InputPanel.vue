@@ -8,7 +8,7 @@
 		:no-data-in-branch-message="$locale.baseText('ndv.input.noOutputDataInBranch')"
 		:is-executing="isExecutingPrevious"
 		:executing-message="$locale.baseText('ndv.input.executingPrevious')"
-		:session-id="sessionId"
+		:push-ref="pushRef"
 		:override-outputs="connectedCurrentNodeOutputs"
 		:mapping-enabled="isMappingEnabled"
 		:distance-from-active="currentNodeDepth"
@@ -16,12 +16,12 @@
 		:is-pane-active="isPaneActive"
 		pane-type="input"
 		data-test-id="ndv-input-panel"
-		@activatePane="activatePane"
-		@itemHover="$emit('itemHover', $event)"
-		@linkRun="onLinkRun"
-		@unlinkRun="onUnlinkRun"
-		@runChange="onRunIndexChange"
-		@tableMounted="$emit('tableMounted', $event)"
+		@activate-pane="activatePane"
+		@item-hover="$emit('itemHover', $event)"
+		@link-run="onLinkRun"
+		@unlink-run="onUnlinkRun"
+		@run-change="onRunIndexChange"
+		@table-mounted="$emit('tableMounted', $event)"
 		@search="$emit('search', $event)"
 	>
 		<template #header>
@@ -35,7 +35,7 @@
 					:placeholder="$locale.baseText('ndv.input.parentNodes')"
 					filterable
 					data-test-id="ndv-input-select"
-					@update:modelValue="onInputNodeChange"
+					@update:model-value="onInputNodeChange"
 				>
 					<template #prepend>
 						<span :class="$style.title">{{ $locale.baseText('ndv.input') }}</span>
@@ -62,7 +62,7 @@
 					v-if="isActiveNodeConfig && !readOnly"
 					:options="inputModes"
 					:model-value="inputMode"
-					@update:modelValue="onInputModeChange"
+					@update:model-value="onInputModeChange"
 				/>
 			</div>
 		</template>
@@ -77,7 +77,7 @@
 					:model-value="mappedNode"
 					size="small"
 					teleported
-					@update:modelValue="onMappedNodeSelected"
+					@update:model-value="onMappedNodeSelected"
 					@click.stop
 				>
 					<template #prepend>{{ $locale.baseText('ndv.input.previousNode') }}</template>
@@ -110,6 +110,7 @@
 					</template>
 					<NodeExecuteButton
 						type="secondary"
+						hide-icon
 						:transparent="true"
 						:node-name="isActiveNodeConfig ? rootNode : currentNodeName"
 						:label="$locale.baseText('ndv.input.noOutputData.executePrevious')"
@@ -174,7 +175,6 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 import RunData from './RunData.vue';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import WireMeUp from './WireMeUp.vue';
 import {
@@ -186,13 +186,13 @@ import {
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useUIStore } from '@/stores/ui.store';
 
 type MappingMode = 'debugging' | 'mapping';
 
 export default defineComponent({
 	name: 'InputPanel',
 	components: { RunData, NodeExecuteButton, WireMeUp },
-	mixins: [workflowHelpers],
 	props: {
 		currentNodeName: {
 			type: String,
@@ -208,7 +208,7 @@ export default defineComponent({
 		canLinkRuns: {
 			type: Boolean,
 		},
-		sessionId: {
+		pushRef: {
 			type: String,
 		},
 		readOnly: {
@@ -236,7 +236,7 @@ export default defineComponent({
 		};
 	},
 	computed: {
-		...mapStores(useNodeTypesStore, useNDVStore, useWorkflowsStore),
+		...mapStores(useNodeTypesStore, useNDVStore, useWorkflowsStore, useUIStore),
 		focusedMappableInput(): string {
 			return this.ndvStore.focusedMappableInput;
 		},
@@ -396,6 +396,8 @@ export default defineComponent({
 				if (val === 'mapping') {
 					this.onUnlinkRun();
 					this.mappedNode = this.rootNodesParents[0];
+				} else {
+					this.mappedNode = null;
 				}
 			},
 			immediate: true,
@@ -470,7 +472,7 @@ export default defineComponent({
 				this.$telemetry.track('User clicked ndv button', {
 					node_type: this.activeNode.type,
 					workflow_id: this.workflowsStore.workflowId,
-					session_id: this.sessionId,
+					push_ref: this.pushRef,
 					pane: 'input',
 					type: 'executePrevious',
 				});
@@ -494,7 +496,7 @@ export default defineComponent({
 				this.$telemetry.track('User clicked ndv link', {
 					node_type: this.activeNode.type,
 					workflow_id: this.workflowsStore.workflowId,
-					session_id: this.sessionId,
+					push_ref: this.pushRef,
 					pane: 'input',
 					type: 'not-connected-help',
 				});

@@ -1,5 +1,5 @@
 import { Service } from 'typedi';
-import { QueryFailedError } from 'typeorm';
+import { QueryFailedError } from '@n8n/typeorm';
 import type { Entry as LdapUser, ClientOptions } from 'ldapts';
 import { Client } from 'ldapts';
 import type { ConnectionOptions } from 'tls';

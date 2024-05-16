@@ -11,9 +11,8 @@
 	</div>
 </template>
 
-<script lang="ts">
-import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
+<script lang="ts" setup>
+import { computed, ref } from 'vue';
 
 function closestNumber(value: number, divisor: number): number {
 	const q = value / divisor;
@@ -35,7 +34,7 @@ function getSize(min: number, virtual: number, gridSize: number): number {
 	return min;
 }
 
-const directionsCursorMaps: { [key: string]: string } = {
+const directionsCursorMaps = {
 	right: 'ew-resize',
 	top: 'ns-resize',
 	bottom: 'ns-resize',
@@ -44,141 +43,141 @@ const directionsCursorMaps: { [key: string]: string } = {
 	topRight: 'ne-resize',
 	bottomLeft: 'sw-resize',
 	bottomRight: 'se-resize',
+} as const;
+
+type Direction = keyof typeof directionsCursorMaps;
+
+interface ResizeProps {
+	isResizingEnabled?: boolean;
+	height?: number;
+	width?: number;
+	minHeight?: number;
+	minWidth?: number;
+	scale?: number;
+	gridSize?: number;
+	supportedDirections?: Direction[];
+}
+
+const props = withDefaults(defineProps<ResizeProps>(), {
+	isResizingEnabled: true,
+	height: 0,
+	width: 0,
+	minHeight: 0,
+	minWidth: 0,
+	scale: 1,
+	gridSize: 20,
+	supportedDirections: () => [],
+});
+
+export interface ResizeData {
+	height: number;
+	width: number;
+	dX: number;
+	dY: number;
+	x: number;
+	y: number;
+	direction: Direction;
+}
+
+const $emit = defineEmits<{
+	(event: 'resizestart');
+	(event: 'resize', value: ResizeData): void;
+	(event: 'resizeend');
+}>();
+
+const enabledDirections = computed((): Direction[] => {
+	const availableDirections = Object.keys(directionsCursorMaps) as Direction[];
+
+	if (!props.isResizingEnabled) return [];
+	if (props.supportedDirections.length === 0) return availableDirections;
+
+	return props.supportedDirections;
+});
+
+const state = {
+	dir: ref<Direction | ''>(''),
+	dHeight: ref(0),
+	dWidth: ref(0),
+	vHeight: ref(0),
+	vWidth: ref(0),
+	x: ref(0),
+	y: ref(0),
 };
 
-export default defineComponent({
-	name: 'N8nResize',
-	props: {
-		isResizingEnabled: {
-			type: Boolean,
-			default: true,
-		},
-		height: {
-			type: Number,
-			default: 0,
-		},
-		width: {
-			type: Number,
-			default: 0,
-		},
-		minHeight: {
-			type: Number,
-			default: 0,
-		},
-		minWidth: {
-			type: Number,
-			default: 0,
-		},
-		scale: {
-			type: Number,
-			default: 1,
-		},
-		gridSize: {
-			type: Number,
-			default: 20,
-		},
-		supportedDirections: {
-			type: Array as PropType<string[]>,
-			default: (): string[] => [],
-		},
-	},
-	data() {
-		return {
-			directionsCursorMaps,
-			dir: '',
-			dHeight: 0,
-			dWidth: 0,
-			vHeight: 0,
-			vWidth: 0,
-			x: 0,
-			y: 0,
-		};
-	},
-	computed: {
-		enabledDirections(): string[] {
-			const availableDirections = Object.keys(directionsCursorMaps);
+const mouseMove = (event: MouseEvent) => {
+	event.preventDefault();
+	event.stopPropagation();
+	let dWidth = 0;
+	let dHeight = 0;
+	let top = false;
+	let left = false;
 
-			if (!this.isResizingEnabled) return [];
-			if (this.supportedDirections.length === 0) return availableDirections;
+	if (state.dir.value.includes('right')) {
+		dWidth = event.pageX - state.x.value;
+	}
+	if (state.dir.value.includes('left')) {
+		dWidth = state.x.value - event.pageX;
+		left = true;
+	}
+	if (state.dir.value.includes('top')) {
+		dHeight = state.y.value - event.pageY;
+		top = true;
+	}
+	if (state.dir.value.includes('bottom')) {
+		dHeight = event.pageY - state.y.value;
+	}
 
-			return this.supportedDirections;
-		},
-	},
-	methods: {
-		resizerMove(event: MouseEvent) {
-			event.preventDefault();
-			event.stopPropagation();
+	const deltaWidth = (dWidth - state.dWidth.value) / props.scale;
+	const deltaHeight = (dHeight - state.dHeight.value) / props.scale;
 
-			const targetResizer = event.target as { dataset: { dir: string } } | null;
-			if (targetResizer) {
-				this.dir = targetResizer.dataset.dir.toLocaleLowerCase();
-			}
+	state.vHeight.value = state.vHeight.value + deltaHeight;
+	state.vWidth.value = state.vWidth.value + deltaWidth;
+	const height = getSize(props.minHeight, state.vHeight.value, props.gridSize);
+	const width = getSize(props.minWidth, state.vWidth.value, props.gridSize);
 
-			document.body.style.cursor = directionsCursorMaps[this.dir];
+	const dX = left && width !== props.width ? -1 * (width - props.width) : 0;
+	const dY = top && height !== props.height ? -1 * (height - props.height) : 0;
+	const x = event.x;
+	const y = event.y;
+	const direction = state.dir.value as Direction;
 
-			this.x = event.pageX;
-			this.y = event.pageY;
-			this.dWidth = 0;
-			this.dHeight = 0;
-			this.vHeight = this.height;
-			this.vWidth = this.width;
+	$emit('resize', { height, width, dX, dY, x, y, direction });
+	state.dHeight.value = dHeight;
+	state.dWidth.value = dWidth;
+};
 
-			window.addEventListener('mousemove', this.mouseMove);
-			window.addEventListener('mouseup', this.mouseUp);
-			this.$emit('resizestart');
-		},
-		mouseMove(event: MouseEvent) {
-			event.preventDefault();
-			event.stopPropagation();
-			let dWidth = 0;
-			let dHeight = 0;
-			let top = false;
-			let left = false;
+const mouseUp = (event: MouseEvent) => {
+	event.preventDefault();
+	event.stopPropagation();
+	$emit('resizeend');
+	window.removeEventListener('mousemove', mouseMove);
+	window.removeEventListener('mouseup', mouseUp);
+	document.body.style.cursor = 'unset';
+	state.dir.value = '';
+};
 
-			if (this.dir.includes('right')) {
-				dWidth = event.pageX - this.x;
-			}
-			if (this.dir.includes('left')) {
-				dWidth = this.x - event.pageX;
-				left = true;
-			}
-			if (this.dir.includes('top')) {
-				dHeight = this.y - event.pageY;
-				top = true;
-			}
-			if (this.dir.includes('bottom')) {
-				dHeight = event.pageY - this.y;
-			}
+const resizerMove = (event: MouseEvent) => {
+	event.preventDefault();
+	event.stopPropagation();
 
-			const deltaWidth = (dWidth - this.dWidth) / this.scale;
-			const deltaHeight = (dHeight - this.dHeight) / this.scale;
+	const targetResizer = event.target as { dataset: { dir: string } } | null;
+	if (targetResizer) {
+		state.dir.value = targetResizer.dataset.dir.toLocaleLowerCase() as Direction;
+	}
 
-			this.vHeight = this.vHeight + deltaHeight;
-			this.vWidth = this.vWidth + deltaWidth;
-			const height = getSize(this.minHeight, this.vHeight, this.gridSize);
-			const width = getSize(this.minWidth, this.vWidth, this.gridSize);
+	document.body.style.cursor = directionsCursorMaps[state.dir.value];
 
-			const dX = left && width !== this.width ? -1 * (width - this.width) : 0;
-			const dY = top && height !== this.height ? -1 * (height - this.height) : 0;
-			const x = event.x;
-			const y = event.y;
-			const direction = this.dir;
+	state.x.value = event.pageX;
+	state.y.value = event.pageY;
+	state.dWidth.value = 0;
+	state.dHeight.value = 0;
+	state.vHeight.value = props.height;
+	state.vWidth.value = props.width;
 
-			this.$emit('resize', { height, width, dX, dY, x, y, direction });
-			this.dHeight = dHeight;
-			this.dWidth = dWidth;
-		},
-		mouseUp(event: MouseEvent) {
-			event.preventDefault();
-			event.stopPropagation();
-			this.$emit('resizeend');
-			window.removeEventListener('mousemove', this.mouseMove);
-			window.removeEventListener('mouseup', this.mouseUp);
-			document.body.style.cursor = 'unset';
-			this.dir = '';
-		},
-	},
-});
+	window.addEventListener('mousemove', mouseMove);
+	window.addEventListener('mouseup', mouseUp);
+	$emit('resizestart');
+};
 </script>
 
 <style lang="scss" module>

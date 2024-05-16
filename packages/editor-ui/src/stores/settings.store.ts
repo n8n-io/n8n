@@ -9,7 +9,12 @@ import {
 import { getPromptsData, getSettings, submitContactInfo, submitValueSurvey } from '@/api/settings';
 import { testHealthEndpoint } from '@/api/templates';
 import type { EnterpriseEditionFeature } from '@/constants';
-import { CONTACT_PROMPT_MODAL_KEY, STORES, VALUE_SURVEY_MODAL_KEY } from '@/constants';
+import {
+	CONTACT_PROMPT_MODAL_KEY,
+	STORES,
+	VALUE_SURVEY_MODAL_KEY,
+	INSECURE_CONNECTION_WARNING,
+} from '@/constants';
 import type {
 	ILdapConfig,
 	IN8nPromptResponse,
@@ -84,6 +89,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		isSwaggerUIEnabled(): boolean {
 			return this.api.swaggerUi.enabled;
+		},
+		isPreviewMode(): boolean {
+			return this.settings.previewMode;
 		},
 		publicApiLatestVersion(): number {
 			return this.api.latestVersion;
@@ -245,6 +253,15 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 				useRootStore().setVersionCli(settings.versionCli);
 			}
 
+			if (
+				settings.authCookie.secure &&
+				location.protocol === 'http:' &&
+				!['localhost', '127.0.0.1'].includes(location.hostname)
+			) {
+				document.write(INSECURE_CONNECTION_WARNING);
+				return;
+			}
+
 			const isV1BannerDismissedPermanently = (settings.banners?.dismissed || []).includes('V1');
 			if (!isV1BannerDismissedPermanently && useRootStore().versionCli.startsWith('1.')) {
 				useUIStore().pushBannerToStack('V1');
@@ -277,6 +294,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			rootStore.setN8nMetadata(settings.n8nMetadata || {});
 			rootStore.setDefaultLocale(settings.defaultLocale);
 			rootStore.setIsNpmAvailable(settings.isNpmAvailable);
+			rootStore.setBinaryDataMode(settings.binaryDataMode);
 
 			useVersionsStore().setVersionNotificationSettings(settings.versionNotifications);
 		},

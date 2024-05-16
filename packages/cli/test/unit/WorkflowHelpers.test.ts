@@ -25,7 +25,7 @@ describe('WorkflowHelpers', () => {
 					node1: {},
 					node2: {},
 				},
-				startNodes: ['node2'],
+				startNodes: [{ name: 'node2' }],
 			} as unknown as IWorkflowExecutionDataProcess;
 			const workflow = {
 				getNode(nodeName: string) {

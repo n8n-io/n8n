@@ -25,8 +25,8 @@ export class TemplateWorkflowPage extends BasePage {
 				user: { username: string };
 				image: { id: number; url: string }[];
 			};
-		}) => {
-			cy.intercept('GET', `https://api.n8n.io/api/templates/workflows/${template.workflow.id}`, {
+		}, templateHost: string) => {
+			cy.intercept('GET', `${templateHost}/api/templates/workflows/${template.workflow.id}`, {
 				statusCode: 200,
 				body: template,
 			}).as('getTemplate');

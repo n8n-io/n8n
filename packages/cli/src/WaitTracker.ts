@@ -4,11 +4,12 @@ import {
 	WorkflowOperationError,
 } from 'n8n-workflow';
 import { Container, Service } from 'typedi';
-import type { IExecutionsStopData, IWorkflowExecutionDataProcess } from '@/Interfaces';
+import type { ExecutionStopResult, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
-import { OwnershipService } from './services/ownership.service';
+import { OwnershipService } from '@/services/ownership.service';
 import { Logger } from '@/Logger';
+import { OrchestrationService } from '@/services/orchestration.service';
 
 @Service()
 export class WaitTracker {
@@ -25,7 +26,26 @@ export class WaitTracker {
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly ownershipService: OwnershipService,
+		private readonly workflowRunner: WorkflowRunner,
+		readonly orchestrationService: OrchestrationService,
 	) {
+		const { isSingleMainSetup, isLeader, multiMainSetup } = orchestrationService;
+
+		if (isSingleMainSetup) {
+			this.startTracking();
+			return;
+		}
+
+		if (isLeader) this.startTracking();
+
+		multiMainSetup
+			.on('leader-takeover', () => this.startTracking())
+			.on('leader-stepdown', () => this.stopTracking());
+	}
+
+	startTracking() {
+		this.logger.debug('Wait tracker started tracking waiting executions');
+
 		// Poll every 60 seconds a list of upcoming executions
 		this.mainTimer = setInterval(() => {
 			void this.getWaitingExecutions();
@@ -79,7 +99,7 @@ export class WaitTracker {
 		}
 	}
 
-	async stopExecution(executionId: string): Promise<IExecutionsStopData> {
+	async stopExecution(executionId: string): Promise<ExecutionStopResult> {
 		if (this.waitingExecutions[executionId] !== undefined) {
 			// The waiting execution was already scheduled to execute.
 			// So stop timer and remove.
@@ -163,8 +183,7 @@ export class WaitTracker {
 			};
 
 			// Start the execution again
-			const workflowRunner = new WorkflowRunner();
-			await workflowRunner.run(data, false, false, executionId);
+			await this.workflowRunner.run(data, false, false, executionId);
 		})().catch((error: Error) => {
 			ErrorReporter.error(error);
 			this.logger.error(
@@ -174,7 +193,9 @@ export class WaitTracker {
 		});
 	}
 
-	shutdown() {
+	stopTracking() {
+		this.logger.debug('Wait tracker shutting down');
+
 		clearInterval(this.mainTimer);
 		Object.keys(this.waitingExecutions).forEach((executionId) => {
 			clearTimeout(this.waitingExecutions[executionId].timer);

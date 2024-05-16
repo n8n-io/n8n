@@ -139,11 +139,8 @@ export class GoogleSheet {
 		});
 
 		if (!foundItem?.properties?.title) {
-			throw new NodeOperationError(
-				node,
-				`Sheet with ${mode === 'name' ? 'name' : 'ID'} ${value} not found`,
-				{ level: 'warning' },
-			);
+			const error = new Error(`Sheet with ${mode === 'name' ? 'name' : 'ID'} ${value} not found`);
+			throw new NodeOperationError(node, error, { level: 'warning' });
 		}
 
 		return foundItem.properties;
@@ -479,7 +476,7 @@ export class GoogleSheet {
 
 		const keyIndex = columnNames.indexOf(indexKey);
 
-		if (keyIndex === -1) {
+		if (keyIndex === -1 && !upsert) {
 			throw new NodeOperationError(
 				this.executeFunctions.getNode(),
 				`Could not find column for key "${indexKey}"`,
@@ -615,7 +612,7 @@ export class GoogleSheet {
 	/**
 	 * Looks for a specific value in a column and if it gets found it returns the whole row
 	 *
-	 * @param {string[][]} inputData Data to to check for lookup value in
+	 * @param {string[][]} inputData Data to check for lookup value in
 	 * @param {number} keyRowIndex Index of the row which contains the keys
 	 * @param {number} dataStartRowIndex Index of the first row which contains data
 	 * @param {ILookupValues[]} lookupValues The lookup values which decide what data to return
@@ -629,6 +626,7 @@ export class GoogleSheet {
 		dataStartRowIndex: number,
 		lookupValues: ILookupValues[],
 		returnAllMatches?: boolean,
+		combineFilters: 'AND' | 'OR' = 'OR',
 	): Promise<IDataObject[]> {
 		const keys: string[] = [];
 
@@ -665,28 +663,65 @@ export class GoogleSheet {
 		// const returnData = [inputData[keyRowIndex]];
 		const returnData = [keys];
 
-		lookupLoop: for (const lookupValue of lookupValues) {
-			returnColumnIndex = keys.indexOf(lookupValue.lookupColumn);
+		if (combineFilters === 'OR') {
+			lookupLoop: for (const lookupValue of lookupValues) {
+				returnColumnIndex = keys.indexOf(lookupValue.lookupColumn);
 
-			if (returnColumnIndex === -1) {
-				throw new NodeOperationError(
-					this.executeFunctions.getNode(),
-					`The column "${lookupValue.lookupColumn}" could not be found`,
-				);
+				if (returnColumnIndex === -1) {
+					throw new NodeOperationError(
+						this.executeFunctions.getNode(),
+						`The column "${lookupValue.lookupColumn}" could not be found`,
+					);
+				}
+
+				// Loop over all the items and find the one with the matching value
+				for (rowIndex = dataStartRowIndex; rowIndex < inputData.length; rowIndex++) {
+					if (
+						inputData[rowIndex][returnColumnIndex]?.toString() ===
+						lookupValue.lookupValue.toString()
+					) {
+						if (addedRows.indexOf(rowIndex) === -1) {
+							returnData.push(inputData[rowIndex]);
+							addedRows.push(rowIndex);
+						}
+
+						if (returnAllMatches !== true) {
+							continue lookupLoop;
+						}
+					}
+				}
 			}
+		} else {
+			lookupLoop: for (rowIndex = dataStartRowIndex; rowIndex < inputData.length; rowIndex++) {
+				let allMatch = true;
 
-			// Loop over all the items and find the one with the matching value
-			for (rowIndex = dataStartRowIndex; rowIndex < inputData.length; rowIndex++) {
-				if (
-					inputData[rowIndex][returnColumnIndex]?.toString() === lookupValue.lookupValue.toString()
-				) {
+				for (const lookupValue of lookupValues) {
+					returnColumnIndex = keys.indexOf(lookupValue.lookupColumn);
+
+					if (returnColumnIndex === -1) {
+						throw new NodeOperationError(
+							this.executeFunctions.getNode(),
+							`The column "${lookupValue.lookupColumn}" could not be found`,
+						);
+					}
+
+					if (
+						inputData[rowIndex][returnColumnIndex]?.toString() !==
+						lookupValue.lookupValue.toString()
+					) {
+						allMatch = false;
+						break;
+					}
+				}
+
+				if (allMatch) {
 					if (addedRows.indexOf(rowIndex) === -1) {
 						returnData.push(inputData[rowIndex]);
 						addedRows.push(rowIndex);
 					}
 
 					if (returnAllMatches !== true) {
-						continue lookupLoop;
+						break lookupLoop;
 					}
 				}
 			}

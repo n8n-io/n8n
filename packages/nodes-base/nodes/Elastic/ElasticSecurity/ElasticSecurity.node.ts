@@ -9,10 +9,10 @@ import type {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import type { OptionsWithUri } from 'request';
 import {
 	elasticSecurityApiRequest,
 	getConnector,
@@ -132,7 +132,7 @@ export class ElasticSecurity implements INodeType {
 
 				const endpoint = '/cases/status';
 
-				const options: OptionsWithUri = {
+				const options: IRequestOptions = {
 					headers: {
 						Authorization: `Basic ${token}`,
 						'kbn-xsrf': true,

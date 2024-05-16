@@ -91,9 +91,11 @@ export class TestWebhooks implements IWebhookManager {
 			});
 		}
 
-		const { destinationNode, sessionId, workflowEntity } = registration;
+		const { destinationNode, pushRef, workflowEntity, webhook: testWebhook } = registration;
 
 		const workflow = this.toWorkflow(workflowEntity);
+
+		if (testWebhook.staticData) workflow.setTestStaticData(testWebhook.staticData);
 
 		const workflowStartNode = workflow.getNode(webhook.node);
 
@@ -106,11 +108,11 @@ export class TestWebhooks implements IWebhookManager {
 				const executionMode = 'manual';
 				const executionId = await WebhookHelpers.executeWebhook(
 					workflow,
-					webhook!,
+					webhook,
 					workflowEntity,
 					workflowStartNode,
 					executionMode,
-					sessionId,
+					pushRef,
 					undefined, // IRunExecutionData
 					undefined, // executionId
 					request,
@@ -128,11 +130,11 @@ export class TestWebhooks implements IWebhookManager {
 				if (executionId === undefined) return;
 
 				// Inform editor-ui that webhook got received
-				if (sessionId !== undefined) {
+				if (pushRef !== undefined) {
 					this.push.send(
 						'testWebhookReceived',
 						{ workflowId: webhook?.workflowId, executionId },
-						sessionId,
+						pushRef,
 					);
 				}
 			} catch {}
@@ -145,10 +147,10 @@ export class TestWebhooks implements IWebhookManager {
 			 */
 			if (
 				this.orchestrationService.isMultiMainSetupEnabled &&
-				sessionId &&
-				!this.push.getBackend().hasSessionId(sessionId)
+				pushRef &&
+				!this.push.getBackend().hasPushRef(pushRef)
 			) {
-				const payload = { webhookKey: key, workflowEntity, sessionId };
+				const payload = { webhookKey: key, workflowEntity, pushRef };
 				void this.orchestrationService.publish('clear-test-webhooks', payload);
 				return;
 			}
@@ -211,7 +213,7 @@ export class TestWebhooks implements IWebhookManager {
 		workflowEntity: IWorkflowDb,
 		additionalData: IWorkflowExecuteAdditionalData,
 		runData?: IRunData,
-		sessionId?: string,
+		pushRef?: string,
 		destinationNode?: string,
 	) {
 		if (!workflowEntity.id) throw new WorkflowMissingIdError(workflowEntity);
@@ -236,13 +238,20 @@ export class TestWebhooks implements IWebhookManager {
 
 		for (const webhook of webhooks) {
 			const key = this.registrations.toKey(webhook);
-			const isAlreadyRegistered = await this.registrations.get(key);
+			const registrationByKey = await this.registrations.get(key);
 
 			if (runData && webhook.node in runData) {
 				return false;
 			}
 
-			if (isAlreadyRegistered && !webhook.webhookId) {
+			// if registration already exists and is not a test webhook created by this user in this workflow throw an error
+			if (
+				registrationByKey &&
+				!webhook.webhookId &&
+				!registrationByKey.webhook.isTest &&
+				registrationByKey.webhook.userId !== userId &&
+				registrationByKey.webhook.workflowId !== workflow.id
+			) {
 				throw new WebhookPathTakenError(webhook.node);
 			}
 
@@ -258,7 +267,7 @@ export class TestWebhooks implements IWebhookManager {
 			cacheableWebhook.userId = userId;
 
 			const registration: TestWebhookRegistration = {
-				sessionId,
+				pushRef,
 				workflowEntity,
 				destinationNode,
 				webhook: cacheableWebhook as IWebhookData,
@@ -300,7 +309,7 @@ export class TestWebhooks implements IWebhookManager {
 
 			if (!registration) continue;
 
-			const { sessionId, workflowEntity } = registration;
+			const { pushRef, workflowEntity } = registration;
 
 			const workflow = this.toWorkflow(workflowEntity);
 
@@ -308,9 +317,9 @@ export class TestWebhooks implements IWebhookManager {
 
 			this.clearTimeout(key);
 
-			if (sessionId !== undefined) {
+			if (pushRef !== undefined) {
 				try {
-					this.push.send('testWebhookDeleted', { workflowId }, sessionId);
+					this.push.send('testWebhookDeleted', { workflowId }, pushRef);
 				} catch {
 					// Could not inform editor, probably is not connected anymore. So simply go on.
 				}
@@ -405,14 +414,7 @@ export class TestWebhooks implements IWebhookManager {
 			connections: workflowEntity.connections,
 			active: false,
 			nodeTypes: this.nodeTypes,
-
-			/**
-			 * `staticData` in the original workflow entity has production webhook IDs.
-			 * Since we are creating here a temporary workflow only for a test webhook,
-			 * `staticData` from the original workflow entity should not be transferred.
-			 */
-			staticData: undefined,
-
+			staticData: {},
 			settings: workflowEntity.settings,
 		});
 	}

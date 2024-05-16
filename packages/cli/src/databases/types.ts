@@ -1,5 +1,5 @@
 import type { INodeTypes } from 'n8n-workflow';
-import type { QueryRunner, ObjectLiteral } from 'typeorm';
+import type { QueryRunner, ObjectLiteral } from '@n8n/typeorm';
 import type { Logger } from '@/Logger';
 import type { createSchemaBuilder } from './dsl';
 
@@ -60,4 +60,4 @@ export interface Migration extends Function {
 
 export type InsertResult = Array<{ insertId: number }>;
 
-export { QueryFailedError } from 'typeorm/error/QueryFailedError';
+export { QueryFailedError } from '@n8n/typeorm/error/QueryFailedError';

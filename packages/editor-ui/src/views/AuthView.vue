@@ -11,7 +11,7 @@
 				v-bind="form"
 				data-test-id="auth-form"
 				:button-loading="formLoading"
-				@secondaryClick="onSecondaryClick"
+				@secondary-click="onSecondaryClick"
 				@submit="onSubmit"
 				@update="onUpdate"
 			>

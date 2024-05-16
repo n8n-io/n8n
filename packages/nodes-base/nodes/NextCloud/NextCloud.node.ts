@@ -3,6 +3,7 @@ import type {
 	IBinaryKeyData,
 	IDataObject,
 	IExecuteFunctions,
+	IHttpRequestMethods,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -874,7 +875,7 @@ export class NextCloud implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 
 		let endpoint = '';
-		let requestMethod = '';
+		let requestMethod: IHttpRequestMethods = 'GET';
 		let responseData: any;
 
 		let body: string | Buffer | IDataObject = '';
@@ -914,14 +915,14 @@ export class NextCloud implements INodeType {
 						//         create
 						// ----------------------------------
 
-						requestMethod = 'MKCOL';
+						requestMethod = 'MKCOL' as IHttpRequestMethods;
 						endpoint = this.getNodeParameter('path', i) as string;
 					} else if (operation === 'list') {
 						// ----------------------------------
 						//         list
 						// ----------------------------------
 
-						requestMethod = 'PROPFIND';
+						requestMethod = 'PROPFIND' as IHttpRequestMethods;
 						endpoint = this.getNodeParameter('path', i) as string;
 					}
 				}
@@ -932,7 +933,7 @@ export class NextCloud implements INodeType {
 						//         copy
 						// ----------------------------------
 
-						requestMethod = 'COPY';
+						requestMethod = 'COPY' as IHttpRequestMethods;
 						endpoint = this.getNodeParameter('path', i) as string;
 						const toPath = this.getNodeParameter('toPath', i) as string;
 						headers.Destination = `${credentials.webDavUrl}/${encodeURI(toPath)}`;
@@ -948,7 +949,7 @@ export class NextCloud implements INodeType {
 						//         move
 						// ----------------------------------
 
-						requestMethod = 'MOVE';
+						requestMethod = 'MOVE' as IHttpRequestMethods;
 						endpoint = this.getNodeParameter('path', i) as string;
 						const toPath = this.getNodeParameter('toPath', i) as string;
 						headers.Destination = `${credentials.webDavUrl}/${encodeURI(toPath)}`;

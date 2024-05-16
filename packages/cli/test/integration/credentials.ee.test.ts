@@ -1,12 +1,11 @@
 import { Container } from 'typedi';
 import type { SuperAgentTest } from 'supertest';
-import { In } from 'typeorm';
+import { In } from '@n8n/typeorm';
 import type { IUser } from 'n8n-workflow';
 
 import type { ListQuery } from '@/requests';
 import type { User } from '@db/entities/User';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
-import { License } from '@/License';
 
 import { randomCredentialPayload } from './shared/random';
 import * as testDb from './shared/testDb';
@@ -17,9 +16,12 @@ import { createManyUsers, createUser, createUserShell } from './shared/db/users'
 import { UserManagementMailer } from '@/UserManagement/email';
 
 import { mockInstance } from '../shared/mocking';
+import config from '@/config';
 
-const sharingSpy = jest.spyOn(License.prototype, 'isSharingEnabled').mockReturnValue(true);
-const testServer = utils.setupTestServer({ endpointGroups: ['credentials'] });
+const testServer = utils.setupTestServer({
+	endpointGroups: ['credentials'],
+	enabledFeatures: ['feat:sharing'],
+});
 
 let owner: User;
 let member: User;
@@ -46,38 +48,6 @@ beforeEach(async () => {
 
 afterEach(() => {
 	jest.clearAllMocks();
-});
-
-// ----------------------------------------
-// dynamic router switching
-// ----------------------------------------
-describe('router should switch based on flag', () => {
-	let savedCredentialId: string;
-
-	beforeEach(async () => {
-		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
-		savedCredentialId = savedCredential.id;
-	});
-
-	test('when sharing is disabled', async () => {
-		sharingSpy.mockReturnValueOnce(false);
-
-		await authOwnerAgent
-			.put(`/credentials/${savedCredentialId}/share`)
-			.send({ shareWithIds: [member.id] })
-			.expect(404);
-
-		await authOwnerAgent.get(`/credentials/${savedCredentialId}`).send().expect(200);
-	});
-
-	test('when sharing is enabled', async () => {
-		await authOwnerAgent
-			.put(`/credentials/${savedCredentialId}/share`)
-			.send({ shareWithIds: [member.id] })
-			.expect(200);
-
-		await authOwnerAgent.get(`/credentials/${savedCredentialId}`).send().expect(200);
-	});
 });
 
 // ----------------------------------------
@@ -259,7 +229,7 @@ describe('GET /credentials/:id', () => {
 		expect(response2.statusCode).toBe(200);
 
 		validateMainCredentialData(response2.body.data);
-		expect(response2.body.data.data).toBeUndefined();
+		expect(response2.body.data.data).toBeDefined(); // Instance owners should be capable of editing all credentials
 		expect(response2.body.data.sharedWith).toHaveLength(1);
 	});
 
@@ -489,7 +459,6 @@ describe('PUT /credentials/:id/share', () => {
 
 		expect(sharedCredentials).toHaveLength(1);
 		expect(sharedCredentials[0].userId).toBe(owner.id);
-		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(0);
 	});
 
 	test('should ignore non-existing sharee', async () => {
@@ -507,7 +476,7 @@ describe('PUT /credentials/:id/share', () => {
 
 		expect(sharedCredentials).toHaveLength(1);
 		expect(sharedCredentials[0].userId).toBe(owner.id);
-		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(0);
+		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(1);
 	});
 
 	test('should respond 400 if invalid payload is provided', async () => {
@@ -521,6 +490,7 @@ describe('PUT /credentials/:id/share', () => {
 		responses.forEach((response) => expect(response.statusCode).toBe(400));
 		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(0);
 	});
+
 	test('should unshare the credential', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
@@ -542,14 +512,33 @@ describe('PUT /credentials/:id/share', () => {
 
 		expect(sharedCredentials).toHaveLength(1);
 		expect(sharedCredentials[0].userId).toBe(owner.id);
-		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(0);
+		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(1);
+	});
+
+	test('should not call internal hooks listener for email sent if emailing is disabled', async () => {
+		config.set('userManagement.emails.mode', '');
+
+		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+
+		const [member1, member2] = await createManyUsers(2, {
+			role: 'global:member',
+		});
+
+		await shareCredentialWithUsers(savedCredential, [member1, member2]);
+
+		const response = await authOwnerAgent
+			.put(`/credentials/${savedCredential.id}/share`)
+			.send({ shareWithIds: [] });
+
+		expect(response.statusCode).toBe(200);
+
+		config.set('userManagement.emails.mode', 'smtp');
 	});
 });
 
 function validateMainCredentialData(credential: ListQuery.Credentials.WithOwnedByAndSharedWith) {
 	expect(typeof credential.name).toBe('string');
 	expect(typeof credential.type).toBe('string');
-	expect(typeof credential.nodesAccess[0].nodeType).toBe('string');
 	expect(credential.ownedBy).toBeDefined();
 	expect(Array.isArray(credential.sharedWith)).toBe(true);
 }

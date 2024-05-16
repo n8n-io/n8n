@@ -1,0 +1,21 @@
+@top Program { entity* }
+
+entity { Plaintext | Resolvable }
+
+@tokens {
+  Plaintext { ![{] Plaintext? | "{" (@eof | ![{] Plaintext?) }
+
+  OpenMarker[closedBy="CloseMarker"] { "{{" }
+
+  CloseMarker[openedBy="OpenMarker"] { "}}" }
+
+  Resolvable {
+    OpenMarker resolvableChar* CloseMarker
+  }
+
+  resolvableChar { unicodeChar | "}" ![}] | "\\}}" }
+
+  unicodeChar { $[\u0000-\u007C] | $[\u007E-\u1FFF] | $[\u20A0-\u20CF] | $[\u{1F300}-\u{1F64F}] }
+}
+
+@detectDelim

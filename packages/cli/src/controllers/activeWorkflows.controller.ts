@@ -1,8 +1,7 @@
-import { Authorized, Get, RestController } from '@/decorators';
+import { Get, RestController } from '@/decorators';
 import { ActiveWorkflowRequest } from '@/requests';
 import { ActiveWorkflowsService } from '@/services/activeWorkflows.service';
 
-@Authorized()
 @RestController('/active-workflows')
 export class ActiveWorkflowsController {
 	constructor(private readonly activeWorkflowsService: ActiveWorkflowsService) {}

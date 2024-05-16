@@ -25,7 +25,6 @@ import { SourceControlPreferencesService } from './sourceControlPreferences.serv
 import { writeFileSync } from 'fs';
 import { SourceControlImportService } from './sourceControlImport.service.ee';
 import type { User } from '@db/entities/User';
-import isEqual from 'lodash/isEqual';
 import type { SourceControlGetStatus } from './types/sourceControlGetStatus';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { Variables } from '@db/entities/Variables';
@@ -39,6 +38,7 @@ import { ApplicationError } from 'n8n-workflow';
 
 @Service()
 export class SourceControlService {
+	/** Path to SSH private key in filesystem. */
 	private sshKeyName: string;
 
 	private sshFolder: string;
@@ -112,7 +112,7 @@ export class SourceControlService {
 			});
 			await this.sourceControlExportService.deleteRepositoryFolder();
 			if (!options.keepKeyPair) {
-				await this.sourceControlPreferencesService.deleteKeyPairFiles();
+				await this.sourceControlPreferencesService.deleteKeyPair();
 			}
 			this.gitService.resetService();
 			return this.sourceControlPreferencesService.sourceControlPreferences;
@@ -383,7 +383,7 @@ export class SourceControlService {
 	 * Does a comparison between the local and remote workfolder based on NOT the git status,
 	 * but certain parameters within the items being synced.
 	 * For workflows, it compares the versionIds
-	 * For credentials, it compares the name, type and nodeAccess
+	 * For credentials, it compares the name and type
 	 * For variables, it compares the name
 	 * For tags, it compares the name and mapping
 	 * @returns either SourceControlledFile[] if verbose is false,
@@ -564,12 +564,7 @@ export class SourceControlService {
 		> = [];
 		credLocalIds.forEach((local) => {
 			const mismatchingCreds = credRemoteIds.find((remote) => {
-				return (
-					remote.id === local.id &&
-					(remote.name !== local.name ||
-						remote.type !== local.type ||
-						!isEqual(remote.nodesAccess, local.nodesAccess))
-				);
+				return remote.id === local.id && (remote.name !== local.name || remote.type !== local.type);
 			});
 			if (mismatchingCreds) {
 				credModifiedInEither.push({

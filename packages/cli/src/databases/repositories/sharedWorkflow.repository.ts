@@ -1,6 +1,6 @@
 import { Service } from 'typedi';
-import { DataSource, Repository, In, Not } from 'typeorm';
-import type { EntityManager, FindManyOptions, FindOptionsWhere } from 'typeorm';
+import { DataSource, Repository, In, Not } from '@n8n/typeorm';
+import type { EntityManager, FindManyOptions, FindOptionsWhere } from '@n8n/typeorm';
 import { SharedWorkflow, type WorkflowSharingRole } from '../entities/SharedWorkflow';
 import { type User } from '../entities/User';
 import type { Scope } from '@n8n/permissions';
@@ -20,6 +20,15 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 			where.userId = user.id;
 		}
 		return await this.exist({ where });
+	}
+
+	/** Get the IDs of all users this workflow is shared with */
+	async getSharedUserIds(workflowId: string) {
+		const sharedWorkflows = await this.find({
+			select: ['userId'],
+			where: { workflowId },
+		});
+		return sharedWorkflows.map((sharing) => sharing.userId);
 	}
 
 	async getSharedWorkflowIds(workflowIds: string[]) {

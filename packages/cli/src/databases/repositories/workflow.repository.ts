@@ -11,7 +11,7 @@ import {
 	type EntityManager,
 	type DeleteResult,
 	Not,
-} from 'typeorm';
+} from '@n8n/typeorm';
 import type { ListQuery } from '@/requests';
 import { isStringArray } from '@/utils';
 import config from '@/config';
@@ -136,7 +136,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 					updatedAt: true,
 					versionId: true,
 					shared: { userId: true, role: true },
-			  };
+				};
 
 		delete select?.ownedBy; // remove non-entity field, handled after query
 

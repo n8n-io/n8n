@@ -6,9 +6,9 @@ import {
 	type INodeTypeDescription,
 	type SupplyData,
 } from 'n8n-workflow';
-import { GooglePaLM } from 'langchain/llms/googlepalm';
-import { logWrapper } from '../../../utils/logWrapper';
+import { GooglePaLM } from '@langchain/community/llms/googlepalm';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmGooglePalm implements INodeType {
 	description: INodeTypeDescription = {
@@ -163,10 +163,11 @@ export class LmGooglePalm implements INodeType {
 			apiKey: credentials.apiKey as string,
 			modelName,
 			...options,
+			callbacks: [new N8nLlmTracing(this)],
 		});
 
 		return {
-			response: logWrapper(model, this),
+			response: model,
 		};
 	}
 }

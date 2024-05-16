@@ -1,6 +1,6 @@
 import { Container } from 'typedi';
 import { Flags, type Config } from '@oclif/core';
-import { sleep } from 'n8n-workflow';
+import { ApplicationError } from 'n8n-workflow';
 
 import config from '@/config';
 import { ActiveExecutions } from '@/ActiveExecutions';
@@ -42,21 +42,7 @@ export class Webhook extends BaseCommand {
 		try {
 			await this.externalHooks?.run('n8n.stop', []);
 
-			// Wait for active workflow executions to finish
-			const activeExecutionsInstance = Container.get(ActiveExecutions);
-			let executingWorkflows = activeExecutionsInstance.getActiveExecutions();
-
-			let count = 0;
-			while (executingWorkflows.length !== 0) {
-				if (count++ % 4 === 0) {
-					this.logger.info(
-						`Waiting for ${executingWorkflows.length} active executions to finish...`,
-					);
-				}
-
-				await sleep(500);
-				executingWorkflows = activeExecutionsInstance.getActiveExecutions();
-			}
+			await Container.get(ActiveExecutions).shutdown();
 		} catch (error) {
 			await this.exitWithCrash('There was an error shutting down n8n.', error);
 		}
@@ -102,6 +88,12 @@ export class Webhook extends BaseCommand {
 	}
 
 	async run() {
+		if (config.getEnv('multiMainSetup.enabled')) {
+			throw new ApplicationError(
+				'Webhook process cannot be started when multi-main setup is enabled.',
+			);
+		}
+
 		await Container.get(Queue).init();
 		await this.server.start();
 		this.logger.debug(`Webhook listener ID: ${this.server.uniqueInstanceId}`);

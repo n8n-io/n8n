@@ -14,6 +14,13 @@ import type {
 import { NodeError } from './abstract/node.error';
 import { removeCircularRefs } from '../utils';
 import type { ReportingOptions } from './application.error';
+import { AxiosError } from 'axios';
+import {
+	NO_OP_NODE_TYPE,
+	UNKNOWN_ERROR_DESCRIPTION,
+	UNKNOWN_ERROR_MESSAGE,
+	UNKNOWN_ERROR_MESSAGE_CRED,
+} from '../Constants';
 
 export interface NodeOperationErrorOptions {
 	message?: string;
@@ -23,6 +30,7 @@ export interface NodeOperationErrorOptions {
 	level?: ReportingOptions['level'];
 	messageMapping?: { [key: string]: string }; // allows to pass custom mapping for error messages scoped to a node
 	functionality?: Functionality;
+	type?: string;
 }
 
 interface NodeApiErrorOptions extends NodeOperationErrorOptions {
@@ -100,9 +108,6 @@ const STATUS_CODE_MESSAGES: IStatusCodeMessages = {
 	'504': 'Gateway timed out - perhaps try again later?',
 };
 
-const UNKNOWN_ERROR_MESSAGE = 'UNKNOWN ERROR - check the detailed error for more information';
-const UNKNOWN_ERROR_MESSAGE_CRED = 'UNKNOWN ERROR';
-
 /**
  * Class for instantiating an error in an API response, e.g. a 404 Not Found response,
  * with an HTTP error code, an error message and a description.
@@ -110,6 +115,7 @@ const UNKNOWN_ERROR_MESSAGE_CRED = 'UNKNOWN ERROR';
 export class NodeApiError extends NodeError {
 	httpCode: string | null;
 
+	// eslint-disable-next-line complexity
 	constructor(
 		node: INode,
 		errorResponse: JsonObject,
@@ -126,6 +132,12 @@ export class NodeApiError extends NodeError {
 		}: NodeApiErrorOptions = {},
 	) {
 		super(node, errorResponse);
+
+		this.addToMessages(errorResponse.message as string);
+
+		if (!httpCode && errorResponse instanceof AxiosError) {
+			httpCode = errorResponse.response?.status?.toString();
+		}
 
 		// only for request library error
 		if (errorResponse.error) {
@@ -169,6 +181,8 @@ export class NodeApiError extends NodeError {
 		// set http code of this error
 		if (httpCode) {
 			this.httpCode = httpCode;
+		} else if (errorResponse.httpCode) {
+			this.httpCode = errorResponse.httpCode as string;
 		} else {
 			this.httpCode =
 				this.findProperty(errorResponse, ERROR_STATUS_PROPERTIES, ERROR_NESTING_PROPERTIES) ?? null;
@@ -178,6 +192,25 @@ export class NodeApiError extends NodeError {
 			this.level = level;
 		} else if (this.httpCode?.charAt(0) !== '5') {
 			this.level = 'warning';
+		}
+
+		if (
+			errorResponse?.response &&
+			typeof errorResponse?.response === 'object' &&
+			!Array.isArray(errorResponse.response) &&
+			errorResponse.response.data &&
+			typeof errorResponse.response.data === 'object' &&
+			!Array.isArray(errorResponse.response.data)
+		) {
+			const data = errorResponse.response.data;
+
+			if (data.message) {
+				description = data.message as string;
+			} else if (data.error && ((data.error as IDataObject) || {}).message) {
+				description = (data.error as IDataObject).message as string;
+			}
+
+			this.context.data = data;
 		}
 
 		// set description of this error
@@ -197,7 +230,9 @@ export class NodeApiError extends NodeError {
 			}
 		}
 
-		// set message if provided or set default message based on http code
+		// set message if provided
+		// set default message based on http code
+		// or use raw error message
 		if (message) {
 			this.message = message;
 		} else {
@@ -210,9 +245,9 @@ export class NodeApiError extends NodeError {
 		}
 
 		// if message contain common error code set descriptive message and update description
-		[this.message, this.description] = this.setDescriptiveErrorMessage(
+		[this.message, this.messages] = this.setDescriptiveErrorMessage(
 			this.message,
-			this.description,
+			this.messages,
 			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 			this.httpCode ||
 				(errorResponse?.code as string) ||
@@ -252,31 +287,46 @@ export class NodeApiError extends NodeError {
 
 		if (!this.httpCode) {
 			this.httpCode = null;
-			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-			this.message = this.message || this.description || UNKNOWN_ERROR_MESSAGE;
+
+			if (!this.message) {
+				if (this.description) {
+					this.message = this.description;
+					this.description = undefined;
+				} else {
+					this.message = UNKNOWN_ERROR_MESSAGE;
+					this.description = UNKNOWN_ERROR_DESCRIPTION;
+				}
+			}
 			return;
 		}
 
 		if (STATUS_CODE_MESSAGES[this.httpCode]) {
-			this.description = this.updateDescription(this.message, this.description);
+			this.addToMessages(this.message);
 			this.message = STATUS_CODE_MESSAGES[this.httpCode];
 			return;
 		}
 
 		switch (this.httpCode.charAt(0)) {
 			case '4':
-				this.description = this.updateDescription(this.message, this.description);
+				this.addToMessages(this.message);
 				this.message = STATUS_CODE_MESSAGES['4XX'];
 				break;
 			case '5':
-				this.description = this.updateDescription(this.message, this.description);
+				this.addToMessages(this.message);
 				this.message = STATUS_CODE_MESSAGES['5XX'];
 				break;
 			default:
-				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-				this.message = this.message || this.description || UNKNOWN_ERROR_MESSAGE;
+				if (!this.message) {
+					if (this.description) {
+						this.message = this.description;
+						this.description = undefined;
+					} else {
+						this.message = UNKNOWN_ERROR_MESSAGE;
+						this.description = UNKNOWN_ERROR_DESCRIPTION;
+					}
+				}
 		}
-		if (this.node.type === 'n8n-nodes-base.noOp' && this.message === UNKNOWN_ERROR_MESSAGE) {
+		if (this.node.type === NO_OP_NODE_TYPE && this.message === UNKNOWN_ERROR_MESSAGE) {
 			this.message = `${UNKNOWN_ERROR_MESSAGE_CRED} - ${this.httpCode}`;
 		}
 	}

@@ -1,4 +1,4 @@
-import type { QueryRunner } from 'typeorm';
+import type { QueryRunner } from '@n8n/typeorm';
 import { Column } from './Column';
 import {
 	AddColumns,

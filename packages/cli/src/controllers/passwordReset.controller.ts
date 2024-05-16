@@ -1,16 +1,15 @@
 import { Response } from 'express';
-import { rateLimit } from 'express-rate-limit';
 import validator from 'validator';
 
+import { AuthService } from '@/auth/auth.service';
 import { Get, Post, RestController } from '@/decorators';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserManagementMailer } from '@/UserManagement/email';
 import { PasswordResetRequest } from '@/requests';
-import { issueCookie } from '@/auth/jwt';
 import { isSamlCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
 import { UserService } from '@/services/user.service';
 import { License } from '@/License';
-import { RESPONSE_ERROR_MESSAGES, inTest } from '@/constants';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { MfaService } from '@/Mfa/mfa.service';
 import { Logger } from '@/Logger';
 import { ExternalHooks } from '@/ExternalHooks';
@@ -23,12 +22,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { UserRepository } from '@/databases/repositories/user.repository';
 
-const throttle = rateLimit({
-	windowMs: 5 * 60 * 1000, // 5 minutes
-	limit: 5, // Limit each IP to 5 requests per `window` (here, per 5 minutes).
-	message: { message: 'Too many requests' },
-});
-
 @RestController()
 export class PasswordResetController {
 	constructor(
@@ -36,6 +29,7 @@ export class PasswordResetController {
 		private readonly externalHooks: ExternalHooks,
 		private readonly internalHooks: InternalHooks,
 		private readonly mailer: UserManagementMailer,
+		private readonly authService: AuthService,
 		private readonly userService: UserService,
 		private readonly mfaService: MfaService,
 		private readonly urlService: UrlService,
@@ -47,9 +41,7 @@ export class PasswordResetController {
 	/**
 	 * Send a password reset email.
 	 */
-	@Post('/forgot-password', {
-		middlewares: !inTest ? [throttle] : [],
-	})
+	@Post('/forgot-password', { skipAuth: true, rateLimit: true })
 	async forgotPassword(req: PasswordResetRequest.Email) {
 		if (!this.mailer.isEmailSetUp) {
 			this.logger.debug(
@@ -89,7 +81,7 @@ export class PasswordResetController {
 		if (
 			isSamlCurrentAuthenticationMethod() &&
 			!(
-				(user && user.hasGlobalScope('user:resetPassword')) === true ||
+				user?.hasGlobalScope('user:resetPassword') === true ||
 				user?.settings?.allowSSOManualLogin === true
 			)
 		) {
@@ -114,7 +106,7 @@ export class PasswordResetController {
 			throw new UnprocessableRequestError('forgotPassword.ldapUserPasswordResetUnavailable');
 		}
 
-		const url = this.userService.generatePasswordResetUrl(user);
+		const url = this.authService.generatePasswordResetUrl(user);
 
 		const { id, firstName, lastName } = user;
 		try {
@@ -149,7 +141,7 @@ export class PasswordResetController {
 	/**
 	 * Verify password reset token and user ID.
 	 */
-	@Get('/resolve-password-token')
+	@Get('/resolve-password-token', { skipAuth: true })
 	async resolvePasswordToken(req: PasswordResetRequest.Credentials) {
 		const { token } = req.query;
 
@@ -163,7 +155,7 @@ export class PasswordResetController {
 			throw new BadRequestError('');
 		}
 
-		const user = await this.userService.resolvePasswordResetToken(token);
+		const user = await this.authService.resolvePasswordResetToken(token);
 		if (!user) throw new NotFoundError('');
 
 		if (!user?.isOwner && !this.license.isWithinUsersLimit()) {
@@ -181,7 +173,7 @@ export class PasswordResetController {
 	/**
 	 * Verify password reset token and update password.
 	 */
-	@Post('/change-password')
+	@Post('/change-password', { skipAuth: true })
 	async changePassword(req: PasswordResetRequest.NewPassword, res: Response) {
 		const { token, password, mfaToken } = req.body;
 
@@ -197,7 +189,7 @@ export class PasswordResetController {
 
 		const validPassword = this.passwordUtility.validate(password);
 
-		const user = await this.userService.resolvePasswordResetToken(token);
+		const user = await this.authService.resolvePasswordResetToken(token);
 		if (!user) throw new NotFoundError('');
 
 		if (user.mfaEnabled) {
@@ -216,7 +208,7 @@ export class PasswordResetController {
 
 		this.logger.info('User password updated successfully', { userId: user.id });
 
-		await issueCookie(res, user);
+		this.authService.issueCookie(res, user, req.browserId);
 
 		void this.internalHooks.onUserUpdate({
 			user,

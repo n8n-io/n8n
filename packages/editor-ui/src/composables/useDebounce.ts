@@ -44,7 +44,7 @@ export function useDebounce() {
 	): ReturnType<T> => {
 		const debouncedFn = debounce(fn, options);
 
-		return debouncedFn(...inputParameters) as ReturnType<T>;
+		return debouncedFn(...inputParameters);
 	};
 
 	return {

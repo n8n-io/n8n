@@ -4,9 +4,9 @@ import type {
 	ICredentialTestFunctions,
 	IDataObject,
 	IPollFunctions,
+	IRequestOptions,
 } from 'n8n-workflow';
 
-import type { OptionsWithUri } from 'request';
 import moment from 'moment-timezone';
 import * as jwt from 'jsonwebtoken';
 
@@ -90,7 +90,7 @@ export async function getGoogleAccessToken(
 		},
 	);
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/x-www-form-urlencoded',
 		},

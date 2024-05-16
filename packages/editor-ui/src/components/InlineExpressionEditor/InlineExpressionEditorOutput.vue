@@ -1,140 +1,133 @@
+<script setup lang="ts">
+import type { EditorState, SelectionRange } from '@codemirror/state';
+
+import { useI18n } from '@/composables/useI18n';
+import type { Segment } from '@/types/expressions';
+import ExpressionOutput from './ExpressionOutput.vue';
+import InlineExpressionTip from './InlineExpressionTip.vue';
+import { outputTheme } from './theme';
+import { computed, onBeforeUnmount } from 'vue';
+import { useNDVStore } from '@/stores/ndv.store';
+import { N8nTooltip } from 'n8n-design-system/components';
+
+interface InlineExpressionEditorOutputProps {
+	segments: Segment[];
+	unresolvedExpression?: string;
+	editorState?: EditorState;
+	selection?: SelectionRange;
+	visible?: boolean;
+}
+
+withDefaults(defineProps<InlineExpressionEditorOutputProps>(), {
+	visible: false,
+	editorState: undefined,
+	selection: undefined,
+	unresolvedExpression: undefined,
+});
+
+const i18n = useI18n();
+const theme = outputTheme();
+const ndvStore = useNDVStore();
+
+const hideTableHoverHint = computed(() => ndvStore.isTableHoverOnboarded);
+const hoveringItem = computed(() => ndvStore.getHoveringItem);
+const hoveringItemIndex = computed(() => hoveringItem.value?.itemIndex);
+const isHoveringItem = computed(() => Boolean(hoveringItem.value));
+const itemsLength = computed(() => ndvStore.ndvInputDataWithPinnedData.length);
+const itemIndex = computed(() => hoveringItemIndex.value ?? ndvStore.expressionOutputItemIndex);
+const max = computed(() => Math.max(itemsLength.value - 1, 0));
+const isItemIndexEditable = computed(() => !isHoveringItem.value && itemsLength.value > 0);
+const canSelectPrevItem = computed(() => isItemIndexEditable.value && itemIndex.value !== 0);
+const canSelectNextItem = computed(
+	() => isItemIndexEditable.value && itemIndex.value < itemsLength.value - 1,
+);
+
+function updateItemIndex(index: number) {
+	ndvStore.expressionOutputItemIndex = index;
+}
+
+function nextItem() {
+	ndvStore.expressionOutputItemIndex = ndvStore.expressionOutputItemIndex + 1;
+}
+
+function prevItem() {
+	ndvStore.expressionOutputItemIndex = ndvStore.expressionOutputItemIndex - 1;
+}
+
+onBeforeUnmount(() => {
+	ndvStore.expressionOutputItemIndex = 0;
+});
+</script>
+
 <template>
-	<div :class="visible ? $style.dropdown : $style.hidden">
-		<n8n-text size="small" compact :class="$style.header">
-			{{ i18n.baseText('parameterInput.resultForItem') }} {{ hoveringItemNumber }}
-		</n8n-text>
+	<div v-if="visible" :class="$style.dropdown" title="">
+		<div :class="$style.header">
+			<n8n-text bold size="small" compact>
+				{{ i18n.baseText('parameterInput.result') }}
+			</n8n-text>
+
+			<div :class="$style.item">
+				<n8n-text size="small" color="text-base" compact>
+					{{ i18n.baseText('parameterInput.item') }}
+				</n8n-text>
+
+				<div :class="$style.controls">
+					<N8nInputNumber
+						data-test-id="inline-expression-editor-item-input"
+						size="mini"
+						:controls="false"
+						:class="[$style.input, { [$style.hovering]: isHoveringItem }]"
+						:min="0"
+						:max="max"
+						:model-value="itemIndex"
+						@update:model-value="updateItemIndex"
+					></N8nInputNumber>
+					<N8nIconButton
+						data-test-id="inline-expression-editor-item-prev"
+						icon="chevron-left"
+						type="tertiary"
+						text
+						size="mini"
+						:disabled="!canSelectPrevItem"
+						@click="prevItem"
+					></N8nIconButton>
+
+					<N8nTooltip placement="right" :disabled="hideTableHoverHint">
+						<template #content>
+							<div>{{ i18n.baseText('parameterInput.hoverTableItemTip') }}</div>
+						</template>
+						<N8nIconButton
+							data-test-id="inline-expression-editor-item-next"
+							icon="chevron-right"
+							type="tertiary"
+							text
+							size="mini"
+							:disabled="!canSelectNextItem"
+							@click="nextItem"
+						></N8nIconButton>
+					</N8nTooltip>
+				</div>
+			</div>
+		</div>
 		<n8n-text :class="$style.body">
-			<div ref="root" data-test-id="inline-expression-editor-output"></div>
+			<ExpressionOutput
+				data-test-id="inline-expression-editor-output"
+				:segments="segments"
+				:extensions="theme"
+			>
+			</ExpressionOutput>
 		</n8n-text>
 		<div :class="$style.footer">
-			<n8n-text size="small" compact>
-				{{ i18n.baseText('parameterInput.anythingInside') }}
-			</n8n-text>
-			<div :class="$style['expression-syntax-example']" v-text="`{{ }}`"></div>
-			<n8n-text size="small" compact>
-				{{ i18n.baseText('parameterInput.isJavaScript') }}
-			</n8n-text>
-			{{ ' ' }}
-			<n8n-link
-				:class="$style['learn-more']"
-				size="small"
-				underline
-				theme="text"
-				:to="expressionsDocsUrl"
-			>
-				{{ i18n.baseText('parameterInput.learnMore') }}
-			</n8n-link>
+			<InlineExpressionTip
+				:editor-state="editorState"
+				:selection="selection"
+				:unresolved-expression="unresolvedExpression"
+			/>
 		</div>
 	</div>
 </template>
 
-<script lang="ts">
-import { EditorView } from '@codemirror/view';
-import { EditorState } from '@codemirror/state';
-
-import { defineComponent } from 'vue';
-import type { PropType } from 'vue';
-
-import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
-import { outputTheme } from './theme';
-
-import type { Plaintext, Resolved, Segment } from '@/types/expressions';
-import { EXPRESSIONS_DOCS_URL } from '@/constants';
-import { useI18n } from '@/composables/useI18n';
-
-export default defineComponent({
-	name: 'InlineExpressionEditorOutput',
-	props: {
-		segments: {
-			type: Array as PropType<Segment[]>,
-			required: true,
-		},
-		isReadOnly: {
-			type: Boolean,
-			default: false,
-		},
-		visible: {
-			type: Boolean,
-			default: false,
-		},
-		hoveringItemNumber: {
-			type: Number,
-			required: true,
-		},
-	},
-	setup() {
-		const i18n = useI18n();
-
-		return {
-			i18n,
-		};
-	},
-	data() {
-		return {
-			editor: null as EditorView | null,
-			expressionsDocsUrl: EXPRESSIONS_DOCS_URL,
-		};
-	},
-	computed: {
-		resolvedExpression(): string {
-			return this.segments.reduce((acc, segment) => {
-				acc += segment.kind === 'resolvable' ? segment.resolved : segment.plaintext;
-				return acc;
-			}, '');
-		},
-		plaintextSegments(): Plaintext[] {
-			return this.segments.filter((s): s is Plaintext => s.kind === 'plaintext');
-		},
-		resolvedSegments(): Resolved[] {
-			let cursor = 0;
-
-			return this.segments
-				.map((segment) => {
-					segment.from = cursor;
-					cursor +=
-						segment.kind === 'plaintext'
-							? segment.plaintext.length
-							: segment.resolved
-							  ? segment.resolved.toString().length
-							  : 0;
-					segment.to = cursor;
-					return segment;
-				})
-				.filter((segment): segment is Resolved => segment.kind === 'resolvable');
-		},
-	},
-	watch: {
-		segments() {
-			if (!this.editor) return;
-
-			this.editor.dispatch({
-				changes: { from: 0, to: this.editor.state.doc.length, insert: this.resolvedExpression },
-			});
-
-			highlighter.addColor(this.editor, this.resolvedSegments);
-			highlighter.removeColor(this.editor, this.plaintextSegments);
-		},
-	},
-	mounted() {
-		this.editor = new EditorView({
-			parent: this.$refs.root as HTMLDivElement,
-			state: EditorState.create({
-				doc: this.resolvedExpression,
-				extensions: [outputTheme(), EditorState.readOnly.of(true), EditorView.lineWrapping],
-			}),
-		});
-	},
-	beforeUnmount() {
-		this.editor?.destroy();
-	},
-});
-</script>
-
 <style lang="scss" module>
-.hidden {
-	display: none;
-}
-
 .dropdown {
 	display: flex;
 	flex-direction: column;
@@ -152,45 +145,66 @@ export default defineComponent({
 		background-color: var(--color-code-background);
 	}
 
-	.header,
-	.body,
-	.footer {
+	.body {
 		padding: var(--spacing-3xs);
 	}
 
+	.footer {
+		border-top: var(--border-base);
+	}
+
 	.header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: var(--spacing-2xs);
 		color: var(--color-text-dark);
 		font-weight: var(--font-weight-bold);
-		padding-left: var(--spacing-2xs);
+		padding: 0 var(--spacing-2xs);
 		padding-top: var(--spacing-2xs);
+	}
+
+	.item {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-4xs);
 	}
 
 	.body {
 		padding-top: 0;
 		padding-left: var(--spacing-2xs);
 		color: var(--color-text-dark);
+
+		&:first-child {
+			padding-top: var(--spacing-2xs);
+		}
 	}
 
-	.footer {
-		border-top: var(--border-base);
-		padding: var(--spacing-4xs);
-		padding-left: var(--spacing-2xs);
-		padding-top: 0;
-		line-height: var(--font-line-height-regular);
-		color: var(--color-text-base);
+	.controls {
+		display: flex;
+		align-items: center;
+	}
 
-		.expression-syntax-example {
-			display: inline-block;
-			font-size: var(--font-size-2xs);
-			height: var(--font-size-m);
-			background-color: var(--color-expression-syntax-example);
-			margin-left: var(--spacing-5xs);
-			margin-right: var(--spacing-5xs);
+	.input {
+		--input-height: 22px;
+		--input-width: 26px;
+		--input-border-top-left-radius: var(--border-radius-base);
+		--input-border-bottom-left-radius: var(--border-radius-base);
+		--input-border-top-right-radius: var(--border-radius-base);
+		--input-border-bottom-right-radius: var(--border-radius-base);
+		max-width: var(--input-width);
+		line-height: calc(var(--input-height) - var(--spacing-4xs));
+
+		&.hovering {
+			--input-font-color: var(--color-secondary);
 		}
 
-		.learn-more {
-			line-height: 1;
-			white-space: nowrap;
+		:global(.el-input__inner) {
+			height: var(--input-height);
+			min-height: var(--input-height);
+			line-height: var(--input-height);
+			text-align: center;
+			padding: 0 var(--spacing-4xs);
 		}
 	}
 }

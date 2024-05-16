@@ -6,6 +6,7 @@ import type {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { jsonParse, NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 
@@ -216,7 +217,7 @@ export class DiscordV1 implements INodeType {
 			if (!body.payload_json) delete body.payload_json;
 			if (!body.attachments) delete body.attachments;
 
-			let requestOptions;
+			let requestOptions: IRequestOptions;
 
 			if (!body.payload_json) {
 				requestOptions = {

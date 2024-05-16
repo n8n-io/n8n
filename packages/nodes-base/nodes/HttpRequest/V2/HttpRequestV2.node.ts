@@ -3,15 +3,16 @@ import type { Readable } from 'stream';
 import type {
 	IDataObject,
 	IExecuteFunctions,
+	IHttpRequestMethods,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
+	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError, sleep, removeCircularRefs } from 'n8n-workflow';
 
-import type { OptionsWithUri } from 'request';
 import type { IAuthDataSanitizeKeys } from '../GenericFunctions';
 import {
 	getOAuth2AdditionalParameters,
@@ -28,7 +29,7 @@ interface OptionDataParameters {
 	[key: string]: OptionData;
 }
 
-type OptionsWithUriKeys = keyof OptionsWithUri;
+type IRequestOptionsKeys = keyof IRequestOptions;
 export class HttpRequestV2 implements INodeType {
 	description: INodeTypeDescription;
 
@@ -339,14 +340,14 @@ export class HttpRequestV2 implements INodeType {
 							name: 'followAllRedirects',
 							type: 'boolean',
 							default: false,
-							description: 'Whether to follow non-GET HTTP 3xx redirects',
+							description: 'Whether to follow All HTTP 3xx redirects',
 						},
 						{
-							displayName: 'Follow GET Redirect',
+							displayName: 'Follow GET/HEAD Redirect',
 							name: 'followRedirect',
 							type: 'boolean',
 							default: true,
-							description: 'Whether to follow GET HTTP 3xx redirects',
+							description: 'Whether to follow GET or HEAD HTTP 3xx redirects',
 						},
 						{
 							displayName: 'Ignore Response Code',
@@ -675,7 +676,7 @@ export class HttpRequestV2 implements INodeType {
 			} catch {}
 		}
 
-		let requestOptions: OptionsWithUri & { useStream?: boolean };
+		let requestOptions: IRequestOptions & { useStream?: boolean };
 		let setUiParameter: IDataObject;
 
 		const uiParameters: IDataObject = {
@@ -701,7 +702,10 @@ export class HttpRequestV2 implements INodeType {
 		let returnItems: INodeExecutionData[] = [];
 		const requestPromises = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			const requestMethod = this.getNodeParameter('requestMethod', itemIndex) as string;
+			const requestMethod = this.getNodeParameter(
+				'requestMethod',
+				itemIndex,
+			) as IHttpRequestMethods;
 			const parametersAreJson = this.getNodeParameter('jsonParameters', itemIndex);
 
 			const options = this.getNodeParameter('options', itemIndex, {});
@@ -855,7 +859,7 @@ export class HttpRequestV2 implements INodeType {
 						try {
 							// @ts-ignore
 							requestOptions[optionData.name] = JSON.parse(
-								requestOptions[optionData.name as OptionsWithUriKeys] as string,
+								requestOptions[optionData.name as IRequestOptionsKeys] as string,
 							);
 						} catch (error) {
 							throw new NodeOperationError(
@@ -888,8 +892,8 @@ export class HttpRequestV2 implements INodeType {
 										return newValue;
 									}
 								};
-								requestOptions[optionName][parameterDataName] = computeNewValue(
-									requestOptions[optionName][parameterDataName],
+								requestOptions[optionName]![parameterDataName] = computeNewValue(
+									requestOptions[optionName]![parameterDataName],
 								);
 							} else if (optionName === 'headers') {
 								// @ts-ignore

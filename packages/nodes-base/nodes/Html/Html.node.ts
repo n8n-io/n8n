@@ -5,12 +5,14 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	IDataObject,
+	INodeProperties,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import get from 'lodash/get';
 import { placeholder } from './placeholder';
 import { getValue } from './utils';
 import type { IValueData } from './types';
-import { getResolvables } from '@utils/utilities';
+import { getResolvables, sanitazeDataPathKey } from '@utils/utilities';
 
 export const capitalizeHeader = (header: string, capitalize?: boolean) => {
 	if (!capitalize) return header;
@@ -21,13 +23,111 @@ export const capitalizeHeader = (header: string, capitalize?: boolean) => {
 		.join(' ');
 };
 
+const extractionValuesCollection: INodeProperties = {
+	displayName: 'Extraction Values',
+	name: 'extractionValues',
+	placeholder: 'Add Value',
+	type: 'fixedCollection',
+	typeOptions: {
+		multipleValues: true,
+	},
+	default: {},
+	options: [
+		{
+			name: 'values',
+			displayName: 'Values',
+			values: [
+				{
+					displayName: 'Key',
+					name: 'key',
+					type: 'string',
+					default: '',
+					description: 'The key under which the extracted value should be saved',
+				},
+				{
+					displayName: 'CSS Selector',
+					name: 'cssSelector',
+					type: 'string',
+					default: '',
+					placeholder: '.price',
+					description: 'The CSS selector to use',
+				},
+				{
+					displayName: 'Return Value',
+					name: 'returnValue',
+					type: 'options',
+					options: [
+						{
+							name: 'Attribute',
+							value: 'attribute',
+							description: 'Get an attribute value like "class" from an element',
+						},
+						{
+							name: 'HTML',
+							value: 'html',
+							description: 'Get the HTML the element contains',
+						},
+						{
+							name: 'Text',
+							value: 'text',
+							description: 'Get only the text content of the element',
+						},
+						{
+							name: 'Value',
+							value: 'value',
+							description: 'Get value of an input, select or textarea',
+						},
+					],
+					default: 'text',
+					description: 'What kind of data should be returned',
+				},
+				{
+					displayName: 'Attribute',
+					name: 'attribute',
+					type: 'string',
+					displayOptions: {
+						show: {
+							returnValue: ['attribute'],
+						},
+					},
+					default: '',
+					placeholder: 'class',
+					description: 'The name of the attribute to return the value off',
+				},
+				{
+					displayName: 'Skip Selectors',
+					name: 'skipSelectors',
+					type: 'string',
+					displayOptions: {
+						show: {
+							returnValue: ['text'],
+							'@version': [{ _cnd: { gt: 1.1 } }],
+						},
+					},
+					default: '',
+					placeholder: 'e.g. img, .className, #ItemId',
+					description: 'Comma-separated list of selectors to skip in the text extraction',
+				},
+				{
+					displayName: 'Return Array',
+					name: 'returnArray',
+					type: 'boolean',
+					default: false,
+					description:
+						'Whether to return the values as an array so if multiple ones get found they also get returned separately. If not set all will be returned as a single string.',
+				},
+			],
+		},
+	],
+};
+
 export class Html implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'HTML',
 		name: 'html',
 		icon: 'file:html.svg',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1, 1.2],
 		subtitle: '={{ $parameter["operation"] }}',
 		description: 'Work with HTML',
 		defaults: {
@@ -143,94 +243,33 @@ export class Html implements INodeType {
 					'Name of the JSON property in which the HTML to extract the data from can be found. The property can either contain a string or an array of strings.',
 			},
 			{
-				displayName: 'Extraction Values',
-				name: 'extractionValues',
-				placeholder: 'Add Value',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
+				...extractionValuesCollection,
+				displayOptions: {
+					show: {
+						operation: ['extractHtmlContent'],
+						'@version': [1],
+					},
+				},
+			},
+			{
+				...extractionValuesCollection,
+				default: {
+					values: [
+						{
+							key: '',
+							cssSelector: '',
+							returnValue: 'text',
+							returnArray: false,
+						},
+					],
 				},
 				displayOptions: {
 					show: {
 						operation: ['extractHtmlContent'],
+						'@version': [{ _cnd: { gt: 1 } }],
 					},
 				},
-				default: {},
-				options: [
-					{
-						name: 'values',
-						displayName: 'Values',
-						values: [
-							{
-								displayName: 'Key',
-								name: 'key',
-								type: 'string',
-								default: '',
-								description: 'The key under which the extracted value should be saved',
-							},
-							{
-								displayName: 'CSS Selector',
-								name: 'cssSelector',
-								type: 'string',
-								default: '',
-								placeholder: '.price',
-								description: 'The CSS selector to use',
-							},
-							{
-								displayName: 'Return Value',
-								name: 'returnValue',
-								type: 'options',
-								options: [
-									{
-										name: 'Attribute',
-										value: 'attribute',
-										description: 'Get an attribute value like "class" from an element',
-									},
-									{
-										name: 'HTML',
-										value: 'html',
-										description: 'Get the HTML the element contains',
-									},
-									{
-										name: 'Text',
-										value: 'text',
-										description: 'Get only the text content of the element',
-									},
-									{
-										name: 'Value',
-										value: 'value',
-										description: 'Get value of an input, select or textarea',
-									},
-								],
-								default: 'text',
-								description: 'What kind of data should be returned',
-							},
-							{
-								displayName: 'Attribute',
-								name: 'attribute',
-								type: 'string',
-								displayOptions: {
-									show: {
-										returnValue: ['attribute'],
-									},
-								},
-								default: '',
-								placeholder: 'class',
-								description: 'The name of the attribute to return the value off',
-							},
-							{
-								displayName: 'Return Array',
-								name: 'returnArray',
-								type: 'boolean',
-								default: false,
-								description:
-									'Whether to return the values as an array so if multiple ones get found they also get returned separately. If not set all will be returned as a single string.',
-							},
-						],
-					},
-				],
 			},
-
 			{
 				displayName: 'Options',
 				name: 'options',
@@ -250,6 +289,14 @@ export class Html implements INodeType {
 						default: true,
 						description:
 							'Whether to remove automatically all spaces and newlines from the beginning and end of the values',
+					},
+					{
+						displayName: 'Clean Up Text',
+						name: 'cleanUpText',
+						type: 'boolean',
+						default: true,
+						description:
+							'Whether to remove remove leading and trailing whitespaces, line breaks (newlines) and condense multiple consecutive whitespaces into a single space',
 					},
 				],
 			},
@@ -329,6 +376,7 @@ export class Html implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0);
+		const nodeVersion = this.getNode().typeVersion;
 
 		if (operation === 'convertToHtmlTable' && items.length) {
 			let table = '';
@@ -467,14 +515,27 @@ export class Html implements INodeType {
 
 					let htmlArray: string[] | string = [];
 					if (sourceData === 'json') {
-						if (item.json[dataPropertyName] === undefined) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`No property named "${dataPropertyName}" exists!`,
-								{ itemIndex },
-							);
+						if (nodeVersion === 1) {
+							const key = sanitazeDataPathKey(item.json, dataPropertyName);
+							if (item.json[key] === undefined) {
+								throw new NodeOperationError(
+									this.getNode(),
+									`No property named "${dataPropertyName}" exists!`,
+									{ itemIndex },
+								);
+							}
+							htmlArray = item.json[key] as string;
+						} else {
+							const value = get(item.json, dataPropertyName);
+							if (value === undefined) {
+								throw new NodeOperationError(
+									this.getNode(),
+									`No property named "${dataPropertyName}" exists!`,
+									{ itemIndex },
+								);
+							}
+							htmlArray = value as string;
 						}
-						htmlArray = item.json[dataPropertyName] as string;
 					} else {
 						this.helpers.assertBinaryData(itemIndex, dataPropertyName);
 						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
@@ -489,7 +550,7 @@ export class Html implements INodeType {
 						htmlArray = [htmlArray];
 					}
 
-					for (const html of htmlArray as string[]) {
+					for (const html of htmlArray) {
 						const $ = cheerio.load(html);
 
 						const newItem: INodeExecutionData = {
@@ -508,14 +569,19 @@ export class Html implements INodeType {
 								// An array should be returned so iterate over one
 								// value at a time
 								newItem.json[valueData.key] = [];
-								htmlElement.each((i, el) => {
+								htmlElement.each((_, el) => {
 									(newItem.json[valueData.key] as Array<string | undefined>).push(
-										getValue($(el), valueData, options),
+										getValue($(el), valueData, options, nodeVersion),
 									);
 								});
 							} else {
 								// One single value should be returned
-								newItem.json[valueData.key] = getValue(htmlElement, valueData, options);
+								newItem.json[valueData.key] = getValue(
+									htmlElement,
+									valueData,
+									options,
+									nodeVersion,
+								);
 							}
 						}
 						returnData.push(newItem);

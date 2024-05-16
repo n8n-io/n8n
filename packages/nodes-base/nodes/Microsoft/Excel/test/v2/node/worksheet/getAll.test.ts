@@ -10,7 +10,7 @@ jest.mock('../../../../v2/transport', () => {
 	const originalModule = jest.requireActual('../../../../v2/transport');
 	return {
 		...originalModule,
-		microsoftApiRequest: jest.fn(async function (method: string) {
+		microsoftApiRequest: jest.fn(async function (method: IHttpRequestMethods) {
 			if (method === 'GET') {
 				return {
 					value: [

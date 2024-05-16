@@ -1,15 +1,13 @@
-import { Service } from 'typedi';
 import express from 'express';
 import { v4 as uuid } from 'uuid';
 import axios from 'axios';
 
 import * as Db from '@/Db';
-import * as GenericHelpers from '@/GenericHelpers';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import type { IWorkflowResponse } from '@/Interfaces';
 import config from '@/config';
-import { Authorized, Delete, Get, Patch, Post, Put, RestController } from '@/decorators';
+import { Delete, Get, Patch, Post, Put, RestController } from '@/decorators';
 import { SharedWorkflow, type WorkflowSharingRole } from '@db/entities/SharedWorkflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
@@ -39,10 +37,7 @@ import { EnterpriseWorkflowService } from './workflow.service.ee';
 import { WorkflowExecutionService } from './workflowExecution.service';
 import { WorkflowSharingService } from './workflowSharing.service';
 import { UserManagementMailer } from '@/UserManagement/email';
-import { UrlService } from '@/services/url.service';
 
-@Service()
-@Authorized()
 @RestController('/workflows')
 export class WorkflowsController {
 	constructor(
@@ -63,7 +58,7 @@ export class WorkflowsController {
 		private readonly userRepository: UserRepository,
 		private readonly license: License,
 		private readonly mailer: UserManagementMailer,
-		private readonly urlService: UrlService,
+		private readonly credentialsService: CredentialsService,
 	) {}
 
 	@Post('/')
@@ -94,7 +89,7 @@ export class WorkflowsController {
 			// This is a new workflow, so we simply check if the user has access to
 			// all used workflows
 
-			const allCredentials = await CredentialsService.getMany(req.user);
+			const allCredentials = await this.credentialsService.getMany(req.user);
 
 			try {
 				this.enterpriseWorkflowService.validateCredentialPermissionsToUser(
@@ -335,7 +330,7 @@ export class WorkflowsController {
 		return await this.workflowExecutionService.executeManually(
 			req.body,
 			req.user,
-			GenericHelpers.getSessionId(req),
+			req.headers['push-ref'] as string,
 		);
 	}
 
@@ -397,41 +392,16 @@ export class WorkflowsController {
 
 			if (newShareeIds.length) {
 				const users = await this.userRepository.getByIds(trx, newShareeIds);
-				await this.sharedWorkflowRepository.share(trx, workflow!, users);
+				await this.sharedWorkflowRepository.share(trx, workflow, users);
 			}
 		});
 
 		void this.internalHooks.onWorkflowSharingUpdate(workflowId, req.user.id, shareWithIds);
 
-		const recipients = await this.userRepository.getEmailsByIds(newShareeIds);
-
-		if (recipients.length === 0) return;
-
-		try {
-			await this.mailer.notifyWorkflowShared({
-				recipientEmails: recipients.map(({ email }) => email),
-				workflowName: workflow.name,
-				workflowId,
-				sharerFirstName: req.user.firstName,
-				baseUrl: this.urlService.getInstanceBaseUrl(),
-			});
-		} catch (error) {
-			void this.internalHooks.onEmailFailed({
-				user: req.user,
-				message_type: 'Workflow shared',
-				public_api: false,
-			});
-			if (error instanceof Error) {
-				throw new InternalServerError(`Please contact your administrator: ${error.message}`);
-			}
-		}
-
-		this.logger.info('Sent workflow shared email successfully', { sharerId: req.user.id });
-
-		void this.internalHooks.onUserTransactionalEmail({
-			user_id: req.user.id,
-			message_type: 'Workflow shared',
-			public_api: false,
+		await this.mailer.notifyWorkflowShared({
+			sharer: req.user,
+			newShareeIds,
+			workflow,
 		});
 	}
 }

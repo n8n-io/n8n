@@ -1,5 +1,3 @@
-import { useStorage } from '@/composables/useStorage';
-import { LOCAL_STORAGE_MAPPING_IS_ONBOARDED, STORES } from '@/constants';
 import type {
 	INodeUi,
 	IRunDataDisplayMode,
@@ -8,7 +6,14 @@ import type {
 	TargetItem,
 	XYPosition,
 } from '@/Interface';
-import type { INodeIssues, IRunData } from 'n8n-workflow';
+import { useStorage } from '@/composables/useStorage';
+import {
+	LOCAL_STORAGE_AUTOCOMPLETE_IS_ONBOARDED,
+	LOCAL_STORAGE_MAPPING_IS_ONBOARDED,
+	LOCAL_STORAGE_TABLE_HOVER_IS_ONBOARDED,
+	STORES,
+} from '@/constants';
+import type { INodeExecutionData, INodeIssues } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
@@ -18,7 +23,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 	state: (): NDVState => ({
 		activeNodeName: null,
 		mainPanelDimensions: {},
-		sessionId: '',
+		pushRef: '',
 		input: {
 			displayMode: 'schema',
 			nodeName: undefined,
@@ -40,23 +45,28 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			},
 		},
 		focusedMappableInput: '',
+		focusedInputPath: '',
 		mappingTelemetry: {},
 		hoveringItem: null,
+		expressionOutputItemIndex: 0,
 		draggable: {
 			isDragging: false,
 			type: '',
 			data: '',
-			activeTargetId: null,
-			stickyPosition: null,
+			dimensions: null,
+			activeTarget: null,
 		},
 		isMappingOnboarded: useStorage(LOCAL_STORAGE_MAPPING_IS_ONBOARDED).value === 'true',
+		isTableHoverOnboarded: useStorage(LOCAL_STORAGE_TABLE_HOVER_IS_ONBOARDED).value === 'true',
+		isAutocompleteOnboarded: useStorage(LOCAL_STORAGE_AUTOCOMPLETE_IS_ONBOARDED).value === 'true',
+		highlightDraggables: false,
 	}),
 	getters: {
 		activeNode(): INodeUi | null {
 			const workflowsStore = useWorkflowsStore();
 			return workflowsStore.getNodeByName(this.activeNodeName || '');
 		},
-		ndvInputData(): IRunData[] {
+		ndvInputData(): INodeExecutionData[] {
 			const workflowsStore = useWorkflowsStore();
 			const executionData = workflowsStore.getWorkflowExecution;
 			const inputNodeName: string | undefined = this.input.nodeName;
@@ -72,8 +82,20 @@ export const useNDVStore = defineStore(STORES.NDV, {
 				return [];
 			}
 
-			return executionData.data?.resultData?.runData?.[inputNodeName]?.[inputRunIndex]?.data
-				?.main?.[inputBranchIndex];
+			return (
+				executionData.data?.resultData?.runData?.[inputNodeName]?.[inputRunIndex]?.data?.main?.[
+					inputBranchIndex
+				] ?? []
+			);
+		},
+		ndvInputDataWithPinnedData(): INodeExecutionData[] {
+			const data = this.ndvInputData;
+			return this.ndvInputNodeName
+				? useWorkflowsStore().pinDataByNodeName(this.ndvInputNodeName) ?? data
+				: data;
+		},
+		hasInputData(): boolean {
+			return this.ndvInputDataWithPinnedData.length > 0;
 		},
 		getPanelDisplayMode() {
 			return (panel: NodePanelType) => this[panel].displayMode;
@@ -94,7 +116,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			return this.draggable.data;
 		},
 		canDraggableDrop(): boolean {
-			return this.draggable.activeTargetId !== null;
+			return this.draggable.activeTarget !== null;
 		},
 		outputPanelEditMode(): NDVState['output']['editMode'] {
 			return this.output.editMode;
@@ -106,7 +128,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			};
 		},
 		draggableStickyPos(): XYPosition | null {
-			return this.draggable.stickyPosition;
+			return this.draggable.activeTarget?.stickyPosition ?? null;
 		},
 		ndvInputNodeName(): string | undefined {
 			return this.input.nodeName;
@@ -117,7 +139,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 		ndvInputBranchIndex(): number | undefined {
 			return this.input.branch;
 		},
-		isDNVDataEmpty() {
+		isNDVDataEmpty() {
 			return (panel: 'input' | 'output'): boolean => this[panel].data.isEmpty;
 		},
 		isInputParentOfActiveNode(): boolean {
@@ -171,11 +193,11 @@ export const useNDVStore = defineStore(STORES.NDV, {
 				},
 			};
 		},
-		setNDVSessionId(): void {
-			this.sessionId = `ndv-${uuid()}`;
+		setNDVPushRef(): void {
+			this.pushRef = `ndv-${uuid()}`;
 		},
-		resetNDVSessionId(): void {
-			this.sessionId = '';
+		resetNDVPushRef(): void {
+			this.pushRef = '';
 		},
 		setPanelDisplayMode(params: { pane: NodePanelType; mode: IRunDataDisplayMode }): void {
 			this[params.pane].displayMode = params.mode;
@@ -189,13 +211,21 @@ export const useNDVStore = defineStore(STORES.NDV, {
 		setMappableNDVInputFocus(paramName: string): void {
 			this.focusedMappableInput = paramName;
 		},
-		draggableStartDragging({ type, data }: { type: string; data: string }): void {
+		draggableStartDragging({
+			type,
+			data,
+			dimensions,
+		}: {
+			type: string;
+			data: string;
+			dimensions: DOMRect | null;
+		}): void {
 			this.draggable = {
 				isDragging: true,
 				type,
 				data,
-				activeTargetId: null,
-				stickyPosition: null,
+				dimensions,
+				activeTarget: null,
 			};
 		},
 		draggableStopDragging(): void {
@@ -203,15 +233,11 @@ export const useNDVStore = defineStore(STORES.NDV, {
 				isDragging: false,
 				type: '',
 				data: '',
-				activeTargetId: null,
-				stickyPosition: null,
+				activeTarget: null,
 			};
 		},
-		setDraggableStickyPos(position: XYPosition | null): void {
-			this.draggable.stickyPosition = position;
-		},
-		setDraggableTargetId(id: string | null): void {
-			this.draggable.activeTargetId = id;
+		setDraggableTarget(target: NDVState['draggable']['activeTarget']): void {
+			this.draggable.activeTarget = target;
 		},
 		setMappingTelemetry(telemetry: { [key: string]: string | number | boolean }): void {
 			this.mappingTelemetry = { ...this.mappingTelemetry, ...telemetry };
@@ -220,6 +246,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			this.mappingTelemetry = {};
 		},
 		setHoveringItem(item: null | NDVState['hoveringItem']): void {
+			if (item) this.setTableHoverOnboarded();
 			this.hoveringItem = item;
 		},
 		setNDVBranchIndex(e: { pane: 'input' | 'output'; branchIndex: number }): void {
@@ -228,11 +255,20 @@ export const useNDVStore = defineStore(STORES.NDV, {
 		setNDVPanelDataIsEmpty(payload: { panel: 'input' | 'output'; isEmpty: boolean }): void {
 			this[payload.panel].data.isEmpty = payload.isEmpty;
 		},
-		disableMappingHint(store = true) {
+		setMappingOnboarded() {
 			this.isMappingOnboarded = true;
-			if (store) {
-				useStorage(LOCAL_STORAGE_MAPPING_IS_ONBOARDED).value = 'true';
-			}
+			useStorage(LOCAL_STORAGE_MAPPING_IS_ONBOARDED).value = 'true';
+		},
+		setTableHoverOnboarded() {
+			this.isTableHoverOnboarded = true;
+			useStorage(LOCAL_STORAGE_TABLE_HOVER_IS_ONBOARDED).value = 'true';
+		},
+		setAutocompleteOnboarded() {
+			this.isAutocompleteOnboarded = true;
+			useStorage(LOCAL_STORAGE_AUTOCOMPLETE_IS_ONBOARDED).value = 'true';
+		},
+		setHighlightDraggables(highlight: boolean) {
+			this.highlightDraggables = highlight;
 		},
 		updateNodeParameterIssues(issues: INodeIssues): void {
 			const workflowsStore = useWorkflowsStore();
@@ -250,6 +286,9 @@ export const useNDVStore = defineStore(STORES.NDV, {
 					},
 				});
 			}
+		},
+		setFocusedInputPath(path: string) {
+			this.focusedInputPath = path;
 		},
 	},
 });

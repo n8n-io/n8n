@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { IUpdateInformation, ResourceMapperReqParams } from '@/Interface';
-import { resolveRequiredParameters } from '@/mixins/workflowHelpers';
+import { resolveRequiredParameters } from '@/composables/useWorkflowHelpers';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type {
 	INode,
@@ -19,6 +19,7 @@ import { fieldCannotBeDeleted, parseResourceMapperFieldName } from '@/utils/node
 import { isResourceMapperValue } from '@/utils/typeGuards';
 import { i18n as locale } from '@/plugins/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 type Props = {
 	parameter: INodeProperties;
@@ -32,6 +33,7 @@ type Props = {
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
+const workflowsStore = useWorkflowsStore();
 
 const props = withDefaults(defineProps<Props>(), {
 	teleported: true,
@@ -67,6 +69,16 @@ watch(
 			emitValueChanged();
 			await initFetching();
 			setDefaultFieldValues(true);
+		}
+	},
+);
+
+// Reload fields to map when node is executed
+watch(
+	() => workflowsStore.getWorkflowExecution,
+	async (data) => {
+		if (data?.status === 'success' && state.paramValue.mappingMode === 'autoMapInputData') {
+			await initFetching(true);
 		}
 	},
 );
@@ -189,7 +201,7 @@ const defaultSelectedMatchingColumns = computed<string[]>(() => {
 					acc.push(field.id);
 				}
 				return acc;
-		  }, [] as string[]);
+			}, [] as string[]);
 });
 
 const pluralFieldWord = computed<string>(() => {
@@ -199,9 +211,9 @@ const pluralFieldWord = computed<string>(() => {
 	);
 });
 
-async function initFetching(inlineLading = false): Promise<void> {
+async function initFetching(inlineLoading = false): Promise<void> {
 	state.loadingError = false;
-	if (inlineLading) {
+	if (inlineLoading) {
 		state.refreshInProgress = true;
 	} else {
 		state.loading = true;
@@ -430,15 +442,17 @@ function emitValueChanged(): void {
 }
 
 function pruneParamValues(): void {
-	if (!state.paramValue.value) {
+	const { value, schema } = state.paramValue;
+	if (!value) {
 		return;
 	}
-	const valueKeys = Object.keys(state.paramValue.value);
-	valueKeys.forEach((key) => {
-		if (state.paramValue.value && state.paramValue.value[key] === null) {
-			delete state.paramValue.value[key];
+
+	const schemaKeys = new Set(schema.map((s) => s.id));
+	for (const key of Object.keys(value)) {
+		if (value[key] === null || !schemaKeys.has(key)) {
+			delete value[key];
 		}
-	});
+	}
 }
 
 defineExpose({
@@ -459,8 +473,8 @@ defineExpose({
 			:loading-error="state.loadingError"
 			:fields-to-map="state.paramValue.schema"
 			:teleported="teleported"
-			@modeChanged="onModeChanged"
-			@retryFetch="initFetching"
+			@mode-changed="onModeChanged"
+			@retry-fetch="initFetching"
 		/>
 		<MatchingColumnsSelect
 			v-if="showMatchingColumnsSelector"
@@ -474,8 +488,8 @@ defineExpose({
 			:service-name="nodeType?.displayName || locale.baseText('generic.service')"
 			:teleported="teleported"
 			:refresh-in-progress="state.refreshInProgress"
-			@matchingColumnsChanged="onMatchingColumnsChanged"
-			@refreshFieldList="initFetching(true)"
+			@matching-columns-changed="onMatchingColumnsChanged"
+			@refresh-field-list="initFetching(true)"
 		/>
 		<n8n-text v-if="!showMappingModeSelect && state.loading" size="small">
 			<n8n-icon icon="sync-alt" size="xsmall" :spin="true" />
@@ -500,10 +514,10 @@ defineExpose({
 			:loading="state.loading"
 			:teleported="teleported"
 			:refresh-in-progress="state.refreshInProgress"
-			@fieldValueChanged="fieldValueChanged"
-			@removeField="removeField"
-			@addField="addField"
-			@refreshFieldList="initFetching(true)"
+			@field-value-changed="fieldValueChanged"
+			@remove-field="removeField"
+			@add-field="addField"
+			@refresh-field-list="initFetching(true)"
 		/>
 		<n8n-notice
 			v-if="state.paramValue.mappingMode === 'autoMapInputData' && hasAvailableMatchingColumns"

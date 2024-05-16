@@ -74,7 +74,7 @@ const datatableColumns = computed<DatatableColumn[]>(() => [
 					path: 'actions',
 					label: '',
 				},
-		  ]
+			]
 		: []),
 ]);
 
@@ -116,6 +116,7 @@ function resetNewVariablesList() {
 }
 
 async function initialize() {
+	if (!isFeatureEnabled.value) return;
 	await environmentsStore.fetchAllVariables();
 
 	allVariables.value = [...environmentsStore.variables];

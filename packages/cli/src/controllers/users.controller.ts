@@ -1,28 +1,22 @@
+import { plainToInstance } from 'class-transformer';
+
+import { AuthService } from '@/auth/auth.service';
 import { User } from '@db/entities/User';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import {
-	RequireGlobalScope,
-	Authorized,
-	Delete,
-	Get,
-	RestController,
-	Patch,
-	Licensed,
-} from '@/decorators';
+import { GlobalScope, Delete, Get, RestController, Patch, Licensed } from '@/decorators';
 import {
 	ListQuery,
 	UserRequest,
 	UserRoleChangePayload,
 	UserSettingsUpdatePayload,
 } from '@/requests';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import type { PublicUser, ITelemetryUserDeletionData } from '@/Interfaces';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { UserRepository } from '@db/repositories/user.repository';
-import { plainToInstance } from 'class-transformer';
 import { UserService } from '@/services/user.service';
 import { listQueryMiddleware } from '@/middlewares';
 import { Logger } from '@/Logger';
@@ -33,7 +27,6 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooks } from '@/InternalHooks';
 import { validateEntity } from '@/GenericHelpers';
 
-@Authorized()
 @RestController('/users')
 export class UsersController {
 	constructor(
@@ -43,7 +36,8 @@ export class UsersController {
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly userRepository: UserRepository,
-		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
+		private readonly activeWorkflowManager: ActiveWorkflowManager,
+		private readonly authService: AuthService,
 		private readonly userService: UserService,
 	) {}
 
@@ -86,7 +80,7 @@ export class UsersController {
 	}
 
 	@Get('/', { middlewares: listQueryMiddleware })
-	@RequireGlobalScope('user:list')
+	@GlobalScope('user:list')
 	async listUsers(req: ListQuery.Request) {
 		const { listQueryOptions } = req;
 
@@ -107,7 +101,7 @@ export class UsersController {
 	}
 
 	@Get('/:id/password-reset-link')
-	@RequireGlobalScope('user:resetPassword')
+	@GlobalScope('user:resetPassword')
 	async getUserPasswordResetLink(req: UserRequest.PasswordResetLink) {
 		const user = await this.userRepository.findOneOrFail({
 			where: { id: req.params.id },
@@ -116,14 +110,16 @@ export class UsersController {
 			throw new NotFoundError('User not found');
 		}
 
-		const link = this.userService.generatePasswordResetUrl(user);
+		const link = this.authService.generatePasswordResetUrl(user);
 		return { link };
 	}
 
 	@Patch('/:id/settings')
-	@RequireGlobalScope('user:update')
+	@GlobalScope('user:update')
 	async updateUserSettings(req: UserRequest.UserSettingsUpdate) {
-		const payload = plainToInstance(UserSettingsUpdatePayload, req.body);
+		const payload = plainToInstance(UserSettingsUpdatePayload, req.body, {
+			excludeExtraneousValues: true,
+		});
 
 		const id = req.params.id;
 
@@ -141,7 +137,7 @@ export class UsersController {
 	 * Delete a user. Optionally, designate a transferee for their workflows and credentials.
 	 */
 	@Delete('/:id')
-	@RequireGlobalScope('user:delete')
+	@GlobalScope('user:delete')
 	async deleteUser(req: UserRequest.Delete) {
 		const { id: idToDelete } = req.params;
 
@@ -270,7 +266,7 @@ export class UsersController {
 				ownedSharedWorkflows.map(async ({ workflow }) => {
 					if (workflow.active) {
 						// deactivate before deleting
-						await this.activeWorkflowRunner.remove(workflow.id);
+						await this.activeWorkflowManager.remove(workflow.id);
 					}
 					return workflow;
 				}),
@@ -293,13 +289,15 @@ export class UsersController {
 	}
 
 	@Patch('/:id/role')
-	@RequireGlobalScope('user:changeRole')
+	@GlobalScope('user:changeRole')
 	@Licensed('feat:advancedPermissions')
 	async changeGlobalRole(req: UserRequest.ChangeRole) {
 		const { NO_ADMIN_ON_OWNER, NO_USER, NO_OWNER_ON_OWNER } =
 			UsersController.ERROR_MESSAGES.CHANGE_ROLE;
 
-		const payload = plainToInstance(UserRoleChangePayload, req.body);
+		const payload = plainToInstance(UserRoleChangePayload, req.body, {
+			excludeExtraneousValues: true,
+		});
 		await validateEntity(payload);
 
 		const targetUser = await this.userRepository.findOne({

@@ -8,10 +8,9 @@ import type {
 	ILoadOptionsFunctions,
 } from 'n8n-workflow';
 
-import type { ClientOptions } from 'openai';
-import { OpenAI } from 'langchain/llms/openai';
-import { logWrapper } from '../../../utils/logWrapper';
+import { OpenAI, type ClientOptions } from '@langchain/openai';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 
 type LmOpenAiOptions = {
 	baseURL?: string;
@@ -241,10 +240,11 @@ export class LmOpenAi implements INodeType {
 			configuration,
 			timeout: options.timeout ?? 60000,
 			maxRetries: options.maxRetries ?? 2,
+			callbacks: [new N8nLlmTracing(this)],
 		});
 
 		return {
-			response: logWrapper(model, this),
+			response: model,
 		};
 	}
 }

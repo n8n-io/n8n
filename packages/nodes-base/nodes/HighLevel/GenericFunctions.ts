@@ -5,17 +5,17 @@ import type {
 	IExecutePaginationFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	IN8nHttpFullResponse,
 	INodeExecutionData,
 	INodePropertyOptions,
 	IPollFunctions,
+	IRequestOptions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-
-import type { OptionsWithUri } from 'request';
 
 import type { ToISOTimeOptions } from 'luxon';
 import { DateTime } from 'luxon';
@@ -131,14 +131,14 @@ export async function highLevelApiRequest(
 		| IPollFunctions
 		| IHookFunctions
 		| ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
 ) {
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		method,
 		body,
 		qs,

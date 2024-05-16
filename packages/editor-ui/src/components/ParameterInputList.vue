@@ -18,14 +18,14 @@
 					:node-values="nodeValues"
 					:path="getPath(parameter.name)"
 					:is-read-only="isReadOnly"
-					@valueChanged="valueChanged"
+					@value-changed="valueChanged"
 				/>
 			</div>
 
-			<ImportParameter
+			<ImportCurlParameter
 				v-else-if="parameter.type === 'curlImport'"
 				:is-read-only="isReadOnly"
-				@valueChanged="valueChanged"
+				@value-changed="valueChanged"
 			/>
 
 			<n8n-notice
@@ -49,7 +49,7 @@
 				class="multi-parameter"
 			>
 				<n8n-icon-button
-					v-if="hideDelete !== true && !isReadOnly"
+					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
 					type="tertiary"
 					text
 					size="mini"
@@ -65,26 +65,38 @@
 					:underline="true"
 					color="text-dark"
 				/>
-				<Suspense>
-					<CollectionParameter
-						v-if="parameter.type === 'collection'"
-						:parameter="parameter"
-						:values="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
-						:node-values="nodeValues"
-						:path="getPath(parameter.name)"
-						:is-read-only="isReadOnly"
-						@valueChanged="valueChanged"
-					/>
-					<FixedCollectionParameter
-						v-else-if="parameter.type === 'fixedCollection'"
-						:parameter="parameter"
-						:values="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
-						:node-values="nodeValues"
-						:path="getPath(parameter.name)"
-						:is-read-only="isReadOnly"
-						@valueChanged="valueChanged"
-					/>
+				<Suspense v-if="!asyncLoadingError">
+					<template #default>
+						<CollectionParameter
+							v-if="parameter.type === 'collection'"
+							:parameter="parameter"
+							:values="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
+							:node-values="nodeValues"
+							:path="getPath(parameter.name)"
+							:is-read-only="isReadOnly"
+							@value-changed="valueChanged"
+						/>
+						<FixedCollectionParameter
+							v-else-if="parameter.type === 'fixedCollection'"
+							:parameter="parameter"
+							:values="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
+							:node-values="nodeValues"
+							:path="getPath(parameter.name)"
+							:is-read-only="isReadOnly"
+							@value-changed="valueChanged"
+						/>
+					</template>
+					<template #fallback>
+						<n8n-text size="small" class="async-notice">
+							<n8n-icon icon="sync-alt" size="xsmall" :spin="true" />
+							{{ $locale.baseText('parameterInputList.loadingFields') }}
+						</n8n-text>
+					</template>
 				</Suspense>
+				<n8n-text v-else size="small" color="danger" class="async-notice">
+					<n8n-icon icon="exclamation-triangle" size="xsmall" />
+					{{ $locale.baseText('parameterInputList.loadingError') }}
+				</n8n-text>
 			</div>
 			<ResourceMapper
 				v-else-if="parameter.type === 'resourceMapper'"
@@ -94,7 +106,7 @@
 				:dependent-parameters-values="getDependentParametersValues(parameter)"
 				input-size="small"
 				label-size="small"
-				@valueChanged="valueChanged"
+				@value-changed="valueChanged"
 			/>
 			<FilterConditions
 				v-else-if="parameter.type === 'filter'"
@@ -103,14 +115,23 @@
 				:path="getPath(parameter.name)"
 				:node="node"
 				:read-only="isReadOnly"
-				@valueChanged="valueChanged"
+				@value-changed="valueChanged"
+			/>
+			<AssignmentCollection
+				v-else-if="parameter.type === 'assignmentCollection'"
+				:parameter="parameter"
+				:value="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
+				:path="getPath(parameter.name)"
+				:node="node"
+				:is-read-only="isReadOnly"
+				@value-changed="valueChanged"
 			/>
 			<div
 				v-else-if="displayNodeParameter(parameter) && credentialsParameterIndex !== index"
 				class="parameter-item"
 			>
 				<n8n-icon-button
-					v-if="hideDelete !== true && !isReadOnly"
+					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
 					type="tertiary"
 					text
 					size="mini"
@@ -150,17 +171,17 @@ import type {
 import { deepCopy } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import type { PropType } from 'vue';
-import { defineAsyncComponent, defineComponent } from 'vue';
+import { defineAsyncComponent, defineComponent, onErrorCaptured, ref } from 'vue';
 
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 
-import ImportParameter from '@/components/ImportParameter.vue';
+import ImportCurlParameter from '@/components/ImportCurlParameter.vue';
 import MultipleParameter from '@/components/MultipleParameter.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
-import Conditions from '@/components/FilterConditions/FilterConditions.vue';
+import FilterConditions from '@/components/FilterConditions/FilterConditions.vue';
+import AssignmentCollection from '@/components/AssignmentCollection/AssignmentCollection.vue';
 import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import {
@@ -170,6 +191,8 @@ import {
 } from '@/utils/nodeTypesUtils';
 import { get, set } from 'lodash-es';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useRouter } from 'vue-router';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 const FixedCollectionParameter = defineAsyncComponent(
 	async () => await import('./FixedCollectionParameter.vue'),
@@ -185,11 +208,11 @@ export default defineComponent({
 		ParameterInputFull,
 		FixedCollectionParameter,
 		CollectionParameter,
-		ImportParameter,
+		ImportCurlParameter,
 		ResourceMapper,
-		FilterConditions: Conditions,
+		FilterConditions,
+		AssignmentCollection,
 	},
-	mixins: [workflowHelpers],
 	props: {
 		nodeValues: {
 			type: Object as PropType<INodeParameters>,
@@ -226,9 +249,34 @@ export default defineComponent({
 	},
 	setup() {
 		const nodeHelpers = useNodeHelpers();
+		const asyncLoadingError = ref(false);
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers({ router });
+
+		// This will catch errors in async components
+		onErrorCaptured((e, component) => {
+			if (
+				!['FixedCollectionParameter', 'CollectionParameter'].includes(
+					component?.$options.name as string,
+				)
+			) {
+				return;
+			}
+			asyncLoadingError.value = true;
+			console.error(e);
+			window?.Sentry?.captureException(e, {
+				tags: {
+					asyncLoadingError: true,
+				},
+			});
+			// Don't propagate the error further
+			return false;
+		});
 
 		return {
 			nodeHelpers,
+			asyncLoadingError,
+			workflowHelpers,
 		};
 	},
 	computed: {
@@ -437,7 +485,7 @@ export default defineComponent({
 					} else {
 						// Contains probably no expression with a missing parameter so resolve
 						try {
-							nodeValues[key] = this.resolveExpression(
+							nodeValues[key] = this.workflowHelpers.resolveExpression(
 								rawValues[key],
 								nodeValues,
 							) as NodeParameterValue;
@@ -514,7 +562,7 @@ export default defineComponent({
 			// Get the resolved parameter values of the current node
 			const currentNodeParameters = this.ndvStore.activeNode?.parameters;
 			try {
-				const resolvedNodeParameters = this.resolveParameter(currentNodeParameters);
+				const resolvedNodeParameters = this.workflowHelpers.resolveParameter(currentNodeParameters);
 
 				const returnValues: string[] = [];
 				for (const parameterPath of loadOptionsDependsOn) {
@@ -571,6 +619,11 @@ export default defineComponent({
 		a {
 			font-weight: var(--font-weight-bold);
 		}
+	}
+
+	.async-notice {
+		display: block;
+		padding: var(--spacing-3xs) 0;
 	}
 }
 </style>

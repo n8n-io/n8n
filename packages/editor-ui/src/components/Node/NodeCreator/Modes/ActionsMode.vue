@@ -13,6 +13,8 @@ import {
 	REGULAR_NODE_CREATOR_VIEW,
 	TRIGGER_NODE_CREATOR_VIEW,
 	CUSTOM_API_CALL_KEY,
+	OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE,
+	OPEN_AI_NODE_TYPE,
 } from '@/constants';
 
 import { useUsersStore } from '@/stores/users.store';
@@ -24,6 +26,7 @@ import { useViewStacks } from '../composables/useViewStacks';
 
 import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
+import type { IDataObject } from 'n8n-workflow';
 
 const emit = defineEmits({
 	nodeTypeSelected: (nodeTypes: string[]) => true,
@@ -145,6 +148,12 @@ function onSelected(actionCreateElement: INodeCreateElement) {
 		const actionNode = actions.value[0].key;
 
 		emit('nodeTypeSelected', [actionData.key as string, actionNode]);
+	} else if (
+		actionData.key === OPEN_AI_NODE_TYPE &&
+		(actionData?.value as IDataObject)?.resource === 'assistant' &&
+		(actionData?.value as IDataObject)?.operation === 'message'
+	) {
+		emit('nodeTypeSelected', [OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE]);
 	} else {
 		emit('nodeTypeSelected', [actionData.key as string]);
 	}

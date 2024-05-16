@@ -2,11 +2,11 @@ import type {
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	IHttpRequestOptions,
+	IRequestOptions,
 	IWebhookFunctions,
 	JsonObject,
 } from 'n8n-workflow';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
-import type { OptionsWithUri } from 'request';
 import MailComposer from 'nodemailer/lib/mail-composer';
 export namespace BrevoNode {
 	type ValidEmailFields = { to: string } | { sender: string } | { cc: string } | { bcc: string };
@@ -311,7 +311,7 @@ export namespace BrevoWebhookApi {
 	export const fetchWebhooks = async (ref: IHookFunctions, type: string): Promise<Webhooks> => {
 		const endpoint = `${baseURL}/webhooks?type=${type}`;
 
-		const options: OptionsWithUri = {
+		const options: IRequestOptions = {
 			method: 'GET',
 			headers: {
 				Accept: 'application/json',
@@ -336,7 +336,7 @@ export namespace BrevoWebhookApi {
 	): Promise<WebhookId> => {
 		const endpoint = `${baseURL}/webhooks`;
 
-		const options: OptionsWithUri = {
+		const options: IRequestOptions = {
 			method: 'POST',
 			headers: {
 				Accept: 'application/json',
@@ -362,7 +362,7 @@ export namespace BrevoWebhookApi {
 		const endpoint = `${baseURL}/webhooks/${webhookId}`;
 		const body = {};
 
-		const options: OptionsWithUri = {
+		const options: IRequestOptions = {
 			method: 'DELETE',
 			headers: {
 				Accept: 'application/json',

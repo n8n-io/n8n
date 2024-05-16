@@ -7,7 +7,7 @@
 				:disabled="disabled"
 				:maxlength="maxLength"
 				clearable
-				@update:modelValue="onSearchChange"
+				@update:model-value="onSearchChange"
 			>
 				<template #prefix>
 					<font-awesome-icon icon="search" />

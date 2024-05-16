@@ -76,7 +76,7 @@ jobs:
       image: cypress/${{ inputs.run-env }}
       options: --user 1001
     steps:
-      - uses: actions/checkout@v3.5.3
+      - uses: actions/checkout@v4.1.1
         with:
           repository: n8n-io/n8n
           ref: ${{ inputs.branch }}
@@ -93,7 +93,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Cypress build
-        uses: cypress-io/github-action@v5.8.3
+        uses: cypress-io/github-action@v6.6.1
         with:
           # Disable running of tests within install job
           runTests: false
@@ -106,7 +106,7 @@ jobs:
         run: pnpm cypress:install
 
       - name: Cache build artifacts
-        uses: actions/cache/save@v3.3.1
+        uses: actions/cache/save@v4.0.0
         with:
           path: |
             /github/home/.cache
@@ -127,7 +127,7 @@ jobs:
         # running the same tests multiple times
         containers: ${{ fromJSON( inputs.spec == 'e2e/*' && inputs.containers || '[1]' ) }}
     steps:
-      - uses: actions/checkout@v3.5.3
+      - uses: actions/checkout@v4.1.1
         with:
           repository: n8n-io/n8n
           ref: ${{ inputs.branch }}
@@ -141,7 +141,7 @@ jobs:
       - uses: pnpm/action-setup@v2.4.0
 
       - name: Restore cached pnpm modules
-        uses: actions/cache/restore@v3.3.1
+        uses: actions/cache/restore@v4.0.0
         with:
           path: |
             /github/home/.cache

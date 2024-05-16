@@ -7,11 +7,10 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 	IRequestOptionsSimplified,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError, jsonParse } from 'n8n-workflow';
-
-import type { OptionsWithUri } from 'request';
-import type { RequestPromiseOptions } from 'request-promise-native';
 
 export class GraphQL implements INodeType {
 	description: INodeTypeDescription = {
@@ -340,12 +339,16 @@ export class GraphQL implements INodeType {
 			// Do nothing
 		}
 
-		let requestOptions: OptionsWithUri & RequestPromiseOptions;
+		let requestOptions: IRequestOptions;
 
 		const returnItems: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
-				const requestMethod = this.getNodeParameter('requestMethod', itemIndex, 'POST') as string;
+				const requestMethod = this.getNodeParameter(
+					'requestMethod',
+					itemIndex,
+					'POST',
+				) as IHttpRequestMethods;
 				const endpoint = this.getNodeParameter('endpoint', itemIndex, '') as string;
 				const requestFormat = this.getNodeParameter(
 					'requestFormat',
@@ -421,32 +424,31 @@ export class GraphQL implements INodeType {
 					requestOptions.qs.query = gqlQuery;
 				} else {
 					if (requestFormat === 'json') {
-						requestOptions.body = {
+						const jsonBody = {
 							...requestOptions.body,
 							query: gqlQuery,
 							variables: this.getNodeParameter('variables', itemIndex, {}) as object,
 							operationName: this.getNodeParameter('operationName', itemIndex) as string,
 						};
-						if (typeof requestOptions.body.variables === 'string') {
+						if (typeof jsonBody.variables === 'string') {
 							try {
-								requestOptions.body.variables = JSON.parse(
-									(requestOptions.body.variables as string) || '{}',
-								);
+								jsonBody.variables = JSON.parse(jsonBody.variables || '{}');
 							} catch (error) {
 								throw new NodeOperationError(
 									this.getNode(),
 									'Using variables failed:\n' +
-										(requestOptions.body.variables as string) +
+										(jsonBody.variables as string) +
 										'\n\nWith error message:\n' +
 										(error as string),
 									{ itemIndex },
 								);
 							}
 						}
-						if (requestOptions.body.operationName === '') {
-							requestOptions.body.operationName = null;
+						if (jsonBody.operationName === '') {
+							jsonBody.operationName = null;
 						}
 						requestOptions.json = true;
+						requestOptions.body = jsonBody;
 					} else {
 						requestOptions.body = gqlQuery;
 					}

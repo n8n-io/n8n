@@ -6,13 +6,13 @@ import {
 	type INodeTypeDescription,
 	type SupplyData,
 } from 'n8n-workflow';
-import { ChatBedrock } from 'langchain/chat_models/bedrock';
-import { logWrapper } from '../../../utils/logWrapper';
+import { BedrockChat } from '@langchain/community/chat_models/bedrock';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 // Dependencies needed underneath the hood. We add them
 // here only to track where what dependency is used
 import '@aws-sdk/credential-provider-node';
 import '@aws-sdk/client-bedrock-runtime';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatAwsBedrock implements INodeType {
 	description: INodeTypeDescription = {
@@ -68,7 +68,7 @@ export class LmChatAwsBedrock implements INodeType {
 						routing: {
 							request: {
 								method: 'GET',
-								url: '/foundation-models?&byOutputModality=TEXT',
+								url: '/foundation-models?&byOutputModality=TEXT&byInferenceType=ON_DEMAND',
 							},
 							output: {
 								postReceive: [
@@ -76,13 +76,6 @@ export class LmChatAwsBedrock implements INodeType {
 										type: 'rootProperty',
 										properties: {
 											property: 'modelSummaries',
-										},
-									},
-									{
-										type: 'filter',
-										properties: {
-											// Not a foundational model
-											pass: "={{ !['anthropic.claude-instant-v1-100k'].includes($responseItem.modelId) }}",
 										},
 									},
 									{
@@ -149,7 +142,7 @@ export class LmChatAwsBedrock implements INodeType {
 			maxTokensToSample: number;
 		};
 
-		const model = new ChatBedrock({
+		const model = new BedrockChat({
 			region: credentials.region as string,
 			model: modelName,
 			temperature: options.temperature,
@@ -159,10 +152,11 @@ export class LmChatAwsBedrock implements INodeType {
 				accessKeyId: credentials.accessKeyId as string,
 				sessionToken: credentials.sessionToken as string,
 			},
+			callbacks: [new N8nLlmTracing(this)],
 		});
 
 		return {
-			response: logWrapper(model, this),
+			response: model,
 		};
 	}
 }

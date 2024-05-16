@@ -5,10 +5,11 @@ import {
 	type INodeTypeDescription,
 	type SupplyData,
 } from 'n8n-workflow';
-import type { PineconeLibArgs } from 'langchain/vectorstores/pinecone';
-import { PineconeStore } from 'langchain/vectorstores/pinecone';
+import type { PineconeStoreParams } from '@langchain/pinecone';
+import { PineconeStore } from '@langchain/pinecone';
 import { Pinecone } from '@pinecone-database/pinecone';
-import type { Embeddings } from 'langchain/embeddings/base';
+
+import type { Embeddings } from '@langchain/core/embeddings';
 import { logWrapper } from '../../../utils/logWrapper';
 import { metadataFilterField } from '../../../utils/sharedFields';
 import { getMetadataFiltersValues } from '../../../utils/helpers';
@@ -99,11 +100,10 @@ export class VectorStorePineconeLoad implements INodeType {
 
 		const client = new Pinecone({
 			apiKey: credentials.apiKey as string,
-			environment: credentials.environment as string,
 		});
 
 		const pineconeIndex = client.Index(index);
-		const config: PineconeLibArgs = {
+		const config: PineconeStoreParams = {
 			namespace: namespace || undefined,
 			pineconeIndex,
 			filter: getMetadataFiltersValues(this, itemIndex),

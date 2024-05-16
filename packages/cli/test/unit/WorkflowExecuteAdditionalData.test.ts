@@ -1,34 +1,41 @@
-import { Container } from 'typedi';
-import { ExecutionMetadataRepository } from '@db/repositories/executionMetadata.repository';
-import { ExecutionMetadataService } from '@/services/executionMetadata.service';
+import { VariablesService } from '@/environments/variables/variables.service.ee';
 import { mockInstance } from '../shared/mocking';
+import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
+import { getBase } from '@/WorkflowExecuteAdditionalData';
+import Container from 'typedi';
+import { CredentialsHelper } from '@/CredentialsHelper';
+import { SecretsHelper } from '@/SecretsHelpers';
 
 describe('WorkflowExecuteAdditionalData', () => {
-	const repository = mockInstance(ExecutionMetadataRepository);
+	const messageEventBus = mockInstance(MessageEventBus);
+	const variablesService = mockInstance(VariablesService);
+	variablesService.getAllCached.mockResolvedValue([]);
+	const credentialsHelper = mockInstance(CredentialsHelper);
+	const secretsHelper = mockInstance(SecretsHelper);
+	Container.set(MessageEventBus, messageEventBus);
+	Container.set(VariablesService, variablesService);
+	Container.set(CredentialsHelper, credentialsHelper);
+	Container.set(SecretsHelper, secretsHelper);
 
-	test('Execution metadata is saved in a batch', async () => {
-		const toSave = {
-			test1: 'value1',
-			test2: 'value2',
+	test('logAiEvent should call MessageEventBus', async () => {
+		const additionalData = await getBase('user-id');
+
+		const eventName = 'n8n.ai.memory.get.messages';
+		const payload = {
+			msg: 'test message',
+			executionId: '123',
+			nodeName: 'n8n-memory',
+			workflowId: 'workflow-id',
+			workflowName: 'workflow-name',
+			nodeType: 'n8n-memory',
 		};
-		const executionId = '1234';
 
-		await Container.get(ExecutionMetadataService).save(executionId, toSave);
+		await additionalData.logAiEvent(eventName, payload);
 
-		expect(repository.save).toHaveBeenCalledTimes(1);
-		expect(repository.save.mock.calls[0]).toEqual([
-			[
-				{
-					execution: { id: executionId },
-					key: 'test1',
-					value: 'value1',
-				},
-				{
-					execution: { id: executionId },
-					key: 'test2',
-					value: 'value2',
-				},
-			],
-		]);
+		expect(messageEventBus.sendAiNodeEvent).toHaveBeenCalledTimes(1);
+		expect(messageEventBus.sendAiNodeEvent).toHaveBeenCalledWith({
+			eventName,
+			payload,
+		});
 	});
 });

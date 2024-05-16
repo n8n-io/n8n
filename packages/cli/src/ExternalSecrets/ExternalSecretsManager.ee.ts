@@ -204,7 +204,7 @@ export class ExternalSecretsManager {
 		return Object.keys(this.providers);
 	}
 
-	getSecret(provider: string, name: string): IDataObject | undefined {
+	getSecret(provider: string, name: string) {
 		return this.getProvider(provider)?.getSecret(name);
 	}
 

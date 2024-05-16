@@ -71,10 +71,13 @@ export class VariablesService {
 		this.validateVariable(variable);
 
 		void Container.get(InternalHooks).onVariableCreated({ variable_type: variable.type });
-		const saveResult = await this.variablesRepository.save({
-			...variable,
-			id: generateNanoId(),
-		});
+		const saveResult = await this.variablesRepository.save(
+			{
+				...variable,
+				id: generateNanoId(),
+			},
+			{ transaction: false },
+		);
 		await this.updateCache();
 		return saveResult;
 	}

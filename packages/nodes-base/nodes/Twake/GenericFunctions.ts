@@ -1,5 +1,11 @@
-import type { OptionsWithUri } from 'request';
-import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IHookFunctions,
+	IHttpRequestMethods,
+	ILoadOptionsFunctions,
+	IRequestOptions,
+} from 'n8n-workflow';
 
 /**
  * Make an API request to Twake
@@ -7,13 +13,13 @@ import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n
  */
 export async function twakeApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: object,
-	query?: object,
+	query?: IDataObject,
 	uri?: string,
 ) {
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {},
 		method,
 		body,

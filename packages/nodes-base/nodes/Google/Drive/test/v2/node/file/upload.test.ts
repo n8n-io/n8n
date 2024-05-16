@@ -11,7 +11,7 @@ jest.mock('../../../../v2/transport', () => {
 	const originalModule = jest.requireActual('../../../../v2/transport');
 	return {
 		...originalModule,
-		googleApiRequest: jest.fn(async function (method: string) {
+		googleApiRequest: jest.fn(async function (method: IHttpRequestMethods) {
 			if (method === 'POST') {
 				return {
 					headers: { location: 'someLocation' },

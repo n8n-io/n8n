@@ -39,6 +39,7 @@ import {
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 	SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
 	SETUP_CREDENTIALS_MODAL_KEY,
+	GENERATE_CURL_MODAL_KEY,
 } from '@/constants';
 import type {
 	CloudUpdateLinkSourceType,
@@ -46,7 +47,6 @@ import type {
 	IFakeDoorLocation,
 	INodeUi,
 	IOnboardingCallPrompt,
-	IUser,
 	UIState,
 	UTMCampaign,
 	XYPosition,
@@ -55,6 +55,8 @@ import type {
 	ThemeOption,
 	AppliedThemeOption,
 	SuggestedTemplates,
+	NotificationOptions,
+	ModalState,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@/stores/n8nRoot.store';
@@ -64,6 +66,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { hasPermission } from '@/rbac/permissions';
 import { useTelemetryStore } from '@/stores/telemetry.store';
+import { useUsersStore } from '@/stores/users.store';
 import { dismissBannerPermanently } from '@/api/ui';
 import type { BannerName } from 'n8n-workflow';
 import {
@@ -73,7 +76,6 @@ import {
 	isValidTheme,
 	updateTheme,
 } from './ui.utils';
-import { useUsersStore } from './users.store';
 
 let savedTheme: ThemeOption = 'system';
 try {
@@ -132,8 +134,16 @@ export const useUIStore = defineStore(STORES.UI, {
 			},
 			[IMPORT_CURL_MODAL_KEY]: {
 				open: false,
-				curlCommand: '',
-				httpNodeParameters: '',
+				data: {
+					curlCommand: '',
+				},
+			},
+			[GENERATE_CURL_MODAL_KEY]: {
+				open: false,
+				data: {
+					service: '',
+					request: '',
+				},
 			},
 			[LOG_STREAM_MODAL_KEY]: {
 				open: false,
@@ -144,7 +154,7 @@ export const useUIStore = defineStore(STORES.UI, {
 				mode: '',
 				activeId: null,
 				showAuthSelector: false,
-			},
+			} as ModalState,
 		},
 		modalStack: [],
 		sidebarMenuCollapsed: true,
@@ -172,12 +182,12 @@ export const useUIStore = defineStore(STORES.UI, {
 		stateIsDirty: false,
 		lastSelectedNode: null,
 		lastSelectedNodeOutputIndex: null,
+		lastSelectedNodeEndpointUuid: null,
 		nodeViewOffsetPosition: [0, 0],
 		nodeViewMoveInProgress: false,
 		selectedNodes: [],
 		nodeViewInitialized: false,
 		addFirstStepOnLoad: false,
-		executionSidebarAutoRefresh: true,
 		bannersHeight: 0,
 		bannerStack: [],
 		suggestedTemplates: undefined,
@@ -192,11 +202,10 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		logo(): string {
 			const { releaseChannel } = useSettingsStore().settings;
-			const type = this.appliedTheme === 'dark' ? '-dark-mode.svg' : '.svg';
-
-			return releaseChannel === 'stable'
-				? `n8n-logo-expanded${type}`
-				: `n8n-${releaseChannel}-logo${type}`;
+			const suffix = this.appliedTheme === 'dark' ? '-dark.svg' : '.svg';
+			return `static/logo/${
+				releaseChannel === 'stable' ? 'expanded' : `channel/${releaseChannel}`
+			}${suffix}`;
 		},
 		contextBasedTranslationKeys() {
 			const settingsStore = useSettingsStore();
@@ -264,12 +273,6 @@ export const useUIStore = defineStore(STORES.UI, {
 				return workflowsStore.getNodeByName(this.lastSelectedNode);
 			}
 			return null;
-		},
-		getCurlCommand(): string | undefined {
-			return this.modals[IMPORT_CURL_MODAL_KEY].curlCommand;
-		},
-		getHttpNodeParameters(): string | undefined {
-			return this.modals[IMPORT_CURL_MODAL_KEY].httpNodeParameters;
 		},
 		areExpressionsDisabled(): boolean {
 			return this.currentView === VIEWS.DEMO;
@@ -342,7 +345,6 @@ export const useUIStore = defineStore(STORES.UI, {
 				let linkUrl = '';
 
 				const searchParams = new URLSearchParams();
-				const { isInstanceOwner } = useUsersStore();
 
 				if (deploymentType === 'cloud' && hasPermission(['instanceOwner'])) {
 					const adminPanelHost = new URL(window.location.href).host.split('.').slice(1).join('.');
@@ -466,26 +468,37 @@ export const useUIStore = defineStore(STORES.UI, {
 			this.setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 			this.openModal(CREDENTIAL_EDIT_MODAL_KEY);
 		},
-		async getNextOnboardingPrompt(): Promise<IOnboardingCallPrompt> {
+		async getNextOnboardingPrompt(): Promise<IOnboardingCallPrompt | null> {
 			const rootStore = useRootStore();
 			const instanceId = rootStore.instanceId;
-			// TODO: current USER
-			const currentUser = {} as IUser;
-			return await fetchNextOnboardingPrompt(instanceId, currentUser);
+			const { currentUser } = useUsersStore();
+			if (currentUser) {
+				return await fetchNextOnboardingPrompt(instanceId, currentUser);
+			}
+			return null;
 		},
-		async applyForOnboardingCall(email: string): Promise<string> {
+		async applyForOnboardingCall(email: string): Promise<string | null> {
 			const rootStore = useRootStore();
 			const instanceId = rootStore.instanceId;
-			// TODO: current USER
-			const currentUser = {} as IUser;
-			return await applyForOnboardingCall(instanceId, currentUser, email);
+			const { currentUser } = useUsersStore();
+			if (currentUser) {
+				return await applyForOnboardingCall(instanceId, currentUser, email);
+			}
+			return null;
 		},
-		async submitContactEmail(email: string, agree: boolean): Promise<string> {
+		async submitContactEmail(email: string, agree: boolean): Promise<string | null> {
 			const rootStore = useRootStore();
 			const instanceId = rootStore.instanceId;
-			// TODO: current USER
-			const currentUser = {} as IUser;
-			return await submitEmailOnSignup(instanceId, currentUser, email || currentUser.email, agree);
+			const { currentUser } = useUsersStore();
+			if (currentUser) {
+				return await submitEmailOnSignup(
+					instanceId,
+					currentUser,
+					email ?? currentUser?.email,
+					agree,
+				);
+			}
+			return null;
 		},
 		openCommunityPackageUninstallConfirmModal(packageName: string) {
 			this.setActiveId(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, packageName);
@@ -532,18 +545,21 @@ export const useUIStore = defineStore(STORES.UI, {
 				curlCommand: payload.command,
 			};
 		},
-		setHttpNodeParameters(payload: { name: string; parameters: string }): void {
-			this.modals[payload.name] = {
-				...this.modals[payload.name],
-				httpNodeParameters: payload.parameters,
-			};
-		},
 		toggleSidebarMenuCollapse(): void {
 			this.sidebarMenuCollapsed = !this.sidebarMenuCollapsed;
 		},
 		async getCurlToJson(curlCommand: string): Promise<CurlToJSONResponse> {
 			const rootStore = useRootStore();
-			return await getCurlToJson(rootStore.getRestApiContext, curlCommand);
+			const parameters = await getCurlToJson(rootStore.getRestApiContext, curlCommand);
+
+			// Normalize placeholder values
+			if (parameters['parameters.url']) {
+				parameters['parameters.url'] = parameters['parameters.url']
+					.replaceAll('%7B', '{')
+					.replaceAll('%7D', '}');
+			}
+
+			return parameters;
 		},
 		async goToUpgrade(
 			source: CloudUpdateLinkSourceType,

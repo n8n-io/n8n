@@ -373,8 +373,15 @@ export function useNodeHelpers() {
 			node.credentials !== undefined
 		) {
 			const stored = credentialsStore.getCredentialsByType(nodeCredentialType);
+			// Prevents HTTP Request node from being unusable if a sharee does not have direct
+			// access to a credential
+			const isCredentialUsedInWorkflow =
+				workflowsStore.usedCredentials?.[node.credentials?.[nodeCredentialType]?.id as string];
 
-			if (selectedCredsDoNotExist(node, nodeCredentialType, stored)) {
+			if (
+				selectedCredsDoNotExist(node, nodeCredentialType, stored) &&
+				!isCredentialUsedInWorkflow
+			) {
 				const credential = credentialsStore.getCredentialTypeByName(nodeCredentialType);
 				return credential ? reportUnsetCredential(credential) : null;
 			}
@@ -555,7 +562,7 @@ export function useNodeHelpers() {
 
 		let data: ITaskDataConnections | undefined = taskData.data;
 		if (paneType === 'input' && taskData.inputOverride) {
-			data = taskData.inputOverride!;
+			data = taskData.inputOverride;
 		}
 
 		if (!data) {
@@ -570,16 +577,7 @@ export function useNodeHelpers() {
 		outputIndex: number,
 		connectionType: ConnectionTypes = NodeConnectionType.Main,
 	): INodeExecutionData[] {
-		if (
-			!connectionsData ||
-			!connectionsData.hasOwnProperty(connectionType) ||
-			connectionsData[connectionType] === undefined ||
-			connectionsData[connectionType].length < outputIndex ||
-			connectionsData[connectionType][outputIndex] === null
-		) {
-			return [];
-		}
-		return connectionsData[connectionType][outputIndex] as INodeExecutionData[];
+		return connectionsData?.[connectionType]?.[outputIndex] ?? [];
 	}
 
 	function getBinaryData(
@@ -595,16 +593,18 @@ export function useNodeHelpers() {
 
 		const runData: IRunData | null = workflowRunData;
 
-		if (!runData?.[node]?.[runIndex]?.data) {
+		const runDataOfNode = runData?.[node]?.[runIndex]?.data;
+		if (!runDataOfNode) {
 			return [];
 		}
 
-		const inputData = getInputData(runData[node][runIndex].data!, outputIndex, connectionType);
+		const inputData = getInputData(runDataOfNode, outputIndex, connectionType);
 
 		const returnData: IBinaryKeyData[] = [];
 		for (let i = 0; i < inputData.length; i++) {
-			if (inputData[i].hasOwnProperty('binary') && inputData[i].binary !== undefined) {
-				returnData.push(inputData[i].binary!);
+			const binaryDataInIdx = inputData[i]?.binary;
+			if (binaryDataInIdx !== undefined) {
+				returnData.push(binaryDataInIdx);
 			}
 		}
 
@@ -617,13 +617,18 @@ export function useNodeHelpers() {
 		if (trackHistory) {
 			historyStore.startRecordingUndo();
 		}
+
+		const newDisabledState = nodes.some((node) => !node.disabled);
 		for (const node of nodes) {
-			const oldState = node.disabled;
+			if (newDisabledState === node.disabled) {
+				continue;
+			}
+
 			// Toggle disabled flag
 			const updateInformation = {
 				name: node.name,
 				properties: {
-					disabled: !oldState,
+					disabled: newDisabledState,
 				} as IDataObject,
 			} as INodeUpdatePropertiesInformation;
 
@@ -640,7 +645,7 @@ export function useNodeHelpers() {
 			updateNodesInputIssues();
 			if (trackHistory) {
 				historyStore.pushCommandToUndo(
-					new EnableNodeToggleCommand(node.name, oldState === true, node.disabled === true),
+					new EnableNodeToggleCommand(node.name, node.disabled === true, newDisabledState),
 				);
 			}
 		}

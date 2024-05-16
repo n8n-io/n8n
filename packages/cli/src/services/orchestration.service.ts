@@ -6,6 +6,7 @@ import type { RedisServiceBaseCommand, RedisServiceCommand } from './redis/Redis
 
 import { RedisService } from './redis.service';
 import { MultiMainSetup } from './orchestration/main/MultiMainSetup.ee';
+import type { WorkflowActivateMode } from 'n8n-workflow';
 
 @Service()
 export class OrchestrationService {
@@ -32,12 +33,19 @@ export class OrchestrationService {
 		);
 	}
 
+	get isSingleMainSetup() {
+		return !this.isMultiMainSetupEnabled;
+	}
+
 	redisPublisher: RedisServicePubSubPublisher;
 
 	get instanceId() {
 		return config.getEnv('redis.queueModeId');
 	}
 
+	/**
+	 * Whether this instance is the leader in a multi-main setup. Always `false` in single-main setup.
+	 */
 	get isLeader() {
 		return config.getEnv('multiMainSetup.instanceType') === 'leader';
 	}
@@ -117,5 +125,34 @@ export class OrchestrationService {
 		this.logger.debug(`Sending "${command}" to command channel`);
 
 		await this.redisPublisher.publishToCommandChannel({ command });
+	}
+
+	// ----------------------------------
+	//           activations
+	// ----------------------------------
+
+	/**
+	 * Whether this instance may add webhooks to the `webhook_entity` table.
+	 */
+	shouldAddWebhooks(activationMode: WorkflowActivateMode) {
+		// Always try to populate the webhook entity table as well as register the webhooks
+		// to prevent issues with users upgrading from a version < 1.15, where the webhook entity
+		// was cleared on shutdown to anything past 1.28.0, where we stopped populating it on init,
+		// causing all webhooks to break
+		if (activationMode === 'init') return true;
+
+		if (activationMode === 'leadershipChange') return false;
+
+		return this.isLeader; // 'update' or 'activate'
+	}
+
+	/**
+	 * Whether this instance may add triggers and pollers to memory.
+	 *
+	 * In both single- and multi-main setup, only the leader is allowed to manage
+	 * triggers and pollers in memory, to ensure they are not duplicated.
+	 */
+	shouldAddTriggersAndPollers() {
+		return this.isLeader;
 	}
 }

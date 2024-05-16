@@ -11,14 +11,14 @@ import { v4 as uuid } from 'uuid';
 
 import config from '@/config';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { AUTH_COOKIE_NAME } from '@/constants';
-
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { SettingsRepository } from '@db/repositories/settings.repository';
-import { mockNodeTypesData } from '../../../unit/Helpers';
-import { OrchestrationService } from '@/services/orchestration.service';
-import { mockInstance } from '../../../shared/mocking';
+import { AUTH_COOKIE_NAME } from '@/constants';
 import { ExecutionService } from '@/executions/execution.service';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { Push } from '@/push';
+import { OrchestrationService } from '@/services/orchestration.service';
+
+import { mockInstance } from '../../../shared/mocking';
 
 export { setupTestServer } from './testServer';
 
@@ -29,14 +29,18 @@ export { setupTestServer } from './testServer';
 /**
  * Initialize node types.
  */
-export async function initActiveWorkflowRunner() {
-	mockInstance(OrchestrationService);
+export async function initActiveWorkflowManager() {
+	mockInstance(OrchestrationService, {
+		isMultiMainSetupEnabled: false,
+		shouldAddWebhooks: jest.fn().mockReturnValue(true),
+	});
 
+	mockInstance(Push);
 	mockInstance(ExecutionService);
-	const { ActiveWorkflowRunner } = await import('@/ActiveWorkflowRunner');
-	const workflowRunner = Container.get(ActiveWorkflowRunner);
-	await workflowRunner.init();
-	return workflowRunner;
+	const { ActiveWorkflowManager } = await import('@/ActiveWorkflowManager');
+	const activeWorkflowManager = Container.get(ActiveWorkflowManager);
+	await activeWorkflowManager.init();
+	return activeWorkflowManager;
 }
 
 /**
@@ -172,15 +176,3 @@ export function makeWorkflow(options?: {
 }
 
 export const MOCK_PINDATA = { Spotify: [{ json: { myKey: 'myValue' } }] };
-
-export function setSchedulerAsLoadedNode() {
-	const nodesAndCredentials = mockInstance(LoadNodesAndCredentials);
-
-	Object.assign(nodesAndCredentials, {
-		loadedNodes: mockNodeTypesData(['scheduleTrigger'], {
-			addTrigger: true,
-		}),
-		known: { nodes: {}, credentials: {} },
-		types: { nodes: [], credentials: [] },
-	});
-}

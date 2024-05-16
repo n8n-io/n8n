@@ -2,7 +2,6 @@ import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { useStorage } from '@/composables/useStorage';
 
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useToast } from '@/composables/useToast';
 
 import {
@@ -14,11 +13,15 @@ import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useRouter } from 'vue-router';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 export const workflowActivate = defineComponent({
-	mixins: [workflowHelpers],
 	setup() {
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers({ router });
 		return {
+			workflowHelpers,
 			...useToast(),
 		};
 	},
@@ -45,7 +48,7 @@ export const workflowActivate = defineComponent({
 
 			let currWorkflowId: string | undefined = workflowId;
 			if (!currWorkflowId || currWorkflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-				const saved = await this.saveCurrentWorkflow();
+				const saved = await this.workflowHelpers.saveCurrentWorkflow();
 				if (!saved) {
 					this.updatingWorkflowActivation = false;
 					return;
@@ -92,7 +95,7 @@ export const workflowActivate = defineComponent({
 					return;
 				}
 
-				await this.updateWorkflow(
+				await this.workflowHelpers.updateWorkflow(
 					{ workflowId: currWorkflowId, active: newActiveState },
 					!this.uiStore.stateIsDirty,
 				);

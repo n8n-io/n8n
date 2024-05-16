@@ -13,5 +13,6 @@ export interface LoadPreviousSessionResponse {
 }
 
 export interface SendMessageResponse {
-	output: string;
+	output?: string;
+	text?: string;
 }

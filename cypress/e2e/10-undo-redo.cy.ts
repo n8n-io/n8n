@@ -258,11 +258,11 @@ describe('Undo/Redo', () => {
 		cy.fixture('Test_workflow-actions_paste-data.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 			WorkflowPage.actions.zoomToFit();
-			WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
+			WorkflowPage.getters.canvasNodes().should('have.have.length', 5);
 			WorkflowPage.actions.hitUndo();
 			WorkflowPage.getters.canvasNodes().should('have.have.length', 0);
 			WorkflowPage.actions.hitRedo();
-			WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
+			WorkflowPage.getters.canvasNodes().should('have.have.length', 5);
 		});
 	});
 
@@ -338,8 +338,8 @@ describe('Undo/Redo', () => {
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
 		cy.get(WorkflowPage.getters.getEndpointSelector('input', 'Switch')).should('have.length', 1);
 		cy.get(WorkflowPage.getters.getEndpointSelector('input', 'Switch'))
-					.should('have.css', 'left', `637px`)
-					.should('have.css', 'top', `501px`);
+			.should('have.css', 'left', `637px`)
+			.should('have.css', 'top', `501px`);
 
 		cy.fixture('Test_workflow_form_switch.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
@@ -353,8 +353,8 @@ describe('Undo/Redo', () => {
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
 		cy.get(WorkflowPage.getters.getEndpointSelector('input', 'Switch')).should('have.length', 1);
 		cy.get(WorkflowPage.getters.getEndpointSelector('input', 'Switch'))
-					.should('have.css', 'left', `637px`)
-					.should('have.css', 'top', `501px`);
+			.should('have.css', 'left', `637px`)
+			.should('have.css', 'top', `501px`);
 	});
 
 	it('should not undo/redo when NDV or a modal is open', () => {

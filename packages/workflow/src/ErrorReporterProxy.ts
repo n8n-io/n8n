@@ -33,7 +33,10 @@ export const error = (e: unknown, options?: ReportingOptions) => {
 	if (toReport) instance.report(toReport, options);
 };
 
-export const report = error;
+export const info = (msg: string, options?: ReportingOptions) => {
+	Logger.info(msg);
+	instance.report(msg, options);
+};
 
 export const warn = (warning: Error | string, options?: ReportingOptions) =>
 	error(warning, { level: 'warning', ...options });

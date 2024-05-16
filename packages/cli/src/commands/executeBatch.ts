@@ -4,7 +4,7 @@ import { Flags } from '@oclif/core';
 import fs from 'fs';
 import os from 'os';
 import type { IRun, ITaskData } from 'n8n-workflow';
-import { ApplicationError, jsonParse, sleep } from 'n8n-workflow';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
 import { sep } from 'path';
 import { diff } from 'json-diff';
 import pick from 'lodash/pick';
@@ -118,28 +118,9 @@ export class ExecuteBatch extends BaseCommand {
 		}
 
 		ExecuteBatch.cancelled = true;
-		const activeExecutionsInstance = Container.get(ActiveExecutions);
-		const stopPromises = activeExecutionsInstance
-			.getActiveExecutions()
-			.map(async (execution) => await activeExecutionsInstance.stopExecution(execution.id));
 
-		await Promise.allSettled(stopPromises);
+		await Container.get(ActiveExecutions).shutdown(true);
 
-		setTimeout(() => process.exit(0), 30000);
-
-		let executingWorkflows = activeExecutionsInstance.getActiveExecutions();
-
-		let count = 0;
-		while (executingWorkflows.length !== 0) {
-			if (count++ % 4 === 0) {
-				console.log(`Waiting for ${executingWorkflows.length} active executions to finish...`);
-				executingWorkflows.map((execution) => {
-					console.log(` - Execution ID ${execution.id}, workflow ID: ${execution.workflowId}`);
-				});
-			}
-			await sleep(500);
-			executingWorkflows = activeExecutionsInstance.getActiveExecutions();
-		}
 		// We may receive true but when called from `process.on`
 		// we get the signal (SIGINT, etc.)
 		if (skipExit !== true) {
@@ -185,6 +166,7 @@ export class ExecuteBatch extends BaseCommand {
 		await this.initExternalHooks();
 	}
 
+	// eslint-disable-next-line complexity
 	async run() {
 		const { flags } = await this.parse(ExecuteBatch);
 		ExecuteBatch.debug = flags.debug;
@@ -196,11 +178,11 @@ export class ExecuteBatch extends BaseCommand {
 		if (flags.snapshot !== undefined) {
 			if (fs.existsSync(flags.snapshot)) {
 				if (!fs.lstatSync(flags.snapshot).isDirectory()) {
-					console.log('The parameter --snapshot must be an existing directory');
+					this.logger.error('The parameter --snapshot must be an existing directory');
 					return;
 				}
 			} else {
-				console.log('The parameter --snapshot must be an existing directory');
+				this.logger.error('The parameter --snapshot must be an existing directory');
 				return;
 			}
 
@@ -209,11 +191,11 @@ export class ExecuteBatch extends BaseCommand {
 		if (flags.compare !== undefined) {
 			if (fs.existsSync(flags.compare)) {
 				if (!fs.lstatSync(flags.compare).isDirectory()) {
-					console.log('The parameter --compare must be an existing directory');
+					this.logger.error('The parameter --compare must be an existing directory');
 					return;
 				}
 			} else {
-				console.log('The parameter --compare must be an existing directory');
+				this.logger.error('The parameter --compare must be an existing directory');
 				return;
 			}
 
@@ -223,7 +205,7 @@ export class ExecuteBatch extends BaseCommand {
 		if (flags.output !== undefined) {
 			if (fs.existsSync(flags.output)) {
 				if (fs.lstatSync(flags.output).isDirectory()) {
-					console.log('The parameter --output must be a writable file');
+					this.logger.error('The parameter --output must be a writable file');
 					return;
 				}
 			}
@@ -243,7 +225,7 @@ export class ExecuteBatch extends BaseCommand {
 				const matchedIds = paramIds.filter((id) => re.exec(id));
 
 				if (matchedIds.length === 0) {
-					console.log(
+					this.logger.error(
 						'The parameter --ids must be a list of numeric IDs separated by a comma or a file with this content.',
 					);
 					return;
@@ -263,7 +245,7 @@ export class ExecuteBatch extends BaseCommand {
 						.filter((id) => re.exec(id)),
 				);
 			} else {
-				console.log('Skip list file not found. Exiting.');
+				this.logger.error('Skip list file not found. Exiting.');
 				return;
 			}
 		}
@@ -320,18 +302,18 @@ export class ExecuteBatch extends BaseCommand {
 
 		if (flags.output !== undefined) {
 			fs.writeFileSync(flags.output, this.formatJsonOutput(results));
-			console.log('\nExecution finished.');
-			console.log('Summary:');
-			console.log(`\tSuccess: ${results.summary.successfulExecutions}`);
-			console.log(`\tFailures: ${results.summary.failedExecutions}`);
-			console.log(`\tWarnings: ${results.summary.warningExecutions}`);
-			console.log('\nNodes successfully tested:');
+			this.logger.info('\nExecution finished.');
+			this.logger.info('Summary:');
+			this.logger.info(`\tSuccess: ${results.summary.successfulExecutions}`);
+			this.logger.info(`\tFailures: ${results.summary.failedExecutions}`);
+			this.logger.info(`\tWarnings: ${results.summary.warningExecutions}`);
+			this.logger.info('\nNodes successfully tested:');
 			Object.entries(results.coveredNodes).forEach(([nodeName, nodeCount]) => {
-				console.log(`\t${nodeName}: ${nodeCount}`);
+				this.logger.info(`\t${nodeName}: ${nodeCount}`);
 			});
-			console.log('\nCheck the JSON file for more details.');
+			this.logger.info('\nCheck the JSON file for more details.');
 		} else if (flags.shortOutput) {
-			console.log(
+			this.logger.info(
 				this.formatJsonOutput({
 					...results,
 					executions: results.executions.filter(
@@ -340,7 +322,7 @@ export class ExecuteBatch extends BaseCommand {
 				}),
 			);
 		} else {
-			console.log(this.formatJsonOutput(results));
+			this.logger.info(this.formatJsonOutput(results));
 		}
 
 		await this.stopProcess(true);
@@ -639,13 +621,12 @@ export class ExecuteBatch extends BaseCommand {
 
 				const runData: IWorkflowExecutionDataProcess = {
 					executionMode: 'cli',
-					startNodes: [startingNode.name],
+					startNodes: [{ name: startingNode.name, sourceData: null }],
 					workflowData,
 					userId: ExecuteBatch.instanceOwner.id,
 				};
 
-				const workflowRunner = new WorkflowRunner();
-				const executionId = await workflowRunner.run(runData);
+				const executionId = await Container.get(WorkflowRunner).run(runData);
 
 				const activeExecutions = Container.get(ActiveExecutions);
 				const data = await activeExecutions.getPostExecutePromise(executionId);

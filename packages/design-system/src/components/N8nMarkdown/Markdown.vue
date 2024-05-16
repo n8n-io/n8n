@@ -8,7 +8,7 @@
 			v-html="htmlContent"
 		/>
 		<div v-else :class="$style.markdown">
-			<div v-for="(block, index) in loadingBlocks" :key="index">
+			<div v-for="(_, index) in loadingBlocks" :key="index">
 				<N8nLoading :loading="loading" :rows="loadingRows" animated variant="p" />
 				<div :class="$style.spacer" />
 			</div>
@@ -16,172 +16,141 @@
 	</div>
 </template>
 
-<script lang="ts">
-import N8nLoading from '../N8nLoading';
-import type { PluginSimple } from 'markdown-it';
+<script lang="ts" setup>
+import { computed } from 'vue';
+import type { Options as MarkdownOptions } from 'markdown-it';
 import Markdown from 'markdown-it';
-
 import markdownLink from 'markdown-it-link-attributes';
 import markdownEmoji from 'markdown-it-emoji';
-import markdownTasklists from 'markdown-it-task-lists';
-
-import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
-
+import markdownTaskLists from 'markdown-it-task-lists';
 import xss, { friendlyAttrValue } from 'xss';
+
+import N8nLoading from '../N8nLoading';
 import { escapeMarkdown } from '../../utils/markdown';
 
-const DEFAULT_OPTIONS_MARKDOWN = {
-	html: true,
-	linkify: true,
-	typographer: true,
-	breaks: true,
-} as const;
-
-const DEFAULT_OPTIONS_LINK_ATTRIBUTES = {
-	attrs: {
-		target: '_blank',
-		rel: 'noopener',
-	},
-} as const;
-
-const DEFAULT_OPTIONS_TASKLISTS = {
-	label: true,
-	labelAfter: true,
-} as const;
-
-export interface IImage {
+interface IImage {
 	id: string;
 	url: string;
 }
 
-export interface Options {
-	markdown: typeof DEFAULT_OPTIONS_MARKDOWN;
-	linkAttributes: typeof DEFAULT_OPTIONS_LINK_ATTRIBUTES;
-	tasklists: typeof DEFAULT_OPTIONS_TASKLISTS;
+interface Options {
+	markdown: MarkdownOptions;
+	linkAttributes: markdownLink.Config;
+	tasklists: markdownTaskLists.Config;
 }
 
-export default defineComponent({
-	name: 'N8nMarkdown',
-	components: {
-		N8nLoading,
-	},
-	props: {
-		content: {
-			type: String,
-			default: '',
+interface MarkdownProps {
+	content?: string;
+	withMultiBreaks?: boolean;
+	images?: IImage[];
+	loading?: boolean;
+	loadingBlocks?: number;
+	loadingRows?: number;
+	theme?: string;
+	options?: Options;
+}
+
+const props = withDefaults(defineProps<MarkdownProps>(), {
+	content: '',
+	withMultiBreaks: false,
+	images: () => [],
+	loading: false,
+	loadingBlocks: 2,
+	loadingRows: 3,
+	theme: 'markdown',
+	options: () => ({
+		markdown: {
+			html: true,
+			linkify: true,
+			typographer: true,
+			breaks: true,
 		},
-		withMultiBreaks: {
-			type: Boolean,
-			default: false,
+		linkAttributes: {
+			attrs: {
+				target: '_blank',
+				rel: 'noopener',
+			},
 		},
-		images: {
-			type: Array as PropType<IImage[]>,
-			default: () => [],
+		tasklists: {
+			label: true,
+			labelAfter: true,
 		},
-		loading: {
-			type: Boolean,
-			default: false,
-		},
-		loadingBlocks: {
-			type: Number,
-			default: 2,
-		},
-		loadingRows: {
-			type: Number,
-			default: 3,
-		},
-		theme: {
-			type: String,
-			default: 'markdown',
-		},
-		options: {
-			type: Object as PropType<Options>,
-			default: (): Options => ({
-				markdown: DEFAULT_OPTIONS_MARKDOWN,
-				linkAttributes: DEFAULT_OPTIONS_LINK_ATTRIBUTES,
-				tasklists: DEFAULT_OPTIONS_TASKLISTS,
-			}),
-		},
-	},
-	data(): { md: Markdown } {
-		return {
-			md: new Markdown(this.options.markdown)
-				.use(markdownLink, this.options.linkAttributes)
-				.use(markdownEmoji)
-				.use(markdownTasklists as PluginSimple, this.options.tasklists),
-		};
-	},
-	computed: {
-		htmlContent(): string {
-			if (!this.content) {
-				return '';
+	}),
+});
+
+const { options } = props;
+const md = new Markdown(options.markdown)
+	.use(markdownLink, options.linkAttributes)
+	.use(markdownEmoji)
+	.use(markdownTaskLists, options.tasklists);
+
+const htmlContent = computed(() => {
+	if (!props.content) {
+		return '';
+	}
+
+	const imageUrls: { [key: string]: string } = {};
+	if (props.images) {
+		props.images.forEach((image: IImage) => {
+			if (!image) {
+				// Happens if an image got deleted but the workflow
+				// still has a reference to it
+				return;
 			}
+			imageUrls[image.id] = image.url;
+		});
+	}
 
-			const imageUrls: { [key: string]: string } = {};
-			if (this.images) {
-				this.images.forEach((image: IImage) => {
-					if (!image) {
-						// Happens if an image got deleted but the workflow
-						// still has a reference to it
-						return;
-					}
-					imageUrls[image.id] = image.url;
-				});
-			}
-
-			const fileIdRegex = new RegExp('fileId:([0-9]+)');
-			let contentToRender = this.content;
-			if (this.withMultiBreaks) {
-				contentToRender = contentToRender.replaceAll('\n\n', '\n&nbsp;\n');
-			}
-			const html = this.md.render(escapeMarkdown(contentToRender));
-			const safeHtml = xss(html, {
-				onTagAttr: (tag, name, value) => {
-					if (tag === 'img' && name === 'src') {
-						if (value.match(fileIdRegex)) {
-							const id = value.split('fileId:')[1];
-							const attributeValue = friendlyAttrValue(imageUrls[id]);
-							return attributeValue ? `src=${attributeValue}` : '';
-						}
-						// Only allow http requests to supported image files from the `static` directory
-						const isImageFile = value.split('#')[0].match(/\.(jpeg|jpg|gif|png|webp)$/) !== null;
-						const isStaticImageFile = isImageFile && value.startsWith('/static/');
-						if (!value.startsWith('https://') && !isStaticImageFile) {
-							return '';
-						}
-					}
-					// Return nothing, means keep the default handling measure
-				},
-				onTag(tag, code) {
-					if (tag === 'img' && code.includes('alt="workflow-screenshot"')) {
-						return '';
-					}
-					// return nothing, keep tag
-				},
-			});
-
-			return safeHtml;
-		},
-	},
-	methods: {
-		onClick(event: MouseEvent) {
-			let clickedLink = null;
-
-			if (event.target instanceof HTMLAnchorElement) {
-				clickedLink = event.target;
-			}
-
-			if (event.target instanceof HTMLElement && event.target.matches('a *')) {
-				const parentLink = event.target.closest('a');
-				if (parentLink) {
-					clickedLink = parentLink;
+	const fileIdRegex = new RegExp('fileId:([0-9]+)');
+	let contentToRender = props.content;
+	if (props.withMultiBreaks) {
+		contentToRender = contentToRender.replaceAll('\n\n', '\n&nbsp;\n');
+	}
+	const html = md.render(escapeMarkdown(contentToRender));
+	const safeHtml = xss(html, {
+		onTagAttr: (tag, name, value) => {
+			if (tag === 'img' && name === 'src') {
+				if (value.match(fileIdRegex)) {
+					const id = value.split('fileId:')[1];
+					const attributeValue = friendlyAttrValue(imageUrls[id]);
+					return attributeValue ? `src=${attributeValue}` : '';
+				}
+				// Only allow http requests to supported image files from the `static` directory
+				const isImageFile = value.split('#')[0].match(/\.(jpeg|jpg|gif|png|webp)$/) !== null;
+				const isStaticImageFile = isImageFile && value.startsWith('/static/');
+				if (!value.startsWith('https://') && !isStaticImageFile) {
+					return '';
 				}
 			}
-			this.$emit('markdown-click', clickedLink, event);
+			// Return nothing, means keep the default handling measure
 		},
-	},
+		onTag(tag, code) {
+			if (tag === 'img' && code.includes('alt="workflow-screenshot"')) {
+				return '';
+			}
+			// return nothing, keep tag
+		},
+	});
+
+	return safeHtml;
 });
+
+const $emit = defineEmits(['markdown-click']);
+const onClick = (event: MouseEvent) => {
+	let clickedLink: HTMLAnchorElement | null = null;
+
+	if (event.target instanceof HTMLAnchorElement) {
+		clickedLink = event.target;
+	}
+
+	if (event.target instanceof HTMLElement && event.target.matches('a *')) {
+		const parentLink = event.target.closest('a');
+		if (parentLink) {
+			clickedLink = parentLink;
+		}
+	}
+	$emit('markdown-click', clickedLink, event);
+};
 </script>
 
 <style lang="scss" module>

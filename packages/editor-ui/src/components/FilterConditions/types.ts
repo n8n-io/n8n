@@ -11,3 +11,8 @@ export interface FilterOperatorGroup {
 	icon?: string;
 	children: FilterOperator[];
 }
+
+export type ConditionResult =
+	| { status: 'resolve_error' }
+	| { status: 'validation_error'; error: string }
+	| { status: 'success'; result: boolean };

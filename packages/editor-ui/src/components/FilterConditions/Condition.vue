@@ -1,29 +1,25 @@
 <script setup lang="ts">
 import type { IUpdateInformation } from '@/Interface';
+import InputTriple from '@/components/InputTriple/InputTriple.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import { useI18n } from '@/composables/useI18n';
 import { DateTime } from 'luxon';
 import {
-	executeFilterCondition,
-	type FilterOptionsValue,
 	type FilterConditionValue,
-	type FilterOperatorType,
+	type FilterOptionsValue,
 	type INodeProperties,
-	type NodeParameterValue,
-	type NodePropertyTypes,
-	FilterError,
-	validateFieldType,
 } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 import OperatorSelect from './OperatorSelect.vue';
-import { OPERATORS_BY_ID, type FilterOperatorId } from './constants';
-import type { FilterOperator } from './types';
-import { resolveParameter } from '@/mixins/workflowHelpers';
-type ConditionResult =
-	| { status: 'resolve_error' }
-	| { status: 'validation_error'; error: string }
-	| { status: 'success'; result: boolean };
+import { type FilterOperatorId } from './constants';
+import {
+	getFilterOperator,
+	handleOperatorChange,
+	isEmptyInput,
+	operatorTypeToNodeProperty,
+	resolveCondition,
+} from './utils';
 
 interface Props {
 	path: string;
@@ -41,6 +37,7 @@ const props = withDefaults(defineProps<Props>(), {
 	canRemove: true,
 	fixedLeftValue: false,
 	readOnly: false,
+	index: 0,
 });
 
 const emit = defineEmits<{
@@ -56,53 +53,22 @@ const operatorId = computed<FilterOperatorId>(() => {
 	const { type, operation } = props.condition.operator;
 	return `${type}:${operation}` as FilterOperatorId;
 });
-const operator = computed(() => OPERATORS_BY_ID[operatorId.value] as FilterOperator);
+const operator = computed(() => getFilterOperator(operatorId.value));
 
-const operatorTypeToNodePropType = (operatorType: FilterOperatorType): NodePropertyTypes => {
-	switch (operatorType) {
-		case 'array':
-		case 'object':
-		case 'boolean':
-		case 'any':
-			return 'string';
-		default:
-			return operatorType;
+const isEmpty = computed(() => {
+	if (operator.value.singleValue) {
+		return isEmptyInput(condition.value.leftValue);
 	}
-};
 
-const conditionResult = computed<ConditionResult>(() => {
-	try {
-		const resolved = resolveParameter(
-			condition.value as unknown as NodeParameterValue,
-		) as FilterConditionValue;
-
-		if (resolved.leftValue === undefined || resolved.rightValue === undefined) {
-			return { status: 'resolve_error' };
-		}
-		try {
-			const result = executeFilterCondition(resolved, props.options, {
-				index: props.index ?? 0,
-				errorFormat: 'inline',
-			});
-			return { status: 'success', result };
-		} catch (error) {
-			let errorMessage = i18n.baseText('parameterInput.error');
-
-			if (error instanceof FilterError) {
-				errorMessage = `${error.message}.\n${error.description}`;
-			}
-			return {
-				status: 'validation_error',
-				error: errorMessage,
-			};
-		}
-	} catch (error) {
-		return { status: 'resolve_error' };
-	}
+	return isEmptyInput(condition.value.leftValue) && isEmptyInput(condition.value.rightValue);
 });
 
+const conditionResult = computed(() =>
+	resolveCondition({ condition: condition.value, options: props.options }),
+);
+
 const allIssues = computed(() => {
-	if (conditionResult.value.status === 'validation_error') {
+	if (conditionResult.value.status === 'validation_error' && !isEmpty.value) {
 		return [conditionResult.value.error];
 	}
 
@@ -119,19 +85,20 @@ const leftParameter = computed<INodeProperties>(() => ({
 		operator.value.type === 'dateTime'
 			? now.value
 			: i18n.baseText('filter.condition.placeholderLeft'),
-	type: operatorTypeToNodePropType(operator.value.type),
+	...operatorTypeToNodeProperty(operator.value.type),
 }));
 
-const rightParameter = computed<INodeProperties>(() => ({
-	name: '',
-	displayName: '',
-	default: '',
-	placeholder:
-		operator.value.type === 'dateTime'
-			? now.value
-			: i18n.baseText('filter.condition.placeholderRight'),
-	type: operatorTypeToNodePropType(operator.value.rightType ?? operator.value.type),
-}));
+const rightParameter = computed<INodeProperties>(() => {
+	const type = operator.value.rightType ?? operator.value.type;
+	return {
+		name: '',
+		displayName: '',
+		default: '',
+		placeholder:
+			type === 'dateTime' ? now.value : i18n.baseText('filter.condition.placeholderRight'),
+		...operatorTypeToNodeProperty(type),
+	};
+});
 
 const onLeftValueChange = (update: IUpdateInformation): void => {
 	condition.value.leftValue = update.value;
@@ -141,36 +108,14 @@ const onRightValueChange = (update: IUpdateInformation): void => {
 	condition.value.rightValue = update.value;
 };
 
-const convertToType = (value: unknown, type: FilterOperatorType): unknown => {
-	if (type === 'any') return value;
-
-	return (
-		validateFieldType('filter', condition.value.leftValue, type, { parseStrings: true }).newValue ??
-		value
-	);
-};
-
 const onOperatorChange = (value: string): void => {
-	const newOperator = OPERATORS_BY_ID[value as FilterOperatorId] as FilterOperator;
-	const rightType = operator.value.rightType ?? operator.value.type;
-	const newRightType = newOperator.rightType ?? newOperator.type;
-	const leftTypeChanged = operator.value.type !== newOperator.type;
-	const rightTypeChanged = rightType !== newRightType;
+	const newOperator = getFilterOperator(value);
 
-	// Try to convert left & right values to operator type
-	if (leftTypeChanged) {
-		condition.value.leftValue = convertToType(condition.value.leftValue, newOperator.type);
-	}
-	if (rightTypeChanged && !newOperator.singleValue) {
-		condition.value.rightValue = convertToType(condition.value.rightValue, newRightType);
-	}
+	condition.value = handleOperatorChange({
+		condition: condition.value,
+		newOperator,
+	});
 
-	condition.value.operator = {
-		type: newOperator.type,
-		operation: newOperator.operation,
-		rightType: newOperator.rightType,
-		singleValue: newOperator.singleValue,
-	};
 	emit('update', condition.value);
 };
 
@@ -202,64 +147,51 @@ const onBlur = (): void => {
 			:class="$style.remove"
 			@click="onRemove"
 		></n8n-icon-button>
-		<n8n-resize-observer
-			:class="$style.observer"
-			:breakpoints="[
-				{ bp: 'stacked', width: 340 },
-				{ bp: 'medium', width: 520 },
-			]"
-		>
-			<template #default="{ bp }">
-				<div
-					:class="{
-						[$style.condition]: true,
-						[$style.hideRightInput]: operator.singleValue,
-						[$style.stacked]: bp === 'stacked',
-						[$style.medium]: bp === 'medium',
-					}"
-				>
-					<ParameterInputFull
-						v-if="!fixedLeftValue"
-						:key="leftParameter.type"
-						display-options
-						hide-label
-						hide-hint
-						is-single-line
-						:parameter="leftParameter"
-						:value="condition.leftValue"
-						:path="`${path}.left`"
-						:class="[$style.input, $style.inputLeft]"
-						:is-read-only="readOnly"
-						data-test-id="filter-condition-left"
-						@update="onLeftValueChange"
-						@blur="onBlur"
-					/>
-					<OperatorSelect
-						:class="$style.select"
-						:selected="`${operator.type}:${operator.operation}`"
-						:read-only="readOnly"
-						@operatorChange="onOperatorChange"
-					></OperatorSelect>
-					<ParameterInputFull
-						v-if="!operator.singleValue"
-						:key="rightParameter.type"
-						display-options
-						hide-label
-						hide-hint
-						is-single-line
-						:options-position="bp === 'default' ? 'top' : 'bottom'"
-						:parameter="rightParameter"
-						:value="condition.rightValue"
-						:path="`${path}.right`"
-						:class="[$style.input, $style.inputRight]"
-						:is-read-only="readOnly"
-						data-test-id="filter-condition-right"
-						@update="onRightValueChange"
-						@blur="onBlur"
-					/>
-				</div>
+		<InputTriple>
+			<template #left>
+				<ParameterInputFull
+					v-if="!fixedLeftValue"
+					:key="leftParameter.type"
+					display-options
+					hide-label
+					hide-hint
+					hide-issues
+					:is-read-only="readOnly"
+					:parameter="leftParameter"
+					:value="condition.leftValue"
+					:path="`${path}.left`"
+					:class="[$style.input, $style.inputLeft]"
+					data-test-id="filter-condition-left"
+					@update="onLeftValueChange"
+					@blur="onBlur"
+				/>
 			</template>
-		</n8n-resize-observer>
+			<template #middle>
+				<OperatorSelect
+					:selected="`${operator.type}:${operator.operation}`"
+					:read-only="readOnly"
+					@operator-change="onOperatorChange"
+				></OperatorSelect>
+			</template>
+			<template v-if="!operator.singleValue" #right="{ breakpoint }">
+				<ParameterInputFull
+					:key="rightParameter.type"
+					display-options
+					hide-label
+					hide-hint
+					hide-issues
+					:is-read-only="readOnly"
+					:options-position="breakpoint === 'default' ? 'top' : 'bottom'"
+					:parameter="rightParameter"
+					:value="condition.rightValue"
+					:path="`${path}.right`"
+					:class="[$style.input, $style.inputRight]"
+					data-test-id="filter-condition-right"
+					@update="onRightValueChange"
+					@blur="onBlur"
+				/>
+			</template>
+		</InputTriple>
 
 		<div :class="$style.status">
 			<ParameterIssues v-if="allIssues.length > 0" :issues="allIssues" />
@@ -305,16 +237,6 @@ const onBlur = (): void => {
 	}
 }
 
-.condition {
-	display: flex;
-	flex-wrap: nowrap;
-	align-items: flex-end;
-}
-
-.observer {
-	width: 100%;
-}
-
 .status {
 	align-self: flex-start;
 	padding-top: 28px;
@@ -324,131 +246,11 @@ const onBlur = (): void => {
 	padding-left: var(--spacing-4xs);
 }
 
-.select {
-	flex-shrink: 0;
-	flex-grow: 0;
-	flex-basis: 160px;
-	--input-border-radius: 0;
-	--input-border-right-color: transparent;
-}
-
-.input {
-	flex-shrink: 0;
-	flex-basis: 160px;
-	flex-grow: 1;
-}
-
-.inputLeft {
-	--input-border-top-right-radius: 0;
-	--input-border-bottom-right-radius: 0;
-	--input-border-right-color: transparent;
-}
-
-.inputRight {
-	--input-border-top-left-radius: 0;
-	--input-border-bottom-left-radius: 0;
-}
-
-.hideRightInput {
-	.select {
-		--input-border-top-right-radius: var(--border-radius-base);
-		--input-border-bottom-right-radius: var(--border-radius-base);
-		--input-border-right-color: var(--input-border-color-base);
-	}
-}
-
 .remove {
 	position: absolute;
 	left: 0;
 	top: var(--spacing-l);
 	opacity: 0;
 	transition: opacity 100ms ease-in;
-}
-
-.medium {
-	flex-wrap: wrap;
-
-	.select {
-		--input-border-top-right-radius: var(--border-radius-base);
-		--input-border-bottom-right-radius: 0;
-		--input-border-bottom-color: transparent;
-		--input-border-right-color: var(--input-border-color-base);
-	}
-
-	.inputLeft {
-		--input-border-top-right-radius: 0;
-		--input-border-bottom-left-radius: 0;
-		--input-border-right-color: transparent;
-		--input-border-bottom-color: transparent;
-	}
-
-	.inputRight {
-		flex-basis: 340px;
-		flex-shrink: 1;
-		--input-border-top-right-radius: 0;
-		--input-border-bottom-left-radius: var(--border-radius-base);
-	}
-
-	&.hideRightInput {
-		.select {
-			--input-border-bottom-color: var(--input-border-color-base);
-			--input-border-top-left-radius: 0;
-			--input-border-bottom-left-radius: 0;
-			--input-border-top-right-radius: var(--border-radius-base);
-			--input-border-bottom-right-radius: var(--border-radius-base);
-		}
-
-		.inputLeft {
-			--input-border-top-right-radius: 0;
-			--input-border-bottom-left-radius: var(--border-radius-base);
-			--input-border-bottom-right-radius: 0;
-			--input-border-bottom-color: var(--input-border-color-base);
-		}
-	}
-}
-
-.stacked {
-	display: block;
-
-	.select {
-		width: 100%;
-		--input-border-right-color: var(--input-border-color-base);
-		--input-border-bottom-color: transparent;
-		--input-border-radius: 0;
-	}
-
-	.inputLeft {
-		--input-border-right-color: var(--input-border-color-base);
-		--input-border-bottom-color: transparent;
-		--input-border-top-left-radius: var(--border-radius-base);
-		--input-border-top-right-radius: var(--border-radius-base);
-		--input-border-bottom-left-radius: 0;
-		--input-border-bottom-right-radius: 0;
-	}
-
-	.inputRight {
-		--input-border-top-left-radius: 0;
-		--input-border-top-right-radius: 0;
-		--input-border-bottom-left-radius: var(--border-radius-base);
-		--input-border-bottom-right-radius: var(--border-radius-base);
-	}
-
-	&.hideRightInput {
-		.select {
-			--input-border-bottom-color: var(--input-border-color-base);
-			--input-border-top-left-radius: 0;
-			--input-border-top-right-radius: 0;
-			--input-border-bottom-left-radius: var(--border-radius-base);
-			--input-border-bottom-right-radius: var(--border-radius-base);
-		}
-
-		.inputLeft {
-			--input-border-top-left-radius: var(--border-radius-base);
-			--input-border-top-right-radius: var(--border-radius-base);
-			--input-border-bottom-left-radius: 0;
-			--input-border-bottom-right-radius: 0;
-			--input-border-bottom-color: transparent;
-		}
-	}
 }
 </style>

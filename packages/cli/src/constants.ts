@@ -131,6 +131,7 @@ export const Time = {
 	},
 	days: {
 		toSeconds: 24 * 60 * 60,
+		toMilliseconds: 24 * 60 * 60 * 1000,
 	},
 };
 
@@ -141,3 +142,5 @@ export const MAX_PASSWORD_CHAR_LENGTH = 64;
 export const TEST_WEBHOOK_TIMEOUT = 2 * TIME.MINUTE;
 
 export const TEST_WEBHOOK_TIMEOUT_BUFFER = 30 * TIME.SECOND;
+
+export const N8N_DOCS_URL = 'https://docs.n8n.io';

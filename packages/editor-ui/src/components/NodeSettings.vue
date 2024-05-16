@@ -14,7 +14,7 @@
 					:model-value="node.name"
 					:node-type="nodeType"
 					:read-only="isReadOnly"
-					@update:modelValue="nameChanged"
+					@update:model-value="nameChanged"
 				></NodeTitle>
 				<div v-if="isExecutable">
 					<NodeExecuteButton
@@ -25,7 +25,7 @@
 						size="small"
 						telemetry-source="parameters"
 						@execute="onNodeExecute"
-						@stopExecution="onStopExecution"
+						@stop-execution="onStopExecution"
 					/>
 				</div>
 			</div>
@@ -33,7 +33,7 @@
 				v-if="node && nodeValid"
 				v-model="openPanel"
 				:node-type="nodeType"
-				:session-id="sessionId"
+				:push-ref="pushRef"
 			/>
 		</div>
 		<div v-if="node && !nodeValid" class="node-is-not-valid">
@@ -98,17 +98,17 @@
 					:is-read-only="isReadOnly"
 					:hidden-issues-inputs="hiddenIssuesInputs"
 					path="parameters"
-					@valueChanged="valueChanged"
+					@value-changed="valueChanged"
 					@activate="onWorkflowActivate"
-					@parameterBlur="onParameterBlur"
+					@parameter-blur="onParameterBlur"
 				>
 					<NodeCredentials
 						:node="node"
 						:readonly="isReadOnly"
 						:show-all="true"
 						:hide-issues="hiddenIssuesInputs.includes('credentials')"
-						@credentialSelected="credentialSelected"
-						@valueChanged="valueChanged"
+						@credential-selected="credentialSelected"
+						@value-changed="valueChanged"
 						@blur="onParameterBlur"
 					/>
 				</ParameterInputList>
@@ -139,8 +139,8 @@
 					:is-read-only="isReadOnly"
 					:hidden-issues-inputs="hiddenIssuesInputs"
 					path="parameters"
-					@valueChanged="valueChanged"
-					@parameterBlur="onParameterBlur"
+					@value-changed="valueChanged"
+					@parameter-blur="onParameterBlur"
 				/>
 				<ParameterInputList
 					:parameters="nodeSettings"
@@ -149,15 +149,15 @@
 					:is-read-only="isReadOnly"
 					:hidden-issues-inputs="hiddenIssuesInputs"
 					path=""
-					@valueChanged="valueChanged"
-					@parameterBlur="onParameterBlur"
+					@value-changed="valueChanged"
+					@parameter-blur="onParameterBlur"
 				/>
 				<div class="node-version" data-test-id="node-version">
 					{{
 						$locale.baseText('nodeSettings.nodeVersion', {
 							interpolate: {
 								node: nodeType?.displayName as string,
-								version: node.typeVersion.toString(),
+								version: (node.typeVersion ?? latestVersion).toString(),
 							},
 						})
 					}}
@@ -165,6 +165,13 @@
 				</div>
 			</div>
 		</div>
+		<NDVSubConnections
+			v-if="node"
+			ref="subConnections"
+			:root-node="node"
+			@switch-selected-node="onSwitchSelectedNode"
+			@open-connection-node-creator="onOpenConnectionNodeCreator"
+		/>
 		<n8n-block-ui :show="blockUI" />
 	</div>
 </template>
@@ -178,8 +185,17 @@ import type {
 	INodeParameters,
 	INodeProperties,
 	NodeParameterValue,
+	ConnectionTypes,
 } from 'n8n-workflow';
-import { NodeHelpers, NodeConnectionType, deepCopy } from 'n8n-workflow';
+import {
+	NodeHelpers,
+	NodeConnectionType,
+	deepCopy,
+	isINodePropertyCollectionList,
+	isINodePropertiesList,
+	isINodePropertyOptionsList,
+	displayParameter,
+} from 'n8n-workflow';
 import type {
 	INodeUi,
 	INodeUpdatePropertiesInformation,
@@ -191,7 +207,7 @@ import {
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 	CUSTOM_NODES_DOCS_URL,
 	MAIN_NODE_PANEL_WIDTH,
-	IMPORT_CURL_MODAL_KEY,
+	SHOULD_CLEAR_NODE_OUTPUTS,
 } from '@/constants';
 
 import NodeTitle from '@/components/NodeTitle.vue';
@@ -199,6 +215,7 @@ import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
+import NDVSubConnections from '@/components/NDVSubConnections.vue';
 import { get, set, unset } from 'lodash-es';
 
 import NodeExecuteButton from './NodeExecuteButton.vue';
@@ -214,6 +231,8 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import type { EventBus } from 'n8n-design-system';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { importCurlEventBus } from '@/event-bus';
+import { useToast } from '@/composables/useToast';
 
 export default defineComponent({
 	name: 'NodeSettings',
@@ -223,15 +242,18 @@ export default defineComponent({
 		ParameterInputList,
 		NodeSettingsTabs,
 		NodeWebhooks,
+		NDVSubConnections,
 		NodeExecuteButton,
 	},
 	setup() {
 		const nodeHelpers = useNodeHelpers();
 		const externalHooks = useExternalHooks();
+		const { showMessage } = useToast();
 
 		return {
 			externalHooks,
 			nodeHelpers,
+			showMessage,
 		};
 	},
 	computed: {
@@ -244,9 +266,6 @@ export default defineComponent({
 			useWorkflowsStore,
 			useWorkflowsEEStore,
 		),
-		isCurlImportModalOpen(): boolean {
-			return this.uiStore.isModalOpen(IMPORT_CURL_MODAL_KEY);
-		},
 		isReadOnly(): boolean {
 			return this.readOnly || this.hasForeignCredential;
 		},
@@ -284,7 +303,7 @@ export default defineComponent({
 			return Math.max(...this.nodeTypeVersions);
 		},
 		isLatestNodeVersion(): boolean {
-			return this.latestVersion === this.node?.typeVersion;
+			return !this.node?.typeVersion || this.latestVersion === this.node.typeVersion;
 		},
 		nodeVersionTag(): string {
 			if (!this.nodeType || this.nodeType.hidden) {
@@ -366,7 +385,7 @@ export default defineComponent({
 			const credential = this.usedCredentials
 				? Object.values(this.usedCredentials).find((credential) => {
 						return credential.id === this.foreignCredentials[0];
-				  })
+					})
 				: undefined;
 
 			return this.credentialsStore.getCredentialOwnerName(credential);
@@ -379,7 +398,7 @@ export default defineComponent({
 		dragging: {
 			type: Boolean,
 		},
-		sessionId: {
+		pushRef: {
 			type: String,
 		},
 		nodeType: {
@@ -432,28 +451,6 @@ export default defineComponent({
 		node(newNode, oldNode) {
 			this.setNodeValues();
 		},
-		isCurlImportModalOpen(newValue, oldValue) {
-			if (newValue === false) {
-				let parameters = this.uiStore.getHttpNodeParameters || '';
-
-				if (!parameters) return;
-
-				try {
-					parameters = JSON.parse(parameters) as {
-						[key: string]: unknown;
-					};
-
-					//@ts-ignore
-					this.valueChanged({
-						node: this.node.name,
-						name: 'parameters',
-						value: parameters,
-					});
-
-					this.uiStore.setHttpNodeParameters({ name: IMPORT_CURL_MODAL_KEY, parameters: '' });
-				} catch {}
-			}
-		},
 	},
 	mounted() {
 		this.populateHiddenIssuesSet();
@@ -462,11 +459,28 @@ export default defineComponent({
 		this.eventBus?.on('openSettings', this.openSettings);
 
 		this.nodeHelpers.updateNodeParameterIssues(this.node as INodeUi, this.nodeType);
+		importCurlEventBus.on('setHttpNodeParameters', this.setHttpNodeParameters);
 	},
 	beforeUnmount() {
 		this.eventBus?.off('openSettings', this.openSettings);
+		importCurlEventBus.off('setHttpNodeParameters', this.setHttpNodeParameters);
 	},
 	methods: {
+		setHttpNodeParameters(parameters: Record<string, unknown>) {
+			try {
+				this.valueChanged({
+					node: this.node.name,
+					name: 'parameters',
+					value: parameters,
+				});
+			} catch {}
+		},
+		onSwitchSelectedNode(node: string) {
+			this.$emit('switchSelectedNode', node);
+		},
+		onOpenConnectionNodeCreator(node: string, connectionType: ConnectionTypes) {
+			this.$emit('openConnectionNodeCreator', node, connectionType);
+		},
 		populateHiddenIssuesSet() {
 			if (!this.node || !this.workflowsStore.isNodePristine(this.node.name)) return;
 
@@ -612,6 +626,7 @@ export default defineComponent({
 		},
 		onNodeExecute() {
 			this.hiddenIssuesInputs = [];
+			(this.$refs.subConnections as InstanceType<typeof NDVSubConnections>)?.showNodeInputsIssues();
 			this.$emit('execute');
 		},
 		setValue(name: string, value: NodeParameterValue) {
@@ -836,6 +851,20 @@ export default defineComponent({
 					return;
 				}
 
+				if (
+					parameterData.type &&
+					this.workflowsStore.nodeHasOutputConnection(node.name) &&
+					SHOULD_CLEAR_NODE_OUTPUTS[nodeType.name]?.eventTypes.includes(parameterData.type) &&
+					SHOULD_CLEAR_NODE_OUTPUTS[nodeType.name]?.parameterPaths.includes(parameterData.name)
+				) {
+					this.workflowsStore.removeAllNodeConnection(node, { preserveInputConnections: true });
+					this.showMessage({
+						type: 'warning',
+						title: this.$locale.baseText('nodeSettings.outputCleared.title'),
+						message: this.$locale.baseText('nodeSettings.outputCleared.message'),
+					});
+				}
+
 				// Get only the parameters which are different to the defaults
 				let nodeParameters = NodeHelpers.getNodeParameters(
 					nodeType.properties,
@@ -955,21 +984,27 @@ export default defineComponent({
 				if (!nodeParameterValues?.hasOwnProperty(prop.name) || !displayOptions || !prop.options) {
 					return;
 				}
-				// Only process the parameters that should be hidden
+				// Only process the parameters that depend on the updated parameter
 				const showCondition = displayOptions.show?.[updatedParameter.name];
 				const hideCondition = displayOptions.hide?.[updatedParameter.name];
 				if (showCondition === undefined && hideCondition === undefined) {
 					return;
 				}
+
+				let hasValidOptions = true;
+
 				// Every value should be a possible option
-				const hasValidOptions = Object.keys(nodeParameterValues).every(
-					(key) => (prop.options ?? []).find((option) => option.name === key) !== undefined,
-				);
-				if (
-					!hasValidOptions ||
-					showCondition !== updatedParameter.value ||
-					hideCondition === updatedParameter.value
-				) {
+				if (isINodePropertyCollectionList(prop.options) || isINodePropertiesList(prop.options)) {
+					hasValidOptions = Object.keys(nodeParameterValues).every(
+						(key) => (prop.options ?? []).find((option) => option.name === key) !== undefined,
+					);
+				} else if (isINodePropertyOptionsList(prop.options)) {
+					hasValidOptions = !!prop.options.find(
+						(option) => option.value === nodeParameterValues[prop.name],
+					);
+				}
+
+				if (!hasValidOptions && displayParameter(nodeParameterValues, prop, this.node)) {
 					unset(nodeParameterValues as object, prop.name);
 				}
 			});

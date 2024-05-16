@@ -4,13 +4,11 @@ import {
 	testData,
 } from '../pages/template-collection';
 import * as templateCredentialsSetupPage from '../pages/template-credential-setup';
-import { TemplateWorkflowPage } from '../pages/template-workflow';
 import { WorkflowPage } from '../pages/workflow';
 import * as formStep from '../composables/setup-template-form-step';
 import { getSetupWorkflowCredentialsButton } from '../composables/setup-workflow-credentials-button';
 import * as setupCredsModal from '../composables/modals/workflow-credential-setup-modal';
 
-const templateWorkflowPage = new TemplateWorkflowPage();
 const workflowPage = new WorkflowPage();
 
 const testTemplate = templateCredentialsSetupPage.testData.simpleTemplate;
@@ -34,18 +32,16 @@ describe('Template credentials setup', () => {
 		cy.intercept('GET', `https://api.n8n.io/api/templates/workflows/${testTemplate.id}`, {
 			fixture: testTemplate.fixture,
 		});
-	});
-
-	it('can be opened from template workflow page', () => {
-		templateWorkflowPage.actions.visit(testTemplate.id);
-		templateCredentialsSetupPage.enableTemplateCredentialSetupFeatureFlag();
-		templateWorkflowPage.getters.useTemplateButton().should('be.visible');
-		templateCredentialsSetupPage.enableTemplateCredentialSetupFeatureFlag();
-		templateWorkflowPage.actions.clickUseThisWorkflowButton();
-
-		templateCredentialsSetupPage.getters
-			.title(`Set up 'Promote new Shopify products on Twitter and Telegram' template`)
-			.should('be.visible');
+		cy.intercept('GET', '**/rest/settings', (req) => {
+			// Disable cache
+			delete req.headers['if-none-match']
+			req.reply((res) => {
+				if (res.body.data) {
+					// Disable custom templates host if it has been overridden by another intercept
+					res.body.data.templates = { enabled: true, host: 'https://api.n8n.io/api/' };
+				}
+			});
+		}).as('settingsRequest');
 	});
 
 	it('can be opened from template collection page', () => {

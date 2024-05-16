@@ -270,7 +270,7 @@ export class HtmlExtract implements INodeType {
 							// An array should be returned so iterate over one
 							// value at a time
 							newItem.json[valueData.key] = [];
-							htmlElement.each((i, el) => {
+							htmlElement.each((_, el) => {
 								(newItem.json[valueData.key] as Array<string | undefined>).push(
 									getValue($(el), valueData, options),
 								);

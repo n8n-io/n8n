@@ -13,7 +13,7 @@ import type { SetNodeOptions } from './helpers/interfaces';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'JSON Output',
+		displayName: 'JSON',
 		name: 'jsonOutput',
 		type: 'json',
 		typeOptions: {

@@ -3,6 +3,8 @@ import { BasePage } from './base';
 import { getVisibleSelect } from '../utils';
 import { NodeCreator } from './features/node-creator';
 
+type CyGetOptions = Parameters<(typeof cy)['get']>[1];
+
 const nodeCreator = new NodeCreator();
 export class WorkflowPage extends BasePage {
 	url = '/workflow/new';
@@ -48,7 +50,8 @@ export class WorkflowPage extends BasePage {
 		},
 		successToast: () => cy.get('.el-notification:has(.el-notification--success)'),
 		warningToast: () => cy.get('.el-notification:has(.el-notification--warning)'),
-		errorToast: () => cy.get('.el-notification:has(.el-notification--error)'),
+		errorToast: (options?: CyGetOptions) =>
+			cy.get('.el-notification:has(.el-notification--error)', options),
 		infoToast: () => cy.get('.el-notification:has(.el-notification--info)'),
 		activatorSwitch: () => cy.getByTestId('workflow-activate-switch'),
 		workflowMenu: () => cy.getByTestId('workflow-menu'),
@@ -142,19 +145,20 @@ export class WorkflowPage extends BasePage {
 		},
 		addInitialNodeToCanvas: (
 			nodeDisplayName: string,
-			opts?: { keepNdvOpen?: boolean; action?: string },
+			opts?: { keepNdvOpen?: boolean; action?: string; isTrigger?: boolean },
 		) => {
 			this.getters.canvasPlusButton().click();
 			this.getters.nodeCreatorSearchBar().type(nodeDisplayName);
 			this.getters.nodeCreatorSearchBar().type('{enter}');
 			if (opts?.action) {
+				const itemId = opts.isTrigger ? 'Triggers' : 'Actions';
 				// Expand actions category if it's collapsed
 				nodeCreator.getters
-					.getCategoryItem('Actions')
+					.getCategoryItem(itemId)
 					.parent()
 					.then(($el) => {
 						if ($el.attr('data-category-collapsed') === 'true') {
-							nodeCreator.getters.getCategoryItem('Actions').click();
+							nodeCreator.getters.getCategoryItem(itemId).click();
 						}
 					});
 				nodeCreator.getters.getCreatorItem(opts.action).click();
@@ -314,7 +318,6 @@ export class WorkflowPage extends BasePage {
 				this.getters.workflowTagsInput().type(tag);
 				this.getters.workflowTagsInput().type('{enter}');
 			});
-			cy.realPress('Tab');
 			// For a brief moment the Element UI tag component shows the tags as(+X) string
 			// so we need to wait for it to disappear
 			this.getters.workflowTagsContainer().should('not.contain', `+${tags.length}`);
@@ -414,6 +417,9 @@ export class WorkflowPage extends BasePage {
 		},
 		editSticky: (content: string) => {
 			this.getters.stickies().dblclick().find('textarea').clear().type(content).type('{esc}');
+		},
+		clearSticky: () => {
+			this.getters.stickies().dblclick().find('textarea').clear().type('{esc}');
 		},
 		shouldHaveWorkflowName: (name: string) => {
 			this.getters.workflowNameInputContainer().invoke('attr', 'title').should('include', name);

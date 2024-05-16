@@ -33,8 +33,8 @@
 						:loading="loading"
 						:use-workflow-button="true"
 						:workflows="loading ? [] : collectionWorkflows"
-						@useWorkflow="onUseWorkflow"
-						@openTemplate="onOpenTemplate"
+						@use-workflow="onUseWorkflow"
+						@open-template="onOpenTemplate"
 					/>
 				</div>
 				<div :class="$style.details">
@@ -57,7 +57,6 @@ import TemplateDetails from '@/components/TemplateDetails.vue';
 import TemplateList from '@/components/TemplateList.vue';
 import TemplatesView from './TemplatesView.vue';
 
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import type {
 	ITemplatesCollection,
 	ITemplatesCollectionFull,
@@ -80,7 +79,6 @@ export default defineComponent({
 		TemplateList,
 		TemplatesView,
 	},
-	mixins: [workflowHelpers],
 	setup() {
 		const externalHooks = useExternalHooks();
 

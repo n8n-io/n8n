@@ -7,8 +7,11 @@ export type RedisServiceCommand =
 	| 'stopWorker'
 	| 'reloadLicense'
 	| 'reloadExternalSecretsProviders'
-	| 'workflowActiveStateChanged' // multi-main only
-	| 'workflowFailedToActivate' // multi-main only
+	| 'display-workflow-activation' // multi-main only
+	| 'display-workflow-deactivation' // multi-main only
+	| 'add-webhooks-triggers-and-pollers' // multi-main only
+	| 'remove-triggers-and-pollers' // multi-main only
+	| 'workflow-failed-to-activate' // multi-main only
 	| 'relay-execution-lifecycle-event' // multi-main only
 	| 'clear-test-webhooks'; // multi-main only
 
@@ -32,12 +35,12 @@ export type RedisServiceBaseCommand =
 	| {
 			senderId: string;
 			command: 'relay-execution-lifecycle-event';
-			payload: { type: IPushDataType; args: Record<string, unknown>; sessionId: string };
+			payload: { type: IPushDataType; args: Record<string, unknown>; pushRef: string };
 	  }
 	| {
 			senderId: string;
 			command: 'clear-test-webhooks';
-			payload: { webhookKey: string; workflowEntity: IWorkflowDb; sessionId: string };
+			payload: { webhookKey: string; workflowEntity: IWorkflowDb; pushRef: string };
 	  };
 
 export type RedisServiceWorkerResponseObject = {

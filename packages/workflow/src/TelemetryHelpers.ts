@@ -8,10 +8,19 @@ import type {
 	INodesGraphResult,
 	IWorkflowBase,
 	INodeTypes,
+	IDataObject,
 } from './Interfaces';
 import { ApplicationError } from './errors/application.error';
-
-const STICKY_NODE_TYPE = 'n8n-nodes-base.stickyNote';
+import {
+	AGENT_LANGCHAIN_NODE_TYPE,
+	CHAIN_LLM_LANGCHAIN_NODE_TYPE,
+	CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE,
+	HTTP_REQUEST_NODE_TYPE,
+	LANGCHAIN_CUSTOM_TOOLS,
+	OPENAI_LANGCHAIN_NODE_TYPE,
+	STICKY_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
+} from './Constants';
 
 export function getNodeTypeForName(workflow: IWorkflowBase, nodeName: string): INode | undefined {
 	return workflow.nodes.find((node) => node.name === nodeName);
@@ -95,6 +104,7 @@ export function generateNodesGraph(
 	options?: {
 		sourceInstanceId?: string;
 		nodeIdMap?: { [curr: string]: string };
+		isCloudDeployment?: boolean;
 	},
 ): INodesGraphResult {
 	const nodeGraph: INodesGraph = {
@@ -116,14 +126,20 @@ export function generateNodesGraph(
 			return;
 		}
 
-		const nodeParameters =
-			getNodeParameters(
-				stickyType.description.properties,
-				stickyNote.parameters,
-				true,
-				false,
-				stickyNote,
-			) ?? {};
+		let nodeParameters: IDataObject = {};
+
+		try {
+			nodeParameters =
+				getNodeParameters(
+					stickyType.description.properties,
+					stickyNote.parameters,
+					true,
+					false,
+					stickyNote,
+				) ?? {};
+		} catch {
+			// prevent node param resolution from failing graph generation
+		}
 
 		const height: number = typeof nodeParameters.height === 'number' ? nodeParameters.height : 0;
 		const width: number = typeof nodeParameters.width === 'number' ? nodeParameters.width : 0;
@@ -141,6 +157,7 @@ export function generateNodesGraph(
 		};
 	});
 
+	// eslint-disable-next-line complexity
 	otherNodes.forEach((node: INode, index: number) => {
 		nodeGraph.node_types.push(node.type);
 		const nodeItem: INodeGraphItem = {
@@ -158,13 +175,15 @@ export function generateNodesGraph(
 			nodeItem.src_node_id = options.nodeIdMap[node.id];
 		}
 
-		if (node.type === 'n8n-nodes-base.httpRequest' && node.typeVersion === 1) {
+		if (node.type === AGENT_LANGCHAIN_NODE_TYPE) {
+			nodeItem.agent = (node.parameters.agent as string) ?? 'conversationalAgent';
+		} else if (node.type === HTTP_REQUEST_NODE_TYPE && node.typeVersion === 1) {
 			try {
 				nodeItem.domain = new URL(node.parameters.url as string).hostname;
 			} catch {
 				nodeItem.domain = getDomainBase(node.parameters.url as string);
 			}
-		} else if (node.type === 'n8n-nodes-base.httpRequest' && node.typeVersion > 1) {
+		} else if (node.type === HTTP_REQUEST_NODE_TYPE && node.typeVersion > 1) {
 			const { authentication } = node.parameters as { authentication: string };
 
 			nodeItem.credential_type = {
@@ -180,11 +199,11 @@ export function generateNodesGraph(
 			nodeItem.domain_base = getDomainBase(url);
 			nodeItem.domain_path = getDomainPath(url);
 			nodeItem.method = node.parameters.requestMethod as string;
-		} else if (node.type === 'n8n-nodes-base.webhook') {
+		} else if (node.type === WEBHOOK_NODE_TYPE) {
 			webhookNodeNames.push(node.name);
 		} else {
 			try {
-				const nodeType = nodeTypes.getByNameAndVersion(node.type);
+				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 				if (nodeType) {
 					const nodeParameters = getNodeParameters(
 						nodeType.description.properties,
@@ -214,6 +233,63 @@ export function generateNodesGraph(
 			}
 		}
 
+		if (options?.isCloudDeployment === true) {
+			if (node.type === OPENAI_LANGCHAIN_NODE_TYPE) {
+				nodeItem.prompts =
+					(((node.parameters?.messages as IDataObject) ?? {}).values as IDataObject[]) ?? [];
+			}
+
+			if (node.type === AGENT_LANGCHAIN_NODE_TYPE) {
+				const prompts: IDataObject = {};
+
+				if (node.parameters?.text) {
+					prompts.text = node.parameters.text as string;
+				}
+				const nodeOptions = node.parameters?.options as IDataObject;
+
+				if (nodeOptions) {
+					const optionalMessagesKeys = [
+						'humanMessage',
+						'systemMessage',
+						'humanMessageTemplate',
+						'prefix',
+						'suffixChat',
+						'suffix',
+						'prefixPrompt',
+						'suffixPrompt',
+					];
+
+					for (const key of optionalMessagesKeys) {
+						if (nodeOptions[key]) {
+							prompts[key] = nodeOptions[key] as string;
+						}
+					}
+				}
+
+				if (Object.keys(prompts).length) {
+					nodeItem.prompts = prompts;
+				}
+			}
+
+			if (node.type === CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE) {
+				nodeItem.prompts = (
+					(((node.parameters?.options as IDataObject) ?? {})
+						.summarizationMethodAndPrompts as IDataObject) ?? {}
+				).values as IDataObject;
+			}
+
+			if (LANGCHAIN_CUSTOM_TOOLS.includes(node.type)) {
+				nodeItem.prompts = {
+					description: (node.parameters?.description as string) ?? '',
+				};
+			}
+
+			if (node.type === CHAIN_LLM_LANGCHAIN_NODE_TYPE) {
+				nodeItem.prompts =
+					(((node.parameters?.messages as IDataObject) ?? {}).messageValues as IDataObject[]) ?? [];
+			}
+		}
+
 		nodeGraph.nodes[index.toString()] = nodeItem;
 		nameIndices[node.name] = index.toString();
 	});
@@ -230,7 +306,7 @@ export function generateNodesGraph(
 
 		Object.keys(connections).forEach((key) => {
 			connections[key].forEach((element) => {
-				element.forEach((element2) => {
+				(element ?? []).forEach((element2) => {
 					nodeGraph.node_connections.push(getGraphConnectionItem(nodeName, element2));
 				});
 			});

@@ -84,7 +84,9 @@ const outputTypeParsers: {
 	[NodeConnectionType.AiAgent]: fallbackParser,
 	[NodeConnectionType.AiMemory](execData: IDataObject) {
 		const chatHistory =
-			execData.chatHistory ?? execData.messages ?? execData?.response?.chat_history;
+			execData.chatHistory ??
+			execData.messages ??
+			(execData?.response as IDataObject)?.chat_history;
 		if (Array.isArray(chatHistory)) {
 			const responseText = chatHistory
 				.map((content: MemoryMessage) => {
@@ -95,26 +97,36 @@ const outputTypeParsers: {
 					) {
 						interface MessageContent {
 							type: string;
-							image_url?: {
-								url: string;
-							};
+							text?: string;
+							image_url?:
+								| {
+										url: string;
+								  }
+								| string;
 						}
 						let message = content.kwargs.content;
 						if (Array.isArray(message)) {
-							const messageContent = message[0] as {
-								type?: string;
-								image_url?: { url: string };
-							};
-							if (messageContent?.type === 'image_url') {
-								message = `![Input image](${messageContent.image_url?.url})`;
-							}
-							message = message as MessageContent[];
+							message = (message as MessageContent[])
+								.map((item) => {
+									const { type, image_url } = item;
+									if (
+										type === 'image_url' &&
+										typeof image_url === 'object' &&
+										typeof image_url.url === 'string'
+									) {
+										return `![Input image](${image_url.url})`;
+									} else if (typeof image_url === 'string') {
+										return `![Input image](${image_url})`;
+									}
+									return item.text;
+								})
+								.join('\n');
 						}
 						if (Object.keys(content.kwargs.additional_kwargs).length) {
 							message += ` (${JSON.stringify(content.kwargs.additional_kwargs)})`;
 						}
 						if (content.id.includes('HumanMessage')) {
-							message = `**Human:** ${message.trim()}`;
+							message = `**Human:** ${String(message).trim()}`;
 						} else if (content.id.includes('AIMessage')) {
 							message = `**AI:** ${message}`;
 						} else if (content.id.includes('SystemMessage')) {

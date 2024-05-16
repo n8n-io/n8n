@@ -1,7 +1,10 @@
 import type { INode } from 'n8n-workflow';
-import { WorkflowExecutionService } from '@/workflows/workflowExecution.service';
-import type { IWorkflowDb } from '@/Interfaces';
 import { mock } from 'jest-mock-extended';
+
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { IWorkflowDb } from '@/Interfaces';
+import { WorkflowExecutionService } from '@/workflows/workflowExecution.service';
+import type { WorkflowRunner } from '@/WorkflowRunner';
 
 const webhookNode: INode = {
 	name: 'Webhook',
@@ -47,17 +50,28 @@ const hackerNewsNode: INode = {
 };
 
 describe('WorkflowExecutionService', () => {
-	let workflowExecutionService: WorkflowExecutionService;
+	const workflowRunner = mock<WorkflowRunner>();
+	const workflowExecutionService = new WorkflowExecutionService(
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		workflowRunner,
+	);
 
-	beforeAll(() => {
-		workflowExecutionService = new WorkflowExecutionService(
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-		);
+	describe('runWorkflow()', () => {
+		test('should call `WorkflowRunner.run()`', async () => {
+			const node = mock<INode>();
+			const workflow = mock<WorkflowEntity>({ active: true, nodes: [node] });
+
+			workflowRunner.run.mockResolvedValue('fake-execution-id');
+
+			await workflowExecutionService.runWorkflow(workflow, node, [[]], mock(), 'trigger');
+
+			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	describe('selectPinnedActivatorStarter()', () => {

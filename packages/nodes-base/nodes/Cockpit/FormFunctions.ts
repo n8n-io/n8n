@@ -11,5 +11,5 @@ export async function submitForm(
 		form,
 	};
 
-	return await cockpitApiRequest.call(this, 'post', `/forms/submit/${resourceName}`, body);
+	return await cockpitApiRequest.call(this, 'POST', `/forms/submit/${resourceName}`, body);
 }

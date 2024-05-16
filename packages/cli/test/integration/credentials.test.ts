@@ -14,6 +14,7 @@ import type { SaveCredentialFunction } from './shared/types';
 import * as utils from './shared/utils/';
 import { affixRoleToSaveCredential, shareCredentialWithUsers } from './shared/db/credentials';
 import { createManyUsers, createUser } from './shared/db/users';
+import { Credentials } from 'n8n-core';
 
 // mock that credentialsSharing is not enabled
 jest.spyOn(License.prototype, 'isSharingEnabled').mockReturnValue(false);
@@ -95,21 +96,16 @@ describe('POST /credentials', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const { id, name, type, nodesAccess, data: encryptedData } = response.body.data;
+		const { id, name, type, data: encryptedData } = response.body.data;
 
 		expect(name).toBe(payload.name);
 		expect(type).toBe(payload.type);
-		if (!payload.nodesAccess) {
-			fail('Payload did not contain a nodesAccess array');
-		}
-		expect(nodesAccess[0].nodeType).toBe(payload.nodesAccess[0].nodeType);
 		expect(encryptedData).not.toBe(payload.data);
 
 		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
 
 		expect(credential.name).toBe(payload.name);
 		expect(credential.type).toBe(payload.type);
-		expect(credential.nodesAccess[0].nodeType).toBe(payload.nodesAccess[0].nodeType);
 		expect(credential.data).not.toBe(payload.data);
 
 		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
@@ -257,14 +253,10 @@ describe('PATCH /credentials/:id', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const { id, name, type, nodesAccess, data: encryptedData } = response.body.data;
+		const { id, name, type, data: encryptedData } = response.body.data;
 
 		expect(name).toBe(patchPayload.name);
 		expect(type).toBe(patchPayload.type);
-		if (!patchPayload.nodesAccess) {
-			fail('Payload did not contain a nodesAccess array');
-		}
-		expect(nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess[0].nodeType);
 
 		expect(encryptedData).not.toBe(patchPayload.data);
 
@@ -272,7 +264,6 @@ describe('PATCH /credentials/:id', () => {
 
 		expect(credential.name).toBe(patchPayload.name);
 		expect(credential.type).toBe(patchPayload.type);
-		expect(credential.nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess[0].nodeType);
 		expect(credential.data).not.toBe(patchPayload.data);
 
 		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
@@ -283,7 +274,7 @@ describe('PATCH /credentials/:id', () => {
 		expect(sharedCredential.credentials.name).toBe(patchPayload.name); // updated
 	});
 
-	test('should not update non-owned cred for owner', async () => {
+	test('should update non-owned cred for owner', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
 		const patchPayload = randomCredentialPayload();
 
@@ -291,22 +282,28 @@ describe('PATCH /credentials/:id', () => {
 			.patch(`/credentials/${savedCredential.id}`)
 			.send(patchPayload);
 
-		expect(response.statusCode).toBe(404);
+		expect(response.statusCode).toBe(200);
 
 		const credential = await Container.get(CredentialsRepository).findOneByOrFail({
 			id: savedCredential.id,
 		});
 
-		expect(credential.name).not.toBe(patchPayload.name);
-		expect(credential.type).not.toBe(patchPayload.type);
-		expect(credential.data).not.toBe(patchPayload.data);
+		expect(credential.name).toBe(patchPayload.name);
+		expect(credential.type).toBe(patchPayload.type);
+
+		const credentialObject = new Credentials(
+			{ id: credential.id, name: credential.name },
+			credential.type,
+			credential.data,
+		);
+		expect(credentialObject.getData()).toStrictEqual(patchPayload.data);
 
 		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
 			relations: ['credentials'],
 			where: { credentialsId: credential.id },
 		});
 
-		expect(sharedCredential.credentials.name).not.toBe(patchPayload.name); // updated
+		expect(sharedCredential.credentials.name).toBe(patchPayload.name); // updated
 	});
 
 	test('should update owned cred for member', async () => {
@@ -319,15 +316,10 @@ describe('PATCH /credentials/:id', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const { id, name, type, nodesAccess, data: encryptedData } = response.body.data;
+		const { id, name, type, data: encryptedData } = response.body.data;
 
 		expect(name).toBe(patchPayload.name);
 		expect(type).toBe(patchPayload.type);
-
-		if (!patchPayload.nodesAccess) {
-			fail('Payload did not contain a nodesAccess array');
-		}
-		expect(nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess[0].nodeType);
 
 		expect(encryptedData).not.toBe(patchPayload.data);
 
@@ -335,7 +327,6 @@ describe('PATCH /credentials/:id', () => {
 
 		expect(credential.name).toBe(patchPayload.name);
 		expect(credential.type).toBe(patchPayload.type);
-		expect(credential.nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess[0].nodeType);
 		expect(credential.data).not.toBe(patchPayload.data);
 
 		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
@@ -381,7 +372,7 @@ describe('PATCH /credentials/:id', () => {
 		expect(shellCredential.name).not.toBe(patchPayload.name); // not updated
 	});
 
-	test('should not update non-owned but shared cred for instance owner', async () => {
+	test('should update non-owned but shared cred for instance owner', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: secondMember });
 		await shareCredentialWithUsers(savedCredential, [owner]);
 		const patchPayload = randomCredentialPayload();
@@ -390,13 +381,13 @@ describe('PATCH /credentials/:id', () => {
 			.patch(`/credentials/${savedCredential.id}`)
 			.send(patchPayload);
 
-		expect(response.statusCode).toBe(404);
+		expect(response.statusCode).toBe(200);
 
 		const shellCredential = await Container.get(CredentialsRepository).findOneByOrFail({
 			id: savedCredential.id,
 		});
 
-		expect(shellCredential.name).not.toBe(patchPayload.name); // not updated
+		expect(shellCredential.name).toBe(patchPayload.name); // updated
 	});
 
 	test('should fail with invalid inputs', async () => {
@@ -407,9 +398,6 @@ describe('PATCH /credentials/:id', () => {
 				.patch(`/credentials/${savedCredential.id}`)
 				.send(invalidPayload);
 
-			if (response.statusCode === 500) {
-				console.log(response.statusCode, response.body);
-			}
 			expect(response.statusCode).toBe(400);
 		}
 	});
@@ -537,11 +525,10 @@ describe('GET /credentials/:id', () => {
 });
 
 function validateMainCredentialData(credential: ListQuery.Credentials.WithOwnedByAndSharedWith) {
-	const { name, type, nodesAccess, sharedWith, ownedBy } = credential;
+	const { name, type, sharedWith, ownedBy } = credential;
 
 	expect(typeof name).toBe('string');
 	expect(typeof type).toBe('string');
-	expect(typeof nodesAccess?.[0].nodeType).toBe('string');
 
 	if (sharedWith) {
 		expect(Array.isArray(sharedWith)).toBe(true);
@@ -560,23 +547,15 @@ function validateMainCredentialData(credential: ListQuery.Credentials.WithOwnedB
 const INVALID_PAYLOADS = [
 	{
 		type: randomName(),
-		nodesAccess: [{ nodeType: randomName() }],
 		data: { accessToken: randomString(6, 16) },
 	},
 	{
 		name: randomName(),
-		nodesAccess: [{ nodeType: randomName() }],
-		data: { accessToken: randomString(6, 16) },
-	},
-	{
-		name: randomName(),
-		type: randomName(),
 		data: { accessToken: randomString(6, 16) },
 	},
 	{
 		name: randomName(),
 		type: randomName(),
-		nodesAccess: [{ nodeType: randomName() }],
 	},
 	{},
 	undefined,

@@ -43,15 +43,20 @@ import type {
 	NodeParameterValueType,
 	ConnectionTypes,
 	CloseFunction,
+	INodeOutputConfiguration,
 } from './Interfaces';
-import { Node } from './Interfaces';
+import { Node, NodeConnectionType } from './Interfaces';
 import type { IDeferredPromise } from './DeferredPromise';
 
 import * as NodeHelpers from './NodeHelpers';
 import * as ObservableObject from './ObservableObject';
 import { RoutingNode } from './RoutingNode';
 import { Expression } from './Expression';
-import { NODES_WITH_RENAMABLE_CONTENT } from './Constants';
+import {
+	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
+	NODES_WITH_RENAMABLE_CONTENT,
+	STARTING_NODE_TYPES,
+} from './Constants';
 import { ApplicationError } from './errors/application.error';
 
 function dedupe<T>(arr: T[]): T[] {
@@ -80,6 +85,8 @@ export class Workflow {
 	// To save workflow specific static data like for example
 	// ids of registered webhooks of nodes
 	staticData: IDataObject;
+
+	testStaticData: IDataObject | undefined;
 
 	pinData?: IPinData;
 
@@ -328,6 +335,8 @@ export class Workflow {
 			});
 		}
 
+		if (this.testStaticData?.[key]) return this.testStaticData[key] as IDataObject;
+
 		if (this.staticData[key] === undefined) {
 			// Create it as ObservableObject that we can easily check if the data changed
 			// to know if the workflow with its data has to be saved afterwards or not.
@@ -335,6 +344,10 @@ export class Workflow {
 		}
 
 		return this.staticData[key] as IDataObject;
+	}
+
+	setTestStaticData(testStaticData: IDataObject) {
+		this.testStaticData = testStaticData;
 	}
 
 	/**
@@ -612,7 +625,7 @@ export class Workflow {
 			connectionsByIndex = this.connectionsByDestinationNode[nodeName][type][connectionIndex];
 			// eslint-disable-next-line @typescript-eslint/no-loop-func
 			connectionsByIndex.forEach((connection) => {
-				if (checkedNodes!.includes(connection.node)) {
+				if (checkedNodes.includes(connection.node)) {
 					// Node got checked already before
 					return;
 				}
@@ -837,6 +850,47 @@ export class Workflow {
 		return returnConns;
 	}
 
+	getParentMainInputNode(node: INode): INode {
+		if (node) {
+			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			const outputs = NodeHelpers.getNodeOutputs(this, node, nodeType.description);
+
+			if (
+				!!outputs.find(
+					(output) =>
+						((output as INodeOutputConfiguration)?.type ?? output) !== NodeConnectionType.Main,
+				)
+			) {
+				// Get the first node which is connected to a non-main output
+				const nonMainNodesConnected = outputs?.reduce((acc, outputName) => {
+					const parentNodes = this.getChildNodes(
+						node.name,
+						(outputName as INodeOutputConfiguration)?.type ?? outputName,
+					);
+					if (parentNodes.length > 0) {
+						acc.push(...parentNodes);
+					}
+					return acc;
+				}, [] as string[]);
+
+				if (nonMainNodesConnected.length) {
+					const returnNode = this.getNode(nonMainNodesConnected[0]);
+					if (returnNode === null) {
+						// This should theoretically never happen as the node is connected
+						// but who knows and it makes TS happy
+						throw new ApplicationError(`Node "${nonMainNodesConnected[0]}" not found`);
+					}
+
+					// The chain of non-main nodes is potentially not finished yet so
+					// keep on going
+					return this.getParentMainInputNode(returnNode);
+				}
+			}
+		}
+
+		return node;
+	}
+
 	/**
 	 * Returns via which output of the parent-node and index the current node
 	 * they are connected
@@ -940,7 +994,7 @@ export class Workflow {
 			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 			// TODO: Identify later differently
-			if (nodeType.description.name === '@n8n/n8n-nodes-langchain.manualChatTrigger') {
+			if (nodeType.description.name === MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE) {
 				continue;
 			}
 
@@ -952,20 +1006,13 @@ export class Workflow {
 			}
 		}
 
-		const startingNodeTypes = [
-			'n8n-nodes-base.manualTrigger',
-			'n8n-nodes-base.executeWorkflowTrigger',
-			'n8n-nodes-base.errorTrigger',
-			'n8n-nodes-base.start',
-		];
-
 		const sortedNodeNames = Object.values(this.nodes)
-			.sort((a, b) => startingNodeTypes.indexOf(a.type) - startingNodeTypes.indexOf(b.type))
+			.sort((a, b) => STARTING_NODE_TYPES.indexOf(a.type) - STARTING_NODE_TYPES.indexOf(b.type))
 			.map((n) => n.name);
 
 		for (const nodeName of sortedNodeNames) {
 			node = this.nodes[nodeName];
-			if (startingNodeTypes.includes(node.type)) {
+			if (STARTING_NODE_TYPES.includes(node.type)) {
 				if (node.disabled === true) {
 					continue;
 				}
@@ -1217,6 +1264,7 @@ export class Workflow {
 	 * Executes the given node.
 	 *
 	 */
+	// eslint-disable-next-line complexity
 	async runNode(
 		executionData: IExecuteData,
 		runExecutionData: IRunExecutionData,
@@ -1285,6 +1333,12 @@ export class Workflow {
 			// The node did already fail. So throw an error here that it displays and logs it correctly.
 			// Does get used by webhook and trigger nodes in case they throw an error that it is possible
 			// to log the error and display in Editor-UI.
+			if (
+				runExecutionData.resultData.error.name === 'NodeOperationError' ||
+				runExecutionData.resultData.error.name === 'NodeApiError'
+			) {
+				throw runExecutionData.resultData.error;
+			}
 
 			const error = new Error(runExecutionData.resultData.error.message);
 			error.stack = runExecutionData.resultData.error.stack;

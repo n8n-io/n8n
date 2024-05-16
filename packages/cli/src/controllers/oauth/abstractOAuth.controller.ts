@@ -95,7 +95,7 @@ export abstract class AbstractOAuthController {
 		credential: ICredentialsDb,
 		decryptedData: ICredentialDataDecryptedObject,
 	) {
-		const credentials = new Credentials(credential, credential.type, credential.nodesAccess);
+		const credentials = new Credentials(credential, credential.type);
 		credentials.setData(decryptedData);
 		await this.credentialsRepository.update(credential.id, {
 			...credentials.getDataToSave(),

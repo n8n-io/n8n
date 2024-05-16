@@ -3,10 +3,10 @@ import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import type { OptionsWithUri } from 'request';
 
 import type { Connector, ElasticSecurityApiCredentials } from './types';
 
@@ -16,7 +16,7 @@ export function tolerateTrailingSlash(baseUrl: string) {
 
 export async function elasticSecurityApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -31,7 +31,7 @@ export async function elasticSecurityApiRequest(
 
 	const token = Buffer.from(`${username}:${password}`).toString('base64');
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			Authorization: `Basic ${token}`,
 			'kbn-xsrf': true,
@@ -64,7 +64,7 @@ export async function elasticSecurityApiRequest(
 
 export async function elasticSecurityApiRequestAllItems(
 	this: IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -89,7 +89,7 @@ export async function elasticSecurityApiRequestAllItems(
 
 export async function handleListing(
 	this: IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},

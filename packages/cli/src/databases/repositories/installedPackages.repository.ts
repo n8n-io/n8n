@@ -1,5 +1,5 @@
 import { Service } from 'typedi';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, Repository } from '@n8n/typeorm';
 import { InstalledPackages } from '../entities/InstalledPackages';
 import { InstalledNodesRepository } from './installedNodes.repository';
 import type { PackageDirectoryLoader } from 'n8n-core';
@@ -31,7 +31,7 @@ export class InstalledPackagesRepository extends Repository<InstalledPackages> {
 
 			installedPackage.installedNodes = [];
 
-			return loadedNodes.map(async (loadedNode) => {
+			for (const loadedNode of loadedNodes) {
 				const installedNode = this.installedNodesRepository.create({
 					name: nodeTypes[loadedNode.name].type.description.displayName,
 					type: loadedNode.name,
@@ -41,8 +41,8 @@ export class InstalledPackagesRepository extends Repository<InstalledPackages> {
 
 				installedPackage.installedNodes.push(installedNode);
 
-				return await manager.save(installedNode);
-			});
+				await manager.save(installedNode);
+			}
 		});
 
 		return installedPackage!;

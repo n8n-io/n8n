@@ -1,8 +1,10 @@
+import { pipeline } from 'stream/promises';
+import { createWriteStream } from 'fs';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError, BINARY_ENCODING } from 'n8n-workflow';
 
 import type { TextSplitter } from 'langchain/text_splitter';
-import type { Document } from 'langchain/document';
+import type { Document } from '@langchain/core/documents';
 import { CSVLoader } from 'langchain/document_loaders/fs/csv';
 import { DocxLoader } from 'langchain/document_loaders/fs/docx';
 import { JSONLoader } from 'langchain/document_loaders/fs/json';
@@ -10,8 +12,6 @@ import { PDFLoader } from 'langchain/document_loaders/fs/pdf';
 import { TextLoader } from 'langchain/document_loaders/fs/text';
 import { EPubLoader } from 'langchain/document_loaders/fs/epub';
 import { file as tmpFile, type DirectoryResult } from 'tmp-promise';
-import { pipeline } from 'stream/promises';
-import { createWriteStream } from 'fs';
 
 import { getMetadataFiltersValues } from './helpers';
 
@@ -34,7 +34,12 @@ export class N8nBinaryLoader {
 
 	private textSplitter?: TextSplitter;
 
-	constructor(context: IExecuteFunctions, optionsPrefix = '', binaryDataKey = '', textSplitter?: TextSplitter) {
+	constructor(
+		context: IExecuteFunctions,
+		optionsPrefix = '',
+		binaryDataKey = '',
+		textSplitter?: TextSplitter,
+	) {
 		this.context = context;
 		this.textSplitter = textSplitter;
 		this.optionsPrefix = optionsPrefix;
@@ -67,7 +72,7 @@ export class N8nBinaryLoader {
 
 		if (!item) return [];
 
-		const binaryData = this.context.helpers.assertBinaryData(itemIndex, this.binaryDataKey)
+		const binaryData = this.context.helpers.assertBinaryData(itemIndex, this.binaryDataKey);
 		const { mimeType } = binaryData;
 
 		// Check if loader matches the mime-type of the data
@@ -98,7 +103,12 @@ export class N8nBinaryLoader {
 
 		let filePathOrBlob: string | Blob;
 		if (binaryData.id) {
-			filePathOrBlob = this.context.helpers.getBinaryPath(binaryData.id);
+			const binaryBuffer = await this.context.helpers.binaryToBuffer(
+				await this.context.helpers.getBinaryStream(binaryData.id),
+			);
+			filePathOrBlob = new Blob([binaryBuffer], {
+				type: mimeType,
+			});
 		} else {
 			filePathOrBlob = new Blob([Buffer.from(binaryData.data, BINARY_ENCODING)], {
 				type: mimeType,
@@ -175,8 +185,9 @@ export class N8nBinaryLoader {
 				loader = new TextLoader(filePathOrBlob);
 		}
 
-
-		const loadedDoc = this.textSplitter ? await loader.loadAndSplit(this.textSplitter) : await loader.load();
+		const loadedDoc = this.textSplitter
+			? await loader.loadAndSplit(this.textSplitter)
+			: await loader.load();
 
 		docs.push(...loadedDoc);
 

@@ -117,7 +117,11 @@ export default defineComponent({
 
 				const data =
 					this.targetDataKey && this.draggingEl ? this.draggingEl.dataset.value : this.data || '';
-				this.ndvStore.draggableStartDragging({ type: this.type, data: data || '' });
+				this.ndvStore.draggableStartDragging({
+					type: this.type,
+					data: data || '',
+					dimensions: this.draggingEl?.getBoundingClientRect() ?? null,
+				});
 
 				this.$emit('dragstart', this.draggingEl);
 				document.body.style.cursor = 'grabbing';

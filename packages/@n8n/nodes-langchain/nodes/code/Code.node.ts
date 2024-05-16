@@ -15,7 +15,7 @@ import {
 import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
 import { standardizeOutput } from 'n8n-nodes-base/dist/nodes/Code/utils';
-import type { Tool } from 'langchain/tools';
+import type { Tool } from '@langchain/core/tools';
 import { makeResolverFromLegacyOptions } from '@n8n/vm2';
 import { logWrapper } from '../../utils/logWrapper';
 
@@ -36,7 +36,7 @@ const connectorTypes = {
 	[NodeConnectionType.Main]: 'Main',
 };
 
-const defaultCodeExecute = `const { PromptTemplate } = require('langchain/prompts');
+const defaultCodeExecute = `const { PromptTemplate } = require('@langchain/core/prompts');
 
 const query = 'Tell me a joke';
 const prompt = PromptTemplate.fromTemplate(query);
@@ -48,13 +48,14 @@ return [ {json: { output } } ];`;
 const defaultCodeSupplyData = `const { WikipediaQueryRun } = require('langchain/tools');
 return new WikipediaQueryRun();`;
 
+const langchainModules = ['langchain', '@langchain/*'];
 export const vmResolver = makeResolverFromLegacyOptions({
 	external: {
-		modules: external ? ['langchain', ...external.split(',')] : ['langchain'],
+		modules: external ? [...langchainModules, ...external.split(',')] : [...langchainModules],
 		transitive: false,
 	},
 	resolve(moduleName, parentDirname) {
-		if (moduleName.match(/^langchain\//)) {
+		if (moduleName.match(/^langchain\//) ?? moduleName.match(/^@langchain\//)) {
 			return require.resolve(`@n8n/n8n-nodes-langchain/node_modules/${moduleName}.cjs`, {
 				paths: [parentDirname],
 			});
@@ -88,6 +89,8 @@ function getSandbox(
 	context.getExecutionCancelSignal = this.getExecutionCancelSignal;
 	// eslint-disable-next-line @typescript-eslint/unbound-method
 	context.getNodeOutputs = this.getNodeOutputs;
+	// eslint-disable-next-line @typescript-eslint/unbound-method
+	context.executeWorkflow = this.executeWorkflow;
 	// eslint-disable-next-line @typescript-eslint/unbound-method
 	context.logger = this.logger;
 
@@ -158,8 +161,7 @@ export class Code implements INodeType {
 								name: 'code',
 								type: 'string',
 								typeOptions: {
-									editor: 'codeNodeEditor',
-									editorLanguage: 'javaScript',
+									editor: 'jsEditor',
 								},
 								default: defaultCodeExecute,
 								hint: 'This code will only run and return data if a "Main" input & output got created.',
@@ -176,8 +178,7 @@ export class Code implements INodeType {
 								name: 'code',
 								type: 'string',
 								typeOptions: {
-									editor: 'codeNodeEditor',
-									editorLanguage: 'javaScript',
+									editor: 'jsEditor',
 								},
 								default: defaultCodeSupplyData,
 								hint: 'This code will only run and return data if an output got created which is not "Main".',

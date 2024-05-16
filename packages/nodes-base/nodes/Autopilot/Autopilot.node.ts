@@ -6,6 +6,7 @@ import type {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 
 import { autopilotApiRequest, autopilotApiRequestAllItems } from './GenericFunctions';
@@ -228,7 +229,7 @@ export class Autopilot implements INodeType {
 
 						const contactId = this.getNodeParameter('contactId', i) as string;
 
-						const method: { [key: string]: string } = {
+						const method: { [key: string]: IHttpRequestMethods } = {
 							add: 'POST',
 							remove: 'DELETE',
 							exist: 'GET',

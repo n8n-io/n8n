@@ -1,9 +1,9 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
+	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
@@ -12,14 +12,14 @@ import { v4 as uuid } from 'uuid';
 
 export async function matrixApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: string | object = {},
-	query: object = {},
+	query: IDataObject = {},
 	headers: IDataObject | undefined = undefined,
 	option: IDataObject = {},
 ) {
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		method,
 		headers: headers || {
 			'Content-Type': 'application/json; charset=utf-8',

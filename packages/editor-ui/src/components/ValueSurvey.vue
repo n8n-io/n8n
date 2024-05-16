@@ -37,7 +37,7 @@
 						<n8n-input
 							v-model="form.email"
 							placeholder="Your email address"
-							@update:modelValue="onInputChange"
+							@update:model-value="onInputChange"
 						/>
 						<div :class="$style.button">
 							<n8n-button label="Send" float="right" :disabled="!isEmailValid" @click="send" />
@@ -62,7 +62,6 @@ import type { IN8nPromptResponse } from '@/Interface';
 
 import ModalDrawer from '@/components/ModalDrawer.vue';
 
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { createEventBus } from 'n8n-design-system/utils';
@@ -79,7 +78,6 @@ export default defineComponent({
 	components: {
 		ModalDrawer,
 	},
-	mixins: [workflowHelpers],
 	props: ['isActive'],
 	setup() {
 		return {

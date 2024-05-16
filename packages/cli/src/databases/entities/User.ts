@@ -8,7 +8,7 @@ import {
 	OneToMany,
 	PrimaryGeneratedColumn,
 	BeforeInsert,
-} from 'typeorm';
+} from '@n8n/typeorm';
 import { IsEmail, IsString, Length } from 'class-validator';
 import type { IUser, IUserSettings } from 'n8n-workflow';
 import type { SharedWorkflow } from './SharedWorkflow';
@@ -115,7 +115,7 @@ export class User extends WithTimestamps implements IUser {
 	@AfterLoad()
 	@AfterUpdate()
 	computeIsPending(): void {
-		this.isPending = this.password === null;
+		this.isPending = this.password === null && this.role !== 'global:owner';
 	}
 
 	/**
@@ -140,5 +140,10 @@ export class User extends WithTimestamps implements IUser {
 			},
 			scopeOptions,
 		);
+	}
+
+	toJSON() {
+		const { password, apiKey, mfaSecret, mfaRecoveryCodes, ...rest } = this;
+		return rest;
 	}
 }

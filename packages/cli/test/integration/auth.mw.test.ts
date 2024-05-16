@@ -1,4 +1,4 @@
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 
 import type { SuperAgentTest } from 'supertest';
 import * as utils from './shared/utils/';
@@ -6,7 +6,7 @@ import { createUser } from './shared/db/users';
 import { mockInstance } from '../shared/mocking';
 
 describe('Auth Middleware', () => {
-	mockInstance(ActiveWorkflowRunner);
+	mockInstance(ActiveWorkflowManager);
 
 	const testServer = utils.setupTestServer({
 		endpointGroups: ['me', 'auth', 'owner', 'users', 'invitations'],
@@ -17,15 +17,12 @@ describe('Auth Middleware', () => {
 		['PATCH', '/me'],
 		['PATCH', '/me/password'],
 		['POST', '/me/survey'],
-		['POST', '/owner/setup'],
-		['GET', '/non-existent'],
 	];
 
 	/** Routes requiring a valid `n8n-auth` cookie for an owner. */
 	const ROUTES_REQUIRING_AUTHORIZATION: Readonly<Array<[string, string]>> = [
 		['POST', '/invitations'],
 		['DELETE', '/users/123'],
-		['POST', '/owner/setup'],
 	];
 
 	describe('Routes requiring Authentication', () => {

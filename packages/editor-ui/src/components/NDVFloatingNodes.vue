@@ -46,12 +46,10 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 
 interface Props {
 	rootNode: INodeUi;
-	type: 'input' | 'sub-input' | 'sub-output' | 'output';
 }
 const enum FloatingNodePosition {
 	top = 'outputSub',
 	right = 'outputMain',
-	bottom = 'inputSub',
 	left = 'inputMain',
 }
 const props = defineProps<Props>();
@@ -77,7 +75,6 @@ function onKeyDown(e: KeyboardEvent) {
 		const mapper = {
 			ArrowUp: FloatingNodePosition.top,
 			ArrowRight: FloatingNodePosition.right,
-			ArrowDown: FloatingNodePosition.bottom,
 			ArrowLeft: FloatingNodePosition.left,
 		};
 		/* eslint-enable @typescript-eslint/naming-convention */
@@ -111,9 +108,6 @@ const connectedNodes = computed<
 			workflow.getChildNodes(rootName, 'ALL_NON_MAIN'),
 		),
 		[FloatingNodePosition.right]: getINodesFromNames(workflow.getChildNodes(rootName, 'main', 1)),
-		[FloatingNodePosition.bottom]: getINodesFromNames(
-			workflow.getParentNodes(rootName, 'ALL_NON_MAIN'),
-		),
 		[FloatingNodePosition.left]: getINodesFromNames(workflow.getParentNodes(rootName, 'main', 1)),
 	};
 });
@@ -121,13 +115,11 @@ const connectedNodes = computed<
 const connectionGroups = [
 	FloatingNodePosition.top,
 	FloatingNodePosition.right,
-	FloatingNodePosition.bottom,
 	FloatingNodePosition.left,
 ];
 const tooltipPositionMapper = {
 	[FloatingNodePosition.top]: 'bottom',
 	[FloatingNodePosition.right]: 'left',
-	[FloatingNodePosition.bottom]: 'top',
 	[FloatingNodePosition.left]: 'right',
 };
 

@@ -15,12 +15,12 @@ jobs:
     continue-on-error: true
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3.5.3
+        uses: actions/checkout@v4.1.1
         with:
           fetch-depth: 0
 
       - name: Use Node.js
-        uses: actions/setup-node@v3.7.0
+        uses: actions/setup-node@v4.0.1
         with:
           node-version: 18.x
 

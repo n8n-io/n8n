@@ -1,15 +1,57 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
 	NodeConnectionType,
+	type INodeProperties,
 	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { ChatAnthropic } from 'langchain/chat_models/anthropic';
-import { logWrapper } from '../../../utils/logWrapper';
+import { ChatAnthropic } from '@langchain/anthropic';
+import type { LLMResult } from '@langchain/core/outputs';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { N8nLlmTracing } from '../N8nLlmTracing';
+
+const modelField: INodeProperties = {
+	displayName: 'Model',
+	name: 'model',
+	type: 'options',
+	// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+	options: [
+		{
+			name: 'Claude 3 Opus(20240229)',
+			value: 'claude-3-opus-20240229',
+		},
+		{
+			name: 'Claude 3 Sonnet(20240229)',
+			value: 'claude-3-sonnet-20240229',
+		},
+		{
+			name: 'Claude 3 Haiku(20240307)',
+			value: 'claude-3-haiku-20240307',
+		},
+		{
+			name: 'LEGACY: Claude 2',
+			value: 'claude-2',
+		},
+		{
+			name: 'LEGACY: Claude 2.1',
+			value: 'claude-2.1',
+		},
+		{
+			name: 'LEGACY: Claude Instant 1.2',
+			value: 'claude-instant-1.2',
+		},
+		{
+			name: 'LEGACY: Claude Instant 1',
+			value: 'claude-instant-1',
+		},
+	],
+	description:
+		'The model which will generate the completion. <a href="https://docs.anthropic.com/claude/docs/models-overview">Learn more</a>.',
+	default: 'claude-2',
+};
 
 export class LmChatAnthropic implements INodeType {
 	description: INodeTypeDescription = {
@@ -18,7 +60,7 @@ export class LmChatAnthropic implements INodeType {
 		name: 'lmChatAnthropic',
 		icon: 'file:anthropic.svg',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Language Model Anthropic',
 		defaults: {
 			name: 'Anthropic Chat Model',
@@ -35,6 +77,7 @@ export class LmChatAnthropic implements INodeType {
 					},
 				],
 			},
+			alias: ['claude', 'sonnet', 'opus'],
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
@@ -50,30 +93,21 @@ export class LmChatAnthropic implements INodeType {
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiChain]),
 			{
-				displayName: 'Model',
-				name: 'model',
-				type: 'options',
-				options: [
-					{
-						name: 'Claude 2',
-						value: 'claude-2',
+				...modelField,
+				displayOptions: {
+					show: {
+						'@version': [1],
 					},
-					{
-						name: 'Claude 2.1',
-						value: 'claude-2.1',
+				},
+			},
+			{
+				...modelField,
+				default: 'claude-3-sonnet-20240229',
+				displayOptions: {
+					hide: {
+						'@version': [1],
 					},
-					{
-						name: 'Claude Instant 1.2',
-						value: 'claude-instant-1.2',
-					},
-					{
-						name: 'Claude Instant 1',
-						value: 'claude-instant-1',
-					},
-				],
-				description:
-					'The model which will generate the completion. <a href="https://docs.anthropic.com/claude/reference/selecting-a-model">Learn more</a>.',
-				default: 'claude-2',
+				},
 			},
 			{
 				displayName: 'Options',
@@ -86,7 +120,7 @@ export class LmChatAnthropic implements INodeType {
 					{
 						displayName: 'Maximum Number of Tokens',
 						name: 'maxTokensToSample',
-						default: 32768,
+						default: 4096,
 						description: 'The maximum number of tokens to generate in the completion',
 						type: 'number',
 					},
@@ -126,16 +160,36 @@ export class LmChatAnthropic implements INodeType {
 		const credentials = await this.getCredentials('anthropicApi');
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
-		const options = this.getNodeParameter('options', itemIndex, {}) as object;
+		const options = this.getNodeParameter('options', itemIndex, {}) as {
+			maxTokensToSample?: number;
+			temperature: number;
+			topK: number;
+			topP: number;
+		};
 
+		const tokensUsageParser = (llmOutput: LLMResult['llmOutput']) => {
+			const usage = (llmOutput?.usage as { input_tokens: number; output_tokens: number }) ?? {
+				input_tokens: 0,
+				output_tokens: 0,
+			};
+			return {
+				completionTokens: usage.output_tokens,
+				promptTokens: usage.input_tokens,
+				totalTokens: usage.input_tokens + usage.output_tokens,
+			};
+		};
 		const model = new ChatAnthropic({
 			anthropicApiKey: credentials.apiKey as string,
 			modelName,
-			...options,
+			maxTokens: options.maxTokensToSample,
+			temperature: options.temperature,
+			topK: options.topK,
+			topP: options.topP,
+			callbacks: [new N8nLlmTracing(this, { tokensUsageParser })],
 		});
 
 		return {
-			response: logWrapper(model, this),
+			response: model,
 		};
 	}
 }

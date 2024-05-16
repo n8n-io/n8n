@@ -1,7 +1,7 @@
 import callsites from 'callsites';
 import type { Event } from '@sentry/node';
 
-type Level = 'warning' | 'error' | 'fatal' | 'info';
+export type Level = 'warning' | 'error' | 'fatal' | 'info';
 
 export type ReportingOptions = {
 	level?: Level;
@@ -10,7 +10,7 @@ export type ReportingOptions = {
 export class ApplicationError extends Error {
 	level: Level;
 
-	readonly tags?: Event['tags'];
+	readonly tags: NonNullable<Event['tags']>;
 
 	readonly extra?: Event['extra'];
 

@@ -84,7 +84,7 @@ export class Gotify implements INodeType {
 					},
 				},
 				default: '',
-				description: 'The message. Markdown (excluding html) is allowed.',
+				description: 'The message to send, If using Markdown add the Content Type option',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -112,6 +112,38 @@ export class Gotify implements INodeType {
 						type: 'string',
 						default: '',
 						description: 'The title of the message',
+					},
+				],
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				displayOptions: {
+					show: {
+						resource: ['message'],
+						operation: ['create'],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Content Type',
+						name: 'contentType',
+						type: 'options',
+						default: 'text/plain',
+						description: 'The message content type',
+						options: [
+							{
+								name: 'Plain',
+								value: 'text/plain',
+							},
+							{
+								name: 'Markdown',
+								value: 'text/markdown',
+							},
+						],
 					},
 				],
 			},
@@ -176,10 +208,19 @@ export class Gotify implements INodeType {
 						const message = this.getNodeParameter('message', i) as string;
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
+						const options = this.getNodeParameter('options', i);
 
 						const body: IDataObject = {
 							message,
 						};
+
+						if (options.contentType) {
+							body.extras = {
+								'client::display': {
+									contentType: options.contentType,
+								},
+							};
+						}
 
 						Object.assign(body, additionalFields);
 

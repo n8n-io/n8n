@@ -42,9 +42,8 @@ export class RssFeedReadTrigger implements INodeType {
 		const feedUrl = this.getNodeParameter('feedUrl') as string;
 
 		const now = moment().utc().format();
-		const startDate = (pollData.lastTimeChecked as string) || now;
-
-		const endDate = now;
+		const dateToCheck =
+			(pollData.lastItemDate as string) || (pollData.lastTimeChecked as string) || now;
 
 		if (!feedUrl) {
 			throw new NodeOperationError(this.getNode(), 'The parameter "URL" has to be set!');
@@ -73,12 +72,12 @@ export class RssFeedReadTrigger implements INodeType {
 				return [this.helpers.returnJsonArray(feed.items[0])];
 			}
 			feed.items.forEach((item) => {
-				if (Date.parse(item.isoDate as string) >= Date.parse(startDate)) {
+				if (Date.parse(item.isoDate as string) > Date.parse(dateToCheck)) {
 					returnData.push(item);
 				}
 			});
+			pollData.lastItemDate = feed.items[0].isoDate;
 		}
-		pollData.lastTimeChecked = endDate;
 
 		if (Array.isArray(returnData) && returnData.length !== 0) {
 			return [this.helpers.returnJsonArray(returnData)];

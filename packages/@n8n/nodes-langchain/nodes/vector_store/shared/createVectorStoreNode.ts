@@ -1,6 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type { VectorStore } from 'langchain/vectorstores/base';
+import type { VectorStore } from '@langchain/core/vectorstores';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	INodeCredentialDescription,
@@ -13,12 +13,12 @@ import type {
 	ILoadOptionsFunctions,
 	INodeListSearchResult,
 } from 'n8n-workflow';
-import type { Embeddings } from 'langchain/embeddings/base';
-import type { Document } from 'langchain/document';
+import type { Embeddings } from '@langchain/core/embeddings';
+import type { Document } from '@langchain/core/documents';
 import { logWrapper } from '../../../utils/logWrapper';
 import type { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
 import type { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
-import { getMetadataFiltersValues } from '../../../utils/helpers';
+import { getMetadataFiltersValues, logAiEvent } from '../../../utils/helpers';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { processDocument } from './processDocuments';
 
@@ -237,6 +237,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					});
 
 					resultData.push(...serializedDocs);
+					void logAiEvent(this, 'n8n.ai.vector.store.searched', { query: prompt });
 				}
 
 				return await this.prepareOutputData(resultData);
@@ -262,6 +263,8 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 
 					try {
 						await args.populateVectorStore(this, embeddings, processedDocuments, itemIndex);
+
+						void logAiEvent(this, 'n8n.ai.vector.store.populated');
 					} catch (error) {
 						throw error;
 					}

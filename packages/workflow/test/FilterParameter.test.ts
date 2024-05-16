@@ -1,6 +1,7 @@
 import { executeFilter } from '@/NodeParameters/FilterParameter';
 import type { FilterConditionValue, FilterValue } from '@/Interfaces';
 import merge from 'lodash/merge';
+import { DateTime } from 'luxon';
 
 type DeepPartial<T> = {
 	[P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
@@ -115,7 +116,7 @@ describe('FilterParameter', () => {
 							}),
 						),
 					).toThrowError(
-						"The provided values '15' and 'true' in condition 1 are not of the expected type 'number' [item 0]",
+						"Wrong type: '15' is a string but was expecting a number [condition 0, item 0]",
 					);
 				});
 
@@ -135,7 +136,7 @@ describe('FilterParameter', () => {
 							}),
 						),
 					).toThrowError(
-						"The provided value 1 '[]' in condition 1 is not of the expected type 'array' [item 0]",
+						"Wrong type: '[]' is a string but was expecting an array [condition 0, item 0]",
 					);
 				});
 
@@ -154,7 +155,7 @@ describe('FilterParameter', () => {
 							}),
 						),
 					).toThrowError(
-						"The provided value 1 '{}' in condition 1 is not of the expected type 'object' [item 0]",
+						"Wrong type: '{}' is a string but was expecting an object [condition 0, item 0]",
 					);
 				});
 			});
@@ -176,6 +177,27 @@ describe('FilterParameter', () => {
 									leftValue: 'true',
 									operator: { operation: 'true', type: 'boolean' },
 								},
+								{
+									id: '3',
+									leftValue: '',
+									operator: { operation: 'false', type: 'boolean' },
+								},
+
+								{
+									id: '4',
+									leftValue: 0,
+									operator: { operation: 'false', type: 'boolean' },
+								},
+								{
+									id: '5',
+									leftValue: 1,
+									operator: { operation: 'true', type: 'boolean' },
+								},
+								{
+									id: '6',
+									leftValue: 'a string',
+									operator: { operation: 'true', type: 'boolean' },
+								},
 							],
 							options: { typeValidation: 'loose' },
 						}),
@@ -193,14 +215,14 @@ describe('FilterParameter', () => {
 										id: '1',
 										leftValue: 'a string',
 										rightValue: 15,
-										operator: { operation: 'equals', type: 'boolean' },
+										operator: { operation: 'equals', type: 'number' },
 									},
 								],
 								options: { typeValidation: 'loose' },
 							}),
 						),
 					).toThrowError(
-						"The provided values 'a string' and '15' in condition 1 cannot be converted to the expected type 'boolean'",
+						"Conversion error: the string 'a string' can't be converted to a number [condition 0, item 0]",
 					);
 				});
 			});
@@ -250,6 +272,38 @@ describe('FilterParameter', () => {
 			});
 
 			describe('string', () => {
+				it.each([
+					{ left: null, expected: true },
+					{ left: undefined, expected: true },
+					{ left: '', expected: true },
+					{ left: '🐛', expected: false },
+				])('string:empty($left) === $expected', ({ left, expected }) => {
+					const result = executeFilter(
+						filterFactory({
+							conditions: [
+								{ id: '1', leftValue: left, operator: { operation: 'empty', type: 'string' } },
+							],
+						}),
+					);
+					expect(result).toBe(expected);
+				});
+
+				it.each([
+					{ left: null, expected: false },
+					{ left: undefined, expected: false },
+					{ left: '', expected: false },
+					{ left: '🐛', expected: true },
+				])('string:notEmpty($left) === $expected', ({ left, expected }) => {
+					const result = executeFilter(
+						filterFactory({
+							conditions: [
+								{ id: '1', leftValue: left, operator: { operation: 'notEmpty', type: 'string' } },
+							],
+						}),
+					);
+					expect(result).toBe(expected);
+				});
+
 				it.each([
 					{ left: 'first string', right: 'first string', expected: true },
 					{ left: 'first string', right: 'second string', expected: false },
@@ -644,6 +698,12 @@ describe('FilterParameter', () => {
 					{ left: '2023-11-15T17:10:49.113Z', right: '2023-11-15T17:10:49.113Z', expected: false },
 					{ left: '2023-11-15T17:10:49.113Z', right: '2023-11-15T17:12:49.113Z', expected: false },
 					{ left: '2023-11-15T17:10:49.113Z', right: '2023-01-01T00:00:00.000Z', expected: true },
+					{ left: '2024-01-01', right: new Date('2023-01-01T00:00:00.000Z'), expected: true },
+					{
+						left: DateTime.fromFormat('2024-01-01', 'yyyy-MM-dd'),
+						right: '1-Feb-2024',
+						expected: false,
+					},
 				])('dateTime:after("$left", "$right") === $expected', ({ left, right, expected }) => {
 					const result = executeFilter(
 						filterFactory({
@@ -972,8 +1032,8 @@ describe('FilterParameter', () => {
 				it.each([
 					{ left: {}, expected: true },
 					{ left: { foo: 'bar' }, expected: false },
-					{ left: undefined, expected: false },
-					{ left: null, expected: false },
+					{ left: undefined, expected: true },
+					{ left: null, expected: true },
 				])('object:empty($left) === $expected', ({ left, expected }) => {
 					const result = executeFilter(
 						filterFactory({

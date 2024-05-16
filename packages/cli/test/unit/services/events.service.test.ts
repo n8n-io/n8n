@@ -4,7 +4,7 @@ import {
 	type DataSource,
 	type EntityManager,
 	type EntityMetadata,
-} from 'typeorm';
+} from '@n8n/typeorm';
 import { mocked } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
 

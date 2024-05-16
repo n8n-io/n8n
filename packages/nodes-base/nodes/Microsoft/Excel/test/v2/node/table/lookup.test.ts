@@ -12,7 +12,7 @@ jest.mock('../../../../v2/transport', () => {
 		...originalModule,
 		microsoftApiRequestAllItemsSkip: jest.fn(async function (
 			_property: string,
-			_method: string,
+			_method: IHttpRequestMethods,
 			endpoint: string,
 		) {
 			if (endpoint.includes('columns')) {

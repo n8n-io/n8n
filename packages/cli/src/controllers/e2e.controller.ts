@@ -3,20 +3,22 @@ import { v4 as uuid } from 'uuid';
 import config from '@/config';
 import { SettingsRepository } from '@db/repositories/settings.repository';
 import { UserRepository } from '@db/repositories/user.repository';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-import { eventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
+import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
+import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { License } from '@/License';
 import { LICENSE_FEATURES, inE2ETests } from '@/constants';
-import { NoAuthRequired, Patch, Post, RestController } from '@/decorators';
+import { Patch, Post, RestController } from '@/decorators';
 import type { UserSetupPayload } from '@/requests';
 import type { BooleanLicenseFeature, IPushDataType } from '@/Interfaces';
 import { MfaService } from '@/Mfa/mfa.service';
 import { Push } from '@/push';
 import { CacheService } from '@/services/cache/cache.service';
 import { PasswordUtility } from '@/services/password.utility';
+import Container from 'typedi';
+import { Logger } from '@/Logger';
 
 if (!inE2ETests) {
-	console.error('E2E endpoints only allowed during E2E tests');
+	Container.get(Logger).error('E2E endpoints only allowed during E2E tests');
 	process.exit(1);
 }
 
@@ -55,12 +57,11 @@ type PushRequest = Request<
 	{},
 	{
 		type: IPushDataType;
-		sessionId: string;
+		pushRef: string;
 		data: object;
 	}
 >;
 
-@NoAuthRequired()
 @RestController('/e2e')
 export class E2EController {
 	private enabledFeatures: Record<BooleanLicenseFeature, boolean> = {
@@ -86,17 +87,18 @@ export class E2EController {
 		license: License,
 		private readonly settingsRepo: SettingsRepository,
 		private readonly userRepo: UserRepository,
-		private readonly workflowRunner: ActiveWorkflowRunner,
+		private readonly workflowRunner: ActiveWorkflowManager,
 		private readonly mfaService: MfaService,
 		private readonly cacheService: CacheService,
 		private readonly push: Push,
 		private readonly passwordUtility: PasswordUtility,
+		private readonly eventBus: MessageEventBus,
 	) {
 		license.isFeatureEnabled = (feature: BooleanLicenseFeature) =>
 			this.enabledFeatures[feature] ?? false;
 	}
 
-	@Post('/reset')
+	@Post('/reset', { skipAuth: true })
 	async reset(req: ResetRequest) {
 		this.resetFeatures();
 		await this.resetLogStreaming();
@@ -106,18 +108,18 @@ export class E2EController {
 		await this.setupUserManagement(req.body.owner, req.body.members, req.body.admin);
 	}
 
-	@Post('/push')
+	@Post('/push', { skipAuth: true })
 	async pushSend(req: PushRequest) {
 		this.push.broadcast(req.body.type, req.body.data);
 	}
 
-	@Patch('/feature')
+	@Patch('/feature', { skipAuth: true })
 	setFeature(req: Request<{}, {}, { feature: BooleanLicenseFeature; enabled: boolean }>) {
 		const { enabled, feature } = req.body;
 		this.enabledFeatures[feature] = enabled;
 	}
 
-	@Patch('/queue-mode')
+	@Patch('/queue-mode', { skipAuth: true })
 	async setQueueMode(req: Request<{}, {}, { enabled: boolean }>) {
 		const { enabled } = req.body;
 		config.set('executions.mode', enabled ? 'queue' : 'regular');
@@ -136,8 +138,8 @@ export class E2EController {
 	}
 
 	private async resetLogStreaming() {
-		for (const id in eventBus.destinations) {
-			await eventBus.removeDestination(id, false);
+		for (const id in this.eventBus.destinations) {
+			await this.eventBus.removeDestination(id, false);
 		}
 	}
 
@@ -149,7 +151,9 @@ export class E2EController {
 					`DELETE FROM ${table}; DELETE FROM sqlite_sequence WHERE name=${table};`,
 				);
 			} catch (error) {
-				console.warn('Dropping Table for E2E Reset error: ', error);
+				Container.get(Logger).warn('Dropping Table for E2E Reset error', {
+					error: error as Error,
+				});
 			}
 		}
 	}

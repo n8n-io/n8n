@@ -1,17 +1,17 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
+	IRequestOptions,
 } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 
 export async function cortexApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},
@@ -21,7 +21,7 @@ export async function cortexApiRequest(
 ): Promise<any> {
 	const credentials = await this.getCredentials('cortexApi');
 
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		headers: {},
 		method,
 		qs: query,

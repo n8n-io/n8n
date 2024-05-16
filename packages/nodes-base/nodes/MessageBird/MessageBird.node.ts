@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -290,7 +291,7 @@ export class MessageBird implements INodeType {
 		// For Query string
 		let qs: IDataObject;
 
-		let requestMethod;
+		let requestMethod: IHttpRequestMethods;
 		let requestPath;
 
 		for (let i = 0; i < items.length; i++) {

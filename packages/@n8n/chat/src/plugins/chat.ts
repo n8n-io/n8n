@@ -45,9 +45,19 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 				options,
 			);
 
+			let textMessage = sendMessageResponse.output ?? sendMessageResponse.text ?? '';
+
+			if (textMessage === '' && Object.keys(sendMessageResponse).length > 0) {
+				try {
+					textMessage = JSON.stringify(sendMessageResponse, null, 2);
+				} catch (e) {
+					// Failed to stringify the object so fallback to empty string
+				}
+			}
+
 			const receivedMessage: ChatMessage = {
 				id: uuidv4(),
-				text: sendMessageResponse.output,
+				text: textMessage,
 				sender: 'bot',
 				createdAt: new Date().toISOString(),
 			};

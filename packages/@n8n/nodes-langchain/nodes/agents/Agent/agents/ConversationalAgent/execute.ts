@@ -1,40 +1,36 @@
-import {
-	type IExecuteFunctions,
-	type INodeExecutionData,
-	NodeConnectionType,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import { initializeAgentExecutorWithOptions } from 'langchain/agents';
-import { BaseChatModel } from 'langchain/chat_models/base';
-import type { Tool } from 'langchain/tools';
-import type { BaseChatMemory } from 'langchain/memory';
-import type { BaseOutputParser } from 'langchain/schema/output_parser';
-import { PromptTemplate } from 'langchain/prompts';
+import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
+import type { BaseOutputParser } from '@langchain/core/output_parsers';
+import { PromptTemplate } from '@langchain/core/prompts';
 import { CombiningOutputParser } from 'langchain/output_parsers';
+import {
+	isChatInstance,
+	getPromptInputByType,
+	getOptionalOutputParsers,
+	getConnectedTools,
+} from '../../../../../utils/helpers';
+import { getTracingConfig } from '../../../../../utils/tracing';
 
 export async function conversationalAgentExecute(
 	this: IExecuteFunctions,
+	nodeVersion: number,
 ): Promise<INodeExecutionData[][]> {
 	this.logger.verbose('Executing Conversational Agent');
+	const model = await this.getInputConnectionData(NodeConnectionType.AiLanguageModel, 0);
 
-	const model = (await this.getInputConnectionData(
-		NodeConnectionType.AiLanguageModel,
-		0,
-	)) as BaseChatModel;
-
-	if (!(model instanceof BaseChatModel)) {
+	if (!isChatInstance(model)) {
 		throw new NodeOperationError(this.getNode(), 'Conversational Agent requires Chat Model');
 	}
 
 	const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
 		| BaseChatMemory
 		| undefined;
-	const tools = (await this.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[];
-	const outputParsers = (await this.getInputConnectionData(
-		NodeConnectionType.AiOutputParser,
-		0,
-	)) as BaseOutputParser[];
+
+	const tools = await getConnectedTools(this, nodeVersion >= 1.5);
+	const outputParsers = await getOptionalOutputParsers(this);
 
 	// TODO: Make it possible in the future to use values for other items than just 0
 	const options = this.getNodeParameter('options', 0, {}) as {
@@ -83,23 +79,45 @@ export async function conversationalAgentExecute(
 
 	const items = this.getInputData();
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-		let input = this.getNodeParameter('text', itemIndex) as string;
+		try {
+			let input;
 
-		if (input === undefined) {
-			throw new NodeOperationError(this.getNode(), 'The ‘text parameter is empty.');
+			if (this.getNode().typeVersion <= 1.2) {
+				input = this.getNodeParameter('text', itemIndex) as string;
+			} else {
+				input = getPromptInputByType({
+					ctx: this,
+					i: itemIndex,
+					inputKey: 'text',
+					promptTypeKey: 'promptType',
+				});
+			}
+
+			if (input === undefined) {
+				throw new NodeOperationError(this.getNode(), 'The ‘text parameter is empty.');
+			}
+
+			if (prompt) {
+				input = (await prompt.invoke({ input })).value;
+			}
+
+			let response = await agentExecutor
+				.withConfig(getTracingConfig(this))
+				.invoke({ input, outputParsers });
+
+			if (outputParser) {
+				response = { output: await outputParser.parse(response.output as string) };
+			}
+
+			returnData.push({ json: response });
+		} catch (error) {
+			if (this.continueOnFail()) {
+				returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
+				continue;
+			}
+
+			throw error;
 		}
-
-		if (prompt) {
-			input = (await prompt.invoke({ input })).value;
-		}
-
-		let response = await agentExecutor.call({ input, outputParsers });
-
-		if (outputParser) {
-			response = { output: await outputParser.parse(response.output as string) };
-		}
-
-		returnData.push({ json: response });
 	}
 
 	return await this.prepareOutputData(returnData);
