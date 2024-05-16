@@ -148,9 +148,8 @@ export default defineComponent({
 		projects(): ProjectListItem[] {
 			return this.projectsStore.personalProjects.filter(
 				(project) =>
-					!project.name?.includes(this.userToDelete?.firstName ?? '') &&
-					!project.name?.includes(this.userToDelete?.lastName ?? '') &&
-					!project.name?.includes(this.userToDelete?.email ?? ''),
+					project.name !==
+					`${this.userToDelete?.firstName} ${this.userToDelete?.lastName} <${this.userToDelete?.email}>`,
 			);
 		},
 	},
