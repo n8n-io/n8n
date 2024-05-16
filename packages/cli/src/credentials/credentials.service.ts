@@ -73,6 +73,7 @@ export class CredentialsService {
 			if (options.listQueryOptions?.filter?.projectId && user.hasGlobalScope('credential:list')) {
 				// Only instance owners and admins have the credential:list scope
 				// Those users should be able to use _all_ credentials within their workflows.
+				// TODO: Change this so we filter by `workflowId` in this case. Require a slight FE change
 				const projectRelation = projectRelations.find(
 					(relation) => relation.projectId === options.listQueryOptions?.filter?.projectId,
 				);
