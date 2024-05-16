@@ -228,7 +228,6 @@ export class GmailTrigger implements INodeType {
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
 		const workflowStaticData = this.getWorkflowStaticData('node');
 		const node = this.getNode();
-		console.log('poll', workflowStaticData);
 
 		let nodeStaticData = workflowStaticData;
 		if (node.typeVersion > 1) {
