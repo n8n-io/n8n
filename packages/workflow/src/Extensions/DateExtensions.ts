@@ -286,7 +286,7 @@ format.doc = {
 	description: 'Formats a Date in the given structure.',
 	returnType: 'string',
 	section: 'format',
-	args: [{ name: 'fmt', default: 'yyyy-MM-dd', type: 'TimeFormat' }],
+	args: [{ name: 'fmt', default: "'yyyy-MM-dd'", type: 'TimeFormat' }],
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-format',
 };
 
@@ -304,6 +304,7 @@ isBetween.doc = {
 
 isInLast.doc = {
 	name: 'isInLast',
+	hidden: true,
 	description: 'Checks if a Date is within a given time period. Default unit is `minute`.',
 	section: 'query',
 	returnType: 'boolean',
@@ -317,7 +318,6 @@ isInLast.doc = {
 toDateTime.doc = {
 	name: 'toDateTime',
 	description: 'Convert a JavaScript Date to a Luxon DateTime.',
-	section: 'query',
 	returnType: 'DateTime',
 	hidden: true,
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-toDateTime',

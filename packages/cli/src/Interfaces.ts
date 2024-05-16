@@ -26,7 +26,7 @@ import type {
 	StartNodeData,
 } from 'n8n-workflow';
 
-import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import type { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 
 import type { WorkflowExecute } from 'n8n-core';
 
@@ -638,7 +638,7 @@ export interface N8nApp {
 	app: Application;
 	restEndpoint: string;
 	externalHooks: ExternalHooks;
-	activeWorkflowRunner: ActiveWorkflowRunner;
+	activeWorkflowManager: ActiveWorkflowManager;
 }
 
 export type UserSettings = Pick<User, 'id' | 'settings'>;

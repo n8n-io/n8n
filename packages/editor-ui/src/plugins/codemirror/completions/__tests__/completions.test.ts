@@ -130,8 +130,10 @@ describe('Luxon method completions', () => {
 		vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(DateTime.now());
 
 		expect(completions('{{ $now.| }}')).toHaveLength(
-			uniqBy(luxonInstanceOptions().concat(extensions('date')), (option) => option.label).length +
-				LUXON_RECOMMENDED_OPTIONS.length,
+			uniqBy(
+				luxonInstanceOptions().concat(extensions({ typeName: 'date' })),
+				(option) => option.label,
+			).length + LUXON_RECOMMENDED_OPTIONS.length,
 		);
 	});
 
@@ -140,8 +142,10 @@ describe('Luxon method completions', () => {
 		vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(DateTime.now());
 
 		expect(completions('{{ $today.| }}')).toHaveLength(
-			uniqBy(luxonInstanceOptions().concat(extensions('date')), (option) => option.label).length +
-				LUXON_RECOMMENDED_OPTIONS.length,
+			uniqBy(
+				luxonInstanceOptions().concat(extensions({ typeName: 'date' })),
+				(option) => option.label,
+			).length + LUXON_RECOMMENDED_OPTIONS.length,
 		);
 	});
 });
@@ -153,7 +157,18 @@ describe('Resolution-based completions', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce('abc');
 
 			expect(completions('{{ "abc".| }}')).toHaveLength(
-				natives('string').length + extensions('string').length + STRING_RECOMMENDED_OPTIONS.length,
+				natives({ typeName: 'string' }).length +
+					extensions({ typeName: 'string' }).length +
+					STRING_RECOMMENDED_OPTIONS.length,
+			);
+		});
+
+		test('should return completions for boolean literal: {{ true.| }}', () => {
+			// @ts-expect-error Spied function is mistyped
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(true);
+
+			expect(completions('{{ true.| }}')).toHaveLength(
+				natives({ typeName: 'boolean' }).length + extensions({ typeName: 'boolean' }).length,
 			);
 		});
 
@@ -163,7 +178,9 @@ describe('Resolution-based completions', () => {
 
 			const result = completions('{{ "You \'owe\' me 200$".| }}');
 
-			expect(result).toHaveLength(natives('string').length + extensions('string').length + 1);
+			expect(result).toHaveLength(
+				natives({ typeName: 'string' }).length + extensions({ typeName: 'string' }).length + 1,
+			);
 		});
 
 		test('should return completions for number literal: {{ (123).| }}', () => {
@@ -171,7 +188,9 @@ describe('Resolution-based completions', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(123);
 
 			expect(completions('{{ (123).| }}')).toHaveLength(
-				natives('number').length + extensions('number').length + ['isEven()', 'isOdd()'].length,
+				natives({ typeName: 'number' }).length +
+					extensions({ typeName: 'number' }).length +
+					['isEven()', 'isOdd()'].length,
 			);
 		});
 
@@ -180,7 +199,7 @@ describe('Resolution-based completions', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce([1, 2, 3]);
 
 			expect(completions('{{ [1, 2, 3].| }}')).toHaveLength(
-				natives('array').length + extensions('array').length,
+				natives({ typeName: 'array' }).length + extensions({ typeName: 'array' }).length,
 			);
 		});
 
@@ -192,7 +211,9 @@ describe('Resolution-based completions', () => {
 
 			if (!found) throw new Error('Expected to find completion');
 
-			expect(found).toHaveLength(natives('array').length + extensions('array').length);
+			expect(found).toHaveLength(
+				natives({ typeName: 'array' }).length + extensions({ typeName: 'array' }).length,
+			);
 		});
 
 		test('should return completions for object literal', () => {
@@ -201,7 +222,7 @@ describe('Resolution-based completions', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(object);
 
 			expect(completions('{{ ({ a: 1 }).| }}')).toHaveLength(
-				Object.keys(object).length + extensions('object').length,
+				Object.keys(object).length + extensions({ typeName: 'object' }).length,
 			);
 		});
 	});
@@ -212,7 +233,9 @@ describe('Resolution-based completions', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce('a');
 
 			expect(completions('{{ "abc"[0].| }}')).toHaveLength(
-				natives('string').length + extensions('string').length + STRING_RECOMMENDED_OPTIONS.length,
+				natives({ typeName: 'string' }).length +
+					extensions({ typeName: 'string' }).length +
+					STRING_RECOMMENDED_OPTIONS.length,
 			);
 		});
 	});
@@ -225,7 +248,9 @@ describe('Resolution-based completions', () => {
 			const found = completions('{{ Math.abs($input.item.json.num1).| }}');
 			if (!found) throw new Error('Expected to find completions');
 			expect(found).toHaveLength(
-				extensions('number').length + natives('number').length + ['isEven()', 'isOdd()'].length,
+				extensions({ typeName: 'number' }).length +
+					natives({ typeName: 'number' }).length +
+					['isEven()', 'isOdd()'].length,
 			);
 		});
 
@@ -240,8 +265,10 @@ describe('Resolution-based completions', () => {
 		test('should return completions for complex expression: {{ $now.diff($now.diff($now.|)) }}', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(DateTime.now());
 			expect(completions('{{ $now.diff($now.diff($now.|)) }}')).toHaveLength(
-				uniqBy(luxonInstanceOptions().concat(extensions('date')), (option) => option.label).length +
-					LUXON_RECOMMENDED_OPTIONS.length,
+				uniqBy(
+					luxonInstanceOptions().concat(extensions({ typeName: 'date' })),
+					(option) => option.label,
+				).length + LUXON_RECOMMENDED_OPTIONS.length,
 			);
 		});
 
@@ -251,7 +278,9 @@ describe('Resolution-based completions', () => {
 			const found = completions('{{ $execution.resumeUrl.includes($json.|) }}');
 
 			if (!found) throw new Error('Expected to find completions');
-			expect(found).toHaveLength(Object.keys($json).length + extensions('object').length);
+			expect(found).toHaveLength(
+				Object.keys($json).length + extensions({ typeName: 'object' }).length,
+			);
 		});
 
 		test('should return completions for operation expression: {{ $now.day + $json. }}', () => {
@@ -261,7 +290,9 @@ describe('Resolution-based completions', () => {
 
 			if (!found) throw new Error('Expected to find completions');
 
-			expect(found).toHaveLength(Object.keys($json).length + extensions('object').length);
+			expect(found).toHaveLength(
+				Object.keys($json).length + extensions({ typeName: 'object' }).length,
+			);
 		});
 
 		test('should return completions for operation expression: {{ Math.abs($now.day) >= 10 ? $now : Math.abs($json.). }}', () => {
@@ -271,7 +302,9 @@ describe('Resolution-based completions', () => {
 
 			if (!found) throw new Error('Expected to find completions');
 
-			expect(found).toHaveLength(Object.keys($json).length + extensions('object').length);
+			expect(found).toHaveLength(
+				Object.keys($json).length + extensions({ typeName: 'object' }).length,
+			);
 		});
 	});
 
@@ -286,7 +319,9 @@ describe('Resolution-based completions', () => {
 			if (!found) throw new Error('Expected to find completions');
 
 			expect(found).toHaveLength(
-				extensions('string').length + natives('string').length + STRING_RECOMMENDED_OPTIONS.length,
+				extensions({ typeName: 'string' }).length +
+					natives({ typeName: 'string' }).length +
+					STRING_RECOMMENDED_OPTIONS.length,
 			);
 			expect(found.map((c) => c.label).every((l) => !l.endsWith('()')));
 		});
@@ -299,7 +334,9 @@ describe('Resolution-based completions', () => {
 			if (!found) throw new Error('Expected to find completions');
 
 			expect(found).toHaveLength(
-				extensions('number').length + natives('number').length + ['isEven()', 'isOdd()'].length,
+				extensions({ typeName: 'number' }).length +
+					natives({ typeName: 'number' }).length +
+					['isEven()', 'isOdd()'].length,
 			);
 			expect(found.map((c) => c.label).every((l) => !l.endsWith('()')));
 		});
@@ -311,7 +348,9 @@ describe('Resolution-based completions', () => {
 
 			if (!found) throw new Error('Expected to find completions');
 
-			expect(found).toHaveLength(extensions('array').length + natives('array').length);
+			expect(found).toHaveLength(
+				extensions({ typeName: 'array' }).length + natives({ typeName: 'array' }).length,
+			);
 			expect(found.map((c) => c.label).every((l) => !l.endsWith('()')));
 		});
 	});
@@ -339,7 +378,6 @@ describe('Resolution-based completions', () => {
 				{
 					info: expect.any(Function),
 					label: provider,
-					type: 'keyword',
 					apply: expect.any(Function),
 				},
 			]);
@@ -363,13 +401,11 @@ describe('Resolution-based completions', () => {
 				{
 					info: expect.any(Function),
 					label: secrets[0],
-					type: 'keyword',
 					apply: expect.any(Function),
 				},
 				{
 					info: expect.any(Function),
 					label: secrets[1],
-					type: 'keyword',
 					apply: expect.any(Function),
 				},
 			]);
@@ -445,7 +481,9 @@ describe('Resolution-based completions', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue([$input.item]);
 
 			expect(completions('{{ $input.all().| }}')).toHaveLength(
-				extensions('array').length + natives('array').length - ARRAY_NUMBER_ONLY_METHODS.length,
+				extensions({ typeName: 'array' }).length +
+					natives({ typeName: 'array' }).length -
+					ARRAY_NUMBER_ONLY_METHODS.length,
 			);
 		});
 
@@ -453,7 +491,7 @@ describe('Resolution-based completions', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.item.json);
 
 			expect(completions('{{ $input.item.| }}')).toHaveLength(
-				Object.keys($input.item.json).length + extensions('object').length,
+				Object.keys($input.item.json).length + extensions({ typeName: 'object' }).length,
 			);
 		});
 
@@ -461,7 +499,7 @@ describe('Resolution-based completions', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.first().json);
 
 			expect(completions('{{ $input.first().| }}')).toHaveLength(
-				Object.keys($input.first().json).length + extensions('object').length,
+				Object.keys($input.first().json).length + extensions({ typeName: 'object' }).length,
 			);
 		});
 
@@ -469,7 +507,7 @@ describe('Resolution-based completions', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.last().json);
 
 			expect(completions('{{ $input.last().| }}')).toHaveLength(
-				Object.keys($input.last().json).length + extensions('object').length,
+				Object.keys($input.last().json).length + extensions({ typeName: 'object' }).length,
 			);
 		});
 
@@ -477,7 +515,7 @@ describe('Resolution-based completions', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.all()[0].json);
 
 			expect(completions('{{ $input.all()[0].| }}')).toHaveLength(
-				Object.keys($input.all()[0].json).length + extensions('object').length,
+				Object.keys($input.all()[0].json).length + extensions({ typeName: 'object' }).length,
 			);
 		});
 
@@ -485,7 +523,9 @@ describe('Resolution-based completions', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.item.json.str);
 
 			expect(completions('{{ $input.item.json.str.| }}')).toHaveLength(
-				extensions('string').length + natives('string').length + STRING_RECOMMENDED_OPTIONS.length,
+				extensions({ typeName: 'string' }).length +
+					natives({ typeName: 'string' }).length +
+					STRING_RECOMMENDED_OPTIONS.length,
 			);
 		});
 
@@ -493,7 +533,9 @@ describe('Resolution-based completions', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.item.json.num);
 
 			expect(completions('{{ $input.item.json.num.| }}')).toHaveLength(
-				extensions('number').length + natives('number').length + ['isEven()', 'isOdd()'].length,
+				extensions({ typeName: 'number' }).length +
+					natives({ typeName: 'number' }).length +
+					['isEven()', 'isOdd()'].length,
 			);
 		});
 
@@ -501,7 +543,7 @@ describe('Resolution-based completions', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.item.json.arr);
 
 			expect(completions('{{ $input.item.json.arr.| }}')).toHaveLength(
-				extensions('array').length + natives('array').length,
+				extensions({ typeName: 'array' }).length + natives({ typeName: 'array' }).length,
 			);
 		});
 
@@ -509,7 +551,7 @@ describe('Resolution-based completions', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.item.json.obj);
 
 			expect(completions('{{ $input.item.json.obj.| }}')).toHaveLength(
-				Object.keys($input.item.json.obj).length + extensions('object').length,
+				Object.keys($input.item.json.obj).length + extensions({ typeName: 'object' }).length,
 			);
 		});
 	});
@@ -591,15 +633,12 @@ describe('Resolution-based completions', () => {
 			);
 		});
 
-		test('should recommend toInt(),toFloat() for: {{ "5.3".| }}', () => {
+		test('should recommend toNumber() for: {{ "5.3".| }}', () => {
 			// @ts-expect-error Spied function is mistyped
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce('5.3');
 			const options = completions('{{ "5.3".| }}');
 			expect(options?.[0]).toEqual(
-				expect.objectContaining({ label: 'toInt()', section: RECOMMENDED_SECTION }),
-			);
-			expect(options?.[1]).toEqual(
-				expect.objectContaining({ label: 'toFloat()', section: RECOMMENDED_SECTION }),
+				expect.objectContaining({ label: 'toNumber()', section: RECOMMENDED_SECTION }),
 			);
 		});
 
@@ -659,25 +698,25 @@ describe('Resolution-based completions', () => {
 			);
 		});
 
-		test('should recommend toDateTime("s") for: {{ (1900062210).| }}', () => {
+		test("should recommend toDateTime('s') for: {{ (1900062210).| }}", () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(
 				// @ts-expect-error Spied function is mistyped
 				1900062210,
 			);
 			const options = completions('{{ (1900062210).| }}');
 			expect(options?.[0]).toEqual(
-				expect.objectContaining({ label: 'toDateTime("s")', section: RECOMMENDED_SECTION }),
+				expect.objectContaining({ label: "toDateTime('s')", section: RECOMMENDED_SECTION }),
 			);
 		});
 
-		test('should recommend toDateTime("ms") for: {{ (1900062210000).| }}', () => {
+		test("should recommend toDateTime('ms') for: {{ (1900062210000).| }}", () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(
 				// @ts-expect-error Spied function is mistyped
 				1900062210000,
 			);
 			const options = completions('{{ (1900062210000).| }}');
 			expect(options?.[0]).toEqual(
-				expect.objectContaining({ label: 'toDateTime("ms")', section: RECOMMENDED_SECTION }),
+				expect.objectContaining({ label: "toDateTime('ms')", section: RECOMMENDED_SECTION }),
 			);
 		});
 
@@ -714,7 +753,9 @@ describe('Resolution-based completions', () => {
 
 			const result = completions('{{ $json.foo| }}', true);
 			expect(result).toHaveLength(
-				extensions('string').length + natives('string').length + STRING_RECOMMENDED_OPTIONS.length,
+				extensions({ typeName: 'string' }).length +
+					natives({ typeName: 'string' }).length +
+					STRING_RECOMMENDED_OPTIONS.length,
 			);
 		});
 	});

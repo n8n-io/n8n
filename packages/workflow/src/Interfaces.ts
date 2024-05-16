@@ -392,7 +392,7 @@ export interface IGetExecuteTriggerFunctions {
 }
 
 export interface IRunNodeResponse {
-	data: INodeExecutionData[][] | null | undefined;
+	data: INodeExecutionData[][] | NodeExecutionOutput | null | undefined;
 	closeFunction?: CloseFunction;
 }
 export interface IGetExecuteFunctions {
@@ -815,6 +815,7 @@ export interface FunctionsBase {
 	getInstanceId(): string;
 	getChildNodes(nodeName: string): NodeTypeAndVersion[];
 	getParentNodes(nodeName: string): NodeTypeAndVersion[];
+	getKnownNodeTypes(): IDataObject;
 	getMode?: () => WorkflowExecuteMode;
 	getActivationMode?: () => WorkflowActivateMode;
 
@@ -1422,6 +1423,20 @@ export interface SupplyData {
 	closeFunction?: CloseFunction;
 }
 
+export class NodeExecutionOutput extends Array {
+	private hints: NodeExecutionHint[];
+
+	constructor(data: INodeExecutionData[][], hints: NodeExecutionHint[] = []) {
+		super();
+		this.push(...data);
+		this.hints = hints;
+	}
+
+	public getHints(): NodeExecutionHint[] {
+		return this.hints;
+	}
+}
+
 export interface INodeType {
 	description: INodeTypeDescription;
 	supplyData?(this: IAllExecuteFunctions, itemIndex: number): Promise<SupplyData>;
@@ -1487,6 +1502,7 @@ export interface INodeCredentialTestRequest {
 export interface INodeCredentialDescription {
 	name: string;
 	required?: boolean;
+	displayName?: string;
 	displayOptions?: ICredentialsDisplayOptions;
 	testedBy?: ICredentialTestRequest | string; // Name of a function inside `loadOptions.credentialTest`
 }
@@ -1743,8 +1759,19 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 		  }
 		| boolean;
 	extendsCredential?: string;
+	hints?: NodeHint[];
 	__loadOptionsMethods?: string[]; // only for validation during build
 }
+
+export type NodeHint = {
+	message: string;
+	type?: 'info' | 'warning' | 'danger';
+	location?: 'outputPane' | 'inputPane' | 'ndv';
+	displayCondition?: string;
+	whenToDisplay?: 'always' | 'beforeExecution' | 'afterExecution';
+};
+
+export type NodeExecutionHint = Omit<NodeHint, 'whenToDisplay' | 'displayCondition'>;
 
 export interface INodeHookDescription {
 	method: string;
@@ -1833,11 +1860,12 @@ export interface IWebhookResponseData {
 }
 
 export type WebhookResponseData = 'allEntries' | 'firstEntryJson' | 'firstEntryBinary' | 'noData';
-export type WebhookResponseMode = 'onReceived' | 'lastNode';
+export type WebhookResponseMode = 'onReceived' | 'lastNode' | 'responseNode';
 
 export interface INodeTypes {
 	getByName(nodeType: string): INodeType | IVersionedNodeType;
 	getByNameAndVersion(nodeType: string, version?: number): INodeType;
+	getKnownTypes(): IDataObject;
 }
 
 export type LoadingDetails = {
@@ -1926,6 +1954,7 @@ export interface ITaskData {
 	data?: ITaskDataConnections;
 	inputOverride?: ITaskDataConnections;
 	error?: ExecutionError;
+	hints?: NodeExecutionHint[];
 	source: Array<ISourceData | null>; // Is an array as nodes have multiple inputs
 	metadata?: ITaskMetadata;
 }
@@ -2017,6 +2046,7 @@ export const eventNamesAiNodes = [
 	'n8n.ai.tool.called',
 	'n8n.ai.vector.store.searched',
 	'n8n.ai.llm.generated',
+	'n8n.ai.llm.error',
 	'n8n.ai.vector.store.populated',
 ] as const;
 
@@ -2564,7 +2594,9 @@ export interface IN8nUISettings {
 	ai: {
 		enabled: boolean;
 		provider: string;
-		errorDebugging: boolean;
+		features: {
+			generateCurl: boolean;
+		};
 	};
 	workflowHistory: {
 		pruneTime: number;

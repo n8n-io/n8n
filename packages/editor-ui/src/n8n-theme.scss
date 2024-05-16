@@ -171,10 +171,34 @@
 		var(--node-type-background-l)
 	);
 
-	--chat--spacing: var(--spacing-s);
-
 	// Using native css variable enables us to use this value in JS
 	--header-height: 65;
+	--chat-width: 350;
+
+	// n8n-chat customizations
+	--chat--spacing: var(--spacing-2xs);
+
+	--chat--header-height: calc(var(--header-height) * 1px);
+	--chat--header--padding: 0 var(--spacing-xs);
+	--chat--heading--font-size: var(--font-size-m);
+	--chat--subtitle--font-size: var(--font-size-s);
+	--chat--subtitle--line-height: var(--font-line-height-base);
+	--chat--header--background: var(--color-background-xlight);
+	--chat--header--color: var(--color-text-dark);
+	--chat--header--border-bottom: var(--border-base);
+	--chat--close--button--color-hover: var(--color-primary);
+	// Message styles
+	--chat--message--padding: var(--spacing-3xs);
+	--chat--message--font-size: 14px;
+	--chat--message-line-height: 1.5;
+	--chat--message--bot--border: 1px solid var(--color-foreground-light);
+	--chat--message--bot--color: var(--color-text-dark);
+	--chat--message--user--color: var(--color-text-dark);
+	--chat--message--user--background: var(--color-success-tint-1);
+	--chat--message--user--border: 1px solid var(--color-success-light-2);
+	// Chat input
+	--chat--input--font-size: var(--font-size-s);
+	--chat--input--send--button--color: var(--color-success);
 }
 
 .clickable {

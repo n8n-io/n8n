@@ -413,7 +413,7 @@ export function addWhereClauses(
 		}
 
 		let valueReplacement = ' ';
-		if (clause.condition !== 'IS NULL') {
+		if (clause.condition !== 'IS NULL' && clause.condition !== 'IS NOT NULL') {
 			valueReplacement = ' ?';
 			values.push(clause.value);
 		}

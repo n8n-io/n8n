@@ -1,11 +1,15 @@
-.cm-tooltip-autocomplete:after {
-	padding: var(--spacing-2xs) var(--spacing-s);
-	border-top: 1px solid var(--color-foreground-dark);
-}
-
 .code-node-editor .cm-tooltip-autocomplete:after {
+	padding: var(--spacing-2xs) var(--spacing-s);
+	border: var(--border-base);
+	border-bottom-left-radius: var(--border-radius-base);
 	display: block;
 	content: 'n8n supports all JavaScript functions, including those not listed.';
+}
+
+.code-node-editor .ͼ2 .cm-tooltip-autocomplete > ul[role='listbox'] {
+	border-bottom: none;
+	border-bottom-left-radius: 0;
+	border-bottom-right-radius: 0;
 }
 
 .ͼ2 .cm-tooltip-autocomplete {
@@ -20,12 +24,22 @@
 
 	> ul[role='listbox'] {
 		font-family: var(--font-family-monospace);
-		max-height: min(220px, 50vh);
-		width: min(260px, 50vw);
-		min-width: 100%;
-		max-width: none;
+		height: min(250px, 50vh);
+		max-height: none;
+		max-width: 200px;
+
 		border: var(--border-base);
-		border-radius: var(--border-radius-base);
+		border-top-left-radius: var(--border-radius-base);
+		border-bottom-left-radius: var(--border-radius-base);
+		border-top-right-radius: 0;
+		border-bottom-right-radius: 0;
+
+		&:has(+ .cm-completionInfo-left) {
+			border-top-left-radius: 0;
+			border-bottom-left-radius: 0;
+			border-top-right-radius: var(--border-radius-base);
+			border-bottom-right-radius: var(--border-radius-base);
+		}
 
 		li[role='option'] {
 			color: var(--color-text-base);
@@ -83,37 +97,199 @@
 .autocomplete-info-container {
 	display: flex;
 	flex-direction: column;
-	padding: var(--spacing-4xs) 0;
+	gap: var(--spacing-xs);
+	padding: var(--spacing-xs) 0;
+	height: 100%;
+	overflow-y: auto;
 }
 
-.ͼ2 .cm-completionInfo {
+.ͼ2 .cm-tooltip.cm-completionInfo {
 	background-color: var(--color-background-xlight);
 	border: var(--border-base);
-	margin-left: var(--spacing-5xs);
-	border-radius: var(--border-radius-base);
+	box-shadow: var(--box-shadow-light);
+	clip-path: inset(-12px -12px -12px 0); // Clip box-shadow on the left
+	border-left: none;
+	border-bottom-right-radius: var(--border-radius-base);
+	border-top-right-radius: var(--border-radius-base);
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
 	line-height: var(--font-line-height-loose);
+	padding: 0;
+
+	// Add padding when infobox only contains text
+	&:not(:has(div)) {
+		padding: var(--spacing-xs);
+	}
+
+	// Overwrite codemirror positioning
+	top: 0 !important;
+	left: 100% !important;
+	right: auto !important;
+	max-width: 320px !important;
+	height: 100%;
+
+	a {
+		color: var(--color-text-dark);
+
+		&:hover,
+		&:active {
+			text-decoration: underline;
+		}
+	}
 
 	.autocomplete-info-header {
+		padding: 0 var(--spacing-xs);
 		color: var(--color-text-base);
 		font-size: var(--font-size-2xs);
 		font-family: var(--font-family-monospace);
 		line-height: var(--font-line-height-compact);
-		margin-bottom: var(--spacing-2xs);
 	}
 
 	.autocomplete-info-name {
 		color: var(--color-autocomplete-item-selected);
 	}
 
+	.autocomplete-info-arg {
+		color: var(--color-text-base);
+		font-weight: var(--font-weight-regular);
+		padding: 0;
+		display: inline-block;
+	}
+
+	.autocomplete-info-return {
+		display: inline-block;
+	}
+
 	.autocomplete-info-description {
+		padding: 0 var(--spacing-xs);
+		color: var(--color-text-base);
+		font-size: var(--font-size-2xs);
+
+		.autocomplete-info-example {
+			border-radius: var(--border-radius-base);
+			border: 1px solid var(--color-infobox-examples-border-color);
+			color: var(--color-text-base);
+			margin-top: var(--spacing-xs);
+		}
+
 		code {
-			background-color: var(--color-background-base);
-			padding: 0 2px;
+			padding: 0;
+			color: var(--color-text-base);
+			font-size: var(--font-size-2xs);
+			font-family: var(--font-family);
+			background-color: transparent;
 		}
+
 		p {
-			line-height: var(--font-line-height-compact);
-			margin-top: 0;
-			margin-bottom: var(--spacing-4xs);
+			line-height: var(--font-line-height-loose);
 		}
+	}
+
+	.autocomplete-info-args {
+		padding: 0 var(--spacing-xs);
+		list-style: none;
+
+		li {
+			text-indent: calc(var(--spacing-2xs) * -1);
+			margin-left: var(--spacing-2xs);
+		}
+
+		li + li {
+			margin-top: var(--spacing-4xs);
+		}
+
+		.autocomplete-info-args {
+			margin-top: var(--spacing-4xs);
+			padding-left: var(--spacing-s);
+		}
+	}
+
+	.autocomplete-info-arg-name {
+		font-size: var(--font-size-2xs);
+		color: var(--color-text-base);
+	}
+
+	.autocomplete-info-arg-description {
+		color: var(--color-text-base);
+		margin-left: var(--spacing-4xs);
+		font-size: var(--font-size-2xs);
+
+		code {
+			padding: 0;
+			color: var(--color-text-base);
+			font-size: var(--font-size-2xs);
+			font-family: var(--font-family);
+			background-color: transparent;
+		}
+	}
+
+	.autocomplete-info-examples {
+		pre {
+			line-height: 1;
+		}
+
+		code {
+			background: inherit;
+		}
+	}
+
+	.autocomplete-info-examples-list {
+		margin: var(--spacing-xs) var(--spacing-xs) 0 var(--spacing-xs);
+		border-radius: var(--border-radius-base);
+		border: 1px solid var(--color-infobox-examples-border-color);
+	}
+
+	.autocomplete-info-example {
+		color: var(--color-text-base);
+	}
+
+	.autocomplete-info-example code {
+		color: var(--color-text-base);
+		display: block;
+		padding: var(--spacing-3xs) var(--spacing-2xs);
+		font-size: 0.688rem; // Equals 11px. Add a new token in _tokens.scss if this size is needed elsewhere
+		font-family: var(--font-family-monospace);
+		line-height: var(--font-line-height-compact);
+
+		word-break: break-all;
+		white-space: pre-wrap;
+	}
+
+	.autocomplete-info-example-comment {
+		color: var(--color-text-light);
+	}
+
+	.autocomplete-info-example + .autocomplete-info-example {
+		margin-top: var(--spacing-4xs);
+	}
+
+	.autocomplete-info-section-title {
+		margin: var(--spacing-3xs) 0;
+		padding: 0 var(--spacing-xs) var(--spacing-3xs) var(--spacing-xs);
+		border-bottom: 1px solid var(--color-autocomplete-section-header-border);
+		text-transform: uppercase;
+		color: var(--color-text-dark);
+		font-size: var(--font-size-3xs);
+		font-weight: var(--font-weight-bold);
+	}
+
+	&.cm-completionInfo-left-narrow,
+	&.cm-completionInfo-right-narrow {
+		display: none;
+	}
+
+	&.cm-completionInfo-left {
+		left: auto !important;
+		right: 100% !important;
+		border-bottom-right-radius: 0;
+		border-top-right-radius: 0;
+		border-top-left-radius: var(--border-radius-base);
+		border-bottom-left-radius: var(--border-radius-base);
+		border-left: var(--border-base);
+		border-right: none;
+	}
+
+	&.cm-completionInfo-right {
+		background-color: var(--color-infobox-background);
 	}
 }

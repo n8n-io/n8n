@@ -519,7 +519,7 @@ function goToUpgrade() {
 </script>
 
 <template>
-	<div class="container">
+	<div :class="$style.container">
 		<BreakpointsObserver :value-x-s="15" :value-s-m="25" :value-m-d="50" class="name-container">
 			<template #default="{ value }">
 				<ShortenName
@@ -623,6 +623,8 @@ function goToUpgrade() {
 					type="primary"
 					:saved="!uiStore.stateIsDirty && !isNewWorkflow"
 					:disabled="isWorkflowSaving || readOnly"
+					with-shortcut
+					:shortcut-tooltip="$locale.baseText('saveWorkflowButton.hint')"
 					data-test-id="workflow-save-button"
 					@click="onSaveButtonClick"
 				/>
@@ -662,14 +664,6 @@ function goToUpgrade() {
 <style scoped lang="scss">
 $--text-line-height: 24px;
 $--header-spacing: 20px;
-
-.container {
-	position: relative;
-	top: -1px;
-	width: 100%;
-	display: flex;
-	align-items: center;
-}
 
 .name-container {
 	margin-right: $--header-spacing;
@@ -727,6 +721,14 @@ $--header-spacing: 20px;
 </style>
 
 <style module lang="scss">
+.container {
+	position: relative;
+	top: -1px;
+	width: 100%;
+	display: flex;
+	align-items: center;
+}
+
 .group {
 	display: flex;
 	gap: var(--spacing-xs);
