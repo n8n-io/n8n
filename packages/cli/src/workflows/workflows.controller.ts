@@ -39,6 +39,7 @@ import { ProjectService } from '@/services/project.service';
 import { ApplicationError } from 'n8n-workflow';
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
 import type { Project } from '@/databases/entities/Project';
+import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 
 @RestController('/workflows')
 export class WorkflowsController {
@@ -61,6 +62,7 @@ export class WorkflowsController {
 		private readonly credentialsService: CredentialsService,
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectService: ProjectService,
+		private readonly projectRelationRepository: ProjectRelationRepository,
 	) {}
 
 	@Post('/')
@@ -447,9 +449,14 @@ export class WorkflowsController {
 
 		void this.internalHooks.onWorkflowSharingUpdate(workflowId, req.user.id, shareWithIds);
 
+		const projectsRelations = await this.projectRelationRepository.findBy({
+			projectId: In(newShareeIds),
+			role: 'project:personalOwner',
+		});
+
 		await this.mailer.notifyWorkflowShared({
 			sharer: req.user,
-			newShareeIds,
+			newShareeIds: projectsRelations.map((pr) => pr.userId),
 			workflow,
 		});
 	}
