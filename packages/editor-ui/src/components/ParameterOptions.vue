@@ -97,6 +97,9 @@ export default defineComponent({
 		isHtmlEditor(): boolean {
 			return this.getArgument('editor') === 'htmlEditor';
 		},
+		isJsonSchemaEditor(): boolean {
+			return this.getArgument('editor') === 'jsonSchemaEditor';
+		},
 		shouldShowExpressionSelector(): boolean {
 			return this.parameter.noDataExpression !== true && this.showExpressionSelector;
 		},
@@ -151,6 +154,13 @@ export default defineComponent({
 				},
 			];
 
+			if (this.isJsonSchemaEditor) {
+				actions.push({
+					label: this.$locale.baseText('parameterInput.generateJsonSchema'),
+					value: 'generateJsonSchema',
+					disabled: false,
+				});
+			}
 			if (
 				this.hasRemoteMethod ||
 				(this.parameter.type === 'resourceLocator' &&

@@ -9,15 +9,64 @@ import type {
 	ExecutionError,
 	IDataObject,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
 import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
 import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
 
-import { DynamicTool } from '@langchain/core/tools';
+import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
 import get from 'lodash/get';
 import isObject from 'lodash/isObject';
 import type { CallbackManagerForToolRun } from '@langchain/core/callbacks/manager';
+import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
+import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
+import { makeResolverFromLegacyOptions } from '@n8n/vm2';
+import type { JSONSchema7 } from 'json-schema';
+import { type z } from 'zod';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+
+const vmResolver = makeResolverFromLegacyOptions({
+	external: {
+		modules: ['json-schema-to-zod', 'zod'],
+		transitive: false,
+	},
+	resolve(moduleName, parentDirname) {
+		if (moduleName === 'json-schema-to-zod') {
+			return require.resolve(
+				'@n8n/n8n-nodes-langchain/node_modules/json-schema-to-zod/dist/cjs/jsonSchemaToZod.js',
+				{
+					paths: [parentDirname],
+				},
+			);
+		}
+		if (moduleName === 'zod') {
+			return require.resolve('@n8n/n8n-nodes-langchain/node_modules/zod.cjs', {
+				paths: [parentDirname],
+			});
+		}
+		return;
+	},
+	builtin: [],
+});
+
+function getSandboxWithZod(ctx: IExecuteFunctions, itemSchema: JSONSchema7, itemIndex: number) {
+	const context = getSandboxContext.call(ctx, itemIndex);
+	// Make sure to remove the description from root schema
+	const { description, ...restOfSchema } = itemSchema;
+	const sandboxedSchema = new JavaScriptSandbox(
+		context,
+		`
+			const { z } = require('zod');
+			const { parseSchema } = require('json-schema-to-zod');
+			const zodSchema = parseSchema(${JSON.stringify(restOfSchema)});
+			const itemSchema = new Function('z', 'return (' + zodSchema + ')')(z)
+			return itemSchema
+		`,
+		itemIndex,
+		ctx.helpers,
+		{ resolver: vmResolver },
+	);
+	return sandboxedSchema;
+}
 
 export class ToolWorkflow implements INodeType {
 	description: INodeTypeDescription = {
@@ -314,15 +363,47 @@ export class ToolWorkflow implements INodeType {
 					},
 				],
 			},
+			{
+				displayName: 'Specify Input Schema',
+				name: 'specifyInputSchema',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Input Schema',
+				name: 'inputSchema',
+				type: 'json',
+				default: `{
+	"type": "object",
+	"properties": {
+		"some_input": {
+			"type": "string",
+			"description": "Some input to the function"
+		}
+	}
+}`,
+				typeOptions: {
+					rows: 10,
+					editor: 'jsonSchemaEditor',
+				},
+				displayOptions: {
+					show: {
+						specifyInputSchema: [true],
+					},
+				},
+				description: 'Schema to use for the function',
+			},
 		],
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		const name = this.getNodeParameter('name', itemIndex) as string;
 		const description = this.getNodeParameter('description', itemIndex) as string;
+		const schema = this.getNodeParameter('inputSchema', itemIndex, null) as string;
+		let tool: DynamicTool | DynamicStructuredTool | undefined = undefined;
 
 		const runFunction = async (
-			query: string,
+			query: string | IDataObject,
 			runManager?: CallbackManagerForToolRun,
 		): Promise<string> => {
 			const source = this.getNodeParameter('source', itemIndex) as string;
@@ -416,50 +497,72 @@ export class ToolWorkflow implements INodeType {
 			return response;
 		};
 
-		return {
-			response: new DynamicTool({
+		const toolHandler = async (
+			query: string | IDataObject,
+			runManager?: CallbackManagerForToolRun,
+		): Promise<string> => {
+			const { index } = this.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
+
+			let response: string = '';
+			let executionError: ExecutionError | undefined;
+			try {
+				response = await runFunction(query, runManager);
+			} catch (error) {
+				// TODO: Do some more testing. Issues here should actually fail the workflow
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				executionError = error;
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				response = `There was an error: "${error.message}"`;
+			}
+
+			if (typeof response === 'number') {
+				response = (response as number).toString();
+			}
+
+			if (isObject(response)) {
+				response = JSON.stringify(response, null, 2);
+			}
+
+			if (typeof response !== 'string') {
+				// TODO: Do some more testing. Issues here should actually fail the workflow
+				executionError = new NodeOperationError(this.getNode(), 'Wrong output type returned', {
+					description: `The response property should be a string, but it is an ${typeof response}`,
+				});
+				response = `There was an error: "${executionError.message}"`;
+			}
+
+			if (executionError) {
+				void this.addOutputData(NodeConnectionType.AiTool, index, executionError);
+			} else {
+				void this.addOutputData(NodeConnectionType.AiTool, index, [[{ json: { response } }]]);
+			}
+			return response;
+		};
+
+		if (schema) {
+			try {
+				const itemSchema = jsonParse<JSONSchema7>(schema);
+				const zodSchemaSandbox = getSandboxWithZod(this, itemSchema, 0);
+				const zodSchema = (await zodSchemaSandbox.runCode()) as z.ZodObject<any, any, any, any>;
+				tool = new DynamicStructuredTool<typeof zodSchema>({
+					name,
+					description,
+					schema: zodSchema,
+					func: toolHandler,
+				});
+			} catch (error) {
+				throw new NodeOperationError(this.getNode(), 'Error during parsing of JSON Schema.');
+			}
+		} else {
+			tool = new DynamicTool({
 				name,
 				description,
+				func: toolHandler,
+			});
+		}
 
-				func: async (query: string, runManager?: CallbackManagerForToolRun): Promise<string> => {
-					const { index } = this.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
-
-					let response: string = '';
-					let executionError: ExecutionError | undefined;
-					try {
-						response = await runFunction(query, runManager);
-					} catch (error) {
-						// TODO: Do some more testing. Issues here should actually fail the workflow
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-						executionError = error;
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-						response = `There was an error: "${error.message}"`;
-					}
-
-					if (typeof response === 'number') {
-						response = (response as number).toString();
-					}
-
-					if (isObject(response)) {
-						response = JSON.stringify(response, null, 2);
-					}
-
-					if (typeof response !== 'string') {
-						// TODO: Do some more testing. Issues here should actually fail the workflow
-						executionError = new NodeOperationError(this.getNode(), 'Wrong output type returned', {
-							description: `The response property should be a string, but it is an ${typeof response}`,
-						});
-						response = `There was an error: "${executionError.message}"`;
-					}
-
-					if (executionError) {
-						void this.addOutputData(NodeConnectionType.AiTool, index, executionError);
-					} else {
-						void this.addOutputData(NodeConnectionType.AiTool, index, [[{ json: { response } }]]);
-					}
-					return response;
-				},
-			}),
+		return {
+			response: tool,
 		};
 	}
 }

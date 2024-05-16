@@ -176,6 +176,12 @@
 				/>
 			</template>
 		</ModalRoot>
+
+		<ModalRoot :name="JSON_TO_SCHEMA_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<GenerateJsonSchemaModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
 	</div>
 </template>
 
@@ -213,6 +219,7 @@ import {
 	SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
 	SETUP_CREDENTIALS_MODAL_KEY,
 	GENERATE_CURL_MODAL_KEY,
+	JSON_TO_SCHEMA_MODAL_KEY,
 } from '@/constants';
 
 import AboutModal from './AboutModal.vue';
@@ -247,6 +254,7 @@ import DebugPaywallModal from '@/components/DebugPaywallModal.vue';
 import WorkflowHistoryVersionRestoreModal from '@/components/WorkflowHistory/WorkflowHistoryVersionRestoreModal.vue';
 import SuggestedTemplatesPreviewModal from '@/components/SuggestedTemplates/SuggestedTemplatesPreviewModal.vue';
 import SetupWorkflowCredentialsModal from '@/components/SetupWorkflowCredentialsModal/SetupWorkflowCredentialsModal.vue';
+import GenerateJsonSchemaModal from './GenerateJsonSchemaModal.vue';
 
 export default defineComponent({
 	name: 'Modals',
@@ -283,6 +291,7 @@ export default defineComponent({
 		WorkflowHistoryVersionRestoreModal,
 		SuggestedTemplatesPreviewModal,
 		SetupWorkflowCredentialsModal,
+		GenerateJsonSchemaModal,
 	},
 	data: () => ({
 		CHAT_EMBED_MODAL_KEY,
@@ -316,6 +325,7 @@ export default defineComponent({
 		WORKFLOW_HISTORY_VERSION_RESTORE,
 		SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
 		SETUP_CREDENTIALS_MODAL_KEY,
+		JSON_TO_SCHEMA_MODAL_KEY,
 	}),
 });
 </script>
