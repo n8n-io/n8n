@@ -260,7 +260,7 @@ describe('GET /credentials', () => {
 
 			// Simulate editing a workflow owned by `owner` so request credentials to their personal project
 			const response: GetAllResponse = await testServer
-				.authAgentFor(owner)
+				.authAgentFor(member)
 				.get('/credentials')
 				.query(`filter={ "projectId": "${ownerPersonalProject.id}" }`)
 				.expect(200);
