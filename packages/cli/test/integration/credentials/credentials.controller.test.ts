@@ -1,14 +1,14 @@
 import type { ListQuery } from '@/requests';
 import type { User } from '@db/entities/User';
-import * as testDb from './shared/testDb';
-import { setupTestServer } from './shared/utils/';
-import { randomCredentialPayload as payload } from './shared/random';
-import { saveCredential, shareCredentialWithUsers } from './shared/db/credentials';
-import { createMember, createOwner } from './shared/db/users';
+import * as testDb from '../shared/testDb';
+import { setupTestServer } from '../shared/utils';
+import { randomCredentialPayload as payload } from '../shared/random';
+import { saveCredential, shareCredentialWithUsers } from '../shared/db/credentials';
+import { createMember, createOwner } from '../shared/db/users';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import Container from 'typedi';
 import type { Project } from '@/databases/entities/Project';
-import { createTeamProject, linkUserToProject } from './shared/db/projects';
+import { createTeamProject, linkUserToProject } from '../shared/db/projects';
 
 const { any } = expect;
 
