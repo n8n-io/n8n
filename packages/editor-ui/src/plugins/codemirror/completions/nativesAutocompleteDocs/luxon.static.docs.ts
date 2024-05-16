@@ -174,7 +174,7 @@ export const luxonStaticDocs: Required<NativeDoc> = {
 				examples: [
 					{
 						example: 'DateTime.fromMillis(1711838940000)',
-						evaluated: '[DateTime: 2024-03-30T18:49:00.000-00:00]',
+						evaluated: '[DateTime: 2024-03-30T18:49:00.000Z]',
 					},
 				],
 			},
@@ -207,7 +207,7 @@ export const luxonStaticDocs: Required<NativeDoc> = {
 				examples: [
 					{
 						example: 'DateTime.fromSeconds(1711838940)',
-						evaluated: '[DateTime: 2024-03-30T18:49:00.000-00:00]',
+						evaluated: '[DateTime: 2024-03-30T18:49:00.000Z]',
 					},
 				],
 			},
@@ -406,7 +406,7 @@ export const luxonStaticDocs: Required<NativeDoc> = {
 					{
 						example:
 							"DateTime.max('2024-03-30T18:49'.toDateTime(), '2025-03-30T18:49'.toDateTime())",
-						evaluated: '[DateTime: 2025-03-30T18:49:00.000-00:00]',
+						evaluated: '[DateTime: 2025-03-30T18:49:00.000Z]',
 					},
 				],
 			},
@@ -431,7 +431,7 @@ export const luxonStaticDocs: Required<NativeDoc> = {
 					{
 						example:
 							"DateTime.min('2024-03-30T18:49'.toDateTime(), '2025-03-30T18:49'.toDateTime())",
-						evaluated: '[DateTime: 2024-03-30T18:49:00.000-00:00]',
+						evaluated: '[DateTime: 2024-03-30T18:49:00.000Z]',
 					},
 				],
 			},

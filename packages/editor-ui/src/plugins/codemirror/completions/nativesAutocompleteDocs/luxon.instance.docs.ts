@@ -413,7 +413,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 				examples: [
 					{
 						example: "dt = '2024-03-30T18:49'.toDateTime()\ndt.endOf('month')",
-						evaluated: '[DateTime: 2024-03-31T23:59:00.000-00:00]',
+						evaluated: '[DateTime: 2024-03-31T23:59:59.999Z]',
 					},
 				],
 			},
@@ -518,7 +518,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 				examples: [
 					{
 						example: "dt = '2024-03-30T18:49'.toDateTime()\ndt.set({ year:1982, month:10 })",
-						evaluated: '[DateTime: 1982-10-20T18:49:00.000-00:00]',
+						evaluated: '[DateTime: 1982-10-20T18:49:00.000Z]',
 					},
 				],
 			},
@@ -617,7 +617,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 				examples: [
 					{
 						example: "'2024-03-20T18:49'.toDateTime().startOf('month')",
-						evaluated: '[DateTime: 2024-03-01T00:00:00.000-00:00]',
+						evaluated: '[DateTime: 2024-03-01T00:00:00.000Z]',
 					},
 				],
 			},
