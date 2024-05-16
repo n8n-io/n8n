@@ -127,7 +127,7 @@ const onExecutionsTab = computed(() => {
 });
 
 const workflowPermissions = computed<PermissionsMap<WorkflowScope>>(() => {
-	return getWorkflowPermissions(props.workflow);
+	return getWorkflowPermissions(workflowsStore.getWorkflowById(props.workflow.id));
 });
 
 const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
@@ -178,7 +178,7 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 		disabled: !onWorkflowPage.value || isNewWorkflow.value,
 	});
 
-	if (workflowPermissions.value.delete && !props.readOnly) {
+	if ((workflowPermissions.value.delete && !props.readOnly) || isNewWorkflow.value) {
 		actions.push({
 			id: WORKFLOW_MENU_ACTIONS.DELETE,
 			label: locale.baseText('menuActions.delete'),
