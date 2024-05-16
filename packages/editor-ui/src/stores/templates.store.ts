@@ -121,7 +121,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 		 * Constructs URLSearchParams object based on the default parameters for the template repository
 		 * and provided additional parameters
 		 */
-		getWebsiteTemplateRepositoryParameters() {
+		websiteTemplateRepositoryParameters() {
 			const rootStore = useRootStore();
 			const userStore = useUsersStore();
 			const workflowsStore = useWorkflowsStore();
@@ -131,8 +131,10 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 				utm_n8n_version: rootStore.versionCli,
 				utm_awc: String(workflowsStore.activeWorkflows.length),
 			};
-			if (userStore.currentUserCloudInfo?.role) {
-				defaultParameters.utm_user_role = userStore.currentUserCloudInfo.role;
+			const userRole: string | undefined =
+				userStore.currentUserCloudInfo?.role ?? userStore.currentUser?.personalizationAnswers?.role;
+			if (userRole) {
+				defaultParameters.utm_user_role = userRole;
 			}
 			return (additionalParameters: Record<string, string> = {}) => {
 				return new URLSearchParams({
@@ -145,28 +147,17 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 		 * Construct the URL for the template repository on the website
 		 * @returns {string}
 		 */
-		getWebsiteTemplateRepositoryURL(): string {
+		websiteTemplateRepositoryURL(): string {
 			return `${
 				TEMPLATES_URLS.BASE_WEBSITE_URL
-			}?${this.getWebsiteTemplateRepositoryParameters().toString()}`;
-		},
-		/**
-		 * Construct the URL for the template page on the website for a given template id
-		 * @returns {function(string): string}
-		 */
-		getWebsiteTemplatePageURL() {
-			return (id: string) => {
-				return `${
-					TEMPLATES_URLS.BASE_WEBSITE_URL
-				}/${id}?${this.getWebsiteTemplateRepositoryParameters().toString()}`;
-			};
+			}?${this.websiteTemplateRepositoryParameters().toString()}`;
 		},
 		/**
 		 * Construct the URL for the template category page on the website for a given category id
 		 */
 		getWebsiteCategoryURL() {
 			return (id: string) => {
-				return `${TEMPLATES_URLS.BASE_WEBSITE_URL}/?${this.getWebsiteTemplateRepositoryParameters({
+				return `${TEMPLATES_URLS.BASE_WEBSITE_URL}/?${this.websiteTemplateRepositoryParameters({
 					categories: id,
 				}).toString()}`;
 			};

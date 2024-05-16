@@ -1,3 +1,4 @@
+import type { SecureContextOptions } from 'tls';
 import type {
 	IDataObject,
 	INodeExecutionData,
@@ -7,7 +8,15 @@ import type {
 
 import set from 'lodash/set';
 
-export type BodyParameter = { name: string; value: string };
+import FormData from 'form-data';
+import type { HttpSslAuthCredentials } from './interfaces';
+import { formatPrivateKey } from '../../utils/utilities';
+
+export type BodyParameter = {
+	name: string;
+	value: string;
+	parameterType?: 'formBinaryData' | 'formData';
+};
 
 export type IAuthDataSanitizeKeys = {
 	[key: string]: string[];
@@ -168,7 +177,38 @@ export const prepareRequestBody = async (
 			set(result, entry.name, entry.value);
 			return result;
 		}, Promise.resolve({}));
+	} else if (bodyType === 'multipart-form-data' && version >= 4.2) {
+		const formData = new FormData();
+
+		for (const parameter of parameters) {
+			if (parameter.parameterType === 'formBinaryData') {
+				const entry = await defaultReducer({}, parameter);
+				const key = Object.keys(entry)[0];
+				const data = entry[key] as { value: Buffer; options: FormData.AppendOptions };
+				formData.append(key, data.value, data.options);
+				continue;
+			}
+
+			formData.append(parameter.name, parameter.value);
+		}
+
+		return formData;
 	} else {
 		return await reduceAsync(parameters, defaultReducer);
+	}
+};
+
+export const setAgentOptions = (
+	requestOptions: IRequestOptions,
+	sslCertificates: HttpSslAuthCredentials | undefined,
+) => {
+	if (sslCertificates) {
+		const agentOptions: SecureContextOptions = {};
+		if (sslCertificates.ca) agentOptions.ca = formatPrivateKey(sslCertificates.ca);
+		if (sslCertificates.cert) agentOptions.cert = formatPrivateKey(sslCertificates.cert);
+		if (sslCertificates.key) agentOptions.key = formatPrivateKey(sslCertificates.key);
+		if (sslCertificates.passphrase)
+			agentOptions.passphrase = formatPrivateKey(sslCertificates.passphrase);
+		requestOptions.agentOptions = agentOptions;
 	}
 };

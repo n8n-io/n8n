@@ -2,16 +2,15 @@ import type express from 'express';
 import type {
 	BannerName,
 	ICredentialDataDecryptedObject,
-	ICredentialNodeAccess,
 	IDataObject,
 	INodeCredentialTestRequest,
 	INodeCredentials,
 	INodeParameters,
 	INodeTypeNameVersion,
 	IUser,
-	NodeError,
 } from 'n8n-workflow';
 
+import { Expose } from 'class-transformer';
 import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length } from 'class-validator';
 import { NoXss } from '@db/utils/customValidators';
 import type { PublicUser, SecretsProvider, SecretsProviderState } from '@/Interfaces';
@@ -22,14 +21,17 @@ import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { WorkflowHistory } from '@db/entities/WorkflowHistory';
 
 export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'lastName'> {
+	@Expose()
 	@IsEmail()
 	email: string;
 
+	@Expose()
 	@NoXss()
 	@IsString({ message: 'First name must be of type string.' })
 	@Length(1, 32, { message: 'First name must be $constraint1 to $constraint2 characters long.' })
 	firstName: string;
 
+	@Expose()
 	@NoXss()
 	@IsString({ message: 'Last name must be of type string.' })
 	@Length(1, 32, { message: 'Last name must be $constraint1 to $constraint2 characters long.' })
@@ -37,36 +39,47 @@ export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'la
 }
 
 export class UserSettingsUpdatePayload {
+	@Expose()
 	@IsBoolean({ message: 'userActivated should be a boolean' })
 	@IsOptional()
 	userActivated: boolean;
 
+	@Expose()
 	@IsBoolean({ message: 'allowSSOManualLogin should be a boolean' })
 	@IsOptional()
 	allowSSOManualLogin?: boolean;
 }
 
 export class UserRoleChangePayload {
+	@Expose()
 	@IsIn(['global:admin', 'global:member'])
 	newRoleName: AssignableRole;
 }
+
+export type APIRequest<
+	RouteParams = {},
+	ResponseBody = {},
+	RequestBody = {},
+	RequestQuery = {},
+> = express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery> & {
+	browserId?: string;
+};
 
 export type AuthlessRequest<
 	RouteParams = {},
 	ResponseBody = {},
 	RequestBody = {},
 	RequestQuery = {},
-> = express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery>;
+> = APIRequest<RouteParams, ResponseBody, RequestBody, RequestQuery> & {
+	user: never;
+};
 
 export type AuthenticatedRequest<
 	RouteParams = {},
 	ResponseBody = {},
 	RequestBody = {},
 	RequestQuery = {},
-> = Omit<
-	express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery>,
-	'user' | 'cookies'
-> & {
+> = Omit<APIRequest<RouteParams, ResponseBody, RequestBody, RequestQuery>, 'user' | 'cookies'> & {
 	user: User;
 	cookies: Record<string, string | undefined>;
 };
@@ -142,11 +155,12 @@ export function hasSharing(
 // ----------------------------------
 
 export declare namespace AIRequest {
-	export type DebugError = AuthenticatedRequest<{}, {}, AIDebugErrorPayload>;
+	export type GenerateCurl = AuthenticatedRequest<{}, {}, AIGenerateCurlPayload>;
 }
 
-export interface AIDebugErrorPayload {
-	error: NodeError;
+export interface AIGenerateCurlPayload {
+	service: string;
+	request: string;
 }
 
 // ----------------------------------
@@ -158,7 +172,6 @@ export declare namespace CredentialRequest {
 		id: string; // delete if sent
 		name: string;
 		type: string;
-		nodesAccess: ICredentialNodeAccess[];
 		data: ICredentialDataDecryptedObject;
 	}>;
 

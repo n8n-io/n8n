@@ -20,6 +20,8 @@ interface AuthJwtPayload {
 	id: string;
 	/** This hash is derived from email and bcrypt of password */
 	hash: string;
+	/** This is a client generated unique string to prevent session hijacking */
+	browserId?: string;
 }
 
 interface IssuedJWT extends AuthJwtPayload {
@@ -30,6 +32,21 @@ interface PasswordResetToken {
 	sub: string;
 	hash: string;
 }
+
+const restEndpoint = config.get('endpoints.rest');
+// The browser-id check needs to be skipped on these endpoints
+const skipBrowserIdCheckEndpoints = [
+	// we need to exclude push endpoint because we can't send custom header on websocket requests
+	// TODO: Implement a custom handshake for push, to avoid having to send any data on querystring or headers
+	`/${restEndpoint}/push`,
+
+	// We need to exclude binary-data downloading endpoint because we can't send custom headers on `<embed>` tags
+	`/${restEndpoint}/binary-data/`,
+
+	// oAuth callback urls aren't called by the frontend. therefore we can't send custom header on these requests
+	`/${restEndpoint}/oauth1-credential/callback`,
+	`/${restEndpoint}/oauth2-credential/callback`,
+];
 
 @Service()
 export class AuthService {
@@ -48,7 +65,7 @@ export class AuthService {
 		const token = req.cookies[AUTH_COOKIE_NAME];
 		if (token) {
 			try {
-				req.user = await this.resolveJwt(token, res);
+				req.user = await this.resolveJwt(token, req, res);
 			} catch (error) {
 				if (error instanceof JsonWebTokenError || error instanceof AuthError) {
 					this.clearCookie(res);
@@ -66,7 +83,8 @@ export class AuthService {
 		res.clearCookie(AUTH_COOKIE_NAME);
 	}
 
-	issueCookie(res: Response, user: User) {
+	issueCookie(res: Response, user: User, browserId?: string) {
+		// TODO: move this check to the login endpoint in AuthController
 		// If the instance has exceeded its user quota, prevent non-owners from logging in
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
 		if (
@@ -77,7 +95,7 @@ export class AuthService {
 			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
-		const token = this.issueJWT(user);
+		const token = this.issueJWT(user, browserId);
 		res.cookie(AUTH_COOKIE_NAME, token, {
 			maxAge: this.jwtExpiration * Time.seconds.toMilliseconds,
 			httpOnly: true,
@@ -86,17 +104,18 @@ export class AuthService {
 		});
 	}
 
-	issueJWT(user: User) {
+	issueJWT(user: User, browserId?: string) {
 		const payload: AuthJwtPayload = {
 			id: user.id,
 			hash: this.createJWTHash(user),
+			browserId: browserId && this.hash(browserId),
 		};
 		return this.jwtService.sign(payload, {
 			expiresIn: this.jwtExpiration,
 		});
 	}
 
-	async resolveJwt(token: string, res: Response): Promise<User> {
+	async resolveJwt(token: string, req: AuthenticatedRequest, res: Response): Promise<User> {
 		const jwtPayload: IssuedJWT = this.jwtService.verify(token, {
 			algorithms: ['HS256'],
 		});
@@ -117,9 +136,21 @@ export class AuthService {
 			throw new AuthError('Unauthorized');
 		}
 
+		// Check if the token was issued for another browser session, ignoring the endpoints that can't send custom headers
+		const endpoint = req.route ? `${req.baseUrl}${req.route.path}` : req.baseUrl;
+		if (req.method === 'GET' && skipBrowserIdCheckEndpoints.includes(endpoint)) {
+			this.logger.debug(`Skipped browserId check on ${endpoint}`);
+		} else if (
+			jwtPayload.browserId &&
+			(!req.browserId || jwtPayload.browserId !== this.hash(req.browserId))
+		) {
+			this.logger.warn(`browserId check failed on ${endpoint}`);
+			throw new AuthError('Unauthorized');
+		}
+
 		if (jwtPayload.exp * 1000 - Date.now() < this.jwtRefreshTimeout) {
 			this.logger.debug('JWT about to expire. Will be refreshed');
-			this.issueCookie(res, user);
+			this.issueCookie(res, user, req.browserId);
 		}
 
 		return user;
@@ -175,10 +206,11 @@ export class AuthService {
 	}
 
 	createJWTHash({ email, password }: User) {
-		const hash = createHash('sha256')
-			.update(email + ':' + password)
-			.digest('base64');
-		return hash.substring(0, 10);
+		return this.hash(email + ':' + password).substring(0, 10);
+	}
+
+	private hash(input: string) {
+		return createHash('sha256').update(input).digest('base64');
 	}
 
 	/** How many **milliseconds** before expiration should a JWT be renewed */

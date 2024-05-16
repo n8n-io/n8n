@@ -11,6 +11,7 @@ import { formatToOpenAIAssistantTool } from '../../helpers/utils';
 import { assistantRLC } from '../descriptions';
 
 import { getConnectedTools } from '../../../../../utils/helpers';
+import { getTracingConfig } from '../../../../../utils/tracing';
 
 const properties: INodeProperties[] = [
 	assistantRLC,
@@ -164,10 +165,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			});
 		}
 
-		const useRetrieval = assistantTools.some((tool) => tool.type === 'retrieval');
+		const useRetrieval = assistantTools.some((tool) => tool.type === 'file_search');
 		if (useRetrieval) {
 			nativeToolsParsed.push({
-				type: 'retrieval',
+				type: 'file_search',
 			});
 		}
 
@@ -181,7 +182,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		tools: tools ?? [],
 	});
 
-	const response = await agentExecutor.invoke({
+	const response = await agentExecutor.withConfig(getTracingConfig(this)).invoke({
 		content: input,
 		signal: this.getExecutionCancelSignal(),
 		timeout: options.timeout ?? 10000,
