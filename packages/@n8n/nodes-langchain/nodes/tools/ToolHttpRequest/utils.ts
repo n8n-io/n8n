@@ -198,7 +198,10 @@ export const configureResponseOptimizer = (ctx: IExecuteFunctions, itemIndex: nu
 					| string[];
 
 				if (typeof elementsToOmitUi === 'string') {
-					elementsToOmit = elementsToOmitUi.split(',').map((s) => s.trim());
+					elementsToOmit = elementsToOmitUi
+						.split(',')
+						.filter((s) => s)
+						.map((s) => s.trim());
 				}
 			}
 

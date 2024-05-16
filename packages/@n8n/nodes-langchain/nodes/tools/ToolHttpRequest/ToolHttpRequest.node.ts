@@ -112,11 +112,18 @@ export class ToolHttpRequest implements INodeType {
 				default: 'GET',
 			},
 			{
+				displayName:
+					'Tip: You can use a {placeholder} for any part of the request to be filled by the model. Provide more context about them in the placeholders section',
+				name: 'placeholderNotice',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'URL',
 				name: 'url',
 				type: 'string',
 				default: '',
-				placeholder: 'e.g. https://wikipedia.org/api',
+				placeholder: 'e.g. http://www.example.com/{path}',
 				validateType: 'url',
 			},
 			...authenticationProperties,
@@ -127,20 +134,6 @@ export class ToolHttpRequest implements INodeType {
 				default: false,
 				noDataExpression: true,
 				description: 'Whether the LLM should provide path parameters',
-			},
-			{
-				displayName: 'Path',
-				name: 'path',
-				type: 'string',
-				default: '',
-				required: true,
-				placeholder: 'e.g. /weather/{latitude}/{longitude}',
-				hint: "Use {parameter_name} to indicate where the parameter's value should be inserted",
-				displayOptions: {
-					show: {
-						sendInPath: [true],
-					},
-				},
 			},
 			{
 				...parametersCollection,
@@ -233,11 +226,26 @@ export class ToolHttpRequest implements INodeType {
 		const name = this.getNodeParameter('name', itemIndex) as string;
 		const toolDescription = this.getNodeParameter('toolDescription', itemIndex) as string;
 		const method = this.getNodeParameter('method', itemIndex, 'GET') as IHttpRequestMethods;
-		const url = this.getNodeParameter('url', itemIndex) as string;
+		let url = this.getNodeParameter('url', itemIndex) as string;
 		const authentication = this.getNodeParameter('authentication', itemIndex, 'none') as
 			| 'predefinedCredentialType'
 			| 'genericCredentialType'
 			| 'none';
+
+		if (authentication !== 'none') {
+			const domain = new URL(url).hostname;
+			if (domain.includes('{') && domain.includes('}')) {
+				throw new NodeOperationError(
+					this.getNode(),
+					"Can't use a placeholder for the domain when using authentication",
+					{
+						itemIndex,
+						description:
+							'This is for security reasons, to prevent the model accidentally sending your credentials to an unauthorized domain',
+					},
+				);
+			}
+		}
 		const options = this.getNodeParameter('options', itemIndex, {});
 
 		let headers = (options?.headers as IDataObject) ?? {};
@@ -265,10 +273,10 @@ export class ToolHttpRequest implements INodeType {
 		const httpRequest = await configureHttpRequestFunction(this, authentication, itemIndex);
 		const optimizeResponse = configureResponseOptimizer(this, itemIndex);
 
-		let path = this.getNodeParameter('path', itemIndex, '') as string;
-		if (path && path[0] !== '/') {
-			path = '/' + path;
-		}
+		// let path = this.getNodeParameter('path', itemIndex, '') as string;
+		// if (path && path[0] !== '/') {
+		// 	path = '/' + path;
+		// }
 		const pathParameters = this.getNodeParameter(
 			'pathParameters.values',
 			itemIndex,
@@ -285,16 +293,16 @@ export class ToolHttpRequest implements INodeType {
 			[],
 		) as ToolParameter[];
 
-		if (pathParameters.length) {
-			for (const parameter of pathParameters) {
-				if (path.indexOf(`{${parameter.name}}`) === -1) {
-					throw new NodeOperationError(
-						this.getNode(),
-						`'Path' does not contain parameter '${parameter.name}', remove it from 'Path Parameters' or include in 'Path' as {${parameter.name}}`,
-					);
-				}
-			}
-		}
+		// if (pathParameters.length) {
+		// 	for (const parameter of pathParameters) {
+		// 		if (path.indexOf(`{${parameter.name}}`) === -1) {
+		// 			throw new NodeOperationError(
+		// 				this.getNode(),
+		// 				`'Path' does not contain parameter '${parameter.name}', remove it from 'Path Parameters' or include in 'Path' as {${parameter.name}}`,
+		// 			);
+		// 		}
+		// 	}
+		// }
 
 		const parameters = [...pathParameters, ...queryParameters, ...bodyParameters];
 
@@ -325,16 +333,11 @@ export class ToolHttpRequest implements INodeType {
 							}
 						}
 
-						const requestOptions: IHttpRequestOptions = {
-							method,
-							url,
-						};
-
 						if (pathParameters.length) {
 							for (const parameter of pathParameters) {
 								const parameterName = parameter.name;
 								const parameterValue = encodeURIComponent(String(toolParameters[parameterName]));
-								path = path.replace(`{${parameterName}}`, parameterValue);
+								url = url.replace(`{${parameterName}}`, parameterValue);
 							}
 						}
 
@@ -354,7 +357,10 @@ export class ToolHttpRequest implements INodeType {
 							}
 						}
 
-						requestOptions.url += path;
+						const requestOptions: IHttpRequestOptions = {
+							method,
+							url,
+						};
 
 						if (Object.keys(headers).length) {
 							requestOptions.headers = headers;
