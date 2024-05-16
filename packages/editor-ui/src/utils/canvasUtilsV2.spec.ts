@@ -6,7 +6,6 @@ import {
 import type { IConnections, INodeTypeDescription } from 'n8n-workflow';
 import type { CanvasConnection } from '@/types';
 import type { INodeUi } from '@/Interface';
-import { v4 as uuid } from 'uuid';
 
 vi.mock('uuid', () => ({
 	v4: vi.fn(() => 'mock-uuid'),

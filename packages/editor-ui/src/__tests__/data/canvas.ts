@@ -1,6 +1,6 @@
 import { CanvasNodeKey } from '@/constants';
 import { ref } from 'vue';
-import { CanvasConnection, CanvasConnectionPort, CanvasElement, CanvasElementData } from '@/types';
+import type { CanvasElement, CanvasElementData } from '@/types';
 
 export function createCanvasNodeData({
 	id = 'node',

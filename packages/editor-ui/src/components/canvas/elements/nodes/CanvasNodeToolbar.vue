@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { computed, inject, useCssModule } from 'vue';
-import type { INodeTypeDescription } from 'n8n-workflow';
-import type { CanvasElementData } from '@/types';
 import { CanvasNodeKey } from '@/constants';
 
 const node = inject(CanvasNodeKey);

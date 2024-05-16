@@ -1,7 +1,7 @@
 import HandleRenderer from '@/components/canvas/elements/handles/HandleRenderer.vue';
 import { NodeConnectionType } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
-import { CanvasNodeHandleKey, CanvasNodeKey } from '@/constants';
+import { CanvasNodeHandleKey } from '@/constants';
 import { ref } from 'vue';
 
 const renderComponent = createComponentRenderer(HandleRenderer);

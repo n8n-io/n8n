@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { Position } from '@vue-flow/core';
-import { computed, provide, toRef, useCssModule } from 'vue';
+import { computed, provide, toRef } from 'vue';
 import type {
 	CanvasElementData,
 	CanvasConnectionPort,
