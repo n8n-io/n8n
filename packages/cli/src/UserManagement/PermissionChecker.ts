@@ -21,6 +21,13 @@ export class PermissionChecker {
 	 * Check if a workflow has the ability to execute based on the projects it's apart of.
 	 */
 	async check(workflowId: string, nodes: INode[]) {
+		const homeProject = await this.ownershipService.getWorkflowProjectCached(workflowId);
+		const homeProjectOwner = await this.ownershipService.getProjectOwnerCached(homeProject.id);
+		if (homeProject.type === 'personal' && homeProjectOwner?.hasGlobalScope('credential:list')) {
+			// Workflow belongs to a project by a user with privileges
+			// so all credentials are usable. Skip credential checks.
+			return;
+		}
 		const projectIds = await this.projectService.findProjectsWorkflowIsIn(workflowId);
 		const credIdsToNodes = this.mapCredIdsToNodes(nodes);
 
@@ -28,13 +35,13 @@ export class PermissionChecker {
 
 		if (workflowCredIds.length === 0) return;
 
-		const accessable = await this.sharedCredentialsRepository.getFilteredAccessibleCredentials(
+		const accessible = await this.sharedCredentialsRepository.getFilteredAccessibleCredentials(
 			projectIds,
 			workflowCredIds,
 		);
 
 		for (const credentialsId of workflowCredIds) {
-			if (!accessable.includes(credentialsId)) {
+			if (!accessible.includes(credentialsId)) {
 				const nodeToFlag = credIdsToNodes[credentialsId][0];
 				throw new CredentialAccessError(nodeToFlag, credentialsId, workflowId);
 			}
