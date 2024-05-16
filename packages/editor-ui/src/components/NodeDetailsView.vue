@@ -165,7 +165,7 @@ import {
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/constants';
-import { useWorkflowActive } from '@/composables/useWorkflowActivate';
+import { useWorkflowActivate } from '@/composables/useWorkflowActivate';
 import { dataPinningEventBus } from '@/event-bus';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -209,13 +209,14 @@ export default defineComponent({
 		const pinnedData = usePinnedData(activeNode);
 		const router = useRouter();
 		const workflowHelpers = useWorkflowHelpers({ router });
+		const workflowActivate = useWorkflowActivate();
 
 		return {
 			externalHooks,
 			nodeHelpers,
 			pinnedData,
 			workflowHelpers,
-			...useWorkflowActive(),
+			workflowActivate,
 			...useDeviceSupport(),
 			...useMessage(),
 		};

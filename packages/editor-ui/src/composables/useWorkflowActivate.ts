@@ -16,7 +16,7 @@ import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
 import { ref } from 'vue';
 
-export function useWorkflowActive() {
+export function useWorkflowActivate() {
 	const updatingWorkflowActivation = ref(false);
 
 	const router = useRouter();
