@@ -269,6 +269,27 @@ describe('GET /credentials', () => {
 			expect(response.body.data.map((credential) => credential.id)).toContain(ownerCredential.id);
 			expect(response.body.data.map((credential) => credential.id)).toContain(memberCredential.id);
 		});
+
+		test('should return all credentials to instance owners when working on their own personal project', async () => {
+			const ownerCredential = await saveCredential(payload(), {
+				user: owner,
+				role: 'credential:owner',
+			});
+			const memberCredential = await saveCredential(payload(), {
+				user: member,
+				role: 'credential:owner',
+			});
+
+			const response: GetAllResponse = await testServer
+				.authAgentFor(owner)
+				.get('/credentials')
+				.query(`filter={ "projectId": "${ownerPersonalProject.id}" }&includeScopes=true`)
+				.expect(200);
+
+			expect(response.body.data).toHaveLength(2);
+			expect(response.body.data.map((credential) => credential.id)).toContain(ownerCredential.id);
+			expect(response.body.data.map((credential) => credential.id)).toContain(memberCredential.id);
+		});
 	});
 
 	describe('select', () => {

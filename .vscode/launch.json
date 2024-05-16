@@ -57,12 +57,7 @@
 			"name": "Debug CLI tests",
 			"cwd": "${workspaceFolder}/packages/cli",
 			"runtimeExecutable": "npm",
-			"args": [
-				"run",
-				"test"
-				// "--",
-				// "ActiveExecutions"
-			],
+			"args": ["run", "test", "--", "credentials.controller"],
 			"type": "node",
 			"request": "launch"
 		}
