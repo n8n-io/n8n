@@ -94,13 +94,10 @@ export default defineComponent({
 					value: 'params',
 				},
 			];
-			if (this.documentationUrl) {
-				options.push({
-					label: this.$locale.baseText('nodeSettings.docs'),
-					value: 'docs',
-					href: this.documentationUrl,
-				});
-			}
+			options.push({
+				label: this.$locale.baseText('nodeSettings.settings'),
+				value: 'settings',
+			});
 			if (this.isCommunityNode) {
 				options.push({
 					icon: 'cube',
@@ -114,13 +111,15 @@ export default defineComponent({
 					}),
 				});
 			}
-			// If both tabs have align right, both will have excessive left margin
 			const pushCogRight = this.isCommunityNode ? false : true;
-			options.push({
-				icon: 'cog',
-				value: 'settings',
-				align: pushCogRight ? 'right' : undefined,
-			});
+			if (this.documentationUrl) {
+				options.push({
+					label: this.$locale.baseText('nodeSettings.docs'),
+					value: 'docs',
+					href: this.documentationUrl,
+					align: pushCogRight ? 'right' : undefined,
+				});
+			}
 
 			return options;
 		},

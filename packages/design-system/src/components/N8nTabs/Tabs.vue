@@ -181,6 +181,7 @@ const scrollRight = () => scroll(50);
 
 .external {
 	display: none;
+	margin-left: var(--spacing-5xs);
 }
 
 .button {
