@@ -801,53 +801,58 @@ export class WorkflowDataProxy {
 				}
 
 				if (Array.isArray(itemPreviousNode.pairedItem)) {
-					// Item is based on multiple items so check all of them
-					const results = itemPreviousNode.pairedItem
-						// eslint-disable-next-line @typescript-eslint/no-loop-func
-						.map((item) => {
-							try {
-								const itemInput = item.input || 0;
-								if (itemInput >= source.length) {
-									// `Could not resolve pairedItem as the defined node input '${itemInput}' does not exist on node '${sourceData!.previousNode}'.`
-									// Actual error does not matter as it gets caught below and `null` will be returned
-									throw new ApplicationError('Not found');
+					if (itemPreviousNode.pairedItem.length === 1) {
+						itemPreviousNode.pairedItem = itemPreviousNode.pairedItem[0];
+					} else if (itemPreviousNode.pairedItem[pairedItem.item] !== undefined) {
+						itemPreviousNode.pairedItem = itemPreviousNode.pairedItem[pairedItem.item];
+					} else {
+						// Item is based on multiple items so check all of them
+						const results = itemPreviousNode.pairedItem
+							// eslint-disable-next-line @typescript-eslint/no-loop-func
+							.map((item) => {
+								try {
+									const itemInput = item.input || 0;
+									if (itemInput >= source.length) {
+										// `Could not resolve pairedItem as the defined node input '${itemInput}' does not exist on node '${sourceData!.previousNode}'.`
+										// Actual error does not matter as it gets caught below and `null` will be returned
+										throw new ApplicationError('Not found');
+									}
+
+									return getPairedItem(destinationNodeName, source[itemInput], item);
+								} catch (error) {
+									// Means pairedItem could not be found
+									return null;
 								}
+							})
+							.filter((result) => result !== null);
 
-								return getPairedItem(destinationNodeName, source[itemInput], item);
-							} catch (error) {
-								// Means pairedItem could not be found
-								return null;
+						if (results.length !== 1) {
+							// Check if the results are all the same
+							const firstResult = results[0];
+							if (results.every((result) => result === firstResult)) {
+								// All results are the same so return the first one
+								return firstResult;
 							}
-						})
-						.filter((result) => result !== null);
 
-					if (results.length !== 1) {
-						// Check if the results are all the same
-						const firstResult = results[0];
-						if (results.every((result) => result === firstResult)) {
-							// All results are the same so return the first one
-							return firstResult;
+							throw createExpressionError('Invalid expression', {
+								messageTemplate: `Multiple matching items for expression [item ${
+									currentPairedItem.item || 0
+								}]`,
+								functionality: 'pairedItem',
+								functionOverrides: {
+									message: `Multiple matching items for code [item ${currentPairedItem.item || 0}]`,
+								},
+								nodeCause: destinationNodeName,
+								descriptionKey: isScriptingNode(destinationNodeName, that.workflow)
+									? 'pairedItemMultipleMatchesCodeNode'
+									: 'pairedItemMultipleMatches',
+								type: 'paired_item_multiple_matches',
+							});
 						}
 
-						throw createExpressionError('Invalid expression', {
-							messageTemplate: `Multiple matching items for expression [item ${
-								currentPairedItem.item || 0
-							}]`,
-							functionality: 'pairedItem',
-							functionOverrides: {
-								message: `Multiple matching items for code [item ${currentPairedItem.item || 0}]`,
-							},
-							nodeCause: destinationNodeName,
-							descriptionKey: isScriptingNode(destinationNodeName, that.workflow)
-								? 'pairedItemMultipleMatchesCodeNode'
-								: 'pairedItemMultipleMatches',
-							type: 'paired_item_multiple_matches',
-						});
+						return results[0];
 					}
-
-					return results[0];
 				}
-
 				currentPairedItem = pairedItem;
 
 				// pairedItem is not an array
