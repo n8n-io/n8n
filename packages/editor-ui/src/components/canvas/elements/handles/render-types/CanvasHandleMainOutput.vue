@@ -32,7 +32,7 @@ const $style = useCssModule();
 const label = computed(() => handle?.label.value ?? '');
 </script>
 <template>
-	<div :class="$style.handle">
+	<div :class="['canvas-node-handle-main-output', $style.handle]">
 		<div :class="$style.label">{{ label }}</div>
 		<div :class="$style.circle" />
 		<!-- @TODO Determine whether handle is connected and find a way to make it work without pointer-events: none -->

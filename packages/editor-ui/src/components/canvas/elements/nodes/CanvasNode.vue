@@ -15,8 +15,6 @@ import { useNodeConnections } from '@/composables/useNodeConnections';
 import { CanvasNodeKey } from '@/constants';
 import type { NodeProps } from '@vue-flow/core';
 
-const $style = useCssModule();
-
 const props = defineProps<NodeProps<CanvasElementData>>();
 
 const inputs = computed(() => props.data.inputs);
@@ -80,11 +78,13 @@ const mapEndpointWithPosition =
  * Provide
  */
 
+const id = toRef(props, 'id');
 const data = toRef(props, 'data');
 const label = toRef(props, 'label');
 const selected = toRef(props, 'selected');
 
 provide(CanvasNodeKey, {
+	id,
 	data,
 	label,
 	selected,
@@ -93,10 +93,11 @@ provide(CanvasNodeKey, {
 </script>
 
 <template>
-	<div :class="$style.canvasNode">
+	<div :class="$style.canvasNode" data-test-id="canvas-node">
 		<template v-for="source in outputsWithPosition" :key="`${source.type}/${source.index}`">
 			<HandleRenderer
 				mode="output"
+				data-test-id="canvas-node-output-handle"
 				:type="source.type"
 				:label="source.label"
 				:index="source.index"
@@ -108,6 +109,7 @@ provide(CanvasNodeKey, {
 		<template v-for="target in inputsWithPosition" :key="`${target.type}/${target.index}`">
 			<HandleRenderer
 				mode="input"
+				data-test-id="canvas-node-input-handle"
 				:type="target.type"
 				:label="target.label"
 				:index="target.index"
@@ -118,9 +120,8 @@ provide(CanvasNodeKey, {
 
 		<CanvasNodeToolbar
 			v-if="nodeType"
+			data-test-id="canvas-node-toolbar"
 			:class="$style.canvasNodeToolbar"
-			:node-type="nodeType"
-			:data="data"
 		/>
 
 		<CanvasNodeRenderer v-if="nodeType">

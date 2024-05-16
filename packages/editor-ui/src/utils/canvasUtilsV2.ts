@@ -3,7 +3,7 @@ import type { INodeUi } from '@/Interface';
 import type { CanvasConnection, CanvasConnectionPortType, CanvasConnectionPort } from '@/types';
 import { v4 as uuid } from 'uuid';
 
-export function mapLegacyConnections(
+export function mapLegacyConnectionsToCanvasConnections(
 	legacyConnections: IConnections,
 	nodes: INodeUi[],
 ): CanvasConnection[] {
@@ -49,7 +49,7 @@ export function mapLegacyConnections(
 	return mappedConnections;
 }
 
-export function normalizeElementEndpoints(
+export function mapLegacyEndpointsToCanvasConnectionPort(
 	endpoints: INodeTypeDescription['inputs'],
 ): CanvasConnectionPort[] {
 	if (typeof endpoints === 'string') {

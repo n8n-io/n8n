@@ -17,7 +17,7 @@ const classes = computed(() => {
 </script>
 
 <template>
-	<div :class="classes">
+	<div :class="classes" data-test-id="canvas-node-configuration">
 		<slot />
 		<div v-if="label" :class="$style.label">{{ label }}</div>
 	</div>

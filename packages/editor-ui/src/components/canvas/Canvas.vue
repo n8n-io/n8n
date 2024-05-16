@@ -55,6 +55,7 @@ function onConnect(...args: unknown[]) {
 		pan-on-scroll
 		:min-zoom="0.2"
 		:max-zoom="2"
+		data-test-id="canvas"
 		@node-drag-stop="onNodeDragStop"
 		@connect="onConnect"
 	>
@@ -66,11 +67,15 @@ function onConnect(...args: unknown[]) {
 			<CanvasEdge v-bind="canvasEdgeProps" />
 		</template>
 
-		<Background pattern-color="#aaa" :gap="16" />
+		<Background data-test-id="canvas-background" pattern-color="#aaa" :gap="16" />
 
-		<MiniMap pannable />
+		<MiniMap data-test-id="canvas-minimap" pannable />
 
-		<Controls :class="$style.canvasControls" :position="controlsPosition"></Controls>
+		<Controls
+			data-test-id="canvas-controls"
+			:class="$style.canvasControls"
+			:position="controlsPosition"
+		></Controls>
 	</VueFlow>
 </template>
 

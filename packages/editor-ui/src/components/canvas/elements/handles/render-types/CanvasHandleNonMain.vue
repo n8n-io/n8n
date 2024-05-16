@@ -9,7 +9,7 @@ const $style = useCssModule();
 const label = computed(() => handle?.label.value ?? '');
 </script>
 <template>
-	<div :class="$style.handle">
+	<div :class="['canvas-node-handle-non-main', $style.handle]">
 		<div :class="$style.diamond" />
 		<div :class="$style.label">{{ label }}</div>
 	</div>

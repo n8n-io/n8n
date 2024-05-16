@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { useCssModule } from 'vue';
+import { computed, inject, useCssModule } from 'vue';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import type { CanvasElementData } from '@/types';
+import { CanvasNodeKey } from '@/constants';
 
-const props = defineProps<{
-	nodeType: INodeTypeDescription;
-	data: CanvasElementData;
-}>();
+const node = inject(CanvasNodeKey);
+
+const data = computed(() => node?.data.value);
 
 const $style = useCssModule();
 
@@ -33,7 +33,7 @@ function openContextMenu(e: MouseEvent, type: string) {}
 	<div :class="$style.canvasNodeToolbar">
 		<div :class="$style.canvasNodeToolbarItems">
 			<N8nIconButton
-				v-if="data.renderType !== 'configuration'"
+				v-if="data?.renderType !== 'configuration'"
 				data-test-id="execute-node-button"
 				type="tertiary"
 				text

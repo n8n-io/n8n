@@ -1,5 +1,10 @@
 import type { INodeTypeData, INodeTypeDescription, IN8nUISettings } from 'n8n-workflow';
-import { AGENT_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
+import {
+	AGENT_NODE_TYPE,
+	SET_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+} from '@/constants';
 import nodeTypesJson from '../../../nodes-base/dist/types/nodes.json';
 import aiNodeTypesJson from '../../../@n8n/nodes-langchain/dist/types/nodes.json';
 
@@ -14,6 +19,12 @@ export const testingNodeTypes: INodeTypeData = {
 		sourcePath: '',
 		type: {
 			description: findNodeWithName(MANUAL_TRIGGER_NODE_TYPE),
+		},
+	},
+	[SET_NODE_TYPE]: {
+		sourcePath: '',
+		type: {
+			description: findNodeWithName(SET_NODE_TYPE),
 		},
 	},
 	[CHAT_TRIGGER_NODE_TYPE]: {
@@ -32,6 +43,7 @@ export const testingNodeTypes: INodeTypeData = {
 
 export const defaultMockNodeTypes: INodeTypeData = {
 	[MANUAL_TRIGGER_NODE_TYPE]: testingNodeTypes[MANUAL_TRIGGER_NODE_TYPE],
+	[SET_NODE_TYPE]: testingNodeTypes[SET_NODE_TYPE],
 };
 
 export function mockNodeTypesToArray(nodeTypes: INodeTypeData): INodeTypeDescription[] {

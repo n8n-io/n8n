@@ -26,6 +26,7 @@ export const retry = async (
 export const waitAllPromises = async () => await new Promise((resolve) => setTimeout(resolve));
 
 export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
+	initialized: true,
 	settings: defaultSettings,
 	promptsData: {
 		message: '',
@@ -56,9 +57,11 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 		loginLabel: '',
 		loginEnabled: false,
 	},
+	mfa: {
+		enabled: false,
+	},
 	onboardingCallPromptEnabled: false,
 	saveDataErrorExecution: 'all',
 	saveDataSuccessExecution: 'all',
 	saveManualExecutions: false,
-	binaryDataMode: 'default',
 };

@@ -31,7 +31,7 @@ const styles = computed(() => {
 </script>
 
 <template>
-	<div v-if="node" :class="classes" :style="styles">
+	<div v-if="node" :class="classes" :style="styles" data-test-id="canvas-node-default">
 		<slot />
 		<div v-if="label" :class="$style.label">{{ label }}</div>
 	</div>

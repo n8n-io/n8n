@@ -44,7 +44,7 @@ const styles = computed(() => {
 </script>
 
 <template>
-	<div :class="classes" :style="styles">
+	<div :class="classes" :style="styles" data-test-id="canvas-node-configurable">
 		<slot />
 		<div :class="$style.label">{{ label }}</div>
 	</div>

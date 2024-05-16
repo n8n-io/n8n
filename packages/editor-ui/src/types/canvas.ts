@@ -22,6 +22,7 @@ export interface CanvasElementPortWithPosition extends CanvasConnectionPort {
 }
 
 export interface CanvasElementData {
+	id: INodeUi['id'];
 	type: INodeUi['type'];
 	typeVersion: INodeUi['typeVersion'];
 	inputs: CanvasConnectionPort[];
@@ -48,6 +49,7 @@ export interface CanvasPlugin {
 }
 
 export interface CanvasNodeInjectionData {
+	id: Ref<string>;
 	data: Ref<CanvasElementData>;
 	label: Ref<NodeProps['label']>;
 	selected: Ref<NodeProps['selected']>;
