@@ -34,6 +34,7 @@ import type {
 	WorkflowExecuteMode,
 	CloseFunction,
 	StartNodeData,
+	NodeExecutionHint,
 } from 'n8n-workflow';
 import {
 	LoggerProxy as Logger,
@@ -41,6 +42,7 @@ import {
 	NodeHelpers,
 	NodeConnectionType,
 	ApplicationError,
+	NodeExecutionOutput,
 } from 'n8n-workflow';
 import get from 'lodash/get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
@@ -807,6 +809,7 @@ export class WorkflowExecute {
 		// Variables which hold temporary data for each node-execution
 		let executionData: IExecuteData;
 		let executionError: ExecutionBaseError | undefined;
+		let executionHints: NodeExecutionHint[] = [];
 		let executionNode: INode;
 		let nodeSuccessData: INodeExecutionData[][] | null | undefined;
 		let runIndex: number;
@@ -828,7 +831,7 @@ export class WorkflowExecute {
 		let lastExecutionTry = '';
 		let closeFunction: Promise<void> | undefined;
 
-		return new PCancelable(async (resolve, reject, onCancel) => {
+		return new PCancelable(async (resolve, _reject, onCancel) => {
 			// Let as many nodes listen to the abort signal, without getting the MaxListenersExceededWarning
 			setMaxListeners(Infinity, this.abortController.signal);
 
@@ -896,6 +899,7 @@ export class WorkflowExecute {
 
 					nodeSuccessData = null;
 					executionError = undefined;
+					executionHints = [];
 					executionData =
 						this.runExecutionData.executionData!.nodeExecutionStack.shift() as IExecuteData;
 					executionNode = executionData.node;
@@ -1059,7 +1063,15 @@ export class WorkflowExecute {
 									this.mode,
 									this.abortController.signal,
 								);
+
 								nodeSuccessData = runNodeData.data;
+
+								if (nodeSuccessData instanceof NodeExecutionOutput) {
+									// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+									const hints: NodeExecutionHint[] = nodeSuccessData.getHints();
+									// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+									executionHints.push(...hints);
+								}
 
 								if (nodeSuccessData && executionData.node.onError === 'continueErrorOutput') {
 									// If errorOutput is activated check all the output items for error data.
@@ -1244,7 +1256,7 @@ export class WorkflowExecute {
 										if (!inputData) {
 											return;
 										}
-										inputData.forEach((item, itemIndex) => {
+										inputData.forEach((_item, itemIndex) => {
 											pairedItem.push({
 												item: itemIndex,
 												input: inputIndex,
@@ -1296,6 +1308,7 @@ export class WorkflowExecute {
 					}
 
 					taskData = {
+						hints: executionHints,
 						startTime,
 						executionTime: new Date().getTime() - startTime,
 						source: !executionData.source ? [] : executionData.source.main,

@@ -197,6 +197,11 @@
 		li + li {
 			margin-top: var(--spacing-4xs);
 		}
+
+		.autocomplete-info-args {
+			margin-top: var(--spacing-4xs);
+			padding-left: var(--spacing-s);
+		}
 	}
 
 	.autocomplete-info-arg-name {

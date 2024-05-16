@@ -25,6 +25,9 @@ patchedDependencies:
   '@types/express-serve-static-core@4.17.43':
     hash: 5orrj4qleu2iko5t27vl44u4we
     path: patches/@types__express-serve-static-core@4.17.43.patch
+  '@types/uuencode@0.0.3':
+    hash: 3i7wecddkama6vhpu5o37g24u4
+    path: patches/@types__uuencode@0.0.3.patch
   '@types/ws@8.5.4':
     hash: nbzuqaoyqbrfwipijj5qriqqju
     path: patches/@types__ws@8.5.4.patch
@@ -44,10 +47,6 @@ patchedDependencies:
 importers:
 
   .:
-    dependencies:
-      n8n:
-        specifier: workspace:*
-        version: link:packages/cli
     devDependencies:
       '@n8n_io/eslint-config':
         specifier: workspace:*
@@ -231,7 +230,7 @@ importers:
         version: 3.0.3
       '@types/uuencode':
         specifier: ^0.0.3
-        version: 0.0.3
+        version: 0.0.3(patch_hash=3i7wecddkama6vhpu5o37g24u4)
 
   packages/@n8n/nodes-langchain:
     dependencies:
@@ -9262,7 +9261,7 @@ packages:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.4.21(typescript@5.4.2)
-      vue-component-type-helpers: 2.0.17
+      vue-component-type-helpers: 2.0.18
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -10165,11 +10164,12 @@ packages:
     resolution: {integrity: sha512-+lqLGxWZsEe4Z6OrzBI7Ym4SMUTaMS5yOrHZ0/IL0bpIye1Qbs4PpobJL2mLDbftUXlPFZR7fu6d1yM+bHLX1w==}
     dev: true
 
-  /@types/uuencode@0.0.3:
+  /@types/uuencode@0.0.3(patch_hash=3i7wecddkama6vhpu5o37g24u4):
     resolution: {integrity: sha512-NaBWHPPQvcXqiSaMAGa2Ea/XaFcK/nHwGe2akwJBXRLkCNa2+izx/F1aKJrzFH+L68D88VLYIATTYP7B2k4zVA==}
     dependencies:
       '@types/node': 18.16.16
     dev: true
+    patched: true
 
   /@types/uuid@8.3.4:
     resolution: {integrity: sha512-c/I8ZRb51j+pYGAu5CrFMRxqZ2ke4y2grEBO5AUjgSkSk+qT2Ea+OdWElz/OiMf5MNpn2b17kuVBwZLQJXzihw==}
@@ -24344,8 +24344,8 @@ packages:
     resolution: {integrity: sha512-0vOfAtI67UjeO1G6UiX5Kd76CqaQ67wrRZiOe7UAb9Jm6GzlUr/fC7CV90XfwapJRjpCMaZFhv1V0ajWRmE9Dg==}
     dev: true
 
-  /vue-component-type-helpers@2.0.17:
-    resolution: {integrity: sha512-2car49m8ciqg/JjgMBkx7o/Fd2A7fHESxNqL/2vJYFLXm4VwYO4yH0rexOi4a35vwNgDyvt17B07Vj126l9rAQ==}
+  /vue-component-type-helpers@2.0.18:
+    resolution: {integrity: sha512-zi1QaDBhSb3oeHJh55aTCrosFNKEQsOL9j3XCAjpF9dwxDUUtd85RkJVzO+YpJqy1LNoCWLU8gwuZ7HW2iDN/A==}
     dev: true
 
   /vue-demi@0.14.5(vue@3.4.21):

@@ -254,8 +254,9 @@ describe('Credentials', () => {
 		});
 
 		workflowPage.actions.visit(true);
-		workflowPage.actions.addNodeToCanvas('Slack');
-		workflowPage.actions.openNode('Slack');
+		workflowPage.actions.addNodeToCanvas('Manual');
+		workflowPage.actions.addNodeToCanvas('Slack', true, true, 'Get a channel');
+		workflowPage.getters.nodeCredentialsSelect().should('exist');
 		workflowPage.getters.nodeCredentialsSelect().click();
 		getVisibleSelect().find('li').last().click();
 		credentialsModal.getters.credentialAuthTypeRadioButtons().first().click();

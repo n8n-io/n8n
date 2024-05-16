@@ -163,6 +163,15 @@ describe('Resolution-based completions', () => {
 			);
 		});
 
+		test('should return completions for boolean literal: {{ true.| }}', () => {
+			// @ts-expect-error Spied function is mistyped
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(true);
+
+			expect(completions('{{ true.| }}')).toHaveLength(
+				natives({ typeName: 'boolean' }).length + extensions({ typeName: 'boolean' }).length,
+			);
+		});
+
 		test('should properly handle string that contain dollar signs', () => {
 			// @ts-expect-error Spied function is mistyped
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce("You 'owe' me 200$ ");

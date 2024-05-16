@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.41.0",
+  "version": "1.42.0",
   "description": "Base nodes of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -720,6 +720,7 @@
       "dist/nodes/Simulate/Simulate.node.js",
       "dist/nodes/Simulate/SimulateTrigger.node.js",
       "dist/nodes/Slack/Slack.node.js",
+      "dist/nodes/Slack/SlackTrigger.node.js",
       "dist/nodes/Sms77/Sms77.node.js",
       "dist/nodes/Snowflake/Snowflake.node.js",
       "dist/nodes/SplitInBatches/SplitInBatches.node.js",
