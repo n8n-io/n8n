@@ -107,6 +107,7 @@ export class CredentialsService {
 			return credentials;
 		}
 
+		// If the workflow is part of a personal project we want to show the credentials the user making the request has access to, not the credentials the user owning the workflow has access to.
 		if (typeof options.listQueryOptions?.filter?.projectId === 'string') {
 			const project = await this.projectService.getProject(
 				options.listQueryOptions.filter.projectId,
