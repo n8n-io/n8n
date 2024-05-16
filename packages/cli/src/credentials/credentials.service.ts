@@ -70,6 +70,18 @@ export class CredentialsService {
 		let projectRelations: ProjectRelation[] | undefined = undefined;
 		if (options.includeScopes) {
 			projectRelations = await this.projectService.getProjectRelationsForUser(user);
+			if (options.listQueryOptions?.filter?.projectId && user.hasGlobalScope('credential:list')) {
+				// Only instance owners and admins have the credential:list scope
+				// Those users should be able to use _all_ credentials within their workflows.
+				// TODO: Change this so we filter by `workflowId` in this case. Require a slight FE change
+				const projectRelation = projectRelations.find(
+					(relation) => relation.projectId === options.listQueryOptions?.filter?.projectId,
+				);
+				if (projectRelation?.role === 'project:personalOwner') {
+					// Will not affect team projects as these have admins, not owners.
+					delete options.listQueryOptions?.filter?.projectId;
+				}
+			}
 		}
 
 		if (returnAll) {
@@ -93,6 +105,17 @@ export class CredentialsService {
 			});
 
 			return credentials;
+		}
+
+		// If the workflow is part of a personal project we want to show the credentials the user making the request has access to, not the credentials the user owning the workflow has access to.
+		if (typeof options.listQueryOptions?.filter?.projectId === 'string') {
+			const project = await this.projectService.getProject(
+				options.listQueryOptions.filter.projectId,
+			);
+			if (project?.type === 'personal') {
+				const currentUsersPersonalProject = await this.projectService.getPersonalProject(user);
+				options.listQueryOptions.filter.projectId = currentUsersPersonalProject?.id;
+			}
 		}
 
 		const ids = await this.sharedCredentialsRepository.getCredentialIdsByUserAndRole([user.id], {

@@ -73,6 +73,8 @@ export function createSubworkflow({
 	});
 }
 
+const ownershipService = mockInstance(OwnershipService);
+
 const createWorkflow = async (nodes: INode[], workflowOwner?: User): Promise<WorkflowEntity> => {
 	const workflowDetails = {
 		id: randomPositiveDigit().toString(),
@@ -102,6 +104,8 @@ let saveCredential: SaveCredentialFunction;
 
 let owner: User;
 let member: User;
+let ownerPersonalProject: Project;
+let memberPersonalProject: Project;
 
 const mockNodeTypes = mockInstance(NodeTypes);
 mockInstance(LoadNodesAndCredentials, {
@@ -118,6 +122,12 @@ beforeAll(async () => {
 	permissionChecker = Container.get(PermissionChecker);
 
 	[owner, member] = await Promise.all([createOwner(), createUser()]);
+	ownerPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+		owner.id,
+	);
+	memberPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+		member.id,
+	);
 });
 
 describe('check()', () => {
@@ -142,6 +152,7 @@ describe('check()', () => {
 		];
 
 		const workflow = await createWorkflow(nodes, member);
+		ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(memberPersonalProject);
 
 		await expect(permissionChecker.check(workflow.id, nodes)).resolves.not.toThrow();
 	});
@@ -191,6 +202,8 @@ describe('check()', () => {
 
 		const workflowEntity = await createWorkflow(nodes, member);
 
+		ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(memberPersonalProject);
+
 		await expect(permissionChecker.check(workflowEntity.id, nodes)).resolves.not.toThrow();
 	});
 
@@ -235,11 +248,53 @@ describe('check()', () => {
 			permissionChecker.check(workflowEntity.id, workflowEntity.nodes),
 		).rejects.toThrow();
 	});
+
+	test('should allow all credentials if current user is instance owner', async () => {
+		const memberCred = await saveCredential(randomCred(), { user: member });
+		const ownerCred = await saveCredential(randomCred(), { user: owner });
+
+		const nodes = [
+			{
+				id: uuid(),
+				name: 'Action Network',
+				type: 'n8n-nodes-base.actionNetwork',
+				parameters: {},
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				credentials: {
+					actionNetworkApi: {
+						id: memberCred.id,
+						name: memberCred.name,
+					},
+				},
+			},
+			{
+				id: uuid(),
+				name: 'Action Network 2',
+				type: 'n8n-nodes-base.actionNetwork',
+				parameters: {},
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				credentials: {
+					actionNetworkApi: {
+						id: ownerCred.id,
+						name: ownerCred.name,
+					},
+				},
+			},
+		];
+
+		const workflowEntity = await createWorkflow(nodes, owner);
+		ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(ownerPersonalProject);
+		ownershipService.getProjectOwnerCached.mockResolvedValueOnce(owner);
+
+		await expect(
+			permissionChecker.check(workflowEntity.id, workflowEntity.nodes),
+		).resolves.not.toThrow();
+	});
 });
 
 describe('checkSubworkflowExecutePolicy()', () => {
-	const ownershipService = mockInstance(OwnershipService);
-
 	let license: LicenseMocker;
 
 	beforeAll(() => {
@@ -255,7 +310,7 @@ describe('checkSubworkflowExecutePolicy()', () => {
 			const parentWorkflow = createParentWorkflow();
 			const subworkflow = createSubworkflow(); // no caller policy
 
-			ownershipService.getWorkflowProjectCached.mockResolvedValue(new Project());
+			ownershipService.getWorkflowProjectCached.mockResolvedValue(memberPersonalProject);
 
 			const check = permissionChecker.checkSubworkflowExecutePolicy(subworkflow, parentWorkflow.id);
 
@@ -328,7 +383,7 @@ describe('checkSubworkflowExecutePolicy()', () => {
 		test('should not throw', async () => {
 			const parentWorkflow = createParentWorkflow();
 			const subworkflow = createSubworkflow({ policy: 'any' });
-			ownershipService.getWorkflowProjectCached.mockResolvedValue(new Project());
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(new Project());
 
 			const check = permissionChecker.checkSubworkflowExecutePolicy(subworkflow, parentWorkflow.id);
 
