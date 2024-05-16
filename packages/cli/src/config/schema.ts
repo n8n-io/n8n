@@ -816,6 +816,12 @@ export const schema = {
 					default: true,
 					env: 'N8N_SMTP_SSL',
 				},
+				startTLS: {
+					doc: 'Whether or not to use STARTTLS for SMTP when SSL is disabled',
+					format: Boolean,
+					default: true,
+					env: 'N8N_SMTP_STARTTLS',
+				},
 				auth: {
 					user: {
 						doc: 'SMTP login username',
