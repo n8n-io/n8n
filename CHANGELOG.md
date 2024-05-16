@@ -1,3 +1,16 @@
+## [1.41.1](https://github.com/n8n-io/n8n/compare/n8n@1.41.0...n8n@1.41.1) (2024-05-16)
+
+
+### Bug Fixes
+
+* **Code Node:** Bind helper methods to the correct context ([#9380](https://github.com/n8n-io/n8n/issues/9380)) ([a515686](https://github.com/n8n-io/n8n/commit/a5156862f7e5e27a3ffacd60cf10ba29cb4012b8))
+* **core:** Add an option to disable STARTTLS for SMTP connections ([#9415](https://github.com/n8n-io/n8n/issues/9415)) ([bc1e6f9](https://github.com/n8n-io/n8n/commit/bc1e6f9e133a0124d91f38703871bedb0f701098))
+* **editor:** Fix blank Public API page ([#9409](https://github.com/n8n-io/n8n/issues/9409)) ([d090a7a](https://github.com/n8n-io/n8n/commit/d090a7aa7d0c3130403e381f55370918075980ff))
+* **Email Trigger (IMAP) Node:** Handle attachments correctly ([#9410](https://github.com/n8n-io/n8n/issues/9410)) ([5633eec](https://github.com/n8n-io/n8n/commit/5633eecbf0c2d3253e4c106bf745910039fb8c42))
+* **Mattermost Node:** Fix issue when fetching reactions ([#9375](https://github.com/n8n-io/n8n/issues/9375)) ([c19d4aa](https://github.com/n8n-io/n8n/commit/c19d4aa1ab275bdaae6d037596525f971257fdf9))
+
+
+
 # [1.41.0](https://github.com/n8n-io/n8n/compare/n8n@1.40.0...n8n@1.41.0) (2024-05-08)
 
 
