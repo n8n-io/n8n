@@ -156,6 +156,10 @@ const scrollRight = () => scroll(50);
 	&:hover {
 		color: var(--color-primary);
 	}
+
+	span + span {
+		margin-left: var(--spacing-4xs);
+	}
 }
 
 .activeTab {
