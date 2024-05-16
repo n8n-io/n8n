@@ -12,7 +12,7 @@ const props = defineProps<Props>();
 const processedName = computed(() => splitName(props.project.name ?? ''));
 </script>
 <template>
-	<div :class="$style.projectInfo">
+	<div :class="$style.projectInfo" data-test-id="project-sharing-info">
 		<div>
 			<N8nAvatar :first-name="processedName.firstName" :last-name="processedName.lastName" />
 			<div class="flex flex-col">
