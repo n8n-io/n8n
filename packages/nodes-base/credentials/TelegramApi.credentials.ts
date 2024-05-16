@@ -9,14 +9,6 @@ export class TelegramApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Base URL',
-			name: 'baseUrl',
-			type: 'string',
-			default: 'https://api.telegram.org',
-			description:
-				'Base URL for Telegram Bot API',
-		},
-		{
 			displayName: 'Access Token',
 			name: 'accessToken',
 			type: 'string',
@@ -24,6 +16,13 @@ export class TelegramApi implements ICredentialType {
 			default: '',
 			description:
 				'Chat with the <a href="https://telegram.me/botfather">bot father</a> to obtain the access token',
+		},
+		{
+			displayName: 'Base URL',
+			name: 'baseUrl',
+			type: 'string',
+			default: 'https://api.telegram.org',
+			description: 'Base URL for Telegram Bot API',
 		},
 	];
 
