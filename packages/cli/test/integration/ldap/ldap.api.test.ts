@@ -2,15 +2,13 @@ import Container from 'typedi';
 import type { SuperAgentTest } from 'supertest';
 import type { Entry as LdapUser } from 'ldapts';
 import { Not } from '@n8n/typeorm';
-import { jsonParse } from 'n8n-workflow';
 import { Cipher } from 'n8n-core';
 
 import config from '@/config';
 import type { User } from '@db/entities/User';
-import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@/Ldap/constants';
+import { LDAP_DEFAULT_CONFIGURATION } from '@/Ldap/constants';
 import { LdapService } from '@/Ldap/ldap.service';
 import { saveLdapSynchronization } from '@/Ldap/helpers';
-import type { LdapConfig } from '@/Ldap/types';
 import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
 
 import { randomEmail, randomName, uniqueId } from './../shared/random';
@@ -19,27 +17,14 @@ import * as utils from '../shared/utils/';
 
 import { createLdapUser, createUser, getAllUsers, getLdapIdentities } from '../shared/db/users';
 import { UserRepository } from '@db/repositories/user.repository';
-import { SettingsRepository } from '@db/repositories/settings.repository';
 import { AuthProviderSyncHistoryRepository } from '@db/repositories/authProviderSyncHistory.repository';
+import { getPersonalProject } from '../shared/db/projects';
+import { createLdapConfig, defaultLdapConfig } from '../shared/ldap';
 
 jest.mock('@/telemetry');
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
-
-const defaultLdapConfig = {
-	...LDAP_DEFAULT_CONFIGURATION,
-	loginEnabled: true,
-	loginLabel: '',
-	ldapIdAttribute: 'uid',
-	firstNameAttribute: 'givenName',
-	lastNameAttribute: 'sn',
-	emailAttribute: 'mail',
-	loginIdAttribute: 'mail',
-	baseDn: 'baseDn',
-	bindingAdminDn: 'adminDn',
-	bindingAdminPassword: 'adminPassword',
-};
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['auth', 'ldap'],
@@ -73,18 +58,6 @@ beforeEach(async () => {
 
 	await setCurrentAuthenticationMethod('email');
 });
-
-const createLdapConfig = async (attributes: Partial<LdapConfig> = {}): Promise<LdapConfig> => {
-	const { value: ldapConfig } = await Container.get(SettingsRepository).save({
-		key: LDAP_FEATURE_NAME,
-		value: JSON.stringify({
-			...defaultLdapConfig,
-			...attributes,
-		}),
-		loadOnStartup: true,
-	});
-	return await jsonParse(ldapConfig);
-};
 
 test('Member role should not be able to access ldap routes', async () => {
 	const member = await createUser({ role: 'global:member' });
@@ -366,6 +339,8 @@ describe('POST /ldap/sync', () => {
 			expect(memberUser.email).toBe(ldapUser.mail);
 			expect(memberUser.lastName).toBe(ldapUser.sn);
 			expect(memberUser.firstName).toBe(ldapUser.givenName);
+			const memberProject = getPersonalProject(memberUser);
+			expect(memberProject).toBeDefined();
 
 			const authIdentities = await getLdapIdentities();
 			expect(authIdentities.length).toBe(1);
@@ -509,6 +484,8 @@ describe('POST /login', () => {
 		expect(localLdapUsers[0].firstName).toBe(ldapUser.givenName);
 		expect(localLdapIdentities[0].providerId).toBe(ldapUser.uid);
 		expect(localLdapUsers[0].disabled).toBe(false);
+
+		await expect(getPersonalProject(localLdapUsers[0])).resolves.toBeDefined();
 	};
 
 	test('should allow new LDAP user to login and synchronize data', async () => {

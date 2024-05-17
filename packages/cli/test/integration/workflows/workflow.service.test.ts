@@ -24,7 +24,6 @@ beforeAll(async () => {
 
 	workflowService = new WorkflowService(
 		mock(),
-		mock(),
 		Container.get(SharedWorkflowRepository),
 		Container.get(WorkflowRepository),
 		mock(),
@@ -35,16 +34,16 @@ beforeAll(async () => {
 		orchestrationService,
 		mock(),
 		activeWorkflowManager,
+		mock(),
+		mock(),
+		mock(),
+		mock(),
 	);
 });
 
 afterEach(async () => {
 	await testDb.truncate(['Workflow']);
 	jest.restoreAllMocks();
-});
-
-afterAll(async () => {
-	await testDb.terminate();
 });
 
 describe('update()', () => {

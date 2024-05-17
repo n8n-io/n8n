@@ -20,12 +20,8 @@
 			</n8n-text>
 		</div>
 		<template #append>
+			<ProjectCardBadge :resource="data" :personal-project="projectsStore.personalProject" />
 			<div ref="cardActions" :class="$style.cardActions">
-				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
-					<n8n-badge v-if="credentialPermissions.isOwner" class="mr-xs" theme="tertiary" bold>
-						{{ $locale.baseText('credentials.item.owner') }}
-					</n8n-badge>
-				</enterprise-edition>
 				<n8n-action-toggle :actions="actions" theme="dark" @action="onAction" @click.stop />
 			</div>
 		</template>
@@ -34,12 +30,13 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
 import type { ICredentialsResponse, IUser } from '@/Interface';
 import type { ICredentialType } from 'n8n-workflow';
-import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
+import { MODAL_CONFIRM } from '@/constants';
 import { useMessage } from '@/composables/useMessage';
 import CredentialIcon from '@/components/CredentialIcon.vue';
-import type { IPermissions } from '@/permissions';
+import type { PermissionsMap } from '@/permissions';
 import { getCredentialPermissions } from '@/permissions';
 import dateformat from 'dateformat';
 import { mapStores } from 'pinia';
@@ -47,6 +44,10 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import TimeAgo from '@/components/TimeAgo.vue';
+import type { ProjectSharingData } from '@/features/projects/projects.types';
+import { useProjectsStore } from '@/features/projects/projects.store';
+import type { CredentialScope } from '@n8n/permissions';
+import ProjectCardBadge from '@/features/projects/components/ProjectCardBadge.vue';
 
 export const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -57,10 +58,11 @@ export default defineComponent({
 	components: {
 		TimeAgo,
 		CredentialIcon,
+		ProjectCardBadge,
 	},
 	props: {
 		data: {
-			type: Object,
+			type: Object as PropType<ICredentialsResponse>,
 			required: true,
 			default: (): ICredentialsResponse => ({
 				id: '',
@@ -68,8 +70,9 @@ export default defineComponent({
 				updatedAt: '',
 				type: '',
 				name: '',
-				sharedWith: [],
-				ownedBy: {} as IUser,
+				nodesAccess: [],
+				sharedWithProjects: [],
+				homeProject: {} as ProjectSharingData,
 			}),
 		},
 		readonly: {
@@ -82,21 +85,16 @@ export default defineComponent({
 			...useMessage(),
 		};
 	},
-	data() {
-		return {
-			EnterpriseEditionFeature,
-		};
-	},
 	computed: {
-		...mapStores(useCredentialsStore, useUIStore, useUsersStore),
+		...mapStores(useCredentialsStore, useUIStore, useUsersStore, useProjectsStore),
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
 		},
 		credentialType(): ICredentialType | undefined {
 			return this.credentialsStore.getCredentialTypeByName(this.data.type);
 		},
-		credentialPermissions(): IPermissions | null {
-			return !this.currentUser ? null : getCredentialPermissions(this.currentUser, this.data);
+		credentialPermissions(): PermissionsMap<CredentialScope> | null {
+			return !this.currentUser ? null : getCredentialPermissions(this.data);
 		},
 		actions(): Array<{ label: string; value: string }> {
 			if (!this.credentialPermissions) {
@@ -184,6 +182,10 @@ export default defineComponent({
 .cardHeading {
 	font-size: var(--font-size-s);
 	padding: var(--spacing-s) 0 0;
+
+	span {
+		color: var(--color-text-light);
+	}
 }
 
 .cardDescription {
