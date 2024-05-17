@@ -28,10 +28,6 @@ export function useWorkflowActivate() {
 	const toast = useToast();
 	const i18n = useI18n();
 
-	//emits
-
-	const emit = defineEmits(['workflowActiveChanged']);
-
 	//methods
 
 	const updateWorkflowActivation = async (
@@ -115,7 +111,6 @@ export function useWorkflowActivate() {
 			active: newActiveState,
 		});
 
-		emit('workflowActiveChanged', { id: currWorkflowId, active: newActiveState });
 		updatingWorkflowActivation.value = false;
 
 		if (isCurrentWorkflow) {
