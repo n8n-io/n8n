@@ -8,7 +8,7 @@ import {
 } from '@/api/ldap';
 import { getPromptsData, getSettings, submitContactInfo, submitValueSurvey } from '@/api/settings';
 import { testHealthEndpoint } from '@/api/templates';
-import type { EnterpriseEditionFeature } from '@/constants';
+import type { EnterpriseEditionFeatureKeys, EnterpriseEditionFeatureValues } from '@/constants';
 import {
 	CONTACT_PROMPT_MODAL_KEY,
 	STORES,
@@ -79,7 +79,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 	}),
 	getters: {
 		isEnterpriseFeatureEnabled() {
-			return (feature: EnterpriseEditionFeature): boolean => this.settings.enterprise?.[feature];
+			return (feature: EnterpriseEditionFeatureValues): boolean =>
+				this.settings.enterprise?.[feature];
 		},
 		versionCli(): string {
 			return this.settings.versionCli;

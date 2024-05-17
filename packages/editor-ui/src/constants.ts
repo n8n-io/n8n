@@ -1,5 +1,5 @@
 import type { NodeCreatorOpenSource } from './Interface';
-import { NodeConnectionType } from 'n8n-workflow';
+import { IN8nUISettings, NodeConnectionType } from 'n8n-workflow';
 
 export const MAX_WORKFLOW_SIZE = 1024 * 1024 * 16; // Workflow size limit in bytes
 export const MAX_EXPECTED_REQUEST_SIZE = 2048; // Expected maximum workflow request metadata (i.e. headers) size in bytes
@@ -538,24 +538,60 @@ export const enum WORKFLOW_MENU_ACTIONS {
 	DELETE = 'delete',
 }
 
+export type EnterpriseEditionFeatureKeys =
+	| 'AdvancedExecutionFilters'
+	| 'Sharing'
+	| 'Ldap'
+	| 'LogStreaming'
+	| 'Variables'
+	| 'Saml'
+	| 'SourceControl'
+	| 'ExternalSecrets'
+	| 'AuditLogs'
+	| 'DebugInEditor'
+	| 'WorkflowHistory'
+	| 'WorkerView'
+	| 'AdvancedPermissions';
+
+export type EnterpriseEditionFeatureValues =
+	// keyof IN8nUISettings["enterprise"]
+	| 'advancedExecutionFilters'
+	| 'sharing'
+	| 'ldap'
+	| 'logStreaming'
+	| 'variables'
+	| 'saml'
+	| 'sourceControl'
+	| 'externalSecrets'
+	| 'auditLogs'
+	| 'debugInEditor'
+	| 'workflowHistory'
+	| 'workerView'
+	| 'advancedPermissions';
+
 /**
  * Enterprise edition
  */
-export const enum EnterpriseEditionFeature {
-	AdvancedExecutionFilters = 'advancedExecutionFilters',
-	Sharing = 'sharing',
-	Ldap = 'ldap',
-	LogStreaming = 'logStreaming',
-	Variables = 'variables',
-	Saml = 'saml',
-	SourceControl = 'sourceControl',
-	ExternalSecrets = 'externalSecrets',
-	AuditLogs = 'auditLogs',
-	DebugInEditor = 'debugInEditor',
-	WorkflowHistory = 'workflowHistory',
-	WorkerView = 'workerView',
-	AdvancedPermissions = 'advancedPermissions',
-}
+
+export const EnterpriseEditionFeature: Record<
+	EnterpriseEditionFeatureKeys,
+	EnterpriseEditionFeatureValues
+> = {
+	AdvancedExecutionFilters: 'advancedExecutionFilters',
+	Sharing: 'sharing',
+	Ldap: 'ldap',
+	LogStreaming: 'logStreaming',
+	Variables: 'variables',
+	Saml: 'saml',
+	SourceControl: 'sourceControl',
+	ExternalSecrets: 'externalSecrets',
+	AuditLogs: 'auditLogs',
+	DebugInEditor: 'debugInEditor',
+	WorkflowHistory: 'workflowHistory',
+	WorkerView: 'workerView',
+	AdvancedPermissions: 'advancedPermissions',
+};
+
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
 export const enum MAIN_HEADER_TABS {

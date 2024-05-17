@@ -1,4 +1,4 @@
-import type { EnterpriseEditionFeature } from '@/constants';
+import type { EnterpriseEditionFeatureValues } from '@/constants';
 import type { Resource, ScopeOptions, Scope } from '@n8n/permissions';
 import type { IRole } from '@/Interface';
 
@@ -9,7 +9,7 @@ export type CustomPermissionOptions<C = {}> = RBACPermissionCheck<C>;
 export type DefaultUserMiddlewareOptions = {};
 export type InstanceOwnerMiddlewareOptions = {};
 export type EnterprisePermissionOptions = {
-	feature?: EnterpriseEditionFeature | EnterpriseEditionFeature[];
+	feature?: EnterpriseEditionFeatureValues | EnterpriseEditionFeatureValues[];
 	mode?: 'oneOf' | 'allOf';
 };
 export type GuestPermissionOptions = {};
