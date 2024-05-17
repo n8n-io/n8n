@@ -158,7 +158,7 @@
 			:class="$style.hintCallout"
 			:theme="hint.type || 'info'"
 		>
-			<n8n-text v-html="hint.message" size="small"></n8n-text>
+			<n8n-text size="small" v-html="hint.message"></n8n-text>
 		</n8n-callout>
 
 		<div
@@ -274,8 +274,8 @@
 				</n8n-text>
 				<slot v-else-if="$slots['content']" name="content"></slot>
 				<NodeErrorView
-					v-else
-					:error="workflowRunData[node.name][runIndex].error"
+					v-else-if="hasRunError"
+					:error="workflowRunErrorAsNodeError"
 					:class="$style.dataDisplay"
 				/>
 			</div>
@@ -403,7 +403,7 @@
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'html'">
-				<RunDataHtml :input-html="inputDataPage[0].json.html" />
+				<RunDataHtml :input-html="inputHtml" />
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && isSchemaView">
@@ -567,6 +567,7 @@ import type {
 	IRunData,
 	IRunExecutionData,
 	NodeHint,
+	NodeError,
 } from 'n8n-workflow';
 import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 
@@ -825,11 +826,20 @@ export default defineComponent({
 		isArtificialRecoveredEventItem(): boolean {
 			return !!this.rawInputData?.[0]?.json?.isArtificialRecoveredEventItem;
 		},
-		subworkflowExecutionError(): Error | null {
-			return this.workflowsStore.subWorkflowExecutionError;
+		subworkflowExecutionError(): NodeError {
+			return {
+				node: this.node,
+				messages: [this.workflowsStore.subWorkflowExecutionError?.message ?? ''],
+			} as NodeError;
 		},
 		hasSubworkflowExecutionError(): boolean {
-			return Boolean(this.subworkflowExecutionError);
+			return Boolean(this.workflowsStore.subWorkflowExecutionError);
+		},
+		workflowRunErrorAsNodeError(): NodeError {
+			return {
+				node: this.node,
+				messages: [this.workflowRunData?.[this.node?.name]?.[this.runIndex]?.error?.message ?? ''],
+			} as NodeError;
 		},
 		hasRunError(): boolean {
 			return Boolean(this.node && this.workflowRunData?.[this.node.name]?.[this.runIndex]?.error);
@@ -937,6 +947,9 @@ export default defineComponent({
 				this.currentOutputIndex,
 			);
 			return binaryData.filter((data) => Boolean(data && Object.keys(data).length));
+		},
+		inputHtml(): string {
+			return String(this.inputData[0]?.json?.html ?? '');
 		},
 		currentOutputIndex(): number {
 			if (this.overrideOutputs?.length && !this.overrideOutputs.includes(this.outputIndex)) {
@@ -1487,21 +1500,21 @@ export default defineComponent({
 			this.workflowsStore.setWorkflowExecutionData(null);
 			this.nodeHelpers.updateNodesExecutionIssues();
 		},
-		isViewable(index: number, key: string): boolean {
+		isViewable(index: number, key: string | number): boolean {
 			const { fileType } = this.binaryData[index][key];
 			return (
 				!!fileType && ['image', 'audio', 'video', 'text', 'json', 'pdf', 'html'].includes(fileType)
 			);
 		},
-		isDownloadable(index: number, key: string): boolean {
+		isDownloadable(index: number, key: string | number): boolean {
 			const { mimeType, fileName } = this.binaryData[index][key];
 			return !!(mimeType && fileName);
 		},
-		async downloadBinaryData(index: number, key: string) {
+		async downloadBinaryData(index: number, key: string | number) {
 			const { id, data, fileName, fileExtension, mimeType } = this.binaryData[index][key];
 
 			if (id) {
-				const url = this.workflowsStore.getBinaryUrl(id, 'download', fileName, mimeType);
+				const url = this.workflowsStore.getBinaryUrl(id, 'download', fileName ?? '', mimeType);
 				saveAs(url, [fileName, fileExtension].join('.'));
 				return;
 			} else {
@@ -1518,7 +1531,7 @@ export default defineComponent({
 
 			saveAs(blob, `${fileName}.json`);
 		},
-		displayBinaryData(index: number, key: string) {
+		displayBinaryData(index: number, key: string | number) {
 			this.binaryDataDisplayVisible = true;
 
 			this.binaryDataDisplayData = {
