@@ -7,7 +7,7 @@
 
 <script lang="ts">
 import { type PropType, defineComponent } from 'vue';
-import type { EnterpriseEditionFeatureValues } from '@/Interface';
+import type { EnterpriseEditionFeatureValue } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
 
@@ -15,7 +15,7 @@ export default defineComponent({
 	name: 'EnterpriseEdition',
 	props: {
 		features: {
-			type: Array as PropType<EnterpriseEditionFeatureValues[]>,
+			type: Array as PropType<EnterpriseEditionFeatureValue[]>,
 			default: () => [],
 		},
 	},

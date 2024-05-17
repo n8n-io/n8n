@@ -1,6 +1,6 @@
 import type {
-	EnterpriseEditionFeatureKeys,
-	EnterpriseEditionFeatureValues,
+	EnterpriseEditionFeatureKey,
+	EnterpriseEditionFeatureValue,
 	NodeCreatorOpenSource,
 } from './Interface';
 import { NodeConnectionType } from 'n8n-workflow';
@@ -546,8 +546,8 @@ export const enum WORKFLOW_MENU_ACTIONS {
  * Enterprise edition
  */
 export const EnterpriseEditionFeature: Record<
-	EnterpriseEditionFeatureKeys,
-	EnterpriseEditionFeatureValues
+	EnterpriseEditionFeatureKey,
+	EnterpriseEditionFeatureValue
 > = {
 	AdvancedExecutionFilters: 'advancedExecutionFilters',
 	Sharing: 'sharing',

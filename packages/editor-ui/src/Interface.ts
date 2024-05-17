@@ -1923,7 +1923,7 @@ export type AIAssistantConnectionInfo = NewConnectionInfo & {
 	stepName: string;
 };
 
-export type EnterpriseEditionFeatureKeys =
+export type EnterpriseEditionFeatureKey =
 	| 'AdvancedExecutionFilters'
 	| 'Sharing'
 	| 'Ldap'
@@ -1938,4 +1938,4 @@ export type EnterpriseEditionFeatureKeys =
 	| 'WorkerView'
 	| 'AdvancedPermissions';
 
-export type EnterpriseEditionFeatureValues = keyof Omit<IN8nUISettings['enterprise'], 'projects'>;
+export type EnterpriseEditionFeatureValue = keyof Omit<IN8nUISettings['enterprise'], 'projects'>;
