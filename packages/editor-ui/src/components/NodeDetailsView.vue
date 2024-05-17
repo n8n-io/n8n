@@ -270,8 +270,6 @@ export default defineComponent({
 				workflowsStore.executionWaitingForWebhook,
 		);
 
-		// const activeNode = computed(() => ndvStore.activeNode);
-
 		const workflowRunData = computed(() => {
 			if (workflowExecution.value === null) {
 				return null;
@@ -305,7 +303,7 @@ export default defineComponent({
 					return parentNodeName;
 				}
 
-				if (workflowRunData.value !== null && workflowRunData.value[parentNodeName]) {
+				if (workflowRunData.value?.[parentNodeName]) {
 					return parentNodeName;
 				}
 			}
@@ -331,7 +329,7 @@ export default defineComponent({
 		);
 
 		const showTriggerPanel = computed(() => {
-			const override = activeNodeType.value?.triggerPanel;
+			const override = !!activeNodeType.value?.triggerPanel;
 			if (typeof activeNodeType.value?.triggerPanel === 'boolean') {
 				return override;
 			}
@@ -373,7 +371,7 @@ export default defineComponent({
 
 			const runData = workflowRunData.value;
 
-			if (runData === null || !runData[activeNode.value.name]) {
+			if (!runData?.[activeNode.value.name]) {
 				return 0;
 			}
 
@@ -443,8 +441,7 @@ export default defineComponent({
 
 		const linked = computed(() => isLinkingEnabled.value && canLinkRuns.value);
 
-		//not used
-		// const inputPanelMargin = computed(() => (isTriggerNode.value ? 0 : 80));
+		const inputPanelMargin = computed(() => (isTriggerNode.value ? 0 : 80));
 
 		const featureRequestUrl = computed(() => {
 			if (!activeNodeType.value) {
@@ -465,23 +462,23 @@ export default defineComponent({
 			const credentials = activeNode.value?.credentials;
 			const usedCredentials = workflowsStore.usedCredentials;
 
-			const foreignCredentials: string[] = [];
+			const foreignCredentialsArray: string[] = [];
 			if (
 				credentials &&
 				settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)
 			) {
 				Object.values(credentials).forEach((credential) => {
 					if (
-						(credential.id as string) &&
+						credential.id &&
 						usedCredentials[credential.id] &&
 						!usedCredentials[credential.id].currentUserHasAccess
 					) {
-						foreignCredentials.push(credential.id);
+						foreignCredentialsArray.push(credential.id);
 					}
 				});
 			}
 
-			return foreignCredentials;
+			return foreignCredentialsArray;
 		});
 
 		const hasForeignCredential = computed(() => foreignCredentials.value.length > 0);
@@ -623,9 +620,9 @@ export default defineComponent({
 			emit('valueChanged', parameterData);
 		};
 
-		// const nodeTypeSelected = (nodeTypeName: string) => {
-		// 	emit('nodeTypeSelected', nodeTypeName);
-		// };
+		const nodeTypeSelected = (nodeTypeName: string) => {
+			emit('nodeTypeSelected', nodeTypeName);
+		};
 
 		const onSwitchSelectedNode = (nodeTypeName: string) => {
 			emit('switchSelectedNode', nodeTypeName);
@@ -865,6 +862,8 @@ export default defineComponent({
 			foreignCredentials,
 			featureRequestUrl,
 			settingsEventBus,
+			inputPanelMargin,
+			nodeTypeSelected,
 			onOutputItemHover,
 			onOutputTableMounted,
 			onInputTableMounted,
