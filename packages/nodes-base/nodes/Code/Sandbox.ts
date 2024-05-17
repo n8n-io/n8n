@@ -32,7 +32,8 @@ export function getSandboxContext(this: IExecuteFunctions, index: number): Sandb
 
 		// to bring in all $-prefixed vars and methods from WorkflowDataProxy
 		// $node, $items(), $parameter, $json, $env, etc.
-		...this.getWorkflowDataProxy(index),
+		// fallback to empty object in case of undefined
+		...(this?.getWorkflowDataProxy(index) ?? {}),
 	};
 }
 

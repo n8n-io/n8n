@@ -21,8 +21,10 @@ import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
 import { makeResolverFromLegacyOptions } from '@n8n/vm2';
 import type { JSONSchema7 } from 'json-schema';
-import { type z } from 'zod';
+import type { SchemaObject } from 'generate-schema';
+import { json as generateJsonSchema } from 'generate-schema';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import type { DynamicZodObject } from '../../../types/zod.types';
 
 const vmResolver = makeResolverFromLegacyOptions({
 	external: {
@@ -68,6 +70,11 @@ function getSandboxWithZod(ctx: IExecuteFunctions, itemSchema: JSONSchema7, item
 	return sandboxedSchema;
 }
 
+function generateSchema(schemaString: string): JSONSchema7 {
+	const parsedSchema = jsonParse<SchemaObject>(schemaString);
+
+	return generateJsonSchema(parsedSchema) as JSONSchema7;
+}
 export class ToolWorkflow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Custom n8n Workflow Tool',
@@ -363,11 +370,59 @@ export class ToolWorkflow implements INodeType {
 					},
 				],
 			},
+			// ----------------------------------
+			//         Output Parsing
+			// ----------------------------------
 			{
 				displayName: 'Specify Input Schema',
 				name: 'specifyInputSchema',
 				type: 'boolean',
+				noDataExpression: true,
 				default: false,
+			},
+			{
+				displayName: 'Schema Type',
+				name: 'schemaType',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Generate From JSON Example',
+						value: 'fromJson',
+						description: 'Generate a schema from an example JSON object',
+					},
+					{
+						name: 'Define Below',
+						value: 'manual',
+						description: 'Define the JSON schema manually',
+					},
+				],
+				default: 'fromJson',
+				description: 'How to specify the schema for the function',
+				displayOptions: {
+					show: {
+						specifyInputSchema: [true],
+					},
+				},
+			},
+			{
+				displayName: 'JSON Example',
+				name: 'jsonSchemaExample',
+				type: 'json',
+				default: `{
+	"some_input": "some_value"
+}`,
+				noDataExpression: true,
+				typeOptions: {
+					rows: 10,
+				},
+				displayOptions: {
+					show: {
+						specifyInputSchema: [true],
+						schemaType: ['fromJson'],
+					},
+				},
+				description: 'Example JSON object to use to generate the schema',
 			},
 			{
 				displayName: 'Input Schema',
@@ -382,13 +437,14 @@ export class ToolWorkflow implements INodeType {
 		}
 	}
 }`,
+				noDataExpression: true,
 				typeOptions: {
 					rows: 10,
-					editor: 'jsonSchemaEditor',
 				},
 				displayOptions: {
 					show: {
 						specifyInputSchema: [true],
+						schemaType: ['manual'],
 					},
 				},
 				description: 'Schema to use for the function',
@@ -397,9 +453,11 @@ export class ToolWorkflow implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+
 		const name = this.getNodeParameter('name', itemIndex) as string;
 		const description = this.getNodeParameter('description', itemIndex) as string;
-		const schema = this.getNodeParameter('inputSchema', itemIndex, null) as string;
+
+		const useSchema = this.getNodeParameter('specifyInputSchema', itemIndex) as boolean;
 		let tool: DynamicTool | DynamicStructuredTool | undefined = undefined;
 
 		const runFunction = async (
@@ -539,26 +597,41 @@ export class ToolWorkflow implements INodeType {
 			return response;
 		};
 
-		if (schema) {
+		const functionBase = {
+			name,
+			description,
+			func: toolHandler,
+		};
+
+		if (useSchema) {
 			try {
-				const itemSchema = jsonParse<JSONSchema7>(schema);
-				const zodSchemaSandbox = getSandboxWithZod(this, itemSchema, 0);
-				const zodSchema = (await zodSchemaSandbox.runCode()) as z.ZodObject<any, any, any, any>;
+				// We initialize these even though one of them will always be empty
+				// it makes it easer to navigate the ternary operator
+				const jsonExample = this.getNodeParameter('jsonSchemaExample', itemIndex, '') as string;
+				const inputSchema = this.getNodeParameter('inputSchema', itemIndex, '') as string;
+
+				const schemaType = this.getNodeParameter('schemaType', itemIndex) as 'fromJson' | 'manual';
+				const jsonSchema =
+					schemaType === 'fromJson'
+						? generateSchema(jsonExample)
+						: jsonParse<JSONSchema7>(inputSchema);
+				console.log('🚀 ~ ToolWorkflow ~ supplyData ~ jsonSchema:', jsonSchema);
+
+				const zodSchemaSandbox = getSandboxWithZod(this, jsonSchema, 0);
+				const zodSchema = (await zodSchemaSandbox.runCode()) as DynamicZodObject;
+
 				tool = new DynamicStructuredTool<typeof zodSchema>({
-					name,
-					description,
 					schema: zodSchema,
-					func: toolHandler,
+					...functionBase,
 				});
 			} catch (error) {
-				throw new NodeOperationError(this.getNode(), 'Error during parsing of JSON Schema.');
+				throw new NodeOperationError(
+					this.getNode(),
+					'Error during parsing of JSON Schema. \n ' + error,
+				);
 			}
 		} else {
-			tool = new DynamicTool({
-				name,
-				description,
-				func: toolHandler,
-			});
+			tool = new DynamicTool(functionBase);
 		}
 
 		return {

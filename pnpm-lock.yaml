@@ -315,6 +315,9 @@ importers:
       form-data:
         specifier: 4.0.0
         version: 4.0.0
+      generate-schema:
+        specifier: ^2.6.0
+        version: 2.6.0
       html-to-text:
         specifier: 9.0.5
         version: 9.0.5
