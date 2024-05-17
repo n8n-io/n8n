@@ -98,7 +98,7 @@ function onSelected(item: INodeCreateElement) {
 			subcategory: item.properties.displayName,
 			title: item.properties.displayName,
 			nodeIcon: {
-				color: (item.properties.defaults?.color as string) || '',
+				color: item.properties.defaults?.color?.toString(),
 				icon,
 				iconType: item.properties.iconUrl ? 'file' : 'icon',
 			},

@@ -132,34 +132,34 @@ function arrowLeft() {
 
 function onKeySelect(activeItemId: string) {
 	const mergedActions = [...actions.value, ...placeholderTriggerActions];
-	const activeAction = mergedActions.find((a) => a.uuid === activeItemId);
+	const activeAction = mergedActions.find((a): a is NodeCreateElement => a.uuid === activeItemId);
 
-	if (activeAction) onSelected(activeAction as NodeCreateElement);
+	if (activeAction) onSelected(activeAction);
 }
 
 function onSelected(actionCreateElement: INodeCreateElement) {
-	if (actionCreateElement.type === 'action') {
-		const actionData = getActionData(actionCreateElement.properties);
-		const isPlaceholderTriggerAction = placeholderTriggerActions.some(
-			(p) => p.key === actionCreateElement.key,
-		);
+	if (actionCreateElement.type !== 'action') return;
 
-		if (isPlaceholderTriggerAction && isTriggerRootView.value) {
-			const actionNode = actions.value[0].key;
+	const actionData = getActionData(actionCreateElement.properties);
+	const isPlaceholderTriggerAction = placeholderTriggerActions.some(
+		(p) => p.key === actionCreateElement.key,
+	);
 
-			emit('nodeTypeSelected', [actionData.key as string, actionNode]);
-		} else if (
-			actionData.key === OPEN_AI_NODE_TYPE &&
-			(actionData?.value as IDataObject)?.resource === 'assistant' &&
-			(actionData?.value as IDataObject)?.operation === 'message'
-		) {
-			emit('nodeTypeSelected', [OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE]);
-		} else {
-			emit('nodeTypeSelected', [actionData.key as string]);
-		}
+	if (isPlaceholderTriggerAction && isTriggerRootView.value) {
+		const actionNode = actions.value[0].key;
 
-		if (telemetry) setAddedNodeActionParameters(actionData, telemetry, rootView.value);
+		emit('nodeTypeSelected', [actionData.key as string, actionNode]);
+	} else if (
+		actionData.key === OPEN_AI_NODE_TYPE &&
+		(actionData?.value as IDataObject)?.resource === 'assistant' &&
+		(actionData?.value as IDataObject)?.operation === 'message'
+	) {
+		emit('nodeTypeSelected', [OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE]);
+	} else {
+		emit('nodeTypeSelected', [actionData.key as string]);
 	}
+
+	if (telemetry) setAddedNodeActionParameters(actionData, telemetry, rootView.value);
 }
 
 function trackActionsView() {
