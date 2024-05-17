@@ -142,7 +142,7 @@ import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 
-import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 import { getAppNameFromCredType, isCommunityPackageName } from '@/utils/nodeTypesUtils';
 
 import Banner from '../Banner.vue';
@@ -177,13 +177,16 @@ export default defineComponent({
 	},
 	props: {
 		credentialType: {
-			type: Object,
+			type: Object as PropType<ICredentialType>,
+			required: true,
 		},
 		credentialProperties: {
-			type: Array,
+			type: Array as PropType<INodeProperties[]>,
+			required: true,
 		},
 		parentTypes: {
-			type: Array,
+			type: Array as PropType<string[]>,
+			default: () => [],
 		},
 		credentialData: {},
 		credentialId: {
@@ -272,7 +275,7 @@ export default defineComponent({
 				return '';
 			}
 
-			const appName = getAppNameFromCredType((this.credentialType as ICredentialType).displayName);
+			const appName = getAppNameFromCredType(this.credentialType.displayName);
 
 			return (
 				appName ||
@@ -280,13 +283,13 @@ export default defineComponent({
 			);
 		},
 		credentialTypeName(): string {
-			return (this.credentialType as ICredentialType)?.name;
+			return this.credentialType?.name;
 		},
 		credentialOwnerName(): string {
 			return this.credentialsStore.getCredentialOwnerNameById(`${this.credentialId}`);
 		},
 		documentationUrl(): string {
-			const type = this.credentialType as ICredentialType;
+			const type = this.credentialType;
 			const activeNode = this.ndvStore.activeNode;
 			const isCommunityNode = activeNode ? isCommunityPackageName(activeNode.type) : false;
 

@@ -67,6 +67,7 @@ export interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
 	active: false,
+	subcategory: undefined,
 });
 
 const i18n = useI18n();
@@ -105,8 +106,7 @@ const hasActions = computed(() => {
 });
 
 const nodeActions = computed(() => {
-	const nodeActions = actions[props.nodeType.name] || [];
-	return nodeActions;
+	return actions[props.nodeType.name] || [];
 });
 
 const shortNodeType = computed<string>(() => i18n.shortNodeType(props.nodeType.name) || '');
@@ -119,11 +119,11 @@ const draggableStyle = computed<{ top: string; left: string }>(() => ({
 const isCommunityNode = computed<boolean>(() => isCommunityPackageName(props.nodeType.name));
 
 const displayName = computed<string>(() => {
-	const displayName = props.nodeType.displayName.trimEnd();
+	const trimmedDisplayName = props.nodeType.displayName.trimEnd();
 
 	return i18n.headerText({
 		key: `headers.${shortNodeType.value}.displayName`,
-		fallback: hasActions.value ? displayName.replace('Trigger', '') : displayName,
+		fallback: hasActions.value ? trimmedDisplayName.replace('Trigger', '') : trimmedDisplayName,
 	});
 });
 
@@ -165,7 +165,7 @@ function onDragOver(event: DragEvent): void {
 	draggablePosition.value = { x, y };
 }
 
-function onDragEnd(event: DragEvent): void {
+function onDragEnd(): void {
 	document.body.removeEventListener('dragover', onDragOver);
 
 	dragging.value = false;
