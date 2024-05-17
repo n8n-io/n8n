@@ -54,7 +54,7 @@ interface ViewStack {
 	baseFilter?: (item: INodeCreateElement) => boolean;
 	itemsMapper?: (item: INodeCreateElement) => INodeCreateElement;
 	panelClass?: string;
-	sections?: NodeViewItemSection[];
+	sections?: string[] | NodeViewItemSection[];
 }
 
 export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
@@ -128,7 +128,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		const i18n = useI18n();
 
 		let nodesByConnectionType: { [key: string]: string[] };
-		let relatedAIView: NodeViewItem | { properties: { title: string; icon: string } } | undefined;
+		let relatedAIView: { properties: NodeViewItem['properties'] } | undefined;
 
 		if (isOutput === true) {
 			nodesByConnectionType = useNodeTypesStore().visibleNodeTypesByInputConnectionTypeNames;
