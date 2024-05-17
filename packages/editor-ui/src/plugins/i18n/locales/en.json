@@ -1122,6 +1122,7 @@
 	"nodeSettings.notesInFlow.description": "If active, the note above will display in the flow as a subtitle",
 	"nodeSettings.notesInFlow.displayName": "Display Note in Flow?",
 	"nodeSettings.parameters": "Parameters",
+	"nodeSettings.settings": "Settings",
 	"nodeSettings.communityNodeTooltip": "This is a <a href=\"{docUrl}\" target=\"_blank\"/>community node</a>",
 	"nodeSettings.retryOnFail.description": "If active, the node tries to execute again when it fails",
 	"nodeSettings.retryOnFail.displayName": "Retry On Fail",

@@ -4,8 +4,8 @@ import type { EnterprisePermissionOptions } from '@/types/rbac';
 import { isEnterpriseFeatureEnabled } from '@/rbac/checks';
 
 export const enterpriseMiddleware: RouterMiddleware<EnterprisePermissionOptions> = async (
-	to,
-	from,
+	_to,
+	_from,
 	next,
 	options,
 ) => {

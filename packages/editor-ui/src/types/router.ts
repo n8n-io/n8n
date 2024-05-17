@@ -16,7 +16,7 @@ import type {
 	DefaultUserMiddlewareOptions,
 } from '@/types/rbac';
 
-export type RouterMiddlewareType = PermissionType;
+export type RouterMiddlewareType = Exclude<PermissionType, 'instanceOwner'>;
 export type CustomMiddlewareOptions = CustomPermissionOptions<{
 	to: RouteLocationNormalized;
 	from: RouteLocationNormalized;
