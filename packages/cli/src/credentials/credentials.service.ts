@@ -502,4 +502,29 @@ export class CredentialsService {
 			})),
 		);
 	}
+
+	replaceCredentialContentsForSharee(
+		user: User,
+		credential: CredentialsEntity,
+		decryptedData: ICredentialDataDecryptedObject,
+		mergedCredentials: ICredentialsDecrypted,
+	) {
+		credential.shared.forEach((sharedCredentials) => {
+			if (sharedCredentials.role === 'credential:owner') {
+				if (sharedCredentials.project.type === 'personal') {
+					// Find the owner of this personal project
+					sharedCredentials.project.projectRelations.forEach((projectRelation) => {
+						if (
+							projectRelation.role === 'project:personalOwner' &&
+							projectRelation.user.id !== user.id
+						) {
+							// If we realize that the current user does not own this credential
+							// We replace the payload with the stored decrypted data
+							mergedCredentials.data = decryptedData;
+						}
+					});
+				}
+			}
+		});
+	}
 }
