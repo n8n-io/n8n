@@ -5,10 +5,11 @@ import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import { useI18n } from '@/composables/useI18n';
 import { DateTime } from 'luxon';
-import {
-	type FilterConditionValue,
-	type FilterOptionsValue,
-	type INodeProperties,
+import type {
+	NodeParameterValue,
+	FilterConditionValue,
+	FilterOptionsValue,
+	INodeProperties,
 } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 import OperatorSelect from './OperatorSelect.vue';
@@ -101,11 +102,11 @@ const rightParameter = computed<INodeProperties>(() => {
 });
 
 const onLeftValueChange = (update: IUpdateInformation): void => {
-	condition.value.leftValue = update.value;
+	condition.value.leftValue = update.value as NodeParameterValue;
 };
 
 const onRightValueChange = (update: IUpdateInformation): void => {
-	condition.value.rightValue = update.value;
+	condition.value.rightValue = update.value as NodeParameterValue;
 };
 
 const onOperatorChange = (value: string): void => {

@@ -17,12 +17,15 @@ import type { ConditionResult, FilterOperator } from './types';
 export const getFilterOperator = (key: string) =>
 	OPERATORS_BY_ID[key as FilterOperatorId] as FilterOperator;
 
-const convertToType = (value: unknown, type: FilterOperatorType): unknown => {
+const convertToType = (value: NodeParameterValue, type: FilterOperatorType): NodeParameterValue => {
 	if (type === 'any') return value;
 
 	const fallback = type === 'boolean' ? false : value;
 
-	return validateFieldType('filter', value, type, { parseStrings: true }).newValue ?? fallback;
+	return (
+		(validateFieldType('filter', value, type, { parseStrings: true })
+			.newValue as NodeParameterValue) ?? fallback
+	);
 };
 
 export const handleOperatorChange = ({
