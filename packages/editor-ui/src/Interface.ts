@@ -1803,18 +1803,19 @@ export interface ExternalSecretsProviderSecret {
 
 export type ExternalSecretsProviderData = Record<string, IUpdateInformation['value']>;
 
+export type ExternalSecretsProviderProperty = INodeProperties;
+
+export type ExternalSecretsProviderState = 'connected' | 'tested' | 'initializing' | 'error';
+
 export interface ExternalSecretsProvider {
 	icon: string;
 	name: string;
 	displayName: string;
 	connected: boolean;
 	connectedAt: string | false;
-	state: 'connected' | 'tested' | 'initializing' | 'error';
+	state: ExternalSecretsProviderState;
 	data?: ExternalSecretsProviderData;
-}
-
-export interface ExternalSecretsProviderWithProperties extends ExternalSecretsProvider {
-	properties: INodeProperties[];
+	properties?: ExternalSecretsProviderProperty[];
 }
 
 export type CloudUpdateLinkSourceType =
@@ -1835,6 +1836,7 @@ export type CloudUpdateLinkSourceType =
 	| 'community-nodes'
 	| 'workflow-history'
 	| 'worker-view'
+	| 'external-secrets'
 	| 'rbac';
 
 export type UTMCampaign =
@@ -1855,6 +1857,7 @@ export type UTMCampaign =
 	| 'upgrade-workflow-history'
 	| 'upgrade-advanced-permissions'
 	| 'upgrade-worker-view'
+	| 'upgrade-external-secrets'
 	| 'upgrade-rbac';
 
 export type N8nBanners = {
