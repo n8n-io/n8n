@@ -168,7 +168,6 @@ import type {
 	INodeTypeDescription,
 	NodeParameterValue,
 	NodeParameterValueType,
-	NodePropertyTypes,
 } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { mapStores } from 'pinia';
