@@ -548,6 +548,18 @@ type GetBaseTextKey<T> = T extends `_${string}` ? never : T;
 
 export type BaseTextKey = GetBaseTextKey<keyof typeof englishBaseText>;
 
+function isBaseTextKey(key: string): key is BaseTextKey {
+	return englishBaseText.hasOwnProperty(key);
+}
+
+export function getBaseTextKey(key: string): BaseTextKey {
+	if (isBaseTextKey(key)) {
+		return key;
+	}
+
+	return 'generic.unknown_translation_key';
+}
+
 type GetCategoryName<T> = T extends `nodeCreator.categoryNames.${infer C}` ? C : never;
 
 export type CategoryName = GetCategoryName<keyof typeof englishBaseText>;

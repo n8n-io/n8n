@@ -141,7 +141,6 @@ import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
-import type { BaseTextKey } from '@/plugins/i18n';
 import { isNavigationFailure } from 'vue-router';
 import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
 import { useProjectsStore } from '@/features/projects/projects.store';
@@ -210,9 +209,8 @@ export default defineComponent({
 
 			return this.$locale.baseText(
 				this.isSharingEnabled
-					? (this.uiStore.contextBasedTranslationKeys.workflows.sharing.title as BaseTextKey)
-					: (this.uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable
-							.title as BaseTextKey),
+					? this.uiStore.contextBasedTranslationKeys.workflows.sharing.title
+					: this.uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.title,
 				{
 					interpolate: { name: this.workflow.name },
 				},
