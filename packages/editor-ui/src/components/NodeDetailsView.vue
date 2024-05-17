@@ -137,15 +137,7 @@
 </template>
 
 <script lang="ts">
-import {
-	defineComponent,
-	ref,
-	onMounted,
-	onBeforeUnmount,
-	computed,
-	watch,
-	defineEmits,
-} from 'vue';
+import { defineComponent, ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import { createEventBus } from 'n8n-design-system/utils';
 import type { IRunData, ConnectionTypes } from 'n8n-workflow';
 import { jsonParse, NodeHelpers, NodeConnectionType } from 'n8n-workflow';
@@ -204,7 +196,16 @@ export default defineComponent({
 			default: false,
 		},
 	},
-	setup(props) {
+	emits: [
+		'saveKeyboardShortcut',
+		'valueChanged',
+		'nodeTypeSelected',
+		'switchSelectedNode',
+		'openConnectionNodeCreator',
+		'redrawNode',
+		'stopExecution',
+	],
+	setup(props, { emit }) {
 		const ndvStore = useNDVStore();
 		const externalHooks = useExternalHooks();
 		const nodeHelpers = useNodeHelpers();
@@ -237,16 +238,6 @@ export default defineComponent({
 		const isInputPaneActive = ref(false);
 		const isOutputPaneActive = ref(false);
 		const isPairedItemHoveringEnabled = ref(true);
-
-		const emit = defineEmits([
-			'saveKeyboardShortcut',
-			'valueChanged',
-			'nodeTypeSelected',
-			'switchSelectedNode',
-			'openConnectionNodeCreator',
-			'redrawNode',
-			'stopExecution',
-		]);
 
 		//computed
 
