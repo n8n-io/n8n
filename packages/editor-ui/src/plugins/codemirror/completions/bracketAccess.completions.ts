@@ -37,7 +37,7 @@ export function bracketAccessCompletions(context: CompletionContext): Completion
 		return null;
 	}
 
-	if (resolved === null || resolved === undefined) return null;
+	if (resolved === null || resolved === undefined || typeof resolved !== 'object') return null;
 
 	let options = bracketAccessOptions(resolved);
 
@@ -59,7 +59,7 @@ export function bracketAccessCompletions(context: CompletionContext): Completion
 	};
 }
 
-function bracketAccessOptions(resolved: IDataObject) {
+function bracketAccessOptions(resolved: object) {
 	const SKIP = new Set(['__ob__', 'pairedItem']);
 
 	return Object.keys(resolved)
