@@ -1,7 +1,6 @@
 import type { Plugin } from 'vue';
 import axios from 'axios';
 import { createI18n } from 'vue-i18n';
-import type { I18nOptions } from 'vue-i18n';
 import { locale } from 'n8n-design-system';
 import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
 
@@ -437,9 +436,7 @@ async function setLanguage(language: string) {
 	return language;
 }
 
-export async function loadLanguage(language?: string) {
-	if (!language) return;
-
+export async function loadLanguage(language: string) {
 	if (i18nInstance.global.locale === language) {
 		return await setLanguage(language);
 	}
@@ -466,25 +463,15 @@ export async function loadLanguage(language?: string) {
  */
 export function addNodeTranslation(
 	nodeTranslation: { [nodeType: string]: object },
-	language: keyof I18nOptions['messages'],
+	language: string,
 ) {
-	const oldNodesBase: { nodes: {} } = i18nInstance.global.messages[language]['n8n-nodes-base'] ?? {
-		nodes: {},
+	const newMessages = {
+		'n8n-nodes-base': {
+			nodes: nodeTranslation,
+		},
 	};
 
-	const updatedNodes = {
-		...oldNodesBase.nodes,
-		...nodeTranslation,
-	};
-
-	const newNodesBase = {
-		'n8n-nodes-base': Object.assign(oldNodesBase, { nodes: updatedNodes }),
-	};
-
-	i18nInstance.global.setLocaleMessage(
-		language,
-		Object.assign(i18nInstance.global.messages[language], newNodesBase),
-	);
+	i18nInstance.global.mergeLocaleMessage(language, newMessages);
 }
 
 /**
@@ -492,38 +479,22 @@ export function addNodeTranslation(
  */
 export function addCredentialTranslation(
 	nodeCredentialTranslation: { [credentialType: string]: object },
-	language: keyof I18nOptions['messages'],
+	language: string,
 ) {
-	const oldNodesBase: { credentials: {} } = i18nInstance.global.messages[language][
-		'n8n-nodes-base'
-	] || { credentials: {} };
-
-	const updatedCredentials = {
-		...oldNodesBase.credentials,
-		...nodeCredentialTranslation,
+	const newMessages = {
+		'n8n-nodes-base': {
+			credentials: nodeCredentialTranslation,
+		},
 	};
 
-	const newNodesBase = {
-		'n8n-nodes-base': Object.assign(oldNodesBase, { credentials: updatedCredentials }),
-	};
-
-	i18nInstance.global.setLocaleMessage(
-		language,
-		Object.assign(i18nInstance.global.messages[language], newNodesBase),
-	);
+	i18nInstance.global.mergeLocaleMessage(language, newMessages);
 }
 
 /**
  * Add a node's header strings to the i18n instance's `messages` object.
  */
-export function addHeaders(
-	headers: INodeTranslationHeaders,
-	language: keyof I18nOptions['messages'],
-) {
-	i18nInstance.global.setLocaleMessage(
-		language,
-		Object.assign(i18nInstance.global.messages[language], { headers }),
-	);
+export function addHeaders(headers: INodeTranslationHeaders, language: string) {
+	i18nInstance.global.mergeLocaleMessage(language, { headers });
 }
 
 export const i18n: I18nClass = new I18nClass();

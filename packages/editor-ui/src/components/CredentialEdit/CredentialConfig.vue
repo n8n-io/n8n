@@ -186,7 +186,7 @@ export default defineComponent({
 		},
 		parentTypes: {
 			type: Array as PropType<string[]>,
-			required: true,
+			default: () => [],
 		},
 		credentialData: {},
 		credentialId: {
