@@ -13,9 +13,9 @@
 		"baseUrl": ".",
 		"types": [
 			"vitest/globals",
-			"src/shims.d.ts",
-			"src/shims-vue.d.ts",
-			"src/v3-infinite-loading.d.ts",
+			"./src/shims.d.ts",
+			"./src/shims-vue.d.ts",
+			"./src/v3-infinite-loading.d.ts",
       "../workflow/src/types.d.ts"
 		],
 		"paths": {
