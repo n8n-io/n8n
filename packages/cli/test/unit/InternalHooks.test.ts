@@ -25,6 +25,8 @@ describe('InternalHooks', () => {
 		mock(),
 		mock(),
 		license,
+		mock(),
+		mock(),
 	);
 
 	beforeEach(() => jest.clearAllMocks());

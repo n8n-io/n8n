@@ -4,23 +4,31 @@ import type { User } from '@db/entities/User';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { WorkflowTagMapping } from '@db/entities/WorkflowTagMapping';
 import { SharedWorkflow, type WorkflowSharingRole } from '@db/entities/SharedWorkflow';
-import config from '@/config';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import type { Project } from '@/databases/entities/Project';
 import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMapping.repository';
 import { TagRepository } from '@db/repositories/tag.repository';
+import { License } from '@/License';
+import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
+import type { Scope } from '@n8n/permissions';
+import config from '@/config';
 
 function insertIf(condition: boolean, elements: string[]): string[] {
 	return condition ? elements : [];
 }
 
-export async function getSharedWorkflowIds(user: User): Promise<string[]> {
-	const where = ['global:owner', 'global:admin'].includes(user.role) ? {} : { userId: user.id };
-	const sharedWorkflows = await Container.get(SharedWorkflowRepository).find({
-		where,
-		select: ['workflowId'],
-	});
-	return sharedWorkflows.map(({ workflowId }) => workflowId);
+export async function getSharedWorkflowIds(user: User, scopes: Scope[]): Promise<string[]> {
+	if (Container.get(License).isSharingEnabled()) {
+		return await Container.get(WorkflowSharingService).getSharedWorkflowIds(user, {
+			scopes,
+		});
+	} else {
+		return await Container.get(WorkflowSharingService).getSharedWorkflowIds(user, {
+			workflowRoles: ['workflow:owner'],
+			projectRoles: ['project:personalOwner'],
+		});
+	}
 }
 
 export async function getSharedWorkflow(
@@ -45,6 +53,7 @@ export async function getWorkflowById(id: string): Promise<WorkflowEntity | null
 export async function createWorkflow(
 	workflow: WorkflowEntity,
 	user: User,
+	personalProject: Project,
 	role: WorkflowSharingRole,
 ): Promise<WorkflowEntity> {
 	return await Db.transaction(async (transactionManager) => {
@@ -56,6 +65,7 @@ export async function createWorkflow(
 		Object.assign(newSharedWorkflow, {
 			role,
 			user,
+			project: personalProject,
 			workflow: savedWorkflow,
 		});
 		await transactionManager.save<SharedWorkflow>(newSharedWorkflow);
