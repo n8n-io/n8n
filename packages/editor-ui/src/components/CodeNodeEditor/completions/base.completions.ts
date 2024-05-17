@@ -65,6 +65,38 @@ export function useBaseCompletions(
 				info: i18n.baseText('codeNodeEditor.completer.$ifEmpty'),
 			},
 			{ label: `${prefix}input`, info: i18n.baseText('codeNodeEditor.completer.$input') },
+			{
+				label: `${prefix}prevNode`,
+				info: i18n.baseText('codeNodeEditor.completer.$prevNode'),
+			},
+			{
+				label: `${prefix}workflow`,
+				info: i18n.baseText('codeNodeEditor.completer.$workflow'),
+			},
+			{
+				label: `${prefix}vars`,
+				info: i18n.baseText('codeNodeEditor.completer.$vars'),
+			},
+			{
+				label: `${prefix}now`,
+				info: i18n.baseText('codeNodeEditor.completer.$now'),
+			},
+			{
+				label: `${prefix}today`,
+				info: i18n.baseText('codeNodeEditor.completer.$today'),
+			},
+			{
+				label: `${prefix}jmespath()`,
+				info: i18n.baseText('codeNodeEditor.completer.$jmespath'),
+			},
+			{
+				label: `${prefix}runIndex`,
+				info: i18n.baseText('codeNodeEditor.completer.$runIndex'),
+			},
+			{
+				label: `${prefix}nodeVersion`,
+				info: i18n.baseText('codeNodeEditor.completer.$nodeVersion'),
+			},
 		];
 
 		const options: Completion[] = TOP_LEVEL_COMPLETIONS_IN_BOTH_MODES.map(addVarType);
