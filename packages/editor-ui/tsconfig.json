@@ -23,5 +23,5 @@
 		"useUnknownInCatchVariables": false,
 		"experimentalDecorators": true
 	},
-	"include": ["src/**/*.ts", "src/**/*.vue"]
+	"include": ["src/*.d.ts", "src/**/*.ts", "src/**/*.vue"]
 }
