@@ -427,7 +427,7 @@ export class Html implements INodeType {
 			table += '<tbody>';
 			itemsData.forEach((entry, entryIndex) => {
 				const rowsAttributes = this.getNodeParameter(
-					'options.rowsAttributes',
+					'options.rowAttributes',
 					entryIndex,
 					'',
 				) as string;

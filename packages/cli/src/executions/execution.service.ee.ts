@@ -22,23 +22,24 @@ export class EnterpriseExecutionsService {
 
 		if (!execution) return;
 
-		const relations = ['shared', 'shared.user'];
-
-		const workflow = (await this.workflowRepository.get(
-			{ id: execution.workflowId },
-			{ relations },
-		)) as WorkflowWithSharingsAndCredentials;
+		const workflow = (await this.workflowRepository.get({
+			id: execution.workflowId,
+		})) as WorkflowWithSharingsAndCredentials;
 
 		if (!workflow) return;
 
-		this.enterpriseWorkflowService.addOwnerAndSharings(workflow);
-		await this.enterpriseWorkflowService.addCredentialsToWorkflow(workflow, req.user);
+		const workflowWithSharingsMetaData =
+			this.enterpriseWorkflowService.addOwnerAndSharings(workflow);
+		await this.enterpriseWorkflowService.addCredentialsToWorkflow(
+			workflowWithSharingsMetaData,
+			req.user,
+		);
 
 		execution.workflowData = {
 			...execution.workflowData,
-			ownedBy: workflow.ownedBy,
-			sharedWith: workflow.sharedWith,
-			usedCredentials: workflow.usedCredentials,
+			homeProject: workflowWithSharingsMetaData.homeProject,
+			sharedWithProjects: workflowWithSharingsMetaData.sharedWithProjects,
+			usedCredentials: workflowWithSharingsMetaData.usedCredentials,
 		} as WorkflowWithSharingsAndCredentials;
 
 		return execution;

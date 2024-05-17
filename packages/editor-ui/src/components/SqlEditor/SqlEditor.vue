@@ -7,7 +7,6 @@
 			:segments="segments"
 			:is-read-only="isReadOnly"
 			:visible="hasFocus"
-			:hovering-item-number="hoveringItemNumber"
 		/>
 	</div>
 </template>
@@ -25,7 +24,6 @@ import {
 	tabKeyMap,
 } from '@/plugins/codemirror/keymap';
 import { n8nAutocompletion } from '@/plugins/codemirror/n8nLang';
-import { useNDVStore } from '@/stores/ndv.store';
 import { ifNotIn } from '@codemirror/autocomplete';
 import { history, toggleComment } from '@codemirror/commands';
 import { LanguageSupport, bracketMatching, foldGutter, indentOnInput } from '@codemirror/language';
@@ -142,11 +140,6 @@ const {
 	extensions,
 	skipSegments: ['Statement', 'CompositeIdentifier', 'Parens', 'Brackets'],
 	isReadOnly: props.isReadOnly,
-});
-const ndvStore = useNDVStore();
-
-const hoveringItemNumber = computed(() => {
-	return ndvStore.hoveringItemNumber;
 });
 
 watch(

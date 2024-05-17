@@ -85,3 +85,10 @@ export function rightDiff<T1, T2>(
 		return acc;
 	}, []);
 }
+
+/**
+ * Asserts that the passed in type is never.
+ * Can be used to make sure the type is exhausted
+ * in switch statements or if/else chains.
+ */
+export const assertNever = (value: never) => {};

@@ -40,16 +40,6 @@ const emit = defineEmits<{
 	(event: 'active-change', value: string): void;
 }>();
 
-const model = computed({
-	get() {
-		return color.value;
-	},
-	set(value: string) {
-		color.value = value;
-		emit('update:modelValue', value);
-	},
-});
-
 const onChange = (value: string) => {
 	emit('change', value);
 };
@@ -61,15 +51,20 @@ const onInput = (value: string) => {
 const onActiveChange = (value: string) => {
 	emit('active-change', value);
 };
+
+const onColorSelect = (value: string) => {
+	emit('update:modelValue', value);
+};
 </script>
 
 <template>
 	<span :class="['n8n-color-picker', $style.component]">
 		<ElColorPicker
-			v-model="model"
 			v-bind="colorPickerProps"
+			size="default"
 			@change="onChange"
 			@active-change="onActiveChange"
+			@update:model-value="onColorSelect"
 		/>
 		<N8nInput
 			v-if="showInput"

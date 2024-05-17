@@ -33,6 +33,7 @@ export const mockSimplifiedNodeType = (
 	defaults: {
 		color: '#ffffff',
 	},
+	outputs: [],
 	...overrides,
 });
 
@@ -123,7 +124,7 @@ export const mockLabelCreateElement = (
 	uuid: uuidv4(),
 	key: uuidv4(),
 	type: 'label',
-	subcategory: subcategory || 'sampleSubcategory',
+	subcategory: subcategory ?? 'sampleSubcategory',
 	properties: mockLabelItemProps(overrides),
 });
 
@@ -134,6 +135,6 @@ export const mockActionCreateElement = (
 	uuid: uuidv4(),
 	key: uuidv4(),
 	type: 'action',
-	subcategory: subcategory || 'sampleSubcategory',
+	subcategory: subcategory ?? 'sampleSubcategory',
 	properties: mockActionTypeDescription(overrides),
 });
