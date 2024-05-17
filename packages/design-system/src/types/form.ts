@@ -49,13 +49,7 @@ export type IFormInput = {
 		infoText?: string;
 		placeholder?: string;
 		options?: Array<{ label: string; value: string; disabled?: boolean }>;
-		autocomplete?:
-			| 'off'
-			| 'new-password'
-			| 'current-password'
-			| 'given-name'
-			| 'family-name'
-			| 'email'; // https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/autocomplete
+		autocomplete?: InputAutocompletePropType;
 		capitalize?: boolean;
 		focusInitially?: boolean;
 		disabled?: boolean;
@@ -76,3 +70,16 @@ export type IFormBoxConfig = {
 	redirectLink?: string;
 	redirectText?: string;
 };
+
+export type CheckboxLabelSizePropType = 'small' | 'medium' | undefined;
+export type CheckboxModelValuePropType = boolean | undefined;
+export type SwitchModelValuePropType = boolean | undefined;
+export type InputModelValuePropType = string | number | undefined;
+export type InputTypePropType = 'number' | 'text' | 'email' | 'password' | 'textarea' | undefined;
+export type InputAutocompletePropType =
+	| 'off'
+	| 'new-password'
+	| 'current-password'
+	| 'given-name'
+	| 'family-name'
+	| 'email'; // https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/autocomplete

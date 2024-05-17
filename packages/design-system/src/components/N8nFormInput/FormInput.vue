@@ -1,8 +1,11 @@
 <template>
 	<N8nCheckbox
 		v-if="type === 'checkbox'"
-		v-bind="$props"
 		ref="inputRef"
+		:label="label"
+		:disabled="disabled"
+		:label-size="labelSize as CheckboxLabelSizePropType"
+		:model-value="modelValue as CheckboxModelValuePropType"
 		@update:model-value="onUpdateModelValue"
 		@focus="onFocus"
 	/>
@@ -17,7 +20,7 @@
 			{{ tooltipText }}
 		</template>
 		<ElSwitch
-			:model-value="modelValue"
+			:model-value="modelValue as SwitchModelValuePropType"
 			:active-color="activeColor"
 			:inactive-color="inactiveColor"
 			@update:model-value="onUpdateModelValue"
@@ -59,9 +62,9 @@
 				v-else
 				ref="inputRef"
 				:name="name"
-				:type="type as InputType"
+				:type="type as InputTypePropType"
 				:placeholder="placeholder"
-				:model-value="modelValue as InputModelValue"
+				:model-value="modelValue as InputModelValuePropType"
 				:maxlength="maxlength"
 				:autocomplete="autocomplete"
 				:disabled="disabled"
@@ -99,12 +102,20 @@ import N8nCheckbox from '../N8nCheckbox';
 import { ElSwitch } from 'element-plus';
 
 import { getValidationError, VALIDATORS } from './validators';
-import type { Rule, RuleGroup, IValidator, Validatable, FormState } from '../../types';
+import {
+	Rule,
+	RuleGroup,
+	IValidator,
+	Validatable,
+	InputModelValuePropType,
+	InputTypePropType,
+	SwitchModelValuePropType,
+	CheckboxModelValuePropType,
+	CheckboxLabelSizePropType,
+	InputAutocompletePropType,
+} from '../../types';
 
 import { t } from '../../locale';
-
-type InputModelValue = string | number | undefined;
-type InputType = 'number' | 'text' | 'email' | 'password' | 'textarea' | undefined;
 
 export interface Props {
 	modelValue: Validatable;
@@ -123,7 +134,7 @@ export interface Props {
 	validators?: { [key: string]: IValidator | RuleGroup };
 	maxlength?: number;
 	options?: Array<{ value: string | number; label: string; disabled?: boolean }>;
-	autocomplete?: 'off' | 'autocomplete';
+	autocomplete?: InputAutocompletePropType;
 	name?: string;
 	focusInitially?: boolean;
 	labelSize?: 'small' | 'medium' | 'large';
@@ -209,7 +220,7 @@ function onBlur() {
 	$emit('blur');
 }
 
-function onUpdateModelValue(value: FormState) {
+function onUpdateModelValue(value: Validatable) {
 	state.isTyping = true;
 	$emit('update:modelValue', value);
 }

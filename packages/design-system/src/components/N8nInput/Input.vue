@@ -34,6 +34,7 @@ import { computed, ref } from 'vue';
 import { ElInput } from 'element-plus';
 import { uid } from '../../utils';
 import type { InputSize, InputType } from '@/types/input';
+import { InputAutocompletePropType } from '@/types';
 
 interface InputProps {
 	modelValue?: string | number;
@@ -47,7 +48,7 @@ interface InputProps {
 	maxlength?: number;
 	title?: string;
 	name?: string;
-	autocomplete?: 'off' | 'autocomplete';
+	autocomplete?: InputAutocompletePropType;
 }
 
 defineOptions({ name: 'N8nInput' });
