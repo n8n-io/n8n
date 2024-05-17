@@ -41,10 +41,10 @@ export class SettingsUsersPage extends BasePage {
 			workflowPage.actions.visit();
 			mainSidebar.actions.goToSettings();
 			if (isOwner) {
-				settingsSidebar.getters.menuItem('Users').click();
+				settingsSidebar.getters.users().click();
 				cy.url().should('match', new RegExp(this.url));
 			} else {
-				settingsSidebar.getters.menuItem('Users').should('not.exist');
+				settingsSidebar.getters.users().should('not.exist');
 				// Should be redirected to workflows page if trying to access UM url
 				cy.visit('/settings/users');
 				cy.url().should('match', new RegExp(workflowsPage.url));

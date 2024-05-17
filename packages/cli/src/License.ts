@@ -289,6 +289,18 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.WORKER_VIEW);
 	}
 
+	isProjectRoleAdminLicensed() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.PROJECT_ROLE_ADMIN);
+	}
+
+	isProjectRoleEditorLicensed() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.PROJECT_ROLE_EDITOR);
+	}
+
+	isProjectRoleViewerLicensed() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.PROJECT_ROLE_VIEWER);
+	}
+
 	getCurrentEntitlements() {
 		return this.manager?.getCurrentEntitlements() ?? [];
 	}
@@ -339,6 +351,10 @@ export class License {
 		return (
 			this.getFeatureValue(LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT) ?? UNLIMITED_LICENSE_QUOTA
 		);
+	}
+
+	getTeamProjectLimit() {
+		return this.getFeatureValue(LICENSE_QUOTAS.TEAM_PROJECT_LIMIT) ?? 0;
 	}
 
 	getPlanName(): string {
