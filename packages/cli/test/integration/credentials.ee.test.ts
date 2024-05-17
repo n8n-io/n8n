@@ -422,6 +422,13 @@ describe('PUT /credentials/:id/share', () => {
 		});
 
 		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(1);
+		expect(mailer.notifyCredentialsShared).toHaveBeenCalledWith(
+			expect.objectContaining({
+				newShareeIds: expect.arrayContaining([member1.id, member2.id, member3.id]),
+				sharer: expect.objectContaining({ id: owner.id }),
+				credentialsName: savedCredential.name,
+			}),
+		);
 	});
 
 	test('should share the credential with the provided userIds', async () => {

@@ -117,6 +117,13 @@ describe('PUT /workflows/:id', () => {
 		const sharedWorkflows = await getWorkflowSharing(workflow);
 		expect(sharedWorkflows).toHaveLength(2);
 		expect(mailer.notifyWorkflowShared).toHaveBeenCalledTimes(1);
+		expect(mailer.notifyWorkflowShared).toHaveBeenCalledWith(
+			expect.objectContaining({
+				newShareeIds: [member.id],
+				sharer: expect.objectContaining({ id: owner.id }),
+				workflow: expect.objectContaining({ id: workflow.id }),
+			}),
+		);
 	});
 
 	test('PUT /workflows/:id/share should succeed when sharing with invalid user-id', async () => {
