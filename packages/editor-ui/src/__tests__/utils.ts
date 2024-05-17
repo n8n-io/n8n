@@ -4,10 +4,7 @@ import type { ISettingsState } from '@/Interface';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import { defaultSettings } from './defaults';
 
-export const retry = async (
-	assertion: () => ReturnType<typeof expect>,
-	{ interval = 20, timeout = 1000 } = {},
-) => {
+export const retry = async (assertion: () => void, { interval = 20, timeout = 1000 } = {}) => {
 	return await new Promise((resolve, reject) => {
 		const startTime = Date.now();
 

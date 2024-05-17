@@ -66,7 +66,7 @@
 					>
 						<template #custom-tooltip>
 							<span
-								v-text="$locale.baseText('nodeView.placeholderNode.addTriggerNodeBeforeExecuting')"
+								v-text="$locale.baseText('nodeView.canvasAddButton.addATriggerNodeBeforeExecuting')"
 							/>
 						</template>
 					</Node>
@@ -203,7 +203,7 @@
 </template>
 
 <script lang="ts">
-import { defineAsyncComponent, defineComponent, nextTick, ref } from 'vue';
+import { type StyleValue, defineAsyncComponent, defineComponent, nextTick, ref } from 'vue';
 import { mapStores, storeToRefs } from 'pinia';
 
 import type {
@@ -221,7 +221,7 @@ import {
 	EVENT_CONNECTION_MOVED,
 	INTERCEPT_BEFORE_DROP,
 } from '@jsplumb/core';
-import type { MessageBoxInputData, ElNotification } from 'element-plus';
+import type { MessageBoxInputData, NotificationHandle } from 'element-plus';
 
 import {
 	FIRST_ONBOARDING_PROMPT_TIMEOUT,
@@ -254,7 +254,7 @@ import {
 
 import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import useCanvasMouseSelect from '@/composables/useCanvasMouseSelect';
+import { useCanvasMouseSelect } from '@/composables/useCanvasMouseSelect';
 import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
 import { useTitleChange } from '@/composables/useTitleChange';
 import { useDataSchema } from '@/composables/useDataSchema';
@@ -322,7 +322,7 @@ import type {
 	AIAssistantConnectionInfo,
 } from '@/Interface';
 
-import { type Route, type RawLocation, useRouter } from 'vue-router';
+import { type RouteLocationNormalizedLoaded, useRouter } from 'vue-router';
 import { dataPinningEventBus, nodeViewEventBus } from '@/event-bus';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useCollaborationStore } from '@/stores/collaboration.store';
@@ -463,14 +463,13 @@ export default defineComponent({
 				if (from.name === VIEWS.NEW_WORKFLOW) {
 					// Replace the current route with the new workflow route
 					// before navigating to the new route when saving new workflow.
-					await this.$router.replace(
-						{ name: VIEWS.WORKFLOW, params: { name: this.currentWorkflow } },
-						() => {
-							// We can't use next() here since vue-router
-							// would prevent the navigation with an error
-							void this.$router.push(to as RawLocation);
-						},
-					);
+					await this.$router.replace({
+						name: VIEWS.WORKFLOW,
+						params: { name: this.currentWorkflow },
+					});
+					// We can't use next() here since vue-router
+					// would prevent the navigation with an error
+					await this.$router.push(to);
 				} else {
 					this.collaborationStore.notifyWorkflowClosed(this.currentWorkflow);
 					next();
@@ -488,9 +487,9 @@ export default defineComponent({
 		}
 	},
 	setup() {
-		const nodeViewRootRef = ref(null);
-		const nodeViewRef = ref(null);
-		const onMouseMoveEnd = ref(null);
+		const nodeViewRootRef = ref<HTMLDivElement | null>(null);
+		const nodeViewRef = ref<HTMLDivElement | null>(null);
+		const onMouseMoveEnd = ref<((e: MouseEvent | TouchEvent) => void) | null>(null);
 		const router = useRouter();
 
 		const ndvStore = useNDVStore();
@@ -534,69 +533,45 @@ export default defineComponent({
 			...useExecutionDebugging(),
 		};
 	},
-	watch: {
-		// Listen to route changes and load the workflow accordingly
-		async $route(to: Route, from: Route) {
-			this.readOnlyEnvRouteCheck();
-
-			const currentTab = getNodeViewTab(to);
-			const nodeViewNotInitialized = !this.uiStore.nodeViewInitialized;
-			let workflowChanged =
-				from.params.name !== to.params.name &&
-				// Both 'new' and __EMPTY__ are new workflow names, so ignore them when detecting if wf changed
-				!(from.params.name === 'new' && this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID) &&
-				!(from.name === VIEWS.NEW_WORKFLOW) &&
-				// Also ignore if workflow id changes when saving new workflow
-				to.params.action !== 'workflowSave';
-			const isOpeningTemplate = to.name === VIEWS.TEMPLATE_IMPORT;
-
-			// When entering this tab:
-			if (currentTab === MAIN_HEADER_TABS.WORKFLOW || isOpeningTemplate) {
-				if (workflowChanged || nodeViewNotInitialized || isOpeningTemplate) {
-					this.canvasStore.startLoading();
-					if (nodeViewNotInitialized) {
-						const previousDirtyState = this.uiStore.stateIsDirty;
-						this.resetWorkspace();
-						this.uiStore.stateIsDirty = previousDirtyState;
-					}
-					await this.initView();
-					this.canvasStore.stopLoading();
-					if (this.blankRedirect) {
-						this.blankRedirect = false;
-					}
-				}
-				await this.checkAndInitDebugMode();
-			}
-			// Also, when landing on executions tab, check if workflow data is changed
-			if (currentTab === MAIN_HEADER_TABS.EXECUTIONS) {
-				workflowChanged =
-					from.params.name !== to.params.name &&
-					!(to.params.name === 'new' && from.params.name === undefined);
-				if (workflowChanged) {
-					// This will trigger node view to update next time workflow tab is opened
-					this.uiStore.nodeViewInitialized = false;
-				}
-			}
-		},
-		activeNode() {
-			// When a node gets set as active deactivate the create-menu
-			this.createNodeActive = false;
-		},
-		containsTrigger(containsTrigger) {
-			// Re-center CanvasAddButton if there's no triggers
-			if (containsTrigger === false)
-				this.canvasStore.setRecenteredCanvasAddButtonPosition(this.getNodeViewOffsetPosition);
-		},
-		nodeViewScale(newScale) {
-			const elementRef = this.nodeViewRef as HTMLDivElement | undefined;
-			if (elementRef) {
-				elementRef.style.transform = `scale(${newScale})`;
-			}
-		},
-	},
-	errorCaptured: (err, vm, info) => {
-		console.error('errorCaptured');
-		console.error(err);
+	data() {
+		return {
+			GRID_SIZE: NodeViewUtils.GRID_SIZE,
+			STICKY_NODE_TYPE,
+			createNodeActive: false,
+			lastClickPosition: [450, 450] as XYPosition,
+			ctrlKeyPressed: false,
+			moveCanvasKeyPressed: false,
+			stopExecutionInProgress: false,
+			blankRedirect: false,
+			credentialsUpdated: false,
+			pullConnActiveNodeName: null as string | null,
+			pullConnActive: false,
+			dropPrevented: false,
+			connectionDragScope: {
+				type: null,
+				connection: null,
+			} as { type: string | null; connection: 'source' | 'target' | null },
+			renamingActive: false,
+			showStickyButton: false,
+			isExecutionPreview: false,
+			showTriggerMissingTooltip: false,
+			workflowData: null as INewWorkflowData | null,
+			activeConnection: null as null | Connection,
+			isInsertingNodes: false,
+			isProductionExecutionPreview: false,
+			enterTimer: undefined as undefined | ReturnType<typeof setTimeout>,
+			exitTimer: undefined as undefined | ReturnType<typeof setTimeout>,
+			readOnlyNotification: null as null | NotificationHandle,
+			// jsplumb automatically deletes all loose connections which is in turn recorded
+			// in undo history as a user action.
+			// This should prevent automatically removed connections from populating undo stack
+			suspendRecordingDetachedConnections: false,
+			NODE_CREATOR_OPEN_SOURCES,
+			eventsAttached: false,
+			unloadTimeout: undefined as undefined | ReturnType<typeof setTimeout>,
+			canOpenNDV: true,
+			hideNodeIssues: false,
+		};
 	},
 	computed: {
 		...mapStores(
@@ -665,19 +640,19 @@ export default defineComponent({
 
 			return this.$locale.baseText('nodeView.runButtonText.executingWorkflow');
 		},
-		workflowStyle(): object {
+		workflowStyle(): StyleValue {
 			const offsetPosition = this.uiStore.nodeViewOffsetPosition;
 			return {
 				left: offsetPosition[0] + 'px',
 				top: offsetPosition[1] + 'px',
 			};
 		},
-		canvasAddButtonStyle(): object {
+		canvasAddButtonStyle(): StyleValue {
 			return {
 				'pointer-events': this.createNodeActive ? 'none' : 'all',
 			};
 		},
-		backgroundStyle(): object {
+		backgroundStyle(): StyleValue {
 			return NodeViewUtils.getBackgroundStyles(
 				this.nodeViewScale,
 				this.uiStore.nodeViewOffsetPosition,
@@ -715,7 +690,11 @@ export default defineComponent({
 			return this.uiStore.isActionActive('workflowRunning');
 		},
 		currentWorkflow(): string {
-			return this.$route.params.name || this.workflowsStore.workflowId;
+			if (typeof this.$route.params.name === 'string') {
+				return this.$route.params.name;
+			}
+
+			return this.workflowsStore.workflowId;
 		},
 		workflowName(): string {
 			return this.workflowsStore.workflowName;
@@ -786,45 +765,69 @@ export default defineComponent({
 			return isCloudDeployment && experimentEnabled && !userHasSeenAIAssistantExperiment;
 		},
 	},
-	data() {
-		return {
-			GRID_SIZE: NodeViewUtils.GRID_SIZE,
-			STICKY_NODE_TYPE,
-			createNodeActive: false,
-			lastClickPosition: [450, 450] as XYPosition,
-			ctrlKeyPressed: false,
-			moveCanvasKeyPressed: false,
-			stopExecutionInProgress: false,
-			blankRedirect: false,
-			credentialsUpdated: false,
-			pullConnActiveNodeName: null as string | null,
-			pullConnActive: false,
-			dropPrevented: false,
-			connectionDragScope: {
-				type: null,
-				connection: null,
-			} as { type: string | null; connection: 'source' | 'target' | null },
-			renamingActive: false,
-			showStickyButton: false,
-			isExecutionPreview: false,
-			showTriggerMissingTooltip: false,
-			workflowData: null as INewWorkflowData | null,
-			activeConnection: null as null | Connection,
-			isInsertingNodes: false,
-			isProductionExecutionPreview: false,
-			enterTimer: undefined as undefined | ReturnType<typeof setTimeout>,
-			exitTimer: undefined as undefined | ReturnType<typeof setTimeout>,
-			readOnlyNotification: null as null | typeof ElNotification,
-			// jsplumb automatically deletes all loose connections which is in turn recorded
-			// in undo history as a user action.
-			// This should prevent automatically removed connections from populating undo stack
-			suspendRecordingDetachedConnections: false,
-			NODE_CREATOR_OPEN_SOURCES,
-			eventsAttached: false,
-			unloadTimeout: undefined as undefined | ReturnType<typeof setTimeout>,
-			canOpenNDV: true,
-			hideNodeIssues: false,
-		};
+	watch: {
+		// Listen to route changes and load the workflow accordingly
+		async $route(to: RouteLocationNormalizedLoaded, from: RouteLocationNormalizedLoaded) {
+			this.readOnlyEnvRouteCheck();
+
+			const currentTab = getNodeViewTab(to);
+			const nodeViewNotInitialized = !this.uiStore.nodeViewInitialized;
+			let workflowChanged =
+				from.params.name !== to.params.name &&
+				// Both 'new' and __EMPTY__ are new workflow names, so ignore them when detecting if wf changed
+				!(from.params.name === 'new' && this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID) &&
+				!(from.name === VIEWS.NEW_WORKFLOW) &&
+				// Also ignore if workflow id changes when saving new workflow
+				to.params.action !== 'workflowSave';
+			const isOpeningTemplate = to.name === VIEWS.TEMPLATE_IMPORT;
+
+			// When entering this tab:
+			if (currentTab === MAIN_HEADER_TABS.WORKFLOW || isOpeningTemplate) {
+				if (workflowChanged || nodeViewNotInitialized || isOpeningTemplate) {
+					this.canvasStore.startLoading();
+					if (nodeViewNotInitialized) {
+						const previousDirtyState = this.uiStore.stateIsDirty;
+						this.resetWorkspace();
+						this.uiStore.stateIsDirty = previousDirtyState;
+					}
+					await this.initView();
+					this.canvasStore.stopLoading();
+					if (this.blankRedirect) {
+						this.blankRedirect = false;
+					}
+				}
+				await this.checkAndInitDebugMode();
+			}
+			// Also, when landing on executions tab, check if workflow data is changed
+			if (currentTab === MAIN_HEADER_TABS.EXECUTIONS) {
+				workflowChanged =
+					from.params.name !== to.params.name &&
+					!(to.params.name === 'new' && from.params.name === undefined);
+				if (workflowChanged) {
+					// This will trigger node view to update next time workflow tab is opened
+					this.uiStore.nodeViewInitialized = false;
+				}
+			}
+		},
+		activeNode() {
+			// When a node gets set as active deactivate the create-menu
+			this.createNodeActive = false;
+		},
+		containsTrigger(containsTrigger) {
+			// Re-center CanvasAddButton if there's no triggers
+			if (containsTrigger === false)
+				this.canvasStore.setRecenteredCanvasAddButtonPosition(this.getNodeViewOffsetPosition);
+		},
+		nodeViewScale(newScale) {
+			const elementRef = this.nodeViewRef;
+			if (elementRef) {
+				elementRef.style.transform = `scale(${newScale})`;
+			}
+		},
+	},
+	errorCaptured: (error) => {
+		console.error('errorCaptured');
+		console.error(error);
 	},
 	async mounted() {
 		// To be refactored (unref) when migrating to composition API
@@ -1059,16 +1062,13 @@ export default defineComponent({
 						index: 0,
 						endpointUuid: `${nodeData.id}-input${connectiontype}0`,
 						eventSource: NODE_CREATOR_OPEN_SOURCES.NOTICE_ERROR_MESSAGE,
-						outputType: connectiontype,
+						outputType: connectiontype as NodeConnectionType,
 						sourceId: nodeData.id,
 					});
 				}
 			});
 		},
 		editAllowedCheck(): boolean {
-			if (this.readOnlyNotification?.visible) {
-				return;
-			}
 			if (this.isReadOnlyRoute || this.readOnlyEnv) {
 				this.readOnlyNotification = this.showMessage({
 					title: this.$locale.baseText(
@@ -1499,8 +1499,8 @@ export default defineComponent({
 			// Hide the node-creator
 			this.createNodeActive = false;
 		},
-		mouseUp(e: MouseEvent) {
-			if (e.button === 1) {
+		mouseUp(e: MouseEvent | TouchEvent) {
+			if ('button' in e && e.button === 1) {
 				this.moveCanvasKeyPressed = false;
 			}
 			this.mouseUpMouseSelect(e);
