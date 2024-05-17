@@ -275,7 +275,7 @@ export class MicrosoftSql implements INodeType {
 				responseData = items;
 			} else if (operation === 'update') {
 				const updateKeys = items.map(
-					(item, index) => this.getNodeParameter('updateKey', index) as string,
+					(_, index) => this.getNodeParameter('updateKey', index) as string,
 				);
 
 				const tables = createTableStruct(

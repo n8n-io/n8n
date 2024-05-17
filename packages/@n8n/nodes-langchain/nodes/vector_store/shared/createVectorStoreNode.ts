@@ -240,7 +240,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					void logAiEvent(this, 'n8n.ai.vector.store.searched', { query: prompt });
 				}
 
-				return await this.prepareOutputData(resultData);
+				return [resultData];
 			}
 
 			if (mode === 'insert') {
@@ -270,7 +270,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					}
 				}
 
-				return await this.prepareOutputData(resultData);
+				return [resultData];
 			}
 
 			throw new NodeOperationError(

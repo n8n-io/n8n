@@ -102,7 +102,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 				const projectId = this.getNodeParameter('projectId', 0) as string;
 				const database = this.getNodeParameter('database', 0) as string;
 				const simple = this.getNodeParameter('simple', 0) as boolean;
-				const documentList = items.map((item: IDataObject, i: number) => {
+				const documentList = items.map((_: IDataObject, i: number) => {
 					const collection = this.getNodeParameter('collection', i) as string;
 					const documentId = this.getNodeParameter('documentId', i) as string;
 					return `projects/${projectId}/databases/${database}/documents/${collection}/${documentId}`;
@@ -221,7 +221,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 				returnData.push(...executionData);
 			} else if (operation === 'delete') {
 				await Promise.all(
-					items.map(async (item: IDataObject, i: number) => {
+					items.map(async (_: IDataObject, i: number) => {
 						const projectId = this.getNodeParameter('projectId', i) as string;
 						const database = this.getNodeParameter('database', i) as string;
 						const collection = this.getNodeParameter('collection', i) as string;
@@ -332,7 +332,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 				const simple = this.getNodeParameter('simple', 0) as boolean;
 
 				await Promise.all(
-					items.map(async (item: IDataObject, i: number) => {
+					items.map(async (_: IDataObject, i: number) => {
 						const query = this.getNodeParameter('query', i) as string;
 						responseData = await googleApiRequest.call(
 							this,
