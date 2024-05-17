@@ -1,7 +1,7 @@
 {
 	"extends": "../../tsconfig.json",
 	"compilerOptions": {
-		"rootDir": ".",
+		"rootDirs": [".", "../design-system/src", "../@n8n/chat/src"],
 		"outDir": "dist",
 		"target": "esnext",
 		"module": "esnext",
