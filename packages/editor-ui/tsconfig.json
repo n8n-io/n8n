@@ -11,7 +11,12 @@
 		"allowSyntheticDefaultImports": true,
 		"resolveJsonModule": true,
 		"baseUrl": ".",
-		"types": ["vitest/globals"],
+		"types": [
+			"vitest/globals",
+			"src/shims.d.ts",
+			"src/shims-vue.d.ts",
+			"src/v3-infinite-loading.d.ts"
+		],
 		"paths": {
 			"@/*": ["src/*"],
 			"n8n-design-system/*": ["../design-system/src/*"],
@@ -23,5 +28,5 @@
 		"useUnknownInCatchVariables": false,
 		"experimentalDecorators": true
 	},
-	"include": ["src/*.d.ts", "src/**/*.ts", "src/**/*.vue"]
+	"include": [ "src/**/*.ts", "src/**/*.d.ts", "src/**/*.vue"]
 }
