@@ -55,7 +55,6 @@ import type {
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { MessageBoxInputData } from 'element-plus';
-import type { BaseTextKey } from '../../plugins/i18n';
 
 const props = defineProps<{
 	workflow: IWorkflowDb;
@@ -634,7 +633,8 @@ function showCreateWorkflowSuccessToast(id?: string) {
 						<template #content>
 							<i18n-t
 								:keypath="
-									uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description.tooltip
+									uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description
+										.tooltip
 								"
 								tag="span"
 							>
