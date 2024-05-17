@@ -2,6 +2,7 @@
 import type { PropType } from 'vue';
 import type { ExternalSecretsProvider } from '@/Interface';
 import { computed } from 'vue';
+
 import infisical from '../assets/images/infisical.webp';
 import doppler from '../assets/images/doppler.webp';
 import vault from '../assets/images/hashicorp.webp';
