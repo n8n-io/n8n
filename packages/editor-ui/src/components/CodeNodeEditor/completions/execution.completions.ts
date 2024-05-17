@@ -5,6 +5,9 @@ import { useI18n } from '@/composables/useI18n';
 export function useExecutionCompletions() {
 	const i18n = useI18n();
 
+	/**
+	 * Complete `$execution.` to `.id .mode .resumeUrl .resumeFormUrl`
+	 */
 	const executionCompletions = (
 		context: CompletionContext,
 		matcher = '$execution',

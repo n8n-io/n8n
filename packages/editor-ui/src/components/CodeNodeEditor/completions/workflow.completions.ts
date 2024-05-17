@@ -7,6 +7,9 @@ const escape = (str: string) => str.replace('$', '\\$');
 export function useWorkflowCompletions() {
 	const i18n = useI18n();
 
+	/**
+	 * Complete `$workflow.` to `.id .name .active`.
+	 */
 	const workflowCompletions = (
 		context: CompletionContext,
 		matcher = '$workflow',

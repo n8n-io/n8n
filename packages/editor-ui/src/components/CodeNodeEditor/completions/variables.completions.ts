@@ -7,6 +7,9 @@ const escape = (str: string) => str.replace('$', '\\$');
 export function useVariablesCompletions() {
 	const environmentsStore = useEnvironmentsStore();
 
+	/**
+	 * Complete `$vars.` to `$vars.VAR_NAME`.
+	 */
 	const variablesCompletions = (
 		context: CompletionContext,
 		matcher = '$vars',

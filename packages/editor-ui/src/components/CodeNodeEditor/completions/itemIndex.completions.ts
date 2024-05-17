@@ -4,7 +4,10 @@ import { useI18n } from '@/composables/useI18n';
 
 export function useItemIndexCompletions(mode: 'runOnceForEachItem' | 'runOnceForAllItems') {
 	const i18n = useI18n();
-
+	/**
+	 * - Complete `$input.` to `.first() .last() .all() .itemMatching()` in all-items mode.
+	 * - Complete `$input.` to `.item` in single-item mode.
+	 */
 	const inputCompletions = (
 		context: CompletionContext,
 		matcher = '$input',
@@ -56,6 +59,11 @@ export function useItemIndexCompletions(mode: 'runOnceForEachItem' | 'runOnceFor
 		};
 	};
 
+	/**
+	 * - Complete `$('nodeName').` to `.params .context` in both modes.
+	 * - Complete `$('nodeName').` to `.first() .last() .all() .itemMatching()` in all-items mode.
+	 * - Complete `$('nodeName').` to `.item` in single-item mode.
+	 */
 	const selectorCompletions = (context: CompletionContext, matcher: string | null = null) => {
 		const pattern =
 			matcher === null
