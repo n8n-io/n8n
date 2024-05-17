@@ -2419,9 +2419,9 @@ export interface FilterOperatorValue {
 
 export type FilterConditionValue = {
 	id: string;
-	leftValue: unknown;
+	leftValue: NodeParameterValue;
 	operator: FilterOperatorValue;
-	rightValue: unknown;
+	rightValue: NodeParameterValue;
 };
 
 export type FilterOptionsValue = {

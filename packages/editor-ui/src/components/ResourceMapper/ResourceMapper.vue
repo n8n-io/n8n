@@ -236,6 +236,12 @@ async function loadFieldsToMap(): Promise<void> {
 	if (!props.node) {
 		return;
 	}
+
+	const methodName = props.parameter.typeOptions?.resourceMapper?.resourceMapperMethod;
+	if (typeof methodName !== 'string') {
+		return;
+	}
+
 	const requestParams: DynamicNodeParameters.ResourceMapperFieldsRequest = {
 		nodeTypeAndVersion: {
 			name: props.node?.type,
@@ -246,7 +252,7 @@ async function loadFieldsToMap(): Promise<void> {
 			props.node.parameters,
 		) as INodeParameters,
 		path: props.path,
-		methodName: props.parameter.typeOptions?.resourceMapper?.resourceMapperMethod as string,
+		methodName,
 		credentials: props.node.credentials,
 	};
 	const fetchedFields = await nodeTypesStore.getResourceMapperFields(requestParams);
