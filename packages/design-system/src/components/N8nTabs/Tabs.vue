@@ -147,9 +147,10 @@ const scrollRight = () => scroll(50);
 }
 
 .tab {
+	--active-tab-border-width: 2px;
 	display: block;
-	padding: 0 var(--spacing-s) var(--spacing-2xs) var(--spacing-s);
-	padding-bottom: var(--spacing-2xs);
+	padding: 0 var(--spacing-s);
+	padding-bottom: calc(var(--spacing-2xs) + var(--active-tab-border-width));
 	font-size: var(--font-size-s);
 	cursor: pointer;
 	white-space: nowrap;
@@ -164,7 +165,8 @@ const scrollRight = () => scroll(50);
 
 .activeTab {
 	color: var(--color-primary);
-	border-bottom: var(--color-primary) 2px solid;
+	padding-bottom: var(--spacing-2xs);
+	border-bottom: var(--color-primary) var(--active-tab-border-width) solid;
 }
 
 .alignRight:not(.alignRight + .alignRight) {
