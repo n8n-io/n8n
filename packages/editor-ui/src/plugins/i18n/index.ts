@@ -1,6 +1,7 @@
 import type { Plugin } from 'vue';
 import axios from 'axios';
 import { createI18n } from 'vue-i18n';
+import type { I18nOptions } from 'vue-i18n';
 import { locale } from 'n8n-design-system';
 import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
 
@@ -50,7 +51,7 @@ export class I18nClass {
 	 */
 	baseText(
 		key: BaseTextKey,
-		options?: { adjustToNumber?: number; interpolate?: { [key: string]: string } },
+		options?: { adjustToNumber?: number; interpolate?: Record<string, string | number> },
 	): string {
 		// Create a unique cache key
 		const cacheKey = `${key}-${JSON.stringify(options)}`;
@@ -465,12 +466,13 @@ export async function loadLanguage(language?: string) {
  */
 export function addNodeTranslation(
 	nodeTranslation: { [nodeType: string]: object },
-	language: string,
+	language: keyof I18nOptions['messages'],
 ) {
-	const oldNodesBase = i18nInstance.global.messages[language]['n8n-nodes-base'] || {};
+	const oldNodesBase: { nodes: {} } = i18nInstance.global.messages[language]['n8n-nodes-base'] ?? {
+		nodes: {},
+	};
 
 	const updatedNodes = {
-		// @ts-ignore
 		...oldNodesBase.nodes,
 		...nodeTranslation,
 	};
@@ -490,12 +492,13 @@ export function addNodeTranslation(
  */
 export function addCredentialTranslation(
 	nodeCredentialTranslation: { [credentialType: string]: object },
-	language: string,
+	language: keyof I18nOptions['messages'],
 ) {
-	const oldNodesBase = i18nInstance.global.messages[language]['n8n-nodes-base'] || {};
+	const oldNodesBase: { credentials: {} } = i18nInstance.global.messages[language][
+		'n8n-nodes-base'
+	] || { credentials: {} };
 
 	const updatedCredentials = {
-		// @ts-ignore
 		...oldNodesBase.credentials,
 		...nodeCredentialTranslation,
 	};
@@ -513,7 +516,10 @@ export function addCredentialTranslation(
 /**
  * Add a node's header strings to the i18n instance's `messages` object.
  */
-export function addHeaders(headers: INodeTranslationHeaders, language: string) {
+export function addHeaders(
+	headers: INodeTranslationHeaders,
+	language: keyof I18nOptions['messages'],
+) {
 	i18nInstance.global.setLocaleMessage(
 		language,
 		Object.assign(i18nInstance.global.messages[language], { headers }),
