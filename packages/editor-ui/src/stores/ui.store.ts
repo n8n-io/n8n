@@ -76,6 +76,7 @@ import {
 	isValidTheme,
 	updateTheme,
 } from './ui.utils';
+import type { BaseTextKey } from '@/plugins/i18n';
 
 let savedTheme: ThemeOption = 'system';
 try {
@@ -221,47 +222,53 @@ export const useUIStore = defineStore(STORES.UI, {
 			return {
 				feature: {
 					unavailable: {
-						title: `contextual.feature.unavailable.title${contextKey}`,
+						title: `contextual.feature.unavailable.title${contextKey}` as BaseTextKey,
 					},
 				},
 				credentials: {
 					sharing: {
 						unavailable: {
-							title: `contextual.credentials.sharing.unavailable.title${contextKey}`,
-							description: `contextual.credentials.sharing.unavailable.description${contextKey}`,
-							action: `contextual.credentials.sharing.unavailable.action${contextKey}`,
-							button: `contextual.credentials.sharing.unavailable.button${contextKey}`,
+							title: `contextual.credentials.sharing.unavailable.title${contextKey}` as BaseTextKey,
+							description:
+								`contextual.credentials.sharing.unavailable.description${contextKey}` as BaseTextKey,
+							action:
+								`contextual.credentials.sharing.unavailable.action${contextKey}` as BaseTextKey,
+							button:
+								`contextual.credentials.sharing.unavailable.button${contextKey}` as BaseTextKey,
 						},
 					},
 				},
 				workflows: {
 					sharing: {
-						title: 'contextual.workflows.sharing.title',
+						title: 'contextual.workflows.sharing.title' as BaseTextKey,
 						unavailable: {
-							title: `contextual.workflows.sharing.unavailable.title${contextKey}`,
+							title: `contextual.workflows.sharing.unavailable.title${contextKey}` as BaseTextKey,
 							description: {
-								modal: `contextual.workflows.sharing.unavailable.description.modal${contextKey}`,
-								tooltip: `contextual.workflows.sharing.unavailable.description.tooltip${contextKey}`,
+								modal:
+									`contextual.workflows.sharing.unavailable.description.modal${contextKey}` as BaseTextKey,
+								tooltip:
+									`contextual.workflows.sharing.unavailable.description.tooltip${contextKey}` as BaseTextKey,
 							},
-							action: `contextual.workflows.sharing.unavailable.action${contextKey}`,
-							button: `contextual.workflows.sharing.unavailable.button${contextKey}`,
+							action: `contextual.workflows.sharing.unavailable.action${contextKey}` as BaseTextKey,
+							button: `contextual.workflows.sharing.unavailable.button${contextKey}` as BaseTextKey,
 						},
 					},
 				},
 				variables: {
 					unavailable: {
-						title: `contextual.variables.unavailable.title${contextKey}`,
-						description: 'contextual.variables.unavailable.description',
-						action: `contextual.variables.unavailable.action${contextKey}`,
-						button: `contextual.variables.unavailable.button${contextKey}`,
+						title: `contextual.variables.unavailable.title${contextKey}` as BaseTextKey,
+						description: 'contextual.variables.unavailable.description' as BaseTextKey,
+						action: `contextual.variables.unavailable.action${contextKey}` as BaseTextKey,
+						button: `contextual.variables.unavailable.button${contextKey}` as BaseTextKey,
 					},
 				},
 				users: {
 					settings: {
 						unavailable: {
-							title: `contextual.users.settings.unavailable.title${contextKey}`,
-							description: `contextual.users.settings.unavailable.description${contextKey}`,
-							button: `contextual.users.settings.unavailable.button${contextKey}`,
+							title: `contextual.users.settings.unavailable.title${contextKey}` as BaseTextKey,
+							description:
+								`contextual.users.settings.unavailable.description${contextKey}` as BaseTextKey,
+							button: `contextual.users.settings.unavailable.button${contextKey}` as BaseTextKey,
 						},
 					},
 				},
