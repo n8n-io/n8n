@@ -69,7 +69,7 @@ import type { useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useProjectsStore } from '@/features/projects/projects.store';
 
-export function resolveParameter(
+export function resolveParameter<T = IDataObject>(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
 	opts: {
 		targetItem?: TargetItem;
@@ -79,7 +79,7 @@ export function resolveParameter(
 		additionalKeys?: IWorkflowDataProxyAdditionalKeys;
 		isForCredential?: boolean;
 	} = {},
-): IDataObject | null {
+): T | null {
 	let itemIndex = opts?.targetItem?.itemIndex || 0;
 
 	const workflow = getCurrentWorkflow();
@@ -115,7 +115,7 @@ export function resolveParameter(
 			false,
 			undefined,
 			'',
-		) as IDataObject;
+		) as T;
 	}
 
 	const inputName = NodeConnectionType.Main;
@@ -235,7 +235,7 @@ export function resolveParameter(
 		false,
 		{},
 		contextNode!.name,
-	) as IDataObject;
+	) as T;
 }
 
 export function resolveRequiredParameters(
