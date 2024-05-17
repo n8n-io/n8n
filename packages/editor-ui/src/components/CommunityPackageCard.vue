@@ -4,7 +4,7 @@
 			<n8n-loading :class="$style.loader" variant="p" :rows="1" />
 			<n8n-loading :class="$style.loader" variant="p" :rows="1" />
 		</div>
-		<div v-else :class="$style.packageCard">
+		<div v-else-if="communityPackage" :class="$style.packageCard">
 			<div :class="$style.cardInfoContainer">
 				<div :class="$style.cardTitle">
 					<n8n-text :bold="true" size="large">{{ communityPackage.packageName }}</n8n-text>
@@ -72,7 +72,9 @@ export default defineComponent({
 	name: 'CommunityPackageCard',
 	props: {
 		communityPackage: {
-			type: Object as () => PublicInstalledPackage,
+			type: Object as () => PublicInstalledPackage | null,
+			required: false,
+			default: null,
 		},
 		loading: {
 			type: Boolean,
@@ -99,6 +101,7 @@ export default defineComponent({
 	},
 	methods: {
 		async onAction(value: string) {
+			if (!this.communityPackage) return;
 			switch (value) {
 				case COMMUNITY_PACKAGE_MANAGE_ACTIONS.VIEW_DOCS:
 					this.$telemetry.track('user clicked to browse the cnr package documentation', {
@@ -115,6 +118,7 @@ export default defineComponent({
 			}
 		},
 		onUpdateClick() {
+			if (!this.communityPackage) return;
 			this.uiStore.openCommunityPackageUpdateConfirmModal(this.communityPackage.packageName);
 		},
 	},

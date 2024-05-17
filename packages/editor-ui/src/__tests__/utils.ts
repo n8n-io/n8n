@@ -16,7 +16,11 @@ export const retry = async (
 				try {
 					resolve(assertion());
 				} catch (err) {
-					Date.now() - startTime > timeout ? reject(err) : tryAgain();
+					if (Date.now() - startTime > timeout) {
+						reject(err);
+					} else {
+						tryAgain();
+					}
 				}
 			}, interval);
 		};
@@ -62,7 +66,10 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 	saveDataErrorExecution: 'all',
 	saveDataSuccessExecution: 'all',
 	saveManualExecutions: false,
-	binaryDataMode: 'default',
+	initialized: false,
+	mfa: {
+		enabled: false,
+	},
 };
 
 export const getDropdownItems = async (dropdownTriggerParent: HTMLElement) => {
