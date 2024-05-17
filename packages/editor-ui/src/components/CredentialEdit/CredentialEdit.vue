@@ -414,8 +414,8 @@ export default defineComponent({
 				}
 
 				if (property.type === 'number') {
-					const paramValue = this.credentialData[property.name];
-					const isPramExpression = typeof paramValue === 'string' && paramValue.startsWith('=');
+					const value = this.credentialData[property.name];
+					const isPramExpression = isExpression(value);
 
 					if (typeof this.credentialData[property.name] !== 'number' && !isPramExpression) {
 						return false;
