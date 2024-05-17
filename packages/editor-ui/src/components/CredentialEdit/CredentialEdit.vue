@@ -90,7 +90,7 @@
 						@auth-type-changed="onAuthTypeChanged"
 					/>
 				</div>
-				<div v-else-if="showSharingContent" :class="$style.mainContent">
+				<div v-else-if="showSharingContent && currentCredential" :class="$style.mainContent">
 					<CredentialSharing
 						:credential="currentCredential"
 						:credential-data="credentialData"
@@ -115,6 +115,7 @@
 </template>
 
 <script lang="ts">
+import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 
@@ -192,7 +193,8 @@ export default defineComponent({
 			required: false,
 		},
 		mode: {
-			type: String,
+			type: String as PropType<'edit' | 'new'>,
+			required: true,
 		},
 	},
 	setup() {
@@ -412,11 +414,10 @@ export default defineComponent({
 				}
 
 				if (property.type === 'number') {
-					const isExpression =
-						typeof this.credentialData[property.name] === 'string' &&
-						this.credentialData[property.name].startsWith('=');
+					const paramValue = this.credentialData[property.name];
+					const isPramExpression = typeof paramValue === 'string' && paramValue.startsWith('=');
 
-					if (typeof this.credentialData[property.name] !== 'number' && !isExpression) {
+					if (typeof this.credentialData[property.name] !== 'number' && !isPramExpression) {
 						return false;
 					}
 				}
