@@ -404,7 +404,7 @@ export default defineComponent({
 			type: String,
 		},
 		nodeType: {
-			type: Object as PropType<INodeTypeDescription>,
+			type: Object as PropType<INodeTypeDescription | null>,
 		},
 		readOnly: {
 			type: Boolean,
