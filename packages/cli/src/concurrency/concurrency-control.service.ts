@@ -17,12 +17,15 @@ export class ConcurrencyControlService {
 
 	private readonly productionQueue: ConcurrencyQueue;
 
+	private readonly isEnabled: boolean;
+
 	constructor(private readonly logger: Logger) {
 		if (this.manualCap === 0 || this.productionCap === 0) {
 			throw new ConcurrencyCapZeroError();
 		}
 
 		if (this.manualCap === -1 && this.productionCap === -1) {
+			this.isEnabled = false;
 			this.logger.info('[Concurrency Control] Disabled');
 			return;
 		}
@@ -40,13 +43,15 @@ export class ConcurrencyControlService {
 		});
 
 		this.logInit();
+
+		this.isEnabled = true;
 	}
 
 	/**
 	 * Block or let through an execution based on concurrency capacity.
 	 */
 	async check({ mode, executionId }: { mode: ExecutionMode; executionId: string }) {
-		if (this.isUncapped(mode)) return;
+		if (!this.isEnabled || this.isUncapped(mode)) return;
 
 		await this.getQueue(mode).enqueue(executionId);
 	}
@@ -55,6 +60,8 @@ export class ConcurrencyControlService {
 	 * Release capacity back so the next queued execution can proceed, if the resulting capacity allows.
 	 */
 	release({ mode }: { mode: ExecutionMode }) {
+		if (!this.isEnabled) return;
+
 		this.getQueue(mode).dequeue();
 	}
 
@@ -62,6 +69,8 @@ export class ConcurrencyControlService {
 	 * Remove an execution from a concurrency control queue, releasing capacity back.
 	 */
 	remove({ mode, executionId }: { mode: ExecutionMode; executionId: string }) {
+		if (!this.isEnabled) return;
+
 		const wasRemoved = this.getQueue(mode).remove(executionId);
 
 		if (wasRemoved) this.release({ mode });
