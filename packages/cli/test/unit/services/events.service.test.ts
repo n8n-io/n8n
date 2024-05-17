@@ -18,9 +18,11 @@ import { EventsService } from '@/services/events.service';
 import { UserService } from '@/services/user.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { mockInstance } from '../../shared/mocking';
+import type { Project } from '@/databases/entities/Project';
 
 describe('EventsService', () => {
 	const fakeUser = mock<User>({ id: 'abcde-fghij' });
+	const fakeProject = mock<Project>({ id: '12345-67890', type: 'personal' });
 	const ownershipService = mockInstance(OwnershipService);
 	const userService = mockInstance(UserService);
 	const globalConfig = Container.get(GlobalConfig);
@@ -38,7 +40,8 @@ describe('EventsService', () => {
 
 	config.set('diagnostics.enabled', true);
 	config.set('deployment.type', 'n8n-testing');
-	mocked(ownershipService.getWorkflowOwnerCached).mockResolvedValue(fakeUser);
+	mocked(ownershipService.getWorkflowProjectCached).mockResolvedValue(fakeProject);
+	mocked(ownershipService.getProjectOwnerCached).mockResolvedValue(fakeUser);
 	const updateSettingsMock = jest.spyOn(userService, 'updateSettings').mockImplementation();
 
 	const eventsService = new EventsService(
@@ -92,6 +95,7 @@ describe('EventsService', () => {
 			expect(updateSettingsMock).toHaveBeenCalledTimes(1);
 			expect(onFirstProductionWorkflowSuccess).toBeCalledTimes(1);
 			expect(onFirstProductionWorkflowSuccess).toHaveBeenNthCalledWith(1, {
+				project_id: fakeProject.id,
 				user_id: fakeUser.id,
 				workflow_id: workflow.id,
 			});
@@ -159,6 +163,7 @@ describe('EventsService', () => {
 			expect(onFirstWorkflowDataLoad).toBeCalledTimes(1);
 			expect(onFirstWorkflowDataLoad).toHaveBeenNthCalledWith(1, {
 				user_id: fakeUser.id,
+				project_id: fakeProject.id,
 				workflow_id: workflowId,
 				node_type: node.type,
 				node_id: node.id,
@@ -186,6 +191,7 @@ describe('EventsService', () => {
 			expect(onFirstWorkflowDataLoad).toBeCalledTimes(1);
 			expect(onFirstWorkflowDataLoad).toHaveBeenNthCalledWith(1, {
 				user_id: fakeUser.id,
+				project_id: fakeProject.id,
 				workflow_id: workflowId,
 				node_type: node.type,
 				node_id: node.id,

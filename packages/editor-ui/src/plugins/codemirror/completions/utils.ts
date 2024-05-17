@@ -164,13 +164,18 @@ export const stripExcessParens = (context: CompletionContext) => (option: Comple
 	return option;
 };
 
-export const getDefaultArgs = (doc?: DocMetadata): unknown[] => {
-	return doc?.args?.map((arg) => arg.default).filter(Boolean) ?? [];
+export const getDefaultArgs = (doc?: DocMetadata): string[] => {
+	return (
+		doc?.args
+			?.filter((arg) => !arg.optional)
+			.map((arg) => arg.default)
+			.filter((def): def is string => !!def) ?? []
+	);
 };
 
 export const insertDefaultArgs = (label: string, args: unknown[]): string => {
 	if (!label.endsWith('()')) return label;
-	const argList = args.map((arg) => JSON.stringify(arg)).join(', ');
+	const argList = args.join(', ');
 	const fnName = label.replace('()', '');
 
 	return `${fnName}(${argList})`;
@@ -239,7 +244,7 @@ export const applyBracketAccessCompletion = (
 
 export const hasRequiredArgs = (doc?: DocMetadata): boolean => {
 	if (!doc) return false;
-	const requiredArgs = doc?.args?.filter((arg) => !arg.name.endsWith('?')) ?? [];
+	const requiredArgs = doc?.args?.filter((arg) => !arg.name.endsWith('?') && !arg.optional) ?? [];
 	return requiredArgs.length > 0;
 };
 

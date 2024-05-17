@@ -31,7 +31,7 @@
 						{{
 							$locale.baseText('runData.aiContentBlock.tokens', {
 								interpolate: {
-									count: consumedTokensSum?.totalTokens.toString()!,
+									count: formatTokenUsageCount(consumedTokensSum?.totalTokens ?? 0),
 								},
 							})
 						}}
@@ -42,7 +42,7 @@
 									{{
 										$locale.baseText('runData.aiContentBlock.tokens', {
 											interpolate: {
-												count: consumedTokensSum?.promptTokens.toString()!,
+												count: formatTokenUsageCount(consumedTokensSum?.promptTokens ?? 0),
 											},
 										})
 									}}
@@ -53,7 +53,7 @@
 									{{
 										$locale.baseText('runData.aiContentBlock.tokens', {
 											interpolate: {
-												count: consumedTokensSum?.completionTokens.toString()!,
+												count: formatTokenUsageCount(consumedTokensSum?.completionTokens ?? 0),
 											},
 										})
 									}}
@@ -75,12 +75,7 @@
 import type { IAiData, IAiDataContent } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type {
-	IDataObject,
-	INodeExecutionData,
-	INodeTypeDescription,
-	NodeConnectionType,
-} from 'n8n-workflow';
+import type { INodeExecutionData, INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
 import { computed } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import AiRunContentBlock from './AiRunContentBlock.vue';
@@ -105,12 +100,13 @@ type TokenUsageData = {
 	promptTokens: number;
 	totalTokens: number;
 };
+
 const consumedTokensSum = computed(() => {
 	// eslint-disable-next-line @typescript-eslint/no-use-before-define
-	const consumedTokensSum1 = outputRun.value?.data?.reduce(
+	const tokenUsage = outputRun.value?.data?.reduce(
 		(acc: TokenUsageData, curr: INodeExecutionData) => {
-			const response = curr.json?.response as IDataObject;
-			const tokenUsageData = (response?.llmOutput as IDataObject)?.tokenUsage as TokenUsageData;
+			const tokenUsageData = (curr.json?.tokenUsage ??
+				curr.json?.tokenUsageEstimate) as TokenUsageData;
 
 			if (!tokenUsageData) return acc;
 
@@ -127,9 +123,16 @@ const consumedTokensSum = computed(() => {
 		},
 	);
 
-	return consumedTokensSum1;
+	return tokenUsage;
 });
 
+const usingTokensEstimates = computed(() => {
+	return outputRun.value?.data?.some((d) => d.json?.tokenUsageEstimate);
+});
+
+function formatTokenUsageCount(count: number) {
+	return usingTokensEstimates.value ? `~${count}` : count.toString();
+}
 function extractRunMeta(run: IAiDataContent) {
 	const uiNode = workflowsStore.getNodeByName(props.inputData.node);
 	const nodeType = nodeTypesStore.getNodeType(uiNode?.type ?? '');

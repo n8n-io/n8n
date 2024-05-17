@@ -84,17 +84,6 @@ export default defineComponent({
 			} as IWorkflowSaveSettings,
 		};
 	},
-	watch: {
-		workflowSettings(newSettings: IWorkflowSettings) {
-			this.updateSettings(newSettings);
-		},
-	},
-	mounted() {
-		this.defaultValues.saveFailedExecutions = this.settingsStore.saveDataErrorExecution;
-		this.defaultValues.saveSuccessfulExecutions = this.settingsStore.saveDataSuccessExecution;
-		this.defaultValues.saveManualExecutions = this.settingsStore.saveManualExecutions;
-		this.updateSettings(this.workflowSettings);
-	},
 	computed: {
 		...mapStores(useRootStore, useSettingsStore, useUIStore, useWorkflowsStore),
 		accordionItems(): object[] {
@@ -182,6 +171,17 @@ export default defineComponent({
 			return this.workflowsStore.workflowTags;
 		},
 	},
+	watch: {
+		workflowSettings(newSettings: IWorkflowSettings) {
+			this.updateSettings(newSettings);
+		},
+	},
+	mounted() {
+		this.defaultValues.saveFailedExecutions = this.settingsStore.saveDataErrorExecution;
+		this.defaultValues.saveSuccessfulExecutions = this.settingsStore.saveDataSuccessExecution;
+		this.defaultValues.saveManualExecutions = this.settingsStore.saveManualExecutions;
+		this.updateSettings(this.workflowSettings);
+	},
 	methods: {
 		updateSettings(workflowSettings: IWorkflowSettings): void {
 			this.workflowSaveSettings.saveFailedExecutions =
@@ -209,15 +209,19 @@ export default defineComponent({
 				this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 			}
 		},
-		openWorkflowSettings(event: MouseEvent): void {
+		openWorkflowSettings(): void {
 			this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 		},
-		async onSaveWorkflowClick(event: MouseEvent): void {
-			let currentId = undefined;
+		async onSaveWorkflowClick(): Promise<void> {
+			let currentId: string | undefined = undefined;
 			if (this.currentWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 				currentId = this.currentWorkflowId;
 			} else if (this.$route.params.name && this.$route.params.name !== 'new') {
-				currentId = this.$route.params.name;
+				const routeName = this.$route.params.name;
+				currentId = Array.isArray(routeName) ? routeName[0] : routeName;
+			}
+			if (!currentId) {
+				return;
 			}
 			const saved = await this.workflowHelpers.saveCurrentWorkflow({
 				id: currentId,

@@ -132,6 +132,7 @@ describe('GET /executions/:id', () => {
 	});
 
 	test('member should be able to fetch executions of workflows shared with him', async () => {
+		testServer.license.enable('feat:sharing');
 		const workflow = await createWorkflow({}, user1);
 
 		const execution = await createSuccessfulExecution(workflow);
@@ -434,6 +435,7 @@ describe('GET /executions', () => {
 	});
 
 	test('member should also see executions of workflows shared with him', async () => {
+		testServer.license.enable('feat:sharing');
 		const [firstWorkflowForUser1, secondWorkflowForUser1] = await createManyWorkflows(2, {}, user1);
 		await createManyExecutions(2, firstWorkflowForUser1, createSuccessfulExecution);
 		await createManyExecutions(2, secondWorkflowForUser1, createSuccessfulExecution);

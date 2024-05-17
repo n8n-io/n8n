@@ -38,7 +38,6 @@ import type {
 import { isString } from '@/utils/typeGuards';
 import { isObject } from '@/utils/objectUtils';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
@@ -46,7 +45,6 @@ import { get } from 'lodash-es';
 import { useI18n } from './useI18n';
 import { EnableNodeToggleCommand } from '@/models/history';
 import { useTelemetry } from './useTelemetry';
-import { getCredentialPermissions } from '@/permissions';
 import { hasPermission } from '@/rbac/permissions';
 import type { N8nPlusEndpoint } from '@/plugins/jsplumb/N8nPlusEndpointType';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
@@ -430,14 +428,7 @@ export function useNodeHelpers() {
 					};
 				}
 
-				const usersStore = useUsersStore();
-				const currentUser = usersStore.currentUser;
-				userCredentials = credentialsStore
-					.getCredentialsByType(credentialTypeDescription.name)
-					.filter((credential: ICredentialsResponse) => {
-						const permissions = getCredentialPermissions(currentUser, credential);
-						return permissions.use;
-					});
+				userCredentials = credentialsStore.getCredentialsByType(credentialTypeDescription.name);
 
 				if (userCredentials === null) {
 					userCredentials = [];

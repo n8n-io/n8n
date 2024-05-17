@@ -1,16 +1,16 @@
-<script lang="ts">
+<script setup lang="ts">
+import type { InputSize } from '@/types';
 import { ElInputNumber } from 'element-plus';
-import { defineComponent } from 'vue';
 
-export default defineComponent({
-	name: 'N8nInputNumber',
-	components: {
-		ElInputNumber,
-	},
-	props: {
-		...ElInputNumber.props,
-	},
-});
+type InputNumberProps = {
+	size?: InputSize;
+	min?: number;
+	max?: number;
+	step?: number;
+	precision?: number;
+};
+
+defineProps<InputNumberProps>();
 </script>
 
 <template>
