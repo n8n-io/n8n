@@ -60,7 +60,11 @@
 						@select="onTabSelect"
 					></n8n-menu>
 				</div>
-				<div v-if="activeTab === 'connection'" ref="content" :class="$style.mainContent">
+				<div
+					v-if="activeTab === 'connection' && credentialType"
+					ref="content"
+					:class="$style.mainContent"
+				>
 					<CredentialConfig
 						:credential-type="credentialType"
 						:credential-properties="credentialProperties"

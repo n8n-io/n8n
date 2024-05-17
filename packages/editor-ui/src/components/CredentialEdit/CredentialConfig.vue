@@ -142,7 +142,7 @@ import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 
-import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 import { getAppNameFromCredType, isCommunityPackageName } from '@/utils/nodeTypesUtils';
 
 import Banner from '../Banner.vue';
@@ -177,13 +177,15 @@ export default defineComponent({
 	},
 	props: {
 		credentialType: {
-			type: Object,
+			type: Object as PropType<ICredentialType>,
+			required: true,
 		},
 		credentialProperties: {
-			type: Array,
+			type: Array as PropType<INodeProperties[]>,
+			required: true,
 		},
 		parentTypes: {
-			type: Array,
+			type: Array as PropType<string[]>,
 		},
 		credentialData: {},
 		credentialId: {
