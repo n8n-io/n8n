@@ -23,6 +23,8 @@ const props = withDefaults(defineProps<ColorPickerProps>(), {
 	showAlpha: false,
 	colorFormat: 'hex',
 	popperClass: '',
+	predefine: undefined,
+	modelValue: undefined,
 	showInput: true,
 	name: uid('color-picker'),
 });
@@ -30,7 +32,7 @@ const props = withDefaults(defineProps<ColorPickerProps>(), {
 const color = ref(props.modelValue);
 
 const colorPickerProps = computed(() => {
-	const { showInput, ...rest } = props;
+	const { showInput, modelValue, size, ...rest } = props;
 	return rest;
 });
 
@@ -50,6 +52,8 @@ const model = computed({
 	},
 });
 
+const resolvedSize = computed(() => props.size as '' | 'small' | 'large' | 'default' | undefined);
+
 const onChange = (value: string) => {
 	emit('change', value);
 };
@@ -68,6 +72,7 @@ const onActiveChange = (value: string) => {
 		<ElColorPicker
 			v-model="model"
 			v-bind="colorPickerProps"
+			:size="resolvedSize"
 			@change="onChange"
 			@active-change="onActiveChange"
 		/>
@@ -75,7 +80,7 @@ const onActiveChange = (value: string) => {
 			v-if="showInput"
 			:class="$style.input"
 			:disabled="props.disabled"
-			:size="props.size"
+			:size="size"
 			:model-value="color"
 			:name="name"
 			type="text"

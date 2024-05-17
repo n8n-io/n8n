@@ -86,13 +86,16 @@ export default defineComponent({
 	},
 	computed: {
 		listeners() {
-			return Object.entries(this.$attrs).reduce<Record<string, () => {}>>((acc, [key, value]) => {
-				if (/^on[A-Z]/.test(key)) {
-					acc[key] = value;
-				}
+			return Object.entries(this.$attrs).reduce<Record<string, (...args: unknown[]) => {}>>(
+				(acc, [key, value]) => {
+					if (/^on[A-Z]/.test(key)) {
+						acc[key] = value as (...args: unknown[]) => {};
+					}
 
-				return acc;
-			}, {});
+					return acc;
+				},
+				{},
+			);
 		},
 		computedSize(): InnerSelectRef['$props']['size'] {
 			if (this.size === 'medium') {

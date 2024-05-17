@@ -1,11 +1,18 @@
 <template>
 	<ElInput
 		ref="innerInput"
-		:size="computedSize"
+		:model-value="modelValue"
+		:size="resolvedSize"
 		:class="['n8n-input', ...classes]"
 		:autocomplete="autocomplete"
 		:name="name"
-		v-bind="{ ...$props, ...$attrs }"
+		:placeholder="placeholder"
+		:disabled="disabled"
+		:readonly="readonly"
+		:clearable="clearable"
+		:rows="rows"
+		:title="title"
+		v-bind="$attrs"
 	>
 		<template v-if="$slots.prepend" #prepend>
 			<slot name="prepend" />
@@ -46,6 +53,7 @@ interface InputProps {
 defineOptions({ name: 'N8nInput' });
 const props = withDefaults(defineProps<InputProps>(), {
 	modelValue: '',
+	type: 'text',
 	size: 'large',
 	placeholder: '',
 	disabled: false,
@@ -58,7 +66,15 @@ const props = withDefaults(defineProps<InputProps>(), {
 	autocomplete: 'off',
 });
 
-const computedSize = computed(() => (props.size === 'xlarge' ? undefined : props.size));
+const resolvedSize = computed(
+	() =>
+		(props.size === 'xlarge' ? undefined : props.size) as
+			| ''
+			| 'small'
+			| 'large'
+			| 'default'
+			| undefined,
+);
 
 const classes = computed(() => {
 	const applied: string[] = [];

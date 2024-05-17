@@ -59,9 +59,9 @@
 				v-else
 				ref="inputRef"
 				:name="name"
-				:type="type"
+				:type="type as InputType"
 				:placeholder="placeholder"
-				:model-value="modelValue"
+				:model-value="modelValue as InputModelValue"
 				:maxlength="maxlength"
 				:autocomplete="autocomplete"
 				:disabled="disabled"
@@ -103,6 +103,9 @@ import type { Rule, RuleGroup, IValidator, Validatable, FormState } from '../../
 
 import { t } from '../../locale';
 
+type InputModelValue = string | number | undefined;
+type InputType = 'number' | 'text' | 'email' | 'password' | 'textarea' | undefined;
+
 export interface Props {
 	modelValue: Validatable;
 	label: string;
@@ -120,10 +123,10 @@ export interface Props {
 	validators?: { [key: string]: IValidator | RuleGroup };
 	maxlength?: number;
 	options?: Array<{ value: string | number; label: string; disabled?: boolean }>;
-	autocomplete?: string;
+	autocomplete?: 'off' | 'autocomplete';
 	name?: string;
 	focusInitially?: boolean;
-	labelSize?: 'small' | 'medium';
+	labelSize?: 'small' | 'medium' | 'large';
 	disabled?: boolean;
 	activeLabel?: string;
 	activeColor?: string;
@@ -225,9 +228,9 @@ const validationError = computed<string | null>(() => {
 	const error = getInputValidationError();
 
 	if (error) {
-		if (error.messageKey) {
-			return t(error.messageKey, error.options);
-		} else {
+		if ('messageKey' in error) {
+			return t(error.messageKey, error.options as object);
+		} else if ('message' in error) {
 			return error.message;
 		}
 	}
