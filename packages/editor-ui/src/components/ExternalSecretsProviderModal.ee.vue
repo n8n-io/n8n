@@ -2,7 +2,7 @@
 import Modal from './Modal.vue';
 import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY, MODAL_CONFIRM } from '@/constants';
 import { computed, onMounted, ref } from 'vue';
-import type { PropType, Ref } from 'vue';
+import type { PropType } from 'vue';
 import type { EventBus } from 'n8n-design-system/utils';
 import { useExternalSecretsProvider } from '@/composables/useExternalSecretsProvider';
 import { useI18n } from '@/composables/useI18n';
