@@ -62,7 +62,7 @@
 		/>
 
 		<template v-if="credentialPermissions.update">
-			<n8n-notice v-if="documentationUrl && credentialProperties?.length" theme="warning">
+			<n8n-notice v-if="documentationUrl && credentialProperties.length" theme="warning">
 				{{ $locale.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
 				<span class="ml-4xs">
 					<n8n-link :to="documentationUrl" size="small" bold @click="onDocumentationUrlClick">
@@ -72,7 +72,7 @@
 			</n8n-notice>
 
 			<AuthTypeSelector
-				v-if="showAuthTypeSelector && isNewCredential && credentialType"
+				v-if="showAuthTypeSelector && isNewCredential"
 				:credential-type="credentialType"
 				@auth-type-changed="onAuthTypeChange"
 			/>
@@ -232,10 +232,7 @@ export default defineComponent({
 	},
 	data() {
 		return {
-			EnterpriseEditionFeature: {
-				Sharing: EnterpriseEditionFeature.Sharing,
-				ExternalSecrets: EnterpriseEditionFeature.ExternalSecrets,
-			},
+			EnterpriseEditionFeature,
 		};
 	},
 	async beforeMount() {
