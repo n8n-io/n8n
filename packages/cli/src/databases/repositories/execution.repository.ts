@@ -345,7 +345,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 					executionIds: deleteConditions.ids,
 				});
 			}
-			return;
+			return [];
 		}
 
 		const ids = executions.map(({ id, workflowId }) => ({
@@ -361,6 +361,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				this.binaryDataService.deleteMany(batch),
 			]);
 		} while (ids.length > 0);
+
+		return executions.map(({ id }) => id);
 	}
 
 	async getIdsSince(date: Date) {

@@ -36,6 +36,8 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import config from '@/config';
 import { WaitTracker } from '@/WaitTracker';
 import type { ExecutionEntity } from '@/databases/entities/ExecutionEntity';
+import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
+import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 
 export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
@@ -85,6 +87,7 @@ export class ExecutionService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly waitTracker: WaitTracker,
 		private readonly workflowRunner: WorkflowRunner,
+		private readonly concurrencyControl: ConcurrencyControlService,
 	) {}
 
 	async findOne(
@@ -128,6 +131,8 @@ export class ExecutionService {
 			);
 			throw new NotFoundError(`The execution with the ID "${executionId}" does not exist.`);
 		}
+
+		if (execution.status === 'new') throw new QueuedExecutionRetryError();
 
 		if (execution.finished) {
 			throw new ApplicationError('The execution succeeded, so it cannot be retried.');
@@ -238,7 +243,7 @@ export class ExecutionService {
 			}
 		}
 
-		return await this.executionRepository.deleteExecutionsByFilter(
+		const deletedExecutionIds = await this.executionRepository.deleteExecutionsByFilter(
 			requestFilters,
 			sharedWorkflowIds,
 			{
@@ -246,6 +251,8 @@ export class ExecutionService {
 				ids,
 			},
 		);
+
+		this.concurrencyControl.removeMany(deletedExecutionIds);
 	}
 
 	async createErrorExecution(

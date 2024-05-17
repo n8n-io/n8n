@@ -254,6 +254,21 @@ export const schema = {
 			env: 'EXECUTIONS_MODE',
 		},
 
+		concurrency: {
+			productionCap: {
+				doc: 'Max number of production executions allowed to run concurrently in main mode. -1 to disable.',
+				format: Number,
+				default: -1,
+				env: 'N8N_CONCURRENCY_PRODUCTION_CAP',
+			},
+			manualCap: {
+				doc: 'Max number of manual executions allowed to run concurrently in manual mode. -1 to disable.',
+				format: Number,
+				default: -1,
+				env: 'N8N_CONCURRENCY_MANUAL_CAP',
+			},
+		},
+
 		// A Workflow times out and gets canceled after this time (seconds).
 		// If the workflow is executed in the main process a soft timeout
 		// is executed (takes effect after the current node finishes).

@@ -9,6 +9,7 @@ import { getSharedWorkflowIds } from '../workflows/workflows.service';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import { InternalHooks } from '@/InternalHooks';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 
 export = {
 	deleteExecution: [
@@ -36,6 +37,11 @@ export = {
 			await Container.get(ExecutionRepository).hardDelete({
 				workflowId: execution.workflowId,
 				executionId: execution.id,
+			});
+
+			Container.get(ConcurrencyControlService).remove({
+				executionId: execution.id,
+				mode: execution.mode,
 			});
 
 			execution.id = id;
