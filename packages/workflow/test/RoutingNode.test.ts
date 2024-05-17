@@ -7,23 +7,24 @@ import type {
 	INodeProperties,
 	IExecuteSingleFunctions,
 	IHttpRequestOptions,
-	IN8nHttpFullResponse,
 	ITaskDataConnections,
 	INodeExecuteFunctions,
 	IN8nRequestOperations,
 	INodeCredentialDescription,
 	IExecuteData,
 	INodeTypeDescription,
+	IWorkflowExecuteAdditionalData,
+	IExecuteFunctions,
 } from '@/Interfaces';
 import { RoutingNode } from '@/RoutingNode';
 import { Workflow } from '@/Workflow';
 
 import * as Helpers from './Helpers';
+import { mock } from 'jest-mock-extended';
 
 const postReceiveFunction1 = async function (
 	this: IExecuteSingleFunctions,
 	items: INodeExecutionData[],
-	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
 	items.forEach((item) => (item.json1 = { success: true }));
 	return items;
@@ -39,6 +40,8 @@ const preSendFunction1 = async function (
 };
 
 describe('RoutingNode', () => {
+	const additionalData = mock<IWorkflowExecuteAdditionalData>();
+
 	describe('getRequestOptionsFromParameters', () => {
 		const tests: Array<{
 			description: string;
@@ -659,7 +662,6 @@ describe('RoutingNode', () => {
 		const itemIndex = 0;
 		const connectionInputData: INodeExecutionData[] = [];
 		const runExecutionData: IRunExecutionData = { resultData: { runData: {} } };
-		const additionalData = Helpers.WorkflowExecuteAdditionalData();
 		const path = '';
 		const nodeType = nodeTypes.getByNameAndVersion(node.type);
 
@@ -693,17 +695,8 @@ describe('RoutingNode', () => {
 					workflow,
 					runExecutionData,
 					runIndex,
-					connectionInputData,
-					{},
 					node,
 					itemIndex,
-					additionalData,
-					{
-						node,
-						data: {},
-						source: null,
-					},
-					mode,
 				);
 
 				const result = routingNode.getRequestOptionsFromParameters(
@@ -1704,7 +1697,6 @@ describe('RoutingNode', () => {
 		const itemIndex = 0;
 		const connectionInputData: INodeExecutionData[] = [];
 		const runExecutionData: IRunExecutionData = { resultData: { runData: {} } };
-		const additionalData = Helpers.WorkflowExecuteAdditionalData();
 		const nodeType = nodeTypes.getByNameAndVersion(baseNode.type);
 
 		const inputData: ITaskDataConnections = {
@@ -1751,34 +1743,15 @@ describe('RoutingNode', () => {
 				} as IExecuteData;
 
 				const nodeExecuteFunctions: Partial<INodeExecuteFunctions> = {
-					getExecuteFunctions: () => {
-						return Helpers.getExecuteFunctions(
+					getExecuteFunctions: () => mock<IExecuteFunctions>(),
+					getExecuteSingleFunctions: () =>
+						Helpers.getExecuteSingleFunctions(
 							workflow,
 							runExecutionData,
 							runIndex,
-							connectionInputData,
-							{},
 							node,
 							itemIndex,
-							additionalData,
-							executeData,
-							mode,
-						);
-					},
-					getExecuteSingleFunctions: () => {
-						return Helpers.getExecuteSingleFunctions(
-							workflow,
-							runExecutionData,
-							runIndex,
-							connectionInputData,
-							{},
-							node,
-							itemIndex,
-							additionalData,
-							executeData,
-							mode,
-						);
-					},
+						),
 				};
 
 				const result = await routingNode.runNode(
@@ -1870,7 +1843,6 @@ describe('RoutingNode', () => {
 		const itemIndex = 0;
 		const connectionInputData: INodeExecutionData[] = [];
 		const runExecutionData: IRunExecutionData = { resultData: { runData: {} } };
-		const additionalData = Helpers.WorkflowExecuteAdditionalData();
 		const nodeType = nodeTypes.getByNameAndVersion(baseNode.type);
 
 		const inputData: ITaskDataConnections = {
@@ -1925,32 +1897,13 @@ describe('RoutingNode', () => {
 				let currentItemIndex = 0;
 				for (let iteration = 0; iteration < inputData.main[0]!.length; iteration++) {
 					const nodeExecuteFunctions: Partial<INodeExecuteFunctions> = {
-						getExecuteFunctions: () => {
-							return Helpers.getExecuteFunctions(
-								workflow,
-								runExecutionData,
-								runIndex,
-								connectionInputData,
-								{},
-								node,
-								itemIndex + iteration,
-								additionalData,
-								executeData,
-								mode,
-							);
-						},
 						getExecuteSingleFunctions: () => {
 							return Helpers.getExecuteSingleFunctions(
 								workflow,
 								runExecutionData,
 								runIndex,
-								connectionInputData,
-								{},
 								node,
 								itemIndex + iteration,
-								additionalData,
-								executeData,
-								mode,
 							);
 						},
 					};
