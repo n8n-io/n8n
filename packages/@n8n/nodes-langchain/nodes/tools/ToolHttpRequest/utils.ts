@@ -14,12 +14,6 @@ import unset from 'lodash/unset';
 import cheerio from 'cheerio';
 import { convert } from 'html-to-text';
 
-export type ToolParameter = {
-	name: string;
-	type: 'infer from description' | 'string' | 'number' | 'boolean';
-	description: string;
-};
-
 export const getOAuth2AdditionalParameters = (nodeCredentialType: string) => {
 	const oAuth2Options: { [credentialType: string]: IOAuth2Options } = {
 		bitlyOAuth2Api: {

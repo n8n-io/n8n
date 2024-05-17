@@ -16,7 +16,6 @@ import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { DynamicTool } from '@langchain/core/tools';
 
 import {
-	type ToolParameter,
 	configureHttpRequestFunction,
 	prettifyToolName,
 	configureResponseOptimizer,
@@ -27,6 +26,9 @@ import {
 	optimizeResponseProperties,
 	parametersCollection,
 } from './descriptions';
+
+import { QUERY_PARAMETERS_PLACEHOLDER } from './interfaces';
+import type { ParameterInputType, ToolParameter } from './interfaces';
 
 export class ToolHttpRequest implements INodeType {
 	description: INodeTypeDescription = {
@@ -127,6 +129,125 @@ export class ToolHttpRequest implements INodeType {
 				validateType: 'url',
 			},
 			...authenticationProperties,
+			//---------------------
+			{
+				displayName: 'Send Query Parameters',
+				name: 'sendQuery',
+				type: 'boolean',
+				default: false,
+				noDataExpression: true,
+				description: 'Whether the request has query params or not',
+			},
+			{
+				displayName: 'Specify Query Parameters',
+				name: 'specifyQuery',
+				type: 'options',
+				displayOptions: {
+					show: {
+						sendQuery: [true],
+					},
+				},
+				options: [
+					{
+						name: 'Using Fields Below',
+						value: 'keypair',
+					},
+					{
+						name: 'Using JSON Below',
+						value: 'json',
+					},
+					{
+						name: 'Let Model Specify All',
+						value: 'model',
+					},
+				],
+				default: 'keypair',
+			},
+			{
+				displayName: 'Query Parameters',
+				name: 'queryParameters',
+				type: 'fixedCollection',
+				displayOptions: {
+					show: {
+						sendQuery: [true],
+						specifyQuery: ['keypair'],
+					},
+				},
+				typeOptions: {
+					multipleValues: true,
+				},
+				placeholder: 'Add Parameter',
+				default: {
+					parameters: [
+						{
+							name: '',
+							value: '',
+						},
+					],
+				},
+				options: [
+					{
+						name: 'parameters',
+						displayName: 'Parameter',
+						values: [
+							{
+								displayName: 'Name',
+								name: 'name',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Value Provided',
+								name: 'valueProvider',
+								type: 'options',
+								options: [
+									{
+										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+										name: 'By Model (and is required)',
+										value: 'modelRequired',
+									},
+									{
+										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+										name: 'By Model (but is optional)',
+										value: 'modelOptional',
+									},
+									{
+										name: 'Using Field Below',
+										value: 'fieldValue',
+									},
+								],
+								default: 'modelRequired',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								hint: 'Use a {placeholder} for any data to be filled in by the model',
+								displayOptions: {
+									show: {
+										valueProvider: ['fieldValue'],
+									},
+								},
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'JSON',
+				name: 'jsonQuery',
+				type: 'json',
+				hint: 'Use a {placeholder} for any data to be filled in by the model',
+				displayOptions: {
+					show: {
+						sendQuery: [true],
+						specifyQuery: ['json'],
+					},
+				},
+				default: '',
+			},
+			//---------------------
 			{
 				displayName: 'Define Path',
 				name: 'sendInPath',
@@ -179,46 +300,6 @@ export class ToolHttpRequest implements INodeType {
 				},
 			},
 			...optimizeResponseProperties,
-			{
-				displayName: 'Options',
-				name: 'options',
-				placeholder: 'Add Option',
-				description: 'Data to send in the request in addition to data provided by LLM',
-				type: 'collection',
-				default: {},
-				options: [
-					{
-						displayName: 'Headers',
-						name: 'headers',
-						type: 'json',
-						typeOptions: {
-							rows: 2,
-						},
-						default: '{\n  "Authorization": "Bearer my_token"\n}\n',
-						validateType: 'object',
-					},
-					{
-						displayName: 'Extra Body Parameters',
-						name: 'bodyParameters',
-						type: 'json',
-						typeOptions: {
-							rows: 2,
-						},
-						default: '{\n  "id": "some id"\n}\n',
-						validateType: 'object',
-					},
-					{
-						displayName: 'Extra Query Parameters',
-						name: 'queryParameters',
-						type: 'json',
-						typeOptions: {
-							rows: 2,
-						},
-						default: '{\n  "limit": 20\n}\n',
-						validateType: 'object',
-					},
-				],
-			},
 		],
 	};
 
@@ -246,37 +327,65 @@ export class ToolHttpRequest implements INodeType {
 				);
 			}
 		}
-		const options = this.getNodeParameter('options', itemIndex, {});
-
-		let headers = (options?.headers as IDataObject) ?? {};
-		let body = (options?.bodyParameters as IDataObject) ?? {};
-		let qs = (options?.queryParameters as IDataObject) ?? {};
-
-		if (typeof headers === 'string') {
-			headers = jsonParse<IDataObject>(headers, {
-				errorMessage: 'Invalid JSON in "Extra Request Options -> Headers" field',
-			});
-		}
-
-		if (typeof body === 'string') {
-			body = jsonParse<IDataObject>(body, {
-				errorMessage: 'Invalid JSON in "Extra Request Options -> Body Parameters" field',
-			});
-		}
-
-		if (typeof qs === 'string') {
-			qs = jsonParse<IDataObject>(qs, {
-				errorMessage: 'Invalid JSON in "Extra Request Options -> Query Parameters" field',
-			});
-		}
 
 		const httpRequest = await configureHttpRequestFunction(this, authentication, itemIndex);
 		const optimizeResponse = configureResponseOptimizer(this, itemIndex);
 
-		// let path = this.getNodeParameter('path', itemIndex, '') as string;
-		// if (path && path[0] !== '/') {
-		// 	path = '/' + path;
-		// }
+		const qs: IDataObject = {};
+		const headers: IDataObject = {};
+		const body: IDataObject = {};
+
+		const parameters: ToolParameter[] = [];
+		const sendInQuery: string[] = [];
+		const sendInPath: string[] = [];
+		const sendInBody: string[] = [];
+
+		const sendQuery = this.getNodeParameter('sendQuery', itemIndex, false) as boolean;
+
+		if (sendQuery) {
+			const specifyQuery = this.getNodeParameter('specifyQuery', itemIndex) as ParameterInputType;
+
+			if (specifyQuery === 'model') {
+				parameters.push({
+					name: QUERY_PARAMETERS_PLACEHOLDER,
+					description:
+						'This has to be valid query parameters string in the form of keypair, e.g. ?key1=value1&key2=value2, must starts with ?, must be valid url encoded. You must decide what shoul be sent in this request as query parameters',
+					type: 'string',
+					required: true,
+				});
+			}
+
+			if (specifyQuery === 'keypair') {
+				const queryParametersValues = this.getNodeParameter(
+					'queryParameters.values',
+					itemIndex,
+					[],
+				) as Array<{
+					name: string;
+					valueProvider: 'modelRequired' | 'modelOptional' | 'fieldValue';
+					value: string;
+				}>;
+
+				for (const entry of queryParametersValues) {
+					if (entry.valueProvider.includes('model')) {
+						sendInQuery.push(entry.name);
+						parameters.push({
+							name: entry.name,
+							description: entry.value,
+							type: 'string',
+							required: entry.valueProvider === 'modelRequired',
+						});
+					} else {
+						qs[entry.name] = entry.value;
+					}
+				}
+			}
+
+			if (specifyQuery === 'json') {
+				//TODO: Add support for JSON with placeholders
+			}
+		}
+
 		const pathParameters = this.getNodeParameter(
 			'pathParameters.values',
 			itemIndex,
@@ -293,24 +402,13 @@ export class ToolHttpRequest implements INodeType {
 			[],
 		) as ToolParameter[];
 
-		// if (pathParameters.length) {
-		// 	for (const parameter of pathParameters) {
-		// 		if (path.indexOf(`{${parameter.name}}`) === -1) {
-		// 			throw new NodeOperationError(
-		// 				this.getNode(),
-		// 				`'Path' does not contain parameter '${parameter.name}', remove it from 'Path Parameters' or include in 'Path' as {${parameter.name}}`,
-		// 			);
-		// 		}
-		// 	}
-		// }
-
-		const parameters = [...pathParameters, ...queryParameters, ...bodyParameters];
+		parameters.push(...pathParameters, ...queryParameters, ...bodyParameters);
 
 		let description = toolDescription;
 		if (parameters.length) {
 			description +=
-				` extract from prompt ${parameters.map((parameter) => `${parameter.name}(description: ${parameter.description}, type: ${parameter.type})`).join(', ')}` +
-				'send as JSON';
+				` expecting following parameters, required would be marked as such, extract from prompt, if possible, ${parameters.map((parameter) => `${parameter.name}(description: ${parameter.description}, type: ${parameter.type}, required: ${parameter.required})`).join(', ')}` +
+				'send as JSON object';
 		}
 
 		return {
@@ -339,6 +437,15 @@ export class ToolHttpRequest implements INodeType {
 								const parameterValue = encodeURIComponent(String(toolParameters[parameterName]));
 								url = url.replace(`{${parameterName}}`, parameterValue);
 							}
+						}
+
+						// Add query parameters to url defined by LLM
+						if (toolParameters[QUERY_PARAMETERS_PLACEHOLDER]) {
+							let toolParametersString = String(toolParameters[QUERY_PARAMETERS_PLACEHOLDER]);
+							if (!toolParametersString.startsWith('?')) {
+								toolParametersString = `?${encodeURIComponent(toolParametersString)}`;
+							}
+							url = `${url}${toolParameters[QUERY_PARAMETERS_PLACEHOLDER]}`;
 						}
 
 						if (queryParameters.length) {
