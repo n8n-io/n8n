@@ -634,8 +634,7 @@ function showCreateWorkflowSuccessToast(id?: string) {
 						<template #content>
 							<i18n-t
 								:keypath="
-									uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description
-										.tooltip
+									uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description.tooltip
 								"
 								tag="span"
 							>
@@ -643,8 +642,7 @@ function showCreateWorkflowSuccessToast(id?: string) {
 									<a @click="goToUpgrade">
 										{{
 											$locale.baseText(
-												uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable
-													.button as BaseTextKey,
+												uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.button,
 											)
 										}}
 									</a>
