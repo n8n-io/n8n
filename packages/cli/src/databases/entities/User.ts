@@ -18,16 +18,21 @@ import { objectRetriever, lowerCaser } from '../utils/transformers';
 import { WithTimestamps, jsonColumnType } from './AbstractEntity';
 import type { IPersonalizationSurveyAnswers } from '@/Interfaces';
 import type { AuthIdentity } from './AuthIdentity';
-import { ownerPermissions, memberPermissions, adminPermissions } from '@/permissions/roles';
+import {
+	GLOBAL_OWNER_SCOPES,
+	GLOBAL_MEMBER_SCOPES,
+	GLOBAL_ADMIN_SCOPES,
+} from '@/permissions/global-roles';
 import { hasScope, type ScopeOptions, type Scope } from '@n8n/permissions';
+import type { ProjectRelation } from './ProjectRelation';
 
 export type GlobalRole = 'global:owner' | 'global:admin' | 'global:member';
 export type AssignableRole = Exclude<GlobalRole, 'global:owner'>;
 
 const STATIC_SCOPE_MAP: Record<GlobalRole, Scope[]> = {
-	'global:owner': ownerPermissions,
-	'global:member': memberPermissions,
-	'global:admin': adminPermissions,
+	'global:owner': GLOBAL_OWNER_SCOPES,
+	'global:member': GLOBAL_MEMBER_SCOPES,
+	'global:admin': GLOBAL_ADMIN_SCOPES,
 };
 
 @Entity()
@@ -85,6 +90,9 @@ export class User extends WithTimestamps implements IUser {
 	@OneToMany('SharedCredentials', 'user')
 	sharedCredentials: SharedCredentials[];
 
+	@OneToMany('ProjectRelation', 'user')
+	projectRelations: ProjectRelation[];
+
 	@Column({ type: Boolean, default: false })
 	disabled: boolean;
 
@@ -138,6 +146,7 @@ export class User extends WithTimestamps implements IUser {
 			{
 				global: this.globalScopes,
 			},
+			undefined,
 			scopeOptions,
 		);
 	}
@@ -145,5 +154,15 @@ export class User extends WithTimestamps implements IUser {
 	toJSON() {
 		const { password, apiKey, mfaSecret, mfaRecoveryCodes, ...rest } = this;
 		return rest;
+	}
+
+	createPersonalProjectName() {
+		if (this.firstName && this.lastName && this.email) {
+			return `${this.firstName} ${this.lastName} <${this.email}>`;
+		} else if (this.email) {
+			return `<${this.email}>`;
+		} else {
+			return 'Unnamed Project';
+		}
 	}
 }

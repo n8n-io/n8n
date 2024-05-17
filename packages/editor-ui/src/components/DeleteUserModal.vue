@@ -21,30 +21,28 @@
 						}}</n8n-text>
 					</div>
 					<el-radio
-						:model-value="operation"
+						v-model="operation"
 						label="transfer"
-						@update:model-value="() => setOperation('transfer')"
+						@update:model-value="operation = 'transfer'"
 					>
 						<n8n-text color="text-dark">{{
 							$locale.baseText('settings.users.transferWorkflowsAndCredentials')
 						}}</n8n-text>
 					</el-radio>
 					<div v-if="operation === 'transfer'" :class="$style.optionInput">
-						<n8n-input-label :label="$locale.baseText('settings.users.userToTransferTo')">
-							<n8n-user-select
-								:users="usersStore.allUsers"
-								:model-value="transferId"
-								:ignore-ids="ignoreIds"
-								:current-user-id="usersStore.currentUserId"
-								@update:model-value="setTransferId"
-							/>
-						</n8n-input-label>
+						<n8n-text color="text-dark">{{
+							$locale.baseText('settings.users.transferWorkflowsAndCredentials.user')
+						}}</n8n-text>
+						<ProjectSharing
+							v-model="selectedProject"
+							class="pt-2xs"
+							:projects="projects"
+							:placeholder="
+								$locale.baseText('settings.users.transferWorkflowsAndCredentials.placeholder')
+							"
+						/>
 					</div>
-					<el-radio
-						:model-value="operation"
-						label="delete"
-						@update:model-value="() => setOperation('delete')"
-					>
+					<el-radio v-model="operation" label="delete" @update:model-value="operation = 'delete'">
 						<n8n-text color="text-dark">{{
 							$locale.baseText('settings.users.deleteWorkflowsAndCredentials')
 						}}</n8n-text>
@@ -56,9 +54,8 @@
 					>
 						<n8n-input-label :label="$locale.baseText('settings.users.deleteConfirmationMessage')">
 							<n8n-input
-								:model-value="deleteConfirmText"
+								v-model="deleteConfirmText"
 								:placeholder="$locale.baseText('settings.users.deleteConfirmationText')"
-								@update:model-value="setConfirmText"
 							/>
 						</n8n-input-label>
 					</div>
@@ -71,6 +68,7 @@
 				:disabled="!enabled"
 				:label="$locale.baseText('settings.users.delete')"
 				float="right"
+				data-test-id="confirm-delete-user-button"
 				@click="onSubmit"
 			/>
 		</template>
@@ -85,11 +83,15 @@ import type { IUser } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
 import { createEventBus } from 'n8n-design-system/utils';
+import { useProjectsStore } from '@/features/projects/projects.store';
+import type { ProjectListItem, ProjectSharingData } from '@/features/projects/projects.types';
+import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
 
 export default defineComponent({
 	name: 'DeleteUserModal',
 	components: {
 		Modal,
+		ProjectSharing,
 	},
 	props: {
 		modalName: {
@@ -110,12 +112,11 @@ export default defineComponent({
 			loading: false,
 			operation: '',
 			deleteConfirmText: '',
-			transferId: '',
-			ignoreIds: [this.activeId],
+			selectedProject: null as ProjectSharingData | null,
 		};
 	},
 	computed: {
-		...mapStores(useUsersStore),
+		...mapStores(useUsersStore, useProjectsStore),
 		userToDelete(): IUser | null {
 			return this.usersStore.getUserById(this.activeId);
 		},
@@ -138,24 +139,24 @@ export default defineComponent({
 				return true;
 			}
 
-			if (this.operation === 'transfer' && this.transferId) {
+			if (this.operation === 'transfer' && this.selectedProject) {
 				return true;
 			}
 
 			return false;
 		},
+		projects(): ProjectListItem[] {
+			return this.projectsStore.personalProjects.filter(
+				(project) =>
+					project.name !==
+					`${this.userToDelete?.firstName} ${this.userToDelete?.lastName} <${this.userToDelete?.email}>`,
+			);
+		},
+	},
+	async beforeMount() {
+		await this.projectsStore.getAllProjects();
 	},
 	methods: {
-		setOperation(operation: string) {
-			this.operation = operation;
-			this.transferId = '';
-		},
-		setConfirmText(text: string) {
-			this.deleteConfirmText = text;
-		},
-		setTransferId(id: string) {
-			this.transferId = id;
-		},
 		async onSubmit() {
 			try {
 				if (!this.enabled) {
@@ -165,18 +166,18 @@ export default defineComponent({
 				this.loading = true;
 
 				const params = { id: this.activeId } as { id: string; transferId?: string };
-				if (this.operation === 'transfer') {
-					params.transferId = this.transferId;
+				if (this.operation === 'transfer' && this.selectedProject) {
+					params.transferId = this.selectedProject.id;
 				}
 
 				await this.usersStore.deleteUser(params);
 
 				let message = '';
-				if (this.transferId) {
-					const transferUser: IUser | null = this.usersStore.getUserById(this.transferId);
-					if (transferUser) {
+				if (params.transferId) {
+					const transferProject = this.projects.find((project) => project.id === params.transferId);
+					if (transferProject) {
 						message = this.$locale.baseText('settings.users.transferredToUser', {
-							interpolate: { user: transferUser.fullName || '' },
+							interpolate: { projectName: transferProject.name ?? '' },
 						});
 					}
 				}

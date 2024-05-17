@@ -2,7 +2,6 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	DEFAULT_NEW_WORKFLOW_NAME,
 	DUPLICATE_POSTFFIX,
-	EnterpriseEditionFeature,
 	ERROR_TRIGGER_NODE_TYPE,
 	MAX_WORKFLOW_NAME_LENGTH,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
@@ -25,7 +24,6 @@ import type {
 	IStartRunData,
 	IUpdateInformation,
 	IUsedCredential,
-	IUser,
 	IWorkflowDataUpdate,
 	IWorkflowDb,
 	IWorkflowsMap,
@@ -70,11 +68,13 @@ import { isJsonKeyObject, isEmpty, stringSizeInBytes } from '@/utils/typesUtils'
 import { makeRestApiRequest, unflattenExecutionData, ResponseError } from '@/utils/apiUtils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useUsersStore } from '@/stores/users.store';
-import { useSettingsStore } from '@/stores/settings.store';
 import { getCredentialOnlyNodeTypeName } from '@/utils/credentialOnlyNodes';
 import { i18n } from '@/plugins/i18n';
+
 import { computed, ref } from 'vue';
+import { useProjectsStore } from '@/features/projects/projects.store';
+import { useSettingsStore } from './settings.store';
+import { useUsersStore } from './users.store';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -355,9 +355,17 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		);
 	}
 
-	async function fetchAllWorkflows(): Promise<IWorkflowDb[]> {
+	async function fetchAllWorkflows(projectId?: string): Promise<IWorkflowDb[]> {
 		const rootStore = useRootStore();
-		const workflows = await workflowsApi.getWorkflows(rootStore.getRestApiContext);
+
+		const filter = {
+			projectId,
+		};
+
+		const workflows = await workflowsApi.getWorkflows(
+			rootStore.getRestApiContext,
+			isEmpty(filter) ? undefined : filter,
+		);
 		setWorkflows(workflows);
 		return workflows;
 	}
@@ -369,7 +377,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return workflow;
 	}
 
-	async function getNewWorkflowData(name?: string): Promise<INewWorkflowData> {
+	async function getNewWorkflowData(name?: string, projectId?: string): Promise<INewWorkflowData> {
 		let workflowData = {
 			name: '',
 			onboardingFlowEnabled: false,
@@ -377,12 +385,23 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		};
 		try {
 			const rootStore = useRootStore();
-			workflowData = await workflowsApi.getNewWorkflow(rootStore.getRestApiContext, name);
+
+			const data: IDataObject = {
+				name,
+				projectId,
+			};
+
+			workflowData = await workflowsApi.getNewWorkflow(
+				rootStore.getRestApiContext,
+				isEmpty(data) ? undefined : data,
+			);
 		} catch (e) {
 			// in case of error, default to original name
 			workflowData.name = name || DEFAULT_NEW_WORKFLOW_NAME;
 		}
+
 		setWorkflowName({ newName: workflowData.name, setStateDirty: false });
+
 		return workflowData;
 	}
 
@@ -390,12 +409,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const usersStore = useUsersStore();
 		const settingsStore = useSettingsStore();
 		workflow.value = createEmptyWorkflow();
-		if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
-			workflow.value = {
-				...workflow.value,
-				ownedBy: usersStore.currentUser as IUser,
-			};
-		}
 	}
 
 	function resetState() {
@@ -566,7 +579,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		let newName = `${currentWorkflowName}${DUPLICATE_POSTFFIX}`;
 		try {
 			const rootStore = useRootStore();
-			const newWorkflow = await workflowsApi.getNewWorkflow(rootStore.getRestApiContext, newName);
+			const newWorkflow = await workflowsApi.getNewWorkflow(rootStore.getRestApiContext, {
+				name: newName,
+			});
 			newName = newWorkflow.name;
 		} catch (e) {}
 		return newName;
@@ -1271,6 +1286,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		sendData.active = false;
 
 		const rootStore = useRootStore();
+		const projectStore = useProjectsStore();
+
+		if (projectStore.currentProjectId) {
+			(sendData as unknown as IDataObject).projectId = projectStore.currentProjectId;
+		}
+
 		return await makeRestApiRequest(
 			rootStore.getRestApiContext,
 			'POST',
@@ -1309,7 +1330,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			return await makeRestApiRequest(
 				rootStore.getRestApiContext,
 				'POST',
-				'/workflows/run',
+				`/workflows/${startRunData.workflowData.id}/run`,
 				startRunData as unknown as IDataObject,
 			);
 		} catch (error) {

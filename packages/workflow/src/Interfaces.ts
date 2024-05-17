@@ -121,8 +121,16 @@ export interface ICredentialsDecrypted {
 	name: string;
 	type: string;
 	data?: ICredentialDataDecryptedObject;
-	ownedBy?: IUser;
-	sharedWith?: IUser[];
+	homeProject?: {
+		id: string;
+		name: string | null;
+		type: 'personal' | 'team' | 'public';
+	};
+	sharedWithProjects?: Array<{
+		id: string;
+		name: string | null;
+		type: 'personal' | 'team' | 'public';
+	}>;
 }
 
 export interface ICredentialsEncrypted {
@@ -2083,7 +2091,7 @@ export interface IWorkflowExecuteAdditionalData {
 	webhookTestBaseUrl: string;
 	currentNodeParameters?: INodeParameters;
 	executionTimeoutTimestamp?: number;
-	userId: string;
+	userId?: string;
 	variables: IDataObject;
 	secretsHelpers: SecretsHelpersBase;
 	logAiEvent: (
@@ -2574,6 +2582,11 @@ export interface IN8nUISettings {
 		workflowHistory: boolean;
 		workerView: boolean;
 		advancedPermissions: boolean;
+		projects: {
+			team: {
+				limit: number;
+			};
+		};
 	};
 	hideUsagePage: boolean;
 	license: {

@@ -11,11 +11,10 @@ import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { ExternalHooks } from '@/ExternalHooks';
 import { addNodeIds, replaceInvalidCredentials } from '@/WorkflowHelpers';
 import type { WorkflowRequest } from '../../../types';
-import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
+import { projectScope, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import {
 	getWorkflowById,
-	getSharedWorkflow,
 	setWorkflowAsActive,
 	setWorkflowAsInactive,
 	updateWorkflow,
@@ -30,10 +29,10 @@ import { WorkflowHistoryService } from '@/workflows/workflowHistory/workflowHist
 import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 
 export = {
 	createWorkflow: [
-		authorize(['global:owner', 'global:admin', 'global:member']),
 		async (req: WorkflowRequest.Create, res: express.Response): Promise<express.Response> => {
 			const workflow = req.body;
 
@@ -44,7 +43,10 @@ export = {
 
 			addNodeIds(workflow);
 
-			const createdWorkflow = await createWorkflow(workflow, req.user, 'workflow:owner');
+			const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+				req.user.id,
+			);
+			const createdWorkflow = await createWorkflow(workflow, req.user, project, 'workflow:owner');
 
 			await Container.get(WorkflowHistoryService).saveVersion(
 				req.user,
@@ -53,13 +55,13 @@ export = {
 			);
 
 			await Container.get(ExternalHooks).run('workflow.afterCreate', [createdWorkflow]);
-			void Container.get(InternalHooks).onWorkflowCreated(req.user, createdWorkflow, true);
+			void Container.get(InternalHooks).onWorkflowCreated(req.user, createdWorkflow, project, true);
 
 			return res.json(createdWorkflow);
 		},
 	],
 	deleteWorkflow: [
-		authorize(['global:owner', 'global:admin', 'global:member']),
+		projectScope('workflow:delete', 'workflow'),
 		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { id: workflowId } = req.params;
 
@@ -74,15 +76,21 @@ export = {
 		},
 	],
 	getWorkflow: [
-		authorize(['global:owner', 'global:admin', 'global:member']),
+		projectScope('workflow:read', 'workflow'),
 		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
-			const sharedWorkflow = await getSharedWorkflow(req.user, id);
+			const workflow = await Container.get(SharedWorkflowRepository).findWorkflowForUser(
+				id,
+				req.user,
+				['workflow:read'],
+				{ includeTags: !config.getEnv('workflowTagsDisabled') },
+			);
 
-			if (!sharedWorkflow) {
+			if (!workflow) {
 				// user trying to access a workflow they do not own
-				// or workflow does not exist
+				// and was not shared to them
+				// Or does not exist.
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
@@ -91,11 +99,10 @@ export = {
 				public_api: true,
 			});
 
-			return res.json(sharedWorkflow.workflow);
+			return res.json(workflow);
 		},
 	],
 	getWorkflows: [
-		authorize(['global:owner', 'global:admin', 'global:member']),
 		validCursor,
 		async (req: WorkflowRequest.GetAll, res: express.Response): Promise<express.Response> => {
 			const { offset = 0, limit = 100, active, tags, name } = req.query;
@@ -121,19 +128,24 @@ export = {
 					);
 				}
 
-				const sharedWorkflows = await Container.get(SharedWorkflowRepository).getSharedWorkflows(
+				let workflows = await Container.get(SharedWorkflowRepository).findAllWorkflowsForUser(
 					req.user,
-					options,
+					['workflow:read'],
 				);
 
-				if (!sharedWorkflows.length) {
+				if (options.workflowIds) {
+					const workflowIds = options.workflowIds;
+					workflows = workflows.filter((wf) => workflowIds.includes(wf.id));
+				}
+
+				if (!workflows.length) {
 					return res.status(200).json({
 						data: [],
 						nextCursor: null,
 					});
 				}
 
-				const workflowsIds = sharedWorkflows.map((shareWorkflow) => shareWorkflow.workflowId);
+				const workflowsIds = workflows.map((wf) => wf.id);
 				where.id = In(workflowsIds);
 			}
 
@@ -160,7 +172,7 @@ export = {
 		},
 	],
 	updateWorkflow: [
-		authorize(['global:owner', 'global:admin', 'global:member']),
+		projectScope('workflow:update', 'workflow'),
 		async (req: WorkflowRequest.Update, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 			const updateData = new WorkflowEntity();
@@ -168,9 +180,13 @@ export = {
 			updateData.id = id;
 			updateData.versionId = uuid();
 
-			const sharedWorkflow = await getSharedWorkflow(req.user, id);
+			const workflow = await Container.get(SharedWorkflowRepository).findWorkflowForUser(
+				id,
+				req.user,
+				['workflow:update'],
+			);
 
-			if (!sharedWorkflow) {
+			if (!workflow) {
 				// user trying to access a workflow they do not own
 				// or workflow does not exist
 				return res.status(404).json({ message: 'Not Found' });
@@ -181,23 +197,23 @@ export = {
 
 			const workflowManager = Container.get(ActiveWorkflowManager);
 
-			if (sharedWorkflow.workflow.active) {
+			if (workflow.active) {
 				// When workflow gets saved always remove it as the triggers could have been
 				// changed and so the changes would not take effect
 				await workflowManager.remove(id);
 			}
 
 			try {
-				await updateWorkflow(sharedWorkflow.workflowId, updateData);
+				await updateWorkflow(workflow.id, updateData);
 			} catch (error) {
 				if (error instanceof Error) {
 					return res.status(400).json({ message: error.message });
 				}
 			}
 
-			if (sharedWorkflow.workflow.active) {
+			if (workflow.active) {
 				try {
-					await workflowManager.add(sharedWorkflow.workflowId, 'update');
+					await workflowManager.add(workflow.id, 'update');
 				} catch (error) {
 					if (error instanceof Error) {
 						return res.status(400).json({ message: error.message });
@@ -205,13 +221,13 @@ export = {
 				}
 			}
 
-			const updatedWorkflow = await getWorkflowById(sharedWorkflow.workflowId);
+			const updatedWorkflow = await getWorkflowById(workflow.id);
 
 			if (updatedWorkflow) {
 				await Container.get(WorkflowHistoryService).saveVersion(
 					req.user,
 					updatedWorkflow,
-					sharedWorkflow.workflowId,
+					workflow.id,
 				);
 			}
 
@@ -222,21 +238,25 @@ export = {
 		},
 	],
 	activateWorkflow: [
-		authorize(['global:owner', 'global:admin', 'global:member']),
+		projectScope('workflow:update', 'workflow'),
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
-			const sharedWorkflow = await getSharedWorkflow(req.user, id);
+			const workflow = await Container.get(SharedWorkflowRepository).findWorkflowForUser(
+				id,
+				req.user,
+				['workflow:update'],
+			);
 
-			if (!sharedWorkflow) {
+			if (!workflow) {
 				// user trying to access a workflow they do not own
 				// or workflow does not exist
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			if (!sharedWorkflow.workflow.active) {
+			if (!workflow.active) {
 				try {
-					await Container.get(ActiveWorkflowManager).add(sharedWorkflow.workflowId, 'activate');
+					await Container.get(ActiveWorkflowManager).add(workflow.id, 'activate');
 				} catch (error) {
 					if (error instanceof Error) {
 						return res.status(400).json({ message: error.message });
@@ -244,25 +264,29 @@ export = {
 				}
 
 				// change the status to active in the DB
-				await setWorkflowAsActive(sharedWorkflow.workflow);
+				await setWorkflowAsActive(workflow);
 
-				sharedWorkflow.workflow.active = true;
+				workflow.active = true;
 
-				return res.json(sharedWorkflow.workflow);
+				return res.json(workflow);
 			}
 
 			// nothing to do as the workflow is already active
-			return res.json(sharedWorkflow.workflow);
+			return res.json(workflow);
 		},
 	],
 	deactivateWorkflow: [
-		authorize(['global:owner', 'global:admin', 'global:member']),
+		projectScope('workflow:update', 'workflow'),
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
-			const sharedWorkflow = await getSharedWorkflow(req.user, id);
+			const workflow = await Container.get(SharedWorkflowRepository).findWorkflowForUser(
+				id,
+				req.user,
+				['workflow:update'],
+			);
 
-			if (!sharedWorkflow) {
+			if (!workflow) {
 				// user trying to access a workflow they do not own
 				// or workflow does not exist
 				return res.status(404).json({ message: 'Not Found' });
@@ -270,22 +294,22 @@ export = {
 
 			const activeWorkflowManager = Container.get(ActiveWorkflowManager);
 
-			if (sharedWorkflow.workflow.active) {
-				await activeWorkflowManager.remove(sharedWorkflow.workflowId);
+			if (workflow.active) {
+				await activeWorkflowManager.remove(workflow.id);
 
-				await setWorkflowAsInactive(sharedWorkflow.workflow);
+				await setWorkflowAsInactive(workflow);
 
-				sharedWorkflow.workflow.active = false;
+				workflow.active = false;
 
-				return res.json(sharedWorkflow.workflow);
+				return res.json(workflow);
 			}
 
 			// nothing to do as the workflow is already inactive
-			return res.json(sharedWorkflow.workflow);
+			return res.json(workflow);
 		},
 	],
 	getWorkflowTags: [
-		authorize(['global:owner', 'global:admin', 'global:member']),
+		projectScope('workflow:read', 'workflow'),
 		async (req: WorkflowRequest.GetTags, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
@@ -293,9 +317,13 @@ export = {
 				return res.status(400).json({ message: 'Workflow Tags Disabled' });
 			}
 
-			const sharedWorkflow = await getSharedWorkflow(req.user, id);
+			const workflow = await Container.get(SharedWorkflowRepository).findWorkflowForUser(
+				id,
+				req.user,
+				['workflow:read'],
+			);
 
-			if (!sharedWorkflow) {
+			if (!workflow) {
 				// user trying to access a workflow he does not own
 				// or workflow does not exist
 				return res.status(404).json({ message: 'Not Found' });
@@ -307,7 +335,7 @@ export = {
 		},
 	],
 	updateWorkflowTags: [
-		authorize(['global:owner', 'global:admin', 'global:member']),
+		projectScope('workflow:update', 'workflow'),
 		async (req: WorkflowRequest.UpdateTags, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 			const newTags = req.body.map((newTag) => newTag.id);
@@ -316,7 +344,11 @@ export = {
 				return res.status(400).json({ message: 'Workflow Tags Disabled' });
 			}
 
-			const sharedWorkflow = await getSharedWorkflow(req.user, id);
+			const sharedWorkflow = await Container.get(SharedWorkflowRepository).findWorkflowForUser(
+				id,
+				req.user,
+				['workflow:update'],
+			);
 
 			if (!sharedWorkflow) {
 				// user trying to access a workflow he does not own
