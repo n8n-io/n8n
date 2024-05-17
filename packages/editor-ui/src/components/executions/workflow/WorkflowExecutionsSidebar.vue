@@ -106,9 +106,16 @@ export default defineComponent({
 			default: null,
 		},
 	},
+	emits: {
+		retryExecution: null,
+		loadMore: null,
+		refresh: null,
+		filterUpdated: null,
+		reloadExecutions: null,
+		'update:autoRefresh': null,
+	},
 	data() {
 		return {
-			VIEWS,
 			filter: {} as ExecutionFilterType,
 		};
 	},
