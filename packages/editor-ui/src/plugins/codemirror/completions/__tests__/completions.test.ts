@@ -235,7 +235,7 @@ describe('Resolution-based completions', () => {
 
 		test('should return completions when $input is used as a function parameter', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.item?.json.num);
-			const found = completions('{{ Math.abs($input.item?.json.num1).| }}');
+			const found = completions('{{ Math.abs($input.item.json.num1).| }}');
 			if (!found) throw new Error('Expected to find completions');
 			expect(found).toHaveLength(
 				extensions({ typeName: 'number' }).length +
@@ -301,10 +301,10 @@ describe('Resolution-based completions', () => {
 	describe('bracket-aware completions', () => {
 		const { $input } = mockProxy;
 
-		test('should return bracket-aware completions for: {{ $input.item.json?.str.|() }}', () => {
+		test('should return bracket-aware completions for: {{ $input.item.json.str.|() }}', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.item?.json.str);
 
-			const found = completions('{{ $input.item.json?.str.|() }}');
+			const found = completions('{{ $input.item.json.str.|() }}');
 
 			if (!found) throw new Error('Expected to find completions');
 
@@ -316,10 +316,10 @@ describe('Resolution-based completions', () => {
 			expect(found.map((c) => c.label).every((l) => !l.endsWith('()')));
 		});
 
-		test('should return bracket-aware completions for: {{ $input.item.json?.num.|() }}', () => {
+		test('should return bracket-aware completions for: {{ $input.item.json.num.|() }}', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.item?.json.num);
 
-			const found = completions('{{ $input.item.json?.num.|() }}');
+			const found = completions('{{ $input.item.json.num.|() }}');
 
 			if (!found) throw new Error('Expected to find completions');
 
@@ -331,10 +331,10 @@ describe('Resolution-based completions', () => {
 			expect(found.map((c) => c.label).every((l) => !l.endsWith('()')));
 		});
 
-		test('should return bracket-aware completions for: {{ $input.item.json?.arr.| }}', () => {
+		test('should return bracket-aware completions for: {{ $input.item.json.arr.| }}', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.item?.json.arr);
 
-			const found = completions('{{ $input.item.json?.arr.|() }}');
+			const found = completions('{{ $input.item.json.arr.|() }}');
 
 			if (!found) throw new Error('Expected to find completions');
 
@@ -508,38 +508,38 @@ describe('Resolution-based completions', () => {
 			);
 		});
 
-		test('should return completions for: {{ $input.item.json?.str.| }}', () => {
+		test('should return completions for: {{ $input.item.json.str.| }}', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.item?.json.str);
 
-			expect(completions('{{ $input.item.json?.str.| }}')).toHaveLength(
+			expect(completions('{{ $input.item.json.str.| }}')).toHaveLength(
 				extensions({ typeName: 'string' }).length +
 					natives({ typeName: 'string' }).length +
 					STRING_RECOMMENDED_OPTIONS.length,
 			);
 		});
 
-		test('should return completions for: {{ $input.item.json?.num.| }}', () => {
+		test('should return completions for: {{ $input.item.json.num.| }}', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.item?.json.num);
 
-			expect(completions('{{ $input.item.json?.num.| }}')).toHaveLength(
+			expect(completions('{{ $input.item.json.num.| }}')).toHaveLength(
 				extensions({ typeName: 'number' }).length +
 					natives({ typeName: 'number' }).length +
 					['isEven()', 'isOdd()'].length,
 			);
 		});
 
-		test('should return completions for: {{ $input.item.json?.arr.| }}', () => {
+		test('should return completions for: {{ $input.item.json.arr.| }}', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.item?.json.arr);
 
-			expect(completions('{{ $input.item.json?.arr.| }}')).toHaveLength(
+			expect(completions('{{ $input.item.json.arr.| }}')).toHaveLength(
 				extensions({ typeName: 'array' }).length + natives({ typeName: 'array' }).length,
 			);
 		});
 
-		test('should return completions for: {{ $input.item.json?.obj.| }}', () => {
+		test('should return completions for: {{ $input.item.json.obj.| }}', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.item?.json.obj);
 
-			expect(completions('{{ $input.item.json?.obj.| }}')).toHaveLength(
+			expect(completions('{{ $input.item.json.obj.| }}')).toHaveLength(
 				Object.keys($input.item?.json.obj ?? {}).length + extensions({ typeName: 'object' }).length,
 			);
 		});
@@ -548,7 +548,7 @@ describe('Resolution-based completions', () => {
 	describe('bracket access', () => {
 		const { $input } = mockProxy;
 
-		['{{ $input.item.json?[| }}', '{{ $json[| }}'].forEach((expression) => {
+		['{{ $input.item.json[| }}', '{{ $json[| }}'].forEach((expression) => {
 			test(`should return completions for: ${expression}`, () => {
 				vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.item?.json);
 
@@ -561,7 +561,7 @@ describe('Resolution-based completions', () => {
 			});
 		});
 
-		["{{ $input.item.json?['obj'][| }}", "{{ $json['obj'][| }}"].forEach((expression) => {
+		["{{ $input.item.json['obj'][| }}", "{{ $json['obj'][| }}"].forEach((expression) => {
 			test(`should return completions for: ${expression}`, () => {
 				vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.item?.json.obj);
 
@@ -739,7 +739,7 @@ describe('Resolution-based completions', () => {
 			expect(result).toContainEqual(expect.objectContaining({ label: 'obj', detail: 'object' }));
 		});
 
-		test('should display type information for: {{ $input.item.json?.| }}', () => {
+		test('should display type information for: {{ $input.item.json.| }}', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce({
 				str: 'bar',
 				empty: null,
