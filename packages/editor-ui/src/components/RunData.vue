@@ -387,7 +387,7 @@
 				/>
 			</Suspense>
 
-			<Suspense v-else-if="hasNodeRun && displayMode === 'json'">
+			<Suspense v-else-if="hasNodeRun && displayMode === 'json' && node && distanceFromActive">
 				<RunDataJson
 					:pane-type="paneType"
 					:edit-mode="editMode"

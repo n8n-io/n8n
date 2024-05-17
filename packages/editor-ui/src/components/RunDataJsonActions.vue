@@ -63,7 +63,8 @@ export default defineComponent({
 	name: 'RunDataJsonActions',
 	props: {
 		node: {
-			type: Object as PropType<INodeUi>,
+			type: Object as PropType<INodeUi | null>,
+			default: null,
 		},
 		paneType: {
 			type: String,
@@ -221,7 +222,7 @@ export default defineComponent({
 			}[commandData.command];
 
 			this.$telemetry.track('User copied ndv data', {
-				node_type: this.activeNode.type,
+				node_type: this.activeNode?.type,
 				push_ref: this.pushRef,
 				run_index: this.runIndex,
 				view: 'json',
