@@ -1536,6 +1536,7 @@ export default defineComponent({
 			saveAs(blob, `${fileName}.json`);
 		},
 		displayBinaryData(index: number, key: string | number) {
+			const { data, mimeType } = this.binaryData[index][key];
 			this.binaryDataDisplayVisible = true;
 
 			this.binaryDataDisplayData = {
@@ -1544,6 +1545,8 @@ export default defineComponent({
 				outputIndex: this.currentOutputIndex,
 				index,
 				key,
+				data,
+				mimeType,
 			};
 		},
 		getOutputName(outputIndex: number) {
