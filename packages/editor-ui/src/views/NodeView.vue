@@ -3703,6 +3703,7 @@ export default defineComponent({
 						return;
 					}
 				}
+				await this.loadCredentials();
 				// Load a workflow
 				let workflowId = null as string | null;
 				if (this.$route.params.name) {
@@ -3742,7 +3743,6 @@ export default defineComponent({
 					await this.newWorkflow();
 				}
 			}
-			await this.loadCredentials();
 			this.historyStore.reset();
 			this.uiStore.nodeViewInitialized = true;
 			document.addEventListener('keydown', this.keyDown);
@@ -5041,14 +5041,14 @@ export default defineComponent({
 		}
 
 		try {
-			await Promise.all([this.loadVariables(), this.tagsStore.fetchAll()]);
+			await Promise.all([this.loadVariables(), this.tagsStore.fetchAll(), this.loadCredentials()]);
 
 			if (workflowId !== null && !this.uiStore.stateIsDirty) {
 				const workflow: IWorkflowDb | undefined =
 					await this.workflowsStore.fetchWorkflow(workflowId);
 				if (workflow) {
 					this.titleSet(workflow.name, 'IDLE');
-					await Promise.all([this.openWorkflow(workflow), this.loadCredentials()]);
+					await this.openWorkflow(workflow);
 				}
 			}
 		} catch (error) {
