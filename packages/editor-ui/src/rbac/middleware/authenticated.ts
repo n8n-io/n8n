@@ -5,7 +5,7 @@ import { isAuthenticated } from '@/rbac/checks';
 
 export const authenticatedMiddleware: RouterMiddleware<AuthenticatedPermissionOptions> = async (
 	to,
-	from,
+	_from,
 	next,
 	options,
 ) => {
