@@ -35,3 +35,13 @@ declare global {
 		findLast(predicate: (value: T, index: number, obj: T[]) => unknown, thisArg?: any): T;
 	}
 }
+
+declare module '*.webp' {
+	declare const path: string;
+	export default path;
+}
+
+declare module '*.svg' {
+	declare const path: string;
+	export default path;
+}

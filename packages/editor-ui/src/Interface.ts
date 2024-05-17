@@ -1800,18 +1800,19 @@ export interface ExternalSecretsProviderSecret {
 
 export type ExternalSecretsProviderData = Record<string, IUpdateInformation['value']>;
 
+export type ExternalSecretsProviderProperty = INodeProperties;
+
+export type ExternalSecretsProviderState = 'connected' | 'tested' | 'initializing' | 'error';
+
 export interface ExternalSecretsProvider {
 	icon: string;
 	name: string;
 	displayName: string;
 	connected: boolean;
 	connectedAt: string | false;
-	state: 'connected' | 'tested' | 'initializing' | 'error';
+	state: ExternalSecretsProviderState;
 	data?: ExternalSecretsProviderData;
-}
-
-export interface ExternalSecretsProviderWithProperties extends ExternalSecretsProvider {
-	properties: INodeProperties[];
+	properties?: ExternalSecretsProviderProperty[];
 }
 
 export type CloudUpdateLinkSourceType =
