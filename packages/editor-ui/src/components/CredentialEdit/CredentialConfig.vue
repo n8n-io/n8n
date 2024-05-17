@@ -241,22 +241,20 @@ export default defineComponent({
 	async beforeMount() {
 		if (this.rootStore.defaultLocale === 'en') return;
 
-		if (this.credentialType) {
-			this.uiStore.activeCredentialType = this.credentialType.name;
+		this.uiStore.activeCredentialType = this.credentialType.name;
 
-			const key = `n8n-nodes-base.credentials.${this.credentialType.name}`;
+		const key = `n8n-nodes-base.credentials.${this.credentialType.name}`;
 
-			if (this.$locale.exists(key)) return;
+		if (this.$locale.exists(key)) return;
 
-			const credTranslation = await this.credentialsStore.getCredentialTranslation(
-				this.credentialType.name,
-			);
+		const credTranslation = await this.credentialsStore.getCredentialTranslation(
+			this.credentialType.name,
+		);
 
-			addCredentialTranslation(
-				{ [this.credentialType.name]: credTranslation },
-				this.rootStore.defaultLocale,
-			);
-		}
+		addCredentialTranslation(
+			{ [this.credentialType.name]: credTranslation },
+			this.rootStore.defaultLocale,
+		);
 	},
 	computed: {
 		...mapStores(
