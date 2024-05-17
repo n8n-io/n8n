@@ -62,7 +62,7 @@
 		/>
 
 		<template v-if="credentialPermissions.update">
-			<n8n-notice v-if="documentationUrl && credentialProperties.length" theme="warning">
+			<n8n-notice v-if="documentationUrl && credentialProperties?.length" theme="warning">
 				{{ $locale.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
 				<span class="ml-4xs">
 					<n8n-link :to="documentationUrl" size="small" bold @click="onDocumentationUrlClick">
@@ -72,7 +72,7 @@
 			</n8n-notice>
 
 			<AuthTypeSelector
-				v-if="showAuthTypeSelector && isNewCredential"
+				v-if="showAuthTypeSelector && isNewCredential && credentialType"
 				:credential-type="credentialType"
 				@auth-type-changed="onAuthTypeChange"
 			/>
@@ -177,13 +177,15 @@ export default defineComponent({
 	},
 	props: {
 		credentialType: {
-			type: Object,
+			type: Object as PropType<ICredentialType | null>,
+			default: null,
 		},
 		credentialProperties: {
 			type: Array,
 		},
 		parentTypes: {
-			type: Array,
+			type: Array as PropType<string[]>,
+			default: () => [],
 		},
 		credentialData: {},
 		credentialId: {
@@ -229,26 +231,31 @@ export default defineComponent({
 	},
 	data() {
 		return {
-			EnterpriseEditionFeature,
+			EnterpriseEditionFeature: {
+				Sharing: EnterpriseEditionFeature.Sharing,
+				ExternalSecrets: EnterpriseEditionFeature.ExternalSecrets,
+			},
 		};
 	},
 	async beforeMount() {
 		if (this.rootStore.defaultLocale === 'en') return;
 
-		this.uiStore.activeCredentialType = this.credentialType.name;
+		if (this.credentialType) {
+			this.uiStore.activeCredentialType = this.credentialType.name;
 
-		const key = `n8n-nodes-base.credentials.${this.credentialType.name}`;
+			const key = `n8n-nodes-base.credentials.${this.credentialType.name}`;
 
-		if (this.$locale.exists(key)) return;
+			if (this.$locale.exists(key)) return;
 
-		const credTranslation = await this.credentialsStore.getCredentialTranslation(
-			this.credentialType.name,
-		);
+			const credTranslation = await this.credentialsStore.getCredentialTranslation(
+				this.credentialType.name,
+			);
 
-		addCredentialTranslation(
-			{ [this.credentialType.name]: credTranslation },
-			this.rootStore.defaultLocale,
-		);
+			addCredentialTranslation(
+				{ [this.credentialType.name]: credTranslation },
+				this.rootStore.defaultLocale,
+			);
+		}
 	},
 	computed: {
 		...mapStores(
@@ -272,7 +279,7 @@ export default defineComponent({
 				return '';
 			}
 
-			const appName = getAppNameFromCredType((this.credentialType as ICredentialType).displayName);
+			const appName = getAppNameFromCredType(this.credentialType.displayName);
 
 			return (
 				appName ||
