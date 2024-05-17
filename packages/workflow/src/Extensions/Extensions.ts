@@ -19,6 +19,8 @@ export type DocMetadataArgument = {
 	variadic?: boolean;
 	description?: string;
 	default?: string;
+	// Function arguments have nested arguments
+	args?: DocMetadataArgument[];
 };
 export type DocMetadataExample = {
 	example: string;

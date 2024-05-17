@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.41.0",
+  "version": "1.42.0",
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
@@ -92,7 +92,8 @@
       "pyodide@0.23.4": "patches/pyodide@0.23.4.patch",
       "@types/express-serve-static-core@4.17.43": "patches/@types__express-serve-static-core@4.17.43.patch",
       "@types/ws@8.5.4": "patches/@types__ws@8.5.4.patch",
-      "vite-plugin-checker@0.6.4": "patches/vite-plugin-checker@0.6.4.patch"
+      "vite-plugin-checker@0.6.4": "patches/vite-plugin-checker@0.6.4.patch",
+      "@types/uuencode@0.0.3": "patches/@types__uuencode@0.0.3.patch"
     }
   }
 }

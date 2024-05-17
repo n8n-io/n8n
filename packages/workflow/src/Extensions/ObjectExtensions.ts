@@ -110,14 +110,22 @@ export function toDateTime() {
 
 isEmpty.doc = {
 	name: 'isEmpty',
-	description: 'Checks if the Object has no key-value pairs.',
+	description: 'Returns <code>true</code> if the Object has no keys (fields) set',
+	examples: [
+		{ example: "({'name': 'Nathan'}).isEmpty()", evaluated: 'false' },
+		{ example: '({}).isEmpty()', evaluated: 'true' },
+	],
 	returnType: 'boolean',
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-isEmpty',
 };
 
 isNotEmpty.doc = {
 	name: 'isNotEmpty',
-	description: 'Checks if the Object has key-value pairs.',
+	description: 'Returns <code>true</code> if the Object has at least one key (field) set',
+	examples: [
+		{ example: "({'name': 'Nathan'}).isNotEmpty()", evaluated: 'true' },
+		{ example: '({}).isNotEmpty()', evaluated: 'false' },
+	],
 	returnType: 'boolean',
 	docURL:
 		'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-isNotEmpty',
@@ -125,14 +133,23 @@ isNotEmpty.doc = {
 
 compact.doc = {
 	name: 'compact',
-	description: 'Removes empty values from an Object.',
-	returnType: 'boolean',
+	description:
+		'Removes all fields that have empty values, i.e. are <code>null</code>, <code>undefined</code>, <code>"nil"</code> or <code>""</code>',
+	examples: [{ example: "({ x: null, y: 2, z: '' }).compact()", evaluated: '{ y: 2 }' }],
+	returnType: 'Object',
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-compact',
 };
 
 urlEncode.doc = {
 	name: 'urlEncode',
-	description: 'Transforms an Object into a URL parameter list. Only top-level keys are supported.',
+	description:
+		"Generates a URL parameter string from the Object's keys and values. Only top-level keys are supported.",
+	examples: [
+		{
+			example: "({ name: 'Mr Nathan', city: 'hanoi' }).urlEncode()",
+			evaluated: "'name=Mr+Nathan&city=hanoi'",
+		},
+	],
 	returnType: 'string',
 	docURL:
 		'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-urlEncode',
@@ -140,17 +157,43 @@ urlEncode.doc = {
 
 hasField.doc = {
 	name: 'hasField',
-	description: 'Checks if the Object has a given field. Only top-level keys are supported.',
+	description:
+		'Returns <code>true</code> if there is a field called <code>name</code>. Only checks top-level keys. Comparison is case-sensitive.',
+	examples: [
+		{ example: "({ name: 'Nathan', age: 42 }).hasField('name')", evaluated: 'true' },
+		{ example: "({ name: 'Nathan', age: 42 }).hasField('Name')", evaluated: 'false' },
+		{ example: "({ name: 'Nathan', age: 42 }).hasField('inventedField')", evaluated: 'false' },
+	],
 	returnType: 'boolean',
-	args: [{ name: 'fieldName', type: 'string' }],
+	args: [
+		{
+			name: 'name',
+			optional: false,
+			description: 'The name of the key to search for',
+			type: 'string',
+		},
+	],
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-hasField',
 };
 
 removeField.doc = {
 	name: 'removeField',
-	description: 'Removes a given field from the Object. Only top-level fields are supported.',
-	returnType: 'object',
-	args: [{ name: 'key', type: 'string' }],
+	description: "Removes a field from the Object. The same as JavaScript's <code>delete</code>.",
+	examples: [
+		{
+			example: "({ name: 'Nathan', city: 'hanoi' }).removeField('name')",
+			evaluated: "{ city: 'hanoi' }",
+		},
+	],
+	returnType: 'Object',
+	args: [
+		{
+			name: 'key',
+			optional: false,
+			description: 'The name of the field to remove',
+			type: 'string',
+		},
+	],
 	docURL:
 		'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-removeField',
 };
@@ -158,39 +201,95 @@ removeField.doc = {
 removeFieldsContaining.doc = {
 	name: 'removeFieldsContaining',
 	description:
-		'Removes fields with a given value from the Object. Only top-level values are supported.',
-	returnType: 'object',
-	args: [{ name: 'value', type: 'string' }],
+		"Removes keys (fields) whose values at least partly match the given <code>value</code>. Comparison is case-sensitive. Fields that aren't strings are always kept.",
+	examples: [
+		{
+			example: "({ name: 'Mr Nathan', city: 'hanoi', age: 42 }).removeFieldsContaining('Nathan')",
+			evaluated: "{ city: 'hanoi', age: 42 }",
+		},
+		{
+			example: "({ name: 'Mr Nathan', city: 'hanoi', age: 42 }).removeFieldsContaining('Han')",
+			evaluated: '{ age: 42 }',
+		},
+		{
+			example: "({ name: 'Mr Nathan', city: 'hanoi', age: 42 }).removeFieldsContaining('nathan')",
+			evaluated: "{ name: 'Mr Nathan', city: 'hanoi', age: 42 }",
+		},
+	],
+	returnType: 'Object',
+	args: [
+		{
+			name: 'value',
+			optional: false,
+			description: 'The text that a value must contain in order to be removed',
+			type: 'string',
+		},
+	],
 	docURL:
 		'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-removeFieldsContaining',
 };
 
 keepFieldsContaining.doc = {
 	name: 'keepFieldsContaining',
-	description: 'Removes fields that do not match the given value from the Object.',
-	returnType: 'object',
-	args: [{ name: 'value', type: 'string' }],
+	description:
+		"Removes any fields whose values don't at least partly match the given <code>value</code>. Comparison is case-sensitive. Fields that aren't strings will always be removed.",
+	examples: [
+		{
+			example: "({ name: 'Mr Nathan', city: 'hanoi', age: 42 }).keepFieldsContaining('Nathan')",
+			evaluated: "{ name: 'Mr Nathan' }",
+		},
+		{
+			example: "({ name: 'Mr Nathan', city: 'hanoi', age: 42 }).keepFieldsContaining('nathan')",
+			evaluated: '{}',
+		},
+		{
+			example: "({ name: 'Mr Nathan', city: 'hanoi', age: 42 }).keepFieldsContaining('han')",
+			evaluated: "{ name: 'Mr Nathan', city: 'hanoi' }",
+		},
+	],
+	returnType: 'Object',
+	args: [
+		{
+			name: 'value',
+			optional: false,
+			description: 'The text that a value must contain in order to be kept',
+			type: 'string',
+		},
+	],
 	docURL:
 		'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-keepFieldsContaining',
 };
 
 keys.doc = {
 	name: 'keys',
-	description: "Returns an array of a given object's own enumerable string-keyed property names.",
+	description:
+		"Returns an array with all the field names (keys) the Object contains. The same as JavaScript's <code>Object.keys(obj)</code>.",
+	examples: [{ example: "({ name: 'Mr Nathan', age: 42 }).keys()", evaluated: "['name', 'age']" }],
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-keys',
 	returnType: 'Array',
 };
 
 values.doc = {
 	name: 'values',
-	description: "Returns an array of a given object's own enumerable string-keyed property values.",
+	description:
+		"Returns an array with all the values of the fields the Object contains. The same as JavaScript's <code>Object.values(obj)</code>.",
+	examples: [
+		{ example: "({ name: 'Mr Nathan', age: 42 }).values()", evaluated: "['Mr Nathan', 42]" },
+	],
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-values',
 	returnType: 'Array',
 };
 
 toJsonString.doc = {
 	name: 'toJsonString',
-	description: 'Converts an object to a JSON string',
+	description:
+		"Converts the Object to a JSON string. Similar to JavaScript's <code>JSON.stringify()</code>.",
+	examples: [
+		{
+			example: "({ name: 'Mr Nathan', age: 42 }).toJsonString()",
+			evaluated: '\'{"name":"Nathan","age":42}\'',
+		},
+	],
 	docURL:
 		'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-toJsonString',
 	returnType: 'string',
