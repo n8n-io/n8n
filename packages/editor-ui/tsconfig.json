@@ -11,7 +11,7 @@
 		"allowSyntheticDefaultImports": true,
 		"resolveJsonModule": true,
 		"baseUrl": ".",
-		"types": ["vitest/globals"],
+		"types": ["vitest/globals", "../workflow/src/types.d.ts"],
 		"paths": {
 			"@/*": ["src/*"],
 			"n8n-design-system/*": ["../design-system/src/*"],
