@@ -5,8 +5,6 @@ import type {
 	INodeProperties,
 	INodeTypeDescription,
 	NodeParameterValueType,
-	INodePropertyOptions,
-	INodePropertyCollection,
 	ResourceMapperField,
 } from 'n8n-workflow';
 import {
