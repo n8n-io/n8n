@@ -1,60 +1,116 @@
-import { parsePermissionsTable } from '@/permissions';
-import type { IUser } from '@/Interface';
-import { ROLE } from '@/constants';
+import {
+	getVariablesPermissions,
+	getProjectPermissions,
+	getCredentialPermissions,
+	getWorkflowPermissions,
+} from '@/permissions';
+import type { ICredentialsResponse, IUser, IWorkflowDb } from '@/Interface';
+import type { Project } from '@/features/projects/projects.types';
 
-describe('parsePermissionsTable()', () => {
-	const user: IUser = {
-		id: '1',
-		firstName: 'John',
-		lastName: 'Doe',
-		isDefaultUser: false,
-		isPending: false,
-		isPendingUser: false,
-		mfaEnabled: false,
-		hasRecoveryCodesLeft: false,
-		role: ROLE.Owner,
-	};
+describe('permissions', () => {
+	it('getVariablesPermissions', () => {
+		expect(getVariablesPermissions(null)).toEqual({
+			create: false,
+			read: false,
+			update: false,
+			delete: false,
+			list: false,
+		});
 
-	it('should return permissions object using generic permissions table', () => {
-		const permissions = parsePermissionsTable(user, []);
+		expect(
+			getVariablesPermissions({
+				globalScopes: [
+					'variable:create',
+					'variable:read',
+					'variable:update',
+					'variable:delete',
+					'variable:list',
+				],
+			} as IUser),
+		).toEqual({
+			create: true,
+			read: true,
+			update: true,
+			delete: true,
+			list: true,
+		});
 
-		expect(permissions.isInstanceOwner).toBe(true);
+		expect(
+			getVariablesPermissions({
+				globalScopes: ['variable:read', 'variable:list'],
+			} as IUser),
+		).toEqual({
+			create: false,
+			read: true,
+			update: false,
+			delete: false,
+			list: true,
+		});
 	});
 
-	it('should set permission based on permissions table row test function', () => {
-		const permissions = parsePermissionsTable(user, [
-			{ name: 'canRead', test: () => true },
-			{ name: 'canUpdate', test: () => false },
-		]);
-
-		expect(permissions.canRead).toBe(true);
-		expect(permissions.canUpdate).toBe(false);
+	it('getProjectPermissions', () => {
+		expect(
+			getProjectPermissions({
+				scopes: [
+					'project:create',
+					'project:read',
+					'project:update',
+					'project:delete',
+					'project:list',
+				],
+			} as Project),
+		).toEqual({
+			create: true,
+			read: true,
+			update: true,
+			delete: true,
+			list: true,
+		});
 	});
 
-	it('should set permission based on previously computed permission', () => {
-		const permissions = parsePermissionsTable(user, [
-			{ name: 'canRead', test: ['isInstanceOwner'] },
-		]);
-
-		expect(permissions.canRead).toBe(true);
+	it('getCredentialPermissions', () => {
+		expect(
+			getCredentialPermissions({
+				scopes: [
+					'credential:create',
+					'credential:read',
+					'credential:update',
+					'credential:delete',
+					'credential:list',
+					'credential:share',
+				],
+			} as ICredentialsResponse),
+		).toEqual({
+			create: true,
+			read: true,
+			update: true,
+			delete: true,
+			list: true,
+			share: true,
+		});
 	});
 
-	it('should set permission based on multiple previously computed permissions', () => {
-		const permissions = parsePermissionsTable(user, [
-			{ name: 'isResourceOwner', test: ['isInstanceOwner'] },
-			{ name: 'canRead', test: ['isInstanceOwner', 'isResourceOwner'] },
-		]);
-
-		expect(permissions.canRead).toBe(true);
-	});
-
-	it('should pass permission to test functions', () => {
-		const permissions = parsePermissionsTable(user, [
-			{ name: 'canRead', test: (p) => !!p.isInstanceOwner },
-			{ name: 'canUpdate', test: (p) => !!p.canRead },
-		]);
-
-		expect(permissions.canRead).toBe(true);
-		expect(permissions.canUpdate).toBe(true);
+	it('getWorkflowPermissions', () => {
+		expect(
+			getWorkflowPermissions({
+				scopes: [
+					'workflow:create',
+					'workflow:read',
+					'workflow:update',
+					'workflow:delete',
+					'workflow:list',
+					'workflow:share',
+					'workflow:execute',
+				],
+			} as IWorkflowDb),
+		).toEqual({
+			create: true,
+			read: true,
+			update: true,
+			delete: true,
+			list: true,
+			share: true,
+			execute: true,
+		});
 	});
 });
