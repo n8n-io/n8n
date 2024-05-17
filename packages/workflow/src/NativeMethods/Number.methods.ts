@@ -1,4 +1,4 @@
-import type { NativeDoc } from '@/Extensions/Extensions';
+import type { NativeDoc } from '../Extensions/Extensions';
 
 export const numberMethods: NativeDoc = {
 	typeName: 'Number',
