@@ -115,6 +115,10 @@ export class CredentialsController {
 		const mergedCredentials = deepCopy(credentials);
 		const decryptedData = this.credentialsService.decrypt(storedCredential);
 
+		// When a sharee opens a credential, the fields and the credential data are missing
+		// so the payload will be empty
+		// We need to replace the credential contents with the db version if that's the case
+		// So the credential can be tested properly
 		this.credentialsService.replaceCredentialContentsForSharee(
 			req.user,
 			storedCredential,
