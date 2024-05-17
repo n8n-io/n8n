@@ -57,8 +57,6 @@ import Modal from '@/components/Modal.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IWorkflowDataUpdate } from '@/Interface';
-import type { IPermissions } from '@/permissions';
-import { getWorkflowPermissions } from '@/permissions';
 import { useUsersStore } from '@/stores/users.store';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useCredentialsStore } from '@/stores/credentials.store';
@@ -98,20 +96,6 @@ export default defineComponent({
 	},
 	computed: {
 		...mapStores(useCredentialsStore, useUsersStore, useSettingsStore, useWorkflowsStore),
-		workflowPermissions(): IPermissions {
-			const isEmptyWorkflow = this.data.id === PLACEHOLDER_EMPTY_WORKFLOW_ID;
-			const isCurrentWorkflowEmpty =
-				this.workflowsStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID;
-
-			// If the workflow to be duplicated is empty and the current workflow is also empty
-			// we need to use the current workflow to get the permissions
-			const currentWorkflow =
-				isEmptyWorkflow && isCurrentWorkflowEmpty
-					? this.workflowsStore.workflow
-					: this.workflowsStore.getWorkflowById(this.data.id);
-
-			return getWorkflowPermissions(this.usersStore.currentUser, currentWorkflow);
-		},
 	},
 	watch: {
 		isActive(active) {
@@ -156,8 +140,15 @@ export default defineComponent({
 			try {
 				let workflowToUpdate: IWorkflowDataUpdate | undefined;
 				if (currentWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-					const { createdAt, updatedAt, usedCredentials, ...workflow } =
-						await this.workflowsStore.fetchWorkflow(this.data.id);
+					const {
+						createdAt,
+						updatedAt,
+						usedCredentials,
+						id,
+						homeProject,
+						sharedWithProjects,
+						...workflow
+					} = await this.workflowsStore.fetchWorkflow(this.data.id);
 					workflowToUpdate = workflow;
 
 					this.workflowHelpers.removeForeignCredentialsFromWorkflow(
@@ -180,7 +171,7 @@ export default defineComponent({
 					this.$telemetry.track('User duplicated workflow', {
 						old_workflow_id: currentWorkflowId,
 						workflow_id: this.data.id,
-						sharing_role: this.workflowPermissions.isOwner ? 'owner' : 'sharee',
+						sharing_role: this.workflowHelpers.getWorkflowProjectRole(this.data.id),
 					});
 				}
 			} catch (error) {

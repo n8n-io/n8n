@@ -29,7 +29,7 @@ export function createMockNodeExecutionData(
 						];
 
 						return acc;
-				  }, {})
+					}, {})
 				: data,
 			source: [null],
 			...rest,
@@ -88,7 +88,7 @@ export function runMockWorkflowExcution({
 }) {
 	const executionId = Math.random().toString(36).substring(4);
 
-	cy.intercept('POST', '/rest/workflows/run', {
+	cy.intercept('POST', '/rest/workflows/**/run', {
 		statusCode: 201,
 		body: {
 			data: {

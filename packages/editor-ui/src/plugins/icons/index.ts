@@ -7,6 +7,7 @@ import {
 	faAngleLeft,
 	faAngleRight,
 	faAngleUp,
+	faArchive,
 	faArrowLeft,
 	faArrowRight,
 	faArrowUp,
@@ -172,6 +173,7 @@ export const FontAwesomePlugin: Plugin<{}> = {
 		addIcon(faAngleLeft);
 		addIcon(faAngleRight);
 		addIcon(faAngleUp);
+		addIcon(faArchive);
 		addIcon(faArrowLeft);
 		addIcon(faArrowRight);
 		addIcon(faArrowUp);

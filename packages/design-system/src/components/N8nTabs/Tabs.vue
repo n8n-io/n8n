@@ -31,7 +31,14 @@
 							/></span>
 						</div>
 					</a>
-
+					<RouterLink
+						v-else-if="option.to"
+						:to="option.to"
+						:class="[$style.tab, { [$style.activeTab]: modelValue === option.value }]"
+					>
+						<N8nIcon v-if="option.icon" :icon="option.icon" size="medium" />
+						<span v-if="option.label">{{ option.label }}</span>
+					</RouterLink>
 					<div
 						v-else
 						:class="{ [$style.tab]: true, [$style.activeTab]: modelValue === option.value }"
@@ -50,6 +57,7 @@
 <script lang="ts" setup>
 import { onMounted, onUnmounted, ref } from 'vue';
 import N8nIcon from '../N8nIcon';
+import type { RouteLocationRaw } from 'vue-router';
 
 interface TabOptions {
 	value: string;
@@ -58,6 +66,7 @@ interface TabOptions {
 	href?: string;
 	tooltip?: string;
 	align?: 'left' | 'right';
+	to?: RouteLocationRaw;
 }
 
 interface TabsProps {
@@ -152,6 +161,7 @@ const scrollRight = () => scroll(50);
 	font-size: var(--font-size-s);
 	cursor: pointer;
 	white-space: nowrap;
+	color: var(--color-text-base);
 	&:hover {
 		color: var(--color-primary);
 	}

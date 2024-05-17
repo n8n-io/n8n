@@ -194,7 +194,7 @@ export class CredentialsTester {
 					'internal' as WorkflowExecuteMode,
 					undefined,
 					undefined,
-					user.hasGlobalScope('externalSecret:use'),
+					await this.credentialsHelper.credentialCanUseExternalSecrets(credentialsDecrypted),
 				);
 			} catch (error) {
 				this.logger.debug('Credential test failed', error);
