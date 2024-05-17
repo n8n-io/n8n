@@ -43,3 +43,9 @@ export const isResourceMapperValue = (value: unknown): value is string | number 
 export const isJSPlumbEndpointElement = (element: Node): element is HTMLElement => {
 	return 'jtk' in element && 'endpoint' in (element.jtk as object);
 };
+
+export function isDateObject(date: unknown): date is Date {
+	return (
+		!!date && Object.prototype.toString.call(date) === '[object Date]' && !isNaN(date as number)
+	);
+}

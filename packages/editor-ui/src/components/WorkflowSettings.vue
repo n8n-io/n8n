@@ -379,7 +379,8 @@ import { useRootStore } from '@/stores/n8nRoot.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from 'n8n-design-system/utils';
-import type { IPermissions } from '@/permissions';
+import type { PermissionsMap } from '@/permissions';
+import type { WorkflowScope } from '@n8n/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
@@ -472,7 +473,7 @@ export default defineComponent({
 			return this.workflowsStore.workflowId;
 		},
 		workflow(): IWorkflowDb {
-			return this.workflowsStore.workflow;
+			return this.workflowsStore.getWorkflowById(this.workflowId);
 		},
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
@@ -482,13 +483,13 @@ export default defineComponent({
 		},
 		workflowOwnerName(): string {
 			const fallback = this.$locale.baseText(
-				'workflowSettings.callerPolicy.options.workflowsFromSameOwner.fallback',
+				'workflowSettings.callerPolicy.options.workflowsFromSameProject',
 			);
 
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflowId}`, fallback);
 		},
-		workflowPermissions(): IPermissions {
-			return getWorkflowPermissions(this.currentUser, this.workflow);
+		workflowPermissions(): PermissionsMap<WorkflowScope> {
+			return getWorkflowPermissions(this.workflow);
 		},
 	},
 	async mounted() {
@@ -603,14 +604,12 @@ export default defineComponent({
 				{
 					key: 'workflowsFromSameOwner',
 					value: this.$locale.baseText(
-						'workflowSettings.callerPolicy.options.workflowsFromSameOwner',
+						this.workflow.homeProject?.type === 'personal'
+							? 'workflowSettings.callerPolicy.options.workflowsFromPersonalProject'
+							: 'workflowSettings.callerPolicy.options.workflowsFromTeamProject',
 						{
 							interpolate: {
-								owner: this.workflowPermissions.isOwner
-									? this.$locale.baseText(
-											'workflowSettings.callerPolicy.options.workflowsFromSameOwner.owner',
-										)
-									: this.workflowOwnerName,
+								projectName: this.workflowOwnerName,
 							},
 						},
 					),
@@ -762,7 +761,9 @@ export default defineComponent({
 			}
 		},
 		async loadWorkflows() {
-			const workflows = (await this.workflowsStore.fetchAllWorkflows()) as IWorkflowShortResponse[];
+			const workflows = (await this.workflowsStore.fetchAllWorkflows(
+				this.workflow.homeProject?.id,
+			)) as IWorkflowShortResponse[];
 			workflows.sort((a, b) => {
 				if (a.name.toLowerCase() < b.name.toLowerCase()) {
 					return -1;

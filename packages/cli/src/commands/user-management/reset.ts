@@ -7,6 +7,7 @@ import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { UserRepository } from '@db/repositories/user.repository';
 import { BaseCommand } from '../BaseCommand';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 
 const defaultUserProps = {
 	firstName: null,
@@ -23,9 +24,12 @@ export class Reset extends BaseCommand {
 
 	async run(): Promise<void> {
 		const owner = await this.getInstanceOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
 
-		await Container.get(SharedWorkflowRepository).makeOwnerOfAllWorkflows(owner);
-		await Container.get(SharedCredentialsRepository).makeOwnerOfAllCredentials(owner);
+		await Container.get(SharedWorkflowRepository).makeOwnerOfAllWorkflows(personalProject);
+		await Container.get(SharedCredentialsRepository).makeOwnerOfAllCredentials(personalProject);
 
 		await Container.get(UserRepository).deleteAllExcept(owner);
 		await Container.get(UserRepository).save(Object.assign(owner, defaultUserProps));
@@ -38,7 +42,7 @@ export class Reset extends BaseCommand {
 		const newSharedCredentials = danglingCredentials.map((credentials) =>
 			Container.get(SharedCredentialsRepository).create({
 				credentials,
-				user: owner,
+				projectId: personalProject.id,
 				role: 'credential:owner',
 			}),
 		);

@@ -15,7 +15,11 @@ import { Logger } from '@/Logger';
 import type {
 	CredentialUsedByWorkflow,
 	WorkflowWithSharingsAndCredentials,
+	WorkflowWithSharingsMetaDataAndCredentials,
 } from './workflows.types';
+import { OwnershipService } from '@/services/ownership.service';
+import { In, type EntityManager } from '@n8n/typeorm';
+import { Project } from '@/databases/entities/Project';
 
 @Service()
 export class EnterpriseWorkflowService {
@@ -25,49 +29,48 @@ export class EnterpriseWorkflowService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly credentialsService: CredentialsService,
+		private readonly ownershipService: OwnershipService,
 	) {}
 
-	async isOwned(
-		user: User,
-		workflowId: string,
-	): Promise<{ ownsWorkflow: boolean; workflow?: WorkflowEntity }> {
-		const sharing = await this.sharedWorkflowRepository.getSharing(
-			user,
-			workflowId,
-			{ allowGlobalScope: false },
-			['workflow'],
-		);
+	async shareWithProjects(
+		workflow: WorkflowEntity,
+		shareWithIds: string[],
+		entityManager: EntityManager,
+	) {
+		const em = entityManager ?? this.sharedWorkflowRepository.manager;
 
-		if (!sharing || sharing.role !== 'workflow:owner') return { ownsWorkflow: false };
-
-		const { workflow } = sharing;
-
-		return { ownsWorkflow: true, workflow };
-	}
-
-	addOwnerAndSharings(workflow: WorkflowWithSharingsAndCredentials): void {
-		workflow.ownedBy = null;
-		workflow.sharedWith = [];
-		if (!workflow.usedCredentials) {
-			workflow.usedCredentials = [];
-		}
-
-		workflow.shared?.forEach(({ user, role }) => {
-			const { id, email, firstName, lastName } = user;
-
-			if (role === 'workflow:owner') {
-				workflow.ownedBy = { id, email, firstName, lastName };
-				return;
-			}
-
-			workflow.sharedWith?.push({ id, email, firstName, lastName });
+		const projects = await em.find(Project, {
+			where: { id: In(shareWithIds), type: 'personal' },
 		});
 
-		delete workflow.shared;
+		const newSharedWorkflows = projects
+			// We filter by role === 'project:personalOwner' above and there should
+			// always only be one owner.
+			.map((project) =>
+				this.sharedWorkflowRepository.create({
+					workflowId: workflow.id,
+					role: 'workflow:editor',
+					projectId: project.id,
+				}),
+			);
+
+		return await em.save(newSharedWorkflows);
+	}
+
+	addOwnerAndSharings(
+		workflow: WorkflowWithSharingsAndCredentials,
+	): WorkflowWithSharingsMetaDataAndCredentials {
+		const workflowWithMetaData = this.ownershipService.addOwnedByAndSharedWith(workflow);
+
+		return {
+			...workflow,
+			...workflowWithMetaData,
+			usedCredentials: workflow.usedCredentials ?? [],
+		};
 	}
 
 	async addCredentialsToWorkflow(
-		workflow: WorkflowWithSharingsAndCredentials,
+		workflow: WorkflowWithSharingsMetaDataAndCredentials,
 		currentUser: User,
 	): Promise<void> {
 		workflow.usedCredentials = [];
@@ -100,14 +103,7 @@ export class EnterpriseWorkflowService {
 				sharedWith: [],
 				ownedBy: null,
 			};
-			credential.shared?.forEach(({ user, role }) => {
-				const { id, email, firstName, lastName } = user;
-				if (role === 'credential:owner') {
-					workflowCredential.ownedBy = { id, email, firstName, lastName };
-				} else {
-					workflowCredential.sharedWith?.push({ id, email, firstName, lastName });
-				}
-			});
+			credential = this.ownershipService.addOwnedByAndSharedWith(credential);
 			workflow.usedCredentials?.push(workflowCredential);
 		});
 	}

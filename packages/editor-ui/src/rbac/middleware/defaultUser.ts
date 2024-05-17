@@ -4,8 +4,8 @@ import type { DefaultUserMiddlewareOptions } from '@/types/rbac';
 import { isDefaultUser } from '@/rbac/checks';
 
 export const defaultUserMiddleware: RouterMiddleware<DefaultUserMiddlewareOptions> = async (
-	to,
-	from,
+	_to,
+	_from,
 	next,
 ) => {
 	const valid = isDefaultUser();

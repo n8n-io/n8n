@@ -2,8 +2,6 @@ import { plainToInstance } from 'class-transformer';
 
 import { AuthService } from '@/auth/auth.service';
 import { User } from '@db/entities/User';
-import { SharedCredentials } from '@db/entities/SharedCredentials';
-import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { GlobalScope, Delete, Get, RestController, Patch, Licensed } from '@/decorators';
 import {
 	ListQuery,
@@ -11,7 +9,6 @@ import {
 	UserRoleChangePayload,
 	UserSettingsUpdatePayload,
 } from '@/requests';
-import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import type { PublicUser, ITelemetryUserDeletionData } from '@/Interfaces';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
@@ -20,12 +17,17 @@ import { UserRepository } from '@db/repositories/user.repository';
 import { UserService } from '@/services/user.service';
 import { listQueryMiddleware } from '@/middlewares';
 import { Logger } from '@/Logger';
-import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooks } from '@/InternalHooks';
 import { validateEntity } from '@/GenericHelpers';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { Project } from '@/databases/entities/Project';
+import { WorkflowService } from '@/workflows/workflow.service';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { ProjectService } from '@/services/project.service';
 
 @RestController('/users')
 export class UsersController {
@@ -36,9 +38,12 @@ export class UsersController {
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly userRepository: UserRepository,
-		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly authService: AuthService,
 		private readonly userService: UserService,
+		private readonly projectRepository: ProjectRepository,
+		private readonly workflowService: WorkflowService,
+		private readonly credentialsService: CredentialsService,
+		private readonly projectService: ProjectService,
 	) {}
 
 	static ERROR_MESSAGES = {
@@ -151,131 +156,92 @@ export class UsersController {
 
 		const { transferId } = req.query;
 
-		if (transferId === idToDelete) {
+		const userToDelete = await this.userRepository.findOneBy({ id: idToDelete });
+
+		if (!userToDelete) {
+			throw new NotFoundError(
+				'Request to delete a user failed because the user to delete was not found in DB',
+			);
+		}
+
+		const personalProjectToDelete = await this.projectRepository.getPersonalProjectForUserOrFail(
+			userToDelete.id,
+		);
+
+		if (transferId === personalProjectToDelete.id) {
 			throw new BadRequestError(
 				'Request to delete a user failed because the user to delete and the transferee are the same user',
 			);
 		}
 
-		const userIds = transferId ? [transferId, idToDelete] : [idToDelete];
-
-		const users = await this.userRepository.findManyByIds(userIds);
-
-		if (!users.length || (transferId && users.length !== 2)) {
-			throw new NotFoundError(
-				'Request to delete a user failed because the ID of the user to delete and/or the ID of the transferee were not found in DB',
-			);
-		}
-
-		const userToDelete = users.find((user) => user.id === req.params.id) as User;
-
 		const telemetryData: ITelemetryUserDeletionData = {
 			user_id: req.user.id,
 			target_user_old_status: userToDelete.isPending ? 'invited' : 'active',
 			target_user_id: idToDelete,
+			migration_strategy: transferId ? 'transfer_data' : 'delete_data',
 		};
 
-		telemetryData.migration_strategy = transferId ? 'transfer_data' : 'delete_data';
-
 		if (transferId) {
-			telemetryData.migration_user_id = transferId;
-		}
+			const transfereePersonalProject = await this.projectRepository.findOneBy({ id: transferId });
 
-		if (transferId) {
-			const transferee = users.find((user) => user.id === transferId);
-
-			await this.userService.getManager().transaction(async (transactionManager) => {
-				// Get all workflow ids belonging to user to delete
-				const sharedWorkflowIds = await transactionManager
-					.getRepository(SharedWorkflow)
-					.find({
-						select: ['workflowId'],
-						where: { userId: userToDelete.id, role: 'workflow:owner' },
-					})
-					.then((sharedWorkflows) => sharedWorkflows.map(({ workflowId }) => workflowId));
-
-				// Prevents issues with unique key constraints since user being assigned
-				// workflows and credentials might be a sharee
-				await this.sharedWorkflowRepository.deleteByIds(
-					transactionManager,
-					sharedWorkflowIds,
-					transferee,
+			if (!transfereePersonalProject) {
+				throw new NotFoundError(
+					'Request to delete a user failed because the transferee project was not found in DB',
 				);
+			}
 
-				// Transfer ownership of owned workflows
-				await transactionManager.update(
-					SharedWorkflow,
-					{ user: userToDelete, role: 'workflow:owner' },
-					{ user: transferee },
-				);
-
-				// Now do the same for creds
-
-				// Get all workflow ids belonging to user to delete
-				const sharedCredentialIds = await transactionManager
-					.getRepository(SharedCredentials)
-					.find({
-						select: ['credentialsId'],
-						where: { userId: userToDelete.id, role: 'credential:owner' },
-					})
-					.then((sharedCredentials) => sharedCredentials.map(({ credentialsId }) => credentialsId));
-
-				// Prevents issues with unique key constraints since user being assigned
-				// workflows and credentials might be a sharee
-				await this.sharedCredentialsRepository.deleteByIds(
-					transactionManager,
-					sharedCredentialIds,
-					transferee,
-				);
-
-				// Transfer ownership of owned credentials
-				await transactionManager.update(
-					SharedCredentials,
-					{ user: userToDelete, role: 'credential:owner' },
-					{ user: transferee },
-				);
-
-				await transactionManager.delete(AuthIdentity, { userId: userToDelete.id });
-
-				// This will remove all shared workflows and credentials not owned
-				await transactionManager.delete(User, { id: userToDelete.id });
+			const transferee = await this.userRepository.findOneByOrFail({
+				projectRelations: {
+					projectId: transfereePersonalProject.id,
+					role: 'project:personalOwner',
+				},
 			});
 
-			void this.internalHooks.onUserDeletion({
-				user: req.user,
-				telemetryData,
-				publicApi: false,
+			telemetryData.migration_user_id = transferee.id;
+
+			await this.userService.getManager().transaction(async (trx) => {
+				await this.workflowService.transferAll(
+					personalProjectToDelete.id,
+					transfereePersonalProject.id,
+					trx,
+				);
+				await this.credentialsService.transferAll(
+					personalProjectToDelete.id,
+					transfereePersonalProject.id,
+					trx,
+				);
 			});
-			await this.externalHooks.run('user.deleted', [await this.userService.toPublic(userToDelete)]);
-			return { success: true };
+
+			await this.projectService.clearCredentialCanUseExternalSecretsCache(
+				transfereePersonalProject.id,
+			);
 		}
 
 		const [ownedSharedWorkflows, ownedSharedCredentials] = await Promise.all([
 			this.sharedWorkflowRepository.find({
-				relations: ['workflow'],
-				where: { userId: userToDelete.id, role: 'workflow:owner' },
+				select: { workflowId: true },
+				where: { projectId: personalProjectToDelete.id, role: 'workflow:owner' },
 			}),
 			this.sharedCredentialsRepository.find({
-				relations: ['credentials'],
-				where: { userId: userToDelete.id, role: 'credential:owner' },
+				relations: { credentials: true },
+				where: { projectId: personalProjectToDelete.id, role: 'credential:owner' },
 			}),
 		]);
 
-		await this.userService.getManager().transaction(async (transactionManager) => {
-			const ownedWorkflows = await Promise.all(
-				ownedSharedWorkflows.map(async ({ workflow }) => {
-					if (workflow.active) {
-						// deactivate before deleting
-						await this.activeWorkflowManager.remove(workflow.id);
-					}
-					return workflow;
-				}),
-			);
-			await transactionManager.remove(ownedWorkflows);
-			await transactionManager.remove(ownedSharedCredentials.map(({ credentials }) => credentials));
+		const ownedCredentials = ownedSharedCredentials.map(({ credentials }) => credentials);
 
-			await transactionManager.delete(AuthIdentity, { userId: userToDelete.id });
-			await transactionManager.delete(User, { id: userToDelete.id });
+		for (const { workflowId } of ownedSharedWorkflows) {
+			await this.workflowService.delete(userToDelete, workflowId);
+		}
+
+		for (const credential of ownedCredentials) {
+			await this.credentialsService.delete(credential);
+		}
+
+		await this.userService.getManager().transaction(async (trx) => {
+			await trx.delete(AuthIdentity, { userId: userToDelete.id });
+			await trx.delete(Project, { id: personalProjectToDelete.id });
+			await trx.delete(User, { id: userToDelete.id });
 		});
 
 		void this.internalHooks.onUserDeletion({
@@ -285,6 +251,7 @@ export class UsersController {
 		});
 
 		await this.externalHooks.run('user.deleted', [await this.userService.toPublic(userToDelete)]);
+
 		return { success: true };
 	}
 
@@ -308,11 +275,11 @@ export class UsersController {
 		}
 
 		if (req.user.role === 'global:admin' && targetUser.role === 'global:owner') {
-			throw new UnauthorizedError(NO_ADMIN_ON_OWNER);
+			throw new ForbiddenError(NO_ADMIN_ON_OWNER);
 		}
 
 		if (req.user.role === 'global:owner' && targetUser.role === 'global:owner') {
-			throw new UnauthorizedError(NO_OWNER_ON_OWNER);
+			throw new ForbiddenError(NO_OWNER_ON_OWNER);
 		}
 
 		await this.userService.update(targetUser.id, { role: payload.newRoleName });
@@ -323,6 +290,13 @@ export class UsersController {
 			target_user_new_role: ['global', payload.newRoleName].join(' '),
 			public_api: false,
 		});
+
+		const projects = await this.projectService.getUserOwnedOrAdminProjects(targetUser.id);
+		await Promise.all(
+			projects.map(
+				async (p) => await this.projectService.clearCredentialCanUseExternalSecretsCache(p.id),
+			),
+		);
 
 		return { success: true };
 	}

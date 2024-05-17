@@ -17,7 +17,7 @@ import { InternalHooks } from '@/InternalHooks';
 import { UrlService } from '@/services/url.service';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { UserRepository } from '@/databases/repositories/user.repository';
@@ -76,7 +76,7 @@ export class PasswordResetController {
 			this.logger.debug(
 				'Request to send password reset email failed because the user limit was reached',
 			);
-			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 		if (
 			isSamlCurrentAuthenticationMethod() &&
@@ -88,7 +88,7 @@ export class PasswordResetController {
 			this.logger.debug(
 				'Request to send password reset email failed because login is handled by SAML',
 			);
-			throw new UnauthorizedError(
+			throw new ForbiddenError(
 				'Login is handled by SAML. Please contact your Identity Provider to reset your password.',
 			);
 		}
@@ -163,7 +163,7 @@ export class PasswordResetController {
 				'Request to resolve password token failed because the user limit was reached',
 				{ userId: user.id },
 			);
-			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
 		this.logger.info('Reset-password token resolved successfully', { userId: user.id });

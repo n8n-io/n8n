@@ -466,9 +466,20 @@ const stringOptions = (input: AutocompleteInput<string>): Completion[] => {
 	]);
 
 	if (resolved && validateFieldType('string', resolved, 'number').valid) {
+		const recommended = ['toNumber()'];
+		const timestampUnit = toTimestampUnit(Number(resolved));
+
+		if (timestampUnit) {
+			return applySections({
+				options,
+				recommended: [...recommended, { label: 'toDateTime()', args: [`'${timestampUnit}'`] }],
+				sections: STRING_SECTIONS,
+			});
+		}
+
 		return applySections({
 			options,
-			recommended: ['toNumber()'],
+			recommended,
 			sections: STRING_SECTIONS,
 		});
 	}
@@ -541,6 +552,29 @@ const booleanOptions = (): Completion[] => {
 	});
 };
 
+const isWithinMargin = (ts: number, now: number, margin: number): boolean => {
+	return ts > now - margin && ts < now + margin;
+};
+
+const toTimestampUnit = (ts: number): null | 'ms' | 's' | 'us' => {
+	const nowMillis = Date.now();
+	const marginMillis = 946_707_779_000; // 30y
+
+	if (isWithinMargin(ts, nowMillis, marginMillis)) {
+		return 'ms';
+	}
+
+	if (isWithinMargin(ts, nowMillis / 1000, marginMillis / 1000)) {
+		return 's';
+	}
+
+	if (isWithinMargin(ts, nowMillis * 1000, marginMillis * 1000)) {
+		return 'us';
+	}
+
+	return null;
+};
+
 const numberOptions = (input: AutocompleteInput<number>): Completion[] => {
 	const { resolved, transformLabel } = input;
 	const options = sortCompletionsAlpha([
@@ -550,26 +584,11 @@ const numberOptions = (input: AutocompleteInput<number>): Completion[] => {
 	const ONLY_INTEGER = ['isEven()', 'isOdd()'];
 
 	if (Number.isInteger(resolved)) {
-		const nowMillis = Date.now();
-		const marginMillis = 946_707_779_000; // 30y
-		const isPlausableMillisDateTime =
-			resolved > nowMillis - marginMillis && resolved < nowMillis + marginMillis;
-
-		if (isPlausableMillisDateTime) {
+		const timestampUnit = toTimestampUnit(resolved);
+		if (timestampUnit) {
 			return applySections({
 				options,
-				recommended: [{ label: 'toDateTime()', args: ["'ms'"] }],
-			});
-		}
-
-		const nowSeconds = nowMillis / 1000;
-		const marginSeconds = marginMillis / 1000;
-		const isPlausableSecondsDateTime =
-			resolved > nowSeconds - marginSeconds && resolved < nowSeconds + marginSeconds;
-		if (isPlausableSecondsDateTime) {
-			return applySections({
-				options,
-				recommended: [{ label: 'toDateTime()', args: ["'s'"] }],
+				recommended: [{ label: 'toDateTime()', args: [`'${timestampUnit}'`] }],
 			});
 		}
 
@@ -737,7 +756,6 @@ export const luxonInstanceOptions = ({
 				name: key,
 				isFunction,
 				docs: luxonInstanceDocs,
-				translations: i18n.luxonInstance,
 				includeHidden,
 				transformLabel,
 			}) as Completion;
@@ -759,7 +777,6 @@ export const luxonStaticOptions = () => {
 					name: key,
 					isFunction: true,
 					docs: luxonStaticDocs,
-					translations: i18n.luxonStatic,
 				}) as Completion;
 			})
 			.filter(Boolean),
@@ -769,14 +786,12 @@ export const luxonStaticOptions = () => {
 const createLuxonAutocompleteOption = ({
 	name,
 	docs,
-	translations,
 	isFunction = false,
 	includeHidden = false,
 	transformLabel = (label) => label,
 }: {
 	name: string;
 	docs: NativeDoc;
-	translations: Record<string, string | undefined>;
 	isFunction?: boolean;
 	includeHidden?: boolean;
 	transformLabel?: (label: string) => string;
@@ -816,8 +831,7 @@ const createLuxonAutocompleteOption = ({
 	option.info = createCompletionOption({
 		name,
 		isFunction,
-		// Add translated description
-		doc: { ...doc, description: translations[name] } as DocMetadata,
+		doc,
 		transformLabel,
 	}).info;
 	return option;
@@ -847,6 +861,7 @@ const regexes = {
 
 	numberLiteral: /\((\d+)\.?(\d*)\)\.(.*)/, // (123). or (123.4).
 	singleQuoteStringLiteral: /('.*')\.([^'{\s])*/, // 'abc'.
+	booleanLiteral: /(true|false)\.([^'{\s])*/, // true.
 	doubleQuoteStringLiteral: /(".*")\.([^"{\s])*/, // "abc".
 	dateLiteral: /\(?new Date\(\(?.*?\)\)?\.(.*)/, // new Date(). or (new Date()).
 	arrayLiteral: /\(?(\[.*\])\)?\.(.*)/, // [1, 2, 3].
