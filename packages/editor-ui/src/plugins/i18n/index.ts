@@ -16,8 +16,6 @@ import {
 	insertOptionsAndValues,
 } from './utils';
 
-export type Language = typeof loadLanguages;
-
 export const i18nInstance = createI18n({
 	locale: 'en',
 	fallbackLocale: 'en',
