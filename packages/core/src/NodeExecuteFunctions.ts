@@ -99,6 +99,7 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 	CallbackManager,
+	INodeParameters,
 } from 'n8n-workflow';
 import {
 	ExpressionError,
@@ -2121,13 +2122,12 @@ export function cleanupParameterData(inputData: NodeParameterValueType): void {
 	}
 
 	if (typeof inputData === 'object') {
-		type Key = keyof typeof inputData;
-		(Object.keys(inputData) as Key[]).forEach((key) => {
-			const value = inputData[key];
+		Object.keys(inputData).forEach((key) => {
+			const value = (inputData as INodeParameters)[key];
 			if (typeof value === 'object') {
 				if (DateTime.isDateTime(value)) {
 					// Is a special luxon date so convert to string
-					inputData[key] = value.toString();
+					(inputData as INodeParameters)[key] = value.toString();
 				} else {
 					cleanupParameterData(value);
 				}
