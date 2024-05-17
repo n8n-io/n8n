@@ -19,6 +19,7 @@ export class NodeMailer {
 			host: config.getEnv('userManagement.emails.smtp.host'),
 			port: config.getEnv('userManagement.emails.smtp.port'),
 			secure: config.getEnv('userManagement.emails.smtp.secure'),
+			ignoreTLS: !config.getEnv('userManagement.emails.smtp.startTLS'),
 		};
 
 		if (
