@@ -1,5 +1,4 @@
 import 'reflect-metadata';
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Container, Service } from 'typedi';
 
 // eslint-disable-next-line @typescript-eslint/ban-types
@@ -17,6 +16,7 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 		const config = new (ConfigClass as new () => Record<PropertyKey, unknown>)();
 		const classMetadata = globalMetadata.get(ConfigClass);
 		if (!classMetadata) {
+			// eslint-disable-next-line n8n-local-rules/no-plain-errors
 			throw new Error('Invalid config class: ' + ConfigClass.name);
 		}
 		for (const [key, { type, envName }] of classMetadata) {
@@ -53,18 +53,18 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 export const Nested: PropertyDecorator = (target: object, key: PropertyKey) => {
 	const ConfigClass = target.constructor;
 	const classMetadata = globalMetadata.get(ConfigClass) ?? new Map<PropertyKey, PropertyMetadata>();
-	const type = Reflect.getMetadata('design:type', target, key);
+	const type = Reflect.getMetadata('design:type', target, key) as unknown;
 	classMetadata.set(key, { type });
 	globalMetadata.set(ConfigClass, classMetadata);
 };
 
-export const FromEnv =
+export const Env =
 	(envName: string): PropertyDecorator =>
 	(target: object, key: PropertyKey) => {
 		const ConfigClass = target.constructor;
 		const classMetadata =
 			globalMetadata.get(ConfigClass) ?? new Map<PropertyKey, PropertyMetadata>();
-		const type = Reflect.getMetadata('design:type', target, key);
+		const type = Reflect.getMetadata('design:type', target, key) as unknown;
 		classMetadata.set(key, { type, envName });
 		globalMetadata.set(ConfigClass, classMetadata);
 	};
