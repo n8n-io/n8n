@@ -25,9 +25,9 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	(event: 'selected', element: INodeCreateElement, $e?: Event): void;
-	(event: 'dragstart', element: INodeCreateElement, $e: Event): void;
-	(event: 'dragend', element: INodeCreateElement, $e: Event): void;
+	selected: [element: INodeCreateElement, $e?: Event];
+	dragstart: [element: INodeCreateElement, $e: Event];
+	dragend: [element: INodeCreateElement, $e: Event];
 }>();
 
 const renderedItems = ref<INodeCreateElement[]>([]);
@@ -61,7 +61,23 @@ function wrappedEmit(
 ) {
 	if (props.disabled) return;
 
-	emit(event, element, $e);
+	switch (event) {
+		case 'dragstart':
+			if ($e) {
+				emit('dragstart', element, $e);
+				break;
+			}
+		case 'dragend':
+			if ($e) {
+				emit('dragend', element, $e);
+				break;
+			}
+		case 'selected':
+			emit('selected', element, $e);
+			break;
+		default:
+			emit(event, element, $e);
+	}
 }
 
 function beforeEnter(el: HTMLElement) {
