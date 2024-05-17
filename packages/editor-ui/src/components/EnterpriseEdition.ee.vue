@@ -7,7 +7,7 @@
 
 <script lang="ts">
 import { type PropType, defineComponent } from 'vue';
-import type { EnterpriseEditionFeatureValues } from '@/constants';
+import type { EnterpriseEditionFeatureValues } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
 

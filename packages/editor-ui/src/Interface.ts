@@ -1922,3 +1922,20 @@ export type NewConnectionInfo = {
 export type AIAssistantConnectionInfo = NewConnectionInfo & {
 	stepName: string;
 };
+
+export type EnterpriseEditionFeatureKeys =
+	| 'AdvancedExecutionFilters'
+	| 'Sharing'
+	| 'Ldap'
+	| 'LogStreaming'
+	| 'Variables'
+	| 'Saml'
+	| 'SourceControl'
+	| 'ExternalSecrets'
+	| 'AuditLogs'
+	| 'DebugInEditor'
+	| 'WorkflowHistory'
+	| 'WorkerView'
+	| 'AdvancedPermissions';
+
+export type EnterpriseEditionFeatureValues = keyof Omit<IN8nUISettings['enterprise'], 'projects'>;

@@ -8,7 +8,7 @@ import {
 } from '@/api/ldap';
 import { getPromptsData, getSettings, submitContactInfo, submitValueSurvey } from '@/api/settings';
 import { testHealthEndpoint } from '@/api/templates';
-import type { EnterpriseEditionFeatureValues } from '@/constants';
+import type { EnterpriseEditionFeatureValues } from '@/Interface';
 import {
 	CONTACT_PROMPT_MODAL_KEY,
 	STORES,

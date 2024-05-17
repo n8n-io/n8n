@@ -1,6 +1,5 @@
-import type { EnterpriseEditionFeatureValues } from '@/constants';
 import type { Resource, ScopeOptions, Scope } from '@n8n/permissions';
-import type { IRole } from '@/Interface';
+import type { EnterpriseEditionFeatureValues, IRole } from '@/Interface';
 
 export type AuthenticatedPermissionOptions = {
 	bypass?: () => boolean;

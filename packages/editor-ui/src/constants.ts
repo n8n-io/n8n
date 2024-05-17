@@ -1,5 +1,8 @@
-import type { NodeCreatorOpenSource } from './Interface';
-import type { IN8nUISettings } from 'n8n-workflow';
+import type {
+	EnterpriseEditionFeatureKeys,
+	EnterpriseEditionFeatureValues,
+	NodeCreatorOpenSource,
+} from './Interface';
 import { NodeConnectionType } from 'n8n-workflow';
 
 export const MAX_WORKFLOW_SIZE = 1024 * 1024 * 16; // Workflow size limit in bytes
@@ -538,23 +541,6 @@ export const enum WORKFLOW_MENU_ACTIONS {
 	SETTINGS = 'settings',
 	DELETE = 'delete',
 }
-
-export type EnterpriseEditionFeatureKeys =
-	| 'AdvancedExecutionFilters'
-	| 'Sharing'
-	| 'Ldap'
-	| 'LogStreaming'
-	| 'Variables'
-	| 'Saml'
-	| 'SourceControl'
-	| 'ExternalSecrets'
-	| 'AuditLogs'
-	| 'DebugInEditor'
-	| 'WorkflowHistory'
-	| 'WorkerView'
-	| 'AdvancedPermissions';
-
-export type EnterpriseEditionFeatureValues = keyof Omit<IN8nUISettings['enterprise'], 'projects'>;
 
 /**
  * Enterprise edition
