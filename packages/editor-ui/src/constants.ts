@@ -1,5 +1,6 @@
 import type { NodeCreatorOpenSource } from './Interface';
-import { IN8nUISettings, NodeConnectionType } from 'n8n-workflow';
+import type { IN8nUISettings } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 export const MAX_WORKFLOW_SIZE = 1024 * 1024 * 16; // Workflow size limit in bytes
 export const MAX_EXPECTED_REQUEST_SIZE = 2048; // Expected maximum workflow request metadata (i.e. headers) size in bytes
@@ -553,26 +554,11 @@ export type EnterpriseEditionFeatureKeys =
 	| 'WorkerView'
 	| 'AdvancedPermissions';
 
-export type EnterpriseEditionFeatureValues =
-	// keyof IN8nUISettings["enterprise"]
-	| 'advancedExecutionFilters'
-	| 'sharing'
-	| 'ldap'
-	| 'logStreaming'
-	| 'variables'
-	| 'saml'
-	| 'sourceControl'
-	| 'externalSecrets'
-	| 'auditLogs'
-	| 'debugInEditor'
-	| 'workflowHistory'
-	| 'workerView'
-	| 'advancedPermissions';
+export type EnterpriseEditionFeatureValues = keyof Omit<IN8nUISettings['enterprise'], 'projects'>;
 
 /**
  * Enterprise edition
  */
-
 export const EnterpriseEditionFeature: Record<
 	EnterpriseEditionFeatureKeys,
 	EnterpriseEditionFeatureValues
