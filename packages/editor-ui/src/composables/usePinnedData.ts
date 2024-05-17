@@ -28,7 +28,8 @@ export type PinDataSource =
 	| 'duplicate-node'
 	| 'add-nodes'
 	| 'context-menu'
-	| 'keyboard-shortcut';
+	| 'keyboard-shortcut'
+	| 'banner-link';
 
 export type UnpinDataSource =
 	| 'unpin-and-execute-modal'
