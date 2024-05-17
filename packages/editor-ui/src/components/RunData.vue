@@ -596,7 +596,7 @@ import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
 import NodeErrorView from '@/components/Error/NodeErrorView.vue';
 import JsonEditor from '@/components/JsonEditor/JsonEditor.vue';
 
-import type { PinDataSource } from '@/composables/usePinnedData';
+import type { PinDataSource, UnpinDataSource } from '@/composables/usePinnedData';
 import { usePinnedData } from '@/composables/usePinnedData';
 import { dataPinningEventBus } from '@/event-bus';
 import { clearJsonKey, isEmpty } from '@/utils/typesUtils';
@@ -717,7 +717,7 @@ export default defineComponent({
 	},
 	data() {
 		return {
-			connectionType: NodeConnectionType.Main,
+			connectionType: NodeConnectionType.Main as ConnectionTypes,
 			binaryDataPreviewActive: false,
 			dataSize: 0,
 			showData: false,
@@ -1018,7 +1018,7 @@ export default defineComponent({
 			return this.hasNodeRun && !this.hasRunError;
 		},
 		showIoSearchNoMatchContent(): boolean {
-			return this.hasNodeRun && !this.inputData.length && this.search;
+			return this.hasNodeRun && !this.inputData.length && !!this.search;
 		},
 	},
 	watch: {
@@ -1208,7 +1208,11 @@ export default defineComponent({
 				? clearJsonKey(this.pinnedData.data.value)
 				: executionDataToJson(this.rawInputData);
 
-			const data = inputData.length > 0 ? inputData : TEST_PIN_DATA;
+			const inputDataLength = Array.isArray(inputData)
+				? inputData.length
+				: Object.keys(inputData ?? {}).length;
+
+			const data = inputDataLength > 0 ? inputData : TEST_PIN_DATA;
 
 			this.ndvStore.setOutputPanelEditModeEnabled(true);
 			this.ndvStore.setOutputPanelEditModeValue(JSON.stringify(data, null, 2));
@@ -1257,14 +1261,14 @@ export default defineComponent({
 				type,
 			});
 		},
-		async onTogglePinData({ source }: { source: PinDataSource }) {
+		async onTogglePinData({ source }: { source: PinDataSource | UnpinDataSource }) {
 			if (!this.node) {
 				return;
 			}
 
 			if (source === 'pin-icon-click') {
 				const telemetryPayload = {
-					node_type: this.activeNode.type,
+					node_type: this.activeNode?.type,
 					push_ref: this.pushRef,
 					run_index: this.runIndex,
 					view: !this.hasNodeRun && !this.pinnedData.hasData.value ? 'none' : this.displayMode,
@@ -1313,7 +1317,7 @@ export default defineComponent({
 			this.$telemetry.track('User changed ndv branch', {
 				push_ref: this.pushRef,
 				branch_index: value,
-				node_type: this.activeNode.type,
+				node_type: this.activeNode?.type,
 				node_type_input_selection: this.nodeType ? this.nodeType.name : '',
 				pane: this.paneType,
 			});
@@ -1321,7 +1325,7 @@ export default defineComponent({
 		showTooMuchData() {
 			this.showData = true;
 			this.$telemetry.track('User clicked ndv button', {
-				node_type: this.activeNode.type,
+				node_type: this.activeNode?.type,
 				workflow_id: this.workflowsStore.workflowId,
 				push_ref: this.pushRef,
 				pane: this.paneType,
@@ -1337,7 +1341,7 @@ export default defineComponent({
 		unlinkRun() {
 			this.$emit('unlinkRun');
 		},
-		onCurrentPageChange(value) {
+		onCurrentPageChange(value: number) {
 			this.currentPage = value;
 			this.$telemetry.track('User changed ndv page', {
 				node_type: this.activeNode?.type,
