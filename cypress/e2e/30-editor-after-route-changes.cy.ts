@@ -148,7 +148,7 @@ describe('Editor actions should work', () => {
 	it('after switching between Editor and Debug', () => {
 		cy.intercept('GET', '/rest/executions?filter=*').as('getExecutions');
 		cy.intercept('GET', '/rest/executions/*').as('getExecution');
-		cy.intercept('POST', '/rest/workflows/run').as('postWorkflowRun');
+		cy.intercept('POST', '/rest/workflows/**/run').as('postWorkflowRun');
 
 		editWorkflowAndDeactivate();
 		workflowPage.actions.executeWorkflow();
@@ -196,9 +196,9 @@ describe('Editor zoom should work after route changes', () => {
 		cy.intercept('GET', '/rest/workflow-history/workflow/*/version/*').as('getVersion');
 		cy.intercept('GET', '/rest/workflow-history/workflow/*').as('getHistory');
 		cy.intercept('GET', '/rest/users').as('getUsers');
-		cy.intercept('GET', '/rest/workflows').as('getWorkflows');
+		cy.intercept('GET', '/rest/workflows?*').as('getWorkflows');
 		cy.intercept('GET', '/rest/active-workflows').as('getActiveWorkflows');
-		cy.intercept('GET', '/rest/credentials').as('getCredentials');
+		cy.intercept('GET', '/rest/credentials?*').as('getCredentials');
 
 		switchBetweenEditorAndHistory();
 		zoomInAndCheckNodes();

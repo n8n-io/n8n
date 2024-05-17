@@ -1,9 +1,11 @@
 import { Service } from 'typedi';
-import type { EntityManager, FindManyOptions } from '@n8n/typeorm';
+import type { DeepPartial, EntityManager, FindManyOptions } from '@n8n/typeorm';
 import { DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
 import type { ListQuery } from '@/requests';
 
 import { type GlobalRole, User } from '../entities/User';
+import { Project } from '../entities/Project';
+import { ProjectRelation } from '../entities/ProjectRelation';
 @Service()
 export class UserRepository extends Repository<User> {
 	constructor(dataSource: DataSource) {
@@ -14,6 +16,19 @@ export class UserRepository extends Repository<User> {
 		return await this.find({
 			where: { id: In(userIds) },
 		});
+	}
+
+	/**
+	 * @deprecated Use `UserRepository.save` instead if you can.
+	 *
+	 * We need to use `save` so that that the subscriber in
+	 * packages/cli/src/databases/entities/Project.ts receives the full user.
+	 * With `update` it would only receive the updated fields, e.g. the `id`
+	 * would be missing. test('does not use `Repository.update`, but
+	 * `Repository.save` instead'.
+	 */
+	async update(...args: Parameters<Repository<User>['update']>) {
+		return await super.update(...args);
 	}
 
 	async deleteAllExcept(user: User) {
@@ -103,5 +118,35 @@ export class UserRepository extends Repository<User> {
 			select: ['email'],
 			where: { id: In(userIds), password: Not(IsNull()) },
 		});
+	}
+
+	async createUserWithProject(
+		user: DeepPartial<User>,
+		transactionManager?: EntityManager,
+	): Promise<{ user: User; project: Project }> {
+		const createInner = async (entityManager: EntityManager) => {
+			const newUser = entityManager.create(User, user);
+			const savedUser = await entityManager.save<User>(newUser);
+			const savedProject = await entityManager.save<Project>(
+				entityManager.create(Project, {
+					type: 'personal',
+					name: savedUser.createPersonalProjectName(),
+				}),
+			);
+			await entityManager.save<ProjectRelation>(
+				entityManager.create(ProjectRelation, {
+					projectId: savedProject.id,
+					userId: savedUser.id,
+					role: 'project:personalOwner',
+				}),
+			);
+			return { user: savedUser, project: savedProject };
+		};
+		if (transactionManager) {
+			return await createInner(transactionManager);
+		}
+		// TODO: use a transactions
+		// This is blocked by TypeORM having concurrency issues with transactions
+		return await createInner(this.manager);
 	}
 }

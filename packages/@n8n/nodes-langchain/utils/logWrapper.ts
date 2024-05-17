@@ -13,7 +13,6 @@ import type { Document } from '@langchain/core/documents';
 import { TextSplitter } from 'langchain/text_splitter';
 import { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import { BaseRetriever } from '@langchain/core/retrievers';
-import type { FormatInstructionsOptions } from '@langchain/core/output_parsers';
 import { BaseOutputParser, OutputParserException } from '@langchain/core/output_parsers';
 import { isObject } from 'lodash';
 import type { BaseDocumentLoader } from 'langchain/dist/document_loaders/base';
@@ -222,31 +221,7 @@ export function logWrapper(
 
 			// ========== BaseOutputParser ==========
 			if (originalInstance instanceof BaseOutputParser) {
-				if (prop === 'getFormatInstructions' && 'getFormatInstructions' in target) {
-					return (options?: FormatInstructionsOptions): string => {
-						connectionType = NodeConnectionType.AiOutputParser;
-						const { index } = executeFunctions.addInputData(connectionType, [
-							[{ json: { action: 'getFormatInstructions' } }],
-						]);
-
-						// @ts-ignore
-						const response = callMethodSync.call(target, {
-							executeFunctions,
-							connectionType,
-							currentNodeRunIndex: index,
-							method: target[prop],
-							arguments: [options],
-						}) as string;
-
-						executeFunctions.addOutputData(connectionType, index, [
-							[{ json: { action: 'getFormatInstructions', response } }],
-						]);
-						void logAiEvent(executeFunctions, 'n8n.ai.output.parser.get.instructions', {
-							response,
-						});
-						return response;
-					};
-				} else if (prop === 'parse' && 'parse' in target) {
+				if (prop === 'parse' && 'parse' in target) {
 					return async (text: string | Record<string, unknown>): Promise<unknown> => {
 						connectionType = NodeConnectionType.AiOutputParser;
 						const stringifiedText = isObject(text) ? JSON.stringify(text) : text;
@@ -254,19 +229,30 @@ export function logWrapper(
 							[{ json: { action: 'parse', text: stringifiedText } }],
 						]);
 
-						const response = (await callMethodAsync.call(target, {
-							executeFunctions,
-							connectionType,
-							currentNodeRunIndex: index,
-							method: target[prop],
-							arguments: [stringifiedText],
-						})) as object;
+						try {
+							const response = (await callMethodAsync.call(target, {
+								executeFunctions,
+								connectionType,
+								currentNodeRunIndex: index,
+								method: target[prop],
+								arguments: [stringifiedText],
+							})) as object;
 
-						void logAiEvent(executeFunctions, 'n8n.ai.output.parser.parsed', { text, response });
-						executeFunctions.addOutputData(connectionType, index, [
-							[{ json: { action: 'parse', response } }],
-						]);
-						return response;
+							void logAiEvent(executeFunctions, 'n8n.ai.output.parser.parsed', { text, response });
+							executeFunctions.addOutputData(connectionType, index, [
+								[{ json: { action: 'parse', response } }],
+							]);
+							return response;
+						} catch (error) {
+							void logAiEvent(executeFunctions, 'n8n.ai.output.parser.parsed', {
+								text,
+								response: error.message ?? error,
+							});
+							executeFunctions.addOutputData(connectionType, index, [
+								[{ json: { action: 'parse', response: error.message ?? error } }],
+							]);
+							throw error;
+						}
 					};
 				}
 			}

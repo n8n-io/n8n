@@ -14,6 +14,7 @@ const plugins = [
 	vue(),
 	icons({
 		compiler: 'vue3',
+		autoInstall: true,
 	}),
 	dts(),
 ];

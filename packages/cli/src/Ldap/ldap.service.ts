@@ -349,7 +349,7 @@ export class LdapService {
 			localAdUsers,
 		);
 
-		this.logger.debug('LDAP - Users processed', {
+		this.logger.debug('LDAP - Users to process', {
 			created: usersToCreate.length,
 			updated: usersToUpdate.length,
 			disabled: usersToDisable.length,
