@@ -4,10 +4,13 @@ import { v4 as uuid } from 'uuid';
 import { User } from '@db/entities/User';
 import { UserService } from '@/services/user.service';
 import { UrlService } from '@/services/url.service';
+import { mockInstance } from '../../shared/mocking';
+import { UserRepository } from '@/databases/repositories/user.repository';
 
 describe('UserService', () => {
 	const urlService = new UrlService();
-	const userService = new UserService(mock(), mock(), mock(), urlService);
+	const userRepository = mockInstance(UserRepository);
+	const userService = new UserService(mock(), userRepository, mock(), urlService);
 
 	const commonMockUser = Object.assign(new User(), {
 		id: uuid(),
@@ -64,6 +67,30 @@ describe('UserService', () => {
 
 			expect(url.searchParams.get('inviterId')).toBe(firstUser.id);
 			expect(url.searchParams.get('inviteeId')).toBe(secondUser.id);
+		});
+	});
+
+	describe('update', () => {
+		// We need to use `save` so that that the subscriber in
+		// packages/cli/src/databases/entities/Project.ts receives the full user.
+		// With `update` it would only receive the updated fields, e.g. the `id`
+		// would be missing.
+		it('should use `save` instead of `update`', async () => {
+			const user = new User();
+			user.firstName = 'Not Nathan';
+			user.lastName = 'Nathaniel';
+
+			const userId = '1234';
+			const data = {
+				firstName: 'Nathan',
+			};
+
+			userRepository.findOneBy.mockResolvedValueOnce(user);
+
+			await userService.update(userId, data);
+
+			expect(userRepository.save).toHaveBeenCalledWith({ ...user, ...data }, { transaction: true });
+			expect(userRepository.update).not.toHaveBeenCalled();
 		});
 	});
 });

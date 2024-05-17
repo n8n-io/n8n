@@ -10,7 +10,7 @@ exports[`components > N8nColorPicker > should render with input 1`] = `
     <div
       aria-description="current color is . press enter to select a new color."
       aria-label="color picker"
-      class="el-color-picker el-color-picker--medium el-tooltip__trigger el-tooltip__trigger"
+      class="el-color-picker el-color-picker--default el-tooltip__trigger el-tooltip__trigger"
       role="button"
       tabindex="0"
     >
@@ -108,7 +108,7 @@ exports[`components > N8nColorPicker > should render without input 1`] = `
     <div
       aria-description="current color is . press enter to select a new color."
       aria-label="color picker"
-      class="el-color-picker el-color-picker--medium el-tooltip__trigger el-tooltip__trigger"
+      class="el-color-picker el-color-picker--default el-tooltip__trigger el-tooltip__trigger"
       role="button"
       tabindex="0"
     >

@@ -37,8 +37,10 @@ export class ActiveWorkflowsService {
 	}
 
 	async getActivationError(workflowId: string, user: User) {
-		const hasAccess = await this.sharedWorkflowRepository.hasAccess(workflowId, user);
-		if (!hasAccess) {
+		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, user, [
+			'workflow:read',
+		]);
+		if (!workflow) {
 			this.logger.verbose('User attempted to access workflow errors without permissions', {
 				workflowId,
 				userId: user.id,

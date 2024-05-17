@@ -47,6 +47,7 @@
 		<div>
 			<NodeCredentials
 				:node="node"
+				:readonly="isReadOnly"
 				:override-cred-type="node.parameters[parameter.name]"
 				@credential-selected="(updateInformation) => $emit('credentialSelected', updateInformation)"
 			/>
