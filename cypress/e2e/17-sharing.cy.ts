@@ -30,7 +30,7 @@ const workflowSharingModal = new WorkflowSharingModal();
 const ndv = new NDV();
 
 describe('Sharing', { disableAutoLogin: true }, () => {
-	before(() => cy.enableFeature('sharing', true));
+	before(() => cy.enableFeature('sharing'));
 
 	let workflowW2Url = '';
 	it('should create C1, W1, W2, share W1 with U3, as U2', () => {
@@ -171,11 +171,11 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		cy.get('input').should('not.have.length');
 		credentialsModal.actions.changeTab('Sharing');
 		cy.contains(
-			'You can view this credential because you have permission to read and share',
+			'Sharing a credential allows people to use it in their workflows. They cannot access credential details.',
 		).should('be.visible');
 
 		credentialsModal.getters.usersSelect().click();
-		cy.getByTestId('user-email')
+		cy.getByTestId('project-sharing-info')
 			.filter(':visible')
 			.should('have.length', 3)
 			.contains(INSTANCE_ADMIN.email)

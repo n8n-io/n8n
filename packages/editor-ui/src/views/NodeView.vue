@@ -290,6 +290,7 @@ import type {
 	Workflow,
 	ConnectionTypes,
 	INodeOutputConfiguration,
+	IRun,
 } from 'n8n-workflow';
 import {
 	deepCopy,
@@ -317,6 +318,7 @@ import type {
 	NodeCreatorOpenSource,
 	AddedNodesAndConnections,
 	ToggleNodeCreatorOptions,
+	IPushDataExecutionFinished,
 	AIAssistantConnectionInfo,
 } from '@/Interface';
 
@@ -388,6 +390,8 @@ import { useCanvasPanning } from '@/composables/useCanvasPanning';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
+import { useProjectsStore } from '@/features/projects/projects.store';
+import type { ProjectSharingData } from '@/features/projects/projects.types';
 import { useAIStore } from '@/stores/ai.store';
 import { useStorage } from '@/composables/useStorage';
 import { isJSPlumbEndpointElement } from '@/utils/typeGuards';
@@ -555,7 +559,7 @@ export default defineComponent({
 						this.resetWorkspace();
 						this.uiStore.stateIsDirty = previousDirtyState;
 					}
-					await Promise.all([this.loadCredentials(), this.initView()]);
+					await this.initView();
 					this.canvasStore.stopLoading();
 					if (this.blankRedirect) {
 						this.blankRedirect = false;
@@ -617,6 +621,7 @@ export default defineComponent({
 			usePushConnectionStore,
 			useSourceControlStore,
 			useExecutionsStore,
+			useProjectsStore,
 			useAIStore,
 		),
 		nativelyNumberSuffixedDefaults(): string[] {
@@ -837,11 +842,7 @@ export default defineComponent({
 
 		const loadPromises = (() => {
 			if (this.settingsStore.isPreviewMode && this.isDemo) return [];
-			const promises = [
-				this.loadActiveWorkflows(),
-				this.loadCredentials(),
-				this.loadCredentialTypes(),
-			];
+			const promises = [this.loadActiveWorkflows(), this.loadCredentialTypes()];
 			if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Variables)) {
 				promises.push(this.loadVariables());
 			}
@@ -1282,17 +1283,10 @@ export default defineComponent({
 				this.workflowsStore.setWorkflowPinData(data.workflowData.pinData);
 			}
 
-			if (data.workflowData.ownedBy) {
-				this.workflowsEEStore.setWorkflowOwnedBy({
-					workflowId: data.workflowData.id,
-					ownedBy: data.workflowData.ownedBy,
-				});
-			}
-
-			if (data.workflowData.sharedWith) {
+			if (data.workflowData.sharedWithProjects) {
 				this.workflowsEEStore.setWorkflowSharedWith({
 					workflowId: data.workflowData.id,
-					sharedWith: data.workflowData.sharedWith,
+					sharedWithProjects: data.workflowData.sharedWithProjects,
 				});
 			}
 
@@ -1418,7 +1412,11 @@ export default defineComponent({
 			await this.$router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
 
 			await this.addNodes(data.workflow.nodes, data.workflow.connections);
-			this.workflowData = (await this.workflowsStore.getNewWorkflowData(data.name)) || {};
+			this.workflowData =
+				(await this.workflowsStore.getNewWorkflowData(
+					data.name,
+					this.projectsStore.currentProjectId,
+				)) || {};
 			this.workflowsStore.addToWorkflowMetadata({ templateId });
 			await this.$nextTick();
 			this.canvasStore.zoomToFit();
@@ -1447,17 +1445,10 @@ export default defineComponent({
 			this.workflowsStore.setWorkflowVersionId(workflow.versionId);
 			this.workflowsStore.setWorkflowMetadata(workflow.meta);
 
-			if (workflow.ownedBy) {
-				this.workflowsEEStore.setWorkflowOwnedBy({
-					workflowId: workflow.id,
-					ownedBy: workflow.ownedBy,
-				});
-			}
-
-			if (workflow.sharedWith) {
+			if (workflow.sharedWithProjects) {
 				this.workflowsEEStore.setWorkflowSharedWith({
 					workflowId: workflow.id,
-					sharedWith: workflow.sharedWith,
+					sharedWithProjects: workflow.sharedWithProjects,
 				});
 			}
 
@@ -3647,10 +3638,21 @@ export default defineComponent({
 			// Clear the interval to prevent the notification from being sent
 			clearTimeout(this.unloadTimeout);
 		},
+		makeNewWorkflowShareable() {
+			const { currentProject, personalProject } = this.projectsStore;
+			const homeProject = currentProject ?? personalProject ?? {};
+			const scopes = currentProject?.scopes ?? personalProject?.scopes ?? [];
+
+			this.workflowsStore.workflow.homeProject = homeProject as ProjectSharingData;
+			this.workflowsStore.workflow.scopes = scopes;
+		},
 		async newWorkflow(): Promise<void> {
 			this.canvasStore.startLoading();
 			this.resetWorkspace();
-			this.workflowData = await this.workflowsStore.getNewWorkflowData();
+			this.workflowData = await this.workflowsStore.getNewWorkflowData(
+				undefined,
+				this.projectsStore.currentProjectId,
+			);
 			this.workflowsStore.currentWorkflowExecutions = [];
 			this.executionsStore.activeExecution = null;
 
@@ -3660,6 +3662,7 @@ export default defineComponent({
 			this.uiStore.nodeViewInitialized = true;
 			this.historyStore.reset();
 			this.executionsStore.activeExecution = null;
+			this.makeNewWorkflowShareable();
 			this.canvasStore.stopLoading();
 		},
 		async tryToAddWelcomeSticky(): Promise<void> {
@@ -3700,6 +3703,7 @@ export default defineComponent({
 						return;
 					}
 				}
+				await this.loadCredentials();
 				// Load a workflow
 				let workflowId = null as string | null;
 				if (this.$route.params.name) {
@@ -4664,7 +4668,12 @@ export default defineComponent({
 			await this.credentialsStore.fetchCredentialTypes(true);
 		},
 		async loadCredentials(): Promise<void> {
-			await this.credentialsStore.fetchAllCredentials();
+			const workflow = this.workflowsStore.getWorkflowById(this.currentWorkflow);
+			const projectId =
+				workflow?.homeProject?.type === 'personal'
+					? this.projectsStore.personalProject?.id
+					: workflow?.homeProject?.id;
+			await this.credentialsStore.fetchAllCredentials(projectId);
 		},
 		async loadVariables(): Promise<void> {
 			await this.environmentsStore.fetchAllVariables();
@@ -4968,7 +4977,7 @@ export default defineComponent({
 					this.resetWorkspace();
 					this.uiStore.stateIsDirty = false;
 
-					await this.$router.replace({ name: VIEWS.WORKFLOWS });
+					await this.$router.replace({ name: VIEWS.HOMEPAGE });
 				});
 			}
 		},
@@ -5032,7 +5041,7 @@ export default defineComponent({
 		}
 
 		try {
-			await Promise.all([this.loadCredentials(), this.loadVariables(), this.tagsStore.fetchAll()]);
+			await Promise.all([this.loadVariables(), this.tagsStore.fetchAll(), this.loadCredentials()]);
 
 			if (workflowId !== null && !this.uiStore.stateIsDirty) {
 				const workflow: IWorkflowDb | undefined =
