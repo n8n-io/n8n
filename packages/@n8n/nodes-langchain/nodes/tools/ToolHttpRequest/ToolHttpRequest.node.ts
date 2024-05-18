@@ -19,16 +19,23 @@ import {
 	configureHttpRequestFunction,
 	prettifyToolName,
 	configureResponseOptimizer,
+	extractPlaceholders,
 } from './utils';
 
 import {
 	authenticationProperties,
+	jsonInput,
 	optimizeResponseProperties,
 	parametersCollection,
+	specifyBySelector,
 } from './descriptions';
 
-import { QUERY_PARAMETERS_PLACEHOLDER } from './interfaces';
-import type { ParameterInputType, ToolParameter } from './interfaces';
+import {
+	BODY_PARAMETERS_PLACEHOLDER,
+	HEADERS_PARAMETERS_PLACEHOLDER,
+	QUERY_PARAMETERS_PLACEHOLDER,
+} from './interfaces';
+import type { ParameterInputType, ParametersValues, ToolParameter } from './interfaces';
 
 export class ToolHttpRequest implements INodeType {
 	description: INodeTypeDescription = {
@@ -129,7 +136,7 @@ export class ToolHttpRequest implements INodeType {
 				validateType: 'url',
 			},
 			...authenticationProperties,
-			//---------------------
+			//Query parameters
 			{
 				displayName: 'Send Query Parameters',
 				name: 'sendQuery',
@@ -139,166 +146,117 @@ export class ToolHttpRequest implements INodeType {
 				description: 'Whether the request has query params or not',
 			},
 			{
+				...specifyBySelector,
 				displayName: 'Specify Query Parameters',
 				name: 'specifyQuery',
-				type: 'options',
 				displayOptions: {
 					show: {
 						sendQuery: [true],
 					},
 				},
-				options: [
-					{
-						name: 'Using Fields Below',
-						value: 'keypair',
-					},
-					{
-						name: 'Using JSON Below',
-						value: 'json',
-					},
-					{
-						name: 'Let Model Specify All',
-						value: 'model',
-					},
-				],
-				default: 'keypair',
 			},
 			{
+				...parametersCollection,
 				displayName: 'Query Parameters',
-				name: 'queryParameters',
-				type: 'fixedCollection',
+				name: 'parametersQuery',
 				displayOptions: {
 					show: {
 						sendQuery: [true],
 						specifyQuery: ['keypair'],
 					},
 				},
-				typeOptions: {
-					multipleValues: true,
-				},
-				placeholder: 'Add Parameter',
-				default: {
-					parameters: [
-						{
-							name: '',
-							value: '',
-						},
-					],
-				},
-				options: [
-					{
-						name: 'parameters',
-						displayName: 'Parameter',
-						values: [
-							{
-								displayName: 'Name',
-								name: 'name',
-								type: 'string',
-								default: '',
-							},
-							{
-								displayName: 'Value Provided',
-								name: 'valueProvider',
-								type: 'options',
-								options: [
-									{
-										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-										name: 'By Model (and is required)',
-										value: 'modelRequired',
-									},
-									{
-										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-										name: 'By Model (but is optional)',
-										value: 'modelOptional',
-									},
-									{
-										name: 'Using Field Below',
-										value: 'fieldValue',
-									},
-								],
-								default: 'modelRequired',
-							},
-							{
-								displayName: 'Value',
-								name: 'value',
-								type: 'string',
-								default: '',
-								hint: 'Use a {placeholder} for any data to be filled in by the model',
-								displayOptions: {
-									show: {
-										valueProvider: ['fieldValue'],
-									},
-								},
-							},
-						],
-					},
-				],
 			},
 			{
-				displayName: 'JSON',
+				...jsonInput,
 				name: 'jsonQuery',
-				type: 'json',
-				hint: 'Use a {placeholder} for any data to be filled in by the model',
 				displayOptions: {
 					show: {
 						sendQuery: [true],
 						specifyQuery: ['json'],
 					},
 				},
-				default: '',
 			},
-			//---------------------
+			//Headers parameters
 			{
-				displayName: 'Define Path',
-				name: 'sendInPath',
+				displayName: 'Send Headers',
+				name: 'sendHeaders',
 				type: 'boolean',
 				default: false,
 				noDataExpression: true,
-				description: 'Whether the LLM should provide path parameters',
+				description: 'Whether the request has headers or not',
 			},
 			{
-				...parametersCollection,
-				name: 'pathParameters',
+				...specifyBySelector,
+				displayName: 'Specify Headers',
+				name: 'specifyHeaders',
 				displayOptions: {
 					show: {
-						sendInPath: [true],
+						sendHeaders: [true],
 					},
 				},
 			},
 			{
-				displayName: 'Define Query',
-				name: 'sendInQuery',
-				type: 'boolean',
-				default: false,
-				noDataExpression: true,
-				description: 'Whether the LLM should provide query parameters',
-			},
-			{
 				...parametersCollection,
-				name: 'queryParameters',
+				displayName: 'Header Parameters',
+				name: 'parametersHeaders',
 				displayOptions: {
 					show: {
-						sendInQuery: [true],
+						sendHeaders: [true],
+						specifyHeaders: ['keypair'],
 					},
 				},
 			},
 			{
-				displayName: 'Define Body',
-				name: 'sendInBody',
-				type: 'boolean',
-				default: false,
-				noDataExpression: true,
-				description: 'Whether the LLM should provide body parameters',
-			},
-			{
-				...parametersCollection,
-				name: 'bodyParameters',
+				...jsonInput,
+				name: 'jsonHeaders',
 				displayOptions: {
 					show: {
-						sendInBody: [true],
+						sendHeaders: [true],
+						specifyHeaders: ['json'],
 					},
 				},
 			},
+			//Body parameters
+			{
+				displayName: 'Send Body',
+				name: 'sendBody',
+				type: 'boolean',
+				default: false,
+				noDataExpression: true,
+				description: 'Whether the request has body or not',
+			},
+			{
+				...specifyBySelector,
+				displayName: 'Specify Body',
+				name: 'specifyBody',
+				displayOptions: {
+					show: {
+						sendBody: [true],
+					},
+				},
+			},
+			{
+				...parametersCollection,
+				displayName: 'Body Parameters',
+				name: 'parametersBody',
+				displayOptions: {
+					show: {
+						sendBody: [true],
+						specifyBody: ['keypair'],
+					},
+				},
+			},
+			{
+				...jsonInput,
+				name: 'jsonBody',
+				displayOptions: {
+					show: {
+						sendBody: [true],
+						specifyBody: ['json'],
+					},
+				},
+			},
+
 			...optimizeResponseProperties,
 		],
 	};
@@ -307,7 +265,8 @@ export class ToolHttpRequest implements INodeType {
 		const name = this.getNodeParameter('name', itemIndex) as string;
 		const toolDescription = this.getNodeParameter('toolDescription', itemIndex) as string;
 		const method = this.getNodeParameter('method', itemIndex, 'GET') as IHttpRequestMethods;
-		let url = this.getNodeParameter('url', itemIndex) as string;
+		const url = this.getNodeParameter('url', itemIndex) as string;
+
 		const authentication = this.getNodeParameter('authentication', itemIndex, 'none') as
 			| 'predefinedCredentialType'
 			| 'genericCredentialType'
@@ -336,12 +295,24 @@ export class ToolHttpRequest implements INodeType {
 		const body: IDataObject = {};
 
 		const parameters: ToolParameter[] = [];
-		const sendInQuery: string[] = [];
-		const sendInPath: string[] = [];
-		const sendInBody: string[] = [];
+
+		let qsPlaceholder: string = '';
+		let headersPlaceholder: string = '';
+		let bodyPlaceholder: string = '';
+
+		const urlPlaceholders = extractPlaceholders(url);
+
+		if (urlPlaceholders.length > 0) {
+			for (const placeholder of urlPlaceholders) {
+				parameters.push({
+					name: placeholder,
+					type: 'string',
+					required: true,
+				});
+			}
+		}
 
 		const sendQuery = this.getNodeParameter('sendQuery', itemIndex, false) as boolean;
-
 		if (sendQuery) {
 			const specifyQuery = this.getNodeParameter('specifyQuery', itemIndex) as ParameterInputType;
 
@@ -349,66 +320,194 @@ export class ToolHttpRequest implements INodeType {
 				parameters.push({
 					name: QUERY_PARAMETERS_PLACEHOLDER,
 					description:
-						'This has to be valid query parameters string in the form of keypair, e.g. ?key1=value1&key2=value2, must starts with ?, must be valid url encoded. You must decide what shoul be sent in this request as query parameters',
-					type: 'string',
-					required: true,
+						'Specify query parameters for request, if needed, here, must be a valid JSON object or null',
+					type: 'json',
+					required: false,
 				});
+
+				qsPlaceholder = `qs: {${QUERY_PARAMETERS_PLACEHOLDER}}`;
 			}
 
 			if (specifyQuery === 'keypair') {
-				const queryParametersValues = this.getNodeParameter(
-					'queryParameters.values',
+				const queryParameters = [];
+				const parametersQueryValues = this.getNodeParameter(
+					'parametersQuery.values',
 					itemIndex,
 					[],
-				) as Array<{
-					name: string;
-					valueProvider: 'modelRequired' | 'modelOptional' | 'fieldValue';
-					value: string;
-				}>;
+				) as ParametersValues;
 
-				for (const entry of queryParametersValues) {
+				for (const entry of parametersQueryValues) {
 					if (entry.valueProvider.includes('model')) {
-						sendInQuery.push(entry.name);
+						queryParameters.push(`"${entry.name}":{${entry.name}}`);
 						parameters.push({
 							name: entry.name,
-							description: entry.value,
-							type: 'string',
 							required: entry.valueProvider === 'modelRequired',
 						});
 					} else {
 						qs[entry.name] = entry.value;
 					}
 				}
+
+				qsPlaceholder = `qs: {${queryParameters.join(',')}}`;
 			}
 
 			if (specifyQuery === 'json') {
-				//TODO: Add support for JSON with placeholders
+				const jsonQuery = this.getNodeParameter('jsonQuery', itemIndex, '') as string;
+
+				const matches = extractPlaceholders(jsonQuery);
+
+				for (const match of matches) {
+					parameters.push({
+						name: match,
+						required: true,
+					});
+				}
+
+				qsPlaceholder = `qs: ${jsonQuery}`;
 			}
 		}
 
-		const pathParameters = this.getNodeParameter(
-			'pathParameters.values',
-			itemIndex,
-			[],
-		) as ToolParameter[];
-		const queryParameters = this.getNodeParameter(
-			'queryParameters.values',
-			itemIndex,
-			[],
-		) as ToolParameter[];
-		const bodyParameters = this.getNodeParameter(
-			'bodyParameters.values',
-			itemIndex,
-			[],
-		) as ToolParameter[];
+		const sendHeaders = this.getNodeParameter('sendHeaders', itemIndex, false) as boolean;
+		if (sendHeaders) {
+			const specifyHeaders = this.getNodeParameter(
+				'specifyHeaders',
+				itemIndex,
+			) as ParameterInputType;
 
-		parameters.push(...pathParameters, ...queryParameters, ...bodyParameters);
+			if (specifyHeaders === 'model') {
+				parameters.push({
+					name: HEADERS_PARAMETERS_PLACEHOLDER,
+					description:
+						'Specify headers for request, if needed, here, must be a valid JSON object or null',
+					type: 'json',
+					required: false,
+				});
 
-		let description = toolDescription;
+				headersPlaceholder = `headers: {${HEADERS_PARAMETERS_PLACEHOLDER}}`;
+			}
+
+			if (specifyHeaders === 'keypair') {
+				const headersParameters = [];
+				const parametersHeadersValues = this.getNodeParameter(
+					'parametersHeaders.values',
+					itemIndex,
+					[],
+				) as ParametersValues;
+
+				for (const entry of parametersHeadersValues) {
+					if (entry.valueProvider.includes('model')) {
+						headersParameters.push(`"${entry.name}":{${entry.name}}`);
+						parameters.push({
+							name: entry.name,
+							required: entry.valueProvider === 'modelRequired',
+						});
+					} else {
+						headers[entry.name] = entry.value;
+					}
+				}
+
+				headersPlaceholder = `headers: {${headersParameters.join(',')}}`;
+			}
+
+			if (specifyHeaders === 'json') {
+				const jsonHeaders = this.getNodeParameter('jsonHeaders', itemIndex, '') as string;
+
+				const matches = extractPlaceholders(jsonHeaders);
+
+				for (const match of matches) {
+					parameters.push({
+						name: match,
+						required: true,
+					});
+				}
+
+				headersPlaceholder = `headers: ${jsonHeaders}`;
+			}
+		}
+
+		const sendBody = this.getNodeParameter('sendBody', itemIndex, false) as boolean;
+		if (sendBody) {
+			const specifyBody = this.getNodeParameter('specifyBody', itemIndex) as ParameterInputType;
+
+			if (specifyBody === 'model') {
+				parameters.push({
+					name: BODY_PARAMETERS_PLACEHOLDER,
+					description:
+						'Specify body for request, if needed, here, must be a valid JSON object or null',
+					type: 'json',
+					required: false,
+				});
+
+				bodyPlaceholder = `body: {${BODY_PARAMETERS_PLACEHOLDER}}`;
+			}
+
+			if (specifyBody === 'keypair') {
+				const bodyParameters = [];
+				const parametersBodyValues = this.getNodeParameter(
+					'parametersBody.values',
+					itemIndex,
+					[],
+				) as ParametersValues;
+
+				for (const entry of parametersBodyValues) {
+					if (entry.valueProvider.includes('model')) {
+						bodyParameters.push(`"${entry.name}":{${entry.name}}`);
+						parameters.push({
+							name: entry.name,
+							required: entry.valueProvider === 'modelRequired',
+						});
+					} else {
+						body[entry.name] = entry.value;
+					}
+				}
+
+				bodyPlaceholder = `body: {${bodyParameters.join(',')}}`;
+			}
+
+			if (specifyBody === 'json') {
+				const jsonBody = this.getNodeParameter('jsonBody', itemIndex, '') as string;
+
+				const matches = extractPlaceholders(jsonBody);
+
+				for (const match of matches) {
+					parameters.push({
+						name: match,
+						required: true,
+					});
+				}
+
+				bodyPlaceholder = `body: ${jsonBody}`;
+			}
+		}
+
+		const optionsExpectedFromLLM = [
+			'{',
+			`"url": "${url}"`,
+			`"method": "${method}"`,
+			`${qsPlaceholder ? `qs: ${qsPlaceholder},` : ''}`,
+			`${headersPlaceholder ? `headers: ${headersPlaceholder},` : ''}`,
+			`${bodyPlaceholder ? `body: ${bodyPlaceholder},` : ''}`,
+			'}',
+		]
+			.filter((e) => e)
+			.join(',\n');
+
+		let description = `
+${toolDescription}
+
+This is the expected tool input: a stringified JSON object that needs to be sent as a string.
+It represents options for an HTTP request done with Axios. Replace all placeholders with actual values.
+Placeholders satisfy this regex: /(\{[a-zA-Z0-9_]+\})/g.
+
+${optionsExpectedFromLLM}`;
+
 		if (parameters.length) {
-			description +=
-				` expecting following parameters, required would be marked as such, extract from prompt, if possible, ${parameters.map((parameter) => `${parameter.name}(description: ${parameter.description}, type: ${parameter.type}, required: ${parameter.required})`).join(', ')}` +
-				'send as JSON object';
+			description += `
+Below are the descriptions of the placeholders.
+Required placeholders are marked accordingly.
+Extract descriptions from the prompt if available.
+If a placeholder lacks a description, infer its meaning based:
+${parameters.map((parameter) => `${parameter.name}(description: ${parameter.description || ''}, type: ${parameter.type || ''}, required: ${parameter.required})`).join(', ')}`;
 		}
 
 		return {
@@ -428,39 +527,6 @@ export class ToolHttpRequest implements INodeType {
 						} catch (error) {
 							if (parameters.length === 1) {
 								toolParameters = { [parameters[0].name]: query };
-							}
-						}
-
-						if (pathParameters.length) {
-							for (const parameter of pathParameters) {
-								const parameterName = parameter.name;
-								const parameterValue = encodeURIComponent(String(toolParameters[parameterName]));
-								url = url.replace(`{${parameterName}}`, parameterValue);
-							}
-						}
-
-						// Add query parameters to url defined by LLM
-						if (toolParameters[QUERY_PARAMETERS_PLACEHOLDER]) {
-							let toolParametersString = String(toolParameters[QUERY_PARAMETERS_PLACEHOLDER]);
-							if (!toolParametersString.startsWith('?')) {
-								toolParametersString = `?${encodeURIComponent(toolParametersString)}`;
-							}
-							url = `${url}${toolParameters[QUERY_PARAMETERS_PLACEHOLDER]}`;
-						}
-
-						if (queryParameters.length) {
-							for (const parameter of queryParameters) {
-								const parameterName = parameter.name;
-								const parameterValue = toolParameters[parameterName];
-								qs[parameterName] = parameterValue;
-							}
-						}
-
-						if (bodyParameters.length) {
-							for (const parameter of bodyParameters) {
-								const parameterName = parameter.name;
-								const parameterValue = toolParameters[parameterName];
-								body[parameterName] = parameterValue;
 							}
 						}
 

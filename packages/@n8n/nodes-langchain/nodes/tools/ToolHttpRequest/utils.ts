@@ -352,3 +352,16 @@ export const configureResponseOptimizer = (ctx: IExecuteFunctions, itemIndex: nu
 		return String(response);
 	};
 };
+
+export const extractPlaceholders = (text: string): string[] => {
+	const placeholder = /(\{[a-zA-Z0-9_]+\})/g;
+	const returnData: string[] = [];
+
+	const matches = text.matchAll(placeholder);
+
+	for (const match of matches) {
+		returnData.push(match[0].replace(/{|}/g, ''));
+	}
+
+	return returnData;
+};

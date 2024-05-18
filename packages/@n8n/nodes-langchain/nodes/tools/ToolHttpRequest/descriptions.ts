@@ -1,61 +1,98 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+export const specifyBySelector: INodeProperties = {
+	displayName: 'Specify By',
+	name: 'specifyBy',
+	type: 'options',
+	options: [
+		{
+			name: 'Using Fields Below',
+			value: 'keypair',
+		},
+		{
+			name: 'Using JSON Below',
+			value: 'json',
+		},
+		{
+			name: 'Let Model Specify All',
+			value: 'model',
+		},
+	],
+	default: 'keypair',
+};
+
 export const parametersCollection: INodeProperties = {
 	displayName: 'Parameters',
 	name: 'parameters',
 	type: 'fixedCollection',
-	default: {},
-	placeholder: 'Add Parameter',
 	typeOptions: {
 		multipleValues: true,
 	},
+	placeholder: 'Add Parameter',
+	default: {
+		parameters: [
+			{
+				name: '',
+				value: '',
+			},
+		],
+	},
 	options: [
 		{
-			displayName: 'Values',
-			name: 'values',
+			name: 'parameters',
+			displayName: 'Parameter',
 			values: [
 				{
 					displayName: 'Name',
 					name: 'name',
 					type: 'string',
-					placeholder: 'e.g. location',
 					default: '',
-					validateType: 'string-alphanumeric',
 				},
 				{
-					displayName: 'Description',
-					name: 'description',
-					type: 'string',
-					default: '',
-					description: 'Describe to llm what the parameter is for',
-				},
-				{
-					displayName: 'Type',
-					name: 'type',
+					displayName: 'Value Provided',
+					name: 'valueProvider',
 					type: 'options',
-					default: 'string',
 					options: [
 						{
-							name: 'Boolean',
-							value: 'boolean',
+							// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+							name: 'By Model (and is required)',
+							value: 'modelRequired',
 						},
 						{
-							name: 'Number',
-							value: 'number',
+							// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+							name: 'By Model (but is optional)',
+							value: 'modelOptional',
 						},
 						{
-							name: 'String',
-							value: 'string',
-						},
-						{
-							name: 'Infer From Description',
-							value: 'infer from description',
+							name: 'Using Field Below',
+							value: 'fieldValue',
 						},
 					],
+					default: 'modelRequired',
+				},
+				{
+					displayName: 'Value',
+					name: 'value',
+					type: 'string',
+					default: '',
+					hint: 'Use a {placeholder} for any data to be filled in by the model',
+					displayOptions: {
+						show: {
+							valueProvider: ['fieldValue'],
+						},
+					},
 				},
 			],
 		},
 	],
+};
+
+export const jsonInput: INodeProperties = {
+	displayName: 'JSON',
+	name: 'json',
+	type: 'json',
+	hint: 'Use a {placeholder} for any data to be filled in by the model',
+	default: '',
 };
 
 export const authenticationProperties: INodeProperties[] = [
