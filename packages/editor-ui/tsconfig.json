@@ -1,7 +1,7 @@
 {
 	"extends": "../../tsconfig.json",
 	"compilerOptions": {
-		"rootDir": ".",
+		"rootDirs": [".", "../design-system/src", "../@n8n/chat/src"],
 		"outDir": "dist",
 		"target": "esnext",
 		"module": "esnext",
@@ -11,7 +11,13 @@
 		"allowSyntheticDefaultImports": true,
 		"resolveJsonModule": true,
 		"baseUrl": ".",
-		"types": ["vitest/globals"],
+		"types": [
+			"vitest/globals",
+			"./src/shims.d.ts",
+			"./src/shims-vue.d.ts",
+			"./src/v3-infinite-loading.d.ts",
+      "../workflow/src/types.d.ts"
+		],
 		"paths": {
 			"@/*": ["src/*"],
 			"n8n-design-system/*": ["../design-system/src/*"],
@@ -23,5 +29,5 @@
 		"useUnknownInCatchVariables": false,
 		"experimentalDecorators": true
 	},
-	"include": ["src/**/*.ts", "src/**/*.vue"]
+	"include": [ "src/**/*.ts", "src/**/*.d.ts", "src/**/*.vue"]
 }

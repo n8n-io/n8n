@@ -13,6 +13,8 @@ import { N8N_VERSION } from '@/constants';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { SourceControlPreferencesService } from '../environments/sourceControl/sourceControlPreferences.service.ee';
 import { UserRepository } from '@db/repositories/user.repository';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 
 type ExecutionTrackDataKey = 'manual_error' | 'manual_success' | 'prod_error' | 'prod_success';
 
@@ -126,6 +128,8 @@ export class Telemetry {
 			source_control_set_up: Container.get(SourceControlPreferencesService).isSourceControlSetup(),
 			branchName: sourceControlPreferences.branchName,
 			read_only_instance: sourceControlPreferences.branchReadOnly,
+			team_projects: (await Container.get(ProjectRepository).getProjectCounts()).team,
+			project_role_count: await Container.get(ProjectRelationRepository).countUsersByRole(),
 		};
 		allPromises.push(this.track('pulse', pulsePacket));
 		return await Promise.all(allPromises);

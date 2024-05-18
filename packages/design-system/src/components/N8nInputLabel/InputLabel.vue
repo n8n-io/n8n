@@ -22,7 +22,7 @@
 				v-if="tooltipText && label"
 				:class="[$style.infoIcon, showTooltip ? $style.visible : $style.hidden]"
 			>
-				<N8nTooltip placement="top" :popper-class="$style.tooltipPopper">
+				<N8nTooltip placement="top" :popper-class="$style.tooltipPopper" :show-after="300">
 					<N8nIcon icon="question-circle" size="small" />
 					<template #content>
 						<div v-html="addTargetBlank(tooltipText)" />
@@ -90,6 +90,10 @@ const addTargetBlank = (html: string) =>
 .inputLabel:hover {
 	.infoIcon {
 		opacity: 1;
+
+		&:hover {
+			color: var(--color-text-base);
+		}
 	}
 
 	.options {
@@ -117,7 +121,7 @@ const addTargetBlank = (html: string) =>
 	display: flex;
 	align-items: center;
 	color: var(--color-text-light);
-	padding-left: var(--spacing-4xs);
+	margin-left: var(--spacing-4xs);
 	z-index: 1;
 }
 

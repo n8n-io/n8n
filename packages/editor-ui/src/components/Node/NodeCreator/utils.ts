@@ -86,16 +86,20 @@ export function flattenCreateElements(items: INodeCreateElement[]): INodeCreateE
 
 export function groupItemsInSections(
 	items: INodeCreateElement[],
-	sections: NodeViewItemSection[],
+	sections: string[] | NodeViewItemSection[],
 ): INodeCreateElement[] {
+	const filteredSections = sections.filter(
+		(section): section is NodeViewItemSection => typeof section === 'object',
+	);
+
 	const itemsBySection = items.reduce((acc: Record<string, INodeCreateElement[]>, item) => {
-		const section = sections.find((s) => s.items.includes(item.key));
+		const section = filteredSections.find((s) => s.items.includes(item.key));
 		const key = section?.key ?? 'other';
 		acc[key] = [...(acc[key] ?? []), item];
 		return acc;
 	}, {});
 
-	const result: SectionCreateElement[] = sections
+	const result: SectionCreateElement[] = filteredSections
 		.map(
 			(section): SectionCreateElement => ({
 				type: 'section',

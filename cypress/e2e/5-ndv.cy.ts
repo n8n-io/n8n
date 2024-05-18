@@ -697,7 +697,7 @@ describe('NDV', () => {
 	});
 
 	it('Stop listening for trigger event from NDV', () => {
-		cy.intercept('POST', '/rest/workflows/run').as('workflowRun');
+		cy.intercept('POST', '/rest/workflows/**/run').as('workflowRun');
 		workflowPage.actions.addInitialNodeToCanvas('Local File Trigger', {
 			keepNdvOpen: true,
 			action: 'On Changes To A Specific File',

@@ -6,6 +6,7 @@ import { isEmpty } from 'lodash';
 import { get } from 'lodash';
 import { BinaryDataService, Credentials, constructExecutionMetaData } from 'n8n-core';
 import { Container } from 'typedi';
+import { mock } from 'jest-mock-extended';
 import type {
 	CredentialLoadingDetails,
 	ICredentialDataDecryptedObject,
@@ -15,7 +16,6 @@ import type {
 	IDataObject,
 	IDeferredPromise,
 	IExecuteFunctions,
-	IExecuteWorkflowInfo,
 	IGetNodeParameterOptions,
 	IHttpRequestHelper,
 	IHttpRequestOptions,
@@ -87,22 +87,20 @@ class CredentialType implements ICredentialTypes {
 		return knownCredentials[type]?.supportedNodes ?? [];
 	}
 
-	getParentTypes(typeName: string): string[] {
+	getParentTypes(_typeName: string): string[] {
 		return [];
 	}
 }
 
-export class CredentialsHelper extends ICredentialsHelper {
-	constructor(private credentialTypes: ICredentialTypes) {
-		super('');
-	}
+const credentialTypes = new CredentialType();
 
+class CredentialsHelper extends ICredentialsHelper {
 	async authenticate(
 		credentials: ICredentialDataDecryptedObject,
 		typeName: string,
 		requestParams: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> {
-		const credentialType = this.credentialTypes.getByName(typeName);
+		const credentialType = credentialTypes.getByName(typeName);
 		if (typeof credentialType.authenticate === 'function') {
 			return await credentialType.authenticate(credentials, requestParams);
 		}
@@ -110,21 +108,21 @@ export class CredentialsHelper extends ICredentialsHelper {
 	}
 
 	async preAuthentication(
-		helpers: IHttpRequestHelper,
-		credentials: ICredentialDataDecryptedObject,
-		typeName: string,
-		node: INode,
-		credentialsExpired: boolean,
+		_helpers: IHttpRequestHelper,
+		_credentials: ICredentialDataDecryptedObject,
+		_typeName: string,
+		_node: INode,
+		_credentialsExpired: boolean,
 	): Promise<ICredentialDataDecryptedObject | undefined> {
 		return undefined;
 	}
 
-	getParentTypes(name: string): string[] {
+	getParentTypes(_name: string): string[] {
 		return [];
 	}
 
 	async getDecrypted(
-		additionalData: IWorkflowExecuteAdditionalData,
+		_additionalData: IWorkflowExecuteAdditionalData,
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 	): Promise<ICredentialDataDecryptedObject> {
@@ -132,27 +130,26 @@ export class CredentialsHelper extends ICredentialsHelper {
 	}
 
 	async getCredentials(
-		nodeCredentials: INodeCredentialsDetails,
-		type: string,
+		_nodeCredentials: INodeCredentialsDetails,
+		_type: string,
 	): Promise<Credentials> {
-		return new Credentials({ id: null, name: '' }, '', [], '');
+		return new Credentials({ id: null, name: '' }, '', '');
 	}
 
 	async updateCredentials(
-		nodeCredentials: INodeCredentialsDetails,
-		type: string,
-		data: ICredentialDataDecryptedObject,
+		_nodeCredentials: INodeCredentialsDetails,
+		_type: string,
+		_data: ICredentialDataDecryptedObject,
 	): Promise<void> {}
 }
 
 export function WorkflowExecuteAdditionalData(
 	waitPromise: IDeferredPromise<IRun>,
 	nodeExecutionOrder: string[],
-	workflowTestData?: WorkflowTestData,
 ): IWorkflowExecuteAdditionalData {
 	const hookFunctions = {
 		nodeExecuteAfter: [
-			async (nodeName: string, data: ITaskData): Promise<void> => {
+			async (nodeName: string, _data: ITaskData): Promise<void> => {
 				nodeExecutionOrder.push(nodeName);
 			},
 		],
@@ -163,27 +160,10 @@ export function WorkflowExecuteAdditionalData(
 		],
 	};
 
-	const workflowData: IWorkflowBase = {
-		name: '',
-		createdAt: new Date(),
-		updatedAt: new Date(),
-		active: true,
-		nodes: [],
-		connections: {},
-	};
-	return {
-		credentialsHelper: new CredentialsHelper(credentialTypes),
-		hooks: new WorkflowHooks(hookFunctions, 'trigger', '1', workflowData),
-		executeWorkflow: async (workflowInfo: IExecuteWorkflowInfo): Promise<any> => {},
-		sendDataToUI: (message: string) => {},
-		restApiUrl: '',
-		webhookBaseUrl: 'webhook',
-		webhookWaitingBaseUrl: 'webhook-waiting',
-		webhookTestBaseUrl: 'webhook-test',
-		userId: '123',
-		variables: {},
-		instanceBaseUrl: '',
-	};
+	return mock<IWorkflowExecuteAdditionalData>({
+		credentialsHelper: new CredentialsHelper(),
+		hooks: new WorkflowHooks(hookFunctions, 'trigger', '1', mock()),
+	});
 }
 
 class NodeTypes implements INodeTypes {
@@ -209,6 +189,10 @@ class NodeTypes implements INodeTypes {
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
 		return NodeHelpers.getVersionedNodeType(this.nodeTypes[nodeType].type, version);
 	}
+
+	getKnownTypes(): IDataObject {
+		throw new Error('Method not implemented.');
+	}
 }
 
 export function createTemporaryDir(prefix = 'n8n') {
@@ -224,8 +208,6 @@ export async function initBinaryDataService(mode: 'default' | 'filesystem' = 'de
 	});
 	Container.set(BinaryDataService, binaryDataService);
 }
-
-const credentialTypes = new CredentialType();
 
 export function setup(testData: WorkflowTestData[] | WorkflowTestData) {
 	if (!Array.isArray(testData)) {
