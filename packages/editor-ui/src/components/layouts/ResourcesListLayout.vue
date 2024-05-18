@@ -158,8 +158,10 @@ import type { DatatableColumn } from 'n8n-design-system';
 import { useI18n } from '@/composables/useI18n';
 import { useDebounce } from '@/composables/useDebounce';
 import { useTelemetry } from '@/composables/useTelemetry';
-import type { BaseTextKey } from '@/plugins/i18n';
 import { useRoute } from 'vue-router';
+
+// eslint-disable-next-line unused-imports/no-unused-imports
+import type { BaseTextKey } from '@/plugins/i18n';
 
 export interface IResource {
 	id: string;
@@ -443,7 +445,7 @@ export default defineComponent({
 		);
 
 		watch(
-			() => route.params.projectId,
+			() => route?.params?.projectId,
 			() => {
 				resetFilters();
 			},
