@@ -249,6 +249,13 @@ export const activityFields: INodeProperties[] = [
 				description: 'The name of the activity',
 			},
 			{
+				displayName: 'Type',
+				name: 'type',
+				type: 'string',
+				default: '',
+				description: 'Type of activity. For example - Run, Ride etc.',
+			},
+			{
 				displayName: 'Sport Type',
 				name: 'sport_type',
 				type: 'string',
