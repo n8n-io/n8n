@@ -160,7 +160,7 @@ import { useDebounce } from '@/composables/useDebounce';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useRoute } from 'vue-router';
 
-// eslint-disable-next-line unused-imports/no-unused-imports
+// eslint-disable-next-line unused-imports/no-unused-imports, @typescript-eslint/no-unused-vars
 import type { BaseTextKey } from '@/plugins/i18n';
 
 export interface IResource {
