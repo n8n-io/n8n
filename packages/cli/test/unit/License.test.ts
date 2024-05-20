@@ -258,7 +258,11 @@ describe('License', () => {
 			const license = new License(mock(), mock(), mock(), mock(), mock());
 			await license.init();
 
+			const initSpy = jest.spyOn(license, 'init');
+
 			await license.reinit();
+
+			expect(initSpy).toHaveBeenCalledWith('main', true);
 
 			expect(LicenseManager.prototype.reset).toHaveBeenCalled();
 			expect(LicenseManager.prototype.initialize).toHaveBeenCalled();
