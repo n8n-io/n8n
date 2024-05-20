@@ -61,8 +61,8 @@ export class License {
 		return autoRenewEnabled;
 	}
 
-	async init(instanceType: N8nInstanceType = 'main') {
-		if (this.manager) {
+	async init(instanceType: N8nInstanceType = 'main', forceRecreate = false) {
+		if (this.manager && !forceRecreate) {
 			this.logger.warn('License manager already initialized or shutting down');
 			return;
 		}
@@ -375,6 +375,6 @@ export class License {
 
 	async reinit() {
 		this.manager?.reset();
-		await this.init();
+		await this.init('main', true);
 	}
 }
