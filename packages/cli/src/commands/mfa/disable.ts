@@ -27,15 +27,26 @@ export class DisableMFACommand extends BaseCommand {
 			return;
 		}
 
-		const updateOperationResult = await Container.get(UserRepository).update(
-			{ email: flags.email },
-			{ mfaSecret: null, mfaRecoveryCodes: [], mfaEnabled: false },
-		);
+		const user = await Container.get(UserRepository).findOneBy({ email: flags.email });
 
-		if (!updateOperationResult.affected) {
+		if (!user) {
 			this.reportUserDoesNotExistError(flags.email);
 			return;
 		}
+
+		if (
+			user.mfaSecret === null &&
+			Array.isArray(user.mfaRecoveryCodes) &&
+			user.mfaRecoveryCodes.length === 0 &&
+			!user.mfaEnabled
+		) {
+			this.reportUserDoesNotExistError(flags.email);
+			return;
+		}
+
+		Object.assign(user, { mfaSecret: null, mfaRecoveryCodes: [], mfaEnabled: false });
+
+		await Container.get(UserRepository).save(user);
 
 		this.reportSuccess(flags.email);
 	}

@@ -121,8 +121,16 @@ export interface ICredentialsDecrypted {
 	name: string;
 	type: string;
 	data?: ICredentialDataDecryptedObject;
-	ownedBy?: IUser;
-	sharedWith?: IUser[];
+	homeProject?: {
+		id: string;
+		name: string | null;
+		type: 'personal' | 'team' | 'public';
+	};
+	sharedWithProjects?: Array<{
+		id: string;
+		name: string | null;
+		type: 'personal' | 'team' | 'public';
+	}>;
 }
 
 export interface ICredentialsEncrypted {
@@ -2057,21 +2065,23 @@ export const eventNamesAiNodes = [
 
 export type EventNamesAiNodesType = (typeof eventNamesAiNodes)[number];
 
+export interface ExecuteWorkflowOptions {
+	node?: INode;
+	parentWorkflowId: string;
+	inputData?: INodeExecutionData[];
+	parentExecutionId?: string;
+	loadedWorkflowData?: IWorkflowBase;
+	loadedRunData?: any;
+	parentWorkflowSettings?: IWorkflowSettings;
+	parentCallbackManager?: CallbackManager;
+}
+
 export interface IWorkflowExecuteAdditionalData {
 	credentialsHelper: ICredentialsHelper;
 	executeWorkflow: (
 		workflowInfo: IExecuteWorkflowInfo,
 		additionalData: IWorkflowExecuteAdditionalData,
-		options: {
-			node?: INode;
-			parentWorkflowId: string;
-			inputData?: INodeExecutionData[];
-			parentExecutionId?: string;
-			loadedWorkflowData?: IWorkflowBase;
-			loadedRunData?: any;
-			parentWorkflowSettings?: IWorkflowSettings;
-			parentCallbackManager?: CallbackManager;
-		},
+		options: ExecuteWorkflowOptions,
 	) => Promise<any>;
 	executionId?: string;
 	restartExecutionId?: string;
@@ -2088,7 +2098,7 @@ export interface IWorkflowExecuteAdditionalData {
 	webhookTestBaseUrl: string;
 	currentNodeParameters?: INodeParameters;
 	executionTimeoutTimestamp?: number;
-	userId: string;
+	userId?: string;
 	variables: IDataObject;
 	secretsHelpers: SecretsHelpersBase;
 	logAiEvent: (
@@ -2579,6 +2589,11 @@ export interface IN8nUISettings {
 		workflowHistory: boolean;
 		workerView: boolean;
 		advancedPermissions: boolean;
+		projects: {
+			team: {
+				limit: number;
+			};
+		};
 	};
 	hideUsagePage: boolean;
 	license: {

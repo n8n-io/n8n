@@ -31,9 +31,10 @@
 			</div>
 			<NodeSettingsTabs
 				v-if="node && nodeValid"
-				v-model="openPanel"
+				:model-value="openPanel"
 				:node-type="nodeType"
 				:push-ref="pushRef"
+				@update:model-value="onTabSelect"
 			/>
 		</div>
 		<div v-if="node && !nodeValid" class="node-is-not-valid">
@@ -126,7 +127,7 @@
 					<n8n-notice
 						:content="
 							$locale.baseText('nodeSettings.useTheHttpRequestNode', {
-								interpolate: { nodeTypeDisplayName: nodeType.displayName },
+								interpolate: { nodeTypeDisplayName: nodeType?.displayName ?? '' },
 							})
 						"
 					/>
@@ -186,6 +187,7 @@ import type {
 	INodeProperties,
 	NodeParameterValue,
 	ConnectionTypes,
+	NodeParameterValueType,
 } from 'n8n-workflow';
 import {
 	NodeHelpers,
@@ -357,16 +359,16 @@ export default defineComponent({
 				return [];
 			}
 
-			return this.nodeType.properties;
+			return this.nodeType?.properties ?? [];
 		},
 		outputPanelEditMode(): { enabled: boolean; value: string } {
 			return this.ndvStore.outputPanelEditMode;
 		},
 		isCommunityNode(): boolean {
-			return isCommunityPackageName(this.node?.type);
+			return !!this.node && isCommunityPackageName(this.node.type);
 		},
 		isTriggerNode(): boolean {
-			return this.nodeTypesStore.isTriggerNode(this.node?.type);
+			return !!this.node && this.nodeTypesStore.isTriggerNode(this.node.type);
 		},
 		workflowOwnerName(): string {
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflowsStore.workflowId}`);
@@ -402,7 +404,7 @@ export default defineComponent({
 			type: String,
 		},
 		nodeType: {
-			type: Object as PropType<INodeTypeDescription>,
+			type: Object as PropType<INodeTypeDescription | null>,
 		},
 		readOnly: {
 			type: Boolean,
@@ -425,7 +427,7 @@ export default defineComponent({
 		return {
 			nodeValid: true,
 			nodeColor: null,
-			openPanel: 'params',
+			openPanel: 'params' as 'params' | 'settings',
 			nodeValues: {
 				color: '#ff0000',
 				alwaysOutputData: false,
@@ -466,10 +468,10 @@ export default defineComponent({
 		importCurlEventBus.off('setHttpNodeParameters', this.setHttpNodeParameters);
 	},
 	methods: {
-		setHttpNodeParameters(parameters: Record<string, unknown>) {
+		setHttpNodeParameters(parameters: NodeParameterValueType) {
 			try {
 				this.valueChanged({
-					node: this.node.name,
+					node: this.node?.name,
 					name: 'parameters',
 					value: parameters,
 				});
@@ -649,8 +651,10 @@ export default defineComponent({
 				// Data is on top level
 				if (value === null) {
 					// Property should be deleted
-					const { [lastNamePart]: removedNodeValue, ...remainingNodeValues } = this.nodeValues;
-					this.nodeValues = remainingNodeValues;
+					if (lastNamePart) {
+						const { [lastNamePart]: removedNodeValue, ...remainingNodeValues } = this.nodeValues;
+						this.nodeValues = remainingNodeValues;
+					}
 				} else {
 					// Value should be set
 					this.nodeValues = {
@@ -666,17 +670,21 @@ export default defineComponent({
 						| INodeParameters
 						| INodeParameters[];
 
-					const { [lastNamePart]: removedNodeValue, ...remainingNodeValues } = tempValue;
-					tempValue = remainingNodeValues;
+					if (lastNamePart && !Array.isArray(tempValue)) {
+						const { [lastNamePart]: removedNodeValue, ...remainingNodeValues } = tempValue;
+						tempValue = remainingNodeValues;
+					}
 
-					if (isArray && (tempValue as INodeParameters[]).length === 0) {
+					if (isArray && Array.isArray(tempValue) && tempValue.length === 0) {
 						// If a value from an array got delete and no values are left
 						// delete also the parent
 						lastNamePart = nameParts.pop();
 						tempValue = get(this.nodeValues, nameParts.join('.')) as INodeParameters;
-						const { [lastNamePart]: removedArrayNodeValue, ...remainingArrayNodeValues } =
-							tempValue;
-						tempValue = remainingArrayNodeValues;
+						if (lastNamePart) {
+							const { [lastNamePart]: removedArrayNodeValue, ...remainingArrayNodeValues } =
+								tempValue;
+							tempValue = remainingArrayNodeValues;
+						}
 					}
 				} else {
 					// Value should be set
@@ -734,6 +742,11 @@ export default defineComponent({
 			// Save the node name before we commit the change because
 			// we need the old name to rename the node properly
 			const nodeNameBefore = parameterData.node || this.node?.name;
+
+			if (!nodeNameBefore) {
+				return;
+			}
+
 			const node = this.workflowsStore.getNodeByName(nodeNameBefore);
 
 			if (node === null) {
@@ -776,44 +789,46 @@ export default defineComponent({
 				// we do not edit it directly
 				nodeParameters = deepCopy(nodeParameters);
 
-				for (const parameterName of Object.keys(parameterData.value)) {
-					//@ts-ignore
-					newValue = parameterData.value[parameterName];
+				if (parameterData.value && typeof parameterData.value === 'object') {
+					for (const parameterName of Object.keys(parameterData.value)) {
+						//@ts-ignore
+						newValue = parameterData.value[parameterName];
 
-					// Remove the 'parameters.' from the beginning to just have the
-					// actual parameter name
-					const parameterPath = parameterName.split('.').slice(1).join('.');
+						// Remove the 'parameters.' from the beginning to just have the
+						// actual parameter name
+						const parameterPath = parameterName.split('.').slice(1).join('.');
 
-					// Check if the path is supposed to change an array and if so get
-					// the needed data like path and index
-					const parameterPathArray = parameterPath.match(/(.*)\[(\d+)\]$/);
+						// Check if the path is supposed to change an array and if so get
+						// the needed data like path and index
+						const parameterPathArray = parameterPath.match(/(.*)\[(\d+)\]$/);
 
-					// Apply the new value
-					//@ts-ignore
-					if (parameterData[parameterName] === undefined && parameterPathArray !== null) {
-						// Delete array item
-						const path = parameterPathArray[1];
-						const index = parameterPathArray[2];
-						const data = get(nodeParameters, path);
+						// Apply the new value
+						//@ts-ignore
+						if (parameterData[parameterName] === undefined && parameterPathArray !== null) {
+							// Delete array item
+							const path = parameterPathArray[1];
+							const index = parameterPathArray[2];
+							const data = get(nodeParameters, path);
 
-						if (Array.isArray(data)) {
-							data.splice(parseInt(index, 10), 1);
-							set(nodeParameters as object, path, data);
-						}
-					} else {
-						if (newValue === undefined) {
-							unset(nodeParameters as object, parameterPath);
+							if (Array.isArray(data)) {
+								data.splice(parseInt(index, 10), 1);
+								set(nodeParameters as object, path, data);
+							}
 						} else {
-							set(nodeParameters as object, parameterPath, newValue);
+							if (newValue === undefined) {
+								unset(nodeParameters as object, parameterPath);
+							} else {
+								set(nodeParameters as object, parameterPath, newValue);
+							}
 						}
-					}
 
-					void this.externalHooks.run('nodeSettings.valueChanged', {
-						parameterPath,
-						newValue,
-						parameters: this.parameters,
-						oldNodeParameters,
-					});
+						void this.externalHooks.run('nodeSettings.valueChanged', {
+							parameterPath,
+							newValue,
+							parameters: this.parameters,
+							oldNodeParameters,
+						});
+					}
 				}
 
 				// Get the parameters with the now new defaults according to the
@@ -1143,6 +1158,9 @@ export default defineComponent({
 		},
 		openSettings() {
 			this.openPanel = 'settings';
+		},
+		onTabSelect(tab: 'params' | 'settings') {
+			this.openPanel = tab;
 		},
 	},
 });

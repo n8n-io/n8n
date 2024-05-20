@@ -11,6 +11,7 @@ import { ApplicationError } from 'n8n-workflow';
 
 import config from '@/config';
 import { entities } from './entities';
+import { subscribers } from './subscribers';
 import { mysqlMigrations } from './migrations/mysqldb';
 import { postgresMigrations } from './migrations/postgresdb';
 import { sqliteMigrations } from './migrations/sqlite';
@@ -32,6 +33,7 @@ const getCommonOptions = () => {
 	return {
 		entityPrefix,
 		entities: Object.values(entities),
+		subscribers: Object.values(subscribers),
 		migrationsTableName: `${entityPrefix}migrations`,
 		migrationsRun: false,
 		synchronize: false,

@@ -1,11 +1,13 @@
-import {
-	NodeHelpers,
-	type INodeType,
-	type INodeTypeData,
-	type INodeTypes,
-	type IVersionedNodeType,
-	type LoadedClass,
-} from '@/index';
+import { mock } from 'jest-mock-extended';
+import type {
+	IDataObject,
+	INodeType,
+	INodeTypeData,
+	INodeTypes,
+	IVersionedNodeType,
+	LoadedClass,
+} from '@/Interfaces';
+import * as NodeHelpers from '@/NodeHelpers';
 
 const stickyNode: LoadedClass<INodeType> = {
 	type: {
@@ -626,39 +628,6 @@ export class NodeTypes implements INodeTypes {
 				},
 			},
 		},
-		'test.switch': {
-			sourcePath: '',
-			type: {
-				description: {
-					displayName: 'Set',
-					name: 'set',
-					group: ['input'],
-					version: 1,
-					description: 'Switches',
-					defaults: {
-						name: 'Switch',
-						color: '#0000FF',
-					},
-					inputs: ['main'],
-					outputs: ['main', 'main', 'main', 'main'],
-					outputNames: ['0', '1', '2', '3'],
-					properties: [
-						{
-							displayName: 'Value1',
-							name: 'value1',
-							type: 'string',
-							default: 'default-value1',
-						},
-						{
-							displayName: 'Value2',
-							name: 'value2',
-							type: 'string',
-							default: 'default-value2',
-						},
-					],
-				},
-			},
-		},
 	};
 
 	getByName(nodeType: string): INodeType | IVersionedNodeType {
@@ -669,5 +638,14 @@ export class NodeTypes implements INodeTypes {
 		if (this.nodeTypes[nodeType]?.type) {
 			return NodeHelpers.getVersionedNodeType(this.nodeTypes[nodeType]?.type, version);
 		}
+		return mock<INodeType>({
+			description: {
+				properties: [],
+			},
+		});
+	}
+
+	getKnownTypes(): IDataObject {
+		throw new Error('Method not implemented.');
 	}
 }

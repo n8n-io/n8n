@@ -137,19 +137,11 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
-import { mapStores, storeToRefs } from 'pinia';
+import { defineComponent, ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import { createEventBus } from 'n8n-design-system/utils';
-import type {
-	INodeConnections,
-	INodeTypeDescription,
-	IRunData,
-	IRunExecutionData,
-	Workflow,
-	ConnectionTypes,
-} from 'n8n-workflow';
+import type { IRunData, ConnectionTypes } from 'n8n-workflow';
 import { jsonParse, NodeHelpers, NodeConnectionType } from 'n8n-workflow';
-import type { IExecutionResponse, INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
+import type { IUpdateInformation, TargetItem } from '@/Interface';
 
 import NodeSettings from '@/components/NodeSettings.vue';
 import NDVDraggablePanels from './NDVDraggablePanels.vue';
@@ -165,7 +157,7 @@ import {
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/constants';
-import { workflowActivate } from '@/mixins/workflowActivate';
+import { useWorkflowActivate } from '@/composables/useWorkflowActivate';
 import { dataPinningEventBus } from '@/event-bus';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -179,6 +171,9 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { usePinnedData } from '@/composables/usePinnedData';
 import { useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useI18n } from '@/composables/useI18n';
+import { storeToRefs } from 'pinia';
 
 export default defineComponent({
 	name: 'NodeDetailsView',
@@ -189,7 +184,6 @@ export default defineComponent({
 		NDVDraggablePanels,
 		TriggerPanel,
 	},
-	mixins: [workflowActivate],
 	props: {
 		readOnly: {
 			type: Boolean,
@@ -202,7 +196,16 @@ export default defineComponent({
 			default: false,
 		},
 	},
-	setup(props, ctx) {
+	emits: [
+		'saveKeyboardShortcut',
+		'valueChanged',
+		'nodeTypeSelected',
+		'switchSelectedNode',
+		'openConnectionNodeCreator',
+		'redrawNode',
+		'stopExecution',
+	],
+	setup(props, { emit }) {
 		const ndvStore = useNDVStore();
 		const externalHooks = useExternalHooks();
 		const nodeHelpers = useNodeHelpers();
@@ -210,195 +213,195 @@ export default defineComponent({
 		const pinnedData = usePinnedData(activeNode);
 		const router = useRouter();
 		const workflowHelpers = useWorkflowHelpers({ router });
+		const workflowActivate = useWorkflowActivate();
+		const nodeTypesStore = useNodeTypesStore();
+		const uiStore = useUIStore();
+		const workflowsStore = useWorkflowsStore();
+		const settingsStore = useSettingsStore();
+		const deviceSupport = useDeviceSupport();
+		const telemetry = useTelemetry();
+		const i18n = useI18n();
+		const message = useMessage();
 
-		return {
-			externalHooks,
-			nodeHelpers,
-			pinnedData,
-			workflowHelpers,
-			...useDeviceSupport(),
-			...useMessage(),
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowActivate.setup?.(props, ctx),
-		};
-	},
-	data() {
-		return {
-			settingsEventBus: createEventBus(),
-			redrawRequired: false,
-			runInputIndex: -1,
-			runOutputIndex: -1,
-			isLinkingEnabled: true,
-			selectedInput: undefined as string | undefined,
-			triggerWaitingWarningEnabled: false,
-			isDragging: false,
-			mainPanelPosition: 0,
-			pinDataDiscoveryTooltipVisible: false,
-			avgInputRowHeight: 0,
-			avgOutputRowHeight: 0,
-			isInputPaneActive: false,
-			isOutputPaneActive: false,
-			isPairedItemHoveringEnabled: true,
-		};
-	},
-	mounted() {
-		dataPinningEventBus.on('data-pinning-discovery', this.setIsTooltipVisible);
-	},
-	beforeUnmount() {
-		dataPinningEventBus.off('data-pinning-discovery', this.setIsTooltipVisible);
-	},
-	computed: {
-		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore, useSettingsStore),
-		pushRef(): string {
-			return this.ndvStore.pushRef;
-		},
-		workflowRunning(): boolean {
-			return this.uiStore.isActionActive('workflowRunning');
-		},
-		showTriggerWaitingWarning(): boolean {
-			return (
-				this.triggerWaitingWarningEnabled &&
-				!!this.activeNodeType &&
-				!this.activeNodeType.group.includes('trigger') &&
-				this.workflowRunning &&
-				this.workflowsStore.executionWaitingForWebhook
-			);
-		},
-		activeNode(): INodeUi | null {
-			return this.ndvStore.activeNode;
-		},
-		inputNodeName(): string | undefined {
-			return this.selectedInput || this.parentNode;
-		},
-		inputNode(): INodeUi | null {
-			if (this.inputNodeName) {
-				return this.workflowsStore.getNodeByName(this.inputNodeName);
-			}
+		const settingsEventBus = createEventBus();
+		const redrawRequired = ref(false);
+		const runInputIndex = ref(-1);
+		const runOutputIndex = ref(-1);
+		const isLinkingEnabled = ref(true);
+		const selectedInput = ref<string | undefined>();
+		const triggerWaitingWarningEnabled = ref(false);
+		const isDragging = ref(false);
+		const mainPanelPosition = ref(0);
+		const pinDataDiscoveryTooltipVisible = ref(false);
+		const avgInputRowHeight = ref(0);
+		const avgOutputRowHeight = ref(0);
+		const isInputPaneActive = ref(false);
+		const isOutputPaneActive = ref(false);
+		const isPairedItemHoveringEnabled = ref(true);
 
-			return null;
-		},
-		activeNodeType(): INodeTypeDescription | null {
-			if (this.activeNode) {
-				return this.nodeTypesStore.getNodeType(this.activeNode.type, this.activeNode.typeVersion);
+		//computed
+
+		const pushRef = computed(() => ndvStore.pushRef);
+
+		const activeNodeType = computed(() => {
+			if (activeNode.value) {
+				return nodeTypesStore.getNodeType(activeNode.value.type, activeNode.value.typeVersion);
 			}
 			return null;
-		},
-		showTriggerPanel(): boolean {
-			const override = !!this.activeNodeType?.triggerPanel;
-			if (typeof this.activeNodeType?.triggerPanel === 'boolean') {
-				return override;
-			}
+		});
 
-			const isWebhookBasedNode = !!this.activeNodeType?.webhooks?.length;
-			const isPollingNode = this.activeNodeType?.polling;
+		const workflowRunning = computed(() => uiStore.isActionActive('workflowRunning'));
 
-			return (
-				!this.readOnly && this.isTriggerNode && (isWebhookBasedNode || isPollingNode || override)
-			);
-		},
-		workflow(): Workflow {
-			return this.workflowHelpers.getCurrentWorkflow();
-		},
-		hasOutputConnection() {
-			if (!this.activeNode) return false;
-			const outgoingConnections = this.workflowsStore.outgoingConnectionsByNodeName(
-				this.activeNode.name,
-			) as INodeConnections;
+		const showTriggerWaitingWarning = computed(
+			() =>
+				triggerWaitingWarningEnabled.value &&
+				!!activeNodeType.value &&
+				!activeNodeType.value.group.includes('trigger') &&
+				workflowRunning.value &&
+				workflowsStore.executionWaitingForWebhook,
+		);
 
-			// Check if there's at-least one output connection
-			return (Object.values(outgoingConnections)?.[0]?.[0] ?? []).length > 0;
-		},
-		parentNodes(): string[] {
-			if (this.activeNode) {
-				return (
-					this.workflow.getParentNodesByDepth(this.activeNode.name, 1).map(({ name }) => name) || []
-				);
-			}
-
-			return [];
-		},
-		parentNode(): string | undefined {
-			// Return the first parent node that contains data
-			for (const parentNodeName of this.parentNodes) {
-				// Check first for pinned data
-				if (this.workflowsStore.pinnedWorkflowData[parentNodeName]) {
-					return parentNodeName;
-				}
-
-				// Check then the data of the current execution
-				if (this.workflowRunData?.[parentNodeName]) {
-					return parentNodeName;
-				}
-			}
-
-			return this.parentNodes[0];
-		},
-		isExecutableTriggerNode(): boolean {
-			if (!this.activeNodeType) return false;
-
-			return EXECUTABLE_TRIGGER_NODE_TYPES.includes(this.activeNodeType.name);
-		},
-		isTriggerNode(): boolean {
-			return (
-				!!this.activeNodeType &&
-				(this.activeNodeType.group.includes('trigger') ||
-					this.activeNodeType.name === START_NODE_TYPE)
-			);
-		},
-		isActiveStickyNode(): boolean {
-			return !!this.ndvStore.activeNode && this.ndvStore.activeNode.type === STICKY_NODE_TYPE;
-		},
-		workflowExecution(): IExecutionResponse | null {
-			return this.workflowsStore.getWorkflowExecution;
-		},
-		workflowRunData(): IRunData | null {
-			if (this.workflowExecution === null) {
+		const workflowRunData = computed(() => {
+			if (workflowExecution.value === null) {
 				return null;
 			}
-			const executionData: IRunExecutionData | undefined = this.workflowExecution.data;
+
+			const executionData = workflowExecution.value.data;
+
 			if (executionData?.resultData) {
 				return executionData.resultData.runData;
 			}
+
 			return null;
-		},
-		maxOutputRun(): number {
-			if (this.activeNode === null) {
+		});
+
+		const workflow = computed(() => workflowHelpers.getCurrentWorkflow());
+
+		const parentNodes = computed(() => {
+			if (activeNode.value) {
+				return (
+					workflow.value.getParentNodesByDepth(activeNode.value.name, 1).map(({ name }) => name) ||
+					[]
+				);
+			} else {
+				return [];
+			}
+		});
+
+		const parentNode = computed(() => {
+			for (const parentNodeName of parentNodes.value) {
+				if (workflowsStore?.pinnedWorkflowData?.[parentNodeName]) {
+					return parentNodeName;
+				}
+
+				if (workflowRunData.value?.[parentNodeName]) {
+					return parentNodeName;
+				}
+			}
+			return parentNodes.value[0];
+		});
+
+		const inputNodeName = computed<string | undefined>(() => {
+			return selectedInput.value || parentNode.value;
+		});
+
+		const inputNode = computed(() => {
+			if (inputNodeName.value) {
+				return workflowsStore.getNodeByName(inputNodeName.value);
+			}
+			return null;
+		});
+
+		const isTriggerNode = computed(
+			() =>
+				!!activeNodeType.value &&
+				(activeNodeType.value.group.includes('trigger') ||
+					activeNodeType.value.name === START_NODE_TYPE),
+		);
+
+		const showTriggerPanel = computed(() => {
+			const override = !!activeNodeType.value?.triggerPanel;
+			if (typeof activeNodeType.value?.triggerPanel === 'boolean') {
+				return override;
+			}
+
+			const isWebhookBasedNode = !!activeNodeType.value?.webhooks?.length;
+			const isPollingNode = activeNodeType.value?.polling;
+
+			return (
+				!props.readOnly && isTriggerNode.value && (isWebhookBasedNode || isPollingNode || override)
+			);
+		});
+
+		const hasOutputConnection = computed(() => {
+			if (!activeNode.value) return false;
+			const outgoingConnections = workflowsStore.outgoingConnectionsByNodeName(
+				activeNode.value.name,
+			);
+
+			// Check if there's at-least one output connection
+			return (Object.values(outgoingConnections)?.[0]?.[0] ?? []).length > 0;
+		});
+
+		const isExecutableTriggerNode = computed(() => {
+			if (!activeNodeType.value) return false;
+
+			return EXECUTABLE_TRIGGER_NODE_TYPES.includes(activeNodeType.value.name);
+		});
+
+		const isActiveStickyNode = computed(
+			() => !!ndvStore.activeNode && ndvStore.activeNode.type === STICKY_NODE_TYPE,
+		);
+
+		const workflowExecution = computed(() => workflowsStore.getWorkflowExecution);
+
+		const maxOutputRun = computed(() => {
+			if (activeNode.value === null) {
 				return 0;
 			}
 
-			const runData: IRunData | null = this.workflowRunData;
+			const runData = workflowRunData.value;
 
-			if (runData === null || !runData.hasOwnProperty(this.activeNode.name)) {
+			if (!runData?.[activeNode.value.name]) {
 				return 0;
 			}
 
-			if (runData[this.activeNode.name].length) {
-				return runData[this.activeNode.name].length - 1;
+			if (runData[activeNode.value.name].length) {
+				return runData[activeNode.value.name].length - 1;
 			}
 
 			return 0;
-		},
-		outputRun(): number {
-			if (this.runOutputIndex === -1) {
-				return this.maxOutputRun;
-			}
+		});
 
-			return Math.min(this.runOutputIndex, this.maxOutputRun);
-		},
-		maxInputRun(): number {
-			if (this.inputNode === null || this.activeNode === null) {
+		const outputRun = computed(() =>
+			runOutputIndex.value === -1
+				? maxOutputRun.value
+				: Math.min(runOutputIndex.value, maxOutputRun.value),
+		);
+
+		const maxInputRun = computed(() => {
+			if (inputNode.value === null || activeNode.value === null) {
 				return 0;
 			}
 
-			const workflowNode = this.workflow.getNode(this.activeNode.name);
-			const outputs = NodeHelpers.getNodeOutputs(this.workflow, workflowNode, this.activeNodeType);
+			const workflowNode = workflow.value.getNode(activeNode.value.name);
 
-			let node = this.inputNode;
+			if (!workflowNode || !activeNodeType.value) {
+				return 0;
+			}
 
-			const runData: IRunData | null = this.workflowRunData;
+			const outputs = NodeHelpers.getNodeOutputs(
+				workflow.value,
+				workflowNode,
+				activeNodeType.value,
+			);
+
+			let node = inputNode.value;
+
+			const runData: IRunData | null = workflowRunData.value;
 
 			if (outputs.some((output) => output !== NodeConnectionType.Main)) {
-				node = this.activeNode;
+				node = activeNode.value;
 			}
 
 			if (!node || !runData || !runData.hasOwnProperty(node.name)) {
@@ -410,52 +413,50 @@ export default defineComponent({
 			}
 
 			return 0;
-		},
-		inputRun(): number {
-			if (this.isLinkingEnabled && this.maxOutputRun === this.maxInputRun) {
-				return this.outputRun;
+		});
+
+		const inputRun = computed(() => {
+			if (isLinkingEnabled.value && maxOutputRun.value === maxInputRun.value) {
+				return outputRun.value;
 			}
-			if (this.runInputIndex === -1) {
-				return this.maxInputRun;
+			if (runInputIndex.value === -1) {
+				return maxInputRun.value;
 			}
 
-			return Math.min(this.runInputIndex, this.maxInputRun);
-		},
-		canLinkRuns(): boolean {
-			return this.maxOutputRun > 0 && this.maxOutputRun === this.maxInputRun;
-		},
-		linked(): boolean {
-			return this.isLinkingEnabled && this.canLinkRuns;
-		},
-		inputPanelMargin(): number {
-			return this.isTriggerNode ? 0 : 80;
-		},
-		featureRequestUrl(): string {
-			if (!this.activeNodeType) {
+			return Math.min(runInputIndex.value, maxInputRun.value);
+		});
+
+		const canLinkRuns = computed(
+			() => maxOutputRun.value > 0 && maxOutputRun.value === maxInputRun.value,
+		);
+
+		const linked = computed(() => isLinkingEnabled.value && canLinkRuns.value);
+
+		const inputPanelMargin = computed(() => (isTriggerNode.value ? 0 : 80));
+
+		const featureRequestUrl = computed(() => {
+			if (!activeNodeType.value) {
 				return '';
 			}
-			return `${BASE_NODE_SURVEY_URL}${this.activeNodeType.name}`;
-		},
-		outputPanelEditMode(): { enabled: boolean; value: string } {
-			return this.ndvStore.outputPanelEditMode;
-		},
-		isWorkflowRunning(): boolean {
-			return this.uiStore.isActionActive('workflowRunning');
-		},
-		isExecutionWaitingForWebhook(): boolean {
-			return this.workflowsStore.executionWaitingForWebhook;
-		},
-		blockUi(): boolean {
-			return this.isWorkflowRunning || this.isExecutionWaitingForWebhook;
-		},
-		foreignCredentials(): string[] {
-			const credentials = (this.activeNode || {}).credentials;
-			const usedCredentials = this.workflowsStore.usedCredentials;
+			return `${BASE_NODE_SURVEY_URL}${activeNodeType.value.name}`;
+		});
 
-			const foreignCredentials: string[] = [];
+		const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
+
+		const isWorkflowRunning = computed(() => uiStore.isActionActive('workflowRunning'));
+
+		const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
+
+		const blockUi = computed(() => isWorkflowRunning.value || isExecutionWaitingForWebhook.value);
+
+		const foreignCredentials = computed(() => {
+			const credentials = activeNode.value?.credentials;
+			const usedCredentials = workflowsStore.usedCredentials;
+
+			const foreignCredentialsArray: string[] = [];
 			if (
 				credentials &&
-				this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)
+				settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)
 			) {
 				Object.values(credentials).forEach((credential) => {
 					if (
@@ -463,315 +464,424 @@ export default defineComponent({
 						usedCredentials[credential.id] &&
 						!usedCredentials[credential.id].currentUserHasAccess
 					) {
-						foreignCredentials.push(credential.id);
+						foreignCredentialsArray.push(credential.id);
 					}
 				});
 			}
 
-			return foreignCredentials;
-		},
-		hasForeignCredential(): boolean {
-			return this.foreignCredentials.length > 0;
-		},
-	},
-	watch: {
-		activeNode(node: INodeUi | null, oldNode: INodeUi | null) {
-			if (node && node.name !== oldNode?.name && !this.isActiveStickyNode) {
-				this.runInputIndex = -1;
-				this.runOutputIndex = -1;
-				this.isLinkingEnabled = true;
-				this.selectedInput = undefined;
-				this.triggerWaitingWarningEnabled = false;
-				this.avgOutputRowHeight = 0;
-				this.avgInputRowHeight = 0;
+			return foreignCredentialsArray;
+		});
 
-				setTimeout(() => this.ndvStore.setNDVPushRef(), 0);
-				void this.externalHooks.run('dataDisplay.nodeTypeChanged', {
-					nodeSubtitle: this.nodeHelpers.getNodeSubtitle(
-						node,
-						this.activeNodeType,
-						this.workflowHelpers.getCurrentWorkflow(),
-					),
-				});
+		const hasForeignCredential = computed(() => foreignCredentials.value.length > 0);
 
-				setTimeout(() => {
-					if (this.activeNode) {
-						const outgoingConnections = this.workflowsStore.outgoingConnectionsByNodeName(
-							this.activeNode.name,
-						);
+		//methods
 
-						this.$telemetry.track('User opened node modal', {
-							node_type: this.activeNodeType ? this.activeNodeType.name : '',
-							workflow_id: this.workflowsStore.workflowId,
-							push_ref: this.pushRef,
-							is_editable: !this.hasForeignCredential,
-							parameters_pane_position: this.mainPanelPosition,
-							input_first_connector_runs: this.maxInputRun,
-							output_first_connector_runs: this.maxOutputRun,
-							selected_view_inputs: this.isTriggerNode
-								? 'trigger'
-								: this.ndvStore.inputPanelDisplayMode,
-							selected_view_outputs: this.ndvStore.outputPanelDisplayMode,
-							input_connectors: this.parentNodes.length,
-							output_connectors: outgoingConnections?.main?.length,
-							input_displayed_run_index: this.inputRun,
-							output_displayed_run_index: this.outputRun,
-							data_pinning_tooltip_presented: this.pinDataDiscoveryTooltipVisible,
-							input_displayed_row_height_avg: this.avgInputRowHeight,
-							output_displayed_row_height_avg: this.avgOutputRowHeight,
-						});
-					}
-				}, 2000); // wait for RunData to mount and present pindata discovery tooltip
-			}
-			if (window.top && !this.isActiveStickyNode) {
-				window.top.postMessage(JSON.stringify({ command: node ? 'openNDV' : 'closeNDV' }), '*');
-			}
-		},
-		maxOutputRun() {
-			this.runOutputIndex = -1;
-		},
-		maxInputRun() {
-			this.runInputIndex = -1;
-		},
-		inputNodeName(nodeName: string | undefined) {
-			setTimeout(() => {
-				this.ndvStore.setInputNodeName(nodeName);
-			}, 0);
-		},
-		inputRun() {
-			setTimeout(() => {
-				this.ndvStore.setInputRunIndex(this.inputRun);
-			}, 0);
-		},
-	},
-	methods: {
-		setIsTooltipVisible({ isTooltipVisible }: { isTooltipVisible: boolean }) {
-			this.pinDataDiscoveryTooltipVisible = isTooltipVisible;
-		},
-		onKeyDown(e: KeyboardEvent) {
-			if (e.key === 's' && this.isCtrlKeyPressed(e)) {
+		const setIsTooltipVisible = ({ isTooltipVisible }: { isTooltipVisible: boolean }) => {
+			pinDataDiscoveryTooltipVisible.value = isTooltipVisible;
+		};
+
+		const onKeyDown = (e: KeyboardEvent) => {
+			if (e.key === 's' && deviceSupport.isCtrlKeyPressed(e)) {
 				e.stopPropagation();
 				e.preventDefault();
 
-				if (this.readOnly) return;
+				if (props.readOnly) return;
 
-				this.$emit('saveKeyboardShortcut', e);
+				emit('saveKeyboardShortcut', e);
 			}
-		},
-		onInputItemHover(e: { itemIndex: number; outputIndex: number } | null) {
-			if (e === null || !this.inputNodeName || !this.isPairedItemHoveringEnabled) {
-				this.ndvStore.setHoveringItem(null);
+		};
+
+		const onInputItemHover = (e: { itemIndex: number; outputIndex: number } | null) => {
+			if (e === null || !inputNodeName.value || !isPairedItemHoveringEnabled.value) {
+				ndvStore.setHoveringItem(null);
 				return;
 			}
 
-			const item: TargetItem = {
-				nodeName: this.inputNodeName,
-				runIndex: this.inputRun,
+			const item = {
+				nodeName: inputNodeName.value,
+				runIndex: inputRun.value,
 				outputIndex: e.outputIndex,
 				itemIndex: e.itemIndex,
 			};
-			this.ndvStore.setHoveringItem(item);
-		},
-		onOutputItemHover(e: { itemIndex: number; outputIndex: number } | null) {
-			if (e === null || !this.activeNode || !this.isPairedItemHoveringEnabled) {
-				this.ndvStore.setHoveringItem(null);
-				return;
-			}
+			ndvStore.setHoveringItem(item);
+		};
 
-			const item: TargetItem = {
-				nodeName: this.activeNode.name,
-				runIndex: this.outputRun,
-				outputIndex: e.outputIndex,
-				itemIndex: e.itemIndex,
-			};
-			this.ndvStore.setHoveringItem(item);
-		},
-		onInputTableMounted(e: { avgRowHeight: number }) {
-			this.avgInputRowHeight = e.avgRowHeight;
-		},
-		onOutputTableMounted(e: { avgRowHeight: number }) {
-			this.avgOutputRowHeight = e.avgRowHeight;
-		},
-		onWorkflowActivate() {
-			this.ndvStore.activeNodeName = null;
+		const onInputTableMounted = (e: { avgRowHeight: number }) => {
+			avgInputRowHeight.value = e.avgRowHeight;
+		};
+
+		const onWorkflowActivate = () => {
+			ndvStore.activeNodeName = null;
 			setTimeout(() => {
-				void this.activateCurrentWorkflow('ndv');
+				void workflowActivate.activateCurrentWorkflow('ndv');
 			}, 1000);
-		},
-		onFeatureRequestClick() {
-			window.open(this.featureRequestUrl, '_blank');
-			if (this.activeNode) {
-				this.$telemetry.track('User clicked ndv link', {
-					node_type: this.activeNode.type,
-					workflow_id: this.workflowsStore.workflowId,
-					push_ref: this.pushRef,
+		};
+
+		const onOutputItemHover = (e: { itemIndex: number; outputIndex: number }) => {
+			if (e === null || !activeNode.value || !isPairedItemHoveringEnabled.value) {
+				ndvStore.setHoveringItem(null);
+				return;
+			}
+
+			const item: TargetItem = {
+				nodeName: activeNode.value?.name,
+				runIndex: outputRun.value,
+				outputIndex: e.outputIndex,
+				itemIndex: e.itemIndex,
+			};
+			ndvStore.setHoveringItem(item);
+		};
+
+		const onFeatureRequestClick = () => {
+			window.open(featureRequestUrl.value, '_blank');
+			if (activeNode.value) {
+				telemetry.track('User clicked ndv link', {
+					node_type: activeNode.value.type,
+					workflow_id: workflowsStore.workflowId,
+					push_ref: pushRef.value,
 					pane: NodeConnectionType.Main,
 					type: 'i-wish-this-node-would',
 				});
 			}
-		},
-		onPanelsInit(e: { position: number }) {
-			this.mainPanelPosition = e.position;
-		},
-		onDragStart(e: { position: number }) {
-			this.isDragging = true;
-			this.mainPanelPosition = e.position;
-		},
-		onDragEnd(e: { windowWidth: number; position: number }) {
-			this.isDragging = false;
-			this.$telemetry.track('User moved parameters pane', {
+		};
+
+		const onDragEnd = (e: { windowWidth: number; position: number }) => {
+			isDragging.value = false;
+			telemetry.track('User moved parameters pane', {
+				// example method for tracking
 				window_width: e.windowWidth,
-				start_position: this.mainPanelPosition,
+				start_position: mainPanelPosition.value,
 				end_position: e.position,
-				node_type: this.activeNodeType ? this.activeNodeType.name : '',
-				push_ref: this.pushRef,
-				workflow_id: this.workflowsStore.workflowId,
+				node_type: activeNodeType.value ? activeNodeType.value.name : '',
+				push_ref: pushRef.value,
+				workflow_id: workflowsStore.workflowId,
 			});
-			this.mainPanelPosition = e.position;
-		},
-		onLinkRunToInput() {
-			this.runOutputIndex = this.runInputIndex;
-			this.isLinkingEnabled = true;
-			this.trackLinking('input');
-		},
-		onLinkRunToOutput() {
-			this.isLinkingEnabled = true;
-			this.trackLinking('output');
-		},
-		onUnlinkRun(pane: string) {
-			this.runInputIndex = this.runOutputIndex;
-			this.isLinkingEnabled = false;
-			this.trackLinking(pane);
-		},
-		trackLinking(pane: string) {
-			this.$telemetry.track('User changed ndv run linking', {
-				node_type: this.activeNodeType ? this.activeNodeType.name : '',
-				push_ref: this.pushRef,
-				linked: this.linked,
-				pane,
-			});
-		},
-		onNodeExecute() {
+			mainPanelPosition.value = e.position;
+		};
+
+		const onDragStart = (e: { position: number }) => {
+			isDragging.value = true;
+			mainPanelPosition.value = e.position;
+		};
+
+		const onPanelsInit = (e: { position: number }) => {
+			mainPanelPosition.value = e.position;
+		};
+
+		const onLinkRunToOutput = () => {
+			isLinkingEnabled.value = true;
+			trackLinking('output');
+		};
+
+		const onUnlinkRun = (pane: string) => {
+			runInputIndex.value = runOutputIndex.value;
+			isLinkingEnabled.value = false;
+			trackLinking(pane);
+		};
+
+		const onNodeExecute = () => {
 			setTimeout(() => {
-				if (!this.activeNode || !this.workflowRunning) {
+				if (!activeNode.value || !workflowRunning.value) {
 					return;
 				}
-				this.triggerWaitingWarningEnabled = true;
+				triggerWaitingWarningEnabled.value = true;
 			}, 1000);
-		},
-		openSettings() {
-			this.settingsEventBus.emit('openSettings');
-		},
-		valueChanged(parameterData: IUpdateInformation) {
-			this.$emit('valueChanged', parameterData);
-		},
-		nodeTypeSelected(nodeTypeName: string) {
-			this.$emit('nodeTypeSelected', nodeTypeName);
-		},
-		onSwitchSelectedNode(nodeTypeName: string) {
-			this.$emit('switchSelectedNode', nodeTypeName);
-		},
-		onOpenConnectionNodeCreator(nodeTypeName: string, connectionType: ConnectionTypes) {
-			this.$emit('openConnectionNodeCreator', nodeTypeName, connectionType);
-		},
-		async close() {
-			if (this.isDragging) {
+		};
+
+		const openSettings = () => {
+			settingsEventBus.emit('openSettings');
+		};
+
+		const trackLinking = (pane: string) => {
+			telemetry.track('User changed ndv run linking', {
+				node_type: activeNodeType.value ? activeNodeType.value.name : '',
+				push_ref: pushRef.value,
+				linked: linked.value,
+				pane,
+			});
+		};
+
+		const onLinkRunToInput = () => {
+			runOutputIndex.value = runInputIndex.value;
+			isLinkingEnabled.value = true;
+			trackLinking('input');
+		};
+
+		const valueChanged = (parameterData: IUpdateInformation) => {
+			emit('valueChanged', parameterData);
+		};
+
+		const nodeTypeSelected = (nodeTypeName: string) => {
+			emit('nodeTypeSelected', nodeTypeName);
+		};
+
+		const onSwitchSelectedNode = (nodeTypeName: string) => {
+			emit('switchSelectedNode', nodeTypeName);
+		};
+
+		const onOpenConnectionNodeCreator = (nodeTypeName: string, connectionType: ConnectionTypes) => {
+			emit('openConnectionNodeCreator', nodeTypeName, connectionType);
+		};
+
+		const close = async () => {
+			if (isDragging.value) {
 				return;
 			}
 
 			if (
-				this.activeNode &&
-				(typeof this.activeNodeType?.outputs === 'string' ||
-					typeof this.activeNodeType?.inputs === 'string' ||
-					this.redrawRequired)
+				activeNode.value &&
+				(typeof activeNodeType.value?.outputs === 'string' ||
+					typeof activeNodeType.value?.inputs === 'string' ||
+					redrawRequired.value)
 			) {
-				// TODO: We should keep track of if it actually changed and only do if required
-				// Whenever a node with custom inputs and outputs gets closed redraw it in case
-				// they changed
-				const nodeName = this.activeNode.name;
+				const nodeName = activeNode.value.name;
 				setTimeout(() => {
-					this.$emit('redrawNode', nodeName);
+					emit('redrawNode', nodeName);
 				}, 1);
 			}
 
-			if (this.outputPanelEditMode.enabled && this.activeNode) {
-				const shouldPinDataBeforeClosing = await this.confirm(
+			if (outputPanelEditMode.value.enabled && activeNode.value) {
+				const shouldPinDataBeforeClosing = await message.confirm(
 					'',
-					this.$locale.baseText('ndv.pinData.beforeClosing.title'),
+					i18n.baseText('ndv.pinData.beforeClosing.title'),
 					{
-						confirmButtonText: this.$locale.baseText('ndv.pinData.beforeClosing.confirm'),
-						cancelButtonText: this.$locale.baseText('ndv.pinData.beforeClosing.cancel'),
+						confirmButtonText: i18n.baseText('ndv.pinData.beforeClosing.confirm'),
+						cancelButtonText: i18n.baseText('ndv.pinData.beforeClosing.cancel'),
 					},
 				);
 
 				if (shouldPinDataBeforeClosing === MODAL_CONFIRM) {
-					const { value } = this.outputPanelEditMode;
+					const { value } = outputPanelEditMode.value;
 					try {
-						this.pinnedData.setData(jsonParse(value), 'on-ndv-close-modal');
+						pinnedData.setData(jsonParse(value), 'on-ndv-close-modal');
 					} catch (error) {
 						console.error(error);
 					}
 				}
 
-				this.ndvStore.setOutputPanelEditModeEnabled(false);
+				ndvStore.setOutputPanelEditModeEnabled(false);
 			}
 
-			await this.externalHooks.run('dataDisplay.nodeEditingFinished');
-			this.$telemetry.track('User closed node modal', {
-				node_type: this.activeNodeType ? this.activeNodeType.name : '',
-				push_ref: this.pushRef,
-				workflow_id: this.workflowsStore.workflowId,
+			await externalHooks.run('dataDisplay.nodeEditingFinished');
+			telemetry.track('User closed node modal', {
+				node_type: activeNodeType.value ? activeNodeType.value?.name : '',
+				push_ref: pushRef.value,
+				workflow_id: workflowsStore.workflowId,
 			});
-			this.triggerWaitingWarningEnabled = false;
-			this.ndvStore.activeNodeName = null;
-			this.ndvStore.resetNDVPushRef();
-		},
-		onRunOutputIndexChange(run: number) {
-			this.runOutputIndex = run;
-			this.trackRunChange(run, 'output');
-		},
-		onRunInputIndexChange(run: number) {
-			this.runInputIndex = run;
-			if (this.linked) {
-				this.runOutputIndex = run;
-			}
-			this.trackRunChange(run, 'input');
-		},
-		trackRunChange(run: number, pane: string) {
-			this.$telemetry.track('User changed ndv run dropdown', {
-				push_ref: this.pushRef,
+			triggerWaitingWarningEnabled.value = false;
+			ndvStore.activeNodeName = null;
+			ndvStore.resetNDVPushRef();
+		};
+
+		const trackRunChange = (run: number, pane: string) => {
+			telemetry.track('User changed ndv run dropdown', {
+				push_ref: pushRef.value,
 				run_index: run,
-				node_type: this.activeNodeType ? this.activeNodeType.name : '',
+				node_type: activeNodeType.value ? activeNodeType.value?.name : '',
 				pane,
 			});
-		},
-		onInputNodeChange(value: string, index: number) {
-			this.runInputIndex = -1;
-			this.isLinkingEnabled = true;
-			this.selectedInput = value;
+		};
 
-			this.$telemetry.track('User changed ndv input dropdown', {
-				node_type: this.activeNode ? this.activeNode.type : '',
-				push_ref: this.pushRef,
-				workflow_id: this.workflowsStore.workflowId,
+		const onRunOutputIndexChange = (run: number) => {
+			runOutputIndex.value = run;
+			trackRunChange(run, 'output');
+		};
+
+		const onRunInputIndexChange = (run: number) => {
+			runInputIndex.value = run;
+			if (linked.value) {
+				runOutputIndex.value = run;
+			}
+			trackRunChange(run, 'input');
+		};
+
+		const onOutputTableMounted = (e: { avgRowHeight: number }) => {
+			avgOutputRowHeight.value = e.avgRowHeight;
+		};
+
+		const onInputNodeChange = (value: string, index: number) => {
+			runInputIndex.value = -1;
+			isLinkingEnabled.value = true;
+			selectedInput.value = value;
+
+			telemetry.track('User changed ndv input dropdown', {
+				node_type: activeNode.value ? activeNode.value.type : '',
+				push_ref: pushRef.value,
+				workflow_id: workflowsStore.workflowId,
 				selection_value: index,
-				input_node_type: this.inputNode ? this.inputNode.type : '',
+				input_node_type: inputNode.value ? inputNode.value.type : '',
 			});
-		},
-		onStopExecution() {
-			this.$emit('stopExecution');
-		},
-		activateInputPane() {
-			this.isInputPaneActive = true;
-			this.isOutputPaneActive = false;
-		},
-		activateOutputPane() {
-			this.isInputPaneActive = false;
-			this.isOutputPaneActive = true;
-		},
-		onSearch(search: string) {
-			this.isPairedItemHoveringEnabled = !search;
-		},
+		};
+
+		const onStopExecution = () => {
+			emit('stopExecution');
+		};
+
+		const activateInputPane = () => {
+			isInputPaneActive.value = true;
+			isOutputPaneActive.value = false;
+		};
+
+		const activateOutputPane = () => {
+			isInputPaneActive.value = false;
+			isOutputPaneActive.value = true;
+		};
+
+		const onSearch = (search: string) => {
+			isPairedItemHoveringEnabled.value = !search;
+		};
+
+		//watchers
+
+		watch(
+			activeNode,
+			(node, oldNode) => {
+				if (node && node.name !== oldNode?.name && !isActiveStickyNode.value) {
+					runInputIndex.value = -1;
+					runOutputIndex.value = -1;
+					isLinkingEnabled.value = true;
+					selectedInput.value = undefined;
+					triggerWaitingWarningEnabled.value = false;
+					avgOutputRowHeight.value = 0;
+					avgInputRowHeight.value = 0;
+
+					setTimeout(() => ndvStore.setNDVPushRef(), 0);
+
+					if (!activeNodeType.value) {
+						return;
+					}
+
+					void externalHooks.run('dataDisplay.nodeTypeChanged', {
+						nodeSubtitle: nodeHelpers.getNodeSubtitle(
+							node,
+							activeNodeType.value,
+							workflowHelpers.getCurrentWorkflow(),
+						),
+					});
+
+					setTimeout(() => {
+						if (activeNode.value) {
+							const outgoingConnections = workflowsStore.outgoingConnectionsByNodeName(
+								activeNode.value?.name,
+							);
+
+							telemetry.track('User opened node modal', {
+								node_type: activeNodeType.value ? activeNodeType.value?.name : '',
+								workflow_id: workflowsStore.workflowId,
+								push_ref: pushRef.value,
+								is_editable: !hasForeignCredential.value,
+								parameters_pane_position: mainPanelPosition.value,
+								input_first_connector_runs: maxInputRun.value,
+								output_first_connector_runs: maxOutputRun.value,
+								selected_view_inputs: isTriggerNode.value
+									? 'trigger'
+									: ndvStore.inputPanelDisplayMode,
+								selected_view_outputs: ndvStore.outputPanelDisplayMode,
+								input_connectors: parentNodes.value.length,
+								output_connectors: outgoingConnections?.main?.length,
+								input_displayed_run_index: inputRun.value,
+								output_displayed_run_index: outputRun.value,
+								data_pinning_tooltip_presented: pinDataDiscoveryTooltipVisible.value,
+								input_displayed_row_height_avg: avgInputRowHeight.value,
+								output_displayed_row_height_avg: avgOutputRowHeight.value,
+							});
+						}
+					}, 2000); // wait for RunData to mount and present pindata discovery tooltip
+				}
+				if (window.top && !isActiveStickyNode.value) {
+					window.top.postMessage(JSON.stringify({ command: node ? 'openNDV' : 'closeNDV' }), '*');
+				}
+			},
+			{ immediate: true },
+		);
+		watch(maxOutputRun, () => {
+			runOutputIndex.value = -1;
+		});
+
+		watch(maxInputRun, () => {
+			runInputIndex.value = -1;
+		});
+
+		watch(inputNodeName, (nodeName) => {
+			setTimeout(() => {
+				ndvStore.setInputNodeName(nodeName);
+			}, 0);
+		});
+
+		watch(inputRun, (inputRun) => {
+			setTimeout(() => {
+				ndvStore.setInputRunIndex(inputRun);
+			}, 0);
+		});
+
+		onMounted(() => {
+			dataPinningEventBus.on('data-pinning-discovery', setIsTooltipVisible);
+		});
+
+		onBeforeUnmount(() => {
+			dataPinningEventBus.off('data-pinning-discovery', setIsTooltipVisible);
+		});
+
+		return {
+			externalHooks,
+			nodeHelpers,
+			pinnedData,
+			workflowHelpers,
+			workflowActivate,
+			redrawRequired,
+			isInputPaneActive,
+			isDragging,
+			activeNodeType,
+			pushRef,
+			workflowRunning,
+			showTriggerWaitingWarning,
+			activeNode,
+			isExecutableTriggerNode,
+			showTriggerPanel,
+			hasOutputConnection,
+			blockUi,
+			isActiveStickyNode,
+			isTriggerNode,
+			workflow,
+			canLinkRuns,
+			inputRun,
+			linked,
+			inputNodeName,
+			hasForeignCredential,
+			outputRun,
+			isOutputPaneActive,
+			foreignCredentials,
+			featureRequestUrl,
+			settingsEventBus,
+			inputPanelMargin,
+			nodeTypeSelected,
+			onOutputItemHover,
+			onOutputTableMounted,
+			onInputTableMounted,
+			onRunOutputIndexChange,
+			onStopExecution,
+			activateInputPane,
+			activateOutputPane,
+			onSearch,
+			onInputNodeChange,
+			onRunInputIndexChange,
+			onLinkRunToInput,
+			valueChanged,
+			onSwitchSelectedNode,
+			onOpenConnectionNodeCreator,
+			close,
+			onKeyDown,
+			onInputItemHover,
+			onWorkflowActivate,
+			onFeatureRequestClick,
+			onDragEnd,
+			onDragStart,
+			onPanelsInit,
+			onLinkRunToOutput,
+			onUnlinkRun,
+			onNodeExecute,
+			openSettings,
+		};
 	},
 });
 </script>

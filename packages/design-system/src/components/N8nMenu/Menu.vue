@@ -133,11 +133,18 @@ const onSelect = (item: IMenuItem): void => {
 	background-color: var(--menu-background, var(--color-background-xlight));
 }
 
+.menuHeader {
+	display: flex;
+	flex-direction: column;
+	flex: 0 1 auto;
+	overflow-y: auto;
+}
+
 .menuContent {
 	display: flex;
 	flex-direction: column;
 	justify-content: space-between;
-	flex-grow: 1;
+	flex: 1 1 auto;
 
 	& > div > :global(.el-menu) {
 		background: none;

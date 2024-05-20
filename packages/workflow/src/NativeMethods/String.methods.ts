@@ -1,4 +1,4 @@
-import type { NativeDoc } from '@/Extensions/Extensions';
+import type { NativeDoc } from '../Extensions/Extensions';
 
 export const stringMethods: NativeDoc = {
 	typeName: 'String',

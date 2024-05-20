@@ -161,6 +161,15 @@ export async function post(
 	return await request({ method: 'POST', baseURL, endpoint, headers, data: params });
 }
 
+export async function patch(
+	baseURL: string,
+	endpoint: string,
+	params?: IDataObject,
+	headers?: IDataObject,
+) {
+	return await request({ method: 'PATCH', baseURL, endpoint, headers, data: params });
+}
+
 /**
  * Unflattens the Execution data.
  *

@@ -17,7 +17,6 @@ import { Queue } from '@/Queue';
 import { N8N_VERSION } from '@/constants';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { OwnershipService } from '@/services/ownership.service';
 import type { ICredentialsOverwrite } from '@/Interfaces';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { rawBodyReader, bodyParser } from '@/middlewares';
@@ -118,8 +117,6 @@ export class Worker extends BaseCommand {
 		);
 		await executionRepository.updateStatus(executionId, 'running');
 
-		const workflowOwner = await Container.get(OwnershipService).getWorkflowOwnerCached(workflowId);
-
 		let { staticData } = fullExecutionData.workflowData;
 		if (loadStaticData) {
 			const workflowData = await Container.get(WorkflowRepository).findOne({
@@ -160,7 +157,7 @@ export class Worker extends BaseCommand {
 		});
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
-			workflowOwner.id,
+			undefined,
 			undefined,
 			executionTimeoutTimestamp,
 		);
