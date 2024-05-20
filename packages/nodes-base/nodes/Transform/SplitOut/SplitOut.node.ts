@@ -1,14 +1,14 @@
 import get from 'lodash/get';
 import unset from 'lodash/unset';
-import {
-	type IBinaryData,
-	NodeOperationError,
-	deepCopy,
-	type IDataObject,
-	type IExecuteFunctions,
-	type INodeExecutionData,
-	type INodeType,
-	type INodeTypeDescription,
+import { NodeOperationError, deepCopy, NodeExecutionOutput } from 'n8n-workflow';
+import type {
+	IBinaryData,
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+	NodeExecutionHint,
 } from 'n8n-workflow';
 import { prepareFieldsArray } from '../utils/utils';
 
@@ -26,14 +26,6 @@ export class SplitOut implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
-		hints: [
-			{
-				message: "The field used in 'Fields To Split Out' not present in input item",
-				displayCondition:
-					'={{ !$parameter.fieldToSplitOut.split(",").map(f => f.trim()).every(f => $json[f]) }} ',
-				location: 'outputPane',
-			},
-		],
 		properties: [
 			{
 				displayName: 'Fields To Split Out',
@@ -119,6 +111,7 @@ export class SplitOut implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const returnData: INodeExecutionData[] = [];
 		const items = this.getInputData();
+		const notFoundedFields: { [key: string]: boolean[] } = {};
 
 		for (let i = 0; i < items.length; i++) {
 			const fieldsToSplitOut = (this.getNodeParameter('fieldToSplitOut', i) as string)
@@ -168,6 +161,14 @@ export class SplitOut implements INodeType {
 
 					if (entityToSplit === undefined) {
 						entityToSplit = [];
+						if (!notFoundedFields[fieldToSplitOut]) {
+							notFoundedFields[fieldToSplitOut] = [];
+						}
+						notFoundedFields[fieldToSplitOut].push(false);
+					} else {
+						if (notFoundedFields[fieldToSplitOut]) {
+							notFoundedFields[fieldToSplitOut].push(true);
+						}
 					}
 
 					if (typeof entityToSplit !== 'object' || entityToSplit === null) {
@@ -260,6 +261,21 @@ export class SplitOut implements INodeType {
 
 				returnData.push(newItem);
 			}
+		}
+
+		if (Object.keys(notFoundedFields).length) {
+			const hints: NodeExecutionHint[] = [];
+
+			for (const [field, values] of Object.entries(notFoundedFields)) {
+				if (values.every((value) => !value)) {
+					hints.push({
+						message: `The field '${field}' wasn't found in any input item`,
+						location: 'outputPane',
+					});
+				}
+			}
+
+			if (hints.length) return new NodeExecutionOutput([returnData], hints);
 		}
 
 		return [returnData];
