@@ -465,13 +465,11 @@ export class ToolHttpRequest implements INodeType {
 		}
 
 		const optionsExpectedFromLLM = [
-			'{',
 			`"url": "${url}"`,
 			`"method": "${method}"`,
 			`${qsPlaceholder}`,
 			`${headersPlaceholder}`,
 			`${bodyPlaceholder}`,
-			'}',
 		]
 			.filter((e) => e)
 			.join(',\n');
@@ -479,30 +477,32 @@ export class ToolHttpRequest implements INodeType {
 		let description = `
 ${toolDescription}
 
-This is the expected tool input: a stringified JSON object that needs to be sent as a string.
-It represents options for an HTTP request done with Axios. Replace all placeholders with actual values.
-Placeholders satisfy this regex: /(\{[a-zA-Z0-9_]+\})/g.
-You forbiden to change anything else except for the placeholders.
+This is the expected tool input: a stringified JSON object that needs to be sent as a string. It represents options for an HTTP request done with Axios. Replace all placeholders with actual values. Placeholders are alphanumeric characters or underscore enclosed in curly brackets. Only placeholders are allowed to be replaced. You must echo this options to the tool input with placeholders replaced by actual values.
 
-${optionsExpectedFromLLM}`;
+{
+${optionsExpectedFromLLM}
+}
+`;
 
 		if (placeholders.length) {
 			description += `
-Below are the descriptions of the placeholders.
-Required placeholders are marked accordingly.
-Extract descriptions from the prompt if available.
-If a placeholder lacks a description, infer its meaning:
-${placeholders.map((p) => `${p.name}(description: ${p.description || ''}, type: ${p.type || ''}, required: ${!!p.required})`).join(', ')}`;
+Below are the descriptions of the placeholders. Required placeholders are marked accordingly, if not can be left ommited. Extract descriptions from the prompt if available. If any placeholder does not have a description, infer its meaning from the name, type and if it is required or not.:
+
+${placeholders
+	.filter((p) => p.name)
+	.map(
+		(p) =>
+			`{${p.name}}: (description: ${p.description || ''}, type: ${p.type || ''}, required: ${!!p.required})`,
+	)
+	.join(', ')}`;
 		}
 
 		return {
 			response: new DynamicTool({
 				name,
 				description,
-				func: async (stringifiedRequestOptions: string): Promise<string> => {
-					const { index } = this.addInputData(NodeConnectionType.AiTool, [
-						[{ json: { stringifiedRequestOptions } }],
-					]);
+				func: async (query: string): Promise<string> => {
+					const { index } = this.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
 
 					let response: string = '';
 					let executionError: Error | undefined = undefined;
@@ -510,9 +510,9 @@ ${placeholders.map((p) => `${p.name}(description: ${p.description || ''}, type: 
 
 					// parse LLM's input
 					try {
-						requestOptions = jsonParse<IHttpRequestOptions>(stringifiedRequestOptions);
+						requestOptions = jsonParse<IHttpRequestOptions>(query);
 					} catch (error) {
-						const errorMessage = `Input could not be parsed as JSON: ${stringifiedRequestOptions}`;
+						const errorMessage = `Input could not be parsed as JSON: ${query}`;
 						executionError = new NodeOperationError(this.getNode(), errorMessage, {
 							itemIndex,
 						});

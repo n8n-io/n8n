@@ -33,7 +33,6 @@ export const parametersCollection: INodeProperties = {
 		values: [
 			{
 				name: '',
-				value: '',
 			},
 		],
 	},
@@ -94,14 +93,7 @@ export const placeholderDefinitionsCollection: INodeProperties = {
 		multipleValues: true,
 	},
 	placeholder: 'Add Definition',
-	default: {
-		values: [
-			{
-				name: '',
-				description: '',
-			},
-		],
-	},
+	default: [],
 	options: [
 		{
 			name: 'values',
