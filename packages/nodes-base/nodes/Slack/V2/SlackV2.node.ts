@@ -25,12 +25,7 @@ import { fileFields, fileOperations } from './FileDescription';
 import { reactionFields, reactionOperations } from './ReactionDescription';
 import { userGroupFields, userGroupOperations } from './UserGroupDescription';
 import { userFields, userOperations } from './UserDescription';
-import {
-	slackApiRequest,
-	slackApiRequestAllItems,
-	validateJSON,
-	getMessageContent,
-} from './GenericFunctions';
+import { slackApiRequest, slackApiRequestAllItems, getMessageContent } from './GenericFunctions';
 
 export class SlackV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -779,6 +774,7 @@ export class SlackV2 implements INodeType {
 						if (authentication === 'accessToken' && sendAsUser !== '' && sendAsUser !== undefined) {
 							body.username = sendAsUser;
 						}
+
 						// Add all the other options to the request
 						const otherOptions = this.getNodeParameter('otherOptions', i) as IDataObject;
 						let action = 'postMessage';
@@ -836,27 +832,15 @@ export class SlackV2 implements INodeType {
 							{},
 							{ extractValue: true },
 						) as string;
-						const text = this.getNodeParameter('text', i) as string;
 						const ts = this.getNodeParameter('ts', i)?.toString() as string;
+						const content = getMessageContent.call(this, i, nodeVersion, instanceId);
+
 						const body: IDataObject = {
 							channel,
-							text,
 							ts,
+							...content,
 						};
 
-						const jsonParameters = this.getNodeParameter('jsonParameters', i, false);
-						if (jsonParameters) {
-							const blocksJson = this.getNodeParameter('blocksJson', i, []) as string;
-
-							if (blocksJson !== '' && validateJSON(blocksJson) === undefined) {
-								throw new NodeOperationError(this.getNode(), 'Blocks it is not a valid json', {
-									itemIndex: i,
-								});
-							}
-							if (blocksJson !== '') {
-								body.blocks = blocksJson;
-							}
-						}
 						// Add all the other options to the request
 						const updateFields = this.getNodeParameter('updateFields', i);
 						Object.assign(body, updateFields);

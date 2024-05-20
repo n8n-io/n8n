@@ -50,7 +50,7 @@ export class I18nClass {
 	 */
 	baseText(
 		key: BaseTextKey,
-		options?: { adjustToNumber?: number; interpolate?: { [key: string]: string } },
+		options?: { adjustToNumber?: number; interpolate?: Record<string, string | number> },
 	): string {
 		// Create a unique cache key
 		const cacheKey = `${key}-${JSON.stringify(options)}`;
@@ -418,131 +418,6 @@ export class I18nClass {
 		values: this.baseText('codeNodeEditor.completer.globalObject.values'),
 	};
 
-	luxonInstance: Record<string, string | undefined> = {
-		// getters
-		isValid: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.isValid'),
-		invalidReason: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.invalidReason'),
-		invalidExplanation: this.baseText(
-			'codeNodeEditor.completer.luxon.instanceMethods.invalidExplanation',
-		),
-		locale: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.locale'),
-		numberingSystem: this.baseText(
-			'codeNodeEditor.completer.luxon.instanceMethods.numberingSystem',
-		),
-		outputCalendar: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.outputCalendar'),
-		zone: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.zone'),
-		zoneName: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.zoneName'),
-		year: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.year'),
-		quarter: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.quarter'),
-		month: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.month'),
-		day: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.day'),
-		hour: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.hour'),
-		minute: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.minute'),
-		second: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.second'),
-		millisecond: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.millisecond'),
-		weekYear: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.weekYear'),
-		weekNumber: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.weekNumber'),
-		weekday: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.weekday'),
-		ordinal: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.ordinal'),
-		monthShort: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.monthShort'),
-		monthLong: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.monthLong'),
-		weekdayShort: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.weekdayShort'),
-		weekdayLong: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.weekdayLong'),
-		offset: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.offset'),
-		offsetNumber: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.offsetNumber'),
-		offsetNameShort: this.baseText(
-			'codeNodeEditor.completer.luxon.instanceMethods.offsetNameShort',
-		),
-		offsetNameLong: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.offsetNameLong'),
-		isOffsetFixed: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.isOffsetFixed'),
-		isInDST: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.isInDST'),
-		isInLeapYear: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.isInLeapYear'),
-		daysInMonth: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.daysInMonth'),
-		daysInYear: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.daysInYear'),
-		weeksInWeekYear: this.baseText(
-			'codeNodeEditor.completer.luxon.instanceMethods.weeksInWeekYear',
-		),
-
-		// methods
-		toUTC: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toUTC'),
-		toLocal: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toLocal'),
-		setZone: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.setZone'),
-		setLocale: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.setLocale'),
-		set: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.set'),
-		plus: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.plus'),
-		minus: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.minus'),
-		startOf: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.startOf'),
-		endOf: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.endOf'),
-		toFormat: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toFormat'),
-		toLocaleString: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toLocaleString'),
-		toLocaleParts: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toLocaleParts'),
-		toISO: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toISO'),
-		toISODate: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toISODate'),
-		toISOWeekDate: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toISOWeekDate'),
-		toISOTime: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toISOTime'),
-		toRFC2822: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toRFC2822'),
-		toHTTP: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toHTTP'),
-		toSQLDate: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toSQLDate'),
-		toSQLTime: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toSQLTime'),
-		toSQL: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toSQL'),
-		toString: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toString'),
-		valueOf: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.valueOf'),
-		toMillis: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toMillis'),
-		toSeconds: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toSeconds'),
-		toUnixInteger: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toUnixInteger'),
-		toJSON: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toJSON'),
-		toBSON: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toBSON'),
-		toObject: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toObject'),
-		toJSDate: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toJsDate'),
-		diff: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.diff'),
-		diffNow: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.diffNow'),
-		until: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.until'),
-		hasSame: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.hasSame'),
-		equals: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.equals'),
-		toRelative: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toRelative'),
-		toRelativeCalendar: this.baseText(
-			'codeNodeEditor.completer.luxon.instanceMethods.toRelativeCalendar',
-		),
-		min: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.min'),
-		max: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.max'),
-		reconfigure: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.reconfigure'),
-		resolvedLocaleOptions: this.baseText(
-			'codeNodeEditor.completer.luxon.instanceMethods.resolvedLocaleOptions',
-		),
-	};
-
-	luxonStatic: Record<string, string | undefined> = {
-		now: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.now'),
-		local: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.local'),
-		utc: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.utc'),
-		fromJSDate: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromJSDate'),
-		fromMillis: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromMillis'),
-		fromSeconds: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromSeconds'),
-		fromObject: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromObject'),
-		fromISO: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromISO'),
-		fromRFC2822: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromRFC2822'),
-		fromHTTP: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromHTTP'),
-		fromFormat: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromFormat'),
-		fromSQL: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromSQL'),
-		invalid: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.invalid'),
-		isDateTime: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.isDateTime'),
-		expandFormat: this.baseText(
-			'codeNodeEditor.completer.luxon.dateTimeStaticMethods.expandFormat',
-		),
-		fromFormatExplain: this.baseText(
-			'codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromFormatExplain',
-		),
-		fromString: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromString'),
-		fromStringExplain: this.baseText(
-			'codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromStringExplain',
-		),
-		max: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.max'),
-		min: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.min'),
-		parseFormatForOpts: this.baseText(
-			'codeNodeEditor.completer.luxon.dateTimeStaticMethods.parseFormatForOpts',
-		),
-	};
-
 	autocompleteUIValues: Record<string, string | undefined> = {
 		docLinkLabel: this.baseText('expressionEdit.learnMore'),
 	};
@@ -561,9 +436,7 @@ async function setLanguage(language: string) {
 	return language;
 }
 
-export async function loadLanguage(language?: string) {
-	if (!language) return;
-
+export async function loadLanguage(language: string) {
 	if (i18nInstance.global.locale === language) {
 		return await setLanguage(language);
 	}
@@ -592,22 +465,13 @@ export function addNodeTranslation(
 	nodeTranslation: { [nodeType: string]: object },
 	language: string,
 ) {
-	const oldNodesBase = i18nInstance.global.messages[language]['n8n-nodes-base'] || {};
-
-	const updatedNodes = {
-		// @ts-ignore
-		...oldNodesBase.nodes,
-		...nodeTranslation,
+	const newMessages = {
+		'n8n-nodes-base': {
+			nodes: nodeTranslation,
+		},
 	};
 
-	const newNodesBase = {
-		'n8n-nodes-base': Object.assign(oldNodesBase, { nodes: updatedNodes }),
-	};
-
-	i18nInstance.global.setLocaleMessage(
-		language,
-		Object.assign(i18nInstance.global.messages[language], newNodesBase),
-	);
+	i18nInstance.global.mergeLocaleMessage(language, newMessages);
 }
 
 /**
@@ -617,32 +481,20 @@ export function addCredentialTranslation(
 	nodeCredentialTranslation: { [credentialType: string]: object },
 	language: string,
 ) {
-	const oldNodesBase = i18nInstance.global.messages[language]['n8n-nodes-base'] || {};
-
-	const updatedCredentials = {
-		// @ts-ignore
-		...oldNodesBase.credentials,
-		...nodeCredentialTranslation,
+	const newMessages = {
+		'n8n-nodes-base': {
+			credentials: nodeCredentialTranslation,
+		},
 	};
 
-	const newNodesBase = {
-		'n8n-nodes-base': Object.assign(oldNodesBase, { credentials: updatedCredentials }),
-	};
-
-	i18nInstance.global.setLocaleMessage(
-		language,
-		Object.assign(i18nInstance.global.messages[language], newNodesBase),
-	);
+	i18nInstance.global.mergeLocaleMessage(language, newMessages);
 }
 
 /**
  * Add a node's header strings to the i18n instance's `messages` object.
  */
 export function addHeaders(headers: INodeTranslationHeaders, language: string) {
-	i18nInstance.global.setLocaleMessage(
-		language,
-		Object.assign(i18nInstance.global.messages[language], { headers }),
-	);
+	i18nInstance.global.mergeLocaleMessage(language, { headers });
 }
 
 export const i18n: I18nClass = new I18nClass();

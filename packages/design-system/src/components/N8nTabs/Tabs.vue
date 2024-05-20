@@ -26,19 +26,26 @@
 					>
 						<div>
 							{{ option.label }}
-							<span :class="$style.external"
-								><N8nIcon icon="external-link-alt" size="small"
-							/></span>
+							<span :class="$style.external">
+								<N8nIcon icon="external-link-alt" size="xsmall" />
+							</span>
 						</div>
 					</a>
-
+					<RouterLink
+						v-else-if="option.to"
+						:to="option.to"
+						:class="[$style.tab, { [$style.activeTab]: modelValue === option.value }]"
+					>
+						<N8nIcon v-if="option.icon" :icon="option.icon" size="medium" />
+						<span v-if="option.label">{{ option.label }}</span>
+					</RouterLink>
 					<div
 						v-else
 						:class="{ [$style.tab]: true, [$style.activeTab]: modelValue === option.value }"
 						:data-test-id="`tab-${option.value}`"
 						@click="() => handleTabClick(option.value)"
 					>
-						<N8nIcon v-if="option.icon" :icon="option.icon" size="medium" />
+						<N8nIcon v-if="option.icon" :icon="option.icon" size="small" />
 						<span v-if="option.label">{{ option.label }}</span>
 					</div>
 				</n8n-tooltip>
@@ -50,6 +57,7 @@
 <script lang="ts" setup>
 import { onMounted, onUnmounted, ref } from 'vue';
 import N8nIcon from '../N8nIcon';
+import type { RouteLocationRaw } from 'vue-router';
 
 interface TabOptions {
 	value: string;
@@ -58,6 +66,7 @@ interface TabOptions {
 	href?: string;
 	tooltip?: string;
 	align?: 'left' | 'right';
+	to?: RouteLocationRaw;
 }
 
 interface TabsProps {
@@ -131,6 +140,7 @@ const scrollRight = () => scroll(50);
 	color: var(--color-text-base);
 	font-weight: var(--font-weight-bold);
 	display: flex;
+	align-items: center;
 	width: 100%;
 	position: absolute;
 	overflow-x: scroll;
@@ -146,23 +156,30 @@ const scrollRight = () => scroll(50);
 }
 
 .tab {
+	--active-tab-border-width: 2px;
 	display: block;
-	padding: 0 var(--spacing-s) var(--spacing-2xs) var(--spacing-s);
-	padding-bottom: var(--spacing-2xs);
+	padding: 0 var(--spacing-s);
+	padding-bottom: calc(var(--spacing-2xs) + var(--active-tab-border-width));
 	font-size: var(--font-size-s);
 	cursor: pointer;
 	white-space: nowrap;
+	color: var(--color-text-base);
 	&:hover {
 		color: var(--color-primary);
+	}
+
+	span + span {
+		margin-left: var(--spacing-4xs);
 	}
 }
 
 .activeTab {
 	color: var(--color-primary);
-	border-bottom: var(--color-primary) 2px solid;
+	padding-bottom: var(--spacing-2xs);
+	border-bottom: var(--color-primary) var(--active-tab-border-width) solid;
 }
 
-.alignRight {
+.alignRight:not(.alignRight + .alignRight) {
 	margin-left: auto;
 }
 
@@ -172,15 +189,12 @@ const scrollRight = () => scroll(50);
 
 	&:hover {
 		color: var(--color-primary);
-
-		.external {
-			display: inline-block;
-		}
 	}
 }
 
 .external {
-	display: none;
+	display: inline-block;
+	margin-left: var(--spacing-5xs);
 }
 
 .button {

@@ -6,7 +6,7 @@
 			:message="
 				$locale.baseText(
 					`credentialEdit.credentialConfig.pleaseCheckTheErrorsBelow${
-						credentialPermissions.update || credentialPermissions.isOwner ? '' : '.sharee'
+						credentialPermissions.update ? '' : '.sharee'
 					}`,
 					{ interpolate: { owner: credentialOwnerName } },
 				)
@@ -19,7 +19,7 @@
 			:message="
 				$locale.baseText(
 					`credentialEdit.credentialConfig.couldntConnectWithTheseSettings${
-						credentialPermissions.update || credentialPermissions.isOwner ? '' : '.sharee'
+						credentialPermissions.update ? '' : '.sharee'
 					}`,
 					{ interpolate: { owner: credentialOwnerName } },
 				)
@@ -114,10 +114,7 @@
 
 		<OauthButton
 			v-if="
-				isOAuthType &&
-				requiredPropertiesFilled &&
-				!isOAuthConnected &&
-				credentialPermissions.isOwner
+				isOAuthType && requiredPropertiesFilled && !isOAuthConnected && credentialPermissions.update
 			"
 			:is-google-o-auth-type="isGoogleOAuthType"
 			@click="$emit('oauth')"
@@ -142,9 +139,10 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 
-import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 import { getAppNameFromCredType, isCommunityPackageName } from '@/utils/nodeTypesUtils';
 
 import Banner from '../Banner.vue';
@@ -153,7 +151,8 @@ import CredentialInputs from './CredentialInputs.vue';
 import OauthButton from './OauthButton.vue';
 import { addCredentialTranslation } from '@/plugins/i18n';
 import { BUILTIN_CREDENTIALS_DOCS_URL, DOCS_DOMAIN, EnterpriseEditionFeature } from '@/constants';
-import type { IPermissions } from '@/permissions';
+import type { PermissionsMap } from '@/permissions';
+import type { CredentialScope } from '@n8n/permissions';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
@@ -178,13 +177,16 @@ export default defineComponent({
 	},
 	props: {
 		credentialType: {
-			type: Object,
+			type: Object as PropType<ICredentialType>,
+			required: true,
 		},
 		credentialProperties: {
-			type: Array,
+			type: Array as PropType<INodeProperties[]>,
+			required: true,
 		},
 		parentTypes: {
-			type: Array,
+			type: Array as PropType<string[]>,
+			default: () => [],
 		},
 		credentialData: {},
 		credentialId: {
@@ -214,8 +216,8 @@ export default defineComponent({
 			type: Boolean,
 		},
 		credentialPermissions: {
-			type: Object,
-			default: (): IPermissions => ({}),
+			type: Object as PropType<PermissionsMap<CredentialScope>>,
+			default: () => ({}) as PermissionsMap<CredentialScope>,
 		},
 		requiredPropertiesFilled: {
 			type: Boolean,
@@ -273,7 +275,7 @@ export default defineComponent({
 				return '';
 			}
 
-			const appName = getAppNameFromCredType((this.credentialType as ICredentialType).displayName);
+			const appName = getAppNameFromCredType(this.credentialType.displayName);
 
 			return (
 				appName ||
@@ -281,13 +283,13 @@ export default defineComponent({
 			);
 		},
 		credentialTypeName(): string {
-			return (this.credentialType as ICredentialType)?.name;
+			return this.credentialType?.name;
 		},
 		credentialOwnerName(): string {
 			return this.credentialsStore.getCredentialOwnerNameById(`${this.credentialId}`);
 		},
 		documentationUrl(): string {
-			const type = this.credentialType as ICredentialType;
+			const type = this.credentialType;
 			const activeNode = this.ndvStore.activeNode;
 			const isCommunityNode = activeNode ? isCommunityPackageName(activeNode.type) : false;
 

@@ -1,5 +1,6 @@
 import { useUsersStore } from '@/stores/users.store';
 import { isAuthenticated } from '@/rbac/checks/isAuthenticated';
+import type { IUser } from '@/Interface';
 
 vi.mock('@/stores/users.store', () => ({
 	useUsersStore: vi.fn(),
@@ -7,7 +8,7 @@ vi.mock('@/stores/users.store', () => ({
 
 describe('Checks', () => {
 	describe('isAuthenticated()', () => {
-		const mockUser = { id: 'user123', name: 'Test User' };
+		const mockUser: Partial<IUser> = { id: 'user123', fullName: 'Test User' };
 
 		it('should return true if there is a current user', () => {
 			vi.mocked(useUsersStore).mockReturnValue({ currentUser: mockUser } as unknown as ReturnType<

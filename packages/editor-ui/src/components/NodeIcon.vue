@@ -11,12 +11,12 @@
 		:show-tooltip="showTooltip"
 		:tooltip-position="tooltipPosition"
 		:badge="badge"
-		@click="(e) => $emit('click')"
+		@click="() => $emit('click')"
 	></n8n-node-icon>
 </template>
 
 <script lang="ts">
-import type { IVersionNode } from '@/Interface';
+import type { ActionTypeDescription, IVersionNode, SimplifiedNodeType } from '@/Interface';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { mapStores } from 'pinia';
@@ -32,7 +32,10 @@ export default defineComponent({
 	name: 'NodeIcon',
 	props: {
 		nodeType: {
-			type: Object as PropType<INodeTypeDescription | IVersionNode | null>,
+			type: Object as PropType<
+				INodeTypeDescription | IVersionNode | SimplifiedNodeType | ActionTypeDescription | null
+			>,
+			required: true,
 		},
 		size: {
 			type: Number,
