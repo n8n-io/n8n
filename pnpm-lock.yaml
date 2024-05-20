@@ -480,13 +480,16 @@ importers:
     dependencies:
       '@langchain/community':
         specifier: 0.0.44
-        version: 0.0.44(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@3.9.5)(pg@8.11.3)(ws@8.14.2)
+        version: 0.0.44(@pinecone-database/pinecone@2.1.0)(duck-duck-scrape@2.2.5)(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@3.9.5)(pg@8.11.3)(ws@8.14.2)
       '@langchain/core':
         specifier: 0.1.41
         version: 0.1.41
       '@langchain/openai':
         specifier: 0.0.16
         version: 0.0.16
+      '@langchain/pinecone':
+        specifier: ^0.0.3
+        version: 0.0.3
       '@n8n/client-oauth2':
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
@@ -508,6 +511,9 @@ importers:
       '@oclif/core':
         specifier: 3.18.1
         version: 3.18.1
+      '@pinecone-database/pinecone':
+        specifier: 2.1.0
+        version: 2.1.0
       '@rudderstack/rudder-sdk-node':
         specifier: 2.0.7
         version: 2.0.7(tslib@2.6.2)
@@ -565,6 +571,9 @@ importers:
       dotenv:
         specifier: 8.6.0
         version: 8.6.0
+      duck-duck-scrape:
+        specifier: ^2.2.5
+        version: 2.2.5
       express:
         specifier: 4.19.2
         version: 4.19.2
@@ -624,7 +633,7 @@ importers:
         version: 9.0.2
       langchain:
         specifier: 0.1.25
-        version: 0.1.25(axios@1.6.7)(handlebars@4.7.8)(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@3.9.5)(pg@8.11.3)(ws@8.14.2)
+        version: 0.1.25(@pinecone-database/pinecone@2.1.0)(axios@1.6.7)(duck-duck-scrape@2.2.5)(handlebars@4.7.8)(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@3.9.5)(pg@8.11.3)(ws@8.14.2)
       ldapts:
         specifier: 4.2.6
         version: 4.2.6
@@ -6061,7 +6070,7 @@ packages:
       - supports-color
     dev: false
 
-  /@langchain/community@0.0.44(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@3.9.5)(pg@8.11.3)(ws@8.14.2):
+  /@langchain/community@0.0.44(@pinecone-database/pinecone@2.1.0)(duck-duck-scrape@2.2.5)(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@3.9.5)(pg@8.11.3)(ws@8.14.2):
     resolution: {integrity: sha512-II9Hz90jJmfWRICtxTg1auQWzFw0npqacWiiOpaxNhzs6rptdf56gyfC48Z6n1ii4R8FfAlfX6YxhOE7lGGKXg==}
     engines: {node: '>=18'}
     peerDependencies:
@@ -6342,6 +6351,8 @@ packages:
     dependencies:
       '@langchain/core': 0.1.41
       '@langchain/openai': 0.0.26
+      '@pinecone-database/pinecone': 2.1.0
+      duck-duck-scrape: 2.2.5
       expr-eval: 2.0.2
       flat: 5.0.2
       ioredis: 5.3.2
@@ -6431,7 +6442,7 @@ packages:
       '@langchain/core': 0.1.41
       '@pinecone-database/pinecone': 2.1.0
       flat: 5.0.2
-      uuid: 9.0.0
+      uuid: 9.0.1
     dev: false
 
   /@langchain/redis@0.0.2:
@@ -9247,7 +9258,7 @@ packages:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.4.21(typescript@5.4.2)
-      vue-component-type-helpers: 2.0.14
+      vue-component-type-helpers: 2.0.19
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -13899,6 +13910,13 @@ packages:
       wordwrap: 1.0.0
     dev: false
 
+  /duck-duck-scrape@2.2.5:
+    resolution: {integrity: sha512-RTu/Ag5LhgD/j1l2zVGCwTINBoEYCffl58nMoBjtXWJG8tTex72h3gxpDjAr8jVqFaBvhgASNKTUsE31JeqYgw==}
+    dependencies:
+      html-entities: 2.5.2
+      needle: 3.3.1
+    dev: false
+
   /duck@0.1.12:
     resolution: {integrity: sha512-wkctla1O6VfP89gQ+J/yDesM0S7B7XLXjKGzXxMDVFg7uEn706niAtyYovKbyq1oT9YwDcly721/iUWoc8MVRg==}
     dependencies:
@@ -16356,6 +16374,10 @@ packages:
       whatwg-encoding: 3.1.1
     dev: true
 
+  /html-entities@2.5.2:
+    resolution: {integrity: sha512-K//PSRMQk4FZ78Kyau+mZurHn3FH0Vwr+H36eE0rPbeYkRRi9YxceYPhuN60UwWorxyKHhqoAJl2OFKa4BVtaA==}
+    dev: false
+
   /html-escaper@2.0.2:
     resolution: {integrity: sha512-H2iMtd0I4Mt5eYiapRdIDjp+XzelXQ0tFE4JS7YFwFevXXMmOp9myNrUvCg0D6ws8iqkRPBfKHgbwig1SmlLfg==}
     dev: true
@@ -18526,7 +18548,7 @@ packages:
       - voy-search
     dev: false
 
-  /langchain@0.1.25(axios@1.6.7)(handlebars@4.7.8)(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@3.9.5)(pg@8.11.3)(ws@8.14.2):
+  /langchain@0.1.25(@pinecone-database/pinecone@2.1.0)(axios@1.6.7)(duck-duck-scrape@2.2.5)(handlebars@4.7.8)(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@3.9.5)(pg@8.11.3)(ws@8.14.2):
     resolution: {integrity: sha512-sfEChvr4H2CklHdSByNBbytwBrFhgtA5kPOnwcBrxuXGg1iOaTzhVxQA0QcNcQucI3hZrsNbZjxGp+Can1ooZQ==}
     engines: {node: '>=18'}
     peerDependencies:
@@ -18686,9 +18708,10 @@ packages:
         optional: true
     dependencies:
       '@anthropic-ai/sdk': 0.9.1
-      '@langchain/community': 0.0.44(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@3.9.5)(pg@8.11.3)(ws@8.14.2)
+      '@langchain/community': 0.0.44(@pinecone-database/pinecone@2.1.0)(duck-duck-scrape@2.2.5)(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@3.9.5)(pg@8.11.3)(ws@8.14.2)
       '@langchain/core': 0.1.41
       '@langchain/openai': 0.0.16
+      '@pinecone-database/pinecone': 2.1.0
       axios: 1.6.7
       binary-extensions: 2.2.0
       expr-eval: 2.0.2
@@ -20108,6 +20131,15 @@ packages:
 
   /natural-orderby@2.0.3:
     resolution: {integrity: sha512-p7KTHxU0CUrcOXe62Zfrb5Z13nLvPhSWR/so3kFulUQU0sgUll2Z0LwpsLN351eOOD+hRGu/F1g+6xDfPeD++Q==}
+    dev: false
+
+  /needle@3.3.1:
+    resolution: {integrity: sha512-6k0YULvhpw+RoLNiQCRKOl09Rv1dPLr8hHnVjHqdolKwDrdNyk+Hmrthi4lIGPPz3r39dLx0hsF5s40sZ3Us4Q==}
+    engines: {node: '>= 4.4.x'}
+    hasBin: true
+    dependencies:
+      iconv-lite: 0.6.3
+      sax: 1.2.4
     dev: false
 
   /negotiator@0.6.3:
@@ -25839,8 +25871,8 @@ packages:
     resolution: {integrity: sha512-0vOfAtI67UjeO1G6UiX5Kd76CqaQ67wrRZiOe7UAb9Jm6GzlUr/fC7CV90XfwapJRjpCMaZFhv1V0ajWRmE9Dg==}
     dev: true
 
-  /vue-component-type-helpers@2.0.14:
-    resolution: {integrity: sha512-DInfgOyXlMyliyqAAD9frK28tTfch0+tMi4qoWJcZlRxUf+NFAtraJBnAsKLep+FOyLMiajkhfyEb3xLK08i7w==}
+  /vue-component-type-helpers@2.0.19:
+    resolution: {integrity: sha512-cN3f1aTxxKo4lzNeQAkVopswuImUrb5Iurll9Gaw5cqpnbTAxtEMM1mgi6ou4X79OCyqYv1U1mzBHJkzmiK82w==}
     dev: true
 
   /vue-demi@0.14.5(vue@3.4.21):

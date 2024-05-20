@@ -151,6 +151,12 @@ export function hasSharing(
 export declare namespace AIRequest {
 	export type DebugError = AuthenticatedRequest<{}, {}, AIDebugErrorPayload>;
 	export type DebugChat = AuthenticatedRequest<{}, {}, AIDebugChatPayload>;
+	export type AskAssistant = AuthenticatedRequest<{}, {}, AskAssistantPayload>;
+}
+
+export interface AskAssistantPayload {
+	message: string;
+	newSession?: boolean;
 }
 
 export interface AIDebugErrorPayload {

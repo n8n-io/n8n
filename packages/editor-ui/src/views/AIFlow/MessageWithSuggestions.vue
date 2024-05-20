@@ -1,7 +1,7 @@
 <template>
 	<div>
 		<div v-for="(suggestion, index) in suggestions" :key="suggestion.key" :class="$style.container">
-			<div>
+			<div v-show="suggestion.userQuestionRelatedToTheCurrentContext">
 				<Message
 					v-for="initialMessage in initialMessages"
 					:key="initialMessage.id"

@@ -4,23 +4,53 @@ import { AIService } from '@/services/ai.service';
 import { NodeTypes } from '@/NodeTypes';
 import { FailedDependencyError } from '@/errors/response-errors/failed-dependency.error';
 import express, { response } from 'express';
+import { Pinecone } from '@pinecone-database/pinecone';
+import { Calculator } from 'langchain/tools/calculator';
 import { ChatMessageHistory } from 'langchain/stores/message/in_memory';
+import { AgentExecutor, createReactAgent } from 'langchain/agents';
 import {
 	ChatPromptTemplate,
 	MessagesPlaceholder,
 	SystemMessagePromptTemplate,
 } from '@langchain/core/prompts';
-import { ChatOpenAI } from '@langchain/openai';
+import { ChatOpenAI, OpenAIEmbeddings } from '@langchain/openai';
 import { RunnableWithMessageHistory } from '@langchain/core/runnables';
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { JsonOutputFunctionsParser } from 'langchain/output_parsers';
 import { AIMessage, HumanMessage } from '@langchain/core/messages';
+import { DynamicTool } from '@langchain/core/tools';
+import { PineconeStore } from '@langchain/pinecone';
+import { DuckDuckGoSearch } from '@langchain/community/tools/duckduckgo_search';
+import {
+	DEBUG_CONVERSATION_RULES,
+	FREE_CHAT_CONVERSATION_RULES,
+	REACT_CHAT_PROMPT,
+} from '@/aiAssistant/prompts';
 
 const memorySessions = new Map<string, ChatMessageHistory>();
 
+const INTERNET_TOOL_SITES = ['https://community.n8n.io', 'https://blog.n8n.io', 'https://n8n.io'];
+
+const getHumanMessages = (history: string[]) => {
+	return history.filter((message, index) => message.startsWith('Human:'));
+};
+
+let chatHistory: string[] = [];
+
+const stringifyHistory = (history: string[]) => history.join('\n');
+
+const assistantModel = new ChatOpenAI({
+	temperature: 0,
+	openAIApiKey: process.env.N8N_AI_OPENAI_API_KEY,
+	modelName: 'gpt-4-turbo',
+});
+
 const errorSuggestionSchema = z.object({
 	suggestion: z.object({
+		userQuestionRelatedToTheCurrentContext: z
+			.boolean()
+			.describe('Weather the question the user did, is related to the current context'),
 		title: z.string().describe('The title of the suggestion'),
 		description: z.string().describe('Concise description of the suggestion'),
 		// followUpQuestion: z.string().describe('The follow-up question to be asked to the user'),
@@ -206,7 +236,6 @@ export class AIController {
 
 			2. runOnceForEachItem: The code in the code node run for every input item. In this mode you can access each input item using "item". In this mode you CAN'T use "items" to access the input data. The output in this mode should be always a single object.
 
-
 			## Workflow context
 
 			### Run mode: {runMode}
@@ -265,8 +294,7 @@ export class AIController {
 
 			chainStream = await chainWithHistory.stream(
 				{
-					question:
-						'Please suggest solutions for the error below and analyze the code to make sure there are not other errors',
+					question: 'Please suggest solutions for the error below ',
 					error: JSON.stringify(error),
 				},
 				{ configurable: { sessionId } },
@@ -317,5 +345,155 @@ export class AIController {
 		req.on('close', () => {
 			res.end();
 		});
+	}
+
+	@Post('/chat-with-assistant', { skipAuth: true })
+	async chatWithAssistant(req: AIRequest.AskAssistant, res: express.Response) {
+		const { message, newSession } = req.body;
+		const response = await this.askAssistant(message);
+		return response;
+	}
+
+	async searchDocsVectorStore(question: string) {
+		// ----------------- Vector store -----------------
+		const pc = new Pinecone({
+			apiKey: process.env.N8N_AI_PINECONE_API_KEY ?? '',
+		});
+		const index = pc.Index('n8n-docs');
+		const vectorStore = await PineconeStore.fromExistingIndex(
+			new OpenAIEmbeddings({
+				openAIApiKey: process.env.N8N_AI_OPENAI_API_KEY,
+				modelName: 'text-embedding-3-large',
+				dimensions: 3072,
+			}),
+			{
+				pineconeIndex: index,
+			},
+		);
+		// ----------------- Get top chunks matching query -----------------
+		const results = await vectorStore.similaritySearch(question, 3);
+		console.log('>> 🧰 << GOT THESE DOCUMENTS:');
+		let out = '';
+		// This will make sure that we don't repeat the same document in the output
+		const documents: string[] = [];
+		results.forEach((result, i) => {
+			if (documents.includes(result.metadata.source)) {
+				return;
+			}
+			documents.push(result.metadata.source);
+			console.log('\t📃', result.metadata.source);
+			out += `--- N8N DOCUMENTATION DOCUMENT ${i + 1} ---\n${result.pageContent}\n\n`;
+		});
+		if (results.length === 0) {
+		}
+		return out;
+	}
+
+	async askAssistant(message: string, debug?: boolean) {
+		// ----------------- Tools -----------------
+		const calculatorTool = new DynamicTool({
+			name: 'calculator',
+			description:
+				'Performs arithmetic operations. Use this tool whenever you need to perform calculations.',
+			func: async (input: string) => {
+				console.log('>> 🧰 << calculatorTool:', input);
+				const calculator = new Calculator();
+				return await calculator.invoke(input);
+			},
+		});
+
+		const n8nInfoTool = new DynamicTool({
+			name: 'get_n8n_info',
+			description: 'Has access to the most relevant pages from the official n8n documentation.',
+			func: async (input: string) => {
+				console.log('>> 🧰 << n8nInfoTool:', input);
+				return (await this.searchDocsVectorStore(input)).toString();
+			},
+		});
+
+		const internetSearchTool = new DynamicTool({
+			name: 'internet_search',
+			description: 'Searches the n8n internet sources for the answer to a question.',
+			func: async (input: string) => {
+				const searchQuery = `${input} site:${INTERNET_TOOL_SITES.join(' OR site:')}`;
+				console.log('>> 🧰 << internetSearchTool:', searchQuery);
+				const duckDuckGoSearchTool = new DuckDuckGoSearch({ maxResults: 10 });
+				const response = await duckDuckGoSearchTool.invoke(searchQuery);
+				try {
+					const objectResponse: { link?: string }[] = JSON.parse(response);
+					objectResponse.forEach((result) => {
+						if (result.link) {
+						}
+					});
+				} catch (error) {
+					console.error('Error parsing search results', error);
+				}
+				console.log('>> 🧰 << duckDuckGoSearchTool:', response);
+				return response;
+			},
+		});
+
+		const tools = [calculatorTool, n8nInfoTool, internetSearchTool];
+
+		const toolNames = tools.map((tool) => tool.name);
+		// ----------------- Agent -----------------
+		const chatPrompt = ChatPromptTemplate.fromTemplate(REACT_CHAT_PROMPT);
+		// Different conversation rules for debug and free-chat modes
+		const conversationRules = debug ? DEBUG_CONVERSATION_RULES : FREE_CHAT_CONVERSATION_RULES;
+		const humanAskedForSuggestions = getHumanMessages(chatHistory).filter((message) => {
+			return (
+				message.includes('I need another suggestion') ||
+				message.includes('I need more detailed instructions')
+			);
+		});
+
+		// Hard-stop if human asks for too many suggestions
+		if (humanAskedForSuggestions.length >= 3) {
+			if (debug) {
+				message =
+					'I have asked for too many new suggestions. Please follow your conversation rules for this case.';
+			}
+		} else {
+			message += ' Please only give me information from the official n8n sources.';
+		}
+
+		const agent = await createReactAgent({
+			llm: assistantModel,
+			tools,
+			prompt: chatPrompt,
+		});
+
+		const agentExecutor = new AgentExecutor({
+			agent,
+			tools,
+			returnIntermediateSteps: true,
+		});
+
+		console.log('\n>> 🤷 <<', message.trim());
+		let _response = '';
+		try {
+			// TODO: Add streaming & LangSmith tracking
+			const result = await agentExecutor.invoke({
+				input: message,
+				chat_history: stringifyHistory(chatHistory),
+				conversation_rules: conversationRules,
+				tool_names: toolNames,
+			});
+			_response = result.output;
+
+			// console.log();
+			// console.log('--------------------- 📋 INTERMEDIATE STEPS ------------------------------------');
+			// result.intermediateSteps.forEach((step) => {
+			// 	console.log('🦾', step.action.toString());
+			// 	console.log('🧠', step.observation);
+			// });
+			// console.log('-----------------------------------------------------------------------------');
+			// console.log();
+		} catch (error) {
+			// TODO: This can be handled by agentExecutor
+			_response = error.toString().replace(/Error: Could not parse LLM output: /, '');
+		}
+
+		return _response;
 	}
 }

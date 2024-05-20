@@ -121,3 +121,12 @@ export const applyCodeSuggestion = async (
 		console.error('Error:', response.status);
 	}
 };
+
+export const askAssistant = async (context: IRestApiContext, payload: { message?: string }) => {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		'/ai/chat-with-assistant',
+		payload as unknown as IDataObject,
+	);
+};

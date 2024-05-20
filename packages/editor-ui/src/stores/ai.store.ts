@@ -13,6 +13,8 @@ import { useWorkflowsStore } from './workflows.store';
 import { useDataSchema } from '@/composables/useDataSchema';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { codeNodeEditorEventBus } from '@/event-bus';
+import { last } from 'lodash-es';
+import { uuid } from '@jsplumb/util';
 
 export const useAIStore = defineStore('ai', () => {
 	const rootStore = useRootStore();
@@ -98,6 +100,11 @@ export const useAIStore = defineStore('ai', () => {
 	function getLastMessage() {
 		return messages.value[messages.value.length - 1];
 	}
+
+	function getLastUserMessage() {
+		return messages.value.reverse().find((message) => message.sender === 'user');
+	}
+
 	function onMessageReceived(messageChunk: string) {
 		waitingForResponse.value = false;
 		if (messageChunk.length === 0) return;
@@ -121,15 +128,41 @@ export const useAIStore = defineStore('ai', () => {
 			chatEventBus.emit('scrollToBottom');
 		}
 	}
+
+	let userQuestionRelatedToTheCurrentContext = true;
+
 	async function onMessageSuggestionReceived(messageChunk: string) {
-		waitingForResponse.value = false;
+		waitingForResponse.value = !userQuestionRelatedToTheCurrentContext ? true : false;
 		if (messageChunk.length === 0) return;
 		if (messageChunk === '__END__') {
 			const lastMessage = getLastMessage();
+
+			if (!userQuestionRelatedToTheCurrentContext) {
+				if (lastMessage?.text) {
+					const response = await aiApi.askAssistant(rootStore.getRestApiContext, {
+						message: lastMessage.text,
+					});
+
+					messages.value.push({
+						createdAt: new Date().toISOString(),
+						sender: 'bot',
+						type: 'text',
+						id: Math.random().toString(),
+						text: response,
+					});
+
+					waitingForResponse.value = false;
+
+					await nextTick();
+					await nextTick();
+
+					chatEventBus.emit('scrollToBottom');
+				}
+			}
+
 			// If last message is a component, then show the follow-up actions
 
 			if (lastMessage.type === 'component') {
-				console.log(lastMessage.arguments);
 				const followUpQuestion: string = lastMessage.arguments.suggestions[0].followUpQuestion;
 				const suggestedCode: string = lastMessage.arguments.suggestions[0].codeDiff;
 				// messages.value.push({
@@ -149,7 +182,7 @@ export const useAIStore = defineStore('ai', () => {
 					text: followUpQuestion,
 				});
 
-				console.log(lastMessage.arguments.suggestions[0].codeDiff);
+				// console.log(lastMessage.arguments.suggestions[0].codeDiff);
 
 				let affirmativeAction = lastMessage.arguments.suggestions[0].codeDiff
 					? { key: 'import_code', label: 'Yes, apply the change' }
@@ -225,27 +258,37 @@ export const useAIStore = defineStore('ai', () => {
 				codeDiff: parsedMessage.suggestion.codeDiff
 					? '```diff\n' + parsedMessage.suggestion.codeDiff + '\n```'
 					: '',
+				userQuestionRelatedToTheCurrentContext:
+					parsedMessage.suggestion.userQuestionRelatedToTheCurrentContext,
 			},
 		];
 
-		console.log(suggestions);
-
 		if (getLastMessage()?.sender !== 'bot') {
-			messages.value.push({
-				createdAt: new Date().toISOString(),
-				sender: 'bot',
-				key: 'MessageWithSuggestions',
-				type: 'component',
-				id: Math.random().toString(),
-				arguments: {
-					suggestions,
-				},
-			});
+			if (parsedMessage.suggestion.userQuestionRelatedToTheCurrentContext) {
+				messages.value.push({
+					createdAt: new Date().toISOString(),
+					sender: 'bot',
+					key: 'MessageWithSuggestions',
+					type: 'component',
+					id: Math.random().toString(),
+					arguments: {
+						suggestions,
+					},
+				});
+			} else {
+				userQuestionRelatedToTheCurrentContext = false;
+				// const response = aiApi.askAssistant();
+			}
+
 			chatEventBus.emit('scrollToBottom');
 			return;
 		}
 
 		const lastMessage = getLastMessage();
+
+		// if (!parsedMessage.suggestion.userQuestionRelatedToTheCurrentContext) {
+		// 	return;
+		// }
 
 		if (lastMessage.type === 'component') {
 			lastMessage.arguments = { suggestions };
