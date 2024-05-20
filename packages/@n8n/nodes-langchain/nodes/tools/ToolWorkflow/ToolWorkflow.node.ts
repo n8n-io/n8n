@@ -17,64 +17,11 @@ import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
 import get from 'lodash/get';
 import isObject from 'lodash/isObject';
 import type { CallbackManagerForToolRun } from '@langchain/core/callbacks/manager';
-import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
-import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
-import { makeResolverFromLegacyOptions } from '@n8n/vm2';
 import type { JSONSchema7 } from 'json-schema';
-import type { SchemaObject } from 'generate-schema';
-import { json as generateJsonSchema } from 'generate-schema';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import type { DynamicZodObject } from '../../../types/zod.types';
+import { generateSchema, getSandboxWithZod } from '../../../utils/schemaParsing';
 
-const vmResolver = makeResolverFromLegacyOptions({
-	external: {
-		modules: ['json-schema-to-zod', 'zod'],
-		transitive: false,
-	},
-	resolve(moduleName, parentDirname) {
-		if (moduleName === 'json-schema-to-zod') {
-			return require.resolve(
-				'@n8n/n8n-nodes-langchain/node_modules/json-schema-to-zod/dist/cjs/jsonSchemaToZod.js',
-				{
-					paths: [parentDirname],
-				},
-			);
-		}
-		if (moduleName === 'zod') {
-			return require.resolve('@n8n/n8n-nodes-langchain/node_modules/zod.cjs', {
-				paths: [parentDirname],
-			});
-		}
-		return;
-	},
-	builtin: [],
-});
-
-function getSandboxWithZod(ctx: IExecuteFunctions, itemSchema: JSONSchema7, itemIndex: number) {
-	const context = getSandboxContext.call(ctx, itemIndex);
-	// Make sure to remove the description from root schema
-	const { description, ...restOfSchema } = itemSchema;
-	const sandboxedSchema = new JavaScriptSandbox(
-		context,
-		`
-			const { z } = require('zod');
-			const { parseSchema } = require('json-schema-to-zod');
-			const zodSchema = parseSchema(${JSON.stringify(restOfSchema)});
-			const itemSchema = new Function('z', 'return (' + zodSchema + ')')(z)
-			return itemSchema
-		`,
-		itemIndex,
-		ctx.helpers,
-		{ resolver: vmResolver },
-	);
-	return sandboxedSchema;
-}
-
-function generateSchema(schemaString: string): JSONSchema7 {
-	const parsedSchema = jsonParse<SchemaObject>(schemaString);
-
-	return generateJsonSchema(parsedSchema) as JSONSchema7;
-}
 export class ToolWorkflow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Custom n8n Workflow Tool',
@@ -453,7 +400,6 @@ export class ToolWorkflow implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-
 		const name = this.getNodeParameter('name', itemIndex) as string;
 		const description = this.getNodeParameter('description', itemIndex) as string;
 
@@ -615,7 +561,6 @@ export class ToolWorkflow implements INodeType {
 					schemaType === 'fromJson'
 						? generateSchema(jsonExample)
 						: jsonParse<JSONSchema7>(inputSchema);
-				console.log('🚀 ~ ToolWorkflow ~ supplyData ~ jsonSchema:', jsonSchema);
 
 				const zodSchemaSandbox = getSandboxWithZod(this, jsonSchema, 0);
 				const zodSchema = (await zodSchemaSandbox.runCode()) as DynamicZodObject;
