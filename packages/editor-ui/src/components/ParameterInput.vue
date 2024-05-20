@@ -504,12 +504,7 @@ import TextEdit from '@/components/TextEdit.vue';
 import { hasExpressionMapping, isValueExpression } from '@/utils/nodeTypesUtils';
 import { isResourceLocatorValue } from '@/utils/typeGuards';
 
-import {
-	CUSTOM_API_CALL_KEY,
-	HTML_NODE_TYPE,
-	JSON_TO_SCHEMA_MODAL_KEY,
-	NODES_USING_CODE_NODE_EDITOR,
-} from '@/constants';
+import { CUSTOM_API_CALL_KEY, HTML_NODE_TYPE, NODES_USING_CODE_NODE_EDITOR } from '@/constants';
 
 import { useDebounce } from '@/composables/useDebounce';
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -528,7 +523,6 @@ import { N8nInput, N8nSelect } from 'n8n-design-system';
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useRouter } from 'vue-router';
-import { useUIStore } from '@/stores/ui.store';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
@@ -1302,17 +1296,6 @@ async function optionSelected(command: string) {
 		void loadRemoteParameterOptions();
 	} else if (command === 'formatHtml') {
 		htmlEditorEventBus.emit('format-html');
-	} else if (command === 'generateJsonSchema') {
-		console.log('Generate JSON Schema');
-		useUIStore().openModalWithData({
-			name: JSON_TO_SCHEMA_MODAL_KEY,
-			data: {
-				onGenerated: (schema: string) => {
-					console.log('Generated JSON Schema:', schema);
-					valueChanged(schema);
-				},
-			},
-		});
 	}
 
 	if (node.value && (command === 'addExpression' || command === 'removeExpression')) {

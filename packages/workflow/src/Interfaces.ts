@@ -1151,12 +1151,7 @@ export type NodePropertyTypes =
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 
-export type EditorType =
-	| 'codeNodeEditor'
-	| 'jsEditor'
-	| 'htmlEditor'
-	| 'sqlEditor'
-	| 'jsonSchemaEditor';
+export type EditorType = 'codeNodeEditor' | 'jsEditor' | 'htmlEditor' | 'sqlEditor';
 export type CodeNodeEditorLanguage = (typeof CODE_LANGUAGES)[number];
 export type CodeExecutionMode = (typeof CODE_EXECUTION_MODES)[number];
 export type SQLDialect =
