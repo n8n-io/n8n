@@ -294,7 +294,7 @@ export class ToolHttpRequest implements INodeType {
 		const headers: IDataObject = {};
 		const body: IDataObject = {};
 
-		const parameters: ToolParameter[] = [];
+		const placeholders: ToolParameter[] = [];
 
 		let qsPlaceholder: string = '';
 		let headersPlaceholder: string = '';
@@ -304,7 +304,7 @@ export class ToolHttpRequest implements INodeType {
 
 		if (urlPlaceholders.length > 0) {
 			for (const placeholder of urlPlaceholders) {
-				parameters.push({
+				placeholders.push({
 					name: placeholder,
 					type: 'string',
 					required: true,
@@ -317,7 +317,7 @@ export class ToolHttpRequest implements INodeType {
 			const specifyQuery = this.getNodeParameter('specifyQuery', itemIndex) as ParameterInputType;
 
 			if (specifyQuery === 'model') {
-				parameters.push({
+				placeholders.push({
 					name: QUERY_PARAMETERS_PLACEHOLDER,
 					description:
 						'Specify query parameters for request, if needed, here, must be a valid JSON object or null',
@@ -339,7 +339,7 @@ export class ToolHttpRequest implements INodeType {
 				for (const entry of parametersQueryValues) {
 					if (entry.valueProvider.includes('model')) {
 						queryParameters.push(`"${entry.name}":{${entry.name}}`);
-						parameters.push({
+						placeholders.push({
 							name: entry.name,
 							required: entry.valueProvider === 'modelRequired',
 						});
@@ -357,7 +357,7 @@ export class ToolHttpRequest implements INodeType {
 				const matches = extractPlaceholders(jsonQuery);
 
 				for (const match of matches) {
-					parameters.push({
+					placeholders.push({
 						name: match,
 						required: true,
 					});
@@ -375,7 +375,7 @@ export class ToolHttpRequest implements INodeType {
 			) as ParameterInputType;
 
 			if (specifyHeaders === 'model') {
-				parameters.push({
+				placeholders.push({
 					name: HEADERS_PARAMETERS_PLACEHOLDER,
 					description:
 						'Specify headers for request, if needed, here, must be a valid JSON object or null',
@@ -397,7 +397,7 @@ export class ToolHttpRequest implements INodeType {
 				for (const entry of parametersHeadersValues) {
 					if (entry.valueProvider.includes('model')) {
 						headersParameters.push(`"${entry.name}":{${entry.name}}`);
-						parameters.push({
+						placeholders.push({
 							name: entry.name,
 							required: entry.valueProvider === 'modelRequired',
 						});
@@ -415,7 +415,7 @@ export class ToolHttpRequest implements INodeType {
 				const matches = extractPlaceholders(jsonHeaders);
 
 				for (const match of matches) {
-					parameters.push({
+					placeholders.push({
 						name: match,
 						required: true,
 					});
@@ -430,7 +430,7 @@ export class ToolHttpRequest implements INodeType {
 			const specifyBody = this.getNodeParameter('specifyBody', itemIndex) as ParameterInputType;
 
 			if (specifyBody === 'model') {
-				parameters.push({
+				placeholders.push({
 					name: BODY_PARAMETERS_PLACEHOLDER,
 					description:
 						'Specify body for request, if needed, here, must be a valid JSON object or null',
@@ -452,7 +452,7 @@ export class ToolHttpRequest implements INodeType {
 				for (const entry of parametersBodyValues) {
 					if (entry.valueProvider.includes('model')) {
 						bodyParameters.push(`"${entry.name}":{${entry.name}}`);
-						parameters.push({
+						placeholders.push({
 							name: entry.name,
 							required: entry.valueProvider === 'modelRequired',
 						});
@@ -470,7 +470,7 @@ export class ToolHttpRequest implements INodeType {
 				const matches = extractPlaceholders(jsonBody);
 
 				for (const match of matches) {
-					parameters.push({
+					placeholders.push({
 						name: match,
 						required: true,
 					});
@@ -498,59 +498,69 @@ ${toolDescription}
 This is the expected tool input: a stringified JSON object that needs to be sent as a string.
 It represents options for an HTTP request done with Axios. Replace all placeholders with actual values.
 Placeholders satisfy this regex: /(\{[a-zA-Z0-9_]+\})/g.
+You forbiden to change anything else except for the placeholders.
 
 ${optionsExpectedFromLLM}`;
 
-		if (parameters.length) {
+		if (placeholders.length) {
 			description += `
 Below are the descriptions of the placeholders.
 Required placeholders are marked accordingly.
 Extract descriptions from the prompt if available.
 If a placeholder lacks a description, infer its meaning based:
-${parameters.map((parameter) => `${parameter.name}(description: ${parameter.description || ''}, type: ${parameter.type || ''}, required: ${parameter.required})`).join(', ')}`;
+${placeholders.map((parameter) => `${parameter.name}(description: ${parameter.description || ''}, type: ${parameter.type || ''}, required: ${parameter.required})`).join(', ')}`;
 		}
 
 		return {
 			response: new DynamicTool({
 				name,
 				description,
-				func: async (query: string): Promise<string> => {
-					const { index } = this.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
+				func: async (stringifiedRequestOptions: string): Promise<string> => {
+					const { index } = this.addInputData(NodeConnectionType.AiTool, [
+						[{ json: { stringifiedRequestOptions } }],
+					]);
 
 					let response: string = '';
 					let executionError: Error | undefined = undefined;
 
+					let requestOptions: IHttpRequestOptions | null = null;
+
+					// parse LLM's input
 					try {
-						let toolParameters: IDataObject = {};
-						try {
-							toolParameters = jsonParse<IDataObject>(query);
-						} catch (error) {
-							if (parameters.length === 1) {
-								toolParameters = { [parameters[0].name]: query };
-							}
-						}
+						requestOptions = jsonParse<IHttpRequestOptions>(stringifiedRequestOptions);
+					} catch (error) {
+						const errorMessage = `Input could not be parsed as JSON: ${stringifiedRequestOptions}`;
+						executionError = new NodeOperationError(this.getNode(), errorMessage, {
+							itemIndex,
+						});
 
-						const requestOptions: IHttpRequestOptions = {
-							method,
-							url,
-						};
+						response = errorMessage;
+					}
 
+					//add user provided request options
+					if (requestOptions) {
 						if (Object.keys(headers).length) {
-							requestOptions.headers = headers;
+							requestOptions.headers = requestOptions.headers
+								? { ...requestOptions.headers, ...headers }
+								: headers;
 						}
 
 						if (Object.keys(qs).length) {
-							requestOptions.qs = qs;
+							requestOptions.qs = requestOptions.qs ? { ...requestOptions.qs, ...qs } : qs;
 						}
 
 						if (Object.keys(body)) {
-							requestOptions.body = body;
+							requestOptions.body = requestOptions.body
+								? { ...(requestOptions.body as IDataObject), ...body }
+								: body;
 						}
 
-						response = optimizeResponse(await httpRequest(requestOptions));
-					} catch (error) {
-						executionError = error;
-						response = `There was an error: "${error.message}"`;
+						// send request and optimize response
+						try {
+							response = optimizeResponse(await httpRequest(requestOptions));
+						} catch (error) {
+							response = `There was an error: "${error.message}"`;
+						}
 					}
 
 					if (typeof response !== 'string') {
