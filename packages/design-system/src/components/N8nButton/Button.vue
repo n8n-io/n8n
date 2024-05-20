@@ -7,7 +7,10 @@
 		:aria-busy="ariaBusy"
 		:href="href"
 		aria-live="polite"
-		v-bind="$attrs"
+		v-bind="{
+			...$attrs,
+			...(props.nativeType ? { type: props.nativeType } : {}),
+		}"
 	>
 		<span v-if="loading || icon" :class="$style.icon">
 			<N8nSpinner v-if="loading" :size="size" />

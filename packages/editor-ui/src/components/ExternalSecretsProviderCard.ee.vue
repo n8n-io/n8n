@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { PropType, Ref } from 'vue';
+import type { PropType } from 'vue';
 import type { ExternalSecretsProvider } from '@/Interface';
 import ExternalSecretsProviderImage from '@/components/ExternalSecretsProviderImage.ee.vue';
 import ExternalSecretsProviderConnectionSwitch from '@/components/ExternalSecretsProviderConnectionSwitch.ee.vue';
@@ -10,7 +10,8 @@ import { useI18n } from '@/composables/useI18n';
 import { useExternalSecretsProvider } from '@/composables/useExternalSecretsProvider';
 import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY } from '@/constants';
 import { DateTime } from 'luxon';
-import { computed, nextTick, onMounted, toRefs } from 'vue';
+import { computed, nextTick, onMounted, toRef } from 'vue';
+import { isDateObject } from '@/utils/typeGuards';
 
 const props = defineProps({
 	provider: {
@@ -24,15 +25,12 @@ const i18n = useI18n();
 const uiStore = useUIStore();
 const toast = useToast();
 
-const { provider } = toRefs(props) as Ref<ExternalSecretsProvider>;
-const providerData = computed(() => provider.value.data);
-const {
-	connectionState,
-	initialConnectionState,
-	normalizedProviderData,
-	testConnection,
-	setConnectionState,
-} = useExternalSecretsProvider(provider, providerData);
+const provider = toRef(props, 'provider');
+const providerData = computed(() => provider.value.data ?? {});
+const { connectionState, testConnection, setConnectionState } = useExternalSecretsProvider(
+	provider,
+	providerData,
+);
 
 const actionDropdownOptions = computed(() => [
 	{
@@ -50,11 +48,15 @@ const actionDropdownOptions = computed(() => [
 ]);
 
 const canConnect = computed(() => {
-	return props.provider.connected || Object.keys(props.provider.data).length > 0;
+	return props.provider.connected || Object.keys(providerData.value).length > 0;
 });
 
-const formattedDate = computed((provider: ExternalSecretsProvider) => {
-	return DateTime.fromISO(props.provider.connectedAt ?? new Date()).toFormat('dd LLL yyyy');
+const formattedDate = computed(() => {
+	return DateTime.fromISO(
+		isDateObject(provider.value.connectedAt)
+			? provider.value.connectedAt.toISOString()
+			: provider.value.connectedAt || new Date().toISOString(),
+	).toFormat('dd LLL yyyy');
 });
 
 onMounted(() => {

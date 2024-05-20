@@ -65,10 +65,9 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 		]);
 		const { connections, nodes } = workflowVersion;
 		const { name } = workflow;
-		const newWorkflow = await getNewWorkflow(
-			rootStore.getRestApiContext,
-			`${name} (${data.formattedCreatedAt})`,
-		);
+		const newWorkflow = await getNewWorkflow(rootStore.getRestApiContext, {
+			name: `${name} (${data.formattedCreatedAt})`,
+		});
 		const newWorkflowData: IWorkflowDataUpdate = {
 			nodes,
 			connections,

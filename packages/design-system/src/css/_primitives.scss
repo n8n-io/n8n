@@ -25,7 +25,9 @@
 	--prim-gray-25: hsl(var(--prim-gray-h), 50%, 97.5%);
 	--prim-gray-10: hsl(var(--prim-gray-h), 50%, 99%);
 	--prim-gray-0-alpha-075: hsla(var(--prim-gray-h), 50%, 100%, 0.75);
+	--prim-gray-0-alpha-030: hsla(var(--prim-gray-h), 50%, 100%, 0.3);
 	--prim-gray-0-alpha-025: hsla(var(--prim-gray-h), 50%, 100%, 0.25);
+	--prim-gray-0-alpha-010: hsla(var(--prim-gray-h), 50%, 100%, 0.1);
 	--prim-gray-0: hsl(var(--prim-gray-h), 50%, 100%);
 
 	// Color Primary
@@ -54,6 +56,18 @@
 		var(--prim-color-primary-l),
 		0.1
 	);
+	--prim-color-primary-alpha-035: hsla(
+		var(--prim-color-primary-h),
+		var(--prim-color-primary-s),
+		var(--prim-color-primary-l),
+		0.35
+	);
+	--prim-color-primary-alpha-050: hsla(
+		var(--prim-color-primary-h),
+		var(--prim-color-primary-s),
+		var(--prim-color-primary-l),
+		0.5
+	);
 	--prim-color-primary-tint-100: hsl(
 		var(--prim-color-primary-h),
 		var(--prim-color-primary-s),
@@ -68,6 +82,11 @@
 		var(--prim-color-primary-h),
 		var(--prim-color-primary-s),
 		calc(var(--prim-color-primary-l) + 25%)
+	);
+	--prim-color-primary-tint-270: hsl(
+		var(--prim-color-primary-h),
+		var(--prim-color-primary-s),
+		calc(var(--prim-color-primary-l) + 27%)
 	);
 	--prim-color-primary-tint-300: hsl(
 		var(--prim-color-primary-h),

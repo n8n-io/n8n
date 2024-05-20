@@ -156,8 +156,8 @@
 	--color-button-primary-border: var(--prim-color-primary);
 	--color-button-primary-background: var(--prim-color-primary);
 	--color-button-primary-hover-active-border: var(--prim-color-primary-shade-100);
-	--color-button-primary-hover-active-background: var(--prim-color-primary-shade-100);
-	--color-button-primary-focus-outline: var(--prim-color-primary-tint-200);
+	--color-button-primary-hover-active-focus-background: var(--prim-color-primary-shade-100);
+	--color-button-primary-focus-outline: var(--prim-color-primary-alpha-035);
 	--color-button-primary-disabled-font: var(--prim-gray-0-alpha-075);
 	--color-button-primary-disabled-border: var(--prim-color-primary-tint-200);
 	--color-button-primary-disabled-background: var(--prim-color-primary-tint-200);
@@ -166,10 +166,10 @@
 	--color-button-secondary-font: var(--prim-gray-670);
 	--color-button-secondary-border: var(--prim-gray-320);
 	--color-button-secondary-background: var(--prim-gray-0);
-	--color-button-secondary-hover-active-focus-font: var(--prim-color-primary);
-	--color-button-secondary-hover-active-border: var(--prim-color-primary);
+	--color-button-secondary-hover-active-focus-font: var(--prim-color-primary-shade-100);
+	--color-button-secondary-hover-active-focus-border: var(--prim-color-primary);
 	--color-button-secondary-hover-background: var(--prim-color-primary-tint-300);
-	--color-button-secondary-active-background: var(--prim-color-primary-tint-250);
+	--color-button-secondary-active-focus-background: var(--prim-color-primary-tint-270);
 	--color-button-secondary-focus-outline: var(--prim-gray-120);
 	--color-button-secondary-disabled-font: var(--prim-gray-200);
 	--color-button-secondary-disabled-border: var(--prim-gray-200);
@@ -187,7 +187,8 @@
 
 	// Node Creator Button
 	--color-button-node-creator-border-font: var(--prim-gray-540);
-	--color-button-node-creator-hover-border-font: var(--prim-color-primary);
+	--color-button-node-creator-hover-font: var(--prim-color-primary);
+	--color-button-node-creator-hover-border: var(--prim-color-primary);
 	--color-button-node-creator-background: var(--prim-gray-0);
 
 	// Table

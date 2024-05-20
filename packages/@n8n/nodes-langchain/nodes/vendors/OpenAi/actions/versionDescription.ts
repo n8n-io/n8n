@@ -46,6 +46,7 @@ const configureNodeInputs = (resource: string, operation: string, hideTools: str
 	if (resource === 'assistant' && operation === 'message') {
 		return [
 			{ type: NodeConnectionType.Main },
+			{ type: NodeConnectionType.AiMemory, displayName: 'Memory', maxConnections: 1 },
 			{ type: NodeConnectionType.AiTool, displayName: 'Tools' },
 		];
 	}
