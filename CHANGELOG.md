@@ -1,3 +1,11 @@
+## [1.42.1](https://github.com/n8n-io/n8n/compare/n8n@1.42.0...n8n@1.42.1) (2024-05-20)
+
+
+### Bug Fixes
+
+* **Core:** Properly initialize license on leadership switch ([#9467](https://github.com/n8n-io/n8n/pull/9467)) ([747012d](https://github.com/n8n-io/n8n/commit/747012dcfdff6058ca4b6f7f7007dc4afe3cf362))
+
+
 # [1.42.0](https://github.com/n8n-io/n8n/compare/n8n@1.41.0...n8n@1.42.0) (2024-05-15)
 
 
