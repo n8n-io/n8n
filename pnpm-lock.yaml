@@ -1176,9 +1176,6 @@ importers:
       flatted:
         specifier: ^3.2.4
         version: 3.2.7
-      generate-schema:
-        specifier: ^2.6.0
-        version: 2.6.0
       humanize-duration:
         specifier: ^3.27.2
         version: 3.27.3
