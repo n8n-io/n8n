@@ -202,7 +202,7 @@ export async function apiRequest(
 	const options: IRequestOptions = {
 		headers: {},
 		method,
-		uri: `https://api.telegram.org/bot${credentials.accessToken}/${endpoint}`,
+		uri: `${credentials.baseUrl}/bot${credentials.accessToken}/${endpoint}`,
 		body,
 		qs: query,
 		json: true,
