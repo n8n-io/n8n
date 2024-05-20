@@ -1,6 +1,6 @@
 export type ToolParameter = {
 	name: string;
-	required: boolean;
+	required?: boolean;
 	type?: string;
 	description?: string;
 };

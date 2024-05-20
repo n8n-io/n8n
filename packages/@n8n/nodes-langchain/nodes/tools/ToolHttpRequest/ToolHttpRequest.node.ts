@@ -20,6 +20,7 @@ import {
 	prettifyToolName,
 	configureResponseOptimizer,
 	extractPlaceholders,
+	updatePlaceholders,
 } from './utils';
 
 import {
@@ -27,6 +28,7 @@ import {
 	jsonInput,
 	optimizeResponseProperties,
 	parametersCollection,
+	placeholderDefinitionsCollection,
 	specifyBySelector,
 } from './descriptions';
 
@@ -256,7 +258,7 @@ export class ToolHttpRequest implements INodeType {
 					},
 				},
 			},
-
+			placeholderDefinitionsCollection,
 			...optimizeResponseProperties,
 		],
 	};
@@ -294,7 +296,11 @@ export class ToolHttpRequest implements INodeType {
 		const headers: IDataObject = {};
 		const body: IDataObject = {};
 
-		const placeholders: ToolParameter[] = [];
+		const placeholders = this.getNodeParameter(
+			'placeholderDefinitions.values',
+			itemIndex,
+			[],
+		) as ToolParameter[];
 
 		let qsPlaceholder: string = '';
 		let headersPlaceholder: string = '';
@@ -302,13 +308,9 @@ export class ToolHttpRequest implements INodeType {
 
 		const urlPlaceholders = extractPlaceholders(url);
 
-		if (urlPlaceholders.length > 0) {
+		if (urlPlaceholders.length) {
 			for (const placeholder of urlPlaceholders) {
-				placeholders.push({
-					name: placeholder,
-					type: 'string',
-					required: true,
-				});
+				updatePlaceholders(placeholders, placeholder, true, 'string');
 			}
 		}
 
@@ -339,10 +341,7 @@ export class ToolHttpRequest implements INodeType {
 				for (const entry of parametersQueryValues) {
 					if (entry.valueProvider.includes('model')) {
 						queryParameters.push(`"${entry.name}":{${entry.name}}`);
-						placeholders.push({
-							name: entry.name,
-							required: entry.valueProvider === 'modelRequired',
-						});
+						updatePlaceholders(placeholders, entry.name, entry.valueProvider === 'modelRequired');
 					} else {
 						qs[entry.name] = entry.value;
 					}
@@ -357,10 +356,7 @@ export class ToolHttpRequest implements INodeType {
 				const matches = extractPlaceholders(jsonQuery);
 
 				for (const match of matches) {
-					placeholders.push({
-						name: match,
-						required: true,
-					});
+					updatePlaceholders(placeholders, match, true);
 				}
 
 				qsPlaceholder = `qs: ${jsonQuery}`;
@@ -397,10 +393,7 @@ export class ToolHttpRequest implements INodeType {
 				for (const entry of parametersHeadersValues) {
 					if (entry.valueProvider.includes('model')) {
 						headersParameters.push(`"${entry.name}":{${entry.name}}`);
-						placeholders.push({
-							name: entry.name,
-							required: entry.valueProvider === 'modelRequired',
-						});
+						updatePlaceholders(placeholders, entry.name, entry.valueProvider === 'modelRequired');
 					} else {
 						headers[entry.name] = entry.value;
 					}
@@ -415,10 +408,7 @@ export class ToolHttpRequest implements INodeType {
 				const matches = extractPlaceholders(jsonHeaders);
 
 				for (const match of matches) {
-					placeholders.push({
-						name: match,
-						required: true,
-					});
+					updatePlaceholders(placeholders, match, true);
 				}
 
 				headersPlaceholder = `headers: ${jsonHeaders}`;
@@ -452,10 +442,7 @@ export class ToolHttpRequest implements INodeType {
 				for (const entry of parametersBodyValues) {
 					if (entry.valueProvider.includes('model')) {
 						bodyParameters.push(`"${entry.name}":{${entry.name}}`);
-						placeholders.push({
-							name: entry.name,
-							required: entry.valueProvider === 'modelRequired',
-						});
+						updatePlaceholders(placeholders, entry.name, entry.valueProvider === 'modelRequired');
 					} else {
 						body[entry.name] = entry.value;
 					}
@@ -470,10 +457,7 @@ export class ToolHttpRequest implements INodeType {
 				const matches = extractPlaceholders(jsonBody);
 
 				for (const match of matches) {
-					placeholders.push({
-						name: match,
-						required: true,
-					});
+					updatePlaceholders(placeholders, match, true);
 				}
 
 				bodyPlaceholder = `body: ${jsonBody}`;
@@ -484,9 +468,9 @@ export class ToolHttpRequest implements INodeType {
 			'{',
 			`"url": "${url}"`,
 			`"method": "${method}"`,
-			`${qsPlaceholder ? `qs: ${qsPlaceholder},` : ''}`,
-			`${headersPlaceholder ? `headers: ${headersPlaceholder},` : ''}`,
-			`${bodyPlaceholder ? `body: ${bodyPlaceholder},` : ''}`,
+			`${qsPlaceholder}`,
+			`${headersPlaceholder}`,
+			`${bodyPlaceholder}`,
 			'}',
 		]
 			.filter((e) => e)
@@ -507,8 +491,8 @@ ${optionsExpectedFromLLM}`;
 Below are the descriptions of the placeholders.
 Required placeholders are marked accordingly.
 Extract descriptions from the prompt if available.
-If a placeholder lacks a description, infer its meaning based:
-${placeholders.map((parameter) => `${parameter.name}(description: ${parameter.description || ''}, type: ${parameter.type || ''}, required: ${parameter.required})`).join(', ')}`;
+If a placeholder lacks a description, infer its meaning:
+${placeholders.map((p) => `${p.name}(description: ${p.description || ''}, type: ${p.type || ''}, required: ${!!p.required})`).join(', ')}`;
 		}
 
 		return {
@@ -522,7 +506,6 @@ ${placeholders.map((parameter) => `${parameter.name}(description: ${parameter.de
 
 					let response: string = '';
 					let executionError: Error | undefined = undefined;
-
 					let requestOptions: IHttpRequestOptions | null = null;
 
 					// parse LLM's input

@@ -30,7 +30,7 @@ export const parametersCollection: INodeProperties = {
 	},
 	placeholder: 'Add Parameter',
 	default: {
-		parameters: [
+		values: [
 			{
 				name: '',
 				value: '',
@@ -39,8 +39,8 @@ export const parametersCollection: INodeProperties = {
 	},
 	options: [
 		{
-			name: 'parameters',
-			displayName: 'Parameter',
+			name: 'values',
+			displayName: 'Values',
 			values: [
 				{
 					displayName: 'Name',
@@ -81,6 +81,72 @@ export const parametersCollection: INodeProperties = {
 							valueProvider: ['fieldValue'],
 						},
 					},
+				},
+			],
+		},
+	],
+};
+export const placeholderDefinitionsCollection: INodeProperties = {
+	displayName: 'Placeholder Definitions',
+	name: 'placeholderDefinitions',
+	type: 'fixedCollection',
+	typeOptions: {
+		multipleValues: true,
+	},
+	placeholder: 'Add Definition',
+	default: {
+		values: [
+			{
+				name: '',
+				description: '',
+			},
+		],
+	},
+	options: [
+		{
+			name: 'values',
+			displayName: 'Values',
+			values: [
+				{
+					displayName: 'Placeholder Name',
+					name: 'name',
+					type: 'string',
+					default: '',
+				},
+				{
+					displayName: 'Description',
+					name: 'description',
+					type: 'string',
+					default: '',
+				},
+				{
+					displayName: 'Type',
+					name: 'type',
+					type: 'options',
+					// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+					options: [
+						{
+							name: 'Not Specified (Default)',
+							value: 'not specified',
+						},
+						{
+							name: 'String',
+							value: 'string',
+						},
+						{
+							name: 'Number',
+							value: 'number',
+						},
+						{
+							name: 'Boolean',
+							value: 'boolean',
+						},
+						{
+							name: 'JSON',
+							value: 'json',
+						},
+					],
+					default: 'not specified',
 				},
 			],
 		},

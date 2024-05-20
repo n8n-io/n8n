@@ -13,6 +13,7 @@ import unset from 'lodash/unset';
 
 import cheerio from 'cheerio';
 import { convert } from 'html-to-text';
+import type { ToolParameter } from './interfaces';
 
 export const getOAuth2AdditionalParameters = (nodeCredentialType: string) => {
 	const oAuth2Options: { [credentialType: string]: IOAuth2Options } = {
@@ -364,4 +365,24 @@ export const extractPlaceholders = (text: string): string[] => {
 	}
 
 	return returnData;
+};
+
+export const updatePlaceholders = (
+	placeholders: ToolParameter[],
+	name: string,
+	required: boolean,
+	type?: string,
+) => {
+	const placeholder = placeholders.find((p) => p.name === name);
+
+	if (placeholder) {
+		placeholder.required = required;
+		if (type) placeholder.type = type;
+	} else {
+		placeholders.push({
+			name,
+			required,
+			type: type ?? 'not specified',
+		});
+	}
 };
