@@ -33,7 +33,10 @@ export async function main(
 	}
 
 	if (!lastMigration.down) {
-		logger.error('The last migration was irreversible and cannot be reverted.');
+		const message = lastMigration.name
+			? `The last migration "${lastMigration.name}" was irreversible and cannot be reverted.`
+			: 'The last migration was irreversible and cannot be reverted.';
+		logger.error(message);
 		return;
 	}
 

@@ -74,6 +74,45 @@ test("don't revert the last migration if it had no down migration", async () => 
 	expect(dataSource.destroy).not.toHaveBeenCalled();
 });
 
+test('print migration name in error message is the migration has a name', async () => {
+	//
+	// ARRANGE
+	//
+	class TestMigration implements IrreversibleMigration {
+		name = 'Test Migration';
+
+		async up() {}
+	}
+
+	const connectionOptions = DbConfig.getConnectionOptions();
+	const migrations = [TestMigration];
+	// @ts-expect-error property is readonly
+	connectionOptions.migrations = migrations;
+	const dataSource = mock<DataSource>();
+	// @ts-expect-error property is readonly, and I can't pass them the `mock`
+	// because `mock` will mock the down method and thus defeat the purpose
+	// of this test, because the tested code will assume that the migration has a
+	// down method.
+	dataSource.migrations = migrations.map((M) => new M());
+
+	//
+	// ACT
+	//
+	await main(connectionOptions, logger, function () {
+		return dataSource;
+	} as never);
+
+	//
+	// ASSERT
+	//
+	expect(logger.error).toHaveBeenCalledTimes(1);
+	expect(logger.error).toHaveBeenCalledWith(
+		'The last migration "Test Migration" was irreversible and cannot be reverted.',
+	);
+	expect(dataSource.undoLastMigration).not.toHaveBeenCalled();
+	expect(dataSource.destroy).not.toHaveBeenCalled();
+});
+
 test('revert the last migration if it has a down migration', async () => {
 	//
 	// ARRANGE
