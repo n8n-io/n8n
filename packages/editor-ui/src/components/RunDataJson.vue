@@ -108,7 +108,8 @@ export default defineComponent({
 	},
 	props: {
 		editMode: {
-			type: Object as () => { enabled?: boolean; value?: string },
+			type: Object as PropType<{ enabled?: boolean; value?: string }>,
+			default: () => ({}),
 		},
 		pushRef: {
 			type: String,
@@ -118,15 +119,18 @@ export default defineComponent({
 		},
 		node: {
 			type: Object as PropType<INodeUi>,
+			required: true,
 		},
 		inputData: {
 			type: Array as PropType<INodeExecutionData[]>,
+			required: true,
 		},
 		mappingEnabled: {
 			type: Boolean,
 		},
 		distanceFromActive: {
 			type: Number,
+			required: true,
 		},
 		runIndex: {
 			type: Number,

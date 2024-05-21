@@ -1,325 +1,301 @@
-import { defineComponent } from 'vue';
-import { escape, toVariableOption } from '../utils';
+import { escape } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
-import type { IDataObject, IPinData, IRunData } from 'n8n-workflow';
-import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { isAllowedInDotNotation } from '@/plugins/codemirror/completions/utils';
+import { useI18n } from '@/composables/useI18n';
+import type { IPinData, IRunData, IDataObject } from 'n8n-workflow';
 
-export const jsonFieldCompletions = defineComponent({
-	computed: {
-		...mapStores(useNDVStore, useWorkflowsStore),
-	},
-	methods: {
-		/**
-		 * - Complete `x.first().json.` to `.field`.
-		 * - Complete `x.last().json.` to `.field`.
-		 * - Complete `x.all()[index].json.` to `.field`.
-		 * - Complete `x.item.json.` to `.field`.
-		 *
-		 * - Complete `x.first().json[` to `['field']`.
-		 * - Complete `x.last().json[` to `['field']`.
-		 * - Complete `x.all()[index].json[` to `['field']`.
-		 * - Complete `x.item.json[` to `['field']`.
-		 */
-		matcherJsonFieldCompletions(
-			context: CompletionContext,
-			matcher: string,
-			variablesToValues: Record<string, string>,
-		): CompletionResult | null {
-			const pattern = new RegExp(`(${escape(matcher)})\..*`);
+function useJsonFieldCompletions() {
+	const i18n = useI18n();
+	const ndvStore = useNDVStore();
+	const workflowsStore = useWorkflowsStore();
 
-			const preCursor = context.matchBefore(pattern);
+	/**
+	 * - Complete `x.first().json.` to `.field`.
+	 * - Complete `x.last().json.` to `.field`.
+	 * - Complete `x.all()[index].json.` to `.field`.
+	 * - Complete `x.item.json.` to `.field`.
+	 *
+	 * - Complete `x.first().json[` to `['field']`.
+	 * - Complete `x.last().json[` to `['field']`.
+	 * - Complete `x.all()[index].json[` to `['field']`.
+	 * - Complete `x.item.json[` to `['field']`.
+	 */
+	const matcherJsonFieldCompletions = (
+		context: CompletionContext,
+		matcher: string,
+		variablesToValues: Record<string, string>,
+	): CompletionResult | null => {
+		const pattern = new RegExp(`(${escape(matcher)})\..*`);
+		const preCursor = context.matchBefore(pattern);
 
-			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
+		if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
 
-			const inputNodeName = this.getInputNodeName();
+		const inputNodeName = getInputNodeName();
+		if (!inputNodeName) return null;
 
-			if (!inputNodeName) return null;
+		const [varName] = preCursor.text.split('.');
+		const originalValue = variablesToValues[varName];
+		if (!originalValue) return null;
 
-			const [varName] = preCursor.text.split('.');
+		for (const accessor of ['first', 'last', 'item']) {
+			if (originalValue.includes(accessor) || preCursor.text.includes(accessor)) {
+				const jsonOutput = getJsonOutput(inputNodeName, { accessor });
+				if (!jsonOutput) return null;
+				return toJsonFieldCompletions(preCursor, jsonOutput, matcher);
+			}
+		}
 
-			const originalValue = variablesToValues[varName];
+		if (originalValue.includes('all')) {
+			const match = originalValue.match(/\$(input|\(.*\))\.all\(\)\[(?<index>.+)\]$/);
+			if (!match?.groups?.index) return null;
 
-			if (!originalValue) return null;
+			const { index } = match.groups;
+			const jsonOutput = getJsonOutput(inputNodeName, { index: Number(index) });
+			if (!jsonOutput) return null;
 
-			for (const accessor of ['first', 'last', 'item']) {
-				/**
-				 * const x = $input.first(); // accessor in original value
-				 * x.json
-				 *
-				 * const x = $input;
-				 * x.first().json // accessor in preCursor.text
-				 */
-				if (originalValue.includes(accessor) || preCursor.text.includes(accessor)) {
-					const jsonOutput = this.getJsonOutput(inputNodeName, { accessor });
+			return toJsonFieldCompletions(preCursor, jsonOutput, matcher);
+		}
 
-					if (!jsonOutput) return null;
+		return null;
+	};
 
-					return this.toJsonFieldCompletions(preCursor, jsonOutput, matcher);
-				}
+	/**
+	 * - Complete `$input.first().json.` to `.field`.
+	 * - Complete `$input.last().json.` to `.field`.
+	 * - Complete `$input.all()[index].json.` to `.field`.
+	 * - Complete `$input.item.json.` to `.field`.
+	 *
+	 * - Complete `$input.first().json[` to `['field']`.
+	 * - Complete `$input.last().json[` to `['field']`.
+	 * - Complete `$input.all()[index].json[` to `['field']`.
+	 * - Complete `$input.item.json[` to `['field']`.
+	 */
+	const inputJsonFieldCompletions = (context: CompletionContext): CompletionResult | null => {
+		console.log('🚀 ~ inputJsonFieldCompletions ~ context:', context);
+		const patterns = {
+			first: /\$input\.first\(\)\.json(\[|\.).*/,
+			last: /\$input\.last\(\)\.json(\[|\.).*/,
+			item: /\$input\.item\.json(\[|\.).*/,
+			all: /\$input\.all\(\)\[(?<index>\w+)\]\.json(\[|\.).*/,
+		};
+
+		for (const [name, regex] of Object.entries(patterns)) {
+			const preCursor = context.matchBefore(regex);
+			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) continue;
+
+			const inputNodeName = getInputNodeName();
+			if (!inputNodeName) continue;
+
+			if (name === 'first' || name === 'last') {
+				const jsonOutput = getJsonOutput(inputNodeName, { accessor: name });
+				if (!jsonOutput) continue;
+				return toJsonFieldCompletions(preCursor, jsonOutput, `$input.${name}().json`);
 			}
 
-			if (originalValue.includes('all')) {
-				const match = originalValue.match(/\$(input|\(.*\))\.all\(\)\[(?<index>.+)\]$/);
+			if (name === 'item') {
+				const jsonOutput = getJsonOutput(inputNodeName, { accessor: 'item' });
+				if (!jsonOutput) continue;
+				return toJsonFieldCompletions(preCursor, jsonOutput, '$input.item.json');
+			}
 
-				if (!match?.groups?.index) return null;
+			if (name === 'all') {
+				const match = preCursor.text.match(regex);
+				if (!match?.groups?.index) continue;
 
 				const { index } = match.groups;
+				const jsonOutput = getJsonOutput(inputNodeName, { index: Number(index) });
+				if (!jsonOutput) continue;
 
-				const jsonOutput = this.getJsonOutput(inputNodeName, { index: Number(index) });
+				return toJsonFieldCompletions(preCursor, jsonOutput, `$input.all()[${index}].json`);
+			}
+		}
 
-				if (!jsonOutput) return null;
+		return null;
+	};
 
-				return this.toJsonFieldCompletions(preCursor, jsonOutput, matcher);
+	/**
+	 * Complete `$('nodeName').first().json.` to `.field`.
+	 * Complete `$('nodeName').last().json.` to `.field`.
+	 * Complete `$('nodeName').all()[index].json.` to `.field`.
+	 * Complete `$('nodeName').item.json.` to `.field`.
+	 *
+	 * Complete `$('nodeName').first().json[` to `['field']`.
+	 * Complete `$('nodeName').last().json[` to `['field']`.
+	 * Complete `$('nodeName').all()[index].json[` to `['field']`.
+	 * Complete `$('nodeName').item.json[` to `['field']`.
+	 */
+	const selectorJsonFieldCompletions = (context: CompletionContext): CompletionResult | null => {
+		const patterns = {
+			first: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.first\(\)\.json(\[|\.).*/,
+			last: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.last\(\)\.json(\[|\.).*/,
+			item: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item\.json(\[|\.).*/,
+			all: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]\.json(\[|\.).*/,
+		};
+
+		for (const [name, regex] of Object.entries(patterns)) {
+			const preCursor = context.matchBefore(regex);
+			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) continue;
+
+			const match = preCursor.text.match(regex);
+			if (!match?.groups?.quotedNodeName) continue;
+
+			const { quotedNodeName } = match.groups;
+			const selector = `$(${match.groups.quotedNodeName})`;
+
+			if (name === 'first' || name === 'last') {
+				const jsonOutput = getJsonOutput(quotedNodeName, { accessor: name });
+				if (!jsonOutput) continue;
+				return toJsonFieldCompletions(preCursor, jsonOutput, `${selector}.${name}().json`);
 			}
 
+			if (name === 'item') {
+				const jsonOutput = getJsonOutput(quotedNodeName, { accessor: 'item' });
+				if (!jsonOutput) continue;
+				return toJsonFieldCompletions(preCursor, jsonOutput, `${selector}.item.json`);
+			}
+
+			if (name === 'all') {
+				const regexMatch = preCursor.text.match(regex);
+				console.log('🚀 ~ selectorJsonFieldCompletions ~ regexMatch:', regexMatch);
+				if (!regexMatch?.groups?.index) continue;
+
+				const { index } = regexMatch.groups;
+				const jsonOutput = getJsonOutput(quotedNodeName, { index: Number(index) });
+				if (!jsonOutput) continue;
+
+				return toJsonFieldCompletions(preCursor, jsonOutput, `${selector}.all()[${index}].json`);
+			}
+		}
+
+		return null;
+	};
+
+	const getInputNodeName = (): string | null => {
+		try {
+			const activeNode = ndvStore.activeNode;
+			if (activeNode) {
+				const workflow = workflowsStore.getCurrentWorkflow();
+				const input = workflow.connectionsByDestinationNode[activeNode.name];
+				return input.main[0][0].node;
+			}
+		} catch (e) {
+			console.error(e);
 			return null;
-		},
+		}
+		return null;
+	};
 
-		/**
-		 * - Complete `$input.first().json.` to `.field`.
-		 * - Complete `$input.last().json.` to `.field`.
-		 * - Complete `$input.all()[index].json.` to `.field`.
-		 * - Complete `$input.item.json.` to `.field`.
-		 *
-		 * - Complete `$input.first().json[` to `['field']`.
-		 * - Complete `$input.last().json[` to `['field']`.
-		 * - Complete `$input.all()[index].json[` to `['field']`.
-		 * - Complete `$input.item.json[` to `['field']`.
-		 */
-		inputJsonFieldCompletions(context: CompletionContext): CompletionResult | null {
-			const patterns = {
-				first: /\$input\.first\(\)\.json(\[|\.).*/,
-				last: /\$input\.last\(\)\.json(\[|\.).*/,
-				item: /\$input\.item\.json(\[|\.).*/,
-				all: /\$input\.all\(\)\[(?<index>\w+)\]\.json(\[|\.).*/,
-			};
-
-			for (const [name, regex] of Object.entries(patterns)) {
-				const preCursor = context.matchBefore(regex);
-
-				if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) continue;
-
-				const inputNodeName = this.getInputNodeName();
-
-				if (!inputNodeName) continue;
-
-				if (name === 'first' || name === 'last') {
-					const jsonOutput = this.getJsonOutput(inputNodeName, { accessor: name });
-
-					if (!jsonOutput) continue;
-
-					return this.toJsonFieldCompletions(preCursor, jsonOutput, `$input.${name}().json`);
-				}
-
-				if (name === 'item') {
-					const jsonOutput = this.getJsonOutput(inputNodeName, { accessor: 'item' });
-
-					if (!jsonOutput) continue;
-
-					return this.toJsonFieldCompletions(preCursor, jsonOutput, '$input.item.json');
-				}
-
-				if (name === 'all') {
-					const match = preCursor.text.match(regex);
-
-					if (!match?.groups?.index) continue;
-
-					const { index } = match.groups;
-
-					const jsonOutput = this.getJsonOutput(inputNodeName, { index: Number(index) });
-
-					if (!jsonOutput) continue;
-
-					return this.toJsonFieldCompletions(preCursor, jsonOutput, `$input.all()[${index}].json`);
-				}
-			}
-
-			return null;
-		},
-
-		/**
-		 * Complete `$('nodeName').first().json.` to `.field`.
-		 * Complete `$('nodeName').last().json.` to `.field`.
-		 * Complete `$('nodeName').all()[index].json.` to `.field`.
-		 * Complete `$('nodeName').item.json.` to `.field`.
-		 *
-		 * Complete `$('nodeName').first().json[` to `['field']`.
-		 * Complete `$('nodeName').last().json[` to `['field']`.
-		 * Complete `$('nodeName').all()[index].json[` to `['field']`.
-		 * Complete `$('nodeName').item.json[` to `['field']`.
-		 */
-		selectorJsonFieldCompletions(context: CompletionContext): CompletionResult | null {
-			const patterns = {
-				first: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.first\(\)\.json(\[|\.).*/,
-				last: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.last\(\)\.json(\[|\.).*/,
-				item: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.item\.json(\[|\.).*/,
-				all: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]\.json(\[|\.).*/,
-			};
-
-			for (const [name, regex] of Object.entries(patterns)) {
-				const preCursor = context.matchBefore(regex);
-
-				if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) continue;
-
-				const match = preCursor.text.match(regex);
-
-				if (!match?.groups?.quotedNodeName) continue;
-
-				const { quotedNodeName } = match.groups;
-
-				const selector = `$(${match.groups.quotedNodeName})`;
-
-				if (name === 'first' || name === 'last') {
-					const jsonOutput = this.getJsonOutput(quotedNodeName, { accessor: name });
-
-					if (!jsonOutput) continue;
-
-					return this.toJsonFieldCompletions(preCursor, jsonOutput, `${selector}.${name}().json`);
-				}
-
-				if (name === 'item') {
-					const jsonOutput = this.getJsonOutput(quotedNodeName, { accessor: 'item' });
-
-					if (!jsonOutput) continue;
-
-					return this.toJsonFieldCompletions(preCursor, jsonOutput, `${selector}.item.json`);
-				}
-
-				if (name === 'all') {
-					const match = preCursor.text.match(regex);
-
-					if (!match?.groups?.index) continue;
-
-					const { index } = match.groups;
-
-					const jsonOutput = this.getJsonOutput(quotedNodeName, { index: Number(index) });
-
-					if (!jsonOutput) continue;
-
-					return this.toJsonFieldCompletions(
-						preCursor,
-						jsonOutput,
-						`${selector}.all()[${index}].json`,
-					);
-				}
-			}
-
-			return null;
-		},
-
-		getInputNodeName() {
-			try {
-				const activeNode = this.ndvStore.activeNode;
-				if (activeNode) {
-					const workflow = this.getCurrentWorkflow();
-					const input = workflow.connectionsByDestinationNode[activeNode.name];
-
-					return input.main[0][0].node;
-				}
-			} catch {
-				return null;
-			}
-		},
-
-		/**
-		 * .json -> .json['field']
-		 * .json -> .json.field
-		 */
-		toJsonFieldCompletions(
-			preCursor: NonNullable<ReturnType<CompletionContext['matchBefore']>>,
-			jsonOutput: IDataObject,
-			matcher: string, // e.g. `$input.first().json` or `x` (user-defined variable)
+	/**
+	 * .json -> .json['field']
+	 * .json -> .json.field
+	 */
+	const toJsonFieldCompletions = (
+		preCursor: NonNullable<ReturnType<CompletionContext['matchBefore']>>,
+		jsonOutput: IDataObject,
+		matcher: string,
+	): CompletionResult | null => {
+		if (
+			/\.json\[/.test(preCursor.text) ||
+			new RegExp(`(${escape(matcher)})\\[`).test(preCursor.text)
 		) {
-			if (
-				/\.json\[/.test(preCursor.text) ||
-				new RegExp(`(${escape(matcher)})\\[`).test(preCursor.text)
-			) {
-				const options: Completion[] = Object.keys(jsonOutput)
-					.map((field) => `${matcher}['${field}']`)
-					.map((label) => ({
-						label,
-						info: this.$locale.baseText('codeNodeEditor.completer.json'),
-					}));
+			const options: Completion[] = Object.keys(jsonOutput)
+				.map((field) => `${matcher}['${field}']`)
+				.map((label) => ({
+					label,
+					info: i18n.baseText('codeNodeEditor.completer.json'),
+				}));
 
-				return {
-					from: preCursor.from,
-					options,
-				};
-			}
+			return {
+				from: preCursor.from,
+				options,
+			};
+		}
 
-			if (
-				/\.json\./.test(preCursor.text) ||
-				new RegExp(`(${escape(matcher)})\.`).test(preCursor.text)
-			) {
-				const options: Completion[] = Object.keys(jsonOutput)
-					.filter(isAllowedInDotNotation)
-					.map((field) => `${matcher}.${field}`)
-					.map(toVariableOption);
+		if (
+			/\.json\./.test(preCursor.text) ||
+			new RegExp(`(${escape(matcher)})\.`).test(preCursor.text)
+		) {
+			const options: Completion[] = Object.keys(jsonOutput)
+				.filter(isAllowedInDotNotation)
+				.map((field) => `${matcher}.${field}`)
+				.map((label) => ({
+					label,
+					info: i18n.baseText('codeNodeEditor.completer.json'),
+				}));
 
-				return {
-					from: preCursor.from,
-					options,
-				};
-			}
+			return {
+				from: preCursor.from,
+				options,
+			};
+		}
 
-			return null;
-		},
+		return null;
+	};
 
-		/**
-		 * Get the `json` output of a node from `runData` or `pinData`.
-		 *
-		 * `accessor` is the method or property used to find the item index.
-		 * `index` is only passed for `all()`.
-		 */
-		getJsonOutput(quotedNodeName: string, options?: { accessor?: string; index?: number }) {
-			let nodeName = quotedNodeName;
+	/**
+	 * Get the `json` output of a node from `runData` or `pinData`.
+	 *
+	 * `accessor` is the method or property used to find the item index.
+	 * `index` is only passed for `all()`.
+	 */
+	const getJsonOutput = (
+		quotedNodeName: string,
+		options?: { accessor?: string; index?: number },
+	) => {
+		let nodeName = quotedNodeName;
 
-			const isSingleQuoteWrapped = quotedNodeName.startsWith("'") && quotedNodeName.endsWith("'");
-			const isDoubleQuoteWrapped = quotedNodeName.startsWith('"') && quotedNodeName.endsWith('"');
+		const isSingleQuoteWrapped = quotedNodeName.startsWith("'") && quotedNodeName.endsWith("'");
+		const isDoubleQuoteWrapped = quotedNodeName.startsWith('"') && quotedNodeName.endsWith('"');
 
-			if (isSingleQuoteWrapped) {
-				nodeName = quotedNodeName.replace(/^'/, '').replace(/'$/, '');
-			} else if (isDoubleQuoteWrapped) {
-				nodeName = quotedNodeName.replace(/^"/, '').replace(/"$/, '');
-			}
+		if (isSingleQuoteWrapped) {
+			nodeName = quotedNodeName.replace(/^'/, '').replace(/'$/, '');
+		} else if (isDoubleQuoteWrapped) {
+			nodeName = quotedNodeName.replace(/^"/, '').replace(/"$/, '');
+		}
 
-			const pinData: IPinData | undefined = this.workflowsStore.pinnedWorkflowData;
+		const pinData: IPinData | undefined = useWorkflowsStore().pinnedWorkflowData;
 
-			const nodePinData = pinData?.[nodeName];
+		const nodePinData = pinData?.[nodeName];
 
-			if (nodePinData) {
-				try {
-					let itemIndex = options?.index ?? 0;
-
-					if (options?.accessor === 'last') {
-						itemIndex = nodePinData.length - 1;
-					}
-
-					return nodePinData[itemIndex].json;
-				} catch {}
-			}
-
-			const runData: IRunData | null = this.workflowsStore.getWorkflowRunData;
-
-			const nodeRunData = runData && runData[nodeName];
-
-			if (!nodeRunData) return null;
-
+		if (nodePinData) {
 			try {
 				let itemIndex = options?.index ?? 0;
 
 				if (options?.accessor === 'last') {
-					const inputItems = nodeRunData[0].data!.main[0]!;
-					itemIndex = inputItems.length - 1;
+					itemIndex = nodePinData.length - 1;
 				}
 
-				return nodeRunData[0].data!.main[0]![itemIndex].json;
-			} catch {
-				return null;
+				return nodePinData[itemIndex].json;
+			} catch {}
+		}
+
+		const runData: IRunData | null = useWorkflowsStore().getWorkflowRunData;
+
+		const nodeRunData = runData?.[nodeName];
+
+		if (!nodeRunData) return null;
+
+		try {
+			let itemIndex = options?.index ?? 0;
+
+			if (options?.accessor === 'last') {
+				const inputItems = nodeRunData[0].data?.main[0] ?? [];
+				itemIndex = inputItems.length - 1;
 			}
-		},
-	},
-});
+
+			return nodeRunData[0].data?.main[0]?.[itemIndex].json;
+		} catch {
+			return null;
+		}
+	};
+
+	return {
+		matcherJsonFieldCompletions,
+		inputJsonFieldCompletions,
+		selectorJsonFieldCompletions,
+	};
+}
+
+export { useJsonFieldCompletions };
