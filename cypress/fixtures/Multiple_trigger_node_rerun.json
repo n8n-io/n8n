@@ -1,28 +1,42 @@
 {
-  "name": "Multiple_trigger_node_rerun",
+  "name": "Multiple trigger node rerun",
   "nodes": [
     {
       "parameters": {},
-      "id": "c232c1d4-3861-49ad-b246-d03b3d5c76fc",
+      "id": "5ae8991f-08a2-4b27-b61c-85e3b8a83693",
       "name": "When clicking \"Test workflow\"",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        1060,
-        320
+        460,
+        460
       ]
     },
     {
       "parameters": {
-        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.first_name_reversed = item.json = {\n    name: item.json.name,\n    firstnNameReversed: item.json.name_BUG.split(\"\").reverse().join(\"\")\n  };\n}\n\nreturn $input.all();"
+        "url": "https://internal.users.n8n.cloud/webhook/random-data-api",
+        "options": {}
       },
-      "id": "23b22a8c-fec9-4a4a-bc6a-c7085e6201ed",
+      "id": "22511d75-ab54-49e1-b8af-08b8b3372373",
+      "name": "fetch 5 random users",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        680,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.first_name_reversed = item.json = {\n    firstName: item.json.firstname,\n    firstnNameReversed: item.json.firstname.split(\"\").reverse().join(\"\")\n  };\n}\n\nreturn $input.all();"
+      },
+      "id": "4b66b15a-1685-46c1-a5e3-ebf8cdb11d21",
       "name": "do something with them",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1500,
-        320
+        900,
+        460
       ]
     },
     {
@@ -36,36 +50,17 @@
           ]
         }
       },
-      "id": "8e83006a-efdc-4f82-b5ee-2d7e69dc279a",
+      "id": "d763fc3b-6c4a-4d39-8857-ff84f7b6dc83",
       "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
       "position": [
-        1060,
-        520
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "getAllPeople",
-        "returnAll": true
-      },
-      "id": "2187b7e4-44d4-4a88-a5e9-ae6e71177f09",
-      "name": "fetch 5 random users",
-      "type": "n8n-nodes-base.n8nTrainingCustomerDatastore",
-      "typeVersion": 1,
-      "position": [
-        1300,
-        320
+        460,
+        660
       ]
     }
   ],
   "pinData": {
-    "When clicking \"Test workflow\"": [
-      {
-        "json": {}
-      }
-    ],
     "Schedule Trigger": [
       {
         "json": {
@@ -82,21 +77,15 @@
           "Timezone": "CET +01:00"
         }
       }
+    ],
+    "When clicking \"Test workflow\"": [
+      {
+        "json": {}
+      }
     ]
   },
   "connections": {
     "When clicking \"Test workflow\"": {
-      "main": [
-        [
-          {
-            "node": "fetch 5 random users",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Schedule Trigger": {
       "main": [
         [
           {
@@ -117,17 +106,28 @@
           }
         ]
       ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "fetch 5 random users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "3dbd3967-2546-4333-bc04-e966e80152a5",
+  "versionId": "b9a6c3b0-15cd-4359-a92e-12a691a36b7b",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "8a47b83b4479b11330fdf21ccc96d4a8117035a968612e452b4c87bfd09c16c7"
   },
-  "id": "FicoGxPYIgIqGKxe",
+  "id": "PymcwIrbqgNh3O0K",
   "tags": []
 }
