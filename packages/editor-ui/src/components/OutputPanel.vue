@@ -1,5 +1,6 @@
 <template>
 	<RunData
+		v-if="node"
 		ref="runData"
 		:node="node"
 		:run-index="runIndex"
