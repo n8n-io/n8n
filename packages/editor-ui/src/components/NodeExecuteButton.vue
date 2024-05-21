@@ -110,7 +110,8 @@ export default defineComponent({
 			const triggeredNode = this.workflowsStore.executedNode;
 			return (
 				this.workflowRunning &&
-				(this.workflowsStore.isNodeExecuting(this.node.name) || triggeredNode === this.node.name)
+				(this.workflowsStore.isNodeExecuting(this.node?.name ?? '') ||
+					triggeredNode === this.node?.name)
 			);
 		},
 		workflowRunning(): boolean {
@@ -148,7 +149,7 @@ export default defineComponent({
 			const executedNode = this.workflowsStore.executedNode;
 
 			return (
-				this.node &&
+				!!this.node &&
 				!this.node.disabled &&
 				this.isTriggerNode &&
 				waitingOnWebhook &&
@@ -173,7 +174,7 @@ export default defineComponent({
 				return '';
 			}
 
-			if (this.isTriggerNode && this.node.disabled) {
+			if (this.isTriggerNode && this.node?.disabled) {
 				return this.$locale.baseText('ndv.execute.nodeIsDisabled');
 			}
 
