@@ -41,7 +41,7 @@
 		>
 			<div
 				v-for="(result, i) in sortedResources"
-				:key="result.value"
+				:key="result.value.toString()"
 				:ref="`item-${i}`"
 				:class="{
 					[$style.resourceItem]: true,
@@ -83,6 +83,7 @@ import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
+import type { NodeParameterValue } from 'n8n-workflow';
 
 const SEARCH_BAR_HEIGHT_PX = 40;
 const SCROLL_MARGIN_PX = 10;
@@ -91,7 +92,7 @@ export default defineComponent({
 	name: 'ResourceLocatorDropdown',
 	props: {
 		modelValue: {
-			type: [String, Number],
+			type: [String, Number] as PropType<NodeParameterValue>,
 		},
 		show: {
 			type: Boolean,
@@ -126,6 +127,7 @@ export default defineComponent({
 			default: () => createEventBus(),
 		},
 	},
+	emits: ['update:modelValue', 'loadMore', 'filter'],
 	data() {
 		return {
 			hoverIndex: 0,
@@ -135,7 +137,7 @@ export default defineComponent({
 	computed: {
 		sortedResources(): IResourceLocatorResultExpanded[] {
 			const seen = new Set();
-			const { selected, notSelected } = this.resources.reduce(
+			const { selected, notSelected } = (this.resources ?? []).reduce(
 				(acc, item: IResourceLocatorResultExpanded) => {
 					if (seen.has(item.value)) {
 						return acc;
@@ -232,7 +234,7 @@ export default defineComponent({
 		onFilterInput(value: string) {
 			this.$emit('filter', value);
 		},
-		onItemClick(selected: string) {
+		onItemClick(selected: string | number | boolean) {
 			this.$emit('update:modelValue', selected);
 		},
 		onItemHover(index: number) {
