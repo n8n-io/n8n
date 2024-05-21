@@ -2375,24 +2375,31 @@ export interface ResourceMapperField {
 	readOnly?: boolean;
 }
 
-export type FieldType =
-	| 'string'
-	| 'string-alphanumeric'
-	| 'number'
-	| 'dateTime'
-	| 'boolean'
-	| 'time'
-	| 'array'
-	| 'object'
-	| 'options'
-	| 'url'
-	| 'jwt';
-
-export type ValidationResult = {
-	valid: boolean;
-	errorMessage?: string;
-	newValue?: string | number | boolean | object | null | undefined;
+export type FieldTypeMap = {
+	// eslint-disable-next-line id-denylist
+	boolean: boolean;
+	// eslint-disable-next-line id-denylist
+	number: number;
+	// eslint-disable-next-line id-denylist
+	string: string;
+	'string-alphanumeric': string;
+	dateTime: string;
+	time: string;
+	array: unknown[];
+	object: object;
+	options: any;
+	url: string;
+	jwt: string;
 };
+
+export type FieldType = keyof FieldTypeMap;
+
+export type ValidationResult<T extends FieldType = FieldType> =
+	| { valid: false; errorMessage: string }
+	| {
+			valid: true;
+			newValue?: FieldTypeMap[T];
+	  };
 
 export type ResourceMapperValue = {
 	mappingMode: string;
