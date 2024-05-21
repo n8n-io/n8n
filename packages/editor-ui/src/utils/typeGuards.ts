@@ -1,8 +1,5 @@
-import {
-	INodeParameterResourceLocator,
-	NodeConnectionType,
-	nodeConnectionTypes,
-} from 'n8n-workflow';
+import type { INodeParameterResourceLocator, NodeConnectionType } from 'n8n-workflow';
+import { nodeConnectionTypes } from 'n8n-workflow';
 import type { ICredentialsResponse, NewCredentialsModal } from '@/Interface';
 
 /*
