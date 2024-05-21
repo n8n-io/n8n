@@ -1,4 +1,8 @@
-import type { INodeParameterResourceLocator } from 'n8n-workflow';
+import {
+	INodeParameterResourceLocator,
+	NodeConnectionType,
+	nodeConnectionTypes,
+} from 'n8n-workflow';
 import type { ICredentialsResponse, NewCredentialsModal } from '@/Interface';
 
 /*
@@ -48,4 +52,10 @@ export function isDateObject(date: unknown): date is Date {
 	return (
 		!!date && Object.prototype.toString.call(date) === '[object Date]' && !isNaN(date as number)
 	);
+}
+
+export function isValidNodeConnectionType(
+	connectionType: string,
+): connectionType is NodeConnectionType {
+	return nodeConnectionTypes.includes(connectionType as NodeConnectionType);
 }

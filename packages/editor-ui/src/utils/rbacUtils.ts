@@ -11,20 +11,23 @@ export function inferProjectIdFromRoute(to: RouteLocationNormalized): string {
 
 export function inferResourceTypeFromRoute(to: RouteLocationNormalized): Resource | undefined {
 	const routeParts = to.path.split('/');
-	const routeMap = {
+	const routeMap: Record<string, string> = {
 		workflow: 'workflows',
 		credential: 'credentials',
 		user: 'users',
 		variable: 'variables',
 		sourceControl: 'source-control',
-		externalSecretsStore: 'external-secrets',
+		externalSecret: 'external-secrets',
 	};
 
-	for (const resource of Object.keys(routeMap) as Array<keyof typeof routeMap>) {
-		if (routeParts.includes(routeMap[resource])) {
-			return resource;
+	for (const resource of Object.keys(routeMap)) {
+		const mappedRoute = routeMap[resource];
+		if (routeParts.includes(mappedRoute)) {
+			return resource as Resource;
 		}
 	}
+
+	return undefined;
 }
 
 export function inferResourceIdFromRoute(to: RouteLocationNormalized): string | undefined {

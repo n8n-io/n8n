@@ -130,6 +130,14 @@ export type EndpointStyle = {
 	hoverMessage?: string;
 };
 
+export type EndpointMeta = {
+	__meta?: {
+		index: number;
+		totalEndpoints: number;
+		endpointLabelLength: number;
+	};
+};
+
 export interface IUpdateInformation {
 	name: string;
 	key?: string;
