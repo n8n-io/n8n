@@ -68,7 +68,6 @@ export async function execute(
 				'GET',
 				`/collections/${collectionId}/items/${itemId}`,
 			);
-			responseData = responseData.items;
 
 			const executionData = this.helpers.constructExecutionMetaData(
 				wrapData(responseData as IDataObject[]),
