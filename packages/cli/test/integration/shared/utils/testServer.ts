@@ -267,6 +267,13 @@ export const setupTestServer = ({
 						const { RoleController } = await import('@/controllers/role.controller');
 						registerController(app, RoleController);
 						break;
+
+					case 'dynamic-node-parameters':
+						const { DynamicNodeParametersController } = await import(
+							'@/controllers/dynamicNodeParameters.controller'
+						);
+						registerController(app, DynamicNodeParametersController);
+						break;
 				}
 			}
 		}
