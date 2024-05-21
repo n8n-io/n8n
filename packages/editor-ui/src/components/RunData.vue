@@ -63,7 +63,7 @@
 					v-show="!editMode.enabled"
 					:title="$locale.baseText('runData.editOutput')"
 					:circle="false"
-					:disabled="node.disabled"
+					:disabled="node?.disabled"
 					class="ml-2xs"
 					icon="pencil-alt"
 					type="tertiary"
@@ -251,7 +251,7 @@
 				<slot name="node-not-run"></slot>
 			</div>
 
-			<div v-else-if="paneType === 'input' && node.disabled" :class="$style.center">
+			<div v-else-if="paneType === 'input' && node?.disabled" :class="$style.center">
 				<n8n-text>
 					{{ $locale.baseText('ndv.input.disabled', { interpolate: { nodeName: node.name } }) }}
 					<n8n-link @click="enableNode">
@@ -268,7 +268,7 @@
 				<n8n-text v-if="isPaneTypeInput" :class="$style.center" size="large" tag="p" bold>
 					{{
 						$locale.baseText('nodeErrorView.inputPanel.previousNodeError.title', {
-							interpolate: { nodeName: node.name },
+							interpolate: { nodeName: node?.name ?? '' },
 						})
 					}}
 				</n8n-text>
@@ -645,7 +645,7 @@ export default defineComponent({
 	props: {
 		node: {
 			type: Object as PropType<INodeUi>,
-			default: null,
+			required: true,
 		},
 		runIndex: {
 			type: Number,
@@ -684,6 +684,7 @@ export default defineComponent({
 		},
 		distanceFromActive: {
 			type: Number,
+			default: 0,
 		},
 		blockUI: {
 			type: Boolean,
