@@ -20,6 +20,7 @@ import {
 	operatorTypeToNodeProperty,
 	resolveCondition,
 } from './utils';
+import { useDebounce } from '@/composables/useDebounce';
 
 interface Props {
 	path: string;
@@ -46,6 +47,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const { debounce } = useDebounce();
 
 const condition = ref<FilterConditionValue>(props.condition);
 
@@ -100,12 +102,16 @@ const rightParameter = computed<INodeProperties>(() => {
 	};
 });
 
+const debouncedEmitUpdate = debounce(() => emit('update', condition.value), { debounceTime: 500 });
+
 const onLeftValueChange = (update: IUpdateInformation): void => {
 	condition.value.leftValue = update.value;
+	debouncedEmitUpdate();
 };
 
 const onRightValueChange = (update: IUpdateInformation): void => {
 	condition.value.rightValue = update.value;
+	debouncedEmitUpdate();
 };
 
 const onOperatorChange = (value: string): void => {
@@ -116,7 +122,7 @@ const onOperatorChange = (value: string): void => {
 		newOperator,
 	});
 
-	emit('update', condition.value);
+	debouncedEmitUpdate();
 };
 
 const onRemove = (): void => {
@@ -124,7 +130,7 @@ const onRemove = (): void => {
 };
 
 const onBlur = (): void => {
-	emit('update', condition.value);
+	debouncedEmitUpdate();
 };
 </script>
 
