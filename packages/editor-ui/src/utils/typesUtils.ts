@@ -95,7 +95,7 @@ export const convertPath = (path: string): string => {
 		let index = part.indexOf(placeholder);
 		while (index !== -1) {
 			if (index === 0) {
-				allParts.push(inBrackets.shift() as string);
+				allParts.push(inBrackets.shift() ?? '');
 				part = part.substr(placeholder.length);
 			} else {
 				allParts.push(part.substr(0, index));

@@ -1156,7 +1156,11 @@ export const getJSPlumbConnection = (
 		scope,
 		source: sourceId,
 		target: targetId,
-	} as SelectOptions<Element>) as Connection[];
+	} as SelectOptions<Element>);
+
+	if (!Array.isArray(connections)) {
+		return;
+	}
 
 	return connections.find((connection: Connection) => {
 		const uuids = connection.getUuids();
