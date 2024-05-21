@@ -138,15 +138,17 @@ export type EndpointMeta = {
 	};
 };
 
-export interface IUpdateInformation {
-	name: string;
-	key?: string;
-	value:
+export interface IUpdateInformation<
+	T extends NodeParameterValueType =
 		| string
 		| number
 		| { [key: string]: string | number | boolean }
 		| NodeParameterValueType
-		| INodeParameters; // with null makes problems in NodeSettings.vue
+		| INodeParameters,
+> {
+	name: string;
+	key?: string;
+	value: T;
 	node?: string;
 	oldValue?: string | number;
 	type?: 'optionsOrderChanged';
