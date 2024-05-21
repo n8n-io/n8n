@@ -20,10 +20,10 @@ export function inferResourceTypeFromRoute(to: RouteLocationNormalized): Resourc
 		externalSecret: 'external-secrets',
 	};
 
-	const isResource = (key: string): key is Resource => key in routeMap;
+	const isResource = (key: string): key is Resource => routeParts.includes(routeMap[key]);
 
 	for (const resource of Object.keys(routeMap)) {
-		if (isResource(resource) && routeParts.includes(routeMap[resource])) {
+		if (isResource(resource)) {
 			return resource;
 		}
 	}
