@@ -485,7 +485,7 @@ export const schema = {
 		timezone: {
 			doc: 'The timezone to use',
 			format: '*',
-			default: 'America/New_York',
+			default: 'Europe/Berlin',
 			env: 'GENERIC_TIMEZONE',
 		},
 
