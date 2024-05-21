@@ -1,36 +1,57 @@
+import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 import { autocompletion } from '@codemirror/autocomplete';
 import { localCompletionSource } from '@codemirror/lang-javascript';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { Extension } from '@codemirror/state';
 
-import { baseCompletions } from './completions/base.completions';
+import { useBaseCompletions } from './completions/base.completions';
 import { jsSnippets } from './completions/js.snippets';
-import { requireCompletions } from './completions/require.completions';
-import { executionCompletions } from './completions/execution.completions';
-import { workflowCompletions } from './completions/workflow.completions';
-import { prevNodeCompletions } from './completions/prevNode.completions';
-import { luxonCompletions } from './completions/luxon.completions';
-import { itemIndexCompletions } from './completions/itemIndex.completions';
-import { itemFieldCompletions } from './completions/itemField.completions';
-import { jsonFieldCompletions } from './completions/jsonField.completions';
-import { variablesCompletions } from './completions/variables.completions';
+
+import type { CodeExecutionMode } from 'n8n-workflow';
+import { CODE_EXECUTION_MODES } from 'n8n-workflow';
+import { useExecutionCompletions } from './completions/execution.completions';
+import { useItemFieldCompletions } from './completions/itemField.completions';
+import { useItemIndexCompletions } from './completions/itemIndex.completions';
+import { useJsonFieldCompletions } from './completions/jsonField.completions';
+import { useLuxonCompletions } from './completions/luxon.completions';
+import { usePrevNodeCompletions } from './completions/prevNode.completions';
+import { useRequireCompletions } from './completions/require.completions';
+import { useVariablesCompletions } from './completions/variables.completions';
+import { useWorkflowCompletions } from './completions/workflow.completions';
+import type { EditorView } from '@codemirror/view';
 
 export const completerExtension = defineComponent({
-	mixins: [
-		baseCompletions,
-		requireCompletions,
-		executionCompletions,
-		workflowCompletions,
-		variablesCompletions,
-		prevNodeCompletions,
-		luxonCompletions,
-		itemIndexCompletions,
-		itemFieldCompletions,
-		jsonFieldCompletions,
-	],
+	props: {
+		mode: {
+			type: String as PropType<CodeExecutionMode>,
+			validator: (value: CodeExecutionMode): boolean => CODE_EXECUTION_MODES.includes(value),
+			required: true,
+		},
+	},
+	data() {
+		return {
+			editor: null as EditorView | null,
+		};
+	},
 	methods: {
 		autocompletionExtension(language: 'javaScript' | 'python'): Extension {
+			// Base completions
+			const { baseCompletions, itemCompletions, nodeSelectorCompletions } = useBaseCompletions(
+				this.mode,
+				language,
+			);
+			const { executionCompletions } = useExecutionCompletions();
+			const { inputMethodCompletions, selectorMethodCompletions } =
+				useItemFieldCompletions(language);
+			const { inputCompletions, selectorCompletions } = useItemIndexCompletions(this.mode);
+			const { inputJsonFieldCompletions, selectorJsonFieldCompletions } = useJsonFieldCompletions();
+			const { dateTimeCompletions, nowCompletions, todayCompletions } = useLuxonCompletions();
+			const { prevNodeCompletions } = usePrevNodeCompletions();
+			const { requireCompletions } = useRequireCompletions();
+			const { variablesCompletions } = useVariablesCompletions();
+			const { workflowCompletions } = useWorkflowCompletions();
+
 			const completions = [];
 			if (language === 'javaScript') {
 				completions.push(jsSnippets, localCompletionSource);
@@ -47,31 +68,31 @@ export const completerExtension = defineComponent({
 					...completions,
 
 					// core
-					this.itemCompletions,
-					this.baseCompletions,
-					this.requireCompletions,
-					this.nodeSelectorCompletions,
-					this.prevNodeCompletions,
-					this.workflowCompletions,
-					this.variablesCompletions,
-					this.executionCompletions,
+					itemCompletions,
+					baseCompletions,
+					requireCompletions,
+					nodeSelectorCompletions,
+					prevNodeCompletions,
+					workflowCompletions,
+					variablesCompletions,
+					executionCompletions,
 
 					// luxon
-					this.todayCompletions,
-					this.nowCompletions,
-					this.dateTimeCompletions,
+					todayCompletions,
+					nowCompletions,
+					dateTimeCompletions,
 
 					// item index
-					this.inputCompletions,
-					this.selectorCompletions,
+					inputCompletions,
+					selectorCompletions,
 
 					// item field
-					this.inputMethodCompletions,
-					this.selectorMethodCompletions,
+					inputMethodCompletions,
+					selectorMethodCompletions,
 
 					// item json field
-					this.inputJsonFieldCompletions,
-					this.selectorJsonFieldCompletions,
+					inputJsonFieldCompletions,
+					selectorJsonFieldCompletions,
 
 					// multiline
 					this.multilineCompletions,
@@ -109,17 +130,17 @@ export const completerExtension = defineComponent({
 			const varNames = Object.keys(variablesToValues);
 
 			const uses = this.extendedUses(docLines, varNames);
-
+			const { matcherItemFieldCompletions } = useItemFieldCompletions('javaScript');
 			for (const use of uses.itemField) {
 				const matcher = use.replace(/\.$/, '');
-				const completions = this.matcherItemFieldCompletions(context, matcher, variablesToValues);
+				const completions = matcherItemFieldCompletions(context, matcher, variablesToValues);
 
 				if (completions) return completions;
 			}
 
 			for (const use of uses.jsonField) {
 				const matcher = use.replace(/(\.|\[)$/, '');
-				const completions = this.matcherJsonFieldCompletions(context, matcher, variablesToValues);
+				const completions = matcherItemFieldCompletions(context, matcher, variablesToValues);
 
 				if (completions) return completions;
 			}
@@ -168,25 +189,32 @@ export const completerExtension = defineComponent({
 				all: /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\.all\(\)\[(?<index>\w+)\]\.json$/,
 			});
 
+			const { executionCompletions } = useExecutionCompletions();
+			const { inputCompletions, selectorCompletions } = useItemIndexCompletions(this.mode);
+			const { matcherJsonFieldCompletions } = useJsonFieldCompletions();
+			const { dateTimeCompletions, nowCompletions, todayCompletions } = useLuxonCompletions();
+			const { variablesCompletions } = useVariablesCompletions();
+			const { workflowCompletions } = useWorkflowCompletions();
+
 			for (const [variable, value] of Object.entries(variablesToValues)) {
-				// core
+				const { prevNodeCompletions } = usePrevNodeCompletions(variable);
 
-				if (value === '$execution') return this.executionCompletions(context, variable);
-				if (value === '$vars') return this.variablesCompletions(context, variable);
+				if (value === '$execution') return executionCompletions(context, variable);
+				if (value === '$vars') return variablesCompletions(context, variable);
 
-				if (value === '$workflow') return this.workflowCompletions(context, variable);
-				if (value === '$prevNode') return this.prevNodeCompletions(context, variable);
+				if (value === '$workflow') return workflowCompletions(context, variable);
+				if (value === '$prevNode') return prevNodeCompletions(context);
 
 				// luxon
 
-				if (value === '$now') return this.nowCompletions(context, variable);
-				if (value === '$today') return this.todayCompletions(context, variable);
-				if (value === 'DateTime') return this.dateTimeCompletions(context, variable);
+				if (value === '$now') return nowCompletions(context, variable);
+				if (value === '$today') return todayCompletions(context, variable);
+				if (value === 'DateTime') return dateTimeCompletions(context, variable);
 
 				// item index
 
-				if (value === '$input') return this.inputCompletions(context, variable);
-				if (SELECTOR_REGEX.test(value)) return this.selectorCompletions(context, variable);
+				if (value === '$input') return inputCompletions(context, variable);
+				if (SELECTOR_REGEX.test(value)) return selectorCompletions(context, variable);
 
 				// json field
 
@@ -194,7 +222,7 @@ export const completerExtension = defineComponent({
 				const selectorJsonMatched = SELECTOR_JSON_REGEXES.some((regex) => regex.test(value));
 
 				if (inputJsonMatched || selectorJsonMatched) {
-					return this.matcherJsonFieldCompletions(context, variable, variablesToValues);
+					return matcherJsonFieldCompletions(context, variable, variablesToValues);
 				}
 
 				// item field
@@ -203,7 +231,7 @@ export const completerExtension = defineComponent({
 				const selectorMethodMatched = SELECTOR_METHOD_REGEXES.some((regex) => regex.test(value));
 
 				if (inputMethodMatched || selectorMethodMatched) {
-					return this.matcherItemFieldCompletions(context, variable, variablesToValues);
+					return matcherItemFieldCompletions(context, variable, variablesToValues);
 				}
 			}
 

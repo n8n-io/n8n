@@ -65,7 +65,7 @@ Cypress.Commands.add('signout', () => {
 	cy.request({
 		method: 'POST',
 		url: `${BACKEND_BASE_URL}/rest/logout`,
-		headers: { 'browser-id': localStorage.getItem('n8n-browserId') }
+		headers: { 'browser-id': localStorage.getItem('n8n-browserId') },
 	});
 	cy.getCookie(N8N_AUTH_COOKIE).should('not.exist');
 });
@@ -80,12 +80,19 @@ const setFeature = (feature: string, enabled: boolean) =>
 		enabled,
 	});
 
+const setQuota = (feature: string, value: number) =>
+	cy.request('PATCH', `${BACKEND_BASE_URL}/rest/e2e/quota`, {
+		feature: `quota:${feature}`,
+		value,
+	});
+
 const setQueueMode = (enabled: boolean) =>
 	cy.request('PATCH', `${BACKEND_BASE_URL}/rest/e2e/queue-mode`, {
 		enabled,
 	});
 
 Cypress.Commands.add('enableFeature', (feature: string) => setFeature(feature, true));
+Cypress.Commands.add('changeQuota', (feature: string, value: number) => setQuota(feature, value));
 Cypress.Commands.add('disableFeature', (feature: string) => setFeature(feature, false));
 Cypress.Commands.add('enableQueueMode', () => setQueueMode(true));
 Cypress.Commands.add('disableQueueMode', () => setQueueMode(false));

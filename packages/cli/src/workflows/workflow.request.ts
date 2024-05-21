@@ -1,5 +1,5 @@
 import type { IWorkflowDb } from '@/Interfaces';
-import type { AuthenticatedRequest } from '@/requests';
+import type { AuthenticatedRequest, ListQuery } from '@/requests';
 import type {
 	INode,
 	IConnections,
@@ -11,7 +11,7 @@ import type {
 
 export declare namespace WorkflowRequest {
 	type CreateUpdatePayload = Partial<{
-		id: string; // delete if sent
+		id: string; // deleted if sent
 		name: string;
 		nodes: INode[];
 		connections: IConnections;
@@ -20,6 +20,7 @@ export declare namespace WorkflowRequest {
 		tags: string[];
 		hash: string;
 		meta: Record<string, unknown>;
+		projectId: string;
 	}>;
 
 	type ManualRunPayload = {
@@ -32,12 +33,16 @@ export declare namespace WorkflowRequest {
 
 	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload>;
 
-	type Get = AuthenticatedRequest<{ id: string }>;
+	type Get = AuthenticatedRequest<{ workflowId: string }>;
+
+	type GetMany = AuthenticatedRequest<{}, {}, {}, ListQuery.Params & { includeScopes?: string }> & {
+		listQueryOptions: ListQuery.Options;
+	};
 
 	type Delete = Get;
 
 	type Update = AuthenticatedRequest<
-		{ id: string },
+		{ workflowId: string },
 		{},
 		CreateUpdatePayload,
 		{ forceSave?: string }
@@ -45,7 +50,7 @@ export declare namespace WorkflowRequest {
 
 	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string }>;
 
-	type ManualRun = AuthenticatedRequest<{}, {}, ManualRunPayload>;
+	type ManualRun = AuthenticatedRequest<{ workflowId: string }, {}, ManualRunPayload>;
 
 	type Share = AuthenticatedRequest<{ workflowId: string }, {}, { shareWithIds: string[] }>;
 

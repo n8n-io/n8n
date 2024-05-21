@@ -35,6 +35,11 @@ export class MoveSshKeysToDatabase1711390882123 implements ReversibleMigration {
 			return;
 		}
 
+		if (!privateKey && !publicKey) {
+			logger.info(`[${migrationName}] No SSH keys in filesystem, skipping`);
+			return;
+		}
+
 		const settings = escape.tableName('settings');
 		const key = escape.columnName('key');
 		const value = escape.columnName('value');

@@ -18,7 +18,7 @@ export class Telegram implements INodeType {
 		name: 'telegram',
 		icon: 'file:telegram.svg',
 		group: ['output'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Sends data to Telegram',
 		defaults: {
@@ -2067,7 +2067,7 @@ export class Telegram implements INodeType {
 							{
 								json: false,
 								encoding: null,
-								uri: `https://api.telegram.org/file/bot${credentials.accessToken}/${filePath}`,
+								uri: `${credentials.baseUrl}/file/bot${credentials.accessToken}/${filePath}`,
 								resolveWithFullResponse: true,
 								useStream: true,
 							},

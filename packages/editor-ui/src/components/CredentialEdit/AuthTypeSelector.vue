@@ -9,11 +9,16 @@ import {
 	getNodeAuthOptions,
 	isAuthRelatedParameter,
 } from '@/utils/nodeTypesUtils';
-import type { INodeProperties, INodeTypeDescription, NodeParameterValue } from 'n8n-workflow';
+import type {
+	ICredentialType,
+	INodeProperties,
+	INodeTypeDescription,
+	NodeParameterValue,
+} from 'n8n-workflow';
 import { computed, onMounted, ref } from 'vue';
 
 export interface Props {
-	credentialType: object;
+	credentialType: ICredentialType;
 }
 
 const emit = defineEmits<{

@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.38.0",
+  "version": "1.42.0",
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
@@ -11,8 +11,8 @@
   "scripts": {
     "preinstall": "node scripts/block-npm-install.js",
     "build": "turbo run build",
-    "build:backend": "pnpm --filter=!@n8n/chat --filter=!n8n-design-system --filter=!n8n-editor-ui build",
-    "build:frontend": "pnpm --filter=@n8n/chat --filter=n8n-design-system --filter=n8n-editor-ui build",
+    "build:backend": "pnpm --filter=!@n8n/chat --filter=!@n8n/codemirror-lang --filter=!n8n-design-system --filter=!n8n-editor-ui build",
+    "build:frontend": "pnpm --filter=@n8n/chat --filter=@n8n/codemirror-lang --filter=n8n-design-system --filter=n8n-editor-ui build",
     "typecheck": "turbo run typecheck",
     "dev": "turbo run dev --parallel --filter=!n8n-design-system --filter=!@n8n/chat",
     "dev:ai": "turbo run dev --parallel --filter=@n8n/nodes-langchain --filter=n8n --filter=n8n-core",
@@ -26,9 +26,9 @@
     "start:tunnel": "./packages/cli/bin/n8n start --tunnel",
     "start:windows": "cd packages/cli/bin && n8n",
     "test": "turbo run test",
-    "test:backend": "pnpm --filter=!@n8n/chat --filter=!n8n-design-system --filter=!n8n-editor-ui --filter=!n8n-nodes-base --filter=!@n8n/n8n-nodes-langchain test",
+    "test:backend": "pnpm --filter=!@n8n/chat --filter=!@n8n/codemirror-lang --filter=!n8n-design-system --filter=!n8n-editor-ui  --filter=!n8n-nodes-base test --filter=!@n8n/n8n-nodes-langchain test",
     "test:nodes": "pnpm --filter=n8n-nodes-base --filter=@n8n/n8n-nodes-langchain test",
-    "test:frontend": "pnpm --filter=@n8n/chat --filter=n8n-design-system --filter=n8n-editor-ui test",
+    "test:frontend": "pnpm --filter=@n8n/chat --filter=@n8n/codemirror-lang --filter=n8n-design-system --filter=n8n-editor-ui test",
     "watch": "turbo run watch --parallel",
     "webhook": "./packages/cli/bin/n8n webhook",
     "worker": "./packages/cli/bin/n8n worker",
@@ -37,9 +37,6 @@
     "test:e2e:ui": "scripts/run-e2e.js ui",
     "test:e2e:dev": "scripts/run-e2e.js dev",
     "test:e2e:all": "scripts/run-e2e.js all"
-  },
-  "dependencies": {
-    "n8n": "workspace:*"
   },
   "devDependencies": {
     "@n8n_io/eslint-config": "workspace:*",
@@ -66,7 +63,7 @@
     "ts-jest": "^29.1.1",
     "tsc-alias": "^1.8.7",
     "tsc-watch": "^6.0.4",
-    "turbo": "1.10.12",
+    "turbo": "1.13.3",
     "typescript": "*",
     "vite": "^5.1.6",
     "vite-plugin-checker": "^0.6.4",
@@ -78,7 +75,6 @@
       "sqlite3"
     ],
     "overrides": {
-      "@langchain/core": "0.1.41",
       "@types/node": "^18.16.16",
       "axios": "1.6.7",
       "chokidar": "3.5.2",
@@ -96,7 +92,8 @@
       "pyodide@0.23.4": "patches/pyodide@0.23.4.patch",
       "@types/express-serve-static-core@4.17.43": "patches/@types__express-serve-static-core@4.17.43.patch",
       "@types/ws@8.5.4": "patches/@types__ws@8.5.4.patch",
-      "vite-plugin-checker@0.6.4": "patches/vite-plugin-checker@0.6.4.patch"
+      "vite-plugin-checker@0.6.4": "patches/vite-plugin-checker@0.6.4.patch",
+      "@types/uuencode@0.0.3": "patches/@types__uuencode@0.0.3.patch"
     }
   }
 }

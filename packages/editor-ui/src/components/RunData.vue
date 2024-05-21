@@ -63,7 +63,7 @@
 					v-show="!editMode.enabled"
 					:title="$locale.baseText('runData.editOutput')"
 					:circle="false"
-					:disabled="node.disabled"
+					:disabled="node?.disabled"
 					class="ml-2xs"
 					icon="pencil-alt"
 					type="tertiary"
@@ -151,6 +151,15 @@
 			/>
 		</div>
 		<slot name="before-data" />
+
+		<n8n-callout
+			v-for="hint in getNodeHints()"
+			:key="hint.message"
+			:class="$style.hintCallout"
+			:theme="hint.type || 'info'"
+		>
+			<n8n-text size="small" v-html="hint.message"></n8n-text>
+		</n8n-callout>
 
 		<div
 			v-if="maxOutputIndex > 0 && branches.length > 1"
@@ -242,7 +251,7 @@
 				<slot name="node-not-run"></slot>
 			</div>
 
-			<div v-else-if="paneType === 'input' && node.disabled" :class="$style.center">
+			<div v-else-if="paneType === 'input' && node?.disabled" :class="$style.center">
 				<n8n-text>
 					{{ $locale.baseText('ndv.input.disabled', { interpolate: { nodeName: node.name } }) }}
 					<n8n-link @click="enableNode">
@@ -259,14 +268,14 @@
 				<n8n-text v-if="isPaneTypeInput" :class="$style.center" size="large" tag="p" bold>
 					{{
 						$locale.baseText('nodeErrorView.inputPanel.previousNodeError.title', {
-							interpolate: { nodeName: node.name },
+							interpolate: { nodeName: node?.name ?? '' },
 						})
 					}}
 				</n8n-text>
 				<slot v-else-if="$slots['content']" name="content"></slot>
 				<NodeErrorView
-					v-else
-					:error="workflowRunData[node.name][runIndex].error"
+					v-else-if="hasRunError"
+					:error="workflowRunErrorAsNodeError"
 					:class="$style.dataDisplay"
 				/>
 			</div>
@@ -378,7 +387,7 @@
 				/>
 			</Suspense>
 
-			<Suspense v-else-if="hasNodeRun && displayMode === 'json'">
+			<Suspense v-else-if="hasNodeRun && displayMode === 'json' && node">
 				<RunDataJson
 					:pane-type="paneType"
 					:edit-mode="editMode"
@@ -394,7 +403,7 @@
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'html'">
-				<RunDataHtml :input-html="inputDataPage[0].json.html" />
+				<RunDataHtml :input-html="inputHtml" />
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && isSchemaView">
@@ -557,6 +566,8 @@ import type {
 	INodeTypeDescription,
 	IRunData,
 	IRunExecutionData,
+	NodeHint,
+	NodeError,
 } from 'n8n-workflow';
 import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 
@@ -585,7 +596,7 @@ import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
 import NodeErrorView from '@/components/Error/NodeErrorView.vue';
 import JsonEditor from '@/components/JsonEditor/JsonEditor.vue';
 
-import type { PinDataSource } from '@/composables/usePinnedData';
+import type { PinDataSource, UnpinDataSource } from '@/composables/usePinnedData';
 import { usePinnedData } from '@/composables/usePinnedData';
 import { dataPinningEventBus } from '@/event-bus';
 import { clearJsonKey, isEmpty } from '@/utils/typesUtils';
@@ -634,7 +645,7 @@ export default defineComponent({
 	props: {
 		node: {
 			type: Object as PropType<INodeUi>,
-			default: null,
+			required: true,
 		},
 		runIndex: {
 			type: Number,
@@ -673,6 +684,7 @@ export default defineComponent({
 		},
 		distanceFromActive: {
 			type: Number,
+			default: 0,
 		},
 		blockUI: {
 			type: Boolean,
@@ -706,7 +718,7 @@ export default defineComponent({
 	},
 	data() {
 		return {
-			connectionType: NodeConnectionType.Main,
+			connectionType: NodeConnectionType.Main as ConnectionTypes,
 			binaryDataPreviewActive: false,
 			dataSize: 0,
 			showData: false,
@@ -815,14 +827,32 @@ export default defineComponent({
 		isArtificialRecoveredEventItem(): boolean {
 			return !!this.rawInputData?.[0]?.json?.isArtificialRecoveredEventItem;
 		},
-		subworkflowExecutionError(): Error | null {
-			return this.workflowsStore.subWorkflowExecutionError;
+		subworkflowExecutionError(): NodeError {
+			return {
+				node: this.node,
+				messages: [this.workflowsStore.subWorkflowExecutionError?.message ?? ''],
+			} as NodeError;
 		},
 		hasSubworkflowExecutionError(): boolean {
-			return Boolean(this.subworkflowExecutionError);
+			return Boolean(this.workflowsStore.subWorkflowExecutionError);
+		},
+		workflowRunErrorAsNodeError(): NodeError {
+			return {
+				node: this.node,
+				messages: [this.workflowRunData?.[this.node?.name]?.[this.runIndex]?.error?.message ?? ''],
+			} as NodeError;
 		},
 		hasRunError(): boolean {
 			return Boolean(this.node && this.workflowRunData?.[this.node.name]?.[this.runIndex]?.error);
+		},
+		executionHints(): NodeHint[] {
+			if (this.hasNodeRun) {
+				const hints = this.node && this.workflowRunData?.[this.node.name]?.[this.runIndex]?.hints;
+
+				if (hints) return hints;
+			}
+
+			return [];
 		},
 		workflowExecution(): IExecutionResponse | null {
 			return this.workflowsStore.getWorkflowExecution;
@@ -919,6 +949,9 @@ export default defineComponent({
 			);
 			return binaryData.filter((data) => Boolean(data && Object.keys(data).length));
 		},
+		inputHtml(): string {
+			return String(this.inputData[0]?.json?.html ?? '');
+		},
 		currentOutputIndex(): number {
 			if (this.overrideOutputs?.length && !this.overrideOutputs.includes(this.outputIndex)) {
 				return this.overrideOutputs[0];
@@ -986,7 +1019,7 @@ export default defineComponent({
 			return this.hasNodeRun && !this.hasRunError;
 		},
 		showIoSearchNoMatchContent(): boolean {
-			return this.hasNodeRun && !this.inputData.length && this.search;
+			return this.hasNodeRun && !this.inputData.length && !!this.search;
 		},
 	},
 	watch: {
@@ -1083,6 +1116,46 @@ export default defineComponent({
 			}
 			return [];
 		},
+		shouldHintBeDisplayed(hint: NodeHint): boolean {
+			const { location, whenToDisplay } = hint;
+			if (location) {
+				if (location === 'ndv') {
+					return true;
+				}
+				if (location === 'inputPane' && this.paneType === 'input') {
+					return true;
+				}
+
+				if (location === 'outputPane' && this.paneType === 'output') {
+					return true;
+				}
+
+				return false;
+			}
+
+			if (whenToDisplay === 'afterExecution' && !this.hasNodeRun) {
+				return false;
+			}
+
+			if (whenToDisplay === 'beforeExecution' && this.hasNodeRun) {
+				return false;
+			}
+
+			return true;
+		},
+		getNodeHints(): NodeHint[] {
+			if (this.node && this.nodeType) {
+				const workflow = this.workflowsStore.getCurrentWorkflow();
+				const workflowNode = workflow.getNode(this.node.name);
+
+				if (workflowNode) {
+					const executionHints = this.executionHints;
+					const nodeHints = NodeHelpers.getNodeHints(workflow, workflowNode, this.nodeType);
+					return executionHints.concat(nodeHints).filter(this.shouldHintBeDisplayed);
+				}
+			}
+			return [];
+		},
 		onItemHover(itemIndex: number | null) {
 			if (itemIndex === null) {
 				this.$emit('itemHover', null);
@@ -1136,7 +1209,11 @@ export default defineComponent({
 				? clearJsonKey(this.pinnedData.data.value)
 				: executionDataToJson(this.rawInputData);
 
-			const data = inputData.length > 0 ? inputData : TEST_PIN_DATA;
+			const inputDataLength = Array.isArray(inputData)
+				? inputData.length
+				: Object.keys(inputData ?? {}).length;
+
+			const data = inputDataLength > 0 ? inputData : TEST_PIN_DATA;
 
 			this.ndvStore.setOutputPanelEditModeEnabled(true);
 			this.ndvStore.setOutputPanelEditModeValue(JSON.stringify(data, null, 2));
@@ -1185,14 +1262,14 @@ export default defineComponent({
 				type,
 			});
 		},
-		async onTogglePinData({ source }: { source: PinDataSource }) {
+		async onTogglePinData({ source }: { source: PinDataSource | UnpinDataSource }) {
 			if (!this.node) {
 				return;
 			}
 
 			if (source === 'pin-icon-click') {
 				const telemetryPayload = {
-					node_type: this.activeNode.type,
+					node_type: this.activeNode?.type,
 					push_ref: this.pushRef,
 					run_index: this.runIndex,
 					view: !this.hasNodeRun && !this.pinnedData.hasData.value ? 'none' : this.displayMode,
@@ -1241,7 +1318,7 @@ export default defineComponent({
 			this.$telemetry.track('User changed ndv branch', {
 				push_ref: this.pushRef,
 				branch_index: value,
-				node_type: this.activeNode.type,
+				node_type: this.activeNode?.type,
 				node_type_input_selection: this.nodeType ? this.nodeType.name : '',
 				pane: this.paneType,
 			});
@@ -1249,7 +1326,7 @@ export default defineComponent({
 		showTooMuchData() {
 			this.showData = true;
 			this.$telemetry.track('User clicked ndv button', {
-				node_type: this.activeNode.type,
+				node_type: this.activeNode?.type,
 				workflow_id: this.workflowsStore.workflowId,
 				push_ref: this.pushRef,
 				pane: this.paneType,
@@ -1265,7 +1342,7 @@ export default defineComponent({
 		unlinkRun() {
 			this.$emit('unlinkRun');
 		},
-		onCurrentPageChange(value) {
+		onCurrentPageChange(value: number) {
 			this.currentPage = value;
 			this.$telemetry.track('User changed ndv page', {
 				node_type: this.activeNode?.type,
@@ -1428,21 +1505,21 @@ export default defineComponent({
 			this.workflowsStore.setWorkflowExecutionData(null);
 			this.nodeHelpers.updateNodesExecutionIssues();
 		},
-		isViewable(index: number, key: string): boolean {
+		isViewable(index: number, key: string | number): boolean {
 			const { fileType } = this.binaryData[index][key];
 			return (
 				!!fileType && ['image', 'audio', 'video', 'text', 'json', 'pdf', 'html'].includes(fileType)
 			);
 		},
-		isDownloadable(index: number, key: string): boolean {
+		isDownloadable(index: number, key: string | number): boolean {
 			const { mimeType, fileName } = this.binaryData[index][key];
 			return !!(mimeType && fileName);
 		},
-		async downloadBinaryData(index: number, key: string) {
+		async downloadBinaryData(index: number, key: string | number) {
 			const { id, data, fileName, fileExtension, mimeType } = this.binaryData[index][key];
 
 			if (id) {
-				const url = this.workflowsStore.getBinaryUrl(id, 'download', fileName, mimeType);
+				const url = this.workflowsStore.getBinaryUrl(id, 'download', fileName ?? '', mimeType);
 				saveAs(url, [fileName, fileExtension].join('.'));
 				return;
 			} else {
@@ -1459,7 +1536,8 @@ export default defineComponent({
 
 			saveAs(blob, `${fileName}.json`);
 		},
-		displayBinaryData(index: number, key: string) {
+		displayBinaryData(index: number, key: string | number) {
+			const { data, mimeType } = this.binaryData[index][key];
 			this.binaryDataDisplayVisible = true;
 
 			this.binaryDataDisplayData = {
@@ -1468,6 +1546,8 @@ export default defineComponent({
 				outputIndex: this.currentOutputIndex,
 				index,
 				key,
+				data,
+				mimeType,
 			};
 		},
 		getOutputName(outputIndex: number) {
@@ -1787,6 +1867,12 @@ export default defineComponent({
 .uiBlocker {
 	border-top-left-radius: 0;
 	border-bottom-left-radius: 0;
+}
+
+.hintCallout {
+	margin-bottom: var(--spacing-xs);
+	margin-left: var(--spacing-s);
+	margin-right: var(--spacing-s);
 }
 </style>
 

@@ -1,9 +1,7 @@
 <script lang="ts" setup>
-import Feedback from '@/components/Feedback.vue';
 import { useI18n } from '@/composables/useI18n';
 import type { PropType } from 'vue';
-import { computed, ref } from 'vue';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { computed } from 'vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useToast } from '@/composables/useToast';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -19,9 +17,7 @@ import type {
 	NodeOperationError,
 } from 'n8n-workflow';
 import { sanitizeHtml } from '@/utils/htmlUtils';
-import { useAIStore } from '@/stores/ai.store';
 import { MAX_DISPLAY_DATA_SIZE } from '@/constants';
-import VueMarkdown from 'vue-markdown-render';
 import type { BaseTextKey } from '@/plugins/i18n';
 
 const props = defineProps({
@@ -34,26 +30,10 @@ const props = defineProps({
 const clipboard = useClipboard();
 const toast = useToast();
 const i18n = useI18n();
-const telemetry = useTelemetry();
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const rootStore = useRootStore();
-const aiStore = useAIStore();
-
-const isLoadingErrorDebugging = ref(false);
-const errorDebuggingMessage = ref('');
-const errorDebuggingFeedback = ref<'positive' | 'negative' | undefined>();
-
-const isErrorDebuggingEnabled = computed(() => {
-	return aiStore.isErrorDebuggingEnabled;
-});
-
-const showErrorDebuggingButton = computed(() => {
-	return (
-		isErrorDebuggingEnabled.value && !(isLoadingErrorDebugging.value || errorDebuggingMessage.value)
-	);
-});
 
 const displayCause = computed(() => {
 	return JSON.stringify(props.error.cause).length < MAX_DISPLAY_DATA_SIZE;
@@ -126,45 +106,6 @@ const prepareRawMessages = computed(() => {
 	return returnData;
 });
 
-async function onDebugError() {
-	try {
-		isLoadingErrorDebugging.value = true;
-		telemetry.track(
-			'User clicked AI error helper button',
-			{
-				node_type: props.error.node?.type,
-				error_title: props.error.message,
-			},
-			{ withPostHog: true },
-		);
-
-		const { message } = await aiStore.debugError({ error: props.error });
-		errorDebuggingMessage.value = message;
-	} catch (error) {
-		toast.showError(error, i18n.baseText('generic.error'));
-	} finally {
-		isLoadingErrorDebugging.value = false;
-	}
-}
-
-async function onDebugErrorRegenerate() {
-	errorDebuggingMessage.value = '';
-	errorDebuggingFeedback.value = undefined;
-	await onDebugError();
-	telemetry.track('User regenerated error debugging AI hint', {
-		node_type: props.error.node?.type,
-		error_title: props.error.message,
-	});
-}
-
-async function onErrorDebuggingFeedback(feedback: 'positive' | 'negative') {
-	telemetry.track('User responded error debugging AI hint', {
-		helpful: feedback === 'positive',
-		node_type: props.error.node?.type,
-		error_title: props.error.message,
-	});
-}
-
 function nodeVersionTag(nodeType: NodeError['node']): string {
 	if (!nodeType || ('hidden' in nodeType && nodeType.hidden)) {
 		return i18n.baseText('nodeSettings.deprecated');
@@ -181,12 +122,8 @@ function nodeVersionTag(nodeType: NodeError['node']): string {
 	});
 }
 
-function replacePlaceholders(parameter: string, message: string): string {
-	const parameterName = parameterDisplayName(parameter, false);
-	const parameterFullName = parameterDisplayName(parameter, true);
-	return message
-		.replace(/%%PARAMETER%%/g, parameterName)
-		.replace(/%%PARAMETER_FULL%%/g, parameterFullName);
+function prepareDescription(description: string): string {
+	return sanitizeHtml(description.replace(/`(.*?)`/g, '<code>$1</code>'));
 }
 
 function getErrorDescription(): string {
@@ -195,7 +132,7 @@ function getErrorDescription(): string {
 		(props.error as NodeOperationError).functionality === 'configuration-node';
 
 	if (isSubNodeError) {
-		return sanitizeHtml(
+		return prepareDescription(
 			props.error.description +
 				i18n.baseText('pushConnection.executionError.openNode', {
 					interpolate: { node: props.error.node.name },
@@ -209,7 +146,7 @@ function getErrorDescription(): string {
 			runIndex: (props.error.context.runIndex as string) ?? '0',
 			itemIndex: (props.error.context.itemIndex as string) ?? '0',
 		};
-		return sanitizeHtml(
+		return prepareDescription(
 			i18n.baseText(
 				`nodeErrorView.description.${props.error.context.descriptionKey as string}` as BaseTextKey,
 				{ interpolate },
@@ -218,11 +155,11 @@ function getErrorDescription(): string {
 	}
 
 	if (!props.error.context?.descriptionTemplate) {
-		return sanitizeHtml(props.error.description ?? '');
+		return prepareDescription(props.error.description ?? '');
 	}
 
 	const parameterName = parameterDisplayName(props.error.context.parameter as string);
-	return sanitizeHtml(
+	return prepareDescription(
 		(props.error.context.descriptionTemplate as string).replace(/%%PARAMETER%%/g, parameterName),
 	);
 }
@@ -273,7 +210,7 @@ function getErrorMessage(): string {
 
 function parameterDisplayName(path: string, fullPath = true) {
 	try {
-		const params = parameterName(parameters.value, path.split('.'));
+		const params = getParameterName(parameters.value, path.split('.'));
 		if (!params.length) {
 			throw new Error();
 		}
@@ -287,7 +224,7 @@ function parameterDisplayName(path: string, fullPath = true) {
 	}
 }
 
-function parameterName(
+function getParameterName(
 	params: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>,
 	pathParts: string[],
 ): Array<INodeProperties | INodePropertyCollection> {
@@ -316,14 +253,14 @@ function parameterName(
 	if (currentParameter.hasOwnProperty('options')) {
 		return [
 			currentParameter,
-			...parameterName((currentParameter as INodeProperties).options!, pathParts),
+			...getParameterName((currentParameter as INodeProperties).options!, pathParts),
 		];
 	}
 
 	if (currentParameter.hasOwnProperty('values')) {
 		return [
 			currentParameter,
-			...parameterName((currentParameter as INodePropertyCollection).values, pathParts),
+			...getParameterName((currentParameter as INodePropertyCollection).values, pathParts),
 		];
 	}
 
@@ -428,17 +365,9 @@ function copySuccess() {
 	<div class="node-error-view">
 		<div class="node-error-view__header">
 			<div class="node-error-view__header-message">
-				<div :class="showErrorDebuggingButton ? 'mt-4xs' : ''">
+				<div>
 					{{ getErrorMessage() }}
 				</div>
-				<N8nButton
-					v-if="showErrorDebuggingButton"
-					type="tertiary"
-					size="small"
-					@click="onDebugError"
-				>
-					{{ i18n.baseText('nodeErrorView.debugError.button') }}
-				</N8nButton>
 			</div>
 			<div
 				v-if="error.description || error.context?.descriptionKey"
@@ -446,26 +375,6 @@ function copySuccess() {
 				v-html="getErrorDescription()"
 			></div>
 		</div>
-
-		<N8nCard
-			v-if="isLoadingErrorDebugging || errorDebuggingMessage"
-			class="node-error-view__debugging mb-s"
-		>
-			<span v-if="isLoadingErrorDebugging">
-				<N8nSpinner class="mr-3xs" />
-				{{ i18n.baseText('nodeErrorView.debugError.loading') }}
-			</span>
-			<VueMarkdown v-else :source="errorDebuggingMessage" />
-
-			<div v-if="errorDebuggingMessage" class="node-error-view__feedback-toolbar">
-				<Feedback v-model="errorDebuggingFeedback" @update:model-value="onErrorDebuggingFeedback" />
-				<N8nTooltip :content="i18n.baseText('nodeErrorView.debugError.feedback.reload')">
-					<span class="node-error-view__feedback-button" @click="onDebugErrorRegenerate">
-						<FontAwesomeIcon icon="sync-alt" />
-					</span>
-				</N8nTooltip>
-			</div>
-		</N8nCard>
 
 		<div class="node-error-view__info">
 			<div class="node-error-view__info-header">

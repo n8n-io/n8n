@@ -21,7 +21,6 @@ import {
 import { PERSONALIZATION_MODAL_KEY, STORES, ROLE } from '@/constants';
 import type {
 	Cloud,
-	ICredentialsResponse,
 	IInviteResponse,
 	IPersonalizationLatestVersion,
 	IRole,
@@ -31,7 +30,6 @@ import type {
 	CurrentUserResponse,
 	InvitableRoleName,
 } from '@/Interface';
-import { getCredentialPermissions } from '@/permissions';
 import { getPersonalizedNodeTypes } from '@/utils/userUtils';
 import { defineStore } from 'pinia';
 import { useRootStore } from './n8nRoot.store';
@@ -92,13 +90,6 @@ export const useUsersStore = defineStore(STORES.USERS, {
 				return [];
 			}
 			return getPersonalizedNodeTypes(answers);
-		},
-		isResourceAccessible() {
-			return (resource: ICredentialsResponse): boolean => {
-				const permissions = getCredentialPermissions(this.currentUser, resource);
-
-				return permissions.use;
-			};
 		},
 	},
 	actions: {

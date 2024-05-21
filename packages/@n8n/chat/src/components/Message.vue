@@ -6,7 +6,8 @@ import VueMarkdown from 'vue-markdown-render';
 import hljs from 'highlight.js/lib/core';
 import markdownLink from 'markdown-it-link-attributes';
 import type MarkdownIt from 'markdown-it';
-import type { ChatMessage } from '@n8n/chat/types';
+import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
+import { useOptions } from '@n8n/chat/composables';
 
 const props = defineProps({
 	message: {
@@ -16,15 +17,17 @@ const props = defineProps({
 });
 
 const { message } = toRefs(props);
+const { options } = useOptions();
 
 const messageText = computed(() => {
-	return message.value.text || '&lt;Empty response&gt;';
+	return (message.value as ChatMessageText).text || '&lt;Empty response&gt;';
 });
 
 const classes = computed(() => {
 	return {
 		'chat-message-from-user': message.value.sender === 'user',
 		'chat-message-from-bot': message.value.sender === 'bot',
+		'chat-message-transparent': message.value.transparent === true,
 	};
 });
 
@@ -48,11 +51,17 @@ const markdownOptions = {
 		return ''; // use external default escaping
 	},
 };
+
+const messageComponents = options.messageComponents ?? {};
 </script>
 <template>
 	<div class="chat-message" :class="classes">
 		<slot>
+			<template v-if="message.type === 'component' && messageComponents[message.key]">
+				<component :is="messageComponents[message.key]" v-bind="message.arguments" />
+			</template>
 			<VueMarkdown
+				v-else
 				class="chat-message-markdown"
 				:source="messageText"
 				:options="markdownOptions"
@@ -66,21 +75,40 @@ const markdownOptions = {
 .chat-message {
 	display: block;
 	max-width: 80%;
+	font-size: var(--chat--message--font-size, 1rem);
 	padding: var(--chat--message--padding, var(--chat--spacing));
 	border-radius: var(--chat--message--border-radius, var(--chat--border-radius));
 
+	p {
+		line-height: var(--chat--message-line-height, 1.8);
+		word-wrap: break-word;
+	}
+
+	// Default message gap is half of the spacing
 	+ .chat-message {
 		margin-top: var(--chat--message--margin-bottom, calc(var(--chat--spacing) * 0.5));
 	}
 
+	// Spacing between messages from different senders is double the individual message gap
+	&.chat-message-from-user + &.chat-message-from-bot,
+	&.chat-message-from-bot + &.chat-message-from-user {
+		margin-top: var(--chat--spacing);
+	}
+
 	&.chat-message-from-bot {
-		background-color: var(--chat--message--bot--background);
+		&:not(.chat-message-transparent) {
+			background-color: var(--chat--message--bot--background);
+			border: var(--chat--message--bot--border, none);
+		}
 		color: var(--chat--message--bot--color);
 		border-bottom-left-radius: 0;
 	}
 
 	&.chat-message-from-user {
-		background-color: var(--chat--message--user--background);
+		&:not(.chat-message-transparent) {
+			background-color: var(--chat--message--user--background);
+			border: var(--chat--message--user--border, none);
+		}
 		color: var(--chat--message--user--color);
 		margin-left: auto;
 		border-bottom-right-radius: 0;

@@ -42,6 +42,7 @@ import type {
 	INodeInputConfiguration,
 	GenericValue,
 	DisplayCondition,
+	NodeHint,
 } from './Interfaces';
 import {
 	isFilterValue,
@@ -996,7 +997,7 @@ export function getNodeWebhooks(
 		) as boolean;
 		const path = getNodeWebhookPath(workflowId, node, nodeWebhookPath, isFullPath, restartWebhook);
 
-		const httpMethod = workflow.expression.getSimpleParameterValue(
+		const webhookMethods = workflow.expression.getSimpleParameterValue(
 			node,
 			webhookDescription.httpMethod,
 			mode,
@@ -1005,7 +1006,7 @@ export function getNodeWebhooks(
 			'GET',
 		);
 
-		if (httpMethod === undefined) {
+		if (webhookMethods === undefined) {
 			// TODO: Use a proper logger
 			console.error(
 				`The webhook "${path}" for node "${node.name}" in workflow "${workflowId}" could not be added because the httpMethod is not defined.`,
@@ -1018,15 +1019,20 @@ export function getNodeWebhooks(
 			webhookId = node.webhookId;
 		}
 
-		returnData.push({
-			httpMethod: httpMethod.toString() as IHttpRequestMethods,
-			node: node.name,
-			path,
-			webhookDescription,
-			workflowId,
-			workflowExecuteAdditionalData: additionalData,
-			webhookId,
-		});
+		String(webhookMethods)
+			.split(',')
+			.forEach((httpMethod) => {
+				if (!httpMethod) return;
+				returnData.push({
+					httpMethod: httpMethod.trim() as IHttpRequestMethods,
+					node: node.name,
+					path,
+					webhookDescription,
+					workflowId,
+					workflowExecuteAdditionalData: additionalData,
+					webhookId,
+				});
+			});
 	}
 
 	return returnData;
@@ -1113,6 +1119,50 @@ export function getNodeInputs(
 		console.warn('Could not calculate inputs dynamically for node: ', node.name);
 		return [];
 	}
+}
+
+export function getNodeHints(
+	workflow: Workflow,
+	node: INode,
+	nodeTypeData: INodeTypeDescription,
+): NodeHint[] {
+	const hints: NodeHint[] = [];
+
+	if (nodeTypeData?.hints?.length) {
+		for (const hint of nodeTypeData.hints) {
+			if (hint.displayCondition) {
+				try {
+					const display = (workflow.expression.getSimpleParameterValue(
+						node,
+						hint.displayCondition,
+						'internal',
+						{},
+					) || false) as boolean;
+
+					if (typeof display !== 'boolean') {
+						console.warn(
+							`Condition was not resolved as boolean in '${node.name}' node for hint: `,
+							hint.message,
+						);
+						continue;
+					}
+
+					if (display) {
+						hints.push(hint);
+					}
+				} catch (e) {
+					console.warn(
+						`Could not calculate display condition in '${node.name}' node for hint: `,
+						hint.message,
+					);
+				}
+			} else {
+				hints.push(hint);
+			}
+		}
+	}
+
+	return hints;
 }
 
 export function getNodeOutputs(

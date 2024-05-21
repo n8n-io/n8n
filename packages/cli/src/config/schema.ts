@@ -82,7 +82,7 @@ export const schema = {
 			user: {
 				doc: 'PostgresDB User',
 				format: String,
-				default: 'root',
+				default: 'postgres',
 				env: 'DB_POSTGRESDB_USER',
 			},
 			schema: {
@@ -816,6 +816,12 @@ export const schema = {
 					default: true,
 					env: 'N8N_SMTP_SSL',
 				},
+				startTLS: {
+					doc: 'Whether or not to use STARTTLS for SMTP when SSL is disabled',
+					format: Boolean,
+					default: true,
+					env: 'N8N_SMTP_STARTTLS',
+				},
 				auth: {
 					user: {
 						doc: 'SMTP login username',
@@ -1356,11 +1362,27 @@ export const schema = {
 			default: 'openai',
 			env: 'N8N_AI_PROVIDER',
 		},
-		openAIApiKey: {
-			doc: 'Enable AI features using OpenAI API key',
-			format: String,
-			default: '',
-			env: 'N8N_AI_OPENAI_API_KEY',
+		openAI: {
+			apiKey: {
+				doc: 'Enable AI features using OpenAI API key',
+				format: String,
+				default: '',
+				env: 'N8N_AI_OPENAI_API_KEY',
+			},
+			model: {
+				doc: 'OpenAI model to use',
+				format: String,
+				default: 'gpt-4-turbo',
+				env: 'N8N_AI_OPENAI_MODEL',
+			},
+		},
+		pinecone: {
+			apiKey: {
+				doc: 'Enable AI features using Pinecone API key',
+				format: String,
+				default: '',
+				env: 'N8N_AI_PINECONE_API_KEY',
+			},
 		},
 	},
 

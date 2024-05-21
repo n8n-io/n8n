@@ -35,4 +35,20 @@ module.exports = {
 		'@typescript-eslint/no-unsafe-enum-comparison': 'warn',
 		'@typescript-eslint/no-unsafe-declaration-merging': 'warn',
 	},
+
+	overrides: [
+		{
+			files: ['./src/decorators/**/*.ts'],
+			rules: {
+				'@typescript-eslint/ban-types': [
+					'warn',
+					{
+						types: {
+							Function: false,
+						},
+					},
+				],
+			},
+		},
+	],
 };

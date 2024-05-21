@@ -63,8 +63,16 @@ describe('POST /credentials', () => {
 		expect(credential.data).not.toBe(payload.data);
 
 		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
-			relations: ['user', 'credentials'],
-			where: { credentialsId: credential.id, userId: owner.id },
+			relations: { credentials: true },
+			where: {
+				credentialsId: credential.id,
+				project: {
+					type: 'personal',
+					projectRelations: {
+						userId: owner.id,
+					},
+				},
+			},
 		});
 
 		expect(sharedCredential.role).toEqual('credential:owner');
@@ -203,7 +211,7 @@ describe('DELETE /credentials/:id', () => {
 
 		const response = await authMemberAgent.delete(`/credentials/${savedCredential.id}`);
 
-		expect(response.statusCode).toBe(404);
+		expect(response.statusCode).toBe(403);
 
 		const shellCredential = await Container.get(CredentialsRepository).findOneBy({
 			id: savedCredential.id,
