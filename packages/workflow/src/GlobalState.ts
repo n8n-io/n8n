@@ -4,7 +4,7 @@ export interface GlobalState {
 	defaultTimezone: string;
 }
 
-let globalState: GlobalState = { defaultTimezone: 'America/New_York' };
+let globalState: GlobalState = { defaultTimezone: 'Europe/Berlin' };
 
 export function setGlobalState(state: GlobalState) {
 	globalState = state;
