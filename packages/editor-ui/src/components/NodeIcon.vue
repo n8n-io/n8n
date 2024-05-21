@@ -33,7 +33,12 @@ export default defineComponent({
 	props: {
 		nodeType: {
 			type: Object as PropType<
-				INodeTypeDescription | IVersionNode | SimplifiedNodeType | ActionTypeDescription | null
+				| INodeTypeDescription
+				| IVersionNode
+				| SimplifiedNodeType
+				| ActionTypeDescription
+				| null
+				| undefined
 			>,
 			required: true,
 		},
