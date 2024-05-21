@@ -36,6 +36,7 @@ vi.mock('vue-router', () => {
 		useRouter: () => ({
 			push,
 		}),
+		useRoute: () => ({}),
 		RouterLink: vi.fn(),
 	};
 });

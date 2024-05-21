@@ -30,7 +30,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	do {
 		const response = await apiRequest.call(this, 'GET', '/assistants', {
 			headers: {
-				'OpenAI-Beta': 'assistants=v1',
+				'OpenAI-Beta': 'assistants=v2',
 			},
 			qs: {
 				limit: 100,

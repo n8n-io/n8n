@@ -3,7 +3,7 @@ import { Container } from 'typedi';
 import { replaceCircularReferences } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/ActiveExecutions';
-import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
+import { validCursor } from '../../shared/middlewares/global.middleware';
 import type { ExecutionRequest } from '../../../types';
 import { getSharedWorkflowIds } from '../workflows/workflows.service';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
@@ -12,9 +12,8 @@ import { ExecutionRepository } from '@db/repositories/execution.repository';
 
 export = {
 	deleteExecution: [
-		authorize(['global:owner', 'global:admin', 'global:member']),
 		async (req: ExecutionRequest.Delete, res: express.Response): Promise<express.Response> => {
-			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user);
+			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:delete']);
 
 			// user does not have workflows hence no executions
 			// or the execution they are trying to access belongs to a workflow they do not own
@@ -44,9 +43,8 @@ export = {
 		},
 	],
 	getExecution: [
-		authorize(['global:owner', 'global:admin', 'global:member']),
 		async (req: ExecutionRequest.Get, res: express.Response): Promise<express.Response> => {
-			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user);
+			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
 			// user does not have workflows hence no executions
 			// or the execution they are trying to access belongs to a workflow they do not own
@@ -75,7 +73,6 @@ export = {
 		},
 	],
 	getExecutions: [
-		authorize(['global:owner', 'global:admin', 'global:member']),
 		validCursor,
 		async (req: ExecutionRequest.GetAll, res: express.Response): Promise<express.Response> => {
 			const {
@@ -86,7 +83,7 @@ export = {
 				workflowId = undefined,
 			} = req.query;
 
-			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user);
+			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
 			// user does not have workflows hence no executions
 			// or the execution they are trying to access belongs to a workflow they do not own

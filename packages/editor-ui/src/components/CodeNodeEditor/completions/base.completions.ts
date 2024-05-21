@@ -1,11 +1,10 @@
-import { defineComponent } from 'vue';
 import { NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION } from '../constants';
 import { addVarType } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { INodeUi } from '@/Interface';
-import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { escapeMappingString } from '@/utils/mappingUtils';
+import { useI18n } from '@/composables/useI18n';
 
 function getAutoCompletableNodeNames(nodes: INodeUi[]) {
 	return nodes
@@ -13,149 +12,156 @@ function getAutoCompletableNodeNames(nodes: INodeUi[]) {
 		.map((node: INodeUi) => node.name);
 }
 
-export const baseCompletions = defineComponent({
-	computed: {
-		...mapStores(useWorkflowsStore),
-	},
-	methods: {
-		itemCompletions(context: CompletionContext): CompletionResult | null {
-			const preCursor = context.matchBefore(/i\w*/);
+export function useBaseCompletions(
+	mode: 'runOnceForEachItem' | 'runOnceForAllItems',
+	language: string,
+) {
+	const i18n = useI18n();
+	const workflowsStore = useWorkflowsStore();
 
-			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
+	const itemCompletions = (context: CompletionContext): CompletionResult | null => {
+		const preCursor = context.matchBefore(/i\w*/);
 
-			const options: Completion[] = [];
+		if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
 
-			if (this.mode === 'runOnceForEachItem') {
-				options.push({
-					label: 'item',
-					info: this.$locale.baseText('codeNodeEditor.completer.$input.item'),
-				});
-			} else if (this.mode === 'runOnceForAllItems') {
-				options.push({
-					label: 'items',
-					info: this.$locale.baseText('codeNodeEditor.completer.$input.all'),
-				});
-			}
+		const options: Completion[] = [];
 
-			return {
-				from: preCursor.from,
-				options,
-			};
-		},
+		if (mode === 'runOnceForEachItem') {
+			options.push({
+				label: 'item',
+				info: i18n.baseText('codeNodeEditor.completer.$input.item'),
+			});
+		} else if (mode === 'runOnceForAllItems') {
+			options.push({
+				label: 'items',
+				info: i18n.baseText('codeNodeEditor.completer.$input.all'),
+			});
+		}
 
-		/**
-		 * - Complete `$` to `$execution $input $prevNode $runIndex $workflow $now $today
-		 * $jmespath $ifEmpt $('nodeName')` in both modes.
-		 * - Complete `$` to `$json $binary $itemIndex` in single-item mode.
-		 */
-		baseCompletions(context: CompletionContext): CompletionResult | null {
-			const prefix = this.language === 'python' ? '_' : '$';
-			const preCursor = context.matchBefore(new RegExp(`\\${prefix}\\w*`));
+		return {
+			from: preCursor.from,
+			options,
+		};
+	};
 
-			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
+	/**
+	 * - Complete `$` to `$execution $input $prevNode $runIndex $workflow $now $today
+	 * $jmespath $ifEmpt $('nodeName')` in both modes.
+	 * - Complete `$` to `$json $binary $itemIndex` in single-item mode.
+	 */
+	const baseCompletions = (context: CompletionContext): CompletionResult | null => {
+		const prefix = language === 'python' ? '_' : '$';
+		const preCursor = context.matchBefore(new RegExp(`\\${prefix}\\w*`));
 
-			const TOP_LEVEL_COMPLETIONS_IN_BOTH_MODES: Completion[] = [
+		if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
+
+		const TOP_LEVEL_COMPLETIONS_IN_BOTH_MODES: Completion[] = [
+			{
+				label: `${prefix}execution`,
+				info: i18n.baseText('codeNodeEditor.completer.$execution'),
+			},
+			{
+				label: `${prefix}ifEmpty()`,
+				info: i18n.baseText('codeNodeEditor.completer.$ifEmpty'),
+			},
+			{ label: `${prefix}input`, info: i18n.baseText('codeNodeEditor.completer.$input') },
+			{
+				label: `${prefix}prevNode`,
+				info: i18n.baseText('codeNodeEditor.completer.$prevNode'),
+			},
+			{
+				label: `${prefix}workflow`,
+				info: i18n.baseText('codeNodeEditor.completer.$workflow'),
+			},
+			{
+				label: `${prefix}vars`,
+				info: i18n.baseText('codeNodeEditor.completer.$vars'),
+			},
+			{
+				label: `${prefix}now`,
+				info: i18n.baseText('codeNodeEditor.completer.$now'),
+			},
+			{
+				label: `${prefix}today`,
+				info: i18n.baseText('codeNodeEditor.completer.$today'),
+			},
+			{
+				label: `${prefix}jmespath()`,
+				info: i18n.baseText('codeNodeEditor.completer.$jmespath'),
+			},
+			{
+				label: `${prefix}runIndex`,
+				info: i18n.baseText('codeNodeEditor.completer.$runIndex'),
+			},
+			{
+				label: `${prefix}nodeVersion`,
+				info: i18n.baseText('codeNodeEditor.completer.$nodeVersion'),
+			},
+		];
+
+		const options: Completion[] = TOP_LEVEL_COMPLETIONS_IN_BOTH_MODES.map(addVarType);
+
+		options.push(
+			...getAutoCompletableNodeNames(workflowsStore.allNodes).map((nodeName) => {
+				return {
+					label: `${prefix}('${escapeMappingString(nodeName)}')`,
+					type: 'variable',
+					info: i18n.baseText('codeNodeEditor.completer.$()', {
+						interpolate: { nodeName },
+					}),
+				};
+			}),
+		);
+
+		if (mode === 'runOnceForEachItem') {
+			const TOP_LEVEL_COMPLETIONS_IN_SINGLE_ITEM_MODE = [
+				{ label: `${prefix}json` },
+				{ label: `${prefix}binary` },
 				{
-					label: `${prefix}execution`,
-					info: this.$locale.baseText('codeNodeEditor.completer.$execution'),
-				},
-				{
-					label: `${prefix}ifEmpty()`,
-					info: this.$locale.baseText('codeNodeEditor.completer.$ifEmpty'),
-				},
-				{ label: `${prefix}input`, info: this.$locale.baseText('codeNodeEditor.completer.$input') },
-				{
-					label: `${prefix}prevNode`,
-					info: this.$locale.baseText('codeNodeEditor.completer.$prevNode'),
-				},
-				{
-					label: `${prefix}workflow`,
-					info: this.$locale.baseText('codeNodeEditor.completer.$workflow'),
-				},
-				{
-					label: `${prefix}vars`,
-					info: this.$locale.baseText('codeNodeEditor.completer.$vars'),
-				},
-				{
-					label: `${prefix}now`,
-					info: this.$locale.baseText('codeNodeEditor.completer.$now'),
-				},
-				{
-					label: `${prefix}today`,
-					info: this.$locale.baseText('codeNodeEditor.completer.$today'),
-				},
-				{
-					label: `${prefix}jmespath()`,
-					info: this.$locale.baseText('codeNodeEditor.completer.$jmespath'),
-				},
-				{
-					label: `${prefix}runIndex`,
-					info: this.$locale.baseText('codeNodeEditor.completer.$runIndex'),
-				},
-				{
-					label: `${prefix}nodeVersion`,
-					info: this.$locale.baseText('codeNodeEditor.completer.$nodeVersion'),
+					label: `${prefix}itemIndex`,
+					info: i18n.baseText('codeNodeEditor.completer.$itemIndex'),
 				},
 			];
 
-			const options: Completion[] = TOP_LEVEL_COMPLETIONS_IN_BOTH_MODES.map(addVarType);
+			options.push(...TOP_LEVEL_COMPLETIONS_IN_SINGLE_ITEM_MODE.map(addVarType));
+		}
 
-			options.push(
-				...getAutoCompletableNodeNames(this.workflowsStore.allNodes).map((nodeName) => {
-					return {
-						label: `${prefix}('${escapeMappingString(nodeName)}')`,
-						type: 'variable',
-						info: this.$locale.baseText('codeNodeEditor.completer.$()', {
-							interpolate: { nodeName },
-						}),
-					};
-				}),
-			);
+		return {
+			from: preCursor.from,
+			options,
+		};
+	};
 
-			if (this.mode === 'runOnceForEachItem') {
-				const TOP_LEVEL_COMPLETIONS_IN_SINGLE_ITEM_MODE = [
-					{ label: `${prefix}json` },
-					{ label: `${prefix}binary` },
-					{
-						label: `${prefix}itemIndex`,
-						info: this.$locale.baseText('codeNodeEditor.completer.$itemIndex'),
-					},
-				];
+	/**
+	 * Complete `$(` to `$('nodeName')`.
+	 */
+	const nodeSelectorCompletions = (context: CompletionContext): CompletionResult | null => {
+		const prefix = language === 'python' ? '_' : '$';
+		const preCursor = context.matchBefore(new RegExp(`\\${prefix}\\(.*`));
 
-				options.push(...TOP_LEVEL_COMPLETIONS_IN_SINGLE_ITEM_MODE.map(addVarType));
-			}
+		if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
 
-			return {
-				from: preCursor.from,
-				options,
-			};
-		},
+		const options: Completion[] = getAutoCompletableNodeNames(workflowsStore.allNodes).map(
+			(nodeName) => {
+				return {
+					label: `${prefix}('${escapeMappingString(nodeName)}')`,
+					type: 'variable',
+					info: i18n.baseText('codeNodeEditor.completer.$()', {
+						interpolate: { nodeName },
+					}),
+				};
+			},
+		);
 
-		/**
-		 * Complete `$(` to `$('nodeName')`.
-		 */
-		nodeSelectorCompletions(context: CompletionContext): CompletionResult | null {
-			const prefix = this.language === 'python' ? '_' : '$';
-			const preCursor = context.matchBefore(new RegExp(`\\${prefix}\\(.*`));
+		return {
+			from: preCursor.from,
+			options,
+		};
+	};
 
-			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
-
-			const options: Completion[] = getAutoCompletableNodeNames(this.workflowsStore.allNodes).map(
-				(nodeName) => {
-					return {
-						label: `${prefix}('${escapeMappingString(nodeName)}')`,
-						type: 'variable',
-						info: this.$locale.baseText('codeNodeEditor.completer.$()', {
-							interpolate: { nodeName },
-						}),
-					};
-				},
-			);
-
-			return {
-				from: preCursor.from,
-				options,
-			};
-		},
-	},
-});
+	return {
+		itemCompletions,
+		baseCompletions,
+		nodeSelectorCompletions,
+	};
+}

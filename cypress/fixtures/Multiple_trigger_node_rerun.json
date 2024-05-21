@@ -14,7 +14,7 @@
     },
     {
       "parameters": {
-        "url": "https://random-data-api.com/api/v2/users?size=5",
+        "url": "https://internal.users.n8n.cloud/webhook/random-data-api",
         "options": {}
       },
       "id": "22511d75-ab54-49e1-b8af-08b8b3372373",
@@ -28,7 +28,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.first_name_reversed = item.json = {\n    firstName: item.json.first_name,\n    firstnNameReversed: item.json.first_name_BUG.split(\"\").reverse().join(\"\")\n  };\n}\n\nreturn $input.all();"
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.first_name_reversed = item.json = {\n    firstName: item.json.firstname,\n    firstnNameReversed: item.json.firstname.split(\"\").reverse().join(\"\")\n  };\n}\n\nreturn $input.all();"
       },
       "id": "4b66b15a-1685-46c1-a5e3-ebf8cdb11d21",
       "name": "do something with them",

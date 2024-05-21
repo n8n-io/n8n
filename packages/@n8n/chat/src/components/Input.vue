@@ -1,5 +1,4 @@
 <script setup lang="ts">
-// eslint-disable-next-line import/no-unresolved
 import IconSend from 'virtual:icons/mdi/send';
 import { computed, onMounted, ref } from 'vue';
 import { useI18n, useChat, useOptions } from '@n8n/chat/composables';

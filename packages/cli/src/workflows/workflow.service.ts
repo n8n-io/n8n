@@ -8,8 +8,6 @@ import { BinaryDataService } from 'n8n-core';
 import config from '@/config';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import type { WorkflowSharingRole } from '@db/entities/SharedWorkflow';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMapping.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
@@ -26,12 +24,19 @@ import { Logger } from '@/Logger';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { RoleService } from '@/services/role.service';
+import { WorkflowSharingService } from './workflowSharing.service';
+import { ProjectService } from '@/services/project.service';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import type { Scope } from '@n8n/permissions';
+import type { EntityManager } from '@n8n/typeorm';
+import { In } from '@n8n/typeorm';
+import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
 
 @Service()
 export class WorkflowService {
 	constructor(
 		private readonly logger: Logger,
-		private readonly executionRepository: ExecutionRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowTagMappingRepository: WorkflowTagMappingRepository,
@@ -42,36 +47,52 @@ export class WorkflowService {
 		private readonly orchestrationService: OrchestrationService,
 		private readonly externalHooks: ExternalHooks,
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
+		private readonly roleService: RoleService,
+		private readonly workflowSharingService: WorkflowSharingService,
+		private readonly projectService: ProjectService,
+		private readonly executionRepository: ExecutionRepository,
 	) {}
 
-	async getMany(sharedWorkflowIds: string[], options?: ListQuery.Options) {
-		const { workflows, count } = await this.workflowRepository.getMany(sharedWorkflowIds, options);
+	async getMany(user: User, options?: ListQuery.Options, includeScopes?: boolean) {
+		const sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(user, {
+			scopes: ['workflow:read'],
+		});
 
-		return hasSharing(workflows)
-			? {
-					workflows: workflows.map((w) => this.ownershipService.addOwnedByAndSharedWith(w)),
-					count,
-				}
-			: { workflows, count };
+		// eslint-disable-next-line prefer-const
+		let { workflows, count } = await this.workflowRepository.getMany(sharedWorkflowIds, options);
+
+		if (hasSharing(workflows)) {
+			workflows = workflows.map((w) => this.ownershipService.addOwnedByAndSharedWith(w));
+		}
+
+		if (includeScopes) {
+			const projectRelations = await this.projectService.getProjectRelationsForUser(user);
+			workflows = workflows.map((w) => this.roleService.addScopes(w, user, projectRelations));
+		}
+
+		workflows.forEach((w) => {
+			// @ts-expect-error: This is to emulate the old behaviour of removing the shared
+			// field as part of `addOwnedByAndSharedWith`. We need this field in `addScopes`
+			// though. So to avoid leaking the information we just delete it.
+			delete w.shared;
+		});
+
+		return { workflows, count };
 	}
 
 	// eslint-disable-next-line complexity
 	async update(
 		user: User,
-		workflow: WorkflowEntity,
+		workflowUpdateData: WorkflowEntity,
 		workflowId: string,
 		tagIds?: string[],
 		forceSave?: boolean,
-		roles?: WorkflowSharingRole[],
 	): Promise<WorkflowEntity> {
-		const shared = await this.sharedWorkflowRepository.findSharing(
-			workflowId,
-			user,
+		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, user, [
 			'workflow:update',
-			{ roles },
-		);
+		]);
 
-		if (!shared) {
+		if (!workflow) {
 			this.logger.verbose('User attempted to update a workflow without permissions', {
 				workflowId,
 				userId: user.id,
@@ -83,8 +104,8 @@ export class WorkflowService {
 
 		if (
 			!forceSave &&
-			workflow.versionId !== '' &&
-			workflow.versionId !== shared.workflow.versionId
+			workflowUpdateData.versionId !== '' &&
+			workflowUpdateData.versionId !== workflow.versionId
 		) {
 			throw new BadRequestError(
 				'Your most recent changes may be lost, because someone else just updated this workflow. Open this workflow in a new tab to see those new updates.',
@@ -92,25 +113,25 @@ export class WorkflowService {
 			);
 		}
 
-		if (Object.keys(omit(workflow, ['id', 'versionId', 'active'])).length > 0) {
+		if (Object.keys(omit(workflowUpdateData, ['id', 'versionId', 'active'])).length > 0) {
 			// Update the workflow's version when changing properties such as
 			// `name`, `pinData`, `nodes`, `connections`, `settings` or `tags`
-			workflow.versionId = uuid();
+			workflowUpdateData.versionId = uuid();
 			this.logger.verbose(
 				`Updating versionId for workflow ${workflowId} for user ${user.id} after saving`,
 				{
-					previousVersionId: shared.workflow.versionId,
-					newVersionId: workflow.versionId,
+					previousVersionId: workflow.versionId,
+					newVersionId: workflowUpdateData.versionId,
 				},
 			);
 		}
 
 		// check credentials for old format
-		await WorkflowHelpers.replaceInvalidCredentials(workflow);
+		await WorkflowHelpers.replaceInvalidCredentials(workflowUpdateData);
 
-		WorkflowHelpers.addNodeIds(workflow);
+		WorkflowHelpers.addNodeIds(workflowUpdateData);
 
-		await this.externalHooks.run('workflow.update', [workflow]);
+		await this.externalHooks.run('workflow.update', [workflowUpdateData]);
 
 		/**
 		 * If the workflow being updated is stored as `active`, remove it from
@@ -119,11 +140,11 @@ export class WorkflowService {
 		 * If a trigger or poller in the workflow was updated, the new value
 		 * will take effect only on removing and re-adding.
 		 */
-		if (shared.workflow.active) {
+		if (workflow.active) {
 			await this.activeWorkflowManager.remove(workflowId);
 		}
 
-		const workflowSettings = workflow.settings ?? {};
+		const workflowSettings = workflowUpdateData.settings ?? {};
 
 		const keysAllowingDefault = [
 			'timezone',
@@ -144,14 +165,14 @@ export class WorkflowService {
 			delete workflowSettings.executionTimeout;
 		}
 
-		if (workflow.name) {
-			workflow.updatedAt = new Date(); // required due to atomic update
-			await validateEntity(workflow);
+		if (workflowUpdateData.name) {
+			workflowUpdateData.updatedAt = new Date(); // required due to atomic update
+			await validateEntity(workflowUpdateData);
 		}
 
 		await this.workflowRepository.update(
 			workflowId,
-			pick(workflow, [
+			pick(workflowUpdateData, [
 				'name',
 				'active',
 				'nodes',
@@ -168,8 +189,8 @@ export class WorkflowService {
 			await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds);
 		}
 
-		if (workflow.versionId !== shared.workflow.versionId) {
-			await this.workflowHistoryService.saveVersion(user, workflow, workflowId);
+		if (workflowUpdateData.versionId !== workflow.versionId) {
+			await this.workflowHistoryService.saveVersion(user, workflowUpdateData, workflowId);
 		}
 
 		const relations = config.getEnv('workflowTagsDisabled') ? [] : ['tags'];
@@ -200,16 +221,13 @@ export class WorkflowService {
 			// When the workflow is supposed to be active add it again
 			try {
 				await this.externalHooks.run('workflow.activate', [updatedWorkflow]);
-				await this.activeWorkflowManager.add(
-					workflowId,
-					shared.workflow.active ? 'update' : 'activate',
-				);
+				await this.activeWorkflowManager.add(workflowId, workflow.active ? 'update' : 'activate');
 			} catch (error) {
 				// If workflow could not be activated set it again to inactive
 				// and revert the versionId change so UI remains consistent
 				await this.workflowRepository.update(workflowId, {
 					active: false,
-					versionId: shared.workflow.versionId,
+					versionId: workflow.versionId,
 				});
 
 				// Also set it in the returned data
@@ -232,18 +250,15 @@ export class WorkflowService {
 	async delete(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
 		await this.externalHooks.run('workflow.delete', [workflowId]);
 
-		const sharedWorkflow = await this.sharedWorkflowRepository.findSharing(
-			workflowId,
-			user,
+		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, user, [
 			'workflow:delete',
-			{ roles: ['workflow:owner'] },
-		);
+		]);
 
-		if (!sharedWorkflow) {
+		if (!workflow) {
 			return;
 		}
 
-		if (sharedWorkflow.workflow.active) {
+		if (workflow.active) {
 			// deactivate before deleting
 			await this.activeWorkflowManager.remove(workflowId);
 		}
@@ -261,6 +276,71 @@ export class WorkflowService {
 		void Container.get(InternalHooks).onWorkflowDeleted(user, workflowId, false);
 		await this.externalHooks.run('workflow.afterDelete', [workflowId]);
 
-		return sharedWorkflow.workflow;
+		return workflow;
+	}
+
+	async getWorkflowScopes(user: User, workflowId: string): Promise<Scope[]> {
+		const userProjectRelations = await this.projectService.getProjectRelationsForUser(user);
+		const shared = await this.sharedWorkflowRepository.find({
+			where: {
+				projectId: In([...new Set(userProjectRelations.map((pr) => pr.projectId))]),
+				workflowId,
+			},
+		});
+		return this.roleService.combineResourceScopes('workflow', user, shared, userProjectRelations);
+	}
+
+	/**
+	 * Transfers all workflows owned by a project to another one.
+	 * This has only been tested for personal projects. It may need to be amended
+	 * for team projects.
+	 **/
+	async transferAll(fromProjectId: string, toProjectId: string, trx?: EntityManager) {
+		trx = trx ?? this.workflowRepository.manager;
+
+		// Get all shared workflows for both projects.
+		const allSharedWorkflows = await trx.findBy(SharedWorkflow, {
+			projectId: In([fromProjectId, toProjectId]),
+		});
+		const sharedWorkflowsOfFromProject = allSharedWorkflows.filter(
+			(sw) => sw.projectId === fromProjectId,
+		);
+
+		// For all workflows that the from-project owns transfer the ownership to
+		// the to-project.
+		// This will override whatever relationship the to-project already has to
+		// the resources at the moment.
+
+		const ownedWorkflowIds = sharedWorkflowsOfFromProject
+			.filter((sw) => sw.role === 'workflow:owner')
+			.map((sw) => sw.workflowId);
+
+		await this.sharedWorkflowRepository.makeOwner(ownedWorkflowIds, toProjectId, trx);
+
+		// Delete the relationship to the from-project.
+		await this.sharedWorkflowRepository.deleteByIds(ownedWorkflowIds, fromProjectId, trx);
+
+		// Transfer relationships that are not `workflow:owner`.
+		// This will NOT override whatever relationship the from-project already
+		// has to the resource at the moment.
+		const sharedWorkflowIdsOfTransferee = allSharedWorkflows
+			.filter((sw) => sw.projectId === toProjectId)
+			.map((sw) => sw.workflowId);
+
+		// All resources that are shared with the from-project, but not with the
+		// to-project.
+		const sharedWorkflowsToTransfer = sharedWorkflowsOfFromProject.filter(
+			(sw) =>
+				sw.role !== 'workflow:owner' && !sharedWorkflowIdsOfTransferee.includes(sw.workflowId),
+		);
+
+		await trx.insert(
+			SharedWorkflow,
+			sharedWorkflowsToTransfer.map((sw) => ({
+				workflowId: sw.workflowId,
+				projectId: toProjectId,
+				role: sw.role,
+			})),
+		);
 	}
 }

@@ -29,7 +29,7 @@ const props = defineProps({
 	},
 });
 
-const permissions = getVariablesPermissions(usersStore.currentUser);
+const permissions = computed(() => getVariablesPermissions(usersStore.currentUser));
 const modelValue = ref<EnvironmentVariable>({ ...props.data });
 
 const formValidationStatus = ref<Record<string, boolean>>({
@@ -47,10 +47,6 @@ const usage = ref(`$vars.${props.data.key}`);
 
 const isFeatureEnabled = computed(() =>
 	settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Variables),
-);
-
-const showActions = computed(
-	() => isFeatureEnabled.value && (permissions.edit || permissions.delete),
 );
 
 onMounted(() => {
@@ -201,20 +197,20 @@ function focusFirstInput() {
 				</n8n-button>
 			</div>
 			<div v-else :class="[$style.buttons, $style.hoverButtons]">
-				<n8n-tooltip :disabled="permissions.edit" placement="top">
+				<n8n-tooltip :disabled="permissions.update" placement="top">
 					<div>
 						<n8n-button
 							data-test-id="variable-row-edit-button"
 							type="tertiary"
 							class="mr-xs"
-							:disabled="!permissions.edit"
+							:disabled="!permissions.update"
 							@click="onEdit"
 						>
 							{{ i18n.baseText('variables.row.button.edit') }}
 						</n8n-button>
 					</div>
 					<template #content>
-						{{ i18n.baseText('variables.row.button.edit.onlyOwnerCanSave') }}
+						{{ i18n.baseText('variables.row.button.edit.onlyRoleCanEdit') }}
 					</template>
 				</n8n-tooltip>
 				<n8n-tooltip :disabled="permissions.delete" placement="top">
@@ -229,7 +225,7 @@ function focusFirstInput() {
 						</n8n-button>
 					</div>
 					<template #content>
-						{{ i18n.baseText('variables.row.button.delete.onlyOwnerCanDelete') }}
+						{{ i18n.baseText('variables.row.button.delete.onlyRoleCanDelete') }}
 					</template>
 				</n8n-tooltip>
 			</div>

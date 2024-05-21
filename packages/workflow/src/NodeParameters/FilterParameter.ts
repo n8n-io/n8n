@@ -111,7 +111,13 @@ function parseFilterConditionValues(
 		};
 	}
 
-	return { ok: true, result: { left: parsedLeftValue.newValue, right: parsedRightValue.newValue } };
+	return {
+		ok: true,
+		result: {
+			left: parsedLeftValue.valid ? parsedLeftValue.newValue : undefined,
+			right: parsedRightValue.valid ? parsedRightValue.newValue : undefined,
+		},
+	};
 }
 
 function parseRegexPattern(pattern: string): RegExp {
