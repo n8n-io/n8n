@@ -20,7 +20,7 @@ export type ColorPickerProps = {
 defineOptions({ name: 'N8nColorPicker' });
 const props = withDefaults(defineProps<ColorPickerProps>(), {
 	disabled: false,
-	size: 'medium',
+	size: 'default',
 	showAlpha: false,
 	colorFormat: 'hex',
 	popperClass: '',
