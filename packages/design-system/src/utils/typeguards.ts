@@ -1,6 +1,6 @@
 export function isEventBindingElementAttribute(
-	attribute: unknown,
+	_attributeValue: unknown,
 	attributeName: string,
-): attribute is (...args: unknown[]) => {} {
-	return /^on[A-Z]/.test(attributeName) && typeof attribute === 'function';
+): _attributeValue is (...args: unknown[]) => {} {
+	return /^on[A-Z]/.test(attributeName);
 }
