@@ -310,7 +310,12 @@ export class ToolHttpRequest implements INodeType {
 
 		if (urlPlaceholders.length) {
 			for (const placeholder of urlPlaceholders) {
-				updatePlaceholders(placeholders, placeholder, true, 'string');
+				updatePlaceholders(
+					placeholders,
+					placeholder,
+					true,
+					'string, do not wrap in quotas this parameter!',
+				);
 			}
 		}
 
@@ -322,12 +327,12 @@ export class ToolHttpRequest implements INodeType {
 				placeholders.push({
 					name: QUERY_PARAMETERS_PLACEHOLDER,
 					description:
-						'Specify query parameters for request, if needed, here, must be a valid JSON object or null',
+						'Specify query parameters for request, if needed, here, must be a valid JSON object',
 					type: 'json',
 					required: false,
 				});
 
-				qsPlaceholder = `qs: {${QUERY_PARAMETERS_PLACEHOLDER}}`;
+				qsPlaceholder = `"qs": {${QUERY_PARAMETERS_PLACEHOLDER}}`;
 			}
 
 			if (specifyQuery === 'keypair') {
@@ -347,7 +352,7 @@ export class ToolHttpRequest implements INodeType {
 					}
 				}
 
-				qsPlaceholder = `qs: {${queryParameters.join(',')}}`;
+				qsPlaceholder = `"qs": {${queryParameters.join(',')}}`;
 			}
 
 			if (specifyQuery === 'json') {
@@ -359,7 +364,7 @@ export class ToolHttpRequest implements INodeType {
 					updatePlaceholders(placeholders, match, true);
 				}
 
-				qsPlaceholder = `qs: ${jsonQuery}`;
+				qsPlaceholder = `"qs": ${jsonQuery}`;
 			}
 		}
 
@@ -373,13 +378,12 @@ export class ToolHttpRequest implements INodeType {
 			if (specifyHeaders === 'model') {
 				placeholders.push({
 					name: HEADERS_PARAMETERS_PLACEHOLDER,
-					description:
-						'Specify headers for request, if needed, here, must be a valid JSON object or null',
+					description: 'Specify headers for request, if needed, here, must be a valid JSON object',
 					type: 'json',
 					required: false,
 				});
 
-				headersPlaceholder = `headers: {${HEADERS_PARAMETERS_PLACEHOLDER}}`;
+				headersPlaceholder = `"headers": {${HEADERS_PARAMETERS_PLACEHOLDER}}`;
 			}
 
 			if (specifyHeaders === 'keypair') {
@@ -399,7 +403,7 @@ export class ToolHttpRequest implements INodeType {
 					}
 				}
 
-				headersPlaceholder = `headers: {${headersParameters.join(',')}}`;
+				headersPlaceholder = `"headers": {${headersParameters.join(',')}}`;
 			}
 
 			if (specifyHeaders === 'json') {
@@ -411,7 +415,7 @@ export class ToolHttpRequest implements INodeType {
 					updatePlaceholders(placeholders, match, true);
 				}
 
-				headersPlaceholder = `headers: ${jsonHeaders}`;
+				headersPlaceholder = `"headers": ${jsonHeaders}`;
 			}
 		}
 
@@ -422,13 +426,12 @@ export class ToolHttpRequest implements INodeType {
 			if (specifyBody === 'model') {
 				placeholders.push({
 					name: BODY_PARAMETERS_PLACEHOLDER,
-					description:
-						'Specify body for request, if needed, here, must be a valid JSON object or null',
+					description: 'Specify body for request, if needed, here, must be a valid JSON object',
 					type: 'json',
 					required: false,
 				});
 
-				bodyPlaceholder = `body: {${BODY_PARAMETERS_PLACEHOLDER}}`;
+				bodyPlaceholder = `"body": {${BODY_PARAMETERS_PLACEHOLDER}}`;
 			}
 
 			if (specifyBody === 'keypair') {
@@ -448,7 +451,7 @@ export class ToolHttpRequest implements INodeType {
 					}
 				}
 
-				bodyPlaceholder = `body: {${bodyParameters.join(',')}}`;
+				bodyPlaceholder = `"body": {${bodyParameters.join(',')}}`;
 			}
 
 			if (specifyBody === 'json') {
@@ -460,41 +463,38 @@ export class ToolHttpRequest implements INodeType {
 					updatePlaceholders(placeholders, match, true);
 				}
 
-				bodyPlaceholder = `body: ${jsonBody}`;
+				bodyPlaceholder = `"body": ${jsonBody}`;
 			}
 		}
 
-		const optionsExpectedFromLLM = [
-			`"url": "${url}"`,
-			`"method": "${method}"`,
-			`${qsPlaceholder}`,
-			`${headersPlaceholder}`,
-			`${bodyPlaceholder}`,
-		]
-			.filter((e) => e)
-			.join(',\n');
-
-		let description = `
-${toolDescription}
-
-This is the expected tool input: a stringified JSON object that needs to be sent as a string. It represents options for an HTTP request done with Axios. Replace all placeholders with actual values. Placeholders are alphanumeric characters or underscore enclosed in curly brackets. Only placeholders are allowed to be replaced. You must echo this options to the tool input with placeholders replaced by actual values.
-
+		const requestTemplate = `
 {
-${optionsExpectedFromLLM}
-}
-`;
+	${[
+		`"url": "${url}"`,
+		`"method": "${method}"`,
+		`${qsPlaceholder}`,
+		`${headersPlaceholder}`,
+		`${bodyPlaceholder}`,
+	]
+		.filter((e) => e)
+		.join(',\n')}
+}`;
+
+		let description = `${toolDescription}`;
 
 		if (placeholders.length) {
 			description += `
-Below are the descriptions of the placeholders. Required placeholders are marked accordingly, if not can be left ommited. Extract descriptions from the prompt if available. If any placeholder does not have a description, infer its meaning from the name, type and if it is required or not.:
+Tool expects string as input with ${placeholders.length} values that represent the following parameters:
 
 ${placeholders
 	.filter((p) => p.name)
 	.map(
 		(p) =>
-			`{${p.name}}: (description: ${p.description || ''}, type: ${p.type || ''}, required: ${!!p.required})`,
+			`${p.name}(description: ${p.description || ''}, type: ${p.type || ''}, required: ${!!p.required})`,
 	)
-	.join(', ')}`;
+	.join(',\n ')}
+
+Do not attempt to send key value pairs, only values in the same order as shown above, if parameter is not required it could be null.`;
 		}
 
 		return {
@@ -510,7 +510,17 @@ ${placeholders
 
 					// parse LLM's input
 					try {
-						requestOptions = jsonParse<IHttpRequestOptions>(query);
+						let rawRequestOptions = requestTemplate;
+						const parameters = query.split(',').map((p) => p.trim());
+						for (let i = 0; i < parameters.length; i++) {
+							let value = parameters[i];
+							if (value === 'null' && placeholders[i].type === 'json') {
+								value = '{}';
+							}
+							rawRequestOptions = rawRequestOptions.replace(`{${placeholders[i].name}}`, value);
+						}
+
+						requestOptions = jsonParse<IHttpRequestOptions>(rawRequestOptions);
 					} catch (error) {
 						const errorMessage = `Input could not be parsed as JSON: ${query}`;
 						executionError = new NodeOperationError(this.getNode(), errorMessage, {
