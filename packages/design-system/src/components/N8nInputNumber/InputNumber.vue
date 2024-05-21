@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { InputSize } from '@/types';
+import type { ElementPlusSizePropType, InputSize } from '@/types';
 import { ElInputNumber } from 'element-plus';
 import { computed } from 'vue';
 
@@ -19,7 +19,7 @@ const props = withDefaults(defineProps<InputNumberProps>(), {
 	max: Infinity,
 });
 
-const resolvedSize = computed(() => props.size as '' | 'small' | 'large' | 'default' | undefined);
+const resolvedSize = computed(() => props.size as ElementPlusSizePropType);
 </script>
 
 <template>

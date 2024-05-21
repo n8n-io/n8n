@@ -83,3 +83,4 @@ export type InputAutocompletePropType =
 	| 'given-name'
 	| 'family-name'
 	| 'email'; // https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/autocomplete
+export type ElementPlusSizePropType = '' | 'small' | 'large' | 'default' | undefined;

@@ -32,6 +32,7 @@
 import { ElSelect } from 'element-plus';
 import { type PropType, defineComponent } from 'vue';
 import type { SelectSize } from '@/types';
+import { isEventBindingElementAttribute } from '@/utils';
 
 type InnerSelectRef = InstanceType<typeof ElSelect>;
 
@@ -88,8 +89,8 @@ export default defineComponent({
 		listeners() {
 			return Object.entries(this.$attrs).reduce<Record<string, (...args: unknown[]) => {}>>(
 				(acc, [key, value]) => {
-					if (/^on[A-Z]/.test(key)) {
-						acc[key] = value as (...args: unknown[]) => {};
+					if (isEventBindingElementAttribute(value, key)) {
+						acc[key] = value;
 					}
 
 					return acc;

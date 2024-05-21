@@ -34,7 +34,7 @@ import { computed, ref } from 'vue';
 import { ElInput } from 'element-plus';
 import { uid } from '../../utils';
 import type { InputSize, InputType } from '@/types/input';
-import { InputAutocompletePropType } from '@/types';
+import type { ElementPlusSizePropType, InputAutocompletePropType } from '@/types';
 
 interface InputProps {
 	modelValue?: string | number;
@@ -68,13 +68,7 @@ const props = withDefaults(defineProps<InputProps>(), {
 });
 
 const resolvedSize = computed(
-	() =>
-		(props.size === 'xlarge' ? undefined : props.size) as
-			| ''
-			| 'small'
-			| 'large'
-			| 'default'
-			| undefined,
+	() => (props.size === 'xlarge' ? undefined : props.size) as ElementPlusSizePropType,
 );
 
 const classes = computed(() => {

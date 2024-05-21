@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import { uid } from '../../utils';
 import { ElColorPicker } from 'element-plus';
 import N8nInput from '../N8nInput';
+import type { ElementPlusSizePropType } from '@/types';
 
 export type ColorPickerProps = {
 	disabled?: boolean;
@@ -42,7 +43,7 @@ const emit = defineEmits<{
 	(event: 'active-change', value: string): void;
 }>();
 
-const resolvedSize = computed(() => props.size as '' | 'small' | 'large' | 'default' | undefined);
+const resolvedSize = computed(() => props.size as ElementPlusSizePropType);
 
 const onChange = (value: string) => {
 	emit('change', value);

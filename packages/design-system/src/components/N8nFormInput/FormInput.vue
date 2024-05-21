@@ -102,7 +102,7 @@ import N8nCheckbox from '../N8nCheckbox';
 import { ElSwitch } from 'element-plus';
 
 import { getValidationError, VALIDATORS } from './validators';
-import {
+import type {
 	Rule,
 	RuleGroup,
 	IValidator,
