@@ -144,7 +144,7 @@
 </template>
 
 <script lang="ts">
-import type { IResourceLocatorReqParams, IResourceLocatorResultExpanded } from '@/Interface';
+import type { DynamicNodeParameters, IResourceLocatorResultExpanded } from '@/Interface';
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
@@ -197,9 +197,7 @@ export default defineComponent({
 			required: true,
 		},
 		modelValue: {
-			type: [Object, String] as PropType<
-				INodeParameterResourceLocator | NodeParameterValue | undefined
-			>,
+			type: Object as PropType<INodeParameterResourceLocator>,
 		},
 		inputSize: {
 			type: String,
@@ -221,8 +219,7 @@ export default defineComponent({
 			default: '',
 		},
 		expressionComputedValue: {
-			type: String,
-			default: '',
+			type: {} as PropType<unknown>,
 		},
 		isReadOnly: {
 			type: Boolean,
@@ -230,6 +227,7 @@ export default defineComponent({
 		},
 		expressionDisplayValue: {
 			type: String,
+			default: '',
 		},
 		forceShowExpression: {
 			type: Boolean,
@@ -245,9 +243,11 @@ export default defineComponent({
 		},
 		node: {
 			type: Object as PropType<INode>,
+			required: true,
 		},
 		path: {
 			type: String,
+			required: true,
 		},
 		loadOptionsMethod: {
 			type: String,
@@ -506,10 +506,10 @@ export default defineComponent({
 				this.width = containerRef?.offsetWidth;
 			}
 		},
-		getLinkAlt(entity: string) {
+		getLinkAlt(entity: NodeParameterValue) {
 			if (this.selectedMode === 'list' && entity) {
 				return this.$locale.baseText('resourceLocator.openSpecificResource', {
-					interpolate: { entity, appName: this.appName },
+					interpolate: { entity: entity.toString(), appName: this.appName },
 				});
 			}
 			return this.$locale.baseText('resourceLocator.openResource', {
@@ -520,7 +520,7 @@ export default defineComponent({
 			this.cachedResponses = {};
 			this.trackEvent('User refreshed resource locator list');
 		},
-		onKeyDown(e: MouseEvent) {
+		onKeyDown(e: KeyboardEvent) {
 			if (this.resourceDropdownVisible && !this.isSearchable) {
 				this.eventBus.emit('keyDown', e);
 			}
@@ -555,6 +555,9 @@ export default defineComponent({
 				return;
 			}
 			const id = node.credentials[credentialKey].id;
+			if (!id) {
+				return;
+			}
 			this.uiStore.openExistingCredential(id);
 		},
 		createNewCredential(): void {
@@ -664,11 +667,11 @@ export default defineComponent({
 				return;
 			}
 
-			let paginationToken: unknown = null;
+			let paginationToken: string | undefined;
 
 			try {
 				if (cachedResponse) {
-					const nextPageToken = cachedResponse.nextPageToken;
+					const nextPageToken = cachedResponse.nextPageToken as string;
 					if (nextPageToken) {
 						paginationToken = nextPageToken;
 						this.setResponse(paramsKey, { loading: true });
@@ -690,11 +693,12 @@ export default defineComponent({
 					this.parameter,
 					params.parameters,
 				) as INodeParameters;
-				const loadOptionsMethod = this.getPropertyArgument(this.currentMode, 'searchListMethod') as
-					| string
-					| undefined;
+				const loadOptionsMethod = this.getPropertyArgument(
+					this.currentMode,
+					'searchListMethod',
+				) as string;
 
-				const requestParams: IResourceLocatorReqParams = {
+				const requestParams: DynamicNodeParameters.ResourceLocatorResultsRequest = {
 					nodeTypeAndVersion: {
 						name: this.node.type,
 						version: this.node.typeVersion,
@@ -703,9 +707,15 @@ export default defineComponent({
 					methodName: loadOptionsMethod,
 					currentNodeParameters: resolvedNodeParameters,
 					credentials: this.node.credentials,
-					...(params.filter ? { filter: params.filter } : {}),
-					...(paginationToken ? { paginationToken } : {}),
 				};
+
+				if (params.filter) {
+					requestParams.filter = params.filter;
+				}
+
+				if (paginationToken) {
+					requestParams.paginationToken = paginationToken;
+				}
 
 				const response = await this.nodeTypesStore.getResourceLocatorResults(requestParams);
 
