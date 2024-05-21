@@ -22,8 +22,6 @@ export class DynamicNodeParametersController {
 			loadOptions,
 		} = req.body;
 
-		if (!methodName) throw new BadRequestError('Missing `methodName` in request body');
-
 		const additionalData = await getBase(req.user.id, currentNodeParameters);
 
 		if (methodName) {
