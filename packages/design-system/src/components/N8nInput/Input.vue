@@ -2,6 +2,7 @@
 	<ElInput
 		ref="innerInput"
 		:model-value="modelValue"
+		:type="type"
 		:size="resolvedSize"
 		:class="['n8n-input', ...classes]"
 		:autocomplete="autocomplete"

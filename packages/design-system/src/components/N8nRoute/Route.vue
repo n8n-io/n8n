@@ -2,7 +2,12 @@
 	<router-link v-if="useRouterLink && to" :to="to" v-bind="$attrs">
 		<slot></slot>
 	</router-link>
-	<a v-else :href="`${to}`" :target="openNewWindow ? '_blank' : '_self'" v-bind="$attrs">
+	<a
+		v-else
+		:href="to ? `${to}` : undefined"
+		:target="openNewWindow ? '_blank' : '_self'"
+		v-bind="$attrs"
+	>
 		<slot></slot>
 	</a>
 </template>
