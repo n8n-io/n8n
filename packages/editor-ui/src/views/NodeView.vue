@@ -3726,6 +3726,10 @@ export default defineComponent({
 						await this.openWorkflow(workflow);
 						await this.checkAndInitDebugMode();
 
+						if (this.projectsStore.currentProjectId) {
+							this.projectsStore.projectNavActiveId = this.projectsStore.currentProjectId;
+						}
+
 						if (workflow.meta?.onboardingId) {
 							this.$telemetry.track(
 								`User opened workflow from onboarding template with ID ${workflow.meta.onboardingId}`,

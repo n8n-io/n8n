@@ -56,10 +56,6 @@ const activeTab = computed(() => {
 	return routes.includes(route.name as VIEWS) ? 'home' : undefined;
 });
 
-const isActiveProject = (projectId: string) =>
-	route?.params?.projectId === projectId || projectsStore.currentProjectId === projectId
-		? projectId
-		: undefined;
 const getProjectMenuItem = (project: ProjectListItem) => ({
 	id: project.id,
 	label: project.name,
@@ -146,7 +142,7 @@ onMounted(async () => {
 				:item="getProjectMenuItem(project)"
 				:compact="props.collapsed"
 				:handle-select="projectClicked"
-				:active-tab="isActiveProject(project.id)"
+				:active-tab="projectsStore.projectNavActiveId"
 				mode="tabs"
 				data-test-id="project-menu-item"
 			/>

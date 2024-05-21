@@ -27,11 +27,12 @@ export const useProjectsStore = defineStore('projects', () => {
 		team: 0,
 		public: 0,
 	});
+	const projectNavActiveIdState = ref<string | string[] | null>(null);
 
 	const currentProjectId = computed(
 		() =>
-			(route.params?.projectId as string | undefined) ||
-			(route.query?.projectId as string | undefined) ||
+			(route.params?.projectId as string | undefined) ??
+			(route.query?.projectId as string | undefined) ??
 			currentProject.value?.id,
 	);
 	const isProjectHome = computed(() => route.path.includes('home'));
@@ -55,6 +56,13 @@ export const useProjectsStore = defineStore('projects', () => {
 	const hasPermissionToCreateProjects = computed(() =>
 		hasPermission(['rbac'], { rbac: { scope: 'project:create' } }),
 	);
+
+	const projectNavActiveId = computed<string | string[] | null>({
+		get: () => route?.params?.projectId ?? projectNavActiveIdState.value,
+		set: (value: string | string[] | null) => {
+			projectNavActiveIdState.value = value;
+		},
+	});
 
 	const setCurrentProject = (project: Project | null) => {
 		currentProject.value = project;
@@ -113,6 +121,8 @@ export const useProjectsStore = defineStore('projects', () => {
 	watch(
 		route,
 		async (newRoute) => {
+			projectNavActiveId.value = null;
+
 			if (newRoute?.path?.includes('home')) {
 				setCurrentProject(null);
 			}
@@ -140,6 +150,7 @@ export const useProjectsStore = defineStore('projects', () => {
 		canCreateProjects,
 		hasPermissionToCreateProjects,
 		teamProjectsAvailable,
+		projectNavActiveId,
 		setCurrentProject,
 		getAllProjects,
 		getMyProjects,
