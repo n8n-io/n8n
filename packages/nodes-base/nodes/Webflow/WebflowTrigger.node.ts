@@ -9,7 +9,7 @@ import type {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import { webflowApiRequest } from './GenericFunctions';
+import { webflowApiRequest } from './V1/GenericFunctions';
 
 export class WebflowTrigger implements INodeType {
 	description: INodeTypeDescription = {
