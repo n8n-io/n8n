@@ -294,7 +294,8 @@ export class AIController {
 
 			chainStream = await chainWithHistory.stream(
 				{
-					question: 'Please suggest solutions for the error below ',
+					question:
+						'Please suggest solutions for the error below and carefully look for other errors in the code. Remember that response should always match the original intent',
 					error: JSON.stringify(error),
 				},
 				{ configurable: { sessionId } },
@@ -456,6 +457,21 @@ export class AIController {
 		} else {
 			message += ' Please only give me information from the official n8n sources.';
 		}
+
+		assistantModel.bind({
+			functions: [
+				{
+					name: 'output_formatter',
+					description: 'Should always be used to properly format output',
+					parameters: zodToJsonSchema(
+						z.object({
+							stepByStepInstruction: z.string().describe('The step-by-step instructions to follow'),
+						}),
+					),
+				},
+			],
+			function_call: { name: 'output_formatter' },
+		});
 
 		const agent = await createReactAgent({
 			llm: assistantModel,
