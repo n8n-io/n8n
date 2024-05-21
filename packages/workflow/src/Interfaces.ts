@@ -39,7 +39,7 @@ export type IAllExecuteFunctions =
 
 export type BinaryFileType = 'text' | 'json' | 'image' | 'audio' | 'video' | 'pdf' | 'html';
 export interface IBinaryData {
-	[key: string]: string | undefined;
+	[key: string]: string | number | undefined;
 	data: string;
 	mimeType: string;
 	fileType?: BinaryFileType;
