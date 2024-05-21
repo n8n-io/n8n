@@ -28,7 +28,8 @@ export type PinDataSource =
 	| 'duplicate-node'
 	| 'add-nodes'
 	| 'context-menu'
-	| 'keyboard-shortcut';
+	| 'keyboard-shortcut'
+	| 'banner-link';
 
 export type UnpinDataSource =
 	| 'unpin-and-execute-modal'
@@ -242,7 +243,7 @@ export function usePinnedData(
 		onSetDataSuccess({ source });
 	}
 
-	function onUnsetData({ source }: { source: UnpinDataSource }) {
+	function onUnsetData({ source }: { source: PinDataSource | UnpinDataSource }) {
 		const targetNode = unref(node);
 		const runIndex = unref(options.runIndex);
 
@@ -255,7 +256,7 @@ export function usePinnedData(
 		});
 	}
 
-	function unsetData(source: UnpinDataSource): void {
+	function unsetData(source: PinDataSource | UnpinDataSource): void {
 		const targetNode = unref(node);
 		if (!targetNode) {
 			return;
