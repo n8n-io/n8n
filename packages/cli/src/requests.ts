@@ -393,21 +393,17 @@ export declare namespace OAuthRequest {
 //      /dynamic-node-parameters
 // ----------------------------------
 export declare namespace DynamicNodeParametersRequest {
-	type BaseRequest<QueryParams = {}> = AuthenticatedRequest<
-		{
-			nodeTypeAndVersion: INodeTypeNameVersion;
-			currentNodeParameters: INodeParameters;
-			credentials?: INodeCredentials;
-		},
+	type BaseRequest<RequestBody = {}> = AuthenticatedRequest<
 		{},
 		{},
 		{
 			path: string;
-			nodeTypeAndVersion: string;
-			currentNodeParameters: string;
+			nodeTypeAndVersion: INodeTypeNameVersion;
+			currentNodeParameters: INodeParameters;
 			methodName?: string;
-			credentials?: string;
-		} & QueryParams
+			credentials?: INodeCredentials;
+		} & RequestBody,
+		{}
 	>;
 
 	/** GET /dynamic-node-parameters/options */

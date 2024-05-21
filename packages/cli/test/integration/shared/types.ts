@@ -35,7 +35,8 @@ type EndpointGroup =
 	| 'invitations'
 	| 'debug'
 	| 'project'
-	| 'role';
+	| 'role'
+	| 'dynamic-node-parameters';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];
