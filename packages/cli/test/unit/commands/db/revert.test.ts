@@ -68,7 +68,7 @@ test("don't revert the last migration if it had no down migration", async () => 
 	//
 	expect(logger.error).toHaveBeenCalledTimes(1);
 	expect(logger.error).toHaveBeenCalledWith(
-		'The last migration was irreversible and cannot be reverted.',
+		'Cancelled command. The last migration was irreversible.',
 	);
 	expect(dataSource.undoLastMigration).not.toHaveBeenCalled();
 	expect(dataSource.destroy).not.toHaveBeenCalled();
@@ -107,7 +107,7 @@ test('print migration name in error message is the migration has a name', async 
 	//
 	expect(logger.error).toHaveBeenCalledTimes(1);
 	expect(logger.error).toHaveBeenCalledWith(
-		'The last migration "Test Migration" was irreversible and cannot be reverted.',
+		'Cancelled command. The last migration "Test Migration" was irreversible.',
 	);
 	expect(dataSource.undoLastMigration).not.toHaveBeenCalled();
 	expect(dataSource.destroy).not.toHaveBeenCalled();
