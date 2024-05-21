@@ -14,6 +14,7 @@ import type { IWorkflowToImport } from '@/Interfaces';
 import { ImportService } from '@/services/import.service';
 import { BaseCommand } from '../BaseCommand';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 
 function assertHasWorkflowsToImport(workflows: unknown): asserts workflows is IWorkflowToImport[] {
 	if (!Array.isArray(workflows)) {
@@ -40,6 +41,7 @@ export class ImportWorkflowsCommand extends BaseCommand {
 		'$ n8n import:workflow --input=file.json',
 		'$ n8n import:workflow --separate --input=backups/latest/',
 		'$ n8n import:workflow --input=file.json --userId=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
+		'$ n8n import:workflow --input=file.json --projectId=Ox8O54VQrmBrb4qL',
 		'$ n8n import:workflow --separate --input=backups/latest/ --userId=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
 	];
 
@@ -54,6 +56,9 @@ export class ImportWorkflowsCommand extends BaseCommand {
 		}),
 		userId: Flags.string({
 			description: 'The ID of the user to assign the imported workflows to',
+		}),
+		projectId: Flags.string({
+			description: 'The ID of the project to assign the imported workflows to',
 		}),
 	};
 
@@ -79,24 +84,32 @@ export class ImportWorkflowsCommand extends BaseCommand {
 			}
 		}
 
-		const owner = await this.getOwner();
+		if (flags.projectId && flags.userId) {
+			throw new ApplicationError(
+				'You cannot use `--userId` and `--projectId` together. Use one or the other.',
+			);
+		}
+
+		const project = await this.getProject(flags.userId, flags.projectId);
 
 		const workflows = await this.readWorkflows(flags.input, flags.separate);
 
-		const result = await this.checkRelations(workflows, flags.userId);
+		const result = await this.checkRelations(workflows, flags.projectId, flags.userId);
+
 		if (!result.success) {
 			throw new ApplicationError(result.message);
 		}
 
 		this.logger.info(`Importing ${workflows.length} workflows...`);
 
-		await Container.get(ImportService).importWorkflows(workflows, flags.userId ?? owner.id);
+		await Container.get(ImportService).importWorkflows(workflows, project.id);
 
 		this.reportSuccess(workflows.length);
 	}
 
-	private async checkRelations(workflows: WorkflowEntity[], userId: string | undefined) {
-		if (!userId) {
+	private async checkRelations(workflows: WorkflowEntity[], projectId?: string, userId?: string) {
+		// The credential is not supposed to be re-owned.
+		if (!userId && !projectId) {
 			return {
 				success: true as const,
 				message: undefined,
@@ -108,15 +121,26 @@ export class ImportWorkflowsCommand extends BaseCommand {
 				continue;
 			}
 
-			const ownerId = await this.getWorkflowOwner(workflow);
-			if (!ownerId) {
+			const { user, project: ownerProject } = await this.getWorkflowOwner(workflow);
+
+			if (!ownerProject) {
 				continue;
 			}
 
-			if (ownerId !== userId) {
+			if (ownerProject.id !== projectId) {
+				const currentOwner =
+					ownerProject.type === 'personal'
+						? `the user with the ID "${user.id}"`
+						: `the project with the ID "${ownerProject.id}"`;
+				const newOwner = userId
+					? // The user passed in `--userId`, so let's use the user ID in the error
+						// message as opposed to the project ID.
+						`the user with the ID "${userId}"`
+					: `the project with the ID "${projectId}"`;
+
 				return {
 					success: false as const,
-					message: `The credential with id "${workflow.id}" is already owned by the user with the id "${ownerId}". It can't be re-owned by the user with the id "${userId}"`,
+					message: `The credential with ID "${workflow.id}" is already owned by ${currentOwner}. It can't be re-owned by ${newOwner}.`,
 				};
 			}
 		}
@@ -136,22 +160,37 @@ export class ImportWorkflowsCommand extends BaseCommand {
 		this.logger.info(`Successfully imported ${total} ${total === 1 ? 'workflow.' : 'workflows.'}`);
 	}
 
-	private async getOwner() {
+	private async getOwnerProject() {
 		const owner = await Container.get(UserRepository).findOneBy({ role: 'global:owner' });
 		if (!owner) {
 			throw new ApplicationError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
 		}
 
-		return owner;
+		const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+
+		return project;
 	}
 
 	private async getWorkflowOwner(workflow: WorkflowEntity) {
-		const sharing = await Container.get(SharedWorkflowRepository).findOneBy({
-			workflowId: workflow.id,
-			role: 'workflow:owner',
+		const sharing = await Container.get(SharedWorkflowRepository).findOne({
+			where: { workflowId: workflow.id, role: 'workflow:owner' },
+			relations: { project: true },
 		});
 
-		return sharing?.userId;
+		if (sharing && sharing.project.type === 'personal') {
+			const user = await Container.get(UserRepository).findOneByOrFail({
+				projectRelations: {
+					role: 'project:personalOwner',
+					projectId: sharing.projectId,
+				},
+			});
+
+			return { user, project: sharing.project };
+		}
+
+		return {};
 	}
 
 	private async workflowExists(workflow: WorkflowEntity) {
@@ -188,5 +227,17 @@ export class ImportWorkflowsCommand extends BaseCommand {
 
 			return workflowInstances;
 		}
+	}
+
+	private async getProject(userId?: string, projectId?: string) {
+		if (projectId) {
+			return await Container.get(ProjectRepository).findOneByOrFail({ id: projectId });
+		}
+
+		if (userId) {
+			return await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(userId);
+		}
+
+		return await this.getOwnerProject();
 	}
 }

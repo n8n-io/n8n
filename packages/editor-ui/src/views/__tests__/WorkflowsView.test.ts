@@ -7,6 +7,7 @@ import WorkflowsView from '@/views/WorkflowsView.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { createComponentRenderer } from '@/__tests__/render';
+import { useProjectsStore } from '@/features/projects/projects.store';
 
 const originalOffsetHeight = Object.getOwnPropertyDescriptor(
 	HTMLElement.prototype,
@@ -18,12 +19,14 @@ describe('WorkflowsView', () => {
 	let pinia: ReturnType<typeof createPinia>;
 	let settingsStore: ReturnType<typeof useSettingsStore>;
 	let usersStore: ReturnType<typeof useUsersStore>;
+	let projectsStore: ReturnType<typeof useProjectsStore>;
 
 	const renderComponent = createComponentRenderer(WorkflowsView, {
 		global: {
 			mocks: {
 				$route: {
 					query: {},
+					params: {},
 				},
 				$router: {
 					replace: vi.fn(),
@@ -54,6 +57,10 @@ describe('WorkflowsView', () => {
 
 		settingsStore = useSettingsStore();
 		usersStore = useUsersStore();
+		projectsStore = useProjectsStore();
+
+		vi.spyOn(projectsStore, 'getAllProjects').mockImplementation(async () => {});
+
 		await settingsStore.getSettings();
 		await usersStore.fetchUsers();
 		await usersStore.loginWithCookie();

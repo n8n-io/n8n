@@ -1,10 +1,8 @@
 import { Service } from 'typedi';
-import { DataSource, QueryFailedError, Repository } from '@n8n/typeorm';
+import { DataSource, MoreThanOrEqual, QueryFailedError, Repository } from '@n8n/typeorm';
 import config from '@/config';
 import { StatisticsNames, WorkflowStatistics } from '../entities/WorkflowStatistics';
 import type { User } from '@/databases/entities/User';
-import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
-import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
 
 type StatisticsInsertResult = 'insert' | 'failed' | 'alreadyExists';
 type StatisticsUpsertResult = StatisticsInsertResult | 'update';
@@ -102,18 +100,18 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 	}
 
 	async queryNumWorkflowsUserHasWithFiveOrMoreProdExecs(userId: User['id']): Promise<number> {
-		return await this.createQueryBuilder('workflow_statistics')
-			.innerJoin(WorkflowEntity, 'workflow', 'workflow.id = workflow_statistics.workflowId')
-			.innerJoin(
-				SharedWorkflow,
-				'shared_workflow',
-				'shared_workflow.workflowId = workflow_statistics.workflowId',
-			)
-			.where('shared_workflow.userId = :userId', { userId })
-			.andWhere('workflow.active = :isActive', { isActive: true })
-			.andWhere('workflow_statistics.name = :name', { name: StatisticsNames.productionSuccess })
-			.andWhere('workflow_statistics.count >= 5')
-			.andWhere('role = :roleName', { roleName: 'workflow:owner' })
-			.getCount();
+		return await this.count({
+			where: {
+				workflow: {
+					shared: {
+						role: 'workflow:owner',
+						project: { projectRelations: { userId, role: 'project:personalOwner' } },
+					},
+					active: true,
+				},
+				name: StatisticsNames.productionSuccess,
+				count: MoreThanOrEqual(5),
+			},
+		});
 	}
 }

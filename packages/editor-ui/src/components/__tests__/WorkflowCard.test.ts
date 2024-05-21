@@ -5,6 +5,11 @@ import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { VIEWS } from '@/constants';
 import WorkflowCard from '@/components/WorkflowCard.vue';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { IWorkflowDb } from '@/Interface';
 
 const $router = {
 	push: vi.fn(),
@@ -19,20 +24,33 @@ const renderComponent = createComponentRenderer(WorkflowCard, {
 	},
 });
 
-const createWorkflow = (overrides = {}) => ({
+const createWorkflow = (overrides = {}): IWorkflowDb => ({
 	id: '1',
 	name: 'My Workflow',
-	createdAt: '2021-01-01T00:00:00.000Z',
+	createdAt: new Date().toISOString(),
+	updatedAt: new Date().toISOString(),
+	nodes: [],
+	connections: {},
+	active: true,
+	versionId: '1',
 	...overrides,
 });
 
 describe('WorkflowCard', () => {
 	let pinia: ReturnType<typeof createPinia>;
 	let windowOpenSpy: MockInstance;
+	let uiStore: ReturnType<typeof useUIStore>;
+	let settingsStore: ReturnType<typeof useSettingsStore>;
+	let usersStore: ReturnType<typeof useUsersStore>;
+	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 
 	beforeEach(async () => {
 		pinia = createPinia();
 		setActivePinia(pinia);
+		uiStore = useUIStore();
+		settingsStore = useSettingsStore();
+		usersStore = useUsersStore();
+		workflowsStore = useWorkflowsStore();
 		windowOpenSpy = vi.spyOn(window, 'open');
 	});
 
@@ -94,5 +112,37 @@ describe('WorkflowCard', () => {
 				params: { name: data.id },
 			});
 		});
+	});
+
+	it('should render name and home project name', () => {
+		const projectName = 'Test Project';
+		const data = createWorkflow({
+			homeProject: {
+				name: projectName,
+			},
+		});
+		const { getByRole, getByTestId } = renderComponent({ props: { data } });
+
+		const heading = getByRole('heading');
+		const badge = getByTestId('card-badge');
+
+		expect(heading).toHaveTextContent(data.name);
+		expect(badge).toHaveTextContent(projectName);
+	});
+
+	it('should render name and personal project name', () => {
+		const projectName = 'John Doe <john@n8n.io>';
+		const data = createWorkflow({
+			homeProject: {
+				name: projectName,
+			},
+		});
+		const { getByRole, getByTestId } = renderComponent({ props: { data } });
+
+		const heading = getByRole('heading');
+		const badge = getByTestId('card-badge');
+
+		expect(heading).toHaveTextContent(data.name);
+		expect(badge).toHaveTextContent('John Doe');
 	});
 });

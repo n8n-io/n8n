@@ -110,11 +110,6 @@ export default defineComponent({
 			...useToast(),
 		};
 	},
-	async mounted() {
-		if (!this.showUMSetupWarning) {
-			await this.usersStore.fetchUsers();
-		}
-	},
 	computed: {
 		...mapStores(useSettingsStore, useUIStore, useUsersStore, useUsageStore, useSSOStore),
 		isSharingEnabled() {
@@ -190,6 +185,11 @@ export default defineComponent({
 		canUpdateRole(): boolean {
 			return hasPermission(['rbac'], { rbac: { scope: ['user:update', 'user:changeRole'] } });
 		},
+	},
+	async mounted() {
+		if (!this.showUMSetupWarning) {
+			await this.usersStore.fetchUsers();
+		}
 	},
 	methods: {
 		redirectToSetup() {

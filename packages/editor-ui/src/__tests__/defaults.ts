@@ -68,6 +68,11 @@ export const defaultSettings: IN8nUISettings = {
 		externalSecrets: false,
 		workerView: false,
 		advancedPermissions: false,
+		projects: {
+			team: {
+				limit: 1,
+			},
+		},
 	},
 	expressions: {
 		evaluator: 'tournament',
