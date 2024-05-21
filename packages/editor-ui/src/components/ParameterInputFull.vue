@@ -150,6 +150,7 @@ export default defineComponent({
 		},
 		path: {
 			type: String,
+			required: true,
 		},
 		value: {
 			type: [Number, String, Boolean, Array, Object] as PropType<NodeParameterValueType>,
@@ -187,7 +188,7 @@ export default defineComponent({
 		node(): INodeUi | null {
 			return this.ndvStore.activeNode;
 		},
-		hint(): string | null {
+		hint(): string {
 			return this.i18n.nodeText().hint(this.parameter, this.path);
 		},
 		isInputTypeString(): boolean {
@@ -260,8 +261,10 @@ export default defineComponent({
 			}
 		},
 		onDrop(newParamValue: string) {
-			const updatedValue = getMappedResult(this.parameter, newParamValue, this.value);
-			const prevValue = this.isResourceLocator ? this.value.value : this.value;
+			const value = this.value;
+			const updatedValue = getMappedResult(this.parameter, newParamValue, value);
+			const prevValue =
+				this.isResourceLocator && isResourceLocatorValue(value) ? value.value : value;
 
 			if (updatedValue.startsWith('=')) {
 				this.forceShowExpression = true;

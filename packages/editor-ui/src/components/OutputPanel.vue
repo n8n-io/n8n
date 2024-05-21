@@ -80,7 +80,7 @@
 			</n8n-text>
 		</template>
 
-		<template v-if="outputMode === 'logs'" #content>
+		<template v-if="outputMode === 'logs' && node" #content>
 			<RunDataAi :node="node" :run-index="runIndex" />
 		</template>
 		<template #recovered-artificial-output-data>
@@ -122,6 +122,9 @@ const OUTPUT_TYPE = {
 	REGULAR: 'regular',
 	LOGS: 'logs',
 } as const;
+
+type OutputTypeKey = keyof typeof OUTPUT_TYPE;
+type OutputType = (typeof OUTPUT_TYPE)[OutputTypeKey];
 
 export default defineComponent({
 	name: 'OutputPanel',
@@ -183,8 +186,8 @@ export default defineComponent({
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),
-		node(): INodeUi | null {
-			return this.ndvStore.activeNode;
+		node(): INodeUi | undefined {
+			return this.ndvStore.activeNode ?? undefined;
 		},
 		nodeType(): INodeTypeDescription | null {
 			if (this.node) {
@@ -193,7 +196,7 @@ export default defineComponent({
 			return null;
 		},
 		isTriggerNode(): boolean {
-			return this.nodeTypesStore.isTriggerNode(this.node?.type ?? '');
+			return !!this.node && this.nodeTypesStore.isTriggerNode(this.node.type);
 		},
 		hasAiMetadata(): boolean {
 			if (this.node) {
@@ -263,11 +266,11 @@ export default defineComponent({
 
 			const runData: IRunData | null = this.workflowRunData;
 
-			if (runData === null || !runData.hasOwnProperty(this.node.name)) {
+			if (runData === null || (this.node && !runData.hasOwnProperty(this.node.name))) {
 				return 0;
 			}
 
-			if (runData[this.node.name].length) {
+			if (this.node && runData[this.node.name].length) {
 				return runData[this.node.name].length;
 			}
 
@@ -327,7 +330,7 @@ export default defineComponent({
 		onRunIndexChange(run: number) {
 			this.$emit('runChange', run);
 		},
-		onUpdateOutputMode(outputMode: (typeof OUTPUT_TYPE)[keyof typeof OUTPUT_TYPE]) {
+		onUpdateOutputMode(outputMode: OutputType) {
 			if (outputMode === OUTPUT_TYPE.LOGS) {
 				ndvEventBus.emit('setPositionByName', 'minLeft');
 			} else {
