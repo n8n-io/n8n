@@ -14,6 +14,7 @@ type Props = {
 	readonly?: boolean;
 	static?: boolean;
 	placeholder?: string;
+	emptyOptionsText?: string;
 };
 
 const props = defineProps<Props>();
@@ -33,6 +34,9 @@ const selectPlaceholder = computed(
 		(Array.isArray(model.value)
 			? locale.baseText('projects.sharing.placeholder')
 			: locale.baseText('projects.sharing.placeholder.single')),
+);
+const noDataText = computed(
+	() => props.emptyOptionsText ?? locale.baseText('projects.sharing.noMatchingUsers'),
 );
 const filteredProjects = computed(() =>
 	props.projects
@@ -101,7 +105,7 @@ watch(
 			:filter-method="setFilter"
 			:placeholder="selectPlaceholder"
 			:default-first-option="true"
-			:no-data-text="locale.baseText('projects.sharing.noMatchingProjects')"
+			:no-data-text="noDataText"
 			size="large"
 			:disabled="props.readonly"
 			@update:model-value="onProjectSelected"

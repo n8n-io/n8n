@@ -75,7 +75,12 @@ const onDelete = () => {
 				<n8n-text color="text-dark">{{
 					locale.baseText('projects.settings.delete.question.transfer.title')
 				}}</n8n-text>
-				<ProjectSharing v-model="selectedProject" class="pt-2xs" :projects="props.projects" />
+				<ProjectSharing
+					v-model="selectedProject"
+					class="pt-2xs"
+					:projects="props.projects"
+					:empty-options-text="locale.baseText('projects.sharing.noMatchingProjects')"
+				/>
 			</div>
 
 			<el-radio
