@@ -39,14 +39,14 @@ export async function createExecution(
 		deletedAt,
 	});
 
-	if (metadata?.length === 1) {
-		const [{ key, value }] = metadata;
-
-		await Container.get(ExecutionMetadataRepository).save({
+	if (metadata?.length) {
+		const metadataToSave = metadata.map(({ key, value }) => ({
 			key,
 			value,
 			execution: { id: execution.id },
-		});
+		}));
+
+		await Container.get(ExecutionMetadataRepository).save(metadataToSave);
 	}
 
 	await Container.get(ExecutionDataRepository).save({
