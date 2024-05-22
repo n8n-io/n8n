@@ -301,7 +301,6 @@ export class VenafiTlsProtectCloud implements INodeType {
 								`/outagedetection/v1/certificates/${certificateId}/contents`,
 								{},
 								qs,
-								undefined,
 								{ encoding: null, json: false, resolveWithFullResponse: true, cert: true },
 							);
 						} else {
@@ -342,7 +341,6 @@ export class VenafiTlsProtectCloud implements INodeType {
 								`/outagedetection/v1/certificates/${certificateId}/keystore`,
 								body,
 								{},
-								undefined,
 								{ encoding: null, json: false, resolveWithFullResponse: true },
 							);
 						}

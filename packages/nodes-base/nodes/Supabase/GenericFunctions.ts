@@ -66,7 +66,6 @@ export function getFilters(
 		filterTypeDisplayName = 'Filter',
 		filterFixedCollectionDisplayName = 'Filters',
 
-		filterStringDisplayName = 'Filters (String)',
 		mustMatchOptions = [
 			{
 				name: 'Any Filter',

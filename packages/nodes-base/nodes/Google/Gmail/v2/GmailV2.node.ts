@@ -325,7 +325,6 @@ export class GmailV2 implements INodeType {
 							attachments = await prepareEmailAttachments.call(
 								this,
 								options.attachmentsUi as IDataObject,
-								items,
 								i,
 							);
 							if (attachments.length) {
@@ -374,7 +373,7 @@ export class GmailV2 implements INodeType {
 						const messageIdGmail = this.getNodeParameter('messageId', i) as string;
 						const options = this.getNodeParameter('options', i);
 
-						responseData = await replyToEmail.call(this, items, messageIdGmail, options, i);
+						responseData = await replyToEmail.call(this, messageIdGmail, options, i);
 					}
 					if (operation === 'get') {
 						//https://developers.google.com/gmail/api/v1/reference/users/messages/get
@@ -581,7 +580,6 @@ export class GmailV2 implements INodeType {
 							attachments = await prepareEmailAttachments.call(
 								this,
 								options.attachmentsUi as IDataObject,
-								items,
 								i,
 							);
 							if (attachments.length) {
@@ -793,7 +791,7 @@ export class GmailV2 implements INodeType {
 						const messageIdGmail = this.getNodeParameter('messageId', i) as string;
 						const options = this.getNodeParameter('options', i);
 
-						responseData = await replyToEmail.call(this, items, messageIdGmail, options, i);
+						responseData = await replyToEmail.call(this, messageIdGmail, options, i);
 					}
 					if (operation === 'trash') {
 						//https://developers.google.com/gmail/api/reference/rest/v1/users.threads/trash

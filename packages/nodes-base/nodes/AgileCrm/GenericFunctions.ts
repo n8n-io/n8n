@@ -96,7 +96,7 @@ export async function agileCrmApiRequestAllItems(
 export async function agileCrmApiRequestUpdate(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods = 'PUT',
-	endpoint?: string,
+	_endpoint?: string,
 	body: any = {},
 	_query: IDataObject = {},
 	uri?: string,
