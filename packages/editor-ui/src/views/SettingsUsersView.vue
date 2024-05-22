@@ -55,12 +55,7 @@
 				:users="usersStore.allUsers"
 				:current-user-id="usersStore.currentUserId"
 				:is-saml-login-enabled="ssoStore.isSamlLoginEnabled"
-				@delete="onDelete"
-				@reinvite="onReinvite"
-				@copy-invite-link="onCopyInviteLink"
-				@copy-password-reset-link="onCopyPasswordResetLink"
-				@allow-s-s-o-manual-login="onAllowSSOManualLogin"
-				@disallow-s-s-o-manual-login="onDisallowSSOManualLogin"
+				@action="onUsersListAction"
 			>
 				<template #actions="{ user }">
 					<n8n-select
@@ -192,6 +187,28 @@ export default defineComponent({
 		}
 	},
 	methods: {
+		async onUsersListAction({ action, userId }: { action: string; userId: string }) {
+			switch (action) {
+				case 'delete':
+					await this.onDelete(userId);
+					break;
+				case 'reinvite':
+					await this.onReinvite(userId);
+					break;
+				case 'copyInviteLink':
+					await this.onCopyInviteLink(userId);
+					break;
+				case 'copyPasswordResetLink':
+					await this.onCopyPasswordResetLink(userId);
+					break;
+				case 'allowSSOManualLogin':
+					await this.onAllowSSOManualLogin(userId);
+					break;
+				case 'disallowSSOManualLogin':
+					await this.onDisallowSSOManualLogin(userId);
+					break;
+			}
+		},
 		redirectToSetup() {
 			void this.$router.push({ name: VIEWS.SETUP });
 		},
