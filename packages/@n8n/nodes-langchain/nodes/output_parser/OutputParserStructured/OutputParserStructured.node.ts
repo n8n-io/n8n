@@ -17,6 +17,11 @@ import type { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScrip
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { logWrapper } from '../../../utils/logWrapper';
 import { generateSchema, getSandboxWithZod } from '../../../utils/schemaParsing';
+import {
+	inputSchemaField,
+	jsonSchemaExampleField,
+	schemaTypeField,
+} from '../../../utils/descriptions';
 
 const STRUCTURED_OUTPUT_KEY = '__structured__output';
 const STRUCTURED_OUTPUT_OBJECT_KEY = '__structured__output__object';
@@ -114,54 +119,16 @@ export class OutputParserStructured implements INodeType {
 		outputNames: ['Output Parser'],
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			{ ...schemaTypeField, displayOptions: { show: { '@version': [{ _cnd: { gte: 1.2 } }] } } },
 			{
-				displayName: 'Schema Type',
-				name: 'schemaType',
-				type: 'options',
-				noDataExpression: true,
-				options: [
-					{
-						name: 'Generate From JSON Example',
-						value: 'fromJson',
-						description: 'Generate a schema from an example JSON object',
-					},
-					{
-						name: 'Define Below',
-						value: 'manual',
-						description: 'Define the JSON schema manually',
-					},
-				],
-				default: 'fromJson',
-				description: 'How to specify the schema for the function',
-				displayOptions: {
-					show: {
-						'@version': [{ _cnd: { gte: 1.2 } }],
-					},
-				},
-			},
-			{
-				displayName: 'JSON Example',
-				name: 'jsonSchemaExample',
-				type: 'json',
+				...jsonSchemaExampleField,
 				default: `{
 	"state": "California",
 	"cities": ["Los Angeles", "San Francisco", "San Diego"]
 }`,
-				noDataExpression: true,
-				typeOptions: {
-					rows: 10,
-				},
-				displayOptions: {
-					show: {
-						schemaType: ['fromJson'],
-					},
-				},
-				description: 'Example JSON object to use to generate the schema',
 			},
 			{
-				displayName: 'Input Schema',
-				name: 'inputSchema',
-				type: 'json',
+				...inputSchemaField,
 				default: `{
 	"type": "object",
 	"properties": {
@@ -176,16 +143,6 @@ export class OutputParserStructured implements INodeType {
 		}
 	}
 }`,
-				noDataExpression: true,
-				typeOptions: {
-					rows: 10,
-				},
-				displayOptions: {
-					show: {
-						schemaType: ['manual'],
-					},
-				},
-				description: 'Schema to use for the function',
 			},
 			{
 				displayName: 'JSON Schema',
