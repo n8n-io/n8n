@@ -36,6 +36,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import config from '@/config';
 import { WaitTracker } from '@/WaitTracker';
 import type { ExecutionEntity } from '@/databases/entities/ExecutionEntity';
+import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 
 export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
@@ -128,6 +129,8 @@ export class ExecutionService {
 			);
 			throw new NotFoundError(`The execution with the ID "${executionId}" does not exist.`);
 		}
+
+		if (!execution.data.executionData) throw new AbortedExecutionRetryError();
 
 		if (execution.finished) {
 			throw new ApplicationError('The execution succeeded, so it cannot be retried.');
