@@ -18,7 +18,7 @@ export async function main(
 	DataSource: typeof Connection,
 ) {
 	const globalConfig = Container.get(GlobalConfig);
-	const dbType = globalConfig.database.type;
+	const { type: dbType } = globalConfig.database;
 
 	(connectionOptions.migrations as Migration[]).forEach(wrapMigration);
 

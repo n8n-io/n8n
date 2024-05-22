@@ -242,7 +242,7 @@ export class Start extends BaseCommand {
 		}
 
 		const globalConfig = Container.get(GlobalConfig);
-		const dbType = globalConfig.database.type;
+		const { type: dbType } = globalConfig.database;
 		if (dbType === 'sqlite') {
 			const shouldRunVacuum = globalConfig.database.sqlite.executeVacuumOnStartup;
 			if (shouldRunVacuum) {

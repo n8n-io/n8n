@@ -17,9 +17,8 @@ import { postgresMigrations } from './migrations/postgresdb';
 import { sqliteMigrations } from './migrations/sqlite';
 
 const getCommonOptions = () => {
-	const globalConfig = Container.get(GlobalConfig);
-	const entityPrefix = globalConfig.database.tablePrefix;
-	const loggingConfig = globalConfig.database.logging;
+	const { tablePrefix: entityPrefix, logging: loggingConfig } =
+		Container.get(GlobalConfig).database;
 
 	let loggingOption: LoggerOptions = loggingConfig.enabled;
 	if (loggingOption) {
@@ -82,13 +81,12 @@ const getSqliteConnectionOptions = (): SqliteConnectionOptions | SqlitePooledCon
 };
 
 const getPostgresConnectionOptions = (): PostgresConnectionOptions => {
-	const globalConfig = Container.get(GlobalConfig);
-	const sslCa = globalConfig.database.postgresdb.ssl.ca;
-	const sslCert = globalConfig.database.postgresdb.ssl.cert;
-	const sslKey = globalConfig.database.postgresdb.ssl.key;
-	const sslRejectUnauthorized = globalConfig.database.postgresdb.ssl.rejectUnauthorized;
+	const postgresConfig = Container.get(GlobalConfig).database.postgresdb;
+	const {
+		ssl: { ca: sslCa, cert: sslCert, key: sslKey, rejectUnauthorized: sslRejectUnauthorized },
+	} = postgresConfig;
 
-	let ssl: TlsOptions | boolean = globalConfig.database.postgresdb.ssl.enabled;
+	let ssl: TlsOptions | boolean = postgresConfig.ssl.enabled;
 	if (sslCa !== '' || sslCert !== '' || sslKey !== '' || !sslRejectUnauthorized) {
 		ssl = {
 			ca: sslCa || undefined,
@@ -102,8 +100,8 @@ const getPostgresConnectionOptions = (): PostgresConnectionOptions => {
 		type: 'postgres',
 		...getCommonOptions(),
 		...getOptionOverrides('postgresdb'),
-		schema: globalConfig.database.postgresdb.schema,
-		poolSize: globalConfig.database.postgresdb.poolSize,
+		schema: postgresConfig.schema,
+		poolSize: postgresConfig.poolSize,
 		migrations: postgresMigrations,
 		ssl,
 	};
@@ -119,7 +117,7 @@ const getMysqlConnectionOptions = (dbType: 'mariadb' | 'mysqldb'): MysqlConnecti
 
 export function getConnectionOptions(): DataSourceOptions {
 	const globalConfig = Container.get(GlobalConfig);
-	const dbType = globalConfig.database.type;
+	const { type: dbType } = globalConfig.database;
 	switch (dbType) {
 		case 'sqlite':
 			return getSqliteConnectionOptions();

@@ -80,7 +80,7 @@ export abstract class BaseCommand extends Command {
 		);
 
 		const globalConfig = Container.get(GlobalConfig);
-		const dbType = globalConfig.database.type;
+		const { type: dbType } = globalConfig.database;
 
 		if (['mysqldb', 'mariadb'].includes(dbType)) {
 			this.logger.warn(

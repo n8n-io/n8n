@@ -5,7 +5,7 @@ import { DataSource as Connection } from '@n8n/typeorm';
 import { getBootstrapDBOptions, testDbPrefix } from './integration/shared/testDb';
 
 export default async () => {
-	const dbType = Container.get(GlobalConfig).database.type;
+	const { type: dbType } = Container.get(GlobalConfig).database;
 	if (dbType !== 'postgresdb' && dbType !== 'mysqldb') return;
 
 	const connection = new Connection(getBootstrapDBOptions(dbType));

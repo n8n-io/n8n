@@ -49,7 +49,7 @@ export async function transaction<T>(fn: (entityManager: EntityManager) => Promi
 }
 
 export async function setSchema(conn: Connection) {
-	const schema = Container.get(GlobalConfig).database.postgresdb.schema;
+	const { schema } = Container.get(GlobalConfig).database.postgresdb;
 	const searchPath = ['public'];
 	if (schema !== 'public') {
 		await conn.query(`CREATE SCHEMA IF NOT EXISTS ${schema}`);
@@ -61,7 +61,7 @@ export async function setSchema(conn: Connection) {
 export async function init(): Promise<void> {
 	if (connectionState.connected) return;
 
-	const dbType = Container.get(GlobalConfig).database.type;
+	const { type: dbType } = Container.get(GlobalConfig).database;
 	const connectionOptions = getConnectionOptions();
 
 	connection = new Connection(connectionOptions);
