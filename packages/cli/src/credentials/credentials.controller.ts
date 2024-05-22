@@ -1,4 +1,7 @@
 import { deepCopy } from 'n8n-workflow';
+import { GlobalConfig } from '@n8n/config';
+import { In } from '@n8n/typeorm';
+
 import config from '@/config';
 import { CredentialsService } from './credentials.service';
 import { CredentialRequest } from '@/requests';
@@ -25,13 +28,13 @@ import * as Db from '@/Db';
 import * as utils from '@/utils';
 import { listQueryMiddleware } from '@/middlewares';
 import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
-import { In } from '@n8n/typeorm';
 import { SharedCredentials } from '@/databases/entities/SharedCredentials';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 
 @RestController('/credentials')
 export class CredentialsController {
 	constructor(
+		private readonly globalConfig: GlobalConfig,
 		private readonly credentialsService: CredentialsService,
 		private readonly enterpriseCredentialsService: EnterpriseCredentialsService,
 		private readonly namingService: NamingService,
@@ -53,7 +56,7 @@ export class CredentialsController {
 
 	@Get('/new')
 	async generateUniqueName(req: CredentialRequest.NewName) {
-		const requestedName = req.query.name ?? config.getEnv('credentials.defaultName');
+		const requestedName = req.query.name ?? this.globalConfig.credentials.defaultName;
 
 		return {
 			name: await this.namingService.getUniqueCredentialName(requestedName),

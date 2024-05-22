@@ -1,8 +1,8 @@
 import { Container } from 'typedi';
 import type { SuperAgentTest } from 'supertest';
 
+import { GlobalConfig } from '@n8n/config';
 import type { Scope } from '@n8n/permissions';
-import config from '@/config';
 import type { ListQuery } from '@/requests';
 import type { User } from '@db/entities/User';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
@@ -642,7 +642,7 @@ describe('PATCH /credentials/:id', () => {
 
 describe('GET /credentials/new', () => {
 	test('should return default name for new credential or its increment', async () => {
-		const name = config.getEnv('credentials.defaultName');
+		const name = Container.get(GlobalConfig).credentials.defaultName;
 		let tempName = name;
 
 		for (let i = 0; i < 4; i++) {

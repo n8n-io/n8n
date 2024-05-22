@@ -1,5 +1,5 @@
-import { Container } from 'typedi';
 import fs from 'fs';
+import { Container } from 'typedi';
 import { mock } from 'jest-mock-extended';
 import { GlobalConfig } from '../src/index';
 
@@ -56,6 +56,14 @@ describe('GlobalConfig', () => {
 			tablePrefix: '',
 			type: 'sqlite',
 		},
+
+		credentials: {
+			defaultName: 'My credentials',
+			overwrite: {
+				data: '{}',
+				endpoint: '',
+			},
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {
@@ -73,6 +81,7 @@ describe('GlobalConfig', () => {
 		};
 		const config = Container.get(GlobalConfig);
 		expect(config).toEqual({
+			...defaultConfig,
 			database: {
 				logging: defaultConfig.database.logging,
 				mysqldb: defaultConfig.database.mysqldb,

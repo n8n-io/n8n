@@ -1,6 +1,6 @@
 import 'reflect-metadata';
-import { Container, Service } from 'typedi';
 import { readFileSync } from 'fs';
+import { Container, Service } from 'typedi';
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 type Class = Function;

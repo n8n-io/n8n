@@ -21,33 +21,6 @@ convict.addFormat({
 });
 
 export const schema = {
-	credentials: {
-		overwrite: {
-			data: {
-				// Allows to set default values for credentials which
-				// get automatically prefilled and the user does not get
-				// displayed and can not change.
-				// Format: { CREDENTIAL_NAME: { PARAMETER: VALUE }}
-				doc: 'Overwrites for credentials',
-				format: '*',
-				default: '{}',
-				env: 'CREDENTIALS_OVERWRITE_DATA',
-			},
-			endpoint: {
-				doc: 'Fetch credentials from API',
-				format: String,
-				default: '',
-				env: 'CREDENTIALS_OVERWRITE_ENDPOINT',
-			},
-		},
-		defaultName: {
-			doc: 'Default name for credentials',
-			format: String,
-			default: 'My credentials',
-			env: 'CREDENTIALS_DEFAULT_NAME',
-		},
-	},
-
 	workflows: {
 		defaultName: {
 			doc: 'Default name for workflow',
