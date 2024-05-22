@@ -1,4 +1,4 @@
-import fs from 'fs';
+import fs from 'node:fs';
 import { InstanceSettings } from '@/InstanceSettings';
 
 describe('InstanceSettings', () => {

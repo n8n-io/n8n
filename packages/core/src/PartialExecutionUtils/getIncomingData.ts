@@ -1,4 +1,4 @@
-import * as a from 'assert';
+import * as a from 'node:assert';
 import type { INodeExecutionData, IRunData, NodeConnectionType } from 'n8n-workflow';
 
 export function getIncomingData(

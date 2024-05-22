@@ -11,7 +11,7 @@
 
 import { recreateNodeExecutionStack } from '@/PartialExecutionUtils/recreateNodeExecutionStack';
 import { type IPinData, type IRunData } from 'n8n-workflow';
-import { AssertionError } from 'assert';
+import { AssertionError } from 'node:assert';
 import { DirectedGraph } from '../DirectedGraph';
 import { findSubgraph } from '../findSubgraph';
 import { createNodeData, toITaskData } from './helpers';

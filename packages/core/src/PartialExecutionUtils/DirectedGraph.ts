@@ -1,4 +1,4 @@
-import * as a from 'assert';
+import * as a from 'node:assert';
 import type { IConnections, INode, WorkflowParameters } from 'n8n-workflow';
 import { NodeConnectionType, Workflow } from 'n8n-workflow';
 

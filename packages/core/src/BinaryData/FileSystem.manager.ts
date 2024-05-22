@@ -6,7 +6,7 @@ import { jsonParse } from 'n8n-workflow';
 import { assertDir, doesNotExist } from './utils';
 import { DisallowedFilepathError } from '../errors/disallowed-filepath.error';
 
-import type { Readable } from 'stream';
+import type { Readable } from 'node:stream';
 import type { BinaryData } from './types';
 import { FileNotFoundError } from '../errors/file-not-found.error';
 

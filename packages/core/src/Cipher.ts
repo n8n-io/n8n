@@ -1,5 +1,5 @@
 import { Service } from 'typedi';
-import { createHash, createCipheriv, createDecipheriv, randomBytes } from 'crypto';
+import { createHash, createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import { InstanceSettings } from './InstanceSettings';
 
 // Data encrypted by CryptoJS always starts with these bytes

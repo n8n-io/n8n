@@ -1,6 +1,6 @@
 import { Container } from 'typedi';
 import { mock } from 'jest-mock-extended';
-import { Duplex } from 'stream';
+import { Duplex } from 'node:stream';
 
 import type { DeepPartial } from 'ts-essentials';
 import type { Class } from '@/Interfaces';

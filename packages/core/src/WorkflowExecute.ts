@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-import { setMaxListeners } from 'events';
+import { setMaxListeners } from 'node:events';
 import PCancelable from 'p-cancelable';
 
 import type {
@@ -49,7 +49,7 @@ import {
 import get from 'lodash/get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 
-import * as assert from 'assert/strict';
+import * as assert from 'node:assert/strict';
 import { recreateNodeExecutionStack } from './PartialExecutionUtils/recreateNodeExecutionStack';
 import {
 	DirectedGraph,

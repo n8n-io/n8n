@@ -22,14 +22,14 @@ import type {
 	AxiosResponse,
 } from 'axios';
 import axios from 'axios';
-import crypto, { createHmac } from 'crypto';
+import crypto, { createHmac } from 'node:crypto';
 import type { Request, Response } from 'express';
 import FileType from 'file-type';
 import FormData from 'form-data';
-import { createReadStream } from 'fs';
-import { access as fsAccess, writeFile as fsWriteFile } from 'fs/promises';
-import { IncomingMessage, type IncomingHttpHeaders } from 'http';
-import { Agent, type AgentOptions } from 'https';
+import { createReadStream } from 'node:fs';
+import { access as fsAccess, writeFile as fsWriteFile } from 'node:fs/promises';
+import { IncomingMessage, type IncomingHttpHeaders } from 'node:http';
+import { Agent, type AgentOptions } from 'node:https';
 import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';
 import pick from 'lodash/pick';
@@ -125,10 +125,10 @@ import {
 } from 'n8n-workflow';
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
-import path from 'path';
+import path from 'node:path';
 import { stringify } from 'qs';
-import { Readable } from 'stream';
-import url, { URL, URLSearchParams } from 'url';
+import { Readable } from 'node:stream';
+import url, { URL, URLSearchParams } from 'node:url';
 
 import { BinaryDataService } from './BinaryData/BinaryData.service';
 import {

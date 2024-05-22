@@ -1,5 +1,5 @@
-import path from 'path';
-import { readdirSync, readFileSync } from 'fs';
+import path from 'node:path';
+import { readdirSync, readFileSync } from 'node:fs';
 
 const BASE_DIR = path.resolve(__dirname, '../../..');
 

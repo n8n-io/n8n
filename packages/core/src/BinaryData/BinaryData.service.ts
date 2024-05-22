@@ -5,7 +5,7 @@ import { BINARY_ENCODING } from 'n8n-workflow';
 import { InvalidModeError } from '../errors/invalid-mode.error';
 import { areConfigModes, binaryToBuffer } from './utils';
 
-import type { Readable } from 'stream';
+import type { Readable } from 'node:stream';
 import type { BinaryData } from './types';
 import type { INodeExecutionData, IBinaryData } from 'n8n-workflow';
 import { InvalidManagerError } from '../errors/invalid-manager.error';

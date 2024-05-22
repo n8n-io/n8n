@@ -1,5 +1,5 @@
 import glob from 'fast-glob';
-import { readFile } from 'fs/promises';
+import { readFile } from 'node:fs/promises';
 import type {
 	CodexData,
 	DocumentationLink,
@@ -20,7 +20,7 @@ import {
 	getVersionedNodeTypeAll,
 	jsonParse,
 } from 'n8n-workflow';
-import * as path from 'path';
+import * as path from 'node:path';
 import { loadClassInIsolation } from './ClassLoader';
 import { CUSTOM_NODES_CATEGORY } from './Constants';
 import type { n8n } from './Interfaces';

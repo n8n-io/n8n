@@ -1,4 +1,4 @@
-import type { SecureContextOptions } from 'tls';
+import type { SecureContextOptions } from 'node:tls';
 import {
 	cleanupParameterData,
 	copyInputItems,
@@ -12,8 +12,8 @@ import {
 	setBinaryDataBuffer,
 } from '@/NodeExecuteFunctions';
 import { DateTime } from 'luxon';
-import { mkdtempSync, readFileSync } from 'fs';
-import type { IncomingMessage } from 'http';
+import { mkdtempSync, readFileSync } from 'node:fs';
+import type { IncomingMessage } from 'node:http';
 import { mock } from 'jest-mock-extended';
 import type {
 	IBinaryData,
@@ -30,10 +30,10 @@ import type {
 import { ExpressionError } from 'n8n-workflow';
 import { BinaryDataService } from '@/BinaryData/BinaryData.service';
 import nock from 'nock';
-import { tmpdir } from 'os';
-import { join } from 'path';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import Container from 'typedi';
-import type { Agent } from 'https';
+import type { Agent } from 'node:https';
 import toPlainObject from 'lodash/toPlainObject';
 import { InstanceSettings } from '@/InstanceSettings';
 

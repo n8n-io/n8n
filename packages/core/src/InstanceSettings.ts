@@ -1,6 +1,6 @@
-import path from 'path';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
-import { createHash, randomBytes } from 'crypto';
+import path from 'node:path';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { createHash, randomBytes } from 'node:crypto';
 import { Service } from 'typedi';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
 

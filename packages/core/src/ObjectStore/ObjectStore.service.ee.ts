@@ -15,7 +15,7 @@ import type {
 	RawListPage,
 	RequestOptions,
 } from './types';
-import type { Readable } from 'stream';
+import type { Readable } from 'node:stream';
 import type { BinaryData } from '../BinaryData/types';
 
 @Service()

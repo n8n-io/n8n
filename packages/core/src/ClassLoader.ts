@@ -1,4 +1,4 @@
-import { createContext, Script } from 'vm';
+import { createContext, Script } from 'node:vm';
 
 const context = createContext({ require });
 export const loadClassInIsolation = <T>(filePath: string, className: string) => {
