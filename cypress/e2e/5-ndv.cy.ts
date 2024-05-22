@@ -105,13 +105,26 @@ describe('NDV', () => {
 	});
 
 	it('should show all validation errors when opening pasted node', () => {
-		cy.fixture('Test_workflow_ndv_errors.json').then((data) => {
-			cy.get('body').paste(JSON.stringify(data));
-			workflowPage.getters.canvasNodes().should('have.have.length', 1);
-			workflowPage.actions.openNode('Airtable');
-			cy.get('.has-issues').should('have.length', 3);
-			cy.get('[class*=hasIssues]').should('have.length', 1);
-		});
+		cy.createFixtureWorkflow('Test_workflow_ndv_errors.json', 'Validation errors');
+		workflowPage.getters.canvasNodes().should('have.have.length', 1);
+		workflowPage.actions.openNode('Airtable');
+		cy.get('.has-issues').should('have.length', 3);
+		cy.get('[class*=hasIssues]').should('have.length', 1);
+	});
+
+	it('should render run errors correctly', () => {
+		cy.createFixtureWorkflow('Test_workflow_ndv_run_error.json', 'Run error');
+		workflowPage.actions.openNode('Error');
+		ndv.actions.execute();
+		ndv.getters
+			.nodeRunErrorMessage()
+			.should('have.text', 'Info for expression missing from previous node');
+		ndv.getters
+			.nodeRunErrorDescription()
+			.should(
+				'contains.text',
+				"An expression here won't work because it uses .item and n8n can't figure out the matching item.",
+			);
 	});
 
 	it('should save workflow using keyboard shortcut from NDV', () => {
