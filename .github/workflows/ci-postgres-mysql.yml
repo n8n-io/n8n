@@ -42,7 +42,7 @@ jobs:
     timeout-minutes: 20
     env:
       DB_TYPE: sqlite
-      DB_SQLITE_POOL_SIZE: 1
+      DB_SQLITE_POOL_SIZE: 4
     steps:
       - uses: actions/checkout@v4.1.1
       - run: corepack enable
