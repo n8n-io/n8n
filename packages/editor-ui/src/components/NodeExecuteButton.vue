@@ -19,6 +19,7 @@
 							? $locale.baseText('ndv.execute.testNode.description')
 							: ''
 					"
+					@mouseover="onMouseOver"
 					@click="onClick"
 				/>
 			</div>
@@ -49,6 +50,9 @@ import { usePinnedData } from '@/composables/usePinnedData';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useUIStore } from '@/stores/ui.store';
 import { useRouter } from 'vue-router';
+
+const NODE_TEST_STEP_POPUP_COUNT_KEY = 'N8N_NODE_TEST_STEP_POPUP_COUNT';
+const MAX_POPUP_COUNT = 10;
 
 export default defineComponent({
 	inheritAttrs: false,
@@ -202,7 +206,8 @@ export default defineComponent({
 		},
 		tooltipText(): string {
 			if (this.disabledHint) return this.disabledHint;
-			if (this.tooltip && !this.loading) return this.tooltip;
+			if (this.tooltip && !this.loading && this.testStepButtonPopupCount() < MAX_POPUP_COUNT)
+				return this.tooltip;
 			return '';
 		},
 		buttonLabel(): string {
@@ -244,6 +249,18 @@ export default defineComponent({
 			} catch (error) {
 				this.showError(error, this.$locale.baseText('ndv.execute.stopWaitingForWebhook.error'));
 				return;
+			}
+		},
+
+		testStepButtonPopupCount() {
+			return Number(localStorage.getItem(NODE_TEST_STEP_POPUP_COUNT_KEY));
+		},
+
+		onMouseOver() {
+			const count = this.testStepButtonPopupCount();
+
+			if (count < MAX_POPUP_COUNT) {
+				localStorage.setItem(NODE_TEST_STEP_POPUP_COUNT_KEY, `${count + 1}`);
 			}
 		},
 
