@@ -73,6 +73,8 @@ export abstract class BaseCommand extends Command {
 
 		await this.server?.init();
 
+    await sleep(500);
+
 		await Db.migrate().catch(
 			async (error: Error) =>
 				await this.exitWithCrash('There was an error running database migrations', error),
