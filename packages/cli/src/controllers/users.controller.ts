@@ -168,6 +168,10 @@ export class UsersController {
 			);
 		}
 
+		if (userToDelete.role === 'global:owner') {
+			throw new ForbiddenError('Instance owner cannot be deleted.');
+		}
+
 		const personalProjectToDelete = await this.projectRepository.getPersonalProjectForUserOrFail(
 			userToDelete.id,
 		);
