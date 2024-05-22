@@ -30,7 +30,7 @@ export async function createExecution(
 		...(workflow !== undefined && { workflowId: workflow.id }),
 		stoppedAt: stoppedAt ?? new Date(),
 		waitTill: waitTill ?? null,
-		status,
+		status: status ?? 'success',
 		deletedAt,
 	});
 
