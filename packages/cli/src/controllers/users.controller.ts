@@ -115,6 +115,10 @@ export class UsersController {
 			throw new NotFoundError('User not found');
 		}
 
+		if (req.user.role === 'global:admin' && user.role === 'global:owner') {
+			throw new ForbiddenError('Admin cannot reset password of global owner');
+		}
+
 		const link = this.authService.generatePasswordResetUrl(user);
 		return { link };
 	}
