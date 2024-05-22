@@ -4,8 +4,8 @@ import { VIEWS } from '@/constants';
 import { hasRole } from '@/rbac/checks';
 
 export const roleMiddleware: RouterMiddleware<RolePermissionOptions> = async (
-	to,
-	from,
+	_to,
+	_from,
 	next,
 	checkRoles,
 ) => {

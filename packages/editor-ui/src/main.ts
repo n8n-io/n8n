@@ -8,6 +8,7 @@ import '@vue-flow/minimap/dist/style.css';
 import 'vue-json-pretty/lib/styles.css';
 import '@jsplumb/browser-ui/css/jsplumbtoolkit.css';
 import 'n8n-design-system/css/index.scss';
+// import 'n8n-design-system/css/tailwind/index.css';
 
 import './n8n-theme.scss';
 

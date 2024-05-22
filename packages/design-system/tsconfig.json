@@ -11,7 +11,7 @@
 		"allowSyntheticDefaultImports": true,
 		"baseUrl": ".",
 		"types": ["vitest/globals"],
-		"typeRoots": ["@testing-library", "@types", "../../node_modules"],
+		"typeRoots": ["./node_modules/@testing-library", "./node_modules/@types", "../../node_modules", "../../node_modules/@types"],
 		"paths": {
 			"@/*": ["src/*"]
 		},

@@ -1,50 +1,22 @@
-import type { IDataObject, DocMetadata, NativeDoc } from 'n8n-workflow';
-import { Expression, ExpressionExtensions, NativeMethods, validateFieldType } from 'n8n-workflow';
-import { DateTime } from 'luxon';
-import { i18n } from '@/plugins/i18n';
 import { resolveParameter } from '@/composables/useWorkflowHelpers';
-import {
-	setRank,
-	hasNoParams,
-	prefixMatch,
-	isAllowedInDotNotation,
-	isSplitInBatchesAbsent,
-	longestCommonPrefix,
-	splitBaseTail,
-	isPseudoParam,
-	stripExcessParens,
-	isCredentialsModalOpen,
-	applyCompletion,
-	sortCompletionsAlpha,
-	hasRequiredArgs,
-	getDefaultArgs,
-	insertDefaultArgs,
-	applyBracketAccessCompletion,
-	applyBracketAccess,
-} from './utils';
+import { VALID_EMAIL_REGEX } from '@/constants';
+import { i18n } from '@/plugins/i18n';
+import { useEnvironmentsStore } from '@/stores/environments.ee.store';
+import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
+
 import type {
 	Completion,
 	CompletionContext,
 	CompletionResult,
 	CompletionSection,
 } from '@codemirror/autocomplete';
-import type {
-	AutocompleteInput,
-	AutocompleteOptionType,
-	ExtensionTypeName,
-	FnToDoc,
-	Resolved,
-} from './types';
-import { sanitizeHtml } from '@/utils/htmlUtils';
-import { isFunctionOption } from './typeGuards';
-import { luxonInstanceDocs } from './nativesAutocompleteDocs/luxon.instance.docs';
-import { luxonStaticDocs } from './nativesAutocompleteDocs/luxon.static.docs';
-import { useEnvironmentsStore } from '@/stores/environments.ee.store';
-import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
+import { uniqBy } from 'lodash-es';
+import { DateTime } from 'luxon';
+import type { DocMetadata, IDataObject, NativeDoc } from 'n8n-workflow';
+import { Expression, ExpressionExtensions, NativeMethods, validateFieldType } from 'n8n-workflow';
 import {
 	ARRAY_NUMBER_ONLY_METHODS,
 	ARRAY_RECOMMENDED_OPTIONS,
-	DATE_RECOMMENDED_OPTIONS,
 	FIELDS_SECTION,
 	LUXON_RECOMMENDED_OPTIONS,
 	LUXON_SECTIONS,
@@ -58,8 +30,28 @@ import {
 	STRING_RECOMMENDED_OPTIONS,
 	STRING_SECTIONS,
 } from './constants';
-import { VALID_EMAIL_REGEX } from '@/constants';
-import { uniqBy } from 'lodash-es';
+import { createInfoBoxRenderer } from './infoBoxRenderer';
+import { luxonInstanceDocs } from './nativesAutocompleteDocs/luxon.instance.docs';
+import { luxonStaticDocs } from './nativesAutocompleteDocs/luxon.static.docs';
+import type { AutocompleteInput, ExtensionTypeName, FnToDoc, Resolved } from './types';
+import {
+	applyBracketAccess,
+	applyBracketAccessCompletion,
+	applyCompletion,
+	getDefaultArgs,
+	hasNoParams,
+	hasRequiredArgs,
+	insertDefaultArgs,
+	isAllowedInDotNotation,
+	isCredentialsModalOpen,
+	isPseudoParam,
+	isSplitInBatchesAbsent,
+	longestCommonPrefix,
+	prefixMatch,
+	sortCompletionsAlpha,
+	splitBaseTail,
+	stripExcessParens,
+} from './utils';
 
 /**
  * Resolution-based completions offered according to datatype.
@@ -92,7 +84,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 
 		try {
 			resolved = resolveParameter(`={{ ${base} }}`);
-		} catch {
+		} catch (error) {
 			return null;
 		}
 
@@ -100,7 +92,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 
 		try {
 			options = datatypeOptions({ resolved, base, tail }).map(stripExcessParens(context));
-		} catch {
+		} catch (error) {
 			return null;
 		}
 	}
@@ -163,7 +155,7 @@ function datatypeOptions(input: AutocompleteInput): Completion[] {
 		return booleanOptions();
 	}
 
-	if (resolved instanceof DateTime) {
+	if (DateTime.isDateTime(resolved)) {
 		return luxonOptions(input as AutocompleteInput<DateTime>);
 	}
 
@@ -182,42 +174,61 @@ function datatypeOptions(input: AutocompleteInput): Completion[] {
 	return [];
 }
 
-export const natives = (
-	typeName: ExtensionTypeName,
-	transformLabel: (label: string) => string = (label) => label,
-): Completion[] => {
-	const natives: NativeDoc = NativeMethods.find((ee) => ee.typeName.toLowerCase() === typeName);
+export const natives = ({
+	typeName,
+	transformLabel = (label) => label,
+}: {
+	typeName: ExtensionTypeName;
+	transformLabel?: (label: string) => string;
+}): Completion[] => {
+	const nativeDocs: NativeDoc = NativeMethods.find((ee) => ee.typeName.toLowerCase() === typeName);
 
-	if (!natives) return [];
+	if (!nativeDocs) return [];
 
-	const nativeProps = natives.properties
-		? toOptions(natives.properties, typeName, 'keyword', false, transformLabel)
+	const nativeProps = nativeDocs.properties
+		? toOptions({
+				fnToDoc: nativeDocs.properties,
+				includeHidden: false,
+				isFunction: false,
+				transformLabel,
+			})
 		: [];
-	const nativeMethods = toOptions(
-		natives.functions,
-		typeName,
-		'native-function',
-		false,
+
+	const nativeMethods = toOptions({
+		fnToDoc: nativeDocs.functions,
+		includeHidden: false,
+		isFunction: true,
 		transformLabel,
-	);
+	});
 
 	return [...nativeProps, ...nativeMethods];
 };
 
-export const extensions = (
-	typeName: ExtensionTypeName,
+export const extensions = ({
+	typeName,
 	includeHidden = false,
-	transformLabel: (label: string) => string = (label) => label,
-) => {
-	const extensions = ExpressionExtensions.find((ee) => ee.typeName.toLowerCase() === typeName);
+	transformLabel = (label) => label,
+}: {
+	typeName: ExtensionTypeName;
+	includeHidden?: boolean;
+	transformLabel?: (label: string) => string;
+}) => {
+	const expressionExtensions = ExpressionExtensions.find(
+		(ee) => ee.typeName.toLowerCase() === typeName,
+	);
 
-	if (!extensions) return [];
+	if (!expressionExtensions) return [];
 
-	const fnToDoc = Object.entries(extensions.functions).reduce<FnToDoc>((acc, [fnName, fn]) => {
-		return { ...acc, [fnName]: { doc: fn.doc } };
-	}, {});
+	const fnToDoc = Object.entries(expressionExtensions.functions).reduce<FnToDoc>(
+		(acc, [fnName, fn]) => {
+			// Extension method docs do not have more info than info box, do not show
+			delete fn.doc?.docURL;
+			return { ...acc, [fnName]: { doc: fn.doc } };
+		},
+		{},
+	);
 
-	return toOptions(fnToDoc, typeName, 'extension-function', includeHidden, transformLabel);
+	return toOptions({ fnToDoc, isFunction: true, includeHidden, transformLabel });
 };
 
 export const getType = (value: unknown): string => {
@@ -232,173 +243,124 @@ export const isInputData = (base: string): boolean => {
 	);
 };
 
+export const isItem = (input: AutocompleteInput<IDataObject>): boolean => {
+	const { base, resolved } = input;
+	return /^(\$\(.*\)|\$input)/.test(base) && 'pairedItem' in resolved;
+};
+
+export const isBinary = (input: AutocompleteInput<IDataObject>): boolean => {
+	const { base, resolved } = input;
+	return (
+		/^(\$\(.*\)\..*\.binary\..*|\$binary)/.test(base) &&
+		'mimeType' in resolved &&
+		'fileExtension' in resolved
+	);
+};
+
 export const getDetail = (base: string, value: unknown): string | undefined => {
 	const type = getType(value);
 	if (!isInputData(base) || type === 'function') return undefined;
 	return type;
 };
 
-export const toOptions = (
-	fnToDoc: FnToDoc,
-	typeName: ExtensionTypeName,
-	optionType: AutocompleteOptionType = 'native-function',
+export const toOptions = ({
+	fnToDoc,
+	isFunction = false,
 	includeHidden = false,
-	transformLabel: (label: string) => string = (label) => label,
-) => {
+	transformLabel = (label) => label,
+}: {
+	fnToDoc: FnToDoc;
+	isFunction?: boolean;
+	includeHidden?: boolean;
+	transformLabel?: (label: string) => string;
+}) => {
 	return Object.entries(fnToDoc)
 		.sort((a, b) => a[0].localeCompare(b[0]))
-		.filter(([, docInfo]) => (docInfo.doc && !docInfo.doc?.hidden) || includeHidden)
+		.filter(([, docInfo]) => Boolean(docInfo.doc && !docInfo.doc?.hidden) || includeHidden)
 		.map(([fnName, docInfo]) => {
-			return createCompletionOption(typeName, fnName, optionType, docInfo, transformLabel);
+			return createCompletionOption({
+				name: fnName,
+				doc: docInfo.doc,
+				isFunction,
+				transformLabel,
+			});
 		});
 };
 
-const createCompletionOption = (
-	typeName: string,
-	name: string,
-	optionType: AutocompleteOptionType,
-	docInfo: { doc?: DocMetadata | undefined },
-	transformLabel: (label: string) => string = (label) => label,
-): Completion => {
-	const isFunction = isFunctionOption(optionType);
+const createCompletionOption = ({
+	name,
+	doc,
+	isFunction = false,
+	transformLabel = (label) => label,
+}: {
+	name: string;
+	doc?: DocMetadata;
+	isFunction?: boolean;
+	transformLabel?: (label: string) => string;
+}): Completion => {
 	const label = isFunction ? name + '()' : name;
 	const option: Completion = {
 		label,
-		type: optionType,
-		section: docInfo.doc?.section,
+		section: doc?.section,
 		apply: applyCompletion({
-			hasArgs: hasRequiredArgs(docInfo?.doc),
-			defaultArgs: getDefaultArgs(docInfo?.doc),
+			hasArgs: hasRequiredArgs(doc),
+			defaultArgs: getDefaultArgs(doc),
 			transformLabel,
 		}),
 	};
-
-	option.info = () => {
-		const tooltipContainer = document.createElement('div');
-		tooltipContainer.classList.add('autocomplete-info-container');
-
-		if (!docInfo.doc) return null;
-
-		const header = isFunctionOption(optionType)
-			? createFunctionHeader(typeName, docInfo)
-			: createPropHeader(typeName, docInfo);
-		header.classList.add('autocomplete-info-header');
-		tooltipContainer.appendChild(header);
-
-		if (docInfo.doc.description) {
-			const descriptionBody = document.createElement('div');
-			descriptionBody.classList.add('autocomplete-info-description');
-			const descriptionText = document.createElement('p');
-			descriptionText.innerHTML = sanitizeHtml(
-				docInfo.doc.description.replace(/`(.*?)`/g, '<code>$1</code>'),
-			);
-			descriptionBody.appendChild(descriptionText);
-			if (docInfo.doc.docURL) {
-				const descriptionLink = document.createElement('a');
-				descriptionLink.setAttribute('target', '_blank');
-				descriptionLink.setAttribute('href', docInfo.doc.docURL);
-				descriptionLink.innerText = i18n.autocompleteUIValues.docLinkLabel || 'Learn more';
-				descriptionLink.addEventListener('mousedown', (event: MouseEvent) => {
-					// This will prevent documentation popup closing before click
-					// event gets to links
-					event.preventDefault();
-				});
-				descriptionLink.classList.add('autocomplete-info-doc-link');
-				descriptionBody.appendChild(descriptionLink);
-			}
-			tooltipContainer.appendChild(descriptionBody);
-		}
-
-		return tooltipContainer;
-	};
+	option.info = createInfoBoxRenderer(doc, isFunction);
 
 	return option;
 };
 
-const createFunctionHeader = (typeName: string, fn: { doc?: DocMetadata | undefined }) => {
-	const header = document.createElement('div');
-	if (fn.doc) {
-		const typeNameSpan = document.createElement('span');
-		typeNameSpan.innerHTML = typeName.slice(0, 1).toUpperCase() + typeName.slice(1) + '.';
-		header.appendChild(typeNameSpan);
+const customObjectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
+	const { base, resolved } = input;
 
-		const functionNameSpan = document.createElement('span');
-		functionNameSpan.classList.add('autocomplete-info-name');
-		functionNameSpan.innerHTML = `${fn.doc.name}`;
-		header.appendChild(functionNameSpan);
-		let functionArgs = '(';
-		if (fn.doc.args) {
-			functionArgs += fn.doc.args
-				.map((arg) => {
-					let argString = `${arg.name}`;
-					if (arg.type) {
-						argString += `: ${arg.type}`;
-					}
-					return argString;
-				})
-				.join(', ');
-		}
-		functionArgs += ')';
-		const argsSpan = document.createElement('span');
-		argsSpan.classList.add('autocomplete-info-name-args');
-		argsSpan.innerText = functionArgs;
-		header.appendChild(argsSpan);
-		if (fn.doc.returnType) {
-			const returnTypeSpan = document.createElement('span');
-			returnTypeSpan.innerHTML = ': ' + fn.doc.returnType;
-			header.appendChild(returnTypeSpan);
-		}
+	if (!resolved) return [];
+
+	if (base === '$execution') {
+		return executionOptions();
+	} else if (base === '$execution.customData') {
+		return customDataOptions();
+	} else if (base === '$workflow') {
+		return workflowOptions();
+	} else if (base === '$input') {
+		return inputOptions(base);
+	} else if (base === '$prevNode') {
+		return prevNodeOptions();
+	} else if (/^\$\(['"][\S\s]+['"]\)$/.test(base)) {
+		return nodeRefOptions(base);
+	} else if (base === '$response') {
+		return responseOptions();
+	} else if (isItem(input)) {
+		return itemOptions();
+	} else if (isBinary(input)) {
+		return binaryOptions();
 	}
-	return header;
-};
 
-const createPropHeader = (typeName: string, property: { doc?: DocMetadata | undefined }) => {
-	const header = document.createElement('div');
-	if (property.doc) {
-		const typeNameSpan = document.createElement('span');
-		typeNameSpan.innerHTML = typeName.charAt(0).toUpperCase() + typeName.slice(1);
-
-		if (!property.doc.name.startsWith("['")) {
-			typeNameSpan.innerHTML += '.';
-		}
-
-		const propNameSpan = document.createElement('span');
-		propNameSpan.classList.add('autocomplete-info-name');
-		propNameSpan.innerText = property.doc.name;
-
-		const returnTypeSpan = document.createElement('span');
-		returnTypeSpan.innerHTML = ': ' + property.doc.returnType;
-
-		header.appendChild(typeNameSpan);
-		header.appendChild(propNameSpan);
-		header.appendChild(returnTypeSpan);
-	}
-	return header;
+	return [];
 };
 
 const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
 	const { base, resolved, transformLabel = (label) => label } = input;
-	const rank = setRank(['item', 'all', 'first', 'last']);
 	const SKIP = new Set(['__ob__', 'pairedItem']);
 
 	if (isSplitInBatchesAbsent()) SKIP.add('context');
 
-	const name = /^\$\(.*\)$/.test(base) ? '$()' : base;
-
-	if (['$input', '$()'].includes(name) && hasNoParams(base)) SKIP.add('params');
-
 	let rawKeys = Object.keys(resolved);
-
-	if (name === '$()') {
-		rawKeys = Reflect.ownKeys(resolved) as string[];
-	}
 
 	if (base === 'Math') {
 		const descriptors = Object.getOwnPropertyDescriptors(Math);
 		rawKeys = Object.keys(descriptors).sort((a, b) => a.localeCompare(b));
 	}
 
-	const localKeys = rank(rawKeys)
+	const customOptions = customObjectOptions(input);
+	if (customOptions.length > 0) {
+		// Only return completions that are present in the resolved data
+		return customOptions.filter((option) => option.label in resolved);
+	}
+
+	const localKeys = rawKeys
 		.filter((key) => !SKIP.has(key) && !isPseudoParam(key))
 		.map((key) => {
 			ensureKeyCanBeResolved(resolved, key);
@@ -406,35 +368,30 @@ const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
 			const resolvedProp = resolved[key];
 
 			const isFunction = typeof resolvedProp === 'function';
-			const hasArgs = isFunction && resolvedProp.length > 0 && name !== '$()';
+			const hasArgs = isFunction && resolvedProp.length > 0;
 
 			const option: Completion = {
 				label: isFunction ? key + '()' : key,
-				section: getObjectPropertySection({ name, key, isFunction }),
+				section: isFunction ? METHODS_SECTION : FIELDS_SECTION,
 				apply: needsBracketAccess
 					? applyBracketAccessCompletion
 					: applyCompletion({
 							hasArgs,
 							transformLabel,
 						}),
-				detail: getDetail(name, resolvedProp),
+				detail: getDetail(base, resolvedProp),
 			};
 
-			const infoKey = [name, key].join('.');
 			const infoName = needsBracketAccess ? applyBracketAccess(key) : key;
-			option.info = createCompletionOption(
-				'',
-				infoName,
-				isFunction ? 'native-function' : 'keyword',
-				{
-					doc: {
-						name: infoName,
-						returnType: getType(resolvedProp),
-						description: i18n.proxyVars[infoKey],
-					},
+			option.info = createCompletionOption({
+				name: infoName,
+				doc: {
+					name: infoName,
+					returnType: isFunction ? 'any' : getType(resolvedProp),
 				},
+				isFunction,
 				transformLabel,
-			).info;
+			}).info;
 
 			return option;
 		});
@@ -445,37 +402,25 @@ const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
 		/json('])$/.test(base) ||
 		base === '$execution' ||
 		base.endsWith('params') ||
+		base.endsWith('binary') ||
 		base === 'Math';
 
 	if (skipObjectExtensions) {
-		return sortCompletionsAlpha([...localKeys, ...natives('object')]);
+		return sortCompletionsAlpha([...localKeys, ...natives({ typeName: 'object' })]);
 	}
 
 	return applySections({
-		options: sortCompletionsAlpha([...localKeys, ...natives('object'), ...extensions('object')]),
+		options: sortCompletionsAlpha([
+			...localKeys,
+			...natives({ typeName: 'object' }),
+			...extensions({ typeName: 'object' }),
+		]),
 		recommended: OBJECT_RECOMMENDED_OPTIONS,
 		recommendedSection: RECOMMENDED_METHODS_SECTION,
-		methodsSection: OTHER_METHODS_SECTION,
 		propSection: FIELDS_SECTION,
+		methodsSection: OTHER_METHODS_SECTION,
 		excludeRecommended: true,
 	});
-};
-
-const getObjectPropertySection = ({
-	name,
-	key,
-	isFunction,
-}: {
-	name: string;
-	key: string;
-	isFunction: boolean;
-}): CompletionSection => {
-	if (name === '$input' || name === '$()') {
-		if (key === 'item') return RECOMMENDED_SECTION;
-		return OTHER_SECTION;
-	}
-
-	return isFunction ? METHODS_SECTION : FIELDS_SECTION;
 };
 
 const applySections = ({
@@ -536,14 +481,25 @@ const isUrl = (url: string): boolean => {
 const stringOptions = (input: AutocompleteInput<string>): Completion[] => {
 	const { resolved, transformLabel } = input;
 	const options = sortCompletionsAlpha([
-		...natives('string', transformLabel),
-		...extensions('string', false, transformLabel),
+		...natives({ typeName: 'string', transformLabel }),
+		...extensions({ typeName: 'string', includeHidden: false, transformLabel }),
 	]);
 
-	if (validateFieldType('string', resolved, 'number').valid) {
+	if (resolved && validateFieldType('string', resolved, 'number').valid) {
+		const recommended = ['toNumber()'];
+		const timestampUnit = toTimestampUnit(Number(resolved));
+
+		if (timestampUnit) {
+			return applySections({
+				options,
+				recommended: [...recommended, { label: 'toDateTime()', args: [`'${timestampUnit}'`] }],
+				sections: STRING_SECTIONS,
+			});
+		}
+
 		return applySections({
 			options,
-			recommended: ['toInt()', 'toFloat()'],
+			recommended,
 			sections: STRING_SECTIONS,
 		});
 	}
@@ -609,39 +565,50 @@ const stringOptions = (input: AutocompleteInput<string>): Completion[] => {
 
 const booleanOptions = (): Completion[] => {
 	return applySections({
-		options: sortCompletionsAlpha([...natives('boolean'), ...extensions('boolean')]),
+		options: sortCompletionsAlpha([
+			...natives({ typeName: 'boolean' }),
+			...extensions({ typeName: 'boolean' }),
+		]),
 	});
+};
+
+const isWithinMargin = (ts: number, now: number, margin: number): boolean => {
+	return ts > now - margin && ts < now + margin;
+};
+
+const toTimestampUnit = (ts: number): null | 'ms' | 's' | 'us' => {
+	const nowMillis = Date.now();
+	const marginMillis = 946_707_779_000; // 30y
+
+	if (isWithinMargin(ts, nowMillis, marginMillis)) {
+		return 'ms';
+	}
+
+	if (isWithinMargin(ts, nowMillis / 1000, marginMillis / 1000)) {
+		return 's';
+	}
+
+	if (isWithinMargin(ts, nowMillis * 1000, marginMillis * 1000)) {
+		return 'us';
+	}
+
+	return null;
 };
 
 const numberOptions = (input: AutocompleteInput<number>): Completion[] => {
 	const { resolved, transformLabel } = input;
 	const options = sortCompletionsAlpha([
-		...natives('number', transformLabel),
-		...extensions('number', false, transformLabel),
+		...natives({ typeName: 'number', transformLabel }),
+		...extensions({ typeName: 'number', includeHidden: false, transformLabel }),
 	]);
 	const ONLY_INTEGER = ['isEven()', 'isOdd()'];
 
 	if (Number.isInteger(resolved)) {
-		const nowMillis = Date.now();
-		const marginMillis = 946_707_779_000; // 30y
-		const isPlausableMillisDateTime =
-			resolved > nowMillis - marginMillis && resolved < nowMillis + marginMillis;
-
-		if (isPlausableMillisDateTime) {
+		const timestampUnit = toTimestampUnit(resolved);
+		if (timestampUnit) {
 			return applySections({
 				options,
-				recommended: [{ label: 'toDateTime()', args: ['ms'] }],
-			});
-		}
-
-		const nowSeconds = nowMillis / 1000;
-		const marginSeconds = marginMillis / 1000;
-		const isPlausableSecondsDateTime =
-			resolved > nowSeconds - marginSeconds && resolved < nowSeconds + marginSeconds;
-		if (isPlausableSecondsDateTime) {
-			return applySections({
-				options,
-				recommended: [{ label: 'toDateTime()', args: ['s'] }],
+				recommended: [{ label: 'toDateTime()', args: [`'${timestampUnit}'`] }],
 			});
 		}
 
@@ -666,22 +633,20 @@ const numberOptions = (input: AutocompleteInput<number>): Completion[] => {
 };
 
 const dateOptions = (input: AutocompleteInput<Date>): Completion[] => {
-	return applySections({
-		options: sortCompletionsAlpha([
-			...natives('date', input.transformLabel),
-			...extensions('date', true, input.transformLabel),
-		]),
-		recommended: DATE_RECOMMENDED_OPTIONS,
-	});
+	const { transformLabel } = input;
+	return extensions({ typeName: 'date', includeHidden: true, transformLabel }).filter(
+		(ext) => ext.label === 'toDateTime()',
+	);
 };
 
 const luxonOptions = (input: AutocompleteInput<DateTime>): Completion[] => {
-	return applySections({
+	const { transformLabel } = input;
+	const result = applySections({
 		options: sortCompletionsAlpha(
 			uniqBy(
 				[
-					...extensions('date', false, input.transformLabel),
-					...luxonInstanceOptions(false, input.transformLabel),
+					...extensions({ typeName: 'date', includeHidden: false, transformLabel }),
+					...luxonInstanceOptions({ includeHidden: false, transformLabel }),
 				],
 				(option) => option.label,
 			),
@@ -689,14 +654,16 @@ const luxonOptions = (input: AutocompleteInput<DateTime>): Completion[] => {
 		recommended: LUXON_RECOMMENDED_OPTIONS,
 		sections: LUXON_SECTIONS,
 	});
+
+	return result;
 };
 
 const arrayOptions = (input: AutocompleteInput<unknown[]>): Completion[] => {
 	const { resolved, transformLabel } = input;
 	const options = applySections({
 		options: sortCompletionsAlpha([
-			...natives('array', transformLabel),
-			...extensions('array', false, transformLabel),
+			...natives({ typeName: 'array', transformLabel }),
+			...extensions({ typeName: 'array', includeHidden: false, transformLabel }),
 		]),
 		recommended: ARRAY_RECOMMENDED_OPTIONS,
 		methodsSection: OTHER_SECTION,
@@ -726,7 +693,8 @@ export const variablesOptions = () => {
 	const variables = environmentsStore.variables;
 
 	return variables.map((variable) =>
-		createCompletionOption('Object', variable.key, 'keyword', {
+		createCompletionOption({
+			name: variable.key,
 			doc: {
 				name: variable.key,
 				returnType: 'string',
@@ -735,6 +703,420 @@ export const variablesOptions = () => {
 			},
 		}),
 	);
+};
+
+export const responseOptions = () => {
+	return [
+		{
+			name: 'statusCode',
+			returnType: 'number',
+			docURL: 'https://docs.n8n.io/code/builtin/http-node-variables/',
+			description: i18n.baseText('codeNodeEditor.completer.$response.statusCode'),
+		},
+		{
+			name: 'statusMessage',
+			returnType: 'string',
+			description: i18n.baseText('codeNodeEditor.completer.$response.statusMessage'),
+		},
+		{
+			name: 'headers',
+			returnType: 'Object',
+			docURL: 'https://docs.n8n.io/code/builtin/http-node-variables/',
+			description: i18n.baseText('codeNodeEditor.completer.$response.headers'),
+		},
+		{
+			name: 'body',
+			returnType: 'Object',
+			docURL: 'https://docs.n8n.io/code/builtin/http-node-variables/',
+			description: i18n.baseText('codeNodeEditor.completer.$response.body'),
+		},
+	].map((doc) => createCompletionOption({ name: doc.name, doc }));
+};
+
+export const executionOptions = () => {
+	return [
+		{
+			name: 'id',
+			returnType: 'string',
+			description: i18n.baseText('codeNodeEditor.completer.$execution.id'),
+		},
+		{
+			name: 'mode',
+			returnType: 'string',
+			description: i18n.baseText('codeNodeEditor.completer.$execution.mode'),
+		},
+
+		{
+			name: 'resumeUrl',
+			returnType: 'string',
+			docURL: 'https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/',
+			description: i18n.baseText('codeNodeEditor.completer.$execution.resumeUrl'),
+		},
+		{
+			name: 'resumeFormUrl',
+			returnType: 'string',
+			docURL: 'https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/',
+			description: i18n.baseText('codeNodeEditor.completer.$execution.resumeFormUrl'),
+		},
+		{
+			name: 'customData',
+			returnType: 'CustomData',
+			docURL: 'https://docs.n8n.io/workflows/executions/custom-executions-data/',
+			description: i18n.baseText('codeNodeEditor.completer.$execution.customData'),
+		},
+	].map((doc) => createCompletionOption({ name: doc.name, doc }));
+};
+
+export const customDataOptions = () => {
+	return [
+		{
+			name: 'get',
+			returnType: 'any',
+			docURL: 'https://docs.n8n.io/workflows/executions/custom-executions-data/',
+			args: [
+				{
+					name: 'key',
+					description: 'The key (identifier) under which the data is stored',
+					type: 'string',
+				},
+			],
+			description: i18n.baseText('codeNodeEditor.completer.$execution.customData.get'),
+			examples: [
+				{
+					description: i18n.baseText(
+						'codeNodeEditor.completer.$execution.customData.get.examples.1',
+					),
+					example: '$execution.customData.get("user_email")',
+					evaluated: '"me@example.com"',
+				},
+			],
+		},
+		{
+			name: 'set',
+			returnType: 'void',
+			args: [
+				{
+					name: 'key',
+					description: i18n.baseText('codeNodeEditor.completer.$execution.customData.set.args.key'),
+					type: 'string',
+				},
+				{
+					name: 'value',
+					description: i18n.baseText(
+						'codeNodeEditor.completer.$execution.customData.set.args.value',
+					),
+					type: 'any',
+				},
+			],
+			docURL: 'https://docs.n8n.io/workflows/executions/custom-executions-data/',
+			description: i18n.baseText('codeNodeEditor.completer.$execution.customData.set'),
+			examples: [
+				{
+					description: i18n.baseText(
+						'codeNodeEditor.completer.$execution.customData.set.examples.1',
+					),
+					example: '$execution.customData.set("user_email", "me@example.com")',
+				},
+			],
+		},
+		{
+			name: 'getAll',
+			returnType: 'object',
+			docURL: 'https://docs.n8n.io/workflows/executions/custom-executions-data/',
+			description: i18n.baseText('codeNodeEditor.completer.$execution.customData.getAll'),
+			examples: [
+				{
+					example: '$execution.customData.getAll()',
+					evaluated: '{ user_email: "me@example.com", id: 1234 }',
+				},
+			],
+		},
+		{
+			name: 'setAll',
+			returnType: 'void',
+			args: [
+				{
+					name: 'obj',
+					description: i18n.baseText(
+						'codeNodeEditor.completer.$execution.customData.setAll.args.obj',
+					),
+					type: 'object',
+				},
+			],
+			docURL: 'https://docs.n8n.io/workflows/executions/custom-executions-data/',
+			description: i18n.baseText('codeNodeEditor.completer.$execution.customData.setAll'),
+			examples: [
+				{ example: '$execution.customData.setAll({ user_email: "me@example.com", id: 1234 })' },
+			],
+		},
+	].map((doc) => createCompletionOption({ name: doc.name, doc, isFunction: true }));
+};
+
+export const nodeRefOptions = (base: string) => {
+	const itemArgs = [
+		{
+			name: 'branchIndex',
+			optional: true,
+			description: i18n.baseText('codeNodeEditor.completer.selector.args.branchIndex'),
+			default: '0',
+			type: 'number',
+		},
+		{
+			name: 'runIndex',
+			optional: true,
+			description: i18n.baseText('codeNodeEditor.completer.selector.args.runIndex'),
+			default: '0',
+			type: 'number',
+		},
+	];
+
+	const options: Array<{ doc: DocMetadata; isFunction?: boolean }> = [
+		{
+			doc: {
+				name: 'item',
+				returnType: 'Item',
+				docURL: 'https://docs.n8n.io/data/data-mapping/data-item-linking/',
+				description: i18n.baseText('codeNodeEditor.completer.selector.item'),
+			},
+		},
+		{
+			doc: {
+				name: 'isExecuted',
+				returnType: 'boolean',
+				description: i18n.baseText('codeNodeEditor.completer.selector.isExecuted'),
+			},
+		},
+		{
+			doc: {
+				name: 'params',
+				returnType: 'NodeParams',
+				description: i18n.baseText('codeNodeEditor.completer.selector.params'),
+			},
+		},
+		{
+			doc: {
+				name: 'itemMatching',
+				returnType: 'Item',
+				args: [
+					{
+						name: 'currentItemIndex',
+						description: i18n.baseText(
+							'codeNodeEditor.completer.selector.itemMatching.args.currentItemIndex',
+						),
+						default: '0',
+						type: 'number',
+					},
+				],
+				docURL: 'https://docs.n8n.io/data/data-mapping/data-item-linking/',
+				description: i18n.baseText('codeNodeEditor.completer.selector.itemMatching'),
+			},
+			isFunction: true,
+		},
+		{
+			doc: {
+				name: 'first',
+				returnType: 'Item',
+				args: itemArgs,
+				description: i18n.baseText('codeNodeEditor.completer.selector.first'),
+			},
+			isFunction: true,
+		},
+		{
+			doc: {
+				name: 'last',
+				returnType: 'Item',
+				args: itemArgs,
+				description: i18n.baseText('codeNodeEditor.completer.selector.last'),
+			},
+			isFunction: true,
+		},
+		{
+			doc: {
+				name: 'all',
+				returnType: 'Item[]',
+				args: itemArgs,
+				description: i18n.baseText('codeNodeEditor.completer.selector.all'),
+			},
+			isFunction: true,
+		},
+	];
+
+	return applySections({
+		options: options
+			.filter((option) => !(option.doc.name === 'params' && hasNoParams(base)))
+			.map(({ doc, isFunction }) => createCompletionOption({ name: doc.name, doc, isFunction })),
+		sections: {},
+		recommended: ['item'],
+	});
+};
+
+export const inputOptions = (base: string) => {
+	const itemArgs = [
+		{
+			name: 'branchIndex',
+			optional: true,
+			description: i18n.baseText('codeNodeEditor.completer.selector.args.branchIndex'),
+			default: '0',
+			type: 'number',
+		},
+		{
+			name: 'runIndex',
+			optional: true,
+			description: i18n.baseText('codeNodeEditor.completer.selector.args.runIndex'),
+			default: '0',
+			type: 'number',
+		},
+	];
+
+	const options: Array<{ doc: DocMetadata; isFunction?: boolean }> = [
+		{
+			doc: {
+				name: 'item',
+				returnType: 'Item',
+				docURL: 'https://docs.n8n.io/data/data-mapping/data-item-linking/',
+				description: i18n.baseText('codeNodeEditor.completer.selector.item'),
+			},
+		},
+		{
+			doc: {
+				name: 'params',
+				returnType: 'NodeParams',
+				description: i18n.baseText('codeNodeEditor.completer.selector.params'),
+			},
+		},
+		{
+			doc: {
+				name: 'first',
+				returnType: 'Item',
+				args: itemArgs,
+				description: i18n.baseText('codeNodeEditor.completer.selector.first'),
+			},
+			isFunction: true,
+		},
+		{
+			doc: {
+				name: 'last',
+				returnType: 'Item',
+				args: itemArgs,
+				description: i18n.baseText('codeNodeEditor.completer.selector.last'),
+			},
+			isFunction: true,
+		},
+		{
+			doc: {
+				name: 'all',
+				returnType: 'Item[]',
+				args: itemArgs,
+				description: i18n.baseText('codeNodeEditor.completer.selector.all'),
+			},
+			isFunction: true,
+		},
+	];
+
+	return applySections({
+		options: options
+			.filter((option) => !(option.doc.name === 'params' && hasNoParams(base)))
+			.map(({ doc, isFunction }) => createCompletionOption({ name: doc.name, doc, isFunction })),
+		recommended: ['item'],
+		sections: {},
+	});
+};
+
+export const prevNodeOptions = () => {
+	return [
+		{
+			name: 'name',
+			returnType: 'string',
+			description: i18n.baseText('codeNodeEditor.completer.$prevNode.name'),
+		},
+		{
+			name: 'outputIndex',
+			returnType: 'number',
+			description: i18n.baseText('codeNodeEditor.completer.$prevNode.outputIndex'),
+		},
+		{
+			name: 'runIndex',
+			returnType: 'number',
+			description: i18n.baseText('codeNodeEditor.completer.$prevNode.runIndex'),
+		},
+	].map((doc) => createCompletionOption({ name: doc.name, doc }));
+};
+
+export const itemOptions = () => {
+	return [
+		{
+			name: 'json',
+			returnType: 'object',
+			docURL: 'https://docs.n8n.io/data/data-structure/',
+			description: i18n.baseText('codeNodeEditor.completer.item.json'),
+		},
+		{
+			name: 'binary',
+			returnType: 'object',
+			docURL: 'https://docs.n8n.io/data/data-structure/',
+			description: i18n.baseText('codeNodeEditor.completer.item.binary'),
+		},
+	].map((doc) => createCompletionOption({ name: doc.name, doc }));
+};
+
+export const binaryOptions = () => {
+	return [
+		{
+			name: 'id',
+			returnType: 'String',
+			description: i18n.baseText('codeNodeEditor.completer.binary.id'),
+		},
+		{
+			name: 'fileExtension',
+			returnType: 'string',
+			description: i18n.baseText('codeNodeEditor.completer.binary.fileExtension'),
+		},
+		{
+			name: 'fileName',
+			returnType: 'string',
+			description: i18n.baseText('codeNodeEditor.completer.binary.fileName'),
+		},
+		{
+			name: 'fileSize',
+			returnType: 'string',
+			description: i18n.baseText('codeNodeEditor.completer.binary.fileSize'),
+		},
+		{
+			name: 'fileType',
+			returnType: 'String',
+			description: i18n.baseText('codeNodeEditor.completer.binary.fileType'),
+		},
+		{
+			name: 'mimeType',
+			returnType: 'string',
+			description: i18n.baseText('codeNodeEditor.completer.binary.mimeType'),
+		},
+		{
+			name: 'directory',
+			returnType: 'String',
+			description: i18n.baseText('codeNodeEditor.completer.binary.directory'),
+		},
+	].map((doc) => createCompletionOption({ name: doc.name, doc }));
+};
+
+export const workflowOptions = () => {
+	return [
+		{
+			name: 'id',
+			returnType: 'string',
+			description: i18n.baseText('codeNodeEditor.completer.$workflow.id'),
+		},
+		{
+			name: 'name',
+			returnType: 'string',
+			description: i18n.baseText('codeNodeEditor.completer.$workflow.name'),
+		},
+		{
+			name: 'active',
+			returnType: 'boolean',
+			description: i18n.baseText('codeNodeEditor.completer.$workflow.active'),
+		},
+	].map((doc) => createCompletionOption({ name: doc.name, doc }));
 };
 
 export const secretOptions = (base: string) => {
@@ -756,7 +1138,8 @@ export const secretOptions = (base: string) => {
 			return [];
 		}
 		return Object.entries(resolved).map(([secret, value]) =>
-			createCompletionOption('', secret, 'keyword', {
+			createCompletionOption({
+				name: secret,
 				doc: {
 					name: secret,
 					returnType: typeof value,
@@ -774,7 +1157,8 @@ export const secretProvidersOptions = () => {
 	const externalSecretsStore = useExternalSecretsStore();
 
 	return Object.keys(externalSecretsStore.secretsAsObject).map((provider) =>
-		createCompletionOption('Object', provider, 'keyword', {
+		createCompletionOption({
+			name: provider,
 			doc: {
 				name: provider,
 				returnType: 'object',
@@ -788,10 +1172,13 @@ export const secretProvidersOptions = () => {
 /**
  * Methods and fields defined on a Luxon `DateTime` class instance.
  */
-export const luxonInstanceOptions = (
+export const luxonInstanceOptions = ({
 	includeHidden = false,
-	transformLabel: (label: string) => string = (label) => label,
-) => {
+	transformLabel = (label) => label,
+}: {
+	includeHidden?: boolean;
+	transformLabel?: (label: string) => string;
+} = {}) => {
 	const SKIP = new Set(['constructor', 'get', 'invalidExplanation', 'invalidReason']);
 
 	return Object.entries(Object.getOwnPropertyDescriptors(DateTime.prototype))
@@ -799,15 +1186,13 @@ export const luxonInstanceOptions = (
 		.sort(([a], [b]) => a.localeCompare(b))
 		.map(([key, descriptor]) => {
 			const isFunction = typeof descriptor.value === 'function';
-			const optionType = isFunction ? 'native-function' : 'keyword';
-			return createLuxonAutocompleteOption(
-				key,
-				optionType,
-				luxonInstanceDocs,
-				i18n.luxonInstance,
+			return createLuxonAutocompleteOption({
+				name: key,
+				isFunction,
+				docs: luxonInstanceDocs,
 				includeHidden,
 				transformLabel,
-			) as Completion;
+			}) as Completion;
 		})
 		.filter(Boolean);
 };
@@ -822,33 +1207,36 @@ export const luxonStaticOptions = () => {
 		Object.keys(Object.getOwnPropertyDescriptors(DateTime))
 			.filter((key) => !SKIP.has(key) && !key.includes('_'))
 			.map((key) => {
-				return createLuxonAutocompleteOption(
-					key,
-					'native-function',
-					luxonStaticDocs,
-					i18n.luxonStatic,
-				) as Completion;
+				return createLuxonAutocompleteOption({
+					name: key,
+					isFunction: true,
+					docs: luxonStaticDocs,
+				}) as Completion;
 			})
 			.filter(Boolean),
 	);
 };
 
-const createLuxonAutocompleteOption = (
-	name: string,
-	type: AutocompleteOptionType,
-	docDefinition: NativeDoc,
-	translations: Record<string, string | undefined>,
+const createLuxonAutocompleteOption = ({
+	name,
+	docs,
+	isFunction = false,
 	includeHidden = false,
-	transformLabel: (label: string) => string = (label) => label,
-): Completion | null => {
-	const isFunction = isFunctionOption(type);
+	transformLabel = (label) => label,
+}: {
+	name: string;
+	docs: NativeDoc;
+	isFunction?: boolean;
+	includeHidden?: boolean;
+	transformLabel?: (label: string) => string;
+}): Completion | null => {
 	const label = isFunction ? name + '()' : name;
 
 	let doc: DocMetadata | undefined;
-	if (docDefinition.properties && docDefinition.properties.hasOwnProperty(name)) {
-		doc = docDefinition.properties[name].doc;
-	} else if (docDefinition.functions.hasOwnProperty(name)) {
-		doc = docDefinition.functions[name].doc;
+	if (docs.properties && docs.properties.hasOwnProperty(name)) {
+		doc = docs.properties[name].doc;
+	} else if (docs.functions.hasOwnProperty(name)) {
+		doc = docs.functions[name].doc;
 	} else {
 		// Use inferred/default values if docs are still not updated
 		// This should happen when our doc specification becomes
@@ -867,7 +1255,6 @@ const createLuxonAutocompleteOption = (
 
 	const option: Completion = {
 		label,
-		type,
 		section: doc?.section,
 		apply: applyCompletion({
 			hasArgs: hasRequiredArgs(doc),
@@ -875,16 +1262,12 @@ const createLuxonAutocompleteOption = (
 			transformLabel,
 		}),
 	};
-	option.info = createCompletionOption(
-		'DateTime',
+	option.info = createCompletionOption({
 		name,
-		type,
-		{
-			// Add translated description
-			doc: { ...doc, description: translations[name] } as DocMetadata,
-		},
+		isFunction,
+		doc,
 		transformLabel,
-	).info;
+	}).info;
 	return option;
 };
 
@@ -892,18 +1275,89 @@ const createLuxonAutocompleteOption = (
  * Methods defined on the global `Object`.
  */
 export const objectGlobalOptions = () => {
-	return ['assign', 'entries', 'keys', 'values'].map((key) => {
-		const option: Completion = {
-			label: key + '()',
-			type: 'function',
-		};
-
-		const info = i18n.globalObject[key];
-
-		if (info) option.info = info;
-
-		return option;
-	});
+	return [
+		{
+			name: 'assign',
+			description: i18n.baseText('codeNodeEditor.completer.globalObject.assign'),
+			args: [
+				{
+					name: 'target',
+					type: 'object',
+				},
+				{
+					name: 'sources',
+					variadic: true,
+					type: 'object',
+				},
+			],
+			examples: [
+				{
+					example: "Object.assign(\n  {},\n  { id: 1, name: 'Apple' },\n  { name: 'Banana' }\n);",
+					evaluated: "{ id: 1, name: 'Banana' }",
+				},
+			],
+			returnType: 'object',
+			docURL:
+				'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/assign',
+		},
+		{
+			name: 'entries',
+			returnType: 'Array<[string, any]>',
+			args: [
+				{
+					name: 'obj',
+					type: 'object',
+				},
+			],
+			examples: [
+				{
+					example: "Object.entries({ id: 1, name: 'Apple' })",
+					evaluated: "[['id', 1], ['name', 'Apple']]",
+				},
+			],
+			description: i18n.baseText('codeNodeEditor.completer.globalObject.entries'),
+			docURL:
+				'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/entries',
+		},
+		{
+			name: 'keys',
+			args: [
+				{
+					name: 'obj',
+					type: 'object',
+				},
+			],
+			examples: [
+				{
+					example: "Object.keys({ id: 1, name: 'Apple' })",
+					evaluated: "['id', 'name']",
+				},
+			],
+			returnType: 'string[]',
+			description: i18n.baseText('codeNodeEditor.completer.globalObject.keys'),
+			docURL:
+				'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/keys',
+		},
+		{
+			name: 'values',
+			args: [
+				{
+					name: 'obj',
+					type: 'object',
+				},
+			],
+			examples: [
+				{
+					example: "Object.values({ id: 1, name: 'Apple' })",
+					evaluated: "[1, 'Apple']",
+				},
+			],
+			description: i18n.baseText('codeNodeEditor.completer.globalObject.values'),
+			returnType: 'Array',
+			docURL:
+				'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/values',
+		},
+	].map((doc) => createCompletionOption({ name: doc.name, doc, isFunction: true }));
 };
 
 const regexes = {
@@ -911,8 +1365,9 @@ const regexes = {
 	selectorRef: /\$\(['"][\S\s]+['"]\)\.(.*)/, // $('nodeName').
 
 	numberLiteral: /\((\d+)\.?(\d*)\)\.(.*)/, // (123). or (123.4).
-	singleQuoteStringLiteral: /('.+')\.([^'{\s])*/, // 'abc'.
-	doubleQuoteStringLiteral: /(".+")\.([^"{\s])*/, // "abc".
+	singleQuoteStringLiteral: /('.*')\.([^'{\s])*/, // 'abc'.
+	booleanLiteral: /(true|false)\.([^'{\s])*/, // true.
+	doubleQuoteStringLiteral: /(".*")\.([^"{\s])*/, // "abc".
 	dateLiteral: /\(?new Date\(\(?.*?\)\)?\.(.*)/, // new Date(). or (new Date()).
 	arrayLiteral: /\(?(\[.*\])\)?\.(.*)/, // [1, 2, 3].
 	indexedAccess: /([^"{\s]+\[.+\])\.(.*)/, // 'abc'[0]. or 'abc'.split('')[0] or similar ones

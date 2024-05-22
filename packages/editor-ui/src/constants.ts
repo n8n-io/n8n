@@ -1,4 +1,8 @@
-import type { NodeCreatorOpenSource } from './Interface';
+import type {
+	EnterpriseEditionFeatureKey,
+	EnterpriseEditionFeatureValue,
+	NodeCreatorOpenSource,
+} from './Interface';
 import { NodeConnectionType } from 'n8n-workflow';
 import type { CanvasNodeHandleInjectionData, CanvasNodeInjectionData } from '@/types';
 import type { InjectionKey } from 'vue';
@@ -403,6 +407,7 @@ export const LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG = 'N8N_PIN_DATA_DISCOVERY
 export const LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG = 'N8N_PIN_DATA_DISCOVERY_CANVAS';
 export const LOCAL_STORAGE_MAPPING_IS_ONBOARDED = 'N8N_MAPPING_ONBOARDED';
 export const LOCAL_STORAGE_AUTOCOMPLETE_IS_ONBOARDED = 'N8N_AUTOCOMPLETE_ONBOARDED';
+export const LOCAL_STORAGE_TABLE_HOVER_IS_ONBOARDED = 'N8N_TABLE_HOVER_ONBOARDED';
 export const LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH = 'N8N_MAIN_PANEL_RELATIVE_WIDTH';
 export const LOCAL_STORAGE_ACTIVE_MODAL = 'N8N_ACTIVE_MODAL';
 export const LOCAL_STORAGE_THEME = 'N8N_THEME';
@@ -475,6 +480,10 @@ export const enum VIEWS {
 	MFA_VIEW = 'MfaView',
 	WORKFLOW_HISTORY = 'WorkflowHistory',
 	WORKER_VIEW = 'WorkerView',
+	PROJECTS = 'Projects',
+	PROJECTS_WORKFLOWS = 'ProjectsWorkflows',
+	PROJECTS_CREDENTIALS = 'ProjectsCredentials',
+	PROJECT_SETTINGS = 'ProjectSettings',
 }
 
 export const EDITABLE_CANVAS_VIEWS = [
@@ -525,6 +534,7 @@ export const MAPPING_PARAMS = [
 	'$today',
 	'$vars',
 	'$workflow',
+	'$nodeVersion',
 ];
 
 export const DEFAULT_STICKY_HEIGHT = 160;
@@ -543,21 +553,25 @@ export const enum WORKFLOW_MENU_ACTIONS {
 /**
  * Enterprise edition
  */
-export const enum EnterpriseEditionFeature {
-	AdvancedExecutionFilters = 'advancedExecutionFilters',
-	Sharing = 'sharing',
-	Ldap = 'ldap',
-	LogStreaming = 'logStreaming',
-	Variables = 'variables',
-	Saml = 'saml',
-	SourceControl = 'sourceControl',
-	ExternalSecrets = 'externalSecrets',
-	AuditLogs = 'auditLogs',
-	DebugInEditor = 'debugInEditor',
-	WorkflowHistory = 'workflowHistory',
-	WorkerView = 'workerView',
-	AdvancedPermissions = 'advancedPermissions',
-}
+export const EnterpriseEditionFeature: Record<
+	EnterpriseEditionFeatureKey,
+	EnterpriseEditionFeatureValue
+> = {
+	AdvancedExecutionFilters: 'advancedExecutionFilters',
+	Sharing: 'sharing',
+	Ldap: 'ldap',
+	LogStreaming: 'logStreaming',
+	Variables: 'variables',
+	Saml: 'saml',
+	SourceControl: 'sourceControl',
+	ExternalSecrets: 'externalSecrets',
+	AuditLogs: 'auditLogs',
+	DebugInEditor: 'debugInEditor',
+	WorkflowHistory: 'workflowHistory',
+	WorkerView: 'workerView',
+	AdvancedPermissions: 'advancedPermissions',
+};
+
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
 export const enum MAIN_HEADER_TABS {

@@ -17,7 +17,7 @@ import type { TextSize } from '@/types/text';
 const THEME = ['primary', 'danger', 'text', 'secondary'] as const;
 
 interface LinkProps {
-	to?: RouteLocationRaw;
+	to?: RouteLocationRaw | string;
 	size?: TextSize;
 	newWindow?: boolean;
 	bold?: boolean;
@@ -27,6 +27,8 @@ interface LinkProps {
 
 defineOptions({ name: 'N8nLink' });
 withDefaults(defineProps<LinkProps>(), {
+	to: undefined,
+	size: undefined,
 	bold: false,
 	underline: false,
 	theme: 'primary',

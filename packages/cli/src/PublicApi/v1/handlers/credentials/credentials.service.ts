@@ -16,6 +16,7 @@ import type { CredentialRequest } from '@/requests';
 import { Container } from 'typedi';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { InternalHooks } from '@/InternalHooks';
 
 export async function getCredentials(credentialId: string): Promise<ICredentialsDb | null> {
@@ -28,7 +29,7 @@ export async function getSharedCredentials(
 ): Promise<SharedCredentials | null> {
 	return await Container.get(SharedCredentialsRepository).findOne({
 		where: {
-			userId,
+			project: { projectRelations: { userId } },
 			credentialsId: credentialId,
 		},
 		relations: ['credentials'],
@@ -66,10 +67,14 @@ export async function saveCredential(
 
 		const newSharedCredential = new SharedCredentials();
 
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			user.id,
+		);
+
 		Object.assign(newSharedCredential, {
 			role: 'credential:owner',
-			user,
 			credentials: savedCredential,
+			projectId: personalProject.id,
 		});
 
 		await transactionManager.save<SharedCredentials>(newSharedCredential);

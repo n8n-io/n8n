@@ -74,7 +74,7 @@ describe('useActionsGenerator', () => {
 				],
 			};
 
-			const { actions } = generateMergedNodesAndActions([node]);
+			const { actions } = generateMergedNodesAndActions([node], []);
 			expect(actions).toEqual({
 				[NODE_NAME]: [
 					expect.objectContaining({
@@ -117,7 +117,7 @@ describe('useActionsGenerator', () => {
 				],
 			};
 
-			const { actions } = generateMergedNodesAndActions([node]);
+			const { actions } = generateMergedNodesAndActions([node], []);
 			expect(actions).toEqual({
 				[NODE_NAME]: [
 					expect.objectContaining({
@@ -156,7 +156,7 @@ describe('useActionsGenerator', () => {
 				],
 			};
 
-			const { actions } = generateMergedNodesAndActions([node]);
+			const { actions } = generateMergedNodesAndActions([node], []);
 			expect(actions).toEqual({
 				[NODE_NAME]: [],
 			});
@@ -189,7 +189,7 @@ describe('useActionsGenerator', () => {
 				],
 			};
 
-			const { actions } = generateMergedNodesAndActions([node]);
+			const { actions } = generateMergedNodesAndActions([node], []);
 			expect(actions).toEqual({
 				[NODE_NAME]: [
 					expect.objectContaining({
@@ -251,7 +251,7 @@ describe('useActionsGenerator', () => {
 				],
 			};
 
-			const { actions } = generateMergedNodesAndActions([node]);
+			const { actions } = generateMergedNodesAndActions([node], []);
 			expect(actions).toEqual({
 				[NODE_NAME]: [
 					expect.objectContaining({
@@ -326,7 +326,7 @@ describe('useActionsGenerator', () => {
 				],
 			};
 
-			const { actions } = generateMergedNodesAndActions([node]);
+			const { actions } = generateMergedNodesAndActions([node], []);
 			expect(actions).toEqual({
 				[NODE_NAME]: [
 					expect.objectContaining({
@@ -371,7 +371,7 @@ describe('useActionsGenerator', () => {
 				],
 			};
 
-			const { actions } = generateMergedNodesAndActions([node]);
+			const { actions } = generateMergedNodesAndActions([node], []);
 			expect(actions).toEqual({
 				[NODE_NAME]: [
 					expect.objectContaining({

@@ -21,7 +21,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, computed, toRefs, getCurrentInstance } from 'vue';
+import { reactive, computed, toRefs } from 'vue';
 import type { ActionTypeDescription, SimplifiedNodeType } from '@/Interface';
 import { WEBHOOK_NODE_TYPE, DRAG_EVENT_DATA_KEY } from '@/constants';
 
@@ -30,6 +30,7 @@ import NodeIcon from '@/components/NodeIcon.vue';
 
 import { useViewStacks } from '../composables/useViewStacks';
 import { useActions } from '../composables/useActions';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 export interface Props {
 	nodeType: SimplifiedNodeType;
@@ -37,9 +38,7 @@ export interface Props {
 }
 
 const props = defineProps<Props>();
-
-const instance = getCurrentInstance();
-const telemetry = instance?.proxy.$telemetry;
+const telemetry = useTelemetry();
 
 const { getActionData, getAddedNodesAndConnections, setAddedNodeActionParameters } = useActions();
 const { activeViewStack } = useViewStacks();
@@ -104,7 +103,7 @@ function onDragOver(event: DragEvent): void {
 	state.draggablePosition = { x, y };
 }
 
-function onDragEnd(event: DragEvent): void {
+function onDragEnd(): void {
 	if (state.storeWatcher) state.storeWatcher();
 	document.body.removeEventListener('dragend', onDragEnd);
 	document.body.removeEventListener('dragover', onDragOver);

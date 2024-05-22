@@ -135,7 +135,7 @@ function getPersonalizationSurveyV2OrLater(
 
 	const companySize = answers[COMPANY_SIZE_KEY];
 	const companyType = answers[COMPANY_TYPE_KEY];
-	const automationGoal = answers[AUTOMATION_GOAL_KEY];
+	const automationGoal = AUTOMATION_GOAL_KEY in answers ? answers[AUTOMATION_GOAL_KEY] : undefined;
 
 	let codingSkill = null;
 	if (CODING_SKILL_KEY in answers && answers[CODING_SKILL_KEY]) {

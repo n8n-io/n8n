@@ -404,7 +404,10 @@ export async function execute(
 	}
 
 	if (nodeVersion < 4 || dataMode === 'autoMapInputData') {
-		return items;
+		return items.map((item, index) => {
+			item.pairedItem = { item: index };
+			return item;
+		});
 	} else {
 		if (!updateData.length) {
 			return [];

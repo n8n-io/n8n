@@ -80,7 +80,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { type PropType, defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import ExpressionEditorModalInput from '@/components/ExpressionEditorModal/ExpressionEditorModalInput.vue';
 import VariableSelector from '@/components/VariableSelector.vue';
@@ -98,6 +98,7 @@ import { useDebounce } from '@/composables/useDebounce';
 import type { Segment } from '@/types/expressions';
 import ExpressionOutput from './InlineExpressionEditor/ExpressionOutput.vue';
 import { outputTheme } from './ExpressionEditorModal/theme';
+import type { INodeProperties } from 'n8n-workflow';
 
 export default defineComponent({
 	name: 'ExpressionEdit',
@@ -112,7 +113,7 @@ export default defineComponent({
 			default: false,
 		},
 		parameter: {
-			type: Object,
+			type: Object as PropType<INodeProperties>,
 			default: () => ({}),
 		},
 		path: {
