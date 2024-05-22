@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { Container, Service } from 'typedi';
+import { readFileSync } from 'fs';
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 type Class = Function;
@@ -19,11 +20,19 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 			// eslint-disable-next-line n8n-local-rules/no-plain-errors
 			throw new Error('Invalid config class: ' + ConfigClass.name);
 		}
+
 		for (const [key, { type, envName }] of classMetadata) {
 			if (typeof type === 'function' && globalMetadata.has(type)) {
 				config[key] = Container.get(type);
 			} else if (envName) {
 				let value: unknown = process.env[envName];
+
+				// Read the value from a file, if "_FILE" environment variable is defined
+				const filePath = process.env[`${envName}_FILE`];
+				if (filePath) {
+					value = readFileSync(filePath, 'utf8');
+				}
+
 				if (type === Number) {
 					value = Number(value);
 					if (isNaN(value as number)) {

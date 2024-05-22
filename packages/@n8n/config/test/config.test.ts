@@ -1,5 +1,11 @@
 import { Container } from 'typedi';
+import fs from 'fs';
+import { mock } from 'jest-mock-extended';
 import { GlobalConfig } from '../src/index';
+
+jest.mock('fs');
+const mockFs = mock<typeof fs>();
+fs.readFileSync = mockFs.readFileSync;
 
 describe('GlobalConfig', () => {
 	beforeEach(() => {
@@ -56,6 +62,7 @@ describe('GlobalConfig', () => {
 		process.env = {};
 		const config = Container.get(GlobalConfig);
 		expect(config).toEqual(defaultConfig);
+		expect(mockFs.readFileSync).not.toHaveBeenCalled();
 	});
 
 	it('should use values from env variables when defined', () => {
@@ -79,5 +86,27 @@ describe('GlobalConfig', () => {
 				type: 'sqlite',
 			},
 		});
+		expect(mockFs.readFileSync).not.toHaveBeenCalled();
+	});
+
+	it('should use values from env variables when defined and convert them to the correct type', () => {
+		const passwordFile = '/path/to/postgres/password';
+		process.env = {
+			DB_POSTGRESDB_PASSWORD_FILE: passwordFile,
+		};
+		mockFs.readFileSync.calledWith(passwordFile, 'utf8').mockReturnValueOnce('password-from-file');
+
+		const config = Container.get(GlobalConfig);
+		expect(config).toEqual({
+			...defaultConfig,
+			database: {
+				...defaultConfig.database,
+				postgresdb: {
+					...defaultConfig.database.postgresdb,
+					password: 'password-from-file',
+				},
+			},
+		});
+		expect(mockFs.readFileSync).toHaveBeenCalled();
 	});
 });
