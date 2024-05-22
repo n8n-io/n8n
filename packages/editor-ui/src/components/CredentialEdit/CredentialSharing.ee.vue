@@ -96,6 +96,7 @@ import type { CredentialScope } from '@n8n/permissions';
 import type { EventBus } from 'n8n-design-system/utils';
 import { useRolesStore } from '@/stores/roles.store';
 import type { RoleMap } from '@/types/roles.types';
+import { ProjectTypes } from '@/features/projects/projects.utils';
 
 export default defineComponent({
 	name: 'CredentialSharing',
@@ -178,7 +179,7 @@ export default defineComponent({
 			);
 		},
 		isHomeTeamProject(): boolean {
-			return this.homeProject?.type === 'team';
+			return this.homeProject?.type === ProjectTypes.Team;
 		},
 		numberOfMembersInHomeTeamProject(): number {
 			return this.teamProject?.relations.length ?? 0;
