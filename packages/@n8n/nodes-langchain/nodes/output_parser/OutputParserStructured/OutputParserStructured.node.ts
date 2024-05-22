@@ -129,6 +129,8 @@ export class OutputParserStructured implements INodeType {
 			},
 			{
 				...inputSchemaField,
+				displayName: 'JSON Schema',
+				description: 'JSON Schema to structure and validate the output against',
 				default: `{
 	"type": "object",
 	"properties": {

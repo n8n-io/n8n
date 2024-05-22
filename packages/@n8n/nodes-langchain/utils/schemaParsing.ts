@@ -71,7 +71,7 @@ export function generateSchema(schemaString: string): JSONSchema7 {
 }
 
 export function throwIfToolSchema(ctx: IExecuteFunctions, error: Error) {
-	if (error.message.includes('tool input did not match expected schema')) {
+	if (error?.message?.includes('tool input did not match expected schema')) {
 		throw new NodeOperationError(
 			ctx.getNode(),
 			`${error.message}.
