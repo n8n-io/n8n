@@ -290,8 +290,9 @@ onBeforeMount(async () => {
 					:delete-label="$locale.baseText('workflows.shareModal.list.delete')"
 				>
 					<template #actions="{ user }">
-						<div class="flex gap-3">
+						<div :class="$style.buttons">
 							<N8nSelect
+								class="mr-2xs"
 								:model-value="user?.role || projectRoles[0].role"
 								size="small"
 								@update:model-value="onRoleAction(user, $event)"
@@ -325,7 +326,7 @@ onBeforeMount(async () => {
 					</template>
 				</N8nUsersList>
 			</fieldset>
-			<fieldset class="flex justify-end items-center">
+			<fieldset :class="$style.buttons">
 				<div>
 					<small v-if="isDirty" class="mr-2xs">{{
 						locale.baseText('projects.settings.message.unsavedChanges')
@@ -408,5 +409,11 @@ onBeforeMount(async () => {
 
 .upgrade {
 	cursor: pointer;
+}
+
+.buttons {
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
 }
 </style>

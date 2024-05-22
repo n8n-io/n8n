@@ -2,7 +2,7 @@
 import type { PropType } from 'vue';
 import { computed, defineComponent } from 'vue';
 import { useRBACStore } from '@/stores/rbac.store';
-import type { HasScopeMode, Scope, Resource } from '@n8n/permissions';
+import type { ScopeMode, Scope, Resource } from '@n8n/permissions';
 import {
 	inferProjectIdFromRoute,
 	inferResourceIdFromRoute,
@@ -17,7 +17,7 @@ export default defineComponent({
 			required: true,
 		},
 		mode: {
-			type: String as PropType<HasScopeMode>,
+			type: String as PropType<ScopeMode>,
 			default: 'allOf',
 		},
 		resourceType: {

@@ -177,14 +177,21 @@ type ValidateFieldTypeOptions = Partial<{
 	strict: boolean;
 	parseStrings: boolean;
 }>;
+
 // Validates field against the schema and tries to parse it to the correct type
+export function validateFieldType<K extends FieldType>(
+	fieldName: string,
+	value: unknown,
+	type: K,
+	options?: ValidateFieldTypeOptions,
+): ValidationResult<K>;
 // eslint-disable-next-line complexity
-export const validateFieldType = (
+export function validateFieldType(
 	fieldName: string,
 	value: unknown,
 	type: FieldType,
 	options: ValidateFieldTypeOptions = {},
-): ValidationResult => {
+): ValidationResult {
 	if (value === null || value === undefined) return { valid: true };
 	const strict = options.strict ?? false;
 	const valueOptions = options.valueOptions ?? [];
@@ -308,4 +315,4 @@ export const validateFieldType = (
 			return { valid: true, newValue: value };
 		}
 	}
-};
+}

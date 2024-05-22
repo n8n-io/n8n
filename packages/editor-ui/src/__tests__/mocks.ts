@@ -14,6 +14,7 @@ import { uuid } from '@jsplumb/util';
 import { defaultMockNodeTypes } from '@/__tests__/defaults';
 import type { INodeUi, ITag, IUsedCredential, IWorkflowDb, WorkflowMetadata } from '@/Interface';
 import type { ProjectSharingData } from '@/features/projects/projects.types';
+import type { RouteLocationNormalized } from 'vue-router';
 
 export function createTestNodeTypes(data: INodeTypeData = {}): INodeTypes {
 	const getResolvedKey = (key: string) => {
@@ -101,5 +102,29 @@ export function createTestNode(
 		position: [0, 0] as [number, number],
 		parameters: {},
 		...node,
+	};
+}
+
+export function createTestRouteLocation({
+	path = '',
+	params = {},
+	fullPath = path,
+	hash = '',
+	matched = [],
+	redirectedFrom = undefined,
+	name = path,
+	meta = {},
+	query = {},
+}: Partial<RouteLocationNormalized> = {}): RouteLocationNormalized {
+	return {
+		path,
+		params,
+		fullPath,
+		hash,
+		matched,
+		redirectedFrom,
+		name,
+		meta,
+		query,
 	};
 }
