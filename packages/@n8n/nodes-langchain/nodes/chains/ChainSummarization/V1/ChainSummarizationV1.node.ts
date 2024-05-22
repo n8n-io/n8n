@@ -258,6 +258,6 @@ export class ChainSummarizationV1 implements INodeType {
 			returnData.push({ json: { response } });
 		}
 
-		return await this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

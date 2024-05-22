@@ -44,7 +44,10 @@ describe('Peekalink Node', () => {
 							typeVersion: 1,
 							position: [960, 380],
 							credentials: {
-								peekalinkApi: 'token',
+								peekalinkApi: {
+									id: '1',
+									name: 'peekalink',
+								},
 							},
 						},
 					],
@@ -113,7 +116,10 @@ describe('Peekalink Node', () => {
 							typeVersion: 1,
 							position: [960, 380],
 							credentials: {
-								peekalinkApi: 'token',
+								peekalinkApi: {
+									id: '1',
+									name: 'peekalink',
+								},
 							},
 						},
 					],
