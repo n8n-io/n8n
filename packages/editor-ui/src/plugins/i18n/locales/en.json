@@ -554,7 +554,7 @@
 	"credentials.noResults.withSearch.switchToShared.preamble": "some credentials may be",
 	"credentials.noResults.withSearch.switchToShared.link": "hidden",
 	"credentials.create.personal.toast.title": "Credential successfully created",
-	"credentials.create.personal.toast.text": "This credential is currently private to you. View sharing options.",
+	"credentials.create.personal.toast.text": "This credential is currently private to you.",
 	"credentials.create.project.toast.title": "Credential successfully created in {projectName}",
 	"credentials.create.project.toast.text": "All members from {projectName} will have access to this credential.",
 	"credentials.shareModal.info.members": "This credential is owned by the {projectName} project which currently has {members} with access to this credential.",
