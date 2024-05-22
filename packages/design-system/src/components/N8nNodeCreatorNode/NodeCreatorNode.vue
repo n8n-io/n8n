@@ -9,7 +9,10 @@ export interface Props {
 	isAi?: boolean;
 	isTrigger?: boolean;
 	description?: string;
-	tag?: string;
+	tag?: {
+		text: string;
+		type?: (typeof ElTag)['type'];
+	};
 	title: string;
 	showActionArrow?: boolean;
 }
@@ -37,8 +40,8 @@ const { t } = useI18n();
 		<div>
 			<div :class="$style.details">
 				<span :class="$style.name" data-test-id="node-creator-item-name" v-text="title" />
-				<ElTag v-if="tag" :class="$style.tag" size="small" round type="success">
-					{{ tag }}
+				<ElTag v-if="tag" :class="$style.tag" size="small" round :type="tag.type ?? 'success'">
+					{{ tag.text }}
 				</ElTag>
 				<FontAwesomeIcon
 					v-if="isTrigger"
@@ -89,6 +92,13 @@ const { t } = useI18n();
 }
 .tag {
 	margin-left: var(--spacing-2xs);
+	line-height: 1.0625rem;
+	padding: 0 var(--spacing-4xs);
+	height: 1.1875rem;
+
+	span {
+		font-size: var(--font-size-2xs) !important;
+	}
 }
 .panelIcon {
 	flex-grow: 1;

@@ -1,13 +1,22 @@
-import type { INodeCreateElement, NodeFilterType, SimplifiedNodeType } from '@/Interface';
+import type {
+	INodeCreateElement,
+	NodeCreateElement,
+	NodeFilterType,
+	SimplifiedNodeType,
+} from '@/Interface';
 import {
+	AI_CATEGORY_ROOT_NODES,
 	AI_CODE_NODE_TYPE,
+	AI_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
+	AI_SUBCATEGORY,
 	DEFAULT_SUBCATEGORY,
 	TRIGGER_NODE_CREATOR_VIEW,
 } from '@/constants';
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
 import { computed, nextTick, ref } from 'vue';
+import difference from 'lodash-es/difference';
 
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
@@ -27,6 +36,7 @@ import { useKeyboardNavigation } from './useKeyboardNavigation';
 
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { INodeInputFilter, NodeConnectionType } from 'n8n-workflow';
+import { useCanvasStore } from '@/stores/canvas.store';
 
 interface ViewStack {
 	uuid?: string;
@@ -64,7 +74,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	const viewStacks = ref<ViewStack[]>([]);
 
 	const activeStackItems = computed<INodeCreateElement[]>(() => {
-		const stack = viewStacks.value[viewStacks.value.length - 1];
+		const stack = getLastActiveStack();
 
 		if (!stack?.baselineItems) {
 			return stack.items ? extendItemsWithUUID(stack.items) : [];
@@ -76,13 +86,19 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 					? searchBaseItems.value
 					: flattenCreateElements(stack.baselineItems ?? []);
 
-			return extendItemsWithUUID(searchNodes(stack.search || '', searchBase));
+			const canvasHasAINodes = useCanvasStore().aiNodes.length > 0;
+			const filteredNodes =
+				isAiRootView(stack) || canvasHasAINodes ? searchBase : filterOutAiNodes(searchBase);
+
+			const searchResults = extendItemsWithUUID(searchNodes(stack.search || '', filteredNodes));
+
+			return groupAINodes(searchResults) ?? searchResults;
 		}
 		return extendItemsWithUUID(stack.baselineItems);
 	});
 
 	const activeViewStack = computed<ViewStack>(() => {
-		const stack = viewStacks.value[viewStacks.value.length - 1];
+		const stack = getLastActiveStack();
 		if (!stack) return {};
 
 		const flatBaselineItems = flattenCreateElements(stack.baselineItems ?? []);
@@ -99,26 +115,136 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	);
 
 	const searchBaseItems = computed<INodeCreateElement[]>(() => {
-		const stack = viewStacks.value[viewStacks.value.length - 1];
+		const stack = getLastActiveStack();
 		if (!stack?.searchItems) return [];
 
 		return stack.searchItems.map((item) => transformNodeType(item, stack.subcategory));
 	});
 
+	function getLastActiveStack() {
+		return viewStacks.value[viewStacks.value.length - 1];
+	}
+
 	// Generate a delta between the global search results(all nodes) and the stack search results
 	const globalSearchItemsDiff = computed<INodeCreateElement[]>(() => {
-		const stack = viewStacks.value[viewStacks.value.length - 1];
+		const stack = getLastActiveStack();
 		if (!stack?.search) return [];
 
 		const allNodes = nodeCreatorStore.mergedNodes.map((item) => transformNodeType(item));
-		const globalSearchResult = extendItemsWithUUID(searchNodes(stack.search || '', allNodes));
+		// Apply filtering for AI nodes if the current view is not the AI root view
+		const filteredNodes = isAiRootView(stack) ? allNodes : filterOutAiNodes(allNodes);
 
-		return globalSearchResult.filter((item) => {
-			return !activeStackItems.value.find((activeItem) => activeItem.key === item.key);
+		let globalSearchResult: INodeCreateElement[] = extendItemsWithUUID(
+			searchNodes(stack.search || '', filteredNodes),
+		);
+		if (isAiRootView(stack)) {
+			globalSearchResult = groupAINodes(globalSearchResult);
+		}
+
+		const filteredItems = globalSearchResult.filter((item) => {
+			return !activeStackItems.value.find((activeItem) => {
+				if (activeItem.type === 'section') {
+					const matchingSectionItem = activeItem.children.some(
+						(sectionItem) => sectionItem.key === item.key,
+					);
+					return matchingSectionItem;
+				}
+
+				return activeItem.key === item.key;
+			});
 		});
+
+		// Filter out empty sections if all of their children are filtered out
+		const filteredSections = filteredItems.filter((item) => {
+			if (item.type === 'section') {
+				const hasVisibleChildren = item.children.some((child) =>
+					activeStackItems.value.some((filteredItem) => filteredItem.key === child.key),
+				);
+
+				return hasVisibleChildren;
+			}
+
+			return true;
+		});
+
+		return filteredSections;
 	});
 
 	const itemsBySubcategory = computed(() => subcategorizeItems(nodeCreatorStore.mergedNodes));
+
+	function isAiRootView(stack: ViewStack) {
+		return stack.rootView === AI_NODE_CREATOR_VIEW;
+	}
+
+	function groupAINodes(items: INodeCreateElement[]) {
+		const aiNodes = items.filter(
+			(node): node is NodeCreateElement =>
+				(node.type === 'node' && node.properties.codex?.categories?.includes(AI_SUBCATEGORY)) ??
+				false,
+		);
+
+		if (aiNodes.length > 0) {
+			const sectionsMap = new Map<string, NodeViewItemSection>();
+			aiNodes.forEach((node) => {
+				const section = node.properties.codex?.subcategories?.[AI_SUBCATEGORY]?.[0];
+				if (section) {
+					const currentItems = sectionsMap.get(section)?.items ?? [];
+
+					sectionsMap.set(section, {
+						key: section,
+						title: section,
+						items: [...currentItems, node.key],
+					});
+				}
+			});
+
+			const nonAiNodes = difference(items, aiNodes);
+			const nonAiTriggerNodes = nonAiNodes.filter(
+				(item) => item.type === 'node' && item.properties.name.toLowerCase().includes('trigger'),
+			);
+			const nonAiRegularNodes = difference(nonAiNodes, nonAiTriggerNodes);
+			if (nonAiNodes.length > 0) {
+				let sectionKey = '';
+				if (nonAiRegularNodes.length && nonAiTriggerNodes.length) {
+					sectionKey = 'Regular & Trigger Nodes';
+				} else {
+					sectionKey = nonAiRegularNodes.length ? 'Regular Nodes' : 'Trigger Nodes';
+				}
+
+				const nodesKeys = nonAiNodes.map((node) => node.key);
+
+
+				sectionsMap.set(sectionKey, {
+					key: sectionKey,
+					title: sectionKey,
+					items: [...nodesKeys],
+				});
+			}
+			// Convert sectionsMap to array of sections
+			const sections = Array.from(sectionsMap.values());
+
+			return groupItemsInSections(items, sections);
+		}
+
+		return items;
+	}
+
+	function filterOutAiNodes(items: INodeCreateElement[]) {
+		const filteredSearchBase = items.filter((item) => {
+			if (item.type === 'node') {
+				const isAICategory = item.properties.codex?.categories?.includes(AI_SUBCATEGORY) === true;
+
+				if (!isAICategory) return true;
+
+				const isRootNodeSubcategory =
+					item.properties.codex?.subcategories?.[AI_SUBCATEGORY]?.includes(AI_CATEGORY_ROOT_NODES);
+
+				return isRootNodeSubcategory;
+			}
+			return true;
+		});
+		return filteredSearchBase;
+	}
 
 	async function gotoCompatibleConnectionView(
 		connectionType: NodeConnectionType,
@@ -185,7 +311,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	}
 
 	function setStackBaselineItems() {
-		const stack = viewStacks.value[viewStacks.value.length - 1];
+		const stack = getLastActiveStack();
 		if (!stack || !activeViewStack.value.uuid) return;
 
 		let stackItems = stack?.items ?? [];
@@ -258,7 +384,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	}
 
 	function updateCurrentViewStack(stack: Partial<ViewStack>) {
-		const currentStack = viewStacks.value[viewStacks.value.length - 1];
+		const currentStack = getLastActiveStack();
 		const matchedIndex = viewStacks.value.findIndex((s) => s.uuid === currentStack.uuid);
 		if (!currentStack) return;
 

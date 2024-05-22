@@ -27,9 +27,10 @@ export class ToolCode implements INodeType {
 			name: 'Custom Code Tool',
 		},
 		codex: {
-			categories: ['AI'],
+			categories: ['AI', 'AITools'],
 			subcategories: {
 				AI: ['Tools'],
+				AITools: ['Popular'],
 			},
 			resources: {
 				primaryDocumentation: [

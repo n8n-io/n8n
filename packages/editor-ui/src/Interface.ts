@@ -54,7 +54,7 @@ import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 import type { Component } from 'vue';
 import type { Scope } from '@n8n/permissions';
-import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
+import type { NotificationOptions as ElementNotificationOptions, ElTag } from 'element-plus';
 import type { ProjectSharingData } from '@/features/projects/projects.types';
 import type { Connection } from '@jsplumb/core';
 
@@ -922,7 +922,9 @@ export type SimplifiedNodeType = Pick<
 	| 'codex'
 	| 'defaults'
 	| 'outputs'
->;
+> & {
+	tag?: string;
+};
 export interface SubcategoryItemProps {
 	description?: string;
 	iconType?: string;
@@ -941,10 +943,26 @@ export interface ViewItemProps {
 	title: string;
 	description: string;
 	icon: string;
-	tag?: string;
+	tag?: {
+		text: string;
+		type: (typeof ElTag)['type'];
+	};
+	borderless?: boolean;
 }
 export interface LabelItemProps {
 	key: string;
+}
+export interface LinkItemProps {
+	url: string;
+	key: string;
+	newTab?: boolean;
+	title: string;
+	description: string;
+	icon: string;
+	tag?: {
+		text: string;
+		type: (typeof ElTag)['type'];
+	};
 }
 export interface ActionTypeDescription extends SimplifiedNodeType {
 	displayOptions?: IDisplayOptions;
@@ -1000,6 +1018,11 @@ export interface LabelCreateElement extends CreateElementBase {
 	properties: LabelItemProps;
 }
 
+export interface LinkCreateElement extends CreateElementBase {
+	type: 'link';
+	properties: LinkItemProps;
+}
+
 export interface ActionCreateElement extends CreateElementBase {
 	type: 'action';
 	subcategory: string;
@@ -1013,7 +1036,8 @@ export type INodeCreateElement =
 	| SectionCreateElement
 	| ViewCreateElement
 	| LabelCreateElement
-	| ActionCreateElement;
+	| ActionCreateElement
+	| LinkCreateElement;
 
 export interface SubcategorizedNodeTypes {
 	[subcategory: string]: INodeCreateElement[];

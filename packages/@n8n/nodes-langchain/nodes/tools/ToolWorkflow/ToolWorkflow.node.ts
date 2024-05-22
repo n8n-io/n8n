@@ -34,9 +34,10 @@ export class ToolWorkflow implements INodeType {
 			name: 'Custom n8n Workflow Tool',
 		},
 		codex: {
-			categories: ['AI'],
+			categories: ['AI', 'AITools'],
 			subcategories: {
 				AI: ['Tools'],
+				AITools: ['Popular'],
 			},
 			resources: {
 				primaryDocumentation: [

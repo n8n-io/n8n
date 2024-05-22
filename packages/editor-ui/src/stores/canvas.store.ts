@@ -61,6 +61,9 @@ export const useCanvasStore = defineStore('canvas', () => {
 			(node) => node.type === START_NODE_TYPE || nodeTypesStore.isTriggerNode(node.type),
 		),
 	);
+	const aiNodes = computed<INodeUi[]>(() =>
+		nodes.value.filter((node) => node.type.includes('langchain')),
+	);
 	const isDemo = ref<boolean>(false);
 	const nodeViewScale = ref<number>(1);
 	const canvasAddButtonPosition = ref<XYPosition>([1, 1]);
@@ -298,6 +301,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 		newNodeInsertPosition,
 		jsPlumbInstance,
 		isLoading: loadingService.isLoading,
+		aiNodes,
 		startLoading: loadingService.startLoading,
 		setLoadingText: loadingService.setLoadingText,
 		stopLoading: loadingService.stopLoading,
