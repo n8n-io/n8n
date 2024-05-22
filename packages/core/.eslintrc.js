@@ -16,6 +16,7 @@ module.exports = {
 
 	rules: {
 		complexity: 'error',
+		'unicorn/prefer-node-protocol': 'error',
 
 		// TODO: Remove this
 		'import/order': 'off',

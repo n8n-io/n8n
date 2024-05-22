@@ -19,6 +19,7 @@ module.exports = {
 	],
 
 	rules: {
+		'unicorn/prefer-node-protocol': 'error',
 		'unicorn/filename-case': ['error', { case: 'kebabCase' }],
 
 		'n8n-local-rules/no-dynamic-import-template': 'error',
