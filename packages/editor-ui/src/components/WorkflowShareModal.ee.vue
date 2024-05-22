@@ -152,6 +152,7 @@ import type {
 } from '@/features/projects/projects.types';
 import { useRolesStore } from '@/stores/roles.store';
 import type { RoleMap } from '@/types/roles.types';
+import { ProjectTypes } from '@/features/projects/projects.utils';
 
 export default defineComponent({
 	name: 'WorkflowShareModal',
@@ -238,7 +239,7 @@ export default defineComponent({
 			);
 		},
 		isHomeTeamProject(): boolean {
-			return this.workflow.homeProject?.type === 'team';
+			return this.workflow.homeProject?.type === ProjectTypes.Team;
 		},
 		numberOfMembersInHomeTeamProject(): number {
 			return this.teamProject?.relations.length ?? 0;
