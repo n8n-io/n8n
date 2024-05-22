@@ -1,15 +1,23 @@
 import { INSTANCE_ADMIN, INSTANCE_MEMBERS } from '../constants';
-import { WorkflowsPage, WorkflowPage, CredentialsModal, CredentialsPage } from '../pages';
+import {
+	WorkflowsPage,
+	WorkflowPage,
+	CredentialsModal,
+	CredentialsPage,
+	WorkflowExecutionsTab,
+} from '../pages';
 import * as projects from '../composables/projects';
 
 const workflowsPage = new WorkflowsPage();
 const workflowPage = new WorkflowPage();
 const credentialsPage = new CredentialsPage();
 const credentialsModal = new CredentialsModal();
+const executionsTab = new WorkflowExecutionsTab();
 
 describe('Projects', () => {
 	beforeEach(() => {
 		cy.resetDatabase();
+		cy.enableFeature('sharing');
 		cy.enableFeature('advancedPermissions');
 		cy.enableFeature('projectRole:admin');
 		cy.enableFeature('projectRole:editor');
@@ -160,7 +168,25 @@ describe('Projects', () => {
 		menuItems.filter('[class*=active_]').should('have.length', 1);
 		menuItems.filter(':contains("Development")[class*=active_]').should('exist');
 
+		cy.intercept('GET', '/rest/workflows/*').as('loadWorkflow');
 		workflowsPage.getters.workflowCards().first().click();
+
+		cy.wait('@loadWorkflow');
+		menuItems = cy.getByTestId('menu-item');
+
+		menuItems.filter('[class*=active_]').should('have.length', 1);
+		menuItems.filter(':contains("Development")[class*=active_]').should('exist');
+
+		cy.intercept('GET', '/rest/executions*').as('loadExecutions');
+		executionsTab.actions.switchToExecutionsTab();
+
+		cy.wait('@loadExecutions');
+		menuItems = cy.getByTestId('menu-item');
+
+		menuItems.filter('[class*=active_]').should('have.length', 1);
+		menuItems.filter(':contains("Development")[class*=active_]').should('exist');
+
+		executionsTab.actions.switchToEditorTab();
 
 		menuItems = cy.getByTestId('menu-item');
 
@@ -174,5 +200,23 @@ describe('Projects', () => {
 
 		menuItems.filter('[class*=active_]').should('have.length', 1);
 		menuItems.filter(':contains("Variables")[class*=active_]').should('exist');
+
+		projects.getHomeButton().click();
+		menuItems = cy.getByTestId('menu-item');
+
+		menuItems.filter('[class*=active_]').should('have.length', 1);
+		menuItems.filter(':contains("Home")[class*=active_]').should('exist');
+
+		workflowsPage.getters.workflowCards().should('have.length', 2).first().click();
+
+		cy.wait('@loadWorkflow');
+		cy.getByTestId('execute-workflow-button').should('be.visible');
+
+		menuItems = cy.getByTestId('menu-item');
+		menuItems.filter(':contains("Home")[class*=active_]').should('not.exist');
+
+		menuItems = cy.getByTestId('menu-item');
+		menuItems.filter('[class*=active_]').should('have.length', 1);
+		menuItems.filter(':contains("Development")[class*=active_]').should('exist');
 	});
 });

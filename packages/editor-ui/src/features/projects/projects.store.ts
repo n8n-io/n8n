@@ -12,6 +12,7 @@ import type {
 } from '@/features/projects/projects.types';
 import { useSettingsStore } from '@/stores/settings.store';
 import { hasPermission } from '@/rbac/permissions';
+import { ProjectTypes } from './projects.utils';
 
 export const useProjectsStore = defineStore('projects', () => {
 	const route = useRoute();
@@ -36,8 +37,10 @@ export const useProjectsStore = defineStore('projects', () => {
 			currentProject.value?.id,
 	);
 	const isProjectHome = computed(() => route.path.includes('home'));
-	const personalProjects = computed(() => projects.value.filter((p) => p.type === 'personal'));
-	const teamProjects = computed(() => projects.value.filter((p) => p.type === 'team'));
+	const personalProjects = computed(() =>
+		projects.value.filter((p) => p.type === ProjectTypes.Personal),
+	);
+	const teamProjects = computed(() => projects.value.filter((p) => p.type === ProjectTypes.Team));
 	const teamProjectsLimit = computed(() => settingsStore.settings.enterprise.projects.team.limit);
 	const teamProjectsAvailable = computed<boolean>(
 		() => settingsStore.settings.enterprise.projects.team.limit !== 0,
@@ -124,7 +127,16 @@ export const useProjectsStore = defineStore('projects', () => {
 			projectNavActiveId.value = null;
 
 			if (newRoute?.path?.includes('home')) {
+				projectNavActiveId.value = 'home';
 				setCurrentProject(null);
+			}
+
+			if (newRoute?.path?.includes('workflow/')) {
+				if (currentProjectId.value) {
+					projectNavActiveId.value = currentProjectId.value;
+				} else {
+					projectNavActiveId.value = 'home';
+				}
 			}
 
 			if (!newRoute?.params?.projectId) {
