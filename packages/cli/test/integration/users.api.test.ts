@@ -582,6 +582,15 @@ describe('DELETE /users/:id', () => {
 		expect(user).toBeDefined();
 	});
 
+	test('should fail to delete the instance owner', async () => {
+		const admin = await createAdmin();
+		const adminAgent = testServer.authAgentFor(admin);
+		await adminAgent.delete(`/users/${owner.id}`).expect(403);
+
+		const user = await getUserById(owner.id);
+		expect(user).toBeDefined();
+	});
+
 	test('should fail to delete a user that does not exist', async () => {
 		await ownerAgent.delete(`/users/${uuid()}`).query({ transferId: '' }).expect(404);
 	});
