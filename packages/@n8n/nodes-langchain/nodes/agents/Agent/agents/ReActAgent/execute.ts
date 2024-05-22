@@ -18,6 +18,7 @@ import {
 	isChatInstance,
 } from '../../../../../utils/helpers';
 import { getTracingConfig } from '../../../../../utils/tracing';
+import { throwIfToolSchema } from '../../../../../utils/schemaParsing';
 
 export async function reActAgentAgentExecute(
 	this: IExecuteFunctions,
@@ -112,6 +113,7 @@ export async function reActAgentAgentExecute(
 
 			returnData.push({ json: response });
 		} catch (error) {
+			throwIfToolSchema(this, error);
 			if (this.continueOnFail()) {
 				returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
 				continue;
