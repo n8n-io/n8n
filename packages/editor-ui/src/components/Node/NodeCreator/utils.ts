@@ -125,10 +125,8 @@ export function groupItemsInSections(
 	const nonAINodesSections = mapNewSections(filteredSections, nonAINodesBySection);
 
 	const AINodesBySection = itemsBySection(AINodes);
-	console.log('Length of AINodesBySection:', Object.keys(AINodesBySection).length);
 	const AINodesSections = mapNewSections(filteredSections, AINodesBySection);
 
-	const allItems = itemsBySection(items);
 	const result = [...nonAINodesSections, ...AINodesSections]
 		// .map(
 		// 	(section): SectionCreateElement => ({
@@ -154,6 +152,5 @@ export function groupItemsInSections(
 		return items;
 	}
 
-	console.log('🚀 ~ result:', result);
 	return result;
 }
