@@ -309,7 +309,12 @@ export default defineComponent({
 			return !this.node?.typeVersion || this.latestVersion === this.node.typeVersion;
 		},
 		executeButtonTooltip(): string {
-			if (this.isLatestNodeVersion && this.inputSize > 1) {
+			if (
+				this.node &&
+				this.isLatestNodeVersion &&
+				this.inputSize > 1 &&
+				!NodeHelpers.willExecutesOnce(this.node.type, this.node.parameters)
+			) {
 				return this.$locale.baseText('nodeSettings.executeButtonTooltip.times', {
 					interpolate: { inputSize: this.inputSize },
 				});

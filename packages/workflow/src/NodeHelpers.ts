@@ -1722,3 +1722,26 @@ export function getCredentialsForNode(
 
 	return object.description.credentials ?? [];
 }
+
+export function willExecutesOnce(type: string, parameters: INodeParameters): boolean {
+	//nodes that would execute only once with such parameters
+	const NODES_EXECUTES_ONCE: { [key: string]: { [key: string]: NodeParameterValue[] } } = {
+		'n8n-nodes-base.code': {
+			mode: [undefined, 'runOnceForAllItems'],
+		},
+	};
+
+	if (NODES_EXECUTES_ONCE[type]) {
+		for (const parameter of Object.keys(NODES_EXECUTES_ONCE[type])) {
+			if (
+				!NODES_EXECUTES_ONCE[type][parameter].includes(parameters[parameter] as NodeParameterValue)
+			) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	return false;
+}
