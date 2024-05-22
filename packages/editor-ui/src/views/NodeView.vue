@@ -3727,14 +3727,9 @@ export default defineComponent({
 						await this.openWorkflow(workflow);
 						await this.checkAndInitDebugMode();
 
-						if (workflow.homeProject?.type === ProjectTypes.Personal) {
-							this.projectsStore.projectNavActiveId = 'home';
-						} else {
-							this.projectsStore.projectNavActiveId = workflow.homeProject?.id ?? null;
-							if (workflow.homeProject?.id && !this.projectsStore.currentProjectId) {
-								await this.projectsStore.getProject(workflow.homeProject?.id);
-							}
-						}
+						await this.projectsStore.setProjectNavActiveIdByWorkflowHomeProject(
+							workflow.homeProject,
+						);
 
 						if (workflow.meta?.onboardingId) {
 							this.$telemetry.track(

@@ -13,6 +13,7 @@ import type {
 import { useSettingsStore } from '@/stores/settings.store';
 import { hasPermission } from '@/rbac/permissions';
 import { ProjectTypes } from './projects.utils';
+import type { IWorkflowDb } from '@/Interface';
 
 export const useProjectsStore = defineStore('projects', () => {
 	const route = useRoute();
@@ -121,6 +122,19 @@ export const useProjectsStore = defineStore('projects', () => {
 		projectsCount.value = await projectsApi.getProjectsCount(rootStore.getRestApiContext);
 	};
 
+	const setProjectNavActiveIdByWorkflowHomeProject = async (
+		homeProject?: IWorkflowDb['homeProject'],
+	) => {
+		if (homeProject?.type === ProjectTypes.Personal) {
+			projectNavActiveId.value = 'home';
+		} else {
+			projectNavActiveId.value = homeProject?.id ?? null;
+			if (homeProject?.id && !currentProjectId.value) {
+				await getProject(homeProject?.id);
+			}
+		}
+	};
+
 	watch(
 		route,
 		async (newRoute) => {
@@ -173,5 +187,6 @@ export const useProjectsStore = defineStore('projects', () => {
 		updateProject,
 		deleteProject,
 		getProjectsCount,
+		setProjectNavActiveIdByWorkflowHomeProject,
 	};
 });
