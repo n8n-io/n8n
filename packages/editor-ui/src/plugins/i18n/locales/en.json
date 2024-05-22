@@ -1218,7 +1218,7 @@
 	"nodeView.runButtonText.executeWorkflow": "Test workflow",
 	"nodeView.runButtonText.executingWorkflow": "Executing workflow",
 	"nodeView.runButtonText.waitingForTriggerEvent": "Waiting for trigger event",
-	"nodeView.showError.workflowError": "Workflow execution finished with an error",
+	"nodeView.showError.workflowError": "Workflow execution had an error",
 	"nodeView.showError.getWorkflowDataFromUrl.title": "Problem loading workflow",
 	"nodeView.showError.importWorkflowData.title": "Problem importing workflow",
 	"nodeView.showError.mounted1.message": "There was a problem loading init data",
