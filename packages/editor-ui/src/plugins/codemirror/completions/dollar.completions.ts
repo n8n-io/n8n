@@ -60,7 +60,8 @@ export function dollarOptions(): Completion[] {
 				info: createInfoBoxRenderer({
 					name: '$pageCount',
 					returnType: 'number',
-					description: i18n.rootVars.$pageCount,
+					docURL: 'https://docs.n8n.io/code/builtin/http-node-variables/',
+					description: i18n.baseText('codeNodeEditor.completer.$pageCount'),
 				}),
 			},
 			{
@@ -68,8 +69,9 @@ export function dollarOptions(): Completion[] {
 				section: RECOMMENDED_SECTION,
 				info: createInfoBoxRenderer({
 					name: '$response',
-					returnType: 'object',
-					description: i18n.rootVars.$response,
+					returnType: 'HTTPResponse',
+					docURL: 'https://docs.n8n.io/code/builtin/http-node-variables/',
+					description: i18n.baseText('codeNodeEditor.completer.$response'),
 				}),
 			},
 			{
@@ -78,7 +80,8 @@ export function dollarOptions(): Completion[] {
 				info: createInfoBoxRenderer({
 					name: '$request',
 					returnType: 'object',
-					description: i18n.rootVars.$request,
+					docURL: 'https://docs.n8n.io/code/builtin/http-node-variables/',
+					description: i18n.baseText('codeNodeEditor.completer.$request'),
 				}),
 			},
 		];
