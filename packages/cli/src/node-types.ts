@@ -1,5 +1,3 @@
-import type { Dirent } from 'fs';
-import { readdir } from 'fs/promises';
 import { loadClassInIsolation } from 'n8n-core';
 import type {
 	INodeType,
@@ -9,7 +7,9 @@ import type {
 	LoadedClass,
 } from 'n8n-workflow';
 import { ApplicationError, NodeHelpers } from 'n8n-workflow';
-import { join, dirname } from 'path';
+import type { Dirent } from 'node:fs';
+import { readdir } from 'node:fs/promises';
+import { join, dirname } from 'node:path';
 import { Service } from 'typedi';
 
 import { UnrecognizedNodeTypeError } from './errors/unrecognized-node-type.error';

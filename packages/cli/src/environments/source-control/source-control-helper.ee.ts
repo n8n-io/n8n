@@ -1,6 +1,6 @@
-import { generateKeyPairSync } from 'crypto';
-import { constants as fsConstants, mkdirSync, accessSync } from 'fs';
-import path from 'path';
+import { generateKeyPairSync } from 'node:crypto';
+import { constants as fsConstants, mkdirSync, accessSync } from 'node:fs';
+import path from 'node:path';
 import { Container } from 'typedi';
 
 import { License } from '@/license';

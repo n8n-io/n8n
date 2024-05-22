@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import glob from 'fast-glob';
-import * as path from 'path';
+import * as path from 'node:path';
 import { Service } from 'typedi';
 
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';

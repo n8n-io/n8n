@@ -2,7 +2,7 @@ import { GlobalConfig } from '@n8n/config';
 import convict from 'convict';
 import { InstanceSettings } from 'n8n-core';
 import { LOG_LEVELS } from 'n8n-workflow';
-import path from 'path';
+import path from 'node:path';
 import { Container } from 'typedi';
 
 import { ensureStringArray } from './utils';

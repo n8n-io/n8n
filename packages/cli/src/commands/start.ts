@@ -2,12 +2,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Flags, type Config } from '@oclif/core';
 import glob from 'fast-glob';
-import { createReadStream, createWriteStream, existsSync } from 'fs';
-import { mkdir } from 'fs/promises';
 import { jsonParse, randomString, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
-import path from 'path';
+import { createReadStream, createWriteStream, existsSync } from 'node:fs';
+import { mkdir } from 'node:fs/promises';
+import path from 'node:path';
+import { pipeline } from 'node:stream/promises';
 import replaceStream from 'replacestream';
-import { pipeline } from 'stream/promises';
 import { Container } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';

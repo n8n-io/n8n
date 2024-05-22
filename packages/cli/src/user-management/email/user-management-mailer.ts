@@ -1,8 +1,8 @@
 import { GlobalConfig } from '@n8n/config';
-import { existsSync } from 'fs';
-import { readFile } from 'fs/promises';
 import Handlebars from 'handlebars';
-import { join as pathJoin } from 'path';
+import { existsSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
+import { join as pathJoin } from 'node:path';
 import { Container, Service } from 'typedi';
 
 import { inTest } from '@/constants';

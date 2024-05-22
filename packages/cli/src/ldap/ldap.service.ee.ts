@@ -4,7 +4,7 @@ import type { Entry as LdapUser, ClientOptions } from 'ldapts';
 import { Client } from 'ldapts';
 import { Cipher } from 'n8n-core';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
-import type { ConnectionOptions } from 'tls';
+import type { ConnectionOptions } from 'node:tls';
 import { Service } from 'typedi';
 
 import config from '@/config';

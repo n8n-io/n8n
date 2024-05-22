@@ -1,6 +1,6 @@
-import { appendFileSync, existsSync, rmSync, renameSync, openSync, closeSync } from 'fs';
-import { stat } from 'fs/promises';
-import { isMainThread, parentPort } from 'worker_threads';
+import { appendFileSync, existsSync, rmSync, renameSync, openSync, closeSync } from 'node:fs';
+import { stat } from 'node:fs/promises';
+import { isMainThread, parentPort } from 'node:worker_threads';
 
 import type { MessageEventBusLogWriterOptions } from './message-event-bus-log-writer';
 

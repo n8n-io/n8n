@@ -4,8 +4,8 @@ import {
 	UserUpdateRequestDto,
 } from '@n8n/api-types';
 import { plainToInstance } from 'class-transformer';
-import { randomBytes } from 'crypto';
 import { type RequestHandler, Response } from 'express';
+import { randomBytes } from 'node:crypto';
 
 import { AuthService } from '@/auth/auth.service';
 import type { User } from '@/databases/entities/user';

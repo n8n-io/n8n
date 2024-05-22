@@ -1,7 +1,7 @@
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { QueryFailedError } from '@n8n/typeorm';
-import { createHash } from 'crypto';
 import { ErrorReporterProxy, ApplicationError } from 'n8n-workflow';
+import { createHash } from 'node:crypto';
 
 import config from '@/config';
 

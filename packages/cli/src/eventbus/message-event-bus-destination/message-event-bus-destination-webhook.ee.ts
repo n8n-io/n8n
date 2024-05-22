@@ -2,7 +2,6 @@
 
 import axios from 'axios';
 import type { AxiosRequestConfig, Method } from 'axios';
-import { Agent as HTTPSAgent } from 'https';
 import { jsonParse, MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type {
 	MessageEventBusDestinationOptions,
@@ -11,6 +10,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	MessageEventBusDestinationWebhookOptions,
 } from 'n8n-workflow';
+import { Agent as HTTPSAgent } from 'node:https';
 import Container from 'typedi';
 
 import { CredentialsHelper } from '@/credentials-helper';

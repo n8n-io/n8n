@@ -1,6 +1,6 @@
-import { writeFileSync } from 'fs';
 import { ApplicationError } from 'n8n-workflow';
-import path from 'path';
+import { writeFileSync } from 'node:fs';
+import path from 'node:path';
 import type { PushResult } from 'simple-git';
 import { Service } from 'typedi';
 

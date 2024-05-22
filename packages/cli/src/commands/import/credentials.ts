@@ -2,10 +2,10 @@
 import type { EntityManager } from '@n8n/typeorm';
 import { Flags } from '@oclif/core';
 import glob from 'fast-glob';
-import fs from 'fs';
 import { Cipher } from 'n8n-core';
 import type { ICredentialsEncrypted } from 'n8n-workflow';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
+import fs from 'node:fs';
 import { Container } from 'typedi';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';

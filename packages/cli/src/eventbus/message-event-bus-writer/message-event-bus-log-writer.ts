@@ -1,15 +1,15 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
 import { GlobalConfig } from '@n8n/config';
-import { once as eventOnce } from 'events';
-import { createReadStream, existsSync, rmSync } from 'fs';
 import remove from 'lodash/remove';
 import { InstanceSettings } from 'n8n-core';
 import { EventMessageTypeNames, jsonParse } from 'n8n-workflow';
-import path, { parse } from 'path';
-import readline from 'readline';
+import { once as eventOnce } from 'node:events';
+import { createReadStream, existsSync, rmSync } from 'node:fs';
+import path, { parse } from 'node:path';
+import readline from 'node:readline';
+import { Worker } from 'node:worker_threads';
 import Container from 'typedi';
-import { Worker } from 'worker_threads';
 
 import { inTest } from '@/constants';
 import { Logger } from '@/logger';

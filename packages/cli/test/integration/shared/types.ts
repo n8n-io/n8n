@@ -1,6 +1,6 @@
 import type { Application } from 'express';
-import type { Server } from 'http';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type { Server } from 'node:http';
 import type TestAgent from 'supertest/lib/agent';
 
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';

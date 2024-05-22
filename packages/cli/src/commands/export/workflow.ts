@@ -1,7 +1,7 @@
 import { Flags } from '@oclif/core';
-import fs from 'fs';
 import { ApplicationError } from 'n8n-workflow';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 import Container from 'typedi';
 
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';

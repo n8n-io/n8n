@@ -1,12 +1,11 @@
 import type { FrontendSettings, ITelemetrySettings } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
-import { createWriteStream } from 'fs';
-import { mkdir } from 'fs/promises';
 import uniq from 'lodash/uniq';
 import { InstanceSettings } from 'n8n-core';
 import type { ICredentialType, INodeTypeBaseDescription } from 'n8n-workflow';
-import fs from 'node:fs';
-import path from 'path';
+import fs, { createWriteStream } from 'node:fs';
+import { mkdir } from 'node:fs/promises';
+import path from 'node:path';
 import { Container, Service } from 'typedi';
 
 import config from '@/config';

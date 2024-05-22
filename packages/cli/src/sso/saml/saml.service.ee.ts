@@ -1,7 +1,7 @@
 import axios from 'axios';
 import type express from 'express';
-import https from 'https';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
+import https from 'node:https';
 import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify';
 import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
 import Container, { Service } from 'typedi';

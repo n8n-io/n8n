@@ -2,9 +2,9 @@ import { GlobalConfig } from '@n8n/config';
 import convict from 'convict';
 import dotenv from 'dotenv';
 import { flatten } from 'flat';
-import { readFileSync } from 'fs';
 import merge from 'lodash/merge';
 import { ApplicationError, setGlobalState } from 'n8n-workflow';
+import { readFileSync } from 'node:fs';
 import colors from 'picocolors';
 import { Container } from 'typedi';
 

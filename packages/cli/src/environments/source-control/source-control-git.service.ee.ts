@@ -1,6 +1,6 @@
-import { execSync } from 'child_process';
 import { ApplicationError } from 'n8n-workflow';
-import path from 'path';
+import { execSync } from 'node:child_process';
+import path from 'node:path';
 import type {
 	CommitResult,
 	DiffResult,

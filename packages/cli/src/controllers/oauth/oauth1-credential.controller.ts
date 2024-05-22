@@ -1,7 +1,7 @@
 import type { AxiosRequestConfig } from 'axios';
 import axios from 'axios';
-import { createHmac } from 'crypto';
 import { Response } from 'express';
+import { createHmac } from 'node:crypto';
 import type { RequestOptions } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
 

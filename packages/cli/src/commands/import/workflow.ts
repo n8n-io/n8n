@@ -1,7 +1,7 @@
 import { Flags } from '@oclif/core';
 import glob from 'fast-glob';
-import fs from 'fs';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
+import fs from 'node:fs';
 import { Container } from 'typedi';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';

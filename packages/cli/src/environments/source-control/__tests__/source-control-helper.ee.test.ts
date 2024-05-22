@@ -1,6 +1,6 @@
-import { constants as fsConstants, accessSync } from 'fs';
 import { InstanceSettings } from 'n8n-core';
-import path from 'path';
+import { constants as fsConstants, accessSync } from 'node:fs';
+import path from 'node:path';
 import Container from 'typedi';
 
 import {

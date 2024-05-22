@@ -1,11 +1,11 @@
 import type { GlobalConfig } from '@n8n/config';
 import axios from 'axios';
-import { exec } from 'child_process';
-import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
 import { mocked } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
 import type { PackageDirectoryLoader } from 'n8n-core';
 import type { PublicInstalledPackage } from 'n8n-workflow';
+import { exec } from 'node:child_process';
+import { access as fsAccess, mkdir as fsMkdir } from 'node:fs/promises';
 
 import {
 	NODE_PACKAGE_PREFIX,

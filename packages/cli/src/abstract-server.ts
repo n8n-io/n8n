@@ -2,10 +2,10 @@ import { GlobalConfig } from '@n8n/config';
 import compression from 'compression';
 import express from 'express';
 import { engine as expressHandlebars } from 'express-handlebars';
-import { readFile } from 'fs/promises';
-import type { Server } from 'http';
 import isbot from 'isbot';
 import type { InstanceType } from 'n8n-core';
+import { readFile } from 'node:fs/promises';
+import type { Server } from 'node:http';
 import { Container, Service } from 'typedi';
 
 import config from '@/config';
@@ -145,7 +145,7 @@ export abstract class AbstractServer {
 		const { protocol } = this.globalConfig;
 
 		if (protocol === 'https' && sslKey && sslCert) {
-			const https = await import('https');
+			const https = await import('node:https');
 			this.server = https.createServer(
 				{
 					key: await readFile(this.sslKey, 'utf8'),
@@ -154,7 +154,7 @@ export abstract class AbstractServer {
 				app,
 			);
 		} else {
-			const http = await import('http');
+			const http = await import('node:http');
 			this.server = http.createServer(app);
 		}
 

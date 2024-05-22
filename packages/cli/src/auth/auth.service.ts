@@ -1,7 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
-import { createHash } from 'crypto';
 import type { NextFunction, Response } from 'express';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
+import { createHash } from 'node:crypto';
 import Container, { Service } from 'typedi';
 
 import config from '@/config';

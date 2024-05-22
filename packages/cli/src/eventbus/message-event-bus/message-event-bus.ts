@@ -3,9 +3,9 @@ import { GlobalConfig } from '@n8n/config';
 import type { DeleteResult } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
-import EventEmitter from 'events';
 import uniqby from 'lodash/uniqBy';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
+import EventEmitter from 'node:events';
 import { Service } from 'typedi';
 
 import config from '@/config';

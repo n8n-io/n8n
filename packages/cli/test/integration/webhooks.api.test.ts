@@ -1,10 +1,10 @@
-import { readFileSync } from 'fs';
 import {
 	NodeConnectionType,
 	type INodeType,
 	type INodeTypeDescription,
 	type IWebhookFunctions,
 } from 'n8n-workflow';
+import { readFileSync } from 'node:fs';
 import { agent as testAgent } from 'supertest';
 
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';

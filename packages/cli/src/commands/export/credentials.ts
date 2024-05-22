@@ -1,8 +1,8 @@
 import { Flags } from '@oclif/core';
-import fs from 'fs';
 import { Credentials } from 'n8n-core';
 import { ApplicationError } from 'n8n-workflow';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 import Container from 'typedi';
 
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';

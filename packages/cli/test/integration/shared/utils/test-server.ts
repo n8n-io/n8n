@@ -1,9 +1,9 @@
 import cookieParser from 'cookie-parser';
 import express from 'express';
+import { URL } from 'node:url';
 import type superagent from 'superagent';
 import request from 'supertest';
 import { Container } from 'typedi';
-import { URL } from 'url';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';

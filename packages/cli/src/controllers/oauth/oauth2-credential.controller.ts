@@ -5,8 +5,8 @@ import omit from 'lodash/omit';
 import set from 'lodash/set';
 import split from 'lodash/split';
 import { jsonStringify } from 'n8n-workflow';
+import * as qs from 'node:querystring';
 import pkceChallenge from 'pkce-challenge';
-import * as qs from 'querystring';
 
 import { Get, RestController } from '@/decorators';
 import { OAuthRequest } from '@/requests';

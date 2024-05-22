@@ -1,12 +1,12 @@
 import { GlobalConfig } from '@n8n/config';
 import axios from 'axios';
-import { exec } from 'child_process';
-import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
 import { InstanceSettings } from 'n8n-core';
 import type { PackageDirectoryLoader } from 'n8n-core';
 import { ApplicationError, type PublicInstalledPackage } from 'n8n-workflow';
+import { exec } from 'node:child_process';
+import { access as fsAccess, mkdir as fsMkdir } from 'node:fs/promises';
+import { promisify } from 'node:util';
 import { Service } from 'typedi';
-import { promisify } from 'util';
 
 import {
 	LICENSE_FEATURES,

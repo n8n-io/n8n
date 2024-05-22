@@ -1,5 +1,5 @@
 import type { PushMessage } from '@n8n/api-types';
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'node:events';
 import { Container } from 'typedi';
 import type WebSocket from 'ws';
 

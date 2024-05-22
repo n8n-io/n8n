@@ -1,5 +1,5 @@
 import formidable from 'formidable';
-import type { IncomingMessage } from 'http';
+import type { IncomingMessage } from 'node:http';
 
 const normalizeFormData = <T>(values: Record<string, T | T[]>) => {
 	for (const key in values) {

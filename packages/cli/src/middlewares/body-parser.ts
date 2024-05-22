@@ -2,12 +2,12 @@ import { GlobalConfig } from '@n8n/config';
 import type { Request, RequestHandler } from 'express';
 import { parseIncomingMessage } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
-import { parse as parseQueryString } from 'querystring';
+import { parse as parseQueryString } from 'node:querystring';
+import { type Readable } from 'node:stream';
+import { createGunzip, createInflate } from 'node:zlib';
 import getRawBody from 'raw-body';
-import { type Readable } from 'stream';
 import Container from 'typedi';
 import { Parser as XmlParser } from 'xml2js';
-import { createGunzip, createInflate } from 'zlib';
 
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 

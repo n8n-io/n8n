@@ -1,10 +1,10 @@
 import type { PushPayload, PushType } from '@n8n/api-types';
 import type { Application } from 'express';
-import { ServerResponse } from 'http';
-import type { Server } from 'http';
-import type { Socket } from 'net';
+import { ServerResponse } from 'node:http';
+import type { Server } from 'node:http';
+import type { Socket } from 'node:net';
+import { parse as parseUrl } from 'node:url';
 import { Container, Service } from 'typedi';
-import { parse as parseUrl } from 'url';
 import { Server as WSServer } from 'ws';
 
 import { AuthService } from '@/auth/auth.service';

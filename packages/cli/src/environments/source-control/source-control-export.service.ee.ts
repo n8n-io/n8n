@@ -1,8 +1,8 @@
-import { rmSync } from 'fs';
 import { Credentials, InstanceSettings } from 'n8n-core';
 import { ApplicationError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { rmSync } from 'node:fs';
 import { writeFile as fsWriteFile, rm as fsRm } from 'node:fs/promises';
-import path from 'path';
+import path from 'node:path';
 import Container, { Service } from 'typedi';
 
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';

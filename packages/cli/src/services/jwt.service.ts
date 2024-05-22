@@ -1,6 +1,6 @@
-import { createHash } from 'crypto';
 import jwt from 'jsonwebtoken';
 import { InstanceSettings } from 'n8n-core';
+import { createHash } from 'node:crypto';
 import { Service } from 'typedi';
 
 import config from '@/config';

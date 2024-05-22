@@ -1,7 +1,7 @@
 import { Request } from 'express';
-import { readFile } from 'fs/promises';
 import get from 'lodash/get';
 import type { INodeTypeDescription, INodeTypeNameVersion } from 'n8n-workflow';
+import { readFile } from 'node:fs/promises';
 
 import config from '@/config';
 import { Post, RestController } from '@/decorators';

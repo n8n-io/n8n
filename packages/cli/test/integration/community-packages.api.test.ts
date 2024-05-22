@@ -1,4 +1,4 @@
-import path from 'path';
+import path from 'node:path';
 
 import type { InstalledNodes } from '@/databases/entities/installed-nodes';
 import type { InstalledPackages } from '@/databases/entities/installed-packages';

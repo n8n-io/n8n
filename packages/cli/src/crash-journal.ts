@@ -1,8 +1,8 @@
-import { existsSync } from 'fs';
-import { mkdir, utimes, open, rm } from 'fs/promises';
 import { InstanceSettings } from 'n8n-core';
 import { sleep } from 'n8n-workflow';
-import { join, dirname } from 'path';
+import { existsSync } from 'node:fs';
+import { mkdir, utimes, open, rm } from 'node:fs/promises';
+import { join, dirname } from 'node:path';
 import { Container } from 'typedi';
 
 import { inProduction } from '@/constants';

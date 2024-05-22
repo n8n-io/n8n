@@ -1,8 +1,8 @@
 import { validate } from 'class-validator';
 import express from 'express';
-import querystring from 'querystring';
+import querystring from 'node:querystring';
+import url from 'node:url';
 import type { PostBindingContext } from 'samlify/types/src/entity';
-import url from 'url';
 
 import { AuthService } from '@/auth/auth.service';
 import { Get, Post, RestController, GlobalScope } from '@/decorators';

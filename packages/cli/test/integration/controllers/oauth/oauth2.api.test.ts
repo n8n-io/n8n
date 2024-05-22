@@ -1,6 +1,6 @@
 import { response as Response } from 'express';
 import nock from 'nock';
-import { parse as parseQs } from 'querystring';
+import { parse as parseQs } from 'node:querystring';
 import { Container } from 'typedi';
 
 import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credential.controller';

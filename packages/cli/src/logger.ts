@@ -1,8 +1,8 @@
 import callsites from 'callsites';
 import { LoggerProxy, type IDataObject, LOG_LEVELS } from 'n8n-workflow';
-import { basename } from 'path';
+import { basename } from 'node:path';
+import { inspect } from 'node:util';
 import { Service } from 'typedi';
-import { inspect } from 'util';
 import winston from 'winston';
 
 import config from '@/config';

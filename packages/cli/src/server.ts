@@ -1,10 +1,10 @@
 import type { FrontendSettings } from '@n8n/api-types';
 import cookieParser from 'cookie-parser';
 import express from 'express';
-import { access as fsAccess } from 'fs/promises';
 import helmet from 'helmet';
 import { InstanceSettings } from 'n8n-core';
-import { resolve } from 'path';
+import { access as fsAccess } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { Container, Service } from 'typedi';
 
 import { AbstractServer } from '@/abstract-server';

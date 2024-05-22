@@ -36,7 +36,7 @@ import {
 	ErrorReporterProxy as ErrorReporter,
 	NodeHelpers,
 } from 'n8n-workflow';
-import { finished } from 'stream/promises';
+import { finished } from 'node:stream/promises';
 import { Container } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';

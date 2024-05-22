@@ -1,6 +1,6 @@
 import type { Request } from 'express';
-import { access } from 'fs/promises';
-import { join } from 'path';
+import { access } from 'node:fs/promises';
+import { join } from 'node:path';
 
 import config from '@/config';
 import { NODES_BASE_DIR } from '@/constants';

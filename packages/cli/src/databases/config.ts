@@ -6,8 +6,8 @@ import type { SqliteConnectionOptions } from '@n8n/typeorm/driver/sqlite/SqliteC
 import type { SqlitePooledConnectionOptions } from '@n8n/typeorm/driver/sqlite-pooled/SqlitePooledConnectionOptions';
 import { InstanceSettings } from 'n8n-core';
 import { ApplicationError } from 'n8n-workflow';
-import path from 'path';
-import type { TlsOptions } from 'tls';
+import path from 'node:path';
+import type { TlsOptions } from 'node:tls';
 import { Container } from 'typedi';
 
 import { entities } from './entities';

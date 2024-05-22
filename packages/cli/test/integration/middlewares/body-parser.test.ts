@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
-import { createServer } from 'http';
+import { createServer } from 'node:http';
+import { gzipSync, deflateSync } from 'node:zlib';
 import request from 'supertest';
-import { gzipSync, deflateSync } from 'zlib';
 
 import { rawBodyReader, bodyParser } from '@/middlewares/body-parser';
 

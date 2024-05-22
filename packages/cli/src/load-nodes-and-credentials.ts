@@ -1,6 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
 import glob from 'fast-glob';
-import fsPromises from 'fs/promises';
 import type { Class, DirectoryLoader, Types } from 'n8n-core';
 import {
 	CUSTOM_EXTENSION_ENV,
@@ -17,7 +16,8 @@ import type {
 	ICredentialTypeData,
 } from 'n8n-workflow';
 import { NodeHelpers, ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
-import path from 'path';
+import fsPromises from 'node:fs/promises';
+import path from 'node:path';
 import { Container, Service } from 'typedi';
 
 import {

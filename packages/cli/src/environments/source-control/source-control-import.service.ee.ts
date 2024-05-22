@@ -4,7 +4,7 @@ import glob from 'fast-glob';
 import { Credentials, InstanceSettings } from 'n8n-core';
 import { ApplicationError, jsonParse, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import { readFile as fsReadFile } from 'node:fs/promises';
-import path from 'path';
+import path from 'node:path';
 import { Container, Service } from 'typedi';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
