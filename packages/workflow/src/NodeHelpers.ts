@@ -43,6 +43,7 @@ import type {
 	GenericValue,
 	DisplayCondition,
 	NodeHint,
+	INodeExecutionData,
 } from './Interfaces';
 import {
 	isFilterValue,
@@ -1125,6 +1126,11 @@ export function getNodeHints(
 	workflow: Workflow,
 	node: INode,
 	nodeTypeData: INodeTypeDescription,
+	nodeInputData?: {
+		runExecutionData: IRunExecutionData | null;
+		runIndex: number;
+		connectionInputData: INodeExecutionData[];
+	},
 ): NodeHint[] {
 	const hints: NodeHint[] = [];
 
@@ -1132,12 +1138,32 @@ export function getNodeHints(
 		for (const hint of nodeTypeData.hints) {
 			if (hint.displayCondition) {
 				try {
-					const display = (workflow.expression.getSimpleParameterValue(
-						node,
-						hint.displayCondition,
-						'internal',
-						{},
-					) || false) as boolean;
+					let display;
+
+					if (nodeInputData === undefined) {
+						display = (workflow.expression.getSimpleParameterValue(
+							node,
+							hint.displayCondition,
+							'internal',
+							{},
+						) || false) as boolean;
+					} else {
+						const { runExecutionData, runIndex, connectionInputData } = nodeInputData;
+						display = workflow.expression.getParameterValue(
+							hint.displayCondition,
+							runExecutionData ?? null,
+							runIndex,
+							0,
+							node.name,
+							connectionInputData,
+							'manual',
+							{},
+						);
+					}
+
+					if (typeof display === 'string' && display.trim() === 'true') {
+						display = true;
+					}
 
 					if (typeof display !== 'boolean') {
 						console.warn(
