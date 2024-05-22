@@ -837,13 +837,10 @@ export default defineComponent({
 			return Boolean(this.workflowsStore.subWorkflowExecutionError);
 		},
 		workflowRunErrorAsNodeError(): NodeError {
-			return {
-				node: this.node,
-				messages: [this.workflowRunData?.[this.node?.name]?.[this.runIndex]?.error?.message ?? ''],
-			} as NodeError;
+			return this.workflowRunData?.[this.node?.name]?.[this.runIndex]?.error as NodeError;
 		},
 		hasRunError(): boolean {
-			return Boolean(this.node && this.workflowRunData?.[this.node.name]?.[this.runIndex]?.error);
+			return Boolean(this.node && this.workflowRunErrorAsNodeError);
 		},
 		executionHints(): NodeHint[] {
 			if (this.hasNodeRun) {
