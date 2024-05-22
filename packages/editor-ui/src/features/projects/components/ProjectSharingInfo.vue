@@ -15,7 +15,7 @@ const processedName = computed(() => splitName(props.project.name ?? ''));
 	<div :class="$style.projectInfo" data-test-id="project-sharing-info">
 		<div>
 			<N8nAvatar :first-name="processedName.firstName" :last-name="processedName.lastName" />
-			<div class="flex flex-col">
+			<div :class="$style.text">
 				<p v-if="processedName.firstName || processedName.lastName">
 					{{ processedName.firstName }} {{ processedName.lastName }}
 				</p>
@@ -53,5 +53,10 @@ const processedName = computed(() => splitName(props.project.name ?? ''));
 		color: var(--color-text-light);
 		line-height: var(--font-line-height-loose);
 	}
+}
+
+.text {
+	display: flex;
+	flex-direction: column;
 }
 </style>
