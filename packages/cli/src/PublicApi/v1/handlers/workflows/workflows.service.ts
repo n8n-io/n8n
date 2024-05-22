@@ -7,7 +7,6 @@ import { SharedWorkflow, type WorkflowSharingRole } from '@db/entities/SharedWor
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import type { Project } from '@/databases/entities/Project';
-import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMapping.repository';
 import { TagRepository } from '@db/repositories/tag.repository';
 import { License } from '@/License';
 import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
@@ -113,9 +112,7 @@ export async function getWorkflowTags(workflowId: string) {
 
 export async function updateTags(workflowId: string, newTags: string[]): Promise<any> {
 	await Db.transaction(async (transactionManager) => {
-		const oldTags = await Container.get(WorkflowTagMappingRepository).findBy({
-			workflowId,
-		});
+		const oldTags = await transactionManager.findBy(WorkflowTagMapping, { workflowId });
 		if (oldTags.length > 0) {
 			await transactionManager.delete(WorkflowTagMapping, oldTags);
 		}
