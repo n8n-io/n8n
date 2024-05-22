@@ -960,13 +960,13 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 				returnType: 'DateTime',
 				args: [
 					{
-						name: 'zone',
+						name: 'offset',
 						optional: true,
 						description: i18n.baseText(
-							'codeNodeEditor.completer.luxon.instanceMethods.toUTC.args.zone',
+							'codeNodeEditor.completer.luxon.instanceMethods.toUTC.args.offset',
 						),
-						default: '"local"',
-						type: 'string',
+						default: '0',
+						type: 'number',
 					},
 					{
 						name: 'options',

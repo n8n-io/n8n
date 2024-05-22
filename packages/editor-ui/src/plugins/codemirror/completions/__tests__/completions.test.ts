@@ -772,11 +772,19 @@ describe('Resolution-based completions', () => {
 		test('should not display type information for other completions', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue({
 				str: 'bar',
+				id: '123',
+				isExecuted: false,
 			});
 
-			expect(completions('{{ $execution.| }}')?.every((item) => !item.detail)).toBe(true);
-			expect(completions('{{ $input.params.| }}')?.every((item) => !item.detail)).toBe(true);
-			expect(completions('{{ $("My Node").| }}')?.every((item) => !item.detail)).toBe(true);
+			expect(completions('{{ $execution.| }}')).not.toContainEqual(
+				expect.objectContaining({ detail: expect.any(String) }),
+			);
+			expect(completions('{{ $input.params.| }}')).not.toContainEqual(
+				expect.objectContaining({ detail: expect.any(String) }),
+			);
+			expect(completions('{{ $("My Node").| }}')).not.toContainEqual(
+				expect.objectContaining({ detail: expect.any(String) }),
+			);
 		});
 	});
 });
