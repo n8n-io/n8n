@@ -1,20 +1,24 @@
 <template>
 	<div>
-		<n8n-tooltip placement="bottom" :disabled="!disabledHint">
+		<n8n-tooltip placement="right" :disabled="!tooltipText">
 			<template #content>
-				<div>{{ disabledHint }}</div>
+				<div>{{ tooltipText }}</div>
 			</template>
 			<div>
 				<n8n-button
 					v-bind="$attrs"
-					:loading="nodeRunning && !isListeningForEvents && !isListeningForWorkflowEvents"
+					:loading
 					:disabled="disabled || !!disabledHint"
 					:label="buttonLabel"
 					:type="type"
 					:size="size"
 					:icon="!isListeningForEvents && !hideIcon ? 'flask' : undefined"
 					:transparent-background="transparent"
-					:title="!isTriggerNode ? $locale.baseText('ndv.execute.testNode.description') : ''"
+					:title="
+						!isTriggerNode && !tooltipText
+							? $locale.baseText('ndv.execute.testNode.description')
+							: ''
+					"
 					@click="onClick"
 				/>
 			</div>
@@ -75,6 +79,9 @@ export default defineComponent({
 		},
 		hideIcon: {
 			type: Boolean,
+		},
+		tooltip: {
+			type: String,
 		},
 	},
 	emits: ['stopExecution', 'execute'],
@@ -193,6 +200,11 @@ export default defineComponent({
 
 			return '';
 		},
+		tooltipText(): string {
+			if (this.disabledHint) return this.disabledHint;
+			if (this.tooltip && !this.loading) return this.tooltip;
+			return '';
+		},
 		buttonLabel(): string {
 			if (this.isListeningForEvents || this.isListeningForWorkflowEvents) {
 				return this.$locale.baseText('ndv.execute.stopListening');
@@ -219,6 +231,10 @@ export default defineComponent({
 			}
 
 			return this.$locale.baseText('ndv.execute.testNode');
+		},
+
+		loading(): boolean {
+			return this.nodeRunning && !this.isListeningForEvents && !this.isListeningForWorkflowEvents;
 		},
 	},
 	methods: {

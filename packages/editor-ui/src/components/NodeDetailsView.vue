@@ -113,6 +113,7 @@
 						:read-only="readOnly"
 						:block-u-i="blockUi && showTriggerPanel"
 						:executable="!readOnly"
+						:input-size="inputSize"
 						@value-changed="valueChanged"
 						@execute="onNodeExecute"
 						@stop-execution="onStopExecution"
@@ -310,6 +311,18 @@ export default defineComponent({
 				return workflowsStore.getNodeByName(inputNodeName.value);
 			}
 			return null;
+		});
+
+		const inputSize = computed(() => {
+			if (workflowRunData.value && inputNodeName.value) {
+				return (
+					workflowRunData.value[inputNodeName.value]?.[inputRun.value]?.data?.[
+						NodeConnectionType.Main
+					]?.[outputRun.value]?.length ?? 0
+				);
+			}
+
+			return 0;
 		});
 
 		const isTriggerNode = computed(
@@ -847,6 +860,7 @@ export default defineComponent({
 			inputRun,
 			linked,
 			inputNodeName,
+			inputSize,
 			hasForeignCredential,
 			outputRun,
 			isOutputPaneActive,
