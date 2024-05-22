@@ -17,8 +17,10 @@ export class ProjectRepository extends Repository<Project> {
 		});
 	}
 
-	async getPersonalProjectForUserOrFail(userId: string) {
-		return await this.findOneOrFail({
+	async getPersonalProjectForUserOrFail(userId: string, entityManager?: EntityManager) {
+		const em = entityManager ?? this.manager;
+
+		return await em.findOneOrFail(Project, {
 			where: { type: 'personal', projectRelations: { userId, role: 'project:personalOwner' } },
 		});
 	}

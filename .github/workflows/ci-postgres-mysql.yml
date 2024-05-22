@@ -102,6 +102,7 @@ jobs:
     timeout-minutes: 20
     env:
       DB_POSTGRESDB_PASSWORD: password
+      DB_POSTGRESDB_POOL_SIZE: 1 # Detect connection pooling deadlocks
     steps:
       - uses: actions/checkout@v4.1.1
       - run: corepack enable
