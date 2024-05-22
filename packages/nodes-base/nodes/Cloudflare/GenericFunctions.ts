@@ -15,7 +15,7 @@ export async function cloudflareApiRequest(
 	resource: string,
 	body = {},
 	qs: IDataObject = {},
-	uri?: string,
+	_uri?: string,
 	headers: IDataObject = {},
 ): Promise<any> {
 	const options: IRequestOptions = {

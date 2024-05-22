@@ -27,7 +27,7 @@ export class Telemetry {
 	}
 
 	private userNodesPanelSession: IUserNodesPanelSession = {
-		sessionId: '',
+		pushRef: '',
 		data: {
 			nodeFilter: '',
 			resultsNodes: [],
@@ -45,10 +45,12 @@ export class Telemetry {
 		{
 			instanceId,
 			userId,
+			projectId,
 			versionCli,
 		}: {
 			instanceId: string;
 			userId?: string;
+			projectId?: string;
 			versionCli: string;
 		},
 	) {
@@ -73,13 +75,13 @@ export class Telemetry {
 		});
 		useTelemetryStore().init(this);
 
-		this.identify(instanceId, userId, versionCli);
+		this.identify(instanceId, userId, versionCli, projectId);
 
 		this.flushPageEvents();
-		this.track('Session started', { session_id: rootStore.sessionId });
+		this.track('Session started', { session_id: rootStore.pushRef });
 	}
 
-	identify(instanceId: string, userId?: string, versionCli?: string) {
+	identify(instanceId: string, userId?: string, versionCli?: string, projectId?: string) {
 		const settingsStore = useSettingsStore();
 		const traits: { instance_id: string; version_cli?: string; user_cloud_id?: string } = {
 			instance_id: instanceId,
@@ -90,7 +92,10 @@ export class Telemetry {
 			traits.user_cloud_id = settingsStore.settings?.n8nMetadata?.userId ?? '';
 		}
 		if (userId) {
-			this.rudderStack.identify(`${instanceId}#${userId}`, traits);
+			this.rudderStack.identify(
+				`${instanceId}#${userId}${projectId ? '#' + projectId : ''}`,
+				traits,
+			);
 		} else {
 			this.rudderStack.reset();
 		}
@@ -150,8 +155,8 @@ export class Telemetry {
 
 	trackAskAI(event: string, properties: IDataObject = {}) {
 		if (this.rudderStack) {
-			properties.session_id = useRootStore().sessionId;
-			properties.ndv_session_id = useNDVStore().sessionId;
+			properties.session_id = useRootStore().pushRef;
+			properties.ndv_session_id = useNDVStore().pushRef;
 
 			switch (event) {
 				case 'askAi.generationFinished':
@@ -164,12 +169,12 @@ export class Telemetry {
 
 	trackNodesPanel(event: string, properties: IDataObject = {}) {
 		if (this.rudderStack) {
-			properties.nodes_panel_session_id = this.userNodesPanelSession.sessionId;
+			properties.nodes_panel_session_id = this.userNodesPanelSession.pushRef;
 			switch (event) {
 				case 'nodeView.createNodeActiveChanged':
 					if (properties.createNodeActive !== false) {
 						this.resetNodesPanelSession();
-						properties.nodes_panel_session_id = this.userNodesPanelSession.sessionId;
+						properties.nodes_panel_session_id = this.userNodesPanelSession.pushRef;
 						this.track('User opened nodes panel', properties);
 					}
 					break;
@@ -200,25 +205,25 @@ export class Telemetry {
 					break;
 				case 'nodeCreateList.onCategoryExpanded':
 					properties.is_subcategory = false;
-					properties.nodes_panel_session_id = this.userNodesPanelSession.sessionId;
+					properties.nodes_panel_session_id = this.userNodesPanelSession.pushRef;
 					this.track('User viewed node category', properties);
 					break;
 				case 'nodeCreateList.onViewActions':
-					properties.nodes_panel_session_id = this.userNodesPanelSession.sessionId;
+					properties.nodes_panel_session_id = this.userNodesPanelSession.pushRef;
 					this.track('User viewed node actions', properties);
 					break;
 				case 'nodeCreateList.onActionsCustmAPIClicked':
-					properties.nodes_panel_session_id = this.userNodesPanelSession.sessionId;
+					properties.nodes_panel_session_id = this.userNodesPanelSession.pushRef;
 					this.track('User clicked custom API from node actions', properties);
 					break;
 				case 'nodeCreateList.addAction':
-					properties.nodes_panel_session_id = this.userNodesPanelSession.sessionId;
+					properties.nodes_panel_session_id = this.userNodesPanelSession.pushRef;
 					this.track('User added action', properties);
 					break;
 				case 'nodeCreateList.onSubcategorySelected':
 					properties.category_name = properties.subcategory;
 					properties.is_subcategory = true;
-					properties.nodes_panel_session_id = this.userNodesPanelSession.sessionId;
+					properties.nodes_panel_session_id = this.userNodesPanelSession.pushRef;
 					delete properties.selected;
 					this.track('User viewed node category', properties);
 					break;
@@ -258,7 +263,7 @@ export class Telemetry {
 	}
 
 	private resetNodesPanelSession() {
-		this.userNodesPanelSession.sessionId = `nodes_panel_session_${new Date().valueOf()}`;
+		this.userNodesPanelSession.pushRef = `nodes_panel_session_${new Date().valueOf()}`;
 		this.userNodesPanelSession.data = {
 			nodeFilter: '',
 			resultsNodes: [],
@@ -271,7 +276,7 @@ export class Telemetry {
 			search_string: this.userNodesPanelSession.data.nodeFilter,
 			results_count: this.userNodesPanelSession.data.resultsNodes.length,
 			filter_mode: this.userNodesPanelSession.data.filterMode,
-			nodes_panel_session_id: this.userNodesPanelSession.sessionId,
+			nodes_panel_session_id: this.userNodesPanelSession.pushRef,
 		};
 	}
 

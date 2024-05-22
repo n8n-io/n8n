@@ -8,8 +8,8 @@ import {
 } from 'n8n-workflow';
 
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
-import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatOpenAi implements INodeType {
 	description: INodeTypeDescription = {
@@ -247,15 +247,16 @@ export class LmChatOpenAi implements INodeType {
 			timeout: options.timeout ?? 60000,
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
+			callbacks: [new N8nLlmTracing(this)],
 			modelKwargs: options.responseFormat
 				? {
 						response_format: { type: options.responseFormat },
-				  }
+					}
 				: undefined,
 		});
 
 		return {
-			response: logWrapper(model, this),
+			response: model,
 		};
 	}
 }

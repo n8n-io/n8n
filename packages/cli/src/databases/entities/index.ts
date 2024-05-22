@@ -20,6 +20,8 @@ import { ExecutionMetadata } from './ExecutionMetadata';
 import { ExecutionData } from './ExecutionData';
 import { WorkflowEntityWithVersion } from './WorkflowEntityWithVersion';
 import { WorkflowHistory } from './WorkflowHistory';
+import { Project } from './Project';
+import { ProjectRelation } from './ProjectRelation';
 
 export const entities = {
 	AuthIdentity,
@@ -43,4 +45,6 @@ export const entities = {
 	ExecutionData,
   WorkflowEntityWithVersion,
 	WorkflowHistory,
+	Project,
+	ProjectRelation,
 };

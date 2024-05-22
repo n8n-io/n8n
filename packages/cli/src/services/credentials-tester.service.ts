@@ -23,6 +23,7 @@ import type {
 	INodeTypeData,
 	INodeTypes,
 	ICredentialTestFunctions,
+	IDataObject,
 } from 'n8n-workflow';
 import {
 	VersionedNodeType,
@@ -54,6 +55,9 @@ const mockNodesData: INodeTypeData = {
 };
 
 const mockNodeTypes: INodeTypes = {
+	getKnownTypes(): IDataObject {
+		return {};
+	},
 	getByName(nodeType: string): INodeType | IVersionedNodeType {
 		return mockNodesData[nodeType]?.type;
 	},
@@ -127,11 +131,11 @@ export class CredentialsTester {
 								? {
 										status: 'OK',
 										message: OAUTH2_CREDENTIAL_TEST_SUCCEEDED,
-								  }
+									}
 								: {
 										status: 'Error',
 										message: OAUTH2_CREDENTIAL_TEST_FAILED,
-								  };
+									};
 						};
 					}
 
@@ -166,6 +170,7 @@ export class CredentialsTester {
 		return undefined;
 	}
 
+	// eslint-disable-next-line complexity
 	async testCredentials(
 		user: User,
 		credentialType: string,
@@ -189,7 +194,7 @@ export class CredentialsTester {
 					'internal' as WorkflowExecuteMode,
 					undefined,
 					undefined,
-					user.hasGlobalScope('externalSecret:use'),
+					await this.credentialsHelper.credentialCanUseExternalSecrets(credentialsDecrypted),
 				);
 			} catch (error) {
 				this.logger.debug('Credential test failed', error);

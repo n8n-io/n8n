@@ -6,7 +6,7 @@ import type {
 	IRequestOptions,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 
 import { parseString } from 'xml2js';
 
@@ -139,9 +139,29 @@ export async function splunkApiRequest(
 		delete options.qs;
 	}
 
+	let result;
 	try {
-		return await this.helpers.request(options).then(parseXml);
+		let attempts = 0;
+
+		do {
+			try {
+				const response = await this.helpers.request(options);
+				result = await parseXml(response);
+				return result;
+			} catch (error) {
+				if (attempts >= 5) {
+					throw error;
+				}
+				await sleep(1000);
+				attempts++;
+			}
+		} while (true);
 	} catch (error) {
+		if (result === undefined) {
+			throw new NodeOperationError(this.getNode(), 'No response from API call', {
+				description: "Try to use 'Retry On Fail' option from node's settings",
+			});
+		}
 		if (error?.cause?.code === 'ECONNREFUSED') {
 			throw new NodeApiError(this.getNode(), { ...(error as JsonObject), code: 401 });
 		}

@@ -55,12 +55,7 @@
 				:users="usersStore.allUsers"
 				:current-user-id="usersStore.currentUserId"
 				:is-saml-login-enabled="ssoStore.isSamlLoginEnabled"
-				@delete="onDelete"
-				@reinvite="onReinvite"
-				@copyInviteLink="onCopyInviteLink"
-				@copyPasswordResetLink="onCopyPasswordResetLink"
-				@allowSSOManualLogin="onAllowSSOManualLogin"
-				@disallowSSOManualLogin="onDisallowSSOManualLogin"
+				@action="onUsersListAction"
 			>
 				<template #actions="{ user }">
 					<n8n-select
@@ -68,7 +63,7 @@
 						:model-value="user?.role || 'global:member'"
 						:disabled="!canUpdateRole"
 						data-test-id="user-role-select"
-						@update:modelValue="onRoleChange(user, $event)"
+						@update:model-value="onRoleChange(user, $event)"
 					>
 						<n8n-option
 							v-for="role in userRoles"
@@ -109,11 +104,6 @@ export default defineComponent({
 			clipboard,
 			...useToast(),
 		};
-	},
-	async mounted() {
-		if (!this.showUMSetupWarning) {
-			await this.usersStore.fetchUsers();
-		}
 	},
 	computed: {
 		...mapStores(useSettingsStore, useUIStore, useUsersStore, useUsageStore, useSSOStore),
@@ -191,7 +181,34 @@ export default defineComponent({
 			return hasPermission(['rbac'], { rbac: { scope: ['user:update', 'user:changeRole'] } });
 		},
 	},
+	async mounted() {
+		if (!this.showUMSetupWarning) {
+			await this.usersStore.fetchUsers();
+		}
+	},
 	methods: {
+		async onUsersListAction({ action, userId }: { action: string; userId: string }) {
+			switch (action) {
+				case 'delete':
+					await this.onDelete(userId);
+					break;
+				case 'reinvite':
+					await this.onReinvite(userId);
+					break;
+				case 'copyInviteLink':
+					await this.onCopyInviteLink(userId);
+					break;
+				case 'copyPasswordResetLink':
+					await this.onCopyPasswordResetLink(userId);
+					break;
+				case 'allowSSOManualLogin':
+					await this.onAllowSSOManualLogin(userId);
+					break;
+				case 'disallowSSOManualLogin':
+					await this.onDisallowSSOManualLogin(userId);
+					break;
+			}
+		},
 		redirectToSetup() {
 			void this.$router.push({ name: VIEWS.SETUP });
 		},
@@ -323,4 +340,3 @@ export default defineComponent({
 	left: calc(50% + 100px);
 }
 </style>
-IRole,

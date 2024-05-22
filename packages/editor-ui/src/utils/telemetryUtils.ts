@@ -6,7 +6,7 @@ export function createExpressionTelemetryPayload(
 	segments: Segment[],
 	value: string,
 	workflowId: string,
-	sessionId: string,
+	pushRef: string,
 	activeNodeType: string,
 	eventSource = 'ndv',
 ) {
@@ -17,7 +17,7 @@ export function createExpressionTelemetryPayload(
 		empty_expression: value === '=' || value === '={{}}' || !value,
 		workflow_id: workflowId,
 		source: eventSource,
-		session_id: sessionId,
+		push_ref: pushRef,
 		is_transforming_data: resolvables.some((r) => isTransformingData(r.resolvable)),
 		has_parameter: value.includes('$parameter'),
 		has_mapping: hasExpressionMapping(value),
@@ -26,12 +26,14 @@ export function createExpressionTelemetryPayload(
 		handlebar_error_count: erroringResolvables.length,
 		short_errors: erroringResolvables.map((r) => r.resolved ?? null),
 		full_errors: erroringResolvables.map((erroringResolvable) => {
-			if (!erroringResolvable.fullError) return null;
+			if (erroringResolvable.fullError) {
+				return {
+					...exposeErrorProperties(erroringResolvable.fullError),
+					stack: erroringResolvable.fullError.stack,
+				};
+			}
 
-			return {
-				...exposeErrorProperties(erroringResolvable.fullError),
-				stack: erroringResolvable.fullError.stack,
-			};
+			return null;
 		}),
 	};
 }

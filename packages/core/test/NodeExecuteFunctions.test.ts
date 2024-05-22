@@ -1,3 +1,4 @@
+import type { SecureContextOptions } from 'tls';
 import {
 	cleanupParameterData,
 	copyInputItems,
@@ -243,6 +244,16 @@ describe('NodeExecuteFunctions', () => {
 			hooks.executeHookFunctions.mockClear();
 		});
 
+		test('should rethrow an error with `status` property', async () => {
+			nock(baseUrl).get('/test').reply(400);
+
+			try {
+				await proxyRequestToAxios(workflow, additionalData, node, `${baseUrl}/test`);
+			} catch (error) {
+				expect(error.status).toEqual(400);
+			}
+		});
+
 		test('should not throw if the response status is 200', async () => {
 			nock(baseUrl).get('/test').reply(200);
 			await proxyRequestToAxios(workflow, additionalData, node, `${baseUrl}/test`);
@@ -375,6 +386,42 @@ describe('NodeExecuteFunctions', () => {
 				headers: { Host: 'other.host.com' },
 			});
 			expect((axiosOptions.httpsAgent as Agent).options.servername).toEqual('example.de');
+		});
+
+		describe('should set SSL certificates', () => {
+			const agentOptions: SecureContextOptions = {
+				ca: '-----BEGIN CERTIFICATE-----\nTEST\n-----END CERTIFICATE-----',
+			};
+			const requestObject: IRequestOptions = {
+				method: 'GET',
+				uri: 'https://example.de',
+				agentOptions,
+			};
+
+			test('on regular requests', async () => {
+				const axiosOptions = await parseRequestObject(requestObject);
+				expect((axiosOptions.httpsAgent as Agent).options).toEqual({
+					servername: 'example.de',
+					...agentOptions,
+					noDelay: true,
+					path: null,
+				});
+			});
+
+			test('on redirected requests', async () => {
+				const axiosOptions = await parseRequestObject(requestObject);
+				expect(axiosOptions.beforeRedirect).toBeDefined;
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				const redirectOptions: Record<string, any> = { agents: {}, hostname: 'example.de' };
+				axiosOptions.beforeRedirect!(redirectOptions, mock());
+				expect(redirectOptions.agent).toEqual(redirectOptions.agents.https);
+				expect((redirectOptions.agent as Agent).options).toEqual({
+					servername: 'example.de',
+					...agentOptions,
+					noDelay: true,
+					path: null,
+				});
+			});
 		});
 
 		describe('when followRedirect is true', () => {

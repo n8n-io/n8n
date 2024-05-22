@@ -35,8 +35,8 @@ export function getSourceItems(
 	const pairedItem: IPairedItemData[] = Array.isArray(item.pairedItem)
 		? item.pairedItem
 		: typeof item.pairedItem === 'object'
-		  ? [item.pairedItem]
-		  : [{ item: item.pairedItem }];
+			? [item.pairedItem]
+			: [{ item: item.pairedItem }];
 	const sourceItems = pairedItem.map((item) => {
 		const input = item.input || 0;
 		return {

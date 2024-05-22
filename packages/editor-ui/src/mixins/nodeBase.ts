@@ -28,6 +28,7 @@ import { useHistoryStore } from '@/stores/history.store';
 import { useCanvasStore } from '@/stores/canvas.store';
 import type { EndpointSpec } from '@jsplumb/common';
 import { useDeviceSupport } from 'n8n-design-system';
+import type { N8nEndpointLabelLength } from '@/plugins/jsplumb/N8nPlusEndpointType';
 
 const createAddInputEndpointSpec = (
 	connectionName: NodeConnectionType,
@@ -54,6 +55,12 @@ const createDiamondOutputEndpointSpec = (): EndpointSpec => ({
 		cssClass: 'diamond-output-endpoint',
 	},
 });
+
+const getEndpointLabelLength = (length: number): N8nEndpointLabelLength => {
+	if (length <= 2) return 'small';
+	else if (length <= 6) return 'medium';
+	return 'large';
+};
 
 export const nodeBase = defineComponent({
 	data() {
@@ -371,7 +378,7 @@ export const nodeBase = defineComponent({
 				outputConfigurations.push(outputConfiguration);
 			});
 
-			const endpointLabelLength = maxLabelLength < 4 ? 'short' : 'medium';
+			const endpointLabelLength = getEndpointLabelLength(maxLabelLength);
 
 			this.outputs.forEach((value, i) => {
 				const outputConfiguration = outputConfigurations[i];
@@ -593,7 +600,7 @@ export const nodeBase = defineComponent({
 								nodeTypeData,
 								this.__getEndpointColor(NodeConnectionType.Main),
 							),
-							fill: 'var(--node-error-output-color)',
+							fill: 'var(--color-danger)',
 						},
 						cssClass: `dot-${type}-endpoint`,
 					};

@@ -38,7 +38,6 @@ import type {
 import { isString } from '@/utils/typeGuards';
 import { isObject } from '@/utils/objectUtils';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
@@ -46,7 +45,6 @@ import { get } from 'lodash-es';
 import { useI18n } from './useI18n';
 import { EnableNodeToggleCommand } from '@/models/history';
 import { useTelemetry } from './useTelemetry';
-import { getCredentialPermissions } from '@/permissions';
 import { hasPermission } from '@/rbac/permissions';
 import type { N8nPlusEndpoint } from '@/plugins/jsplumb/N8nPlusEndpointType';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
@@ -430,14 +428,7 @@ export function useNodeHelpers() {
 					};
 				}
 
-				const usersStore = useUsersStore();
-				const currentUser = usersStore.currentUser;
-				userCredentials = credentialsStore
-					.getCredentialsByType(credentialTypeDescription.name)
-					.filter((credential: ICredentialsResponse) => {
-						const permissions = getCredentialPermissions(currentUser, credential);
-						return permissions.use;
-					});
+				userCredentials = credentialsStore.getCredentialsByType(credentialTypeDescription.name);
 
 				if (userCredentials === null) {
 					userCredentials = [];
@@ -562,7 +553,7 @@ export function useNodeHelpers() {
 
 		let data: ITaskDataConnections | undefined = taskData.data;
 		if (paneType === 'input' && taskData.inputOverride) {
-			data = taskData.inputOverride!;
+			data = taskData.inputOverride;
 		}
 
 		if (!data) {
@@ -577,16 +568,7 @@ export function useNodeHelpers() {
 		outputIndex: number,
 		connectionType: ConnectionTypes = NodeConnectionType.Main,
 	): INodeExecutionData[] {
-		if (
-			!connectionsData ||
-			!connectionsData.hasOwnProperty(connectionType) ||
-			connectionsData[connectionType] === undefined ||
-			connectionsData[connectionType].length < outputIndex ||
-			connectionsData[connectionType][outputIndex] === null
-		) {
-			return [];
-		}
-		return connectionsData[connectionType][outputIndex] as INodeExecutionData[];
+		return connectionsData?.[connectionType]?.[outputIndex] ?? [];
 	}
 
 	function getBinaryData(
@@ -602,16 +584,18 @@ export function useNodeHelpers() {
 
 		const runData: IRunData | null = workflowRunData;
 
-		if (!runData?.[node]?.[runIndex]?.data) {
+		const runDataOfNode = runData?.[node]?.[runIndex]?.data;
+		if (!runDataOfNode) {
 			return [];
 		}
 
-		const inputData = getInputData(runData[node][runIndex].data!, outputIndex, connectionType);
+		const inputData = getInputData(runDataOfNode, outputIndex, connectionType);
 
 		const returnData: IBinaryKeyData[] = [];
 		for (let i = 0; i < inputData.length; i++) {
-			if (inputData[i].hasOwnProperty('binary') && inputData[i].binary !== undefined) {
-				returnData.push(inputData[i].binary!);
+			const binaryDataInIdx = inputData[i]?.binary;
+			if (binaryDataInIdx !== undefined) {
+				returnData.push(binaryDataInIdx);
 			}
 		}
 

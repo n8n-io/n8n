@@ -73,6 +73,7 @@ describe('Data mapping', () => {
 		ndv.actions.mapToParameter('value');
 
 		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.input[0].count }}');
+		ndv.getters.inlineExpressionEditorInput().type('{esc}');
 		ndv.getters.parameterExpressionPreview('value').should('include.text', '0');
 
 		ndv.getters.inputTbodyCell(1, 0).realHover();
@@ -206,7 +207,7 @@ describe('Data mapping', () => {
 		workflowPage.actions.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		workflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		workflowPage.actions.openNode(MANUAL_TRIGGER_NODE_DISPLAY_NAME);
-		ndv.actions.setPinnedData([
+		ndv.actions.pastePinnedData([
 			{
 				input: [
 					{
@@ -255,6 +256,7 @@ describe('Data mapping', () => {
 		ndv.actions.typeIntoParameterInput('value', 'delete me');
 
 		ndv.actions.typeIntoParameterInput('name', 'test');
+		ndv.getters.parameterInput('name').find('input').blur();
 
 		ndv.actions.typeIntoParameterInput('value', 'fun');
 		ndv.actions.clearParameterInput('value'); // keep focus on param
@@ -273,6 +275,33 @@ describe('Data mapping', () => {
 			.inlineExpressionEditorInput()
 			.should('have.text', '{{ $json.input[0].count }} {{ $json.input }}');
 		ndv.actions.validateExpressionPreview('value', '0 [object Object]');
+	});
+
+	it('renders expression preview when a previous node is selected', () => {
+		cy.fixture('Test_workflow_3.json').then((data) => {
+			cy.get('body').paste(JSON.stringify(data));
+		});
+
+		workflowPage.actions.openNode('Set');
+		ndv.actions.typeIntoParameterInput('value', 'test_value');
+		ndv.actions.typeIntoParameterInput('name', '{selectall}test_name');
+		ndv.actions.close();
+
+		workflowPage.actions.openNode('Set1');
+		ndv.actions.executePrevious();
+		ndv.getters.executingLoader().should('not.exist');
+		ndv.getters.inputDataContainer().should('exist');
+		ndv.getters
+			.inputDataContainer()
+			.should('exist')
+			.find('span')
+			.contains('test_name')
+			.realMouseDown();
+		ndv.actions.mapToParameter('value');
+
+		ndv.actions.validateExpressionPreview('value', 'test_value');
+		ndv.actions.selectInputNode(SCHEDULE_TRIGGER_NODE_NAME);
+		ndv.actions.validateExpressionPreview('value', 'test_value');
 	});
 
 	it('shows you can drop to inputs, including booleans', () => {

@@ -115,8 +115,9 @@ export async function componentsRequest(
 		};
 
 		if (component.type === 'body') {
-			comp.parameters = (((component.bodyParameters as IDataObject)!.parameter as IDataObject[]) ||
-				[])!.map((i: IDataObject) => {
+			comp.parameters = (
+				((component.bodyParameters as IDataObject).parameter as IDataObject[]) || []
+			).map((i: IDataObject) => {
 				if (i.type === 'text') {
 					return i;
 				} else if (i.type === 'currency') {

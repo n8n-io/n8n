@@ -68,6 +68,11 @@ export const defaultSettings: IN8nUISettings = {
 		externalSecrets: true,
 		workerView: true,
 		advancedPermissions: true,
+    projects: {
+			team: {
+				limit: 1,
+			},
+		}
 	},
 	expressions: {
 		evaluator: 'tournament',
@@ -143,7 +148,6 @@ export const defaultSettings: IN8nUISettings = {
 	ai: {
 		enabled: false,
 		provider: '',
-		errorDebugging: false,
 	},
 	workflowHistory: {
 		pruneTime: 0,

@@ -14,18 +14,18 @@
 			>
 				<MultipleParameter
 					:parameter="parameter"
-					:values="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
+					:values="getParameterValue(parameter.name)"
 					:node-values="nodeValues"
 					:path="getPath(parameter.name)"
 					:is-read-only="isReadOnly"
-					@valueChanged="valueChanged"
+					@value-changed="valueChanged"
 				/>
 			</div>
 
-			<ImportParameter
+			<ImportCurlParameter
 				v-else-if="parameter.type === 'curlImport'"
 				:is-read-only="isReadOnly"
-				@valueChanged="valueChanged"
+				@value-changed="valueChanged"
 			/>
 
 			<n8n-notice
@@ -49,7 +49,7 @@
 				class="multi-parameter"
 			>
 				<n8n-icon-button
-					v-if="hideDelete !== true && !isReadOnly"
+					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
 					type="tertiary"
 					text
 					size="mini"
@@ -70,20 +70,20 @@
 						<CollectionParameter
 							v-if="parameter.type === 'collection'"
 							:parameter="parameter"
-							:values="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
+							:values="getParameterValue(parameter.name)"
 							:node-values="nodeValues"
 							:path="getPath(parameter.name)"
 							:is-read-only="isReadOnly"
-							@valueChanged="valueChanged"
+							@value-changed="valueChanged"
 						/>
 						<FixedCollectionParameter
 							v-else-if="parameter.type === 'fixedCollection'"
 							:parameter="parameter"
-							:values="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
+							:values="getParameterValue(parameter.name)"
 							:node-values="nodeValues"
 							:path="getPath(parameter.name)"
 							:is-read-only="isReadOnly"
-							@valueChanged="valueChanged"
+							@value-changed="valueChanged"
 						/>
 					</template>
 					<template #fallback>
@@ -106,32 +106,32 @@
 				:dependent-parameters-values="getDependentParametersValues(parameter)"
 				input-size="small"
 				label-size="small"
-				@valueChanged="valueChanged"
+				@value-changed="valueChanged"
 			/>
 			<FilterConditions
 				v-else-if="parameter.type === 'filter'"
 				:parameter="parameter"
-				:value="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
+				:value="getParameterValue(parameter.name)"
 				:path="getPath(parameter.name)"
 				:node="node"
 				:read-only="isReadOnly"
-				@valueChanged="valueChanged"
+				@value-changed="valueChanged"
 			/>
 			<AssignmentCollection
 				v-else-if="parameter.type === 'assignmentCollection'"
 				:parameter="parameter"
-				:value="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
+				:value="getParameterValue(parameter.name)"
 				:path="getPath(parameter.name)"
 				:node="node"
 				:is-read-only="isReadOnly"
-				@valueChanged="valueChanged"
+				@value-changed="valueChanged"
 			/>
 			<div
 				v-else-if="displayNodeParameter(parameter) && credentialsParameterIndex !== index"
 				class="parameter-item"
 			>
 				<n8n-icon-button
-					v-if="hideDelete !== true && !isReadOnly"
+					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
 					type="tertiary"
 					text
 					size="mini"
@@ -144,7 +144,7 @@
 				<ParameterInputFull
 					:parameter="parameter"
 					:hide-issues="hiddenIssuesInputs.includes(parameter.name)"
-					:value="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
+					:value="getParameterValue(parameter.name)"
 					:display-options="shouldShowOptions(parameter)"
 					:path="getPath(parameter.name)"
 					:is-read-only="isReadOnly"
@@ -167,6 +167,7 @@ import type {
 	INodeProperties,
 	INodeTypeDescription,
 	NodeParameterValue,
+	NodeParameterValueType,
 } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { mapStores } from 'pinia';
@@ -175,7 +176,7 @@ import { defineAsyncComponent, defineComponent, onErrorCaptured, ref } from 'vue
 
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 
-import ImportParameter from '@/components/ImportParameter.vue';
+import ImportCurlParameter from '@/components/ImportCurlParameter.vue';
 import MultipleParameter from '@/components/MultipleParameter.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
@@ -208,7 +209,7 @@ export default defineComponent({
 		ParameterInputFull,
 		FixedCollectionParameter,
 		CollectionParameter,
-		ImportParameter,
+		ImportCurlParameter,
 		ResourceMapper,
 		FilterConditions,
 		AssignmentCollection,
@@ -385,10 +386,7 @@ export default defineComponent({
 			return dependencies;
 		},
 		multipleValues(parameter: INodeProperties): boolean {
-			if (this.getArgument('multipleValues', parameter) === true) {
-				return true;
-			}
-			return false;
+			return this.getArgument('multipleValues', parameter) === true;
 		},
 		getArgument(
 			argumentName: string,
@@ -460,7 +458,7 @@ export default defineComponent({
 			const nodeValues: INodeParameters = {};
 			let rawValues = this.nodeValues;
 			if (this.path) {
-				rawValues = get(this.nodeValues, this.path);
+				rawValues = get(this.nodeValues, this.path) as INodeParameters;
 			}
 
 			if (!rawValues) {
@@ -473,11 +471,12 @@ export default defineComponent({
 			let parameterGotResolved = false;
 			do {
 				key = resolveKeys.shift() as string;
-				if (typeof rawValues[key] === 'string' && rawValues[key].charAt(0) === '=') {
+				const value = rawValues[key];
+				if (typeof value === 'string' && value?.charAt(0) === '=') {
 					// Contains an expression that
 					if (
-						rawValues[key].includes('$parameter') &&
-						resolveKeys.some((parameterName) => rawValues[key].includes(parameterName))
+						value.includes('$parameter') &&
+						resolveKeys.some((parameterName) => value.includes(parameterName))
 					) {
 						// Contains probably an expression of a missing parameter so skip
 						resolveKeys.push(key);
@@ -486,7 +485,7 @@ export default defineComponent({
 						// Contains probably no expression with a missing parameter so resolve
 						try {
 							nodeValues[key] = this.workflowHelpers.resolveExpression(
-								rawValues[key],
+								value,
 								nodeValues,
 							) as NodeParameterValue;
 						} catch (e) {
@@ -573,6 +572,9 @@ export default defineComponent({
 			} catch (error) {
 				return null;
 			}
+		},
+		getParameterValue<T extends NodeParameterValueType = NodeParameterValueType>(name: string): T {
+			return this.nodeHelpers.getParameterValue(this.nodeValues, name, this.path) as T;
 		},
 	},
 });

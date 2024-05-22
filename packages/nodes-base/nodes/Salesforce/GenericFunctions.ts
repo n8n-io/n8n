@@ -6,6 +6,7 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	IPollFunctions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -14,7 +15,7 @@ import moment from 'moment-timezone';
 import jwt from 'jsonwebtoken';
 
 function getOptions(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
 	endpoint: string,
 
@@ -41,7 +42,7 @@ function getOptions(
 }
 
 async function getAccessToken(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	credentials: IDataObject,
 ): Promise<IDataObject> {
 	const now = moment().unix();
@@ -83,7 +84,7 @@ async function getAccessToken(
 }
 
 export async function salesforceApiRequest(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
 	endpoint: string,
 
@@ -142,7 +143,7 @@ export async function salesforceApiRequest(
 }
 
 export async function salesforceApiRequestAllItems(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
 	endpoint: string,

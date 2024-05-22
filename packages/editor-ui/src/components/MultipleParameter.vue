@@ -45,7 +45,7 @@
 					:path="getPath(index)"
 					:hide-delete="hideDelete"
 					:is-read-only="isReadOnly"
-					@valueChanged="valueChanged"
+					@value-changed="valueChanged"
 				/>
 			</div>
 			<div v-else>
@@ -102,7 +102,7 @@ export default defineComponent({
 	},
 	props: {
 		nodeValues: {
-			type: Object as PropType<Record<string, INodeParameters[]>>,
+			type: Object as PropType<INodeParameters>,
 			required: true,
 		},
 		parameter: {
@@ -159,7 +159,7 @@ export default defineComponent({
 	methods: {
 		addItem() {
 			const name = this.getPath();
-			const currentValue = get(this.nodeValues, name, [] as INodeParameters[]);
+			const currentValue = get(this.nodeValues, name, []) as INodeParameters[];
 
 			currentValue.push(deepCopy(this.parameter.default as INodeParameters));
 

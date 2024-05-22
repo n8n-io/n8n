@@ -9,9 +9,14 @@ import type { SourceControlledFile } from '@/environments/sourceControl/types/so
 
 import * as utils from '../shared/utils/';
 import { createUser } from '../shared/db/users';
+import { mockInstance } from '../../shared/mocking';
+import { WaitTracker } from '@/WaitTracker';
 
 let authOwnerAgent: SuperAgentTest;
 let owner: User;
+
+// This is necessary for the tests to shutdown cleanly.
+mockInstance(WaitTracker);
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['sourceControl', 'license', 'auth'],

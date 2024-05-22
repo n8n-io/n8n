@@ -57,7 +57,6 @@ export async function matrixApiRequest(
 
 export async function handleMatrixCall(
 	this: IExecuteFunctions,
-	item: IDataObject,
 	index: number,
 	resource: string,
 	operation: string,

@@ -43,7 +43,6 @@ describe('OAuth2CredentialController', () => {
 	const credential = mock<CredentialsEntity>({
 		id: '1',
 		name: 'Test Credential',
-		nodesAccess: [],
 		type: 'oAuth2Api',
 	});
 

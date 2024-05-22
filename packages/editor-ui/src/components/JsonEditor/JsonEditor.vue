@@ -101,11 +101,31 @@ export default defineComponent({
 			return extensions;
 		},
 	},
+	watch: {
+		modelValue(newValue: string) {
+			const editorValue = this.editor?.state?.doc.toString();
+
+			// If model value changes from outside the component
+			if (editorValue && editorValue.length !== newValue.length && editorValue !== newValue) {
+				this.destroyEditor();
+				this.createEditor();
+			}
+		},
+	},
 	mounted() {
-		const state = EditorState.create({ doc: this.modelValue, extensions: this.extensions });
-		const parent = this.$refs.jsonEditor as HTMLDivElement;
-		this.editor = new EditorView({ parent, state });
-		this.editorState = this.editor.state;
+		this.createEditor();
+	},
+	methods: {
+		createEditor() {
+			const state = EditorState.create({ doc: this.modelValue, extensions: this.extensions });
+			const parent = this.$refs.jsonEditor as HTMLDivElement;
+
+			this.editor = new EditorView({ parent, state });
+			this.editorState = this.editor.state;
+		},
+		destroyEditor() {
+			this.editor?.destroy();
+		},
 	},
 });
 </script>

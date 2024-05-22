@@ -1,5 +1,3 @@
-import { useStorage } from '@/composables/useStorage';
-
 import type {
 	NavigationGuardNext,
 	RouteLocation,
@@ -19,6 +17,7 @@ import { middleware } from '@/rbac/middleware';
 import type { RouteConfig, RouterMiddleware } from '@/types/router';
 import { initializeCore } from '@/init';
 import { tryToParseNumber } from '@/utils/typesUtils';
+import { projectsRoutes } from '@/features/projects/projects.routes';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
 const ErrorView = async () => await import('./views/ErrorView.vue');
@@ -26,12 +25,11 @@ const ForgotMyPasswordView = async () => await import('./views/ForgotMyPasswordV
 const MainHeader = async () => await import('@/components/MainHeader/MainHeader.vue');
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
 const NodeView = async () => await import('@/views/NodeView.vue');
-const WorkflowExecutionsList = async () =>
-	await import('@/components/ExecutionsView/ExecutionsList.vue');
-const ExecutionsLandingPage = async () =>
-	await import('@/components/ExecutionsView/ExecutionsLandingPage.vue');
-const ExecutionPreview = async () =>
-	await import('@/components/ExecutionsView/ExecutionPreview.vue');
+const WorkflowExecutionsView = async () => await import('@/views/WorkflowExecutionsView.vue');
+const WorkflowExecutionsLandingPage = async () =>
+	await import('@/components/executions/workflow/WorkflowExecutionsLandingPage.vue');
+const WorkflowExecutionsPreview = async () =>
+	await import('@/components/executions/workflow/WorkflowExecutionsPreview.vue');
 const SettingsView = async () => await import('./views/SettingsView.vue');
 const SettingsLdapView = async () => await import('./views/SettingsLdapView.vue');
 const SettingsPersonalView = async () => await import('./views/SettingsPersonalView.vue');
@@ -49,9 +47,7 @@ const TemplatesWorkflowView = async () => await import('@/views/TemplatesWorkflo
 const SetupWorkflowFromTemplateView = async () =>
 	await import('@/views/SetupWorkflowFromTemplateView/SetupWorkflowFromTemplateView.vue');
 const TemplatesSearchView = async () => await import('@/views/TemplatesSearchView.vue');
-const CredentialsView = async () => await import('@/views/CredentialsView.vue');
 const ExecutionsView = async () => await import('@/views/ExecutionsView.vue');
-const WorkflowsView = async () => await import('@/views/WorkflowsView.vue');
 const VariablesView = async () => await import('@/views/VariablesView.vue');
 const SettingsUsageAndPlan = async () => await import('./views/SettingsUsageAndPlan.vue');
 const SettingsSso = async () => await import('./views/SettingsSso.vue');
@@ -59,7 +55,6 @@ const SignoutView = async () => await import('@/views/SignoutView.vue');
 const SamlOnboarding = async () => await import('@/views/SamlOnboarding.vue');
 const SettingsSourceControl = async () => await import('./views/SettingsSourceControl.vue');
 const SettingsExternalSecrets = async () => await import('./views/SettingsExternalSecrets.vue');
-const SettingsAuditLogs = async () => await import('./views/SettingsAuditLogs.vue');
 const WorkerView = async () => await import('./views/WorkerView.vue');
 const WorkflowHistory = async () => await import('@/views/WorkflowHistory.vue');
 const WorkflowOnboardingView = async () => await import('@/views/WorkflowOnboardingView.vue');
@@ -77,10 +72,7 @@ function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]) {
 export const routes = [
 	{
 		path: '/',
-		name: VIEWS.HOMEPAGE,
-		redirect: () => {
-			return { name: VIEWS.WORKFLOWS };
-		},
+		redirect: '/home/workflows',
 		meta: {
 			middleware: ['authenticated'],
 		},
@@ -187,21 +179,10 @@ export const routes = [
 		beforeEnter: (_to, _from, next) => {
 			const templatesStore = useTemplatesStore();
 			if (!templatesStore.hasCustomTemplatesHost) {
-				window.location.href = templatesStore.getWebsiteTemplateRepositoryURL;
+				window.location.href = templatesStore.websiteTemplateRepositoryURL;
 			} else {
 				next();
 			}
-		},
-	},
-	{
-		path: '/credentials',
-		name: VIEWS.CREDENTIALS,
-		components: {
-			default: CredentialsView,
-			sidebar: MainSidebar,
-		},
-		meta: {
-			middleware: ['authenticated'],
 		},
 	},
 	{
@@ -218,17 +199,6 @@ export const routes = [
 		name: VIEWS.EXECUTIONS,
 		components: {
 			default: ExecutionsView,
-			sidebar: MainSidebar,
-		},
-		meta: {
-			middleware: ['authenticated'],
-		},
-	},
-	{
-		path: '/workflows',
-		name: VIEWS.WORKFLOWS,
-		components: {
-			default: WorkflowsView,
 			sidebar: MainSidebar,
 		},
 		meta: {
@@ -258,7 +228,7 @@ export const routes = [
 		path: '/workflow/:name/executions',
 		name: VIEWS.WORKFLOW_EXECUTIONS,
 		components: {
-			default: WorkflowExecutionsList,
+			default: WorkflowExecutionsView,
 			header: MainHeader,
 			sidebar: MainSidebar,
 		},
@@ -271,7 +241,7 @@ export const routes = [
 				path: '',
 				name: VIEWS.EXECUTION_HOME,
 				components: {
-					executionPreview: ExecutionsLandingPage,
+					executionPreview: WorkflowExecutionsLandingPage,
 				},
 				meta: {
 					keepWorkflowAlive: true,
@@ -282,7 +252,7 @@ export const routes = [
 				path: ':executionId',
 				name: VIEWS.EXECUTION_PREVIEW,
 				components: {
-					executionPreview: ExecutionPreview,
+					executionPreview: WorkflowExecutionsPreview,
 				},
 				meta: {
 					keepWorkflowAlive: true,
@@ -481,10 +451,7 @@ export const routes = [
 					middlewareOptions: {
 						custom: () => {
 							const settingsStore = useSettingsStore();
-							return !(
-								settingsStore.settings.hideUsagePage ||
-								settingsStore.settings.deployment?.type === 'cloud'
-							);
+							return !settingsStore.settings.hideUsagePage;
 						},
 					},
 					telemetry: {
@@ -712,32 +679,6 @@ export const routes = [
 					},
 				},
 			},
-			{
-				path: 'audit-logs',
-				name: VIEWS.AUDIT_LOGS,
-				components: {
-					settingsView: SettingsAuditLogs,
-				},
-				meta: {
-					middleware: ['authenticated', 'rbac', 'custom'],
-					middlewareOptions: {
-						custom: () => {
-							return !!useStorage('audit-logs').value;
-						},
-						rbac: {
-							scope: 'auditLogs:manage',
-						},
-					},
-					telemetry: {
-						pageCategory: 'settings',
-						getProperties(route: RouteLocation) {
-							return {
-								feature: 'audit-logs',
-							};
-						},
-					},
-				},
-			},
 		],
 	},
 	{
@@ -764,6 +705,7 @@ export const routes = [
 			},
 		},
 	},
+	...projectsRoutes,
 	{
 		path: '/:pathMatch(.*)*',
 		name: VIEWS.NOT_FOUND,

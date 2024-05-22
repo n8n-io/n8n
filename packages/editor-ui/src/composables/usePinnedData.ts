@@ -1,7 +1,7 @@
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
 import type { INodeExecutionData, IPinData } from 'n8n-workflow';
-import { jsonParse, jsonStringify } from 'n8n-workflow';
+import { jsonParse, jsonStringify, NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import {
 	MAX_EXPECTED_REQUEST_SIZE,
 	MAX_PINNED_DATA_SIZE,
@@ -18,6 +18,8 @@ import { computed, unref } from 'vue';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { storeToRefs } from 'pinia';
 import { useNodeType } from '@/composables/useNodeType';
+import { useDataSchema } from './useDataSchema';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 export type PinDataSource =
 	| 'pin-icon-click'
@@ -26,7 +28,8 @@ export type PinDataSource =
 	| 'duplicate-node'
 	| 'add-nodes'
 	| 'context-menu'
-	| 'keyboard-shortcut';
+	| 'keyboard-shortcut'
+	| 'banner-link';
 
 export type UnpinDataSource =
 	| 'unpin-and-execute-modal'
@@ -47,8 +50,9 @@ export function usePinnedData(
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
 	const externalHooks = useExternalHooks();
+	const { getInputDataWithPinned } = useDataSchema();
 
-	const { sessionId } = storeToRefs(rootStore);
+	const { pushRef } = storeToRefs(rootStore);
 	const { isSubNodeType, isMultipleOutputsNodeType } = useNodeType({
 		node,
 	});
@@ -72,6 +76,26 @@ export function usePinnedData(
 			!PIN_DATA_NODE_TYPES_DENYLIST.includes(targetNode.type)
 		);
 	});
+
+	function canPinNode(checkDataEmpty = false) {
+		const targetNode = unref(node);
+		if (targetNode === null) return false;
+
+		const nodeType = useNodeTypesStore().getNodeType(targetNode.type, targetNode.typeVersion);
+		const dataToPin = getInputDataWithPinned(targetNode);
+
+		if (!nodeType || (checkDataEmpty && dataToPin.length === 0)) return false;
+
+		const workflow = workflowsStore.getCurrentWorkflow();
+		const outputs = NodeHelpers.getNodeOutputs(workflow, targetNode, nodeType);
+		const mainOutputs = outputs.filter((output) =>
+			typeof output === 'string'
+				? output === NodeConnectionType.Main
+				: output.type === NodeConnectionType.Main,
+		);
+
+		return mainOutputs.length === 1 && !PIN_DATA_NODE_TYPES_DENYLIST.includes(targetNode.type);
+	}
 
 	function isValidJSON(data: string): boolean {
 		try {
@@ -163,7 +187,7 @@ export function usePinnedData(
 		const telemetryPayload = {
 			pinning_source: source,
 			node_type: targetNode?.type,
-			session_id: sessionId.value,
+			push_ref: pushRef.value,
 			data_size: stringSizeInBytes(data.value),
 			view: displayMode,
 			run_index: runIndex,
@@ -187,7 +211,7 @@ export function usePinnedData(
 		telemetry.track('Ndv data pinning failure', {
 			pinning_source: source,
 			node_type: targetNode?.type,
-			session_id: sessionId.value,
+			push_ref: pushRef.value,
 			data_size: stringSizeInBytes(data.value),
 			view: displayMode,
 			run_index: runIndex,
@@ -219,20 +243,20 @@ export function usePinnedData(
 		onSetDataSuccess({ source });
 	}
 
-	function onUnsetData({ source }: { source: UnpinDataSource }) {
+	function onUnsetData({ source }: { source: PinDataSource | UnpinDataSource }) {
 		const targetNode = unref(node);
 		const runIndex = unref(options.runIndex);
 
 		telemetry.track('User unpinned ndv data', {
 			node_type: targetNode?.type,
-			session_id: sessionId.value,
+			push_ref: pushRef.value,
 			run_index: runIndex,
 			source,
 			data_size: stringSizeInBytes(data.value),
 		});
 	}
 
-	function unsetData(source: UnpinDataSource): void {
+	function unsetData(source: PinDataSource | UnpinDataSource): void {
 		const targetNode = unref(node);
 		if (!targetNode) {
 			return;
@@ -246,6 +270,7 @@ export function usePinnedData(
 		data,
 		hasData,
 		isValidNodeType,
+		canPinNode,
 		setData,
 		onSetDataSuccess,
 		onSetDataError,
