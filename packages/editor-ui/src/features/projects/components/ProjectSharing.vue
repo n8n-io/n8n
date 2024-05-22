@@ -164,7 +164,7 @@ watch(
 	width: 100%;
 	align-items: center;
 	padding: var(--spacing-2xs) 0;
-	gap: var(--spacing-xs);
+	gap: var(--spacing-2xs);
 }
 
 .selectedProjects {

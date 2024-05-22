@@ -93,13 +93,8 @@ export default defineComponent({
 					return;
 				}
 
-				length += (
-					Array.isArray(this.modelValue[key])
-						? this.modelValue[key].length > 0
-						: this.modelValue[key] !== ''
-				)
-					? 1
-					: 0;
+				const value = this.modelValue[key];
+				length += (Array.isArray(value) ? value.length > 0 : value !== '') ? 1 : 0;
 			});
 
 			return length;

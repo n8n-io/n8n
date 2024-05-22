@@ -204,7 +204,7 @@ export class I18nClass {
 			/**
 			 * Display name for an input label, whether top-level or nested.
 			 */
-			inputLabelDisplayName(parameter: INodeProperties, path: string) {
+			inputLabelDisplayName(parameter: INodeProperties | INodePropertyCollection, path: string) {
 				const middleKey = deriveMiddleKey(path, parameter);
 
 				return context.dynamicRender({

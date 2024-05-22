@@ -1,8 +1,11 @@
 <template>
 	<N8nCheckbox
 		v-if="type === 'checkbox'"
-		v-bind="$props"
 		ref="inputRef"
+		:label="label"
+		:disabled="disabled"
+		:label-size="labelSize as CheckboxLabelSizePropType"
+		:model-value="modelValue as CheckboxModelValuePropType"
 		@update:model-value="onUpdateModelValue"
 		@focus="onFocus"
 	/>
@@ -17,7 +20,7 @@
 			{{ tooltipText }}
 		</template>
 		<ElSwitch
-			:model-value="modelValue"
+			:model-value="modelValue as SwitchModelValuePropType"
 			:active-color="activeColor"
 			:inactive-color="inactiveColor"
 			@update:model-value="onUpdateModelValue"
@@ -59,9 +62,9 @@
 				v-else
 				ref="inputRef"
 				:name="name"
-				:type="type"
+				:type="type as InputTypePropType"
 				:placeholder="placeholder"
-				:model-value="modelValue"
+				:model-value="modelValue as InputModelValuePropType"
 				:maxlength="maxlength"
 				:autocomplete="autocomplete"
 				:disabled="disabled"
@@ -99,7 +102,18 @@ import N8nCheckbox from '../N8nCheckbox';
 import { ElSwitch } from 'element-plus';
 
 import { getValidationError, VALIDATORS } from './validators';
-import type { Rule, RuleGroup, IValidator, Validatable, FormState } from '../../types';
+import type {
+	Rule,
+	RuleGroup,
+	IValidator,
+	Validatable,
+	InputModelValuePropType,
+	InputTypePropType,
+	SwitchModelValuePropType,
+	CheckboxModelValuePropType,
+	CheckboxLabelSizePropType,
+	InputAutocompletePropType,
+} from '../../types';
 
 import { t } from '../../locale';
 
@@ -120,10 +134,10 @@ export interface Props {
 	validators?: { [key: string]: IValidator | RuleGroup };
 	maxlength?: number;
 	options?: Array<{ value: string | number; label: string; disabled?: boolean }>;
-	autocomplete?: string;
+	autocomplete?: InputAutocompletePropType;
 	name?: string;
 	focusInitially?: boolean;
-	labelSize?: 'small' | 'medium';
+	labelSize?: 'small' | 'medium' | 'large';
 	disabled?: boolean;
 	activeLabel?: string;
 	activeColor?: string;
@@ -206,7 +220,7 @@ function onBlur() {
 	$emit('blur');
 }
 
-function onUpdateModelValue(value: FormState) {
+function onUpdateModelValue(value: Validatable) {
 	state.isTyping = true;
 	$emit('update:modelValue', value);
 }
@@ -225,9 +239,9 @@ const validationError = computed<string | null>(() => {
 	const error = getInputValidationError();
 
 	if (error) {
-		if (error.messageKey) {
-			return t(error.messageKey, error.options);
-		} else {
+		if ('messageKey' in error) {
+			return t(error.messageKey, error.options as object);
+		} else if ('message' in error) {
 			return error.message;
 		}
 	}
