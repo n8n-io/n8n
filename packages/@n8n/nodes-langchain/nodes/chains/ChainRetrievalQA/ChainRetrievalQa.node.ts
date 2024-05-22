@@ -189,6 +189,6 @@ export class ChainRetrievalQa implements INodeType {
 				throw error;
 			}
 		}
-		return await this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }
