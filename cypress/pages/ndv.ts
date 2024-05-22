@@ -124,6 +124,8 @@ export class NDV extends BasePage {
 		codeEditorFullscreen: () => this.getters.codeEditorDialog().find('.cm-content'),
 		nodeRunSuccessIndicator: () => cy.getByTestId('node-run-info-success'),
 		nodeRunErrorIndicator: () => cy.getByTestId('node-run-info-danger'),
+		nodeRunErrorMessage: () => cy.getByTestId('node-error-message'),
+		nodeRunErrorDescription: () => cy.getByTestId('node-error-description'),
 	};
 
 	actions = {
