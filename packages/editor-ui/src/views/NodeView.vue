@@ -3731,6 +3731,9 @@ export default defineComponent({
 							this.projectsStore.projectNavActiveId = 'home';
 						} else {
 							this.projectsStore.projectNavActiveId = workflow.homeProject?.id ?? null;
+							if (workflow.homeProject?.id && !this.projectsStore.currentProjectId) {
+								await this.projectsStore.getProject(workflow.homeProject?.id);
+							}
 						}
 
 						if (workflow.meta?.onboardingId) {
