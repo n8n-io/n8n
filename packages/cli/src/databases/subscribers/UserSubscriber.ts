@@ -2,7 +2,6 @@ import type { EntitySubscriberInterface, UpdateEvent } from '@n8n/typeorm';
 import { EventSubscriber } from '@n8n/typeorm';
 import { User } from '../entities/User';
 import Container from 'typedi';
-import { ProjectRepository } from '../repositories/project.repository';
 import { ApplicationError, ErrorReporterProxy } from 'n8n-workflow';
 import { Logger } from '@/Logger';
 import { UserRepository } from '../repositories/user.repository';
@@ -32,9 +31,10 @@ export class UserSubscriber implements EntitySubscriberInterface<User> {
 							? newUserData.createPersonalProjectName()
 							: Container.get(UserRepository).create(newUserData).createPersonalProjectName();
 
-					const project = await Container.get(ProjectRepository).getPersonalProjectForUser(
-						oldUser.id,
-					);
+					const project = await event.manager.findOneBy(Project, {
+						type: 'personal',
+						projectRelations: { userId: oldUser.id },
+					});
 
 					if (!project) {
 						// Since this is benign we're not throwing the exception. We don't
