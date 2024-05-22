@@ -160,19 +160,6 @@ export class ImportWorkflowsCommand extends BaseCommand {
 		this.logger.info(`Successfully imported ${total} ${total === 1 ? 'workflow.' : 'workflows.'}`);
 	}
 
-	private async getOwnerProject() {
-		const owner = await Container.get(UserRepository).findOneBy({ role: 'global:owner' });
-		if (!owner) {
-			throw new ApplicationError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
-		}
-
-		const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
-			owner.id,
-		);
-
-		return project;
-	}
-
 	private async getWorkflowOwner(workflow: WorkflowEntity) {
 		const sharing = await Container.get(SharedWorkflowRepository).findOne({
 			where: { workflowId: workflow.id, role: 'workflow:owner' },
@@ -234,10 +221,14 @@ export class ImportWorkflowsCommand extends BaseCommand {
 			return await Container.get(ProjectRepository).findOneByOrFail({ id: projectId });
 		}
 
-		if (userId) {
-			return await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(userId);
+		if (!userId) {
+			const owner = await Container.get(UserRepository).findOneBy({ role: 'global:owner' });
+			if (!owner) {
+				throw new ApplicationError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
+			}
+			userId = owner.id;
 		}
 
-		return await this.getOwnerProject();
+		return await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(userId);
 	}
 }
