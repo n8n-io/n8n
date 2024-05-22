@@ -88,6 +88,7 @@ describe('SettingsSso', () => {
 		expect(getByTestId('sso-test')).toBeEnabled();
 	});
 
+	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
 	it.skip('should enable activation checkbox after data is saved', async () => {
 		await ssoStore.saveSamlConfig({ metadata: '' });
 
