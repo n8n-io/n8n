@@ -123,5 +123,5 @@ export async function reActAgentAgentExecute(
 		}
 	}
 
-	return await this.prepareOutputData(returnData);
+	return [returnData];
 }

@@ -123,5 +123,5 @@ export async function conversationalAgentExecute(
 		}
 	}
 
-	return await this.prepareOutputData(returnData);
+	return [returnData];
 }
