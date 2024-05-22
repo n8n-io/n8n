@@ -1525,6 +1525,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getActivationError,
 		fetchAllWorkflows,
 		fetchWorkflow,
+    fetchWorkflowWithVersion,
 		getNewWorkflowData,
 		resetWorkflow,
 		resetState,

@@ -1170,7 +1170,6 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 
   async function getWorkflowWithVersion(id: string) {
     const data: IWorkflowDb = await workflowsStore.fetchWorkflowWithVersion(id);
-    return data;
   }
 
 	function getWorkflowProjectRole(workflowId: string): 'owner' | 'sharee' | 'member' {
