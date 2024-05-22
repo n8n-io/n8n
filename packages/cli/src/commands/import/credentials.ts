@@ -16,6 +16,7 @@ import { UM_FIX_INSTRUCTION } from '@/constants';
 import { UserRepository } from '@db/repositories/user.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import type { Project } from '@/databases/entities/Project';
+import { User } from '@/databases/entities/User';
 
 export class ImportCredentialsCommand extends BaseCommand {
 	static description = 'Import credentials';
@@ -244,7 +245,7 @@ export class ImportCredentialsCommand extends BaseCommand {
 		});
 
 		if (sharedCredential && sharedCredential.project.type === 'personal') {
-			const user = await Container.get(UserRepository).findOneByOrFail({
+			const user = await this.transactionManager.findOneByOrFail(User, {
 				projectRelations: {
 					role: 'project:personalOwner',
 					projectId: sharedCredential.projectId,
