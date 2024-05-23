@@ -92,13 +92,7 @@ export class ActiveWorkflows {
 
 				throw new WorkflowActivationError(
 					`There was a problem activating the workflow: "${error.message}"`,
-					{
-						cause: error,
-						node: triggerNode,
-						level: ['ETIMEDOUT', 'ECONNREFUSED'].some((code) => error.message.includes(code))
-							? 'warning'
-							: 'error',
-					},
+					{ cause: error, node: triggerNode },
 				);
 			}
 		}

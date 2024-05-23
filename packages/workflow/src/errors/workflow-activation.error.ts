@@ -32,6 +32,20 @@ export class WorkflowActivationError extends ExecutionBaseError {
 		this.node = node;
 		this.workflowId = workflowId;
 		this.message = message;
-		if (level) this.level = level;
+		this.setLevel(level);
+	}
+
+	private setLevel(level?: ApplicationError['level']) {
+		if (level) {
+			this.level = level;
+			return;
+		}
+
+		if (['ETIMEDOUT', 'ECONNREFUSED', 'EAUTH'].some((code) => this.message.includes(code))) {
+			this.level = 'warning';
+			return;
+		}
+
+		this.level = 'error';
 	}
 }
