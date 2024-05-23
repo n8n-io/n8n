@@ -1,62 +1,62 @@
-import { completionStatus } from '@codemirror/autocomplete';
+import {
+	CompletionContext,
+	type CompletionInfo,
+	type CompletionResult,
+	completionStatus,
+	type Completion,
+} from '@codemirror/autocomplete';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { syntaxTree } from '@codemirror/language';
 import { StateEffect, StateField, type EditorState, type Extension } from '@codemirror/state';
 import { EditorView, hoverTooltip, keymap, showTooltip, type Tooltip } from '@codemirror/view';
 import type { SyntaxNode } from '@lezer/common';
-import { DateTime } from 'luxon';
-import type { DocMetadata } from 'n8n-workflow';
-import { arrayExtensions } from 'n8n-workflow/src/Extensions/ArrayExtensions';
-import { booleanExtensions } from 'n8n-workflow/src/Extensions/BooleanExtensions';
-import { dateExtensions } from 'n8n-workflow/src/Extensions/DateExtensions';
-import { numberExtensions } from 'n8n-workflow/src/Extensions/NumberExtensions';
-import { objectExtensions } from 'n8n-workflow/src/Extensions/ObjectExtensions';
-import { stringExtensions } from 'n8n-workflow/src/Extensions/StringExtensions';
-import { arrayMethods } from 'n8n-workflow/src/NativeMethods/Array.methods';
-import { booleanMethods } from 'n8n-workflow/src/NativeMethods/Boolean.methods';
-import { numberMethods } from 'n8n-workflow/src/NativeMethods/Number.methods';
-import { objectMethods } from 'n8n-workflow/src/NativeMethods/Object.Methods';
-import { stringMethods } from 'n8n-workflow/src/NativeMethods/String.methods';
-import { resolveParameter } from '../../../composables/useWorkflowHelpers';
-import { ROOT_DOLLAR_COMPLETIONS } from '../completions/constants';
-import { createInfoBoxRenderer } from '../completions/infoBoxRenderer';
-import { getDisplayType } from '../completions/utils';
+import type { createInfoBoxRenderer } from '../completions/infoBoxRenderer';
 
-function docToTooltip(
-	index: number,
-	activeArgIndex: number,
-	doc?: DocMetadata,
-	isFunction = true,
+const findNearestParentOfType =
+	(type: string) =>
+	(node: SyntaxNode): SyntaxNode | null => {
+		if (node.name === type) {
+			return node;
+		}
+
+		if (node.parent) {
+			return findNearestParentOfType(type)(node.parent);
+		}
+
+		return null;
+	};
+
+const findNearestArgList = findNearestParentOfType('ArgList');
+const findNearestCallExpression = findNearestParentOfType('CallExpression');
+
+function completionToTooltip(
+	completion: Completion | null,
+	pos: number,
+	options: { argIndex?: number; end?: number } = {},
 ): Tooltip | null {
-	if (doc) {
-		return {
-			pos: index,
-			above: true,
-			create: () => {
-				const element = document.createElement('div');
-				element.classList.add('cm-cursorInfo');
-				const info = createInfoBoxRenderer(doc, isFunction, activeArgIndex)();
-				if (info) {
-					element.appendChild(info);
+	if (!completion) return null;
+
+	return {
+		pos,
+		end: options.end,
+		above: true,
+		create: () => {
+			const element = document.createElement('div');
+			element.classList.add('cm-cursorInfo');
+			const info = completion.info;
+			if (typeof info === 'string') {
+				element.textContent = info;
+			} else if (isInfoBoxRenderer(info)) {
+				const infoResult = info(completion, options.argIndex ?? -1);
+
+				if (infoResult) {
+					element.appendChild(infoResult);
 				}
-				return { dom: element };
-			},
-		};
-	}
+			}
 
-	return null;
-}
-
-function findNearestParentOfType(type: string, node: SyntaxNode): SyntaxNode | null {
-	if (node.name === type) {
-		return node;
-	}
-
-	if (node.parent) {
-		return findNearestParentOfType(type, node.parent);
-	}
-
-	return null;
+			return { dom: element };
+		},
+	};
 }
 
 function findActiveArgIndex(node: SyntaxNode, index: number) {
@@ -81,138 +81,121 @@ function findActiveArgIndex(node: SyntaxNode, index: number) {
 	return -1;
 }
 
-function getInfoBoxTooltip(state: EditorState): Tooltip | null {
-	const { head, anchor } = state.selection.ranges[0];
-	const index = head;
+const createStateReader = (state: EditorState) => (node?: SyntaxNode | null) => {
+	return node ? state.sliceDoc(node.from, node.to) : '';
+};
 
-	const node = syntaxTree(state).resolveInner(index, -1);
+const createStringReader = (str: string) => (node?: SyntaxNode | null) => {
+	return node ? str.slice(node.from, node.to) : '';
+};
 
-	if (node.name !== 'Resolvable') {
+function getJsNodeAtPosition(state: EditorState, pos: number, anchor?: number) {
+	const rootNode = syntaxTree(state).resolveInner(pos, -1);
+
+	if (rootNode.name !== 'Resolvable') {
 		return null;
 	}
 
-	const read = (n?: SyntaxNode | null) => (n ? state.sliceDoc(n.from, n.to) : '');
-	const resolvable = read(node);
+	const read = createStateReader(state);
+	const resolvable = read(rootNode);
 	const jsCode = resolvable.replace(/^{{\s*(.*)\s*}}$/, '$1');
 	const prefixLength = resolvable.indexOf(jsCode);
-	const jsIndex = index - node.from - prefixLength;
-	const jsAnchor = anchor - node.from - prefixLength;
+	const jsOffset = rootNode.from + prefixLength;
+	const jsPos = pos - jsOffset;
+	const jsAnchor = anchor ? anchor - jsOffset : jsPos;
+	const isSelectionWithinNode = (n: SyntaxNode) => {
+		return jsPos >= n.from && jsPos <= n.to && jsAnchor >= n.from && jsAnchor <= n.to;
+	};
+	const getGlobalPosition = (jsPosition: number) => jsPosition + jsOffset;
 
-	if (jsIndex >= jsCode.length || jsAnchor >= jsCode.length) {
+	// cursor or selection is outside of JS code
+	if (jsPos >= jsCode.length || jsAnchor >= jsCode.length) {
 		return null;
 	}
 
-	const readJs = (n?: SyntaxNode | null) => (n ? jsCode.slice(n.from, n.to) : '');
-	const jsNode = javascriptLanguage.parser.parse(jsCode).resolveInner(jsIndex, 0);
+	const jsNode = javascriptLanguage.parser
+		.parse(jsCode)
+		.resolveInner(jsPos, typeof anchor === 'number' ? 0 : -1);
 
-	const argList = findNearestParentOfType('ArgList', jsNode);
+	return {
+		node: jsNode,
+		pos: jsPos,
+		readNode: createStringReader(jsCode),
+		isSelectionWithinNode,
+		getGlobalPosition,
+	};
+}
 
-	if (!argList || argList.from > jsAnchor || argList.to < jsAnchor) {
+function getCompletion(
+	state: EditorState,
+	pos: number,
+	filter: (completion: Completion) => boolean,
+): Completion | null {
+	const context = new CompletionContext(state, pos, true);
+
+	for (const source of state.languageDataAt<(context: CompletionContext) => CompletionResult>(
+		'autocomplete',
+		pos,
+	)) {
+		const result = source(context);
+
+		const options = result?.options.filter(filter);
+		if (options && options.length > 0) {
+			return options[0];
+		}
+	}
+
+	return null;
+}
+
+const isInfoBoxRenderer = (
+	info: string | ((completion: Completion) => CompletionInfo | Promise<CompletionInfo>) | undefined,
+): info is ReturnType<typeof createInfoBoxRenderer> => {
+	return typeof info === 'function';
+};
+
+function getInfoBoxTooltip(state: EditorState): Tooltip | null {
+	const { head, anchor } = state.selection.ranges[0];
+	const jsNodeResult = getJsNodeAtPosition(state, head, anchor);
+
+	if (!jsNodeResult) {
 		return null;
 	}
-	const callExpression = findNearestParentOfType('CallExpression', argList);
 
-	const argIndex = findActiveArgIndex(argList, jsIndex);
+	const { node, pos, isSelectionWithinNode, getGlobalPosition, readNode } = jsNodeResult;
 
+	const argList = findNearestArgList(node);
+	if (!argList || !isSelectionWithinNode(argList)) {
+		return null;
+	}
+
+	const callExpression = findNearestCallExpression(argList);
+	if (!callExpression) {
+		return null;
+	}
+	const argIndex = findActiveArgIndex(argList, pos);
 	const subject = callExpression?.firstChild;
 
 	switch (subject?.name) {
 		case 'MemberExpression': {
-			const methodNameNode = subject.lastChild;
+			const methodName = readNode(subject.lastChild);
+			const completion = getCompletion(
+				state,
+				getGlobalPosition(subject.to - 1),
+				(c) => c.label === methodName + '()',
+			);
 
-			if (methodNameNode?.name !== 'PropertyName' || jsIndex < methodNameNode.from) {
-				return null;
-			}
-
-			try {
-				const base = readJs(subject.firstChild);
-				const resolved = resolveParameter(`={{ ${base} }}`);
-				const methodName = readJs(methodNameNode);
-
-				if (typeof resolved === 'string') {
-					const doc =
-						stringExtensions.functions[methodName]?.doc ?? stringMethods.functions[methodName]?.doc;
-
-					return docToTooltip(index, argIndex, doc);
-				}
-
-				if (typeof resolved === 'number') {
-					const doc =
-						numberExtensions.functions[methodName]?.doc ?? numberMethods.functions[methodName]?.doc;
-
-					return docToTooltip(index, argIndex, doc);
-				}
-
-				if (typeof resolved === 'boolean') {
-					const doc =
-						booleanExtensions.functions[methodName]?.doc ??
-						booleanMethods.functions[methodName]?.doc;
-
-					return docToTooltip(index, argIndex, doc);
-				}
-
-				if (Array.isArray(resolved)) {
-					const doc =
-						arrayExtensions.functions[methodName]?.doc ?? arrayMethods.functions[methodName]?.doc;
-
-					return docToTooltip(index, argIndex, doc);
-				}
-
-				if (DateTime.isDateTime(resolved)) {
-					const doc = dateExtensions.functions[methodName]?.doc;
-					return docToTooltip(index, argIndex, doc);
-				}
-
-				if (resolved instanceof Date) {
-					if (methodName !== 'toDateTime') {
-						return null;
-					}
-					const doc = dateExtensions.functions[methodName]?.doc;
-					return docToTooltip(index, argIndex, doc);
-				}
-
-				if (resolved && typeof resolved === 'object') {
-					const doc =
-						objectExtensions.functions[methodName]?.doc ?? objectMethods.functions[methodName]?.doc;
-
-					return docToTooltip(index, argIndex, doc);
-				}
-			} catch (error) {
-				return null;
-			}
-
-			return null;
+			return completionToTooltip(completion, head, { argIndex });
 		}
-
 		case 'VariableName': {
-			const result = ROOT_DOLLAR_COMPLETIONS.find((comp) => comp.label === readJs(subject) + '()');
+			const methodName = readNode(subject);
+			const completion = getCompletion(
+				state,
+				getGlobalPosition(subject.to - 1),
+				(c) => c.label === methodName + '()',
+			);
 
-			if (!result) {
-				return null;
-			}
-
-			return {
-				pos: index,
-				above: true,
-				create: () => {
-					const element = document.createElement('div');
-					element.classList.add('cm-cursorInfo');
-					const info = result.info;
-					if (typeof info === 'string') {
-						element.textContent = info;
-					} else if (typeof info === 'function') {
-						const infoResult = info(result);
-
-						if (infoResult instanceof Node) {
-							element.appendChild(infoResult);
-						} else if (infoResult && 'dom' in infoResult) {
-							element.appendChild(infoResult.dom);
-						}
-					}
-
-					return { dom: element };
-				},
-			};
+			return completionToTooltip(completion, head, { argIndex });
 		}
 		default:
 			return null;
@@ -248,141 +231,52 @@ const cursorInfoBoxTooltip = StateField.define<{
 });
 
 const hoverInfoBoxTooltip = hoverTooltip(
-	async (view, pos, side) => {
-		const node = syntaxTree(view.state).resolveInner(pos, -1);
+	(view, pos) => {
+		const state = view.state.field(cursorInfoBoxTooltip, false);
+		const cursorTooltipOpen = !!state?.tooltip;
 
-		if (node.name !== 'Resolvable') {
+		const jsNodeResult = getJsNodeAtPosition(view.state, pos);
+
+		if (!jsNodeResult) {
 			return null;
 		}
 
-		const read = (n?: SyntaxNode | null) => (n ? view.state.sliceDoc(n.from, n.to) : '');
-		const resolvable = read(node);
-		const jsCode = resolvable.replace(/^{{\s*(.*)\s*}}$/, '$1');
-		const prefixLength = resolvable.indexOf(jsCode);
-		const jsPos = pos - node.from - prefixLength;
-		const jsNode = javascriptLanguage.parser.parse(jsCode).resolveInner(jsPos, 0);
+		const { node, getGlobalPosition, readNode } = jsNodeResult;
 
-		const start = node.from;
-		const end = node.to;
+		const tooltipForNode = (tooltipNode: SyntaxNode) => {
+			const completion = getCompletion(
+				view.state,
+				getGlobalPosition(tooltipNode.to - 1),
+				(c) => c.label === readNode(tooltipNode) || c.label === readNode(tooltipNode) + '()',
+			);
 
-		if ((start === pos && side < 0) || (end === pos && side > 0)) return null;
+			const newHoverTooltip = completionToTooltip(completion, getGlobalPosition(tooltipNode.from), {
+				end: getGlobalPosition(tooltipNode.to),
+			});
 
-		const readJs = (n?: SyntaxNode | null) => (n ? jsCode.slice(n.from, n.to) : '');
-
-		console.log(readJs(jsNode), jsNode.name);
-
-		switch (jsNode?.name) {
-			case 'PropertyName': {
-				const callExpression = findNearestParentOfType('CallExpression', jsNode);
-				const subject = callExpression?.firstChild;
-				const propName = readJs(jsNode);
-				const currentPropertyIsFunctionCall =
-					subject && subject.lastChild?.from === jsNode.from && subject.lastChild?.to === jsNode.to;
-
-				rawCompletionSources;
-
-				try {
-					if (currentPropertyIsFunctionCall) {
-						const base = readJs(jsNode.parent?.firstChild);
-						const resolved = resolveParameter(`={{ ${base} }}`);
-
-						if (typeof resolved === 'string') {
-							const doc =
-								stringExtensions.functions[propName]?.doc ?? stringMethods.functions[propName]?.doc;
-
-							return docToTooltip(pos, -1, doc);
-						}
-
-						if (typeof resolved === 'number') {
-							const doc =
-								numberExtensions.functions[propName]?.doc ?? numberMethods.functions[propName]?.doc;
-
-							return docToTooltip(pos, -1, doc);
-						}
-
-						if (typeof resolved === 'boolean') {
-							const doc =
-								booleanExtensions.functions[propName]?.doc ??
-								booleanMethods.functions[propName]?.doc;
-
-							return docToTooltip(pos, -1, doc);
-						}
-
-						if (Array.isArray(resolved)) {
-							const doc =
-								arrayExtensions.functions[propName]?.doc ?? arrayMethods.functions[propName]?.doc;
-
-							return docToTooltip(pos, -1, doc);
-						}
-
-						if (DateTime.isDateTime(resolved)) {
-							const doc = dateExtensions.functions[propName]?.doc;
-							return docToTooltip(pos, -1, doc);
-						}
-
-						if (resolved instanceof Date) {
-							if (propName !== 'toDateTime') {
-								return null;
-							}
-							const doc = dateExtensions.functions[propName]?.doc;
-							return docToTooltip(pos, -1, doc);
-						}
-
-						if (resolved && typeof resolved === 'object') {
-							const doc =
-								objectExtensions.functions[propName]?.doc ?? objectMethods.functions[propName]?.doc;
-
-							return docToTooltip(pos, -1, doc);
-						}
-					} else {
-						const parent = readJs(jsNode.parent);
-						const resolved = resolveParameter(`={{ ${parent} }}`);
-
-						return docToTooltip(
-							pos,
-							-1,
-							{ name: propName, returnType: getDisplayType(resolved) },
-							false,
-						);
-					}
-				} catch (error) {
-					return null;
-				}
-			}
-			case 'VariableName': {
-				const isFunction = jsNode.nextSibling?.name === 'ArgList';
-				const label = isFunction ? readJs(jsNode) + '()' : readJs(jsNode);
-				const result = ROOT_DOLLAR_COMPLETIONS.find((comp) => comp.label === label);
-
-				if (!result) {
-					return null;
-				}
-
+			if (newHoverTooltip && cursorTooltipOpen) {
 				view.dispatch({ effects: closeInfoBoxEffect.of(null) });
-				return {
-					pos: jsNode.from + prefixLength + node.from,
-					end: jsNode.to + prefixLength + node.from,
-					above: true,
-					create: () => {
-						const element = document.createElement('div');
-						element.classList.add('cm-cursorInfo');
-						const info = result.info;
-						if (typeof info === 'string') {
-							element.textContent = info;
-						} else if (typeof info === 'function') {
-							const infoResult = info(result);
-
-							if (infoResult instanceof Node) {
-								element.appendChild(infoResult);
-							} else if (infoResult && 'dom' in infoResult) {
-								element.appendChild(infoResult.dom);
-							}
-						}
-
-						return { dom: element };
-					},
-				};
 			}
+
+			return newHoverTooltip;
+		};
+
+		switch (node.name) {
+			case 'VariableName':
+			case 'PropertyName': {
+				return tooltipForNode(node);
+			}
+			case 'String':
+			case 'Number':
+			case 'Number':
+			case 'CallExpression': {
+				const callExpression = findNearestCallExpression(node);
+
+				if (!callExpression) return null;
+
+				return tooltipForNode(callExpression);
+			}
+
 			default:
 				return null;
 		}

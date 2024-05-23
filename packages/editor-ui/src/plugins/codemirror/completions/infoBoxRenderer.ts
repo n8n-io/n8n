@@ -1,6 +1,19 @@
+import type { Completion } from '@codemirror/autocomplete';
 import type { DocMetadata, DocMetadataArgument, DocMetadataExample } from 'n8n-workflow';
 import { sanitizeHtml } from '@/utils/htmlUtils';
 import { i18n } from '@/plugins/i18n';
+
+const shouldHighlightArgument = (
+	arg: DocMetadataArgument,
+	index: number,
+	highlightArgIndex?: number,
+) => {
+	if (arg.variadic) {
+		return (highlightArgIndex ?? 0) >= index;
+	}
+
+	return highlightArgIndex === index;
+};
 
 const renderFunctionHeader = (doc?: DocMetadata, highlightArgIndex?: number) => {
 	const header = document.createElement('div');
@@ -17,7 +30,9 @@ const renderFunctionHeader = (doc?: DocMetadata, highlightArgIndex?: number) => 
 		const argsSpan = document.createElement('span');
 		doc.args?.forEach((arg, index, array) => {
 			const optional = arg.optional && !arg.name.endsWith('?');
-			const argSpan = document.createElement(highlightArgIndex === index ? 'strong' : 'span');
+			const argSpan = document.createElement(
+				shouldHighlightArgument(arg, index, highlightArgIndex) ? 'strong' : 'span',
+			);
 			argSpan.classList.add('autocomplete-info-arg');
 			argSpan.textContent = arg.name;
 
@@ -111,11 +126,9 @@ const renderDescription = ({
 	return descriptionBody;
 };
 
-const renderArg = (arg: DocMetadataArgument, highlightArgIndex?: number) => {
+const renderArg = (arg: DocMetadataArgument, highlight: boolean) => {
 	const argItem = document.createElement('li');
-	const argName = document.createElement(
-		highlightArgIndex === highlightArgIndex ? 'strong' : 'span',
-	);
+	const argName = document.createElement(highlight ? 'strong' : 'span');
 	argName.classList.add('autocomplete-info-arg-name');
 	argName.textContent = arg.name.replaceAll('?', '');
 	const tags = [];
@@ -156,7 +169,7 @@ const renderArg = (arg: DocMetadataArgument, highlightArgIndex?: number) => {
 	}
 
 	if (Array.isArray(arg.args)) {
-		argItem.appendChild(renderArgList(arg.args, highlightArgIndex));
+		argItem.appendChild(renderArgList(arg.args));
 	}
 
 	return argItem;
@@ -166,9 +179,9 @@ const renderArgList = (args: DocMetadataArgument[], highlightArgIndex?: number) 
 	const argsList = document.createElement('ul');
 	argsList.classList.add('autocomplete-info-args');
 
-	for (const arg of args) {
-		argsList.appendChild(renderArg(arg, highlightArgIndex));
-	}
+	args.forEach((arg, index) => {
+		argsList.appendChild(renderArg(arg, shouldHighlightArgument(arg, index, highlightArgIndex)));
+	});
 
 	return argsList;
 };
@@ -235,8 +248,8 @@ const renderExamples = (examples: DocMetadataExample[]) => {
 };
 
 export const createInfoBoxRenderer =
-	(doc?: DocMetadata, isFunction = false, highlightArgIndex?: number) =>
-	() => {
+	(doc?: DocMetadata, isFunction = false) =>
+	(_completion: Completion, highlightArgIndex?: number) => {
 		const tooltipContainer = document.createElement('div');
 		tooltipContainer.setAttribute('tabindex', '-1');
 		tooltipContainer.setAttribute('title', '');

@@ -182,7 +182,7 @@ export const natives = ({
 	typeName: ExtensionTypeName;
 	transformLabel?: (label: string) => string;
 }): Completion[] => {
-	const nativeDocs: NativeDoc = NativeMethods.find((ee) => ee.typeName.toLowerCase() === typeName);
+	const nativeDocs = NativeMethods.find((ee) => ee.typeName.toLowerCase() === typeName);
 
 	if (!nativeDocs) return [];
 
@@ -382,7 +382,7 @@ const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
 				name: infoName,
 				doc: {
 					name: infoName,
-					returnType: isFunction ? 'any' : getType(resolvedProp),
+					returnType: isFunction ? 'any' : getDisplayType(resolvedProp),
 				},
 				isFunction,
 				transformLabel,
