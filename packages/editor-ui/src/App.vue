@@ -113,7 +113,7 @@ export default defineComponent({
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		async 'usersStore.currentUser'(currentValue, previousValue) {
 			if (currentValue && !previousValue) {
-				await initializeAuthenticatedFeatures();
+				await initializeAuthenticatedFeatures(true);
 			}
 		},
 		defaultLocale(newLocale) {
