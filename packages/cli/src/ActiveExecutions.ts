@@ -154,13 +154,6 @@ export class ActiveExecutions {
 			return;
 		}
 
-		if (execution.status === 'new') {
-			// `new` executions are registered as active but only enqueued, not yet actually started
-			await this.executionRepository.updateStatus(executionId, 'canceled');
-			this.concurrencyControl.remove({ mode: execution.executionData.executionMode, executionId });
-			return;
-		}
-
 		execution.workflowExecution!.cancel();
 
 		return await this.getPostExecutePromise(executionId);
