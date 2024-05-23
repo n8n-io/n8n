@@ -83,7 +83,6 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 	async handleCallback(req: OAuthRequest.OAuth2Credential.Callback, res: Response) {
 		const userId = req.user?.id;
 		try {
-			// realmId it's currently just use for the quickbook OAuth2 flow
 			const { code, state: encodedState } = req.query;
 			if (!code || !encodedState) {
 				return this.renderCallbackError(

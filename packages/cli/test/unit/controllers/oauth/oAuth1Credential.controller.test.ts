@@ -99,6 +99,7 @@ describe('OAuth1CredentialController', () => {
 					type: 'oAuth1Api',
 				}),
 			);
+			expect(cipher.encrypt).toHaveBeenCalledWith({ csrfSecret });
 		});
 	});
 
@@ -162,6 +163,27 @@ describe('OAuth1CredentialController', () => {
 			});
 			expect(credentialsRepository.findOneBy).toHaveBeenCalledTimes(1);
 			expect(credentialsRepository.findOneBy).toHaveBeenCalledWith({ id: '1' });
+		});
+		
+		it('should render the error page when state differs from the stored state in the credential', async () => {
+			credentialsRepository.findOneBy.mockResolvedValue(new CredentialsEntity());
+			credentialsHelper.getDecrypted.mockResolvedValue({ csrfSecret: 'invalid' });
+
+			const req = mock<OAuthRequest.OAuth1Credential.Callback>();
+			const res = mock<Response>();
+			req.query = {
+				oauth_verifier: 'verifier',
+				oauth_token: 'token',
+				state: validState,
+			} as OAuthRequest.OAuth1Credential.Callback['query'];
+
+			await controller.handleCallback(req, res);
+
+			expect(res.render).toHaveBeenCalledWith('oauth-error-callback', {
+				error: {
+					message: 'The OAuth1 callback state is invalid!',
+				},
+			});
 		});
 	});
 });
