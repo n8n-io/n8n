@@ -406,7 +406,10 @@ export class ExecutionService {
 		// @TODO: Delete instead?
 
 		if (execution.status === 'new') {
-			await this.executionRepository.updateStatus(executionId, 'canceled');
+			await this.executionRepository.update(executionId, {
+				status: 'canceled',
+				stoppedAt: new Date(),
+			});
 			this.concurrencyControl.remove({ mode: execution.mode, executionId });
 
 			return;
