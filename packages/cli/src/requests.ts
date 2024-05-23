@@ -602,3 +602,11 @@ export declare namespace ProjectRequest {
 	>;
 	type Delete = AuthenticatedRequest<{ projectId: string }, {}, {}, { transferId?: string }>;
 }
+
+// ----------------------------------
+//           /value-survey
+// ----------------------------------
+export declare namespace ValueSurveyRequest {
+	type ValueSurveyShown = AuthenticatedRequest;
+	type ValueSurveyIgnored = AuthenticatedRequest;
+}

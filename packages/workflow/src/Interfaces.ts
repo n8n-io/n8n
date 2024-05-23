@@ -2502,7 +2502,10 @@ export interface IUserSettings {
 	isOnboarded?: boolean;
 	firstSuccessfulWorkflowId?: string;
 	userActivated?: boolean;
+	userActivatedAt?: number;
 	allowSSOManualLogin?: boolean;
+	valueSurveyLastShownAt?: number;
+	valueSurveyIgnoredLastCount?: number;
 }
 
 export interface IPublicApiSettings {
