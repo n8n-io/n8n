@@ -86,6 +86,8 @@ export class ConcurrencyControlService {
 	 * Remove multiple executions from concurrency control queues, releasing capacity back.
 	 */
 	removeMany(executionIds: string[]) {
+		if (!this.isEnabled) return;
+
 		const queuedManualIds = this.manualQueue.getAll();
 		const queuedProductionIds = this.productionQueue.getAll();
 
