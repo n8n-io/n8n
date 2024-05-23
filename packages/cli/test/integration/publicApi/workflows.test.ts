@@ -17,9 +17,13 @@ import { createUser } from '../shared/db/users';
 import { createWorkflow, createWorkflowWithTrigger } from '../shared/db/workflows';
 import { createTag } from '../shared/db/tags';
 import { mockInstance } from '../../shared/mocking';
+import type { Project } from '@/databases/entities/Project';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 
 let owner: User;
+let ownerPersonalProject: Project;
 let member: User;
+let memberPersonalProject: Project;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 let activeWorkflowManager: ActiveWorkflowManager;
@@ -34,11 +38,17 @@ beforeAll(async () => {
 		role: 'global:owner',
 		apiKey: randomApiKey(),
 	});
+	ownerPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+		owner.id,
+	);
 
 	member = await createUser({
 		role: 'global:member',
 		apiKey: randomApiKey(),
 	});
+	memberPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+		member.id,
+	);
 
 	await utils.initNodeTypes();
 
@@ -254,10 +264,7 @@ describe('GET /workflows', () => {
 	test('should return all owned workflows filtered by name', async () => {
 		const workflowName = 'Workflow 1';
 
-		const [workflow] = await Promise.all([
-			createWorkflow({ name: workflowName }, member),
-			createWorkflow({}, member),
-		]);
+		await Promise.all([createWorkflow({ name: workflowName }, member), createWorkflow({}, member)]);
 
 		const response = await authMemberAgent.get(`/workflows?name=${workflowName}`);
 
@@ -274,7 +281,7 @@ describe('GET /workflows', () => {
 			name,
 			createdAt,
 			updatedAt,
-			tags: wfTags,
+			tags,
 		} = response.body.data[0];
 
 		expect(id).toBeDefined();
@@ -286,6 +293,7 @@ describe('GET /workflows', () => {
 		expect(settings).toBeDefined();
 		expect(createdAt).toBeDefined();
 		expect(updatedAt).toBeDefined();
+		expect(tags).toEqual([]);
 	});
 
 	test('should return all workflows for owner', async () => {
@@ -508,7 +516,7 @@ describe('POST /workflows/:id/activate', () => {
 		// check whether the workflow is on the database
 		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
-				userId: member.id,
+				projectId: memberPersonalProject.id,
 				workflowId: workflow.id,
 			},
 			relations: ['workflow'],
@@ -523,9 +531,7 @@ describe('POST /workflows/:id/activate', () => {
 	test('should set non-owned workflow as active when owner', async () => {
 		const workflow = await createWorkflowWithTrigger({}, member);
 
-		const response = await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
-
-		expect(response.statusCode).toBe(200);
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/activate`).expect(200);
 
 		const { id, connections, active, staticData, nodes, settings, name, createdAt, updatedAt } =
 			response.body;
@@ -543,7 +549,7 @@ describe('POST /workflows/:id/activate', () => {
 		// check whether the workflow is on the database
 		const sharedOwnerWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
-				userId: owner.id,
+				projectId: ownerPersonalProject.id,
 				workflowId: workflow.id,
 			},
 		});
@@ -552,7 +558,7 @@ describe('POST /workflows/:id/activate', () => {
 
 		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
-				userId: member.id,
+				projectId: memberPersonalProject.id,
 				workflowId: workflow.id,
 			},
 			relations: ['workflow'],
@@ -606,7 +612,7 @@ describe('POST /workflows/:id/deactivate', () => {
 		// get the workflow after it was deactivated
 		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
-				userId: member.id,
+				projectId: memberPersonalProject.id,
 				workflowId: workflow.id,
 			},
 			relations: ['workflow'],
@@ -643,7 +649,7 @@ describe('POST /workflows/:id/deactivate', () => {
 		// check whether the workflow is deactivated in the database
 		const sharedOwnerWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
-				userId: owner.id,
+				projectId: ownerPersonalProject.id,
 				workflowId: workflow.id,
 			},
 		});
@@ -652,7 +658,7 @@ describe('POST /workflows/:id/deactivate', () => {
 
 		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
-				userId: member.id,
+				projectId: memberPersonalProject.id,
 				workflowId: workflow.id,
 			},
 			relations: ['workflow'],
@@ -720,7 +726,7 @@ describe('POST /workflows', () => {
 		// check if created workflow in DB
 		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
-				userId: member.id,
+				projectId: memberPersonalProject.id,
 				workflowId: response.body.id,
 			},
 			relations: ['workflow'],
@@ -959,7 +965,7 @@ describe('PUT /workflows/:id', () => {
 		// check updated workflow in DB
 		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
-				userId: member.id,
+				projectId: memberPersonalProject.id,
 				workflowId: response.body.id,
 			},
 			relations: ['workflow'],
@@ -1128,7 +1134,7 @@ describe('PUT /workflows/:id', () => {
 		// check updated workflow in DB
 		const sharedOwnerWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
-				userId: owner.id,
+				projectId: ownerPersonalProject.id,
 				workflowId: response.body.id,
 			},
 		});
@@ -1137,7 +1143,7 @@ describe('PUT /workflows/:id', () => {
 
 		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
-				userId: member.id,
+				projectId: memberPersonalProject.id,
 				workflowId: response.body.id,
 			},
 			relations: ['workflow'],
@@ -1269,7 +1275,7 @@ describe('PUT /workflows/:id/tags', () => {
 		// Check the association in DB
 		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
-				userId: member.id,
+				projectId: memberPersonalProject.id,
 				workflowId: workflow.id,
 			},
 			relations: ['workflow.tags'],
@@ -1304,7 +1310,7 @@ describe('PUT /workflows/:id/tags', () => {
 		// Check the association in DB
 		const oldSharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
-				userId: member.id,
+				projectId: memberPersonalProject.id,
 				workflowId: workflow.id,
 			},
 			relations: ['workflow.tags'],
@@ -1357,7 +1363,7 @@ describe('PUT /workflows/:id/tags', () => {
 		// Check the association in DB
 		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
-				userId: member.id,
+				projectId: memberPersonalProject.id,
 				workflowId: workflow.id,
 			},
 			relations: ['workflow.tags'],
@@ -1391,7 +1397,7 @@ describe('PUT /workflows/:id/tags', () => {
 		// Check the association in DB
 		const oldSharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
-				userId: member.id,
+				projectId: memberPersonalProject.id,
 				workflowId: workflow.id,
 			},
 			relations: ['workflow.tags'],
@@ -1431,7 +1437,7 @@ describe('PUT /workflows/:id/tags', () => {
 		// Check the association in DB
 		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
-				userId: member.id,
+				projectId: memberPersonalProject.id,
 				workflowId: workflow.id,
 			},
 			relations: ['workflow.tags'],

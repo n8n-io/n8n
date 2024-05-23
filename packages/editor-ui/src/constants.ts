@@ -1,4 +1,8 @@
-import type { NodeCreatorOpenSource } from './Interface';
+import type {
+	EnterpriseEditionFeatureKey,
+	EnterpriseEditionFeatureValue,
+	NodeCreatorOpenSource,
+} from './Interface';
 import { NodeConnectionType } from 'n8n-workflow';
 
 export const MAX_WORKFLOW_SIZE = 1024 * 1024 * 16; // Workflow size limit in bytes
@@ -473,6 +477,10 @@ export const enum VIEWS {
 	MFA_VIEW = 'MfaView',
 	WORKFLOW_HISTORY = 'WorkflowHistory',
 	WORKER_VIEW = 'WorkerView',
+	PROJECTS = 'Projects',
+	PROJECTS_WORKFLOWS = 'ProjectsWorkflows',
+	PROJECTS_CREDENTIALS = 'ProjectsCredentials',
+	PROJECT_SETTINGS = 'ProjectSettings',
 }
 
 export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
@@ -537,21 +545,25 @@ export const enum WORKFLOW_MENU_ACTIONS {
 /**
  * Enterprise edition
  */
-export const enum EnterpriseEditionFeature {
-	AdvancedExecutionFilters = 'advancedExecutionFilters',
-	Sharing = 'sharing',
-	Ldap = 'ldap',
-	LogStreaming = 'logStreaming',
-	Variables = 'variables',
-	Saml = 'saml',
-	SourceControl = 'sourceControl',
-	ExternalSecrets = 'externalSecrets',
-	AuditLogs = 'auditLogs',
-	DebugInEditor = 'debugInEditor',
-	WorkflowHistory = 'workflowHistory',
-	WorkerView = 'workerView',
-	AdvancedPermissions = 'advancedPermissions',
-}
+export const EnterpriseEditionFeature: Record<
+	EnterpriseEditionFeatureKey,
+	EnterpriseEditionFeatureValue
+> = {
+	AdvancedExecutionFilters: 'advancedExecutionFilters',
+	Sharing: 'sharing',
+	Ldap: 'ldap',
+	LogStreaming: 'logStreaming',
+	Variables: 'variables',
+	Saml: 'saml',
+	SourceControl: 'sourceControl',
+	ExternalSecrets: 'externalSecrets',
+	AuditLogs: 'auditLogs',
+	DebugInEditor: 'debugInEditor',
+	WorkflowHistory: 'workflowHistory',
+	WorkerView: 'workerView',
+	AdvancedPermissions: 'advancedPermissions',
+};
+
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
 export const enum MAIN_HEADER_TABS {

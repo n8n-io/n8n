@@ -19,7 +19,7 @@
 			{{ $locale.baseText('executionsList.stopExecution') }}
 		</n8n-button>
 	</div>
-	<div v-else :class="$style.previewContainer">
+	<div v-else-if="executionUIDetails" :class="$style.previewContainer">
 		<div
 			v-if="execution"
 			:class="$style.executionDetails"
@@ -76,7 +76,7 @@
 					<router-link
 						:class="$style.executionLink"
 						:to="{
-							name: VIEWS.EXECUTION_PREVIEW,
+							name: executionPreviewViewName,
 							params: {
 								workflowId: execution.workflowId,
 								executionId: execution.retryOf,
@@ -91,7 +91,7 @@
 				<n8n-button size="medium" :type="debugButtonData.type" :class="$style.debugLink">
 					<router-link
 						:to="{
-							name: VIEWS.EXECUTION_DEBUG,
+							name: executionDebugViewName,
 							params: {
 								name: execution.workflowId,
 								executionId: execution.id,
@@ -182,7 +182,6 @@ export default defineComponent({
 		const executionHelpers = useExecutionHelpers();
 
 		return {
-			VIEWS,
 			executionHelpers,
 			...useMessage(),
 			...useExecutionDebugging(),
@@ -212,6 +211,12 @@ export default defineComponent({
 		},
 		isRetriable(): boolean {
 			return !!this.execution && this.executionHelpers.isExecutionRetriable(this.execution);
+		},
+		executionDebugViewName() {
+			return VIEWS.EXECUTION_DEBUG;
+		},
+		executionPreviewViewName() {
+			return VIEWS.EXECUTION_PREVIEW;
 		},
 	},
 	methods: {

@@ -11,6 +11,8 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/constants';
+import type { PermissionsMap } from '@/permissions';
+import type { WorkflowScope } from '@n8n/permissions';
 
 import ShortenName from '@/components/ShortenName.vue';
 import TagsContainer from '@/components/TagsContainer.vue';
@@ -29,6 +31,7 @@ import { useTagsStore } from '@/stores/tags.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 
 import { saveAs } from 'file-saver';
 import { useTitleChange } from '@/composables/useTitleChange';
@@ -69,6 +72,7 @@ const tagsStore = useTagsStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
+const projectsStore = useProjectsStore();
 
 const router = useRouter();
 const route = useRoute();
@@ -122,8 +126,8 @@ const onExecutionsTab = computed(() => {
 	].includes((route.name as string) || '');
 });
 
-const workflowPermissions = computed(() => {
-	return getWorkflowPermissions(usersStore.currentUser, props.workflow);
+const workflowPermissions = computed<PermissionsMap<WorkflowScope>>(() => {
+	return getWorkflowPermissions(workflowsStore.getWorkflowById(props.workflow.id));
 });
 
 const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
@@ -174,7 +178,7 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 		disabled: !onWorkflowPage.value || isNewWorkflow.value,
 	});
 
-	if (workflowPermissions.value.delete && !props.readOnly) {
+	if ((workflowPermissions.value.delete && !props.readOnly) || isNewWorkflow.value) {
 		actions.push({
 			id: WORKFLOW_MENU_ACTIONS.DELETE,
 			label: locale.baseText('menuActions.delete'),
@@ -212,18 +216,24 @@ watch(
 	},
 );
 
-async function onSaveButtonClick() {
-	// If the workflow is saving, do not allow another save
-	if (isWorkflowSaving.value) {
-		return;
-	}
-
+function getWorkflowId(): string | undefined {
 	let id: string | undefined = undefined;
 	if (props.workflow.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 		id = props.workflow.id;
 	} else if (route.params.name && route.params.name !== 'new') {
 		id = route.params.name as string;
 	}
+
+	return id;
+}
+
+async function onSaveButtonClick() {
+	// If the workflow is saving, do not allow another save
+	if (isWorkflowSaving.value) {
+		return;
+	}
+
+	const id = getWorkflowId();
 
 	const name = props.workflow.name;
 	const tags = props.workflow.tags as string[];
@@ -235,6 +245,8 @@ async function onSaveButtonClick() {
 	});
 
 	if (saved) {
+		showCreateWorkflowSuccessToast(id);
+
 		await settingsStore.fetchPromptsData();
 
 		if (route.name === VIEWS.EXECUTION_DEBUG) {
@@ -337,9 +349,11 @@ async function onNameSubmit({
 	}
 
 	uiStore.addActiveAction('workflowSaving');
+	const id = getWorkflowId();
 	const saved = await workflowHelpers.saveCurrentWorkflow({ name });
 	if (saved) {
 		isNameEditEnabled.value = false;
+		showCreateWorkflowSuccessToast(id);
 	}
 	uiStore.removeActiveAction('workflowSaving');
 	onSubmit(saved);
@@ -515,6 +529,28 @@ async function onWorkflowMenuSelect(action: string): Promise<void> {
 
 function goToUpgrade() {
 	void uiStore.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
+}
+
+function showCreateWorkflowSuccessToast(id?: string) {
+	if (!id || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(id)) {
+		let toastTitle = locale.baseText('workflows.create.personal.toast.title');
+		let toastText = locale.baseText('workflows.create.personal.toast.text');
+		if (projectsStore.currentProject) {
+			toastTitle = locale.baseText('workflows.create.project.toast.title', {
+				interpolate: { projectName: projectsStore.currentProject.name ?? '' },
+			});
+
+			toastText = locale.baseText('workflows.create.project.toast.text', {
+				interpolate: { projectName: projectsStore.currentProject.name ?? '' },
+			});
+		}
+
+		toast.showMessage({
+			title: toastTitle,
+			message: toastText,
+			type: 'success',
+		});
+	}
 }
 </script>
 

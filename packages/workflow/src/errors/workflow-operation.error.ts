@@ -9,10 +9,6 @@ export class WorkflowOperationError extends ExecutionBaseError {
 
 	timestamp: number;
 
-	lineNumber: number | undefined;
-
-	description: string | undefined;
-
 	constructor(message: string, node?: INode, description?: string) {
 		super(message, { cause: undefined });
 		this.level = 'warning';

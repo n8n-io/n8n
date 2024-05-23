@@ -31,7 +31,7 @@ export async function getNodeParameterOptions(
 	context: IRestApiContext,
 	sendData: DynamicNodeParameters.OptionsRequest,
 ): Promise<INodePropertyOptions[]> {
-	return await makeRestApiRequest(context, 'GET', '/dynamic-node-parameters/options', sendData);
+	return await makeRestApiRequest(context, 'POST', '/dynamic-node-parameters/options', sendData);
 }
 
 export async function getResourceLocatorResults(
@@ -40,7 +40,7 @@ export async function getResourceLocatorResults(
 ): Promise<INodeListSearchResult> {
 	return await makeRestApiRequest(
 		context,
-		'GET',
+		'POST',
 		'/dynamic-node-parameters/resource-locator-results',
 		sendData,
 	);
@@ -52,7 +52,7 @@ export async function getResourceMapperFields(
 ): Promise<ResourceMapperFields> {
 	return await makeRestApiRequest(
 		context,
-		'GET',
+		'POST',
 		'/dynamic-node-parameters/resource-mapper-fields',
 		sendData,
 	);

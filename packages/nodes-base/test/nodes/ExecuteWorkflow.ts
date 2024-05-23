@@ -10,6 +10,7 @@ export async function executeWorkflow(testData: WorkflowTestData, nodeTypes: INo
 		const { baseUrl, mocks } = testData.nock;
 		const agent = nock(baseUrl);
 		mocks.forEach(({ method, path, statusCode, responseBody }) =>
+			// @ts-expect-error
 			agent[method](path).reply(statusCode, responseBody),
 		);
 	}
@@ -24,11 +25,7 @@ export async function executeWorkflow(testData: WorkflowTestData, nodeTypes: INo
 	});
 	const waitPromise = await createDeferredPromise<IRun>();
 	const nodeExecutionOrder: string[] = [];
-	const additionalData = Helpers.WorkflowExecuteAdditionalData(
-		waitPromise,
-		nodeExecutionOrder,
-		testData,
-	);
+	const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise, nodeExecutionOrder);
 
 	let executionData: IRun;
 	const runExecutionData: IRunExecutionData = {
@@ -36,6 +33,7 @@ export async function executeWorkflow(testData: WorkflowTestData, nodeTypes: INo
 			runData: {},
 		},
 		executionData: {
+			metadata: {},
 			contextData: {},
 			waitingExecution: {},
 			waitingExecutionSource: null,

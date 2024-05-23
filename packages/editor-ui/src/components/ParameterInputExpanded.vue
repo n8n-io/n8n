@@ -30,7 +30,7 @@
 			:error-highlight="showRequiredErrors"
 			:is-for-credential="true"
 			:event-source="eventSource"
-			:hint="!showRequiredErrors ? hint : ''"
+			:hint="!showRequiredErrors && hint ? hint : ''"
 			:event-bus="eventBus"
 			@focus="onFocus"
 			@blur="onBlur"
@@ -61,7 +61,12 @@ import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import ParameterInputWrapper from './ParameterInputWrapper.vue';
 import { isValueExpression } from '@/utils/nodeTypesUtils';
-import type { INodeParameterResourceLocator, INodeProperties, IParameterLabel } from 'n8n-workflow';
+import type {
+	INodeParameterResourceLocator,
+	INodeProperties,
+	IParameterLabel,
+	NodeParameterValueType,
+} from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from 'n8n-design-system/utils';
@@ -75,8 +80,11 @@ export default defineComponent({
 	props: {
 		parameter: {
 			type: Object as PropType<INodeProperties>,
+			required: true,
 		},
-		value: {},
+		value: {
+			type: Object as PropType<NodeParameterValueType>,
+		},
 		showValidationWarnings: {
 			type: Boolean,
 		},

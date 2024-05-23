@@ -1,16 +1,16 @@
-import { isNumber } from '@/utils/typeGuards';
+import { isNumber, isValidNodeConnectionType } from '@/utils/typeGuards';
 import { NODE_OUTPUT_DEFAULT_KEY, STICKY_NODE_TYPE } from '@/constants';
-import type { EndpointStyle, IBounds, INodeUi, XYPosition } from '@/Interface';
+import type { EndpointMeta, EndpointStyle, IBounds, INodeUi, XYPosition } from '@/Interface';
 import type { ArrayAnchorSpec, ConnectorSpec, OverlaySpec, PaintStyle } from '@jsplumb/common';
-import type { Endpoint, Connection } from '@jsplumb/core';
+import type { Connection, Endpoint, SelectOptions } from '@jsplumb/core';
 import { N8nConnector } from '@/plugins/connectors/N8nCustomConnector';
 import type {
 	ConnectionTypes,
 	IConnection,
-	ITaskData,
 	INodeExecutionData,
-	NodeInputConnections,
 	INodeTypeDescription,
+	ITaskData,
+	NodeInputConnections,
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
@@ -72,13 +72,15 @@ export const CONNECTOR_FLOWCHART_TYPE: ConnectorSpec = {
 		alwaysRespectStubs: false,
 		loopbackVerticalLength: NODE_SIZE + GRID_SIZE, // height of vertical segment when looping
 		loopbackMinimum: LOOPBACK_MINIMUM, // minimum length before flowchart loops around
-		getEndpointOffset(endpoint: Endpoint) {
+		getEndpointOffset(endpoint: Endpoint & EndpointMeta) {
 			const indexOffset = 10; // stub offset between different endpoints of same node
 			const index = endpoint?.__meta ? endpoint.__meta.index : 0;
 			const totalEndpoints = endpoint?.__meta ? endpoint.__meta.totalEndpoints : 0;
 
 			const outputOverlay = getOverlay(endpoint, OVERLAY_OUTPUT_NAME_LABEL);
-			const labelOffset = outputOverlay?.label && outputOverlay.label.length > 1 ? 10 : 0;
+			const outputOverlayLabel =
+				outputOverlay && 'label' in outputOverlay ? `${outputOverlay?.label}` : '';
+			const labelOffset = outputOverlayLabel.length > 1 ? 10 : 0;
 			const outputsOffset = totalEndpoints > 3 ? 24 : 0; // avoid intersecting plus
 
 			return index * indexOffset + labelOffset + outputsOffset;
@@ -110,6 +112,10 @@ export const CONNECTOR_PAINT_STYLE_DATA: PaintStyle = {
 	},
 	stroke: 'var(--color-foreground-dark)',
 };
+
+export function isCanvasAugmentedType<T>(overlay: T): overlay is T & { canvas: HTMLElement } {
+	return typeof overlay === 'object' && overlay !== null && 'canvas' in overlay && !!overlay.canvas;
+}
 
 export const getConnectorColor = (type: ConnectionTypes, category?: string): string => {
 	if (category === 'error') {
@@ -228,15 +234,18 @@ export const getAnchorPosition = (
 	return returnPositions;
 };
 
-export const getScope = (type?: string) => {
+export const getScope = (type?: NodeConnectionType): NodeConnectionType | undefined => {
 	if (!type || type === NodeConnectionType.Main) {
 		return undefined;
 	}
+
 	return type;
 };
 
-export const getEndpointScope = (endpointType: ConnectionTypes): string | undefined => {
-	if (Object.values(NodeConnectionType).includes(endpointType)) {
+export const getEndpointScope = (
+	endpointType: NodeConnectionType | string,
+): NodeConnectionType | undefined => {
+	if (isValidNodeConnectionType(endpointType)) {
 		return getScope(endpointType);
 	}
 
@@ -276,7 +285,7 @@ export const getInputNameOverlay = (
 		id: OVERLAY_INPUT_NAME_LABEL,
 		visible: true,
 		location: [-1, -1],
-		create: (component: Endpoint) => {
+		create: (_: Endpoint) => {
 			const label = document.createElement('div');
 			label.innerHTML = labelText;
 			if (required) {
@@ -303,20 +312,20 @@ export const getOutputEndpointStyle = (
 
 export const getOutputNameOverlay = (
 	labelText: string,
-	outputName: ConnectionTypes,
+	outputName: NodeConnectionType,
 	category?: string,
 ): OverlaySpec => ({
 	type: 'Custom',
 	options: {
 		id: OVERLAY_OUTPUT_NAME_LABEL,
 		visible: true,
-		create: (ep: Endpoint) => {
+		create: (ep: Endpoint & EndpointMeta) => {
 			const label = document.createElement('div');
 			label.innerHTML = labelText;
 			label.classList.add('node-output-endpoint-label');
 
 			if (ep?.__meta?.endpointLabelLength) {
-				label.setAttribute('data-endpoint-label-length', ep?.__meta?.endpointLabelLength);
+				label.setAttribute('data-endpoint-label-length', `${ep?.__meta?.endpointLabelLength}`);
 			}
 			label.classList.add(`node-connection-type-${getScope(outputName) ?? 'main'}`);
 			if (outputName !== NodeConnectionType.Main) {
@@ -438,7 +447,10 @@ export const showOrHideMidpointArrow = (connection: Connection) => {
 	if (arrow) {
 		arrow.setVisible(isArrowVisible);
 		arrow.setLocation(hasItemsLabel ? 0.6 : 0.5);
-		connection.instance.repaint(arrow.canvas);
+
+		if (isCanvasAugmentedType(arrow)) {
+			connection.instance.repaint(arrow.canvas);
+		}
 	}
 };
 
@@ -481,7 +493,9 @@ export const showOrHideItemsLabel = (connection: Connection) => {
 	const isHidden = diffX < MIN_X_TO_SHOW_OUTPUT_LABEL && diffY < MIN_Y_TO_SHOW_OUTPUT_LABEL;
 
 	overlay.setVisible(!isHidden);
-	const innerElement = overlay.canvas?.querySelector('span');
+	const innerElement = isCanvasAugmentedType(overlay)
+		? overlay.canvas.querySelector('span')
+		: undefined;
 	if (innerElement) {
 		if (diffY === 0 || isLoopingBackwards(connection)) {
 			innerElement.classList.add('floating');
@@ -812,8 +826,11 @@ export const addClassesToOverlays = ({
 	overlayIds.forEach((overlayId) => {
 		const overlay = getOverlay(connection, overlayId);
 
-		overlay?.canvas?.classList.add(...classNames);
-		if (includeConnector) {
+		if (overlay && isCanvasAugmentedType(overlay)) {
+			overlay.canvas?.classList.add(...classNames);
+		}
+
+		if (includeConnector && isCanvasAugmentedType(connection.connector)) {
 			connection.connector.canvas?.classList.add(...classNames);
 		}
 	});
@@ -995,18 +1012,18 @@ export const addConnectionActionsOverlay = (
 
 export const getOutputEndpointUUID = (
 	nodeId: string,
-	connectionType: ConnectionTypes,
+	connectionType: NodeConnectionType,
 	outputIndex: number,
 ) => {
-	return `${nodeId}${OUTPUT_UUID_KEY}${getScope(connectionType) || ''}${outputIndex}`;
+	return `${nodeId}${OUTPUT_UUID_KEY}${getScope(connectionType) ?? ''}${outputIndex}`;
 };
 
 export const getInputEndpointUUID = (
 	nodeId: string,
-	connectionType: ConnectionTypes,
+	connectionType: NodeConnectionType,
 	inputIndex: number,
 ) => {
-	return `${nodeId}${INPUT_UUID_KEY}${getScope(connectionType) || ''}${inputIndex}`;
+	return `${nodeId}${INPUT_UUID_KEY}${getScope(connectionType) ?? ''}${inputIndex}`;
 };
 
 export const getFixedNodesList = <T extends { position: XYPosition }>(workflowNodes: T[]): T[] => {
@@ -1089,10 +1106,10 @@ export const getJSPlumbEndpoints = (
 	node: INodeUi | null,
 	instance: BrowserJsPlumbInstance,
 ): Endpoint[] => {
-	const nodeEl = instance.getManagedElement(node?.id);
+	if (!node) return [];
 
-	const endpoints = instance?.getEndpoints(nodeEl);
-	return endpoints;
+	const nodeEl = instance.getManagedElement(node?.id);
+	return instance?.getEndpoints(nodeEl);
 };
 
 export const getPlusEndpoint = (
@@ -1102,8 +1119,7 @@ export const getPlusEndpoint = (
 ): Endpoint | undefined => {
 	const endpoints = getJSPlumbEndpoints(node, instance);
 	return endpoints.find(
-		(endpoint: Endpoint) =>
-			// @ts-ignore
+		(endpoint: Endpoint & EndpointMeta) =>
 			endpoint.endpoint.type === 'N8nPlus' && endpoint?.__meta?.index === outputIndex,
 	);
 };
@@ -1113,7 +1129,7 @@ export const getJSPlumbConnection = (
 	sourceOutputIndex: number,
 	targetNode: INodeUi | null,
 	targetInputIndex: number,
-	connectionType: ConnectionTypes,
+	connectionType: NodeConnectionType,
 	sourceNodeType: INodeTypeDescription | null,
 	instance: BrowserJsPlumbInstance,
 ): Connection | undefined => {
@@ -1127,17 +1143,24 @@ export const getJSPlumbConnection = (
 	const sourceEndpoint = getOutputEndpointUUID(sourceId, connectionType, sourceOutputIndex);
 	const targetEndpoint = getInputEndpointUUID(targetId, connectionType, targetInputIndex);
 
-	const sourceNodeOutput = sourceNodeType?.outputs?.[sourceOutputIndex] || NodeConnectionType.Main;
+	const sourceNodeOutput = sourceNodeType?.outputs?.[sourceOutputIndex] ?? NodeConnectionType.Main;
 	const sourceNodeOutputName =
-		typeof sourceNodeOutput === 'string' ? sourceNodeOutput : sourceNodeOutput.name;
+		typeof sourceNodeOutput === 'string'
+			? sourceNodeOutput
+			: 'name' in sourceNodeOutput
+				? `${sourceNodeOutput.name}`
+				: '';
 	const scope = getEndpointScope(sourceNodeOutputName);
 
-	// @ts-ignore
 	const connections = instance?.getConnections({
 		scope,
 		source: sourceId,
 		target: targetId,
-	}) as Connection[];
+	} as SelectOptions<Element>);
+
+	if (!Array.isArray(connections)) {
+		return;
+	}
 
 	return connections.find((connection: Connection) => {
 		const uuids = connection.getUuids();

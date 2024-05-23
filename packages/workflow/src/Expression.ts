@@ -73,10 +73,13 @@ export class Expression {
 	 *
 	 */
 	convertObjectValueToString(value: object): string {
-		const typeName = Array.isArray(value) ? 'Array' : 'Object';
-
 		if (value instanceof DateTime && value.invalidReason !== null) {
 			throw new ApplicationError('invalid DateTime');
+		}
+
+		let typeName = value.constructor.name ?? 'Object';
+		if (DateTime.isDateTime(value)) {
+			typeName = 'DateTime';
 		}
 
 		let result = '';
@@ -85,6 +88,8 @@ export class Expression {
 			result = DateTime.fromJSDate(value, {
 				zone: this.workflow.settings?.timezone ?? getGlobalState().defaultTimezone,
 			}).toISO();
+		} else if (DateTime.isDateTime(value)) {
+			result = value.toString();
 		} else {
 			result = JSON.stringify(value);
 		}

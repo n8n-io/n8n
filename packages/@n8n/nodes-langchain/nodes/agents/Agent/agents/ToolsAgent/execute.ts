@@ -39,10 +39,7 @@ function getOutputParserSchema(outputParser: BaseOutputParser): ZodObject<any, a
 	return schema;
 }
 
-export async function toolsAgentExecute(
-	this: IExecuteFunctions,
-	nodeVersion: number,
-): Promise<INodeExecutionData[][]> {
+export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	this.logger.verbose('Executing Tools Agent');
 	const model = await this.getInputConnectionData(NodeConnectionType.AiLanguageModel, 0);
 
@@ -185,5 +182,5 @@ export async function toolsAgentExecute(
 		}
 	}
 
-	return await this.prepareOutputData(returnData);
+	return [returnData];
 }

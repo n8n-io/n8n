@@ -149,74 +149,90 @@ export async function execute(
 	base: string,
 	table: string,
 ): Promise<INodeExecutionData[]> {
-	let returnData: INodeExecutionData[] = [];
-
-	const body: IDataObject = {};
-	const qs: IDataObject = {};
+	const returnData: INodeExecutionData[] = [];
+	const nodeVersion = this.getNode().typeVersion;
 
 	const endpoint = `${base}/${table}`;
 
-	try {
-		const returnAll = this.getNodeParameter('returnAll', 0);
-		const options = this.getNodeParameter('options', 0, {});
-		const sort = this.getNodeParameter('sort', 0, {}) as IDataObject;
-		const filterByFormula = this.getNodeParameter('filterByFormula', 0) as string;
+	let itemsLength = items.length ? 1 : 0;
+	let fallbackPairedItems;
 
-		if (filterByFormula) {
-			qs.filterByFormula = filterByFormula;
-		}
+	if (nodeVersion >= 2.1) {
+		itemsLength = items.length;
+	} else {
+		fallbackPairedItems = generatePairedItemData(items.length);
+	}
 
-		if (options.fields) {
-			if (typeof options.fields === 'string') {
-				qs.fields = options.fields.split(',').map((field) => field.trim());
-			} else {
-				qs.fields = options.fields as string[];
+	for (let i = 0; i < itemsLength; i++) {
+		try {
+			const returnAll = this.getNodeParameter('returnAll', i);
+			const options = this.getNodeParameter('options', i, {});
+			const sort = this.getNodeParameter('sort', i, {}) as IDataObject;
+			const filterByFormula = this.getNodeParameter('filterByFormula', i) as string;
+
+			const body: IDataObject = {};
+			const qs: IDataObject = {};
+
+			if (filterByFormula) {
+				qs.filterByFormula = filterByFormula;
 			}
-		}
 
-		if (sort.property) {
-			qs.sort = sort.property;
-		}
+			if (options.fields) {
+				if (typeof options.fields === 'string') {
+					qs.fields = options.fields.split(',').map((field) => field.trim());
+				} else {
+					qs.fields = options.fields as string[];
+				}
+			}
 
-		if (options.view) {
-			qs.view = (options.view as IDataObject).value as string;
-		}
+			if (sort.property) {
+				qs.sort = sort.property;
+			}
 
-		let responseData;
+			if (options.view) {
+				qs.view = (options.view as IDataObject).value as string;
+			}
 
-		if (returnAll) {
-			responseData = await apiRequestAllItems.call(this, 'GET', endpoint, body, qs);
-		} else {
-			qs.maxRecords = this.getNodeParameter('limit', 0);
-			responseData = await apiRequest.call(this, 'GET', endpoint, body, qs);
-		}
+			let responseData;
 
-		returnData = responseData.records as INodeExecutionData[];
+			if (returnAll) {
+				responseData = await apiRequestAllItems.call(this, 'GET', endpoint, body, qs);
+			} else {
+				qs.maxRecords = this.getNodeParameter('limit', i);
+				responseData = await apiRequest.call(this, 'GET', endpoint, body, qs);
+			}
 
-		if (options.downloadFields) {
-			const pairedItem = generatePairedItemData(items.length);
-			return await downloadRecordAttachments.call(
-				this,
-				responseData.records as IRecord[],
-				options.downloadFields as string[],
-				pairedItem,
-			);
-		}
+			if (options.downloadFields) {
+				const itemWithAttachments = await downloadRecordAttachments.call(
+					this,
+					responseData.records as IRecord[],
+					options.downloadFields as string[],
+					fallbackPairedItems || [{ item: i }],
+				);
+				returnData.push(...itemWithAttachments);
+				continue;
+			}
 
-		returnData = returnData.map((record) => ({
-			json: flattenOutput(record as IDataObject),
-		}));
+			let records = responseData.records;
 
-		const itemData = generatePairedItemData(items.length);
+			records = (records as IDataObject[]).map((record) => ({
+				json: flattenOutput(record),
+			})) as INodeExecutionData[];
 
-		returnData = this.helpers.constructExecutionMetaData(returnData, {
-			itemData,
-		});
-	} catch (error) {
-		if (this.continueOnFail()) {
-			returnData.push({ json: { message: error.message, error } });
-		} else {
-			throw error;
+			const itemData = fallbackPairedItems || [{ item: i }];
+
+			const executionData = this.helpers.constructExecutionMetaData(records, {
+				itemData,
+			});
+
+			returnData.push(...executionData);
+		} catch (error) {
+			if (this.continueOnFail()) {
+				returnData.push({ json: { message: error.message, error }, pairedItem: { item: i } });
+				continue;
+			} else {
+				throw error;
+			}
 		}
 	}
 
