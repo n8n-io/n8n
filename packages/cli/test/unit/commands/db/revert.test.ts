@@ -110,7 +110,6 @@ test("don't revert the last migration if we cannot find the migration in the cod
 	// ARRANGE
 	//
 
-	// const migrationsInCode = [new TestMigration()];
 	const migrationsInDb: Migration[] = [{ id: 1, timestamp: Date.now(), name: 'TestMigration' }];
 	const dataSource = mock<DataSource>({ migrations: [] });
 
