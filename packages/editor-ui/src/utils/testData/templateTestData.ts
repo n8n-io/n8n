@@ -295,17 +295,14 @@ export const fullSaveEmailAttachmentsToNextCloudTemplate = {
 export const fullCreateApiEndpointTemplate = {
 	id: 1750,
 	name: 'Creating an API endpoint',
-	views: 13265,
 	recentViews: 9899,
 	totalViews: 13265,
 	createdAt: '2022-07-06T14:45:19.659Z',
 	description:
 		'**Task:**\nCreate a simple API endpoint using the Webhook and Respond to Webhook nodes\n\n**Why:**\nYou can prototype or replace a backend process with a single workflow\n\n**Main use cases:**\nReplace backend logic with a workflow',
 	workflow: {
-		meta: { instanceId: '8c8c5237b8e37b006a7adce87f4369350c58e41f3ca9de16196d3197f69eabcd' },
 		nodes: [
 			{
-				id: 'f80aceed-b676-42aa-bf25-f7a44408b1bc',
 				name: 'Webhook',
 				type: 'n8n-nodes-base.webhook',
 				position: [375, 115],
@@ -318,7 +315,6 @@ export const fullCreateApiEndpointTemplate = {
 				typeVersion: 1,
 			},
 			{
-				id: '3b9ec913-0bbe-4906-bf8e-da352b556655',
 				name: 'Note1',
 				type: 'n8n-nodes-base.stickyNote',
 				position: [355, -25],
@@ -331,7 +327,6 @@ export const fullCreateApiEndpointTemplate = {
 				typeVersion: 1,
 			},
 			{
-				id: '9c36dae5-0700-450c-9739-e9f3eff31bfe',
 				name: 'Respond to Webhook',
 				type: 'n8n-nodes-base.respondToWebhook',
 				position: [815, 115],
@@ -344,7 +339,6 @@ export const fullCreateApiEndpointTemplate = {
 				typeVersion: 1,
 			},
 			{
-				id: '5a228fcb-78b9-4a28-95d2-d7c9fdf1d4ea',
 				name: 'Create URL string',
 				type: 'n8n-nodes-base.set',
 				position: [595, 115],
@@ -364,7 +358,6 @@ export const fullCreateApiEndpointTemplate = {
 				typeVersion: 1,
 			},
 			{
-				id: 'e7971820-45a8-4dc8-ba4c-b3220d65307a',
 				name: 'Note3',
 				type: 'n8n-nodes-base.stickyNote',
 				position: [355, 275],
@@ -383,7 +376,10 @@ export const fullCreateApiEndpointTemplate = {
 		},
 	},
 	lastUpdatedBy: 1,
-	workflowInfo: null,
+	workflowInfo: {
+		nodeCount: 2,
+		nodeTypes: {},
+	},
 	user: { username: 'jon-n8n' },
 	nodes: [
 		{

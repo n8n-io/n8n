@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted, nextTick } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRouter } from 'vue-router';
 import type { IMenuItem } from 'n8n-design-system/types';
 import { useI18n } from '@/composables/useI18n';
 import { VIEWS } from '@/constants';
@@ -16,7 +16,6 @@ type Props = {
 
 const props = defineProps<Props>();
 
-const route = useRoute();
 const router = useRouter();
 const locale = useI18n();
 const toast = useToast();
@@ -42,24 +41,6 @@ const addProject = computed<IMenuItem>(() => ({
 	isLoading: isCreatingProject.value,
 }));
 
-const activeTab = computed(() => {
-	let routes = [VIEWS.HOMEPAGE, VIEWS.WORKFLOWS, VIEWS.CREDENTIALS];
-	if (projectsStore.currentProjectId === undefined) {
-		routes = [
-			...routes,
-			VIEWS.NEW_WORKFLOW,
-			VIEWS.WORKFLOW_HISTORY,
-			VIEWS.WORKFLOW,
-			VIEWS.EXECUTION_HOME,
-		];
-	}
-	return routes.includes(route.name as VIEWS) ? 'home' : undefined;
-});
-
-const isActiveProject = (projectId: string) =>
-	route?.params?.projectId === projectId || projectsStore.currentProjectId === projectId
-		? projectId
-		: undefined;
 const getProjectMenuItem = (project: ProjectListItem) => ({
 	id: project.id,
 	label: project.name,
@@ -127,7 +108,7 @@ onMounted(async () => {
 				:item="home"
 				:compact="props.collapsed"
 				:handle-select="homeClicked"
-				:active-tab="activeTab"
+				:active-tab="projectsStore.projectNavActiveId"
 				mode="tabs"
 				data-test-id="project-home-menu-item"
 			/>
@@ -146,7 +127,7 @@ onMounted(async () => {
 				:item="getProjectMenuItem(project)"
 				:compact="props.collapsed"
 				:handle-select="projectClicked"
-				:active-tab="isActiveProject(project.id)"
+				:active-tab="projectsStore.projectNavActiveId"
 				mode="tabs"
 				data-test-id="project-menu-item"
 			/>

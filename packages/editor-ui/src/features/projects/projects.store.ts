@@ -12,6 +12,8 @@ import type {
 } from '@/features/projects/projects.types';
 import { useSettingsStore } from '@/stores/settings.store';
 import { hasPermission } from '@/rbac/permissions';
+import { ProjectTypes } from './projects.utils';
+import type { IWorkflowDb } from '@/Interface';
 
 export const useProjectsStore = defineStore('projects', () => {
 	const route = useRoute();
@@ -27,16 +29,19 @@ export const useProjectsStore = defineStore('projects', () => {
 		team: 0,
 		public: 0,
 	});
+	const projectNavActiveIdState = ref<string | string[] | null>(null);
 
 	const currentProjectId = computed(
 		() =>
-			(route.params?.projectId as string | undefined) ||
-			(route.query?.projectId as string | undefined) ||
+			(route.params?.projectId as string | undefined) ??
+			(route.query?.projectId as string | undefined) ??
 			currentProject.value?.id,
 	);
 	const isProjectHome = computed(() => route.path.includes('home'));
-	const personalProjects = computed(() => projects.value.filter((p) => p.type === 'personal'));
-	const teamProjects = computed(() => projects.value.filter((p) => p.type === 'team'));
+	const personalProjects = computed(() =>
+		projects.value.filter((p) => p.type === ProjectTypes.Personal),
+	);
+	const teamProjects = computed(() => projects.value.filter((p) => p.type === ProjectTypes.Team));
 	const teamProjectsLimit = computed(() => settingsStore.settings.enterprise.projects.team.limit);
 	const teamProjectsAvailable = computed<boolean>(
 		() => settingsStore.settings.enterprise.projects.team.limit !== 0,
@@ -55,6 +60,13 @@ export const useProjectsStore = defineStore('projects', () => {
 	const hasPermissionToCreateProjects = computed(() =>
 		hasPermission(['rbac'], { rbac: { scope: 'project:create' } }),
 	);
+
+	const projectNavActiveId = computed<string | string[] | null>({
+		get: () => route?.params?.projectId ?? projectNavActiveIdState.value,
+		set: (value: string | string[] | null) => {
+			projectNavActiveIdState.value = value;
+		},
+	});
 
 	const setCurrentProject = (project: Project | null) => {
 		currentProject.value = project;
@@ -110,11 +122,35 @@ export const useProjectsStore = defineStore('projects', () => {
 		projectsCount.value = await projectsApi.getProjectsCount(rootStore.getRestApiContext);
 	};
 
+	const setProjectNavActiveIdByWorkflowHomeProject = async (
+		homeProject?: IWorkflowDb['homeProject'],
+	) => {
+		if (homeProject?.type === ProjectTypes.Personal) {
+			projectNavActiveId.value = 'home';
+		} else {
+			projectNavActiveId.value = homeProject?.id ?? null;
+			if (homeProject?.id && !currentProjectId.value) {
+				await getProject(homeProject?.id);
+			}
+		}
+	};
+
 	watch(
 		route,
 		async (newRoute) => {
+			projectNavActiveId.value = null;
+
 			if (newRoute?.path?.includes('home')) {
+				projectNavActiveId.value = 'home';
 				setCurrentProject(null);
+			}
+
+			if (newRoute?.path?.includes('workflow/')) {
+				if (currentProjectId.value) {
+					projectNavActiveId.value = currentProjectId.value;
+				} else {
+					projectNavActiveId.value = 'home';
+				}
 			}
 
 			if (!newRoute?.params?.projectId) {
@@ -140,6 +176,7 @@ export const useProjectsStore = defineStore('projects', () => {
 		canCreateProjects,
 		hasPermissionToCreateProjects,
 		teamProjectsAvailable,
+		projectNavActiveId,
 		setCurrentProject,
 		getAllProjects,
 		getMyProjects,
@@ -150,5 +187,6 @@ export const useProjectsStore = defineStore('projects', () => {
 		updateProject,
 		deleteProject,
 		getProjectsCount,
+		setProjectNavActiveIdByWorkflowHomeProject,
 	};
 });

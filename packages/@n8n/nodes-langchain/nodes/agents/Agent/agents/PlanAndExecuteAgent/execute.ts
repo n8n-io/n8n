@@ -16,6 +16,7 @@ import {
 	getPromptInputByType,
 } from '../../../../../utils/helpers';
 import { getTracingConfig } from '../../../../../utils/tracing';
+import { throwIfToolSchema } from '../../../../../utils/schemaParsing';
 
 export async function planAndExecuteAgentExecute(
 	this: IExecuteFunctions,
@@ -91,6 +92,7 @@ export async function planAndExecuteAgentExecute(
 
 			returnData.push({ json: response });
 		} catch (error) {
+			throwIfToolSchema(this, error);
 			if (this.continueOnFail()) {
 				returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
 				continue;
@@ -100,5 +102,5 @@ export async function planAndExecuteAgentExecute(
 		}
 	}
 
-	return await this.prepareOutputData(returnData);
+	return [returnData];
 }
