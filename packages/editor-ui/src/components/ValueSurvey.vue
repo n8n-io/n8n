@@ -59,6 +59,7 @@ function closeDialog(): void {
 		telemetry.track('User responded value survey email', {
 			instance_id: rootStore.instanceId,
 			email: '',
+			nps: form.value.value,
 		});
 	}
 }
