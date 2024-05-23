@@ -75,7 +75,7 @@ export class N8nJsonLoader {
 		}
 
 		const docs = this.textSplitter
-			? await documentLoader.loadAndSplit(this.textSplitter)
+			? await this.textSplitter.splitDocuments(await documentLoader.load())
 			: await documentLoader.load();
 
 		if (metadata) {
