@@ -126,10 +126,7 @@ export class OAuth1CredentialController extends AbstractOAuthController {
 			const credential = await this.getCredentialWithoutUser(credentialId);
 			if (!credential) {
 				const errorMessage = 'OAuth1 callback failed because of insufficient permissions';
-				this.logger.error(errorMessage, {
-					userId,
-					credentialId,
-				});
+				this.logger.error(errorMessage, { userId, credentialId });
 				return this.renderCallbackError(res, errorMessage);
 			}
 
@@ -143,7 +140,7 @@ export class OAuth1CredentialController extends AbstractOAuthController {
 
 			if (this.verifyCsrfState(decryptedDataOriginal, state)) {
 				const errorMessage = 'The OAuth1 callback state is invalid!';
-				this.logger.debug(errorMessage, { credentialId });
+				this.logger.debug(errorMessage, { userId, credentialId });
 				return this.renderCallbackError(res, errorMessage);
 			}
 

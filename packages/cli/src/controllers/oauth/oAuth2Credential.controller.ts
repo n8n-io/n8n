@@ -104,10 +104,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 			const credential = await this.getCredentialWithoutUser(credentialId);
 			if (!credential) {
 				const errorMessage = 'OAuth2 callback failed because of insufficient permissions';
-				this.logger.error(errorMessage, {
-					userId,
-					credentialId,
-				});
+				this.logger.error(errorMessage, { userId, credentialId });
 				return this.renderCallbackError(res, errorMessage);
 			}
 
@@ -121,7 +118,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 
 			if (this.verifyCsrfState(decryptedDataOriginal, state)) {
 				const errorMessage = 'The OAuth2 callback state is invalid!';
-				this.logger.debug(errorMessage, { credentialId: credential.id });
+				this.logger.debug(errorMessage, { userId, credentialId });
 				return this.renderCallbackError(res, errorMessage);
 			}
 
@@ -160,10 +157,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 
 			if (oauthToken === undefined) {
 				const errorMessage = 'Unable to get OAuth2 access tokens!';
-				this.logger.error(errorMessage, {
-					userId,
-					credentialId,
-				});
+				this.logger.error(errorMessage, { userId, credentialId });
 				return this.renderCallbackError(res, errorMessage);
 			}
 
