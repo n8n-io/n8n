@@ -6,22 +6,21 @@ import {
 	testLdapConnection,
 	updateLdapConfig,
 } from '@/api/ldap';
-import { getPromptsData, getSettings, submitContactInfo, submitValueSurvey } from '@/api/settings';
+import { getPromptsData, getSettings, submitContactInfo } from '@/api/settings';
 import { testHealthEndpoint } from '@/api/templates';
-import type { EnterpriseEditionFeatureValue } from '@/Interface';
+import type {
+	EnterpriseEditionFeatureValue,
+	ILdapConfig,
+	IN8nPromptResponse,
+	IN8nPrompts,
+	ISettingsState,
+} from '@/Interface';
 import {
 	CONTACT_PROMPT_MODAL_KEY,
 	STORES,
 	VALUE_SURVEY_MODAL_KEY,
 	INSECURE_CONNECTION_WARNING,
 } from '@/constants';
-import type {
-	ILdapConfig,
-	IN8nPromptResponse,
-	IN8nPrompts,
-	IN8nValueSurveyData,
-	ISettingsState,
-} from '@/Interface';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import type {
 	IDataObject,
@@ -344,18 +343,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 					this.settings.instanceId,
 					usersStore.currentUserId || '',
 					email,
-				);
-			} catch (error) {
-				return;
-			}
-		},
-		async submitValueSurvey(params: IN8nValueSurveyData): Promise<IN8nPromptResponse | undefined> {
-			try {
-				const usersStore = useUsersStore();
-				return await submitValueSurvey(
-					this.settings.instanceId,
-					usersStore.currentUserId || '',
-					params,
 				);
 			} catch (error) {
 				return;

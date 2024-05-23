@@ -768,14 +768,6 @@ export interface IN8nPrompts {
 	showValueSurvey: boolean;
 }
 
-export interface IN8nValueSurveyData {
-	[key: string]: string;
-}
-
-export interface IN8nPromptResponse {
-	updated: boolean;
-}
-
 export const enum UserManagementAuthenticationMethod {
 	Email = 'email',
 	Ldap = 'ldap',
@@ -1951,5 +1943,37 @@ export type EnterpriseEditionFeatureKey =
 	| 'WorkflowHistory'
 	| 'WorkerView'
 	| 'AdvancedPermissions';
+
+export type ModalKey =
+	| 'about'
+	| 'chatEmbed'
+	| 'changePassword'
+	| 'editCredential'
+	| 'selectCredential'
+	| 'deleteUser'
+	| 'inviteUser'
+	| 'duplicate'
+	| 'tagsManager'
+	| 'versions'
+	| 'settings'
+	| 'lmChat'
+	| 'workflowShare'
+	| 'personalization'
+	| 'contactPrompt'
+	| 'valueSurvey'
+	| 'activation'
+	| 'onboardingCallSignup'
+	| 'communityPackageInstall'
+	| 'communityPackageManageConfirm'
+	| 'importCurl'
+	| 'generateCurl'
+	| 'settingsLogStream'
+	| 'sourceControlPush'
+	| 'sourceControlPull'
+	| 'debugPaywall'
+	| 'mfaSetup'
+	| 'workflowHistoryVersionRestore'
+	| 'suggestedTemplatePreview'
+	| 'setupCredentials';
 
 export type EnterpriseEditionFeatureValue = keyof Omit<IN8nUISettings['enterprise'], 'projects'>;

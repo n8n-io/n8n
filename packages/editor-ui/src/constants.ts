@@ -1,6 +1,7 @@
 import type {
 	EnterpriseEditionFeatureKey,
 	EnterpriseEditionFeatureValue,
+	ModalKey,
 	NodeCreatorOpenSource,
 } from './Interface';
 import { NodeConnectionType } from 'n8n-workflow';
@@ -35,36 +36,36 @@ export const QUICKSTART_NOTE_NAME = '_QUICKSTART_NOTE_';
 export const MAX_TAG_NAME_LENGTH = 24;
 
 // modals
-export const ABOUT_MODAL_KEY = 'about';
-export const CHAT_EMBED_MODAL_KEY = 'chatEmbed';
-export const CHANGE_PASSWORD_MODAL_KEY = 'changePassword';
-export const CREDENTIAL_EDIT_MODAL_KEY = 'editCredential';
-export const CREDENTIAL_SELECT_MODAL_KEY = 'selectCredential';
-export const DELETE_USER_MODAL_KEY = 'deleteUser';
-export const INVITE_USER_MODAL_KEY = 'inviteUser';
-export const DUPLICATE_MODAL_KEY = 'duplicate';
-export const TAGS_MANAGER_MODAL_KEY = 'tagsManager';
-export const VERSIONS_MODAL_KEY = 'versions';
-export const WORKFLOW_SETTINGS_MODAL_KEY = 'settings';
-export const WORKFLOW_LM_CHAT_MODAL_KEY = 'lmChat';
-export const WORKFLOW_SHARE_MODAL_KEY = 'workflowShare';
-export const PERSONALIZATION_MODAL_KEY = 'personalization';
-export const CONTACT_PROMPT_MODAL_KEY = 'contactPrompt';
-export const VALUE_SURVEY_MODAL_KEY = 'valueSurvey';
-export const WORKFLOW_ACTIVE_MODAL_KEY = 'activation';
-export const ONBOARDING_CALL_SIGNUP_MODAL_KEY = 'onboardingCallSignup';
-export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
-export const COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY = 'communityPackageManageConfirm';
-export const IMPORT_CURL_MODAL_KEY = 'importCurl';
-export const GENERATE_CURL_MODAL_KEY = 'generateCurl';
-export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
-export const SOURCE_CONTROL_PUSH_MODAL_KEY = 'sourceControlPush';
-export const SOURCE_CONTROL_PULL_MODAL_KEY = 'sourceControlPull';
-export const DEBUG_PAYWALL_MODAL_KEY = 'debugPaywall';
-export const MFA_SETUP_MODAL_KEY = 'mfaSetup';
-export const WORKFLOW_HISTORY_VERSION_RESTORE = 'workflowHistoryVersionRestore';
-export const SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY = 'suggestedTemplatePreview';
-export const SETUP_CREDENTIALS_MODAL_KEY = 'setupCredentials';
+export const ABOUT_MODAL_KEY: ModalKey = 'about';
+export const CHAT_EMBED_MODAL_KEY: ModalKey = 'chatEmbed';
+export const CHANGE_PASSWORD_MODAL_KEY: ModalKey = 'changePassword';
+export const CREDENTIAL_EDIT_MODAL_KEY: ModalKey = 'editCredential';
+export const CREDENTIAL_SELECT_MODAL_KEY: ModalKey = 'selectCredential';
+export const DELETE_USER_MODAL_KEY: ModalKey = 'deleteUser';
+export const INVITE_USER_MODAL_KEY: ModalKey = 'inviteUser';
+export const DUPLICATE_MODAL_KEY: ModalKey = 'duplicate';
+export const TAGS_MANAGER_MODAL_KEY: ModalKey = 'tagsManager';
+export const VERSIONS_MODAL_KEY: ModalKey = 'versions';
+export const WORKFLOW_SETTINGS_MODAL_KEY: ModalKey = 'settings';
+export const WORKFLOW_LM_CHAT_MODAL_KEY: ModalKey = 'lmChat';
+export const WORKFLOW_SHARE_MODAL_KEY: ModalKey = 'workflowShare';
+export const PERSONALIZATION_MODAL_KEY: ModalKey = 'personalization';
+export const CONTACT_PROMPT_MODAL_KEY: ModalKey = 'contactPrompt';
+export const VALUE_SURVEY_MODAL_KEY: ModalKey = 'valueSurvey';
+export const WORKFLOW_ACTIVE_MODAL_KEY: ModalKey = 'activation';
+export const ONBOARDING_CALL_SIGNUP_MODAL_KEY: ModalKey = 'onboardingCallSignup';
+export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY: ModalKey = 'communityPackageInstall';
+export const COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY: ModalKey = 'communityPackageManageConfirm';
+export const IMPORT_CURL_MODAL_KEY: ModalKey = 'importCurl';
+export const GENERATE_CURL_MODAL_KEY: ModalKey = 'generateCurl';
+export const LOG_STREAM_MODAL_KEY: ModalKey = 'settingsLogStream';
+export const SOURCE_CONTROL_PUSH_MODAL_KEY: ModalKey = 'sourceControlPush';
+export const SOURCE_CONTROL_PULL_MODAL_KEY: ModalKey = 'sourceControlPull';
+export const DEBUG_PAYWALL_MODAL_KEY: ModalKey = 'debugPaywall';
+export const MFA_SETUP_MODAL_KEY: ModalKey = 'mfaSetup';
+export const WORKFLOW_HISTORY_VERSION_RESTORE: ModalKey = 'workflowHistoryVersionRestore';
+export const SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY: ModalKey = 'suggestedTemplatePreview';
+export const SETUP_CREDENTIALS_MODAL_KEY: ModalKey = 'setupCredentials';
 
 export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
 

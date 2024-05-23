@@ -33,9 +33,10 @@
 </template>
 
 <script lang="ts">
+import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import type { IN8nPromptResponse } from '@/Interface';
+import type { IN8nPromptResponse, ModalKey } from '@/Interface';
 import { VALID_EMAIL_REGEX } from '@/constants';
 import Modal from '@/components/Modal.vue';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -46,7 +47,12 @@ import { useToast } from '@/composables/useToast';
 export default defineComponent({
 	name: 'ContactPromptModal',
 	components: { Modal },
-	props: ['modalName'],
+	props: {
+		modalName: {
+			type: String as PropType<ModalKey>,
+			required: true,
+		},
+	},
 	setup() {
 		return {
 			...useToast(),

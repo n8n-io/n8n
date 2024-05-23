@@ -1,3 +1,118 @@
+<script lang="ts" setup>
+import { VALID_EMAIL_REGEX, VALUE_SURVEY_MODAL_KEY } from '@/constants';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import ModalDrawer from '@/components/ModalDrawer.vue';
+import { useToast } from '@/composables/useToast';
+import { useI18n } from '@/composables/useI18n';
+import { ref, computed, watch } from 'vue';
+import { createEventBus } from 'n8n-design-system/utils';
+import { useTelemetry } from '@/composables/useTelemetry';
+
+const props = defineProps({
+	isActive: {
+		type: Boolean,
+	},
+});
+
+const rootStore = useRootStore();
+const i18n = useI18n();
+const toast = useToast();
+const telemetry = useTelemetry();
+
+const DEFAULT_TITLE = i18n.baseText('prompts.valueSurvey.recommendationQuestion');
+const GREAT_FEEDBACK_TITLE = i18n.baseText('prompts.valueSurvey.greatFeedbackTitle');
+const DEFAULT_FEEDBACK_TITLE = i18n.baseText('prompts.valueSurvey.defaultFeedbackTitle');
+const PRODUCT_TEAM_MESSAGE = i18n.baseText('prompts.productTeamMessage');
+const VERY_LIKELY_OPTION = i18n.baseText('prompts.valueSurvey.veryLikely');
+const NOT_LIKELY_OPTION = i18n.baseText('prompts.valueSurvey.notLikely');
+const SEND = i18n.baseText('prompts.valueSurvey.send');
+const YOUR_EMAIL_ADDRESS = i18n.baseText('prompts.valueSurvey.yourEmailAddress');
+
+const form = ref<{ value: string; email: string }>({ value: '', email: '' });
+const showButtons = ref(true);
+const modalBus = createEventBus();
+
+const getTitle = computed(() => {
+	if (form?.value?.value !== '') {
+		if (Number(form.value) > 7) {
+			return GREAT_FEEDBACK_TITLE;
+		} else {
+			return DEFAULT_FEEDBACK_TITLE;
+		}
+	}
+
+	return DEFAULT_TITLE;
+});
+
+const isEmailValid = computed(
+	() => form?.value?.email && VALID_EMAIL_REGEX.test(String(form.value.email).toLowerCase()),
+);
+
+function closeDialog(): void {
+	if (form.value.value === '') {
+		telemetry.track('User responded value survey score', {
+			instance_id: rootStore.instanceId,
+			nps: '',
+		});
+	}
+	if (form.value.value !== '' && form.value.email === '') {
+		telemetry.track('User responded value survey email', {
+			instance_id: rootStore.instanceId,
+			email: '',
+		});
+	}
+}
+
+function onInputChange(value: string) {
+	form.value.email = value;
+}
+
+async function selectSurveyValue(value: string) {
+	form.value.value = value;
+	showButtons.value = false;
+
+	telemetry.track('User responded value survey score', {
+		instance_id: rootStore.instanceId,
+		nps: form.value.value,
+	});
+}
+
+async function send() {
+	if (isEmailValid.value) {
+		telemetry.track('User responded value survey email', {
+			instance_id: rootStore.instanceId,
+			email: form.value.email,
+			nps: form.value.value,
+		});
+
+		toast.showMessage({
+			title: i18n.baseText('prompts.valueSurvey.thanks'),
+			message: Number(form.value.value) >= 8 ? i18n.baseText('prompts.valueSurvey.reviewUs') : '',
+			type: 'success',
+			duration: 15000,
+		});
+
+		setTimeout(() => {
+			form.value.value = '';
+			form.value.email = '';
+			showButtons.value = true;
+		}, 1000);
+		modalBus.emit('close');
+	}
+}
+
+watch(
+	() => props.isActive,
+	(isActive) => {
+		if (isActive) {
+			telemetry.track('User shown value survey', {
+				instance_id: rootStore.instanceId,
+			});
+		}
+	},
+);
+</script>
+
 <template>
 	<ModalDrawer
 		:name="VALUE_SURVEY_MODAL_KEY"
@@ -28,24 +143,24 @@
 						</div>
 					</div>
 					<div :class="$style.text">
-						<n8n-text size="small" color="text-xlight">Not likely</n8n-text>
-						<n8n-text size="small" color="text-xlight">Very likely</n8n-text>
+						<n8n-text size="small" color="text-xlight">{{ NOT_LIKELY_OPTION }}</n8n-text>
+						<n8n-text size="small" color="text-xlight">{{ VERY_LIKELY_OPTION }}</n8n-text>
 					</div>
 				</div>
 				<div v-else :class="$style.email">
 					<div :class="$style.input" @keyup.enter="send">
 						<n8n-input
 							v-model="form.email"
-							placeholder="Your email address"
+							:placeholder="YOUR_EMAIL_ADDRESS"
 							@update:model-value="onInputChange"
 						/>
 						<div :class="$style.button">
-							<n8n-button label="Send" float="right" :disabled="!isEmailValid" @click="send" />
+							<n8n-button :label="SEND" float="right" :disabled="!isEmailValid" @click="send" />
 						</div>
 					</div>
 					<div :class="$style.disclaimer">
-						<n8n-text size="small" color="text-xlight">
-							David from our product team will get in touch personally
+						<n8n-text size="small" color="text-dark">
+							{{ PRODUCT_TEAM_MESSAGE }}
 						</n8n-text>
 					</div>
 				</div>
@@ -53,141 +168,6 @@
 		</template>
 	</ModalDrawer>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
-import { VALID_EMAIL_REGEX, VALUE_SURVEY_MODAL_KEY } from '@/constants';
-import type { IN8nPromptResponse } from '@/Interface';
-
-import ModalDrawer from '@/components/ModalDrawer.vue';
-
-import { useSettingsStore } from '@/stores/settings.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
-import { createEventBus } from 'n8n-design-system/utils';
-import { useToast } from '@/composables/useToast';
-
-const DEFAULT_TITLE = 'How likely are you to recommend n8n to a friend or colleague?';
-const GREAT_FEEDBACK_TITLE =
-	'Great to hear! Can we reach out to see how we can make n8n even better for you?';
-const DEFAULT_FEEDBACK_TITLE =
-	"Thanks for your feedback! We'd love to understand how we can improve. Can we reach out?";
-
-export default defineComponent({
-	name: 'ValueSurvey',
-	components: {
-		ModalDrawer,
-	},
-	props: ['isActive'],
-	setup() {
-		return {
-			...useToast(),
-		};
-	},
-	watch: {
-		isActive(isActive) {
-			if (isActive) {
-				this.$telemetry.track('User shown value survey', {
-					instance_id: this.rootStore.instanceId,
-				});
-			}
-		},
-	},
-	computed: {
-		...mapStores(useRootStore, useSettingsStore),
-		getTitle(): string {
-			if (this.form.value !== '') {
-				if (Number(this.form.value) > 7) {
-					return GREAT_FEEDBACK_TITLE;
-				} else {
-					return DEFAULT_FEEDBACK_TITLE;
-				}
-			} else {
-				return DEFAULT_TITLE;
-			}
-		},
-		isEmailValid(): boolean {
-			return VALID_EMAIL_REGEX.test(String(this.form.email).toLowerCase());
-		},
-	},
-	data() {
-		return {
-			form: {
-				email: '',
-				value: '',
-			},
-			showButtons: true,
-			VALUE_SURVEY_MODAL_KEY,
-			modalBus: createEventBus(),
-		};
-	},
-	methods: {
-		closeDialog(): void {
-			if (this.form.value === '') {
-				this.$telemetry.track('User responded value survey score', {
-					instance_id: this.rootStore.instanceId,
-					nps: '',
-				});
-			}
-			if (this.form.value !== '' && this.form.email === '') {
-				this.$telemetry.track('User responded value survey email', {
-					instance_id: this.rootStore.instanceId,
-					email: '',
-				});
-			}
-		},
-		onInputChange(value: string) {
-			this.form.email = value;
-		},
-		async selectSurveyValue(value: string) {
-			this.form.value = value;
-			this.showButtons = false;
-
-			const response: IN8nPromptResponse | undefined = await this.settingsStore.submitValueSurvey({
-				value: this.form.value,
-			});
-
-			if (response && response.updated) {
-				this.$telemetry.track('User responded value survey score', {
-					instance_id: this.rootStore.instanceId,
-					nps: this.form.value,
-				});
-			}
-		},
-		async send() {
-			if (this.isEmailValid) {
-				const response: IN8nPromptResponse | undefined = await this.settingsStore.submitValueSurvey(
-					{
-						email: this.form.email,
-						value: this.form.value,
-					},
-				);
-
-				if (response && response.updated) {
-					this.$telemetry.track('User responded value survey email', {
-						instance_id: this.rootStore.instanceId,
-						email: this.form.email,
-					});
-					this.showMessage({
-						title: 'Thanks for your feedback',
-						message:
-							'If you’d like to help even more, leave us a <a target="_blank" href="https://www.g2.com/products/n8n/reviews/start">review on G2</a>.',
-						type: 'success',
-						duration: 15000,
-					});
-				}
-
-				setTimeout(() => {
-					this.form.value = '';
-					this.form.email = '';
-					this.showButtons = true;
-				}, 1000);
-				this.modalBus.emit('close');
-			}
-		},
-	},
-});
-</script>
 
 <style module lang="scss">
 .title {
