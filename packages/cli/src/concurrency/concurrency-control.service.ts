@@ -5,9 +5,7 @@ import { ConcurrencyQueue } from './concurrency-queue';
 import { UnknownExecutionModeError } from '@/errors/unknown-execution-mode.error';
 import { UnexpectedExecutionModeError } from '@/errors/unexpected-execution-mode.error';
 import { ConcurrencyCapZeroError } from '@/errors/concurrency-cap-zero.error';
-import { Push } from '@/push';
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
-import type { ConcurrencyEventArgs } from './concurrency.types';
 
 @Service()
 export class ConcurrencyControlService {
@@ -15,16 +13,13 @@ export class ConcurrencyControlService {
 
 	private readonly productionCap = config.getEnv('executions.concurrency.productionCap');
 
-	private readonly manualQueue: ConcurrencyQueue;
+	readonly manualQueue: ConcurrencyQueue;
 
-	private readonly productionQueue: ConcurrencyQueue;
+	readonly productionQueue: ConcurrencyQueue;
 
 	private readonly isEnabled: boolean;
 
-	constructor(
-		private readonly logger: Logger,
-		private readonly push: Push,
-	) {
+	constructor(private readonly logger: Logger) {
 		if (this.manualCap === 0 || this.productionCap === 0) {
 			throw new ConcurrencyCapZeroError();
 		}
@@ -48,18 +43,6 @@ export class ConcurrencyControlService {
 		this.logInit();
 
 		this.isEnabled = true;
-
-		for (const queue of [this.manualQueue, this.productionQueue]) {
-			queue.on('execution-throttled', (event: ConcurrencyEventArgs) => {
-				this.logger.info('[Concurrency Control] Throttled execution', event);
-				this.push.broadcast('executionThrottled'); // @TODO: Specify execution ID?
-			});
-
-			queue.on('execution-released', (event: ConcurrencyEventArgs) => {
-				this.logger.info('[Concurrency Control] Released throttled execution', event);
-				this.push.broadcast('executionReleased'); // @TODO: Specify execution ID?
-			});
-		}
 	}
 
 	/**
@@ -86,9 +69,7 @@ export class ConcurrencyControlService {
 	remove({ mode, executionId }: { mode: ExecutionMode; executionId: string }) {
 		if (!this.isEnabled) return;
 
-		const wasRemoved = this.getQueue(mode).remove(executionId);
-
-		if (wasRemoved) this.getQueue(mode).dequeue();
+		this.getQueue(mode).remove(executionId);
 	}
 
 	/**

@@ -19,6 +19,8 @@ import { isWorkflowIdValid } from '@/utils';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { Logger } from '@/Logger';
 import { ConcurrencyControlService } from './concurrency/concurrency-control.service';
+import type { ConcurrencyEventArgs } from './concurrency/concurrency.types';
+import { Push } from './push';
 
 @Service()
 export class ActiveExecutions {
@@ -33,7 +35,26 @@ export class ActiveExecutions {
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly concurrencyControl: ConcurrencyControlService,
-	) {}
+		private readonly push: Push,
+	) {
+		// @TODO: Adding these listeners at ConcurrencyControlService would introduce a dependency cycle:
+		// concurrencyControl → executionService → activeExecutions → concurrencyControl
+		for (const queue of [
+			this.concurrencyControl.manualQueue,
+			this.concurrencyControl.productionQueue,
+		]) {
+			queue.on('execution-throttled', async (event: ConcurrencyEventArgs) => {
+				this.logger.info('[Concurrency Control] Throttled execution', event);
+				this.push.broadcast('executionThrottled'); // @TODO: Specify execution ID and handle on FE
+			});
+
+			queue.on('execution-released', async (event: ConcurrencyEventArgs) => {
+				this.logger.info('[Concurrency Control] Released execution', event);
+				this.push.broadcast('executionReleased'); // @TODO: Specify execution ID and handle on FE
+				await this.executionRepository.resetStartedAt(event.executionId);
+			});
+		}
+	}
 
 	/**
 	 * Add a new active execution
@@ -69,12 +90,6 @@ export class ActiveExecutions {
 			}
 
 			await this.concurrencyControl.check({ mode, executionId });
-
-			if (new Date().getTime() - fullExecutionData.startedAt.getTime() > 1000) {
-				// @TODO: Update `startedAt` without heuristic?
-				await this.executionRepository.resetStartedAt(executionId);
-			}
-
 			executionStatus = 'running';
 		} else {
 			// Is an existing execution we want to finish so update in DB

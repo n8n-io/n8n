@@ -38,10 +38,11 @@ export class ConcurrencyQueue extends EventEmitter {
 
 		if (index > -1) {
 			this.queue.splice(index, 1);
-			return true;
-		}
 
-		return false;
+			this.capacity++;
+
+			if (this.capacity > 0) this.resolveNext();
+		}
 	}
 
 	getAll() {
