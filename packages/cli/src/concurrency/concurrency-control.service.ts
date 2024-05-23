@@ -79,7 +79,7 @@ export class ConcurrencyControlService {
 
 		const wasRemoved = this.getQueue(mode).remove(executionId);
 
-		if (wasRemoved) this.release({ mode });
+		if (wasRemoved) this.getQueue(mode).dequeue();
 	}
 
 	/**
