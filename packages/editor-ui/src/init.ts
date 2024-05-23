@@ -46,8 +46,8 @@ export async function initializeCore() {
 /**
  * Initializes the features of the application that require an authenticated user
  */
-export async function initializeAuthenticatedFeatures(reinitialize = false) {
-	if (authenticatedFeaturesInitialized && !reinitialize) {
+export async function initializeAuthenticatedFeatures() {
+	if (authenticatedFeaturesInitialized) {
 		return;
 	}
 
