@@ -4,6 +4,8 @@ import type {
 	NodeCreatorOpenSource,
 } from './Interface';
 import { NodeConnectionType } from 'n8n-workflow';
+import type { CanvasNodeHandleInjectionData, CanvasNodeInjectionData } from '@/types';
+import type { InjectionKey } from 'vue';
 
 export const MAX_WORKFLOW_SIZE = 1024 * 1024 * 16; // Workflow size limit in bytes
 export const MAX_EXPECTED_REQUEST_SIZE = 2048; // Expected maximum workflow request metadata (i.e. headers) size in bytes
@@ -450,6 +452,7 @@ export const enum VIEWS {
 	VARIABLES = 'VariablesView',
 	NEW_WORKFLOW = 'NodeViewNew',
 	WORKFLOW = 'NodeViewExisting',
+	WORKFLOW_V2 = 'NodeViewV2',
 	DEMO = 'WorkflowDemo',
 	TEMPLATE_IMPORT = 'WorkflowTemplate',
 	WORKFLOW_ONBOARDING = 'WorkflowOnboarding',
@@ -483,7 +486,12 @@ export const enum VIEWS {
 	PROJECT_SETTINGS = 'ProjectSettings',
 }
 
-export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
+export const EDITABLE_CANVAS_VIEWS = [
+	VIEWS.WORKFLOW,
+	VIEWS.NEW_WORKFLOW,
+	VIEWS.EXECUTION_DEBUG,
+	VIEWS.WORKFLOW_V2,
+];
 
 export const enum FAKE_DOOR_FEATURES {
 	ENVIRONMENTS = 'environments',
@@ -611,6 +619,7 @@ export const enum STORES {
 	UI = 'ui',
 	USERS = 'users',
 	WORKFLOWS = 'workflows',
+	WORKFLOWS_V2 = 'workflowsV2',
 	WORKFLOWS_EE = 'workflowsEE',
 	EXECUTIONS = 'executions',
 	NDV = 'ndv',
@@ -828,3 +837,11 @@ export const AI_ASSISTANT_EXPERIMENT_URLS = {
 };
 
 export const AI_ASSISTANT_LOCAL_STORAGE_KEY = 'N8N_AI_ASSISTANT_EXPERIMENT';
+
+/**
+ * Injection Keys
+ */
+
+export const CanvasNodeKey = 'canvasNode' as unknown as InjectionKey<CanvasNodeInjectionData>;
+export const CanvasNodeHandleKey =
+	'canvasNodeHandle' as unknown as InjectionKey<CanvasNodeHandleInjectionData>;
