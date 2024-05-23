@@ -34,6 +34,27 @@ describe('User Management', { disableAutoLogin: true }, () => {
 		cy.enableFeature('sharing');
 	});
 
+	it.only('should login and logout', () => {
+		cy.visit('/');
+		cy.get('input[name="email"]').type(INSTANCE_OWNER.email);
+		cy.get('input[name="password"]').type(INSTANCE_OWNER.password);
+		cy.getByTestId('form-submit-button').click();
+		mainSidebar.getters.logo().should('be.visible');
+		mainSidebar.actions.goToSettings();
+		settingsSidebar.getters.users().should('be.visible');
+
+		mainSidebar.actions.closeSettings();
+		mainSidebar.actions.openUserMenu();
+		cy.getByTestId('user-menu-item-logout').click();
+
+		cy.get('input[name="email"]').type(INSTANCE_MEMBERS[0].email);
+		cy.get('input[name="password"]').type(INSTANCE_MEMBERS[0].password);
+		cy.getByTestId('form-submit-button').click();
+		mainSidebar.getters.logo().should('be.visible');
+		mainSidebar.actions.goToSettings();
+		cy.getByTestId('menu-item').filter('#settings-users').should('not.exist');
+	});
+
 	it('should prevent non-owners to access UM settings', () => {
 		usersSettingsPage.actions.loginAndVisit(
 			INSTANCE_MEMBERS[0].email,
