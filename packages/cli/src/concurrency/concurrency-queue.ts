@@ -36,7 +36,7 @@ export class ConcurrencyQueue extends EventEmitter {
 	dequeue() {
 		this.capacity++;
 
-		if (this.capacity > 0) this.resolveNext();
+		this.resolveNext();
 	}
 
 	remove(executionId: string) {
@@ -47,7 +47,7 @@ export class ConcurrencyQueue extends EventEmitter {
 
 			this.capacity++;
 
-			if (this.capacity > 0) this.resolveNext();
+			this.resolveNext();
 		}
 	}
 
