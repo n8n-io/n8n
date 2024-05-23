@@ -17,22 +17,21 @@ import type { ProjectSharingData } from '@/features/projects/projects.types';
 import type { RouteLocationNormalized } from 'vue-router';
 
 export function createTestNodeTypes(data: INodeTypeData = {}): INodeTypes {
-	const getResolvedKey = (key: string) => {
-		const resolvedKeyParts = key.split(/[\/.]/);
-		return resolvedKeyParts[resolvedKeyParts.length - 1];
-	};
-
 	const nodeTypes = {
 		...defaultMockNodeTypes,
 		...Object.keys(data).reduce<INodeTypeData>((acc, key) => {
-			acc[getResolvedKey(key)] = data[key];
+			acc[key] = data[key];
 
 			return acc;
 		}, {}),
 	};
 
+	function getKnownTypes(): IDataObject {
+		return {};
+	}
+
 	function getByName(nodeType: string): INodeType | IVersionedNodeType {
-		return nodeTypes[getResolvedKey(nodeType)].type;
+		return nodeTypes[nodeType].type;
 	}
 
 	function getByNameAndVersion(nodeType: string, version?: number): INodeType {
@@ -40,6 +39,7 @@ export function createTestNodeTypes(data: INodeTypeData = {}): INodeTypes {
 	}
 
 	return {
+		getKnownTypes,
 		getByName,
 		getByNameAndVersion,
 	};
