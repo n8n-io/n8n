@@ -1,7 +1,7 @@
 import { BasePage } from './base';
 
 export class CredentialsPage extends BasePage {
-	url = '/credentials';
+	url = '/home/credentials';
 	getters = {
 		emptyListCreateCredentialButton: () => cy.getByTestId('empty-resources-list').find('button'),
 		createCredentialButton: () => cy.getByTestId('resources-list-add'),

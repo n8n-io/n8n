@@ -2,7 +2,6 @@ import { deepCopy } from 'n8n-workflow';
 import type {
 	ExecutionError,
 	GenericValue,
-	INodeParameters,
 	INodeProperties,
 	ITelemetryTrackProperties,
 	NodeParameterValue,
@@ -119,7 +118,7 @@ export interface ExpressionEditorEventsData {
 	dialogVisible: boolean;
 	value: string;
 	resolvedExpressionValue: string;
-	parameter: INodeParameters;
+	parameter: INodeProperties;
 }
 
 export const getExpressionEditorEventsData = (

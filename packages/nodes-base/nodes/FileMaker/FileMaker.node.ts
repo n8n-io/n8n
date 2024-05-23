@@ -692,8 +692,8 @@ export class FileMaker implements INodeType {
 
 		const action = this.getNodeParameter('action', 0) as string;
 
-		try {
-			for (let i = 0; i < items.length; i++) {
+		for (let i = 0; i < items.length; i++) {
+			try {
 				// Reset all values
 				requestOptions = {
 					uri: '',
@@ -807,17 +807,24 @@ export class FileMaker implements INodeType {
 						{ itemIndex: i },
 					);
 				}
-				returnData.push({ json: response });
-			}
-		} catch (error) {
-			if (error.node) {
-				throw error;
-			}
+				returnData.push({ json: response, pairedItem: { item: i } });
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({
+						json: { error: error.message },
+						pairedItem: { item: i },
+					});
+				} else {
+					if (error.node) {
+						throw error;
+					}
 
-			throw new NodeOperationError(
-				this.getNode(),
-				`The action "${error.message}" is not implemented yet!`,
-			);
+					throw new NodeOperationError(
+						this.getNode(),
+						`The action "${error.message}" is not implemented yet!`,
+					);
+				}
+			}
 		}
 
 		await logout.call(this, token as string);

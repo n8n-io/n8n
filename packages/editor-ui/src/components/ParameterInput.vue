@@ -537,7 +537,7 @@ type Props = {
 	hint?: string;
 	inputSize?: InputSize;
 	eventSource?: string;
-	expressionEvaluated?: string;
+	expressionEvaluated: unknown;
 	documentationUrl?: string;
 	isAssignment?: boolean;
 	isReadOnly?: boolean;
@@ -555,7 +555,6 @@ const props = withDefaults(defineProps<Props>(), {
 	hint: undefined,
 	inputSize: undefined,
 	eventSource: undefined,
-	expressionEvaluated: undefined,
 	documentationUrl: undefined,
 	isReadOnly: false,
 	isAssignment: false,
@@ -1187,6 +1186,10 @@ function onUpdateTextInput(value: string) {
 }
 
 function valueChanged(value: NodeParameterValueType | {} | Date) {
+	if (remoteParameterOptionsLoading.value) {
+		return;
+	}
+
 	if (props.parameter.name === 'nodeCredentialType') {
 		activeCredentialType.value = value as string;
 	}
@@ -1262,7 +1265,7 @@ async function optionSelected(command: string) {
 
 		await setFocus();
 	} else if (command === 'removeExpression') {
-		let value: NodeParameterValueType = props.expressionEvaluated;
+		let value = props.expressionEvaluated;
 
 		isFocused.value = false;
 

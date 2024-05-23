@@ -368,7 +368,7 @@ export class MergeV2 implements INodeType {
 				let input1 = this.getInputData(0);
 				let input2 = this.getInputData(1);
 
-				if (input1.length === 0 || input2.length === 0) {
+				if (input1?.length === 0 || input2?.length === 0) {
 					// If data of any input is missing, return the data of
 					// the input that contains data
 					return [[...input1, ...input2]];
@@ -474,19 +474,19 @@ export class MergeV2 implements INodeType {
 					if (!input1) return [returnData];
 				}
 
-				if (input1.length === 0 || input2.length === 0) {
-					if (!input1.length && joinMode === 'keepNonMatches' && outputDataFrom === 'input1')
+				if (input1?.length === 0 || input2?.length === 0) {
+					if (!input1?.length && joinMode === 'keepNonMatches' && outputDataFrom === 'input1')
 						return [returnData];
-					if (!input2.length && joinMode === 'keepNonMatches' && outputDataFrom === 'input2')
+					if (!input2?.length && joinMode === 'keepNonMatches' && outputDataFrom === 'input2')
 						return [returnData];
 
 					if (joinMode === 'keepMatches') {
 						// Stop the execution
 						return [[]];
-					} else if (joinMode === 'enrichInput1' && input1.length === 0) {
+					} else if (joinMode === 'enrichInput1' && input1?.length === 0) {
 						// No data to enrich so stop
 						return [[]];
-					} else if (joinMode === 'enrichInput2' && input2.length === 0) {
+					} else if (joinMode === 'enrichInput2' && input2?.length === 0) {
 						// No data to enrich so stop
 						return [[]];
 					} else {

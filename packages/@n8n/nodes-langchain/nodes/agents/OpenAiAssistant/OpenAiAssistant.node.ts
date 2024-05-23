@@ -392,6 +392,6 @@ export class OpenAiAssistant implements INodeType {
 			}
 		}
 
-		return await this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

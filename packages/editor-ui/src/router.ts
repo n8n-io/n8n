@@ -17,6 +17,7 @@ import { middleware } from '@/rbac/middleware';
 import type { RouteConfig, RouterMiddleware } from '@/types/router';
 import { initializeCore } from '@/init';
 import { tryToParseNumber } from '@/utils/typesUtils';
+import { projectsRoutes } from '@/features/projects/projects.routes';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
 const ErrorView = async () => await import('./views/ErrorView.vue');
@@ -24,6 +25,7 @@ const ForgotMyPasswordView = async () => await import('./views/ForgotMyPasswordV
 const MainHeader = async () => await import('@/components/MainHeader/MainHeader.vue');
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
 const NodeView = async () => await import('@/views/NodeView.vue');
+const NodeViewV2 = async () => await import('@/views/NodeView.v2.vue');
 const WorkflowExecutionsView = async () => await import('@/views/WorkflowExecutionsView.vue');
 const WorkflowExecutionsLandingPage = async () =>
 	await import('@/components/executions/workflow/WorkflowExecutionsLandingPage.vue');
@@ -46,9 +48,7 @@ const TemplatesWorkflowView = async () => await import('@/views/TemplatesWorkflo
 const SetupWorkflowFromTemplateView = async () =>
 	await import('@/views/SetupWorkflowFromTemplateView/SetupWorkflowFromTemplateView.vue');
 const TemplatesSearchView = async () => await import('@/views/TemplatesSearchView.vue');
-const CredentialsView = async () => await import('@/views/CredentialsView.vue');
 const ExecutionsView = async () => await import('@/views/ExecutionsView.vue');
-const WorkflowsView = async () => await import('@/views/WorkflowsView.vue');
 const VariablesView = async () => await import('@/views/VariablesView.vue');
 const SettingsUsageAndPlan = async () => await import('./views/SettingsUsageAndPlan.vue');
 const SettingsSso = async () => await import('./views/SettingsSso.vue');
@@ -73,10 +73,7 @@ function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]) {
 export const routes = [
 	{
 		path: '/',
-		name: VIEWS.HOMEPAGE,
-		redirect: () => {
-			return { name: VIEWS.WORKFLOWS };
-		},
+		redirect: '/home/workflows',
 		meta: {
 			middleware: ['authenticated'],
 		},
@@ -190,17 +187,6 @@ export const routes = [
 		},
 	},
 	{
-		path: '/credentials',
-		name: VIEWS.CREDENTIALS,
-		components: {
-			default: CredentialsView,
-			sidebar: MainSidebar,
-		},
-		meta: {
-			middleware: ['authenticated'],
-		},
-	},
-	{
 		path: '/variables',
 		name: VIEWS.VARIABLES,
 		components: {
@@ -214,17 +200,6 @@ export const routes = [
 		name: VIEWS.EXECUTIONS,
 		components: {
 			default: ExecutionsView,
-			sidebar: MainSidebar,
-		},
-		meta: {
-			middleware: ['authenticated'],
-		},
-	},
-	{
-		path: '/workflows',
-		name: VIEWS.WORKFLOWS,
-		components: {
-			default: WorkflowsView,
 			sidebar: MainSidebar,
 		},
 		meta: {
@@ -382,6 +357,23 @@ export const routes = [
 	{
 		path: '/workflow',
 		redirect: '/workflow/new',
+	},
+	{
+		path: '/workflow-v2/:workflowId',
+		name: VIEWS.WORKFLOW_V2,
+		components: {
+			default: NodeViewV2,
+			header: MainHeader,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			middleware: ['authenticated', 'custom'],
+			middlewareOptions: {
+				custom: () => {
+					return !!localStorage.getItem('features.NodeViewV2');
+				},
+			},
+		},
 	},
 	{
 		path: '/signin',
@@ -731,6 +723,7 @@ export const routes = [
 			},
 		},
 	},
+	...projectsRoutes,
 	{
 		path: '/:pathMatch(.*)*',
 		name: VIEWS.NOT_FOUND,

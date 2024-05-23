@@ -257,6 +257,32 @@ describe('ExecutionService', () => {
 			]);
 		});
 
+		test('should filter executions by `metadata`', async () => {
+			const workflow = await createWorkflow();
+
+			const metadata = [{ key: 'myKey', value: 'myValue' }];
+
+			await Promise.all([
+				createExecution({ status: 'success', metadata }, workflow),
+				createExecution({ status: 'error' }, workflow),
+			]);
+
+			const query: ExecutionSummaries.RangeQuery = {
+				kind: 'range',
+				range: { limit: 20 },
+				accessibleWorkflowIds: [workflow.id],
+				metadata,
+			};
+
+			const output = await executionService.findRangeWithCount(query);
+
+			expect(output).toEqual({
+				count: 1,
+				estimated: false,
+				results: [expect.objectContaining({ status: 'success' })],
+			});
+		});
+
 		test('should exclude executions by inaccessible `workflowId`', async () => {
 			const accessibleWorkflow = await createWorkflow();
 			const inaccessibleWorkflow = await createWorkflow();

@@ -71,8 +71,8 @@ export interface NodeViewItem {
 	type: string;
 	properties: {
 		name?: string;
-		title: string;
-		icon: string;
+		title?: string;
+		icon?: string;
 		iconProps?: {
 			color?: string;
 		};
@@ -81,8 +81,14 @@ export interface NodeViewItem {
 		group?: string[];
 		sections?: NodeViewItemSection[];
 		description?: string;
+		displayName?: string;
 		tag?: string;
 		forceIncludeNodes?: string[];
+		iconData?: {
+			type: string;
+			icon?: string;
+			fileBuffer?: string;
+		};
 	};
 	category?: string | string[];
 }
@@ -264,7 +270,7 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 	};
 }
 
-export function TriggerView(nodes: SimplifiedNodeType[]) {
+export function TriggerView() {
 	const i18n = useI18n();
 
 	const view: NodeView = {

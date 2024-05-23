@@ -4,9 +4,17 @@ import { OpenAIAssistantRunnable } from 'langchain/experimental/openai_assistant
 import type { OpenAIToolType } from 'langchain/dist/experimental/openai_assistant/schema';
 import { OpenAI as OpenAIClient } from 'openai';
 
-import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
-import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
 
+import type { BufferWindowMemory } from 'langchain/memory';
+import omit from 'lodash/omit';
+import type { BaseMessage } from '@langchain/core/messages';
 import { formatToOpenAIAssistantTool } from '../../helpers/utils';
 import { assistantRLC } from '../descriptions';
 
@@ -110,6 +118,12 @@ const displayOptions = {
 };
 
 export const description = updateDisplayOptions(displayOptions, properties);
+const mapChatMessageToThreadMessage = (
+	message: BaseMessage,
+): OpenAIClient.Beta.Threads.ThreadCreateParams.Message => ({
+	role: message._getType() === 'ai' ? 'assistant' : 'user',
+	content: message.content.toString(),
+});
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const credentials = await this.getCredentials('openAiApi');
@@ -182,11 +196,47 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		tools: tools ?? [],
 	});
 
-	const response = await agentExecutor.withConfig(getTracingConfig(this)).invoke({
+	const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
+		| BufferWindowMemory
+		| undefined;
+
+	const chainValues: IDataObject = {
 		content: input,
 		signal: this.getExecutionCancelSignal(),
 		timeout: options.timeout ?? 10000,
-	});
+	};
+	let thread: OpenAIClient.Beta.Threads.Thread;
+	if (memory) {
+		const chatMessages = await memory.chatHistory.getMessages();
+
+		// Construct a new thread from the chat history to map the memory
+		if (chatMessages.length) {
+			const first32Messages = chatMessages.slice(0, 32);
+			// There is a undocumented limit of 32 messages per thread when creating a thread with messages
+			const mappedMessages: OpenAIClient.Beta.Threads.ThreadCreateParams.Message[] =
+				first32Messages.map(mapChatMessageToThreadMessage);
+
+			thread = await client.beta.threads.create({ messages: mappedMessages });
+			const overLimitMessages = chatMessages.slice(32).map(mapChatMessageToThreadMessage);
+
+			// Send the remaining messages that exceed the limit of 32 sequentially
+			for (const message of overLimitMessages) {
+				await client.beta.threads.messages.create(thread.id, message);
+			}
+
+			chainValues.threadId = thread.id;
+		}
+	}
+
+	const response = await agentExecutor.withConfig(getTracingConfig(this)).invoke(chainValues);
+	if (memory) {
+		await memory.saveContext({ input }, { output: response.output });
+
+		if (response.threadId && response.runId) {
+			const threadRun = await client.beta.threads.runs.retrieve(response.threadId, response.runId);
+			response.usage = threadRun.usage;
+		}
+	}
 
 	if (
 		options.preserveOriginalTools !== false &&
@@ -197,6 +247,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			tools: assistantTools,
 		});
 	}
-
-	return [{ json: response, pairedItem: { item: i } }];
+	const filteredResponse = omit(response, ['signal', 'timeout']);
+	return [{ json: filteredResponse, pairedItem: { item: i } }];
 }

@@ -1,3 +1,5 @@
+import { within, waitFor } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import type { ISettingsState } from '@/Interface';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import { defaultSettings } from './defaults';
@@ -14,7 +16,11 @@ export const retry = async (
 				try {
 					resolve(assertion());
 				} catch (err) {
-					Date.now() - startTime > timeout ? reject(err) : tryAgain();
+					if (Date.now() - startTime > timeout) {
+						reject(err);
+					} else {
+						tryAgain();
+					}
 				}
 			}, interval);
 		};
@@ -26,6 +32,7 @@ export const retry = async (
 export const waitAllPromises = async () => await new Promise((resolve) => setTimeout(resolve));
 
 export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
+	initialized: true,
 	settings: defaultSettings,
 	promptsData: {
 		message: '',
@@ -56,9 +63,25 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 		loginLabel: '',
 		loginEnabled: false,
 	},
+	mfa: {
+		enabled: false,
+	},
 	onboardingCallPromptEnabled: false,
 	saveDataErrorExecution: 'all',
 	saveDataSuccessExecution: 'all',
 	saveManualExecutions: false,
-	binaryDataMode: 'default',
+};
+
+export const getDropdownItems = async (dropdownTriggerParent: HTMLElement) => {
+	await userEvent.click(within(dropdownTriggerParent).getByRole('textbox'));
+	const selectTrigger = dropdownTriggerParent.querySelector(
+		'.select-trigger[aria-describedby]',
+	) as HTMLElement;
+	await waitFor(() => expect(selectTrigger).toBeInTheDocument());
+
+	const selectDropdownId = selectTrigger.getAttribute('aria-describedby');
+	const selectDropdown = document.getElementById(selectDropdownId as string) as HTMLElement;
+	await waitFor(() => expect(selectDropdown).toBeInTheDocument());
+
+	return selectDropdown.querySelectorAll('.el-select-dropdown__item');
 };

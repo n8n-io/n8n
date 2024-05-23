@@ -9,6 +9,7 @@ import type {
 	ExecutionStatus,
 } from 'n8n-workflow';
 import {
+	ErrorReporterProxy as EventReporter,
 	ApplicationError,
 	ExecutionStatusList,
 	Workflow,
@@ -36,6 +37,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import config from '@/config';
 import { WaitTracker } from '@/WaitTracker';
 import type { ExecutionEntity } from '@/databases/entities/ExecutionEntity';
+import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 
 export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
@@ -105,6 +107,8 @@ export class ExecutionService {
 		}
 
 		if (!execution.status) {
+			const { data, workflowData, ...rest } = execution;
+			EventReporter.info('Detected `null` execution status', { extra: { execution: rest } });
 			execution.status = getStatusUsingPreviousExecutionStatusMethod(execution);
 		}
 
@@ -128,6 +132,8 @@ export class ExecutionService {
 			);
 			throw new NotFoundError(`The execution with the ID "${executionId}" does not exist.`);
 		}
+
+		if (!execution.data.executionData) throw new AbortedExecutionRetryError();
 
 		if (execution.finished) {
 			throw new ApplicationError('The execution succeeded, so it cannot be retried.');

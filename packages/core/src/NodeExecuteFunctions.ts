@@ -99,6 +99,7 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 	CallbackManager,
+	INodeParameters,
 } from 'n8n-workflow';
 import {
 	ExpressionError,
@@ -2121,13 +2122,12 @@ export function cleanupParameterData(inputData: NodeParameterValueType): void {
 	}
 
 	if (typeof inputData === 'object') {
-		type Key = keyof typeof inputData;
-		(Object.keys(inputData) as Key[]).forEach((key) => {
-			const value = inputData[key];
+		Object.keys(inputData).forEach((key) => {
+			const value = (inputData as INodeParameters)[key];
 			if (typeof value === 'object') {
 				if (DateTime.isDateTime(value)) {
 					// Is a special luxon date so convert to string
-					inputData[key] = value.toString();
+					(inputData as INodeParameters)[key] = value.toString();
 				} else {
 					cleanupParameterData(value);
 				}
@@ -2230,28 +2230,30 @@ const validateCollection = (
 		return validationResult;
 	}
 
-	for (const value of Array.isArray(validationResult.newValue)
-		? (validationResult.newValue as IDataObject[])
-		: [validationResult.newValue as IDataObject]) {
-		for (const key of Object.keys(value)) {
-			if (!validationMap[key]) continue;
+	if (validationResult.valid) {
+		for (const value of Array.isArray(validationResult.newValue)
+			? (validationResult.newValue as IDataObject[])
+			: [validationResult.newValue as IDataObject]) {
+			for (const key of Object.keys(value)) {
+				if (!validationMap[key]) continue;
 
-			const fieldValidationResult = validateFieldType(key, value[key], validationMap[key].type, {
-				valueOptions: validationMap[key].options,
-			});
+				const fieldValidationResult = validateFieldType(key, value[key], validationMap[key].type, {
+					valueOptions: validationMap[key].options,
+				});
 
-			if (!fieldValidationResult.valid) {
-				throw new ExpressionError(
-					`Invalid input for field '${validationMap[key].displayName}' inside '${propertyDescription.displayName}' in [item ${itemIndex}]`,
-					{
-						description: fieldValidationResult.errorMessage,
-						runIndex,
-						itemIndex,
-						nodeCause: node.name,
-					},
-				);
+				if (!fieldValidationResult.valid) {
+					throw new ExpressionError(
+						`Invalid input for field '${validationMap[key].displayName}' inside '${propertyDescription.displayName}' in [item ${itemIndex}]`,
+						{
+							description: fieldValidationResult.errorMessage,
+							runIndex,
+							itemIndex,
+							nodeCause: node.name,
+						},
+					);
+				}
+				value[key] = fieldValidationResult.newValue;
 			}
-			value[key] = fieldValidationResult.newValue;
 		}
 	}
 
@@ -2839,6 +2841,7 @@ const getCommonWorkflowFunctions = (
 		}
 		return output;
 	},
+	getKnownNodeTypes: () => workflow.nodeTypes.getKnownTypes(),
 	getRestApiUrl: () => additionalData.restApiUrl,
 	getInstanceBaseUrl: () => additionalData.instanceBaseUrl,
 	getInstanceId: () => Container.get(InstanceSettings).instanceId,
@@ -3319,7 +3322,7 @@ export function copyInputItems(items: INodeExecutionData[], properties: string[]
 /**
  * Returns the execute functions the poll nodes have access to.
  */
-// TODO: Check if I can get rid of: additionalData, and so then maybe also at ActiveWorkflowRunner.add
+// TODO: Check if I can get rid of: additionalData, and so then maybe also at ActiveWorkflowManager.add
 export function getExecutePollFunctions(
 	workflow: Workflow,
 	node: INode,
@@ -3382,7 +3385,7 @@ export function getExecutePollFunctions(
 /**
  * Returns the execute functions the trigger nodes have access to.
  */
-// TODO: Check if I can get rid of: additionalData, and so then maybe also at ActiveWorkflowRunner.add
+// TODO: Check if I can get rid of: additionalData, and so then maybe also at ActiveWorkflowManager.add
 export function getExecuteTriggerFunctions(
 	workflow: Workflow,
 	node: INode,

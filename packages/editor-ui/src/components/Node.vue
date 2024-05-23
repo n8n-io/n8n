@@ -1,5 +1,6 @@
 <template>
 	<div
+		v-if="data"
 		:id="nodeId"
 		:ref="data.name"
 		:class="nodeWrapperClass"
@@ -98,7 +99,7 @@
 
 				<NodeIcon
 					class="node-icon"
-					:node-type="nodeType"
+					:node-type="iconNodeType"
 					:size="40"
 					:shrink="false"
 					:color-default="iconColorDefault"
@@ -179,6 +180,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
+import xss from 'xss';
 import { useStorage } from '@/composables/useStorage';
 import {
 	CUSTOM_API_CALL_KEY,
@@ -186,6 +188,8 @@ import {
 	MANUAL_TRIGGER_NODE_TYPE,
 	NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS,
 	NOT_DUPLICATABE_NODE_TYPES,
+	SIMULATE_NODE_TYPE,
+	SIMULATE_TRIGGER_NODE_TYPE,
 	WAIT_TIME_UNLIMITED,
 } from '@/constants';
 import { nodeBase } from '@/mixins/nodeBase';
@@ -260,6 +264,16 @@ export default defineComponent({
 			callDebounced,
 		};
 	},
+	data() {
+		return {
+			isTouchActive: false,
+			nodeSubtitle: '',
+			showTriggerNodeTooltip: false,
+			pinDataDiscoveryTooltipVisible: false,
+			dragging: false,
+			unwatchWorkflowDataItems: () => {},
+		};
+	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),
 		showPinnedDataInfo(): boolean {
@@ -323,6 +337,7 @@ export default defineComponent({
 			return !!this.nodeType?.polling;
 		},
 		isExecuting(): boolean {
+			if (!this.data) return false;
 			return this.workflowsStore.isNodeExecuting(this.data.name);
 		},
 		isSingleActiveTriggerNode(): boolean {
@@ -334,12 +349,15 @@ export default defineComponent({
 			return nodes.length === 1;
 		},
 		isManualTypeNode(): boolean {
-			return this.data.type === MANUAL_TRIGGER_NODE_TYPE;
+			return this.data?.type === MANUAL_TRIGGER_NODE_TYPE;
 		},
 		isConfigNode(): boolean {
-			return this.nodeTypesStore.isConfigNode(this.workflow, this.data, this.data?.type ?? '');
+			if (!this.data) return false;
+			return this.nodeTypesStore.isConfigNode(this.workflow, this.data, this.data.type ?? '');
 		},
 		isConfigurableNode(): boolean {
+			if (!this.data) return false;
+
 			return this.nodeTypesStore.isConfigurableNode(
 				this.workflow,
 				this.data,
@@ -363,10 +381,10 @@ export default defineComponent({
 			return this.workflowsStore.nodesByName[this.name] as INodeUi | undefined;
 		},
 		sameTypeNodes(): INodeUi[] {
-			return this.workflowsStore.allNodes.filter((node: INodeUi) => node.type === this.data.type);
+			return this.workflowsStore.allNodes.filter((node: INodeUi) => node.type === this.data?.type);
 		},
-		nodeWrapperClass(): object {
-			const classes = {
+		nodeWrapperClass() {
+			const classes: Record<string, boolean> = {
 				'node-wrapper': true,
 				'node-wrapper--trigger': this.isTriggerNode,
 				'node-wrapper--configurable': this.isConfigurableNode,
@@ -387,7 +405,7 @@ export default defineComponent({
 
 			return classes;
 		},
-		nodeWrapperStyles(): object {
+		nodeWrapperStyles() {
 			const styles: {
 				[key: string]: string | number;
 			} = {
@@ -433,7 +451,7 @@ export default defineComponent({
 		nodeClass(): object {
 			return {
 				'node-box': true,
-				disabled: this.data.disabled,
+				disabled: this.data?.disabled,
 				executing: this.isExecuting,
 			};
 		},
@@ -450,11 +468,9 @@ export default defineComponent({
 			if (nodeExecutionRunData) {
 				nodeExecutionRunData.forEach((executionRunData) => {
 					if (executionRunData?.error) {
-						issues.push(
-							`${executionRunData.error.message}${
-								executionRunData.error.description ? ` (${executionRunData.error.description})` : ''
-							}`,
-						);
+						const { message, description } = executionRunData.error;
+						const issue = `${message}${description ? ` (${description})` : ''}`;
+						issues.push(xss(issue));
 					}
 				});
 			}
@@ -464,7 +480,7 @@ export default defineComponent({
 			return issues;
 		},
 		nodeDisabledTitle(): string {
-			return this.data.disabled
+			return this.data?.disabled
 				? this.$locale.baseText('node.enable')
 				: this.$locale.baseText('node.disable');
 		},
@@ -474,21 +490,21 @@ export default defineComponent({
 		showDisabledLinethrough(): boolean {
 			return (
 				!this.isConfigurableNode &&
-				!!(this.data.disabled && this.inputs.length === 1 && this.outputs.length === 1)
+				!!(this.data?.disabled && this.inputs.length === 1 && this.outputs.length === 1)
 			);
 		},
 		shortNodeType(): string {
-			return this.$locale.shortNodeType(this.data.type);
+			return this.$locale.shortNodeType(this.data?.type ?? '');
 		},
 		nodeTitle(): string {
-			if (this.data.name === 'Start') {
+			if (this.data?.name === 'Start') {
 				return this.$locale.headerText({
 					key: 'headers.start.displayName',
 					fallback: 'Start',
 				});
 			}
 
-			return this.data.name;
+			return this.data?.name ?? '';
 		},
 		waiting(): string | undefined {
 			const workflowExecution = this.workflowsStore.getWorkflowExecution as ExecutionSummary;
@@ -516,7 +532,7 @@ export default defineComponent({
 		workflowRunning(): boolean {
 			return this.uiStore.isActionActive('workflowRunning');
 		},
-		nodeStyle(): object {
+		nodeStyle() {
 			const returnStyles: {
 				[key: string]: string;
 			} = {};
@@ -527,7 +543,7 @@ export default defineComponent({
 				borderColor = '--color-foreground-dark';
 			}
 
-			if (this.data.disabled) {
+			if (this.data?.disabled) {
 				borderColor = '--color-foreground-base';
 			} else if (!this.isExecuting) {
 				if (this.hasIssues && !this.hideNodeIssues) {
@@ -557,7 +573,7 @@ export default defineComponent({
 		},
 		isSelected(): boolean {
 			return (
-				this.uiStore.getSelectedNodes.find((node: INodeUi) => node.name === this.data.name) !==
+				this.uiStore.getSelectedNodes.find((node: INodeUi) => node.name === this.data?.name) !==
 				undefined
 			);
 		},
@@ -585,6 +601,25 @@ export default defineComponent({
 				this.contextMenu.target.value.source === 'node-button' &&
 				this.contextMenu.target.value.node.name === this.data?.name
 			);
+		},
+		iconNodeType() {
+			if (
+				this.data?.type === SIMULATE_NODE_TYPE ||
+				this.data?.type === SIMULATE_TRIGGER_NODE_TYPE
+			) {
+				const icon = this.data.parameters?.icon as string;
+				const iconNodeType = this.workflow.expression.getSimpleParameterValue(
+					this.data,
+					icon,
+					'internal',
+					{},
+				);
+				if (iconNodeType && typeof iconNodeType === 'string') {
+					return this.nodeTypesStore.getNodeType(iconNodeType);
+				}
+			}
+
+			return this.nodeType;
 		},
 	},
 	watch: {
@@ -647,23 +682,13 @@ export default defineComponent({
 			}, 0);
 		}
 	},
-	data() {
-		return {
-			isTouchActive: false,
-			nodeSubtitle: '',
-			showTriggerNodeTooltip: false,
-			pinDataDiscoveryTooltipVisible: false,
-			dragging: false,
-			unwatchWorkflowDataItems: () => {},
-		};
-	},
 	methods: {
 		showPinDataDiscoveryTooltip(dataItemsCount: number): void {
 			if (
 				!this.isTriggerNode ||
 				this.isManualTypeNode ||
 				this.isScheduledGroup ||
-				this.uiStore.isModalActive ||
+				this.uiStore.isAnyModalOpen ||
 				dataItemsCount === 0
 			)
 				return;
@@ -674,13 +699,14 @@ export default defineComponent({
 			this.unwatchWorkflowDataItems();
 		},
 		setSubtitle() {
+			if (!this.data || !this.nodeType) return;
 			// why is this not a computed property? because it's a very expensive operation
 			// it requires expressions to resolve each subtitle...
 			// and ends up bogging down the UI with big workflows, for example when pasting a workflow or even opening a node...
 			// so we only update it when necessary (when node is mounted and when it's opened and closed (isActive))
 			try {
 				const nodeSubtitle =
-					this.nodeHelpers.getNodeSubtitle(this.data, this.nodeType, this.workflow) || '';
+					this.nodeHelpers.getNodeSubtitle(this.data, this.nodeType, this.workflow) ?? '';
 
 				this.nodeSubtitle = nodeSubtitle.includes(CUSTOM_API_CALL_KEY) ? '' : nodeSubtitle;
 			} catch (e) {
@@ -706,9 +732,9 @@ export default defineComponent({
 		},
 
 		executeNode() {
-			this.$emit('runWorkflow', this.data.name, 'Node.executeNode');
+			this.$emit('runWorkflow', this.data?.name, 'Node.executeNode');
 			this.$telemetry.track('User clicked node hover button', {
-				node_type: this.data.type,
+				node_type: this.data?.type,
 				button_name: 'execute',
 				workflow_id: this.workflowsStore.workflowId,
 			});
@@ -716,18 +742,18 @@ export default defineComponent({
 
 		deleteNode() {
 			this.$telemetry.track('User clicked node hover button', {
-				node_type: this.data.type,
+				node_type: this.data?.type,
 				button_name: 'delete',
 				workflow_id: this.workflowsStore.workflowId,
 			});
 
-			this.$emit('removeNode', this.data.name);
+			this.$emit('removeNode', this.data?.name);
 		},
 
 		toggleDisableNode(event: MouseEvent) {
 			(event.currentTarget as HTMLButtonElement).blur();
 			this.$telemetry.track('User clicked node hover button', {
-				node_type: this.data.type,
+				node_type: this.data?.type,
 				button_name: 'disable',
 				workflow_id: this.workflowsStore.workflowId,
 			});
@@ -738,7 +764,8 @@ export default defineComponent({
 			void this.callDebounced(this.onClickDebounced, { debounceTime: 50, trailing: true }, event);
 		},
 
-		onClickDebounced(event: MouseEvent) {
+		onClickDebounced(...args: unknown[]) {
+			const event = args[0] as MouseEvent;
 			const isDoubleClick = event.detail >= 2;
 			if (isDoubleClick) {
 				this.setNodeActive();
