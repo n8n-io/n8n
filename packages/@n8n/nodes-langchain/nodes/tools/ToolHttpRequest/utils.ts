@@ -13,7 +13,8 @@ import unset from 'lodash/unset';
 
 import cheerio from 'cheerio';
 import { convert } from 'html-to-text';
-import type { ToolParameter } from './interfaces';
+import type { ParametersValues, ToolParameter } from './interfaces';
+import type { JSONSchema7Definition } from 'json-schema';
 
 export const getOAuth2AdditionalParameters = (nodeCredentialType: string) => {
 	const oAuth2Options: { [credentialType: string]: IOAuth2Options } = {
@@ -386,3 +387,61 @@ export const updatePlaceholders = (
 		});
 	}
 };
+
+export function prepareJSONSchema7Properties(
+	parameters: ParametersValues,
+	placeholders: ToolParameter[],
+	parametersInputType: 'model' | 'keypair' | 'json',
+	requestOptionKey: string,
+	modelInputDescription: string,
+) {
+	const schemaProperties: JSONSchema7Definition = {
+		type: 'object',
+		properties: {},
+		required: [],
+	};
+	const userProvidedValues: IDataObject = {};
+
+	if (parametersInputType === 'model') {
+		return {
+			schema: {
+				name: requestOptionKey,
+				description: modelInputDescription,
+				type: 'object',
+			},
+			values: userProvidedValues,
+		};
+	}
+
+	if (parametersInputType === 'keypair' || parametersInputType === 'json') {
+		for (const entry of parameters) {
+			if (entry.valueProvider.includes('model')) {
+				const placeholder = placeholders.find((p) => p.name === entry.name);
+				const schemaEntry: IDataObject = {};
+				const required = placeholder?.required ?? entry.valueProvider === 'modelRequired';
+
+				if (placeholder) {
+					schemaEntry.type = placeholder.type !== 'not specified' ? placeholder.type : undefined;
+					schemaEntry.description = placeholder.description;
+				}
+
+				if (required) {
+					schemaProperties.required!.push(entry.name);
+				}
+
+				schemaProperties.properties![entry.name] = schemaEntry;
+			} else {
+				userProvidedValues[entry.name] = entry.value;
+			}
+		}
+	}
+
+	return {
+		schema: {
+			name: requestOptionKey,
+			type: 'object',
+			properties: schemaProperties,
+		},
+		values: userProvidedValues,
+	};
+}

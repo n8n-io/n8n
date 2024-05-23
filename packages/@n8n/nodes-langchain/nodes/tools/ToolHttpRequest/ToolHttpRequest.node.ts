@@ -13,7 +13,7 @@ import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow'
 
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
-import { DynamicTool } from '@langchain/core/tools';
+import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
 
 import {
 	configureHttpRequestFunction,
@@ -38,6 +38,9 @@ import {
 	QUERY_PARAMETERS_PLACEHOLDER,
 } from './interfaces';
 import type { ParameterInputType, ParametersValues, ToolParameter } from './interfaces';
+import { getSandboxWithZod } from '../../../utils/schemaParsing';
+import type { DynamicZodObject } from '../../../types/zod.types';
+import type { JSONSchema7, JSONSchema7Definition } from 'json-schema';
 
 export class ToolHttpRequest implements INodeType {
 	description: INodeTypeDescription = {
@@ -77,6 +80,7 @@ export class ToolHttpRequest implements INodeType {
 				name: 'name',
 				type: 'string',
 				default: '',
+				required: true,
 				placeholder: 'e.g. get_current_weather',
 				validateType: 'string-alphanumeric',
 				description:
@@ -134,6 +138,7 @@ export class ToolHttpRequest implements INodeType {
 				name: 'url',
 				type: 'string',
 				default: '',
+				required: true,
 				placeholder: 'e.g. http://www.example.com/{path}',
 				validateType: 'url',
 			},
@@ -296,6 +301,14 @@ export class ToolHttpRequest implements INodeType {
 		const headers: IDataObject = {};
 		const body: IDataObject = {};
 
+		const qsProperties: JSONSchema7Definition = {
+			type: 'object',
+			properties: {},
+			required: [],
+		};
+		// const headersProperties: IDataObject = {};
+		// const bodyProperties: IDataObject = {};
+
 		const placeholders = this.getNodeParameter(
 			'placeholderDefinitions.values',
 			itemIndex,
@@ -344,6 +357,18 @@ export class ToolHttpRequest implements INodeType {
 				) as ParametersValues;
 
 				for (const entry of parametersQueryValues) {
+					const placeholder = placeholders.find((p) => p.name === entry.name);
+					const schemaEntry: IDataObject = {};
+					const required = entry.valueProvider === 'modelRequired';
+					if (placeholder) {
+						schemaEntry.type = placeholder.type !== 'not specified' ? placeholder.type : undefined;
+						schemaEntry.description = placeholder.description;
+					}
+					if (required) {
+						qsProperties.required!.push(entry.name);
+					}
+					qsProperties.properties![entry.name] = schemaEntry;
+
 					if (entry.valueProvider.includes('model')) {
 						queryParameters.push(`"${entry.name}":{${entry.name}}`);
 						updatePlaceholders(placeholders, entry.name, entry.valueProvider === 'modelRequired');
@@ -494,87 +519,134 @@ ${placeholders
 	)
 	.join(',\n ')}
 
+Separate values with tree commas(,,,)
 Do not attempt to send key value pairs, only values in the same order as shown above, if parameter is not required it could be null.`;
 		}
 
-		return {
-			response: new DynamicTool({
-				name,
-				description,
-				func: async (query: string): Promise<string> => {
-					const { index } = this.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
+		const toolHandler = async (query: string | IDataObject): Promise<string> => {
+			const { index } = this.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
 
-					let response: string = '';
-					let executionError: Error | undefined = undefined;
-					let requestOptions: IHttpRequestOptions | null = null;
+			let response: string = '';
+			let executionError: Error | undefined = undefined;
+			let requestOptions: IHttpRequestOptions | null = null;
 
-					// parse LLM's input
-					try {
+			// parse LLM's input
+			try {
+				if (query && placeholders.length) {
+					if (typeof query === 'string') {
 						let rawRequestOptions = requestTemplate;
-						const parameters = query.split(',').map((p) => p.trim());
-						for (let i = 0; i < parameters.length; i++) {
-							let value = parameters[i];
+						const modelProvidedArguments = query.split(',,,').map((p) => p.trim());
+						for (let i = 0; i < modelProvidedArguments.length; i++) {
+							let value = modelProvidedArguments[i];
 							if (value === 'null' && placeholders[i].type === 'json') {
 								value = '{}';
+							}
+							if (value !== 'null' && placeholders[i].type === 'string' && !value.startsWith('"')) {
+								value = `"${value}"`;
 							}
 							rawRequestOptions = rawRequestOptions.replace(`{${placeholders[i].name}}`, value);
 						}
 
 						requestOptions = jsonParse<IHttpRequestOptions>(rawRequestOptions);
-					} catch (error) {
-						const errorMessage = `Input could not be parsed as JSON: ${query}`;
-						executionError = new NodeOperationError(this.getNode(), errorMessage, {
-							itemIndex,
-						});
-
-						response = errorMessage;
-					}
-
-					//add user provided request options
-					if (requestOptions) {
-						if (Object.keys(headers).length) {
-							requestOptions.headers = requestOptions.headers
-								? { ...requestOptions.headers, ...headers }
-								: headers;
-						}
-
-						if (Object.keys(qs).length) {
-							requestOptions.qs = requestOptions.qs ? { ...requestOptions.qs, ...qs } : qs;
-						}
-
-						if (Object.keys(body)) {
-							requestOptions.body = requestOptions.body
-								? { ...(requestOptions.body as IDataObject), ...body }
-								: body;
-						}
-
-						// send request and optimize response
-						try {
-							response = optimizeResponse(await httpRequest(requestOptions));
-						} catch (error) {
-							response = `There was an error: "${error.message}"`;
-						}
-					}
-
-					if (typeof response !== 'string') {
-						executionError = new NodeOperationError(this.getNode(), 'Wrong output type returned', {
-							description: `The response property should be a string, but it is an ${typeof response}`,
-						});
-						response = `There was an error: "${executionError.message}"`;
-					}
-
-					if (executionError) {
-						void this.addOutputData(
-							NodeConnectionType.AiTool,
-							index,
-							executionError as ExecutionError,
-						);
 					} else {
-						void this.addOutputData(NodeConnectionType.AiTool, index, [[{ json: { response } }]]);
+						requestOptions = (query as { requestOptions: IHttpRequestOptions }).requestOptions;
+						requestOptions.url = url;
+						requestOptions.method = method;
 					}
-					return response;
+				} else {
+					requestOptions = {
+						url,
+						method,
+					};
+				}
+			} catch (error) {
+				const errorMessage = `Input could not be parsed as JSON: ${query}`;
+				executionError = new NodeOperationError(this.getNode(), errorMessage, {
+					itemIndex,
+				});
+
+				response = errorMessage;
+			}
+
+			//add user provided request options
+			if (requestOptions) {
+				if (Object.keys(headers).length) {
+					requestOptions.headers = requestOptions.headers
+						? { ...requestOptions.headers, ...headers }
+						: headers;
+				}
+
+				if (Object.keys(qs).length) {
+					requestOptions.qs = requestOptions.qs ? { ...requestOptions.qs, ...qs } : qs;
+				}
+
+				if (Object.keys(body)) {
+					requestOptions.body = requestOptions.body
+						? { ...(requestOptions.body as IDataObject), ...body }
+						: body;
+				}
+
+				// send request and optimize response
+				try {
+					response = optimizeResponse(await httpRequest(requestOptions));
+				} catch (error) {
+					response = `There was an error: "${error.message}"`;
+				}
+			}
+
+			if (typeof response !== 'string') {
+				executionError = new NodeOperationError(this.getNode(), 'Wrong output type returned', {
+					description: `The response property should be a string, but it is an ${typeof response}`,
+				});
+				response = `There was an error: "${executionError.message}"`;
+			}
+
+			if (executionError) {
+				void this.addOutputData(NodeConnectionType.AiTool, index, executionError as ExecutionError);
+			} else {
+				void this.addOutputData(NodeConnectionType.AiTool, index, [[{ json: { response } }]]);
+			}
+			return response;
+		};
+
+		let tool: DynamicTool | DynamicStructuredTool | undefined = undefined;
+
+		const jsonSchema: JSONSchema7 = {
+			$schema: 'http://json-schema.org/draft-07/schema#',
+			title: 'Request',
+			type: 'object',
+			properties: {
+				requestOptions: {
+					type: 'object',
+					properties: {
+						qs: qsProperties,
+					},
+					required: [],
 				},
-			}),
+			},
+			required: ['requestOptions'],
+		};
+
+		const zodSchemaSandbox = getSandboxWithZod(this, jsonSchema, 0);
+		const zodSchema = (await zodSchemaSandbox.runCode()) as DynamicZodObject;
+
+		try {
+			tool = new DynamicStructuredTool<typeof zodSchema>({
+				name,
+				description: toolDescription,
+				func: toolHandler,
+				schema: zodSchema,
+			});
+		} catch (error) {
+			tool = new DynamicTool({
+				name,
+				description,
+				func: toolHandler,
+			});
+		}
+
+		return {
+			response: tool,
 		};
 	}
 }
