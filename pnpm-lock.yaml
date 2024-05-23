@@ -1518,8 +1518,8 @@ importers:
         specifier: 8.3.2
         version: 8.3.2
       xlsx:
-        specifier: https://cdn.sheetjs.com/xlsx-0.19.3/xlsx-0.19.3.tgz
-        version: '@cdn.sheetjs.com/xlsx-0.19.3/xlsx-0.19.3.tgz'
+        specifier: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
+        version: '@cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz'
       xml2js:
         specifier: 0.6.2
         version: 0.6.2
@@ -25274,10 +25274,10 @@ packages:
     resolution: {integrity: sha512-iC+8Io04lddc+mVqQ9AZ7OQ2MrUKGN+oIQyq1vemgt46jwCwLfhq7/pwnBnNXXXZb8VTVLKwp9EDkx+ryxIWmg==}
     dev: false
 
-  '@cdn.sheetjs.com/xlsx-0.19.3/xlsx-0.19.3.tgz':
-    resolution: {registry: https://registry.npmjs.org/, tarball: https://cdn.sheetjs.com/xlsx-0.19.3/xlsx-0.19.3.tgz}
+  '@cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz':
+    resolution: {tarball: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz}
     name: xlsx
-    version: 0.19.3
+    version: 0.20.2
     engines: {node: '>=0.8'}
     hasBin: true
     dev: false
