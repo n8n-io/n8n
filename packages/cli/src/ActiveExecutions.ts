@@ -45,12 +45,18 @@ export class ActiveExecutions {
 		]) {
 			queue.on('execution-throttled', async (event: ConcurrencyEventArgs) => {
 				this.logger.info('[Concurrency Control] Throttled execution', event);
-				this.push.broadcast('executionThrottled'); // @TODO: Specify execution ID and handle on FE
+				this.push.broadcast('executionThrottled', {
+					executionId: event.executionId,
+					workflowId: event.workflowId,
+				});
 			});
 
 			queue.on('execution-released', async (event: ConcurrencyEventArgs) => {
 				this.logger.info('[Concurrency Control] Released execution', event);
-				this.push.broadcast('executionReleased'); // @TODO: Specify execution ID and handle on FE
+				this.push.broadcast('executionReleased', {
+					executionId: event.executionId,
+					workflowId: event.workflowId,
+				});
 				await this.executionRepository.resetStartedAt(event.executionId);
 			});
 		}
@@ -89,11 +95,16 @@ export class ActiveExecutions {
 				throw new ApplicationError('There was an issue assigning an execution id to the execution');
 			}
 
-			await this.concurrencyControl.check({ mode, executionId });
+			await this.concurrencyControl.check({ mode, executionId, workflowId });
 			executionStatus = 'running';
 		} else {
 			// Is an existing execution we want to finish so update in DB
-			await this.concurrencyControl.check({ mode, executionId });
+
+			await this.concurrencyControl.check({
+				mode,
+				executionId,
+				workflowId: executionData.workflowData.id,
+			});
 
 			const execution: Pick<IExecutionDb, 'id' | 'data' | 'waitTill' | 'status'> = {
 				id: executionId,
@@ -220,6 +231,8 @@ export class ActiveExecutions {
 		let executionIds = Object.keys(this.activeExecutions);
 
 		if (cancelAll) {
+			// @TODO: Handle enqueued executions
+
 			const stopPromises = executionIds.map(
 				async (executionId) => await this.stopExecution(executionId),
 			);

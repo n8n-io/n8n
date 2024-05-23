@@ -48,10 +48,18 @@ export class ConcurrencyControlService {
 	/**
 	 * Block or let through an execution based on concurrency capacity.
 	 */
-	async check({ mode, executionId }: { mode: ExecutionMode; executionId: string }) {
+	async check({
+		mode,
+		executionId,
+		workflowId,
+	}: {
+		mode: ExecutionMode;
+		executionId: string;
+		workflowId: string;
+	}) {
 		if (!this.isEnabled || this.isUncapped(mode)) return;
 
-		await this.getQueue(mode).enqueue(executionId);
+		await this.getQueue(mode).enqueue({ executionId, workflowId });
 	}
 
 	/**

@@ -243,7 +243,10 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 			return true;
 		}
 
-		if (receivedData.type === 'executionThrottled') {
+		if (
+			receivedData.type === 'executionThrottled' &&
+			receivedData.data.workflowId === workflowsStore.workflowId
+		) {
 			workflowsStore.setExecutionStatus('pending');
 
 			toast.showToast({
@@ -252,10 +255,14 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				type: 'info',
 				duration: 0,
 			});
+
 			return true;
 		}
 
-		if (receivedData.type === 'executionReleased') {
+		if (
+			receivedData.type === 'executionReleased' &&
+			receivedData.data.workflowId === workflowsStore.workflowId
+		) {
 			workflowsStore.setExecutionStatus('running');
 
 			toast.showToast({
@@ -264,6 +271,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				type: 'info',
 				duration: 0,
 			});
+
 			return true;
 		}
 

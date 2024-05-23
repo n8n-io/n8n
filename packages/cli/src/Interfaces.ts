@@ -341,10 +341,12 @@ type PushDataActiveWorkflowUsersChanged = {
 };
 
 export type PushDataExecutionThrottled = {
+	data: { executionId: string };
 	type: 'executionThrottled';
 };
 
 export type PushDataExecutionReleased = {
+	data: { executionId: string };
 	type: 'executionReleased';
 };
 
