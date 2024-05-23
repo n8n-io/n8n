@@ -2,11 +2,12 @@ import { Logger } from '@/Logger';
 import config from '@/config';
 import { Service } from 'typedi';
 import { ConcurrencyQueue } from './concurrency-queue';
-import { type WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
 import { UnknownExecutionModeError } from '@/errors/unknown-execution-mode.error';
 import { UnexpectedExecutionModeError } from '@/errors/unexpected-execution-mode.error';
 import { ConcurrencyCapZeroError } from '@/errors/concurrency-cap-zero.error';
 import { Push } from '@/push';
+import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
+import type { ConcurrencyEventArgs } from './concurrency.types';
 
 @Service()
 export class ConcurrencyControlService {
@@ -34,27 +35,31 @@ export class ConcurrencyControlService {
 			return;
 		}
 
-		this.productionQueue = new ConcurrencyQueue(
-			{
-				kind: 'production',
-				capacity: this.productionCap,
-			},
-			this.logger,
-			this.push,
-		);
+		this.productionQueue = new ConcurrencyQueue({
+			kind: 'production',
+			capacity: this.productionCap,
+		});
 
-		this.manualQueue = new ConcurrencyQueue(
-			{
-				kind: 'manual',
-				capacity: this.manualCap,
-			},
-			this.logger,
-			this.push,
-		);
+		this.manualQueue = new ConcurrencyQueue({
+			kind: 'manual',
+			capacity: this.manualCap,
+		});
 
 		this.logInit();
 
 		this.isEnabled = true;
+
+		for (const queue of [this.manualQueue, this.productionQueue]) {
+			queue.on('execution-throttled', (event: ConcurrencyEventArgs) => {
+				this.logger.info('[Concurrency Control] Throttled execution', event);
+				this.push.broadcast('executionThrottled'); // @TODO: Specify execution ID?
+			});
+
+			queue.on('execution-released', (event: ConcurrencyEventArgs) => {
+				this.logger.info('[Concurrency Control] Released throttled execution', event);
+				this.push.broadcast('executionReleased'); // @TODO: Specify execution ID?
+			});
+		}
 	}
 
 	/**

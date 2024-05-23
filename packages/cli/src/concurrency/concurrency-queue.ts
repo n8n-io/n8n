@@ -1,37 +1,26 @@
-import { Logger } from '@/Logger';
-import { Push } from '@/push';
 import { Service } from 'typedi';
+import { EventEmitter } from 'node:events';
 
 @Service()
-export class ConcurrencyQueue {
+export class ConcurrencyQueue extends EventEmitter {
 	private readonly queue: Array<[executionId: string, resolve: () => void]> = [];
 
 	private capacity: number;
 
 	private readonly kind: 'manual' | 'production';
 
-	constructor(
-		{ capacity, kind }: { capacity: number; kind: 'manual' | 'production' },
-		private readonly logger: Logger,
-		private readonly push: Push,
-	) {
+	constructor({ capacity, kind }: { capacity: number; kind: 'manual' | 'production' }) {
+		super();
+
 		this.capacity = capacity;
 		this.kind = kind;
-		this.logger = logger;
-		this.push = push;
 	}
 
 	async enqueue(executionId: string) {
 		this.capacity--;
 
 		if (this.capacity < 0) {
-			this.logger.info('[Concurrency Control] Throttled execution', {
-				executionId,
-				capacity: this.capacity,
-				kind: this.kind,
-			});
-
-			if (this.kind === 'manual') this.push.broadcast('executionThrottled'); // @TODO: Specify execution ID?
+			this.emit('execution-throttled', { executionId, capacity: this.capacity, kind: this.kind });
 
 			// eslint-disable-next-line @typescript-eslint/return-await
 			return new Promise<void>((resolve) => this.queue.push([executionId, resolve]));
@@ -66,13 +55,7 @@ export class ConcurrencyQueue {
 
 		const [executionId, resolve] = execution;
 
-		this.logger.info('[Concurrency Control] Released throttled execution', {
-			executionId,
-			capacity: this.capacity,
-			kind: this.kind,
-		});
-
-		if (this.kind === 'manual') this.push.broadcast('executionReleased'); // @TODO: Specify execution ID?
+		this.emit('execution-released', { executionId, capacity: this.capacity, kind: this.kind });
 
 		resolve();
 	}
