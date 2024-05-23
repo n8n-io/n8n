@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { CanvasConnection, CanvasElement } from '@/types';
 import type { NodeDragEvent, Connection } from '@vue-flow/core';
-import { useVueFlow, VueFlow, PanelPosition } from '@vue-flow/core';
+import { VueFlow, PanelPosition } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
 import { MiniMap } from '@vue-flow/minimap';
@@ -11,9 +11,13 @@ import { useCssModule } from 'vue';
 
 const $style = useCssModule();
 
-const emit = defineEmits(['update:modelValue', 'update:node:position', 'create:connection']);
+const emit = defineEmits<{
+	'update:modelValue': [elements: CanvasElement[]];
+	'update:node:position': [id: string, position: { x: number; y: number }];
+	'create:connection': [connection: Connection];
+}>();
 
-const props = withDefaults(
+withDefaults(
 	defineProps<{
 		id?: string;
 		elements: CanvasElement[];
@@ -27,12 +31,6 @@ const props = withDefaults(
 		controlsPosition: PanelPosition.BottomLeft,
 	},
 );
-
-const { onInit } = useVueFlow({ id: props.id });
-
-onInit((instance) => {
-	console.log(instance);
-});
 
 function onNodeDragStop(e: NodeDragEvent) {
 	e.nodes.forEach((node) => {

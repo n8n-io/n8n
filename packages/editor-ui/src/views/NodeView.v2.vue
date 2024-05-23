@@ -167,20 +167,6 @@ function initializeEditableWorkflow(id: string) {
 		workflowsStore.setUsedCredentials(targetWorkflow.usedCredentials);
 	}
 
-	if (targetWorkflow.ownedBy) {
-		workflowsEEStore.setWorkflowOwnedBy({
-			workflowId: targetWorkflow.id,
-			ownedBy: targetWorkflow.ownedBy,
-		});
-	}
-
-	if (targetWorkflow.sharedWith) {
-		workflowsEEStore.setWorkflowSharedWith({
-			workflowId: targetWorkflow.id,
-			sharedWith: targetWorkflow.sharedWith,
-		});
-	}
-
 	const tags = (targetWorkflow.tags ?? []) as ITag[];
 	const tagIds = tags.map((tag) => tag.id);
 	workflowsStore.setWorkflowTagIds(tagIds || []);

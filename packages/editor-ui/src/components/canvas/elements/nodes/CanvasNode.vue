@@ -22,11 +22,10 @@ const outputs = computed(() => props.data.outputs);
 
 const nodeTypesStore = useNodeTypesStore();
 
-const { mainInputs, nonMainInputs, mainOutputs, nonMainOutputs, requiredNonMainInputs } =
-	useNodeConnections({
-		inputs,
-		outputs,
-	});
+const { mainInputs, nonMainInputs, mainOutputs, nonMainOutputs } = useNodeConnections({
+	inputs,
+	outputs,
+});
 
 const nodeType = computed(() => {
 	return nodeTypesStore.getNodeType(props.data.type, props.data.typeVersion);
