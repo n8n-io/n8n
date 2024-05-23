@@ -285,6 +285,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		await this.update({ id: executionId }, { status });
 	}
 
+	async resetStartedAt(executionId: string) {
+		await this.update({ id: executionId }, { startedAt: new Date() });
+	}
+
 	async updateExistingExecution(executionId: string, execution: Partial<IExecutionResponse>) {
 		// Se isolate startedAt because it must be set when the execution starts and should never change.
 		// So we prevent updating it, if it's sent (it usually is and causes problems to executions that

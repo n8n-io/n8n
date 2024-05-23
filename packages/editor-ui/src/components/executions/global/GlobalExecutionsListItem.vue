@@ -38,6 +38,10 @@ const isRunning = computed(() => {
 	return props.execution.status === 'running';
 });
 
+const isPending = computed(() => {
+	return props.execution.status === 'new';
+});
+
 const isWaitTillIndefinite = computed(() => {
 	if (!props.execution.waitTill) {
 		return false;
@@ -74,8 +78,12 @@ const formattedStoppedAtDate = computed(() => {
 });
 
 const statusTooltipText = computed(() => {
+	if (props.execution.status === 'new') {
+		return i18n.baseText('executionsList.statusTooltipText.waitingForConcurrencyCapacity');
+	}
+
 	if (props.execution.status === 'waiting' && isWaitTillIndefinite.value) {
-		return i18n.baseText('executionsList.statusTooltipText.theWorkflowIsWaitingIndefinitely');
+		return i18n.baseText('executionsList.statusTooltipText.waitingForWebhook');
 	}
 	return '';
 });
@@ -89,7 +97,7 @@ const statusText = computed(() => {
 		case 'crashed':
 			return i18n.baseText('executionsList.error');
 		case 'new':
-			return i18n.baseText('executionsList.running');
+			return i18n.baseText('executionsList.pending');
 		case 'running':
 			return i18n.baseText('executionsList.running');
 		case 'success':
@@ -116,7 +124,7 @@ const statusTextTranslationPath = computed(() => {
 				return 'executionsList.statusText';
 			}
 		case 'new':
-			return 'executionsList.statusRunning';
+			return 'executionsList.statusPending';
 		case 'running':
 			return 'executionsList.statusRunning';
 		default:
@@ -171,11 +179,11 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 		</td>
 		<td>
 			<div :class="$style.statusColumn">
-				<span v-if="isRunning" :class="$style.spinner">
+				<span v-if="isPending || isRunning" :class="$style.spinner">
 					<FontAwesomeIcon icon="spinner" spin />
 				</span>
 				<i18n-t
-					v-if="!isWaitTillIndefinite"
+					v-if="!isWaitTillIndefinite && !isPending"
 					data-test-id="execution-status"
 					tag="span"
 					:keypath="statusTextTranslationPath"
@@ -332,7 +340,7 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 
 	&.new td:first-child::before,
 	&.running td:first-child::before {
-		background: var(--execution-card-border-running);
+		background: var(--color-warning);
 	}
 
 	&.waiting td:first-child::before {

@@ -459,6 +459,8 @@ export type IPushData =
 	| PushDataReloadNodeType
 	| PushDataRemoveNodeType
 	| PushDataTestWebhook
+	| PushDataExecutionThrottled
+	| PushDataExecutionReleased
 	| PushDataExecutionRecovered
 	| PushDataWorkerStatusMessage
 	| PushDataActiveWorkflowAdded
@@ -479,6 +481,14 @@ export type PushDataActiveWorkflowRemoved = {
 export type PushDataWorkflowFailedToActivate = {
 	data: IWorkflowFailedToActivate;
 	type: 'workflowFailedToActivate';
+};
+
+export type PushDataExecutionThrottled = {
+	type: 'executionThrottled';
+};
+
+export type PushDataExecutionReleased = {
+	type: 'executionReleased';
 };
 
 export type PushDataExecutionRecovered = {

@@ -6,6 +6,7 @@ import { type WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
 import { UnknownExecutionModeError } from '@/errors/unknown-execution-mode.error';
 import { UnexpectedExecutionModeError } from '@/errors/unexpected-execution-mode.error';
 import { ConcurrencyCapZeroError } from '@/errors/concurrency-cap-zero.error';
+import { Push } from '@/push';
 
 @Service()
 export class ConcurrencyControlService {
@@ -19,7 +20,10 @@ export class ConcurrencyControlService {
 
 	private readonly isEnabled: boolean;
 
-	constructor(private readonly logger: Logger) {
+	constructor(
+		private readonly logger: Logger,
+		private readonly push: Push,
+	) {
 		if (this.manualCap === 0 || this.productionCap === 0) {
 			throw new ConcurrencyCapZeroError();
 		}
@@ -34,12 +38,14 @@ export class ConcurrencyControlService {
 			kind: 'production',
 			capacity: this.productionCap,
 			logger: this.logger,
+			push: this.push,
 		});
 
 		this.manualQueue = new ConcurrencyQueue({
 			kind: 'manual',
 			capacity: this.manualCap,
 			logger: this.logger,
+			push: this.push,
 		});
 
 		this.logInit();

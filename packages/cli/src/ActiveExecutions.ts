@@ -67,7 +67,14 @@ export class ActiveExecutions {
 			if (executionId === undefined) {
 				throw new ApplicationError('There was an issue assigning an execution id to the execution');
 			}
+
 			await this.concurrencyControl.check({ mode, executionId });
+
+			if (new Date().getTime() - fullExecutionData.startedAt.getTime() > 1000) {
+				// @TODO: Do this at ConcurrencyQueue.resolveNext?
+				await this.executionRepository.resetStartedAt(executionId);
+			}
+
 			executionStatus = 'running';
 		} else {
 			// Is an existing execution we want to finish so update in DB

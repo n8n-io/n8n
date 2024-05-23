@@ -23,7 +23,7 @@
 				</n8n-text>
 				<div :class="$style.executionStatus">
 					<n8n-spinner
-						v-if="executionUIDetails.name === 'running'"
+						v-if="executionUIDetails.name === 'running' || executionUIDetails.name === 'pending'"
 						size="small"
 						:class="[$style.spinner, 'mr-4xs']"
 					/>
@@ -179,7 +179,7 @@ export default defineComponent({
 		}
 	}
 
-	&.new,
+	&.pending,
 	&.running {
 		.spinner {
 			position: relative;

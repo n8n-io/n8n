@@ -281,6 +281,7 @@ async function onLoadMore(): Promise<void> {
 }
 
 async function loadMore(): Promise<void> {
+	// @TODO: Update here for pending?
 	if (
 		!!executionsStore.executionsFilters.status?.includes('running') ||
 		executions.value.length >= executionsStore.executionsCount

@@ -1,10 +1,19 @@
 <template>
-	<div v-if="executionUIDetails?.name === 'running'" :class="$style.runningInfo">
+	<div
+		v-if="executionUIDetails?.name === 'running' || executionUIDetails?.name === 'pending'"
+		:class="$style.runningInfo"
+	>
 		<div :class="$style.spinner">
 			<n8n-spinner type="ring" />
 		</div>
 		<n8n-text :class="$style.runningMessage" color="text-light">
-			{{ $locale.baseText('executionDetails.runningMessage') }}
+			{{
+				$locale.baseText(
+					executionUIDetails?.name === 'running'
+						? 'executionDetails.runningMessage'
+						: 'executionDetails.pendingMessage',
+				)
+			}}
 		</n8n-text>
 		<n8n-button class="mt-l" type="tertiary" @click="handleStopClick">
 			{{ $locale.baseText('executionsList.stopExecution') }}

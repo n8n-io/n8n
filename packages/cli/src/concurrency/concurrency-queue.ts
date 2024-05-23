@@ -1,4 +1,5 @@
 import type { Logger } from '@/Logger';
+import type { Push } from '@/push';
 import { Service } from 'typedi';
 
 @Service()
@@ -7,22 +8,27 @@ export class ConcurrencyQueue {
 
 	private capacity: number;
 
-	private kind: 'manual' | 'production';
+	private readonly kind: 'manual' | 'production';
 
-	private logger: Logger;
+	private readonly logger: Logger;
+
+	private readonly push: Push;
 
 	constructor({
 		capacity,
 		kind,
-		logger,
+		logger, // @TODO: Inject via typedi?
+		push, // @TODO: Inject via typedi?
 	}: {
 		capacity: number;
 		kind: 'manual' | 'production';
 		logger: Logger;
+		push: Push;
 	}) {
 		this.capacity = capacity;
 		this.kind = kind;
 		this.logger = logger;
+		this.push = push;
 	}
 
 	async enqueue(executionId: string) {
@@ -34,6 +40,9 @@ export class ConcurrencyQueue {
 				capacity: this.capacity,
 				kind: this.kind,
 			});
+
+			if (this.kind === 'manual') this.push.broadcast('executionThrottled');
+
 			// eslint-disable-next-line @typescript-eslint/return-await
 			return new Promise<void>((resolve) => this.queue.push([executionId, resolve]));
 		}
@@ -66,6 +75,8 @@ export class ConcurrencyQueue {
 		if (!execution) return;
 
 		const [_, resolve] = execution;
+
+		if (this.kind === 'manual') this.push.broadcast('executionReleased');
 
 		resolve();
 	}
