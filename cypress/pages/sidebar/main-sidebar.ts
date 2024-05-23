@@ -7,6 +7,7 @@ export class MainSidebar extends BasePage {
 	getters = {
 		menuItem: (id: string) => cy.getByTestId('menu-item').get('#' + id),
 		settings: () => this.getters.menuItem('settings'),
+		settingsBack: () => cy.getByTestId('settings-back'),
 		templates: () => this.getters.menuItem('templates'),
 		workflows: () => this.getters.menuItem('workflows'),
 		credentials: () => this.getters.menuItem('credentials'),
@@ -30,8 +31,8 @@ export class MainSidebar extends BasePage {
 		openUserMenu: () => {
 			this.getters.userMenu().click();
 		},
-		openUserMenu: () => {
-			this.getters.userMenu().click();
+		closeSettings: () => {
+			this.getters.settingsBack().click();
 		},
 		signout: () => {
 			const workflowsPage = new WorkflowsPage();
