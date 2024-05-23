@@ -1,6 +1,5 @@
 <template>
 	<RunData
-		v-if="currentNode"
 		:node="currentNode"
 		:run-index="runIndex"
 		:linked-runs="linkedRuns"
