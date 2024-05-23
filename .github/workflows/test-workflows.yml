@@ -26,9 +26,9 @@ jobs:
       - run: corepack enable
         working-directory: n8n
 
-      - uses: actions/setup-node@v4.0.1
+      - uses: actions/setup-node@v4.0.2
         with:
-          node-version: 18.x
+          node-version: 20.x
           cache: 'pnpm'
           cache-dependency-path: 'n8n/pnpm-lock.yaml'
 
