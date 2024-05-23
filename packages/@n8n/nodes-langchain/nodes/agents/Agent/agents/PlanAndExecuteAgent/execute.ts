@@ -102,5 +102,5 @@ export async function planAndExecuteAgentExecute(
 		}
 	}
 
-	return await this.prepareOutputData(returnData);
+	return [returnData];
 }

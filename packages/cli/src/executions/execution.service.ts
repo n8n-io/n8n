@@ -9,6 +9,7 @@ import type {
 	ExecutionStatus,
 } from 'n8n-workflow';
 import {
+	ErrorReporterProxy as EventReporter,
 	ApplicationError,
 	ExecutionStatusList,
 	Workflow,
@@ -106,6 +107,8 @@ export class ExecutionService {
 		}
 
 		if (!execution.status) {
+			const { data, workflowData, ...rest } = execution;
+			EventReporter.info('Detected `null` execution status', { extra: { execution: rest } });
 			execution.status = getStatusUsingPreviousExecutionStatusMethod(execution);
 		}
 

@@ -1,22 +1,30 @@
 import { INSTANCE_ADMIN, INSTANCE_MEMBERS } from '../constants';
-import { WorkflowsPage, WorkflowPage, CredentialsModal, CredentialsPage } from '../pages';
+import {
+	WorkflowsPage,
+	WorkflowPage,
+	CredentialsModal,
+	CredentialsPage,
+	WorkflowExecutionsTab,
+} from '../pages';
 import * as projects from '../composables/projects';
 
 const workflowsPage = new WorkflowsPage();
 const workflowPage = new WorkflowPage();
 const credentialsPage = new CredentialsPage();
 const credentialsModal = new CredentialsModal();
+const executionsTab = new WorkflowExecutionsTab();
 
 describe('Projects', () => {
 	beforeEach(() => {
 		cy.resetDatabase();
+		cy.enableFeature('sharing');
 		cy.enableFeature('advancedPermissions');
 		cy.enableFeature('projectRole:admin');
 		cy.enableFeature('projectRole:editor');
 		cy.changeQuota('maxTeamProjects', -1);
 	});
 
-	it('should handle workflows and credentials', () => {
+	it('should handle workflows and credentials and menu items', () => {
 		cy.signin(INSTANCE_ADMIN);
 		cy.visit(workflowsPage.url);
 		workflowsPage.getters.workflowCards().should('not.have.length');
@@ -147,5 +155,68 @@ describe('Projects', () => {
 		cy.wait('@credentialsList').then((interception) => {
 			expect(interception.request.url).not.to.contain('filter');
 		});
+
+		let menuItems = cy.getByTestId('menu-item');
+
+		menuItems.filter('[class*=active_]').should('have.length', 1);
+		menuItems.filter(':contains("Home")[class*=active_]').should('exist');
+
+		projects.getMenuItems().first().click();
+
+		menuItems = cy.getByTestId('menu-item');
+
+		menuItems.filter('[class*=active_]').should('have.length', 1);
+		menuItems.filter(':contains("Development")[class*=active_]').should('exist');
+
+		cy.intercept('GET', '/rest/workflows/*').as('loadWorkflow');
+		workflowsPage.getters.workflowCards().first().click();
+
+		cy.wait('@loadWorkflow');
+		menuItems = cy.getByTestId('menu-item');
+
+		menuItems.filter('[class*=active_]').should('have.length', 1);
+		menuItems.filter(':contains("Development")[class*=active_]').should('exist');
+
+		cy.intercept('GET', '/rest/executions*').as('loadExecutions');
+		executionsTab.actions.switchToExecutionsTab();
+
+		cy.wait('@loadExecutions');
+		menuItems = cy.getByTestId('menu-item');
+
+		menuItems.filter('[class*=active_]').should('have.length', 1);
+		menuItems.filter(':contains("Development")[class*=active_]').should('exist');
+
+		executionsTab.actions.switchToEditorTab();
+
+		menuItems = cy.getByTestId('menu-item');
+
+		menuItems.filter('[class*=active_]').should('have.length', 1);
+		menuItems.filter(':contains("Development")[class*=active_]').should('exist');
+
+		cy.getByTestId('menu-item').filter(':contains("Variables")').click();
+		cy.getByTestId('unavailable-resources-list').should('be.visible');
+
+		menuItems = cy.getByTestId('menu-item');
+
+		menuItems.filter('[class*=active_]').should('have.length', 1);
+		menuItems.filter(':contains("Variables")[class*=active_]').should('exist');
+
+		projects.getHomeButton().click();
+		menuItems = cy.getByTestId('menu-item');
+
+		menuItems.filter('[class*=active_]').should('have.length', 1);
+		menuItems.filter(':contains("Home")[class*=active_]').should('exist');
+
+		workflowsPage.getters.workflowCards().should('have.length', 2).first().click();
+
+		cy.wait('@loadWorkflow');
+		cy.getByTestId('execute-workflow-button').should('be.visible');
+
+		menuItems = cy.getByTestId('menu-item');
+		menuItems.filter(':contains("Home")[class*=active_]').should('not.exist');
+
+		menuItems = cy.getByTestId('menu-item');
+		menuItems.filter('[class*=active_]').should('have.length', 1);
+		menuItems.filter(':contains("Development")[class*=active_]').should('exist');
 	});
 });
