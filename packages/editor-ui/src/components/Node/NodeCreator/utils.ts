@@ -91,6 +91,7 @@ export function isAINode(node: INodeCreateElement) {
 export function groupItemsInSections(
 	items: INodeCreateElement[],
 	sections: string[] | NodeViewItemSection[],
+	sortAlphabetically = true,
 ): INodeCreateElement[] {
 	const filteredSections = sections.filter(
 		(section): section is NodeViewItemSection => typeof section === 'object',
@@ -115,9 +116,12 @@ export function groupItemsInSections(
 				type: 'section',
 				key: section.key,
 				title: section.title,
-				children: sortNodeCreateElements(children[section.key] ?? []),
+				children: sortAlphabetically
+					? sortNodeCreateElements(children[section.key] ?? [])
+					: children[section.key] ?? [],
 			}),
 		);
+
 	const nonAINodes = items.filter((item) => !isAINode(item));
 	const AINodes = items.filter((item) => isAINode(item));
 

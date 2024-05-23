@@ -92,7 +92,12 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 			const searchResults = extendItemsWithUUID(searchNodes(stack.search || '', filteredNodes));
 
-			return groupAINodes(searchResults) ?? searchResults;
+			const groupedNodes = groupIfAiNodes(searchResults, false) ?? searchResults;
+			// Set the active index to the second item if there's a section
+			// as the first item is collapsable
+			stack.activeIndex = groupedNodes.some((node) => node.type === 'section') ? 1 : 0;
+
+			return groupedNodes;
 		}
 		return extendItemsWithUUID(stack.baselineItems);
 	});
@@ -138,7 +143,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 			searchNodes(stack.search || '', filteredNodes),
 		);
 		if (isAiRootView(stack)) {
-			globalSearchResult = groupAINodes(globalSearchResult);
+			globalSearchResult = groupIfAiNodes(globalSearchResult);
 		}
 
 		const filteredItems = globalSearchResult.filter((item) => {
@@ -176,7 +181,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		return stack.rootView === AI_NODE_CREATOR_VIEW;
 	}
 
-	function groupAINodes(items: INodeCreateElement[]) {
+	function groupIfAiNodes(items: INodeCreateElement[], sortAlphabetically = true) {
 		const aiNodes = items.filter(
 			(node): node is NodeCreateElement =>
 				(node.type === 'node' && node.properties.codex?.categories?.includes(AI_SUBCATEGORY)) ??
@@ -213,7 +218,6 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 				const nodesKeys = nonAiNodes.map((node) => node.key);
 
-
 				sectionsMap.set(sectionKey, {
 					key: sectionKey,
 					title: sectionKey,
@@ -223,7 +227,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 			// Convert sectionsMap to array of sections
 			const sections = Array.from(sectionsMap.values());
 
-			return groupItemsInSections(items, sections);
+			return groupItemsInSections(items, sections, sortAlphabetically);
 		}
 
 		return items;

@@ -35,7 +35,7 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.actions.openNodeCreator();
 
 		nodeCreatorFeature.getters.searchBar().find('input').type('manual');
-		nodeCreatorFeature.getters.creatorItem().should('have.length', 2);
+		nodeCreatorFeature.getters.creatorItem().should('have.length', 1);
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('manual123');
 		nodeCreatorFeature.getters.creatorItem().should('have.length', 0);
 		nodeCreatorFeature.getters
@@ -159,7 +159,7 @@ describe('Node Creator', () => {
 
 	it('should have "Triggers" section collapsed when opening actions view from Regular root view', () => {
 		nodeCreatorFeature.actions.openNodeCreator();
-		nodeCreatorFeature.getters.getCreatorItem('Manually').click();
+		nodeCreatorFeature.getters.getCreatorItem('Trigger manually').click();
 
 		nodeCreatorFeature.actions.openNodeCreator();
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('n8n');
