@@ -23,8 +23,6 @@ import type { MessageEventBusDestinationWebhook } from '@/eventbus/MessageEventB
 import type { MessageEventBusDestinationSentry } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSentry.ee';
 import { EventMessageAudit } from '@/eventbus/EventMessageClasses/EventMessageAudit';
 import type { EventNamesTypes } from '@/eventbus/EventMessageClasses';
-import { EventMessageWorkflow } from '@/eventbus/EventMessageClasses/EventMessageWorkflow';
-import { EventMessageNode } from '@/eventbus/EventMessageClasses/EventMessageNode';
 import { ExecutionDataRecoveryService } from '@/eventbus/executionDataRecovery.service';
 
 import * as utils from './shared/utils';
