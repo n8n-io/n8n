@@ -6,7 +6,7 @@ import { Cipher } from 'n8n-core';
 import { mock } from 'jest-mock-extended';
 
 import { OAuth1CredentialController } from '@/controllers/oauth/oAuth1Credential.controller';
-import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { User } from '@db/entities/User';
 import type { OAuthRequest } from '@/requests';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
@@ -164,7 +164,7 @@ describe('OAuth1CredentialController', () => {
 			expect(credentialsRepository.findOneBy).toHaveBeenCalledTimes(1);
 			expect(credentialsRepository.findOneBy).toHaveBeenCalledWith({ id: '1' });
 		});
-		
+
 		it('should render the error page when state differs from the stored state in the credential', async () => {
 			credentialsRepository.findOneBy.mockResolvedValue(new CredentialsEntity());
 			credentialsHelper.getDecrypted.mockResolvedValue({ csrfSecret: 'invalid' });
