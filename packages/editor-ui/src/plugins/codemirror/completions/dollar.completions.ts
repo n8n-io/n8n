@@ -79,7 +79,7 @@ export function dollarOptions(): Completion[] {
 				section: RECOMMENDED_SECTION,
 				info: createInfoBoxRenderer({
 					name: '$request',
-					returnType: 'object',
+					returnType: 'Object',
 					docURL: 'https://docs.n8n.io/code/builtin/http-node-variables/',
 					description: i18n.baseText('codeNodeEditor.completer.$request'),
 				}),
@@ -114,7 +114,7 @@ export function dollarOptions(): Completion[] {
 			label,
 			info: createInfoBoxRenderer({
 				name: label,
-				returnType: 'object',
+				returnType: 'Object',
 				description: i18n.baseText('codeNodeEditor.completer.$()', { interpolate: { nodeName } }),
 			}),
 			section: PREVIOUS_NODES_SECTION,

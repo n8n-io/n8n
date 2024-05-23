@@ -39,6 +39,7 @@ import {
 	applyBracketAccessCompletion,
 	applyCompletion,
 	getDefaultArgs,
+	getDisplayType,
 	hasNoParams,
 	hasRequiredArgs,
 	insertDefaultArgs,
@@ -231,12 +232,6 @@ export const extensions = ({
 	return toOptions({ fnToDoc, isFunction: true, includeHidden, transformLabel });
 };
 
-export const getType = (value: unknown): string => {
-	if (Array.isArray(value)) return 'array';
-	if (value === null) return 'null';
-	return (typeof value).toLocaleLowerCase();
-};
-
 export const isInputData = (base: string): boolean => {
 	return (
 		/^\$input\..*\.json]/.test(base) || /^\$json/.test(base) || /^\$\(.*\)\..*\.json/.test(base)
@@ -258,7 +253,7 @@ export const isBinary = (input: AutocompleteInput<IDataObject>): boolean => {
 };
 
 export const getDetail = (base: string, value: unknown): string | undefined => {
-	const type = getType(value);
+	const type = getDisplayType(value);
 	if (!isInputData(base) || type === 'function') return undefined;
 	return type;
 };
@@ -821,7 +816,7 @@ export const customDataOptions = () => {
 		},
 		{
 			name: 'getAll',
-			returnType: 'object',
+			returnType: 'Object',
 			docURL: 'https://docs.n8n.io/workflows/executions/custom-executions-data/',
 			description: i18n.baseText('codeNodeEditor.completer.$execution.customData.getAll'),
 			examples: [
@@ -1046,13 +1041,13 @@ export const itemOptions = () => {
 	return [
 		{
 			name: 'json',
-			returnType: 'object',
+			returnType: 'Object',
 			docURL: 'https://docs.n8n.io/data/data-structure/',
 			description: i18n.baseText('codeNodeEditor.completer.item.json'),
 		},
 		{
 			name: 'binary',
-			returnType: 'object',
+			returnType: 'Object',
 			docURL: 'https://docs.n8n.io/data/data-structure/',
 			description: i18n.baseText('codeNodeEditor.completer.item.binary'),
 		},
@@ -1161,7 +1156,7 @@ export const secretProvidersOptions = () => {
 			name: provider,
 			doc: {
 				name: provider,
-				returnType: 'object',
+				returnType: 'Object',
 				description: i18n.baseText('codeNodeEditor.completer.$secrets.provider'),
 				docURL: i18n.baseText('settings.externalSecrets.docs'),
 			},
@@ -1296,7 +1291,7 @@ export const objectGlobalOptions = () => {
 					evaluated: "{ id: 1, name: 'Banana' }",
 				},
 			],
-			returnType: 'object',
+			returnType: 'Object',
 			docURL:
 				'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/assign',
 		},

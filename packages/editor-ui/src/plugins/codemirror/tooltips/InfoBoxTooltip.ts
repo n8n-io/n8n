@@ -20,6 +20,7 @@ import { stringMethods } from 'n8n-workflow/src/NativeMethods/String.methods';
 import { resolveParameter } from '../../../composables/useWorkflowHelpers';
 import { ROOT_DOLLAR_COMPLETIONS } from '../completions/constants';
 import { createInfoBoxRenderer } from '../completions/infoBoxRenderer';
+import { getDisplayType } from '../completions/utils';
 
 function docToTooltip(
 	index: number,
@@ -278,6 +279,8 @@ const hoverInfoBoxTooltip = hoverTooltip(
 				const currentPropertyIsFunctionCall =
 					subject && subject.lastChild?.from === jsNode.from && subject.lastChild?.to === jsNode.to;
 
+				rawCompletionSources;
+
 				try {
 					if (currentPropertyIsFunctionCall) {
 						const base = readJs(jsNode.parent?.firstChild);
@@ -335,7 +338,12 @@ const hoverInfoBoxTooltip = hoverTooltip(
 						const parent = readJs(jsNode.parent);
 						const resolved = resolveParameter(`={{ ${parent} }}`);
 
-						return docToTooltip(pos, -1, { name: propName, returnType: typeof resolved }, false);
+						return docToTooltip(
+							pos,
+							-1,
+							{ name: propName, returnType: getDisplayType(resolved) },
+							false,
+						);
 					}
 				} catch (error) {
 					return null;

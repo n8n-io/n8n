@@ -156,7 +156,7 @@ const renderArg = (arg: DocMetadataArgument, highlightArgIndex?: number) => {
 	}
 
 	if (Array.isArray(arg.args)) {
-		argItem.appendChild(renderArgList(arg.args));
+		argItem.appendChild(renderArgList(arg.args, highlightArgIndex));
 	}
 
 	return argItem;
