@@ -56,6 +56,7 @@ import type { Workflow } from './Workflow';
 import { validateFilterParameter } from './NodeParameters/FilterParameter';
 import { validateFieldType } from './TypeValidation';
 import { ApplicationError } from './errors/application.error';
+import { SINGLE_EXECUTION_NODES } from './Constants';
 
 export const cronNodeOptions: INodePropertyCollection[] = [
 	{
@@ -1749,19 +1750,12 @@ export function getCredentialsForNode(
 	return object.description.credentials ?? [];
 }
 
-export function willExecutesOnce(type: string, parameters: INodeParameters): boolean {
-	//nodes that would execute only once with such parameters
-	const NODES_EXECUTES_ONCE: { [key: string]: { [key: string]: NodeParameterValue[] } } = {
-		'n8n-nodes-base.code': {
-			mode: [undefined, 'runOnceForAllItems'],
-		},
-	};
+export function isSingleExecution(type: string, parameters: INodeParameters): boolean {
+	const singleExecutionCase = SINGLE_EXECUTION_NODES[type];
 
-	if (NODES_EXECUTES_ONCE[type]) {
-		for (const parameter of Object.keys(NODES_EXECUTES_ONCE[type])) {
-			if (
-				!NODES_EXECUTES_ONCE[type][parameter].includes(parameters[parameter] as NodeParameterValue)
-			) {
+	if (singleExecutionCase) {
+		for (const parameter of Object.keys(singleExecutionCase)) {
+			if (!singleExecutionCase[parameter].includes(parameters[parameter] as NodeParameterValue)) {
 				return false;
 			}
 		}

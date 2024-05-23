@@ -53,6 +53,7 @@ import { useRouter } from 'vue-router';
 
 const NODE_TEST_STEP_POPUP_COUNT_KEY = 'N8N_NODE_TEST_STEP_POPUP_COUNT';
 const MAX_POPUP_COUNT = 10;
+const POPUP_UPDATE_DELAY = 3000;
 
 export default defineComponent({
 	inheritAttrs: false,
@@ -102,6 +103,7 @@ export default defineComponent({
 			pinnedData,
 			runWorkflow,
 			stopCurrentExecution,
+			lastPopupCountUpdate: 0,
 			...useToast(),
 			...useMessage(),
 		};
@@ -259,8 +261,12 @@ export default defineComponent({
 		onMouseOver() {
 			const count = this.testStepButtonPopupCount();
 
-			if (count < MAX_POPUP_COUNT) {
-				localStorage.setItem(NODE_TEST_STEP_POPUP_COUNT_KEY, `${count + 1}`);
+			if (count < MAX_POPUP_COUNT && !this.disabledHint && this.tooltipText) {
+				const now = Date.now();
+				if (!this.lastPopupCountUpdate || now - this.lastPopupCountUpdate >= POPUP_UPDATE_DELAY) {
+					localStorage.setItem(NODE_TEST_STEP_POPUP_COUNT_KEY, `${count + 1}`);
+					this.lastPopupCountUpdate = now;
+				}
 			}
 		},
 

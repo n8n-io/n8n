@@ -313,7 +313,7 @@ export default defineComponent({
 				this.node &&
 				this.isLatestNodeVersion &&
 				this.inputSize > 1 &&
-				!NodeHelpers.willExecutesOnce(this.node.type, this.node.parameters)
+				!NodeHelpers.isSingleExecution(this.node.type, this.node.parameters)
 			) {
 				return this.$locale.baseText('nodeSettings.executeButtonTooltip.times', {
 					interpolate: { inputSize: this.inputSize },
