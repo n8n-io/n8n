@@ -34,19 +34,23 @@ export class ConcurrencyControlService {
 			return;
 		}
 
-		this.productionQueue = new ConcurrencyQueue({
-			kind: 'production',
-			capacity: this.productionCap,
-			logger: this.logger,
-			push: this.push,
-		});
+		this.productionQueue = new ConcurrencyQueue(
+			{
+				kind: 'production',
+				capacity: this.productionCap,
+			},
+			this.logger,
+			this.push,
+		);
 
-		this.manualQueue = new ConcurrencyQueue({
-			kind: 'manual',
-			capacity: this.manualCap,
-			logger: this.logger,
-			push: this.push,
-		});
+		this.manualQueue = new ConcurrencyQueue(
+			{
+				kind: 'manual',
+				capacity: this.manualCap,
+			},
+			this.logger,
+			this.push,
+		);
 
 		this.logInit();
 

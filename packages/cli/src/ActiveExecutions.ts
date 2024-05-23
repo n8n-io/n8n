@@ -71,7 +71,7 @@ export class ActiveExecutions {
 			await this.concurrencyControl.check({ mode, executionId });
 
 			if (new Date().getTime() - fullExecutionData.startedAt.getTime() > 1000) {
-				// @TODO: Do this at ConcurrencyQueue.resolveNext?
+				// @TODO: Update `startedAt` without heuristic?
 				await this.executionRepository.resetStartedAt(executionId);
 			}
 
