@@ -1,12 +1,12 @@
 import nock from 'nock';
 import Container from 'typedi';
+import type { Response } from 'express';
 import Csrf from 'csrf';
-import { type Response } from 'express';
 import { Cipher } from 'n8n-core';
 import { mock } from 'jest-mock-extended';
 
-import { OAuth2CredentialController } from '@/controllers/oauth/oAuth2Credential.controller';
-import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import { OAuth1CredentialController } from '@/controllers/oauth/oAuth1Credential.controller';
+import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { User } from '@db/entities/User';
 import type { OAuthRequest } from '@/requests';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
@@ -16,19 +16,19 @@ import { Logger } from '@/Logger';
 import { VariablesService } from '@/environments/variables/variables.service.ee';
 import { SecretsHelper } from '@/SecretsHelpers';
 import { CredentialsHelper } from '@/CredentialsHelper';
-
-import { mockInstance } from '../../shared/mocking';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-describe('OAuth2CredentialController', () => {
+import { mockInstance } from '../../../shared/mocking';
+
+describe('OAuth1CredentialController', () => {
 	mockInstance(Logger);
+	mockInstance(ExternalHooks);
 	mockInstance(SecretsHelper);
 	mockInstance(VariablesService, {
 		getAllCached: async () => [],
 	});
 	const cipher = mockInstance(Cipher);
-	const externalHooks = mockInstance(ExternalHooks);
 	const credentialsHelper = mockInstance(CredentialsHelper);
 	const credentialsRepository = mockInstance(CredentialsRepository);
 	const sharedCredentialsRepository = mockInstance(SharedCredentialsRepository);
@@ -43,10 +43,10 @@ describe('OAuth2CredentialController', () => {
 	const credential = mock<CredentialsEntity>({
 		id: '1',
 		name: 'Test Credential',
-		type: 'oAuth2Api',
+		type: 'oAuth1Api',
 	});
 
-	const controller = Container.get(OAuth2CredentialController);
+	const controller = Container.get(OAuth1CredentialController);
 
 	beforeEach(() => {
 		jest.resetAllMocks();
@@ -54,7 +54,7 @@ describe('OAuth2CredentialController', () => {
 
 	describe('getAuthUri', () => {
 		it('should throw a BadRequestError when credentialId is missing in the query', async () => {
-			const req = mock<OAuthRequest.OAuth2Credential.Auth>({ query: { id: '' } });
+			const req = mock<OAuthRequest.OAuth1Credential.Auth>({ query: { id: '' } });
 			await expect(controller.getAuthUri(req)).rejects.toThrowError(
 				new BadRequestError('Required credential ID is missing'),
 			);
@@ -63,7 +63,7 @@ describe('OAuth2CredentialController', () => {
 		it('should throw a NotFoundError when no matching credential is found for the user', async () => {
 			sharedCredentialsRepository.findCredentialForUser.mockResolvedValueOnce(null);
 
-			const req = mock<OAuthRequest.OAuth2Credential.Auth>({ user, query: { id: '1' } });
+			const req = mock<OAuthRequest.OAuth1Credential.Auth>({ user, query: { id: '1' } });
 			await expect(controller.getAuthUri(req)).rejects.toThrowError(
 				new NotFoundError('Credential not found'),
 			);
@@ -74,26 +74,32 @@ describe('OAuth2CredentialController', () => {
 			jest.spyOn(Csrf.prototype, 'create').mockReturnValueOnce('token');
 			sharedCredentialsRepository.findCredentialForUser.mockResolvedValueOnce(credential);
 			credentialsHelper.getDecrypted.mockResolvedValueOnce({});
-			credentialsHelper.applyDefaultsAndOverwrites.mockReturnValue({
-				clientId: 'test-client-id',
-				authUrl: 'https://example.domain/o/oauth2/v2/auth',
+			credentialsHelper.applyDefaultsAndOverwrites.mockReturnValueOnce({
+				requestTokenUrl: 'https://example.domain/oauth/request_token',
+				authUrl: 'https://example.domain/oauth/authorize',
+				signatureMethod: 'HMAC-SHA1',
 			});
+			nock('https://example.domain')
+				.post('/oauth/request_token', {
+					oauth_callback:
+						'http://localhost:5678/rest/oauth1-credential/callback?state=eyJ0b2tlbiI6InRva2VuIiwiY2lkIjoiMSJ9',
+				})
+				.reply(200, { oauth_token: 'random-token' });
 			cipher.encrypt.mockReturnValue('encrypted');
 
-			const req = mock<OAuthRequest.OAuth2Credential.Auth>({ user, query: { id: '1' } });
+			const req = mock<OAuthRequest.OAuth1Credential.Auth>({ user, query: { id: '1' } });
 			const authUri = await controller.getAuthUri(req);
-			expect(authUri).toEqual(
-				'https://example.domain/o/oauth2/v2/auth?client_id=test-client-id&redirect_uri=http%3A%2F%2Flocalhost%3A5678%2Frest%2Foauth2-credential%2Fcallback&response_type=code&state=eyJ0b2tlbiI6InRva2VuIiwiY2lkIjoiMSJ9&scope=openid',
-			);
+			expect(authUri).toEqual('https://example.domain/oauth/authorize?oauth_token=random-token');
 			expect(credentialsRepository.update).toHaveBeenCalledWith(
 				'1',
 				expect.objectContaining({
 					data: 'encrypted',
 					id: '1',
 					name: 'Test Credential',
-					type: 'oAuth2Api',
+					type: 'oAuth1Api',
 				}),
 			);
+			expect(cipher.encrypt).toHaveBeenCalledWith({ csrfSecret });
 		});
 	});
 
@@ -106,26 +112,28 @@ describe('OAuth2CredentialController', () => {
 		).toString('base64');
 
 		it('should render the error page when required query params are missing', async () => {
-			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
-				query: { code: undefined, state: undefined },
-			});
+			const req = mock<OAuthRequest.OAuth1Credential.Callback>();
 			const res = mock<Response>();
+			req.query = { state: 'test' } as OAuthRequest.OAuth1Credential.Callback['query'];
 			await controller.handleCallback(req, res);
 
 			expect(res.render).toHaveBeenCalledWith('oauth-error-callback', {
 				error: {
-					message: 'Insufficient parameters for OAuth2 callback.',
-					reason: 'Received following query parameters: undefined',
+					message: 'Insufficient parameters for OAuth1 callback.',
+					reason: 'Received following query parameters: {"state":"test"}',
 				},
 			});
 			expect(credentialsRepository.findOneBy).not.toHaveBeenCalled();
 		});
 
 		it('should render the error page when `state` query param is invalid', async () => {
-			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
-				query: { code: 'code', state: 'invalid-state' },
-			});
+			const req = mock<OAuthRequest.OAuth1Credential.Callback>();
 			const res = mock<Response>();
+			req.query = {
+				oauth_verifier: 'verifier',
+				oauth_token: 'token',
+				state: 'test',
+			} as OAuthRequest.OAuth1Credential.Callback['query'];
 			await controller.handleCallback(req, res);
 
 			expect(res.render).toHaveBeenCalledWith('oauth-error-callback', {
@@ -139,82 +147,43 @@ describe('OAuth2CredentialController', () => {
 		it('should render the error page when credential is not found in DB', async () => {
 			credentialsRepository.findOneBy.mockResolvedValueOnce(null);
 
-			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
-				query: { code: 'code', state: validState },
-			});
+			const req = mock<OAuthRequest.OAuth1Credential.Callback>();
 			const res = mock<Response>();
+			req.query = {
+				oauth_verifier: 'verifier',
+				oauth_token: 'token',
+				state: validState,
+			} as OAuthRequest.OAuth1Credential.Callback['query'];
 			await controller.handleCallback(req, res);
 
 			expect(res.render).toHaveBeenCalledWith('oauth-error-callback', {
 				error: {
-					message: 'OAuth2 callback failed because of insufficient permissions',
+					message: 'OAuth1 callback failed because of insufficient permissions',
 				},
 			});
 			expect(credentialsRepository.findOneBy).toHaveBeenCalledTimes(1);
 			expect(credentialsRepository.findOneBy).toHaveBeenCalledWith({ id: '1' });
 		});
 
-		it('should render the error page when csrfSecret on the saved credential does not match the state', async () => {
-			credentialsRepository.findOneBy.mockResolvedValueOnce(credential);
-			credentialsHelper.getDecrypted.mockResolvedValueOnce({ csrfSecret });
-			jest.spyOn(Csrf.prototype, 'verify').mockReturnValueOnce(false);
+		it('should render the error page when state differs from the stored state in the credential', async () => {
+			credentialsRepository.findOneBy.mockResolvedValue(new CredentialsEntity());
+			credentialsHelper.getDecrypted.mockResolvedValue({ csrfSecret: 'invalid' });
 
-			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
-				query: { code: 'code', state: validState },
-			});
+			const req = mock<OAuthRequest.OAuth1Credential.Callback>();
 			const res = mock<Response>();
+			req.query = {
+				oauth_verifier: 'verifier',
+				oauth_token: 'token',
+				state: validState,
+			} as OAuthRequest.OAuth1Credential.Callback['query'];
+
 			await controller.handleCallback(req, res);
+
 			expect(res.render).toHaveBeenCalledWith('oauth-error-callback', {
 				error: {
-					message: 'The OAuth2 callback state is invalid!',
+					message: 'The OAuth1 callback state is invalid!',
 				},
 			});
-			expect(externalHooks.run).not.toHaveBeenCalled();
-		});
-
-		it('should exchange the code for a valid token, and save it to DB', async () => {
-			credentialsRepository.findOneBy.mockResolvedValueOnce(credential);
-			credentialsHelper.getDecrypted.mockResolvedValueOnce({ csrfSecret });
-			credentialsHelper.applyDefaultsAndOverwrites.mockReturnValue({
-				clientId: 'test-client-id',
-				clientSecret: 'oauth-secret',
-				accessTokenUrl: 'https://example.domain/token',
-			});
-			jest.spyOn(Csrf.prototype, 'verify').mockReturnValueOnce(true);
-			nock('https://example.domain')
-				.post(
-					'/token',
-					'code=code&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A5678%2Frest%2Foauth2-credential%2Fcallback',
-				)
-				.reply(200, { access_token: 'access-token', refresh_token: 'refresh-token' });
-			cipher.encrypt.mockReturnValue('encrypted');
-
-			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
-				query: { code: 'code', state: validState },
-				originalUrl: '?code=code',
-			});
-			const res = mock<Response>();
-			await controller.handleCallback(req, res);
-
-			expect(externalHooks.run).toHaveBeenCalledWith('oauth2.callback', [
-				expect.objectContaining({
-					clientId: 'test-client-id',
-					redirectUri: 'http://localhost:5678/rest/oauth2-credential/callback',
-				}),
-			]);
-			expect(cipher.encrypt).toHaveBeenCalledWith({
-				oauthTokenData: { access_token: 'access-token', refresh_token: 'refresh-token' },
-			});
-			expect(credentialsRepository.update).toHaveBeenCalledWith(
-				'1',
-				expect.objectContaining({
-					data: 'encrypted',
-					id: '1',
-					name: 'Test Credential',
-					type: 'oAuth2Api',
-				}),
-			);
-			expect(res.render).toHaveBeenCalledWith('oauth-callback');
 		});
 	});
 });
