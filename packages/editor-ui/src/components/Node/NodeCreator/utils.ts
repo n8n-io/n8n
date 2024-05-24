@@ -11,6 +11,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { sublimeSearch } from '@/utils/sortUtils';
 import type { NodeViewItemSection } from './viewsData';
+import { i18n } from '@/plugins/i18n';
 
 export function transformNodeType(
 	node: SimplifiedNodeType,
@@ -100,6 +101,7 @@ export function groupItemsInSections(
 	const itemsBySection = (items2: INodeCreateElement[]) =>
 		items2.reduce((acc: Record<string, INodeCreateElement[]>, item) => {
 			const section = filteredSections.find((s) => s.items.includes(item.key));
+			console.log('🚀 ~ items2.reduce ~ section:', section);
 			const key = section?.key ?? 'other';
 			if (key) {
 				acc[key] = [...(acc[key] ?? []), item];
@@ -132,26 +134,14 @@ export function groupItemsInSections(
 	const AINodesSections = mapNewSections(filteredSections, AINodesBySection);
 
 	const result = [...nonAINodesSections, ...AINodesSections]
-		// .map(
-		// 	(section): SectionCreateElement => ({
-		// 		type: 'section',
-		// 		key: section.key,
-		// 		title: section.title,
-		// 		children: sortNodeCreateElements(allItems[section.key] ?? []),
-		// 	}),
-		// )
-		// .concat({
-		// 	type: 'section',
-		// 	key: 'other',
-		// 	title: i18n.baseText('nodeCreator.sectionNames.other'),
-		// 	children: sortNodeCreateElements(allItems.other ?? []),
-		// })
+		.concat({
+			type: 'section',
+			key: 'other',
+			title: i18n.baseText('nodeCreator.sectionNames.other'),
+			children: sortNodeCreateElements(nonAINodesBySection.other ?? []),
+		})
 		.filter((section) => section.type !== 'section' || section.children.length > 0);
-	// const otherNodes = sortNodeCreateElements(itemsBySection.other);
-	// console.log('Result2:', result);
-	// result.unshift(...otherNodes);
-	// result = result.filter((section) => section.type !== 'section' || section.children.length > 0);
-	//
+
 	if (result.length <= 1) {
 		return items;
 	}

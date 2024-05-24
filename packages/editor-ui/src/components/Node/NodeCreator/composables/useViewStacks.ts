@@ -70,6 +70,7 @@ interface ViewStack {
 export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	const nodeCreatorStore = useNodeCreatorStore();
 	const { getActiveItemIndex } = useKeyboardNavigation();
+	const i18n = useI18n();
 
 	const viewStacks = ref<ViewStack[]>([]);
 
@@ -99,7 +100,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 			return groupedNodes;
 		}
-		return extendItemsWithUUID(stack.baselineItems);
+		return groupIfAiNodes(stack.baselineItems, true);
 	});
 
 	const activeViewStack = computed<ViewStack>(() => {
@@ -192,6 +193,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 			const sectionsMap = new Map<string, NodeViewItemSection>();
 			aiNodes.forEach((node) => {
 				const section = node.properties.codex?.subcategories?.[AI_SUBCATEGORY]?.[0];
+
 				if (section) {
 					const currentItems = sectionsMap.get(section)?.items ?? [];
 
@@ -211,9 +213,11 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 			if (nonAiNodes.length > 0) {
 				let sectionKey = '';
 				if (nonAiRegularNodes.length && nonAiTriggerNodes.length) {
-					sectionKey = 'Regular & Trigger Nodes';
+					sectionKey = i18n.baseText('nodeCreator.actionsCategory.regularAndTriggers');
 				} else {
-					sectionKey = nonAiRegularNodes.length ? 'Regular Nodes' : 'Trigger Nodes';
+					sectionKey = nonAiRegularNodes.length
+						? i18n.baseText('nodeCreator.actionsCategory.regularNodes')
+						: i18n.baseText('nodeCreator.actionsCategory.triggerNodes');
 				}
 
 				const nodesKeys = nonAiNodes.map((node) => node.key);
@@ -255,8 +259,6 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		isOutput?: boolean,
 		filter?: INodeInputFilter,
 	) {
-		const i18n = useI18n();
-
 		let nodesByConnectionType: { [key: string]: string[] };
 		let relatedAIView: { properties: NodeViewItem['properties'] } | undefined;
 
