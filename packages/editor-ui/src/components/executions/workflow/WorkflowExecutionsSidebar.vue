@@ -81,6 +81,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { ExecutionFilterType } from '@/Interface';
 
 type WorkflowExecutionsCardRef = InstanceType<typeof WorkflowExecutionsCard>;
+type AutoScrollDeps = { activeExecutionSet: boolean; cardsMounted: boolean; scroll: boolean };
 
 export default defineComponent({
 	name: 'WorkflowExecutionsSidebar',
@@ -123,7 +124,7 @@ export default defineComponent({
 				activeExecutionSet: false,
 				cardsMounted: false,
 				scroll: true,
-			} as { activeExecutionSet: boolean; cardsMounted: boolean; scroll: boolean },
+			} as AutoScrollDeps,
 		};
 	},
 	computed: {
@@ -145,11 +146,7 @@ export default defineComponent({
 			}
 		},
 		autoScrollDeps: {
-			handler(updatedDeps: {
-				activeExecutionSet: boolean;
-				cardsMounted: boolean;
-				scroll: boolean;
-			}) {
+			handler(updatedDeps: AutoScrollDeps) {
 				if (Object.values(updatedDeps).every(Boolean)) {
 					this.scrollToActiveCard();
 				}
