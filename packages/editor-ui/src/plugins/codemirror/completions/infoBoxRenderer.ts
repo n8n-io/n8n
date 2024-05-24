@@ -74,7 +74,7 @@ const renderPropHeader = (doc?: DocMetadata) => {
 	if (doc) {
 		const propNameSpan = document.createElement('span');
 		propNameSpan.classList.add('autocomplete-info-name');
-		propNameSpan.innerText = doc.name;
+		propNameSpan.textContent = doc.name;
 
 		const returnTypeSpan = document.createElement('span');
 		returnTypeSpan.textContent = ': ' + doc.returnType;

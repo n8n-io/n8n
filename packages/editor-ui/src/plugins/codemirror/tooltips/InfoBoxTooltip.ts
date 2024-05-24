@@ -90,6 +90,7 @@ const createStringReader = (str: string) => (node?: SyntaxNode | null) => {
 };
 
 function getJsNodeAtPosition(state: EditorState, pos: number, anchor?: number) {
+	// Syntax node in the n8n language (Resolvable | Plaintext)
 	const rootNode = syntaxTree(state).resolveInner(pos, -1);
 
 	if (rootNode.name !== 'Resolvable') {
@@ -103,16 +104,17 @@ function getJsNodeAtPosition(state: EditorState, pos: number, anchor?: number) {
 	const jsOffset = rootNode.from + prefixLength;
 	const jsPos = pos - jsOffset;
 	const jsAnchor = anchor ? anchor - jsOffset : jsPos;
+	const getGlobalPosition = (jsPosition: number) => jsPosition + jsOffset;
 	const isSelectionWithinNode = (n: SyntaxNode) => {
 		return jsPos >= n.from && jsPos <= n.to && jsAnchor >= n.from && jsAnchor <= n.to;
 	};
-	const getGlobalPosition = (jsPosition: number) => jsPosition + jsOffset;
 
-	// cursor or selection is outside of JS code
+	// Cursor or selection is outside of JS code
 	if (jsPos >= jsCode.length || jsAnchor >= jsCode.length) {
 		return null;
 	}
 
+	// Syntax node in JavaScript
 	const jsNode = javascriptLanguage.parser
 		.parse(jsCode)
 		.resolveInner(jsPos, typeof anchor === 'number' ? 0 : -1);
@@ -132,11 +134,12 @@ function getCompletion(
 	filter: (completion: Completion) => boolean,
 ): Completion | null {
 	const context = new CompletionContext(state, pos, true);
-
-	for (const source of state.languageDataAt<(context: CompletionContext) => CompletionResult>(
+	const sources = state.languageDataAt<(context: CompletionContext) => CompletionResult>(
 		'autocomplete',
 		pos,
-	)) {
+	);
+
+	for (const source of sources) {
 		const result = source(context);
 
 		const options = result?.options.filter(filter);
@@ -202,11 +205,9 @@ function getInfoBoxTooltip(state: EditorState): Tooltip | null {
 	}
 }
 
-const cursorInfoBoxTooltip = StateField.define<{
-	tooltip: Tooltip | null;
-}>({
-	create() {
-		return { tooltip: null };
+const cursorInfoBoxTooltip = StateField.define<{ tooltip: Tooltip | null }>({
+	create(state) {
+		return { tooltip: getInfoBoxTooltip(state) };
 	},
 
 	update(value, tr) {
@@ -230,59 +231,60 @@ const cursorInfoBoxTooltip = StateField.define<{
 	provide: (f) => showTooltip.compute([f], (state) => state.field(f).tooltip),
 });
 
-const hoverInfoBoxTooltip = hoverTooltip(
-	(view, pos) => {
-		const state = view.state.field(cursorInfoBoxTooltip, false);
-		const cursorTooltipOpen = !!state?.tooltip;
+export const hoverTooltipSource = (view: EditorView, pos: number) => {
+	const state = view.state.field(cursorInfoBoxTooltip, false);
+	const cursorTooltipOpen = !!state?.tooltip;
 
-		const jsNodeResult = getJsNodeAtPosition(view.state, pos);
+	const jsNodeResult = getJsNodeAtPosition(view.state, pos);
 
-		if (!jsNodeResult) {
+	if (!jsNodeResult) {
+		return null;
+	}
+
+	const { node, getGlobalPosition, readNode } = jsNodeResult;
+
+	const tooltipForNode = (subject: SyntaxNode) => {
+		const completion = getCompletion(
+			view.state,
+			getGlobalPosition(subject.to - 1),
+			(c) => c.label === readNode(subject) || c.label === readNode(subject) + '()',
+		);
+
+		const newHoverTooltip = completionToTooltip(completion, getGlobalPosition(subject.from), {
+			end: getGlobalPosition(subject.to),
+		});
+
+		if (newHoverTooltip && cursorTooltipOpen) {
+			view.dispatch({ effects: closeInfoBoxEffect.of(null) });
+		}
+
+		return newHoverTooltip;
+	};
+
+	switch (node.name) {
+		case 'VariableName':
+		case 'PropertyName': {
+			return tooltipForNode(node);
+		}
+		case 'String':
+		case 'Number':
+		case 'Boolean':
+		case 'CallExpression': {
+			const callExpression = findNearestCallExpression(node);
+
+			if (!callExpression) return null;
+
+			return tooltipForNode(callExpression);
+		}
+
+		default:
 			return null;
-		}
-
-		const { node, getGlobalPosition, readNode } = jsNodeResult;
-
-		const tooltipForNode = (tooltipNode: SyntaxNode) => {
-			const completion = getCompletion(
-				view.state,
-				getGlobalPosition(tooltipNode.to - 1),
-				(c) => c.label === readNode(tooltipNode) || c.label === readNode(tooltipNode) + '()',
-			);
-
-			const newHoverTooltip = completionToTooltip(completion, getGlobalPosition(tooltipNode.from), {
-				end: getGlobalPosition(tooltipNode.to),
-			});
-
-			if (newHoverTooltip && cursorTooltipOpen) {
-				view.dispatch({ effects: closeInfoBoxEffect.of(null) });
-			}
-
-			return newHoverTooltip;
-		};
-
-		switch (node.name) {
-			case 'VariableName':
-			case 'PropertyName': {
-				return tooltipForNode(node);
-			}
-			case 'String':
-			case 'Number':
-			case 'Number':
-			case 'CallExpression': {
-				const callExpression = findNearestCallExpression(node);
-
-				if (!callExpression) return null;
-
-				return tooltipForNode(callExpression);
-			}
-
-			default:
-				return null;
-		}
-	},
-	{ hideOnChange: true, hoverTime: 500 },
-);
+	}
+};
+const hoverInfoBoxTooltip = hoverTooltip(hoverTooltipSource, {
+	hideOnChange: true,
+	hoverTime: 500,
+});
 
 const closeInfoBoxEffect = StateEffect.define<null>();
 
