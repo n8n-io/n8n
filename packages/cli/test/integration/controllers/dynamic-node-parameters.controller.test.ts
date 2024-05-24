@@ -39,7 +39,7 @@ describe('DynamicNodeParametersController', () => {
 				.post('/dynamic-node-parameters/options')
 				.send({
 					...commonRequestParams,
-					loadOptions: 'loadOptions',
+					loadOptions: {},
 				})
 				.expect(200);
 		});

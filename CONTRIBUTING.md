@@ -64,7 +64,7 @@ dependencies are installed and the packages get linked correctly. Here's a short
 
 #### Node.js
 
-[Node.js](https://nodejs.org/en/) version 16.9 or newer is required for development purposes.
+[Node.js](https://nodejs.org/en/) version 18.10 or newer is required for development purposes.
 
 #### pnpm
 
