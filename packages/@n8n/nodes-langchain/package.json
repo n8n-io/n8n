@@ -145,6 +145,7 @@
     "@langchain/openai": "0.0.33",
     "@langchain/pinecone": "0.0.6",
     "@langchain/redis": "0.0.5",
+    "@langchain/textsplitters": "0.0.2",
     "@n8n/typeorm": "0.3.20-9",
     "@n8n/vm2": "3.9.20",
     "@pinecone-database/pinecone": "2.2.1",

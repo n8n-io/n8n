@@ -282,6 +282,9 @@ importers:
       '@langchain/redis':
         specifier: 0.0.5
         version: 0.0.5
+      '@langchain/textsplitters':
+        specifier: 0.0.2
+        version: 0.0.2
       '@n8n/typeorm':
         specifier: 0.3.20-9
         version: 0.3.20-9(pg@8.11.3)(redis@4.6.12)(sqlite3@5.1.7)
@@ -6565,24 +6568,6 @@ packages:
       - supports-color
     dev: false
 
-  /@langchain/core@0.1.61:
-    resolution: {integrity: sha512-C8OkAly+ugvXsL8TACCmFv9WTTcT4gvQaG6NbrXCOzibBCywfxxcTqEMOyg3zIKpxHEmR0DHqh0OiJRHocnsCg==}
-    engines: {node: '>=18'}
-    dependencies:
-      ansi-styles: 5.2.0
-      camelcase: 6.3.0
-      decamelize: 1.2.0
-      js-tiktoken: 1.0.12
-      langsmith: 0.1.12
-      ml-distance: 4.0.1
-      mustache: 4.2.0
-      p-queue: 6.6.2
-      p-retry: 4.6.2
-      uuid: 9.0.1
-      zod: 3.23.8
-      zod-to-json-schema: 3.23.0(zod@3.23.8)
-    dev: false
-
   /@langchain/core@0.2.0:
     resolution: {integrity: sha512-UbCJUp9eh2JXd9AW/vhPbTgtZoMgTqJgSan5Wf/EP27X8JM65lWdCOpJW+gHyBXvabbyrZz3/EGaptTUL5gutw==}
     engines: {node: '>=18'}
@@ -6670,11 +6655,11 @@ packages:
       redis: 4.6.13
     dev: false
 
-  /@langchain/textsplitters@0.0.0:
-    resolution: {integrity: sha512-3hPesWomnmVeYMppEGYbyv0v/sRUugUdlFBNn9m1ueJYHAIKbvCErkWxNUH3guyKKYgJVrkvZoQxcd9faucSaw==}
+  /@langchain/textsplitters@0.0.2:
+    resolution: {integrity: sha512-6bQOuYHTGYlkgPY/8M5WPq4nnXZpEysGzRopQCYjg2WLcEoIPUMMrXsAaNNdvU3BOeMrhin8izvpDPD165hX6Q==}
     engines: {node: '>=18'}
     dependencies:
-      '@langchain/core': 0.1.61
+      '@langchain/core': 0.2.0
       js-tiktoken: 1.0.12
     dev: false
 
@@ -17978,7 +17963,7 @@ packages:
       '@google-ai/generativelanguage': 2.5.0
       '@langchain/core': 0.2.0
       '@langchain/openai': 0.0.33
-      '@langchain/textsplitters': 0.0.0
+      '@langchain/textsplitters': 0.0.2
       '@pinecone-database/pinecone': 2.2.1
       '@supabase/supabase-js': 2.43.4
       '@xata.io/client': 0.28.4(typescript@5.4.2)
@@ -18167,7 +18152,7 @@ packages:
     dependencies:
       '@langchain/core': 0.2.0
       '@langchain/openai': 0.0.33
-      '@langchain/textsplitters': 0.0.0
+      '@langchain/textsplitters': 0.0.2
       '@pinecone-database/pinecone': 2.1.0
       axios: 1.6.7
       binary-extensions: 2.2.0
