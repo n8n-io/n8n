@@ -228,7 +228,9 @@ export default defineComponent({
 				name: this.workflowName,
 				tags: this.currentWorkflowTagIds,
 			});
-			if (saved) await this.settingsStore.fetchPromptsData();
+			if (saved) {
+				await this.settingsStore.fetchPromptsData();
+			}
 		},
 	},
 });

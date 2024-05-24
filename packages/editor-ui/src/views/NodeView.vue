@@ -3699,7 +3699,9 @@ export default defineComponent({
 					);
 					if (confirmModal === MODAL_CONFIRM) {
 						const saved = await this.workflowHelpers.saveCurrentWorkflow();
-						if (saved) await this.settingsStore.fetchPromptsData();
+						if (saved) {
+							await this.settingsStore.fetchPromptsData();
+						}
 					} else if (confirmModal === MODAL_CLOSE) {
 						return;
 					}

@@ -6,21 +6,21 @@ import { UserService } from '@/services/user.service';
 export class ValueSurveyController {
 	constructor(private readonly userService: UserService) {}
 
-	@Post('/shown')
+	@Post('/show')
 	async valueSurveyShown(req: ValueSurveyRequest.ValueSurveyShown): Promise<void> {
 		await this.userService.updateSettings(req.user.id, {
 			valueSurveyLastShownAt: Date.now(),
 		});
 	}
 
-	@Post('/responded')
+	@Post('/respond')
 	async valueSurveyResponded(req: ValueSurveyRequest.ValueSurveyShown): Promise<void> {
 		await this.userService.updateSettings(req.user.id, {
 			valueSurveyIgnoredLastCount: 0,
 		});
 	}
 
-	@Post('/ignored')
+	@Post('/ignore')
 	async valueSurveyIgnored(req: ValueSurveyRequest.ValueSurveyShown): Promise<void> {
 		const lastCount = req.user.settings?.valueSurveyIgnoredLastCount ?? 0;
 

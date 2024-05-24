@@ -633,8 +633,12 @@ export const useUIStore = defineStore(STORES.UI, {
 			delete this.pendingNotificationsForViews[view];
 		},
 		showValueSurvey() {
+			if (!this.shouldShowValueSurveyNext) {
+				return;
+			}
 			this.openModal(VALUE_SURVEY_MODAL_KEY);
 
+			this.shouldShowValueSurveyNext = false;
 			void valueSurveyShown(useRootStore().getRestApiContext);
 		},
 		ignoreValueSurvey() {

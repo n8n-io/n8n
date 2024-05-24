@@ -325,6 +325,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 
 			if (promptsData && promptsData.showContactPrompt) {
 				uiStore.openModal(CONTACT_PROMPT_MODAL_KEY);
+			} else {
+				uiStore.showValueSurvey();
 			}
 
 			this.setPromptsData(promptsData);
