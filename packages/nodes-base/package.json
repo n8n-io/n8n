@@ -901,7 +901,7 @@
     "ts-ics": "^1.2.2",
     "typedi": "0.10.0",
     "uuid": "8.3.2",
-    "xlsx": "https://cdn.sheetjs.com/xlsx-0.19.3/xlsx-0.19.3.tgz",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz",
     "xml2js": "0.6.2"
   }
 }

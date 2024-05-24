@@ -15,7 +15,7 @@ const credentialsModal = new CredentialsModal();
 const executionsTab = new WorkflowExecutionsTab();
 
 describe('Projects', () => {
-	beforeEach(() => {
+	before(() => {
 		cy.resetDatabase();
 		cy.enableFeature('sharing');
 		cy.enableFeature('advancedPermissions');
@@ -218,5 +218,14 @@ describe('Projects', () => {
 		menuItems = cy.getByTestId('menu-item');
 		menuItems.filter('[class*=active_]').should('have.length', 1);
 		menuItems.filter(':contains("Development")[class*=active_]').should('exist');
+	});
+
+	it('should not show project add button and projects to a member if not invited to any project', () => {
+		cy.signout();
+		cy.signin(INSTANCE_MEMBERS[1]);
+		cy.visit(workflowsPage.url);
+
+		projects.getAddProjectButton().should('not.exist');
+		projects.getMenuItems().should('not.exist');
 	});
 });
