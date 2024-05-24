@@ -7,6 +7,7 @@ import { useI18n } from '@/composables/useI18n';
 import { ref, computed, watch } from 'vue';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useUIStore } from '@/stores/ui.store';
 
 const props = defineProps({
 	isActive: {
@@ -62,6 +63,8 @@ function closeDialog(): void {
 			nps: form.value.value,
 		});
 	}
+
+	useUIStore().ignoreValueSurvey();
 }
 
 function onInputChange(value: string) {
@@ -76,6 +79,8 @@ async function selectSurveyValue(value: string) {
 		instance_id: rootStore.instanceId,
 		nps: form.value.value,
 	});
+
+	useUIStore().respondValueSurvey();
 }
 
 async function send() {

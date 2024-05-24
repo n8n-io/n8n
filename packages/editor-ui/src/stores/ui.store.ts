@@ -76,6 +76,7 @@ import {
 	isValidTheme,
 	updateTheme,
 } from './ui.utils';
+import { valueSurveyIgnored, valueSurveyResponded, valueSurveyShown } from '@/api/valueSurvey';
 
 let savedTheme: ThemeOption = 'system';
 try {
@@ -633,6 +634,14 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		showValueSurvey() {
 			this.openModal(VALUE_SURVEY_MODAL_KEY);
+
+			void valueSurveyShown(useRootStore().getRestApiContext);
+		},
+		ignoreValueSurvey() {
+			void valueSurveyIgnored(useRootStore().getRestApiContext);
+		},
+		respondValueSurvey() {
+			void valueSurveyResponded(useRootStore().getRestApiContext);
 		},
 		shouldShowValueSurvey(settings: IUserSettings) {
 			const ONE_DAY_IN_MILLIS = 24 * 60 * 60 * 1000;
