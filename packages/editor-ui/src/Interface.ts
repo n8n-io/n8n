@@ -1310,6 +1310,7 @@ export interface UIState {
 		[key in VIEWS]?: NotificationOptions[];
 	};
 	isCreateNodeActive: boolean;
+	shouldShowValueSurveyNext: boolean;
 }
 
 export type IFakeDoor = {
@@ -1977,3 +1978,7 @@ export type ModalKey =
 	| 'setupCredentials';
 
 export type EnterpriseEditionFeatureValue = keyof Omit<IN8nUISettings['enterprise'], 'projects'>;
+
+export interface IN8nPromptResponse {
+	updated: boolean;
+}

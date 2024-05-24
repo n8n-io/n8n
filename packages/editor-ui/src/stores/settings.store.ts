@@ -15,12 +15,7 @@ import type {
 	IN8nPrompts,
 	ISettingsState,
 } from '@/Interface';
-import {
-	CONTACT_PROMPT_MODAL_KEY,
-	STORES,
-	VALUE_SURVEY_MODAL_KEY,
-	INSECURE_CONNECTION_WARNING,
-} from '@/constants';
+import { CONTACT_PROMPT_MODAL_KEY, STORES, INSECURE_CONNECTION_WARNING } from '@/constants';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import type {
 	IDataObject,
@@ -330,8 +325,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 
 			if (promptsData && promptsData.showContactPrompt) {
 				uiStore.openModal(CONTACT_PROMPT_MODAL_KEY);
-			} else if (promptsData && promptsData.showValueSurvey) {
-				uiStore.openModal(VALUE_SURVEY_MODAL_KEY);
 			}
 
 			this.setPromptsData(promptsData);

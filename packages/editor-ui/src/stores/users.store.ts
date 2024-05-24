@@ -110,11 +110,15 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const defaultScopes: Scope[] = [];
 			useRBACStore().setGlobalScopes(user.globalScopes || defaultScopes);
 			usePostHog().init(user.featureFlags);
+			if (user.settings) {
+				useUIStore().shouldShowValueSurvey(user.settings);
+			}
 		},
 		unsetCurrentUser() {
 			this.currentUserId = null;
 			this.currentUserCloudInfo = null;
 			useRBACStore().setGlobalScopes([]);
+			useUIStore().shouldShowValueSurveyNext = false;
 		},
 		addUsers(users: IUserResponse[]) {
 			users.forEach((userResponse: IUserResponse) => {
