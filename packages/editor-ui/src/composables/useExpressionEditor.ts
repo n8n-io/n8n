@@ -322,10 +322,6 @@ export const useExpressionEditor = ({
 			result.error = true;
 		}
 
-		if (typeof result.resolved === 'number' && isNaN(result.resolved)) {
-			result.resolved = i18n.baseText('expressionModalInput.null');
-		}
-
 		return result;
 	}
 
