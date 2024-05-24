@@ -8,7 +8,7 @@ export type ToolParameter = {
 export type ParametersValues = Array<{
 	name: string;
 	valueProvider: 'modelRequired' | 'modelOptional' | 'fieldValue';
-	value: string;
+	value?: string;
 }>;
 
 export type ParameterInputType = 'keypair' | 'json' | 'model';

@@ -394,7 +394,7 @@ export function prepareJSONSchema7Properties(
 	parametersInputType: 'model' | 'keypair' | 'json',
 	requestOptionKey: string,
 	modelInputDescription: string,
-) {
+): { schema: { [key: string]: JSONSchema7Definition }; values: IDataObject } {
 	const schemaProperties: JSONSchema7Definition = {
 		type: 'object',
 		properties: {},
@@ -405,14 +405,16 @@ export function prepareJSONSchema7Properties(
 	if (parametersInputType === 'model') {
 		return {
 			schema: {
-				name: requestOptionKey,
-				description: modelInputDescription,
-				type: 'object',
+				[requestOptionKey]: {
+					type: 'object',
+					description: modelInputDescription,
+				},
 			},
-			values: userProvidedValues,
+			values: {},
 		};
 	}
 
+	//TODO implement json input type to resolve placeholders
 	if (parametersInputType === 'keypair' || parametersInputType === 'json') {
 		for (const entry of parameters) {
 			if (entry.valueProvider.includes('model')) {
@@ -438,9 +440,7 @@ export function prepareJSONSchema7Properties(
 
 	return {
 		schema: {
-			name: requestOptionKey,
-			type: 'object',
-			properties: schemaProperties,
+			[requestOptionKey]: schemaProperties,
 		},
 		values: userProvidedValues,
 	};

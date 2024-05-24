@@ -21,6 +21,7 @@ import {
 	configureResponseOptimizer,
 	extractPlaceholders,
 	updatePlaceholders,
+	prepareJSONSchema7Properties,
 } from './utils';
 
 import {
@@ -297,17 +298,9 @@ export class ToolHttpRequest implements INodeType {
 		const httpRequest = await configureHttpRequestFunction(this, authentication, itemIndex);
 		const optimizeResponse = configureResponseOptimizer(this, itemIndex);
 
-		const qs: IDataObject = {};
+		let qs: IDataObject = {};
 		const headers: IDataObject = {};
 		const body: IDataObject = {};
-
-		const qsProperties: JSONSchema7Definition = {
-			type: 'object',
-			properties: {},
-			required: [],
-		};
-		// const headersProperties: IDataObject = {};
-		// const bodyProperties: IDataObject = {};
 
 		const placeholders = this.getNodeParameter(
 			'placeholderDefinitions.values',
@@ -357,18 +350,6 @@ export class ToolHttpRequest implements INodeType {
 				) as ParametersValues;
 
 				for (const entry of parametersQueryValues) {
-					const placeholder = placeholders.find((p) => p.name === entry.name);
-					const schemaEntry: IDataObject = {};
-					const required = entry.valueProvider === 'modelRequired';
-					if (placeholder) {
-						schemaEntry.type = placeholder.type !== 'not specified' ? placeholder.type : undefined;
-						schemaEntry.description = placeholder.description;
-					}
-					if (required) {
-						qsProperties.required!.push(entry.name);
-					}
-					qsProperties.properties![entry.name] = schemaEntry;
-
 					if (entry.valueProvider.includes('model')) {
 						queryParameters.push(`"${entry.name}":{${entry.name}}`);
 						updatePlaceholders(placeholders, entry.name, entry.valueProvider === 'modelRequired');
@@ -533,6 +514,7 @@ Do not attempt to send key value pairs, only values in the same order as shown a
 			// parse LLM's input
 			try {
 				if (query && placeholders.length) {
+					//non structured query
 					if (typeof query === 'string') {
 						let rawRequestOptions = requestTemplate;
 						const modelProvidedArguments = query.split(',,,').map((p) => p.trim());
@@ -549,8 +531,20 @@ Do not attempt to send key value pairs, only values in the same order as shown a
 
 						requestOptions = jsonParse<IHttpRequestOptions>(rawRequestOptions);
 					} else {
+						//structured query
 						requestOptions = (query as { requestOptions: IHttpRequestOptions }).requestOptions;
-						requestOptions.url = url;
+
+						if (query.pathInput) {
+							const pathInput = query.pathInput as IDataObject;
+							let parsedUrl = requestOptions.url;
+							for (const [key, value] of Object.entries(pathInput)) {
+								parsedUrl = parsedUrl.replace(`{${key}}`, encodeURIComponent(String(value)));
+							}
+							requestOptions.url = parsedUrl;
+						} else {
+							requestOptions.url = url;
+						}
+
 						requestOptions.method = method;
 					}
 				} else {
@@ -606,26 +600,60 @@ Do not attempt to send key value pairs, only values in the same order as shown a
 			} else {
 				void this.addOutputData(NodeConnectionType.AiTool, index, [[{ json: { response } }]]);
 			}
+
 			return response;
 		};
 
 		let tool: DynamicTool | DynamicStructuredTool | undefined = undefined;
+
+		const pathParameters = extractPlaceholders(url);
+
+		let pathInput: { [key: string]: JSONSchema7Definition } = {};
+		if (pathParameters.length) {
+			for (const entry of pathParameters) {
+				updatePlaceholders(placeholders, entry, true, 'string');
+			}
+
+			pathInput = prepareJSONSchema7Properties(
+				pathParameters.map((pathParameter) => ({
+					name: pathParameter,
+					valueProvider: 'modelRequired',
+				})),
+				placeholders,
+				'keypair',
+				'pathParameters',
+				'',
+			).schema;
+		}
+
+		const queryInput = prepareJSONSchema7Properties(
+			(this.getNodeParameter('parametersQuery.values', itemIndex, []) as ParametersValues) || [],
+			placeholders,
+			this.getNodeParameter('specifyQuery', itemIndex, 'keypair') as ParameterInputType,
+			'qs',
+			'Query parameters for request as key value pairs',
+		);
+
+		qs = { ...qs, ...queryInput.values };
 
 		const jsonSchema: JSONSchema7 = {
 			$schema: 'http://json-schema.org/draft-07/schema#',
 			title: 'Request',
 			type: 'object',
 			properties: {
+				...pathInput,
 				requestOptions: {
 					type: 'object',
 					properties: {
-						qs: qsProperties,
+						...queryInput.schema,
 					},
 					required: [],
 				},
 			},
 			required: ['requestOptions'],
 		};
+
+		console.log(JSON.stringify(jsonSchema, null, 2));
 
 		const zodSchemaSandbox = getSandboxWithZod(this, jsonSchema, 0);
 		const zodSchema = (await zodSchemaSandbox.runCode()) as DynamicZodObject;
