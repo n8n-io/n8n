@@ -134,9 +134,9 @@ describe('Projects', () => {
 		});
 
 		projects.getMenuItems().last().click();
-		cy.intercept('GET', '/rest/credentials*').as('credentialsList');
+		cy.intercept('GET', '/rest/credentials*').as('credentialsListProjectId');
 		projects.getProjectTabCredentials().click();
-		cy.wait('@credentialsList').then((interception) => {
+		cy.wait('@credentialsListProjectId').then((interception) => {
 			const url = new URL(interception.request.url);
 			const queryParams = new URLSearchParams(url.search);
 			const filter = queryParams.get('filter');
@@ -150,9 +150,9 @@ describe('Projects', () => {
 		projects.getHomeButton().click();
 		workflowsPage.getters.workflowCards().should('have.length', 2);
 
-		cy.intercept('GET', '/rest/credentials*').as('credentialsList');
+		cy.intercept('GET', '/rest/credentials*').as('credentialsListFilterless');
 		projects.getProjectTabCredentials().click();
-		cy.wait('@credentialsList').then((interception) => {
+		cy.wait('@credentialsListFilterless').then((interception) => {
 			expect(interception.request.url).not.to.contain('filter');
 		});
 

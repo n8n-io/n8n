@@ -6,8 +6,8 @@ import {
 	type INodeTypeDescription,
 	type SupplyData,
 } from 'n8n-workflow';
-import { GithubRepoLoader } from 'langchain/document_loaders/web/github';
-import type { CharacterTextSplitter } from 'langchain/text_splitter';
+import { GithubRepoLoader } from '@langchain/community/document_loaders/web/github';
+import type { CharacterTextSplitter } from '@langchain/textsplitters';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
@@ -116,7 +116,9 @@ export class DocumentGithubLoader implements INodeType {
 			accessToken: (credentials.accessToken as string) || '',
 		});
 
-		const loadedDocs = textSplitter ? await docs.loadAndSplit(textSplitter) : await docs.load();
+		const loadedDocs = textSplitter
+			? await textSplitter.splitDocuments(await docs.load())
+			: await docs.load();
 
 		return {
 			response: logWrapper(loadedDocs, this),
