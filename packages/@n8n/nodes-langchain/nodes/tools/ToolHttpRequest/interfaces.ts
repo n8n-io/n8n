@@ -1,8 +1,16 @@
 export type ToolParameter = {
 	name: string;
-	required?: boolean;
+	required: boolean;
 	type?: string;
 	description?: string;
+	sendIn: SendIn;
+	key?: string;
+};
+
+export type PlaceholderDefinition = {
+	name: string;
+	type?: string;
+	description: string;
 };
 
 export type ParametersValues = Array<{
@@ -12,7 +20,4 @@ export type ParametersValues = Array<{
 }>;
 
 export type ParameterInputType = 'keypair' | 'json' | 'model';
-
-export const QUERY_PARAMETERS_PLACEHOLDER = 'queryParameters';
-export const HEADERS_PARAMETERS_PLACEHOLDER = 'headersParameters';
-export const BODY_PARAMETERS_PLACEHOLDER = 'bodyParameters';
+export type SendIn = 'body' | 'qs' | 'path' | 'headers';

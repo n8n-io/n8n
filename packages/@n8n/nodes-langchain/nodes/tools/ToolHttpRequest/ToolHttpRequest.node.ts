@@ -13,15 +13,12 @@ import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow'
 
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
-import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
-
 import {
 	configureHttpRequestFunction,
 	prettifyToolName,
 	configureResponseOptimizer,
-	extractPlaceholders,
-	updatePlaceholders,
-	prepareJSONSchema7Properties,
+	prepareParameters,
+	extractParametersFromText,
 } from './utils';
 
 import {
@@ -33,15 +30,17 @@ import {
 	specifyBySelector,
 } from './descriptions';
 
-import {
-	BODY_PARAMETERS_PLACEHOLDER,
-	HEADERS_PARAMETERS_PLACEHOLDER,
-	QUERY_PARAMETERS_PLACEHOLDER,
+import type {
+	ParameterInputType,
+	ParametersValues,
+	PlaceholderDefinition,
+	ToolParameter,
 } from './interfaces';
-import type { ParameterInputType, ParametersValues, ToolParameter } from './interfaces';
-import { getSandboxWithZod } from '../../../utils/schemaParsing';
-import type { DynamicZodObject } from '../../../types/zod.types';
-import type { JSONSchema7, JSONSchema7Definition } from 'json-schema';
+
+import { DynamicTool } from '@langchain/core/tools';
+
+import get from 'lodash/get';
+import set from 'lodash/set';
 
 export class ToolHttpRequest implements INodeType {
 	description: INodeTypeDescription = {
@@ -274,6 +273,9 @@ export class ToolHttpRequest implements INodeType {
 		const toolDescription = this.getNodeParameter('toolDescription', itemIndex) as string;
 		const method = this.getNodeParameter('method', itemIndex, 'GET') as IHttpRequestMethods;
 		const url = this.getNodeParameter('url', itemIndex) as string;
+		const sendQuery = this.getNodeParameter('sendQuery', itemIndex, false) as boolean;
+		const sendHeaders = this.getNodeParameter('sendHeaders', itemIndex, false) as boolean;
+		const sendBody = this.getNodeParameter('sendBody', itemIndex, false) as boolean;
 
 		const authentication = this.getNodeParameter('authentication', itemIndex, 'none') as
 			| 'predefinedCredentialType'
@@ -299,8 +301,8 @@ export class ToolHttpRequest implements INodeType {
 		const optimizeResponse = configureResponseOptimizer(this, itemIndex);
 
 		let qs: IDataObject = {};
-		const headers: IDataObject = {};
-		const body: IDataObject = {};
+		let headers: IDataObject = {};
+		let body: IDataObject = {};
 
 		const placeholders = this.getNodeParameter(
 			'placeholderDefinitions.values',
@@ -308,279 +310,189 @@ export class ToolHttpRequest implements INodeType {
 			[],
 		) as ToolParameter[];
 
-		let qsPlaceholder: string = '';
-		let headersPlaceholder: string = '';
-		let bodyPlaceholder: string = '';
+		const toolParameters: ToolParameter[] = [];
 
-		const urlPlaceholders = extractPlaceholders(url);
+		toolParameters.push(
+			...extractParametersFromText(placeholders as PlaceholderDefinition[], url, 'path'),
+		);
 
-		if (urlPlaceholders.length) {
-			for (const placeholder of urlPlaceholders) {
-				updatePlaceholders(
-					placeholders,
-					placeholder,
-					true,
-					'string, do not wrap in quotas this parameter!',
-				);
-			}
-		}
-
-		const sendQuery = this.getNodeParameter('sendQuery', itemIndex, false) as boolean;
 		if (sendQuery) {
-			const specifyQuery = this.getNodeParameter('specifyQuery', itemIndex) as ParameterInputType;
-
-			if (specifyQuery === 'model') {
-				placeholders.push({
-					name: QUERY_PARAMETERS_PLACEHOLDER,
-					description:
-						'Specify query parameters for request, if needed, here, must be a valid JSON object',
-					type: 'json',
-					required: false,
-				});
-
-				qsPlaceholder = `"qs": {${QUERY_PARAMETERS_PLACEHOLDER}}`;
-			}
-
-			if (specifyQuery === 'keypair') {
-				const queryParameters = [];
-				const parametersQueryValues = this.getNodeParameter(
-					'parametersQuery.values',
-					itemIndex,
-					[],
-				) as ParametersValues;
-
-				for (const entry of parametersQueryValues) {
-					if (entry.valueProvider.includes('model')) {
-						queryParameters.push(`"${entry.name}":{${entry.name}}`);
-						updatePlaceholders(placeholders, entry.name, entry.valueProvider === 'modelRequired');
-					} else {
-						qs[entry.name] = entry.value;
-					}
-				}
-
-				qsPlaceholder = `"qs": {${queryParameters.join(',')}}`;
-			}
-
-			if (specifyQuery === 'json') {
-				const jsonQuery = this.getNodeParameter('jsonQuery', itemIndex, '') as string;
-
-				const matches = extractPlaceholders(jsonQuery);
-
-				for (const match of matches) {
-					updatePlaceholders(placeholders, match, true);
-				}
-
-				qsPlaceholder = `"qs": ${jsonQuery}`;
-			}
+			const queryInputParameters = prepareParameters(
+				(this.getNodeParameter('parametersQuery.values', itemIndex, []) as ParametersValues) || [],
+				placeholders as PlaceholderDefinition[],
+				this.getNodeParameter('specifyQuery', itemIndex, 'keypair') as ParameterInputType,
+				'qs',
+				'Query parameters for request as key value pairs',
+			);
+			toolParameters.push(...queryInputParameters.parameters);
+			qs = { ...qs, ...queryInputParameters.values };
 		}
 
-		const sendHeaders = this.getNodeParameter('sendHeaders', itemIndex, false) as boolean;
 		if (sendHeaders) {
-			const specifyHeaders = this.getNodeParameter(
-				'specifyHeaders',
-				itemIndex,
-			) as ParameterInputType;
-
-			if (specifyHeaders === 'model') {
-				placeholders.push({
-					name: HEADERS_PARAMETERS_PLACEHOLDER,
-					description: 'Specify headers for request, if needed, here, must be a valid JSON object',
-					type: 'json',
-					required: false,
-				});
-
-				headersPlaceholder = `"headers": {${HEADERS_PARAMETERS_PLACEHOLDER}}`;
-			}
-
-			if (specifyHeaders === 'keypair') {
-				const headersParameters = [];
-				const parametersHeadersValues = this.getNodeParameter(
-					'parametersHeaders.values',
-					itemIndex,
+			const headersInputParameters = prepareParameters(
+				(this.getNodeParameter('parametersHeaders.values', itemIndex, []) as ParametersValues) ||
 					[],
-				) as ParametersValues;
-
-				for (const entry of parametersHeadersValues) {
-					if (entry.valueProvider.includes('model')) {
-						headersParameters.push(`"${entry.name}":{${entry.name}}`);
-						updatePlaceholders(placeholders, entry.name, entry.valueProvider === 'modelRequired');
-					} else {
-						headers[entry.name] = entry.value;
-					}
-				}
-
-				headersPlaceholder = `"headers": {${headersParameters.join(',')}}`;
-			}
-
-			if (specifyHeaders === 'json') {
-				const jsonHeaders = this.getNodeParameter('jsonHeaders', itemIndex, '') as string;
-
-				const matches = extractPlaceholders(jsonHeaders);
-
-				for (const match of matches) {
-					updatePlaceholders(placeholders, match, true);
-				}
-
-				headersPlaceholder = `"headers": ${jsonHeaders}`;
-			}
+				placeholders as PlaceholderDefinition[],
+				this.getNodeParameter('specifyHeaders', itemIndex, 'keypair') as ParameterInputType,
+				'headers',
+				'Headers parameters for request as key value pairs',
+			);
+			toolParameters.push(...headersInputParameters.parameters);
+			headers = { ...headers, ...headersInputParameters.values };
 		}
 
-		const sendBody = this.getNodeParameter('sendBody', itemIndex, false) as boolean;
 		if (sendBody) {
-			const specifyBody = this.getNodeParameter('specifyBody', itemIndex) as ParameterInputType;
-
-			if (specifyBody === 'model') {
-				placeholders.push({
-					name: BODY_PARAMETERS_PLACEHOLDER,
-					description: 'Specify body for request, if needed, here, must be a valid JSON object',
-					type: 'json',
-					required: false,
-				});
-
-				bodyPlaceholder = `"body": {${BODY_PARAMETERS_PLACEHOLDER}}`;
-			}
-
-			if (specifyBody === 'keypair') {
-				const bodyParameters = [];
-				const parametersBodyValues = this.getNodeParameter(
-					'parametersBody.values',
-					itemIndex,
-					[],
-				) as ParametersValues;
-
-				for (const entry of parametersBodyValues) {
-					if (entry.valueProvider.includes('model')) {
-						bodyParameters.push(`"${entry.name}":{${entry.name}}`);
-						updatePlaceholders(placeholders, entry.name, entry.valueProvider === 'modelRequired');
-					} else {
-						body[entry.name] = entry.value;
-					}
-				}
-
-				bodyPlaceholder = `"body": {${bodyParameters.join(',')}}`;
-			}
-
-			if (specifyBody === 'json') {
-				const jsonBody = this.getNodeParameter('jsonBody', itemIndex, '') as string;
-
-				const matches = extractPlaceholders(jsonBody);
-
-				for (const match of matches) {
-					updatePlaceholders(placeholders, match, true);
-				}
-
-				bodyPlaceholder = `"body": ${jsonBody}`;
-			}
+			const bodyInputParameters = prepareParameters(
+				(this.getNodeParameter('parametersBody.values', itemIndex, []) as ParametersValues) || [],
+				placeholders as PlaceholderDefinition[],
+				this.getNodeParameter('specifyBody', itemIndex, 'keypair') as ParameterInputType,
+				'body',
+				'Body parameters for request as key value pairs',
+			);
+			toolParameters.push(...bodyInputParameters.parameters);
+			body = { ...body, ...bodyInputParameters.values };
 		}
-
-		const requestTemplate = `
-{
-	${[
-		`"url": "${url}"`,
-		`"method": "${method}"`,
-		`${qsPlaceholder}`,
-		`${headersPlaceholder}`,
-		`${bodyPlaceholder}`,
-	]
-		.filter((e) => e)
-		.join(',\n')}
-}`;
 
 		let description = `${toolDescription}`;
 
-		if (placeholders.length) {
+		if (toolParameters.length) {
 			description += `
-Tool expects string as input with ${placeholders.length} values that represent the following parameters:
+		Tool expects valid stringified JSON object with ${toolParameters.length} properties.
+		Property names with description, type and required status:
 
-${placeholders
-	.filter((p) => p.name)
-	.map(
-		(p) =>
-			`${p.name}(description: ${p.description || ''}, type: ${p.type || ''}, required: ${!!p.required})`,
-	)
-	.join(',\n ')}
+		${toolParameters
+			.filter((p) => p.name)
+			.map(
+				(p) =>
+					`${p.name}: (description: ${p.description || ''}, type: ${p.type || 'string'}, required: ${!!p.required})`,
+			)
+			.join(',\n ')}
 
-Separate values with tree commas(,,,)
-Do not attempt to send key value pairs, only values in the same order as shown above, if parameter is not required it could be null.`;
+			ALL parameters marked as required must be provided`;
 		}
 
-		const toolHandler = async (query: string | IDataObject): Promise<string> => {
+		const func = async (query: string): Promise<string> => {
 			const { index } = this.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
 
 			let response: string = '';
 			let executionError: Error | undefined = undefined;
 			let requestOptions: IHttpRequestOptions | null = null;
 
-			// parse LLM's input
 			try {
-				if (query && placeholders.length) {
-					//non structured query
-					if (typeof query === 'string') {
-						let rawRequestOptions = requestTemplate;
-						const modelProvidedArguments = query.split(',,,').map((p) => p.trim());
-						for (let i = 0; i < modelProvidedArguments.length; i++) {
-							let value = modelProvidedArguments[i];
-							if (value === 'null' && placeholders[i].type === 'json') {
-								value = '{}';
-							}
-							if (value !== 'null' && placeholders[i].type === 'string' && !value.startsWith('"')) {
-								value = `"${value}"`;
-							}
-							rawRequestOptions = rawRequestOptions.replace(`{${placeholders[i].name}}`, value);
-						}
+				if (query && toolParameters.length) {
+					let queryParset;
 
-						requestOptions = jsonParse<IHttpRequestOptions>(rawRequestOptions);
-					} else {
-						//structured query
-						requestOptions = (query as { requestOptions: IHttpRequestOptions }).requestOptions;
-
-						if (query.pathInput) {
-							const pathInput = query.pathInput as IDataObject;
-							let parsedUrl = requestOptions.url;
-							for (const [key, value] of Object.entries(pathInput)) {
-								parsedUrl = parsedUrl.replace(`{${key}}`, encodeURIComponent(String(value)));
-							}
-							requestOptions.url = parsedUrl;
+					try {
+						queryParset = jsonParse<IDataObject>(query);
+					} catch (error) {
+						if (toolParameters.length === 1) {
+							queryParset = { [toolParameters[0].name]: query };
 						} else {
-							requestOptions.url = url;
+							throw new NodeOperationError(
+								this.getNode(),
+								`Input is not a valid JSON: ${error.message}`,
+								{ itemIndex },
+							);
 						}
-
-						requestOptions.method = method;
 					}
-				} else {
+
 					requestOptions = {
 						url,
 						method,
+						headers,
+						qs,
+						body,
 					};
+
+					for (const parameter of toolParameters) {
+						let parameterValue = queryParset[parameter.name];
+
+						if (parameterValue === undefined && parameter.required) {
+							throw new NodeOperationError(
+								this.getNode(),
+								`Model did not provided required parameter: ${parameter.name}`,
+								{
+									itemIndex,
+								},
+							);
+						}
+
+						if (parameterValue && parameter.type === 'json' && typeof parameterValue !== 'object') {
+							try {
+								parameterValue = jsonParse(String(parameterValue));
+							} catch (error) {
+								throw new NodeOperationError(
+									this.getNode(),
+									`Parameter ${parameter.name} is not a valid JSON: ${error.message}`,
+									{
+										itemIndex,
+									},
+								);
+							}
+						}
+
+						if (parameter.sendIn === 'path') {
+							requestOptions.url = requestOptions.url.replace(
+								`{${parameter.name}}`,
+								encodeURIComponent(String(parameterValue)),
+							);
+
+							continue;
+						}
+
+						if (parameter.sendIn === parameter.name) {
+							set(requestOptions, [parameter.sendIn], parameterValue);
+
+							continue;
+						}
+
+						if (parameter.key) {
+							let requestOptionsValue = get(requestOptions, [parameter.sendIn, parameter.key]);
+
+							if (typeof requestOptionsValue === 'string') {
+								requestOptionsValue = requestOptionsValue.replace(
+									`{${parameter.name}}`,
+									String(parameterValue),
+								);
+							}
+
+							set(requestOptions, [parameter.sendIn, parameter.key], requestOptionsValue);
+
+							continue;
+						}
+
+						set(requestOptions, [parameter.sendIn, parameter.name], parameterValue);
+					}
+
+					if (!Object.keys(requestOptions.headers as IDataObject).length) {
+						delete requestOptions.headers;
+					}
+
+					if (!Object.keys(requestOptions.qs as IDataObject).length) {
+						delete requestOptions.qs;
+					}
+
+					if (!Object.keys(requestOptions.body as IDataObject).length) {
+						delete requestOptions.body;
+					}
+				} else {
+					requestOptions = { url, method };
 				}
 			} catch (error) {
-				const errorMessage = `Input could not be parsed as JSON: ${query}`;
-				executionError = new NodeOperationError(this.getNode(), errorMessage, {
-					itemIndex,
-				});
+				const errorMessage = 'Input provided by model is not valid';
+
+				if (error instanceof NodeOperationError) {
+					executionError = error;
+				} else {
+					executionError = new NodeOperationError(this.getNode(), errorMessage, {
+						itemIndex,
+					});
+				}
 
 				response = errorMessage;
 			}
 
-			//add user provided request options
 			if (requestOptions) {
-				if (Object.keys(headers).length) {
-					requestOptions.headers = requestOptions.headers
-						? { ...requestOptions.headers, ...headers }
-						: headers;
-				}
-
-				if (Object.keys(qs).length) {
-					requestOptions.qs = requestOptions.qs ? { ...requestOptions.qs, ...qs } : qs;
-				}
-
-				if (Object.keys(body)) {
-					requestOptions.body = requestOptions.body
-						? { ...(requestOptions.body as IDataObject), ...body }
-						: body;
-				}
-
-				// send request and optimize response
 				try {
 					response = optimizeResponse(await httpRequest(requestOptions));
 				} catch (error) {
@@ -604,74 +516,13 @@ Do not attempt to send key value pairs, only values in the same order as shown a
 			return response;
 		};
 
-		let tool: DynamicTool | DynamicStructuredTool | undefined = undefined;
+		let tool: DynamicTool | undefined = undefined;
 
-		const pathParameters = extractPlaceholders(url);
-
-		let pathInput: { [key: string]: JSONSchema7Definition } = {};
-		if (pathParameters.length) {
-			for (const entry of pathParameters) {
-				updatePlaceholders(placeholders, entry, true, 'string');
-			}
-
-			pathInput = prepareJSONSchema7Properties(
-				pathParameters.map((pathParameter) => ({
-					name: pathParameter,
-					valueProvider: 'modelRequired',
-				})),
-				placeholders,
-				'keypair',
-				'pathParameters',
-				'',
-			).schema;
-		}
-
-		const queryInput = prepareJSONSchema7Properties(
-			(this.getNodeParameter('parametersQuery.values', itemIndex, []) as ParametersValues) || [],
-			placeholders,
-			this.getNodeParameter('specifyQuery', itemIndex, 'keypair') as ParameterInputType,
-			'qs',
-			'Query parameters for request as key value pairs',
-		);
-
-		qs = { ...qs, ...queryInput.values };
-
-		const jsonSchema: JSONSchema7 = {
-			$schema: 'http://json-schema.org/draft-07/schema#',
-			title: 'Request',
-			type: 'object',
-			properties: {
-				...pathInput,
-				requestOptions: {
-					type: 'object',
-					properties: {
-						...queryInput.schema,
-					},
-					required: [],
-				},
-			},
-			required: ['requestOptions'],
-		};
-
-		console.log(JSON.stringify(jsonSchema, null, 2));
-
-		const zodSchemaSandbox = getSandboxWithZod(this, jsonSchema, 0);
-		const zodSchema = (await zodSchemaSandbox.runCode()) as DynamicZodObject;
-
-		try {
-			tool = new DynamicStructuredTool<typeof zodSchema>({
-				name,
-				description: toolDescription,
-				func: toolHandler,
-				schema: zodSchema,
-			});
-		} catch (error) {
-			tool = new DynamicTool({
-				name,
-				description,
-				func: toolHandler,
-			});
-		}
+		tool = new DynamicTool({
+			name,
+			description,
+			func,
+		});
 
 		return {
 			response: tool,

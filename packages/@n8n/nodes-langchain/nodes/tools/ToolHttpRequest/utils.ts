@@ -13,8 +13,12 @@ import unset from 'lodash/unset';
 
 import cheerio from 'cheerio';
 import { convert } from 'html-to-text';
-import type { ParametersValues, ToolParameter } from './interfaces';
-import type { JSONSchema7Definition } from 'json-schema';
+import type {
+	PlaceholderDefinition,
+	ParametersValues as RawParametersValues,
+	SendIn,
+	ToolParameter,
+} from './interfaces';
 
 export const getOAuth2AdditionalParameters = (nodeCredentialType: string) => {
 	const oAuth2Options: { [credentialType: string]: IOAuth2Options } = {
@@ -355,7 +359,7 @@ export const configureResponseOptimizer = (ctx: IExecuteFunctions, itemIndex: nu
 	};
 };
 
-export const extractPlaceholders = (text: string): string[] => {
+const extractPlaceholders = (text: string): string[] => {
 	const placeholder = /(\{[a-zA-Z0-9_]+\})/g;
 	const returnData: string[] = [];
 
@@ -368,80 +372,91 @@ export const extractPlaceholders = (text: string): string[] => {
 	return returnData;
 };
 
-export const updatePlaceholders = (
-	placeholders: ToolParameter[],
-	name: string,
-	required: boolean,
-	type?: string,
-) => {
-	const placeholder = placeholders.find((p) => p.name === name);
+export const extractParametersFromText = (
+	placeholders: PlaceholderDefinition[],
+	text: string,
+	sendIn: SendIn,
+	key?: string,
+): ToolParameter[] => {
+	if (typeof text !== 'string') return [];
 
-	if (placeholder) {
-		placeholder.required = required;
-		if (type) placeholder.type = type;
-	} else {
-		placeholders.push({
-			name,
-			required,
-			type: type ?? 'not specified',
-		});
+	const parameters = extractPlaceholders(text);
+
+	if (parameters.length) {
+		// eslint-disable-next-line @typescript-eslint/no-use-before-define
+		const inputParameters = prepareParameters(
+			parameters.map((name) => ({
+				name,
+				valueProvider: 'modelRequired',
+			})),
+			placeholders,
+			'keypair',
+			sendIn,
+			'',
+		);
+
+		return key
+			? inputParameters.parameters.map((p) => ({ ...p, key }))
+			: inputParameters.parameters;
 	}
+
+	return [];
 };
 
-export function prepareJSONSchema7Properties(
-	parameters: ParametersValues,
-	placeholders: ToolParameter[],
+export function prepareParameters(
+	rawParameters: RawParametersValues,
+	placeholders: PlaceholderDefinition[],
 	parametersInputType: 'model' | 'keypair' | 'json',
-	requestOptionKey: string,
+	sendIn: SendIn,
 	modelInputDescription: string,
-): { schema: { [key: string]: JSONSchema7Definition }; values: IDataObject } {
-	const schemaProperties: JSONSchema7Definition = {
-		type: 'object',
-		properties: {},
-		required: [],
-	};
-	const userProvidedValues: IDataObject = {};
+): { parameters: ToolParameter[]; values: IDataObject } {
+	const parameters: ToolParameter[] = [];
+	const values: IDataObject = {};
 
 	if (parametersInputType === 'model') {
 		return {
-			schema: {
-				[requestOptionKey]: {
-					type: 'object',
+			parameters: [
+				{
+					name: sendIn,
+					required: true,
+					type: 'json',
 					description: modelInputDescription,
+					sendIn,
 				},
-			},
+			],
 			values: {},
 		};
 	}
 
 	//TODO implement json input type to resolve placeholders
 	if (parametersInputType === 'keypair' || parametersInputType === 'json') {
-		for (const entry of parameters) {
+		for (const entry of rawParameters) {
 			if (entry.valueProvider.includes('model')) {
 				const placeholder = placeholders.find((p) => p.name === entry.name);
-				const schemaEntry: IDataObject = {};
-				const required = placeholder?.required ?? entry.valueProvider === 'modelRequired';
+
+				const parameter: ToolParameter = {
+					name: entry.name,
+					required: entry.valueProvider === 'modelRequired',
+					sendIn,
+				};
 
 				if (placeholder) {
-					schemaEntry.type = placeholder.type !== 'not specified' ? placeholder.type : undefined;
-					schemaEntry.description = placeholder.description;
+					parameter.type = placeholder.type;
+					parameter.description = placeholder.description;
 				}
 
-				if (required) {
-					schemaProperties.required!.push(entry.name);
-				}
-
-				schemaProperties.properties![entry.name] = schemaEntry;
+				parameters.push(parameter);
 			} else {
-				userProvidedValues[entry.name] = entry.value;
+				parameters.push(
+					...extractParametersFromText(placeholders, entry.value as string, sendIn, entry.name),
+				);
+				values[entry.name] = entry.value;
 			}
 		}
 	}
 
 	return {
-		schema: {
-			[requestOptionKey]: schemaProperties,
-		},
-		values: userProvidedValues,
+		parameters,
+		values,
 	};
 }
