@@ -1,3 +1,15 @@
+## [1.43.1](https://github.com/n8n-io/n8n/compare/n8n@1.43.0...n8n@1.43.1) (2024-05-24)
+
+
+### Bug Fixes
+
+* **core:** Prevent re-parsing of dynamically loaded options ([#9503](https://github.com/n8n-io/n8n/issues/9503)) ([6ce0774](https://github.com/n8n-io/n8n/commit/6ce07746d1f4dcc105f0a5424eb0cd58bc4ab414))
+* **core:** Upgrade sheetjs to address CVE-2024-22363 ([#9498](https://github.com/n8n-io/n8n/issues/9498)) ([c23df0a](https://github.com/n8n-io/n8n/commit/c23df0a9ef557f079453946e86a9fe050f01c725))
+* **editor:** Prevent XSS in node-issues tooltip ([#9490](https://github.com/n8n-io/n8n/issues/9490)) ([13489b6](https://github.com/n8n-io/n8n/commit/13489b6f2ed3f075488d82f9897cdc700586828c))
+* **editor:** Show input panel with not connected message ([#9495](https://github.com/n8n-io/n8n/issues/9495)) ([a1cce94](https://github.com/n8n-io/n8n/commit/a1cce943188afa0f2c8746c758a67ac63093d18a))
+
+
+
 # [1.43.0](https://github.com/n8n-io/n8n/compare/n8n@1.42.0...n8n@1.43.0) (2024-05-22)
 
 
