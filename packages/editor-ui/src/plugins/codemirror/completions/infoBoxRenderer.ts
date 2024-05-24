@@ -44,7 +44,6 @@ const renderFunctionHeader = (doc?: DocMetadata, highlightArgIndex?: number) => 
 				argSpan.textContent = '...' + argSpan.textContent;
 			}
 
-			argSpan.classList.add('autocomplete-info-arg');
 			argsSpan.appendChild(argSpan);
 
 			if (index !== array.length - 1) {
@@ -52,7 +51,9 @@ const renderFunctionHeader = (doc?: DocMetadata, highlightArgIndex?: number) => 
 				separatorSpan.textContent = ', ';
 				argsSpan.appendChild(separatorSpan);
 			} else {
-				argSpan.textContent += ')';
+				const closeBrackets = document.createElement('span');
+				closeBrackets.textContent = ')';
+				argsSpan.appendChild(closeBrackets);
 			}
 		});
 		header.appendChild(argsSpan);
@@ -249,7 +250,7 @@ const renderExamples = (examples: DocMetadataExample[]) => {
 
 export const createInfoBoxRenderer =
 	(doc?: DocMetadata, isFunction = false) =>
-	(_completion: Completion, highlightArgIndex?: number) => {
+	(_completion: Completion, highlightArgIndex = -1) => {
 		const tooltipContainer = document.createElement('div');
 		tooltipContainer.setAttribute('tabindex', '-1');
 		tooltipContainer.setAttribute('title', '');
