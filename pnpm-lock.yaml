@@ -523,8 +523,8 @@ importers:
         specifier: 0.3.20-9
         version: 0.3.20-9(@sentry/node@7.87.0)(ioredis@5.3.2)(mysql2@3.9.7)(pg@8.11.3)(sqlite3@5.1.7)
       '@n8n_io/license-sdk':
-        specifier: 2.10.0
-        version: 2.10.0
+        specifier: 2.11.1
+        version: 2.11.1
       '@oclif/core':
         specifier: 3.18.1
         version: 3.18.1
@@ -7067,14 +7067,14 @@ packages:
       acorn-walk: 8.2.0
     dev: false
 
-  /@n8n_io/license-sdk@2.10.0:
-    resolution: {integrity: sha512-o6jJSQJ80uGGgGCaSr0NPVGpJd3ePR+fGBQ7MtnNKxxQy3m4iX8reKGoLAphANNzQHnXVFHqo7U2zXlI8h4ZvA==}
-    engines: {node: '>=18.12.1', npm: '>=8.19.2'}
+  /@n8n_io/license-sdk@2.11.1:
+    resolution: {integrity: sha512-7bv2Wu4+29VELXbePpGNtzwFkc0/AFWYDG46PRbhdFMUMvUhK2q3N/J/HW5qHzXrQpOvL7fZGbzGxUQi8AdvAQ==}
+    engines: {node: '>=18.12.1'}
     dependencies:
       crypto-js: 4.2.0
       node-machine-id: 1.1.12
       node-rsa: 1.1.1
-      undici: 6.4.0
+      undici: 6.18.1
     dev: false
 
   /@n8n_io/riot-tmpl@4.0.0:
@@ -23986,11 +23986,9 @@ packages:
       '@fastify/busboy': 2.0.0
     dev: false
 
-  /undici@6.4.0:
-    resolution: {integrity: sha512-wYaKgftNqf6Je7JQ51YzkEkEevzOgM7at5JytKO7BjaURQpERW8edQSMrr2xb+Yv4U8Yg47J24+lc9+NbeXMFA==}
-    engines: {node: '>=18.0'}
-    dependencies:
-      '@fastify/busboy': 2.0.0
+  /undici@6.18.1:
+    resolution: {integrity: sha512-/0BWqR8rJNRysS5lqVmfc7eeOErcOP4tZpATVjJOojjHZ71gSYVAtFhEmadcIjwMIUehh5NFyKGsXCnXIajtbA==}
+    engines: {node: '>=18.17'}
     dev: false
 
   /unicode-canonical-property-names-ecmascript@2.0.0:
