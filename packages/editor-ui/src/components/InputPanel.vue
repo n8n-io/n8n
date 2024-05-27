@@ -1,6 +1,7 @@
 <template>
 	<RunData
 		:node="currentNode"
+		:workflow="workflow"
 		:run-index="runIndex"
 		:linked-runs="linkedRuns"
 		:can-link-runs="!mappedNode && canLinkRuns"
@@ -23,41 +24,11 @@
 		@run-change="onRunIndexChange"
 		@table-mounted="$emit('tableMounted', $event)"
 		@search="$emit('search', $event)"
+		@input-node-change="onInputNodeChange"
 	>
 		<template #header>
 			<div :class="$style.titleSection">
-				<n8n-select
-					v-if="parentNodes.length"
-					teleported
-					size="small"
-					:model-value="currentNodeName"
-					:no-data-text="$locale.baseText('ndv.input.noNodesFound')"
-					:placeholder="$locale.baseText('ndv.input.parentNodes')"
-					filterable
-					data-test-id="ndv-input-select"
-					@update:model-value="onInputNodeChange"
-				>
-					<template #prepend>
-						<span :class="$style.title">{{ $locale.baseText('ndv.input') }}</span>
-					</template>
-					<n8n-option
-						v-for="node of parentNodes"
-						:key="node.name"
-						:value="node.name"
-						class="node-option"
-						:label="`${truncate(node.name)} ${getMultipleNodesText(node.name)}`"
-						data-test-id="ndv-input-option"
-					>
-						<span>{{ truncate(node.name) }}&nbsp;</span>
-						<span v-if="getMultipleNodesText(node.name)">{{
-							getMultipleNodesText(node.name)
-						}}</span>
-						<span v-else>{{
-							$locale.baseText('ndv.input.nodeDistance', { adjustToNumber: node.depth })
-						}}</span>
-					</n8n-option>
-				</n8n-select>
-				<span v-else :class="$style.title">{{ $locale.baseText('ndv.input') }}</span>
+				<span :class="$style.title">{{ $locale.baseText('ndv.input') }}</span>
 				<n8n-radio-buttons
 					v-if="isActiveNodeConfig && !readOnly"
 					:options="inputModes"
@@ -65,6 +36,41 @@
 					@update:model-value="onInputModeChange"
 				/>
 			</div>
+		</template>
+		<template #input-selector>
+			<n8n-select
+				v-if="parentNodes.length && currentNodeName"
+				:model-value="currentNodeName"
+				:no-data-text="$locale.baseText('ndv.input.noNodesFound')"
+				:placeholder="$locale.baseText('ndv.input.parentNodes')"
+				:class="$style.inputSelector"
+				teleported
+				size="small"
+				filterable
+				data-test-id="ndv-input-select"
+				@update:model-value="onInputNodeChange"
+			>
+				<template #prefix>
+					<NodeIcon :node-type="getNodeTypeFromName(currentNodeName)" :size="14" :shrink="false" />
+				</template>
+				<n8n-option
+					v-for="node of parentNodes"
+					:key="node.name"
+					:value="node.name"
+					:class="$style.nodeOption"
+					:label="`${nodeOptionTitle(node.name)} ${getMultipleNodesText(node.name)}`"
+					data-test-id="ndv-input-option"
+				>
+					<NodeIcon
+						:class="$style.nodeOptionIcon"
+						:node-type="getNodeTypeFromName(node.name)"
+						:size="14"
+						:shrink="false"
+					/>
+					<span :class="$style.nodeOptionTitle">{{ nodeOptionTitle(node.name) }}&nbsp;</span>
+					<span :class="$style.nodeOptionSubtitle">{{ nodeOptionSubtitle(node) }}</span>
+				</n8n-option>
+			</n8n-select>
 		</template>
 		<template v-if="isMappingMode" #before-data>
 			<!--
@@ -163,7 +169,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { type PropType, defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import type { INodeUi } from '@/Interface';
 import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
@@ -176,6 +182,7 @@ import type {
 } from 'n8n-workflow';
 import RunData from './RunData.vue';
 import NodeExecuteButton from './NodeExecuteButton.vue';
+import NodeIcon from './NodeIcon.vue';
 import WireMeUp from './WireMeUp.vue';
 import {
 	CRON_NODE_TYPE,
@@ -192,7 +199,7 @@ type MappingMode = 'debugging' | 'mapping';
 
 export default defineComponent({
 	name: 'InputPanel',
-	components: { RunData, NodeExecuteButton, WireMeUp },
+	components: { RunData, NodeExecuteButton, WireMeUp, NodeIcon },
 	props: {
 		currentNodeName: {
 			type: String,
@@ -204,7 +211,10 @@ export default defineComponent({
 		linkedRuns: {
 			type: Boolean,
 		},
-		workflow: {},
+		workflow: {
+			type: Object as PropType<Workflow>,
+			required: true,
+		},
 		canLinkRuns: {
 			type: Boolean,
 		},
@@ -262,10 +272,10 @@ export default defineComponent({
 		isActiveNodeConfig(): boolean {
 			let inputs = this.activeNodeType?.inputs ?? [];
 			let outputs = this.activeNodeType?.outputs ?? [];
-			if (this.activeNode !== null && this.currentWorkflow !== null) {
-				const node = this.currentWorkflow.getNode(this.activeNode.name);
-				inputs = NodeHelpers.getNodeInputs(this.currentWorkflow, node!, this.activeNodeType!);
-				outputs = NodeHelpers.getNodeOutputs(this.currentWorkflow, node!, this.activeNodeType!);
+			if (this.activeNode !== null && this.workflow !== null) {
+				const node = this.workflow.getNode(this.activeNode.name);
+				inputs = NodeHelpers.getNodeInputs(this.workflow, node!, this.activeNodeType!);
+				outputs = NodeHelpers.getNodeOutputs(this.workflow, node!, this.activeNodeType!);
 			} else {
 				// If we can not figure out the node type we set no outputs
 				if (!Array.isArray(inputs)) {
@@ -319,21 +329,19 @@ export default defineComponent({
 		workflowRunning(): boolean {
 			return this.uiStore.isActionActive('workflowRunning');
 		},
-		currentWorkflow(): Workflow {
-			return this.workflow as Workflow;
-		},
+
 		activeNode(): INodeUi | null {
 			return this.ndvStore.activeNode;
 		},
 
 		rootNode(): string {
-			const workflow = this.currentWorkflow;
+			const workflow = this.workflow;
 			const rootNodes = workflow.getChildNodes(this.activeNode?.name ?? '', 'ALL_NON_MAIN');
 
 			return rootNodes[0];
 		},
 		rootNodesParents(): string[] {
-			const workflow = this.currentWorkflow;
+			const workflow = this.workflow;
 			const parentNodes = [...workflow.getParentNodes(this.rootNode, 'main')].reverse();
 
 			return parentNodes;
@@ -363,9 +371,7 @@ export default defineComponent({
 			if (!this.activeNode) {
 				return [];
 			}
-			const nodes: IConnectedNode[] = (this.workflow as Workflow).getParentNodesByDepth(
-				this.activeNode.name,
-			);
+			const nodes = this.workflow.getParentNodesByDepth(this.activeNode.name);
 
 			return nodes.filter(
 				({ name }, i) =>
@@ -440,7 +446,7 @@ export default defineComponent({
 			this.onRunIndexChange(0);
 			this.onUnlinkRun();
 		},
-		getMultipleNodesText(nodeName?: string): string {
+		getMultipleNodesText(nodeName: string): string {
 			if (
 				!nodeName ||
 				!this.isMultiInputNode ||
@@ -450,7 +456,7 @@ export default defineComponent({
 				return '';
 
 			const activeNodeConnections =
-				this.currentWorkflow.connectionsByDestinationNode[this.activeNode.name].main || [];
+				this.workflow.connectionsByDestinationNode[this.activeNode.name].main || [];
 			// Collect indexes of connected nodes
 			const connectedInputIndexes = activeNodeConnections.reduce((acc: number[], node, index) => {
 				if (node[0] && node[0].node === nodeName) return [...acc, index];
@@ -502,15 +508,27 @@ export default defineComponent({
 				});
 			}
 		},
-		truncate(nodeName: string) {
+		nodeOptionTitle(nodeName: string) {
 			const truncated = nodeName.substring(0, 30);
 			if (truncated.length < nodeName.length) {
 				return `${truncated}...`;
 			}
 			return truncated;
 		},
+		nodeOptionSubtitle(node: IConnectedNode) {
+			const multipleNodesText = this.getMultipleNodesText(node.name);
+			if (multipleNodesText) return multipleNodesText;
+
+			return this.$locale.baseText('ndv.input.nodeDistance', { adjustToNumber: node.depth });
+		},
 		activatePane() {
 			this.$emit('activatePane');
+		},
+		getNodeTypeFromName(nodeName: string) {
+			const node = this.workflowsStore.getNodeByName(nodeName);
+
+			if (!node) return null;
+			return this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 		},
 	},
 });
@@ -521,6 +539,7 @@ export default defineComponent({
 	width: max-content;
 	padding: 0 var(--spacing-s) var(--spacing-s);
 }
+
 .titleSection {
 	display: flex;
 	max-width: 300px;
@@ -570,22 +589,37 @@ export default defineComponent({
 .title {
 	text-transform: uppercase;
 	color: var(--color-text-light);
-	letter-spacing: 3px;
 	font-size: var(--font-size-s);
 	font-weight: var(--font-weight-bold);
 }
-</style>
 
-<style lang="scss" scoped>
-.node-option {
-	font-weight: var(--font-weight-regular) !important;
+.inputSelector {
+	max-width: 240px;
 
-	span {
-		color: var(--color-text-light);
+	:global(.el-input--suffix .el-input__inner) {
+		padding-right: var(--spacing-l);
 	}
+}
 
-	&.selected > span {
-		color: var(--color-primary);
-	}
+.nodeOption {
+	--select-option-padding: 0 var(--spacing-s);
+	display: flex;
+	align-items: center;
+	font-size: var(--font-size-2xs);
+	gap: var(--spacing-4xs);
+}
+
+.nodeOptionIcon {
+	padding-right: var(--spacing-5xs);
+}
+
+.nodeOptionTitle {
+	color: var(--color-text-dark);
+	font-weight: var(--font-weight-regular);
+}
+
+.nodeOptionSubtitle {
+	color: var(--color-text-light);
+	font-weight: var(--font-weight-regular);
 }
 </style>

@@ -85,6 +85,7 @@
 				<template #output>
 					<OutputPanel
 						data-test-id="output-panel"
+						:workflow="workflow"
 						:can-link-runs="canLinkRuns"
 						:run-index="outputRun"
 						:linked-runs="linked"

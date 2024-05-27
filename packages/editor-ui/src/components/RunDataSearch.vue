@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue';
+import { computed, ref, onMounted, onUnmounted, type StyleValue } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import type { NodePanelType } from '@/Interface';
 
@@ -9,7 +9,9 @@ type Props = {
 	isAreaActive?: boolean;
 };
 
-const INITIAL_WIDTH = '34px';
+const COLLAPSED_WIDTH = '34px';
+const OPEN_WIDTH = '200px';
+const OPEN_MIN_WIDTH = '120px';
 
 const emit = defineEmits<{
 	(event: 'update:modelValue', value: Props['modelValue']): void;
@@ -24,12 +26,15 @@ const props = withDefaults(defineProps<Props>(), {
 const locale = useI18n();
 
 const inputRef = ref<HTMLInputElement | null>(null);
-const maxWidth = ref(INITIAL_WIDTH);
 const opened = ref(false);
 const placeholder = computed(() =>
 	props.paneType === 'input'
 		? locale.baseText('ndv.search.placeholder.input')
 		: locale.baseText('ndv.search.placeholder.output'),
+);
+
+const style = computed<StyleValue>(() =>
+	opened.value ? { maxWidth: OPEN_WIDTH, minWidth: OPEN_MIN_WIDTH } : { maxWidth: COLLAPSED_WIDTH },
 );
 
 const documentKeyHandler = (event: KeyboardEvent) => {
@@ -50,14 +55,12 @@ const onSearchUpdate = (value: string) => {
 };
 const onFocus = () => {
 	opened.value = true;
-	maxWidth.value = '30%';
 	inputRef.value?.select();
 	emit('focus');
 };
 const onBlur = () => {
 	if (!props.modelValue) {
 		opened.value = false;
-		maxWidth.value = INITIAL_WIDTH;
 	}
 };
 onMounted(() => {
@@ -76,7 +79,7 @@ onUnmounted(() => {
 			[$style.ioSearch]: true,
 			[$style.ioSearchOpened]: opened,
 		}"
-		:style="{ maxWidth }"
+		:style="style"
 		:model-value="modelValue"
 		:placeholder="placeholder"
 		size="small"
@@ -94,7 +97,6 @@ onUnmounted(() => {
 @import '@/styles/variables';
 
 .ioSearch {
-	margin-right: var(--spacing-s);
 	transition: max-width 0.3s $ease-out-expo;
 
 	.ioSearchIcon {
