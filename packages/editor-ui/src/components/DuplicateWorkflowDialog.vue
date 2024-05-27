@@ -162,7 +162,7 @@ export default defineComponent({
 					data: workflowToUpdate,
 					tags: this.currentTagIds,
 					resetWebhookUrls: true,
-					openInNewWindow: false,
+					openInNewWindow: true,
 					resetNodeIds: true,
 				});
 
