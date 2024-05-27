@@ -454,9 +454,9 @@ async function onAutoRefreshToggle(value: boolean) {
 	left: 50%;
 	transform: translateX(-50%);
 	bottom: var(--spacing-3xl);
-	background: var(--color-background-dark);
+	background: var(--execution-selector-background);
 	border-radius: var(--border-radius-base);
-	color: var(--color-text-xlight);
+	color: var(--execution-selector-text);
 	font-size: var(--font-size-2xs);
 
 	button {
@@ -534,7 +534,7 @@ async function onAutoRefreshToggle(value: boolean) {
 .selectAll {
 	display: inline-block;
 	margin: 0 0 var(--spacing-s) var(--spacing-s);
-	color: var(--color-danger);
+	color: var(--execution-select-all-text);
 }
 
 .filterLoader {
