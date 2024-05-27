@@ -1,5 +1,4 @@
 import type { INodePropertyOptions } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
 
 import { Post, RestController } from '@/decorators';
 import { getBase } from '@/WorkflowExecuteAdditionalData';
@@ -37,7 +36,7 @@ export class DynamicNodeParametersController {
 
 		if (loadOptions) {
 			return await this.service.getOptionsViaLoadOptions(
-				jsonParse(loadOptions),
+				loadOptions,
 				additionalData,
 				nodeTypeAndVersion,
 				currentNodeParameters,
