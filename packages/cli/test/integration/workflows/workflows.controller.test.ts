@@ -359,7 +359,7 @@ describe('POST /workflows', () => {
 	});
 });
 
-describe('GET /workflows/:id', () => {
+describe('GET /workflows/:workflowId', () => {
 	test('should return pin data', async () => {
 		const workflow = makeWorkflow({ withPinData: true });
 		const workflowCreationResponse = await authOwnerAgent.post('/workflows').send(workflow);
@@ -823,7 +823,7 @@ describe('GET /workflows', () => {
 	});
 });
 
-describe('PATCH /workflows/:id', () => {
+describe('PATCH /workflows/:workflowId', () => {
 	test('should create workflow history version when licensed', async () => {
 		license.enable('feat:workflowHistory');
 		const workflow = await createWorkflow({}, owner);
@@ -997,7 +997,7 @@ describe('PATCH /workflows/:id', () => {
 	});
 });
 
-describe('POST /workflows/run', () => {
+describe('POST /workflows/:workflowId/run', () => {
 	let sharingSpy: jest.SpyInstance;
 	let tamperingSpy: jest.SpyInstance;
 	let workflow: WorkflowEntity;
@@ -1028,7 +1028,7 @@ describe('POST /workflows/run', () => {
 	});
 });
 
-describe('DELETE /workflows/:id', () => {
+describe('DELETE /workflows/:workflowId', () => {
 	test('deletes a workflow owned by the user', async () => {
 		const workflow = await createWorkflow({}, owner);
 
