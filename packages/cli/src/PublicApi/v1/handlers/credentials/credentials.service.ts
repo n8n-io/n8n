@@ -69,6 +69,7 @@ export async function saveCredential(
 
 		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 			user.id,
+			transactionManager,
 		);
 
 		Object.assign(newSharedCredential, {

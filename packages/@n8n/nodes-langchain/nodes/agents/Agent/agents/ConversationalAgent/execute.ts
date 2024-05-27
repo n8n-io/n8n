@@ -13,6 +13,7 @@ import {
 	getConnectedTools,
 } from '../../../../../utils/helpers';
 import { getTracingConfig } from '../../../../../utils/tracing';
+import { throwIfToolSchema } from '../../../../../utils/schemaParsing';
 
 export async function conversationalAgentExecute(
 	this: IExecuteFunctions,
@@ -111,13 +112,8 @@ export async function conversationalAgentExecute(
 
 			returnData.push({ json: response });
 		} catch (error) {
-			if (error.message.includes('tool input did not match expected schema')) {
-				throw new NodeOperationError(
-					this.getNode(),
-					`${error.message}.
-					This is most likely because some of your tools are configured to require a specific schema. This is not supported by Conversational Agent. Remove the schema from the tool configuration or use Tools agent instead.`,
-				);
-			}
+			throwIfToolSchema(this, error);
+
 			if (this.continueOnFail()) {
 				returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
 				continue;
@@ -127,5 +123,5 @@ export async function conversationalAgentExecute(
 		}
 	}
 
-	return await this.prepareOutputData(returnData);
+	return [returnData];
 }

@@ -17,6 +17,11 @@ import type { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScrip
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { logWrapper } from '../../../utils/logWrapper';
 import { generateSchema, getSandboxWithZod } from '../../../utils/schemaParsing';
+import {
+	inputSchemaField,
+	jsonSchemaExampleField,
+	schemaTypeField,
+} from '../../../utils/descriptions';
 
 const STRUCTURED_OUTPUT_KEY = '__structured__output';
 const STRUCTURED_OUTPUT_OBJECT_KEY = '__structured__output__object';
@@ -114,6 +119,33 @@ export class OutputParserStructured implements INodeType {
 		outputNames: ['Output Parser'],
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			{ ...schemaTypeField, displayOptions: { show: { '@version': [{ _cnd: { gte: 1.2 } }] } } },
+			{
+				...jsonSchemaExampleField,
+				default: `{
+	"state": "California",
+	"cities": ["Los Angeles", "San Francisco", "San Diego"]
+}`,
+			},
+			{
+				...inputSchemaField,
+				displayName: 'JSON Schema',
+				description: 'JSON Schema to structure and validate the output against',
+				default: `{
+	"type": "object",
+	"properties": {
+		"state": {
+			"type": "string"
+		},
+		"cities": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			}
+		}
+	}
+}`,
+			},
 			{
 				displayName: 'Schema Type',
 				name: 'schemaType',

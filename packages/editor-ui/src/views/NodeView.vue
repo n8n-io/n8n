@@ -397,6 +397,7 @@ import { useAIStore } from '@/stores/ai.store';
 import { useStorage } from '@/composables/useStorage';
 import { isJSPlumbEndpointElement } from '@/utils/typeGuards';
 import { usePostHog } from '@/stores/posthog.store';
+import { ProjectTypes } from '@/features/projects/projects.utils';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -3749,6 +3750,10 @@ export default defineComponent({
 						await this.openWorkflow(workflow);
 						await this.checkAndInitDebugMode();
 
+						await this.projectsStore.setProjectNavActiveIdByWorkflowHomeProject(
+							workflow.homeProject,
+						);
+
 						if (workflow.meta?.onboardingId) {
 							this.$telemetry.track(
 								`User opened workflow from onboarding template with ID ${workflow.meta.onboardingId}`,
@@ -4693,7 +4698,7 @@ export default defineComponent({
 		async loadCredentials(): Promise<void> {
 			const workflow = this.workflowsStore.getWorkflowById(this.currentWorkflow);
 			const projectId =
-				workflow?.homeProject?.type === 'personal'
+				workflow?.homeProject?.type === ProjectTypes.Personal
 					? this.projectsStore.personalProject?.id
 					: workflow?.homeProject?.id;
 			await this.credentialsStore.fetchAllCredentials(projectId);
@@ -4783,7 +4788,9 @@ export default defineComponent({
 						});
 					}
 				} else if (json?.command === 'setActiveExecution') {
-					this.executionsStore.activeExecution = json.execution;
+					this.executionsStore.activeExecution = (await this.executionsStore.fetchExecution(
+						json.executionId,
+					)) as ExecutionSummary;
 				}
 			} catch (e) {}
 		},

@@ -21,7 +21,11 @@ import type { JSONSchema7 } from 'json-schema';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import type { DynamicZodObject } from '../../../types/zod.types';
 import { generateSchema, getSandboxWithZod } from '../../../utils/schemaParsing';
-
+import {
+	jsonSchemaExampleField,
+	schemaTypeField,
+	inputSchemaField,
+} from '../../../utils/descriptions';
 export class ToolWorkflow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Custom n8n Workflow Tool',
@@ -324,78 +328,14 @@ export class ToolWorkflow implements INodeType {
 				displayName: 'Specify Input Schema',
 				name: 'specifyInputSchema',
 				type: 'boolean',
+				description:
+					'Whether to specify the schema for the function. This would require the LLM to provide the input in the correct format and would validate it against the schema.',
 				noDataExpression: true,
 				default: false,
 			},
-			{
-				displayName: 'Schema Type',
-				name: 'schemaType',
-				type: 'options',
-				noDataExpression: true,
-				options: [
-					{
-						name: 'Generate From JSON Example',
-						value: 'fromJson',
-						description: 'Generate a schema from an example JSON object',
-					},
-					{
-						name: 'Define Below',
-						value: 'manual',
-						description: 'Define the JSON schema manually',
-					},
-				],
-				default: 'fromJson',
-				description: 'How to specify the schema for the function',
-				displayOptions: {
-					show: {
-						specifyInputSchema: [true],
-					},
-				},
-			},
-			{
-				displayName: 'JSON Example',
-				name: 'jsonSchemaExample',
-				type: 'json',
-				default: `{
-	"some_input": "some_value"
-}`,
-				noDataExpression: true,
-				typeOptions: {
-					rows: 10,
-				},
-				displayOptions: {
-					show: {
-						specifyInputSchema: [true],
-						schemaType: ['fromJson'],
-					},
-				},
-				description: 'Example JSON object to use to generate the schema',
-			},
-			{
-				displayName: 'Input Schema',
-				name: 'inputSchema',
-				type: 'json',
-				default: `{
-	"type": "object",
-	"properties": {
-		"some_input": {
-			"type": "string",
-			"description": "Some input to the function"
-		}
-	}
-}`,
-				noDataExpression: true,
-				typeOptions: {
-					rows: 10,
-				},
-				displayOptions: {
-					show: {
-						specifyInputSchema: [true],
-						schemaType: ['manual'],
-					},
-				},
-				description: 'Schema to use for the function',
-			},
+			{ ...schemaTypeField, displayOptions: { show: { specifyInputSchema: [true] } } },
+			jsonSchemaExampleField,
+			inputSchemaField,
 		],
 	};
 

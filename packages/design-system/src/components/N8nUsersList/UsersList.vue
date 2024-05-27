@@ -52,6 +52,7 @@ interface UsersListProps {
 
 const props = withDefaults(defineProps<UsersListProps>(), {
 	readonly: false,
+	currentUserId: '',
 	users: () => [],
 	actions: () => [],
 	isSamlLoginEnabled: false,
@@ -101,11 +102,15 @@ const defaultGuard = () => true;
 const getActions = (user: IUser): UserAction[] => {
 	if (user.isOwner) return [];
 
-	return props.actions.filter((action) => (action.guard || defaultGuard)(user));
+	return props.actions.filter((action) => (action.guard ?? defaultGuard)(user));
 };
 
-const $emit = defineEmits(['*']);
-const onUserAction = (user: IUser, action: string) => $emit(action, user.id);
+const $emit = defineEmits(['action']);
+const onUserAction = (user: IUser, action: string) =>
+	$emit('action', {
+		action,
+		userId: user.id,
+	});
 </script>
 
 <style lang="scss" module>

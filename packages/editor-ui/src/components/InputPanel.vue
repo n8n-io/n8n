@@ -112,7 +112,7 @@
 						type="secondary"
 						hide-icon
 						:transparent="true"
-						:node-name="isActiveNodeConfig ? rootNode : currentNodeName"
+						:node-name="isActiveNodeConfig ? rootNode : currentNodeName ?? ''"
 						:label="$locale.baseText('ndv.input.noOutputData.executePrevious')"
 						telemetry-source="inputs"
 						data-test-id="execute-previous-node"
@@ -328,7 +328,7 @@ export default defineComponent({
 
 		rootNode(): string {
 			const workflow = this.currentWorkflow;
-			const rootNodes = workflow.getChildNodes(this.activeNode.name, 'ALL_NON_MAIN');
+			const rootNodes = workflow.getChildNodes(this.activeNode?.name ?? '', 'ALL_NON_MAIN');
 
 			return rootNodes[0];
 		},
@@ -350,7 +350,7 @@ export default defineComponent({
 				return this.activeNode;
 			}
 
-			return this.workflowsStore.getNodeByName(this.currentNodeName);
+			return this.workflowsStore.getNodeByName(this.currentNodeName ?? '');
 		},
 		connectedCurrentNodeOutputs(): number[] | undefined {
 			const search = this.parentNodes.find(({ name }) => name === this.currentNodeName);
