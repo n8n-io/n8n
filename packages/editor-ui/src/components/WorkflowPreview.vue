@@ -119,7 +119,7 @@ const loadExecution = () => {
 			iframeRef.value?.contentWindow?.postMessage?.(
 				JSON.stringify({
 					command: 'setActiveExecution',
-					execution: executionsStore.activeExecution,
+					executionId: executionsStore.activeExecution.id,
 				}),
 				'*',
 			);
