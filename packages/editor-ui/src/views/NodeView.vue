@@ -250,6 +250,7 @@ import {
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	TIME,
 	AI_ASSISTANT_LOCAL_STORAGE_KEY,
+	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT,
 } from '@/constants';
 
 import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
@@ -395,6 +396,7 @@ import type { ProjectSharingData } from '@/features/projects/projects.types';
 import { useAIStore } from '@/stores/ai.store';
 import { useStorage } from '@/composables/useStorage';
 import { isJSPlumbEndpointElement } from '@/utils/typeGuards';
+import { usePostHog } from '@/stores/posthog.store';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -3659,6 +3661,7 @@ export default defineComponent({
 			this.workflowsStore.workflow.scopes = scopes;
 		},
 		async newWorkflow(): Promise<void> {
+			const { getVariant } = usePostHog();
 			this.canvasStore.startLoading();
 			this.resetWorkspace();
 			this.workflowData = await this.workflowsStore.getNewWorkflowData(
@@ -3670,15 +3673,23 @@ export default defineComponent({
 
 			this.uiStore.stateIsDirty = false;
 			this.canvasStore.setZoomLevel(1, [0, 0]);
-			await this.tryToAddWelcomeSticky();
+			this.canvasStore.zoomToFit();
 			this.uiStore.nodeViewInitialized = true;
 			this.historyStore.reset();
 			this.executionsStore.activeExecution = null;
 			this.makeNewWorkflowShareable();
 			this.canvasStore.stopLoading();
-		},
-		async tryToAddWelcomeSticky(): Promise<void> {
-			this.canvasStore.zoomToFit();
+
+			// Pre-populate the canvas with the manual trigger node if the experiment is enabled and the user is in the variant group
+			if (
+				getVariant(CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT.name) ===
+				CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT.variant
+			) {
+				const manualTriggerNode = this.canvasStore.getAutoAddManualTriggerNode();
+				if (manualTriggerNode) {
+					await this.addNodes([manualTriggerNode]);
+				}
+			}
 		},
 		async initView(): Promise<void> {
 			if (this.$route.params.action === 'workflowSave') {
@@ -5363,4 +5374,3 @@ export default defineComponent({
 	);
 }
 </style>
-, IRun, IPushDataExecutionFinished

@@ -667,10 +667,17 @@ export const AI_ASSISTANT_EXPERIMENT = {
 	variant: 'variant',
 };
 
+export const CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT = {
+	name: '20_canvas_auto_add_manual_trigger',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const EXPERIMENTS_TO_TRACK = [
 	ASK_AI_EXPERIMENT.name,
 	TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT,
 	AI_ASSISTANT_EXPERIMENT.name,
+	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT.name,
 ];
 
 export const MFA_AUTHENTICATION_REQUIRED_ERROR_CODE = 998;

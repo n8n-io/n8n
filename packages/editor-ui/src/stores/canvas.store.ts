@@ -15,7 +15,7 @@ import {
 	scaleReset,
 	scaleSmaller,
 } from '@/utils/canvasUtils';
-import { START_NODE_TYPE } from '@/constants';
+import { MANUAL_TRIGGER_NODE_TYPE, START_NODE_TYPE } from '@/constants';
 import type {
 	BeforeStartEventParams,
 	BrowserJsPlumbInstance,
@@ -91,6 +91,23 @@ export const useCanvasStore = defineStore('canvas', () => {
 			id: uuid(),
 			...DEFAULT_PLACEHOLDER_TRIGGER_BUTTON,
 			position: canvasAddButtonPosition.value,
+		};
+	};
+
+	const getAutoAddManualTriggerNode = (): INodeUi | null => {
+		const manualTriggerNode = nodeTypesStore.getNodeType(MANUAL_TRIGGER_NODE_TYPE);
+
+		if (!manualTriggerNode) {
+			console.error('Could not find the manual trigger node');
+			return null;
+		}
+		return {
+			id: uuid(),
+			name: manualTriggerNode.defaults.name?.toString() ?? manualTriggerNode.displayName,
+			type: MANUAL_TRIGGER_NODE_TYPE,
+			parameters: {},
+			position: canvasAddButtonPosition.value,
+			typeVersion: 1,
 		};
 	};
 
@@ -315,5 +332,6 @@ export const useCanvasStore = defineStore('canvas', () => {
 		zoomToFit,
 		wheelScroll,
 		initInstance,
+		getAutoAddManualTriggerNode,
 	};
 });
