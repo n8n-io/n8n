@@ -90,7 +90,7 @@ const { t } = useI18n();
 .creatorNode:hover .panelIcon {
 	color: var(--action-arrow-color-hover, var(--color-text-light));
 }
-.tag {
+:root .tag {
 	margin-left: var(--spacing-2xs);
 	line-height: 10px;
 	font-size: 10px;
