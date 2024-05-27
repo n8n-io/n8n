@@ -10,10 +10,7 @@ export const handleEmailLogin = async (
 	email: string,
 	password: string,
 ): Promise<User | undefined> => {
-	const user = await Container.get(UserRepository).findOne({
-		where: { email },
-		relations: ['authIdentities'],
-	});
+	const user = await Container.get(UserRepository).findForAuth({ email }, true);
 
 	if (user?.password && (await Container.get(PasswordUtility).compare(password, user.password))) {
 		return user;

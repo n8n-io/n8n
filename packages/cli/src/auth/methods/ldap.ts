@@ -4,7 +4,6 @@ import { InternalHooks } from '@/InternalHooks';
 import { LdapService } from '@/Ldap/ldap.service';
 import {
 	createLdapUserOnLocalDb,
-	getUserByEmail,
 	getAuthIdentityByLdapId,
 	isLdapEnabled,
 	mapLdapAttributesToUser,
@@ -12,6 +11,7 @@ import {
 	updateLdapUserOnLocalDb,
 } from '@/Ldap/helpers';
 import type { User } from '@db/entities/User';
+import { UserRepository } from '@db/repositories/user.repository';
 
 export const handleLdapLogin = async (
 	loginId: string,
@@ -42,7 +42,9 @@ export const handleLdapLogin = async (
 
 	const ldapAuthIdentity = await getAuthIdentityByLdapId(ldapId);
 	if (!ldapAuthIdentity) {
-		const emailUser = await getUserByEmail(emailAttributeValue);
+		const emailUser = await Container.get(UserRepository).findForAuth({
+			email: emailAttributeValue,
+		});
 
 		// check if there is an email user with the same email as the authenticated LDAP user trying to log-in
 		if (emailUser && emailUser.email === emailAttributeValue) {

@@ -101,12 +101,6 @@ export const getAuthIdentityByLdapId = async (
 	});
 };
 
-export const getUserByEmail = async (email: string): Promise<User | null> => {
-	return await Container.get(UserRepository).findOne({
-		where: { email },
-	});
-};
-
 /**
  * Map attributes from the LDAP server to the proper columns in the database
  * e.g. mail => email | uid => ldapId

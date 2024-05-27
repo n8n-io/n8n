@@ -1,11 +1,16 @@
+import { Response } from 'express';
 import { Delete, Get, Post, RestController } from '@/decorators';
 import { AuthenticatedRequest, MFA } from '@/requests';
+import { AuthService } from '@/auth/auth.service';
 import { MfaService } from '@/Mfa/mfa.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 @RestController('/mfa')
 export class MFAController {
-	constructor(private mfaService: MfaService) {}
+	constructor(
+		private readonly authService: AuthService,
+		private readonly mfaService: MfaService,
+	) {}
 
 	@Get('/qr')
 	async getQRCode(req: AuthenticatedRequest) {
@@ -48,7 +53,7 @@ export class MFAController {
 	}
 
 	@Post('/enable')
-	async activateMFA(req: MFA.Activate) {
+	async activateMFA(req: MFA.Activate, res: Response) {
 		const { token = null } = req.body;
 		const { id, mfaEnabled } = req.user;
 
@@ -69,13 +74,17 @@ export class MFAController {
 			throw new BadRequestError('MFA token expired. Close the modal and enable MFA again', 997);
 
 		await this.mfaService.enableMfa(id);
+
+		this.authService.issueCookie(res, req.user, req.browserId);
 	}
 
 	@Delete('/disable')
-	async disableMFA(req: AuthenticatedRequest) {
+	async disableMFA(req: AuthenticatedRequest, res: Response) {
 		const { id } = req.user;
 
 		await this.mfaService.disableMfa(id);
+
+		this.authService.issueCookie(res, req.user, req.browserId);
 	}
 
 	@Post('/verify')

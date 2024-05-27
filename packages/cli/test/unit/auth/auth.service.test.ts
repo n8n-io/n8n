@@ -21,6 +21,7 @@ describe('AuthService', () => {
 		password: 'passwordHash',
 		disabled: false,
 		mfaEnabled: false,
+		mfaSecret: undefined,
 	};
 	const user = mock<User>(userData);
 	const jwtService = new JwtService(mock());
@@ -43,15 +44,19 @@ describe('AuthService', () => {
 
 	describe('createJWTHash', () => {
 		it('should generate unique hashes', () => {
-			expect(authService.createJWTHash(user)).toEqual('mJAYx4Wb7k');
-			expect(
-				authService.createJWTHash(mock<User>({ email: user.email, password: 'newPasswordHash' })),
-			).toEqual('FVALtU7AE0');
-			expect(
-				authService.createJWTHash(
-					mock<User>({ email: 'test1@example.com', password: user.password }),
-				),
-			).toEqual('y8ha6X01jd');
+			const testUser = mock({ ...user });
+			expect(authService.createJWTHash(testUser)).toEqual('mJAYx4Wb7k');
+
+			testUser.password = 'newPasswordHash';
+			expect(authService.createJWTHash(testUser)).toEqual('FVALtU7AE0');
+
+			testUser.email = 'test1@example.com';
+			expect(authService.createJWTHash(testUser)).toEqual('IOFY0uvO3h');
+
+			testUser.mfaSecret = 'random';
+			expect(authService.createJWTHash(testUser)).toEqual('IOFY0uvO3h');
+			testUser.mfaEnabled = true;
+			expect(authService.createJWTHash(testUser)).toEqual('I5Sf6vCuu+');
 		});
 	});
 
@@ -88,7 +93,7 @@ describe('AuthService', () => {
 		it('should refresh the cookie before it expires', async () => {
 			req.cookies[AUTH_COOKIE_NAME] = validToken;
 			jest.advanceTimersByTime(6 * Time.days.toMilliseconds);
-			userRepository.findOne.mockResolvedValue(user);
+			userRepository.findForAuth.mockResolvedValue(user);
 
 			await authService.authMiddleware(req, res, next);
 			expect(next).toHaveBeenCalled();
@@ -166,7 +171,6 @@ describe('AuthService', () => {
 		});
 
 		it('should throw on hijacked tokens', async () => {
-			userRepository.findOne.mockResolvedValue(user);
 			const req = mock<AuthenticatedRequest>({ browserId: 'another-browser' });
 			await expect(authService.resolveJwt(validToken, req, res)).rejects.toThrow('Unauthorized');
 			expect(res.cookie).not.toHaveBeenCalled();
@@ -184,13 +188,12 @@ describe('AuthService', () => {
 				{ ...userData, email: 'someone@example.com' },
 			],
 		])('should throw if %s', async (_, data) => {
-			userRepository.findOne.mockResolvedValueOnce(data && mock<User>(data));
+			userRepository.findForAuth.mockResolvedValueOnce(data && mock<User>(data));
 			await expect(authService.resolveJwt(validToken, req, res)).rejects.toThrow('Unauthorized');
 			expect(res.cookie).not.toHaveBeenCalled();
 		});
 
 		it('should refresh the cookie before it expires', async () => {
-			userRepository.findOne.mockResolvedValue(user);
 			expect(await authService.resolveJwt(validToken, req, res)).toEqual(user);
 			expect(res.cookie).not.toHaveBeenCalled();
 
@@ -212,7 +215,6 @@ describe('AuthService', () => {
 		});
 
 		it('should refresh the cookie only if less than 1/4th of time is left', async () => {
-			userRepository.findOne.mockResolvedValue(user);
 			expect(await authService.resolveJwt(validToken, req, res)).toEqual(user);
 			expect(res.cookie).not.toHaveBeenCalled();
 
@@ -228,7 +230,6 @@ describe('AuthService', () => {
 		it('should not refresh the cookie if jwtRefreshTimeoutHours is set to -1', async () => {
 			config.set('userManagement.jwtRefreshTimeoutHours', -1);
 
-			userRepository.findOne.mockResolvedValue(user);
 			expect(await authService.resolveJwt(validToken, req, res)).toEqual(user);
 			expect(res.cookie).not.toHaveBeenCalled();
 
@@ -277,7 +278,7 @@ describe('AuthService', () => {
 		});
 
 		it('should not return a user if the user does not exist in the DB', async () => {
-			userRepository.findOne.mockResolvedValueOnce(null);
+			userRepository.findForAuth.mockResolvedValueOnce(null);
 			const token = authService.generatePasswordResetToken(user);
 
 			const resolvedUser = await authService.resolvePasswordResetToken(token);
@@ -288,7 +289,6 @@ describe('AuthService', () => {
 			const token = authService.generatePasswordResetToken(user);
 			const updatedUser = Object.create(user);
 			updatedUser.password = 'something-else';
-			userRepository.findOne.mockResolvedValueOnce(updatedUser);
 
 			const resolvedUser = await authService.resolvePasswordResetToken(token);
 			expect(resolvedUser).toBeUndefined();

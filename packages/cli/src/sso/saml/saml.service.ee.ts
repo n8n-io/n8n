@@ -172,10 +172,10 @@ export class SamlService {
 		const attributes = await this.getAttributesFromLoginResponse(req, binding);
 		if (attributes.email) {
 			const lowerCasedEmail = attributes.email.toLowerCase();
-			const user = await Container.get(UserRepository).findOne({
-				where: { email: lowerCasedEmail },
-				relations: ['authIdentities'],
-			});
+			const user = await Container.get(UserRepository).findForAuth(
+				{ email: lowerCasedEmail },
+				true,
+			);
 			if (user) {
 				// Login path for existing users that are fully set up and that have a SAML authIdentity set up
 				if (

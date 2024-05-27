@@ -1,5 +1,5 @@
 import { Service } from 'typedi';
-import type { DeepPartial, EntityManager, FindManyOptions } from '@n8n/typeorm';
+import type { DeepPartial, EntityManager, FindManyOptions, FindOptionsWhere } from '@n8n/typeorm';
 import { DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
 import type { ListQuery } from '@/requests';
 
@@ -10,6 +10,16 @@ import { ProjectRelation } from '../entities/ProjectRelation';
 export class UserRepository extends Repository<User> {
 	constructor(dataSource: DataSource) {
 		super(User, dataSource.manager);
+	}
+
+	/** This returns a user object with all columns, including the ones marked as `select: false` */
+	async findForAuth(where: FindOptionsWhere<User>, includeRelations = false) {
+		const select = this.metadata.columns.map((column) => column.propertyName) as Array<keyof User>;
+		return await this.findOne({
+			where,
+			select,
+			relations: includeRelations ? ['authIdentities'] : undefined,
+		});
 	}
 
 	async findManyByIds(userIds: string[]) {

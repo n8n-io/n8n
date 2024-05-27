@@ -121,9 +121,7 @@ export class AuthService {
 		});
 
 		// TODO: Use an in-memory ttl-cache to cache the User object for upto a minute
-		const user = await this.userRepository.findOne({
-			where: { id: jwtPayload.id },
-		});
+		const user = await this.userRepository.findForAuth({ id: jwtPayload.id });
 
 		if (
 			// If not user is found
@@ -184,11 +182,7 @@ export class AuthService {
 			return;
 		}
 
-		const user = await this.userRepository.findOne({
-			where: { id: decodedToken.sub },
-			relations: ['authIdentities'],
-		});
-
+		const user = await this.userRepository.findForAuth({ id: decodedToken.sub }, true);
 		if (!user) {
 			this.logger.debug(
 				'Request to resolve password token failed because no user was found for the provided user ID',
@@ -205,8 +199,10 @@ export class AuthService {
 		return user;
 	}
 
-	createJWTHash({ email, password }: User) {
-		return this.hash(email + ':' + password).substring(0, 10);
+	createJWTHash({ email, password, mfaEnabled, mfaSecret }: User) {
+		const payload = [email, password];
+		if (mfaEnabled) payload.push(mfaSecret!);
+		return this.hash(payload.join(':')).substring(0, 10);
 	}
 
 	private hash(input: string) {
