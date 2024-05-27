@@ -50,22 +50,13 @@ const renderFunctionHeader = (doc?: DocMetadata, highlightArgIndex?: number) => 
 				const separatorSpan = document.createElement('span');
 				separatorSpan.textContent = ', ';
 				argsSpan.appendChild(separatorSpan);
-			} else {
-				const closeBrackets = document.createElement('span');
-				closeBrackets.textContent = ')';
-				argsSpan.appendChild(closeBrackets);
 			}
 		});
 		header.appendChild(argsSpan);
 
-		const preTypeInfo = document.createElement('span');
-		preTypeInfo.textContent = !doc.args || doc.args.length === 0 ? '): ' : ': ';
-		header.appendChild(preTypeInfo);
-
-		const returnTypeSpan = document.createElement('span');
-		returnTypeSpan.textContent = doc.returnType;
-		returnTypeSpan.classList.add('autocomplete-info-return');
-		header.appendChild(returnTypeSpan);
+		const closingBracket = document.createElement('span');
+		closingBracket.textContent = ')';
+		header.appendChild(closingBracket);
 	}
 	return header;
 };
@@ -77,11 +68,7 @@ const renderPropHeader = (doc?: DocMetadata) => {
 		propNameSpan.classList.add('autocomplete-info-name');
 		propNameSpan.textContent = doc.name;
 
-		const returnTypeSpan = document.createElement('span');
-		returnTypeSpan.textContent = ': ' + doc.returnType;
-
 		header.appendChild(propNameSpan);
-		header.appendChild(returnTypeSpan);
 	}
 	return header;
 };

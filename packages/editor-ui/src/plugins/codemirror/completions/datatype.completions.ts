@@ -377,17 +377,6 @@ const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
 				detail: getDetail(base, resolvedProp),
 			};
 
-			const infoName = needsBracketAccess ? applyBracketAccess(key) : key;
-			option.info = createCompletionOption({
-				name: infoName,
-				doc: {
-					name: infoName,
-					returnType: isFunction ? 'any' : getDisplayType(resolvedProp),
-				},
-				isFunction,
-				transformLabel,
-			}).info;
-
 			return option;
 		});
 
