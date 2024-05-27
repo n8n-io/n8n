@@ -1448,17 +1448,6 @@ export default defineComponent({
 			}
 		},
 		getRunLabel(option: number) {
-			// let itemsCount = 0;
-			// for (let i = 0; i <= this.maxOutputIndex; i++) {
-			// 	itemsCount += this.getPinDataOrLiveData(this.getRawInputData(option - 1, i)).length;
-			// }
-			// const items = this.$locale.baseText('ndv.output.items', {
-			// 	adjustToNumber: itemsCount,
-			// 	interpolate: { count: itemsCount },
-			// });
-			// const itemsLabel = itemsCount > 0 ? ` (${items})` : '';
-			// return option + this.$locale.baseText('ndv.output.of') + (this.maxRunIndex + 1) + itemsLabel;
-
 			return this.$locale.baseText('ndv.output.of', {
 				interpolate: { current: option, total: this.maxRunIndex + 1 },
 			});
