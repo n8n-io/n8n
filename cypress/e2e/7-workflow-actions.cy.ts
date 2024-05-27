@@ -6,6 +6,7 @@ import {
 	EDIT_FIELDS_SET_NODE_NAME,
 	INSTANCE_MEMBERS,
 	INSTANCE_OWNER,
+	WEBHOOK_NODE_NAME,
 } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { WorkflowsPage as WorkflowsPageClass } from '../pages/workflows';
@@ -250,6 +251,21 @@ describe('Workflow Actions', () => {
 		it('should duplicate saved workflow', () => {
 			WorkflowPage.actions.saveWorkflowOnButtonClick();
 			duplicateWorkflow();
+		});
+
+		it('should update webhook path when duplicating workflow', () => {
+			WorkflowPage.actions.addNodeToCanvas(WEBHOOK_NODE_NAME);
+			WorkflowPage.actions.addNodeToCanvas(WEBHOOK_NODE_NAME);
+			// Activate original workflow
+			WorkflowPage.actions.activateWorkflow();
+			WorkflowPage.getters.isWorkflowActivated();
+			duplicateWorkflow();
+			cy.visit(WorkflowPages.url);
+			WorkflowPages.getters.workflowCards().contains(DUPLICATE_WORKFLOW_NAME).click();
+			// Activate duplicated workflow
+			WorkflowPage.actions.activateWorkflow();
+			// If webhooks are properly updated, this should pass
+			WorkflowPage.getters.isWorkflowActivated();
 		});
 	});
 
