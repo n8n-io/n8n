@@ -5,10 +5,10 @@ import {
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
+	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	REGULAR_NODE_CREATOR_VIEW,
 	TRANSFORM_DATA_SUBCATEGORY,
-	FILES_SUBCATEGORY,
 	FLOWS_CONTROL_SUBCATEGORY,
 	TRIGGER_NODE_CREATOR_VIEW,
 	EMAIL_IMAP_NODE_TYPE,
@@ -156,7 +156,7 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 					icon: 'box-open',
 					description: i18n.baseText('nodeCreator.aiPanel.linkItem.description'),
 					name: 'ai_templates_root',
-					url: templatesStore.getWebsiteCategoryURL('ai', 'AdvancedAI'),
+					url: templatesStore.getWebsiteCategoryURL(undefined, 'AdvancedAI'),
 					tag: {
 						type: 'info',
 						text: i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerTag'),
@@ -314,10 +314,6 @@ export function TriggerView() {
 					name: MANUAL_TRIGGER_NODE_TYPE,
 					displayName: i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerDisplayName'),
 					description: i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerDescription'),
-					tag: {
-						type: 'info',
-						text: i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerTag'),
-					},
 					icon: 'fa:mouse-pointer',
 				},
 			},
@@ -384,6 +380,18 @@ export function TriggerView() {
 					displayName: i18n.baseText('nodeCreator.triggerHelperPanel.workflowTriggerDisplayName'),
 					description: i18n.baseText('nodeCreator.triggerHelperPanel.workflowTriggerDescription'),
 					icon: 'fa:sign-out-alt',
+				},
+			},
+			{
+				key: MANUAL_CHAT_TRIGGER_NODE_TYPE,
+				type: 'node',
+				category: [CORE_NODES_CATEGORY],
+				properties: {
+					group: [],
+					name: MANUAL_CHAT_TRIGGER_NODE_TYPE,
+					displayName: i18n.baseText('nodeCreator.triggerHelperPanel.manualChatTriggerDisplayName'),
+					description: i18n.baseText('nodeCreator.triggerHelperPanel.manualChatTriggerDescription'),
+					icon: 'fa:comments',
 				},
 			},
 			{
@@ -474,22 +482,6 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 							key: 'popular',
 							title: i18n.baseText('nodeCreator.sectionNames.popular'),
 							items: [FILTER_NODE_TYPE, IF_NODE_TYPE, SPLIT_IN_BATCHES_NODE_TYPE, MERGE_NODE_TYPE],
-						},
-					],
-				},
-			},
-			{
-				type: 'subcategory',
-				key: FILES_SUBCATEGORY,
-				category: CORE_NODES_CATEGORY,
-				properties: {
-					title: FILES_SUBCATEGORY,
-					icon: 'file-alt',
-					sections: [
-						{
-							key: 'popular',
-							title: i18n.baseText('nodeCreator.sectionNames.popular'),
-							items: [CONVERT_TO_FILE_NODE_TYPE, EXTRACT_FROM_FILE_NODE_TYPE],
 						},
 					],
 				},

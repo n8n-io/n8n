@@ -157,10 +157,11 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 		 * Construct the URL for the template category page on the website for a given category id
 		 */
 		getWebsiteCategoryURL() {
-			return (id: string, roleOverride?: string) => {
-				const payload: Record<string, string> = {
-					categories: id,
-				};
+			return (id?: string, roleOverride?: string) => {
+				const payload: Record<string, string> = {};
+				if (id) {
+					payload.categories = id;
+				}
 				if (roleOverride) {
 					payload.utm_user_role = roleOverride;
 				}

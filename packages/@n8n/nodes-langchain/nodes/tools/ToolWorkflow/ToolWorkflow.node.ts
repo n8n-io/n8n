@@ -37,7 +37,6 @@ export class ToolWorkflow implements INodeType {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Tools'],
-				Tools: ['Popular'],
 			},
 			resources: {
 				primaryDocumentation: [

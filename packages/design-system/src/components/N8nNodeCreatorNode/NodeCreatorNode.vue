@@ -92,9 +92,10 @@ const { t } = useI18n();
 }
 .tag {
 	margin-left: var(--spacing-2xs);
-	line-height: 1.0625rem;
-	padding: 0 var(--spacing-4xs);
-	height: 1.1875rem;
+	line-height: 10px;
+	font-size: 10px;
+	padding: 0.1875rem var(--spacing-3xs) var(--spacing-4xs) var(--spacing-3xs);
+	height: auto;
 
 	span {
 		font-size: var(--font-size-2xs) !important;

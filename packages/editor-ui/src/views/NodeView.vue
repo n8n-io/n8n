@@ -943,6 +943,17 @@ export default defineComponent({
 			action: this.openSelectiveNodeCreator,
 		});
 
+		this.registerCustomAction({
+			key: 'showNodeCreator',
+			action: () => {
+				this.ndvStore.activeNodeName = null;
+
+				void this.$nextTick(() => {
+					this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TAB);
+				});
+			},
+		});
+
 		this.readOnlyEnvRouteCheck();
 		this.canvasStore.isDemo = this.isDemo;
 	},
@@ -1176,11 +1187,6 @@ export default defineComponent({
 					? this.$locale.baseText('nodeView.addOrEnableTriggerNode')
 					: this.$locale.baseText('nodeView.addATriggerNodeFirst');
 
-			this.registerCustomAction({
-				key: 'showNodeCreator',
-				action: () =>
-					this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.NO_TRIGGER_EXECUTION_TOOLTIP),
-			});
 
 			const notice = this.showMessage({
 				type: 'info',
@@ -1256,9 +1262,15 @@ export default defineComponent({
 		},
 		showTriggerCreator(source: NodeCreatorOpenSource) {
 			if (this.createNodeActive) return;
+
+			this.ndvStore.activeNodeName = null;
 			this.nodeCreatorStore.setSelectedView(TRIGGER_NODE_CREATOR_VIEW);
 			this.nodeCreatorStore.setShowScrim(true);
-			this.onToggleNodeCreator({ source, createNodeActive: true });
+			this.onToggleNodeCreator({
+				source,
+				createNodeActive: true,
+				nodeCreatorView: TRIGGER_NODE_CREATOR_VIEW,
+			});
 		},
 		async openExecution(executionId: string) {
 			this.canvasStore.startLoading();
