@@ -1,7 +1,12 @@
+import { Container } from 'typedi';
 import type { SuperAgentTest } from 'supertest';
 import { IsNull } from '@n8n/typeorm';
 import validator from 'validator';
+
 import type { User } from '@db/entities/User';
+import { UserRepository } from '@db/repositories/user.repository';
+import { ProjectRepository } from '@db/repositories/project.repository';
+
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import {
 	randomApiKey,
@@ -13,14 +18,13 @@ import {
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
 import { addApiKey, createUser, createUserShell } from './shared/db/users';
-import Container from 'typedi';
-import { UserRepository } from '@db/repositories/user.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
+import config from '@/config';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['me'] });
 
 beforeEach(async () => {
 	await testDb.truncate(['User']);
+	config.set('publicApi.disabled', false);
 });
 
 describe('Owner shell', () => {
@@ -151,11 +155,23 @@ describe('Owner shell', () => {
 		expect(storedShellOwner.apiKey).toEqual(response.body.data.apiKey);
 	});
 
+	test('POST /me/api-key 404 when the API is disabled', async () => {
+		config.set('publicApi.disabled', true);
+		const response = await authOwnerShellAgent.post('/me/api-key');
+		expect(response.statusCode).toBe(404);
+	});
+
 	test('GET /me/api-key should fetch the api key', async () => {
 		const response = await authOwnerShellAgent.get('/me/api-key');
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.apiKey).toEqual(ownerShell.apiKey);
+	});
+
+	test('GET /me/api-key should 404 when the API is disabled', async () => {
+		config.set('publicApi.disabled', true);
+		const response = await authOwnerShellAgent.get('/me/api-key');
+		expect(response.statusCode).toBe(404);
 	});
 
 	test('DELETE /me/api-key should fetch the api key', async () => {
