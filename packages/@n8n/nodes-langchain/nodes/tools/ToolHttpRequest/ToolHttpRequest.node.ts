@@ -6,6 +6,7 @@ import type {
 	SupplyData,
 	IDataObject,
 	IHttpRequestMethods,
+	IHttpRequestOptions,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
@@ -268,11 +269,17 @@ export class ToolHttpRequest implements INodeType {
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		const name = this.getNodeParameter('name', itemIndex) as string;
 		const toolDescription = this.getNodeParameter('toolDescription', itemIndex) as string;
-		const method = this.getNodeParameter('method', itemIndex, 'GET') as IHttpRequestMethods;
-		const url = this.getNodeParameter('url', itemIndex) as string;
 		const sendQuery = this.getNodeParameter('sendQuery', itemIndex, false) as boolean;
 		const sendHeaders = this.getNodeParameter('sendHeaders', itemIndex, false) as boolean;
 		const sendBody = this.getNodeParameter('sendBody', itemIndex, false) as boolean;
+
+		const requestOptions: IHttpRequestOptions = {
+			method: this.getNodeParameter('method', itemIndex, 'GET') as IHttpRequestMethods,
+			url: this.getNodeParameter('url', itemIndex) as string,
+			qs: {},
+			headers: {},
+			body: {},
+		};
 
 		const authentication = this.getNodeParameter('authentication', itemIndex, 'none') as
 			| 'predefinedCredentialType'
@@ -280,7 +287,7 @@ export class ToolHttpRequest implements INodeType {
 			| 'none';
 
 		if (authentication !== 'none') {
-			const domain = new URL(url).hostname;
+			const domain = new URL(requestOptions.url).hostname;
 			if (domain.includes('{') && domain.includes('}')) {
 				throw new NodeOperationError(
 					this.getNode(),
@@ -297,10 +304,6 @@ export class ToolHttpRequest implements INodeType {
 		const httpRequest = await configureHttpRequestFunction(this, authentication, itemIndex);
 		const optimizeResponse = configureResponseOptimizer(this, itemIndex);
 
-		let qs: IDataObject = {};
-		let headers: IDataObject = {};
-		let body: IDataObject = {};
-
 		const rawRequestOptions: { [key: string]: string } = {
 			qs: '',
 			headers: '',
@@ -315,7 +318,9 @@ export class ToolHttpRequest implements INodeType {
 
 		const toolParameters: ToolParameter[] = [];
 
-		toolParameters.push(...extractParametersFromText(placeholdersDefinitions, url, 'path'));
+		toolParameters.push(
+			...extractParametersFromText(placeholdersDefinitions, requestOptions.url, 'path'),
+		);
 
 		if (sendQuery) {
 			const queryInputType = this.getNodeParameter(
@@ -346,7 +351,7 @@ export class ToolHttpRequest implements INodeType {
 			);
 
 			toolParameters.push(...queryInputParameters.parameters);
-			qs = { ...qs, ...queryInputParameters.values };
+			requestOptions.qs = { ...requestOptions.qs, ...queryInputParameters.values };
 		}
 
 		if (sendHeaders) {
@@ -378,7 +383,7 @@ export class ToolHttpRequest implements INodeType {
 			);
 
 			toolParameters.push(...headersInputParameters.parameters);
-			headers = { ...headers, ...headersInputParameters.values };
+			requestOptions.headers = { ...requestOptions.headers, ...headersInputParameters.values };
 		}
 
 		if (sendBody) {
@@ -408,19 +413,19 @@ export class ToolHttpRequest implements INodeType {
 				'Body parameters for request as key value pairs',
 				rawRequestOptions.body,
 			);
+
 			toolParameters.push(...bodyInputParameters.parameters);
-			body = { ...body, ...bodyInputParameters.values };
+			requestOptions.body = {
+				...(requestOptions.body as IDataObject),
+				...bodyInputParameters.values,
+			};
 		}
 
 		const func = configureToolFunction(
 			this,
 			itemIndex,
 			toolParameters,
-			url,
-			method,
-			qs,
-			headers,
-			body,
+			requestOptions,
 			rawRequestOptions,
 			httpRequest,
 			optimizeResponse,

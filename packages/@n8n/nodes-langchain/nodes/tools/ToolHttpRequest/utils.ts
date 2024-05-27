@@ -4,7 +4,6 @@ import type {
 	IHttpRequestOptions,
 	IRequestOptionsSimplified,
 	IOAuth2Options,
-	IHttpRequestMethods,
 	ExecutionError,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
@@ -499,11 +498,7 @@ export const configureToolFunction = (
 	ctx: IExecuteFunctions,
 	itemIndex: number,
 	toolParameters: ToolParameter[],
-	url: string,
-	method: IHttpRequestMethods,
-	qs: IDataObject,
-	headers: IDataObject,
-	body: IDataObject,
+	requestOptions: IHttpRequestOptions,
 	rawRequestOptions: { [key: string]: string },
 	httpRequest: (options: IHttpRequestOptions) => Promise<any>,
 	optimizeResponse: (response: string) => string,
@@ -513,7 +508,6 @@ export const configureToolFunction = (
 
 		let response: string = '';
 		let executionError: Error | undefined = undefined;
-		let requestOptions: IHttpRequestOptions | null = null;
 
 		try {
 			if (query && toolParameters.length) {
@@ -532,14 +526,6 @@ export const configureToolFunction = (
 						);
 					}
 				}
-
-				requestOptions = {
-					url,
-					method,
-					headers,
-					qs,
-					body,
-				};
 
 				for (const parameter of toolParameters) {
 					let parameterValue = queryParset[parameter.name];
@@ -653,20 +639,18 @@ export const configureToolFunction = (
 						requestOptions[key as 'qs' | 'headers' | 'body'] = parsedValue;
 					}
 				}
+			}
 
-				if (!Object.keys(requestOptions.headers as IDataObject).length) {
-					delete requestOptions.headers;
-				}
+			if (!Object.keys(requestOptions.headers as IDataObject).length) {
+				delete requestOptions.headers;
+			}
 
-				if (!Object.keys(requestOptions.qs as IDataObject).length) {
-					delete requestOptions.qs;
-				}
+			if (!Object.keys(requestOptions.qs as IDataObject).length) {
+				delete requestOptions.qs;
+			}
 
-				if (!Object.keys(requestOptions.body as IDataObject).length) {
-					delete requestOptions.body;
-				}
-			} else {
-				requestOptions = { url, method };
+			if (!Object.keys(requestOptions.body as IDataObject).length) {
+				delete requestOptions.body;
 			}
 		} catch (error) {
 			const errorMessage = 'Input provided by model is not valid';
@@ -682,12 +666,10 @@ export const configureToolFunction = (
 			response = errorMessage;
 		}
 
-		if (requestOptions) {
-			try {
-				response = optimizeResponse(await httpRequest(requestOptions));
-			} catch (error) {
-				response = `There was an error: "${error.message}"`;
-			}
+		try {
+			response = optimizeResponse(await httpRequest(requestOptions));
+		} catch (error) {
+			response = `There was an error: "${error.message}"`;
 		}
 
 		if (typeof response !== 'string') {
