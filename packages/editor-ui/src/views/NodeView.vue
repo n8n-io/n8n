@@ -3689,6 +3689,7 @@ export default defineComponent({
 				const manualTriggerNode = this.canvasStore.getAutoAddManualTriggerNode();
 				if (manualTriggerNode) {
 					await this.addNodes([manualTriggerNode]);
+					this.uiStore.lastSelectedNode = manualTriggerNode.name;
 				}
 			}
 		},

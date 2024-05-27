@@ -101,7 +101,7 @@ export function groupItemsInSections(
 	const itemsBySection = (items2: INodeCreateElement[]) =>
 		items2.reduce((acc: Record<string, INodeCreateElement[]>, item) => {
 			const section = filteredSections.find((s) => s.items.includes(item.key));
-			console.log('🚀 ~ items2.reduce ~ section:', section);
+
 			const key = section?.key ?? 'other';
 			if (key) {
 				acc[key] = [...(acc[key] ?? []), item];
