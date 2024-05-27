@@ -570,13 +570,13 @@ export const configureToolFunction = (
 
 		try {
 			if (query && toolParameters.length) {
-				let queryParset;
+				let dataFromModel;
 
 				try {
-					queryParset = jsonParse<IDataObject>(query);
+					dataFromModel = jsonParse<IDataObject>(query);
 				} catch (error) {
 					if (toolParameters.length === 1) {
-						queryParset = { [toolParameters[0].name]: query };
+						dataFromModel = { [toolParameters[0].name]: query };
 					} else {
 						throw new NodeOperationError(
 							ctx.getNode(),
@@ -587,9 +587,9 @@ export const configureToolFunction = (
 				}
 
 				for (const parameter of toolParameters) {
-					let parameterValue = queryParset[parameter.name];
+					let argument = dataFromModel[parameter.name];
 
-					if (parameterValue === undefined && parameter.required) {
+					if (argument === undefined && parameter.required) {
 						throw new NodeOperationError(
 							ctx.getNode(),
 							`Model did not provided required parameter: ${parameter.name}`,
@@ -600,13 +600,13 @@ export const configureToolFunction = (
 					}
 
 					if (
-						parameterValue &&
+						argument &&
 						parameter.type === 'json' &&
 						!['qsRaw', 'headersRaw', 'bodyRaw'].includes(parameter.key ?? '') &&
-						typeof parameterValue !== 'object'
+						typeof argument !== 'object'
 					) {
 						try {
-							parameterValue = jsonParse(String(parameterValue));
+							argument = jsonParse(String(argument));
 						} catch (error) {
 							throw new NodeOperationError(
 								ctx.getNode(),
@@ -621,36 +621,37 @@ export const configureToolFunction = (
 					if (parameter.sendIn === 'path') {
 						requestOptions.url = requestOptions.url.replace(
 							`{${parameter.name}}`,
-							encodeURIComponent(String(parameterValue)),
+							encodeURIComponent(String(argument)),
 						);
 
 						continue;
 					}
 
 					if (parameter.sendIn === parameter.name) {
-						set(requestOptions, [parameter.sendIn], parameterValue);
+						set(requestOptions, [parameter.sendIn], argument);
 
 						continue;
 					}
 
 					if (['qsRaw', 'headersRaw', 'bodyRaw'].includes(parameter.key ?? '')) {
+						//enclose string in quotes as user and model could omit them
 						if (parameter.type === 'string') {
-							parameterValue = String(parameterValue);
+							argument = String(argument);
 							if (
-								!parameterValue.startsWith('"') &&
+								!argument.startsWith('"') &&
 								!rawRequestOptions[parameter.sendIn].includes(`"{${parameter.name}}"`)
 							) {
-								parameterValue = `"${parameterValue}"`;
+								argument = `"${argument}"`;
 							}
 						}
 
-						if (typeof parameterValue === 'object') {
-							parameterValue = JSON.stringify(parameterValue);
+						if (typeof argument === 'object') {
+							argument = JSON.stringify(argument);
 						}
 
 						rawRequestOptions[parameter.sendIn] = rawRequestOptions[parameter.sendIn].replace(
 							`{${parameter.name}}`,
-							String(parameterValue),
+							String(argument),
 						);
 
 						continue;
@@ -662,7 +663,7 @@ export const configureToolFunction = (
 						if (typeof requestOptionsValue === 'string') {
 							requestOptionsValue = requestOptionsValue.replace(
 								`{${parameter.name}}`,
-								String(parameterValue),
+								String(argument),
 							);
 						}
 
@@ -671,7 +672,7 @@ export const configureToolFunction = (
 						continue;
 					}
 
-					set(requestOptions, [parameter.sendIn, parameter.name], parameterValue);
+					set(requestOptions, [parameter.sendIn, parameter.name], argument);
 				}
 
 				for (const [key, value] of Object.entries(rawRequestOptions)) {
