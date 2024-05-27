@@ -71,7 +71,12 @@ export class SourceControlPreferencesService {
 
 		type KeyPair = { publicKey: string; encryptedPrivateKey: string };
 
-		return jsonParse<KeyPair | null>(dbSetting.value, { fallbackValue: null });
+		try {
+			return jsonParse<KeyPair>(dbSetting.value);
+		} catch (error) {
+			this.logger.error('Failed to parse key pair from database', { error });
+			return null;
+		}
 	}
 
 	private async getPrivateKeyFromDatabase() {
@@ -108,6 +113,10 @@ export class SourceControlPreferencesService {
 
 			if (dbPublicKey) return dbPublicKey;
 
+			this.logger.info(
+				`[Source Control] Failed to fetch SSH public key from database. Falling back to key "${this.sshKeyName}.pub" in filesystem.`,
+			);
+
 			return await readFile(this.sshKeyName + '.pub', { encoding: 'utf8' });
 		} catch (e) {
 			const error = e instanceof Error ? e : new Error(`${e}`);
@@ -137,6 +146,10 @@ export class SourceControlPreferencesService {
 				'ed25519';
 		}
 		const keyPair = await generateSshKeyPair(keyPairType);
+
+		this.logger.info(
+			`[Source Control] Generated new SSH key pair with type "${keyPairType}". Public key: "${keyPair.publicKey}"`,
+		);
 
 		try {
 			await Container.get(SettingsRepository).save({

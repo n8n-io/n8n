@@ -214,6 +214,8 @@ export class SourceControlGitService {
 			throw new ApplicationError('Git is not initialized (getBranches)');
 		}
 
+		await this.setGitSshCommand();
+
 		try {
 			// Get remote branches
 			const { branches } = await this.git.branch(['-r']);
@@ -245,6 +247,7 @@ export class SourceControlGitService {
 		if (!this.git) {
 			throw new ApplicationError('Git is not initialized (getCurrentBranch)');
 		}
+		await this.setGitSshCommand();
 		const currentBranch = (await this.git.branch()).current;
 		return {
 			current: currentBranch,
