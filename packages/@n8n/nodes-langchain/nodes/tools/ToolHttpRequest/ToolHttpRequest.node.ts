@@ -4,7 +4,6 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	SupplyData,
-	IDataObject,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 } from 'n8n-workflow';
@@ -16,10 +15,10 @@ import {
 	configureHttpRequestFunction,
 	prettifyToolName,
 	configureResponseOptimizer,
-	prepareParameters,
 	extractParametersFromText,
 	prepareToolDescription,
 	configureToolFunction,
+	updateParametersAndOptions,
 } from './utils';
 
 import {
@@ -31,12 +30,7 @@ import {
 	specifyBySelector,
 } from './descriptions';
 
-import type {
-	ParameterInputType,
-	ParametersValues,
-	PlaceholderDefinition,
-	ToolParameter,
-} from './interfaces';
+import type { PlaceholderDefinition, ToolParameter } from './interfaces';
 
 import { DynamicTool } from '@langchain/core/tools';
 
@@ -323,102 +317,48 @@ export class ToolHttpRequest implements INodeType {
 		);
 
 		if (sendQuery) {
-			const queryInputType = this.getNodeParameter(
-				'specifyQuery',
+			updateParametersAndOptions(
+				this,
 				itemIndex,
-				'keypair',
-			) as ParameterInputType;
-
-			let queryParametersValues: ParametersValues = [];
-
-			if (queryInputType === 'json') {
-				rawRequestOptions.qs = this.getNodeParameter('jsonQuery', itemIndex, '') as string;
-			} else {
-				queryParametersValues = this.getNodeParameter(
-					'parametersQuery.values',
-					itemIndex,
-					[],
-				) as ParametersValues;
-			}
-
-			const queryInputParameters = prepareParameters(
-				queryParametersValues,
+				toolParameters,
 				placeholdersDefinitions,
-				queryInputType,
+				requestOptions,
+				rawRequestOptions,
 				'qs',
-				'Query parameters for request as key value pairs',
-				rawRequestOptions.qs,
+				'specifyQuery',
+				'jsonQuery',
+				'parametersQuery.values',
 			);
-
-			toolParameters.push(...queryInputParameters.parameters);
-			requestOptions.qs = { ...requestOptions.qs, ...queryInputParameters.values };
 		}
 
 		if (sendHeaders) {
-			const headersInputType = this.getNodeParameter(
-				'specifyHeaders',
+			updateParametersAndOptions(
+				this,
 				itemIndex,
-				'keypair',
-			) as ParameterInputType;
-
-			let headersParametersValues: ParametersValues = [];
-
-			if (headersInputType === 'json') {
-				rawRequestOptions.headers = this.getNodeParameter('jsonHeaders', itemIndex, '') as string;
-			} else {
-				headersParametersValues = this.getNodeParameter(
-					'parametersHeaders.values',
-					itemIndex,
-					[],
-				) as ParametersValues;
-			}
-
-			const headersInputParameters = prepareParameters(
-				headersParametersValues,
+				toolParameters,
 				placeholdersDefinitions,
-				headersInputType,
+				requestOptions,
+				rawRequestOptions,
 				'headers',
-				'Headers parameters for request as key value pairs',
-				rawRequestOptions.headers,
+				'specifyHeaders',
+				'jsonHeaders',
+				'parametersHeaders.values',
 			);
-
-			toolParameters.push(...headersInputParameters.parameters);
-			requestOptions.headers = { ...requestOptions.headers, ...headersInputParameters.values };
 		}
 
 		if (sendBody) {
-			const bodyInputType = this.getNodeParameter(
-				'specifyBody',
+			updateParametersAndOptions(
+				this,
 				itemIndex,
-				'keypair',
-			) as ParameterInputType;
-
-			let bodyParametersValues: ParametersValues = [];
-
-			if (bodyInputType === 'json') {
-				rawRequestOptions.body = this.getNodeParameter('jsonBody', itemIndex, '') as string;
-			} else {
-				bodyParametersValues = this.getNodeParameter(
-					'parametersBody.values',
-					itemIndex,
-					[],
-				) as ParametersValues;
-			}
-
-			const bodyInputParameters = prepareParameters(
-				bodyParametersValues,
+				toolParameters,
 				placeholdersDefinitions,
-				bodyInputType,
+				requestOptions,
+				rawRequestOptions,
 				'body',
-				'Body parameters for request as key value pairs',
-				rawRequestOptions.body,
+				'specifyBody',
+				'jsonBody',
+				'parametersBody.values',
 			);
-
-			toolParameters.push(...bodyInputParameters.parameters);
-			requestOptions.body = {
-				...(requestOptions.body as IDataObject),
-				...bodyInputParameters.values,
-			};
 		}
 
 		const func = configureToolFunction(

@@ -15,6 +15,8 @@ import unset from 'lodash/unset';
 import cheerio from 'cheerio';
 import { convert } from 'html-to-text';
 import type {
+	ParameterInputType,
+	ParametersValues,
 	PlaceholderDefinition,
 	ParametersValues as RawParametersValues,
 	SendIn,
@@ -404,7 +406,7 @@ export const extractParametersFromText = (
 	return [];
 };
 
-export function prepareParameters(
+function prepareParameters(
 	rawParameters: RawParametersValues,
 	placeholders: PlaceholderDefinition[],
 	parametersInputType: 'model' | 'keypair' | 'json',
@@ -468,6 +470,63 @@ export function prepareParameters(
 		values,
 	};
 }
+
+const MODEL_INPUT_DESCRIPTION = {
+	qs: 'Query parameters for request as key value pairs',
+	headers: 'Headers parameters for request as key value pairs',
+	body: 'Body parameters for request as key value pairs',
+};
+
+export const updateParametersAndOptions = (
+	ctx: IExecuteFunctions,
+	itemIndex: number,
+	toolParameters: ToolParameter[],
+	placeholdersDefinitions: PlaceholderDefinition[],
+	requestOptions: IHttpRequestOptions,
+	rawRequestOptions: { [key: string]: string },
+	requestOptionsProperty: 'headers' | 'qs' | 'body',
+	inputTypePropertyName: string,
+	jsonPropertyName: string,
+	parametersPropertyName: string,
+) => {
+	const inputType = ctx.getNodeParameter(
+		inputTypePropertyName,
+		itemIndex,
+		'keypair',
+	) as ParameterInputType;
+
+	let parametersValues: ParametersValues = [];
+
+	if (inputType === 'json') {
+		rawRequestOptions[requestOptionsProperty] = ctx.getNodeParameter(
+			jsonPropertyName,
+			itemIndex,
+			'',
+		) as string;
+	} else {
+		parametersValues = ctx.getNodeParameter(
+			parametersPropertyName,
+			itemIndex,
+			[],
+		) as ParametersValues;
+	}
+
+	const inputParameters = prepareParameters(
+		parametersValues,
+		placeholdersDefinitions,
+		inputType,
+		requestOptionsProperty,
+		MODEL_INPUT_DESCRIPTION[requestOptionsProperty],
+		rawRequestOptions[requestOptionsProperty],
+	);
+
+	toolParameters.push(...inputParameters.parameters);
+
+	requestOptions[requestOptionsProperty] = {
+		...(requestOptions[requestOptionsProperty] as IDataObject),
+		...inputParameters.values,
+	};
+};
 
 export const prepareToolDescription = (
 	toolDescription: string,
