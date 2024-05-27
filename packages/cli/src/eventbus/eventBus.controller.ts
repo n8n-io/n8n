@@ -1,5 +1,4 @@
 import express from 'express';
-import type { IRunExecutionData } from 'n8n-workflow';
 import { EventMessageTypeNames } from 'n8n-workflow';
 
 import { RestController, Get, Post, GlobalScope } from '@/decorators';
@@ -11,13 +10,12 @@ import type { EventMessageWorkflowOptions } from './EventMessageClasses/EventMes
 import { EventMessageWorkflow } from './EventMessageClasses/EventMessageWorkflow';
 import type { EventMessageReturnMode } from './MessageEventBus/MessageEventBus';
 import { MessageEventBus } from './MessageEventBus/MessageEventBus';
-import type { EventMessageTypes, FailedEventSummary } from './EventMessageClasses';
+import type { EventMessageTypes } from './EventMessageClasses';
 import { eventNamesAll } from './EventMessageClasses';
 import type { EventMessageAuditOptions } from './EventMessageClasses/EventMessageAudit';
 import { EventMessageAudit } from './EventMessageClasses/EventMessageAudit';
 import type { EventMessageNodeOptions } from './EventMessageClasses/EventMessageNode';
 import { EventMessageNode } from './EventMessageClasses/EventMessageNode';
-import { ExecutionDataRecoveryService } from './executionDataRecovery.service';
 
 // ----------------------------------------
 // TypeGuards
@@ -35,10 +33,7 @@ const isWithQueryString = (candidate: unknown): candidate is { query: string } =
 
 @RestController('/eventbus')
 export class EventBusController {
-	constructor(
-		private readonly eventBus: MessageEventBus,
-		private readonly recoveryService: ExecutionDataRecoveryService,
-	) {}
+	constructor(private readonly eventBus: MessageEventBus) {}
 
 	// ----------------------------------------
 	// Events
@@ -65,13 +60,6 @@ export class EventBusController {
 		}
 	}
 
-	@Get('/failed')
-	@GlobalScope('eventBusEvent:list')
-	async getFailedEvents(req: express.Request): Promise<FailedEventSummary[]> {
-		const amount = parseInt(req.query?.amount as string) ?? 5;
-		return await this.eventBus.getEventsFailed(amount);
-	}
-
 	@Get('/execution/:id')
 	@GlobalScope('eventBusEvent:read')
 	async getEventForExecutionId(req: express.Request): Promise<EventMessageTypes[] | undefined> {
@@ -81,21 +69,6 @@ export class EventBusController {
 				logHistory = parseInt(req.query.logHistory as string, 10);
 			}
 			return await this.eventBus.getEventsByExecutionId(req.params.id, logHistory);
-		}
-		return;
-	}
-
-	@Get('/execution-recover/:id')
-	@GlobalScope('eventBusEvent:read')
-	async getRecoveryForExecutionId(req: express.Request): Promise<IRunExecutionData | undefined> {
-		const { id } = req.params;
-		if (req.params?.id) {
-			const logHistory = parseInt(req.query.logHistory as string, 10) || undefined;
-			const applyToDb = req.query.applyToDb !== undefined ? !!req.query.applyToDb : true;
-			const messages = await this.eventBus.getEventsByExecutionId(id, logHistory);
-			if (messages.length > 0) {
-				return await this.recoveryService.recoverExecutionData(id, messages, applyToDb);
-			}
 		}
 		return;
 	}
