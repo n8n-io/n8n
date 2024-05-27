@@ -41,7 +41,14 @@ export class WorkflowActivationError extends ExecutionBaseError {
 			return;
 		}
 
-		if (['ETIMEDOUT', 'ECONNREFUSED', 'EAUTH'].some((code) => this.message.includes(code))) {
+		if (
+			[
+				'etimedout', // Node.js
+				'econnrefused', // Node.js
+				'eauth', // OAuth
+				'temporary authentication failure', // IMAP server
+			].some((str) => this.message.toLowerCase().includes(str))
+		) {
 			this.level = 'warning';
 			return;
 		}
