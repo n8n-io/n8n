@@ -20,7 +20,7 @@ import type {
 	ToolParameter,
 } from './interfaces';
 
-export const getOAuth2AdditionalParameters = (nodeCredentialType: string) => {
+const getOAuth2AdditionalParameters = (nodeCredentialType: string) => {
 	const oAuth2Options: { [credentialType: string]: IOAuth2Options } = {
 		bitlyOAuth2Api: {
 			tokenType: 'Bearer',
@@ -409,6 +409,7 @@ export function prepareParameters(
 	parametersInputType: 'model' | 'keypair' | 'json',
 	sendIn: SendIn,
 	modelInputDescription: string,
+	jsonWithPlaceholders?: string,
 ): { parameters: ToolParameter[]; values: IDataObject } {
 	const parameters: ToolParameter[] = [];
 	const values: IDataObject = {};
@@ -428,8 +429,7 @@ export function prepareParameters(
 		};
 	}
 
-	//TODO implement json input type to resolve placeholders
-	if (parametersInputType === 'keypair' || parametersInputType === 'json') {
+	if (parametersInputType === 'keypair') {
 		for (const entry of rawParameters) {
 			if (entry.valueProvider.includes('model')) {
 				const placeholder = placeholders.find((p) => p.name === entry.name);
@@ -447,12 +447,19 @@ export function prepareParameters(
 
 				parameters.push(parameter);
 			} else {
+				// if value has placeholders push them to parameters
 				parameters.push(
 					...extractParametersFromText(placeholders, entry.value as string, sendIn, entry.name),
 				);
-				values[entry.name] = entry.value;
+				values[entry.name] = entry.value; //push to user provided values
 			}
 		}
+	}
+
+	if (parametersInputType === 'json' && jsonWithPlaceholders) {
+		parameters.push(
+			...extractParametersFromText(placeholders, jsonWithPlaceholders, sendIn, `${sendIn + 'Raw'}`),
+		);
 	}
 
 	return {

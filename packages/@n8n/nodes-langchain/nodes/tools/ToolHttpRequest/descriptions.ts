@@ -148,7 +148,10 @@ export const placeholderDefinitionsCollection: INodeProperties = {
 export const jsonInput: INodeProperties = {
 	displayName: 'JSON',
 	name: 'json',
-	type: 'json',
+	type: 'string',
+	typeOptions: {
+		rows: 5,
+	},
 	hint: 'Use a {placeholder} for any data to be filled in by the model',
 	default: '',
 };

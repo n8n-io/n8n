@@ -303,51 +303,84 @@ export class ToolHttpRequest implements INodeType {
 		let qs: IDataObject = {};
 		let headers: IDataObject = {};
 		let body: IDataObject = {};
+		let qsRaw: string = '';
+		let headersRaw: string = '';
+		let bodyRaw: string = '';
 
 		const placeholders = this.getNodeParameter(
 			'placeholderDefinitions.values',
 			itemIndex,
 			[],
-		) as ToolParameter[];
+		) as PlaceholderDefinition[];
 
 		const toolParameters: ToolParameter[] = [];
 
-		toolParameters.push(
-			...extractParametersFromText(placeholders as PlaceholderDefinition[], url, 'path'),
-		);
+		toolParameters.push(...extractParametersFromText(placeholders, url, 'path'));
 
 		if (sendQuery) {
+			const queryInputType = this.getNodeParameter(
+				'specifyQuery',
+				itemIndex,
+				'keypair',
+			) as ParameterInputType;
+
+			if (queryInputType === 'json') {
+				qsRaw = this.getNodeParameter('jsonQuery', itemIndex, '') as string;
+			}
+
 			const queryInputParameters = prepareParameters(
 				(this.getNodeParameter('parametersQuery.values', itemIndex, []) as ParametersValues) || [],
-				placeholders as PlaceholderDefinition[],
-				this.getNodeParameter('specifyQuery', itemIndex, 'keypair') as ParameterInputType,
+				placeholders,
+				queryInputType,
 				'qs',
 				'Query parameters for request as key value pairs',
+				qsRaw,
 			);
 			toolParameters.push(...queryInputParameters.parameters);
 			qs = { ...qs, ...queryInputParameters.values };
 		}
 
 		if (sendHeaders) {
+			const headersInputType = this.getNodeParameter(
+				'specifyHeaders',
+				itemIndex,
+				'keypair',
+			) as ParameterInputType;
+
+			if (headersInputType === 'json') {
+				headersRaw = this.getNodeParameter('jsonHeaders', itemIndex, '') as string;
+			}
+
 			const headersInputParameters = prepareParameters(
 				(this.getNodeParameter('parametersHeaders.values', itemIndex, []) as ParametersValues) ||
 					[],
-				placeholders as PlaceholderDefinition[],
-				this.getNodeParameter('specifyHeaders', itemIndex, 'keypair') as ParameterInputType,
+				placeholders,
+				headersInputType,
 				'headers',
 				'Headers parameters for request as key value pairs',
+				headersRaw,
 			);
 			toolParameters.push(...headersInputParameters.parameters);
 			headers = { ...headers, ...headersInputParameters.values };
 		}
 
 		if (sendBody) {
+			const bodyInputType = this.getNodeParameter(
+				'specifyBody',
+				itemIndex,
+				'keypair',
+			) as ParameterInputType;
+
+			if (bodyInputType === 'json') {
+				bodyRaw = this.getNodeParameter('jsonBody', itemIndex, '') as string;
+			}
 			const bodyInputParameters = prepareParameters(
 				(this.getNodeParameter('parametersBody.values', itemIndex, []) as ParametersValues) || [],
-				placeholders as PlaceholderDefinition[],
-				this.getNodeParameter('specifyBody', itemIndex, 'keypair') as ParameterInputType,
+				placeholders,
+				bodyInputType,
 				'body',
 				'Body parameters for request as key value pairs',
+				bodyRaw,
 			);
 			toolParameters.push(...bodyInputParameters.parameters);
 			body = { ...body, ...bodyInputParameters.values };
@@ -404,6 +437,12 @@ export class ToolHttpRequest implements INodeType {
 						body,
 					};
 
+					const rawRequestOptions: { [key: string]: string } = {
+						qs: qsRaw,
+						headers: headersRaw,
+						body: bodyRaw,
+					};
+
 					for (const parameter of toolParameters) {
 						let parameterValue = queryParset[parameter.name];
 
@@ -417,7 +456,12 @@ export class ToolHttpRequest implements INodeType {
 							);
 						}
 
-						if (parameterValue && parameter.type === 'json' && typeof parameterValue !== 'object') {
+						if (
+							parameterValue &&
+							parameter.type === 'json' &&
+							!['qsRaw', 'headersRaw', 'bodyRaw'].includes(parameter.key ?? '') &&
+							typeof parameterValue !== 'object'
+						) {
 							try {
 								parameterValue = jsonParse(String(parameterValue));
 							} catch (error) {
@@ -446,6 +490,29 @@ export class ToolHttpRequest implements INodeType {
 							continue;
 						}
 
+						if (['qsRaw', 'headersRaw', 'bodyRaw'].includes(parameter.key ?? '')) {
+							if (parameter.type === 'string') {
+								parameterValue = String(parameterValue);
+								if (
+									!parameterValue.startsWith('"') &&
+									!rawRequestOptions[parameter.sendIn].includes(`"{${parameter.name}}"`)
+								) {
+									parameterValue = `"${parameterValue}"`;
+								}
+							}
+
+							if (typeof parameterValue === 'object') {
+								parameterValue = JSON.stringify(parameterValue);
+							}
+
+							rawRequestOptions[parameter.sendIn] = rawRequestOptions[parameter.sendIn].replace(
+								`{${parameter.name}}`,
+								String(parameterValue),
+							);
+
+							continue;
+						}
+
 						if (parameter.key) {
 							let requestOptionsValue = get(requestOptions, [parameter.sendIn, parameter.key]);
 
@@ -462,6 +529,31 @@ export class ToolHttpRequest implements INodeType {
 						}
 
 						set(requestOptions, [parameter.sendIn, parameter.name], parameterValue);
+					}
+
+					for (const [key, value] of Object.entries(rawRequestOptions)) {
+						if (value) {
+							let parsedValue;
+							try {
+								parsedValue = jsonParse<IDataObject>(value);
+							} catch (error) {
+								let recoveredData = '';
+								try {
+									recoveredData = value
+										.replace(/'/g, '"') // Replace single quotes with double quotes
+										.replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2":') // Wrap keys in double quotes
+										.replace(/,\s*([\]}])/g, '$1') // Remove trailing commas from objects
+										.replace(/,+$/, ''); // Remove trailing comma
+									parsedValue = jsonParse<IDataObject>(recoveredData);
+								} catch (err) {
+									throw new NodeOperationError(
+										this.getNode(),
+										`Could not replace placeholders in ${key}: ${error.message}`,
+									);
+								}
+							}
+							requestOptions[key as 'qs' | 'headers' | 'body'] = parsedValue;
+						}
 					}
 
 					if (!Object.keys(requestOptions.headers as IDataObject).length) {
