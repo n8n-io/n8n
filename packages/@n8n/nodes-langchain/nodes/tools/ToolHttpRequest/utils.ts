@@ -4,8 +4,10 @@ import type {
 	IHttpRequestOptions,
 	IRequestOptionsSimplified,
 	IOAuth2Options,
+	IHttpRequestMethods,
+	ExecutionError,
 } from 'n8n-workflow';
-import { NodeOperationError, jsonParse } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
 
 import set from 'lodash/set';
 import get from 'lodash/get';
@@ -467,3 +469,240 @@ export function prepareParameters(
 		values,
 	};
 }
+
+export const prepareToolDescription = (
+	toolDescription: string,
+	toolParameters: ToolParameter[],
+) => {
+	let description = `${toolDescription}`;
+
+	if (toolParameters.length) {
+		description += `
+	Tool expects valid stringified JSON object with ${toolParameters.length} properties.
+	Property names with description, type and required status:
+
+	${toolParameters
+		.filter((p) => p.name)
+		.map(
+			(p) =>
+				`${p.name}: (description: ${p.description || ''}, type: ${p.type || 'string'}, required: ${!!p.required})`,
+		)
+		.join(',\n ')}
+
+		ALL parameters marked as required must be provided`;
+	}
+
+	return description;
+};
+
+export const configureToolFunction = (
+	ctx: IExecuteFunctions,
+	itemIndex: number,
+	toolParameters: ToolParameter[],
+	url: string,
+	method: IHttpRequestMethods,
+	qs: IDataObject,
+	headers: IDataObject,
+	body: IDataObject,
+	rawRequestOptions: { [key: string]: string },
+	httpRequest: (options: IHttpRequestOptions) => Promise<any>,
+	optimizeResponse: (response: string) => string,
+) => {
+	return async (query: string): Promise<string> => {
+		const { index } = ctx.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
+
+		let response: string = '';
+		let executionError: Error | undefined = undefined;
+		let requestOptions: IHttpRequestOptions | null = null;
+
+		try {
+			if (query && toolParameters.length) {
+				let queryParset;
+
+				try {
+					queryParset = jsonParse<IDataObject>(query);
+				} catch (error) {
+					if (toolParameters.length === 1) {
+						queryParset = { [toolParameters[0].name]: query };
+					} else {
+						throw new NodeOperationError(
+							ctx.getNode(),
+							`Input is not a valid JSON: ${error.message}`,
+							{ itemIndex },
+						);
+					}
+				}
+
+				requestOptions = {
+					url,
+					method,
+					headers,
+					qs,
+					body,
+				};
+
+				for (const parameter of toolParameters) {
+					let parameterValue = queryParset[parameter.name];
+
+					if (parameterValue === undefined && parameter.required) {
+						throw new NodeOperationError(
+							ctx.getNode(),
+							`Model did not provided required parameter: ${parameter.name}`,
+							{
+								itemIndex,
+							},
+						);
+					}
+
+					if (
+						parameterValue &&
+						parameter.type === 'json' &&
+						!['qsRaw', 'headersRaw', 'bodyRaw'].includes(parameter.key ?? '') &&
+						typeof parameterValue !== 'object'
+					) {
+						try {
+							parameterValue = jsonParse(String(parameterValue));
+						} catch (error) {
+							throw new NodeOperationError(
+								ctx.getNode(),
+								`Parameter ${parameter.name} is not a valid JSON: ${error.message}`,
+								{
+									itemIndex,
+								},
+							);
+						}
+					}
+
+					if (parameter.sendIn === 'path') {
+						requestOptions.url = requestOptions.url.replace(
+							`{${parameter.name}}`,
+							encodeURIComponent(String(parameterValue)),
+						);
+
+						continue;
+					}
+
+					if (parameter.sendIn === parameter.name) {
+						set(requestOptions, [parameter.sendIn], parameterValue);
+
+						continue;
+					}
+
+					if (['qsRaw', 'headersRaw', 'bodyRaw'].includes(parameter.key ?? '')) {
+						if (parameter.type === 'string') {
+							parameterValue = String(parameterValue);
+							if (
+								!parameterValue.startsWith('"') &&
+								!rawRequestOptions[parameter.sendIn].includes(`"{${parameter.name}}"`)
+							) {
+								parameterValue = `"${parameterValue}"`;
+							}
+						}
+
+						if (typeof parameterValue === 'object') {
+							parameterValue = JSON.stringify(parameterValue);
+						}
+
+						rawRequestOptions[parameter.sendIn] = rawRequestOptions[parameter.sendIn].replace(
+							`{${parameter.name}}`,
+							String(parameterValue),
+						);
+
+						continue;
+					}
+
+					if (parameter.key) {
+						let requestOptionsValue = get(requestOptions, [parameter.sendIn, parameter.key]);
+
+						if (typeof requestOptionsValue === 'string') {
+							requestOptionsValue = requestOptionsValue.replace(
+								`{${parameter.name}}`,
+								String(parameterValue),
+							);
+						}
+
+						set(requestOptions, [parameter.sendIn, parameter.key], requestOptionsValue);
+
+						continue;
+					}
+
+					set(requestOptions, [parameter.sendIn, parameter.name], parameterValue);
+				}
+
+				for (const [key, value] of Object.entries(rawRequestOptions)) {
+					if (value) {
+						let parsedValue;
+						try {
+							parsedValue = jsonParse<IDataObject>(value);
+						} catch (error) {
+							let recoveredData = '';
+							try {
+								recoveredData = value
+									.replace(/'/g, '"') // Replace single quotes with double quotes
+									.replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2":') // Wrap keys in double quotes
+									.replace(/,\s*([\]}])/g, '$1') // Remove trailing commas from objects
+									.replace(/,+$/, ''); // Remove trailing comma
+								parsedValue = jsonParse<IDataObject>(recoveredData);
+							} catch (err) {
+								throw new NodeOperationError(
+									ctx.getNode(),
+									`Could not replace placeholders in ${key}: ${error.message}`,
+								);
+							}
+						}
+						requestOptions[key as 'qs' | 'headers' | 'body'] = parsedValue;
+					}
+				}
+
+				if (!Object.keys(requestOptions.headers as IDataObject).length) {
+					delete requestOptions.headers;
+				}
+
+				if (!Object.keys(requestOptions.qs as IDataObject).length) {
+					delete requestOptions.qs;
+				}
+
+				if (!Object.keys(requestOptions.body as IDataObject).length) {
+					delete requestOptions.body;
+				}
+			} else {
+				requestOptions = { url, method };
+			}
+		} catch (error) {
+			const errorMessage = 'Input provided by model is not valid';
+
+			if (error instanceof NodeOperationError) {
+				executionError = error;
+			} else {
+				executionError = new NodeOperationError(ctx.getNode(), errorMessage, {
+					itemIndex,
+				});
+			}
+
+			response = errorMessage;
+		}
+
+		if (requestOptions) {
+			try {
+				response = optimizeResponse(await httpRequest(requestOptions));
+			} catch (error) {
+				response = `There was an error: "${error.message}"`;
+			}
+		}
+
+		if (typeof response !== 'string') {
+			executionError = new NodeOperationError(ctx.getNode(), 'Wrong output type returned', {
+				description: `The response property should be a string, but it is an ${typeof response}`,
+			});
+			response = `There was an error: "${executionError.message}"`;
+		}
+
+		if (executionError) {
+			void ctx.addOutputData(NodeConnectionType.AiTool, index, executionError as ExecutionError);
+		} else {
+			void ctx.addOutputData(NodeConnectionType.AiTool, index, [[{ json: { response } }]]);
+		}
+
+		return response;
+	};
+};
