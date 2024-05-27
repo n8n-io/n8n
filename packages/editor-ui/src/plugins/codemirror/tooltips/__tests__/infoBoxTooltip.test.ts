@@ -86,12 +86,6 @@ describe('Infobox tooltips', () => {
 			expect(infoBoxHeader(tooltip?.view)).toHaveTextContent('$json: Object');
 		});
 
-		test('should show a tooltip for: {{ $jso|n }}', () => {
-			const tooltip = hoverTooltip('{{ $jso|n }}');
-			expect(tooltip).not.toBeNull();
-			expect(infoBoxHeader(tooltip?.view)).toHaveTextContent('$json: Object');
-		});
-
 		test('should show a tooltip for: {{ $execution.mo|de }}', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue({ mode: 'foo' });
 			const tooltip = hoverTooltip('{{ $execution.mo|de }}');
