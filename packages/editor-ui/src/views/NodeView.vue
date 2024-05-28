@@ -4768,7 +4768,9 @@ export default defineComponent({
 						});
 					}
 				} else if (json?.command === 'setActiveExecution') {
-					this.executionsStore.activeExecution = json.execution;
+					this.executionsStore.activeExecution = (await this.executionsStore.fetchExecution(
+						json.executionId,
+					)) as ExecutionSummary;
 				}
 			} catch (e) {}
 		},
