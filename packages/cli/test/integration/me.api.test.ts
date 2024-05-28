@@ -1,7 +1,11 @@
-import type { SuperAgentTest } from 'supertest';
+import { Container } from 'typedi';
 import { IsNull } from '@n8n/typeorm';
 import validator from 'validator';
+
 import type { User } from '@db/entities/User';
+import { UserRepository } from '@db/repositories/user.repository';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import {
 	randomApiKey,
@@ -13,9 +17,7 @@ import {
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
 import { addApiKey, createUser, createUserShell } from './shared/db/users';
-import Container from 'typedi';
-import { UserRepository } from '@db/repositories/user.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
+import type { SuperAgentTest } from './shared/types';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['me'] });
 

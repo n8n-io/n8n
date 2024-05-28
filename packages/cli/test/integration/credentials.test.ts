@@ -1,17 +1,20 @@
 import { Container } from 'typedi';
-import type { SuperAgentTest } from 'supertest';
-
+import { Credentials } from 'n8n-core';
 import type { Scope } from '@n8n/permissions';
+
 import config from '@/config';
 import type { ListQuery } from '@/requests';
 import type { User } from '@db/entities/User';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { ProjectRepository } from '@db/repositories/project.repository';
+import type { Project } from '@db/entities/Project';
+import { ProjectService } from '@/services/project.service';
 import { License } from '@/License';
 
 import { randomCredentialPayload, randomName, randomString } from './shared/random';
 import * as testDb from './shared/testDb';
-import type { SaveCredentialFunction } from './shared/types';
+import type { SaveCredentialFunction, SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 import {
 	affixRoleToSaveCredential,
@@ -19,10 +22,6 @@ import {
 	shareCredentialWithUsers,
 } from './shared/db/credentials';
 import { createManyUsers, createUser } from './shared/db/users';
-import { Credentials } from 'n8n-core';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import type { Project } from '@/databases/entities/Project';
-import { ProjectService } from '@/services/project.service';
 import { createTeamProject, linkUserToProject } from './shared/db/projects';
 
 // mock that credentialsSharing is not enabled

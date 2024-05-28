@@ -3,7 +3,6 @@ import config from '@/config';
 import axios from 'axios';
 import syslog from 'syslog-client';
 import { v4 as uuid } from 'uuid';
-import type { SuperAgentTest } from 'supertest';
 import type {
 	MessageEventBusDestinationSentryOptions,
 	MessageEventBusDestinationSyslogOptions,
@@ -28,6 +27,7 @@ import { ExecutionDataRecoveryService } from '@/eventbus/executionDataRecovery.s
 import * as utils from './shared/utils';
 import { createUser } from './shared/db/users';
 import { mockInstance } from '../shared/mocking';
+import type { SuperAgentTest } from './shared/types';
 
 jest.unmock('@/eventbus/MessageEventBus/MessageEventBus');
 jest.mock('axios');

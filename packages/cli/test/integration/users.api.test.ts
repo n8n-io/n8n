@@ -1,11 +1,15 @@
 import Container from 'typedi';
-import type { SuperAgentTest } from 'supertest';
+import { v4 as uuid } from 'uuid';
 
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UsersController } from '@/controllers/users.controller';
 import type { User } from '@db/entities/User';
+import { ProjectRepository } from '@db/repositories/project.repository';
+import { ProjectRelationRepository } from '@db/repositories/projectRelation.repository';
 import { UserRepository } from '@db/repositories/user.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { CacheService } from '@/services/cache/cache.service';
 import { ExecutionService } from '@/executions/execution.service';
 
 import {
@@ -21,12 +25,8 @@ import { randomCredentialPayload } from './shared/random';
 import * as utils from './shared/utils/';
 import * as testDb from './shared/testDb';
 import { mockInstance } from '../shared/mocking';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
+import type { SuperAgentTest } from './shared/types';
 import { createTeamProject, getPersonalProject, linkUserToProject } from './shared/db/projects';
-import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
-import { CacheService } from '@/services/cache/cache.service';
-import { v4 as uuid } from 'uuid';
 
 mockInstance(ExecutionService);
 
