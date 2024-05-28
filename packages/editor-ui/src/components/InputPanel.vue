@@ -67,13 +67,17 @@
 					data-test-id="ndv-input-option"
 				>
 					<NodeIcon
-						:disabled="node?.disabled"
+						:disabled="node.disabled"
 						:node-type="type"
 						:size="14"
 						:shrink="false"
 						:class="$style.nodeOptionIcon"
 					/>
-					<span :class="$style.nodeOptionTitle">{{ nodeOptionTitle(node.name) }}&nbsp;</span>
+					<span :class="$style.nodeOptionTitle">
+						{{ nodeOptionTitle(node.name) }}
+						<span v-if="node.disabled">({{ $locale.baseText('node.disabled') }})</span>
+					</span>
+
 					<span :class="$style.nodeOptionSubtitle">{{ nodeOptionSubtitle(node.name, depth) }}</span>
 				</n8n-option>
 			</n8n-select>
