@@ -10,7 +10,7 @@ import { NodeOperationError } from 'n8n-workflow';
 import { CronJob } from 'cron';
 import moment from 'moment-timezone';
 import type { IRecurencyRule } from './SchedulerInterface';
-import { convertToUnixFormat, recurencyCheck } from './GenericFunctions';
+import { addFallbackValue, convertToUnixFormat, recurencyCheck } from './GenericFunctions';
 
 export class ScheduleTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -18,7 +18,7 @@ export class ScheduleTrigger implements INodeType {
 		name: 'scheduleTrigger',
 		icon: 'fa:clock',
 		group: ['trigger', 'schedule'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Triggers the workflow on a given schedule',
 		eventTriggerDescription: '',
 		activationMessage:
@@ -415,7 +415,7 @@ export class ScheduleTrigger implements INodeType {
 		const rule = this.getNodeParameter('rule', []) as IDataObject;
 		const interval = rule.interval as IDataObject[];
 		const timezone = this.getTimezone();
-		const version = this.getNode().typeVersion;
+		const nodeVersion = this.getNode().typeVersion;
 		const cronJobs: CronJob[] = [];
 		const intervalArr: NodeJS.Timeout[] = [];
 		const staticData = this.getWorkflowStaticData('node') as {
@@ -424,6 +424,7 @@ export class ScheduleTrigger implements INodeType {
 		if (!staticData.recurrencyRules) {
 			staticData.recurrencyRules = [];
 		}
+		const fallbackToZero = addFallbackValue(nodeVersion >= 1.2, '0');
 		const executeTrigger = async (recurency: IRecurencyRule) => {
 			const resultData = {
 				timestamp: moment.tz(timezone).toISOString(true),
@@ -451,7 +452,7 @@ export class ScheduleTrigger implements INodeType {
 		for (let i = 0; i < interval.length; i++) {
 			let intervalValue = 1000;
 			if (interval[i].field === 'cronExpression') {
-				if (version > 1) {
+				if (nodeVersion > 1) {
 					// ! Remove this part if we use a cron library that follows unix cron expression
 					convertToUnixFormat(interval[i]);
 				}
@@ -494,7 +495,8 @@ export class ScheduleTrigger implements INodeType {
 
 			if (interval[i].field === 'hours') {
 				const hour = interval[i].hoursInterval as number;
-				const minute = interval[i].triggerAtMinute?.toString() as string;
+				const minute = fallbackToZero(interval[i].triggerAtMinute?.toString() as string);
+
 				const cronTimes: string[] = [minute, '*', '*', '*', '*'];
 				const cronExpression: string = cronTimes.join(' ');
 				if (hour === 1) {
@@ -527,7 +529,7 @@ export class ScheduleTrigger implements INodeType {
 			if (interval[i].field === 'days') {
 				const day = interval[i].daysInterval as number;
 				const hour = interval[i].triggerAtHour?.toString() as string;
-				const minute = interval[i].triggerAtMinute?.toString() as string;
+				const minute = fallbackToZero(interval[i].triggerAtMinute?.toString() as string);
 				const cronTimes: string[] = [minute, hour, '*', '*', '*'];
 				const cronExpression: string = cronTimes.join(' ');
 				if (day === 1) {
@@ -559,7 +561,7 @@ export class ScheduleTrigger implements INodeType {
 
 			if (interval[i].field === 'weeks') {
 				const hour = interval[i].triggerAtHour?.toString() as string;
-				const minute = interval[i].triggerAtMinute?.toString() as string;
+				const minute = fallbackToZero(interval[i].triggerAtMinute?.toString() as string);
 				const week = interval[i].weeksInterval as number;
 				const days = interval[i].triggerAtDay as IDataObject[];
 				const day = days.length === 0 ? '*' : days.join(',');
@@ -596,7 +598,7 @@ export class ScheduleTrigger implements INodeType {
 				const month = interval[i].monthsInterval;
 				const day = interval[i].triggerAtDayOfMonth?.toString() as string;
 				const hour = interval[i].triggerAtHour?.toString() as string;
-				const minute = interval[i].triggerAtMinute?.toString() as string;
+				const minute = fallbackToZero(interval[i].triggerAtMinute?.toString() as string);
 				const cronTimes: string[] = [minute, hour, day, '*', '*'];
 				const cronExpression: string = cronTimes.join(' ');
 				if (month === 1) {

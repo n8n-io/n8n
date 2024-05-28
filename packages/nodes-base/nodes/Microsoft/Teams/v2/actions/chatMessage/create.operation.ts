@@ -1,8 +1,8 @@
 import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
-import { updateDisplayOptions } from '@utils/utilities';
 import { prepareMessage } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 import { chatRLC } from '../../descriptions';
+import { updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	chatRLC,
@@ -64,12 +64,7 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(
-	this: IExecuteFunctions,
-	i: number,
-	nodeVersion: number,
-	instanceId: string,
-) {
+export async function execute(this: IExecuteFunctions, i: number, instanceId: string) {
 	// https://docs.microsoft.com/en-us/graph/api/channel-post-messages?view=graph-rest-1.0&tabs=http
 
 	const chatId = this.getNodeParameter('chatId', i, '', { extractValue: true }) as string;

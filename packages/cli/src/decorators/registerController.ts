@@ -1,12 +1,14 @@
 import { Container } from 'typedi';
 import { Router } from 'express';
 import type { Application, Request, Response, RequestHandler } from 'express';
-import type { Scope } from '@n8n/permissions';
+import { rateLimit as expressRateLimit } from 'express-rate-limit';
 import { ApplicationError } from 'n8n-workflow';
 import type { Class } from 'n8n-core';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
+import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
+import { inE2ETests, inTest, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import type { BooleanLicenseFeature } from '@/Interfaces';
 import { License } from '@/License';
 import type { AuthenticatedRequest } from '@/requests';
@@ -15,7 +17,7 @@ import {
 	CONTROLLER_BASE_PATH,
 	CONTROLLER_LICENSE_FEATURES,
 	CONTROLLER_MIDDLEWARES,
-	CONTROLLER_REQUIRED_SCOPES,
+	CONTROLLER_ROUTE_SCOPES,
 	CONTROLLER_ROUTES,
 } from './constants';
 import type {
@@ -23,8 +25,15 @@ import type {
 	LicenseMetadata,
 	MiddlewareMetadata,
 	RouteMetadata,
-	ScopeMetadata,
+	RouteScopeMetadata,
 } from './types';
+import { userHasScope } from '@/permissions/checkAccess';
+
+const throttle = expressRateLimit({
+	windowMs: 5 * 60 * 1000, // 5 minutes
+	limit: 5, // Limit each IP to 5 requests per `window` (here, per 5 minutes).
+	message: { message: 'Too many requests' },
+});
 
 export const createLicenseMiddleware =
 	(features: BooleanLicenseFeature[]): RequestHandler =>
@@ -45,18 +54,24 @@ export const createLicenseMiddleware =
 		return next();
 	};
 
-export const createGlobalScopeMiddleware =
-	(scopes: Scope[]): RequestHandler =>
-	async ({ user }: AuthenticatedRequest, res, next) => {
-		if (scopes.length === 0) {
-			return next();
-		}
+export const createScopedMiddleware =
+	(routeScopeMetadata: RouteScopeMetadata[string]): RequestHandler =>
+	async (
+		req: AuthenticatedRequest<{ credentialId?: string; workflowId?: string; projectId?: string }>,
+		res,
+		next,
+	) => {
+		if (!req.user) throw new UnauthenticatedError();
 
-		if (!user) return res.status(401).json({ status: 'error', message: 'Unauthorized' });
+		const { scopes, globalOnly } = routeScopeMetadata;
 
-		const hasScopes = user.hasGlobalScope(scopes);
-		if (!hasScopes) {
-			return res.status(403).json({ status: 'error', message: 'Unauthorized' });
+		if (scopes.length === 0) return next();
+
+		if (!(await userHasScope(req.user, scopes, globalOnly, req.params))) {
+			return res.status(403).json({
+				status: 'error',
+				message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE,
+			});
 		}
 
 		return next();
@@ -76,8 +91,8 @@ export const registerController = (app: Application, controllerClass: Class<obje
 	const licenseFeatures = Reflect.getMetadata(CONTROLLER_LICENSE_FEATURES, controllerClass) as
 		| LicenseMetadata
 		| undefined;
-	const requiredScopes = Reflect.getMetadata(CONTROLLER_REQUIRED_SCOPES, controllerClass) as
-		| ScopeMetadata
+	const routeScopes = Reflect.getMetadata(CONTROLLER_ROUTE_SCOPES, controllerClass) as
+		| RouteScopeMetadata
 		| undefined;
 
 	if (routes.length > 0) {
@@ -94,17 +109,26 @@ export const registerController = (app: Application, controllerClass: Class<obje
 		const authService = Container.get(AuthService);
 
 		routes.forEach(
-			({ method, path, middlewares: routeMiddlewares, handlerName, usesTemplates, skipAuth }) => {
+			({
+				method,
+				path,
+				middlewares: routeMiddlewares,
+				handlerName,
+				usesTemplates,
+				skipAuth,
+				rateLimit,
+			}) => {
 				const features = licenseFeatures?.[handlerName] ?? licenseFeatures?.['*'];
-				const scopes = requiredScopes?.[handlerName] ?? requiredScopes?.['*'];
+				const scopes = routeScopes?.[handlerName] ?? routeScopes?.['*'];
 				const handler = async (req: Request, res: Response) =>
 					await controller[handlerName](req, res);
 				router[method](
 					path,
+					...(!inTest && !inE2ETests && rateLimit ? [throttle] : []),
 					// eslint-disable-next-line @typescript-eslint/unbound-method
 					...(skipAuth ? [] : [authService.authMiddleware]),
 					...(features ? [createLicenseMiddleware(features)] : []),
-					...(scopes ? [createGlobalScopeMiddleware(scopes)] : []),
+					...(scopes ? [createScopedMiddleware(scopes)] : []),
 					...controllerMiddlewares,
 					...routeMiddlewares,
 					usesTemplates ? handler : send(handler),

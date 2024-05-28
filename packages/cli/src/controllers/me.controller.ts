@@ -41,7 +41,7 @@ export class MeController {
 	@Patch('/')
 	async updateCurrentUser(req: MeRequest.UserUpdate, res: Response): Promise<PublicUser> {
 		const { id: userId, email: currentEmail } = req.user;
-		const payload = plainToInstance(UserUpdatePayload, req.body);
+		const payload = plainToInstance(UserUpdatePayload, req.body, { excludeExtraneousValues: true });
 
 		const { email } = payload;
 		if (!email) {
@@ -85,7 +85,7 @@ export class MeController {
 
 		this.logger.info('User updated successfully', { userId });
 
-		this.authService.issueCookie(res, user);
+		this.authService.issueCookie(res, user, req.browserId);
 
 		const updatedKeys = Object.keys(payload);
 		void this.internalHooks.onUserUpdate({
@@ -138,7 +138,7 @@ export class MeController {
 		const updatedUser = await this.userRepository.save(user, { transaction: false });
 		this.logger.info('Password updated successfully', { userId: user.id });
 
-		this.authService.issueCookie(res, updatedUser);
+		this.authService.issueCookie(res, updatedUser, req.browserId);
 
 		void this.internalHooks.onUserUpdate({
 			user: updatedUser,
@@ -227,7 +227,9 @@ export class MeController {
 	 */
 	@Patch('/settings')
 	async updateCurrentUserSettings(req: MeRequest.UserSettingsUpdate): Promise<User['settings']> {
-		const payload = plainToInstance(UserSettingsUpdatePayload, req.body);
+		const payload = plainToInstance(UserSettingsUpdatePayload, req.body, {
+			excludeExtraneousValues: true,
+		});
 		const { id } = req.user;
 
 		await this.userService.updateSettings(id, payload);

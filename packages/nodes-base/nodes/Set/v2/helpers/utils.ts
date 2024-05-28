@@ -4,7 +4,6 @@ import type {
 	IExecuteFunctions,
 	INode,
 	INodeExecutionData,
-	ValidationResult,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -200,7 +199,7 @@ export const validateEntry = (
 
 	if (!validationResult.valid) {
 		if (ignoreErrors) {
-			validationResult.newValue = value as ValidationResult['newValue'];
+			return { name, value: value ?? null };
 		} else {
 			const message = `${validationResult.errorMessage} [item ${itemIndex}]`;
 			throw new NodeOperationError(node, message, {
@@ -212,7 +211,7 @@ export const validateEntry = (
 
 	return {
 		name,
-		value: validationResult.newValue === undefined ? null : validationResult.newValue,
+		value: validationResult.newValue ?? null,
 	};
 };
 

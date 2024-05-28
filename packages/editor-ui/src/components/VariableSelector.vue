@@ -17,7 +17,7 @@
 				:item="option"
 				:extend-all="extendAll"
 				:redact-values="redactValues"
-				@itemSelected="forwardItemSelected"
+				@item-selected="forwardItemSelected"
 			></VariableSelectorItem>
 		</div>
 	</div>

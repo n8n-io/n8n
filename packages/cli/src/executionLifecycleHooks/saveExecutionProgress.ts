@@ -13,7 +13,7 @@ export async function saveExecutionProgress(
 	nodeName: string,
 	data: ITaskData,
 	executionData: IRunExecutionData,
-	sessionId?: string,
+	pushRef?: string,
 ) {
 	const saveSettings = toSaveSettings(workflowData.settings);
 
@@ -97,7 +97,7 @@ export async function saveExecutionProgress(
 			{
 				...error,
 				executionId,
-				sessionId,
+				pushRef,
 				workflowId: workflowData.id,
 			},
 		);

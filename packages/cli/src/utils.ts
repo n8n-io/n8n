@@ -39,18 +39,6 @@ export const findSubworkflowStart = findWorkflowStart('integrated');
 
 export const findCliWorkflowStart = findWorkflowStart('cli');
 
-export const alphabetizeKeys = (obj: INode) =>
-	Object.keys(obj)
-		.sort()
-		.reduce<Partial<INode>>(
-			(acc, key) => ({
-				...acc,
-				// @ts-expect-error @TECH_DEBT Adding index signature to INode causes type issues downstream
-				[key]: obj[key],
-			}),
-			{},
-		);
-
 export const separate = <T>(array: T[], test: (element: T) => boolean) => {
 	const pass: T[] = [];
 	const fail: T[] = [];
@@ -97,3 +85,10 @@ export function rightDiff<T1, T2>(
 		return acc;
 	}, []);
 }
+
+/**
+ * Asserts that the passed in type is never.
+ * Can be used to make sure the type is exhausted
+ * in switch statements or if/else chains.
+ */
+export const assertNever = (value: never) => {};

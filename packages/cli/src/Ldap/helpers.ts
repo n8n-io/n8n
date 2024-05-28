@@ -93,7 +93,7 @@ export const getAuthIdentityByLdapId = async (
 	idAttributeValue: string,
 ): Promise<AuthIdentity | null> => {
 	return await Container.get(AuthIdentityRepository).findOne({
-		relations: ['user'],
+		relations: { user: true },
 		where: {
 			providerId: idAttributeValue,
 			providerType: 'ldap',
@@ -140,7 +140,7 @@ export const getLdapIds = async (): Promise<string[]> => {
 
 export const getLdapUsers = async (): Promise<User[]> => {
 	const identities = await Container.get(AuthIdentityRepository).find({
-		relations: ['user'],
+		relations: { user: true },
 		where: {
 			providerType: 'ldap',
 		},
@@ -179,10 +179,15 @@ export const processUsers = async (
 	toUpdateUsers: Array<[string, User]>,
 	toDisableUsers: string[],
 ): Promise<void> => {
+	const userRepository = Container.get(UserRepository);
 	await Db.transaction(async (transactionManager) => {
 		return await Promise.all([
 			...toCreateUsers.map(async ([ldapId, user]) => {
-				const authIdentity = AuthIdentity.create(await transactionManager.save(user), ldapId);
+				const { user: savedUser } = await userRepository.createUserWithProject(
+					user,
+					transactionManager,
+				);
+				const authIdentity = AuthIdentity.create(savedUser, ldapId);
 				return await transactionManager.save(authIdentity);
 			}),
 			...toUpdateUsers.map(async ([ldapId, user]) => {
@@ -202,7 +207,13 @@ export const processUsers = async (
 					providerId: ldapId,
 				});
 				if (authIdentity?.userId) {
-					await transactionManager.update(User, { id: authIdentity?.userId }, { disabled: true });
+					const user = await transactionManager.findOneBy(User, { id: authIdentity.userId });
+
+					if (user) {
+						user.disabled = true;
+						await transactionManager.save(user);
+					}
+
 					await transactionManager.delete(AuthIdentity, { userId: authIdentity?.userId });
 				}
 			}),
@@ -266,14 +277,11 @@ export const createLdapAuthIdentity = async (user: User, ldapId: string) => {
 };
 
 export const createLdapUserOnLocalDb = async (data: Partial<User>, ldapId: string) => {
-	const user = await Container.get(UserRepository).save(
-		{
-			password: randomPassword(),
-			role: 'global:member',
-			...data,
-		},
-		{ transaction: false },
-	);
+	const { user } = await Container.get(UserRepository).createUserWithProject({
+		password: randomPassword(),
+		role: 'global:member',
+		...data,
+	});
 	await createLdapAuthIdentity(user, ldapId);
 	return user;
 };
@@ -281,7 +289,11 @@ export const createLdapUserOnLocalDb = async (data: Partial<User>, ldapId: strin
 export const updateLdapUserOnLocalDb = async (identity: AuthIdentity, data: Partial<User>) => {
 	const userId = identity?.user?.id;
 	if (userId) {
-		await Container.get(UserRepository).update({ id: userId }, data);
+		const user = await Container.get(UserRepository).findOneBy({ id: userId });
+
+		if (user) {
+			await Container.get(UserRepository).save({ id: userId, ...data }, { transaction: true });
+		}
 	}
 };
 

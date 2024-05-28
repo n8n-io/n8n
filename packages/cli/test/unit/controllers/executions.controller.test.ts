@@ -1,94 +1,145 @@
-import { mock, mockFn } from 'jest-mock-extended';
-import config from '@/config';
+import { mock } from 'jest-mock-extended';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExecutionsController } from '@/executions/executions.controller';
-import { License } from '@/License';
-import { mockInstance } from '../../shared/mocking';
-import type { IExecutionBase } from '@/Interfaces';
-import type { ActiveExecutionService } from '@/executions/active-execution.service';
-import type { ExecutionRequest } from '@/executions/execution.types';
+import type { ExecutionRequest, ExecutionSummaries } from '@/executions/execution.types';
+import type { ExecutionService } from '@/executions/execution.service';
 import type { WorkflowSharingService } from '@/workflows/workflowSharing.service';
 
 describe('ExecutionsController', () => {
-	const getEnv = mockFn<(typeof config)['getEnv']>();
-	config.getEnv = getEnv;
-
-	mockInstance(License);
-	const activeExecutionService = mock<ActiveExecutionService>();
+	const executionService = mock<ExecutionService>();
 	const workflowSharingService = mock<WorkflowSharingService>();
 
-	const req = mock<ExecutionRequest.GetManyActive>({ query: { filter: '{}' } });
+	const executionsController = new ExecutionsController(
+		executionService,
+		mock(),
+		workflowSharingService,
+		mock(),
+	);
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 	});
 
-	describe('getActive()', () => {
-		workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['123']);
+	describe('getMany', () => {
+		const NO_EXECUTIONS = { count: 0, estimated: false, results: [] };
 
-		it('should call `ActiveExecutionService.findManyInQueueMode()`', async () => {
-			getEnv.calledWith('executions.mode').mockReturnValue('queue');
+		const QUERIES_WITH_EITHER_STATUS_OR_RANGE: ExecutionSummaries.RangeQuery[] = [
+			{
+				kind: 'range',
+				workflowId: undefined,
+				status: undefined,
+				range: { lastId: '999', firstId: '111', limit: 20 },
+			},
+			{
+				kind: 'range',
+				workflowId: undefined,
+				status: [],
+				range: { lastId: '999', firstId: '111', limit: 20 },
+			},
+			{
+				kind: 'range',
+				workflowId: undefined,
+				status: ['waiting'],
+				range: { lastId: undefined, firstId: undefined, limit: 20 },
+			},
+			{
+				kind: 'range',
+				workflowId: undefined,
+				status: [],
+				range: { lastId: '999', firstId: '111', limit: 20 },
+			},
+		];
 
-			await new ExecutionsController(
-				mock(),
-				mock(),
-				workflowSharingService,
-				activeExecutionService,
-				mock(),
-			).getActive(req);
+		const QUERIES_NEITHER_STATUS_NOR_RANGE_PROVIDED: ExecutionSummaries.RangeQuery[] = [
+			{
+				kind: 'range',
+				workflowId: undefined,
+				status: undefined,
+				range: { lastId: undefined, firstId: undefined, limit: 20 },
+			},
+			{
+				kind: 'range',
+				workflowId: undefined,
+				status: [],
+				range: { lastId: undefined, firstId: undefined, limit: 20 },
+			},
+		];
 
-			expect(activeExecutionService.findManyInQueueMode).toHaveBeenCalled();
-			expect(activeExecutionService.findManyInRegularMode).not.toHaveBeenCalled();
+		describe('if either status or range provided', () => {
+			test.each(QUERIES_WITH_EITHER_STATUS_OR_RANGE)(
+				'should fetch executions per query',
+				async (rangeQuery) => {
+					workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['123']);
+					executionService.findAllRunningAndLatest.mockResolvedValue(NO_EXECUTIONS);
+
+					const req = mock<ExecutionRequest.GetMany>({ rangeQuery });
+
+					await executionsController.getMany(req);
+
+					expect(executionService.findAllRunningAndLatest).not.toHaveBeenCalled();
+					expect(executionService.findRangeWithCount).toHaveBeenCalledWith(rangeQuery);
+				},
+			);
 		});
 
-		it('should call `ActiveExecutionService.findManyInRegularMode()`', async () => {
-			getEnv.calledWith('executions.mode').mockReturnValue('regular');
+		describe('if neither status nor range provided', () => {
+			test.each(QUERIES_NEITHER_STATUS_NOR_RANGE_PROVIDED)(
+				'should fetch executions per query',
+				async (rangeQuery) => {
+					workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['123']);
+					executionService.findAllRunningAndLatest.mockResolvedValue(NO_EXECUTIONS);
 
-			await new ExecutionsController(
-				mock(),
-				mock(),
-				workflowSharingService,
-				activeExecutionService,
-				mock(),
-			).getActive(req);
+					const req = mock<ExecutionRequest.GetMany>({ rangeQuery });
 
-			expect(activeExecutionService.findManyInQueueMode).not.toHaveBeenCalled();
-			expect(activeExecutionService.findManyInRegularMode).toHaveBeenCalled();
+					await executionsController.getMany(req);
+
+					expect(executionService.findAllRunningAndLatest).toHaveBeenCalled();
+					expect(executionService.findRangeWithCount).not.toHaveBeenCalled();
+				},
+			);
+		});
+
+		describe('if both status and range provided', () => {
+			it('should fetch executions per query', async () => {
+				workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['123']);
+				executionService.findAllRunningAndLatest.mockResolvedValue(NO_EXECUTIONS);
+
+				const rangeQuery: ExecutionSummaries.RangeQuery = {
+					kind: 'range',
+					workflowId: undefined,
+					status: ['success'],
+					range: { lastId: '999', firstId: '111', limit: 5 },
+				};
+
+				const req = mock<ExecutionRequest.GetMany>({ rangeQuery });
+
+				await executionsController.getMany(req);
+
+				expect(executionService.findAllRunningAndLatest).not.toHaveBeenCalled();
+				expect(executionService.findRangeWithCount).toHaveBeenCalledWith(rangeQuery);
+			});
 		});
 	});
 
-	describe('stop()', () => {
-		const req = mock<ExecutionRequest.Stop>({ params: { id: '999' } });
-		const execution = mock<IExecutionBase>();
+	describe('stop', () => {
+		const executionId = '999';
+		const req = mock<ExecutionRequest.Stop>({ params: { id: executionId } });
 
-		it('should 404 when execution is not found or inaccessible for user', async () => {
-			activeExecutionService.findOne.mockResolvedValue(undefined);
+		it('should 404 when execution is inaccessible for user', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue([]);
 
-			const promise = new ExecutionsController(
-				mock(),
-				mock(),
-				workflowSharingService,
-				activeExecutionService,
-				mock(),
-			).stop(req);
+			const promise = executionsController.stop(req);
 
 			await expect(promise).rejects.toThrow(NotFoundError);
-			expect(activeExecutionService.findOne).toHaveBeenCalledWith('999', ['123']);
+			expect(executionService.stop).not.toHaveBeenCalled();
 		});
 
-		it('should call `ActiveExecutionService.stop()`', async () => {
-			getEnv.calledWith('executions.mode').mockReturnValue('regular');
-			activeExecutionService.findOne.mockResolvedValue(execution);
+		it('should call ask for an execution to be stopped', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['123']);
 
-			await new ExecutionsController(
-				mock(),
-				mock(),
-				workflowSharingService,
-				activeExecutionService,
-				mock(),
-			).stop(req);
+			await executionsController.stop(req);
 
-			expect(activeExecutionService.stop).toHaveBeenCalled();
+			expect(executionService.stop).toHaveBeenCalledWith(executionId);
 		});
 	});
 });

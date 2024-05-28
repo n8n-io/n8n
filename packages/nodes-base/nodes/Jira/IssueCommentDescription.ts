@@ -111,7 +111,7 @@ export const issueCommentFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -130,9 +130,22 @@ export const issueCommentFields: INodeProperties[] = [
 						value: 'renderedBody',
 					},
 				],
-				default: '',
+				default: [],
 				description:
 					'Use expand to include additional information about comments in the response. This parameter accepts Rendered Body, which returns the comment body rendered in HTML.',
+			},
+			{
+				displayName: 'Use Wiki Markup',
+				name: 'wikiMarkup',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: {
+						'/jiraVersion': ['cloud'],
+					},
+				},
+				description:
+					'Whether to enable parsing of wikiformatting for this comment. Default is false.',
 			},
 		],
 	},
@@ -269,7 +282,7 @@ export const issueCommentFields: INodeProperties[] = [
 						value: 'renderedBody',
 					},
 				],
-				default: '',
+				default: 'renderedBody',
 				description:
 					'Use expand to include additional information about comments in the response. This parameter accepts Rendered Body, which returns the comment body rendered in HTML.',
 			},
@@ -384,7 +397,7 @@ export const issueCommentFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -403,9 +416,22 @@ export const issueCommentFields: INodeProperties[] = [
 						value: 'renderedBody',
 					},
 				],
-				default: '',
+				default: 'renderedBody',
 				description:
 					'Use expand to include additional information about comments in the response. This parameter accepts Rendered Body, which returns the comment body rendered in HTML.',
+			},
+			{
+				displayName: 'Use Wiki Markup',
+				name: 'wikiMarkup',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: {
+						'/jiraVersion': ['cloud'],
+					},
+				},
+				description:
+					'Whether to enable parsing of wikiformatting for this comment. Default is false.',
 			},
 		],
 	},

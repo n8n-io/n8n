@@ -80,7 +80,7 @@ onUnmounted(() => {
 		:model-value="modelValue"
 		:placeholder="placeholder"
 		size="small"
-		@update:modelValue="onSearchUpdate"
+		@update:model-value="onSearchUpdate"
 		@focus="onFocus"
 		@blur="onBlur"
 	>

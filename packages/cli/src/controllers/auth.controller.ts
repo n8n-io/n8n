@@ -21,7 +21,7 @@ import { MfaService } from '@/Mfa/mfa.service';
 import { Logger } from '@/Logger';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { ApplicationError } from 'n8n-workflow';
 import { UserRepository } from '@/databases/repositories/user.repository';
 
@@ -39,7 +39,7 @@ export class AuthController {
 	) {}
 
 	/** Log in a user */
-	@Post('/login', { skipAuth: true })
+	@Post('/login', { skipAuth: true, rateLimit: true })
 	async login(req: LoginRequest, res: Response): Promise<PublicUser | undefined> {
 		const { email, password, mfaToken, mfaRecoveryCode } = req.body;
 		if (!email) throw new ApplicationError('Email is required to log in');
@@ -94,7 +94,7 @@ export class AuthController {
 				}
 			}
 
-			this.authService.issueCookie(res, user);
+			this.authService.issueCookie(res, user, req.browserId);
 			void this.internalHooks.onUserLoginSuccess({
 				user,
 				authenticationMethod: usedAuthenticationMethod,
@@ -130,7 +130,7 @@ export class AuthController {
 				inviterId,
 				inviteeId,
 			});
-			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
 		if (!inviterId || !inviteeId) {

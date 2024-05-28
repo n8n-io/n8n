@@ -55,6 +55,8 @@ import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 import type { Component } from 'vue';
 import type { Scope } from '@n8n/permissions';
 import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
+import type { ProjectSharingData } from '@/features/projects/projects.types';
+import type { Connection } from '@jsplumb/core';
 
 export * from 'n8n-design-system/types';
 
@@ -128,17 +130,28 @@ export type EndpointStyle = {
 	hoverMessage?: string;
 };
 
-export interface IUpdateInformation {
-	name: string;
-	key?: string;
-	value:
+export type EndpointMeta = {
+	__meta?: {
+		index: number;
+		totalEndpoints: number;
+		endpointLabelLength: number;
+	};
+};
+
+export interface IUpdateInformation<
+	T extends NodeParameterValueType =
 		| string
 		| number
 		| { [key: string]: string | number | boolean }
 		| NodeParameterValueType
-		| INodeParameters; // with null makes problems in NodeSettings.vue
+		| INodeParameters,
+> {
+	name: string;
+	key?: string;
+	value: T;
 	node?: string;
 	oldValue?: string | number;
+	type?: 'optionsOrderChanged';
 }
 
 export interface INodeUpdatePropertiesInformation {
@@ -251,6 +264,12 @@ export interface IWorkflowToShare extends IWorkflowDataUpdate {
 	meta?: WorkflowMetadata;
 }
 
+export interface NewWorkflowResponse {
+	name: string;
+	onboardingFlowEnabled?: boolean;
+	defaultSettings: IWorkflowSettings;
+}
+
 export interface IWorkflowTemplateNode
 	extends Pick<INodeUi, 'name' | 'type' | 'position' | 'parameters' | 'typeVersion' | 'webhookId'> {
 	// The credentials in a template workflow have a different type than in a regular workflow
@@ -293,8 +312,9 @@ export interface IWorkflowDb {
 	settings?: IWorkflowSettings;
 	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
 	pinData?: IPinData;
-	sharedWith?: Array<Partial<IUser>>;
-	ownedBy?: Partial<IUser>;
+	sharedWithProjects?: ProjectSharingData[];
+	homeProject?: ProjectSharingData;
+	scopes?: Scope[];
 	versionId: string;
 	usedCredentials?: IUsedCredential[];
 	meta?: WorkflowMetadata;
@@ -314,8 +334,8 @@ export interface IWorkflowsShareResponse {
 	id: string;
 	createdAt: number | string;
 	updatedAt: number | string;
-	sharedWith?: Array<Partial<IUser>>;
-	ownedBy?: Partial<IUser>;
+	sharedWithProjects?: ProjectSharingData[];
+	homeProject?: ProjectSharingData;
 }
 
 // Identical or almost identical to cli.Interfaces.ts
@@ -339,9 +359,10 @@ export interface ICredentialsResponse extends ICredentialsEncrypted {
 	id: string;
 	createdAt: number | string;
 	updatedAt: number | string;
-	sharedWith?: Array<Partial<IUser>>;
-	ownedBy?: Partial<IUser>;
+	sharedWithProjects?: ProjectSharingData[];
+	homeProject?: ProjectSharingData;
 	currentUserHasAccess?: boolean;
+	scopes?: Scope[];
 }
 
 export interface ICredentialsBase {
@@ -446,6 +467,7 @@ export type IPushData =
 	| PushDataExecutionStarted
 	| PushDataExecuteAfter
 	| PushDataExecuteBefore
+	| PushDataNodeDescriptionUpdated
 	| PushDataConsoleMessage
 	| PushDataReloadNodeType
 	| PushDataRemoveNodeType
@@ -457,67 +479,72 @@ export type IPushData =
 	| PushDataWorkflowFailedToActivate
 	| PushDataWorkflowUsersChanged;
 
-type PushDataActiveWorkflowAdded = {
+export type PushDataActiveWorkflowAdded = {
 	data: IActiveWorkflowAdded;
 	type: 'workflowActivated';
 };
 
-type PushDataActiveWorkflowRemoved = {
+export type PushDataActiveWorkflowRemoved = {
 	data: IActiveWorkflowRemoved;
 	type: 'workflowDeactivated';
 };
 
-type PushDataWorkflowFailedToActivate = {
+export type PushDataWorkflowFailedToActivate = {
 	data: IWorkflowFailedToActivate;
 	type: 'workflowFailedToActivate';
 };
 
-type PushDataExecutionRecovered = {
+export type PushDataExecutionRecovered = {
 	data: IPushDataExecutionRecovered;
 	type: 'executionRecovered';
 };
 
-type PushDataExecutionFinished = {
+export type PushDataExecutionFinished = {
 	data: IPushDataExecutionFinished;
 	type: 'executionFinished';
 };
 
-type PushDataExecutionStarted = {
+export type PushDataExecutionStarted = {
 	data: IPushDataExecutionStarted;
 	type: 'executionStarted';
 };
 
-type PushDataExecuteAfter = {
+export type PushDataExecuteAfter = {
 	data: IPushDataNodeExecuteAfter;
 	type: 'nodeExecuteAfter';
 };
 
-type PushDataExecuteBefore = {
+export type PushDataExecuteBefore = {
 	data: IPushDataNodeExecuteBefore;
 	type: 'nodeExecuteBefore';
 };
 
-type PushDataConsoleMessage = {
+export type PushDataNodeDescriptionUpdated = {
+	data: {};
+	type: 'nodeDescriptionUpdated';
+};
+
+export type PushDataConsoleMessage = {
 	data: IPushDataConsoleMessage;
 	type: 'sendConsoleMessage';
 };
 
-type PushDataReloadNodeType = {
+export type PushDataReloadNodeType = {
 	data: IPushDataReloadNodeType;
 	type: 'reloadNodeType';
 };
 
-type PushDataRemoveNodeType = {
+export type PushDataRemoveNodeType = {
 	data: IPushDataRemoveNodeType;
 	type: 'removeNodeType';
 };
 
-type PushDataTestWebhook = {
+export type PushDataTestWebhook = {
 	data: IPushDataTestWebhook;
 	type: 'testWebhookDeleted' | 'testWebhookReceived';
 };
 
-type PushDataWorkerStatusMessage = {
+export type PushDataWorkerStatusMessage = {
 	data: IPushDataWorkerStatusMessage;
 	type: 'sendWorkerStatusMessage';
 };
@@ -687,7 +714,8 @@ export type IPersonalizationLatestVersion = IPersonalizationSurveyAnswersV4;
 export type IPersonalizationSurveyVersions =
 	| IPersonalizationSurveyAnswersV1
 	| IPersonalizationSurveyAnswersV2
-	| IPersonalizationSurveyAnswersV3;
+	| IPersonalizationSurveyAnswersV3
+	| IPersonalizationSurveyAnswersV4;
 
 export type Roles = typeof ROLE;
 export type IRole = Roles[keyof Roles];
@@ -1059,8 +1087,8 @@ export interface IUsedCredential {
 	name: string;
 	credentialType: string;
 	currentUserHasAccess: boolean;
-	ownedBy: Partial<IUser>;
-	sharedWith: Array<Partial<IUser>>;
+	homeProject?: ProjectSharingData;
+	sharedWithProjects?: ProjectSharingData[];
 }
 
 export interface WorkflowsState {
@@ -1101,7 +1129,7 @@ export interface RootState {
 	n8nMetadata: {
 		[key: string]: string | number | undefined;
 	};
-	sessionId: string;
+	pushRef: string;
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
 	instanceId: string;
@@ -1145,7 +1173,7 @@ export interface IRootState {
 	nodeViewOffsetPosition: XYPosition;
 	nodeViewMoveInProgress: boolean;
 	selectedNodes: INodeUi[];
-	sessionId: string;
+	pushRef: string;
 	urlBaseEditor: string;
 	urlBaseWebhook: string;
 	workflow: IWorkflowDb;
@@ -1213,7 +1241,7 @@ export interface TargetItem {
 export interface NDVState {
 	activeNodeName: string | null;
 	mainPanelDimensions: { [key: string]: { [key: string]: number } };
-	sessionId: string;
+	pushRef: string;
 	input: {
 		displayMode: IRunDataDisplayMode;
 		nodeName?: string;
@@ -1238,6 +1266,7 @@ export interface NDVState {
 	focusedInputPath: string;
 	mappingTelemetry: { [key: string]: string | number | boolean };
 	hoveringItem: null | TargetItem;
+	expressionOutputItemIndex: number;
 	draggable: {
 		isDragging: boolean;
 		type: string;
@@ -1246,7 +1275,9 @@ export interface NDVState {
 		activeTarget: { id: string; stickyPosition: null | XYPosition } | null;
 	};
 	isMappingOnboarded: boolean;
+	isTableHoverOnboarded: boolean;
 	isAutocompleteOnboarded: boolean;
+	highlightDraggables: boolean;
 }
 
 export interface NotificationOptions extends Partial<ElementNotificationOptions> {
@@ -1279,7 +1310,6 @@ export interface UIState {
 	selectedNodes: INodeUi[];
 	nodeViewInitialized: boolean;
 	addFirstStepOnLoad: boolean;
-	executionSidebarAutoRefresh: boolean;
 	bannersHeight: number;
 	bannerStack: BannerName[];
 	theme: ThemeOption;
@@ -1287,6 +1317,7 @@ export interface UIState {
 	pendingNotificationsForViews: {
 		[key in VIEWS]?: NotificationOptions[];
 	};
+	isCreateNodeActive: boolean;
 }
 
 export type IFakeDoor = {
@@ -1426,7 +1457,7 @@ export interface CommunityNodesState {
 
 export interface IRestApiContext {
 	baseUrl: string;
-	sessionId: string;
+	pushRef: string;
 }
 
 export interface IZoomConfig {
@@ -1783,18 +1814,19 @@ export interface ExternalSecretsProviderSecret {
 
 export type ExternalSecretsProviderData = Record<string, IUpdateInformation['value']>;
 
+export type ExternalSecretsProviderProperty = INodeProperties;
+
+export type ExternalSecretsProviderState = 'connected' | 'tested' | 'initializing' | 'error';
+
 export interface ExternalSecretsProvider {
 	icon: string;
 	name: string;
 	displayName: string;
 	connected: boolean;
 	connectedAt: string | false;
-	state: 'connected' | 'tested' | 'initializing' | 'error';
+	state: ExternalSecretsProviderState;
 	data?: ExternalSecretsProviderData;
-}
-
-export interface ExternalSecretsProviderWithProperties extends ExternalSecretsProvider {
-	properties: INodeProperties[];
+	properties?: ExternalSecretsProviderProperty[];
 }
 
 export type CloudUpdateLinkSourceType =
@@ -1814,7 +1846,9 @@ export type CloudUpdateLinkSourceType =
 	| 'variables'
 	| 'community-nodes'
 	| 'workflow-history'
-	| 'worker-view';
+	| 'worker-view'
+	| 'external-secrets'
+	| 'rbac';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -1833,7 +1867,9 @@ export type UTMCampaign =
 	| 'upgrade-community-nodes'
 	| 'upgrade-workflow-history'
 	| 'upgrade-advanced-permissions'
-	| 'upgrade-worker-view';
+	| 'upgrade-worker-view'
+	| 'upgrade-external-secrets'
+	| 'upgrade-rbac';
 
 export type N8nBanners = {
 	[key in BannerName]: {
@@ -1863,7 +1899,7 @@ export type AddedNodesAndConnections = {
 export type ToggleNodeCreatorOptions = {
 	createNodeActive: boolean;
 	source?: NodeCreatorOpenSource;
-	nodeCreatorView?: string;
+	nodeCreatorView?: NodeFilterType;
 };
 
 export type AppliedThemeOption = 'light' | 'dark';
@@ -1886,3 +1922,34 @@ export type SuggestedTemplatesWorkflowPreview = {
 	preview: IWorkflowData;
 	nodes: Array<Pick<ITemplatesNode, 'id' | 'displayName' | 'icon' | 'defaults' | 'iconData'>>;
 };
+
+export type NewConnectionInfo = {
+	sourceId: string;
+	index: number;
+	eventSource: NodeCreatorOpenSource;
+	connection?: Connection;
+	nodeCreatorView?: string;
+	outputType?: NodeConnectionType;
+	endpointUuid?: string;
+};
+
+export type AIAssistantConnectionInfo = NewConnectionInfo & {
+	stepName: string;
+};
+
+export type EnterpriseEditionFeatureKey =
+	| 'AdvancedExecutionFilters'
+	| 'Sharing'
+	| 'Ldap'
+	| 'LogStreaming'
+	| 'Variables'
+	| 'Saml'
+	| 'SourceControl'
+	| 'ExternalSecrets'
+	| 'AuditLogs'
+	| 'DebugInEditor'
+	| 'WorkflowHistory'
+	| 'WorkerView'
+	| 'AdvancedPermissions';
+
+export type EnterpriseEditionFeatureValue = keyof Omit<IN8nUISettings['enterprise'], 'projects'>;

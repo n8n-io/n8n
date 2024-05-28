@@ -185,6 +185,11 @@ export class FrontendService {
 				workflowHistory: false,
 				workerView: false,
 				advancedPermissions: false,
+				projects: {
+					team: {
+						limit: 0,
+					},
+				},
 			},
 			mfa: {
 				enabled: false,
@@ -205,7 +210,9 @@ export class FrontendService {
 			ai: {
 				enabled: config.getEnv('ai.enabled'),
 				provider: config.getEnv('ai.provider'),
-				errorDebugging: !!config.getEnv('ai.openAIApiKey'),
+				features: {
+					generateCurl: !!config.getEnv('ai.openAI.apiKey'),
+				},
 			},
 			workflowHistory: {
 				pruneTime: -1,
@@ -225,8 +232,8 @@ export class FrontendService {
 		this.writeStaticJSON('credentials', credentials);
 	}
 
-	getSettings(sessionId?: string): IN8nUISettings {
-		void this.internalHooks.onFrontendSettingsAPI(sessionId);
+	getSettings(pushRef?: string): IN8nUISettings {
+		void this.internalHooks.onFrontendSettingsAPI(pushRef);
 
 		const restEndpoint = config.getEnv('endpoints.rest');
 
@@ -315,6 +322,8 @@ export class FrontendService {
 		this.settings.executionMode = config.getEnv('executions.mode');
 
 		this.settings.binaryDataMode = config.getEnv('binaryDataManager.mode');
+
+		this.settings.enterprise.projects.team.limit = this.license.getTeamProjectLimit();
 
 		return this.settings;
 	}

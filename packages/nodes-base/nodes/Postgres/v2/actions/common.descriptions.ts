@@ -31,6 +31,16 @@ export const optionsCollection: INodeProperties = {
 			description: 'Number of seconds reserved for connecting to the database',
 		},
 		{
+			displayName: 'Delay Closing Idle Connection',
+			name: 'delayClosingIdleConnection',
+			type: 'number',
+			default: 0,
+			description: 'Number of seconds to wait before idle connection would be eligible for closing',
+			typeOptions: {
+				minValue: 0,
+			},
+		},
+		{
 			displayName: 'Query Batching',
 			name: 'queryBatching',
 			type: 'options',
@@ -253,6 +263,10 @@ export const whereFixedCollection: INodeProperties = {
 							name: 'Is Null',
 							value: 'IS NULL',
 						},
+						{
+							name: 'Is Not Null',
+							value: 'IS NOT NULL',
+						},
 					],
 					default: 'equal',
 				},
@@ -260,6 +274,11 @@ export const whereFixedCollection: INodeProperties = {
 					displayName: 'Value',
 					name: 'value',
 					type: 'string',
+					displayOptions: {
+						hide: {
+							condition: ['IS NULL', 'IS NOT NULL'],
+						},
+					},
 					default: '',
 				},
 			],

@@ -43,7 +43,6 @@ import type {
 import * as NodeHelpers from './NodeHelpers';
 
 import type { Workflow } from './Workflow';
-import type { NodeError } from './errors/abstract/node.error';
 
 import { NodeOperationError } from './errors/node-operation.error';
 import { NodeApiError } from './errors/node-api.error';
@@ -233,23 +232,9 @@ export class RoutingNode {
 					throw error;
 				}
 
-				interface AxiosError extends NodeError {
-					isAxiosError: boolean;
-					description: string | undefined;
-					response?: { status: number };
-				}
-
-				const routingError = error as AxiosError;
-
 				throw new NodeApiError(this.node, error as JsonObject, {
 					runIndex,
 					itemIndex: i,
-					message: routingError?.message,
-					description: routingError?.description,
-					httpCode:
-						routingError.isAxiosError && routingError.response
-							? String(routingError.response?.status)
-							: 'none',
 				});
 			}
 		}
@@ -743,6 +728,7 @@ export class RoutingNode {
 		return parameterValue;
 	}
 
+	// eslint-disable-next-line complexity
 	getRequestOptionsFromParameters(
 		executeSingleFunctions: IExecuteSingleFunctions,
 		nodeProperties: INodeProperties | INodePropertyOptions,
@@ -844,7 +830,7 @@ export class RoutingNode {
 
 						if (nodeProperties.routing.send.propertyInDotNotation === false) {
 							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							(returnData.options.body as Record<string, any>)![propertyName] = value;
+							(returnData.options.body as Record<string, any>)[propertyName] = value;
 						} else {
 							set(returnData.options.body as object, propertyName, value);
 						}

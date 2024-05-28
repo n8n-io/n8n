@@ -30,7 +30,7 @@ export interface Props {
 }
 
 const emit = defineEmits({
-	nodeTypeSelected: (nodeTypes: string[]) => true,
+	nodeTypeSelected: (_nodeTypes: string[]) => true,
 });
 
 const i18n = useI18n();
@@ -64,7 +64,7 @@ function onSelected(item: INodeCreateElement) {
 							icon: item.properties.icon,
 							iconType: 'icon',
 						},
-				  }
+					}
 				: {}),
 			...(item.properties.panelClass ? { panelClass: item.properties.panelClass } : {}),
 			rootView: activeViewStack.value.rootView,
@@ -98,7 +98,7 @@ function onSelected(item: INodeCreateElement) {
 			subcategory: item.properties.displayName,
 			title: item.properties.displayName,
 			nodeIcon: {
-				color: item.properties.defaults?.color || '',
+				color: item.properties.defaults?.color?.toString(),
 				icon,
 				iconType: item.properties.iconUrl ? 'file' : 'icon',
 			},
@@ -218,8 +218,8 @@ registerKeyHook('MainViewArrowLeft', {
 					:root-view="activeViewStack.rootView"
 					show-icon
 					show-request
-					@addWebhookNode="selectNodeType([WEBHOOK_NODE_TYPE])"
-					@addHttpNode="selectNodeType([HTTP_REQUEST_NODE_TYPE])"
+					@add-webhook-node="selectNodeType([WEBHOOK_NODE_TYPE])"
+					@add-http-node="selectNodeType([HTTP_REQUEST_NODE_TYPE])"
 				/>
 			</template>
 		</ItemsRenderer>

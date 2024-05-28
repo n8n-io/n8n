@@ -22,6 +22,9 @@ type Props = {
 const props = defineProps<Props>();
 
 const isSchemaValueArray = computed(() => Array.isArray(props.schema.value));
+const schemaArray = computed(
+	() => (isSchemaValueArray.value ? props.schema.value : []) as Schema[],
+);
 const isSchemaParentTypeArray = computed(() => props.parent?.type === 'array');
 const isFlat = computed(
 	() =>
@@ -71,9 +74,10 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 			return 'sun';
 		case 'undefined':
 			return 'ban';
+		default:
+			checkExhaustive(type);
+			return '';
 	}
-
-	checkExhaustive(type);
 };
 </script>
 
@@ -117,7 +121,7 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 		</label>
 		<div v-if="isSchemaValueArray" :class="{ [$style.sub]: true, [$style.flat]: isFlat }">
 			<run-data-schema-item
-				v-for="(s, i) in schema.value"
+				v-for="(s, i) in schemaArray"
 				:key="`${s.type}-${level}-${i}`"
 				:schema="s"
 				:level="level + 1"

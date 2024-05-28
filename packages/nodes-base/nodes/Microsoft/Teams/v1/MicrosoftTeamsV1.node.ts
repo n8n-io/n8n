@@ -10,6 +10,7 @@ import type {
 	INodeTypeBaseDescription,
 } from 'n8n-workflow';
 
+import { oldVersionNotice } from '../../../../utils/descriptions';
 import {
 	microsoftApiRequest,
 	microsoftApiRequestAllItems,
@@ -23,7 +24,6 @@ import { channelMessageFields, channelMessageOperations } from './ChannelMessage
 import { chatMessageFields, chatMessageOperations } from './ChatMessageDescription';
 
 import { taskFields, taskOperations } from './TaskDescription';
-import { oldVersionNotice } from '../../../../utils/descriptions';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Microsoft Teams',

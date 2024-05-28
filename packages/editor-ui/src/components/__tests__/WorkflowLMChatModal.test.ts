@@ -39,7 +39,7 @@ async function createPiniaWithAINodes(options = { withConnections: true, withAge
 							],
 						],
 					},
-			  }
+				}
 			: {},
 		active: true,
 		nodes: [
@@ -53,7 +53,7 @@ async function createPiniaWithAINodes(options = { withConnections: true, withAge
 							name: 'Agent',
 							type: AGENT_NODE_TYPE,
 						}),
-				  ]
+					]
 				: []),
 		],
 	});

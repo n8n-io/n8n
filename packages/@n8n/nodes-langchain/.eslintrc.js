@@ -149,5 +149,11 @@ module.exports = {
 				'n8n-nodes-base/node-param-type-options-password-missing': 'error',
 			},
 		},
+		{
+			files: ['**/*.test.ts', '**/test/**/*.ts'],
+			rules: {
+				'import/no-extraneous-dependencies': 'off',
+			},
+		},
 	],
 };

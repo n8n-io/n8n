@@ -50,7 +50,7 @@ function onVisibleChange(open: boolean) {
 				data-test-id="context-menu"
 				:hide-arrow="target.source !== 'node-button'"
 				@select="onActionSelect"
-				@visibleChange="onVisibleChange"
+				@visible-change="onVisibleChange"
 			>
 				<template #activator>
 					<div :class="$style.activator"></div>

@@ -42,6 +42,8 @@ import type {
 	INodeInputConfiguration,
 	GenericValue,
 	DisplayCondition,
+	NodeHint,
+	INodeExecutionData,
 } from './Interfaces';
 import {
 	isFilterValue,
@@ -264,7 +266,8 @@ const commonCORSParameters: INodeProperties[] = [
 		name: 'allowedOrigins',
 		type: 'string',
 		default: '*',
-		description: 'The origin(s) to allow cross-origin non-preflight requests from in a browser',
+		description:
+			'Comma-separated list of URLs allowed for cross-origin non-preflight requests. Use * (default) to allow all origins.',
 	},
 ];
 
@@ -278,7 +281,11 @@ export function applySpecialNodeParameters(nodeType: INodeType): void {
 	}
 	if (nodeType.webhook && supportsCORS) {
 		const optionsProperty = properties.find(({ name }) => name === 'options');
-		if (optionsProperty) optionsProperty.options!.push(...commonCORSParameters);
+		if (optionsProperty)
+			optionsProperty.options = [
+				...commonCORSParameters,
+				...(optionsProperty.options as INodePropertyOptions[]),
+			];
 		else properties.push(...commonCORSParameters);
 	}
 }
@@ -533,7 +540,7 @@ export function getParameterResolveOrder(
 	parameterDependencies: IParameterDependencies,
 ): number[] {
 	const executionOrder: number[] = [];
-	const indexToResolve = Array.from({ length: nodePropertiesArray.length }, (v, k) => k);
+	const indexToResolve = Array.from({ length: nodePropertiesArray.length }, (_, k) => k);
 	const resolvedParameters: string[] = [];
 
 	let index: number;
@@ -602,6 +609,7 @@ export function getParameterResolveOrder(
  * @param {boolean} [dataIsResolved=false] If nodeValues are already fully resolved (so that all default values got added already)
  * @param {INodeParameters} [nodeValuesRoot] The root node-parameter-data
  */
+// eslint-disable-next-line complexity
 export function getNodeParameters(
 	nodePropertiesArray: INodeProperties[],
 	nodeValues: INodeParameters | null,
@@ -990,7 +998,7 @@ export function getNodeWebhooks(
 		) as boolean;
 		const path = getNodeWebhookPath(workflowId, node, nodeWebhookPath, isFullPath, restartWebhook);
 
-		const httpMethod = workflow.expression.getSimpleParameterValue(
+		const webhookMethods = workflow.expression.getSimpleParameterValue(
 			node,
 			webhookDescription.httpMethod,
 			mode,
@@ -999,7 +1007,7 @@ export function getNodeWebhooks(
 			'GET',
 		);
 
-		if (httpMethod === undefined) {
+		if (webhookMethods === undefined) {
 			// TODO: Use a proper logger
 			console.error(
 				`The webhook "${path}" for node "${node.name}" in workflow "${workflowId}" could not be added because the httpMethod is not defined.`,
@@ -1012,15 +1020,20 @@ export function getNodeWebhooks(
 			webhookId = node.webhookId;
 		}
 
-		returnData.push({
-			httpMethod: httpMethod.toString() as IHttpRequestMethods,
-			node: node.name,
-			path,
-			webhookDescription,
-			workflowId,
-			workflowExecuteAdditionalData: additionalData,
-			webhookId,
-		});
+		String(webhookMethods)
+			.split(',')
+			.forEach((httpMethod) => {
+				if (!httpMethod) return;
+				returnData.push({
+					httpMethod: httpMethod.trim() as IHttpRequestMethods,
+					node: node.name,
+					path,
+					webhookDescription,
+					workflowId,
+					workflowExecuteAdditionalData: additionalData,
+					webhookId,
+				});
+			});
 	}
 
 	return returnData;
@@ -1107,6 +1120,75 @@ export function getNodeInputs(
 		console.warn('Could not calculate inputs dynamically for node: ', node.name);
 		return [];
 	}
+}
+
+export function getNodeHints(
+	workflow: Workflow,
+	node: INode,
+	nodeTypeData: INodeTypeDescription,
+	nodeInputData?: {
+		runExecutionData: IRunExecutionData | null;
+		runIndex: number;
+		connectionInputData: INodeExecutionData[];
+	},
+): NodeHint[] {
+	const hints: NodeHint[] = [];
+
+	if (nodeTypeData?.hints?.length) {
+		for (const hint of nodeTypeData.hints) {
+			if (hint.displayCondition) {
+				try {
+					let display;
+
+					if (nodeInputData === undefined) {
+						display = (workflow.expression.getSimpleParameterValue(
+							node,
+							hint.displayCondition,
+							'internal',
+							{},
+						) || false) as boolean;
+					} else {
+						const { runExecutionData, runIndex, connectionInputData } = nodeInputData;
+						display = workflow.expression.getParameterValue(
+							hint.displayCondition,
+							runExecutionData ?? null,
+							runIndex,
+							0,
+							node.name,
+							connectionInputData,
+							'manual',
+							{},
+						);
+					}
+
+					if (typeof display === 'string' && display.trim() === 'true') {
+						display = true;
+					}
+
+					if (typeof display !== 'boolean') {
+						console.warn(
+							`Condition was not resolved as boolean in '${node.name}' node for hint: `,
+							hint.message,
+						);
+						continue;
+					}
+
+					if (display) {
+						hints.push(hint);
+					}
+				} catch (e) {
+					console.warn(
+						`Could not calculate display condition in '${node.name}' node for hint: `,
+						hint.message,
+					);
+				}
+			} else {
+				hints.push(hint);
+			}
+		}
+	}
+
+	return hints;
 }
 
 export function getNodeOutputs(
@@ -1383,6 +1465,7 @@ function isINodeParameterResourceLocator(value: unknown): value is INodeParamete
  * @param {INodeParameters} nodeValues The values of the node
  * @param {string} path The path to the properties
  */
+// eslint-disable-next-line complexity
 export function getParameterIssues(
 	nodeProperties: INodeProperties,
 	nodeValues: INodeParameters,

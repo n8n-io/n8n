@@ -17,7 +17,6 @@ import { Queue } from '@/Queue';
 import { N8N_VERSION } from '@/constants';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { OwnershipService } from '@/services/ownership.service';
 import type { ICredentialsOverwrite } from '@/Interfaces';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { rawBodyReader, bodyParser } from '@/middlewares';
@@ -29,6 +28,7 @@ import { OrchestrationWorkerService } from '@/services/orchestration/worker/orch
 import type { WorkerJobStatusSummary } from '@/services/orchestration/worker/types';
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { BaseCommand } from './BaseCommand';
+import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -117,8 +117,6 @@ export class Worker extends BaseCommand {
 		);
 		await executionRepository.updateStatus(executionId, 'running');
 
-		const workflowOwner = await Container.get(OwnershipService).getWorkflowOwnerCached(workflowId);
-
 		let { staticData } = fullExecutionData.workflowData;
 		if (loadStaticData) {
 			const workflowData = await Container.get(WorkflowRepository).findOne({
@@ -159,7 +157,7 @@ export class Worker extends BaseCommand {
 		});
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
-			workflowOwner.id,
+			undefined,
 			undefined,
 			executionTimeoutTimestamp,
 		);
@@ -236,7 +234,7 @@ export class Worker extends BaseCommand {
 
 		if (!process.env.N8N_ENCRYPTION_KEY) {
 			throw new ApplicationError(
-				'Missing encryption key. Worker started without the required N8N_ENCRYPTION_KEY env var. More information: https://docs.n8n.io/hosting/environment-variables/configuration-methods/#encryption-key',
+				'Missing encryption key. Worker started without the required N8N_ENCRYPTION_KEY env var. More information: https://docs.n8n.io/hosting/configuration/configuration-examples/encryption-key/',
 			);
 		}
 
@@ -366,6 +364,11 @@ export class Worker extends BaseCommand {
 				process.exit(2);
 			} else {
 				this.logger.error('Error from queue: ', error);
+
+				if (error.message.includes('job stalled more than maxStalledCount')) {
+					throw new MaxStalledCountError(error);
+				}
+
 				throw error;
 			}
 		});

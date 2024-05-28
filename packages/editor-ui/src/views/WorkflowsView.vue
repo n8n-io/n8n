@@ -6,13 +6,15 @@
 		:filters="filters"
 		:additional-filters-handler="onFilter"
 		:type-props="{ itemSize: 80 }"
-		:show-aside="allWorkflows.length > 0"
 		:shareable="isShareable"
 		:initialize="initialize"
 		:disabled="readOnlyEnv"
 		@click:add="addWorkflow"
 		@update:filters="onFiltersUpdated"
 	>
+		<template #header>
+			<ProjectTabs v-if="showProjectTabs" />
+		</template>
 		<template #add-button="{ disabled }">
 			<n8n-tooltip :disabled="!readOnlyEnv">
 				<div>
@@ -23,7 +25,7 @@
 						data-test-id="resources-list-add"
 						@click="addWorkflow"
 					>
-						{{ $locale.baseText(`workflows.add`) }}
+						{{ addWorkflowButtonText }}
 					</n8n-button>
 				</div>
 				<template #content>
@@ -85,8 +87,8 @@
 				</div>
 				<div v-if="!readOnlyEnv" :class="['text-center', 'mt-2xl', $style.actionsContainer]">
 					<a
-						v-if="userCloudAccount?.role === 'Sales'"
-						:href="getTemplateRepositoryURL('Sales')"
+						v-if="isSalesUser"
+						:href="getTemplateRepositoryURL()"
 						:class="$style.emptyStateCard"
 						target="_blank"
 					>
@@ -95,13 +97,9 @@
 							data-test-id="browse-sales-templates-card"
 							@click="trackCategoryLinkClick('Sales')"
 						>
-							<n8n-icon :class="$style.emptyStateCardIcon" icon="hand-holding-usd" />
+							<n8n-icon :class="$style.emptyStateCardIcon" icon="box-open" />
 							<n8n-text size="large" class="mt-xs" color="text-base">
-								{{
-									$locale.baseText('workflows.empty.browseTemplates', {
-										interpolate: { category: 'Sales' },
-									})
-								}}
+								{{ $locale.baseText('workflows.empty.browseTemplates') }}
 							</n8n-text>
 						</n8n-card>
 					</a>
@@ -132,7 +130,7 @@
 					:placeholder="$locale.baseText('workflowOpen.filterWorkflows')"
 					:model-value="filters.tags"
 					:create-enabled="false"
-					@update:modelValue="setKeyValue('tags', $event)"
+					@update:model-value="setKeyValue('tags', $event)"
 				/>
 			</div>
 			<div class="mb-s">
@@ -146,7 +144,7 @@
 				<n8n-select
 					data-test-id="status-dropdown"
 					:model-value="filters.status"
-					@update:modelValue="setKeyValue('status', $event)"
+					@update:model-value="setKeyValue('status', $event)"
 				>
 					<n8n-option
 						v-for="option in statusFilterOptions"
@@ -175,11 +173,11 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
-import { useTemplatesStore } from '@/stores/templates.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
+import ProjectTabs from '@/features/projects/components/ProjectTabs.vue';
 
 type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
 
@@ -205,13 +203,13 @@ const WorkflowsView = defineComponent({
 		TagsDropdown,
 		SuggestedTemplatesPage,
 		SuggestedTemplatesSection,
+		ProjectTabs,
 	},
 	data() {
 		return {
 			filters: {
 				search: '',
-				ownedBy: '',
-				sharedWith: '',
+				homeProject: '',
 				status: StatusFilter.ALL as string | boolean,
 				tags: [] as string[],
 			},
@@ -224,11 +222,9 @@ const WorkflowsView = defineComponent({
 			useUIStore,
 			useUsersStore,
 			useWorkflowsStore,
-			useCredentialsStore,
 			useSourceControlStore,
 			useTagsStore,
-			useTemplatesStore,
-			useUsersStore,
+			useProjectsStore,
 		),
 		readOnlyEnv(): boolean {
 			return this.sourceControlStore.preferences.branchReadOnly;
@@ -261,17 +257,41 @@ const WorkflowsView = defineComponent({
 		suggestedTemplates() {
 			return this.uiStore.suggestedTemplates;
 		},
-		userCloudAccount() {
-			return this.usersStore.currentUserCloudInfo;
+		userRole() {
+			const userRole: string | undefined =
+				this.usersStore.currentUserCloudInfo?.role ??
+				this.usersStore.currentUser?.personalizationAnswers?.role;
+			return userRole;
+		},
+		isSalesUser() {
+			if (!this.userRole) {
+				return false;
+			}
+			return ['Sales', 'sales-and-marketing'].includes(this.userRole);
+		},
+		showProjectTabs() {
+			return (
+				!!this.$route.params.projectId ||
+				!!this.allWorkflows.length ||
+				this.projectsStore.myProjects.length > 1
+			);
+		},
+		addWorkflowButtonText() {
+			return this.projectsStore.currentProject
+				? this.$locale.baseText('workflows.project.add')
+				: this.$locale.baseText('workflows.add');
 		},
 	},
 	watch: {
 		'filters.tags'() {
 			this.sendFiltersTelemetry('tags');
 		},
+		'$route.params.projectId'() {
+			void this.initialize();
+		},
 	},
-	mounted() {
-		this.setFiltersFromQueryString();
+	async mounted() {
+		await this.setFiltersFromQueryString();
 
 		void this.usersStore.showPersonalizationSurvey();
 
@@ -293,14 +313,17 @@ const WorkflowsView = defineComponent({
 		},
 		addWorkflow() {
 			this.uiStore.nodeViewInitialized = false;
-			void this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+			void this.$router.push({
+				name: VIEWS.NEW_WORKFLOW,
+				query: { projectId: this.$route?.params?.projectId },
+			});
 
 			this.$telemetry.track('User clicked add workflow button', {
 				source: 'Workflows list',
 			});
 		},
-		getTemplateRepositoryURL(category: string) {
-			return this.templatesStore.getWebsiteCategoryURL(category);
+		getTemplateRepositoryURL() {
+			return this.templatesStore.websiteTemplateRepositoryURL;
 		},
 		trackCategoryLinkClick(category: string) {
 			this.$telemetry.track(`User clicked Browse ${category} Templates`, {
@@ -311,9 +334,8 @@ const WorkflowsView = defineComponent({
 		async initialize() {
 			await Promise.all([
 				this.usersStore.fetchUsers(),
-				this.workflowsStore.fetchAllWorkflows(),
+				this.workflowsStore.fetchAllWorkflows(this.$route?.params?.projectId as string | undefined),
 				this.workflowsStore.fetchActiveWorkflows(),
-				this.credentialsStore.fetchAllCredentials(),
 			]);
 		},
 		onClickTag(tagId: string, event: PointerEvent) {
@@ -329,13 +351,12 @@ const WorkflowsView = defineComponent({
 			if (this.settingsStore.areTagsEnabled && filters.tags.length > 0) {
 				matches =
 					matches &&
-					filters.tags.every(
-						(tag) =>
-							(resource.tags as ITag[])?.find((resourceTag) =>
-								typeof resourceTag === 'object'
-									? `${resourceTag.id}` === `${tag}`
-									: `${resourceTag}` === `${tag}`,
-							),
+					filters.tags.every((tag) =>
+						(resource.tags as ITag[])?.find((resourceTag) =>
+							typeof resourceTag === 'object'
+								? `${resourceTag.id}` === `${tag}`
+								: `${resourceTag}` === `${tag}`,
+						),
 					);
 			}
 
@@ -363,32 +384,27 @@ const WorkflowsView = defineComponent({
 				query.tags = this.filters.tags.join(',');
 			}
 
-			if (this.filters.ownedBy) {
-				query.ownedBy = this.filters.ownedBy;
-			}
-
-			if (this.filters.sharedWith) {
-				query.sharedWith = this.filters.sharedWith;
+			if (this.filters.homeProject) {
+				query.homeProject = this.filters.homeProject;
 			}
 
 			void this.$router.replace({
 				query: Object.keys(query).length ? query : undefined,
 			});
 		},
-		isValidUserId(userId: string) {
-			return Object.keys(this.usersStore.users).includes(userId);
+		isValidProjectId(projectId: string) {
+			return this.projectsStore.projects.some((project) => project.id === projectId);
 		},
-		setFiltersFromQueryString() {
-			const { tags, status, search, ownedBy, sharedWith } = this.$route.query;
+		async setFiltersFromQueryString() {
+			const { tags, status, search, homeProject } = this.$route.query;
 
 			const filtersToApply: { [key: string]: string | string[] | boolean } = {};
 
-			if (ownedBy && typeof ownedBy === 'string' && this.isValidUserId(ownedBy)) {
-				filtersToApply.ownedBy = ownedBy;
-			}
-
-			if (sharedWith && typeof sharedWith === 'string' && this.isValidUserId(sharedWith)) {
-				filtersToApply.sharedWith = sharedWith;
+			if (homeProject && typeof homeProject === 'string') {
+				await this.projectsStore.getAllProjects();
+				if (this.isValidProjectId(homeProject)) {
+					filtersToApply.homeProject = homeProject;
+				}
 			}
 
 			if (search && typeof search === 'string') {

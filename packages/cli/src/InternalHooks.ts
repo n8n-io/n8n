@@ -34,6 +34,10 @@ import { License } from '@/License';
 import { EventsService } from '@/services/events.service';
 import { NodeTypes } from '@/NodeTypes';
 import { Telemetry } from '@/telemetry';
+import type { Project } from '@db/entities/Project';
+import type { ProjectRole } from '@db/entities/ProjectRelation';
+import { ProjectRelationRepository } from './databases/repositories/projectRelation.repository';
+import { SharedCredentialsRepository } from './databases/repositories/sharedCredentials.repository';
 
 function userToPayload(user: User): {
 	userId: string;
@@ -62,6 +66,8 @@ export class InternalHooks {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly eventBus: MessageEventBus,
 		private readonly license: License,
+		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 	) {
 		eventsService.on(
 			'telemetry.onFirstProductionWorkflowSuccess',
@@ -144,8 +150,8 @@ export class InternalHooks {
 		]);
 	}
 
-	async onFrontendSettingsAPI(sessionId?: string): Promise<void> {
-		return await this.telemetry.track('Session started', { session_id: sessionId });
+	async onFrontendSettingsAPI(pushRef?: string): Promise<void> {
+		return await this.telemetry.track('Session started', { session_id: pushRef });
 	}
 
 	async onPersonalizationSurveySubmitted(
@@ -164,7 +170,12 @@ export class InternalHooks {
 		);
 	}
 
-	async onWorkflowCreated(user: User, workflow: IWorkflowBase, publicApi: boolean): Promise<void> {
+	async onWorkflowCreated(
+		user: User,
+		workflow: IWorkflowBase,
+		project: Project,
+		publicApi: boolean,
+	): Promise<void> {
 		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
 		void Promise.all([
 			this.eventBus.sendAuditEvent({
@@ -180,6 +191,8 @@ export class InternalHooks {
 				workflow_id: workflow.id,
 				node_graph_string: JSON.stringify(nodeGraph),
 				public_api: publicApi,
+				project_id: project.id,
+				project_type: project.type,
 			}),
 		]);
 	}
@@ -202,20 +215,37 @@ export class InternalHooks {
 	}
 
 	async onWorkflowSaved(user: User, workflow: IWorkflowDb, publicApi: boolean): Promise<void> {
-		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
+		const isCloudDeployment = config.getEnv('deployment.type') === 'cloud';
+
+		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes, {
+			isCloudDeployment,
+		});
+
+		let userRole: 'owner' | 'sharee' | 'member' | undefined = undefined;
+		const role = await this.sharedWorkflowRepository.findSharingRole(user.id, workflow.id);
+		if (role) {
+			userRole = role === 'workflow:owner' ? 'owner' : 'sharee';
+		} else {
+			const workflowOwner = await this.sharedWorkflowRepository.getWorkflowOwningProject(
+				workflow.id,
+			);
+
+			if (workflowOwner) {
+				const projectRole = await this.projectRelationRepository.findProjectRole({
+					userId: user.id,
+					projectId: workflowOwner.id,
+				});
+
+				if (projectRole && projectRole !== 'project:personalOwner') {
+					userRole = 'member';
+				}
+			}
+		}
 
 		const notesCount = Object.keys(nodeGraph.notes).length;
 		const overlappingCount = Object.values(nodeGraph.notes).filter(
 			(note) => note.overlapping,
 		).length;
-
-		let userRole: 'owner' | 'sharee' | undefined = undefined;
-		if (user.id && workflow.id) {
-			const role = await this.sharedWorkflowRepository.findSharingRole(user.id, workflow.id);
-			if (role) {
-				userRole = role === 'workflow:owner' ? 'owner' : 'sharee';
-			}
-		}
 
 		void Promise.all([
 			this.eventBus.sendAuditEvent({
@@ -335,6 +365,7 @@ export class InternalHooks {
 		]);
 	}
 
+	// eslint-disable-next-line complexity
 	async onWorkflowPostExecute(
 		executionId: string,
 		workflow: IWorkflowBase,
@@ -483,23 +514,26 @@ export class InternalHooks {
 			workflowName: workflow.name,
 			metaData: runData?.data?.resultData?.metadata,
 		};
-		promises.push(
-			telemetryProperties.success
-				? this.eventBus.sendWorkflowEvent({
-						eventName: 'n8n.workflow.success',
-						payload: sharedEventPayload,
-				  })
-				: this.eventBus.sendWorkflowEvent({
-						eventName: 'n8n.workflow.failed',
-						payload: {
-							...sharedEventPayload,
-							lastNodeExecuted: runData?.data.resultData.lastNodeExecuted,
-							errorNodeType: telemetryProperties.error_node_type,
-							errorNodeId: telemetryProperties.error_node_id?.toString(),
-							errorMessage: telemetryProperties.error_message?.toString(),
-						},
-				  }),
-		);
+		let event;
+		if (telemetryProperties.success) {
+			event = this.eventBus.sendWorkflowEvent({
+				eventName: 'n8n.workflow.success',
+				payload: sharedEventPayload,
+			});
+		} else {
+			event = this.eventBus.sendWorkflowEvent({
+				eventName: 'n8n.workflow.failed',
+				payload: {
+					...sharedEventPayload,
+					lastNodeExecuted: runData?.data.resultData.lastNodeExecuted,
+					errorNodeType: telemetryProperties.error_node_type,
+					errorNodeId: telemetryProperties.error_node_id?.toString(),
+					errorMessage: telemetryProperties.error_message?.toString(),
+				},
+			});
+		}
+
+		promises.push(event);
 
 		void Promise.all([...promises, this.telemetry.trackWorkflowExecution(telemetryProperties)]);
 	}
@@ -857,6 +891,9 @@ export class InternalHooks {
 		credential_id: string;
 		public_api: boolean;
 	}): Promise<void> {
+		const project = await this.sharedCredentialsRepository.findCredentialOwningProject(
+			userCreatedCredentialsData.credential_id,
+		);
 		void Promise.all([
 			this.eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.user.credentials.created',
@@ -872,6 +909,8 @@ export class InternalHooks {
 				credential_type: userCreatedCredentialsData.credential_type,
 				credential_id: userCreatedCredentialsData.credential_id,
 				instance_id: this.instanceSettings.instanceId,
+				project_id: project?.id,
+				project_type: project?.type,
 			}),
 		]);
 	}
@@ -905,6 +944,55 @@ export class InternalHooks {
 				user_id_sharer: userSharedCredentialsData.user_id_sharer,
 				user_ids_sharees_added: userSharedCredentialsData.user_ids_sharees_added,
 				sharees_removed: userSharedCredentialsData.sharees_removed,
+				instance_id: this.instanceSettings.instanceId,
+			}),
+		]);
+	}
+
+	async onUserUpdatedCredentials(userUpdatedCredentialsData: {
+		user: User;
+		credential_name: string;
+		credential_type: string;
+		credential_id: string;
+	}): Promise<void> {
+		void Promise.all([
+			this.eventBus.sendAuditEvent({
+				eventName: 'n8n.audit.user.credentials.updated',
+				payload: {
+					...userToPayload(userUpdatedCredentialsData.user),
+					credentialName: userUpdatedCredentialsData.credential_name,
+					credentialType: userUpdatedCredentialsData.credential_type,
+					credentialId: userUpdatedCredentialsData.credential_id,
+				},
+			}),
+			this.telemetry.track('User updated credentials', {
+				user_id: userUpdatedCredentialsData.user.id,
+				credential_type: userUpdatedCredentialsData.credential_type,
+				credential_id: userUpdatedCredentialsData.credential_id,
+			}),
+		]);
+	}
+
+	async onUserDeletedCredentials(userUpdatedCredentialsData: {
+		user: User;
+		credential_name: string;
+		credential_type: string;
+		credential_id: string;
+	}): Promise<void> {
+		void Promise.all([
+			this.eventBus.sendAuditEvent({
+				eventName: 'n8n.audit.user.credentials.deleted',
+				payload: {
+					...userToPayload(userUpdatedCredentialsData.user),
+					credentialName: userUpdatedCredentialsData.credential_name,
+					credentialType: userUpdatedCredentialsData.credential_type,
+					credentialId: userUpdatedCredentialsData.credential_id,
+				},
+			}),
+			this.telemetry.track('User deleted credentials', {
+				user_id: userUpdatedCredentialsData.user.id,
+				credential_type: userUpdatedCredentialsData.credential_type,
+				credential_id: userUpdatedCredentialsData.credential_id,
 				instance_id: this.instanceSettings.instanceId,
 			}),
 		]);
@@ -1149,5 +1237,28 @@ export class InternalHooks {
 		error_message?: string | undefined;
 	}): Promise<void> {
 		return await this.telemetry.track('User updated external secrets settings', saveData);
+	}
+
+	async onTeamProjectCreated(data: { user_id: string; role: GlobalRole }) {
+		return await this.telemetry.track('User created project', data);
+	}
+
+	async onTeamProjectDeleted(data: {
+		user_id: string;
+		role: GlobalRole;
+		project_id: string;
+		removal_type: 'delete' | 'transfer';
+		target_project_id?: string;
+	}) {
+		return await this.telemetry.track('User deleted project', data);
+	}
+
+	async onTeamProjectUpdated(data: {
+		user_id: string;
+		role: GlobalRole;
+		project_id: string;
+		members: Array<{ user_id: string; role: ProjectRole }>;
+	}) {
+		return await this.telemetry.track('Project settings updated', data);
 	}
 }

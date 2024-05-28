@@ -29,19 +29,19 @@ export function Eq(field: string, value: any): IQueryObject {
 	return { _field: field, _value: value };
 }
 
-export function Gt(field: string, value: any): IQueryObject {
+export function Gt(_field: string, value: any): IQueryObject {
 	return { _gt: { field: value } };
 }
 
-export function Gte(field: string, value: any): IQueryObject {
+export function Gte(_field: string, value: any): IQueryObject {
 	return { _gte: { field: value } };
 }
 
-export function Lt(field: string, value: any): IQueryObject {
+export function Lt(_field: string, value: any): IQueryObject {
 	return { _lt: { field: value } };
 }
 
-export function Lte(field: string, value: any): IQueryObject {
+export function Lte(_field: string, value: any): IQueryObject {
 	return { _lte: { field: value } };
 }
 export function And(...criteria: IQueryObject[]): IQueryObject {

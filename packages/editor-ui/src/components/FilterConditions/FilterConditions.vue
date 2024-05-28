@@ -43,7 +43,7 @@ const ndvStore = useNDVStore();
 const { debounce } = useDebounce();
 
 function createCondition(): FilterConditionValue {
-	return { id: uuid(), leftValue: '=', rightValue: '=', operator: DEFAULT_OPERATOR_VALUE };
+	return { id: uuid(), leftValue: '', rightValue: '', operator: DEFAULT_OPERATOR_VALUE };
 }
 
 const allowedCombinators = computed<FilterTypeCombinator[]>(
@@ -168,7 +168,7 @@ function getIssues(index: number): string[] {
 						:options="allowedCombinators"
 						:selected="state.paramValue.combinator"
 						:class="$style.combinator"
-						@combinatorChange="onCombinatorChange"
+						@combinator-change="onCombinatorChange"
 					/>
 
 					<Condition

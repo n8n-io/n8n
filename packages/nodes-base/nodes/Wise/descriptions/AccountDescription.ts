@@ -136,6 +136,10 @@ export const accountFields: INodeProperties[] = [
 				name: 'PDF',
 				value: 'pdf',
 			},
+			{
+				name: 'XML (CAMT.053)',
+				value: 'xml',
+			},
 		],
 	},
 	{
@@ -149,7 +153,7 @@ export const accountFields: INodeProperties[] = [
 			show: {
 				resource: ['account'],
 				operation: ['getStatement'],
-				format: ['csv', 'pdf'],
+				format: ['csv', 'pdf', 'xml'],
 			},
 		},
 	},
@@ -165,7 +169,7 @@ export const accountFields: INodeProperties[] = [
 			show: {
 				resource: ['account'],
 				operation: ['getStatement'],
-				format: ['csv', 'pdf'],
+				format: ['csv', 'pdf', 'xml'],
 			},
 		},
 	},

@@ -62,7 +62,7 @@
 								:path="getPropertyPath(property.name, index)"
 								:hide-delete="true"
 								:is-read-only="isReadOnly"
-								@valueChanged="valueChanged"
+								@value-changed="valueChanged"
 							/>
 						</Suspense>
 					</div>
@@ -87,7 +87,7 @@
 						:is-read-only="isReadOnly"
 						class="parameter-item"
 						:hide-delete="true"
-						@valueChanged="valueChanged"
+						@value-changed="valueChanged"
 					/>
 				</div>
 			</div>
@@ -95,7 +95,7 @@
 
 		<div v-if="parameterOptions.length > 0 && !isReadOnly" class="controls">
 			<n8n-button
-				v-if="parameter.options.length === 1"
+				v-if="parameter.options && parameter.options.length === 1"
 				type="tertiary"
 				block
 				:label="getPlaceholderText"
@@ -107,7 +107,7 @@
 					:placeholder="getPlaceholderText"
 					size="small"
 					filterable
-					@update:modelValue="optionSelected"
+					@update:model-value="optionSelected"
 				>
 					<n8n-option
 						v-for="item in parameterOptions"
@@ -126,12 +126,7 @@ import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import type { IUpdateInformation } from '@/Interface';
 
-import type {
-	INodeParameters,
-	INodeProperties,
-	INodePropertyCollection,
-	NodeParameterValue,
-} from 'n8n-workflow';
+import type { INodeParameters, INodeProperties, INodePropertyCollection } from 'n8n-workflow';
 import { deepCopy, isINodePropertyCollectionList } from 'n8n-workflow';
 
 import { get } from 'lodash-es';
@@ -140,7 +135,7 @@ export default defineComponent({
 	name: 'FixedCollectionParameter',
 	props: {
 		nodeValues: {
-			type: Object as PropType<Record<string, INodeParameters[]>>,
+			type: Object as PropType<INodeParameters>,
 			required: true,
 		},
 		parameter: {
@@ -254,6 +249,7 @@ export default defineComponent({
 			const parameterData = {
 				name: this.getPropertyPath(optionName),
 				value: this.mutableValues[optionName],
+				type: 'optionsOrderChanged',
 			};
 
 			this.$emit('valueChanged', parameterData);
@@ -270,6 +266,7 @@ export default defineComponent({
 			const parameterData = {
 				name: this.getPropertyPath(optionName),
 				value: this.mutableValues[optionName],
+				type: 'optionsOrderChanged',
 			};
 
 			this.$emit('valueChanged', parameterData);
@@ -295,23 +292,18 @@ export default defineComponent({
 					optionParameter.typeOptions.multipleValues === true
 				) {
 					// Multiple values are allowed so append option to array
-					newParameterValue[optionParameter.name] = get(
-						this.nodeValues,
-						[this.path, optionParameter.name],
-						[],
-					);
+					const multiValue = get(this.nodeValues, [this.path, optionParameter.name], []);
+
 					if (Array.isArray(optionParameter.default)) {
-						(newParameterValue[optionParameter.name] as INodeParameters[]).push(
-							...deepCopy(optionParameter.default as INodeParameters[]),
-						);
+						multiValue.push(...deepCopy(optionParameter.default));
 					} else if (
 						optionParameter.default !== '' &&
 						typeof optionParameter.default !== 'object'
 					) {
-						(newParameterValue[optionParameter.name] as NodeParameterValue[]).push(
-							deepCopy(optionParameter.default),
-						);
+						multiValue.push(deepCopy(optionParameter.default));
 					}
+
+					newParameterValue[optionParameter.name] = multiValue;
 				} else {
 					// Add a new option
 					newParameterValue[optionParameter.name] = deepCopy(optionParameter.default);
@@ -320,7 +312,7 @@ export default defineComponent({
 
 			let newValue;
 			if (this.multipleValues) {
-				newValue = get(this.nodeValues, name, [] as INodeParameters[]);
+				newValue = get(this.nodeValues, name, []) as INodeParameters[];
 
 				newValue.push(newParameterValue);
 			} else {

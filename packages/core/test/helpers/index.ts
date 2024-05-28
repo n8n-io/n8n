@@ -4,14 +4,8 @@ import { readdirSync, readFileSync } from 'fs';
 const BASE_DIR = path.resolve(__dirname, '../../..');
 
 import type {
-	ICredentialDataDecryptedObject,
 	IDataObject,
 	IDeferredPromise,
-	IExecuteWorkflowInfo,
-	IHttpRequestHelper,
-	IHttpRequestOptions,
-	INode,
-	INodeCredentialsDetails,
 	INodeType,
 	INodeTypes,
 	IRun,
@@ -24,66 +18,13 @@ import type {
 	INodeTypeData,
 } from 'n8n-workflow';
 
-import { ApplicationError, ICredentialsHelper, NodeHelpers, WorkflowHooks } from 'n8n-workflow';
-import { Credentials } from '@/Credentials';
+import { ApplicationError, NodeHelpers, WorkflowHooks } from 'n8n-workflow';
 
 import { predefinedNodesTypes } from './constants';
-
-export class CredentialsHelper extends ICredentialsHelper {
-	async authenticate(
-		credentials: ICredentialDataDecryptedObject,
-		typeName: string,
-		requestParams: IHttpRequestOptions,
-	): Promise<IHttpRequestOptions> {
-		return requestParams;
-	}
-
-	async preAuthentication(
-		helpers: IHttpRequestHelper,
-		credentials: ICredentialDataDecryptedObject,
-		typeName: string,
-		node: INode,
-		credentialsExpired: boolean,
-	): Promise<ICredentialDataDecryptedObject | undefined> {
-		return undefined;
-	}
-
-	getParentTypes(name: string): string[] {
-		return [];
-	}
-
-	async getDecrypted(
-		additionalData: IWorkflowExecuteAdditionalData,
-		nodeCredentials: INodeCredentialsDetails,
-		type: string,
-	): Promise<ICredentialDataDecryptedObject> {
-		return {};
-	}
-
-	async getCredentials(
-		nodeCredentials: INodeCredentialsDetails,
-		type: string,
-	): Promise<Credentials> {
-		return new Credentials({ id: null, name: '' }, '', [], '');
-	}
-
-	async updateCredentials(
-		nodeCredentials: INodeCredentialsDetails,
-		type: string,
-		data: ICredentialDataDecryptedObject,
-	): Promise<void> {}
-}
+import { mock } from 'jest-mock-extended';
 
 class NodeTypesClass implements INodeTypes {
-	nodeTypes: INodeTypeData;
-
-	constructor(nodeTypes?: INodeTypeData) {
-		if (nodeTypes) {
-			this.nodeTypes = nodeTypes;
-		} else {
-			this.nodeTypes = predefinedNodesTypes;
-		}
-	}
+	constructor(private nodeTypes: INodeTypeData = predefinedNodesTypes) {}
 
 	getByName(nodeType: string): INodeType | IVersionedNodeType {
 		return this.nodeTypes[nodeType].type;
@@ -92,11 +33,15 @@ class NodeTypesClass implements INodeTypes {
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
 		return NodeHelpers.getVersionedNodeType(this.nodeTypes[nodeType].type, version);
 	}
+
+	getKnownTypes(): IDataObject {
+		throw new Error('Method not implemented.');
+	}
 }
 
 let nodeTypesInstance: NodeTypesClass | undefined;
 
-export function NodeTypes(nodeTypes?: INodeTypeData): NodeTypesClass {
+export function NodeTypes(nodeTypes?: INodeTypeData): INodeTypes {
 	if (nodeTypesInstance === undefined || nodeTypes !== undefined) {
 		nodeTypesInstance = new NodeTypesClass(nodeTypes);
 	}
@@ -110,7 +55,7 @@ export function WorkflowExecuteAdditionalData(
 ): IWorkflowExecuteAdditionalData {
 	const hookFunctions = {
 		nodeExecuteAfter: [
-			async (nodeName: string, data: ITaskData): Promise<void> => {
+			async (nodeName: string, _data: ITaskData): Promise<void> => {
 				nodeExecutionOrder.push(nodeName);
 			},
 		],
@@ -121,26 +66,9 @@ export function WorkflowExecuteAdditionalData(
 		],
 	};
 
-	const workflowData: IWorkflowBase = {
-		name: '',
-		createdAt: new Date(),
-		updatedAt: new Date(),
-		active: true,
-		nodes: [],
-		connections: {},
-	};
-
-	return {
-		credentialsHelper: new CredentialsHelper(),
-		hooks: new WorkflowHooks(hookFunctions, 'trigger', '1', workflowData),
-		executeWorkflow: async (workflowInfo: IExecuteWorkflowInfo) => {},
-		sendDataToUI: (message: string) => {},
-		restApiUrl: '',
-		webhookBaseUrl: 'webhook',
-		webhookWaitingBaseUrl: 'webhook-waiting',
-		webhookTestBaseUrl: 'webhook-test',
-		userId: '123',
-	};
+	return mock<IWorkflowExecuteAdditionalData>({
+		hooks: new WorkflowHooks(hookFunctions, 'trigger', '1', mock()),
+	});
 }
 
 const preparePinData = (pinData: IDataObject) => {

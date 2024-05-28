@@ -35,3 +35,10 @@ declare global {
 		findLast(predicate: (value: T, index: number, obj: T[]) => unknown, thisArg?: any): T;
 	}
 }
+
+declare module '*.svg';
+declare module '*.png';
+declare module '*.jpg';
+declare module '*.jpeg';
+declare module '*.gif';
+declare module '*.webp';

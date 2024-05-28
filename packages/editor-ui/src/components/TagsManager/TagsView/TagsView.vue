@@ -3,8 +3,8 @@
 		<TagsTableHeader
 			:search="search"
 			:disabled="isHeaderDisabled()"
-			@searchChange="onSearchChange"
-			@createEnable="onCreateEnable"
+			@search-change="onSearchChange"
+			@create-enable="onCreateEnable"
 		/>
 		<TagsTable
 			ref="tagsTable"
@@ -13,11 +13,11 @@
 			:is-saving="isSaving"
 			:new-name="newName"
 			data-test-id="tags-table"
-			@newNameChange="onNewNameChange"
-			@updateEnable="onUpdateEnable"
-			@deleteEnable="onDeleteEnable"
-			@cancelOperation="cancelOperation"
-			@applyOperation="applyOperation"
+			@new-name-change="onNewNameChange"
+			@update-enable="onUpdateEnable"
+			@delete-enable="onDeleteEnable"
+			@cancel-operation="cancelOperation"
+			@apply-operation="applyOperation"
 		/>
 	</div>
 </template>

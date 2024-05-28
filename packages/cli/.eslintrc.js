@@ -20,6 +20,7 @@ module.exports = {
 
 	rules: {
 		'n8n-local-rules/no-dynamic-import-template': 'error',
+		complexity: 'error',
 
 		// TODO: Remove this
 		'import/no-cycle': 'warn',
@@ -34,4 +35,20 @@ module.exports = {
 		'@typescript-eslint/no-unsafe-enum-comparison': 'warn',
 		'@typescript-eslint/no-unsafe-declaration-merging': 'warn',
 	},
+
+	overrides: [
+		{
+			files: ['./src/decorators/**/*.ts'],
+			rules: {
+				'@typescript-eslint/ban-types': [
+					'warn',
+					{
+						types: {
+							Function: false,
+						},
+					},
+				],
+			},
+		},
+	],
 };

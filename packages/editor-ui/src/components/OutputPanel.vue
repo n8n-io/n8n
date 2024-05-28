@@ -9,18 +9,18 @@
 		:no-data-in-branch-message="$locale.baseText('ndv.output.noOutputDataInBranch')"
 		:is-executing="isNodeRunning"
 		:executing-message="$locale.baseText('ndv.output.executing')"
-		:session-id="sessionId"
+		:push-ref="pushRef"
 		:block-u-i="blockUI"
 		:is-production-execution-preview="isProductionExecutionPreview"
 		:is-pane-active="isPaneActive"
 		pane-type="output"
 		:data-output-type="outputMode"
-		@activatePane="activatePane"
-		@runChange="onRunIndexChange"
-		@linkRun="onLinkRun"
-		@unlinkRun="onUnlinkRun"
-		@tableMounted="$emit('tableMounted', $event)"
-		@itemHover="$emit('itemHover', $event)"
+		@activate-pane="activatePane"
+		@run-change="onRunIndexChange"
+		@link-run="onLinkRun"
+		@unlink-run="onUnlinkRun"
+		@table-mounted="$emit('tableMounted', $event)"
+		@item-hover="$emit('itemHover', $event)"
 		@search="$emit('search', $event)"
 	>
 		<template #header>
@@ -29,7 +29,7 @@
 					<n8n-radio-buttons
 						v-model="outputMode"
 						:options="outputTypes"
-						@update:modelValue="onUpdateOutputMode"
+						@update:model-value="onUpdateOutputMode"
 					/>
 				</template>
 				<span v-else :class="$style.title">
@@ -50,7 +50,7 @@
 				$locale.baseText('ndv.output.waitingToRun')
 			}}</n8n-text>
 			<n8n-text v-if="!workflowRunning" data-test-id="ndv-output-run-node-hint">
-				<template v-if="isSubNodeType.value">
+				<template v-if="isSubNodeType">
 					{{ $locale.baseText('ndv.output.runNodeHintSubNode') }}
 				</template>
 				<template v-else>
@@ -79,7 +79,7 @@
 			</n8n-text>
 		</template>
 
-		<template v-if="outputMode === 'logs'" #content>
+		<template v-if="outputMode === 'logs' && node" #content>
 			<RunDataAi :node="node" :run-index="runIndex" />
 		</template>
 		<template #recovered-artificial-output-data>
@@ -120,7 +120,10 @@ type RunDataRef = InstanceType<typeof RunData>;
 const OUTPUT_TYPE = {
 	REGULAR: 'regular',
 	LOGS: 'logs',
-};
+} as const;
+
+type OutputTypeKey = keyof typeof OUTPUT_TYPE;
+type OutputType = (typeof OUTPUT_TYPE)[OutputTypeKey];
 
 export default defineComponent({
 	name: 'OutputPanel',
@@ -139,7 +142,7 @@ export default defineComponent({
 		canLinkRuns: {
 			type: Boolean,
 		},
-		sessionId: {
+		pushRef: {
 			type: String,
 		},
 		blockUI: {
@@ -182,8 +185,8 @@ export default defineComponent({
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),
-		node(): INodeUi | null {
-			return this.ndvStore.activeNode;
+		node(): INodeUi | undefined {
+			return this.ndvStore.activeNode ?? undefined;
 		},
 		nodeType(): INodeTypeDescription | null {
 			if (this.node) {
@@ -192,7 +195,7 @@ export default defineComponent({
 			return null;
 		},
 		isTriggerNode(): boolean {
-			return this.nodeTypesStore.isTriggerNode(this.node.type);
+			return !!this.node && this.nodeTypesStore.isTriggerNode(this.node.type);
 		},
 		hasAiMetadata(): boolean {
 			if (this.node) {
@@ -213,7 +216,7 @@ export default defineComponent({
 			return !!(this.nodeType && this.nodeType.group.includes('schedule'));
 		},
 		isNodeRunning(): boolean {
-			return this.node && this.workflowsStore.isNodeExecuting(this.node.name);
+			return !!this.node && this.workflowsStore.isNodeExecuting(this.node.name);
 		},
 		workflowRunning(): boolean {
 			return this.uiStore.isActionActive('workflowRunning');
@@ -262,11 +265,11 @@ export default defineComponent({
 
 			const runData: IRunData | null = this.workflowRunData;
 
-			if (runData === null || !runData.hasOwnProperty(this.node.name)) {
+			if (runData === null || (this.node && !runData.hasOwnProperty(this.node.name))) {
 				return 0;
 			}
 
-			if (runData[this.node.name].length) {
+			if (this.node && runData[this.node.name].length) {
 				return runData[this.node.name].length;
 			}
 
@@ -300,8 +303,8 @@ export default defineComponent({
 
 				this.$telemetry.track('User clicked ndv link', {
 					workflow_id: this.workflowsStore.workflowId,
-					session_id: this.sessionId,
-					node_type: this.node.type,
+					push_ref: this.pushRef,
+					node_type: this.node?.type,
 					pane: 'output',
 					type: 'insert-test-data',
 				});
@@ -316,9 +319,9 @@ export default defineComponent({
 		openSettings() {
 			this.$emit('openSettings');
 			this.$telemetry.track('User clicked ndv link', {
-				node_type: this.node.type,
+				node_type: this.node?.type,
 				workflow_id: this.workflowsStore.workflowId,
-				session_id: this.sessionId,
+				push_ref: this.pushRef,
 				pane: 'output',
 				type: 'settings',
 			});
@@ -326,7 +329,7 @@ export default defineComponent({
 		onRunIndexChange(run: number) {
 			this.$emit('runChange', run);
 		},
-		onUpdateOutputMode(outputMode: (typeof OUTPUT_TYPE)[string]) {
+		onUpdateOutputMode(outputMode: OutputType) {
 			if (outputMode === OUTPUT_TYPE.LOGS) {
 				ndvEventBus.emit('setPositionByName', 'minLeft');
 			} else {

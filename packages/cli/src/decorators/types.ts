@@ -6,7 +6,12 @@ export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete';
 
 export type LicenseMetadata = Record<string, BooleanLicenseFeature[]>;
 
-export type ScopeMetadata = Record<string, Scope[]>;
+export type RouteScopeMetadata = {
+	[handlerName: string]: {
+		scopes: Scope[];
+		globalOnly: boolean;
+	};
+};
 
 export interface MiddlewareMetadata {
 	handlerName: string;
@@ -19,6 +24,7 @@ export interface RouteMetadata {
 	middlewares: RequestHandler[];
 	usesTemplates: boolean;
 	skipAuth: boolean;
+	rateLimit: boolean;
 }
 
 export type Controller = Record<

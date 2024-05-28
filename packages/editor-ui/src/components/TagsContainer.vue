@@ -27,7 +27,7 @@
 				</el-tag>
 				<IntersectionObserved
 					v-else
-					:class="{ hidden: tag.hidden }"
+					:class="{ hideTag: tag.hidden }"
 					:data-id="tag.id"
 					:enabled="responsive"
 					:event-bus="intersectionEventBus"
@@ -183,7 +183,7 @@ export default defineComponent({
 	}
 }
 
-.hidden {
+.hideTag {
 	visibility: hidden;
 }
 

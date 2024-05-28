@@ -44,7 +44,7 @@
 					type="textarea"
 					:rows="5"
 					@blur="onInputBlur"
-					@update:modelValue="onUpdateModelValue"
+					@update:model-value="onUpdateModelValue"
 					@wheel="onInputScroll"
 				/>
 			</div>
