@@ -5,6 +5,7 @@ import type {
 	IRequestOptionsSimplified,
 	IOAuth2Options,
 	ExecutionError,
+	NodeApiError,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
 
@@ -729,7 +730,8 @@ export const configureToolFunction = (
 		try {
 			response = optimizeResponse(await httpRequest(requestOptions));
 		} catch (error) {
-			response = `There was an error: "${error.message}"`;
+			const httpCode = (error as NodeApiError).httpCode;
+			response = `${httpCode ? `HTTP ${httpCode} ` : ''}There was an error: "${error.message}"`;
 		}
 
 		if (typeof response !== 'string') {

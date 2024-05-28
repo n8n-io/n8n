@@ -132,7 +132,6 @@ export class ToolHttpRequest implements INodeType {
 				default: '',
 				required: true,
 				placeholder: 'e.g. http://www.example.com/{path}',
-				validateType: 'url',
 			},
 			...authenticationProperties,
 			//Query parameters
