@@ -4,8 +4,8 @@ import router from '@/router';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
-const inputWorkflowData: IWorkflowDataUpdate = {
-	name: 'My workflow 9 copy',
+const duplicateTestWorkflow: IWorkflowDataUpdate = {
+	name: 'Duplicate webhook test',
 	active: false,
 	nodes: [
 		{
@@ -20,69 +20,27 @@ const inputWorkflowData: IWorkflowDataUpdate = {
 			position: [680, 20],
 			webhookId: '5340ae49-2c96-4492-9073-7744d2e52b8a',
 		},
-	],
-	connections: {},
-	settings: {
-		executionOrder: 'v1',
-	},
-	meta: {
-		templateCredsSetupCompleted: true,
-	},
-	pinData: {},
-	versionId: '20c24e55-5756-4b55-b63e-c18c0cf56537',
-	tags: [],
-};
-
-const newWorkflowData: IWorkflowDb = {
-	createdAt: '2024-05-27T14:20:51.177Z',
-	updatedAt: '2024-05-27T14:20:51.177Z',
-	id: 'HQ9KIBzVl5FvHfB2',
-	name: 'My workflow 9 copy',
-	active: false,
-	nodes: [
 		{
 			parameters: {
-				path: '5340ae49-2c96-4492-9073-7744d2e52b8a',
+				path: 'aa5150d8-1d7d-4247-88d8-44c96fe3a37b',
 				options: {},
 			},
-			id: 'c1e1b6e7-df13-41b1-95f6-42903b85e438',
-			name: 'Webhook',
+			id: 'aa5150d8-1d7d-4247-88d8-44c96fe3a37b',
+			name: 'Webhook 2',
 			type: 'n8n-nodes-base.webhook',
 			typeVersion: 2,
-			position: [680, 20],
-			webhookId: '5340ae49-2c96-4492-9073-7744d2e52b8a',
+			position: [700, 40],
+			webhookId: 'aa5150d8-1d7d-4247-88d8-44c96fe3a37b',
 		},
 	],
 	connections: {},
-	settings: {
-		executionOrder: 'v1',
-	},
-	meta: {
-		templateCredsSetupCompleted: true,
-	},
-	pinData: {},
-	versionId: '1d601560-b15f-42d1-84ac-9b572262dfff',
-	tags: [],
-	sharedWithProjects: [],
-	usedCredentials: [],
-	scopes: [
-		'workflow:create',
-		'workflow:delete',
-		'workflow:execute',
-		'workflow:list',
-		'workflow:read',
-		'workflow:share',
-		'workflow:update',
-	],
 };
 
 vi.mock('@/stores/workflows.store', () => ({
 	useWorkflowsStore: vi.fn(() => ({
 		workflowsById: {},
-		createNewWorkflow: vi.fn((workflowData: IWorkflowDataUpdate) => {
-			return newWorkflowData;
-		}),
-		addWorkflow: vi.fn((workflow: IWorkflowDb) => {}),
+		createNewWorkflow: vi.fn(() => {}),
+		addWorkflow: vi.fn(() => {}),
 		setActive: vi.fn(() => {}),
 		setWorkflowId: vi.fn(() => {}),
 		setWorkflowVersionId: vi.fn(() => {}),
@@ -104,16 +62,46 @@ describe('useWorkflowHelpers', () => {
 			vi.clearAllMocks();
 		});
 
-		it('should save the current workflow as a new workflow', async () => {
+		it('should update webhook ids and path when duplicating workflow', async () => {
+			if (!duplicateTestWorkflow.nodes) {
+				throw new Error('Missing nodes in test workflow');
+			}
 			const { saveAsNewWorkflow } = useWorkflowHelpers({ router });
+			const webHookIdsPreSave = duplicateTestWorkflow.nodes.map((node) => node.webhookId);
+			const pathsPreSave = duplicateTestWorkflow.nodes.map((node) => node.parameters.path);
 
-			const saved = await saveAsNewWorkflow({
-				name: inputWorkflowData.name,
+			await saveAsNewWorkflow({
+				name: duplicateTestWorkflow.name,
 				resetWebhookUrls: true,
-				data: inputWorkflowData,
+				data: duplicateTestWorkflow,
 			});
 
-			expect(saved).toEqual(true);
+			// Expect the webhookIds and paths to be different
+			const webHookIdsPostSave = duplicateTestWorkflow.nodes.map((node) => node.webhookId);
+			expect(webHookIdsPreSave).not.toEqual(webHookIdsPostSave);
+			const pathsPostSave = duplicateTestWorkflow.nodes.map((node) => node.parameters.path);
+			expect(pathsPreSave).not.toEqual(pathsPostSave);
+		});
+
+		it('should respect `resetWebhookUrls` when duplicating workflows', async () => {
+			if (!duplicateTestWorkflow.nodes) {
+				throw new Error('Missing nodes in test workflow');
+			}
+			const { saveAsNewWorkflow } = useWorkflowHelpers({ router });
+			const webHookIdsPreSave = duplicateTestWorkflow.nodes.map((node) => node.webhookId);
+			const pathsPreSave = duplicateTestWorkflow.nodes.map((node) => node.parameters.path);
+
+			await saveAsNewWorkflow({
+				name: duplicateTestWorkflow.name,
+				resetWebhookUrls: false,
+				data: duplicateTestWorkflow,
+			});
+
+			// Now. webhookIds and paths should be the same
+			const webHookIdsPostSave = duplicateTestWorkflow.nodes.map((node) => node.webhookId);
+			expect(webHookIdsPreSave).toEqual(webHookIdsPostSave);
+			const pathsPostSave = duplicateTestWorkflow.nodes.map((node) => node.parameters.path);
+			expect(pathsPreSave).toEqual(pathsPostSave);
 		});
 	});
 });

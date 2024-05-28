@@ -252,21 +252,6 @@ describe('Workflow Actions', () => {
 			WorkflowPage.actions.saveWorkflowOnButtonClick();
 			duplicateWorkflow();
 		});
-
-		it('should update webhook path when duplicating workflow', () => {
-			WorkflowPage.actions.addNodeToCanvas(WEBHOOK_NODE_NAME);
-			WorkflowPage.actions.addNodeToCanvas(WEBHOOK_NODE_NAME);
-			// Activate original workflow
-			WorkflowPage.actions.activateWorkflow();
-			WorkflowPage.getters.isWorkflowActivated();
-			duplicateWorkflow();
-			cy.visit(WorkflowPages.url);
-			WorkflowPages.getters.workflowCards().contains(DUPLICATE_WORKFLOW_NAME).click();
-			// Activate duplicated workflow
-			WorkflowPage.actions.activateWorkflow();
-			// If webhooks are properly updated, this should pass
-			WorkflowPage.getters.isWorkflowActivated();
-		});
 	});
 
 	it('should keep endpoint click working when switching between execution and editor tab', () => {
