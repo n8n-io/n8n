@@ -17,7 +17,7 @@ import {
 } from './shared/random';
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
-import { addApiKey, createUser, createUserShell } from './shared/db/users';
+import { addApiKey, createOwner, createUser, createUserShell } from './shared/db/users';
 import config from '@/config';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['me'] });
@@ -25,6 +25,30 @@ const testServer = utils.setupTestServer({ endpointGroups: ['me'] });
 beforeEach(async () => {
 	await testDb.truncate(['User']);
 	config.set('publicApi.disabled', false);
+});
+
+describe('When public API is disabled', () => {
+	let owner: User;
+	let authAgent: SuperAgentTest;
+
+	beforeEach(async () => {
+		owner = await createOwner();
+		await addApiKey(owner);
+		authAgent = testServer.authAgentFor(owner);
+		config.set('publicApi.disabled', true);
+	});
+
+	test('POST /me/api-key should 404', async () => {
+		await authAgent.post('/me/api-key').expect(404);
+	});
+
+	test('GET /me/api-key should 404', async () => {
+		await authAgent.get('/me/api-key').expect(404);
+	});
+
+	test('DELETE /me/api-key should 404', async () => {
+		await authAgent.delete('/me/api-key').expect(404);
+	});
 });
 
 describe('Owner shell', () => {
@@ -155,23 +179,11 @@ describe('Owner shell', () => {
 		expect(storedShellOwner.apiKey).toEqual(response.body.data.apiKey);
 	});
 
-	test('POST /me/api-key 404 when the API is disabled', async () => {
-		config.set('publicApi.disabled', true);
-		const response = await authOwnerShellAgent.post('/me/api-key');
-		expect(response.statusCode).toBe(404);
-	});
-
 	test('GET /me/api-key should fetch the api key', async () => {
 		const response = await authOwnerShellAgent.get('/me/api-key');
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.apiKey).toEqual(ownerShell.apiKey);
-	});
-
-	test('GET /me/api-key should 404 when the API is disabled', async () => {
-		config.set('publicApi.disabled', true);
-		const response = await authOwnerShellAgent.get('/me/api-key');
-		expect(response.statusCode).toBe(404);
 	});
 
 	test('DELETE /me/api-key should fetch the api key', async () => {
