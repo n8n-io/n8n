@@ -24,8 +24,10 @@ export async function upload(
 	const append = this.getNodeParameter('append', index) as string;
 
 	// get server url
-	const credentials = await this.getCredentials('seaTableApi');
-	const serverURL = credentials.domain ?? 'https://cloud.seatable.io';
+	const credentials: any = await this.getCredentials('seaTableApi');
+	const serverURL: string = credentials.domain
+		? credentials.domain.replace(/\/$/, '')
+		: 'https://cloud.seatable.io';
 
 	// get workspaceId
 	const workspaceId = (
