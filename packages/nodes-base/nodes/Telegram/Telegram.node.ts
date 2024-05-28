@@ -1482,6 +1482,18 @@ export class Telegram implements INodeType {
 						},
 					},
 					{
+						displayName: 'Business Connection ID',
+						name: 'business_connection_id',
+						type: 'number',
+						displayOptions: {
+							hide: {
+								'/operation': ['editMessageText'],
+							},
+						},
+						default: 0,
+						description: 'If the message is sent to a business connection, ID of the connection',
+					},
+					{
 						displayName: 'Caption',
 						name: 'caption',
 						type: 'string',
