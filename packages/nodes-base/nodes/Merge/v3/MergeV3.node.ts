@@ -634,7 +634,10 @@ export class MergeV3 implements INodeType {
 							},
 						);
 					}
-					returnData.push.apply(returnData, this.getInputData(parseInt(useDataOfInput) - 1));
+					returnData.push.apply(
+						returnData,
+						this.getInputData(parseInt(String(useDataOfInput)) - 1),
+					);
 				}
 				if (output === 'empty') {
 					const pairedItem = [
