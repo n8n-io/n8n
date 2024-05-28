@@ -27,14 +27,14 @@ describe('Infobox tooltips', () => {
 		test('should show a tooltip for: {{ $max(|) }}', () => {
 			const tooltips = cursorTooltips('{{ $max(|) }}');
 			expect(tooltips.length).toBe(1);
-			expect(infoBoxHeader(tooltips[0].view)).toHaveTextContent('$max(...numbers): number');
+			expect(infoBoxHeader(tooltips[0].view)).toHaveTextContent('$max(...numbers)');
 			expect(highlightedArgIndex(tooltips[0].view)).toBe(0);
 		});
 
 		test('should show a tooltip for: {{ $max(1,2,3,|) }}', () => {
 			const tooltips = cursorTooltips('{{ $max(1, 2|) }}');
 			expect(tooltips.length).toBe(1);
-			expect(infoBoxHeader(tooltips[0].view)).toHaveTextContent('$max(...numbers): number');
+			expect(infoBoxHeader(tooltips[0].view)).toHaveTextContent('$max(...numbers)');
 			expect(highlightedArgIndex(tooltips[0].view)).toBe(0);
 		});
 
@@ -47,9 +47,7 @@ describe('Infobox tooltips', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue('a string');
 			const tooltips = cursorTooltips('{{ $json.str.includes(|) }}');
 			expect(tooltips.length).toBe(1);
-			expect(infoBoxHeader(tooltips[0].view)).toHaveTextContent(
-				'includes(searchString, start?): boolean',
-			);
+			expect(infoBoxHeader(tooltips[0].view)).toHaveTextContent('includes(searchString, start?)');
 			expect(highlightedArgIndex(tooltips[0].view)).toBe(0);
 		});
 
@@ -57,9 +55,7 @@ describe('Infobox tooltips', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue('a string');
 			const tooltips = cursorTooltips('{{ $json.str.includes("tes|t") }}');
 			expect(tooltips.length).toBe(1);
-			expect(infoBoxHeader(tooltips[0].view)).toHaveTextContent(
-				'includes(searchString, start?): boolean',
-			);
+			expect(infoBoxHeader(tooltips[0].view)).toHaveTextContent('includes(searchString, start?)');
 			expect(highlightedArgIndex(tooltips[0].view)).toBe(0);
 		});
 
@@ -67,9 +63,7 @@ describe('Infobox tooltips', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue('a string');
 			const tooltips = cursorTooltips('{{ $json.str.includes("test",|) }}');
 			expect(tooltips.length).toBe(1);
-			expect(infoBoxHeader(tooltips[0].view)).toHaveTextContent(
-				'includes(searchString, start?): boolean',
-			);
+			expect(infoBoxHeader(tooltips[0].view)).toHaveTextContent('includes(searchString, start?)');
 			expect(highlightedArgIndex(tooltips[0].view)).toBe(1);
 		});
 	});
@@ -83,29 +77,27 @@ describe('Infobox tooltips', () => {
 		test('should show a tooltip for: {{ $jso|n }}', () => {
 			const tooltip = hoverTooltip('{{ $jso|n }}');
 			expect(tooltip).not.toBeNull();
-			expect(infoBoxHeader(tooltip?.view)).toHaveTextContent('$json: Object');
+			expect(infoBoxHeader(tooltip?.view)).toHaveTextContent('$json');
 		});
 
 		test('should show a tooltip for: {{ $execution.mo|de }}', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue({ mode: 'foo' });
 			const tooltip = hoverTooltip('{{ $execution.mo|de }}');
 			expect(tooltip).not.toBeNull();
-			expect(infoBoxHeader(tooltip?.view)).toHaveTextContent('mode: string');
+			expect(infoBoxHeader(tooltip?.view)).toHaveTextContent('mode');
 		});
 
 		test('should show a tooltip for: {{ $jmespa|th() }}', () => {
 			const tooltip = hoverTooltip('{{ $jmespa|th() }}');
 			expect(tooltip).not.toBeNull();
-			expect(infoBoxHeader(tooltip?.view)).toHaveTextContent('$jmespath(obj, expression): any');
+			expect(infoBoxHeader(tooltip?.view)).toHaveTextContent('$jmespath(obj, expression)');
 		});
 
 		test('should show a tooltip for: {{ $json.str.includ|es() }}', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue('foo');
 			const tooltip = hoverTooltip('{{ $json.str.includ|es() }}');
 			expect(tooltip).not.toBeNull();
-			expect(infoBoxHeader(tooltip?.view)).toHaveTextContent(
-				'includes(searchString, start?): boolean',
-			);
+			expect(infoBoxHeader(tooltip?.view)).toHaveTextContent('includes(searchString, start?)');
 		});
 	});
 });

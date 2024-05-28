@@ -35,7 +35,6 @@ import { luxonInstanceDocs } from './nativesAutocompleteDocs/luxon.instance.docs
 import { luxonStaticDocs } from './nativesAutocompleteDocs/luxon.static.docs';
 import type { AutocompleteInput, ExtensionTypeName, FnToDoc, Resolved } from './types';
 import {
-	applyBracketAccess,
 	applyBracketAccessCompletion,
 	applyCompletion,
 	getDefaultArgs,
