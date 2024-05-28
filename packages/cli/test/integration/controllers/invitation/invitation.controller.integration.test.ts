@@ -126,7 +126,7 @@ describe('InvitationController', () => {
 				role: 'global:member',
 			});
 
-			const invalidPaylods = [
+			const invalidPayloads = [
 				{
 					firstName: randomName(),
 					lastName: randomName(),
@@ -155,7 +155,7 @@ describe('InvitationController', () => {
 				},
 			];
 
-			for (const payload of invalidPaylods) {
+			for (const payload of invalidPayloads) {
 				await testServer.authlessAgent
 					.post(`/invitations/${memberShell.id}/accept`)
 					.send(payload)

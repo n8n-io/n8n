@@ -22,6 +22,7 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooks } from '@/InternalHooks';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UserRepository } from '@/databases/repositories/user.repository';
+import { AuthUserService } from '@/services/authUser.service';
 
 @RestController('/me')
 export class MeController {
@@ -30,6 +31,7 @@ export class MeController {
 		private readonly externalHooks: ExternalHooks,
 		private readonly internalHooks: InternalHooks,
 		private readonly authService: AuthService,
+		private readonly authUserService: AuthUserService,
 		private readonly userService: UserService,
 		private readonly passwordUtility: PasswordUtility,
 		private readonly userRepository: UserRepository,
@@ -189,7 +191,7 @@ export class MeController {
 	async createAPIKey(req: AuthenticatedRequest) {
 		const apiKey = `n8n_api_${randomBytes(40).toString('hex')}`;
 
-		await this.userService.update(req.user.id, { apiKey });
+		await this.authUserService.update(req.user.id, { apiKey });
 
 		void this.internalHooks.onApiKeyCreated({
 			user: req.user,
@@ -212,7 +214,7 @@ export class MeController {
 	 */
 	@Delete('/api-key')
 	async deleteAPIKey(req: AuthenticatedRequest) {
-		await this.userService.update(req.user.id, { apiKey: null });
+		await this.authUserService.update(req.user.id, { apiKey: null });
 
 		void this.internalHooks.onApiKeyDeleted({
 			user: req.user,

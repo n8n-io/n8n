@@ -1,6 +1,9 @@
 import { Container } from 'typedi';
 import config from '@/config';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
+import type { AuthUser } from '@db/entities/AuthUser';
+import { UserRepository } from '@db/repositories/user.repository';
+import { AuthIdentityRepository } from '@db/repositories/authIdentity.repository';
 import type { User } from '@db/entities/User';
 import { License } from '@/License';
 import { PasswordUtility } from '@/services/password.utility';
@@ -17,8 +20,6 @@ import {
 } from '../ssoHelpers';
 import { getServiceProviderConfigTestReturnUrl } from './serviceProvider.ee';
 import type { SamlConfiguration } from './types/requests';
-import { UserRepository } from '@db/repositories/user.repository';
-import { AuthIdentityRepository } from '@db/repositories/authIdentity.repository';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { AuthError } from '@/errors/response-errors/auth.error';
 
@@ -123,7 +124,7 @@ export async function createUserFromSamlAttributes(attributes: SamlUserAttribute
 }
 
 export async function updateUserFromSamlAttributes(
-	user: User,
+	user: AuthUser,
 	attributes: SamlUserAttributes,
 ): Promise<User> {
 	if (!attributes.email) throw new AuthError('Email is required to update user');

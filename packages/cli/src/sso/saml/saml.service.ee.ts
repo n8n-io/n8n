@@ -25,7 +25,7 @@ import https from 'https';
 import type { SamlLoginBinding } from './types';
 import { validateMetadata, validateResponse } from './samlValidator';
 import { Logger } from '@/Logger';
-import { UserRepository } from '@db/repositories/user.repository';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
 import { SettingsRepository } from '@db/repositories/settings.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { AuthError } from '@/errors/response-errors/auth.error';
@@ -172,7 +172,7 @@ export class SamlService {
 		const attributes = await this.getAttributesFromLoginResponse(req, binding);
 		if (attributes.email) {
 			const lowerCasedEmail = attributes.email.toLowerCase();
-			const user = await Container.get(UserRepository).findOne({
+			const user = await Container.get(AuthUserRepository).findOne({
 				where: { email: lowerCasedEmail },
 				relations: ['authIdentities'],
 			});

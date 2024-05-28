@@ -1,4 +1,6 @@
+import Container from 'typedi';
 import type { SuperAgentTest } from 'supertest';
+import type TestAgent from 'supertest/lib/agent';
 import { IsNull } from '@n8n/typeorm';
 import validator from 'validator';
 import type { User } from '@db/entities/User';
@@ -13,9 +15,10 @@ import {
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
 import { addApiKey, createUser, createUserShell } from './shared/db/users';
-import Container from 'typedi';
 import { UserRepository } from '@db/repositories/user.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
+
+jest.setTimeout(1000);
 
 const testServer = utils.setupTestServer({ endpointGroups: ['me'] });
 
@@ -25,7 +28,7 @@ beforeEach(async () => {
 
 describe('Owner shell', () => {
 	let ownerShell: User;
-	let authOwnerShellAgent: SuperAgentTest;
+	let authOwnerShellAgent: TestAgent;
 
 	beforeEach(async () => {
 		ownerShell = await createUserShell('global:owner');

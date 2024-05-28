@@ -17,7 +17,6 @@ import { NoXss } from '../utils/customValidators';
 import { objectRetriever, lowerCaser } from '../utils/transformers';
 import { WithTimestamps, jsonColumnType } from './AbstractEntity';
 import type { IPersonalizationSurveyAnswers } from '@/Interfaces';
-import type { AuthIdentity } from './AuthIdentity';
 import {
 	GLOBAL_OWNER_SCOPES,
 	GLOBAL_MEMBER_SCOPES,
@@ -65,6 +64,7 @@ export class User extends WithTimestamps implements IUser {
 	@IsString({ message: 'Password must be of type string.' })
 	password: string;
 
+	// TODO: move to AuthUser
 	@Column({
 		type: jsonColumnType,
 		nullable: true,
@@ -72,6 +72,7 @@ export class User extends WithTimestamps implements IUser {
 	})
 	personalizationAnswers: IPersonalizationSurveyAnswers | null;
 
+	// TODO: move to AuthUser
 	@Column({
 		type: jsonColumnType,
 		nullable: true,
@@ -80,9 +81,6 @@ export class User extends WithTimestamps implements IUser {
 
 	@Column()
 	role: GlobalRole;
-
-	@OneToMany('AuthIdentity', 'user')
-	authIdentities: AuthIdentity[];
 
 	@OneToMany('SharedWorkflow', 'user')
 	sharedWorkflows: SharedWorkflow[];
@@ -101,10 +99,6 @@ export class User extends WithTimestamps implements IUser {
 	preUpsertHook(): void {
 		this.email = this.email?.toLowerCase() ?? null;
 	}
-
-	@Column({ type: String, nullable: true })
-	@Index({ unique: true })
-	apiKey?: string | null;
 
 	@Column({ type: Boolean, default: false })
 	mfaEnabled: boolean;
@@ -152,7 +146,7 @@ export class User extends WithTimestamps implements IUser {
 	}
 
 	toJSON() {
-		const { password, apiKey, mfaSecret, mfaRecoveryCodes, ...rest } = this;
+		const { password, mfaSecret, mfaRecoveryCodes, ...rest } = this;
 		return rest;
 	}
 

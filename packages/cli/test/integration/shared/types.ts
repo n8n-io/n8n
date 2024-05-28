@@ -1,9 +1,10 @@
 import type { Application } from 'express';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
-import type { SuperAgentTest } from 'supertest';
+import type TestAgent from 'supertest/lib/agent';
 import type { Server } from 'http';
 
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import type { AuthUser } from '@/databases/entities/AuthUser';
 import type { User } from '@db/entities/User';
 import type { BooleanLicenseFeature, ICredentialsDb, NumericLicenseFeature } from '@/Interfaces';
 import type { LicenseMocker } from './license';
@@ -47,9 +48,9 @@ export interface SetupProps {
 export interface TestServer {
 	app: Application;
 	httpServer: Server;
-	authAgentFor: (user: User) => SuperAgentTest;
-	publicApiAgentFor: (user: User) => SuperAgentTest;
-	authlessAgent: SuperAgentTest;
+	authAgentFor: (user: AuthUser) => TestAgent;
+	publicApiAgentFor: (user: AuthUser) => TestAgent;
+	authlessAgent: TestAgent;
 	license: LicenseMocker;
 }
 

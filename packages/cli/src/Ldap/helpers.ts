@@ -20,6 +20,7 @@ import { License } from '@/License';
 import { UserRepository } from '@db/repositories/user.repository';
 import { AuthProviderSyncHistoryRepository } from '@db/repositories/authProviderSyncHistory.repository';
 import { AuthIdentityRepository } from '@db/repositories/authIdentity.repository';
+import type { AuthUser } from '@/databases/entities/AuthUser';
 
 /**
  *  Check whether the LDAP feature is disabled in the instance
@@ -187,7 +188,7 @@ export const processUsers = async (
 					user,
 					transactionManager,
 				);
-				const authIdentity = AuthIdentity.create(savedUser, ldapId);
+				const authIdentity = AuthIdentity.create(savedUser as AuthUser, ldapId);
 				return await transactionManager.save(authIdentity);
 			}),
 			...toUpdateUsers.map(async ([ldapId, user]) => {
@@ -271,9 +272,12 @@ export const getMappingAttributes = (ldapConfig: LdapConfig): string[] => {
 };
 
 export const createLdapAuthIdentity = async (user: User, ldapId: string) => {
-	return await Container.get(AuthIdentityRepository).save(AuthIdentity.create(user, ldapId), {
-		transaction: false,
-	});
+	return await Container.get(AuthIdentityRepository).save(
+		AuthIdentity.create(user as AuthUser, ldapId),
+		{
+			transaction: false,
+		},
+	);
 };
 
 export const createLdapUserOnLocalDb = async (data: Partial<User>, ldapId: string) => {

@@ -15,7 +15,7 @@ import config from '@/config';
 
 import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
-import { UserRepository } from '@db/repositories/user.repository';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
 import { UrlService } from '@/services/url.service';
 import type { AuthenticatedRequest } from '@/requests';
 
@@ -94,7 +94,7 @@ async function createApiRouter(
 						schema: OpenAPIV3.ApiKeySecurityScheme,
 					): Promise<boolean> => {
 						const apiKey = req.headers[schema.name.toLowerCase()] as string;
-						const user = await Container.get(UserRepository).findOne({
+						const user = await Container.get(AuthUserRepository).findOne({
 							where: { apiKey },
 						});
 

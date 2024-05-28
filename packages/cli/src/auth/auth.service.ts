@@ -5,8 +5,9 @@ import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 
 import config from '@/config';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES, Time } from '@/constants';
+import type { AuthUser } from '@db/entities/AuthUser';
 import type { User } from '@db/entities/User';
-import { UserRepository } from '@db/repositories/user.repository';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { License } from '@/License';
@@ -55,7 +56,7 @@ export class AuthService {
 		private readonly license: License,
 		private readonly jwtService: JwtService,
 		private readonly urlService: UrlService,
-		private readonly userRepository: UserRepository,
+		private readonly authUserRepository: AuthUserRepository,
 	) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		this.authMiddleware = this.authMiddleware.bind(this);
@@ -115,13 +116,13 @@ export class AuthService {
 		});
 	}
 
-	async resolveJwt(token: string, req: AuthenticatedRequest, res: Response): Promise<User> {
+	async resolveJwt(token: string, req: AuthenticatedRequest, res: Response): Promise<AuthUser> {
 		const jwtPayload: IssuedJWT = this.jwtService.verify(token, {
 			algorithms: ['HS256'],
 		});
 
 		// TODO: Use an in-memory ttl-cache to cache the User object for upto a minute
-		const user = await this.userRepository.findOne({
+		const user = await this.authUserRepository.findOne({
 			where: { id: jwtPayload.id },
 		});
 
@@ -171,7 +172,7 @@ export class AuthService {
 		return url.toString();
 	}
 
-	async resolvePasswordResetToken(token: string): Promise<User | undefined> {
+	async resolvePasswordResetToken(token: string): Promise<AuthUser | undefined> {
 		let decodedToken: PasswordResetToken;
 		try {
 			decodedToken = this.jwtService.verify(token);
@@ -184,7 +185,7 @@ export class AuthService {
 			return;
 		}
 
-		const user = await this.userRepository.findOne({
+		const user = await this.authUserRepository.findOne({
 			where: { id: decodedToken.sub },
 			relations: ['authIdentities'],
 		});
