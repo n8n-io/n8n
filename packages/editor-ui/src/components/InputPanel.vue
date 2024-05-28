@@ -39,7 +39,7 @@
 		</template>
 		<template #input-selector>
 			<n8n-select
-				v-if="parentNodes.length && currentNodeName"
+				v-if="inputSelectorNodes.length && currentNodeName"
 				:model-value="currentNodeName"
 				:no-data-text="$locale.baseText('ndv.input.noNodesFound')"
 				:placeholder="$locale.baseText('ndv.input.parentNodes')"
@@ -51,10 +51,15 @@
 				@update:model-value="onInputNodeChange"
 			>
 				<template #prefix>
-					<NodeIcon :node-type="getNodeTypeFromName(currentNodeName)" :size="14" :shrink="false" />
+					<NodeIcon
+						:disabled="currentNode?.disabled"
+						:node-type="currentNodeType"
+						:size="14"
+						:shrink="false"
+					/>
 				</template>
 				<n8n-option
-					v-for="node of parentNodes"
+					v-for="{ node, type, depth } of inputSelectorNodes"
 					:key="node.name"
 					:value="node.name"
 					:class="$style.nodeOption"
@@ -62,13 +67,14 @@
 					data-test-id="ndv-input-option"
 				>
 					<NodeIcon
-						:class="$style.nodeOptionIcon"
-						:node-type="getNodeTypeFromName(node.name)"
+						:disabled="node?.disabled"
+						:node-type="type"
 						:size="14"
 						:shrink="false"
+						:class="$style.nodeOptionIcon"
 					/>
 					<span :class="$style.nodeOptionTitle">{{ nodeOptionTitle(node.name) }}&nbsp;</span>
-					<span :class="$style.nodeOptionSubtitle">{{ nodeOptionSubtitle(node) }}</span>
+					<span :class="$style.nodeOptionSubtitle">{{ nodeOptionSubtitle(node.name, depth) }}</span>
 				</n8n-option>
 			</n8n-select>
 		</template>
@@ -194,6 +200,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
+import { isPresent } from '@/utils/typesUtils';
 
 type MappingMode = 'debugging' | 'mapping';
 
@@ -360,6 +367,11 @@ export default defineComponent({
 
 			return this.workflowsStore.getNodeByName(this.currentNodeName ?? '');
 		},
+		currentNodeType(): INodeTypeDescription | null {
+			if (!this.currentNode) return null;
+
+			return this.nodeTypesStore.getNodeType(this.currentNode.type, this.currentNode.typeVersion);
+		},
 		connectedCurrentNodeOutputs(): number[] | undefined {
 			const search = this.parentNodes.find(({ name }) => name === this.currentNodeName);
 			if (search) {
@@ -379,6 +391,20 @@ export default defineComponent({
 					name !== this.activeNode.name &&
 					nodes.findIndex((node) => node.name === name) === i,
 			);
+		},
+		inputSelectorNodes() {
+			return this.parentNodes
+				.map((parent) => {
+					const node = this.workflowsStore.getNodeByName(parent.name);
+					if (!node) return null;
+
+					return {
+						node,
+						type: this.nodeTypesStore.getNodeType(node.type, node.typeVersion),
+						depth: parent.depth,
+					};
+				})
+				.filter(isPresent);
 		},
 		currentNodeDepth(): number {
 			const node = this.parentNodes.find(
@@ -515,20 +541,14 @@ export default defineComponent({
 			}
 			return truncated;
 		},
-		nodeOptionSubtitle(node: IConnectedNode) {
-			const multipleNodesText = this.getMultipleNodesText(node.name);
+		nodeOptionSubtitle(nodeName: string, depth: number) {
+			const multipleNodesText = this.getMultipleNodesText(nodeName);
 			if (multipleNodesText) return multipleNodesText;
 
-			return this.$locale.baseText('ndv.input.nodeDistance', { adjustToNumber: node.depth });
+			return this.$locale.baseText('ndv.input.nodeDistance', { adjustToNumber: depth });
 		},
 		activatePane() {
 			this.$emit('activatePane');
-		},
-		getNodeTypeFromName(nodeName: string) {
-			const node = this.workflowsStore.getNodeByName(nodeName);
-
-			if (!node) return null;
-			return this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 		},
 	},
 });
@@ -589,6 +609,7 @@ export default defineComponent({
 .title {
 	text-transform: uppercase;
 	color: var(--color-text-light);
+	letter-spacing: 3px;
 	font-size: var(--font-size-s);
 	font-weight: var(--font-weight-bold);
 }
@@ -597,6 +618,7 @@ export default defineComponent({
 	max-width: 240px;
 
 	:global(.el-input--suffix .el-input__inner) {
+		padding-left: calc(var(--spacing-l) + var(--spacing-4xs));
 		padding-right: var(--spacing-l);
 	}
 }
@@ -610,7 +632,7 @@ export default defineComponent({
 }
 
 .nodeOptionIcon {
-	padding-right: var(--spacing-5xs);
+	padding-right: var(--spacing-4xs);
 }
 
 .nodeOptionTitle {
