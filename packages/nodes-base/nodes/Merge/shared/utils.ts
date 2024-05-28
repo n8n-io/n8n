@@ -12,41 +12,15 @@ import assignWith from 'lodash/assignWith';
 import get from 'lodash/get';
 import merge from 'lodash/merge';
 import mergeWith from 'lodash/mergeWith';
+
 import { fuzzyCompare, preparePairedItemDataArray } from '@utils/utilities';
+
+import type { ClashResolveOptions, MatchFieldsJoinMode, MatchFieldsOptions } from './interfaces';
 
 type PairToMatch = {
 	field1: string;
 	field2: string;
 };
-
-export type MatchFieldsOptions = {
-	joinMode: MatchFieldsJoinMode;
-	outputDataFrom: MatchFieldsOutput;
-	multipleMatches: MultipleMatches;
-	disableDotNotation: boolean;
-	fuzzyCompare?: boolean;
-};
-
-export type ClashResolveOptions = {
-	resolveClash: ClashResolveMode;
-	mergeMode: ClashMergeMode;
-	overrideEmpty: boolean;
-};
-
-type ClashMergeMode = 'deepMerge' | 'shallowMerge';
-
-type ClashResolveMode = 'addSuffix' | 'preferInput1' | 'preferInput2';
-
-type MultipleMatches = 'all' | 'first';
-
-export type MatchFieldsOutput = 'both' | 'input1' | 'input2';
-
-export type MatchFieldsJoinMode =
-	| 'keepEverything'
-	| 'keepMatches'
-	| 'keepNonMatches'
-	| 'enrichInput2'
-	| 'enrichInput1';
 
 type EntryMatches = {
 	entry: INodeExecutionData;
