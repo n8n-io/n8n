@@ -52,7 +52,7 @@
     "shelljs": "^0.8.5",
     "unbuild": "^2.0.0",
     "unplugin-icons": "^0.17.0",
-    "vite-plugin-dts": "^3.7.3"
+    "vite-plugin-dts": "^3.9.1"
   },
   "repository": {
     "type": "git",
