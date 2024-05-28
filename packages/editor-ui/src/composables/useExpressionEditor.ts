@@ -71,6 +71,7 @@ export const useExpressionEditor = ({
 	const readOnlyExtensions = ref<Compartment>(new Compartment());
 	const telemetryExtensions = ref<Compartment>(new Compartment());
 	const autocompleteStatus = ref<'pending' | 'active' | null>(null);
+	const dragging = ref(false);
 
 	const updateSegments = (): void => {
 		const state = editor.value?.state;
@@ -167,9 +168,10 @@ export const useExpressionEditor = ({
 	}
 
 	function blurOnClickOutside(event: MouseEvent) {
-		if (event.target && !editor.value?.dom.contains(event.target as Node)) {
+		if (event.target && !dragging.value && !editor.value?.dom.contains(event.target as Node)) {
 			blur();
 		}
+		dragging.value = false;
 	}
 
 	watch(editorRef, () => {
@@ -197,6 +199,11 @@ export const useExpressionEditor = ({
 					return null;
 				}),
 				EditorView.contentAttributes.of({ 'data-gramm': 'false' }), // disable grammarly
+				EditorView.domEventHandlers({
+					mousedown: () => {
+						dragging.value = true;
+					},
+				}),
 			],
 		});
 
