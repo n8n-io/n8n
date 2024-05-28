@@ -33,7 +33,7 @@ describe('SQL editors', () => {
 		});
 		ndv.actions.close();
 
-		workflowPage.actions.openNode('When clicking "Test workflow"');
+		workflowPage.actions.openNode('When clicking ‘Test workflow’');
 		ndv.actions.setPinnedData([{ table: 'test_table' }]);
 		ndv.actions.close();
 
