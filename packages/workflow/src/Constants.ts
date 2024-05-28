@@ -74,4 +74,22 @@ export const SINGLE_EXECUTION_NODES: { [key: string]: { [key: string]: NodeParam
 	'n8n-nodes-base.executeWorkflow': {
 		mode: [undefined, 'once'],
 	},
+	'n8n-nodes-base.crateDb': {
+		operation: [undefined, 'update'], // default insert
+	},
+	'n8n-nodes-base.timescaleDb': {
+		operation: [undefined, 'update'], // default insert
+	},
+	'n8n-nodes-base.microsoftSql': {
+		operation: [undefined, 'update', 'delete'], // default insert
+	},
+	'n8n-nodes-base.questDb': {
+		operation: [undefined], // default insert
+	},
+	'n8n-nodes-base.mongoDb': {
+		operation: ['insert', 'update'],
+	},
+	'n8n-nodes-base.redis': {
+		operation: [undefined], // default info
+	},
 };
