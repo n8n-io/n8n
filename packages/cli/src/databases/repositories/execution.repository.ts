@@ -603,6 +603,14 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		});
 	}
 
+	async cancel(executionId: string) {
+		await this.update({ id: executionId }, { status: 'canceled', stoppedAt: new Date() });
+	}
+
+	async cancelAllNewExecutions() {
+		await this.update({ status: 'new' }, { status: 'canceled', stoppedAt: new Date() });
+	}
+
 	// ----------------------------------
 	//            new API
 	// ----------------------------------

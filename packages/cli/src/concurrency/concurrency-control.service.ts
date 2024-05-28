@@ -5,6 +5,9 @@ import { ConcurrencyQueue } from './concurrency-queue';
 import { UnknownExecutionModeError } from '@/errors/unknown-execution-mode.error';
 import { UnexpectedExecutionModeError } from '@/errors/unexpected-execution-mode.error';
 import { ConcurrencyCapZeroError } from '@/errors/concurrency-cap-zero.error';
+import { Push } from '@/push';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import type { Ids } from './concurrency.types';
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
 
 @Service()
@@ -17,53 +20,54 @@ export class ConcurrencyControlService {
 
 	readonly productionQueue: ConcurrencyQueue;
 
-	private readonly isEnabled: boolean;
+	readonly isEnabled: boolean;
 
-	constructor(private readonly logger: Logger) {
+	constructor(
+		private readonly logger: Logger,
+		private readonly push: Push,
+		private readonly executionRepository: ExecutionRepository,
+	) {
 		if (this.manualCap === 0 || this.productionCap === 0) {
 			throw new ConcurrencyCapZeroError();
 		}
 
-		if (this.manualCap === -1 && this.productionCap === -1) {
+		if (this.manualCap < 0 && this.productionCap < 0) {
 			this.isEnabled = false;
-			this.logger.info('[Concurrency Control] Disabled');
+			this.log('Service disabled');
 			return;
 		}
 
-		this.productionQueue = new ConcurrencyQueue({
-			kind: 'production',
-			capacity: this.productionCap,
-		});
-
-		this.manualQueue = new ConcurrencyQueue({
-			kind: 'manual',
-			capacity: this.manualCap,
-		});
+		this.productionQueue = new ConcurrencyQueue(this.productionCap);
+		this.manualQueue = new ConcurrencyQueue(this.manualCap);
 
 		this.logInit();
 
 		this.isEnabled = true;
+
+		this.manualQueue.on('execution-throttled', async (event: Ids) => {
+			this.log('Throttled execution', event);
+			this.push.broadcast('executionThrottled', event);
+		});
+
+		this.manualQueue.on('execution-released', async (event: Ids) => {
+			this.log('Released execution', event);
+			this.push.broadcast('executionReleased', event);
+			await this.executionRepository.resetStartedAt(event.executionId);
+		});
 	}
 
 	/**
 	 * Block or let through an execution based on concurrency capacity.
 	 */
-	async check({
-		mode,
-		executionId,
-		workflowId,
-	}: {
-		mode: ExecutionMode;
-		executionId: string;
-		workflowId: string;
-	}) {
+	async check({ mode, ...ids }: Ids & { mode: ExecutionMode }) {
 		if (!this.isEnabled || this.isUncapped(mode)) return;
 
-		await this.getQueue(mode).enqueue({ executionId, workflowId });
+		await this.getQueue(mode).enqueue(ids);
 	}
 
 	/**
-	 * Release capacity back so the next queued execution can proceed, if the resulting capacity allows.
+	 * Release capacity back so the next execution in the queue can proceed, if
+	 * concurrency capacity allows.
 	 */
 	release({ mode }: { mode: ExecutionMode }) {
 		if (!this.isEnabled) return;
@@ -72,7 +76,7 @@ export class ConcurrencyControlService {
 	}
 
 	/**
-	 * Remove an execution from a concurrency control queue, releasing capacity back.
+	 * Remove an execution from a queue, releasing capacity back.
 	 */
 	remove({ mode, executionId }: { mode: ExecutionMode; executionId: string }) {
 		if (!this.isEnabled) return;
@@ -81,16 +85,16 @@ export class ConcurrencyControlService {
 	}
 
 	/**
-	 * Remove multiple executions from concurrency control queues, releasing capacity back.
+	 * Remove many executions from any of the queues, releasing capacity back.
 	 */
 	removeMany(executionIds: string[]) {
 		if (!this.isEnabled) return;
 
-		const queuedManualIds = this.manualQueue.getAll();
-		const queuedProductionIds = this.productionQueue.getAll();
+		const enqueuedManualIds = this.manualQueue.getAll();
+		const enqueuedProductionIds = this.productionQueue.getAll();
 
-		const manualIds = executionIds.filter((id) => queuedManualIds.has(id));
-		const productionIds = executionIds.filter((id) => queuedProductionIds.has(id));
+		const manualIds = executionIds.filter((id) => enqueuedManualIds.has(id));
+		const productionIds = executionIds.filter((id) => enqueuedProductionIds.has(id));
 
 		for (const id of manualIds) {
 			this.manualQueue.remove(id);
@@ -101,19 +105,37 @@ export class ConcurrencyControlService {
 		}
 	}
 
-	private logInit() {
-		this.logger.info('[Concurrency Control] Enabled');
+	/**
+	 * Remove all executions from both queues, releasing all capacity back.
+	 */
+	removeAll() {
+		if (!this.isEnabled) return;
 
-		this.logger.info(
+		const enqueuedManualIds = this.manualQueue.getAll();
+		const enqueuedProductionIds = this.productionQueue.getAll();
+
+		for (const id of enqueuedManualIds) {
+			this.manualQueue.remove(id);
+		}
+
+		for (const id of enqueuedProductionIds) {
+			this.productionQueue.remove(id);
+		}
+	}
+
+	private logInit() {
+		this.log('Enabled');
+
+		this.log(
 			[
-				'[Concurrency Control] Manual execution concurrency is',
+				'Manual execution concurrency is',
 				this.manualCap === -1 ? 'uncapped' : this.manualCap.toString(),
 			].join(' '),
 		);
 
-		this.logger.info(
+		this.log(
 			[
-				'[Concurrency Control] Production execution concurrency is',
+				'Production execution concurrency is',
 				this.productionCap === -1 ? 'uncapped' : this.productionCap.toString(),
 			].join(' '),
 		);
@@ -137,5 +159,9 @@ export class ConcurrencyControlService {
 		if (mode === 'webhook' || mode === 'trigger') return this.productionQueue;
 
 		throw new UnexpectedExecutionModeError(mode);
+	}
+
+	private log(message: string, meta?: object) {
+		this.logger.info(['[Concurrency Control]', message].join(' '), meta);
 	}
 }

@@ -402,15 +402,9 @@ export class ExecutionService {
 
 		if (!execution) throw new NotFoundError('Execution not found');
 
-		// `new` executions are only enqueued, not yet active
-		// @TODO: Delete instead?
-
 		if (execution.status === 'new') {
-			await this.executionRepository.update(executionId, {
-				status: 'canceled',
-				stoppedAt: new Date(),
-			});
 			this.concurrencyControl.remove({ mode: execution.mode, executionId });
+			await this.executionRepository.cancel(executionId);
 
 			return;
 		}

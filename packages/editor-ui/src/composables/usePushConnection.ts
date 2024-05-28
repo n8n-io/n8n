@@ -245,7 +245,8 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 
 		if (
 			receivedData.type === 'executionThrottled' &&
-			receivedData.data.workflowId === workflowsStore.workflowId
+			receivedData.data.workflowId === workflowsStore.workflowId &&
+			receivedData.data.pushRef === pushStore.pushRef
 		) {
 			workflowsStore.setExecutionStatus('pending');
 
@@ -261,7 +262,8 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 
 		if (
 			receivedData.type === 'executionReleased' &&
-			receivedData.data.workflowId === workflowsStore.workflowId
+			receivedData.data.workflowId === workflowsStore.workflowId &&
+			receivedData.data.pushRef === pushStore.pushRef
 		) {
 			workflowsStore.setExecutionStatus('running');
 

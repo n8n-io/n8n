@@ -1,6 +1,9 @@
-export type ConcurrencyEventArgs = {
+export type Ids = {
 	executionId: string;
 	workflowId: string;
-	capacity: number;
-	kind: 'manual' | 'production';
+	pushRef: string;
+};
+
+export type ConcurrencyQueueItem = Ids & {
+	resolve: () => void;
 };

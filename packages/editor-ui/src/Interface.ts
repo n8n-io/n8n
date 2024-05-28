@@ -497,12 +497,12 @@ export type PushDataWorkflowFailedToActivate = {
 };
 
 export type PushDataExecutionThrottled = {
-	data: { executionId: string; workflowId: string };
+	data: { executionId: string; workflowId: string; pushRef: string };
 	type: 'executionThrottled';
 };
 
 export type PushDataExecutionReleased = {
-	data: { executionId: string; workflowId: string };
+	data: { executionId: string; workflowId: string; pushRef: string };
 	type: 'executionReleased';
 };
 

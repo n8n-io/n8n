@@ -11,7 +11,7 @@ import { ConcurrencyControlService } from '@/concurrency/concurrency-control.ser
 import { WaitTracker } from '@/WaitTracker';
 
 mockInstance(WaitTracker);
-mockInstance(ConcurrencyControlService);
+mockInstance(ConcurrencyControlService, { isEnabled: false });
 
 const testServer = setupTestServer({ endpointGroups: ['executions'] });
 

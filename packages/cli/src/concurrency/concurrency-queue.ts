@@ -1,35 +1,23 @@
 import { Service } from 'typedi';
 import { EventEmitter } from 'node:events';
+import type { ConcurrencyQueueItem, Ids } from './concurrency.types';
 
 @Service()
 export class ConcurrencyQueue extends EventEmitter {
-	private readonly queue: Array<[executionId: string, workflowId: string, resolve: () => void]> =
-		[];
+	private readonly queue: ConcurrencyQueueItem[] = [];
 
-	private capacity: number;
-
-	private readonly kind: 'manual' | 'production';
-
-	constructor({ capacity, kind }: { capacity: number; kind: 'manual' | 'production' }) {
+	constructor(private capacity: number) {
 		super();
-
-		this.capacity = capacity;
-		this.kind = kind;
 	}
 
-	async enqueue({ executionId, workflowId }: { executionId: string; workflowId: string }) {
+	async enqueue(ids: Ids) {
 		this.capacity--;
 
 		if (this.capacity < 0) {
-			this.emit('execution-throttled', {
-				executionId,
-				workflowId,
-				capacity: this.capacity,
-				kind: this.kind,
-			});
+			this.emit('execution-throttled', ids);
 
 			// eslint-disable-next-line @typescript-eslint/return-await
-			return new Promise<void>((resolve) => this.queue.push([executionId, workflowId, resolve]));
+			return new Promise<void>((resolve) => this.queue.push({ ...ids, resolve }));
 		}
 	}
 
@@ -40,7 +28,7 @@ export class ConcurrencyQueue extends EventEmitter {
 	}
 
 	remove(executionId: string) {
-		const index = this.queue.findIndex((item) => item[0] === executionId);
+		const index = this.queue.findIndex((item) => item.executionId === executionId);
 
 		if (index > -1) {
 			this.queue.splice(index, 1);
@@ -52,7 +40,7 @@ export class ConcurrencyQueue extends EventEmitter {
 	}
 
 	getAll() {
-		return new Set(...this.queue.map((item) => item[0]));
+		return new Set(...this.queue.map((item) => item.executionId));
 	}
 
 	private resolveNext() {
@@ -60,14 +48,9 @@ export class ConcurrencyQueue extends EventEmitter {
 
 		if (!execution) return;
 
-		const [executionId, workflowId, resolve] = execution;
+		const { resolve, ...ids } = execution;
 
-		this.emit('execution-released', {
-			executionId,
-			workflowId,
-			capacity: this.capacity,
-			kind: this.kind,
-		});
+		this.emit('execution-released', ids);
 
 		resolve();
 	}
