@@ -13,7 +13,12 @@ import {
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { escapeMappingString } from '@/utils/mappingUtils';
-import { PREVIOUS_NODES_SECTION, RECOMMENDED_SECTION, ROOT_DOLLAR_COMPLETIONS } from './constants';
+import {
+	METADATA_SECTION,
+	PREVIOUS_NODES_SECTION,
+	RECOMMENDED_SECTION,
+	ROOT_DOLLAR_COMPLETIONS,
+} from './constants';
 import { createInfoBoxRenderer } from './infoBoxRenderer';
 
 /**
@@ -79,7 +84,7 @@ export function dollarOptions(): Completion[] {
 				section: RECOMMENDED_SECTION,
 				info: createInfoBoxRenderer({
 					name: '$request',
-					returnType: 'object',
+					returnType: 'Object',
 					docURL: 'https://docs.n8n.io/code/builtin/http-node-variables/',
 					description: i18n.baseText('codeNodeEditor.completer.$request'),
 				}),
@@ -91,12 +96,22 @@ export function dollarOptions(): Completion[] {
 		return useExternalSecretsStore().isEnterpriseExternalSecretsEnabled
 			? [
 					{
-						label: '$secrets',
-						type: 'keyword',
+						label: '$vars',
+						section: METADATA_SECTION,
+						info: createInfoBoxRenderer({
+							name: '$vars',
+							returnType: 'Object',
+							description: i18n.baseText('codeNodeEditor.completer.$vars'),
+						}),
 					},
 					{
-						label: '$vars',
-						type: 'keyword',
+						label: '$secrets',
+						section: METADATA_SECTION,
+						info: createInfoBoxRenderer({
+							name: '$secrets',
+							returnType: 'Object',
+							description: i18n.baseText('codeNodeEditor.completer.$secrets'),
+						}),
 					},
 				]
 			: [];
@@ -114,7 +129,7 @@ export function dollarOptions(): Completion[] {
 			label,
 			info: createInfoBoxRenderer({
 				name: label,
-				returnType: 'object',
+				returnType: 'Object',
 				description: i18n.baseText('codeNodeEditor.completer.$()', { interpolate: { nodeName } }),
 			}),
 			section: PREVIOUS_NODES_SECTION,
