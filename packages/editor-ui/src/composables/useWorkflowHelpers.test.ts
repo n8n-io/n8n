@@ -32,6 +32,20 @@ const duplicateTestWorkflow: IWorkflowDataUpdate = {
 			position: [700, 40],
 			webhookId: 'aa5150d8-1d7d-4247-88d8-44c96fe3a37b',
 		},
+		{
+			parameters: {
+				resume: 'webhook',
+				options: {
+					webhookSuffix: '/test',
+				},
+			},
+			id: '979d8443-51b1-48e2-b239-acf399b66509',
+			name: 'Wait',
+			type: 'n8n-nodes-base.wait',
+			typeVersion: 1.1,
+			position: [900, 20],
+			webhookId: '5340ae49-2c96-4492-9073-7744d2e52b8a',
+		},
 	],
 	connections: {},
 };
@@ -69,6 +83,11 @@ describe('useWorkflowHelpers', () => {
 			const { saveAsNewWorkflow } = useWorkflowHelpers({ router });
 			const webHookIdsPreSave = duplicateTestWorkflow.nodes.map((node) => node.webhookId);
 			const pathsPreSave = duplicateTestWorkflow.nodes.map((node) => node.parameters.path);
+			const webhookSuffixPreSave = duplicateTestWorkflow.nodes
+				.map((node) => node.parameters.options)
+				.filter((options): options is { webhookSuffix: string } => typeof options !== 'string')
+				.map((options) => options.webhookSuffix)
+				.filter((suffix) => suffix);
 
 			await saveAsNewWorkflow({
 				name: duplicateTestWorkflow.name,
@@ -76,11 +95,17 @@ describe('useWorkflowHelpers', () => {
 				data: duplicateTestWorkflow,
 			});
 
-			// Expect the webhookIds and paths to be different
 			const webHookIdsPostSave = duplicateTestWorkflow.nodes.map((node) => node.webhookId);
-			expect(webHookIdsPreSave).not.toEqual(webHookIdsPostSave);
 			const pathsPostSave = duplicateTestWorkflow.nodes.map((node) => node.parameters.path);
+			const webhookSuffixPostSave = duplicateTestWorkflow.nodes
+				.map((node) => node.parameters.options)
+				.filter((options): options is { webhookSuffix: string } => typeof options !== 'string')
+				.map((options) => options.webhookSuffix)
+				.filter((suffix) => suffix);
+			// Expect webhookIds, paths and suffix to be different
+			expect(webHookIdsPreSave).not.toEqual(webHookIdsPostSave);
 			expect(pathsPreSave).not.toEqual(pathsPostSave);
+			expect(webhookSuffixPreSave).not.toEqual(webhookSuffixPostSave);
 		});
 
 		it('should respect `resetWebhookUrls` when duplicating workflows', async () => {
@@ -90,6 +115,11 @@ describe('useWorkflowHelpers', () => {
 			const { saveAsNewWorkflow } = useWorkflowHelpers({ router });
 			const webHookIdsPreSave = duplicateTestWorkflow.nodes.map((node) => node.webhookId);
 			const pathsPreSave = duplicateTestWorkflow.nodes.map((node) => node.parameters.path);
+			const webhookSuffixPreSave = duplicateTestWorkflow.nodes
+				.map((node) => node.parameters.options)
+				.filter((options): options is { webhookSuffix: string } => typeof options !== 'string')
+				.map((options) => options.webhookSuffix)
+				.filter((suffix) => suffix);
 
 			await saveAsNewWorkflow({
 				name: duplicateTestWorkflow.name,
@@ -97,11 +127,17 @@ describe('useWorkflowHelpers', () => {
 				data: duplicateTestWorkflow,
 			});
 
-			// Now. webhookIds and paths should be the same
 			const webHookIdsPostSave = duplicateTestWorkflow.nodes.map((node) => node.webhookId);
-			expect(webHookIdsPreSave).toEqual(webHookIdsPostSave);
 			const pathsPostSave = duplicateTestWorkflow.nodes.map((node) => node.parameters.path);
+			const webhookSuffixPostSave = duplicateTestWorkflow.nodes
+				.map((node) => node.parameters.options)
+				.filter((options): options is { webhookSuffix: string } => typeof options !== 'string')
+				.map((options) => options.webhookSuffix)
+				.filter((suffix) => suffix);
+			// Now, webhookIds, paths and suffix should be the same
+			expect(webHookIdsPreSave).toEqual(webHookIdsPostSave);
 			expect(pathsPreSave).toEqual(pathsPostSave);
+			expect(webhookSuffixPreSave).not.toEqual(webhookSuffixPostSave);
 		});
 	});
 });

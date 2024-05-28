@@ -1009,6 +1009,14 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 						node.parameters.path = newId;
 						changedNodes[node.name] = node.webhookId;
 					}
+					// Also update the webhookSuffix if it exists in wait nodes
+					if (
+						node.parameters.options &&
+						typeof node.parameters.options === 'object' &&
+						'webhookSuffix' in node.parameters.options
+					) {
+						node.parameters.options.webhookSuffix = `${node.parameters.options.webhookSuffix}-copy`;
+					}
 					return node;
 				});
 			}
