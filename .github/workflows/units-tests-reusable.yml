@@ -12,7 +12,7 @@ on:
         description: 'Version of node to use.'
         required: false
         type: string
-        default: '18.x'
+        default: 20.x
       cacheKey:
         description: 'Cache key for modules and build artifacts.'
         required: false
@@ -37,7 +37,7 @@ jobs:
 
       - run: corepack enable
       - name: Use Node.js ${{ inputs.nodeVersion }}
-        uses: actions/setup-node@v4.0.1
+        uses: actions/setup-node@v4.0.2
         with:
           node-version: ${{ inputs.nodeVersion }}
           cache: pnpm

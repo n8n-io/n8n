@@ -71,6 +71,45 @@ describe('Current Workflow Executions', () => {
 		cy.wait(executionsRefreshInterval);
 		cy.url().should('not.include', '/executions');
 	});
+
+	it.only('should auto load more items if there is space and auto scroll', () => {
+		cy.viewport(1280, 960);
+		executionsTab.actions.createManualExecutions(24);
+
+		cy.intercept('GET', '/rest/executions?filter=*').as('getExecutions');
+		cy.intercept('GET', '/rest/executions/*').as('getExecution');
+		executionsTab.actions.switchToExecutionsTab();
+
+		cy.wait(['@getExecutions']);
+		executionsTab.getters.executionListItems().its('length').should('be.gte', 10);
+
+		cy.getByTestId('current-executions-list').scrollTo('bottom');
+		cy.wait(['@getExecutions']);
+		executionsTab.getters.executionListItems().should('have.length', 24);
+
+		executionsTab.getters.executionListItems().eq(14).click();
+		cy.wait(['@getExecution']);
+		cy.reload();
+
+		cy.wait(['@getExecutions']);
+		executionsTab.getters.executionListItems().eq(14).should('not.be.visible');
+		executionsTab.getters.executionListItems().should('have.length', 24);
+		executionsTab.getters.executionListItems().first().should('not.be.visible');
+		cy.getByTestId('current-executions-list').scrollTo(0, 0);
+		executionsTab.getters.executionListItems().first().should('be.visible');
+		executionsTab.getters.executionListItems().eq(14).should('not.be.visible');
+
+		executionsTab.actions.switchToEditorTab();
+		executionsTab.actions.switchToExecutionsTab();
+
+		cy.wait(['@getExecutions']);
+		executionsTab.getters.executionListItems().eq(14).should('not.be.visible');
+		executionsTab.getters.executionListItems().should('have.length', 24);
+		executionsTab.getters.executionListItems().first().should('not.be.visible');
+		cy.getByTestId('current-executions-list').scrollTo(0, 0);
+		executionsTab.getters.executionListItems().first().should('be.visible');
+		executionsTab.getters.executionListItems().eq(14).should('not.be.visible');
+	});
 });
 
 const createMockExecutions = () => {
