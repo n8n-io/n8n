@@ -72,7 +72,7 @@ describe('Current Workflow Executions', () => {
 		cy.url().should('not.include', '/executions');
 	});
 
-	it.only('should auto load more items if there is space and auto scroll', () => {
+	it('should auto load more items if there is space and auto scroll', () => {
 		cy.viewport(1280, 960);
 		executionsTab.actions.createManualExecutions(24);
 
@@ -110,6 +110,17 @@ describe('Current Workflow Executions', () => {
 		executionsTab.getters.executionListItems().first().should('be.visible');
 		executionsTab.getters.executionListItems().eq(14).should('not.be.visible');
 	});
+
+	it('should show workflow data in executions tab after hard reload', () => {
+		executionsTab.actions.switchToExecutionsTab();
+		checkMainHeaderELements();
+
+		cy.reload();
+		checkMainHeaderELements();
+
+		executionsTab.actions.switchToEditorTab();
+		checkMainHeaderELements();
+	});
 });
 
 const createMockExecutions = () => {
@@ -120,4 +131,11 @@ const createMockExecutions = () => {
 	// Then add some more successful ones
 	executionsTab.actions.toggleNodeEnabled('Error');
 	executionsTab.actions.createManualExecutions(4);
+};
+
+const checkMainHeaderELements = () => {
+	workflowPage.getters.workflowNameInputContainer().should('be.visible');
+	workflowPage.getters.workflowTagsContainer().should('be.visible');
+	workflowPage.getters.workflowMenu().should('be.visible');
+	workflowPage.getters.saveButton().should('be.visible');
 };
