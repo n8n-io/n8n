@@ -5,12 +5,12 @@ import { waitFor, fireEvent } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
 import { beforeEach, describe, vi } from 'vitest';
 import { defineComponent, h, ref, toValue } from 'vue';
-import { n8nLang } from '../../plugins/codemirror/n8nLang';
+import { n8nLang } from '@/plugins/codemirror/n8nLang';
 import { useExpressionEditor } from '../useExpressionEditor';
 import { useRouter } from 'vue-router';
 import { EditorSelection } from '@codemirror/state';
 import userEvent from '@testing-library/user-event';
-import { renderComponent } from '../../__tests__/render';
+import { renderComponent } from '@/__tests__/render';
 
 vi.mock('@/composables/useAutocompleteTelemetry', () => ({
 	useAutocompleteTelemetry: vi.fn(),
