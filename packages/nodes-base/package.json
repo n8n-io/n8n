@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.42.0",
+  "version": "1.43.0",
   "description": "Base nodes of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -901,7 +901,7 @@
     "ts-ics": "^1.2.2",
     "typedi": "0.10.0",
     "uuid": "8.3.2",
-    "xlsx": "https://cdn.sheetjs.com/xlsx-0.19.3/xlsx-0.19.3.tgz",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz",
     "xml2js": "0.6.2"
   }
 }

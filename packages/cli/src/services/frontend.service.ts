@@ -31,6 +31,7 @@ import type { CommunityPackagesService } from '@/services/communityPackages.serv
 import { Logger } from '@/Logger';
 import { UrlService } from './url.service';
 import { InternalHooks } from '@/InternalHooks';
+import { isApiEnabled } from '@/PublicApi';
 
 @Service()
 export class FrontendService {
@@ -143,7 +144,7 @@ export class FrontendService {
 				},
 			},
 			publicApi: {
-				enabled: !config.get('publicApi.disabled') && !this.license.isAPIDisabled(),
+				enabled: isApiEnabled(),
 				latestVersion: 1,
 				path: config.getEnv('publicApi.path'),
 				swaggerUi: {

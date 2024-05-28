@@ -10,12 +10,12 @@ import { WorkflowDataProxy } from 'n8n-workflow';
 import { createTestWorkflowObject } from '@/__tests__/mocks';
 
 const nodeTypes: INodeTypeData = {
-	'test.set': {
+	'n8n-nodes-base.set': {
 		sourcePath: '',
 		type: {
 			description: {
 				displayName: 'Set',
-				name: 'set',
+				name: 'n8n-nodes-base.set',
 				group: ['input'],
 				version: 1,
 				description: 'Sets a value',
@@ -47,7 +47,7 @@ const nodeTypes: INodeTypeData = {
 const nodes: INode[] = [
 	{
 		name: 'Start',
-		type: 'test.set',
+		type: 'n8n-nodes-base.set',
 		parameters: {},
 		typeVersion: 1,
 		id: 'uuid-1',
@@ -55,7 +55,7 @@ const nodes: INode[] = [
 	},
 	{
 		name: 'Function',
-		type: 'test.set',
+		type: 'n8n-nodes-base.set',
 		parameters: {
 			functionCode:
 				'// Code here will run only once, no matter how many input items there are.\n// More info and help: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.function/\nconst { DateTime, Duration, Interval } = require("luxon");\n\nconst data = [\n  {\n  "length": 105\n  },\n  {\n  "length": 160\n  },\n  {\n  "length": 121\n  },\n  {\n  "length": 275\n  },\n  {\n  "length": 950\n  },\n];\n\nreturn data.map(fact => ({json: fact}));',
@@ -66,7 +66,7 @@ const nodes: INode[] = [
 	},
 	{
 		name: 'Rename',
-		type: 'test.set',
+		type: 'n8n-nodes-base.set',
 		parameters: {
 			value1: 'data',
 			value2: 'initialName',
@@ -77,7 +77,7 @@ const nodes: INode[] = [
 	},
 	{
 		name: 'End',
-		type: 'test.set',
+		type: 'n8n-nodes-base.set',
 		parameters: {},
 		typeVersion: 1,
 		id: 'uuid-4',

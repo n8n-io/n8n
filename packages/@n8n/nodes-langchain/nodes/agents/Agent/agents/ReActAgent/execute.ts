@@ -6,7 +6,7 @@ import {
 } from 'n8n-workflow';
 
 import { AgentExecutor, ChatAgent, ZeroShotAgent } from 'langchain/agents';
-import type { BaseLanguageModel } from 'langchain/base_language';
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { CombiningOutputParser } from 'langchain/output_parsers';
@@ -18,6 +18,7 @@ import {
 	isChatInstance,
 } from '../../../../../utils/helpers';
 import { getTracingConfig } from '../../../../../utils/tracing';
+import { throwIfToolSchema } from '../../../../../utils/schemaParsing';
 
 export async function reActAgentAgentExecute(
 	this: IExecuteFunctions,
@@ -112,6 +113,7 @@ export async function reActAgentAgentExecute(
 
 			returnData.push({ json: response });
 		} catch (error) {
+			throwIfToolSchema(this, error);
 			if (this.continueOnFail()) {
 				returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
 				continue;
@@ -121,5 +123,5 @@ export async function reActAgentAgentExecute(
 		}
 	}
 
-	return await this.prepareOutputData(returnData);
+	return [returnData];
 }

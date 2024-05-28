@@ -154,8 +154,11 @@
 	// Notification
 	--color-notification-background: var(--prim-gray-740);
 
-	// Execution card
+	// Execution
 	--execution-card-background-hover: var(--color-foreground-base);
+	--execution-selector-background: var(--prim-gray-740);
+	--execution-selector-text: var(--color-text-base);
+	--execution-select-all-text: var(--color-text-base);
 
 	// NDV
 	--color-run-data-background: var(--prim-gray-800);

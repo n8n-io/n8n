@@ -7,10 +7,11 @@ on:
         description: 'Node.js version to build this image with.'
         type: choice
         required: true
-        default: '18'
+        default: '20'
         options:
           - '18'
           - '20'
+          - '22'
 
 jobs:
   build:

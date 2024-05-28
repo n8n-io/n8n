@@ -274,7 +274,7 @@
 				</n8n-text>
 				<slot v-else-if="$slots['content']" name="content"></slot>
 				<NodeErrorView
-					v-else-if="hasRunError"
+					v-else-if="workflowRunErrorAsNodeError"
 					:error="workflowRunErrorAsNodeError"
 					:class="$style.dataDisplay"
 				/>
@@ -370,7 +370,7 @@
 				</n8n-text>
 			</div>
 
-			<Suspense v-else-if="hasNodeRun && displayMode === 'table'">
+			<Suspense v-else-if="hasNodeRun && displayMode === 'table' && node">
 				<RunDataTable
 					:node="node"
 					:input-data="inputDataPage"
@@ -644,8 +644,8 @@ export default defineComponent({
 	},
 	props: {
 		node: {
-			type: Object as PropType<INodeUi>,
-			required: true,
+			type: Object as PropType<INodeUi | null>,
+			default: null,
 		},
 		runIndex: {
 			type: Number,
@@ -836,14 +836,14 @@ export default defineComponent({
 		hasSubworkflowExecutionError(): boolean {
 			return Boolean(this.workflowsStore.subWorkflowExecutionError);
 		},
-		workflowRunErrorAsNodeError(): NodeError {
-			return {
-				node: this.node,
-				messages: [this.workflowRunData?.[this.node?.name]?.[this.runIndex]?.error?.message ?? ''],
-			} as NodeError;
+		workflowRunErrorAsNodeError(): NodeError | null {
+			if (!this.node) {
+				return null;
+			}
+			return this.workflowRunData?.[this.node?.name]?.[this.runIndex]?.error as NodeError;
 		},
 		hasRunError(): boolean {
-			return Boolean(this.node && this.workflowRunData?.[this.node.name]?.[this.runIndex]?.error);
+			return Boolean(this.node && this.workflowRunErrorAsNodeError);
 		},
 		executionHints(): NodeHint[] {
 			if (this.hasNodeRun) {
@@ -985,7 +985,7 @@ export default defineComponent({
 					outputName = `${this.$locale.baseText('ndv.output')} ${outputName}`;
 				} else {
 					const appendBranchWord = NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND.includes(
-						this.node?.type,
+						this.node?.type ?? '',
 					)
 						? ''
 						: ` ${this.$locale.baseText('ndv.output.branch')}`;
@@ -1020,6 +1020,24 @@ export default defineComponent({
 		},
 		showIoSearchNoMatchContent(): boolean {
 			return this.hasNodeRun && !this.inputData.length && !!this.search;
+		},
+		parentNodeOutputData(): INodeExecutionData[] {
+			const workflow = this.workflowsStore.getCurrentWorkflow();
+
+			const parentNode = workflow.getParentNodesByDepth(this.node?.name ?? '')[0];
+			let parentNodeData: INodeExecutionData[] = [];
+
+			if (parentNode?.name) {
+				parentNodeData = this.nodeHelpers.getNodeInputData(
+					workflow.getNode(parentNode?.name),
+					this.runIndex,
+					this.outputIndex,
+					'input',
+					this.connectionType,
+				);
+			}
+
+			return parentNodeData;
 		},
 	},
 	watch: {
@@ -1080,7 +1098,7 @@ export default defineComponent({
 			this.activatePane();
 		}
 
-		if (this.hasRunError) {
+		if (this.hasRunError && this.node) {
 			const error = this.workflowRunData?.[this.node.name]?.[this.runIndex]?.error;
 			const errorsToTrack = ['unknown error'];
 
@@ -1118,19 +1136,18 @@ export default defineComponent({
 		},
 		shouldHintBeDisplayed(hint: NodeHint): boolean {
 			const { location, whenToDisplay } = hint;
+
 			if (location) {
-				if (location === 'ndv') {
-					return true;
+				if (location === 'ndv' && !['input', 'output'].includes(this.paneType)) {
+					return false;
 				}
-				if (location === 'inputPane' && this.paneType === 'input') {
-					return true;
-				}
-
-				if (location === 'outputPane' && this.paneType === 'output') {
-					return true;
+				if (location === 'inputPane' && this.paneType !== 'input') {
+					return false;
 				}
 
-				return false;
+				if (location === 'outputPane' && this.paneType !== 'output') {
+					return false;
+				}
 			}
 
 			if (whenToDisplay === 'afterExecution' && !this.hasNodeRun) {
@@ -1150,7 +1167,12 @@ export default defineComponent({
 
 				if (workflowNode) {
 					const executionHints = this.executionHints;
-					const nodeHints = NodeHelpers.getNodeHints(workflow, workflowNode, this.nodeType);
+					const nodeHints = NodeHelpers.getNodeHints(workflow, workflowNode, this.nodeType, {
+						runExecutionData: this.workflowExecution?.data ?? null,
+						runIndex: this.runIndex,
+						connectionInputData: this.parentNodeOutputData,
+					});
+
 					return executionHints.concat(nodeHints).filter(this.shouldHintBeDisplayed);
 				}
 			}
@@ -1529,7 +1551,7 @@ export default defineComponent({
 			}
 		},
 		async downloadJsonData() {
-			const fileName = this.node.name.replace(/[^\w\d]/g, '_');
+			const fileName = (this.node?.name ?? '').replace(/[^\w\d]/g, '_');
 			const blob = new Blob([JSON.stringify(this.rawInputData, null, 2)], {
 				type: 'application/json',
 			});
@@ -1541,7 +1563,7 @@ export default defineComponent({
 			this.binaryDataDisplayVisible = true;
 
 			this.binaryDataDisplayData = {
-				node: this.node.name,
+				node: this.node?.name,
 				runIndex: this.runIndex,
 				outputIndex: this.currentOutputIndex,
 				index,

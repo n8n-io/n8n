@@ -1704,6 +1704,21 @@ export const enum NodeConnectionType {
 	Main = 'main',
 }
 
+export const nodeConnectionTypes: NodeConnectionType[] = [
+	NodeConnectionType.AiAgent,
+	NodeConnectionType.AiChain,
+	NodeConnectionType.AiDocument,
+	NodeConnectionType.AiEmbedding,
+	NodeConnectionType.AiLanguageModel,
+	NodeConnectionType.AiMemory,
+	NodeConnectionType.AiOutputParser,
+	NodeConnectionType.AiRetriever,
+	NodeConnectionType.AiTextSplitter,
+	NodeConnectionType.AiTool,
+	NodeConnectionType.AiVectorStore,
+	NodeConnectionType.Main,
+];
+
 export interface INodeInputFilter {
 	// TODO: Later add more filter options like categories, subcatogries,
 	//       regex, allow to exclude certain nodes, ... ?

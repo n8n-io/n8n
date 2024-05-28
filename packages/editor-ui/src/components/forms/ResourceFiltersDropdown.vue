@@ -32,6 +32,7 @@
 					class="pt-2xs"
 					:projects="projectsStore.projects"
 					:placeholder="$locale.baseText('forms.resourceFiltersDropdown.owner.placeholder')"
+					:empty-options-text="$locale.baseText('projects.sharing.noMatchingProjects')"
 					@update:model-value="setKeyValue('homeProject', ($event as ProjectSharingData).id)"
 				/>
 			</enterprise-edition>

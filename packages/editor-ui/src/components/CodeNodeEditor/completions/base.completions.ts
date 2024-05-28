@@ -1,5 +1,5 @@
 import { NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION } from '../constants';
-import { addVarType } from '../utils';
+import { addInfoRenderer, addVarType } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { INodeUi } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -128,7 +128,7 @@ export function useBaseCompletions(
 
 		return {
 			from: preCursor.from,
-			options,
+			options: options.map(addInfoRenderer),
 		};
 	};
 

@@ -3,7 +3,7 @@ import {
 	ErrorReporterProxy as ErrorReporter,
 	WorkflowOperationError,
 } from 'n8n-workflow';
-import { Container, Service } from 'typedi';
+import { Service } from 'typedi';
 import type { ExecutionStopResult, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
@@ -137,10 +137,7 @@ export class WaitTracker {
 		fullExecutionData.waitTill = null;
 		fullExecutionData.status = 'canceled';
 
-		await Container.get(ExecutionRepository).updateExistingExecution(
-			executionId,
-			fullExecutionData,
-		);
+		await this.executionRepository.updateExistingExecution(executionId, fullExecutionData);
 
 		return {
 			mode: fullExecutionData.mode,

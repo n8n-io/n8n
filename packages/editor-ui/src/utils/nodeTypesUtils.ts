@@ -143,8 +143,8 @@ export const getMainAuthField = (nodeType: INodeTypeDescription | null): INodePr
 		credentialDependencies.find(
 			(prop) =>
 				prop.name === MAIN_AUTH_FIELD_NAME &&
-				!prop.options?.find((option) => option.value === 'none'),
-		) || null;
+				!prop.options?.find((option) => 'value' in option && option.value === 'none'),
+		) ?? null;
 	// If there is a field name `authentication`, use it
 	// Otherwise, try to find alternative main auth field
 	const mainAuthFiled =
@@ -166,7 +166,7 @@ const findAlternativeAuthField = (
 		if (cred.displayOptions?.show) {
 			for (const fieldName in cred.displayOptions.show) {
 				dependentAuthFieldValues[fieldName] = (dependentAuthFieldValues[fieldName] || []).concat(
-					(cred.displayOptions.show[fieldName] || []).map((val) => (val ? val.toString() : '')),
+					(cred.displayOptions.show[fieldName] ?? []).map((val) => (val ? val.toString() : '')),
 				);
 			}
 		}
@@ -174,7 +174,11 @@ const findAlternativeAuthField = (
 	const alternativeAuthField = fields.find((field) => {
 		let required = true;
 		field.options?.forEach((option) => {
-			if (!dependentAuthFieldValues[field.name].includes(option.value)) {
+			if (
+				'value' in option &&
+				typeof option.value === 'string' &&
+				!dependentAuthFieldValues[field.name].includes(option.value)
+			) {
 				required = false;
 			}
 		});
@@ -206,21 +210,24 @@ export const getNodeAuthOptions = (
 		if (field.options) {
 			options = options.concat(
 				field.options.map((option) => {
+					const optionValue = 'value' in option ? `${option.value}` : '';
+
 					// Check if credential type associated with this auth option has overwritten properties
 					let hasOverrides = false;
-					const cred = getNodeCredentialForSelectedAuthType(nodeType, option.value);
+					const cred = getNodeCredentialForSelectedAuthType(nodeType, optionValue);
 					if (cred) {
 						hasOverrides =
 							useCredentialsStore().getCredentialTypeByName(cred.name)?.__overwrittenProperties !==
 							undefined;
 					}
+
 					return {
 						name:
 							// Add recommended suffix if credentials have overrides and option is not already recommended
 							hasOverrides && !option.name.endsWith(recommendedSuffix)
 								? `${option.name} ${recommendedSuffix}`
 								: option.name,
-						value: option.value,
+						value: optionValue,
 						// Also add in the display options so we can hide/show the option if necessary
 						displayOptions: field.displayOptions,
 					};

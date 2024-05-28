@@ -1,4 +1,4 @@
-import { addVarType, escape } from '../utils';
+import { addInfoRenderer, addVarType, escape } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import { useI18n } from '@/composables/useI18n';
 
@@ -17,15 +17,6 @@ export function useExecutionCompletions() {
 		const preCursor = context.matchBefore(pattern);
 
 		if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
-
-		const buildLinkNode = (text: string) => {
-			const wrapper = document.createElement('span');
-			// This is being loaded from the locales file. This could
-			// cause an XSS of some kind but multiple other locales strings
-			// do the same thing.
-			wrapper.innerHTML = text;
-			return () => wrapper;
-		};
 
 		const options: Completion[] = [
 			{
@@ -46,29 +37,25 @@ export function useExecutionCompletions() {
 			},
 			{
 				label: `${matcher}.customData.set("key", "value")`,
-				info: buildLinkNode(i18n.baseText('codeNodeEditor.completer.$execution.customData.set()')),
+				info: i18n.baseText('codeNodeEditor.completer.$execution.customData.set'),
 			},
 			{
 				label: `${matcher}.customData.get("key")`,
-				info: buildLinkNode(i18n.baseText('codeNodeEditor.completer.$execution.customData.get()')),
+				info: i18n.baseText('codeNodeEditor.completer.$execution.customData.get'),
 			},
 			{
 				label: `${matcher}.customData.setAll({})`,
-				info: buildLinkNode(
-					i18n.baseText('codeNodeEditor.completer.$execution.customData.setAll()'),
-				),
+				info: i18n.baseText('codeNodeEditor.completer.$execution.customData.setAll'),
 			},
 			{
 				label: `${matcher}.customData.getAll()`,
-				info: buildLinkNode(
-					i18n.baseText('codeNodeEditor.completer.$execution.customData.getAll()'),
-				),
+				info: i18n.baseText('codeNodeEditor.completer.$execution.customData.getAll'),
 			},
 		];
 
 		return {
 			from: preCursor.from,
-			options: options.map(addVarType),
+			options: options.map(addVarType).map(addInfoRenderer),
 		};
 	};
 
