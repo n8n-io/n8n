@@ -98,7 +98,7 @@ export class SourceControlService {
 				throw new ApplicationError('Branch is not set up correctly');
 			}
 		} catch (error) {
-			this.logger.debug('[Source Control] Sanity check failed', { error });
+			this.logger.debug('[Source Control] Sanity check failed', { error: error as Error });
 			throw new BadRequestError(
 				'Source control is not properly set up, please disconnect and reconnect.',
 			);

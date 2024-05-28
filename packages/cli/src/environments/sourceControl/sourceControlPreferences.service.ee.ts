@@ -74,7 +74,7 @@ export class SourceControlPreferencesService {
 		try {
 			return jsonParse<KeyPair>(dbSetting.value);
 		} catch (error) {
-			this.logger.error('Failed to parse key pair from database', { error });
+			this.logger.error('Failed to parse key pair from database', { error: error as Error });
 			return null;
 		}
 	}
@@ -232,7 +232,9 @@ export class SourceControlPreferencesService {
 					{ transaction: false },
 				);
 			} catch (error) {
-				throw new ApplicationError('Failed to save source control preferences', { cause: error });
+				throw new ApplicationError('Failed to save source control preferences', {
+					cause: error as Error,
+				});
 			}
 		}
 		return this.sourceControlPreferences;
