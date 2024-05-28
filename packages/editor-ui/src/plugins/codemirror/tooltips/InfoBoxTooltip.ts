@@ -1,14 +1,21 @@
 import {
 	CompletionContext,
-	type CompletionInfo,
-	type CompletionResult,
 	completionStatus,
 	type Completion,
+	type CompletionInfo,
+	type CompletionResult,
 } from '@codemirror/autocomplete';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { syntaxTree } from '@codemirror/language';
 import { StateEffect, StateField, type EditorState, type Extension } from '@codemirror/state';
-import { EditorView, hoverTooltip, keymap, showTooltip, type Tooltip } from '@codemirror/view';
+import {
+	hoverTooltip,
+	keymap,
+	showTooltip,
+	type Command,
+	type EditorView,
+	type Tooltip,
+} from '@codemirror/view';
 import type { SyntaxNode } from '@lezer/common';
 import type { createInfoBoxRenderer } from '../completions/infoBoxRenderer';
 
@@ -255,7 +262,7 @@ export const hoverTooltipSource = (view: EditorView, pos: number) => {
 		});
 
 		if (newHoverTooltip && cursorTooltipOpen) {
-			view.dispatch({ effects: closeInfoBoxEffect.of(null) });
+			closeCursorInfoBox(view);
 		}
 
 		return newHoverTooltip;
@@ -288,26 +295,22 @@ const hoverInfoBoxTooltip = hoverTooltip(hoverTooltipSource, {
 
 const closeInfoBoxEffect = StateEffect.define<null>();
 
+export const closeCursorInfoBox: Command = (view) => {
+	const state = view.state.field(cursorInfoBoxTooltip, false);
+	if (!state?.tooltip) return false;
+
+	view.dispatch({ effects: closeInfoBoxEffect.of(null) });
+	return true;
+};
+
 export const infoBoxTooltips = (): Extension[] => {
 	return [
 		cursorInfoBoxTooltip,
 		hoverInfoBoxTooltip,
-		EditorView.focusChangeEffect.of((_, focus) => {
-			if (!focus) {
-				return closeInfoBoxEffect.of(null);
-			}
-			return null;
-		}),
 		keymap.of([
 			{
 				key: 'Escape',
-				run: (view) => {
-					const state = view.state.field(cursorInfoBoxTooltip, false);
-					if (!state?.tooltip) return false;
-
-					view.dispatch({ effects: closeInfoBoxEffect.of(null) });
-					return true;
-				},
+				run: closeCursorInfoBox,
 			},
 		]),
 	];
