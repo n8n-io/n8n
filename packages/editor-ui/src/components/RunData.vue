@@ -1788,7 +1788,7 @@ export default defineComponent({
 }
 
 .runSelectorInner {
-	max-width: 160px;
+	max-width: 172px;
 }
 
 .pagination {

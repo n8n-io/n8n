@@ -618,7 +618,7 @@ export default defineComponent({
 }
 
 .inputSelector {
-	max-width: 240px;
+	max-width: 224px;
 
 	:global(.el-input--suffix .el-input__inner) {
 		padding-left: calc(var(--spacing-l) + var(--spacing-4xs));
