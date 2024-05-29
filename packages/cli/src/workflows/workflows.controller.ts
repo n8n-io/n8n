@@ -7,7 +7,16 @@ import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import type { IWorkflowResponse } from '@/Interfaces';
 import config from '@/config';
-import { Delete, Get, Patch, Post, ProjectScope, Put, RestController } from '@/decorators';
+import {
+	Delete,
+	Get,
+	Licensed,
+	Patch,
+	Post,
+	ProjectScope,
+	Put,
+	RestController,
+} from '@/decorators';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
@@ -40,6 +49,7 @@ import { ApplicationError } from 'n8n-workflow';
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
 import type { Project } from '@/databases/entities/Project';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
+import { z } from 'zod';
 
 @RestController('/workflows')
 export class WorkflowsController {
@@ -459,5 +469,17 @@ export class WorkflowsController {
 			newShareeIds: projectsRelations.map((pr) => pr.userId),
 			workflow,
 		});
+	}
+
+	@Put('/:workflowId/transfer')
+	@Licensed('feat:advancedPermissions')
+	async transfer(req: WorkflowRequest.Transfer) {
+		const body = z.object({ toProject: z.string() }).parse(req.body);
+
+		return await this.enterpriseWorkflowService.transferOne(
+			req.user,
+			req.params.workflowId,
+			body.toProject,
+		);
 	}
 }

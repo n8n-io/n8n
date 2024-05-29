@@ -38,7 +38,7 @@ export abstract class ExecutionBaseError extends ApplicationError {
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	toJSON?(): any {
+	toJSON() {
 		return {
 			message: this.message,
 			lineNumber: this.lineNumber,
