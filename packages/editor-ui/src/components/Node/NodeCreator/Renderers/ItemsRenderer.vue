@@ -153,7 +153,7 @@ watch(
 					}"
 					data-test-id="item-iterator-item"
 					:data-keyboard-nav-type="item.type !== 'label' ? item.type : undefined"
-					:data-keyboard-nav-id="item.uuid"
+					:data-keyboard-nav-id="item.uuid ?? item.type"
 					@click="wrappedEmit('selected', item)"
 				>
 					<LabelItem v-if="item.type === 'label'" :item="item" />
@@ -176,17 +176,13 @@ watch(
 					<ViewItem
 						v-else-if="item.type === 'view'"
 						:view="item.properties"
-						:class="{
-							[$style.viewItem]: true,
-						}"
+						:class="$style.viewItem"
 					/>
 
 					<LinkItem
 						v-else-if="item.type === 'link'"
 						:link="item.properties"
-						:class="{
-							[$style.linkItem]: true,
-						}"
+						:class="$style.linkItem"
 					/>
 				</div>
 			</div>

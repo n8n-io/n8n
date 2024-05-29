@@ -999,6 +999,7 @@
 	"nodeCreator.actionsTooltip.actionsPerformStep": "Actions perform a step once your workflow has already started. <a target=\"_blank\" href=\"https://docs.n8n.io/integrations/builtin/\"> Learn more</a>",
 	"nodeCreator.actionsCallout.noTriggerItems": "No <strong>{nodeName}</strong> Triggers available. Users often combine the following Triggers with <strong>{nodeName}</strong> Actions.",
 	"nodeCreator.categoryNames.otherCategories": "Results in other categories",
+	"nodeCreator.subnodes": "sub-nodes",
 	"nodeCreator.noResults.dontWorryYouCanProbablyDoItWithThe": "Don’t worry, you can probably do it with the",
 	"nodeCreator.noResults.httpRequest": "HTTP Request",
 	"nodeCreator.noResults.node": "node",

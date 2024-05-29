@@ -6,12 +6,18 @@ import type {
 	INodeCreateElement,
 	SectionCreateElement,
 } from '@/Interface';
-import { AI_SUBCATEGORY, CORE_NODES_CATEGORY, DEFAULT_SUBCATEGORY } from '@/constants';
+import {
+	AI_CATEGORY_AGENTS,
+	AI_SUBCATEGORY,
+	CORE_NODES_CATEGORY,
+	DEFAULT_SUBCATEGORY,
+} from '@/constants';
 import { v4 as uuidv4 } from 'uuid';
 
 import { sublimeSearch } from '@/utils/sortUtils';
 import type { NodeViewItemSection } from './viewsData';
 import { i18n } from '@/plugins/i18n';
+import { sortBy } from 'lodash-es';
 
 export function transformNodeType(
 	node: SimplifiedNodeType,
@@ -85,9 +91,17 @@ export function flattenCreateElements(items: INodeCreateElement[]): INodeCreateE
 	return items.map((item) => (item.type === 'section' ? item.children : item)).flat();
 }
 export function isAINode(node: INodeCreateElement) {
-	if (node.type !== 'node') return false;
+	const isNode = node.type === 'node';
+	if (!isNode) return false;
 
-	return node.properties.codex?.categories?.includes(AI_SUBCATEGORY);
+	if (node.properties.codex?.categories?.includes(AI_SUBCATEGORY)) {
+		const isAgentSubcategory =
+			node.properties.codex?.subcategories?.[AI_SUBCATEGORY]?.includes(AI_CATEGORY_AGENTS);
+
+		return !isAgentSubcategory;
+	}
+
+	return false;
 }
 export function groupItemsInSections(
 	items: INodeCreateElement[],
@@ -131,7 +145,8 @@ export function groupItemsInSections(
 	const nonAINodesSections = mapNewSections(filteredSections, nonAINodesBySection);
 
 	const AINodesBySection = itemsBySection(AINodes);
-	const AINodesSections = mapNewSections(filteredSections, AINodesBySection);
+
+	const AINodesSections = mapNewSections(sortBy(filteredSections, ['title']), AINodesBySection);
 
 	const result = [...nonAINodesSections, ...AINodesSections]
 		.concat({

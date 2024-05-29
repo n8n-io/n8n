@@ -23,6 +23,7 @@ import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import {
 	flattenCreateElements,
 	groupItemsInSections,
+	isAINode,
 	searchNodes,
 	sortNodeCreateElements,
 	subcategorizeItems,
@@ -100,7 +101,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 			return groupedNodes;
 		}
-		return groupIfAiNodes(stack.baselineItems, true);
+		return extendItemsWithUUID(groupIfAiNodes(stack.baselineItems, true));
 	});
 
 	const activeViewStack = computed<ViewStack>(() => {
@@ -183,11 +184,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	}
 
 	function groupIfAiNodes(items: INodeCreateElement[], sortAlphabetically = true) {
-		const aiNodes = items.filter(
-			(node): node is NodeCreateElement =>
-				(node.type === 'node' && node.properties.codex?.categories?.includes(AI_SUBCATEGORY)) ??
-				false,
-		);
+		const aiNodes = items.filter((node): node is NodeCreateElement => isAINode(node));
 
 		if (aiNodes.length > 0) {
 			const sectionsMap = new Map<string, NodeViewItemSection>();
@@ -196,10 +193,16 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 				if (section) {
 					const currentItems = sectionsMap.get(section)?.items ?? [];
+					const isSubnodesSection =
+						!node.properties.codex?.subcategories?.[AI_SUBCATEGORY].includes(
+							AI_CATEGORY_ROOT_NODES,
+						);
 
 					sectionsMap.set(section, {
 						key: section,
-						title: section,
+						title: isSubnodesSection
+							? `${section} (${i18n.baseText('nodeCreator.subnodes')})`
+							: section,
 						items: [...currentItems, node.key],
 					});
 				}
@@ -210,6 +213,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 				(item) => item.type === 'node' && item.properties.name.toLowerCase().includes('trigger'),
 			);
 			const nonAiRegularNodes = difference(nonAiNodes, nonAiTriggerNodes);
+
 			if (nonAiNodes.length > 0) {
 				let sectionKey = '';
 				if (nonAiRegularNodes.length && nonAiTriggerNodes.length) {
