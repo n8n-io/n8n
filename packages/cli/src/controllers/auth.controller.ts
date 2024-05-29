@@ -82,11 +82,10 @@ export class AuthController {
 				const { decryptedRecoveryCodes, decryptedSecret } =
 					await this.mfaService.getSecretAndRecoveryCodes(user.id);
 
-				user.mfaSecret = decryptedSecret;
 				user.mfaRecoveryCodes = decryptedRecoveryCodes;
 
 				const isMFATokenValid =
-					(await this.validateMfaToken(user, mfaToken)) ||
+					(await this.validateMfaToken(mfaToken, decryptedSecret)) ||
 					(await this.validateMfaRecoveryCode(user, mfaRecoveryCode));
 
 				if (!isMFATokenValid) {
@@ -194,16 +193,13 @@ export class AuthController {
 		return { loggedOut: true };
 	}
 
-	private async validateMfaToken(user: User, token?: string) {
-		if (!!!token) return false;
-		return this.mfaService.totp.verifySecret({
-			secret: user.mfaSecret ?? '',
-			token,
-		});
+	private async validateMfaToken(token: string | undefined, secret: string) {
+		if (!token) return false;
+		return this.mfaService.totp.verifySecret({ secret, token });
 	}
 
 	private async validateMfaRecoveryCode(user: User, mfaRecoveryCode?: string) {
-		if (!!!mfaRecoveryCode) return false;
+		if (!mfaRecoveryCode) return false;
 		const index = user.mfaRecoveryCodes.indexOf(mfaRecoveryCode);
 		if (index === -1) return false;
 
