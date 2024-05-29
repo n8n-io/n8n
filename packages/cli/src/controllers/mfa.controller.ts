@@ -69,22 +69,18 @@ export class MFAController {
 		}
 
 		const verified = this.mfaService.totp.verifySecret({ secret, token, window: 10 });
-
 		if (!verified)
 			throw new BadRequestError('MFA token expired. Close the modal and enable MFA again', 997);
 
-		await this.mfaService.enableMfa(id);
-
-		this.authService.issueCookie(res, req.user, req.browserId);
+		const user = await this.mfaService.enableMfa(id);
+		this.authService.issueCookie(res, user, req.browserId);
 	}
 
 	@Delete('/disable')
 	async disableMFA(req: AuthenticatedRequest, res: Response) {
 		const { id } = req.user;
-
-		await this.mfaService.disableMfa(id);
-
-		this.authService.issueCookie(res, req.user, req.browserId);
+		const user = await this.mfaService.disableMfa(id);
+		this.authService.issueCookie(res, user, req.browserId);
 	}
 
 	@Post('/verify')

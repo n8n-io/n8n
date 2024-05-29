@@ -79,15 +79,7 @@ export class AuthController {
 					throw new AuthError('MFA Error', 998);
 				}
 
-				const { decryptedRecoveryCodes, decryptedSecret } =
-					await this.mfaService.getSecretAndRecoveryCodes(user.id);
-
-				user.mfaRecoveryCodes = decryptedRecoveryCodes;
-
-				const isMFATokenValid =
-					(await this.validateMfaToken(mfaToken, decryptedSecret)) ||
-					(await this.validateMfaRecoveryCode(user, mfaRecoveryCode));
-
+				const isMFATokenValid = await this.mfaService.validateMfa(user, mfaToken, mfaRecoveryCode);
 				if (!isMFATokenValid) {
 					throw new AuthError('Invalid mfa token or recovery code');
 				}
@@ -191,25 +183,5 @@ export class AuthController {
 	logout(_: Request, res: Response) {
 		this.authService.clearCookie(res);
 		return { loggedOut: true };
-	}
-
-	private async validateMfaToken(token: string | undefined, secret: string) {
-		if (!token) return false;
-		return this.mfaService.totp.verifySecret({ secret, token });
-	}
-
-	private async validateMfaRecoveryCode(user: User, mfaRecoveryCode?: string) {
-		if (!mfaRecoveryCode) return false;
-		const index = user.mfaRecoveryCodes.indexOf(mfaRecoveryCode);
-		if (index === -1) return false;
-
-		// remove used recovery code
-		user.mfaRecoveryCodes.splice(index, 1);
-
-		await this.userService.update(user.id, {
-			mfaRecoveryCodes: this.mfaService.encryptRecoveryCodes(user.mfaRecoveryCodes),
-		});
-
-		return true;
 	}
 }
