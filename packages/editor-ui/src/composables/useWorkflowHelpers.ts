@@ -1004,7 +1004,9 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 			if (resetWebhookUrls) {
 				workflowDataRequest.nodes = workflowDataRequest.nodes!.map((node) => {
 					if (node.webhookId) {
-						node.webhookId = uuid();
+						const newId = uuid();
+						node.webhookId = newId;
+						node.parameters.path = newId;
 						changedNodes[node.name] = node.webhookId;
 					}
 					return node;
