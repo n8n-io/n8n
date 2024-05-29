@@ -14,7 +14,7 @@ export const specifyBySelector: INodeProperties = {
 			value: 'json',
 		},
 		{
-			name: 'Let Model Specify All',
+			name: 'Let Model Specify Entire Body',
 			value: 'model',
 		},
 	],
@@ -346,6 +346,7 @@ export const optimizeResponseProperties: INodeProperties[] = [
 		default: false,
 		description:
 			'Whether to return only content of html elements, stripping html tags and attributes',
+		hint: 'Uses less tokens and may be easier for model to understand',
 		displayOptions: {
 			show: {
 				optimizeResponse: [true],

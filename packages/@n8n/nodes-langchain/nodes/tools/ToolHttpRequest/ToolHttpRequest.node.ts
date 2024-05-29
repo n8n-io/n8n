@@ -13,7 +13,6 @@ import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 import {
 	configureHttpRequestFunction,
-	prettifyToolName,
 	configureResponseOptimizer,
 	extractParametersFromText,
 	prepareToolDescription,
@@ -42,7 +41,7 @@ export class ToolHttpRequest implements INodeType {
 		group: ['output'],
 		version: 1,
 		description: 'Makes an HTTP request and returns the response data',
-		subtitle: `={{(${prettifyToolName})($parameter.name)}}`,
+		subtitle: '={{ $parameter.toolDescription }}',
 		defaults: {
 			name: 'HTTP Request',
 		},
@@ -67,17 +66,6 @@ export class ToolHttpRequest implements INodeType {
 		outputNames: ['Tool'],
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
-			{
-				displayName: 'Name',
-				name: 'name',
-				type: 'string',
-				default: '',
-				required: true,
-				placeholder: 'e.g. get_current_weather',
-				validateType: 'string-alphanumeric',
-				description:
-					'The name of the function to be called, could contain letters, numbers, and underscores only',
-			},
 			{
 				displayName: 'Description',
 				name: 'toolDescription',
@@ -134,7 +122,7 @@ export class ToolHttpRequest implements INodeType {
 				placeholder: 'e.g. http://www.example.com/{path}',
 			},
 			...authenticationProperties,
-			//Query parameters
+			//----------------------------------------------------------------
 			{
 				displayName: 'Send Query Parameters',
 				name: 'sendQuery',
@@ -174,7 +162,7 @@ export class ToolHttpRequest implements INodeType {
 					},
 				},
 			},
-			//Headers parameters
+			//----------------------------------------------------------------
 			{
 				displayName: 'Send Headers',
 				name: 'sendHeaders',
@@ -214,7 +202,7 @@ export class ToolHttpRequest implements INodeType {
 					},
 				},
 			},
-			//Body parameters
+			//----------------------------------------------------------------
 			{
 				displayName: 'Send Body',
 				name: 'sendBody',
@@ -254,13 +242,14 @@ export class ToolHttpRequest implements INodeType {
 					},
 				},
 			},
+			//----------------------------------------------------------------
 			placeholderDefinitionsCollection,
 			...optimizeResponseProperties,
 		],
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		const name = this.getNodeParameter('name', itemIndex) as string;
+		const name = this.getNode().name.replace(/ /g, '_');
 		const toolDescription = this.getNodeParameter('toolDescription', itemIndex) as string;
 		const sendQuery = this.getNodeParameter('sendQuery', itemIndex, false) as boolean;
 		const sendHeaders = this.getNodeParameter('sendHeaders', itemIndex, false) as boolean;
@@ -303,11 +292,18 @@ export class ToolHttpRequest implements INodeType {
 			body: '',
 		};
 
-		const placeholdersDefinitions = this.getNodeParameter(
-			'placeholderDefinitions.values',
-			itemIndex,
-			[],
-		) as PlaceholderDefinition[];
+		const placeholdersDefinitions = (
+			this.getNodeParameter(
+				'placeholderDefinitions.values',
+				itemIndex,
+				[],
+			) as PlaceholderDefinition[]
+		).map((p) => {
+			if (p.name.startsWith('{') && p.name.endsWith('}')) {
+				p.name = p.name.slice(1, -1);
+			}
+			return p;
+		});
 
 		const toolParameters: ToolParameter[] = [];
 
@@ -358,6 +354,20 @@ export class ToolHttpRequest implements INodeType {
 				'jsonBody',
 				'parametersBody.values',
 			);
+		}
+
+		for (const placeholder of placeholdersDefinitions) {
+			if (!toolParameters.find((parameter) => parameter.name === placeholder.name)) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`Misconfigured placeholder '${placeholder.name}'`,
+					{
+						itemIndex,
+						description:
+							"This placeholder is defined in the 'Placeholder Definitions' but isn't used anywhere. Either remove the definition, or add the placeholder to a part of the request.",
+					},
+				);
+			}
 		}
 
 		const func = configureToolFunction(

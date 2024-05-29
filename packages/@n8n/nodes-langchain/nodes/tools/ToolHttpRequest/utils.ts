@@ -86,16 +86,6 @@ const getOAuth2AdditionalParameters = (nodeCredentialType: string) => {
 	return oAuth2Options[nodeCredentialType];
 };
 
-export const prettifyToolName = (toolName: string) => {
-	const capitalize = (str: string) => {
-		const chars = str.split('');
-		chars[0] = chars[0].toUpperCase();
-		return chars.join('');
-	};
-
-	return toolName.split('_').map(capitalize).join(' ');
-};
-
 export const configureHttpRequestFunction = async (
 	ctx: IExecuteFunctions,
 	credentialsType: 'predefinedCredentialType' | 'genericCredentialType' | 'none',
@@ -567,6 +557,7 @@ export const configureToolFunction = (
 		const { index } = ctx.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
 
 		let response: string = '';
+		let options: IHttpRequestOptions | null = null;
 		let executionError: Error | undefined = undefined;
 
 		try {
@@ -588,17 +579,22 @@ export const configureToolFunction = (
 				}
 
 				for (const parameter of toolParameters) {
-					let argument = dataFromModel[parameter.name];
-
-					if (argument === undefined && parameter.required) {
+					if (
+						parameter.required &&
+						(dataFromModel[parameter.name] === undefined || dataFromModel[parameter.name] === null)
+					) {
 						throw new NodeOperationError(
 							ctx.getNode(),
-							`Model did not provided required parameter: ${parameter.name}`,
-							{
-								itemIndex,
-							},
+							`Model did not provide parameter '${parameter.name}' which is required and must be present in the input`,
+							{ itemIndex },
 						);
 					}
+				}
+
+				options = requestOptions;
+
+				for (const parameter of toolParameters) {
+					let argument = dataFromModel[parameter.name];
 
 					if (
 						argument &&
@@ -620,17 +616,17 @@ export const configureToolFunction = (
 					}
 
 					if (parameter.sendIn === 'path') {
-						requestOptions.url = requestOptions.url.replace(
-							`{${parameter.name}}`,
-							encodeURIComponent(String(argument)),
-						);
+						argument = String(argument);
 
+						//remove " or ' from start or end
+						argument = argument.replace(/^['"]+|['"]+$/g, '');
+
+						options.url = options.url.replace(`{${parameter.name}}`, argument);
 						continue;
 					}
 
 					if (parameter.sendIn === parameter.name) {
-						set(requestOptions, [parameter.sendIn], argument);
-
+						set(options, [parameter.sendIn], argument);
 						continue;
 					}
 
@@ -654,12 +650,11 @@ export const configureToolFunction = (
 							`{${parameter.name}}`,
 							String(argument),
 						);
-
 						continue;
 					}
 
 					if (parameter.key) {
-						let requestOptionsValue = get(requestOptions, [parameter.sendIn, parameter.key]);
+						let requestOptionsValue = get(options, [parameter.sendIn, parameter.key]);
 
 						if (typeof requestOptionsValue === 'string') {
 							requestOptionsValue = requestOptionsValue.replace(
@@ -668,12 +663,11 @@ export const configureToolFunction = (
 							);
 						}
 
-						set(requestOptions, [parameter.sendIn, parameter.key], requestOptionsValue);
-
+						set(options, [parameter.sendIn, parameter.key], requestOptionsValue);
 						continue;
 					}
 
-					set(requestOptions, [parameter.sendIn, parameter.name], argument);
+					set(options, [parameter.sendIn, parameter.name], argument);
 				}
 
 				for (const [key, value] of Object.entries(rawRequestOptions)) {
@@ -697,21 +691,25 @@ export const configureToolFunction = (
 								);
 							}
 						}
-						requestOptions[key as 'qs' | 'headers' | 'body'] = parsedValue;
+						options[key as 'qs' | 'headers' | 'body'] = parsedValue;
 					}
 				}
 			}
 
-			if (!Object.keys(requestOptions.headers as IDataObject).length) {
-				delete requestOptions.headers;
-			}
+			if (options) {
+				options.url = encodeURI(options.url);
 
-			if (!Object.keys(requestOptions.qs as IDataObject).length) {
-				delete requestOptions.qs;
-			}
+				if (!Object.keys(options.headers as IDataObject).length) {
+					delete options.headers;
+				}
 
-			if (!Object.keys(requestOptions.body as IDataObject).length) {
-				delete requestOptions.body;
+				if (!Object.keys(options.qs as IDataObject).length) {
+					delete options.qs;
+				}
+
+				if (!Object.keys(options.body as IDataObject).length) {
+					delete options.body;
+				}
 			}
 		} catch (error) {
 			const errorMessage = 'Input provided by model is not valid';
@@ -727,11 +725,13 @@ export const configureToolFunction = (
 			response = errorMessage;
 		}
 
-		try {
-			response = optimizeResponse(await httpRequest(requestOptions));
-		} catch (error) {
-			const httpCode = (error as NodeApiError).httpCode;
-			response = `${httpCode ? `HTTP ${httpCode} ` : ''}There was an error: "${error.message}"`;
+		if (options) {
+			try {
+				response = optimizeResponse(await httpRequest(options));
+			} catch (error) {
+				const httpCode = (error as NodeApiError).httpCode;
+				response = `${httpCode ? `HTTP ${httpCode} ` : ''}There was an error: "${error.message}"`;
+			}
 		}
 
 		if (typeof response !== 'string') {
