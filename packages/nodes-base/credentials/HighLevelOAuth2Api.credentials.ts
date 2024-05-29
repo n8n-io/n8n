@@ -30,7 +30,7 @@ export class HighLevelOAuth2Api implements ICredentialType {
 					value: 'https://marketplace.leadconnectorhq.com/oauth/chooselocation',
 				},
 				{
-					name: 'Standart',
+					name: 'Standard',
 					value: 'https://marketplace.gohighlevel.com/oauth/chooselocation',
 				},
 			],
