@@ -93,7 +93,7 @@ describe('useWorkflowHelpers', () => {
 
 			const webHookIdsPostSave = workflow.nodes.map((node) => node.webhookId);
 			const pathsPostSave = workflow.nodes.map((node) => node.parameters.path);
-			// Expect webhookIds, paths and suffix to be the same as in the original workflow
+			// Expect webhookIds and paths to be the same as in the original workflow
 			expect(webHookIdsPreSave).toEqual(webHookIdsPostSave);
 			expect(pathsPreSave).toEqual(pathsPostSave);
 		});
@@ -115,7 +115,7 @@ describe('useWorkflowHelpers', () => {
 
 			const webHookIdsPostSave = workflow.nodes.map((node) => node.webhookId);
 			const pathsPostSave = workflow.nodes.map((node) => node.parameters.path);
-			// Now, expect webhookIds, paths and suffix to be different
+			// Now, expect webhookIds and paths to be different
 			expect(webHookIdsPreSave).not.toEqual(webHookIdsPostSave);
 			expect(pathsPreSave).not.toEqual(pathsPostSave);
 		});
