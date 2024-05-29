@@ -22,9 +22,10 @@ const nodeVersion = process.versions.node;
 const { major, gte } = require('semver');
 
 const MINIMUM_SUPPORTED_NODE_VERSION = '18.17.0';
+const ENFORCE_MIN_NODE_VERSION = process.env.E2E_TESTS !== 'true';
 
 if (
-	!gte(nodeVersion, MINIMUM_SUPPORTED_NODE_VERSION) ||
+	(ENFORCE_MIN_NODE_VERSION && !gte(nodeVersion, MINIMUM_SUPPORTED_NODE_VERSION)) ||
 	![18, 20, 22].includes(major(nodeVersion))
 ) {
 	console.log(`
