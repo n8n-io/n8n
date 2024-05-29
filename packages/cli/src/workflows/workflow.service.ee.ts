@@ -319,7 +319,14 @@ export class EnterpriseWorkflowService {
 				// Since the transfer worked we return a 200 but also return the
 				// activation error as data.
 				if (error instanceof WorkflowActivationError) {
-					return { error: error.toJSON() };
+					return {
+						error: error.toJSON
+							? error.toJSON()
+							: {
+									name: error.name,
+									message: error.message,
+								},
+					};
 				}
 
 				throw error;
