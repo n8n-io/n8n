@@ -92,7 +92,10 @@ describe('Expression editor modal', () => {
 				.expressionModalOutput()
 				.should('have.text', '[Execute previous nodes for preview]');
 			WorkflowPage.getters.expressionModalInput().clear();
-			WorkflowPage.getters.expressionModalInput().type("{{ $('Schedule Trigger').item.json.myStr");
+			WorkflowPage.getters
+				.expressionModalInput()
+				.click()
+				.type("{{ $('Schedule Trigger').item.json.myStr");
 			WorkflowPage.getters
 				.expressionModalOutput()
 				.should('have.text', '[Execute previous nodes for preview]');
@@ -112,7 +115,10 @@ describe('Expression editor modal', () => {
 			WorkflowPage.getters.expressionModalInput().click().type('{{ $input.item.json.myStr');
 			WorkflowPage.getters.expressionModalOutput().should('have.text', 'Monday');
 			WorkflowPage.getters.expressionModalInput().clear();
-			WorkflowPage.getters.expressionModalInput().type("{{ $('Schedule Trigger').item.json.myStr");
+			WorkflowPage.getters
+				.expressionModalInput()
+				.click()
+				.type("{{ $('Schedule Trigger').item.json.myStr");
 			WorkflowPage.getters.expressionModalOutput().should('have.text', 'Monday');
 		});
 	});
