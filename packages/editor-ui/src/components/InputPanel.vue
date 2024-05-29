@@ -24,7 +24,6 @@
 		@run-change="onRunIndexChange"
 		@table-mounted="$emit('tableMounted', $event)"
 		@search="$emit('search', $event)"
-		@input-node-change="onInputNodeChange"
 	>
 		<template #header>
 			<div :class="$style.titleSection">
