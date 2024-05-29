@@ -2,6 +2,7 @@
 
 @mixin theme {
 	// Primary tokens
+	--color-danger: var(--prim-color-alt-c-tint-250);
 
 	// Text
 	--color-text-dark: var(--prim-gray-40);
