@@ -89,11 +89,6 @@ export default defineComponent({
 			prevTagIds: currentTagIds,
 		};
 	},
-	async mounted() {
-		this.name = await this.workflowsStore.getDuplicateCurrentWorkflowName(this.data.name);
-		await this.$nextTick();
-		this.focusOnNameInput();
-	},
 	computed: {
 		...mapStores(useCredentialsStore, useUsersStore, useSettingsStore, useWorkflowsStore),
 	},
@@ -103,6 +98,11 @@ export default defineComponent({
 				this.focusOnSelect();
 			}
 		},
+	},
+	async mounted() {
+		this.name = await this.workflowsStore.getDuplicateCurrentWorkflowName(this.data.name);
+		await this.$nextTick();
+		this.focusOnNameInput();
 	},
 	methods: {
 		focusOnSelect() {
