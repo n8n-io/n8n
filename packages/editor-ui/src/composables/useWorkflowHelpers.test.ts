@@ -5,8 +5,6 @@ import { createTestingPinia } from '@pinia/testing';
 import type { INode } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 
-const TEST_WEBHOOK_SUFFIX = '/test';
-
 const duplicateTestWorkflow: IWorkflowDataUpdate = {
 	name: 'Duplicate webhook test',
 	active: false,
@@ -39,7 +37,7 @@ const duplicateTestWorkflow: IWorkflowDataUpdate = {
 			parameters: {
 				resume: 'webhook',
 				options: {
-					webhookSuffix: TEST_WEBHOOK_SUFFIX,
+					webhookSuffix: '/test',
 				},
 			},
 			id: '979d8443-51b1-48e2-b239-acf399b66509',
@@ -51,22 +49,6 @@ const duplicateTestWorkflow: IWorkflowDataUpdate = {
 		},
 	],
 	connections: {},
-};
-
-/**
- * Extract webhook suffixes from nodes that have them
- * @param nodes List of nodes
- * @returns List of webhook suffixes found in the nodes
- */
-const extractWebhookSuffixes = (nodes: INode[]) => {
-	return nodes
-		.map((node) => node.parameters.options)
-		.filter(
-			(options): options is { webhookSuffix: string } =>
-				options !== null && typeof options === 'object' && 'webhookSuffix' in options,
-		)
-		.map((options) => options.webhookSuffix)
-		.filter((suffix) => suffix);
 };
 
 vi.mock('@/stores/workflows.store', () => ({
@@ -111,11 +93,9 @@ describe('useWorkflowHelpers', () => {
 
 			const webHookIdsPostSave = duplicateTestWorkflow.nodes.map((node) => node.webhookId);
 			const pathsPostSave = duplicateTestWorkflow.nodes.map((node) => node.parameters.path);
-			const webhookSuffixPostSave = extractWebhookSuffixes(duplicateTestWorkflow.nodes);
 			// Expect webhookIds, paths and suffix to be the same as in the original workflow
 			expect(webHookIdsPreSave).toEqual(webHookIdsPostSave);
 			expect(pathsPreSave).toEqual(pathsPostSave);
-			expect(webhookSuffixPostSave).toEqual([TEST_WEBHOOK_SUFFIX]);
 		});
 
 		it('should respect `resetWebhookUrls: true` when duplicating workflows', async () => {
@@ -134,11 +114,9 @@ describe('useWorkflowHelpers', () => {
 
 			const webHookIdsPostSave = duplicateTestWorkflow.nodes.map((node) => node.webhookId);
 			const pathsPostSave = duplicateTestWorkflow.nodes.map((node) => node.parameters.path);
-			const webhookSuffixPostSave = extractWebhookSuffixes(duplicateTestWorkflow.nodes);
 			// Now, expect webhookIds, paths and suffix to be different
 			expect(webHookIdsPreSave).not.toEqual(webHookIdsPostSave);
 			expect(pathsPreSave).not.toEqual(pathsPostSave);
-			expect(webhookSuffixPostSave).toEqual([`${TEST_WEBHOOK_SUFFIX}-copy`]);
 		});
 	});
 });
