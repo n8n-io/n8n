@@ -2,10 +2,9 @@ import type { IWorkflowDataUpdate } from '@/Interface';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import router from '@/router';
 import { createTestingPinia } from '@pinia/testing';
-import type { INode } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 
-const duplicateTestWorkflow: IWorkflowDataUpdate = {
+const getDuplicateTestWorkflow = (): IWorkflowDataUpdate => ({
 	name: 'Duplicate webhook test',
 	active: false,
 	nodes: [
@@ -49,7 +48,7 @@ const duplicateTestWorkflow: IWorkflowDataUpdate = {
 		},
 	],
 	connections: {},
-};
+});
 
 vi.mock('@/stores/workflows.store', () => ({
 	useWorkflowsStore: vi.fn(() => ({
@@ -78,42 +77,44 @@ describe('useWorkflowHelpers', () => {
 		});
 
 		it('should respect `resetWebhookUrls: false` when duplicating workflows', async () => {
-			if (!duplicateTestWorkflow.nodes) {
+			const workflow = getDuplicateTestWorkflow();
+			if (!workflow.nodes) {
 				throw new Error('Missing nodes in test workflow');
 			}
 			const { saveAsNewWorkflow } = useWorkflowHelpers({ router });
-			const webHookIdsPreSave = duplicateTestWorkflow.nodes.map((node) => node.webhookId);
-			const pathsPreSave = duplicateTestWorkflow.nodes.map((node) => node.parameters.path);
+			const webHookIdsPreSave = workflow.nodes.map((node) => node.webhookId);
+			const pathsPreSave = workflow.nodes.map((node) => node.parameters.path);
 
 			await saveAsNewWorkflow({
-				name: duplicateTestWorkflow.name,
+				name: workflow.name,
 				resetWebhookUrls: false,
-				data: duplicateTestWorkflow,
+				data: workflow,
 			});
 
-			const webHookIdsPostSave = duplicateTestWorkflow.nodes.map((node) => node.webhookId);
-			const pathsPostSave = duplicateTestWorkflow.nodes.map((node) => node.parameters.path);
+			const webHookIdsPostSave = workflow.nodes.map((node) => node.webhookId);
+			const pathsPostSave = workflow.nodes.map((node) => node.parameters.path);
 			// Expect webhookIds, paths and suffix to be the same as in the original workflow
 			expect(webHookIdsPreSave).toEqual(webHookIdsPostSave);
 			expect(pathsPreSave).toEqual(pathsPostSave);
 		});
 
 		it('should respect `resetWebhookUrls: true` when duplicating workflows', async () => {
-			if (!duplicateTestWorkflow.nodes) {
+			const workflow = getDuplicateTestWorkflow();
+			if (!workflow.nodes) {
 				throw new Error('Missing nodes in test workflow');
 			}
 			const { saveAsNewWorkflow } = useWorkflowHelpers({ router });
-			const webHookIdsPreSave = duplicateTestWorkflow.nodes.map((node) => node.webhookId);
-			const pathsPreSave = duplicateTestWorkflow.nodes.map((node) => node.parameters.path);
+			const webHookIdsPreSave = workflow.nodes.map((node) => node.webhookId);
+			const pathsPreSave = workflow.nodes.map((node) => node.parameters.path);
 
 			await saveAsNewWorkflow({
-				name: duplicateTestWorkflow.name,
+				name: workflow.name,
 				resetWebhookUrls: true,
-				data: duplicateTestWorkflow,
+				data: workflow,
 			});
 
-			const webHookIdsPostSave = duplicateTestWorkflow.nodes.map((node) => node.webhookId);
-			const pathsPostSave = duplicateTestWorkflow.nodes.map((node) => node.parameters.path);
+			const webHookIdsPostSave = workflow.nodes.map((node) => node.webhookId);
+			const pathsPostSave = workflow.nodes.map((node) => node.parameters.path);
 			// Now, expect webhookIds, paths and suffix to be different
 			expect(webHookIdsPreSave).not.toEqual(webHookIdsPostSave);
 			expect(pathsPreSave).not.toEqual(pathsPostSave);
