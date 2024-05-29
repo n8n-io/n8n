@@ -258,3 +258,15 @@ export const isCompletionSection = (
 ): section is CompletionSection => {
 	return typeof section === 'object';
 };
+
+export const getDisplayType = (value: unknown): string => {
+	if (Array.isArray(value)) {
+		if (value.length > 0) {
+			return `${getDisplayType(value[0])}[]`;
+		}
+		return 'Array';
+	}
+	if (value === null) return 'null';
+	if (typeof value === 'object') return 'Object';
+	return (typeof value).toLocaleLowerCase();
+};

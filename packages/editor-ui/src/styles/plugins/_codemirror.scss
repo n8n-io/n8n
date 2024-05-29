@@ -94,39 +94,54 @@
 	}
 }
 
-.autocomplete-info-container {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing-xs);
-	padding: var(--spacing-xs) 0;
-	height: 100%;
-	overflow-y: auto;
-}
-
-.ͼ2 .cm-tooltip.cm-completionInfo {
-	background-color: var(--color-background-xlight);
-	border: var(--border-base);
-	box-shadow: var(--box-shadow-light);
-	clip-path: inset(-12px -12px -12px 0); // Clip box-shadow on the left
-	border-left: none;
-	border-bottom-right-radius: var(--border-radius-base);
-	border-top-right-radius: var(--border-radius-base);
-	border-top-left-radius: 0;
-	border-bottom-left-radius: 0;
-	line-height: var(--font-line-height-loose);
-	padding: 0;
-
+.ͼ2 .cm-tooltip.cm-completionInfo,
+.ͼ2 .cm-tooltip.cm-cursorInfo,
+.ͼ2 .cm-tooltip-hover {
 	// Add padding when infobox only contains text
 	&:not(:has(div)) {
 		padding: var(--spacing-xs);
 	}
 
-	// Overwrite codemirror positioning
-	top: 0 !important;
-	left: 100% !important;
-	right: auto !important;
-	max-width: 320px !important;
-	height: 100%;
+	.autocomplete-info-container {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-xs);
+		padding: var(--spacing-xs) 0;
+		height: 100%;
+		overflow-y: auto;
+	}
+
+	strong.autocomplete-info-arg,
+	strong.autocomplete-info-arg-name {
+		font-weight: var(--font-weight-regular);
+		text-decoration: underline;
+		color: var(--color-text-dark);
+	}
+
+	.autocomplete-info-description {
+		padding: 0 var(--spacing-xs);
+		color: var(--color-text-base);
+		font-size: var(--font-size-2xs);
+
+		.autocomplete-info-example {
+			border-radius: var(--border-radius-base);
+			border: 1px solid var(--color-infobox-examples-border-color);
+			color: var(--color-text-base);
+			margin-top: var(--spacing-xs);
+		}
+
+		code {
+			padding: 0;
+			color: var(--color-text-base);
+			font-size: var(--font-size-2xs);
+			font-family: var(--font-family);
+			background-color: transparent;
+		}
+
+		p {
+			line-height: var(--font-line-height-loose);
+		}
+	}
 
 	a {
 		color: var(--color-text-dark);
@@ -158,31 +173,6 @@
 
 	.autocomplete-info-return {
 		display: inline-block;
-	}
-
-	.autocomplete-info-description {
-		padding: 0 var(--spacing-xs);
-		color: var(--color-text-base);
-		font-size: var(--font-size-2xs);
-
-		.autocomplete-info-example {
-			border-radius: var(--border-radius-base);
-			border: 1px solid var(--color-infobox-examples-border-color);
-			color: var(--color-text-base);
-			margin-top: var(--spacing-xs);
-		}
-
-		code {
-			padding: 0;
-			color: var(--color-text-base);
-			font-size: var(--font-size-2xs);
-			font-family: var(--font-family);
-			background-color: transparent;
-		}
-
-		p {
-			line-height: var(--font-line-height-loose);
-		}
 	}
 
 	.autocomplete-info-args {
@@ -272,6 +262,27 @@
 		font-size: var(--font-size-3xs);
 		font-weight: var(--font-weight-bold);
 	}
+}
+
+.ͼ2 .cm-tooltip.cm-completionInfo {
+	background-color: var(--color-background-xlight);
+	border: var(--border-base);
+	box-shadow: var(--box-shadow-light);
+	clip-path: inset(-12px -12px -12px 0); // Clip box-shadow on the left
+	border-left: none;
+	border-bottom-right-radius: var(--border-radius-base);
+	border-top-right-radius: var(--border-radius-base);
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
+	line-height: var(--font-line-height-loose);
+	padding: 0;
+
+	// Overwrite codemirror positioning
+	top: 0 !important;
+	left: 100% !important;
+	right: auto !important;
+	max-width: 320px !important;
+	height: 100%;
 
 	&.cm-completionInfo-left-narrow,
 	&.cm-completionInfo-right-narrow {
@@ -291,5 +302,21 @@
 
 	&.cm-completionInfo-right {
 		background-color: var(--color-infobox-background);
+	}
+}
+
+.ͼ2 .cm-tooltip.cm-cursorInfo,
+.ͼ2 .cm-tooltip-hover {
+	background-color: var(--color-infobox-background);
+	border: var(--border-base);
+	box-shadow: var(--box-shadow-light);
+	border-radius: var(--border-radius-base);
+	line-height: var(--font-line-height-loose);
+	padding: 0;
+	max-width: 320px;
+
+	.autocomplete-info-container {
+		height: auto;
+		max-height: min(250px, 50vh);
 	}
 }
