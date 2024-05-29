@@ -1189,6 +1189,13 @@ function valueChanged(value: NodeParameterValueType | {} | Date) {
 	if (remoteParameterOptionsLoading.value) {
 		return;
 	}
+	// Only update the value if it has changed
+	const oldValue = node.value?.parameters
+		? nodeHelpers.getParameterValue(node.value?.parameters, props.parameter.name, '')
+		: undefined;
+	if (oldValue !== undefined && oldValue === value) {
+		return;
+	}
 
 	if (props.parameter.name === 'nodeCredentialType') {
 		activeCredentialType.value = value as string;

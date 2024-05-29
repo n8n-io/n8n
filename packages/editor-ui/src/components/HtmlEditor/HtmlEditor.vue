@@ -244,7 +244,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
 	htmlEditorEventBus.off('format-html', formatHtml);
-	emit('update:model-value', readEditorValue());
 });
 </script>
 
