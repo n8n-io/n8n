@@ -7,16 +7,7 @@ import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import type { IWorkflowResponse } from '@/Interfaces';
 import config from '@/config';
-import {
-	Delete,
-	Get,
-	Licensed,
-	Patch,
-	Post,
-	ProjectScope,
-	Put,
-	RestController,
-} from '@/decorators';
+import { Delete, Get, Patch, Post, ProjectScope, Put, RestController } from '@/decorators';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
@@ -472,7 +463,7 @@ export class WorkflowsController {
 	}
 
 	@Put('/:workflowId/transfer')
-	@Licensed('feat:advancedPermissions')
+	@ProjectScope('workflow:move')
 	async transfer(req: WorkflowRequest.Transfer) {
 		const body = z.object({ toProject: z.string() }).parse(req.body);
 

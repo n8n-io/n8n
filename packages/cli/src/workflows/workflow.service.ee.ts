@@ -245,7 +245,7 @@ export class EnterpriseWorkflowService {
 	async transferOne(user: User, workflowId: string, toProjectId: string) {
 		// 1. get workflow
 		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, user, [
-			'workflow:delete',
+			'workflow:move',
 		]);
 		NotFoundError.isDefinedAndNotNull(
 			workflow,

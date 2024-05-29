@@ -1245,24 +1245,28 @@ describe('PATCH /workflows/:workflowId - activate workflow', () => {
 
 describe('PUT /:workflowId/transfer', () => {
 	test('cannot transfer into the same project', async () => {
-		const workflow = await createWorkflow({}, member);
+		const project = await createTeamProject('Team Project', member);
+		const workflow = await createWorkflow({}, project);
 
-		await authOwnerAgent
+		await testServer
+			.authAgentFor(member)
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ toProject: project.id })
+			.expect(400);
+	});
+
+	test('cannot transfer into a personal project', async () => {
+		const project = await createTeamProject('Team Project', member);
+		const workflow = await createWorkflow({}, project);
+
+		await testServer
+			.authAgentFor(member)
 			.put(`/workflows/${workflow.id}/transfer`)
 			.send({ toProject: memberPersonalProject.id })
 			.expect(400);
 	});
 
-	test('cannot transfer into another personal project', async () => {
-		const workflow = await createWorkflow({}, member);
-
-		await authOwnerAgent
-			.put(`/workflows/${workflow.id}/transfer`)
-			.send({ toProject: anotherMemberPersonalProject.id })
-			.expect(400);
-	});
-
-	test('cannot transfer without workflow:delete scope in source project', async () => {
+	test('cannot transfer without workflow:move scope for the workflow', async () => {
 		const destinationProject = await createTeamProject('Team Project', member);
 
 		const workflow = await createWorkflow({}, anotherMember);
@@ -1271,7 +1275,7 @@ describe('PUT /:workflowId/transfer', () => {
 			.authAgentFor(member)
 			.put(`/workflows/${workflow.id}/transfer`)
 			.send({ toProject: destinationProject.id })
-			.expect(404);
+			.expect(403);
 	});
 
 	test('cannot transfer without workflow:create scope in destination project', async () => {
