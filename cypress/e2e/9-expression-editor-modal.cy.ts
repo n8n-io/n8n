@@ -20,16 +20,16 @@ describe('Expression editor modal', () => {
 
 		it('should resolve primitive resolvables', () => {
 			WorkflowPage.getters.expressionModalInput().clear();
-			WorkflowPage.getters.expressionModalInput().type('{{ 1 + 2');
+			WorkflowPage.getters.expressionModalInput().click().type('{{ 1 + 2');
 			WorkflowPage.getters.expressionModalOutput().contains(/^3$/);
 			WorkflowPage.getters.expressionModalInput().clear();
 
-			WorkflowPage.getters.expressionModalInput().type('{{ "ab" + "cd"');
+			WorkflowPage.getters.expressionModalInput().click().type('{{ "ab" + "cd"');
 			WorkflowPage.getters.expressionModalOutput().contains(/^abcd$/);
 
 			WorkflowPage.getters.expressionModalInput().clear();
 
-			WorkflowPage.getters.expressionModalInput().type('{{ true && false');
+			WorkflowPage.getters.expressionModalInput().click().type('{{ true && false');
 			WorkflowPage.getters.expressionModalOutput().contains(/^false$/);
 		});
 
@@ -37,6 +37,7 @@ describe('Expression editor modal', () => {
 			WorkflowPage.getters.expressionModalInput().clear();
 			WorkflowPage.getters
 				.expressionModalInput()
+				.click()
 				.type('{{ { a : 1 }', { parseSpecialCharSequences: false });
 			WorkflowPage.getters.expressionModalOutput().contains(/^\[Object: \{"a": 1\}\]$/);
 
@@ -44,18 +45,19 @@ describe('Expression editor modal', () => {
 
 			WorkflowPage.getters
 				.expressionModalInput()
+				.click()
 				.type('{{ { a : 1 }.a', { parseSpecialCharSequences: false });
 			WorkflowPage.getters.expressionModalOutput().contains(/^1$/);
 		});
 
 		it('should resolve array resolvables', () => {
 			WorkflowPage.getters.expressionModalInput().clear();
-			WorkflowPage.getters.expressionModalInput().type('{{ [1, 2, 3]');
+			WorkflowPage.getters.expressionModalInput().click().type('{{ [1, 2, 3]');
 			WorkflowPage.getters.expressionModalOutput().contains(/^\[Array: \[1,2,3\]\]$/);
 
 			WorkflowPage.getters.expressionModalInput().clear();
 
-			WorkflowPage.getters.expressionModalInput().type('{{ [1, 2, 3][0]');
+			WorkflowPage.getters.expressionModalInput().click().type('{{ [1, 2, 3][0]');
 			WorkflowPage.getters.expressionModalOutput().contains(/^1$/);
 		});
 	});
@@ -73,24 +75,27 @@ describe('Expression editor modal', () => {
 
 		it('should resolve $parameter[]', () => {
 			WorkflowPage.getters.expressionModalInput().clear();
-			WorkflowPage.getters.expressionModalInput().type('{{ $parameter["operation"]');
+			WorkflowPage.getters.expressionModalInput().click().type('{{ $parameter["operation"]');
 			WorkflowPage.getters.expressionModalOutput().should('have.text', 'getAll');
 		});
 
 		it('should resolve input: $json,$input,$(nodeName)', () => {
 			// Previous nodes have not run, input is empty
 			WorkflowPage.getters.expressionModalInput().clear();
-			WorkflowPage.getters.expressionModalInput().type('{{ $json.myStr');
+			WorkflowPage.getters.expressionModalInput().click().type('{{ $json.myStr');
 			WorkflowPage.getters
 				.expressionModalOutput()
 				.should('have.text', '[Execute previous nodes for preview]');
 			WorkflowPage.getters.expressionModalInput().clear();
-			WorkflowPage.getters.expressionModalInput().type('{{ $input.item.json.myStr');
+			WorkflowPage.getters.expressionModalInput().click().type('{{ $input.item.json.myStr');
 			WorkflowPage.getters
 				.expressionModalOutput()
 				.should('have.text', '[Execute previous nodes for preview]');
 			WorkflowPage.getters.expressionModalInput().clear();
-			WorkflowPage.getters.expressionModalInput().type("{{ $('Schedule Trigger').item.json.myStr");
+			WorkflowPage.getters
+				.expressionModalInput()
+				.click()
+				.type("{{ $('Schedule Trigger').item.json.myStr");
 			WorkflowPage.getters
 				.expressionModalOutput()
 				.should('have.text', '[Execute previous nodes for preview]');
@@ -104,13 +109,16 @@ describe('Expression editor modal', () => {
 
 			// Previous nodes have run, input can be resolved
 			WorkflowPage.getters.expressionModalInput().clear();
-			WorkflowPage.getters.expressionModalInput().type('{{ $json.myStr');
+			WorkflowPage.getters.expressionModalInput().click().type('{{ $json.myStr');
 			WorkflowPage.getters.expressionModalOutput().should('have.text', 'Monday');
 			WorkflowPage.getters.expressionModalInput().clear();
-			WorkflowPage.getters.expressionModalInput().type('{{ $input.item.json.myStr');
+			WorkflowPage.getters.expressionModalInput().click().type('{{ $input.item.json.myStr');
 			WorkflowPage.getters.expressionModalOutput().should('have.text', 'Monday');
 			WorkflowPage.getters.expressionModalInput().clear();
-			WorkflowPage.getters.expressionModalInput().type("{{ $('Schedule Trigger').item.json.myStr");
+			WorkflowPage.getters
+				.expressionModalInput()
+				.click()
+				.type("{{ $('Schedule Trigger').item.json.myStr");
 			WorkflowPage.getters.expressionModalOutput().should('have.text', 'Monday');
 		});
 	});
