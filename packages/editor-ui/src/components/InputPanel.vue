@@ -62,7 +62,7 @@
 					v-for="{ node, type, depth } of inputSelectorNodes"
 					:key="node.name"
 					:value="node.name"
-					:class="$style.nodeOption"
+					:class="[$style.nodeOption, { [$style.disabled]: node.disabled }]"
 					:label="`${nodeOptionTitle(node.name)} ${getMultipleNodesText(node.name)}`"
 					data-test-id="ndv-input-option"
 				>
@@ -642,6 +642,10 @@ export default defineComponent({
 .nodeOptionTitle {
 	color: var(--color-text-dark);
 	font-weight: var(--font-weight-regular);
+}
+
+.disabled .nodeOptionTitle {
+	color: var(--color-text-light);
 }
 
 .nodeOptionSubtitle {
