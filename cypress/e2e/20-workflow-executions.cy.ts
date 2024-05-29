@@ -1,6 +1,7 @@
 import { WorkflowPage } from '../pages';
 import { WorkflowExecutionsTab } from '../pages/workflow-executions-tab';
 import type { RouteHandler } from 'cypress/types/net-stubbing';
+import executionOutOfMemoryServerResponse from '../fixtures/responses/execution-out-of-memory-server-response.json';
 
 const workflowPage = new WorkflowPage();
 const executionsTab = new WorkflowExecutionsTab();
@@ -72,7 +73,29 @@ describe('Current Workflow Executions', () => {
 		cy.url().should('not.include', '/executions');
 	});
 
-	it.only('should auto load more items if there is space and auto scroll', () => {
+	it('should error toast when server error message returned without stack trace', () => {
+		executionsTab.actions.createManualExecutions(1);
+		const message = 'Workflow did not finish, possible out-of-memory issue';
+		cy.intercept('GET', '/rest/executions/*', {
+			statusCode: 200,
+			body: executionOutOfMemoryServerResponse,
+		}).as('getExecution');
+
+		executionsTab.actions.switchToExecutionsTab();
+		cy.wait(['@getExecution']);
+
+		cy.getByTestId('workflow-preview-iframe')
+			.should('be.visible')
+			.its('0.contentDocument.body') // Access the body of the iframe document
+			.should('not.be.empty') // Ensure the body is not empty
+			.then(cy.wrap)
+			.find('.el-notification:has(.el-notification--error)')
+			.should('be.visible')
+			.filter(`:contains("${message}")`)
+			.should('be.visible');
+	});
+
+	it('should auto load more items if there is space and auto scroll', () => {
 		cy.viewport(1280, 960);
 		executionsTab.actions.createManualExecutions(24);
 
