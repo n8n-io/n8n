@@ -519,7 +519,7 @@ async function onWorkflowMenuSelect(action: string): Promise<void> {
 				type: 'success',
 			});
 
-			await router.push({ name: VIEWS.NEW_WORKFLOW });
+			await router.push({ name: VIEWS.WORKFLOWS });
 			break;
 		}
 		default:
