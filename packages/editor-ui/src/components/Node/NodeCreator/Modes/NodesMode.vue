@@ -139,6 +139,13 @@ function onSelected(item: INodeCreateElement) {
 			searchItems: mergedNodes,
 		});
 	}
+
+	if (item.type === 'link') {
+		window.open(item.properties.url, '_blank');
+		telemetry.trackNodesPanel('nodeCreateList.onLinkSelected', {
+			link: item.properties.url,
+		});
+	}
 }
 
 function subcategoriesMapper(item: INodeCreateElement) {
@@ -195,13 +202,13 @@ function onKeySelect(activeItemId: string) {
 
 registerKeyHook('MainViewArrowRight', {
 	keyboardKeys: ['ArrowRight', 'Enter'],
-	condition: (type) => ['subcategory', 'node', 'view'].includes(type),
+	condition: (type) => ['subcategory', 'node', 'link', 'view'].includes(type),
 	handler: onKeySelect,
 });
 
 registerKeyHook('MainViewArrowLeft', {
 	keyboardKeys: ['ArrowLeft'],
-	condition: (type) => ['subcategory', 'node', 'view'].includes(type),
+	condition: (type) => ['subcategory', 'node', 'link', 'view'].includes(type),
 	handler: arrowLeft,
 });
 </script>
