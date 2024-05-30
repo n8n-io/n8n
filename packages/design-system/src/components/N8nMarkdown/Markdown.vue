@@ -27,7 +27,6 @@ import xss, { friendlyAttrValue, whiteList } from 'xss';
 
 import N8nLoading from '../N8nLoading';
 import { escapeMarkdown } from '../../utils/markdown';
-import { input } from '@testing-library/user-event/dist/types/event';
 
 interface IImage {
 	id: string;
