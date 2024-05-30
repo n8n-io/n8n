@@ -107,8 +107,18 @@
 	--color-sticky-border-7: var(--prim-gray-120);
 
 	// NodeIcon
-	--color-node-icon-blue: blue;
-	--color-node-icon-red: red;
+	--color-node-icon-gray: var(--prim-gray-420);
+	--color-node-icon-black: var(--prim-gray-780);
+	--color-node-icon-blue: #4a3eea;
+	--color-node-icon-light-blue: #5fabf7;
+	--color-node-icon-orange: #ff965a;
+	--color-node-icon-orange-red: #ff6d5a;
+	--color-node-icon-light-green: #31c49f;
+	--color-node-icon-green: #1ea986;
+	--color-node-icon-dark-green: #15755d;
+	--color-node-icon-azure: #54b8c9;
+	--color-node-icon-purple: #9b6dd5;
+	--color-node-icon-crimson: #bb3a5a;
 
 	// Expressions, autocomplete, infobox
 	--color-valid-resolvable-foreground: var(--prim-color-alt-a);

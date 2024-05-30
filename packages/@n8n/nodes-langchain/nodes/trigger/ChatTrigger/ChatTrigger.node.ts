@@ -19,6 +19,7 @@ export class ChatTrigger implements INodeType {
 		displayName: 'Chat Trigger',
 		name: 'chatTrigger',
 		icon: 'fa:comments',
+		iconColor: 'black',
 		group: ['trigger'],
 		version: 1,
 		description: 'Runs the workflow when an n8n generated webchat is submitted',
