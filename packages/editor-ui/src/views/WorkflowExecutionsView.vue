@@ -137,7 +137,7 @@ async function fetchWorkflow() {
 
 	const tags = (data.tags ?? []) as ITag[];
 	workflow.value = data;
-	workflowsStore.setWorkflow(data);
+	workflowsStore.setWorkflowName({ newName: data.name, setStateDirty: false });
 	workflowsStore.setWorkflowTagIds(tags.map(({ id }) => id) ?? []);
 	tagsStore.upsertTags(tags);
 }
