@@ -10,6 +10,7 @@ import { contactFields, contactNotes, contactOperations } from './description/Co
 import { opportunityFields, opportunityOperations } from './description/OpportunityDescription';
 import { taskFields, taskOperations } from './description/TaskDescription';
 import {
+	getPipelines,
 	getPipelineStages,
 	getTimezones,
 	getUsers,
@@ -95,6 +96,7 @@ export class HighLevelV2 implements INodeType {
 
 	methods = {
 		loadOptions: {
+			getPipelines,
 			getPipelineStages,
 			getUsers,
 			getTimezones,

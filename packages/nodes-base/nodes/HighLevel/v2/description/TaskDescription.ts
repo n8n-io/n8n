@@ -198,16 +198,10 @@ const createProperties: INodeProperties[] = [
 		},
 		options: [
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Assigned To',
 				name: 'assignedTo',
-				type: 'options',
+				type: 'string',
 				default: '',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getUsers',
-				},
 				routing: {
 					send: {
 						type: 'body',
@@ -216,7 +210,7 @@ const createProperties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Description',
+				displayName: 'Body',
 				name: 'body',
 				type: 'string',
 				default: '',
@@ -387,16 +381,10 @@ const updateProperties: INodeProperties[] = [
 		},
 		options: [
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Assigned To',
 				name: 'assignedTo',
-				type: 'options',
+				type: 'string',
 				default: '',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getUsers',
-				},
 				routing: {
 					send: {
 						type: 'body',
@@ -417,7 +405,7 @@ const updateProperties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Description',
+				displayName: 'Body',
 				name: 'body',
 				type: 'string',
 				default: '',
@@ -438,28 +426,6 @@ const updateProperties: INodeProperties[] = [
 						type: 'body',
 						property: 'dueDate',
 						preSend: [dueDatePreSendAction],
-					},
-				},
-			},
-			{
-				displayName: 'Status',
-				name: 'status',
-				type: 'options',
-				options: [
-					{
-						name: 'Incompleted',
-						value: 'incompleted',
-					},
-					{
-						name: 'Completed',
-						value: 'completed',
-					},
-				],
-				default: 'incompleted',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'status',
 					},
 				},
 			},

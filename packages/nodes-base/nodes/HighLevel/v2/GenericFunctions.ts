@@ -269,10 +269,13 @@ export async function getPipelineStages(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
 	const pipelineId = this.getCurrentNodeParameter('pipelineId') as string;
-	const responseData = await highLevelApiRequest.call(this, 'GET', '/pipelines');
-	const pipelines = responseData.pipelines as [
-		{ id: string; stages: [{ id: string; name: string }] },
-	];
+	const { locationId } =
+		((await this.getCredentials('highLevelOAuth2Api'))?.oauthTokenData as IDataObject) ?? {};
+	const pipelines = (
+		await highLevelApiRequest.call(this, 'GET', '/opportunities/pipelines', undefined, {
+			locationId,
+		})
+	).pipelines as IDataObject[];
 	const pipeline = pipelines.find((p) => p.id === pipelineId);
 	if (pipeline) {
 		const options: INodePropertyOptions[] = pipeline.stages.map((stage) => {
@@ -284,13 +287,34 @@ export async function getPipelineStages(
 	}
 	return [];
 }
+export async function getPipelines(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+	const { locationId } =
+		((await this.getCredentials('highLevelOAuth2Api'))?.oauthTokenData as IDataObject) ?? {};
+	const responseData = await highLevelApiRequest.call(
+		this,
+		'GET',
+		'/opportunities/pipelines',
+		undefined,
+		{ locationId },
+	);
+
+	const pipelines = responseData.pipelines as [{ id: string; name: string; email: string }];
+	const options: INodePropertyOptions[] = pipelines.map((pipeline) => {
+		const name = pipeline.name;
+		const value = pipeline.id;
+		return { name, value };
+	});
+	return options;
+}
 
 export async function getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const { companyId } =
 		((await this.getCredentials('highLevelOAuth2Api'))?.oauthTokenData as IDataObject) ?? {};
-	const responseData = await highLevelApiRequest.call(this, 'GET', '/users/search/', undefined, {
-		companyId,
-	});
+	const responseData = await highLevelApiRequest.call(
+		this,
+		'GET',
+		`/users/search?companyId=${companyId}`,
+	);
 
 	const users = responseData.users as [{ id: string; name: string; email: string }];
 	const options: INodePropertyOptions[] = users.map((user) => {

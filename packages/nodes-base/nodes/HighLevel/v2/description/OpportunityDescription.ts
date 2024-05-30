@@ -1,6 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 import {
+	// addLocationIdPreSendAction,
 	contactIdentifierPreSendAction,
 	dateTimeToEpochPreSendAction,
 	opportunityUpdatePreSendAction,
@@ -111,37 +112,7 @@ const pipelineId: INodeProperties = {
 	description:
 		'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 	typeOptions: {
-		loadOptions: {
-			routing: {
-				request: {
-					url: '/pipelines',
-					method: 'GET',
-				},
-				output: {
-					postReceive: [
-						{
-							type: 'rootProperty',
-							properties: {
-								property: 'pipelines',
-							},
-						},
-						{
-							type: 'setKeyValue',
-							properties: {
-								name: '={{$responseItem.name}}',
-								value: '={{$responseItem.id}}',
-							},
-						},
-						{
-							type: 'sort',
-							properties: {
-								key: 'name',
-							},
-						},
-					],
-				},
-			},
-		},
+		loadOptionsMethod: 'getPipelines',
 	},
 	default: '',
 };
