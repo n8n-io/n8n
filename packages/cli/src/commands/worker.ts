@@ -64,22 +64,22 @@ export class Worker extends BaseCommand {
 		this.logger.info('Stopping n8n...');
 
 		// Stop accepting new jobs
-		await Worker.jobQueue.pause(true);
+		void Worker.jobQueue.pause(true); // do not block so we can report progress
 
 		try {
 			await this.externalHooks?.run('n8n.stop', []);
 
-			const hardStopTime = Date.now() + this.gracefulShutdownTimeoutInS;
+			const hardStopTimeMs = Date.now() + this.gracefulShutdownTimeoutInS * 1000;
 
 			// Wait for active workflow executions to finish
 			let count = 0;
 			while (Object.keys(Worker.runningJobs).length !== 0) {
 				if (count++ % 4 === 0) {
-					const waitLeft = Math.ceil((hardStopTime - Date.now()) / 1000);
+					const waitLeft = Math.ceil((hardStopTimeMs - Date.now()) / 1000);
 					this.logger.info(
 						`Waiting for ${
 							Object.keys(Worker.runningJobs).length
-						} active executions to finish... (wait ${waitLeft} more seconds)`,
+						} active executions to finish... (max wait ${waitLeft} more seconds)`,
 					);
 				}
 
@@ -481,6 +481,19 @@ export class Worker extends BaseCommand {
 
 		if (config.getEnv('queue.health.active')) {
 			await this.setupHealthMonitor();
+		}
+
+		if (process.stdout.isTTY) {
+			process.stdin.setRawMode(true);
+			process.stdin.resume();
+			process.stdin.setEncoding('utf8');
+
+			process.stdin.on('data', (key: string) => {
+				// ctrl+c
+				if (key.charCodeAt(0) === 3) {
+					void this.stopProcess();
+				}
+			});
 		}
 
 		// Make sure that the process does not close
