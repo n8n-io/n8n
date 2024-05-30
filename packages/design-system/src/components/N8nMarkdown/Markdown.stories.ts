@@ -51,3 +51,18 @@ Markdown.args = {
 		},
 	],
 };
+
+const TemplateWithCheckboxes: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
+	props: Object.keys(argTypes),
+	components: {
+		N8nMarkdown,
+	},
+	template: '<n8n-markdown v-bind="args"></n8n-markdown>',
+});
+
+export const WithCheckboxes = TemplateWithCheckboxes.bind({});
+WithCheckboxes.args = {
+	content: '__TODO__\n- [ ] Buy milk\n- [X] Buy socks\n',
+	loading: false,
+};
