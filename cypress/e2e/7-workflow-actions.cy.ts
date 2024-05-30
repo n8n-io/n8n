@@ -6,6 +6,7 @@ import {
 	EDIT_FIELDS_SET_NODE_NAME,
 	INSTANCE_MEMBERS,
 	INSTANCE_OWNER,
+	WEBHOOK_NODE_NAME,
 } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { WorkflowsPage as WorkflowsPageClass } from '../pages/workflows';

@@ -735,8 +735,8 @@ describe('Resolution-based completions', () => {
 			const result = completions('{{ $json.obj.| }}');
 			expect(result).toContainEqual(expect.objectContaining({ label: 'str', detail: 'string' }));
 			expect(result).toContainEqual(expect.objectContaining({ label: 'empty', detail: 'null' }));
-			expect(result).toContainEqual(expect.objectContaining({ label: 'arr', detail: 'array' }));
-			expect(result).toContainEqual(expect.objectContaining({ label: 'obj', detail: 'object' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'arr', detail: 'Array' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'obj', detail: 'Object' }));
 		});
 
 		test('should display type information for: {{ $input.item.json.| }}', () => {
@@ -750,8 +750,8 @@ describe('Resolution-based completions', () => {
 			const result = completions('{{ $json.item.json.| }}');
 			expect(result).toContainEqual(expect.objectContaining({ label: 'str', detail: 'string' }));
 			expect(result).toContainEqual(expect.objectContaining({ label: 'empty', detail: 'null' }));
-			expect(result).toContainEqual(expect.objectContaining({ label: 'arr', detail: 'array' }));
-			expect(result).toContainEqual(expect.objectContaining({ label: 'obj', detail: 'object' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'arr', detail: 'Array' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'obj', detail: 'Object' }));
 		});
 
 		test('should display type information for: {{ $("My Node").item.json.| }}', () => {
@@ -765,8 +765,8 @@ describe('Resolution-based completions', () => {
 			const result = completions('{{ $("My Node").item.json.| }}');
 			expect(result).toContainEqual(expect.objectContaining({ label: 'str', detail: 'string' }));
 			expect(result).toContainEqual(expect.objectContaining({ label: 'empty', detail: 'null' }));
-			expect(result).toContainEqual(expect.objectContaining({ label: 'arr', detail: 'array' }));
-			expect(result).toContainEqual(expect.objectContaining({ label: 'obj', detail: 'object' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'arr', detail: 'Array' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'obj', detail: 'Object' }));
 		});
 
 		test('should not display type information for other completions', () => {
