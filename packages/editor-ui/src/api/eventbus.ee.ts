@@ -45,10 +45,3 @@ export async function getDestinationsFromBackend(
 export async function getExecutionEvents(context: IRestApiContext, executionId: string) {
 	return await makeRestApiRequest(context, 'GET', `/eventbus/execution/${executionId}`);
 }
-
-export async function recoverExecutionDataFromEvents(
-	context: IRestApiContext,
-	executionId: string,
-) {
-	return await makeRestApiRequest(context, 'GET', `/eventbus/execution-recover/${executionId}`);
-}

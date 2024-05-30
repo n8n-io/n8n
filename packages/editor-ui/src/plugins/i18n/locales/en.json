@@ -243,7 +243,7 @@
 	"codeNodeEditor.completer.$today": "A DateTime representing midnight at the start of the current day. \n\nUses the instance's time zone (unless overridden in the workflow's settings).",
 	"codeNodeEditor.completer.$vars": "The <a target=\"_blank\"  href=\"https://docs.n8n.io/code/variables/\">variables</a> available to the workflow",
 	"codeNodeEditor.completer.$vars.varName": "Variable set on this n8n instance. All variables evaluate to strings.",
-	"codeNodeEditor.completer.$secrets": "The external secrets connected to your instance",
+	"codeNodeEditor.completer.$secrets": "The secrets from an <a target=\"_blank\" href=\"https://docs.n8n.io/external-secrets/\">external secrets vault</a>, if configured. Secret values are never displayed to the user. Only available in credential fields.",
 	"codeNodeEditor.completer.$secrets.provider": "External secrets providers connected to this n8n instance.",
 	"codeNodeEditor.completer.$secrets.provider.varName": "External secrets connected to this n8n instance. All secrets evaluate to strings.",
 	"codeNodeEditor.completer.$workflow": "Information about the current workflow",

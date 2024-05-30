@@ -3,11 +3,9 @@ import type { DataSourceOptions as ConnectionOptions } from '@n8n/typeorm';
 import { MigrationExecutor, DataSource as Connection } from '@n8n/typeorm';
 import { Container } from 'typedi';
 import { Logger } from '@/Logger';
-import { setSchema } from '@/Db';
 import { getConnectionOptions } from '@db/config';
 import type { Migration } from '@db/types';
 import { wrapMigration } from '@db/utils/migrationHelpers';
-import config from '@/config';
 
 // This function is extracted to make it easier to unit test it.
 // Mocking turned into a mess due to this command using typeorm and the db
@@ -87,9 +85,6 @@ export class DbRevertMigrationCommand extends Command {
 
 		const connection = new Connection(connectionOptions);
 		await connection.initialize();
-
-		const dbType = config.getEnv('database.type');
-		if (dbType === 'postgresdb') await setSchema(connection);
 
 		const migrationExecutor = new MigrationExecutor(connection);
 
