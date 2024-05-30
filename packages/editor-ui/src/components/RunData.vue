@@ -110,19 +110,15 @@
 			<slot name="input-select"></slot>
 		</div>
 
-		<div
-			v-if="maxRunIndex > 0"
-			v-show="!editMode.enabled"
-			:class="$style.runSelector"
-			data-test-id="run-selector"
-		>
+		<div v-if="maxRunIndex > 0" v-show="!editMode.enabled" :class="$style.runSelector">
 			<slot v-if="extraControlsLocation === 'runs'" name="input-select"></slot>
 
 			<n8n-select
-				size="small"
 				:model-value="runIndex"
 				:class="$style.runSelectorInner"
+				size="small"
 				teleported
+				data-test-id="run-selector"
 				@update:model-value="onRunIndexChange"
 				@click.stop
 			>
@@ -140,11 +136,12 @@
 					{{ $locale.baseText(linkedRuns ? 'runData.unlinking.hint' : 'runData.linking.hint') }}
 				</template>
 				<n8n-icon-button
-					class="linkRun"
 					:icon="linkedRuns ? 'unlink' : 'link'"
+					class="linkRun"
 					text
 					type="tertiary"
 					size="small"
+					data-test-id="link-run"
 					@click="toggleLinkRuns"
 				/>
 			</n8n-tooltip>
