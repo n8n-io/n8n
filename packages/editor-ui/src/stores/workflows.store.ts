@@ -305,6 +305,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return workflow.value.nodes.map((node) => ({ ...node }));
 	}
 
+	function setNodePosition(id: string, position: INodeUi['position']): void {
+		const node = workflow.value.nodes.find((n) => n.id === id);
+		if (!node) return;
+
+		setNodeValue({ name: node.name, key: 'position', value: position });
+	}
+
 	function getWorkflow(nodes: INodeUi[], connections: IConnections, copyData?: boolean): Workflow {
 		const nodeTypes = getNodeTypes();
 		let cachedWorkflowId: string | undefined = workflowId.value;
@@ -1588,5 +1595,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		resetChatMessages,
 		appendChatMessage,
 		checkIfNodeHasChatParent,
+		setNodePosition,
 	};
 });

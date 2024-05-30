@@ -35,7 +35,7 @@ export const INSTANCE_MEMBERS = [
 ];
 
 export const MANUAL_TRIGGER_NODE_NAME = 'Manual Trigger';
-export const MANUAL_TRIGGER_NODE_DISPLAY_NAME = 'When clicking "Test workflow"';
+export const MANUAL_TRIGGER_NODE_DISPLAY_NAME = 'When clicking ‘Test workflow’';
 export const MANUAL_CHAT_TRIGGER_NODE_NAME = 'Chat Trigger';
 export const SCHEDULE_TRIGGER_NODE_NAME = 'Schedule Trigger';
 export const CODE_NODE_NAME = 'Code';
@@ -57,6 +57,7 @@ export const AI_TOOL_CODE_NODE_NAME = 'Custom Code Tool';
 export const AI_TOOL_WIKIPEDIA_NODE_NAME = 'Wikipedia';
 export const AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME = 'OpenAI Chat Model';
 export const AI_OUTPUT_PARSER_AUTO_FIXING_NODE_NAME = 'Auto-fixing Output Parser';
+export const WEBHOOK_NODE_NAME = 'Webhook';
 
 export const META_KEY = Cypress.platform === 'darwin' ? '{meta}' : '{ctrl}';
 

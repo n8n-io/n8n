@@ -17,7 +17,6 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'eventBusEvent:read',
 	'eventBusEvent:update',
 	'eventBusEvent:delete',
-	'eventBusEvent:list',
 	'eventBusEvent:query',
 	'eventBusEvent:create',
 	'eventBusDestination:create',
@@ -80,7 +79,6 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 export const GLOBAL_ADMIN_SCOPES = GLOBAL_OWNER_SCOPES.concat();
 
 export const GLOBAL_MEMBER_SCOPES: Scope[] = [
-	'eventBusEvent:list',
 	'eventBusEvent:read',
 	'eventBusDestination:list',
 	'eventBusDestination:test',

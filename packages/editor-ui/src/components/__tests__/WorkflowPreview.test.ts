@@ -179,7 +179,7 @@ describe('WorkflowPreview', () => {
 			expect(postMessageSpy).toHaveBeenCalledWith(
 				JSON.stringify({
 					command: 'setActiveExecution',
-					execution: { id: 'abc' },
+					executionId: 'abc',
 				}),
 				'*',
 			);

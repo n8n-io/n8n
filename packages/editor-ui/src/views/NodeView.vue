@@ -250,6 +250,7 @@ import {
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	TIME,
 	AI_ASSISTANT_LOCAL_STORAGE_KEY,
+	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT,
 } from '@/constants';
 
 import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
@@ -395,6 +396,7 @@ import type { ProjectSharingData } from '@/features/projects/projects.types';
 import { useAIStore } from '@/stores/ai.store';
 import { useStorage } from '@/composables/useStorage';
 import { isJSPlumbEndpointElement } from '@/utils/typeGuards';
+import { usePostHog } from '@/stores/posthog.store';
 import { ProjectTypes } from '@/features/projects/projects.utils';
 
 interface AddNodeOptions {
@@ -944,6 +946,17 @@ export default defineComponent({
 			action: this.openSelectiveNodeCreator,
 		});
 
+		this.registerCustomAction({
+			key: 'showNodeCreator',
+			action: () => {
+				this.ndvStore.activeNodeName = null;
+
+				void this.$nextTick(() => {
+					this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TAB);
+				});
+			},
+		});
+
 		this.readOnlyEnvRouteCheck();
 		this.canvasStore.isDemo = this.isDemo;
 	},
@@ -1177,12 +1190,6 @@ export default defineComponent({
 					? this.$locale.baseText('nodeView.addOrEnableTriggerNode')
 					: this.$locale.baseText('nodeView.addATriggerNodeFirst');
 
-			this.registerCustomAction({
-				key: 'showNodeCreator',
-				action: () =>
-					this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.NO_TRIGGER_EXECUTION_TOOLTIP),
-			});
-
 			const notice = this.showMessage({
 				type: 'info',
 				title: this.$locale.baseText('nodeView.cantExecuteNoTrigger'),
@@ -1257,9 +1264,15 @@ export default defineComponent({
 		},
 		showTriggerCreator(source: NodeCreatorOpenSource) {
 			if (this.createNodeActive) return;
+
+			this.ndvStore.activeNodeName = null;
 			this.nodeCreatorStore.setSelectedView(TRIGGER_NODE_CREATOR_VIEW);
 			this.nodeCreatorStore.setShowScrim(true);
-			this.onToggleNodeCreator({ source, createNodeActive: true });
+			this.onToggleNodeCreator({
+				source,
+				createNodeActive: true,
+				nodeCreatorView: TRIGGER_NODE_CREATOR_VIEW,
+			});
 		},
 		async openExecution(executionId: string) {
 			this.canvasStore.startLoading();
@@ -1328,7 +1341,10 @@ export default defineComponent({
 					}
 				}
 
-				if (!nodeErrorFound && data.data.resultData.error.stack) {
+				if (
+					!nodeErrorFound &&
+					(data.data.resultData.error.stack || data.data.resultData.error.message)
+				) {
 					// Display some more information for now in console to make debugging easier
 					console.error(`Execution ${executionId} error:`);
 					console.error(data.data.resultData.error.stack);
@@ -2171,7 +2187,15 @@ export default defineComponent({
 			try {
 				const nodeIdMap: { [prev: string]: string } = {};
 				if (workflowData.nodes) {
+					const nodeNames = workflowData.nodes.map((node) => node.name);
 					workflowData.nodes.forEach((node: INode) => {
+						// Provide a new name for nodes that don't have one
+						if (!node.name) {
+							const nodeType = this.nodeTypesStore.getNodeType(node.type);
+							const newName = this.uniqueNodeName(nodeType?.displayName ?? node.type, nodeNames);
+							node.name = newName;
+							nodeNames.push(newName);
+						}
 						//generate new webhookId if workflow already contains a node with the same webhookId
 						if (node.webhookId && UPDATE_WEBHOOK_ID_NODE_TYPES.includes(node.type)) {
 							const isDuplicate = Object.values(
@@ -3648,6 +3672,7 @@ export default defineComponent({
 			this.workflowsStore.workflow.scopes = scopes;
 		},
 		async newWorkflow(): Promise<void> {
+			const { getVariant } = usePostHog();
 			this.canvasStore.startLoading();
 			this.resetWorkspace();
 			this.workflowData = await this.workflowsStore.getNewWorkflowData(
@@ -3659,15 +3684,24 @@ export default defineComponent({
 
 			this.uiStore.stateIsDirty = false;
 			this.canvasStore.setZoomLevel(1, [0, 0]);
-			await this.tryToAddWelcomeSticky();
+			this.canvasStore.zoomToFit();
 			this.uiStore.nodeViewInitialized = true;
 			this.historyStore.reset();
 			this.executionsStore.activeExecution = null;
 			this.makeNewWorkflowShareable();
 			this.canvasStore.stopLoading();
-		},
-		async tryToAddWelcomeSticky(): Promise<void> {
-			this.canvasStore.zoomToFit();
+
+			// Pre-populate the canvas with the manual trigger node if the experiment is enabled and the user is in the variant group
+			if (
+				getVariant(CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT.name) ===
+				CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT.variant
+			) {
+				const manualTriggerNode = this.canvasStore.getAutoAddManualTriggerNode();
+				if (manualTriggerNode) {
+					await this.addNodes([manualTriggerNode]);
+					this.uiStore.lastSelectedNode = manualTriggerNode.name;
+				}
+			}
 		},
 		async initView(): Promise<void> {
 			if (this.$route.params.action === 'workflowSave') {
@@ -4134,6 +4168,12 @@ export default defineComponent({
 						cancelButtonText: this.$locale.baseText('nodeView.prompt.cancel'),
 						inputErrorMessage: this.$locale.baseText('nodeView.prompt.invalidName'),
 						inputValue: currentName,
+						inputValidator: (value: string) => {
+							if (!value.trim()) {
+								return this.$locale.baseText('nodeView.prompt.invalidName');
+							}
+							return true;
+						},
 					},
 				);
 
@@ -4399,7 +4439,7 @@ export default defineComponent({
 		async addNodesToWorkflow(data: IWorkflowDataUpdate): Promise<IWorkflowDataUpdate> {
 			// Because nodes with the same name maybe already exist, it could
 			// be needed that they have to be renamed. Also could it be possible
-			// that nodes are not allowd to be created because they have a create
+			// that nodes are not allowed to be created because they have a create
 			// limit set. So we would then link the new nodes with the already existing ones.
 			// In this object all that nodes get saved in the format:
 			//   old-name -> new-name
@@ -4765,7 +4805,9 @@ export default defineComponent({
 						});
 					}
 				} else if (json?.command === 'setActiveExecution') {
-					this.executionsStore.activeExecution = json.execution;
+					this.executionsStore.activeExecution = (await this.executionsStore.fetchExecution(
+						json.executionId,
+					)) as ExecutionSummary;
 				}
 			} catch (e) {}
 		},
@@ -5356,4 +5398,3 @@ export default defineComponent({
 	);
 }
 </style>
-, IRun, IPushDataExecutionFinished

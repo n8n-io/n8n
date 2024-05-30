@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 import { Container } from 'typedi';
-import { GlobalConfig } from '@n8n/config';
 import type { EntityManager } from '@n8n/typeorm';
 import { DataSource as Connection } from '@n8n/typeorm';
 import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
@@ -48,29 +47,13 @@ export async function transaction<T>(fn: (entityManager: EntityManager) => Promi
 	return await connection.transaction(fn);
 }
 
-export async function setSchema(conn: Connection) {
-	const { schema } = Container.get(GlobalConfig).database.postgresdb;
-	const searchPath = ['public'];
-	if (schema !== 'public') {
-		await conn.query(`CREATE SCHEMA IF NOT EXISTS ${schema}`);
-		searchPath.unshift(schema);
-	}
-	await conn.query(`SET search_path TO ${searchPath.join(',')};`);
-}
-
 export async function init(): Promise<void> {
 	if (connectionState.connected) return;
 
-	const { type: dbType } = Container.get(GlobalConfig).database;
 	const connectionOptions = getConnectionOptions();
-
 	connection = new Connection(connectionOptions);
 	Container.set(Connection, connection);
 	await connection.initialize();
-
-	if (dbType === 'postgresdb') {
-		await setSchema(connection);
-	}
 
 	connectionState.connected = true;
 }

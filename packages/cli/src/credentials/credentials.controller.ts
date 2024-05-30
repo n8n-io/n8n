@@ -2,7 +2,6 @@ import { deepCopy } from 'n8n-workflow';
 import { GlobalConfig } from '@n8n/config';
 import { In } from '@n8n/typeorm';
 
-import config from '@/config';
 import { CredentialsService } from './credentials.service';
 import { CredentialRequest } from '@/requests';
 import { InternalHooks } from '@/InternalHooks';

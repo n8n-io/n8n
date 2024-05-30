@@ -24,6 +24,14 @@ describe('NDV', () => {
 		ndv.getters.container().should('not.be.visible');
 	});
 
+	it('should show input panel when node is not connected', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Manual');
+		workflowPage.actions.deselectAll();
+		workflowPage.actions.addNodeToCanvas('Set');
+		workflowPage.getters.canvasNodes().last().dblclick();
+		ndv.getters.container().should('be.visible').should('contain', 'Wire me up');
+	});
+
 	it('should test webhook node', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Webhook');
 		workflowPage.getters.canvasNodes().first().dblclick();
@@ -644,7 +652,7 @@ describe('NDV', () => {
 		ndv.getters.backToCanvas().click();
 		workflowPage.actions.executeWorkflow();
 		// Manual tigger node should show success indicator
-		workflowPage.actions.openNode('When clicking "Test workflow"');
+		workflowPage.actions.openNode('When clicking ‘Test workflow’');
 		ndv.getters.nodeRunSuccessIndicator().should('exist');
 		// Code node should show error
 		ndv.getters.backToCanvas().click();

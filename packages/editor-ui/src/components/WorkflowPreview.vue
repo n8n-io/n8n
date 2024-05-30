@@ -14,7 +14,8 @@
 				[$style.openNDV]: nodeViewDetailsOpened,
 				[$style.show]: showPreview,
 			}"
-			:src="`${rootStore.baseUrl}workflows/demo`"
+			:src="iframeSrc"
+			data-test-id="workflow-preview-iframe"
 			@mouseenter="onMouseEnter"
 			@mouseleave="onMouseLeave"
 		/>
@@ -64,6 +65,10 @@ const ready = ref(false);
 const insideIframe = ref(false);
 const scrollX = ref(0);
 const scrollY = ref(0);
+
+const iframeSrc = computed(() => {
+	return `${window.BASE_PATH ?? '/'}workflows/demo`;
+});
 
 const showPreview = computed(() => {
 	return (
@@ -119,7 +124,7 @@ const loadExecution = () => {
 			iframeRef.value?.contentWindow?.postMessage?.(
 				JSON.stringify({
 					command: 'setActiveExecution',
-					execution: executionsStore.activeExecution,
+					executionId: executionsStore.activeExecution.id,
 				}),
 				'*',
 			);
