@@ -2,9 +2,8 @@ import { BasePage } from '../base';
 
 export class SettingsSidebar extends BasePage {
 	getters = {
-		menuItem: (menuLabel: string) =>
-			cy.getByTestId('menu-item').filter(`:contains("${menuLabel}")`),
-		users: () => this.getters.menuItem('Users'),
+		menuItem: (id: string) => cy.getByTestId('menu-item').get('#' + id),
+		users: () => this.getters.menuItem('settings-users'),
 		back: () => cy.getByTestId('settings-back'),
 	};
 	actions = {

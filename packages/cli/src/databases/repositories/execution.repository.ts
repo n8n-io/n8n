@@ -728,12 +728,17 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		if (startedBefore) qb.andWhere({ startedAt: lessThanOrEqual(startedBefore) });
 		if (startedAfter) qb.andWhere({ startedAt: moreThanOrEqual(startedAfter) });
 
-		if (metadata) {
-			qb.leftJoin(ExecutionMetadata, 'md', 'md.executionId = execution.id');
+		if (metadata?.length === 1) {
+			const [{ key, value }] = metadata;
 
-			for (const item of metadata) {
-				qb.andWhere('md.key = :key AND md.value = :value', item);
-			}
+			qb.innerJoin(
+				ExecutionMetadata,
+				'md',
+				'md.executionId = execution.id AND md.key = :key AND md.value = :value',
+			);
+
+			qb.setParameter('key', key);
+			qb.setParameter('value', value);
 		}
 
 		return qb;

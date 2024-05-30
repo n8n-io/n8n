@@ -170,8 +170,8 @@
 	--color-button-primary-border: var(--prim-color-primary);
 	--color-button-primary-background: var(--prim-color-primary);
 	--color-button-primary-hover-active-border: var(--prim-color-primary-shade-100);
-	--color-button-primary-hover-active-background: var(--prim-color-primary-shade-100);
-	--color-button-primary-focus-outline: var(--prim-color-primary-tint-200);
+	--color-button-primary-hover-active-focus-background: var(--prim-color-primary-shade-100);
+	--color-button-primary-focus-outline: var(--prim-color-primary-alpha-035);
 	--color-button-primary-disabled-font: var(--prim-gray-0-alpha-075);
 	--color-button-primary-disabled-border: var(--prim-color-primary-tint-200);
 	--color-button-primary-disabled-background: var(--prim-color-primary-tint-200);
@@ -180,10 +180,10 @@
 	--color-button-secondary-font: var(--prim-gray-670);
 	--color-button-secondary-border: var(--prim-gray-320);
 	--color-button-secondary-background: var(--prim-gray-0);
-	--color-button-secondary-hover-active-focus-font: var(--prim-color-primary);
-	--color-button-secondary-hover-active-border: var(--prim-color-primary);
+	--color-button-secondary-hover-active-focus-font: var(--prim-color-primary-shade-100);
+	--color-button-secondary-hover-active-focus-border: var(--prim-color-primary);
 	--color-button-secondary-hover-background: var(--prim-color-primary-tint-300);
-	--color-button-secondary-active-background: var(--prim-color-primary-tint-250);
+	--color-button-secondary-active-focus-background: var(--prim-color-primary-tint-270);
 	--color-button-secondary-focus-outline: var(--prim-gray-120);
 	--color-button-secondary-disabled-font: var(--prim-gray-200);
 	--color-button-secondary-disabled-border: var(--prim-gray-200);
@@ -201,7 +201,8 @@
 
 	// Node Creator Button
 	--color-button-node-creator-border-font: var(--prim-gray-540);
-	--color-button-node-creator-hover-border-font: var(--prim-color-primary);
+	--color-button-node-creator-hover-font: var(--prim-color-primary);
+	--color-button-node-creator-hover-border: var(--prim-color-primary);
 	--color-button-node-creator-background: var(--prim-gray-0);
 
 	// Table
@@ -214,13 +215,16 @@
 	// Notification
 	--color-notification-background: var(--color-background-xlight);
 
-	// Execution card
+	// Execution
 	--execution-card-border-success: var(--prim-color-alt-a-tint-300);
 	--execution-card-border-error: var(--prim-color-alt-c-tint-250);
 	--execution-card-border-waiting: var(--prim-color-secondary-tint-300);
 	--execution-card-border-running: var(--prim-color-alt-b-tint-250);
 	--execution-card-border-unknown: var(--prim-gray-120);
 	--execution-card-background-hover: var(--color-foreground-light);
+	--execution-selector-background: var(--color-background-dark);
+	--execution-selector-text: var(--color-text-xlight);
+	--execution-select-all-text: var(--color-danger);
 
 	// NDV
 	--color-run-data-background: var(--color-background-base);
@@ -228,7 +232,6 @@
 	--color-ndv-droppable-parameter-background: var(--prim-color-secondary-alpha-010);
 	--color-ndv-droppable-parameter-active-background: var(--prim-color-alt-a-alpha-015);
 	--color-ndv-back-font: var(--prim-gray-0);
-	--color-ndv-output-error-message: var(--prim-color-alt-c);
 
 	// Notice
 	--color-notice-warning-border: var(--color-warning-tint-1);
@@ -238,8 +241,8 @@
 	// Callout
 	--color-callout-info-border: var(--color-foreground-base);
 	--color-callout-info-background: var(--color-foreground-xlight);
-	--color-callout-info-font: var(--color-info);
-	--color-callout-info-icon: var(--color-info);
+	--color-callout-info-font: var(--color-text-base);
+	--color-callout-info-icon: var(--color-text-light);
 	--color-callout-success-border: var(--color-success-light-2);
 	--color-callout-success-background: var(--color-success-tint-2);
 	--color-callout-success-font: var(--color-success);

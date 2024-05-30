@@ -39,4 +39,4 @@ export const info = (msg: string, options?: ReportingOptions) => {
 };
 
 export const warn = (warning: Error | string, options?: ReportingOptions) =>
-	error(warning, { level: 'warning', ...options });
+	error(warning, { ...options, level: 'warning' });

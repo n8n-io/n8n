@@ -529,10 +529,54 @@ describe('FilterParameter', () => {
 
 			describe('number', () => {
 				it.each([
+					{ left: 0, expected: true },
+					{ left: 15, expected: true },
+					{ left: -15.4, expected: true },
+					{ left: NaN, expected: false },
+					{ left: null, expected: false },
+				])('number:exists($left) === $expected', ({ left, expected }) => {
+					const result = executeFilter(
+						filterFactory({
+							conditions: [
+								{
+									id: '1',
+									leftValue: left,
+									operator: { operation: 'exists', type: 'number' },
+								},
+							],
+						}),
+					);
+					expect(result).toBe(expected);
+				});
+
+				it.each([
+					{ left: 0, expected: false },
+					{ left: 15, expected: false },
+					{ left: -15.4, expected: false },
+					{ left: NaN, expected: true },
+					{ left: null, expected: true },
+				])('number:notExists($left) === $expected', ({ left, expected }) => {
+					const result = executeFilter(
+						filterFactory({
+							conditions: [
+								{
+									id: '1',
+									leftValue: left,
+									operator: { operation: 'notExists', type: 'number' },
+								},
+							],
+						}),
+					);
+					expect(result).toBe(expected);
+				});
+
+				it.each([
 					{ left: 0, right: 0, expected: true },
 					{ left: 15, right: 15, expected: true },
 					{ left: 15.34, right: 15.34, expected: true },
 					{ left: 15, right: 15.3249038, expected: false },
+					{ left: 15, right: NaN, expected: false },
+					{ left: NaN, right: NaN, expected: false },
 				])('number:equals($left,$right) === $expected', ({ left, right, expected }) => {
 					const result = executeFilter(
 						filterFactory({
@@ -554,6 +598,8 @@ describe('FilterParameter', () => {
 					{ left: 15, right: 15, expected: false },
 					{ left: 15.34, right: 15.34, expected: false },
 					{ left: 15, right: 15.3249038, expected: true },
+					{ left: 15, right: NaN, expected: true },
+					{ left: NaN, right: NaN, expected: true },
 				])('number:notEquals($left,$right) === $expected', ({ left, right, expected }) => {
 					const result = executeFilter(
 						filterFactory({
@@ -575,6 +621,7 @@ describe('FilterParameter', () => {
 					{ left: 15, right: 16, expected: false },
 					{ left: 16, right: 15, expected: true },
 					{ left: 15.34001, right: 15.34, expected: true },
+					{ left: 15, right: NaN, expected: false },
 				])('number:gt($left,$right) === $expected', ({ left, right, expected }) => {
 					const result = executeFilter(
 						filterFactory({
@@ -596,6 +643,7 @@ describe('FilterParameter', () => {
 					{ left: 15, right: 16, expected: true },
 					{ left: 16, right: 15, expected: false },
 					{ left: 15.34001, right: 15.34, expected: false },
+					{ left: 15, right: NaN, expected: false },
 				])('number:lt($left,$right) === $expected', ({ left, right, expected }) => {
 					const result = executeFilter(
 						filterFactory({
@@ -617,6 +665,7 @@ describe('FilterParameter', () => {
 					{ left: 15, right: 16, expected: false },
 					{ left: 16, right: 15, expected: true },
 					{ left: 15.34001, right: 15.34, expected: true },
+					{ left: 15, right: NaN, expected: false },
 				])('number:gte($left,$right) === $expected', ({ left, right, expected }) => {
 					const result = executeFilter(
 						filterFactory({
@@ -638,6 +687,7 @@ describe('FilterParameter', () => {
 					{ left: 15, right: 16, expected: true },
 					{ left: 16, right: 15, expected: false },
 					{ left: 15.34001, right: 15.34, expected: false },
+					{ left: 15, right: NaN, expected: false },
 				])('number:lte($left,$right) === $expected', ({ left, right, expected }) => {
 					const result = executeFilter(
 						filterFactory({

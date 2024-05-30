@@ -5,7 +5,7 @@
 				icon="filter"
 				type="tertiary"
 				:active="hasFilters"
-				:class="[$style['filter-button'], 'ml-2xs']"
+				:class="$style['filter-button']"
 				data-test-id="resources-list-filters-trigger"
 			>
 				<n8n-badge v-show="filtersLength > 0" theme="primary" class="mr-4xs">
@@ -17,39 +17,23 @@
 		<div :class="$style['filters-dropdown']" data-test-id="resources-list-filters-dropdown">
 			<slot :filters="modelValue" :set-key-value="setKeyValue" />
 			<enterprise-edition
-				v-if="shareable"
-				class="mb-s"
+				v-if="shareable && projectsStore.isProjectHome"
 				:features="[EnterpriseEditionFeature.Sharing]"
 			>
 				<n8n-input-label
-					:label="$locale.baseText('forms.resourceFiltersDropdown.ownedBy')"
+					:label="$locale.baseText('forms.resourceFiltersDropdown.owner')"
 					:bold="false"
 					size="small"
 					color="text-base"
 					class="mb-3xs"
 				/>
-				<n8n-user-select
-					:users="ownedByUsers"
-					:current-user-id="usersStore.currentUser.id"
-					:model-value="modelValue.ownedBy"
-					size="medium"
-					@update:model-value="setKeyValue('ownedBy', $event)"
-				/>
-			</enterprise-edition>
-			<enterprise-edition v-if="shareable" :features="[EnterpriseEditionFeature.Sharing]">
-				<n8n-input-label
-					:label="$locale.baseText('forms.resourceFiltersDropdown.sharedWith')"
-					:bold="false"
-					size="small"
-					color="text-base"
-					class="mb-3xs"
-				/>
-				<n8n-user-select
-					:users="sharedWithUsers"
-					:current-user-id="usersStore.currentUser.id"
-					:model-value="modelValue.sharedWith"
-					size="medium"
-					@update:model-value="setKeyValue('sharedWith', $event)"
+				<ProjectSharing
+					v-model="selectedProject"
+					class="pt-2xs"
+					:projects="projectsStore.projects"
+					:placeholder="$locale.baseText('forms.resourceFiltersDropdown.owner.placeholder')"
+					:empty-options-text="$locale.baseText('projects.sharing.noMatchingProjects')"
+					@update:model-value="setKeyValue('homeProject', ($event as ProjectSharingData).id)"
 				/>
 			</enterprise-edition>
 			<div v-if="hasFilters" :class="[$style['filters-dropdown-footer'], 'mt-s']">
@@ -65,13 +49,17 @@
 import { defineComponent } from 'vue';
 import { EnterpriseEditionFeature } from '@/constants';
 import { mapStores } from 'pinia';
-import { useUsersStore } from '@/stores/users.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import type { PropType } from 'vue';
-import type { IUser } from '@/Interface';
+import type { ProjectSharingData } from '@/features/projects/projects.types';
+import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
 
 export type IResourceFiltersType = Record<string, boolean | string | string[]>;
 
 export default defineComponent({
+	components: {
+		ProjectSharing,
+	},
 	props: {
 		modelValue: {
 			type: Object as PropType<IResourceFiltersType>,
@@ -87,25 +75,17 @@ export default defineComponent({
 		},
 		reset: {
 			type: Function as PropType<() => void>,
+			default: () => {},
 		},
 	},
 	data() {
 		return {
 			EnterpriseEditionFeature,
+			selectedProject: null as ProjectSharingData | null,
 		};
 	},
 	computed: {
-		...mapStores(useUsersStore),
-		ownedByUsers(): IUser[] {
-			return this.usersStore.allUsers.map((user) =>
-				user.id === this.modelValue.sharedWith ? { ...user, disabled: true } : user,
-			);
-		},
-		sharedWithUsers(): IUser[] {
-			return this.usersStore.allUsers.map((user) =>
-				user.id === this.modelValue.ownedBy ? { ...user, disabled: true } : user,
-			);
-		},
+		...mapStores(useProjectsStore),
 		filtersLength(): number {
 			let length = 0;
 
@@ -114,13 +94,8 @@ export default defineComponent({
 					return;
 				}
 
-				length += (
-					Array.isArray(this.modelValue[key])
-						? this.modelValue[key].length > 0
-						: this.modelValue[key] !== ''
-				)
-					? 1
-					: 0;
+				const value = this.modelValue[key];
+				length += (Array.isArray(value) ? value.length > 0 : value !== '') ? 1 : 0;
 			});
 
 			return length;
@@ -133,6 +108,12 @@ export default defineComponent({
 		filtersLength(value: number) {
 			this.$emit('update:filtersLength', value);
 		},
+	},
+	async beforeMount() {
+		await this.projectsStore.getAllProjects();
+		this.selectedProject =
+			this.projectsStore.projects.find((project) => project.id === this.modelValue.homeProject) ??
+			null;
 	},
 	methods: {
 		setKeyValue(key: string, value: unknown) {
@@ -155,6 +136,7 @@ export default defineComponent({
 
 				this.$emit('update:modelValue', filters);
 			}
+			this.selectedProject = null;
 		},
 	},
 });

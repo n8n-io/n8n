@@ -31,6 +31,7 @@ import type { CommunityPackagesService } from '@/services/communityPackages.serv
 import { Logger } from '@/Logger';
 import { UrlService } from './url.service';
 import { InternalHooks } from '@/InternalHooks';
+import { isApiEnabled } from '@/PublicApi';
 
 @Service()
 export class FrontendService {
@@ -143,7 +144,7 @@ export class FrontendService {
 				},
 			},
 			publicApi: {
-				enabled: !config.get('publicApi.disabled') && !this.license.isAPIDisabled(),
+				enabled: isApiEnabled(),
 				latestVersion: 1,
 				path: config.getEnv('publicApi.path'),
 				swaggerUi: {
@@ -185,6 +186,11 @@ export class FrontendService {
 				workflowHistory: false,
 				workerView: false,
 				advancedPermissions: false,
+				projects: {
+					team: {
+						limit: 0,
+					},
+				},
 			},
 			mfa: {
 				enabled: false,
@@ -317,6 +323,8 @@ export class FrontendService {
 		this.settings.executionMode = config.getEnv('executions.mode');
 
 		this.settings.binaryDataMode = config.getEnv('binaryDataManager.mode');
+
+		this.settings.enterprise.projects.team.limit = this.license.getTeamProjectLimit();
 
 		return this.settings;
 	}

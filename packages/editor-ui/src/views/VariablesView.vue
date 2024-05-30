@@ -246,6 +246,11 @@ onBeforeUnmount(() => {
 		@sort="resetNewVariablesList"
 		@click:add="addTemporaryVariable"
 	>
+		<template #header>
+			<n8n-heading size="2xlarge" class="mb-m">
+				{{ i18n.baseText('variables.heading') }}
+			</n8n-heading>
+		</template>
 		<template #add-button>
 			<n8n-tooltip placement="top" :disabled="canCreateVariables">
 				<div>

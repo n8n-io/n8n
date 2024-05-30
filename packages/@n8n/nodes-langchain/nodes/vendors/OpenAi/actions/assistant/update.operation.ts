@@ -84,6 +84,25 @@ const properties: INodeProperties[] = [
 				default: false,
 				description: 'Whether to remove all custom tools (functions) from the assistant',
 			},
+
+			{
+				displayName: 'Output Randomness (Temperature)',
+				name: 'temperature',
+				default: 1,
+				typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
+				description:
+					'Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. We generally recommend altering this or temperature but not both.',
+				type: 'number',
+			},
+			{
+				displayName: 'Output Randomness (Top P)',
+				name: 'topP',
+				default: 1,
+				typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
+				description:
+					'An alternative to sampling with temperature, controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both.',
+				type: 'number',
+			},
 		],
 	},
 ];
@@ -109,6 +128,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		knowledgeRetrieval,
 		file_ids,
 		removeCustomTools,
+		temperature,
+		topP,
 	} = options;
 
 	const assistantDescription = options.description as string;
@@ -128,7 +149,19 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			);
 		}
 
-		body.file_ids = files;
+		body.tool_resources = {
+			...((body.tool_resources as object) ?? {}),
+			code_interpreter: {
+				file_ids,
+			},
+			file_search: {
+				vector_stores: [
+					{
+						file_ids,
+					},
+				],
+			},
+		};
 	}
 
 	if (modelId) {
@@ -147,11 +180,19 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		body.instructions = instructions;
 	}
 
+	if (temperature) {
+		body.temperature = temperature;
+	}
+
+	if (topP) {
+		body.topP = topP;
+	}
+
 	let tools =
 		((
 			await apiRequest.call(this, 'GET', `/assistants/${assistantId}`, {
 				headers: {
-					'OpenAI-Beta': 'assistants=v1',
+					'OpenAI-Beta': 'assistants=v2',
 				},
 			})
 		).tools as IDataObject[]) || [];
@@ -166,14 +207,14 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		tools = tools.filter((tool) => tool.type !== 'code_interpreter');
 	}
 
-	if (knowledgeRetrieval && !tools.find((tool) => tool.type === 'retrieval')) {
+	if (knowledgeRetrieval && !tools.find((tool) => tool.type === 'file_search')) {
 		tools.push({
-			type: 'retrieval',
+			type: 'file_search',
 		});
 	}
 
-	if (knowledgeRetrieval === false && tools.find((tool) => tool.type === 'retrieval')) {
-		tools = tools.filter((tool) => tool.type !== 'retrieval');
+	if (knowledgeRetrieval === false && tools.find((tool) => tool.type === 'file_search')) {
+		tools = tools.filter((tool) => tool.type !== 'file_search');
 	}
 
 	if (removeCustomTools) {
@@ -185,7 +226,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const response = await apiRequest.call(this, 'POST', `/assistants/${assistantId}`, {
 		body,
 		headers: {
-			'OpenAI-Beta': 'assistants=v1',
+			'OpenAI-Beta': 'assistants=v2',
 		},
 	});
 

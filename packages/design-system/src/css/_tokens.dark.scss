@@ -2,6 +2,7 @@
 
 @mixin theme {
 	// Primary tokens
+	--color-danger: var(--prim-color-alt-k);
 
 	// Text
 	--color-text-dark: var(--prim-gray-40);
@@ -22,6 +23,7 @@
 	--color-background-dark: var(--prim-gray-70);
 	--color-background-medium: var(--prim-gray-540);
 	--color-background-base: var(--prim-gray-670);
+	--color-background-light-base: var(--prim-gray-780);
 	--color-background-light: var(--prim-gray-820);
 	--color-background-xlight: var(--prim-gray-740);
 
@@ -108,7 +110,7 @@
 	--color-code-tags-variable: var(--prim-color-primary-tint-100);
 	--color-code-tags-definition: var(--prim-color-alt-e);
 	--color-json-default: var(--prim-color-secondary-tint-200);
-	--color-json-null: var(--prim-color-alt-c-tint-150);
+	--color-json-null: var(--color-danger);
 	--color-json-boolean: var(--prim-color-alt-a);
 	--color-json-number: var(--prim-color-alt-a);
 	--color-json-string: var(--prim-color-secondary-tint-200);
@@ -132,15 +134,30 @@
 	--color-variables-usage-syntax-bg: var(--prim-color-alt-a-alpha-025);
 
 	// Button primary
-	--color-button-primary-disabled-font: var(--prim-gray-0-alpha-025);
+	--color-button-primary-focus-outline: var(--prim-color-primary-alpha-035);
+	--color-button-primary-disabled-font: var(--prim-gray-0-alpha-030);
 	--color-button-primary-disabled-border: transparent;
-	--color-button-primary-disabled-background: var(--prim-color-primary-shade-300);
+	--color-button-primary-disabled-background: var(--prim-color-primary-alpha-050);
 
 	// Button secondary
-	--color-button-secondary-border: var(--prim-gray-420);
+	--color-button-secondary-font: var(--prim-gray-70);
+	--color-button-secondary-border: var(--prim-gray-70);
+	--color-button-secondary-background: transparent;
+	--color-button-secondary-hover-active-focus-font: var(--prim-color-primary-tint-100);
+	--color-button-secondary-hover-background: transparent;
+	--color-button-secondary-active-focus-background: var(--prim-color-primary-alpha-010);
+	--color-button-secondary-focus-outline: var(--prim-color-primary-alpha-035);
+	--color-button-secondary-disabled-font: var(--prim-gray-0-alpha-030);
+	--color-button-secondary-disabled-border: var(--prim-gray-0-alpha-030);
 
 	// Text button
 	--color-text-button-secondary-font: var(--prim-gray-320);
+
+	// Node Creator Button
+	--color-button-node-creator-border-font: var(--color-button-secondary-font);
+	--color-button-node-creator-hover-font: var(--color-button-secondary-hover-active-focus-font);
+	--color-button-node-creator-hover-border: var(--prim-color-primary);
+	--color-button-node-creator-background: var(--prim-color-primary-alpha-010);
 
 	// Table
 	--color-table-header-background: var(--prim-gray-740);
@@ -152,8 +169,11 @@
 	// Notification
 	--color-notification-background: var(--prim-gray-740);
 
-	// Execution card
+	// Execution
 	--execution-card-background-hover: var(--color-foreground-base);
+	--execution-selector-background: var(--prim-gray-740);
+	--execution-selector-text: var(--color-text-base);
+	--execution-select-all-text: var(--color-text-base);
 
 	// NDV
 	--color-run-data-background: var(--prim-gray-800);
@@ -161,7 +181,6 @@
 	--color-ndv-droppable-parameter-background: var(--prim-color-primary-alpha-010);
 	--color-ndv-droppable-parameter-active-background: var(--prim-color-alt-a-alpha-015);
 	--color-ndv-back-font: var(--prim-gray-0);
-	--color-ndv-output-error-message: var(--prim-color-alt-c-tint-150);
 
 	// Notice
 	--color-notice-warning-border: var(--prim-color-alt-b-tint-250);
@@ -181,6 +200,7 @@
 	--color-callout-danger-border: var(--color-danger);
 	--color-callout-danger-background: var(--prim-color-alt-c-alpha-02);
 	--color-callout-danger-font: var(--prim-gray-0);
+	--color-callout-danger-icon: var(--color-danger);
 	--color-callout-secondary-border: var(--color-secondary);
 	--color-callout-secondary-background: var(--prim-color-secondary-alpha-025);
 	--color-callout-secondary-font: var(--prim-gray-0);
@@ -209,12 +229,12 @@
 	--color-background-input-triple: var(--prim-gray-800);
 
 	// Node error
-	--color-node-error-output-text-color: var(--prim-color-alt-c-tint-150);
+	--color-node-error-output-text-color: var(--color-danger);
 
 	// MFA Recovery codes
 	--color-mfa-recovery-code-background: var(--color-background-xlight);
 	--color-mfa-recovery-code-color: var(--color-text-dark);
-	--color-mfa-lose-access-text-color: var(--prim-color-alt-c-tint-150);
+	--color-mfa-lose-access-text-color: var(--color-danger);
 
 	// Various
 	--color-info-tint-1: var(--prim-gray-420);

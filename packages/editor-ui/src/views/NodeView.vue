@@ -290,6 +290,7 @@ import type {
 	Workflow,
 	ConnectionTypes,
 	INodeOutputConfiguration,
+	IRun,
 } from 'n8n-workflow';
 import {
 	deepCopy,
@@ -317,6 +318,7 @@ import type {
 	NodeCreatorOpenSource,
 	AddedNodesAndConnections,
 	ToggleNodeCreatorOptions,
+	IPushDataExecutionFinished,
 	AIAssistantConnectionInfo,
 } from '@/Interface';
 
@@ -388,9 +390,12 @@ import { useCanvasPanning } from '@/composables/useCanvasPanning';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
+import { useProjectsStore } from '@/features/projects/projects.store';
+import type { ProjectSharingData } from '@/features/projects/projects.types';
 import { useAIStore } from '@/stores/ai.store';
 import { useStorage } from '@/composables/useStorage';
 import { isJSPlumbEndpointElement } from '@/utils/typeGuards';
+import { ProjectTypes } from '@/features/projects/projects.utils';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -555,7 +560,7 @@ export default defineComponent({
 						this.resetWorkspace();
 						this.uiStore.stateIsDirty = previousDirtyState;
 					}
-					await Promise.all([this.loadCredentials(), this.initView()]);
+					await this.initView();
 					this.canvasStore.stopLoading();
 					if (this.blankRedirect) {
 						this.blankRedirect = false;
@@ -617,6 +622,7 @@ export default defineComponent({
 			usePushConnectionStore,
 			useSourceControlStore,
 			useExecutionsStore,
+			useProjectsStore,
 			useAIStore,
 		),
 		nativelyNumberSuffixedDefaults(): string[] {
@@ -837,11 +843,7 @@ export default defineComponent({
 
 		const loadPromises = (() => {
 			if (this.settingsStore.isPreviewMode && this.isDemo) return [];
-			const promises = [
-				this.loadActiveWorkflows(),
-				this.loadCredentials(),
-				this.loadCredentialTypes(),
-			];
+			const promises = [this.loadActiveWorkflows(), this.loadCredentialTypes()];
 			if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Variables)) {
 				promises.push(this.loadVariables());
 			}
@@ -1282,17 +1284,10 @@ export default defineComponent({
 				this.workflowsStore.setWorkflowPinData(data.workflowData.pinData);
 			}
 
-			if (data.workflowData.ownedBy) {
-				this.workflowsEEStore.setWorkflowOwnedBy({
-					workflowId: data.workflowData.id,
-					ownedBy: data.workflowData.ownedBy,
-				});
-			}
-
-			if (data.workflowData.sharedWith) {
+			if (data.workflowData.sharedWithProjects) {
 				this.workflowsEEStore.setWorkflowSharedWith({
 					workflowId: data.workflowData.id,
-					sharedWith: data.workflowData.sharedWith,
+					sharedWithProjects: data.workflowData.sharedWithProjects,
 				});
 			}
 
@@ -1333,7 +1328,10 @@ export default defineComponent({
 					}
 				}
 
-				if (!nodeErrorFound && data.data.resultData.error.stack) {
+				if (
+					!nodeErrorFound &&
+					(data.data.resultData.error.stack || data.data.resultData.error.message)
+				) {
 					// Display some more information for now in console to make debugging easier
 					console.error(`Execution ${executionId} error:`);
 					console.error(data.data.resultData.error.stack);
@@ -1418,7 +1416,11 @@ export default defineComponent({
 			await this.$router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
 
 			await this.addNodes(data.workflow.nodes, data.workflow.connections);
-			this.workflowData = (await this.workflowsStore.getNewWorkflowData(data.name)) || {};
+			this.workflowData =
+				(await this.workflowsStore.getNewWorkflowData(
+					data.name,
+					this.projectsStore.currentProjectId,
+				)) || {};
 			this.workflowsStore.addToWorkflowMetadata({ templateId });
 			await this.$nextTick();
 			this.canvasStore.zoomToFit();
@@ -1447,17 +1449,10 @@ export default defineComponent({
 			this.workflowsStore.setWorkflowVersionId(workflow.versionId);
 			this.workflowsStore.setWorkflowMetadata(workflow.meta);
 
-			if (workflow.ownedBy) {
-				this.workflowsEEStore.setWorkflowOwnedBy({
-					workflowId: workflow.id,
-					ownedBy: workflow.ownedBy,
-				});
-			}
-
-			if (workflow.sharedWith) {
+			if (workflow.sharedWithProjects) {
 				this.workflowsEEStore.setWorkflowSharedWith({
 					workflowId: workflow.id,
-					sharedWith: workflow.sharedWith,
+					sharedWithProjects: workflow.sharedWithProjects,
 				});
 			}
 
@@ -2179,7 +2174,15 @@ export default defineComponent({
 			try {
 				const nodeIdMap: { [prev: string]: string } = {};
 				if (workflowData.nodes) {
+					const nodeNames = workflowData.nodes.map((node) => node.name);
 					workflowData.nodes.forEach((node: INode) => {
+						// Provide a new name for nodes that don't have one
+						if (!node.name) {
+							const nodeType = this.nodeTypesStore.getNodeType(node.type);
+							const newName = this.uniqueNodeName(nodeType?.displayName ?? node.type, nodeNames);
+							node.name = newName;
+							nodeNames.push(newName);
+						}
 						//generate new webhookId if workflow already contains a node with the same webhookId
 						if (node.webhookId && UPDATE_WEBHOOK_ID_NODE_TYPES.includes(node.type)) {
 							const isDuplicate = Object.values(
@@ -3647,10 +3650,21 @@ export default defineComponent({
 			// Clear the interval to prevent the notification from being sent
 			clearTimeout(this.unloadTimeout);
 		},
+		makeNewWorkflowShareable() {
+			const { currentProject, personalProject } = this.projectsStore;
+			const homeProject = currentProject ?? personalProject ?? {};
+			const scopes = currentProject?.scopes ?? personalProject?.scopes ?? [];
+
+			this.workflowsStore.workflow.homeProject = homeProject as ProjectSharingData;
+			this.workflowsStore.workflow.scopes = scopes;
+		},
 		async newWorkflow(): Promise<void> {
 			this.canvasStore.startLoading();
 			this.resetWorkspace();
-			this.workflowData = await this.workflowsStore.getNewWorkflowData();
+			this.workflowData = await this.workflowsStore.getNewWorkflowData(
+				undefined,
+				this.projectsStore.currentProjectId,
+			);
 			this.workflowsStore.currentWorkflowExecutions = [];
 			this.executionsStore.activeExecution = null;
 
@@ -3660,6 +3674,7 @@ export default defineComponent({
 			this.uiStore.nodeViewInitialized = true;
 			this.historyStore.reset();
 			this.executionsStore.activeExecution = null;
+			this.makeNewWorkflowShareable();
 			this.canvasStore.stopLoading();
 		},
 		async tryToAddWelcomeSticky(): Promise<void> {
@@ -3700,6 +3715,7 @@ export default defineComponent({
 						return;
 					}
 				}
+				await this.loadCredentials();
 				// Load a workflow
 				let workflowId = null as string | null;
 				if (this.$route.params.name) {
@@ -3721,6 +3737,10 @@ export default defineComponent({
 						this.titleSet(workflow.name, 'IDLE');
 						await this.openWorkflow(workflow);
 						await this.checkAndInitDebugMode();
+
+						await this.projectsStore.setProjectNavActiveIdByWorkflowHomeProject(
+							workflow.homeProject,
+						);
 
 						if (workflow.meta?.onboardingId) {
 							this.$telemetry.track(
@@ -4125,6 +4145,12 @@ export default defineComponent({
 						cancelButtonText: this.$locale.baseText('nodeView.prompt.cancel'),
 						inputErrorMessage: this.$locale.baseText('nodeView.prompt.invalidName'),
 						inputValue: currentName,
+						inputValidator: (value: string) => {
+							if (!value.trim()) {
+								return this.$locale.baseText('nodeView.prompt.invalidName');
+							}
+							return true;
+						},
 					},
 				);
 
@@ -4390,7 +4416,7 @@ export default defineComponent({
 		async addNodesToWorkflow(data: IWorkflowDataUpdate): Promise<IWorkflowDataUpdate> {
 			// Because nodes with the same name maybe already exist, it could
 			// be needed that they have to be renamed. Also could it be possible
-			// that nodes are not allowd to be created because they have a create
+			// that nodes are not allowed to be created because they have a create
 			// limit set. So we would then link the new nodes with the already existing ones.
 			// In this object all that nodes get saved in the format:
 			//   old-name -> new-name
@@ -4664,7 +4690,12 @@ export default defineComponent({
 			await this.credentialsStore.fetchCredentialTypes(true);
 		},
 		async loadCredentials(): Promise<void> {
-			await this.credentialsStore.fetchAllCredentials();
+			const workflow = this.workflowsStore.getWorkflowById(this.currentWorkflow);
+			const projectId =
+				workflow?.homeProject?.type === ProjectTypes.Personal
+					? this.projectsStore.personalProject?.id
+					: workflow?.homeProject?.id;
+			await this.credentialsStore.fetchAllCredentials(projectId);
 		},
 		async loadVariables(): Promise<void> {
 			await this.environmentsStore.fetchAllVariables();
@@ -4751,7 +4782,9 @@ export default defineComponent({
 						});
 					}
 				} else if (json?.command === 'setActiveExecution') {
-					this.executionsStore.activeExecution = json.execution;
+					this.executionsStore.activeExecution = (await this.executionsStore.fetchExecution(
+						json.executionId,
+					)) as ExecutionSummary;
 				}
 			} catch (e) {}
 		},
@@ -4968,7 +5001,7 @@ export default defineComponent({
 					this.resetWorkspace();
 					this.uiStore.stateIsDirty = false;
 
-					await this.$router.replace({ name: VIEWS.WORKFLOWS });
+					await this.$router.replace({ name: VIEWS.HOMEPAGE });
 				});
 			}
 		},
@@ -5032,7 +5065,7 @@ export default defineComponent({
 		}
 
 		try {
-			await Promise.all([this.loadCredentials(), this.loadVariables(), this.tagsStore.fetchAll()]);
+			await Promise.all([this.loadVariables(), this.tagsStore.fetchAll(), this.loadCredentials()]);
 
 			if (workflowId !== null && !this.uiStore.stateIsDirty) {
 				const workflow: IWorkflowDb | undefined =

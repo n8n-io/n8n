@@ -53,6 +53,7 @@
 					:execution="execution"
 					:data-test-id="`execution-details-${execution.id}`"
 					@retry-execution="onRetryExecution"
+					@mounted="onItemMounted"
 				/>
 			</TransitionGroup>
 			<div v-if="loadingMore" class="mr-m">
@@ -80,6 +81,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { ExecutionFilterType } from '@/Interface';
 
 type WorkflowExecutionsCardRef = InstanceType<typeof WorkflowExecutionsCard>;
+type AutoScrollDeps = { activeExecutionSet: boolean; cardsMounted: boolean; scroll: boolean };
 
 export default defineComponent({
 	name: 'WorkflowExecutionsSidebar',
@@ -106,10 +108,23 @@ export default defineComponent({
 			default: null,
 		},
 	},
+	emits: {
+		retryExecution: null,
+		loadMore: null,
+		refresh: null,
+		filterUpdated: null,
+		reloadExecutions: null,
+		'update:autoRefresh': null,
+	},
 	data() {
 		return {
-			VIEWS,
 			filter: {} as ExecutionFilterType,
+			mountedItems: [] as string[],
+			autoScrollDeps: {
+				activeExecutionSet: false,
+				cardsMounted: false,
+				scroll: true,
+			} as AutoScrollDeps,
 		};
 	},
 	computed: {
@@ -122,16 +137,35 @@ export default defineComponent({
 				this.$router.go(-1);
 			}
 		},
-	},
-	mounted() {
-		// On larger screens, we need to load more then first page of executions
-		// for the scroll bar to appear and infinite scrolling is enabled
-		this.checkListSize();
-		setTimeout(() => {
-			this.scrollToActiveCard();
-		}, 1000);
+		'executionsStore.activeExecution'(
+			newValue: ExecutionSummary | null,
+			oldValue: ExecutionSummary | null,
+		) {
+			if (newValue && newValue.id !== oldValue?.id) {
+				this.autoScrollDeps.activeExecutionSet = true;
+			}
+		},
+		autoScrollDeps: {
+			handler(updatedDeps: AutoScrollDeps) {
+				if (Object.values(updatedDeps).every(Boolean)) {
+					this.scrollToActiveCard();
+				}
+			},
+			deep: true,
+		},
 	},
 	methods: {
+		onItemMounted(id: string): void {
+			this.mountedItems.push(id);
+			if (this.mountedItems.length === this.executions.length) {
+				this.autoScrollDeps.cardsMounted = true;
+				this.checkListSize();
+			}
+
+			if (this.executionsStore.activeExecution?.id === id) {
+				this.autoScrollDeps.activeExecutionSet = true;
+			}
+		},
 		loadMore(limit = 20): void {
 			if (!this.loading) {
 				const executionsListRef = this.$refs.executionList as HTMLElement | undefined;
@@ -160,7 +194,7 @@ export default defineComponent({
 		checkListSize(): void {
 			const sidebarContainerRef = this.$refs.container as HTMLElement | undefined;
 			const currentWorkflowExecutionsCardRefs = this.$refs[
-				`execution-${this.executionsStore.activeExecution?.id}`
+				`execution-${this.mountedItems[this.mountedItems.length - 1]}`
 			] as WorkflowExecutionsCardRef[] | undefined;
 
 			// Find out how many execution card can fit into list
@@ -189,7 +223,11 @@ export default defineComponent({
 				const cardRect = cardElement.getBoundingClientRect();
 				const LIST_HEADER_OFFSET = 200;
 				if (cardRect.top > executionsListRef.offsetHeight) {
-					executionsListRef.scrollTo({ top: cardRect.top - LIST_HEADER_OFFSET });
+					this.autoScrollDeps.scroll = false;
+					executionsListRef.scrollTo({
+						top: cardRect.top - LIST_HEADER_OFFSET,
+						behavior: 'smooth',
+					});
 				}
 			}
 		},

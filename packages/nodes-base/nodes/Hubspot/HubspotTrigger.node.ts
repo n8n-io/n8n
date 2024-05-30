@@ -447,6 +447,9 @@ export class HubspotTrigger implements INodeType {
 			if (subscriptionType.includes('deal')) {
 				bodyData[i].dealId = bodyData[i].objectId;
 			}
+			if (subscriptionType.includes('ticket')) {
+				bodyData[i].ticketId = bodyData[i].objectId;
+			}
 			delete bodyData[i].objectId;
 		}
 		return {

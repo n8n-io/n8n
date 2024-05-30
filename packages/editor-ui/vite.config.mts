@@ -73,6 +73,7 @@ const alias = [
 const plugins = [
 	icons({
 		compiler: 'vue3',
+		autoInstall: true,
 	}),
 	vue(),
 ];

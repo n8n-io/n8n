@@ -29,6 +29,7 @@ export default defineComponent({
 		},
 		type: {
 			type: String,
+			required: true,
 		},
 		data: {
 			type: String,

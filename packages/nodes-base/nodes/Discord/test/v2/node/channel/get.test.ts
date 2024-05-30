@@ -5,10 +5,11 @@ import { getResultNodeData, setup, workflowToTests } from '@test/nodes/Helpers';
 import type { WorkflowTestData } from '@test/nodes/types';
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 
+// TODO: use nock
 const requestApiSpy = jest.spyOn(transport, 'requestApi');
 
 requestApiSpy.mockImplementation(
-	async (options: IRequestOptions, credentialType: string, endpoint: string) => {
+	async (_options: IRequestOptions, _credentialType: string, endpoint: string) => {
 		if (endpoint === '/users/@me/guilds') {
 			return {
 				headers: {},

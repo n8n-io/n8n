@@ -35,7 +35,7 @@ export class VariablesPage extends BasePage {
 		deleteVariable: (key: string) => {
 			const row = this.getters.variableRow(key);
 			row.within(() => {
-				cy.getByTestId('variable-row-delete-button').click();
+				cy.getByTestId('variable-row-delete-button').should('not.be.disabled').click();
 			});
 
 			const modal = cy.get('[role="dialog"]');
@@ -53,7 +53,7 @@ export class VariablesPage extends BasePage {
 		editRow: (key: string) => {
 			const row = this.getters.variableRow(key);
 			row.within(() => {
-				cy.getByTestId('variable-row-edit-button').click();
+				cy.getByTestId('variable-row-edit-button').should('not.be.disabled').click();
 			});
 		},
 		setRowValue: (row: Chainable<JQuery<HTMLElement>>, field: 'key' | 'value', value: string) => {

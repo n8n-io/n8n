@@ -66,7 +66,7 @@ export const credentialsTelegram1: ICredentialsResponse = {
 		firstName: 'Player',
 		lastName: 'One',
 	},
-	sharedWith: [],
+	sharedWithProjects: [],
 };
 
 export const credentialsTelegram2: ICredentialsResponse = {
@@ -81,7 +81,7 @@ export const credentialsTelegram2: ICredentialsResponse = {
 		firstName: 'Player',
 		lastName: 'One',
 	},
-	sharedWith: [],
+	sharedWithProjects: [],
 };
 
 export {

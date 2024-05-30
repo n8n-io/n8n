@@ -71,6 +71,8 @@ import { InvitationController } from './controllers/invitation.controller';
 // import { CollaborationService } from './collaboration/collaboration.service';
 import { BadRequestError } from './errors/response-errors/bad-request.error';
 import { OrchestrationService } from '@/services/orchestration.service';
+import { ProjectController } from './controllers/project.controller';
+import { RoleController } from './controllers/role.controller';
 
 const exec = promisify(callbackExec);
 
@@ -146,6 +148,8 @@ export class Server extends AbstractServer {
 			ExecutionsController,
 			CredentialsController,
 			AIController,
+			ProjectController,
+			RoleController,
 		];
 
 		if (
@@ -367,7 +371,8 @@ export class Server extends AbstractServer {
 			const isPreviewMode = process.env.N8N_PREVIEW_MODE === 'true';
 			const securityHeadersMiddleware = helmet({
 				contentSecurityPolicy: false,
-				xFrameOptions: isPreviewMode || inE2ETests ? false : { action: 'sameorigin' },
+				xFrameOptions:
+					isPreviewMode || inE2ETests || inDevelopment ? false : { action: 'sameorigin' },
 				dnsPrefetchControl: false,
 				// This is only relevant for Internet-explorer, which we do not support
 				ieNoOpen: false,
