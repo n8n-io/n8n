@@ -204,7 +204,7 @@ describe('Workflow Actions', () => {
 		cy.get('div[role=dialog][aria-modal=true]').should('be.visible');
 		cy.get('button.btn--confirm').should('be.visible').click();
 		WorkflowPage.getters.successToast().should('exist');
-		cy.url().should('include', '/workflow/new');
+		cy.url().should('include', WorkflowPages.url);
 	});
 
 	describe('duplicate workflow', () => {

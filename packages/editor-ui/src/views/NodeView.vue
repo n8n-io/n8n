@@ -1341,7 +1341,10 @@ export default defineComponent({
 					}
 				}
 
-				if (!nodeErrorFound && data.data.resultData.error.stack) {
+				if (
+					!nodeErrorFound &&
+					(data.data.resultData.error.stack || data.data.resultData.error.message)
+				) {
 					// Display some more information for now in console to make debugging easier
 					console.error(`Execution ${executionId} error:`);
 					console.error(data.data.resultData.error.stack);
