@@ -1362,7 +1362,7 @@ describe('PUT /:workflowId/transfer', () => {
 		['owners', () => owner],
 		['admins', () => admin],
 	])(
-		'%s can always transfer from any personal or team project into any team project',
+		'global %s can always transfer from any personal or team project into any team project',
 		async (_name, actor) => {
 			//
 			// ARRANGE
@@ -1418,7 +1418,7 @@ describe('PUT /:workflowId/transfer', () => {
 	test.each([
 		['owners', () => owner],
 		['admins', () => admin],
-	])('%s cannot transfer into personal projects', async (_name, actor) => {
+	])('global %s cannot transfer into personal projects', async (_name, actor) => {
 		//
 		// ARRANGE
 		//
