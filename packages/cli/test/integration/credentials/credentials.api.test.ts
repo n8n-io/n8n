@@ -145,7 +145,7 @@ describe('GET /credentials', () => {
 			// Team cred
 			expect(cred1.id).toBe(savedCredential1.id);
 			expect(cred1.scopes).toEqual(
-				['credential:read', 'credential:update', 'credential:delete'].sort(),
+				['credential:move', 'credential:read', 'credential:update', 'credential:delete'].sort(),
 			);
 
 			// Shared cred
@@ -172,7 +172,13 @@ describe('GET /credentials', () => {
 			// Shared cred
 			expect(cred2.id).toBe(savedCredential2.id);
 			expect(cred2.scopes).toEqual(
-				['credential:read', 'credential:update', 'credential:delete', 'credential:share'].sort(),
+				[
+					'credential:delete',
+					'credential:move',
+					'credential:read',
+					'credential:share',
+					'credential:update',
+				].sort(),
 			);
 		}
 
@@ -191,11 +197,12 @@ describe('GET /credentials', () => {
 			expect(cred1.scopes).toEqual(
 				[
 					'credential:create',
-					'credential:read',
-					'credential:update',
 					'credential:delete',
 					'credential:list',
+					'credential:move',
+					'credential:read',
 					'credential:share',
+					'credential:update',
 				].sort(),
 			);
 
@@ -204,11 +211,12 @@ describe('GET /credentials', () => {
 			expect(cred2.scopes).toEqual(
 				[
 					'credential:create',
-					'credential:read',
-					'credential:update',
 					'credential:delete',
 					'credential:list',
+					'credential:move',
+					'credential:read',
 					'credential:share',
+					'credential:update',
 				].sort(),
 			);
 		}
@@ -576,7 +584,13 @@ describe('POST /credentials', () => {
 		expect(encryptedData).not.toBe(payload.data);
 
 		expect(scopes).toEqual(
-			['credential:read', 'credential:update', 'credential:delete', 'credential:share'].sort(),
+			[
+				'credential:delete',
+				'credential:move',
+				'credential:read',
+				'credential:share',
+				'credential:update',
+			].sort(),
 		);
 
 		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
@@ -819,11 +833,12 @@ describe('PATCH /credentials/:id', () => {
 		expect(scopes).toEqual(
 			[
 				'credential:create',
-				'credential:read',
-				'credential:update',
 				'credential:delete',
 				'credential:list',
+				'credential:move',
+				'credential:read',
 				'credential:share',
+				'credential:update',
 			].sort(),
 		);
 
