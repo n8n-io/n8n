@@ -133,6 +133,17 @@ describe('Current Workflow Executions', () => {
 		executionsTab.getters.executionListItems().first().should('be.visible');
 		executionsTab.getters.executionListItems().eq(14).should('not.be.visible');
 	});
+
+	it('should show workflow data in executions tab after hard reload', () => {
+		executionsTab.actions.switchToExecutionsTab();
+		checkMainHeaderELements();
+
+		cy.reload();
+		checkMainHeaderELements();
+
+		executionsTab.actions.switchToEditorTab();
+		checkMainHeaderELements();
+	});
 });
 
 const createMockExecutions = () => {
@@ -143,4 +154,11 @@ const createMockExecutions = () => {
 	// Then add some more successful ones
 	executionsTab.actions.toggleNodeEnabled('Error');
 	executionsTab.actions.createManualExecutions(4);
+};
+
+const checkMainHeaderELements = () => {
+	workflowPage.getters.workflowNameInputContainer().should('be.visible');
+	workflowPage.getters.workflowTagsContainer().should('be.visible');
+	workflowPage.getters.workflowMenu().should('be.visible');
+	workflowPage.getters.saveButton().should('be.visible');
 };
