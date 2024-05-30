@@ -257,7 +257,7 @@ export class ChainLlm implements INodeType {
 			alias: ['LangChain'],
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Chains'],
+				AI: ['Chains', 'Root Nodes'],
 			},
 			resources: {
 				primaryDocumentation: [
