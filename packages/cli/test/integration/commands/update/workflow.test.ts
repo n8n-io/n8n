@@ -7,10 +7,13 @@ import * as testDb from '../../shared/testDb';
 import { createWorkflowWithTrigger, getAllWorkflows } from '../../shared/db/workflows';
 import { mockInstance } from '../../../shared/mocking';
 
+const oclifConfig = new Config({ root: __dirname });
+
 beforeAll(async () => {
 	mockInstance(InternalHooks);
 	mockInstance(LoadNodesAndCredentials);
 	await testDb.init();
+	await oclifConfig.load();
 });
 
 beforeEach(async () => {
@@ -34,8 +37,7 @@ test('update:workflow can activate all workflows', async () => {
 	//
 	// ACT
 	//
-	const config = new Config({ root: __dirname });
-	const updater = new UpdateWorkflowCommand(['--all', '--active=true'], config);
+	const updater = new UpdateWorkflowCommand(['--all', '--active=true'], oclifConfig);
 	await updater.init();
 	await updater.run();
 
@@ -59,8 +61,7 @@ test('update:workflow can deactivate all workflows', async () => {
 	//
 	// ACT
 	//
-	const config = new Config({ root: __dirname });
-	const updater = new UpdateWorkflowCommand(['--all', '--active=false'], config);
+	const updater = new UpdateWorkflowCommand(['--all', '--active=false'], oclifConfig);
 	await updater.init();
 	await updater.run();
 
@@ -86,8 +87,10 @@ test('update:workflow can activate a specific workflow', async () => {
 	//
 	// ACT
 	//
-	const config = new Config({ root: __dirname });
-	const updater = new UpdateWorkflowCommand([`--id=${workflows[0].id}`, '--active=true'], config);
+	const updater = new UpdateWorkflowCommand(
+		[`--id=${workflows[0].id}`, '--active=true'],
+		oclifConfig,
+	);
 	await updater.init();
 	await updater.run();
 
@@ -113,8 +116,10 @@ test('update:workflow can deactivate a specific workflow', async () => {
 	//
 	// ACT
 	//
-	const config = new Config({ root: __dirname });
-	const updater = new UpdateWorkflowCommand([`--id=${workflows[0].id}`, '--active=false'], config);
+	const updater = new UpdateWorkflowCommand(
+		[`--id=${workflows[0].id}`, '--active=false'],
+		oclifConfig,
+	);
 	await updater.init();
 	await updater.run();
 
