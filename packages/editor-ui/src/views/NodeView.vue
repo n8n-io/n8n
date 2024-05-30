@@ -4146,7 +4146,7 @@ export default defineComponent({
 						inputErrorMessage: this.$locale.baseText('nodeView.prompt.invalidName'),
 						inputValue: currentName,
 						inputValidator: (value: string) => {
-							if (!value) {
+							if (!value.trim()) {
 								return this.$locale.baseText('nodeView.prompt.invalidName');
 							}
 							return true;
