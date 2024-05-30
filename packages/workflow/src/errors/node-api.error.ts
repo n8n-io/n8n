@@ -188,11 +188,7 @@ export class NodeApiError extends NodeError {
 				this.findProperty(errorResponse, ERROR_STATUS_PROPERTIES, ERROR_NESTING_PROPERTIES) ?? null;
 		}
 
-		if (level) {
-			this.level = level;
-		} else if (this.httpCode?.charAt(0) !== '5') {
-			this.level = 'warning';
-		}
+		this.level = level ?? 'warning';
 
 		if (
 			errorResponse?.response &&
