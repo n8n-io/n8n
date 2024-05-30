@@ -1,6 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 import {
+	addLocationIdPreSendAction,
 	// addLocationIdPreSendAction,
 	contactIdentifierPreSendAction,
 	dateTimeToEpochPreSendAction,
@@ -25,11 +26,11 @@ export const opportunityOperations: INodeProperties[] = [
 				value: 'create',
 				routing: {
 					send: {
-						preSend: [splitTagsPreSendAction],
+						preSend: [splitTagsPreSendAction, addLocationIdPreSendAction],
 					},
 					request: {
 						method: 'POST',
-						url: '=/pipelines/{{$parameter.pipelineId}}/opportunities',
+						url: '/opportunities/',
 					},
 				},
 				action: 'Create an opportunity',
@@ -114,6 +115,12 @@ const pipelineId: INodeProperties = {
 	typeOptions: {
 		loadOptionsMethod: 'getPipelines',
 	},
+	routing: {
+		send: {
+			type: 'body',
+			property: 'pipelineId',
+		},
+	},
 	default: '',
 };
 
@@ -139,16 +146,15 @@ const createProperties: INodeProperties[] = [
 		routing: {
 			send: {
 				type: 'body',
-				property: 'stageId',
+				property: 'pipelineStageId',
 			},
 		},
 	},
 	{
-		displayName: 'Contact Identifier',
-		name: 'contactIdentifier',
+		displayName: 'Contact ID',
+		name: 'contactId',
 		required: true,
 		type: 'string',
-		description: 'Either Email, Phone or Contact ID',
 		hint: 'There can only be one opportunity for each contact.',
 		displayOptions: {
 			show: {
@@ -159,13 +165,14 @@ const createProperties: INodeProperties[] = [
 		default: '',
 		routing: {
 			send: {
-				preSend: [contactIdentifierPreSendAction],
+				type: 'body',
+				property: 'contactId',
 			},
 		},
 	},
 	{
-		displayName: 'Title',
-		name: 'title',
+		displayName: 'Name',
+		name: 'name',
 		type: 'string',
 		required: true,
 		displayOptions: {
@@ -178,7 +185,7 @@ const createProperties: INodeProperties[] = [
 		routing: {
 			send: {
 				type: 'body',
-				property: 'title',
+				property: 'name',
 			},
 		},
 	},
@@ -233,17 +240,10 @@ const createProperties: INodeProperties[] = [
 		},
 		options: [
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Assigned To',
 				name: 'assignedTo',
-				type: 'options',
+				type: 'string',
 				default: '',
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
-				description:
-					'Choose staff member from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getUsers',
-				},
 				routing: {
 					send: {
 						type: 'body',
@@ -273,20 +273,6 @@ const createProperties: INodeProperties[] = [
 					send: {
 						type: 'body',
 						property: 'monetaryValue',
-					},
-				},
-			},
-
-			{
-				displayName: 'Name',
-				name: 'name',
-				type: 'string',
-				default: '',
-				placeholder: 'e.g. John Deo',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'name',
 					},
 				},
 			},

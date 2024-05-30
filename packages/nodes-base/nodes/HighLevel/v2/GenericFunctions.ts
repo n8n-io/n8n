@@ -18,6 +18,7 @@ import { NodeApiError } from 'n8n-workflow';
 
 import type { ToISOTimeOptions } from 'luxon';
 import { DateTime } from 'luxon';
+import { as } from 'pg-promise';
 
 const VALID_EMAIL_REGEX =
 	/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
@@ -137,6 +138,15 @@ export async function addLocationIdPreSendAction(
 				locationId: (credentials.oauthTokenData as IDataObject)?.locationId,
 			});
 		}
+		if (operation === 'create') {
+			requestOptions.body = requestOptions.body || {};
+			Object.assign(requestOptions.body, {
+				locationId: (credentials.oauthTokenData as IDataObject)?.locationId,
+			});
+		}
+	}
+
+	if (resource === 'opportunity') {
 		if (operation === 'create') {
 			requestOptions.body = requestOptions.body || {};
 			Object.assign(requestOptions.body, {
@@ -278,9 +288,9 @@ export async function getPipelineStages(
 	).pipelines as IDataObject[];
 	const pipeline = pipelines.find((p) => p.id === pipelineId);
 	if (pipeline) {
-		const options: INodePropertyOptions[] = pipeline.stages.map((stage) => {
-			const name = stage.name;
-			const value = stage.id;
+		const options: INodePropertyOptions[] = (pipeline.stages as IDataObject[]).map((stage) => {
+			const name = stage.name as string;
+			const value = stage.id as string;
 			return { name, value };
 		});
 		return options;
