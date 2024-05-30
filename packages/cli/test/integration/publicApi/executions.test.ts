@@ -1,4 +1,3 @@
-import type TestAgent from 'supertest/lib/agent';
 import type { User } from '@db/entities/User';
 import type { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 
@@ -17,13 +16,14 @@ import {
 	createSuccessfulExecution,
 	createWaitingExecution,
 } from '../shared/db/executions';
+import type { SuperAgentTest } from '../shared/types';
 
 let owner: User;
 let user1: User;
 let user2: User;
-let authOwnerAgent: TestAgent;
-let authUser1Agent: TestAgent;
-let authUser2Agent: TestAgent;
+let authOwnerAgent: SuperAgentTest;
+let authUser1Agent: SuperAgentTest;
+let authUser2Agent: SuperAgentTest;
 let workflowRunner: ActiveWorkflowManager;
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });

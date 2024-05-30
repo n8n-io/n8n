@@ -25,7 +25,12 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 		// At some point in the past we saved hidden scopes to credentials (but shouldn't)
 		// Delete scope before applying defaults to make sure new scopes are present on reconnect
 		// Generic Oauth2 API is an exception because it needs to save the scope
-		const genericOAuth2 = ['oAuth2Api', 'googleOAuth2Api', 'microsoftOAuth2Api'];
+		const genericOAuth2 = [
+			'oAuth2Api',
+			'googleOAuth2Api',
+			'microsoftOAuth2Api',
+			'highLevelOAuth2Api',
+		];
 		if (
 			decryptedDataOriginal?.scope &&
 			credential.type.includes('OAuth2') &&

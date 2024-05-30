@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.43.0",
+  "version": "1.44.0",
   "description": "Base nodes of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -161,6 +161,7 @@
       "dist/credentials/HarvestOAuth2Api.credentials.js",
       "dist/credentials/HelpScoutOAuth2Api.credentials.js",
       "dist/credentials/HighLevelApi.credentials.js",
+      "dist/credentials/HighLevelOAuth2Api.credentials.js",
       "dist/credentials/HomeAssistantApi.credentials.js",
       "dist/credentials/HttpBasicAuth.credentials.js",
       "dist/credentials/HttpDigestAuth.credentials.js",

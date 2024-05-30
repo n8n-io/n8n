@@ -40,6 +40,10 @@ function parseSingleFilterValue(
 		return { valid: true, newValue: Boolean(value) };
 	}
 
+	if (type === 'number' && Number.isNaN(value)) {
+		return { valid: true, newValue: value };
+	}
+
 	return validateFieldType('filter', value, type, { strict, parseStrings: true });
 }
 
@@ -149,7 +153,7 @@ export function executeFilterCondition(
 
 	let { left: leftValue, right: rightValue } = parsedValues.result;
 
-	const exists = leftValue !== undefined && leftValue !== null;
+	const exists = leftValue !== undefined && leftValue !== null && !Number.isNaN(leftValue);
 	if (condition.operator.operation === 'exists') {
 		return exists;
 	} else if (condition.operator.operation === 'notExists') {
