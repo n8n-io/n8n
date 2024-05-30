@@ -147,7 +147,7 @@ describe('Workflow Actions', () => {
 		});
 	});
 
-	it.only('should allow importing nodes without names', () => {
+	it('should allow importing nodes without names', () => {
 		cy.fixture('Test_workflow-actions_import_nodes_empty_name.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 			WorkflowPage.actions.zoomToFit();
