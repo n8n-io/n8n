@@ -111,7 +111,7 @@
 			:class="$style.runSelector"
 			data-test-id="run-selector"
 		>
-			<slot name="input-selector"></slot>
+			<slot v-if="extraControlsLocation === 'runs'" name="input-selector"></slot>
 
 			<n8n-select
 				size="small"
@@ -147,7 +147,7 @@
 			<slot name="run-info"></slot>
 
 			<RunDataSearch
-				v-if="showIOSearch && searchLocation === 'runs'"
+				v-if="showIOSearch && extraControlsLocation === 'runs'"
 				v-model="search"
 				:class="$style.search"
 				:pane-type="paneType"
@@ -169,22 +169,26 @@
 
 		<div
 			v-if="maxOutputIndex > 0 && branches.length > 1"
-			:class="$style.tabs"
+			:class="$style.outputs"
 			data-test-id="branches"
 		>
-			<n8n-tabs
-				:model-value="currentOutputIndex"
-				:options="branches"
-				@update:model-value="onBranchChange"
-			/>
+			<slot v-if="extraControlsLocation === 'outputs'" name="input-selector"></slot>
 
-			<RunDataSearch
-				v-if="showIOSearch && searchLocation === 'outputs'"
-				v-model="search"
-				:pane-type="paneType"
-				:is-area-active="isPaneActive"
-				@focus="activatePane"
-			/>
+			<div :class="$style.tabs">
+				<n8n-tabs
+					:model-value="currentOutputIndex"
+					:options="branches"
+					@update:model-value="onBranchChange"
+				/>
+
+				<RunDataSearch
+					v-if="showIOSearch && extraControlsLocation === 'outputs'"
+					v-model="search"
+					:pane-type="paneType"
+					:is-area-active="isPaneActive"
+					@focus="activatePane"
+				/>
+			</div>
 		</div>
 
 		<div
@@ -195,10 +199,10 @@
 				!isArtificialRecoveredEventItem
 			"
 			v-show="!editMode.enabled && !hasRunError"
-			:class="[$style.itemsCount, { [$style.muted]: maxRunIndex === 0 }]"
+			:class="[$style.itemsCount, { [$style.muted]: paneType === 'input' && maxRunIndex === 0 }]"
 			data-test-id="ndv-items-count"
 		>
-			<slot v-if="maxRunIndex === 0" name="input-selector"></slot>
+			<slot v-if="extraControlsLocation === 'items'" name="input-selector"></slot>
 
 			<n8n-text v-if="search" :class="$style.itemsText">
 				{{
@@ -218,7 +222,7 @@
 			</n8n-text>
 
 			<RunDataSearch
-				v-if="showIOSearch && searchLocation === 'items'"
+				v-if="showIOSearch && extraControlsLocation === 'items'"
 				v-model="search"
 				:class="$style.search"
 				:pane-type="paneType"
@@ -816,7 +820,7 @@ export default defineComponent({
 			}
 
 			const schemaView = { label: this.$locale.baseText('runData.schema'), value: 'schema' };
-			if (this.isPaneTypeInput && !isEmpty(this.jsonData)) {
+			if (this.isPaneTypeInput) {
 				defaults.unshift(schemaView);
 			} else {
 				defaults.push(schemaView);
@@ -830,6 +834,7 @@ export default defineComponent({
 				defaults.unshift({ label: 'HTML', value: 'html' });
 			}
 
+			console.log(defaults);
 			return defaults;
 		},
 		hasNodeRun(): boolean {
@@ -1036,7 +1041,7 @@ export default defineComponent({
 		showIOSearch(): boolean {
 			return this.hasNodeRun && !this.hasRunError && this.unfilteredInputData.length > 0;
 		},
-		searchLocation() {
+		extraControlsLocation() {
 			if (this.maxRunIndex > 0) {
 				return 'runs';
 			}
@@ -1741,12 +1746,20 @@ export default defineComponent({
 	height: 100%;
 }
 
+.outputs {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-s);
+	padding-left: var(--spacing-s);
+	padding-right: var(--spacing-s);
+	padding-bottom: var(--spacing-s);
+}
+
 .tabs {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	padding-right: var(--spacing-s);
-	margin-bottom: var(--spacing-s);
+	min-height: 30px;
 }
 
 .itemsCount {
