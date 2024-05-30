@@ -6,7 +6,6 @@ import {
 	EDIT_FIELDS_SET_NODE_NAME,
 	INSTANCE_MEMBERS,
 	INSTANCE_OWNER,
-	WEBHOOK_NODE_NAME,
 } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { WorkflowsPage as WorkflowsPageClass } from '../pages/workflows';
@@ -205,7 +204,7 @@ describe('Workflow Actions', () => {
 		cy.get('div[role=dialog][aria-modal=true]').should('be.visible');
 		cy.get('button.btn--confirm').should('be.visible').click();
 		WorkflowPage.getters.successToast().should('exist');
-		cy.url().should('include', '/workflow/new');
+		cy.url().should('include', WorkflowPages.url);
 	});
 
 	describe('duplicate workflow', () => {
