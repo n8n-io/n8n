@@ -36,7 +36,7 @@
 				/>
 			</div>
 		</template>
-		<template #input-selector>
+		<template #input-select>
 			<InputNodeSelect
 				v-if="parentNodes.length && currentNodeName"
 				:model-value="currentNodeName"

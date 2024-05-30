@@ -58,6 +58,7 @@
 					data-test-id="ndv-run-data-display-mode"
 					@update:model-value="onDisplayModeChange"
 				/>
+
 				<n8n-icon-button
 					v-if="canPinData && !isReadOnlyRoute && !readOnlyEnv"
 					v-show="!editMode.enabled"
@@ -105,13 +106,17 @@
 			</div>
 		</div>
 
+		<div v-if="extraControlsLocation === 'header'" :class="$style.inputSelect">
+			<slot name="input-select"></slot>
+		</div>
+
 		<div
 			v-if="maxRunIndex > 0"
 			v-show="!editMode.enabled"
 			:class="$style.runSelector"
 			data-test-id="run-selector"
 		>
-			<slot v-if="extraControlsLocation === 'runs'" name="input-selector"></slot>
+			<slot v-if="extraControlsLocation === 'runs'" name="input-select"></slot>
 
 			<n8n-select
 				size="small"
@@ -172,7 +177,7 @@
 			:class="$style.outputs"
 			data-test-id="branches"
 		>
-			<slot v-if="extraControlsLocation === 'outputs'" name="input-selector"></slot>
+			<slot v-if="extraControlsLocation === 'outputs'" name="input-select"></slot>
 
 			<div :class="$style.tabs">
 				<n8n-tabs
@@ -202,7 +207,7 @@
 			:class="[$style.itemsCount, { [$style.muted]: paneType === 'input' && maxRunIndex === 0 }]"
 			data-test-id="ndv-items-count"
 		>
-			<slot v-if="extraControlsLocation === 'items'" name="input-selector"></slot>
+			<slot v-if="extraControlsLocation === 'items'" name="input-select"></slot>
 
 			<n8n-text v-if="search" :class="$style.itemsText">
 				{{
@@ -1042,10 +1047,8 @@ export default defineComponent({
 			return this.hasNodeRun && !this.hasRunError && this.unfilteredInputData.length > 0;
 		},
 		extraControlsLocation() {
-			if (this.maxRunIndex > 0) {
-				return 'runs';
-			}
-
+			if (!this.hasNodeRun) return 'header';
+			if (this.maxRunIndex > 0) return 'runs';
 			if (this.maxOutputIndex > 0 && this.branches.length > 1) {
 				return 'outputs';
 			}
@@ -1781,6 +1784,12 @@ export default defineComponent({
 		color: var(--color-text-light);
 		font-size: var(--font-size-2xs);
 	}
+}
+
+.inputSelect {
+	padding-left: var(--spacing-s);
+	padding-right: var(--spacing-s);
+	padding-bottom: var(--spacing-s);
 }
 
 .runSelector {
