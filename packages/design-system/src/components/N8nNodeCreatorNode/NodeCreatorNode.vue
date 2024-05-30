@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from '../../composables/useI18n';
+import type { NodeCreatorTag } from '../../types/node-creator-node';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import N8nTooltip from '../N8nTooltip';
 import { ElTag } from 'element-plus';
@@ -9,10 +10,7 @@ export interface Props {
 	isAi?: boolean;
 	isTrigger?: boolean;
 	description?: string;
-	tag?: {
-		text: string;
-		type?: (typeof ElTag)['type'];
-	};
+	tag?: NodeCreatorTag;
 	title: string;
 	showActionArrow?: boolean;
 }
@@ -92,8 +90,8 @@ const { t } = useI18n();
 }
 :root .tag {
 	margin-left: var(--spacing-2xs);
-	line-height: 10px;
-	font-size: 10px;
+	line-height: var(--font-size-3xs);
+	font-size: var(--font-size-3xs);
 	padding: 0.1875rem var(--spacing-3xs) var(--spacing-4xs) var(--spacing-3xs);
 	height: auto;
 

@@ -210,8 +210,9 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 			const nonAiNodes = difference(items, aiNodes);
 			const nonAiTriggerNodes = nonAiNodes.filter(
-				(item) => item.type === 'node' && item.properties.name.toLowerCase().includes('trigger'),
+				(item) => item.type === 'node' && useNodeTypesStore().isTriggerNode(item.properties.name),
 			);
+
 			const nonAiRegularNodes = difference(nonAiNodes, nonAiTriggerNodes);
 
 			if (nonAiNodes.length > 0) {

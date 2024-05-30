@@ -9,7 +9,7 @@ import type {
 	VIEWS,
 	ROLE,
 } from '@/constants';
-import type { IMenuItem } from 'n8n-design-system';
+import type { IMenuItem, NodeCreatorTag } from 'n8n-design-system';
 import {
 	type GenericValue,
 	type IConnections,
@@ -54,7 +54,7 @@ import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 import type { Component } from 'vue';
 import type { Scope } from '@n8n/permissions';
-import type { NotificationOptions as ElementNotificationOptions, ElTag } from 'element-plus';
+import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
 import type { ProjectSharingData } from '@/features/projects/projects.types';
 import type { Connection } from '@jsplumb/core';
 
@@ -953,10 +953,7 @@ export interface ViewItemProps {
 	title: string;
 	description: string;
 	icon: string;
-	tag?: {
-		text: string;
-		type: (typeof ElTag)['type'];
-	};
+	tag?: NodeCreatorTag;
 	borderless?: boolean;
 }
 export interface LabelItemProps {
@@ -969,10 +966,7 @@ export interface LinkItemProps {
 	title: string;
 	description: string;
 	icon: string;
-	tag?: {
-		text: string;
-		type: (typeof ElTag)['type'];
-	};
+	tag?: NodeCreatorTag;
 }
 export interface ActionTypeDescription extends SimplifiedNodeType {
 	displayOptions?: IDisplayOptions;

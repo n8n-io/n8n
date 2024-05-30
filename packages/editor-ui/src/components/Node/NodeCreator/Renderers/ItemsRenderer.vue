@@ -149,11 +149,11 @@ watch(
 						[$style.iteratorItem]: true,
 						[$style[item.type]]: true,
 						// Borderless is only applied to views
-						[$style.borderless]: item.type === 'view' ? item.properties.borderless === true : false,
+						[$style.borderless]: item.type === 'view' && item.properties.borderless === true,
 					}"
 					data-test-id="item-iterator-item"
 					:data-keyboard-nav-type="item.type !== 'label' ? item.type : undefined"
-					:data-keyboard-nav-id="item.uuid ?? item.type"
+					:data-keyboard-nav-id="item.uuid"
 					@click="wrappedEmit('selected', item)"
 				>
 					<LabelItem v-if="item.type === 'label'" :item="item" />
