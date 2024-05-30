@@ -23,7 +23,7 @@ import { createAdmin, createOwner, createUser, createUserShell } from '../shared
 import { createWorkflow, getWorkflowSharing, shareWorkflowWithUsers } from '../shared/db/workflows';
 import { createTag } from '../shared/db/tags';
 import type { SuperAgentTest } from '../shared/types';
-import { createTeamProject } from '../shared/db/projects';
+import { createTeamProject, linkUserToProject } from '../shared/db/projects';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
 let owner: User;
@@ -1290,6 +1290,26 @@ describe('PUT /:workflowId/transfer', () => {
 			.put(`/workflows/${workflow.id}/transfer`)
 			.send({ destinationProjectId: destinationProject.id })
 			.expect(404);
+	});
+
+	test('project members cannot transfer workflows', async () => {
+		//
+		// ARRANGE
+		//
+		const sourceProject = await createTeamProject('Team Project 1');
+		await linkUserToProject(member, sourceProject, 'project:editor');
+		const destinationProject = await createTeamProject('Team Project 2', member);
+
+		const workflow = await createWorkflow({}, sourceProject);
+
+		//
+		// ACT & ASSERT
+		//
+		await testServer
+			.authAgentFor(member)
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id })
+			.expect(403);
 	});
 
 	test('can transfer from personal to team project', async () => {
