@@ -23,10 +23,11 @@ import Markdown from 'markdown-it';
 import markdownLink from 'markdown-it-link-attributes';
 import markdownEmoji from 'markdown-it-emoji';
 import markdownTaskLists from 'markdown-it-task-lists';
-import xss, { friendlyAttrValue } from 'xss';
+import xss, { friendlyAttrValue, whiteList } from 'xss';
 
 import N8nLoading from '../N8nLoading';
 import { escapeMarkdown } from '../../utils/markdown';
+import { input } from '@testing-library/user-event/dist/types/event';
 
 interface IImage {
 	id: string;
@@ -72,6 +73,7 @@ const props = withDefaults(defineProps<MarkdownProps>(), {
 			},
 		},
 		tasklists: {
+			enabled: true,
 			label: true,
 			labelAfter: true,
 		},
@@ -83,6 +85,11 @@ const md = new Markdown(options.markdown)
 	.use(markdownLink, options.linkAttributes)
 	.use(markdownEmoji)
 	.use(markdownTaskLists, options.tasklists);
+
+const xssWhiteList = {
+	...whiteList,
+	label: ['class', 'for'],
+};
 
 const htmlContent = computed(() => {
 	if (!props.content) {
@@ -130,6 +137,13 @@ const htmlContent = computed(() => {
 			}
 			// return nothing, keep tag
 		},
+		onIgnoreTag(tag, tagHTML) {
+			// Allow checkboxes
+			if (tag === 'input' && tagHTML.includes('type="checkbox"')) {
+				return tagHTML;
+			}
+		},
+		whiteList: xssWhiteList,
 	});
 
 	return safeHtml;
