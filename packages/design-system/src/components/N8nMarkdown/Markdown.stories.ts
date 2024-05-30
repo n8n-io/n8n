@@ -63,6 +63,6 @@ const TemplateWithCheckboxes: StoryFn = (args, { argTypes }) => ({
 
 export const WithCheckboxes = TemplateWithCheckboxes.bind({});
 WithCheckboxes.args = {
-	content: `__TODO__\n- [ ] Buy milk\n- [X] Buy socks\n`,
+	content: '__TODO__\n- [ ] Buy milk\n- [X] Buy socks\n',
 	loading: false,
 };
