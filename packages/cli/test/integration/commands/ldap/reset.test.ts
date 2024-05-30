@@ -44,6 +44,7 @@ beforeAll(async () => {
 	// from exiting properly.
 	mockInstance(WaitTracker);
 	await testDb.init();
+	await oclifConfig.load();
 });
 
 afterAll(async () => {
