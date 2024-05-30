@@ -489,10 +489,7 @@ export class Worker extends BaseCommand {
 			process.stdin.setEncoding('utf8');
 
 			process.stdin.on('data', (key: string) => {
-				// ctrl+c
-				if (key.charCodeAt(0) === 3) {
-					void this.stopProcess();
-				}
+				if (key.charCodeAt(0) === 3) process.kill(process.pid, 'SIGINT'); // ctrl+c
 			});
 		}
 
