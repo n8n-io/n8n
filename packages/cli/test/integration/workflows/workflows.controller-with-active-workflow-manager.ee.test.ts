@@ -47,7 +47,7 @@ describe('PUT /:workflowId/transfer', () => {
 		const response = await testServer
 			.authAgentFor(member)
 			.put(`/workflows/${workflow.id}/transfer`)
-			.send({ toProject: destinationProject.id })
+			.send({ destinationProjectId: destinationProject.id })
 			.expect(200);
 
 		//

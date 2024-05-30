@@ -1245,24 +1245,26 @@ describe('PATCH /workflows/:workflowId - activate workflow', () => {
 
 describe('PUT /:workflowId/transfer', () => {
 	test('cannot transfer into the same project', async () => {
-		const project = await createTeamProject('Team Project', member);
-		const workflow = await createWorkflow({}, project);
+		const destinationProject = await createTeamProject('Team Project', member);
+
+		const workflow = await createWorkflow({}, destinationProject);
 
 		await testServer
 			.authAgentFor(member)
 			.put(`/workflows/${workflow.id}/transfer`)
-			.send({ toProject: project.id })
+			.send({ destinationProjectId: destinationProject.id })
 			.expect(400);
 	});
 
 	test('cannot transfer into a personal project', async () => {
-		const project = await createTeamProject('Team Project', member);
-		const workflow = await createWorkflow({}, project);
+		const destinationProject = await createTeamProject('Team Project', member);
+
+		const workflow = await createWorkflow({}, destinationProject);
 
 		await testServer
 			.authAgentFor(member)
 			.put(`/workflows/${workflow.id}/transfer`)
-			.send({ toProject: memberPersonalProject.id })
+			.send({ destinationProjectId: memberPersonalProject.id })
 			.expect(400);
 	});
 
@@ -1274,7 +1276,7 @@ describe('PUT /:workflowId/transfer', () => {
 		await testServer
 			.authAgentFor(member)
 			.put(`/workflows/${workflow.id}/transfer`)
-			.send({ toProject: destinationProject.id })
+			.send({ destinationProjectId: destinationProject.id })
 			.expect(403);
 	});
 
@@ -1286,7 +1288,7 @@ describe('PUT /:workflowId/transfer', () => {
 		await testServer
 			.authAgentFor(member)
 			.put(`/workflows/${workflow.id}/transfer`)
-			.send({ toProject: destinationProject.id })
+			.send({ destinationProjectId: destinationProject.id })
 			.expect(404);
 	});
 
@@ -1307,7 +1309,7 @@ describe('PUT /:workflowId/transfer', () => {
 		const response = await testServer
 			.authAgentFor(member)
 			.put(`/workflows/${workflow.id}/transfer`)
-			.send({ toProject: destinationProject.id })
+			.send({ destinationProjectId: destinationProject.id })
 			.expect(200);
 
 		//
@@ -1339,7 +1341,7 @@ describe('PUT /:workflowId/transfer', () => {
 		const response = await testServer
 			.authAgentFor(member)
 			.put(`/workflows/${workflow.id}/transfer`)
-			.send({ toProject: destinationProject.id })
+			.send({ destinationProjectId: destinationProject.id })
 			.expect(200);
 
 		//
@@ -1377,12 +1379,12 @@ describe('PUT /:workflowId/transfer', () => {
 			const response1 = await testServer
 				.authAgentFor(actor())
 				.put(`/workflows/${teamWorkflow.id}/transfer`)
-				.send({ toProject: destinationProject.id })
+				.send({ destinationProjectId: destinationProject.id })
 				.expect(200);
 			const response2 = await testServer
 				.authAgentFor(actor())
 				.put(`/workflows/${personalWorkflow.id}/transfer`)
-				.send({ toProject: destinationProject.id })
+				.send({ destinationProjectId: destinationProject.id })
 				.expect(200);
 
 			//
@@ -1432,12 +1434,12 @@ describe('PUT /:workflowId/transfer', () => {
 		await testServer
 			.authAgentFor(actor())
 			.put(`/workflows/${teamWorkflow.id}/transfer`)
-			.send({ toProject: destinationProject.id })
+			.send({ destinationProjectId: destinationProject.id })
 			.expect(400);
 		await testServer
 			.authAgentFor(actor())
 			.put(`/workflows/${personalWorkflow.id}/transfer`)
-			.send({ toProject: destinationProject.id })
+			.send({ destinationProjectId: destinationProject.id })
 			.expect(400);
 	});
 
@@ -1455,7 +1457,7 @@ describe('PUT /:workflowId/transfer', () => {
 		const response = await testServer
 			.authAgentFor(member)
 			.put(`/workflows/${workflow.id}/transfer`)
-			.send({ toProject: destinationProject.id })
+			.send({ destinationProjectId: destinationProject.id })
 			.expect(200);
 
 		//
@@ -1483,7 +1485,7 @@ describe('PUT /:workflowId/transfer', () => {
 		const response = await testServer
 			.authAgentFor(member)
 			.put(`/workflows/${workflow.id}/transfer`)
-			.send({ toProject: destinationProject.id })
+			.send({ destinationProjectId: destinationProject.id })
 			.expect(200);
 
 		//
@@ -1521,7 +1523,7 @@ describe('PUT /:workflowId/transfer', () => {
 		await testServer
 			.authAgentFor(member)
 			.put(`/workflows/${workflow.id}/transfer`)
-			.send({ toProject: destinationProject.id })
+			.send({ destinationProjectId: destinationProject.id })
 			.expect(500);
 	});
 });

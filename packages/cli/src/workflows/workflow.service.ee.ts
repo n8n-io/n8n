@@ -242,7 +242,7 @@ export class EnterpriseWorkflowService {
 		});
 	}
 
-	async transferOne(user: User, workflowId: string, toProjectId: string) {
+	async transferOne(user: User, workflowId: string, destinationProjectId: string) {
 		// 1. get workflow
 		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, user, [
 			'workflow:move',
@@ -263,12 +263,14 @@ export class EnterpriseWorkflowService {
 		const sourceProject = ownerSharing.project;
 
 		// 4. get destination project
-		const destinationProject = await this.projectService.getProjectWithScope(user, toProjectId, [
-			'workflow:create',
-		]);
+		const destinationProject = await this.projectService.getProjectWithScope(
+			user,
+			destinationProjectId,
+			['workflow:create'],
+		);
 		NotFoundError.isDefinedAndNotNull(
 			destinationProject,
-			`Could not find project with the id "${toProjectId}". Make sure you have the permission to create workflows in it.`,
+			`Could not find project with the id "${destinationProjectId}". Make sure you have the permission to create workflows in it.`,
 		);
 
 		// 5. checks

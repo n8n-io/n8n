@@ -465,12 +465,12 @@ export class WorkflowsController {
 	@Put('/:workflowId/transfer')
 	@ProjectScope('workflow:move')
 	async transfer(req: WorkflowRequest.Transfer) {
-		const body = z.object({ toProject: z.string() }).parse(req.body);
+		const body = z.object({ destinationProjectId: z.string() }).parse(req.body);
 
 		return await this.enterpriseWorkflowService.transferOne(
 			req.user,
 			req.params.workflowId,
-			body.toProject,
+			body.destinationProjectId,
 		);
 	}
 }
