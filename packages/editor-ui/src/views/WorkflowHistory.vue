@@ -117,7 +117,7 @@ onBeforeMount(async () => {
 const normalizeSingleRouteParam = (name: string): string => {
 	const param = route.params[name];
 	if (typeof param === 'string') return param;
-	return param[0] ?? '';
+	return param?.[0] ?? '';
 };
 
 const openInNewTab = (id: WorkflowVersionId) => {
