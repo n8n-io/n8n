@@ -195,6 +195,7 @@ export const useUIStore = defineStore(STORES.UI, {
 		// This enables us to set a queue of notifications form outside (another component)
 		// and then show them when the view is initialized
 		pendingNotificationsForViews: {},
+		isCreateNodeActive: false,
 	}),
 	getters: {
 		appliedTheme(): AppliedThemeOption {

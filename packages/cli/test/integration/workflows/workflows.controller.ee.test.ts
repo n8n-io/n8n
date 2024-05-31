@@ -1,11 +1,16 @@
 import Container from 'typedi';
-import type { SuperAgentTest } from 'supertest';
 import { v4 as uuid } from 'uuid';
 import type { INode } from 'n8n-workflow';
 
+import config from '@/config';
+import type { Project } from '@db/entities/Project';
+import { ProjectRepository } from '@db/repositories/project.repository';
 import type { User } from '@db/entities/User';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
 import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
+import { License } from '@/License';
+import { UserManagementMailer } from '@/UserManagement/email';
+import type { WorkflowWithSharingsMetaDataAndCredentials } from '@/workflows/workflows.types';
 
 import { mockInstance } from '../../shared/mocking';
 import * as utils from '../shared/utils/';
@@ -16,13 +21,8 @@ import { randomCredentialPayload } from '../shared/random';
 import { affixRoleToSaveCredential, shareCredentialWithUsers } from '../shared/db/credentials';
 import { createUser, createUserShell } from '../shared/db/users';
 import { createWorkflow, getWorkflowSharing, shareWorkflowWithUsers } from '../shared/db/workflows';
-import { License } from '@/License';
-import { UserManagementMailer } from '@/UserManagement/email';
-import config from '@/config';
-import type { WorkflowWithSharingsMetaDataAndCredentials } from '@/workflows/workflows.types';
-import type { Project } from '@/databases/entities/Project';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { createTag } from '../shared/db/tags';
+import type { SuperAgentTest } from '../shared/types';
 
 let owner: User;
 let ownerPersonalProject: Project;
@@ -104,8 +104,8 @@ describe('router should switch based on flag', () => {
 	});
 });
 
-describe('PUT /workflows/:id', () => {
-	test('PUT /workflows/:id/share should save sharing with new users', async () => {
+describe('PUT /workflows/:workflowId/share', () => {
+	test('should save sharing with new users', async () => {
 		const workflow = await createWorkflow({}, owner);
 
 		const response = await authOwnerAgent
@@ -126,7 +126,7 @@ describe('PUT /workflows/:id', () => {
 		);
 	});
 
-	test('PUT /workflows/:id/share should succeed when sharing with invalid user-id', async () => {
+	test('should succeed when sharing with invalid user-id', async () => {
 		const workflow = await createWorkflow({}, owner);
 
 		const response = await authOwnerAgent
@@ -139,7 +139,7 @@ describe('PUT /workflows/:id', () => {
 		expect(sharedWorkflows).toHaveLength(1);
 	});
 
-	test('PUT /workflows/:id/share should allow sharing with pending users', async () => {
+	test('should allow sharing with pending users', async () => {
 		const workflow = await createWorkflow({}, owner);
 		const memberShell = await createUserShell('global:member');
 		const memberShellPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
@@ -157,7 +157,7 @@ describe('PUT /workflows/:id', () => {
 		expect(mailer.notifyWorkflowShared).toHaveBeenCalledTimes(1);
 	});
 
-	test('PUT /workflows/:id/share should allow sharing with multiple users', async () => {
+	test('should allow sharing with multiple users', async () => {
 		const workflow = await createWorkflow({}, owner);
 
 		const response = await authOwnerAgent
@@ -171,7 +171,7 @@ describe('PUT /workflows/:id', () => {
 		expect(mailer.notifyWorkflowShared).toHaveBeenCalledTimes(1);
 	});
 
-	test('PUT /workflows/:id/share should override sharing', async () => {
+	test('should override sharing', async () => {
 		const workflow = await createWorkflow({}, owner);
 
 		const response = await authOwnerAgent
@@ -193,7 +193,7 @@ describe('PUT /workflows/:id', () => {
 		expect(mailer.notifyWorkflowShared).toHaveBeenCalledTimes(2);
 	});
 
-	test('PUT /workflows/:id/share should allow sharing by the owner of the workflow', async () => {
+	test('should allow sharing by the owner of the workflow', async () => {
 		const workflow = await createWorkflow({}, member);
 
 		const response = await authMemberAgent
@@ -207,7 +207,7 @@ describe('PUT /workflows/:id', () => {
 		expect(mailer.notifyWorkflowShared).toHaveBeenCalledTimes(1);
 	});
 
-	test('PUT /workflows/:id/share should allow sharing by the instance owner', async () => {
+	test('should allow sharing by the instance owner', async () => {
 		const workflow = await createWorkflow({}, member);
 
 		const response = await authOwnerAgent
@@ -221,7 +221,7 @@ describe('PUT /workflows/:id', () => {
 		expect(mailer.notifyWorkflowShared).toHaveBeenCalledTimes(1);
 	});
 
-	test('PUT /workflows/:id/share should not allow sharing by another shared member', async () => {
+	test('should not allow sharing by another shared member', async () => {
 		const workflow = await createWorkflow({}, member);
 
 		await shareWorkflowWithUsers(workflow, [anotherMember]);
@@ -237,7 +237,7 @@ describe('PUT /workflows/:id', () => {
 		expect(mailer.notifyWorkflowShared).toHaveBeenCalledTimes(0);
 	});
 
-	test('PUT /workflows/:id/share should not allow sharing with self by another non-shared member', async () => {
+	test('should not allow sharing with self by another non-shared member', async () => {
 		const workflow = await createWorkflow({}, member);
 
 		const response = await authAnotherMemberAgent
@@ -251,7 +251,7 @@ describe('PUT /workflows/:id', () => {
 		expect(mailer.notifyWorkflowShared).toHaveBeenCalledTimes(0);
 	});
 
-	test('PUT /workflows/:id/share should not allow sharing by another non-shared member', async () => {
+	test('should not allow sharing by another non-shared member', async () => {
 		const workflow = await createWorkflow({}, member);
 
 		const tempUser = await createUser({ role: 'global:member' });
@@ -302,20 +302,20 @@ describe('GET /workflows/new', () => {
 	});
 });
 
-describe('GET /workflows/:id', () => {
-	test('GET should fail with invalid id due to route rule', async () => {
+describe('GET /workflows/:workflowId', () => {
+	test('should fail with invalid id due to route rule', async () => {
 		const response = await authOwnerAgent.get('/workflows/potatoes');
 
 		expect(response.statusCode).toBe(404);
 	});
 
-	test('GET should return 404 for non existing workflow', async () => {
+	test('should return 404 for non existing workflow', async () => {
 		const response = await authOwnerAgent.get('/workflows/9001');
 
 		expect(response.statusCode).toBe(404);
 	});
 
-	test('GET should return a workflow with owner', async () => {
+	test('should return a workflow with owner', async () => {
 		const workflow = await createWorkflow({}, owner);
 
 		const response = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
@@ -343,7 +343,7 @@ describe('GET /workflows/:id', () => {
 		});
 	});
 
-	test('GET should return shared workflow with user data', async () => {
+	test('should return shared workflow with user data', async () => {
 		const workflow = await createWorkflow({}, owner);
 		await shareWorkflowWithUsers(workflow, [member]);
 
@@ -364,7 +364,7 @@ describe('GET /workflows/:id', () => {
 		});
 	});
 
-	test('GET should return all sharees', async () => {
+	test('should return all sharees', async () => {
 		const workflow = await createWorkflow({}, owner);
 		await shareWorkflowWithUsers(workflow, [member, anotherMember]);
 
@@ -380,7 +380,7 @@ describe('GET /workflows/:id', () => {
 		expect(responseWorkflow.sharedWithProjects).toHaveLength(2);
 	});
 
-	test('GET should return workflow with credentials owned by user', async () => {
+	test('should return workflow with credentials owned by user', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
 		const workflowPayload = makeWorkflow({
@@ -404,7 +404,7 @@ describe('GET /workflows/:id', () => {
 		expect(responseWorkflow.sharedWithProjects).toHaveLength(0);
 	});
 
-	test('GET should return workflow with credentials saying owner does not have access when not shared', async () => {
+	test('should return workflow with credentials saying owner does not have access when not shared', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
 
 		const workflowPayload = makeWorkflow({
@@ -427,7 +427,7 @@ describe('GET /workflows/:id', () => {
 		expect(responseWorkflow.sharedWithProjects).toHaveLength(0);
 	});
 
-	test('GET should return workflow with credentials for all users with or without access', async () => {
+	test('should return workflow with credentials for all users with or without access', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
 
 		const workflowPayload = makeWorkflow({
@@ -464,7 +464,7 @@ describe('GET /workflows/:id', () => {
 		expect(member2Workflow.sharedWithProjects).toHaveLength(1);
 	});
 
-	test('GET should return workflow with credentials for all users with access', async () => {
+	test('should return workflow with credentials for all users with access', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
 		// Both users have access to the credential (none is owner)
 		await shareCredentialWithUsers(savedCredential, [anotherMember]);
@@ -659,7 +659,7 @@ describe('POST /workflows', () => {
 	});
 });
 
-describe('PATCH /workflows/:id - validate credential permissions to user', () => {
+describe('PATCH /workflows/:workflowId - validate credential permissions to user', () => {
 	it('Should succeed when saving unchanged workflow nodes', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 		const workflow = {
@@ -891,7 +891,7 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 	});
 });
 
-describe('PATCH /workflows/:id - validate interim updates', () => {
+describe('PATCH /workflows/:workflowId - validate interim updates', () => {
 	it('should block owner updating workflow nodes on interim update by member', async () => {
 		// owner creates and shares workflow
 
@@ -1080,7 +1080,7 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 	});
 });
 
-describe('PATCH /workflows/:id - workflow history', () => {
+describe('PATCH /workflows/:workflowId - workflow history', () => {
 	test('Should create workflow history version when licensed', async () => {
 		license.enable('feat:workflowHistory');
 		const workflow = await createWorkflow({}, owner);
@@ -1190,7 +1190,7 @@ describe('PATCH /workflows/:id - workflow history', () => {
 	});
 });
 
-describe('PATCH /workflows/:id - activate workflow', () => {
+describe('PATCH /workflows/:workflowId - activate workflow', () => {
 	test('should activate workflow without changing version ID', async () => {
 		license.disable('feat:workflowHistory');
 		const workflow = await createWorkflow({}, owner);

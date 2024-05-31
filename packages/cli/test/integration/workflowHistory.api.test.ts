@@ -1,4 +1,3 @@
-import type { SuperAgentTest } from 'supertest';
 import type { User } from '@db/entities/User';
 
 import * as testDb from './shared/testDb';
@@ -6,6 +5,7 @@ import * as utils from './shared/utils/';
 import { createOwner, createUser } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
 import { createWorkflowHistoryItem } from './shared/db/workflowHistory';
+import type { SuperAgentTest } from './shared/types';
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;

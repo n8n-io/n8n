@@ -30,7 +30,6 @@ const pinia = createTestingPinia({
 					lastName: 'Doe',
 					isDefaultUser: false,
 					isPendingUser: false,
-					hasRecoveryCodesLeft: true,
 					role: ROLE.Owner,
 					mfaEnabled: false,
 				},

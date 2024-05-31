@@ -1,4 +1,3 @@
-import type { SuperAgentTest } from 'supertest';
 import type { User } from '@db/entities/User';
 import type { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 
@@ -17,6 +16,7 @@ import {
 	createSuccessfulExecution,
 	createWaitingExecution,
 } from '../shared/db/executions';
+import type { SuperAgentTest } from '../shared/types';
 
 let owner: User;
 let user1: User;
@@ -225,64 +225,6 @@ describe('GET /executions', () => {
 		expect(stoppedAt).not.toBeNull();
 		expect(workflowId).toBe(successfulExecution.workflowId);
 		expect(waitTill).toBeNull();
-	});
-
-	// failing on Postgres and MySQL - ref: https://github.com/n8n-io/n8n/pull/3834
-	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
-	test.skip('should paginate two executions', async () => {
-		const workflow = await createWorkflow({}, owner);
-
-		const firstSuccessfulExecution = await createSuccessfulExecution(workflow);
-
-		const secondSuccessfulExecution = await createSuccessfulExecution(workflow);
-
-		await createErrorExecution(workflow);
-
-		const firstExecutionResponse = await authOwnerAgent.get('/executions').query({
-			status: 'success',
-			limit: 1,
-		});
-
-		expect(firstExecutionResponse.statusCode).toBe(200);
-		expect(firstExecutionResponse.body.data.length).toBe(1);
-		expect(firstExecutionResponse.body.nextCursor).toBeDefined();
-
-		const secondExecutionResponse = await authOwnerAgent.get('/executions').query({
-			status: 'success',
-			limit: 1,
-			cursor: firstExecutionResponse.body.nextCursor,
-		});
-
-		expect(secondExecutionResponse.statusCode).toBe(200);
-		expect(secondExecutionResponse.body.data.length).toBe(1);
-		expect(secondExecutionResponse.body.nextCursor).toBeNull();
-
-		const successfulExecutions = [firstSuccessfulExecution, secondSuccessfulExecution];
-		const executions = [...firstExecutionResponse.body.data, ...secondExecutionResponse.body.data];
-
-		for (let i = 0; i < executions.length; i++) {
-			const {
-				id,
-				finished,
-				mode,
-				retryOf,
-				retrySuccessId,
-				startedAt,
-				stoppedAt,
-				workflowId,
-				waitTill,
-			} = executions[i];
-
-			expect(id).toBeDefined();
-			expect(finished).toBe(true);
-			expect(mode).toEqual(successfulExecutions[i].mode);
-			expect(retrySuccessId).toBeNull();
-			expect(retryOf).toBeNull();
-			expect(startedAt).not.toBeNull();
-			expect(stoppedAt).not.toBeNull();
-			expect(workflowId).toBe(successfulExecutions[i].workflowId);
-			expect(waitTill).toBeNull();
-		}
 	});
 
 	test('should retrieve all error executions', async () => {

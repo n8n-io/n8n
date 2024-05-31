@@ -1,15 +1,19 @@
 import Container from 'typedi';
-import type { SuperAgentTest } from 'supertest';
 import { v4 as uuid } from 'uuid';
 import type { INode, IPinData } from 'n8n-workflow';
+import type { Scope } from '@n8n/permissions';
 
 import type { User } from '@db/entities/User';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { ListQuery } from '@/requests';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { ProjectRepository } from '@db/repositories/project.repository';
+import { ProjectService } from '@/services/project.service';
 import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+import { License } from '@/License';
 
 import { mockInstance } from '../../shared/mocking';
 import * as utils from '../shared/utils/';
@@ -20,12 +24,8 @@ import { saveCredential } from '../shared/db/credentials';
 import { createManyUsers, createMember, createOwner } from '../shared/db/users';
 import { createWorkflow, shareWorkflowWithProjects } from '../shared/db/workflows';
 import { createTag } from '../shared/db/tags';
-import { License } from '@/License';
-import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { ProjectService } from '@/services/project.service';
 import { createTeamProject, linkUserToProject } from '../shared/db/projects';
-import type { Scope } from '@n8n/permissions';
+import type { SuperAgentTest } from '../shared/types';
 
 let owner: User;
 let member: User;
@@ -359,7 +359,7 @@ describe('POST /workflows', () => {
 	});
 });
 
-describe('GET /workflows/:id', () => {
+describe('GET /workflows/:workflowId', () => {
 	test('should return pin data', async () => {
 		const workflow = makeWorkflow({ withPinData: true });
 		const workflowCreationResponse = await authOwnerAgent.post('/workflows').send(workflow);
@@ -823,7 +823,7 @@ describe('GET /workflows', () => {
 	});
 });
 
-describe('PATCH /workflows/:id', () => {
+describe('PATCH /workflows/:workflowId', () => {
 	test('should create workflow history version when licensed', async () => {
 		license.enable('feat:workflowHistory');
 		const workflow = await createWorkflow({}, owner);
@@ -997,7 +997,7 @@ describe('PATCH /workflows/:id', () => {
 	});
 });
 
-describe('POST /workflows/run', () => {
+describe('POST /workflows/:workflowId/run', () => {
 	let sharingSpy: jest.SpyInstance;
 	let tamperingSpy: jest.SpyInstance;
 	let workflow: WorkflowEntity;
@@ -1028,7 +1028,7 @@ describe('POST /workflows/run', () => {
 	});
 });
 
-describe('DELETE /workflows/:id', () => {
+describe('DELETE /workflows/:workflowId', () => {
 	test('deletes a workflow owned by the user', async () => {
 		const workflow = await createWorkflow({}, owner);
 

@@ -15,7 +15,7 @@ const credentialsModal = new CredentialsModal();
 const executionsTab = new WorkflowExecutionsTab();
 
 describe('Projects', () => {
-	beforeEach(() => {
+	before(() => {
 		cy.resetDatabase();
 		cy.enableFeature('sharing');
 		cy.enableFeature('advancedPermissions');
@@ -134,9 +134,9 @@ describe('Projects', () => {
 		});
 
 		projects.getMenuItems().last().click();
-		cy.intercept('GET', '/rest/credentials*').as('credentialsList');
+		cy.intercept('GET', '/rest/credentials*').as('credentialsListProjectId');
 		projects.getProjectTabCredentials().click();
-		cy.wait('@credentialsList').then((interception) => {
+		cy.wait('@credentialsListProjectId').then((interception) => {
 			const url = new URL(interception.request.url);
 			const queryParams = new URLSearchParams(url.search);
 			const filter = queryParams.get('filter');
@@ -150,9 +150,9 @@ describe('Projects', () => {
 		projects.getHomeButton().click();
 		workflowsPage.getters.workflowCards().should('have.length', 2);
 
-		cy.intercept('GET', '/rest/credentials*').as('credentialsList');
+		cy.intercept('GET', '/rest/credentials*').as('credentialsListFilterless');
 		projects.getProjectTabCredentials().click();
-		cy.wait('@credentialsList').then((interception) => {
+		cy.wait('@credentialsListFilterless').then((interception) => {
 			expect(interception.request.url).not.to.contain('filter');
 		});
 
@@ -218,5 +218,14 @@ describe('Projects', () => {
 		menuItems = cy.getByTestId('menu-item');
 		menuItems.filter('[class*=active_]').should('have.length', 1);
 		menuItems.filter(':contains("Development")[class*=active_]').should('exist');
+	});
+
+	it('should not show project add button and projects to a member if not invited to any project', () => {
+		cy.signout();
+		cy.signin(INSTANCE_MEMBERS[1]);
+		cy.visit(workflowsPage.url);
+
+		projects.getAddProjectButton().should('not.exist');
+		projects.getMenuItems().should('not.exist');
 	});
 });
