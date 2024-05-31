@@ -1,23 +1,12 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 const scopes = [
-	'locations.write',
 	'locations.readonly',
 	'contacts.readonly',
 	'contacts.write',
 	'opportunities.readonly',
 	'opportunities.write',
 	'users.readonly',
-	// 'products.write',
-	// 'payments/integration.write',
-	// 'links.readonly',
-	// 'businesses.readonly',
-	// 'businesses.write',
-	// 'companies.readonly',
-	// 'campaigns.readonly',
-	// 'conversations.readonly',
-	// 'calendars.write',
-	// 'calendars.readonly',
 ];
 
 export class HighLevelOAuth2Api implements ICredentialType {
