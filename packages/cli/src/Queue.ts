@@ -109,8 +109,11 @@ export class Queue {
 		return await this.jobQueue.client.ping();
 	}
 
-	async pause(isLocal?: boolean): Promise<void> {
-		return await this.jobQueue.pause(isLocal);
+	async pause({
+		isLocal,
+		doNotWaitActive,
+	}: { isLocal?: boolean; doNotWaitActive?: boolean } = {}): Promise<void> {
+		return await this.jobQueue.pause(isLocal, doNotWaitActive);
 	}
 
 	getBullObjectInstance(): JobQueue {
