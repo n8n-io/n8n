@@ -250,7 +250,7 @@ export interface IWorkflowData {
 export interface IWorkflowDataUpdate {
 	id?: string;
 	name?: string;
-	nodes?: INode[];
+	nodes?: Array<INode | IWorkflowTemplateNode>;
 	connections?: IConnections;
 	settings?: IWorkflowSettings;
 	active?: boolean;
@@ -363,6 +363,7 @@ export interface ICredentialsResponse extends ICredentialsEncrypted {
 	homeProject?: ProjectSharingData;
 	currentUserHasAccess?: boolean;
 	scopes?: Scope[];
+	ownedBy?: Pick<IUserResponse, 'id' | 'firstName' | 'lastName' | 'email'>;
 }
 
 export interface ICredentialsBase {
