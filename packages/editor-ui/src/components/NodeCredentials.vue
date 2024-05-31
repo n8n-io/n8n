@@ -179,7 +179,7 @@ export default defineComponent({
 			default: false,
 		},
 	},
-	emits: { credentialSelected: null, valueChanged: null, 'blur': null },
+	emits: { credentialSelected: null, valueChanged: null, blur: null },
 	setup() {
 		const nodeHelpers = useNodeHelpers();
 
