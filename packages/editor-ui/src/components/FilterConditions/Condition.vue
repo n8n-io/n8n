@@ -5,10 +5,11 @@ import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import { useI18n } from '@/composables/useI18n';
 import { DateTime } from 'luxon';
-import {
-	type FilterConditionValue,
-	type FilterOptionsValue,
-	type INodeProperties,
+import type {
+	FilterConditionValue,
+	FilterOptionsValue,
+	INodeProperties,
+	NodeParameterValue,
 } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 import OperatorSelect from './OperatorSelect.vue';
@@ -20,6 +21,7 @@ import {
 	operatorTypeToNodeProperty,
 	resolveCondition,
 } from './utils';
+import { useDebounce } from '@/composables/useDebounce';
 
 interface Props {
 	path: string;
@@ -46,6 +48,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const { debounce } = useDebounce();
 
 const condition = ref<FilterConditionValue>(props.condition);
 
@@ -100,12 +103,16 @@ const rightParameter = computed<INodeProperties>(() => {
 	};
 });
 
-const onLeftValueChange = (update: IUpdateInformation): void => {
+const debouncedEmitUpdate = debounce(() => emit('update', condition.value), { debounceTime: 500 });
+
+const onLeftValueChange = (update: IUpdateInformation<NodeParameterValue>): void => {
 	condition.value.leftValue = update.value;
+	debouncedEmitUpdate();
 };
 
-const onRightValueChange = (update: IUpdateInformation): void => {
+const onRightValueChange = (update: IUpdateInformation<NodeParameterValue>): void => {
 	condition.value.rightValue = update.value;
+	debouncedEmitUpdate();
 };
 
 const onOperatorChange = (value: string): void => {
@@ -116,7 +123,7 @@ const onOperatorChange = (value: string): void => {
 		newOperator,
 	});
 
-	emit('update', condition.value);
+	debouncedEmitUpdate();
 };
 
 const onRemove = (): void => {
@@ -124,7 +131,7 @@ const onRemove = (): void => {
 };
 
 const onBlur = (): void => {
-	emit('update', condition.value);
+	debouncedEmitUpdate();
 };
 </script>
 

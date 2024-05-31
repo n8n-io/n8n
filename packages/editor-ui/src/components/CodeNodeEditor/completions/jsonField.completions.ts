@@ -73,7 +73,6 @@ function useJsonFieldCompletions() {
 	 * - Complete `$input.item.json[` to `['field']`.
 	 */
 	const inputJsonFieldCompletions = (context: CompletionContext): CompletionResult | null => {
-		console.log('🚀 ~ inputJsonFieldCompletions ~ context:', context);
 		const patterns = {
 			first: /\$input\.first\(\)\.json(\[|\.).*/,
 			last: /\$input\.last\(\)\.json(\[|\.).*/,
@@ -158,7 +157,6 @@ function useJsonFieldCompletions() {
 
 			if (name === 'all') {
 				const regexMatch = preCursor.text.match(regex);
-				console.log('🚀 ~ selectorJsonFieldCompletions ~ regexMatch:', regexMatch);
 				if (!regexMatch?.groups?.index) continue;
 
 				const { index } = regexMatch.groups;

@@ -537,7 +537,9 @@ export class ActiveWorkflowManager {
 			const dbWorkflow = existingWorkflow ?? (await this.workflowRepository.findById(workflowId));
 
 			if (!dbWorkflow) {
-				throw new WorkflowActivationError(`Failed to find workflow with ID "${workflowId}"`);
+				throw new WorkflowActivationError(`Failed to find workflow with ID "${workflowId}"`, {
+					level: 'warning',
+				});
 			}
 
 			if (shouldDisplayActivationMessage) {
@@ -564,6 +566,7 @@ export class ActiveWorkflowManager {
 			if (!canBeActivated) {
 				throw new WorkflowActivationError(
 					`Workflow ${dbWorkflow.display()} has no node to start the workflow - at least one trigger, poller or webhook node is required`,
+					{ level: 'warning' },
 				);
 			}
 

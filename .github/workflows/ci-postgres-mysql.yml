@@ -20,9 +20,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4.1.1
       - run: corepack enable
-      - uses: actions/setup-node@v4.0.1
+      - uses: actions/setup-node@v4.0.2
         with:
-          node-version: 18.x
+          node-version: 20.x
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
 
@@ -46,9 +46,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4.1.1
       - run: corepack enable
-      - uses: actions/setup-node@v4.0.1
+      - uses: actions/setup-node@v4.0.2
         with:
-          node-version: 18.x
+          node-version: 20.x
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
 
@@ -72,9 +72,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4.1.1
       - run: corepack enable
-      - uses: actions/setup-node@v4.0.1
+      - uses: actions/setup-node@v4.0.2
         with:
-          node-version: 18.x
+          node-version: 20.x
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
 
@@ -102,12 +102,13 @@ jobs:
     timeout-minutes: 20
     env:
       DB_POSTGRESDB_PASSWORD: password
+      DB_POSTGRESDB_POOL_SIZE: 1 # Detect connection pooling deadlocks
     steps:
       - uses: actions/checkout@v4.1.1
       - run: corepack enable
-      - uses: actions/setup-node@v4.0.1
+      - uses: actions/setup-node@v4.0.2
         with:
-          node-version: 18.x
+          node-version: 20.x
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
 

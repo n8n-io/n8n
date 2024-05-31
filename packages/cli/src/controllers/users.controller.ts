@@ -77,7 +77,6 @@ export class UsersController {
 				delete user.isOwner;
 				delete user.isPending;
 				delete user.signInType;
-				delete user.hasRecoveryCodesLeft;
 			}
 		}
 
@@ -113,6 +112,10 @@ export class UsersController {
 		});
 		if (!user) {
 			throw new NotFoundError('User not found');
+		}
+
+		if (req.user.role === 'global:admin' && user.role === 'global:owner') {
+			throw new ForbiddenError('Admin cannot reset password of global owner');
 		}
 
 		const link = this.authService.generatePasswordResetUrl(user);
@@ -162,6 +165,10 @@ export class UsersController {
 			throw new NotFoundError(
 				'Request to delete a user failed because the user to delete was not found in DB',
 			);
+		}
+
+		if (userToDelete.role === 'global:owner') {
+			throw new ForbiddenError('Instance owner cannot be deleted.');
 		}
 
 		const personalProjectToDelete = await this.projectRepository.getPersonalProjectForUserOrFail(

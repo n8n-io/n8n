@@ -9,20 +9,15 @@ jobs:
   install-and-build:
     runs-on: ubuntu-latest
 
-    timeout-minutes: 30
-
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x]
+    timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@v4.1.1
 
       - run: corepack enable
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4.0.1
+      - uses: actions/setup-node@v4.0.2
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 20.x
           cache: pnpm
 
       - name: Install dependencies
@@ -35,7 +30,7 @@ jobs:
         uses: actions/cache/save@v4.0.0
         with:
           path: ./packages/**/dist
-          key: ${{ github.sha }}-base:${{ matrix.node-version }}-test-lint
+          key: ${{ github.sha }}-base:build
 
   unit-test:
     name: Unit tests
@@ -43,20 +38,17 @@ jobs:
     needs: install-and-build
     strategy:
       matrix:
-        node-version: [18.x, 20.x]
+        node-version: [18.x, 20.x, 22.x]
     with:
       ref: ${{ inputs.branch }}
       nodeVersion: ${{ matrix.node-version }}
-      cacheKey: ${{ github.sha }}-base:${{ matrix.node-version }}-test-lint
+      cacheKey: ${{ github.sha }}-base:build
       collectCoverage: true
 
   lint:
     name: Lint changes
     runs-on: ubuntu-latest
     needs: install-and-build
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x]
     steps:
       - uses: actions/checkout@v4.1.1
         with:
@@ -64,10 +56,9 @@ jobs:
           ref: ${{ inputs.branch }}
 
       - run: corepack enable
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4.0.1
+      - uses: actions/setup-node@v4.0.2
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 20.x
           cache: pnpm
 
       - name: Install dependencies
@@ -77,7 +68,7 @@ jobs:
         uses: actions/cache/restore@v4.0.0
         with:
           path: ./packages/**/dist
-          key: ${{ github.sha }}-base:${{ matrix.node-version }}-test-lint
+          key: ${{ github.sha }}-base:build
 
       - name: Lint
         env:

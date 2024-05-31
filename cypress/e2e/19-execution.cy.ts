@@ -510,7 +510,7 @@ describe('Execution', () => {
 
 		cy.wait('@workflowRun').then((interception) => {
 			expect(interception.request.body).to.have.property('runData').that.is.an('object');
-			const expectedKeys = ['When clicking "Test workflow"', 'fetch 5 random users'];
+			const expectedKeys = ['When clicking ‘Test workflow’', 'fetch 5 random users'];
 
 			expect(Object.keys(interception.request.body.runData)).to.have.lengthOf(expectedKeys.length);
 			expect(interception.request.body.runData).to.include.all.keys(expectedKeys);

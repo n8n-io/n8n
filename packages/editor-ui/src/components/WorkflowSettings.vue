@@ -384,6 +384,7 @@ import type { WorkflowScope } from '@n8n/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { ProjectTypes } from '@/features/projects/projects.utils';
 
 export default defineComponent({
 	name: 'WorkflowSettings',
@@ -604,7 +605,7 @@ export default defineComponent({
 				{
 					key: 'workflowsFromSameOwner',
 					value: this.$locale.baseText(
-						this.workflow.homeProject?.type === 'personal'
+						this.workflow.homeProject?.type === ProjectTypes.Personal
 							? 'workflowSettings.callerPolicy.options.workflowsFromPersonalProject'
 							: 'workflowSettings.callerPolicy.options.workflowsFromTeamProject',
 						{

@@ -121,7 +121,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 		 * Constructs URLSearchParams object based on the default parameters for the template repository
 		 * and provided additional parameters
 		 */
-		websiteTemplateRepositoryParameters() {
+		websiteTemplateRepositoryParameters(roleOverride?: string) {
 			const rootStore = useRootStore();
 			const userStore = useUsersStore();
 			const workflowsStore = useWorkflowsStore();
@@ -133,6 +133,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 			};
 			const userRole: string | undefined =
 				userStore.currentUserCloudInfo?.role ?? userStore.currentUser?.personalizationAnswers?.role;
+
 			if (userRole) {
 				defaultParameters.utm_user_role = userRole;
 			}
@@ -156,10 +157,15 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 		 * Construct the URL for the template category page on the website for a given category id
 		 */
 		getWebsiteCategoryURL() {
-			return (id: string) => {
-				return `${TEMPLATES_URLS.BASE_WEBSITE_URL}/?${this.websiteTemplateRepositoryParameters({
-					categories: id,
-				}).toString()}`;
+			return (id?: string, roleOverride?: string) => {
+				const payload: Record<string, string> = {};
+				if (id) {
+					payload.categories = id;
+				}
+				if (roleOverride) {
+					payload.utm_user_role = roleOverride;
+				}
+				return `${TEMPLATES_URLS.BASE_WEBSITE_URL}/?${this.websiteTemplateRepositoryParameters(payload).toString()}`;
 			};
 		},
 	},

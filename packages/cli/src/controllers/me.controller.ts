@@ -1,6 +1,6 @@
 import validator from 'validator';
 import { plainToInstance } from 'class-transformer';
-import { Response } from 'express';
+import { type RequestHandler, Response } from 'express';
 import { randomBytes } from 'crypto';
 
 import { AuthService } from '@/auth/auth.service';
@@ -22,6 +22,15 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooks } from '@/InternalHooks';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UserRepository } from '@/databases/repositories/user.repository';
+import { isApiEnabled } from '@/PublicApi';
+
+export const isApiEnabledMiddleware: RequestHandler = (_, res, next) => {
+	if (isApiEnabled()) {
+		next();
+	} else {
+		res.status(404).end();
+	}
+};
 
 @RestController('/me')
 export class MeController {
@@ -185,7 +194,7 @@ export class MeController {
 	/**
 	 * Creates an API Key
 	 */
-	@Post('/api-key')
+	@Post('/api-key', { middlewares: [isApiEnabledMiddleware] })
 	async createAPIKey(req: AuthenticatedRequest) {
 		const apiKey = `n8n_api_${randomBytes(40).toString('hex')}`;
 
@@ -202,7 +211,7 @@ export class MeController {
 	/**
 	 * Get an API Key
 	 */
-	@Get('/api-key')
+	@Get('/api-key', { middlewares: [isApiEnabledMiddleware] })
 	async getAPIKey(req: AuthenticatedRequest) {
 		return { apiKey: req.user.apiKey };
 	}
@@ -210,7 +219,7 @@ export class MeController {
 	/**
 	 * Deletes an API Key
 	 */
-	@Delete('/api-key')
+	@Delete('/api-key', { middlewares: [isApiEnabledMiddleware] })
 	async deleteAPIKey(req: AuthenticatedRequest) {
 		await this.userService.update(req.user.id, { apiKey: null });
 

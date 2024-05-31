@@ -180,6 +180,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
+import xss from 'xss';
 import { useStorage } from '@/composables/useStorage';
 import {
 	CUSTOM_API_CALL_KEY,
@@ -467,11 +468,9 @@ export default defineComponent({
 			if (nodeExecutionRunData) {
 				nodeExecutionRunData.forEach((executionRunData) => {
 					if (executionRunData?.error) {
-						issues.push(
-							`${executionRunData.error.message}${
-								executionRunData.error.description ? ` (${executionRunData.error.description})` : ''
-							}`,
-						);
+						const { message, description } = executionRunData.error;
+						const issue = `${message}${description ? ` (${description})` : ''}`;
+						issues.push(xss(issue));
 					}
 				});
 			}

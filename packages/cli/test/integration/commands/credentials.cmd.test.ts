@@ -23,6 +23,7 @@ beforeAll(async () => {
 	mockInstance(InternalHooks);
 	mockInstance(LoadNodesAndCredentials);
 	await testDb.init();
+	await oclifConfig.load();
 });
 
 beforeEach(async () => {

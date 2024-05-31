@@ -53,6 +53,7 @@ import { DropRoleMapping1705429061930 } from './1705429061930-DropRoleMapping';
 import { RemoveFailedExecutionStatus1711018413374 } from '../common/1711018413374-RemoveFailedExecutionStatus';
 import { MoveSshKeysToDatabase1711390882123 } from '../common/1711390882123-MoveSshKeysToDatabase';
 import { RemoveNodesAccess1712044305787 } from '../common/1712044305787-RemoveNodesAccess';
+import { MakeExecutionStatusNonNullable1714133768521 } from '../common/1714133768521-MakeExecutionStatusNonNullable';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -109,6 +110,7 @@ const sqliteMigrations: Migration[] = [
 	MoveSshKeysToDatabase1711390882123,
 	RemoveNodesAccess1712044305787,
 	CreateProject1714133768519,
+	MakeExecutionStatusNonNullable1714133768521,
 ];
 
 export { sqliteMigrations };

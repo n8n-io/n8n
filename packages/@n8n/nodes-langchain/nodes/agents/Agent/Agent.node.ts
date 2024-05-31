@@ -46,7 +46,7 @@ function getInputs(
 			[NodeConnectionType.AiOutputParser]: 'Output Parser',
 		};
 
-		return inputs.map(({ type, filter, required }) => {
+		return inputs.map(({ type, filter }) => {
 			const input: INodeInputConfiguration = {
 				type,
 				displayName: type in displayNames ? displayNames[type] : undefined,
@@ -247,7 +247,7 @@ export class Agent implements INodeType {
 			alias: ['LangChain'],
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Agents'],
+				AI: ['Agents', 'Root Nodes'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -370,13 +370,13 @@ export class Agent implements INodeType {
 		if (agentType === 'conversationalAgent') {
 			return await conversationalAgentExecute.call(this, nodeVersion);
 		} else if (agentType === 'toolsAgent') {
-			return await toolsAgentExecute.call(this, nodeVersion);
+			return await toolsAgentExecute.call(this);
 		} else if (agentType === 'openAiFunctionsAgent') {
 			return await openAiFunctionsAgentExecute.call(this, nodeVersion);
 		} else if (agentType === 'reActAgent') {
 			return await reActAgentAgentExecute.call(this, nodeVersion);
 		} else if (agentType === 'sqlAgent') {
-			return await sqlAgentAgentExecute.call(this, nodeVersion);
+			return await sqlAgentAgentExecute.call(this);
 		} else if (agentType === 'planAndExecuteAgent') {
 			return await planAndExecuteAgentExecute.call(this, nodeVersion);
 		}

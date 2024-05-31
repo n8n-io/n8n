@@ -3,6 +3,7 @@ import type {
 	BannerName,
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	ILoadOptions,
 	INodeCredentialTestRequest,
 	INodeCredentials,
 	INodeParameters,
@@ -377,7 +378,7 @@ export declare namespace OAuthRequest {
 			{},
 			{},
 			{},
-			{ oauth_verifier: string; oauth_token: string; cid: string }
+			{ oauth_verifier: string; oauth_token: string; state: string }
 		> & {
 			user?: User;
 		};
@@ -393,36 +394,32 @@ export declare namespace OAuthRequest {
 //      /dynamic-node-parameters
 // ----------------------------------
 export declare namespace DynamicNodeParametersRequest {
-	type BaseRequest<QueryParams = {}> = AuthenticatedRequest<
-		{
-			nodeTypeAndVersion: INodeTypeNameVersion;
-			currentNodeParameters: INodeParameters;
-			credentials?: INodeCredentials;
-		},
+	type BaseRequest<RequestBody = {}> = AuthenticatedRequest<
 		{},
 		{},
 		{
 			path: string;
-			nodeTypeAndVersion: string;
-			currentNodeParameters: string;
+			nodeTypeAndVersion: INodeTypeNameVersion;
+			currentNodeParameters: INodeParameters;
 			methodName?: string;
-			credentials?: string;
-		} & QueryParams
+			credentials?: INodeCredentials;
+		} & RequestBody,
+		{}
 	>;
 
-	/** GET /dynamic-node-parameters/options */
+	/** POST /dynamic-node-parameters/options */
 	type Options = BaseRequest<{
-		loadOptions?: string;
+		loadOptions?: ILoadOptions;
 	}>;
 
-	/** GET /dynamic-node-parameters/resource-locator-results */
+	/** POST /dynamic-node-parameters/resource-locator-results */
 	type ResourceLocatorResults = BaseRequest<{
 		methodName: string;
 		filter?: string;
 		paginationToken?: string;
 	}>;
 
-	/** GET dynamic-node-parameters/resource-mapper-fields */
+	/** POST dynamic-node-parameters/resource-mapper-fields */
 	type ResourceMapperFields = BaseRequest<{
 		methodName: string;
 	}>;
