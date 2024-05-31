@@ -499,7 +499,7 @@ importers:
     dependencies:
       '@langchain/community':
         specifier: 0.2.2
-        version: 0.2.2(@pinecone-database/pinecone@2.1.0)(axios@1.6.7)(handlebars@4.7.8)(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@3.9.7)(pg@8.11.3)(ws@8.14.2)
+        version: 0.2.2(@pinecone-database/pinecone@2.1.0)(axios@1.6.7)(handlebars@4.7.8)(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@3.10.0)(pg@8.11.3)(ws@8.14.2)
       '@langchain/core':
         specifier: 0.2.0
         version: 0.2.0
@@ -523,7 +523,7 @@ importers:
         version: link:../@n8n/permissions
       '@n8n/typeorm':
         specifier: 0.3.20-10
-        version: 0.3.20-10(@sentry/node@7.87.0)(ioredis@5.3.2)(mysql2@3.9.7)(pg@8.11.3)(sqlite3@5.1.7)
+        version: 0.3.20-10(@sentry/node@7.87.0)(ioredis@5.3.2)(mysql2@3.10.0)(pg@8.11.3)(sqlite3@5.1.7)
       '@n8n_io/license-sdk':
         specifier: 2.12.0
         version: 2.12.0
@@ -663,8 +663,8 @@ importers:
         specifier: 3.3.0
         version: 3.3.0
       mysql2:
-        specifier: 3.9.7
-        version: 3.9.7
+        specifier: 3.10.0
+        version: 3.10.0
       n8n-core:
         specifier: workspace:*
         version: link:../core
@@ -1436,8 +1436,8 @@ importers:
         specifier: 10.0.2
         version: 10.0.2
       mysql2:
-        specifier: 3.9.7
-        version: 3.9.7
+        specifier: 3.10.0
+        version: 3.10.0
       n8n-workflow:
         specifier: workspace:*
         version: link:../workflow
@@ -6514,7 +6514,7 @@ packages:
       - supports-color
     dev: false
 
-  /@langchain/community@0.2.2(@pinecone-database/pinecone@2.1.0)(axios@1.6.7)(handlebars@4.7.8)(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@3.9.7)(pg@8.11.3)(ws@8.14.2):
+  /@langchain/community@0.2.2(@pinecone-database/pinecone@2.1.0)(axios@1.6.7)(handlebars@4.7.8)(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@3.10.0)(pg@8.11.3)(ws@8.14.2):
     resolution: {integrity: sha512-TtlZnPBYt7Sujc1hAYvdZKUmV97wuF15O7b4nBX4lBfQeW38N0DwGbhqpitDbpaJqZ2s8DM4rjapECk0kIdAww==}
     engines: {node: '>=18'}
     peerDependencies:
@@ -6883,7 +6883,7 @@ packages:
       langchain: 0.2.2(@pinecone-database/pinecone@2.1.0)(axios@1.6.7)(handlebars@4.7.8)(ioredis@5.3.2)(ws@8.14.2)
       langsmith: 0.1.12
       lodash: 4.17.21
-      mysql2: 3.9.7
+      mysql2: 3.10.0
       pg: 8.11.3
       uuid: 9.0.1
       ws: 8.14.2
@@ -7216,7 +7216,7 @@ packages:
       recast: 0.22.0
     dev: false
 
-  /@n8n/typeorm@0.3.20-10(@sentry/node@7.87.0)(ioredis@5.3.2)(mysql2@3.9.7)(pg@8.11.3)(sqlite3@5.1.7):
+  /@n8n/typeorm@0.3.20-10(@sentry/node@7.87.0)(ioredis@5.3.2)(mysql2@3.10.0)(pg@8.11.3)(sqlite3@5.1.7):
     resolution: {integrity: sha512-YYQKkafEGqNAG+VgtGbJOWpcyF4ZsRJ+Q7qXigTXZFQb4xpL/+t0BXEMhy8Gw0OEjnZI5cbLGHcQtj7Xlfg7dw==}
     engines: {node: '>=16.13.0'}
     hasBin: true
@@ -7293,7 +7293,7 @@ packages:
       glob: 10.3.10
       ioredis: 5.3.2
       mkdirp: 2.1.3
-      mysql2: 3.9.7
+      mysql2: 3.10.0
       pg: 8.11.3
       reflect-metadata: 0.2.2
       sha.js: 2.4.11
@@ -20026,8 +20026,8 @@ packages:
     engines: {node: '>=12.0.0'}
     dev: true
 
-  /mysql2@3.9.7:
-    resolution: {integrity: sha512-KnJT8vYRcNAZv73uf9zpXqNbvBG7DJrs+1nACsjZP1HMJ1TgXEy8wnNilXAn/5i57JizXKtrUtwDB7HxT9DDpw==}
+  /mysql2@3.10.0:
+    resolution: {integrity: sha512-qx0mfWYt1DpTPkw8mAcHW/OwqqyNqBLBHvY5IjN8+icIYTjt6znrgYJ+gxqNNRpVknb5Wc/gcCM4XjbCR0j5tw==}
     engines: {node: '>= 8.0'}
     dependencies:
       denque: 2.1.0
