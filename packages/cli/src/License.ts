@@ -87,6 +87,10 @@ export class License {
 
 		const renewalEnabled = this.renewalEnabled(instanceType);
 
+		if (isMainInstance && !config.getEnv('license.autoRenewEnabled')) {
+			this.logger.warn('Automatic license renewal is disabled. The license will not renew automatically, and access to licensed features may be lost!');
+		}
+
 		try {
 			this.manager = new LicenseManager({
 				server,
