@@ -623,7 +623,7 @@ export const getBackgroundStyles = (
 		};
 	}
 
-	const styles: object = {
+	const styles = {
 		'background-size': `${squareSize}px ${squareSize}px`,
 		'background-position': `left ${offsetPosition[0]}px top ${offsetPosition[1]}px`,
 	};

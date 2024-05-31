@@ -132,6 +132,8 @@ export type EndpointStyle = {
 
 export type EndpointMeta = {
 	__meta?: {
+		nodeName: string;
+		nodeId: string;
 		index: number;
 		totalEndpoints: number;
 		endpointLabelLength: number;
@@ -271,7 +273,10 @@ export interface NewWorkflowResponse {
 }
 
 export interface IWorkflowTemplateNode
-	extends Pick<INodeUi, 'name' | 'type' | 'position' | 'parameters' | 'typeVersion' | 'webhookId'> {
+	extends Pick<
+		INodeUi,
+		'name' | 'type' | 'position' | 'parameters' | 'typeVersion' | 'webhookId' | 'id' | 'disabled'
+	> {
 	// The credentials in a template workflow have a different type than in a regular workflow
 	credentials?: IWorkflowTemplateNodeCredentials;
 }
@@ -1946,7 +1951,7 @@ export type NewConnectionInfo = {
 	index: number;
 	eventSource: NodeCreatorOpenSource;
 	connection?: Connection;
-	nodeCreatorView?: string;
+	nodeCreatorView?: NodeFilterType;
 	outputType?: NodeConnectionType;
 	endpointUuid?: string;
 };

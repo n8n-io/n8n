@@ -128,9 +128,9 @@ export default function useCanvasMouseSelect() {
 		_updateSelectBox(e);
 	}
 
-	function mouseUpMouseSelect(e: MouseEvent) {
+	function mouseUpMouseSelect(e: MouseEvent | TouchEvent) {
 		// Ignore right-click
-		if (e.button === 2 || isContextMenuOpen.value) return;
+		if ((e instanceof MouseEvent && e.button === 2) || isContextMenuOpen.value) return;
 
 		if (!selectActive.value) {
 			if (isTouchDevice && e.target instanceof HTMLElement) {
@@ -204,8 +204,8 @@ export default function useCanvasMouseSelect() {
 		uiStore.lastSelectedNode = null;
 		uiStore.lastSelectedNodeOutputIndex = null;
 
-		canvasStore.lastSelectedConnection = null;
 		canvasStore.newNodeInsertPosition = null;
+		canvasStore.setLastSelectedConnection(undefined);
 	}
 
 	const instance = computed(() => canvasStore.jsPlumbInstance);

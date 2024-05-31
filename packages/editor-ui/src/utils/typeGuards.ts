@@ -1,6 +1,8 @@
 import type { INodeParameterResourceLocator, NodeConnectionType } from 'n8n-workflow';
 import { nodeConnectionTypes } from 'n8n-workflow';
 import type { ICredentialsResponse, NewCredentialsModal } from '@/Interface';
+import { jsPlumbDOMElement } from '@jsplumb/browser-ui';
+import { Connection } from '@jsplumb/core';
 
 /*
 	Type guards used in editor-ui project
@@ -41,8 +43,12 @@ export const isResourceMapperValue = (value: unknown): value is string | number 
 	return ['string', 'number', 'boolean'].includes(typeof value);
 };
 
-export const isJSPlumbEndpointElement = (element: Node): element is HTMLElement => {
+export const isJSPlumbEndpointElement = (element: Node): element is jsPlumbDOMElement => {
 	return 'jtk' in element && 'endpoint' in (element.jtk as object);
+};
+
+export const isJSPlumbConnection = (connection: unknown): connection is Connection => {
+	return connection !== null && typeof connection === 'object' && 'connector' in connection;
 };
 
 export function isDateObject(date: unknown): date is Date {

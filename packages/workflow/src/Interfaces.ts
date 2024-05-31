@@ -68,7 +68,7 @@ export interface IConnection {
 	node: string;
 
 	// The type of the input on destination node (for example "main")
-	type: string;
+	type: NodeConnectionType;
 
 	// The output/input-index of destination node (if node has multiple inputs/outputs of the same type)
 	index: number;

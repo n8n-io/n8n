@@ -21,6 +21,7 @@ declare global {
 		BASE_PATH: string;
 		REST_ENDPOINT: string;
 		n8nExternalHooks?: PartialDeep<ExternalHooks>;
+		preventNodeViewBeforeUnload?: boolean;
 	}
 
 	namespace JSX {
