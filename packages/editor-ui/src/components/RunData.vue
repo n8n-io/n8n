@@ -836,7 +836,6 @@ export default defineComponent({
 				defaults.unshift({ label: 'HTML', value: 'html' });
 			}
 
-			console.log(defaults);
 			return defaults;
 		},
 		hasNodeRun(): boolean {
