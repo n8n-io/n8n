@@ -18,12 +18,15 @@ describe('WorkflowActivationError', () => {
 		expect(secondError.level).toBe('error');
 	});
 
-	test.each(['ETIMEDOUT', 'ECONNREFUSED', 'EAUTH', 'Temporary authentication failure'])(
-		'should set `level` to `warning` for `%s`',
-		(code) => {
-			const error = new WorkflowActivationError(code, { cause });
+	test.each([
+		'ETIMEDOUT',
+		'ECONNREFUSED',
+		'EAUTH',
+		'Temporary authentication failure',
+		'Invalid credentials',
+	])('should set `level` to `warning` for `%s`', (code) => {
+		const error = new WorkflowActivationError(code, { cause });
 
-			expect(error.level).toBe('warning');
-		},
-	);
+		expect(error.level).toBe('warning');
+	});
 });
