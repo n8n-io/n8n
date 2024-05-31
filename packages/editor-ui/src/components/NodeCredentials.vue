@@ -120,7 +120,6 @@ import type {
 	IUser,
 } from '@/Interface';
 import type {
-	ICredentialType,
 	INodeCredentialDescription,
 	INodeCredentialsDetails,
 	INodeParameters,
@@ -205,7 +204,7 @@ export default defineComponent({
 			useWorkflowsStore,
 		),
 		currentUser(): IUser {
-			return this.usersStore.currentUser || ({} as IUser);
+			return this.usersStore.currentUser ?? ({} as IUser);
 		},
 		credentialTypesNode(): string[] {
 			return this.credentialTypesNodeDescription.map(
@@ -230,20 +229,17 @@ export default defineComponent({
 			return [];
 		},
 		credentialTypeNames() {
-			const returnData: {
-				[key: string]: string;
-			} = {};
-			let credentialType: ICredentialType | undefined;
+			const returnData: Record<string, string> = {};
 			for (const credentialTypeName of this.credentialTypesNode) {
-				credentialType = this.credentialsStore.getCredentialTypeByName(credentialTypeName);
+				const credentialType = this.credentialsStore.getCredentialTypeByName(credentialTypeName);
 				returnData[credentialTypeName] = credentialType
 					? credentialType.displayName
 					: credentialTypeName;
 			}
 			return returnData;
 		},
-		selected(): { [type: string]: INodeCredentialsDetails } {
-			return this.node.credentials || {};
+		selected(): Record<string, INodeCredentialsDetails> {
+			return this.node.credentials ?? {};
 		},
 		nodeType(): INodeTypeDescription | null {
 			return this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
@@ -267,10 +263,9 @@ export default defineComponent({
 						const newAuth = newValue[this.mainNodeAuthField.name];
 
 						if (newAuth) {
-							const credentialType = getNodeCredentialForSelectedAuthType(
-								nodeType,
-								JSON.stringify(newAuth),
-							);
+							const authType =
+								typeof newAuth === 'object' ? JSON.stringify(newAuth) : newAuth.toString();
+							const credentialType = getNodeCredentialForSelectedAuthType(nodeType, authType);
 							if (credentialType) {
 								this.subscribedToCredentialType = credentialType.name;
 							}
@@ -452,11 +447,7 @@ export default defineComponent({
 
 			const selectedCredentials = this.credentialsStore.getCredentialById(credentialId);
 			const selectedCredentialsType = this.showAll ? selectedCredentials.type : credentialType;
-			const oldCredentials: INodeCredentialsDetails | null = this.node.credentials?.[
-				selectedCredentialsType
-			]
-				? this.node.credentials[selectedCredentialsType]
-				: null;
+			const oldCredentials = this.node.credentials?.[selectedCredentialsType] ?? null;
 
 			const selected = { id: selectedCredentials.id, name: selectedCredentials.name };
 
@@ -560,17 +551,7 @@ export default defineComponent({
 
 		editCredential(credentialType: string): void {
 			const credential = this.node.credentials?.[credentialType];
-
-			if (!credential?.id) {
-				this.showMessage({
-					title: this.$locale.baseText('nodeCredentials.editCredentialError.title'),
-					message: this.$locale.baseText('nodeCredentials.editCredentialError.message', {
-						interpolate: { credentialType },
-					}),
-					type: 'error',
-				});
-				return;
-			}
+			assert(credential?.id);
 
 			this.uiStore.openExistingCredential(credential.id);
 
