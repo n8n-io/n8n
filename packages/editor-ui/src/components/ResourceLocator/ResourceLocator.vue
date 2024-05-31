@@ -243,7 +243,6 @@ export default defineComponent({
 		},
 		node: {
 			type: Object as PropType<INode>,
-			required: true,
 		},
 		path: {
 			type: String,
@@ -308,7 +307,8 @@ export default defineComponent({
 			return !!(node?.credentials && Object.keys(node.credentials).length === 1);
 		},
 		credentialsNotSet(): boolean {
-			const nodeType = this.nodeTypesStore.getNodeType(this.node?.type);
+			if (!this.node) return false;
+			const nodeType = this.nodeTypesStore.getNodeType(this.node.type);
 			if (nodeType) {
 				const usesCredentials =
 					nodeType.credentials !== undefined && nodeType.credentials.length > 0;
@@ -387,8 +387,8 @@ export default defineComponent({
 			filter: string;
 		} {
 			return {
-				parameters: this.node.parameters,
-				credentials: this.node.credentials,
+				parameters: this.node?.parameters ?? {},
+				credentials: this.node?.credentials ?? {},
 				filter: this.searchFilter,
 			};
 		},
@@ -561,7 +561,8 @@ export default defineComponent({
 			this.uiStore.openExistingCredential(id);
 		},
 		createNewCredential(): void {
-			const nodeType = this.nodeTypesStore.getNodeType(this.node?.type);
+			if (!this.node) return;
+			const nodeType = this.nodeTypesStore.getNodeType(this.node.type);
 			if (!nodeType) {
 				return;
 			}
@@ -664,6 +665,10 @@ export default defineComponent({
 			const cachedResponse = this.cachedResponses[paramsKey];
 
 			if (this.requiresSearchFilter && !params.filter) {
+				return;
+			}
+
+			if (!this.node) {
 				return;
 			}
 

@@ -60,7 +60,7 @@ export default defineComponent({
 	},
 	computed: {
 		doc(): string {
-			return this.editor?.state.doc.toString();
+			return this.editor?.state.doc.toString() ?? '';
 		},
 		extensions(): Extension[] {
 			const { isReadOnly } = this;
