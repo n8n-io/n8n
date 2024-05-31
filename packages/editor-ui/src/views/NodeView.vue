@@ -2606,10 +2606,6 @@ export default defineComponent({
 
 					// If node has only scoped outputs, position it below the last selected node
 					const lastSelectedNodeWorkflow = workflow.getNode(lastSelectedNode.name);
-					console.log('🚀 ~ lastSelectedNodeWorkflow:', {
-						lastSelectedNodeType,
-						lastSelectedNodeWorkflow,
-					});
 					if (!lastSelectedNodeWorkflow || !lastSelectedNodeType) {
 						console.error('Could not find last selected node or node type');
 						return;
