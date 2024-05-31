@@ -9,7 +9,6 @@ import { ProjectRepository } from '@db/repositories/project.repository';
 import type { Project } from '@db/entities/Project';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
-import { ProjectService } from '@/services/project.service';
 
 import * as testDb from '../shared/testDb';
 import { setupTestServer } from '../shared/utils';
@@ -44,7 +43,6 @@ let authMemberAgent: SuperAgentTest;
 
 let projectRepository: ProjectRepository;
 let sharedCredentialsRepository: SharedCredentialsRepository;
-let projectService: ProjectService;
 
 beforeEach(async () => {
 	await testDb.truncate(['SharedCredentials', 'Credentials']);
@@ -65,7 +63,6 @@ beforeEach(async () => {
 
 	projectRepository = Container.get(ProjectRepository);
 	sharedCredentialsRepository = Container.get(SharedCredentialsRepository);
-	projectService = Container.get(ProjectService);
 });
 
 type GetAllResponse = { body: { data: ListQuery.Credentials.WithOwnedByAndSharedWith[] } };
