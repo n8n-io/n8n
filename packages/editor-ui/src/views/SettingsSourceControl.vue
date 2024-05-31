@@ -121,8 +121,10 @@ const formValidationStatus = reactive<Record<string, boolean>>({
 	keyGeneratorType: false,
 });
 
-function onValidate(key: string, value: boolean) {
-	formValidationStatus[key] = value;
+function onValidate(key: string) {
+	return (shouldValidate: boolean) => {
+		formValidationStatus[key] = shouldValidate;
+	};
 }
 
 const repoUrlValidationRules: Array<Rule | RuleGroup> = [
@@ -219,7 +221,7 @@ const onSelectSshKeyType = async (sshKeyType: TupleToUnion<SshKeyTypes>) => {
 						:validation-rules="repoUrlValidationRules"
 						:disabled="isConnected"
 						:placeholder="locale.baseText('settings.sourceControl.repoUrlPlaceholder')"
-						@validate="(value) => onValidate('repoUrl', value)"
+						@validate="onValidate('repoUrl')"
 					/>
 					<n8n-button
 						v-if="isConnected"
@@ -248,7 +250,7 @@ const onSelectSshKeyType = async (sshKeyType: TupleToUnion<SshKeyTypes>) => {
 						:validation-rules="keyGeneratorTypeValidationRules"
 						:options="sourceControlStore.sshKeyTypesWithLabel"
 						:model-value="sourceControlStore.preferences.keyGeneratorType"
-						@validate="(value) => onValidate('keyGeneratorType', value)"
+						@validate="onValidate('keyGeneratorType')"
 						@update:model-value="onSelectSshKeyType"
 					/>
 					<CopyInput
@@ -309,7 +311,7 @@ const onSelectSshKeyType = async (sshKeyType: TupleToUnion<SshKeyTypes>) => {
 							:validation-rules="branchNameValidationRules"
 							:options="branchNameOptions"
 							:model-value="sourceControlStore.preferences.branchName"
-							@validate="(value) => onValidate('branchName', value)"
+							@validate="onValidate('branchName')"
 							@update:model-value="onSelect"
 						/>
 						<n8n-tooltip placement="top">

@@ -363,6 +363,7 @@ export interface ICredentialsResponse extends ICredentialsEncrypted {
 	homeProject?: ProjectSharingData;
 	currentUserHasAccess?: boolean;
 	scopes?: Scope[];
+	ownedBy?: Pick<IUserResponse, 'id' | 'firstName' | 'lastName' | 'email'>;
 }
 
 export interface ICredentialsBase {
