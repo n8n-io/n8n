@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import WorkflowExecutionsList from '@/components/executions/workflow/WorkflowExecutionsList.vue';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useI18n } from '@/composables/useI18n';
-import type { ExecutionFilterType, IWorkflowDb } from '@/Interface';
+import type { ExecutionFilterType, ITag, IWorkflowDb } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { NO_NETWORK_ERROR_CODE } from '@/utils/apiUtils';
@@ -14,9 +14,11 @@ import type { ExecutionSummary } from 'n8n-workflow';
 import { useDebounce } from '@/composables/useDebounce';
 import { storeToRefs } from 'pinia';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useTagsStore } from '@/stores/tags.store';
 
 const executionsStore = useExecutionsStore();
 const workflowsStore = useWorkflowsStore();
+const tagsStore = useTagsStore();
 const nodeTypesStore = useNodeTypesStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -115,13 +117,14 @@ async function initializeRoute() {
 }
 
 async function fetchWorkflow() {
-	let data: IWorkflowDb | undefined;
-	try {
-		// @TODO Retrieve from store if exists
-		data = await workflowsStore.fetchWorkflow(workflowId.value);
-	} catch (error) {
-		toast.showError(error, i18n.baseText('nodeView.showError.openWorkflow.title'));
-		return;
+	let data: IWorkflowDb | undefined = workflowsStore.workflowsById[workflowId.value];
+	if (!data) {
+		try {
+			data = await workflowsStore.fetchWorkflow(workflowId.value);
+		} catch (error) {
+			toast.showError(error, i18n.baseText('nodeView.showError.openWorkflow.title'));
+			return;
+		}
 	}
 
 	if (!data) {
@@ -132,7 +135,11 @@ async function fetchWorkflow() {
 		);
 	}
 
+	const tags = (data.tags ?? []) as ITag[];
 	workflow.value = data;
+	workflowsStore.setWorkflowName({ newName: data.name, setStateDirty: false });
+	workflowsStore.setWorkflowTagIds(tags.map(({ id }) => id) ?? []);
+	tagsStore.upsertTags(tags);
 }
 
 async function onAutoRefreshToggle(value: boolean) {
