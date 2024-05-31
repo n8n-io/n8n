@@ -15,11 +15,7 @@ import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import VariablesRow from '@/components/VariablesRow.vue';
 
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
-import type {
-	DatatableColumn,
-	EnvironmentVariable,
-	TemporaryEnvironmentVariable,
-} from '@/Interface';
+import type { DatatableColumn, EnvironmentVariable } from '@/Interface';
 import { uid } from 'n8n-design-system/utils';
 import { getVariablesPermissions } from '@/permissions';
 import type { BaseTextKey } from '@/plugins/i18n';
