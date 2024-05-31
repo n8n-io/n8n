@@ -17,6 +17,7 @@ export default defineComponent({
 	props: {
 		date: {
 			type: String,
+			default: '',
 		},
 		capitalize: {
 			type: Boolean,
