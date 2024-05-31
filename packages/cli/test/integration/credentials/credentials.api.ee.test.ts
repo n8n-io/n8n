@@ -661,7 +661,7 @@ describe('PUT /credentials/:id/share', () => {
 
 describe('PUT /:credentialId/transfer', () => {
 	test('cannot transfer into the same project', async () => {
-		const destinationProject = await createTeamProject('Team Project', member);
+		const destinationProject = await createTeamProject('Destination Project', member);
 
 		const credential = await saveCredential(randomCredentialPayload(), {
 			project: destinationProject,
@@ -675,10 +675,8 @@ describe('PUT /:credentialId/transfer', () => {
 	});
 
 	test('cannot transfer into a personal project', async () => {
-		const destinationProject = await createTeamProject('Team Project', member);
-
 		const credential = await saveCredential(randomCredentialPayload(), {
-			project: destinationProject,
+			user: member,
 		});
 
 		await testServer
@@ -689,7 +687,7 @@ describe('PUT /:credentialId/transfer', () => {
 	});
 
 	test('cannot transfer somebody elses credential', async () => {
-		const destinationProject = await createTeamProject('Team Project', member);
+		const destinationProject = await createTeamProject('Destination Project', member);
 
 		const credential = await saveCredential(randomCredentialPayload(), {
 			user: anotherMember,
@@ -702,15 +700,14 @@ describe('PUT /:credentialId/transfer', () => {
 			.expect(403);
 	});
 
-	test('cannot transfer if youre not member in the source project', async () => {
+	test("cannot transfer if you're not an admin in the source project", async () => {
 		const sourceProject = await createTeamProject('Source Project');
 		await linkUserToProject(member, sourceProject, 'project:editor');
-
-		const destinationProject = await createTeamProject('Destination Project', member);
-
 		const credential = await saveCredential(randomCredentialPayload(), {
 			project: sourceProject,
 		});
+
+		const destinationProject = await createTeamProject('Destination Project', member);
 
 		await testServer
 			.authAgentFor(member)
@@ -719,12 +716,12 @@ describe('PUT /:credentialId/transfer', () => {
 			.expect(403);
 	});
 
-	test('cannot transfer without credential:create scope for the destination project', async () => {
-		const destinationProject = await createTeamProject('Team Project', anotherMember);
-
+	test("cannot transfer if you're not a member of the destination project", async () => {
 		const credential = await saveCredential(randomCredentialPayload(), {
 			user: member,
 		});
+
+		const destinationProject = await createTeamProject('Team Project');
 
 		await testServer
 			.authAgentFor(member)
@@ -741,10 +738,10 @@ describe('PUT /:credentialId/transfer', () => {
 			user: member,
 		});
 
-		const destinationProject = await createTeamProject('Destination Project', member);
-
 		// all other sharings should be deleted by the transfer
 		await shareCredentialWithUsers(credential, [anotherMember]);
+
+		const destinationProject = await createTeamProject('Destination Project', member);
 
 		//
 		// ACT
@@ -774,7 +771,6 @@ describe('PUT /:credentialId/transfer', () => {
 		// ARRANGE
 		//
 		const sourceProject = await createTeamProject('Team Project 1', member);
-
 		const credential = await saveCredential(randomCredentialPayload(), {
 			project: sourceProject,
 		});
@@ -814,12 +810,13 @@ describe('PUT /:credentialId/transfer', () => {
 			// ARRANGE
 			//
 			const sourceProject = await createTeamProject('Source Project', member);
-			const destinationProject = await createTeamProject('Destination Project', member);
-
 			const teamCredential = await saveCredential(randomCredentialPayload(), {
 				project: sourceProject,
 			});
+
 			const personalCredential = await saveCredential(randomCredentialPayload(), { user: member });
+
+			const destinationProject = await createTeamProject('Destination Project', member);
 
 			//
 			// ACT
@@ -871,12 +868,13 @@ describe('PUT /:credentialId/transfer', () => {
 		// ARRANGE
 		//
 		const sourceProject = await createTeamProject('Source Project', member);
-		const destinationProject = anotherMemberPersonalProject;
-
 		const teamCredential = await saveCredential(randomCredentialPayload(), {
 			project: sourceProject,
 		});
+
 		const personalCredential = await saveCredential(randomCredentialPayload(), { user: member });
+
+		const destinationProject = anotherMemberPersonalProject;
 
 		//
 		// ACT & ASSERT
