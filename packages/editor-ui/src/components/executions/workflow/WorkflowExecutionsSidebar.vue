@@ -8,6 +8,14 @@
 			<n8n-heading tag="h2" size="medium" color="text-dark">
 				{{ $locale.baseText('generic.executions') }}
 			</n8n-heading>
+
+			<div v-if="isProductionConcurrencyCapEnabled">
+				<ConcurrentExecutionsHeader
+					:header-text="concurrentExecutionsHeaderText"
+					:tooltip-text="concurrentExecutionsTooltipText"
+					:upgrade-text="$locale.baseText('generic.upgradeNow')"
+				/>
+			</div>
 		</div>
 		<div :class="$style.controls">
 			<el-checkbox
@@ -69,6 +77,7 @@
 <script lang="ts">
 import WorkflowExecutionsCard from '@/components/executions/workflow/WorkflowExecutionsCard.vue';
 import WorkflowExecutionsInfoAccordion from '@/components/executions/workflow/WorkflowExecutionsInfoAccordion.vue';
+import ConcurrentExecutionsHeader from '@/components/ConcurrentExecutionsHeader.vue';
 import ExecutionsFilter from '@/components/executions/ExecutionsFilter.vue';
 import { VIEWS } from '@/constants';
 import type { ExecutionSummary } from 'n8n-workflow';
@@ -78,6 +87,8 @@ import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import type { ExecutionFilterType } from '@/Interface';
 
 type WorkflowExecutionsCardRef = InstanceType<typeof WorkflowExecutionsCard>;
@@ -89,6 +100,7 @@ export default defineComponent({
 		WorkflowExecutionsCard,
 		WorkflowExecutionsInfoAccordion,
 		ExecutionsFilter,
+		ConcurrentExecutionsHeader,
 	},
 	props: {
 		executions: {
@@ -128,7 +140,27 @@ export default defineComponent({
 		};
 	},
 	computed: {
-		...mapStores(useExecutionsStore, useWorkflowsStore),
+		...mapStores(useExecutionsStore, useWorkflowsStore, useUIStore, useSettingsStore),
+		productionConcurrencyCap(): boolean {
+			return this.settingsStore.productionConcurrencyCap;
+		},
+		isProductionConcurrencyCapEnabled(): boolean {
+			return this.settingsStore.isProductionConcurrencyCapEnabled;
+		},
+		runningExecutionsCount(): number {
+			return this.executions.filter((execution) => execution.status === 'running').length;
+		},
+		concurrentExecutionsTooltipText(): string {
+			return this.$locale.baseText('executionsList.activeExecutions.tooltip', {
+				interpolate: {
+					running: this.runningExecutionsCount,
+					cap: this.productionConcurrencyCap,
+				},
+			});
+		},
+		concurrentExecutionsHeaderText(): string {
+			return [this.runningExecutionsCount, this.productionConcurrencyCap].join('/');
+		},
 	},
 	watch: {
 		$route(to: Route, from: Route) {
@@ -155,6 +187,9 @@ export default defineComponent({
 		},
 	},
 	methods: {
+		goToUpgrade() {
+			void this.uiStore.goToUpgrade('concurrency', 'max-concurrency-limit');
+		},
 		onItemMounted(id: string): void {
 			this.mountedItems.push(id);
 			if (this.mountedItems.length === this.executions.length) {

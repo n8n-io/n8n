@@ -205,6 +205,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		productionConcurrencyCap(): number {
 			return this.settings.concurrency.productionCap;
 		},
+		isProductionConcurrencyCapEnabled(): boolean {
+			return this.settings.concurrency.productionCap !== -1;
+		},
 	},
 	actions: {
 		async initialize() {
