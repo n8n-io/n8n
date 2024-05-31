@@ -57,6 +57,7 @@ import type { Scope } from '@n8n/permissions';
 import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
 import type { ProjectSharingData } from '@/features/projects/projects.types';
 import type { Connection } from '@jsplumb/core';
+import type { BaseTextKey } from './plugins/i18n';
 
 export * from 'n8n-design-system/types';
 
@@ -138,14 +139,7 @@ export type EndpointMeta = {
 	};
 };
 
-export interface IUpdateInformation<
-	T extends NodeParameterValueType =
-		| string
-		| number
-		| { [key: string]: string | number | boolean }
-		| NodeParameterValueType
-		| INodeParameters,
-> {
+export interface IUpdateInformation<T extends NodeParameterValueType = NodeParameterValueType> {
 	name: string;
 	key?: string;
 	value: T;
@@ -250,7 +244,7 @@ export interface IWorkflowData {
 export interface IWorkflowDataUpdate {
 	id?: string;
 	name?: string;
-	nodes?: INode[];
+	nodes?: Array<INode | IWorkflowTemplateNode>;
 	connections?: IConnections;
 	settings?: IWorkflowSettings;
 	active?: boolean;
@@ -363,6 +357,7 @@ export interface ICredentialsResponse extends ICredentialsEncrypted {
 	homeProject?: ProjectSharingData;
 	currentUserHasAccess?: boolean;
 	scopes?: Scope[];
+	ownedBy?: Pick<IUserResponse, 'id' | 'firstName' | 'lastName' | 'email'>;
 }
 
 export interface ICredentialsBase {
@@ -1339,12 +1334,12 @@ export interface UIState {
 
 export type IFakeDoor = {
 	id: FAKE_DOOR_FEATURES;
-	featureName: string;
+	featureName: BaseTextKey;
 	icon?: string;
-	infoText?: string;
-	actionBoxTitle: string;
-	actionBoxDescription: string;
-	actionBoxButtonLabel?: string;
+	infoText?: BaseTextKey;
+	actionBoxTitle: BaseTextKey;
+	actionBoxDescription: BaseTextKey;
+	actionBoxButtonLabel?: BaseTextKey;
 	linkURL: string;
 	uiLocations: IFakeDoorLocation[];
 };
