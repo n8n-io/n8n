@@ -3,7 +3,6 @@ import type { INodeProperties } from 'n8n-workflow';
 import {
 	addLocationIdPreSendAction,
 	dateTimeToEpochPreSendAction,
-	opportunityUpdatePreSendAction,
 	splitTagsPreSendAction,
 } from '../GenericFunctions';
 
@@ -87,9 +86,6 @@ export const opportunityOperations: INodeProperties[] = [
 					request: {
 						method: 'PUT',
 						url: '=/opportunities/{{$parameter.opportunityId}}',
-					},
-					send: {
-						preSend: [opportunityUpdatePreSendAction, splitTagsPreSendAction],
 					},
 				},
 				action: 'Update an opportunity',
@@ -656,31 +652,6 @@ const updateProperties: INodeProperties[] = [
 					send: {
 						type: 'body',
 						property: 'status',
-					},
-				},
-			},
-			{
-				displayName: 'Title',
-				name: 'title',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'title',
-					},
-				},
-			},
-			{
-				displayName: 'Tags',
-				name: 'tags',
-				type: 'string',
-				hint: 'Comma separated list of tags, array of strings can be set in expression',
-				default: '',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'tags',
 					},
 				},
 			},

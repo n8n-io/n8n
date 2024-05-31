@@ -199,23 +199,6 @@ export async function highLevelApiRequest(
 	return await this.helpers.httpRequestWithAuthentication.call(this, 'highLevelOAuth2Api', options);
 }
 
-export async function opportunityUpdatePreSendAction(
-	this: IExecuteSingleFunctions,
-	requestOptions: IHttpRequestOptions,
-): Promise<IHttpRequestOptions> {
-	const body = (requestOptions.body || {}) as { title?: string; status?: string };
-	if (!body.status || !body.title) {
-		const pipelineId = this.getNodeParameter('pipelineId');
-		const opportunityId = this.getNodeParameter('opportunityId');
-		const resource = `/pipelines/${pipelineId}/opportunities/${opportunityId}`;
-		const responseData = await highLevelApiRequest.call(this, 'GET', resource);
-		body.status = body.status || responseData.status;
-		body.title = body.title || responseData.name;
-		requestOptions.body = body;
-	}
-	return requestOptions;
-}
-
 export async function taskUpdatePreSendAction(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
