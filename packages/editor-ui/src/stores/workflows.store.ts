@@ -30,6 +30,7 @@ import type {
 	NodeMetadataMap,
 	WorkflowMetadata,
 	IExecutionFlattedResponse,
+	IWorkflowTemplateNode,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import type {
@@ -312,7 +313,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setNodeValue({ name: node.name, key: 'position', value: position });
 	}
 
-	function getWorkflow(nodes: INodeUi[], connections: IConnections, copyData?: boolean): Workflow {
+	function getWorkflow(
+		nodes: Array<INodeUi | IWorkflowTemplateNode>,
+		connections: IConnections,
+		copyData?: boolean,
+	): Workflow {
 		const nodeTypes = getNodeTypes();
 		let cachedWorkflowId: string | undefined = workflowId.value;
 		if (cachedWorkflowId && cachedWorkflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
@@ -322,6 +327,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		cachedWorkflow = new Workflow({
 			id: cachedWorkflowId,
 			name: workflowName.value,
+			// @ts-ignore
 			nodes: copyData ? deepCopy(nodes) : nodes,
 			connections: copyData ? deepCopy(connections) : connections,
 			active: false,

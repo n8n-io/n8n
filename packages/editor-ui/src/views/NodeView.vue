@@ -2200,7 +2200,7 @@ export default defineComponent({
 				const nodeIdMap: { [prev: string]: string } = {};
 				if (workflowData.nodes) {
 					const nodeNames = workflowData.nodes.map((node) => node.name);
-					workflowData.nodes.forEach((node: INode) => {
+					workflowData.nodes.forEach((node: INode | IWorkflowTemplateNode) => {
 						// Provide a new name for nodes that don't have one
 						if (!node.name) {
 							const nodeType = this.nodeTypesStore.getNodeType(node.type);
@@ -2280,7 +2280,7 @@ export default defineComponent({
 				const data = await this.addNodesToWorkflow(workflowData);
 
 				setTimeout(() => {
-					data.nodes!.forEach((node: INodeUi) => {
+					(data?.nodes ?? []).forEach((node: INodeUi | IWorkflowTemplateNode) => {
 						this.nodeSelectedByName(node.name);
 					});
 				});
@@ -2331,7 +2331,7 @@ export default defineComponent({
 				if (!node.credentials) continue;
 
 				for (const [name, credential] of Object.entries(node.credentials)) {
-					if (credential.id === null) continue;
+					if (typeof credential === 'string' || credential.id === null) continue;
 
 					if (!this.credentialsStore.getCredentialById(credential.id)) {
 						delete node.credentials[name];
@@ -3461,7 +3461,9 @@ export default defineComponent({
 				const requiredType = connectionType === 'source' ? 'target' : 'source';
 
 				const filteredEndpoints = scopedEndpoints.filter((el) => {
-					const endpoint = el.jtk.endpoint as Endpoint;
+					if (!isJSPlumbEndpointElement(el)) return false;
+
+					const endpoint = el.jtk.endpoint;
 					if (!endpoint) return false;
 
 					// Prevent snapping(but not connecting) to the same node
@@ -3478,6 +3480,7 @@ export default defineComponent({
 
 					const intersectingEndpoints = filteredEndpoints
 						.filter((element: Element) => {
+							if (!isJSPlumbEndpointElement(element)) return false;
 							const endpoint = element.jtk.endpoint as Endpoint;
 
 							if (element.classList.contains('jtk-floating-endpoint')) {
@@ -3521,7 +3524,10 @@ export default defineComponent({
 							return bEndpointIntersect.y - aEndpointIntersect.y;
 						});
 
-					if (intersectingEndpoints.length > 0) {
+					if (
+						intersectingEndpoints.length > 0 &&
+						isJSPlumbEndpointElement(intersectingEndpoints[0])
+					) {
 						const intersectingEndpoint = intersectingEndpoints[0];
 						const endpoint = intersectingEndpoint.jtk.endpoint as Endpoint;
 						const node = this.workflowsStore.getNodeById(endpoint.parameters.nodeId);
@@ -4530,7 +4536,7 @@ export default defineComponent({
 
 			let oldName: string;
 			let newName: string;
-			const createNodes: INode[] = [];
+			const createNodes: Array<INode | IWorkflowTemplateNode> = [];
 
 			await this.loadNodesProperties(
 				data.nodes.map((node) => ({ name: node.type, version: node.typeVersion })),

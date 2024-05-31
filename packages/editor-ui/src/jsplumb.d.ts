@@ -1,7 +1,17 @@
-import type { Connection, Endpoint } from '@jsplumb/core';
-import { NodeConnectionType } from 'n8n-workflow';
+import type { Connection, Endpoint, EndpointRepresentation, AbstractConnector, Overlay } from '@jsplumb/core';
+import type { NodeConnectionType } from 'n8n-workflow';
 
 declare module '@jsplumb/core' {
+	interface EndpointRepresentation {
+		canvas: HTMLElement;
+		scope: NodeConnectionType;
+	}
+	interface AbstractConnector {
+		canvas: HTMLElement;
+	}
+	interface Overlay {
+		canvas: HTMLElement;
+	}
 	interface Connection {
 		__meta: {
 			sourceOutputIndex: number;
@@ -10,7 +20,6 @@ declare module '@jsplumb/core' {
 			sourceNodeName: string;
 		};
 	}
-
 	interface Endpoint {
 		scope: NodeConnectionType;
 		__meta: {
