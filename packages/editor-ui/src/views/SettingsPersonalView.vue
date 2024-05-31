@@ -4,7 +4,7 @@
 			<n8n-heading size="2xlarge">{{
 				i18n.baseText('settings.personal.personalSettings')
 			}}</n8n-heading>
-			<div :class="$style.user">
+			<div v-if="currentUser" :class="$style.user">
 				<span :class="$style.username" data-test-id="current-user-name">
 					<n8n-text color="text-light">{{ currentUser.fullName }}</n8n-text>
 				</span>
