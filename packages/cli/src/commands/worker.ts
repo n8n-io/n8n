@@ -385,7 +385,7 @@ export class Worker extends BaseCommand {
 		app.get(
 			'/healthz',
 
-			async (req: express.Request, res: express.Response) => {
+			async (_req: express.Request, res: express.Response) => {
 				this.logger.debug('Health check started!');
 
 				const connection = Db.getConnection();
