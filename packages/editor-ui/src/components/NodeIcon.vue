@@ -19,7 +19,7 @@
 import type { IVersionNode } from '@/Interface';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useUIStore } from '@/stores/ui.store';
-import { getNodeIcon, getNodeIconUrl } from '@/utils/nodeTypesUtils';
+import { getBadgeIconUrl, getNodeIcon, getNodeIconUrl } from '@/utils/nodeTypesUtils';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { computed } from 'vue';
 
@@ -123,7 +123,10 @@ const iconSource = computed<NodeIconSource>(() => {
 const badge = computed(() => {
 	const nodeType = props.nodeType;
 	if (nodeType && 'badgeIconUrl' in nodeType && nodeType.badgeIconUrl) {
-		return { type: 'file', src: rootStore.getBaseUrl + nodeType.badgeIconUrl };
+		return {
+			type: 'file',
+			src: rootStore.getBaseUrl + getBadgeIconUrl(nodeType, uiStore.appliedTheme),
+		};
 	}
 
 	return undefined;

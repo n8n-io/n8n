@@ -463,3 +463,10 @@ export const getNodeIconUrl = (
 ): string | null => {
 	return getThemedValue(nodeType.iconUrl, theme);
 };
+
+export const getBadgeIconUrl = (
+	nodeType: INodeTypeDescription,
+	theme: AppliedThemeOption = 'light',
+): string | null => {
+	return getThemedValue(nodeType.badgeIconUrl, theme);
+};
