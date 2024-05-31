@@ -161,3 +161,7 @@ export const getObjectKeys = <T extends object, K extends keyof T>(o: T): K[] =>
 export const tryToParseNumber = (value: string): number | string => {
 	return isNaN(+value) ? value : +value;
 };
+
+export function isPresent<T>(arg: T): arg is Exclude<T, null | undefined> {
+	return arg !== null && arg !== undefined;
+}

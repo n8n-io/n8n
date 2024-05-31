@@ -118,6 +118,7 @@ export default defineComponent({
 	computed: {
 		...mapStores(useUsersStore, useProjectsStore),
 		userToDelete(): IUser | null {
+			if (!this.activeId) return null;
 			return this.usersStore.getUserById(this.activeId);
 		},
 		isPending(): boolean {

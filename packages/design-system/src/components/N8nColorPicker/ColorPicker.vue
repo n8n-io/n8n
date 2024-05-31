@@ -3,11 +3,10 @@ import { computed, ref } from 'vue';
 import { uid } from '../../utils';
 import { ElColorPicker } from 'element-plus';
 import N8nInput from '../N8nInput';
-import type { ElementPlusSizePropType } from '@/types';
 
 export type ColorPickerProps = {
 	disabled?: boolean;
-	size?: 'small' | 'medium' | 'mini';
+	size?: 'small' | 'large';
 	showAlpha?: boolean;
 	colorFormat?: 'hex' | 'rgb' | 'hsl' | 'hsv';
 	popperClass?: string;
@@ -20,7 +19,7 @@ export type ColorPickerProps = {
 defineOptions({ name: 'N8nColorPicker' });
 const props = withDefaults(defineProps<ColorPickerProps>(), {
 	disabled: false,
-	size: 'default',
+	size: 'large',
 	showAlpha: false,
 	colorFormat: 'hex',
 	popperClass: '',
@@ -31,7 +30,6 @@ const props = withDefaults(defineProps<ColorPickerProps>(), {
 });
 
 const color = ref(props.modelValue);
-
 const colorPickerProps = computed(() => {
 	const { showInput, modelValue, size, ...rest } = props;
 	return rest;
@@ -42,8 +40,6 @@ const emit = defineEmits<{
 	(event: 'change', value: string): void;
 	(event: 'active-change', value: string): void;
 }>();
-
-const resolvedSize = computed(() => props.size as ElementPlusSizePropType);
 
 const onChange = (value: string) => {
 	emit('change', value);
@@ -66,7 +62,8 @@ const onColorSelect = (value: string) => {
 	<span :class="['n8n-color-picker', $style.component]">
 		<ElColorPicker
 			v-bind="colorPickerProps"
-			:size="resolvedSize"
+			:model-value="modelValue"
+			:size="props.size"
 			@change="onChange"
 			@active-change="onActiveChange"
 			@update:model-value="onColorSelect"
@@ -75,7 +72,7 @@ const onColorSelect = (value: string) => {
 			v-if="showInput"
 			:class="$style.input"
 			:disabled="props.disabled"
-			:size="size"
+			:size="props.size"
 			:model-value="color"
 			:name="name"
 			type="text"

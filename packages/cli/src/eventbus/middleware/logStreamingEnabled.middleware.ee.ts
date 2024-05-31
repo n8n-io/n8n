@@ -6,7 +6,7 @@ export function islogStreamingLicensed(): boolean {
 	return Container.get(License).isLogStreamingEnabled();
 }
 
-export const logStreamingLicensedMiddleware: RequestHandler = (req, res, next) => {
+export const logStreamingLicensedMiddleware: RequestHandler = (_req, res, next) => {
 	if (islogStreamingLicensed()) {
 		next();
 	} else {

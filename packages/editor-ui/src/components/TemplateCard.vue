@@ -12,7 +12,7 @@
 		<div v-if="loading" :class="$style.loading">
 			<n8n-loading :rows="2" :shrink-last="false" :loading="loading" />
 		</div>
-		<div v-else>
+		<div v-else-if="workflow">
 			<n8n-heading :bold="true" size="small">{{ workflow.name }}</n8n-heading>
 			<div v-if="!simpleView" :class="$style.content">
 				<span v-if="workflow.totalViews">
@@ -31,7 +31,10 @@
 				>
 			</div>
 		</div>
-		<div v-if="!loading" :class="[$style.nodesContainer, useWorkflowButton && $style.hideOnHover]">
+		<div
+			v-if="!loading && workflow"
+			:class="[$style.nodesContainer, useWorkflowButton && $style.hideOnHover]"
+		>
 			<NodeList v-if="workflow.nodes" :nodes="workflow.nodes" :limit="nodesToBeShown" size="md" />
 		</div>
 		<div v-if="useWorkflowButton" :class="$style.buttonContainer">
@@ -47,11 +50,12 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { type PropType, defineComponent } from 'vue';
 import { filterTemplateNodes } from '@/utils/nodeTypesUtils';
 import { abbreviateNumber } from '@/utils/typesUtils';
 import NodeList from './NodeList.vue';
 import TimeAgo from '@/components/TimeAgo.vue';
+import type { ITemplatesWorkflow } from '@/Interface';
 
 export default defineComponent({
 	name: 'TemplateCard',
@@ -60,6 +64,9 @@ export default defineComponent({
 		NodeList,
 	},
 	props: {
+		workflow: {
+			type: Object as PropType<ITemplatesWorkflow>,
+		},
 		lastItem: {
 			type: Boolean,
 			default: false,
@@ -67,9 +74,6 @@ export default defineComponent({
 		firstItem: {
 			type: Boolean,
 			default: false,
-		},
-		workflow: {
-			type: Object,
 		},
 		useWorkflowButton: {
 			type: Boolean,

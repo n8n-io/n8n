@@ -23,8 +23,8 @@ const badgeText = computed(() => {
 	) {
 		return locale.baseText('generic.ownedByMe');
 	} else {
-		const { firstName, lastName } = splitName(props.resource.homeProject?.name ?? '');
-		return `${firstName}${lastName ? ' ' + lastName : ''}`;
+		const { firstName, lastName, email } = splitName(props.resource.homeProject?.name ?? '');
+		return !firstName ? email : `${firstName}${lastName ? ' ' + lastName : ''}`;
 	}
 });
 
