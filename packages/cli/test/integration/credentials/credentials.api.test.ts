@@ -1,6 +1,16 @@
+import { Container } from 'typedi';
+import type { Scope } from '@sentry/node';
+import { Credentials } from 'n8n-core';
+
 import type { ListQuery } from '@/requests';
 import type { User } from '@db/entities/User';
 import config from '@/config';
+import { ProjectRepository } from '@db/repositories/project.repository';
+import type { Project } from '@db/entities/Project';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { ProjectService } from '@/services/project.service';
+
 import * as testDb from '../shared/testDb';
 import { setupTestServer } from '../shared/utils';
 import {
@@ -15,16 +25,8 @@ import {
 	shareCredentialWithUsers,
 } from '../shared/db/credentials';
 import { createManyUsers, createMember, createOwner } from '../shared/db/users';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import Container from 'typedi';
-import type { Project } from '@/databases/entities/Project';
 import { createTeamProject, linkUserToProject } from '../shared/db/projects';
-import type { SuperAgentTest } from 'supertest';
-import { Credentials } from 'n8n-core';
-import type { Scope } from '@sentry/node';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
-import { ProjectService } from '@/services/project.service';
+import type { SuperAgentTest } from '../shared/types';
 
 const { any } = expect;
 

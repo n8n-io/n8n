@@ -1,10 +1,12 @@
-import type { SuperAgentTest } from 'supertest';
-import config from '@/config';
-import Container from 'typedi';
+import { Container } from 'typedi';
 import type { INode } from 'n8n-workflow';
+
+import config from '@/config';
 import { STARTING_NODES } from '@/constants';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
+import type { Project } from '@db/entities/Project';
+import { ProjectRepository } from '@db/repositories/project.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
 import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
@@ -17,8 +19,7 @@ import { createUser } from '../shared/db/users';
 import { createWorkflow, createWorkflowWithTrigger } from '../shared/db/workflows';
 import { createTag } from '../shared/db/tags';
 import { mockInstance } from '../../shared/mocking';
-import type { Project } from '@/databases/entities/Project';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
+import type { SuperAgentTest } from '../shared/types';
 
 let owner: User;
 let ownerPersonalProject: Project;

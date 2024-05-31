@@ -1,10 +1,14 @@
 import { Container } from 'typedi';
-import type { SuperAgentTest } from 'supertest';
 import { In } from '@n8n/typeorm';
 
+import config from '@/config';
 import type { ListQuery } from '@/requests';
 import type { User } from '@db/entities/User';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { ProjectRepository } from '@db/repositories/project.repository';
+import type { Project } from '@db/entities/Project';
+import { ProjectService } from '@/services/project.service';
+import { UserManagementMailer } from '@/UserManagement/email';
 
 import { randomCredentialPayload } from '../shared/random';
 import * as testDb from '../shared/testDb';
@@ -16,13 +20,8 @@ import {
 	shareCredentialWithUsers,
 } from '../shared/db/credentials';
 import { createManyUsers, createUser, createUserShell } from '../shared/db/users';
-import { UserManagementMailer } from '@/UserManagement/email';
-
+import type { SuperAgentTest } from '../shared/types';
 import { mockInstance } from '../../shared/mocking';
-import config from '@/config';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import type { Project } from '@/databases/entities/Project';
-import { ProjectService } from '@/services/project.service';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['credentials'],

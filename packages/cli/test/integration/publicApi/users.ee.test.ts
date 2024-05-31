@@ -1,4 +1,3 @@
-import type { SuperAgentTest } from 'supertest';
 import validator from 'validator';
 import { v4 as uuid } from 'uuid';
 
@@ -9,6 +8,7 @@ import { randomApiKey } from '../shared/random';
 import * as utils from '../shared/utils/';
 import * as testDb from '../shared/testDb';
 import { createUser, createUserShell } from '../shared/db/users';
+import type { SuperAgentTest } from '../shared/types';
 
 mockInstance(License, {
 	getUsersLimit: jest.fn().mockReturnValue(-1),

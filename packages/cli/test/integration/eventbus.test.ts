@@ -1,5 +1,3 @@
-import type { SuperAgentTest } from 'supertest';
-
 import type { User } from '@db/entities/User';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { ExecutionDataRecoveryService } from '@/eventbus/executionDataRecovery.service';
@@ -7,6 +5,7 @@ import { ExecutionDataRecoveryService } from '@/eventbus/executionDataRecovery.s
 import * as utils from './shared/utils/';
 import { createUser } from './shared/db/users';
 import { mockInstance } from '../shared/mocking';
+import type { SuperAgentTest } from './shared/types';
 
 /**
  * NOTE: due to issues with mocking the MessageEventBus in multiple tests running in parallel,
