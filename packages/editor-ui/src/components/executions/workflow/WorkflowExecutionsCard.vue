@@ -185,7 +185,7 @@ export default defineComponent({
 		}
 	}
 
-	&.pending,
+	&.queued,
 	&.running {
 		.spinner {
 			position: relative;

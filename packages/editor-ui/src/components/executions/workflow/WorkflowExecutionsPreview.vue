@@ -1,6 +1,6 @@
 <template>
 	<div
-		v-if="executionUIDetails?.name === 'running' || executionUIDetails?.name === 'pending'"
+		v-if="executionUIDetails?.name === 'running' || executionUIDetails?.name === 'queued'"
 		:class="$style.runningInfo"
 	>
 		<div :class="$style.spinner">
@@ -11,7 +11,7 @@
 				$locale.baseText(
 					executionUIDetails?.name === 'running'
 						? 'executionDetails.runningMessage'
-						: 'executionDetails.pendingMessage',
+						: 'executionDetails.queuedMessage',
 				)
 			}}
 		</n8n-text>

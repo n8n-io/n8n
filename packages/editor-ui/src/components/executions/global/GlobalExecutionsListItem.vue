@@ -38,7 +38,7 @@ const isRunning = computed(() => {
 	return props.execution.status === 'running';
 });
 
-const isPending = computed(() => {
+const isQueued = computed(() => {
 	return props.execution.status === 'new';
 });
 
@@ -97,7 +97,7 @@ const statusText = computed(() => {
 		case 'crashed':
 			return i18n.baseText('executionsList.error');
 		case 'new':
-			return i18n.baseText('executionsList.pending');
+			return i18n.baseText('executionsList.queued');
 		case 'running':
 			return i18n.baseText('executionsList.running');
 		case 'success':
@@ -124,7 +124,7 @@ const statusTextTranslationPath = computed(() => {
 				return 'executionsList.statusText';
 			}
 		case 'new':
-			return 'executionsList.statusPending';
+			return 'executionsList.statusQueued';
 		case 'running':
 			return 'executionsList.statusRunning';
 		default:
@@ -179,11 +179,11 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 		</td>
 		<td>
 			<div :class="$style.statusColumn">
-				<span v-if="isPending || isRunning" :class="$style.spinner">
+				<span v-if="isQueued || isRunning" :class="$style.spinner">
 					<FontAwesomeIcon icon="spinner" spin />
 				</span>
 				<i18n-t
-					v-if="!isWaitTillIndefinite && !isPending"
+					v-if="!isWaitTillIndefinite && !isQueued"
 					data-test-id="execution-status"
 					tag="span"
 					:keypath="statusTextTranslationPath"

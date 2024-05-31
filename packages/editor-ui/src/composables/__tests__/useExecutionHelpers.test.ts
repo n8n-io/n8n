@@ -9,7 +9,7 @@ describe('useExecutionHelpers()', () => {
 			['waiting', 'waiting', i18n.baseText('executionsList.waiting')],
 			['canceled', 'unknown', i18n.baseText('executionsList.canceled')],
 			['running', 'running', i18n.baseText('executionsList.running')],
-			['new', 'pending', i18n.baseText('executionsList.pending')],
+			['new', 'queued', i18n.baseText('executionsList.queued')],
 			['success', 'success', i18n.baseText('executionsList.succeeded')],
 			['error', 'error', i18n.baseText('executionsList.error')],
 			['crashed', 'error', i18n.baseText('executionsList.error')],
