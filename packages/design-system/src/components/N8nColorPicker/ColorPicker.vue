@@ -77,6 +77,7 @@ const onColorSelect = (value: string) => {
 	<span :class="['n8n-color-picker', $style.component]">
 		<ElColorPicker
 			v-bind="colorPickerProps"
+			:model-value="modelValue"
 			:size="resolvedSize"
 			@change="onChange"
 			@active-change="onActiveChange"
