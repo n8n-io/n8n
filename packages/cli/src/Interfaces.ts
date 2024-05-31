@@ -311,8 +311,6 @@ export type IPushData =
 	| PushDataRemoveNodeType
 	| PushDataTestWebhook
 	| PushDataNodeDescriptionUpdated
-	| PushDataExecutionThrottled
-	| PushDataExecutionReleased
 	| PushDataExecutionRecovered
 	| PushDataActiveWorkflowUsersChanged
 	| PushDataWorkerStatusMessage
@@ -338,16 +336,6 @@ type PushDataWorkflowDeactivated = {
 type PushDataActiveWorkflowUsersChanged = {
 	data: IActiveWorkflowUsersChanged;
 	type: 'activeWorkflowUsersChanged';
-};
-
-export type PushDataExecutionThrottled = {
-	data: { executionId: string; workflowId: string; pushRef: string };
-	type: 'executionThrottled';
-};
-
-export type PushDataExecutionReleased = {
-	data: { executionId: string; workflowId: string; pushRef: string };
-	type: 'executionReleased';
 };
 
 export type PushDataExecutionRecovered = {

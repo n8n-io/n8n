@@ -599,10 +599,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowExecutionPairedItemMappings.value = getPairedItemsMapping(workflowResultData);
 	}
 
-	function setExecutionStatus(status: string) {
-		if (workflowExecutionData.value) workflowExecutionData.value.status = status;
-	}
-
 	function setWorkflowExecutionRunData(workflowResultData: IRunExecutionData) {
 		if (workflowExecutionData.value) {
 			workflowExecutionData.value = {
@@ -1599,7 +1595,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		resetChatMessages,
 		appendChatMessage,
 		checkIfNodeHasChatParent,
-		setExecutionStatus,
 		setNodePosition,
 	};
 });

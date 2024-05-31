@@ -243,40 +243,6 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 			return true;
 		}
 
-		if (
-			receivedData.type === 'executionThrottled' &&
-			receivedData.data.workflowId === workflowsStore.workflowId &&
-			receivedData.data.pushRef === pushStore.pushRef
-		) {
-			workflowsStore.setExecutionStatus('pending');
-
-			toast.showToast({
-				title: i18n.baseText('pushConnection.executionThrottled.message'),
-				message: i18n.baseText('pushConnection.executionThrottled.description'),
-				type: 'info',
-				duration: 0,
-			});
-
-			return true;
-		}
-
-		if (
-			receivedData.type === 'executionReleased' &&
-			receivedData.data.workflowId === workflowsStore.workflowId &&
-			receivedData.data.pushRef === pushStore.pushRef
-		) {
-			workflowsStore.setExecutionStatus('running');
-
-			toast.showToast({
-				title: i18n.baseText('pushConnection.executionReleased.message'),
-				message: i18n.baseText('pushConnection.executionReleased.description'),
-				type: 'info',
-				duration: 0,
-			});
-
-			return true;
-		}
-
 		if (receivedData.type === 'executionFinished' || receivedData.type === 'executionRecovered') {
 			// The workflow finished executing
 			let pushData: IPushDataExecutionFinished;

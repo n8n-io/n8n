@@ -658,10 +658,6 @@ export default defineComponent({
 			return this.workflowsStore.allNodes.filter((node) => node.type === STICKY_NODE_TYPE);
 		},
 		runButtonText(): string {
-			if (this.workflowsStore.getWorkflowExecution?.status === 'pending') {
-				return this.$locale.baseText('nodeView.runButtonText.pendingExecution');
-			}
-
 			if (!this.workflowRunning) {
 				return this.$locale.baseText('nodeView.runButtonText.executeWorkflow');
 			}
