@@ -4,6 +4,14 @@ import type { ISettingsState } from '@/Interface';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import { defaultSettings } from './defaults';
 
+/**
+ * Retries the given assertion until it passes or the timeout is reached
+ *
+ * @example
+ * await retry(
+ *   () => expect(screen.getByText('Hello')).toBeInTheDocument()
+ * );
+ */
 export const retry = async (assertion: () => void, { interval = 20, timeout = 1000 } = {}) => {
 	return await new Promise((resolve, reject) => {
 		const startTime = Date.now();
@@ -12,9 +20,9 @@ export const retry = async (assertion: () => void, { interval = 20, timeout = 10
 			setTimeout(() => {
 				try {
 					resolve(assertion());
-				} catch (err) {
+				} catch (error) {
 					if (Date.now() - startTime > timeout) {
-						reject(err);
+						reject(error);
 					} else {
 						tryAgain();
 					}

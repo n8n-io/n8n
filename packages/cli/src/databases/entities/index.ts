@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { AuthIdentity } from './AuthIdentity';
 import { AuthProviderSyncHistory } from './AuthProviderSyncHistory';
+import { AuthUser } from './AuthUser';
 import { CredentialsEntity } from './CredentialsEntity';
 import { EventDestinations } from './EventDestinations';
 import { ExecutionEntity } from './ExecutionEntity';
@@ -25,6 +26,7 @@ import { ProjectRelation } from './ProjectRelation';
 export const entities = {
 	AuthIdentity,
 	AuthProviderSyncHistory,
+	AuthUser,
 	CredentialsEntity,
 	EventDestinations,
 	ExecutionEntity,

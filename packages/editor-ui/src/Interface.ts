@@ -9,7 +9,7 @@ import type {
 	VIEWS,
 	ROLE,
 } from '@/constants';
-import type { IMenuItem } from 'n8n-design-system';
+import type { IMenuItem, NodeCreatorTag } from 'n8n-design-system';
 import {
 	type GenericValue,
 	type IConnections,
@@ -431,8 +431,8 @@ export interface IExecutionsCurrentSummaryExtended {
 	id: string;
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
-	retryOf?: string;
-	retrySuccessId?: string;
+	retryOf?: string | null;
+	retrySuccessId?: string | null;
 	startedAt: Date;
 	stoppedAt?: Date;
 	workflowId: string;
@@ -743,7 +743,6 @@ export interface CurrentUserResponse extends IUserResponse {
 export interface IUser extends IUserResponse {
 	isDefaultUser: boolean;
 	isPendingUser: boolean;
-	hasRecoveryCodesLeft: boolean;
 	inviteAcceptUrl?: string;
 	fullName?: string;
 	createdAt?: string;
@@ -933,7 +932,9 @@ export type SimplifiedNodeType = Pick<
 	| 'codex'
 	| 'defaults'
 	| 'outputs'
->;
+> & {
+	tag?: string;
+};
 export interface SubcategoryItemProps {
 	description?: string;
 	iconType?: string;
@@ -952,10 +953,20 @@ export interface ViewItemProps {
 	title: string;
 	description: string;
 	icon: string;
-	tag?: string;
+	tag?: NodeCreatorTag;
+	borderless?: boolean;
 }
 export interface LabelItemProps {
 	key: string;
+}
+export interface LinkItemProps {
+	url: string;
+	key: string;
+	newTab?: boolean;
+	title: string;
+	description: string;
+	icon: string;
+	tag?: NodeCreatorTag;
 }
 export interface ActionTypeDescription extends SimplifiedNodeType {
 	displayOptions?: IDisplayOptions;
@@ -1011,6 +1022,11 @@ export interface LabelCreateElement extends CreateElementBase {
 	properties: LabelItemProps;
 }
 
+export interface LinkCreateElement extends CreateElementBase {
+	type: 'link';
+	properties: LinkItemProps;
+}
+
 export interface ActionCreateElement extends CreateElementBase {
 	type: 'action';
 	subcategory: string;
@@ -1024,7 +1040,8 @@ export type INodeCreateElement =
 	| SectionCreateElement
 	| ViewCreateElement
 	| LabelCreateElement
-	| ActionCreateElement;
+	| ActionCreateElement
+	| LinkCreateElement;
 
 export interface SubcategorizedNodeTypes {
 	[subcategory: string]: INodeCreateElement[];
