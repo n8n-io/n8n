@@ -645,6 +645,7 @@ const deleteProperties: INodeProperties[] = [
 		displayName: 'Contact ID',
 		name: 'contactId',
 		type: 'string',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: ['contact'],

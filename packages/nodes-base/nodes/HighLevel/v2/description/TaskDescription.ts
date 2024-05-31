@@ -113,9 +113,13 @@ export const taskOperations: INodeProperties[] = [
 
 const createProperties: INodeProperties[] = [
 	{
-		displayName: 'Contact ID',
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+		displayName: 'Contact Email or ID',
 		name: 'contactId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getContacts',
+		},
 		displayOptions: {
 			show: {
 				resource: ['task'],
@@ -124,7 +128,8 @@ const createProperties: INodeProperties[] = [
 		},
 		default: '',
 		required: true,
-		description: 'Contact the task belongs to',
+		description:
+			'Contact the task belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Title',
@@ -227,9 +232,13 @@ const createProperties: INodeProperties[] = [
 
 const deleteProperties: INodeProperties[] = [
 	{
-		displayName: 'Contact ID',
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+		displayName: 'Contact Email or ID',
 		name: 'contactId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getContacts',
+		},
 		displayOptions: {
 			show: {
 				resource: ['task'],
@@ -238,7 +247,8 @@ const deleteProperties: INodeProperties[] = [
 		},
 		default: '',
 		required: true,
-		description: 'Contact the task belongs to',
+		description:
+			'Contact the task belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Task ID',
@@ -257,9 +267,13 @@ const deleteProperties: INodeProperties[] = [
 
 const getProperties: INodeProperties[] = [
 	{
-		displayName: 'Contact ID',
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+		displayName: 'Contact Email or ID',
 		name: 'contactId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getContacts',
+		},
 		displayOptions: {
 			show: {
 				resource: ['task'],
@@ -268,7 +282,8 @@ const getProperties: INodeProperties[] = [
 		},
 		default: '',
 		required: true,
-		description: 'Contact the task belongs to',
+		description:
+			'Contact the task belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Task ID',
@@ -287,9 +302,13 @@ const getProperties: INodeProperties[] = [
 
 const getAllProperties: INodeProperties[] = [
 	{
-		displayName: 'Contact ID',
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+		displayName: 'Contact Email or ID',
 		name: 'contactId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getContacts',
+		},
 		displayOptions: {
 			show: {
 				resource: ['task'],
@@ -298,7 +317,8 @@ const getAllProperties: INodeProperties[] = [
 		},
 		default: '',
 		required: true,
-		description: 'Contact the task belongs to',
+		description:
+			'Contact the task belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -341,9 +361,13 @@ const getAllProperties: INodeProperties[] = [
 
 const updateProperties: INodeProperties[] = [
 	{
-		displayName: 'Contact ID',
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+		displayName: 'Contact Email or ID',
 		name: 'contactId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getContacts',
+		},
 		displayOptions: {
 			show: {
 				resource: ['task'],
@@ -352,7 +376,8 @@ const updateProperties: INodeProperties[] = [
 		},
 		default: '',
 		required: true,
-		description: 'Contact the task belongs to',
+		description:
+			'Contact the task belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Task ID',

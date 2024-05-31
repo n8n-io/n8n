@@ -2,8 +2,6 @@ import type { INodeProperties } from 'n8n-workflow';
 
 import {
 	addLocationIdPreSendAction,
-	// addLocationIdPreSendAction,
-	contactIdentifierPreSendAction,
 	dateTimeToEpochPreSendAction,
 	opportunityUpdatePreSendAction,
 	splitTagsPreSendAction,
@@ -41,7 +39,7 @@ export const opportunityOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/pipelines/{{$parameter.pipelineId}}/opportunities/{{$parameter.opportunityId}}',
+						url: '=/opportunities/{{$parameter.opportunityId}}',
 					},
 					output: {
 						postReceive: [
@@ -62,7 +60,7 @@ export const opportunityOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/pipelines/{{$parameter.pipelineId}}/opportunities/{{$parameter.opportunityId}}',
+						url: '=/opportunities/{{$parameter.opportunityId}}',
 					},
 				},
 				action: 'Get an opportunity',
@@ -73,9 +71,10 @@ export const opportunityOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/pipelines/{{$parameter.pipelineId}}/opportunities',
+						url: '/opportunities/search',
 					},
 					send: {
+						preSend: [addLocationIdPreSendAction],
 						paginate: true,
 					},
 				},
@@ -87,7 +86,7 @@ export const opportunityOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PUT',
-						url: '=/pipelines/{{$parameter.pipelineId}}/opportunities/{{$parameter.opportunityId}}',
+						url: '=/opportunities/{{$parameter.opportunityId}}',
 					},
 					send: {
 						preSend: [opportunityUpdatePreSendAction, splitTagsPreSendAction],
@@ -107,7 +106,7 @@ const pipelineId: INodeProperties = {
 	displayOptions: {
 		show: {
 			resource: ['opportunity'],
-			operation: ['create', 'delete', 'get', 'getAll', 'update'],
+			operation: ['create'],
 		},
 	},
 	description:
@@ -126,41 +125,22 @@ const pipelineId: INodeProperties = {
 
 const createProperties: INodeProperties[] = [
 	{
-		displayName: 'Stage Name or ID',
-		name: 'stageId',
-		type: 'options',
-		required: true,
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		displayOptions: {
-			show: {
-				resource: ['opportunity'],
-				operation: ['create'],
-			},
-		},
-		default: '',
-		typeOptions: {
-			loadOptionsDependsOn: ['pipelineId'],
-			loadOptionsMethod: 'getPipelineStages',
-		},
-		routing: {
-			send: {
-				type: 'body',
-				property: 'pipelineStageId',
-			},
-		},
-	},
-	{
-		displayName: 'Contact ID',
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+		displayName: 'Contact Email or ID',
 		name: 'contactId',
 		required: true,
-		type: 'string',
-		hint: 'There can only be one opportunity for each contact.',
+		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		hint: 'There can only be one opportunity for each contact',
 		displayOptions: {
 			show: {
 				resource: ['opportunity'],
 				operation: ['create'],
 			},
+		},
+		typeOptions: {
+			loadOptionsMethod: 'getContacts',
 		},
 		default: '',
 		routing: {
@@ -289,6 +269,25 @@ const createProperties: INodeProperties[] = [
 					},
 				},
 			},
+			{
+				displayName: 'Stage Name or ID',
+				name: 'stageId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+
+				default: '',
+				typeOptions: {
+					loadOptionsDependsOn: ['/pipelineId'],
+					loadOptionsMethod: 'getPipelineStages',
+				},
+				routing: {
+					send: {
+						type: 'body',
+						property: 'pipelineStageId',
+					},
+				},
+			},
 		],
 	},
 ];
@@ -377,21 +376,14 @@ const getAllProperties: INodeProperties[] = [
 		},
 		options: [
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Assigned To',
 				name: 'assignedTo',
 				type: 'options',
 				default: '',
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
-				description:
-					'Choose staff member from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getUsers',
-				},
 				routing: {
 					send: {
 						type: 'query',
-						property: 'assignedTo',
+						property: 'assigned_to',
 					},
 				},
 			},
@@ -420,19 +412,23 @@ const getAllProperties: INodeProperties[] = [
 					},
 				},
 			},
-			// api should filter by monetary value but doesn't
-			// {
-			// 	displayName: 'Monetary Value',
-			// 	name: 'monetaryValue',
-			// 	type: 'number',
-			// 	default: '',
-			// 	routing: {
-			// 		send: {
-			// 			type: 'query',
-			// 			property: 'monetaryValue',
-			// 		},
-			// 	},
-			// },
+			{
+				displayName: 'Pipeline Name or ID',
+				name: 'pipelineId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getPipelines',
+				},
+				routing: {
+					send: {
+						type: 'query',
+						property: 'pipeline_id',
+					},
+				},
+				default: '',
+			},
 			{
 				displayName: 'Stage Name or ID',
 				name: 'stageId',
@@ -440,6 +436,7 @@ const getAllProperties: INodeProperties[] = [
 				default: '',
 				description:
 					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				hint: "Select 'Pipeline Name or ID' first to see stages",
 				typeOptions: {
 					loadOptionsDependsOn: ['pipelineId'],
 					loadOptionsMethod: 'getPipelineStages',
@@ -447,7 +444,7 @@ const getAllProperties: INodeProperties[] = [
 				routing: {
 					send: {
 						type: 'query',
-						property: 'stageId',
+						property: 'pipeline_stage_id',
 					},
 				},
 			},
@@ -459,7 +456,7 @@ const getAllProperties: INodeProperties[] = [
 				routing: {
 					send: {
 						type: 'query',
-						property: 'startDate',
+						property: 'date',
 						preSend: [dateTimeToEpochPreSendAction],
 					},
 				},
@@ -504,7 +501,7 @@ const getAllProperties: INodeProperties[] = [
 				routing: {
 					send: {
 						type: 'query',
-						property: 'query',
+						property: 'q',
 					},
 				},
 			},
@@ -541,46 +538,14 @@ const updateProperties: INodeProperties[] = [
 		},
 		options: [
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Assigned To',
 				name: 'assignedTo',
 				type: 'options',
 				default: '',
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
-				description:
-					'Choose staff member from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getUsers',
-				},
 				routing: {
 					send: {
 						type: 'body',
 						property: 'assignedTo',
-					},
-				},
-			},
-			{
-				displayName: 'Company Name',
-				name: 'companyName',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'companyName',
-					},
-				},
-			},
-			{
-				displayName: 'Contact Identifier',
-				name: 'contactIdentifier',
-				type: 'string',
-				description: 'Either Email, Phone or Contact ID',
-				hint: 'There can only be one opportunity for each contact.',
-				default: '',
-				routing: {
-					send: {
-						preSend: [contactIdentifierPreSendAction],
 					},
 				},
 			},
@@ -611,12 +576,30 @@ const updateProperties: INodeProperties[] = [
 				},
 			},
 			{
+				displayName: 'Pipeline Name or ID',
+				name: 'pipelineId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getPipelines',
+				},
+				routing: {
+					send: {
+						type: 'body',
+						property: 'pipelineId',
+					},
+				},
+				default: '',
+			},
+			{
 				displayName: 'Stage Name or ID',
 				name: 'stageId',
 				type: 'options',
 				default: '',
 				description:
 					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				hint: "Select 'Pipeline Name or ID' first to see stages",
 				typeOptions: {
 					loadOptionsDependsOn: ['pipelineId'],
 					loadOptionsMethod: 'getPipelineStages',
@@ -624,7 +607,7 @@ const updateProperties: INodeProperties[] = [
 				routing: {
 					send: {
 						type: 'body',
-						property: 'stageId',
+						property: 'pipelineStageId',
 					},
 				},
 			},

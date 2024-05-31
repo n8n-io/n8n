@@ -18,7 +18,6 @@ import { NodeApiError } from 'n8n-workflow';
 
 import type { ToISOTimeOptions } from 'luxon';
 import { DateTime } from 'luxon';
-import { as } from 'pg-promise';
 
 const VALID_EMAIL_REGEX =
 	/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
@@ -153,6 +152,12 @@ export async function addLocationIdPreSendAction(
 				locationId: (credentials.oauthTokenData as IDataObject)?.locationId,
 			});
 		}
+		if (operation === 'getAll') {
+			requestOptions.qs = requestOptions.qs || {};
+			Object.assign(requestOptions.qs, {
+				location_id: (credentials.oauthTokenData as IDataObject)?.locationId,
+			});
+		}
 	}
 
 	return requestOptions;
@@ -278,7 +283,19 @@ export async function highLevelApiPagination(
 export async function getPipelineStages(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	const pipelineId = this.getCurrentNodeParameter('pipelineId') as string;
+	const operation = this.getNodeParameter('operation') as string;
+
+	let pipelineId = '';
+	if (operation === 'create') {
+		pipelineId = this.getCurrentNodeParameter('pipelineId') as string;
+	}
+	if (operation === 'update') {
+		pipelineId = this.getNodeParameter('updateFields.pipelineId') as string;
+	}
+	if (operation === 'getAll') {
+		pipelineId = this.getNodeParameter('filters.pipelineId') as string;
+	}
+
 	const { locationId } =
 		((await this.getCredentials('highLevelOAuth2Api'))?.oauthTokenData as IDataObject) ?? {};
 	const pipelines = (
@@ -312,6 +329,22 @@ export async function getPipelines(this: ILoadOptionsFunctions): Promise<INodePr
 	const options: INodePropertyOptions[] = pipelines.map((pipeline) => {
 		const name = pipeline.name;
 		const value = pipeline.id;
+		return { name, value };
+	});
+	return options;
+}
+
+export async function getContacts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+	const { locationId } =
+		((await this.getCredentials('highLevelOAuth2Api'))?.oauthTokenData as IDataObject) ?? {};
+	const responseData = await highLevelApiRequest.call(this, 'GET', '/contacts/', undefined, {
+		locationId,
+	});
+
+	const contacts = responseData.contacts as [{ id: string; name: string; email: string }];
+	const options: INodePropertyOptions[] = contacts.map((contact) => {
+		const name = contact.email;
+		const value = contact.id;
 		return { name, value };
 	});
 	return options;
