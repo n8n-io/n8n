@@ -13,7 +13,7 @@ interface ExtendedHTMLSpanElement extends HTMLSpanElement {
 	y: number;
 }
 
-export function useCanvasMouseSelect() {
+export default useCanvasMouseSelect() {
 	const selectActive = ref(false);
 	const selectBox = ref(document.createElement('span') as ExtendedHTMLSpanElement);
 
