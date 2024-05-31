@@ -762,7 +762,7 @@ export default defineComponent({
 		},
 
 		async retestCredential() {
-			if (!this.isCredentialTestable) {
+			if (!this.isCredentialTestable || !this.credentialTypeName) {
 				this.authError = '';
 				this.testedSuccessfully = false;
 
@@ -770,7 +770,6 @@ export default defineComponent({
 			}
 
 			const { ownedBy, sharedWithProjects, ...credentialData } = this.credentialData;
-			assert(this.credentialTypeName);
 			const details: ICredentialsDecrypted = {
 				id: this.credentialId,
 				name: this.credentialName,
