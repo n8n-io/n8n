@@ -124,6 +124,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useContextMenu } from '@/composables/useContextMenu';
 import { useDeviceSupport } from 'n8n-design-system';
 import { GRID_SIZE } from '@/utils/nodeViewUtils';
+import { useToast } from '@/composables/useToast';
 
 export default defineComponent({
 	name: 'Sticky',
@@ -141,6 +142,7 @@ export default defineComponent({
 	emits: { removeNode: null, nodeSelected: null },
 	setup() {
 		const deviceSupport = useDeviceSupport();
+		const toast = useToast();
 		const colorPopoverTrigger = ref<HTMLDivElement>();
 		const forceActions = ref(false);
 		const setForceActions = (value: boolean) => {
@@ -153,7 +155,14 @@ export default defineComponent({
 			}
 		});
 
-		return { deviceSupport, colorPopoverTrigger, contextMenu, forceActions, setForceActions };
+		return {
+			deviceSupport,
+			toast,
+			colorPopoverTrigger,
+			contextMenu,
+			forceActions,
+			setForceActions,
+		};
 	},
 	data() {
 		return {
@@ -238,6 +247,11 @@ export default defineComponent({
 		},
 		async deleteNode() {
 			if (!this.data?.name) {
+				this.toast.showMessage({
+					title: this.$locale.baseText('nodeView.deleteSticky.error.title'),
+					message: this.$locale.baseText('nodeView.deleteSticky.error.message'),
+					type: 'error',
+				});
 				return;
 			}
 			// Wait a tick else vue causes problems because the data is gone
