@@ -742,7 +742,6 @@ export interface CurrentUserResponse extends IUserResponse {
 export interface IUser extends IUserResponse {
 	isDefaultUser: boolean;
 	isPendingUser: boolean;
-	hasRecoveryCodesLeft: boolean;
 	inviteAcceptUrl?: string;
 	fullName?: string;
 	createdAt?: string;
