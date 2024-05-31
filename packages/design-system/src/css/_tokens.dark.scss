@@ -79,10 +79,11 @@
 	--color-node-icon-black: var(--prim-gray-70);
 	--color-node-icon-blue: #766dfb;
 	--color-node-icon-light-blue: #5fabf7;
+	--color-node-icon-dark-blue: #6275ad;
 	--color-node-icon-orange: #ff965a;
 	--color-node-icon-orange-red: #ff6d5a;
+	--color-node-icon-red: var(--prim-color-alt-k);
 	--color-node-icon-light-green: #26b28f;
-	--color-node-icon-green: #49d7b4;
 	--color-node-icon-dark-green: #86dec8;
 	--color-node-icon-azure: #54b8c9;
 	--color-node-icon-purple: #9b6dd5;
@@ -236,6 +237,10 @@
 	--color-mfa-recovery-code-color: var(--color-text-dark);
 	--color-mfa-lose-access-text-color: var(--color-danger);
 
+	// AI
+	--node-type-background-l: 20%;
+	--node-type-supplemental-color-s: 15%;
+
 	// Various
 	--color-info-tint-1: var(--prim-gray-420);
 	--color-info-tint-2: var(--prim-gray-740);
@@ -248,7 +253,7 @@
 		var(--node-type-supplemental-label-color-s),
 		var(--node-type-supplemental-label-color-l)
 	);
-	--color-configurable-node-name: var(--color-text-lighter);
+	--color-configurable-node-name: var(--color-text-dark);
 	--color-secondary-link: var(--prim-color-secondary-tint-200);
 	--color-secondary-link-hover: var(--prim-color-secondary-tint-100);
 }

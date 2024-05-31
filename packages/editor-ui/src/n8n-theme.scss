@@ -2,19 +2,11 @@
 @import 'styles';
 
 :root {
-	--node-type-background-l: 95%;
-
-	--node-type-supplemental-label-color-h: 235;
-	--node-type-supplemental-label-color-s: 28%;
-	--node-type-supplemental-label-color-l: 40%;
 	--node-type-supplemental-label-color: hsl(
 		var(--node-type-supplemental-label-color-h),
 		var(--node-type-supplemental-label-color-s),
 		var(--node-type-supplemental-label-color-l)
 	);
-	--node-type-supplemental-color-h: 235;
-	--node-type-supplemental-color-s: 28%;
-	--node-type-supplemental-color-l: 60%;
 	--node-type-supplemental-icon: var(--color-foreground-dark);
 	--node-type-supplemental-color: hsl(
 		var(--node-type-supplemental-color-h),
@@ -187,6 +179,7 @@
 	--chat--header--color: var(--color-text-dark);
 	--chat--header--border-bottom: var(--border-base);
 	--chat--close--button--color-hover: var(--color-primary);
+
 	// Message styles
 	--chat--message--padding: var(--spacing-3xs);
 	--chat--message--font-size: 14px;
@@ -196,6 +189,7 @@
 	--chat--message--user--color: var(--color-text-dark);
 	--chat--message--user--background: var(--color-success-tint-1);
 	--chat--message--user--border: 1px solid var(--color-success-light-2);
+
 	// Chat input
 	--chat--input--font-size: var(--font-size-s);
 	--chat--input--send--button--color: var(--color-success);

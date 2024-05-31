@@ -109,16 +109,18 @@
 	// NodeIcon
 	--color-node-icon-gray: var(--prim-gray-420);
 	--color-node-icon-black: var(--prim-gray-780);
-	--color-node-icon-blue: #4a3eea;
+	--color-node-icon-blue: #3a42e9;
 	--color-node-icon-light-blue: #5fabf7;
+	--color-node-icon-dark-blue: #353f6e;
 	--color-node-icon-orange: #ff965a;
 	--color-node-icon-orange-red: #ff6d5a;
+	--color-node-icon-red: var(--prim-color-alt-c);
 	--color-node-icon-light-green: #31c49f;
-	--color-node-icon-green: #1ea986;
+	--color-node-icon-green: #108e49;
 	--color-node-icon-dark-green: #15755d;
 	--color-node-icon-azure: #54b8c9;
-	--color-node-icon-purple: #9b6dd5;
-	--color-node-icon-crimson: #bb3a5a;
+	--color-node-icon-purple: #553399;
+	--color-node-icon-crimson: #772244;
 
 	// Expressions, autocomplete, infobox
 	--color-valid-resolvable-foreground: var(--prim-color-alt-a);
@@ -295,6 +297,15 @@
 	--color-mfa-recovery-code-background: var(--color-background-base);
 	--color-mfa-recovery-code-color: var(--prim-gray-490);
 	--color-mfa-lose-access-text-color: var(--color-danger);
+
+	// AI
+	--node-type-background-l: 95%;
+	--node-type-supplemental-label-color-h: 235;
+	--node-type-supplemental-label-color-s: 28%;
+	--node-type-supplemental-label-color-l: 40%;
+	--node-type-supplemental-color-h: 235;
+	--node-type-supplemental-color-s: 28%;
+	--node-type-supplemental-color-l: 60%;
 
 	// Various
 	--color-avatar-accent-1: var(--prim-gray-120);

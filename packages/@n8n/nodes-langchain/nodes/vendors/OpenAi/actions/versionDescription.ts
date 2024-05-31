@@ -67,7 +67,7 @@ const configureNodeInputs = (resource: string, operation: string, hideTools: str
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'OpenAI',
 	name: 'openAi',
-	icon: 'file:openAi.svg',
+	icon: { light: 'file:openAi.svg', dark: 'file:openAi.dark.svg' },
 	group: ['transform'],
 	version: [1, 1.1, 1.2, 1.3],
 	subtitle: `={{(${prettifyOperation})($parameter.resource, $parameter.operation)}}`,
