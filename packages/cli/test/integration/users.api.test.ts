@@ -35,12 +35,6 @@ const testServer = utils.setupTestServer({
 	enabledFeatures: ['feat:advancedPermissions'],
 });
 
-let projectRepository: ProjectRepository;
-
-beforeAll(() => {
-	projectRepository = Container.get(ProjectRepository);
-});
-
 describe('GET /users', () => {
 	let owner: User;
 	let member: User;
@@ -240,6 +234,39 @@ describe('GET /users', () => {
 				expect(response.body).toEqual({ data: [{ firstName: expect.any(String) }] });
 			});
 		});
+	});
+});
+
+describe('GET /users/:id/password-reset-link', () => {
+	let owner: User;
+	let admin: User;
+	let member: User;
+
+	beforeAll(async () => {
+		await testDb.truncate(['User']);
+
+		[owner, admin, member] = await Promise.all([createOwner(), createAdmin(), createMember()]);
+	});
+
+	it('should allow owners to generate password reset links for admins and members', async () => {
+		const ownerAgent = testServer.authAgentFor(owner);
+		await ownerAgent.get(`/users/${owner.id}/password-reset-link`).expect(200);
+		await ownerAgent.get(`/users/${admin.id}/password-reset-link`).expect(200);
+		await ownerAgent.get(`/users/${member.id}/password-reset-link`).expect(200);
+	});
+
+	it('should allow admins to generate password reset links for admins and members, but not owners', async () => {
+		const adminAgent = testServer.authAgentFor(admin);
+		await adminAgent.get(`/users/${owner.id}/password-reset-link`).expect(403);
+		await adminAgent.get(`/users/${admin.id}/password-reset-link`).expect(200);
+		await adminAgent.get(`/users/${member.id}/password-reset-link`).expect(200);
+	});
+
+	it('should not allow members to generate password reset links for anyone', async () => {
+		const memberAgent = testServer.authAgentFor(member);
+		await memberAgent.get(`/users/${owner.id}/password-reset-link`).expect(403);
+		await memberAgent.get(`/users/${admin.id}/password-reset-link`).expect(403);
+		await memberAgent.get(`/users/${member.id}/password-reset-link`).expect(403);
 	});
 });
 
@@ -552,6 +579,15 @@ describe('DELETE /users/:id', () => {
 
 		const user = await getUserById(owner.id);
 
+		expect(user).toBeDefined();
+	});
+
+	test('should fail to delete the instance owner', async () => {
+		const admin = await createAdmin();
+		const adminAgent = testServer.authAgentFor(admin);
+		await adminAgent.delete(`/users/${owner.id}`).expect(403);
+
+		const user = await getUserById(owner.id);
 		expect(user).toBeDefined();
 	});
 

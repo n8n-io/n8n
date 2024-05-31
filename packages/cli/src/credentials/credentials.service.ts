@@ -262,7 +262,10 @@ export class CredentialsService {
 
 			const project =
 				projectId === undefined
-					? await this.projectRepository.getPersonalProjectForUserOrFail(user.id)
+					? await this.projectRepository.getPersonalProjectForUserOrFail(
+							user.id,
+							transactionManager,
+						)
 					: await this.projectService.getProjectWithScope(
 							user,
 							projectId,

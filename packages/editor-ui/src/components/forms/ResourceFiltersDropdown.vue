@@ -32,6 +32,7 @@
 					class="pt-2xs"
 					:projects="projectsStore.projects"
 					:placeholder="$locale.baseText('forms.resourceFiltersDropdown.owner.placeholder')"
+					:empty-options-text="$locale.baseText('projects.sharing.noMatchingProjects')"
 					@update:model-value="setKeyValue('homeProject', ($event as ProjectSharingData).id)"
 				/>
 			</enterprise-edition>
@@ -93,13 +94,8 @@ export default defineComponent({
 					return;
 				}
 
-				length += (
-					Array.isArray(this.modelValue[key])
-						? this.modelValue[key].length > 0
-						: this.modelValue[key] !== ''
-				)
-					? 1
-					: 0;
+				const value = this.modelValue[key];
+				length += (Array.isArray(value) ? value.length > 0 : value !== '') ? 1 : 0;
 			});
 
 			return length;

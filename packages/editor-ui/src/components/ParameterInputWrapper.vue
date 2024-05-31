@@ -50,7 +50,7 @@ import { mapStores } from 'pinia';
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 
-import type { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
+import type { INodeUi, IUpdateInformation, InputSize, TargetItem } from '@/Interface';
 import ParameterInput from '@/components/ParameterInput.vue';
 import InputHint from '@/components/ParameterInputHint.vue';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
@@ -96,9 +96,11 @@ export default defineComponent({
 		},
 		parameter: {
 			type: Object as PropType<INodeProperties>,
+			required: true,
 		},
 		path: {
 			type: String,
+			required: true,
 		},
 		modelValue: {
 			type: [String, Number, Boolean, Array, Object] as PropType<NodeParameterValueType>,
@@ -121,7 +123,7 @@ export default defineComponent({
 			required: false,
 		},
 		inputSize: {
-			type: String,
+			type: String as PropType<InputSize>,
 		},
 		hideIssues: {
 			type: Boolean,
@@ -202,15 +204,14 @@ export default defineComponent({
 				? this.modelValue.value
 				: this.modelValue;
 
-			if (
-				!this.isForCredential &&
-				(!this.activeNode || !this.isValueExpression || typeof value !== 'string')
-			) {
+			if (!this.activeNode || !this.isValueExpression || typeof value !== 'string') {
 				return { ok: false, error: new Error() };
 			}
 
 			try {
-				let opts = { isForCredential: this.isForCredential };
+				let opts: Parameters<typeof this.workflowHelpers.resolveExpression>[2] = {
+					isForCredential: this.isForCredential,
+				};
 				if (this.ndvStore.isInputParentOfActiveNode) {
 					opts = {
 						...opts,

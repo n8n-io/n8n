@@ -29,6 +29,7 @@ export const retry = async (assertion: () => void, { interval = 20, timeout = 10
 export const waitAllPromises = async () => await new Promise((resolve) => setTimeout(resolve));
 
 export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
+	initialized: true,
 	settings: defaultSettings,
 	promptsData: {
 		message: '',
@@ -59,14 +60,13 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 		loginLabel: '',
 		loginEnabled: false,
 	},
+	mfa: {
+		enabled: false,
+	},
 	onboardingCallPromptEnabled: false,
 	saveDataErrorExecution: 'all',
 	saveDataSuccessExecution: 'all',
 	saveManualExecutions: false,
-	initialized: false,
-	mfa: {
-		enabled: false,
-	},
 };
 
 export const getDropdownItems = async (dropdownTriggerParent: HTMLElement) => {

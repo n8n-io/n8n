@@ -130,15 +130,25 @@ export type EndpointStyle = {
 	hoverMessage?: string;
 };
 
-export interface IUpdateInformation {
-	name: string;
-	key?: string;
-	value:
+export type EndpointMeta = {
+	__meta?: {
+		index: number;
+		totalEndpoints: number;
+		endpointLabelLength: number;
+	};
+};
+
+export interface IUpdateInformation<
+	T extends NodeParameterValueType =
 		| string
 		| number
 		| { [key: string]: string | number | boolean }
 		| NodeParameterValueType
-		| INodeParameters; // with null makes problems in NodeSettings.vue
+		| INodeParameters,
+> {
+	name: string;
+	key?: string;
+	value: T;
 	node?: string;
 	oldValue?: string | number;
 	type?: 'optionsOrderChanged';
@@ -1307,6 +1317,7 @@ export interface UIState {
 	pendingNotificationsForViews: {
 		[key in VIEWS]?: NotificationOptions[];
 	};
+	isCreateNodeActive: boolean;
 }
 
 export type IFakeDoor = {
@@ -1888,7 +1899,7 @@ export type AddedNodesAndConnections = {
 export type ToggleNodeCreatorOptions = {
 	createNodeActive: boolean;
 	source?: NodeCreatorOpenSource;
-	nodeCreatorView?: string;
+	nodeCreatorView?: NodeFilterType;
 };
 
 export type AppliedThemeOption = 'light' | 'dark';

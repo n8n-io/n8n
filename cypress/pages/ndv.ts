@@ -84,6 +84,7 @@ export class NDV extends BasePage {
 			cy.getByTestId('columns-parameter-input-options-container'),
 		resourceMapperRemoveAllFieldsOption: () => cy.getByTestId('action-removeAllFields'),
 		sqlEditorContainer: () => cy.getByTestId('sql-editor-container'),
+		htmlEditorContainer: () => cy.getByTestId('html-editor-container'),
 		filterComponent: (paramName: string) => cy.getByTestId(`filter-${paramName}`),
 		filterCombinator: (paramName: string, index = 0) =>
 			this.getters.filterComponent(paramName).getByTestId('filter-combinator-select').eq(index),
@@ -124,6 +125,8 @@ export class NDV extends BasePage {
 		codeEditorFullscreen: () => this.getters.codeEditorDialog().find('.cm-content'),
 		nodeRunSuccessIndicator: () => cy.getByTestId('node-run-info-success'),
 		nodeRunErrorIndicator: () => cy.getByTestId('node-run-info-danger'),
+		nodeRunErrorMessage: () => cy.getByTestId('node-error-message'),
+		nodeRunErrorDescription: () => cy.getByTestId('node-error-description'),
 	};
 
 	actions = {

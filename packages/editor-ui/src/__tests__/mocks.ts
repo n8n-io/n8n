@@ -14,24 +14,24 @@ import { uuid } from '@jsplumb/util';
 import { defaultMockNodeTypes } from '@/__tests__/defaults';
 import type { INodeUi, ITag, IUsedCredential, IWorkflowDb, WorkflowMetadata } from '@/Interface';
 import type { ProjectSharingData } from '@/features/projects/projects.types';
+import type { RouteLocationNormalized } from 'vue-router';
 
 export function createTestNodeTypes(data: INodeTypeData = {}): INodeTypes {
-	const getResolvedKey = (key: string) => {
-		const resolvedKeyParts = key.split(/[\/.]/);
-		return resolvedKeyParts[resolvedKeyParts.length - 1];
-	};
-
 	const nodeTypes = {
 		...defaultMockNodeTypes,
 		...Object.keys(data).reduce<INodeTypeData>((acc, key) => {
-			acc[getResolvedKey(key)] = data[key];
+			acc[key] = data[key];
 
 			return acc;
 		}, {}),
 	};
 
+	function getKnownTypes(): IDataObject {
+		return {};
+	}
+
 	function getByName(nodeType: string): INodeType | IVersionedNodeType {
-		return nodeTypes[getResolvedKey(nodeType)].type;
+		return nodeTypes[nodeType].type;
 	}
 
 	function getByNameAndVersion(nodeType: string, version?: number): INodeType {
@@ -39,6 +39,7 @@ export function createTestNodeTypes(data: INodeTypeData = {}): INodeTypes {
 	}
 
 	return {
+		getKnownTypes,
 		getByName,
 		getByNameAndVersion,
 	};
@@ -101,5 +102,29 @@ export function createTestNode(
 		position: [0, 0] as [number, number],
 		parameters: {},
 		...node,
+	};
+}
+
+export function createTestRouteLocation({
+	path = '',
+	params = {},
+	fullPath = path,
+	hash = '',
+	matched = [],
+	redirectedFrom = undefined,
+	name = path,
+	meta = {},
+	query = {},
+}: Partial<RouteLocationNormalized> = {}): RouteLocationNormalized {
+	return {
+		path,
+		params,
+		fullPath,
+		hash,
+		matched,
+		redirectedFrom,
+		name,
+		meta,
+		query,
 	};
 }

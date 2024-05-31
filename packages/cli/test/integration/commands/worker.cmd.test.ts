@@ -41,6 +41,7 @@ beforeAll(async () => {
 	mockInstance(RedisServicePubSubSubscriber);
 	mockInstance(OrchestrationService);
 	await testDb.init();
+	await oclifConfig.load();
 });
 
 afterAll(async () => {

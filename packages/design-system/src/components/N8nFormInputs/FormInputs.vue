@@ -75,7 +75,7 @@ export default defineComponent({
 			default: true,
 		},
 		tagSize: {
-			type: String,
+			type: String as PropType<'small' | 'medium'>,
 			default: 'small',
 			validator: (value: string): boolean => ['small', 'medium'].includes(value),
 		},

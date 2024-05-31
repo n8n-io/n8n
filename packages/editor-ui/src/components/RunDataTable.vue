@@ -187,15 +187,18 @@ export default defineComponent({
 	props: {
 		node: {
 			type: Object as PropType<INodeUi>,
+			required: true,
 		},
 		inputData: {
 			type: Array as PropType<INodeExecutionData[]>,
+			required: true,
 		},
 		mappingEnabled: {
 			type: Boolean,
 		},
 		distanceFromActive: {
 			type: Number,
+			required: true,
 		},
 		runIndex: {
 			type: Number,
@@ -208,6 +211,7 @@ export default defineComponent({
 		},
 		pageOffset: {
 			type: Number,
+			required: true,
 		},
 		hasDefaultHoverState: {
 			type: Boolean,
@@ -237,7 +241,7 @@ export default defineComponent({
 	},
 	mounted() {
 		if (this.tableData && this.tableData.columns && this.$refs.draggable) {
-			const tbody = (this.$refs.draggable as DraggableRef).$refs.wrapper;
+			const tbody = (this.$refs.draggable as DraggableRef).$refs.wrapper as HTMLElement;
 			if (tbody) {
 				this.$emit('mounted', {
 					avgRowHeight: tbody.offsetHeight / this.tableData.data.length,
@@ -280,7 +284,7 @@ export default defineComponent({
 				return true;
 			}
 			const itemNodeId = getPairedItemId(
-				this.node.name,
+				this.node?.name ?? '',
 				this.runIndex || 0,
 				this.outputIndex || 0,
 				itemIndex,
@@ -398,7 +402,7 @@ export default defineComponent({
 			if (value === true || value === false || typeof value === 'number') {
 				return value.toString();
 			}
-			return value;
+			return JSON.stringify(value);
 		},
 		onDragStart() {
 			this.draggedColumn = true;
