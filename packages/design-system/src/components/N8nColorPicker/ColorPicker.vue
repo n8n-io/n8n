@@ -9,7 +9,7 @@ import { isInputSize, isElementPlusSize } from '@/types';
 
 export type ColorPickerProps = {
 	disabled?: boolean;
-	size?: 'default' | 'small' | 'medium';
+	size?: 'small' | 'large';
 	showAlpha?: boolean;
 	colorFormat?: 'hex' | 'rgb' | 'hsl' | 'hsv';
 	popperClass?: string;
@@ -22,7 +22,7 @@ export type ColorPickerProps = {
 defineOptions({ name: 'N8nColorPicker' });
 const props = withDefaults(defineProps<ColorPickerProps>(), {
 	disabled: false,
-	size: 'default',
+	size: 'large',
 	showAlpha: false,
 	colorFormat: 'hex',
 	popperClass: '',
