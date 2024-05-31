@@ -1,6 +1,6 @@
 import { Container } from 'typedi';
-import type { SuperAgentTest } from 'supertest';
 import type { AuthenticationMethod } from 'n8n-workflow';
+
 import type { User } from '@db/entities/User';
 import { setSamlLoginEnabled } from '@/sso/saml/samlHelpers';
 import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
@@ -12,6 +12,7 @@ import { randomEmail, randomName, randomValidPassword } from '../shared/random';
 import * as utils from '../shared/utils/';
 import { sampleConfig } from './sampleMetadata';
 import { createOwner, createUser } from '../shared/db/users';
+import type { SuperAgentTest } from '../shared/types';
 
 let someUser: User;
 let owner: User;
