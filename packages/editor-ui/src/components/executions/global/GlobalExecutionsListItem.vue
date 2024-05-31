@@ -179,8 +179,11 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 		</td>
 		<td>
 			<div :class="$style.statusColumn">
-				<span v-if="isQueued || isRunning" :class="$style.spinner">
+				<span v-if="isRunning" :class="$style.spinner">
 					<FontAwesomeIcon icon="spinner" spin />
+				</span>
+				<span v-if="isQueued" :class="$style.queued">
+					<FontAwesomeIcon icon="pause-circle" />
 				</span>
 				<i18n-t
 					v-if="!isWaitTillIndefinite && !isQueued"
@@ -363,6 +366,7 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 	align-items: center;
 }
 
+.queued,
 .spinner {
 	margin-right: var(--spacing-2xs);
 }

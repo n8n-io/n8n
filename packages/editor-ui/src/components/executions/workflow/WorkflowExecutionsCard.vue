@@ -23,10 +23,17 @@
 				</n8n-text>
 				<div :class="$style.executionStatus">
 					<n8n-spinner
-						v-if="executionUIDetails.name === 'running' || executionUIDetails.name === 'pending'"
+						v-if="executionUIDetails.name === 'running'"
 						size="small"
 						:class="[$style.spinner, 'mr-4xs']"
 					/>
+					<span
+						v-if="executionUIDetails.name === 'queued'"
+						size="small"
+						:class="[$style.queued, 'mr-4xs']"
+					>
+						<FontAwesomeIcon icon="pause-circle" />
+					</span>
 					<n8n-text :class="$style.statusLabel" size="small">{{
 						executionUIDetails.label
 					}}</n8n-text>
@@ -196,6 +203,7 @@ export default defineComponent({
 			border-left: var(--spacing-4xs) var(--border-style-base) var(--execution-card-border-running);
 		}
 		.statusLabel,
+		.queued,
 		.spinner {
 			color: var(--color-warning);
 		}
