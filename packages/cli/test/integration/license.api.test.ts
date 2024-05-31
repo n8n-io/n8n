@@ -1,12 +1,13 @@
-import type { SuperAgentTest } from 'supertest';
 import config from '@/config';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import type { User } from '@db/entities/User';
 import type { ILicensePostResponse, ILicenseReadResponse } from '@/Interfaces';
 import { License } from '@/License';
+
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
 import { createUserShell } from './shared/db/users';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import type { SuperAgentTest } from './shared/types';
 
 const MOCK_SERVER_URL = 'https://server.com/v1';
 const MOCK_RENEW_OFFSET = 259200;

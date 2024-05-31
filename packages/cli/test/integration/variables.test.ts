@@ -1,5 +1,5 @@
-import Container from 'typedi';
-import type { SuperAgentTest } from 'supertest';
+import { Container } from 'typedi';
+
 import type { Variables } from '@db/entities/Variables';
 import { VariablesRepository } from '@db/repositories/variables.repository';
 import { generateNanoId } from '@db/utils/generators';
@@ -8,6 +8,7 @@ import { VariablesService } from '@/environments/variables/variables.service.ee'
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
 import { createOwner, createUser } from './shared/db/users';
+import type { SuperAgentTest } from './shared/types';
 
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
