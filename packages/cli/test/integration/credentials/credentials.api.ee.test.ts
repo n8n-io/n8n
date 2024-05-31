@@ -700,22 +700,6 @@ describe('PUT /:credentialId/transfer', () => {
 			.expect(403);
 	});
 
-	test("cannot transfer if you're not an admin in the source project", async () => {
-		const sourceProject = await createTeamProject('Source Project');
-		await linkUserToProject(member, sourceProject, 'project:editor');
-		const credential = await saveCredential(randomCredentialPayload(), {
-			project: sourceProject,
-		});
-
-		const destinationProject = await createTeamProject('Destination Project', member);
-
-		await testServer
-			.authAgentFor(member)
-			.put(`/credentials/${credential.id}/transfer`)
-			.send({ destinationProjectId: destinationProject.id })
-			.expect(403);
-	});
-
 	test("cannot transfer if you're not a member of the destination project", async () => {
 		const credential = await saveCredential(randomCredentialPayload(), {
 			user: member,
@@ -730,16 +714,37 @@ describe('PUT /:credentialId/transfer', () => {
 			.expect(404);
 	});
 
-	test('can transfer from personal to team project', async () => {
+	test('project:editors cannot transfer credentials', async () => {
 		//
 		// ARRANGE
 		//
+		const sourceProject = await createTeamProject('Source Project');
+		await linkUserToProject(member, sourceProject, 'project:editor');
+
 		const credential = await saveCredential(randomCredentialPayload(), {
-			user: member,
+			project: sourceProject,
 		});
 
-		// all other sharings should be deleted by the transfer
-		await shareCredentialWithUsers(credential, [anotherMember]);
+		const destinationProject = await createTeamProject('Destination Project', member);
+
+		//
+		// ACT & ASSERT
+		//
+		await testServer
+			.authAgentFor(member)
+			.put(`/credentials/${credential.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id })
+			.expect(403);
+	});
+
+	test('transferring from a personal project to a team project severs all sharings', async () => {
+		//
+		// ARRANGE
+		//
+		const credential = await saveCredential(randomCredentialPayload(), { user: member });
+
+		// these sharings should be deleted by the transfer
+		await shareCredentialWithUsers(credential, [anotherMember, owner]);
 
 		const destinationProject = await createTeamProject('Destination Project', member);
 
