@@ -28,10 +28,9 @@ const usersStore = useUsersStore();
 const toast = useToast();
 const telemetry = useTelemetry();
 
-function showConfirmationMessage(event: PointerEvent) {
-	if (event.target instanceof HTMLAnchorElement) {
+function showConfirmationMessage(event?: PointerEvent) {
+	if (event?.target instanceof HTMLAnchorElement) {
 		event.preventDefault();
-		// @ts-expect-error Additional parameters are not necessary for this function
 		toast.showMessage({
 			title: i18n.baseText('suggestedTemplates.notification.confirmation.title'),
 			message: i18n.baseText('suggestedTemplates.notification.confirmation.message'),
