@@ -1,13 +1,15 @@
 <script lang="ts" setup>
+import type { ComputedRef } from 'vue';
 import { computed, ref } from 'vue';
 import { uid } from '../../utils';
 import { ElColorPicker } from 'element-plus';
 import N8nInput from '../N8nInput';
-import type { ElementPlusSizePropType } from '@/types';
+import type { ElementPlusSizePropType, InputSize } from '@/types';
+import { isInputSize, isElementPlusSize } from '@/types';
 
 export type ColorPickerProps = {
 	disabled?: boolean;
-	size?: 'default' | 'small' | 'medium' | 'mini';
+	size?: 'default' | 'small' | 'medium';
 	showAlpha?: boolean;
 	colorFormat?: 'hex' | 'rgb' | 'hsl' | 'hsv';
 	popperClass?: string;
@@ -16,8 +18,6 @@ export type ColorPickerProps = {
 	showInput?: boolean;
 	name?: string;
 };
-
-type InputSize = 'small' | 'medium' | 'mini' | 'large' | 'xlarge' | undefined;
 
 defineOptions({ name: 'N8nColorPicker' });
 const props = withDefaults(defineProps<ColorPickerProps>(), {
@@ -33,15 +33,13 @@ const props = withDefaults(defineProps<ColorPickerProps>(), {
 });
 
 const color = ref(props.modelValue);
+const inputSize: ComputedRef<InputSize> = computed(() => {
+	if (isInputSize(props.size)) {
+		return props.size;
+	}
 
-function isInputSize(size: unknown): size is InputSize {
-	return typeof size === 'string' && ['small', 'medium', 'mini', 'large', 'xlarge'].includes(size);
-}
-
-let inputSize: InputSize = undefined;
-if (isInputSize(props.size)) {
-	inputSize = props.size;
-}
+	return undefined;
+});
 
 const colorPickerProps = computed(() => {
 	const { showInput, modelValue, size, ...rest } = props;
@@ -54,7 +52,13 @@ const emit = defineEmits<{
 	(event: 'active-change', value: string): void;
 }>();
 
-const resolvedSize = computed(() => props.size as ElementPlusSizePropType);
+const resolvedSize: ComputedRef<ElementPlusSizePropType> = computed(() => {
+	if (isElementPlusSize(props.size)) {
+		return props.size;
+	}
+
+	return undefined;
+});
 
 const onChange = (value: string) => {
 	emit('change', value);

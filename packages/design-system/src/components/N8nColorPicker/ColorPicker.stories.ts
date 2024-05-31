@@ -11,7 +11,7 @@ export default {
 		},
 		size: {
 			control: 'select',
-			options: ['mini', 'small', 'medium', 'large'],
+			options: ['small', 'medium', 'large'],
 		},
 		showAlpha: {
 			control: 'boolean',
