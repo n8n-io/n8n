@@ -23,7 +23,7 @@
 		</TemplateDetailsBlock>
 
 		<TemplateDetailsBlock
-			v-if="!loading && template && 'categories' in template && template.categories.length > 0"
+			v-if="!loading && isFullTemplatesCollection(template) && template.categories.length > 0"
 			:title="$locale.baseText('template.details.categories')"
 		>
 			<n8n-tags :tags="template.categories" @click:tag="redirectToCategory" />
@@ -34,7 +34,7 @@
 			:title="$locale.baseText('template.details.details')"
 		>
 			<div :class="$style.text">
-				<n8n-text v-if="'user' in template" size="small" color="text-base">
+				<n8n-text v-if="isTemplatesWorkflow(template)" size="small" color="text-base">
 					{{ $locale.baseText('template.details.created') }}
 					<TimeAgo :date="template.createdAt" />
 					{{ $locale.baseText('template.details.by') }}
@@ -43,7 +43,7 @@
 			</div>
 			<div :class="$style.text">
 				<n8n-text
-					v-if="'totalViews' in template && template.totalViews !== 0"
+					v-if="isTemplatesWorkflow(template) && template.totalViews !== 0"
 					size="small"
 					color="text-base"
 				>
@@ -72,6 +72,7 @@ import type {
 import { mapStores } from 'pinia';
 import { useTemplatesStore } from '@/stores/templates.store';
 import TimeAgo from '@/components/TimeAgo.vue';
+import { isFullTemplatesCollection, isTemplatesWorkflow } from '@/utils/templates/typeGuards';
 
 export default defineComponent({
 	name: 'TemplateDetails',
@@ -109,6 +110,8 @@ export default defineComponent({
 			this.templatesStore.resetSessionId();
 			void this.$router.push(`/templates?search=${node.displayName}`);
 		},
+		isFullTemplatesCollection,
+		isTemplatesWorkflow,
 	},
 });
 </script>

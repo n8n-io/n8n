@@ -21,13 +21,10 @@
 		<template v-if="!notFoundError" #content>
 			<div :class="$style.wrapper">
 				<div :class="$style.mainContent">
-					<div
-						v-if="loading || (collection && 'description' in collection)"
-						:class="$style.markdown"
-					>
+					<div v-if="loading || isFullTemplatesCollection(collection)" :class="$style.markdown">
 						<n8n-markdown
-							:content="collection && 'description' in collection && collection.description"
-							:images="collection && 'image' in collection && collection.image"
+							:content="isFullTemplatesCollection(collection) && collection.description"
+							:images="isFullTemplatesCollection(collection) && collection.image"
 							:loading="loading"
 						/>
 					</div>
@@ -73,6 +70,7 @@ import { usePostHog } from '@/stores/posthog.store';
 import { useTemplateWorkflow } from '@/utils/templates/templateActions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { isFullTemplatesCollection } from '@/utils/templates/typeGuards';
 
 export default defineComponent({
 	name: 'TemplatesCollectionView',
@@ -174,6 +172,7 @@ export default defineComponent({
 				void this.$router.push({ name: page, params: { id } });
 			}
 		},
+		isFullTemplatesCollection,
 	},
 });
 </script>
