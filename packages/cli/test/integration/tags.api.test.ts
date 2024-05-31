@@ -1,8 +1,10 @@
+import { Container } from 'typedi';
+
+import { TagRepository } from '@db/repositories/tag.repository';
+
 import * as utils from './shared/utils/';
 import * as testDb from './shared/testDb';
-import type { SuperAgentTest } from 'supertest';
-import { TagRepository } from '@db/repositories/tag.repository';
-import Container from 'typedi';
+import type { SuperAgentTest } from './shared/types';
 import { createUserShell } from './shared/db/users';
 
 let authOwnerAgent: SuperAgentTest;

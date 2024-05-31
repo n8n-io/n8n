@@ -1,5 +1,4 @@
 import { readFileSync } from 'fs';
-import type { SuperAgentTest } from 'supertest';
 import { agent as testAgent } from 'supertest';
 import type { INodeType, INodeTypeDescription, IWebhookFunctions } from 'n8n-workflow';
 
@@ -15,6 +14,7 @@ import { initActiveWorkflowManager } from './shared/utils';
 import * as testDb from './shared/testDb';
 import { createUser } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
+import type { SuperAgentTest } from './shared/types';
 
 describe('Webhook API', () => {
 	mockInstance(ExternalHooks);
