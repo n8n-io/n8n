@@ -202,6 +202,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		isDevRelease(): boolean {
 			return this.settings.releaseChannel === 'dev';
 		},
+		productionConcurrencyCap(): number {
+			return this.settings.concurrency.productionCap;
+		},
 	},
 	actions: {
 		async initialize() {

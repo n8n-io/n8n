@@ -2583,6 +2583,7 @@ export interface IN8nUISettings {
 	onboardingCallPromptEnabled: boolean;
 	missingPackages?: boolean;
 	executionMode: 'regular' | 'queue';
+	concurrency: { productionCap: number };
 	pushBackend: 'sse' | 'websocket';
 	communityNodesEnabled: boolean;
 	deployment: {

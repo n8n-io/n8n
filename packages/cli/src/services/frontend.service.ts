@@ -160,6 +160,9 @@ export class FrontendService {
 			},
 			onboardingCallPromptEnabled: config.getEnv('onboardingCallPrompt.enabled'),
 			executionMode: config.getEnv('executions.mode'),
+			concurrency: {
+				productionCap: config.getEnv('executions.concurrency.productionCap'),
+			},
 			pushBackend: config.getEnv('push.backend'),
 			communityNodesEnabled: config.getEnv('nodes.communityPackages.enabled'),
 			deployment: {
