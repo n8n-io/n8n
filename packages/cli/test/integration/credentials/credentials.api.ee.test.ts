@@ -536,7 +536,7 @@ describe('PUT /credentials/:id/share', () => {
 	test('should respond 200 for non-owned credentials for owners', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
 
-		const response = await authOwnerAgent
+		await authOwnerAgent
 			.put(`/credentials/${savedCredential.id}/share`)
 			.send({ shareWithIds: [anotherMemberPersonalProject.id] })
 			.expect(200);
