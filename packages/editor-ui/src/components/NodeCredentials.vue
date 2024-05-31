@@ -10,7 +10,6 @@
 			<n8n-input-label
 				:label="getCredentialsFieldLabel(credentialTypeDescription)"
 				:bold="false"
-				:set="(issues = getIssues(credentialTypeDescription.name))"
 				size="small"
 				color="text-dark"
 				data-test-id="credentials-label"
@@ -25,12 +24,21 @@
 				</div>
 				<div
 					v-else
-					:class="issues.length && !hideIssues ? $style.hasIssues : $style.input"
+					:class="
+						getIssues(credentialTypeDescription.name).length && !hideIssues
+							? $style.hasIssues
+							: $style.input
+					"
 					data-test-id="node-credentials-select"
 				>
 					<n8n-select
 						:model-value="getSelectedId(credentialTypeDescription.name)"
-						:placeholder="getSelectPlaceholder(credentialTypeDescription.name, issues)"
+						:placeholder="
+							getSelectPlaceholder(
+								credentialTypeDescription.name,
+								getIssues(credentialTypeDescription.name),
+							)
+						"
 						size="small"
 						@update:model-value="
 							(value: string) =>
@@ -65,12 +73,15 @@
 						</n8n-option>
 					</n8n-select>
 
-					<div v-if="issues.length && !hideIssues" :class="$style.warning">
+					<div
+						v-if="getIssues(credentialTypeDescription.name).length && !hideIssues"
+						:class="$style.warning"
+					>
 						<n8n-tooltip placement="top">
 							<template #content>
 								<TitledList
 									:title="`${$locale.baseText('nodeCredentials.issues')}:`"
-									:items="issues"
+									:items="getIssues(credentialTypeDescription.name)"
 								/>
 							</template>
 							<font-awesome-icon icon="exclamation-triangle" />
