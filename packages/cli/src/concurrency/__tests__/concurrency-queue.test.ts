@@ -1,6 +1,4 @@
-import { v4 as uuid } from 'uuid';
 import { ConcurrencyQueue } from '../concurrency-queue';
-import type { Ids } from '../concurrency.types';
 
 describe('ConcurrencyQueue', () => {
 	beforeAll(() => {
@@ -14,8 +12,8 @@ describe('ConcurrencyQueue', () => {
 		// eslint-disable-next-line @typescript-eslint/promise-function-async
 		const sleep = jest.fn(() => new Promise((resolve) => setTimeout(resolve, 500)));
 
-		const testFn = async (item: Ids) => {
-			await queue.enqueue(item);
+		const testFn = async (item: { executionId: string }) => {
+			await queue.enqueue(item.executionId);
 			state[item.executionId] = 'started';
 			await sleep();
 			queue.dequeue();
@@ -23,11 +21,11 @@ describe('ConcurrencyQueue', () => {
 		};
 
 		void Promise.all([
-			testFn({ executionId: '1', workflowId: uuid(), pushRef: uuid() }),
-			testFn({ executionId: '2', workflowId: uuid(), pushRef: uuid() }),
-			testFn({ executionId: '3', workflowId: uuid(), pushRef: uuid() }),
-			testFn({ executionId: '4', workflowId: uuid(), pushRef: uuid() }),
-			testFn({ executionId: '5', workflowId: uuid(), pushRef: uuid() }),
+			testFn({ executionId: '1' }),
+			testFn({ executionId: '2' }),
+			testFn({ executionId: '3' }),
+			testFn({ executionId: '4' }),
+			testFn({ executionId: '5' }),
 		]);
 
 		// At T+0 seconds this method hasn't yielded to the event-loop, so no `testFn` calls are made

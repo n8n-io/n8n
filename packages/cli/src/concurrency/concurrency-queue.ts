@@ -1,6 +1,6 @@
 import { Service } from 'typedi';
 import { EventEmitter } from 'node:events';
-import type { ConcurrencyQueueItem, Ids } from './concurrency.types';
+import type { ConcurrencyQueueItem } from './concurrency.types';
 
 @Service()
 export class ConcurrencyQueue extends EventEmitter {
@@ -10,14 +10,14 @@ export class ConcurrencyQueue extends EventEmitter {
 		super();
 	}
 
-	async enqueue(ids: Ids) {
+	async enqueue(executionId: string) {
 		this.capacity--;
 
 		if (this.capacity < 0) {
-			this.emit('execution-throttled', ids);
+			this.emit('execution-throttled', executionId);
 
 			// eslint-disable-next-line @typescript-eslint/return-await
-			return new Promise<void>((resolve) => this.queue.push({ ...ids, resolve }));
+			return new Promise<void>((resolve) => this.queue.push({ executionId, resolve }));
 		}
 	}
 
@@ -48,9 +48,9 @@ export class ConcurrencyQueue extends EventEmitter {
 
 		if (!execution) return;
 
-		const { resolve, ...ids } = execution;
+		const { resolve, executionId } = execution;
 
-		this.emit('execution-released', ids);
+		this.emit('execution-released', executionId);
 
 		resolve();
 	}

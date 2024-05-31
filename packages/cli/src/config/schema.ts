@@ -256,16 +256,10 @@ export const schema = {
 
 		concurrency: {
 			productionCap: {
-				doc: 'Max number of production executions allowed to run concurrently in main mode. -1 to disable.',
+				doc: 'Max production executions allowed to run concurrently in main mode. -1 to disable.',
 				format: Number,
 				default: -1,
 				env: 'N8N_CONCURRENCY_PRODUCTION_CAP',
-			},
-			manualCap: {
-				doc: 'Max number of manual executions allowed to run concurrently in manual mode. -1 to disable.',
-				format: Number,
-				default: -1,
-				env: 'N8N_CONCURRENCY_MANUAL_CAP',
 			},
 		},
 

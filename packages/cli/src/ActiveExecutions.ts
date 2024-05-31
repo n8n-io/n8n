@@ -68,22 +68,12 @@ export class ActiveExecutions {
 				throw new ApplicationError('There was an issue assigning an execution id to the execution');
 			}
 
-			await this.concurrencyControl.check({
-				mode,
-				executionId,
-				workflowId,
-				pushRef: executionData.pushRef ?? '',
-			});
+			await this.concurrencyControl.check({ mode, executionId });
 			executionStatus = 'running';
 		} else {
 			// Is an existing execution we want to finish so update in DB
 
-			await this.concurrencyControl.check({
-				mode,
-				executionId,
-				workflowId: executionData.workflowData.id,
-				pushRef: executionData.pushRef ?? '',
-			});
+			await this.concurrencyControl.check({ mode, executionId });
 
 			const execution: Pick<IExecutionDb, 'id' | 'data' | 'waitTill' | 'status'> = {
 				id: executionId,
