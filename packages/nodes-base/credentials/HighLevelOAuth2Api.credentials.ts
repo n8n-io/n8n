@@ -1,14 +1,5 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
-const scopes = [
-	'locations.readonly',
-	'contacts.readonly',
-	'contacts.write',
-	'opportunities.readonly',
-	'opportunities.write',
-	'users.readonly',
-];
-
 export class HighLevelOAuth2Api implements ICredentialType {
 	name = 'highLevelOAuth2Api';
 
@@ -49,7 +40,7 @@ export class HighLevelOAuth2Api implements ICredentialType {
 			name: 'scope',
 			type: 'string',
 			hint: 'Separate scopes by space',
-			default: scopes.join(' '),
+			default: '',
 			required: true,
 		},
 		{
