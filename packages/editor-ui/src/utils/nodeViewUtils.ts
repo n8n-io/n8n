@@ -16,7 +16,7 @@ import { NodeConnectionType } from 'n8n-workflow';
 import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 import { EVENT_CONNECTION_MOUSEOUT, EVENT_CONNECTION_MOUSEOVER } from '@jsplumb/browser-ui';
 import { useUIStore } from '@/stores/ui.store';
-import { StyleValue } from 'vue';
+import type { StyleValue } from 'vue';
 
 /*
 	Canvas constants and functions.
