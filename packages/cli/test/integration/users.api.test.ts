@@ -912,7 +912,7 @@ describe('PATCH /users/:id/role', () => {
 			createTeamProject(),
 		]);
 
-		const [credential1, credential2, credential3] = await Promise.all([
+		await Promise.all([
 			saveCredential(randomCredentialPayload(), {
 				user,
 				role: 'credential:owner',
