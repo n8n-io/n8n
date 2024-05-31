@@ -40,7 +40,7 @@ describe('ProjectCardBadge', () => {
 		[' <email@domain.com>', 'email@domain.com'],
 		['My project', 'My project'],
 		['MyProject', 'MyProject'],
-	])('should split a name in the format "First Last <email@domain.com>"', (name, result) => {
+	])('should show the correct owner badge for project name: "%s"', (name, result) => {
 		const { getByText } = renderComponent({
 			props: {
 				resource: {
