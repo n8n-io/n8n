@@ -492,15 +492,9 @@ export class N8nConnector extends AbstractConnector {
 
 	_compute(originalPaintInfo: PaintGeometry, connParams: ConnectorComputeParams) {
 		const paintInfo = this._getPaintInfo(connParams);
-		// Set the type of key as key of paintInfo
-		// TODO: Check if this is the best way to do this
-		// Object.assign(originalPaintInfo, paintInfo);
-		Object.keys(paintInfo).forEach((key) => {
-			if (key === undefined) return;
-			// override so that bounding box is calculated correctly when target override is set
-			// todo
-			originalPaintInfo[key as keyof PaintGeometry] = paintInfo[key as keyof PaintGeometry];
-		});
+
+		// override so that bounding box is calculated correctly when target override is set
+		Object.assign(originalPaintInfo, paintInfo);
 
 		try {
 			if (paintInfo.tx < 0) {
