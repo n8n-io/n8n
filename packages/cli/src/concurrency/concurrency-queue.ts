@@ -44,11 +44,11 @@ export class ConcurrencyQueue extends EventEmitter {
 	}
 
 	private resolveNext() {
-		const execution = this.queue.shift();
+		const item = this.queue.shift();
 
-		if (!execution) return;
+		if (!item) return;
 
-		const { resolve, executionId } = execution;
+		const { resolve, executionId } = item;
 
 		this.emit('execution-released', executionId);
 

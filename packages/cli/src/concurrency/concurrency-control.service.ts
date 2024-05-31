@@ -35,8 +35,13 @@ export class ConcurrencyControlService {
 
 		this.isEnabled = true;
 
-		this.productionQueue.on('execution-released', async (event: { executionId: string }) => {
-			await this.executionRepository.resetStartedAt(event.executionId);
+		this.productionQueue.on('execution-throttled', async (executionId: string) => {
+			this.log('Execution throttled', { executionId });
+		});
+
+		this.productionQueue.on('execution-released', async (executionId: string) => {
+			this.log('Execution released', { executionId });
+			await this.executionRepository.resetStartedAt(executionId);
 		});
 	}
 
