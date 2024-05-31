@@ -7,7 +7,7 @@ import type { ElementPlusSizePropType } from '@/types';
 
 export type ColorPickerProps = {
 	disabled?: boolean;
-	size?: 'small' | 'medium' | 'mini';
+	size?: 'default' | 'small' | 'medium' | 'mini';
 	showAlpha?: boolean;
 	colorFormat?: 'hex' | 'rgb' | 'hsl' | 'hsv';
 	popperClass?: string;
@@ -16,6 +16,8 @@ export type ColorPickerProps = {
 	showInput?: boolean;
 	name?: string;
 };
+
+type InputSize = 'small' | 'medium' | 'mini' | 'large' | 'xlarge' | undefined;
 
 defineOptions({ name: 'N8nColorPicker' });
 const props = withDefaults(defineProps<ColorPickerProps>(), {
@@ -31,6 +33,15 @@ const props = withDefaults(defineProps<ColorPickerProps>(), {
 });
 
 const color = ref(props.modelValue);
+
+function isInputSize(size: unknown): size is InputSize {
+	return typeof size === 'string' && ['small', 'medium', 'mini', 'large', 'xlarge'].includes(size);
+}
+
+let inputSize: InputSize = undefined;
+if (isInputSize(props.size)) {
+	inputSize = props.size;
+}
 
 const colorPickerProps = computed(() => {
 	const { showInput, modelValue, size, ...rest } = props;
@@ -75,7 +86,7 @@ const onColorSelect = (value: string) => {
 			v-if="showInput"
 			:class="$style.input"
 			:disabled="props.disabled"
-			:size="size"
+			:size="inputSize"
 			:model-value="color"
 			:name="name"
 			type="text"
