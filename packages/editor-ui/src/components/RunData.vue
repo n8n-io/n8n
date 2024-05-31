@@ -58,6 +58,7 @@
 					data-test-id="ndv-run-data-display-mode"
 					@update:model-value="onDisplayModeChange"
 				/>
+
 				<n8n-icon-button
 					v-if="canPinData && !isReadOnlyRoute && !readOnlyEnv"
 					v-show="!editMode.enabled"
@@ -105,51 +106,58 @@
 			</div>
 		</div>
 
-		<div
-			v-if="maxRunIndex > 0"
-			v-show="!editMode.enabled"
-			:class="$style.runSelector"
-			data-test-id="run-selector"
-		>
-			<div :class="$style.runSelectorWrapper">
-				<n8n-select
+		<div v-if="extraControlsLocation === 'header'" :class="$style.inputSelect">
+			<slot name="input-select"></slot>
+		</div>
+
+		<div v-if="maxRunIndex > 0" v-show="!editMode.enabled" :class="$style.runSelector">
+			<slot v-if="extraControlsLocation === 'runs'" name="input-select"></slot>
+
+			<n8n-select
+				:model-value="runIndex"
+				:class="$style.runSelectorInner"
+				size="small"
+				teleported
+				data-test-id="run-selector"
+				@update:model-value="onRunIndexChange"
+				@click.stop
+			>
+				<template #prepend>{{ $locale.baseText('ndv.output.run') }}</template>
+				<n8n-option
+					v-for="option in maxRunIndex + 1"
+					:key="option"
+					:label="getRunLabel(option)"
+					:value="option - 1"
+				></n8n-option>
+			</n8n-select>
+
+			<n8n-tooltip v-if="canLinkRuns" placement="right">
+				<template #content>
+					{{ $locale.baseText(linkedRuns ? 'runData.unlinking.hint' : 'runData.linking.hint') }}
+				</template>
+				<n8n-icon-button
+					:icon="linkedRuns ? 'unlink' : 'link'"
+					class="linkRun"
+					text
+					type="tertiary"
 					size="small"
-					:model-value="runIndex"
-					teleported
-					@update:model-value="onRunIndexChange"
-					@click.stop
-				>
-					<template #prepend>{{ $locale.baseText('ndv.output.run') }}</template>
-					<n8n-option
-						v-for="option in maxRunIndex + 1"
-						:key="option"
-						:label="getRunLabel(option)"
-						:value="option - 1"
-					></n8n-option>
-				</n8n-select>
-				<n8n-tooltip v-if="canLinkRuns" placement="right">
-					<template #content>
-						{{ $locale.baseText(linkedRuns ? 'runData.unlinking.hint' : 'runData.linking.hint') }}
-					</template>
-					<n8n-icon-button
-						class="linkRun"
-						:icon="linkedRuns ? 'unlink' : 'link'"
-						text
-						type="tertiary"
-						size="small"
-						@click="toggleLinkRuns"
-					/>
-				</n8n-tooltip>
-				<slot name="run-info"></slot>
-			</div>
+					data-test-id="link-run"
+					@click="toggleLinkRuns"
+				/>
+			</n8n-tooltip>
+
+			<slot name="run-info"></slot>
+
 			<RunDataSearch
-				v-if="showIOSearch"
+				v-if="showIOSearch && extraControlsLocation === 'runs'"
 				v-model="search"
+				:class="$style.search"
 				:pane-type="paneType"
 				:is-area-active="isPaneActive"
 				@focus="activatePane"
 			/>
 		</div>
+
 		<slot name="before-data" />
 
 		<n8n-callout
@@ -163,21 +171,26 @@
 
 		<div
 			v-if="maxOutputIndex > 0 && branches.length > 1"
-			:class="$style.tabs"
+			:class="$style.outputs"
 			data-test-id="branches"
 		>
-			<n8n-tabs
-				:model-value="currentOutputIndex"
-				:options="branches"
-				@update:model-value="onBranchChange"
-			/>
-			<RunDataSearch
-				v-if="showIOSearch"
-				v-model="search"
-				:pane-type="paneType"
-				:is-area-active="isPaneActive"
-				@focus="activatePane"
-			/>
+			<slot v-if="extraControlsLocation === 'outputs'" name="input-select"></slot>
+
+			<div :class="$style.tabs">
+				<n8n-tabs
+					:model-value="currentOutputIndex"
+					:options="branches"
+					@update:model-value="onBranchChange"
+				/>
+
+				<RunDataSearch
+					v-if="showIOSearch && extraControlsLocation === 'outputs'"
+					v-model="search"
+					:pane-type="paneType"
+					:is-area-active="isPaneActive"
+					@focus="activatePane"
+				/>
+			</div>
 		</div>
 
 		<div
@@ -188,10 +201,12 @@
 				!isArtificialRecoveredEventItem
 			"
 			v-show="!editMode.enabled && !hasRunError"
-			:class="$style.itemsCount"
+			:class="[$style.itemsCount, { [$style.muted]: paneType === 'input' && maxRunIndex === 0 }]"
 			data-test-id="ndv-items-count"
 		>
-			<n8n-text v-if="search">
+			<slot v-if="extraControlsLocation === 'items'" name="input-select"></slot>
+
+			<n8n-text v-if="search" :class="$style.itemsText">
 				{{
 					$locale.baseText('ndv.search.items', {
 						adjustToNumber: unfilteredDataCount,
@@ -199,7 +214,7 @@
 					})
 				}}
 			</n8n-text>
-			<n8n-text v-else>
+			<n8n-text v-else :class="$style.itemsText">
 				{{
 					$locale.baseText('ndv.output.items', {
 						adjustToNumber: dataCount,
@@ -207,9 +222,11 @@
 					})
 				}}
 			</n8n-text>
+
 			<RunDataSearch
-				v-if="showIOSearch"
+				v-if="showIOSearch && extraControlsLocation === 'items'"
 				v-model="search"
+				:class="$style.search"
 				:pane-type="paneType"
 				:is-area-active="isPaneActive"
 				@focus="activatePane"
@@ -568,6 +585,7 @@ import type {
 	IRunExecutionData,
 	NodeHint,
 	NodeError,
+	Workflow,
 } from 'n8n-workflow';
 import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 
@@ -646,6 +664,10 @@ export default defineComponent({
 		node: {
 			type: Object as PropType<INodeUi | null>,
 			default: null,
+		},
+		workflow: {
+			type: Object as PropType<Workflow>,
+			required: true,
 		},
 		runIndex: {
 			type: Number,
@@ -800,7 +822,7 @@ export default defineComponent({
 			}
 
 			const schemaView = { label: this.$locale.baseText('runData.schema'), value: 'schema' };
-			if (this.isPaneTypeInput && !isEmpty(this.jsonData)) {
+			if (this.isPaneTypeInput) {
 				defaults.unshift(schemaView);
 			} else {
 				defaults.push(schemaView);
@@ -925,9 +947,11 @@ export default defineComponent({
 		rawInputData(): INodeExecutionData[] {
 			return this.getRawInputData(this.runIndex, this.currentOutputIndex, this.connectionType);
 		},
+		unfilteredInputData(): INodeExecutionData[] {
+			return this.getPinDataOrLiveData(this.rawInputData);
+		},
 		inputData(): INodeExecutionData[] {
-			const pinOrLiveData = this.getPinDataOrLiveData(this.rawInputData);
-			return this.getFilteredData(pinOrLiveData);
+			return this.getFilteredData(this.unfilteredInputData);
 		},
 		inputDataPage(): INodeExecutionData[] {
 			const offset = this.pageSize * (this.currentPage - 1);
@@ -1016,20 +1040,27 @@ export default defineComponent({
 			return this.sourceControlStore.preferences.branchReadOnly;
 		},
 		showIOSearch(): boolean {
-			return this.hasNodeRun && !this.hasRunError;
+			return this.hasNodeRun && !this.hasRunError && this.unfilteredInputData.length > 0;
+		},
+		extraControlsLocation() {
+			if (!this.hasNodeRun) return 'header';
+			if (this.maxRunIndex > 0) return 'runs';
+			if (this.maxOutputIndex > 0 && this.branches.length > 1) {
+				return 'outputs';
+			}
+
+			return 'items';
 		},
 		showIoSearchNoMatchContent(): boolean {
 			return this.hasNodeRun && !this.inputData.length && !!this.search;
 		},
 		parentNodeOutputData(): INodeExecutionData[] {
-			const workflow = this.workflowsStore.getCurrentWorkflow();
-
-			const parentNode = workflow.getParentNodesByDepth(this.node?.name ?? '')[0];
+			const parentNode = this.workflow.getParentNodesByDepth(this.node?.name ?? '')[0];
 			let parentNodeData: INodeExecutionData[] = [];
 
 			if (parentNode?.name) {
 				parentNodeData = this.nodeHelpers.getNodeInputData(
-					workflow.getNode(parentNode?.name),
+					this.workflow.getNode(parentNode?.name),
 					this.runIndex,
 					this.outputIndex,
 					'input',
@@ -1124,11 +1155,10 @@ export default defineComponent({
 	methods: {
 		getResolvedNodeOutputs() {
 			if (this.node && this.nodeType) {
-				const workflow = this.workflowsStore.getCurrentWorkflow();
-				const workflowNode = workflow.getNode(this.node.name);
+				const workflowNode = this.workflow.getNode(this.node.name);
 
 				if (workflowNode) {
-					const outputs = NodeHelpers.getNodeOutputs(workflow, workflowNode, this.nodeType);
+					const outputs = NodeHelpers.getNodeOutputs(this.workflow, workflowNode, this.nodeType);
 					return outputs;
 				}
 			}
@@ -1162,12 +1192,11 @@ export default defineComponent({
 		},
 		getNodeHints(): NodeHint[] {
 			if (this.node && this.nodeType) {
-				const workflow = this.workflowsStore.getCurrentWorkflow();
-				const workflowNode = workflow.getNode(this.node.name);
+				const workflowNode = this.workflow.getNode(this.node.name);
 
 				if (workflowNode) {
 					const executionHints = this.executionHints;
-					const nodeHints = NodeHelpers.getNodeHints(workflow, workflowNode, this.nodeType, {
+					const nodeHints = NodeHelpers.getNodeHints(this.workflow, workflowNode, this.nodeType, {
 						runExecutionData: this.workflowExecution?.data ?? null,
 						runIndex: this.runIndex,
 						connectionInputData: this.parentNodeOutputData,
@@ -1716,33 +1745,68 @@ export default defineComponent({
 	height: 100%;
 }
 
+.outputs {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-s);
+	padding-left: var(--spacing-s);
+	padding-right: var(--spacing-s);
+	padding-bottom: var(--spacing-s);
+}
+
 .tabs {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	margin-bottom: var(--spacing-s);
+	min-height: 30px;
 }
 
 .itemsCount {
 	display: flex;
-	justify-content: space-between;
 	align-items: center;
-	margin-left: var(--spacing-s);
-	margin-bottom: var(--spacing-s);
+	gap: var(--spacing-2xs);
+	padding-left: var(--spacing-s);
+	padding-right: var(--spacing-s);
+	padding-bottom: var(--spacing-s);
+
+	.itemsText {
+		flex-shrink: 0;
+		overflow-x: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+	}
+
+	&.muted .itemsText {
+		color: var(--color-text-light);
+		font-size: var(--font-size-2xs);
+	}
+}
+
+.inputSelect {
+	padding-left: var(--spacing-s);
+	padding-right: var(--spacing-s);
+	padding-bottom: var(--spacing-s);
 }
 
 .runSelector {
 	padding-left: var(--spacing-s);
+	padding-right: var(--spacing-s);
 	padding-bottom: var(--spacing-s);
 	display: flex;
-	width: 100%;
+	gap: var(--spacing-4xs);
 	align-items: center;
-	justify-content: space-between;
+
+	:global(.el-input--suffix .el-input__inner) {
+		padding-right: var(--spacing-l);
+	}
 }
 
-.runSelectorWrapper {
-	display: flex;
-	align-items: center;
+.search {
+	margin-left: auto;
+}
+
+.runSelectorInner {
+	max-width: 172px;
 }
 
 .pagination {
