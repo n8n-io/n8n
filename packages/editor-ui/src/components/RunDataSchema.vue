@@ -6,7 +6,6 @@ import Draggable from '@/components/Draggable.vue';
 import { useNDVStore } from '@/stores/ndv.store';
 import { telemetry } from '@/plugins/telemetry';
 import type { IDataObject } from 'n8n-workflow';
-import { isEmpty } from '@/utils/typesUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { i18n } from '@/plugins/i18n';
 import MappingPill from './MappingPill.vue';
@@ -33,7 +32,14 @@ const { getSchemaForExecutionData } = useDataSchema();
 
 const schema = computed(() => getSchemaForExecutionData(props.data));
 
-const isDataEmpty = computed(() => isEmpty(props.data));
+const isDataEmpty = computed(() => {
+	// Utilize the generated schema instead of looping over the entire data again
+	// The schema for empty data is { type: 'object' | 'array', value: [] }
+	const isObjectOrArray = schema.value.type === 'object' || schema.value.type === 'array';
+	const isEmpty = Array.isArray(schema.value.value) && schema.value.value.length === 0;
+
+	return isObjectOrArray && isEmpty;
+});
 
 const highlight = computed(() => ndvStore.highlightDraggables);
 
@@ -51,11 +57,11 @@ const onDragEnd = (el: HTMLElement) => {
 		const mappingTelemetry = ndvStore.mappingTelemetry;
 		const telemetryPayload = {
 			src_node_type: props.node?.type,
-			src_field_name: el.dataset.name || '',
+			src_field_name: el.dataset.name ?? '',
 			src_nodes_back: props.distanceFromActive,
 			src_run_index: props.runIndex,
 			src_runs_total: props.totalRuns,
-			src_field_nest_level: el.dataset.depth || 0,
+			src_field_nest_level: el.dataset.depth ?? 0,
 			src_view: 'schema',
 			src_element: el,
 			success: false,

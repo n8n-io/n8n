@@ -1,11 +1,16 @@
 import Container from 'typedi';
-import type { SuperAgentTest } from 'supertest';
 import { v4 as uuid } from 'uuid';
 import type { INode } from 'n8n-workflow';
 
+import config from '@/config';
+import type { Project } from '@db/entities/Project';
+import { ProjectRepository } from '@db/repositories/project.repository';
 import type { User } from '@db/entities/User';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
 import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
+import { License } from '@/License';
+import { UserManagementMailer } from '@/UserManagement/email';
+import type { WorkflowWithSharingsMetaDataAndCredentials } from '@/workflows/workflows.types';
 
 import { mockInstance } from '../../shared/mocking';
 import * as utils from '../shared/utils/';
@@ -16,13 +21,8 @@ import { randomCredentialPayload } from '../shared/random';
 import { affixRoleToSaveCredential, shareCredentialWithUsers } from '../shared/db/credentials';
 import { createUser, createUserShell } from '../shared/db/users';
 import { createWorkflow, getWorkflowSharing, shareWorkflowWithUsers } from '../shared/db/workflows';
-import { License } from '@/License';
-import { UserManagementMailer } from '@/UserManagement/email';
-import config from '@/config';
-import type { WorkflowWithSharingsMetaDataAndCredentials } from '@/workflows/workflows.types';
-import type { Project } from '@/databases/entities/Project';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { createTag } from '../shared/db/tags';
+import type { SuperAgentTest } from '../shared/types';
 
 let owner: User;
 let ownerPersonalProject: Project;

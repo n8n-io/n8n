@@ -1,5 +1,5 @@
-import Container from 'typedi';
-import type { SuperAgentTest } from 'supertest';
+import { Container } from 'typedi';
+
 import type { Variables } from '@db/entities/Variables';
 import { VariablesRepository } from '@db/repositories/variables.repository';
 import { generateNanoId } from '@db/utils/generators';
@@ -8,6 +8,7 @@ import { VariablesService } from '@/environments/variables/variables.service.ee'
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
 import { createOwner, createUser } from './shared/db/users';
+import type { SuperAgentTest } from './shared/types';
 
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
@@ -305,7 +306,7 @@ describe('PATCH /variables/:id', () => {
 	});
 
 	test('should not modify existing variable if one with the same key exists', async () => {
-		const [var1, var2] = await Promise.all([
+		const [var1] = await Promise.all([
 			createVariable('test1', 'value1'),
 			createVariable(toModify.key, toModify.value),
 		]);
@@ -326,7 +327,7 @@ describe('PATCH /variables/:id', () => {
 // ----------------------------------------
 describe('DELETE /variables/:id', () => {
 	test('should delete a single variable for an owner', async () => {
-		const [var1, var2, var3] = await Promise.all([
+		const [var1] = await Promise.all([
 			createVariable('test1', 'value1'),
 			createVariable('test2', 'value2'),
 			createVariable('test3', 'value3'),
@@ -343,7 +344,7 @@ describe('DELETE /variables/:id', () => {
 	});
 
 	test('should not delete a single variable for a member', async () => {
-		const [var1, var2, var3] = await Promise.all([
+		const [var1] = await Promise.all([
 			createVariable('test1', 'value1'),
 			createVariable('test2', 'value2'),
 			createVariable('test3', 'value3'),

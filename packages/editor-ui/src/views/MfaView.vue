@@ -148,7 +148,11 @@ export default defineComponent({
 			this.verifyingMfaToken = true;
 			this.hasAnyChanges = true;
 
-			this.onSubmit({ token: value, recoveryCode: value })
+			const dataToSubmit = isSubmittingMfaToken
+				? { token: value, recoveryCode: '' }
+				: { token: '', recoveryCode: value };
+
+			this.onSubmit(dataToSubmit)
 				.catch(() => {})
 				.finally(() => (this.verifyingMfaToken = false));
 		},

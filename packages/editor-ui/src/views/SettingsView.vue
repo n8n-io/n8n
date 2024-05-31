@@ -15,7 +15,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import type { Route } from 'vue-router';
+import type { RouteLocationPathRaw } from 'vue-router';
 
 import { VIEWS } from '@/constants';
 import SettingsSidebar from '@/components/SettingsSidebar.vue';
@@ -32,7 +32,7 @@ const SettingsView = defineComponent({
 	},
 	data() {
 		return {
-			previousRoute: null as Route | null,
+			previousRoute: null as RouteLocationPathRaw | null,
 		};
 	},
 	methods: {

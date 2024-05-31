@@ -252,7 +252,7 @@ export interface IWorkflowData {
 export interface IWorkflowDataUpdate {
 	id?: string;
 	name?: string;
-	nodes?: INode[];
+	nodes?: Array<INode | IWorkflowTemplateNode>;
 	connections?: IConnections;
 	settings?: IWorkflowSettings;
 	active?: boolean;
@@ -368,6 +368,7 @@ export interface ICredentialsResponse extends ICredentialsEncrypted {
 	homeProject?: ProjectSharingData;
 	currentUserHasAccess?: boolean;
 	scopes?: Scope[];
+	ownedBy?: Pick<IUserResponse, 'id' | 'firstName' | 'lastName' | 'email'>;
 }
 
 export interface ICredentialsBase {
@@ -435,8 +436,8 @@ export interface IExecutionsCurrentSummaryExtended {
 	id: string;
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
-	retryOf?: string;
-	retrySuccessId?: string;
+	retryOf?: string | null;
+	retrySuccessId?: string | null;
 	startedAt: Date;
 	stoppedAt?: Date;
 	workflowId: string;
@@ -747,7 +748,6 @@ export interface CurrentUserResponse extends IUserResponse {
 export interface IUser extends IUserResponse {
 	isDefaultUser: boolean;
 	isPendingUser: boolean;
-	hasRecoveryCodesLeft: boolean;
 	inviteAcceptUrl?: string;
 	fullName?: string;
 	createdAt?: string;

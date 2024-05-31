@@ -212,7 +212,7 @@ export const useUIStore = defineStore(STORES.UI, {
 			const settingsStore = useSettingsStore();
 			const deploymentType = settingsStore.deploymentType;
 
-			let contextKey = '';
+			let contextKey: '' | '.cloud' | '.desktop' = '';
 			if (deploymentType === 'cloud') {
 				contextKey = '.cloud';
 			} else if (deploymentType === 'desktop_mac' || deploymentType === 'desktop_win') {
@@ -266,7 +266,7 @@ export const useUIStore = defineStore(STORES.UI, {
 						},
 					},
 				},
-			};
+			} as const;
 		},
 		getLastSelectedNode(): INodeUi | null {
 			const workflowsStore = useWorkflowsStore();
