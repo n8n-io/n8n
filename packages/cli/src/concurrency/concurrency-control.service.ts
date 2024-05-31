@@ -19,7 +19,7 @@ export class ConcurrencyControlService {
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
 	) {
-		if (this.productionCap === -1) {
+		if (this.productionCap === -1 || config.getEnv('executions.mode') === 'queue') {
 			this.isEnabled = false;
 			this.log('Service disabled');
 			return;

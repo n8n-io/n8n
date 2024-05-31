@@ -12,7 +12,9 @@ describe('ConcurrencyControlService', () => {
 	const executionRepository = mock<ExecutionRepository>();
 
 	afterEach(() => {
-		config.load(config.default);
+		config.set('executions.concurrency.productionCap', -1);
+		config.set('executions.mode', 'integrated');
+
 		jest.clearAllMocks();
 	});
 
@@ -22,6 +24,25 @@ describe('ConcurrencyControlService', () => {
 			 * Arrange
 			 */
 			config.set('executions.concurrency.productionCap', 0);
+
+			try {
+				/**
+				 * Act
+				 */
+				new ConcurrencyControlService(logger, executionRepository);
+			} catch (error) {
+				/**
+				 * Assert
+				 */
+				expect(error).toBeInstanceOf(UnsupportedConcurrencyCapError);
+			}
+		});
+
+		it('should throw if production cap is lower than -1', () => {
+			/**
+			 * Arrange
+			 */
+			config.set('executions.concurrency.productionCap', -2);
 
 			try {
 				/**
@@ -59,6 +80,24 @@ describe('ConcurrencyControlService', () => {
 			 * Arrange
 			 */
 			config.set('executions.concurrency.productionCap', -1);
+
+			/**
+			 * Act
+			 */
+			const service = new ConcurrencyControlService(logger, executionRepository);
+
+			/**
+			 * Assert
+			 */
+			expect(service.isEnabled).toBe(false);
+		});
+
+		it('should be disabled on queue mode', () => {
+			/**
+			 * Arrange
+			 */
+			config.set('executions.mode', 'queue');
+			config.set('executions.concurrency.productionCap', 2);
 
 			/**
 			 * Act
