@@ -1,11 +1,8 @@
 <script lang="ts" setup>
-import type { ComputedRef } from 'vue';
 import { computed, ref } from 'vue';
 import { uid } from '../../utils';
 import { ElColorPicker } from 'element-plus';
 import N8nInput from '../N8nInput';
-import type { ElementPlusSizePropType, InputSize } from '@/types';
-import { isInputSize, isElementPlusSize } from '@/types';
 
 export type ColorPickerProps = {
 	disabled?: boolean;
@@ -33,14 +30,6 @@ const props = withDefaults(defineProps<ColorPickerProps>(), {
 });
 
 const color = ref(props.modelValue);
-const inputSize: ComputedRef<InputSize> = computed(() => {
-	if (isInputSize(props.size)) {
-		return props.size;
-	}
-
-	return undefined;
-});
-
 const colorPickerProps = computed(() => {
 	const { showInput, modelValue, size, ...rest } = props;
 	return rest;
@@ -51,14 +40,6 @@ const emit = defineEmits<{
 	(event: 'change', value: string): void;
 	(event: 'active-change', value: string): void;
 }>();
-
-const resolvedSize: ComputedRef<ElementPlusSizePropType> = computed(() => {
-	if (isElementPlusSize(props.size)) {
-		return props.size;
-	}
-
-	return undefined;
-});
 
 const onChange = (value: string) => {
 	emit('change', value);
@@ -82,7 +63,7 @@ const onColorSelect = (value: string) => {
 		<ElColorPicker
 			v-bind="colorPickerProps"
 			:model-value="modelValue"
-			:size="resolvedSize"
+			:size="props.size"
 			@change="onChange"
 			@active-change="onActiveChange"
 			@update:model-value="onColorSelect"
@@ -91,7 +72,7 @@ const onColorSelect = (value: string) => {
 			v-if="showInput"
 			:class="$style.input"
 			:disabled="props.disabled"
-			:size="inputSize"
+			:size="props.size"
 			:model-value="color"
 			:name="name"
 			type="text"

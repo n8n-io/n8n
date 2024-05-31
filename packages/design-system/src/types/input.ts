@@ -3,10 +3,3 @@ const INPUT_SIZES = ['mini', 'small', 'medium', 'large', 'xlarge'] as const;
 
 export type InputType = (typeof INPUT_TYPES)[number];
 export type InputSize = (typeof INPUT_SIZES)[number] | undefined;
-
-export function isInputSize(size: unknown): size is InputSize {
-	return (
-		size === undefined ||
-		(typeof size === 'string' && ['small', 'medium', 'mini', 'large', 'xlarge'].includes(size))
-	);
-}
