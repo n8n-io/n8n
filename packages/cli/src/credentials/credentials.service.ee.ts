@@ -103,11 +103,17 @@ export class EnterpriseCredentialsService {
 			user,
 			['credential:move'],
 		);
-		NotFoundError.isDefinedAndNotNull(credential, '...');
+		NotFoundError.isDefinedAndNotNull(
+			credential,
+			`Could not find the credential with the id "${credentialId}". Make sure you have the permission to move it.`,
+		);
 
 		// 2. get owner-sharing
 		const ownerSharing = credential.shared.find((s) => s.role === 'credential:owner');
-		NotFoundError.isDefinedAndNotNull(ownerSharing, '...');
+		NotFoundError.isDefinedAndNotNull(
+			ownerSharing,
+			`Could not find owner for credential "${credential.id}"`,
+		);
 
 		// 3. get source project
 		const sourceProject = ownerSharing.project;
@@ -118,17 +124,24 @@ export class EnterpriseCredentialsService {
 			destinationProjectId,
 			['credential:create'],
 		);
-		NotFoundError.isDefinedAndNotNull(destinationProject, '...');
+		NotFoundError.isDefinedAndNotNull(
+			destinationProject,
+			`Could not find project with the id "${destinationProjectId}". Make sure you have the permission to create credentials in it.`,
+		);
 
 		// 5. checks
 		if (sourceProject.id === destinationProject.id) {
-			throw new TransferCredentialError('...');
+			throw new TransferCredentialError(
+				"You can't transfer a credential into the project that's already owning it.",
+			);
 		}
 		if (sourceProject.type !== 'team' && sourceProject.type !== 'personal') {
-			throw new TransferCredentialError('...');
+			throw new TransferCredentialError(
+				'You can only transfer credentials out of personal or team projects.',
+			);
 		}
 		if (destinationProject.type !== 'team') {
-			throw new TransferCredentialError('...');
+			throw new TransferCredentialError('You can only transfer credentials into team projects.');
 		}
 
 		await this.sharedCredentialsRepository.manager.transaction(async (trx) => {
