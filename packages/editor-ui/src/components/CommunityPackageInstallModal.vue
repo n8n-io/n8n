@@ -16,7 +16,7 @@
 					</n8n-text>
 					{{ ' ' }}
 					<n8n-link :to="COMMUNITY_NODES_INSTALLATION_DOCS_URL" @click="onMoreInfoTopClick">
-						{{ $locale.baseText('_reusableDynamicText.moreInfo') }}
+						{{ $locale.baseText('generic.moreInfo') }}
 					</n8n-link>
 				</div>
 				<n8n-button
@@ -67,7 +67,7 @@
 						{{ $locale.baseText('settings.communityNodes.installModal.checkbox.label') }} </n8n-text
 					><br />
 					<n8n-link :to="COMMUNITY_NODES_RISKS_DOCS_URL" @click="onLearnMoreLinkClick">{{
-						$locale.baseText('_reusableDynamicText.moreInfo')
+						$locale.baseText('generic.moreInfo')
 					}}</n8n-link>
 				</el-checkbox>
 			</div>
