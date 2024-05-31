@@ -91,7 +91,7 @@ describe('Cloud', { disableAutoLogin: true }, () => {
 		});
 	});
 
-	describe('Public API', () => {
+	describe.only('Public API', () => {
 		it('Should show upgrade CTA for Public API if user is trialing', () => {
 			cy.intercept('GET', '/rest/admin/cloud-plan', {
 				body: planData,
@@ -112,6 +112,7 @@ describe('Cloud', { disableAutoLogin: true }, () => {
 			cy.signin({ email: INSTANCE_OWNER.email, password: INSTANCE_OWNER.password });
 
 			visitPublicApiPage();
+			cy.wait(['@loadSettings', '@getPlanData']);
 
 			getPublicApiUpgradeCTA().should('be.visible');
 		});
