@@ -67,7 +67,7 @@ export const N8nAddInputEndpointHandler: EndpointHandler<
 		anchorPoint: AnchorPlacement,
 	): ComputedN8nAddInputEndpoint => {
 		if (!(ep instanceof N8nAddInputEndpoint)) {
-			throw Error('Unexpected type');
+			throw Error('Unexpected Endpoint type');
 		}
 		const x = anchorPoint.curX - ep.params.width / 2;
 		const y = anchorPoint.curY - ep.params.width / 2;
