@@ -125,6 +125,7 @@ import { useContextMenu } from '@/composables/useContextMenu';
 import { useDeviceSupport } from 'n8n-design-system';
 import { GRID_SIZE } from '@/utils/nodeViewUtils';
 import { useToast } from '@/composables/useToast';
+import { assert } from '@/utils/assert';
 
 export default defineComponent({
 	name: 'Sticky',
@@ -246,7 +247,7 @@ export default defineComponent({
 			this.setForceActions(false);
 		},
 		async deleteNode() {
-			assert(this.data?.name);
+			assert(this.data);
 			// Wait a tick else vue causes problems because the data is gone
 			await this.$nextTick();
 			this.$emit('removeNode', this.data.name);
