@@ -402,6 +402,7 @@ import { isJSPlumbEndpointElement, isJSPlumbConnection } from '@/utils/typeGuard
 import { usePostHog } from '@/stores/posthog.store';
 import { ProjectTypes } from '@/features/projects/projects.utils';
 import { IWorkflowTemplateNodeCredentials } from '@/Interface';
+import { getEndpointScope } from '@/utils/nodeViewUtils';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -3580,7 +3581,7 @@ export default defineComponent({
 						sourceId: endpoint.__meta.nodeId,
 						index: endpoint.__meta.index,
 						eventSource: NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
-						outputType: endpoint.scope,
+						outputType: getEndpointScope(endpoint.scope),
 						endpointUuid: endpoint.uuid,
 						stepName: endpoint.__meta.nodeName,
 					};
@@ -3595,7 +3596,7 @@ export default defineComponent({
 					sourceId: endpoint.__meta.nodeId,
 					index: endpoint.__meta.index,
 					eventSource: NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
-					outputType: endpoint.scope,
+					outputType: getEndpointScope(endpoint.scope),
 					endpointUuid: endpoint.uuid,
 					stepName: endpoint.__meta.nodeName,
 				});
@@ -3608,7 +3609,7 @@ export default defineComponent({
 					index: endpoint.__meta.index,
 					eventSource: NODE_CREATOR_OPEN_SOURCES.ADD_INPUT_ENDPOINT,
 					nodeCreatorView: AI_NODE_CREATOR_VIEW,
-					outputType: endpoint.scope,
+					outputType: getEndpointScope(endpoint.scope),
 					endpointUuid: endpoint.uuid,
 				});
 			}
@@ -4487,7 +4488,7 @@ export default defineComponent({
 						if (outwardConnections) {
 							outwardConnections.forEach((targetData) => {
 								batchedConnectionData.push([
-									{ node: sourceNode, type, index: sourceIndex },
+									{ node: sourceNode, type: getEndpointScope(type) ?? NodeConnectionType.Main, index: sourceIndex },
 									{ node: targetData.node, type: targetData.type, index: targetData.index },
 								]);
 							});
