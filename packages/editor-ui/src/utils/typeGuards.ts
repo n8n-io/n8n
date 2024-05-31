@@ -65,5 +65,5 @@ export function isValidNodeConnectionType(
 export function isTriggerPanelObject(
 	triggerPanel: INodeTypeDescription['triggerPanel'],
 ): triggerPanel is TriggerPanelDefinition {
-	return typeof triggerPanel === 'object' && triggerPanel !== null;
+	return triggerPanel !== undefined && typeof triggerPanel === 'object' && triggerPanel !== null;
 }

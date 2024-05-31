@@ -118,7 +118,7 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 } from '@/constants';
 import type { INodeUi } from '@/Interface';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription, TriggerPanelDefinition } from 'n8n-workflow';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
 import CopyInput from '@/components/CopyInput.vue';
@@ -176,14 +176,14 @@ export default defineComponent({
 			return null;
 		},
 		triggerPanel() {
-			return this.nodeType?.triggerPanel;
+			const panel = this.nodeType?.triggerPanel;
+			if (isTriggerPanelObject(panel)) {
+				return panel;
+			}
+			return undefined;
 		},
 		hideContent(): boolean {
-			if (!isTriggerPanelObject(this.triggerPanel)) {
-				return false;
-			}
-
-			const hideContent = this.triggerPanel.hideContent;
+			const hideContent = this.triggerPanel?.hideContent;
 			if (typeof hideContent === 'boolean') {
 				return hideContent;
 			}
@@ -298,7 +298,7 @@ export default defineComponent({
 				return this.$locale.baseText('ndv.trigger.pollingNode.fetchingEvent');
 			}
 
-			if (isTriggerPanelObject(this.triggerPanel) && this.triggerPanel.header) {
+			if (this.triggerPanel?.header) {
 				return this.triggerPanel.header;
 			}
 
@@ -321,7 +321,7 @@ export default defineComponent({
 			return '';
 		},
 		executionsHelp(): string {
-			if (isTriggerPanelObject(this.triggerPanel) && this.triggerPanel.executionsHelp) {
+			if (this.triggerPanel?.executionsHelp) {
 				if (typeof this.triggerPanel.executionsHelp === 'string') {
 					return this.triggerPanel.executionsHelp;
 				}
@@ -360,7 +360,7 @@ export default defineComponent({
 			return '';
 		},
 		activationHint(): string {
-			if (this.isActivelyPolling || !isTriggerPanelObject(this.triggerPanel)) {
+			if (this.isActivelyPolling || !this.triggerPanel) {
 				return '';
 			}
 
