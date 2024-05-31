@@ -8,6 +8,7 @@ declare module '@jsplumb/core' {
 	}
 	interface AbstractConnector {
 		canvas: HTMLElement;
+		overrideTargetEndpoint: Endpoint;
 	}
 	interface Overlay {
 		canvas: HTMLElement;

@@ -1957,7 +1957,7 @@ export type NewConnectionInfo = {
 };
 
 export type AIAssistantConnectionInfo = NewConnectionInfo & {
-	stepName: string;
+	stepName?: string;
 };
 
 export type EnterpriseEditionFeatureKey =
