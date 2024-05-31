@@ -351,13 +351,11 @@ export async function getContacts(this: ILoadOptionsFunctions): Promise<INodePro
 }
 
 export async function getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const { companyId } =
+	const { locationId } =
 		((await this.getCredentials('highLevelOAuth2Api'))?.oauthTokenData as IDataObject) ?? {};
-	const responseData = await highLevelApiRequest.call(
-		this,
-		'GET',
-		`/users/search?companyId=${companyId}`,
-	);
+	const responseData = await highLevelApiRequest.call(this, 'GET', '/users/', undefined, {
+		locationId,
+	});
 
 	const users = responseData.users as [{ id: string; name: string; email: string }];
 	const options: INodePropertyOptions[] = users.map((user) => {
