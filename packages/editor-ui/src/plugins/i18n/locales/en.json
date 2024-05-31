@@ -727,7 +727,7 @@
 	"executionsList.view": "View",
 	"executionsList.stop": "Stop",
 	"executionsList.statusTooltipText.waitingForWebhook": "The workflow is waiting indefinitely for an incoming webhook call.",
-	"executionsList.statusTooltipText.waitingForConcurrencyCapacity": "This execution is queued and will start once others have finished, because this instance limits max concurrent executions.",
+	"executionsList.statusTooltipText.waitingForConcurrencyCapacity": "This execution will start once concurrency capacity is available. This instance limits concurrent production executions.",
 	"executionsList.debug.button.copyToEditor": "Copy to editor",
 	"executionsList.debug.button.debugInEditor": "Debug in editor",
 	"executionsList.debug.paywall.content": "Debug in Editor allows you to debug a previous execution with the actual data pinned, right in your editor.",
