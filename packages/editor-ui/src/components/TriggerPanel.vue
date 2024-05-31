@@ -118,7 +118,7 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 } from '@/constants';
 import type { INodeUi } from '@/Interface';
-import type { INodeTypeDescription, TriggerPanelDefinition } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
 import CopyInput from '@/components/CopyInput.vue';
