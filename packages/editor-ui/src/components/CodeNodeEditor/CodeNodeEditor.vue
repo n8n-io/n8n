@@ -134,7 +134,7 @@ export default defineComponent({
 		};
 	},
 	watch: {
-		mode(newMode, previousMode: CodeExecutionMode) {
+		mode(_newMode, previousMode: CodeExecutionMode) {
 			this.reloadLinter();
 
 			if (
@@ -143,7 +143,7 @@ export default defineComponent({
 				this.refreshPlaceholder();
 			}
 		},
-		language(newLanguage, previousLanguage: CodeNodeEditorLanguage) {
+		language(_newLanguage, previousLanguage: CodeNodeEditorLanguage) {
 			if (
 				this.getCurrentEditorContent().trim() === CODE_PLACEHOLDERS[previousLanguage]?.[this.mode]
 			) {
