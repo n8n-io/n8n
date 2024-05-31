@@ -1660,13 +1660,9 @@ export declare namespace DynamicNodeParameters {
 }
 
 export interface EnvironmentVariable {
-	id: number;
+	id: string;
 	key: string;
 	value: string;
-}
-
-export interface TemporaryEnvironmentVariable extends Omit<EnvironmentVariable, 'id'> {
-	id: string;
 }
 
 export type ExecutionFilterMetadata = {
