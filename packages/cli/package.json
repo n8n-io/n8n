@@ -76,7 +76,7 @@
     "@types/replacestream": "^4.0.1",
     "@types/shelljs": "^0.8.11",
     "@types/sshpk": "^1.17.1",
-    "@types/superagent": "^8.1.4",
+    "@types/superagent": "^8.1.7",
     "@types/swagger-ui-express": "^4.1.6",
     "@types/syslog-client": "^1.1.2",
     "@types/uuid": "^8.3.2",
