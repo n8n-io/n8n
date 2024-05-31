@@ -66,7 +66,7 @@ export class Queue {
 					: getRedisStandardClient(Redis, clientConfig, (type + '(bull)') as RedisClientType),
 		});
 
-		this.jobQueue.on('global:progress', (jobId, progress: WebhookResponse) => {
+		this.jobQueue.on('global:progress', (_jobId, progress: WebhookResponse) => {
 			this.activeExecutions.resolveResponsePromise(
 				progress.executionId,
 				this.decodeWebhookResponse(progress.response),
