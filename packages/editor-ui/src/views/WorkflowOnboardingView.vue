@@ -6,7 +6,6 @@ import { useTemplatesStore } from '@/stores/templates.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import type { INode } from 'n8n-workflow';
 
 const loadingService = useLoadingService();
 const templateStore = useTemplatesStore();
@@ -30,7 +29,7 @@ const openWorkflowTemplate = async (templateId: string) => {
 		const workflow = await workflowsStore.createNewWorkflow({
 			name,
 			connections: template.workflow.connections,
-			nodes: template.workflow.nodes as INode[],
+			nodes: template.workflow.nodes,
 			pinData: template.workflow.pinData,
 			settings: template.workflow.settings,
 			meta: {
