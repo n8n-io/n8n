@@ -269,8 +269,8 @@ export class N8nConnector extends AbstractConnector {
 	}
 
 	writeFlowchartSegments(paintInfo: N8nConnectorPaintGeometry) {
-		let current: FlowchartSegment = null;
-		let next: FlowchartSegment = null;
+		let current: FlowchartSegment | null = null;
+		let next: FlowchartSegment | null = null;
 		let currentDirection: [number, number];
 		let nextDirection: [number, number];
 
@@ -414,8 +414,8 @@ export class N8nConnector extends AbstractConnector {
 			const index = w > h ? 'curX' : 'curY';
 			const indexNum = w > h ? 0 : 1;
 			const oIndex = [1, 0][indexNum];
-			so = [];
-			to = [];
+			so = [0, 0];
+			to = [0, 0];
 			so[indexNum] = params.sourcePos[index] > targetPos[index] ? -1 : 1;
 			to[indexNum] = params.sourcePos[index] > targetPos[index] ? 1 : -1;
 			so[oIndex] = 0;
@@ -498,6 +498,7 @@ export class N8nConnector extends AbstractConnector {
 		Object.keys(paintInfo).forEach((key) => {
 			if (key === undefined) return;
 			// override so that bounding box is calculated correctly when target override is set
+			// todo
 			originalPaintInfo[key as keyof PaintGeometry] = paintInfo[key as keyof PaintGeometry];
 		});
 
