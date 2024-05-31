@@ -21,10 +21,13 @@
 		<template v-if="!notFoundError" #content>
 			<div :class="$style.wrapper">
 				<div :class="$style.mainContent">
-					<div v-if="loading || (collection && collection.description)" :class="$style.markdown">
+					<div
+						v-if="loading || (collection && 'description' in collection)"
+						:class="$style.markdown"
+					>
 						<n8n-markdown
-							:content="collection && collection.description"
-							:images="collection && collection.image"
+							:content="collection && 'description' in collection && collection.description"
+							:images="collection && 'image' in collection && collection.image"
 							:loading="loading"
 						/>
 					</div>
@@ -32,7 +35,7 @@
 						:infinite-scroll-enabled="false"
 						:loading="loading"
 						:use-workflow-button="true"
-						:workflows="loading ? [] : collectionWorkflows"
+						:workflows="collectionWorkflows"
 						@use-workflow="onUseWorkflow"
 						@open-template="onOpenTemplate"
 					/>
@@ -61,7 +64,6 @@ import type {
 	ITemplatesCollection,
 	ITemplatesCollectionFull,
 	ITemplatesWorkflow,
-	ITemplatesWorkflowFull,
 } from '@/Interface';
 
 import { setPageTitle } from '@/utils/htmlUtils';
@@ -88,7 +90,7 @@ export default defineComponent({
 	},
 	computed: {
 		...mapStores(useTemplatesStore, usePostHog),
-		collection(): ITemplatesCollectionFull | null {
+		collection(): ITemplatesCollectionFull | ITemplatesCollection | null {
 			return this.templatesStore.getCollectionById(this.collectionId);
 		},
 		collectionId(): string {
@@ -96,13 +98,13 @@ export default defineComponent({
 				? this.$route.params.id[0]
 				: this.$route.params.id;
 		},
-		collectionWorkflows(): Array<ITemplatesWorkflow | ITemplatesWorkflowFull | null> | null {
-			if (!this.collection) {
-				return null;
+		collectionWorkflows(): ITemplatesWorkflow[] {
+			if (!this.collection || this.loading) {
+				return [];
 			}
-			return this.collection.workflows.map(({ id }) => {
-				return this.templatesStore.getTemplateById(id.toString());
-			});
+			return this.collection.workflows
+				.map(({ id }) => this.templatesStore.getTemplateById(id.toString()))
+				.filter((workflow): workflow is ITemplatesWorkflow => !!workflow);
 		},
 	},
 	data() {
@@ -123,7 +125,7 @@ export default defineComponent({
 	async mounted() {
 		this.scrollToTop();
 
-		if (this.collection && this.collection.full) {
+		if (this.collection && 'full' in this.collection && this.collection.full) {
 			this.loading = false;
 			return;
 		}
