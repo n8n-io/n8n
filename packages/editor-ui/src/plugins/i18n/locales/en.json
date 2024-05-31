@@ -1198,8 +1198,6 @@
 	"nodeView.addOrEnableTriggerNode": "<a data-action='showNodeCreator'>Add</a> or enable a Trigger node to execute the workflow",
 	"nodeView.addSticky": "Click to add sticky note",
 	"nodeView.addStickyHint": "Add sticky note",
-	"nodeView.deleteSticky.error.title": "Error deleting sticky note",
-	"nodeView.deleteSticky.error.message": "Node name not defined",
 	"nodeView.cantExecuteNoTrigger": "Cannot execute workflow",
 	"nodeView.canvasAddButton.addATriggerNodeBeforeExecuting": "Add a Trigger Node before executing the workflow",
 	"nodeView.canvasAddButton.addFirstStep": "Add first step…",

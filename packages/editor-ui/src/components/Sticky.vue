@@ -246,14 +246,7 @@ export default defineComponent({
 			this.setForceActions(false);
 		},
 		async deleteNode() {
-			if (!this.data?.name) {
-				this.toast.showMessage({
-					title: this.$locale.baseText('nodeView.deleteSticky.error.title'),
-					message: this.$locale.baseText('nodeView.deleteSticky.error.message'),
-					type: 'error',
-				});
-				return;
-			}
+			assert(this.data?.name);
 			// Wait a tick else vue causes problems because the data is gone
 			await this.$nextTick();
 			this.$emit('removeNode', this.data.name);
