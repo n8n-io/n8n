@@ -162,7 +162,7 @@ export default defineComponent({
 			return this.credentialsStore.getCredentialOwnerNameById(`${this.credentialId}`);
 		},
 		isCredentialSharedWithCurrentUser(): boolean {
-			return (this.credentialData.sharedWithProjects || []).some((sharee: IUser) => {
+			return (this.credentialData.sharedWithProjects ?? []).some((sharee: IUser) => {
 				return sharee.id === this.usersStore.currentUser?.id;
 			});
 		},
