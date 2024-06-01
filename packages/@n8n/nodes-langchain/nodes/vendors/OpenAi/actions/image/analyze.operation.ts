@@ -111,6 +111,13 @@ const properties: INodeProperties[] = [
 			},
 		],
 	},
+	{
+		displayName: 'GPT Model',
+		name: 'model',
+		type: 'string',
+		default: 'gpt-4-vision-preview',
+		description: 'Choose the model you want to use',
+	},
 ];
 
 const displayOptions = {
@@ -123,7 +130,7 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	const model = 'gpt-4-vision-preview';
+	const model = this.getNodeParameter('model', i, '') as string; 
 	const text = this.getNodeParameter('text', i, '') as string;
 	const inputType = this.getNodeParameter('inputType', i) as string;
 	const options = this.getNodeParameter('options', i, {});
