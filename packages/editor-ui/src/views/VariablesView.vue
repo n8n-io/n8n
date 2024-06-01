@@ -44,6 +44,11 @@ const permissions = getVariablesPermissions(usersStore.currentUser);
 const isFeatureEnabled = computed(() =>
 	settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Variables),
 );
+
+const variablesToResources = computed((): IResource[] =>
+	allVariables.value.map((v) => ({ id: v.id, name: v.key, value: v.value })),
+);
+
 const canCreateVariables = computed(() => isFeatureEnabled.value && permissions.create);
 
 const datatableColumns = computed<DatatableColumn[]>(() => [
@@ -113,6 +118,14 @@ function resetNewVariablesList() {
 	newlyAddedVariableIds.value = [];
 }
 
+const resourceToEnvironmentVariable = (data: IResource): EnvironmentVariable => {
+	return {
+		id: data.id,
+		key: data.name,
+		value: data.value,
+	};
+};
+
 async function initialize() {
 	if (!isFeatureEnabled.value) return;
 	await environmentsStore.fetchAllVariables();
@@ -145,18 +158,19 @@ function addTemporaryVariable() {
 	telemetry.track('User clicked add variable button');
 }
 
-async function saveVariable(data: EnvironmentVariable) {
+async function saveVariable(data: IResource) {
 	let updatedVariable: EnvironmentVariable;
+	const variable = resourceToEnvironmentVariable(data);
 
 	try {
 		if (typeof data.id === 'string' && data.id.startsWith(TEMPORARY_VARIABLE_UID_BASE)) {
-			const { id, ...rest } = data;
+			const { id, ...rest } = variable;
 			updatedVariable = await environmentsStore.createVariable(rest);
 			allVariables.value.unshift(updatedVariable);
 			allVariables.value = allVariables.value.filter((variable) => variable.id !== data.id);
 			newlyAddedVariableIds.value.unshift(updatedVariable.id);
 		} else {
-			updatedVariable = await environmentsStore.updateVariable(data);
+			updatedVariable = await environmentsStore.updateVariable(variable);
 			allVariables.value = allVariables.value.filter((variable) => variable.id !== data.id);
 			allVariables.value.push(updatedVariable);
 			toggleEditing(updatedVariable);
@@ -208,7 +222,7 @@ function goToUpgrade() {
 }
 
 function displayName(resource: IResource) {
-	return resource.id;
+	return resource.name;
 }
 
 onBeforeMount(() => {
@@ -232,7 +246,7 @@ onBeforeUnmount(() => {
 		class="variables-view"
 		resource-key="variables"
 		:disabled="!isFeatureEnabled"
-		:resources="allVariables"
+		:resources="variablesToResources"
 		:initialize="initialize"
 		:shareable="false"
 		:display-name="displayName"
