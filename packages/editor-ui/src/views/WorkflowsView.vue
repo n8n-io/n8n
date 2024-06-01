@@ -67,12 +67,11 @@
 				<div class="text-center mt-s">
 					<n8n-heading tag="h2" size="xlarge" class="mb-2xs">
 						{{
-							$locale.baseText(
-								currentUser.firstName
-									? 'workflows.empty.heading'
-									: 'workflows.empty.heading.userNotSetup',
-								{ interpolate: { name: currentUser.firstName } },
-							)
+							currentUser.firstName
+								? $locale.baseText('workflows.empty.heading', {
+										interpolate: { name: currentUser.firstName },
+									})
+								: $locale.baseText('workflows.empty.heading.userNotSetup')
 						}}
 					</n8n-heading>
 					<n8n-text size="large" color="text-base">
@@ -178,13 +177,13 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import ProjectTabs from '@/features/projects/components/ProjectTabs.vue';
+import { useTemplatesStore } from '@/stores/templates.store';
 
 type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
 
 interface Filters {
 	search: string;
-	ownedBy: string;
-	sharedWith: string;
+	homeProject: string;
 	status: string | boolean;
 	tags: string[];
 }
@@ -210,9 +209,9 @@ const WorkflowsView = defineComponent({
 			filters: {
 				search: '',
 				homeProject: '',
-				status: StatusFilter.ALL as string | boolean,
-				tags: [] as string[],
-			},
+				status: StatusFilter.ALL,
+				tags: [],
+			} as Filters,
 			sourceControlStoreUnsubscribe: () => {},
 		};
 	},
@@ -225,6 +224,7 @@ const WorkflowsView = defineComponent({
 			useSourceControlStore,
 			useTagsStore,
 			useProjectsStore,
+			useTemplatesStore,
 		),
 		readOnlyEnv(): boolean {
 			return this.sourceControlStore.preferences.branchReadOnly;
@@ -258,10 +258,18 @@ const WorkflowsView = defineComponent({
 			return this.uiStore.suggestedTemplates;
 		},
 		userRole() {
-			const userRole: string | undefined =
-				this.usersStore.currentUserCloudInfo?.role ??
-				this.usersStore.currentUser?.personalizationAnswers?.role;
-			return userRole;
+			const role = this.usersStore.currentUserCloudInfo?.role;
+
+			if (role) {
+				return role;
+			}
+
+			const answers = this.usersStore.currentUser?.personalizationAnswers;
+			if (answers && 'role' in answers) {
+				return answers.role;
+			}
+
+			return undefined;
 		},
 		isSalesUser() {
 			if (!this.userRole) {

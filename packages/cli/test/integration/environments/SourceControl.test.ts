@@ -1,16 +1,16 @@
 import { Container } from 'typedi';
-import type { SuperAgentTest } from 'supertest';
 
 import type { User } from '@db/entities/User';
 import config from '@/config';
 import { SourceControlPreferencesService } from '@/environments/sourceControl/sourceControlPreferences.service.ee';
 import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
 import type { SourceControlledFile } from '@/environments/sourceControl/types/sourceControlledFile';
+import { WaitTracker } from '@/WaitTracker';
 
 import * as utils from '../shared/utils/';
 import { createUser } from '../shared/db/users';
 import { mockInstance } from '../../shared/mocking';
-import { WaitTracker } from '@/WaitTracker';
+import type { SuperAgentTest } from '../shared/types';
 
 let authOwnerAgent: SuperAgentTest;
 let owner: User;

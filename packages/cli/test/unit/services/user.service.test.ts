@@ -30,15 +30,13 @@ describe('UserService', () => {
 			});
 
 			type MaybeSensitiveProperties = Partial<
-				Pick<User, 'password' | 'mfaSecret' | 'mfaRecoveryCodes' | 'updatedAt' | 'authIdentities'>
+				Pick<User, 'password' | 'updatedAt' | 'authIdentities'>
 			>;
 
 			// to prevent typechecking from blocking assertions
 			const publicUser: MaybeSensitiveProperties = await userService.toPublic(mockUser);
 
 			expect(publicUser.password).toBeUndefined();
-			expect(publicUser.mfaSecret).toBeUndefined();
-			expect(publicUser.mfaRecoveryCodes).toBeUndefined();
 			expect(publicUser.updatedAt).toBeUndefined();
 			expect(publicUser.authIdentities).toBeUndefined();
 		});

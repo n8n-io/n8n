@@ -66,7 +66,7 @@ export class Queue {
 					: getRedisStandardClient(Redis, clientConfig, (type + '(bull)') as RedisClientType),
 		});
 
-		this.jobQueue.on('global:progress', (jobId, progress: WebhookResponse) => {
+		this.jobQueue.on('global:progress', (_jobId, progress: WebhookResponse) => {
 			this.activeExecutions.resolveResponsePromise(
 				progress.executionId,
 				this.decodeWebhookResponse(progress.response),
@@ -109,8 +109,11 @@ export class Queue {
 		return await this.jobQueue.client.ping();
 	}
 
-	async pause(isLocal?: boolean): Promise<void> {
-		return await this.jobQueue.pause(isLocal);
+	async pause({
+		isLocal,
+		doNotWaitActive,
+	}: { isLocal?: boolean; doNotWaitActive?: boolean } = {}): Promise<void> {
+		return await this.jobQueue.pause(isLocal, doNotWaitActive);
 	}
 
 	getBullObjectInstance(): JobQueue {

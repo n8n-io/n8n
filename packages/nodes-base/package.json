@@ -875,7 +875,7 @@
     "mongodb": "6.3.0",
     "mqtt": "5.0.2",
     "mssql": "10.0.2",
-    "mysql2": "3.9.7",
+    "mysql2": "3.10.0",
     "n8n-workflow": "workspace:*",
     "nanoid": "3.3.6",
     "node-html-markdown": "1.2.0",

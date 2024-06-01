@@ -12,8 +12,6 @@ function setDefaultConfig() {
 }
 
 const PUBSUB_CHANNEL = 'testchannel';
-const LIST_CHANNEL = 'testlist';
-const STREAM_CHANNEL = 'teststream';
 
 describe('RedisService', () => {
 	beforeAll(async () => {
@@ -41,7 +39,7 @@ describe('RedisService', () => {
 		expect(sub).toBeDefined();
 
 		const mockHandler = jest.fn();
-		mockHandler.mockImplementation((channel: string, message: string) => {});
+		mockHandler.mockImplementation((_channel: string, _message: string) => {});
 		sub.addMessageHandler(PUBSUB_CHANNEL, mockHandler);
 		await sub.subscribe(PUBSUB_CHANNEL);
 		await pub.publish(PUBSUB_CHANNEL, 'test');
