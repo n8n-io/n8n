@@ -462,10 +462,16 @@ export class InvoiceNinja implements INodeType {
 							body.discount = additionalFields.discount as number;
 						}
 						if (additionalFields.paid) {
-							body.paid = additionalFields.paid as number;
+							qs.paid = additionalFields.paid as boolean;
 						}
-						if (additionalFields.emailInvoice) {
-							body.email_invoice = additionalFields.emailInvoice as boolean;
+						if (additionalFields.sendEmail) {
+							qs.send_email = additionalFields.sendEmail as boolean;
+						}
+						if(additionalFields.amountPaid) {
+							qs.amountPaid = additionalFields.amountPaid as number;
+						}
+						if(additionalFields.markSent) {
+							qs.markSent = additionalFields.markSent as boolean;
 						}
 						const invoceItemsValues = (this.getNodeParameter('invoiceItemsUi', i) as IDataObject)
 							.invoiceItemsValues as IDataObject[];
@@ -501,6 +507,7 @@ export class InvoiceNinja implements INodeType {
 							'POST',
 							'/invoices',
 							body as IDataObject,
+							qs,
 						);
 						responseData = responseData.data;
 					}

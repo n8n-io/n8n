@@ -76,6 +76,12 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
+				displayName: 'Amount Paid',
+				name: 'amountPaid',
+				type: 'number',
+				default: 0,
+			},
+			{
 				displayName: 'Auto Bill',
 				name: 'autoBill',
 				type: 'boolean',
@@ -112,19 +118,6 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Email',
-				name: 'email',
-				type: 'string',
-				placeholder: 'name@email.com',
-				default: '',
-			},
-			{
-				displayName: 'Email Invoice',
-				name: 'emailInvoice',
-				type: 'boolean',
-				default: false,
-			},
-			{
 				displayName: 'Invoice Date',
 				name: 'invoiceDate',
 				type: 'dateTime',
@@ -159,10 +152,16 @@ export const invoiceFields: INodeProperties[] = [
 				default: false,
 			},
 			{
+				displayName: 'Mark Sent',
+				name: 'markSent',
+				type: 'boolean',
+				default: false,
+			},
+			{
 				displayName: 'Paid',
 				name: 'paid',
-				type: 'number',
-				default: 0,
+				type: 'boolean',
+				default: false,
 			},
 			{
 				displayName: 'Partial',
@@ -193,6 +192,12 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'publicNotes',
 				type: 'string',
 				default: '',
+			},
+			{
+				displayName: 'Send Email',
+				name: 'sendEmail',
+				type: 'boolean',
+				default: false,
 			},
 			{
 				displayName: 'Tax Name 1',
