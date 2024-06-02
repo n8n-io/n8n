@@ -415,19 +415,19 @@ export const clientFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Created At',
-				name: 'created_at',
+				name: 'createdAt',
 				type: 'dateTime',
 				default: '',
 			},
 			{
 				displayName: 'Updated At',
-				name: 'updated_at',
+				name: 'updatedAt',
 				type: 'dateTime',
 				default: '',
 			},
 			{
 				displayName: 'Is Deleted',
-				name: 'is_deleted',
+				name: 'isDeleted',
 				type: 'boolean',
 				default: false,
 			},
