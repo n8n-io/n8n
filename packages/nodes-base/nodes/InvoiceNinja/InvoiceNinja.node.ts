@@ -477,7 +477,7 @@ export class InvoiceNinja implements INodeType {
 								qs.send_email = additionalFields.emailInvoice as boolean;
 							}
 						}
-						if(additionalFields.markSent) {
+						if (additionalFields.markSent) {
 							qs.mark_sent = additionalFields.markSent as boolean;
 						}
 						const invoceItemsValues = (this.getNodeParameter('invoiceItemsUi', i) as IDataObject)
