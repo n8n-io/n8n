@@ -553,7 +553,7 @@ export class InvoiceNinja implements INodeType {
 							qs.include = options.include as string;
 						}
 						if (options.invoiceNumber) {
-							qs.invoice_number = options.invoiceNumber as string;
+							qs.number = options.invoiceNumber as string;
 						}
 						if (options.status) {
 							qs.status = options.status as string;
