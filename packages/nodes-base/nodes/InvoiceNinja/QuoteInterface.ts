@@ -28,7 +28,7 @@ export interface IQuote {
 	invoice_status_id?: number;
 	is_amount_discount?: boolean;
 	is_quote?: boolean;
-	paid_to_date?: number;
+	paid?: number;
 	partial?: number;
 	partial_due_date?: string;
 	po_number?: string;

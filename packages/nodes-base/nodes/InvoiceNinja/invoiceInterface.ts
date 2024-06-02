@@ -17,6 +17,8 @@ export interface IInvoice {
 	custom_value2?: number;
 	discount?: number;
 	due_date?: string;
+	email_invoice?: boolean;
+	email?: string;
 	invoice_date?: string;
 	invoice_items?: IItem[];
 	line_items?: IItem[];
@@ -25,7 +27,7 @@ export interface IInvoice {
 	number?: string;
 	invoice_status_id?: number;
 	is_amount_discount?: boolean;
-	paid_to_date?: number;
+	paid?: number;
 	partial?: number;
 	partial_due_date?: string;
 	po_number?: string;

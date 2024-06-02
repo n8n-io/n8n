@@ -462,13 +462,20 @@ export class InvoiceNinja implements INodeType {
 							body.discount = additionalFields.discount as number;
 						}
 						if (additionalFields.paid) {
-							qs.paid = additionalFields.paid as boolean;
+							if (apiVersion === 'v4') {
+								body.paid = additionalFields.paid as number;
+							} else if (apiVersion === 'v5') {
+								// eslint-disable-next-line id-denylist
+								qs.amount_paid = additionalFields.paid as boolean;
+							}
 						}
-						if (additionalFields.sendEmail) {
-							qs.send_email = additionalFields.sendEmail as boolean;
-						}
-						if(additionalFields.amountPaid) {
-							qs.amountPaid = additionalFields.amountPaid as number;
+						if (additionalFields.emailInvoice) {
+							if (apiVersion === 'v4') {
+								body.email_invoice = additionalFields.emailInvoice as boolean;
+							} else if (apiVersion === 'v5') {
+								// eslint-disable-next-line id-denylist
+								qs.send_email = additionalFields.sendEmail as boolean;
+							}
 						}
 						if(additionalFields.markSent) {
 							qs.markSent = additionalFields.markSent as boolean;
