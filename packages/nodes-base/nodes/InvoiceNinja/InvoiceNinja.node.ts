@@ -466,7 +466,7 @@ export class InvoiceNinja implements INodeType {
 								body.paid = additionalFields.paid as number;
 							} else if (apiVersion === 'v5') {
 								// eslint-disable-next-line id-denylist
-								qs.amount_paid = additionalFields.paid as boolean;
+								qs.amount_paid = additionalFields.paid as number;
 							}
 						}
 						if (additionalFields.emailInvoice) {
