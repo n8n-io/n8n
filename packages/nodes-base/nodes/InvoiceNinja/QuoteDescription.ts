@@ -27,7 +27,7 @@ export const quoteOperations: INodeProperties[] = [
 			{
 				name: 'Email',
 				value: 'email',
-				description: 'Email an quote',
+				description: 'Email a quote',
 				action: 'Email a quote',
 			},
 			{
@@ -159,8 +159,8 @@ export const quoteFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Paid',
-				name: 'paid',
+				displayName: 'Paid To Date',
+				name: 'paidToDate',
 				type: 'number',
 				default: 0,
 			},
