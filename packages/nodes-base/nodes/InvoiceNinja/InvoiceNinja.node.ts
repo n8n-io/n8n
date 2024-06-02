@@ -675,7 +675,7 @@ export class InvoiceNinja implements INodeType {
 						else if (apiVersion === 'v5') {
 							body.invoices = {
 								invoice_id: invoice as string,
-								amount
+								amount,
 							}
 					}
 						if (additionalFields.paymentType) {
