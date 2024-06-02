@@ -159,8 +159,8 @@ export const quoteFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Paid To Date',
-				name: 'paidToDate',
+				displayName: 'Paid',
+				name: 'paid',
 				type: 'number',
 				default: 0,
 			},

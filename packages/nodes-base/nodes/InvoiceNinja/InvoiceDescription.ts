@@ -167,8 +167,8 @@ export const invoiceFields: INodeProperties[] = [
 			{
 				displayName: 'Paid',
 				name: 'paid',
-				type: 'boolean',
-				default: false,
+				type: 'number',
+				default: 0,
 			},
 			{
 				displayName: 'Partial',
