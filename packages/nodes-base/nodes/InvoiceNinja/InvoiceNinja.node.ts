@@ -676,8 +676,8 @@ export class InvoiceNinja implements INodeType {
 							body.invoices = {
 								invoice_id: invoice as string,
 								amount,
-							}
-					}
+							};
+						}
 						if (additionalFields.paymentType) {
 							body.payment_type_id = additionalFields.paymentType as number;
 						}

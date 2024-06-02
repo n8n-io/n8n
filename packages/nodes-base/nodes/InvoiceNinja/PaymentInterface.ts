@@ -6,7 +6,7 @@ export interface IPayment {
 	private_notes?: string;
 	client_id?: string;
 	invoices?: {
-		invoice_id?: string
-		amount?: number
-	}
+		invoice_id?: string;
+		amount?: number;
+	};
 }
