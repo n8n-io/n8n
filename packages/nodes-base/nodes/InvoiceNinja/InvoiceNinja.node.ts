@@ -35,7 +35,6 @@ import type { IExpense } from './ExpenseInterface';
 import { quoteFields, quoteOperations } from './QuoteDescription';
 
 import type { IQuote } from './QuoteInterface';
-import { DateTime } from '../DateTime/DateTime.node';
 
 export class InvoiceNinja implements INodeType {
 	description: INodeTypeDescription = {
@@ -371,13 +370,13 @@ export class InvoiceNinja implements INodeType {
 						if (options.status) {
 							qs.status = options.status as string;
 						}
-						if (options.created_at) {
-							qs.created_at = options.createdAt as DateTime;
+						if (options.createdAt) {
+							qs.created_at = options.createdAt as string;
 						}
-						if (options.updated_at) {
-							qs.updated_at = options.updatedAt as DateTime;
+						if (options.updatedAt) {
+							qs.updated_at = options.updatedAt as string;
 						}
-						if (options.is_deleted) {
+						if (options.isDeleted) {
 							qs.is_deleted = options.isDeleted as boolean;
 						}
 						if (returnAll) {
@@ -559,16 +558,16 @@ export class InvoiceNinja implements INodeType {
 						if (options.status) {
 							qs.status = options.status as string;
 						}
-						if (options.created_at) {
-							qs.created_at = options.createdAt as DateTime;
+						if (options.createdAt) {
+							qs.created_at = options.createdAt as string;
 						}
-						if (options.updated_at) {
-							qs.updated_at = options.updatedAt as DateTime;
+						if (options.updatedAt) {
+							qs.updated_at = options.updatedAt as string;
 						}
-						if (options.is_deleted) {
+						if (options.isDeleted) {
 							qs.is_deleted = options.isDeleted as boolean;
 						}
-						if (options.client_status) {
+						if (options.clientStatus) {
 							qs.client_status = options.clientStatus as string;
 						}
 						if (returnAll) {
@@ -739,13 +738,13 @@ export class InvoiceNinja implements INodeType {
 						if (options.status) {
 							qs.status = options.status as string;
 						}
-						if (options.created_at) {
-							qs.created_at = options.createdAt as DateTime;
+						if (options.createdAt) {
+							qs.created_at = options.createdAt as string;
 						}
-						if (options.updated_at) {
-							qs.updated_at = options.updatedAt as DateTime;
+						if (options.updatedAt) {
+							qs.updated_at = options.updatedAt as string;
 						}
-						if (options.is_deleted) {
+						if (options.isDeleted) {
 							qs.is_deleted = options.isDeleted as boolean;
 						}
 						if (returnAll) {
@@ -1031,13 +1030,13 @@ export class InvoiceNinja implements INodeType {
 						if (options.status) {
 							qs.status = options.status as string;
 						}
-						if (options.created_at) {
-							qs.created_at = options.createdAt as DateTime;
+						if (options.createdAt) {
+							qs.created_at = options.createdAt as string;
 						}
-						if (options.updated_at) {
-							qs.updated_at = options.updatedAt as DateTime;
+						if (options.updatedAt) {
+							qs.updated_at = options.updatedAt as string;
 						}
-						if (options.is_deleted) {
+						if (options.isDeleted) {
 							qs.is_deleted = options.isDeleted as boolean;
 						}
 						if (returnAll) {
