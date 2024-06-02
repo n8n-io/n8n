@@ -474,7 +474,7 @@ export class InvoiceNinja implements INodeType {
 								body.email_invoice = additionalFields.emailInvoice as boolean;
 							} else if (apiVersion === 'v5') {
 								// eslint-disable-next-line id-denylist
-								qs.send_email = additionalFields.sendEmail as boolean;
+								qs.send_email = additionalFields.emailInvoice as boolean;
 							}
 						}
 						if(additionalFields.markSent) {
