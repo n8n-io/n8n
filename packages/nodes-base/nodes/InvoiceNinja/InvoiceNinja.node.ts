@@ -35,6 +35,7 @@ import type { IExpense } from './ExpenseInterface';
 import { quoteFields, quoteOperations } from './QuoteDescription';
 
 import type { IQuote } from './QuoteInterface';
+import { DateTime } from '../DateTime/DateTime.node';
 
 export class InvoiceNinja implements INodeType {
 	description: INodeTypeDescription = {
@@ -367,6 +368,18 @@ export class InvoiceNinja implements INodeType {
 						if (options.include) {
 							qs.include = options.include as string;
 						}
+						if (options.status) {
+							qs.status = options.status as string;
+						}
+						if (options.created_at) {
+							qs.created_at = options.created_at as DateTime;
+						}
+						if (options.updated_at) {
+							qs.updated_at = options.updated_at as DateTime;
+						}
+						if (options.is_deleted) {
+							qs.is_deleted = options.is_deleted as boolean;
+						}
 						if (returnAll) {
 							responseData = await invoiceNinjaApiRequestAllItems.call(
 								this,
@@ -543,6 +556,21 @@ export class InvoiceNinja implements INodeType {
 						if (options.invoiceNumber) {
 							qs.invoice_number = options.invoiceNumber as string;
 						}
+						if (options.status) {
+							qs.status = options.status as string;
+						}
+						if (options.created_at) {
+							qs.created_at = options.created_at as DateTime;
+						}
+						if (options.updated_at) {
+							qs.updated_at = options.updated_at as DateTime;
+						}
+						if (options.is_deleted) {
+							qs.is_deleted = options.is_deleted as boolean;
+						}
+						if (options.client_status) {
+							qs.client_status = options.client_status as string;
+						}
 						if (returnAll) {
 							responseData = await invoiceNinjaApiRequestAllItems.call(
 								this,
@@ -707,6 +735,18 @@ export class InvoiceNinja implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						if (options.include) {
 							qs.include = options.include as string;
+						}
+						if (options.status) {
+							qs.status = options.status as string;
+						}
+						if (options.created_at) {
+							qs.created_at = options.created_at as DateTime;
+						}
+						if (options.updated_at) {
+							qs.updated_at = options.updated_at as DateTime;
+						}
+						if (options.is_deleted) {
+							qs.is_deleted = options.is_deleted as boolean;
 						}
 						if (returnAll) {
 							responseData = await invoiceNinjaApiRequestAllItems.call(
@@ -987,6 +1027,18 @@ export class InvoiceNinja implements INodeType {
 						}
 						if (options.invoiceNumber) {
 							qs.invoice_number = options.invoiceNumber as string;
+						}
+						if (options.status) {
+							qs.status = options.status as string;
+						}
+						if (options.created_at) {
+							qs.created_at = options.created_at as DateTime;
+						}
+						if (options.updated_at) {
+							qs.updated_at = options.updated_at as DateTime;
+						}
+						if (options.is_deleted) {
+							qs.is_deleted = options.is_deleted as boolean;
 						}
 						if (returnAll) {
 							responseData = await invoiceNinjaApiRequestAllItems.call(
