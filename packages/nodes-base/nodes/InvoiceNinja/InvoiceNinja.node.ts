@@ -553,7 +553,12 @@ export class InvoiceNinja implements INodeType {
 							qs.include = options.include as string;
 						}
 						if (options.invoiceNumber) {
-							qs.number = options.invoiceNumber as string;
+							if (apiVersion === 'v4') {
+								qs.invoice_number = options.invoiceNumber as string;
+							} else if (apiVersion === 'v5') {
+								// eslint-disable-next-line id-denylist
+								qs.number = options.invoiceNumber as string;
+							}
 						}
 						if (options.status) {
 							qs.status = options.status as string;
