@@ -120,6 +120,7 @@ import {
 	jsonParse,
 	ApplicationError,
 	sleep,
+	OBFUSCATED_ERROR_MESSAGE,
 } from 'n8n-workflow';
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
@@ -3480,7 +3481,12 @@ export function getExecuteFunctions(
 					itemIndex,
 				),
 			getExecuteData: () => executeData,
-			continueOnFail: () => continueOnFail(node),
+			continueOnFail: (error?: Error) => {
+				if (error && !(error instanceof ApplicationError)) {
+					error.message = OBFUSCATED_ERROR_MESSAGE;
+				}
+				return continueOnFail(node);
+			},
 			evaluateExpression: (expression: string, itemIndex: number) => {
 				return workflow.expression.resolveSimpleParameterValue(
 					`=${expression}`,
