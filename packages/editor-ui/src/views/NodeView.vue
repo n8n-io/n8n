@@ -3168,7 +3168,6 @@ export default defineComponent({
 				NodeViewUtils.moveBackInputLabelPosition(info.targetEndpoint);
 
 				if (!sourceNodeName || !targetNodeName) {
-					// TODO: Check if this works
 					console.error('Could not find source or target node name');
 					return;
 				}
@@ -3893,22 +3892,11 @@ export default defineComponent({
 					return;
 				}
 
-				const sourceNodeType = this.nodeTypesStore.getNodeType(
-					sourceNode.type,
-					sourceNode.typeVersion,
-				);
-				const sourceNodeOutput =
-					sourceNodeType?.outputs?.[connection[0].index] || NodeConnectionType.Main;
-				const sourceNodeOutputName =
-					typeof sourceNodeOutput === 'string' ? sourceNodeOutput : sourceNodeOutput.type;
-				const scope = [NodeViewUtils.getEndpointScope(sourceNodeOutputName)?.toString() ?? ''];
-
 				const sourceElement = document.getElementById(sourceNode.id);
 				const targetElement = document.getElementById(targetNode.id);
 
 				if (sourceElement && targetElement) {
 					const connections = this.instance?.getConnections({
-						scope,
 						source: sourceElement,
 						target: targetElement,
 					});
