@@ -266,7 +266,8 @@ const onCheckboxChange = async (checkbox: HTMLInputElement, position: number) =>
 	cursor: pointer;
 }
 
-input[type='checkbox'], input[type='checkbox'] + label {
+input[type='checkbox'],
+input[type='checkbox'] + label {
 	cursor: pointer;
 }
 
