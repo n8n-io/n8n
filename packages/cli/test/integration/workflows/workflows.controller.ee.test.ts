@@ -1292,7 +1292,7 @@ describe('PUT /:workflowId/transfer', () => {
 			.expect(404);
 	});
 
-	test('project members cannot transfer workflows', async () => {
+	test('project:editors cannot transfer workflows', async () => {
 		//
 		// ARRANGE
 		//
