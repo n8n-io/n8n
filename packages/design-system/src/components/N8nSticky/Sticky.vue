@@ -26,7 +26,6 @@
 				ref="markdownContainer"
 				:class="$style.wrapper"
 				@dblclick.stop="onDoubleClick"
-				@mousedown.stop
 			>
 				<N8nMarkdown
 					theme="sticky"

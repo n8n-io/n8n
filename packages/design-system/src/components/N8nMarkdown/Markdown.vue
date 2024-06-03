@@ -5,6 +5,7 @@
 			ref="editor"
 			:class="$style[theme]"
 			@click="onClick"
+			@mousedown="onMouseDown"
 			v-html="htmlContent"
 		/>
 		<div v-else :class="$style.markdown">
@@ -163,6 +164,14 @@ const onClick = (event: MouseEvent) => {
 		}
 	}
 	$emit('markdown-click', clickedLink, event);
+};
+
+const onMouseDown = (event: MouseEvent) => {
+	// Mouse down on input fields is caught by node view handlers
+	// which prevents checking them, this will prevent that
+	if (event.target instanceof HTMLInputElement) {
+		event.stopPropagation();
+	}
 };
 </script>
 
