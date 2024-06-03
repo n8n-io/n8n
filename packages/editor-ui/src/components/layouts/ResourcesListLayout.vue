@@ -163,8 +163,9 @@ import type { BaseTextKey } from '@/plugins/i18n';
 export interface IResource {
 	id: string;
 	name: string;
-	updatedAt: string;
-	createdAt: string;
+	value: string;
+	updatedAt?: string;
+	createdAt?: string;
 	homeProject?: ProjectSharingData;
 }
 
