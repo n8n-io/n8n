@@ -11,7 +11,7 @@ const renderComponent = createComponentRenderer(WorkflowPreview);
 
 vi.mock('@/stores/settings.store', () => ({
 	useSettingsStore: vi.fn().mockReturnValue({
-		concurrency: { productionCap: -1 },
+		settings: { concurrency: { productionCap: -1 } },
 	}),
 }));
 
