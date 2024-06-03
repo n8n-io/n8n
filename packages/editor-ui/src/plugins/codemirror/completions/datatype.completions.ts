@@ -35,10 +35,10 @@ import { luxonInstanceDocs } from './nativesAutocompleteDocs/luxon.instance.docs
 import { luxonStaticDocs } from './nativesAutocompleteDocs/luxon.static.docs';
 import type { AutocompleteInput, ExtensionTypeName, FnToDoc, Resolved } from './types';
 import {
-	applyBracketAccess,
 	applyBracketAccessCompletion,
 	applyCompletion,
 	getDefaultArgs,
+	getDisplayType,
 	hasNoParams,
 	hasRequiredArgs,
 	insertDefaultArgs,
@@ -181,7 +181,7 @@ export const natives = ({
 	typeName: ExtensionTypeName;
 	transformLabel?: (label: string) => string;
 }): Completion[] => {
-	const nativeDocs: NativeDoc = NativeMethods.find((ee) => ee.typeName.toLowerCase() === typeName);
+	const nativeDocs = NativeMethods.find((ee) => ee.typeName.toLowerCase() === typeName);
 
 	if (!nativeDocs) return [];
 
@@ -231,12 +231,6 @@ export const extensions = ({
 	return toOptions({ fnToDoc, isFunction: true, includeHidden, transformLabel });
 };
 
-export const getType = (value: unknown): string => {
-	if (Array.isArray(value)) return 'array';
-	if (value === null) return 'null';
-	return (typeof value).toLocaleLowerCase();
-};
-
 export const isInputData = (base: string): boolean => {
 	return (
 		/^\$input\..*\.json]/.test(base) || /^\$json/.test(base) || /^\$\(.*\)\..*\.json/.test(base)
@@ -258,7 +252,7 @@ export const isBinary = (input: AutocompleteInput<IDataObject>): boolean => {
 };
 
 export const getDetail = (base: string, value: unknown): string | undefined => {
-	const type = getType(value);
+	const type = getDisplayType(value);
 	if (!isInputData(base) || type === 'function') return undefined;
 	return type;
 };
@@ -381,17 +375,6 @@ const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
 						}),
 				detail: getDetail(base, resolvedProp),
 			};
-
-			const infoName = needsBracketAccess ? applyBracketAccess(key) : key;
-			option.info = createCompletionOption({
-				name: infoName,
-				doc: {
-					name: infoName,
-					returnType: isFunction ? 'any' : getType(resolvedProp),
-				},
-				isFunction,
-				transformLabel,
-			}).info;
 
 			return option;
 		});
@@ -821,7 +804,7 @@ export const customDataOptions = () => {
 		},
 		{
 			name: 'getAll',
-			returnType: 'object',
+			returnType: 'Object',
 			docURL: 'https://docs.n8n.io/workflows/executions/custom-executions-data/',
 			description: i18n.baseText('codeNodeEditor.completer.$execution.customData.getAll'),
 			examples: [
@@ -1046,13 +1029,13 @@ export const itemOptions = () => {
 	return [
 		{
 			name: 'json',
-			returnType: 'object',
+			returnType: 'Object',
 			docURL: 'https://docs.n8n.io/data/data-structure/',
 			description: i18n.baseText('codeNodeEditor.completer.item.json'),
 		},
 		{
 			name: 'binary',
-			returnType: 'object',
+			returnType: 'Object',
 			docURL: 'https://docs.n8n.io/data/data-structure/',
 			description: i18n.baseText('codeNodeEditor.completer.item.binary'),
 		},
@@ -1161,7 +1144,7 @@ export const secretProvidersOptions = () => {
 			name: provider,
 			doc: {
 				name: provider,
-				returnType: 'object',
+				returnType: 'Object',
 				description: i18n.baseText('codeNodeEditor.completer.$secrets.provider'),
 				docURL: i18n.baseText('settings.externalSecrets.docs'),
 			},
@@ -1296,7 +1279,7 @@ export const objectGlobalOptions = () => {
 					evaluated: "{ id: 1, name: 'Banana' }",
 				},
 			],
-			returnType: 'object',
+			returnType: 'Object',
 			docURL:
 				'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/assign',
 		},

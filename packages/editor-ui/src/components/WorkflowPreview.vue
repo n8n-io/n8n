@@ -14,7 +14,8 @@
 				[$style.openNDV]: nodeViewDetailsOpened,
 				[$style.show]: showPreview,
 			}"
-			:src="`${rootStore.baseUrl}workflows/demo`"
+			:src="iframeSrc"
+			data-test-id="workflow-preview-iframe"
 			@mouseenter="onMouseEnter"
 			@mouseleave="onMouseLeave"
 		/>
@@ -25,7 +26,7 @@
 import { onMounted, onBeforeUnmount, ref, computed, watch } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
-import type { IWorkflowDb } from '@/Interface';
+import type { IWorkflowDb, IWorkflowTemplate } from '@/Interface';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useExecutionsStore } from '@/stores/executions.store';
 
@@ -33,7 +34,7 @@ const props = withDefaults(
 	defineProps<{
 		loading?: boolean;
 		mode?: 'workflow' | 'execution';
-		workflow?: IWorkflowDb;
+		workflow?: IWorkflowDb | IWorkflowTemplate['workflow'];
 		executionId?: string;
 		executionMode?: string;
 		loaderType?: 'image' | 'spinner';
@@ -64,6 +65,10 @@ const ready = ref(false);
 const insideIframe = ref(false);
 const scrollX = ref(0);
 const scrollY = ref(0);
+
+const iframeSrc = computed(() => {
+	return `${window.BASE_PATH ?? '/'}workflows/demo`;
+});
 
 const showPreview = computed(() => {
 	return (
@@ -119,7 +124,7 @@ const loadExecution = () => {
 			iframeRef.value?.contentWindow?.postMessage?.(
 				JSON.stringify({
 					command: 'setActiveExecution',
-					execution: executionsStore.activeExecution,
+					executionId: executionsStore.activeExecution.id,
 				}),
 				'*',
 			);

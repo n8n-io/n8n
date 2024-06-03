@@ -157,15 +157,6 @@
 				/>
 			</template>
 		</ModalRoot>
-		<ModalRoot :name="SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY">
-			<template #default="{ modalName, data }">
-				<SuggestedTemplatesPreviewModal
-					data-test-id="suggested-templates-preview-modal"
-					:modal-name="modalName"
-					:data="data"
-				/>
-			</template>
-		</ModalRoot>
 
 		<ModalRoot :name="SETUP_CREDENTIALS_MODAL_KEY">
 			<template #default="{ modalName, data }">
@@ -210,7 +201,6 @@ import {
 	DEBUG_PAYWALL_MODAL_KEY,
 	MFA_SETUP_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
-	SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
 	SETUP_CREDENTIALS_MODAL_KEY,
 	GENERATE_CURL_MODAL_KEY,
 } from '@/constants';
@@ -245,7 +235,6 @@ import SourceControlPullModal from '@/components/SourceControlPullModal.ee.vue';
 import ExternalSecretsProviderModal from '@/components/ExternalSecretsProviderModal.ee.vue';
 import DebugPaywallModal from '@/components/DebugPaywallModal.vue';
 import WorkflowHistoryVersionRestoreModal from '@/components/WorkflowHistory/WorkflowHistoryVersionRestoreModal.vue';
-import SuggestedTemplatesPreviewModal from '@/components/SuggestedTemplates/SuggestedTemplatesPreviewModal.vue';
 import SetupWorkflowCredentialsModal from '@/components/SetupWorkflowCredentialsModal/SetupWorkflowCredentialsModal.vue';
 
 export default defineComponent({
@@ -281,7 +270,6 @@ export default defineComponent({
 		DebugPaywallModal,
 		MfaSetupModal,
 		WorkflowHistoryVersionRestoreModal,
-		SuggestedTemplatesPreviewModal,
 		SetupWorkflowCredentialsModal,
 	},
 	data: () => ({
@@ -314,7 +302,6 @@ export default defineComponent({
 		DEBUG_PAYWALL_MODAL_KEY,
 		MFA_SETUP_MODAL_KEY,
 		WORKFLOW_HISTORY_VERSION_RESTORE,
-		SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
 		SETUP_CREDENTIALS_MODAL_KEY,
 	}),
 });

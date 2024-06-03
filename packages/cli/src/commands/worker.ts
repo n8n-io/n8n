@@ -63,23 +63,23 @@ export class Worker extends BaseCommand {
 	async stopProcess() {
 		this.logger.info('Stopping n8n...');
 
-		// Stop accepting new jobs
-		await Worker.jobQueue.pause(true);
+		// Stop accepting new jobs, `doNotWaitActive` allows reporting progress
+		await Worker.jobQueue.pause({ isLocal: true, doNotWaitActive: true });
 
 		try {
 			await this.externalHooks?.run('n8n.stop', []);
 
-			const hardStopTime = Date.now() + this.gracefulShutdownTimeoutInS;
+			const hardStopTimeMs = Date.now() + this.gracefulShutdownTimeoutInS * 1000;
 
 			// Wait for active workflow executions to finish
 			let count = 0;
 			while (Object.keys(Worker.runningJobs).length !== 0) {
 				if (count++ % 4 === 0) {
-					const waitLeft = Math.ceil((hardStopTime - Date.now()) / 1000);
+					const waitLeft = Math.ceil((hardStopTimeMs - Date.now()) / 1000);
 					this.logger.info(
 						`Waiting for ${
 							Object.keys(Worker.runningJobs).length
-						} active executions to finish... (wait ${waitLeft} more seconds)`,
+						} active executions to finish... (max wait ${waitLeft} more seconds)`,
 					);
 				}
 
@@ -234,7 +234,7 @@ export class Worker extends BaseCommand {
 
 		if (!process.env.N8N_ENCRYPTION_KEY) {
 			throw new ApplicationError(
-				'Missing encryption key. Worker started without the required N8N_ENCRYPTION_KEY env var. More information: https://docs.n8n.io/hosting/environment-variables/configuration-methods/#encryption-key',
+				'Missing encryption key. Worker started without the required N8N_ENCRYPTION_KEY env var. More information: https://docs.n8n.io/hosting/configuration/configuration-examples/encryption-key/',
 			);
 		}
 
@@ -385,7 +385,7 @@ export class Worker extends BaseCommand {
 		app.get(
 			'/healthz',
 
-			async (req: express.Request, res: express.Response) => {
+			async (_req: express.Request, res: express.Response) => {
 				this.logger.debug('Health check started!');
 
 				const connection = Db.getConnection();
@@ -481,6 +481,16 @@ export class Worker extends BaseCommand {
 
 		if (config.getEnv('queue.health.active')) {
 			await this.setupHealthMonitor();
+		}
+
+		if (process.stdout.isTTY) {
+			process.stdin.setRawMode(true);
+			process.stdin.resume();
+			process.stdin.setEncoding('utf8');
+
+			process.stdin.on('data', (key: string) => {
+				if (key.charCodeAt(0) === 3) process.kill(process.pid, 'SIGINT'); // ctrl+c
+			});
 		}
 
 		// Make sure that the process does not close

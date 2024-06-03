@@ -1,13 +1,13 @@
 import {
 	computed,
-	type MaybeRefOrGetter,
 	onBeforeUnmount,
+	onMounted,
 	ref,
-	watchEffect,
-	type Ref,
 	toValue,
 	watch,
-	onMounted,
+	watchEffect,
+	type MaybeRefOrGetter,
+	type Ref,
 } from 'vue';
 
 import { ensureSyntaxTree } from '@codemirror/language';
@@ -19,6 +19,8 @@ import { useNDVStore } from '@/stores/ndv.store';
 
 import type { TargetItem } from '@/Interface';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
+import { closeCursorInfoBox } from '@/plugins/codemirror/tooltips/InfoBoxTooltip';
 import type { Html, Plaintext, RawSegment, Resolvable, Segment } from '@/types/expressions';
 import {
 	getExpressionErrorMessage,
@@ -28,16 +30,15 @@ import {
 import { closeCompletion, completionStatus } from '@codemirror/autocomplete';
 import {
 	Compartment,
-	EditorState,
-	type SelectionRange,
-	type Extension,
 	EditorSelection,
+	EditorState,
+	type Extension,
+	type SelectionRange,
 } from '@codemirror/state';
 import { EditorView, type ViewUpdate } from '@codemirror/view';
 import { debounce, isEqual } from 'lodash-es';
 import { useRouter } from 'vue-router';
 import { useI18n } from '../composables/useI18n';
-import { highlighter } from '../plugins/codemirror/resolvableHighlighter';
 import { useWorkflowsStore } from '../stores/workflows.store';
 import { useAutocompleteTelemetry } from './useAutocompleteTelemetry';
 
@@ -71,6 +72,7 @@ export const useExpressionEditor = ({
 	const readOnlyExtensions = ref<Compartment>(new Compartment());
 	const telemetryExtensions = ref<Compartment>(new Compartment());
 	const autocompleteStatus = ref<'pending' | 'active' | null>(null);
+	const dragging = ref(false);
 
 	const updateSegments = (): void => {
 		const state = editor.value?.state;
@@ -163,13 +165,15 @@ export const useExpressionEditor = ({
 		if (editor.value) {
 			editor.value.contentDOM.blur();
 			closeCompletion(editor.value);
+			closeCursorInfoBox(editor.value);
 		}
 	}
 
 	function blurOnClickOutside(event: MouseEvent) {
-		if (event.target && !editor.value?.dom.contains(event.target as Node)) {
+		if (event.target && !dragging.value && !editor.value?.dom.contains(event.target as Node)) {
 			blur();
 		}
+		dragging.value = false;
 	}
 
 	watch(editorRef, () => {
@@ -197,6 +201,11 @@ export const useExpressionEditor = ({
 					return null;
 				}),
 				EditorView.contentAttributes.of({ 'data-gramm': 'false' }), // disable grammarly
+				EditorView.domEventHandlers({
+					mousedown: () => {
+						dragging.value = true;
+					},
+				}),
 			],
 		});
 
@@ -320,10 +329,6 @@ export const useExpressionEditor = ({
 				: i18n.baseText('expressionModalInput.undefined');
 
 			result.error = true;
-		}
-
-		if (typeof result.resolved === 'number' && isNaN(result.resolved)) {
-			result.resolved = i18n.baseText('expressionModalInput.null');
 		}
 
 		return result;

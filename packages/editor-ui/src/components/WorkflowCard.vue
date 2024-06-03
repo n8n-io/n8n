@@ -8,7 +8,8 @@
 		<div :class="$style.cardDescription">
 			<n8n-text color="text-light" size="small">
 				<span v-show="data"
-					>{{ $locale.baseText('workflows.item.updated') }} <TimeAgo :date="data.updatedAt" /> |
+					>{{ $locale.baseText('workflows.item.updated') }}
+					<TimeAgo :date="String(data.updatedAt)" /> |
 				</span>
 				<span v-show="data" class="mr-2xs"
 					>{{ $locale.baseText('workflows.item.created') }} {{ formattedCreatedAtDate }}
@@ -52,7 +53,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
-import type { IWorkflowDb, IUser, ITag } from '@/Interface';
+import type { IWorkflowDb, IUser } from '@/Interface';
 import { DUPLICATE_MODAL_KEY, MODAL_CONFIRM, VIEWS, WORKFLOW_SHARE_MODAL_KEY } from '@/constants';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
@@ -149,11 +150,11 @@ export default defineComponent({
 			return actions;
 		},
 		formattedCreatedAtDate(): string {
-			const currentYear = new Date().getFullYear();
+			const currentYear = new Date().getFullYear().toString();
 
 			return dateformat(
 				this.data.createdAt,
-				`d mmmm${this.data.createdAt.startsWith(currentYear) ? '' : ', yyyy'}`,
+				`d mmmm${String(this.data.createdAt).startsWith(currentYear) ? '' : ', yyyy'}`,
 			);
 		},
 	},
@@ -191,7 +192,9 @@ export default defineComponent({
 					data: {
 						id: this.data.id,
 						name: this.data.name,
-						tags: (this.data.tags || []).map((tag: ITag) => tag.id),
+						tags: (this.data.tags ?? []).map((tag) =>
+							typeof tag !== 'string' && 'id' in tag ? tag.id : tag,
+						),
 					},
 				});
 			} else if (action === WORKFLOW_LIST_ITEM_ACTIONS.SHARE) {

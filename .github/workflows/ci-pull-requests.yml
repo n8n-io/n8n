@@ -13,10 +13,9 @@ jobs:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
 
       - run: corepack enable
-      - name: Use Node.js 18
-        uses: actions/setup-node@v4.0.1
+      - uses: actions/setup-node@v4.0.2
         with:
-          node-version: 18.x
+          node-version: 20.x
           cache: pnpm
 
       - name: Install dependencies
@@ -29,7 +28,7 @@ jobs:
         uses: actions/cache/save@v4.0.0
         with:
           path: ./packages/**/dist
-          key: ${{ github.sha }}-base:18-test-lint
+          key: ${{ github.sha }}-base:build
 
   unit-test:
     name: Unit tests
@@ -37,7 +36,7 @@ jobs:
     needs: install
     with:
       ref: refs/pull/${{ github.event.pull_request.number }}/merge
-      cacheKey: ${{ github.sha }}-base:18-test-lint
+      cacheKey: ${{ github.sha }}-base:build
 
   lint:
     name: Lint changes
@@ -50,10 +49,9 @@ jobs:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
 
       - run: corepack enable
-      - name: Use Node.js 18
-        uses: actions/setup-node@v4.0.1
+      - uses: actions/setup-node@v4.0.2
         with:
-          node-version: 18.x
+          node-version: 20.x
           cache: pnpm
 
       - name: Install dependencies
@@ -63,7 +61,7 @@ jobs:
         uses: actions/cache/restore@v4.0.0
         with:
           path: ./packages/**/dist
-          key: ${{ github.sha }}-base:18-test-lint
+          key: ${{ github.sha }}-base:build
 
       - name: Lint
         run: pnpm lint

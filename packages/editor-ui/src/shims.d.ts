@@ -5,6 +5,7 @@ import { ExternalHooks } from '@/types/externalHooks';
 declare module 'markdown-it-link-attributes';
 declare module 'markdown-it-emoji';
 declare module 'markdown-it-task-lists';
+declare module 'vue-agile';
 
 declare global {
 	interface ImportMeta {
@@ -21,6 +22,7 @@ declare global {
 		BASE_PATH: string;
 		REST_ENDPOINT: string;
 		n8nExternalHooks?: PartialDeep<ExternalHooks>;
+		preventNodeViewBeforeUnload?: boolean;
 	}
 
 	namespace JSX {

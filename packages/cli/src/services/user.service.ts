@@ -57,15 +57,13 @@ export class UserService {
 			withScopes?: boolean;
 		},
 	) {
-		const { password, updatedAt, apiKey, authIdentities, mfaRecoveryCodes, mfaSecret, ...rest } =
-			user;
+		const { password, updatedAt, apiKey, authIdentities, ...rest } = user;
 
 		const ldapIdentity = authIdentities?.find((i) => i.providerType === 'ldap');
 
 		let publicUser: PublicUser = {
 			...rest,
 			signInType: ldapIdentity ? 'ldap' : 'email',
-			hasRecoveryCodesLeft: !!user.mfaRecoveryCodes?.length,
 		};
 
 		if (options?.withInviteUrl && !options?.inviterId) {

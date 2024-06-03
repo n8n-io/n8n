@@ -115,8 +115,8 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
+import { defineComponent, type PropType } from 'vue';
 
 import type { ICredentialsResponse, IUser } from '@/Interface';
 
@@ -158,6 +158,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { ProjectSharingData } from '@/features/projects/projects.types';
+import { assert } from '@/utils/assert';
 
 import {
 	getNodeAuthOptions,
@@ -190,9 +191,11 @@ export default defineComponent({
 		activeId: {
 			type: [String, Number],
 			required: false,
+			default: undefined,
 		},
 		mode: {
-			type: String,
+			type: String as PropType<'new' | 'edit'>,
+			default: 'new',
 		},
 	},
 	setup() {
@@ -380,13 +383,14 @@ export default defineComponent({
 				return [];
 			}
 
-			const properties = this.credentialType.properties.filter((propertyData: INodeProperties) => {
+			const credentialType = this.credentialType;
+			const properties = credentialType.properties.filter((propertyData: INodeProperties) => {
 				if (!this.displayCredentialParameter(propertyData)) {
 					return false;
 				}
 				return (
-					!this.credentialType!.__overwrittenProperties ||
-					!this.credentialType!.__overwrittenProperties.includes(propertyData.name)
+					!credentialType.__overwrittenProperties ||
+					!credentialType.__overwrittenProperties.includes(propertyData.name)
 				);
 			});
 
@@ -407,16 +411,17 @@ export default defineComponent({
 					continue;
 				}
 
-				if (property.type === 'string' && !this.credentialData[property.name]) {
+				const credentialProperty = this.credentialData[property.name];
+
+				if (property.type === 'string' && !credentialProperty) {
 					return false;
 				}
 
 				if (property.type === 'number') {
-					const isExpression =
-						typeof this.credentialData[property.name] === 'string' &&
-						this.credentialData[property.name].startsWith('=');
+					const containsExpression =
+						typeof credentialProperty === 'string' && credentialProperty.startsWith('=');
 
-					if (typeof this.credentialData[property.name] !== 'number' && !isExpression) {
+					if (typeof credentialProperty !== 'number' && !containsExpression) {
 						return false;
 					}
 				}
@@ -463,7 +468,7 @@ export default defineComponent({
 					credentialTypeName = this.activeNodeType.credentials[0].name;
 				}
 			}
-			return credentialTypeName || '';
+			return credentialTypeName ?? '';
 		},
 		showSaveButton(): boolean {
 			return (
@@ -757,7 +762,7 @@ export default defineComponent({
 		},
 
 		async retestCredential() {
-			if (!this.isCredentialTestable) {
+			if (!this.isCredentialTestable || !this.credentialTypeName) {
 				this.authError = '';
 				this.testedSuccessfully = false;
 
@@ -768,7 +773,7 @@ export default defineComponent({
 			const details: ICredentialsDecrypted = {
 				id: this.credentialId,
 				name: this.credentialName,
-				type: this.credentialTypeName!,
+				type: this.credentialTypeName,
 				data: credentialData,
 			};
 
@@ -801,20 +806,21 @@ export default defineComponent({
 			this.isSaving = true;
 
 			// Save only the none default data
+			assert(this.credentialType);
 			const data = NodeHelpers.getNodeParameters(
-				this.credentialType!.properties,
+				this.credentialType.properties,
 				this.credentialData as INodeParameters,
 				false,
 				false,
 				null,
 			);
 
+			assert(this.credentialTypeName);
 			const credentialDetails: ICredentialsDecrypted = {
 				id: this.credentialId,
 				name: this.credentialName,
-				type: this.credentialTypeName!,
+				type: this.credentialTypeName,
 				data: data as unknown as ICredentialDataDecryptedObject,
-				nodesAccess: [],
 			};
 
 			if (
@@ -825,7 +831,7 @@ export default defineComponent({
 					.sharedWithProjects as ProjectSharingData[];
 			}
 
-			let credential;
+			let credential: ICredentialsResponse | null = null;
 
 			const isNewCredential = this.mode === 'new' && !this.credentialId;
 
@@ -954,7 +960,7 @@ export default defineComponent({
 		async updateCredential(
 			credentialDetails: ICredentialsDecrypted,
 		): Promise<ICredentialsResponse | null> {
-			let credential;
+			let credential: ICredentialsResponse | null = null;
 			try {
 				if (this.credentialPermissions.update) {
 					credential = await this.credentialsStore.updateCredential({
@@ -974,6 +980,14 @@ export default defineComponent({
 					this.isSharedWithChanged = false;
 				}
 				this.hasUnsavedChanges = false;
+
+				if (credential) {
+					await this.externalHooks.run('credential.saved', {
+						credential_type: credentialDetails.type,
+						credential_id: credential.id,
+						is_new: false,
+					});
+				}
 			} catch (error) {
 				this.showError(
 					error,
@@ -982,12 +996,6 @@ export default defineComponent({
 
 				return null;
 			}
-
-			await this.externalHooks.run('credential.saved', {
-				credential_type: credentialDetails.type,
-				credential_id: credential.id,
-				is_new: false,
-			});
 
 			// Now that the credentials changed check if any nodes use credentials
 			// which have now a different name

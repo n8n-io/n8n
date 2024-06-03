@@ -53,6 +53,7 @@
 					:execution="execution"
 					:data-test-id="`execution-details-${execution.id}`"
 					@retry-execution="onRetryExecution"
+					@mounted="onItemMounted"
 				/>
 			</TransitionGroup>
 			<div v-if="loadingMore" class="mr-m">
@@ -71,7 +72,7 @@ import WorkflowExecutionsInfoAccordion from '@/components/executions/workflow/Wo
 import ExecutionsFilter from '@/components/executions/ExecutionsFilter.vue';
 import { VIEWS } from '@/constants';
 import type { ExecutionSummary } from 'n8n-workflow';
-import type { Route } from 'vue-router';
+import type { RouteRecord } from 'vue-router';
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
@@ -80,6 +81,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { ExecutionFilterType } from '@/Interface';
 
 type WorkflowExecutionsCardRef = InstanceType<typeof WorkflowExecutionsCard>;
+type AutoScrollDeps = { activeExecutionSet: boolean; cardsMounted: boolean; scroll: boolean };
 
 export default defineComponent({
 	name: 'WorkflowExecutionsSidebar',
@@ -117,28 +119,53 @@ export default defineComponent({
 	data() {
 		return {
 			filter: {} as ExecutionFilterType,
+			mountedItems: [] as string[],
+			autoScrollDeps: {
+				activeExecutionSet: false,
+				cardsMounted: false,
+				scroll: true,
+			} as AutoScrollDeps,
 		};
 	},
 	computed: {
 		...mapStores(useExecutionsStore, useWorkflowsStore),
 	},
 	watch: {
-		$route(to: Route, from: Route) {
+		$route(to: RouteRecord, from: RouteRecord) {
 			if (from.name === VIEWS.EXECUTION_PREVIEW && to.name === VIEWS.EXECUTION_HOME) {
 				// Skip parent route when navigating through executions with back button
 				this.$router.go(-1);
 			}
 		},
-	},
-	mounted() {
-		// On larger screens, we need to load more then first page of executions
-		// for the scroll bar to appear and infinite scrolling is enabled
-		this.checkListSize();
-		setTimeout(() => {
-			this.scrollToActiveCard();
-		}, 1000);
+		'executionsStore.activeExecution'(
+			newValue: ExecutionSummary | null,
+			oldValue: ExecutionSummary | null,
+		) {
+			if (newValue && newValue.id !== oldValue?.id) {
+				this.autoScrollDeps.activeExecutionSet = true;
+			}
+		},
+		autoScrollDeps: {
+			handler(updatedDeps: AutoScrollDeps) {
+				if (Object.values(updatedDeps).every(Boolean)) {
+					this.scrollToActiveCard();
+				}
+			},
+			deep: true,
+		},
 	},
 	methods: {
+		onItemMounted(id: string): void {
+			this.mountedItems.push(id);
+			if (this.mountedItems.length === this.executions.length) {
+				this.autoScrollDeps.cardsMounted = true;
+				this.checkListSize();
+			}
+
+			if (this.executionsStore.activeExecution?.id === id) {
+				this.autoScrollDeps.activeExecutionSet = true;
+			}
+		},
 		loadMore(limit = 20): void {
 			if (!this.loading) {
 				const executionsListRef = this.$refs.executionList as HTMLElement | undefined;
@@ -167,7 +194,7 @@ export default defineComponent({
 		checkListSize(): void {
 			const sidebarContainerRef = this.$refs.container as HTMLElement | undefined;
 			const currentWorkflowExecutionsCardRefs = this.$refs[
-				`execution-${this.executionsStore.activeExecution?.id}`
+				`execution-${this.mountedItems[this.mountedItems.length - 1]}`
 			] as WorkflowExecutionsCardRef[] | undefined;
 
 			// Find out how many execution card can fit into list
@@ -196,7 +223,11 @@ export default defineComponent({
 				const cardRect = cardElement.getBoundingClientRect();
 				const LIST_HEADER_OFFSET = 200;
 				if (cardRect.top > executionsListRef.offsetHeight) {
-					executionsListRef.scrollTo({ top: cardRect.top - LIST_HEADER_OFFSET });
+					this.autoScrollDeps.scroll = false;
+					executionsListRef.scrollTo({
+						top: cardRect.top - LIST_HEADER_OFFSET,
+						behavior: 'smooth',
+					});
 				}
 			}
 		},

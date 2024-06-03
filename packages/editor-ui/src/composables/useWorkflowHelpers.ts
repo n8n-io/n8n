@@ -39,6 +39,7 @@ import type {
 	IWorkflowData,
 	IWorkflowDataUpdate,
 	IWorkflowDb,
+	IWorkflowTemplateNode,
 	TargetItem,
 	XYPosition,
 } from '@/Interface';
@@ -307,7 +308,11 @@ function getNodes(): INodeUi[] {
 }
 
 // Returns a workflow instance.
-function getWorkflow(nodes: INodeUi[], connections: IConnections, copyData?: boolean): Workflow {
+function getWorkflow(
+	nodes: Array<INodeUi | IWorkflowTemplateNode>,
+	connections: IConnections,
+	copyData?: boolean,
+): Workflow {
 	return useWorkflowsStore().getWorkflow(nodes, connections, copyData);
 }
 
@@ -1004,7 +1009,9 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 			if (resetWebhookUrls) {
 				workflowDataRequest.nodes = workflowDataRequest.nodes!.map((node) => {
 					if (node.webhookId) {
-						node.webhookId = uuid();
+						const newId = uuid();
+						node.webhookId = newId;
+						node.parameters.path = newId;
 						changedNodes[node.name] = node.webhookId;
 					}
 					return node;

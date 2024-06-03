@@ -364,6 +364,17 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.getters.canvasNodeByName(RENAME_NODE_NAME2).should('exist');
 	});
 
+	it('should not allow empty strings for node names', () => {
+		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.getters.canvasNodes().last().click();
+		cy.get('body').trigger('keydown', { key: 'F2' });
+		cy.get('.rename-prompt').should('be.visible');
+		cy.get('body').type('{backspace}');
+		cy.get('body').type('{enter}');
+		cy.get('.rename-prompt').should('contain', 'Invalid Name');
+	});
+
 	it('should duplicate nodes (context menu or shortcut)', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();

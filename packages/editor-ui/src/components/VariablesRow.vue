@@ -144,7 +144,7 @@ function focusFirstInput() {
 					required
 					validate-on-blur
 					:validation-rules="keyValidationRules"
-					@validate="(value) => onValidate('key', value)"
+					@validate="(value: boolean) => onValidate('key', value)"
 				/>
 			</div>
 		</td>
@@ -161,7 +161,7 @@ function focusFirstInput() {
 					:placeholder="i18n.baseText('variables.editing.value.placeholder')"
 					validate-on-blur
 					:validation-rules="valueValidationRules"
-					@validate="(value) => onValidate('value', value)"
+					@validate="(value: boolean) => onValidate('value', value)"
 				/>
 			</div>
 		</td>

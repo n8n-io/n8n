@@ -1,9 +1,9 @@
 import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 
-import type { SuperAgentTest } from 'supertest';
 import * as utils from './shared/utils/';
 import { createUser } from './shared/db/users';
 import { mockInstance } from '../shared/mocking';
+import type { SuperAgentTest } from './shared/types';
 
 describe('Auth Middleware', () => {
 	mockInstance(ActiveWorkflowManager);
@@ -13,23 +13,23 @@ describe('Auth Middleware', () => {
 	});
 
 	/** Routes requiring a valid `n8n-auth` cookie for a user, either owner or member. */
-	const ROUTES_REQUIRING_AUTHENTICATION: Readonly<Array<[string, string]>> = [
-		['PATCH', '/me'],
-		['PATCH', '/me/password'],
-		['POST', '/me/survey'],
-	];
+	const ROUTES_REQUIRING_AUTHENTICATION = [
+		['patch', '/me'],
+		['patch', '/me/password'],
+		['post', '/me/survey'],
+	] as const;
 
 	/** Routes requiring a valid `n8n-auth` cookie for an owner. */
-	const ROUTES_REQUIRING_AUTHORIZATION: Readonly<Array<[string, string]>> = [
-		['POST', '/invitations'],
-		['DELETE', '/users/123'],
-	];
+	const ROUTES_REQUIRING_AUTHORIZATION = [
+		['post', '/invitations'],
+		['delete', '/users/123'],
+	] as const;
 
 	describe('Routes requiring Authentication', () => {
-		ROUTES_REQUIRING_AUTHENTICATION.concat(ROUTES_REQUIRING_AUTHORIZATION).forEach(
+		[...ROUTES_REQUIRING_AUTHENTICATION, ...ROUTES_REQUIRING_AUTHORIZATION].forEach(
 			([method, endpoint]) => {
 				test(`${method} ${endpoint} should return 401 Unauthorized if no cookie`, async () => {
-					const { statusCode } = await testServer.authlessAgent[method.toLowerCase()](endpoint);
+					const { statusCode } = await testServer.authlessAgent[method](endpoint);
 					expect(statusCode).toBe(401);
 				});
 			},
@@ -45,7 +45,7 @@ describe('Auth Middleware', () => {
 
 		ROUTES_REQUIRING_AUTHORIZATION.forEach(async ([method, endpoint]) => {
 			test(`${method} ${endpoint} should return 403 Forbidden for member`, async () => {
-				const { statusCode } = await authMemberAgent[method.toLowerCase()](endpoint);
+				const { statusCode } = await authMemberAgent[method](endpoint);
 				expect(statusCode).toBe(403);
 			});
 		});

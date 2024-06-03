@@ -18,20 +18,22 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import type { BaseTextKey } from '@/plugins/i18n';
+import { type PropType, defineComponent } from 'vue';
 
 export default defineComponent({
 	name: 'ErrorView',
 	props: {
 		messageKey: {
-			type: String,
+			type: String as PropType<BaseTextKey>,
 			required: true,
 		},
 		errorCode: {
 			type: Number,
 		},
 		redirectTextKey: {
-			type: String,
+			type: String as PropType<BaseTextKey>,
+			required: true,
 		},
 		redirectPage: {
 			type: String,

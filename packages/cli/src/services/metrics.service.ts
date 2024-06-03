@@ -77,7 +77,7 @@ export class MetricsService extends EventEmitter {
 	}
 
 	mountMetricsEndpoint(app: express.Application) {
-		app.get('/metrics', async (req: express.Request, res: express.Response) => {
+		app.get('/metrics', async (_req: express.Request, res: express.Response) => {
 			const metrics = await promClient.register.metrics();
 			res.setHeader('Content-Type', promClient.register.contentType);
 			res.send(metrics).end();

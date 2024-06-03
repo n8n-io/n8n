@@ -13,7 +13,6 @@ import type {
 } from '@/Interfaces';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
-import { OwnershipService } from './services/ownership.service';
 import { Logger } from '@/Logger';
 import { ConflictError } from './errors/response-errors/conflict.error';
 import { NotFoundError } from './errors/response-errors/not-found.error';
@@ -26,7 +25,6 @@ export class WaitingWebhooks implements IWebhookManager {
 		protected readonly logger: Logger,
 		private readonly nodeTypes: NodeTypes,
 		private readonly executionRepository: ExecutionRepository,
-		private readonly ownershipService: OwnershipService,
 	) {}
 
 	// TODO: implement `getWebhookMethods` for CORS support

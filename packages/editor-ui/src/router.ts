@@ -165,7 +165,7 @@ export const routes = [
 			// Templates view remembers it's scroll position on back
 			scrollOffset: 0,
 			telemetry: {
-				getProperties(route: RouteLocation) {
+				getProperties() {
 					const templatesStore = useTemplatesStore();
 					return {
 						wf_template_repo_session_id: templatesStore.currentSessionId,
@@ -474,7 +474,7 @@ export const routes = [
 					},
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: RouteLocation) {
+						getProperties() {
 							return {
 								feature: 'usage',
 							};
@@ -492,7 +492,7 @@ export const routes = [
 					middleware: ['authenticated'],
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: RouteLocation) {
+						getProperties() {
 							return {
 								feature: 'personal',
 							};
@@ -515,7 +515,7 @@ export const routes = [
 					},
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: RouteLocation) {
+						getProperties() {
 							return {
 								feature: 'users',
 							};
@@ -533,7 +533,7 @@ export const routes = [
 					middleware: ['authenticated'],
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: RouteLocation) {
+						getProperties() {
 							return {
 								feature: 'api',
 							};
@@ -556,7 +556,7 @@ export const routes = [
 					},
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: RouteLocation) {
+						getProperties() {
 							return {
 								feature: 'environments',
 							};
@@ -579,7 +579,7 @@ export const routes = [
 					},
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: RouteLocation) {
+						getProperties() {
 							return {
 								feature: 'external-secrets',
 							};
@@ -606,7 +606,7 @@ export const routes = [
 					},
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: RouteLocation) {
+						getProperties() {
 							return {
 								feature: 'sso',
 							};

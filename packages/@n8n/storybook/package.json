@@ -3,19 +3,19 @@
   "private": true,
   "version": "0.0.1",
   "devDependencies": {
-    "@chromatic-com/storybook": "^1.2.18",
-    "@storybook/addon-a11y": "^8.0.0",
-    "@storybook/addon-actions": "^8.0.0",
-    "@storybook/addon-docs": "^8.0.0",
-    "@storybook/addon-essentials": "^8.0.0",
-    "@storybook/addon-interactions": "^8.0.0",
-    "@storybook/addon-links": "^8.0.0",
-    "@storybook/addon-themes": "^8.0.0",
-    "@storybook/blocks": "^8.0.0",
-    "@storybook/test": "^8.0.0",
-    "@storybook/vue3": "^8.0.0",
-    "@storybook/vue3-vite": "^8.0.0",
-    "chromatic": "^11.0.8",
-    "storybook": "^8.0.0"
+    "@chromatic-com/storybook": "^1.5.0",
+    "@storybook/addon-a11y": "^8.1.4",
+    "@storybook/addon-actions": "^8.1.4",
+    "@storybook/addon-docs": "^8.1.4",
+    "@storybook/addon-essentials": "^8.1.4",
+    "@storybook/addon-interactions": "^8.1.4",
+    "@storybook/addon-links": "^8.1.4",
+    "@storybook/addon-themes": "^8.1.4",
+    "@storybook/blocks": "^8.1.4",
+    "@storybook/test": "^8.1.4",
+    "@storybook/vue3": "^8.1.4",
+    "@storybook/vue3-vite": "^8.1.4",
+    "chromatic": "^11.4.1",
+    "storybook": "^8.1.4"
   }
 }

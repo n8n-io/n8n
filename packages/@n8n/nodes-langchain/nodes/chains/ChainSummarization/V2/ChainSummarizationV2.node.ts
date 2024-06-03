@@ -11,8 +11,8 @@ import type {
 import { loadSummarizationChain } from 'langchain/chains';
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { Document } from '@langchain/core/documents';
-import type { TextSplitter } from 'langchain/text_splitter';
-import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
+import type { TextSplitter } from '@langchain/textsplitters';
+import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import { N8nJsonLoader } from '../../../../utils/N8nJsonLoader';
 import { N8nBinaryLoader } from '../../../../utils/N8nBinaryLoader';
 import { getTemplateNoticeField } from '../../../../utils/sharedFields';
