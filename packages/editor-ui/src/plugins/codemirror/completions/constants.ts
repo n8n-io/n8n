@@ -54,7 +54,7 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 		section: RECOMMENDED_SECTION,
 		info: createInfoBoxRenderer({
 			name: '$json',
-			returnType: 'object',
+			returnType: 'Object',
 			description: i18n.baseText('codeNodeEditor.completer.json'),
 			docURL: 'https://docs.n8n.io/data/data-structure/',
 		}),
@@ -64,7 +64,7 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 		section: RECOMMENDED_SECTION,
 		info: createInfoBoxRenderer({
 			name: '$binary',
-			returnType: 'object',
+			returnType: 'Object',
 			description: i18n.baseText('codeNodeEditor.completer.binary'),
 		}),
 	},
@@ -170,7 +170,7 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 		section: METADATA_SECTION,
 		info: createInfoBoxRenderer({
 			name: '$input',
-			returnType: 'object',
+			returnType: 'Object',
 			description: i18n.baseText('codeNodeEditor.completer.$input'),
 		}),
 	},
@@ -179,7 +179,7 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 		section: METADATA_SECTION,
 		info: createInfoBoxRenderer({
 			name: '$parameter',
-			returnType: 'object',
+			returnType: 'Object',
 			description: i18n.baseText('codeNodeEditor.completer.$parameter'),
 		}),
 	},
@@ -215,7 +215,7 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 		section: METADATA_SECTION,
 		info: createInfoBoxRenderer({
 			name: '$vars',
-			returnType: 'object',
+			returnType: 'Object',
 			description: i18n.baseText('codeNodeEditor.completer.$vars'),
 		}),
 	},

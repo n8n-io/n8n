@@ -80,9 +80,6 @@ export default defineComponent({
 		workflow(): IWorkflowDb {
 			return this.workflowsStore.workflow;
 		},
-		workflowName(): string {
-			return this.workflowsStore.workflowName;
-		},
 		currentWorkflow(): string {
 			return this.$route.params.name || this.workflowsStore.workflowId;
 		},

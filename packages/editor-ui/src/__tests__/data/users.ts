@@ -10,7 +10,6 @@ export const createUser = (overrides?: Partial<IUser>): IUser => ({
 	isDefaultUser: false,
 	isPending: false,
 	isPendingUser: false,
-	hasRecoveryCodesLeft: false,
 	mfaEnabled: false,
 	signInType: SignInType.EMAIL,
 	...overrides,

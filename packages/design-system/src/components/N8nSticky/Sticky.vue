@@ -99,7 +99,7 @@ const $emit = defineEmits<{
 	(event: 'markdown-click', link: string, e: Event);
 	(event: 'resize', values: ResizeData);
 	(event: 'resizestart');
-	(event: 'resizeend', value: unknown);
+	(event: 'resizeend');
 }>();
 
 const { t } = useI18n();
@@ -160,9 +160,9 @@ const onResizeStart = () => {
 	$emit('resizestart');
 };
 
-const onResizeEnd = (resizeEnd: unknown) => {
+const onResizeEnd = () => {
 	isResizing.value = false;
-	$emit('resizeend', resizeEnd);
+	$emit('resizeend');
 };
 
 const onInputScroll = (event: WheelEvent) => {
