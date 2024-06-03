@@ -105,8 +105,8 @@ export default defineComponent({
 	},
 	props: {
 		credential: {
-			type: Object as PropType<ICredentialsResponse>,
-			required: true,
+			type: Object as PropType<ICredentialsResponse | null>,
+			default: null,
 		},
 		credentialId: {
 			type: String,
@@ -162,7 +162,7 @@ export default defineComponent({
 			return this.credentialsStore.getCredentialOwnerNameById(`${this.credentialId}`);
 		},
 		isCredentialSharedWithCurrentUser(): boolean {
-			return (this.credentialData.sharedWithProjects || []).some((sharee: IUser) => {
+			return (this.credentialData.sharedWithProjects ?? []).some((sharee: IUser) => {
 				return sharee.id === this.usersStore.currentUser?.id;
 			});
 		},
