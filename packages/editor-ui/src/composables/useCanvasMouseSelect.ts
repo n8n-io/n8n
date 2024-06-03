@@ -204,8 +204,8 @@ export default function useCanvasMouseSelect() {
 		uiStore.lastSelectedNode = null;
 		uiStore.lastSelectedNodeOutputIndex = null;
 
-		canvasStore.lastSelectedConnection = null;
 		canvasStore.newNodeInsertPosition = null;
+		canvasStore.setLastSelectedConnection(undefined);
 	}
 
 	const instance = computed(() => canvasStore.jsPlumbInstance);

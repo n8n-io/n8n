@@ -3,7 +3,7 @@ import {
 	mapLegacyEndpointsToCanvasConnectionPort,
 	getUniqueNodeName,
 } from '@/utils/canvasUtilsV2';
-import type { IConnections, INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionType, type IConnections, type INodeTypeDescription } from 'n8n-workflow';
 import type { CanvasConnection } from '@/types';
 import type { INodeUi } from '@/Interface';
 
@@ -15,7 +15,7 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 	it('should map legacy connections to canvas connections', () => {
 		const legacyConnections: IConnections = {
 			'Node A': {
-				main: [[{ node: 'Node B', type: 'main', index: 0 }]],
+				main: [[{ node: 'Node B', type: NodeConnectionType.Main, index: 0 }]],
 			},
 		};
 		const nodes: INodeUi[] = [
@@ -53,11 +53,11 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 					fromNodeName: 'Node A',
 					source: {
 						index: 0,
-						type: 'main',
+						type: NodeConnectionType.Main,
 					},
 					target: {
 						index: 0,
-						type: 'main',
+						type: NodeConnectionType.Main,
 					},
 				},
 			},
@@ -67,7 +67,7 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 	it('should return empty array when no matching nodes found', () => {
 		const legacyConnections: IConnections = {
 			'Node A': {
-				main: [[{ node: 'Node B', type: 'main', index: 0 }]],
+				main: [[{ node: 'Node B', type: NodeConnectionType.Main, index: 0 }]],
 			},
 		};
 		const nodes: INodeUi[] = [];
@@ -113,8 +113,8 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 		const legacyConnections: IConnections = {
 			'Node A': {
 				main: [
-					[{ node: 'Node B', type: 'main', index: 0 }],
-					[{ node: 'Node B', type: 'main', index: 1 }],
+					[{ node: 'Node B', type: NodeConnectionType.Main, index: 0 }],
+					[{ node: 'Node B', type: NodeConnectionType.Main, index: 1 }],
 				],
 			},
 		};
@@ -153,11 +153,11 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 					fromNodeName: 'Node A',
 					source: {
 						index: 0,
-						type: 'main',
+						type: NodeConnectionType.Main,
 					},
 					target: {
 						index: 0,
-						type: 'main',
+						type: NodeConnectionType.Main,
 					},
 				},
 			},
@@ -171,11 +171,11 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 					fromNodeName: 'Node A',
 					source: {
 						index: 1,
-						type: 'main',
+						type: NodeConnectionType.Main,
 					},
 					target: {
 						index: 1,
-						type: 'main',
+						type: NodeConnectionType.Main,
 					},
 				},
 			},
@@ -186,8 +186,8 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 		const legacyConnections: IConnections = {
 			'Node A': {
 				main: [
-					[{ node: 'Node B', type: 'main', index: 0 }],
-					[{ node: 'Node C', type: 'main', index: 0 }],
+					[{ node: 'Node B', type: NodeConnectionType.Main, index: 0 }],
+					[{ node: 'Node C', type: NodeConnectionType.Main, index: 0 }],
 				],
 			},
 		};
@@ -234,11 +234,11 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 					fromNodeName: 'Node A',
 					source: {
 						index: 0,
-						type: 'main',
+						type: NodeConnectionType.Main,
 					},
 					target: {
 						index: 0,
-						type: 'main',
+						type: NodeConnectionType.Main,
 					},
 				},
 			},
@@ -252,11 +252,11 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 					fromNodeName: 'Node A',
 					source: {
 						index: 1,
-						type: 'main',
+						type: NodeConnectionType.Main,
 					},
 					target: {
 						index: 0,
-						type: 'main',
+						type: NodeConnectionType.Main,
 					},
 				},
 			},
@@ -266,11 +266,13 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 	it('should map complex node setup with mixed inputs and outputs', () => {
 		const legacyConnections: IConnections = {
 			'Node A': {
-				main: [[{ node: 'Node B', type: 'main', index: 0 }]],
-				other: [[{ node: 'Node C', type: 'other', index: 1 }]],
+				main: [[{ node: 'Node B', type: NodeConnectionType.Main, index: 0 }]],
+				[NodeConnectionType.AiMemory]: [
+					[{ node: 'Node C', type: NodeConnectionType.AiMemory, index: 1 }],
+				],
 			},
 			'Node B': {
-				main: [[{ node: 'Node C', type: 'main', index: 0 }]],
+				main: [[{ node: 'Node C', type: NodeConnectionType.Main, index: 0 }]],
 			},
 		};
 		const nodes: INodeUi[] = [
@@ -316,29 +318,29 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 					fromNodeName: 'Node A',
 					source: {
 						index: 0,
-						type: 'main',
+						type: NodeConnectionType.Main,
 					},
 					target: {
 						index: 0,
-						type: 'main',
+						type: NodeConnectionType.Main,
 					},
 				},
 			},
 			{
-				id: '[1/other/0][3/other/1]',
+				id: `[1/${NodeConnectionType.AiMemory}/0][3/${NodeConnectionType.AiMemory}/1]`,
 				source: '1',
 				target: '3',
-				sourceHandle: 'outputs/other/0',
-				targetHandle: 'inputs/other/1',
+				sourceHandle: `outputs/${NodeConnectionType.AiMemory}/0`,
+				targetHandle: `inputs/${NodeConnectionType.AiMemory}/1`,
 				data: {
 					fromNodeName: 'Node A',
 					source: {
 						index: 0,
-						type: 'other',
+						type: NodeConnectionType.AiMemory,
 					},
 					target: {
 						index: 1,
-						type: 'other',
+						type: NodeConnectionType.AiMemory,
 					},
 				},
 			},
@@ -352,11 +354,11 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 					fromNodeName: 'Node B',
 					source: {
 						index: 0,
-						type: 'main',
+						type: NodeConnectionType.Main,
 					},
 					target: {
 						index: 0,
-						type: 'main',
+						type: NodeConnectionType.Main,
 					},
 				},
 			},
@@ -367,8 +369,8 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 		const legacyConnections: IConnections = {
 			'Node A': {
 				main: [
-					[{ node: 'Nonexistent Node', type: 'main', index: 0 }],
-					[{ node: 'Node B', type: 'main', index: 0 }],
+					[{ node: 'Nonexistent Node', type: NodeConnectionType.Main, index: 0 }],
+					[{ node: 'Node B', type: NodeConnectionType.Main, index: 0 }],
 				],
 			},
 		};
@@ -407,11 +409,11 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 					fromNodeName: 'Node A',
 					source: {
 						index: 1,
-						type: 'main',
+						type: NodeConnectionType.Main,
 					},
 					target: {
 						index: 0,
-						type: 'main',
+						type: NodeConnectionType.Main,
 					},
 				},
 			},
@@ -435,66 +437,69 @@ describe('mapLegacyEndpointsToCanvasConnectionPort', () => {
 	});
 
 	it('should map string endpoints correctly', () => {
-		const endpoints: INodeTypeDescription['inputs'] = ['main', 'ai_tool'];
+		const endpoints: INodeTypeDescription['inputs'] = [
+			NodeConnectionType.Main,
+			NodeConnectionType.AiTool,
+		];
 		const result = mapLegacyEndpointsToCanvasConnectionPort(endpoints);
 
 		expect(result).toEqual([
-			{ type: 'main', index: 0, label: undefined },
-			{ type: 'ai_tool', index: 0, label: undefined },
+			{ type: NodeConnectionType.Main, index: 0, label: undefined },
+			{ type: NodeConnectionType.AiTool, index: 0, label: undefined },
 		]);
 	});
 
 	it('should map object endpoints correctly', () => {
 		const endpoints: INodeTypeDescription['inputs'] = [
-			{ type: 'main', displayName: 'Main Input' },
-			{ type: 'ai_tool', displayName: 'AI Tool', required: true },
+			{ type: NodeConnectionType.Main, displayName: 'Main Input' },
+			{ type: NodeConnectionType.AiTool, displayName: 'AI Tool', required: true },
 		];
 		const result = mapLegacyEndpointsToCanvasConnectionPort(endpoints);
 
 		expect(result).toEqual([
-			{ type: 'main', index: 0, label: 'Main Input' },
-			{ type: 'ai_tool', index: 0, label: 'AI Tool', required: true },
+			{ type: NodeConnectionType.Main, index: 0, label: 'Main Input' },
+			{ type: NodeConnectionType.AiTool, index: 0, label: 'AI Tool', required: true },
 		]);
 	});
 
 	it('should map mixed string and object endpoints correctly', () => {
 		const endpoints: INodeTypeDescription['inputs'] = [
-			'main',
-			{ type: 'ai_tool', displayName: 'AI Tool' },
-			'main',
+			NodeConnectionType.Main,
+			{ type: NodeConnectionType.AiTool, displayName: 'AI Tool' },
+			NodeConnectionType.Main,
 		];
 		const result = mapLegacyEndpointsToCanvasConnectionPort(endpoints);
 
 		expect(result).toEqual([
-			{ type: 'main', index: 0, label: undefined },
-			{ type: 'ai_tool', index: 0, label: 'AI Tool' },
-			{ type: 'main', index: 1, label: undefined },
+			{ type: NodeConnectionType.Main, index: 0, label: undefined },
+			{ type: NodeConnectionType.AiTool, index: 0, label: 'AI Tool' },
+			{ type: NodeConnectionType.Main, index: 1, label: undefined },
 		]);
 	});
 
 	it('should handle multiple same type object endpoints', () => {
 		const endpoints: INodeTypeDescription['inputs'] = [
-			{ type: 'main', displayName: 'Main Input' },
-			{ type: 'main', displayName: 'Secondary Main Input' },
+			{ type: NodeConnectionType.Main, displayName: 'Main Input' },
+			{ type: NodeConnectionType.Main, displayName: 'Secondary Main Input' },
 		];
 		const result = mapLegacyEndpointsToCanvasConnectionPort(endpoints);
 
 		expect(result).toEqual([
-			{ type: 'main', index: 0, label: 'Main Input' },
-			{ type: 'main', index: 1, label: 'Secondary Main Input' },
+			{ type: NodeConnectionType.Main, index: 0, label: 'Main Input' },
+			{ type: NodeConnectionType.Main, index: 1, label: 'Secondary Main Input' },
 		]);
 	});
 
 	it('should map required and non-required endpoints correctly', () => {
 		const endpoints: INodeTypeDescription['inputs'] = [
-			{ type: 'main', displayName: 'Main Input', required: true },
-			{ type: 'ai_tool', displayName: 'Optional Tool', required: false },
+			{ type: NodeConnectionType.Main, displayName: 'Main Input', required: true },
+			{ type: NodeConnectionType.AiTool, displayName: 'Optional Tool', required: false },
 		];
 		const result = mapLegacyEndpointsToCanvasConnectionPort(endpoints);
 
 		expect(result).toEqual([
-			{ type: 'main', index: 0, label: 'Main Input', required: true },
-			{ type: 'ai_tool', index: 0, label: 'Optional Tool' },
+			{ type: NodeConnectionType.Main, index: 0, label: 'Main Input', required: true },
+			{ type: NodeConnectionType.AiTool, index: 0, label: 'Optional Tool' },
 		]);
 	});
 });

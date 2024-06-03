@@ -42,6 +42,7 @@ import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useCollaborationStore } from '@/stores/collaboration.store';
 import { getUniqueNodeName } from '@/utils/canvasUtilsV2';
+import { isValidNodeConnectionType } from '@/utils/typeGuards';
 
 const NodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -217,13 +218,17 @@ function onCreateNodeConnection(connection: Connection) {
 	const sourceNodeId = connection.source;
 	const sourceNode = workflowsStore.getNodeById(sourceNodeId);
 	const sourceNodeName = sourceNode?.name ?? '';
-	const [, sourceType, sourceIndex] = (connection.sourceHandle ?? '').split('/');
+	const [, sourceType, sourceIndex] = (connection.sourceHandle ?? '')
+		.split('/')
+		.filter(isValidNodeConnectionType);
 
 	// Input
 	const targetNodeId = connection.target;
 	const targetNode = workflowsStore.getNodeById(targetNodeId);
 	const targetNodeName = targetNode?.name ?? '';
-	const [, targetType, targetIndex] = (connection.targetHandle ?? '').split('/');
+	const [, targetType, targetIndex] = (connection.targetHandle ?? '')
+		.split('/')
+		.filter(isValidNodeConnectionType);
 
 	if (sourceNode && targetNode && !checkIfNodeConnectionIsAllowed(sourceNode, targetNode)) {
 		return;
@@ -248,7 +253,7 @@ function onCreateNodeConnection(connection: Connection) {
 }
 
 // @TODO Figure out a way to improve this
-function checkIfNodeConnectionIsAllowed(sourceNode: INodeUi, targetNode: INodeUi): boolean {
+function checkIfNodeConnectionIsAllowed(_sourceNode: INodeUi, _targetNode: INodeUi): boolean {
 	// const targetNodeType = nodeTypesStore.getNodeType(
 	// 	targetNode.type,
 	// 	targetNode.typeVersion,
@@ -341,7 +346,7 @@ async function onAddNodes(
 ) {
 	let currentPosition = position;
 	for (const { type, name, position: nodePosition, isAutoAdd, openDetail } of nodes) {
-		const node = await addNode(
+		const _node = await addNode(
 			{
 				name,
 				type,
@@ -407,7 +412,7 @@ type AddNodeOptions = {
 	isAutoAdd?: boolean;
 };
 
-async function addNode(node: AddNodeData, options: AddNodeOptions): Promise<INodeUi | undefined> {
+async function addNode(node: AddNodeData, _options: AddNodeOptions): Promise<INodeUi | undefined> {
 	if (!checkIfEditingIsAllowed()) {
 		return;
 	}
@@ -663,11 +668,11 @@ async function createNodeWithDefaultCredentials(node: Partial<INodeUi>) {
  * @TODO Probably not needed and can be merged into addNode
  */
 async function injectNode(
-	nodeTypeName: string,
-	options: AddNodeOptions = {},
-	showDetail = true,
-	trackHistory = false,
-	isAutoAdd = false,
+	_nodeTypeName: string,
+	_options: AddNodeOptions = {},
+	_showDetail = true,
+	_trackHistory = false,
+	_isAutoAdd = false,
 ) {
 	// const nodeTypeData: INodeTypeDescription | null =
 	// 	this.nodeTypesStore.getNodeType(nodeTypeName);
