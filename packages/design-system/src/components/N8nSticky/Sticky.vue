@@ -21,7 +21,12 @@
 			@resize="onResize"
 			@resizestart="onResizeStart"
 		>
-			<div v-show="!editMode" :class="$style.wrapper" @dblclick.stop="onDoubleClick">
+			<div
+				v-show="!editMode"
+				ref="markdownContainer"
+				:class="$style.wrapper"
+				@dblclick.stop="onDoubleClick"
+			>
 				<N8nMarkdown
 					theme="sticky"
 					:content="modelValue"
@@ -256,6 +261,10 @@ const onCheckboxChange = async (checkbox: HTMLInputElement, position: number) =>
 }
 
 .clickable {
+	cursor: pointer;
+}
+
+input[type='checkbox'] + label {
 	cursor: pointer;
 }
 
