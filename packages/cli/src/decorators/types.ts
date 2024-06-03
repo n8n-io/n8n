@@ -17,6 +17,19 @@ export interface MiddlewareMetadata {
 	handlerName: string;
 }
 
+export interface RateLimit {
+	/**
+	 * The maximum number of requests to allow during the `window` before rate limiting the client.
+	 * @default 5
+	 */
+	limit?: number;
+	/**
+	 * How long we should remember the requests.
+	 * @default 300_000 (5 minutes)
+	 */
+	windowMs?: number;
+}
+
 export interface RouteMetadata {
 	method: Method;
 	path: string;
@@ -24,7 +37,7 @@ export interface RouteMetadata {
 	middlewares: RequestHandler[];
 	usesTemplates: boolean;
 	skipAuth: boolean;
-	rateLimit: boolean;
+	rateLimit?: RateLimit;
 }
 
 export type Controller = Record<
