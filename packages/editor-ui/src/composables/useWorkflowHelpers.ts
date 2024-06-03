@@ -39,7 +39,6 @@ import type {
 	IWorkflowData,
 	IWorkflowDataUpdate,
 	IWorkflowDb,
-	IWorkflowTemplateNode,
 	TargetItem,
 	XYPosition,
 } from '@/Interface';
