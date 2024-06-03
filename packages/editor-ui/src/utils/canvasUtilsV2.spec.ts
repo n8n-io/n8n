@@ -267,7 +267,9 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 		const legacyConnections: IConnections = {
 			'Node A': {
 				main: [[{ node: 'Node B', type: NodeConnectionType.Main, index: 0 }]],
-				other: [[{ node: 'Node C', type: NodeConnectionType.AiMemory, index: 1 }]],
+				[NodeConnectionType.AiMemory]: [
+					[{ node: 'Node C', type: NodeConnectionType.AiMemory, index: 1 }],
+				],
 			},
 			'Node B': {
 				main: [[{ node: 'Node C', type: NodeConnectionType.Main, index: 0 }]],
@@ -325,20 +327,20 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 				},
 			},
 			{
-				id: '[1/other/0][3/other/1]',
+				id: `[1/${NodeConnectionType.AiMemory}/0][3/${NodeConnectionType.AiMemory}/1]`,
 				source: '1',
 				target: '3',
-				sourceHandle: 'outputs/other/0',
-				targetHandle: 'inputs/other/1',
+				sourceHandle: `outputs/${NodeConnectionType.AiMemory}/0`,
+				targetHandle: `inputs/${NodeConnectionType.AiMemory}/1`,
 				data: {
 					fromNodeName: 'Node A',
 					source: {
 						index: 0,
-						type: 'other',
+						type: NodeConnectionType.AiMemory,
 					},
 					target: {
 						index: 1,
-						type: 'other',
+						type: NodeConnectionType.AiMemory,
 					},
 				},
 			},
