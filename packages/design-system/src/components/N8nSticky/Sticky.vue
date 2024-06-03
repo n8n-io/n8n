@@ -26,6 +26,7 @@
 				ref="markdownContainer"
 				:class="$style.wrapper"
 				@dblclick.stop="onDoubleClick"
+				@mousedown.stop
 			>
 				<N8nMarkdown
 					theme="sticky"
@@ -265,7 +266,7 @@ const onCheckboxChange = async (checkbox: HTMLInputElement, position: number) =>
 	cursor: pointer;
 }
 
-input[type='checkbox'] + label {
+input[type='checkbox'], input[type='checkbox'] + label {
 	cursor: pointer;
 }
 
