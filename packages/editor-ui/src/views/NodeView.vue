@@ -221,7 +221,7 @@ import {
 	EVENT_CONNECTION_MOVED,
 	INTERCEPT_BEFORE_DROP,
 } from '@jsplumb/core';
-import type { MessageBoxInputData, ElNotification } from 'element-plus';
+import type ElNotification from 'element-plus/lib/components/notification/src/notification';
 
 import {
 	FIRST_ONBOARDING_PROMPT_TIMEOUT,
@@ -570,7 +570,7 @@ export default defineComponent({
 			isProductionExecutionPreview: false,
 			enterTimer: undefined as undefined | ReturnType<typeof setTimeout>,
 			exitTimer: undefined as undefined | ReturnType<typeof setTimeout>,
-			readOnlyNotification: null as null | typeof ElNotification,
+			readOnlyNotification: null as null | ElNotification,
 			// jsplumb automatically deletes all loose connections which is in turn recorded
 			// in undo history as a user action.
 			// This should prevent automatically removed connections from populating undo stack
@@ -1093,7 +1093,10 @@ export default defineComponent({
 			});
 		},
 		editAllowedCheck(): boolean {
-			if (this.readOnlyNotification?.visible) {
+			if (
+				this.readOnlyNotification?.hasOwnProperty('visible') &&
+				this.readOnlyNotification?.visible
+			) {
 				return false;
 			}
 			if (this.isReadOnlyRoute || this.readOnlyEnv) {
@@ -2909,7 +2912,7 @@ export default defineComponent({
 
 			return filter;
 		},
-		insertNodeAfterSelected(info: NewConnectionInfo) {
+		insertNodeAfterSelected(info: AIAssistantConnectionInfo) {
 			const type = info.outputType ?? NodeConnectionType.Main;
 			// Get the node and set it as active that new nodes
 			// which get created get automatically connected
