@@ -7,7 +7,7 @@ interface RouteOptions {
 	usesTemplates?: boolean;
 	/** When this flag is set to true, auth cookie isn't validated, and req.user will not be set */
 	skipAuth?: boolean;
-	/** When these options are set, calls to this endpoint is rate limited using the options */
+	/** When these options are set, calls to this endpoint are rate limited using the options */
 	rateLimit?: RateLimit;
 }
 
