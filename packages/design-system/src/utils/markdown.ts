@@ -12,7 +12,6 @@ export const escapeMarkdown = (html: string | undefined): string => {
 	return withQuotes;
 };
 
-
 /**
  * Replace nth occurrence of a regex match in a string
  * @param markdown string to replace in

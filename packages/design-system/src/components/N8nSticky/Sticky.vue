@@ -112,7 +112,7 @@ const { t } = useI18n();
 const isResizing = ref(false);
 const input = ref<HTMLTextAreaElement | undefined>(undefined);
 const markdownContainer = ref<HTMLDivElement | undefined>(undefined);
-const checkboxListeners = ref<Map<String, EventListener>>(new Map());
+const checkboxListeners = ref<Map<string, EventListener>>(new Map());
 
 const resHeight = computed((): number => {
 	return props.height < props.minHeight ? props.minHeight : props.height;

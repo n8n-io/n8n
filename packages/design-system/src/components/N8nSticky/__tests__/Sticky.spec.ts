@@ -1,6 +1,6 @@
-import { render, fireEvent } from "@testing-library/vue";
-import N8nSticky from "../Sticky.vue";
-import { N8nMarkdown } from "@/main";
+import { render, fireEvent } from '@testing-library/vue';
+import N8nSticky from '../Sticky.vue';
+import { N8nMarkdown } from '@/main';
 
 describe('components', () => {
 	describe('Sticky', () => {
