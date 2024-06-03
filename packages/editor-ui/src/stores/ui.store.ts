@@ -37,7 +37,6 @@ import {
 	DEBUG_PAYWALL_MODAL_KEY,
 	N8N_PRICING_PAGE_URL,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
-	SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
 	SETUP_CREDENTIALS_MODAL_KEY,
 	GENERATE_CURL_MODAL_KEY,
 } from '@/constants';
@@ -54,7 +53,6 @@ import type {
 	NewCredentialsModal,
 	ThemeOption,
 	AppliedThemeOption,
-	SuggestedTemplates,
 	NotificationOptions,
 	ModalState,
 } from '@/Interface';
@@ -119,7 +117,6 @@ export const useUIStore = defineStore(STORES.UI, {
 					EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
 					DEBUG_PAYWALL_MODAL_KEY,
 					WORKFLOW_HISTORY_VERSION_RESTORE,
-					SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
 					SETUP_CREDENTIALS_MODAL_KEY,
 				].map((modalKey) => [modalKey, { open: false }]),
 			),
@@ -190,7 +187,6 @@ export const useUIStore = defineStore(STORES.UI, {
 		addFirstStepOnLoad: false,
 		bannersHeight: 0,
 		bannerStack: [],
-		suggestedTemplates: undefined,
 		// Notifications that should show when a view is initialized
 		// This enables us to set a queue of notifications form outside (another component)
 		// and then show them when the view is initialized
@@ -614,12 +610,6 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		clearBannerStack() {
 			this.bannerStack = [];
-		},
-		setSuggestedTemplates(templates: SuggestedTemplates) {
-			this.suggestedTemplates = templates;
-		},
-		deleteSuggestedTemplates() {
-			this.suggestedTemplates = undefined;
 		},
 		getNotificationsForView(view: VIEWS): NotificationOptions[] {
 			return this.pendingNotificationsForViews[view] ?? [];
