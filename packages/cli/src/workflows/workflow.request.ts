@@ -54,5 +54,11 @@ export declare namespace WorkflowRequest {
 
 	type Share = AuthenticatedRequest<{ workflowId: string }, {}, { shareWithIds: string[] }>;
 
+	type Transfer = AuthenticatedRequest<
+		{ workflowId: string },
+		{},
+		{ destinationProjectId: string }
+	>;
+
 	type FromUrl = AuthenticatedRequest<{}, {}, {}, { url?: string }>;
 }
