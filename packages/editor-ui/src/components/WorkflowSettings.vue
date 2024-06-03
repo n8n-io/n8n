@@ -279,7 +279,7 @@
 							<el-switch
 								ref="inputField"
 								:disabled="readOnlyEnv"
-								:model-value="workflowSettings.executionTimeout > -1"
+								:model-value="(workflowSettings.executionTimeout ?? -1) > -1"
 								active-color="#13ce66"
 								data-test-id="workflow-settings-timeout-workflow"
 								@update:model-value="toggleTimeout"
@@ -288,7 +288,7 @@
 					</el-col>
 				</el-row>
 				<div
-					v-if="workflowSettings.executionTimeout > -1"
+					v-if="(workflowSettings.executionTimeout ?? -1) > -1"
 					data-test-id="workflow-settings-timeout-form"
 				>
 					<el-row>
@@ -306,7 +306,7 @@
 								:disabled="readOnlyEnv"
 								:model-value="timeoutHMS.hours"
 								:min="0"
-								@update:model-value="(value) => setTimeout('hours', value)"
+								@update:model-value="(value: string) => setTimeout('hours', value)"
 							>
 								<template #append>{{ $locale.baseText('workflowSettings.hours') }}</template>
 							</n8n-input>
@@ -317,7 +317,7 @@
 								:model-value="timeoutHMS.minutes"
 								:min="0"
 								:max="60"
-								@update:model-value="(value) => setTimeout('minutes', value)"
+								@update:model-value="(value: string) => setTimeout('minutes', value)"
 							>
 								<template #append>{{ $locale.baseText('workflowSettings.minutes') }}</template>
 							</n8n-input>
@@ -328,7 +328,7 @@
 								:model-value="timeoutHMS.seconds"
 								:min="0"
 								:max="60"
-								@update:model-value="(value) => setTimeout('seconds', value)"
+								@update:model-value="(value: string) => setTimeout('seconds', value)"
 							>
 								<template #append>{{ $locale.baseText('workflowSettings.seconds') }}</template>
 							</n8n-input>
@@ -828,7 +828,10 @@ export default defineComponent({
 			data.versionId = this.workflowsStore.workflowVersionId;
 
 			try {
-				const workflow = await this.workflowsStore.updateWorkflow(this.$route.params.name, data);
+				const workflow = await this.workflowsStore.updateWorkflow(
+					String(this.$route.params.name),
+					data,
+				);
 				this.workflowsStore.setWorkflowVersionId(workflow.versionId);
 			} catch (error) {
 				this.showError(
@@ -840,12 +843,9 @@ export default defineComponent({
 			}
 
 			// Get the settings without the defaults set for local workflow settings
-			const localWorkflowSettings: IWorkflowSettings = {};
-			for (const key of Object.keys(this.workflowSettings)) {
-				if (this.workflowSettings[key] !== 'DEFAULT') {
-					localWorkflowSettings[key] = this.workflowSettings[key];
-				}
-			}
+			const localWorkflowSettings = Object.fromEntries(
+				Object.entries(this.workflowSettings).filter(([, value]) => value !== 'DEFAULT'),
+			);
 
 			const oldSettings = deepCopy(this.workflowsStore.workflowSettings);
 
