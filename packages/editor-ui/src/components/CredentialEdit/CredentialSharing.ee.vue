@@ -105,8 +105,8 @@ export default defineComponent({
 	},
 	props: {
 		credential: {
-			type: Object as PropType<ICredentialsResponse>,
-			required: true,
+			type: Object as PropType<ICredentialsResponse | null>,
+			default: null,
 		},
 		credentialId: {
 			type: String,

@@ -90,7 +90,7 @@
 						@auth-type-changed="onAuthTypeChanged"
 					/>
 				</div>
-				<div v-else-if="currentCredential && showSharingContent" :class="$style.mainContent">
+				<div v-else-if="showSharingContent" :class="$style.mainContent">
 					<CredentialSharing
 						:credential="currentCredential"
 						:credential-data="credentialData"
