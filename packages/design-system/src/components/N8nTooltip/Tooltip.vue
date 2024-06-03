@@ -24,7 +24,7 @@
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 import { ElTooltip } from 'element-plus';
-import type { IN8nButton } from '@/types';
+import type { IN8nButton } from 'n8n-design-system/types';
 import N8nButton from '../N8nButton';
 
 export default defineComponent({
