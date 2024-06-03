@@ -145,6 +145,17 @@ export const tryToParseObject = (value: unknown): object => {
 	}
 };
 
+export const getValueDescription = <T>(value: T, stringify = false): string => {
+	if (typeof value === 'object') {
+		if (value === null) return "'null'";
+		if (stringify) return JSON.stringify(value);
+		if (Array.isArray(value)) return 'array';
+		return 'object';
+	}
+
+	return `'${String(value)}'`;
+};
+
 export const tryToParseUrl = (value: unknown): string => {
 	if (typeof value === 'string' && !value.includes('://')) {
 		value = `http://${value}`;
@@ -196,7 +207,8 @@ export function validateFieldType(
 	const strict = options.strict ?? false;
 	const valueOptions = options.valueOptions ?? [];
 	const parseStrings = options.parseStrings ?? false;
-	const defaultErrorMessage = `'${fieldName}' expects a ${type} but we got '${String(value)}'`;
+
+	const defaultErrorMessage = `'${fieldName}' expects a ${type} but we got ${getValueDescription(value)}`;
 	switch (type.toLowerCase()) {
 		case 'string': {
 			if (!parseStrings) return { valid: true, newValue: value };
@@ -256,7 +268,7 @@ export function validateFieldType(
 			} catch (e) {
 				return {
 					valid: false,
-					errorMessage: `'${fieldName}' expects time (hh:mm:(:ss)) but we got '${String(value)}'.`,
+					errorMessage: `'${fieldName}' expects time (hh:mm:(:ss)) but we got ${getValueDescription(value)}.`,
 				};
 			}
 		}
@@ -287,9 +299,9 @@ export function validateFieldType(
 			if (!isValidOption) {
 				return {
 					valid: false,
-					errorMessage: `'${fieldName}' expects one of the following values: [${validOptions}] but we got '${String(
+					errorMessage: `'${fieldName}' expects one of the following values: [${validOptions}] but we got ${getValueDescription(
 						value,
-					)}'`,
+					)}`,
 				};
 			}
 			return { valid: true, newValue: value };
