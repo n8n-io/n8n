@@ -895,6 +895,7 @@ export class WorkflowExecute {
 					}
 
 					if (this.status === 'canceled') {
+						resolve();
 						return;
 					}
 
