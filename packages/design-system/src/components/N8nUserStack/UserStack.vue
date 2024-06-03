@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { IUser, UserStackGroups } from '@/types';
+import type { IUser, UserStackGroups } from 'n8n-design-system/types';
 import N8nAvatar from '../N8nAvatar';
 import N8nUserInfo from '../N8nUserInfo';
 import type { PropType } from 'vue';
