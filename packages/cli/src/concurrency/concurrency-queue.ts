@@ -1,10 +1,12 @@
 import { Service } from 'typedi';
 import { EventEmitter } from 'node:events';
-import type { ConcurrencyQueueItem } from './concurrency.types';
 
 @Service()
 export class ConcurrencyQueue extends EventEmitter {
-	private readonly queue: ConcurrencyQueueItem[] = [];
+	private readonly queue: Array<{
+		executionId: string;
+		resolve: () => void;
+	}> = [];
 
 	constructor(private capacity: number) {
 		super();

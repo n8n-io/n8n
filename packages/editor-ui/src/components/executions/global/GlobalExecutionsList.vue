@@ -322,7 +322,6 @@ async function onAutoRefreshToggle(value: boolean) {
 						:class="$style['concurrent-executions-header']"
 						:header-text="concurrentExecutionsHeaderText"
 						:tooltip-text="concurrentExecutionsTooltipText"
-						:upgrade-text="$locale.baseText('generic.upgradeNow')"
 					/>
 					<ElCheckbox
 						v-model="executionsStore.autoRefresh"

@@ -366,31 +366,37 @@ export class ExecutionService {
 	}
 
 	/**
-	 * Find summaries of active and finished executions that satisfy a query.
+	 * Return:
 	 *
-	 * Return also the total count of all finished executions that satisfy the query,
-	 * and whether the total is an estimate or not. Active executions are excluded
-	 * from the total and count for pagination purposes.
+	 * - the latest summaries of current and completed executions that satisfy a query,
+	 * - the total count of all completed executions that satisfy the query, and
+	 * - whether the total of completed executions is an estimate.
+	 *
+	 * By default, "current" means executions starting and running. With concurrency
+	 * control, "current" means executions enqueued to start and running.
 	 */
-	async findAllRunningAndLatest(query: ExecutionSummaries.RangeQuery) {
-		const currentlyRunningStatuses: ExecutionStatus[] = ['new', 'running'];
-		const allStatuses = new Set(ExecutionStatusList);
-		currentlyRunningStatuses.forEach((status) => allStatuses.delete(status));
-		const notRunningStatuses: ExecutionStatus[] = Array.from(allStatuses);
+	async findLatestCurrentAndCompleted(query: ExecutionSummaries.RangeQuery) {
+		const currentStatuses: ExecutionStatus[] = ['new', 'running'];
 
-		const [activeResult, finishedResult] = await Promise.all([
-			this.findRangeWithCount({ ...query, status: currentlyRunningStatuses }),
+		const completedStatuses = ExecutionStatusList.filter((s) => !currentStatuses.includes(s));
+
+		const [current, completed] = await Promise.all([
 			this.findRangeWithCount({
 				...query,
-				status: notRunningStatuses,
+				status: currentStatuses,
+				order: { top: 'running' }, // ensure limit cannot exclude running
+			}),
+			this.findRangeWithCount({
+				...query,
+				status: completedStatuses,
 				order: { stoppedAt: 'DESC' },
 			}),
 		]);
 
 		return {
-			results: activeResult.results.concat(finishedResult.results),
-			count: finishedResult.count,
-			estimated: finishedResult.estimated,
+			results: current.results.concat(completed.results),
+			count: completed.count, // exclude current from count for pagination
+			estimated: completed.estimated,
 		};
 	}
 

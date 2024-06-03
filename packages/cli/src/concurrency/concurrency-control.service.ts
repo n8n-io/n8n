@@ -3,30 +3,38 @@ import config from '@/config';
 import { Service } from 'typedi';
 import { ConcurrencyQueue } from './concurrency-queue';
 import { UnknownExecutionModeError } from '@/errors/unknown-execution-mode.error';
-import { UnsupportedConcurrencyCapError } from '@/errors/unsupported-concurrency-cap.error';
+import { InvalidConcurrencyCapError } from '@/errors/invalid-concurrency-cap.error';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { License } from '@/License';
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
 
 @Service()
 export class ConcurrencyControlService {
-	private readonly productionCap = config.getEnv('executions.concurrency.productionCap');
+	private readonly isEnabled: boolean;
 
-	readonly productionQueue: ConcurrencyQueue;
+	private readonly productionCap: number;
 
-	readonly isEnabled: boolean;
+	private readonly productionQueue: ConcurrencyQueue;
 
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly license: License,
 	) {
+		this.productionCap = this.getProductionCap();
+
+		if (this.productionCap === 0) {
+			throw new InvalidConcurrencyCapError(this.productionCap);
+		}
+
+		if (this.productionCap < -1) {
+			this.productionCap = -1;
+		}
+
 		if (this.productionCap === -1 || config.getEnv('executions.mode') === 'queue') {
 			this.isEnabled = false;
 			this.log('Service disabled');
 			return;
-		}
-
-		if (this.productionCap === 0 || this.productionCap <= -2) {
-			throw new UnsupportedConcurrencyCapError(this.productionCap);
 		}
 
 		this.productionQueue = new ConcurrencyQueue(this.productionCap);
@@ -103,6 +111,18 @@ export class ConcurrencyControlService {
 	// ----------------------------------
 	//             private
 	// ----------------------------------
+
+	private getProductionCap() {
+		const envCap = config.getEnv('executions.concurrency.productionCap');
+
+		if (config.getEnv('deployment.type') === 'cloud') {
+			if (process.env.N8N_CLOUD_OVERRIDE_CONCURRENCY_PRODUCTION_CAP === 'true') return envCap;
+
+			return this.license.getConcurrencyProductionCap();
+		}
+
+		return envCap;
+	}
 
 	private logInit() {
 		this.log('Enabled');

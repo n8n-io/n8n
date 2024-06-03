@@ -5,7 +5,7 @@
 				<div :class="$style.tooltip">
 					{{ tooltipText }}
 					<n8n-link bold size="small" :class="$style.upgrade" @click="goToUpgrade">
-						{{ upgradeText }}
+						{{ $locale.baseText('generic.upgradeNow') }}
 					</n8n-link>
 				</div>
 			</template>
@@ -19,9 +19,8 @@
 import { useUIStore } from '@/stores/ui.store';
 
 defineProps<{
-	tooltipText: string;
 	headerText: string;
-	upgradeText: string;
+	tooltipText: string;
 }>();
 
 const goToUpgrade = () => {

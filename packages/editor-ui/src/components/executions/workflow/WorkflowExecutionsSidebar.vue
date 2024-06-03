@@ -13,7 +13,6 @@
 				<ConcurrentExecutionsHeader
 					:header-text="concurrentExecutionsHeaderText"
 					:tooltip-text="concurrentExecutionsTooltipText"
-					:upgrade-text="$locale.baseText('generic.upgradeNow')"
 				/>
 			</div>
 		</div>
