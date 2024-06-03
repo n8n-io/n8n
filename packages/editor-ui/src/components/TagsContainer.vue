@@ -77,7 +77,7 @@ export default defineComponent({
 		},
 		limit: {
 			type: Number,
-			default: null,
+			default: DEFAULT_MAX_TAGS_LIMIT,
 		},
 		clickable: Boolean,
 		responsive: Boolean,
@@ -106,9 +106,7 @@ export default defineComponent({
 				.map((tagId: string) => this.tagsStore.getTagById(tagId))
 				.filter(Boolean); // if tag has been deleted from store
 
-			const limit = this.limit ?? DEFAULT_MAX_TAGS_LIMIT;
-
-			let toDisplay: TagEl[] = limit ? tags.slice(0, limit) : tags;
+			let toDisplay: TagEl[] = this.limit ? tags.slice(0, this.limit) : tags;
 			toDisplay = toDisplay.map((tag: ITag) => ({
 				...tag,
 				hidden: this.responsive && !this.visibility[tag.id],
