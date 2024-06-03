@@ -192,6 +192,7 @@ const onInputScroll = (event: WheelEvent) => {
 	}
 };
 
+// TODO: Ideally, this should be part of the Markdown component
 const initCheckboxEvents = () => {
 	const markdownContainerEl = markdownContainer.value;
 	const checkboxes = markdownContainerEl?.querySelectorAll('input[type="checkbox"]');
