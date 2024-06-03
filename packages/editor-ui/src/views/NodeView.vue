@@ -445,7 +445,6 @@ export default defineComponent({
 			return;
 		}
 		if (this.uiStore.stateIsDirty && !this.readOnlyEnv) {
-			console.log('Hello!');
 			const confirmModal = await this.confirm(
 				this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
 				{
@@ -3990,7 +3989,6 @@ export default defineComponent({
 				const incoming = this.instance?.getConnections({
 					target: nodeEl,
 				});
-				console.log('Incoming and outgoing connections', incoming, outgoing);
 				return {
 					incoming: Array.isArray(incoming) ? incoming : Object.values(incoming),
 					outgoing: Array.isArray(outgoing) ? outgoing : Object.values(outgoing),
@@ -3999,7 +3997,6 @@ export default defineComponent({
 			return { incoming: [], outgoing: [] };
 		},
 		onNodeMoved(node: INodeUi) {
-			console.log('Node moved');
 			const { incoming, outgoing } = this.getIncomingOutgoingConnections(node.name);
 
 			[...incoming, ...outgoing].forEach((connection: Connection) => {
@@ -4248,7 +4245,9 @@ export default defineComponent({
 
 				const promptResponse = await promptResponsePromise;
 
-				if (promptResponse?.action !== MODAL_CONFIRM) return;
+				if (promptResponse?.action !== MODAL_CONFIRM) {
+					return;
+				}
 
 				await this.renameNode(currentName, promptResponse.value, true);
 			} catch (e) {}

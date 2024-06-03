@@ -1,13 +1,19 @@
-import type { ElMessageBoxOptions, MessageBoxData } from 'element-plus';
+import type { ElMessageBoxOptions, Action, MessageBoxInputData } from 'element-plus';
 import { ElMessageBox as MessageBox } from 'element-plus';
 
 export type MessageBoxConfirmResult = 'confirm' | 'cancel';
 
 export function useMessage() {
-	const handleCancelOrClose = (e: unknown) => {
+	const handleCancelOrClose = (e: Action | Error): Action => {
 		if (e instanceof Error) throw e;
 
-		return { action: 'cancel', value: '' } as MessageBoxData;
+		return e;
+	};
+
+	const handleCancelOrClosePrompt = (e: Error | Action): MessageBoxInputData => {
+		if (e instanceof Error) throw e;
+
+		return { value: '', action: e };
 	};
 
 	async function alert(
@@ -65,10 +71,10 @@ export function useMessage() {
 
 		if (typeof configOrTitle === 'string') {
 			return await MessageBox.prompt(message, configOrTitle, resolvedConfig).catch(
-				handleCancelOrClose,
+				handleCancelOrClosePrompt,
 			);
 		}
-		return await MessageBox.prompt(message, resolvedConfig).catch(handleCancelOrClose);
+		return await MessageBox.prompt(message, resolvedConfig).catch(handleCancelOrClosePrompt);
 	}
 
 	return {

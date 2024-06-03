@@ -1,3 +1,4 @@
+<!-- eslint-disable @typescript-eslint/no-unsafe-enum-comparison -->
 <script lang="ts" setup>
 import {
 	DUPLICATE_MODAL_KEY,
@@ -427,7 +428,7 @@ async function onWorkflowMenuSelect(action: string): Promise<void> {
 		}
 		case WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL: {
 			try {
-				const promptResponse = (await message.prompt(
+				const promptResponse = await message.prompt(
 					locale.baseText('mainSidebar.prompt.workflowUrl') + ':',
 					locale.baseText('mainSidebar.prompt.importWorkflowFromUrl') + ':',
 					{
@@ -436,9 +437,9 @@ async function onWorkflowMenuSelect(action: string): Promise<void> {
 						inputErrorMessage: locale.baseText('mainSidebar.prompt.invalidUrl'),
 						inputPattern: /^http[s]?:\/\/.*\.json$/i,
 					},
-				)) as MessageBoxInputData;
+				);
 
-				if ((promptResponse as unknown as string) === 'cancel') {
+				if (promptResponse.action === 'cancel') {
 					return;
 				}
 
