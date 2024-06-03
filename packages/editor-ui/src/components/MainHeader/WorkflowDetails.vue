@@ -55,7 +55,6 @@ import type {
 } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import type { MessageBoxInputData } from 'element-plus';
 import type { BaseTextKey } from '../../plugins/i18n';
 
 const props = defineProps<{
