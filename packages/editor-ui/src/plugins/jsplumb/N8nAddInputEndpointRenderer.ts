@@ -74,6 +74,6 @@ export const register = () => {
 
 			return container;
 		},
-		updateNode: (endpointInstance: N8nAddInputEndpoint) => {},
+		updateNode: () => {},
 	});
 };
