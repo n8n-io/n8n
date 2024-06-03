@@ -1,10 +1,10 @@
 <template>
 	<div
 		:id="nodeId"
-		:ref="data.name"
+		:ref="data?.name"
 		class="sticky-wrapper"
 		:style="stickyPosition"
-		:data-name="data.name"
+		:data-name="data?.name"
 		data-test-id="sticky"
 	>
 		<div
@@ -25,6 +25,7 @@
 				@contextmenu="onContextMenu"
 			>
 				<n8n-sticky
+					v-if="node"
 					:id="node.id"
 					:model-value="node.parameters.content"
 					:height="node.parameters.height"
@@ -102,7 +103,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref } from 'vue';
+import { defineComponent, ref, type StyleValue } from 'vue';
 import { mapStores } from 'pinia';
 
 import { nodeBase } from '@/mixins/nodeBase';
@@ -122,6 +123,9 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useContextMenu } from '@/composables/useContextMenu';
 import { useDeviceSupport } from 'n8n-design-system';
+import { GRID_SIZE } from '@/utils/nodeViewUtils';
+import { useToast } from '@/composables/useToast';
+import { assert } from '@/utils/assert';
 
 export default defineComponent({
 	name: 'Sticky',
@@ -129,13 +133,17 @@ export default defineComponent({
 	props: {
 		nodeViewScale: {
 			type: Number,
+			default: 1,
 		},
 		gridSize: {
 			type: Number,
+			default: GRID_SIZE,
 		},
 	},
+	emits: { removeNode: null, nodeSelected: null },
 	setup() {
 		const deviceSupport = useDeviceSupport();
+		const toast = useToast();
 		const colorPopoverTrigger = ref<HTMLDivElement>();
 		const forceActions = ref(false);
 		const setForceActions = (value: boolean) => {
@@ -148,7 +156,20 @@ export default defineComponent({
 			}
 		});
 
-		return { deviceSupport, colorPopoverTrigger, contextMenu, forceActions, setForceActions };
+		return {
+			deviceSupport,
+			toast,
+			colorPopoverTrigger,
+			contextMenu,
+			forceActions,
+			setForceActions,
+		};
+	},
+	data() {
+		return {
+			isResizing: false,
+			isTouchActive: false,
+		};
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),
@@ -187,7 +208,7 @@ export default defineComponent({
 		width(): number {
 			return this.node && isNumber(this.node.parameters.width) ? this.node.parameters.width : 0;
 		},
-		stickySize(): object {
+		stickySize(): StyleValue {
 			const returnStyles: {
 				[key: string]: string | number;
 			} = {
@@ -197,7 +218,7 @@ export default defineComponent({
 
 			return returnStyles;
 		},
-		stickyPosition(): object {
+		stickyPosition(): StyleValue {
 			const returnStyles: {
 				[key: string]: string | number;
 			} = {
@@ -218,12 +239,6 @@ export default defineComponent({
 			return this.uiStore.isActionActive('workflowRunning');
 		},
 	},
-	data() {
-		return {
-			isResizing: false,
-			isTouchActive: false,
-		};
-	},
 	methods: {
 		onShowPopover() {
 			this.setForceActions(true);
@@ -232,6 +247,7 @@ export default defineComponent({
 			this.setForceActions(false);
 		},
 		async deleteNode() {
+			assert(this.data);
 			// Wait a tick else vue causes problems because the data is gone
 			await this.$nextTick();
 			this.$emit('removeNode', this.data.name);
@@ -239,7 +255,13 @@ export default defineComponent({
 		changeColor(index: number) {
 			this.workflowsStore.updateNodeProperties({
 				name: this.name,
-				properties: { parameters: { ...this.node.parameters, color: index } },
+				properties: {
+					parameters: {
+						...this.node?.parameters,
+						color: index,
+					},
+					position: this.node?.position ?? [0, 0],
+				},
 			});
 		},
 		onEdit(edit: boolean) {
@@ -249,7 +271,7 @@ export default defineComponent({
 				this.ndvStore.activeNodeName = null;
 			}
 		},
-		onMarkdownClick(link: HTMLAnchorElement, event: Event) {
+		onMarkdownClick(link: HTMLAnchorElement) {
 			if (link) {
 				const isOnboardingNote = this.name === QUICKSTART_NOTE_NAME;
 				const isWelcomeVideo = link.querySelector('img[alt="n8n quickstart video"');
@@ -264,6 +286,9 @@ export default defineComponent({
 			}
 		},
 		onInputChange(content: string) {
+			if (!this.node) {
+				return;
+			}
 			this.node.parameters.content = content;
 			this.setParameters({ content });
 		},
@@ -319,7 +344,7 @@ export default defineComponent({
 			this.workflowsStore.updateNodeProperties(updateInformation);
 		},
 		touchStart() {
-			if (this.deviceSupport.isTouchDevice && !this.isMacOs && !this.isTouchActive) {
+			if (this.deviceSupport.isTouchDevice && !this.deviceSupport.isMacOs && !this.isTouchActive) {
 				this.isTouchActive = true;
 				setTimeout(() => {
 					this.isTouchActive = false;

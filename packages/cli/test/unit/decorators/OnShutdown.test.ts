@@ -5,12 +5,11 @@ import { mock } from 'jest-mock-extended';
 
 describe('OnShutdown', () => {
 	let shutdownService: ShutdownService;
-	let registerSpy: jest.SpyInstance;
 
 	beforeEach(() => {
 		shutdownService = new ShutdownService(mock());
 		Container.set(ShutdownService, shutdownService);
-		registerSpy = jest.spyOn(shutdownService, 'register');
+		jest.spyOn(shutdownService, 'register');
 	});
 
 	it('should register a methods that is decorated with OnShutdown', () => {
@@ -49,6 +48,7 @@ describe('OnShutdown', () => {
 	});
 
 	it('should use the given priority', () => {
+		// @ts-expect-error We are checking the decorator.
 		class TestClass {
 			@OnShutdown(10)
 			async onShutdown() {

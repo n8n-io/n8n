@@ -17,7 +17,7 @@ const xmlParser = new XmlParser({
 });
 
 const payloadSizeMax = config.getEnv('endpoints.payloadSizeMax');
-export const rawBodyReader: RequestHandler = async (req, res, next) => {
+export const rawBodyReader: RequestHandler = async (req, _res, next) => {
 	parseIncomingMessage(req);
 
 	req.readRawBody = async () => {
@@ -70,7 +70,7 @@ export const parseBody = async (req: Request) => {
 	}
 };
 
-export const bodyParser: RequestHandler = async (req, res, next) => {
+export const bodyParser: RequestHandler = async (req, _res, next) => {
 	await parseBody(req);
 	if (!req.body) req.body = {};
 	next();

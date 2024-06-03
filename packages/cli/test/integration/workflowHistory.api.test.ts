@@ -91,7 +91,7 @@ describe('GET /workflow-history/:workflowId', () => {
 				),
 		);
 
-		const versions2 = await Promise.all(
+		await Promise.all(
 			new Array(10).fill(undefined).map(async (_) => await createWorkflowHistoryItem(workflow2.id)),
 		);
 

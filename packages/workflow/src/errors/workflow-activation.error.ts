@@ -47,6 +47,7 @@ export class WorkflowActivationError extends ExecutionBaseError {
 				'econnrefused', // Node.js
 				'eauth', // OAuth
 				'temporary authentication failure', // IMAP server
+				'invalid credentials',
 			].some((str) => this.message.toLowerCase().includes(str))
 		) {
 			this.level = 'warning';

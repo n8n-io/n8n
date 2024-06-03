@@ -30,8 +30,8 @@
 import { computed, useCssModule } from 'vue';
 
 interface TreeProps {
-	value?: Record<string, unknown>;
-	path?: string[];
+	value?: unknown;
+	path?: Array<string | number>;
 	depth?: number;
 	nodeClass?: string;
 }
@@ -65,7 +65,7 @@ const isSimple = (data: unknown): boolean => {
 	return typeof data !== 'object';
 };
 
-const getPath = (key: string): unknown[] => {
+const getPath = (key: string): Array<string | number> => {
 	if (Array.isArray(props.value)) {
 		return [...props.path, parseInt(key, 10)];
 	}
