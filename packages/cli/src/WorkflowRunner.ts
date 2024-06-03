@@ -25,8 +25,6 @@ import PCancelable from 'p-cancelable';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
-import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
-import { ExecutionDataRecoveryService } from '@/eventbus/executionDataRecovery.service';
 import { ExternalHooks } from '@/ExternalHooks';
 import type { IExecutionResponse, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
@@ -102,42 +100,6 @@ export class WorkflowRunner {
 			stoppedAt: new Date(),
 			status: 'error',
 		};
-
-		// The following will attempt to recover runData from event logs
-		// Note that this will only work as long as the event logs actually contain the events from this workflow execution
-		// Since processError is run almost immediately after the workflow execution has failed, it is likely that the event logs
-		// does contain those messages.
-		try {
-			// Search for messages for this executionId in event logs
-			const eventBus = Container.get(MessageEventBus);
-			const eventLogMessages = await eventBus.getEventsByExecutionId(executionId);
-			// Attempt to recover more better runData from these messages (but don't update the execution db entry yet)
-			if (eventLogMessages.length > 0) {
-				const eventLogExecutionData = await Container.get(
-					ExecutionDataRecoveryService,
-				).recoverExecutionData(executionId, eventLogMessages, false);
-				if (eventLogExecutionData) {
-					fullRunData.data.resultData.runData = eventLogExecutionData.resultData.runData;
-					fullRunData.status = 'crashed';
-				}
-			}
-
-			const executionFlattedData = await this.executionRepository.findSingleExecution(executionId, {
-				includeData: true,
-			});
-
-			if (executionFlattedData) {
-				void Container.get(InternalHooks).onWorkflowCrashed(
-					executionId,
-					executionMode,
-					executionFlattedData?.workflowData,
-					// TODO: get metadata to be sent here
-					// executionFlattedData?.metadata,
-				);
-			}
-		} catch {
-			// Ignore errors
-		}
 
 		// Remove from active execution with empty data. That will
 		// set the execution to failed.

@@ -1867,7 +1867,8 @@ export type CloudUpdateLinkSourceType =
 	| 'workflow-history'
 	| 'worker-view'
 	| 'external-secrets'
-	| 'rbac';
+	| 'rbac'
+	| 'debug';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -1888,7 +1889,8 @@ export type UTMCampaign =
 	| 'upgrade-advanced-permissions'
 	| 'upgrade-worker-view'
 	| 'upgrade-external-secrets'
-	| 'upgrade-rbac';
+	| 'upgrade-rbac'
+	| 'upgrade-debug';
 
 export type N8nBanners = {
 	[key in BannerName]: {
