@@ -18,7 +18,7 @@ export const GlobalComponentsPlugin: Plugin<{}> = {
 		app.component('ParameterInputList', ParameterInputList);
 
 		app.use(ElementPlus);
-		app.use(N8nPlugin);
+		app.use(N8nPlugin, {});
 
 		// app.use(ElLoading);
 		// app.use(ElNotification);

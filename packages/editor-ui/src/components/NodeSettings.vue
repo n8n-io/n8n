@@ -441,7 +441,6 @@ export default defineComponent({
 				parameters: {},
 			} as INodeParameters,
 			nodeValuesInitialized: false, // Used to prevent nodeValues from being overwritten by defaults on reopening ndv
-
 			nodeSettings: [] as INodeProperties[],
 			COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 			CUSTOM_NODES_DOCS_URL,
@@ -450,7 +449,7 @@ export default defineComponent({
 		};
 	},
 	watch: {
-		node(newNode, oldNode) {
+		node() {
 			this.setNodeValues();
 		},
 	},

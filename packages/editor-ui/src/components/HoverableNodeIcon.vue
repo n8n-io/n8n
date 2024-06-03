@@ -2,7 +2,7 @@
 	<div
 		:class="$style.wrapper"
 		:style="iconStyleData"
-		@click="(e) => $emit('click')"
+		@click="() => $emit('click')"
 		@mouseover="showTooltip = true"
 		@mouseleave="showTooltip = false"
 	>

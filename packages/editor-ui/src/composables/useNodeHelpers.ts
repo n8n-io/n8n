@@ -271,7 +271,7 @@ export function useNodeHelpers() {
 		}
 	}
 
-	function updateNodeParameterIssues(node: INodeUi, nodeType?: INodeTypeDescription): void {
+	function updateNodeParameterIssues(node: INodeUi, nodeType?: INodeTypeDescription | null): void {
 		const localNodeType = nodeType ?? nodeTypesStore.getNodeType(node.type, node.typeVersion);
 
 		if (localNodeType === null) {
