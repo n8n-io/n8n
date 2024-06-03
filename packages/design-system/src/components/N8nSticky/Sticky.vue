@@ -58,12 +58,13 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import N8nInput from '../N8nInput';
 import N8nMarkdown from '../N8nMarkdown';
 import N8nResizeWrapper, { type ResizeData } from '../N8nResizeWrapper/ResizeWrapper.vue';
 import N8nText from '../N8nText';
 import { useI18n } from '../../composables/useI18n';
+import { replaceNth } from '../../utils/markdown';
 
 interface StickyProps {
 	modelValue?: string;
@@ -105,6 +106,8 @@ const $emit = defineEmits<{
 const { t } = useI18n();
 const isResizing = ref(false);
 const input = ref<HTMLTextAreaElement | undefined>(undefined);
+const markdownContainer = ref<HTMLDivElement | undefined>(undefined);
+const checkboxListeners = ref<Map<String, EventListener>>(new Map());
 
 const resHeight = computed((): number => {
 	return props.height < props.minHeight ? props.minHeight : props.height;
@@ -124,16 +127,28 @@ const shouldShowFooter = computed((): boolean => resHeight.value > 100 && resWid
 watch(
 	() => props.editMode,
 	(newMode, prevMode) => {
-		setTimeout(() => {
+		setTimeout(async () => {
 			if (newMode && !prevMode && input.value) {
 				if (props.defaultText === props.modelValue) {
 					input.value.select();
 				}
 				input.value.focus();
 			}
+			if (!newMode && prevMode) {
+				// Init checkbox events after editor is closed
+				await resetCheckboxListeners();
+			}
 		}, 100);
 	},
 );
+
+onMounted(() => {
+	initCheckboxEvents();
+});
+
+onBeforeUnmount(() => {
+	removeCheckboxListeners();
+});
 
 const onDoubleClick = () => {
 	if (!props.readOnly) $emit('edit', true);
@@ -170,6 +185,55 @@ const onInputScroll = (event: WheelEvent) => {
 	if (!event.ctrlKey && !event.metaKey) {
 		event.stopPropagation();
 	}
+};
+
+const initCheckboxEvents = () => {
+	const markdownContainerEl = markdownContainer.value;
+	const checkboxes = markdownContainerEl?.querySelectorAll('input[type="checkbox"]');
+	if (checkboxes) {
+		checkboxes.forEach((checkbox, position) => {
+			const handler: EventListener = onCheckboxChange.bind(null, checkbox, position);
+			checkbox.addEventListener('change', handler);
+			checkboxListeners.value.set(checkbox.id, handler);
+		});
+	}
+};
+
+const removeCheckboxListeners = () => {
+	const markdownContainerEl = markdownContainer.value;
+	const checkboxes = markdownContainerEl?.querySelectorAll('input[type="checkbox"]');
+	if (checkboxes) {
+		checkboxes.forEach((checkbox) => {
+			const handler = checkboxListeners.value.get(checkbox.id);
+			if (handler) {
+				checkbox.removeEventListener('change', handler);
+				checkboxListeners.value.delete(checkbox.id);
+			}
+		});
+	}
+};
+
+const resetCheckboxListeners = async () => {
+	removeCheckboxListeners();
+	await nextTick();
+	initCheckboxEvents();
+};
+
+// Update markdown when checkbox state changes
+const onCheckboxChange = async (checkbox: HTMLInputElement, position: number) => {
+	const currentContent = props.modelValue;
+	if (!currentContent) {
+		return;
+	}
+	// We are using position to connect the checkbox with the corresponding line in the markdown
+	const newContent = replaceNth(
+		currentContent,
+		/\- \[[x|\s]\]/gim,
+		checkbox.checked ? '- [x]' : '- [ ]',
+		position + 1,
+	);
+	$emit('update:modelValue', newContent);
+	await resetCheckboxListeners();
 };
 </script>
 
