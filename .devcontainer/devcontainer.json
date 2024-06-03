@@ -1,51 +1,19 @@
 {
-	"name": "n8n-dev",
-	"image": "mcr.microsoft.com/devcontainers/typescript-node:20",
-	"workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
-	"workspaceFolder": "/workspace",
+	"name": "n8n",
+	"dockerComposeFile": "docker-compose.yml",
+	"service": "n8n",
+	"workspaceFolder": "/workspaces",
 	"mounts": [
-		"source=${localEnv:HOME}/.ssh,target=/home/node/.ssh,type=bind,consistency=cached"
+		"type=bind,source=${localWorkspaceFolder},target=/workspaces,consistency=cached",
+		"type=bind,source=${localEnv:HOME}/.ssh,target=/home/node/.ssh,consistency=cached",
+		"type=bind,source=${localEnv:HOME}/.n8n,target=/home/node/.n8n,consistency=cached"
 	],
-	"forwardPorts": [
-		8080,
-		5678
-	],
-	"features": {},
-	"postAttachCommand": "corepack enable && corepack prepare pnpm@latest --activate && pnpm config set store-dir /home/node/.pnpm-store && pnpm install && pnpm build",
+	"forwardPorts": [8080, 5678],
+	"postCreateCommand": "corepack prepare --activate && pnpm install ",
+	"postAttachCommand": "pnpm build",
 	"customizations": {
-		"vscode": {
-			"settings": {
-				"editor.defaultFormatter": "esbenp.prettier-vscode",
-				"editor.formatOnSave": true,
-				"search.exclude": {
-					"node_modules": true,
-					"dist": true,
-					"pnpm-lock.yaml": true
-				},
-				"typescript.format.enable": false,
-				"typescript.tsdk": "node_modules/typescript/lib",
-				"workspace-default-settings.runOnActivation": true,
-				"prettier.prettierPath": "node_modules/prettier/index.cjs",
-				"eslint.probe": [
-					"javascript",
-					"typescript",
-					"vue"
-				],
-				"eslint.workingDirectories": [
-					{
-						"mode": "auto"
-					}
-				]
-			},
-			"extensions": [
-				"streetsidesoftware.code-spell-checker",
-				"dangmai.workspace-default-settings",
-				"dbaeumer.vscode-eslint",
-				"EditorConfig.EditorConfig",
-				"esbenp.prettier-vscode",
-				"Vue.vscode-typescript-vue-plugin",
-				"Vue.volar"
-			]
+		"codespaces": {
+			"openFiles": ["CONTRIBUTING.md"]
 		}
 	}
 }
