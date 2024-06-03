@@ -84,11 +84,9 @@ export function returnId(tweetId: INodeParameterResourceLocator) {
 		return tweetId.value as string;
 	} else if (tweetId.mode === 'url') {
 		const value = tweetId.value as string;
-		const tweetIdMatch = value.includes('lists')
-			? value.match(/^https?:\/\/twitter\.com\/(?:#!\/)?(\w+)\/list(s)?\/(\d+)$/)
-			: value.match(/^https?:\/\/twitter\.com\/(?:#!\/)?(\w+)\/status(es)?\/(\d+)$/);
-
-		return tweetIdMatch?.[3] as string;
+		const urlParts = value.split('/');
+		const tweetIdPart = urlParts[urlParts.length - 1];
+		return tweetIdPart as string;
 	} else {
 		throw new ApplicationError(`The mode ${tweetId.mode} is not valid!`, { level: 'warning' });
 	}
