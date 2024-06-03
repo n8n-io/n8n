@@ -1298,7 +1298,8 @@ describe('PUT /:workflowId/transfer', () => {
 		//
 		const sourceProject = await createTeamProject('Team Project 1');
 		await linkUserToProject(member, sourceProject, 'project:editor');
-		const destinationProject = await createTeamProject('Team Project 2', member);
+		const destinationProject = await createTeamProject();
+		await linkUserToProject(member, destinationProject, 'project:admin');
 
 		const workflow = await createWorkflow({}, sourceProject);
 
@@ -1312,16 +1313,16 @@ describe('PUT /:workflowId/transfer', () => {
 			.expect(403);
 	});
 
-	test('can transfer from personal to team project', async () => {
+	test('transferring from a personal project to a team project severs all sharings', async () => {
 		//
 		// ARRANGE
 		//
-		const destinationProject = await createTeamProject('Team Project', member);
-
 		const workflow = await createWorkflow({}, member);
 
-		// all other sharings should be deleted by the transfer
-		await shareWorkflowWithUsers(workflow, [anotherMember]);
+		// this sharing should be deleted by the transfer
+		await shareWorkflowWithUsers(workflow, [anotherMember, owner]);
+
+		const destinationProject = await createTeamProject('Team Project', member);
 
 		//
 		// ACT
@@ -1339,7 +1340,7 @@ describe('PUT /:workflowId/transfer', () => {
 
 		const allSharings = await getWorkflowSharing(workflow);
 		expect(allSharings).toHaveLength(1);
-		expect(allSharings[0]).toMatchObject({
+		expect(allSharings).not.toContainEqual({
 			projectId: destinationProject.id,
 			workflowId: workflow.id,
 			role: 'workflow:owner',
