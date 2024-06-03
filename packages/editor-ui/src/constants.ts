@@ -398,7 +398,6 @@ export const ROLE_OTHER = 'other';
 /** END OF PERSONALIZATION SURVEY */
 
 export const MODAL_CANCEL = 'cancel';
-export const MODAL_CLOSE = 'close';
 export const MODAL_CONFIRM = 'confirm';
 
 export const VALID_EMAIL_REGEX =
