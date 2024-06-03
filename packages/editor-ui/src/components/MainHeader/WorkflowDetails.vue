@@ -1,4 +1,3 @@
-<!-- eslint-disable @typescript-eslint/no-unsafe-enum-comparison -->
 <script lang="ts" setup>
 import {
 	DUPLICATE_MODAL_KEY,
@@ -385,7 +384,7 @@ async function handleFileImport(): Promise<void> {
 	}
 }
 
-async function onWorkflowMenuSelect(action: string): Promise<void> {
+async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void> {
 	switch (action) {
 		case WORKFLOW_MENU_ACTIONS.DUPLICATE: {
 			uiStore.openModalWithData({
