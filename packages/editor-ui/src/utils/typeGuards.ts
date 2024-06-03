@@ -6,8 +6,8 @@ import type {
 } from 'n8n-workflow';
 import { nodeConnectionTypes } from 'n8n-workflow';
 import type { ICredentialsResponse, NewCredentialsModal } from '@/Interface';
-import { jsPlumbDOMElement } from '@jsplumb/browser-ui';
-import { Connection } from '@jsplumb/core';
+import type { jsPlumbDOMElement } from '@jsplumb/browser-ui';
+import type { Connection } from '@jsplumb/core';
 
 /*
 	Type guards used in editor-ui project

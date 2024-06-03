@@ -435,7 +435,10 @@ describe('mapLegacyEndpointsToCanvasConnectionPort', () => {
 	});
 
 	it('should map string endpoints correctly', () => {
-		const endpoints: INodeTypeDescription['inputs'] = [NodeConnectionType.Main, NodeConnectionType.AiTool];
+		const endpoints: INodeTypeDescription['inputs'] = [
+			NodeConnectionType.Main,
+			NodeConnectionType.AiTool,
+		];
 		const result = mapLegacyEndpointsToCanvasConnectionPort(endpoints);
 
 		expect(result).toEqual([
