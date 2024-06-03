@@ -29,7 +29,10 @@ export const vitestConfig = defineVitestConfig({
 	},
 }) as UserConfig;
 
-const plugins = [vue(), checker({ vueTsc: true })];
+const plugins = [vue()];
+if (!process.env.VITEST) {
+	plugins.push(checker({ vueTsc: true }));
+}
 
 export default mergeConfig(
 	defineConfig({
