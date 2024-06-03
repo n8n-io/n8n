@@ -126,37 +126,31 @@ export async function addLocationIdPreSendAction(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const credentials = await this.getCredentials('highLevelOAuth2Api');
+	const { locationId } =
+		((await this.getCredentials('highLevelOAuth2Api'))?.oauthTokenData as IDataObject) ?? {};
+
 	const resource = this.getNodeParameter('resource') as string;
 	const operation = this.getNodeParameter('operation') as string;
 
 	if (resource === 'contact') {
 		if (operation === 'getAll') {
 			requestOptions.qs = requestOptions.qs || {};
-			Object.assign(requestOptions.qs, {
-				locationId: (credentials.oauthTokenData as IDataObject)?.locationId,
-			});
+			Object.assign(requestOptions.qs, { locationId });
 		}
 		if (operation === 'create') {
 			requestOptions.body = requestOptions.body || {};
-			Object.assign(requestOptions.body, {
-				locationId: (credentials.oauthTokenData as IDataObject)?.locationId,
-			});
+			Object.assign(requestOptions.body, { locationId });
 		}
 	}
 
 	if (resource === 'opportunity') {
 		if (operation === 'create') {
 			requestOptions.body = requestOptions.body || {};
-			Object.assign(requestOptions.body, {
-				locationId: (credentials.oauthTokenData as IDataObject)?.locationId,
-			});
+			Object.assign(requestOptions.body, { locationId });
 		}
 		if (operation === 'getAll') {
 			requestOptions.qs = requestOptions.qs || {};
-			Object.assign(requestOptions.qs, {
-				location_id: (credentials.oauthTokenData as IDataObject)?.locationId,
-			});
+			Object.assign(requestOptions.qs, { location_id: locationId });
 		}
 	}
 
@@ -281,11 +275,13 @@ export async function getPipelineStages(
 
 	const { locationId } =
 		((await this.getCredentials('highLevelOAuth2Api'))?.oauthTokenData as IDataObject) ?? {};
+
 	const pipelines = (
 		await highLevelApiRequest.call(this, 'GET', '/opportunities/pipelines', undefined, {
 			locationId,
 		})
 	).pipelines as IDataObject[];
+
 	const pipeline = pipelines.find((p) => p.id === pipelineId);
 	if (pipeline) {
 		const options: INodePropertyOptions[] = (pipeline.stages as IDataObject[]).map((stage) => {
