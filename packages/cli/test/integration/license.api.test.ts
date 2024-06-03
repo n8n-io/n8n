@@ -130,6 +130,5 @@ const DEFAULT_POST_RESPONSE: { data: ILicensePostResponse } = {
 	},
 };
 
-const UNAUTHORIZED_RESPONSE = { status: 'error', message: 'Unauthorized' };
 const ACTIVATION_FAILED_MESSAGE = 'Failed to activate license';
 const GENERIC_ERROR_MESSAGE = 'Something went wrong';

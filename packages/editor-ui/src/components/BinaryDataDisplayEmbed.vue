@@ -69,7 +69,7 @@ export default defineComponent({
 			}
 		} else {
 			try {
-				const binaryUrl = this.workflowsStore.getBinaryUrl(id, 'view', fileName, mimeType);
+				const binaryUrl = this.workflowsStore.getBinaryUrl(id, 'view', fileName ?? '', mimeType);
 				if (isJSONData || isHTMLData) {
 					const fetchedData = await fetch(binaryUrl, { credentials: 'include' });
 					this.data = await (isJSONData ? fetchedData.json() : fetchedData.text());

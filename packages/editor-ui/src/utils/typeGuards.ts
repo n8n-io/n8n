@@ -1,4 +1,9 @@
-import type { INodeParameterResourceLocator, NodeConnectionType } from 'n8n-workflow';
+import type {
+	INodeParameterResourceLocator,
+	INodeTypeDescription,
+	NodeConnectionType,
+	TriggerPanelDefinition,
+} from 'n8n-workflow';
 import { nodeConnectionTypes } from 'n8n-workflow';
 import type { ICredentialsResponse, NewCredentialsModal } from '@/Interface';
 
@@ -55,4 +60,10 @@ export function isValidNodeConnectionType(
 	connectionType: string,
 ): connectionType is NodeConnectionType {
 	return nodeConnectionTypes.includes(connectionType as NodeConnectionType);
+}
+
+export function isTriggerPanelObject(
+	triggerPanel: INodeTypeDescription['triggerPanel'],
+): triggerPanel is TriggerPanelDefinition {
+	return triggerPanel !== undefined && typeof triggerPanel === 'object' && triggerPanel !== null;
 }

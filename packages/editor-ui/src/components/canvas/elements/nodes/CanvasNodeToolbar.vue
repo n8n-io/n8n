@@ -24,7 +24,7 @@ function toggleDisableNode() {}
 function deleteNode() {}
 
 // @TODO
-function openContextMenu(e: MouseEvent, type: string) {}
+function openContextMenu(_e: MouseEvent, _type: string) {}
 </script>
 
 <template>
