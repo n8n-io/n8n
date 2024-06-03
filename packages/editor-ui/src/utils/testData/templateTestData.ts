@@ -26,6 +26,7 @@ export const fullShopifyTelegramTwitterTemplate = {
 	workflow: {
 		nodes: [
 			{
+				id: 'd65f8060-0196-430a-923c-57f838991cc1',
 				name: 'Twitter',
 				type: 'n8n-nodes-base.twitter',
 				position: [720, -220],
@@ -39,6 +40,7 @@ export const fullShopifyTelegramTwitterTemplate = {
 				typeVersion: 1,
 			},
 			{
+				id: 'd65f8060-0196-430a-923c-57f838991dd3',
 				name: 'Telegram',
 				type: 'n8n-nodes-base.telegram',
 				position: [720, -20],
@@ -53,6 +55,7 @@ export const fullShopifyTelegramTwitterTemplate = {
 				typeVersion: 1,
 			},
 			{
+				id: 'd65f8060-0196-430a-923c-57f838991dd2',
 				name: 'product created',
 				type: 'n8n-nodes-base.shopifyTrigger',
 				position: [540, -110],
@@ -195,6 +198,7 @@ export const fullSaveEmailAttachmentsToNextCloudTemplate = {
 	workflow: {
 		nodes: [
 			{
+				id: 'd65f8060-0196-430a-923c-57f8389911f3',
 				name: 'IMAP Email',
 				type: 'n8n-nodes-base.emailReadImap',
 				position: [240, 420],
@@ -206,6 +210,7 @@ export const fullSaveEmailAttachmentsToNextCloudTemplate = {
 				typeVersion: 1,
 			},
 			{
+				id: 'd65f8060-0196-430a-923c-57f838991gg2',
 				name: 'Nextcloud',
 				type: 'n8n-nodes-base.nextCloud',
 				position: [940, 420],
@@ -217,6 +222,7 @@ export const fullSaveEmailAttachmentsToNextCloudTemplate = {
 				typeVersion: 1,
 			},
 			{
+				id: 'd65f8060-0196-430a-923c-57f838991ddh',
 				name: 'Map each attachment',
 				type: 'n8n-nodes-base.function',
 				position: [620, 420],
@@ -303,6 +309,7 @@ export const fullCreateApiEndpointTemplate = {
 	workflow: {
 		nodes: [
 			{
+				id: 'd65f8060-0196-430a-923c-57f838991dd1',
 				name: 'Webhook',
 				type: 'n8n-nodes-base.webhook',
 				position: [375, 115],
@@ -315,6 +322,7 @@ export const fullCreateApiEndpointTemplate = {
 				typeVersion: 1,
 			},
 			{
+				id: 'd65f8060-0196-430a-923c-57f838991dd9',
 				name: 'Note1',
 				type: 'n8n-nodes-base.stickyNote',
 				position: [355, -25],
@@ -327,6 +335,7 @@ export const fullCreateApiEndpointTemplate = {
 				typeVersion: 1,
 			},
 			{
+				id: 'd65f8060-0196-430a-923c-57f838991dd5',
 				name: 'Respond to Webhook',
 				type: 'n8n-nodes-base.respondToWebhook',
 				position: [815, 115],
@@ -339,6 +348,7 @@ export const fullCreateApiEndpointTemplate = {
 				typeVersion: 1,
 			},
 			{
+				id: 'd65f8060-0196-430a-923c-57f838991df1',
 				name: 'Create URL string',
 				type: 'n8n-nodes-base.set',
 				position: [595, 115],
@@ -358,6 +368,7 @@ export const fullCreateApiEndpointTemplate = {
 				typeVersion: 1,
 			},
 			{
+				id: 'd65f8060-0196-430a-923c-57f838991dbb',
 				name: 'Note3',
 				type: 'n8n-nodes-base.stickyNote',
 				position: [355, 275],

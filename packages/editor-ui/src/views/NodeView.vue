@@ -291,7 +291,6 @@ import type {
 	ConnectionTypes,
 	INodeOutputConfiguration,
 	IRun,
-	INodeCredentials,
 } from 'n8n-workflow';
 import {
 	deepCopy,
@@ -323,8 +322,6 @@ import type {
 	IPushDataExecutionFinished,
 	AIAssistantConnectionInfo,
 	NodeFilterType,
-	IWorkflowTemplateNode,
-	IWorkflowTemplateNodeCredentials,
 } from '@/Interface';
 
 import { type RouteLocation, useRouter } from 'vue-router';
@@ -1446,7 +1443,10 @@ export default defineComponent({
 			this.blankRedirect = true;
 			await this.$router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
 
-			await this.addNodes(data.workflow.nodes, data.workflow.connections);
+			const convertedNodes = data.workflow.nodes.map(
+				this.workflowsStore.convertTemplateNodeToNodeUi,
+			);
+			await this.addNodes(convertedNodes, data.workflow.connections);
 			this.workflowData =
 				(await this.workflowsStore.getNewWorkflowData(
 					data.name,
@@ -1475,8 +1475,8 @@ export default defineComponent({
 			this.workflowsStore.setActive(workflow.active || false);
 			this.workflowsStore.setWorkflowId(workflow.id);
 			this.workflowsStore.setWorkflowName({ newName: workflow.name, setStateDirty: false });
-			this.workflowsStore.setWorkflowSettings(workflow.settings || {});
-			this.workflowsStore.setWorkflowPinData(workflow.pinData || {});
+			this.workflowsStore.setWorkflowSettings(workflow.settings ?? {});
+			this.workflowsStore.setWorkflowPinData(workflow.pinData ?? {});
 			this.workflowsStore.setWorkflowVersionId(workflow.versionId);
 			this.workflowsStore.setWorkflowMetadata(workflow.meta);
 
@@ -1491,7 +1491,7 @@ export default defineComponent({
 				this.workflowsStore.setUsedCredentials(workflow.usedCredentials);
 			}
 
-			const tags = (workflow.tags || []) as ITag[];
+			const tags = (workflow.tags ?? []) as ITag[];
 			const tagIds = tags.map((tag) => tag.id);
 			this.workflowsStore.setWorkflowTagIds(tagIds || []);
 			this.tagsStore.upsertTags(tags);
@@ -2206,7 +2206,7 @@ export default defineComponent({
 				const nodeIdMap: { [prev: string]: string } = {};
 				if (workflowData.nodes) {
 					const nodeNames = workflowData.nodes.map((node) => node.name);
-					workflowData.nodes.forEach((node: INode | IWorkflowTemplateNode) => {
+					workflowData.nodes.forEach((node: INode) => {
 						// Provide a new name for nodes that don't have one
 						if (!node.name) {
 							const nodeType = this.nodeTypesStore.getNodeType(node.type);
@@ -2286,7 +2286,7 @@ export default defineComponent({
 				const data = await this.addNodesToWorkflow(workflowData);
 
 				setTimeout(() => {
-					(data?.nodes ?? []).forEach((node: INodeUi | IWorkflowTemplateNode) => {
+					(data?.nodes ?? []).forEach((node: INodeUi) => {
 						this.nodeSelectedByName(node.name);
 					});
 				});
@@ -4373,11 +4373,7 @@ export default defineComponent({
 				},
 			);
 		},
-		async addNodes(
-			nodes: INodeUi[] | IWorkflowTemplateNode[],
-			connections?: IConnections,
-			trackHistory = false,
-		) {
+		async addNodes(nodes: INodeUi[], connections?: IConnections, trackHistory = false) {
 			if (!nodes?.length) {
 				return;
 			}
@@ -4392,14 +4388,8 @@ export default defineComponent({
 			// Add the node to the node-list
 			let nodeType: INodeTypeDescription | null;
 			nodes.forEach((node) => {
-				const isTemplateCredentials = (
-					credentials?: IWorkflowTemplateNodeCredentials | INodeCredentials,
-				): credentials is IWorkflowTemplateNodeCredentials => {
-					return Object.values(credentials ?? {}).some((c) => typeof c === 'string');
-				};
 				const newNode: INodeUi = {
 					...node,
-					credentials: isTemplateCredentials(node.credentials) ? undefined : node.credentials,
 				};
 
 				if (!newNode.id) {
@@ -4534,7 +4524,7 @@ export default defineComponent({
 
 			let oldName: string;
 			let newName: string;
-			const createNodes: Array<INode | IWorkflowTemplateNode> = [];
+			const createNodes: INode[] = [];
 
 			await this.loadNodesProperties(
 				data.nodes.map((node) => ({ name: node.type, version: node.typeVersion })),

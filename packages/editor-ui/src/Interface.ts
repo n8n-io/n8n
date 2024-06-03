@@ -249,7 +249,7 @@ export interface IWorkflowData {
 export interface IWorkflowDataUpdate {
 	id?: string;
 	name?: string;
-	nodes?: Array<INode | IWorkflowTemplateNode>;
+	nodes?: INode[];
 	connections?: IConnections;
 	settings?: IWorkflowSettings;
 	active?: boolean;

@@ -313,13 +313,31 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setNodeValue({ name: node.name, key: 'position', value: position });
 	}
 
-	function getWorkflow(
-		nodes: Array<INodeUi | IWorkflowTemplateNode>,
-		connections: IConnections,
-		copyData?: boolean,
-	): Workflow {
+	function convertTemplateNodeToNodeUi(node: IWorkflowTemplateNode): INodeUi {
+		const filteredCredentials = Object.keys(node.credentials ?? {}).reduce<INodeCredentials>(
+			(credentials, curr) => {
+				const credential = node?.credentials?.[curr];
+				if (!credential || typeof credential === 'string') {
+					return credentials;
+				}
+
+				credentials[curr] = credential;
+
+				return credentials;
+			},
+			{},
+		);
+
+		return {
+			...node,
+			credentials: filteredCredentials,
+		};
+	}
+
+	function getWorkflow(nodes: INodeUi[], connections: IConnections, copyData?: boolean): Workflow {
 		const nodeTypes = getNodeTypes();
 		let cachedWorkflowId: string | undefined = workflowId.value;
+
 		if (cachedWorkflowId && cachedWorkflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 			cachedWorkflowId = undefined;
 		}
@@ -327,13 +345,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		cachedWorkflow = new Workflow({
 			id: cachedWorkflowId,
 			name: workflowName.value,
-			// @ts-ignore
 			nodes: copyData ? deepCopy(nodes) : nodes,
 			connections: copyData ? deepCopy(connections) : connections,
 			active: false,
 			nodeTypes,
 			settings: workflowSettings.value,
-			// @ts-ignore
 			pinData: pinnedWorkflowData.value,
 		});
 
@@ -1526,6 +1542,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getPinDataSize,
 		getNodeTypes,
 		getNodes,
+		convertTemplateNodeToNodeUi,
 		getWorkflow,
 		getCurrentWorkflow,
 		getWorkflowFromUrl,
