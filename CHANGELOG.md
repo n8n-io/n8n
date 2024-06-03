@@ -1,3 +1,15 @@
+## [1.44.1](https://github.com/n8n-io/n8n/compare/n8n@1.44.0...n8n@1.44.1) (2024-06-03)
+
+
+### Bug Fixes
+
+* **core:** Ensure graceful shutdown for workers ([#9547](https://github.com/n8n-io/n8n/issues/9547)) ([570839a](https://github.com/n8n-io/n8n/commit/570839a2e07a35cf4f8ebbb07ed4c09226c77ee6))
+* **core:** Upgrade mysql2 to address CVE-2024-21512 ([#9565](https://github.com/n8n-io/n8n/issues/9565)) ([e7e738b](https://github.com/n8n-io/n8n/commit/e7e738bd3c3626af27afec7c2b078f20f64c5a53))
+* **editor:** Replace more variants of BASE_PATH in static assets ([#9564](https://github.com/n8n-io/n8n/issues/9564)) ([4e42ac7](https://github.com/n8n-io/n8n/commit/4e42ac7c13118226b480a9f486b76e0f2f0000d1))
+* **editor:** Show workflow data in header when execution page is hard reloaded ([#9529](https://github.com/n8n-io/n8n/issues/9529)) ([ab00672](https://github.com/n8n-io/n8n/commit/ab006728802d0f98a5497e7822ec829a14b71310))
+
+
+
 # [1.44.0](https://github.com/n8n-io/n8n/compare/n8n@1.43.0...n8n@1.44.0) (2024-05-30)
 
 
