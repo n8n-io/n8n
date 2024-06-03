@@ -36,12 +36,12 @@ const colorPickerProps = computed(() => {
 });
 
 const emit = defineEmits<{
-	(event: 'update:modelValue', value: string): void;
-	(event: 'change', value: string): void;
-	(event: 'active-change', value: string): void;
+	(event: 'update:modelValue', value: string | null): void;
+	(event: 'change', value: string | null): void;
+	(event: 'active-change', value: string | null): void;
 }>();
 
-const onChange = (value: string) => {
+const onChange = (value: string | null) => {
 	emit('change', value);
 };
 
@@ -49,11 +49,11 @@ const onInput = (value: string) => {
 	color.value = value;
 };
 
-const onActiveChange = (value: string) => {
+const onActiveChange = (value: string | null) => {
 	emit('active-change', value);
 };
 
-const onColorSelect = (value: string) => {
+const onColorSelect = (value: string | null) => {
 	emit('update:modelValue', value);
 };
 </script>
