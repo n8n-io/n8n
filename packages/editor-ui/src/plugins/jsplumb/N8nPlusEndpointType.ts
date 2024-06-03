@@ -32,6 +32,8 @@ export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpo
 
 	messageOverlay: Overlay | null;
 
+	canvas: HTMLElement | null;
+
 	constructor(endpoint: Endpoint, params: N8nPlusEndpointParams) {
 		super(endpoint, params);
 
@@ -39,6 +41,7 @@ export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpo
 		this.label = '';
 		this.stalkOverlay = null;
 		this.messageOverlay = null;
+		this.canvas = null;
 
 		this.unbindEvents();
 		this.bindEvents();
@@ -183,7 +186,13 @@ export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpo
 export const N8nPlusEndpointHandler: EndpointHandler<N8nPlusEndpoint, ComputedN8nPlusEndpoint> = {
 	type: N8nPlusEndpoint.type,
 	cls: N8nPlusEndpoint,
-	compute: (ep: N8nPlusEndpoint, anchorPoint: AnchorPlacement): ComputedN8nPlusEndpoint => {
+	compute: (
+		ep: EndpointRepresentation<ComputedN8nPlusEndpoint>,
+		anchorPoint: AnchorPlacement,
+	): ComputedN8nPlusEndpoint => {
+		if (!(ep instanceof N8nPlusEndpoint)) {
+			throw Error('Unexpected Endpoint type');
+		}
 		const x = anchorPoint.curX - ep.params.dimensions / 2;
 		const y = anchorPoint.curY - ep.params.dimensions / 2;
 		const w = ep.params.dimensions;
