@@ -8,6 +8,7 @@ import { ref, computed, watch } from 'vue';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
 
 const props = defineProps({
 	isActive: {
@@ -55,6 +56,14 @@ function closeDialog(): void {
 			instance_id: rootStore.instanceId,
 			nps: '',
 		});
+
+		const settings = useUsersStore().currentUser?.settings;
+		if (settings?.valueSurveyIgnoredLastCount && settings.valueSurveyIgnoredLastCount >= 2) {
+			// Stop bothering user after survey ignored 3 times, until 6 months later
+			useUIStore().respondValueSurvey();
+		} else {
+			useUIStore().ignoreValueSurvey();
+		}
 	}
 	if (form.value.value !== '' && form.value.email === '') {
 		telemetry.track('User responded value survey email', {
@@ -63,8 +72,6 @@ function closeDialog(): void {
 			nps: form.value.value,
 		});
 	}
-
-	useUIStore().ignoreValueSurvey();
 }
 
 function onInputChange(value: string) {

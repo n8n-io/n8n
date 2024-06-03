@@ -670,8 +670,7 @@ export const useUIStore = defineStore(STORES.UI, {
 			if (valueSurveyIgnoredCount > 0 && timeSinceLastShown < SEVEN_DAYS_IN_MILLIS) {
 				return;
 			}
-			if (valueSurveyIgnoredCount > 3) {
-				// TODO DO WE NEVER SHOW AGAIN? OR DO WE TRY AGAIN AFTER 6 months?
+			if (valueSurveyIgnoredCount >= 3) {
 				return;
 			}
 
