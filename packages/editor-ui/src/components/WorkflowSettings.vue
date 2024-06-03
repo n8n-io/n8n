@@ -279,7 +279,7 @@
 							<el-switch
 								ref="inputField"
 								:disabled="readOnlyEnv"
-								:model-value="workflowSettings.executionTimeout ?? 0 > -1"
+								:model-value="workflowSettings.executionTimeout ?? -1 > -1"
 								active-color="#13ce66"
 								data-test-id="workflow-settings-timeout-workflow"
 								@update:model-value="toggleTimeout"
@@ -288,7 +288,7 @@
 					</el-col>
 				</el-row>
 				<div
-					v-if="workflowSettings.executionTimeout ?? 0 > -1"
+					v-if="workflowSettings.executionTimeout ?? -1 > -1"
 					data-test-id="workflow-settings-timeout-form"
 				>
 					<el-row>
@@ -843,9 +843,9 @@ export default defineComponent({
 			}
 
 			// Get the settings without the defaults set for local workflow settings
-			const localWorkflowSettings = Object.entries(deepCopy(this.workflowSettings))
-				.filter(([, value]) => value !== 'DEFAULT')
-				.reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {} as IWorkflowSettings);
+			const localWorkflowSettings = Object.fromEntries(
+				Object.entries(this.workflowSettings).filter(([, value]) => value !== 'DEFAULT'),
+			);
 
 			const oldSettings = deepCopy(this.workflowsStore.workflowSettings);
 
