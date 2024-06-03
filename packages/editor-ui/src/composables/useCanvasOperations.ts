@@ -210,5 +210,6 @@ export function useCanvasOperations() {
 		createConnection,
 		deleteConnection,
 		revertDeleteConnection,
+		checkIfNodeConnectionIsAllowed,
 	};
 }

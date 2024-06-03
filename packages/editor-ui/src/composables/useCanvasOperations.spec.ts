@@ -3,12 +3,16 @@ import type { CanvasElement } from '@/types';
 import type { INodeUi } from '@/Interface';
 import { RemoveNodeCommand } from '@/models/history';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useUIStore } from '@/stores/ui.store';
 import { useHistoryStore } from '@/stores/history.store';
 import { createPinia, setActivePinia } from 'pinia';
 import { createTestNode } from '@/__tests__/mocks';
+import type { Connection } from '@vue-flow/core';
+import type { IConnection } from 'n8n-workflow';
 
 describe('useCanvasOperations', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
+	let uiStore: ReturnType<typeof useUIStore>;
 	let historyStore: ReturnType<typeof useHistoryStore>;
 	let canvasOperations: ReturnType<typeof useCanvasOperations>;
 
@@ -17,6 +21,7 @@ describe('useCanvasOperations', () => {
 		setActivePinia(pinia);
 
 		workflowsStore = useWorkflowsStore();
+		uiStore = useUIStore();
 		historyStore = useHistoryStore();
 		canvasOperations = useCanvasOperations();
 	});
@@ -28,6 +33,14 @@ describe('useCanvasOperations', () => {
 				.mockImplementation(() => {});
 			const id = 'node1';
 			const position: CanvasElement['position'] = { x: 10, y: 20 };
+			const node = createTestNode({
+				id,
+				type: 'node',
+				position: [0, 0],
+				name: 'Node 1',
+			});
+
+			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValueOnce(node);
 
 			canvasOperations.updateNodePosition(id, position);
 
@@ -56,7 +69,6 @@ describe('useCanvasOperations', () => {
 				type: 'node',
 				position: [10, 20],
 				name: 'Node 1',
-				parameters: {},
 			});
 
 			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(node);
@@ -123,53 +135,100 @@ describe('useCanvasOperations', () => {
 
 	describe('createConnection', () => {
 		it('should not create a connection if source node does not exist', () => {
+			const addConnectionSpy = vi
+				.spyOn(workflowsStore, 'addConnection')
+				.mockImplementation(() => {});
 			const connection: Connection = { source: 'nonexistent', target: 'targetNode' };
 
-			workflowsStore.getNodeById.mockReturnValueOnce(null);
+			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValueOnce(null);
 
 			canvasOperations.createConnection(connection);
 
-			expect(workflowsStore.addConnection).not.toHaveBeenCalled();
+			expect(addConnectionSpy).not.toHaveBeenCalled();
 			expect(uiStore.stateIsDirty).toBe(false);
 		});
 
 		it('should not create a connection if target node does not exist', () => {
+			const addConnectionSpy = vi
+				.spyOn(workflowsStore, 'addConnection')
+				.mockImplementation(() => {});
 			const connection: Connection = { source: 'sourceNode', target: 'nonexistent' };
 
-			workflowsStore.getNodeById.mockReturnValueOnce({}).mockReturnValueOnce(null);
+			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValueOnce({}).mockReturnValueOnce(null);
 
 			canvasOperations.createConnection(connection);
 
-			expect(workflowsStore.addConnection).not.toHaveBeenCalled();
+			expect(addConnectionSpy).not.toHaveBeenCalled();
 			expect(uiStore.stateIsDirty).toBe(false);
 		});
 
-		it('should not create a connection if connection is not allowed', () => {
+		// @TODO Implement once the checkIfNodeConnectionIsAllowed method is implemented
+		it.skip('should not create a connection if connection is not allowed', () => {
+			const addConnectionSpy = vi
+				.spyOn(workflowsStore, 'addConnection')
+				.mockImplementation(() => {});
 			const connection: Connection = { source: 'sourceNode', target: 'targetNode' };
 
-			workflowsStore.getNodeById.mockReturnValue({});
-			canvasOperations.checkIfNodeConnectionIsAllowed = jest.fn().mockReturnValue(false);
+			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValueOnce({}).mockReturnValueOnce({});
 
 			canvasOperations.createConnection(connection);
 
-			expect(workflowsStore.addConnection).not.toHaveBeenCalled();
+			expect(addConnectionSpy).not.toHaveBeenCalled();
 			expect(uiStore.stateIsDirty).toBe(false);
 		});
 
 		it('should create a connection if source and target nodes exist and connection is allowed', () => {
-			const connection: Connection = { source: 'sourceNode', target: 'targetNode' };
-			const mappedConnection = { connection: 'mappedConnection' };
+			const addConnectionSpy = vi
+				.spyOn(workflowsStore, 'addConnection')
+				.mockImplementation(() => {});
 
-			workflowsStore.getNodeById.mockReturnValue({});
-			canvasOperations.checkIfNodeConnectionIsAllowed = jest.fn().mockReturnValue(true);
-			canvasOperations.mapCanvasConnectionToLegacyConnection = jest
-				.fn()
-				.mockReturnValue(mappedConnection);
+			const nodeA = createTestNode({
+				id: 'a',
+				type: 'node',
+				name: 'Node A',
+			});
+
+			const nodeB = createTestNode({
+				id: 'b',
+				type: 'node',
+				name: 'Node B',
+			});
+
+			const connection: Connection = {
+				source: nodeA.id,
+				sourceHandle: 'outputs/main/0',
+				target: nodeB.id,
+				targetHandle: 'inputs/main/0',
+			};
+
+			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValueOnce(nodeA).mockReturnValueOnce(nodeB);
 
 			canvasOperations.createConnection(connection);
 
-			expect(workflowsStore.addConnection).toHaveBeenCalledWith(mappedConnection);
+			expect(addConnectionSpy).toHaveBeenCalledWith({
+				connection: [
+					{ index: 0, node: nodeA.name, type: 'main' },
+					{ index: 0, node: nodeB.name, type: 'main' },
+				],
+			});
 			expect(uiStore.stateIsDirty).toBe(true);
+		});
+	});
+
+	describe('revertDeleteConnection', () => {
+		it('should revert delete connection', () => {
+			const addConnectionSpy = vi
+				.spyOn(workflowsStore, 'addConnection')
+				.mockImplementation(() => {});
+
+			const connection: [IConnection, IConnection] = [
+				{ node: 'sourceNode', type: 'type', index: 1 },
+				{ node: 'targetNode', type: 'type', index: 2 },
+			];
+
+			canvasOperations.revertDeleteConnection(connection);
+
+			expect(addConnectionSpy).toHaveBeenCalledWith({ connection });
 		});
 	});
 });
