@@ -39,7 +39,7 @@ export class HighLevelOAuth2Api implements ICredentialType {
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'string',
-			hint: 'Separate scopes by space',
+			hint: "Separate scopes by space, scopes needed for node: 'locations.readonly contacts.readonly contacts.write opportunities.readonly opportunities.write users.readonly'",
 			default: '',
 			required: true,
 		},
