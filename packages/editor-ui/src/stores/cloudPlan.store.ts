@@ -5,14 +5,9 @@ import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
-import {
-	getAdminPanelLoginCode,
-	getCurrentPlan,
-	getCurrentUsage,
-	fetchSuggestedTemplates,
-} from '@/api/cloudPlans';
+import { getAdminPanelLoginCode, getCurrentPlan, getCurrentUsage } from '@/api/cloudPlans';
 import { DateTime } from 'luxon';
-import { CLOUD_TRIAL_CHECK_INTERVAL, SUGGESTED_TEMPLATES_FLAG, STORES } from '@/constants';
+import { CLOUD_TRIAL_CHECK_INTERVAL, STORES } from '@/constants';
 import { hasPermission } from '@/rbac/permissions';
 
 const DEFAULT_STATE: CloudPlanState = {
@@ -166,17 +161,6 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		window.location.href = `https://${adminPanelHost}/login?code=${code}`;
 	};
 
-	const loadSuggestedTemplates = async () => {
-		try {
-			const additionalTemplates = await fetchSuggestedTemplates(rootStore.getRestApiContext);
-			if (additionalTemplates.sections && additionalTemplates.sections.length > 0) {
-				useUIStore().setSuggestedTemplates(additionalTemplates);
-			}
-		} catch (error) {
-			console.warn('Error checking for lead enrichment templates:', error);
-		}
-	};
-
 	const initialize = async () => {
 		if (state.initialized) {
 			return;
@@ -192,12 +176,6 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 			await fetchUserCloudAccount();
 		} catch (error) {
 			console.warn('Error fetching user cloud account:', error);
-		}
-
-		const localStorageFlag = localStorage.getItem(SUGGESTED_TEMPLATES_FLAG);
-		// Don't show if users already opted in
-		if (localStorageFlag !== 'false' && hasPermission(['instanceOwner'])) {
-			await loadSuggestedTemplates();
 		}
 
 		state.initialized = true;

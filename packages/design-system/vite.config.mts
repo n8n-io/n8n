@@ -30,7 +30,7 @@ export const vitestConfig = defineVitestConfig({
 }) as UserConfig;
 
 const plugins = [vue()];
-if (process.env.ENABLE_TYPE_CHECKING === 'true') {
+if (!process.env.VITEST) {
 	plugins.push(checker({ vueTsc: true }));
 }
 
