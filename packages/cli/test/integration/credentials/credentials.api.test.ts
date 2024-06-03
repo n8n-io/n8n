@@ -1,11 +1,15 @@
-import Container from 'typedi';
-import type { SuperAgentTest } from 'supertest';
+import { Container } from 'typedi';
+import type { Scope } from '@sentry/node';
 import { GlobalConfig } from '@n8n/config';
-import type { Scope } from '@n8n/permissions';
 import { Credentials } from 'n8n-core';
 
 import type { ListQuery } from '@/requests';
 import type { User } from '@db/entities/User';
+import { ProjectRepository } from '@db/repositories/project.repository';
+import type { Project } from '@db/entities/Project';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+
 import * as testDb from '../shared/testDb';
 import { setupTestServer } from '../shared/utils';
 import {
@@ -20,12 +24,8 @@ import {
 	shareCredentialWithUsers,
 } from '../shared/db/credentials';
 import { createManyUsers, createMember, createOwner } from '../shared/db/users';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import type { Project } from '@/databases/entities/Project';
 import { createTeamProject, linkUserToProject } from '../shared/db/projects';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
-import { ProjectService } from '@/services/project.service';
+import type { SuperAgentTest } from '../shared/types';
 
 const { any } = expect;
 
@@ -43,7 +43,6 @@ let authMemberAgent: SuperAgentTest;
 
 let projectRepository: ProjectRepository;
 let sharedCredentialsRepository: SharedCredentialsRepository;
-let projectService: ProjectService;
 
 beforeEach(async () => {
 	await testDb.truncate(['SharedCredentials', 'Credentials']);
@@ -64,7 +63,6 @@ beforeEach(async () => {
 
 	projectRepository = Container.get(ProjectRepository);
 	sharedCredentialsRepository = Container.get(SharedCredentialsRepository);
-	projectService = Container.get(ProjectService);
 });
 
 type GetAllResponse = { body: { data: ListQuery.Credentials.WithOwnedByAndSharedWith[] } };
@@ -144,7 +142,7 @@ describe('GET /credentials', () => {
 			// Team cred
 			expect(cred1.id).toBe(savedCredential1.id);
 			expect(cred1.scopes).toEqual(
-				['credential:read', 'credential:update', 'credential:delete'].sort(),
+				['credential:move', 'credential:read', 'credential:update', 'credential:delete'].sort(),
 			);
 
 			// Shared cred
@@ -171,7 +169,13 @@ describe('GET /credentials', () => {
 			// Shared cred
 			expect(cred2.id).toBe(savedCredential2.id);
 			expect(cred2.scopes).toEqual(
-				['credential:read', 'credential:update', 'credential:delete', 'credential:share'].sort(),
+				[
+					'credential:delete',
+					'credential:move',
+					'credential:read',
+					'credential:share',
+					'credential:update',
+				].sort(),
 			);
 		}
 
@@ -190,11 +194,12 @@ describe('GET /credentials', () => {
 			expect(cred1.scopes).toEqual(
 				[
 					'credential:create',
-					'credential:read',
-					'credential:update',
 					'credential:delete',
 					'credential:list',
+					'credential:move',
+					'credential:read',
 					'credential:share',
+					'credential:update',
 				].sort(),
 			);
 
@@ -203,11 +208,12 @@ describe('GET /credentials', () => {
 			expect(cred2.scopes).toEqual(
 				[
 					'credential:create',
-					'credential:read',
-					'credential:update',
 					'credential:delete',
 					'credential:list',
+					'credential:move',
+					'credential:read',
 					'credential:share',
+					'credential:update',
 				].sort(),
 			);
 		}
@@ -575,7 +581,13 @@ describe('POST /credentials', () => {
 		expect(encryptedData).not.toBe(payload.data);
 
 		expect(scopes).toEqual(
-			['credential:read', 'credential:update', 'credential:delete', 'credential:share'].sort(),
+			[
+				'credential:delete',
+				'credential:move',
+				'credential:read',
+				'credential:share',
+				'credential:update',
+			].sort(),
 		);
 
 		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
@@ -818,11 +830,12 @@ describe('PATCH /credentials/:id', () => {
 		expect(scopes).toEqual(
 			[
 				'credential:create',
-				'credential:read',
-				'credential:update',
 				'credential:delete',
 				'credential:list',
+				'credential:move',
+				'credential:read',
 				'credential:share',
+				'credential:update',
 			].sort(),
 		);
 

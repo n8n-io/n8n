@@ -8,7 +8,7 @@ import type { Class } from 'n8n-core';
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
-import { inE2ETests, inTest, RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { inProduction, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import type { BooleanLicenseFeature } from '@/Interfaces';
 import { License } from '@/License';
 import type { AuthenticatedRequest } from '@/requests';
@@ -24,16 +24,18 @@ import type {
 	Controller,
 	LicenseMetadata,
 	MiddlewareMetadata,
+	RateLimit,
 	RouteMetadata,
 	RouteScopeMetadata,
 } from './types';
 import { userHasScope } from '@/permissions/checkAccess';
 
-const throttle = expressRateLimit({
-	windowMs: 5 * 60 * 1000, // 5 minutes
-	limit: 5, // Limit each IP to 5 requests per `window` (here, per 5 minutes).
-	message: { message: 'Too many requests' },
-});
+const createRateLimitMiddleware = (rateLimit: RateLimit): RequestHandler =>
+	expressRateLimit({
+		windowMs: rateLimit.windowMs,
+		limit: rateLimit.limit,
+		message: { message: 'Too many requests' },
+	});
 
 export const createLicenseMiddleware =
 	(features: BooleanLicenseFeature[]): RequestHandler =>
@@ -124,7 +126,7 @@ export const registerController = (app: Application, controllerClass: Class<obje
 					await controller[handlerName](req, res);
 				router[method](
 					path,
-					...(!inTest && !inE2ETests && rateLimit ? [throttle] : []),
+					...(inProduction && rateLimit ? [createRateLimitMiddleware(rateLimit)] : []),
 					// eslint-disable-next-line @typescript-eslint/unbound-method
 					...(skipAuth ? [] : [authService.authMiddleware]),
 					...(features ? [createLicenseMiddleware(features)] : []),

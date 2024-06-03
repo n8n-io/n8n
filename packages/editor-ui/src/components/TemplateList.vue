@@ -34,8 +34,9 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { type PropType, defineComponent } from 'vue';
 import TemplateCard from './TemplateCard.vue';
+import type { ITemplatesWorkflow } from '@/Interface';
 
 export default defineComponent({
 	name: 'TemplateList',
@@ -55,7 +56,7 @@ export default defineComponent({
 			default: false,
 		},
 		workflows: {
-			type: Array,
+			type: Array as PropType<ITemplatesWorkflow[]>,
 			default: () => [],
 		},
 		totalWorkflows: {
@@ -103,10 +104,10 @@ export default defineComponent({
 				this.$emit('loadMore');
 			}
 		},
-		onCardClick(event: MouseEvent, id: string) {
+		onCardClick(event: MouseEvent, id: number) {
 			this.$emit('openTemplate', { event, id });
 		},
-		onUseWorkflow(event: MouseEvent, id: string) {
+		onUseWorkflow(event: MouseEvent, id: number) {
 			this.$emit('useWorkflow', { event, id });
 		},
 	},

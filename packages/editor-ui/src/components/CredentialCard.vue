@@ -70,7 +70,6 @@ export default defineComponent({
 				updatedAt: '',
 				type: '',
 				name: '',
-				nodesAccess: [],
 				sharedWithProjects: [],
 				homeProject: {} as ProjectSharingData,
 			}),
@@ -118,7 +117,7 @@ export default defineComponent({
 			);
 		},
 		formattedCreatedAtDate(): string {
-			const currentYear = new Date().getFullYear();
+			const currentYear = new Date().getFullYear().toString();
 
 			return dateformat(
 				this.data.createdAt,
@@ -128,10 +127,9 @@ export default defineComponent({
 	},
 	methods: {
 		async onClick(event: Event) {
-			if (
-				this.$refs.cardActions === event.target ||
-				this.$refs.cardActions?.contains(event.target)
-			) {
+			const cardActionsEl = this.$refs.cardActions as HTMLDivElement | undefined;
+			const clickTarget = event.target as HTMLElement | null;
+			if (cardActionsEl === clickTarget || (clickTarget && cardActionsEl?.contains(clickTarget))) {
 				return;
 			}
 

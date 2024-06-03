@@ -57,6 +57,7 @@ import type { Scope } from '@n8n/permissions';
 import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
 import type { ProjectSharingData } from '@/features/projects/projects.types';
 import type { Connection } from '@jsplumb/core';
+import type { BaseTextKey } from './plugins/i18n';
 
 export * from 'n8n-design-system/types';
 
@@ -117,6 +118,9 @@ declare global {
 	}
 }
 
+/** String that represents a timestamp in the ISO8601 format, i.e. YYYY-MM-DDTHH:MM:SS.sssZ */
+export type Iso8601String = string;
+
 export type EndpointStyle = {
 	width?: number;
 	height?: number;
@@ -132,20 +136,15 @@ export type EndpointStyle = {
 
 export type EndpointMeta = {
 	__meta?: {
+		nodeName: string;
+		nodeId: string;
 		index: number;
 		totalEndpoints: number;
 		endpointLabelLength: number;
 	};
 };
 
-export interface IUpdateInformation<
-	T extends NodeParameterValueType =
-		| string
-		| number
-		| { [key: string]: string | number | boolean }
-		| NodeParameterValueType
-		| INodeParameters,
-> {
+export interface IUpdateInformation<T extends NodeParameterValueType = NodeParameterValueType> {
 	name: string;
 	key?: string;
 	value: T;
@@ -271,7 +270,10 @@ export interface NewWorkflowResponse {
 }
 
 export interface IWorkflowTemplateNode
-	extends Pick<INodeUi, 'name' | 'type' | 'position' | 'parameters' | 'typeVersion' | 'webhookId'> {
+	extends Pick<
+		INodeUi,
+		'name' | 'type' | 'position' | 'parameters' | 'typeVersion' | 'webhookId' | 'id' | 'disabled'
+	> {
 	// The credentials in a template workflow have a different type than in a regular workflow
 	credentials?: IWorkflowTemplateNodeCredentials;
 }
@@ -357,17 +359,18 @@ export interface IShareWorkflowsPayload {
 
 export interface ICredentialsResponse extends ICredentialsEncrypted {
 	id: string;
-	createdAt: number | string;
-	updatedAt: number | string;
+	createdAt: Iso8601String;
+	updatedAt: Iso8601String;
 	sharedWithProjects?: ProjectSharingData[];
 	homeProject?: ProjectSharingData;
 	currentUserHasAccess?: boolean;
 	scopes?: Scope[];
+	ownedBy?: Pick<IUserResponse, 'id' | 'firstName' | 'lastName' | 'email'>;
 }
 
 export interface ICredentialsBase {
-	createdAt: number | string;
-	updatedAt: number | string;
+	createdAt: Iso8601String;
+	updatedAt: Iso8601String;
 }
 
 export interface ICredentialsDecryptedResponse extends ICredentialsBase, ICredentialsDecrypted {
@@ -430,8 +433,8 @@ export interface IExecutionsCurrentSummaryExtended {
 	id: string;
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
-	retryOf?: string;
-	retrySuccessId?: string;
+	retryOf?: string | null;
+	retrySuccessId?: string | null;
 	startedAt: Date;
 	stoppedAt?: Date;
 	workflowId: string;
@@ -742,7 +745,6 @@ export interface CurrentUserResponse extends IUserResponse {
 export interface IUser extends IUserResponse {
 	isDefaultUser: boolean;
 	isPendingUser: boolean;
-	hasRecoveryCodesLeft: boolean;
 	inviteAcceptUrl?: string;
 	fullName?: string;
 	createdAt?: string;
@@ -1331,7 +1333,6 @@ export interface UIState {
 	bannersHeight: number;
 	bannerStack: BannerName[];
 	theme: ThemeOption;
-	suggestedTemplates?: SuggestedTemplates;
 	pendingNotificationsForViews: {
 		[key in VIEWS]?: NotificationOptions[];
 	};
@@ -1340,12 +1341,12 @@ export interface UIState {
 
 export type IFakeDoor = {
 	id: FAKE_DOOR_FEATURES;
-	featureName: string;
+	featureName: BaseTextKey;
 	icon?: string;
-	infoText?: string;
-	actionBoxTitle: string;
-	actionBoxDescription: string;
-	actionBoxButtonLabel?: string;
+	infoText?: BaseTextKey;
+	actionBoxTitle: BaseTextKey;
+	actionBoxDescription: BaseTextKey;
+	actionBoxButtonLabel?: BaseTextKey;
 	linkURL: string;
 	uiLocations: IFakeDoorLocation[];
 };
@@ -1866,7 +1867,8 @@ export type CloudUpdateLinkSourceType =
 	| 'workflow-history'
 	| 'worker-view'
 	| 'external-secrets'
-	| 'rbac';
+	| 'rbac'
+	| 'debug';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -1887,7 +1889,8 @@ export type UTMCampaign =
 	| 'upgrade-advanced-permissions'
 	| 'upgrade-worker-view'
 	| 'upgrade-external-secrets'
-	| 'upgrade-rbac';
+	| 'upgrade-rbac'
+	| 'upgrade-debug';
 
 export type N8nBanners = {
 	[key in BannerName]: {
@@ -1923,36 +1926,18 @@ export type ToggleNodeCreatorOptions = {
 export type AppliedThemeOption = 'light' | 'dark';
 export type ThemeOption = AppliedThemeOption | 'system';
 
-export type SuggestedTemplates = {
-	sections: SuggestedTemplatesSection[];
-};
-
-export type SuggestedTemplatesSection = {
-	name: string;
-	title: string;
-	description: string;
-	workflows: SuggestedTemplatesWorkflowPreview[];
-};
-
-export type SuggestedTemplatesWorkflowPreview = {
-	title: string;
-	description: string;
-	preview: IWorkflowData;
-	nodes: Array<Pick<ITemplatesNode, 'id' | 'displayName' | 'icon' | 'defaults' | 'iconData'>>;
-};
-
 export type NewConnectionInfo = {
 	sourceId: string;
 	index: number;
 	eventSource: NodeCreatorOpenSource;
 	connection?: Connection;
-	nodeCreatorView?: string;
+	nodeCreatorView?: NodeFilterType;
 	outputType?: NodeConnectionType;
 	endpointUuid?: string;
 };
 
 export type AIAssistantConnectionInfo = NewConnectionInfo & {
-	stepName: string;
+	stepName?: string;
 };
 
 export type EnterpriseEditionFeatureKey =

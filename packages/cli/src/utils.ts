@@ -91,4 +91,4 @@ export function rightDiff<T1, T2>(
  * Can be used to make sure the type is exhausted
  * in switch statements or if/else chains.
  */
-export const assertNever = (value: never) => {};
+export const assertNever = (_value: never) => {};

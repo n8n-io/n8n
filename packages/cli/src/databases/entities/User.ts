@@ -109,12 +109,6 @@ export class User extends WithTimestamps implements IUser {
 	@Column({ type: Boolean, default: false })
 	mfaEnabled: boolean;
 
-	@Column({ type: String, nullable: true, select: false })
-	mfaSecret?: string | null;
-
-	@Column({ type: 'simple-array', default: '', select: false })
-	mfaRecoveryCodes: string[];
-
 	/**
 	 * Whether the user is pending setup completion.
 	 */
@@ -152,7 +146,7 @@ export class User extends WithTimestamps implements IUser {
 	}
 
 	toJSON() {
-		const { password, apiKey, mfaSecret, mfaRecoveryCodes, ...rest } = this;
+		const { password, apiKey, ...rest } = this;
 		return rest;
 	}
 

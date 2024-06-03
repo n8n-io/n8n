@@ -1,6 +1,6 @@
 import type { AxiosRequestConfig, Method, RawAxiosRequestHeaders } from 'axios';
 import axios from 'axios';
-import type { IDataObject } from 'n8n-workflow';
+import type { GenericValue, IDataObject } from 'n8n-workflow';
 import type { IExecutionFlattedResponse, IExecutionResponse, IRestApiContext } from '@/Interface';
 import { parse } from 'flatted';
 
@@ -56,7 +56,7 @@ const legacyParamSerializer = (params: Record<string, any>) =>
 		.filter((key) => params[key] !== undefined)
 		.map((key) => {
 			if (Array.isArray(params[key])) {
-				return params[key].map((v) => `${key}[]=${encodeURIComponent(v)}`).join('&');
+				return params[key].map((v: string) => `${key}[]=${encodeURIComponent(v)}`).join('&');
 			}
 			if (typeof params[key] === 'object') {
 				params[key] = JSON.stringify(params[key]);
@@ -70,7 +70,7 @@ export async function request(config: {
 	baseURL: string;
 	endpoint: string;
 	headers?: RawAxiosRequestHeaders;
-	data?: IDataObject | IDataObject[];
+	data?: GenericValue | GenericValue[];
 	withCredentials?: boolean;
 }) {
 	const { method, baseURL, endpoint, headers, data } = config;
@@ -129,7 +129,7 @@ export async function makeRestApiRequest<T>(
 	context: IRestApiContext,
 	method: Method,
 	endpoint: string,
-	data?: IDataObject | IDataObject[],
+	data?: GenericValue | GenericValue[],
 ) {
 	const response = await request({
 		method,
@@ -165,7 +165,7 @@ export async function patch(
 	baseURL: string,
 	endpoint: string,
 	params?: IDataObject,
-	headers?: IDataObject,
+	headers?: RawAxiosRequestHeaders,
 ) {
 	return await request({ method: 'PATCH', baseURL, endpoint, headers, data: params });
 }
@@ -177,9 +177,9 @@ export async function patch(
  */
 export function unflattenExecutionData(
 	fullExecutionData: IExecutionFlattedResponse,
-): IExecutionResponse {
+): Omit<IExecutionResponse, 'status'> {
 	// Unflatten the data
-	const returnData: IExecutionResponse = {
+	const returnData: Omit<IExecutionResponse, 'status'> = {
 		...fullExecutionData,
 		workflowData: fullExecutionData.workflowData,
 		data: parse(fullExecutionData.data),

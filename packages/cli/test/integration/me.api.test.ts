@@ -1,8 +1,8 @@
 import { Container } from 'typedi';
-import type { SuperAgentTest } from 'supertest';
 import { IsNull } from '@n8n/typeorm';
 import validator from 'validator';
 
+import config from '@/config';
 import type { User } from '@db/entities/User';
 import { UserRepository } from '@db/repositories/user.repository';
 import { ProjectRepository } from '@db/repositories/project.repository';
@@ -18,7 +18,7 @@ import {
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
 import { addApiKey, createOwner, createUser, createUserShell } from './shared/db/users';
-import config from '@/config';
+import type { SuperAgentTest } from './shared/types';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['me'] });
 

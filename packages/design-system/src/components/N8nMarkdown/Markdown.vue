@@ -114,7 +114,7 @@ const htmlContent = computed(() => {
 	}
 	const html = md.render(escapeMarkdown(contentToRender));
 	const safeHtml = xss(html, {
-		onTagAttr: (tag, name, value) => {
+		onTagAttr(tag, name, value) {
 			if (tag === 'img' && name === 'src') {
 				if (value.match(fileIdRegex)) {
 					const id = value.split('fileId:')[1];
@@ -129,18 +129,21 @@ const htmlContent = computed(() => {
 				}
 			}
 			// Return nothing, means keep the default handling measure
+			return;
 		},
 		onTag(tag, code) {
 			if (tag === 'img' && code.includes('alt="workflow-screenshot"')) {
 				return '';
 			}
 			// return nothing, keep tag
+			return;
 		},
 		onIgnoreTag(tag, tagHTML) {
 			// Allow checkboxes
 			if (tag === 'input' && tagHTML.includes('type="checkbox"')) {
 				return tagHTML;
 			}
+			return;
 		},
 		whiteList: xssWhiteList,
 	});
