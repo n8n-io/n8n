@@ -313,17 +313,7 @@ export default defineComponent({
 			return null;
 		});
 
-		const inputSize = computed(() => {
-			if (workflowRunData.value && inputNodeName.value) {
-				return (
-					workflowRunData.value[inputNodeName.value]?.[inputRun.value]?.data?.[
-						NodeConnectionType.Main
-					]?.[outputRun.value]?.length ?? 0
-				);
-			}
-
-			return 0;
-		});
+		const inputSize = computed(() => ndvStore.ndvInputDataWithPinnedData.length);
 
 		const isTriggerNode = computed(
 			() =>
