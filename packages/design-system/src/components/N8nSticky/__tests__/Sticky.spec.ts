@@ -1,6 +1,6 @@
 import { render, fireEvent } from '@testing-library/vue';
 import N8nSticky from '../Sticky.vue';
-import { N8nMarkdown } from '@/main';
+import N8nMarkdown from '../../N8nMarkdown/Markdown.vue';
 
 describe('components', () => {
 	describe('Sticky', () => {
@@ -23,6 +23,9 @@ describe('components', () => {
 			// Should emit modelValue update when checkbox is clicked
 			await fireEvent.change(allCheckboxes[2], { target: { checked: true } });
 			expect(wrapper.emitted()['update:modelValue']).toBeDefined();
+			// Emitted value should contain the new content (3rd checkbox checked)
+			const newContent = (wrapper.emitted()['update:modelValue'][0] as string[])[0];
+			expect(newContent).toContain('- [x] Three');
 		});
 	});
 });
