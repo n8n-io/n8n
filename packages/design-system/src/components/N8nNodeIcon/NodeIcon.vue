@@ -83,7 +83,7 @@ const badgeSize = computed((): number => {
 			return 10;
 		case 18:
 		default:
-			return 8;
+			return 12;
 	}
 });
 
