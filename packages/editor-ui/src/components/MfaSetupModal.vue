@@ -38,7 +38,7 @@
 					</n8n-text>
 				</div>
 				<div :class="$style.qrContainer">
-					<QrcodeVue :value="qrCode" size="150" level="H" />
+					<QrcodeVue :value="qrCode" :size="150" level="H" />
 				</div>
 				<div :class="$style.textContainer">
 					<n8n-text size="large" color="text-dark" :bold="true">{{

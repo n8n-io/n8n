@@ -21,10 +21,11 @@ export default defineComponent({
 	computed: {
 		...mapStores(useRootStore, useSettingsStore, useUsersStore, useProjectsStore),
 		currentUserId(): string {
-			return this.usersStore.currentUserId || '';
+			return this.usersStore.currentUserId ?? '';
 		},
 		isTelemetryEnabledOnRoute(): boolean {
-			return this.$route.meta?.telemetry ? !this.$route.meta.telemetry.disabled : true;
+			const routeMeta = this.$route.meta as { telemetry?: { disabled?: boolean } } | undefined;
+			return routeMeta?.telemetry ? !routeMeta.telemetry.disabled : true;
 		},
 		telemetry(): ITelemetrySettings {
 			return this.settingsStore.telemetry;
