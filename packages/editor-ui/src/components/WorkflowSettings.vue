@@ -279,7 +279,7 @@
 							<el-switch
 								ref="inputField"
 								:disabled="readOnlyEnv"
-								:model-value="workflowSettings.executionTimeout ?? -1 > -1"
+								:model-value="(workflowSettings.executionTimeout ?? -1) > -1"
 								active-color="#13ce66"
 								data-test-id="workflow-settings-timeout-workflow"
 								@update:model-value="toggleTimeout"
@@ -288,7 +288,7 @@
 					</el-col>
 				</el-row>
 				<div
-					v-if="workflowSettings.executionTimeout ?? -1 > -1"
+					v-if="(workflowSettings.executionTimeout ?? -1) > -1"
 					data-test-id="workflow-settings-timeout-form"
 				>
 					<el-row>
