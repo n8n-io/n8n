@@ -1,4 +1,4 @@
-import { vi, describe, expect } from 'vitest';
+import { describe, expect } from 'vitest';
 import { render } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { faker } from '@faker-js/faker';
@@ -8,7 +8,7 @@ import { PiniaVuePlugin, setActivePinia } from 'pinia';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useSettingsStore } from '@/stores/settings.store';
 import WorkflowExecutionsPreview from '@/components/executions/workflow/WorkflowExecutionsPreview.vue';
-import { STORES, VIEWS } from '@/constants';
+import { STORES, EnterpriseEditionFeature, VIEWS } from '@/constants';
 import { i18nInstance, I18nPlugin } from '@/plugins/i18n';
 import { FontAwesomePlugin } from '@/plugins/icons';
 import { GlobalComponentsPlugin } from '@/plugins/components';
@@ -88,9 +88,10 @@ describe('WorkflowExecutionsPreview.vue', () => {
 	])(
 		'when debug enterprise feature is %s it should handle debug link click accordingly',
 		async (availability, path) => {
-			vi.spyOn(settingsStore, 'isEnterpriseFeatureEnabled', 'get').mockReturnValue(
-				() => availability,
-			);
+			settingsStore.settings.enterprise = {
+				...(settingsStore.settings.enterprise ?? {}),
+				[EnterpriseEditionFeature.DebugInEditor]: availability,
+			};
 
 			// Not using createComponentRenderer helper here because this component should not stub `router-link`
 			const { getByTestId } = render(WorkflowExecutionsPreview, {

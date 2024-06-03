@@ -324,7 +324,7 @@ const WorkflowsView = defineComponent({
 				this.workflowsStore.fetchActiveWorkflows(),
 			]);
 		},
-		onClickTag(tagId: string, event: PointerEvent) {
+		onClickTag(tagId: string) {
 			if (!this.filters.tags.includes(tagId)) {
 				this.filters.tags.push(tagId);
 			}

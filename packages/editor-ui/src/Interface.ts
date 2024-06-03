@@ -118,6 +118,9 @@ declare global {
 	}
 }
 
+/** String that represents a timestamp in the ISO8601 format, i.e. YYYY-MM-DDTHH:MM:SS.sssZ */
+export type Iso8601String = string;
+
 export type EndpointStyle = {
 	width?: number;
 	height?: number;
@@ -133,6 +136,8 @@ export type EndpointStyle = {
 
 export type EndpointMeta = {
 	__meta?: {
+		nodeName: string;
+		nodeId: string;
 		index: number;
 		totalEndpoints: number;
 		endpointLabelLength: number;
@@ -244,7 +249,7 @@ export interface IWorkflowData {
 export interface IWorkflowDataUpdate {
 	id?: string;
 	name?: string;
-	nodes?: Array<INode | IWorkflowTemplateNode>;
+	nodes?: INode[];
 	connections?: IConnections;
 	settings?: IWorkflowSettings;
 	active?: boolean;
@@ -265,7 +270,10 @@ export interface NewWorkflowResponse {
 }
 
 export interface IWorkflowTemplateNode
-	extends Pick<INodeUi, 'name' | 'type' | 'position' | 'parameters' | 'typeVersion' | 'webhookId'> {
+	extends Pick<
+		INodeUi,
+		'name' | 'type' | 'position' | 'parameters' | 'typeVersion' | 'webhookId' | 'id' | 'disabled'
+	> {
 	// The credentials in a template workflow have a different type than in a regular workflow
 	credentials?: IWorkflowTemplateNodeCredentials;
 }
@@ -351,8 +359,8 @@ export interface IShareWorkflowsPayload {
 
 export interface ICredentialsResponse extends ICredentialsEncrypted {
 	id: string;
-	createdAt: number | string;
-	updatedAt: number | string;
+	createdAt: Iso8601String;
+	updatedAt: Iso8601String;
 	sharedWithProjects?: ProjectSharingData[];
 	homeProject?: ProjectSharingData;
 	currentUserHasAccess?: boolean;
@@ -361,8 +369,8 @@ export interface ICredentialsResponse extends ICredentialsEncrypted {
 }
 
 export interface ICredentialsBase {
-	createdAt: number | string;
-	updatedAt: number | string;
+	createdAt: Iso8601String;
+	updatedAt: Iso8601String;
 }
 
 export interface ICredentialsDecryptedResponse extends ICredentialsBase, ICredentialsDecrypted {
@@ -1859,7 +1867,8 @@ export type CloudUpdateLinkSourceType =
 	| 'workflow-history'
 	| 'worker-view'
 	| 'external-secrets'
-	| 'rbac';
+	| 'rbac'
+	| 'debug';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -1880,7 +1889,8 @@ export type UTMCampaign =
 	| 'upgrade-advanced-permissions'
 	| 'upgrade-worker-view'
 	| 'upgrade-external-secrets'
-	| 'upgrade-rbac';
+	| 'upgrade-rbac'
+	| 'upgrade-debug';
 
 export type N8nBanners = {
 	[key in BannerName]: {
@@ -1921,13 +1931,13 @@ export type NewConnectionInfo = {
 	index: number;
 	eventSource: NodeCreatorOpenSource;
 	connection?: Connection;
-	nodeCreatorView?: string;
+	nodeCreatorView?: NodeFilterType;
 	outputType?: NodeConnectionType;
 	endpointUuid?: string;
 };
 
 export type AIAssistantConnectionInfo = NewConnectionInfo & {
-	stepName: string;
+	stepName?: string;
 };
 
 export type EnterpriseEditionFeatureKey =
