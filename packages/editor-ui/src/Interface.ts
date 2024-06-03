@@ -1325,7 +1325,6 @@ export interface UIState {
 	bannersHeight: number;
 	bannerStack: BannerName[];
 	theme: ThemeOption;
-	suggestedTemplates?: SuggestedTemplates;
 	pendingNotificationsForViews: {
 		[key in VIEWS]?: NotificationOptions[];
 	};
@@ -1916,24 +1915,6 @@ export type ToggleNodeCreatorOptions = {
 
 export type AppliedThemeOption = 'light' | 'dark';
 export type ThemeOption = AppliedThemeOption | 'system';
-
-export type SuggestedTemplates = {
-	sections: SuggestedTemplatesSection[];
-};
-
-export type SuggestedTemplatesSection = {
-	name: string;
-	title: string;
-	description: string;
-	workflows: SuggestedTemplatesWorkflowPreview[];
-};
-
-export type SuggestedTemplatesWorkflowPreview = {
-	title: string;
-	description: string;
-	preview: IWorkflowData;
-	nodes: Array<Pick<ITemplatesNode, 'id' | 'displayName' | 'icon' | 'defaults' | 'iconData'>>;
-};
 
 export type NewConnectionInfo = {
 	sourceId: string;
