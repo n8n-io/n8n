@@ -215,6 +215,70 @@ describe('useCanvasOperations', () => {
 		});
 	});
 
+	describe('deleteConnection', () => {
+		it('should not delete a connection if source node does not exist', () => {
+			const removeConnectionSpy = vi
+				.spyOn(workflowsStore, 'removeConnection')
+				.mockImplementation(() => {});
+			const connection: Connection = { source: 'nonexistent', target: 'targetNode' };
+
+			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValueOnce(null).mockReturnValueOnce({});
+
+			canvasOperations.deleteConnection(connection);
+
+			expect(removeConnectionSpy).not.toHaveBeenCalled();
+		});
+
+		it('should not delete a connection if target node does not exist', () => {
+			const removeConnectionSpy = vi
+				.spyOn(workflowsStore, 'removeConnection')
+				.mockImplementation(() => {});
+			const connection: Connection = { source: 'sourceNode', target: 'nonexistent' };
+
+			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValueOnce({}).mockReturnValueOnce(null);
+
+			canvasOperations.deleteConnection(connection);
+
+			expect(removeConnectionSpy).not.toHaveBeenCalled();
+		});
+
+		it('should delete a connection if source and target nodes exist', () => {
+			const removeConnectionSpy = vi
+				.spyOn(workflowsStore, 'removeConnection')
+				.mockImplementation(() => {});
+
+			const nodeA = createTestNode({
+				id: 'a',
+				type: 'node',
+				name: 'Node A',
+			});
+
+			const nodeB = createTestNode({
+				id: 'b',
+				type: 'node',
+				name: 'Node B',
+			});
+
+			const connection: Connection = {
+				source: nodeA.id,
+				sourceHandle: 'outputs/main/0',
+				target: nodeB.id,
+				targetHandle: 'inputs/main/0',
+			};
+
+			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValueOnce(nodeA).mockReturnValueOnce(nodeB);
+
+			canvasOperations.deleteConnection(connection);
+
+			expect(removeConnectionSpy).toHaveBeenCalledWith({
+				connection: [
+					{ index: 0, node: nodeA.name, type: 'main' },
+					{ index: 0, node: nodeB.name, type: 'main' },
+				],
+			});
+		});
+	});
+
 	describe('revertDeleteConnection', () => {
 		it('should revert delete connection', () => {
 			const addConnectionSpy = vi
