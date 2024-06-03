@@ -2,10 +2,13 @@ import {
 	mapLegacyConnectionsToCanvasConnections,
 	mapLegacyEndpointsToCanvasConnectionPort,
 	getUniqueNodeName,
+	mapCanvasConnectionToLegacyConnection,
 } from '@/utils/canvasUtilsV2';
 import type { IConnections, INodeTypeDescription } from 'n8n-workflow';
 import type { CanvasConnection } from '@/types';
 import type { INodeUi } from '@/Interface';
+import { Connection } from '@vue-flow/core';
+import { createTestNode } from '@/__tests__/mocks';
 
 vi.mock('uuid', () => ({
 	v4: vi.fn(() => 'mock-uuid'),
@@ -415,6 +418,26 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 					},
 				},
 			},
+		]);
+	});
+});
+
+describe('mapCanvasConnectionToLegacyConnection', () => {
+	it('should map canvas connection to legacy connection', () => {
+		const sourceNode = createTestNode({ name: 'sourceNode', type: 'test' });
+		const targetNode = createTestNode({ name: 'targetNode', type: 'test' });
+		const connection: Connection = {
+			target: '1',
+			source: '2',
+			sourceHandle: 'outputs/type/1',
+			targetHandle: 'inputs/type/2',
+		};
+
+		const result = mapCanvasConnectionToLegacyConnection(sourceNode, targetNode, connection);
+
+		expect(result).toEqual([
+			{ node: sourceNode.name, type: 'type', index: 1 },
+			{ node: targetNode.name, type: 'type', index: 2 },
 		]);
 	});
 });

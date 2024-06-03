@@ -14,6 +14,8 @@ const $style = useCssModule();
 const emit = defineEmits<{
 	'update:modelValue': [elements: CanvasElement[]];
 	'update:node:position': [id: string, position: { x: number; y: number }];
+	'delete:node': [id: string];
+	'delete:connection': [connection: Connection];
 	'create:connection': [connection: Connection];
 }>();
 
@@ -38,6 +40,14 @@ function onNodeDragStop(e: NodeDragEvent) {
 	});
 }
 
+function onDeleteNode(id: string) {
+	emit('delete:node', id);
+}
+
+function onDeleteConnection(connection: Connection) {
+	emit('delete:connection', connection);
+}
+
 function onConnect(...args: unknown[]) {
 	emit('create:connection', args[0] as Connection);
 }
@@ -58,11 +68,11 @@ function onConnect(...args: unknown[]) {
 		@connect="onConnect"
 	>
 		<template #node-canvas-node="canvasNodeProps">
-			<CanvasNode v-bind="canvasNodeProps" />
+			<CanvasNode v-bind="canvasNodeProps" @delete="onDeleteNode" />
 		</template>
 
 		<template #edge-canvas-edge="canvasEdgeProps">
-			<CanvasEdge v-bind="canvasEdgeProps" />
+			<CanvasEdge v-bind="canvasEdgeProps" @delete="onDeleteConnection" />
 		</template>
 
 		<Background data-test-id="canvas-background" pattern-color="#aaa" :gap="16" />

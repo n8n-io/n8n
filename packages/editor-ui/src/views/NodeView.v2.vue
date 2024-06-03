@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted, ref, useCssModule } from 'vue';
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, useCssModule } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import WorkflowCanvas from '@/components/canvas/WorkflowCanvas.vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -25,6 +25,8 @@ import {
 	REGULAR_NODE_CREATOR_VIEW,
 	TRIGGER_NODE_CREATOR_VIEW,
 	VIEWS,
+	STICKY_NODE_TYPE,
+	QUICKSTART_NOTE_NAME,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
@@ -41,7 +43,9 @@ import useEnvironmentsStore from '@/stores/environments.ee.store';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useCollaborationStore } from '@/stores/collaboration.store';
-import { getUniqueNodeName } from '@/utils/canvasUtilsV2';
+import { getUniqueNodeName, mapCanvasConnectionToLegacyConnection } from '@/utils/canvasUtilsV2';
+import { historyBus } from '@/models/history';
+import { useCanvasOperations } from '@/composables/useCanvasOperations';
 
 const NodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -71,6 +75,14 @@ const rootStore = useRootStore();
 const collaborationStore = useCollaborationStore();
 
 const { runWorkflow } = useRunWorkflow({ router });
+const {
+	updateNodePosition,
+	deleteNode,
+	revertDeleteNode,
+	createConnection,
+	deleteConnection,
+	revertDeleteConnection,
+} = useCanvasOperations();
 
 const isLoading = ref(true);
 const readOnlyNotification = ref<null | { visible: boolean }>(null);
@@ -140,6 +152,8 @@ async function initialize() {
 
 	initializeEditableWorkflow(workflowId.value);
 
+	addUndoRedoEventBindings();
+
 	if (window.parent) {
 		window.parent.postMessage(
 			JSON.stringify({ command: 'n8nReady', version: rootStore.versionCli }),
@@ -148,6 +162,30 @@ async function initialize() {
 	}
 
 	isLoading.value = false;
+}
+
+onBeforeUnmount(() => {
+	removeUndoRedoEventBindings();
+});
+
+function addUndoRedoEventBindings() {
+	// historyBus.on('nodeMove', onMoveNode);
+	// historyBus.on('revertAddNode', onRevertAddNode);
+	historyBus.on('revertRemoveNode', onRevertDeleteNode);
+	// historyBus.on('revertAddConnection', onRevertAddConnection);
+	historyBus.on('revertRemoveConnection', onRevertDeleteConnection);
+	// historyBus.on('revertRenameNode', onRevertNameChange);
+	// historyBus.on('enableNodeToggle', onRevertEnableToggle);
+}
+
+function removeUndoRedoEventBindings() {
+	// historyBus.off('nodeMove', onMoveNode);
+	// historyBus.off('revertAddNode', onRevertAddNode);
+	historyBus.off('revertRemoveNode', onRevertDeleteNode);
+	// historyBus.off('revertAddConnection', onRevertAddConnection);
+	historyBus.off('revertRemoveConnection', onRevertDeleteConnection);
+	// historyBus.off('revertRenameNode', onRevertNameChange);
+	// historyBus.off('enableNodeToggle', onRevertEnableToggle);
 }
 
 // @TODO Maybe move this to the store
@@ -197,14 +235,16 @@ async function onRunWorkflow() {
 	await runWorkflow({});
 }
 
-/**
- * Map new node position format to the old one and update the store
- *
- * @param id
- * @param position
- */
-function onNodePositionUpdate(id: string, position: CanvasElement['position']) {
-	workflowsStore.setNodePosition(id, [position.x, position.y]);
+function onUpdateNodePosition(id: string, position: CanvasElement['position']) {
+	updateNodePosition(id, position, { trackHistory: true });
+}
+
+function onDeleteNode(id: string) {
+	deleteNode(id, { trackHistory: true });
+}
+
+function onRevertDeleteNode({ node }: { node: INodeUi }) {
+	revertDeleteNode(node);
 }
 
 /**
@@ -212,79 +252,17 @@ function onNodePositionUpdate(id: string, position: CanvasElement['position']) {
  *
  * @param connection
  */
-function onCreateNodeConnection(connection: Connection) {
-	// Output
-	const sourceNodeId = connection.source;
-	const sourceNode = workflowsStore.getNodeById(sourceNodeId);
-	const sourceNodeName = sourceNode?.name ?? '';
-	const [, sourceType, sourceIndex] = (connection.sourceHandle ?? '').split('/');
-
-	// Input
-	const targetNodeId = connection.target;
-	const targetNode = workflowsStore.getNodeById(targetNodeId);
-	const targetNodeName = targetNode?.name ?? '';
-	const [, targetType, targetIndex] = (connection.targetHandle ?? '').split('/');
-
-	if (sourceNode && targetNode && !checkIfNodeConnectionIsAllowed(sourceNode, targetNode)) {
-		return;
-	}
-
-	workflowsStore.addConnection({
-		connection: [
-			{
-				node: sourceNodeName,
-				type: sourceType,
-				index: parseInt(sourceIndex, 10),
-			},
-			{
-				node: targetNodeName,
-				type: targetType,
-				index: parseInt(targetIndex, 10),
-			},
-		],
-	});
-
-	uiStore.stateIsDirty = true;
+function onCreateConnection(connection: Connection) {
+	createConnection(connection);
 }
 
-// @TODO Figure out a way to improve this
-function checkIfNodeConnectionIsAllowed(sourceNode: INodeUi, targetNode: INodeUi): boolean {
-	// const targetNodeType = nodeTypesStore.getNodeType(
-	// 	targetNode.type,
-	// 	targetNode.typeVersion,
-	// );
-	//
-	// if (targetNodeType?.inputs?.length) {
-	// 	const workflow = this.workflowHelpers.getCurrentWorkflow();
-	// 	const workflowNode = workflow.getNode(targetNode.name);
-	// 	let inputs: Array<ConnectionTypes | INodeInputConfiguration> = [];
-	// 	if (targetNodeType) {
-	// 		inputs = NodeHelpers.getNodeInputs(workflow, workflowNode, targetNodeType);
-	// 	}
-	//
-	// 	for (const input of inputs || []) {
-	// 		if (typeof input === 'string' || input.type !== targetInfoType || !input.filter) {
-	// 			// No filters defined or wrong connection type
-	// 			continue;
-	// 		}
-	//
-	// 		if (input.filter.nodes.length) {
-	// 			if (!input.filter.nodes.includes(sourceNode.type)) {
-	// 				this.dropPrevented = true;
-	// 				this.showToast({
-	// 					title: this.$locale.baseText('nodeView.showError.nodeNodeCompatible.title'),
-	// 					message: this.$locale.baseText('nodeView.showError.nodeNodeCompatible.message', {
-	// 						interpolate: { sourceNodeName: sourceNode.name, targetNodeName: targetNode.name },
-	// 					}),
-	// 					type: 'error',
-	// 					duration: 5000,
-	// 				});
-	// 				return false;
-	// 			}
-	// 		}
-	// 	}
-	// }
-	return true;
+function onDeleteConnection(connection: Connection) {
+	deleteConnection(connection);
+}
+
+function onRevertDeleteConnection() {
+	console.log('Revert delete connection');
+	revertDeleteConnection();
 }
 
 function onToggleNodeCreator({
@@ -341,7 +319,7 @@ async function onAddNodes(
 ) {
 	let currentPosition = position;
 	for (const { type, name, position: nodePosition, isAutoAdd, openDetail } of nodes) {
-		const node = await addNode(
+		const node = await onNodeCreate(
 			{
 				name,
 				type,
@@ -367,7 +345,7 @@ async function onAddNodes(
 		const fromNode = editableWorkflow.value.nodes[newNodesOffset + from.nodeIndex];
 		const toNode = editableWorkflow.value.nodes[newNodesOffset + to.nodeIndex];
 
-		onCreateNodeConnection({
+		onCreateConnection({
 			source: fromNode.id,
 			sourceHandle: `outputs/${NodeConnectionType.Main}/${from.outputIndex ?? 0}`,
 			target: toNode.id,
@@ -407,7 +385,10 @@ type AddNodeOptions = {
 	isAutoAdd?: boolean;
 };
 
-async function addNode(node: AddNodeData, options: AddNodeOptions): Promise<INodeUi | undefined> {
+async function onNodeCreate(
+	node: AddNodeData,
+	options: AddNodeOptions = {},
+): Promise<INodeUi | undefined> {
 	if (!checkIfEditingIsAllowed()) {
 		return;
 	}
@@ -924,8 +905,10 @@ function checkIfEditingIsAllowed(): boolean {
 		v-if="editableWorkflow && editableWorkflowObject"
 		:workflow="editableWorkflow"
 		:workflow-object="editableWorkflowObject"
-		@update:node:position="onNodePositionUpdate"
-		@create:connection="onCreateNodeConnection"
+		@update:node:position="onUpdateNodePosition"
+		@delete:node="onDeleteNode"
+		@create:connection="onCreateConnection"
+		@delete:connection="onDeleteConnection"
 	>
 		<div :class="$style.executionButtons">
 			<CanvasExecuteWorkflowButton @click="onRunWorkflow" />

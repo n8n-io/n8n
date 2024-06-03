@@ -1,7 +1,9 @@
-import type { IConnections, INodeTypeDescription } from 'n8n-workflow';
+import type { IConnection, IConnections, INodeTypeDescription } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { CanvasConnection, CanvasConnectionPortType, CanvasConnectionPort } from '@/types';
 import { v4 as uuid } from 'uuid';
+import { Connection } from '@vue-flow/core';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 export function mapLegacyConnectionsToCanvasConnections(
 	legacyConnections: IConnections,
@@ -47,6 +49,33 @@ export function mapLegacyConnectionsToCanvasConnections(
 	});
 
 	return mappedConnections;
+}
+
+export function mapCanvasConnectionToLegacyConnection(
+	sourceNode: INodeUi,
+	targetNode: INodeUi,
+	connection: Connection,
+): [IConnection, IConnection] {
+	// Output
+	const sourceNodeName = sourceNode?.name ?? '';
+	const [, sourceType, sourceIndex] = (connection.sourceHandle ?? '').split('/');
+
+	// Input
+	const targetNodeName = targetNode?.name ?? '';
+	const [, targetType, targetIndex] = (connection.targetHandle ?? '').split('/');
+
+	return [
+		{
+			node: sourceNodeName,
+			type: sourceType,
+			index: parseInt(sourceIndex, 10),
+		},
+		{
+			node: targetNodeName,
+			type: targetType,
+			index: parseInt(targetIndex, 10),
+		},
+	];
 }
 
 export function mapLegacyEndpointsToCanvasConnectionPort(

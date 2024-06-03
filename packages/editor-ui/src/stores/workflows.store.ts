@@ -75,6 +75,9 @@ import { computed, ref } from 'vue';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import { useSettingsStore } from './settings.store';
 import { useUsersStore } from './users.store';
+import { useHistoryStore } from '@/stores/history.store';
+import { RemoveNodeCommand } from '@/models/history';
+import { v4 as uuid } from 'uuid';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -305,7 +308,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return workflow.value.nodes.map((node) => ({ ...node }));
 	}
 
-	function setNodePosition(id: string, position: INodeUi['position']): void {
+	function setNodePositionById(id: string, position: INodeUi['position']): void {
 		const node = workflow.value.nodes.find((n) => n.id === id);
 		if (!node) return;
 
@@ -1465,6 +1468,43 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return !!matchedChatNode;
 	}
 
+	//
+	// Start Canvas V2 Functions
+	//
+
+	function removeNodeById(nodeId: string): void {
+		const node = getNodeById(nodeId);
+		if (!node) {
+			return;
+		}
+
+		removeNode(node);
+
+		// @TODO When removing node connected between two nodes, create a connection between them
+	}
+
+	function removeNodeConnectionsById(nodeId: string): void {
+		const node = getNodeById(nodeId);
+		if (!node) {
+			return;
+		}
+
+		removeAllNodeConnection(node);
+	}
+
+	function removeNodeExecutionDataById(nodeId: string): void {
+		const node = getNodeById(nodeId);
+		if (!node) {
+			return;
+		}
+
+		clearNodeExecutionData(node.name);
+	}
+
+	//
+	// End Canvas V2 Functions
+	//
+
 	return {
 		workflow,
 		usedCredentials,
@@ -1595,6 +1635,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		resetChatMessages,
 		appendChatMessage,
 		checkIfNodeHasChatParent,
-		setNodePosition,
+		setNodePositionById,
+		removeNodeById,
+		removeNodeConnectionsById,
+		removeNodeExecutionDataById,
 	};
 });

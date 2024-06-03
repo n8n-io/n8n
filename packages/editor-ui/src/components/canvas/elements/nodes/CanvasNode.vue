@@ -15,6 +15,10 @@ import { useNodeConnections } from '@/composables/useNodeConnections';
 import { CanvasNodeKey } from '@/constants';
 import type { NodeProps } from '@vue-flow/core';
 
+const emit = defineEmits<{
+	delete: [id: string];
+}>();
+
 const props = defineProps<NodeProps<CanvasElementData>>();
 
 const inputs = computed(() => props.data.inputs);
@@ -89,10 +93,24 @@ provide(CanvasNodeKey, {
 	selected,
 	nodeType,
 });
+
+function onDelete() {
+	emit('delete', props.id);
+}
+
+function onKeyDown(e: KeyboardEvent) {
+	if (!selected.value) {
+		return;
+	}
+
+	if (e.key === 'Delete') {
+		onDelete();
+	}
+}
 </script>
 
 <template>
-	<div :class="$style.canvasNode" data-test-id="canvas-node">
+	<div :class="$style.canvasNode" data-test-id="canvas-node" tabindex="1" @keydown="onKeyDown">
 		<template v-for="source in outputsWithPosition" :key="`${source.type}/${source.index}`">
 			<HandleRenderer
 				mode="output"
@@ -121,6 +139,7 @@ provide(CanvasNodeKey, {
 			v-if="nodeType"
 			data-test-id="canvas-node-toolbar"
 			:class="$style.canvasNodeToolbar"
+			@delete="onDelete"
 		/>
 
 		<CanvasNodeRenderer v-if="nodeType">
