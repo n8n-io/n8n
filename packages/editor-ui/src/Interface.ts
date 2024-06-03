@@ -118,6 +118,9 @@ declare global {
 	}
 }
 
+/** String that represents a timestamp in the ISO8601 format, i.e. YYYY-MM-DDTHH:MM:SS.sssZ */
+export type Iso8601String = string;
+
 export type EndpointStyle = {
 	width?: number;
 	height?: number;
@@ -351,8 +354,8 @@ export interface IShareWorkflowsPayload {
 
 export interface ICredentialsResponse extends ICredentialsEncrypted {
 	id: string;
-	createdAt: number | string;
-	updatedAt: number | string;
+	createdAt: Iso8601String;
+	updatedAt: Iso8601String;
 	sharedWithProjects?: ProjectSharingData[];
 	homeProject?: ProjectSharingData;
 	currentUserHasAccess?: boolean;
@@ -361,8 +364,8 @@ export interface ICredentialsResponse extends ICredentialsEncrypted {
 }
 
 export interface ICredentialsBase {
-	createdAt: number | string;
-	updatedAt: number | string;
+	createdAt: Iso8601String;
+	updatedAt: Iso8601String;
 }
 
 export interface ICredentialsDecryptedResponse extends ICredentialsBase, ICredentialsDecrypted {
@@ -1325,7 +1328,6 @@ export interface UIState {
 	bannersHeight: number;
 	bannerStack: BannerName[];
 	theme: ThemeOption;
-	suggestedTemplates?: SuggestedTemplates;
 	pendingNotificationsForViews: {
 		[key in VIEWS]?: NotificationOptions[];
 	};
@@ -1916,24 +1918,6 @@ export type ToggleNodeCreatorOptions = {
 
 export type AppliedThemeOption = 'light' | 'dark';
 export type ThemeOption = AppliedThemeOption | 'system';
-
-export type SuggestedTemplates = {
-	sections: SuggestedTemplatesSection[];
-};
-
-export type SuggestedTemplatesSection = {
-	name: string;
-	title: string;
-	description: string;
-	workflows: SuggestedTemplatesWorkflowPreview[];
-};
-
-export type SuggestedTemplatesWorkflowPreview = {
-	title: string;
-	description: string;
-	preview: IWorkflowData;
-	nodes: Array<Pick<ITemplatesNode, 'id' | 'displayName' | 'icon' | 'defaults' | 'iconData'>>;
-};
 
 export type NewConnectionInfo = {
 	sourceId: string;
