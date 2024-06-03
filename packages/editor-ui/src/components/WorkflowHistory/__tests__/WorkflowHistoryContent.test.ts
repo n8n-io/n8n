@@ -17,6 +17,12 @@ const actions: UserAction[] = actionTypes.map((value) => ({
 	value,
 }));
 
+vi.mock('@/stores/settings.store', () => ({
+	useSettingsStore: vi.fn().mockReturnValue({
+		concurrency: { productionCap: -1 },
+	}),
+}));
+
 const renderComponent = createComponentRenderer(WorkflowHistoryContent);
 
 let pinia: ReturnType<typeof createPinia>;

@@ -14,6 +14,12 @@ import { GlobalComponentsPlugin } from '@/plugins/components';
 
 let pinia: ReturnType<typeof createPinia>;
 
+vi.mock('@/stores/settings.store', () => ({
+	useSettingsStore: vi.fn().mockReturnValue({
+		concurrency: { productionCap: -1 },
+	}),
+}));
+
 const routes = [
 	{ path: '/', name: 'home', component: { template: '<div></div>' } },
 	{
