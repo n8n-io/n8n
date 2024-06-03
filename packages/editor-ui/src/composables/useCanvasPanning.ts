@@ -70,7 +70,7 @@ export function useCanvasPanning(
 	/**
 	 * Ends the panning process and removes the mousemove event listener
 	 */
-	function onMouseUp(_: MouseEvent) {
+	function onMouseUp() {
 		if (!uiStore.nodeViewMoveInProgress) {
 			// If it is not active return directly.
 			// Else normal node dragging will not work.
@@ -89,7 +89,7 @@ export function useCanvasPanning(
 	 * Handles the actual movement of the canvas during a mouse drag,
 	 * updating the position based on the current mouse position
 	 */
-	function onMouseMove(e: MouseEvent) {
+	function onMouseMove(e: MouseEvent | TouchEvent) {
 		const element = unref(elementRef);
 		if (e.target && !(element === e.target || element?.contains(e.target as Node))) {
 			return;
@@ -100,11 +100,11 @@ export function useCanvasPanning(
 		}
 
 		// Signal that moving canvas is active if middle button is pressed and mouse is moved
-		if (e.buttons === MOUSE_EVENT_BUTTONS.MIDDLE) {
+		if (e instanceof MouseEvent && e.buttons === MOUSE_EVENT_BUTTONS.MIDDLE) {
 			uiStore.nodeViewMoveInProgress = true;
 		}
 
-		if (e.buttons === MOUSE_EVENT_BUTTONS.NONE) {
+		if (e instanceof MouseEvent && e.buttons === MOUSE_EVENT_BUTTONS.NONE) {
 			// Mouse button is not pressed anymore so stop selection mode
 			// Happens normally when mouse leave the view pressed and then
 			// comes back unpressed.

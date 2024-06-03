@@ -25,7 +25,7 @@ const SettingsView = defineComponent({
 	components: {
 		SettingsSidebar,
 	},
-	beforeRouteEnter(to, from, next) {
+	beforeRouteEnter(_to, from, next) {
 		next((vm) => {
 			(vm as unknown as InstanceType<typeof SettingsView>).previousRoute = from;
 		});
