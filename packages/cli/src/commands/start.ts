@@ -177,6 +177,16 @@ export class Start extends BaseCommand {
 
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
+
+		if (
+			!config.getEnv('license.autoRenewEnabled') &&
+			config.getEnv('multiMainSetup.instanceType') === 'leader'
+		) {
+			this.logger.warn(
+				'Automatic license renewal is disabled. The license will not renew automatically, and access to licensed features may be lost!',
+			);
+		}
+
 		await this.initBinaryDataService();
 		this.logger.debug('Binary data service init complete');
 		await this.initExternalHooks();
@@ -192,7 +202,10 @@ export class Start extends BaseCommand {
 	}
 
 	async initOrchestration() {
-		if (config.getEnv('executions.mode') !== 'queue') return;
+		if (config.getEnv('executions.mode') === 'regular') {
+			config.set('multiMainSetup.instanceType', 'leader');
+			return;
+		}
 
 		if (
 			config.getEnv('multiMainSetup.enabled') &&
