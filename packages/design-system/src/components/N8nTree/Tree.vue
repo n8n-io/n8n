@@ -8,7 +8,7 @@
 				<slot v-if="$slots.value" name="value" :value="value[label]" />
 				<span v-else>{{ value[label] }}</span>
 			</div>
-			<div>
+			<div v-else>
 				<slot v-if="$slots.label" name="label" :label="label" :path="getPath(label)" />
 				<span v-else>{{ label }}</span>
 				<n8n-tree

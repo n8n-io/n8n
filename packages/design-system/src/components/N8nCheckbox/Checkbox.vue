@@ -22,7 +22,8 @@
 
 <script lang="ts" setup>
 import { ref } from 'vue';
-import { CheckboxValueType, ElCheckbox } from 'element-plus';
+import { ElCheckbox } from 'element-plus';
+import type { CheckboxValueType } from 'element-plus';
 import N8nInputLabel from '../N8nInputLabel';
 
 const LABEL_SIZE = ['small', 'medium'] as const;
