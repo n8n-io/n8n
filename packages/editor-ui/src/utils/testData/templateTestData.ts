@@ -1,6 +1,7 @@
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { faker } from '@faker-js/faker/locale/en';
 import type { ITemplatesWorkflowFull, IWorkflowTemplateNode } from '@/Interface';
+import { NodeConnectionType } from 'n8n-workflow';
 
 export const newWorkflowTemplateNode = ({
 	type,
@@ -75,12 +76,12 @@ export const fullShopifyTelegramTwitterTemplate = {
 					[
 						{
 							node: 'Twitter',
-							type: 'main',
+							type: NodeConnectionType.Main,
 							index: 0,
 						},
 						{
 							node: 'Telegram',
-							type: 'main',
+							type: NodeConnectionType.Main,
 							index: 0,
 						},
 					],
@@ -234,8 +235,12 @@ export const fullSaveEmailAttachmentsToNextCloudTemplate = {
 			},
 		],
 		connections: {
-			'IMAP Email': { main: [[{ node: 'Map each attachment', type: 'main', index: 0 }]] },
-			'Map each attachment': { main: [[{ node: 'Nextcloud', type: 'main', index: 0 }]] },
+			'IMAP Email': {
+				main: [[{ node: 'Map each attachment', type: NodeConnectionType.Main, index: 0 }]],
+			},
+			'Map each attachment': {
+				main: [[{ node: 'Nextcloud', type: NodeConnectionType.Main, index: 0 }]],
+			},
 		},
 	},
 	workflowInfo: {
@@ -382,8 +387,10 @@ export const fullCreateApiEndpointTemplate = {
 			},
 		],
 		connections: {
-			Webhook: { main: [[{ node: 'Create URL string', type: 'main', index: 0 }]] },
-			'Create URL string': { main: [[{ node: 'Respond to Webhook', type: 'main', index: 0 }]] },
+			Webhook: { main: [[{ node: 'Create URL string', type: NodeConnectionType.Main, index: 0 }]] },
+			'Create URL string': {
+				main: [[{ node: 'Respond to Webhook', type: NodeConnectionType.Main, index: 0 }]],
+			},
 		},
 	},
 	lastUpdatedBy: 1,

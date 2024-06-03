@@ -267,7 +267,7 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 		const legacyConnections: IConnections = {
 			'Node A': {
 				main: [[{ node: 'Node B', type: NodeConnectionType.Main, index: 0 }]],
-				other: [[{ node: 'Node C', type: 'other', index: 1 }]],
+				other: [[{ node: 'Node C', type: NodeConnectionType.AiMemory, index: 1 }]],
 			},
 			'Node B': {
 				main: [[{ node: 'Node C', type: NodeConnectionType.Main, index: 0 }]],
