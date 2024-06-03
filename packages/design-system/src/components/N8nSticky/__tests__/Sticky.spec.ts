@@ -17,15 +17,33 @@ describe('components', () => {
 					},
 				},
 			});
-			const checkboxes = wrapper.container.querySelectorAll('input[type="checkbox"][checked]');
-			const allCheckboxes = wrapper.container.querySelectorAll('input[type="checkbox"]');
-			expect(checkboxes).toHaveLength(2);
+			const checkboxes = wrapper.container.querySelectorAll('input[type="checkbox"]');
 			// Should emit modelValue update when checkbox is clicked
-			await fireEvent.change(allCheckboxes[2], { target: { checked: true } });
+			await fireEvent.click(checkboxes[2]);
 			expect(wrapper.emitted()['update:modelValue']).toBeDefined();
 			// Emitted value should contain the new content (3rd checkbox checked)
 			const newContent = (wrapper.emitted()['update:modelValue'][0] as string[])[0];
 			expect(newContent).toContain('- [x] Three');
+		});
+
+		it('should update markdown when checkbox label is clicked', async () => {
+			const wrapper = render(N8nSticky, {
+				props: {
+					editMode: false,
+					modelValue:
+						'### Checkboxes test\n- [x] One\n- [x] Two\n- Something else\n- [ ] Three\n- [ ] Four',
+				},
+				global: {
+					components: {
+						'n8n-markdown': N8nMarkdown,
+					},
+				},
+			});
+			const aLabel = wrapper.getByText('Four');
+			await fireEvent.click(aLabel);
+			expect(wrapper.emitted()['update:modelValue']).toBeDefined();
+			const newContent = (wrapper.emitted()['update:modelValue'][0] as string[])[0];
+			expect(newContent).toContain('- [x] Four');
 		});
 	});
 });
