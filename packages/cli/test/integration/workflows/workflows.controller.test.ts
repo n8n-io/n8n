@@ -116,6 +116,7 @@ describe('POST /workflows', () => {
 			[
 				'workflow:delete',
 				'workflow:execute',
+				'workflow:move',
 				'workflow:read',
 				'workflow:share',
 				'workflow:update',
@@ -519,7 +520,13 @@ describe('GET /workflows', () => {
 			// Team workflow
 			expect(wf1.id).toBe(savedWorkflow1.id);
 			expect(wf1.scopes).toEqual(
-				['workflow:read', 'workflow:update', 'workflow:delete', 'workflow:execute'].sort(),
+				[
+					'workflow:delete',
+					'workflow:execute',
+					'workflow:move',
+					'workflow:read',
+					'workflow:update',
+				].sort(),
 			);
 
 			// Shared workflow
@@ -550,11 +557,12 @@ describe('GET /workflows', () => {
 			expect(wf2.id).toBe(savedWorkflow2.id);
 			expect(wf2.scopes).toEqual(
 				[
-					'workflow:read',
-					'workflow:update',
 					'workflow:delete',
 					'workflow:execute',
+					'workflow:move',
+					'workflow:read',
 					'workflow:share',
+					'workflow:update',
 				].sort(),
 			);
 		}
@@ -574,12 +582,13 @@ describe('GET /workflows', () => {
 			expect(wf1.scopes).toEqual(
 				[
 					'workflow:create',
-					'workflow:read',
-					'workflow:update',
 					'workflow:delete',
-					'workflow:list',
-					'workflow:share',
 					'workflow:execute',
+					'workflow:list',
+					'workflow:move',
+					'workflow:read',
+					'workflow:share',
+					'workflow:update',
 				].sort(),
 			);
 
@@ -588,12 +597,13 @@ describe('GET /workflows', () => {
 			expect(wf2.scopes).toEqual(
 				[
 					'workflow:create',
-					'workflow:read',
-					'workflow:update',
 					'workflow:delete',
-					'workflow:list',
-					'workflow:share',
 					'workflow:execute',
+					'workflow:list',
+					'workflow:move',
+					'workflow:read',
+					'workflow:share',
+					'workflow:update',
 				].sort(),
 			);
 		}

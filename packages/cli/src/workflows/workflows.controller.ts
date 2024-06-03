@@ -40,6 +40,7 @@ import { ApplicationError } from 'n8n-workflow';
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
 import type { Project } from '@/databases/entities/Project';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
+import { z } from 'zod';
 
 @RestController('/workflows')
 export class WorkflowsController {
@@ -459,5 +460,17 @@ export class WorkflowsController {
 			newShareeIds: projectsRelations.map((pr) => pr.userId),
 			workflow,
 		});
+	}
+
+	@Put('/:workflowId/transfer')
+	@ProjectScope('workflow:move')
+	async transfer(req: WorkflowRequest.Transfer) {
+		const body = z.object({ destinationProjectId: z.string() }).parse(req.body);
+
+		return await this.enterpriseWorkflowService.transferOne(
+			req.user,
+			req.params.workflowId,
+			body.destinationProjectId,
+		);
 	}
 }
