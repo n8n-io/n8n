@@ -165,4 +165,7 @@ export const defaultSettings: IN8nUISettings = {
 		pruneTime: 0,
 		licensePruneTime: 0,
 	},
+	concurrency: {
+		productionCap: -1,
+	},
 };

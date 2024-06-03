@@ -13,12 +13,6 @@ vi.mock('@/stores/n8nRoot.store', () => ({
 	useRootStore: vi.fn().mockReturnValue({ pushConnectionActive: true }),
 }));
 
-vi.mock('@/stores/settings.store', () => ({
-	useSettingsStore: vi.fn().mockReturnValue({
-		concurrency: { productionCap: -1 },
-	}),
-}));
-
 vi.mock('@/stores/workflows.store', () => ({
 	useWorkflowsStore: vi.fn().mockReturnValue({
 		runWorkflow: vi.fn(),

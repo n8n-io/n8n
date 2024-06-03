@@ -105,7 +105,6 @@ describe('GlobalExecutionsList', () => {
 						enterprise: {
 							advancedExecutionFilters: true,
 						},
-						concurrency: { productionCap: -1 },
 					}),
 				},
 			},

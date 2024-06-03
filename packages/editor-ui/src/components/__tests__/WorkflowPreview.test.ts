@@ -9,12 +9,6 @@ import { useExecutionsStore } from '@/stores/executions.store';
 
 const renderComponent = createComponentRenderer(WorkflowPreview);
 
-vi.mock('@/stores/settings.store', () => ({
-	useSettingsStore: vi.fn().mockReturnValue({
-		concurrency: { productionCap: -1 },
-	}),
-}));
-
 let pinia: ReturnType<typeof createPinia>;
 let executionsStore: ReturnType<typeof useExecutionsStore>;
 let postMessageSpy: Mock;
