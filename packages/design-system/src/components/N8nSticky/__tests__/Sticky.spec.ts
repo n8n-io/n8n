@@ -4,7 +4,7 @@ import N8nMarkdown from '../../N8nMarkdown/Markdown.vue';
 
 describe('components', () => {
 	describe('Sticky', () => {
-		it('should render the component', async () => {
+		it('should update markdown when checkbox is clicked', async () => {
 			const wrapper = render(N8nSticky, {
 				props: {
 					editMode: false,
