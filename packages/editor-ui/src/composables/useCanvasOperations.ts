@@ -6,9 +6,10 @@ import { useHistoryStore } from '@/stores/history.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { MoveNodeCommand, RemoveNodeCommand } from '@/models/history';
+import { MoveNodeCommand, RemoveConnectionCommand, RemoveNodeCommand } from '@/models/history';
 import type { Connection } from '@vue-flow/core';
 import { mapCanvasConnectionToLegacyConnection } from '@/utils/canvasUtilsV2';
+import type { IConnection } from 'n8n-workflow';
 
 export function useCanvasOperations() {
 	const workflowsStore = useWorkflowsStore();
@@ -122,7 +123,10 @@ export function useCanvasOperations() {
 		uiStore.stateIsDirty = true;
 	}
 
-	function deleteConnection(connection: Connection) {
+	function deleteConnection(
+		connection: Connection,
+		{ trackHistory = false, trackBulk = true } = {},
+	) {
 		const sourceNode = workflowsStore.getNodeById(connection.source);
 		const targetNode = workflowsStore.getNodeById(connection.target);
 		if (!sourceNode || !targetNode) {
@@ -134,13 +138,28 @@ export function useCanvasOperations() {
 			targetNode,
 			connection,
 		);
+
+		if (trackHistory && trackBulk) {
+			historyStore.startRecordingUndo();
+		}
+
 		workflowsStore.removeConnection({
 			connection: mappedConnection,
 		});
+
+		if (trackHistory) {
+			historyStore.pushCommandToUndo(new RemoveConnectionCommand(mappedConnection));
+
+			if (trackBulk) {
+				historyStore.stopRecordingUndo();
+			}
+		}
 	}
 
-	function revertDeleteConnection() {
-		// @TODO Implement connection operation history
+	function revertDeleteConnection(connection: [IConnection, IConnection]) {
+		workflowsStore.addConnection({
+			connection,
+		});
 	}
 
 	// @TODO Figure out a way to improve this

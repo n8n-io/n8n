@@ -33,7 +33,7 @@ import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { IConnection, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
 import { v4 as uuid } from 'uuid';
@@ -257,12 +257,11 @@ function onCreateConnection(connection: Connection) {
 }
 
 function onDeleteConnection(connection: Connection) {
-	deleteConnection(connection);
+	deleteConnection(connection, { trackHistory: true });
 }
 
-function onRevertDeleteConnection() {
-	console.log('Revert delete connection');
-	revertDeleteConnection();
+function onRevertDeleteConnection({ connection }: { connection: [IConnection, IConnection] }) {
+	revertDeleteConnection(connection);
 }
 
 function onToggleNodeCreator({

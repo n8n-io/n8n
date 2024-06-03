@@ -1,9 +1,8 @@
 <script lang="ts" setup>
 /* eslint-disable vue/no-multiple-template-root */
-
 import type { Connection, EdgeProps } from '@vue-flow/core';
 import { BaseEdge, EdgeLabelRenderer, getBezierPath } from '@vue-flow/core';
-import { computed, toRef, useCssModule } from 'vue';
+import { computed, onMounted, onUnmounted, toRef, useCssModule } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 
 const emit = defineEmits<{
@@ -44,12 +43,19 @@ const connection = computed<Connection>(() => ({
 	targetHandle: props.targetHandleId,
 }));
 
+onMounted(() => {
+	document.addEventListener('keydown', onKeyDown);
+});
+
+onUnmounted(() => {
+	document.removeEventListener('keydown', onKeyDown);
+});
+
 function onDelete() {
 	emit('delete', connection.value);
 }
 
 function onKeyDown(e: KeyboardEvent) {
-	console.log('e', e);
 	if (!selected.value) {
 		return;
 	}
@@ -75,7 +81,6 @@ function onKeyDown(e: KeyboardEvent) {
 		:label-bg-padding="[2, 4]"
 		:label-bg-border-radius="2"
 		tabindex="2"
-		@keydown="onKeyDown"
 	/>
 	<EdgeLabelRenderer>
 		<div :class="[$style.edgeToolbar, 'nodrag', 'nopan']" :style="edgeLabelStyle">
