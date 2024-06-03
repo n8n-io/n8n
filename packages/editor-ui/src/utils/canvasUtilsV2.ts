@@ -1,9 +1,8 @@
 import type { IConnection, IConnections, INodeTypeDescription } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { CanvasConnection, CanvasConnectionPortType, CanvasConnectionPort } from '@/types';
+import type { Connection } from '@vue-flow/core';
 import { v4 as uuid } from 'uuid';
-import { Connection } from '@vue-flow/core';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 
 export function mapLegacyConnectionsToCanvasConnections(
 	legacyConnections: IConnections,

@@ -75,9 +75,6 @@ import { computed, ref } from 'vue';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import { useSettingsStore } from './settings.store';
 import { useUsersStore } from './users.store';
-import { useHistoryStore } from '@/stores/history.store';
-import { RemoveNodeCommand } from '@/models/history';
-import { v4 as uuid } from 'uuid';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',

@@ -7,7 +7,7 @@ import {
 import type { IConnections, INodeTypeDescription } from 'n8n-workflow';
 import type { CanvasConnection } from '@/types';
 import type { INodeUi } from '@/Interface';
-import { Connection } from '@vue-flow/core';
+import type { Connection } from '@vue-flow/core';
 import { createTestNode } from '@/__tests__/mocks';
 
 vi.mock('uuid', () => ({

@@ -25,8 +25,6 @@ import {
 	REGULAR_NODE_CREATOR_VIEW,
 	TRIGGER_NODE_CREATOR_VIEW,
 	VIEWS,
-	STICKY_NODE_TYPE,
-	QUICKSTART_NOTE_NAME,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
@@ -43,7 +41,7 @@ import useEnvironmentsStore from '@/stores/environments.ee.store';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useCollaborationStore } from '@/stores/collaboration.store';
-import { getUniqueNodeName, mapCanvasConnectionToLegacyConnection } from '@/utils/canvasUtilsV2';
+import { getUniqueNodeName } from '@/utils/canvasUtilsV2';
 import { historyBus } from '@/models/history';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 
