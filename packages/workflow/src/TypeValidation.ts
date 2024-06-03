@@ -145,10 +145,9 @@ export const tryToParseObject = (value: unknown): object => {
 	}
 };
 
-export const getValueDescription = <T>(value: T, stringify = false): string => {
+export const getValueDescription = <T>(value: T): string => {
 	if (typeof value === 'object') {
 		if (value === null) return "'null'";
-		if (stringify) return JSON.stringify(value);
 		if (Array.isArray(value)) return 'array';
 		return 'object';
 	}
