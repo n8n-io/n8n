@@ -221,7 +221,7 @@ import {
 	EVENT_CONNECTION_MOVED,
 	INTERCEPT_BEFORE_DROP,
 } from '@jsplumb/core';
-import type ElNotification from 'element-plus/lib/components/notification/src/notification';
+import type { NotificationHandle } from 'element-plus';
 
 import {
 	FIRST_ONBOARDING_PROMPT_TIMEOUT,
@@ -291,7 +291,7 @@ import type {
 	ConnectionTypes,
 	INodeOutputConfiguration,
 	IRun,
-INodeCredentials,
+	INodeCredentials,
 } from 'n8n-workflow';
 import {
 	deepCopy,
@@ -324,6 +324,7 @@ import type {
 	AIAssistantConnectionInfo,
 	NodeFilterType,
 	IWorkflowTemplateNode,
+	IWorkflowTemplateNodeCredentials,
 } from '@/Interface';
 
 import { type RouteLocation, useRouter } from 'vue-router';
@@ -381,7 +382,11 @@ import {
 	N8nAddInputEndpointType,
 } from '@/plugins/jsplumb/N8nAddInputEndpointType';
 import { sourceControlEventBus } from '@/event-bus/source-control';
-import { getConnectorPaintStyleData, OVERLAY_ENDPOINT_ARROW_ID } from '@/utils/nodeViewUtils';
+import {
+	getConnectorPaintStyleData,
+	OVERLAY_ENDPOINT_ARROW_ID,
+	getEndpointScope,
+} from '@/utils/nodeViewUtils';
 import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useClipboard } from '@/composables/useClipboard';
@@ -401,8 +406,6 @@ import { useStorage } from '@/composables/useStorage';
 import { isJSPlumbEndpointElement, isJSPlumbConnection } from '@/utils/typeGuards';
 import { usePostHog } from '@/stores/posthog.store';
 import { ProjectTypes } from '@/features/projects/projects.utils';
-import { IWorkflowTemplateNodeCredentials } from '@/Interface';
-import { getEndpointScope } from '@/utils/nodeViewUtils';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -445,6 +448,7 @@ export default defineComponent({
 			return;
 		}
 		if (this.uiStore.stateIsDirty && !this.readOnlyEnv) {
+			console.log('Hello!');
 			const confirmModal = await this.confirm(
 				this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
 				{
@@ -471,14 +475,12 @@ export default defineComponent({
 				if (from.name === VIEWS.NEW_WORKFLOW) {
 					// Replace the current route with the new workflow route
 					// before navigating to the new route when saving new workflow.
-					await this.$router.replace(
-						{ name: VIEWS.WORKFLOW, params: { name: this.currentWorkflow } },
-						() => {
-							// We can't use next() here since vue-router
-							// would prevent the navigation with an error
-							void this.$router.push(to);
-						},
-					);
+					await this.$router.replace({
+						name: VIEWS.WORKFLOW,
+						params: { name: this.currentWorkflow },
+					});
+
+					await this.$router.push(to);
 				} else {
 					this.collaborationStore.notifyWorkflowClosed(this.currentWorkflow);
 					next();
@@ -570,7 +572,7 @@ export default defineComponent({
 			isProductionExecutionPreview: false,
 			enterTimer: undefined as undefined | ReturnType<typeof setTimeout>,
 			exitTimer: undefined as undefined | ReturnType<typeof setTimeout>,
-			readOnlyNotification: null as null | ElNotification,
+			readOnlyNotification: null as null | NotificationHandle,
 			// jsplumb automatically deletes all loose connections which is in turn recorded
 			// in undo history as a user action.
 			// This should prevent automatically removed connections from populating undo stack
@@ -1093,10 +1095,7 @@ export default defineComponent({
 			});
 		},
 		editAllowedCheck(): boolean {
-			if (
-				this.readOnlyNotification?.hasOwnProperty('visible') &&
-				this.readOnlyNotification?.visible
-			) {
+			if (this.readOnlyNotification) {
 				return false;
 			}
 			if (this.isReadOnlyRoute || this.readOnlyEnv) {
@@ -1115,6 +1114,9 @@ export default defineComponent({
 					),
 					type: 'info',
 					dangerouslyUseHTMLString: true,
+					onClose: () => {
+						this.readOnlyNotification = null;
+					},
 				});
 
 				return false;
@@ -3233,7 +3235,7 @@ export default defineComponent({
 								info.source,
 								info.target,
 								info.connection?.connector?.hasOwnProperty('canvas')
-									? (info.connection.connector.canvas as HTMLElement)
+									? info.connection.connector.canvas
 									: undefined,
 							);
 						}, 0);
@@ -4244,7 +4246,7 @@ export default defineComponent({
 					nameInput.select();
 				}
 
-				const promptResponse = (await promptResponsePromise) as MessageBoxInputData;
+				const promptResponse = await promptResponsePromise;
 
 				if (promptResponse?.action !== MODAL_CONFIRM) return;
 
@@ -4479,7 +4481,11 @@ export default defineComponent({
 						if (outwardConnections) {
 							outwardConnections.forEach((targetData) => {
 								batchedConnectionData.push([
-									{ node: sourceNode, type: getEndpointScope(type) ?? NodeConnectionType.Main, index: sourceIndex },
+									{
+										node: sourceNode,
+										type: getEndpointScope(type) ?? NodeConnectionType.Main,
+										index: sourceIndex,
+									},
 									{ node: targetData.node, type: targetData.type, index: targetData.index },
 								]);
 							});
