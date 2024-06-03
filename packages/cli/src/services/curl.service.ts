@@ -264,11 +264,13 @@ export const flattenObject = (obj: { [x: string]: any }, prefix = '') =>
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		if (typeof obj[k] === 'object') Object.assign(acc, flattenObject(obj[k], pre + k));
 		//@ts-ignore
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		else acc[pre + k] = obj[k];
 		return acc;
 	}, {});
 
 export class CurlService {
+	// eslint-disable-next-line complexity
 	toHttpNodeParameters(curlCommand: string): HttpNodeParameters {
 		const curlJson = jsonParse<CurlJson>(curlconverter.toJsonString(curlCommand));
 
