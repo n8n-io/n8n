@@ -1,13 +1,10 @@
 import type { N8nInput } from 'n8n-design-system';
 import type {
 	IConnections,
-	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
 	ITelemetryTrackProperties,
-	INodeParameterResourceLocator,
-	NodeParameterValue,
-	ResourceMapperValue,
+	NodeParameterValueType,
 } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
 import type {
@@ -197,16 +194,7 @@ export interface ExternalHooks {
 			ExternalHooksMethod<{
 				node_type?: string;
 				action: string;
-				resource:
-					| string
-					| number
-					| true
-					| INodeParameters
-					| INodeParameterResourceLocator
-					| NodeParameterValue[]
-					| INodeParameters[]
-					| INodeParameterResourceLocator[]
-					| ResourceMapperValue[];
+				resource: NodeParameterValueType;
 			}>
 		>;
 		selectedTypeChanged: Array<ExternalHooksMethod<{ oldValue: string; newValue: string }>>;

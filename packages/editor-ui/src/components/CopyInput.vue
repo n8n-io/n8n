@@ -77,7 +77,7 @@ export default defineComponent({
 	methods: {
 		copy(): void {
 			this.$emit('copy');
-			void this.clipboard.copy(this.value);
+			void this.clipboard.copy(this.value ?? '');
 
 			this.showMessage({
 				title: this.toastTitle,
