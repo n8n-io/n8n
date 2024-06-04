@@ -56,6 +56,7 @@ import type { Workflow } from './Workflow';
 import { validateFilterParameter } from './NodeParameters/FilterParameter';
 import { validateFieldType } from './TypeValidation';
 import { ApplicationError } from './errors/application.error';
+import { SINGLE_EXECUTION_NODES } from './Constants';
 
 export const cronNodeOptions: INodePropertyCollection[] = [
 	{
@@ -1747,4 +1748,20 @@ export function getCredentialsForNode(
 	}
 
 	return object.description.credentials ?? [];
+}
+
+export function isSingleExecution(type: string, parameters: INodeParameters): boolean {
+	const singleExecutionCase = SINGLE_EXECUTION_NODES[type];
+
+	if (singleExecutionCase) {
+		for (const parameter of Object.keys(singleExecutionCase)) {
+			if (!singleExecutionCase[parameter].includes(parameters[parameter] as NodeParameterValue)) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	return false;
 }
