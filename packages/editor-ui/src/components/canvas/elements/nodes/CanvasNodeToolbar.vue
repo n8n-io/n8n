@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { computed, inject, useCssModule } from 'vue';
 import { CanvasNodeKey } from '@/constants';
+import { useI18n } from '@/composables/useI18n';
+
+const emit = defineEmits(['delete']);
+const $style = useCssModule();
 
 const node = inject(CanvasNodeKey);
 
-const data = computed(() => node?.data.value);
+const i18n = useI18n();
 
-const $style = useCssModule();
+const data = computed(() => node?.data.value);
 
 // @TODO
 const workflowRunning = false;
@@ -20,8 +24,9 @@ function executeNode() {}
 // @TODO
 function toggleDisableNode() {}
 
-// @TODO
-function deleteNode() {}
+function deleteNode() {
+	emit('delete');
+}
 
 // @TODO
 function openContextMenu(_e: MouseEvent, _type: string) {}
@@ -38,7 +43,7 @@ function openContextMenu(_e: MouseEvent, _type: string) {}
 				size="small"
 				icon="play"
 				:disabled="workflowRunning"
-				:title="$locale.baseText('node.testStep')"
+				:title="i18n.baseText('node.testStep')"
 				@click="executeNode"
 			/>
 			<N8nIconButton
@@ -56,7 +61,7 @@ function openContextMenu(_e: MouseEvent, _type: string) {}
 				size="small"
 				text
 				icon="trash"
-				:title="$locale.baseText('node.delete')"
+				:title="i18n.baseText('node.delete')"
 				@click="deleteNode"
 			/>
 			<N8nIconButton
