@@ -249,14 +249,14 @@ export class EnterpriseWorkflowService {
 		]);
 		NotFoundError.isDefinedAndNotNull(
 			workflow,
-			`Could not find workflow with the id "${workflowId}". Make sure you have the permission to delete it.`,
+			`Could not find workflow with the id "${workflowId}". Make sure you have the permission to move it.`,
 		);
 
 		// 2. get owner-sharing
 		const ownerSharing = workflow.shared.find((s) => s.role === 'workflow:owner')!;
 		NotFoundError.isDefinedAndNotNull(
 			ownerSharing,
-			`Could not find owner for workflow ${workflow.id}`,
+			`Could not find owner for workflow "${workflow.id}"`,
 		);
 
 		// 3. get source project
