@@ -3482,10 +3482,11 @@ export function getExecuteFunctions(
 				),
 			getExecuteData: () => executeData,
 			continueOnFail: (error?: Error) => {
-				if (error && !(error instanceof ApplicationError)) {
+				const shouldContinue = continueOnFail(node);
+				if (error && shouldContinue && !(error instanceof ApplicationError)) {
 					error.message = OBFUSCATED_ERROR_MESSAGE;
 				}
-				return continueOnFail(node);
+				return shouldContinue;
 			},
 			evaluateExpression: (expression: string, itemIndex: number) => {
 				return workflow.expression.resolveSimpleParameterValue(

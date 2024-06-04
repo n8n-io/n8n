@@ -247,13 +247,6 @@ export async function execute(
 				return [name, value];
 			}),
 		);
-		// if ('test') {
-		// 	// eslint-disable-next-line n8n-local-rules/no-plain-errors
-		// 	const e = new Error('Not handeled error in Set node');
-		// 	throw new NodeOperationError(this.getNode(), e, {
-		// 		itemIndex: i,
-		// 	});
-		// }
 		return composeReturnItem.call(this, i, item, newData, options);
 	} catch (error) {
 		if (this.continueOnFail(error)) {
