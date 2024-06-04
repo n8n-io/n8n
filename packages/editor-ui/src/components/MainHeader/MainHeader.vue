@@ -81,13 +81,10 @@ export default defineComponent({
 			return this.workflowsStore.workflow;
 		},
 		currentWorkflow(): string {
-			return this.$route.params.name || this.workflowsStore.workflowId;
+			return String(this.$route.params.name || this.workflowsStore.workflowId);
 		},
 		onWorkflowPage(): boolean {
-			return (
-				this.$route.meta &&
-				(this.$route.meta.nodeView || this.$route.meta.keepWorkflowAlive === true)
-			);
+			return !!(this.$route.meta.nodeView || this.$route.meta.keepWorkflowAlive);
 		},
 		readOnly(): boolean {
 			return this.sourceControlStore.preferences.branchReadOnly;
@@ -124,11 +121,15 @@ export default defineComponent({
 				this.activeHeaderTab = MAIN_HEADER_TABS.WORKFLOW;
 			}
 
-			if (to.params.name !== 'new') {
+			if (to.params.name !== 'new' && typeof to.params.name === 'string') {
 				this.workflowToReturnTo = to.params.name;
 			}
 
-			if (from?.name === VIEWS.EXECUTION_PREVIEW && to.params.name === from.params.name) {
+			if (
+				from?.name === VIEWS.EXECUTION_PREVIEW &&
+				to.params.name === from.params.name &&
+				typeof from.params.executionId === 'string'
+			) {
 				this.executionToReturnTo = from.params.executionId;
 			}
 		},

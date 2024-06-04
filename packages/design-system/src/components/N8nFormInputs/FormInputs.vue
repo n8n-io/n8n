@@ -126,7 +126,7 @@ export default defineComponent({
 		onUpdateModelValue(name: string, value: unknown) {
 			this.values = {
 				...this.values,
-				[name]: value,
+				[name]: value as Validatable,
 			};
 			this.$emit('update', { name, value });
 			this.$emit('update:modelValue', this.values);
