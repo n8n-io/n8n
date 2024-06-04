@@ -303,7 +303,7 @@ export class Coda implements INodeType {
 						);
 					}
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						return [this.helpers.returnJsonArray({ error: error.message })];
 					}
 					throw error;
@@ -348,7 +348,7 @@ export class Coda implements INodeType {
 							returnData.push(...executionData);
 						}
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							const executionErrorData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.messsage }),
 								{ itemData: { item: i } },
@@ -428,7 +428,7 @@ export class Coda implements INodeType {
 							}
 						}
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							returnData.push({
 								json: { error: error.message },
 								pairedItem: [{ item: i }],
@@ -465,7 +465,7 @@ export class Coda implements INodeType {
 						await codaApiRequest.call(this, 'DELETE', endpoint, { rowIds: sendData[endpoint] }, qs);
 					}
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						return [this.helpers.returnJsonArray({ error: error.message })];
 					}
 					throw error;
@@ -485,7 +485,7 @@ export class Coda implements INodeType {
 						responseData = await codaApiRequest.call(this, 'POST', endpoint, {});
 						returnData.push(responseData as INodeExecutionData);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							const executionErrorData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.messsage }),
 								{ itemData: { item: i } },
@@ -513,7 +513,7 @@ export class Coda implements INodeType {
 						);
 						returnData.push(...executionData);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							const executionErrorData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.messsage }),
 								{ itemData: { item: i } },
@@ -547,7 +547,7 @@ export class Coda implements INodeType {
 						);
 						returnData.push(...executionData);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							const executionErrorData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.messsage }),
 								{ itemData: { item: i } },
@@ -576,7 +576,7 @@ export class Coda implements INodeType {
 						);
 						returnData.push(...executionData);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							const executionErrorData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.messsage }),
 								{ itemData: { item: i } },
@@ -609,7 +609,7 @@ export class Coda implements INodeType {
 						);
 						returnData.push(...executionData);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							const executionErrorData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.messsage }),
 								{ itemData: { item: i } },
@@ -638,7 +638,7 @@ export class Coda implements INodeType {
 						);
 						returnData.push(...executionData);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							const executionErrorData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.messsage }),
 								{ itemData: { item: i } },
@@ -671,7 +671,7 @@ export class Coda implements INodeType {
 						);
 						returnData.push(...executionData);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							const executionErrorData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.messsage }),
 								{ itemData: { item: i } },
@@ -721,7 +721,7 @@ export class Coda implements INodeType {
 						);
 						returnData.push(...responseData);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							const executionErrorData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.messsage }),
 								{ itemData: { item: i } },
@@ -796,7 +796,7 @@ export class Coda implements INodeType {
 							}
 						}
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							returnData.push({
 								json: { error: error.message },
 								pairedItem: [{ item: i }],
@@ -825,7 +825,7 @@ export class Coda implements INodeType {
 						);
 						returnData.push(...executionData);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							const executionErrorData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.messsage }),
 								{ itemData: { item: i } },
@@ -854,7 +854,7 @@ export class Coda implements INodeType {
 						);
 						returnData.push(...executionData);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							const executionErrorData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.messsage }),
 								{ itemData: { item: i } },
@@ -887,7 +887,7 @@ export class Coda implements INodeType {
 						);
 						returnData.push(...executionData);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							const executionErrorData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.messsage }),
 								{ itemData: { item: i } },
@@ -931,7 +931,7 @@ export class Coda implements INodeType {
 						};
 						await codaApiRequest.call(this, 'PUT', endpoint, body, qs);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							items[i].json = { error: error.message };
 							continue;
 						}

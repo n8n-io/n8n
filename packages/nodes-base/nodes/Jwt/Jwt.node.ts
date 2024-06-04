@@ -434,7 +434,7 @@ export class Jwt implements INodeType {
 							'Be sure that the provided JWT token is correctly encoded and matches the selected credentials',
 					});
 				}
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({
 						json: this.getInputData(itemIndex)[0].json,
 						error,

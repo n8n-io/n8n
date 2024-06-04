@@ -56,7 +56,7 @@ export async function execute(
 
 		return composeReturnItem.call(this, i, item, newData, options);
 	} catch (error) {
-		if (this.continueOnFail()) {
+		if (this.continueOnFail(error)) {
 			return { json: { error: (error as Error).message }, pairedItem: { item: i } };
 		}
 		throw new NodeOperationError(node, error as Error, {
