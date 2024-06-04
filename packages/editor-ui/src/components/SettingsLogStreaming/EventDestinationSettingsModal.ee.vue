@@ -448,7 +448,7 @@ export default defineComponent({
 			if (deleteConfirmed !== MODAL_CONFIRM) {
 				return;
 			} else {
-				this.callEVentBus('remove', this.destination.id);
+				this.callEventBus('remove', this.destination.id);
 				this.uiStore.closeModal(LOG_STREAM_MODAL_KEY);
 				this.uiStore.stateIsDirty = false;
 			}
@@ -459,7 +459,7 @@ export default defineComponent({
 				this.logStreamingStore.removeDestination(this.nodeParameters.id!);
 			}
 			this.ndvStore.activeNodeName = null;
-			this.callEVentBus('closing', this.destination.id);
+			this.callEventBus('closing', this.destination.id);
 			this.uiStore.stateIsDirty = false;
 		},
 		async saveDestination() {
@@ -471,7 +471,7 @@ export default defineComponent({
 				this.hasOnceBeenSaved = true;
 				this.testMessageSent = false;
 				this.unchanged = true;
-				this.callEVentBus('destinationWasSaved', this.destination.id);
+				this.callEventBus('destinationWasSaved', this.destination.id);
 				this.uiStore.stateIsDirty = false;
 
 				const destinationType = (this.nodeParameters.__type ?? 'unknown')
@@ -503,7 +503,7 @@ export default defineComponent({
 				});
 			}
 		},
-		callEVentBus(event: string, data: unknown) {
+		callEventBus(event: string, data: unknown) {
 			if (this.eventBus) {
 				this.eventBus.emit(event, data);
 			}
