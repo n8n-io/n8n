@@ -3717,6 +3717,7 @@ export default defineComponent({
 			this.workflowsStore.workflow.scopes = scopes;
 		},
 		async newWorkflow(): Promise<void> {
+			await this.loadCredentials();
 			const { getVariant } = usePostHog();
 			this.canvasStore.startLoading();
 			this.resetWorkspace();
@@ -3783,7 +3784,6 @@ export default defineComponent({
 						return;
 					}
 				}
-				await this.loadCredentials();
 				// Load a workflow
 				let workflowId = null as string | null;
 				if (this.$route.params.name) {
@@ -3809,6 +3809,7 @@ export default defineComponent({
 						await this.projectsStore.setProjectNavActiveIdByWorkflowHomeProject(
 							workflow.homeProject,
 						);
+						await this.loadCredentials();
 
 						if (workflow.meta?.onboardingId) {
 							this.$telemetry.track(
@@ -4779,9 +4780,9 @@ export default defineComponent({
 		async loadCredentials(): Promise<void> {
 			const workflow = this.workflowsStore.getWorkflowById(this.currentWorkflow);
 			const projectId =
-				workflow?.homeProject?.type === ProjectTypes.Personal
+				(workflow?.homeProject?.type === ProjectTypes.Personal
 					? this.projectsStore.personalProject?.id
-					: workflow?.homeProject?.id;
+					: workflow?.homeProject?.id) ?? this.projectsStore.currentProjectId;
 			await this.credentialsStore.fetchAllCredentials(projectId);
 		},
 		async loadVariables(): Promise<void> {
