@@ -137,10 +137,6 @@ watch(
 				}
 				input.value.focus();
 			}
-			if (!newMode && prevMode) {
-				// Init checkbox events after editor is closed
-				await resetCheckboxListeners();
-			}
 		}, 100);
 	},
 );
