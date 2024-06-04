@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import type { PropType } from 'vue';
 import type { GenericValue } from 'n8n-workflow';
-import { computed } from 'vue';
+import { computed, useCssModule } from 'vue';
+import { sanitizeHtml } from '@/utils/htmlUtils';
 
 const props = defineProps({
 	content: {
@@ -11,6 +12,8 @@ const props = defineProps({
 		type: String,
 	},
 });
+
+const $style = useCssModule();
 
 const splitTextBySearch = (
 	text = '',
@@ -37,6 +40,17 @@ const parts = computed(() => {
 		? splitTextBySearch(props.content, props.search)
 		: [];
 });
+
+const contentWithNewLines = computed(() => {
+	if (typeof props.content === 'string') {
+		return sanitizeHtml(props.content).replaceAll(
+			'\n',
+			`<span class="${$style.newLine}">\\n</span>`,
+		);
+	}
+
+	return props.content;
+});
 </script>
 
 <template>
@@ -48,5 +62,14 @@ const parts = computed(() => {
 			<span v-else-if="part.content" :key="`span-${index}`">{{ part.content }}</span>
 		</template>
 	</span>
-	<span v-else>{{ props.content }}</span>
+	<!-- We need to use v-html here as we want to render the new lines wrapped in span. The HTML is sanitized before. -->
+	<!-- eslint-disable-next-line vue/no-v-html-->
+	<span v-else :class="$style.content" v-html="contentWithNewLines" />
 </template>
+
+<style lang="scss" module>
+:root .content .newLine {
+	font-size: 0.8em;
+	color: red;
+}
+</style>

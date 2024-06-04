@@ -1,10 +1,11 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, useCssModule } from 'vue';
 import type { INodeUi, Schema } from '@/Interface';
 import { checkExhaustive } from '@/utils/typeGuards';
 import { shorten } from '@/utils/typesUtils';
 import { getMappedExpression } from '@/utils/mappingUtils';
 import TextWithHighlights from './TextWithHighlights.vue';
+import { sanitizeHtml } from '@/utils/htmlUtils';
 
 type Props = {
 	schema: Schema;
@@ -20,6 +21,7 @@ type Props = {
 };
 
 const props = defineProps<Props>();
+const $style = useCssModule();
 
 const isSchemaValueArray = computed(() => Array.isArray(props.schema.value));
 const schemaArray = computed(
@@ -38,9 +40,14 @@ const key = computed((): string | undefined => {
 const schemaName = computed(() =>
 	isSchemaParentTypeArray.value ? `${props.schema.type}[${props.schema.key}]` : props.schema.key,
 );
-const text = computed(() =>
-	Array.isArray(props.schema.value) ? '' : shorten(props.schema.value, 600, 0),
-);
+const text = computed(() => {
+	if (Array.isArray(props.schema.value)) return '';
+
+	return sanitizeHtml(shorten(props.schema.value, 600, 0)).replaceAll(
+		'\n',
+		`<span class="${$style.newLine}">\\n</span>`,
+	);
+});
 
 const dragged = computed(() => props.draggingPath === props.schema.path);
 
@@ -114,7 +121,9 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 				/>
 			</span>
 		</div>
-		<span v-if="text" :class="$style.text">{{ text }}</span>
+		<!-- We need to use v-html here as we want to render the new lines wrapped in span. The HTML is sanitized before. -->
+		<!-- eslint-disable-next-line vue/no-v-html-->
+		<span v-if="text" :class="$style.text" v-html="text" />
 		<input v-if="level > 0 && isSchemaValueArray" :id="subKey" type="checkbox" checked />
 		<label v-if="level > 0 && isSchemaValueArray" :class="$style.toggle" :for="subKey">
 			<font-awesome-icon icon="angle-up" />
@@ -286,6 +295,11 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 	font-size: var(--font-size-2xs);
 	overflow: hidden;
 	word-break: break-word;
+
+	.newLine {
+		font-size: 0.8em;
+		color: red;
+	}
 }
 
 .toggle {
