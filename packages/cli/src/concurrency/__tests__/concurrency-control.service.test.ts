@@ -21,44 +21,6 @@ describe('ConcurrencyControlService', () => {
 	});
 
 	describe('constructor', () => {
-		it('should throw if production cap is 0', () => {
-			/**
-			 * Arrange
-			 */
-			config.set('executions.concurrency.productionCap', 0);
-
-			try {
-				/**
-				 * Act
-				 */
-				new ConcurrencyControlService(logger, executionRepository, license);
-			} catch (error) {
-				/**
-				 * Assert
-				 */
-				expect(error).toBeInstanceOf(InvalidConcurrencyCapError);
-			}
-		});
-
-		it('should throw if production cap is lower than -1', () => {
-			/**
-			 * Arrange
-			 */
-			config.set('executions.concurrency.productionCap', -2);
-
-			try {
-				/**
-				 * Act
-				 */
-				new ConcurrencyControlService(logger, executionRepository, license);
-			} catch (error) {
-				/**
-				 * Assert
-				 */
-				expect(error).toBeInstanceOf(InvalidConcurrencyCapError);
-			}
-		});
-
 		it('should be enabled if production cap is positive', () => {
 			/**
 			 * Arrange
@@ -79,6 +41,25 @@ describe('ConcurrencyControlService', () => {
 			expect(service.productionQueue).toBeDefined();
 		});
 
+		it('should throw if production cap is 0', () => {
+			/**
+			 * Arrange
+			 */
+			config.set('executions.concurrency.productionCap', 0);
+
+			try {
+				/**
+				 * Act
+				 */
+				new ConcurrencyControlService(logger, executionRepository, license);
+			} catch (error) {
+				/**
+				 * Assert
+				 */
+				expect(error).toBeInstanceOf(InvalidConcurrencyCapError);
+			}
+		});
+
 		it('should be disabled if production cap is -1', () => {
 			/**
 			 * Arrange
@@ -92,6 +73,24 @@ describe('ConcurrencyControlService', () => {
 
 			/**
 			 * Assert
+			 */
+			// @ts-expect-error Private property
+			expect(service.isEnabled).toBe(false);
+		});
+
+		it('should be disabled if production cap is lower than -1', () => {
+			/**
+			 * Arrange
+			 */
+			config.set('executions.concurrency.productionCap', -2);
+
+			/**
+			 * Act
+			 */
+			const service = new ConcurrencyControlService(logger, executionRepository, license);
+
+			/**
+			 * Act
 			 */
 			// @ts-expect-error Private property
 			expect(service.isEnabled).toBe(false);

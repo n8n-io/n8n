@@ -140,7 +140,7 @@ export default defineComponent({
 	},
 	computed: {
 		...mapStores(useExecutionsStore, useWorkflowsStore, useUIStore, useSettingsStore),
-		productionConcurrencyCap(): boolean {
+		productionConcurrencyCap(): number {
 			return this.settingsStore.productionConcurrencyCap;
 		},
 		isProductionConcurrencyCapEnabled(): boolean {
@@ -186,9 +186,6 @@ export default defineComponent({
 		},
 	},
 	methods: {
-		goToUpgrade() {
-			void this.uiStore.goToUpgrade('concurrency', 'max-concurrency-limit');
-		},
 		onItemMounted(id: string): void {
 			this.mountedItems.push(id);
 			if (this.mountedItems.length === this.executions.length) {

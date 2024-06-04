@@ -1849,6 +1849,7 @@ export interface ExternalSecretsProvider {
 }
 
 export type CloudUpdateLinkSourceType =
+	| 'concurrency'
 	| 'advanced-permissions'
 	| 'canvas-nav'
 	| 'custom-data-filter'
@@ -1871,6 +1872,7 @@ export type CloudUpdateLinkSourceType =
 	| 'debug';
 
 export type UTMCampaign =
+	| 'upgrade-concurrency'
 	| 'upgrade-custom-data-filter'
 	| 'upgrade-canvas-nav'
 	| 'upgrade-workflow-sharing'

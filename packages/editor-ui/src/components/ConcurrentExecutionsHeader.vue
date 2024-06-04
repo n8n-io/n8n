@@ -24,7 +24,7 @@ defineProps<{
 }>();
 
 const goToUpgrade = () => {
-	void useUIStore().goToUpgrade('concurrency', 'max-concurrency-limit');
+	void useUIStore().goToUpgrade('concurrency', 'upgrade-concurrency');
 };
 </script>
 
