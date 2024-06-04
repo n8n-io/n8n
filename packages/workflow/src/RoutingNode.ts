@@ -150,42 +150,40 @@ export class RoutingNode {
 				}
 			}
 
-			itemContext.push({
-				thisArgs: nodeExecuteFunctions.getExecuteSingleFunctions(
-					this.workflow,
-					this.runExecutionData,
-					runIndex,
-					this.connectionInputData,
-					inputData,
-					this.node,
-					itemIndex,
-					this.additionalData,
-					executeData,
-					this.mode,
-					abortSignal,
-				),
-				requestData: {
-					options: {
-						qs: {},
-						body: {},
-						headers: {},
-					},
-					preSend: [],
-					postReceive: [],
-					requestOperations: {},
-				} as DeclarativeRestApiSettings.ResultOptions,
-			});
+			const thisArgs = nodeExecuteFunctions.getExecuteSingleFunctions(
+				this.workflow,
+				this.runExecutionData,
+				runIndex,
+				this.connectionInputData,
+				inputData,
+				this.node,
+				itemIndex,
+				this.additionalData,
+				executeData,
+				this.mode,
+				abortSignal,
+			);
+			const requestData = {
+				options: {
+					qs: {},
+					body: {},
+					headers: {},
+				},
+				preSend: [],
+				postReceive: [],
+				requestOperations: {},
+			} as DeclarativeRestApiSettings.ResultOptions;
 
-			const { proxy, timeout, allowUnauthorizedCerts } = itemContext[
-				itemIndex
-			].thisArgs.getNodeParameter('requestOptions', 0, {}) as {
+			itemContext.push({ thisArgs, requestData });
+
+			const { proxy, timeout, allowUnauthorizedCerts } = thisArgs.getNodeParameter('requestOptions', {}) as {
 				proxy: string;
 				timeout: number;
 				allowUnauthorizedCerts: boolean;
 			};
 
 			if (nodeType.description.requestOperations) {
-				itemContext[itemIndex].requestData.requestOperations = {
+				requestData.requestOperations = {
 					...nodeType.description.requestOperations,
 				};
 			}
@@ -204,7 +202,7 @@ export class RoutingNode {
 						false,
 					) as string;
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					(itemContext[itemIndex].requestData.options as Record<string, any>)[key] = value;
+					(requestData.options as Record<string, any>)[key] = value;
 				}
 			}
 
@@ -221,7 +219,7 @@ export class RoutingNode {
 				) as string | NodeParameterValue;
 
 				const tempOptions = this.getRequestOptionsFromParameters(
-					itemContext[itemIndex].thisArgs,
+					thisArgs,
 					property,
 					itemIndex,
 					runIndex,
@@ -229,7 +227,7 @@ export class RoutingNode {
 					{ $credentials: credentials, $value: value, $version: this.node.typeVersion },
 				);
 
-				this.mergeOptions(itemContext[itemIndex].requestData, tempOptions);
+				this.mergeOptions(requestData, tempOptions);
 			}
 
 			if (proxy) {
@@ -265,25 +263,25 @@ export class RoutingNode {
 			}
 
 			if (allowUnauthorizedCerts) {
-				itemContext[itemIndex].requestData.options.skipSslCertificateValidation =
+				requestData.options.skipSslCertificateValidation =
 					allowUnauthorizedCerts;
 			}
 
 			if (timeout) {
-				itemContext[itemIndex].requestData.options.timeout = timeout;
+				requestData.options.timeout = timeout;
 			} else {
 				// set default timeout to 5 minutes
-				itemContext[itemIndex].requestData.options.timeout = 300_000;
+				requestData.options.timeout = 300_000;
 			}
 
 			requestPromises.push(
 				this.makeRoutingRequest(
-					itemContext[itemIndex].requestData,
-					itemContext[itemIndex].thisArgs,
+					requestData,
+					thisArgs,
 					itemIndex,
 					runIndex,
 					credentialType,
-					itemContext[itemIndex].requestData.requestOperations,
+					requestData.requestOperations,
 					credentialsDecrypted,
 				),
 			);
@@ -292,6 +290,7 @@ export class RoutingNode {
 		const promisesResponses = await Promise.allSettled(requestPromises);
 		let responseData: any;
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+			const { thisArgs, requestData } = itemContext[itemIndex];
 			responseData = promisesResponses.shift();
 			if (responseData!.status !== 'fulfilled') {
 				if (responseData.reason.statusCode === 429) {
@@ -301,7 +300,7 @@ export class RoutingNode {
 
 				const error = responseData.reason;
 
-				if (itemContext[itemIndex].thisArgs?.continueOnFail()) {
+				if (thisArgs.continueOnFail()) {
 					returnData.push({ json: {}, error: error as NodeApiError });
 					continue;
 				}
@@ -321,9 +320,9 @@ export class RoutingNode {
 				});
 			}
 
-			if (itemContext[itemIndex].requestData.maxResults) {
+			if (requestData.maxResults) {
 				// Remove not needed items in case APIs return to many
-				responseData.value.splice(itemContext[itemIndex].requestData.maxResults as number);
+				responseData.value.splice(requestData.maxResults as number);
 			}
 
 			returnData.push(...responseData.value);
