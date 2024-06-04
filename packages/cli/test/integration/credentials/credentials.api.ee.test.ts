@@ -3,7 +3,7 @@ import { In } from '@n8n/typeorm';
 
 import config from '@/config';
 import type { ListQuery } from '@/requests';
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { ProjectRepository } from '@db/repositories/project.repository';
 import type { Project } from '@db/entities/Project';
@@ -39,12 +39,12 @@ const testServer = utils.setupTestServer({
 	},
 });
 
-let owner: User;
-let admin: User;
+let owner: AuthUser;
+let admin: AuthUser;
 let ownerPersonalProject: Project;
-let member: User;
+let member: AuthUser;
 let memberPersonalProject: Project;
-let anotherMember: User;
+let anotherMember: AuthUser;
 let anotherMemberPersonalProject: Project;
 let authOwnerAgent: SuperAgentTest;
 let authAnotherMemberAgent: SuperAgentTest;

@@ -13,6 +13,7 @@ import type { PublicUser, ITelemetryUserDeletionData } from '@/Interfaces';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
 import { UserRepository } from '@db/repositories/user.repository';
 import { UserService } from '@/services/user.service';
 import { listQueryMiddleware } from '@/middlewares';
@@ -37,6 +38,7 @@ export class UsersController {
 		private readonly internalHooks: InternalHooks,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly authUserRepository: AuthUserRepository,
 		private readonly userRepository: UserRepository,
 		private readonly authService: AuthService,
 		private readonly userService: UserService,
@@ -107,7 +109,7 @@ export class UsersController {
 	@Get('/:id/password-reset-link')
 	@GlobalScope('user:resetPassword')
 	async getUserPasswordResetLink(req: UserRequest.PasswordResetLink) {
-		const user = await this.userRepository.findOneOrFail({
+		const user = await this.authUserRepository.findOneOrFail({
 			where: { id: req.params.id },
 		});
 		if (!user) {

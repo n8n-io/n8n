@@ -4,7 +4,7 @@ import type { INode, WorkflowSettings } from 'n8n-workflow';
 import { SubworkflowOperationError, Workflow } from 'n8n-workflow';
 
 import config from '@/config';
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { generateNanoId } from '@/databases/utils/generators';
@@ -75,7 +75,10 @@ export function createSubworkflow({
 
 const ownershipService = mockInstance(OwnershipService);
 
-const createWorkflow = async (nodes: INode[], workflowOwner?: User): Promise<WorkflowEntity> => {
+const createWorkflow = async (
+	nodes: INode[],
+	workflowOwner?: AuthUser,
+): Promise<WorkflowEntity> => {
 	const workflowDetails = {
 		id: randomPositiveDigit().toString(),
 		name: 'test',
@@ -102,8 +105,8 @@ const createWorkflow = async (nodes: INode[], workflowOwner?: User): Promise<Wor
 
 let saveCredential: SaveCredentialFunction;
 
-let owner: User;
-let member: User;
+let owner: AuthUser;
+let member: AuthUser;
 let ownerPersonalProject: Project;
 let memberPersonalProject: Project;
 

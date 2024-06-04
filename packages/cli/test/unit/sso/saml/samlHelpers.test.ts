@@ -1,13 +1,13 @@
-import { User } from '@/databases/entities/User';
-import { generateNanoId } from '@/databases/utils/generators';
+import { AuthUser } from '@db/entities/AuthUser';
+import { generateNanoId } from '@db/utils/generators';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
+import type { AuthIdentity } from '@db/entities/AuthIdentity';
+import { AuthIdentityRepository } from '@db/repositories/authIdentity.repository';
 import * as helpers from '@/sso/saml/samlHelpers';
 import type { SamlUserAttributes } from '@/sso/saml/types/samlUserAttributes';
 import { mockInstance } from '../../../shared/mocking';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import type { AuthIdentity } from '@/databases/entities/AuthIdentity';
-import { AuthIdentityRepository } from '@/databases/repositories/authIdentity.repository';
 
-const userRepository = mockInstance(UserRepository);
+const authUserRepository = mockInstance(AuthUserRepository);
 mockInstance(AuthIdentityRepository);
 
 describe('sso/saml/samlHelpers', () => {
@@ -20,10 +20,10 @@ describe('sso/saml/samlHelpers', () => {
 			//
 			// ARRANGE
 			//
-			const user = Object.assign(new User(), {
+			const user = Object.assign(new AuthUser(), {
 				id: generateNanoId(),
 				authIdentities: [] as AuthIdentity[],
-			} as User);
+			} as AuthUser);
 			const samlUserAttributes: SamlUserAttributes = {
 				firstName: 'Nathan',
 				lastName: 'Nathaniel',
@@ -31,7 +31,7 @@ describe('sso/saml/samlHelpers', () => {
 				userPrincipalName: 'Huh?',
 			};
 
-			userRepository.save.mockImplementationOnce(async (user) => user as User);
+			authUserRepository.save.mockImplementationOnce(async (user) => user as AuthUser);
 
 			//
 			// ACT
@@ -41,7 +41,7 @@ describe('sso/saml/samlHelpers', () => {
 			//
 			// ASSERT
 			//
-			expect(userRepository.save).toHaveBeenCalledWith(
+			expect(authUserRepository.save).toHaveBeenCalledWith(
 				{
 					...user,
 					firstName: samlUserAttributes.firstName,
@@ -49,7 +49,7 @@ describe('sso/saml/samlHelpers', () => {
 				},
 				{ transaction: false },
 			);
-			expect(userRepository.update).not.toHaveBeenCalled();
+			expect(authUserRepository.update).not.toHaveBeenCalled();
 		});
 	});
 });

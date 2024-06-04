@@ -3,7 +3,7 @@ import type { Scope } from '@sentry/node';
 import { Credentials } from 'n8n-core';
 
 import type { ListQuery } from '@/requests';
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import config from '@/config';
 import { ProjectRepository } from '@db/repositories/project.repository';
 import type { Project } from '@db/entities/Project';
@@ -31,9 +31,9 @@ const { any } = expect;
 
 const testServer = setupTestServer({ endpointGroups: ['credentials'] });
 
-let owner: User;
-let member: User;
-let secondMember: User;
+let owner: AuthUser;
+let member: AuthUser;
+let secondMember: AuthUser;
 
 let ownerPersonalProject: Project;
 let memberPersonalProject: Project;

@@ -1,11 +1,11 @@
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { mockInstance } from '../../shared/mocking';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
 import * as helpers from '@/Ldap/helpers';
-import { AuthIdentity } from '@/databases/entities/AuthIdentity';
-import { User } from '@/databases/entities/User';
-import { generateNanoId } from '@/databases/utils/generators';
+import { AuthIdentity } from '@db/entities/AuthIdentity';
+import { AuthUser } from '@db/entities/AuthUser';
+import { generateNanoId } from '@db/utils/generators';
+import { mockInstance } from '../../shared/mocking';
 
-const userRepository = mockInstance(UserRepository);
+const authUserRepository = mockInstance(AuthUserRepository);
 
 describe('Ldap/helpers', () => {
 	describe('updateLdapUserOnLocalDb', () => {
@@ -17,13 +17,13 @@ describe('Ldap/helpers', () => {
 			//
 			// ARRANGE
 			//
-			const user = Object.assign(new User(), { id: generateNanoId() } as User);
+			const user = Object.assign(new AuthUser(), { id: generateNanoId() } as AuthUser);
 			const authIdentity = Object.assign(new AuthIdentity(), {
 				user: { id: user.id },
 			} as AuthIdentity);
-			const data: Partial<User> = { firstName: 'Nathan', lastName: 'Nathaniel' };
+			const data: Partial<AuthUser> = { firstName: 'Nathan', lastName: 'Nathaniel' };
 
-			userRepository.findOneBy.mockResolvedValueOnce(user);
+			authUserRepository.findOneBy.mockResolvedValueOnce(user);
 
 			//
 			// ACT
@@ -33,8 +33,11 @@ describe('Ldap/helpers', () => {
 			//
 			// ASSERT
 			//
-			expect(userRepository.save).toHaveBeenCalledWith({ ...user, ...data }, { transaction: true });
-			expect(userRepository.update).not.toHaveBeenCalled();
+			expect(authUserRepository.save).toHaveBeenCalledWith(
+				{ ...user, ...data },
+				{ transaction: true },
+			);
+			expect(authUserRepository.update).not.toHaveBeenCalled();
 		});
 	});
 });

@@ -1,25 +1,33 @@
 import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
-import { User } from '@db/entities/User';
+import { AuthUser } from '@db/entities/AuthUser';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
+import { UserRepository } from '@db/repositories/user.repository';
 import { UserService } from '@/services/user.service';
 import { UrlService } from '@/services/url.service';
 import { mockInstance } from '../../shared/mocking';
-import { UserRepository } from '@/databases/repositories/user.repository';
 
 describe('UserService', () => {
 	const urlService = new UrlService();
+	const authUserRepository = mockInstance(AuthUserRepository);
 	const userRepository = mockInstance(UserRepository);
-	const userService = new UserService(mock(), userRepository, mock(), urlService);
+	const userService = new UserService(
+		mock(),
+		authUserRepository,
+		userRepository,
+		mock(),
+		urlService,
+	);
 
-	const commonMockUser = Object.assign(new User(), {
+	const commonMockUser = Object.assign(new AuthUser(), {
 		id: uuid(),
 		password: 'passwordHash',
 	});
 
 	describe('toPublic', () => {
 		it('should remove sensitive properties', async () => {
-			const mockUser = Object.assign(new User(), {
+			const mockUser = Object.assign(new AuthUser(), {
 				id: uuid(),
 				password: 'passwordHash',
 				mfaEnabled: false,
@@ -30,7 +38,7 @@ describe('UserService', () => {
 			});
 
 			type MaybeSensitiveProperties = Partial<
-				Pick<User, 'password' | 'updatedAt' | 'authIdentities'>
+				Pick<AuthUser, 'password' | 'updatedAt' | 'authIdentities'>
 			>;
 
 			// to prevent typechecking from blocking assertions
@@ -50,8 +58,8 @@ describe('UserService', () => {
 		});
 
 		it('should add invite URL if requested', async () => {
-			const firstUser = Object.assign(new User(), { id: uuid() });
-			const secondUser = Object.assign(new User(), { id: uuid(), isPending: true });
+			const firstUser = Object.assign(new AuthUser(), { id: uuid() });
+			const secondUser = Object.assign(new AuthUser(), { id: uuid(), isPending: true });
 
 			const withoutUrl = await userService.toPublic(secondUser);
 			const withUrl = await userService.toPublic(secondUser, {
@@ -74,7 +82,7 @@ describe('UserService', () => {
 		// With `update` it would only receive the updated fields, e.g. the `id`
 		// would be missing.
 		it('should use `save` instead of `update`', async () => {
-			const user = new User();
+			const user = new AuthUser();
 			user.firstName = 'Not Nathan';
 			user.lastName = 'Nathaniel';
 

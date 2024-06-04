@@ -1,6 +1,6 @@
 import Container from 'typedi';
 import { WorkflowHooks, type ExecutionError, type IWorkflowExecuteHooks } from 'n8n-workflow';
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import config from '@/config';
 
@@ -10,7 +10,7 @@ import { createUser } from '../integration/shared/db/users';
 import { createWorkflow } from '../integration/shared/db/workflows';
 import { createExecution } from '../integration/shared/db/executions';
 
-let owner: User;
+let owner: AuthUser;
 let runner: WorkflowRunner;
 let hookFunctions: IWorkflowExecuteHooks;
 setupTestServer({ endpointGroups: [] });

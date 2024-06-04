@@ -20,14 +20,14 @@ import {
 	newWorkflow,
 } from './shared/db/workflows';
 
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import type { Project } from '@/databases/entities/Project';
 import { getPersonalProject } from './shared/db/projects';
 
 describe('ImportService', () => {
 	let importService: ImportService;
 	let tagRepository: TagRepository;
-	let owner: User;
+	let owner: AuthUser;
 	let ownerPersonalProject: Project;
 
 	beforeAll(async () => {

@@ -2,7 +2,7 @@ import Container from 'typedi';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import { AuthUserRepository } from '@db/repositories/authUser.repository';
 import { randomPassword } from '@/Ldap/helpers';
 import { TOTPService } from '@/Mfa/totp.service';
@@ -14,7 +14,7 @@ import { createUser, createUserWithMfaEnabled } from '../shared/db/users';
 
 jest.mock('@/telemetry');
 
-let owner: User;
+let owner: AuthUser;
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['mfa', 'auth', 'me', 'passwordReset'],

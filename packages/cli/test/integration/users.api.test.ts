@@ -3,7 +3,7 @@ import { v4 as uuid } from 'uuid';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UsersController } from '@/controllers/users.controller';
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import { ProjectRepository } from '@db/repositories/project.repository';
 import { ProjectRelationRepository } from '@db/repositories/projectRelation.repository';
 import { UserRepository } from '@db/repositories/user.repository';
@@ -36,8 +36,8 @@ const testServer = utils.setupTestServer({
 });
 
 describe('GET /users', () => {
-	let owner: User;
-	let member: User;
+	let owner: AuthUser;
+	let member: AuthUser;
 	let ownerAgent: SuperAgentTest;
 
 	beforeAll(async () => {
@@ -238,9 +238,9 @@ describe('GET /users', () => {
 });
 
 describe('GET /users/:id/password-reset-link', () => {
-	let owner: User;
-	let admin: User;
-	let member: User;
+	let owner: AuthUser;
+	let admin: AuthUser;
+	let member: AuthUser;
 
 	beforeAll(async () => {
 		await testDb.truncate(['User']);
@@ -271,7 +271,7 @@ describe('GET /users/:id/password-reset-link', () => {
 });
 
 describe('DELETE /users/:id', () => {
-	let owner: User;
+	let owner: AuthUser;
 	let ownerAgent: SuperAgentTest;
 
 	beforeAll(async () => {
@@ -621,11 +621,11 @@ describe('DELETE /users/:id', () => {
 });
 
 describe('PATCH /users/:id/role', () => {
-	let owner: User;
-	let admin: User;
-	let otherAdmin: User;
-	let member: User;
-	let otherMember: User;
+	let owner: AuthUser;
+	let admin: AuthUser;
+	let otherAdmin: AuthUser;
+	let member: AuthUser;
+	let otherMember: AuthUser;
 
 	let ownerAgent: SuperAgentTest;
 	let adminAgent: SuperAgentTest;

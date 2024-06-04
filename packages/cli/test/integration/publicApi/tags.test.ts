@@ -1,5 +1,5 @@
 import { Container } from 'typedi';
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import { TagRepository } from '@db/repositories/tag.repository';
 
 import { randomApiKey } from '../shared/random';
@@ -9,8 +9,8 @@ import { createUser } from '../shared/db/users';
 import { createTag } from '../shared/db/tags';
 import type { SuperAgentTest } from '../shared/types';
 
-let owner: User;
-let member: User;
+let owner: AuthUser;
+let member: AuthUser;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 

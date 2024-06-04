@@ -1,4 +1,4 @@
-import type { User } from '@/databases/entities/User';
+import type { AuthUser } from '@/databases/entities/AuthUser';
 import type { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
 import { saveCredential, shareCredentialWithUsers } from '../shared/db/credentials';
 import { createMember } from '../shared/db/users';
@@ -9,8 +9,8 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import * as testDb from '../shared/testDb';
 
 const credentialPayload = randomCredentialPayload();
-let memberWhoOwnsCredential: User;
-let memberWhoDoesNotOwnCredential: User;
+let memberWhoOwnsCredential: AuthUser;
+let memberWhoDoesNotOwnCredential: AuthUser;
 let credential: CredentialsEntity;
 
 beforeAll(async () => {

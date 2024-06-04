@@ -3,7 +3,7 @@ import validator from 'validator';
 
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import { UserRepository } from '@db/repositories/user.repository';
 import { MfaService } from '@/Mfa/mfa.service';
 
@@ -14,7 +14,7 @@ import * as utils from './shared/utils/';
 import { createUser, createUserShell } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 
-let owner: User;
+let owner: AuthUser;
 let authOwnerAgent: SuperAgentTest;
 const ownerPassword = randomValidPassword();
 
@@ -354,32 +354,33 @@ describe('GET /resolve-signup-token', () => {
 	test('should fail with invalid inputs', async () => {
 		const { id: inviteeId } = await createUser({ role: 'global:member' });
 
-		const first = await authOwnerAgent.get('/resolve-signup-token').query({ inviterId: owner.id });
+		await authOwnerAgent.get('/resolve-signup-token').query({ inviterId: owner.id }).expect(400);
 
-		const second = await authOwnerAgent.get('/resolve-signup-token').query({ inviteeId });
+		await authOwnerAgent.get('/resolve-signup-token').query({ inviteeId }).expect(400);
 
-		const third = await authOwnerAgent.get('/resolve-signup-token').query({
-			inviterId: '5531199e-b7ae-425b-a326-a95ef8cca59d',
-			inviteeId: 'cb133beb-7729-4c34-8cd1-a06be8834d9d',
-		});
+		await authOwnerAgent
+			.get('/resolve-signup-token')
+			.query({
+				inviterId: '5531199e-b7ae-425b-a326-a95ef8cca59d',
+				inviteeId: 'cb133beb-7729-4c34-8cd1-a06be8834d9d',
+			})
+			.expect(400);
 
 		// user is already set up, so call should error
-		const fourth = await authOwnerAgent
+		await authOwnerAgent
 			.get('/resolve-signup-token')
 			.query({ inviterId: owner.id })
-			.query({ inviteeId });
+			.query({ inviteeId })
+			.expect(400);
 
 		// cause inconsistent DB state
 		owner.email = '';
 		await Container.get(UserRepository).save(owner);
-		const fifth = await authOwnerAgent
+		await authOwnerAgent
 			.get('/resolve-signup-token')
 			.query({ inviterId: owner.id })
-			.query({ inviteeId });
-
-		for (const response of [first, second, third, fourth, fifth]) {
-			expect(response.statusCode).toBe(400);
-		}
+			.query({ inviteeId })
+			.expect(400);
 	});
 });
 

@@ -3,15 +3,15 @@ import * as testDb from '../integration/shared/testDb';
 
 import { CredentialsHelper } from '@/CredentialsHelper';
 import { createOwner, createAdmin, createMember } from './shared/db/users';
-import type { User } from '@/databases/entities/User';
+import type { AuthUser } from '@/databases/entities/AuthUser';
 import { saveCredential } from './shared/db/credentials';
 import { randomCredentialPayload } from './shared/random';
 import { createTeamProject, linkUserToProject } from './shared/db/projects';
 
 let credentialHelper: CredentialsHelper;
-let owner: User;
-let admin: User;
-let member: User;
+let owner: AuthUser;
+let admin: AuthUser;
+let member: AuthUser;
 
 beforeAll(async () => {
 	await testDb.init();

@@ -3,7 +3,7 @@ import { Container } from 'typedi';
 import jwt from 'jsonwebtoken';
 import { mock, anyObject } from 'jest-mock-extended';
 import type { PublicUser } from '@/Interfaces';
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import { MeController } from '@/controllers/me.controller';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import type { AuthenticatedRequest, MeRequest } from '@/requests';
@@ -12,7 +12,7 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { UserRepository } from '@/databases/repositories/user.repository';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
 import { badPasswords } from '../shared/testData';
 import { mockInstance } from '../../shared/mocking';
 
@@ -22,7 +22,7 @@ describe('MeController', () => {
 	const externalHooks = mockInstance(ExternalHooks);
 	const internalHooks = mockInstance(InternalHooks);
 	const userService = mockInstance(UserService);
-	const userRepository = mockInstance(UserRepository);
+	const authUserRepository = mockInstance(AuthUserRepository);
 	mockInstance(License).isWithinUsersLimit.mockReturnValue(true);
 	const controller = Container.get(MeController);
 
@@ -42,7 +42,7 @@ describe('MeController', () => {
 		});
 
 		it('should update the user in the DB, and issue a new cookie', async () => {
-			const user = mock<User>({
+			const user = mock<AuthUser>({
 				id: '123',
 				password: 'password',
 				authIdentities: [],
@@ -51,7 +51,7 @@ describe('MeController', () => {
 			const reqBody = { email: 'valid@email.com', firstName: 'John', lastName: 'Potato' };
 			const req = mock<MeRequest.UserUpdate>({ user, body: reqBody, browserId });
 			const res = mock<Response>();
-			userRepository.findOneOrFail.mockResolvedValue(user);
+			authUserRepository.findOneOrFail.mockResolvedValue(user);
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 			userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 
@@ -83,7 +83,7 @@ describe('MeController', () => {
 		});
 
 		it('should not allow updating any other fields on a user besides email and name', async () => {
-			const user = mock<User>({
+			const user = mock<AuthUser>({
 				id: '123',
 				password: 'password',
 				authIdentities: [],
@@ -93,7 +93,7 @@ describe('MeController', () => {
 			const req = mock<MeRequest.UserUpdate>({ user, browserId });
 			req.body = reqBody;
 			const res = mock<Response>();
-			userRepository.findOneOrFail.mockResolvedValue(user);
+			authUserRepository.findOneOrFail.mockResolvedValue(user);
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 
 			// Add invalid data to the request payload
@@ -112,7 +112,7 @@ describe('MeController', () => {
 		});
 
 		it('should throw BadRequestError if beforeUpdate hook throws BadRequestError', async () => {
-			const user = mock<User>({
+			const user = mock<AuthUser>({
 				id: '123',
 				password: 'password',
 				authIdentities: [],
@@ -179,7 +179,7 @@ describe('MeController', () => {
 				browserId,
 			});
 			const res = mock<Response>();
-			userRepository.save.calledWith(req.user).mockResolvedValue(req.user);
+			authUserRepository.save.calledWith(req.user).mockResolvedValue(req.user);
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
 
 			await controller.updatePassword(req, res);
@@ -223,7 +223,7 @@ describe('MeController', () => {
 	describe('API Key methods', () => {
 		let req: AuthenticatedRequest;
 		beforeAll(() => {
-			req = mock({ user: mock<Partial<User>>({ id: '123', apiKey: 'test-key' }) });
+			req = mock({ user: mock<Partial<AuthUser>>({ id: '123', apiKey: 'test-key' }) });
 		});
 
 		describe('createAPIKey', () => {

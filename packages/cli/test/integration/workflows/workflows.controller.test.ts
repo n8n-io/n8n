@@ -3,7 +3,7 @@ import { v4 as uuid } from 'uuid';
 import type { INode, IPinData } from 'n8n-workflow';
 import type { Scope } from '@n8n/permissions';
 
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { ListQuery } from '@/requests';
@@ -27,9 +27,9 @@ import { createTag } from '../shared/db/tags';
 import { createTeamProject, linkUserToProject } from '../shared/db/projects';
 import type { SuperAgentTest } from '../shared/types';
 
-let owner: User;
-let member: User;
-let anotherMember: User;
+let owner: AuthUser;
+let member: AuthUser;
+let anotherMember: AuthUser;
 
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;

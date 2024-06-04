@@ -5,7 +5,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 @RestController('/mfa')
 export class MFAController {
-	constructor(private mfaService: MfaService) {}
+	constructor(private readonly mfaService: MfaService) {}
 
 	@Get('/qr')
 	async getQRCode(req: AuthenticatedRequest) {
@@ -64,7 +64,6 @@ export class MFAController {
 		}
 
 		const verified = this.mfaService.totp.verifySecret({ secret, token, window: 10 });
-
 		if (!verified)
 			throw new BadRequestError('MFA token expired. Close the modal and enable MFA again', 997);
 
@@ -74,7 +73,6 @@ export class MFAController {
 	@Delete('/disable')
 	async disableMFA(req: AuthenticatedRequest) {
 		const { id } = req.user;
-
 		await this.mfaService.disableMfa(id);
 	}
 

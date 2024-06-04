@@ -1,6 +1,6 @@
 import Container from 'typedi';
 
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
 
 import * as testDb from '../shared/testDb';
@@ -10,9 +10,9 @@ import { ProjectService } from '@/services/project.service';
 import { LicenseMocker } from '../shared/license';
 import { License } from '@/License';
 
-let owner: User;
-let member: User;
-let anotherMember: User;
+let owner: AuthUser;
+let member: AuthUser;
+let anotherMember: AuthUser;
 let workflowSharingService: WorkflowSharingService;
 let projectService: ProjectService;
 

@@ -1,4 +1,4 @@
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 
 import * as utils from '../shared/utils/';
 import * as testDb from '../shared/testDb';
@@ -8,8 +8,7 @@ import { createTeamProject } from '../shared/db/projects';
 import { mockInstance } from '../../shared/mocking';
 import { WaitTracker } from '@/WaitTracker';
 
-let member: User;
-let anotherMember: User;
+let member: AuthUser;
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['workflows'],
@@ -21,7 +20,6 @@ mockInstance(WaitTracker);
 
 beforeAll(async () => {
 	member = await createUser({ role: 'global:member' });
-	anotherMember = await createUser({ role: 'global:member' });
 
 	await utils.initNodeTypes();
 });

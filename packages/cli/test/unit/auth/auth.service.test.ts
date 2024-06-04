@@ -5,8 +5,8 @@ import type { NextFunction, Response } from 'express';
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { AUTH_COOKIE_NAME, Time } from '@/constants';
-import type { User } from '@db/entities/User';
-import type { UserRepository } from '@db/repositories/user.repository';
+import type { AuthUser } from '@db/entities/AuthUser';
+import type { AuthUserRepository } from '@db/repositories/authUser.repository';
 import { JwtService } from '@/services/jwt.service';
 import type { UrlService } from '@/services/url.service';
 import type { AuthenticatedRequest } from '@/requests';
@@ -22,11 +22,11 @@ describe('AuthService', () => {
 		disabled: false,
 		mfaEnabled: false,
 	};
-	const user = mock<User>(userData);
+	const user = mock<AuthUser>(userData);
 	const jwtService = new JwtService(mock());
 	const urlService = mock<UrlService>();
-	const userRepository = mock<UserRepository>();
-	const authService = new AuthService(mock(), mock(), jwtService, urlService, userRepository);
+	const authUserRepository = mock<AuthUserRepository>();
+	const authService = new AuthService(mock(), mock(), jwtService, urlService, authUserRepository);
 
 	const now = new Date('2024-02-01T01:23:45.678Z');
 	jest.useFakeTimers({ now });
@@ -43,15 +43,14 @@ describe('AuthService', () => {
 
 	describe('createJWTHash', () => {
 		it('should generate unique hashes', () => {
-			expect(authService.createJWTHash(user)).toEqual('mJAYx4Wb7k');
-			expect(
-				authService.createJWTHash(mock<User>({ email: user.email, password: 'newPasswordHash' })),
-			).toEqual('FVALtU7AE0');
-			expect(
-				authService.createJWTHash(
-					mock<User>({ email: 'test1@example.com', password: user.password }),
-				),
-			).toEqual('y8ha6X01jd');
+			const testUser = mock({ ...user });
+			expect(authService.createJWTHash(testUser)).toEqual('mJAYx4Wb7k');
+
+			testUser.password = 'newPasswordHash';
+			expect(authService.createJWTHash(testUser)).toEqual('FVALtU7AE0');
+
+			testUser.email = 'test1@example.com';
+			expect(authService.createJWTHash(testUser)).toEqual('IOFY0uvO3h');
 		});
 	});
 
@@ -88,7 +87,7 @@ describe('AuthService', () => {
 		it('should refresh the cookie before it expires', async () => {
 			req.cookies[AUTH_COOKIE_NAME] = validToken;
 			jest.advanceTimersByTime(6 * Time.days.toMilliseconds);
-			userRepository.findOne.mockResolvedValue(user);
+			authUserRepository.findForAuth.mockResolvedValue(user);
 
 			await authService.authMiddleware(req, res, next);
 			expect(next).toHaveBeenCalled();
@@ -166,7 +165,6 @@ describe('AuthService', () => {
 		});
 
 		it('should throw on hijacked tokens', async () => {
-			userRepository.findOne.mockResolvedValue(user);
 			const req = mock<AuthenticatedRequest>({ browserId: 'another-browser' });
 			await expect(authService.resolveJwt(validToken, req, res)).rejects.toThrow('Unauthorized');
 			expect(res.cookie).not.toHaveBeenCalled();
@@ -184,13 +182,12 @@ describe('AuthService', () => {
 				{ ...userData, email: 'someone@example.com' },
 			],
 		])('should throw if %s', async (_, data) => {
-			userRepository.findOne.mockResolvedValueOnce(data && mock<User>(data));
+			authUserRepository.findForAuth.mockResolvedValueOnce(data && mock<AuthUser>(data));
 			await expect(authService.resolveJwt(validToken, req, res)).rejects.toThrow('Unauthorized');
 			expect(res.cookie).not.toHaveBeenCalled();
 		});
 
 		it('should refresh the cookie before it expires', async () => {
-			userRepository.findOne.mockResolvedValue(user);
 			expect(await authService.resolveJwt(validToken, req, res)).toEqual(user);
 			expect(res.cookie).not.toHaveBeenCalled();
 
@@ -212,7 +209,6 @@ describe('AuthService', () => {
 		});
 
 		it('should refresh the cookie only if less than 1/4th of time is left', async () => {
-			userRepository.findOne.mockResolvedValue(user);
 			expect(await authService.resolveJwt(validToken, req, res)).toEqual(user);
 			expect(res.cookie).not.toHaveBeenCalled();
 
@@ -228,7 +224,6 @@ describe('AuthService', () => {
 		it('should not refresh the cookie if jwtRefreshTimeoutHours is set to -1', async () => {
 			config.set('userManagement.jwtRefreshTimeoutHours', -1);
 
-			userRepository.findOne.mockResolvedValue(user);
 			expect(await authService.resolveJwt(validToken, req, res)).toEqual(user);
 			expect(res.cookie).not.toHaveBeenCalled();
 
@@ -271,15 +266,13 @@ describe('AuthService', () => {
 
 		it('should not return a user if the token in expired', async () => {
 			const token = authService.generatePasswordResetToken(user, '-1h');
-
 			const resolvedUser = await authService.resolvePasswordResetToken(token);
 			expect(resolvedUser).toBeUndefined();
 		});
 
 		it('should not return a user if the user does not exist in the DB', async () => {
-			userRepository.findOne.mockResolvedValueOnce(null);
+			authUserRepository.findForAuth.mockResolvedValueOnce(null);
 			const token = authService.generatePasswordResetToken(user);
-
 			const resolvedUser = await authService.resolvePasswordResetToken(token);
 			expect(resolvedUser).toBeUndefined();
 		});
@@ -288,16 +281,12 @@ describe('AuthService', () => {
 			const token = authService.generatePasswordResetToken(user);
 			const updatedUser = Object.create(user);
 			updatedUser.password = 'something-else';
-			userRepository.findOne.mockResolvedValueOnce(updatedUser);
-
 			const resolvedUser = await authService.resolvePasswordResetToken(token);
 			expect(resolvedUser).toBeUndefined();
 		});
 
 		it('should not return the user if all checks pass', async () => {
 			const token = authService.generatePasswordResetToken(user);
-			userRepository.findOne.mockResolvedValueOnce(user);
-
 			const resolvedUser = await authService.resolvePasswordResetToken(token);
 			expect(resolvedUser).toEqual(user);
 		});

@@ -1,4 +1,4 @@
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 
@@ -13,7 +13,7 @@ import type { SuperAgentTest } from './shared/types';
  * The tests in this file are only checking endpoint permissions.
  */
 
-let owner: User;
+let owner: AuthUser;
 let authOwnerAgent: SuperAgentTest;
 
 mockInstance(MessageEventBus);

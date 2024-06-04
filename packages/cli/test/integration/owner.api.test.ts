@@ -1,7 +1,7 @@
 import validator from 'validator';
 
 import config from '@/config';
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import {
 	randomEmail,
 	randomInvalidPassword,
@@ -16,7 +16,7 @@ import Container from 'typedi';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['owner'] });
 
-let ownerShell: User;
+let ownerShell: AuthUser;
 
 beforeEach(async () => {
 	ownerShell = await createUserShell('global:owner');

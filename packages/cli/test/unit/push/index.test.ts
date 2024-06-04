@@ -1,6 +1,6 @@
 import type { WebSocket } from 'ws';
 import config from '@/config';
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import { Push } from '@/push';
 import { SSEPush } from '@/push/sse.push';
 import { WebSocketPush } from '@/push/websocket.push';
@@ -12,7 +12,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 jest.unmock('@/push');
 
 describe('Push', () => {
-	const user = mock<User>();
+	const user = mock<AuthUser>();
 
 	const sseBackend = mockInstance(SSEPush);
 	const wsBackend = mockInstance(WebSocketPush);

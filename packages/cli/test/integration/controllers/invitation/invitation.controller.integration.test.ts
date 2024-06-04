@@ -5,7 +5,9 @@ import { Not } from '@n8n/typeorm';
 import { InternalHooks } from '@/InternalHooks';
 import { ExternalHooks } from '@/ExternalHooks';
 import { UserManagementMailer } from '@/UserManagement/email';
-import { UserRepository } from '@/databases/repositories/user.repository';
+import { UserRepository } from '@db/repositories/user.repository';
+import type { AuthUser } from '@db/entities/AuthUser';
+import { ProjectRelationRepository } from '@db/repositories/projectRelation.repository';
 import { PasswordUtility } from '@/services/password.utility';
 
 import {
@@ -24,9 +26,7 @@ import {
 	assertUserInviteResult,
 } from './assertions';
 
-import type { User } from '@/databases/entities/User';
 import type { UserInvitationResult } from '../../shared/utils/users';
-import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 
 describe('InvitationController', () => {
 	const mailer = mockInstance(UserManagementMailer);
@@ -35,7 +35,7 @@ describe('InvitationController', () => {
 
 	const testServer = utils.setupTestServer({ endpointGroups: ['invitations'] });
 
-	let instanceOwner: User;
+	let instanceOwner: AuthUser;
 	let userRepository: UserRepository;
 	let projectRelationRepository: ProjectRelationRepository;
 

@@ -1,6 +1,6 @@
 import { Container } from 'typedi';
 
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 
@@ -12,8 +12,8 @@ import { affixRoleToSaveCredential } from '../shared/db/credentials';
 import { addApiKey, createUser, createUserShell } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 
-let owner: User;
-let member: User;
+let owner: AuthUser;
+let member: AuthUser;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 

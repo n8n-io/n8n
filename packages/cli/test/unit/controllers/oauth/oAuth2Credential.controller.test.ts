@@ -7,7 +7,7 @@ import { mock } from 'jest-mock-extended';
 
 import { OAuth2CredentialController } from '@/controllers/oauth/oAuth2Credential.controller';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import type { OAuthRequest } from '@/requests';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
@@ -34,7 +34,7 @@ describe('OAuth2CredentialController', () => {
 	const sharedCredentialsRepository = mockInstance(SharedCredentialsRepository);
 
 	const csrfSecret = 'csrf-secret';
-	const user = mock<User>({
+	const user = mock<AuthUser>({
 		id: '123',
 		password: 'password',
 		authIdentities: [],

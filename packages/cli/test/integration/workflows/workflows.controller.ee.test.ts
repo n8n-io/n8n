@@ -5,7 +5,7 @@ import { ApplicationError, WorkflowActivationError, type INode } from 'n8n-workf
 import config from '@/config';
 import type { Project } from '@db/entities/Project';
 import { ProjectRepository } from '@db/repositories/project.repository';
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
 import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import { License } from '@/License';
@@ -26,12 +26,12 @@ import type { SuperAgentTest } from '../shared/types';
 import { createTeamProject, linkUserToProject } from '../shared/db/projects';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
-let owner: User;
-let admin: User;
+let owner: AuthUser;
+let admin: AuthUser;
 let ownerPersonalProject: Project;
-let member: User;
+let member: AuthUser;
 let memberPersonalProject: Project;
-let anotherMember: User;
+let anotherMember: AuthUser;
 let anotherMemberPersonalProject: Project;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;

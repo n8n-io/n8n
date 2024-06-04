@@ -3,13 +3,13 @@ import * as testDb from './shared/testDb';
 import { CtaService } from '@/services/cta.service';
 import { createUser } from './shared/db/users';
 import { createManyWorkflows } from './shared/db/workflows';
-import type { User } from '@/databases/entities/User';
+import type { AuthUser } from '@/databases/entities/AuthUser';
 import { createWorkflowStatisticsItem } from './shared/db/workflowStatistics';
 import { StatisticsNames } from '@/databases/entities/WorkflowStatistics';
 
 describe('CtaService', () => {
 	let ctaService: CtaService;
-	let user: User;
+	let user: AuthUser;
 
 	beforeAll(async () => {
 		await testDb.init();

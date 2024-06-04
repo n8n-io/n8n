@@ -4,7 +4,7 @@ import { Not } from '@n8n/typeorm';
 import { Cipher } from 'n8n-core';
 
 import config from '@/config';
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import { UserRepository } from '@db/repositories/user.repository';
 import { AuthProviderSyncHistoryRepository } from '@db/repositories/authProviderSyncHistory.repository';
 import { LDAP_DEFAULT_CONFIGURATION } from '@/Ldap/constants';
@@ -22,7 +22,7 @@ import type { SuperAgentTest } from '../shared/types';
 
 jest.mock('@/telemetry');
 
-let owner: User;
+let owner: AuthUser;
 let authOwnerAgent: SuperAgentTest;
 
 const testServer = utils.setupTestServer({

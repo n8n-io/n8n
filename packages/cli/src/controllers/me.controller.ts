@@ -21,7 +21,7 @@ import { Logger } from '@/Logger';
 import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooks } from '@/InternalHooks';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { UserRepository } from '@/databases/repositories/user.repository';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
 import { isApiEnabled } from '@/PublicApi';
 
 export const isApiEnabledMiddleware: RequestHandler = (_, res, next) => {
@@ -41,7 +41,7 @@ export class MeController {
 		private readonly authService: AuthService,
 		private readonly userService: UserService,
 		private readonly passwordUtility: PasswordUtility,
-		private readonly userRepository: UserRepository,
+		private readonly authUserRepository: AuthUserRepository,
 	) {}
 
 	/**
@@ -88,7 +88,7 @@ export class MeController {
 		await this.externalHooks.run('user.profile.beforeUpdate', [userId, currentEmail, payload]);
 
 		await this.userService.update(userId, payload);
-		const user = await this.userRepository.findOneOrFail({
+		const user = await this.authUserRepository.findOneOrFail({
 			where: { id: userId },
 		});
 
@@ -144,7 +144,7 @@ export class MeController {
 
 		user.password = await this.passwordUtility.hash(validPassword);
 
-		const updatedUser = await this.userRepository.save(user, { transaction: false });
+		const updatedUser = await this.authUserRepository.save(user, { transaction: false });
 		this.logger.info('Password updated successfully', { userId: user.id });
 
 		this.authService.issueCookie(res, updatedUser, req.browserId);
@@ -176,7 +176,7 @@ export class MeController {
 			throw new BadRequestError('Personalization answers are mandatory');
 		}
 
-		await this.userRepository.save(
+		await this.authUserRepository.save(
 			{
 				id: req.user.id,
 				personalizationAnswers,
@@ -243,7 +243,7 @@ export class MeController {
 
 		await this.userService.updateSettings(id, payload);
 
-		const user = await this.userRepository.findOneOrFail({
+		const user = await this.authUserRepository.findOneOrFail({
 			select: ['settings'],
 			where: { id },
 		});

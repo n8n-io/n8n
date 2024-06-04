@@ -1,4 +1,4 @@
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
@@ -7,9 +7,9 @@ import { createWorkflow } from './shared/db/workflows';
 import { createWorkflowHistoryItem } from './shared/db/workflowHistory';
 import type { SuperAgentTest } from './shared/types';
 
-let owner: User;
+let owner: AuthUser;
 let authOwnerAgent: SuperAgentTest;
-let member: User;
+let member: AuthUser;
 let authMemberAgent: SuperAgentTest;
 
 const testServer = utils.setupTestServer({

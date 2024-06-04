@@ -1,6 +1,6 @@
 import config from '@/config';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import type { ILicensePostResponse, ILicenseReadResponse } from '@/Interfaces';
 import { License } from '@/License';
 
@@ -12,8 +12,8 @@ import type { SuperAgentTest } from './shared/types';
 const MOCK_SERVER_URL = 'https://server.com/v1';
 const MOCK_RENEW_OFFSET = 259200;
 
-let owner: User;
-let member: User;
+let owner: AuthUser;
+let member: AuthUser;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 

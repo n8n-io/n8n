@@ -8,7 +8,7 @@ import { GlobalScope, Post, RestController } from '@/decorators';
 import { PasswordUtility } from '@/services/password.utility';
 import { OwnerRequest } from '@/requests';
 import { SettingsRepository } from '@db/repositories/settings.repository';
-import { UserRepository } from '@db/repositories/user.repository';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
 import { PostHogClient } from '@/posthog';
 import { UserService } from '@/services/user.service';
 import { Logger } from '@/Logger';
@@ -25,7 +25,7 @@ export class OwnerController {
 		private readonly userService: UserService,
 		private readonly passwordUtility: PasswordUtility,
 		private readonly postHog: PostHogClient,
-		private readonly userRepository: UserRepository,
+		private readonly authUserRepository: AuthUserRepository,
 	) {}
 
 	/**
@@ -60,7 +60,7 @@ export class OwnerController {
 			throw new BadRequestError('First and last names are mandatory');
 		}
 
-		let owner = await this.userRepository.findOneOrFail({
+		let owner = await this.authUserRepository.findOneOrFail({
 			where: { role: 'global:owner' },
 		});
 		owner.email = email;
@@ -70,7 +70,7 @@ export class OwnerController {
 
 		await validateEntity(owner);
 
-		owner = await this.userRepository.save(owner, { transaction: false });
+		owner = await this.authUserRepository.save(owner, { transaction: false });
 
 		this.logger.info('Owner was set up successfully');
 

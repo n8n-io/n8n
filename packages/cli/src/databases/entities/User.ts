@@ -1,3 +1,4 @@
+import omit from 'lodash/omit';
 import {
 	AfterLoad,
 	AfterUpdate,
@@ -11,6 +12,7 @@ import {
 } from '@n8n/typeorm';
 import { IsEmail, IsString, Length } from 'class-validator';
 import type { IUser, IUserSettings } from 'n8n-workflow';
+
 import type { SharedWorkflow } from './SharedWorkflow';
 import type { SharedCredentials } from './SharedCredentials';
 import { NoXss } from '../utils/customValidators';
@@ -146,8 +148,7 @@ export class User extends WithTimestamps implements IUser {
 	}
 
 	toJSON() {
-		const { password, apiKey, ...rest } = this;
-		return rest;
+		return omit(this, ['password', 'apiKey']);
 	}
 
 	createPersonalProjectName() {

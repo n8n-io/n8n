@@ -6,9 +6,9 @@ import jwt from 'jsonwebtoken';
 import type { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { OwnerController } from '@/controllers/owner.controller';
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import type { SettingsRepository } from '@db/repositories/settings.repository';
-import type { UserRepository } from '@db/repositories/user.repository';
+import type { AuthUserRepository } from '@db/repositories/authUser.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
@@ -24,7 +24,7 @@ describe('OwnerController', () => {
 	const internalHooks = mock<InternalHooks>();
 	const authService = mock<AuthService>();
 	const userService = mock<UserService>();
-	const userRepository = mock<UserRepository>();
+	const authUserRepository = mock<AuthUserRepository>();
 	const settingsRepository = mock<SettingsRepository>();
 	mockInstance(License).isWithinUsersLimit.mockReturnValue(true);
 	const controller = new OwnerController(
@@ -35,7 +35,7 @@ describe('OwnerController', () => {
 		userService,
 		Container.get(PasswordUtility),
 		mock(),
-		userRepository,
+		authUserRepository,
 	);
 
 	describe('setupOwner', () => {
@@ -77,7 +77,7 @@ describe('OwnerController', () => {
 		});
 
 		it('should setup the instance owner successfully', async () => {
-			const user = mock<User>({
+			const user = mock<AuthUser>({
 				id: 'userId',
 				role: 'global:owner',
 				authIdentities: [],
@@ -95,16 +95,16 @@ describe('OwnerController', () => {
 			});
 			const res = mock<Response>();
 			configGetSpy.mockReturnValue(false);
-			userRepository.findOneOrFail.calledWith(anyObject()).mockResolvedValue(user);
-			userRepository.save.calledWith(anyObject()).mockResolvedValue(user);
+			authUserRepository.findOneOrFail.calledWith(anyObject()).mockResolvedValue(user);
+			authUserRepository.save.calledWith(anyObject()).mockResolvedValue(user);
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 
 			await controller.setupOwner(req, res);
 
-			expect(userRepository.findOneOrFail).toHaveBeenCalledWith({
+			expect(authUserRepository.findOneOrFail).toHaveBeenCalledWith({
 				where: { role: 'global:owner' },
 			});
-			expect(userRepository.save).toHaveBeenCalledWith(user, { transaction: false });
+			expect(authUserRepository.save).toHaveBeenCalledWith(user, { transaction: false });
 			expect(authService.issueCookie).toHaveBeenCalledWith(res, user, browserId);
 		});
 	});

@@ -10,20 +10,21 @@ import type {
 	INodeTypeNameVersion,
 	IUser,
 } from 'n8n-workflow';
-
 import { Expose } from 'class-transformer';
 import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length } from 'class-validator';
+import type { Scope } from '@n8n/permissions';
+
 import { NoXss } from '@db/utils/customValidators';
 import type { PublicUser, SecretsProvider, SecretsProviderState } from '@/Interfaces';
 import { AssignableRole } from '@db/entities/User';
 import type { GlobalRole, User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import type { Variables } from '@db/entities/Variables';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { WorkflowHistory } from '@db/entities/WorkflowHistory';
 import type { Project, ProjectType } from '@db/entities/Project';
-import type { ProjectRole } from './databases/entities/ProjectRelation';
-import type { Scope } from '@n8n/permissions';
+import type { ProjectRole } from '@db/entities/ProjectRelation';
 
 export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'lastName'> {
 	@Expose()
@@ -85,7 +86,7 @@ export type AuthenticatedRequest<
 	RequestBody = {},
 	RequestQuery = {},
 > = Omit<APIRequest<RouteParams, ResponseBody, RequestBody, RequestQuery>, 'user' | 'cookies'> & {
-	user: User;
+	user: AuthUser;
 	cookies: Record<string, string | undefined>;
 };
 

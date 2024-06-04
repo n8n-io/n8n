@@ -5,8 +5,8 @@ import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 
 import config from '@/config';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES, Time } from '@/constants';
-import type { User } from '@db/entities/User';
-import { UserRepository } from '@db/repositories/user.repository';
+import type { AuthUser } from '@db/entities/AuthUser';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { License } from '@/License';
@@ -55,7 +55,7 @@ export class AuthService {
 		private readonly license: License,
 		private readonly jwtService: JwtService,
 		private readonly urlService: UrlService,
-		private readonly userRepository: UserRepository,
+		private readonly authUserRepository: AuthUserRepository,
 	) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		this.authMiddleware = this.authMiddleware.bind(this);
@@ -83,7 +83,7 @@ export class AuthService {
 		res.clearCookie(AUTH_COOKIE_NAME);
 	}
 
-	issueCookie(res: Response, user: User, browserId?: string) {
+	issueCookie(res: Response, user: AuthUser, browserId?: string) {
 		// TODO: move this check to the login endpoint in AuthController
 		// If the instance has exceeded its user quota, prevent non-owners from logging in
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
@@ -104,7 +104,7 @@ export class AuthService {
 		});
 	}
 
-	issueJWT(user: User, browserId?: string) {
+	issueJWT(user: AuthUser, browserId?: string) {
 		const payload: AuthJwtPayload = {
 			id: user.id,
 			hash: this.createJWTHash(user),
@@ -115,15 +115,13 @@ export class AuthService {
 		});
 	}
 
-	async resolveJwt(token: string, req: AuthenticatedRequest, res: Response): Promise<User> {
+	async resolveJwt(token: string, req: AuthenticatedRequest, res: Response): Promise<AuthUser> {
 		const jwtPayload: IssuedJWT = this.jwtService.verify(token, {
 			algorithms: ['HS256'],
 		});
 
 		// TODO: Use an in-memory ttl-cache to cache the User object for upto a minute
-		const user = await this.userRepository.findOne({
-			where: { id: jwtPayload.id },
-		});
+		const user = await this.authUserRepository.findForAuth({ id: jwtPayload.id });
 
 		if (
 			// If not user is found
@@ -156,12 +154,12 @@ export class AuthService {
 		return user;
 	}
 
-	generatePasswordResetToken(user: User, expiresIn = '20m') {
+	generatePasswordResetToken(user: AuthUser, expiresIn = '20m') {
 		const payload: PasswordResetToken = { sub: user.id, hash: this.createJWTHash(user) };
 		return this.jwtService.sign(payload, { expiresIn });
 	}
 
-	generatePasswordResetUrl(user: User) {
+	generatePasswordResetUrl(user: AuthUser) {
 		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
 		const url = new URL(`${instanceBaseUrl}/change-password`);
 
@@ -171,7 +169,7 @@ export class AuthService {
 		return url.toString();
 	}
 
-	async resolvePasswordResetToken(token: string): Promise<User | undefined> {
+	async resolvePasswordResetToken(token: string): Promise<AuthUser | undefined> {
 		let decodedToken: PasswordResetToken;
 		try {
 			decodedToken = this.jwtService.verify(token);
@@ -184,11 +182,7 @@ export class AuthService {
 			return;
 		}
 
-		const user = await this.userRepository.findOne({
-			where: { id: decodedToken.sub },
-			relations: ['authIdentities'],
-		});
-
+		const user = await this.authUserRepository.findForAuth({ id: decodedToken.sub }, true);
 		if (!user) {
 			this.logger.debug(
 				'Request to resolve password token failed because no user was found for the provided user ID',
@@ -205,8 +199,9 @@ export class AuthService {
 		return user;
 	}
 
-	createJWTHash({ email, password }: User) {
-		return this.hash(email + ':' + password).substring(0, 10);
+	createJWTHash({ email, password }: AuthUser) {
+		const payload = [email, password];
+		return this.hash(payload.join(':')).substring(0, 10);
 	}
 
 	private hash(input: string) {

@@ -3,7 +3,7 @@ import { IsNull } from '@n8n/typeorm';
 import validator from 'validator';
 
 import config from '@/config';
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import { UserRepository } from '@db/repositories/user.repository';
 import { ProjectRepository } from '@db/repositories/project.repository';
 
@@ -28,7 +28,7 @@ beforeEach(async () => {
 });
 
 describe('When public API is disabled', () => {
-	let owner: User;
+	let owner: AuthUser;
 	let authAgent: SuperAgentTest;
 
 	beforeEach(async () => {
@@ -52,7 +52,7 @@ describe('When public API is disabled', () => {
 });
 
 describe('Owner shell', () => {
-	let ownerShell: User;
+	let ownerShell: AuthUser;
 	let authOwnerShellAgent: SuperAgentTest;
 
 	beforeEach(async () => {
@@ -201,7 +201,7 @@ describe('Owner shell', () => {
 
 describe('Member', () => {
 	const memberPassword = randomValidPassword();
-	let member: User;
+	let member: AuthUser;
 	let authMemberAgent: SuperAgentTest;
 
 	beforeEach(async () => {

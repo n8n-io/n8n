@@ -1,7 +1,7 @@
 import { Container } from 'typedi';
 import type { AuthenticationMethod } from 'n8n-workflow';
 
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import { setSamlLoginEnabled } from '@/sso/saml/samlHelpers';
 import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
 import { InternalHooks } from '@/InternalHooks';
@@ -14,8 +14,8 @@ import { sampleConfig } from './sampleMetadata';
 import { createOwner, createUser } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 
-let someUser: User;
-let owner: User;
+let someUser: AuthUser;
+let owner: AuthUser;
 let authMemberAgent: SuperAgentTest;
 let authOwnerAgent: SuperAgentTest;
 
@@ -277,7 +277,7 @@ describe('SAML login flow', () => {
 
 		mockedHandleSamlLogin.mockImplementation(
 			async (): Promise<{
-				authenticatedUser: User;
+				authenticatedUser: AuthUser;
 				attributes: SamlUserAttributes;
 				onboardingRequired: false;
 			}> => {
@@ -299,7 +299,7 @@ describe('SAML login flow', () => {
 			'onUserLoginSuccess',
 		);
 		mockedHookOnUserLoginSuccess.mockImplementation(
-			async (userLoginData: { user: User; authenticationMethod: AuthenticationMethod }) => {
+			async (userLoginData: { user: AuthUser; authenticationMethod: AuthenticationMethod }) => {
 				expect(userLoginData.authenticationMethod).toEqual('saml');
 				return;
 			},
@@ -315,7 +315,7 @@ describe('SAML login flow', () => {
 
 		mockedHandleSamlLogin.mockImplementation(
 			async (): Promise<{
-				authenticatedUser: User | undefined;
+				authenticatedUser: AuthUser | undefined;
 				attributes: SamlUserAttributes;
 				onboardingRequired: false;
 			}> => {

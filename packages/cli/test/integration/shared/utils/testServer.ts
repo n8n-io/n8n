@@ -7,7 +7,7 @@ import { URL } from 'url';
 
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import { registerController } from '@/decorators';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import { PostHogClient } from '@/posthog';
@@ -15,14 +15,14 @@ import { Push } from '@/push';
 import { License } from '@/License';
 import { Logger } from '@/Logger';
 import { InternalHooks } from '@/InternalHooks';
+import { AuthService } from '@/auth/auth.service';
+import type { APIRequest } from '@/requests';
 
 import { mockInstance } from '../../../shared/mocking';
 import * as testDb from '../../shared/testDb';
 import { PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
 import type { SetupProps, TestServer } from '../types';
 import { LicenseMocker } from '../license';
-import { AuthService } from '@/auth/auth.service';
-import type { APIRequest } from '@/requests';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -45,7 +45,7 @@ function prefix(pathSegment: string) {
 }
 
 const browserId = 'test-browser-id';
-function createAgent(app: express.Application, options?: { auth: boolean; user: User }) {
+function createAgent(app: express.Application, options?: { auth: boolean; user: AuthUser }) {
 	const agent = request.agent(app);
 	void agent.use(prefix(REST_PATH_SEGMENT));
 	if (options?.auth && options?.user) {
@@ -57,7 +57,7 @@ function createAgent(app: express.Application, options?: { auth: boolean; user: 
 
 function publicApiAgent(
 	app: express.Application,
-	{ user, version = 1 }: { user: User; version?: number },
+	{ user, version = 1 }: { user: AuthUser; version?: number },
 ) {
 	const agent = request.agent(app);
 	void agent.use(prefix(`${PUBLIC_API_REST_PATH_SEGMENT}/v${version}`));
@@ -89,7 +89,7 @@ export const setupTestServer = ({
 	const testServer: TestServer = {
 		app,
 		httpServer: app.listen(0),
-		authAgentFor: (user: User) => createAgent(app, { auth: true, user }),
+		authAgentFor: (user: AuthUser) => createAgent(app, { auth: true, user }),
 		authlessAgent: createAgent(app),
 		publicApiAgentFor: (user) => publicApiAgent(app, { user }),
 		license: new LicenseMocker(),

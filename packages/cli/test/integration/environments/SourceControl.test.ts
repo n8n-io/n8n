@@ -1,6 +1,6 @@
 import { Container } from 'typedi';
 
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import config from '@/config';
 import { SourceControlPreferencesService } from '@/environments/sourceControl/sourceControlPreferences.service.ee';
 import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
@@ -13,7 +13,7 @@ import { mockInstance } from '../../shared/mocking';
 import type { SuperAgentTest } from '../shared/types';
 
 let authOwnerAgent: SuperAgentTest;
-let owner: User;
+let owner: AuthUser;
 
 // This is necessary for the tests to shutdown cleanly.
 mockInstance(WaitTracker);
