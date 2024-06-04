@@ -671,8 +671,7 @@ export class InvoiceNinja implements INodeType {
 						};
 						if (apiVersion === 'v4') {
 							body.invoice_id = invoice as number;
-						}
-						else if (apiVersion === 'v5') {
+						} else if (apiVersion === 'v5') {
 							body.invoices = [
 								{
 									invoice_id: invoice as string,
