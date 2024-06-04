@@ -725,12 +725,23 @@ export default defineComponent({
 			);
 		},
 		isManualChatOnly(): boolean {
-			return this.containsChatNodes && this.triggerNodes.length === 1;
+			if (!this.canvasChatNode) return false;
+
+			return this.containsChatNodes && this.triggerNodes.length === 1 && !this.pinnedChatNodeData;
+		},
+		canvasChatNode() {
+			return this.nodes.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
+		},
+		pinnedChatNodeData() {
+			if (!this.canvasChatNode) return null;
+
+			return this.workflowsStore.pinDataByNodeName(this.canvasChatNode.name);
 		},
 		isExecutionDisabled(): boolean {
 			if (
 				this.containsChatNodes &&
-				this.triggerNodes.every((node) => node.disabled || node.type === CHAT_TRIGGER_NODE_TYPE)
+				this.triggerNodes.every((node) => node.disabled || node.type === CHAT_TRIGGER_NODE_TYPE) &&
+				!this.pinnedChatNodeData
 			) {
 				return true;
 			}
