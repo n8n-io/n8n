@@ -15,18 +15,21 @@ export class NodeOperationError extends NodeError {
 		error: Error | string | JsonObject,
 		options: NodeOperationErrorOptions = {},
 	) {
+		let obfuscateErrorMessage = false;
 		if (typeof error === 'string') {
 			error = new Error(error);
 		} else if (!(error instanceof ApplicationError)) {
 			// this error was no processed by n8n, obfuscate error message
-			error.message = OBFUSCATED_ERROR_MESSAGE;
+			obfuscateErrorMessage = true;
 		}
+
 		super(node, error);
 
 		if (error instanceof NodeError && error?.messages?.length) {
 			error.messages.forEach((message) => this.addToMessages(message));
 		}
 
+		if (obfuscateErrorMessage) this.message = OBFUSCATED_ERROR_MESSAGE;
 		if (options.message) this.message = options.message;
 		if (options.level) this.level = options.level;
 		if (options.functionality) this.functionality = options.functionality;
