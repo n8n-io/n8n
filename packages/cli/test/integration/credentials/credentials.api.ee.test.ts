@@ -31,8 +31,6 @@ import type { SuperAgentTest } from '../shared/types';
 import { mockInstance } from '../../shared/mocking';
 import { createTeamProject, linkUserToProject } from '../shared/db/projects';
 
-import { createTeamProject, linkUserToProject } from '../shared/db/projects';
-
 const testServer = utils.setupTestServer({
 	endpointGroups: ['credentials'],
 	enabledFeatures: ['feat:sharing'],
