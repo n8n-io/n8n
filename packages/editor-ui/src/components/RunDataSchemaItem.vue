@@ -295,8 +295,9 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 	word-break: break-word;
 
 	.newLine {
-		font-size: 0.8em;
-		color: red;
+		font-family: var(--font-family-monospace);
+		color: var(--color-line-break);
+		padding-right: 2px;
 	}
 }
 

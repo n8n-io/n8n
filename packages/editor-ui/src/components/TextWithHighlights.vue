@@ -71,7 +71,8 @@ const contentWithNewLines = computed(() => {
 
 <style lang="scss" module>
 :root .content .newLine {
-	font-size: 0.8em;
-	color: red;
+	font-family: var(--font-family-monospace);
+	color: var(--color-line-break);
+	padding-right: 2px;
 }
 </style>
