@@ -45,9 +45,6 @@
     "@types/uuid": "^8.3.2",
     "@types/xml2js": "^0.4.14"
   },
-  "peerDependencies": {
-    "n8n-nodes-base": "workspace:*"
-  },
   "dependencies": {
     "@n8n/client-oauth2": "workspace:*",
     "aws4": "1.11.0",
