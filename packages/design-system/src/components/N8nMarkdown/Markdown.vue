@@ -249,6 +249,14 @@ const onMouseDown = (event: MouseEvent) => {
 	}
 }
 
+input[type='checkbox'] {
+	accent-color: var(--color-primary);
+}
+
+input[type='checkbox'] + label {
+	cursor: pointer;
+}
+
 .sticky {
 	color: var(--color-sticky-font);
 

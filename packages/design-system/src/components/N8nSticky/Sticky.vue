@@ -265,11 +265,6 @@ const onCheckboxChange = async (checkbox: HTMLInputElement, position: number) =>
 	cursor: pointer;
 }
 
-input[type='checkbox'],
-input[type='checkbox'] + label {
-	cursor: pointer;
-}
-
 .wrapper {
 	width: 100%;
 	height: 100%;
