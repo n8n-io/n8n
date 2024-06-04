@@ -171,7 +171,7 @@ const onClick = (event: MouseEvent) => {
 
 // Handle checkbox changes
 const onChange = async (event: Event) => {
-	if (event.target instanceof HTMLInputElement) {
+	if (event.target instanceof HTMLInputElement && event.target.type === 'checkbox') {
 		const checkboxes = editor.value?.querySelectorAll('input[type="checkbox"]');
 		if (checkboxes) {
 			// Get the index of the checkbox that was clicked
