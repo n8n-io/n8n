@@ -2,10 +2,14 @@ import {
 	mapLegacyConnectionsToCanvasConnections,
 	mapLegacyEndpointsToCanvasConnectionPort,
 	getUniqueNodeName,
+	mapCanvasConnectionToLegacyConnection,
+	parseCanvasConnectionHandleString,
 } from '@/utils/canvasUtilsV2';
 import { NodeConnectionType, type IConnections, type INodeTypeDescription } from 'n8n-workflow';
 import type { CanvasConnection } from '@/types';
 import type { INodeUi } from '@/Interface';
+import type { Connection } from '@vue-flow/core';
+import { createTestNode } from '@/__tests__/mocks';
 
 vi.mock('uuid', () => ({
 	v4: vi.fn(() => 'mock-uuid'),
@@ -417,6 +421,78 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 					},
 				},
 			},
+		]);
+	});
+});
+
+describe('parseCanvasConnectionHandleString', () => {
+	it('should parse valid handle string', () => {
+		const handle = 'outputs/main/1';
+		const result = parseCanvasConnectionHandleString(handle);
+
+		expect(result).toEqual({
+			type: 'main',
+			index: 1,
+		});
+	});
+
+	it('should handle null handle', () => {
+		const handle = null;
+		const result = parseCanvasConnectionHandleString(handle);
+
+		expect(result).toEqual({
+			type: 'main',
+			index: 0,
+		});
+	});
+
+	it('should handle undefined handle', () => {
+		const handle = undefined;
+		const result = parseCanvasConnectionHandleString(handle);
+
+		expect(result).toEqual({
+			type: 'main',
+			index: 0,
+		});
+	});
+
+	it('should handle invalid type in handle', () => {
+		const handle = 'outputs/invalid/1';
+		const result = parseCanvasConnectionHandleString(handle);
+
+		expect(result).toEqual({
+			type: 'main',
+			index: 1,
+		});
+	});
+
+	it('should handle invalid index in handle', () => {
+		const handle = 'outputs/main/invalid';
+		const result = parseCanvasConnectionHandleString(handle);
+
+		expect(result).toEqual({
+			type: 'main',
+			index: 0,
+		});
+	});
+});
+
+describe('mapCanvasConnectionToLegacyConnection', () => {
+	it('should map canvas connection to legacy connection', () => {
+		const sourceNode = createTestNode({ name: 'sourceNode', type: 'main' });
+		const targetNode = createTestNode({ name: 'targetNode', type: 'main' });
+		const connection: Connection = {
+			target: '1',
+			source: '2',
+			sourceHandle: 'outputs/main/1',
+			targetHandle: 'inputs/main/2',
+		};
+
+		const result = mapCanvasConnectionToLegacyConnection(sourceNode, targetNode, connection);
+
+		expect(result).toEqual([
+			{ node: sourceNode.name, type: 'main', index: 1 },
+			{ node: targetNode.name, type: 'main', index: 2 },
 		]);
 	});
 });
