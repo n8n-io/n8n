@@ -25,6 +25,7 @@ import type {
 	INodeUpdatePropertiesInformation,
 	IPersonalizationLatestVersion,
 	IWorkflowDb,
+	IWorkflowTemplateNode,
 	NodeFilterType,
 } from '@/Interface';
 import type { ComponentPublicInstance } from 'vue/dist/vue';
@@ -68,6 +69,7 @@ export interface ExternalHooks {
 		addNodeButton: Array<ExternalHooksMethod<{ nodeTypeName: string }>>;
 		onRunNode: Array<ExternalHooksMethod<ITelemetryTrackProperties>>;
 		onRunWorkflow: Array<ExternalHooksMethod<ITelemetryTrackProperties>>;
+		onOpenChat: Array<ExternalHooksMethod<ITelemetryTrackProperties>>;
 	};
 	main: {
 		routeChange: Array<ExternalHooksMethod<{ to: RouteLocation; from: RouteLocation }>>;
@@ -255,7 +257,7 @@ export interface ExternalHooks {
 			ExternalHooksMethod<{
 				templateId: string;
 				templateName: string;
-				workflow: { nodes: INodeUi[]; connections: IConnections };
+				workflow: { nodes: INodeUi[] | IWorkflowTemplateNode[]; connections: IConnections };
 			}>
 		>;
 	};

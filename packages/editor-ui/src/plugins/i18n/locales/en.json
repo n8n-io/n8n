@@ -1836,6 +1836,7 @@
 	"settings.sourceControl.status.modified": "Modified",
 	"settings.sourceControl.status.deleted": "Deleted",
 	"settings.sourceControl.status.created": "New",
+	"settings.sourceControl.status.renamed": "Renamed",
 	"settings.sourceControl.pull.oneLastStep.title": "One last step",
 	"settings.sourceControl.pull.oneLastStep.description": "You have new creds/vars. Fill them out to make sure your workflows function properly",
 	"settings.sourceControl.pull.success.title": "Pulled successfully",
