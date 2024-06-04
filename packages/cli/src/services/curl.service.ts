@@ -1,3 +1,4 @@
+import { Service } from 'typedi';
 import curlconverter from 'curlconverter';
 import get from 'lodash/get';
 import type { IDataObject } from 'n8n-workflow';
@@ -269,6 +270,7 @@ export const flattenObject = (obj: { [x: string]: any }, prefix = '') =>
 		return acc;
 	}, {});
 
+@Service()
 export class CurlService {
 	// eslint-disable-next-line complexity
 	toHttpNodeParameters(curlCommand: string): HttpNodeParameters {
