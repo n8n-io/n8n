@@ -1551,6 +1551,7 @@ export type NodeIconColor =
 	| 'dark-blue'
 	| 'orange'
 	| 'orange-red'
+	| 'pink-red'
 	| 'red'
 	| 'light-green'
 	| 'green'
