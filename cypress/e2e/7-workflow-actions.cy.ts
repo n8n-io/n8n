@@ -6,6 +6,7 @@ import {
 	EDIT_FIELDS_SET_NODE_NAME,
 	INSTANCE_MEMBERS,
 	INSTANCE_OWNER,
+	NOTION_NODE_NAME,
 } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { WorkflowsPage as WorkflowsPageClass } from '../pages/workflows';
@@ -49,6 +50,30 @@ describe('Workflow Actions', () => {
 	it('should be able to activate workflow', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.saveWorkflowOnButtonClick();
+		WorkflowPage.actions.activateWorkflow();
+		WorkflowPage.getters.isWorkflowActivated();
+	});
+
+	it('should not be be able to activate workflow when nodes have errors', () => {
+		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME);
+		WorkflowPage.actions.saveWorkflowOnButtonClick();
+		WorkflowPage.getters.successToast().should('exist');
+		WorkflowPage.actions.clickWorkflowActivator();
+		WorkflowPage.getters.errorToast().should('exist');
+	});
+
+	it('should be be able to activate workflow when nodes with errors are disabled', () => {
+		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME);
+		WorkflowPage.actions.saveWorkflowOnButtonClick();
+		WorkflowPage.getters.successToast().should('exist');
+		// First, try to activate the workflow with errors
+		WorkflowPage.actions.clickWorkflowActivator();
+		WorkflowPage.getters.errorToast().should('exist');
+		// Now, disable the node with errors
+		WorkflowPage.getters.canvasNodes().last().click();
+		WorkflowPage.actions.hitDisableNodeShortcut();
 		WorkflowPage.actions.activateWorkflow();
 		WorkflowPage.getters.isWorkflowActivated();
 	});
