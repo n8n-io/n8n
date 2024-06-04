@@ -373,6 +373,7 @@ export const routes = [
 					return !!localStorage.getItem('features.NodeViewV2');
 				},
 			},
+			nodeView: true,
 		},
 	},
 	{
