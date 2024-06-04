@@ -1257,9 +1257,9 @@ describe('PUT /:workflowId/transfer', () => {
 	});
 
 	test('cannot transfer into a personal project', async () => {
-		const destinationProject = await createTeamProject('Team Project', member);
+		const sourceProject = await createTeamProject('Team Project', member);
 
-		const workflow = await createWorkflow({}, destinationProject);
+		const workflow = await createWorkflow({}, sourceProject);
 
 		await testServer
 			.authAgentFor(member)
@@ -1268,7 +1268,7 @@ describe('PUT /:workflowId/transfer', () => {
 			.expect(400);
 	});
 
-	test('cannot transfer without workflow:move scope for the workflow', async () => {
+	test('cannot transfer somebody elses workflow', async () => {
 		const destinationProject = await createTeamProject('Team Project', member);
 
 		const workflow = await createWorkflow({}, anotherMember);
@@ -1280,7 +1280,7 @@ describe('PUT /:workflowId/transfer', () => {
 			.expect(403);
 	});
 
-	test('cannot transfer without workflow:create scope in destination project', async () => {
+	test("cannot transfer if you're not a member of the destination project", async () => {
 		const destinationProject = await createTeamProject('Team Project', anotherMember);
 
 		const workflow = await createWorkflow({}, member);
@@ -1296,12 +1296,13 @@ describe('PUT /:workflowId/transfer', () => {
 		//
 		// ARRANGE
 		//
-		const sourceProject = await createTeamProject('Team Project 1');
+		const sourceProject = await createTeamProject();
 		await linkUserToProject(member, sourceProject, 'project:editor');
-		const destinationProject = await createTeamProject();
-		await linkUserToProject(member, destinationProject, 'project:admin');
 
 		const workflow = await createWorkflow({}, sourceProject);
+
+		const destinationProject = await createTeamProject();
+		await linkUserToProject(member, destinationProject, 'project:admin');
 
 		//
 		// ACT & ASSERT
@@ -1319,7 +1320,7 @@ describe('PUT /:workflowId/transfer', () => {
 		//
 		const workflow = await createWorkflow({}, member);
 
-		// this sharing should be deleted by the transfer
+		// these sharings should be deleted by the transfer
 		await shareWorkflowWithUsers(workflow, [anotherMember, owner]);
 
 		const destinationProject = await createTeamProject('Team Project', member);
@@ -1340,7 +1341,7 @@ describe('PUT /:workflowId/transfer', () => {
 
 		const allSharings = await getWorkflowSharing(workflow);
 		expect(allSharings).toHaveLength(1);
-		expect(allSharings).not.toContainEqual({
+		expect(allSharings[0]).toMatchObject({
 			projectId: destinationProject.id,
 			workflowId: workflow.id,
 			role: 'workflow:owner',
@@ -1352,9 +1353,9 @@ describe('PUT /:workflowId/transfer', () => {
 		// ARRANGE
 		//
 		const sourceProject = await createTeamProject('Team Project 1', member);
-		const destinationProject = await createTeamProject('Team Project 2', member);
-
 		const workflow = await createWorkflow({}, sourceProject);
+
+		const destinationProject = await createTeamProject('Team Project 2', member);
 
 		//
 		// ACT
@@ -1389,10 +1390,11 @@ describe('PUT /:workflowId/transfer', () => {
 			// ARRANGE
 			//
 			const sourceProject = await createTeamProject('Source Project', member);
-			const destinationProject = await createTeamProject('Destination Project', member);
-
 			const teamWorkflow = await createWorkflow({}, sourceProject);
+
 			const personalWorkflow = await createWorkflow({}, member);
+
+			const destinationProject = await createTeamProject('Destination Project', member);
 
 			//
 			// ACT
@@ -1444,10 +1446,11 @@ describe('PUT /:workflowId/transfer', () => {
 		// ARRANGE
 		//
 		const sourceProject = await createTeamProject('Source Project', member);
-		const destinationProject = anotherMemberPersonalProject;
-
 		const teamWorkflow = await createWorkflow({}, sourceProject);
+
 		const personalWorkflow = await createWorkflow({}, member);
+
+		const destinationProject = anotherMemberPersonalProject;
 
 		//
 		// ACT & ASSERT
