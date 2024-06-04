@@ -638,6 +638,10 @@ export const useUIStore = defineStore(STORES.UI, {
 			void valueSurveyResponded(useRootStore().getRestApiContext);
 		},
 		shouldShowValueSurvey(settings: IUserSettings) {
+			if (!useSettingsStore().isTelemetryEnabled) {
+				return false;
+			}
+
 			const ONE_DAY_IN_MILLIS = 24 * 60 * 60 * 1000;
 			const THREE_DAYS_IN_MILLIS = 3 * ONE_DAY_IN_MILLIS;
 			const SEVEN_DAYS_IN_MILLIS = 7 * ONE_DAY_IN_MILLIS;
