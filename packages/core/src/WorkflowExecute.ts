@@ -1707,7 +1707,7 @@ export class WorkflowExecute {
 						return await this.processSuccessExecution(
 							startedAt,
 							workflow,
-							new WorkflowOperationError('Workflow has been canceled or timed out!'),
+							new WorkflowOperationError('Workflow has been canceled or timed out'),
 							closeFunction,
 						);
 					}

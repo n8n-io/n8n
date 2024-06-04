@@ -76,7 +76,7 @@ export const versionDescription: INodeTypeDescription = {
 		name: 'OpenAI',
 	},
 	codex: {
-		alias: ['LangChain', 'ChatGPT', 'DallE'],
+		alias: ['LangChain', 'ChatGPT', 'DallE', 'whisper', 'audio', 'transcribe', 'tts', 'assistant'],
 		categories: ['AI'],
 		subcategories: {
 			AI: ['Agents', 'Miscellaneous', 'Root Nodes'],
