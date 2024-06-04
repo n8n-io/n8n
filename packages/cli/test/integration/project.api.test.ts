@@ -551,54 +551,61 @@ describe('PATCH /projects/:projectId', () => {
 			expect(tp2Relations.find((p) => p.userId === ownerUser.id)?.role).toBe('project:editor');
 		});
 
-		test('project viewers should not be able to add, update or remove users from a project', async () => {
-			//
-			// ARRANGE
-			//
-			const [projectViewer, projectEditor, userToBeInvited] = await Promise.all([
-				createUser(),
-				createUser(),
-				createUser(),
-			]);
-			const teamProject1 = await createTeamProject();
+		test.each([['project:viewer'], ['project:editor']] as const)(
+			'`%s`s should not be able to add, update or remove users from a project',
+			async (role) => {
+				//
+				// ARRANGE
+				//
+				const [actor, projectEditor, userToBeInvited] = await Promise.all([
+					createUser(),
+					createUser(),
+					createUser(),
+				]);
+				const teamProject1 = await createTeamProject();
 
-			await linkUserToProject(projectEditor, teamProject1, 'project:editor');
-			await linkUserToProject(projectViewer, teamProject1, 'project:viewer');
+				await linkUserToProject(actor, teamProject1, role);
+				await linkUserToProject(projectEditor, teamProject1, 'project:editor');
 
-			//
-			// ACT
-			//
-			await testServer
-				.authAgentFor(projectViewer)
-				.patch(`/projects/${teamProject1.id}`)
-				.send({
-					name: teamProject1.name,
-					relations: [
-						// update the viewer to be the project admin
-						{ userId: projectViewer.id, role: 'project:admin' },
-						// add a user to the project
-						{ userId: userToBeInvited.id, role: 'project:editor' },
-						// implicitly remove the project editor
-					] as Array<{
-						userId: string;
-						role: ProjectRole;
-					}>,
-				})
-				.expect(403);
+				//
+				// ACT
+				//
+				const response = await testServer
+					.authAgentFor(actor)
+					.patch(`/projects/${teamProject1.id}`)
+					.send({
+						name: teamProject1.name,
+						relations: [
+							// update the viewer to be the project admin
+							{ userId: actor.id, role: 'project:admin' },
+							// add a user to the project
+							{ userId: userToBeInvited.id, role: 'project:editor' },
+							// implicitly remove the project editor
+						] as Array<{
+							userId: string;
+							role: ProjectRole;
+						}>,
+					});
+				//.expect(403);
 
-			//
-			// ASSERT
-			//
-			const tp1Relations = await getProjectRelations({ projectId: teamProject1.id });
+				//
+				// ASSERT
+				//
+				expect(response.status).toBe(403);
+				expect(response.body).toMatchObject({
+					message: 'User is missing a scope required to perform this action',
+				});
+				const tp1Relations = await getProjectRelations({ projectId: teamProject1.id });
 
-			expect(tp1Relations.length).toBe(2);
-			expect(tp1Relations).toMatchObject(
-				expect.arrayContaining([
-					expect.objectContaining({ userId: projectViewer.id, role: 'project:viewer' }),
-					expect.objectContaining({ userId: projectEditor.id, role: 'project:editor' }),
-				]),
-			);
-		});
+				expect(tp1Relations.length).toBe(2);
+				expect(tp1Relations).toMatchObject(
+					expect.arrayContaining([
+						expect.objectContaining({ userId: actor.id, role }),
+						expect.objectContaining({ userId: projectEditor.id, role: 'project:editor' }),
+					]),
+				);
+			},
+		);
 
 		test.each([
 			['project:viewer', 'feat:projectRole:viewer'],
