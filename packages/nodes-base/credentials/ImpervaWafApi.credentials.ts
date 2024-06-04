@@ -1,4 +1,4 @@
-import type { IAuthenticateGeneric, ICredentialType, INodeProperties, Icon } from 'n8n-workflow';
+import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class ImpervaWafApi implements ICredentialType {
 	name = 'impervaWafApi';
@@ -7,7 +7,7 @@ export class ImpervaWafApi implements ICredentialType {
 
 	documentationUrl = 'impervawaf';
 
-	icon: Icon = 'file:icons/Imperva.svg';
+	icon = { light: 'file:icons/Imperva.svg', dark: 'file:icons/Imperva.dark.svg' } as const;
 
 	httpRequestNode = {
 		name: 'Imperva WAF',

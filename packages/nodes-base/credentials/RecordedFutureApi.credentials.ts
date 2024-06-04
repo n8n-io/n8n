@@ -1,4 +1,4 @@
-import type { IAuthenticateGeneric, ICredentialType, INodeProperties, Icon } from 'n8n-workflow';
+import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class RecordedFutureApi implements ICredentialType {
 	name = 'recordedFutureApi';
@@ -7,7 +7,10 @@ export class RecordedFutureApi implements ICredentialType {
 
 	documentationUrl = 'recordedfuture';
 
-	icon: Icon = 'file:icons/RecordedFuture.svg';
+	icon = {
+		light: 'file:icons/RecordedFuture.svg',
+		dark: 'file:icons/RecordedFuture.dark.svg',
+	} as const;
 
 	httpRequestNode = {
 		name: 'Recorded Future',

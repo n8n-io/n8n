@@ -1,4 +1,4 @@
-import type { IAuthenticateGeneric, ICredentialType, INodeProperties, Icon } from 'n8n-workflow';
+import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class CiscoMerakiApi implements ICredentialType {
 	name = 'ciscoMerakiApi';
@@ -7,7 +7,7 @@ export class CiscoMerakiApi implements ICredentialType {
 
 	documentationUrl = 'ciscomeraki';
 
-	icon: Icon = 'file:icons/Cisco.svg';
+	icon = { light: 'file:icons/Cisco.svg', dark: 'file:icons/Cisco.dark.svg' } as const;
 
 	httpRequestNode = {
 		name: 'Cisco Meraki',

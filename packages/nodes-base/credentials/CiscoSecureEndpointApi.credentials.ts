@@ -4,7 +4,6 @@ import type {
 	ICredentialType,
 	IHttpRequestOptions,
 	INodeProperties,
-	Icon,
 } from 'n8n-workflow';
 
 import axios from 'axios';
@@ -16,7 +15,7 @@ export class CiscoSecureEndpointApi implements ICredentialType {
 
 	documentationUrl = 'ciscosecureendpoint';
 
-	icon: Icon = 'file:icons/Cisco.svg';
+	icon = { light: 'file:icons/Cisco.svg', dark: 'file:icons/Cisco.dark.svg' } as const;
 
 	httpRequestNode = {
 		name: 'Cisco Secure Endpoint',
