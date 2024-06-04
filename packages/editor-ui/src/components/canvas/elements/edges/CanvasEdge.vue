@@ -60,7 +60,6 @@ function onDelete() {
 		:label-bg-style="{ fill: 'red' }"
 		:label-bg-padding="[2, 4]"
 		:label-bg-border-radius="2"
-		tabindex="2"
 	/>
 	<EdgeLabelRenderer>
 		<div :class="[$style.edgeToolbar, 'nodrag', 'nopan']" :style="edgeLabelStyle">
