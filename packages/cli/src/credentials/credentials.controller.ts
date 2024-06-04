@@ -28,6 +28,7 @@ import { SharedCredentialsRepository } from '@/databases/repositories/sharedCred
 import { In } from '@n8n/typeorm';
 import { SharedCredentials } from '@/databases/entities/SharedCredentials';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
+import { z } from 'zod';
 
 @RestController('/credentials')
 export class CredentialsController {
@@ -323,5 +324,17 @@ export class CredentialsController {
 			newShareeIds: projectsRelations.map((pr) => pr.userId),
 			credentialsName: credential.name,
 		});
+	}
+
+	@Put('/:credentialId/transfer')
+	@ProjectScope('credential:move')
+	async transfer(req: CredentialRequest.Transfer) {
+		const body = z.object({ destinationProjectId: z.string() }).parse(req.body);
+
+		return await this.enterpriseCredentialsService.transferOne(
+			req.user,
+			req.params.credentialId,
+			body.destinationProjectId,
+		);
 	}
 }

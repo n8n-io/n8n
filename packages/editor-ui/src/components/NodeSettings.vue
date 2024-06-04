@@ -22,6 +22,7 @@
 						data-test-id="node-execute-button"
 						:node-name="node.name"
 						:disabled="outputPanelEditMode.enabled && !isTriggerNode"
+						:tooltip="executeButtonTooltip"
 						size="small"
 						telemetry-source="parameters"
 						@execute="onNodeExecute"
@@ -307,6 +308,19 @@ export default defineComponent({
 		isLatestNodeVersion(): boolean {
 			return !this.node?.typeVersion || this.latestVersion === this.node.typeVersion;
 		},
+		executeButtonTooltip(): string {
+			if (
+				this.node &&
+				this.isLatestNodeVersion &&
+				this.inputSize > 1 &&
+				!NodeHelpers.isSingleExecution(this.node.type, this.node.parameters)
+			) {
+				return this.$locale.baseText('nodeSettings.executeButtonTooltip.times', {
+					interpolate: { inputSize: this.inputSize },
+				});
+			}
+			return '';
+		},
 		nodeVersionTag(): string {
 			if (!this.nodeType || this.nodeType.hidden) {
 				return this.$locale.baseText('nodeSettings.deprecated');
@@ -421,6 +435,10 @@ export default defineComponent({
 		executable: {
 			type: Boolean,
 			default: true,
+		},
+		inputSize: {
+			type: Number,
+			default: 0,
 		},
 	},
 	data() {
