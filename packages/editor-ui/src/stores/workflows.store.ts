@@ -308,7 +308,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return workflow.value.nodes.map((node) => ({ ...node }));
 	}
 
-	function setNodePosition(id: string, position: INodeUi['position']): void {
+	function setNodePositionById(id: string, position: INodeUi['position']): void {
 		const node = workflow.value.nodes.find((n) => n.id === id);
 		if (!node) return;
 
@@ -1489,6 +1489,43 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return !!matchedChatNode;
 	}
 
+	//
+	// Start Canvas V2 Functions
+	//
+
+	function removeNodeById(nodeId: string): void {
+		const node = getNodeById(nodeId);
+		if (!node) {
+			return;
+		}
+
+		removeNode(node);
+
+		// @TODO When removing node connected between two nodes, create a connection between them
+	}
+
+	function removeNodeConnectionsById(nodeId: string): void {
+		const node = getNodeById(nodeId);
+		if (!node) {
+			return;
+		}
+
+		removeAllNodeConnection(node);
+	}
+
+	function removeNodeExecutionDataById(nodeId: string): void {
+		const node = getNodeById(nodeId);
+		if (!node) {
+			return;
+		}
+
+		clearNodeExecutionData(node.name);
+	}
+
+	//
+	// End Canvas V2 Functions
+	//
+
 	return {
 		workflow,
 		usedCredentials,
@@ -1620,6 +1657,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		resetChatMessages,
 		appendChatMessage,
 		checkIfNodeHasChatParent,
-		setNodePosition,
+		setNodePositionById,
+		removeNodeById,
+		removeNodeConnectionsById,
+		removeNodeExecutionDataById,
 	};
 });
