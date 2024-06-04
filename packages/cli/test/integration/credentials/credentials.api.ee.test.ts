@@ -16,12 +16,21 @@ import type { SaveCredentialFunction } from '../shared/types';
 import * as utils from '../shared/utils';
 import {
 	affixRoleToSaveCredential,
+	getCredentialSharings,
 	shareCredentialWithProjects,
 	shareCredentialWithUsers,
 } from '../shared/db/credentials';
-import { createManyUsers, createUser, createUserShell } from '../shared/db/users';
+import {
+	createAdmin,
+	createManyUsers,
+	createOwner,
+	createUser,
+	createUserShell,
+} from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import { mockInstance } from '../../shared/mocking';
+
+import { createTeamProject, linkUserToProject } from '../shared/db/projects';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['credentials'],
@@ -32,6 +41,7 @@ const testServer = utils.setupTestServer({
 });
 
 let owner: User;
+let admin: User;
 let ownerPersonalProject: Project;
 let member: User;
 let memberPersonalProject: Project;
@@ -50,7 +60,8 @@ beforeEach(async () => {
 	projectRepository = Container.get(ProjectRepository);
 	projectService = Container.get(ProjectService);
 
-	owner = await createUser({ role: 'global:owner' });
+	owner = await createOwner();
+	admin = await createAdmin();
 	ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
 
 	member = await createUser({ role: 'global:member' });
@@ -645,6 +656,244 @@ describe('PUT /credentials/:id/share', () => {
 		expect(response.statusCode).toBe(200);
 
 		config.set('userManagement.emails.mode', 'smtp');
+	});
+});
+
+describe('PUT /:credentialId/transfer', () => {
+	test('cannot transfer into the same project', async () => {
+		const destinationProject = await createTeamProject('Destination Project', member);
+
+		const credential = await saveCredential(randomCredentialPayload(), {
+			project: destinationProject,
+		});
+
+		await testServer
+			.authAgentFor(member)
+			.put(`/credentials/${credential.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id })
+			.expect(400);
+	});
+
+	test('cannot transfer into a personal project', async () => {
+		const credential = await saveCredential(randomCredentialPayload(), {
+			user: member,
+		});
+
+		await testServer
+			.authAgentFor(member)
+			.put(`/credentials/${credential.id}/transfer`)
+			.send({ destinationProjectId: memberPersonalProject.id })
+			.expect(400);
+	});
+
+	test('cannot transfer somebody elses credential', async () => {
+		const destinationProject = await createTeamProject('Destination Project', member);
+
+		const credential = await saveCredential(randomCredentialPayload(), {
+			user: anotherMember,
+		});
+
+		await testServer
+			.authAgentFor(member)
+			.put(`/credentials/${credential.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id })
+			.expect(403);
+	});
+
+	test("cannot transfer if you're not a member of the destination project", async () => {
+		const credential = await saveCredential(randomCredentialPayload(), {
+			user: member,
+		});
+
+		const destinationProject = await createTeamProject('Team Project');
+
+		await testServer
+			.authAgentFor(member)
+			.put(`/credentials/${credential.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id })
+			.expect(404);
+	});
+
+	test('project:editors cannot transfer credentials', async () => {
+		//
+		// ARRANGE
+		//
+		const sourceProject = await createTeamProject('Source Project');
+		await linkUserToProject(member, sourceProject, 'project:editor');
+
+		const credential = await saveCredential(randomCredentialPayload(), {
+			project: sourceProject,
+		});
+
+		const destinationProject = await createTeamProject('Destination Project', member);
+
+		//
+		// ACT & ASSERT
+		//
+		await testServer
+			.authAgentFor(member)
+			.put(`/credentials/${credential.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id })
+			.expect(403);
+	});
+
+	test('transferring from a personal project to a team project severs all sharings', async () => {
+		//
+		// ARRANGE
+		//
+		const credential = await saveCredential(randomCredentialPayload(), { user: member });
+
+		// these sharings should be deleted by the transfer
+		await shareCredentialWithUsers(credential, [anotherMember, owner]);
+
+		const destinationProject = await createTeamProject('Destination Project', member);
+
+		//
+		// ACT
+		//
+		const response = await testServer
+			.authAgentFor(member)
+			.put(`/credentials/${credential.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id })
+			.expect(200);
+
+		//
+		// ASSERT
+		//
+		expect(response.body).toEqual({});
+
+		const allSharings = await getCredentialSharings(credential);
+		expect(allSharings).toHaveLength(1);
+		expect(allSharings[0]).toMatchObject({
+			projectId: destinationProject.id,
+			credentialsId: credential.id,
+			role: 'credential:owner',
+		});
+	});
+
+	test('can transfer from team to another team project', async () => {
+		//
+		// ARRANGE
+		//
+		const sourceProject = await createTeamProject('Team Project 1', member);
+		const credential = await saveCredential(randomCredentialPayload(), {
+			project: sourceProject,
+		});
+
+		const destinationProject = await createTeamProject('Team Project 2', member);
+
+		//
+		// ACT
+		//
+		const response = await testServer
+			.authAgentFor(member)
+			.put(`/credentials/${credential.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id })
+			.expect(200);
+
+		//
+		// ASSERT
+		//
+		expect(response.body).toEqual({});
+
+		const allSharings = await getCredentialSharings(credential);
+		expect(allSharings).toHaveLength(1);
+		expect(allSharings[0]).toMatchObject({
+			projectId: destinationProject.id,
+			credentialsId: credential.id,
+			role: 'credential:owner',
+		});
+	});
+
+	test.each([
+		['owners', () => owner],
+		['admins', () => admin],
+	])(
+		'%s can always transfer from any personal or team project into any team project',
+		async (_name, actor) => {
+			//
+			// ARRANGE
+			//
+			const sourceProject = await createTeamProject('Source Project', member);
+			const teamCredential = await saveCredential(randomCredentialPayload(), {
+				project: sourceProject,
+			});
+
+			const personalCredential = await saveCredential(randomCredentialPayload(), { user: member });
+
+			const destinationProject = await createTeamProject('Destination Project', member);
+
+			//
+			// ACT
+			//
+			const response1 = await testServer
+				.authAgentFor(actor())
+				.put(`/credentials/${teamCredential.id}/transfer`)
+				.send({ destinationProjectId: destinationProject.id })
+				.expect(200);
+			const response2 = await testServer
+				.authAgentFor(actor())
+				.put(`/credentials/${personalCredential.id}/transfer`)
+				.send({ destinationProjectId: destinationProject.id })
+				.expect(200);
+
+			//
+			// ASSERT
+			//
+			expect(response1.body).toEqual({});
+			expect(response2.body).toEqual({});
+
+			{
+				const allSharings = await getCredentialSharings(teamCredential);
+				expect(allSharings).toHaveLength(1);
+				expect(allSharings[0]).toMatchObject({
+					projectId: destinationProject.id,
+					credentialsId: teamCredential.id,
+					role: 'credential:owner',
+				});
+			}
+
+			{
+				const allSharings = await getCredentialSharings(personalCredential);
+				expect(allSharings).toHaveLength(1);
+				expect(allSharings[0]).toMatchObject({
+					projectId: destinationProject.id,
+					credentialsId: personalCredential.id,
+					role: 'credential:owner',
+				});
+			}
+		},
+	);
+
+	test.each([
+		['owners', () => owner],
+		['admins', () => admin],
+	])('%s cannot transfer into personal projects', async (_name, actor) => {
+		//
+		// ARRANGE
+		//
+		const sourceProject = await createTeamProject('Source Project', member);
+		const teamCredential = await saveCredential(randomCredentialPayload(), {
+			project: sourceProject,
+		});
+
+		const personalCredential = await saveCredential(randomCredentialPayload(), { user: member });
+
+		const destinationProject = anotherMemberPersonalProject;
+
+		//
+		// ACT & ASSERT
+		//
+		await testServer
+			.authAgentFor(actor())
+			.put(`/credentials/${teamCredential.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id })
+			.expect(400);
+		await testServer
+			.authAgentFor(actor())
+			.put(`/credentials/${personalCredential.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id })
+			.expect(400);
 	});
 });
 
