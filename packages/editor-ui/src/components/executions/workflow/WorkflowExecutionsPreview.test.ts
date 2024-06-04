@@ -3,26 +3,17 @@ import { render } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { faker } from '@faker-js/faker';
 import { createRouter, createWebHistory } from 'vue-router';
-import type { createPinia } from 'pinia';
+import { createPinia } from 'pinia';
 import { PiniaVuePlugin, setActivePinia } from 'pinia';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useSettingsStore } from '@/stores/settings.store';
 import WorkflowExecutionsPreview from '@/components/executions/workflow/WorkflowExecutionsPreview.vue';
-import { STORES, EnterpriseEditionFeature, VIEWS } from '@/constants';
+import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 import { i18nInstance, I18nPlugin } from '@/plugins/i18n';
 import { FontAwesomePlugin } from '@/plugins/icons';
 import { GlobalComponentsPlugin } from '@/plugins/components';
-import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
-import { merge } from 'lodash-es';
-import { createTestingPinia } from '@pinia/testing';
 
 let pinia: ReturnType<typeof createPinia>;
-
-const initialState = {
-	[STORES.SETTINGS]: {
-		settings: merge({}, SETTINGS_STORE_DEFAULT_STATE.settings),
-	},
-};
 
 const routes = [
 	{ path: '/', name: 'home', component: { template: '<div></div>' } },
@@ -76,7 +67,7 @@ describe('WorkflowExecutionsPreview.vue', () => {
 	const executionData: ExecutionSummary = executionDataFactory();
 
 	beforeEach(() => {
-		pinia = createTestingPinia({ initialState });
+		pinia = createPinia();
 		setActivePinia(pinia);
 
 		settingsStore = useSettingsStore();

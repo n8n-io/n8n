@@ -44,7 +44,11 @@ import { i18n } from '@/plugins/i18n';
 export const useSettingsStore = defineStore(STORES.SETTINGS, {
 	state: (): ISettingsState => ({
 		initialized: false,
-		settings: {} as IN8nUISettings,
+		settings: {
+			concurrency: {
+				productionCap: -1,
+			},
+		} as IN8nUISettings,
 		promptsData: {} as IN8nPrompts,
 		userManagement: {
 			quota: -1,
