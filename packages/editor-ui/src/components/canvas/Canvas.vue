@@ -1,23 +1,25 @@
 <script lang="ts" setup>
 import type { CanvasConnection, CanvasElement } from '@/types';
 import type { NodeDragEvent, Connection } from '@vue-flow/core';
-import { VueFlow, PanelPosition } from '@vue-flow/core';
+import { useVueFlow, VueFlow, PanelPosition } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
 import { MiniMap } from '@vue-flow/minimap';
 import CanvasNode from './elements/nodes/CanvasNode.vue';
 import CanvasEdge from './elements/edges/CanvasEdge.vue';
-import { useCssModule } from 'vue';
+import { onMounted, onUnmounted, useCssModule } from 'vue';
 
 const $style = useCssModule();
 
 const emit = defineEmits<{
 	'update:modelValue': [elements: CanvasElement[]];
 	'update:node:position': [id: string, position: { x: number; y: number }];
+	'delete:node': [id: string];
+	'delete:connection': [connection: Connection];
 	'create:connection': [connection: Connection];
 }>();
 
-withDefaults(
+const props = withDefaults(
 	defineProps<{
 		id?: string;
 		elements: CanvasElement[];
@@ -32,14 +34,39 @@ withDefaults(
 	},
 );
 
+const { getSelectedEdges, getSelectedNodes } = useVueFlow({ id: props.id });
+
+onMounted(() => {
+	document.addEventListener('keydown', onKeyDown);
+});
+
+onUnmounted(() => {
+	document.removeEventListener('keydown', onKeyDown);
+});
+
 function onNodeDragStop(e: NodeDragEvent) {
 	e.nodes.forEach((node) => {
 		emit('update:node:position', node.id, node.position);
 	});
 }
 
+function onDeleteNode(id: string) {
+	emit('delete:node', id);
+}
+
+function onDeleteConnection(connection: Connection) {
+	emit('delete:connection', connection);
+}
+
 function onConnect(...args: unknown[]) {
 	emit('create:connection', args[0] as Connection);
+}
+
+function onKeyDown(e: KeyboardEvent) {
+	if (e.key === 'Delete') {
+		getSelectedEdges.value.forEach(onDeleteConnection);
+		getSelectedNodes.value.forEach(({ id }) => onDeleteNode(id));
+	}
 }
 </script>
 
@@ -58,11 +85,11 @@ function onConnect(...args: unknown[]) {
 		@connect="onConnect"
 	>
 		<template #node-canvas-node="canvasNodeProps">
-			<CanvasNode v-bind="canvasNodeProps" />
+			<CanvasNode v-bind="canvasNodeProps" @delete="onDeleteNode" />
 		</template>
 
 		<template #edge-canvas-edge="canvasEdgeProps">
-			<CanvasEdge v-bind="canvasEdgeProps" />
+			<CanvasEdge v-bind="canvasEdgeProps" @delete="onDeleteConnection" />
 		</template>
 
 		<Background data-test-id="canvas-background" pattern-color="#aaa" :gap="16" />

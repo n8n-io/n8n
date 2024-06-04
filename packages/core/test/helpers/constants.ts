@@ -4,11 +4,11 @@ import type {
 	INodeTypeData,
 	WorkflowTestData,
 } from 'n8n-workflow';
-import { If } from 'n8n-nodes-base/nodes/If/If.node';
-import { Merge } from 'n8n-nodes-base/dist/nodes/Merge/Merge.node';
-import { NoOp } from 'n8n-nodes-base/nodes/NoOp/NoOp.node';
-import { Set } from 'n8n-nodes-base/nodes/Set/Set.node';
-import { Start } from 'n8n-nodes-base/nodes/Start/Start.node';
+import { If } from '../../../nodes-base/dist/nodes/If/If.node';
+import { Merge } from '../../../nodes-base/dist/nodes/Merge/Merge.node';
+import { NoOp } from '../../../nodes-base/dist/nodes/NoOp/NoOp.node';
+import { Set } from '../../../nodes-base/dist/nodes/Set/Set.node';
+import { Start } from '../../../nodes-base/dist/nodes/Start/Start.node';
 
 export const predefinedNodesTypes: INodeTypeData = {
 	'n8n-nodes-base.if': {
