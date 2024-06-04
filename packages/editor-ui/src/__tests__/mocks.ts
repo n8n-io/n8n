@@ -93,11 +93,11 @@ export function createTestWorkflow(options: {
 	} as IWorkflowDb;
 }
 
-export function createTestNode(
-	node: Partial<INode> & { name: INode['name']; type: INode['type'] },
-): INode {
+export function createTestNode(node: Partial<INode> = {}): INode {
 	return {
 		id: uuid(),
+		name: 'Node',
+		type: 'n8n-nodes-base.test',
 		typeVersion: 1,
 		position: [0, 0] as [number, number],
 		parameters: {},

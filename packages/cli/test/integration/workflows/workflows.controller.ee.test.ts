@@ -1,6 +1,6 @@
 import Container from 'typedi';
 import { v4 as uuid } from 'uuid';
-import type { INode } from 'n8n-workflow';
+import { ApplicationError, WorkflowActivationError, type INode } from 'n8n-workflow';
 
 import config from '@/config';
 import type { Project } from '@db/entities/Project';
@@ -19,12 +19,15 @@ import type { SaveCredentialFunction } from '../shared/types';
 import { makeWorkflow } from '../shared/utils/';
 import { randomCredentialPayload } from '../shared/random';
 import { affixRoleToSaveCredential, shareCredentialWithUsers } from '../shared/db/credentials';
-import { createUser, createUserShell } from '../shared/db/users';
+import { createAdmin, createOwner, createUser, createUserShell } from '../shared/db/users';
 import { createWorkflow, getWorkflowSharing, shareWorkflowWithUsers } from '../shared/db/workflows';
 import { createTag } from '../shared/db/tags';
 import type { SuperAgentTest } from '../shared/types';
+import { createTeamProject, linkUserToProject } from '../shared/db/projects';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
 let owner: User;
+let admin: User;
 let ownerPersonalProject: Project;
 let member: User;
 let memberPersonalProject: Project;
@@ -36,21 +39,24 @@ let authAnotherMemberAgent: SuperAgentTest;
 let saveCredential: SaveCredentialFunction;
 
 let projectRepository: ProjectRepository;
+let workflowRepository: WorkflowRepository;
 
 const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 
 const sharingSpy = jest.spyOn(License.prototype, 'isSharingEnabled').mockReturnValue(true);
 const testServer = utils.setupTestServer({
 	endpointGroups: ['workflows'],
-	enabledFeatures: ['feat:sharing'],
+	enabledFeatures: ['feat:sharing', 'feat:advancedPermissions'],
 });
 const license = testServer.license;
 const mailer = mockInstance(UserManagementMailer);
 
 beforeAll(async () => {
 	projectRepository = Container.get(ProjectRepository);
+	workflowRepository = Container.get(WorkflowRepository);
 
-	owner = await createUser({ role: 'global:owner' });
+	owner = await createOwner();
+	admin = await createAdmin();
 	ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
 	member = await createUser({ role: 'global:member' });
 	memberPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(member.id);
@@ -1234,5 +1240,311 @@ describe('PATCH /workflows/:workflowId - activate workflow', () => {
 		expect(id).toBe(workflow.id);
 		expect(versionId).toBe(workflow.versionId);
 		expect(active).toBe(false);
+	});
+});
+
+describe('PUT /:workflowId/transfer', () => {
+	test('cannot transfer into the same project', async () => {
+		const destinationProject = await createTeamProject('Team Project', member);
+
+		const workflow = await createWorkflow({}, destinationProject);
+
+		await testServer
+			.authAgentFor(member)
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id })
+			.expect(400);
+	});
+
+	test('cannot transfer into a personal project', async () => {
+		const destinationProject = await createTeamProject('Team Project', member);
+
+		const workflow = await createWorkflow({}, destinationProject);
+
+		await testServer
+			.authAgentFor(member)
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: memberPersonalProject.id })
+			.expect(400);
+	});
+
+	test('cannot transfer without workflow:move scope for the workflow', async () => {
+		const destinationProject = await createTeamProject('Team Project', member);
+
+		const workflow = await createWorkflow({}, anotherMember);
+
+		await testServer
+			.authAgentFor(member)
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id })
+			.expect(403);
+	});
+
+	test('cannot transfer without workflow:create scope in destination project', async () => {
+		const destinationProject = await createTeamProject('Team Project', anotherMember);
+
+		const workflow = await createWorkflow({}, member);
+
+		await testServer
+			.authAgentFor(member)
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id })
+			.expect(404);
+	});
+
+	test('project:editors cannot transfer workflows', async () => {
+		//
+		// ARRANGE
+		//
+		const sourceProject = await createTeamProject('Team Project 1');
+		await linkUserToProject(member, sourceProject, 'project:editor');
+		const destinationProject = await createTeamProject();
+		await linkUserToProject(member, destinationProject, 'project:admin');
+
+		const workflow = await createWorkflow({}, sourceProject);
+
+		//
+		// ACT & ASSERT
+		//
+		await testServer
+			.authAgentFor(member)
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id })
+			.expect(403);
+	});
+
+	test('transferring from a personal project to a team project severs all sharings', async () => {
+		//
+		// ARRANGE
+		//
+		const workflow = await createWorkflow({}, member);
+
+		// this sharing should be deleted by the transfer
+		await shareWorkflowWithUsers(workflow, [anotherMember, owner]);
+
+		const destinationProject = await createTeamProject('Team Project', member);
+
+		//
+		// ACT
+		//
+		const response = await testServer
+			.authAgentFor(member)
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id })
+			.expect(200);
+
+		//
+		// ASSERT
+		//
+		expect(response.body).toEqual({});
+
+		const allSharings = await getWorkflowSharing(workflow);
+		expect(allSharings).toHaveLength(1);
+		expect(allSharings).not.toContainEqual({
+			projectId: destinationProject.id,
+			workflowId: workflow.id,
+			role: 'workflow:owner',
+		});
+	});
+
+	test('can transfer from team to another team project', async () => {
+		//
+		// ARRANGE
+		//
+		const sourceProject = await createTeamProject('Team Project 1', member);
+		const destinationProject = await createTeamProject('Team Project 2', member);
+
+		const workflow = await createWorkflow({}, sourceProject);
+
+		//
+		// ACT
+		//
+		const response = await testServer
+			.authAgentFor(member)
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id })
+			.expect(200);
+
+		//
+		// ASSERT
+		//
+		expect(response.body).toEqual({});
+
+		const allSharings = await getWorkflowSharing(workflow);
+		expect(allSharings).toHaveLength(1);
+		expect(allSharings[0]).toMatchObject({
+			projectId: destinationProject.id,
+			workflowId: workflow.id,
+			role: 'workflow:owner',
+		});
+	});
+
+	test.each([
+		['owners', () => owner],
+		['admins', () => admin],
+	])(
+		'global %s can always transfer from any personal or team project into any team project',
+		async (_name, actor) => {
+			//
+			// ARRANGE
+			//
+			const sourceProject = await createTeamProject('Source Project', member);
+			const destinationProject = await createTeamProject('Destination Project', member);
+
+			const teamWorkflow = await createWorkflow({}, sourceProject);
+			const personalWorkflow = await createWorkflow({}, member);
+
+			//
+			// ACT
+			//
+			const response1 = await testServer
+				.authAgentFor(actor())
+				.put(`/workflows/${teamWorkflow.id}/transfer`)
+				.send({ destinationProjectId: destinationProject.id })
+				.expect(200);
+			const response2 = await testServer
+				.authAgentFor(actor())
+				.put(`/workflows/${personalWorkflow.id}/transfer`)
+				.send({ destinationProjectId: destinationProject.id })
+				.expect(200);
+
+			//
+			// ASSERT
+			//
+			expect(response1.body).toEqual({});
+			expect(response2.body).toEqual({});
+
+			{
+				const allSharings = await getWorkflowSharing(teamWorkflow);
+				expect(allSharings).toHaveLength(1);
+				expect(allSharings[0]).toMatchObject({
+					projectId: destinationProject.id,
+					workflowId: teamWorkflow.id,
+					role: 'workflow:owner',
+				});
+			}
+
+			{
+				const allSharings = await getWorkflowSharing(personalWorkflow);
+				expect(allSharings).toHaveLength(1);
+				expect(allSharings[0]).toMatchObject({
+					projectId: destinationProject.id,
+					workflowId: personalWorkflow.id,
+					role: 'workflow:owner',
+				});
+			}
+		},
+	);
+
+	test.each([
+		['owners', () => owner],
+		['admins', () => admin],
+	])('global %s cannot transfer into personal projects', async (_name, actor) => {
+		//
+		// ARRANGE
+		//
+		const sourceProject = await createTeamProject('Source Project', member);
+		const destinationProject = anotherMemberPersonalProject;
+
+		const teamWorkflow = await createWorkflow({}, sourceProject);
+		const personalWorkflow = await createWorkflow({}, member);
+
+		//
+		// ACT & ASSERT
+		//
+		await testServer
+			.authAgentFor(actor())
+			.put(`/workflows/${teamWorkflow.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id })
+			.expect(400);
+		await testServer
+			.authAgentFor(actor())
+			.put(`/workflows/${personalWorkflow.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id })
+			.expect(400);
+	});
+
+	test('removes and re-adds the workflow from the active workflow manager during the transfer', async () => {
+		//
+		// ARRANGE
+		//
+		const destinationProject = await createTeamProject('Team Project', member);
+
+		const workflow = await createWorkflow({ active: true }, member);
+
+		//
+		// ACT
+		//
+		const response = await testServer
+			.authAgentFor(member)
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id })
+			.expect(200);
+
+		//
+		// ASSERT
+		//
+		expect(response.body).toEqual({});
+
+		expect(activeWorkflowManager.remove).toHaveBeenCalledWith(workflow.id);
+		expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflow.id, 'update');
+	});
+
+	test('deactivates the workflow if it cannot be added to the active workflow manager again and returns the WorkflowActivationError as data', async () => {
+		//
+		// ARRANGE
+		//
+		const destinationProject = await createTeamProject('Team Project', member);
+
+		const workflow = await createWorkflow({ active: true }, member);
+
+		activeWorkflowManager.add.mockRejectedValue(new WorkflowActivationError('Failed'));
+
+		//
+		// ACT
+		//
+		const response = await testServer
+			.authAgentFor(member)
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id })
+			.expect(200);
+
+		//
+		// ASSERT
+		//
+		expect(response.body).toMatchObject({
+			data: {
+				error: {
+					message: 'Failed',
+					name: 'WorkflowActivationError',
+				},
+			},
+		});
+
+		expect(activeWorkflowManager.remove).toHaveBeenCalledWith(workflow.id);
+		expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflow.id, 'update');
+
+		const workflowFromDB = await workflowRepository.findOneByOrFail({ id: workflow.id });
+		expect(workflowFromDB).toMatchObject({ active: false });
+	});
+
+	test('returns a 500 if the workflow cannot be activated due to an unknown error', async () => {
+		//
+		// ARRANGE
+		//
+		const destinationProject = await createTeamProject('Team Project', member);
+
+		const workflow = await createWorkflow({ active: true }, member);
+
+		activeWorkflowManager.add.mockRejectedValue(new ApplicationError('Oh no!'));
+
+		//
+		// ACT & ASSERT
+		//
+		await testServer
+			.authAgentFor(member)
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id })
+			.expect(500);
 	});
 });

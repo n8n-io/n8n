@@ -316,7 +316,7 @@ async function onAddNodes(
 ) {
 	let currentPosition = position;
 	for (const { type, name, position: nodePosition, isAutoAdd, openDetail } of nodes) {
-		const node = await onNodeCreate(
+		const _node = await onNodeCreate(
 			{
 				name,
 				type,
@@ -384,7 +384,7 @@ type AddNodeOptions = {
 
 async function onNodeCreate(
 	node: AddNodeData,
-	options: AddNodeOptions = {},
+	_options: AddNodeOptions = {},
 ): Promise<INodeUi | undefined> {
 	if (!checkIfEditingIsAllowed()) {
 		return;
@@ -641,11 +641,11 @@ async function createNodeWithDefaultCredentials(node: Partial<INodeUi>) {
  * @TODO Probably not needed and can be merged into addNode
  */
 async function injectNode(
-	nodeTypeName: string,
-	options: AddNodeOptions = {},
-	showDetail = true,
-	trackHistory = false,
-	isAutoAdd = false,
+	_nodeTypeName: string,
+	_options: AddNodeOptions = {},
+	_showDetail = true,
+	_trackHistory = false,
+	_isAutoAdd = false,
 ) {
 	// const nodeTypeData: INodeTypeDescription | null =
 	// 	this.nodeTypesStore.getNodeType(nodeTypeName);

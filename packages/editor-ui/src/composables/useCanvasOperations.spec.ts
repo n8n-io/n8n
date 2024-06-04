@@ -140,7 +140,7 @@ describe('useCanvasOperations', () => {
 				.mockImplementation(() => {});
 			const connection: Connection = { source: 'nonexistent', target: 'targetNode' };
 
-			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValueOnce(null);
+			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValueOnce(undefined);
 
 			canvasOperations.createConnection(connection);
 
@@ -154,7 +154,9 @@ describe('useCanvasOperations', () => {
 				.mockImplementation(() => {});
 			const connection: Connection = { source: 'sourceNode', target: 'nonexistent' };
 
-			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValueOnce({}).mockReturnValueOnce(null);
+			vi.spyOn(workflowsStore, 'getNodeById')
+				.mockReturnValueOnce(createTestNode())
+				.mockReturnValueOnce(undefined);
 
 			canvasOperations.createConnection(connection);
 
@@ -169,7 +171,9 @@ describe('useCanvasOperations', () => {
 				.mockImplementation(() => {});
 			const connection: Connection = { source: 'sourceNode', target: 'targetNode' };
 
-			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValueOnce({}).mockReturnValueOnce({});
+			vi.spyOn(workflowsStore, 'getNodeById')
+				.mockReturnValueOnce(createTestNode())
+				.mockReturnValueOnce(createTestNode());
 
 			canvasOperations.createConnection(connection);
 
@@ -222,7 +226,9 @@ describe('useCanvasOperations', () => {
 				.mockImplementation(() => {});
 			const connection: Connection = { source: 'nonexistent', target: 'targetNode' };
 
-			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValueOnce(null).mockReturnValueOnce({});
+			vi.spyOn(workflowsStore, 'getNodeById')
+				.mockReturnValueOnce(undefined)
+				.mockReturnValueOnce(createTestNode());
 
 			canvasOperations.deleteConnection(connection);
 
@@ -235,7 +241,9 @@ describe('useCanvasOperations', () => {
 				.mockImplementation(() => {});
 			const connection: Connection = { source: 'sourceNode', target: 'nonexistent' };
 
-			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValueOnce({}).mockReturnValueOnce(null);
+			vi.spyOn(workflowsStore, 'getNodeById')
+				.mockReturnValueOnce(createTestNode())
+				.mockReturnValueOnce(undefined);
 
 			canvasOperations.deleteConnection(connection);
 

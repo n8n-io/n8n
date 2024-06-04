@@ -178,6 +178,8 @@ export class Start extends BaseCommand {
 
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
+		Container.get(WaitTracker).init();
+		this.logger.debug('Wait tracker init complete');
 		await this.initBinaryDataService();
 		this.logger.debug('Binary data service init complete');
 		await this.initExternalHooks();

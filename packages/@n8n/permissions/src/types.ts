@@ -35,7 +35,7 @@ export type CommunityPackageScope = ResourceScope<
 	'communityPackage',
 	'install' | 'uninstall' | 'update' | 'list' | 'manage'
 >;
-export type CredentialScope = ResourceScope<'credential', DefaultOperations | 'share'>;
+export type CredentialScope = ResourceScope<'credential', DefaultOperations | 'share' | 'move'>;
 export type ExternalSecretScope = ResourceScope<'externalSecret', 'list' | 'use'>;
 export type ExternalSecretProviderScope = ResourceScope<
 	'externalSecretsProvider',
@@ -58,7 +58,10 @@ export type TagScope = ResourceScope<'tag'>;
 export type UserScope = ResourceScope<'user', DefaultOperations | 'resetPassword' | 'changeRole'>;
 export type VariableScope = ResourceScope<'variable'>;
 export type WorkersViewScope = ResourceScope<'workersView', 'manage'>;
-export type WorkflowScope = ResourceScope<'workflow', DefaultOperations | 'share' | 'execute'>;
+export type WorkflowScope = ResourceScope<
+	'workflow',
+	DefaultOperations | 'share' | 'execute' | 'move'
+>;
 
 export type Scope =
 	| AuditLogsScope
