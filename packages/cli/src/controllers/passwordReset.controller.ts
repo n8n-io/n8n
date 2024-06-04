@@ -20,7 +20,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
-import { UserRepository } from '@/databases/repositories/user.repository';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
 
 @RestController()
 export class PasswordResetController {
@@ -35,7 +35,7 @@ export class PasswordResetController {
 		private readonly urlService: UrlService,
 		private readonly license: License,
 		private readonly passwordUtility: PasswordUtility,
-		private readonly userRepository: UserRepository,
+		private readonly authUserRepository: AuthUserRepository,
 	) {}
 
 	/**
@@ -70,7 +70,7 @@ export class PasswordResetController {
 		}
 
 		// User should just be able to reset password if one is already present
-		const user = await this.userRepository.findNonShellUser(email);
+		const user = await this.authUserRepository.findNonShellUser(email);
 
 		if (!user?.isOwner && !this.license.isWithinUsersLimit()) {
 			this.logger.debug(

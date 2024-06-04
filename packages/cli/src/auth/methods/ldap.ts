@@ -10,13 +10,13 @@ import {
 	createLdapAuthIdentity,
 	updateLdapUserOnLocalDb,
 } from '@/Ldap/helpers';
-import type { User } from '@db/entities/User';
-import { UserRepository } from '@db/repositories/user.repository';
+import type { AuthUser } from '@db/entities/AuthUser';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
 
 export const handleLdapLogin = async (
 	loginId: string,
 	password: string,
-): Promise<User | undefined> => {
+): Promise<AuthUser | undefined> => {
 	if (!isLdapEnabled()) return undefined;
 
 	const ldapService = Container.get(LdapService);
@@ -42,7 +42,7 @@ export const handleLdapLogin = async (
 
 	const ldapAuthIdentity = await getAuthIdentityByLdapId(ldapId);
 	if (!ldapAuthIdentity) {
-		const emailUser = await Container.get(UserRepository).findForAuth({
+		const emailUser = await Container.get(AuthUserRepository).findForAuth({
 			email: emailAttributeValue,
 		});
 
@@ -56,7 +56,10 @@ export const handleLdapLogin = async (
 				user_type: 'ldap',
 				was_disabled_ldap_user: false,
 			});
-			return user;
+			const authUser = await Container.get(AuthUserRepository).findForAuth({
+				id: user.id,
+			});
+			return authUser!;
 		}
 	} else {
 		if (ldapAuthIdentity.user) {

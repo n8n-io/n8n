@@ -13,7 +13,7 @@ import { isSamlLicensedAndEnabled } from '@/sso/saml/samlHelpers';
 import { PasswordUtility } from '@/services/password.utility';
 import { PostHogClient } from '@/posthog';
 import type { User } from '@/databases/entities/User';
-import { UserRepository } from '@db/repositories/user.repository';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalHooks } from '@/InternalHooks';
@@ -29,7 +29,7 @@ export class InvitationController {
 		private readonly userService: UserService,
 		private readonly license: License,
 		private readonly passwordUtility: PasswordUtility,
-		private readonly userRepository: UserRepository,
+		private readonly authUserRepository: AuthUserRepository,
 		private readonly postHog: PostHogClient,
 	) {}
 
@@ -135,7 +135,7 @@ export class InvitationController {
 
 		const validPassword = this.passwordUtility.validate(password);
 
-		const users = await this.userRepository.findManyByIds([inviterId, inviteeId]);
+		const users = await this.authUserRepository.findManyByIds([inviterId, inviteeId]);
 
 		if (users.length !== 2) {
 			this.logger.debug(
@@ -162,7 +162,7 @@ export class InvitationController {
 		invitee.lastName = lastName;
 		invitee.password = await this.passwordUtility.hash(validPassword);
 
-		const updatedUser = await this.userRepository.save(invitee, { transaction: false });
+		const updatedUser = await this.authUserRepository.save(invitee, { transaction: false });
 
 		this.authService.issueCookie(res, updatedUser, req.browserId);
 

@@ -1,32 +1,14 @@
 import { Service } from 'typedi';
-import type { DeepPartial, EntityManager, FindManyOptions, FindOptionsWhere } from '@n8n/typeorm';
+import type { EntityManager, FindManyOptions } from '@n8n/typeorm';
 import { DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
 import type { ListQuery } from '@/requests';
 
 import { type GlobalRole, User } from '../entities/User';
-import { Project } from '../entities/Project';
-import { ProjectRelation } from '../entities/ProjectRelation';
 
 @Service()
 export class UserRepository extends Repository<User> {
 	constructor(dataSource: DataSource) {
 		super(User, dataSource.manager);
-	}
-
-	/** This returns a user object with all columns, including the ones marked as `select: false` */
-	async findForAuth(where: FindOptionsWhere<User>, includeRelations = false) {
-		const select = this.metadata.columns.map((column) => column.propertyName) as Array<keyof User>;
-		return await this.findOne({
-			where,
-			select,
-			relations: includeRelations ? ['authIdentities'] : undefined,
-		});
-	}
-
-	async findManyByIds(userIds: string[]) {
-		return await this.find({
-			where: { id: In(userIds) },
-		});
 	}
 
 	/**
@@ -59,16 +41,6 @@ export class UserRepository extends Repository<User> {
 
 	async deleteMany(userIds: string[]) {
 		return await this.delete({ id: In(userIds) });
-	}
-
-	async findNonShellUser(email: string) {
-		return await this.findOne({
-			where: {
-				email,
-				password: Not(IsNull()),
-			},
-			relations: ['authIdentities'],
-		});
 	}
 
 	/** Counts the number of users in each role, e.g. `{ admin: 2, member: 6, owner: 1 }` */
@@ -129,35 +101,5 @@ export class UserRepository extends Repository<User> {
 			select: ['email'],
 			where: { id: In(userIds), password: Not(IsNull()) },
 		});
-	}
-
-	async createUserWithProject(
-		user: DeepPartial<User>,
-		transactionManager?: EntityManager,
-	): Promise<{ user: User; project: Project }> {
-		const createInner = async (entityManager: EntityManager) => {
-			const newUser = entityManager.create(User, user);
-			const savedUser = await entityManager.save<User>(newUser);
-			const savedProject = await entityManager.save<Project>(
-				entityManager.create(Project, {
-					type: 'personal',
-					name: savedUser.createPersonalProjectName(),
-				}),
-			);
-			await entityManager.save<ProjectRelation>(
-				entityManager.create(ProjectRelation, {
-					projectId: savedProject.id,
-					userId: savedUser.id,
-					role: 'project:personalOwner',
-				}),
-			);
-			return { user: savedUser, project: savedProject };
-		};
-		if (transactionManager) {
-			return await createInner(transactionManager);
-		}
-		// TODO: use a transactions
-		// This is blocked by TypeORM having concurrency issues with transactions
-		return await createInner(this.manager);
 	}
 }

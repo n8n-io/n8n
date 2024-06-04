@@ -1,12 +1,18 @@
 import { Container } from 'typedi';
+import type { FlowResult } from 'samlify/types/src/flow';
+
 import config from '@/config';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
-import type { User } from '@db/entities/User';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
+import { AuthIdentityRepository } from '@db/repositories/authIdentity.repository';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { AuthError } from '@/errors/response-errors/auth.error';
+import type { AuthUser } from '@db/entities/AuthUser';
 import { License } from '@/License';
 import { PasswordUtility } from '@/services/password.utility';
+
 import type { SamlPreferences } from './types/samlPreferences';
 import type { SamlUserAttributes } from './types/samlUserAttributes';
-import type { FlowResult } from 'samlify/types/src/flow';
 import type { SamlAttributeMapping } from './types/samlAttributeMapping';
 import { SAML_LOGIN_ENABLED, SAML_LOGIN_LABEL } from './constants';
 import {
@@ -17,10 +23,6 @@ import {
 } from '../ssoHelpers';
 import { getServiceProviderConfigTestReturnUrl } from './serviceProvider.ee';
 import type { SamlConfiguration } from './types/requests';
-import { UserRepository } from '@db/repositories/user.repository';
-import { AuthIdentityRepository } from '@db/repositories/authIdentity.repository';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { AuthError } from '@/errors/response-errors/auth.error';
 
 /**
  *  Check whether the SAML feature is licensed and enabled in the instance
@@ -96,9 +98,12 @@ export function generatePassword(): string {
 	return password;
 }
 
-export async function createUserFromSamlAttributes(attributes: SamlUserAttributes): Promise<User> {
-	return await Container.get(UserRepository).manager.transaction(async (trx) => {
-		const { user } = await Container.get(UserRepository).createUserWithProject(
+export async function createUserFromSamlAttributes(
+	attributes: SamlUserAttributes,
+): Promise<AuthUser> {
+	const repository = Container.get(AuthUserRepository);
+	return await repository.manager.transaction(async (trx) => {
+		const { user } = await repository.createUserWithProject(
 			{
 				email: attributes.email.toLowerCase(),
 				firstName: attributes.firstName,
@@ -123,9 +128,9 @@ export async function createUserFromSamlAttributes(attributes: SamlUserAttribute
 }
 
 export async function updateUserFromSamlAttributes(
-	user: User,
+	user: AuthUser,
 	attributes: SamlUserAttributes,
-): Promise<User> {
+): Promise<AuthUser> {
 	if (!attributes.email) throw new AuthError('Email is required to update user');
 	if (!user) throw new AuthError('User not found');
 	let samlAuthIdentity = user?.authIdentities.find((e) => e.providerType === 'saml');
@@ -141,7 +146,7 @@ export async function updateUserFromSamlAttributes(
 	await Container.get(AuthIdentityRepository).save(samlAuthIdentity, { transaction: false });
 	user.firstName = attributes.firstName;
 	user.lastName = attributes.lastName;
-	const resultUser = await Container.get(UserRepository).save(user, { transaction: false });
+	const resultUser = await Container.get(AuthUserRepository).save(user, { transaction: false });
 	if (!resultUser) throw new AuthError('Could not create User');
 	return resultUser;
 }

@@ -2,7 +2,9 @@ import { Container, Service } from 'typedi';
 import type { IUserSettings } from 'n8n-workflow';
 import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
+import type { AuthUser } from '@/databases/entities/AuthUser';
 import type { User, AssignableRole } from '@db/entities/User';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
 import { UserRepository } from '@db/repositories/user.repository';
 import type { PublicUser } from '@/Interfaces';
 import type { PostHogClient } from '@/posthog';
@@ -17,6 +19,7 @@ import { InternalServerError } from '@/errors/response-errors/internal-server.er
 export class UserService {
 	constructor(
 		private readonly logger: Logger,
+		private readonly authUserRepository: AuthUserRepository,
 		private readonly userRepository: UserRepository,
 		private readonly mailer: UserManagementMailer,
 		private readonly urlService: UrlService,
@@ -57,13 +60,14 @@ export class UserService {
 			withScopes?: boolean;
 		},
 	) {
-		const { password, updatedAt, apiKey, authIdentities, ...rest } = user;
+		const { password, updatedAt, apiKey, ...rest } = user;
 
-		const ldapIdentity = authIdentities?.find((i) => i.providerType === 'ldap');
+		// const ldapIdentity = user.authIdentities?.find((i) => i.providerType === 'ldap');
 
 		let publicUser: PublicUser = {
 			...rest,
-			signInType: ldapIdentity ? 'ldap' : 'email',
+			// signInType: ldapIdentity ? 'ldap' : 'email',
+			signInType: 'email', // TODO: fix this
 		};
 
 		if (options?.withInviteUrl && !options?.inviterId) {
@@ -178,7 +182,7 @@ export class UserService {
 		);
 	}
 
-	async inviteUsers(owner: User, attributes: Array<{ email: string; role: AssignableRole }>) {
+	async inviteUsers(owner: AuthUser, attributes: Array<{ email: string; role: AssignableRole }>) {
 		const emails = attributes.map(({ email }) => email);
 
 		const existingUsers = await this.userRepository.findManyByEmail(emails);
@@ -202,7 +206,7 @@ export class UserService {
 				async (transactionManager) =>
 					await Promise.all(
 						toCreateUsers.map(async ({ email, role }) => {
-							const { user: savedUser } = await this.userRepository.createUserWithProject(
+							const { user: savedUser } = await this.authUserRepository.createUserWithProject(
 								{ email, role },
 								transactionManager,
 							);

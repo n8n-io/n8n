@@ -17,7 +17,6 @@ import { NoXss } from '../utils/customValidators';
 import { objectRetriever, lowerCaser } from '../utils/transformers';
 import { WithTimestamps, jsonColumnType } from './AbstractEntity';
 import type { IPersonalizationSurveyAnswers } from '@/Interfaces';
-import type { AuthIdentity } from './AuthIdentity';
 import {
 	GLOBAL_OWNER_SCOPES,
 	GLOBAL_MEMBER_SCOPES,
@@ -80,9 +79,6 @@ export class User extends WithTimestamps implements IUser {
 
 	@Column()
 	role: GlobalRole;
-
-	@OneToMany('AuthIdentity', 'user')
-	authIdentities: AuthIdentity[];
 
 	@OneToMany('SharedWorkflow', 'user')
 	sharedWorkflows: SharedWorkflow[];

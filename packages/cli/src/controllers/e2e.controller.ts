@@ -1,8 +1,8 @@
 import { Request } from 'express';
 import { v4 as uuid } from 'uuid';
 import config from '@/config';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
 import { SettingsRepository } from '@db/repositories/settings.repository';
-import { UserRepository } from '@db/repositories/user.repository';
 import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { License } from '@/License';
@@ -16,7 +16,6 @@ import { CacheService } from '@/services/cache/cache.service';
 import { PasswordUtility } from '@/services/password.utility';
 import Container from 'typedi';
 import { Logger } from '@/Logger';
-import { AuthUserRepository } from '@/databases/repositories/authUser.repository';
 
 if (!inE2ETests) {
 	Container.get(Logger).error('E2E endpoints only allowed during E2E tests');
@@ -106,7 +105,6 @@ export class E2EController {
 		private readonly push: Push,
 		private readonly passwordUtility: PasswordUtility,
 		private readonly eventBus: MessageEventBus,
-		private readonly userRepository: UserRepository,
 		private readonly authUserRepository: AuthUserRepository,
 	) {
 		license.isFeatureEnabled = (feature: BooleanLicenseFeature) =>
@@ -188,7 +186,7 @@ export class E2EController {
 		admin: UserSetupPayload,
 	) {
 		const userCreatePromises = [
-			this.userRepository.createUserWithProject({
+			this.authUserRepository.createUserWithProject({
 				id: uuid(),
 				...owner,
 				password: await this.passwordUtility.hash(owner.password),
@@ -197,7 +195,7 @@ export class E2EController {
 		];
 
 		userCreatePromises.push(
-			this.userRepository.createUserWithProject({
+			this.authUserRepository.createUserWithProject({
 				id: uuid(),
 				...admin,
 				password: await this.passwordUtility.hash(admin.password),
@@ -207,7 +205,7 @@ export class E2EController {
 
 		for (const { password, ...payload } of members) {
 			userCreatePromises.push(
-				this.userRepository.createUserWithProject({
+				this.authUserRepository.createUserWithProject({
 					id: uuid(),
 					...payload,
 					password: await this.passwordUtility.hash(password),
