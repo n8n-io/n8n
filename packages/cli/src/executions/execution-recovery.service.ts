@@ -14,7 +14,6 @@ import { ARTIFICIAL_TASK_DATA } from '@/constants';
 
 /**
  * Service for recovering executions truncated by an instance crash.
- *
  */
 @Service()
 export class ExecutionRecoveryService {
@@ -36,7 +35,7 @@ export class ExecutionRecoveryService {
 	 * log to their own filesystems, only manual exections can be recovered.
 	 */
 	async recover(executionId: string, messages: EventMessageTypes[]) {
-		if (messages.length === 0) return;
+		if (messages.length === 0) return null;
 
 		const amendedExecution = await this.amend(executionId, messages);
 
@@ -57,7 +56,7 @@ export class ExecutionRecoveryService {
 	/**
 	 * Amend `status`, `stoppedAt`, and `data` of an execution using event log messages.
 	 */
-	async amend(executionId: string, messages: EventMessageTypes[]) {
+	private async amend(executionId: string, messages: EventMessageTypes[]) {
 		const { nodeMessages, workflowMessages } = this.toRelevantMessages(messages);
 
 		if (nodeMessages.length === 0) return null;

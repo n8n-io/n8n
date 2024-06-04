@@ -200,6 +200,7 @@ describe('ExecutionRecoveryService', () => {
 			/**
 			 * Arrange
 			 */
+			// @ts-expect-error Private method
 			const amendSpy = jest.spyOn(executionRecoveryService, 'amend');
 			const executionRepository = Container.get(ExecutionRepository);
 			const dbUpdateSpy = jest.spyOn(executionRepository, 'update');
@@ -234,9 +235,7 @@ describe('ExecutionRecoveryService', () => {
 			expect(runHooksSpy).toHaveBeenCalledTimes(1);
 			expect(push.once).toHaveBeenCalledTimes(1);
 		});
-	});
 
-	describe('amend', () => {
 		test('should amend a truncated execution where last node did not finish', async () => {
 			/**
 			 * Arrange
@@ -258,7 +257,7 @@ describe('ExecutionRecoveryService', () => {
 			 * Act
 			 */
 
-			const amendedExecution = await executionRecoveryService.amend(execution.id, messages);
+			const amendedExecution = await executionRecoveryService.recover(execution.id, messages);
 
 			/**
 			 * Assert
@@ -329,7 +328,7 @@ describe('ExecutionRecoveryService', () => {
 			 * Act
 			 */
 
-			const amendedExecution = await executionRecoveryService.amend(execution.id, messages);
+			const amendedExecution = await executionRecoveryService.recover(execution.id, messages);
 
 			/**
 			 * Assert
@@ -386,7 +385,7 @@ describe('ExecutionRecoveryService', () => {
 			 * Act
 			 */
 
-			const amendedExecution = await executionRecoveryService.amend(execution.id, noMessages);
+			const amendedExecution = await executionRecoveryService.recover(execution.id, noMessages);
 
 			/**
 			 * Assert
@@ -406,7 +405,7 @@ describe('ExecutionRecoveryService', () => {
 			 * Act
 			 */
 
-			const amendedExecution = await executionRecoveryService.amend(
+			const amendedExecution = await executionRecoveryService.recover(
 				inexistentExecutionId,
 				messages,
 			);
