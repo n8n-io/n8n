@@ -13,20 +13,8 @@ import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
 
 /**
- * Service for recovering truncated executions using event log messages.
+ * Service for recovering executions truncated by an instance crash.
  *
- * "Recovery" means (1) amending and persisting a few key details of an
- * execution truncated by an instance crash, (2) running post-execution hooks,
- * and (3) surfacing this amended execution to the client. "Recovery" does _not_
- * mean injecting actual execution data from the logs, or resuming from the
- * point of truncation, or re-running the execution.
- *
- * Recovery is only possible if execution logs are available in the container.
- * In main mode, if the container was not recycled, logs should be available.
- * In queue mode, workers handle production executions and write logs to each of
- * the workers' filesystems, whereas the main process handles manual executions
- * and writes logs to its own filesystem, so in queue mode execution recovery
- * is only ever possible for manual executions.
  */
 @Service()
 export class ExecutionRecoveryService {
@@ -35,6 +23,18 @@ export class ExecutionRecoveryService {
 		private readonly executionRepository: ExecutionRepository,
 	) {}
 
+	/**
+	 * "Recovery" means (1) amending key properties of a truncated execution,
+	 * (2) running post-execution hooks, and (3) returning the amended execution
+	 * so the UI can reflect the error. "Recovery" does **not** mean injecting
+	 * execution data from the logs (they hold none), or resuming the execution
+	 * from the point of truncation, or re-running the whole execution.
+	 *
+	 * Recovery is only possible if event logs are available in the container.
+	 * In regular mode, logs should but might not be available, e.g. due to container
+	 * being recycled, max log size causing rotation, etc. In queue mode, as workers
+	 * log to their own filesystems, only manual exections can be recovered.
+	 */
 	async recover(executionId: string, messages: EventMessageTypes[]) {
 		if (messages.length === 0) return;
 
@@ -115,9 +115,9 @@ export class ExecutionRecoveryService {
 		} as IExecutionResponse;
 	}
 
-	/**
-	 * Private
-	 */
+	// ----------------------------------
+	//             private
+	// ----------------------------------
 
 	private toRelevantMessages(messages: EventMessageTypes[]) {
 		return messages.reduce<{

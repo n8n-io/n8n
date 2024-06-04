@@ -19,6 +19,7 @@ import { EventMessageNode } from '@/eventbus/EventMessageClasses/EventMessageNod
 import { EventMessageWorkflow } from '@/eventbus/EventMessageClasses/EventMessageWorkflow';
 import type { EventMessageTypes as EventMessage } from '@/eventbus/EventMessageClasses';
 import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
+import { NodeConnectionType } from 'n8n-workflow';
 
 /**
  * Workflow producing an execution whose data will be truncated by an instance crash.
@@ -51,7 +52,7 @@ export const OOM_WORKFLOW: Partial<WorkflowEntity> = {
 				[
 					{
 						node: 'DebugHelper',
-						type: 'main',
+						type: NodeConnectionType.Main,
 						index: 0,
 					},
 				],
@@ -231,7 +232,6 @@ describe('ExecutionRecoveryService', () => {
 			expect(amendSpy).toHaveBeenCalledWith(execution.id, messages);
 			expect(dbUpdateSpy).toHaveBeenCalledTimes(1);
 			expect(runHooksSpy).toHaveBeenCalledTimes(1);
-			// eslint-disable-next-line @typescript-eslint/unbound-method
 			expect(push.once).toHaveBeenCalledTimes(1);
 		});
 	});
