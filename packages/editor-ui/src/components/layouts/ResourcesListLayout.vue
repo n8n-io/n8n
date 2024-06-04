@@ -114,9 +114,6 @@
 						<template #default="{ item, updateItemSize }">
 							<slot :data="item" :update-item-size="updateItemSize" />
 						</template>
-						<template #postListContent>
-							<slot name="postListContent" />
-						</template>
 					</n8n-recycle-scroller>
 					<n8n-datatable
 						v-if="type === 'datatable'"
@@ -166,8 +163,9 @@ import type { BaseTextKey } from '@/plugins/i18n';
 export interface IResource {
 	id: string;
 	name: string;
-	updatedAt: string;
-	createdAt: string;
+	value: string;
+	updatedAt?: string;
+	createdAt?: string;
 	homeProject?: ProjectSharingData;
 }
 

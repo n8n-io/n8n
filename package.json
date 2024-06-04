@@ -1,13 +1,13 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.43.0",
+  "version": "1.44.0",
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
     "node": ">=18.10",
-    "pnpm": ">=8.14"
+    "pnpm": ">=9.1"
   },
-  "packageManager": "pnpm@8.14.3",
+  "packageManager": "pnpm@9.1.4",
   "scripts": {
     "preinstall": "node scripts/block-npm-install.js",
     "build": "turbo run build",
@@ -59,7 +59,7 @@
     "rimraf": "^5.0.1",
     "run-script-os": "^1.0.7",
     "start-server-and-test": "^2.0.3",
-    "supertest": "^6.3.4",
+    "supertest": "^7.0.0",
     "ts-jest": "^29.1.1",
     "tsc-alias": "^1.8.7",
     "tsc-watch": "^6.0.4",

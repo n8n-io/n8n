@@ -9,6 +9,5 @@ exports[`components > N8nRecycleScroller > should render correctly 1`] = `
       <div class="recycle-scroller-item"></div>
     </div>
   </div>
-  <div class="post-list-container"></div>
 </div>"
 `;

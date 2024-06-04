@@ -229,7 +229,8 @@ export default defineComponent({
 
 		setTimeout(() => {
 			this.scrollToLatestMessage();
-			this.$refs.inputField?.focus();
+			const inputField = this.$refs.inputField as HTMLInputElement | null;
+			inputField?.focus();
 		}, 0);
 	},
 	methods: {
@@ -516,13 +517,13 @@ export default defineComponent({
 					const lastNodeExecuted =
 						this.workflowsStore.getWorkflowExecution?.data?.resultData.lastNodeExecuted;
 
-					if (!lastNodeExecuted) {
-						return;
-					}
-					const nodeResponseDataArray = get(
-						this.workflowsStore.getWorkflowExecution?.data?.resultData.runData,
-						lastNodeExecuted,
-					) as ITaskData[];
+					if (!lastNodeExecuted) return;
+
+					const nodeResponseDataArray =
+						get(
+							this.workflowsStore.getWorkflowExecution?.data?.resultData.runData,
+							lastNodeExecuted,
+						) ?? [];
 
 					const nodeResponseData = nodeResponseDataArray[nodeResponseDataArray.length - 1];
 

@@ -94,12 +94,12 @@ const props = withDefaults(defineProps<StickyProps>(), {
 });
 
 const $emit = defineEmits<{
-	(event: 'edit', editing: boolean);
-	(event: 'update:modelValue', value: string);
-	(event: 'markdown-click', link: string, e: Event);
-	(event: 'resize', values: ResizeData);
-	(event: 'resizestart');
-	(event: 'resizeend', value: unknown);
+	(event: 'edit', editing: boolean): void;
+	(event: 'update:modelValue', value: string): void;
+	(event: 'markdown-click', link: string, e: Event): void;
+	(event: 'resize', values: ResizeData): void;
+	(event: 'resizestart'): void;
+	(event: 'resizeend'): void;
 }>();
 
 const { t } = useI18n();
@@ -160,9 +160,9 @@ const onResizeStart = () => {
 	$emit('resizestart');
 };
 
-const onResizeEnd = (resizeEnd: unknown) => {
+const onResizeEnd = () => {
 	isResizing.value = false;
-	$emit('resizeend', resizeEnd);
+	$emit('resizeend');
 };
 
 const onInputScroll = (event: WheelEvent) => {

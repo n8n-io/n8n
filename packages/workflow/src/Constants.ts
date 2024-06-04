@@ -1,3 +1,5 @@
+import type { NodeParameterValue } from './Interfaces';
+
 export const BINARY_ENCODING = 'base64';
 export const WAIT_TIME_UNLIMITED = '3000-01-01T00:00:00.000Z';
 
@@ -62,3 +64,32 @@ export const LANGCHAIN_CUSTOM_TOOLS = [
 	CODE_TOOL_LANGCHAIN_NODE_TYPE,
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 ];
+
+//nodes that would execute only once with such parameters
+//add 'undefined' to parameters values if it is parameter's default value
+export const SINGLE_EXECUTION_NODES: { [key: string]: { [key: string]: NodeParameterValue[] } } = {
+	'n8n-nodes-base.code': {
+		mode: [undefined, 'runOnceForAllItems'],
+	},
+	'n8n-nodes-base.executeWorkflow': {
+		mode: [undefined, 'once'],
+	},
+	'n8n-nodes-base.crateDb': {
+		operation: [undefined, 'update'], // default insert
+	},
+	'n8n-nodes-base.timescaleDb': {
+		operation: [undefined, 'update'], // default insert
+	},
+	'n8n-nodes-base.microsoftSql': {
+		operation: [undefined, 'update', 'delete'], // default insert
+	},
+	'n8n-nodes-base.questDb': {
+		operation: [undefined], // default insert
+	},
+	'n8n-nodes-base.mongoDb': {
+		operation: ['insert', 'update'],
+	},
+	'n8n-nodes-base.redis': {
+		operation: [undefined], // default info
+	},
+};

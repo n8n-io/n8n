@@ -1,15 +1,19 @@
 import Container from 'typedi';
-import type { SuperAgentTest } from 'supertest';
 import { v4 as uuid } from 'uuid';
 import type { INode, IPinData } from 'n8n-workflow';
+import type { Scope } from '@n8n/permissions';
 
 import type { User } from '@db/entities/User';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { ListQuery } from '@/requests';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { ProjectRepository } from '@db/repositories/project.repository';
+import { ProjectService } from '@/services/project.service';
 import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+import { License } from '@/License';
 
 import { mockInstance } from '../../shared/mocking';
 import * as utils from '../shared/utils/';
@@ -20,12 +24,8 @@ import { saveCredential } from '../shared/db/credentials';
 import { createManyUsers, createMember, createOwner } from '../shared/db/users';
 import { createWorkflow, shareWorkflowWithProjects } from '../shared/db/workflows';
 import { createTag } from '../shared/db/tags';
-import { License } from '@/License';
-import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { ProjectService } from '@/services/project.service';
 import { createTeamProject, linkUserToProject } from '../shared/db/projects';
-import type { Scope } from '@n8n/permissions';
+import type { SuperAgentTest } from '../shared/types';
 
 let owner: User;
 let member: User;
@@ -116,6 +116,7 @@ describe('POST /workflows', () => {
 			[
 				'workflow:delete',
 				'workflow:execute',
+				'workflow:move',
 				'workflow:read',
 				'workflow:share',
 				'workflow:update',
@@ -519,7 +520,13 @@ describe('GET /workflows', () => {
 			// Team workflow
 			expect(wf1.id).toBe(savedWorkflow1.id);
 			expect(wf1.scopes).toEqual(
-				['workflow:read', 'workflow:update', 'workflow:delete', 'workflow:execute'].sort(),
+				[
+					'workflow:delete',
+					'workflow:execute',
+					'workflow:move',
+					'workflow:read',
+					'workflow:update',
+				].sort(),
 			);
 
 			// Shared workflow
@@ -550,11 +557,12 @@ describe('GET /workflows', () => {
 			expect(wf2.id).toBe(savedWorkflow2.id);
 			expect(wf2.scopes).toEqual(
 				[
-					'workflow:read',
-					'workflow:update',
 					'workflow:delete',
 					'workflow:execute',
+					'workflow:move',
+					'workflow:read',
 					'workflow:share',
+					'workflow:update',
 				].sort(),
 			);
 		}
@@ -574,12 +582,13 @@ describe('GET /workflows', () => {
 			expect(wf1.scopes).toEqual(
 				[
 					'workflow:create',
-					'workflow:read',
-					'workflow:update',
 					'workflow:delete',
-					'workflow:list',
-					'workflow:share',
 					'workflow:execute',
+					'workflow:list',
+					'workflow:move',
+					'workflow:read',
+					'workflow:share',
+					'workflow:update',
 				].sort(),
 			);
 
@@ -588,12 +597,13 @@ describe('GET /workflows', () => {
 			expect(wf2.scopes).toEqual(
 				[
 					'workflow:create',
-					'workflow:read',
-					'workflow:update',
 					'workflow:delete',
-					'workflow:list',
-					'workflow:share',
 					'workflow:execute',
+					'workflow:list',
+					'workflow:move',
+					'workflow:read',
+					'workflow:share',
+					'workflow:update',
 				].sort(),
 			);
 		}

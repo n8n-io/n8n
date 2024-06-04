@@ -624,7 +624,6 @@ export interface PublicUser {
 	passwordResetToken?: string;
 	createdAt: Date;
 	isPending: boolean;
-	hasRecoveryCodesLeft: boolean;
 	role?: GlobalRole;
 	globalScopes?: Scope[];
 	signInType: AuthProviderType;

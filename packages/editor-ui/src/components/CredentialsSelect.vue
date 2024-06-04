@@ -6,13 +6,11 @@
 				:size="inputSize"
 				filterable
 				:model-value="displayValue"
-				:placeholder="
-					parameter.placeholder ? getPlaceholder() : $locale.baseText('parameterInput.select')
-				"
+				:placeholder="$locale.baseText('parameterInput.select')"
 				:title="displayTitle"
 				:disabled="isReadOnly"
 				data-test-id="credential-select"
-				@update:model-value="(value) => $emit('update:modelValue', value)"
+				@update:model-value="(value: string) => $emit('update:modelValue', value)"
 				@keydown.stop
 				@focus="$emit('setFocus')"
 				@blur="$emit('onBlur')"
@@ -28,11 +26,6 @@
 						<div class="option-headline">
 							{{ credType.displayName }}
 						</div>
-						<div
-							v-if="credType.description"
-							class="option-description"
-							v-html="credType.description"
-						/>
 					</div>
 				</n8n-option>
 			</n8n-select>
@@ -62,9 +55,6 @@ import ScopesNotice from '@/components/ScopesNotice.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import { mapStores } from 'pinia';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import type { N8nSelect } from 'n8n-design-system';
-
-type N8nSelectRef = InstanceType<typeof N8nSelect>;
 
 export default defineComponent({
 	name: 'CredentialsSelect',
@@ -81,6 +71,7 @@ export default defineComponent({
 		'isReadOnly',
 		'displayTitle',
 	],
+	emits: ['update:modelValue', 'setFocus', 'onBlur', 'credentialSelected'],
 	computed: {
 		...mapStores(useCredentialsStore),
 		allCredentialTypes(): ICredentialType[] {
@@ -97,7 +88,7 @@ export default defineComponent({
 	},
 	methods: {
 		focus() {
-			const selectRef = this.$refs.innerSelect as N8nSelectRef | undefined;
+			const selectRef = this.$refs.innerSelect as HTMLElement | undefined;
 			if (selectRef) {
 				selectRef.focus();
 			}

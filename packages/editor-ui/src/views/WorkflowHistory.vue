@@ -53,15 +53,18 @@ const canRender = ref(true);
 const isListLoading = ref(true);
 const requestNumberOfItems = ref(20);
 const lastReceivedItemsLength = ref(0);
-const editorRoute = computed(() => ({
-	name: VIEWS.WORKFLOW,
-	params: {
-		name: route.params.workflowId,
-	},
-}));
 const activeWorkflow = ref<IWorkflowDb | null>(null);
 const workflowHistory = ref<WorkflowHistory[]>([]);
 const activeWorkflowVersion = ref<WorkflowVersion | null>(null);
+
+const workflowId = computed(() => normalizeSingleRouteParam('workflowId'));
+const versionId = computed(() => normalizeSingleRouteParam('versionId'));
+const editorRoute = computed(() => ({
+	name: VIEWS.WORKFLOW,
+	params: {
+		name: workflowId.value,
+	},
+}));
 const actions = computed<UserAction[]>(() =>
 	workflowHistoryActionTypes.map((value) => ({
 		label: i18n.baseText(`workflowHistory.item.actions.${value}`),
@@ -70,23 +73,18 @@ const actions = computed<UserAction[]>(() =>
 	})),
 );
 
-const isFirstItemShown = computed(
-	() => workflowHistory.value[0]?.versionId === route.params.versionId,
-);
+const isFirstItemShown = computed(() => workflowHistory.value[0]?.versionId === versionId.value);
 const evaluatedPruneTime = computed(() => Math.floor(workflowHistoryStore.evaluatedPruneTime / 24));
 
 const sendTelemetry = (event: string) => {
 	telemetry.track(event, {
 		instance_id: useRootStore().instanceId,
-		workflow_id: route.params.workflowId,
+		workflow_id: workflowId.value,
 	});
 };
 
 const loadMore = async (queryParams: WorkflowHistoryRequestParams) => {
-	const history = await workflowHistoryStore.getWorkflowHistory(
-		route.params.workflowId,
-		queryParams,
-	);
+	const history = await workflowHistoryStore.getWorkflowHistory(workflowId.value, queryParams);
 	lastReceivedItemsLength.value = history.length;
 	workflowHistory.value = workflowHistory.value.concat(history);
 };
@@ -95,17 +93,17 @@ onBeforeMount(async () => {
 	sendTelemetry('User opened workflow history');
 	try {
 		const [workflow] = await Promise.all([
-			workflowsStore.fetchWorkflow(route.params.workflowId),
+			workflowsStore.fetchWorkflow(workflowId.value),
 			loadMore({ take: requestNumberOfItems.value }),
 		]);
 		activeWorkflow.value = workflow;
 		isListLoading.value = false;
 
-		if (!route.params.versionId && workflowHistory.value.length) {
+		if (!versionId.value && workflowHistory.value.length) {
 			await router.replace({
 				name: VIEWS.WORKFLOW_HISTORY,
 				params: {
-					workflowId: route.params.workflowId,
+					workflowId: workflowId.value,
 					versionId: workflowHistory.value[0].versionId,
 				},
 			});
@@ -116,11 +114,17 @@ onBeforeMount(async () => {
 	}
 });
 
+const normalizeSingleRouteParam = (name: string): string => {
+	const param = route.params[name];
+	if (typeof param === 'string') return param;
+	return param?.[0] ?? '';
+};
+
 const openInNewTab = (id: WorkflowVersionId) => {
 	const { href } = router.resolve({
 		name: VIEWS.WORKFLOW_HISTORY,
 		params: {
-			workflowId: route.params.workflowId,
+			workflowId: workflowId.value,
 			versionId: id,
 		},
 	});
@@ -183,7 +187,7 @@ const cloneWorkflowVersion = async (
 	data: { formattedCreatedAt: string },
 ) => {
 	const clonedWorkflow = await workflowHistoryStore.cloneIntoNewWorkflow(
-		route.params.workflowId,
+		workflowId.value,
 		id,
 		data,
 	);
@@ -210,17 +214,17 @@ const restoreWorkflowVersion = async (
 	id: WorkflowVersionId,
 	data: { formattedCreatedAt: string },
 ) => {
-	const workflow = await workflowsStore.fetchWorkflow(route.params.workflowId);
+	const workflow = await workflowsStore.fetchWorkflow(workflowId.value);
 	const modalAction = await openRestorationModal(workflow.active, data.formattedCreatedAt);
 	if (modalAction === WorkflowHistoryVersionRestoreModalActions.cancel) {
 		return;
 	}
 	activeWorkflow.value = await workflowHistoryStore.restoreWorkflow(
-		route.params.workflowId,
+		workflowId.value,
 		id,
 		modalAction === WorkflowHistoryVersionRestoreModalActions.deactivateAndRestore,
 	);
-	const history = await workflowHistoryStore.getWorkflowHistory(route.params.workflowId, {
+	const history = await workflowHistoryStore.getWorkflowHistory(workflowId.value, {
 		take: 1,
 	});
 	workflowHistory.value = history.concat(workflowHistory.value);
@@ -246,7 +250,7 @@ const onAction = async ({
 				sendTelemetry('User opened version in new tab');
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.DOWNLOAD:
-				await workflowHistoryStore.downloadVersion(route.params.workflowId, id, data);
+				await workflowHistoryStore.downloadVersion(workflowId.value, id, data);
 				sendTelemetry('User downloaded version');
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.CLONE:
@@ -278,7 +282,7 @@ const onPreview = async ({ event, id }: { event: MouseEvent; id: WorkflowVersion
 		await router.push({
 			name: VIEWS.WORKFLOW_HISTORY,
 			params: {
-				workflowId: route.params.workflowId,
+				workflowId: workflowId.value,
 				versionId: id,
 			},
 		});
@@ -290,24 +294,24 @@ const onUpgrade = () => {
 };
 
 watchEffect(async () => {
-	if (!route.params.versionId) {
+	if (!versionId.value) {
 		return;
 	}
 	try {
 		activeWorkflowVersion.value = await workflowHistoryStore.getWorkflowVersion(
-			route.params.workflowId,
-			route.params.versionId,
+			workflowId.value,
+			versionId.value,
 		);
 		sendTelemetry('User selected version');
 	} catch (error) {
 		toast.showError(
-			new Error(`${error.message} "${route.params.versionId}"&nbsp;`),
+			new Error(`${error.message} "${versionId.value}"&nbsp;`),
 			i18n.baseText('workflowHistory.title'),
 		);
 	}
 
 	try {
-		activeWorkflow.value = await workflowsStore.fetchWorkflow(route.params.workflowId);
+		activeWorkflow.value = await workflowsStore.fetchWorkflow(workflowId.value);
 	} catch (error) {
 		canRender.value = false;
 		toast.showError(error, i18n.baseText('workflowHistory.title'));

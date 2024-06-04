@@ -4,6 +4,7 @@ import {
 	deleteDestinationFromDb,
 	getDestinationsFromBackend,
 	getEventNamesFromBackend,
+	hasDestinationId,
 	saveDestinationToDb,
 	sendTestMessageToDestination,
 } from '../api/eventbus.ee';
@@ -186,29 +187,31 @@ export const useLogStreamingStore = defineStore('logStreaming', {
 			}
 		},
 		async saveDestination(destination: MessageEventBusDestinationOptions): Promise<boolean> {
-			if (destination.id) {
-				const rootStore = useRootStore();
-				const selectedEvents = this.getSelectedEvents(destination.id);
-				try {
-					await saveDestinationToDb(rootStore.getRestApiContext, destination, selectedEvents);
-					this.updateDestination(destination);
-					return true;
-				} catch (e) {
-					return false;
-				}
+			if (!hasDestinationId(destination)) {
+				return false;
 			}
-			return false;
+
+			const rootStore = useRootStore();
+			const selectedEvents = this.getSelectedEvents(destination.id);
+			try {
+				await saveDestinationToDb(rootStore.getRestApiContext, destination, selectedEvents);
+				this.updateDestination(destination);
+				return true;
+			} catch (e) {
+				return false;
+			}
 		},
 		async sendTestMessage(destination: MessageEventBusDestinationOptions) {
-			if (destination.id) {
-				const rootStore = useRootStore();
-				const testResult = await sendTestMessageToDestination(
-					rootStore.getRestApiContext,
-					destination,
-				);
-				return testResult;
+			if (!hasDestinationId(destination)) {
+				return false;
 			}
-			return false;
+
+			const rootStore = useRootStore();
+			const testResult = await sendTestMessageToDestination(
+				rootStore.getRestApiContext,
+				destination,
+			);
+			return testResult;
 		},
 		async fetchEventNames(): Promise<string[]> {
 			const rootStore = useRootStore();

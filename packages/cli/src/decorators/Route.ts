@@ -1,14 +1,14 @@
 import type { RequestHandler } from 'express';
 import { CONTROLLER_ROUTES } from './constants';
-import type { Method, RouteMetadata } from './types';
+import type { Method, RateLimit, RouteMetadata } from './types';
 
 interface RouteOptions {
 	middlewares?: RequestHandler[];
 	usesTemplates?: boolean;
 	/** When this flag is set to true, auth cookie isn't validated, and req.user will not be set */
 	skipAuth?: boolean;
-	/** When this flag is set to true, calls to this endpoint is rate limited to a max of 5 over a window of 5 minutes **/
-	rateLimit?: boolean;
+	/** When these options are set, calls to this endpoint are rate limited using the options */
+	rateLimit?: RateLimit;
 }
 
 const RouteFactory =
@@ -25,7 +25,7 @@ const RouteFactory =
 			handlerName: String(handlerName),
 			usesTemplates: options.usesTemplates ?? false,
 			skipAuth: options.skipAuth ?? false,
-			rateLimit: options.rateLimit ?? false,
+			rateLimit: options.rateLimit,
 		});
 		Reflect.defineMetadata(CONTROLLER_ROUTES, routes, controllerClass);
 	};
