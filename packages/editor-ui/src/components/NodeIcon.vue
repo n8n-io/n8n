@@ -63,7 +63,7 @@ const iconType = computed(() => {
 
 	if (nodeType) {
 		if (nodeType.iconUrl) return 'file';
-		if ('iconData' in nodeType) {
+		if ('iconData' in nodeType && nodeType.iconData) {
 			return nodeType.iconData.type;
 		}
 		if (nodeType.icon) {
@@ -90,7 +90,7 @@ const iconSource = computed<NodeIconSource>(() => {
 
 	if (nodeType) {
 		// If node type has icon data, use it
-		if ('iconData' in nodeType) {
+		if ('iconData' in nodeType && nodeType.iconData) {
 			return {
 				icon: nodeType.iconData.icon,
 				fileBuffer: nodeType.iconData.fileBuffer,
