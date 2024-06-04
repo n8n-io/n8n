@@ -316,19 +316,24 @@ async function onAddNodes(
 ) {
 	let currentPosition = position;
 	for (const { type, name, position: nodePosition, isAutoAdd, openDetail } of nodes) {
-		const _node = await onNodeCreate(
-			{
-				name,
-				type,
-				position: nodePosition ?? currentPosition,
-			},
-			{
-				dragAndDrop,
-				openNDV: openDetail ?? false,
-				trackHistory: true,
-				isAutoAdd,
-			},
-		);
+		try {
+			await onNodeCreate(
+				{
+					name,
+					type,
+					position: nodePosition ?? currentPosition,
+				},
+				{
+					dragAndDrop,
+					openNDV: openDetail ?? false,
+					trackHistory: true,
+					isAutoAdd,
+				},
+			);
+		} catch (error) {
+			toast.showError(error, i18n.baseText('error'));
+			continue;
+		}
 
 		const lastAddedNode = editableWorkflow.value.nodes[editableWorkflow.value.nodes.length - 1];
 		currentPosition = [
@@ -382,17 +387,14 @@ type AddNodeOptions = {
 	isAutoAdd?: boolean;
 };
 
-async function onNodeCreate(
-	node: AddNodeData,
-	_options: AddNodeOptions = {},
-): Promise<INodeUi | undefined> {
+async function onNodeCreate(node: AddNodeData, _options: AddNodeOptions = {}): Promise<INodeUi> {
 	if (!checkIfEditingIsAllowed()) {
-		return;
+		throw new Error(i18n.baseText('nodeViewV2.showError.editingNotAllowed'));
 	}
 
 	const newNodeData = await createNodeWithDefaultCredentials(node);
 	if (!newNodeData) {
-		return;
+		throw new Error(i18n.baseText('nodeViewV2.showError.failedToCreateNode'));
 	}
 
 	/**

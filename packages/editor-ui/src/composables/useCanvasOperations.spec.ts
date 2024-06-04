@@ -164,7 +164,7 @@ describe('useCanvasOperations', () => {
 			expect(uiStore.stateIsDirty).toBe(false);
 		});
 
-		// @TODO Implement once the checkIfNodeConnectionIsAllowed method is implemented
+		// @TODO Implement once the isConnectionAllowed method is implemented
 		it.skip('should not create a connection if connection is not allowed', () => {
 			const addConnectionSpy = vi
 				.spyOn(workflowsStore, 'addConnection')

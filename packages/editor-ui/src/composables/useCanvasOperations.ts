@@ -107,7 +107,7 @@ export function useCanvasOperations() {
 	function createConnection(connection: Connection) {
 		const sourceNode = workflowsStore.getNodeById(connection.source);
 		const targetNode = workflowsStore.getNodeById(connection.target);
-		if (!sourceNode || !targetNode || !checkIfNodeConnectionIsAllowed(sourceNode, targetNode)) {
+		if (!sourceNode || !targetNode || !isConnectionAllowed(sourceNode, targetNode)) {
 			return;
 		}
 
@@ -163,7 +163,7 @@ export function useCanvasOperations() {
 	}
 
 	// @TODO Figure out a way to improve this
-	function checkIfNodeConnectionIsAllowed(_sourceNode: INodeUi, _targetNode: INodeUi): boolean {
+	function isConnectionAllowed(sourceNode: INodeUi, targetNode: INodeUi): boolean {
 		// const targetNodeType = nodeTypesStore.getNodeType(
 		// 	targetNode.type,
 		// 	targetNode.typeVersion,
@@ -199,7 +199,7 @@ export function useCanvasOperations() {
 		// 		}
 		// 	}
 		// }
-		return true;
+		return sourceNode.id !== targetNode.id;
 	}
 
 	return {
@@ -210,6 +210,6 @@ export function useCanvasOperations() {
 		createConnection,
 		deleteConnection,
 		revertDeleteConnection,
-		checkIfNodeConnectionIsAllowed,
+		isConnectionAllowed,
 	};
 }

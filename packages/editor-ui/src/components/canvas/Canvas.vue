@@ -1,13 +1,13 @@
 <script lang="ts" setup>
 import type { CanvasConnection, CanvasElement } from '@/types';
-import type { NodeDragEvent, Connection } from '@vue-flow/core';
+import { NodeDragEvent, Connection, useVueFlow } from '@vue-flow/core';
 import { VueFlow, PanelPosition } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
 import { MiniMap } from '@vue-flow/minimap';
 import CanvasNode from './elements/nodes/CanvasNode.vue';
 import CanvasEdge from './elements/edges/CanvasEdge.vue';
-import { useCssModule } from 'vue';
+import { onMounted, onUnmounted, useCssModule } from 'vue';
 
 const $style = useCssModule();
 
@@ -19,7 +19,7 @@ const emit = defineEmits<{
 	'create:connection': [connection: Connection];
 }>();
 
-withDefaults(
+const props = withDefaults(
 	defineProps<{
 		id?: string;
 		elements: CanvasElement[];
@@ -33,6 +33,16 @@ withDefaults(
 		controlsPosition: PanelPosition.BottomLeft,
 	},
 );
+
+const { getSelectedEdges, getSelectedNodes } = useVueFlow({ id: props.id });
+
+onMounted(() => {
+	document.addEventListener('keydown', onKeyDown);
+});
+
+onUnmounted(() => {
+	document.removeEventListener('keydown', onKeyDown);
+});
 
 function onNodeDragStop(e: NodeDragEvent) {
 	e.nodes.forEach((node) => {
@@ -50,6 +60,13 @@ function onDeleteConnection(connection: Connection) {
 
 function onConnect(...args: unknown[]) {
 	emit('create:connection', args[0] as Connection);
+}
+
+function onKeyDown(e: KeyboardEvent) {
+	if (e.key === 'Delete') {
+		getSelectedEdges.value.forEach(onDeleteConnection);
+		getSelectedNodes.value.forEach(({ id }) => onDeleteNode(id));
+	}
 }
 </script>
 

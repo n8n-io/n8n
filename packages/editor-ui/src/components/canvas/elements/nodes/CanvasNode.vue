@@ -97,20 +97,10 @@ provide(CanvasNodeKey, {
 function onDelete() {
 	emit('delete', props.id);
 }
-
-function onKeyDown(e: KeyboardEvent) {
-	if (!selected.value) {
-		return;
-	}
-
-	if (e.key === 'Delete') {
-		onDelete();
-	}
-}
 </script>
 
 <template>
-	<div :class="$style.canvasNode" data-test-id="canvas-node" tabindex="1" @keydown="onKeyDown">
+	<div :class="$style.canvasNode" data-test-id="canvas-node">
 		<template v-for="source in outputsWithPosition" :key="`${source.type}/${source.index}`">
 			<HandleRenderer
 				mode="output"
