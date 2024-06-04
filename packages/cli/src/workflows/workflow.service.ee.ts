@@ -1,6 +1,6 @@
 import { Service } from 'typedi';
 import omit from 'lodash/omit';
-import { ApplicationError, NodeOperationError } from 'n8n-workflow';
+import { ApplicationError, NodeOperationError, WorkflowActivationError } from 'n8n-workflow';
 
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { User } from '@db/entities/User';
@@ -20,6 +20,10 @@ import type {
 import { OwnershipService } from '@/services/ownership.service';
 import { In, type EntityManager } from '@n8n/typeorm';
 import { Project } from '@/databases/entities/Project';
+import { ProjectService } from '@/services/project.service';
+import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
+import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
+import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
 
 @Service()
 export class EnterpriseWorkflowService {
@@ -30,6 +34,8 @@ export class EnterpriseWorkflowService {
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly credentialsService: CredentialsService,
 		private readonly ownershipService: OwnershipService,
+		private readonly projectService: ProjectService,
+		private readonly activeWorkflowManager: ActiveWorkflowManager,
 	) {}
 
 	async shareWithProjects(
@@ -234,5 +240,101 @@ export class EnterpriseWorkflowService {
 				(nodeCredId) => nodeCredId && !userCredIds.includes(nodeCredId),
 			);
 		});
+	}
+
+	async transferOne(user: User, workflowId: string, destinationProjectId: string) {
+		// 1. get workflow
+		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, user, [
+			'workflow:move',
+		]);
+		NotFoundError.isDefinedAndNotNull(
+			workflow,
+			`Could not find workflow with the id "${workflowId}". Make sure you have the permission to move it.`,
+		);
+
+		// 2. get owner-sharing
+		const ownerSharing = workflow.shared.find((s) => s.role === 'workflow:owner')!;
+		NotFoundError.isDefinedAndNotNull(
+			ownerSharing,
+			`Could not find owner for workflow "${workflow.id}"`,
+		);
+
+		// 3. get source project
+		const sourceProject = ownerSharing.project;
+
+		// 4. get destination project
+		const destinationProject = await this.projectService.getProjectWithScope(
+			user,
+			destinationProjectId,
+			['workflow:create'],
+		);
+		NotFoundError.isDefinedAndNotNull(
+			destinationProject,
+			`Could not find project with the id "${destinationProjectId}". Make sure you have the permission to create workflows in it.`,
+		);
+
+		// 5. checks
+		if (sourceProject.id === destinationProject.id) {
+			throw new TransferWorkflowError(
+				"You can't transfer a workflow into the project that's already owning it.",
+			);
+		}
+		if (sourceProject.type !== 'team' && sourceProject.type !== 'personal') {
+			throw new TransferWorkflowError(
+				'You can only transfer workflows out of personal or team projects.',
+			);
+		}
+		if (destinationProject.type !== 'team') {
+			throw new TransferWorkflowError('You can only transfer workflows into team projects.');
+		}
+
+		// 6. deactivate workflow if necessary
+		const wasActive = workflow.active;
+		if (wasActive) {
+			await this.activeWorkflowManager.remove(workflowId);
+		}
+
+		// 7. transfer the workflow
+		await this.workflowRepository.manager.transaction(async (trx) => {
+			// remove all sharings
+			await trx.remove(workflow.shared);
+
+			// create new owner-sharing
+			await trx.save(
+				trx.create(SharedWorkflow, {
+					workflowId: workflow.id,
+					projectId: destinationProject.id,
+					role: 'workflow:owner',
+				}),
+			);
+		});
+
+		// 8. try to activate it again if it was active
+		if (wasActive) {
+			try {
+				await this.activeWorkflowManager.add(workflowId, 'update');
+
+				return;
+			} catch (error) {
+				await this.workflowRepository.updateActiveState(workflowId, false);
+
+				// Since the transfer worked we return a 200 but also return the
+				// activation error as data.
+				if (error instanceof WorkflowActivationError) {
+					return {
+						error: error.toJSON
+							? error.toJSON()
+							: {
+									name: error.name,
+									message: error.message,
+								},
+					};
+				}
+
+				throw error;
+			}
+		}
+
+		return;
 	}
 }

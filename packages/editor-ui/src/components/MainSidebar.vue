@@ -67,8 +67,8 @@
 						>
 							<div :class="{ [$style.avatar]: true, ['clickable']: isCollapsed }">
 								<n8n-avatar
-									:first-name="usersStore.currentUser.firstName"
-									:last-name="usersStore.currentUser.lastName"
+									:first-name="usersStore.currentUser?.firstName"
+									:last-name="usersStore.currentUser?.lastName"
 									size="small"
 								/>
 							</div>
@@ -88,7 +88,7 @@
 						:class="{ ['ml-2xs']: true, [$style.userName]: true, [$style.expanded]: fullyExpanded }"
 					>
 						<n8n-text size="small" :bold="true" color="text-dark">{{
-							usersStore.currentUser.fullName
+							usersStore.currentUser?.fullName
 						}}</n8n-text>
 					</div>
 					<div :class="{ [$style.userActions]: true, [$style.expanded]: fullyExpanded }">
@@ -142,7 +142,7 @@ export default defineComponent({
 		ProjectNavigation,
 	},
 	mixins: [userHelpers],
-	setup(props, ctx) {
+	setup() {
 		const externalHooks = useExternalHooks();
 		const { callDebounced } = useDebounce();
 
@@ -435,11 +435,11 @@ export default defineComponent({
 		findFirstAccessibleSettingsRoute() {
 			const settingsRoutes = this.$router
 				.getRoutes()
-				.find((route) => route.path === '/settings')!
-				.children.map((route) => route.name ?? '');
+				.find((route) => route.path === '/settings')
+				?.children.map((route) => route.name ?? '');
 
 			let defaultSettingsRoute = { name: VIEWS.USERS_SETTINGS };
-			for (const route of settingsRoutes) {
+			for (const route of settingsRoutes ?? []) {
 				if (this.canUserAccessRouteByName(route.toString())) {
 					defaultSettingsRoute = {
 						name: route.toString() as VIEWS,

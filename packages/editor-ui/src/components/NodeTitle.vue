@@ -48,7 +48,7 @@ import { computed, nextTick, ref } from 'vue';
 
 type Props = {
 	modelValue: string;
-	nodeType?: INodeTypeDescription;
+	nodeType?: INodeTypeDescription | null;
 	readOnly?: boolean;
 };
 

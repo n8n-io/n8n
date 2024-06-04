@@ -85,6 +85,7 @@
 				<template #output>
 					<OutputPanel
 						data-test-id="output-panel"
+						:workflow="workflow"
 						:can-link-runs="canLinkRuns"
 						:run-index="outputRun"
 						:linked-runs="linked"
@@ -113,6 +114,7 @@
 						:read-only="readOnly"
 						:block-u-i="blockUi && showTriggerPanel"
 						:executable="!readOnly"
+						:input-size="inputSize"
 						@value-changed="valueChanged"
 						@execute="onNodeExecute"
 						@stop-execution="onStopExecution"
@@ -311,6 +313,8 @@ export default defineComponent({
 			}
 			return null;
 		});
+
+		const inputSize = computed(() => ndvStore.ndvInputDataWithPinnedData.length);
 
 		const isTriggerNode = computed(
 			() =>
@@ -847,6 +851,7 @@ export default defineComponent({
 			inputRun,
 			linked,
 			inputNodeName,
+			inputSize,
 			hasForeignCredential,
 			outputRun,
 			isOutputPaneActive,

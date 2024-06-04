@@ -3,8 +3,8 @@ import { MAIN_HEADER_TABS } from '@/constants';
 import { render } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { useHistoryHelper } from '../useHistoryHelper';
-import { defineComponent } from 'vue';
-import type { Route } from 'vue-router';
+import { defineComponent, type PropType } from 'vue';
+import type { RouteLocationNormalizedLoaded } from 'vue-router';
 
 const undoMock = vi.fn();
 const redoMock = vi.fn();
@@ -37,11 +37,12 @@ vi.mock('vue-router', () => ({
 const TestComponent = defineComponent({
 	props: {
 		route: {
-			type: Object,
+			type: Object as PropType<RouteLocationNormalizedLoaded>,
+			required: true,
 		},
 	},
 	setup(props) {
-		useHistoryHelper(props.route as Route);
+		useHistoryHelper(props.route);
 
 		return {};
 	},

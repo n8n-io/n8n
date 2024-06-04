@@ -16,6 +16,7 @@ import { NodeConnectionType } from 'n8n-workflow';
 import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 import { EVENT_CONNECTION_MOUSEOUT, EVENT_CONNECTION_MOUSEOVER } from '@jsplumb/browser-ui';
 import { useUIStore } from '@/stores/ui.store';
+import type { StyleValue } from 'vue';
 
 /*
 	Canvas constants and functions.
@@ -609,7 +610,7 @@ export const getBackgroundStyles = (
 	scale: number,
 	offsetPosition: XYPosition,
 	executionPreview: boolean,
-) => {
+): StyleValue => {
 	const squareSize = GRID_SIZE * scale;
 	const dotSize = 1 * scale;
 	const dotPosition = (GRID_SIZE / 2) * scale;
@@ -623,7 +624,7 @@ export const getBackgroundStyles = (
 		};
 	}
 
-	const styles: object = {
+	const styles: StyleValue = {
 		'background-size': `${squareSize}px ${squareSize}px`,
 		'background-position': `left ${offsetPosition[0]}px top ${offsetPosition[1]}px`,
 	};

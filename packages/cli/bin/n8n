@@ -35,9 +35,6 @@ if (
 	process.exit(1);
 }
 
-// Prevent oclif from loading ts-node and typescript
-process.env.OCLIF_TS_NODE = '0';
-
 // Disable nodejs custom inspection across the app
 const { inspect } = require('util');
 inspect.defaultOptions.customInspect = false;
@@ -52,5 +49,5 @@ if (process.env.NODEJS_PREFER_IPV4 === 'true') {
 
 (async () => {
 	const oclif = await import('@oclif/core');
-	await oclif.execute({});
+	await oclif.execute({ dir: __dirname });
 })();

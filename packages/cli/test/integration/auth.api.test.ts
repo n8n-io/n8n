@@ -1,16 +1,18 @@
-import type { SuperAgentTest } from 'supertest';
 import { Container } from 'typedi';
 import validator from 'validator';
+
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import type { User } from '@db/entities/User';
+import { UserRepository } from '@db/repositories/user.repository';
+import { MfaService } from '@/Mfa/mfa.service';
+
 import { LOGGED_OUT_RESPONSE_BODY } from './shared/constants';
 import { randomValidPassword } from './shared/random';
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
 import { createUser, createUserShell } from './shared/db/users';
-import { UserRepository } from '@db/repositories/user.repository';
-import { MfaService } from '@/Mfa/mfa.service';
+import type { SuperAgentTest } from './shared/types';
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;

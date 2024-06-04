@@ -77,7 +77,7 @@ export class MemoryManager implements INodeType {
 		codex: {
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Miscellaneous'],
+				AI: ['Miscellaneous', 'Root Nodes'],
 			},
 			resources: {
 				primaryDocumentation: [

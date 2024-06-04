@@ -54,7 +54,6 @@ import type {
 } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import type { MessageBoxInputData } from 'element-plus';
 import type { BaseTextKey } from '../../plugins/i18n';
 
 const props = defineProps<{
@@ -385,7 +384,7 @@ async function handleFileImport(): Promise<void> {
 	}
 }
 
-async function onWorkflowMenuSelect(action: string): Promise<void> {
+async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void> {
 	switch (action) {
 		case WORKFLOW_MENU_ACTIONS.DUPLICATE: {
 			uiStore.openModalWithData({
@@ -427,7 +426,7 @@ async function onWorkflowMenuSelect(action: string): Promise<void> {
 		}
 		case WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL: {
 			try {
-				const promptResponse = (await message.prompt(
+				const promptResponse = await message.prompt(
 					locale.baseText('mainSidebar.prompt.workflowUrl') + ':',
 					locale.baseText('mainSidebar.prompt.importWorkflowFromUrl') + ':',
 					{
@@ -436,9 +435,9 @@ async function onWorkflowMenuSelect(action: string): Promise<void> {
 						inputErrorMessage: locale.baseText('mainSidebar.prompt.invalidUrl'),
 						inputPattern: /^http[s]?:\/\/.*\.json$/i,
 					},
-				)) as MessageBoxInputData;
+				);
 
-				if ((promptResponse as unknown as string) === 'cancel') {
+				if (promptResponse.action === 'cancel') {
 					return;
 				}
 
@@ -519,7 +518,7 @@ async function onWorkflowMenuSelect(action: string): Promise<void> {
 				type: 'success',
 			});
 
-			await router.push({ name: VIEWS.NEW_WORKFLOW });
+			await router.push({ name: VIEWS.WORKFLOWS });
 			break;
 		}
 		default:

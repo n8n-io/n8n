@@ -49,72 +49,56 @@
 				@click:tag="onClickTag"
 			/>
 		</template>
-		<template #postListContent>
-			<SuggestedTemplatesSection
-				v-for="(section, key) in suggestedTemplates?.sections"
-				:key="key"
-				:section="section"
-				:title="
-					$locale.baseText('suggestedTemplates.sectionTitle', {
-						interpolate: { sectionName: section.name.toLocaleLowerCase() },
-					})
-				"
-			/>
-		</template>
 		<template #empty>
-			<SuggestedTemplatesPage v-if="suggestedTemplates" />
-			<div v-else>
-				<div class="text-center mt-s">
-					<n8n-heading tag="h2" size="xlarge" class="mb-2xs">
-						{{
-							$locale.baseText(
-								currentUser.firstName
-									? 'workflows.empty.heading'
-									: 'workflows.empty.heading.userNotSetup',
-								{ interpolate: { name: currentUser.firstName } },
-							)
-						}}
-					</n8n-heading>
-					<n8n-text size="large" color="text-base">
-						{{
-							$locale.baseText(
-								readOnlyEnv
-									? 'workflows.empty.description.readOnlyEnv'
-									: 'workflows.empty.description',
-							)
-						}}
-					</n8n-text>
-				</div>
-				<div v-if="!readOnlyEnv" :class="['text-center', 'mt-2xl', $style.actionsContainer]">
-					<a
-						v-if="isSalesUser"
-						:href="getTemplateRepositoryURL()"
-						:class="$style.emptyStateCard"
-						target="_blank"
-					>
-						<n8n-card
-							hoverable
-							data-test-id="browse-sales-templates-card"
-							@click="trackCategoryLinkClick('Sales')"
-						>
-							<n8n-icon :class="$style.emptyStateCardIcon" icon="box-open" />
-							<n8n-text size="large" class="mt-xs" color="text-base">
-								{{ $locale.baseText('workflows.empty.browseTemplates') }}
-							</n8n-text>
-						</n8n-card>
-					</a>
+			<div class="text-center mt-s">
+				<n8n-heading tag="h2" size="xlarge" class="mb-2xs">
+					{{
+						currentUser.firstName
+							? $locale.baseText('workflows.empty.heading', {
+									interpolate: { name: currentUser.firstName },
+								})
+							: $locale.baseText('workflows.empty.heading.userNotSetup')
+					}}
+				</n8n-heading>
+				<n8n-text size="large" color="text-base">
+					{{
+						$locale.baseText(
+							readOnlyEnv
+								? 'workflows.empty.description.readOnlyEnv'
+								: 'workflows.empty.description',
+						)
+					}}
+				</n8n-text>
+			</div>
+			<div v-if="!readOnlyEnv" :class="['text-center', 'mt-2xl', $style.actionsContainer]">
+				<a
+					v-if="isSalesUser"
+					:href="getTemplateRepositoryURL()"
+					:class="$style.emptyStateCard"
+					target="_blank"
+				>
 					<n8n-card
-						:class="$style.emptyStateCard"
 						hoverable
-						data-test-id="new-workflow-card"
-						@click="addWorkflow"
+						data-test-id="browse-sales-templates-card"
+						@click="trackCategoryLinkClick('Sales')"
 					>
-						<n8n-icon :class="$style.emptyStateCardIcon" icon="file" />
+						<n8n-icon :class="$style.emptyStateCardIcon" icon="box-open" />
 						<n8n-text size="large" class="mt-xs" color="text-base">
-							{{ $locale.baseText('workflows.empty.startFromScratch') }}
+							{{ $locale.baseText('workflows.empty.browseTemplates') }}
 						</n8n-text>
 					</n8n-card>
-				</div>
+				</a>
+				<n8n-card
+					:class="$style.emptyStateCard"
+					hoverable
+					data-test-id="new-workflow-card"
+					@click="addWorkflow"
+				>
+					<n8n-icon :class="$style.emptyStateCardIcon" icon="file" />
+					<n8n-text size="large" class="mt-xs" color="text-base">
+						{{ $locale.baseText('workflows.empty.startFromScratch') }}
+					</n8n-text>
+				</n8n-card>
 			</div>
 		</template>
 		<template #filters="{ setKeyValue }">
@@ -167,8 +151,6 @@ import WorkflowCard from '@/components/WorkflowCard.vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 import type { ITag, IUser, IWorkflowDb } from '@/Interface';
 import TagsDropdown from '@/components/TagsDropdown.vue';
-import SuggestedTemplatesPage from '@/components/SuggestedTemplates/SuggestedTemplatesPage.vue';
-import SuggestedTemplatesSection from '@/components/SuggestedTemplates/SuggestedTemplatesSection.vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -178,13 +160,13 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import ProjectTabs from '@/features/projects/components/ProjectTabs.vue';
+import { useTemplatesStore } from '@/stores/templates.store';
 
 type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
 
 interface Filters {
 	search: string;
-	ownedBy: string;
-	sharedWith: string;
+	homeProject: string;
 	status: string | boolean;
 	tags: string[];
 }
@@ -201,8 +183,6 @@ const WorkflowsView = defineComponent({
 		ResourcesListLayout,
 		WorkflowCard,
 		TagsDropdown,
-		SuggestedTemplatesPage,
-		SuggestedTemplatesSection,
 		ProjectTabs,
 	},
 	data() {
@@ -210,9 +190,9 @@ const WorkflowsView = defineComponent({
 			filters: {
 				search: '',
 				homeProject: '',
-				status: StatusFilter.ALL as string | boolean,
-				tags: [] as string[],
-			},
+				status: StatusFilter.ALL,
+				tags: [],
+			} as Filters,
 			sourceControlStoreUnsubscribe: () => {},
 		};
 	},
@@ -225,6 +205,7 @@ const WorkflowsView = defineComponent({
 			useSourceControlStore,
 			useTagsStore,
 			useProjectsStore,
+			useTemplatesStore,
 		),
 		readOnlyEnv(): boolean {
 			return this.sourceControlStore.preferences.branchReadOnly;
@@ -254,14 +235,19 @@ const WorkflowsView = defineComponent({
 				},
 			];
 		},
-		suggestedTemplates() {
-			return this.uiStore.suggestedTemplates;
-		},
 		userRole() {
-			const userRole: string | undefined =
-				this.usersStore.currentUserCloudInfo?.role ??
-				this.usersStore.currentUser?.personalizationAnswers?.role;
-			return userRole;
+			const role = this.usersStore.currentUserCloudInfo?.role;
+
+			if (role) {
+				return role;
+			}
+
+			const answers = this.usersStore.currentUser?.personalizationAnswers;
+			if (answers && 'role' in answers) {
+				return answers.role;
+			}
+
+			return undefined;
 		},
 		isSalesUser() {
 			if (!this.userRole) {
@@ -338,7 +324,7 @@ const WorkflowsView = defineComponent({
 				this.workflowsStore.fetchActiveWorkflows(),
 			]);
 		},
-		onClickTag(tagId: string, event: PointerEvent) {
+		onClickTag(tagId: string) {
 			if (!this.filters.tags.includes(tagId)) {
 				this.filters.tags.push(tagId);
 			}

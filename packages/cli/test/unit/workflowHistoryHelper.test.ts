@@ -3,11 +3,10 @@ import config from '@/config';
 import { getWorkflowHistoryPruneTime } from '@/workflows/workflowHistory/workflowHistoryHelper.ee';
 import { mockInstance } from '../shared/mocking';
 
-let licenseMock: License;
 let licensePruneTime = -1;
 
 beforeAll(async () => {
-	licenseMock = mockInstance(License, {
+	mockInstance(License, {
 		getWorkflowHistoryPruneLimit() {
 			return licensePruneTime;
 		},

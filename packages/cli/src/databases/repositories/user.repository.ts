@@ -6,6 +6,7 @@ import type { ListQuery } from '@/requests';
 import { type GlobalRole, User } from '../entities/User';
 import { Project } from '../entities/Project';
 import { ProjectRelation } from '../entities/ProjectRelation';
+
 @Service()
 export class UserRepository extends Repository<User> {
 	constructor(dataSource: DataSource) {

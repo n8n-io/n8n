@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "1.43.0",
+  "version": "1.44.0",
   "description": "",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -146,7 +146,7 @@
     "@langchain/pinecone": "0.0.6",
     "@langchain/redis": "0.0.5",
     "@langchain/textsplitters": "0.0.2",
-    "@n8n/typeorm": "0.3.20-9",
+    "@n8n/typeorm": "0.3.20-10",
     "@n8n/vm2": "3.9.20",
     "@pinecone-database/pinecone": "2.2.1",
     "@qdrant/js-client-rest": "1.9.0",

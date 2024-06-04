@@ -198,8 +198,9 @@ export default defineComponent({
 
 		setTimeout(() => {
 			// Check if there is scroll position saved in route and scroll to it
-			if (this.$route.meta && this.$route.meta.scrollOffset > 0) {
-				this.scrollTo(this.$route.meta.scrollOffset, 'auto');
+			const scrollOffset = this.$route.meta?.scrollOffset;
+			if (typeof scrollOffset === 'number' && scrollOffset > 0) {
+				this.scrollTo(scrollOffset, 'auto');
 			}
 		}, 100);
 	},

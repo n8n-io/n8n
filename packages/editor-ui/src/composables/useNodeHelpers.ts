@@ -77,10 +77,14 @@ export function useNodeHelpers() {
 
 		if (!isObject(parameters)) return false;
 
-		const { resource, operation } = parameters;
-		if (!isString(resource) || !isString(operation)) return false;
+		if ('resource' in parameters && 'operation' in parameters) {
+			const { resource, operation } = parameters;
+			if (!isString(resource) || !isString(operation)) return false;
 
-		return resource.includes(CUSTOM_API_CALL_KEY) || operation.includes(CUSTOM_API_CALL_KEY);
+			return resource.includes(CUSTOM_API_CALL_KEY) || operation.includes(CUSTOM_API_CALL_KEY);
+		}
+
+		return false;
 	}
 
 	function getParameterValue(nodeValues: INodeParameters, parameterName: string, path: string) {
@@ -520,7 +524,7 @@ export function useNodeHelpers() {
 			workflowsStore.setNodeIssue({
 				node: node.name,
 				type: 'credentials',
-				value: issues === null ? null : issues.credentials,
+				value: issues?.credentials ?? null,
 			});
 		}
 	}
@@ -712,12 +716,12 @@ export function useNodeHelpers() {
 
 		const allNodeConnections = workflowsStore.outgoingConnectionsByNodeName(sourceNode.name);
 
-		const connectionType = Object.keys(allNodeConnections)[0];
+		const connectionType = Object.keys(allNodeConnections)[0] as NodeConnectionType;
 		const nodeConnections = allNodeConnections[connectionType];
 		const outputMap = NodeViewUtils.getOutputSummary(
 			data,
 			nodeConnections || [],
-			(connectionType as ConnectionTypes) ?? NodeConnectionType.Main,
+			connectionType ?? NodeConnectionType.Main,
 		);
 		const sourceNodeType = nodeTypesStore.getNodeType(sourceNode.type, sourceNode.typeVersion);
 
@@ -732,7 +736,7 @@ export function useNodeHelpers() {
 								parseInt(sourceOutputIndex, 10),
 								targetNode,
 								parseInt(targetInputIndex, 10),
-								connectionType as ConnectionTypes,
+								connectionType,
 								sourceNodeType,
 								canvasStore.jsPlumbInstance,
 							);
