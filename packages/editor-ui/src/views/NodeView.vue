@@ -5213,8 +5213,8 @@ export default defineComponent({
 .node-view-background {
 	background-color: var(--color-canvas-background);
 	position: absolute;
-	width: 10000px;
-	height: 10000px;
+	width: 100vw;
+	height: 100vh;
 	z-index: -2;
 }
 
