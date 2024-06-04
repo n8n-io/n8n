@@ -1149,6 +1149,7 @@
 	"nodeSettings.onError.options.stopWorkflow.description": "Halt execution and fail workflow",
 	"nodeSettings.onError.options.stopWorkflow.displayName": "Stop Workflow",
 	"nodeSettings.docs": "Docs",
+	"nodeSettings.executeButtonTooltip.times": "Will execute {inputSize} times, once for each input item",
 	"nodeSettings.executeOnce.description": "If active, the node executes only once, with data from the first item it receives",
 	"nodeSettings.executeOnce.displayName": "Execute Once",
 	"nodeSettings.maxTries.description": "Number of times to attempt to execute the node before failing the execution",
