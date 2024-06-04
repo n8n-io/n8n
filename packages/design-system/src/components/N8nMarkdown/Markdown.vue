@@ -340,6 +340,11 @@ input[type='checkbox'] + label {
 			font-weight: var(--font-weight-regular);
 			line-height: var(--font-line-height-regular);
 		}
+
+		&:has(input[type='checkbox']) {
+			list-style-type: none;
+			padding-left: var(--spacing-5xs);
+		}
 	}
 
 	code {

@@ -21,18 +21,13 @@
 			@resize="onResize"
 			@resizestart="onResizeStart"
 		>
-			<div
-				v-show="!editMode"
-				ref="markdownContainer"
-				:class="$style.wrapper"
-				@dblclick.stop="onDoubleClick"
-			>
+			<div v-show="!editMode" :class="$style.wrapper" @dblclick.stop="onDoubleClick">
 				<N8nMarkdown
 					theme="sticky"
 					:content="modelValue"
 					:with-multi-breaks="true"
 					@markdown-click="onMarkdownClick"
-					@update-content="$emit('update:modelValue', $event)"
+					@update-content="onUpdateModelValue"
 				/>
 			</div>
 			<div
