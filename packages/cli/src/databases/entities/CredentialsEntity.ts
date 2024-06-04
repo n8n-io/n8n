@@ -1,8 +1,7 @@
-import type { ICredentialNodeAccess } from 'n8n-workflow';
 import { Column, Entity, Index, OneToMany } from '@n8n/typeorm';
-import { IsArray, IsObject, IsString, Length } from 'class-validator';
+import { IsObject, IsString, Length } from 'class-validator';
 import type { SharedCredentials } from './SharedCredentials';
-import { WithTimestampsAndStringId, jsonColumnType } from './AbstractEntity';
+import { WithTimestampsAndStringId } from './AbstractEntity';
 import type { ICredentialsDb } from '@/Interfaces';
 
 @Entity()
@@ -27,8 +26,4 @@ export class CredentialsEntity extends WithTimestampsAndStringId implements ICre
 
 	@OneToMany('SharedCredentials', 'credentials')
 	shared: SharedCredentials[];
-
-	@Column(jsonColumnType)
-	@IsArray()
-	nodesAccess: ICredentialNodeAccess[];
 }

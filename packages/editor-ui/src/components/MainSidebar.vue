@@ -20,6 +20,10 @@
 				<div :class="$style.logo">
 					<img :src="logoPath" data-test-id="n8n-logo" :class="$style.icon" alt="n8n" />
 				</div>
+				<ProjectNavigation
+					:collapsed="isCollapsed"
+					:plan-name="cloudPlanStore.currentPlanData?.displayName"
+				/>
 			</template>
 
 			<template #beforeLowerMenu>
@@ -63,8 +67,8 @@
 						>
 							<div :class="{ [$style.avatar]: true, ['clickable']: isCollapsed }">
 								<n8n-avatar
-									:first-name="usersStore.currentUser.firstName"
-									:last-name="usersStore.currentUser.lastName"
+									:first-name="usersStore.currentUser?.firstName"
+									:last-name="usersStore.currentUser?.lastName"
 									size="small"
 								/>
 							</div>
@@ -84,7 +88,7 @@
 						:class="{ ['ml-2xs']: true, [$style.userName]: true, [$style.expanded]: fullyExpanded }"
 					>
 						<n8n-text size="small" :bold="true" color="text-dark">{{
-							usersStore.currentUser.fullName
+							usersStore.currentUser?.fullName
 						}}</n8n-text>
 					</div>
 					<div :class="{ [$style.userActions]: true, [$style.expanded]: fullyExpanded }">
@@ -119,13 +123,14 @@ import { useUsersStore } from '@/stores/users.store';
 import { useVersionsStore } from '@/stores/versions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useTemplatesStore } from '@/stores/templates.store';
-import ExecutionsUsage from '@/components/ExecutionsUsage.vue';
+import ExecutionsUsage from '@/components/executions/ExecutionsUsage.vue';
 import BecomeTemplateCreatorCta from '@/components/BecomeTemplateCreatorCta/BecomeTemplateCreatorCta.vue';
 import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
 import { hasPermission } from '@/rbac/permissions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useDebounce } from '@/composables/useDebounce';
 import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
+import ProjectNavigation from '@/features/projects/components/ProjectNavigation.vue';
 
 export default defineComponent({
 	name: 'MainSidebar',
@@ -134,9 +139,10 @@ export default defineComponent({
 		ExecutionsUsage,
 		MainSidebarSourceControl,
 		BecomeTemplateCreatorCta,
+		ProjectNavigation,
 	},
 	mixins: [userHelpers],
-	setup(props, ctx) {
+	setup() {
 		const externalHooks = useExternalHooks();
 		const { callDebounced } = useDebounce();
 
@@ -205,31 +211,21 @@ export default defineComponent({
 		mainMenuItems(): IMenuItem[] {
 			const items: IMenuItem[] = [];
 
-			const workflows: IMenuItem = {
-				id: 'workflows',
-				icon: 'network-wired',
-				label: this.$locale.baseText('mainSidebar.workflows'),
-				position: 'top',
-				route: { to: { name: VIEWS.WORKFLOWS } },
-				secondaryIcon: this.sourceControlStore.preferences.branchReadOnly
-					? {
-							name: 'lock',
-							tooltip: {
-								content: this.$locale.baseText('mainSidebar.workflows.readOnlyEnv.tooltip'),
-							},
-					  }
-					: undefined,
-			};
-
 			const defaultSettingsRoute = this.findFirstAccessibleSettingsRoute();
 			const regularItems: IMenuItem[] = [
-				workflows,
+				{
+					id: 'cloud-admin',
+					position: 'bottom',
+					label: 'Admin Panel',
+					icon: 'cloud',
+					available: this.settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
+				},
 				{
 					// Link to in-app templates, available if custom templates are enabled
 					id: 'templates',
 					icon: 'box-open',
 					label: this.$locale.baseText('mainSidebar.templates'),
-					position: 'top',
+					position: 'bottom',
 					available:
 						this.settingsStore.isTemplatesEnabled && this.templatesStore.hasCustomTemplatesHost,
 					route: { to: { name: VIEWS.TEMPLATES } },
@@ -239,43 +235,28 @@ export default defineComponent({
 					id: 'templates',
 					icon: 'box-open',
 					label: this.$locale.baseText('mainSidebar.templates'),
-					position: 'top',
+					position: 'bottom',
 					available:
 						this.settingsStore.isTemplatesEnabled && !this.templatesStore.hasCustomTemplatesHost,
 					link: {
-						href: this.templatesStore.getWebsiteTemplateRepositoryURL,
+						href: this.templatesStore.websiteTemplateRepositoryURL,
 						target: '_blank',
 					},
-				},
-				{
-					id: 'credentials',
-					icon: 'key',
-					label: this.$locale.baseText('mainSidebar.credentials'),
-					customIconSize: 'medium',
-					position: 'top',
-					route: { to: { name: VIEWS.CREDENTIALS } },
 				},
 				{
 					id: 'variables',
 					icon: 'variable',
 					label: this.$locale.baseText('mainSidebar.variables'),
 					customIconSize: 'medium',
-					position: 'top',
+					position: 'bottom',
 					route: { to: { name: VIEWS.VARIABLES } },
 				},
 				{
 					id: 'executions',
 					icon: 'tasks',
 					label: this.$locale.baseText('mainSidebar.executions'),
-					position: 'top',
-					route: { to: { name: VIEWS.EXECUTIONS } },
-				},
-				{
-					id: 'cloud-admin',
 					position: 'bottom',
-					label: 'Admin Panel',
-					icon: 'home',
-					available: this.settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
+					route: { to: { name: VIEWS.EXECUTIONS } },
 				},
 				{
 					id: 'settings',
@@ -454,11 +435,11 @@ export default defineComponent({
 		findFirstAccessibleSettingsRoute() {
 			const settingsRoutes = this.$router
 				.getRoutes()
-				.find((route) => route.path === '/settings')!
-				.children.map((route) => route.name ?? '');
+				.find((route) => route.path === '/settings')
+				?.children.map((route) => route.name ?? '');
 
 			let defaultSettingsRoute = { name: VIEWS.USERS_SETTINGS };
-			for (const route of settingsRoutes) {
+			for (const route of settingsRoutes ?? []) {
 				if (this.canUserAccessRouteByName(route.toString())) {
 					defaultSettingsRoute = {
 						name: route.toString() as VIEWS,

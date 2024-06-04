@@ -3,8 +3,8 @@
 		<TagsTableHeader
 			:search="search"
 			:disabled="isHeaderDisabled()"
-			@searchChange="onSearchChange"
-			@createEnable="onCreateEnable"
+			@search-change="onSearchChange"
+			@create-enable="onCreateEnable"
 		/>
 		<TagsTable
 			ref="tagsTable"
@@ -13,11 +13,11 @@
 			:is-saving="isSaving"
 			:new-name="newName"
 			data-test-id="tags-table"
-			@newNameChange="onNewNameChange"
-			@updateEnable="onUpdateEnable"
-			@deleteEnable="onDeleteEnable"
-			@cancelOperation="cancelOperation"
-			@applyOperation="applyOperation"
+			@new-name-change="onNewNameChange"
+			@update-enable="onUpdateEnable"
+			@delete-enable="onDeleteEnable"
+			@cancel-operation="cancelOperation"
+			@apply-operation="applyOperation"
 		/>
 	</div>
 </template>
@@ -38,7 +38,22 @@ const matches = (name: string, filter: string) =>
 export default defineComponent({
 	name: 'TagsView',
 	components: { TagsTableHeader, TagsTable },
-	props: ['tags', 'isLoading'],
+	props: {
+		tags: {
+			type: Array as () => ITag[],
+			required: true,
+		},
+		isLoading: {
+			type: Boolean,
+			required: true,
+		},
+	},
+	emits: {
+		update: null,
+		delete: null,
+		create: null,
+		disableCreate: null,
+	},
 	data() {
 		return {
 			createEnabled: false,
@@ -61,11 +76,11 @@ export default defineComponent({
 					? this.$locale.baseText('tagsView.inUse', { adjustToNumber: count })
 					: this.$locale.baseText('tagsView.notBeingUsed');
 
-			const disabled = this.isCreateEnabled || this.updateId || this.deleteId;
-			const tagRows = (this.tags || [])
-				.filter((tag: ITag) => this.stickyIds.has(tag.id) || matches(tag.name, this.search))
+			const disabled = this.isCreateEnabled || !!this.updateId || !!this.deleteId;
+			const tagRows = (this.tags ?? [])
+				.filter((tag) => this.stickyIds.has(tag.id) || matches(tag.name, this.search))
 				.map(
-					(tag: ITag): ITagRow => ({
+					(tag): ITagRow => ({
 						tag,
 						usage: getUsage(tag.usageCount),
 						disable: disabled && tag.id !== this.deleteId && tag.id !== this.updateId,
@@ -140,7 +155,7 @@ export default defineComponent({
 		createTag(): void {
 			this.isSaving = true;
 			const name = this.newName.trim();
-			const onCreate = (created: ITag | null, error?: Error) => {
+			const onCreate = (created: ITag | null) => {
 				if (created) {
 					this.stickyIds.add(created.id);
 					this.disableCreate();

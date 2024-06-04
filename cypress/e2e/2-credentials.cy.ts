@@ -42,39 +42,6 @@ describe('Credentials', () => {
 		credentialsPage.getters.credentialCards().should('have.length', 1);
 	});
 
-	it.skip('should create a new credential using Add Credential button', () => {
-		credentialsPage.getters.createCredentialButton().click();
-
-		credentialsModal.getters.newCredentialModal().should('be.visible');
-		credentialsModal.getters.newCredentialTypeSelect().should('be.visible');
-		credentialsModal.getters.newCredentialTypeOption('Airtable API').click();
-
-		credentialsModal.getters.newCredentialTypeButton().click();
-		credentialsModal.getters.editCredentialModal().should('be.visible');
-		credentialsModal.getters.connectionParameter('API Key').type('1234567890');
-
-		credentialsModal.actions.setName('Airtable Account');
-		credentialsModal.actions.save();
-		credentialsModal.actions.close();
-
-		credentialsPage.getters.credentialCards().should('have.length', 2);
-	});
-
-	it.skip('should search credentials', () => {
-		// Search by name
-		credentialsPage.actions.search('Notion');
-		credentialsPage.getters.credentialCards().should('have.length', 1);
-
-		// Search by Credential type
-		credentialsPage.actions.search('Airtable API');
-		credentialsPage.getters.credentialCards().should('have.length', 1);
-
-		// No results
-		credentialsPage.actions.search('Google');
-		credentialsPage.getters.credentialCards().should('have.length', 0);
-		credentialsPage.getters.emptyList().should('be.visible');
-	});
-
 	it('should sort credentials', () => {
 		credentialsPage.actions.search('');
 		credentialsPage.actions.sortBy('nameDesc');
@@ -235,5 +202,31 @@ describe('Credentials', () => {
 			.nodeCredentialsSelect()
 			.find('input')
 			.should('have.value', NEW_QUERY_AUTH_ACCOUNT_NAME);
+	});
+
+	it('should not show OAuth redirect URL section when OAuth2 credentials are overridden', () => {
+		cy.intercept('/types/credentials.json', { middleware: true }, (req) => {
+			req.headers['cache-control'] = 'no-cache, no-store';
+
+			req.on('response', (res) => {
+				const credentials = res.body || [];
+
+				const index = credentials.findIndex((c) => c.name === 'slackOAuth2Api');
+
+				credentials[index] = {
+					...credentials[index],
+					__overwrittenProperties: ['clientId', 'clientSecret'],
+				};
+			});
+		});
+
+		workflowPage.actions.visit(true);
+		workflowPage.actions.addNodeToCanvas('Manual');
+		workflowPage.actions.addNodeToCanvas('Slack', true, true, 'Get a channel');
+		workflowPage.getters.nodeCredentialsSelect().should('exist');
+		workflowPage.getters.nodeCredentialsSelect().click();
+		getVisibleSelect().find('li').last().click();
+		credentialsModal.getters.credentialAuthTypeRadioButtons().first().click();
+		nodeDetailsView.getters.copyInput().should('not.exist');
 	});
 });

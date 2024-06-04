@@ -22,7 +22,7 @@ export class NDV extends BasePage {
 			this.getters.outputPanel().findChildByTestId('ndv-run-data-display-mode').first(),
 		pinDataButton: () => cy.getByTestId('ndv-pin-data'),
 		editPinnedDataButton: () => cy.getByTestId('ndv-edit-pinned-data'),
-		pinnedDataEditor: () => this.getters.outputPanel().find('.cm-editor .cm-scroller'),
+		pinnedDataEditor: () => this.getters.outputPanel().find('.cm-editor .cm-scroller .cm-content'),
 		runDataPaneHeader: () => cy.getByTestId('run-data-pane-header'),
 		nodeOutputHint: () => cy.getByTestId('ndv-output-run-node-hint'),
 		savePinnedDataButton: () =>
@@ -40,6 +40,12 @@ export class NDV extends BasePage {
 			this.getters.inputTableRow(row).find('td').eq(col),
 		inlineExpressionEditorInput: () => cy.getByTestId('inline-expression-editor-input'),
 		inlineExpressionEditorOutput: () => cy.getByTestId('inline-expression-editor-output'),
+		inlineExpressionEditorItemInput: () =>
+			cy.getByTestId('inline-expression-editor-item-input').find('input'),
+		inlineExpressionEditorItemPrevButton: () =>
+			cy.getByTestId('inline-expression-editor-item-prev'),
+		inlineExpressionEditorItemNextButton: () =>
+			cy.getByTestId('inline-expression-editor-item-next'),
 		nodeParameters: () => cy.getByTestId('node-parameters'),
 		parameterInput: (parameterName: string) => cy.getByTestId(`parameter-input-${parameterName}`),
 		parameterInputIssues: (parameterName: string) =>
@@ -57,7 +63,9 @@ export class NDV extends BasePage {
 		httpRequestNotice: () => cy.getByTestId('node-parameters-http-notice'),
 		nthParam: (n: number) => cy.getByTestId('node-parameters').find('.parameter-item').eq(n),
 		inputRunSelector: () => this.getters.inputPanel().findChildByTestId('run-selector'),
+		inputLinkRun: () => this.getters.inputPanel().findChildByTestId('link-run'),
 		outputRunSelector: () => this.getters.outputPanel().findChildByTestId('run-selector'),
+		outputLinkRun: () => this.getters.outputPanel().findChildByTestId('link-run'),
 		outputHoveringItem: () => this.getters.outputPanel().findChildByTestId('hovering-item'),
 		inputHoveringItem: () => this.getters.inputPanel().findChildByTestId('hovering-item'),
 		outputBranches: () => this.getters.outputPanel().findChildByTestId('branches'),
@@ -78,6 +86,7 @@ export class NDV extends BasePage {
 			cy.getByTestId('columns-parameter-input-options-container'),
 		resourceMapperRemoveAllFieldsOption: () => cy.getByTestId('action-removeAllFields'),
 		sqlEditorContainer: () => cy.getByTestId('sql-editor-container'),
+		htmlEditorContainer: () => cy.getByTestId('html-editor-container'),
 		filterComponent: (paramName: string) => cy.getByTestId(`filter-${paramName}`),
 		filterCombinator: (paramName: string, index = 0) =>
 			this.getters.filterComponent(paramName).getByTestId('filter-combinator-select').eq(index),
@@ -118,6 +127,8 @@ export class NDV extends BasePage {
 		codeEditorFullscreen: () => this.getters.codeEditorDialog().find('.cm-content'),
 		nodeRunSuccessIndicator: () => cy.getByTestId('node-run-info-success'),
 		nodeRunErrorIndicator: () => cy.getByTestId('node-run-info-danger'),
+		nodeRunErrorMessage: () => cy.getByTestId('node-error-message'),
+		nodeRunErrorDescription: () => cy.getByTestId('node-error-description'),
 	};
 
 	actions = {
@@ -152,6 +163,17 @@ export class NDV extends BasePage {
 						delay: 0,
 					},
 				);
+
+			this.actions.savePinnedData();
+		},
+		pastePinnedData: (data: object) => {
+			this.getters.editPinnedDataButton().click();
+
+			this.getters.pinnedDataEditor().click();
+			this.getters
+				.pinnedDataEditor()
+				.type('{selectall}{backspace}', { delay: 0 })
+				.paste(JSON.stringify(data));
 
 			this.actions.savePinnedData();
 		},
@@ -208,10 +230,10 @@ export class NDV extends BasePage {
 			getVisibleSelect().find('.el-select-dropdown__item').contains(runName).click();
 		},
 		toggleOutputRunLinking: () => {
-			this.getters.outputRunSelector().find('button').click();
+			this.getters.outputLinkRun().click();
 		},
 		toggleInputRunLinking: () => {
-			this.getters.inputRunSelector().find('button').click();
+			this.getters.inputLinkRun().click();
 		},
 		switchOutputBranch: (name: string) => {
 			this.getters.outputBranches().get('span').contains(name).click();
@@ -278,6 +300,15 @@ export class NDV extends BasePage {
 				.contains(new RegExp(`^${operation}$`))
 				.click({ force: true });
 			this.getters.parameterInput('operation').find('input').should('have.value', operation);
+		},
+		expressionSelectItem: (index: number) => {
+			this.getters.inlineExpressionEditorItemInput().type(`{selectall}${index}`);
+		},
+		expressionSelectNextItem: () => {
+			this.getters.inlineExpressionEditorItemNextButton().click();
+		},
+		expressionSelectPrevItem: () => {
+			this.getters.inlineExpressionEditorItemPrevButton().click();
 		},
 	};
 }

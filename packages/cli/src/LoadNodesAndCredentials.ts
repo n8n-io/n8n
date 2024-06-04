@@ -133,7 +133,7 @@ export class LoadNodesAndCredentials {
 			: [
 					...(await glob('n8n-nodes-*', globOptions)),
 					...(await glob('@*/n8n-nodes-*', { ...globOptions, deep: 2 })),
-			  ];
+				];
 
 		for (const packagePath of installedPackagePaths) {
 			try {

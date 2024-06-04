@@ -9,8 +9,9 @@ import {
 } from 'n8n-workflow';
 
 import { ChatAnthropic } from '@langchain/anthropic';
-import { logWrapper } from '../../../utils/logWrapper';
+import type { LLMResult } from '@langchain/core/outputs';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 
 const modelField: INodeProperties = {
 	displayName: 'Model',
@@ -166,6 +167,17 @@ export class LmChatAnthropic implements INodeType {
 			topP: number;
 		};
 
+		const tokensUsageParser = (llmOutput: LLMResult['llmOutput']) => {
+			const usage = (llmOutput?.usage as { input_tokens: number; output_tokens: number }) ?? {
+				input_tokens: 0,
+				output_tokens: 0,
+			};
+			return {
+				completionTokens: usage.output_tokens,
+				promptTokens: usage.input_tokens,
+				totalTokens: usage.input_tokens + usage.output_tokens,
+			};
+		};
 		const model = new ChatAnthropic({
 			anthropicApiKey: credentials.apiKey as string,
 			modelName,
@@ -173,10 +185,11 @@ export class LmChatAnthropic implements INodeType {
 			temperature: options.temperature,
 			topK: options.topK,
 			topP: options.topP,
+			callbacks: [new N8nLlmTracing(this, { tokensUsageParser })],
 		});
 
 		return {
-			response: logWrapper(model, this),
+			response: model,
 		};
 	}
 }

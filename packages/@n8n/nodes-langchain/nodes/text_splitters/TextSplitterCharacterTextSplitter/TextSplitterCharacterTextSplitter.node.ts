@@ -6,8 +6,8 @@ import {
 	type INodeTypeDescription,
 	type SupplyData,
 } from 'n8n-workflow';
-import type { CharacterTextSplitterParams } from 'langchain/text_splitter';
-import { CharacterTextSplitter } from 'langchain/text_splitter';
+import type { CharacterTextSplitterParams } from '@langchain/textsplitters';
+import { CharacterTextSplitter } from '@langchain/textsplitters';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 

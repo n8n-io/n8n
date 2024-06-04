@@ -64,11 +64,11 @@ dependencies are installed and the packages get linked correctly. Here's a short
 
 #### Node.js
 
-[Node.js](https://nodejs.org/en/) version 16.9 or newer is required for development purposes.
+[Node.js](https://nodejs.org/en/) version 18.10 or newer is required for development purposes.
 
 #### pnpm
 
-[pnpm](https://pnpm.io/) version 8.9 or newer is required for development purposes. We recommend installing it with [corepack](#corepack).
+[pnpm](https://pnpm.io/) version 9.1 or newer is required for development purposes. We recommend installing it with [corepack](#corepack).
 
 ##### pnpm workspaces
 

@@ -65,20 +65,17 @@ async function createApiRouter(
 			operationHandlers: handlersDirectory,
 			validateRequests: true,
 			validateApiSpec: true,
-			formats: [
-				{
-					name: 'email',
+			formats: {
+				email: {
 					type: 'string',
 					validate: (email: string) => validator.isEmail(email),
 				},
-				{
-					name: 'identifier',
+				identifier: {
 					type: 'string',
 					validate: (identifier: string) =>
 						validator.isUUID(identifier) || validator.isEmail(identifier),
 				},
-				{
-					name: 'jsonString',
+				jsonString: {
 					validate: (data: string) => {
 						try {
 							JSON.parse(data);
@@ -88,7 +85,7 @@ async function createApiRouter(
 						}
 					},
 				},
-			],
+			},
 			validateSecurity: {
 				handlers: {
 					ApiKeyAuth: async (
@@ -156,11 +153,6 @@ export const loadPublicApiVersions = async (
 	};
 };
 
-function isApiEnabledByLicense(): boolean {
-	const license = Container.get(License);
-	return !license.isAPIDisabled();
-}
-
 export function isApiEnabled(): boolean {
-	return !config.get('publicApi.disabled') && isApiEnabledByLicense();
+	return !config.get('publicApi.disabled') && !Container.get(License).isAPIDisabled();
 }

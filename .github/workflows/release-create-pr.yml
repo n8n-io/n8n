@@ -36,9 +36,9 @@ jobs:
           ref: ${{ github.event.inputs.base-branch }}
 
       - run: corepack enable
-      - uses: actions/setup-node@v4.0.1
+      - uses: actions/setup-node@v4.0.2
         with:
-          node-version: 18.x
+          node-version: 20.x
 
       - run: npm install --prefix=.github/scripts --no-package-lock
 

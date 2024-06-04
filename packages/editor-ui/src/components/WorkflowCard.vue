@@ -8,7 +8,8 @@
 		<div :class="$style.cardDescription">
 			<n8n-text color="text-light" size="small">
 				<span v-show="data"
-					>{{ $locale.baseText('workflows.item.updated') }} <TimeAgo :date="data.updatedAt" /> |
+					>{{ $locale.baseText('workflows.item.updated') }}
+					<TimeAgo :date="String(data.updatedAt)" /> |
 				</span>
 				<span v-show="data" class="mr-2xs"
 					>{{ $locale.baseText('workflows.item.created') }} {{ formattedCreatedAtDate }}
@@ -30,12 +31,7 @@
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
-				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
-					<n8n-badge v-if="workflowPermissions.isOwner" class="mr-xs" theme="tertiary" bold>
-						{{ $locale.baseText('workflows.item.owner') }}
-					</n8n-badge>
-				</enterprise-edition>
-
+				<ProjectCardBadge :resource="data" :personal-project="projectsStore.personalProject" />
 				<WorkflowActivator
 					class="mr-s"
 					:workflow-active="data.active"
@@ -56,17 +52,13 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import type { IWorkflowDb, IUser, ITag } from '@/Interface';
-import {
-	DUPLICATE_MODAL_KEY,
-	EnterpriseEditionFeature,
-	MODAL_CONFIRM,
-	VIEWS,
-	WORKFLOW_SHARE_MODAL_KEY,
-} from '@/constants';
+import type { PropType } from 'vue';
+import type { IWorkflowDb, IUser } from '@/Interface';
+import { DUPLICATE_MODAL_KEY, MODAL_CONFIRM, VIEWS, WORKFLOW_SHARE_MODAL_KEY } from '@/constants';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
-import type { IPermissions } from '@/permissions';
+import type { PermissionsMap } from '@/permissions';
+import type { WorkflowScope } from '@n8n/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import dateformat from 'dateformat';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
@@ -76,6 +68,9 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import TimeAgo from '@/components/TimeAgo.vue';
+import type { ProjectSharingData } from '@/features/projects/projects.types';
+import { useProjectsStore } from '@/features/projects/projects.store';
+import ProjectCardBadge from '@/features/projects/components/ProjectCardBadge.vue';
 
 export const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -88,10 +83,11 @@ export default defineComponent({
 	components: {
 		TimeAgo,
 		WorkflowActivator,
+		ProjectCardBadge,
 	},
 	props: {
 		data: {
-			type: Object,
+			type: Object as PropType<IWorkflowDb>,
 			required: true,
 			default: (): IWorkflowDb => ({
 				id: '',
@@ -101,8 +97,8 @@ export default defineComponent({
 				connections: {},
 				nodes: [],
 				name: '',
-				sharedWith: [],
-				ownedBy: {} as IUser,
+				sharedWithProjects: [],
+				homeProject: {} as ProjectSharingData,
 				versionId: '',
 			}),
 		},
@@ -117,18 +113,13 @@ export default defineComponent({
 			...useMessage(),
 		};
 	},
-	data() {
-		return {
-			EnterpriseEditionFeature,
-		};
-	},
 	computed: {
-		...mapStores(useSettingsStore, useUIStore, useUsersStore, useWorkflowsStore),
+		...mapStores(useSettingsStore, useUIStore, useUsersStore, useWorkflowsStore, useProjectsStore),
 		currentUser(): IUser {
 			return this.usersStore.currentUser || ({} as IUser);
 		},
-		workflowPermissions(): IPermissions {
-			return getWorkflowPermissions(this.currentUser, this.data);
+		workflowPermissions(): PermissionsMap<WorkflowScope> {
+			return getWorkflowPermissions(this.data);
 		},
 		actions(): Array<{ label: string; value: string }> {
 			const actions = [
@@ -159,11 +150,11 @@ export default defineComponent({
 			return actions;
 		},
 		formattedCreatedAtDate(): string {
-			const currentYear = new Date().getFullYear();
+			const currentYear = new Date().getFullYear().toString();
 
 			return dateformat(
 				this.data.createdAt,
-				`d mmmm${this.data.createdAt.startsWith(currentYear) ? '' : ', yyyy'}`,
+				`d mmmm${String(this.data.createdAt).startsWith(currentYear) ? '' : ', yyyy'}`,
 			);
 		},
 	},
@@ -201,7 +192,9 @@ export default defineComponent({
 					data: {
 						id: this.data.id,
 						name: this.data.name,
-						tags: (this.data.tags || []).map((tag: ITag) => tag.id),
+						tags: (this.data.tags ?? []).map((tag) =>
+							typeof tag !== 'string' && 'id' in tag ? tag.id : tag,
+						),
 					},
 				});
 			} else if (action === WORKFLOW_LIST_ITEM_ACTIONS.SHARE) {
@@ -213,7 +206,7 @@ export default defineComponent({
 				this.$telemetry.track('User opened sharing modal', {
 					workflow_id: this.data.id,
 					user_id_sharer: this.currentUser.id,
-					sub_view: this.$route.name === VIEWS.WORKFLOWS ? 'Workflows listing' : 'Workflow editor',
+					sub_view: 'Workflows listing',
 				});
 			} else if (action === WORKFLOW_LIST_ITEM_ACTIONS.DELETE) {
 				const deleteConfirmed = await this.confirm(
@@ -270,6 +263,10 @@ export default defineComponent({
 	font-size: var(--font-size-s);
 	word-break: break-word;
 	padding: var(--spacing-s) 0 0 var(--spacing-s);
+
+	span {
+		color: var(--color-text-light);
+	}
 }
 
 .cardDescription {

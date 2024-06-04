@@ -18,7 +18,7 @@
 			loading-text="..."
 			popper-class="tags-dropdown"
 			data-test-id="tags-dropdown"
-			@update:modelValue="onTagsUpdated"
+			@update:model-value="onTagsUpdated"
 			@visible-change="onVisibleChange"
 			@remove-tag="onRemoveTag"
 		>
@@ -96,7 +96,13 @@ export default defineComponent({
 		},
 		eventBus: {
 			type: Object as PropType<EventBus>,
+			default: null,
 		},
+	},
+	emits: {
+		'update:modelValue': null,
+		esc: null,
+		blur: null,
 	},
 	setup(props, { emit }) {
 		const i18n = useI18n();
@@ -119,14 +125,8 @@ export default defineComponent({
 			return tagsStore.allTags;
 		});
 
-		const hasTags = computed<boolean>(() => {
-			return tagsStore.hasTags;
-		});
-
 		const options = computed<ITag[]>(() => {
-			return allTags.value.filter(
-				(tag: ITag) => tag && tag.name.toLowerCase().includes(filter.value.toLowerCase()),
-			);
+			return allTags.value.filter((tag: ITag) => tag && tag.name.includes(filter.value));
 		});
 
 		const appliedTags = computed<string[]>(() => {
@@ -144,7 +144,9 @@ export default defineComponent({
 		);
 
 		onMounted(() => {
-			const select = selectRef.value?.$refs?.innerSelect;
+			const select = selectRef.value?.$refs?.innerSelect as
+				| { $refs: { input: Element } }
+				| undefined;
 			if (select) {
 				const input = select.$refs.input as Element | undefined;
 				if (input) {
@@ -182,7 +184,7 @@ export default defineComponent({
 		}
 
 		function filterOptions(value = '') {
-			filter.value = value.trim();
+			filter.value = value;
 			void nextTick(() => focusFirstOption());
 		}
 
@@ -191,8 +193,6 @@ export default defineComponent({
 			try {
 				const newTag = await tagsStore.create(name);
 				emit('update:modelValue', [...props.modelValue, newTag.id]);
-
-				void nextTick(() => focusOnTag(newTag.id));
 
 				filter.value = '';
 			} catch (error) {
@@ -235,13 +235,6 @@ export default defineComponent({
 			}
 		}
 
-		function focusOnTag(tagId: string) {
-			const tagOptions = tagRefs.value || [];
-			if (tagOptions && tagOptions.length) {
-				const added = tagOptions.find((ref) => ref.value === tagId);
-			}
-		}
-
 		function focusOnInput() {
 			if (selectRef.value) {
 				selectRef.value.focusOnInput();
@@ -269,8 +262,8 @@ export default defineComponent({
 			const tagsModal = document.querySelector('#tags-manager-modal');
 
 			const clickInsideTagsDropdowns =
-				tagsDropdown?.contains(e.target as Node) || tagsDropdown === e.target;
-			const clickInsideTagsModal = tagsModal?.contains(e.target as Node) || tagsModal === e.target;
+				tagsDropdown?.contains(e.target as Node) ?? tagsDropdown === e.target;
+			const clickInsideTagsModal = tagsModal?.contains(e.target as Node) ?? tagsModal === e.target;
 
 			if (!clickInsideTagsDropdowns && !clickInsideTagsModal && e.type === 'click') {
 				emit('blur');
@@ -320,7 +313,7 @@ export default defineComponent({
 	}
 
 	.el-tag {
-		padding: 1px var(--spacing-4xs);
+		padding: var(--spacing-5xs) var(--spacing-4xs);
 		color: var(--color-text-dark);
 		background-color: var(--color-background-base);
 		border-radius: var(--border-radius-base);

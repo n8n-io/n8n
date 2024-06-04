@@ -12,7 +12,7 @@ import { jsonParse } from 'n8n-workflow';
 
 import config from '@/config';
 import { ActiveExecutions } from '@/ActiveExecutions';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import { Server } from '@/Server';
 import { EDITOR_UI_DIST_DIR, LICENSE_FEATURES } from '@/constants';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
@@ -57,7 +57,7 @@ export class Start extends BaseCommand {
 		}),
 	};
 
-	protected activeWorkflowRunner: ActiveWorkflowRunner;
+	protected activeWorkflowManager: ActiveWorkflowManager;
 
 	protected server = Container.get(Server);
 
@@ -76,7 +76,7 @@ export class Start extends BaseCommand {
 		const editorUrl = Container.get(UrlService).baseUrl;
 
 		open(editorUrl, { wait: true }).catch(() => {
-			console.log(
+			this.logger.info(
 				`\nWas not able to open URL in browser. Please open manually by visiting:\n${editorUrl}\n`,
 			);
 		});
@@ -92,14 +92,14 @@ export class Start extends BaseCommand {
 
 		try {
 			// Stop with trying to activate workflows that could not be activated
-			this.activeWorkflowRunner.removeAllQueuedWorkflowActivations();
+			this.activeWorkflowManager.removeAllQueuedWorkflowActivations();
 
-			Container.get(WaitTracker).shutdown();
+			Container.get(WaitTracker).stopTracking();
 
 			await this.externalHooks?.run('n8n.stop', []);
 
 			if (Container.get(OrchestrationService).isMultiMainSetupEnabled) {
-				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
+				await this.activeWorkflowManager.removeAllTriggerAndPollerBasedWorkflows();
 
 				await Container.get(OrchestrationService).shutdown();
 			}
@@ -141,6 +141,7 @@ export class Start extends BaseCommand {
 					createReadStream(filePath, 'utf-8'),
 					replaceStream('/{{BASE_PATH}}/', n8nPath, { ignoreCase: false }),
 					replaceStream('/%7B%7BBASE_PATH%7D%7D/', n8nPath, { ignoreCase: false }),
+					replaceStream('/%257B%257BBASE_PATH%257D%257D/', n8nPath, { ignoreCase: false }),
 					replaceStream('/static/', n8nPath + 'static/', { ignoreCase: false }),
 				];
 				if (filePath.endsWith('index.html')) {
@@ -171,12 +172,14 @@ export class Start extends BaseCommand {
 		}
 
 		await super.init();
-		this.activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
+		this.activeWorkflowManager = Container.get(ActiveWorkflowManager);
 
 		await this.initLicense();
 
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
+		Container.get(WaitTracker).init();
+		this.logger.debug('Wait tracker init complete');
 		await this.initBinaryDataService();
 		this.logger.debug('Binary data service init complete');
 		await this.initExternalHooks();
@@ -211,10 +214,12 @@ export class Start extends BaseCommand {
 
 		orchestrationService.multiMainSetup
 			.on('leader-stepdown', async () => {
-				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
+				await this.license.reinit(); // to disable renewal
+				await this.activeWorkflowManager.removeAllTriggerAndPollerBasedWorkflows();
 			})
 			.on('leader-takeover', async () => {
-				await this.activeWorkflowRunner.addAllTriggerAndPollerBasedWorkflows();
+				await this.license.reinit(); // to enable renewal
+				await this.activeWorkflowManager.addAllTriggerAndPollerBasedWorkflows();
 			});
 	}
 
@@ -284,7 +289,7 @@ export class Start extends BaseCommand {
 		await this.initPruning();
 
 		// Start to get active workflows and run their triggers
-		await this.activeWorkflowRunner.init();
+		await this.activeWorkflowManager.init();
 
 		const editorUrl = Container.get(UrlService).baseUrl;
 		this.log(`\nEditor is now accessible via:\n${editorUrl}`);
@@ -339,7 +344,7 @@ export class Start extends BaseCommand {
 	}
 
 	async catch(error: Error) {
-		console.log(error.stack);
+		if (error.stack) this.logger.error(error.stack);
 		await this.exitWithCrash('Exiting due to an error.', error);
 	}
 }

@@ -2,11 +2,12 @@ import type Bull from 'bull';
 import { Service } from 'typedi';
 import {
 	ApplicationError,
+	BINARY_ENCODING,
+	type IDataObject,
 	type ExecutionError,
 	type IExecuteResponsePromiseData,
 } from 'n8n-workflow';
 import { ActiveExecutions } from '@/ActiveExecutions';
-import { decodeWebhookResponse } from '@/helpers/decodeWebhookResponse';
 
 import {
 	getRedisClusterClient,
@@ -65,12 +66,27 @@ export class Queue {
 					: getRedisStandardClient(Redis, clientConfig, (type + '(bull)') as RedisClientType),
 		});
 
-		this.jobQueue.on('global:progress', (jobId, progress: WebhookResponse) => {
+		this.jobQueue.on('global:progress', (_jobId, progress: WebhookResponse) => {
 			this.activeExecutions.resolveResponsePromise(
 				progress.executionId,
-				decodeWebhookResponse(progress.response),
+				this.decodeWebhookResponse(progress.response),
 			);
 		});
+	}
+
+	decodeWebhookResponse(response: IExecuteResponsePromiseData): IExecuteResponsePromiseData {
+		if (
+			typeof response === 'object' &&
+			typeof response.body === 'object' &&
+			(response.body as IDataObject)['__@N8nEncodedBuffer@__']
+		) {
+			response.body = Buffer.from(
+				(response.body as IDataObject)['__@N8nEncodedBuffer@__'] as string,
+				BINARY_ENCODING,
+			);
+		}
+
+		return response;
 	}
 
 	async add(jobData: JobData, jobOptions: object): Promise<Job> {
@@ -93,8 +109,11 @@ export class Queue {
 		return await this.jobQueue.client.ping();
 	}
 
-	async pause(isLocal?: boolean): Promise<void> {
-		return await this.jobQueue.pause(isLocal);
+	async pause({
+		isLocal,
+		doNotWaitActive,
+	}: { isLocal?: boolean; doNotWaitActive?: boolean } = {}): Promise<void> {
+		return await this.jobQueue.pause(isLocal, doNotWaitActive);
 	}
 
 	getBullObjectInstance(): JobQueue {

@@ -34,9 +34,6 @@ export class ChatTrigger implements INodeType {
 					},
 				],
 			},
-			subcategories: {
-				'Core Nodes': ['Other Trigger Nodes'],
-			},
 		},
 		supportsCORS: true,
 		maxNodes: 1,

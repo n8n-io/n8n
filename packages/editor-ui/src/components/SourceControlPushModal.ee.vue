@@ -42,9 +42,9 @@ const files = ref<SourceControlAggregatedFile[]>(
 
 const commitMessage = ref('');
 const loading = ref(true);
-const context = ref<'workflow' | 'workflows' | 'credentials' | string>('');
+const context = ref<'workflow' | 'workflows' | 'credentials' | ''>('');
 
-const statusToBadgeThemeMap = {
+const statusToBadgeThemeMap: Record<string, string> = {
 	created: 'success',
 	deleted: 'danger',
 	modified: 'warning',
@@ -64,7 +64,7 @@ const workflowId = computed(() => {
 });
 
 const sortedFiles = computed(() => {
-	const statusPriority = {
+	const statusPriority: Record<string, number> = {
 		modified: 1,
 		renamed: 2,
 		created: 3,
@@ -86,7 +86,11 @@ const sortedFiles = computed(() => {
 			return 1;
 		}
 
-		return a.updatedAt < b.updatedAt ? 1 : a.updatedAt > b.updatedAt ? -1 : 0;
+		return (a.updatedAt ?? 0) < (b.updatedAt ?? 0)
+			? 1
+			: (a.updatedAt ?? 0) > (b.updatedAt ?? 0)
+				? -1
+				: 0;
 	});
 });
 
@@ -151,13 +155,18 @@ function getContext() {
 	return '';
 }
 
-function getStagedFilesByContext(files: SourceControlAggregatedFile[]): Record<string, boolean> {
-	const stagedFiles = files.reduce((acc, file) => {
-		acc[file.file] = false;
-		return acc;
-	}, {});
+function getStagedFilesByContext(
+	filesByContext: SourceControlAggregatedFile[],
+): Record<string, boolean> {
+	const stagedFiles = filesByContext.reduce(
+		(acc, file) => {
+			acc[file.file] = false;
+			return acc;
+		},
+		{} as Record<string, boolean>,
+	);
 
-	files.forEach((file) => {
+	filesByContext.forEach((file) => {
 		if (defaultStagedFileTypes.includes(file.type)) {
 			stagedFiles[file.file] = true;
 		}
@@ -184,13 +193,13 @@ function close() {
 }
 
 function renderUpdatedAt(file: SourceControlAggregatedFile) {
-	const currentYear = new Date().getFullYear();
+	const currentYear = new Date().getFullYear().toString();
 
 	return i18n.baseText('settings.sourceControl.lastUpdated', {
 		interpolate: {
 			date: dateformat(
 				file.updatedAt,
-				`d mmm${file.updatedAt.startsWith(currentYear) ? '' : ', yyyy'}`,
+				`d mmm${file.updatedAt?.startsWith(currentYear) ? '' : ', yyyy'}`,
 			),
 			time: dateformat(file.updatedAt, 'HH:MM'),
 		},
@@ -227,6 +236,22 @@ async function commitAndPush() {
 		loadingService.stopLoading();
 	}
 }
+
+function getStatusText(file: SourceControlAggregatedFile): string {
+	if (file.status === 'deleted') {
+		return i18n.baseText('settings.sourceControl.status.deleted');
+	}
+
+	if (file.status === 'created') {
+		return i18n.baseText('settings.sourceControl.status.created');
+	}
+
+	if (file.status === 'modified') {
+		return i18n.baseText('settings.sourceControl.status.modified');
+	}
+
+	return i18n.baseText('settings.sourceControl.status.renamed');
+}
 </script>
 
 <template>
@@ -252,7 +277,7 @@ async function commitAndPush() {
 							<n8n-checkbox
 								:indeterminate="selectAllIndeterminate"
 								:model-value="selectAll"
-								@update:modelValue="onToggleSelectAll"
+								@update:model-value="onToggleSelectAll"
 							>
 								<n8n-text bold tag="strong">
 									{{ i18n.baseText('settings.sourceControl.modals.push.workflowsToCommit') }}
@@ -273,7 +298,7 @@ async function commitAndPush() {
 								<n8n-checkbox
 									:model-value="staged[file.file]"
 									:class="$style.listItemCheckbox"
-									@update:modelValue="setStagedStatus(file, !staged[file.file])"
+									@update:model-value="setStagedStatus(file, !staged[file.file])"
 								/>
 								<div>
 									<n8n-text v-if="file.status === 'deleted'" color="text-light">
@@ -296,7 +321,7 @@ async function commitAndPush() {
 										Current workflow
 									</n8n-badge>
 									<n8n-badge :theme="statusToBadgeThemeMap[file.status] || 'default'">
-										{{ i18n.baseText(`settings.sourceControl.status.${file.status}`) }}
+										{{ getStatusText(file) }}
 									</n8n-badge>
 								</div>
 							</div>

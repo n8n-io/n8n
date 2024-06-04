@@ -9,7 +9,7 @@
 import type express from 'express';
 import { Container } from 'typedi';
 import get from 'lodash/get';
-import { pipeline } from 'stream/promises';
+import { finished } from 'stream/promises';
 import formidable from 'formidable';
 
 import { BinaryDataService, NodeExecuteFunctions } from 'n8n-core';
@@ -30,6 +30,7 @@ import type {
 	IWebhookResponseData,
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
+	WebhookResponseMode,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -55,8 +56,6 @@ import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { ActiveExecutions } from '@/ActiveExecutions';
-import type { User } from '@db/entities/User';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { EventsService } from '@/services/events.service';
 import { OwnershipService } from './services/ownership.service';
 import { parseBody } from './middlewares';
@@ -64,6 +63,7 @@ import { Logger } from './Logger';
 import { NotFoundError } from './errors/response-errors/not-found.error';
 import { InternalServerError } from './errors/response-errors/internal-server.error';
 import { UnprocessableRequestError } from './errors/response-errors/unprocessable.error';
+import type { Project } from './databases/entities/Project';
 
 export const WEBHOOK_METHODS: IHttpRequestMethods[] = [
 	'DELETE',
@@ -106,10 +106,22 @@ export const webhookRequestHandler =
 				const options = await webhookManager.findAccessControlOptions(path, requestedMethod);
 				const { allowedOrigins } = options ?? {};
 
-				res.header(
-					'Access-Control-Allow-Origin',
-					!allowedOrigins || allowedOrigins === '*' ? req.headers.origin : allowedOrigins,
-				);
+				if (allowedOrigins && allowedOrigins !== '*' && allowedOrigins !== req.headers.origin) {
+					const originsList = allowedOrigins.split(',');
+					const defaultOrigin = originsList[0];
+
+					if (originsList.length === 1) {
+						res.header('Access-Control-Allow-Origin', defaultOrigin);
+					}
+
+					if (originsList.includes(req.headers.origin as string)) {
+						res.header('Access-Control-Allow-Origin', req.headers.origin);
+					} else {
+						res.header('Access-Control-Allow-Origin', defaultOrigin);
+					}
+				} else {
+					res.header('Access-Control-Allow-Origin', req.headers.origin);
+				}
 
 				if (method === 'OPTIONS') {
 					res.header('Access-Control-Max-Age', '300');
@@ -205,13 +217,14 @@ const normalizeFormData = <T>(values: Record<string, T | T[]>) => {
 /**
  * Executes a webhook
  */
+// eslint-disable-next-line complexity
 export async function executeWebhook(
 	workflow: Workflow,
 	webhookData: IWebhookData,
 	workflowData: IWorkflowDb,
 	workflowStartNode: INode,
 	executionMode: WorkflowExecuteMode,
-	sessionId: string | undefined,
+	pushRef: string | undefined,
 	runExecutionData: IRunExecutionData | undefined,
 	executionId: string | undefined,
 	req: WebhookRequest,
@@ -234,22 +247,15 @@ export async function executeWebhook(
 		$executionId: executionId,
 	};
 
-	let user: User;
-	if (
-		(workflowData as WorkflowEntity).shared?.length &&
-		(workflowData as WorkflowEntity).shared[0].user
-	) {
-		user = (workflowData as WorkflowEntity).shared[0].user;
-	} else {
-		try {
-			user = await Container.get(OwnershipService).getWorkflowOwnerCached(workflowData.id);
-		} catch (error) {
-			throw new NotFoundError('Cannot find workflow');
-		}
+	let project: Project | undefined = undefined;
+	try {
+		project = await Container.get(OwnershipService).getWorkflowProjectCached(workflowData.id);
+	} catch (error) {
+		throw new NotFoundError('Cannot find workflow');
 	}
 
 	// Prepare everything that is needed to run the workflow
-	const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id);
+	const additionalData = await WorkflowExecuteAdditionalData.getBase();
 
 	// Get the responseMode
 	const responseMode = workflow.expression.getSimpleParameterValue(
@@ -259,17 +265,17 @@ export async function executeWebhook(
 		additionalKeys,
 		undefined,
 		'onReceived',
-	);
+	) as WebhookResponseMode;
 	const responseCode = workflow.expression.getSimpleParameterValue(
 		workflowStartNode,
-		webhookData.webhookDescription.responseCode,
+		webhookData.webhookDescription.responseCode as string,
 		executionMode,
 		additionalKeys,
 		undefined,
 		200,
 	) as number;
 
-	const responseData = workflow.expression.getSimpleParameterValue(
+	const responseData = workflow.expression.getComplexParameterValue(
 		workflowStartNode,
 		webhookData.webhookDescription.responseData,
 		executionMode,
@@ -278,7 +284,7 @@ export async function executeWebhook(
 		'firstEntryJson',
 	);
 
-	if (!['onReceived', 'lastNode', 'responseNode'].includes(responseMode as string)) {
+	if (!['onReceived', 'lastNode', 'responseNode'].includes(responseMode)) {
 		// If the mode is not known we error. Is probably best like that instead of using
 		// the default that people know as early as possible (probably already testing phase)
 		// that something does not resolve properly.
@@ -324,7 +330,7 @@ export async function executeWebhook(
 					// TODO: pass a custom `fileWriteStreamHandler` to create binary data files directly
 				});
 				req.body = await new Promise((resolve) => {
-					form.parse(req, async (err, data, files) => {
+					form.parse(req, async (_err, data, files) => {
 						normalizeFormData(data);
 						normalizeFormData(files);
 						resolve({ data, files });
@@ -455,6 +461,12 @@ export async function executeWebhook(
 				responseCallback(null, {
 					responseCode,
 				});
+			} else if (responseData) {
+				// Return the data specified in the response data option
+				responseCallback(null, {
+					data: responseData as IDataObject,
+					responseCode,
+				});
 			} else if (webhookResultData.webhookResponse !== undefined) {
 				// Data to respond with is given
 				responseCallback(null, {
@@ -523,10 +535,10 @@ export async function executeWebhook(
 		const runData: IWorkflowExecutionDataProcess = {
 			executionMode,
 			executionData: runExecutionData,
-			sessionId,
+			pushRef,
 			workflowData,
 			pinData,
-			userId: user.id,
+			projectId: project?.id,
 		};
 
 		let responsePromise: IDeferredPromise<IN8nHttpFullResponse> | undefined;
@@ -543,7 +555,8 @@ export async function executeWebhook(
 					if (binaryData?.id) {
 						res.header(response.headers);
 						const stream = await Container.get(BinaryDataService).getAsStream(binaryData.id);
-						await pipeline(stream, res);
+						stream.pipe(res, { end: false });
+						await finished(stream);
 						responseCallback(null, { noWebhookResponse: true });
 					} else if (Buffer.isBuffer(response.body)) {
 						res.header(response.headers);
@@ -576,6 +589,7 @@ export async function executeWebhook(
 						});
 					}
 
+					process.nextTick(() => res.end());
 					didSendResponse = true;
 				})
 				.catch(async (error) => {
@@ -607,6 +621,7 @@ export async function executeWebhook(
 				executionId,
 			) as Promise<IExecutionDb | undefined>;
 			executePromise
+				// eslint-disable-next-line complexity
 				.then(async (data) => {
 					if (data === undefined) {
 						if (!didSendResponse) {
@@ -639,17 +654,9 @@ export async function executeWebhook(
 						return data;
 					}
 
-					if (responseMode === 'responseNode') {
-						if (!didSendResponse) {
-							// Return an error if no Webhook-Response node did send any data
-							responseCallback(null, {
-								data: {
-									message: 'Workflow executed successfully',
-								},
-								responseCode,
-							});
-							didSendResponse = true;
-						}
+					// in `responseNode` mode `responseCallback` is called by `responsePromise`
+					if (responseMode === 'responseNode' && responsePromise) {
+						await Promise.allSettled([responsePromise.promise()]);
 						return undefined;
 					}
 
@@ -775,14 +782,16 @@ export async function executeWebhook(
 								res.setHeader('Content-Type', binaryData.mimeType);
 								if (binaryData.id) {
 									const stream = await Container.get(BinaryDataService).getAsStream(binaryData.id);
-									await pipeline(stream, res);
+									stream.pipe(res, { end: false });
+									await finished(stream);
 								} else {
-									res.end(Buffer.from(binaryData.data, BINARY_ENCODING));
+									res.write(Buffer.from(binaryData.data, BINARY_ENCODING));
 								}
 
 								responseCallback(null, {
 									noWebhookResponse: true,
 								});
+								process.nextTick(() => res.end());
 							}
 						} else if (responseData === 'noData') {
 							// Return without data
@@ -828,7 +837,7 @@ export async function executeWebhook(
 				: new ApplicationError('There was a problem executing the workflow', {
 						level: 'warning',
 						cause: e,
-				  });
+					});
 		if (didSendResponse) throw error;
 		responseCallback(error, {});
 		return;

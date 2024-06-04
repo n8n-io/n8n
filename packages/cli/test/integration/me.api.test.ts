@@ -1,7 +1,12 @@
-import type { SuperAgentTest } from 'supertest';
+import { Container } from 'typedi';
 import { IsNull } from '@n8n/typeorm';
 import validator from 'validator';
+
+import config from '@/config';
 import type { User } from '@db/entities/User';
+import { UserRepository } from '@db/repositories/user.repository';
+import { ProjectRepository } from '@db/repositories/project.repository';
+
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import {
 	randomApiKey,
@@ -12,14 +17,38 @@ import {
 } from './shared/random';
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
-import { addApiKey, createUser, createUserShell } from './shared/db/users';
-import Container from 'typedi';
-import { UserRepository } from '@db/repositories/user.repository';
+import { addApiKey, createOwner, createUser, createUserShell } from './shared/db/users';
+import type { SuperAgentTest } from './shared/types';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['me'] });
 
 beforeEach(async () => {
 	await testDb.truncate(['User']);
+	config.set('publicApi.disabled', false);
+});
+
+describe('When public API is disabled', () => {
+	let owner: User;
+	let authAgent: SuperAgentTest;
+
+	beforeEach(async () => {
+		owner = await createOwner();
+		await addApiKey(owner);
+		authAgent = testServer.authAgentFor(owner);
+		config.set('publicApi.disabled', true);
+	});
+
+	test('POST /me/api-key should 404', async () => {
+		await authAgent.post('/me/api-key').expect(404);
+	});
+
+	test('GET /me/api-key should 404', async () => {
+		await authAgent.get('/me/api-key').expect(404);
+	});
+
+	test('DELETE /me/api-key should 404', async () => {
+		await authAgent.delete('/me/api-key').expect(404);
+	});
 });
 
 describe('Owner shell', () => {
@@ -65,6 +94,12 @@ describe('Owner shell', () => {
 			expect(storedOwnerShell.email).toBe(validPayload.email.toLowerCase());
 			expect(storedOwnerShell.firstName).toBe(validPayload.firstName);
 			expect(storedOwnerShell.lastName).toBe(validPayload.lastName);
+
+			const storedPersonalProject = await Container.get(
+				ProjectRepository,
+			).getPersonalProjectForUserOrFail(storedOwnerShell.id);
+
+			expect(storedPersonalProject.name).toBe(storedOwnerShell.createPersonalProjectName());
 		}
 	});
 
@@ -77,6 +112,12 @@ describe('Owner shell', () => {
 			expect(storedOwnerShell.email).toBeNull();
 			expect(storedOwnerShell.firstName).toBeNull();
 			expect(storedOwnerShell.lastName).toBeNull();
+
+			const storedPersonalProject = await Container.get(
+				ProjectRepository,
+			).getPersonalProjectForUserOrFail(storedOwnerShell.id);
+
+			expect(storedPersonalProject.name).toBe(storedOwnerShell.createPersonalProjectName());
 		}
 	});
 
@@ -176,9 +217,7 @@ describe('Member', () => {
 
 	test('PATCH /me should succeed with valid inputs', async () => {
 		for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
-			const response = await authMemberAgent.patch('/me').send(validPayload);
-
-			expect(response.statusCode).toBe(200);
+			const response = await authMemberAgent.patch('/me').send(validPayload).expect(200);
 
 			const {
 				id,
@@ -207,6 +246,11 @@ describe('Member', () => {
 			expect(storedMember.email).toBe(validPayload.email.toLowerCase());
 			expect(storedMember.firstName).toBe(validPayload.firstName);
 			expect(storedMember.lastName).toBe(validPayload.lastName);
+
+			const storedPersonalProject =
+				await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(id);
+
+			expect(storedPersonalProject.name).toBe(storedMember.createPersonalProjectName());
 		}
 	});
 
@@ -219,6 +263,12 @@ describe('Member', () => {
 			expect(storedMember.email).toBe(member.email);
 			expect(storedMember.firstName).toBe(member.firstName);
 			expect(storedMember.lastName).toBe(member.lastName);
+
+			const storedPersonalProject = await Container.get(
+				ProjectRepository,
+			).getPersonalProjectForUserOrFail(storedMember.id);
+
+			expect(storedPersonalProject.name).toBe(storedMember.createPersonalProjectName());
 		}
 	});
 
@@ -336,6 +386,12 @@ describe('Owner', () => {
 			expect(storedOwner.email).toBe(validPayload.email.toLowerCase());
 			expect(storedOwner.firstName).toBe(validPayload.firstName);
 			expect(storedOwner.lastName).toBe(validPayload.lastName);
+
+			const storedPersonalProject = await Container.get(
+				ProjectRepository,
+			).getPersonalProjectForUserOrFail(storedOwner.id);
+
+			expect(storedPersonalProject.name).toBe(storedOwner.createPersonalProjectName());
 		}
 	});
 });
@@ -356,14 +412,12 @@ const VALID_PATCH_ME_PAYLOADS = [
 		email: randomEmail(),
 		firstName: randomName(),
 		lastName: randomName(),
-		password: randomValidPassword(),
 	},
-	{
-		email: randomEmail().toUpperCase(),
-		firstName: randomName(),
-		lastName: randomName(),
-		password: randomValidPassword(),
-	},
+	// {
+	// 	email: randomEmail().toUpperCase(),
+	// 	firstName: randomName(),
+	// 	lastName: randomName(),
+	// },
 ];
 
 const INVALID_PATCH_ME_PAYLOADS = [

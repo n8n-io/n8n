@@ -164,7 +164,9 @@ export class WorkflowDataProxy {
 		const that = this;
 		const node = this.workflow.nodes[nodeName];
 
-		return new Proxy(node.parameters, {
+		// `node` is `undefined` only in expressions in credentials
+
+		return new Proxy(node?.parameters ?? {}, {
 			has: () => true,
 			ownKeys(target) {
 				return Reflect.ownKeys(target);
@@ -738,6 +740,7 @@ export class WorkflowDataProxy {
 			});
 		};
 
+		// eslint-disable-next-line complexity
 		const getPairedItem = (
 			destinationNodeName: string,
 			incomingSourceData: ISourceData | null,
@@ -915,6 +918,7 @@ export class WorkflowDataProxy {
 					functionOverrides: {
 						message: 'Can’t get data',
 					},
+					nodeCause: sourceData.previousNode,
 					description: 'Item points to a node output which does not exist',
 					causeDetailed: `The sourceData points to a node output ‘${previousNodeOutput}‘ which does not exist on node ‘${sourceData.previousNode}‘ (output node did probably supply a wrong one)`,
 					type: 'paired_item_invalid_info',
@@ -991,6 +995,7 @@ export class WorkflowDataProxy {
 								// Before resolving the pairedItem make sure that the requested node comes in the
 								// graph before the current one
 								const activeNode = that.workflow.getNode(that.activeNodeName);
+
 								let contextNode = that.contextNodeName;
 								if (activeNode) {
 									const parentMainInputNode = that.workflow.getParentMainInputNode(activeNode);
@@ -1277,6 +1282,7 @@ export class WorkflowDataProxy {
 			$thisItem: that.connectionInputData[that.itemIndex],
 			$thisItemIndex: this.itemIndex,
 			$thisRunIndex: this.runIndex,
+			$nodeVersion: that.workflow.getNode(that.activeNodeName)?.typeVersion,
 		};
 
 		return new Proxy(base, {

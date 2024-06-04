@@ -23,6 +23,7 @@ import type { User } from '@db/entities/User';
 import { Logger } from '@/Logger';
 import { ApplicationError } from 'n8n-workflow';
 import { OwnershipService } from '@/services/ownership.service';
+import { SourceControlPreferencesService } from './sourceControlPreferences.service.ee';
 
 @Service()
 export class SourceControlGitService {
@@ -33,6 +34,7 @@ export class SourceControlGitService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly ownershipService: OwnershipService,
+		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
 	) {}
 
 	/**
@@ -66,12 +68,7 @@ export class SourceControlGitService {
 		sshFolder: string;
 		sshKeyName: string;
 	}): Promise<void> {
-		const {
-			sourceControlPreferences: sourceControlPreferences,
-			gitFolder,
-			sshKeyName,
-			sshFolder,
-		} = options;
+		const { sourceControlPreferences: sourceControlPreferences, gitFolder, sshFolder } = options;
 		this.logger.debug('GitService.init');
 		if (this.git !== null) {
 			return;
@@ -82,8 +79,30 @@ export class SourceControlGitService {
 
 		sourceControlFoldersExistCheck([gitFolder, sshFolder]);
 
+		await this.setGitSshCommand(gitFolder, sshFolder);
+
+		if (!(await this.checkRepositorySetup())) {
+			await (this.git as unknown as SimpleGit).init();
+		}
+		if (!(await this.hasRemote(sourceControlPreferences.repositoryUrl))) {
+			if (sourceControlPreferences.connected && sourceControlPreferences.repositoryUrl) {
+				const instanceOwner = await this.ownershipService.getInstanceOwner();
+				await this.initRepository(sourceControlPreferences, instanceOwner);
+			}
+		}
+	}
+
+	/**
+	 * Update the SSH command with the path to the temp file containing the private key from the DB.
+	 */
+	async setGitSshCommand(
+		gitFolder = this.sourceControlPreferencesService.gitFolder,
+		sshFolder = this.sourceControlPreferencesService.sshFolder,
+	) {
+		const privateKeyPath = await this.sourceControlPreferencesService.getPrivateKeyPath();
+
 		const sshKnownHosts = path.join(sshFolder, 'known_hosts');
-		const sshCommand = `ssh -o UserKnownHostsFile=${sshKnownHosts} -o StrictHostKeyChecking=no -i ${sshKeyName}`;
+		const sshCommand = `ssh -o UserKnownHostsFile=${sshKnownHosts} -o StrictHostKeyChecking=no -i ${privateKeyPath}`;
 
 		this.gitOptions = {
 			baseDir: gitFolder,
@@ -95,21 +114,8 @@ export class SourceControlGitService {
 		const { simpleGit } = await import('simple-git');
 
 		this.git = simpleGit(this.gitOptions)
-			// Tell git not to ask for any information via the terminal like for
-			// example the username. As nobody will be able to answer it would
-			// n8n keep on waiting forever.
 			.env('GIT_SSH_COMMAND', sshCommand)
 			.env('GIT_TERMINAL_PROMPT', '0');
-
-		if (!(await this.checkRepositorySetup())) {
-			await this.git.init();
-		}
-		if (!(await this.hasRemote(sourceControlPreferences.repositoryUrl))) {
-			if (sourceControlPreferences.connected && sourceControlPreferences.repositoryUrl) {
-				const instanceOwner = await this.ownershipService.getInstanceOwner();
-				await this.initRepository(sourceControlPreferences, instanceOwner);
-			}
-		}
 	}
 
 	resetService() {
@@ -170,6 +176,7 @@ export class SourceControlGitService {
 		}
 		try {
 			await this.git.addRemote(SOURCE_CONTROL_ORIGIN, sourceControlPreferences.repositoryUrl);
+			this.logger.debug(`Git remote added: ${sourceControlPreferences.repositoryUrl}`);
 		} catch (error) {
 			if ((error as Error).message.includes('remote origin already exists')) {
 				this.logger.debug(`Git remote already exists: ${(error as Error).message}`);
@@ -183,6 +190,9 @@ export class SourceControlGitService {
 				: SOURCE_CONTROL_DEFAULT_NAME,
 			user.email ?? SOURCE_CONTROL_DEFAULT_EMAIL,
 		);
+
+		await this.trackRemoteIfReady(sourceControlPreferences.branchName);
+
 		if (sourceControlPreferences.initRepo) {
 			try {
 				const branches = await this.getBranches();
@@ -192,6 +202,28 @@ export class SourceControlGitService {
 			} catch (error) {
 				this.logger.debug(`Git init: ${(error as Error).message}`);
 			}
+		}
+	}
+
+	/**
+	 * If this is a new local repository being set up after remote is ready,
+	 * then set this local to start tracking remote's target branch.
+	 */
+	private async trackRemoteIfReady(targetBranch: string) {
+		if (!this.git) return;
+
+		await this.fetch();
+
+		const { currentBranch, branches: remoteBranches } = await this.getBranches();
+
+		if (!currentBranch && remoteBranches.some((b) => b === targetBranch)) {
+			await this.git.checkout(targetBranch);
+
+			const upstream = [SOURCE_CONTROL_ORIGIN, targetBranch].join('/');
+
+			await this.git.branch([`--set-upstream-to=${upstream}`, targetBranch]);
+
+			this.logger.info('Set local git repository to track remote', { upstream });
 		}
 	}
 
@@ -274,6 +306,7 @@ export class SourceControlGitService {
 		if (!this.git) {
 			throw new ApplicationError('Git is not initialized (fetch)');
 		}
+		await this.setGitSshCommand();
 		return await this.git.fetch();
 	}
 
@@ -281,6 +314,7 @@ export class SourceControlGitService {
 		if (!this.git) {
 			throw new ApplicationError('Git is not initialized (pull)');
 		}
+		await this.setGitSshCommand();
 		const params = {};
 		if (options.ffOnly) {
 			// eslint-disable-next-line @typescript-eslint/naming-convention
@@ -299,6 +333,7 @@ export class SourceControlGitService {
 		if (!this.git) {
 			throw new ApplicationError('Git is not initialized ({)');
 		}
+		await this.setGitSshCommand();
 		if (force) {
 			return await this.git.push(SOURCE_CONTROL_ORIGIN, branch, ['-f']);
 		}

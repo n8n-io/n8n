@@ -1,11 +1,7 @@
-<template>
-	<div ref="root" :class="$style.editor" data-test-id="inline-expression-editor-input"></div>
-</template>
-
 <script setup lang="ts">
 import { startCompletion } from '@codemirror/autocomplete';
 import { history } from '@codemirror/commands';
-import { Prec } from '@codemirror/state';
+import { type EditorState, Prec, type SelectionRange } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, toValue, watch } from 'vue';
 
@@ -24,25 +20,27 @@ import { removeExpressionPrefix } from '@/utils/expressions';
 import { createEventBus, type EventBus } from 'n8n-design-system/utils';
 import type { IDataObject } from 'n8n-workflow';
 import { inputTheme } from './theme';
+import { infoBoxTooltips } from '@/plugins/codemirror/tooltips/InfoBoxTooltip';
 
 type Props = {
 	modelValue: string;
 	path: string;
 	rows?: number;
-	isReadonly?: boolean;
+	isReadOnly?: boolean;
 	additionalData?: IDataObject;
 	eventBus?: EventBus;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	rows: 5,
-	isReadonly: false,
+	isReadOnly: false,
 	additionalData: () => ({}),
 	eventBus: () => createEventBus(),
 });
 
 const emit = defineEmits<{
-	(event: 'change', value: { value: string; segments: Segment[] }): void;
+	(event: 'update:model-value', value: { value: string; segments: Segment[] }): void;
+	(event: 'update:selection', value: { state: EditorState; selection: SelectionRange }): void;
 	(event: 'focus'): void;
 }>();
 
@@ -59,11 +57,13 @@ const extensions = computed(() => [
 	history(),
 	expressionInputHandler(),
 	EditorView.lineWrapping,
+	infoBoxTooltips(),
 ]);
 const editorValue = ref<string>(removeExpressionPrefix(props.modelValue));
 const {
 	editor: editorRef,
 	segments,
+	selection,
 	readEditorValue,
 	setCursorPosition,
 	hasFocus,
@@ -72,29 +72,34 @@ const {
 	editorRef: root,
 	editorValue,
 	extensions,
-	isReadOnly: props.isReadonly,
+	isReadOnly: props.isReadOnly,
 	autocompleteTelemetry: { enabled: true, parameterPath: props.path },
 	additionalData: props.additionalData,
 });
 
 defineExpose({
 	focus: () => {
-		setCursorPosition('lastExpression');
-		focus();
+		if (!hasFocus.value) {
+			setCursorPosition('lastExpression');
+			focus();
+		}
 	},
 });
 
 async function onDrop() {
+	await nextTick();
+
 	const editor = toValue(editorRef);
 	if (!editor) return;
 
-	await nextTick();
 	focus();
 
 	setCursorPosition('lastExpression');
 
 	if (!ndvStore.isAutocompleteOnboarded) {
-		startCompletion(editor);
+		setTimeout(() => {
+			startCompletion(editor);
+		});
 	}
 }
 
@@ -106,10 +111,19 @@ watch(
 );
 
 watch(segments.display, (newSegments) => {
-	emit('change', {
+	emit('update:model-value', {
 		value: '=' + readEditorValue(),
 		segments: newSegments,
 	});
+});
+
+watch(selection, (newSelection: SelectionRange) => {
+	if (editorRef.value) {
+		emit('update:selection', {
+			state: editorRef.value.state,
+			selection: newSelection,
+		});
+	}
 });
 
 watch(hasFocus, (focused) => {
@@ -124,6 +138,15 @@ onBeforeUnmount(() => {
 	props.eventBus.off('drop', onDrop);
 });
 </script>
+
+<template>
+	<div
+		ref="root"
+		title=""
+		:class="$style.editor"
+		data-test-id="inline-expression-editor-input"
+	></div>
+</template>
 
 <style lang="scss" module>
 .editor div[contenteditable='false'] {

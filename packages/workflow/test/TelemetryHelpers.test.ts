@@ -5,8 +5,10 @@ import {
 	getDomainBase,
 	getDomainPath,
 } from '@/TelemetryHelpers';
-import type { IWorkflowBase } from '@/index';
+import { ApplicationError, STICKY_NODE_TYPE, type IWorkflowBase } from '@/index';
 import { nodeTypes } from './ExpressionExtensions/Helpers';
+import { mock } from 'jest-mock-extended';
+import * as nodeHelpers from '@/NodeHelpers';
 
 describe('getDomainBase should return protocol plus domain', () => {
 	test('in valid URLs', () => {
@@ -665,7 +667,7 @@ describe('generateNodesGraph', () => {
 				{
 					parameters: {},
 					id: 'fe69383c-e418-4f98-9c0e-924deafa7f93',
-					name: 'When clicking "Test workflow"',
+					name: 'When clicking ‘Test workflow’',
 					type: 'n8n-nodes-base.manualTrigger',
 					typeVersion: 1,
 					position: [540, 220],
@@ -690,7 +692,7 @@ describe('generateNodesGraph', () => {
 				},
 			],
 			connections: {
-				'When clicking "Test workflow"': {
+				'When clicking ‘Test workflow’': {
 					main: [
 						[
 							{
@@ -756,12 +758,22 @@ describe('generateNodesGraph', () => {
 				is_pinned: false,
 			},
 			nameIndices: {
-				'When clicking "Test workflow"': '0',
+				'When clicking ‘Test workflow’': '0',
 				Chain: '1',
 				Model: '2',
 			},
 			webhookNodeNames: [],
 		});
+	});
+
+	test('should not fail on error to resolve a node parameter for sticky node type', () => {
+		const workflow = mock<IWorkflowBase>({ nodes: [{ type: STICKY_NODE_TYPE }] });
+
+		jest.spyOn(nodeHelpers, 'getNodeParameters').mockImplementationOnce(() => {
+			throw new ApplicationError('Could not find property option');
+		});
+
+		expect(() => generateNodesGraph(workflow, nodeTypes)).not.toThrow();
 	});
 });
 

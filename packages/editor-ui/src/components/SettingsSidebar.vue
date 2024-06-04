@@ -83,14 +83,7 @@ export default defineComponent({
 					available: this.canAccessExternalSecrets(),
 					route: { to: { name: VIEWS.EXTERNAL_SECRETS_SETTINGS } },
 				},
-				{
-					id: 'settings-audit-logs',
-					icon: 'clipboard-list',
-					label: this.$locale.baseText('settings.auditLogs.title'),
-					position: 'top',
-					available: this.canAccessAuditLogs(),
-					route: { to: { name: VIEWS.AUDIT_LOGS } },
-				},
+
 				{
 					id: 'settings-source-control',
 					icon: 'code-branch',
@@ -172,7 +165,9 @@ export default defineComponent({
 			return this.canUserAccessRouteByName(VIEWS.COMMUNITY_NODES);
 		},
 		canAccessApiSettings(): boolean {
-			return this.canUserAccessRouteByName(VIEWS.API_SETTINGS);
+			return (
+				this.settingsStore.isPublicApiEnabled && this.canUserAccessRouteByName(VIEWS.API_SETTINGS)
+			);
 		},
 		canAccessLdapSettings(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.LDAP_SETTINGS);
@@ -189,9 +184,6 @@ export default defineComponent({
 		canAccessSourceControl(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.SOURCE_CONTROL);
 		},
-		canAccessAuditLogs(): boolean {
-			return this.canUserAccessRouteByName(VIEWS.AUDIT_LOGS);
-		},
 		canAccessSso(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.SSO_SETTINGS);
 		},
@@ -200,11 +192,6 @@ export default defineComponent({
 		},
 		openUpdatesPanel() {
 			this.uiStore.openModal(VERSIONS_MODAL_KEY);
-		},
-		async navigateTo(routeName: (typeof VIEWS)[keyof typeof VIEWS]) {
-			if (this.$router.currentRoute.name !== routeName) {
-				await this.$router.push({ name: routeName });
-			}
 		},
 		async handleSelect(key: string) {
 			switch (key) {

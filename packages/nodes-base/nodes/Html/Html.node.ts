@@ -8,12 +8,11 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import get from 'lodash/get';
 import { placeholder } from './placeholder';
 import { getValue } from './utils';
 import type { IValueData } from './types';
 import { getResolvables, sanitazeDataPathKey } from '@utils/utilities';
-
-import get from 'lodash/get';
 
 export const capitalizeHeader = (header: string, capitalize?: boolean) => {
 	if (!capitalize) return header;
@@ -428,7 +427,7 @@ export class Html implements INodeType {
 			table += '<tbody>';
 			itemsData.forEach((entry, entryIndex) => {
 				const rowsAttributes = this.getNodeParameter(
-					'options.rowsAttributes',
+					'options.rowAttributes',
 					entryIndex,
 					'',
 				) as string;

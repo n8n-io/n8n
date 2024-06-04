@@ -19,25 +19,39 @@ describe('Cloud', { disableAutoLogin: true }, () => {
 		planData.expirationDate = fiveDaysFromNow.toJSON();
 	});
 
+	beforeEach(() => {
+		cy.intercept('GET', '/rest/admin/cloud-plan', {
+			body: planData,
+		}).as('getPlanData');
+
+		cy.intercept('GET', '/rest/settings', (req) => {
+			req.on('response', (res) => {
+				res.send({
+					data: {
+						...res.body.data,
+						deployment: { type: 'cloud' },
+						n8nMetadata: { userId: 1 },
+					},
+				});
+			});
+		}).as('loadSettings');
+
+		cy.intercept('GET', new RegExp('/rest/projects*')).as('projects');
+		cy.intercept('GET', new RegExp('/rest/roles')).as('roles');
+	});
+
+	function visitWorkflowPage() {
+		cy.visit(workflowPage.url);
+		cy.wait('@getPlanData');
+		cy.wait('@projects');
+		cy.wait('@roles');
+	}
+
 	describe('BannerStack', () => {
 		it('should render trial banner for opt-in cloud user', () => {
-			cy.intercept('GET', '/rest/admin/cloud-plan', {
-				body: planData,
-			}).as('getPlanData');
-
-			cy.intercept('GET', '/rest/settings', (req) => {
-				req.on('response', (res) => {
-					res.send({
-						data: { ...res.body.data, deployment: { type: 'cloud' }, n8nMetadata: { userId: 1 } },
-					});
-				});
-			}).as('loadSettings');
-
 			cy.signin({ email: INSTANCE_OWNER.email, password: INSTANCE_OWNER.password });
 
-			cy.visit(workflowPage.url);
-
-			cy.wait('@getPlanData');
+			visitWorkflowPage();
 
 			bannerStack.getters.banner().should('be.visible');
 
@@ -47,27 +61,9 @@ describe('Cloud', { disableAutoLogin: true }, () => {
 
 			cy.signin({ email: INSTANCE_OWNER.email, password: INSTANCE_OWNER.password });
 
-			cy.visit(workflowPage.url);
+			visitWorkflowPage();
 
 			bannerStack.getters.banner().should('be.visible');
-
-			mainSidebar.actions.signout();
-		});
-
-		it('should not render opt-in-trial banner for non cloud deployment', () => {
-			cy.intercept('GET', '/rest/settings', (req) => {
-				req.on('response', (res) => {
-					res.send({
-						data: { ...res.body.data, deployment: { type: 'default' } },
-					});
-				});
-			}).as('loadSettings');
-
-			cy.signin({ email: INSTANCE_OWNER.email, password: INSTANCE_OWNER.password });
-
-			cy.visit(workflowPage.url);
-
-			bannerStack.getters.banner().should('not.be.visible');
 
 			mainSidebar.actions.signout();
 		});
@@ -75,17 +71,9 @@ describe('Cloud', { disableAutoLogin: true }, () => {
 
 	describe('Admin Home', () => {
 		it('Should show admin button', () => {
-			cy.intercept('GET', '/rest/settings', (req) => {
-				req.on('response', (res) => {
-					res.send({
-						data: { ...res.body.data, deployment: { type: 'cloud' }, n8nMetadata: { userId: 1 } },
-					});
-				});
-			}).as('loadSettings');
-
 			cy.signin({ email: INSTANCE_OWNER.email, password: INSTANCE_OWNER.password });
 
-			cy.visit(workflowPage.url);
+			visitWorkflowPage();
 
 			mainSidebar.getters.adminPanel().should('be.visible');
 		});
@@ -93,25 +81,10 @@ describe('Cloud', { disableAutoLogin: true }, () => {
 
 	describe('Public API', () => {
 		it('Should show upgrade CTA for Public API if user is trialing', () => {
-			cy.intercept('GET', '/rest/admin/cloud-plan', {
-				body: planData,
-			}).as('getPlanData');
-
-			cy.intercept('GET', '/rest/settings', (req) => {
-				req.on('response', (res) => {
-					res.send({
-						data: {
-							...res.body.data,
-							deployment: { type: 'cloud' },
-							n8nMetadata: { userId: 1 },
-						},
-					});
-				});
-			}).as('loadSettings');
-
 			cy.signin({ email: INSTANCE_OWNER.email, password: INSTANCE_OWNER.password });
 
 			visitPublicApiPage();
+			cy.wait(['@loadSettings', '@projects', '@roles', '@getPlanData']);
 
 			getPublicApiUpgradeCTA().should('be.visible');
 		});

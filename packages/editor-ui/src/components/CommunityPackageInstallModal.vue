@@ -16,7 +16,7 @@
 					</n8n-text>
 					{{ ' ' }}
 					<n8n-link :to="COMMUNITY_NODES_INSTALLATION_DOCS_URL" @click="onMoreInfoTopClick">
-						{{ $locale.baseText('_reusableDynamicText.moreInfo') }}
+						{{ $locale.baseText('generic.moreInfo') }}
 					</n8n-link>
 				</div>
 				<n8n-button
@@ -61,13 +61,13 @@
 					:class="[$style.checkbox, checkboxWarning ? $style.error : '', 'mt-l']"
 					:disabled="loading"
 					data-test-id="user-agreement-checkbox"
-					@update:modelValue="onCheckboxChecked"
+					@update:model-value="onCheckboxChecked"
 				>
 					<n8n-text>
 						{{ $locale.baseText('settings.communityNodes.installModal.checkbox.label') }} </n8n-text
 					><br />
 					<n8n-link :to="COMMUNITY_NODES_RISKS_DOCS_URL" @click="onLearnMoreLinkClick">{{
-						$locale.baseText('_reusableDynamicText.moreInfo')
+						$locale.baseText('generic.moreInfo')
 					}}</n8n-link>
 				</el-checkbox>
 			</div>

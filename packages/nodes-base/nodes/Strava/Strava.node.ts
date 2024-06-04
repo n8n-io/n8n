@@ -17,7 +17,7 @@ export class Strava implements INodeType {
 		name: 'strava',
 		icon: 'file:strava.svg',
 		group: ['input'],
-		version: 1,
+		version: [1, 1.1],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Strava API',
 		defaults: {
@@ -56,6 +56,7 @@ export class Strava implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
+		const nodeVersion = this.getNode().typeVersion;
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
@@ -64,8 +65,6 @@ export class Strava implements INodeType {
 					//https://developers.strava.com/docs/reference/#api-Activities-createActivity
 					if (operation === 'create') {
 						const name = this.getNodeParameter('name', i) as string;
-
-						const type = this.getNodeParameter('type', i) as string;
 
 						const startDate = this.getNodeParameter('startDate', i) as string;
 
@@ -83,10 +82,17 @@ export class Strava implements INodeType {
 
 						const body: IDataObject = {
 							name,
-							type,
 							start_date_local: moment(startDate).toISOString(),
 							elapsed_time: elapsedTime,
 						};
+
+						if (nodeVersion === 1) {
+							const type = this.getNodeParameter('type', i) as string;
+							body.type = type;
+						} else {
+							const sportType = this.getNodeParameter('sport_type', i) as string;
+							body.sport_type = sportType;
+						}
 
 						Object.assign(body, additionalFields);
 

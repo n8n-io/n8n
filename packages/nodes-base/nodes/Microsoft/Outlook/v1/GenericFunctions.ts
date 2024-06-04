@@ -7,7 +7,7 @@ import type {
 	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeApiError } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -221,24 +221,4 @@ export async function downloadAttachments(
 		elements.push(element);
 	}
 	return elements;
-}
-
-export async function binaryToAttachments(
-	this: IExecuteFunctions,
-	attachments: IDataObject[],
-	items: INodeExecutionData[],
-	i: number,
-) {
-	return await Promise.all(
-		attachments.map(async (attachment) => {
-			const binaryPropertyName = attachment.binaryPropertyName as string;
-			const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
-			const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
-			return {
-				'@odata.type': '#microsoft.graph.fileAttachment',
-				name: binaryData.fileName,
-				contentBytes: dataBuffer.toString(BINARY_ENCODING),
-			};
-		}),
-	);
 }

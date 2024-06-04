@@ -1,8 +1,15 @@
-import type { AxiosRequestConfig, Method } from 'axios';
+import type { AxiosRequestConfig, Method, RawAxiosRequestHeaders } from 'axios';
 import axios from 'axios';
-import type { IDataObject } from 'n8n-workflow';
+import type { GenericValue, IDataObject } from 'n8n-workflow';
 import type { IExecutionFlattedResponse, IExecutionResponse, IRestApiContext } from '@/Interface';
 import { parse } from 'flatted';
+
+const BROWSER_ID_STORAGE_KEY = 'n8n-browserId';
+let browserId = localStorage.getItem(BROWSER_ID_STORAGE_KEY);
+if (!browserId && 'randomUUID' in crypto) {
+	browserId = crypto.randomUUID();
+	localStorage.setItem(BROWSER_ID_STORAGE_KEY, browserId);
+}
 
 export const NO_NETWORK_ERROR_CODE = 999;
 
@@ -49,7 +56,7 @@ const legacyParamSerializer = (params: Record<string, any>) =>
 		.filter((key) => params[key] !== undefined)
 		.map((key) => {
 			if (Array.isArray(params[key])) {
-				return params[key].map((v) => `${key}[]=${encodeURIComponent(v)}`).join('&');
+				return params[key].map((v: string) => `${key}[]=${encodeURIComponent(v)}`).join('&');
 			}
 			if (typeof params[key] === 'object') {
 				params[key] = JSON.stringify(params[key]);
@@ -62,8 +69,8 @@ export async function request(config: {
 	method: Method;
 	baseURL: string;
 	endpoint: string;
-	headers?: IDataObject;
-	data?: IDataObject | IDataObject[];
+	headers?: RawAxiosRequestHeaders;
+	data?: GenericValue | GenericValue[];
 	withCredentials?: boolean;
 }) {
 	const { method, baseURL, endpoint, headers, data } = config;
@@ -71,8 +78,11 @@ export async function request(config: {
 		method,
 		url: endpoint,
 		baseURL,
-		headers,
+		headers: headers ?? {},
 	};
+	if (baseURL.startsWith('/') && browserId) {
+		options.headers!['browser-id'] = browserId;
+	}
 	if (
 		import.meta.env.NODE_ENV !== 'production' &&
 		!baseURL.includes('api.n8n.io') &&
@@ -119,13 +129,13 @@ export async function makeRestApiRequest<T>(
 	context: IRestApiContext,
 	method: Method,
 	endpoint: string,
-	data?: IDataObject | IDataObject[],
+	data?: GenericValue | GenericValue[],
 ) {
 	const response = await request({
 		method,
 		baseURL: context.baseUrl,
 		endpoint,
-		headers: { sessionid: context.sessionId },
+		headers: { 'push-ref': context.pushRef },
 		data,
 	});
 
@@ -137,7 +147,7 @@ export async function get(
 	baseURL: string,
 	endpoint: string,
 	params?: IDataObject,
-	headers?: IDataObject,
+	headers?: RawAxiosRequestHeaders,
 ) {
 	return await request({ method: 'GET', baseURL, endpoint, headers, data: params });
 }
@@ -146,9 +156,18 @@ export async function post(
 	baseURL: string,
 	endpoint: string,
 	params?: IDataObject,
-	headers?: IDataObject,
+	headers?: RawAxiosRequestHeaders,
 ) {
 	return await request({ method: 'POST', baseURL, endpoint, headers, data: params });
+}
+
+export async function patch(
+	baseURL: string,
+	endpoint: string,
+	params?: IDataObject,
+	headers?: RawAxiosRequestHeaders,
+) {
+	return await request({ method: 'PATCH', baseURL, endpoint, headers, data: params });
 }
 
 /**
@@ -158,9 +177,9 @@ export async function post(
  */
 export function unflattenExecutionData(
 	fullExecutionData: IExecutionFlattedResponse,
-): IExecutionResponse {
+): Omit<IExecutionResponse, 'status'> {
 	// Unflatten the data
-	const returnData: IExecutionResponse = {
+	const returnData: Omit<IExecutionResponse, 'status'> = {
 		...fullExecutionData,
 		workflowData: fullExecutionData.workflowData,
 		data: parse(fullExecutionData.data),

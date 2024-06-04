@@ -10,7 +10,7 @@ import { hasScope } from '@/rbac/checks';
 
 export const rbacMiddleware: RouterMiddleware<RBACPermissionOptions> = async (
 	to,
-	from,
+	_from,
 	next,
 	{ scope, options },
 ) => {

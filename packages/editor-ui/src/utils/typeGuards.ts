@@ -1,5 +1,13 @@
-import type { INodeParameterResourceLocator } from 'n8n-workflow';
+import type {
+	INodeParameterResourceLocator,
+	INodeTypeDescription,
+	NodeConnectionType,
+	TriggerPanelDefinition,
+} from 'n8n-workflow';
+import { nodeConnectionTypes } from 'n8n-workflow';
 import type { ICredentialsResponse, NewCredentialsModal } from '@/Interface';
+import type { jsPlumbDOMElement } from '@jsplumb/browser-ui';
+import type { Connection } from '@jsplumb/core';
 
 /*
 	Type guards used in editor-ui project
@@ -39,3 +47,29 @@ export const isCredentialModalState = (value: unknown): value is NewCredentialsM
 export const isResourceMapperValue = (value: unknown): value is string | number | boolean => {
 	return ['string', 'number', 'boolean'].includes(typeof value);
 };
+
+export const isJSPlumbEndpointElement = (element: Node): element is jsPlumbDOMElement => {
+	return 'jtk' in element && 'endpoint' in (element.jtk as object);
+};
+
+export const isJSPlumbConnection = (connection: unknown): connection is Connection => {
+	return connection !== null && typeof connection === 'object' && 'connector' in connection;
+};
+
+export function isDateObject(date: unknown): date is Date {
+	return (
+		!!date && Object.prototype.toString.call(date) === '[object Date]' && !isNaN(date as number)
+	);
+}
+
+export function isValidNodeConnectionType(
+	connectionType: string,
+): connectionType is NodeConnectionType {
+	return nodeConnectionTypes.includes(connectionType as NodeConnectionType);
+}
+
+export function isTriggerPanelObject(
+	triggerPanel: INodeTypeDescription['triggerPanel'],
+): triggerPanel is TriggerPanelDefinition {
+	return triggerPanel !== undefined && typeof triggerPanel === 'object' && triggerPanel !== null;
+}

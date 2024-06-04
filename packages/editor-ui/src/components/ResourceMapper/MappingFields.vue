@@ -67,7 +67,7 @@ function markAsReadOnly(field: ResourceMapperField): boolean {
 	return field.readOnly || false;
 }
 
-const fieldsUi = computed<Array<Partial<INodeProperties> & { readOnly?: boolean }>>(() => {
+const fieldsUi = computed<Array<INodeProperties & { readOnly: boolean }>>(() => {
 	return props.fieldsToMap
 		.filter((field) => field.display && field.removed !== true)
 		.map((field) => {
@@ -85,11 +85,11 @@ const fieldsUi = computed<Array<Partial<INodeProperties> & { readOnly?: boolean 
 		});
 });
 
-const orderedFields = computed<Array<Partial<INodeProperties> & { readOnly?: boolean }>>(() => {
+const orderedFields = computed<Array<INodeProperties & { readOnly: boolean }>>(() => {
 	// Sort so that matching columns are first
 	if (props.paramValue.matchingColumns) {
 		fieldsUi.value.forEach((field, i) => {
-			const fieldName = parseResourceMapperFieldName(field.name);
+			const fieldName = field.name && parseResourceMapperFieldName(field.name);
 			if (fieldName) {
 				if (props.paramValue.matchingColumns.includes(fieldName)) {
 					fieldsUi.value.splice(i, 1);
@@ -300,7 +300,7 @@ defineExpose({
 					:custom-actions="parameterActions"
 					:loading="props.refreshInProgress"
 					:loading-message="fetchingFieldsLabel"
-					@update:modelValue="onParameterActionSelected"
+					@update:model-value="onParameterActionSelected"
 				/>
 			</template>
 		</n8n-input-label>
@@ -388,7 +388,7 @@ defineExpose({
 				size="small"
 				:teleported="teleported"
 				:disabled="addFieldOptions.length == 0"
-				@update:modelValue="addField"
+				@update:model-value="addField"
 			>
 				<n8n-option
 					v-for="item in addFieldOptions"

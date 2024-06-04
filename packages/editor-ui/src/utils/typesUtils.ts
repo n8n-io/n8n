@@ -77,20 +77,17 @@ export function shorten(s: string, limit: number, keep: number) {
 export const convertPath = (path: string): string => {
 	// TODO: That can for sure be done fancier but for now it works
 	const placeholder = '*___~#^#~___*';
-	let inBrackets = path.match(/\[(.*?)]/g);
+	let inBrackets: string[] = path.match(/\[(.*?)]/g) ?? [];
 
-	if (inBrackets === null) {
-		inBrackets = [];
-	} else {
-		inBrackets = inBrackets
-			.map((item) => item.slice(1, -1))
-			.map((item) => {
-				if (item.startsWith('"') && item.endsWith('"')) {
-					return item.slice(1, -1);
-				}
-				return item;
-			});
-	}
+	inBrackets = inBrackets
+		.map((item) => item.slice(1, -1))
+		.map((item) => {
+			if (item.startsWith('"') && item.endsWith('"')) {
+				return item.slice(1, -1);
+			}
+			return item;
+		});
+
 	const withoutBrackets = path.replace(/\[(.*?)]/g, placeholder);
 	const pathParts = withoutBrackets.split('.');
 	const allParts = [] as string[];
@@ -98,7 +95,7 @@ export const convertPath = (path: string): string => {
 		let index = part.indexOf(placeholder);
 		while (index !== -1) {
 			if (index === 0) {
-				allParts.push(inBrackets!.shift() as string);
+				allParts.push(inBrackets.shift() ?? '');
 				part = part.substr(placeholder.length);
 			} else {
 				allParts.push(part.substr(0, index));
@@ -164,3 +161,7 @@ export const getObjectKeys = <T extends object, K extends keyof T>(o: T): K[] =>
 export const tryToParseNumber = (value: string): number | string => {
 	return isNaN(+value) ? value : +value;
 };
+
+export function isPresent<T>(arg: T): arg is Exclude<T, null | undefined> {
+	return arg !== null && arg !== undefined;
+}

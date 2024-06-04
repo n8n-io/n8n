@@ -3,12 +3,13 @@ import {
 	ErrorReporterProxy as ErrorReporter,
 	WorkflowOperationError,
 } from 'n8n-workflow';
-import { Container, Service } from 'typedi';
-import type { IExecutionsStopData, IWorkflowExecutionDataProcess } from '@/Interfaces';
+import { Service } from 'typedi';
+import type { ExecutionStopResult, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
-import { OwnershipService } from './services/ownership.service';
+import { OwnershipService } from '@/services/ownership.service';
 import { Logger } from '@/Logger';
+import { OrchestrationService } from '@/services/orchestration.service';
 
 @Service()
 export class WaitTracker {
@@ -26,7 +27,27 @@ export class WaitTracker {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly ownershipService: OwnershipService,
 		private readonly workflowRunner: WorkflowRunner,
-	) {
+		private readonly orchestrationService: OrchestrationService,
+	) {}
+
+	init() {
+		const { isSingleMainSetup, isLeader, multiMainSetup } = this.orchestrationService;
+
+		if (isSingleMainSetup) {
+			this.startTracking();
+			return;
+		}
+
+		if (isLeader) this.startTracking();
+
+		multiMainSetup
+			.on('leader-takeover', () => this.startTracking())
+			.on('leader-stepdown', () => this.stopTracking());
+	}
+
+	private startTracking() {
+		this.logger.debug('Wait tracker started tracking waiting executions');
+
 		// Poll every 60 seconds a list of upcoming executions
 		this.mainTimer = setInterval(() => {
 			void this.getWaitingExecutions();
@@ -80,7 +101,7 @@ export class WaitTracker {
 		}
 	}
 
-	async stopExecution(executionId: string): Promise<IExecutionsStopData> {
+	async stopExecution(executionId: string): Promise<ExecutionStopResult> {
 		if (this.waitingExecutions[executionId] !== undefined) {
 			// The waiting execution was already scheduled to execute.
 			// So stop timer and remove.
@@ -118,10 +139,7 @@ export class WaitTracker {
 		fullExecutionData.waitTill = null;
 		fullExecutionData.status = 'canceled';
 
-		await Container.get(ExecutionRepository).updateExistingExecution(
-			executionId,
-			fullExecutionData,
-		);
+		await this.executionRepository.updateExistingExecution(executionId, fullExecutionData);
 
 		return {
 			mode: fullExecutionData.mode,
@@ -154,13 +172,13 @@ export class WaitTracker {
 				throw new ApplicationError('Only saved workflows can be resumed.');
 			}
 			const workflowId = fullExecutionData.workflowData.id;
-			const user = await this.ownershipService.getWorkflowOwnerCached(workflowId);
+			const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
 
 			const data: IWorkflowExecutionDataProcess = {
 				executionMode: fullExecutionData.mode,
 				executionData: fullExecutionData.data,
 				workflowData: fullExecutionData.workflowData,
-				userId: user.id,
+				projectId: project.id,
 			};
 
 			// Start the execution again
@@ -174,7 +192,9 @@ export class WaitTracker {
 		});
 	}
 
-	shutdown() {
+	stopTracking() {
+		this.logger.debug('Wait tracker shutting down');
+
 		clearInterval(this.mainTimer);
 		Object.keys(this.waitingExecutions).forEach((executionId) => {
 			clearTimeout(this.waitingExecutions[executionId].timer);

@@ -46,6 +46,7 @@ const configureNodeInputs = (resource: string, operation: string, hideTools: str
 	if (resource === 'assistant' && operation === 'message') {
 		return [
 			{ type: NodeConnectionType.Main },
+			{ type: NodeConnectionType.AiMemory, displayName: 'Memory', maxConnections: 1 },
 			{ type: NodeConnectionType.AiTool, displayName: 'Tools' },
 		];
 	}
@@ -78,7 +79,7 @@ export const versionDescription: INodeTypeDescription = {
 		alias: ['LangChain', 'ChatGPT', 'DallE'],
 		categories: ['AI'],
 		subcategories: {
-			AI: ['Agents', 'Miscellaneous'],
+			AI: ['Agents', 'Miscellaneous', 'Root Nodes'],
 		},
 		resources: {
 			primaryDocumentation: [

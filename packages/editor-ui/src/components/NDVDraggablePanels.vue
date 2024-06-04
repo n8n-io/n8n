@@ -3,7 +3,7 @@
 		<NDVFloatingNodes
 			v-if="activeNode"
 			:root-node="activeNode"
-			@switchSelectedNode="onSwitchSelectedNode"
+			@switch-selected-node="onSwitchSelectedNode"
 		/>
 		<div v-if="!hideInputAndOutput" :class="$style.inputPanel" :style="inputPanelStyles">
 			<slot name="input"></slot>
@@ -88,7 +88,7 @@ export default defineComponent({
 			type: Number,
 		},
 		nodeType: {
-			type: Object as PropType<INodeTypeDescription>,
+			type: Object as PropType<INodeTypeDescription | null>,
 			default: () => ({}),
 		},
 	},

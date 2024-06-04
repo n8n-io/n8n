@@ -1,20 +1,25 @@
 <template>
 	<div>
-		<n8n-tooltip placement="bottom" :disabled="!disabledHint">
+		<n8n-tooltip placement="right" :disabled="!tooltipText">
 			<template #content>
-				<div>{{ disabledHint }}</div>
+				<div>{{ tooltipText }}</div>
 			</template>
 			<div>
 				<n8n-button
 					v-bind="$attrs"
-					:loading="nodeRunning && !isListeningForEvents && !isListeningForWorkflowEvents"
+					:loading
 					:disabled="disabled || !!disabledHint"
 					:label="buttonLabel"
 					:type="type"
 					:size="size"
-					:icon="!isListeningForEvents && !hideIcon && 'flask'"
+					:icon="!isListeningForEvents && !hideIcon ? 'flask' : undefined"
 					:transparent-background="transparent"
-					:title="!isTriggerNode ? $locale.baseText('ndv.execute.testNode.description') : ''"
+					:title="
+						!isTriggerNode && !tooltipText
+							? $locale.baseText('ndv.execute.testNode.description')
+							: ''
+					"
+					@mouseover="onMouseOver"
 					@click="onClick"
 				/>
 			</div>
@@ -46,6 +51,10 @@ import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useUIStore } from '@/stores/ui.store';
 import { useRouter } from 'vue-router';
 
+const NODE_TEST_STEP_POPUP_COUNT_KEY = 'N8N_NODE_TEST_STEP_POPUP_COUNT';
+const MAX_POPUP_COUNT = 10;
+const POPUP_UPDATE_DELAY = 3000;
+
 export default defineComponent({
 	inheritAttrs: false,
 	props: {
@@ -76,19 +85,25 @@ export default defineComponent({
 		hideIcon: {
 			type: Boolean,
 		},
+		tooltip: {
+			type: String,
+		},
 	},
+	emits: ['stopExecution', 'execute'],
 	setup(props) {
 		const router = useRouter();
 		const workflowsStore = useWorkflowsStore();
 		const node = workflowsStore.getNodeByName(props.nodeName);
 		const pinnedData = usePinnedData(node);
 		const externalHooks = useExternalHooks();
-		const { runWorkflow } = useRunWorkflow({ router });
+		const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
 
 		return {
 			externalHooks,
 			pinnedData,
 			runWorkflow,
+			stopCurrentExecution,
+			lastPopupCountUpdate: 0,
 			...useToast(),
 			...useMessage(),
 		};
@@ -108,7 +123,8 @@ export default defineComponent({
 			const triggeredNode = this.workflowsStore.executedNode;
 			return (
 				this.workflowRunning &&
-				(this.workflowsStore.isNodeExecuting(this.node.name) || triggeredNode === this.node.name)
+				(this.workflowsStore.isNodeExecuting(this.node?.name ?? '') ||
+					triggeredNode === this.node?.name)
 			);
 		},
 		workflowRunning(): boolean {
@@ -146,7 +162,7 @@ export default defineComponent({
 			const executedNode = this.workflowsStore.executedNode;
 
 			return (
-				this.node &&
+				!!this.node &&
 				!this.node.disabled &&
 				this.isTriggerNode &&
 				waitingOnWebhook &&
@@ -171,7 +187,7 @@ export default defineComponent({
 				return '';
 			}
 
-			if (this.isTriggerNode && this.node.disabled) {
+			if (this.isTriggerNode && this.node?.disabled) {
 				return this.$locale.baseText('ndv.execute.nodeIsDisabled');
 			}
 
@@ -188,6 +204,12 @@ export default defineComponent({
 				return this.$locale.baseText('ndv.execute.workflowAlreadyRunning');
 			}
 
+			return '';
+		},
+		tooltipText(): string {
+			if (this.disabledHint) return this.disabledHint;
+			if (this.tooltip && !this.loading && this.testStepButtonPopupCount() < MAX_POPUP_COUNT)
+				return this.tooltip;
 			return '';
 		},
 		buttonLabel(): string {
@@ -217,6 +239,10 @@ export default defineComponent({
 
 			return this.$locale.baseText('ndv.execute.testNode');
 		},
+
+		loading(): boolean {
+			return this.nodeRunning && !this.isListeningForEvents && !this.isListeningForWorkflowEvents;
+		},
 	},
 	methods: {
 		async stopWaitingForWebhook() {
@@ -228,14 +254,31 @@ export default defineComponent({
 			}
 		},
 
+		testStepButtonPopupCount() {
+			return Number(localStorage.getItem(NODE_TEST_STEP_POPUP_COUNT_KEY));
+		},
+
+		onMouseOver() {
+			const count = this.testStepButtonPopupCount();
+
+			if (count < MAX_POPUP_COUNT && !this.disabledHint && this.tooltipText) {
+				const now = Date.now();
+				if (!this.lastPopupCountUpdate || now - this.lastPopupCountUpdate >= POPUP_UPDATE_DELAY) {
+					localStorage.setItem(NODE_TEST_STEP_POPUP_COUNT_KEY, `${count + 1}`);
+					this.lastPopupCountUpdate = now;
+				}
+			}
+		},
+
 		async onClick() {
 			// Show chat if it's a chat node or a child of a chat node with no input data
-			if (this.isChatNode || (this.isChatChild && this.ndvStore.isDNVDataEmpty('input'))) {
+			if (this.isChatNode || (this.isChatChild && this.ndvStore.isNDVDataEmpty('input'))) {
 				this.ndvStore.setActiveNodeName(null);
 				nodeViewEventBus.emit('openChat');
 			} else if (this.isListeningForEvents) {
 				await this.stopWaitingForWebhook();
 			} else if (this.isListeningForWorkflowEvents) {
+				await this.stopCurrentExecution();
 				this.$emit('stopExecution');
 			} else {
 				let shouldUnpinAndExecute = false;
@@ -260,7 +303,7 @@ export default defineComponent({
 						node_type: this.nodeType ? this.nodeType.name : null,
 						workflow_id: this.workflowsStore.workflowId,
 						source: this.telemetrySource,
-						session_id: this.ndvStore.sessionId,
+						push_ref: this.ndvStore.pushRef,
 					};
 					this.$telemetry.track('User clicked execute node button', telemetryPayload);
 					await this.externalHooks.run('nodeExecuteButton.onClick', telemetryPayload);

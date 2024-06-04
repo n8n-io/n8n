@@ -1,5 +1,4 @@
 import { readFileSync } from 'fs';
-import type { SuperAgentTest } from 'supertest';
 import { agent as testAgent } from 'supertest';
 import type { INodeType, INodeTypeDescription, IWebhookFunctions } from 'n8n-workflow';
 
@@ -11,10 +10,11 @@ import { Push } from '@/push';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 
 import { mockInstance } from '../shared/mocking';
-import { initActiveWorkflowRunner } from './shared/utils';
+import { initActiveWorkflowManager } from './shared/utils';
 import * as testDb from './shared/testDb';
 import { createUser } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
+import type { SuperAgentTest } from './shared/types';
 
 describe('Webhook API', () => {
 	mockInstance(ExternalHooks);
@@ -41,7 +41,7 @@ describe('Webhook API', () => {
 			nodeTypes.getByName.mockReturnValue(node);
 			nodeTypes.getByNameAndVersion.mockReturnValue(node);
 
-			await initActiveWorkflowRunner();
+			await initActiveWorkflowManager();
 
 			const server = new (class extends AbstractServer {})();
 			await server.start();
@@ -144,7 +144,7 @@ describe('Webhook API', () => {
 			nodeTypes.getByName.mockReturnValue(node);
 			nodeTypes.getByNameAndVersion.mockReturnValue(node);
 
-			await initActiveWorkflowRunner();
+			await initActiveWorkflowManager();
 
 			const server = new (class extends AbstractServer {})();
 			await server.start();

@@ -25,7 +25,7 @@
 			@focus="onFocus"
 			@blur="onBlur"
 			@drop="onDrop"
-			@textInput="onTextInput"
+			@text-input="onTextInput"
 			@update="onValueChanged"
 		/>
 		<div v-if="!hideHint && (expressionOutput || parameterHint)" :class="$style.hint">
@@ -50,7 +50,7 @@ import { mapStores } from 'pinia';
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 
-import type { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
+import type { INodeUi, IUpdateInformation, InputSize, TargetItem } from '@/Interface';
 import ParameterInput from '@/components/ParameterInput.vue';
 import InputHint from '@/components/ParameterInputHint.vue';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
@@ -71,7 +71,7 @@ import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { getExpressionErrorMessage, getResolvableState } from '@/utils/expressions';
+import { stringifyExpressionResult } from '@/utils/expressions';
 
 export default defineComponent({
 	name: 'ParameterInputWrapper',
@@ -96,9 +96,11 @@ export default defineComponent({
 		},
 		parameter: {
 			type: Object as PropType<INodeProperties>,
+			required: true,
 		},
 		path: {
 			type: String,
+			required: true,
 		},
 		modelValue: {
 			type: [String, Number, Boolean, Array, Object] as PropType<NodeParameterValueType>,
@@ -121,7 +123,7 @@ export default defineComponent({
 			required: false,
 		},
 		inputSize: {
-			type: String,
+			type: String as PropType<InputSize>,
 		},
 		hideIssues: {
 			type: Boolean,
@@ -197,18 +199,22 @@ export default defineComponent({
 		isInputParentOfActiveNode(): boolean {
 			return this.ndvStore.isInputParentOfActiveNode;
 		},
-		evaluatedExpression(): Result<unknown, unknown> {
+		evaluatedExpression(): Result<unknown, Error> {
 			const value = isResourceLocatorValue(this.modelValue)
 				? this.modelValue.value
 				: this.modelValue;
+
 			if (!this.activeNode || !this.isValueExpression || typeof value !== 'string') {
-				return { ok: false, error: '' };
+				return { ok: false, error: new Error() };
 			}
 
 			try {
-				let opts;
+				let opts: Parameters<typeof this.workflowHelpers.resolveExpression>[2] = {
+					isForCredential: this.isForCredential,
+				};
 				if (this.ndvStore.isInputParentOfActiveNode) {
 					opts = {
+						...opts,
 						targetItem: this.targetItem ?? undefined,
 						inputNodeName: this.ndvStore.ndvInputNodeName,
 						inputRunIndex: this.ndvStore.ndvInputRunIndex,
@@ -227,28 +233,7 @@ export default defineComponent({
 			return evaluated.ok ? evaluated.result : null;
 		},
 		evaluatedExpressionString(): string | null {
-			const evaluated = this.evaluatedExpression;
-
-			if (!evaluated.ok) {
-				if (getResolvableState(evaluated.error) !== 'invalid') {
-					return null;
-				}
-
-				return `[${this.$locale.baseText('parameterInput.error')}: ${getExpressionErrorMessage(
-					evaluated.error as Error,
-				)}]`;
-			}
-
-			if (evaluated.result === null) {
-				return null;
-			}
-
-			if (typeof evaluated.result === 'string' && evaluated.result.length === 0) {
-				return this.$locale.baseText('parameterInput.emptyString');
-			}
-			return typeof evaluated.result === 'string'
-				? evaluated.result
-				: JSON.stringify(evaluated.result);
+			return stringifyExpressionResult(this.evaluatedExpression);
 		},
 		expressionOutput(): string | null {
 			if (this.isValueExpression && this.evaluatedExpressionString) {

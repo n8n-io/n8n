@@ -17,7 +17,6 @@ import { Queue } from '@/Queue';
 import { N8N_VERSION } from '@/constants';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { OwnershipService } from '@/services/ownership.service';
 import type { ICredentialsOverwrite } from '@/Interfaces';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { rawBodyReader, bodyParser } from '@/middlewares';
@@ -29,6 +28,7 @@ import { OrchestrationWorkerService } from '@/services/orchestration/worker/orch
 import type { WorkerJobStatusSummary } from '@/services/orchestration/worker/types';
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { BaseCommand } from './BaseCommand';
+import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -63,23 +63,23 @@ export class Worker extends BaseCommand {
 	async stopProcess() {
 		this.logger.info('Stopping n8n...');
 
-		// Stop accepting new jobs
-		await Worker.jobQueue.pause(true);
+		// Stop accepting new jobs, `doNotWaitActive` allows reporting progress
+		await Worker.jobQueue.pause({ isLocal: true, doNotWaitActive: true });
 
 		try {
 			await this.externalHooks?.run('n8n.stop', []);
 
-			const hardStopTime = Date.now() + this.gracefulShutdownTimeoutInS;
+			const hardStopTimeMs = Date.now() + this.gracefulShutdownTimeoutInS * 1000;
 
 			// Wait for active workflow executions to finish
 			let count = 0;
 			while (Object.keys(Worker.runningJobs).length !== 0) {
 				if (count++ % 4 === 0) {
-					const waitLeft = Math.ceil((hardStopTime - Date.now()) / 1000);
+					const waitLeft = Math.ceil((hardStopTimeMs - Date.now()) / 1000);
 					this.logger.info(
 						`Waiting for ${
 							Object.keys(Worker.runningJobs).length
-						} active executions to finish... (wait ${waitLeft} more seconds)`,
+						} active executions to finish... (max wait ${waitLeft} more seconds)`,
 					);
 				}
 
@@ -116,8 +116,6 @@ export class Worker extends BaseCommand {
 			`Start job: ${job.id} (Workflow ID: ${workflowId} | Execution: ${executionId})`,
 		);
 		await executionRepository.updateStatus(executionId, 'running');
-
-		const workflowOwner = await Container.get(OwnershipService).getWorkflowOwnerCached(workflowId);
 
 		let { staticData } = fullExecutionData.workflowData;
 		if (loadStaticData) {
@@ -159,7 +157,7 @@ export class Worker extends BaseCommand {
 		});
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
-			workflowOwner.id,
+			undefined,
 			undefined,
 			executionTimeoutTimestamp,
 		);
@@ -236,7 +234,7 @@ export class Worker extends BaseCommand {
 
 		if (!process.env.N8N_ENCRYPTION_KEY) {
 			throw new ApplicationError(
-				'Missing encryption key. Worker started without the required N8N_ENCRYPTION_KEY env var. More information: https://docs.n8n.io/hosting/environment-variables/configuration-methods/#encryption-key',
+				'Missing encryption key. Worker started without the required N8N_ENCRYPTION_KEY env var. More information: https://docs.n8n.io/hosting/configuration/configuration-examples/encryption-key/',
 			);
 		}
 
@@ -366,6 +364,11 @@ export class Worker extends BaseCommand {
 				process.exit(2);
 			} else {
 				this.logger.error('Error from queue: ', error);
+
+				if (error.message.includes('job stalled more than maxStalledCount')) {
+					throw new MaxStalledCountError(error);
+				}
+
 				throw error;
 			}
 		});
@@ -382,7 +385,7 @@ export class Worker extends BaseCommand {
 		app.get(
 			'/healthz',
 
-			async (req: express.Request, res: express.Response) => {
+			async (_req: express.Request, res: express.Response) => {
 				this.logger.debug('Health check started!');
 
 				const connection = Db.getConnection();
@@ -478,6 +481,16 @@ export class Worker extends BaseCommand {
 
 		if (config.getEnv('queue.health.active')) {
 			await this.setupHealthMonitor();
+		}
+
+		if (process.stdout.isTTY) {
+			process.stdin.setRawMode(true);
+			process.stdin.resume();
+			process.stdin.setEncoding('utf8');
+
+			process.stdin.on('data', (key: string) => {
+				if (key.charCodeAt(0) === 3) process.kill(process.pid, 'SIGINT'); // ctrl+c
+			});
 		}
 
 		// Make sure that the process does not close

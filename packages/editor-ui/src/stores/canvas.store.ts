@@ -15,7 +15,7 @@ import {
 	scaleReset,
 	scaleSmaller,
 } from '@/utils/canvasUtils';
-import { START_NODE_TYPE } from '@/constants';
+import { MANUAL_TRIGGER_NODE_TYPE, START_NODE_TYPE } from '@/constants';
 import type {
 	BeforeStartEventParams,
 	BrowserJsPlumbInstance,
@@ -52,7 +52,8 @@ export const useCanvasStore = defineStore('canvas', () => {
 
 	const jsPlumbInstanceRef = ref<BrowserJsPlumbInstance>();
 	const isDragging = ref<boolean>(false);
-	const lastSelectedConnection = ref<Connection | null>(null);
+	const lastSelectedConnection = ref<Connection>();
+
 	const newNodeInsertPosition = ref<XYPosition | null>(null);
 
 	const nodes = computed<INodeUi[]>(() => workflowStore.allNodes);
@@ -61,16 +62,26 @@ export const useCanvasStore = defineStore('canvas', () => {
 			(node) => node.type === START_NODE_TYPE || nodeTypesStore.isTriggerNode(node.type),
 		),
 	);
+	const aiNodes = computed<INodeUi[]>(() =>
+		nodes.value.filter((node) => node.type.includes('langchain')),
+	);
 	const isDemo = ref<boolean>(false);
 	const nodeViewScale = ref<number>(1);
 	const canvasAddButtonPosition = ref<XYPosition>([1, 1]);
 	const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
+	const lastSelectedConnectionComputed = computed<Connection | undefined>(
+		() => lastSelectedConnection.value,
+	);
 
 	watch(readOnlyEnv, (readOnly) => {
 		if (jsPlumbInstanceRef.value) {
 			jsPlumbInstanceRef.value.elementsDraggable = !readOnly;
 		}
 	});
+
+	const setLastSelectedConnection = (connection: Connection | undefined) => {
+		lastSelectedConnection.value = connection;
+	};
 
 	const setRecenteredCanvasAddButtonPosition = (offset?: XYPosition) => {
 		const position = getMidCanvasPosition(nodeViewScale.value, offset ?? [0, 0]);
@@ -91,6 +102,23 @@ export const useCanvasStore = defineStore('canvas', () => {
 		};
 	};
 
+	const getAutoAddManualTriggerNode = (): INodeUi | null => {
+		const manualTriggerNode = nodeTypesStore.getNodeType(MANUAL_TRIGGER_NODE_TYPE);
+
+		if (!manualTriggerNode) {
+			console.error('Could not find the manual trigger node');
+			return null;
+		}
+		return {
+			id: uuid(),
+			name: manualTriggerNode.defaults.name?.toString() ?? manualTriggerNode.displayName,
+			type: MANUAL_TRIGGER_NODE_TYPE,
+			parameters: {},
+			position: canvasAddButtonPosition.value,
+			typeVersion: 1,
+		};
+	};
+
 	const getNodesWithPlaceholderNode = (): INodeUi[] =>
 		triggerNodes.value.length > 0 ? nodes.value : [getPlaceholderTriggerNodeUI(), ...nodes.value];
 
@@ -98,8 +126,8 @@ export const useCanvasStore = defineStore('canvas', () => {
 		const sidebarWidth = isDemo.value
 			? 0
 			: uiStore.sidebarMenuCollapsed
-			  ? SIDEBAR_WIDTH
-			  : SIDEBAR_WIDTH_EXPANDED;
+				? SIDEBAR_WIDTH
+				: SIDEBAR_WIDTH_EXPANDED;
 
 		const relativeX = position[0] - sidebarWidth;
 		const relativeY = isDemo.value
@@ -294,10 +322,12 @@ export const useCanvasStore = defineStore('canvas', () => {
 		isDemo,
 		nodeViewScale,
 		canvasAddButtonPosition,
-		lastSelectedConnection,
 		newNodeInsertPosition,
 		jsPlumbInstance,
 		isLoading: loadingService.isLoading,
+		aiNodes,
+		lastSelectedConnection: lastSelectedConnectionComputed,
+		setLastSelectedConnection,
 		startLoading: loadingService.startLoading,
 		setLoadingText: loadingService.setLoadingText,
 		stopLoading: loadingService.stopLoading,
@@ -311,5 +341,6 @@ export const useCanvasStore = defineStore('canvas', () => {
 		zoomToFit,
 		wheelScroll,
 		initInstance,
+		getAutoAddManualTriggerNode,
 	};
 });

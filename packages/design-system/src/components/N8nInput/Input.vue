@@ -1,11 +1,19 @@
 <template>
 	<ElInput
 		ref="innerInput"
-		:size="computedSize"
+		:model-value="modelValue"
+		:type="type"
+		:size="resolvedSize"
 		:class="['n8n-input', ...classes]"
 		:autocomplete="autocomplete"
 		:name="name"
-		v-bind="{ ...$props, ...$attrs }"
+		:placeholder="placeholder"
+		:disabled="disabled"
+		:readonly="readonly"
+		:clearable="clearable"
+		:rows="rows"
+		:title="title"
+		v-bind="$attrs"
 	>
 		<template v-if="$slots.prepend" #prepend>
 			<slot name="prepend" />
@@ -26,14 +34,13 @@
 import { computed, ref } from 'vue';
 import { ElInput } from 'element-plus';
 import { uid } from '../../utils';
-
-const INPUT = ['text', 'textarea', 'number', 'password', 'email'] as const;
-const SIZE = ['mini', 'small', 'medium', 'large', 'xlarge'] as const;
+import type { InputSize, InputType } from 'n8n-design-system/types/input';
+import type { ElementPlusSizePropType, InputAutocompletePropType } from 'n8n-design-system/types';
 
 interface InputProps {
 	modelValue?: string | number;
-	type?: (typeof INPUT)[number];
-	size?: (typeof SIZE)[number];
+	type?: InputType;
+	size?: InputSize;
 	placeholder?: string;
 	disabled?: boolean;
 	readonly?: boolean;
@@ -42,12 +49,13 @@ interface InputProps {
 	maxlength?: number;
 	title?: string;
 	name?: string;
-	autocomplete?: 'off' | 'autocomplete';
+	autocomplete?: InputAutocompletePropType;
 }
 
 defineOptions({ name: 'N8nInput' });
 const props = withDefaults(defineProps<InputProps>(), {
 	modelValue: '',
+	type: 'text',
 	size: 'large',
 	placeholder: '',
 	disabled: false,
@@ -60,7 +68,9 @@ const props = withDefaults(defineProps<InputProps>(), {
 	autocomplete: 'off',
 });
 
-const computedSize = computed(() => (props.size === 'xlarge' ? undefined : props.size));
+const resolvedSize = computed(
+	() => (props.size === 'xlarge' ? undefined : props.size) as ElementPlusSizePropType,
+);
 
 const classes = computed(() => {
 	const applied: string[] = [];

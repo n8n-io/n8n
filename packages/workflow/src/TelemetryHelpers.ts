@@ -13,6 +13,7 @@ import type {
 import { ApplicationError } from './errors/application.error';
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
+	CHAIN_LLM_LANGCHAIN_NODE_TYPE,
 	CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
 	LANGCHAIN_CUSTOM_TOOLS,
@@ -125,14 +126,20 @@ export function generateNodesGraph(
 			return;
 		}
 
-		const nodeParameters =
-			getNodeParameters(
-				stickyType.description.properties,
-				stickyNote.parameters,
-				true,
-				false,
-				stickyNote,
-			) ?? {};
+		let nodeParameters: IDataObject = {};
+
+		try {
+			nodeParameters =
+				getNodeParameters(
+					stickyType.description.properties,
+					stickyNote.parameters,
+					true,
+					false,
+					stickyNote,
+				) ?? {};
+		} catch {
+			// prevent node param resolution from failing graph generation
+		}
 
 		const height: number = typeof nodeParameters.height === 'number' ? nodeParameters.height : 0;
 		const width: number = typeof nodeParameters.width === 'number' ? nodeParameters.width : 0;
@@ -150,6 +157,7 @@ export function generateNodesGraph(
 		};
 	});
 
+	// eslint-disable-next-line complexity
 	otherNodes.forEach((node: INode, index: number) => {
 		nodeGraph.node_types.push(node.type);
 		const nodeItem: INodeGraphItem = {
@@ -168,7 +176,7 @@ export function generateNodesGraph(
 		}
 
 		if (node.type === AGENT_LANGCHAIN_NODE_TYPE) {
-			nodeItem.agent = (node.parameters.agent as string) || 'conversationalAgent';
+			nodeItem.agent = (node.parameters.agent as string) ?? 'conversationalAgent';
 		} else if (node.type === HTTP_REQUEST_NODE_TYPE && node.typeVersion === 1) {
 			try {
 				nodeItem.domain = new URL(node.parameters.url as string).hostname;
@@ -228,7 +236,7 @@ export function generateNodesGraph(
 		if (options?.isCloudDeployment === true) {
 			if (node.type === OPENAI_LANGCHAIN_NODE_TYPE) {
 				nodeItem.prompts =
-					(((node.parameters?.messages as IDataObject) || {}).values as IDataObject[]) || [];
+					(((node.parameters?.messages as IDataObject) ?? {}).values as IDataObject[]) ?? [];
 			}
 
 			if (node.type === AGENT_LANGCHAIN_NODE_TYPE) {
@@ -265,15 +273,20 @@ export function generateNodesGraph(
 
 			if (node.type === CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE) {
 				nodeItem.prompts = (
-					(((node.parameters?.options as IDataObject) || {})
-						.summarizationMethodAndPrompts as IDataObject) || {}
+					(((node.parameters?.options as IDataObject) ?? {})
+						.summarizationMethodAndPrompts as IDataObject) ?? {}
 				).values as IDataObject;
 			}
 
 			if (LANGCHAIN_CUSTOM_TOOLS.includes(node.type)) {
 				nodeItem.prompts = {
-					description: (node.parameters?.description as string) || '',
+					description: (node.parameters?.description as string) ?? '',
 				};
+			}
+
+			if (node.type === CHAIN_LLM_LANGCHAIN_NODE_TYPE) {
+				nodeItem.prompts =
+					(((node.parameters?.messages as IDataObject) ?? {}).messageValues as IDataObject[]) ?? [];
 			}
 		}
 

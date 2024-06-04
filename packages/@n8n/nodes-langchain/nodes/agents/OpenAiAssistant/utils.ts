@@ -1,5 +1,5 @@
 import { zodToJsonSchema } from 'zod-to-json-schema';
-import type { OpenAI as OpenAIClient } from 'openai';
+import type { OpenAIClient } from '@langchain/openai';
 import type { StructuredTool } from '@langchain/core/tools';
 
 // Copied from langchain(`langchain/src/tools/convert_to_openai.ts`)
@@ -33,9 +33,7 @@ export function formatToOpenAITool(tool: StructuredTool): OpenAIClient.Chat.Chat
 	};
 }
 
-export function formatToOpenAIAssistantTool(
-	tool: StructuredTool,
-): OpenAIClient.Beta.AssistantCreateParams.AssistantToolsFunction {
+export function formatToOpenAIAssistantTool(tool: StructuredTool): OpenAIClient.Beta.AssistantTool {
 	return {
 		type: 'function',
 		function: {
