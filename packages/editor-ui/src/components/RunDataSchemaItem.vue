@@ -121,8 +121,6 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 				/>
 			</span>
 		</div>
-		<!-- We need to use v-html here as we want to render the new lines wrapped in span. The HTML is sanitized before. -->
-		<!-- eslint-disable-next-line vue/no-v-html-->
 		<span v-if="text" :class="$style.text" v-html="text" />
 		<input v-if="level > 0 && isSchemaValueArray" :id="subKey" type="checkbox" checked />
 		<label v-if="level > 0 && isSchemaValueArray" :class="$style.toggle" :for="subKey">

@@ -86,7 +86,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
           >
             
             <span
-              class="mappable"
+              class="content mappable"
               data-depth="2"
               data-name="list"
               data-path="[0].list"
@@ -140,7 +140,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
             >
               
               <span
-                class="mappable ph-no-capture"
+                class="content mappable ph-no-capture"
                 data-depth="3"
                 data-name="list[0]"
                 data-path="[0].list[0]"
@@ -185,7 +185,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
             >
               
               <span
-                class="mappable ph-no-capture"
+                class="content mappable ph-no-capture"
                 data-depth="3"
                 data-name="list[1]"
                 data-path="[0].list[1]"
@@ -230,7 +230,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
             >
               
               <span
-                class="mappable ph-no-capture"
+                class="content mappable ph-no-capture"
                 data-depth="3"
                 data-name="list[2]"
                 data-path="[0].list[2]"
@@ -299,7 +299,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
           >
             
             <span
-              class="mappable"
+              class="content mappable"
               data-depth="2"
               data-name="record"
               data-path="[0].record"
@@ -351,7 +351,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
           >
             
             <span
-              class="mappable"
+              class="content mappable"
               data-depth="3"
               data-name="name"
               data-path="[0].record.name"
@@ -372,7 +372,9 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
               class="vjs-value vjs-value-string"
             >
               
-              <span>
+              <span
+                class="content"
+              >
                 "Joe"
               </span>
               
@@ -435,7 +437,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
           >
             
             <span
-              class="mappable"
+              class="content mappable"
               data-depth="2"
               data-name="myNumber"
               data-path="[0].myNumber"
@@ -456,7 +458,9 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
               class="vjs-value vjs-value-number"
             >
               
-              <span>
+              <span
+                class="content"
+              >
                 123
               </span>
               
@@ -490,7 +494,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
           >
             
             <span
-              class="mappable"
+              class="content mappable"
               data-depth="2"
               data-name="myStringNumber"
               data-path="[0].myStringNumber"
@@ -511,7 +515,9 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
               class="vjs-value vjs-value-string"
             >
               
-              <span>
+              <span
+                class="content"
+              >
                 "456"
               </span>
               
@@ -545,7 +551,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
           >
             
             <span
-              class="mappable"
+              class="content mappable"
               data-depth="2"
               data-name="myStringText"
               data-path="[0].myStringText"
@@ -566,7 +572,9 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
               class="vjs-value vjs-value-string"
             >
               
-              <span>
+              <span
+                class="content"
+              >
                 "abc"
               </span>
               
@@ -600,7 +608,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
           >
             
             <span
-              class="mappable"
+              class="content mappable"
               data-depth="2"
               data-name="nil"
               data-path="[0].nil"
@@ -621,7 +629,9 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
               class="vjs-value vjs-value-null"
             >
               
-              <span>
+              <span
+                class="content"
+              >
                 null
               </span>
               
@@ -655,7 +665,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
           >
             
             <span
-              class="mappable"
+              class="content mappable"
               data-depth="2"
               data-name="d"
               data-path="[0].d"
@@ -676,7 +686,9 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
               class="vjs-value vjs-value-undefined"
             >
               
-              <span />
+              <span
+                class="content"
+              />
               
             </span>
             <!---->
