@@ -78,7 +78,7 @@ const iconType = computed(() => {
 const color = computed(() => {
 	const nodeType = props.nodeType;
 
-	if (nodeType && 'iconColor' in nodeType) {
+	if (nodeType && 'iconColor' in nodeType && nodeType.iconColor) {
 		return `var(--color-node-icon-${nodeType.iconColor})`;
 	}
 	return nodeType?.defaults?.color?.toString() ?? props.colorDefault ?? '';
