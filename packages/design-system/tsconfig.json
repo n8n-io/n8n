@@ -13,7 +13,7 @@
 		"types": ["vitest/globals"],
 		"typeRoots": ["./node_modules/@testing-library", "./node_modules/@types", "../../node_modules", "../../node_modules/@types"],
 		"paths": {
-			"@/*": ["src/*"]
+			"n8n-design-system/*": ["./src/*"]
 		},
 		"lib": ["esnext", "dom", "dom.iterable", "scripthost"],
 		// TODO: remove all options below this line

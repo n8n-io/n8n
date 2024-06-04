@@ -63,7 +63,6 @@ export const SOURCE_CONTROL_PULL_MODAL_KEY = 'sourceControlPull';
 export const DEBUG_PAYWALL_MODAL_KEY = 'debugPaywall';
 export const MFA_SETUP_MODAL_KEY = 'mfaSetup';
 export const WORKFLOW_HISTORY_VERSION_RESTORE = 'workflowHistoryVersionRestore';
-export const SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY = 'suggestedTemplatePreview';
 export const SETUP_CREDENTIALS_MODAL_KEY = 'setupCredentials';
 
 export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
@@ -264,8 +263,10 @@ export const AI_CATEGORY_RETRIEVERS = 'Retrievers';
 export const AI_CATEGORY_EMBEDDING = 'Embeddings';
 export const AI_CATEGORY_DOCUMENT_LOADERS = 'Document Loaders';
 export const AI_CATEGORY_TEXT_SPLITTERS = 'Text Splitters';
+export const AI_CATEGORY_ROOT_NODES = 'Root Nodes';
 export const AI_UNCATEGORIZED_CATEGORY = 'Miscellaneous';
-
+export const AI_CODE_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolCode';
+export const AI_WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolWorkflow';
 export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fBVTZ3';
 
 // Node Connection Types
@@ -397,7 +398,6 @@ export const ROLE_OTHER = 'other';
 /** END OF PERSONALIZATION SURVEY */
 
 export const MODAL_CANCEL = 'cancel';
-export const MODAL_CLOSE = 'close';
 export const MODAL_CONFIRM = 'confirm';
 
 export const VALID_EMAIL_REGEX =
@@ -674,10 +674,17 @@ export const AI_ASSISTANT_EXPERIMENT = {
 	variant: 'variant',
 };
 
+export const CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT = {
+	name: '20_canvas_auto_add_manual_trigger',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const EXPERIMENTS_TO_TRACK = [
 	ASK_AI_EXPERIMENT.name,
 	TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT,
 	AI_ASSISTANT_EXPERIMENT.name,
+	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT.name,
 ];
 
 export const MFA_AUTHENTICATION_REQUIRED_ERROR_CODE = 998;
@@ -759,8 +766,6 @@ export const TIME = {
 	HOUR: 60 * 60 * 1000,
 	DAY: 24 * 60 * 60 * 1000,
 };
-
-export const SUGGESTED_TEMPLATES_FLAG = 'SHOW_N8N_SUGGESTED_TEMPLATES';
 
 /**
  * Mouse button codes

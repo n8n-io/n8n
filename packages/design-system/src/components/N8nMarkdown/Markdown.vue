@@ -23,7 +23,7 @@ import Markdown from 'markdown-it';
 import markdownLink from 'markdown-it-link-attributes';
 import markdownEmoji from 'markdown-it-emoji';
 import markdownTaskLists from 'markdown-it-task-lists';
-import xss, { friendlyAttrValue } from 'xss';
+import xss, { friendlyAttrValue, whiteList } from 'xss';
 
 import N8nLoading from '../N8nLoading';
 import { escapeMarkdown } from '../../utils/markdown';
@@ -72,6 +72,7 @@ const props = withDefaults(defineProps<MarkdownProps>(), {
 			},
 		},
 		tasklists: {
+			enabled: true,
 			label: true,
 			labelAfter: true,
 		},
@@ -83,6 +84,11 @@ const md = new Markdown(options.markdown)
 	.use(markdownLink, options.linkAttributes)
 	.use(markdownEmoji)
 	.use(markdownTaskLists, options.tasklists);
+
+const xssWhiteList = {
+	...whiteList,
+	label: ['class', 'for'],
+};
 
 const htmlContent = computed(() => {
 	if (!props.content) {
@@ -108,7 +114,7 @@ const htmlContent = computed(() => {
 	}
 	const html = md.render(escapeMarkdown(contentToRender));
 	const safeHtml = xss(html, {
-		onTagAttr: (tag, name, value) => {
+		onTagAttr(tag, name, value) {
 			if (tag === 'img' && name === 'src') {
 				if (value.match(fileIdRegex)) {
 					const id = value.split('fileId:')[1];
@@ -123,13 +129,23 @@ const htmlContent = computed(() => {
 				}
 			}
 			// Return nothing, means keep the default handling measure
+			return;
 		},
 		onTag(tag, code) {
 			if (tag === 'img' && code.includes('alt="workflow-screenshot"')) {
 				return '';
 			}
 			// return nothing, keep tag
+			return;
 		},
+		onIgnoreTag(tag, tagHTML) {
+			// Allow checkboxes
+			if (tag === 'input' && tagHTML.includes('type="checkbox"')) {
+				return tagHTML;
+			}
+			return;
+		},
+		whiteList: xssWhiteList,
 	});
 
 	return safeHtml;

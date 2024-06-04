@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { ComponentPublicInstance, PropType } from 'vue';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
-import type { EnvironmentVariable, Rule, RuleGroup } from '@/Interface';
+import type { Rule, RuleGroup } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import { useClipboard } from '@/composables/useClipboard';
@@ -9,6 +9,7 @@ import { EnterpriseEditionFeature } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { getVariablesPermissions } from '@/permissions';
+import type { IResource } from './layouts/ResourcesListLayout.vue';
 
 const i18n = useI18n();
 const clipboard = useClipboard();
@@ -20,7 +21,7 @@ const emit = defineEmits(['save', 'cancel', 'edit', 'delete']);
 
 const props = defineProps({
 	data: {
-		type: Object as PropType<EnvironmentVariable>,
+		type: Object as PropType<IResource>,
 		default: () => ({}),
 	},
 	editing: {
@@ -30,20 +31,20 @@ const props = defineProps({
 });
 
 const permissions = computed(() => getVariablesPermissions(usersStore.currentUser));
-const modelValue = ref<EnvironmentVariable>({ ...props.data });
+const modelValue = ref<IResource>({ ...props.data });
 
 const formValidationStatus = ref<Record<string, boolean>>({
 	key: false,
 	value: false,
 });
 const formValid = computed(() => {
-	return formValidationStatus.value.key && formValidationStatus.value.value;
+	return formValidationStatus.value.name && formValidationStatus.value.value;
 });
 
 const keyInputRef = ref<ComponentPublicInstance & { inputRef?: HTMLElement }>();
 const valueInputRef = ref<HTMLElement>();
 
-const usage = ref(`$vars.${props.data.key}`);
+const usage = ref(`$vars.${props.data.name}`);
 
 const isFeatureEnabled = computed(() =>
 	settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Variables),
@@ -77,17 +78,17 @@ const valueValidationRules: Array<Rule | RuleGroup> = [
 ];
 
 watch(
-	() => modelValue.value.key,
+	() => modelValue.value.name,
 	async () => {
 		await nextTick();
-		if (formValidationStatus.value.key) {
+		if (formValidationStatus.value.name) {
 			updateUsageSyntax();
 		}
 	},
 );
 
 function updateUsageSyntax() {
-	usage.value = `$vars.${modelValue.value.key || props.data.key}`;
+	usage.value = `$vars.${modelValue.value.name || props.data.name}`;
 }
 
 async function onCancel() {
@@ -111,8 +112,8 @@ async function onDelete() {
 	emit('delete', modelValue.value);
 }
 
-function onValidate(key: string, value: boolean) {
-	formValidationStatus.value[key] = value;
+function onValidate(name: string, value: boolean) {
+	formValidationStatus.value[name] = value;
 }
 
 function onUsageClick() {
@@ -132,19 +133,19 @@ function focusFirstInput() {
 	<tr :class="$style.variablesRow" data-test-id="variables-row">
 		<td class="variables-key-column">
 			<div>
-				<span v-if="!editing">{{ data.key }}</span>
+				<span v-if="!editing">{{ data.name }}</span>
 				<n8n-form-input
 					v-else
 					ref="keyInputRef"
-					v-model="modelValue.key"
+					v-model="modelValue.name"
 					label
-					name="key"
+					name="name"
 					data-test-id="variable-row-key-input"
 					:placeholder="i18n.baseText('variables.editing.key.placeholder')"
 					required
 					validate-on-blur
 					:validation-rules="keyValidationRules"
-					@validate="(value) => onValidate('key', value)"
+					@validate="(value: boolean) => onValidate('name', value)"
 				/>
 			</div>
 		</td>
@@ -161,14 +162,14 @@ function focusFirstInput() {
 					:placeholder="i18n.baseText('variables.editing.value.placeholder')"
 					validate-on-blur
 					:validation-rules="valueValidationRules"
-					@validate="(value) => onValidate('value', value)"
+					@validate="(value: boolean) => onValidate('value', value)"
 				/>
 			</div>
 		</td>
 		<td class="variables-usage-column">
 			<div>
 				<n8n-tooltip placement="top">
-					<span v-if="modelValue.key && usage" :class="$style.usageSyntax" @click="onUsageClick">{{
+					<span v-if="modelValue.name && usage" :class="$style.usageSyntax" @click="onUsageClick">{{
 						usage
 					}}</span>
 					<template #content>

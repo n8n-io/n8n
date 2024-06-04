@@ -79,7 +79,7 @@ export const versionDescription: INodeTypeDescription = {
 		alias: ['LangChain', 'ChatGPT', 'DallE'],
 		categories: ['AI'],
 		subcategories: {
-			AI: ['Agents', 'Miscellaneous'],
+			AI: ['Agents', 'Miscellaneous', 'Root Nodes'],
 		},
 		resources: {
 			primaryDocumentation: [

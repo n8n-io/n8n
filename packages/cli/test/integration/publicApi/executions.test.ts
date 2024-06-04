@@ -1,4 +1,3 @@
-import type { SuperAgentTest } from 'supertest';
 import type { User } from '@db/entities/User';
 import type { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 
@@ -17,6 +16,7 @@ import {
 	createSuccessfulExecution,
 	createWaitingExecution,
 } from '../shared/db/executions';
+import type { SuperAgentTest } from '../shared/types';
 
 let owner: User;
 let user1: User;

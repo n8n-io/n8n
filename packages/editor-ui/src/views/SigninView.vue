@@ -144,7 +144,6 @@ export default defineComponent({
 				}
 				await this.settingsStore.getSettings();
 				this.clearAllStickyNotifications();
-				this.checkRecoveryCodesLeft();
 
 				this.$telemetry.track('User attempted to login', {
 					result: this.showMfaView ? 'mfa_success' : 'success',
@@ -197,21 +196,6 @@ export default defineComponent({
 		cacheCredentials(form: { email: string; password: string }) {
 			this.email = form.email;
 			this.password = form.password;
-		},
-		checkRecoveryCodesLeft() {
-			if (this.usersStore.currentUser) {
-				const { hasRecoveryCodesLeft, mfaEnabled } = this.usersStore.currentUser;
-
-				if (mfaEnabled && !hasRecoveryCodesLeft) {
-					this.showToast({
-						title: this.$locale.baseText('settings.mfa.toast.noRecoveryCodeLeft.title'),
-						message: this.$locale.baseText('settings.mfa.toast.noRecoveryCodeLeft.message'),
-						type: 'info',
-						duration: 0,
-						dangerouslyUseHTMLString: true,
-					});
-				}
-			}
 		},
 	},
 });

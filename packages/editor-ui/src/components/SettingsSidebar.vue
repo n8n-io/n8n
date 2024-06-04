@@ -193,11 +193,6 @@ export default defineComponent({
 		openUpdatesPanel() {
 			this.uiStore.openModal(VERSIONS_MODAL_KEY);
 		},
-		async navigateTo(routeName: (typeof VIEWS)[keyof typeof VIEWS]) {
-			if (this.$router.currentRoute.name !== routeName) {
-				await this.$router.push({ name: routeName });
-			}
-		},
 		async handleSelect(key: string) {
 			switch (key) {
 				case 'users': // Fakedoor feature added via hooks when user management is disabled on cloud

@@ -248,7 +248,7 @@ export class Agent implements INodeType {
 			alias: ['LangChain'],
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Agents'],
+				AI: ['Agents', 'Root Nodes'],
 			},
 			resources: {
 				primaryDocumentation: [

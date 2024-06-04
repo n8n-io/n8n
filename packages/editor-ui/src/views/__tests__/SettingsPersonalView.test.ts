@@ -24,7 +24,6 @@ const currentUser = {
 	isDefaultUser: false,
 	isPendingUser: false,
 	isPending: false,
-	hasRecoveryCodesLeft: false,
 	mfaEnabled: false,
 };
 

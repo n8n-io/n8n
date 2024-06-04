@@ -77,7 +77,6 @@ export class UsersController {
 				delete user.isOwner;
 				delete user.isPending;
 				delete user.signInType;
-				delete user.hasRecoveryCodesLeft;
 			}
 		}
 

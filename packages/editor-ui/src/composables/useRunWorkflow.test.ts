@@ -8,6 +8,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRouter } from 'vue-router';
 import { ExpressionError, type IPinData, type IRunData, type Workflow } from 'n8n-workflow';
+import type * as router from 'vue-router';
 
 vi.mock('@/stores/n8nRoot.store', () => ({
 	useRootStore: vi.fn().mockReturnValue({ pushConnectionActive: true }),
@@ -77,7 +78,7 @@ vi.mock('@/composables/useTitleChange', () => ({
 }));
 
 vi.mock('vue-router', async (importOriginal) => {
-	const { RouterLink } = await importOriginal();
+	const { RouterLink } = await importOriginal<typeof router>();
 	return {
 		RouterLink,
 		useRouter: vi.fn().mockReturnValue({
