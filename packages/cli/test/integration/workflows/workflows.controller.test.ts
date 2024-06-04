@@ -261,6 +261,7 @@ describe('POST /workflows', () => {
 		//
 		const tag = await createTag({ name: 'A' });
 		const workflow = makeWorkflow();
+		// TODO: use helpers instead
 		const project = await projectRepository.save(
 			projectRepository.create({
 				name: 'Team Project',

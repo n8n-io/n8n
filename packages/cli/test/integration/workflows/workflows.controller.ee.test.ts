@@ -321,6 +321,24 @@ describe('GET /workflows/:workflowId', () => {
 		expect(response.statusCode).toBe(404);
 	});
 
+	test('project viewers can view workflows', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:viewer');
+
+		const workflow = await createWorkflow({}, teamProject);
+
+		const response = await authMemberAgent.get(`/workflows/${workflow.id}`).expect(200);
+		const responseWorkflow: WorkflowWithSharingsMetaDataAndCredentials = response.body.data;
+
+		expect(responseWorkflow.homeProject).toMatchObject({
+			id: teamProject.id,
+			name: teamProject.name,
+			type: 'team',
+		});
+
+		expect(responseWorkflow.sharedWithProjects).toHaveLength(0);
+	});
+
 	test('should return a workflow with owner', async () => {
 		const workflow = await createWorkflow({}, owner);
 
@@ -512,6 +530,20 @@ describe('GET /workflows/:workflowId', () => {
 });
 
 describe('POST /workflows', () => {
+	test('project viewers cannot create workflows', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:viewer');
+
+		const response = await authMemberAgent
+			.post('/workflows')
+			.send({ ...makeWorkflow(), projectId: teamProject.id });
+
+		expect(response.body).toMatchObject({
+			code: 400,
+			message: "You don't have the permissions to save the workflow in this project.",
+		});
+	});
+
 	it('Should create a workflow that uses no credential', async () => {
 		const workflow = makeWorkflow({ withPinData: false });
 
@@ -666,6 +698,22 @@ describe('POST /workflows', () => {
 });
 
 describe('PATCH /workflows/:workflowId', () => {
+	test('project viewers cannot update workflows', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:viewer');
+
+		const workflow = await createWorkflow({ name: 'WF Name' }, teamProject);
+
+		const response = await authMemberAgent
+			.patch(`/workflows/${workflow.id}`)
+			.send({ ...workflow, name: 'New Name' });
+
+		expect(response.status).toBe(403);
+		expect(response.body).toMatchObject({
+			message: 'User is missing a scope required to perform this action',
+		});
+	});
+
 	describe('validate credential permissions to user', () => {
 		it('Should succeed when saving unchanged workflow nodes', async () => {
 			const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
@@ -1551,5 +1599,23 @@ describe('PUT /:workflowId/transfer', () => {
 			.put(`/workflows/${workflow.id}/transfer`)
 			.send({ destinationProjectId: destinationProject.id })
 			.expect(500);
+	});
+});
+
+describe('POST /workflows/:workflowId/run', () => {
+	test('project viewers cannot run workflows', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:viewer');
+
+		const workflow = await createWorkflow({}, teamProject);
+
+		const response = await authMemberAgent
+			.post(`/workflows/${workflow.id}/run`)
+			.send({ workflowData: workflow });
+
+		expect(response.status).toBe(403);
+		expect(response.body).toMatchObject({
+			message: 'User is missing a scope required to perform this action',
+		});
 	});
 });
