@@ -345,7 +345,7 @@ describe('ExecutionService', () => {
 		});
 	});
 
-	describe('findAllCurrentAndLatest', () => {
+	describe('findLatestCurrentAndCompleted', () => {
 		test('should return latest current and completed executions', async () => {
 			const workflow = await createWorkflow();
 

@@ -289,7 +289,7 @@ export class Start extends BaseCommand {
 		await this.initPruning();
 
 		if (config.getEnv('executions.mode') === 'regular') {
-			// account for enqueued executions that were unable to start due to instance crash
+			// cancel any lingering enqueued executions due to instance crash
 			await Container.get(ExecutionRepository).cancelAllNewExecutions();
 		}
 
