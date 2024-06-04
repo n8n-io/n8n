@@ -2846,7 +2846,8 @@ const getCommonWorkflowFunctions = (
 	getInstanceBaseUrl: () => additionalData.instanceBaseUrl,
 	getInstanceId: () => Container.get(InstanceSettings).instanceId,
 	getTimezone: () => getTimezone(workflow),
-
+	getCredentialsProperties: (type: string) =>
+		additionalData.credentialsHelper.getCredentialsProperties(type),
 	prepareOutputData: async (outputData) => [outputData],
 });
 
