@@ -13,6 +13,7 @@ import type { ZodObject } from 'zod';
 import { z } from 'zod';
 import type { BaseOutputParser, StructuredOutputParser } from '@langchain/core/output_parsers';
 import { OutputFixingParser } from 'langchain/output_parsers';
+import type { APIError } from 'openai/error';
 import {
 	isChatInstance,
 	getPromptInputByType,
@@ -20,6 +21,12 @@ import {
 	getConnectedTools,
 } from '../../../../../utils/helpers';
 import { SYSTEM_MESSAGE } from './prompt';
+
+function isOpenAiApiError(error: unknown): error is APIError {
+	return (
+		!!error && typeof error === 'object' && 'type' in error && 'param' in error && 'code' in error
+	);
+}
 
 function getOutputParserSchema(outputParser: BaseOutputParser): ZodObject<any, any, any, any> {
 	const parserType = outputParser.lc_namespace[outputParser.lc_namespace.length - 1];
@@ -159,7 +166,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				input,
 				system_message: options.systemMessage ?? SYSTEM_MESSAGE,
 				formatting_instructions:
-					'IMPORTANT: Always call `format_final_response` to format your final response!', //outputParser?.getFormatInstructions(),
+					'IMPORTANT: Always call `format_final_response` to format your final response!',
 			});
 
 			returnData.push({
@@ -173,12 +180,29 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				),
 			});
 		} catch (error) {
+			let errorOverride = error;
+
+			// OpenAI doesn't allow empty tools array so we will provide a more user-friendly error message
+			if (
+				isOpenAiApiError(error) &&
+				error.type === 'invalid_request_error' &&
+				error.param?.includes('tools') &&
+				error.code?.includes('empty_array')
+			) {
+				errorOverride = new NodeOperationError(
+					this.getNode(),
+					"Please connect at least one tool. If you don't need any, try the conversational agent instead",
+				);
+			}
 			if (this.continueOnFail()) {
-				returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
+				returnData.push({
+					json: { error: errorOverride?.message },
+					pairedItem: { item: itemIndex },
+				});
 				continue;
 			}
 
-			throw error;
+			throw errorOverride;
 		}
 	}
 
