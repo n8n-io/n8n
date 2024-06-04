@@ -12,20 +12,35 @@ export const escapeMarkdown = (html: string | undefined): string => {
 	return withQuotes;
 };
 
+const checkedRegEx = /(\*|-) \[x\]/;
+const uncheckedRegEx = /(\*|-) \[\s\]/;
+
 /**
- * Replace nth occurrence of a regex match in a string
- * @param markdown string to replace in
- * @param regex regex to match
- * @param replacement string to replace with
- * @param index position of the occurrence to replace
+ * Toggles the checkbox at the specified index in the given markdown string.
+ *
+ * @param markdown - The markdown string containing checkboxes.
+ * @param index - The index of the checkbox to toggle.
+ * @returns The updated markdown string with the checkbox toggled.
  */
-export const replaceNth = (markdown: string, regex: RegExp, replacement: string, index: number) => {
-	let occurrence = 0;
-	return markdown.replace(regex, (match) => {
-		occurrence++;
-		if (occurrence === index) {
-			return replacement;
+export const toggleCheckbox = (markdown: string, index: number) => {
+	let cursor = 0;
+	const lines = markdown.split('\n');
+
+	for (let lineNumber = 0; lineNumber < lines.length; lineNumber++) {
+		const line = lines[lineNumber];
+		const checked = checkedRegEx.test(line);
+		const unchecked = uncheckedRegEx.test(line);
+
+		if (checked || unchecked) {
+			if (cursor === index) {
+				const regExp = checked ? checkedRegEx : uncheckedRegEx;
+				const replacement = checked ? '[ ]' : '[x]';
+				lines[lineNumber] = line.replace(regExp, `$1 ${replacement}`);
+				break;
+			}
+			cursor++;
 		}
-		return match;
-	});
+	}
+
+	return lines.join('\n');
 };

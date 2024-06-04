@@ -130,7 +130,7 @@ const shouldShowFooter = computed((): boolean => resHeight.value > 100 && resWid
 watch(
 	() => props.editMode,
 	(newMode, prevMode) => {
-		setTimeout(async () => {
+		setTimeout(() => {
 			if (newMode && !prevMode && input.value) {
 				if (props.defaultText === props.modelValue) {
 					input.value.select();

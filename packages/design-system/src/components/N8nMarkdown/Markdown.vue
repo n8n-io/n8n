@@ -28,7 +28,7 @@ import markdownTaskLists from 'markdown-it-task-lists';
 import xss, { friendlyAttrValue, whiteList } from 'xss';
 
 import N8nLoading from '../N8nLoading';
-import { escapeMarkdown, replaceNth } from '../../utils/markdown';
+import { escapeMarkdown, toggleCheckbox } from '../../utils/markdown';
 
 interface IImage {
 	id: string;
@@ -177,7 +177,7 @@ const onChange = async (event: Event) => {
 			// Get the index of the checkbox that was clicked
 			const index = Array.from(checkboxes).indexOf(event.target);
 			if (index !== -1) {
-				await onCheckboxChange(event.target, index);
+				onCheckboxChange(index);
 			}
 		}
 	}
@@ -192,18 +192,14 @@ const onMouseDown = (event: MouseEvent) => {
 };
 
 // Update markdown when checkbox state changes
-const onCheckboxChange = async (checkbox: HTMLInputElement, position: number) => {
+const onCheckboxChange = (index: number) => {
 	const currentContent = props.content;
 	if (!currentContent) {
 		return;
 	}
-	// We are using position to connect the checkbox with the corresponding line in the markdown
-	const newContent = replaceNth(
-		currentContent,
-		/\- \[[x|\s]\]/gim,
-		checkbox.checked ? '- [x]' : '- [ ]',
-		position + 1,
-	);
+
+	// We are using index to connect the checkbox with the corresponding line in the markdown
+	const newContent = toggleCheckbox(currentContent, index);
 	$emit('update-content', newContent);
 };
 </script>
