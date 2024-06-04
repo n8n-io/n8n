@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { CanvasConnection, CanvasElement } from '@/types';
-import { NodeDragEvent, Connection, useVueFlow } from '@vue-flow/core';
-import { VueFlow, PanelPosition } from '@vue-flow/core';
+import type { NodeDragEvent, Connection } from '@vue-flow/core';
+import { useVueFlow, VueFlow, PanelPosition } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
 import { MiniMap } from '@vue-flow/minimap';
