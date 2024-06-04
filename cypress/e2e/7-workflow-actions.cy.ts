@@ -187,45 +187,47 @@ describe('Workflow Actions', () => {
 
 	it('should update workflow settings', () => {
 		cy.visit(WorkflowPages.url);
-		WorkflowPages.getters.workflowCards().then((cards) => {
-			const totalWorkflows = cards.length;
+		cy.intercept('GET', '/rest/workflows', (req) => {
+			req.on('response', (res) => {
+				const totalWorkflows = res.body.count ?? 0;
 
-			WorkflowPage.actions.visit();
-			// Open settings dialog
-			WorkflowPage.actions.saveWorkflowOnButtonClick();
-			WorkflowPage.getters.workflowMenu().should('be.visible');
-			WorkflowPage.getters.workflowMenu().click();
-			WorkflowPage.getters.workflowMenuItemSettings().should('be.visible');
-			WorkflowPage.getters.workflowMenuItemSettings().click();
-			// Change all settings
-			// totalWorkflows + 1 (current workflow) + 1 (no workflow option)
-			WorkflowPage.getters.workflowSettingsErrorWorkflowSelect().click();
-			getVisibleSelect()
-				.find('li')
-				.should('have.length', totalWorkflows + 2);
-			getVisibleSelect().find('li').last().click({ force: true });
-			WorkflowPage.getters.workflowSettingsTimezoneSelect().click();
-			getVisibleSelect().find('li').should('exist');
-			getVisibleSelect().find('li').eq(1).click({ force: true });
-			WorkflowPage.getters.workflowSettingsSaveFiledExecutionsSelect().click();
-			getVisibleSelect().find('li').should('have.length', 3);
-			getVisibleSelect().find('li').last().click({ force: true });
-			WorkflowPage.getters.workflowSettingsSaveSuccessExecutionsSelect().click();
-			getVisibleSelect().find('li').should('have.length', 3);
-			getVisibleSelect().find('li').last().click({ force: true });
-			WorkflowPage.getters.workflowSettingsSaveManualExecutionsSelect().click();
-			getVisibleSelect().find('li').should('have.length', 3);
-			getVisibleSelect().find('li').last().click({ force: true });
-			WorkflowPage.getters.workflowSettingsSaveExecutionProgressSelect().click();
-			getVisibleSelect().find('li').should('have.length', 3);
-			getVisibleSelect().find('li').last().click({ force: true });
-			WorkflowPage.getters.workflowSettingsTimeoutWorkflowSwitch().click();
-			WorkflowPage.getters.workflowSettingsTimeoutForm().find('input').first().type('1');
-			// Save settings
-			WorkflowPage.getters.workflowSettingsSaveButton().click();
-			WorkflowPage.getters.workflowSettingsModal().should('not.exist');
-			WorkflowPage.getters.successToast().should('exist');
-		});
+				WorkflowPage.actions.visit();
+				// Open settings dialog
+				WorkflowPage.actions.saveWorkflowOnButtonClick();
+				WorkflowPage.getters.workflowMenu().should('be.visible');
+				WorkflowPage.getters.workflowMenu().click();
+				WorkflowPage.getters.workflowMenuItemSettings().should('be.visible');
+				WorkflowPage.getters.workflowMenuItemSettings().click();
+				// Change all settings
+				// totalWorkflows + 1 (current workflow) + 1 (no workflow option)
+				WorkflowPage.getters.workflowSettingsErrorWorkflowSelect().click();
+				getVisibleSelect()
+					.find('li')
+					.should('have.length', totalWorkflows + 2);
+				getVisibleSelect().find('li').last().click({ force: true });
+				WorkflowPage.getters.workflowSettingsTimezoneSelect().click();
+				getVisibleSelect().find('li').should('exist');
+				getVisibleSelect().find('li').eq(1).click({ force: true });
+				WorkflowPage.getters.workflowSettingsSaveFiledExecutionsSelect().click();
+				getVisibleSelect().find('li').should('have.length', 3);
+				getVisibleSelect().find('li').last().click({ force: true });
+				WorkflowPage.getters.workflowSettingsSaveSuccessExecutionsSelect().click();
+				getVisibleSelect().find('li').should('have.length', 3);
+				getVisibleSelect().find('li').last().click({ force: true });
+				WorkflowPage.getters.workflowSettingsSaveManualExecutionsSelect().click();
+				getVisibleSelect().find('li').should('have.length', 3);
+				getVisibleSelect().find('li').last().click({ force: true });
+				WorkflowPage.getters.workflowSettingsSaveExecutionProgressSelect().click();
+				getVisibleSelect().find('li').should('have.length', 3);
+				getVisibleSelect().find('li').last().click({ force: true });
+				WorkflowPage.getters.workflowSettingsTimeoutWorkflowSwitch().click();
+				WorkflowPage.getters.workflowSettingsTimeoutForm().find('input').first().type('1');
+				// Save settings
+				WorkflowPage.getters.workflowSettingsSaveButton().click();
+				WorkflowPage.getters.workflowSettingsModal().should('not.exist');
+				WorkflowPage.getters.successToast().should('exist');
+			});
+		}).as('loadWorkflows');
 	});
 
 	it('should not be able to delete unsaved workflow', () => {
