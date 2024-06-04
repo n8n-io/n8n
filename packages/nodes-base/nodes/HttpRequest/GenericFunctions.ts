@@ -106,7 +106,8 @@ export function getSecrets(
 
 	const secrets = Object.entries(credentials)
 		.filter(([propName]) => sensitivePropNames.has(propName))
-		.map(([_, value]) => value as string);
+		.map(([_, value]) => value)
+		.filter((value): value is string => typeof value === 'string');
 	const oauthAccessToken = get(credentials, 'oauthTokenData.access_token');
 	if (typeof oauthAccessToken === 'string') {
 		secrets.push(oauthAccessToken);
