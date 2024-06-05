@@ -39,6 +39,7 @@ export async function getAuthorization(
 
 		return response.auth_token;
 	} catch (error) {
+		if (error instanceof NodeApiError) throw error;
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
@@ -80,6 +81,7 @@ export async function taigaApiRequest(
 	try {
 		return await this.helpers.request(options);
 	} catch (error) {
+		if (error instanceof NodeApiError) throw error;
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

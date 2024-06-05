@@ -253,6 +253,7 @@ export class AwsSqs implements INodeType {
 					// loads first 1000 queues from SQS
 					data = await awsApiRequestSOAP.call(this, 'sqs', 'GET', `?${params.join('&')}`);
 				} catch (error) {
+					if (error instanceof NodeApiError) throw error;
 					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 
@@ -372,6 +373,7 @@ export class AwsSqs implements INodeType {
 						`${queuePath}?${params.join('&')}`,
 					);
 				} catch (error) {
+					if (error instanceof NodeApiError) throw error;
 					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 

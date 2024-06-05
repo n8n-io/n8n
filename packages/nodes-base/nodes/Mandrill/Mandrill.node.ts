@@ -692,6 +692,7 @@ export class Mandrill implements INodeType {
 				try {
 					templates = await mandrillApiRequest.call(this, '/templates', 'POST', '/list');
 				} catch (error) {
+					if (error instanceof NodeApiError) throw error;
 					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 				for (const template of templates) {

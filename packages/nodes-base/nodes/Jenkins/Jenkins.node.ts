@@ -538,6 +538,7 @@ export class Jenkins implements INodeType {
 							if (error.httpCode === '302') {
 								responseData = { success: true };
 							} else {
+								if (error instanceof NodeApiError) throw error;
 								throw new NodeApiError(this.getNode(), error as JsonObject);
 							}
 						}
@@ -590,6 +591,7 @@ export class Jenkins implements INodeType {
 							if (error.httpCode === '503') {
 								responseData = { success: true };
 							} else {
+								if (error instanceof NodeApiError) throw error;
 								throw new NodeApiError(this.getNode(), error as JsonObject);
 							}
 						}
@@ -602,6 +604,7 @@ export class Jenkins implements INodeType {
 							if (error.httpCode === '503') {
 								responseData = { success: true };
 							} else {
+								if (error instanceof NodeApiError) throw error;
 								throw new NodeApiError(this.getNode(), error as JsonObject);
 							}
 						}

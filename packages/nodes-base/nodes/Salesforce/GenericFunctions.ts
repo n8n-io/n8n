@@ -138,6 +138,7 @@ export async function salesforceApiRequest(
 			return await this.helpers.requestOAuth2.call(this, credentialsType, options);
 		}
 	} catch (error) {
+		if (error instanceof NodeApiError) throw error;
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

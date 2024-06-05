@@ -125,6 +125,7 @@ export class Flow implements INodeType {
 						responseData = await flowApiRequest.call(this, 'POST', '/tasks', body);
 						responseData = responseData.task;
 					} catch (error) {
+						if (error instanceof NodeApiError) throw error;
 						throw new NodeApiError(this.getNode(), error as JsonObject);
 					}
 				}
@@ -193,6 +194,7 @@ export class Flow implements INodeType {
 						responseData = await flowApiRequest.call(this, 'PUT', `/tasks/${taskId}`, body);
 						responseData = responseData.task;
 					} catch (error) {
+						if (error instanceof NodeApiError) throw error;
 						throw new NodeApiError(this.getNode(), error as JsonObject);
 					}
 				}
@@ -207,6 +209,7 @@ export class Flow implements INodeType {
 					try {
 						responseData = await flowApiRequest.call(this, 'GET', `/tasks/${taskId}`, {}, qs);
 					} catch (error) {
+						if (error instanceof NodeApiError) throw error;
 						throw new NodeApiError(this.getNode(), error as JsonObject);
 					}
 				}

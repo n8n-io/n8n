@@ -69,6 +69,7 @@ export class TogglTrigger implements INodeType {
 			timeEntries = await togglApiRequest.call(this, 'GET', endpoint, {}, qs);
 			webhookData.lastTimeChecked = qs.end_date;
 		} catch (error) {
+			if (error instanceof NodeApiError) throw error;
 			throw new NodeApiError(this.getNode(), error as JsonObject);
 		}
 		if (Array.isArray(timeEntries) && timeEntries.length !== 0) {

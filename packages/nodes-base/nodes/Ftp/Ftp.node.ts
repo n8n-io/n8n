@@ -786,6 +786,7 @@ export class Ftp implements INodeType {
 										await ftp!.mkdir(dirPath, true);
 										await ftp!.put(uploadData, remotePath);
 									} else {
+										if (error instanceof NodeApiError) throw error;
 										throw new NodeApiError(this.getNode(), error as JsonObject);
 									}
 								}
@@ -803,6 +804,7 @@ export class Ftp implements INodeType {
 										await ftp!.mkdir(dirPath, true);
 										await ftp!.put(buffer, remotePath);
 									} else {
+										if (error instanceof NodeApiError) throw error;
 										throw new NodeApiError(this.getNode(), error as JsonObject);
 									}
 								}

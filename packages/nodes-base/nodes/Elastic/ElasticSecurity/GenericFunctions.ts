@@ -58,6 +58,7 @@ export async function elasticSecurityApiRequest(
 			error.error.error = `${error.error.error}: ${error.error.message}`;
 		}
 
+		if (error instanceof NodeApiError) throw error;
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

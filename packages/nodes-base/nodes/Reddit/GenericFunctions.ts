@@ -43,12 +43,14 @@ export async function redditApiRequest(
 		try {
 			return await this.helpers.requestOAuth2.call(this, 'redditOAuth2Api', options);
 		} catch (error) {
+			if (error instanceof NodeApiError) throw error;
 			throw new NodeApiError(this.getNode(), error as JsonObject);
 		}
 	} else {
 		try {
 			return await this.helpers.request.call(this, options);
 		} catch (error) {
+			if (error instanceof NodeApiError) throw error;
 			throw new NodeApiError(this.getNode(), error as JsonObject);
 		}
 	}

@@ -72,6 +72,7 @@ export async function grafanaApiRequest(
 				'Invalid credentials or error in establishing connection with given credentials';
 		}
 
+		if (error instanceof NodeApiError) throw error;
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

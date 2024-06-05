@@ -39,6 +39,7 @@ export async function workableApiRequest(
 	try {
 		return await this.helpers.request(options);
 	} catch (error) {
+		if (error instanceof NodeApiError) throw error;
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

@@ -129,6 +129,7 @@ export async function odooJSONRPCRequest(
 		}
 		return responce.result;
 	} catch (error) {
+		if (error instanceof NodeApiError) throw error;
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
@@ -164,6 +165,7 @@ export async function odooGetModelFields(
 		const result = await odooJSONRPCRequest.call(this, body, url);
 		return result;
 	} catch (error) {
+		if (error instanceof NodeApiError) throw error;
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
@@ -200,6 +202,7 @@ export async function odooCreate(
 		const result = await odooJSONRPCRequest.call(this, body, url);
 		return { id: result };
 	} catch (error) {
+		if (error instanceof NodeApiError) throw error;
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
@@ -244,6 +247,7 @@ export async function odooGet(
 		const result = await odooJSONRPCRequest.call(this, body, url);
 		return result;
 	} catch (error) {
+		if (error instanceof NodeApiError) throw error;
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
@@ -285,6 +289,7 @@ export async function odooGetAll(
 		const result = await odooJSONRPCRequest.call(this, body, url);
 		return result;
 	} catch (error) {
+		if (error instanceof NodeApiError) throw error;
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
@@ -335,6 +340,7 @@ export async function odooUpdate(
 		await odooJSONRPCRequest.call(this, body, url);
 		return { id: itemsID };
 	} catch (error) {
+		if (error instanceof NodeApiError) throw error;
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
@@ -377,6 +383,7 @@ export async function odooDelete(
 		await odooJSONRPCRequest.call(this, body, url);
 		return { success: true };
 	} catch (error) {
+		if (error instanceof NodeApiError) throw error;
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
@@ -402,6 +409,7 @@ export async function odooGetUserID(
 		const loginResult = await odooJSONRPCRequest.call(this, body, url);
 		return loginResult as unknown as number;
 	} catch (error) {
+		if (error instanceof NodeApiError) throw error;
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
@@ -424,6 +432,7 @@ export async function odooGetServerVersion(
 		const result = await odooJSONRPCRequest.call(this, body, url);
 		return result;
 	} catch (error) {
+		if (error instanceof NodeApiError) throw error;
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

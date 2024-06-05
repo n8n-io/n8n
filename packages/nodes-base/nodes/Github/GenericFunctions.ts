@@ -60,6 +60,7 @@ export async function githubApiRequest(
 
 		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
+		if (error instanceof NodeApiError) throw error;
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

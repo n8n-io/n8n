@@ -94,6 +94,7 @@ export class S3 implements INodeType {
 						try {
 							credentials = await this.getCredentials('s3');
 						} catch (error) {
+							if (error instanceof NodeApiError) throw error;
 							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 

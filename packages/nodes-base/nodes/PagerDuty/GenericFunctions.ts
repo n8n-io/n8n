@@ -58,6 +58,7 @@ export async function pagerDutyApiRequest(
 			return await this.helpers.requestOAuth2.call(this, 'pagerDutyOAuth2Api', options);
 		}
 	} catch (error) {
+		if (error instanceof NodeApiError) throw error;
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

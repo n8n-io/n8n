@@ -128,6 +128,7 @@ export async function layoutsApiRequest(
 		items.sort((a, b) => (a.name > b.name ? 0 : 1));
 		return items;
 	} catch (error) {
+		if (error instanceof NodeApiError) throw error;
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

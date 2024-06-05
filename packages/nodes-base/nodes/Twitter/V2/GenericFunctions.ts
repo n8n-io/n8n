@@ -52,6 +52,7 @@ export async function twitterApiRequest(
 		} else if (error.errors && error.error?.errors[0].message.includes('must be ')) {
 			throw new NodeOperationError(this.getNode(), error.error.errors[0].message as string);
 		}
+		if (error instanceof NodeApiError) throw error;
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

@@ -51,6 +51,7 @@ export async function matrixApiRequest(
 		//@ts-ignore
 		return options.overridePrefix === 'media' ? JSON.parse(response as string) : response;
 	} catch (error) {
+		if (error instanceof NodeApiError) throw error;
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

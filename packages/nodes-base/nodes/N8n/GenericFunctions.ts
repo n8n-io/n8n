@@ -49,6 +49,7 @@ export async function apiRequest(
 		if (error instanceof NodeApiError) {
 			throw error;
 		}
+		if (error instanceof NodeApiError) throw error;
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
