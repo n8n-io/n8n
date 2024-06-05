@@ -768,6 +768,10 @@ export const TIME = {
 	DAY: 24 * 60 * 60 * 1000,
 };
 
+export const THREE_DAYS_IN_MILLIS = 3 * TIME.DAY;
+export const SEVEN_DAYS_IN_MILLIS = 7 * TIME.DAY;
+export const SIX_MONTHS_IN_MILLIS = 6 * 30 * TIME.DAY;
+
 /**
  * Mouse button codes
  */
