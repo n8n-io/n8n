@@ -1,4 +1,4 @@
-import type { UpdateGlobalRolePayload } from '@/api/users';
+import type { IUpdateUserSettingsReqPayload, UpdateGlobalRolePayload } from '@/api/users';
 import {
 	changePassword,
 	deleteUser,
@@ -250,7 +250,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const user = await updateCurrentUser(rootStore.getRestApiContext, params);
 			this.addUsers([user]);
 		},
-		async updateUserSettings(settings: IUserResponse['settings']): Promise<void> {
+		async updateUserSettings(settings: IUpdateUserSettingsReqPayload): Promise<void> {
 			const rootStore = useRootStore();
 			const updatedSettings = await updateCurrentUserSettings(
 				rootStore.getRestApiContext,
@@ -263,7 +263,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		},
 		async updateOtherUserSettings(
 			userId: string,
-			settings: IUserResponse['settings'],
+			settings: IUpdateUserSettingsReqPayload,
 		): Promise<void> {
 			const rootStore = useRootStore();
 			const updatedSettings = await updateOtherUserSettings(

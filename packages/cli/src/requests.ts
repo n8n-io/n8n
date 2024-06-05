@@ -47,7 +47,7 @@ export class UserSettingsUpdatePayload {
 	@Expose()
 	@IsBoolean({ message: 'userActivated should be a boolean' })
 	@IsOptional()
-	userActivated: boolean;
+	userActivated?: boolean;
 
 	@Expose()
 	@IsBoolean({ message: 'allowSSOManualLogin should be a boolean' })
@@ -217,6 +217,12 @@ export declare namespace CredentialRequest {
 	type Test = AuthenticatedRequest<{}, {}, INodeCredentialTestRequest>;
 
 	type Share = AuthenticatedRequest<{ credentialId: string }, {}, { shareWithIds: string[] }>;
+
+	type Transfer = AuthenticatedRequest<
+		{ credentialId: string },
+		{},
+		{ destinationProjectId: string }
+	>;
 }
 
 // ----------------------------------
@@ -448,14 +454,6 @@ export declare namespace NodeRequest {
 	type Delete = AuthenticatedRequest<{}, {}, {}, { name: string }>;
 
 	type Update = Post;
-}
-
-// ----------------------------------
-//           /curl-to-json
-// ----------------------------------
-
-export declare namespace CurlHelper {
-	type ToJson = AuthenticatedRequest<{}, {}, { curlCommand?: string }>;
 }
 
 // ----------------------------------
