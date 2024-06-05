@@ -151,14 +151,15 @@ export class NDV extends BasePage {
 			cy.contains('Expression').invoke('show').click();
 			this.getters.inlineExpressionEditorInput().click();
 		},
-		setPinnedData: (data: object) => {
+		setPinnedData: (data: object | string) => {
+			const pinnedData = typeof data === 'string' ? data : JSON.stringify(data);
 			this.getters.editPinnedDataButton().click();
 
 			this.getters.pinnedDataEditor().click();
 			this.getters
 				.pinnedDataEditor()
 				.type(
-					`{selectall}{backspace}${JSON.stringify(data).replace(new RegExp('{', 'g'), '{{}')}`,
+					`{selectall}{backspace}${pinnedData.replace(new RegExp('{', 'g'), '{{}')}`,
 					{
 						delay: 0,
 					},

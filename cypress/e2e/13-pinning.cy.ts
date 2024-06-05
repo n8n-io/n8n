@@ -134,6 +134,9 @@ describe('Data pinning', () => {
 		ndv.getters.pinDataButton().should('not.exist');
 		ndv.getters.editPinnedDataButton().should('be.visible');
 
+		console.log('MAX_PINNED_DATA_SIZE', Cypress.env('MAX_PINNED_DATA_SIZE'));
+
+
 		ndv.actions.pastePinnedData([
 			{
 				test: '1'.repeat(Cypress.env('MAX_PINNED_DATA_SIZE')),
@@ -142,6 +145,19 @@ describe('Data pinning', () => {
 		workflowPage.getters
 			.errorToast()
 			.should('contain', 'Workflow has reached the maximum allowed pinned data size');
+	});
+
+	it('Should show an error when pin data JSON in invalid', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger');
+		workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, true, true);
+		ndv.getters.container().should('be.visible');
+		ndv.getters.pinDataButton().should('not.exist');
+		ndv.getters.editPinnedDataButton().should('be.visible');
+
+		ndv.actions.setPinnedData('[ { "name": "First item", "code": 2dsa }]')
+		workflowPage.getters
+			.errorToast()
+			.should('contain', 'Unable to save due to invalid JSON');
 	});
 
 	it('Should be able to reference paired items in a node located before pinned data', () => {
