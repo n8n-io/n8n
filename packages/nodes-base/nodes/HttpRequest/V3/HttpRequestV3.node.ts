@@ -29,14 +29,15 @@ import type { BodyParameter, IAuthDataSanitizeKeys } from '../GenericFunctions';
 import {
 	binaryContentTypes,
 	getOAuth2AdditionalParameters,
+	getSecrets,
 	prepareRequestBody,
 	reduceAsync,
 	replaceNullValues,
 	sanitizeUiMessage,
 	setAgentOptions,
 } from '../GenericFunctions';
-import { keysToLowercase } from '@utils/utilities';
 import type { HttpSslAuthCredentials } from '../interfaces';
+import { keysToLowercase } from '@utils/utilities';
 
 function toText<T>(data: T) {
 	if (typeof data === 'object' && data !== null) {
@@ -1299,7 +1300,12 @@ export class HttpRequestV3 implements INodeType {
 			requestInterval: number;
 		};
 
-		const sanitazedRequests: IDataObject[] = [];
+		const requests: Array<{
+			options: IRequestOptions;
+			authKeys: IAuthDataSanitizeKeys;
+			credentialType?: string;
+		}> = [];
+
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			if (authentication === 'genericCredentialType') {
 				genericCredentialType = this.getNodeParameter('genericAuthType', 0) as string;
@@ -1696,11 +1702,11 @@ export class HttpRequestV3 implements INodeType {
 				}
 			}
 
-			try {
-				const sanitazedRequestOptions = sanitizeUiMessage(requestOptions, authDataKeys);
-				this.sendMessageToUI(sanitazedRequestOptions);
-				sanitazedRequests.push(sanitazedRequestOptions);
-			} catch (e) {}
+			requests.push({
+				options: requestOptions,
+				authKeys: authDataKeys,
+				credentialType: nodeCredentialType,
+			});
 
 			if (pagination && pagination.paginationMode !== 'off') {
 				let continueExpression = '={{false}}';
@@ -1827,7 +1833,29 @@ export class HttpRequestV3 implements INodeType {
 				requestPromises.push(requestWithAuthentication);
 			}
 		}
-		const promisesResponses = await Promise.allSettled(requestPromises);
+
+		const sanitizedRequests: IDataObject[] = [];
+		const promisesResponses = await Promise.allSettled(
+			requestPromises.map(
+				async (requestPromise, itemIndex) =>
+					await requestPromise.finally(async () => {
+						try {
+							// Secrets need to be read after the request because secrets could have changed
+							// For example: OAuth token refresh, preAuthentication
+							const { options, authKeys, credentialType } = requests[itemIndex];
+							let secrets: string[] = [];
+							if (credentialType) {
+								const properties = this.getCredentialsProperties(credentialType);
+								const credentials = await this.getCredentials(credentialType, itemIndex);
+								secrets = getSecrets(properties, credentials);
+							}
+							const sanitizedRequestOptions = sanitizeUiMessage(options, authKeys, secrets);
+							sanitizedRequests.push(sanitizedRequestOptions);
+							this.sendMessageToUI(sanitizedRequestOptions);
+						} catch (e) {}
+					}),
+			),
+		);
 
 		let responseData: any;
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
@@ -1842,7 +1870,7 @@ export class HttpRequestV3 implements INodeType {
 						responseData.reason.error = Buffer.from(responseData.reason.error as Buffer).toString();
 					}
 					const error = new NodeApiError(this.getNode(), responseData as JsonObject, { itemIndex });
-					set(error, 'context.request', sanitazedRequests[itemIndex]);
+					set(error, 'context.request', sanitizedRequests[itemIndex]);
 					throw error;
 				} else {
 					removeCircularRefs(responseData.reason as JsonObject);

@@ -373,6 +373,7 @@ export const routes: RouteRecordRaw[] = [
 					return !!localStorage.getItem('features.NodeViewV2');
 				},
 			},
+			nodeView: true,
 		},
 	},
 	{
