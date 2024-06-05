@@ -261,7 +261,7 @@ describe('Projects', () => {
 			credentialsModal.getters.newCredentialTypeOption('Notion API').click();
 			credentialsModal.getters.newCredentialTypeButton().click();
 			credentialsModal.getters.connectionParameter('Internal Integration Secret').type('1234567890');
-			credentialsModal.actions.setName('Notion account 1');
+			credentialsModal.actions.setName('Notion account project 1');
 
 			cy.intercept('POST', '/rest/credentials').as('credentialSave');
 			credentialsModal.actions.save();
@@ -284,7 +284,7 @@ describe('Projects', () => {
 			credentialsModal.getters.newCredentialTypeOption('Notion API').click();
 			credentialsModal.getters.newCredentialTypeButton().click();
 			credentialsModal.getters.connectionParameter('Internal Integration Secret').type('1234567890');
-			credentialsModal.actions.setName('Notion account 2');
+			credentialsModal.actions.setName('Notion account project 2');
 
 			credentialsModal.actions.save();
 			cy.wait('@credentialSave').then((interception) => {
@@ -304,7 +304,7 @@ describe('Projects', () => {
 			credentialsModal.getters.newCredentialTypeOption('Notion API').click();
 			credentialsModal.getters.newCredentialTypeButton().click();
 			credentialsModal.getters.connectionParameter('Internal Integration Secret').type('1234567890');
-			credentialsModal.actions.setName('Notion account personal');
+			credentialsModal.actions.setName('Notion account personal project');
 
 			cy.intercept('POST', '/rest/credentials').as('credentialSave');
 			credentialsModal.actions.save();
@@ -318,7 +318,7 @@ describe('Projects', () => {
 			workflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 			workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
 			workflowPage.getters.nodeCredentialsSelect().first().click();
-			getVisibleSelect().find('li').should('have.length', 2).first().should('contain.text', 'Notion account 1');
+			getVisibleSelect().find('li').should('have.length', 2).first().should('contain.text', 'Notion account project 1');
 			ndv.getters.backToCanvas().click();
 			workflowPage.actions.saveWorkflowOnButtonClick();
 
@@ -329,7 +329,7 @@ describe('Projects', () => {
 			workflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 			workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
 			workflowPage.getters.nodeCredentialsSelect().first().click();
-			getVisibleSelect().find('li').should('have.length', 2).first().should('contain.text', 'Notion account 2');
+			getVisibleSelect().find('li').should('have.length', 2).first().should('contain.text', 'Notion account project 2');
 			ndv.getters.backToCanvas().click();
 			workflowPage.actions.saveWorkflowOnButtonClick();
 
@@ -344,7 +344,7 @@ describe('Projects', () => {
 			workflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 			workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
 			workflowPage.getters.nodeCredentialsSelect().first().click();
-			getVisibleSelect().find('li').should('have.length', 2).first().should('contain.text', 'Notion account personal');
+			getVisibleSelect().find('li').should('have.length', 2).first().should('contain.text', 'Notion account personal project');
 			ndv.getters.backToCanvas().click();
 			workflowPage.actions.saveWorkflowOnButtonClick();
 
