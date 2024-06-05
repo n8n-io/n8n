@@ -127,6 +127,14 @@ export const regions = [
 
 export type AWSRegion = (typeof regions)[number]['name'];
 
+// Some AWS services are global and don't have a region
+// https://docs.aws.amazon.com/general/latest/gr/rande.html#global-endpoints
+// Example: iam.amazonaws.com (global), s3.us-east-1.amazonaws.com (regional)
+function parseAwsUrl(url: URL): { region: string | null; service: string } {
+	const [service, region] = url.hostname.replace('amazonaws.com', '').split('.');
+	return { service, region };
+}
+
 export class Aws implements ICredentialType {
 	name = 'aws';
 
@@ -281,7 +289,7 @@ export class Aws implements ICredentialType {
 	): Promise<IHttpRequestOptions> {
 		let endpoint: URL;
 		let service = requestOptions.qs?.service as string;
-		let path = requestOptions.qs?.path;
+		let path = requestOptions.qs?.path as string;
 		const method = requestOptions.method;
 		let body = requestOptions.body;
 
@@ -310,8 +318,11 @@ export class Aws implements ICredentialType {
 					console.log(err);
 				}
 			}
-			service = endpoint.hostname.split('.')[0];
-			region = endpoint.hostname.split('.')[1];
+			const parsed = parseAwsUrl(endpoint);
+			service = parsed.service;
+			if (parsed.region) {
+				region = parsed.region;
+			}
 		} else {
 			if (!requestOptions.baseURL && !requestOptions.url) {
 				let endpointString: string;
@@ -332,14 +343,15 @@ export class Aws implements ICredentialType {
 				} else if (service) {
 					endpointString = `https://${service}.${region}.amazonaws.com`;
 				}
-				endpoint = new URL(
-					endpointString!.replace('{region}', region as string) + (path as string),
-				);
+				endpoint = new URL(endpointString!.replace('{region}', region as string) + path);
 			} else {
 				// If no endpoint is set, we try to decompose the path and use the default endpoint
 				const customUrl = new URL(`${requestOptions.baseURL!}${requestOptions.url}${path ?? ''}`);
-				service = customUrl.hostname.split('.')[0];
-				region = customUrl.hostname.split('.')[1];
+				const parsed = parseAwsUrl(customUrl);
+				service = parsed.service;
+				if (parsed.region) {
+					region = parsed.region;
+				}
 				if (service === 'sts') {
 					try {
 						customUrl.searchParams.set('Action', 'GetCallerIdentity');
