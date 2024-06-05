@@ -113,7 +113,7 @@ const STATUS_CODE_MESSAGES: IStatusCodeMessages = {
  * with an HTTP error code, an error message and a description.
  */
 export class NodeApiError extends NodeError {
-	httpCode: string | null;
+	httpCode: string | null = null;
 
 	// eslint-disable-next-line complexity
 	constructor(
@@ -131,6 +131,10 @@ export class NodeApiError extends NodeError {
 			messageMapping,
 		}: NodeApiErrorOptions = {},
 	) {
+		if (errorResponse instanceof NodeApiError) {
+			return errorResponse;
+		}
+
 		super(node, errorResponse);
 
 		this.addToMessages(errorResponse.message as string);
