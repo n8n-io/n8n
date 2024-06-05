@@ -19,7 +19,6 @@ export const useValueSurvey = defineStore('valueSurvey', () => {
 	const valueSurveyIgnoredCount = ref<number>(0);
 
 	function setupValueSurveyOnLogin(settings: IUserSettings): void {
-		console.log('yo');
 		if (!useSettingsStore().isTelemetryEnabled) {
 			shouldShowValueSurveyNext.value = false;
 			return;

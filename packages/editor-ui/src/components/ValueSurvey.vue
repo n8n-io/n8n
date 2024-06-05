@@ -130,6 +130,7 @@ watch(
 		width="120px"
 		class="value-survey"
 		:class="$style.valueSurvey"
+		data-test-id="value-survey-modal"
 	>
 		<template #header>
 			<div :class="$style.title">
@@ -139,7 +140,7 @@ watch(
 		<template #content>
 			<section :class="$style.content">
 				<div v-if="showButtons" :class="$style.wrapper">
-					<div :class="$style.buttons">
+					<div :class="$style.buttons" data-test-id="value-survey-ratings">
 						<div v-for="value in 11" :key="value - 1" :class="$style.container">
 							<n8n-button
 								type="tertiary"
@@ -155,7 +156,7 @@ watch(
 					</div>
 				</div>
 				<div v-else :class="$style.email">
-					<div :class="$style.input" @keyup.enter="send">
+					<div :class="$style.input" @keyup.enter="send" data-test-id="value-survey-email">
 						<n8n-input
 							v-model="form.email"
 							:placeholder="YOUR_EMAIL_ADDRESS"

@@ -72,6 +72,7 @@ import { InvitationController } from './controllers/invitation.controller';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { ProjectController } from './controllers/project.controller';
 import { RoleController } from './controllers/role.controller';
+import { ValueSurveyController } from './controllers/valueSurvey.controller';
 
 const exec = promisify(callbackExec);
 
@@ -150,6 +151,7 @@ export class Server extends AbstractServer {
 			ProjectController,
 			RoleController,
 			CurlController,
+			ValueSurveyController,
 		];
 
 		if (
