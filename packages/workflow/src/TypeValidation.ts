@@ -145,6 +145,16 @@ export const tryToParseObject = (value: unknown): object => {
 	}
 };
 
+export const getValueDescription = <T>(value: T): string => {
+	if (typeof value === 'object') {
+		if (value === null) return "'null'";
+		if (Array.isArray(value)) return 'array';
+		return 'object';
+	}
+
+	return `'${String(value)}'`;
+};
+
 export const tryToParseUrl = (value: unknown): string => {
 	if (typeof value === 'string' && !value.includes('://')) {
 		value = `http://${value}`;
@@ -158,23 +168,46 @@ export const tryToParseUrl = (value: unknown): string => {
 	return String(value);
 };
 
+export const tryToParseJwt = (value: unknown): string => {
+	const error = new ApplicationError(`The value "${String(value)}" is not a valid JWT token.`, {
+		extra: { value },
+	});
+
+	if (!value) throw error;
+
+	const jwtPattern = /^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_.+/=]*$/;
+
+	if (!jwtPattern.test(String(value))) throw error;
+
+	return String(value);
+};
+
 type ValidateFieldTypeOptions = Partial<{
 	valueOptions: INodePropertyOptions[];
 	strict: boolean;
 	parseStrings: boolean;
 }>;
+
 // Validates field against the schema and tries to parse it to the correct type
-export const validateFieldType = (
+export function validateFieldType<K extends FieldType>(
+	fieldName: string,
+	value: unknown,
+	type: K,
+	options?: ValidateFieldTypeOptions,
+): ValidationResult<K>;
+// eslint-disable-next-line complexity
+export function validateFieldType(
 	fieldName: string,
 	value: unknown,
 	type: FieldType,
 	options: ValidateFieldTypeOptions = {},
-): ValidationResult => {
+): ValidationResult {
 	if (value === null || value === undefined) return { valid: true };
 	const strict = options.strict ?? false;
 	const valueOptions = options.valueOptions ?? [];
 	const parseStrings = options.parseStrings ?? false;
-	const defaultErrorMessage = `'${fieldName}' expects a ${type} but we got '${String(value)}'`;
+
+	const defaultErrorMessage = `'${fieldName}' expects a ${type} but we got ${getValueDescription(value)}`;
 	switch (type.toLowerCase()) {
 		case 'string': {
 			if (!parseStrings) return { valid: true, newValue: value };
@@ -234,7 +267,7 @@ export const validateFieldType = (
 			} catch (e) {
 				return {
 					valid: false,
-					errorMessage: `'${fieldName}' expects time (hh:mm:(:ss)) but we got '${String(value)}'.`,
+					errorMessage: `'${fieldName}' expects time (hh:mm:(:ss)) but we got ${getValueDescription(value)}.`,
 				};
 			}
 		}
@@ -265,9 +298,9 @@ export const validateFieldType = (
 			if (!isValidOption) {
 				return {
 					valid: false,
-					errorMessage: `'${fieldName}' expects one of the following values: [${validOptions}] but we got '${String(
+					errorMessage: `'${fieldName}' expects one of the following values: [${validOptions}] but we got ${getValueDescription(
 						value,
-					)}'`,
+					)}`,
 				};
 			}
 			return { valid: true, newValue: value };
@@ -279,8 +312,18 @@ export const validateFieldType = (
 				return { valid: false, errorMessage: defaultErrorMessage };
 			}
 		}
+		case 'jwt': {
+			try {
+				return { valid: true, newValue: tryToParseJwt(value) };
+			} catch (e) {
+				return {
+					valid: false,
+					errorMessage: 'Value is not a valid JWT token',
+				};
+			}
+		}
 		default: {
 			return { valid: true, newValue: value };
 		}
 	}
-};
+}

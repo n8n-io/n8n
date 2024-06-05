@@ -1,6 +1,5 @@
-import type { SuperAgentTest } from 'supertest';
 import type { User } from '@db/entities/User';
-import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import type { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 
 import { randomApiKey } from '../shared/random';
 import * as utils from '../shared/utils/';
@@ -17,6 +16,7 @@ import {
 	createSuccessfulExecution,
 	createWaitingExecution,
 } from '../shared/db/executions';
+import type { SuperAgentTest } from '../shared/types';
 
 let owner: User;
 let user1: User;
@@ -24,7 +24,7 @@ let user2: User;
 let authOwnerAgent: SuperAgentTest;
 let authUser1Agent: SuperAgentTest;
 let authUser2Agent: SuperAgentTest;
-let workflowRunner: ActiveWorkflowRunner;
+let workflowRunner: ActiveWorkflowManager;
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
@@ -37,7 +37,7 @@ beforeAll(async () => {
 	await utils.initBinaryDataService();
 	await utils.initNodeTypes();
 
-	workflowRunner = await utils.initActiveWorkflowRunner();
+	workflowRunner = await utils.initActiveWorkflowManager();
 });
 
 beforeEach(async () => {
@@ -132,6 +132,7 @@ describe('GET /executions/:id', () => {
 	});
 
 	test('member should be able to fetch executions of workflows shared with him', async () => {
+		testServer.license.enable('feat:sharing');
 		const workflow = await createWorkflow({}, user1);
 
 		const execution = await createSuccessfulExecution(workflow);
@@ -226,13 +227,10 @@ describe('GET /executions', () => {
 		expect(waitTill).toBeNull();
 	});
 
-	// failing on Postgres and MySQL - ref: https://github.com/n8n-io/n8n/pull/3834
-	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
-	test.skip('should paginate two executions', async () => {
+	test('should paginate two executions', async () => {
 		const workflow = await createWorkflow({}, owner);
 
 		const firstSuccessfulExecution = await createSuccessfulExecution(workflow);
-
 		const secondSuccessfulExecution = await createSuccessfulExecution(workflow);
 
 		await createErrorExecution(workflow);
@@ -434,6 +432,7 @@ describe('GET /executions', () => {
 	});
 
 	test('member should also see executions of workflows shared with him', async () => {
+		testServer.license.enable('feat:sharing');
 		const [firstWorkflowForUser1, secondWorkflowForUser1] = await createManyWorkflows(2, {}, user1);
 		await createManyExecutions(2, firstWorkflowForUser1, createSuccessfulExecution);
 		await createManyExecutions(2, secondWorkflowForUser1, createSuccessfulExecution);

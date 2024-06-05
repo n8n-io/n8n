@@ -12,32 +12,26 @@ import type {
 import { NodeHelpers, Workflow } from 'n8n-workflow';
 import { uuid } from '@jsplumb/util';
 import { defaultMockNodeTypes } from '@/__tests__/defaults';
-import type {
-	INodeUi,
-	ITag,
-	IUsedCredential,
-	IUser,
-	IWorkflowDb,
-	WorkflowMetadata,
-} from '@/Interface';
+import type { INodeUi, ITag, IUsedCredential, IWorkflowDb, WorkflowMetadata } from '@/Interface';
+import type { ProjectSharingData } from '@/features/projects/projects.types';
+import type { RouteLocationNormalized } from 'vue-router';
 
 export function createTestNodeTypes(data: INodeTypeData = {}): INodeTypes {
-	const getResolvedKey = (key: string) => {
-		const resolvedKeyParts = key.split(/[\/.]/);
-		return resolvedKeyParts[resolvedKeyParts.length - 1];
-	};
-
 	const nodeTypes = {
 		...defaultMockNodeTypes,
 		...Object.keys(data).reduce<INodeTypeData>((acc, key) => {
-			acc[getResolvedKey(key)] = data[key];
+			acc[key] = data[key];
 
 			return acc;
 		}, {}),
 	};
 
+	function getKnownTypes(): IDataObject {
+		return {};
+	}
+
 	function getByName(nodeType: string): INodeType | IVersionedNodeType {
-		return nodeTypes[getResolvedKey(nodeType)].type;
+		return nodeTypes[nodeType].type;
 	}
 
 	function getByNameAndVersion(nodeType: string, version?: number): INodeType {
@@ -45,6 +39,7 @@ export function createTestNodeTypes(data: INodeTypeData = {}): INodeTypes {
 	}
 
 	return {
+		getKnownTypes,
 		getByName,
 		getByNameAndVersion,
 	};
@@ -81,8 +76,8 @@ export function createTestWorkflow(options: {
 	settings?: IWorkflowSettings;
 	tags?: ITag[] | string[];
 	pinData?: IPinData;
-	sharedWith?: Array<Partial<IUser>>;
-	ownedBy?: Partial<IUser>;
+	sharedWithProjects?: ProjectSharingData[];
+	homeProject?: ProjectSharingData;
 	versionId?: string;
 	usedCredentials?: IUsedCredential[];
 	meta?: WorkflowMetadata;
@@ -98,14 +93,38 @@ export function createTestWorkflow(options: {
 	} as IWorkflowDb;
 }
 
-export function createTestNode(
-	node: Partial<INode> & { name: INode['name']; type: INode['type'] },
-): INode {
+export function createTestNode(node: Partial<INode> = {}): INode {
 	return {
 		id: uuid(),
+		name: 'Node',
+		type: 'n8n-nodes-base.test',
 		typeVersion: 1,
 		position: [0, 0] as [number, number],
 		parameters: {},
 		...node,
+	};
+}
+
+export function createTestRouteLocation({
+	path = '',
+	params = {},
+	fullPath = path,
+	hash = '',
+	matched = [],
+	redirectedFrom = undefined,
+	name = path,
+	meta = {},
+	query = {},
+}: Partial<RouteLocationNormalized> = {}): RouteLocationNormalized {
+	return {
+		path,
+		params,
+		fullPath,
+		hash,
+		matched,
+		redirectedFrom,
+		name,
+		meta,
+		query,
 	};
 }

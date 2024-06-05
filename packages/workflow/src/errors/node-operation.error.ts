@@ -6,8 +6,6 @@ import { NodeError } from './abstract/node.error';
  * Class for instantiating an operational error, e.g. an invalid credentials error.
  */
 export class NodeOperationError extends NodeError {
-	lineNumber: number | undefined;
-
 	type: string | undefined;
 
 	constructor(
@@ -15,9 +13,13 @@ export class NodeOperationError extends NodeError {
 		error: Error | string | JsonObject,
 		options: NodeOperationErrorOptions = {},
 	) {
+		if (error instanceof NodeOperationError) {
+			return error;
+		}
 		if (typeof error === 'string') {
 			error = new Error(error);
 		}
+
 		super(node, error);
 
 		if (error instanceof NodeError && error?.messages?.length) {

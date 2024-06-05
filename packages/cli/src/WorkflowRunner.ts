@@ -25,8 +25,6 @@ import PCancelable from 'p-cancelable';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
-import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
-import { ExecutionDataRecoveryService } from '@/eventbus/executionDataRecovery.service';
 import { ExternalHooks } from '@/ExternalHooks';
 import type { IExecutionResponse, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
@@ -103,42 +101,6 @@ export class WorkflowRunner {
 			status: 'error',
 		};
 
-		// The following will attempt to recover runData from event logs
-		// Note that this will only work as long as the event logs actually contain the events from this workflow execution
-		// Since processError is run almost immediately after the workflow execution has failed, it is likely that the event logs
-		// does contain those messages.
-		try {
-			// Search for messages for this executionId in event logs
-			const eventBus = Container.get(MessageEventBus);
-			const eventLogMessages = await eventBus.getEventsByExecutionId(executionId);
-			// Attempt to recover more better runData from these messages (but don't update the execution db entry yet)
-			if (eventLogMessages.length > 0) {
-				const eventLogExecutionData = await Container.get(
-					ExecutionDataRecoveryService,
-				).recoverExecutionData(executionId, eventLogMessages, false);
-				if (eventLogExecutionData) {
-					fullRunData.data.resultData.runData = eventLogExecutionData.resultData.runData;
-					fullRunData.status = 'crashed';
-				}
-			}
-
-			const executionFlattedData = await this.executionRepository.findSingleExecution(executionId, {
-				includeData: true,
-			});
-
-			if (executionFlattedData) {
-				void Container.get(InternalHooks).onWorkflowCrashed(
-					executionId,
-					executionMode,
-					executionFlattedData?.workflowData,
-					// TODO: get metadata to be sent here
-					// executionFlattedData?.metadata,
-				);
-			}
-		} catch {
-			// Ignore errors
-		}
-
 		// Remove from active execution with empty data. That will
 		// set the execution to failed.
 		this.activeExecutions.remove(executionId, fullRunData);
@@ -161,7 +123,7 @@ export class WorkflowRunner {
 
 		const { id: workflowId, nodes } = data.workflowData;
 		try {
-			await this.permissionChecker.check(workflowId, data.userId, nodes);
+			await this.permissionChecker.check(workflowId, nodes);
 		} catch (error) {
 			// Create a failed execution with the data for the node, save it and abort execution
 			const runData = generateFailedExecutionFromError(data.executionMode, error, error.node);
@@ -211,13 +173,16 @@ export class WorkflowRunner {
 							]);
 						} catch (error) {
 							ErrorReporter.error(error);
-							console.error('There was a problem running hook "workflow.postExecute"', error);
+							this.logger.error('There was a problem running hook "workflow.postExecute"', error);
 						}
 					}
 				})
 				.catch((error) => {
 					ErrorReporter.error(error);
-					console.error('There was a problem running internal hook "onWorkflowPostExecute"', error);
+					this.logger.error(
+						'There was a problem running internal hook "onWorkflowPostExecute"',
+						error,
+					);
 				});
 		}
 
@@ -295,7 +260,7 @@ export class WorkflowRunner {
 			});
 
 			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({
-				sessionId: data.sessionId,
+				pushRef: data.pushRef,
 			});
 
 			await additionalData.hooks.executeHookFunctions('workflowExecuteBefore', []);
@@ -411,7 +376,7 @@ export class WorkflowRunner {
 		try {
 			job = await this.jobQueue.add(jobData, jobOptions);
 
-			console.log(`Started with job ID: ${job.id.toString()} (Execution ID: ${executionId})`);
+			this.logger.info(`Started with job ID: ${job.id.toString()} (Execution ID: ${executionId})`);
 
 			hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerMain(
 				data.executionMode,

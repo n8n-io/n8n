@@ -26,7 +26,12 @@ const onCombinatorChange = (combinator: FilterTypeCombinator): void => {
 		<div v-if="readOnly || options.length === 1">
 			{{ i18n.baseText(`filter.combinator.${selected}`) }}
 		</div>
-		<n8n-select v-else size="small" :model-value="selected" @update:modelValue="onCombinatorChange">
+		<n8n-select
+			v-else
+			size="small"
+			:model-value="selected"
+			@update:model-value="onCombinatorChange"
+		>
 			<n8n-option
 				v-for="option in options"
 				:key="option"

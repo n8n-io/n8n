@@ -2,6 +2,7 @@ import { apiUrl } from '../Peekalink.node';
 import type { WorkflowTestData } from '@test/nodes/types';
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import * as Helpers from '@test/nodes/Helpers';
+import { NodeConnectionType } from 'n8n-workflow';
 
 describe('Peekalink Node', () => {
 	const exampleComPreview = {
@@ -44,7 +45,10 @@ describe('Peekalink Node', () => {
 							typeVersion: 1,
 							position: [960, 380],
 							credentials: {
-								peekalinkApi: 'token',
+								peekalinkApi: {
+									id: '1',
+									name: 'peekalink',
+								},
 							},
 						},
 					],
@@ -54,7 +58,7 @@ describe('Peekalink Node', () => {
 								[
 									{
 										node: 'Peekalink',
-										type: 'main',
+										type: NodeConnectionType.Main,
 										index: 0,
 									},
 								],
@@ -113,7 +117,10 @@ describe('Peekalink Node', () => {
 							typeVersion: 1,
 							position: [960, 380],
 							credentials: {
-								peekalinkApi: 'token',
+								peekalinkApi: {
+									id: '1',
+									name: 'peekalink',
+								},
 							},
 						},
 					],
@@ -123,7 +130,7 @@ describe('Peekalink Node', () => {
 								[
 									{
 										node: 'Peekalink',
-										type: 'main',
+										type: NodeConnectionType.Main,
 										index: 0,
 									},
 								],

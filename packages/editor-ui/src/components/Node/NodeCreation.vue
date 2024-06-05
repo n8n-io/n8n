@@ -137,8 +137,8 @@ function nodeTypeSelected(nodeTypes: string[]) {
 		<Suspense>
 			<NodeCreator
 				:active="createNodeActive"
-				@nodeTypeSelected="nodeTypeSelected"
-				@closeNodeCreator="closeNodeCreator"
+				@node-type-selected="nodeTypeSelected"
+				@close-node-creator="closeNodeCreator"
 			/>
 		</Suspense>
 	</div>
@@ -182,8 +182,8 @@ function nodeTypeSelected(nodeTypes: string[]) {
 		color: var(--color-button-node-creator-border-font);
 
 		&:hover {
-			border-color: var(--color-button-node-creator-hover-border-font);
-			color: var(--color-button-node-creator-hover-border-font);
+			color: var(--color-button-node-creator-hover-font);
+			border-color: var(--color-button-node-creator-hover-border);
 			background: var(--color-button-node-creator-background);
 		}
 	}

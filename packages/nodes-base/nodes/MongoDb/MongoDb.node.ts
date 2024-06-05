@@ -9,7 +9,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { ApplicationError, NodeOperationError } from 'n8n-workflow';
+import { ApplicationError } from 'n8n-workflow';
 
 import type {
 	FindOneAndReplaceOptions,
@@ -38,7 +38,7 @@ export class MongoDb implements INodeType {
 		name: 'mongoDb',
 		icon: 'file:mongodb.svg',
 		group: ['input'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Find, insert and update documents in MongoDB',
 		defaults: {
 			name: 'MongoDB',
@@ -108,101 +108,126 @@ export class MongoDb implements INodeType {
 
 		const mdb = client.db(database);
 
-		let responseData: IDataObject | IDataObject[] = [];
+		let returnData: INodeExecutionData[] = [];
 
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0);
+		const nodeVersion = this.getNode().typeVersion;
+
+		let itemsLength = items.length ? 1 : 0;
+		let fallbackPairedItems;
+
+		if (nodeVersion >= 1.1) {
+			itemsLength = items.length;
+		} else {
+			fallbackPairedItems = generatePairedItemData(items.length);
+		}
 
 		if (operation === 'aggregate') {
-			// ----------------------------------
-			//         aggregate
-			// ----------------------------------
+			for (let i = 0; i < itemsLength; i++) {
+				try {
+					const queryParameter = JSON.parse(
+						this.getNodeParameter('query', i) as string,
+					) as IDataObject;
 
-			try {
-				const queryParameter = JSON.parse(
-					this.getNodeParameter('query', 0) as string,
-				) as IDataObject;
+					if (queryParameter._id && typeof queryParameter._id === 'string') {
+						queryParameter._id = new ObjectId(queryParameter._id);
+					}
 
-				if (queryParameter._id && typeof queryParameter._id === 'string') {
-					queryParameter._id = new ObjectId(queryParameter._id);
-				}
+					const query = mdb
+						.collection(this.getNodeParameter('collection', i) as string)
+						.aggregate(queryParameter as unknown as Document[]);
 
-				const query = mdb
-					.collection(this.getNodeParameter('collection', 0) as string)
-					.aggregate(queryParameter as unknown as Document[]);
-
-				responseData = await query.toArray();
-			} catch (error) {
-				if (this.continueOnFail()) {
-					responseData = [{ error: (error as JsonObject).message }];
-				} else {
+					for (const entry of await query.toArray()) {
+						returnData.push({ json: entry, pairedItem: fallbackPairedItems ?? [{ item: i }] });
+					}
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({
+							json: { error: (error as JsonObject).message },
+							pairedItem: fallbackPairedItems ?? [{ item: i }],
+						});
+						continue;
+					}
 					throw error;
 				}
 			}
-		} else if (operation === 'delete') {
-			// ----------------------------------
-			//         delete
-			// ----------------------------------
+		}
 
-			try {
-				const { deletedCount } = await mdb
-					.collection(this.getNodeParameter('collection', 0) as string)
-					.deleteMany(JSON.parse(this.getNodeParameter('query', 0) as string) as Document);
+		if (operation === 'delete') {
+			for (let i = 0; i < itemsLength; i++) {
+				try {
+					const { deletedCount } = await mdb
+						.collection(this.getNodeParameter('collection', i) as string)
+						.deleteMany(JSON.parse(this.getNodeParameter('query', i) as string) as Document);
 
-				responseData = [{ deletedCount }];
-			} catch (error) {
-				if (this.continueOnFail()) {
-					responseData = [{ error: (error as JsonObject).message }];
-				} else {
+					returnData.push({
+						json: { deletedCount },
+						pairedItem: fallbackPairedItems ?? [{ item: i }],
+					});
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({
+							json: { error: (error as JsonObject).message },
+							pairedItem: fallbackPairedItems ?? [{ item: i }],
+						});
+						continue;
+					}
 					throw error;
 				}
 			}
-		} else if (operation === 'find') {
-			// ----------------------------------
-			//         find
-			// ----------------------------------
+		}
 
-			try {
-				const queryParameter = JSON.parse(
-					this.getNodeParameter('query', 0) as string,
-				) as IDataObject;
+		if (operation === 'find') {
+			for (let i = 0; i < itemsLength; i++) {
+				try {
+					const queryParameter = JSON.parse(
+						this.getNodeParameter('query', i) as string,
+					) as IDataObject;
 
-				if (queryParameter._id && typeof queryParameter._id === 'string') {
-					queryParameter._id = new ObjectId(queryParameter._id);
-				}
+					if (queryParameter._id && typeof queryParameter._id === 'string') {
+						queryParameter._id = new ObjectId(queryParameter._id);
+					}
 
-				let query = mdb
-					.collection(this.getNodeParameter('collection', 0) as string)
-					.find(queryParameter as unknown as Document);
+					let query = mdb
+						.collection(this.getNodeParameter('collection', i) as string)
+						.find(queryParameter as unknown as Document);
 
-				const options = this.getNodeParameter('options', 0);
-				const limit = options.limit as number;
-				const skip = options.skip as number;
-				const sort = options.sort && (JSON.parse(options.sort as string) as Sort);
-				if (skip > 0) {
-					query = query.skip(skip);
-				}
-				if (limit > 0) {
-					query = query.limit(limit);
-				}
-				if (sort && Object.keys(sort).length !== 0 && sort.constructor === Object) {
-					query = query.sort(sort);
-				}
-				const queryResult = await query.toArray();
+					const options = this.getNodeParameter('options', i);
+					const limit = options.limit as number;
+					const skip = options.skip as number;
+					const sort = options.sort && (JSON.parse(options.sort as string) as Sort);
 
-				responseData = queryResult;
-			} catch (error) {
-				if (this.continueOnFail()) {
-					responseData = [{ error: (error as JsonObject).message }];
-				} else {
+					if (skip > 0) {
+						query = query.skip(skip);
+					}
+					if (limit > 0) {
+						query = query.limit(limit);
+					}
+					if (sort && Object.keys(sort).length !== 0 && sort.constructor === Object) {
+						query = query.sort(sort);
+					}
+
+					const queryResult = await query.toArray();
+
+					for (const entry of queryResult) {
+						returnData.push({ json: entry, pairedItem: fallbackPairedItems ?? [{ item: i }] });
+					}
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({
+							json: { error: (error as JsonObject).message },
+							pairedItem: fallbackPairedItems ?? [{ item: i }],
+						});
+						continue;
+					}
 					throw error;
 				}
 			}
-		} else if (operation === 'findOneAndReplace') {
-			// ----------------------------------
-			//         findOneAndReplace
-			// ----------------------------------
+		}
 
+		if (operation === 'findOneAndReplace') {
+			fallbackPairedItems = fallbackPairedItems ?? generatePairedItemData(items.length);
 			const fields = prepareFields(this.getNodeParameter('fields', 0) as string);
 			const useDotNotation = this.getNodeParameter('options.useDotNotation', 0, false) as boolean;
 			const dateFields = prepareFields(
@@ -237,12 +262,14 @@ export class MongoDb implements INodeType {
 				}
 			}
 
-			responseData = updateItems;
-		} else if (operation === 'findOneAndUpdate') {
-			// ----------------------------------
-			//         findOneAndUpdate
-			// ----------------------------------
+			returnData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(updateItems),
+				{ itemData: fallbackPairedItems },
+			);
+		}
 
+		if (operation === 'findOneAndUpdate') {
+			fallbackPairedItems = fallbackPairedItems ?? generatePairedItemData(items.length);
 			const fields = prepareFields(this.getNodeParameter('fields', 0) as string);
 			const useDotNotation = this.getNodeParameter('options.useDotNotation', 0, false) as boolean;
 			const dateFields = prepareFields(
@@ -277,11 +304,15 @@ export class MongoDb implements INodeType {
 				}
 			}
 
-			responseData = updateItems;
-		} else if (operation === 'insert') {
-			// ----------------------------------
-			//         insert
-			// ----------------------------------
+			returnData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(updateItems),
+				{ itemData: fallbackPairedItems },
+			);
+		}
+
+		if (operation === 'insert') {
+			fallbackPairedItems = fallbackPairedItems ?? generatePairedItemData(items.length);
+			let responseData: IDataObject[] = [];
 			try {
 				// Prepare the data to insert and copy it to be returned
 				const fields = prepareFields(this.getNodeParameter('fields', 0) as string);
@@ -310,11 +341,15 @@ export class MongoDb implements INodeType {
 					throw error;
 				}
 			}
-		} else if (operation === 'update') {
-			// ----------------------------------
-			//         update
-			// ----------------------------------
 
+			returnData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
+				{ itemData: fallbackPairedItems },
+			);
+		}
+
+		if (operation === 'update') {
+			fallbackPairedItems = fallbackPairedItems ?? generatePairedItemData(items.length);
 			const fields = prepareFields(this.getNodeParameter('fields', 0) as string);
 			const useDotNotation = this.getNodeParameter('options.useDotNotation', 0, false) as boolean;
 			const dateFields = prepareFields(
@@ -349,30 +384,14 @@ export class MongoDb implements INodeType {
 				}
 			}
 
-			responseData = updateItems;
-		} else {
-			if (this.continueOnFail()) {
-				responseData = [{ error: `The operation "${operation}" is not supported!` }];
-			} else {
-				throw new NodeOperationError(
-					this.getNode(),
-					`The operation "${operation}" is not supported!`,
-					{ itemIndex: 0 },
-				);
-			}
+			returnData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(updateItems),
+				{ itemData: fallbackPairedItems },
+			);
 		}
 
 		await client.close();
 
-		stringifyObjectIDs(responseData);
-
-		const itemData = generatePairedItemData(items.length);
-
-		const returnItems = this.helpers.constructExecutionMetaData(
-			this.helpers.returnJsonArray(responseData),
-			{ itemData },
-		);
-
-		return [returnItems];
+		return [stringifyObjectIDs(returnData)];
 	}
 }

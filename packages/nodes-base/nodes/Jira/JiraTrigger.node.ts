@@ -17,7 +17,7 @@ export class JiraTrigger implements INodeType {
 		name: 'jiraTrigger',
 		icon: 'file:jira.svg',
 		group: ['trigger'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Starts the workflow when Jira events occur',
 		defaults: {
 			name: 'Jira Trigger',
@@ -26,6 +26,7 @@ export class JiraTrigger implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
+				displayName: 'Credentials to Connect to Jira',
 				name: 'jiraSoftwareCloudApi',
 				required: true,
 				displayOptions: {
@@ -35,6 +36,7 @@ export class JiraTrigger implements INodeType {
 				},
 			},
 			{
+				displayName: 'Credentials to Connect to Jira',
 				name: 'jiraSoftwareServerApi',
 				required: true,
 				displayOptions: {
@@ -46,7 +48,17 @@ export class JiraTrigger implements INodeType {
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
 				name: 'httpQueryAuth',
-				required: true,
+				displayName: 'Credentials to Authenticate Webhook',
+				displayOptions: {
+					show: {
+						authenticateWebhook: [true],
+					},
+				},
+			},
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
+				name: 'httpQueryAuth',
+				displayName: 'Credentials to Authenticate Webhook',
 				displayOptions: {
 					show: {
 						incomingAuthentication: ['queryAuth'],
@@ -80,7 +92,20 @@ export class JiraTrigger implements INodeType {
 				default: 'cloud',
 			},
 			{
-				displayName: 'Incoming Authentication',
+				displayName: 'Authenticate Incoming Webhook',
+				name: 'authenticateWebhook',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether authentication should be activated for the incoming webhooks (makes it more secure)',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Authenticate Webhook With',
 				name: 'incomingAuthentication',
 				type: 'options',
 				options: [
@@ -95,6 +120,11 @@ export class JiraTrigger implements INodeType {
 				],
 				default: 'none',
 				description: 'If authentication should be activated for the webhook (makes it more secure)',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
 			},
 			{
 				displayName: 'Events',
@@ -382,17 +412,24 @@ export class JiraTrigger implements INodeType {
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
+				const nodeVersion = this.getNode().typeVersion;
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
-
 				let events = this.getNodeParameter('events', []) as string[];
-
 				const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
-
 				const endpoint = '/webhooks/1.0/webhook';
-
 				const webhookData = this.getWorkflowStaticData('node');
 
-				const incomingAuthentication = this.getNodeParameter('incomingAuthentication') as string;
+				let authenticateWebhook = false;
+
+				if (nodeVersion === 1) {
+					const incomingAuthentication = this.getNodeParameter('incomingAuthentication') as string;
+
+					if (incomingAuthentication === 'queryAuth') {
+						authenticateWebhook = true;
+					}
+				} else {
+					authenticateWebhook = this.getNodeParameter('authenticateWebhook') as boolean;
+				}
 
 				if (events.includes('*')) {
 					events = allEvents;
@@ -418,7 +455,7 @@ export class JiraTrigger implements INodeType {
 
 				const parameters: any = {};
 
-				if (incomingAuthentication === 'queryAuth') {
+				if (authenticateWebhook) {
 					let httpQueryAuth;
 					try {
 						httpQueryAuth = await this.getCredentials('httpQueryAuth');
@@ -477,13 +514,24 @@ export class JiraTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		const nodeVersion = this.getNode().typeVersion;
 		const bodyData = this.getBodyData();
 		const queryData = this.getQueryData() as IDataObject;
 		const response = this.getResponseObject();
 
-		const incomingAuthentication = this.getNodeParameter('incomingAuthentication') as string;
+		let authenticateWebhook = false;
 
-		if (incomingAuthentication === 'queryAuth') {
+		if (nodeVersion === 1) {
+			const incomingAuthentication = this.getNodeParameter('incomingAuthentication') as string;
+
+			if (incomingAuthentication === 'queryAuth') {
+				authenticateWebhook = true;
+			}
+		} else {
+			authenticateWebhook = this.getNodeParameter('authenticateWebhook') as boolean;
+		}
+
+		if (authenticateWebhook) {
 			let httpQueryAuth: ICredentialDataDecryptedObject | undefined;
 
 			try {

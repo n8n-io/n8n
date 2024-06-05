@@ -95,6 +95,10 @@
 			<ImportCurlModal />
 		</ModalRoot>
 
+		<ModalRoot :name="GENERATE_CURL_MODAL_KEY">
+			<GenerateCurlModal />
+		</ModalRoot>
+
 		<ModalRoot :name="COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY">
 			<template #default="{ modalName, activeId, mode }">
 				<CommunityPackageManageConfirmModal
@@ -153,15 +157,6 @@
 				/>
 			</template>
 		</ModalRoot>
-		<ModalRoot :name="SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY">
-			<template #default="{ modalName, data }">
-				<SuggestedTemplatesPreviewModal
-					data-test-id="suggested-templates-preview-modal"
-					:modal-name="modalName"
-					:data="data"
-				/>
-			</template>
-		</ModalRoot>
 
 		<ModalRoot :name="SETUP_CREDENTIALS_MODAL_KEY">
 			<template #default="{ modalName, data }">
@@ -206,8 +201,8 @@ import {
 	DEBUG_PAYWALL_MODAL_KEY,
 	MFA_SETUP_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
-	SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
 	SETUP_CREDENTIALS_MODAL_KEY,
+	GENERATE_CURL_MODAL_KEY,
 } from '@/constants';
 
 import AboutModal from './AboutModal.vue';
@@ -231,6 +226,7 @@ import WorkflowSettings from './WorkflowSettings.vue';
 import DeleteUserModal from './DeleteUserModal.vue';
 import ActivationModal from './ActivationModal.vue';
 import ImportCurlModal from './ImportCurlModal.vue';
+import GenerateCurlModal from './GenerateCurlModal.vue';
 import MfaSetupModal from './MfaSetupModal.vue';
 import WorkflowShareModal from './WorkflowShareModal.ee.vue';
 import EventDestinationSettingsModal from '@/components/SettingsLogStreaming/EventDestinationSettingsModal.ee.vue';
@@ -239,7 +235,6 @@ import SourceControlPullModal from '@/components/SourceControlPullModal.ee.vue';
 import ExternalSecretsProviderModal from '@/components/ExternalSecretsProviderModal.ee.vue';
 import DebugPaywallModal from '@/components/DebugPaywallModal.vue';
 import WorkflowHistoryVersionRestoreModal from '@/components/WorkflowHistory/WorkflowHistoryVersionRestoreModal.vue';
-import SuggestedTemplatesPreviewModal from '@/components/SuggestedTemplates/SuggestedTemplatesPreviewModal.vue';
 import SetupWorkflowCredentialsModal from '@/components/SetupWorkflowCredentialsModal/SetupWorkflowCredentialsModal.vue';
 
 export default defineComponent({
@@ -267,6 +262,7 @@ export default defineComponent({
 		WorkflowSettings,
 		WorkflowShareModal,
 		ImportCurlModal,
+		GenerateCurlModal,
 		EventDestinationSettingsModal,
 		SourceControlPushModal,
 		SourceControlPullModal,
@@ -274,7 +270,6 @@ export default defineComponent({
 		DebugPaywallModal,
 		MfaSetupModal,
 		WorkflowHistoryVersionRestoreModal,
-		SuggestedTemplatesPreviewModal,
 		SetupWorkflowCredentialsModal,
 	},
 	data: () => ({
@@ -299,6 +294,7 @@ export default defineComponent({
 		VALUE_SURVEY_MODAL_KEY,
 		WORKFLOW_ACTIVE_MODAL_KEY,
 		IMPORT_CURL_MODAL_KEY,
+		GENERATE_CURL_MODAL_KEY,
 		LOG_STREAM_MODAL_KEY,
 		SOURCE_CONTROL_PUSH_MODAL_KEY,
 		SOURCE_CONTROL_PULL_MODAL_KEY,
@@ -306,7 +302,6 @@ export default defineComponent({
 		DEBUG_PAYWALL_MODAL_KEY,
 		MFA_SETUP_MODAL_KEY,
 		WORKFLOW_HISTORY_VERSION_RESTORE,
-		SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
 		SETUP_CREDENTIALS_MODAL_KEY,
 	}),
 });

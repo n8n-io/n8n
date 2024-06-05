@@ -25,14 +25,18 @@ export default defineComponent({
 	name: 'ExpandableInputEdit',
 	components: { ExpandableInputBase },
 	props: {
-		modelValue: {},
-		placeholder: {},
-		maxlength: {},
-		autofocus: {},
+		modelValue: {
+			type: String,
+			required: true,
+		},
+		placeholder: { type: String, required: true },
+		maxlength: { type: Number },
+		autofocus: { type: Boolean },
 		eventBus: {
 			type: Object as PropType<EventBus>,
 		},
 	},
+	emits: ['update:modelValue', 'enter', 'blur', 'esc'],
 	mounted() {
 		// autofocus on input element is not reliable
 		if (this.autofocus && this.$refs.input) {

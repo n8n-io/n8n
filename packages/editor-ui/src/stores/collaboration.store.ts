@@ -14,37 +14,48 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	const workflowStore = useWorkflowsStore();
 
 	const usersForWorkflows = ref<ActiveUsersForWorkflows>({});
+	const pushStoreEventListenerRemovalFn = ref<(() => void) | null>(null);
 
-	pushStore.addEventListener((event) => {
-		if (event.type === 'activeWorkflowUsersChanged') {
-			const activeWorkflowId = workflowStore.workflowId;
-			if (event.data.workflowId === activeWorkflowId) {
-				usersForWorkflows.value[activeWorkflowId] = event.data.activeUsers;
-			}
-		}
+	const getUsersForCurrentWorkflow = computed(() => {
+		return usersForWorkflows.value[workflowStore.workflowId] ?? [];
 	});
 
-	const workflowUsersUpdated = (data: ActiveUsersForWorkflows) => {
-		usersForWorkflows.value = data;
-	};
+	function initialize() {
+		pushStoreEventListenerRemovalFn.value = pushStore.addEventListener((event) => {
+			if (event.type === 'activeWorkflowUsersChanged') {
+				const activeWorkflowId = workflowStore.workflowId;
+				if (event.data.workflowId === activeWorkflowId) {
+					usersForWorkflows.value[activeWorkflowId] = event.data.activeUsers;
+				}
+			}
+		});
+	}
 
-	const notifyWorkflowOpened = (workflowId: string) => {
+	function terminate() {
+		if (typeof pushStoreEventListenerRemovalFn.value === 'function') {
+			pushStoreEventListenerRemovalFn.value();
+		}
+	}
+
+	function workflowUsersUpdated(data: ActiveUsersForWorkflows) {
+		usersForWorkflows.value = data;
+	}
+
+	function notifyWorkflowOpened(workflowId: string) {
 		pushStore.send({
 			type: 'workflowOpened',
 			workflowId,
 		});
-	};
+	}
 
-	const notifyWorkflowClosed = (workflowId: string) => {
+	function notifyWorkflowClosed(workflowId: string) {
 		pushStore.send({ type: 'workflowClosed', workflowId });
-	};
-
-	const getUsersForCurrentWorkflow = computed(() => {
-		return usersForWorkflows.value[workflowStore.workflowId];
-	});
+	}
 
 	return {
 		usersForWorkflows,
+		initialize,
+		terminate,
 		notifyWorkflowOpened,
 		notifyWorkflowClosed,
 		workflowUsersUpdated,

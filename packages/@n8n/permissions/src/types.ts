@@ -12,8 +12,10 @@ export type Resource =
 	| 'license'
 	| 'logStreaming'
 	| 'orchestration'
-	| 'sourceControl'
+	| 'project'
 	| 'saml'
+	| 'securityAudit'
+	| 'sourceControl'
 	| 'tag'
 	| 'user'
 	| 'variable'
@@ -33,7 +35,7 @@ export type CommunityPackageScope = ResourceScope<
 	'communityPackage',
 	'install' | 'uninstall' | 'update' | 'list' | 'manage'
 >;
-export type CredentialScope = ResourceScope<'credential', DefaultOperations | 'share'>;
+export type CredentialScope = ResourceScope<'credential', DefaultOperations | 'share' | 'move'>;
 export type ExternalSecretScope = ResourceScope<'externalSecret', 'list' | 'use'>;
 export type ExternalSecretProviderScope = ResourceScope<
 	'externalSecretsProvider',
@@ -48,13 +50,18 @@ export type LdapScope = ResourceScope<'ldap', 'manage' | 'sync'>;
 export type LicenseScope = ResourceScope<'license', 'manage'>;
 export type LogStreamingScope = ResourceScope<'logStreaming', 'manage'>;
 export type OrchestrationScope = ResourceScope<'orchestration', 'read' | 'list'>;
+export type ProjectScope = ResourceScope<'project'>;
 export type SamlScope = ResourceScope<'saml', 'manage'>;
+export type SecurityAuditScope = ResourceScope<'securityAudit', 'generate'>;
 export type SourceControlScope = ResourceScope<'sourceControl', 'pull' | 'push' | 'manage'>;
 export type TagScope = ResourceScope<'tag'>;
 export type UserScope = ResourceScope<'user', DefaultOperations | 'resetPassword' | 'changeRole'>;
 export type VariableScope = ResourceScope<'variable'>;
 export type WorkersViewScope = ResourceScope<'workersView', 'manage'>;
-export type WorkflowScope = ResourceScope<'workflow', DefaultOperations | 'share' | 'execute'>;
+export type WorkflowScope = ResourceScope<
+	'workflow',
+	DefaultOperations | 'share' | 'execute' | 'move'
+>;
 
 export type Scope =
 	| AuditLogsScope
@@ -69,7 +76,9 @@ export type Scope =
 	| LicenseScope
 	| LogStreamingScope
 	| OrchestrationScope
+	| ProjectScope
 	| SamlScope
+	| SecurityAuditScope
 	| SourceControlScope
 	| TagScope
 	| UserScope
@@ -83,6 +92,11 @@ export type GlobalScopes = GetScopeLevel<'global'>;
 export type ProjectScopes = GetScopeLevel<'project'>;
 export type ResourceScopes = GetScopeLevel<'resource'>;
 export type ScopeLevels = GlobalScopes & (ProjectScopes | (ProjectScopes & ResourceScopes));
+
+export type MaskLevel = 'sharing';
+export type GetMaskLevel<T extends MaskLevel> = Record<T, Scope[]>;
+export type SharingMasks = GetMaskLevel<'sharing'>;
+export type MaskLevels = SharingMasks;
 
 export type ScopeMode = 'oneOf' | 'allOf';
 export type ScopeOptions = { mode: ScopeMode };

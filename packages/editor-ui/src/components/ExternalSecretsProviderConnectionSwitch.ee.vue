@@ -95,7 +95,7 @@ async function onUpdateConnected(value: boolean) {
 			"
 			:disabled="disabled"
 			data-test-id="settings-external-secrets-connected-switch"
-			@update:modelValue="onUpdateConnected"
+			@update:model-value="onUpdateConnected"
 		>
 		</el-switch>
 	</div>

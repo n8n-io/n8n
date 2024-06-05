@@ -22,7 +22,7 @@
 						<VariableSelector
 							:path="path"
 							:redact-values="redactValues"
-							@itemSelected="itemSelected"
+							@item-selected="itemSelected"
 						></VariableSelector>
 					</div>
 				</el-col>
@@ -65,9 +65,10 @@
 							{{ $locale.baseText('expressionEdit.resultOfItem1') }}
 						</div>
 						<div :class="{ 'ph-no-capture': redactValues }">
-							<ExpressionEditorModalOutput
+							<ExpressionOutput
 								ref="expressionResult"
 								:segments="segments"
+								:extensions="theme"
 								data-test-id="expression-modal-output"
 							/>
 						</div>
@@ -79,10 +80,9 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { type PropType, defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import ExpressionEditorModalInput from '@/components/ExpressionEditorModal/ExpressionEditorModalInput.vue';
-import ExpressionEditorModalOutput from '@/components/ExpressionEditorModal/ExpressionEditorModalOutput.vue';
 import VariableSelector from '@/components/VariableSelector.vue';
 
 import type { IVariableItemSelected } from '@/Interface';
@@ -96,12 +96,15 @@ import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 import { useDebounce } from '@/composables/useDebounce';
 
 import type { Segment } from '@/types/expressions';
+import ExpressionOutput from './InlineExpressionEditor/ExpressionOutput.vue';
+import { outputTheme } from './ExpressionEditorModal/theme';
+import type { INodeProperties } from 'n8n-workflow';
 
 export default defineComponent({
 	name: 'ExpressionEdit',
 	components: {
 		ExpressionEditorModalInput,
-		ExpressionEditorModalOutput,
+		ExpressionOutput,
 		VariableSelector,
 	},
 	props: {
@@ -110,7 +113,7 @@ export default defineComponent({
 			default: false,
 		},
 		parameter: {
-			type: Object,
+			type: Object as PropType<INodeProperties>,
 			default: () => ({}),
 		},
 		path: {
@@ -149,6 +152,7 @@ export default defineComponent({
 			latestValue: '',
 			segments: [] as Segment[],
 			expressionsDocsUrl: EXPRESSIONS_DOCS_URL,
+			theme: outputTheme(),
 		};
 	},
 	computed: {
@@ -160,11 +164,7 @@ export default defineComponent({
 			this.latestValue = this.modelValue;
 
 			const resolvedExpressionValue =
-				(
-					this.$refs.expressionResult as {
-						getValue: () => string;
-					}
-				)?.getValue() || '';
+				(this.$refs.expressionResult as InstanceType<typeof ExpressionOutput>)?.getValue() || '';
 			void this.externalHooks.run('expressionEdit.dialogVisibleChanged', {
 				dialogVisible: newValue,
 				parameter: this.parameter,
@@ -177,7 +177,7 @@ export default defineComponent({
 					this.segments,
 					this.modelValue,
 					this.workflowsStore.workflowId,
-					this.ndvStore.sessionId,
+					this.ndvStore.pushRef,
 					this.ndvStore.activeNode?.type ?? '',
 				);
 

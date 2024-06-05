@@ -17,12 +17,12 @@ describe('Push', () => {
 	const sseBackend = mockInstance(SSEPush);
 	const wsBackend = mockInstance(WebSocketPush);
 
-	test('should validate sessionId on requests for websocket backend', () => {
+	test('should validate pushRef on requests for websocket backend', () => {
 		config.set('push.backend', 'websocket');
 		const push = new Push();
 		const ws = mock<WebSocket>();
 		const request = mock<WebSocketPushRequest>({ user, ws });
-		request.query = { sessionId: '' };
+		request.query = { pushRef: '' };
 		push.handleRequest(request, mock());
 
 		expect(ws.send).toHaveBeenCalled();
@@ -30,11 +30,11 @@ describe('Push', () => {
 		expect(wsBackend.add).not.toHaveBeenCalled();
 	});
 
-	test('should validate sessionId on requests for SSE backend', () => {
+	test('should validate pushRef on requests for SSE backend', () => {
 		config.set('push.backend', 'sse');
 		const push = new Push();
 		const request = mock<SSEPushRequest>({ user, ws: undefined });
-		request.query = { sessionId: '' };
+		request.query = { pushRef: '' };
 		expect(() => push.handleRequest(request, mock())).toThrow(BadRequestError);
 
 		expect(sseBackend.add).not.toHaveBeenCalled();

@@ -1,8 +1,8 @@
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+import { oldVersionNotice } from '../../utils/descriptions';
 import { imageFields, imageOperations } from './ImageDescription';
 import { textFields, textOperations } from './TextDescription';
 import { chatFields, chatOperations } from './ChatDescription';
-import { oldVersionNotice } from '../../utils/descriptions';
 
 export class OpenAi implements INodeType {
 	description: INodeTypeDescription = {

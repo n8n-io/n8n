@@ -20,6 +20,7 @@ import type { SyntaxNode } from '@lezer/common';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { useRouter } from 'vue-router';
 import type { DocMetadata } from 'n8n-workflow';
+import { escapeMappingString } from '@/utils/mappingUtils';
 
 /**
  * Split user input into base (to resolve) and tail (to filter).
@@ -59,21 +60,6 @@ export function longestCommonPrefix(...strings: string[]) {
 
 export const prefixMatch = (first: string, second: string) =>
 	first.startsWith(second) && first !== second;
-
-/**
- * Make a function to bring selected elements to the start of an array, in order.
- */
-export const setRank = (selected: string[]) => (full: string[]) => {
-	const fullCopy = [...full];
-
-	[...selected].reverse().forEach((s) => {
-		const index = fullCopy.indexOf(s);
-
-		if (index !== -1) fullCopy.unshift(fullCopy.splice(index, 1)[0]);
-	});
-
-	return fullCopy;
-};
 
 export const isPseudoParam = (candidate: string) => {
 	const PSEUDO_PARAMS = ['notice']; // user input disallowed
@@ -163,13 +149,18 @@ export const stripExcessParens = (context: CompletionContext) => (option: Comple
 	return option;
 };
 
-export const getDefaultArgs = (doc?: DocMetadata): unknown[] => {
-	return doc?.args?.map((arg) => arg.default).filter(Boolean) ?? [];
+export const getDefaultArgs = (doc?: DocMetadata): string[] => {
+	return (
+		doc?.args
+			?.filter((arg) => !arg.optional)
+			.map((arg) => arg.default)
+			.filter((def): def is string => !!def) ?? []
+	);
 };
 
 export const insertDefaultArgs = (label: string, args: unknown[]): string => {
 	if (!label.endsWith('()')) return label;
-	const argList = args.map((arg) => JSON.stringify(arg)).join(', ');
+	const argList = args.join(', ');
 	const fnName = label.replace('()', '');
 
 	return `${fnName}(${argList})`;
@@ -194,7 +185,6 @@ export const applyCompletion =
 	(view: EditorView, completion: Completion, from: number, to: number): void => {
 		const isFunction = completion.label.endsWith('()');
 		const label = insertDefaultArgs(transformLabel(completion.label), defaultArgs);
-
 		const tx: TransactionSpec = {
 			...insertCompletionText(view.state, label, from, to),
 			annotations: pickedCompletion.of(completion),
@@ -212,9 +202,34 @@ export const applyCompletion =
 		view.dispatch(tx);
 	};
 
+export const applyBracketAccess = (key: string): string => {
+	return `['${escapeMappingString(key)}']`;
+};
+
+/**
+ * Apply a bracket-access completion
+ *
+ *  @example `$json.` -> `$json['key with spaces']`
+ *  @example `$json` -> `$json['key with spaces']`
+ */
+export const applyBracketAccessCompletion = (
+	view: EditorView,
+	completion: Completion,
+	from: number,
+	to: number,
+): void => {
+	const label = applyBracketAccess(completion.label);
+	const completionAtDot = view.state.sliceDoc(from - 1, from) === '.';
+
+	view.dispatch({
+		...insertCompletionText(view.state, label, completionAtDot ? from - 1 : from, to),
+		annotations: pickedCompletion.of(completion),
+	});
+};
+
 export const hasRequiredArgs = (doc?: DocMetadata): boolean => {
 	if (!doc) return false;
-	const requiredArgs = doc?.args?.filter((arg) => !arg.name.endsWith('?')) ?? [];
+	const requiredArgs = doc?.args?.filter((arg) => !arg.name.endsWith('?') && !arg.optional) ?? [];
 	return requiredArgs.length > 0;
 };
 
@@ -236,4 +251,22 @@ export const renderSectionHeader = (section: CompletionSection): HTMLElement => 
 export const withSectionHeader = (section: CompletionSection): CompletionSection => {
 	section.header = renderSectionHeader;
 	return section;
+};
+
+export const isCompletionSection = (
+	section: CompletionSection | string | undefined,
+): section is CompletionSection => {
+	return typeof section === 'object';
+};
+
+export const getDisplayType = (value: unknown): string => {
+	if (Array.isArray(value)) {
+		if (value.length > 0) {
+			return `${getDisplayType(value[0])}[]`;
+		}
+		return 'Array';
+	}
+	if (value === null) return 'null';
+	if (typeof value === 'object') return 'Object';
+	return (typeof value).toLocaleLowerCase();
 };

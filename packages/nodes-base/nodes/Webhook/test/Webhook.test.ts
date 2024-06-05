@@ -15,6 +15,10 @@ describe('Test Webhook Node', () => {
 			nodeHelpers: mock(),
 		});
 		context.getNodeParameter.calledWith('options').mockReturnValue({});
+		context.getNode.calledWith().mockReturnValue({
+			type: 'n8n-nodes-base.webhook',
+			typeVersion: 1.1,
+		} as any);
 		const req = mock<Request>();
 		req.contentType = 'multipart/form-data';
 		context.getRequestObject.mockReturnValue(req);

@@ -13,7 +13,7 @@
 				<template #content>{{ nodeTypeName }}</template>
 				<div v-if="type !== 'unknown'" :class="$style.icon">
 					<img v-if="type === 'file'" :src="src" :class="$style.nodeIconImage" />
-					<FontAwesomeIcon v-else :icon="name" :class="$style.iconFa" :style="fontStyleData" />
+					<FontAwesomeIcon v-else :icon="`${name}`" :class="$style.iconFa" :style="fontStyleData" />
 				</div>
 				<div v-else :class="$style.nodeIconPlaceholder">
 					{{ nodeTypeName ? nodeTypeName.charAt(0) : '?' }}
@@ -22,7 +22,7 @@
 			<template v-else>
 				<div v-if="type !== 'unknown'" :class="$style.icon">
 					<img v-if="type === 'file'" :src="src" :class="$style.nodeIconImage" />
-					<FontAwesomeIcon v-else :icon="name" :style="fontStyleData" />
+					<FontAwesomeIcon v-else :icon="`${name}`" :style="fontStyleData" />
 					<div v-if="badge" :class="$style.badge" :style="badgeStyleData">
 						<n8n-node-icon :type="badge.type" :src="badge.src" :size="badgeSize"></n8n-node-icon>
 					</div>

@@ -1,4 +1,4 @@
-import type { UpdateGlobalRolePayload } from '@/api/users';
+import type { IUpdateUserSettingsReqPayload, UpdateGlobalRolePayload } from '@/api/users';
 import {
 	changePassword,
 	deleteUser,
@@ -21,7 +21,6 @@ import {
 import { PERSONALIZATION_MODAL_KEY, STORES, ROLE } from '@/constants';
 import type {
 	Cloud,
-	ICredentialsResponse,
 	IInviteResponse,
 	IPersonalizationLatestVersion,
 	IRole,
@@ -31,7 +30,6 @@ import type {
 	CurrentUserResponse,
 	InvitableRoleName,
 } from '@/Interface';
-import { getCredentialPermissions } from '@/permissions';
 import { getPersonalizedNodeTypes } from '@/utils/userUtils';
 import { defineStore } from 'pinia';
 import { useRootStore } from './n8nRoot.store';
@@ -92,13 +90,6 @@ export const useUsersStore = defineStore(STORES.USERS, {
 				return [];
 			}
 			return getPersonalizedNodeTypes(answers);
-		},
-		isResourceAccessible() {
-			return (resource: ICredentialsResponse): boolean => {
-				const permissions = getCredentialPermissions(this.currentUser, resource);
-
-				return permissions.use;
-			};
 		},
 	},
 	actions: {
@@ -255,7 +246,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const user = await updateCurrentUser(rootStore.getRestApiContext, params);
 			this.addUsers([user]);
 		},
-		async updateUserSettings(settings: IUserResponse['settings']): Promise<void> {
+		async updateUserSettings(settings: IUpdateUserSettingsReqPayload): Promise<void> {
 			const rootStore = useRootStore();
 			const updatedSettings = await updateCurrentUserSettings(
 				rootStore.getRestApiContext,
@@ -268,7 +259,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		},
 		async updateOtherUserSettings(
 			userId: string,
-			settings: IUserResponse['settings'],
+			settings: IUpdateUserSettingsReqPayload,
 		): Promise<void> {
 			const rootStore = useRootStore();
 			const updatedSettings = await updateOtherUserSettings(

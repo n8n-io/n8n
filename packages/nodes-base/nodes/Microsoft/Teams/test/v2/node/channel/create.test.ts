@@ -1,11 +1,9 @@
 import type { INodeTypes } from 'n8n-workflow';
+import nock from 'nock';
+import * as transport from '../../../../v2/transport';
 import { getResultNodeData, setup, workflowToTests } from '@test/nodes/Helpers';
 import type { WorkflowTestData } from '@test/nodes/types';
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
-
-import nock from 'nock';
-
-import * as transport from '../../../../v2/transport';
 
 const microsoftApiRequestSpy = jest.spyOn(transport, 'microsoftApiRequest');
 

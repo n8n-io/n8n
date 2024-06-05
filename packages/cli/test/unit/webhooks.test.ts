@@ -1,4 +1,4 @@
-import type { SuperAgentTest } from 'supertest';
+import type SuperAgentTest from 'supertest/lib/agent';
 import { agent as testAgent } from 'supertest';
 import { mock } from 'jest-mock-extended';
 

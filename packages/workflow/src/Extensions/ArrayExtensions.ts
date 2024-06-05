@@ -1,8 +1,9 @@
 import { ExpressionError } from '../errors/expression.error';
 import { ExpressionExtensionError } from '../errors/expression-extension.error';
-import type { ExtensionMap } from './Extensions';
+import type { Extension, ExtensionMap } from './Extensions';
 import { compact as oCompact } from './ObjectExtensions';
 import deepEqual from 'deep-equal';
+import uniqWith from 'lodash/uniqWith';
 
 function first(value: unknown[]): unknown {
 	return value[0];
@@ -52,31 +53,18 @@ function randomItem(value: unknown[]): unknown {
 }
 
 function unique(value: unknown[], extraArgs: string[]): unknown[] {
-	if (extraArgs.length) {
-		return value.reduce<unknown[]>((l, v) => {
-			if (typeof v === 'object' && v !== null && extraArgs.every((i) => i in v)) {
-				const alreadySeen = l.find((i) =>
-					extraArgs.every((j) =>
-						deepEqual(
-							(i as Record<string, unknown>)[j],
-							(v as Record<string, unknown>, { strict: true })[j],
-							{ strict: true },
-						),
-					),
-				);
-				if (!alreadySeen) {
-					l.push(v);
-				}
-			}
-			return l;
-		}, []);
-	}
-	return value.reduce<unknown[]>((l, v) => {
-		if (l.findIndex((i) => deepEqual(i, v, { strict: true })) === -1) {
-			l.push(v);
+	const mapForEqualityCheck = (item: unknown): unknown => {
+		if (extraArgs.length > 0 && item && typeof item === 'object') {
+			return extraArgs.reduce<Record<string, unknown>>((acc, key) => {
+				acc[key] = (item as Record<string, unknown>)[key];
+				return acc;
+			}, {});
 		}
-		return l;
-	}, []);
+		return item;
+	};
+	return uniqWith(value, (a, b) =>
+		deepEqual(mapForEqualityCheck(a), mapForEqualityCheck(b), { strict: true }),
+	);
 }
 
 const ensureNumberArray = (arr: unknown[], { fnName }: { fnName: string }) => {
@@ -320,6 +308,10 @@ function intersection(value: unknown[], extraArgs: unknown[][]): unknown[] {
 	return unique(newArr, []);
 }
 
+function append(value: unknown[], extraArgs: unknown[][]): unknown[] {
+	return value.concat(extraArgs);
+}
+
 export function toJsonString(value: unknown[]) {
 	return JSON.stringify(value);
 }
@@ -342,97 +334,145 @@ export function toDateTime() {
 
 average.doc = {
 	name: 'average',
-	description: 'Returns the mean average of all values in the array.',
+	description:
+		'Returns the average of the numbers in the array. Throws an error if there are any non-numbers.',
+	examples: [{ example: '[12, 1, 5].average()', evaluated: '6' }],
 	returnType: 'number',
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-average',
 };
 
 compact.doc = {
 	name: 'compact',
-	description: 'Removes all empty values from the array.',
+	description:
+		'Removes any empty values from the array. <code>null</code>, <code>""</code> and <code>undefined</code> count as empty.',
+	examples: [{ example: '[2, null, 1, ""].compact()', evaluated: '[2, 1]' }],
 	returnType: 'Array',
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-compact',
 };
 
 isEmpty.doc = {
 	name: 'isEmpty',
-	description: 'Checks if the array doesn’t have any elements.',
+	description: 'Returns <code>true</code> if the array has no elements',
+	examples: [
+		{ example: '[].isEmpty()', evaluated: 'true' },
+		{ example: "['quick', 'brown', 'fox'].isEmpty()", evaluated: 'false' },
+	],
 	returnType: 'boolean',
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-isEmpty',
 };
 
 isNotEmpty.doc = {
 	name: 'isNotEmpty',
-	description: 'Checks if the array has elements.',
+	description: 'Returns <code>true</code> if the array has at least one element',
+	examples: [
+		{ example: "['quick', 'brown', 'fox'].isNotEmpty()", evaluated: 'true' },
+		{ example: '[].isNotEmpty()', evaluated: 'false' },
+	],
 	returnType: 'boolean',
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-isNotEmpty',
 };
 
 first.doc = {
 	name: 'first',
-	description: 'Returns the first element of the array.',
-	returnType: 'Element',
+	description: 'Returns the first element of the array',
+	examples: [{ example: "['quick', 'brown', 'fox'].first()", evaluated: "'quick'" }],
+	returnType: 'any',
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-first',
 };
 
 last.doc = {
 	name: 'last',
-	description: 'Returns the last element of the array.',
-	returnType: 'Element',
+	description: 'Returns the last element of the array',
+	examples: [{ example: "['quick', 'brown', 'fox'].last()", evaluated: "'fox'" }],
+	returnType: 'any',
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-last',
 };
 
 max.doc = {
 	name: 'max',
-	description: 'Gets the maximum value from a number-only array.',
+	description:
+		'Returns the largest number in the array. Throws an error if there are any non-numbers.',
+	examples: [{ example: '[1, 12, 5].max()', evaluated: '12' }],
 	returnType: 'number',
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-max',
 };
 
 min.doc = {
 	name: 'min',
-	description: 'Gets the minimum value from a number-only array.',
+	description:
+		'Returns the smallest number in the array. Throws an error if there are any non-numbers.',
+	examples: [{ example: '[12, 1, 5].min()', evaluated: '1' }],
 	returnType: 'number',
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-min',
 };
 
 randomItem.doc = {
 	name: 'randomItem',
-	description: 'Returns a random element from an array.',
-	returnType: 'Element',
+	description: 'Returns a randomly-chosen element from the array',
+	examples: [
+		{ example: "['quick', 'brown', 'fox'].randomItem()", evaluated: "'brown'" },
+		{ example: "['quick', 'brown', 'fox'].randomItem()", evaluated: "'quick'" },
+	],
+	returnType: 'any',
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-randomItem',
 };
 
 sum.doc = {
 	name: 'sum',
-	description: 'Returns the total sum all the values in an array of parsable numbers.',
+	description:
+		'Returns the total of all the numbers in the array. Throws an error if there are any non-numbers.',
+	examples: [{ example: '[12, 1, 5].sum()', evaluated: '18' }],
 	returnType: 'number',
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-sum',
 };
 
 chunk.doc = {
 	name: 'chunk',
-	description: 'Splits arrays into chunks with a length of `size`.',
+	description: 'Splits the array into an array of sub-arrays, each with the given length',
+	examples: [{ example: '[1, 2, 3, 4, 5, 6].chunk(2)', evaluated: '[[1,2],[3,4],[5,6]]' }],
 	returnType: 'Array',
-	args: [{ name: 'size', type: 'number' }],
+	args: [
+		{
+			name: 'length',
+			optional: false,
+			description: 'The number of elements in each chunk',
+			type: 'number',
+		},
+	],
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-chunk',
 };
 
 difference.doc = {
 	name: 'difference',
 	description:
-		'Compares two arrays. Returns all elements in the base array that aren’t present in `arr`.',
+		"Compares two arrays. Returns all elements in the base array that aren't present\nin <code>otherArray</code>.",
+	examples: [{ example: '[1, 2, 3].difference([2, 3])', evaluated: '[1]' }],
 	returnType: 'Array',
-	args: [{ name: 'arr', type: 'Array' }],
+	args: [
+		{
+			name: 'otherArray',
+			optional: false,
+			description: 'The array to compare to the base array',
+			type: 'Array',
+		},
+	],
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-difference',
 };
 
 intersection.doc = {
 	name: 'intersection',
 	description:
-		'Compares two arrays. Returns all elements in the base array that are present in `arr`.',
+		'Compares two arrays. Returns all elements in the base array that are also present in the other array.',
+	examples: [{ example: '[1, 2].intersection([2, 3])', evaluated: '[2]' }],
 	returnType: 'Array',
-	args: [{ name: 'arr', type: 'Array' }],
+	args: [
+		{
+			name: 'otherArray',
+			optional: false,
+			description: 'The array to compare to the base array',
+			type: 'Array',
+		},
+	],
 	docURL:
 		'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-intersection',
 };
@@ -440,37 +480,72 @@ intersection.doc = {
 merge.doc = {
 	name: 'merge',
 	description:
-		'Merges two Object-arrays into one array by merging the key-value pairs of each element.',
-	returnType: 'array',
-	args: [{ name: 'arr', type: 'Array' }],
+		'Merges two Object-arrays into one object by merging the key-value pairs of each element.',
+	examples: [
+		{
+			example:
+				"[{ name: 'Nathan' }, { age: 42 }].merge([{ city: 'Berlin' }, { country: 'Germany' }])",
+			evaluated: "{ name: 'Nathan', age: 42, city: 'Berlin', country: 'Germany' }",
+		},
+	],
+	returnType: 'Object',
+	args: [
+		{
+			name: 'otherArray',
+			optional: false,
+			description: 'The array to merge into the base array',
+			type: 'Array',
+		},
+	],
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-merge',
 };
 
 pluck.doc = {
 	name: 'pluck',
-	description: 'Returns an array of Objects where the key is equal the given `fieldName`s.',
+	description:
+		'Returns an array containing the values of the given field(s) in each Object of the array. Ignores any array elements that aren’t Objects or don’t have a key matching the field name(s) provided.',
+	examples: [
+		{
+			example: "[{ name: 'Nathan', age: 42 },{ name: 'Jan', city: 'Berlin' }].pluck('name')",
+			evaluated: '["Nathan", "Jan"]',
+		},
+		{
+			example: "[{ name: 'Nathan', age: 42 },{ name: 'Jan', city: 'Berlin' }].pluck('age')",
+			evaluated: '[42]',
+		},
+	],
 	returnType: 'Array',
 	args: [
-		{ name: 'fieldName1', type: 'string' },
-		{ name: 'fieldName1?', type: 'string' },
-		{ name: '...' },
-		{ name: 'fieldNameN?', type: 'string' },
+		{
+			name: 'fieldNames',
+			optional: false,
+			variadic: true,
+			description: 'The keys to retrieve the value of',
+			type: 'string',
+		},
 	],
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-pluck',
 };
 
 renameKeys.doc = {
 	name: 'renameKeys',
-	description: 'Renames all matching keys in the array.',
+	description:
+		'Changes all matching keys (field names) of any Objects in the array. Rename more than one key by\nadding extra arguments, i.e. <code>from1, to1, from2, to2, ...</code>.',
+	examples: [
+		{
+			example: "[{ name: 'bob' }, { name: 'meg' }].renameKeys('name', 'x')",
+			evaluated: "[{ x: 'bob' }, { x: 'meg' }]",
+		},
+	],
 	returnType: 'Array',
 	args: [
-		{ name: 'from1', type: 'string' },
-		{ name: 'to1', type: 'string' },
-		{ name: 'from2?', type: 'string' },
-		{ name: 'to2?', type: 'string' },
-		{ name: '...' },
-		{ name: 'fromN?', type: 'string' },
-		{ name: 'toN?', type: 'string' },
+		{
+			name: 'from',
+			optional: false,
+			description: 'The key to rename',
+			type: 'string',
+		},
+		{ name: 'to', optional: false, description: 'The new key name', type: 'string' },
 	],
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-renameKeys',
 };
@@ -478,43 +553,124 @@ renameKeys.doc = {
 smartJoin.doc = {
 	name: 'smartJoin',
 	description:
-		'Operates on an array of objects where each object contains key-value pairs. Creates a new object containing key-value pairs, where the key is the value of the first pair, and the value is the value of the second pair. Removes non-matching and empty values and trims any whitespace before joining.',
-	returnType: 'Array',
+		'Creates a single Object from an array of Objects. Each Object in the array provides one field for the returned Object. Each Object in the array must contain a field with the key name and a field with the value.',
+	examples: [
+		{
+			example:
+				"[{ field: 'age', value: 2 }, { field: 'city', value: 'Berlin' }].smartJoin('field', 'value')",
+			evaluated: "{ age: 2, city: 'Berlin' }",
+		},
+	],
+	returnType: 'Object',
 	args: [
-		{ name: 'keyField', type: 'string' },
-		{ name: 'nameField', type: 'string' },
+		{
+			name: 'keyField',
+			optional: false,
+			description: 'The field in each Object containing the key name',
+			type: 'string',
+		},
+		{
+			name: 'nameField',
+			optional: false,
+			description: 'The field in each Object containing the value',
+			type: 'string',
+		},
 	],
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-smartJoin',
 };
 
 union.doc = {
 	name: 'union',
-	description: 'Concatenates two arrays and then removes duplicates.',
+	description: 'Concatenates two arrays and then removes any duplicates',
+	examples: [{ example: '[1, 2].union([2, 3])', evaluated: '[1, 2, 3]' }],
 	returnType: 'Array',
-	args: [{ name: 'arr', type: 'Array' }],
+	args: [
+		{
+			name: 'otherArray',
+			optional: false,
+			description: 'The array to union with the base array',
+			type: 'Array',
+		},
+	],
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-union',
 };
 
 unique.doc = {
 	name: 'unique',
-	description: 'Remove duplicates from an array. ',
-	returnType: 'Element',
+	description: 'Removes any duplicate elements from the array',
+	examples: [
+		{ example: "['quick', 'brown', 'quick'].unique()", evaluated: "['quick', 'brown']" },
+		{
+			example: "[{ name: 'Nathan', age: 42 }, { name: 'Nathan', age: 22 }].unique()",
+			evaluated: "[{ name: 'Nathan', age: 42 }, { name: 'Nathan', age: 22 }]",
+		},
+		{
+			example: "[{ name: 'Nathan', age: 42 }, { name: 'Nathan', age: 22 }].unique('name')",
+			evaluated: "[{ name: 'Nathan', age: 42 }]",
+		},
+	],
+	returnType: 'any',
 	aliases: ['removeDuplicates'],
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-unique',
+	args: [
+		{
+			name: 'fieldNames',
+			optional: false,
+			variadic: true,
+			description: 'The object keys to check for equality',
+			type: 'any',
+		},
+	],
 };
 
 toJsonString.doc = {
 	name: 'toJsonString',
-	description: 'Converts an array to a JSON string',
+	description:
+		"Converts the array to a JSON string. The same as JavaScript's <code>JSON.stringify()</code>.",
+	examples: [
+		{
+			example: "['quick', 'brown', 'fox'].toJsonString()",
+			evaluated: '\'["quick","brown","fox"]\'',
+		},
+	],
 	docURL:
 		'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-toJsonString',
 	returnType: 'string',
 };
 
+append.doc = {
+	name: 'append',
+	description:
+		'Adds new elements to the end of the array. Similar to <code>push()</code>, but returns the modified array. Consider using spread syntax instead (see examples).',
+	examples: [
+		{ example: "['forget', 'me'].append('not')", evaluated: "['forget', 'me', 'not']" },
+		{ example: '[9, 0, 2].append(1, 0)', evaluated: '[9, 0, 2, 1, 0]' },
+		{
+			example: '[...[9, 0, 2], 1, 0]',
+			evaluated: '[9, 0, 2, 1, 0]',
+			description: 'Consider using spread syntax instead',
+		},
+	],
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-append',
+	returnType: 'Array',
+	args: [
+		{
+			name: 'elements',
+			optional: false,
+			variadic: true,
+			description: 'The elements to append, in order',
+			type: 'any',
+		},
+	],
+};
+
+const removeDuplicates: Extension = unique.bind({});
+removeDuplicates.doc = { ...unique.doc, hidden: true };
+
 export const arrayExtensions: ExtensionMap = {
 	typeName: 'Array',
 	functions: {
-		removeDuplicates: unique,
+		removeDuplicates,
 		unique,
 		first,
 		last,
@@ -534,6 +690,7 @@ export const arrayExtensions: ExtensionMap = {
 		union,
 		difference,
 		intersection,
+		append,
 		toJsonString,
 		toInt,
 		toFloat,

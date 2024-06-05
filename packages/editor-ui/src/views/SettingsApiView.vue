@@ -4,7 +4,7 @@
 			<n8n-heading size="2xlarge">
 				{{ $locale.baseText('settings.api') }}
 				<span :style="{ fontSize: 'var(--font-size-s)', color: 'var(--color-text-light)' }">
-					({{ $locale.baseText('beta') }})
+					({{ $locale.baseText('generic.beta') }})
 				</span>
 			</n8n-heading>
 		</div>

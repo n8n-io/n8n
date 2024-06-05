@@ -23,7 +23,7 @@ export class ChatTrigger implements INodeType {
 		version: 1,
 		description: 'Runs the workflow when an n8n generated webchat is submitted',
 		defaults: {
-			name: 'Chat Trigger',
+			name: 'When chat message received',
 		},
 		codex: {
 			categories: ['Core Nodes'],
@@ -33,9 +33,6 @@ export class ChatTrigger implements INodeType {
 						url: 'https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.chattrigger/',
 					},
 				],
-			},
-			subcategories: {
-				'Core Nodes': ['Other Trigger Nodes'],
 			},
 		},
 		supportsCORS: true,

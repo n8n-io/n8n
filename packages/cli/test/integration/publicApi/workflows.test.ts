@@ -1,13 +1,15 @@
-import type { SuperAgentTest } from 'supertest';
-import config from '@/config';
-import Container from 'typedi';
+import { Container } from 'typedi';
 import type { INode } from 'n8n-workflow';
+
+import config from '@/config';
 import { STARTING_NODES } from '@/constants';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
+import type { Project } from '@db/entities/Project';
+import { ProjectRepository } from '@db/repositories/project.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import { ExecutionService } from '@/executions/execution.service';
 
 import { randomApiKey } from '../shared/random';
@@ -17,12 +19,15 @@ import { createUser } from '../shared/db/users';
 import { createWorkflow, createWorkflowWithTrigger } from '../shared/db/workflows';
 import { createTag } from '../shared/db/tags';
 import { mockInstance } from '../../shared/mocking';
+import type { SuperAgentTest } from '../shared/types';
 
 let owner: User;
+let ownerPersonalProject: Project;
 let member: User;
+let memberPersonalProject: Project;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
-let workflowRunner: ActiveWorkflowRunner;
+let activeWorkflowManager: ActiveWorkflowManager;
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 const license = testServer.license;
@@ -34,17 +39,23 @@ beforeAll(async () => {
 		role: 'global:owner',
 		apiKey: randomApiKey(),
 	});
+	ownerPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+		owner.id,
+	);
 
 	member = await createUser({
 		role: 'global:member',
 		apiKey: randomApiKey(),
 	});
+	memberPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+		member.id,
+	);
 
 	await utils.initNodeTypes();
 
-	workflowRunner = Container.get(ActiveWorkflowRunner);
+	activeWorkflowManager = Container.get(ActiveWorkflowManager);
 
-	await workflowRunner.init();
+	await activeWorkflowManager.init();
 });
 
 beforeEach(async () => {
@@ -62,7 +73,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-	await workflowRunner?.removeAll();
+	await activeWorkflowManager?.removeAll();
 });
 
 const testWithAPIKey =
@@ -254,10 +265,7 @@ describe('GET /workflows', () => {
 	test('should return all owned workflows filtered by name', async () => {
 		const workflowName = 'Workflow 1';
 
-		const [workflow] = await Promise.all([
-			createWorkflow({ name: workflowName }, member),
-			createWorkflow({}, member),
-		]);
+		await Promise.all([createWorkflow({ name: workflowName }, member), createWorkflow({}, member)]);
 
 		const response = await authMemberAgent.get(`/workflows?name=${workflowName}`);
 
@@ -274,7 +282,7 @@ describe('GET /workflows', () => {
 			name,
 			createdAt,
 			updatedAt,
-			tags: wfTags,
+			tags,
 		} = response.body.data[0];
 
 		expect(id).toBeDefined();
@@ -286,6 +294,7 @@ describe('GET /workflows', () => {
 		expect(settings).toBeDefined();
 		expect(createdAt).toBeDefined();
 		expect(updatedAt).toBeDefined();
+		expect(tags).toEqual([]);
 	});
 
 	test('should return all workflows for owner', async () => {
@@ -508,7 +517,7 @@ describe('POST /workflows/:id/activate', () => {
 		// check whether the workflow is on the database
 		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
-				userId: member.id,
+				projectId: memberPersonalProject.id,
 				workflowId: workflow.id,
 			},
 			relations: ['workflow'],
@@ -517,15 +526,13 @@ describe('POST /workflows/:id/activate', () => {
 		expect(sharedWorkflow?.workflow.active).toBe(true);
 
 		// check whether the workflow is on the active workflow runner
-		expect(await workflowRunner.isActive(workflow.id)).toBe(true);
+		expect(await activeWorkflowManager.isActive(workflow.id)).toBe(true);
 	});
 
 	test('should set non-owned workflow as active when owner', async () => {
 		const workflow = await createWorkflowWithTrigger({}, member);
 
-		const response = await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
-
-		expect(response.statusCode).toBe(200);
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/activate`).expect(200);
 
 		const { id, connections, active, staticData, nodes, settings, name, createdAt, updatedAt } =
 			response.body;
@@ -543,7 +550,7 @@ describe('POST /workflows/:id/activate', () => {
 		// check whether the workflow is on the database
 		const sharedOwnerWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
-				userId: owner.id,
+				projectId: ownerPersonalProject.id,
 				workflowId: workflow.id,
 			},
 		});
@@ -552,7 +559,7 @@ describe('POST /workflows/:id/activate', () => {
 
 		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
-				userId: member.id,
+				projectId: memberPersonalProject.id,
 				workflowId: workflow.id,
 			},
 			relations: ['workflow'],
@@ -561,7 +568,7 @@ describe('POST /workflows/:id/activate', () => {
 		expect(sharedWorkflow?.workflow.active).toBe(true);
 
 		// check whether the workflow is on the active workflow runner
-		expect(await workflowRunner.isActive(workflow.id)).toBe(true);
+		expect(await activeWorkflowManager.isActive(workflow.id)).toBe(true);
 	});
 });
 
@@ -606,7 +613,7 @@ describe('POST /workflows/:id/deactivate', () => {
 		// get the workflow after it was deactivated
 		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
-				userId: member.id,
+				projectId: memberPersonalProject.id,
 				workflowId: workflow.id,
 			},
 			relations: ['workflow'],
@@ -615,7 +622,7 @@ describe('POST /workflows/:id/deactivate', () => {
 		// check whether the workflow is deactivated in the database
 		expect(sharedWorkflow?.workflow.active).toBe(false);
 
-		expect(await workflowRunner.isActive(workflow.id)).toBe(false);
+		expect(await activeWorkflowManager.isActive(workflow.id)).toBe(false);
 	});
 
 	test('should deactivate non-owned workflow when owner', async () => {
@@ -643,7 +650,7 @@ describe('POST /workflows/:id/deactivate', () => {
 		// check whether the workflow is deactivated in the database
 		const sharedOwnerWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
-				userId: owner.id,
+				projectId: ownerPersonalProject.id,
 				workflowId: workflow.id,
 			},
 		});
@@ -652,7 +659,7 @@ describe('POST /workflows/:id/deactivate', () => {
 
 		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
-				userId: member.id,
+				projectId: memberPersonalProject.id,
 				workflowId: workflow.id,
 			},
 			relations: ['workflow'],
@@ -660,7 +667,7 @@ describe('POST /workflows/:id/deactivate', () => {
 
 		expect(sharedWorkflow?.workflow.active).toBe(false);
 
-		expect(await workflowRunner.isActive(workflow.id)).toBe(false);
+		expect(await activeWorkflowManager.isActive(workflow.id)).toBe(false);
 	});
 });
 
@@ -696,6 +703,7 @@ describe('POST /workflows', () => {
 				saveDataSuccessExecution: 'all',
 				executionTimeout: 3600,
 				timezone: 'America/New_York',
+				executionOrder: 'v1',
 			},
 		};
 
@@ -719,7 +727,7 @@ describe('POST /workflows', () => {
 		// check if created workflow in DB
 		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
-				userId: member.id,
+				projectId: memberPersonalProject.id,
 				workflowId: response.body.id,
 			},
 			relations: ['workflow'],
@@ -958,7 +966,7 @@ describe('PUT /workflows/:id', () => {
 		// check updated workflow in DB
 		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
-				userId: member.id,
+				projectId: memberPersonalProject.id,
 				workflowId: response.body.id,
 			},
 			relations: ['workflow'],
@@ -1127,7 +1135,7 @@ describe('PUT /workflows/:id', () => {
 		// check updated workflow in DB
 		const sharedOwnerWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
-				userId: owner.id,
+				projectId: ownerPersonalProject.id,
 				workflowId: response.body.id,
 			},
 		});
@@ -1136,7 +1144,7 @@ describe('PUT /workflows/:id', () => {
 
 		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
-				userId: member.id,
+				projectId: memberPersonalProject.id,
 				workflowId: response.body.id,
 			},
 			relations: ['workflow'],
@@ -1268,7 +1276,7 @@ describe('PUT /workflows/:id/tags', () => {
 		// Check the association in DB
 		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
-				userId: member.id,
+				projectId: memberPersonalProject.id,
 				workflowId: workflow.id,
 			},
 			relations: ['workflow.tags'],
@@ -1303,7 +1311,7 @@ describe('PUT /workflows/:id/tags', () => {
 		// Check the association in DB
 		const oldSharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
-				userId: member.id,
+				projectId: memberPersonalProject.id,
 				workflowId: workflow.id,
 			},
 			relations: ['workflow.tags'],
@@ -1356,7 +1364,7 @@ describe('PUT /workflows/:id/tags', () => {
 		// Check the association in DB
 		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
-				userId: member.id,
+				projectId: memberPersonalProject.id,
 				workflowId: workflow.id,
 			},
 			relations: ['workflow.tags'],
@@ -1390,7 +1398,7 @@ describe('PUT /workflows/:id/tags', () => {
 		// Check the association in DB
 		const oldSharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
-				userId: member.id,
+				projectId: memberPersonalProject.id,
 				workflowId: workflow.id,
 			},
 			relations: ['workflow.tags'],
@@ -1430,7 +1438,7 @@ describe('PUT /workflows/:id/tags', () => {
 		// Check the association in DB
 		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
-				userId: member.id,
+				projectId: memberPersonalProject.id,
 				workflowId: workflow.id,
 			},
 			relations: ['workflow.tags'],

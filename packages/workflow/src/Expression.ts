@@ -73,10 +73,17 @@ export class Expression {
 	 *
 	 */
 	convertObjectValueToString(value: object): string {
-		const typeName = Array.isArray(value) ? 'Array' : 'Object';
-
 		if (value instanceof DateTime && value.invalidReason !== null) {
 			throw new ApplicationError('invalid DateTime');
+		}
+
+		if (value === null) {
+			return 'null';
+		}
+
+		let typeName = value.constructor.name ?? 'Object';
+		if (DateTime.isDateTime(value)) {
+			typeName = 'DateTime';
 		}
 
 		let result = '';
@@ -85,6 +92,8 @@ export class Expression {
 			result = DateTime.fromJSDate(value, {
 				zone: this.workflow.settings?.timezone ?? getGlobalState().defaultTimezone,
 			}).toISO();
+		} else if (DateTime.isDateTime(value)) {
+			result = value.toString();
 		} else {
 			result = JSON.stringify(value);
 		}
@@ -104,6 +113,7 @@ export class Expression {
 	 * @param {boolean} [returnObjectAsString=false]
 	 */
 	// TODO: Clean that up at some point and move all the options into an options object
+	// eslint-disable-next-line complexity
 	resolveSimpleParameterValue(
 		parameterValue: NodeParameterValue,
 		siblingParameters: INodeParameters,
@@ -161,7 +171,7 @@ export class Expression {
 						release: process.release,
 						version: process.pid,
 						versions: process.versions,
-				  }
+					}
 				: {};
 
 		/**

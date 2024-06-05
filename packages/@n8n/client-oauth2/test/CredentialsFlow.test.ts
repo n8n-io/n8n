@@ -130,8 +130,8 @@ describe('CredentialsFlow', () => {
 		});
 
 		describe('#refresh', () => {
-			const mockRefreshCall = () =>
-				nock(config.baseUrl)
+			const mockRefreshCall = async () => {
+				const nockScope = nock(config.baseUrl)
 					.post(
 						'/login/oauth/access_token',
 						({ refresh_token, grant_type }) =>
@@ -142,6 +142,15 @@ describe('CredentialsFlow', () => {
 						access_token: config.refreshedAccessToken,
 						refresh_token: config.refreshedRefreshToken,
 					});
+				return await new Promise<{ headers: Headers; body: unknown }>((resolve) => {
+					nockScope.once('request', (req) => {
+						resolve({
+							headers: req.headers,
+							body: req.requestBodyBuffers.toString('utf-8'),
+						});
+					});
+				});
+			};
 
 			it('should make a request to get a new access token', async () => {
 				const authClient = createAuthClient({ scopes: ['notifications'] });
@@ -150,11 +159,54 @@ describe('CredentialsFlow', () => {
 				const token = await authClient.credentials.getToken();
 				expect(token.accessToken).toEqual(config.accessToken);
 
-				mockRefreshCall();
+				const requestPromise = mockRefreshCall();
 				const token1 = await token.refresh();
+				await requestPromise;
+
 				expect(token1).toBeInstanceOf(ClientOAuth2Token);
 				expect(token1.accessToken).toEqual(config.refreshedAccessToken);
 				expect(token1.tokenType).toEqual('bearer');
+			});
+
+			it('should make a request to get a new access token with authentication = "body"', async () => {
+				const authClient = createAuthClient({ scopes: ['notifications'], authentication: 'body' });
+				void mockTokenCall({ requestedScope: 'notifications' });
+
+				const token = await authClient.credentials.getToken();
+				expect(token.accessToken).toEqual(config.accessToken);
+
+				const requestPromise = mockRefreshCall();
+				const token1 = await token.refresh();
+				const { headers, body } = await requestPromise;
+
+				expect(token1).toBeInstanceOf(ClientOAuth2Token);
+				expect(token1.accessToken).toEqual(config.refreshedAccessToken);
+				expect(token1.tokenType).toEqual('bearer');
+				expect(headers?.authorization).toBe(undefined);
+				expect(body).toEqual(
+					'refresh_token=def456token&grant_type=refresh_token&client_id=abc&client_secret=123',
+				);
+			});
+
+			it('should make a request to get a new access token with authentication = "header"', async () => {
+				const authClient = createAuthClient({
+					scopes: ['notifications'],
+					authentication: 'header',
+				});
+				void mockTokenCall({ requestedScope: 'notifications' });
+
+				const token = await authClient.credentials.getToken();
+				expect(token.accessToken).toEqual(config.accessToken);
+
+				const requestPromise = mockRefreshCall();
+				const token1 = await token.refresh();
+				const { headers, body } = await requestPromise;
+
+				expect(token1).toBeInstanceOf(ClientOAuth2Token);
+				expect(token1.accessToken).toEqual(config.refreshedAccessToken);
+				expect(token1.tokenType).toEqual('bearer');
+				expect(headers?.authorization).toBe('Basic YWJjOjEyMw==');
+				expect(body).toEqual('refresh_token=def456token&grant_type=refresh_token');
 			});
 		});
 	});

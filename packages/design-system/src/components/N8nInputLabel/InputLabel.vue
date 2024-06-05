@@ -22,7 +22,7 @@
 				v-if="tooltipText && label"
 				:class="[$style.infoIcon, showTooltip ? $style.visible : $style.hidden]"
 			>
-				<N8nTooltip placement="top" :popper-class="$style.tooltipPopper">
+				<N8nTooltip placement="top" :popper-class="$style.tooltipPopper" :show-after="300">
 					<N8nIcon icon="question-circle" size="small" />
 					<template #content>
 						<div v-html="addTargetBlank(tooltipText)" />
@@ -49,7 +49,7 @@
 import N8nText from '../N8nText';
 import N8nIcon from '../N8nIcon';
 import N8nTooltip from '../N8nTooltip';
-import type { TextColor } from '@/types/text';
+import type { TextColor } from 'n8n-design-system/types/text';
 
 const SIZE = ['small', 'medium'] as const;
 
@@ -90,6 +90,10 @@ const addTargetBlank = (html: string) =>
 .inputLabel:hover {
 	.infoIcon {
 		opacity: 1;
+
+		&:hover {
+			color: var(--color-text-base);
+		}
 	}
 
 	.options {
@@ -117,14 +121,12 @@ const addTargetBlank = (html: string) =>
 	display: flex;
 	align-items: center;
 	color: var(--color-text-light);
-	padding-left: var(--spacing-4xs);
-	background-color: var(--color-background-xlight);
+	margin-left: var(--spacing-4xs);
 	z-index: 1;
 }
 
 .options {
 	opacity: 0;
-	background-color: var(--color-background-xlight);
 	transition: opacity 250ms cubic-bezier(0.98, -0.06, 0.49, -0.2); // transition on hover out
 
 	> * {

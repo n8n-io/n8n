@@ -5,14 +5,14 @@ const workflowsPage = new WorkflowsPage();
 
 export class MainSidebar extends BasePage {
 	getters = {
-		menuItem: (menuLabel: string) =>
-			cy.getByTestId('menu-item').filter(`:contains("${menuLabel}")`),
-		settings: () => this.getters.menuItem('Settings'),
-		templates: () => this.getters.menuItem('Templates'),
-		workflows: () => this.getters.menuItem('Workflows'),
-		credentials: () => this.getters.menuItem('Credentials'),
-		executions: () => this.getters.menuItem('Executions'),
-		adminPanel: () => this.getters.menuItem('Admin Panel'),
+		menuItem: (id: string) => cy.getByTestId('menu-item').get('#' + id),
+		settings: () => this.getters.menuItem('settings'),
+		settingsBack: () => cy.getByTestId('settings-back'),
+		templates: () => this.getters.menuItem('templates'),
+		workflows: () => this.getters.menuItem('workflows'),
+		credentials: () => this.getters.menuItem('credentials'),
+		executions: () => this.getters.menuItem('executions'),
+		adminPanel: () => this.getters.menuItem('cloud-admin'),
 		userMenu: () => cy.get('div[class="action-dropdown-container"]'),
 		logo: () => cy.getByTestId('n8n-logo'),
 	};
@@ -31,8 +31,8 @@ export class MainSidebar extends BasePage {
 		openUserMenu: () => {
 			this.getters.userMenu().click();
 		},
-		openUserMenu: () => {
-			this.getters.userMenu().click();
+		closeSettings: () => {
+			this.getters.settingsBack().click();
 		},
 		signout: () => {
 			const workflowsPage = new WorkflowsPage();

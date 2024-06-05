@@ -4,12 +4,12 @@ import type {
 	IExecuteFunctions,
 	INode,
 	INodeExecutionData,
-	ValidationResult,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
 	NodeOperationError,
 	deepCopy,
+	getValueDescription,
 	jsonParse,
 	validateFieldType,
 } from 'n8n-workflow';
@@ -185,7 +185,7 @@ export const validateEntry = (
 			} else {
 				throw new NodeOperationError(
 					node,
-					`'${name}' expects a ${type} but we got '${String(value)}' [item ${itemIndex}]`,
+					`'${name}' expects a ${type} but we got ${getValueDescription(value)} [item ${itemIndex}]`,
 					{ description },
 				);
 			}
@@ -200,7 +200,7 @@ export const validateEntry = (
 
 	if (!validationResult.valid) {
 		if (ignoreErrors) {
-			validationResult.newValue = value as ValidationResult['newValue'];
+			return { name, value: value ?? null };
 		} else {
 			const message = `${validationResult.errorMessage} [item ${itemIndex}]`;
 			throw new NodeOperationError(node, message, {
@@ -212,7 +212,7 @@ export const validateEntry = (
 
 	return {
 		name,
-		value: validationResult.newValue === undefined ? null : validationResult.newValue,
+		value: validationResult.newValue ?? null,
 	};
 };
 

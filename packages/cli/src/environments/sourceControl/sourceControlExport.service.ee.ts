@@ -29,6 +29,7 @@ import { Logger } from '@/Logger';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMapping.repository';
+import type { ResourceOwner } from './types/resourceOwner';
 
 @Service()
 export class SourceControlExportService {
@@ -79,7 +80,7 @@ export class SourceControlExportService {
 
 	private async writeExportableWorkflowsToExportFolder(
 		workflowsToBeExported: WorkflowEntity[],
-		owners: Record<string, string>,
+		owners: Record<string, ResourceOwner>,
 	) {
 		await Promise.all(
 			workflowsToBeExported.map(async (e) => {
@@ -109,8 +110,37 @@ export class SourceControlExportService {
 			const workflows = await Container.get(WorkflowRepository).findByIds(workflowIds);
 
 			// determine owner of each workflow to be exported
-			const owners: Record<string, string> = {};
-			sharedWorkflows.forEach((e) => (owners[e.workflowId] = e.user.email));
+			const owners: Record<string, ResourceOwner> = {};
+			sharedWorkflows.forEach((e) => {
+				const project = e.project;
+
+				if (!project) {
+					throw new ApplicationError(`Workflow ${e.workflow.display()} has no owner`);
+				}
+
+				if (project.type === 'personal') {
+					const ownerRelation = project.projectRelations.find(
+						(pr) => pr.role === 'project:personalOwner',
+					);
+					if (!ownerRelation) {
+						throw new ApplicationError(`Workflow ${e.workflow.display()} has no owner`);
+					}
+					owners[e.workflowId] = {
+						type: 'personal',
+						personalEmail: ownerRelation.user.email,
+					};
+				} else if (project.type === 'team') {
+					owners[e.workflowId] = {
+						type: 'team',
+						teamId: project.id,
+						teamName: project.name,
+					};
+				} else {
+					throw new ApplicationError(
+						`Workflow belongs to unknown project type: ${project.type as string}`,
+					);
+				}
+			});
 
 			// write the workflows to the export folder as json files
 			await this.writeExportableWorkflowsToExportFolder(workflows, owners);
@@ -230,7 +260,7 @@ export class SourceControlExportService {
 			const credentialIds = candidates.map((e) => e.id);
 			const credentialsToBeExported = await Container.get(
 				SharedCredentialsRepository,
-			).findByCredentialIds(credentialIds);
+			).findByCredentialIds(credentialIds, 'credential:owner');
 			let missingIds: string[] = [];
 			if (credentialsToBeExported.length !== credentialIds.length) {
 				const foundCredentialIds = credentialsToBeExported.map((e) => e.credentialsId);
@@ -239,23 +269,44 @@ export class SourceControlExportService {
 				);
 			}
 			await Promise.all(
-				credentialsToBeExported.map(async (sharedCredential) => {
-					const { name, type, nodesAccess, data, id } = sharedCredential.credentials;
-					const credentialObject = new Credentials({ id, name }, type, nodesAccess, data);
-					const plainData = credentialObject.getData();
-					const sanitizedData = this.replaceCredentialData(plainData);
-					const fileName = this.getCredentialsPath(sharedCredential.credentials.id);
-					const sanitizedCredential: ExportableCredential = {
-						id: sharedCredential.credentials.id,
-						name: sharedCredential.credentials.name,
-						type: sharedCredential.credentials.type,
-						data: sanitizedData,
-						nodesAccess: sharedCredential.credentials.nodesAccess,
+				credentialsToBeExported.map(async (sharing) => {
+					const { name, type, data, id } = sharing.credentials;
+					const credentials = new Credentials({ id, name }, type, data);
+
+					let owner: ResourceOwner | null = null;
+					if (sharing.project.type === 'personal') {
+						const ownerRelation = sharing.project.projectRelations.find(
+							(pr) => pr.role === 'project:personalOwner',
+						);
+						if (ownerRelation) {
+							owner = {
+								type: 'personal',
+								personalEmail: ownerRelation.user.email,
+							};
+						}
+					} else if (sharing.project.type === 'team') {
+						owner = {
+							type: 'team',
+							teamId: sharing.project.id,
+							teamName: sharing.project.name,
+						};
+					}
+
+					const stub: ExportableCredential = {
+						id,
+						name,
+						type,
+						data: this.replaceCredentialData(credentials.getData()),
+						ownedBy: owner,
 					};
-					this.logger.debug(`Writing credential ${sharedCredential.credentials.id} to ${fileName}`);
-					return await fsWriteFile(fileName, JSON.stringify(sanitizedCredential, null, 2));
+
+					const filePath = this.getCredentialsPath(id);
+					this.logger.debug(`Writing credentials stub "${name}" (ID ${id}) to: ${filePath}`);
+
+					return await fsWriteFile(filePath, JSON.stringify(stub, null, 2));
 				}),
 			);
+
 			return {
 				count: credentialsToBeExported.length,
 				folder: this.credentialExportFolder,

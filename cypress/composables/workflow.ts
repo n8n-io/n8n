@@ -48,6 +48,12 @@ export function getNodeByName(name: string) {
 	return cy.getByTestId('canvas-node').filter(`[data-name="${name}"]`).eq(0);
 }
 
+export function disableNode(name: string) {
+	const target = getNodeByName(name);
+	target.rightclick(name ? 'center' : 'topLeft', { force: true });
+	cy.getByTestId(`context-menu-item-toggle_activation`).click();
+}
+
 export function getConnectionBySourceAndTarget(source: string, target: string) {
 	return cy
 		.get('.jtk-connector')
@@ -110,14 +116,20 @@ export function addSupplementalNodeToParent(
 ) {
 	getAddInputEndpointByType(parentNodeName, endpointType).click({ force: true });
 	if (exactMatch) {
-		getNodeCreatorItems().contains(new RegExp("^" + nodeName + "$", "g")).click();
+		getNodeCreatorItems()
+			.contains(new RegExp('^' + nodeName + '$', 'g'))
+			.click();
 	} else {
 		getNodeCreatorItems().contains(nodeName).click();
 	}
 	getConnectionBySourceAndTarget(parentNodeName, nodeName).should('exist');
 }
 
-export function addLanguageModelNodeToParent(nodeName: string, parentNodeName: string, exactMatch = false) {
+export function addLanguageModelNodeToParent(
+	nodeName: string,
+	parentNodeName: string,
+	exactMatch = false,
+) {
 	addSupplementalNodeToParent(nodeName, 'ai_languageModel', parentNodeName, exactMatch);
 }
 
