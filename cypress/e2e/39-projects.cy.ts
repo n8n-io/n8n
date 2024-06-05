@@ -232,7 +232,7 @@ describe('Projects', () => {
 		projects.getMenuItems().should('not.exist');
 	});
 
-	describe('when starting from cratch', () => {
+	describe('when starting from scratch', () => {
 		beforeEach(() => {
 			cy.resetDatabase();
 			cy.enableFeature('sharing');

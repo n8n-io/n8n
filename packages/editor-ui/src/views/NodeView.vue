@@ -4795,7 +4795,7 @@ export default defineComponent({
 				: workflow?.homeProject?.type === ProjectTypes.Personal
 					? this.projectsStore.personalProject?.id
 					: workflow?.homeProject?.id ?? this.projectsStore.currentProjectId;
-			await this.credentialsStore.fetchAllCredentials(projectId);
+			await this.credentialsStore.fetchAllCredentials(projectId, false);
 		},
 		async loadVariables(): Promise<void> {
 			await this.environmentsStore.fetchAllVariables();
