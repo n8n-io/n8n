@@ -1329,7 +1329,6 @@ export interface UIState {
 		[key in VIEWS]?: NotificationOptions[];
 	};
 	isCreateNodeActive: boolean;
-	shouldShowValueSurveyNext: boolean;
 }
 
 export type IFakeDoor = {

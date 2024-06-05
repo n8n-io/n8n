@@ -119,7 +119,6 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			this.currentUserId = null;
 			this.currentUserCloudInfo = null;
 			useRBACStore().setGlobalScopes([]);
-			useUIStore().shouldShowValueSurveyNext = false;
 		},
 		addUsers(users: IUserResponse[]) {
 			users.forEach((userResponse: IUserResponse) => {

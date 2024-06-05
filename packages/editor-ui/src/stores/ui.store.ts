@@ -192,7 +192,6 @@ export const useUIStore = defineStore(STORES.UI, {
 		// and then show them when the view is initialized
 		pendingNotificationsForViews: {},
 		isCreateNodeActive: false,
-		shouldShowValueSurveyNext: false,
 	}),
 	getters: {
 		appliedTheme(): AppliedThemeOption {
