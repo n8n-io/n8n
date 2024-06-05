@@ -7,7 +7,6 @@ import { useI18n } from '@/composables/useI18n';
 import { ref, computed, watch } from 'vue';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useUsersStore } from '@/stores/users.store';
 import { useValueSurvey } from '@/stores/valueSurvey.store';
 
 const props = defineProps({
