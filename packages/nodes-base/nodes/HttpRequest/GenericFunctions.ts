@@ -1,9 +1,10 @@
 import type { SecureContextOptions } from 'tls';
-import type {
-	IDataObject,
-	INodeExecutionData,
-	IOAuth2Options,
-	IRequestOptions,
+import {
+	deepCopy,
+	type IDataObject,
+	type INodeExecutionData,
+	type IOAuth2Options,
+	type IRequestOptions,
 } from 'n8n-workflow';
 
 import set from 'lodash/set';
@@ -30,7 +31,7 @@ export const replaceNullValues = (item: INodeExecutionData) => {
 };
 
 export function sanitizeUiMessage(request: IRequestOptions, authDataKeys: IAuthDataSanitizeKeys) {
-	let sendRequest = request as unknown as IDataObject;
+	let sendRequest = deepCopy(request as unknown as IDataObject);
 
 	// Protect browser from sending large binary data
 	if (Buffer.isBuffer(sendRequest.body) && sendRequest.body.length > 250000) {
