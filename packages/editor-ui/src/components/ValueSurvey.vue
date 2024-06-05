@@ -128,6 +128,7 @@ watch(
 		:wrapper-closable="false"
 		direction="btt"
 		width="120px"
+		class="value-survey"
 		:class="$style.valueSurvey"
 	>
 		<template #header>

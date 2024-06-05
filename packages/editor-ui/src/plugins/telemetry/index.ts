@@ -3,7 +3,7 @@ import type { ITelemetrySettings, ITelemetryTrackProperties, IDataObject } from 
 import type { RouteLocation } from 'vue-router';
 
 import type { INodeCreateElement, IUpdateInformation } from '@/Interface';
-import type { IUserNodesPanelSession } from './telemetry.types';
+import type { IUserNodesPanelSession, RudderStack } from './telemetry.types';
 import {
 	APPEND_ATTRIBUTION_DEFAULT_PATH,
 	MICROSOFT_TEAMS_NODE_TYPE,
@@ -22,7 +22,7 @@ export class Telemetry {
 
 	private previousPath: string;
 
-	private get rudderStack() {
+	private get rudderStack(): RudderStack | undefined {
 		return window.rudderanalytics;
 	}
 
@@ -92,12 +92,12 @@ export class Telemetry {
 			traits.user_cloud_id = settingsStore.settings?.n8nMetadata?.userId ?? '';
 		}
 		if (userId) {
-			this.rudderStack.identify(
+			this.rudderStack?.identify(
 				`${instanceId}#${userId}${projectId ? '#' + projectId : ''}`,
 				traits,
 			);
 		} else {
-			this.rudderStack.reset();
+			this.rudderStack?.reset();
 		}
 	}
 
@@ -282,6 +282,9 @@ export class Telemetry {
 
 	private initRudderStack(key: string, url: string, options: IDataObject) {
 		window.rudderanalytics = window.rudderanalytics || [];
+		if (!this.rudderStack) {
+			return;
+		}
 
 		this.rudderStack.methods = [
 			'load',
@@ -298,6 +301,10 @@ export class Telemetry {
 
 		this.rudderStack.factory = (method: string) => {
 			return (...args: unknown[]) => {
+				if (!this.rudderStack) {
+					throw new Error('RudderStack not initialized');
+				}
+
 				const argsCopy = [method, ...args];
 				this.rudderStack.push(argsCopy);
 
