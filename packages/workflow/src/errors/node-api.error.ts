@@ -31,6 +31,7 @@ export interface NodeOperationErrorOptions {
 	messageMapping?: { [key: string]: string }; // allows to pass custom mapping for error messages scoped to a node
 	functionality?: Functionality;
 	type?: string;
+	allowRewraping?: boolean;
 }
 
 interface NodeApiErrorOptions extends NodeOperationErrorOptions {
@@ -113,7 +114,7 @@ const STATUS_CODE_MESSAGES: IStatusCodeMessages = {
  * with an HTTP error code, an error message and a description.
  */
 export class NodeApiError extends NodeError {
-	httpCode: string | null;
+	httpCode: string | null = null;
 
 	// eslint-disable-next-line complexity
 	constructor(
@@ -129,8 +130,13 @@ export class NodeApiError extends NodeError {
 			level,
 			functionality,
 			messageMapping,
+			allowRewraping,
 		}: NodeApiErrorOptions = {},
 	) {
+		if (errorResponse instanceof NodeApiError && !allowRewraping) {
+			return errorResponse;
+		}
+
 		super(node, errorResponse);
 
 		this.addToMessages(errorResponse.message as string);
