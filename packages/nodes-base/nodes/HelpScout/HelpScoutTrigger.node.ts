@@ -1,4 +1,4 @@
-import { createHmac } from 'crypto';
+import { createHmac, randomBytes } from 'crypto';
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -140,7 +140,7 @@ export class HelpScoutTrigger implements INodeType {
 				const body = {
 					url: webhookUrl,
 					events,
-					secret: Math.random().toString(36).substring(2, 15),
+					secret: randomBytes(15).toString('base64url'),
 				};
 
 				const responseData = await helpscoutApiRequest.call(
