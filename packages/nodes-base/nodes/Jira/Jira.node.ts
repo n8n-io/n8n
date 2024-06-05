@@ -1280,7 +1280,7 @@ export class Jira implements INodeType {
 						);
 					} else {
 						const limit = this.getNodeParameter('limit', i);
-						body.maxResults = limit;
+						qs.maxResults = limit;
 						responseData = await jiraSoftwareCloudApiRequest.call(
 							this,
 							`/api/${apiVersion}/issue/${issueKey}/comment`,
