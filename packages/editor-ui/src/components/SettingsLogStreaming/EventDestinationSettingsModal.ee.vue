@@ -176,7 +176,6 @@ import ParameterInputList from '@/components/ParameterInputList.vue';
 import type { IMenuItem, INodeUi, IUpdateInformation } from '@/Interface';
 import type {
 	IDataObject,
-	INodeCredentials,
 	NodeParameterValue,
 	MessageEventBusDestinationOptions,
 	INodeParameters,

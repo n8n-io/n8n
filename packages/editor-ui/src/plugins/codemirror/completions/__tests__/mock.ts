@@ -1,12 +1,12 @@
 import { v4 as uuidv4 } from 'uuid';
-import {
+import type {
 	INode,
 	IConnections,
 	IRunExecutionData,
 	IExecuteData,
 	INodeTypeData,
-	NodeConnectionType,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 import { WorkflowDataProxy } from 'n8n-workflow';
 import { createTestWorkflowObject } from '@/__tests__/mocks';
 

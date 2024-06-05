@@ -72,7 +72,7 @@
 </template>
 
 <script lang="ts">
-import type { ICredentialsResponse, IUser, IUserListAction } from '@/Interface';
+import type { ICredentialsResponse, IUserListAction } from '@/Interface';
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { useMessage } from '@/composables/useMessage';
