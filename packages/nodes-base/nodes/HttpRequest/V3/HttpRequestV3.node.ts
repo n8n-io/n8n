@@ -1875,7 +1875,10 @@ export class HttpRequestV3 implements INodeType {
 						error = responseData.reason;
 						set(error, 'context.itemIndex', itemIndex);
 					} else {
-						error = new NodeApiError(this.getNode(), responseData as JsonObject, { itemIndex });
+						const errorData = (
+							responseData.reason ? responseData.reason : responseData
+						) as JsonObject;
+						error = new NodeApiError(this.getNode(), errorData, { itemIndex });
 					}
 
 					set(error, 'context.request', sanitizedRequests[itemIndex]);
