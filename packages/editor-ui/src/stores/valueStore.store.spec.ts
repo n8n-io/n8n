@@ -1,10 +1,16 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { useValueSurvey } from './valueSurvey.store';
-import { valueSurveyShown } from '@/api/valueSurvey';
-import { THREE_DAYS_IN_MILLIS, TIME } from '@/constants';
+import { MAXIMUM_TIMES_TO_SHOW_SURVEY_IF_IGNORED, useValueSurvey } from './valueSurvey.store';
+import { THREE_DAYS_IN_MILLIS, TIME, VALUE_SURVEY_MODAL_KEY } from '@/constants';
 import { useSettingsStore } from './settings.store';
 
-const openModal = vi.fn();
+const { openModal, valueSurveyIgnored, valueSurveyShown, valueSurveyResponded } = vi.hoisted(() => {
+	return {
+		openModal: vi.fn(),
+		valueSurveyIgnored: vi.fn(),
+		valueSurveyResponded: vi.fn(),
+		valueSurveyShown: vi.fn(),
+	};
+});
 
 vi.mock('@/stores/ui.store', () => ({
 	useUIStore: vi.fn(() => ({
@@ -13,9 +19,9 @@ vi.mock('@/stores/ui.store', () => ({
 }));
 
 vi.mock('@/api/valueSurvey', () => ({
-	valueSurveyShown: vi.fn(),
-	valueSurveyResponded: vi.fn(),
-	valueSurveyIgnored: vi.fn(),
+	valueSurveyIgnored,
+	valueSurveyResponded,
+	valueSurveyShown,
 }));
 
 const NOW = 1717602004819;
@@ -61,7 +67,7 @@ describe('useValueSurvey', () => {
 
 		valueSurveyStore.showValueSurveyIfPossible();
 
-		expect(openModal).toHaveBeenCalled();
+		expect(openModal).toHaveBeenCalledWith(VALUE_SURVEY_MODAL_KEY);
 		expect(valueSurveyShown).toHaveBeenCalled();
 	});
 
@@ -89,7 +95,7 @@ describe('useValueSurvey', () => {
 
 		valueSurveyStore.showValueSurveyIfPossible();
 
-		expect(openModal).toHaveBeenCalled();
+		expect(openModal).toHaveBeenCalledWith(VALUE_SURVEY_MODAL_KEY);
 		expect(valueSurveyShown).toHaveBeenCalled();
 	});
 
@@ -131,7 +137,87 @@ describe('useValueSurvey', () => {
 
 		valueSurveyStore.showValueSurveyIfPossible();
 
-		expect(openModal).toHaveBeenCalled();
+		expect(openModal).toHaveBeenCalledWith(VALUE_SURVEY_MODAL_KEY);
 		expect(valueSurveyShown).toHaveBeenCalled();
+	});
+
+	it('calls ignore api when survey is ignored', () => {
+		valueSurveyStore.setupValueSurveyOnLogin({
+			userActivated: true,
+			userActivatedAt: NOW - 30 * 7 * TIME.DAY,
+			valueSurveyLastResponseState: 'done',
+			valueSurveyLastShownAt: NOW - (30 * 6 + 1) * TIME.DAY,
+			valueSurveyIgnoredLastCount: 0,
+		});
+
+		valueSurveyStore.ignoreValueSurvey();
+
+		expect(valueSurveyIgnored).toHaveBeenCalled();
+	});
+
+	it('calls respond api when survey is ignored more than maximum times', () => {
+		valueSurveyStore.setupValueSurveyOnLogin({
+			userActivated: true,
+			userActivatedAt: NOW - 30 * 7 * TIME.DAY,
+			valueSurveyLastResponseState: 'done',
+			valueSurveyLastShownAt: NOW - (30 * 6 + 1) * TIME.DAY,
+			valueSurveyIgnoredLastCount: MAXIMUM_TIMES_TO_SHOW_SURVEY_IF_IGNORED - 1,
+		});
+
+		valueSurveyStore.ignoreValueSurvey();
+
+		expect(valueSurveyIgnored).not.toHaveBeenCalled();
+		expect(valueSurveyResponded).toHaveBeenCalled();
+	});
+
+	it('calls respond api when response is given', () => {
+		valueSurveyStore.respondValueSurvey();
+
+		expect(valueSurveyResponded).toHaveBeenCalled();
+	});
+
+	it('does not show value survey twice in the same session', () => {
+		valueSurveyStore.setupValueSurveyOnLogin({
+			userActivated: true,
+			userActivatedAt: NOW - THREE_DAYS_IN_MILLIS - 10000,
+		});
+
+		valueSurveyStore.showValueSurveyIfPossible();
+
+		expect(openModal).toHaveBeenCalledWith(VALUE_SURVEY_MODAL_KEY);
+		expect(valueSurveyShown).toHaveBeenCalled();
+
+		openModal.mockReset();
+		valueSurveyShown.mockReset();
+
+		valueSurveyStore.showValueSurveyIfPossible();
+		expect(openModal).not.toHaveBeenCalled();
+		expect(valueSurveyShown).not.toHaveBeenCalled();
+	});
+
+	it('resets on logout, preventing value survey from showing', () => {
+		valueSurveyStore.setupValueSurveyOnLogin({
+			userActivated: true,
+			userActivatedAt: NOW - THREE_DAYS_IN_MILLIS - 10000,
+		});
+
+		valueSurveyStore.resetValueSurveyOnLogOut();
+		valueSurveyStore.showValueSurveyIfPossible();
+
+		expect(openModal).not.toHaveBeenCalled();
+		expect(valueSurveyShown).not.toHaveBeenCalled();
+	});
+
+	it('if telemetry is disabled, does not show value survey', () => {
+		useSettingsStore().settings.telemetry = { enabled: false };
+		valueSurveyStore.setupValueSurveyOnLogin({
+			userActivated: true,
+			userActivatedAt: NOW - THREE_DAYS_IN_MILLIS - 10000,
+		});
+
+		valueSurveyStore.showValueSurveyIfPossible();
+
+		expect(openModal).not.toHaveBeenCalled();
+		expect(valueSurveyShown).not.toHaveBeenCalled();
 	});
 });

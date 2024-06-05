@@ -12,8 +12,11 @@ import { useRootStore } from './n8nRoot.store';
 import type { IUserSettings } from 'n8n-workflow';
 import { useSettingsStore } from './settings.store';
 
+export const MAXIMUM_TIMES_TO_SHOW_SURVEY_IF_IGNORED = 3;
+
 export const useValueSurvey = defineStore('valueSurvey', () => {
 	const shouldShowValueSurveyNext = ref<boolean>(false);
+	const valueSurveyIgnoredCount = ref<number>(0);
 
 	function setupValueSurveyOnLogin(settings: IUserSettings): void {
 		if (!useSettingsStore().isTelemetryEnabled) {
@@ -25,6 +28,7 @@ export const useValueSurvey = defineStore('valueSurvey', () => {
 		const userActivatedAt = settings.userActivatedAt;
 		const valueSurveyLastShownAt = settings.valueSurveyLastShownAt;
 		const valueSurveyLastResponseState = settings.valueSurveyLastResponseState || 'waiting';
+		valueSurveyIgnoredCount.value = settings.valueSurveyIgnoredLastCount ?? 0;
 
 		if (!userActivated || !userActivatedAt) {
 			return;
@@ -68,14 +72,18 @@ export const useValueSurvey = defineStore('valueSurvey', () => {
 		void valueSurveyShown(useRootStore().getRestApiContext);
 	}
 
-	function ignoreValueSurvey() {
-		void valueSurveyIgnored(useRootStore().getRestApiContext);
-	}
-
 	function respondValueSurvey() {
 		void valueSurveyResponded(useRootStore().getRestApiContext);
 	}
 
+	function ignoreValueSurvey() {
+		if (valueSurveyIgnoredCount.value + 1 >= MAXIMUM_TIMES_TO_SHOW_SURVEY_IF_IGNORED) {
+			respondValueSurvey();
+
+			return;
+		}
+		void valueSurveyIgnored(useRootStore().getRestApiContext);
+	}
 	return {
 		resetValueSurveyOnLogOut,
 		showValueSurveyIfPossible,
