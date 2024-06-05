@@ -100,20 +100,20 @@ describe('X / Twitter Node unit tests', () => {
 			expect(returnId(tweetId)).toBe('12345');
 		});
 
-		it('should return the last part of the URL when mode is url and domain is twitter.com', () => {
+		it('should extract the tweetId from url when the domain is twitter.com', () => {
 			const tweetId: INodeParameterResourceLocator = {
 				__rl: true,
 				mode: 'url',
-				value: 'https://twitter.com/user/status/12345',
+				value: 'https://twitter.com/user/status/12345?utm=6789',
 			};
 			expect(returnId(tweetId)).toBe('12345');
 		});
 
-		it('should return the last part of the URL when mode is url and domain is x.com', () => {
+		it('should extract the tweetId from url when the domain is x.com', () => {
 			const tweetId: INodeParameterResourceLocator = {
 				__rl: true,
 				mode: 'url',
-				value: 'https://x.com/user/status/12345',
+				value: 'https://x.com/user/status/12345?utm=6789',
 			};
 			expect(returnId(tweetId)).toBe('12345');
 		});
@@ -125,6 +125,23 @@ describe('X / Twitter Node unit tests', () => {
 				value: 'https://twitter.com/user/status/12345',
 			};
 			expect(() => returnId(tweetId)).toThrow();
+		});
+
+		describe('should throw an error when the URL is not valid', () => {
+			test.each([
+				'https://twitter.com/user/',
+				'https://twitter.com/user/status/',
+				'https://twitter.com/user/profile/12345',
+				'https://twitter.com/search?param=12345',
+			])('%s', (value) => {
+				expect(() =>
+					returnId({
+						__rl: true,
+						mode: 'url',
+						value,
+					}),
+				).toThrow();
+			});
 		});
 	});
 });

@@ -83,9 +83,19 @@ export function returnId(tweetId: INodeParameterResourceLocator) {
 	if (tweetId.mode === 'id') {
 		return tweetId.value as string;
 	} else if (tweetId.mode === 'url') {
-		const value = tweetId.value as string;
-		const urlParts = value.split('/');
-		return urlParts[urlParts.length - 1];
+		try {
+			const url = new URL(tweetId.value as string);
+			if (/{twitter|x}.com$/.test(url.hostname)) {
+				throw new ApplicationError('Invalid domain');
+			}
+			const parts = url.pathname.split('/');
+			if (parts.length !== 4 || parts[2] !== 'status' || !/^\d+$/.test(parts[3])) {
+				throw new ApplicationError('Invalid path');
+			}
+			return parts[3];
+		} catch (error) {
+			throw new ApplicationError('Not a valid tweet url', { level: 'warning', cause: error });
+		}
 	} else {
 		throw new ApplicationError(`The mode ${tweetId.mode} is not valid!`, { level: 'warning' });
 	}
