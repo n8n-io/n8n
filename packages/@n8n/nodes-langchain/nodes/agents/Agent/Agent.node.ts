@@ -190,7 +190,14 @@ const agentTypeProperty: INodeProperties = {
 	name: 'agent',
 	type: 'options',
 	noDataExpression: true,
+	// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 	options: [
+		{
+			name: 'Tools Agent',
+			value: 'toolsAgent',
+			description:
+				'Utilized unified Tool calling interface to select the appropriate tools and argument for execution',
+		},
 		{
 			name: 'Conversational Agent',
 			value: 'conversationalAgent',
@@ -218,12 +225,6 @@ const agentTypeProperty: INodeProperties = {
 			name: 'SQL Agent',
 			value: 'sqlAgent',
 			description: 'Answers questions about data in an SQL database',
-		},
-		{
-			name: 'Tools Agent',
-			value: 'toolsAgent',
-			description:
-				'Utilized unified Tool calling interface to select the appropriate tools and argument for execution',
 		},
 	],
 	default: '',
