@@ -93,4 +93,4 @@ export function rightDiff<T1, T2>(
  */
 export const assertNever = (_value: never) => {};
 
-export const isPositiveInteger = (maybeInt: string) => /^\d+$/.test(maybeInt);
+export const isPositiveInteger = (maybeInt: string) => /^[1-9]\d*$/.test(maybeInt);
