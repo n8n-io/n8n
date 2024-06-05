@@ -49,12 +49,12 @@ describe('SettingsUsersView', () => {
 
 		vi.spyOn(rbacStore, 'hasScope').mockReturnValue(true);
 		vi.spyOn(usersApi, 'getUsers').mockResolvedValue(users);
+		vi.spyOn(usersStore, 'allUsers', 'get').mockReturnValue(users);
 		vi.spyOn(projectsStore, 'getAllProjects').mockImplementation(
 			async () => await Promise.resolve(),
 		);
 		vi.spyOn(projectsStore, 'personalProjects', 'get').mockReturnValue(personalProjects);
 
-		usersStore.users = users;
 		usersStore.currentUserId = loggedInUser.id;
 	});
 
