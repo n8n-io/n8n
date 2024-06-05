@@ -90,7 +90,6 @@ export async function pipedriveApiRequest(
 			data: responseData.data === null ? [] : responseData.data,
 		};
 	} catch (error) {
-		if (error instanceof NodeApiError) throw error;
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
