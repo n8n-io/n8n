@@ -85,7 +85,7 @@ export function returnId(tweetId: INodeParameterResourceLocator) {
 	} else if (tweetId.mode === 'url') {
 		try {
 			const url = new URL(tweetId.value as string);
-			if (/{twitter|x}.com$/.test(url.hostname)) {
+			if (!/(twitter|x).com$/.test(url.hostname)) {
 				throw new ApplicationError('Invalid domain');
 			}
 			const parts = url.pathname.split('/');
