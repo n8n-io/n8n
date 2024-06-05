@@ -8,7 +8,7 @@ import {
 	MAX_WORKFLOW_SIZE,
 	PIN_DATA_NODE_TYPES_DENYLIST,
 } from '@/constants';
-import { stringSizeInBytes } from '@/utils/typesUtils';
+import { stringSizeInBytes, toMegaBytes } from '@/utils/typesUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { INodeUi, IRunDataDisplayMode } from '@/Interface';
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -158,19 +158,29 @@ export function usePinnedData(
 
 		if (newPinDataSize > MAX_PINNED_DATA_SIZE) {
 			toast.showError(
-				new Error(i18n.baseText('ndv.pinData.error.tooLarge.description')),
+				new Error(
+					i18n.baseText('ndv.pinData.error.tooLarge.description', {
+						interpolate: {
+							size: toMegaBytes(newPinDataSize),
+							limit: toMegaBytes(MAX_PINNED_DATA_SIZE),
+						},
+					}),
+				),
 				i18n.baseText('ndv.pinData.error.tooLarge.title'),
 			);
 
 			return false;
 		}
 
-		if (
-			stringSizeInBytes(workflowJson) + newPinDataSize >
-			MAX_WORKFLOW_SIZE - MAX_EXPECTED_REQUEST_SIZE
-		) {
+		const workflowSize = stringSizeInBytes(workflowJson) + newPinDataSize;
+		const limit = MAX_WORKFLOW_SIZE - MAX_EXPECTED_REQUEST_SIZE;
+		if (workflowSize > limit) {
 			toast.showError(
-				new Error(i18n.baseText('ndv.pinData.error.tooLargeWorkflow.description')),
+				new Error(
+					i18n.baseText('ndv.pinData.error.tooLargeWorkflow.description', {
+						interpolate: { size: toMegaBytes(workflowSize), limit: toMegaBytes(limit) },
+					}),
+				),
 				i18n.baseText('ndv.pinData.error.tooLargeWorkflow.title'),
 			);
 
