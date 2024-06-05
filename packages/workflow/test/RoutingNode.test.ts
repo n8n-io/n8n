@@ -1921,16 +1921,18 @@ describe('RoutingNode', () => {
 					source: null,
 				} as IExecuteData;
 
+				const executeFunctions = mock<IExecuteFunctions>();
+				const executeSingleFunctions = Helpers.getExecuteSingleFunctions(
+					workflow,
+					runExecutionData,
+					runIndex,
+					node,
+					itemIndex,
+				);
+
 				const nodeExecuteFunctions: Partial<INodeExecuteFunctions> = {
-					getExecuteFunctions: () => mock<IExecuteFunctions>(),
-					getExecuteSingleFunctions: () =>
-						Helpers.getExecuteSingleFunctions(
-							workflow,
-							runExecutionData,
-							runIndex,
-							node,
-							itemIndex,
-						),
+					getExecuteFunctions: () => executeFunctions,
+					getExecuteSingleFunctions: () => executeSingleFunctions,
 				};
 
 				const numberOfItems = testData.input.specialTestOptions?.numberOfItems ?? 1;
@@ -1948,6 +1950,16 @@ describe('RoutingNode', () => {
 				);
 
 				spy.mockClear();
+
+				executeFunctions.getNodeParameter.mockImplementation(
+					(parameterName: string) => testData.input.node.parameters[parameterName] || {},
+				);
+
+				const getNodeParameter = executeSingleFunctions.getNodeParameter;
+				executeSingleFunctions.getNodeParameter = (parameterName: string) =>
+					parameterName in testData.input.node.parameters
+						? testData.input.node.parameters[parameterName]
+						: getNodeParameter(parameterName) ?? {};
 
 				const result = await routingNode.runNode(
 					inputData,
