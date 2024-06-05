@@ -30,50 +30,42 @@ describe('Aws Credential', () => {
 	});
 
 	describe('authenticate', () => {
-		let credentials: AwsCredentialsType;
+		const credentials: AwsCredentialsType = {
+			region: 'eu-central-1',
+			accessKeyId: 'hakuna',
+			secretAccessKey: 'matata',
+			customEndpoints: false,
+			temporaryCredentials: false,
+		};
 
-		let requestOptions: IHttpRequestOptions;
+		const requestOptions: IHttpRequestOptions = {
+			qs: {},
+			body: {},
+			headers: {},
+			baseURL: 'https://sts.eu-central-1.amazonaws.com',
+			url: '?Action=GetCallerIdentity&Version=2011-06-15',
+			method: 'POST',
+			returnFullResponse: true,
+		};
 
-		let signOpts: Request & IHttpRequestOptions;
+		const signOpts: Request & IHttpRequestOptions = {
+			qs: {},
+			body: undefined,
+			headers: {},
+			baseURL: 'https://sts.eu-central-1.amazonaws.com',
+			url: '?Action=GetCallerIdentity&Version=2011-06-15',
+			method: 'POST',
+			returnFullResponse: true,
+			host: 'sts.eu-central-1.amazonaws.com',
+			path: '/?Action=GetCallerIdentity&Version=2011-06-15',
+			region: 'eu-central-1',
+		};
 
 		const securityHeaders = {
 			accessKeyId: 'hakuna',
 			secretAccessKey: 'matata',
 			sessionToken: undefined,
 		};
-
-		beforeEach(() => {
-			credentials = {
-				region: 'eu-central-1',
-				accessKeyId: 'hakuna',
-				secretAccessKey: 'matata',
-				customEndpoints: false,
-				temporaryCredentials: false,
-			};
-
-			requestOptions = {
-				qs: {},
-				body: {},
-				headers: {},
-				baseURL: 'https://sts.eu-central-1.amazonaws.com',
-				url: '?Action=GetCallerIdentity&Version=2011-06-15',
-				method: 'POST',
-				returnFullResponse: true,
-			};
-
-			signOpts = {
-				qs: {},
-				body: undefined,
-				headers: {},
-				baseURL: 'https://sts.eu-central-1.amazonaws.com',
-				url: '?Action=GetCallerIdentity&Version=2011-06-15',
-				method: 'POST',
-				returnFullResponse: true,
-				host: 'sts.eu-central-1.amazonaws.com',
-				path: '/?Action=GetCallerIdentity&Version=2011-06-15',
-				region: 'eu-central-1',
-			};
-		});
 
 		it('should call sign with correct parameters', async () => {
 			const result = await aws.authenticate(credentials, requestOptions);
