@@ -131,6 +131,8 @@ export class WorkflowPage extends BasePage {
 		stickies: () => cy.getByTestId('sticky'),
 		editorTabButton: () => cy.getByTestId('radio-button-workflow'),
 		workflowHistoryButton: () => cy.getByTestId('workflow-history-button'),
+		workflowHistoryItems: () => cy.getByTestId('workflow-history-list-item'),
+		workflowHistoryCloseButton: () => cy.getByTestId('workflow-history-close-button'),
 		colors: () => cy.getByTestId('color'),
 		contextMenuAction: (action: string) => cy.getByTestId(`context-menu-item-${action}`),
 	};
