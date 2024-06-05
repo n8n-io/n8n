@@ -2498,6 +2498,7 @@ export interface IUserSettings {
 	userActivatedAt?: number;
 	allowSSOManualLogin?: boolean;
 	valueSurveyLastShownAt?: number;
+	valueSurveyLastResponseState?: 'waiting' | 'done';
 	valueSurveyIgnoredLastCount?: number;
 }
 
