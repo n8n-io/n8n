@@ -126,10 +126,10 @@ import { useDeviceSupport } from 'n8n-design-system';
 import { GRID_SIZE } from '@/utils/nodeViewUtils';
 import { useToast } from '@/composables/useToast';
 import { assert } from '@/utils/assert';
+import { useNodesBase } from '@/composables/useNodesBase';
 
 export default defineComponent({
 	name: 'Sticky',
-	mixins: [nodeBase],
 	props: {
 		nodeViewScale: {
 			type: Number,
@@ -141,7 +141,7 @@ export default defineComponent({
 		},
 	},
 	emits: { removeNode: null, nodeSelected: null },
-	setup() {
+	setup(props, { emit }) {
 		const deviceSupport = useDeviceSupport();
 		const toast = useToast();
 		const colorPopoverTrigger = ref<HTMLDivElement>();
@@ -155,6 +155,23 @@ export default defineComponent({
 				colorPopoverTrigger.value?.click();
 			}
 		});
+
+		const useWorkflowStore = useWorkflowsStore();
+
+		// const nodesBase = useNodesBase({}, emit);
+
+		// onMounted(() => {
+		// 	const node = useWorkflowStore.getNodeByName();
+
+		// 	if (data.value !== null) {
+		// 		try {
+		// 			__addNode(data.value);
+		// 		} catch (error) {
+		// 			// This breaks when new nodes are loaded into store but workflow tab is not currently active
+		// 			// Shouldn't affect anything
+		// 		}
+		// 	}
+		// });
 
 		return {
 			deviceSupport,
@@ -181,6 +198,12 @@ export default defineComponent({
 			const content = properties.find((property) => property.name === 'content');
 
 			return content && isString(content.default) ? content.default : '';
+		},
+		mouseLeftClick(e: MouseEvent) {
+			return this.nodesBase.mouseLeftClick(e);
+		},
+		touchEnd(e: MouseEvent) {
+			return this.nodesBase.touchEnd(e);
 		},
 		isSelected(): boolean {
 			return (

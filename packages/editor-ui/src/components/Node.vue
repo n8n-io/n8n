@@ -192,7 +192,6 @@ import {
 	SIMULATE_TRIGGER_NODE_TYPE,
 	WAIT_TIME_UNLIMITED,
 } from '@/constants';
-import { nodeBase } from '@/mixins/nodeBase';
 import type {
 	ConnectionTypes,
 	ExecutionSummary,
@@ -222,6 +221,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { usePinnedData } from '@/composables/usePinnedData';
 import { useDeviceSupport } from 'n8n-design-system';
 import { useDebounce } from '@/composables/useDebounce';
+import { useNodesBase } from '@/composables/useNodesBase';
 
 export default defineComponent({
 	name: 'Node',
@@ -230,7 +230,6 @@ export default defineComponent({
 		FontAwesomeIcon,
 		NodeIcon,
 	},
-	mixins: [nodeBase],
 	props: {
 		isProductionExecutionPreview: {
 			type: Boolean,
@@ -254,6 +253,7 @@ export default defineComponent({
 		const pinnedData = usePinnedData(node);
 		const deviceSupport = useDeviceSupport();
 		const { callDebounced } = useDebounce();
+		const nodesBase = useNodesBase();
 
 		return {
 			contextMenu,
@@ -262,6 +262,7 @@ export default defineComponent({
 			pinnedData,
 			deviceSupport,
 			callDebounced,
+			nodesBase,
 		};
 	},
 	data() {
@@ -770,8 +771,12 @@ export default defineComponent({
 			if (isDoubleClick) {
 				this.setNodeActive();
 			} else {
-				this.mouseLeftClick(event);
+				this.nodesBase.mouseLeftClick(event);
 			}
+		},
+
+		touchEnd(e: MouseEvent) {
+			return this.nodesBase.touchEnd(e);
 		},
 
 		setNodeActive() {
