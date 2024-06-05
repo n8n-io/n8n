@@ -457,14 +457,6 @@ export declare namespace NodeRequest {
 }
 
 // ----------------------------------
-//           /curl-to-json
-// ----------------------------------
-
-export declare namespace CurlHelper {
-	type ToJson = AuthenticatedRequest<{}, {}, { curlCommand?: string }>;
-}
-
-// ----------------------------------
 //           /license
 // ----------------------------------
 
