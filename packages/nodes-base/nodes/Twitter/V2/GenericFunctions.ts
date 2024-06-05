@@ -85,8 +85,7 @@ export function returnId(tweetId: INodeParameterResourceLocator) {
 	} else if (tweetId.mode === 'url') {
 		const value = tweetId.value as string;
 		const urlParts = value.split('/');
-		const tweetIdPart = urlParts[urlParts.length - 1];
-		return tweetIdPart as string;
+		return urlParts[urlParts.length - 1];
 	} else {
 		throw new ApplicationError(`The mode ${tweetId.mode} is not valid!`, { level: 'warning' });
 	}
