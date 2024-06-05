@@ -47,7 +47,6 @@ export async function supabaseApiRequest(
 		}
 		return await this.helpers.requestWithAuthentication.call(this, 'supabaseApi', options);
 	} catch (error) {
-		if (error instanceof NodeApiError) throw error;
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

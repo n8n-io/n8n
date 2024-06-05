@@ -250,7 +250,6 @@ export class GitlabTrigger implements INodeType {
 				try {
 					responseData = await gitlabApiRequest.call(this, 'POST', endpoint, body);
 				} catch (error) {
-					if (error instanceof NodeApiError) throw error;
 					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 

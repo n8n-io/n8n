@@ -1327,7 +1327,6 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							if (error instanceof NodeApiError) throw error;
 							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
@@ -1341,7 +1340,6 @@ export class Salesforce implements INodeType {
 								`/sobjects/lead/${leadId}`,
 							);
 						} catch (error) {
-							if (error instanceof NodeApiError) throw error;
 							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
@@ -1673,7 +1671,6 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							if (error instanceof NodeApiError) throw error;
 							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
@@ -1687,7 +1684,6 @@ export class Salesforce implements INodeType {
 								`/sobjects/contact/${contactId}`,
 							);
 						} catch (error) {
-							if (error instanceof NodeApiError) throw error;
 							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
@@ -1827,7 +1823,6 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							if (error instanceof NodeApiError) throw error;
 							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
@@ -1841,7 +1836,6 @@ export class Salesforce implements INodeType {
 								`/sobjects/${customObject}/${recordId}`,
 							);
 						} catch (error) {
-							if (error instanceof NodeApiError) throw error;
 							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
@@ -2063,7 +2057,6 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							if (error instanceof NodeApiError) throw error;
 							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
@@ -2077,7 +2070,6 @@ export class Salesforce implements INodeType {
 								`/sobjects/opportunity/${opportunityId}`,
 							);
 						} catch (error) {
-							if (error instanceof NodeApiError) throw error;
 							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
@@ -2353,7 +2345,6 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							if (error instanceof NodeApiError) throw error;
 							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
@@ -2367,7 +2358,6 @@ export class Salesforce implements INodeType {
 								`/sobjects/account/${accountId}`,
 							);
 						} catch (error) {
-							if (error instanceof NodeApiError) throw error;
 							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
@@ -2570,7 +2560,6 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							if (error instanceof NodeApiError) throw error;
 							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
@@ -2584,7 +2573,6 @@ export class Salesforce implements INodeType {
 								`/sobjects/case/${caseId}`,
 							);
 						} catch (error) {
-							if (error instanceof NodeApiError) throw error;
 							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
@@ -2835,7 +2823,6 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							if (error instanceof NodeApiError) throw error;
 							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
@@ -2849,7 +2836,6 @@ export class Salesforce implements INodeType {
 								`/sobjects/task/${taskId}`,
 							);
 						} catch (error) {
-							if (error instanceof NodeApiError) throw error;
 							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
@@ -2969,7 +2955,6 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							if (error instanceof NodeApiError) throw error;
 							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
@@ -2983,7 +2968,6 @@ export class Salesforce implements INodeType {
 								`/sobjects/attachment/${attachmentId}`,
 							);
 						} catch (error) {
-							if (error instanceof NodeApiError) throw error;
 							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
@@ -3026,7 +3010,6 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							if (error instanceof NodeApiError) throw error;
 							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}

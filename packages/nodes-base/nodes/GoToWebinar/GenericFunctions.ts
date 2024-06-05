@@ -77,7 +77,6 @@ export async function goToWebinarApiRequest(
 		// https://stackoverflow.com/questions/62190724/getting-gotowebinar-registrant
 		return losslessJSON.parse(response as string, convertLosslessNumber);
 	} catch (error) {
-		if (error instanceof NodeApiError) throw error;
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

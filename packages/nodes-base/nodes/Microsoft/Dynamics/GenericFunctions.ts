@@ -47,7 +47,6 @@ export async function microsoftApiRequest(
 			property: 'id_token',
 		});
 	} catch (error) {
-		if (error instanceof NodeApiError) throw error;
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

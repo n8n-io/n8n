@@ -399,7 +399,6 @@ export class NocoDB implements INodeType {
 					if (this.continueOnFail()) {
 						returnData.push({ error: error.toString() });
 					}
-					if (error instanceof NodeApiError) throw error;
 					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 			}
@@ -463,7 +462,6 @@ export class NocoDB implements INodeType {
 					if (this.continueOnFail()) {
 						returnData.push({ error: error.toString() });
 					}
-					if (error instanceof NodeApiError) throw error;
 					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 			}
@@ -755,7 +753,6 @@ export class NocoDB implements INodeType {
 					if (this.continueOnFail()) {
 						returnData.push({ error: error.toString() });
 					}
-					if (error instanceof NodeApiError) throw error;
 					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 			}

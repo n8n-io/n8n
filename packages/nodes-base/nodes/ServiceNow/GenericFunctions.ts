@@ -55,7 +55,6 @@ export async function serviceNowApiRequest(
 			authenticationMethod === 'oAuth2' ? 'serviceNowOAuth2Api' : 'serviceNowBasicApi';
 		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
-		if (error instanceof NodeApiError) throw error;
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

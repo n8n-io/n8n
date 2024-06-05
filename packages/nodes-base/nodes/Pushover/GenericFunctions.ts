@@ -35,7 +35,6 @@ export async function pushoverApiRequest(
 
 		return await this.helpers.requestWithAuthentication.call(this, 'pushoverApi', options);
 	} catch (error) {
-		if (error instanceof NodeApiError) throw error;
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

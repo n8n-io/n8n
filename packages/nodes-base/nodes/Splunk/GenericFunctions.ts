@@ -173,7 +173,6 @@ export async function splunkApiRequest(
 			error = { error: error.fatal };
 		}
 
-		if (error instanceof NodeApiError) throw error;
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

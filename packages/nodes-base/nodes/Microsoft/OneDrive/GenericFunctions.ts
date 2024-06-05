@@ -44,7 +44,6 @@ export async function microsoftApiRequest(
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'microsoftOneDriveOAuth2Api', options);
 	} catch (error) {
-		if (error instanceof NodeApiError) throw error;
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

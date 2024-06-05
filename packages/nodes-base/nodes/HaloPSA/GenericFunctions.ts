@@ -54,7 +54,6 @@ export async function getAccessTokens(
 		const tokens = await this.helpers.request(options);
 		return tokens;
 	} catch (error) {
-		if (error instanceof NodeApiError) throw error;
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
@@ -113,7 +112,6 @@ export async function haloPSAApiRequest(
 						.toLowerCase()}.`;
 			}
 		}
-		if (error instanceof NodeApiError) throw error;
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

@@ -103,7 +103,6 @@ export class Vero implements INodeType {
 						try {
 							responseData = await veroApiRequest.call(this, 'POST', '/users/track', body);
 						} catch (error) {
-							if (error instanceof NodeApiError) throw error;
 							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
@@ -118,7 +117,6 @@ export class Vero implements INodeType {
 						try {
 							responseData = await veroApiRequest.call(this, 'PUT', '/users/reidentify', body);
 						} catch (error) {
-							if (error instanceof NodeApiError) throw error;
 							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
@@ -137,7 +135,6 @@ export class Vero implements INodeType {
 						try {
 							responseData = await veroApiRequest.call(this, 'POST', `/users/${operation}`, body);
 						} catch (error) {
-							if (error instanceof NodeApiError) throw error;
 							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
@@ -158,7 +155,6 @@ export class Vero implements INodeType {
 						try {
 							responseData = await veroApiRequest.call(this, 'PUT', '/users/tags/edit', body);
 						} catch (error) {
-							if (error instanceof NodeApiError) throw error;
 							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
@@ -216,7 +212,6 @@ export class Vero implements INodeType {
 						try {
 							responseData = await veroApiRequest.call(this, 'POST', '/events/track', body);
 						} catch (error) {
-							if (error instanceof NodeApiError) throw error;
 							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}

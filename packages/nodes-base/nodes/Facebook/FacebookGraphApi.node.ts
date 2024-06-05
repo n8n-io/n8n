@@ -411,7 +411,6 @@ export class FacebookGraphApi implements INodeType {
 				response = await this.helpers.request(requestOptions);
 			} catch (error) {
 				if (!this.continueOnFail()) {
-					if (error instanceof NodeApiError) throw error;
 					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 

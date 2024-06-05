@@ -44,7 +44,6 @@ export async function freshworksCrmApiRequest(
 		const credentialsType = 'freshworksCrmApi';
 		return await this.helpers.requestWithAuthentication.call(this, credentialsType, options);
 	} catch (error) {
-		if (error instanceof NodeApiError) throw error;
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
