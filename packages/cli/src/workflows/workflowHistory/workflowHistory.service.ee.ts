@@ -65,18 +65,25 @@ export class WorkflowHistoryService {
 
 	async saveVersion(user: User, workflow: WorkflowEntity, workflowId: string) {
 		// On some update scenarios, `nodes` and `connections` are missing, such as when
-		// changing workflow settings or renaming. In these cases, we don't want to save
-		// a new version
-		if (isWorkflowHistoryEnabled() && workflow.nodes && workflow.connections) {
+		// changing workflow settings or renaming. In these cases, we need to fetch the
+		// full workflow from the database to save the correct version.
+		let workflowToSave: WorkflowEntity | null = workflow;
+		if (!workflow.nodes || !workflow.connections) {
+			workflowToSave = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, user, [
+				'workflow:read',
+			]);
+		}
+		if (isWorkflowHistoryEnabled() && workflowToSave) {
 			try {
 				await this.workflowHistoryRepository.insert({
 					authors: user.firstName + ' ' + user.lastName,
-					connections: workflow.connections,
-					nodes: workflow.nodes,
-					versionId: workflow.versionId,
+					connections: workflowToSave.connections,
+					nodes: workflowToSave.nodes,
+					versionId: workflowToSave.versionId,
 					workflowId,
 				});
 			} catch (e) {
+				console.log('ERROR');
 				this.logger.error(
 					`Failed to save workflow history version for workflow ${workflowId}`,
 					e as Error,
