@@ -322,6 +322,12 @@ describe('Projects', () => {
 			ndv.getters.backToCanvas().click();
 			workflowPage.actions.saveWorkflowOnButtonClick();
 
+			cy.reload();
+			workflowPage.getters.canvasNodeByName(NOTION_NODE_NAME).should('be.visible').dblclick();
+			workflowPage.getters.nodeCredentialsSelect().first().click();
+			getVisibleSelect().find('li').should('have.length', 2).first().should('contain.text', 'Notion account project 1');
+			ndv.getters.backToCanvas().click();
+
 			// Go to the second project and create a workflow
 			projects.getMenuItems().last().click();
 			workflowsPage.getters.workflowCards().should('not.have.length');
@@ -332,6 +338,12 @@ describe('Projects', () => {
 			getVisibleSelect().find('li').should('have.length', 2).first().should('contain.text', 'Notion account project 2');
 			ndv.getters.backToCanvas().click();
 			workflowPage.actions.saveWorkflowOnButtonClick();
+
+			cy.reload();
+			workflowPage.getters.canvasNodeByName(NOTION_NODE_NAME).should('be.visible').dblclick();
+			workflowPage.getters.nodeCredentialsSelect().first().click();
+			getVisibleSelect().find('li').should('have.length', 2).first().should('contain.text', 'Notion account project 2');
+			ndv.getters.backToCanvas().click();
 
 			// Go to the Home project and create a workflow
 			projects.getHomeButton().click();
@@ -347,6 +359,11 @@ describe('Projects', () => {
 			getVisibleSelect().find('li').should('have.length', 2).first().should('contain.text', 'Notion account personal project');
 			ndv.getters.backToCanvas().click();
 			workflowPage.actions.saveWorkflowOnButtonClick();
+
+			cy.reload();
+			workflowPage.getters.canvasNodeByName(NOTION_NODE_NAME).should('be.visible').dblclick();
+			workflowPage.getters.nodeCredentialsSelect().first().click();
+			getVisibleSelect().find('li').should('have.length', 2).first().should('contain.text', 'Notion account personal project');
 
 		});
 	});
