@@ -235,10 +235,7 @@ export interface IAuthenticateGeneric extends IAuthenticateBase {
 }
 
 export type IAuthenticate =
-	| ((
-			credentials: ICredentialDataDecryptedObject,
-			requestOptions: IHttpRequestOptions,
-	  ) => Promise<IHttpRequestOptions>)
+	| ((credentials: C, requestOptions: IHttpRequestOptions) => Promise<IHttpRequestOptions>)
 	| IAuthenticateGeneric;
 
 export interface IAuthenticateRuleBase {
