@@ -66,7 +66,7 @@ import { hasPermission } from '@/rbac/permissions';
 import { useTelemetryStore } from '@/stores/telemetry.store';
 import { useUsersStore } from '@/stores/users.store';
 import { dismissBannerPermanently } from '@/api/ui';
-import type { BannerName, IUser, IUserSettings } from 'n8n-workflow';
+import type { BannerName } from 'n8n-workflow';
 import {
 	addThemeToBody,
 	getPreferredTheme,
@@ -74,7 +74,6 @@ import {
 	isValidTheme,
 	updateTheme,
 } from './ui.utils';
-import { valueSurveyIgnored, valueSurveyResponded, valueSurveyShown } from '@/api/valueSurvey';
 
 let savedTheme: ThemeOption = 'system';
 try {
@@ -621,64 +620,6 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		deleteNotificationsForView(view: VIEWS) {
 			delete this.pendingNotificationsForViews[view];
-		},
-		showValueSurvey() {
-			if (!this.shouldShowValueSurveyNext) {
-				return;
-			}
-			this.openModal(VALUE_SURVEY_MODAL_KEY);
-
-			this.shouldShowValueSurveyNext = false;
-			void valueSurveyShown(useRootStore().getRestApiContext);
-		},
-		ignoreValueSurvey() {
-			void valueSurveyIgnored(useRootStore().getRestApiContext);
-		},
-		respondValueSurvey() {
-			void valueSurveyResponded(useRootStore().getRestApiContext);
-		},
-		shouldShowValueSurvey(settings: IUserSettings) {
-			if (!useSettingsStore().isTelemetryEnabled) {
-				return false;
-			}
-
-			const ONE_DAY_IN_MILLIS = 24 * 60 * 60 * 1000;
-			const THREE_DAYS_IN_MILLIS = 3 * ONE_DAY_IN_MILLIS;
-			const SEVEN_DAYS_IN_MILLIS = 7 * ONE_DAY_IN_MILLIS;
-			const SIX_MONTHS_IN_MILLIS = 6 * 30 * ONE_DAY_IN_MILLIS;
-
-			const userActivated = Boolean(settings.userActivated);
-			const userActivatedAt = settings.userActivatedAt;
-			const valueSurveyLastShownAt = settings.valueSurveyLastShownAt;
-			const valueSurveyIgnoredCount = settings.valueSurveyIgnoredLastCount ?? 0;
-
-			if (!userActivated || !userActivatedAt) {
-				return;
-			}
-
-			const timeSinceActivation = Date.now() - userActivatedAt;
-			if (userActivated && timeSinceActivation < THREE_DAYS_IN_MILLIS) {
-				return;
-			}
-
-			if (!valueSurveyLastShownAt) {
-				// user has activated but never seen the value survey
-				this.shouldShowValueSurveyNext = true;
-				return;
-			}
-
-			const timeSinceLastShown = Date.now() - valueSurveyLastShownAt;
-			if (valueSurveyIgnoredCount === 0 && timeSinceLastShown < SIX_MONTHS_IN_MILLIS) {
-				return;
-			}
-			if (valueSurveyIgnoredCount > 0 && timeSinceLastShown < SEVEN_DAYS_IN_MILLIS) {
-				return;
-			}
-			if (valueSurveyIgnoredCount >= 3) {
-				return;
-			}
-
-			this.shouldShowValueSurveyNext = true;
 		},
 	},
 });

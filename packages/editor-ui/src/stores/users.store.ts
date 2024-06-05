@@ -42,6 +42,7 @@ import { confirmEmail, getCloudUserInfo } from '@/api/cloudPlans';
 import { useRBACStore } from '@/stores/rbac.store';
 import type { Scope } from '@n8n/permissions';
 import { inviteUsers, acceptInvitation } from '@/api/invitation';
+import { useValueSurvey } from './valueSurvey.store';
 
 const isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
 const isInstanceOwner = (user: IUserResponse | null) => user?.role === ROLE.Owner;
@@ -111,7 +112,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			useRBACStore().setGlobalScopes(user.globalScopes || defaultScopes);
 			usePostHog().init(user.featureFlags);
 			if (user.settings) {
-				useUIStore().shouldShowValueSurvey(user.settings);
+				useValueSurvey().setupValueSurveyOnLogin(user.settings);
 			}
 		},
 		unsetCurrentUser() {
@@ -189,6 +190,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			useCloudPlanStore().reset();
 			usePostHog().reset();
 			useUIStore().clearBannerStack();
+			useValueSurvey().resetValueSurveyOnLogOut();
 		},
 		async createOwner(params: {
 			firstName: string;

@@ -9,7 +9,6 @@ import { useSettingsStore } from './settings.store';
 
 export const useValueSurvey = defineStore('valueSurvey', () => {
 	const shouldShowValueSurveyNext = ref<boolean>(false);
-	const valueSurveyIgnoredLastCount = ref<number | undefined>();
 
 	function setupValueSurveyOnLogin(settings: IUserSettings): void {
 		if (!useSettingsStore().isTelemetryEnabled) {
@@ -25,7 +24,7 @@ export const useValueSurvey = defineStore('valueSurvey', () => {
 		const userActivated = Boolean(settings.userActivated);
 		const userActivatedAt = settings.userActivatedAt;
 		const valueSurveyLastShownAt = settings.valueSurveyLastShownAt;
-		const valueSurveyIgnoredCount = settings.valueSurveyIgnoredLastCount ?? 0;
+		const valueSurveyLastResponseState = settings.valueSurveyLastResponseState || 'waiting';
 
 		if (!userActivated || !userActivatedAt) {
 			return;
@@ -43,13 +42,10 @@ export const useValueSurvey = defineStore('valueSurvey', () => {
 		}
 
 		const timeSinceLastShown = Date.now() - valueSurveyLastShownAt;
-		if (valueSurveyIgnoredCount === 0 && timeSinceLastShown < SIX_MONTHS_IN_MILLIS) {
+		if (valueSurveyLastResponseState === 'done' && timeSinceLastShown < SIX_MONTHS_IN_MILLIS) {
 			return;
 		}
-		if (valueSurveyIgnoredCount > 0 && timeSinceLastShown < SEVEN_DAYS_IN_MILLIS) {
-			return;
-		}
-		if (valueSurveyIgnoredCount >= 3) {
+		if (valueSurveyLastResponseState === 'waiting' && timeSinceLastShown < SEVEN_DAYS_IN_MILLIS) {
 			return;
 		}
 
@@ -58,10 +54,9 @@ export const useValueSurvey = defineStore('valueSurvey', () => {
 
 	function resetValueSurveyOnLogOut() {
 		shouldShowValueSurveyNext.value = false;
-		valueSurveyIgnoredLastCount.value = undefined;
 	}
 
-	function showValueSurvey() {
+	function showValueSurveyIfPossible() {
 		if (!shouldShowValueSurveyNext.value) {
 			return;
 		}
@@ -81,9 +76,8 @@ export const useValueSurvey = defineStore('valueSurvey', () => {
 	}
 
 	return {
-		shouldShowValueSurveyNext,
 		resetValueSurveyOnLogOut,
-		showValueSurvey,
+		showValueSurveyIfPossible,
 		ignoreValueSurvey,
 		respondValueSurvey,
 		setupValueSurveyOnLogin,
