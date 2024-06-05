@@ -12,7 +12,7 @@
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm run watch",
-    "typecheck": "tsc",
+    "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json && pnpm n8n-copy-icons && pnpm build:metadata",
     "build:metadata": "pnpm n8n-generate-known && pnpm n8n-generate-ui-types",
     "format": "prettier nodes credentials --write",

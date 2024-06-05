@@ -22,7 +22,7 @@
   },
   "scripts": {
     "clean": "rimraf dist .turbo",
-    "typecheck": "tsc",
+    "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
     "dev": "pnpm watch",
     "format": "prettier --write . --ignore-path ../../.prettierignore",
