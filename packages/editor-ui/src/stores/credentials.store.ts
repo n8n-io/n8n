@@ -260,7 +260,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 			const credentials = await getAllCredentials(
 				rootStore.getRestApiContext,
 				isEmpty(filter) ? undefined : filter,
-				includeScopes || undefined,
+				includeScopes,
 			);
 			this.setCredentials(credentials);
 			return credentials;
