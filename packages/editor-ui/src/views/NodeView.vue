@@ -3717,7 +3717,6 @@ export default defineComponent({
 			this.workflowsStore.workflow.scopes = scopes;
 		},
 		async newWorkflow(): Promise<void> {
-			await this.loadCredentials();
 			const { getVariant } = usePostHog();
 			this.canvasStore.startLoading();
 			this.resetWorkspace();
@@ -3809,7 +3808,6 @@ export default defineComponent({
 						await this.projectsStore.setProjectNavActiveIdByWorkflowHomeProject(
 							workflow.homeProject,
 						);
-						await this.loadCredentials();
 
 						if (workflow.meta?.onboardingId) {
 							this.$telemetry.track(
@@ -3828,6 +3826,7 @@ export default defineComponent({
 					await this.newWorkflow();
 				}
 			}
+			await this.loadCredentials();
 			this.historyStore.reset();
 			this.uiStore.nodeViewInitialized = true;
 			document.addEventListener('keydown', this.keyDown);
@@ -4779,10 +4778,12 @@ export default defineComponent({
 		},
 		async loadCredentials(): Promise<void> {
 			const workflow = this.workflowsStore.getWorkflowById(this.currentWorkflow);
-			const projectId =
-				(workflow?.homeProject?.type === ProjectTypes.Personal
+			const projectId = !workflow
+				? (this.$route.query?.projectId as string | undefined) ??
+					this.projectsStore.personalProject?.id
+				: workflow?.homeProject?.type === ProjectTypes.Personal
 					? this.projectsStore.personalProject?.id
-					: workflow?.homeProject?.id) ?? this.projectsStore.currentProjectId;
+					: workflow?.homeProject?.id ?? this.projectsStore.currentProjectId;
 			await this.credentialsStore.fetchAllCredentials(projectId);
 		},
 		async loadVariables(): Promise<void> {
