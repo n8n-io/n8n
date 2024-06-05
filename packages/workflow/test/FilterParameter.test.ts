@@ -571,6 +571,48 @@ describe('FilterParameter', () => {
 				});
 
 				it.each([
+					{ left: 0, expected: false },
+					{ left: 15, expected: false },
+					{ left: -15.4, expected: false },
+					{ left: NaN, expected: true },
+					{ left: null, expected: true },
+				])('number:empty($left) === $expected', ({ left, expected }) => {
+					const result = executeFilter(
+						filterFactory({
+							conditions: [
+								{
+									id: '1',
+									leftValue: left,
+									operator: { operation: 'empty', type: 'number' },
+								},
+							],
+						}),
+					);
+					expect(result).toBe(expected);
+				});
+
+				it.each([
+					{ left: 0, expected: true },
+					{ left: 15, expected: true },
+					{ left: -15.4, expected: true },
+					{ left: NaN, expected: false },
+					{ left: null, expected: false },
+				])('number:notEmpty($left) === $expected', ({ left, expected }) => {
+					const result = executeFilter(
+						filterFactory({
+							conditions: [
+								{
+									id: '1',
+									leftValue: left,
+									operator: { operation: 'notEmpty', type: 'number' },
+								},
+							],
+						}),
+					);
+					expect(result).toBe(expected);
+				});
+
+				it.each([
 					{ left: 0, right: 0, expected: true },
 					{ left: 15, right: 15, expected: true },
 					{ left: 15.34, right: 15.34, expected: true },
