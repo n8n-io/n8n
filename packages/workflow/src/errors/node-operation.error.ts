@@ -13,7 +13,7 @@ export class NodeOperationError extends NodeError {
 		error: Error | string | JsonObject,
 		options: NodeOperationErrorOptions = {},
 	) {
-		if (error instanceof NodeOperationError && !options.allowRewraping) {
+		if (error instanceof NodeOperationError && !options.allowRewrapping) {
 			return error;
 		}
 		if (typeof error === 'string') {

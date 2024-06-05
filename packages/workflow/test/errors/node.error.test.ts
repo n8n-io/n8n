@@ -9,8 +9,8 @@ describe('NodeError', () => {
 	it('should update re-wrapped error level and message', () => {
 		const apiError = new NodeApiError(node, { message: 'Some error happened', code: 500 });
 		const opsError = new NodeOperationError(node, mock(), { message: 'Some operation failed' });
-		const wrapped1 = new NodeOperationError(node, apiError, { allowRewraping: true });
-		const wrapped2 = new NodeOperationError(node, opsError, { allowRewraping: true });
+		const wrapped1 = new NodeOperationError(node, apiError, { allowRewrapping: true });
+		const wrapped2 = new NodeOperationError(node, opsError, { allowRewrapping: true });
 
 		expect(wrapped1.level).toEqual('error');
 		expect(wrapped1.message).toEqual('The service was not able to process your request');

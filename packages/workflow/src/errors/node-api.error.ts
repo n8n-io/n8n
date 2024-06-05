@@ -31,7 +31,7 @@ export interface NodeOperationErrorOptions {
 	messageMapping?: { [key: string]: string }; // allows to pass custom mapping for error messages scoped to a node
 	functionality?: Functionality;
 	type?: string;
-	allowRewraping?: boolean;
+	allowRewrapping?: boolean;
 }
 
 interface NodeApiErrorOptions extends NodeOperationErrorOptions {
@@ -130,7 +130,7 @@ export class NodeApiError extends NodeError {
 			level,
 			functionality,
 			messageMapping,
-			allowRewraping,
+			allowRewrapping: allowRewraping,
 		}: NodeApiErrorOptions = {},
 	) {
 		if (errorResponse instanceof NodeApiError && !allowRewraping) {
