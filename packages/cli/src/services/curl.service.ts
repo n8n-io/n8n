@@ -1,3 +1,4 @@
+import { Service } from 'typedi';
 import curlconverter from 'curlconverter';
 import get from 'lodash/get';
 import type { IDataObject } from 'n8n-workflow';
@@ -35,7 +36,7 @@ interface Parameter {
 	value: string;
 }
 
-export interface HttpNodeParameters {
+interface HttpNodeParameters {
 	url?: string;
 	method: string;
 	sendBody?: boolean;
@@ -109,10 +110,6 @@ const DOWNLOAD_FILE_FLAGS = ['-O', '-o'];
 
 const IGNORE_SSL_ISSUES_FLAGS = ['-k', '--insecure'];
 
-const curlToJson = (curlCommand: string): CurlJson => {
-	return jsonParse(curlconverter.toJsonString(curlCommand));
-};
-
 const isContentType = (headers: CurlJson['headers'], contentType: ContentTypes): boolean => {
 	return get(headers, CONTENT_TYPE_KEY) === contentType;
 };
@@ -154,7 +151,7 @@ const isBinaryRequest = (curlJson: CurlJson): boolean => {
 	return false;
 };
 
-const sanatizeCurlCommand = (curlCommand: string) =>
+const sanitizeCurlCommand = (curlCommand: string) =>
 	curlCommand
 		.replace(/\r\n/g, ' ')
 		.replace(/\n/g, ' ')
@@ -262,206 +259,220 @@ const mapCookies = (cookies: CurlJson['cookies']): { cookie: string } | {} => {
 	};
 };
 
-// eslint-disable-next-line complexity
-export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters => {
-	const curlJson = curlToJson(curlCommand);
+export const flattenObject = (obj: { [x: string]: any }, prefix = '') =>
+	Object.keys(obj).reduce((acc, k) => {
+		const pre = prefix.length ? prefix + '.' : '';
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+		if (typeof obj[k] === 'object') Object.assign(acc, flattenObject(obj[k], pre + k));
+		//@ts-ignore
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		else acc[pre + k] = obj[k];
+		return acc;
+	}, {});
 
-	if (!curlJson.headers) curlJson.headers = {};
+@Service()
+export class CurlService {
+	// eslint-disable-next-line complexity
+	toHttpNodeParameters(curlCommand: string): HttpNodeParameters {
+		const curlJson = jsonParse<CurlJson>(curlconverter.toJsonString(curlCommand));
 
-	lowerCaseContentTypeKey(curlJson.headers);
+		if (!curlJson.headers) curlJson.headers = {};
 
-	// set basic authentication
-	if (curlJson.auth) {
-		const { user, password: pass } = curlJson.auth;
-		Object.assign(curlJson.headers, {
-			authorization: `Basic ${encodeBasicAuthentication(user, pass)}`,
-		});
-	}
+		lowerCaseContentTypeKey(curlJson.headers);
 
-	const httpNodeParameters: HttpNodeParameters = {
-		url: curlJson.url,
-		authentication: 'none',
-		method: curlJson.method.toUpperCase(),
-		...extractHeaders({ ...curlJson.headers, ...mapCookies(curlJson.cookies) }),
-		...extractQueries(curlJson.queries),
-		options: {
-			redirect: {
-				redirect: {},
+		// set basic authentication
+		if (curlJson.auth) {
+			const { user, password: pass } = curlJson.auth;
+			Object.assign(curlJson.headers, {
+				authorization: `Basic ${encodeBasicAuthentication(user, pass)}`,
+			});
+		}
+
+		const httpNodeParameters: HttpNodeParameters = {
+			url: curlJson.url,
+			authentication: 'none',
+			method: curlJson.method.toUpperCase(),
+			...extractHeaders({ ...curlJson.headers, ...mapCookies(curlJson.cookies) }),
+			...extractQueries(curlJson.queries),
+			options: {
+				redirect: {
+					redirect: {},
+				},
+				response: {
+					response: {},
+				},
 			},
-			response: {
-				response: {},
-			},
-		},
-	};
+		};
 
-	//attempt to get the curl flags not supported by the library
-	const curl = sanatizeCurlCommand(curlCommand);
+		//attempt to get the curl flags not supported by the library
+		const curl = sanitizeCurlCommand(curlCommand);
 
-	//check for follow redirect flags
-	if (FOLLOW_REDIRECT_FLAGS.some((flag) => curl.includes(` ${flag}`))) {
-		Object.assign(httpNodeParameters.options.redirect?.redirect, { followRedirects: true });
+		//check for follow redirect flags
+		if (FOLLOW_REDIRECT_FLAGS.some((flag) => curl.includes(` ${flag}`))) {
+			Object.assign(httpNodeParameters.options.redirect?.redirect, { followRedirects: true });
 
-		if (curl.includes(` ${MAX_REDIRECT_FLAG}`)) {
-			const extractedValue = Array.from(
-				extractGroup(curl, new RegExp(` ${MAX_REDIRECT_FLAG} (\\d+)`, 'g')),
-			);
-			if (extractedValue.length) {
-				const [_, maxRedirects] = extractedValue[0];
-				if (maxRedirects) {
-					Object.assign(httpNodeParameters.options.redirect?.redirect, { maxRedirects });
+			if (curl.includes(` ${MAX_REDIRECT_FLAG}`)) {
+				const extractedValue = Array.from(
+					extractGroup(curl, new RegExp(` ${MAX_REDIRECT_FLAG} (\\d+)`, 'g')),
+				);
+				if (extractedValue.length) {
+					const [_, maxRedirects] = extractedValue[0];
+					if (maxRedirects) {
+						Object.assign(httpNodeParameters.options.redirect?.redirect, { maxRedirects });
+					}
 				}
 			}
 		}
-	}
 
-	//check for proxy flags
-	if (PROXY_FLAGS.some((flag) => curl.includes(` ${flag}`))) {
-		const foundFlag = PROXY_FLAGS.find((flag) => curl.includes(` ${flag}`));
-		if (foundFlag) {
-			const extractedValue = Array.from(
-				extractGroup(curl, new RegExp(` ${foundFlag} (\\S*)`, 'g')),
-			);
-			if (extractedValue.length) {
-				const [_, proxy] = extractedValue[0];
-				Object.assign(httpNodeParameters.options, { proxy });
+		//check for proxy flags
+		if (PROXY_FLAGS.some((flag) => curl.includes(` ${flag}`))) {
+			const foundFlag = PROXY_FLAGS.find((flag) => curl.includes(` ${flag}`));
+			if (foundFlag) {
+				const extractedValue = Array.from(
+					extractGroup(curl, new RegExp(` ${foundFlag} (\\S*)`, 'g')),
+				);
+				if (extractedValue.length) {
+					const [_, proxy] = extractedValue[0];
+					Object.assign(httpNodeParameters.options, { proxy });
+				}
 			}
 		}
-	}
 
-	// check for "include header in output" flag
-	if (INCLUDE_HEADERS_IN_OUTPUT_FLAGS.some((flag) => curl.includes(` ${flag}`))) {
-		Object.assign(httpNodeParameters.options?.response?.response, {
-			fullResponse: true,
-			responseFormat: 'autodetect',
-		});
-	}
+		// check for "include header in output" flag
+		if (INCLUDE_HEADERS_IN_OUTPUT_FLAGS.some((flag) => curl.includes(` ${flag}`))) {
+			Object.assign(httpNodeParameters.options?.response?.response, {
+				fullResponse: true,
+				responseFormat: 'autodetect',
+			});
+		}
 
-	// check for request flag
-	if (REQUEST_FLAGS.some((flag) => curl.includes(` ${flag}`))) {
-		const foundFlag = REQUEST_FLAGS.find((flag) => curl.includes(` ${flag}`));
-		if (foundFlag) {
-			const extractedValue = Array.from(
-				extractGroup(curl, new RegExp(` ${foundFlag} (\\w+)`, 'g')),
-			);
-			if (extractedValue.length) {
-				const [_, request] = extractedValue[0];
-				httpNodeParameters.method = request.toUpperCase();
+		// check for request flag
+		if (REQUEST_FLAGS.some((flag) => curl.includes(` ${flag}`))) {
+			const foundFlag = REQUEST_FLAGS.find((flag) => curl.includes(` ${flag}`));
+			if (foundFlag) {
+				const extractedValue = Array.from(
+					extractGroup(curl, new RegExp(` ${foundFlag} (\\w+)`, 'g')),
+				);
+				if (extractedValue.length) {
+					const [_, request] = extractedValue[0];
+					httpNodeParameters.method = request.toUpperCase();
+				}
 			}
 		}
-	}
 
-	// check for timeout flag
-	if (TIMEOUT_FLAGS.some((flag) => curl.includes(` ${flag}`))) {
-		const foundFlag = TIMEOUT_FLAGS.find((flag) => curl.includes(` ${flag}`));
-		if (foundFlag) {
-			const extractedValue = Array.from(
-				extractGroup(curl, new RegExp(` ${foundFlag} (\\d+)`, 'g')),
-			);
-			if (extractedValue.length) {
-				const [_, timeout] = extractedValue[0];
+		// check for timeout flag
+		if (TIMEOUT_FLAGS.some((flag) => curl.includes(` ${flag}`))) {
+			const foundFlag = TIMEOUT_FLAGS.find((flag) => curl.includes(` ${flag}`));
+			if (foundFlag) {
+				const extractedValue = Array.from(
+					extractGroup(curl, new RegExp(` ${foundFlag} (\\d+)`, 'g')),
+				);
+				if (extractedValue.length) {
+					const [_, timeout] = extractedValue[0];
+					Object.assign(httpNodeParameters.options, {
+						timeout: parseInt(timeout, 10) * 1000,
+					});
+				}
+			}
+		}
+
+		// check for download flag
+		if (DOWNLOAD_FILE_FLAGS.some((flag) => curl.includes(` ${flag}`))) {
+			const foundFlag = DOWNLOAD_FILE_FLAGS.find((flag) => curl.includes(` ${flag}`));
+			if (foundFlag) {
+				Object.assign(httpNodeParameters.options.response.response, {
+					responseFormat: 'file',
+					outputPropertyName: 'data',
+				});
+			}
+		}
+
+		if (IGNORE_SSL_ISSUES_FLAGS.some((flag) => curl.includes(` ${flag}`))) {
+			const foundFlag = IGNORE_SSL_ISSUES_FLAGS.find((flag) => curl.includes(` ${flag}`));
+			if (foundFlag) {
 				Object.assign(httpNodeParameters.options, {
-					timeout: parseInt(timeout, 10) * 1000,
+					allowUnauthorizedCerts: true,
 				});
 			}
 		}
-	}
 
-	// check for download flag
-	if (DOWNLOAD_FILE_FLAGS.some((flag) => curl.includes(` ${flag}`))) {
-		const foundFlag = DOWNLOAD_FILE_FLAGS.find((flag) => curl.includes(` ${flag}`));
-		if (foundFlag) {
-			Object.assign(httpNodeParameters.options.response.response, {
-				responseFormat: 'file',
-				outputPropertyName: 'data',
+		const contentType = curlJson?.headers?.[CONTENT_TYPE_KEY] as ContentTypes;
+
+		if (isBinaryRequest(curlJson)) {
+			return Object.assign(httpNodeParameters, {
+				contentType: 'binaryData',
+				sendBody: true,
 			});
 		}
-	}
 
-	if (IGNORE_SSL_ISSUES_FLAGS.some((flag) => curl.includes(` ${flag}`))) {
-		const foundFlag = IGNORE_SSL_ISSUES_FLAGS.find((flag) => curl.includes(` ${flag}`));
-		if (foundFlag) {
-			Object.assign(httpNodeParameters.options, {
-				allowUnauthorizedCerts: true,
+		if (contentType && !SUPPORTED_CONTENT_TYPES.includes(contentType)) {
+			return Object.assign(httpNodeParameters, {
+				sendBody: true,
+				contentType: 'raw',
+				rawContentType: contentType,
+				body: Object.keys(curlJson?.data ?? {})[0],
 			});
 		}
-	}
 
-	const contentType = curlJson?.headers?.[CONTENT_TYPE_KEY] as ContentTypes;
+		if (isJsonRequest(curlJson)) {
+			Object.assign(httpNodeParameters, {
+				contentType: 'json',
+				sendBody: true,
+			});
 
-	if (isBinaryRequest(curlJson)) {
-		return Object.assign(httpNodeParameters, {
-			contentType: 'binaryData',
-			sendBody: true,
-		});
-	}
+			if (curlJson.data) {
+				const json = extractJson(curlJson.data);
 
-	if (contentType && !SUPPORTED_CONTENT_TYPES.includes(contentType)) {
-		return Object.assign(httpNodeParameters, {
-			sendBody: true,
-			contentType: 'raw',
-			rawContentType: contentType,
-			body: Object.keys(curlJson?.data ?? {})[0],
-		});
-	}
-
-	if (isJsonRequest(curlJson)) {
-		Object.assign(httpNodeParameters, {
-			contentType: 'json',
-			sendBody: true,
-		});
-
-		if (curlJson.data) {
-			const json = extractJson(curlJson.data);
-
-			if (jsonHasNestedObjects(json)) {
-				// json body
-				Object.assign(httpNodeParameters, {
-					specifyBody: 'json',
-					jsonBody: JSON.stringify(json, null, 2),
-				});
-			} else {
-				// key-value body
-				Object.assign(httpNodeParameters, {
-					specifyBody: 'keypair',
-					bodyParameters: {
-						parameters: jsonBodyToNodeParameters(curlJson.data),
-					},
-				});
+				if (jsonHasNestedObjects(json)) {
+					// json body
+					Object.assign(httpNodeParameters, {
+						specifyBody: 'json',
+						jsonBody: JSON.stringify(json, null, 2),
+					});
+				} else {
+					// key-value body
+					Object.assign(httpNodeParameters, {
+						specifyBody: 'keypair',
+						bodyParameters: {
+							parameters: jsonBodyToNodeParameters(curlJson.data),
+						},
+					});
+				}
 			}
+		} else if (isFormUrlEncodedRequest(curlJson)) {
+			Object.assign(httpNodeParameters, {
+				contentType: 'form-urlencoded',
+				sendBody: true,
+				specifyBody: 'keypair',
+				bodyParameters: {
+					parameters: keyValueBodyToNodeParameters(curlJson.data),
+				},
+			});
+		} else if (isMultipartRequest(curlJson)) {
+			Object.assign(httpNodeParameters, {
+				contentType: 'multipart-form-data',
+				sendBody: true,
+				bodyParameters: {
+					parameters: multipartToNodeParameters(curlJson.data, curlJson.files),
+				},
+			});
+		} else {
+			// could not figure the content type so do not set the body
+			Object.assign(httpNodeParameters, {
+				sendBody: false,
+			});
 		}
-	} else if (isFormUrlEncodedRequest(curlJson)) {
-		Object.assign(httpNodeParameters, {
-			contentType: 'form-urlencoded',
-			sendBody: true,
-			specifyBody: 'keypair',
-			bodyParameters: {
-				parameters: keyValueBodyToNodeParameters(curlJson.data),
-			},
-		});
-	} else if (isMultipartRequest(curlJson)) {
-		Object.assign(httpNodeParameters, {
-			contentType: 'multipart-form-data',
-			sendBody: true,
-			bodyParameters: {
-				parameters: multipartToNodeParameters(curlJson.data, curlJson.files),
-			},
-		});
-	} else {
-		// could not figure the content type so do not set the body
-		Object.assign(httpNodeParameters, {
-			sendBody: false,
-		});
-	}
 
-	if (!Object.keys(httpNodeParameters.options?.redirect.redirect).length) {
-		// @ts-ignore
-		delete httpNodeParameters.options.redirect;
-	}
+		if (!Object.keys(httpNodeParameters.options?.redirect.redirect).length) {
+			// @ts-ignore
+			delete httpNodeParameters.options.redirect;
+		}
 
-	if (!Object.keys(httpNodeParameters.options.response.response).length) {
-		// @ts-ignore
-		delete httpNodeParameters.options.response;
-	}
+		if (!Object.keys(httpNodeParameters.options.response.response).length) {
+			// @ts-ignore
+			delete httpNodeParameters.options.response;
+		}
 
-	return httpNodeParameters;
-};
+		return httpNodeParameters;
+	}
+}
