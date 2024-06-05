@@ -41,6 +41,7 @@ interface NodeApiErrorOptions extends NodeOperationErrorOptions {
 
 /**
  * Top-level properties where an error message can be found in an API response.
+ * order is important, precedence is from top to bottom
  */
 const POSSIBLE_ERROR_MESSAGE_KEYS = [
 	'cause',
