@@ -178,7 +178,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { type CSSProperties, defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import xss from 'xss';
 import { useStorage } from '@/composables/useStorage';
@@ -245,6 +245,12 @@ export default defineComponent({
 			default: false,
 		},
 	},
+	emits: {
+		run: null,
+		runWorkflow: null,
+		removeNode: null,
+		toggleDisableNode: null,
+	},
 	setup(props) {
 		const workflowsStore = useWorkflowsStore();
 		const contextMenu = useContextMenu();
@@ -296,7 +302,9 @@ export default defineComponent({
 			return undefined;
 		},
 		nodeRunData(): ITaskData[] {
-			return this.workflowsStore.getWorkflowResultDataByNodeName(this.data?.name || '') || [];
+			if (!this.data) return [];
+
+			return this.workflowsStore.getWorkflowResultDataByNodeName(this.data.name) ?? [];
 		},
 		hasIssues(): boolean {
 			if (this.nodeExecutionStatus && ['crashed', 'error'].includes(this.nodeExecutionStatus))
@@ -324,7 +332,7 @@ export default defineComponent({
 				const { eventTriggerDescription } = this.nodeType;
 				return this.$locale
 					.nodeText()
-					.eventTriggerDescription(nodeName, eventTriggerDescription || '');
+					.eventTriggerDescription(nodeName, eventTriggerDescription ?? '');
 			} else {
 				return this.$locale.baseText('node.waitingForYouToCreateAnEventIn', {
 					interpolate: {
@@ -365,7 +373,7 @@ export default defineComponent({
 			);
 		},
 		isTriggerNode(): boolean {
-			return this.nodeTypesStore.isTriggerNode(this.data?.type || '');
+			return this.data ? this.nodeTypesStore.isTriggerNode(this.data.type) : false;
 		},
 		isTriggerNodeTooltipEmpty(): boolean {
 			return this.nodeType !== null ? this.nodeType.eventTriggerDescription === '' : false;
@@ -406,9 +414,7 @@ export default defineComponent({
 			return classes;
 		},
 		nodeWrapperStyles() {
-			const styles: {
-				[key: string]: string | number;
-			} = {
+			const styles: CSSProperties = {
 				left: this.position[0] + 'px',
 				top: this.position[1] + 'px',
 			};
@@ -556,7 +562,7 @@ export default defineComponent({
 						returnStyles['border-width'] = '2px';
 						returnStyles['border-style'] = 'solid';
 					}
-				} else if (this.waiting || this.showPinnedDataInfo) {
+				} else if (!!this.waiting || this.showPinnedDataInfo) {
 					borderColor = '--color-canvas-node-pinned-border';
 				} else if (this.nodeExecutionStatus === 'unknown') {
 					borderColor = '--color-foreground-xdark';
@@ -675,7 +681,7 @@ export default defineComponent({
 		if (this.nodeRunData) {
 			setTimeout(() => {
 				this.$emit('run', {
-					name: this.data && this.data.name,
+					name: this.data?.name,
 					data: this.nodeRunData,
 					waiting: !!this.waiting,
 				});

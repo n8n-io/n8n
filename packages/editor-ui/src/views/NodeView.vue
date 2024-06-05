@@ -3794,7 +3794,6 @@ export default defineComponent({
 						return;
 					}
 				}
-				await this.loadCredentials();
 				// Load a workflow
 				let workflowId = null as string | null;
 				if (this.$route.params.name) {
@@ -3838,6 +3837,7 @@ export default defineComponent({
 					await this.newWorkflow();
 				}
 			}
+			await this.loadCredentials();
 			this.historyStore.reset();
 			this.uiStore.nodeViewInitialized = true;
 			document.addEventListener('keydown', this.keyDown);
@@ -4789,11 +4789,20 @@ export default defineComponent({
 		},
 		async loadCredentials(): Promise<void> {
 			const workflow = this.workflowsStore.getWorkflowById(this.currentWorkflow);
-			const projectId =
-				workflow?.homeProject?.type === ProjectTypes.Personal
-					? this.projectsStore.personalProject?.id
-					: workflow?.homeProject?.id;
-			await this.credentialsStore.fetchAllCredentials(projectId);
+			let projectId: string | undefined;
+			if (workflow) {
+				projectId =
+					workflow.homeProject?.type === ProjectTypes.Personal
+						? this.projectsStore.personalProject?.id
+						: workflow?.homeProject?.id ?? this.projectsStore.currentProjectId;
+			} else {
+				const queryParam =
+					typeof this.$route.query?.projectId === 'string'
+						? this.$route.query?.projectId
+						: undefined;
+				projectId = queryParam ?? this.projectsStore.personalProject?.id;
+			}
+			await this.credentialsStore.fetchAllCredentials(projectId, false);
 		},
 		async loadVariables(): Promise<void> {
 			await this.environmentsStore.fetchAllVariables();
