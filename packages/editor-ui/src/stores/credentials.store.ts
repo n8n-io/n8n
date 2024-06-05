@@ -247,7 +247,10 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 			const credentialTypes = await getCredentialTypes(rootStore.getBaseUrl);
 			this.setCredentialTypes(credentialTypes);
 		},
-		async fetchAllCredentials(projectId?: string): Promise<ICredentialsResponse[]> {
+		async fetchAllCredentials(
+			projectId?: string,
+			includeScopes = true,
+		): Promise<ICredentialsResponse[]> {
 			const rootStore = useRootStore();
 
 			const filter = {
@@ -257,6 +260,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 			const credentials = await getAllCredentials(
 				rootStore.getRestApiContext,
 				isEmpty(filter) ? undefined : filter,
+				includeScopes,
 			);
 			this.setCredentials(credentials);
 			return credentials;
