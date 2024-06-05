@@ -1547,11 +1547,11 @@ export async function requestOAuth1(
 	const credentials = await this.getCredentials(credentialsType);
 
 	if (credentials === undefined) {
-		throw new ApplicationError('No credentials were returned!');
+		throw new ApplicationError('No credentials were returned');
 	}
 
 	if (credentials.oauthTokenData === undefined) {
-		throw new ApplicationError('OAuth credentials not connected!');
+		throw new ApplicationError('OAuth credentials not connected');
 	}
 
 	const oauth = new clientOAuth1({
@@ -1647,7 +1647,7 @@ export async function httpRequestWithAuthentication(
 		if (credentialsDecrypted === undefined) {
 			throw new NodeOperationError(
 				node,
-				`Node "${node.name}" does not have any credentials of type "${credentialsType}" set!`,
+				`Node "${node.name}" does not have any credentials of type "${credentialsType}" set`,
 				{ level: 'warning' },
 			);
 		}
@@ -1844,7 +1844,7 @@ export async function requestWithAuthentication(
 		if (credentialsDecrypted === undefined) {
 			throw new NodeOperationError(
 				node,
-				`Node "${node.name}" does not have any credentials of type "${credentialsType}" set!`,
+				`Node "${node.name}" does not have any credentials of type "${credentialsType}" set`,
 				{ level: 'warning' },
 			);
 		}
@@ -1990,7 +1990,7 @@ export async function getCredentials(
 	if (nodeType === undefined) {
 		throw new NodeOperationError(
 			node,
-			`Node type "${node.type}" is not known so can not get credentials!`,
+			`Node type "${node.type}" is not known so can not get credentials`,
 		);
 	}
 
@@ -2003,7 +2003,7 @@ export async function getCredentials(
 		if (nodeType.description.credentials === undefined) {
 			throw new NodeOperationError(
 				node,
-				`Node type "${node.type}" does not have any credentials defined!`,
+				`Node type "${node.type}" does not have any credentials defined`,
 				{ level: 'warning' },
 			);
 		}
@@ -2014,7 +2014,7 @@ export async function getCredentials(
 		if (nodeCredentialDescription === undefined) {
 			throw new NodeOperationError(
 				node,
-				`Node type "${node.type}" does not have any credentials of type "${type}" defined!`,
+				`Node type "${node.type}" does not have any credentials of type "${type}" defined`,
 				{ level: 'warning' },
 			);
 		}
@@ -2039,16 +2039,14 @@ export async function getCredentials(
 		if (nodeCredentialDescription?.required === true) {
 			// Credentials are required so error
 			if (!node.credentials) {
-				throw new NodeOperationError(node, 'Node does not have any credentials set!', {
+				throw new NodeOperationError(node, 'Node does not have any credentials set', {
 					level: 'warning',
 				});
 			}
 			if (!node.credentials[type]) {
-				throw new NodeOperationError(
-					node,
-					`Node does not have any credentials set for "${type}"!`,
-					{ level: 'warning' },
-				);
+				throw new NodeOperationError(node, `Node does not have any credentials set for "${type}"`, {
+					level: 'warning',
+				});
 			}
 		} else {
 			// Credentials are not required
@@ -2782,7 +2780,7 @@ async function getInputConnectionData(
 	const nodes = await Promise.all(constParentNodes);
 
 	if (inputConfiguration.required && nodes.length === 0) {
-		throw new NodeOperationError(node, `A ${inputName} processor node must be connected!`);
+		throw new NodeOperationError(node, `A ${inputName} processor node must be connected`);
 	}
 	if (
 		inputConfiguration.maxConnections !== undefined &&
@@ -2790,7 +2788,7 @@ async function getInputConnectionData(
 	) {
 		throw new NodeOperationError(
 			node,
-			`Only ${inputConfiguration.maxConnections} ${inputName} processor nodes are/is allowed to be connected!`,
+			`Only ${inputConfiguration.maxConnections} ${inputName} processor nodes are/is allowed to be connected`,
 		);
 	}
 
@@ -2846,7 +2844,8 @@ const getCommonWorkflowFunctions = (
 	getInstanceBaseUrl: () => additionalData.instanceBaseUrl,
 	getInstanceId: () => Container.get(InstanceSettings).instanceId,
 	getTimezone: () => getTimezone(workflow),
-
+	getCredentialsProperties: (type: string) =>
+		additionalData.credentialsHelper.getCredentialsProperties(type),
 	prepareOutputData: async (outputData) => [outputData],
 });
 
@@ -3335,12 +3334,12 @@ export function getExecutePollFunctions(
 			...getCommonWorkflowFunctions(workflow, node, additionalData),
 			__emit: (): void => {
 				throw new ApplicationError(
-					'Overwrite NodeExecuteFunctions.getExecutePollFunctions.__emit function!',
+					'Overwrite NodeExecuteFunctions.getExecutePollFunctions.__emit function',
 				);
 			},
 			__emitError() {
 				throw new ApplicationError(
-					'Overwrite NodeExecuteFunctions.getExecutePollFunctions.__emitError function!',
+					'Overwrite NodeExecuteFunctions.getExecutePollFunctions.__emitError function',
 				);
 			},
 			getMode: () => mode,
@@ -3398,12 +3397,12 @@ export function getExecuteTriggerFunctions(
 			...getCommonWorkflowFunctions(workflow, node, additionalData),
 			emit: (): void => {
 				throw new ApplicationError(
-					'Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function!',
+					'Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function',
 				);
 			},
 			emitError: (): void => {
 				throw new ApplicationError(
-					'Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function!',
+					'Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function',
 				);
 			},
 			getMode: () => mode,

@@ -24,6 +24,9 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Run typecheck
+        run: pnpm typecheck
+
       - name: Cache build artifacts
         uses: actions/cache/save@v4.0.0
         with:
