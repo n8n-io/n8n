@@ -144,6 +144,19 @@ describe('Data pinning', () => {
 			.should('contain', 'Workflow has reached the maximum allowed pinned data size');
 	});
 
+	it('Should show an error when pin data JSON in invalid', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger');
+		workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, true, true);
+		ndv.getters.container().should('be.visible');
+		ndv.getters.pinDataButton().should('not.exist');
+		ndv.getters.editPinnedDataButton().should('be.visible');
+
+		ndv.actions.setPinnedData('[ { "name": "First item", "code": 2dsa }]')
+		workflowPage.getters
+			.errorToast()
+			.should('contain', 'Unable to save due to invalid JSON');
+	});
+
 	it('Should be able to reference paired items in a node located before pinned data', () => {
 		workflowPage.actions.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		workflowPage.actions.addNodeToCanvas(HTTP_REQUEST_NODE_NAME, true, true);
