@@ -1,72 +1,150 @@
+import { sign, type Request } from 'aws4';
+import type { IHttpRequestOptions } from 'n8n-workflow';
 import { Aws, type AwsCredentialsType } from '../Aws.credentials';
 
-function buildAwsCredentials(creds: Partial<AwsCredentialsType> = {}): AwsCredentialsType {
-	return {
-		region: 'us-east-1',
-		accessKeyId: 'accessKeyId',
-		secretAccessKey: 'secretAccessKey',
-		temporaryCredentials: false,
-		customEndpoints: false,
-		...creds,
-	};
-}
+jest.mock('aws4', () => ({
+	sign: jest.fn(),
+}));
 
-describe('AWS credentials', () => {
-	beforeAll(() => {
-		jest.useFakeTimers();
-		jest.setSystemTime(new Date('2020-01-01'));
+describe('Aws Credential', () => {
+	const aws = new Aws();
+	let mockSign: jest.Mock;
+
+	beforeEach(() => {
+		mockSign = sign as unknown as jest.Mock;
 	});
 
-	afterAll(() => {
-		jest.useRealTimers();
+	afterEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('should have correct properties', () => {
+		expect(aws.name).toBe('aws');
+		expect(aws.displayName).toBe('AWS');
+		expect(aws.documentationUrl).toBe('aws');
+		expect(aws.icon).toBe('file:icons/AWS.svg');
+		expect(aws.properties.length).toBeGreaterThan(0);
+		expect(aws.test.request.baseURL).toBe('=https://sts.{{$credentials.region}}.amazonaws.com');
+		expect(aws.test.request.url).toBe('?Action=GetCallerIdentity&Version=2011-06-15');
+		expect(aws.test.request.method).toBe('POST');
 	});
 
 	describe('authenticate', () => {
-		it('should sign requests for regional AWS services', async () => {
-			const credential = new Aws();
-			const { headers } = await credential.authenticate(buildAwsCredentials(), {
-				url: 'https://s3.eu-central-1.amazonaws.com',
-			});
-			expect(headers).toEqual({
-				Authorization:
-					'AWS4-HMAC-SHA256 Credential=accessKeyId/20200101/eu-central-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=38045964b530976bee64b5241ebebb7e0c09b0a15fb425579c6ea26cc2fa0667',
-				Host: 's3.eu-central-1.amazonaws.com',
-				'X-Amz-Content-Sha256': 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
-				'X-Amz-Date': '20200101T000000Z',
-			});
+		let credentials: AwsCredentialsType;
+
+		let requestOptions: IHttpRequestOptions;
+
+		let signOpts: Request & IHttpRequestOptions;
+
+		const securityHeaders = {
+			accessKeyId: 'hakuna',
+			secretAccessKey: 'matata',
+			sessionToken: undefined,
+		};
+
+		beforeEach(() => {
+			credentials = {
+				region: 'eu-central-1',
+				accessKeyId: 'hakuna',
+				secretAccessKey: 'matata',
+				customEndpoints: false,
+				temporaryCredentials: false,
+			};
+
+			requestOptions = {
+				qs: {},
+				body: {},
+				headers: {},
+				baseURL: 'https://sts.eu-central-1.amazonaws.com',
+				url: '?Action=GetCallerIdentity&Version=2011-06-15',
+				method: 'POST',
+				returnFullResponse: true,
+			};
+
+			signOpts = {
+				qs: {},
+				body: undefined,
+				headers: {},
+				baseURL: 'https://sts.eu-central-1.amazonaws.com',
+				url: '?Action=GetCallerIdentity&Version=2011-06-15',
+				method: 'POST',
+				returnFullResponse: true,
+				host: 'sts.eu-central-1.amazonaws.com',
+				path: '/?Action=GetCallerIdentity&Version=2011-06-15',
+				region: 'eu-central-1',
+			};
 		});
 
-		it('should sign requests for global AWS services', async () => {
-			const credential = new Aws();
-			const { headers } = await credential.authenticate(buildAwsCredentials(), {
-				url: 'https://iam.amazonaws.com',
-			});
-			expect(headers).toEqual({
-				Authorization:
-					'AWS4-HMAC-SHA256 Credential=accessKeyId/20200101/us-east-1/iam/aws4_request, SignedHeaders=host;x-amz-date, Signature=13d4ff2c5882417eb57a3b6dcd0c40b0f37cea5d1b97c7abc2909f6f60912736',
-				Host: 'iam.amazonaws.com',
-				'X-Amz-Date': '20200101T000000Z',
-			});
+		it('should call sign with correct parameters', async () => {
+			const result = await aws.authenticate(credentials, requestOptions);
+
+			expect(mockSign).toHaveBeenCalledWith(signOpts, securityHeaders);
+
+			expect(result.method).toBe('POST');
+			expect(result.url).toBe(
+				'https://sts.eu-central-1.amazonaws.com/?Action=GetCallerIdentity&Version=2011-06-15',
+			);
 		});
 
-		it('should sign requests with custom endpoints', async () => {
-			const credential = new Aws();
-			const { url } = await credential.authenticate(
-				buildAwsCredentials({
-					customEndpoints: true,
-					region: 'eu-central-1',
-					s3Endpoint: 'https://s3.{region}.customvpcendpoint.com',
-				}),
+		it('should return correct options with custom endpoint', async () => {
+			const customEndpoint = 'https://custom.endpoint.com';
+			const result = await aws.authenticate(
+				{ ...credentials, customEndpoints: true, snsEndpoint: customEndpoint },
+				{ ...requestOptions, url: '', baseURL: '', qs: { service: 'sns' } },
+			);
+
+			expect(mockSign).toHaveBeenCalledWith(
 				{
+					...signOpts,
+					baseURL: '',
+					path: '/',
 					url: '',
 					qs: {
-						service: 's3',
-						region: 'eu-central-1',
-						path: '',
+						service: 'sns',
 					},
+					host: 'custom.endpoint.com',
 				},
+				securityHeaders,
 			);
-			expect(url).toEqual('https://s3.eu-central-1.customvpcendpoint.com/');
+			expect(result.method).toBe('POST');
+			expect(result.url).toBe(`${customEndpoint}/`);
+		});
+
+		it('should return correct options with temporary credentials', async () => {
+			const result = await aws.authenticate(
+				{ ...credentials, temporaryCredentials: true, sessionToken: 'test-token' },
+				requestOptions,
+			);
+
+			expect(mockSign).toHaveBeenCalledWith(signOpts, {
+				...securityHeaders,
+				sessionToken: 'test-token',
+			});
+			expect(result.method).toBe('POST');
+			expect(result.url).toBe(
+				'https://sts.eu-central-1.amazonaws.com/?Action=GetCallerIdentity&Version=2011-06-15',
+			);
+		});
+
+		it('should return correct options for a global AWS service', async () => {
+			const result = await aws.authenticate(credentials, {
+				...requestOptions,
+				url: 'https://iam.amazonaws.com',
+				baseURL: '',
+			});
+
+			expect(mockSign).toHaveBeenCalledWith(
+				{
+					...signOpts,
+					baseURL: '',
+					path: '/',
+					host: 'iam.amazonaws.com',
+					url: 'https://iam.amazonaws.com',
+				},
+				securityHeaders,
+			);
+			expect(result.method).toBe('POST');
+			expect(result.url).toBe('https://iam.amazonaws.com/');
 		});
 	});
 });
