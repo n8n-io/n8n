@@ -16,7 +16,7 @@ export class ValueSurveyController {
 	}
 
 	@Post('/respond')
-	async valueSurveyResponded(req: ValueSurveyRequest.ValueSurveyShown): Promise<void> {
+	async valueSurveyResponded(req: ValueSurveyRequest.ValueSurveyResponded): Promise<void> {
 		await this.userService.updateSettings(req.user.id, {
 			valueSurveyLastResponseState: 'done',
 			valueSurveyIgnoredLastCount: 0,
@@ -24,7 +24,7 @@ export class ValueSurveyController {
 	}
 
 	@Post('/ignore')
-	async valueSurveyIgnored(req: ValueSurveyRequest.ValueSurveyShown): Promise<void> {
+	async valueSurveyIgnored(req: ValueSurveyRequest.ValueSurveyIgnored): Promise<void> {
 		const lastCount = req.user.settings?.valueSurveyIgnoredLastCount ?? 0;
 		await this.userService.updateSettings(req.user.id, {
 			valueSurveyIgnoredLastCount: lastCount + 1,

@@ -607,5 +607,6 @@ export declare namespace ProjectRequest {
 // ----------------------------------
 export declare namespace ValueSurveyRequest {
 	type ValueSurveyShown = AuthenticatedRequest;
+	type ValueSurveyResponded = AuthenticatedRequest;
 	type ValueSurveyIgnored = AuthenticatedRequest;
 }
