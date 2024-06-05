@@ -54,6 +54,7 @@ describe('AWS credentials', () => {
 			const { url } = await credential.authenticate(
 				buildAwsCredentials({
 					customEndpoints: true,
+					region: 'eu-central-1',
 					s3Endpoint: 'https://s3.{region}.customvpcendpoint.com',
 				}),
 				{
@@ -65,7 +66,7 @@ describe('AWS credentials', () => {
 					},
 				},
 			);
-			expect(url).toEqual('https://s3.us-east-1.customvpcendpoint.com/');
+			expect(url).toEqual('https://s3.eu-central-1.customvpcendpoint.com/');
 		});
 	});
 });
