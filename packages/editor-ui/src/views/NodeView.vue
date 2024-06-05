@@ -4789,12 +4789,19 @@ export default defineComponent({
 		},
 		async loadCredentials(): Promise<void> {
 			const workflow = this.workflowsStore.getWorkflowById(this.currentWorkflow);
-			const projectId = !workflow
-				? (this.$route.query?.projectId as string | undefined) ??
-					this.projectsStore.personalProject?.id
-				: workflow?.homeProject?.type === ProjectTypes.Personal
-					? this.projectsStore.personalProject?.id
-					: workflow?.homeProject?.id ?? this.projectsStore.currentProjectId;
+			let projectId: string | undefined;
+			if (workflow) {
+				projectId =
+					workflow.homeProject?.type === ProjectTypes.Personal
+						? this.projectsStore.personalProject?.id
+						: workflow?.homeProject?.id ?? this.projectsStore.currentProjectId;
+			} else {
+				const queryParam =
+					typeof this.$route.query?.projectId === 'string'
+						? this.$route.query?.projectId
+						: undefined;
+				projectId = queryParam ?? this.projectsStore.personalProject?.id;
+			}
 			await this.credentialsStore.fetchAllCredentials(projectId, false);
 		},
 		async loadVariables(): Promise<void> {
