@@ -29,6 +29,7 @@ import { useCanvasStore } from '@/stores/canvas.store';
 import type { EndpointSpec } from '@jsplumb/common';
 import { useDeviceSupport } from 'n8n-design-system';
 import type { N8nEndpointLabelLength } from '@/plugins/jsplumb/N8nPlusEndpointType';
+import { isValidNodeConnectionType } from '@/utils/typeGuards';
 
 const createAddInputEndpointSpec = (
 	connectionName: NodeConnectionType,
@@ -119,9 +120,9 @@ export const nodeBase = defineComponent({
 	},
 	methods: {
 		__addEndpointTestingData(endpoint: Endpoint, type: string, inputIndex: number) {
-			if (window?.Cypress && 'canvas' in endpoint.endpoint) {
+			if (window?.Cypress && 'canvas' in endpoint.endpoint && this.instance) {
 				const canvas = endpoint.endpoint.canvas;
-				this.instance.setAttribute(canvas, 'data-endpoint-name', this.data.name);
+				this.instance.setAttribute(canvas, 'data-endpoint-name', this.data?.name ?? '');
 				this.instance.setAttribute(canvas, 'data-input-index', inputIndex.toString());
 				this.instance.setAttribute(canvas, 'data-endpoint-type', type);
 			}
@@ -216,7 +217,11 @@ export const nodeBase = defineComponent({
 					spacerIndexes,
 				)[rootTypeIndex];
 
-				const scope = NodeViewUtils.getEndpointScope(inputName as NodeConnectionType);
+				if (!isValidNodeConnectionType(inputName)) {
+					return;
+				}
+
+				const scope = NodeViewUtils.getEndpointScope(inputName);
 
 				const newEndpointData: EndpointOptions = {
 					uuid: NodeViewUtils.getInputEndpointUUID(this.nodeId, inputName, typeIndex),
@@ -252,15 +257,15 @@ export const nodeBase = defineComponent({
 				};
 
 				const endpoint = this.instance?.addEndpoint(
-					this.$refs[this.data.name] as Element,
+					this.$refs[this.data?.name ?? ''] as Element,
 					newEndpointData,
 				) as Endpoint;
 				this.__addEndpointTestingData(endpoint, 'input', typeIndex);
-				if (inputConfiguration.displayName || nodeTypeData.inputNames?.[i]) {
+				if (inputConfiguration.displayName ?? nodeTypeData.inputNames?.[i]) {
 					// Apply input names if they got set
 					endpoint.addOverlay(
 						NodeViewUtils.getInputNameOverlay(
-							inputConfiguration.displayName || nodeTypeData.inputNames[i],
+							inputConfiguration.displayName ?? nodeTypeData.inputNames?.[i] ?? '',
 							inputName,
 							inputConfiguration.required,
 						),
@@ -288,7 +293,7 @@ export const nodeBase = defineComponent({
 				// }
 			});
 			if (sortedInputs.length === 0) {
-				this.instance.manage(this.$refs[this.data.name] as Element);
+				this.instance?.manage(this.$refs[this.data?.name ?? ''] as Element);
 			}
 		},
 		getSpacerIndexes(
@@ -349,6 +354,10 @@ export const nodeBase = defineComponent({
 				[key: string]: number;
 			} = {};
 
+			if (!this.data) {
+				return;
+			}
+
 			this.outputs = NodeHelpers.getNodeOutputs(this.workflow, this.data, nodeTypeData) || [];
 
 			// TODO: There are still a lot of references of "main" in NodesView and
@@ -380,7 +389,7 @@ export const nodeBase = defineComponent({
 
 			const endpointLabelLength = getEndpointLabelLength(maxLabelLength);
 
-			this.outputs.forEach((value, i) => {
+			this.outputs.forEach((_value, i) => {
 				const outputConfiguration = outputConfigurations[i];
 
 				const outputName: ConnectionTypes = outputConfiguration.type;
@@ -419,7 +428,11 @@ export const nodeBase = defineComponent({
 					outputsOfSameRootType.length,
 				)[rootTypeIndex];
 
-				const scope = NodeViewUtils.getEndpointScope(outputName as NodeConnectionType);
+				if (!isValidNodeConnectionType(outputName)) {
+					return;
+				}
+
+				const scope = NodeViewUtils.getEndpointScope(outputName);
 
 				const newEndpointData: EndpointOptions = {
 					uuid: NodeViewUtils.getOutputEndpointUUID(this.nodeId, outputName, typeIndex),
@@ -448,13 +461,17 @@ export const nodeBase = defineComponent({
 					...this.__getOutputConnectionStyle(outputName, outputConfiguration, nodeTypeData),
 				};
 
-				const endpoint = this.instance.addEndpoint(
-					this.$refs[this.data.name] as Element,
+				const endpoint = this.instance?.addEndpoint(
+					this.$refs[this.data?.name ?? ''] as Element,
 					newEndpointData,
 				);
 
+				if (!endpoint) {
+					return;
+				}
+
 				this.__addEndpointTestingData(endpoint, 'output', typeIndex);
-				if (outputConfiguration.displayName) {
+				if (outputConfiguration.displayName && isValidNodeConnectionType(outputName)) {
 					// Apply output names if they got set
 					const overlaySpec = NodeViewUtils.getOutputNameOverlay(
 						outputConfiguration.displayName,
@@ -514,6 +531,10 @@ export const nodeBase = defineComponent({
 						plusEndpointData.cssClass = `${plusEndpointData.cssClass} ${outputConfiguration?.category}`;
 					}
 
+					if (!this.instance || !this.data) {
+						return;
+					}
+
 					const plusEndpoint = this.instance.addEndpoint(
 						this.$refs[this.data.name] as Element,
 						plusEndpointData,
@@ -556,7 +577,7 @@ export const nodeBase = defineComponent({
 				};
 			}
 
-			if (!Object.values(NodeConnectionType).includes(connectionType as NodeConnectionType)) {
+			if (!isValidNodeConnectionType(connectionType)) {
 				return {};
 			}
 
@@ -614,13 +635,13 @@ export const nodeBase = defineComponent({
 				};
 			}
 
-			if (!Object.values(NodeConnectionType).includes(connectionType as NodeConnectionType)) {
+			if (!isValidNodeConnectionType(connectionType)) {
 				return {};
 			}
 
 			return createSupplementalConnectionType(connectionType);
 		},
-		touchEnd(e: MouseEvent) {
+		touchEnd(_e: MouseEvent) {
 			const deviceSupport = useDeviceSupport();
 			if (deviceSupport.isTouchDevice) {
 				if (this.uiStore.isActionActive('dragActive')) {
@@ -651,7 +672,7 @@ export const nodeBase = defineComponent({
 						this.$emit('deselectAllNodes');
 					}
 
-					if (this.uiStore.isNodeSelected(this.data.name)) {
+					if (this.uiStore.isNodeSelected(this.data?.name ?? '')) {
 						this.$emit('deselectNode', this.name);
 					} else {
 						this.$emit('nodeSelected', this.name);

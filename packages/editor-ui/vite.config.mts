@@ -76,10 +76,8 @@ const plugins = [
 		autoInstall: true,
 	}),
 	vue(),
+	checker({ vueTsc: true })
 ];
-if (process.env.ENABLE_TYPE_CHECKING === 'true') {
-	plugins.push(checker({ vueTsc: true }));
-}
 
 const { SENTRY_AUTH_TOKEN: authToken, RELEASE: release } = process.env;
 if (release && authToken) {

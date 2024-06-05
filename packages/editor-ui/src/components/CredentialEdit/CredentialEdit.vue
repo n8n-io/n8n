@@ -499,7 +499,7 @@ export default defineComponent({
 
 			this.credentialData = {
 				...this.credentialData,
-				scopes,
+				scopes: scopes as unknown as CredentialInformation,
 				homeProject,
 			};
 		} else {
@@ -1164,7 +1164,7 @@ export default defineComponent({
 
 			this.credentialData = {
 				...this.credentialData,
-				scopes,
+				scopes: scopes as unknown as CredentialInformation,
 				homeProject,
 			};
 		},

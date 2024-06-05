@@ -48,7 +48,7 @@ describe('SettingsUsersView', () => {
 		vi.spyOn(rbacStore, 'hasScope').mockReturnValue(true);
 		vi.spyOn(usersStore, 'fetchUsers').mockImplementation(async () => await Promise.resolve());
 		vi.spyOn(usersStore, 'allUsers', 'get').mockReturnValue(users);
-		vi.spyOn(usersStore, 'getUserById', 'get').mockReturnValue(() => loggedInUser);
+		vi.spyOn(usersStore, 'getUserById').mockImplementation(() => loggedInUser);
 		vi.spyOn(projectsStore, 'getAllProjects').mockImplementation(
 			async () => await Promise.resolve(),
 		);

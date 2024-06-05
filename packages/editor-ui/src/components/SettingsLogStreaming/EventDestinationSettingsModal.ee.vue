@@ -179,9 +179,12 @@ import type {
 	INodeCredentials,
 	NodeParameterValue,
 	MessageEventBusDestinationOptions,
+	INodeParameters,
+	NodeParameterValueType,
 } from 'n8n-workflow';
 import {
 	deepCopy,
+	messageEventBusDestinationTypeNames,
 	defaultMessageEventBusDestinationOptions,
 	defaultMessageEventBusDestinationWebhookOptions,
 	MessageEventBusDestinationTypeNames,
@@ -246,7 +249,7 @@ export default defineComponent({
 			showRemoveConfirm: false,
 			typeSelectValue: '',
 			typeSelectPlaceholder: 'Destination Type',
-			nodeParameters: deepCopy(defaultMessageEventBusDestinationOptions),
+			nodeParameters: deepCopy(defaultMessageEventBusDestinationOptions) as INodeParameters,
 			webhookDescription: webhookModalDescription,
 			sentryDescription: sentryModalDescription,
 			syslogDescription: syslogModalDescription,
@@ -261,7 +264,7 @@ export default defineComponent({
 		...mapStores(useUIStore, useLogStreamingStore, useNDVStore, useWorkflowsStore),
 		typeSelectOptions(): Array<{ value: string; label: BaseTextKey }> {
 			const options: Array<{ value: string; label: BaseTextKey }> = [];
-			for (const t of Object.values(MessageEventBusDestinationTypeNames)) {
+			for (const t of messageEventBusDestinationTypeNames) {
 				if (t === MessageEventBusDestinationTypeNames.abstract) {
 					continue;
 				}
@@ -325,7 +328,8 @@ export default defineComponent({
 						if (arg.name === this.destination.id) {
 							if ('credentials' in arg.properties) {
 								this.unchanged = false;
-								this.nodeParameters.credentials = arg.properties.credentials as INodeCredentials;
+								this.nodeParameters.credentials = arg.properties
+									.credentials as NodeParameterValueType;
 							}
 						}
 					}
@@ -350,7 +354,7 @@ export default defineComponent({
 			this.workflowsStore.removeNode(this.node);
 			this.ndvStore.activeNodeName = options.id ?? 'thisshouldnothappen';
 			this.workflowsStore.addNode(destinationToFakeINodeUi(options));
-			this.nodeParameters = options;
+			this.nodeParameters = options as INodeParameters;
 			this.logStreamingStore.items[this.destination.id].destination = options;
 		},
 		onTypeSelectInput(destinationType: MessageEventBusDestinationTypeNames) {
@@ -456,7 +460,9 @@ export default defineComponent({
 		onModalClose() {
 			if (!this.hasOnceBeenSaved) {
 				this.workflowsStore.removeNode(this.node);
-				this.logStreamingStore.removeDestination(this.nodeParameters.id!);
+				if (this.nodeParameters.id) {
+					this.logStreamingStore.removeDestination(this.nodeParameters.id.toString());
+				}
 			}
 			this.ndvStore.activeNodeName = null;
 			this.callEVentBus('closing', this.destination.id);
@@ -474,7 +480,9 @@ export default defineComponent({
 				this.callEVentBus('destinationWasSaved', this.destination.id);
 				this.uiStore.stateIsDirty = false;
 
-				const destinationType = (this.nodeParameters.__type ?? 'unknown')
+				const destinationType = (
+					this.nodeParameters.__type ? `${this.nodeParameters.__type}` : 'unknown'
+				)
 					.replace('$$MessageEventBusDestination', '')
 					.toLowerCase();
 

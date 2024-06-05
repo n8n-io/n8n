@@ -9,7 +9,7 @@ import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
 import RBAC from '@/components/RBAC.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 
-export const GlobalComponentsPlugin: Plugin<{}> = {
+export const GlobalComponentsPlugin: Plugin = {
 	install(app) {
 		const messageService = useMessage();
 

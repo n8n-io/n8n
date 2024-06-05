@@ -2,6 +2,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import ProjectTabs from '@/features/projects/components/ProjectTabs.vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useProjectsStore } from '@/features/projects/projects.store';
+import { createTestProject } from '@/__tests__/data/projects';
 
 vi.mock('vue-router', () => {
 	const params = {};
@@ -52,17 +53,14 @@ describe('ProjectTabs', () => {
 
 	it('should render project tabs if use has permissions', () => {
 		route.params.projectId = '123';
-		vi.mocked(useProjectsStore).mockImplementationOnce(() => ({
-			currentProject: {
-				id: '123',
-				type: 'team',
-				name: 'Project',
-				relations: [],
-				scopes: ['project:update'],
-				createdAt: '',
-				updatedAt: '',
-			},
-		}));
+		vi.mocked(useProjectsStore).mockImplementationOnce(
+			() =>
+				({
+					currentProject: createTestProject({
+						scopes: ['project:update'],
+					}),
+				}) as ReturnType<typeof useProjectsStore>,
+		);
 		const { getByText } = renderComponent();
 
 		expect(getByText('Workflows')).toBeInTheDocument();
@@ -72,17 +70,14 @@ describe('ProjectTabs', () => {
 
 	it('should render project tabs', () => {
 		route.params.projectId = '123';
-		vi.mocked(useProjectsStore).mockImplementationOnce(() => ({
-			currentProject: {
-				id: '123',
-				type: 'team',
-				name: 'Project',
-				relations: [],
-				scopes: ['project:read'],
-				createdAt: '',
-				updatedAt: '',
-			},
-		}));
+		vi.mocked(useProjectsStore).mockImplementationOnce(
+			() =>
+				({
+					currentProject: createTestProject({
+						scopes: ['project:read'],
+					}),
+				}) as ReturnType<typeof useProjectsStore>,
+		);
 		const { queryByText, getByText } = renderComponent();
 
 		expect(getByText('Workflows')).toBeInTheDocument();

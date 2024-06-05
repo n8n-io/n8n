@@ -236,7 +236,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 				};
 			}
 		},
-		enableOAuthCredential(credential: ICredentialsResponse): void {
+		enableOAuthCredential(_credential: ICredentialsResponse): void {
 			// enable oauth event to track change between modals
 		},
 		async fetchCredentialTypes(forceFetch: boolean): Promise<void> {

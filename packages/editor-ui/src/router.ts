@@ -14,7 +14,7 @@ import { useSSOStore } from '@/stores/sso.store';
 import { EnterpriseEditionFeature, VIEWS, EDITABLE_CANVAS_VIEWS } from '@/constants';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { middleware } from '@/rbac/middleware';
-import type { RouteConfig, RouterMiddleware } from '@/types/router';
+import type { RouterMiddleware } from '@/types/router';
 import { initializeCore } from '@/init';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { projectsRoutes } from '@/features/projects/projects.routes';
@@ -60,17 +60,17 @@ const WorkerView = async () => await import('./views/WorkerView.vue');
 const WorkflowHistory = async () => await import('@/views/WorkflowHistory.vue');
 const WorkflowOnboardingView = async () => await import('@/views/WorkflowOnboardingView.vue');
 
-function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]) {
+function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: string } | false {
 	const settingsStore = useSettingsStore();
 	const isTemplatesEnabled: boolean = settingsStore.isTemplatesEnabled;
 	if (!isTemplatesEnabled) {
-		return { name: defaultRedirect || VIEWS.NOT_FOUND };
+		return { name: `${defaultRedirect}` || VIEWS.NOT_FOUND };
 	}
 
 	return false;
 }
 
-export const routes = [
+export const routes: RouteRecordRaw[] = [
 	{
 		path: '/',
 		redirect: '/home/workflows',
@@ -741,7 +741,7 @@ export const routes = [
 			},
 		},
 	},
-] as Array<RouteRecordRaw & RouteConfig>;
+];
 
 function withCanvasReadOnlyMeta(route: RouteRecordRaw) {
 	if (!route.meta) {
@@ -758,7 +758,7 @@ function withCanvasReadOnlyMeta(route: RouteRecordRaw) {
 
 const router = createRouter({
 	history: createWebHistory(import.meta.env.DEV ? '/' : window.BASE_PATH ?? '/'),
-	scrollBehavior(to: RouteLocationNormalized & RouteConfig, _, savedPosition) {
+	scrollBehavior(to: RouteLocationNormalized, _, savedPosition) {
 		// saved position == null means the page is NOT visited from history (back button)
 		if (savedPosition === null && to.name === VIEWS.TEMPLATES && to.meta?.setScrollPosition) {
 			// for templates view, reset scroll position in this case
@@ -768,7 +768,7 @@ const router = createRouter({
 	routes: routes.map(withCanvasReadOnlyMeta),
 });
 
-router.beforeEach(async (to: RouteLocationNormalized & RouteConfig, from, next) => {
+router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 	try {
 		/**
 		 * Initialize application core

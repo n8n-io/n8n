@@ -134,16 +134,6 @@ export type EndpointStyle = {
 	hoverMessage?: string;
 };
 
-export type EndpointMeta = {
-	__meta?: {
-		nodeName: string;
-		nodeId: string;
-		index: number;
-		totalEndpoints: number;
-		endpointLabelLength: number;
-	};
-};
-
 export interface IUpdateInformation<T extends NodeParameterValueType = NodeParameterValueType> {
 	name: string;
 	key?: string;

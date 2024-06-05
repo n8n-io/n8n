@@ -177,10 +177,11 @@ export async function patch(
  */
 export function unflattenExecutionData(
 	fullExecutionData: IExecutionFlattedResponse,
-): Omit<IExecutionResponse, 'status'> {
+): IExecutionResponse {
 	// Unflatten the data
-	const returnData: Omit<IExecutionResponse, 'status'> = {
+	const returnData: IExecutionResponse = {
 		...fullExecutionData,
+		status: 'unknown',
 		workflowData: fullExecutionData.workflowData,
 		data: parse(fullExecutionData.data),
 	};

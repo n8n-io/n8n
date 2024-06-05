@@ -90,7 +90,7 @@ import type {
 	ProjectSharingData,
 	Project,
 } from '@/features/projects/projects.types';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
 import type { PermissionsMap } from '@/permissions';
 import type { CredentialScope } from '@n8n/permissions';
 import type { EventBus } from 'n8n-design-system/utils';
@@ -162,7 +162,11 @@ export default defineComponent({
 			return this.credentialsStore.getCredentialOwnerNameById(`${this.credentialId}`);
 		},
 		isCredentialSharedWithCurrentUser(): boolean {
-			return (this.credentialData.sharedWithProjects ?? []).some((sharee: IUser) => {
+			return (
+				Array.isArray(this.credentialData.sharedWithProjects)
+					? this.credentialData.sharedWithProjects
+					: []
+			).some((sharee) => {
 				return sharee.id === this.usersStore.currentUser?.id;
 			});
 		},
@@ -170,7 +174,7 @@ export default defineComponent({
 			return this.projectsStore.personalProjects.filter(
 				(project) =>
 					project.id !== this.credential?.homeProject?.id &&
-					project.id !== this.credentialData?.homeProject?.id,
+					project.id !== (this.credentialData?.homeProject as IDataObject)?.id,
 			);
 		},
 		homeProject(): ProjectSharingData | undefined {
