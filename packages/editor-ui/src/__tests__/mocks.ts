@@ -13,7 +13,7 @@ import { NodeHelpers, Workflow } from 'n8n-workflow';
 import { uuid } from '@jsplumb/util';
 import { defaultMockNodeTypes } from '@/__tests__/defaults';
 import type { INodeUi, ITag, IUsedCredential, IWorkflowDb, WorkflowMetadata } from '@/Interface';
-import type { ProjectSharingData } from '@/features/projects/projects.types';
+import type { ProjectSharingData } from '@/types/projects.types';
 import type { RouteLocationNormalized } from 'vue-router';
 
 export function createTestNodeTypes(data: INodeTypeData = {}): INodeTypes {
