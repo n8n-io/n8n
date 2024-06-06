@@ -260,7 +260,16 @@ describe('GET /credentials/:id', () => {
 			.get(`/credentials/${savedCredential.id}`);
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data).toBeDefined();
+		expect(response.body.data).toMatchObject({
+			id: savedCredential.id,
+			shared: [{ projectId: teamProject.id, role: 'credential:owner' }],
+			homeProject: {
+				id: teamProject.id,
+			},
+			sharedWithProjects: [],
+			scopes: ['credential:read'],
+		});
+		expect(response.body.data.data).toBeUndefined();
 	});
 
 	test('should retrieve owned cred for owner', async () => {
