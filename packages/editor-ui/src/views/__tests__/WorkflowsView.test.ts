@@ -7,7 +7,7 @@ import WorkflowsView from '@/views/WorkflowsView.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { createComponentRenderer } from '@/__tests__/render';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useProjectsStore } from '@/stores/projects.store';
 
 const originalOffsetHeight = Object.getOwnPropertyDescriptor(
 	HTMLElement.prototype,

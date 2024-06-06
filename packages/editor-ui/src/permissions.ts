@@ -6,7 +6,7 @@ import type {
 	WorkflowScope,
 	VariableScope,
 } from '@n8n/permissions';
-import type { Project } from './features/projects/projects.types';
+import type { Project } from '@/types/projects.types';
 
 type ExtractAfterColon<T> = T extends `${infer _Prefix}:${infer Suffix}` ? Suffix : never;
 export type PermissionsMap<T> = {
