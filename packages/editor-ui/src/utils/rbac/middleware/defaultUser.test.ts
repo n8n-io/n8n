@@ -1,6 +1,6 @@
 import { useUsersStore } from '@/stores/users.store';
 import { VIEWS } from '@/constants';
-import { defaultUserMiddleware } from '@/rbac/middleware/defaultUser';
+import { defaultUserMiddleware } from '@/utils/rbac/middleware/defaultUser';
 import type { RouteLocationNormalized } from 'vue-router';
 
 vi.mock('@/stores/users.store', () => ({

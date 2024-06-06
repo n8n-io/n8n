@@ -1,5 +1,5 @@
 import { useUsersStore } from '@/stores/users.store';
-import { isInstanceOwner } from '@/rbac/checks/isInstanceOwner';
+import { isInstanceOwner } from '@/utils/rbac/checks/isInstanceOwner';
 
 vi.mock('@/stores/users.store', () => ({
 	useUsersStore: vi.fn(),

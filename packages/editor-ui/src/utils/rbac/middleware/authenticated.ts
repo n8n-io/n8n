@@ -1,7 +1,7 @@
 import type { RouterMiddleware } from '@/types/router';
 import { VIEWS } from '@/constants';
 import type { AuthenticatedPermissionOptions } from '@/types/rbac';
-import { isAuthenticated } from '@/rbac/checks';
+import { isAuthenticated } from '@/utils/rbac/checks';
 
 export const authenticatedMiddleware: RouterMiddleware<AuthenticatedPermissionOptions> = async (
 	to,

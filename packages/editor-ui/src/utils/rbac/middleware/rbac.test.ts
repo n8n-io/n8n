@@ -1,5 +1,5 @@
 import { useRBACStore } from '@/stores/rbac.store';
-import { rbacMiddleware } from '@/rbac/middleware/rbac';
+import { rbacMiddleware } from '@/utils/rbac/middleware/rbac';
 import { VIEWS } from '@/constants';
 import {
 	inferProjectIdFromRoute,

@@ -1,6 +1,6 @@
 import { useSettingsStore } from '@/stores/settings.store';
 import { VIEWS, EnterpriseEditionFeature } from '@/constants';
-import { enterpriseMiddleware } from '@/rbac/middleware/enterprise';
+import { enterpriseMiddleware } from '@/utils/rbac/middleware/enterprise';
 import { type RouteLocationNormalized } from 'vue-router';
 import type { EnterprisePermissionOptions } from '@/types/rbac';
 

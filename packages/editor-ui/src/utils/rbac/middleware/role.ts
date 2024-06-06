@@ -1,7 +1,7 @@
 import type { RouterMiddleware } from '@/types/router';
 import type { RolePermissionOptions } from '@/types/rbac';
 import { VIEWS } from '@/constants';
-import { hasRole } from '@/rbac/checks';
+import { hasRole } from '@/utils/rbac/checks';
 
 export const roleMiddleware: RouterMiddleware<RolePermissionOptions> = async (
 	_to,

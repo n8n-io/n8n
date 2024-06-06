@@ -1,4 +1,4 @@
-import { authenticatedMiddleware } from '@/rbac/middleware/authenticated';
+import { authenticatedMiddleware } from '@/utils/rbac/middleware/authenticated';
 import { useUsersStore } from '@/stores/users.store';
 import { VIEWS } from '@/constants';
 import type { RouteLocationNormalized } from 'vue-router';

@@ -1,5 +1,5 @@
 import { useRBACStore } from '@/stores/rbac.store';
-import { hasScope } from '@/rbac/checks/hasScope';
+import { hasScope } from '@/utils/rbac/checks/hasScope';
 import type { ScopeOptions } from '@n8n/permissions';
 
 vi.mock('@/stores/rbac.store', () => ({

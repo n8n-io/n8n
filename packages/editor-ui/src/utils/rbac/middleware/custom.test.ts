@@ -1,4 +1,4 @@
-import { customMiddleware } from '@/rbac/middleware/custom';
+import { customMiddleware } from '@/utils/rbac/middleware/custom';
 import type { RouteLocationNormalized } from 'vue-router';
 import { VIEWS } from '@/constants';
 

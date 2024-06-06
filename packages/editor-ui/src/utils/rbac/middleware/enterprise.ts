@@ -1,7 +1,7 @@
 import type { RouterMiddleware } from '@/types/router';
 import { VIEWS } from '@/constants';
 import type { EnterprisePermissionOptions } from '@/types/rbac';
-import { isEnterpriseFeatureEnabled } from '@/rbac/checks';
+import { isEnterpriseFeatureEnabled } from '@/utils/rbac/checks';
 
 export const enterpriseMiddleware: RouterMiddleware<EnterprisePermissionOptions> = async (
 	_to,

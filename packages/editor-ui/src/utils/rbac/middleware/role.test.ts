@@ -1,4 +1,4 @@
-import { roleMiddleware } from '@/rbac/middleware/role';
+import { roleMiddleware } from '@/utils/rbac/middleware/role';
 import { useUsersStore } from '@/stores/users.store';
 import type { IUser } from '@/Interface';
 import type { RouteLocationNormalized } from 'vue-router';

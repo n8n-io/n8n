@@ -1,7 +1,7 @@
-import { hasPermission } from '@/rbac/permissions';
-import * as checks from '@/rbac/checks';
+import { hasPermission } from '@/utils/rbac/permissions';
+import * as checks from '@/utils/rbac/checks';
 
-vi.mock('@/rbac/checks', () => ({
+vi.mock('@/utils/rbac/checks', () => ({
 	hasRole: vi.fn(),
 	hasScope: vi.fn(),
 	isGuest: vi.fn(),

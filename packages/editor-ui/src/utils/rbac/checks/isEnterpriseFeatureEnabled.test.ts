@@ -1,5 +1,5 @@
 import { useSettingsStore } from '@/stores/settings.store';
-import { isEnterpriseFeatureEnabled } from '@/rbac/checks/isEnterpriseFeatureEnabled';
+import { isEnterpriseFeatureEnabled } from '@/utils/rbac/checks/isEnterpriseFeatureEnabled';
 import { EnterpriseEditionFeature } from '@/constants';
 
 vi.mock('@/stores/settings.store', () => ({

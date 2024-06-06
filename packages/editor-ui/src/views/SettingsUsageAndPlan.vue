@@ -8,7 +8,7 @@ import { i18n as locale } from '@/plugins/i18n';
 import { useUIStore } from '@/stores/ui.store';
 import { N8N_PRICING_PAGE_URL } from '@/constants';
 import { useToast } from '@/composables/useToast';
-import { hasPermission } from '@/rbac/permissions';
+import { hasPermission } from '@/utils/rbac/permissions';
 
 const usageStore = useUsageStore();
 const route = useRoute();

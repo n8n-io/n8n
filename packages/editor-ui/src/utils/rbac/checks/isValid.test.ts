@@ -1,4 +1,4 @@
-import { isValid } from '@/rbac/checks/isValid';
+import { isValid } from '@/utils/rbac/checks/isValid';
 
 describe('Checks', () => {
 	describe('isValid()', () => {

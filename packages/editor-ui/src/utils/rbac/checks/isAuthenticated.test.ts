@@ -1,5 +1,5 @@
 import { useUsersStore } from '@/stores/users.store';
-import { isAuthenticated } from '@/rbac/checks/isAuthenticated';
+import { isAuthenticated } from '@/utils/rbac/checks/isAuthenticated';
 import type { IUser } from '@/Interface';
 
 vi.mock('@/stores/users.store', () => ({

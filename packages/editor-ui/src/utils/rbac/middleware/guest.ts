@@ -1,7 +1,7 @@
 import type { RouterMiddleware } from '@/types/router';
 import { VIEWS } from '@/constants';
 import type { GuestPermissionOptions } from '@/types/rbac';
-import { isGuest } from '@/rbac/checks';
+import { isGuest } from '@/utils/rbac/checks';
 
 export const guestMiddleware: RouterMiddleware<GuestPermissionOptions> = async (
 	to,

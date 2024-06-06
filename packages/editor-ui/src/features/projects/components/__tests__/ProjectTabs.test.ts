@@ -27,7 +27,7 @@ vi.mock('@/features/projects/projects.store', () => ({
 	useProjectsStore: vi.fn().mockReturnValue({}),
 }));
 
-vi.mock('@/rbac/permissions', () => ({
+vi.mock('@/utils/rbac/permissions', () => ({
 	hasPermission: vi.fn().mockReturnValue(false),
 }));
 

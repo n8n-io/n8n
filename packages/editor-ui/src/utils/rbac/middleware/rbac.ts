@@ -6,7 +6,7 @@ import {
 	inferResourceTypeFromRoute,
 } from '@/utils/rbacUtils';
 import type { RBACPermissionOptions } from '@/types/rbac';
-import { hasScope } from '@/rbac/checks';
+import { hasScope } from '@/utils/rbac/checks';
 
 export const rbacMiddleware: RouterMiddleware<RBACPermissionOptions> = async (
 	to,

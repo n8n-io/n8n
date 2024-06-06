@@ -7,7 +7,7 @@ import {
 	isEnterpriseFeatureEnabled,
 	isGuest,
 	isValid,
-} from '@/rbac/checks';
+} from '@/utils/rbac/checks';
 import type { PermissionType, PermissionTypeOptions, RBACPermissionCheck } from '@/types/rbac';
 
 type Permissions = {

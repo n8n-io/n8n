@@ -8,7 +8,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { getAdminPanelLoginCode, getCurrentPlan, getCurrentUsage } from '@/api/cloudPlans';
 import { DateTime } from 'luxon';
 import { CLOUD_TRIAL_CHECK_INTERVAL, STORES } from '@/constants';
-import { hasPermission } from '@/rbac/permissions';
+import { hasPermission } from '@/utils/rbac/permissions';
 
 const DEFAULT_STATE: CloudPlanState = {
 	initialized: false,

@@ -1,5 +1,5 @@
 import { useUsersStore } from '@/stores/users.store';
-import { isGuest } from '@/rbac/checks/isGuest';
+import { isGuest } from '@/utils/rbac/checks/isGuest';
 
 vi.mock('@/stores/users.store', () => ({
 	useUsersStore: vi.fn(),

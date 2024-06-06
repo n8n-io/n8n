@@ -1,5 +1,5 @@
 import { useUsersStore } from '@/stores/users.store';
-import { hasRole } from '@/rbac/checks';
+import { hasRole } from '@/utils/rbac/checks';
 import { ROLE } from '@/constants';
 
 vi.mock('@/stores/users.store', () => ({
