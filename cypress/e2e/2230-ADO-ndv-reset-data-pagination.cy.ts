@@ -1,10 +1,4 @@
-import { v4 as uuid } from 'uuid';
-import { getVisibleSelect } from '../utils';
-import { MANUAL_TRIGGER_NODE_DISPLAY_NAME } from '../constants';
 import { NDV, WorkflowPage } from '../pages';
-import { NodeCreator } from '../pages/features/node-creator';
-import { clickCreateNewCredential } from '../composables/ndv';
-import { setCredentialValues } from '../composables/modals/credential-modal';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
