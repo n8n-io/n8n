@@ -1,4 +1,4 @@
-import { splitName } from '@/features/projects/projects.utils';
+import { splitName } from '@/utils/projects.utils';
 
 describe('splitName', () => {
 	it('should return name as firstName if it is only one word', () => {

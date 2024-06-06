@@ -402,7 +402,7 @@ import { useAIStore } from '@/stores/ai.store';
 import { useStorage } from '@/composables/useStorage';
 import { isJSPlumbEndpointElement, isJSPlumbConnection } from '@/utils/typeGuards';
 import { usePostHog } from '@/stores/posthog.store';
-import { ProjectTypes } from '@/features/projects/projects.utils';
+import { ProjectTypes } from '@/utils/projects.utils';
 
 interface AddNodeOptions {
 	position?: XYPosition;

@@ -12,7 +12,7 @@ import type {
 } from '@/features/projects/projects.types';
 import { useSettingsStore } from '@/stores/settings.store';
 import { hasPermission } from '@/utils/rbac/permissions';
-import { ProjectTypes } from '@/features/projects/projects.utils';
+import { ProjectTypes } from '@/utils/projects.utils';
 import type { IWorkflowDb } from '@/Interface';
 
 export const useProjectsStore = defineStore('projects', () => {

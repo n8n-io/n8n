@@ -1,7 +1,7 @@
 import type { Scope } from '@n8n/permissions';
 import type { IUserResponse } from '@/Interface';
 import type { ProjectRole } from '@/types/roles.types';
-import type { ProjectTypes } from '@/features/projects/projects.utils';
+import type { ProjectTypes } from '@/utils/projects.utils';
 
 type ProjectTypeKeys = typeof ProjectTypes;
 

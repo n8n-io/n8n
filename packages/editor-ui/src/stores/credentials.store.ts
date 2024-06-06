@@ -36,7 +36,7 @@ import { useNodeTypesStore } from './nodeTypes.store';
 import { useSettingsStore } from './settings.store';
 import { isEmpty } from '@/utils/typesUtils';
 import type { ProjectSharingData } from '@/features/projects/projects.types';
-import { splitName } from '@/features/projects/projects.utils';
+import { splitName } from '@/utils/projects.utils';
 
 const DEFAULT_CREDENTIAL_NAME = 'Unnamed credential';
 const DEFAULT_CREDENTIAL_POSTFIX = 'account';

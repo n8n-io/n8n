@@ -152,7 +152,7 @@ import type {
 } from '@/features/projects/projects.types';
 import { useRolesStore } from '@/stores/roles.store';
 import type { RoleMap } from '@/types/roles.types';
-import { ProjectTypes } from '@/features/projects/projects.utils';
+import { ProjectTypes } from '@/utils/projects.utils';
 
 export default defineComponent({
 	name: 'WorkflowShareModal',
