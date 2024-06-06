@@ -3,6 +3,7 @@ import {
 	type IDataObject,
 	type INodeExecutionData,
 	NodeOperationError,
+	type ResourceMapperField,
 } from 'n8n-workflow';
 import type { SheetProperties, ValueInputOption } from '../../helpers/GoogleSheets.types';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
@@ -233,6 +234,7 @@ export async function execute(
 	}
 
 	if (nodeVersion >= 4.4 && dataMode !== 'autoMapInputData') {
+		//not possible to refresh columns when mode is autoMapInputData
 		const sheetData = await sheet.getData(sheetName, 'FORMATTED_VALUE');
 
 		if (sheetData?.[headerRow - 1] === undefined) {
@@ -242,7 +244,8 @@ export async function execute(
 			);
 		}
 
-		checkForSchemaChanges(this, sheetData[headerRow - 1], nodeVersion);
+		const schema = this.getNodeParameter('columns.schema', 0) as ResourceMapperField[];
+		checkForSchemaChanges(this.getNode(), sheetData[headerRow - 1], schema);
 	}
 
 	let setData: IDataObject[] = [];
