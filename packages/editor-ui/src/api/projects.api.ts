@@ -57,3 +57,11 @@ export const deleteProject = async (
 export const getProjectsCount = async (context: IRestApiContext): Promise<ProjectsCount> => {
 	return await makeRestApiRequest(context, 'GET', '/projects/count');
 };
+
+export const moveResourceToProject = async (
+	context: IRestApiContext,
+	resourceId: string,
+	projectId: string,
+): Promise<void> => {
+	return await makeRestApiRequest(context, 'POST', '/projects/move', { resourceId, projectId });
+};

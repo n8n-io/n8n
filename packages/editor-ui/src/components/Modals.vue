@@ -30,6 +30,8 @@ import {
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 	SETUP_CREDENTIALS_MODAL_KEY,
 	GENERATE_CURL_MODAL_KEY,
+	PROJECT_MOVE_RESOURCE_MODAL,
+	PROJECT_MOVE_RESOURCE_CONFIRM_MODAL,
 } from '@/constants';
 
 import AboutModal from '@/components/AboutModal.vue';
@@ -63,6 +65,8 @@ import ExternalSecretsProviderModal from '@/components/ExternalSecretsProviderMo
 import DebugPaywallModal from '@/components/DebugPaywallModal.vue';
 import WorkflowHistoryVersionRestoreModal from '@/components/WorkflowHistory/WorkflowHistoryVersionRestoreModal.vue';
 import SetupWorkflowCredentialsModal from '@/components/SetupWorkflowCredentialsModal/SetupWorkflowCredentialsModal.vue';
+import ProjectMoveResourceModal from '@/components/Projects/ProjectMoveResourceModal.vue';
+import ProjectMoveResourceConfirmModal from '@/components/Projects/ProjectMoveResourceConfirmModal.vue';
 </script>
 
 <template>
@@ -229,6 +233,24 @@ import SetupWorkflowCredentialsModal from '@/components/SetupWorkflowCredentials
 			<template #default="{ modalName, data }">
 				<SetupWorkflowCredentialsModal
 					data-test-id="setup-workflow-credentials-modal"
+					:modal-name="modalName"
+					:data="data"
+				/>
+			</template>
+		</ModalRoot>
+		<ModalRoot :name="PROJECT_MOVE_RESOURCE_MODAL">
+			<template #default="{ modalName, data }">
+				<ProjectMoveResourceModal
+					data-test-id="project-move-resource-modal"
+					:modal-name="modalName"
+					:data="data"
+				/>
+			</template>
+		</ModalRoot>
+		<ModalRoot :name="PROJECT_MOVE_RESOURCE_CONFIRM_MODAL">
+			<template #default="{ modalName, data }">
+				<ProjectMoveResourceConfirmModal
+					data-test-id="project-move-resource-confirm-modal"
 					:modal-name="modalName"
 					:data="data"
 				/>

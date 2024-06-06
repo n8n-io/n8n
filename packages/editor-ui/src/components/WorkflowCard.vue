@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { IWorkflowDb, IUser } from '@/Interface';
-import { DUPLICATE_MODAL_KEY, MODAL_CONFIRM, VIEWS, WORKFLOW_SHARE_MODAL_KEY } from '@/constants';
+import {
+	DUPLICATE_MODAL_KEY,
+	MODAL_CONFIRM,
+	PROJECT_MOVE_RESOURCE_MODAL,
+	VIEWS,
+	WORKFLOW_SHARE_MODAL_KEY,
+} from '@/constants';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { getWorkflowPermissions } from '@/permissions';
@@ -172,7 +178,7 @@ async function onAction(action: string) {
 			await deleteWorkflow();
 			break;
 		case WORKFLOW_LIST_ITEM_ACTIONS.MOVE:
-			await moveWorkflow();
+			moveWorkflow();
 			break;
 	}
 }
@@ -212,11 +218,12 @@ async function deleteWorkflow() {
 	});
 }
 
-async function moveWorkflow() {
+function moveWorkflow() {
 	uiStore.openModalWithData({
-		name: 'move-workflow',
+		name: PROJECT_MOVE_RESOURCE_MODAL,
 		data: {
-			workflowId: props.data.id,
+			resource: props.data,
+			resourceType: locale.baseText('generic.workflow').toLocaleLowerCase(),
 		},
 	});
 }

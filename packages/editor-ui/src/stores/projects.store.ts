@@ -135,6 +135,10 @@ export const useProjectsStore = defineStore('projects', () => {
 		}
 	};
 
+	const moveResourceToProject = async (resourceId: string, projectId: string) => {
+		await projectsApi.moveResourceToProject(rootStore.getRestApiContext, resourceId, projectId);
+	};
+
 	watch(
 		route,
 		async (newRoute) => {
@@ -188,5 +192,6 @@ export const useProjectsStore = defineStore('projects', () => {
 		deleteProject,
 		getProjectsCount,
 		setProjectNavActiveIdByWorkflowHomeProject,
+		moveResourceToProject,
 	};
 });
