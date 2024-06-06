@@ -83,7 +83,7 @@ import type { IUser } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
 import { createEventBus } from 'n8n-design-system/utils';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectListItem, ProjectSharingData } from '@/types/projects.types';
 import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
 

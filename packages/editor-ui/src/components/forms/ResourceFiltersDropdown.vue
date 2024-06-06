@@ -49,7 +49,7 @@
 import { defineComponent } from 'vue';
 import { EnterpriseEditionFeature } from '@/constants';
 import { mapStores } from 'pinia';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useProjectsStore } from '@/stores/projects.store';
 import type { PropType } from 'vue';
 import type { ProjectSharingData } from '@/types/projects.types';
 import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';

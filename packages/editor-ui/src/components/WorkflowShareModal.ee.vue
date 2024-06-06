@@ -144,7 +144,7 @@ import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { isNavigationFailure } from 'vue-router';
 import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useProjectsStore } from '@/stores/projects.store';
 import {
 	ProjectListItem,
 	ProjectSharingData,

@@ -69,7 +69,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import TimeAgo from '@/components/TimeAgo.vue';
 import type { ProjectSharingData } from '@/types/projects.types';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useProjectsStore } from '@/stores/projects.store';
 import ProjectCardBadge from '@/features/projects/components/ProjectCardBadge.vue';
 
 export const WORKFLOW_LIST_ITEM_ACTIONS = {

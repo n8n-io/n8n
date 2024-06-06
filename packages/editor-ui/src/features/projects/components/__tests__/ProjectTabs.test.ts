@@ -1,7 +1,7 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import ProjectTabs from '@/features/projects/components/ProjectTabs.vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useProjectsStore } from '@/stores/projects.store';
 
 vi.mock('vue-router', () => {
 	const params = {};

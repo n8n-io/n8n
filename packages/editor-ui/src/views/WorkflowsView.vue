@@ -158,7 +158,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useProjectsStore } from '@/stores/projects.store';
 import ProjectTabs from '@/features/projects/components/ProjectTabs.vue';
 import { useTemplatesStore } from '@/stores/templates.store';
 

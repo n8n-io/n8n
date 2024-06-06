@@ -5,7 +5,7 @@ import { deepCopy } from 'n8n-workflow';
 import { useUsersStore } from '@/stores/users.store';
 import type { IUser } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useProjectsStore } from '@/stores/projects.store';
 import ProjectTabs from '@/features/projects/components/ProjectTabs.vue';
 import type { Project, ProjectRelation } from '@/types/projects.types';
 import { useToast } from '@/composables/useToast';

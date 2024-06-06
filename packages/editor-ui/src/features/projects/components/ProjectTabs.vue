@@ -4,7 +4,7 @@ import type { RouteRecordName } from 'vue-router';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
-import { useProjectsStore } from '../projects.store';
+import { useProjectsStore } from '@/stores/projects.store';
 import { getProjectPermissions } from '@/permissions';
 
 const locale = useI18n();

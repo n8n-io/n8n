@@ -5,7 +5,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { getDropdownItems } from '@/__tests__/utils';
 import { useRoute, useRouter } from 'vue-router';
 import ProjectSettings from '@/features/projects/components/ProjectSettings.vue';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useProjectsStore } from '@/stores/projects.store';
 import { VIEWS } from '@/constants';
 import { useUsersStore } from '@/stores/users.store';
 import { createProjectListItem } from '@/__tests__/data/projects';

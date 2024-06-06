@@ -168,7 +168,7 @@ import {
 import { isValidCredentialResponse, isCredentialModalState } from '@/utils/typeGuards';
 import { isExpression, isTestableExpression } from '@/utils/expressions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useProjectsStore } from '@/stores/projects.store';
 import type { CredentialScope } from '@n8n/permissions';
 
 export default defineComponent({
