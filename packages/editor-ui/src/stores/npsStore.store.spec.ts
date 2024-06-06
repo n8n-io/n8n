@@ -59,7 +59,7 @@ describe('useNpsSurvey', () => {
 		expect(npsSurveyShown).not.toHaveBeenCalled();
 	});
 
-	it('shows values survey if user activated more than 3 days ago and has yet to see survey', () => {
+	it('shows nps survey if user activated more than 3 days ago and has yet to see survey', () => {
 		npsSurveyStore.setupNpsSurveyOnLogin({
 			userActivated: true,
 			userActivatedAt: NOW - THREE_DAYS_IN_MILLIS - 10000,
