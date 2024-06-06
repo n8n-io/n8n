@@ -55,7 +55,7 @@ import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 import type { Component } from 'vue';
 import type { Scope } from '@n8n/permissions';
 import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
-import type { ProjectSharingData } from '@/features/projects/projects.types';
+import type { ProjectSharingData } from '@/types/projects.types';
 import type { Connection } from '@jsplumb/core';
 import type { BaseTextKey } from './plugins/i18n';
 
@@ -930,6 +930,7 @@ export type SimplifiedNodeType = Pick<
 	| 'group'
 	| 'icon'
 	| 'iconUrl'
+	| 'iconColor'
 	| 'badgeIconUrl'
 	| 'codex'
 	| 'defaults'

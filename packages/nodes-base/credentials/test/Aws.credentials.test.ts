@@ -22,7 +22,7 @@ describe('Aws Credential', () => {
 		expect(aws.name).toBe('aws');
 		expect(aws.displayName).toBe('AWS');
 		expect(aws.documentationUrl).toBe('aws');
-		expect(aws.icon).toBe('file:icons/AWS.svg');
+		expect(aws.icon).toEqual({ light: 'file:icons/AWS.svg', dark: 'file:icons/AWS.dark.svg' });
 		expect(aws.properties.length).toBeGreaterThan(0);
 		expect(aws.test.request.baseURL).toBe('=https://sts.{{$credentials.region}}.amazonaws.com');
 		expect(aws.test.request.url).toBe('?Action=GetCallerIdentity&Version=2011-06-15');

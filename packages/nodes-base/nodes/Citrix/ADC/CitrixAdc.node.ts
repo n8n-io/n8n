@@ -17,7 +17,7 @@ export class CitrixAdc implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Citrix ADC',
 		name: 'citrixAdc',
-		icon: 'file:citrix.svg',
+		icon: { light: 'file:citrix.svg', dark: 'file:citrix.dark.svg' },
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

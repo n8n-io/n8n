@@ -6,7 +6,7 @@ import { getDropdownItems } from '@/__tests__/utils';
 import ModalRoot from '@/components/ModalRoot.vue';
 import DeleteUserModal from '@/components/DeleteUserModal.vue';
 import SettingsUsersView from '@/views/SettingsUsersView.vue';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useProjectsStore } from '@/stores/projects.store';
 import { useUsersStore } from '@/stores/users.store';
 import { createUser } from '@/__tests__/data/users';
 import { createProjectListItem } from '@/__tests__/data/projects';
