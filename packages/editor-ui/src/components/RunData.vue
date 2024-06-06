@@ -1518,6 +1518,7 @@ export default defineComponent({
 				return inputData;
 			}
 
+			this.currentPage = 1;
 			return inputData.filter(({ json }) => searchInObject(json, this.search));
 		},
 		getDataCount(
