@@ -6,6 +6,7 @@ import type {
 	ICredentialType,
 	IHttpRequestHelper,
 	INodeProperties,
+	Icon,
 } from 'n8n-workflow';
 
 export class ZscalerZiaApi implements ICredentialType {
@@ -15,7 +16,7 @@ export class ZscalerZiaApi implements ICredentialType {
 
 	documentationUrl = 'zscalerzia';
 
-	icon = 'file:icons/Zscaler.svg';
+	icon: Icon = 'file:icons/Zscaler.svg';
 
 	httpRequestNode = {
 		name: 'Zscaler ZIA',

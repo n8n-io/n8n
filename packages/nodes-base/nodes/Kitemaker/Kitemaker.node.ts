@@ -40,7 +40,7 @@ export class Kitemaker implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Kitemaker',
 		name: 'kitemaker',
-		icon: 'file:kitemaker.svg',
+		icon: { light: 'file:kitemaker.svg', dark: 'file:kitemaker.dark.svg' },
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
