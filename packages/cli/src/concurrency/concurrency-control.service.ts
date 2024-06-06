@@ -113,15 +113,15 @@ export class ConcurrencyControlService {
 	// ----------------------------------
 
 	private getProductionLimit() {
-		const envCap = config.getEnv('executions.concurrency.productionLimit');
+		const envLimit = config.getEnv('executions.concurrency.productionLimit');
 
 		if (config.getEnv('deployment.type') === 'cloud') {
-			if (process.env.N8N_CLOUD_OVERRIDE_CONCURRENCY_PRODUCTION_CAP === 'true') return envCap;
+			if (process.env.N8N_CLOUD_OVERRIDE_CONCURRENCY_PRODUCTION_LIMIT === 'true') return envLimit;
 
 			return this.license.getConcurrencyProductionLimit();
 		}
 
-		return envCap;
+		return envLimit;
 	}
 
 	private logInit() {
