@@ -162,7 +162,12 @@ export function getMessageContent(
 			};
 			break;
 		case 'block':
-			content = jsonParse(this.getNodeParameter('blocksUi', i) as string);
+			const blocksUi = this.getNodeParameter('blocksUi', i) as string | IDataObject;
+			if (typeof blocksUi === 'string') {
+				content = jsonParse(blocksUi);
+			} else {
+				content = blocksUi;
+			}
 
 			if (includeLinkToWorkflow && Array.isArray(content.blocks)) {
 				content.blocks.push({
