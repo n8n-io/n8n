@@ -8,7 +8,7 @@ import type {
 export class ZepApi implements ICredentialType {
 	name = 'zepApi';
 
-	displayName = 'Zep Api';
+	displayName = 'Zep Open Source Api';
 
 	documentationUrl = 'zep';
 
