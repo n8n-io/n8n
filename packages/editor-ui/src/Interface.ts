@@ -930,6 +930,7 @@ export type SimplifiedNodeType = Pick<
 	| 'group'
 	| 'icon'
 	| 'iconUrl'
+	| 'iconColor'
 	| 'badgeIconUrl'
 	| 'codex'
 	| 'defaults'

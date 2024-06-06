@@ -1,4 +1,4 @@
-import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties, Icon } from 'n8n-workflow';
 
 export class MicrosoftEntraOAuth2Api implements ICredentialType {
 	name = 'microsoftEntraOAuth2Api';
@@ -7,7 +7,7 @@ export class MicrosoftEntraOAuth2Api implements ICredentialType {
 
 	extends = ['microsoftOAuth2Api'];
 
-	icon = 'file:icons/Azure.svg';
+	icon: Icon = 'file:icons/Azure.svg';
 
 	documentationUrl = 'microsoftentra';
 
