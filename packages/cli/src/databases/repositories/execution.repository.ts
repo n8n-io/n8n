@@ -607,8 +607,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		await this.update({ id: executionId }, { status: 'canceled', stoppedAt: new Date() });
 	}
 
-	async cancelAllNewExecutions() {
-		await this.update({ status: 'new' }, { status: 'canceled', stoppedAt: new Date() });
+	async cancelMany(executionIds: string[]) {
+		await this.update({ id: In(executionIds) }, { status: 'canceled', stoppedAt: new Date() });
 	}
 
 	// ----------------------------------

@@ -19,6 +19,7 @@ import { isWorkflowIdValid } from '@/utils';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { Logger } from '@/Logger';
 import { ConcurrencyControlService } from './concurrency/concurrency-control.service';
+import config from './config';
 
 @Service()
 export class ActiveExecutions {
@@ -195,13 +196,27 @@ export class ActiveExecutions {
 		return this.getExecution(executionId).status;
 	}
 
+	async cancelEnqueuedExecutionsWithResponsePromises() {
+		const executionIds = Object.entries(this.activeExecutions)
+			.filter(([_, execution]) => execution.status === 'new' && execution.responsePromise)
+			.map(([executionId, _]) => executionId);
+
+		if (executionIds.length === 0) return;
+
+		await this.executionRepository.cancelMany(executionIds);
+
+		this.logger.info('Canceled enqueued executions with response promises', { executionIds });
+	}
+
 	/** Wait for all active executions to finish */
 	async shutdown(cancelAll = false) {
 		let executionIds = Object.keys(this.activeExecutions);
 
 		if (cancelAll) {
-			this.concurrencyControl.removeAll();
-			await this.executionRepository.cancelAllNewExecutions();
+			if (config.getEnv('executions.mode') === 'regular') {
+				this.concurrencyControl.removeAll();
+				await this.cancelEnqueuedExecutionsWithResponsePromises();
+			}
 
 			const stopPromises = executionIds.map(
 				async (executionId) => await this.stopExecution(executionId),

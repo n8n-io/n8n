@@ -288,11 +288,6 @@ export class Start extends BaseCommand {
 
 		await this.initPruning();
 
-		if (config.getEnv('executions.mode') === 'regular') {
-			// cancel any lingering enqueued executions due to instance crash
-			await Container.get(ExecutionRepository).cancelAllNewExecutions();
-		}
-
 		// Start to get active workflows and run their triggers
 		await this.activeWorkflowManager.init();
 
