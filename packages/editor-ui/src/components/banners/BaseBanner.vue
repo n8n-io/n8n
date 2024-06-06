@@ -36,6 +36,7 @@ async function onCloseClick() {
 		icon-size="medium"
 		:round-corners="false"
 		:data-test-id="`banners-${props.name}`"
+		:only-bottom-border="true"
 	>
 		<div :class="[$style.mainContent, !hasTrailingContent ? $style.keepSpace : '']">
 			<slot name="mainContent" />
