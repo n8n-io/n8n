@@ -41,7 +41,7 @@
 			<UpdatesPanel />
 		</ModalRoot>
 
-		<ModalRoot :name="VALUE_SURVEY_MODAL_KEY" :keep-alive="true">
+		<ModalRoot :name="NPS_SURVEY_MODAL_KEY" :keep-alive="true">
 			<template #default="{ active }">
 				<NpsSurvey :is-active="active" />
 			</template>
@@ -187,7 +187,7 @@ import {
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
 	TAGS_MANAGER_MODAL_KEY,
-	VALUE_SURVEY_MODAL_KEY,
+	NPS_SURVEY_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
 	WORKFLOW_LM_CHAT_MODAL_KEY,
@@ -291,7 +291,7 @@ export default defineComponent({
 		WORKFLOW_LM_CHAT_MODAL_KEY,
 		WORKFLOW_SETTINGS_MODAL_KEY,
 		WORKFLOW_SHARE_MODAL_KEY,
-		VALUE_SURVEY_MODAL_KEY,
+		NPS_SURVEY_MODAL_KEY,
 		WORKFLOW_ACTIVE_MODAL_KEY,
 		IMPORT_CURL_MODAL_KEY,
 		GENERATE_CURL_MODAL_KEY,

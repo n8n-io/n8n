@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { VALID_EMAIL_REGEX, VALUE_SURVEY_MODAL_KEY } from '@/constants';
+import { VALID_EMAIL_REGEX, NPS_SURVEY_MODAL_KEY } from '@/constants';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import ModalDrawer from '@/components/ModalDrawer.vue';
 import { useToast } from '@/composables/useToast';
@@ -121,7 +121,7 @@ watch(
 
 <template>
 	<ModalDrawer
-		:name="VALUE_SURVEY_MODAL_KEY"
+		:name="NPS_SURVEY_MODAL_KEY"
 		:event-bus="modalBus"
 		:before-close="closeDialog"
 		:modal="false"

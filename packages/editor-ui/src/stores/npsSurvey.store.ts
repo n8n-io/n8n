@@ -5,7 +5,7 @@ import {
 	SEVEN_DAYS_IN_MILLIS,
 	SIX_MONTHS_IN_MILLIS,
 	THREE_DAYS_IN_MILLIS,
-	VALUE_SURVEY_MODAL_KEY,
+	NPS_SURVEY_MODAL_KEY,
 } from '@/constants';
 import { npsSurveyIgnored, npsSurveyResponded, npsSurveyShown } from '@/api/npsSurvey';
 import { useRootStore } from './n8nRoot.store';
@@ -66,7 +66,7 @@ export const useNpsSurvey = defineStore('npsSurvey', () => {
 			return;
 		}
 
-		useUIStore().openModal(VALUE_SURVEY_MODAL_KEY);
+		useUIStore().openModal(NPS_SURVEY_MODAL_KEY);
 		shouldShowNpsSurveyNext.value = false;
 
 		void npsSurveyShown(useRootStore().getRestApiContext);
