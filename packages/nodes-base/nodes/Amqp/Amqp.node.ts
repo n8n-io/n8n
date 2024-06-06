@@ -19,7 +19,7 @@ export class Amqp implements INodeType {
 		displayName: 'AMQP Sender',
 		name: 'amqp',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:amqp.png',
+		icon: 'file:amqp.svg',
 		group: ['transform'],
 		version: 1,
 		description: 'Sends a raw-message via AMQP 1.0, executed once per item',

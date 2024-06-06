@@ -17,7 +17,7 @@ export class GoogleTasks implements INodeType {
 		displayName: 'Google Tasks',
 		name: 'googleTasks',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:googleTasks.png',
+		icon: 'file:googleTasks.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

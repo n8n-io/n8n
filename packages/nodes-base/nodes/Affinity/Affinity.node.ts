@@ -27,7 +27,7 @@ export class Affinity implements INodeType {
 		displayName: 'Affinity',
 		name: 'affinity',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:affinity.png',
+		icon: { light: 'file:affinity.svg', dark: 'file:affinity.dark.svg' },
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

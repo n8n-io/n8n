@@ -121,7 +121,7 @@ const tooltipPositionMapper = {
 	[FloatingNodePosition.top]: 'bottom',
 	[FloatingNodePosition.right]: 'left',
 	[FloatingNodePosition.left]: 'right',
-};
+} as const;
 
 onMounted(() => {
 	document.addEventListener('keydown', onKeyDown, true);

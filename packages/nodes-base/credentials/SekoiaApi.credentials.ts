@@ -1,11 +1,11 @@
-import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { IAuthenticateGeneric, ICredentialType, INodeProperties, Icon } from 'n8n-workflow';
 
 export class SekoiaApi implements ICredentialType {
 	name = 'sekoiaApi';
 
 	displayName = 'Sekoia API';
 
-	icon = 'file:icons/Sekoia.svg';
+	icon: Icon = 'file:icons/Sekoia.svg';
 
 	documentationUrl = 'sekoia';
 
