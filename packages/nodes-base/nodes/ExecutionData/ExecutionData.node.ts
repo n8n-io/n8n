@@ -12,6 +12,7 @@ export class ExecutionData implements INodeType {
 		name: 'executionData',
 		icon: 'fa:tasks',
 		group: ['input'],
+		iconColor: 'light-green',
 		version: 1,
 		description: 'Add execution data for search',
 		defaults: {
