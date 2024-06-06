@@ -5,7 +5,7 @@ import {
 	getWorkflowPermissions,
 } from '@/permissions';
 import type { ICredentialsResponse, IUser, IWorkflowDb } from '@/Interface';
-import type { Project } from '@/features/projects/projects.types';
+import type { Project } from '@/types/projects.types';
 
 describe('permissions', () => {
 	it('getVariablesPermissions', () => {

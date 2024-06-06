@@ -126,11 +126,11 @@ import { useTemplatesStore } from '@/stores/templates.store';
 import ExecutionsUsage from '@/components/executions/ExecutionsUsage.vue';
 import BecomeTemplateCreatorCta from '@/components/BecomeTemplateCreatorCta/BecomeTemplateCreatorCta.vue';
 import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
-import { hasPermission } from '@/rbac/permissions';
+import { hasPermission } from '@/utils/rbac/permissions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useDebounce } from '@/composables/useDebounce';
 import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
-import ProjectNavigation from '@/features/projects/components/ProjectNavigation.vue';
+import ProjectNavigation from '@/components/Projects/ProjectNavigation.vue';
 
 export default defineComponent({
 	name: 'MainSidebar',

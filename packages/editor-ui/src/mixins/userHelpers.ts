@@ -1,6 +1,6 @@
 import { defineComponent } from 'vue';
 import type { RouteLocation } from 'vue-router';
-import { hasPermission } from '@/rbac/permissions';
+import { hasPermission } from '@/utils/rbac/permissions';
 import type { RouteConfig } from '@/types/router';
 import type { PermissionTypeOptions } from '@/types/rbac';
 
