@@ -9,6 +9,7 @@ import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
 import { i18n as locale } from '@/plugins/i18n';
 import ExecutionsTime from '@/components/executions/ExecutionsTime.vue';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
+import { useSettingsStore } from '@/stores/settings.store';
 
 const emit = defineEmits(['stop', 'select', 'retrySaved', 'retryOriginal', 'delete']);
 
@@ -31,6 +32,9 @@ const style = useCssModule();
 const i18n = useI18n();
 const router = useRouter();
 const executionHelpers = useExecutionHelpers();
+const settingsStore = useSettingsStore();
+
+const productionCap = settingsStore.settings.concurrency.productionCap;
 
 const isStopping = ref(false);
 
@@ -79,7 +83,9 @@ const formattedStoppedAtDate = computed(() => {
 
 const statusTooltipText = computed(() => {
 	if (props.execution.status === 'new') {
-		return i18n.baseText('executionsList.statusTooltipText.waitingForConcurrencyCapacity');
+		return i18n.baseText('executionsList.statusTooltipText.waitingForConcurrencyCapacity', {
+			interpolate: { productionCap },
+		});
 	}
 
 	if (props.execution.status === 'waiting' && isWaitTillIndefinite.value) {
@@ -181,9 +187,6 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 			<div :class="$style.statusColumn">
 				<span v-if="isRunning" :class="$style.spinner">
 					<FontAwesomeIcon icon="spinner" spin />
-				</span>
-				<span v-if="isQueued" :class="$style.queued">
-					<FontAwesomeIcon icon="pause-circle" />
 				</span>
 				<i18n-t
 					v-if="!isWaitTillIndefinite && !isQueued"
@@ -341,7 +344,6 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 		background: var(--execution-card-border-success);
 	}
 
-	&.new td:first-child::before,
 	&.running td:first-child::before {
 		background: var(--color-warning);
 	}
@@ -366,7 +368,6 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 	align-items: center;
 }
 
-.queued,
 .spinner {
 	margin-right: var(--spacing-2xs);
 }
@@ -386,11 +387,11 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 		color: var(--color-secondary);
 	}
 
+	.new &,
 	.success & {
 		font-weight: var(--font-weight-normal);
 	}
 
-	.new &,
 	.running & {
 		color: var(--color-warning);
 	}
