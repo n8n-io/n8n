@@ -33,7 +33,7 @@ const form = ref<{ value: string; email: string }>({ value: '', email: '' });
 const showButtons = ref(true);
 const modalBus = createEventBus();
 
-const getTitle = computed(() => {
+const modalTitle = computed(() => {
 	if (form?.value?.value !== '') {
 		if (Number(form.value) > 7) {
 			return GREAT_FEEDBACK_TITLE;
@@ -134,7 +134,7 @@ watch(
 	>
 		<template #header>
 			<div :class="$style.title">
-				<n8n-heading tag="h2" size="medium" color="text-xlight">{{ getTitle }}</n8n-heading>
+				<n8n-heading tag="h2" size="medium" color="text-xlight">{{ modalTitle }}</n8n-heading>
 			</div>
 		</template>
 		<template #content>
