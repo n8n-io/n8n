@@ -7,7 +7,7 @@ import { useI18n } from '@/composables/useI18n';
 import { ref, computed, watch } from 'vue';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useValueSurvey } from '@/stores/valueSurvey.store';
+import { useNpsSurvey } from '@/stores/npsSurvey.store';
 
 const props = defineProps({
 	isActive: {
@@ -20,14 +20,14 @@ const i18n = useI18n();
 const toast = useToast();
 const telemetry = useTelemetry();
 
-const DEFAULT_TITLE = i18n.baseText('prompts.valueSurvey.recommendationQuestion');
-const GREAT_FEEDBACK_TITLE = i18n.baseText('prompts.valueSurvey.greatFeedbackTitle');
-const DEFAULT_FEEDBACK_TITLE = i18n.baseText('prompts.valueSurvey.defaultFeedbackTitle');
+const DEFAULT_TITLE = i18n.baseText('prompts.npsSurvey.recommendationQuestion');
+const GREAT_FEEDBACK_TITLE = i18n.baseText('prompts.npsSurvey.greatFeedbackTitle');
+const DEFAULT_FEEDBACK_TITLE = i18n.baseText('prompts.npsSurvey.defaultFeedbackTitle');
 const PRODUCT_TEAM_MESSAGE = i18n.baseText('prompts.productTeamMessage');
-const VERY_LIKELY_OPTION = i18n.baseText('prompts.valueSurvey.veryLikely');
-const NOT_LIKELY_OPTION = i18n.baseText('prompts.valueSurvey.notLikely');
-const SEND = i18n.baseText('prompts.valueSurvey.send');
-const YOUR_EMAIL_ADDRESS = i18n.baseText('prompts.valueSurvey.yourEmailAddress');
+const VERY_LIKELY_OPTION = i18n.baseText('prompts.npsSurvey.veryLikely');
+const NOT_LIKELY_OPTION = i18n.baseText('prompts.npsSurvey.notLikely');
+const SEND = i18n.baseText('prompts.npsSurvey.send');
+const YOUR_EMAIL_ADDRESS = i18n.baseText('prompts.npsSurvey.yourEmailAddress');
 
 const form = ref<{ value: string; email: string }>({ value: '', email: '' });
 const showButtons = ref(true);
@@ -56,7 +56,7 @@ function closeDialog(): void {
 			nps: '',
 		});
 
-		useValueSurvey().ignoreValueSurvey();
+		useNpsSurvey().ignoreNpsSurvey();
 	}
 	if (form.value.value !== '' && form.value.email === '') {
 		telemetry.track('User responded value survey email', {
@@ -80,7 +80,7 @@ async function selectSurveyValue(value: string) {
 		nps: form.value.value,
 	});
 
-	useValueSurvey().respondValueSurvey();
+	useNpsSurvey().respondNpsSurvey();
 }
 
 async function send() {
@@ -92,8 +92,8 @@ async function send() {
 		});
 
 		toast.showMessage({
-			title: i18n.baseText('prompts.valueSurvey.thanks'),
-			message: Number(form.value.value) >= 8 ? i18n.baseText('prompts.valueSurvey.reviewUs') : '',
+			title: i18n.baseText('prompts.npsSurvey.thanks'),
+			message: Number(form.value.value) >= 8 ? i18n.baseText('prompts.npsSurvey.reviewUs') : '',
 			type: 'success',
 			duration: 15000,
 		});
@@ -128,9 +128,9 @@ watch(
 		:wrapper-closable="false"
 		direction="btt"
 		width="120px"
-		class="value-survey"
-		:class="$style.valueSurvey"
-		data-test-id="value-survey-modal"
+		class="nps-survey"
+		:class="$style.npsSurvey"
+		data-test-id="nps-survey-modal"
 	>
 		<template #header>
 			<div :class="$style.title">
@@ -140,7 +140,7 @@ watch(
 		<template #content>
 			<section :class="$style.content">
 				<div v-if="showButtons" :class="$style.wrapper">
-					<div :class="$style.buttons" data-test-id="value-survey-ratings">
+					<div :class="$style.buttons" data-test-id="nps-survey-ratings">
 						<div v-for="value in 11" :key="value - 1" :class="$style.container">
 							<n8n-button
 								type="tertiary"
@@ -156,7 +156,7 @@ watch(
 					</div>
 				</div>
 				<div v-else :class="$style.email">
-					<div :class="$style.input" @keyup.enter="send" data-test-id="value-survey-email">
+					<div :class="$style.input" @keyup.enter="send" data-test-id="nps-survey-email">
 						<n8n-input
 							v-model="form.email"
 							:placeholder="YOUR_EMAIL_ADDRESS"
@@ -188,7 +188,7 @@ watch(
 	}
 
 	h2 {
-		color: var(--color-value-survey-font);
+		color: var(--color-nps-survey-font);
 	}
 }
 
@@ -205,7 +205,7 @@ watch(
 	display: flex;
 	flex-direction: column;
 	.text span {
-		color: var(--color-value-survey-font);
+		color: var(--color-nps-survey-font);
 	}
 }
 
@@ -248,8 +248,8 @@ watch(
 	margin-top: var(--spacing-4xs);
 }
 
-.valueSurvey {
-	background: var(--color-value-survey-background);
+.npsSurvey {
+	background: var(--color-nps-survey-background);
 	height: 120px;
 	top: auto;
 
@@ -271,7 +271,7 @@ watch(
 			right: 16px;
 			position: absolute;
 			font-weight: var(--font-weight-bold);
-			color: var(--color-value-survey-font);
+			color: var(--color-nps-survey-font);
 
 			@media (max-width: $breakpoint-xs) {
 				top: 2px;

@@ -1,4 +1,4 @@
-import { getValueSurvey, getValueSurveyEmail, getValueSurveyRatings } from '../pages/valueSurvey';
+import { getNpsSurvey, getNpsSurveyEmail, getNpsSurveyRatings } from '../pages/npsSurvey';
 import { WorkflowPage } from '../pages/workflow';
 
 const workflowPage = new WorkflowPage();
@@ -7,8 +7,8 @@ const NOW = Date.now();
 const ONE_DAY = 24 * 60 * 60 * 1000;
 const THREE_DAYS = ONE_DAY * 3;
 
-describe('ValueSurvey', () => {
-	it('shows value survey to recently activated user and can submit email ', () => {
+describe('NpsSurvey', () => {
+	it('shows nps survey to recently activated user and can submit email ', () => {
 		cy.intercept('/rest/settings', { middleware: true }, (req) => {
 			req.on('response', (res) => {
 				if (res.body.data) {
@@ -31,13 +31,13 @@ describe('ValueSurvey', () => {
 
 		workflowPage.actions.saveWorkflowOnButtonClick();
 
-		getValueSurvey().should('be.visible');
-		getValueSurveyRatings().find('button').should('have.length', 11);
+		getNpsSurvey().should('be.visible');
+		getNpsSurveyRatings().find('button').should('have.length', 11);
 
-		getValueSurveyRatings().find('button').first().click();
+		getNpsSurveyRatings().find('button').first().click();
 
-		getValueSurveyEmail().find('input').type('test@n8n.io');
-		getValueSurveyEmail().find('button').click();
+		getNpsSurveyEmail().find('input').type('test@n8n.io');
+		getNpsSurveyEmail().find('button').click();
 
 		// test that modal does not show up again
 		cy.reload();
@@ -45,6 +45,6 @@ describe('ValueSurvey', () => {
 		workflowPage.actions.visit();
 		workflowPage.actions.saveWorkflowOnButtonClick();
 
-		getValueSurvey().should('not.be.visible');
+		getNpsSurvey().should('not.be.visible');
 	});
 });

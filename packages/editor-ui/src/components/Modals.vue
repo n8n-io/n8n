@@ -43,7 +43,7 @@
 
 		<ModalRoot :name="VALUE_SURVEY_MODAL_KEY" :keep-alive="true">
 			<template #default="{ active }">
-				<ValueSurvey :is-active="active" />
+				<NpsSurvey :is-active="active" />
 			</template>
 		</ModalRoot>
 
@@ -220,7 +220,7 @@ import OnboardingCallSignupModal from './OnboardingCallSignupModal.vue';
 import PersonalizationModal from './PersonalizationModal.vue';
 import TagsManager from './TagsManager/TagsManager.vue';
 import UpdatesPanel from './UpdatesPanel.vue';
-import ValueSurvey from './ValueSurvey.vue';
+import NpsSurvey from './NpsSurvey.vue';
 import WorkflowLMChat from './WorkflowLMChat.vue';
 import WorkflowSettings from './WorkflowSettings.vue';
 import DeleteUserModal from './DeleteUserModal.vue';
@@ -257,7 +257,7 @@ export default defineComponent({
 		PersonalizationModal,
 		TagsManager,
 		UpdatesPanel,
-		ValueSurvey,
+		NpsSurvey,
 		WorkflowLMChat,
 		WorkflowSettings,
 		WorkflowShareModal,

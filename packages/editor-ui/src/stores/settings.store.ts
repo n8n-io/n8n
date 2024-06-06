@@ -34,7 +34,7 @@ import { makeRestApiRequest } from '@/utils/apiUtils';
 import { useTitleChange } from '@/composables/useTitleChange';
 import { useToast } from '@/composables/useToast';
 import { i18n } from '@/plugins/i18n';
-import { useValueSurvey } from './valueSurvey.store';
+import { useNpsSurvey } from './npsSurvey.store';
 
 export const useSettingsStore = defineStore(STORES.SETTINGS, {
 	state: (): ISettingsState => ({
@@ -327,7 +327,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			if (promptsData && promptsData.showContactPrompt) {
 				uiStore.openModal(CONTACT_PROMPT_MODAL_KEY);
 			} else {
-				useValueSurvey().showValueSurveyIfPossible();
+				useNpsSurvey().showNpsSurveyIfPossible();
 			}
 
 			this.setPromptsData(promptsData);

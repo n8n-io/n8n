@@ -767,7 +767,7 @@ export interface IN8nPrompts {
 	message: string;
 	title: string;
 	showContactPrompt: boolean;
-	showValueSurvey: boolean;
+	showNpsSurvey: boolean;
 }
 
 export const enum UserManagementAuthenticationMethod {
@@ -1959,7 +1959,7 @@ export type ModalKey =
 	| 'workflowShare'
 	| 'personalization'
 	| 'contactPrompt'
-	| 'valueSurvey'
+	| 'npsSurvey'
 	| 'activation'
 	| 'onboardingCallSignup'
 	| 'communityPackageInstall'

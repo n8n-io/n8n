@@ -2497,9 +2497,9 @@ export interface IUserSettings {
 	userActivated?: boolean;
 	userActivatedAt?: number;
 	allowSSOManualLogin?: boolean;
-	valueSurveyLastShownAt?: number;
-	valueSurveyLastResponseState?: 'waiting' | 'done';
-	valueSurveyIgnoredLastCount?: number;
+	npsSurveyLastShownAt?: number;
+	npsSurveyLastResponseState?: 'waiting' | 'done';
+	npsSurveyIgnoredLastCount?: number;
 }
 
 export interface IPublicApiSettings {

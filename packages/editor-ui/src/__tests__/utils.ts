@@ -43,7 +43,7 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 		message: '',
 		title: '',
 		showContactPrompt: false,
-		showValueSurvey: false,
+		showNpsSurvey: false,
 	},
 	userManagement: {
 		showSetupOnFirstLoad: false,

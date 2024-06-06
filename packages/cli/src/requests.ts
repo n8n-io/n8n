@@ -603,10 +603,10 @@ export declare namespace ProjectRequest {
 }
 
 // ----------------------------------
-//           /value-survey
+//           /nps-survey
 // ----------------------------------
-export declare namespace ValueSurveyRequest {
-	type ValueSurveyShown = AuthenticatedRequest;
-	type ValueSurveyResponded = AuthenticatedRequest;
-	type ValueSurveyIgnored = AuthenticatedRequest;
+export declare namespace NpsSurveyRequest {
+	type NpsSurveyShown = AuthenticatedRequest;
+	type NpsSurveyResponded = AuthenticatedRequest;
+	type NpsSurveyIgnored = AuthenticatedRequest;
 }
