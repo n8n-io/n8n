@@ -11,13 +11,11 @@ import type {
 	IExecutionsStopData,
 } from '@/Interface';
 import { useRootStore } from '@/stores/n8nRoot.store';
-import { useSettingsStore } from '@/stores/settings.store';
 import { makeRestApiRequest, unflattenExecutionData } from '@/utils/apiUtils';
 import { executionFilterToQueryFilter, getDefaultExecutionFilters } from '@/utils/executionUtils';
 
 export const useExecutionsStore = defineStore('executions', () => {
 	const rootStore = useRootStore();
-	const settingsStore = useSettingsStore();
 
 	const loading = ref(false);
 	const itemsPerPage = ref(10);
@@ -60,34 +58,12 @@ export const useExecutionsStore = defineStore('executions', () => {
 	);
 
 	const currentExecutionsById = ref<Record<string, ExecutionSummary>>({});
-
-	const startedAtSortFn = (a: ExecutionSummary, b: ExecutionSummary) => {
-		return new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime();
-	};
-
-	/**
-	 * Prioritize `running` over `new` executions, then sort by start timestamp.
-	 */
-	const statusThenStartedAtSortFn = (a: ExecutionSummary, b: ExecutionSummary) => {
-		if (a.status && b.status) {
-			const statusPriority: { [key: string]: number } = { running: 1, new: 2 };
-
-			const statusComparison = statusPriority[a.status] - statusPriority[b.status];
-
-			if (statusComparison !== 0) return statusComparison;
-		}
-
-		return startedAtSortFn(a, b);
-	};
-
-	const sortFn = settingsStore.isProductionConcurrencyCapEnabled
-		? statusThenStartedAtSortFn
-		: startedAtSortFn;
-
 	const currentExecutions = computed(() => {
 		const data = Object.values(currentExecutionsById.value);
 
-		data.sort(sortFn);
+		data.sort((a, b) => {
+			return new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime();
+		});
 
 		return data;
 	});

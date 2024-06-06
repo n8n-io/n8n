@@ -25,10 +25,7 @@ export function useExecutionHelpers() {
 			status.label = i18n.baseText('executionsList.waiting');
 		} else if (execution.status === 'canceled') {
 			status.label = i18n.baseText('executionsList.canceled');
-		} else if (execution.status === 'new') {
-			status.name = 'queued';
-			status.label = i18n.baseText('executionsList.queued');
-		} else if (execution.status === 'running') {
+		} else if (execution.status === 'running' || execution.status === 'new') {
 			status.name = 'running';
 			status.label = i18n.baseText('executionsList.running');
 		} else if (execution.status === 'success') {

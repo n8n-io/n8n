@@ -2,7 +2,6 @@
 import type { PropType } from 'vue';
 import { watch, computed, ref, onMounted } from 'vue';
 import ExecutionsFilter from '@/components/executions/ExecutionsFilter.vue';
-import ConcurrentExecutionsHeader from '@/components/ConcurrentExecutionsHeader.vue';
 import GlobalExecutionsListItem from '@/components/executions/global/GlobalExecutionsListItem.vue';
 import { MODAL_CONFIRM } from '@/constants';
 import { useToast } from '@/composables/useToast';
@@ -13,8 +12,6 @@ import type { ExecutionFilterType, IWorkflowDb } from '@/Interface';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExecutionsStore } from '@/stores/executions.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useUIStore } from '@/stores/ui.store';
 
 const props = defineProps({
 	executions: {
@@ -41,8 +38,6 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
 const executionsStore = useExecutionsStore();
-const settingsStore = useSettingsStore();
-const uiStore = useUIStore();
 
 const isMounted = ref(false);
 const allVisibleSelected = ref(false);
@@ -58,39 +53,6 @@ const selectedCount = computed(() => {
 	}
 
 	return Object.keys(selectedItems.value).length;
-});
-
-const productionConcurrencyCap = computed(() => settingsStore.productionConcurrencyCap);
-
-const isProductionConcurrencyCapEnabled = computed(
-	() => settingsStore.isProductionConcurrencyCapEnabled,
-);
-
-const runningExecutionsCount = computed(() => {
-	return props.executions.filter((execution) => execution.status === 'running').length;
-});
-
-const concurrentExecutionsTooltipText = computed(() => {
-	return i18n.baseText('executionsList.activeExecutions.tooltip', {
-		interpolate: {
-			running: runningExecutionsCount.value,
-			cap: productionConcurrencyCap.value,
-		},
-	});
-});
-
-const concurrentExecutionsHeaderText = computed(() => {
-	if (runningExecutionsCount.value === 0) {
-		console.log(i18n.baseText('executionsList.activeExecutions.none'));
-		return i18n.baseText('executionsList.activeExecutions.none');
-	}
-
-	return i18n.baseText('executionsList.activeExecutions.header', {
-		interpolate: {
-			running: runningExecutionsCount.value,
-			cap: productionConcurrencyCap.value,
-		},
-	});
 });
 
 const workflows = computed<IWorkflowDb[]>(() => {
@@ -322,13 +284,8 @@ async function onAutoRefreshToggle(value: boolean) {
 				</N8nHeading>
 				<div :class="$style.execListHeaderControls">
 					<N8nLoading v-if="!isMounted" :class="$style.filterLoader" variant="custom" />
-					<ConcurrentExecutionsHeader
-						v-if="isProductionConcurrencyCapEnabled"
-						:class="$style['concurrent-executions-header']"
-						:header-text="concurrentExecutionsHeaderText"
-						:tooltip-text="concurrentExecutionsTooltipText"
-					/>
 					<ElCheckbox
+						v-else
 						v-model="executionsStore.autoRefresh"
 						class="mr-xl"
 						data-test-id="execution-auto-refresh-checkbox"
@@ -589,9 +546,5 @@ async function onAutoRefreshToggle(value: boolean) {
 	width: 100%;
 	height: 48px;
 	margin-bottom: var(--spacing-2xs);
-}
-
-.concurrent-executions-header {
-	margin-right: var(--spacing-xl);
 }
 </style>

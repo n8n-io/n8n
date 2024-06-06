@@ -44,11 +44,7 @@ import { i18n } from '@/plugins/i18n';
 export const useSettingsStore = defineStore(STORES.SETTINGS, {
 	state: (): ISettingsState => ({
 		initialized: false,
-		settings: {
-			concurrency: {
-				productionCap: -1,
-			},
-		} as IN8nUISettings,
+		settings: {} as IN8nUISettings,
 		promptsData: {} as IN8nPrompts,
 		userManagement: {
 			quota: -1,
@@ -205,12 +201,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		isDevRelease(): boolean {
 			return this.settings.releaseChannel === 'dev';
-		},
-		productionConcurrencyCap(): number {
-			return this.settings.concurrency.productionCap;
-		},
-		isProductionConcurrencyCapEnabled(): boolean {
-			return this.settings.concurrency.productionCap !== -1;
 		},
 	},
 	actions: {
