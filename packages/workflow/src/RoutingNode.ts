@@ -78,6 +78,7 @@ export class RoutingNode {
 		this.workflow = workflow;
 	}
 
+	// eslint-disable-next-line complexity
 	async runNode(
 		inputData: ITaskDataConnections,
 		runIndex: number,
