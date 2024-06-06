@@ -181,7 +181,7 @@ export class ActiveWorkflows {
 			const cronTimeParts = cronTime.split(' ');
 			if (cronTimeParts.length > 0 && cronTimeParts[0].includes('*')) {
 				throw new ApplicationError(
-					'The polling interval is too short. It has to be at least a minute!',
+					'The polling interval is too short. It has to be at least a minute.',
 				);
 			}
 

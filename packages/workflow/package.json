@@ -1,6 +1,6 @@
 {
   "name": "n8n-workflow",
-  "version": "1.43.0",
+  "version": "1.44.0",
   "description": "Workflow base code of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -26,7 +26,7 @@
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
-    "typecheck": "tsc",
+    "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
     "format": "prettier --write . --ignore-path ../../.prettierignore",
     "lint": "eslint . --quiet",
