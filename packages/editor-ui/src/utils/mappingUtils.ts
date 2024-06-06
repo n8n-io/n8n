@@ -46,23 +46,43 @@ export function getMappedExpression({
 	return `{{ ${generatePath(root, path)} }}`;
 }
 
+const unquote = (str: string) => {
+	if (str.startsWith('"') && str.endsWith('"')) {
+		return str.slice(1, -1).replace(/\\"/g, '"');
+	}
+
+	if (str.startsWith("'") && str.endsWith("'")) {
+		return str.slice(1, -1).replace(/\\'/g, "'");
+	}
+
+	return str;
+};
+
+export function propertyNameFromExpression(expression: string): string {
+	const baseRegex = /^(\$\(.*\)\.item\.json|\$json|\$node\[.*\]\.json)/;
+	const bracketAccessRegex = /\[(.*)\]$/;
+	const dotAccessRegex = /\.(.*)$/;
+
+	return unquote(
+		expression
+			.replace(/^{{\s*|\s*}}$/g, '')
+			.replace(new RegExp(`${baseRegex.source}${dotAccessRegex.source}`), '$2')
+			.replace(new RegExp(`${baseRegex.source}${bracketAccessRegex.source}`), '$2'),
+	);
+}
+
 export function getMappedResult(
 	parameter: INodeProperties,
 	newParamValue: string,
 	prevParamValue: NodeParameterValueType,
 ): string {
-	const useDataPath = !!parameter.requiresDataPath && newParamValue.startsWith('{{ $json'); // ignore when mapping from grand-parent-node
 	const prevValue =
 		parameter.type === 'resourceLocator' && isResourceLocatorValue(prevParamValue)
 			? prevParamValue.value
 			: prevParamValue;
 
-	if (useDataPath) {
-		const newValue = newParamValue
-			.replace('{{ $json', '')
-			.replace(new RegExp('^\\.'), '')
-			.replace(new RegExp('}}$'), '')
-			.trim();
+	if (parameter.requiresDataPath) {
+		const newValue = propertyNameFromExpression(newParamValue);
 
 		if (prevValue && parameter.requiresDataPath === 'multiple') {
 			if (typeof prevValue === 'string' && prevValue.trim() === '=') {
