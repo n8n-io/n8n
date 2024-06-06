@@ -13,13 +13,16 @@ export type PermissionsMap<T> = {
 	[K in ExtractAfterColon<T>]: boolean;
 };
 
-const mapScopesToPermissions = (scopes: Scope[], scopeSet: Set<Scope>): PermissionsMap<Scope> =>
+const mapScopesToPermissions = <T extends Scope>(
+	scopes: T[],
+	scopeSet: Set<T>,
+): PermissionsMap<T> =>
 	scopes.reduce(
-		(permissions: PermissionsMap<Scope>, scope: Scope) => ({
+		(permissions: PermissionsMap<T>, scope: T) => ({
 			...permissions,
 			[scope.split(':')[1]]: scopeSet.has(scope),
 		}),
-		{} as PermissionsMap<Scope>,
+		{} as PermissionsMap<T>,
 	);
 
 export const getCredentialPermissions = (
@@ -47,6 +50,7 @@ export const getWorkflowPermissions = (workflow: IWorkflowDb): PermissionsMap<Wo
 			'workflow:list',
 			'workflow:share',
 			'workflow:execute',
+			'workflow:move',
 		],
 		new Set(workflow?.scopes ?? []),
 	);

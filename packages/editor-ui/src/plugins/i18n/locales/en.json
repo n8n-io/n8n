@@ -2168,6 +2168,7 @@
 	"workflows.item.share": "Share...",
 	"workflows.item.duplicate": "Duplicate",
 	"workflows.item.delete": "Delete",
+	"workflows.item.move": "Move",
 	"workflows.item.updated": "Last updated",
 	"workflows.item.created": "Created",
 	"workflows.search.placeholder": "Search workflows...",
