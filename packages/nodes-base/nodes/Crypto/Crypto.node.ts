@@ -30,6 +30,7 @@ export class Crypto implements INodeType {
 		displayName: 'Crypto',
 		name: 'crypto',
 		icon: 'fa:key',
+		iconColor: 'green',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["action"]}}',

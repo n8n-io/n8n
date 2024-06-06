@@ -21,7 +21,7 @@ export class Kafka implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Kafka',
 		name: 'kafka',
-		icon: 'file:kafka.svg',
+		icon: { light: 'file:kafka.svg', dark: 'file:kafka.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		description: 'Sends messages to a Kafka topic',

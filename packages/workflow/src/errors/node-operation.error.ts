@@ -15,7 +15,12 @@ export class NodeOperationError extends NodeError {
 		error: Error | string | JsonObject,
 		options: NodeOperationErrorOptions = {},
 	) {
+		if (error instanceof NodeOperationError) {
+			return error;
+		}
+
 		let obfuscateErrorMessage = false;
+
 		if (typeof error === 'string') {
 			error = new Error(error);
 		} else if (!(error instanceof ApplicationError)) {

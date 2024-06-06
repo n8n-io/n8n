@@ -14,7 +14,7 @@ export class Drift implements INodeType {
 		displayName: 'Drift',
 		name: 'drift',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:drift.png',
+		icon: { light: 'file:drift.svg', dark: 'file:drift.dark.svg' },
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

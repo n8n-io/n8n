@@ -82,7 +82,7 @@ export class ActiveCampaign implements INodeType {
 		displayName: 'ActiveCampaign',
 		name: 'activeCampaign',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:activeCampaign.png',
+		icon: { light: 'file:activeCampaign.svg', dark: 'file:activeCampaign.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

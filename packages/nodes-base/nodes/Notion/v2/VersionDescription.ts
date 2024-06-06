@@ -16,7 +16,7 @@ import {
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Notion',
 	name: 'notion',
-	icon: 'file:notion.svg',
+	icon: { light: 'file:notion.svg', dark: 'file:notion.dark.svg' },
 	group: ['output'],
 	version: [2, 2.1, 2.2],
 	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

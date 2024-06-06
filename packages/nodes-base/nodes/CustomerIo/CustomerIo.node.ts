@@ -16,7 +16,7 @@ export class CustomerIo implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Customer.io',
 		name: 'customerIo',
-		icon: 'file:customerio.svg',
+		icon: { light: 'file:customerio.svg', dark: 'file:customerio.dark.svg' },
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

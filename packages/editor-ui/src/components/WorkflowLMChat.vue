@@ -156,6 +156,7 @@ import { useRouter } from 'vue-router';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { usePinnedData } from '@/composables/usePinnedData';
+import { isEmpty } from '@/utils/typesUtils';
 
 const RunDataAi = defineAsyncComponent(
 	async () => await import('@/components/RunDataAi/RunDataAi.vue'),
@@ -495,7 +496,9 @@ export default defineComponent({
 			this.waitForExecution(response.executionId);
 		},
 		extractResponseMessage(responseData?: IDataObject) {
-			if (!responseData) return '<NO RESPONSE FOUND>';
+			if (!responseData || isEmpty(responseData)) {
+				return this.$locale.baseText('chat.window.chat.response.empty');
+			}
 
 			// Paths where the response message might be located
 			const paths = ['output', 'text', 'response.text'];

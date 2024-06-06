@@ -26,7 +26,7 @@ export class DebugHelper implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'DebugHelper',
 		name: 'debugHelper',
-		icon: 'file:DebugHelper.svg',
+		icon: { light: 'file:DebugHelper.svg', dark: 'file:DebugHelper.dark.svg' },
 		group: ['output'],
 		subtitle: '={{$parameter["category"]}}',
 		description: 'Causes problems intentionally and generates useful data for debugging',

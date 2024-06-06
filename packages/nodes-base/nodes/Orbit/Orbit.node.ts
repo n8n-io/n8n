@@ -25,7 +25,7 @@ export class Orbit implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Orbit',
 		name: 'orbit',
-		icon: 'file:orbit.svg',
+		icon: { light: 'file:orbit.svg', dark: 'file:orbit.dark.svg' },
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

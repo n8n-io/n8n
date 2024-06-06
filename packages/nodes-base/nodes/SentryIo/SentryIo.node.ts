@@ -28,7 +28,7 @@ export class SentryIo implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Sentry.io',
 		name: 'sentryIo',
-		icon: 'file:sentryio.svg',
+		icon: { light: 'file:sentryio.svg', dark: 'file:sentryio.dark.svg' },
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

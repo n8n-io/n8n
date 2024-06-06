@@ -48,6 +48,7 @@ export class Compression implements INodeType {
 		displayName: 'Compression',
 		name: 'compression',
 		icon: 'fa:file-archive',
+		iconColor: 'green',
 		group: ['transform'],
 		subtitle: '={{$parameter["operation"]}}',
 		version: [1, 1.1],

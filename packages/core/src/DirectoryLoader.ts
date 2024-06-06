@@ -101,11 +101,11 @@ export abstract class DirectoryLoader {
 
 		tempNode.description.name = fullNodeName;
 
-		this.fixIconPath(tempNode.description, filePath);
+		this.fixIconPaths(tempNode.description, filePath);
 
 		if ('nodeVersions' in tempNode) {
 			for (const versionNode of Object.values(tempNode.nodeVersions)) {
-				this.fixIconPath(versionNode.description, filePath);
+				this.fixIconPaths(versionNode.description, filePath);
 			}
 
 			for (const version of Object.values(tempNode.nodeVersions)) {
@@ -118,7 +118,7 @@ export abstract class DirectoryLoader {
 
 			if (currentVersionNode.hasOwnProperty('executeSingle')) {
 				throw new ApplicationError(
-					'"executeSingle" has been removed. Please update the code of this node to use "execute" instead!',
+					'"executeSingle" has been removed. Please update the code of this node to use "execute" instead.',
 					{ extra: { nodeName: `${this.packageName}.${nodeName}` } },
 				);
 			}
@@ -169,7 +169,7 @@ export abstract class DirectoryLoader {
 			// include the credential type in the predefined credentials (HTTP node)
 			Object.assign(tempCredential, { toJSON });
 
-			this.fixIconPath(tempCredential, filePath);
+			this.fixIconPaths(tempCredential, filePath);
 		} catch (e) {
 			if (e instanceof TypeError) {
 				throw new ApplicationError(
@@ -281,14 +281,29 @@ export abstract class DirectoryLoader {
 		}
 	}
 
-	private fixIconPath(
+	private getIconPath(icon: string, filePath: string) {
+		const iconPath = path.join(path.dirname(filePath), icon.replace('file:', ''));
+		const relativePath = path.relative(this.directory, iconPath);
+		return `icons/${this.packageName}/${relativePath}`;
+	}
+
+	private fixIconPaths(
 		obj: INodeTypeDescription | INodeTypeBaseDescription | ICredentialType,
 		filePath: string,
 	) {
-		if (obj.icon?.startsWith('file:')) {
-			const iconPath = path.join(path.dirname(filePath), obj.icon.substring(5));
-			const relativePath = path.relative(this.directory, iconPath);
-			obj.iconUrl = `icons/${this.packageName}/${relativePath}`;
+		const { icon } = obj;
+		if (!icon) return;
+
+		if (typeof icon === 'string') {
+			if (icon.startsWith('file:')) {
+				obj.iconUrl = this.getIconPath(icon, filePath);
+				delete obj.icon;
+			}
+		} else if (icon.light.startsWith('file:') && icon.dark.startsWith('file:')) {
+			obj.iconUrl = {
+				light: this.getIconPath(icon.light, filePath),
+				dark: this.getIconPath(icon.dark, filePath),
+			};
 			delete obj.icon;
 		}
 	}

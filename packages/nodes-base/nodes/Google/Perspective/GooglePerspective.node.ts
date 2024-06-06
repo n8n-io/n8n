@@ -23,7 +23,7 @@ export class GooglePerspective implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Perspective',
 		name: 'googlePerspective',
-		icon: 'file:perspective.svg',
+		icon: { light: 'file:googlePerspective.svg', dark: 'file:googlePerspective.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		description: 'Consume Google Perspective API',

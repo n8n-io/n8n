@@ -18,7 +18,7 @@ export class Egoi implements INodeType {
 		displayName: 'E-goi',
 		name: 'egoi',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:egoi.png',
+		icon: 'file:egoi.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

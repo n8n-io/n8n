@@ -13,13 +13,12 @@ export class OpenWeatherMap implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'OpenWeatherMap',
 		name: 'openWeatherMap',
-		icon: 'fa:sun',
+		icon: 'file:openWeatherMap.svg',
 		group: ['input'],
 		version: 1,
 		description: 'Gets current and future weather information',
 		defaults: {
 			name: 'OpenWeatherMap',
-			color: '#554455',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

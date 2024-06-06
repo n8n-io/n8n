@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "1.44.0",
+  "version": "1.45.0",
   "description": "",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -12,7 +12,7 @@
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm run watch",
-    "typecheck": "tsc",
+    "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json && pnpm n8n-copy-icons && pnpm build:metadata",
     "build:metadata": "pnpm n8n-generate-known && pnpm n8n-generate-ui-types",
     "format": "prettier nodes credentials --write",

@@ -75,7 +75,7 @@ export class Freshdesk implements INodeType {
 		displayName: 'Freshdesk',
 		name: 'freshdesk',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:freshdesk.png',
+		icon: 'file:freshdesk.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
