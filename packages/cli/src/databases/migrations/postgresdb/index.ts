@@ -117,5 +117,4 @@ export const postgresMigrations: Migration[] = [
 	CreateProject1714133768519,
 	MakeExecutionStatusNonNullable1714133768521,
 	AddActivatedAtUserSetting1717498465931,
-
 ];

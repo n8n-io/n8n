@@ -1,6 +1,6 @@
 import { ValueSurveyController } from '@/controllers/valueSurvey.controller';
 import type { ValueSurveyRequest } from '@/requests';
-import { UserService } from '@/services/user.service';
+import type { UserService } from '@/services/user.service';
 import { mock } from 'jest-mock-extended';
 
 const NOW = 1717607016208;
