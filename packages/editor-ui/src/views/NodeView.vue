@@ -4802,7 +4802,7 @@ export default defineComponent({
 						: undefined;
 				projectId = queryParam ?? this.projectsStore.personalProject?.id;
 			}
-			await this.credentialsStore.fetchAllCredentials(projectId, false);
+			await this.credentialsStore.fetchAllCredentials(projectId);
 		},
 		async loadVariables(): Promise<void> {
 			await this.environmentsStore.fetchAllVariables();
