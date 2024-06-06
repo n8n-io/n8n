@@ -9,7 +9,7 @@ import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import type { ITelemetrySettings } from 'n8n-workflow';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useProjectsStore } from '@/stores/projects.store';
 
 export default defineComponent({
 	name: 'Telemetry',
