@@ -85,7 +85,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectListItem, ProjectSharingData } from '@/types/projects.types';
-import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
+import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
 
 export default defineComponent({
 	name: 'DeleteUserModal',

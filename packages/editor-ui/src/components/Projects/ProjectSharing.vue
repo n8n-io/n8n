@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import type { ProjectListItem, ProjectSharingData } from '@/types/projects.types';
-import ProjectSharingInfo from '@/features/projects/components/ProjectSharingInfo.vue';
+import ProjectSharingInfo from '@/components/Projects/ProjectSharingInfo.vue';
 import type { RoleMap } from '@/types/roles.types';
 
 const locale = useI18n();

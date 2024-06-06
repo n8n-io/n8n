@@ -159,7 +159,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useProjectsStore } from '@/stores/projects.store';
-import ProjectTabs from '@/features/projects/components/ProjectTabs.vue';
+import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import { useTemplatesStore } from '@/stores/templates.store';
 
 type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;

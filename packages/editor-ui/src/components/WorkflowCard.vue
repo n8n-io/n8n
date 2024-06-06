@@ -70,7 +70,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import TimeAgo from '@/components/TimeAgo.vue';
 import type { ProjectSharingData } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
-import ProjectCardBadge from '@/features/projects/components/ProjectCardBadge.vue';
+import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
 
 export const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',

@@ -130,7 +130,7 @@ import { hasPermission } from '@/utils/rbac/permissions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useDebounce } from '@/composables/useDebounce';
 import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
-import ProjectNavigation from '@/features/projects/components/ProjectNavigation.vue';
+import ProjectNavigation from '@/components/Projects/ProjectNavigation.vue';
 
 export default defineComponent({
 	name: 'MainSidebar',

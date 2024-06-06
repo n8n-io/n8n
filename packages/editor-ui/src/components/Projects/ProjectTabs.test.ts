@@ -1,5 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import ProjectTabs from '@/features/projects/components/ProjectTabs.vue';
+import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useProjectsStore } from '@/stores/projects.store';
 

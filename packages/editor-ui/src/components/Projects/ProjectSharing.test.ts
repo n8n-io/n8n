@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { getDropdownItems } from '@/__tests__/utils';
 import { createProjectListItem, createProjectSharingData } from '@/__tests__/data/projects';
-import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
+import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
 
 const renderComponent = createComponentRenderer(ProjectSharing);
 

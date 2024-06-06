@@ -5,7 +5,7 @@ const MainSidebar = async () => await import('@/components/MainSidebar.vue');
 const WorkflowsView = async () => await import('@/views/WorkflowsView.vue');
 const CredentialsView = async () => await import('@/views/CredentialsView.vue');
 const ProjectSettings = async () =>
-	await import('@/features/projects/components/ProjectSettings.vue');
+	await import('@/components/Projects/ProjectSettings.vue');
 
 const commonChildRoutes: RouteRecordRaw[] = [
 	{

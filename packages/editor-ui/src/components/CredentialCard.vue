@@ -47,7 +47,7 @@ import TimeAgo from '@/components/TimeAgo.vue';
 import type { ProjectSharingData } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { CredentialScope } from '@n8n/permissions';
-import ProjectCardBadge from '@/features/projects/components/ProjectCardBadge.vue';
+import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
 
 export const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',

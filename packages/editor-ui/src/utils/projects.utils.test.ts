@@ -1,21 +1,61 @@
 import { splitName } from '@/utils/projects.utils';
 
 describe('splitName', () => {
-	it('should return name as firstName if it is only one word', () => {
-		const name = 'Projectname';
-		const result = splitName(name);
-		expect(result).toEqual({ firstName: name });
-	});
-
-	it('should return name as is when it does not contain email', () => {
-		const name = 'First Last';
-		const result = splitName(name);
-		expect(result).toEqual({ firstName: 'First', lastName: 'Last' });
-	});
-
-	it('should return firstName, lastName and email when name is in the proper format', () => {
-		const name = 'First Last <email@domain.com>';
-		const result = splitName(name);
-		expect(result).toEqual({ firstName: 'First', lastName: 'Last', email: 'email@domain.com' });
+	test.each([
+		[
+			'First Last <email@domain.com>',
+			{
+				firstName: 'First',
+				lastName: 'Last',
+				email: 'email@domain.com',
+			},
+		],
+		[
+			'First Last Third <email@domain.com>',
+			{
+				firstName: 'First Last',
+				lastName: 'Third',
+				email: 'email@domain.com',
+			},
+		],
+		[
+			'First Last Third Fourth <email@domain.com>',
+			{
+				firstName: 'First Last Third',
+				lastName: 'Fourth',
+				email: 'email@domain.com',
+			},
+		],
+		[
+			'<email@domain.com>',
+			{
+				firstName: undefined,
+				lastName: undefined,
+				email: 'email@domain.com',
+			},
+		],
+		[
+			' <email@domain.com>',
+			{
+				firstName: '',
+				lastName: '',
+				email: 'email@domain.com',
+			},
+		],
+		[
+			'My project',
+			{
+				firstName: 'My',
+				lastName: 'project',
+			},
+		],
+		[
+			'MyProject',
+			{
+				firstName: 'MyProject',
+			},
+		],
+	])('should split a name in the format "First Last <email@domain.com>"', (input, result) => {
+		expect(splitName(input)).toEqual(result);
 	});
 });

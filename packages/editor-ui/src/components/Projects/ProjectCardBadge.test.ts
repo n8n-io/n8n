@@ -1,5 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import ProjectCardBadge from '@/features/projects/components/ProjectCardBadge.vue';
+import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
 
 const renderComponent = createComponentRenderer(ProjectCardBadge);
 

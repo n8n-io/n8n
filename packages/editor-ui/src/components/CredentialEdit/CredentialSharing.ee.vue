@@ -83,7 +83,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { EnterpriseEditionFeature } from '@/constants';
-import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
+import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
 import { useProjectsStore } from '@/stores/projects.store';
 import {
 	ProjectListItem,

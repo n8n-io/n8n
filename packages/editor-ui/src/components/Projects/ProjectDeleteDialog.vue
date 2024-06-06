@@ -5,7 +5,7 @@ import type {
 	ProjectListItem,
 	ProjectSharingData,
 } from '@/types/projects.types';
-import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
+import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
 import { useI18n } from '@/composables/useI18n';
 
 type Props = {
