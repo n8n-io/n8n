@@ -81,7 +81,7 @@ describe('ProjectSettings', () => {
 
 		await userEvent.click(deleteButton);
 		expect(deleteProjectSpy).not.toHaveBeenCalled();
-		let modal = getByRole('dialog');
+		const modal = getByRole('dialog');
 		expect(modal).toBeVisible();
 		const confirmButton = getByTestId('project-settings-delete-confirm-button');
 		expect(confirmButton).toBeDisabled();
@@ -107,7 +107,7 @@ describe('ProjectSettings', () => {
 
 		await userEvent.click(deleteButton);
 		expect(deleteProjectSpy).not.toHaveBeenCalled();
-		let modal = getByRole('dialog');
+		const modal = getByRole('dialog');
 		expect(modal).toBeVisible();
 		const confirmButton = getByTestId('project-settings-delete-confirm-button');
 		expect(confirmButton).toBeDisabled();

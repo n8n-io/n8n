@@ -85,12 +85,8 @@ import { useUsageStore } from '@/stores/usage.store';
 import { EnterpriseEditionFeature } from '@/constants';
 import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
 import { useProjectsStore } from '@/stores/projects.store';
-import {
-	ProjectListItem,
-	ProjectSharingData,
-	Project,
-	ProjectTypes,
-} from '@/types/projects.types';
+import type { ProjectListItem, ProjectSharingData, Project } from '@/types/projects.types';
+import { ProjectTypes } from '@/types/projects.types';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import type { PermissionsMap } from '@/permissions';
 import type { CredentialScope } from '@n8n/permissions';

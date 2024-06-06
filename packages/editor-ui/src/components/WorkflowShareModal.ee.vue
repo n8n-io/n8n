@@ -145,12 +145,8 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import { isNavigationFailure } from 'vue-router';
 import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
 import { useProjectsStore } from '@/stores/projects.store';
-import {
-	ProjectListItem,
-	ProjectSharingData,
-	Project,
-	ProjectTypes,
-} from '@/types/projects.types';
+import type { ProjectListItem, ProjectSharingData, Project } from '@/types/projects.types';
+import { ProjectTypes } from '@/types/projects.types';
 import { useRolesStore } from '@/stores/roles.store';
 import type { RoleMap } from '@/types/roles.types';
 

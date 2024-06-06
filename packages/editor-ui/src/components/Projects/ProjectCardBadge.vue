@@ -3,7 +3,8 @@ import { computed } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import { splitName } from '@/utils/projects.utils';
 import type { ICredentialsResponse, IWorkflowDb } from '@/Interface';
-import { Project, ProjectTypes } from '@/types/projects.types';
+import type { Project } from '@/types/projects.types';
+import { ProjectTypes } from '@/types/projects.types';
 
 type Props = {
 	resource: IWorkflowDb | ICredentialsResponse;

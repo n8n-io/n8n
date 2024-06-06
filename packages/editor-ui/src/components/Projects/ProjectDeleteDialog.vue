@@ -1,10 +1,6 @@
 <script lang="ts" setup>
 import { ref, computed } from 'vue';
-import type {
-	Project,
-	ProjectListItem,
-	ProjectSharingData,
-} from '@/types/projects.types';
+import type { Project, ProjectListItem, ProjectSharingData } from '@/types/projects.types';
 import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
 import { useI18n } from '@/composables/useI18n';
 

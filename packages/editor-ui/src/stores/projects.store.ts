@@ -3,14 +3,14 @@ import { ref, watch, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import * as projectsApi from '@/api/projects.api';
-import {
+import type {
 	Project,
 	ProjectCreateRequest,
 	ProjectListItem,
 	ProjectUpdateRequest,
 	ProjectsCount,
-	ProjectTypes,
 } from '@/types/projects.types';
+import { ProjectTypes } from '@/types/projects.types';
 import { useSettingsStore } from '@/stores/settings.store';
 import { hasPermission } from '@/utils/rbac/permissions';
 import type { IWorkflowDb } from '@/Interface';
