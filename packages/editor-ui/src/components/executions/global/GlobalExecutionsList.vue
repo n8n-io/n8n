@@ -80,6 +80,11 @@ const concurrentExecutionsTooltipText = computed(() => {
 });
 
 const concurrentExecutionsHeaderText = computed(() => {
+	if (runningExecutionsCount.value === 0) {
+		console.log(i18n.baseText('executionsList.activeExecutions.none'));
+		return i18n.baseText('executionsList.activeExecutions.none');
+	}
+
 	return i18n.baseText('executionsList.activeExecutions.header', {
 		interpolate: {
 			running: runningExecutionsCount.value,

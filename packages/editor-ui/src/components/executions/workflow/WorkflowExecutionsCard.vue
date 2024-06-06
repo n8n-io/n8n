@@ -27,12 +27,7 @@
 						size="small"
 						:class="[$style.spinner, 'mr-4xs']"
 					/>
-					<span
-						v-if="executionUIDetails.name === 'queued'"
-						size="small"
-						:class="[$style.queued, 'mr-4xs']"
-					>
-						<FontAwesomeIcon icon="pause-circle" />
+					<span v-if="executionUIDetails.name === 'queued'" size="small" :class="[$style.queued]">
 					</span>
 					<n8n-text :class="$style.statusLabel" size="small">{{
 						executionUIDetails.label
@@ -192,7 +187,6 @@ export default defineComponent({
 		}
 	}
 
-	&.queued,
 	&.running {
 		.spinner {
 			position: relative;
