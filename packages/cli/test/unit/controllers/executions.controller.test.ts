@@ -4,6 +4,7 @@ import { ExecutionsController } from '@/executions/executions.controller';
 import type { ExecutionRequest, ExecutionSummaries } from '@/executions/execution.types';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { WorkflowSharingService } from '@/workflows/workflowSharing.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 describe('ExecutionsController', () => {
 	const executionService = mock<ExecutionService>();
@@ -18,6 +19,14 @@ describe('ExecutionsController', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+	});
+
+	describe('getOne', () => {
+		it('should 400 when execution is not a number', async () => {
+			const req = mock<ExecutionRequest.GetOne>({ params: { id: 'test' } });
+
+			await expect(executionsController.getOne(req)).rejects.toThrow(BadRequestError);
+		});
 	});
 
 	describe('getMany', () => {

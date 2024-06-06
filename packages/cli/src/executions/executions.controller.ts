@@ -8,6 +8,8 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { parseRangeQuery } from './parse-range-query.middleware';
 import type { User } from '@/databases/entities/User';
 import type { Scope } from '@n8n/permissions';
+import { isPositiveInteger } from '@/utils';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 @RestController('/executions')
 export class ExecutionsController {
@@ -59,6 +61,10 @@ export class ExecutionsController {
 
 	@Get('/:id')
 	async getOne(req: ExecutionRequest.GetOne) {
+		if (!isPositiveInteger(req.params.id)) {
+			throw new BadRequestError('Execution ID is not a number');
+		}
+
 		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');

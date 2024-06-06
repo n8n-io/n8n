@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "1.44.0",
+  "version": "1.45.0",
   "description": "Core functionality of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -22,7 +22,7 @@
   },
   "scripts": {
     "clean": "rimraf dist .turbo",
-    "typecheck": "tsc",
+    "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
     "dev": "pnpm watch",
     "format": "prettier --write . --ignore-path ../../.prettierignore",

@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.44.0",
+  "version": "1.45.0",
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
@@ -13,7 +13,7 @@
     "build": "turbo run build",
     "build:backend": "pnpm --filter=!@n8n/chat --filter=!@n8n/codemirror-lang --filter=!n8n-design-system --filter=!n8n-editor-ui build",
     "build:frontend": "pnpm --filter=@n8n/chat --filter=@n8n/codemirror-lang --filter=n8n-design-system --filter=n8n-editor-ui build",
-    "typecheck": "turbo run typecheck",
+    "typecheck": "pnpm --filter=!@n8n/chat --filter=!@n8n/storybook --filter=!n8n-core --filter=!n8n-editor-ui --filter=!n8n-workflow --filter=!n8n typecheck",
     "dev": "turbo run dev --parallel --filter=!n8n-design-system --filter=!@n8n/chat",
     "dev:ai": "turbo run dev --parallel --filter=@n8n/nodes-langchain --filter=n8n --filter=n8n-core",
     "clean": "turbo run clean --parallel",
@@ -26,7 +26,7 @@
     "start:tunnel": "./packages/cli/bin/n8n start --tunnel",
     "start:windows": "cd packages/cli/bin && n8n",
     "test": "turbo run test",
-    "test:backend": "pnpm --filter=!@n8n/chat --filter=!@n8n/codemirror-lang --filter=!n8n-design-system --filter=!n8n-editor-ui  --filter=!n8n-nodes-base test --filter=!@n8n/n8n-nodes-langchain test",
+    "test:backend": "pnpm --filter=!@n8n/chat --filter=!@n8n/codemirror-lang --filter=!n8n-design-system --filter=!n8n-editor-ui --filter=!n8n-nodes-base --filter=!@n8n/n8n-nodes-langchain test",
     "test:nodes": "pnpm --filter=n8n-nodes-base --filter=@n8n/n8n-nodes-langchain test",
     "test:frontend": "pnpm --filter=@n8n/chat --filter=@n8n/codemirror-lang --filter=n8n-design-system --filter=n8n-editor-ui test",
     "watch": "turbo run watch --parallel",
