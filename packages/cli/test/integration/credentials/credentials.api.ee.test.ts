@@ -29,7 +29,6 @@ import {
 } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import { mockInstance } from '../../shared/mocking';
-
 import { createTeamProject, linkUserToProject } from '../shared/db/projects';
 
 const testServer = utils.setupTestServer({
@@ -80,6 +79,23 @@ beforeEach(async () => {
 
 afterEach(() => {
 	jest.clearAllMocks();
+});
+
+describe('POST /credentials', () => {
+	test('project viewers cannot create credentials', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:viewer');
+
+		const response = await testServer
+			.authAgentFor(member)
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), projectId: teamProject.id });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe(
+			"You don't have the permissions to save the credential in this project.",
+		);
+	});
 });
 
 // ----------------------------------------
@@ -231,6 +247,31 @@ describe('GET /credentials', () => {
 // GET /credentials/:id - fetch a certain credential
 // ----------------------------------------
 describe('GET /credentials/:id', () => {
+	test('project viewers can view credentials', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:viewer');
+
+		const savedCredential = await saveCredential(randomCredentialPayload(), {
+			project: teamProject,
+		});
+
+		const response = await testServer
+			.authAgentFor(member)
+			.get(`/credentials/${savedCredential.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toMatchObject({
+			id: savedCredential.id,
+			shared: [{ projectId: teamProject.id, role: 'credential:owner' }],
+			homeProject: {
+				id: teamProject.id,
+			},
+			sharedWithProjects: [],
+			scopes: ['credential:read'],
+		});
+		expect(response.body.data.data).toBeUndefined();
+	});
+
 	test('should retrieve owned cred for owner', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
@@ -384,6 +425,35 @@ describe('GET /credentials/:id', () => {
 		// because EE router has precedence, check if forwards this route
 		const responseNew = await authOwnerAgent.get('/credentials/new');
 		expect(responseNew.statusCode).toBe(200);
+	});
+});
+
+describe('PATCH /credentials/:id', () => {
+	test('project viewer cannot update credentials', async () => {
+		//
+		// ARRANGE
+		//
+		const teamProject = await createTeamProject('', member);
+		await linkUserToProject(member, teamProject, 'project:viewer');
+
+		const savedCredential = await saveCredential(randomCredentialPayload(), {
+			project: teamProject,
+		});
+
+		//
+		// ACT
+		//
+		const response = await testServer
+			.authAgentFor(member)
+			.patch(`/credentials/${savedCredential.id}`)
+			.send({ ...randomCredentialPayload() });
+
+		//
+		// ASSERT
+		//
+
+		expect(response.statusCode).toBe(403);
+		expect(response.body.message).toBe('User is missing a scope required to perform this action');
 	});
 });
 
