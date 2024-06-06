@@ -1,14 +1,7 @@
 import type { IRestApiContext } from '@/Interface';
 import { makeRestApiRequest } from '@/utils/apiUtils';
+import type { NpsSurveyState } from 'n8n-workflow';
 
-export async function npsSurveyShown(context: IRestApiContext): Promise<void> {
-	await makeRestApiRequest(context, 'POST', '/nps-survey/show');
-}
-
-export async function npsSurveyResponded(context: IRestApiContext): Promise<void> {
-	await makeRestApiRequest(context, 'POST', '/nps-survey/respond');
-}
-
-export async function npsSurveyIgnored(context: IRestApiContext): Promise<void> {
-	await makeRestApiRequest(context, 'POST', '/nps-survey/ignore');
+export async function updateNpsSurveyState(context: IRestApiContext, state: NpsSurveyState) {
+	await makeRestApiRequest(context, 'POST', '/user-settings/nps-survey', state);
 }

@@ -9,6 +9,7 @@ import type {
 	INodeParameters,
 	INodeTypeNameVersion,
 	IUser,
+	NpsSurveyState,
 } from 'n8n-workflow';
 
 import { Expose } from 'class-transformer';
@@ -606,7 +607,5 @@ export declare namespace ProjectRequest {
 //           /nps-survey
 // ----------------------------------
 export declare namespace NpsSurveyRequest {
-	type NpsSurveyShown = AuthenticatedRequest;
-	type NpsSurveyResponded = AuthenticatedRequest;
-	type NpsSurveyIgnored = AuthenticatedRequest;
+	type NpsSurveyUpdate = AuthenticatedRequest<{}, {}, unknown>;
 }

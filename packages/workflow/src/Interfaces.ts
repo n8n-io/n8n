@@ -2491,15 +2491,21 @@ export interface IUserManagementSettings {
 	authenticationMethod: AuthenticationMethod;
 }
 
+export type NpsSurveyRespondedState = { lastShownAt: number; responded: true };
+export type NpsSurveyWaitingState = {
+	lastShownAt: number;
+	waitingForResponse: true;
+	ignoredCount: number;
+};
+export type NpsSurveyState = NpsSurveyRespondedState | NpsSurveyWaitingState;
+
 export interface IUserSettings {
 	isOnboarded?: boolean;
 	firstSuccessfulWorkflowId?: string;
 	userActivated?: boolean;
 	userActivatedAt?: number;
 	allowSSOManualLogin?: boolean;
-	npsSurveyLastShownAt?: number;
-	npsSurveyLastResponseState?: 'waiting' | 'done';
-	npsSurveyIgnoredLastCount?: number;
+	npsSurvey?: NpsSurveyState;
 }
 
 export interface IPublicApiSettings {
