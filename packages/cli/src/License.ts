@@ -357,9 +357,9 @@ export class License {
 		return this.getFeatureValue(LICENSE_QUOTAS.TEAM_PROJECT_LIMIT) ?? 0;
 	}
 
-	getConcurrencyProductionCap() {
+	getConcurrencyProductionLimit() {
 		return (
-			this.getFeatureValue(LICENSE_QUOTAS.CONCURRENCY_PRODUCTION_CAP) ?? UNLIMITED_LICENSE_QUOTA
+			this.getFeatureValue(LICENSE_QUOTAS.CONCURRENCY_PRODUCTION_LIMIT) ?? UNLIMITED_LICENSE_QUOTA
 		);
 	}
 

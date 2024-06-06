@@ -12,7 +12,7 @@ import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
 export class ConcurrencyControlService {
 	private readonly isEnabled: boolean;
 
-	private readonly productionCap: number;
+	private readonly productionLimit: number;
 
 	private readonly productionQueue: ConcurrencyQueue;
 
@@ -21,23 +21,23 @@ export class ConcurrencyControlService {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly license: License,
 	) {
-		this.productionCap = this.getProductionCap();
+		this.productionLimit = this.getProductionLimit();
 
-		if (this.productionCap === 0) {
-			throw new InvalidConcurrencyCapError(this.productionCap);
+		if (this.productionLimit === 0) {
+			throw new InvalidConcurrencyCapError(this.productionLimit);
 		}
 
-		if (this.productionCap < -1) {
-			this.productionCap = -1;
+		if (this.productionLimit < -1) {
+			this.productionLimit = -1;
 		}
 
-		if (this.productionCap === -1 || config.getEnv('executions.mode') === 'queue') {
+		if (this.productionLimit === -1 || config.getEnv('executions.mode') === 'queue') {
 			this.isEnabled = false;
 			this.log('Service disabled');
 			return;
 		}
 
-		this.productionQueue = new ConcurrencyQueue(this.productionCap);
+		this.productionQueue = new ConcurrencyQueue(this.productionLimit);
 
 		this.logInit();
 
@@ -112,13 +112,13 @@ export class ConcurrencyControlService {
 	//             private
 	// ----------------------------------
 
-	private getProductionCap() {
-		const envCap = config.getEnv('executions.concurrency.productionCap');
+	private getProductionLimit() {
+		const envCap = config.getEnv('executions.concurrency.productionLimit');
 
 		if (config.getEnv('deployment.type') === 'cloud') {
 			if (process.env.N8N_CLOUD_OVERRIDE_CONCURRENCY_PRODUCTION_CAP === 'true') return envCap;
 
-			return this.license.getConcurrencyProductionCap();
+			return this.license.getConcurrencyProductionLimit();
 		}
 
 		return envCap;
@@ -130,7 +130,7 @@ export class ConcurrencyControlService {
 		this.log(
 			[
 				'Production execution concurrency is',
-				this.productionCap === -1 ? 'uncapped' : 'capped to ' + this.productionCap.toString(),
+				this.productionLimit === -1 ? 'unlimited' : 'limited to ' + this.productionLimit.toString(),
 			].join(' '),
 		);
 	}
@@ -147,7 +147,7 @@ export class ConcurrencyControlService {
 			return true;
 		}
 
-		if (mode === 'webhook' || mode === 'trigger') return this.productionCap === -1;
+		if (mode === 'webhook' || mode === 'trigger') return this.productionLimit === -1;
 
 		throw new UnknownExecutionModeError(mode);
 	}
