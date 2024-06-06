@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, watch, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useRootStore } from '@/stores/n8nRoot.store';
-import * as projectsApi from '@/features/projects/projects.api';
+import * as projectsApi from '@/api/projects.api';
 import {
 	Project,
 	ProjectCreateRequest,
