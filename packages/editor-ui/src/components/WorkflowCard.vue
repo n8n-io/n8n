@@ -69,7 +69,7 @@ const projectsStore = useProjectsStore();
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const workflowPermissions = computed(() => getWorkflowPermissions(props.data));
 const actions = computed(() => {
-	const actions = [
+	const items = [
 		{
 			label: locale.baseText('workflows.item.open'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.OPEN,
@@ -81,27 +81,27 @@ const actions = computed(() => {
 	];
 
 	if (!props.readOnly) {
-		actions.push({
+		items.push({
 			label: locale.baseText('workflows.item.duplicate'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.DUPLICATE,
 		});
 	}
 
 	if (workflowPermissions.value.move) {
-		actions.push({
+		items.push({
 			label: locale.baseText('workflows.item.move'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.MOVE,
 		});
 	}
 
 	if (workflowPermissions.value.delete && !props.readOnly) {
-		actions.push({
+		items.push({
 			label: locale.baseText('workflows.item.delete'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.DELETE,
 		});
 	}
 
-	return actions;
+	return items;
 });
 const formattedCreatedAtDate = computed(() => {
 	const currentYear = new Date().getFullYear().toString();
@@ -140,64 +140,85 @@ function onExpandTags() {
 }
 
 async function onAction(action: string) {
-	if (action === WORKFLOW_LIST_ITEM_ACTIONS.OPEN) {
-		await onClick();
-	} else if (action === WORKFLOW_LIST_ITEM_ACTIONS.DUPLICATE) {
-		uiStore.openModalWithData({
-			name: DUPLICATE_MODAL_KEY,
-			data: {
-				id: props.data.id,
-				name: props.data.name,
-				tags: (props.data.tags ?? []).map((tag) =>
-					typeof tag !== 'string' && 'id' in tag ? tag.id : tag,
-				),
-			},
-		});
-	} else if (action === WORKFLOW_LIST_ITEM_ACTIONS.SHARE) {
-		uiStore.openModalWithData({
-			name: WORKFLOW_SHARE_MODAL_KEY,
-			data: { id: props.data.id },
-		});
+	switch (action) {
+		case WORKFLOW_LIST_ITEM_ACTIONS.OPEN:
+			await onClick();
+			break;
+		case WORKFLOW_LIST_ITEM_ACTIONS.DUPLICATE:
+			uiStore.openModalWithData({
+				name: DUPLICATE_MODAL_KEY,
+				data: {
+					id: props.data.id,
+					name: props.data.name,
+					tags: (props.data.tags ?? []).map((tag) =>
+						typeof tag !== 'string' && 'id' in tag ? tag.id : tag,
+					),
+				},
+			});
+			break;
+		case WORKFLOW_LIST_ITEM_ACTIONS.SHARE:
+			uiStore.openModalWithData({
+				name: WORKFLOW_SHARE_MODAL_KEY,
+				data: { id: props.data.id },
+			});
 
-		telemetry.track('User opened sharing modal', {
-			workflow_id: props.data.id,
-			user_id_sharer: currentUser.value.id,
-			sub_view: 'Workflows listing',
-		});
-	} else if (action === WORKFLOW_LIST_ITEM_ACTIONS.DELETE) {
-		const deleteConfirmed = await message.confirm(
-			locale.baseText('mainSidebar.confirmMessage.workflowDelete.message', {
-				interpolate: { workflowName: props.data.name },
-			}),
-			locale.baseText('mainSidebar.confirmMessage.workflowDelete.headline'),
-			{
-				type: 'warning',
-				confirmButtonText: locale.baseText(
-					'mainSidebar.confirmMessage.workflowDelete.confirmButtonText',
-				),
-				cancelButtonText: locale.baseText(
-					'mainSidebar.confirmMessage.workflowDelete.cancelButtonText',
-				),
-			},
-		);
-
-		if (deleteConfirmed !== MODAL_CONFIRM) {
-			return;
-		}
-
-		try {
-			await workflowsStore.deleteWorkflow(props.data.id);
-		} catch (error) {
-			toast.showError(error, locale.baseText('generic.deleteWorkflowError'));
-			return;
-		}
-
-		// Reset tab title since workflow is deleted.
-		toast.showMessage({
-			title: locale.baseText('mainSidebar.showMessage.handleSelect1.title'),
-			type: 'success',
-		});
+			telemetry.track('User opened sharing modal', {
+				workflow_id: props.data.id,
+				user_id_sharer: currentUser.value.id,
+				sub_view: 'Workflows listing',
+			});
+			break;
+		case WORKFLOW_LIST_ITEM_ACTIONS.DELETE:
+			await deleteWorkflow();
+			break;
+		case WORKFLOW_LIST_ITEM_ACTIONS.MOVE:
+			await moveWorkflow();
+			break;
 	}
+}
+
+async function deleteWorkflow() {
+	const deleteConfirmed = await message.confirm(
+		locale.baseText('mainSidebar.confirmMessage.workflowDelete.message', {
+			interpolate: { workflowName: props.data.name },
+		}),
+		locale.baseText('mainSidebar.confirmMessage.workflowDelete.headline'),
+		{
+			type: 'warning',
+			confirmButtonText: locale.baseText(
+				'mainSidebar.confirmMessage.workflowDelete.confirmButtonText',
+			),
+			cancelButtonText: locale.baseText(
+				'mainSidebar.confirmMessage.workflowDelete.cancelButtonText',
+			),
+		},
+	);
+
+	if (deleteConfirmed !== MODAL_CONFIRM) {
+		return;
+	}
+
+	try {
+		await workflowsStore.deleteWorkflow(props.data.id);
+	} catch (error) {
+		toast.showError(error, locale.baseText('generic.deleteWorkflowError'));
+		return;
+	}
+
+	// Reset tab title since workflow is deleted.
+	toast.showMessage({
+		title: locale.baseText('mainSidebar.showMessage.handleSelect1.title'),
+		type: 'success',
+	});
+}
+
+async function moveWorkflow() {
+	uiStore.openModalWithData({
+		name: 'move-workflow',
+		data: {
+			workflowId: props.data.id,
+		},
+	});
 }
 </script>
 
