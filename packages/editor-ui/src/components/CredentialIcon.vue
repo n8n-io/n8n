@@ -15,6 +15,8 @@ import { useRootStore } from '@/stores/n8nRoot.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 import NodeIcon from '@/components/NodeIcon.vue';
+import { getThemedValue } from '@/utils/nodeTypesUtils';
+import { useUIStore } from '@/stores/ui.store';
 
 export default defineComponent({
 	components: {
@@ -26,22 +28,28 @@ export default defineComponent({
 		},
 	},
 	computed: {
-		...mapStores(useCredentialsStore, useNodeTypesStore, useRootStore),
+		...mapStores(useCredentialsStore, useNodeTypesStore, useRootStore, useUIStore),
 		credentialWithIcon(): ICredentialType | null {
 			return this.credentialTypeName ? this.getCredentialWithIcon(this.credentialTypeName) : null;
 		},
 
 		filePath(): string | null {
-			const iconUrl = this.credentialWithIcon?.iconUrl;
-			if (!iconUrl) {
+			const themeIconUrl = getThemedValue(
+				this.credentialWithIcon?.iconUrl,
+				this.uiStore.appliedTheme,
+			);
+
+			if (!themeIconUrl) {
 				return null;
 			}
-			return this.rootStore.getBaseUrl + iconUrl;
+
+			return this.rootStore.getBaseUrl + themeIconUrl;
 		},
 
 		relevantNode(): INodeTypeDescription | null {
-			if (this.credentialWithIcon?.icon?.startsWith('node:')) {
-				const nodeType = this.credentialWithIcon.icon.replace('node:', '');
+			const icon = this.credentialWithIcon?.icon;
+			if (typeof icon === 'string' && icon.startsWith('node:')) {
+				const nodeType = icon.replace('node:', '');
 				return this.nodeTypesStore.getNodeType(nodeType);
 			}
 			if (!this.credentialTypeName) {
