@@ -9,6 +9,7 @@ import { mockInstance } from '../shared/mocking';
 
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { WaitTracker } from '@/WaitTracker';
+import { createTeamProject, linkUserToProject } from './shared/db/projects';
 
 mockInstance(WaitTracker);
 mockInstance(ConcurrencyControlService, { isEnabled: false });
@@ -50,6 +51,23 @@ describe('GET /executions', () => {
 });
 
 describe('GET /executions/:id', () => {
+	test('project viewers can view executions for workflows in the project', async () => {
+		// if sharing is not enabled, we're only returning the executions of
+		// personal workflows
+		testServer.license.enable('feat:sharing');
+
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:viewer');
+
+		const workflow = await createWorkflow({}, teamProject);
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await testServer.authAgentFor(member).get(`/executions/${execution.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toBeDefined();
+	});
+
 	test('only returns executions of shared workflows if sharing is enabled', async () => {
 		const workflow = await createWorkflow({}, owner);
 		await shareWorkflowWithUsers(workflow, [member]);

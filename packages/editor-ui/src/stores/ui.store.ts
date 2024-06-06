@@ -62,7 +62,7 @@ import { getCurlToJson } from '@/api/curlHelper';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { hasPermission } from '@/rbac/permissions';
+import { hasPermission } from '@/utils/rbac/permissions';
 import { useTelemetryStore } from '@/stores/telemetry.store';
 import { useUsersStore } from '@/stores/users.store';
 import { dismissBannerPermanently } from '@/api/ui';

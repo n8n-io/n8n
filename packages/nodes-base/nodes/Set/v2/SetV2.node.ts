@@ -19,14 +19,13 @@ type Mode = 'manual' | 'raw';
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Edit Fields (Set)',
 	name: 'set',
-	icon: 'fa:pen',
+	iconColor: 'blue',
 	group: ['input'],
 	version: [3, 3.1, 3.2, 3.3],
 	description: 'Modify, add, or remove item fields',
 	subtitle: '={{$parameter["mode"]}}',
 	defaults: {
 		name: 'Edit Fields',
-		color: '#0000FF',
 	},
 	inputs: ['main'],
 	outputs: ['main'],

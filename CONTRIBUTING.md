@@ -9,6 +9,7 @@ Great that you are here and you want to contribute to n8n
 	- [Code of conduct](#code-of-conduct)
 	- [Directory structure](#directory-structure)
 	- [Development setup](#development-setup)
+		- [Dev Container](#dev-container)
 		- [Requirements](#requirements)
 			- [Node.js](#nodejs)
 			- [pnpm](#pnpm)
@@ -59,6 +60,10 @@ The most important directories:
 
 If you want to change or extend n8n you have to make sure that all the needed
 dependencies are installed and the packages get linked correctly. Here's a short guide on how that can be done:
+
+### Dev Container
+
+If you already have VS Code and Docker installed, you can click [here](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://github.com/n8n-io/n8n) to get started. Clicking these links will cause VS Code to automatically install the Dev Containers extension if needed, clone the source code into a container volume, and spin up a dev container for use.
 
 ### Requirements
 
