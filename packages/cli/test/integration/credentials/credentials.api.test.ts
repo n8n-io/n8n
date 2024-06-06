@@ -685,7 +685,7 @@ describe('POST /credentials', () => {
 			//
 			.expect(400, {
 				code: 400,
-				message: "You don't have the permissions to save the workflow in this project.",
+				message: "You don't have the permissions to save the credential in this project.",
 			});
 	});
 });
