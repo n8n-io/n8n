@@ -118,7 +118,7 @@ export abstract class DirectoryLoader {
 
 			if (currentVersionNode.hasOwnProperty('executeSingle')) {
 				throw new ApplicationError(
-					'"executeSingle" has been removed. Please update the code of this node to use "execute" instead!',
+					'"executeSingle" has been removed. Please update the code of this node to use "execute" instead.',
 					{ extra: { nodeName: `${this.packageName}.${nodeName}` } },
 				);
 			}

@@ -1,4 +1,4 @@
-import { useDeviceSupport } from '@/composables/useDeviceSupport';
+import { useDeviceSupport } from 'n8n-design-system/composables/useDeviceSupport';
 
 describe('useDeviceSupport()', () => {
 	beforeEach(() => {

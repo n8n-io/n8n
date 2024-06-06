@@ -12,7 +12,7 @@
 import type { RouteLocationRaw } from 'vue-router';
 import N8nText from '../N8nText';
 import N8nRoute from '../N8nRoute';
-import type { TextSize } from '@/types/text';
+import type { TextSize } from 'n8n-design-system/types/text';
 
 const THEME = ['primary', 'danger', 'text', 'secondary'] as const;
 
