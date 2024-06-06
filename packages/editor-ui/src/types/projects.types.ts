@@ -1,6 +1,6 @@
-import type {Scope} from '@n8n/permissions';
-import type {IUserResponse} from '@/Interface';
-import type {ProjectRole} from '@/types/roles.types';
+import type { Scope } from '@n8n/permissions';
+import type { IUserResponse } from '@/Interface';
+import type { ProjectRole } from '@/types/roles.types';
 
 export const ProjectTypes = {
 	Personal: 'personal',
