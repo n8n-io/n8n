@@ -1,9 +1,9 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { useI18n } from '@/composables/useI18n';
-import { ProjectTypes, splitName } from '@/utils/projects.utils';
+import { splitName } from '@/utils/projects.utils';
 import type { ICredentialsResponse, IWorkflowDb } from '@/Interface';
-import type { Project } from '@/features/projects/projects.types';
+import { Project, ProjectTypes } from '@/types/projects.types';
 
 type Props = {
 	resource: IWorkflowDb | ICredentialsResponse;

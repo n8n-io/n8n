@@ -5,7 +5,7 @@ import type { IMenuItem } from 'n8n-design-system/types';
 import { useI18n } from '@/composables/useI18n';
 import { VIEWS } from '@/constants';
 import { useProjectsStore } from '@/features/projects/projects.store';
-import type { ProjectListItem } from '@/features/projects/projects.types';
+import type { ProjectListItem } from '@/types/projects.types';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 

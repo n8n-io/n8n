@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue';
 import { useI18n } from '@/composables/useI18n';
-import type { ProjectListItem, ProjectSharingData } from '@/features/projects/projects.types';
+import type { ProjectListItem, ProjectSharingData } from '@/types/projects.types';
 import ProjectSharingInfo from '@/features/projects/components/ProjectSharingInfo.vue';
 import type { RoleMap } from '@/types/roles.types';
 

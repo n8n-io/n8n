@@ -51,7 +51,7 @@ import { EnterpriseEditionFeature } from '@/constants';
 import { mapStores } from 'pinia';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import type { PropType } from 'vue';
-import type { ProjectSharingData } from '@/features/projects/projects.types';
+import type { ProjectSharingData } from '@/types/projects.types';
 import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
 
 export type IResourceFiltersType = Record<string, boolean | string | string[]>;

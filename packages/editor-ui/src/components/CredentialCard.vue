@@ -44,7 +44,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import TimeAgo from '@/components/TimeAgo.vue';
-import type { ProjectSharingData } from '@/features/projects/projects.types';
+import type { ProjectSharingData } from '@/types/projects.types';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import type { CredentialScope } from '@n8n/permissions';
 import ProjectCardBadge from '@/features/projects/components/ProjectCardBadge.vue';

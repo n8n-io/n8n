@@ -3,16 +3,16 @@ import { ref, watch, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import * as projectsApi from '@/features/projects/projects.api';
-import type {
+import {
 	Project,
 	ProjectCreateRequest,
 	ProjectListItem,
 	ProjectUpdateRequest,
 	ProjectsCount,
-} from '@/features/projects/projects.types';
+	ProjectTypes,
+} from '@/types/projects.types';
 import { useSettingsStore } from '@/stores/settings.store';
 import { hasPermission } from '@/utils/rbac/permissions';
-import { ProjectTypes } from '@/utils/projects.utils';
 import type { IWorkflowDb } from '@/Interface';
 
 export const useProjectsStore = defineStore('projects', () => {

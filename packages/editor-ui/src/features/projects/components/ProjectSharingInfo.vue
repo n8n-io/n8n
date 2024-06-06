@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import type { ProjectListItem, ProjectSharingData } from '@/features/projects/projects.types';
+import type { ProjectListItem, ProjectSharingData } from '@/types/projects.types';
 import { splitName } from '@/utils/projects.utils';
 
 type Props = {

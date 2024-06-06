@@ -6,7 +6,7 @@ import type {
 	ProjectListItem,
 	ProjectUpdateRequest,
 	ProjectsCount,
-} from '@/features/projects/projects.types';
+} from '@/types/projects.types';
 
 export const getAllProjects = async (context: IRestApiContext): Promise<ProjectListItem[]> => {
 	return await makeRestApiRequest(context, 'GET', '/projects');

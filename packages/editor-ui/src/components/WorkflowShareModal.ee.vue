@@ -145,14 +145,14 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import { isNavigationFailure } from 'vue-router';
 import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
 import { useProjectsStore } from '@/features/projects/projects.store';
-import type {
+import {
 	ProjectListItem,
 	ProjectSharingData,
 	Project,
-} from '@/features/projects/projects.types';
+	ProjectTypes,
+} from '@/types/projects.types';
 import { useRolesStore } from '@/stores/roles.store';
 import type { RoleMap } from '@/types/roles.types';
-import { ProjectTypes } from '@/utils/projects.utils';
 
 export default defineComponent({
 	name: 'WorkflowShareModal',

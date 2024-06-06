@@ -68,7 +68,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import TimeAgo from '@/components/TimeAgo.vue';
-import type { ProjectSharingData } from '@/features/projects/projects.types';
+import type { ProjectSharingData } from '@/types/projects.types';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import ProjectCardBadge from '@/features/projects/components/ProjectCardBadge.vue';
 

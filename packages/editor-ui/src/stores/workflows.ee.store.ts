@@ -5,7 +5,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { defineStore } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { i18n } from '@/plugins/i18n';
-import type { ProjectSharingData } from '@/features/projects/projects.types';
+import type { ProjectSharingData } from '@/types/projects.types';
 import { splitName } from '@/utils/projects.utils';
 
 export const useWorkflowsEEStore = defineStore(STORES.WORKFLOWS_EE, {

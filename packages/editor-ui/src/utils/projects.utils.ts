@@ -27,8 +27,3 @@ export const splitName = (
 	}
 };
 
-export const ProjectTypes = {
-	Personal: 'personal',
-	Team: 'team',
-	Public: 'public',
-} as const;

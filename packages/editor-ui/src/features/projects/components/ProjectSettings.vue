@@ -7,7 +7,7 @@ import type { IUser } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import ProjectTabs from '@/features/projects/components/ProjectTabs.vue';
-import type { Project, ProjectRelation } from '@/features/projects/projects.types';
+import type { Project, ProjectRelation } from '@/types/projects.types';
 import { useToast } from '@/composables/useToast';
 import { VIEWS } from '@/constants';
 import ProjectDeleteDialog from '@/features/projects/components/ProjectDeleteDialog.vue';

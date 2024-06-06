@@ -1,7 +1,12 @@
-import type { Scope } from '@n8n/permissions';
-import type { IUserResponse } from '@/Interface';
-import type { ProjectRole } from '@/types/roles.types';
-import type { ProjectTypes } from '@/utils/projects.utils';
+import type {Scope} from '@n8n/permissions';
+import type {IUserResponse} from '@/Interface';
+import type {ProjectRole} from '@/types/roles.types';
+
+export const ProjectTypes = {
+	Personal: 'personal',
+	Team: 'team',
+	Public: 'public',
+} as const;
 
 type ProjectTypeKeys = typeof ProjectTypes;
 
