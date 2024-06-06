@@ -7,7 +7,11 @@ import type {
 	ValueRenderOption,
 } from '../../helpers/GoogleSheets.types';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
-import { cellFormatDefault, untilSheetSelected } from '../../helpers/GoogleSheets.utils';
+import {
+	cellFormatDefault,
+	checkForSchemaChanges,
+	untilSheetSelected,
+} from '../../helpers/GoogleSheets.utils';
 import { cellFormat, handlingExtraData, locationDefine } from './commonDescription';
 
 export const description: SheetProperties = [
@@ -252,6 +256,9 @@ export async function execute(
 	}
 
 	columnNames = sheetData[headerRow];
+
+	checkForSchemaChanges(this, columnNames, nodeVersion);
+
 	const newColumns = new Set<string>();
 
 	const columnsToMatchOn: string[] =
