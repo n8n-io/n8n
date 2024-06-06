@@ -300,7 +300,7 @@ export const issueCommentFields: INodeProperties[] = [
 						value: '-created',
 					},
 				],
-				default: 'created_asc',
+				default: '+created',
 				description: 'Order comments by the created date',
 			},
 		],
