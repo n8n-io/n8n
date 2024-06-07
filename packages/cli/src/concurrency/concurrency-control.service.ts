@@ -82,21 +82,6 @@ export class ConcurrencyControlService {
 	}
 
 	/**
-	 * Remove many executions from the production queue, releasing capacity back.
-	 */
-	removeMany(executionIds: string[]) {
-		if (!this.isEnabled) return;
-
-		const enqueuedProductionIds = this.productionQueue.getAll();
-
-		const productionIds = executionIds.filter((id) => enqueuedProductionIds.has(id));
-
-		for (const id of productionIds) {
-			this.productionQueue.remove(id);
-		}
-	}
-
-	/**
 	 * Empty the production queue, releasing all capacity back. Also cancel any
 	 * enqueued executions that have response promises, as these cannot
 	 * be re-run via `Start.runEnqueuedExecutions` during startup.

@@ -260,34 +260,6 @@ describe('ConcurrencyControlService', () => {
 			);
 		});
 
-		describe('removeMany', () => {
-			it('should remove many executions from the queue', () => {
-				/**
-				 * Arrange
-				 */
-				config.set('executions.concurrency.productionLimit', 2);
-
-				const service = new ConcurrencyControlService(logger, executionRepository, license);
-
-				jest
-					.spyOn(ConcurrencyQueue.prototype, 'getAll')
-					.mockReturnValueOnce(new Set(['1', '2', '3']));
-
-				const removeSpy = jest.spyOn(ConcurrencyQueue.prototype, 'remove');
-
-				/**
-				 * Act
-				 */
-				service.removeMany(['2', '3']);
-
-				/**
-				 * Assert
-				 */
-				expect(removeSpy).toHaveBeenNthCalledWith(1, '2');
-				expect(removeSpy).toHaveBeenNthCalledWith(2, '3');
-			});
-		});
-
 		describe('removeAll', () => {
 			it('should remove all executions from the production queue', async () => {
 				/**
@@ -386,50 +358,6 @@ describe('ConcurrencyControlService', () => {
 				 * Act
 				 */
 				service.remove({ mode: 'webhook', executionId: '1' });
-
-				/**
-				 * Assert
-				 */
-				expect(removeSpy).not.toHaveBeenCalled();
-			});
-		});
-
-		describe('removeMany', () => {
-			it('should do nothing', () => {
-				/**
-				 * Arrange
-				 */
-				config.set('executions.concurrency.productionLimit', -1);
-
-				const service = new ConcurrencyControlService(logger, executionRepository, license);
-				const removeSpy = jest.spyOn(ConcurrencyQueue.prototype, 'remove');
-
-				/**
-				 * Act
-				 */
-				service.removeMany(['1', '2', '3']);
-
-				/**
-				 * Assert
-				 */
-				expect(removeSpy).not.toHaveBeenCalled();
-			});
-		});
-
-		describe('removeAll', () => {
-			it('should do nothing', () => {
-				/**
-				 * Arrange
-				 */
-				config.set('executions.concurrency.productionLimit', -1);
-
-				const service = new ConcurrencyControlService(logger, executionRepository, license);
-				const removeSpy = jest.spyOn(ConcurrencyQueue.prototype, 'remove');
-
-				/**
-				 * Act
-				 */
-				service.removeMany(['1', '2', '3']);
 
 				/**
 				 * Assert

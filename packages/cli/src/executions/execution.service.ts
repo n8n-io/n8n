@@ -249,16 +249,10 @@ export class ExecutionService {
 			}
 		}
 
-		const deletedExecutionIds = await this.executionRepository.deleteExecutionsByFilter(
-			requestFilters,
-			sharedWorkflowIds,
-			{
-				deleteBefore,
-				ids,
-			},
-		);
-
-		this.concurrencyControl.removeMany(deletedExecutionIds);
+		await this.executionRepository.deleteExecutionsByFilter(requestFilters, sharedWorkflowIds, {
+			deleteBefore,
+			ids,
+		});
 	}
 
 	async createErrorExecution(
