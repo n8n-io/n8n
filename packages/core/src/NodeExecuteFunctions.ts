@@ -100,6 +100,7 @@ import type {
 	WorkflowExecuteMode,
 	CallbackManager,
 	INodeParameters,
+	EnsureTypeOptions,
 } from 'n8n-workflow';
 import {
 	ExpressionError,
@@ -2330,7 +2331,7 @@ export const validateValueAgainstSchema = (
 };
 
 function ensureType(
-	toType: 'string' | 'number' | 'boolean' | 'object' | 'array',
+	toType: EnsureTypeOptions,
 	value: any,
 	parameterName: string,
 	errorOptions?: { itemIndex?: number; runIndex?: number; nodeCause?: string },
@@ -2346,8 +2347,9 @@ function ensureType(
 		);
 	}
 
-	if (toType === 'object' || toType === 'array') {
+	if (['object', 'array', 'json'].includes(toType)) {
 		if (typeof value !== 'object') {
+			// if value is not an object and is string try to parse it, else throw an error
 			if (typeof value === 'string' && value.length) {
 				try {
 					const parsedValue = JSON.parse(value);
@@ -2364,9 +2366,20 @@ function ensureType(
 					errorOptions,
 				);
 			}
+		} else if (toType === 'json') {
+			// value is an object, make sure it is valid JSON
+			try {
+				JSON.stringify(value);
+			} catch (error) {
+				throw new ExpressionError(`Parameter '${parameterName}' is not valid JSON`, {
+					...errorOptions,
+					description: error.message,
+				});
+			}
 		}
 
 		if (toType === 'array' && !Array.isArray(value)) {
+			// value is not an array, but has to be
 			throw new ExpressionError(
 				`Parameter '${parameterName}' must be an array, but we got object`,
 				errorOptions,
