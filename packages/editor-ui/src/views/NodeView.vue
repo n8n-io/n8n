@@ -396,13 +396,13 @@ import { useCanvasPanning } from '@/composables/useCanvasPanning';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
-import { useProjectsStore } from '@/features/projects/projects.store';
-import type { ProjectSharingData } from '@/features/projects/projects.types';
+import { useProjectsStore } from '@/stores/projects.store';
+import type { ProjectSharingData } from '@/types/projects.types';
+import { ProjectTypes } from '@/types/projects.types';
 import { useAIStore } from '@/stores/ai.store';
 import { useStorage } from '@/composables/useStorage';
 import { isJSPlumbEndpointElement, isJSPlumbConnection } from '@/utils/typeGuards';
 import { usePostHog } from '@/stores/posthog.store';
-import { ProjectTypes } from '@/features/projects/projects.utils';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 
 interface AddNodeOptions {
@@ -917,7 +917,7 @@ export default defineComponent({
 
 			setTimeout(() => {
 				void this.usersStore.showPersonalizationSurvey();
-				this.addPinDataConnections(this.workflowsStore.pinnedWorkflowData || ({} as IPinData));
+				this.addPinDataConnections(this.workflowsStore.pinnedWorkflowData);
 			}, 0);
 		});
 
@@ -1645,7 +1645,7 @@ export default defineComponent({
 					source: NODE_CREATOR_OPEN_SOURCES.TAB,
 					createNodeActive: !this.createNodeActive && !this.isReadOnlyRoute && !this.readOnlyEnv,
 				});
-			} else if (e.key === 'Enter' && ctrlModifier && !readOnly) {
+			} else if (e.key === 'Enter' && ctrlModifier && !readOnly && !this.isExecutionDisabled) {
 				void this.onRunWorkflow();
 			} else if (e.key === 'S' && shiftModifier && !readOnly) {
 				void this.onAddNodes({ nodes: [{ type: STICKY_NODE_TYPE }], connections: [] });
@@ -2334,7 +2334,7 @@ export default defineComponent({
 
 					this.workflowsStore.addWorkflowTagIds(tagIds);
 					setTimeout(() => {
-						this.addPinDataConnections(this.workflowsStore.pinnedWorkflowData || ({} as IPinData));
+						this.addPinDataConnections(this.workflowsStore.pinnedWorkflowData);
 					});
 				}
 			} catch (error) {
@@ -3894,7 +3894,7 @@ export default defineComponent({
 			});
 
 			setTimeout(() => {
-				this.addPinDataConnections(this.workflowsStore.pinnedWorkflowData ?? ({} as IPinData));
+				this.addPinDataConnections(this.workflowsStore.pinnedWorkflowData);
 			});
 		},
 		__removeConnection(connection: [IConnection, IConnection], removeVisualConnection = false) {
@@ -4906,23 +4906,31 @@ export default defineComponent({
 				await this.importWorkflowData(workflowData, 'url');
 			}
 		},
-		addPinDataConnections(pinData: IPinData) {
+		addPinDataConnections(pinData?: IPinData) {
+			if (!pinData) {
+				return;
+			}
+
 			Object.keys(pinData).forEach((nodeName) => {
 				const node = this.workflowsStore.getNodeByName(nodeName);
 				if (!node) {
 					return;
 				}
 
-				const hasRun = this.workflowsStore.getWorkflowResultDataByNodeName(nodeName) !== null;
-				const classNames = ['pinned'];
-
-				if (hasRun) {
-					classNames.push('has-run');
-				}
 				const nodeElement = document.getElementById(node.id);
 				if (!nodeElement) {
 					return;
 				}
+
+				const hasRun = this.workflowsStore.getWorkflowResultDataByNodeName(nodeName) !== null;
+				// In case we are showing a production execution preview we want
+				// to show pinned data connections as they wouldn't have been pinned
+				const classNames = this.isProductionExecutionPreview ? [] : ['pinned'];
+
+				if (hasRun) {
+					classNames.push('has-run');
+				}
+
 				const connections = this.instance?.getConnections({
 					source: nodeElement,
 				});
@@ -5057,7 +5065,7 @@ export default defineComponent({
 				});
 			}
 
-			this.addPinDataConnections(this.workflowsStore.pinnedWorkflowData || ({} as IPinData));
+			this.addPinDataConnections(this.workflowsStore.pinnedWorkflowData);
 		},
 
 		async saveCurrentWorkflowExternal(callback: () => void) {

@@ -14,7 +14,7 @@ import { getConnectedTools } from '../../../../../utils/helpers';
 import { MODELS_NOT_SUPPORT_FUNCTION_CALLS } from '../../helpers/constants';
 
 const properties: INodeProperties[] = [
-	modelRLC,
+	modelRLC('modelSearch'),
 	{
 		displayName: 'Messages',
 		name: 'messages',

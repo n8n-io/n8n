@@ -235,6 +235,7 @@ export class Agent implements INodeType {
 		displayName: 'AI Agent',
 		name: 'agent',
 		icon: 'fa:robot',
+		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
 		description: 'Generates an action plan and executes it. Can use external tools.',
