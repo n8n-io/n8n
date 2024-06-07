@@ -98,9 +98,9 @@ export class Start extends BaseCommand {
 
 			await this.externalHooks?.run('n8n.stop', []);
 
-			if (Container.get(OrchestrationService).isMultiMainSetupEnabled) {
-				await this.activeWorkflowManager.removeAllTriggerAndPollerBasedWorkflows();
+			await this.activeWorkflowManager.removeAllTriggerAndPollerBasedWorkflows();
 
+			if (Container.get(OrchestrationService).isMultiMainSetupEnabled) {
 				await Container.get(OrchestrationService).shutdown();
 			}
 
