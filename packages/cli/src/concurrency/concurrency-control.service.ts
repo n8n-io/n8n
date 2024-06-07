@@ -7,6 +7,7 @@ import { InvalidConcurrencyCapError } from '@/errors/invalid-concurrency-cap.err
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { License } from '@/License';
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
+import type { IExecutingWorkflowData } from '@/Interfaces';
 
 @Service()
 export class ConcurrencyControlService {
@@ -96,9 +97,11 @@ export class ConcurrencyControlService {
 	}
 
 	/**
-	 * Remove all executions from both queues, releasing all capacity back.
+	 * Empty the production queue, releasing all capacity back. Also cancel any
+	 * enqueued executions that have response promises, as these cannot
+	 * be re-run via `Start.runEnqueuedExecutions` during startup.
 	 */
-	removeAll() {
+	async removeAll(activeExecutions: { [executionId: string]: IExecutingWorkflowData }) {
 		if (!this.isEnabled) return;
 
 		const enqueuedProductionIds = this.productionQueue.getAll();
@@ -106,6 +109,16 @@ export class ConcurrencyControlService {
 		for (const id of enqueuedProductionIds) {
 			this.productionQueue.remove(id);
 		}
+
+		const executionIds = Object.entries(activeExecutions)
+			.filter(([_, execution]) => execution.status === 'new' && execution.responsePromise)
+			.map(([executionId, _]) => executionId);
+
+		if (executionIds.length === 0) return;
+
+		await this.executionRepository.cancelMany(executionIds);
+
+		this.logger.info('Canceled enqueued executions with response promises', { executionIds });
 	}
 
 	// ----------------------------------

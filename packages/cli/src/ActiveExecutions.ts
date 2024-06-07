@@ -196,26 +196,13 @@ export class ActiveExecutions {
 		return this.getExecution(executionId).status;
 	}
 
-	async cancelEnqueuedExecutionsWithResponsePromises() {
-		const executionIds = Object.entries(this.activeExecutions)
-			.filter(([_, execution]) => execution.status === 'new' && execution.responsePromise)
-			.map(([executionId, _]) => executionId);
-
-		if (executionIds.length === 0) return;
-
-		await this.executionRepository.cancelMany(executionIds);
-
-		this.logger.info('Canceled enqueued executions with response promises', { executionIds });
-	}
-
 	/** Wait for all active executions to finish */
 	async shutdown(cancelAll = false) {
 		let executionIds = Object.keys(this.activeExecutions);
 
 		if (cancelAll) {
 			if (config.getEnv('executions.mode') === 'regular') {
-				this.concurrencyControl.removeAll();
-				await this.cancelEnqueuedExecutionsWithResponsePromises();
+				await this.concurrencyControl.removeAll(this.activeExecutions);
 			}
 
 			const stopPromises = executionIds.map(

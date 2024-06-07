@@ -7,6 +7,7 @@ import { ConcurrencyQueue } from '../concurrency-queue';
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
 import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { License } from '@/License';
+import type { IExecutingWorkflowData } from '@/Interfaces';
 
 describe('ConcurrencyControlService', () => {
 	const logger = mock<Logger>();
@@ -288,7 +289,7 @@ describe('ConcurrencyControlService', () => {
 		});
 
 		describe('removeAll', () => {
-			it('should remove all executions from the queue', () => {
+			it('should remove all executions from the production queue', async () => {
 				/**
 				 * Arrange
 				 */
@@ -305,7 +306,11 @@ describe('ConcurrencyControlService', () => {
 				/**
 				 * Act
 				 */
-				service.removeAll();
+				await service.removeAll({
+					'1': mock<IExecutingWorkflowData>(),
+					'2': mock<IExecutingWorkflowData>(),
+					'3': mock<IExecutingWorkflowData>(),
+				});
 
 				/**
 				 * Assert
