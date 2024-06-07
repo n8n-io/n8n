@@ -153,7 +153,6 @@ import Container from 'typedi';
 import type { BinaryData } from './BinaryData/types';
 import merge from 'lodash/merge';
 import { InstanceSettings } from './InstanceSettings';
-import type { ExpressionErrorOptions } from 'n8n-workflow/src/errors/expression.error';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -2334,7 +2333,7 @@ function ensureType(
 	toType: 'string' | 'number' | 'boolean' | 'object' | 'array',
 	value: any,
 	parameterName: string,
-	errorOptions: ExpressionErrorOptions | undefined,
+	errorOptions?: { itemIndex?: number; runIndex?: number; nodeCause?: string },
 ): string | number | boolean | object {
 	if (value === null) {
 		throw new ExpressionError(`Parameter '${parameterName}' must not be null`, errorOptions);
