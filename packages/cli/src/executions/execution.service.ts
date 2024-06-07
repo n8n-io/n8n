@@ -452,4 +452,15 @@ export class ExecutionService {
 			status: execution.status,
 		};
 	}
+
+	async findAllEnqueuedExecutions() {
+		return await this.executionRepository.findMultipleExecutions(
+			{
+				select: ['id', 'mode'],
+				where: { status: 'new' },
+				order: { id: 'ASC' },
+			},
+			{ includeData: true, unflattenData: true },
+		);
+	}
 }
