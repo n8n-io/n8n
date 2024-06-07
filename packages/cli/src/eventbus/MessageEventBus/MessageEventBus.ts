@@ -32,7 +32,7 @@ import {
 import { METRICS_EVENT_NAME } from '../MessageEventBusDestination/Helpers.ee';
 import type { AbstractEventMessageOptions } from '../EventMessageClasses/AbstractEventMessageOptions';
 import { getEventMessageObjectByType } from '../EventMessageClasses/Helpers';
-import { ExecutionDataRecoveryService } from '../executionDataRecovery.service';
+import { ExecutionRecoveryService } from '../../executions/execution-recovery.service';
 import {
 	EventMessageAiNode,
 	type EventMessageAiNodeOptions,
@@ -68,7 +68,7 @@ export class MessageEventBus extends EventEmitter {
 		private readonly eventDestinationsRepository: EventDestinationsRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly orchestrationService: OrchestrationService,
-		private readonly recoveryService: ExecutionDataRecoveryService,
+		private readonly recoveryService: ExecutionRecoveryService,
 	) {
 		super();
 	}
@@ -185,10 +185,9 @@ export class MessageEventBus extends EventEmitter {
 							);
 							await this.executionRepository.markAsCrashed([executionId]);
 						} else {
-							await this.recoveryService.recoverExecutionData(
+							await this.recoveryService.recover(
 								executionId,
 								unsentAndUnfinished.unfinishedExecutions[executionId],
-								true,
 							);
 						}
 					}
