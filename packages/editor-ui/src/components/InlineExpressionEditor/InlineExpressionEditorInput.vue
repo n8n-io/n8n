@@ -49,7 +49,7 @@ const ndvStore = useNDVStore();
 const root = ref<HTMLElement>();
 const extensions = computed(() => [
 	Prec.highest(
-		keymap.of([...tabKeyMap(true), ...enterKeyMap, ...autocompleteKeyMap, ...historyKeyMap]),
+		keymap.of([...tabKeyMap(false), ...enterKeyMap, ...autocompleteKeyMap, ...historyKeyMap]),
 	),
 	n8nLang(),
 	n8nAutocompletion(),
