@@ -4,18 +4,18 @@ import { AddActivatedAtUserSetting1717498465931 as BaseMigration } from '../comm
 export class AddActivatedAtUserSetting1717498465931 extends BaseMigration {
 	transaction = false as const;
 
-	async up({ queryRunner, tablePrefix }: MigrationContext) {
+	async up({ queryRunner, escape }: MigrationContext) {
 		const now = Date.now();
 		await queryRunner.query(
-			`UPDATE ${tablePrefix}user
+			`UPDATE ${escape.tableName('user')}
 			SET settings = JSON_SET(settings, '$.userActivatedAt', ${now})
 			WHERE JSON_EXTRACT(settings, '$.userActivated') = true;`,
 		);
 	}
 
-	async down({ queryRunner, tablePrefix }: MigrationContext) {
+	async down({ queryRunner, escape }: MigrationContext) {
 		await queryRunner.query(
-			`UPDATE ${tablePrefix}user SET settings = JSON_REMOVE(settings, '$.userActivatedAt')`,
+			`UPDATE ${escape.tableName('user')} SET settings = JSON_REMOVE(settings, '$.userActivatedAt')`,
 		);
 	}
 }
