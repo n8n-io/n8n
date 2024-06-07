@@ -56,7 +56,7 @@ export class ConcurrencyControlService {
 	/**
 	 * Block or let through an execution based on concurrency capacity.
 	 */
-	async check({ mode, executionId }: { mode: ExecutionMode; executionId: string }) {
+	async throttle({ mode, executionId }: { mode: ExecutionMode; executionId: string }) {
 		if (!this.isEnabled || this.isUncapped(mode)) return;
 
 		await this.productionQueue.enqueue(executionId);

@@ -69,12 +69,12 @@ export class ActiveExecutions {
 				throw new ApplicationError('There was an issue assigning an execution id to the execution');
 			}
 
-			await this.concurrencyControl.check({ mode, executionId });
+			await this.concurrencyControl.throttle({ mode, executionId });
 			executionStatus = 'running';
 		} else {
 			// Is an existing execution we want to finish so update in DB
 
-			await this.concurrencyControl.check({ mode, executionId });
+			await this.concurrencyControl.throttle({ mode, executionId });
 
 			const execution: Pick<IExecutionDb, 'id' | 'data' | 'waitTill' | 'status'> = {
 				id: executionId,

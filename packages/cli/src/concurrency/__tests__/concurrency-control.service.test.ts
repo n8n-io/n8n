@@ -121,7 +121,7 @@ describe('ConcurrencyControlService', () => {
 	// ----------------------------------
 
 	describe('if enabled', () => {
-		describe('check', () => {
+		describe('throttle', () => {
 			it.each(['cli', 'error', 'integrated', 'internal', 'manual', 'retry'])(
 				'should do nothing on %s mode',
 				async (mode: ExecutionMode) => {
@@ -136,7 +136,7 @@ describe('ConcurrencyControlService', () => {
 					/**
 					 * Act
 					 */
-					await service.check({ mode, executionId: '1' });
+					await service.throttle({ mode, executionId: '1' });
 
 					/**
 					 * Assert
@@ -157,7 +157,7 @@ describe('ConcurrencyControlService', () => {
 				/**
 				 * Act
 				 */
-				await service.check({ mode, executionId: '1' });
+				await service.throttle({ mode, executionId: '1' });
 
 				/**
 				 * Assert
@@ -181,7 +181,7 @@ describe('ConcurrencyControlService', () => {
 					/**
 					 * Act
 					 */
-					await service.check({ mode, executionId: '1' });
+					await service.throttle({ mode, executionId: '1' });
 
 					/**
 					 * Assert
@@ -226,7 +226,7 @@ describe('ConcurrencyControlService', () => {
 					/**
 					 * Act
 					 */
-					await service.check({ mode, executionId: '1' });
+					await service.throttle({ mode, executionId: '1' });
 
 					/**
 					 * Assert
@@ -322,7 +322,7 @@ describe('ConcurrencyControlService', () => {
 	// ----------------------------------
 
 	describe('if disabled', () => {
-		describe('check', () => {
+		describe('throttle', () => {
 			it('should do nothing', async () => {
 				/**
 				 * Arrange
@@ -335,8 +335,8 @@ describe('ConcurrencyControlService', () => {
 				/**
 				 * Act
 				 */
-				await service.check({ mode: 'trigger', executionId: '1' });
-				await service.check({ mode: 'webhook', executionId: '2' });
+				await service.throttle({ mode: 'trigger', executionId: '1' });
+				await service.throttle({ mode: 'webhook', executionId: '2' });
 
 				/**
 				 * Assert
