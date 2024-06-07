@@ -14,6 +14,14 @@ export class ZepApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
+			displayName: 'API Key',
+			name: 'apiKey',
+			type: 'string',
+			typeOptions: { password: true },
+			required: false,
+			default: '',
+		},
+		{
 			displayName: 'Cloud',
 			description: 'Whether you are adding credentials for Zep Cloud instead of Zep Open Source',
 			name: 'cloud',
@@ -32,21 +40,14 @@ export class ZepApi implements ICredentialType {
 				},
 			},
 		},
-		{
-			displayName: 'API Key',
-			name: 'apiKey',
-			type: 'string',
-			typeOptions: { password: true },
-			required: false,
-			default: '',
-		},
 	];
 
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
 			headers: {
-				Authorization: '={{$credentials.apiKey && !$credentials.cloud ? "Bearer " + $credentials.apiKey : "Api-Key " + $credentials.apiKey }}',
+				Authorization:
+					'={{$credentials.apiKey && !$credentials.cloud ? "Bearer " + $credentials.apiKey : "Api-Key " + $credentials.apiKey }}',
 			},
 		},
 	};
