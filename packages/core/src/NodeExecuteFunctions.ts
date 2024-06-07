@@ -2330,17 +2330,19 @@ export const validateValueAgainstSchema = (
 	return validationResult.newValue;
 };
 
-function ensureType(
+export function ensureType(
 	toType: EnsureTypeOptions,
-	value: any,
+	parameterValue: any,
 	parameterName: string,
 	errorOptions?: { itemIndex?: number; runIndex?: number; nodeCause?: string },
 ): string | number | boolean | object {
-	if (value === null) {
+	let returnData = parameterValue;
+
+	if (returnData === null) {
 		throw new ExpressionError(`Parameter '${parameterName}' must not be null`, errorOptions);
 	}
 
-	if (value === undefined) {
+	if (returnData === undefined) {
 		throw new ExpressionError(
 			`Parameter '${parameterName}' could not be 'undefined'`,
 			errorOptions,
@@ -2348,12 +2350,12 @@ function ensureType(
 	}
 
 	if (['object', 'array', 'json'].includes(toType)) {
-		if (typeof value !== 'object') {
+		if (typeof returnData !== 'object') {
 			// if value is not an object and is string try to parse it, else throw an error
-			if (typeof value === 'string' && value.length) {
+			if (typeof returnData === 'string' && returnData.length) {
 				try {
-					const parsedValue = JSON.parse(value);
-					value = parsedValue;
+					const parsedValue = JSON.parse(returnData);
+					returnData = parsedValue;
 				} catch (error) {
 					throw new ExpressionError(`Parameter '${parameterName}' could not be parsed`, {
 						...errorOptions,
@@ -2362,14 +2364,14 @@ function ensureType(
 				}
 			} else {
 				throw new ExpressionError(
-					`Parameter '${parameterName}' must be an ${toType}, but we got '${value}'`,
+					`Parameter '${parameterName}' must be an ${toType}, but we got '${String(parameterValue)}'`,
 					errorOptions,
 				);
 			}
 		} else if (toType === 'json') {
 			// value is an object, make sure it is valid JSON
 			try {
-				JSON.stringify(value);
+				JSON.stringify(returnData);
 			} catch (error) {
 				throw new ExpressionError(`Parameter '${parameterName}' is not valid JSON`, {
 					...errorOptions,
@@ -2378,7 +2380,7 @@ function ensureType(
 			}
 		}
 
-		if (toType === 'array' && !Array.isArray(value)) {
+		if (toType === 'array' && !Array.isArray(returnData)) {
 			// value is not an array, but has to be
 			throw new ExpressionError(
 				`Parameter '${parameterName}' must be an array, but we got object`,
@@ -2389,25 +2391,25 @@ function ensureType(
 
 	try {
 		if (toType === 'string') {
-			if (typeof value === 'object') {
-				value = JSON.stringify(value);
+			if (typeof returnData === 'object') {
+				returnData = JSON.stringify(returnData);
 			} else {
-				value = String(value);
+				returnData = String(returnData);
 			}
 		}
 
 		if (toType === 'number') {
-			value = Number(value);
-			if (Number.isNaN(value)) {
+			returnData = Number(returnData);
+			if (Number.isNaN(returnData)) {
 				throw new ExpressionError(
-					`Parameter '${parameterName}' must be a number, but we got '${value}'`,
+					`Parameter '${parameterName}' must be a number, but we got '${parameterValue}'`,
 					errorOptions,
 				);
 			}
 		}
 
 		if (toType === 'boolean') {
-			value = Boolean(value);
+			returnData = Boolean(returnData);
 		}
 	} catch (error) {
 		if (error instanceof ExpressionError) throw error;
@@ -2418,7 +2420,7 @@ function ensureType(
 		});
 	}
 
-	return value;
+	return returnData;
 }
 
 /**
