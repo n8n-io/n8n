@@ -1,18 +1,18 @@
 <script lang="ts" setup>
+import { ref, computed } from 'vue';
 import type { ICredentialsResponse, IWorkflowDb } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { useUIStore } from '@/stores/ui.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import Modal from '@/components/Modal.vue';
-import { ref } from 'vue';
 import { PROJECT_MOVE_RESOURCE_CONFIRM_MODAL } from '@/constants';
+import { splitName } from '@/utils/projects.utils';
 
 const props = defineProps<{
 	modalName: string;
 	data: {
 		resource: IWorkflowDb | ICredentialsResponse;
 		resourceType: 'workflow' | 'credential';
-		beforeClose: () => void;
 	};
 }>();
 
@@ -21,6 +21,13 @@ const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 
 const projectId = ref<string | null>(null);
+const processedName = computed(() => {
+	const { firstName, lastName, email } = splitName(props.data.resource.homeProject?.name ?? '');
+	return !firstName ? email : `${firstName}${lastName ? ' ' + lastName : ''}`;
+});
+const availableProjects = computed(() => {
+	return projectsStore.teamProjects.filter((p) => p.id !== props.data.resource.homeProject?.id);
+});
 
 const updateProject = (value: string) => {
 	projectId.value = value;
@@ -43,7 +50,7 @@ const next = () => {
 };
 </script>
 <template>
-	<Modal width="500px" :name="props.modalName" :before-close="props.data.beforeClose">
+	<Modal width="500px" :name="props.modalName" data-test-id="project-move-resource-modal">
 		<template #header>
 			<N8nHeading tag="h2" size="xlarge" class="mb-m">
 				{{
@@ -57,7 +64,7 @@ const next = () => {
 					<template #resourceName
 						><strong>{{ props.data.resource.name }}</strong></template
 					>
-					<template #resourceHomeProjectName>{{ props.data.resource.homeProject?.name }}</template>
+					<template #resourceHomeProjectName>{{ processedName }}</template>
 					<template #resourceType>{{ props.data.resourceType }}</template>
 				</i18n-t>
 			</N8nText>
@@ -71,7 +78,7 @@ const next = () => {
 					@update:model-value="updateProject"
 				>
 					<N8nOption
-						v-for="p in projectsStore.teamProjects"
+						v-for="p in availableProjects"
 						:key="p.id"
 						:value="p.id"
 						:label="p.name"

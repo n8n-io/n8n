@@ -14,7 +14,6 @@ const props = defineProps<{
 		resource: IWorkflowDb | ICredentialsResponse;
 		resourceType: 'workflow' | 'credential';
 		projectId: string;
-		beforeClose: () => void;
 	};
 }>();
 
@@ -58,7 +57,7 @@ const confirm = async () => {
 };
 </script>
 <template>
-	<Modal width="500px" :name="props.modalName" :before-close="props.data.beforeClose">
+	<Modal width="500px" :name="props.modalName" data-test-id="project-move-resource-confirm-modal">
 		<template #header>
 			<N8nHeading tag="h2" size="xlarge" class="mb-m">
 				{{ i18n.baseText('projects.move.resource.confirm.modal.title') }}
