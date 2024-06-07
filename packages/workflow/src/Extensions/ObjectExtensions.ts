@@ -110,7 +110,8 @@ export function toDateTime() {
 
 isEmpty.doc = {
 	name: 'isEmpty',
-	description: 'Returns <code>true</code> if the Object has no keys (fields) set',
+	description:
+		'Returns <code>true</code> if the Object has no keys (fields) set or is <code>null</code>',
 	examples: [
 		{ example: "({'name': 'Nathan'}).isEmpty()", evaluated: 'false' },
 		{ example: '({}).isEmpty()', evaluated: 'true' },
