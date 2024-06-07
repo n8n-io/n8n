@@ -15,11 +15,15 @@ import { updateNpsSurveyState } from '@/api/npsSurvey';
 export const MAXIMUM_TIMES_TO_SHOW_SURVEY_IF_IGNORED = 3;
 
 export const useNpsSurvey = defineStore('npsSurvey', () => {
+	const rootStore = useRootStore();
+	const uiStore = useUIStore();
+	const settingsStore = useSettingsStore();
+
 	const shouldShowNpsSurveyNext = ref<boolean>(false);
 	const currentSurveyState = ref<NpsSurveyState | undefined>();
 
 	function setupNpsSurveyOnLogin(settings: IUserSettings): void {
-		if (!useSettingsStore().isTelemetryEnabled) {
+		if (!settingsStore.isTelemetryEnabled) {
 			shouldShowNpsSurveyNext.value = false;
 			return;
 		}
@@ -67,7 +71,7 @@ export const useNpsSurvey = defineStore('npsSurvey', () => {
 			return;
 		}
 
-		useUIStore().openModal(NPS_SURVEY_MODAL_KEY);
+		uiStore.openModal(NPS_SURVEY_MODAL_KEY);
 		shouldShowNpsSurveyNext.value = false;
 
 		const updatedState: NpsSurveyState = {
@@ -75,7 +79,7 @@ export const useNpsSurvey = defineStore('npsSurvey', () => {
 			lastShownAt: Date.now(),
 			ignoredCount: 0,
 		};
-		await updateNpsSurveyState(useRootStore().getRestApiContext, updatedState);
+		await updateNpsSurveyState(rootStore.getRestApiContext, updatedState);
 		currentSurveyState.value = updatedState;
 	}
 
@@ -88,7 +92,7 @@ export const useNpsSurvey = defineStore('npsSurvey', () => {
 			responded: true,
 			lastShownAt: currentSurveyState.value.lastShownAt,
 		};
-		await updateNpsSurveyState(useRootStore().getRestApiContext, updatedState);
+		await updateNpsSurveyState(rootStore.getRestApiContext, updatedState);
 		currentSurveyState.value = updatedState;
 	}
 
@@ -110,7 +114,7 @@ export const useNpsSurvey = defineStore('npsSurvey', () => {
 			lastShownAt: currentSurveyState.value.lastShownAt,
 			ignoredCount: ignoredCount + 1,
 		};
-		await updateNpsSurveyState(useRootStore().getRestApiContext, updatedState);
+		await updateNpsSurveyState(rootStore.getRestApiContext, updatedState);
 		currentSurveyState.value = updatedState;
 	}
 
