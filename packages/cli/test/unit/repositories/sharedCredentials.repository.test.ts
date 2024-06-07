@@ -62,7 +62,12 @@ describe('SharedCredentialsRepository', () => {
 					role: In(['credential:owner', 'credential:user']),
 					project: {
 						projectRelations: {
-							role: In(['project:admin', 'project:personalOwner', 'project:editor']),
+							role: In([
+								'project:admin',
+								'project:personalOwner',
+								'project:editor',
+								'project:viewer',
+							]),
 							userId: member.id,
 						},
 					},
@@ -83,7 +88,12 @@ describe('SharedCredentialsRepository', () => {
 					role: In(['credential:owner', 'credential:user']),
 					project: {
 						projectRelations: {
-							role: In(['project:admin', 'project:personalOwner', 'project:editor']),
+							role: In([
+								'project:admin',
+								'project:personalOwner',
+								'project:editor',
+								'project:viewer',
+							]),
 							userId: member.id,
 						},
 					},
