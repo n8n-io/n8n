@@ -1,5 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { MAXIMUM_TIMES_TO_SHOW_SURVEY_IF_IGNORED, useNpsSurvey } from './npsSurvey.store';
+import { MAXIMUM_TIMES_TO_SHOW_SURVEY_IF_IGNORED, useNpsSurveyStore } from './npsSurvey.store';
 import { THREE_DAYS_IN_MILLIS, TIME, NPS_SURVEY_MODAL_KEY } from '@/constants';
 import { useSettingsStore } from './settings.store';
 
@@ -31,13 +31,13 @@ vi.useFakeTimers({
 });
 
 describe('useNpsSurvey', () => {
-	let npsSurveyStore: ReturnType<typeof useNpsSurvey>;
+	let npsSurveyStore: ReturnType<typeof useNpsSurveyStore>;
 
 	beforeEach(() => {
 		vi.restoreAllMocks();
 		setActivePinia(createPinia());
 		useSettingsStore().settings.telemetry = { enabled: true };
-		npsSurveyStore = useNpsSurvey();
+		npsSurveyStore = useNpsSurveyStore();
 	});
 
 	it('by default, does not show survey', () => {

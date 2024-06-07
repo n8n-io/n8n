@@ -7,7 +7,7 @@ import { useI18n } from '@/composables/useI18n';
 import { ref, computed, watch } from 'vue';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useNpsSurvey } from '@/stores/npsSurvey.store';
+import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 
 const props = defineProps({
 	isActive: {
@@ -56,7 +56,7 @@ function closeDialog(): void {
 			nps: '',
 		});
 
-		useNpsSurvey().ignoreNpsSurvey();
+		useNpsSurveyStore().ignoreNpsSurvey();
 	}
 	if (form.value.value !== '' && form.value.email === '') {
 		telemetry.track('User responded value survey email', {
@@ -80,7 +80,7 @@ async function selectSurveyValue(value: string) {
 		nps: form.value.value,
 	});
 
-	useNpsSurvey().respondNpsSurvey();
+	useNpsSurveyStore().respondNpsSurvey();
 }
 
 async function send() {

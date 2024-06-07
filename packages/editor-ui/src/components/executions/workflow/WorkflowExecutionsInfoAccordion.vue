@@ -47,6 +47,7 @@ import { PLACEHOLDER_EMPTY_WORKFLOW_ID, WORKFLOW_SETTINGS_MODAL_KEY } from '@/co
 import type { IWorkflowSettings } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 
 interface IWorkflowSaveSettings {
 	saveFailedExecutions: boolean;
@@ -85,7 +86,7 @@ export default defineComponent({
 		};
 	},
 	computed: {
-		...mapStores(useRootStore, useSettingsStore, useUIStore, useWorkflowsStore),
+		...mapStores(useRootStore, useSettingsStore, useUIStore, useWorkflowsStore, useNpsSurveyStore),
 		accordionItems(): object[] {
 			return [
 				{
@@ -229,7 +230,7 @@ export default defineComponent({
 				tags: this.currentWorkflowTagIds,
 			});
 			if (saved) {
-				await this.settingsStore.fetchPromptsData();
+				await this.npsSurveyStore.fetchPromptsData();
 			}
 		},
 	},

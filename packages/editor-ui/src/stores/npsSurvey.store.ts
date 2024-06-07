@@ -17,7 +17,7 @@ import { getPromptsData } from '@/api/settings';
 
 export const MAXIMUM_TIMES_TO_SHOW_SURVEY_IF_IGNORED = 3;
 
-export const useNpsSurvey = defineStore('npsSurvey', () => {
+export const useNpsSurveyStore = defineStore('npsSurvey', () => {
 	const rootStore = useRootStore();
 	const uiStore = useUIStore();
 	const settingsStore = useSettingsStore();
@@ -143,7 +143,7 @@ export const useNpsSurvey = defineStore('npsSurvey', () => {
 		if (promptsData?.showContactPrompt) {
 			uiStore.openModal(CONTACT_PROMPT_MODAL_KEY);
 		} else {
-			await useNpsSurvey().showNpsSurveyIfPossible();
+			await useNpsSurveyStore().showNpsSurveyIfPossible();
 		}
 	}
 
