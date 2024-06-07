@@ -19,7 +19,7 @@ export async function moveWorkflowToProject(
 	context: IRestApiContext,
 	id: string,
 	destinationProjectId: string,
-): Promise<IWorkflowsShareResponse> {
+): Promise<void> {
 	return await makeRestApiRequest(context, 'PUT', `/workflows/${id}/transfer`, {
 		destinationProjectId,
 	});

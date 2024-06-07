@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import * as projectsApi from '@/api/projects.api';
 import * as workflowsEEApi from '@/api/workflows.ee';
+import * as credentialsEEApi from '@/api/credentials.ee';
 import type {
 	Project,
 	ProjectCreateRequest,
@@ -15,13 +16,15 @@ import { ProjectTypes } from '@/types/projects.types';
 import { useSettingsStore } from '@/stores/settings.store';
 import { hasPermission } from '@/utils/rbac/permissions';
 import type { IWorkflowDb } from '@/Interface';
-import { useWorkflowsStore } from './workflows.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
 
 export const useProjectsStore = defineStore('projects', () => {
 	const route = useRoute();
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 	const workflowsStore = useWorkflowsStore();
+	const credentialsStore = useCredentialsStore();
 
 	const projects = ref<ProjectListItem[]>([]);
 	const myProjects = ref<ProjectListItem[]>([]);
@@ -151,7 +154,12 @@ export const useProjectsStore = defineStore('projects', () => {
 			);
 			await workflowsStore.fetchAllWorkflows(currentProjectId.value);
 		} else {
-			// await credentialsApi.moveCredentialToProject(rootStore.getRestApiContext, resourceId, projectId);
+			await credentialsEEApi.moveCredentialToProject(
+				rootStore.getRestApiContext,
+				resourceId,
+				projectId,
+			);
+			await credentialsStore.fetchAllCredentials(currentProjectId.value);
 		}
 	};
 
