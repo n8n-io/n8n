@@ -177,7 +177,7 @@ async function onAction(action: string) {
 			await deleteWorkflow();
 			break;
 		case WORKFLOW_LIST_ITEM_ACTIONS.MOVE:
-			moveWorkflow();
+			moveResource();
 			break;
 	}
 }
@@ -217,7 +217,7 @@ async function deleteWorkflow() {
 	});
 }
 
-function moveWorkflow() {
+function moveResource() {
 	uiStore.openModalWithData({
 		name: PROJECT_MOVE_RESOURCE_MODAL,
 		data: {

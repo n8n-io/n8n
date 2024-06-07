@@ -1,23 +1,23 @@
 <script setup lang="ts">
+import { computed } from 'vue';
+import dateformat from 'dateformat';
 import type { ICredentialsResponse } from '@/Interface';
-import { MODAL_CONFIRM } from '@/constants';
+import { MODAL_CONFIRM, PROJECT_MOVE_RESOURCE_MODAL } from '@/constants';
 import { useMessage } from '@/composables/useMessage';
 import CredentialIcon from '@/components/CredentialIcon.vue';
 import { getCredentialPermissions } from '@/permissions';
-import dateformat from 'dateformat';
 import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/stores/users.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import TimeAgo from '@/components/TimeAgo.vue';
 import type { ProjectSharingData } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
 import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
 import { useI18n } from '@/composables/useI18n';
-import { computed } from 'vue';
 
 const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	DELETE: 'delete',
+	MOVE: 'move',
 };
 
 const props = withDefaults(
@@ -42,35 +42,34 @@ const props = withDefaults(
 const locale = useI18n();
 const message = useMessage();
 const uiStore = useUIStore();
-const usersStore = useUsersStore();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
 
-const currentUser = computed(() => usersStore.currentUser);
 const credentialType = computed(() => credentialsStore.getCredentialTypeByName(props.data.type));
-const credentialPermissions = computed(() =>
-	!currentUser.value ? null : getCredentialPermissions(props.data),
-);
+const credentialPermissions = computed(() => getCredentialPermissions(props.data));
 const actions = computed(() => {
-	if (!credentialPermissions.value) {
-		return [];
-	}
-
-	return [
+	const items = [
 		{
 			label: locale.baseText('credentials.item.open'),
 			value: CREDENTIAL_LIST_ITEM_ACTIONS.OPEN,
 		},
-	].concat(
-		credentialPermissions.value.delete
-			? [
-					{
-						label: locale.baseText('credentials.item.delete'),
-						value: CREDENTIAL_LIST_ITEM_ACTIONS.DELETE,
-					},
-				]
-			: [],
-	);
+	];
+
+	if (credentialPermissions.value.delete) {
+		items.push({
+			label: locale.baseText('credentials.item.delete'),
+			value: CREDENTIAL_LIST_ITEM_ACTIONS.DELETE,
+		});
+	}
+
+	if (credentialPermissions.value.move) {
+		items.push({
+			label: locale.baseText('credentials.item.move'),
+			value: CREDENTIAL_LIST_ITEM_ACTIONS.MOVE,
+		});
+	}
+
+	return items;
 });
 const formattedCreatedAtDate = computed(() => {
 	const currentYear = new Date().getFullYear().toString();
@@ -86,25 +85,45 @@ function onClick() {
 }
 
 async function onAction(action: string) {
-	if (action === CREDENTIAL_LIST_ITEM_ACTIONS.OPEN) {
-		onClick();
-	} else if (action === CREDENTIAL_LIST_ITEM_ACTIONS.DELETE) {
-		const deleteConfirmed = await message.confirm(
-			locale.baseText('credentialEdit.credentialEdit.confirmMessage.deleteCredential.message', {
-				interpolate: { savedCredentialName: props.data.name },
-			}),
-			locale.baseText('credentialEdit.credentialEdit.confirmMessage.deleteCredential.headline'),
-			{
-				confirmButtonText: locale.baseText(
-					'credentialEdit.credentialEdit.confirmMessage.deleteCredential.confirmButtonText',
-				),
-			},
-		);
-
-		if (deleteConfirmed === MODAL_CONFIRM) {
-			await credentialsStore.deleteCredential({ id: props.data.id });
-		}
+	switch (action) {
+		case CREDENTIAL_LIST_ITEM_ACTIONS.OPEN:
+			onClick();
+			break;
+		case CREDENTIAL_LIST_ITEM_ACTIONS.DELETE:
+			await deleteResource();
+			break;
+		case CREDENTIAL_LIST_ITEM_ACTIONS.MOVE:
+			moveResource();
+			break;
 	}
+}
+
+async function deleteResource() {
+	const deleteConfirmed = await message.confirm(
+		locale.baseText('credentialEdit.credentialEdit.confirmMessage.deleteCredential.message', {
+			interpolate: { savedCredentialName: props.data.name },
+		}),
+		locale.baseText('credentialEdit.credentialEdit.confirmMessage.deleteCredential.headline'),
+		{
+			confirmButtonText: locale.baseText(
+				'credentialEdit.credentialEdit.confirmMessage.deleteCredential.confirmButtonText',
+			),
+		},
+	);
+
+	if (deleteConfirmed === MODAL_CONFIRM) {
+		await credentialsStore.deleteCredential({ id: props.data.id });
+	}
+}
+
+function moveResource() {
+	uiStore.openModalWithData({
+		name: PROJECT_MOVE_RESOURCE_MODAL,
+		data: {
+			resource: props.data,
+			resourceType: locale.baseText('generic.credential').toLocaleLowerCase(),
+		},
+	});
 }
 </script>
 

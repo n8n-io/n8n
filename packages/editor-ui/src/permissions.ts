@@ -36,6 +36,7 @@ export const getCredentialPermissions = (
 			'credential:delete',
 			'credential:list',
 			'credential:share',
+			'credential:move',
 		],
 		new Set(credential?.scopes ?? []),
 	);

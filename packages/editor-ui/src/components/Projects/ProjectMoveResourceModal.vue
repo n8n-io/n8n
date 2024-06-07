@@ -11,7 +11,7 @@ const props = defineProps<{
 	modalName: string;
 	data: {
 		resource: IWorkflowDb | ICredentialsResponse;
-		resourceType: ReturnType<typeof i18n.baseText>;
+		resourceType: 'workflow' | 'credential';
 		beforeClose: () => void;
 	};
 }>();

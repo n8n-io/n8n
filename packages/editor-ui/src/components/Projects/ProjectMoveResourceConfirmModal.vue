@@ -1,15 +1,17 @@
 <script lang="ts" setup>
+import { ref, computed } from 'vue';
 import type { ICredentialsResponse, IWorkflowDb } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { useUIStore } from '@/stores/ui.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import Modal from '@/components/Modal.vue';
+import { N8nCheckbox } from 'n8n-design-system';
 
 const props = defineProps<{
 	modalName: string;
 	data: {
 		resource: IWorkflowDb | ICredentialsResponse;
-		resourceType: ReturnType<typeof i18n.baseText>;
+		resourceType: 'workflow' | 'credential';
 		projectId: string;
 		beforeClose: () => void;
 	};
@@ -18,6 +20,15 @@ const props = defineProps<{
 const i18n = useI18n();
 const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
+
+const checks = ref([false, false]);
+const allChecked = computed(() => checks.value.every(Boolean));
+
+const moveResourceLabel = computed(() =>
+	props.data.resourceType === 'workflow'
+		? i18n.baseText('projects.move.workflow.confirm.modal.label')
+		: i18n.baseText('projects.move.credential.confirm.modal.label'),
+);
 
 const closeModal = () => {
 	uiStore.closeModal(props.modalName);
@@ -35,13 +46,20 @@ const confirm = async () => {
 				{{ i18n.baseText('projects.move.resource.confirm.modal.title') }}
 			</N8nHeading>
 		</template>
-		<template #content> </template>
+		<template #content>
+			<N8nCheckbox v-model="checks[0]" :label="moveResourceLabel" />
+			<N8nCheckbox v-model="checks[1]">
+				<i18n-t keypath="projects.move.resource.confirm.modal.label">
+					<template #resourceType>{{ props.data.resourceType }}</template>
+				</i18n-t>
+			</N8nCheckbox>
+		</template>
 		<template #footer>
 			<div :class="$style.buttons">
 				<N8nButton type="secondary" text class="mr-2xs" @click="closeModal">
 					{{ i18n.baseText('generic.cancel') }}
 				</N8nButton>
-				<N8nButton type="primary" @click="confirm">
+				<N8nButton :disabled="!allChecked" type="primary" @click="confirm">
 					{{ i18n.baseText('projects.move.resource.confirm.modal.button.confirm') }}
 				</N8nButton>
 			</div>
