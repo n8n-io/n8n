@@ -12,7 +12,7 @@ export class AddActivatedAtUserSetting1717498465931 implements ReversibleMigrati
 
 	async down({ queryRunner, escape }: MigrationContext) {
 		await queryRunner.query(
-			`UPDATE ${escape.tableName('user')}user SET settings = settings::jsonb - 'userActivatedAt' WHERE settings IS NOT NULL`,
+			`UPDATE ${escape.tableName('user')} SET settings = settings::jsonb - 'userActivatedAt' WHERE settings IS NOT NULL`,
 		);
 	}
 }
