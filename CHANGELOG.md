@@ -1,3 +1,12 @@
+## [1.42.2](https://github.com/n8n-io/n8n/compare/n8n@1.42.1...n8n@1.42.2) (2024-06-07)
+
+
+### Bug Fixes
+
+* **core:** Start WaitTracker only in the main container ([#9600](https://github.com/n8n-io/n8n/issues/9600)) ([9f51abf](https://github.com/n8n-io/n8n/commit/9f51abfe7da344dad970b892b13095fbf20ec6a1))
+
+
+
 ## [1.42.1](https://github.com/n8n-io/n8n/compare/n8n@1.42.0...n8n@1.42.1) (2024-05-20)
 
 
