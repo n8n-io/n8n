@@ -35,7 +35,11 @@ const closeModal = () => {
 };
 
 const confirm = async () => {
-	await projectsStore.moveResourceToProject(props.data.resource.id, props.data.projectId);
+	await projectsStore.moveResourceToProject(
+		props.data.resourceType,
+		props.data.resource.id,
+		props.data.projectId,
+	);
 	closeModal();
 };
 </script>
