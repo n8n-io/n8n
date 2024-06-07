@@ -260,7 +260,7 @@ export interface IWorkflowDataUpdate {
 }
 
 export interface IWorkflowToShare extends IWorkflowDataUpdate {
-	meta?: WorkflowMetadata;
+	meta: WorkflowMetadata;
 }
 
 export interface NewWorkflowResponse {
