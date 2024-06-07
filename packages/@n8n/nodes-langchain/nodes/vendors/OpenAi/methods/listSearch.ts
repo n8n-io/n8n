@@ -40,7 +40,7 @@ export async function fileSearch(
 	}
 }
 
-const getModalSearch =
+const getModelSearch =
 	(filterCondition: (model: Model) => boolean) =>
 	async (ctx: ILoadOptionsFunctions, filter?: string): Promise<INodeListSearchResult> => {
 		let { data } = (await apiRequest.call(ctx, 'GET', '/models')) as { data: Model[] };
@@ -76,14 +76,14 @@ export async function modelSearch(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	return await getModalSearch((model) => model.id.startsWith('gpt-'))(this, filter);
+	return await getModelSearch((model) => model.id.startsWith('gpt-'))(this, filter);
 }
 
 export async function imageModelSearch(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	return await getModalSearch(
+	return await getModelSearch(
 		(model) => model.id.includes('vision') || model.id.includes('gpt-4o'),
 	)(this, filter);
 }
@@ -132,7 +132,7 @@ export async function assistantSearch(
 	} else {
 		return {
 			results: (data || []).map((assistant) => ({
-				name: assistant.name ?? '',
+				name: assistant.name ?? assistant.id,
 				value: assistant.id,
 			})),
 			paginationToken,
