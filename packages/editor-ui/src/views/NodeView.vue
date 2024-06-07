@@ -396,13 +396,13 @@ import { useCanvasPanning } from '@/composables/useCanvasPanning';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
-import { useProjectsStore } from '@/features/projects/projects.store';
-import type { ProjectSharingData } from '@/features/projects/projects.types';
+import { useProjectsStore } from '@/stores/projects.store';
+import type { ProjectSharingData } from '@/types/projects.types';
+import { ProjectTypes } from '@/types/projects.types';
 import { useAIStore } from '@/stores/ai.store';
 import { useStorage } from '@/composables/useStorage';
 import { isJSPlumbEndpointElement, isJSPlumbConnection } from '@/utils/typeGuards';
 import { usePostHog } from '@/stores/posthog.store';
-import { ProjectTypes } from '@/features/projects/projects.utils';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -1643,7 +1643,7 @@ export default defineComponent({
 					source: NODE_CREATOR_OPEN_SOURCES.TAB,
 					createNodeActive: !this.createNodeActive && !this.isReadOnlyRoute && !this.readOnlyEnv,
 				});
-			} else if (e.key === 'Enter' && ctrlModifier && !readOnly) {
+			} else if (e.key === 'Enter' && ctrlModifier && !readOnly && !this.isExecutionDisabled) {
 				void this.onRunWorkflow();
 			} else if (e.key === 'S' && shiftModifier && !readOnly) {
 				void this.onAddNodes({ nodes: [{ type: STICKY_NODE_TYPE }], connections: [] });

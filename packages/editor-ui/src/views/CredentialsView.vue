@@ -73,8 +73,8 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useProjectsStore } from '@/features/projects/projects.store';
-import ProjectTabs from '@/features/projects/components/ProjectTabs.vue';
+import { useProjectsStore } from '@/stores/projects.store';
+import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import useEnvironmentsStore from '@/stores/environments.ee.store';
 import { useSettingsStore } from '@/stores/settings.store';
 

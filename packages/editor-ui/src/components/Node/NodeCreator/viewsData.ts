@@ -123,13 +123,7 @@ function getAiNodesBySubcategory(nodes: INodeTypeDescription[], subcategory: str
 				description: node.description,
 				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				icon: node.icon!,
-				iconData: node.name.toLowerCase().includes('openai')
-					? {
-							type: 'file',
-							icon: 'openai',
-							fileBuffer: '/static/open-ai.svg',
-						}
-					: undefined,
+				iconUrl: node.iconUrl,
 			},
 		}))
 		.sort((a, b) => a.properties.displayName.localeCompare(b.properties.displayName));
