@@ -2495,6 +2495,7 @@
 	"projects.move.workflow.confirm.modal.label": "This workflow may stop working if the credentials used with it do not exist in the project its being moved to",
 	"projects.move.credential.confirm.modal.label": "This credential may cause workflows using it to stop working",
 	"projects.move.resource.confirm.modal.label": "Any individual sharing currently associated with this {resourceType} will be removed.",
+	"projects.move.resource.error.title": "Error moving {resourceName} {resourceType}",
 	"mfa.setup.invalidAuthenticatorCode": "{code} is not a valid number",
 	"mfa.setup.invalidCode": "Two-factor code failed. Please try again.",
 	"mfa.code.modal.title": "Two-factor authentication",

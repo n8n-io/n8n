@@ -6,6 +6,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import Modal from '@/components/Modal.vue';
 import { N8nCheckbox } from 'n8n-design-system';
+import { useToast } from '@/composables/useToast';
 
 const props = defineProps<{
 	modalName: string;
@@ -18,6 +19,7 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const toast = useToast();
 const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 
@@ -35,12 +37,24 @@ const closeModal = () => {
 };
 
 const confirm = async () => {
-	await projectsStore.moveResourceToProject(
-		props.data.resourceType,
-		props.data.resource.id,
-		props.data.projectId,
-	);
-	closeModal();
+	try {
+		await projectsStore.moveResourceToProject(
+			props.data.resourceType,
+			props.data.resource.id,
+			props.data.projectId,
+		);
+		closeModal();
+	} catch (error) {
+		toast.showError(
+			error.message,
+			i18n.baseText('projects.move.resource.error.title', {
+				interpolate: {
+					resourceType: props.data.resourceType,
+					resourceName: props.data.resource.name,
+				},
+			}),
+		);
+	}
 };
 </script>
 <template>
