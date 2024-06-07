@@ -87,18 +87,6 @@ export class MemoryZep implements INodeType {
 				},
 			},
 			sessionKeyProperty,
-			{
-				displayName: 'Cloud',
-				name: 'cloud',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to use Zep Cloud instead of Zep Open Source',
-				displayOptions: {
-					show: {
-						'@version': [{ _cnd: { gte: 1.2 } }],
-					},
-				},
-			},
 		],
 	};
 
@@ -106,6 +94,7 @@ export class MemoryZep implements INodeType {
 		const credentials = (await this.getCredentials('zepApi')) as {
 			apiKey?: string;
 			apiUrl?: string;
+			cloud?: boolean;
 		};
 
 		const nodeVersion = this.getNode().typeVersion;
@@ -118,11 +107,9 @@ export class MemoryZep implements INodeType {
 			sessionId = this.getNodeParameter('sessionId', itemIndex) as string;
 		}
 
-		const cloud = (this.getNodeParameter('cloud', itemIndex) as boolean) ?? false;
-
 		let memory;
 
-		if (cloud) {
+		if (credentials.cloud) {
 			if (!credentials.apiKey) {
 				throw new NodeOperationError(this.getNode(), 'API key is required to use Zep Cloud');
 			}
