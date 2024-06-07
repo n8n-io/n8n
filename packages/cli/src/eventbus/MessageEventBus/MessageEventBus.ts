@@ -3,7 +3,6 @@ import type { DeleteResult } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
 import EventEmitter from 'events';
 import uniqby from 'lodash/uniqBy';
-import { jsonParse } from 'n8n-workflow';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
 import config from '@/config';
@@ -30,9 +29,6 @@ import {
 	eventMessageGenericDestinationTestEvent,
 } from '../EventMessageClasses/EventMessageGeneric';
 import { METRICS_EVENT_NAME } from '../MessageEventBusDestination/Helpers.ee';
-import type { AbstractEventMessageOptions } from '../EventMessageClasses/AbstractEventMessageOptions';
-import { getEventMessageObjectByType } from '../EventMessageClasses/Helpers';
-import { ExecutionDataRecoveryService } from '../executionDataRecovery.service';
 import {
 	EventMessageAiNode,
 	type EventMessageAiNodeOptions,
