@@ -33,6 +33,7 @@ import {
 	EventMessageAiNode,
 	type EventMessageAiNodeOptions,
 } from '../EventMessageClasses/EventMessageAiNode';
+import { ExecutionDataRecoveryService } from '../executionDataRecovery.service';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all' | 'unfinished';
 
