@@ -18,10 +18,7 @@ test('license:clear invokes shutdown() to release any floating entitlements', as
 	const cmd = new ClearLicenseCommand([], oclifConfig);
 	await cmd.init();
 
-	const license = Container.get(License);
-
-	jest.spyOn(license, 'init');
-	jest.spyOn(license, 'shutdown');
+	const license = mockInstance(License);
 
 	await cmd.run();
 
