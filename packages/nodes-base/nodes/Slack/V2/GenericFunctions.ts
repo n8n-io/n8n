@@ -8,7 +8,7 @@ import type {
 	IWebhookFunctions,
 } from 'n8n-workflow';
 
-import { NodeOperationError, jsonParse } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import get from 'lodash/get';
 
@@ -162,12 +162,7 @@ export function getMessageContent(
 			};
 			break;
 		case 'block':
-			const blocksUi = this.getNodeParameter('blocksUi', i) as string | IDataObject;
-			if (typeof blocksUi === 'string') {
-				content = jsonParse(blocksUi);
-			} else {
-				content = blocksUi;
-			}
+			content = this.getNodeParameter('blocksUi', i, {}, { ensureType: 'object' }) as IDataObject;
 
 			if (includeLinkToWorkflow && Array.isArray(content.blocks)) {
 				content.blocks.push({

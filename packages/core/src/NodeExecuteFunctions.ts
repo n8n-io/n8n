@@ -153,6 +153,7 @@ import Container from 'typedi';
 import type { BinaryData } from './BinaryData/types';
 import merge from 'lodash/merge';
 import { InstanceSettings } from './InstanceSettings';
+import type { ExpressionErrorOptions } from 'n8n-workflow/src/errors/expression.error';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -2329,6 +2330,85 @@ export const validateValueAgainstSchema = (
 	return validationResult.newValue;
 };
 
+function ensureType(
+	toType: 'string' | 'number' | 'boolean' | 'object' | 'array',
+	value: any,
+	parameterName: string,
+	errorOptions: ExpressionErrorOptions | undefined,
+): string | number | boolean | object {
+	if (value === null) {
+		throw new ExpressionError(`Parameter '${parameterName}' must not be null`, errorOptions);
+	}
+
+	if (value === undefined) {
+		throw new ExpressionError(
+			`Parameter '${parameterName}' could not be 'undefined'`,
+			errorOptions,
+		);
+	}
+
+	if (toType === 'object' || toType === 'array') {
+		if (typeof value !== 'object') {
+			if (typeof value === 'string' && value.length) {
+				try {
+					const parsedValue = JSON.parse(value);
+					value = parsedValue;
+				} catch (error) {
+					throw new ExpressionError(`Parameter '${parameterName}' could not be parsed`, {
+						...errorOptions,
+						description: error.message,
+					});
+				}
+			} else {
+				throw new ExpressionError(
+					`Parameter '${parameterName}' must be an ${toType}, but we got '${value}'`,
+					errorOptions,
+				);
+			}
+		}
+
+		if (toType === 'array' && !Array.isArray(value)) {
+			throw new ExpressionError(
+				`Parameter '${parameterName}' must be an array, but we got object`,
+				errorOptions,
+			);
+		}
+	}
+
+	try {
+		if (toType === 'string') {
+			if (typeof value === 'object') {
+				value = JSON.stringify(value);
+			} else {
+				value = String(value);
+			}
+		}
+
+		if (toType === 'number') {
+			value = Number(value);
+			if (Number.isNaN(value)) {
+				throw new ExpressionError(
+					`Parameter '${parameterName}' must be a number, but we got '${value}'`,
+					errorOptions,
+				);
+			}
+		}
+
+		if (toType === 'boolean') {
+			value = Boolean(value);
+		}
+	} catch (error) {
+		if (error instanceof ExpressionError) throw error;
+
+		throw new ExpressionError(`Parameter '${parameterName}' could not be converted to ${toType}`, {
+			...errorOptions,
+			description: error.message,
+		});
+	}
+
+	return value;
+}
+
 /**
  * Returns the requested resolved (all expressions replaced) node parameters.
  *
@@ -2397,6 +2477,15 @@ export function getNodeParameter(
 	// This is outside the try/catch because it throws errors with proper messages
 	if (options?.extractValue) {
 		returnData = extractValue(returnData, parameterName, node, nodeType, itemIndex);
+	}
+
+	// Make sure parameter value is the type specified in the ensureType option, if needed convert it
+	if (options?.ensureType) {
+		returnData = ensureType(options.ensureType, returnData, parameterName, {
+			itemIndex,
+			runIndex,
+			nodeCause: node.name,
+		});
 	}
 
 	// Validate parameter value if it has a schema defined(RMC) or validateType defined

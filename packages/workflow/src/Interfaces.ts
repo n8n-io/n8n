@@ -618,6 +618,8 @@ export interface IN8nRequestOperationPaginationOffset extends IN8nRequestOperati
 
 export interface IGetNodeParameterOptions {
 	contextNode?: INode;
+	// make sure that returned value would be of specified type, converts it if needed
+	ensureType?: 'string' | 'number' | 'boolean' | 'object' | 'array';
 	// extract value from regex, works only when parameter type is resourceLocator
 	extractValue?: boolean;
 	// get raw value of parameter with unresolved expressions
