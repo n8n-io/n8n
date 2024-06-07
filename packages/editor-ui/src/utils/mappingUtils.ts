@@ -60,16 +60,9 @@ const unquote = (str: string) => {
 };
 
 export function propertyNameFromExpression(expression: string): string {
-	const baseRegex = /^(\$\(.*\)\.item\.json|\$json|\$node\[.*\]\.json)/;
-	const bracketAccessRegex = /\[(.*)\]$/;
-	const dotAccessRegex = /\.(.*)$/;
-
-	return unquote(
-		expression
-			.replace(/^{{\s*|\s*}}$/g, '')
-			.replace(new RegExp(`${baseRegex.source}${dotAccessRegex.source}`), '$2')
-			.replace(new RegExp(`${baseRegex.source}${bracketAccessRegex.source}`), '$2'),
-	);
+	return expression
+		.replace(/^{{\s*|\s*}}$/g, '')
+		.replace(/^(\$\(.*\)\.item\.json|\$json|\$node\[.*\]\.json)\.?(.*)/, '$2');
 }
 
 export function getMappedResult(
