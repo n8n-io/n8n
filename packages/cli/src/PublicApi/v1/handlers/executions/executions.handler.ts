@@ -33,6 +33,12 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
+			if (execution.status === 'running') {
+				return res.status(400).json({
+					message: 'Cannot delete a running execution',
+				});
+			}
+
 			await Container.get(ExecutionRepository).hardDelete({
 				workflowId: execution.workflowId,
 				executionId: execution.id,
