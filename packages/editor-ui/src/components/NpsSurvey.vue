@@ -49,14 +49,14 @@ const isEmailValid = computed(
 	() => form?.value?.email && VALID_EMAIL_REGEX.test(String(form.value.email).toLowerCase()),
 );
 
-function closeDialog(): void {
+async function closeDialog(): Promise<void> {
 	if (form.value.value === '') {
 		telemetry.track('User responded value survey score', {
 			instance_id: rootStore.instanceId,
 			nps: '',
 		});
 
-		useNpsSurveyStore().ignoreNpsSurvey();
+		await useNpsSurveyStore().ignoreNpsSurvey();
 	}
 	if (form.value.value !== '' && form.value.email === '') {
 		telemetry.track('User responded value survey email', {
@@ -80,7 +80,7 @@ async function selectSurveyValue(value: string) {
 		nps: form.value.value,
 	});
 
-	useNpsSurveyStore().respondNpsSurvey();
+	await useNpsSurveyStore().respondNpsSurvey();
 }
 
 async function send() {

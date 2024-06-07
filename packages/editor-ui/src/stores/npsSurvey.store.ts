@@ -116,7 +116,7 @@ export const useNpsSurveyStore = defineStore('npsSurvey', () => {
 		const state = currentSurveyState.value;
 		const ignoredCount = 'ignoredCount' in state ? state.ignoredCount : 0;
 
-		if (ignoredCount + 1 > MAXIMUM_TIMES_TO_SHOW_SURVEY_IF_IGNORED) {
+		if (ignoredCount + 1 >= MAXIMUM_TIMES_TO_SHOW_SURVEY_IF_IGNORED) {
 			await respondNpsSurvey();
 
 			return;

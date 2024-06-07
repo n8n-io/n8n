@@ -1,14 +1,12 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { MAXIMUM_TIMES_TO_SHOW_SURVEY_IF_IGNORED, useNpsSurveyStore } from './npsSurvey.store';
+import { useNpsSurveyStore } from './npsSurvey.store';
 import { THREE_DAYS_IN_MILLIS, TIME, NPS_SURVEY_MODAL_KEY } from '@/constants';
 import { useSettingsStore } from './settings.store';
 
-const { openModal, npsSurveyIgnored, npsSurveyShown, npsSurveyResponded } = vi.hoisted(() => {
+const { openModal, updateNpsSurveyState } = vi.hoisted(() => {
 	return {
 		openModal: vi.fn(),
-		npsSurveyIgnored: vi.fn(),
-		npsSurveyResponded: vi.fn(),
-		npsSurveyShown: vi.fn(),
+		updateNpsSurveyState: vi.fn(),
 	};
 });
 
@@ -19,9 +17,7 @@ vi.mock('@/stores/ui.store', () => ({
 }));
 
 vi.mock('@/api/npsSurvey', () => ({
-	npsSurveyIgnored,
-	npsSurveyResponded,
-	npsSurveyShown,
+	updateNpsSurveyState,
 }));
 
 const NOW = 1717602004819;
@@ -40,184 +36,269 @@ describe('useNpsSurvey', () => {
 		npsSurveyStore = useNpsSurveyStore();
 	});
 
-	it('by default, does not show survey', () => {
-		npsSurveyStore.showNpsSurveyIfPossible();
+	// todo rename and review tests
+	it('by default, does not show survey', async () => {
+		await npsSurveyStore.showNpsSurveyIfPossible();
 
 		expect(openModal).not.toHaveBeenCalled();
-		expect(npsSurveyShown).not.toHaveBeenCalled();
+		expect(updateNpsSurveyState).not.toHaveBeenCalled();
 	});
 
-	it('does not show nps survey if user activated less than 3 days ago', () => {
-		npsSurveyStore.setupNpsSurveyOnLogin({
+	it('does not show nps survey if user activated less than 3 days ago', async () => {
+		npsSurveyStore.setupNpsSurveyOnLogin('1', {
 			userActivated: true,
 			userActivatedAt: NOW - THREE_DAYS_IN_MILLIS + 10000,
 		});
 
-		npsSurveyStore.showNpsSurveyIfPossible();
+		await npsSurveyStore.showNpsSurveyIfPossible();
 
 		expect(openModal).not.toHaveBeenCalled();
-		expect(npsSurveyShown).not.toHaveBeenCalled();
+		expect(updateNpsSurveyState).not.toHaveBeenCalled();
 	});
 
-	it('shows nps survey if user activated more than 3 days ago and has yet to see survey', () => {
-		npsSurveyStore.setupNpsSurveyOnLogin({
+	it('shows nps survey if user activated more than 3 days ago and has yet to see survey', async () => {
+		npsSurveyStore.setupNpsSurveyOnLogin('1', {
 			userActivated: true,
 			userActivatedAt: NOW - THREE_DAYS_IN_MILLIS - 10000,
 		});
 
-		npsSurveyStore.showNpsSurveyIfPossible();
+		await npsSurveyStore.showNpsSurveyIfPossible();
 
 		expect(openModal).toHaveBeenCalledWith(NPS_SURVEY_MODAL_KEY);
-		expect(npsSurveyShown).toHaveBeenCalled();
+		expect(updateNpsSurveyState).toHaveBeenCalledWith(
+			expect.objectContaining({
+				baseUrl: '/rest',
+			}),
+			{
+				ignoredCount: 0,
+				lastShownAt: NOW,
+				waitingForResponse: true,
+			},
+		);
 	});
 
-	it('does not show nps survey if user has seen and responded to survey', () => {
-		npsSurveyStore.setupNpsSurveyOnLogin({
+	it('does not show nps survey if user has seen and responded to survey', async () => {
+		npsSurveyStore.setupNpsSurveyOnLogin('1', {
 			userActivated: true,
 			userActivatedAt: NOW - 10 * TIME.DAY,
-			npsSurveyLastResponseState: 'done',
-			npsSurveyLastShownAt: NOW - 2 * TIME.DAY,
+			npsSurvey: {
+				responded: true,
+				lastShownAt: NOW - 2 * TIME.DAY,
+			},
 		});
 
-		npsSurveyStore.showNpsSurveyIfPossible();
+		await npsSurveyStore.showNpsSurveyIfPossible();
 
 		expect(openModal).not.toHaveBeenCalled();
-		expect(npsSurveyShown).not.toHaveBeenCalled();
+		expect(updateNpsSurveyState).not.toHaveBeenCalledWith();
 	});
 
-	it('shows nps survey if user has ignored survey more than 7 days ago', () => {
-		npsSurveyStore.setupNpsSurveyOnLogin({
+	it('shows nps survey if user has ignored survey more than 7 days ago', async () => {
+		npsSurveyStore.setupNpsSurveyOnLogin('1', {
 			userActivated: true,
 			userActivatedAt: NOW - 10 * TIME.DAY,
-			npsSurveyLastResponseState: 'waiting',
-			npsSurveyLastShownAt: NOW - 8 * TIME.DAY,
+			npsSurvey: {
+				waitingForResponse: true,
+				lastShownAt: NOW - 8 * TIME.DAY,
+				ignoredCount: 0,
+			},
 		});
 
-		npsSurveyStore.showNpsSurveyIfPossible();
+		await npsSurveyStore.showNpsSurveyIfPossible();
 
 		expect(openModal).toHaveBeenCalledWith(NPS_SURVEY_MODAL_KEY);
-		expect(npsSurveyShown).toHaveBeenCalled();
+		expect(updateNpsSurveyState).toHaveBeenCalledWith(
+			expect.objectContaining({
+				baseUrl: '/rest',
+			}),
+			{
+				ignoredCount: 0,
+				lastShownAt: NOW,
+				waitingForResponse: true,
+			},
+		);
 	});
 
-	it('does not show nps survey if user has ignored survey less than 7 days ago', () => {
-		npsSurveyStore.setupNpsSurveyOnLogin({
+	it('does not show nps survey if user has ignored survey less than 7 days ago', async () => {
+		npsSurveyStore.setupNpsSurveyOnLogin('1', {
 			userActivated: true,
 			userActivatedAt: NOW - 10 * TIME.DAY,
-			npsSurveyLastResponseState: 'waiting',
-			npsSurveyLastShownAt: NOW - 5 * TIME.DAY,
+			npsSurvey: {
+				waitingForResponse: true,
+				lastShownAt: NOW - 5 * TIME.DAY,
+				ignoredCount: 0,
+			},
 		});
 
-		npsSurveyStore.showNpsSurveyIfPossible();
+		await npsSurveyStore.showNpsSurveyIfPossible();
 
 		expect(openModal).not.toHaveBeenCalled();
-		expect(npsSurveyShown).not.toHaveBeenCalled();
+		expect(updateNpsSurveyState).not.toHaveBeenCalled();
 	});
 
-	it('does not show nps survey if user has responded survey more than 7 days ago', () => {
-		npsSurveyStore.setupNpsSurveyOnLogin({
+	it('does not show nps survey if user has responded survey more than 7 days ago', async () => {
+		npsSurveyStore.setupNpsSurveyOnLogin('1', {
 			userActivated: true,
 			userActivatedAt: NOW - 10 * TIME.DAY,
-			npsSurveyLastResponseState: 'done',
-			npsSurveyLastShownAt: NOW - 8 * TIME.DAY,
+			npsSurvey: {
+				responded: true,
+				lastShownAt: NOW - 8 * TIME.DAY,
+			},
 		});
 
-		npsSurveyStore.showNpsSurveyIfPossible();
+		await npsSurveyStore.showNpsSurveyIfPossible();
 
 		expect(openModal).not.toHaveBeenCalled();
-		expect(npsSurveyShown).not.toHaveBeenCalled();
+		expect(updateNpsSurveyState).not.toHaveBeenCalled();
 	});
 
-	it('shows nps survey if user has responded survey more than 6 months ago', () => {
-		npsSurveyStore.setupNpsSurveyOnLogin({
+	it('shows nps survey if user has responded survey more than 6 months ago', async () => {
+		npsSurveyStore.setupNpsSurveyOnLogin('1', {
 			userActivated: true,
 			userActivatedAt: NOW - 30 * 7 * TIME.DAY,
-			npsSurveyLastResponseState: 'done',
-			npsSurveyLastShownAt: NOW - (30 * 6 + 1) * TIME.DAY,
+			npsSurvey: {
+				responded: true,
+				lastShownAt: NOW - (30 * 6 + 1) * TIME.DAY,
+			},
 		});
 
-		npsSurveyStore.showNpsSurveyIfPossible();
+		await npsSurveyStore.showNpsSurveyIfPossible();
 
 		expect(openModal).toHaveBeenCalledWith(NPS_SURVEY_MODAL_KEY);
-		expect(npsSurveyShown).toHaveBeenCalled();
+		expect(updateNpsSurveyState).toHaveBeenCalledWith(
+			expect.objectContaining({
+				baseUrl: '/rest',
+			}),
+			{
+				ignoredCount: 0,
+				lastShownAt: NOW,
+				waitingForResponse: true,
+			},
+		);
 	});
 
-	it('calls ignore api when survey is ignored', () => {
-		npsSurveyStore.setupNpsSurveyOnLogin({
+	it('calls ignore api when survey is ignored', async () => {
+		npsSurveyStore.setupNpsSurveyOnLogin('1', {
 			userActivated: true,
 			userActivatedAt: NOW - 30 * 7 * TIME.DAY,
-			npsSurveyLastResponseState: 'done',
-			npsSurveyLastShownAt: NOW - (30 * 6 + 1) * TIME.DAY,
-			npsSurveyIgnoredLastCount: 0,
+			npsSurvey: {
+				responded: true,
+				lastShownAt: NOW - (30 * 6 + 1) * TIME.DAY,
+			},
 		});
 
-		npsSurveyStore.ignoreNpsSurvey();
+		await npsSurveyStore.ignoreNpsSurvey();
 
-		expect(npsSurveyIgnored).toHaveBeenCalled();
+		expect(updateNpsSurveyState).toHaveBeenCalledWith(
+			expect.objectContaining({
+				baseUrl: '/rest',
+			}),
+			{
+				ignoredCount: 1,
+				lastShownAt: NOW - (30 * 6 + 1) * TIME.DAY,
+				waitingForResponse: true,
+			},
+		);
 	});
 
-	it('calls respond api when survey is ignored more than maximum times', () => {
-		npsSurveyStore.setupNpsSurveyOnLogin({
+	it('calls respond api when survey is ignored more than maximum times', async () => {
+		npsSurveyStore.setupNpsSurveyOnLogin('1', {
 			userActivated: true,
 			userActivatedAt: NOW - 30 * 7 * TIME.DAY,
-			npsSurveyLastResponseState: 'done',
-			npsSurveyLastShownAt: NOW - (30 * 6 + 1) * TIME.DAY,
-			npsSurveyIgnoredLastCount: MAXIMUM_TIMES_TO_SHOW_SURVEY_IF_IGNORED - 1,
+			npsSurvey: {
+				waitingForResponse: true,
+				lastShownAt: NOW - (30 * 6 + 1) * TIME.DAY,
+				ignoredCount: 2,
+			},
 		});
 
-		npsSurveyStore.ignoreNpsSurvey();
+		await npsSurveyStore.ignoreNpsSurvey();
 
-		expect(npsSurveyIgnored).not.toHaveBeenCalled();
-		expect(npsSurveyResponded).toHaveBeenCalled();
+		expect(updateNpsSurveyState).toHaveBeenCalledWith(
+			expect.objectContaining({
+				baseUrl: '/rest',
+			}),
+			{
+				lastShownAt: NOW - (30 * 6 + 1) * TIME.DAY,
+				responded: true,
+			},
+		);
 	});
 
-	it('calls respond api when response is given', () => {
-		npsSurveyStore.respondNpsSurvey();
+	it('calls respond api when response is given', async () => {
+		npsSurveyStore.setupNpsSurveyOnLogin('1', {
+			userActivated: true,
+			userActivatedAt: NOW - 30 * 7 * TIME.DAY,
+			npsSurvey: {
+				responded: true,
+				lastShownAt: NOW - (30 * 6 + 1) * TIME.DAY,
+			},
+		});
 
-		expect(npsSurveyResponded).toHaveBeenCalled();
+		await npsSurveyStore.respondNpsSurvey();
+
+		expect(updateNpsSurveyState).toHaveBeenCalledWith(
+			expect.objectContaining({
+				baseUrl: '/rest',
+			}),
+			{
+				responded: true,
+				lastShownAt: NOW - (30 * 6 + 1) * TIME.DAY,
+			},
+		);
 	});
 
-	it('does not show nps survey twice in the same session', () => {
-		npsSurveyStore.setupNpsSurveyOnLogin({
+	it('does not show nps survey twice in the same session', async () => {
+		npsSurveyStore.setupNpsSurveyOnLogin('1', {
 			userActivated: true,
 			userActivatedAt: NOW - THREE_DAYS_IN_MILLIS - 10000,
 		});
 
-		npsSurveyStore.showNpsSurveyIfPossible();
+		await npsSurveyStore.showNpsSurveyIfPossible();
 
 		expect(openModal).toHaveBeenCalledWith(NPS_SURVEY_MODAL_KEY);
-		expect(npsSurveyShown).toHaveBeenCalled();
+		expect(updateNpsSurveyState).toHaveBeenCalledWith(
+			expect.objectContaining({
+				baseUrl: '/rest',
+			}),
+			{
+				ignoredCount: 0,
+				lastShownAt: NOW,
+				waitingForResponse: true,
+			},
+		);
 
 		openModal.mockReset();
-		npsSurveyShown.mockReset();
+		updateNpsSurveyState.mockReset();
 
-		npsSurveyStore.showNpsSurveyIfPossible();
+		await npsSurveyStore.showNpsSurveyIfPossible();
 		expect(openModal).not.toHaveBeenCalled();
-		expect(npsSurveyShown).not.toHaveBeenCalled();
+		expect(updateNpsSurveyState).not.toHaveBeenCalled();
 	});
 
-	it('resets on logout, preventing nps survey from showing', () => {
-		npsSurveyStore.setupNpsSurveyOnLogin({
+	it('resets on logout, preventing nps survey from showing', async () => {
+		npsSurveyStore.setupNpsSurveyOnLogin('1', {
 			userActivated: true,
 			userActivatedAt: NOW - THREE_DAYS_IN_MILLIS - 10000,
 		});
 
 		npsSurveyStore.resetNpsSurveyOnLogOut();
-		npsSurveyStore.showNpsSurveyIfPossible();
+		await npsSurveyStore.showNpsSurveyIfPossible();
 
 		expect(openModal).not.toHaveBeenCalled();
-		expect(npsSurveyShown).not.toHaveBeenCalled();
+		expect(updateNpsSurveyState).not.toHaveBeenCalled();
 	});
 
-	it('if telemetry is disabled, does not show nps survey', () => {
+	it('if telemetry is disabled, does not show nps survey', async () => {
 		useSettingsStore().settings.telemetry = { enabled: false };
-		npsSurveyStore.setupNpsSurveyOnLogin({
+		npsSurveyStore.setupNpsSurveyOnLogin('1', {
 			userActivated: true,
 			userActivatedAt: NOW - THREE_DAYS_IN_MILLIS - 10000,
 		});
 
-		npsSurveyStore.showNpsSurveyIfPossible();
+		await npsSurveyStore.showNpsSurveyIfPossible();
 
 		expect(openModal).not.toHaveBeenCalled();
-		expect(npsSurveyShown).not.toHaveBeenCalled();
+		expect(updateNpsSurveyState).not.toHaveBeenCalled();
 	});
 });
