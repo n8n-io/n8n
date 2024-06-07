@@ -247,17 +247,6 @@ export class MessageEventBus extends EventEmitter {
 		return result;
 	}
 
-	async handleRedisEventBusMessage(messageString: string) {
-		const eventData = jsonParse<AbstractEventMessageOptions>(messageString);
-		if (eventData) {
-			const eventMessage = getEventMessageObjectByType(eventData);
-			if (eventMessage) {
-				await this.send(eventMessage);
-			}
-		}
-		return eventData;
-	}
-
 	private async trySendingUnsent(msgs?: EventMessageTypes[]) {
 		const unsentMessages = msgs ?? (await this.getEventsUnsent());
 		if (unsentMessages.length > 0) {
