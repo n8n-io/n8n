@@ -17,7 +17,6 @@
 		},
 		"lib": ["esnext", "dom", "dom.iterable", "scripthost"],
 		// TODO: remove all options below this line
-		"strict": false,
 		"noImplicitAny": false,
 		"noImplicitReturns": false
 	},

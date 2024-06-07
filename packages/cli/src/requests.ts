@@ -47,7 +47,7 @@ export class UserSettingsUpdatePayload {
 	@Expose()
 	@IsBoolean({ message: 'userActivated should be a boolean' })
 	@IsOptional()
-	userActivated: boolean;
+	userActivated?: boolean;
 
 	@Expose()
 	@IsBoolean({ message: 'allowSSOManualLogin should be a boolean' })
@@ -454,14 +454,6 @@ export declare namespace NodeRequest {
 	type Delete = AuthenticatedRequest<{}, {}, {}, { name: string }>;
 
 	type Update = Post;
-}
-
-// ----------------------------------
-//           /curl-to-json
-// ----------------------------------
-
-export declare namespace CurlHelper {
-	type ToJson = AuthenticatedRequest<{}, {}, { curlCommand?: string }>;
 }
 
 // ----------------------------------

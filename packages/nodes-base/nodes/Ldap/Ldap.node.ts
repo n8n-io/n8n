@@ -20,7 +20,7 @@ export class Ldap implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Ldap',
 		name: 'ldap',
-		icon: 'file:ldap.svg',
+		icon: { light: 'file:ldap.svg', dark: 'file:ldap.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

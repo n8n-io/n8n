@@ -73,7 +73,7 @@ import { getCredentialOnlyNodeTypeName } from '@/utils/credentialOnlyNodes';
 import { i18n } from '@/plugins/i18n';
 
 import { computed, ref } from 'vue';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from './settings.store';
 import { useUsersStore } from './users.store';
 

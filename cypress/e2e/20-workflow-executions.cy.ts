@@ -84,7 +84,8 @@ describe('Current Workflow Executions', () => {
 		executionsTab.actions.switchToExecutionsTab();
 		cy.wait(['@getExecution']);
 
-		cy.getByTestId('workflow-preview-iframe')
+		executionsTab.getters
+			.workflowExecutionPreviewIframe()
 			.should('be.visible')
 			.its('0.contentDocument.body') // Access the body of the iframe document
 			.should('not.be.empty') // Ensure the body is not empty

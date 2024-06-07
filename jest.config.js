@@ -26,12 +26,9 @@ const config = {
 		path = `^${path.replace(/\/\*$/, '/(.*)$')}`;
 		mapping = mapping.replace(/^\.?\.\/(?:(.*)\/)?\*$/, '$1');
 		mapping = mapping ? `/${mapping}` : '';
-		acc[path] = '<rootDir>' + (baseUrl ? `/${baseUrl.replace(/^\.\//, '')}` : '') + mapping + '/$1';
-
 		acc[path] = mapping.startsWith('/test')
 			? '<rootDir>' + mapping + '/$1'
 			: '<rootDir>' + (baseUrl ? `/${baseUrl.replace(/^\.\//, '')}` : '') + mapping + '/$1';
-
 		return acc;
 	}, {}),
 	setupFilesAfterEnv: ['jest-expect-message'],

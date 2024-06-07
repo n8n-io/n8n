@@ -1094,6 +1094,9 @@ export default defineComponent({
 		jsonData(data: IDataObject[], prevData: IDataObject[]) {
 			if (isEqual(data, prevData)) return;
 			this.refreshDataSize();
+			if (this.dataCount) {
+				this.resetCurrentPageIfTooFar();
+			}
 			this.showPinDataDiscoveryTooltip(data);
 		},
 		binaryData(newData: IBinaryKeyData[], prevData: IBinaryKeyData[]) {
@@ -1294,9 +1297,15 @@ export default defineComponent({
 			this.clearAllStickyNotifications();
 
 			try {
-				this.pinnedData.setData(clearJsonKey(value) as INodeExecutionData[], 'save-edit');
+				const clearedValue = clearJsonKey(value) as INodeExecutionData[];
+				try {
+					this.pinnedData.setData(clearedValue, 'save-edit');
+				} catch (error) {
+					// setData function already shows toasts on error, so just return here
+					return;
+				}
 			} catch (error) {
-				console.error(error);
+				this.showError(error, this.$locale.baseText('ndv.pinData.error.syntaxError.title'));
 				return;
 			}
 
@@ -1405,12 +1414,16 @@ export default defineComponent({
 				items_total: this.dataCount,
 			});
 		},
-		onPageSizeChange(pageSize: number) {
-			this.pageSize = pageSize;
+		resetCurrentPageIfTooFar() {
 			const maxPage = Math.ceil(this.dataCount / this.pageSize);
 			if (maxPage < this.currentPage) {
 				this.currentPage = maxPage;
 			}
+		},
+		onPageSizeChange(pageSize: number) {
+			this.pageSize = pageSize;
+
+			this.resetCurrentPageIfTooFar();
 
 			this.$telemetry.track('User changed ndv page size', {
 				node_type: this.activeNode?.type,

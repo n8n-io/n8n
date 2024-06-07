@@ -396,13 +396,13 @@ import { useCanvasPanning } from '@/composables/useCanvasPanning';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
-import { useProjectsStore } from '@/features/projects/projects.store';
-import type { ProjectSharingData } from '@/features/projects/projects.types';
+import { useProjectsStore } from '@/stores/projects.store';
+import type { ProjectSharingData } from '@/types/projects.types';
+import { ProjectTypes } from '@/types/projects.types';
 import { useAIStore } from '@/stores/ai.store';
 import { useStorage } from '@/composables/useStorage';
 import { isJSPlumbEndpointElement, isJSPlumbConnection } from '@/utils/typeGuards';
 import { usePostHog } from '@/stores/posthog.store';
-import { ProjectTypes } from '@/features/projects/projects.utils';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -725,12 +725,23 @@ export default defineComponent({
 			);
 		},
 		isManualChatOnly(): boolean {
-			return this.containsChatNodes && this.triggerNodes.length === 1;
+			if (!this.canvasChatNode) return false;
+
+			return this.containsChatNodes && this.triggerNodes.length === 1 && !this.pinnedChatNodeData;
+		},
+		canvasChatNode() {
+			return this.nodes.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
+		},
+		pinnedChatNodeData() {
+			if (!this.canvasChatNode) return null;
+
+			return this.workflowsStore.pinDataByNodeName(this.canvasChatNode.name);
 		},
 		isExecutionDisabled(): boolean {
 			if (
 				this.containsChatNodes &&
-				this.triggerNodes.every((node) => node.disabled || node.type === CHAT_TRIGGER_NODE_TYPE)
+				this.triggerNodes.every((node) => node.disabled || node.type === CHAT_TRIGGER_NODE_TYPE) &&
+				!this.pinnedChatNodeData
 			) {
 				return true;
 			}
@@ -904,7 +915,7 @@ export default defineComponent({
 
 			setTimeout(() => {
 				void this.usersStore.showPersonalizationSurvey();
-				this.addPinDataConnections(this.workflowsStore.pinnedWorkflowData || ({} as IPinData));
+				this.addPinDataConnections(this.workflowsStore.pinnedWorkflowData);
 			}, 0);
 		});
 
@@ -1632,7 +1643,7 @@ export default defineComponent({
 					source: NODE_CREATOR_OPEN_SOURCES.TAB,
 					createNodeActive: !this.createNodeActive && !this.isReadOnlyRoute && !this.readOnlyEnv,
 				});
-			} else if (e.key === 'Enter' && ctrlModifier && !readOnly) {
+			} else if (e.key === 'Enter' && ctrlModifier && !readOnly && !this.isExecutionDisabled) {
 				void this.onRunWorkflow();
 			} else if (e.key === 'S' && shiftModifier && !readOnly) {
 				void this.onAddNodes({ nodes: [{ type: STICKY_NODE_TYPE }], connections: [] });
@@ -2321,7 +2332,7 @@ export default defineComponent({
 
 					this.workflowsStore.addWorkflowTagIds(tagIds);
 					setTimeout(() => {
-						this.addPinDataConnections(this.workflowsStore.pinnedWorkflowData || ({} as IPinData));
+						this.addPinDataConnections(this.workflowsStore.pinnedWorkflowData);
 					});
 				}
 			} catch (error) {
@@ -3783,7 +3794,6 @@ export default defineComponent({
 						return;
 					}
 				}
-				await this.loadCredentials();
 				// Load a workflow
 				let workflowId = null as string | null;
 				if (this.$route.params.name) {
@@ -3827,6 +3837,7 @@ export default defineComponent({
 					await this.newWorkflow();
 				}
 			}
+			await this.loadCredentials();
 			this.historyStore.reset();
 			this.uiStore.nodeViewInitialized = true;
 			document.addEventListener('keydown', this.keyDown);
@@ -3881,7 +3892,7 @@ export default defineComponent({
 			});
 
 			setTimeout(() => {
-				this.addPinDataConnections(this.workflowsStore.pinnedWorkflowData ?? ({} as IPinData));
+				this.addPinDataConnections(this.workflowsStore.pinnedWorkflowData);
 			});
 		},
 		__removeConnection(connection: [IConnection, IConnection], removeVisualConnection = false) {
@@ -4778,11 +4789,20 @@ export default defineComponent({
 		},
 		async loadCredentials(): Promise<void> {
 			const workflow = this.workflowsStore.getWorkflowById(this.currentWorkflow);
-			const projectId =
-				workflow?.homeProject?.type === ProjectTypes.Personal
-					? this.projectsStore.personalProject?.id
-					: workflow?.homeProject?.id;
-			await this.credentialsStore.fetchAllCredentials(projectId);
+			let projectId: string | undefined;
+			if (workflow) {
+				projectId =
+					workflow.homeProject?.type === ProjectTypes.Personal
+						? this.projectsStore.personalProject?.id
+						: workflow?.homeProject?.id ?? this.projectsStore.currentProjectId;
+			} else {
+				const queryParam =
+					typeof this.$route.query?.projectId === 'string'
+						? this.$route.query?.projectId
+						: undefined;
+				projectId = queryParam ?? this.projectsStore.personalProject?.id;
+			}
+			await this.credentialsStore.fetchAllCredentials(projectId, false);
 		},
 		async loadVariables(): Promise<void> {
 			await this.environmentsStore.fetchAllVariables();
@@ -4884,23 +4904,31 @@ export default defineComponent({
 				await this.importWorkflowData(workflowData, 'url');
 			}
 		},
-		addPinDataConnections(pinData: IPinData) {
+		addPinDataConnections(pinData?: IPinData) {
+			if (!pinData) {
+				return;
+			}
+
 			Object.keys(pinData).forEach((nodeName) => {
 				const node = this.workflowsStore.getNodeByName(nodeName);
 				if (!node) {
 					return;
 				}
 
-				const hasRun = this.workflowsStore.getWorkflowResultDataByNodeName(nodeName) !== null;
-				const classNames = ['pinned'];
-
-				if (hasRun) {
-					classNames.push('has-run');
-				}
 				const nodeElement = document.getElementById(node.id);
 				if (!nodeElement) {
 					return;
 				}
+
+				const hasRun = this.workflowsStore.getWorkflowResultDataByNodeName(nodeName) !== null;
+				// In case we are showing a production execution preview we want
+				// to show pinned data connections as they wouldn't have been pinned
+				const classNames = this.isProductionExecutionPreview ? [] : ['pinned'];
+
+				if (hasRun) {
+					classNames.push('has-run');
+				}
+
 				const connections = this.instance?.getConnections({
 					source: nodeElement,
 				});
@@ -5035,7 +5063,7 @@ export default defineComponent({
 				});
 			}
 
-			this.addPinDataConnections(this.workflowsStore.pinnedWorkflowData || ({} as IPinData));
+			this.addPinDataConnections(this.workflowsStore.pinnedWorkflowData);
 		},
 
 		async saveCurrentWorkflowExternal(callback: () => void) {
@@ -5213,8 +5241,8 @@ export default defineComponent({
 .node-view-background {
 	background-color: var(--color-canvas-background);
 	position: absolute;
-	width: 10000px;
-	height: 10000px;
+	width: 100vw;
+	height: 100vh;
 	z-index: -2;
 }
 

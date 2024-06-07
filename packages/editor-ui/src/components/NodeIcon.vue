@@ -1,6 +1,6 @@
 <template>
 	<n8n-node-icon
-		:type="type"
+		:type="iconType"
 		:src="iconSource.path || iconSource.fileBuffer"
 		:name="iconSource.icon"
 		:color="color"
@@ -11,16 +11,17 @@
 		:show-tooltip="showTooltip"
 		:tooltip-position="tooltipPosition"
 		:badge="badge"
-		@click="() => $emit('click')"
+		@click="emit('click')"
 	></n8n-node-icon>
 </template>
 
-<script lang="ts">
-import type { ActionTypeDescription, IVersionNode, SimplifiedNodeType } from '@/Interface';
+<script setup lang="ts">
+import type { IVersionNode } from '@/Interface';
 import { useRootStore } from '@/stores/n8nRoot.store';
+import { useUIStore } from '@/stores/ui.store';
+import { getBadgeIconUrl, getNodeIcon, getNodeIconUrl } from '@/utils/nodeTypesUtils';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import { mapStores } from 'pinia';
-import { defineComponent, type PropType } from 'vue';
+import { computed } from 'vue';
 
 interface NodeIconSource {
 	path?: string;
@@ -28,112 +29,108 @@ interface NodeIconSource {
 	icon?: string;
 }
 
-export default defineComponent({
-	name: 'NodeIcon',
-	props: {
-		nodeType: {
-			type: Object as PropType<
-				| INodeTypeDescription
-				| IVersionNode
-				| SimplifiedNodeType
-				| ActionTypeDescription
-				| null
-				| undefined
-			>,
-			required: true,
-		},
-		size: {
-			type: Number,
-			required: false,
-		},
-		disabled: {
-			type: Boolean,
-			default: false,
-		},
-		circle: {
-			type: Boolean,
-			default: false,
-		},
-		colorDefault: {
-			type: String,
-			required: false,
-		},
-		showTooltip: {
-			type: Boolean,
-			default: false,
-		},
-		tooltipPosition: {
-			type: String,
-			default: 'top',
-		},
-		nodeName: {
-			type: String,
-			required: false,
-		},
-	},
-	computed: {
-		...mapStores(useRootStore),
-		type(): string {
-			const nodeType = this.nodeType;
-			let iconType = 'unknown';
-			if (nodeType) {
-				if (nodeType.iconUrl) return 'file';
-				if ((nodeType as IVersionNode).iconData) {
-					iconType = (nodeType as IVersionNode).iconData.type;
-				} else if (nodeType.icon) {
-					iconType = nodeType.icon.split(':')[0] === 'file' ? 'file' : 'icon';
-				}
-			}
-			return iconType;
-		},
-		color(): string {
-			const nodeType = this.nodeType;
-			if (nodeType?.defaults?.color) {
-				return nodeType.defaults.color.toString();
-			}
-			if (this.colorDefault) {
-				return this.colorDefault;
-			}
-			return '';
-		},
-		iconSource(): NodeIconSource {
-			const nodeType = this.nodeType;
-			const baseUrl = this.rootStore.getBaseUrl;
-			const iconSource = {} as NodeIconSource;
+type Props = {
+	nodeType?: INodeTypeDescription | IVersionNode | null;
+	size?: number;
+	disabled?: boolean;
+	circle?: boolean;
+	colorDefault?: string;
+	showTooltip?: boolean;
+	tooltipPosition?: 'top' | 'bottom' | 'left' | 'right';
+	nodeName?: string;
+};
 
-			if (nodeType) {
-				// If node type has icon data, use it
-				if ((nodeType as IVersionNode).iconData) {
-					return {
-						icon: (nodeType as IVersionNode).iconData.icon,
-						fileBuffer: (nodeType as IVersionNode).iconData.fileBuffer,
-					};
-				}
-				if (nodeType.iconUrl) {
-					return { path: baseUrl + nodeType.iconUrl };
-				}
-				// Otherwise, extract it from icon prop
-				if (nodeType.icon) {
-					const [type, path] = nodeType.icon.split(':');
-					if (type === 'file') {
-						throw new Error(`Unexpected icon: ${nodeType.icon}`);
-					} else {
-						iconSource.icon = path;
-					}
-				}
-			}
-			return iconSource;
-		},
-		badge(): { src: string; type: string } | undefined {
-			const nodeType = this.nodeType as INodeTypeDescription;
-			if (nodeType && 'badgeIconUrl' in nodeType && nodeType.badgeIconUrl) {
-				return { type: 'file', src: this.rootStore.getBaseUrl + nodeType.badgeIconUrl };
-			}
+const props = withDefaults(defineProps<Props>(), {
+	nodeType: undefined,
+	size: undefined,
+	circle: false,
+	disabled: false,
+	showTooltip: false,
+	tooltipPosition: 'top',
+	colorDefault: '',
+	nodeName: '',
+});
 
-			return undefined;
-		},
-	},
+const emit = defineEmits<{
+	(event: 'click'): void;
+}>();
+
+const rootStore = useRootStore();
+const uiStore = useUIStore();
+
+const iconType = computed(() => {
+	const nodeType = props.nodeType;
+
+	if (nodeType) {
+		if (nodeType.iconUrl) return 'file';
+		if ('iconData' in nodeType && nodeType.iconData) {
+			return nodeType.iconData.type;
+		}
+		if (nodeType.icon) {
+			const icon = getNodeIcon(nodeType, uiStore.appliedTheme);
+			return icon && icon.split(':')[0] === 'file' ? 'file' : 'icon';
+		}
+	}
+
+	return 'unknown';
+});
+
+const color = computed(() => {
+	const nodeType = props.nodeType;
+
+	if (nodeType && 'iconColor' in nodeType && nodeType.iconColor) {
+		return `var(--color-node-icon-${nodeType.iconColor})`;
+	}
+	return nodeType?.defaults?.color?.toString() ?? props.colorDefault ?? '';
+});
+
+const iconSource = computed<NodeIconSource>(() => {
+	const nodeType = props.nodeType;
+	const baseUrl = rootStore.getBaseUrl;
+
+	if (nodeType) {
+		// If node type has icon data, use it
+		if ('iconData' in nodeType && nodeType.iconData) {
+			return {
+				icon: nodeType.iconData.icon,
+				fileBuffer: nodeType.iconData.fileBuffer,
+			};
+		}
+
+		const iconUrl = getNodeIconUrl(nodeType, uiStore.appliedTheme);
+		if (iconUrl) {
+			return { path: baseUrl + iconUrl };
+		}
+		// Otherwise, extract it from icon prop
+		if (nodeType.icon) {
+			const icon = getNodeIcon(nodeType, uiStore.appliedTheme);
+			console.log(nodeType.icon, icon);
+
+			if (icon) {
+				const [type, path] = icon.split(':');
+				if (type === 'file') {
+					throw new Error(`Unexpected icon: ${icon}`);
+				}
+
+				return { icon: path };
+			}
+		}
+	}
+
+	return {};
+});
+
+const badge = computed(() => {
+	const nodeType = props.nodeType;
+	if (nodeType && 'badgeIconUrl' in nodeType && nodeType.badgeIconUrl) {
+		return {
+			type: 'file',
+			src: rootStore.getBaseUrl + getBadgeIconUrl(nodeType, uiStore.appliedTheme),
+		};
+	}
+
+	return undefined;
 });
 </script>
 
-<style lang="scss"></style>
+<style lang="scss" module></style>

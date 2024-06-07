@@ -24,7 +24,7 @@ export class ProfitWell implements INodeType {
 		displayName: 'ProfitWell',
 		name: 'profitWell',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:profitwell.png',
+		icon: { light: 'file:profitwell.svg', dark: 'file:profitwell.dark.svg' },
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

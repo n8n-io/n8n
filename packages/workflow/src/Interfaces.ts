@@ -216,6 +216,8 @@ export abstract class ICredentialsHelper {
 		type: string,
 		data: ICredentialDataDecryptedObject,
 	): Promise<void>;
+
+	abstract getCredentialsProperties(type: string): INodeProperties[];
 }
 
 export interface IAuthenticateBase {
@@ -307,8 +309,8 @@ type ICredentialHttpRequestNode = {
 export interface ICredentialType {
 	name: string;
 	displayName: string;
-	icon?: string;
-	iconUrl?: string;
+	icon?: Themed<Icon>;
+	iconUrl?: Themed<string>;
 	extends?: string[];
 	properties: INodeProperties[];
 	documentationUrl?: string;
@@ -813,6 +815,7 @@ export type NodeTypeAndVersion = {
 export interface FunctionsBase {
 	logger: Logger;
 	getCredentials(type: string, itemIndex?: number): Promise<ICredentialDataDecryptedObject>;
+	getCredentialsProperties(type: string): INodeProperties[];
 	getExecutionId(): string;
 	getNode(): INode;
 	getWorkflow(): IWorkflowMetadata;
@@ -1543,11 +1546,31 @@ export interface IWorkflowIssues {
 	[key: string]: INodeIssues;
 }
 
+export type NodeIconColor =
+	| 'gray'
+	| 'black'
+	| 'blue'
+	| 'light-blue'
+	| 'dark-blue'
+	| 'orange'
+	| 'orange-red'
+	| 'pink-red'
+	| 'red'
+	| 'light-green'
+	| 'green'
+	| 'dark-green'
+	| 'azure'
+	| 'purple'
+	| 'crimson';
+export type Icon = `fa:${string}` | `file:${string}` | `node:${string}`;
+export type Themed<T> = T | { light: T; dark: T };
+
 export interface INodeTypeBaseDescription {
 	displayName: string;
 	name: string;
-	icon?: string;
-	iconUrl?: string;
+	icon?: Themed<Icon>;
+	iconColor?: NodeIconColor;
+	iconUrl?: Themed<string>;
 	badgeIconUrl?: string;
 	group: string[];
 	description: string;
