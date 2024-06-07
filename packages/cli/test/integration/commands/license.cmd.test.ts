@@ -3,7 +3,6 @@ import { License } from '@/License';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { ClearLicenseCommand } from '@/commands/license/clear';
 import { Config } from '@oclif/core';
-import Container from 'typedi';
 import { mockInstance } from '../../shared/mocking';
 
 const oclifConfig = new Config({ root: __dirname });
