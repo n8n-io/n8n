@@ -101,6 +101,7 @@ describe('permissions', () => {
 					'workflow:list',
 					'workflow:share',
 					'workflow:execute',
+					'workflow:move',
 				],
 			} as IWorkflowDb),
 		).toEqual({

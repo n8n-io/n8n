@@ -137,7 +137,6 @@ async function onClick(event?: KeyboardEvent | PointerEvent) {
 
 function onClickTag(tagId: string, event: PointerEvent) {
 	event.stopPropagation();
-
 	emit('click:tag', tagId, event);
 }
 
