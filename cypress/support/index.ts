@@ -51,6 +51,7 @@ declare global {
 				}
 			>;
 			resetDatabase(): void;
+			setAppDate(targetDate: number | Date): void;
 		}
 	}
 }

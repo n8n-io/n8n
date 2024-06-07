@@ -1,11 +1,18 @@
-import { getNpsSurvey, getNpsSurveyEmail, getNpsSurveyRatings } from '../pages/npsSurvey';
+import {
+	getNpsSurvey,
+	getNpsSurveyClose,
+	getNpsSurveyEmail,
+	getNpsSurveyRatings,
+} from '../pages/npsSurvey';
 import { WorkflowPage } from '../pages/workflow';
 
 const workflowPage = new WorkflowPage();
 
-const NOW = Date.now();
+const NOW = 1717771477012;
 const ONE_DAY = 24 * 60 * 60 * 1000;
 const THREE_DAYS = ONE_DAY * 3;
+const SEVEN_DAYS = ONE_DAY * 7;
+const ABOUT_SIX_MONTHS = ONE_DAY * 30 * 6 + ONE_DAY;
 
 describe('NpsSurvey', () => {
 	it('shows nps survey to recently activated user and can submit email ', () => {
@@ -27,24 +34,91 @@ describe('NpsSurvey', () => {
 			});
 		});
 
-		workflowPage.actions.visit();
+		workflowPage.actions.visit(true, NOW);
 
 		workflowPage.actions.saveWorkflowOnButtonClick();
-
 		getNpsSurvey().should('be.visible');
 		getNpsSurveyRatings().find('button').should('have.length', 11);
-
 		getNpsSurveyRatings().find('button').first().click();
 
 		getNpsSurveyEmail().find('input').type('test@n8n.io');
 		getNpsSurveyEmail().find('button').click();
 
-		// test that modal does not show up again
-		cy.reload();
-
-		workflowPage.actions.visit();
+		// test that modal does not show up again until 6 months later
+		workflowPage.actions.visit(true, NOW + ONE_DAY);
 		workflowPage.actions.saveWorkflowOnButtonClick();
-
 		getNpsSurvey().should('not.be.visible');
+
+		// 6 months later
+		workflowPage.actions.visit(true, NOW + ABOUT_SIX_MONTHS);
+		workflowPage.actions.saveWorkflowOnButtonClick();
+		getNpsSurvey().should('be.visible');
+	});
+
+	it('allows user to ignore survey 3 times until  ', () => {
+		cy.intercept('/rest/settings', { middleware: true }, (req) => {
+			req.on('response', (res) => {
+				if (res.body.data) {
+					res.body.data.telemetry = { enabled: true };
+				}
+			});
+		});
+
+		cy.intercept('/rest/login', { middleware: true }, (req) => {
+			req.on('response', (res) => {
+				if (res.body.data) {
+					res.body.data.settings = res.body.data.settings || {};
+					res.body.data.settings.userActivated = true;
+					res.body.data.settings.userActivatedAt = NOW - THREE_DAYS - 1000;
+				}
+			});
+		});
+
+		// can ignore survey and it won't show up again
+		workflowPage.actions.visit(true, NOW);
+		workflowPage.actions.saveWorkflowOnButtonClick();
+		workflowPage.actions.clearNotifications();
+
+		getNpsSurvey().should('be.visible');
+		getNpsSurveyClose().click();
+		getNpsSurvey().should('not.be.visible');
+
+		workflowPage.actions.visit(true, NOW + ONE_DAY);
+		workflowPage.actions.saveWorkflowOnButtonClick();
+		getNpsSurvey().should('not.be.visible');
+
+		// shows up seven days later to ignore again
+		workflowPage.actions.visit(true, NOW + SEVEN_DAYS + 10000);
+		workflowPage.actions.saveWorkflowOnButtonClick();
+		workflowPage.actions.clearNotifications();
+		getNpsSurvey().should('be.visible');
+		getNpsSurveyClose().click();
+		getNpsSurvey().should('not.be.visible');
+
+		workflowPage.actions.visit(true, NOW + SEVEN_DAYS + 10000);
+		workflowPage.actions.saveWorkflowOnButtonClick();
+		getNpsSurvey().should('not.be.visible');
+
+		// shows up seven days later to ignore again
+		workflowPage.actions.visit(true, NOW + SEVEN_DAYS * 2 + 10000 * 2);
+		workflowPage.actions.saveWorkflowOnButtonClick();
+		workflowPage.actions.clearNotifications();
+		getNpsSurvey().should('be.visible');
+		getNpsSurveyClose().click();
+		getNpsSurvey().should('not.be.visible');
+
+		workflowPage.actions.visit(true, NOW + SEVEN_DAYS * 2 + 10000 * 2);
+		workflowPage.actions.saveWorkflowOnButtonClick();
+		getNpsSurvey().should('not.be.visible');
+
+		// does not show up again 7 days later
+		workflowPage.actions.visit(true, NOW + SEVEN_DAYS * 3 + 10000 * 3);
+		workflowPage.actions.saveWorkflowOnButtonClick();
+		getNpsSurvey().should('not.be.visible');
+
+		// shows up 6 months later
+		workflowPage.actions.visit(true, NOW + SEVEN_DAYS * 3 + 10000 * 3 + ABOUT_SIX_MONTHS);
+		workflowPage.actions.saveWorkflowOnButtonClick();
+		getNpsSurvey().should('be.visible');
 	});
 });

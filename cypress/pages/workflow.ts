@@ -135,8 +135,11 @@ export class WorkflowPage extends BasePage {
 		contextMenuAction: (action: string) => cy.getByTestId(`context-menu-item-${action}`),
 	};
 	actions = {
-		visit: (preventNodeViewUnload = true) => {
+		visit: (preventNodeViewUnload = true, appDate?: number) => {
 			cy.visit(this.url);
+			if (appDate) {
+				cy.setAppDate(appDate);
+			}
 			cy.waitForLoad();
 			cy.window().then((win) => {
 				// @ts-ignore
@@ -439,6 +442,9 @@ export class WorkflowPage extends BasePage {
 				left: +$el[0].style.left.replace('px', ''),
 				top: +$el[0].style.top.replace('px', ''),
 			}));
+		},
+		clearNotifications: () => {
+			this.getters.successToast().find('.el-notification__closeBtn').click({ multiple: true });
 		},
 	};
 }
