@@ -8,7 +8,7 @@ import type {
 export class ZepApi implements ICredentialType {
 	name = 'zepApi';
 
-	displayName = 'Zep Open Source Api';
+	displayName = 'Zep Api';
 
 	documentationUrl = 'zep';
 
@@ -16,7 +16,7 @@ export class ZepApi implements ICredentialType {
 		{
 			displayName: 'API URL',
 			name: 'apiUrl',
-			required: true,
+			required: false,
 			type: 'string',
 			default: 'http://localhost:8000',
 		},

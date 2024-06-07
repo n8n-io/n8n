@@ -5,8 +5,12 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type SupplyData,
+	NodeOperationError,
 } from 'n8n-workflow';
 import { ZepMemory } from '@langchain/community/memory/zep';
+import { ZepCloudMemory } from '@langchain/community/memory/zep_cloud';
+import { ZepCloudChatMessageHistory } from '@langchain/community/stores/message/zep_cloud';
+
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { sessionIdOption, sessionKeyProperty } from '../descriptions';
@@ -14,15 +18,15 @@ import { getSessionId } from '../../../utils/helpers';
 
 export class MemoryZep implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Zep Open Source',
+		displayName: 'Zep',
 		name: 'memoryZep',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:zep.png',
 		group: ['transform'],
 		version: [1, 1.1, 1.2],
-		description: 'Use Zep Open Source Memory',
+		description: 'Use Zep Memory',
 		defaults: {
-			name: 'Zep Open Source',
+			name: 'Zep',
 		},
 		codex: {
 			categories: ['AI'],
@@ -83,13 +87,25 @@ export class MemoryZep implements INodeType {
 				},
 			},
 			sessionKeyProperty,
+			{
+				displayName: 'Cloud',
+				name: 'cloud',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to use Zep Cloud instead of Zep Open Source',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.2 } }],
+					},
+				},
+			},
 		],
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = (await this.getCredentials('zepApi')) as {
 			apiKey?: string;
-			apiUrl: string;
+			apiUrl?: string;
 		};
 
 		const nodeVersion = this.getNode().typeVersion;
@@ -102,15 +118,44 @@ export class MemoryZep implements INodeType {
 			sessionId = this.getNodeParameter('sessionId', itemIndex) as string;
 		}
 
-		const memory = new ZepMemory({
-			sessionId,
-			baseURL: credentials.apiUrl,
-			apiKey: credentials.apiKey,
-			memoryKey: 'chat_history',
-			returnMessages: true,
-			inputKey: 'input',
-			outputKey: 'output',
-		});
+		const cloud = (this.getNodeParameter('cloud', itemIndex) as boolean) ?? false;
+
+		let memory;
+
+		if (cloud) {
+			if (!credentials.apiKey) {
+				throw new NodeOperationError(this.getNode(), 'API key is required to use Zep Cloud');
+			}
+			memory = new ZepCloudMemory({
+				sessionId,
+				apiKey: credentials.apiKey,
+				memoryType: 'perpetual',
+				memoryKey: 'chat_history',
+				returnMessages: true,
+				inputKey: 'input',
+				outputKey: 'output',
+			});
+
+			// Need to add ZepCloudChatMessageHistory to memory because MemoryManager expects it
+			memory.chatHistory = new ZepCloudChatMessageHistory({
+				client: memory.zepClient,
+				sessionId: memory.sessionId,
+				memoryType: memory.memoryType,
+			});
+		} else {
+			if (!credentials.apiUrl) {
+				throw new NodeOperationError(this.getNode(), 'API url is required to use Zep Open Source');
+			}
+			memory = new ZepMemory({
+				sessionId,
+				baseURL: credentials.apiUrl,
+				apiKey: credentials.apiKey,
+				memoryKey: 'chat_history',
+				returnMessages: true,
+				inputKey: 'input',
+				outputKey: 'output',
+			});
+		}
 
 		return {
 			response: logWrapper(memory, this),

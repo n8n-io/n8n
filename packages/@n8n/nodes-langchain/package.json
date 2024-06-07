@@ -42,8 +42,7 @@
       "dist/credentials/SerpApi.credentials.js",
       "dist/credentials/WolframAlphaApi.credentials.js",
       "dist/credentials/XataApi.credentials.js",
-      "dist/credentials/ZepApi.credentials.js",
-      "dist/credentials/ZepCloudApi.credentials.js"
+      "dist/credentials/ZepApi.credentials.js"
     ],
     "nodes": [
       "dist/nodes/vendors/OpenAi/OpenAi.node.js",
@@ -87,7 +86,6 @@
       "dist/nodes/memory/MemoryChatRetriever/MemoryChatRetriever.node.js",
       "dist/nodes/memory/MemoryXata/MemoryXata.node.js",
       "dist/nodes/memory/MemoryZep/MemoryZep.node.js",
-      "dist/nodes/memory/MemoryZepCloud/MemoryZepCloud.node.js",
       "dist/nodes/output_parser/OutputParserAutofixing/OutputParserAutofixing.node.js",
       "dist/nodes/output_parser/OutputParserItemList/OutputParserItemList.node.js",
       "dist/nodes/output_parser/OutputParserStructured/OutputParserStructured.node.js",
