@@ -27,6 +27,12 @@ export function useDeviceSupport() {
 		return (e as KeyboardEvent).ctrlKey;
 	}
 
+	console.log('============ useDeviceSupport ============');
+	console.log('isTouchDevice', isTouchDevice.value);
+	console.log('FINE', window.matchMedia('(any-pointer: fine)').matches);
+	console.log('COARSE', window.matchMedia('(any-pointer: coarse)').matches);
+	console.log('==========================================');
+
 	return {
 		isTouchDevice: isTouchDevice.value,
 		isMacOs: isMacOs.value,
