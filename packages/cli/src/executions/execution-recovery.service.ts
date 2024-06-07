@@ -11,40 +11,49 @@ import type { IExecutionResponse } from '@/Interfaces';
 import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
+import { Logger } from '@/Logger';
 
 /**
- * Service for recovering executions truncated by an instance crash.
+ * Service for recovering key properties in executions.
  */
 @Service()
 export class ExecutionRecoveryService {
 	constructor(
 		private readonly push: Push,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly logger: Logger,
 	) {}
 
 	/**
-	 * "Recovery" means (1) amending key properties of a truncated execution,
-	 * (2) running post-execution hooks, and (3) returning the amended execution
-	 * so the UI can reflect the error. "Recovery" does **not** mean injecting
-	 * execution data from the logs (they hold none), or resuming the execution
-	 * from the point of truncation, or re-running the whole execution.
+	 * "Recovery" means amending key properties of a truncated execution
+	 * using event logs. Depending on the state of the logs, we may amend
+	 * only the status, or also `stoppedAt` and some execution data.
 	 *
-	 * Recovery is only possible if event logs are available in the container.
-	 * In regular mode, logs should but might not be available, e.g. due to container
-	 * being recycled, max log size causing rotation, etc. In queue mode, as workers
-	 * log to their own filesystems, only manual exections can be recovered.
+	 * "Recovery" does not inject execution data from logs (they hold none)
+	 * or resume from the point of truncation or re-run the execution.
+	 *
+	 * In regular mode, logs may or may not be available. In queue mode, since
+	 * workers log to their own FS, only manual exections can be recovered.
 	 */
-	async recover(executionId: string, messages: EventMessageTypes[]) {
-		if (messages.length === 0) return null;
+	async recoverFromLogs(executionId: string, messages: EventMessageTypes[]) {
+		if (messages.length === 0) {
+			await this.executionRepository.markAsCrashed(executionId);
+			this.log('Marked execution as crashed', { executionId });
+			return;
+		}
 
 		const amendedExecution = await this.amend(executionId, messages);
 
 		if (!amendedExecution) return null;
 
+		this.log('Amended execution', { executionId: amendedExecution.id });
+
 		await this.executionRepository.updateExistingExecution(executionId, amendedExecution);
 
+		// @TODO: Should this run also for the `messages.length === 0` case?
 		await this.runHooks(amendedExecution);
 
+		// @TODO: Should this run also for the `messages.length === 0` case?
 		this.push.once('editorUiConnected', async () => {
 			await sleep(1000);
 			this.push.broadcast('executionRecovered', { executionId });
@@ -185,5 +194,9 @@ export class ExecutionRecoveryService {
 		};
 
 		await externalHooks.executeHookFunctions('workflowExecuteAfter', [run]);
+	}
+
+	private log(message: string, meta?: object) {
+		this.logger.info(['[Recovery]', message].join(' '), meta);
 	}
 }

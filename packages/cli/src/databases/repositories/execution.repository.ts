@@ -261,7 +261,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return String(executionId);
 	}
 
-	async markAsCrashed(executionIds: string[]) {
+	async markAsCrashed(executionIds: string | string[]) {
+		if (!Array.isArray(executionIds)) executionIds = [executionIds];
+
 		await this.update(
 			{ id: In(executionIds) },
 			{

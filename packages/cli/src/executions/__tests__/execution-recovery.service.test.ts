@@ -20,6 +20,7 @@ import { EventMessageWorkflow } from '@/eventbus/EventMessageClasses/EventMessag
 import type { EventMessageTypes as EventMessage } from '@/eventbus/EventMessageClasses';
 import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 import { NodeConnectionType } from 'n8n-workflow';
+import { Logger } from '@/Logger';
 
 /**
  * Workflow producing an execution whose data will be truncated by an instance crash.
@@ -174,17 +175,18 @@ export const setupMessages = (executionId: string, workflowName: string): EventM
 describe('ExecutionRecoveryService', () => {
 	let executionRecoveryService: ExecutionRecoveryService;
 	let push: Push;
+	let executionRepository: ExecutionRepository;
+	let logger: Logger;
 
 	beforeAll(async () => {
 		await testDb.init();
 
 		mockInstance(InternalHooks);
 		push = mockInstance(Push);
+		executionRepository = Container.get(ExecutionRepository);
+		logger = mockInstance(Logger);
 
-		executionRecoveryService = new ExecutionRecoveryService(
-			push,
-			Container.get(ExecutionRepository),
-		);
+		executionRecoveryService = new ExecutionRecoveryService(push, executionRepository, logger);
 	});
 
 	afterEach(async () => {
@@ -196,225 +198,190 @@ describe('ExecutionRecoveryService', () => {
 	});
 
 	describe('recover', () => {
-		it('should amend, persist, run hooks, broadcast', async () => {
-			/**
-			 * Arrange
-			 */
-			// @ts-expect-error Private method
-			const amendSpy = jest.spyOn(executionRecoveryService, 'amend');
-			const executionRepository = Container.get(ExecutionRepository);
-			const dbUpdateSpy = jest.spyOn(executionRepository, 'update');
-			// @ts-expect-error Private method
-			const runHooksSpy = jest.spyOn(executionRecoveryService, 'runHooks');
-
-			const workflow = await createWorkflow(OOM_WORKFLOW);
-
-			const execution = await createExecution(
-				{
-					status: 'running',
-					data: stringify(IN_PROGRESS_EXECUTION_DATA),
-				},
-				workflow,
-			);
-
-			const messages = setupMessages(execution.id, workflow.name);
-
-			/**
-			 * Act
-			 */
-
-			await executionRecoveryService.recover(execution.id, messages);
-
-			/**
-			 * Assert
-			 */
-
-			expect(amendSpy).toHaveBeenCalledTimes(1);
-			expect(amendSpy).toHaveBeenCalledWith(execution.id, messages);
-			expect(dbUpdateSpy).toHaveBeenCalledTimes(1);
-			expect(runHooksSpy).toHaveBeenCalledTimes(1);
-			expect(push.once).toHaveBeenCalledTimes(1);
-		});
-
-		test('should amend a truncated execution where last node did not finish', async () => {
-			/**
-			 * Arrange
-			 */
-
-			const workflow = await createWorkflow(OOM_WORKFLOW);
-
-			const execution = await createExecution(
-				{
-					status: 'running',
-					data: stringify(IN_PROGRESS_EXECUTION_DATA),
-				},
-				workflow,
-			);
-
-			const messages = setupMessages(execution.id, workflow.name);
-
-			/**
-			 * Act
-			 */
-
-			const amendedExecution = await executionRecoveryService.recover(execution.id, messages);
-
-			/**
-			 * Assert
-			 */
-
-			const startOfLastNodeRun = messages
-				.find((m) => m.eventName === 'n8n.node.started' && m.payload.nodeName === 'DebugHelper')
-				?.ts.toJSDate();
-
-			expect(amendedExecution).toEqual(
-				expect.objectContaining({
-					status: 'crashed',
-					stoppedAt: startOfLastNodeRun,
-				}),
-			);
-
-			const resultData = amendedExecution?.data.resultData;
-
-			if (!resultData) fail('Expected `resultData` to be defined');
-
-			expect(resultData.error).toBeInstanceOf(WorkflowCrashedError);
-			expect(resultData.lastNodeExecuted).toBe('DebugHelper');
-
-			const runData = resultData.runData;
-
-			if (!runData) fail('Expected `runData` to be defined');
-
-			const manualTriggerTaskData = runData['When clicking "Test workflow"'].at(0);
-			const debugHelperTaskData = runData.DebugHelper.at(0);
-
-			expect(manualTriggerTaskData?.executionStatus).toBe('success');
-			expect(manualTriggerTaskData?.error).toBeUndefined();
-			expect(manualTriggerTaskData?.startTime).not.toBe(ARTIFICIAL_TASK_DATA);
-
-			expect(debugHelperTaskData?.executionStatus).toBe('crashed');
-			expect(debugHelperTaskData?.error).toBeInstanceOf(NodeCrashedError);
-		});
-
-		test('should amend a truncated execution where last node finished', async () => {
-			/**
-			 * Arrange
-			 */
-
-			const workflow = await createWorkflow(OOM_WORKFLOW);
-
-			const execution = await createExecution(
-				{
-					status: 'running',
-					data: stringify(IN_PROGRESS_EXECUTION_DATA),
-				},
-				workflow,
-			);
-
-			const messages = setupMessages(execution.id, workflow.name);
-			messages.push(
-				new EventMessageNode({
-					eventName: 'n8n.node.finished',
-					payload: {
-						executionId: execution.id,
-						workflowName: workflow.name,
-						nodeName: 'DebugHelper',
-						nodeType: 'n8n-nodes-base.debugHelper',
+		describe('if no messages', () => {
+			test('should mark execution as crashed', async () => {
+				/**
+				 * Arrange
+				 */
+				const workflow = await createWorkflow(OOM_WORKFLOW);
+				const execution = await createExecution(
+					{
+						status: 'running',
+						data: stringify(IN_PROGRESS_EXECUTION_DATA),
 					},
-				}),
-			);
+					workflow,
+				);
+				const noMessages: EventMessage[] = [];
+				const markAsCrashedSpy = jest.spyOn(executionRepository, 'markAsCrashed');
 
-			/**
-			 * Act
-			 */
+				/**
+				 * Act
+				 */
+				await executionRecoveryService.recoverFromLogs(execution.id, noMessages);
 
-			const amendedExecution = await executionRecoveryService.recover(execution.id, messages);
-
-			/**
-			 * Assert
-			 */
-
-			const endOfLastNoderun = messages
-				.find((m) => m.eventName === 'n8n.node.finished' && m.payload.nodeName === 'DebugHelper')
-				?.ts.toJSDate();
-
-			expect(amendedExecution).toEqual(
-				expect.objectContaining({
-					status: 'crashed',
-					stoppedAt: endOfLastNoderun,
-				}),
-			);
-
-			const resultData = amendedExecution?.data.resultData;
-
-			if (!resultData) fail('Expected `resultData` to be defined');
-
-			expect(resultData.error).toBeUndefined();
-			expect(resultData.lastNodeExecuted).toBe('DebugHelper');
-
-			const runData = resultData.runData;
-
-			if (!runData) fail('Expected `runData` to be defined');
-
-			const manualTriggerTaskData = runData['When clicking "Test workflow"'].at(0);
-			const debugHelperTaskData = runData.DebugHelper.at(0);
-
-			expect(manualTriggerTaskData?.executionStatus).toBe('success');
-			expect(manualTriggerTaskData?.error).toBeUndefined();
-
-			expect(debugHelperTaskData?.executionStatus).toBe('success');
-			expect(debugHelperTaskData?.error).toBeUndefined();
-			expect(debugHelperTaskData?.data).toEqual(ARTIFICIAL_TASK_DATA);
+				/**
+				 * Assert
+				 */
+				expect(markAsCrashedSpy).toHaveBeenCalledTimes(1);
+			});
 		});
 
-		test('should return `null` if no messages', async () => {
-			/**
-			 * Arrange
-			 */
-			const workflow = await createWorkflow(OOM_WORKFLOW);
-			const execution = await createExecution(
-				{
-					status: 'running',
-					data: stringify(IN_PROGRESS_EXECUTION_DATA),
-				},
-				workflow,
-			);
-			const noMessages: EventMessage[] = [];
+		describe('if messages', () => {
+			test('should amend a truncated execution where last node did not finish', async () => {
+				/**
+				 * Arrange
+				 */
 
-			/**
-			 * Act
-			 */
+				const workflow = await createWorkflow(OOM_WORKFLOW);
 
-			const amendedExecution = await executionRecoveryService.recover(execution.id, noMessages);
+				const execution = await createExecution(
+					{
+						status: 'running',
+						data: stringify(IN_PROGRESS_EXECUTION_DATA),
+					},
+					workflow,
+				);
 
-			/**
-			 * Assert
-			 */
+				const messages = setupMessages(execution.id, workflow.name);
 
-			expect(amendedExecution).toBeNull();
-		});
+				/**
+				 * Act
+				 */
 
-		test('should return `null` if no execution', async () => {
-			/**
-			 * Arrange
-			 */
-			const inexistentExecutionId = randomInteger(100).toString();
-			const messages = setupMessages(inexistentExecutionId, 'Some workflow');
+				const amendedExecution = await executionRecoveryService.recoverFromLogs(
+					execution.id,
+					messages,
+				);
 
-			/**
-			 * Act
-			 */
+				/**
+				 * Assert
+				 */
 
-			const amendedExecution = await executionRecoveryService.recover(
-				inexistentExecutionId,
-				messages,
-			);
+				const startOfLastNodeRun = messages
+					.find((m) => m.eventName === 'n8n.node.started' && m.payload.nodeName === 'DebugHelper')
+					?.ts.toJSDate();
 
-			/**
-			 * Assert
-			 */
+				expect(amendedExecution).toEqual(
+					expect.objectContaining({
+						status: 'crashed',
+						stoppedAt: startOfLastNodeRun,
+					}),
+				);
 
-			expect(amendedExecution).toBeNull();
+				const resultData = amendedExecution?.data.resultData;
+
+				if (!resultData) fail('Expected `resultData` to be defined');
+
+				expect(resultData.error).toBeInstanceOf(WorkflowCrashedError);
+				expect(resultData.lastNodeExecuted).toBe('DebugHelper');
+
+				const runData = resultData.runData;
+
+				if (!runData) fail('Expected `runData` to be defined');
+
+				const manualTriggerTaskData = runData['When clicking "Test workflow"'].at(0);
+				const debugHelperTaskData = runData.DebugHelper.at(0);
+
+				expect(manualTriggerTaskData?.executionStatus).toBe('success');
+				expect(manualTriggerTaskData?.error).toBeUndefined();
+				expect(manualTriggerTaskData?.startTime).not.toBe(ARTIFICIAL_TASK_DATA);
+
+				expect(debugHelperTaskData?.executionStatus).toBe('crashed');
+				expect(debugHelperTaskData?.error).toBeInstanceOf(NodeCrashedError);
+			});
+
+			test('should amend a truncated execution where last node finished', async () => {
+				/**
+				 * Arrange
+				 */
+				const workflow = await createWorkflow(OOM_WORKFLOW);
+
+				const execution = await createExecution(
+					{
+						status: 'running',
+						data: stringify(IN_PROGRESS_EXECUTION_DATA),
+					},
+					workflow,
+				);
+
+				const messages = setupMessages(execution.id, workflow.name);
+				messages.push(
+					new EventMessageNode({
+						eventName: 'n8n.node.finished',
+						payload: {
+							executionId: execution.id,
+							workflowName: workflow.name,
+							nodeName: 'DebugHelper',
+							nodeType: 'n8n-nodes-base.debugHelper',
+						},
+					}),
+				);
+
+				/**
+				 * Act
+				 */
+				const amendedExecution = await executionRecoveryService.recoverFromLogs(
+					execution.id,
+					messages,
+				);
+
+				/**
+				 * Assert
+				 */
+
+				const endOfLastNoderun = messages
+					.find((m) => m.eventName === 'n8n.node.finished' && m.payload.nodeName === 'DebugHelper')
+					?.ts.toJSDate();
+
+				expect(amendedExecution).toEqual(
+					expect.objectContaining({
+						status: 'crashed',
+						stoppedAt: endOfLastNoderun,
+					}),
+				);
+
+				const resultData = amendedExecution?.data.resultData;
+
+				if (!resultData) fail('Expected `resultData` to be defined');
+
+				expect(resultData.error).toBeUndefined();
+				expect(resultData.lastNodeExecuted).toBe('DebugHelper');
+
+				const runData = resultData.runData;
+
+				if (!runData) fail('Expected `runData` to be defined');
+
+				const manualTriggerTaskData = runData['When clicking "Test workflow"'].at(0);
+				const debugHelperTaskData = runData.DebugHelper.at(0);
+
+				expect(manualTriggerTaskData?.executionStatus).toBe('success');
+				expect(manualTriggerTaskData?.error).toBeUndefined();
+
+				expect(debugHelperTaskData?.executionStatus).toBe('success');
+				expect(debugHelperTaskData?.error).toBeUndefined();
+				expect(debugHelperTaskData?.data).toEqual(ARTIFICIAL_TASK_DATA);
+			});
+
+			test('should return `null` if no execution found', async () => {
+				/**
+				 * Arrange
+				 */
+				const inexistentExecutionId = randomInteger(100).toString();
+				const messages = setupMessages(inexistentExecutionId, 'Some workflow');
+
+				/**
+				 * Act
+				 */
+				const amendedExecution = await executionRecoveryService.recoverFromLogs(
+					inexistentExecutionId,
+					messages,
+				);
+
+				/**
+				 * Assert
+				 */
+				expect(amendedExecution).toBeNull();
+			});
 		});
 	});
 });
