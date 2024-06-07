@@ -286,7 +286,7 @@ export class Wait extends Webhook {
 						description: 'Waits for a webhook call before continuing',
 					},
 					{
-						name: 'On Form Submited',
+						name: 'On Form Submitted',
 						value: 'form',
 						description: 'Waits for a form submission before continuing',
 					},
