@@ -730,7 +730,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			if (query.order?.stoppedAt === 'DESC') {
 				qb.orderBy({ 'execution.stoppedAt': 'DESC' });
 			} else if (query.order?.top) {
-				qb.orderBy(`(CASE WHEN execution.status = '${query.order?.top}' THEN 0 ELSE 1 END)`);
+				qb.orderBy(`(CASE WHEN execution.status = '${query.order.top}' THEN 0 ELSE 1 END)`);
 			} else {
 				qb.orderBy({ 'execution.id': 'DESC' });
 			}
