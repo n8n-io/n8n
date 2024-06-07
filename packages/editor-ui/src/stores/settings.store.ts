@@ -6,16 +6,15 @@ import {
 	testLdapConnection,
 	updateLdapConfig,
 } from '@/api/ldap';
-import { getPromptsData, getSettings, submitContactInfo } from '@/api/settings';
+import { getSettings, submitContactInfo } from '@/api/settings';
 import { testHealthEndpoint } from '@/api/templates';
 import type {
 	EnterpriseEditionFeatureValue,
 	ILdapConfig,
 	IN8nPromptResponse,
-	IN8nPrompts,
 	ISettingsState,
 } from '@/Interface';
-import { CONTACT_PROMPT_MODAL_KEY, STORES, INSECURE_CONNECTION_WARNING } from '@/constants';
+import { STORES, INSECURE_CONNECTION_WARNING } from '@/constants';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import type {
 	IDataObject,
@@ -34,13 +33,11 @@ import { makeRestApiRequest } from '@/utils/apiUtils';
 import { useTitleChange } from '@/composables/useTitleChange';
 import { useToast } from '@/composables/useToast';
 import { i18n } from '@/plugins/i18n';
-import { useNpsSurvey } from './npsSurvey.store';
 
 export const useSettingsStore = defineStore(STORES.SETTINGS, {
 	state: (): ISettingsState => ({
 		initialized: false,
 		settings: {} as IN8nUISettings,
-		promptsData: {} as IN8nPrompts,
 		userManagement: {
 			quota: -1,
 			showSetupOnFirstLoad: false,
@@ -306,31 +303,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 				},
 			};
 		},
-		setPromptsData(promptsData: IN8nPrompts): void {
-			this.promptsData = promptsData;
-		},
 		setAllowedModules(allowedModules: { builtIn?: string[]; external?: string[] }): void {
 			this.settings.allowedModules = allowedModules;
-		},
-		async fetchPromptsData(): Promise<void> {
-			if (!this.isTelemetryEnabled) {
-				return;
-			}
-
-			const uiStore = useUIStore();
-			const usersStore = useUsersStore();
-			const promptsData: IN8nPrompts = await getPromptsData(
-				this.settings.instanceId,
-				usersStore.currentUserId || '',
-			);
-
-			if (promptsData && promptsData.showContactPrompt) {
-				uiStore.openModal(CONTACT_PROMPT_MODAL_KEY);
-			} else {
-				useNpsSurvey().showNpsSurveyIfPossible();
-			}
-
-			this.setPromptsData(promptsData);
 		},
 		async submitContactInfo(email: string): Promise<IN8nPromptResponse | undefined> {
 			try {

@@ -111,9 +111,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const defaultScopes: Scope[] = [];
 			useRBACStore().setGlobalScopes(user.globalScopes || defaultScopes);
 			usePostHog().init(user.featureFlags);
-			if (user.settings) {
-				useNpsSurvey().setupNpsSurveyOnLogin(user.settings);
-			}
+			useNpsSurvey().setupNpsSurveyOnLogin(user.id, user.settings);
 		},
 		unsetCurrentUser() {
 			this.currentUserId = null;

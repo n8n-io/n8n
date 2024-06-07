@@ -1379,7 +1379,6 @@ export interface INodeCreatorState {
 export interface ISettingsState {
 	initialized: boolean;
 	settings: IN8nUISettings;
-	promptsData: IN8nPrompts;
 	userManagement: IUserManagementSettings;
 	templatesEndpointHealthy: boolean;
 	api: {

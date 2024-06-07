@@ -6,11 +6,14 @@ import {
 	SIX_MONTHS_IN_MILLIS,
 	THREE_DAYS_IN_MILLIS,
 	NPS_SURVEY_MODAL_KEY,
+	CONTACT_PROMPT_MODAL_KEY,
 } from '@/constants';
 import { useRootStore } from './n8nRoot.store';
 import type { IUserSettings, NpsSurveyState } from 'n8n-workflow';
 import { useSettingsStore } from './settings.store';
 import { updateNpsSurveyState } from '@/api/npsSurvey';
+import type { IN8nPrompts } from '@/Interface';
+import { getPromptsData } from '@/api/settings';
 
 export const MAXIMUM_TIMES_TO_SHOW_SURVEY_IF_IGNORED = 3;
 
@@ -21,8 +24,17 @@ export const useNpsSurvey = defineStore('npsSurvey', () => {
 
 	const shouldShowNpsSurveyNext = ref<boolean>(false);
 	const currentSurveyState = ref<NpsSurveyState | undefined>();
+	const currentUserId = ref<string | undefined>();
 
-	function setupNpsSurveyOnLogin(settings: IUserSettings): void {
+	function setupNpsSurveyOnLogin(userId: string, settings?: IUserSettings): void {
+		currentUserId.value = userId;
+
+		if (settings) {
+			setShouldShowNpsSurvey(settings);
+		}
+	}
+
+	function setShouldShowNpsSurvey(settings: IUserSettings) {
 		if (!settingsStore.isTelemetryEnabled) {
 			shouldShowNpsSurveyNext.value = false;
 			return;
@@ -118,11 +130,29 @@ export const useNpsSurvey = defineStore('npsSurvey', () => {
 		currentSurveyState.value = updatedState;
 	}
 
+	async function fetchPromptsData(): Promise<void> {
+		if (!settingsStore.isTelemetryEnabled) {
+			return;
+		}
+
+		const promptsData: IN8nPrompts = await getPromptsData(
+			settingsStore.settings.instanceId,
+			currentUserId.value ?? '',
+		);
+
+		if (promptsData?.showContactPrompt) {
+			uiStore.openModal(CONTACT_PROMPT_MODAL_KEY);
+		} else {
+			await useNpsSurvey().showNpsSurveyIfPossible();
+		}
+	}
+
 	return {
 		resetNpsSurveyOnLogOut,
 		showNpsSurveyIfPossible,
 		ignoreNpsSurvey,
 		respondNpsSurvey,
 		setupNpsSurveyOnLogin,
+		fetchPromptsData,
 	};
 });
