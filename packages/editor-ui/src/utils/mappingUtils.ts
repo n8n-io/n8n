@@ -1,5 +1,6 @@
 import type { INodeProperties, NodeParameterValueType } from 'n8n-workflow';
 import { isResourceLocatorValue } from 'n8n-workflow';
+import { isExpression } from './expressions';
 
 const validJsIdNameRegex = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
 
@@ -82,18 +83,18 @@ export function getMappedResult(
 			: prevParamValue;
 
 	if (parameter.requiresDataPath) {
-		const newValue = propertyNameFromExpression(newParamValue);
+		const propertyName = propertyNameFromExpression(newParamValue);
 
-		if (prevValue && parameter.requiresDataPath === 'multiple') {
-			if (typeof prevValue === 'string' && prevValue.trim() === '=') {
-				return newValue;
-			} else {
-				return `${prevValue}, ${newValue}`;
+		if (parameter.requiresDataPath === 'multiple') {
+			if (typeof prevValue === 'string' && (prevValue.trim() === '=' || prevValue.trim() === '')) {
+				return propertyName;
 			}
-		} else {
-			return newValue;
+
+			return `${prevValue}, ${propertyName}`;
 		}
-	} else if (typeof prevValue === 'string' && prevValue.startsWith('=') && prevValue.length > 1) {
+
+		return propertyName;
+	} else if (typeof prevValue === 'string' && isExpression(prevValue) && prevValue.length > 1) {
 		return `${prevValue} ${newParamValue}`;
 	} else if (prevValue && ['string', 'json'].includes(parameter.type)) {
 		return prevValue === '=' ? `=${newParamValue}` : `=${prevValue} ${newParamValue}`;

@@ -168,7 +168,7 @@ describe('Mapping Utils', () => {
 			expect(getMappedResult(MULTIPLE_DATA_PATH_PARAM, '{{ $json.test }}', '=')).toEqual('test');
 		});
 
-		it('handles data when dragging from grand-parent nodes', () => {
+		it('handles data when dragging from grand-parent nodes, replacing if expecting single path', () => {
 			expect(
 				getMappedResult(
 					MULTIPLE_DATA_PATH_PARAM,
@@ -176,6 +176,14 @@ describe('Mapping Utils', () => {
 					'',
 				),
 			).toEqual('Day of week');
+
+			expect(
+				getMappedResult(
+					MULTIPLE_DATA_PATH_PARAM,
+					'{{ $node["Schedule Trigger"].json["Day of week"] }}',
+					'=data',
+				),
+			).toEqual('=data, Day of week');
 
 			expect(
 				getMappedResult(
