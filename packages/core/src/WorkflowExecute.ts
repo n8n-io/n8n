@@ -1067,7 +1067,7 @@ export class WorkflowExecute {
 
 								nodeSuccessData = runNodeData.data;
 
-								const didContinueOnFail = nodeSuccessData?.at(0)?.at(0)?.json.error !== undefined;
+								const didContinueOnFail = nodeSuccessData?.at(0)?.at(0)?.json?.error !== undefined;
 
 								while (didContinueOnFail && tryIndex !== maxTries - 1) {
 									await sleep(waitBetweenTries);
