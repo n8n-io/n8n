@@ -39,14 +39,16 @@ export = {
 				});
 			}
 
+			if (execution.status === 'new') {
+				Container.get(ConcurrencyControlService).remove({
+					executionId: execution.id,
+					mode: execution.mode,
+				});
+			}
+
 			await Container.get(ExecutionRepository).hardDelete({
 				workflowId: execution.workflowId,
 				executionId: execution.id,
-			});
-
-			Container.get(ConcurrencyControlService).remove({
-				executionId: execution.id,
-				mode: execution.mode,
 			});
 
 			execution.id = id;
