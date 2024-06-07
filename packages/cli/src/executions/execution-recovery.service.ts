@@ -12,6 +12,7 @@ import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
 import { Logger } from '@/Logger';
+import config from '@/config';
 
 /**
  * Service for recovering key properties in executions.
@@ -25,12 +26,9 @@ export class ExecutionRecoveryService {
 	) {}
 
 	/**
-	 * "Recovery" means amending key properties of a truncated execution
-	 * using event logs. Depending on the state of the logs, we may amend
-	 * only the status, or also `stoppedAt` and some execution data.
-	 *
-	 * "Recovery" does not inject execution data from logs (they hold none)
-	 * or resume from the point of truncation or re-run the execution.
+	 * Amend key properties of a truncated execution using event logs in the FS.
+	 * Depending on the state of the logs, we may update only the status, or also
+	 * the `stoppedAt` timestamp and some execution data.
 	 *
 	 * In regular mode, logs may or may not be available. In queue mode, since
 	 * workers log to their own FS, only manual exections can be recovered.
@@ -63,8 +61,33 @@ export class ExecutionRecoveryService {
 	}
 
 	/**
-	 * Amend `status`, `stoppedAt`, and `data` of an execution using event log messages.
+	 * Mark an in-progress execution as crashed if absent from the Bull queue.
 	 */
+	async recoverFromQueue() {
+		if (config.getEnv('executions.mode') !== 'queue') return;
+
+		// @TODO: Timer
+
+		const { Queue } = await import('@/Queue');
+
+		const currentExecutionIds = await this.executionRepository.allCurrentExecutionIds();
+
+		if (currentExecutionIds.length === 0) return;
+
+		const currentJobs = await Container.get(Queue).getJobs(['active', 'waiting']);
+		const queuedExecutionIds = new Set(currentJobs.map((j) => j.data.executionId));
+
+		const danglingExecutionIds = currentExecutionIds.filter((id) => !queuedExecutionIds.has(id));
+
+		if (danglingExecutionIds.length === 0) return;
+
+		await this.executionRepository.markAsCrashed(danglingExecutionIds);
+	}
+
+	// ----------------------------------
+	//             private
+	// ----------------------------------
+
 	private async amend(executionId: string, messages: EventMessageTypes[]) {
 		const { nodeMessages, workflowMessages } = this.toRelevantMessages(messages);
 
@@ -122,10 +145,6 @@ export class ExecutionRecoveryService {
 			data: runExecutionData,
 		} as IExecutionResponse;
 	}
-
-	// ----------------------------------
-	//             private
-	// ----------------------------------
 
 	private toRelevantMessages(messages: EventMessageTypes[]) {
 		return messages.reduce<{

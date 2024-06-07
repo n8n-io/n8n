@@ -751,4 +751,13 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		return executions.map(({ id }) => id);
 	}
+
+	async allCurrentExecutionIds() {
+		const executions = await this.find({
+			select: ['id'],
+			where: { status: In(['new', 'running']) },
+		});
+
+		return executions.map(({ id }) => id);
+	}
 }
