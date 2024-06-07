@@ -75,6 +75,7 @@ const next = () => {
 					class="mr-2xs"
 					:model-value="projectId"
 					size="small"
+					data-test-id="project-move-resource-modal-select"
 					@update:model-value="updateProject"
 				>
 					<N8nOption

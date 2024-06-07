@@ -5,7 +5,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useUIStore } from '@/stores/ui.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import Modal from '@/components/Modal.vue';
-import { N8nCheckbox } from 'n8n-design-system';
+import { N8nCheckbox, N8nText } from 'n8n-design-system';
 import { useToast } from '@/composables/useToast';
 
 const props = defineProps<{
@@ -66,9 +66,11 @@ const confirm = async () => {
 		<template #content>
 			<N8nCheckbox v-model="checks[0]" :label="moveResourceLabel" />
 			<N8nCheckbox v-model="checks[1]">
-				<i18n-t keypath="projects.move.resource.confirm.modal.label">
-					<template #resourceType>{{ props.data.resourceType }}</template>
-				</i18n-t>
+				<N8nText>
+					<i18n-t keypath="projects.move.resource.confirm.modal.label">
+						<template #resourceType>{{ props.data.resourceType }}</template>
+					</i18n-t>
+				</N8nText>
 			</N8nCheckbox>
 		</template>
 		<template #footer>
