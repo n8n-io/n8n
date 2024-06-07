@@ -151,7 +151,7 @@ describe('Mapping Utils', () => {
 		it('sets data path, replacing if expecting single path', () => {
 			expect(
 				getMappedResult(SINGLE_DATA_PATH_PARAM, '{{ $json["Readable date"] }}', '={{$json.test}}'),
-			).toEqual('["Readable date"]');
+			).toEqual('Readable date');
 
 			expect(
 				getMappedResult(SINGLE_DATA_PATH_PARAM, '{{ $json.path }}', '={{$json.test}}'),
@@ -191,7 +191,7 @@ describe('Mapping Utils', () => {
 					'{{ $node["Schedule Trigger"].json["Day of week"] }}',
 					'=data',
 				),
-			).toEqual('["Day of week"]');
+			).toEqual('Day of week');
 
 			expect(
 				getMappedResult(
@@ -199,7 +199,7 @@ describe('Mapping Utils', () => {
 					'{{ $node["Schedule Trigger"].json["Day of week"] }}',
 					'=   ',
 				),
-			).toEqual('["Day of week"]');
+			).toEqual('Day of week');
 		});
 
 		it('handles RLC values', () => {
@@ -305,7 +305,7 @@ describe('Mapping Utils', () => {
 		describe('bracket access', () => {
 			test('should extract property name from previous node (root)', () => {
 				expect(propertyNameFromExpression("{{ $json['with spaces\\' here'] }}")).toBe(
-					"['with spaces\\' here']",
+					"with spaces' here",
 				);
 			});
 
@@ -320,7 +320,7 @@ describe('Mapping Utils', () => {
 					propertyNameFromExpression(
 						"{{ $('Node's \"Name\" (copy)').item.json['with spaces\\' here'] }}",
 					),
-				).toBe("['with spaces\\' here']");
+				).toBe("with spaces' here");
 			});
 
 			test('should extract property name from another node (nested)', () => {
@@ -329,6 +329,23 @@ describe('Mapping Utils', () => {
 						"{{ $('Node's \"Name\" (copy)').item.json.foo['with spaces\\' here'] }}",
 					),
 				).toBe("foo['with spaces\\' here']");
+			});
+
+			test('should handle nested bracket access', () => {
+				expect(
+					propertyNameFromExpression(
+						"{{ $('Node's \"Name\" (copy)').item.json['First with spaces']['Second with spaces'] }}",
+					),
+				).toBe("['First with spaces']['Second with spaces']");
+			});
+
+			test('should handle forceBracketAccess=true', () => {
+				expect(
+					propertyNameFromExpression(
+						"{{ $('Node's \"Name\" (copy)').item.json['First with spaces'] }}",
+						true,
+					),
+				).toBe("['First with spaces']");
 			});
 		});
 	});

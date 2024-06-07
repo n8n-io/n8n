@@ -59,10 +59,18 @@ const unquote = (str: string) => {
 	return str;
 };
 
-export function propertyNameFromExpression(expression: string): string {
-	return expression
+export function propertyNameFromExpression(expression: string, forceBracketAccess = false): string {
+	const propPath = expression
 		.replace(/^{{\s*|\s*}}$/g, '')
 		.replace(/^(\$\(.*\)\.item\.json|\$json|\$node\[.*\]\.json)\.?(.*)/, '$2');
+
+	const isSingleBracketAccess = propPath.startsWith('[') && !propPath.slice(1).includes('[');
+	if (isSingleBracketAccess && !forceBracketAccess) {
+		// "['Key with spaces']" -> "Key with spaces"
+		return unquote(propPath.slice(1, -1));
+	}
+
+	return propPath;
 }
 
 export function getMappedResult(
@@ -76,9 +84,8 @@ export function getMappedResult(
 			: prevParamValue;
 
 	if (parameter.requiresDataPath) {
-		const propertyName = propertyNameFromExpression(newParamValue);
-
 		if (parameter.requiresDataPath === 'multiple') {
+			const propertyName = propertyNameFromExpression(newParamValue, true);
 			if (typeof prevValue === 'string' && (prevValue.trim() === '=' || prevValue.trim() === '')) {
 				return propertyName;
 			}
@@ -86,7 +93,7 @@ export function getMappedResult(
 			return `${prevValue}, ${propertyName}`;
 		}
 
-		return propertyName;
+		return propertyNameFromExpression(newParamValue);
 	} else if (typeof prevValue === 'string' && isExpression(prevValue) && prevValue.length > 1) {
 		return `${prevValue} ${newParamValue}`;
 	} else if (prevValue && ['string', 'json'].includes(parameter.type)) {
