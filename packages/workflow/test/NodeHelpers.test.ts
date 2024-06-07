@@ -1,7 +1,7 @@
 import type { INode, INodeParameters, INodeProperties, INodeTypeDescription } from '@/Interfaces';
 import type { Workflow } from '../src';
 
-import { getNodeParameters, getNodeHints } from '@/NodeHelpers';
+import { getNodeParameters, getNodeHints, isSingleExecution } from '@/NodeHelpers';
 
 describe('NodeHelpers', () => {
 	describe('getNodeParameters', () => {
@@ -3526,6 +3526,33 @@ describe('NodeHelpers', () => {
 			const hints = getNodeHints(workflow, node, nodeType);
 
 			expect(hints).toHaveLength(1);
+		});
+	});
+	describe('isSingleExecution', () => {
+		test('should determine based on node parameters if it would be executed once', () => {
+			expect(isSingleExecution('n8n-nodes-base.code', {})).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.code', { mode: 'runOnceForEachItem' })).toEqual(
+				false,
+			);
+			expect(isSingleExecution('n8n-nodes-base.executeWorkflow', {})).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.executeWorkflow', { mode: 'each' })).toEqual(false);
+			expect(isSingleExecution('n8n-nodes-base.crateDb', {})).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.crateDb', { operation: 'update' })).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.timescaleDb', {})).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.timescaleDb', { operation: 'update' })).toEqual(
+				true,
+			);
+			expect(isSingleExecution('n8n-nodes-base.microsoftSql', {})).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.microsoftSql', { operation: 'update' })).toEqual(
+				true,
+			);
+			expect(isSingleExecution('n8n-nodes-base.microsoftSql', { operation: 'delete' })).toEqual(
+				true,
+			);
+			expect(isSingleExecution('n8n-nodes-base.questDb', {})).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.mongoDb', { operation: 'insert' })).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.mongoDb', { operation: 'update' })).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.redis', {})).toEqual(true);
 		});
 	});
 });
