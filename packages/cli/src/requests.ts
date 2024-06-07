@@ -9,7 +9,6 @@ import type {
 	INodeParameters,
 	INodeTypeNameVersion,
 	IUser,
-	NpsSurveyState,
 } from 'n8n-workflow';
 
 import { Expose } from 'class-transformer';
