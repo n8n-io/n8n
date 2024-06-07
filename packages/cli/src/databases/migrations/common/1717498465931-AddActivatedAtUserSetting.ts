@@ -5,14 +5,14 @@ export class AddActivatedAtUserSetting1717498465931 implements ReversibleMigrati
 		const now = Date.now();
 		await queryRunner.query(
 			`UPDATE ${tablePrefix}user
-			SET settings = JSON_SET(settings, '$.userActivatedAt', ${now})
-			WHERE JSON_EXTRACT(settings, '$.userActivated') = true;`,
+			SET settings = jsonb_set(COALESCE(settings::jsonb, '{}'), '{userActivatedAt}', to_jsonb(${now}))
+			WHERE settings IS NOT NULL AND (settings->>'userActivated')::boolean = true`,
 		);
 	}
 
 	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
-			`UPDATE ${tablePrefix}user SET settings = JSON_REMOVE(settings, '$.userActivatedAt')`,
+			`UPDATE ${tablePrefix}user SET settings = settings::jsonb - 'userActivatedAt' WHERE settings IS NOT NULL`,
 		);
 	}
 }
