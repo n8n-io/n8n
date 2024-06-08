@@ -36,8 +36,7 @@ describe('useNpsSurvey', () => {
 		npsSurveyStore = useNpsSurveyStore();
 	});
 
-	// todo rename and review tests
-	it('by default, does not show survey', async () => {
+	it('by default, without login, does not show survey', async () => {
 		await npsSurveyStore.showNpsSurveyIfPossible();
 
 		expect(openModal).not.toHaveBeenCalled();
@@ -77,7 +76,7 @@ describe('useNpsSurvey', () => {
 		);
 	});
 
-	it('does not show nps survey if user has seen and responded to survey', async () => {
+	it('does not show nps survey if user has seen and responded to survey less than 6 months ago', async () => {
 		npsSurveyStore.setupNpsSurveyOnLogin('1', {
 			userActivated: true,
 			userActivatedAt: NOW - 10 * TIME.DAY,
@@ -91,49 +90,6 @@ describe('useNpsSurvey', () => {
 
 		expect(openModal).not.toHaveBeenCalled();
 		expect(updateNpsSurveyState).not.toHaveBeenCalledWith();
-	});
-
-	it('shows nps survey if user has ignored survey more than 7 days ago', async () => {
-		npsSurveyStore.setupNpsSurveyOnLogin('1', {
-			userActivated: true,
-			userActivatedAt: NOW - 10 * TIME.DAY,
-			npsSurvey: {
-				waitingForResponse: true,
-				lastShownAt: NOW - 8 * TIME.DAY,
-				ignoredCount: 0,
-			},
-		});
-
-		await npsSurveyStore.showNpsSurveyIfPossible();
-
-		expect(openModal).toHaveBeenCalledWith(NPS_SURVEY_MODAL_KEY);
-		expect(updateNpsSurveyState).toHaveBeenCalledWith(
-			expect.objectContaining({
-				baseUrl: '/rest',
-			}),
-			{
-				ignoredCount: 0,
-				lastShownAt: NOW,
-				waitingForResponse: true,
-			},
-		);
-	});
-
-	it('does not show nps survey if user has ignored survey less than 7 days ago', async () => {
-		npsSurveyStore.setupNpsSurveyOnLogin('1', {
-			userActivated: true,
-			userActivatedAt: NOW - 10 * TIME.DAY,
-			npsSurvey: {
-				waitingForResponse: true,
-				lastShownAt: NOW - 5 * TIME.DAY,
-				ignoredCount: 0,
-			},
-		});
-
-		await npsSurveyStore.showNpsSurveyIfPossible();
-
-		expect(openModal).not.toHaveBeenCalled();
-		expect(updateNpsSurveyState).not.toHaveBeenCalled();
 	});
 
 	it('does not show nps survey if user has responded survey more than 7 days ago', async () => {
@@ -177,7 +133,50 @@ describe('useNpsSurvey', () => {
 		);
 	});
 
-	it('calls ignore api when survey is ignored', async () => {
+	it('does not show nps survey if user has ignored survey less than 7 days ago', async () => {
+		npsSurveyStore.setupNpsSurveyOnLogin('1', {
+			userActivated: true,
+			userActivatedAt: NOW - 10 * TIME.DAY,
+			npsSurvey: {
+				waitingForResponse: true,
+				lastShownAt: NOW - 5 * TIME.DAY,
+				ignoredCount: 0,
+			},
+		});
+
+		await npsSurveyStore.showNpsSurveyIfPossible();
+
+		expect(openModal).not.toHaveBeenCalled();
+		expect(updateNpsSurveyState).not.toHaveBeenCalled();
+	});
+
+	it('shows nps survey if user has ignored survey more than 7 days ago', async () => {
+		npsSurveyStore.setupNpsSurveyOnLogin('1', {
+			userActivated: true,
+			userActivatedAt: NOW - 10 * TIME.DAY,
+			npsSurvey: {
+				waitingForResponse: true,
+				lastShownAt: NOW - 8 * TIME.DAY,
+				ignoredCount: 0,
+			},
+		});
+
+		await npsSurveyStore.showNpsSurveyIfPossible();
+
+		expect(openModal).toHaveBeenCalledWith(NPS_SURVEY_MODAL_KEY);
+		expect(updateNpsSurveyState).toHaveBeenCalledWith(
+			expect.objectContaining({
+				baseUrl: '/rest',
+			}),
+			{
+				ignoredCount: 0,
+				lastShownAt: NOW,
+				waitingForResponse: true,
+			},
+		);
+	});
+
+	it('increments ignore count when survey is ignored', async () => {
 		npsSurveyStore.setupNpsSurveyOnLogin('1', {
 			userActivated: true,
 			userActivatedAt: NOW - 30 * 7 * TIME.DAY,
@@ -201,7 +200,7 @@ describe('useNpsSurvey', () => {
 		);
 	});
 
-	it('calls respond api when survey is ignored more than maximum times', async () => {
+	it('updates state to responded if ignored more than maximum times', async () => {
 		npsSurveyStore.setupNpsSurveyOnLogin('1', {
 			userActivated: true,
 			userActivatedAt: NOW - 30 * 7 * TIME.DAY,
@@ -225,7 +224,7 @@ describe('useNpsSurvey', () => {
 		);
 	});
 
-	it('calls respond api when response is given', async () => {
+	it('updates state to responded when response is given', async () => {
 		npsSurveyStore.setupNpsSurveyOnLogin('1', {
 			userActivated: true,
 			userActivatedAt: NOW - 30 * 7 * TIME.DAY,
