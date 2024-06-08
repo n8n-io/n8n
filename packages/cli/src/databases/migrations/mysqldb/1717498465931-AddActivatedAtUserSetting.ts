@@ -5,8 +5,8 @@ export class AddActivatedAtUserSetting1717498465931 implements ReversibleMigrati
 		const now = Date.now();
 		await queryRunner.query(
 			`UPDATE ${escape.tableName('user')}
-			SET settings = jsonb_set(COALESCE(settings::jsonb, '{}'), '{userActivatedAt}', to_jsonb(${now}))
-			WHERE settings IS NOT NULL AND (settings->>'userActivated')::boolean = true`,
+			SET settings = JSON_SET(COALESCE(settings, '{}'), '$.userActivatedAt', CAST('${now}' AS JSON))
+			WHERE settings IS NOT NULL AND JSON_EXTRACT(settings, '$.userActivated') = true`,
 		);
 	}
 
@@ -14,7 +14,7 @@ export class AddActivatedAtUserSetting1717498465931 implements ReversibleMigrati
 		await queryRunner.query(
 			`UPDATE ${escape.tableName('user')}
 			SET settings = JSON_REMOVE(CAST(settings AS JSON), '$.userActivatedAt')
-			WHERE settings IS NOT NULL;`,
+			WHERE settings IS NOT NULL`,
 		);
 	}
 }
