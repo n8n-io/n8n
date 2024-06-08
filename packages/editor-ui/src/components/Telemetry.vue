@@ -39,7 +39,7 @@ export default defineComponent({
 			this.init();
 		},
 		currentUserId(userId) {
-			if (this.isTelemetryEnabled) {
+			if (this.isTelemetryEnabled && this.$telemetry) {
 				this.$telemetry.identify(this.rootStore.instanceId, userId);
 			}
 		},
