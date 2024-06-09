@@ -20,12 +20,12 @@ import type { Settings } from '@/databases/entities/Settings';
 @Service()
 export class HooksService {
 	constructor(
-		private userService: UserService,
-		private authService: AuthService,
-		private userRepository: UserRepository,
-		private settingsRepository: SettingsRepository,
-		private workflowRepository: WorkflowRepository,
-		private credentialsRepository: CredentialsRepository,
+		private readonly userService: UserService,
+		private readonly authService: AuthService,
+		private readonly userRepository: UserRepository,
+		private readonly settingsRepository: SettingsRepository,
+		private readonly workflowRepository: WorkflowRepository,
+		private readonly credentialsRepository: CredentialsRepository,
 	) {}
 
 	/**
