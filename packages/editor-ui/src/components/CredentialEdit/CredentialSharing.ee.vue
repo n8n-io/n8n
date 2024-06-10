@@ -72,7 +72,7 @@
 </template>
 
 <script lang="ts">
-import type { ICredentialsResponse, IUser, IUserListAction } from '@/Interface';
+import type { ICredentialsResponse, IUserListAction } from '@/Interface';
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { useMessage } from '@/composables/useMessage';
@@ -157,22 +157,35 @@ export default defineComponent({
 		credentialOwnerName(): string {
 			return this.credentialsStore.getCredentialOwnerNameById(`${this.credentialId}`);
 		},
+		credentialDataHomeProject(): ProjectSharingData | undefined {
+			const credentialContainsProjectSharingData = (
+				data: ICredentialDataDecryptedObject,
+			): data is { homeProject: ProjectSharingData } => {
+				return 'homeProject' in data;
+			};
+
+			return this.credentialData && credentialContainsProjectSharingData(this.credentialData)
+				? this.credentialData.homeProject
+				: undefined;
+		},
 		isCredentialSharedWithCurrentUser(): boolean {
-			return (this.credentialData.sharedWithProjects ?? []).some((sharee: IUser) => {
-				return sharee.id === this.usersStore.currentUser?.id;
+			if (!Array.isArray(this.credentialData.sharedWithProjects)) return false;
+
+			return this.credentialData.sharedWithProjects.some((sharee) => {
+				return typeof sharee === 'object' && 'id' in sharee
+					? sharee.id === this.usersStore.currentUser?.id
+					: false;
 			});
 		},
 		projects(): ProjectListItem[] {
 			return this.projectsStore.personalProjects.filter(
 				(project) =>
 					project.id !== this.credential?.homeProject?.id &&
-					project.id !== this.credentialData?.homeProject?.id,
+					project.id !== this.credentialDataHomeProject?.id,
 			);
 		},
 		homeProject(): ProjectSharingData | undefined {
-			return (
-				this.credential?.homeProject ?? (this.credentialData?.homeProject as ProjectSharingData)
-			);
+			return this.credential?.homeProject ?? this.credentialDataHomeProject;
 		},
 		isHomeTeamProject(): boolean {
 			return this.homeProject?.type === ProjectTypes.Team;

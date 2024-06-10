@@ -1,13 +1,14 @@
+import generateOTPToken from 'cypress-otp';
 import { ChangePasswordModal } from './modals/change-password-modal';
 import { MfaSetupModal } from './modals/mfa-setup-modal';
 import { BasePage } from './base';
-import generateOTPToken from 'cypress-otp';
 
 const changePasswordModal = new ChangePasswordModal();
 const mfaSetupModal = new MfaSetupModal();
 
 export class PersonalSettingsPage extends BasePage {
 	url = '/settings/personal';
+
 	secret = '';
 
 	getters = {
@@ -23,6 +24,7 @@ export class PersonalSettingsPage extends BasePage {
 		themeSelector: () => cy.getByTestId('theme-select'),
 		selectOptionsVisible: () => cy.get('.el-select-dropdown:visible .el-select-dropdown__item'),
 	};
+
 	actions = {
 		changeTheme: (theme: 'System default' | 'Dark' | 'Light') => {
 			this.getters.themeSelector().click();

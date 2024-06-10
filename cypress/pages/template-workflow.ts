@@ -17,15 +17,18 @@ export class TemplateWorkflowPage extends BasePage {
 			this.getters.useTemplateButton().click();
 		},
 
-		openTemplate: (template: {
-			workflow: {
-				id: number;
-				name: string;
-				description: string;
-				user: { username: string };
-				image: { id: number; url: string }[];
-			};
-		}, templateHost: string) => {
+		openTemplate: (
+			template: {
+				workflow: {
+					id: number;
+					name: string;
+					description: string;
+					user: { username: string };
+					image: Array<{ id: number; url: string }>;
+				};
+			},
+			templateHost: string,
+		) => {
 			cy.intercept('GET', `${templateHost}/api/templates/workflows/${template.workflow.id}`, {
 				statusCode: 200,
 				body: template,

@@ -1,10 +1,10 @@
+import { WorkflowPage, NDV } from '../pages';
+import { getVisibleSelect } from '../utils';
 import {
 	MANUAL_TRIGGER_NODE_NAME,
 	MANUAL_TRIGGER_NODE_DISPLAY_NAME,
 	SCHEDULE_TRIGGER_NODE_NAME,
 } from './../constants';
-import { WorkflowPage, NDV } from '../pages';
-import { getVisibleSelect } from '../utils';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -170,7 +170,7 @@ describe('Data mapping', () => {
 	});
 
 	it('maps expressions from previous nodes', () => {
-		cy.createFixtureWorkflow('Test_workflow_3.json', `My test workflow`);
+		cy.createFixtureWorkflow('Test_workflow_3.json', 'My test workflow');
 		workflowPage.actions.zoomToFit();
 		workflowPage.actions.openNode('Set1');
 

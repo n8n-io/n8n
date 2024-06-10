@@ -93,6 +93,7 @@ describe('SetupWorkflowFromTemplateView store', () => {
 
 			const templatesStore = useTemplatesStore();
 			const workflow = testData.newFullOneNodeTemplate({
+				id: 'workflow',
 				name: 'Test',
 				type: 'n8n-nodes-base.httpRequest',
 				typeVersion: 1,

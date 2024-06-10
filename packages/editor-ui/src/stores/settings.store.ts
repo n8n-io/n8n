@@ -274,7 +274,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 
 			this.setSettings(settings);
 			this.settings.communityNodesEnabled = settings.communityNodesEnabled;
-			this.setAllowedModules(settings.allowedModules as { builtIn?: string; external?: string });
+			this.setAllowedModules(settings.allowedModules);
 			this.setSaveDataErrorExecution(settings.saveDataErrorExecution);
 			this.setSaveDataSuccessExecution(settings.saveDataSuccessExecution);
 			this.setSaveManualExecutions(settings.saveManualExecutions);
