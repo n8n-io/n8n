@@ -107,6 +107,14 @@ describe('HooksService', () => {
 		const next = jest.fn();
 
 		await hooksService.authMiddleware(req, res, next);
-		expect(authService.authMiddleware).toHaveBeenCalledWith(req, res);
+		expect(authService.authMiddleware).toHaveBeenCalledWith(req, res, next);
+	});
+
+	it('hooksService.dbCollections should return valid repositories', async () => {
+		const collections = hooksService.dbCollections();
+		expect(collections).toHaveProperty('User');
+		expect(collections).toHaveProperty('Settings');
+		expect(collections).toHaveProperty('Credentials');
+		expect(collections).toHaveProperty('Workflow');
 	});
 });

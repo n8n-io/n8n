@@ -99,4 +99,17 @@ export class HooksService {
 	async authMiddleware(req: AuthenticatedRequest, res: Response, next: NextFunction) {
 		return await this.authService.authMiddleware(req, res, next);
 	}
+
+	/**
+	 * Return repositories to be used in the hooks
+	 * 1. Some self-hosted users rely in the repositories to interact with the DB directly
+	 */
+	dbCollections() {
+		return {
+			User: this.userRepository,
+			Settings: this.settingsRepository,
+			Credentials: this.credentialsRepository,
+			Workflow: this.workflowRepository,
+		};
+	}
 }
