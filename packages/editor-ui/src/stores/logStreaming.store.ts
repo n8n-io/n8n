@@ -201,7 +201,7 @@ export const useLogStreamingStore = defineStore('logStreaming', {
 				return false;
 			}
 		},
-		async sendTestMessage(destination: MessageEventBusDestinationOptions) {
+		async sendTestMessage(destination: MessageEventBusDestinationOptions): Promise<boolean> {
 			if (!hasDestinationId(destination)) {
 				return false;
 			}

@@ -184,7 +184,7 @@ export default defineComponent({
 		},
 		isSelected(): boolean {
 			return (
-				this.uiStore.getSelectedNodes.find((node: INodeUi) => node.name === this.data.name) !==
+				this.uiStore.getSelectedNodes.find((node: INodeUi) => node.name === this.data?.name) !==
 				undefined
 			);
 		},

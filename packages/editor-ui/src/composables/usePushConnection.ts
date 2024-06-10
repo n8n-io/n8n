@@ -530,6 +530,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 			const executionData: IExecutionsCurrentSummaryExtended = {
 				id: pushData.executionId,
 				finished: false,
+				status: 'running',
 				mode: pushData.mode,
 				startedAt: pushData.startedAt,
 				retryOf: pushData.retryOf,
