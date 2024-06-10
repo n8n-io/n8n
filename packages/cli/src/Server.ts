@@ -47,7 +47,6 @@ import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import * as ResponseHelper from '@/ResponseHelper';
 import { EventBusController } from '@/eventbus/eventBus.controller';
-import { EventBusControllerEE } from '@/eventbus/eventBus.controller.ee';
 import { LicenseController } from '@/license/license.controller';
 import { setupPushServer, setupPushHandler } from '@/push';
 import { isLdapEnabled } from './Ldap/helpers';
@@ -119,7 +118,6 @@ export class Server extends AbstractServer {
 
 		const controllers: Array<Class<object>> = [
 			EventBusController,
-			EventBusControllerEE,
 			AuthController,
 			LicenseController,
 			OAuth1CredentialController,

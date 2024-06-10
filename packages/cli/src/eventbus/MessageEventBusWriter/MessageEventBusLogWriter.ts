@@ -97,15 +97,6 @@ export class MessageEventBusLogWriter {
 		}
 	}
 
-	/**
-	 *  Pauses all logging. Events are still received by the worker, they just are not logged any more
-	 */
-	async pauseLogging() {
-		if (this.worker) {
-			this.worker.postMessage({ command: 'pauseLogging', data: {} });
-		}
-	}
-
 	startRecoveryProcess() {
 		if (this.worker) {
 			this.worker.postMessage({ command: 'startRecoveryProcess', data: {} });
