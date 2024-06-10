@@ -7,7 +7,7 @@ describe('ADO-2230 NDV Pagination Reset', () => {
 	it('should reset pagaintion if data size changes to less than current page', () => {
 		// setup, load workflow with debughelper node with random seed
 		workflowPage.actions.visit();
-		cy.createFixtureWorkflow('NDV-debug-generate-data.json', `Debug workflow`);
+		cy.createFixtureWorkflow('NDV-debug-generate-data.json', 'Debug workflow');
 		workflowPage.actions.openNode('DebugHelper');
 
 		// execute node outputting 10 pages, check output of first page

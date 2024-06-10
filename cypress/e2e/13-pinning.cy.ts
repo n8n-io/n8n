@@ -136,7 +136,7 @@ describe('Data pinning', () => {
 
 		ndv.actions.pastePinnedData([
 			{
-				test: '1'.repeat(Cypress.env('MAX_PINNED_DATA_SIZE')),
+				test: '1'.repeat(Cypress.env('MAX_PINNED_DATA_SIZE') as number),
 			},
 		]);
 		workflowPage.getters
@@ -151,10 +151,8 @@ describe('Data pinning', () => {
 		ndv.getters.pinDataButton().should('not.exist');
 		ndv.getters.editPinnedDataButton().should('be.visible');
 
-		ndv.actions.setPinnedData('[ { "name": "First item", "code": 2dsa }]')
-		workflowPage.getters
-			.errorToast()
-			.should('contain', 'Unable to save due to invalid JSON');
+		ndv.actions.setPinnedData('[ { "name": "First item", "code": 2dsa }]');
+		workflowPage.getters.errorToast().should('contain', 'Unable to save due to invalid JSON');
 	});
 
 	it('Should be able to reference paired items in a node located before pinned data', () => {
@@ -168,6 +166,7 @@ describe('Data pinning', () => {
 		ndv.actions.close();
 
 		workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, true, true);
+		// eslint-disable-next-line @typescript-eslint/no-use-before-define
 		setExpressionOnStringValueInSet(`{{ $('${HTTP_REQUEST_NODE_NAME}').item`);
 
 		const output = '[Object: {"json": {"http": 123}, "pairedItem": {"item": 0}}]';

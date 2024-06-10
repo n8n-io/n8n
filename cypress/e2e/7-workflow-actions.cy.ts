@@ -338,7 +338,6 @@ describe('Workflow Actions', () => {
 		cy.get('body').type(META_KEY, { delay: 500, release: false }).type('{enter}');
 		WorkflowPage.getters.successToast().should('not.exist');
 	});
-
 });
 
 describe('Menu entry Push To Git', () => {

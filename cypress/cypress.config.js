@@ -21,6 +21,9 @@ module.exports = defineConfig({
 		specPattern: 'e2e/**/*.ts',
 		supportFile: 'support/e2e.ts',
 		fixturesFolder: 'fixtures',
+		downloadsFolder: 'downloads',
+		screenshotsFolder: 'screenshots',
+		videosFolder: 'videos',
 	},
 	env: {
 		MAX_PINNED_DATA_SIZE: process.env.VUE_APP_MAX_PINNED_DATA_SIZE

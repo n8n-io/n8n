@@ -44,7 +44,7 @@ Cypress.Commands.add('waitForLoad', (waitForIntercepts = true) => {
 });
 
 Cypress.Commands.add('signin', ({ email, password }) => {
-	Cypress.session.clearAllSavedSessions();
+	void Cypress.session.clearAllSavedSessions();
 	cy.session([email, password], () =>
 		cy.request({
 			method: 'POST',
@@ -126,7 +126,7 @@ Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) =>
 });
 
 Cypress.Commands.add('drag', (selector, pos, options) => {
-	const index = options?.index || 0;
+	const index = options?.index ?? 0;
 	const [xDiff, yDiff] = pos;
 	const element = typeof selector === 'string' ? cy.get(selector).eq(index) : selector;
 	element.should('exist');
