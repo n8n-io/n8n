@@ -20,7 +20,13 @@ describe('NpsSurvey', () => {
 		cy.intercept('/rest/settings', { middleware: true }, (req) => {
 			req.on('response', (res) => {
 				if (res.body.data) {
-					res.body.data.telemetry = { enabled: true };
+					res.body.data.telemetry = {
+						enabled: true,
+						config: {
+							key: '1zPn9bgWPzlQc0p8Gj1uiK6DOTn',
+							url: 'https://telemetry.n8n.io',
+						},
+					};
 				}
 			});
 		});
@@ -60,7 +66,13 @@ describe('NpsSurvey', () => {
 		cy.intercept('/rest/settings', { middleware: true }, (req) => {
 			req.on('response', (res) => {
 				if (res.body.data) {
-					res.body.data.telemetry = { enabled: true };
+					res.body.data.telemetry = {
+						enabled: true,
+						config: {
+							key: '1zPn9bgWPzlQc0p8Gj1uiK6DOTn',
+							url: 'https://telemetry.n8n.io',
+						},
+					};
 				}
 			});
 		});
