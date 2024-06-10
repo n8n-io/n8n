@@ -13,7 +13,7 @@ export class Vonage implements INodeType {
 		displayName: 'Vonage',
 		name: 'vonage',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:vonage.png',
+		icon: { light: 'file:vonage.svg', dark: 'file:vonage.dark.svg' },
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

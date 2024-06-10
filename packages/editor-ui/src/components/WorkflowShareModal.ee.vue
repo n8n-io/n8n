@@ -143,16 +143,12 @@ import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { isNavigationFailure } from 'vue-router';
-import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
-import { useProjectsStore } from '@/features/projects/projects.store';
-import type {
-	ProjectListItem,
-	ProjectSharingData,
-	Project,
-} from '@/features/projects/projects.types';
+import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
+import { useProjectsStore } from '@/stores/projects.store';
+import type { ProjectListItem, ProjectSharingData, Project } from '@/types/projects.types';
+import { ProjectTypes } from '@/types/projects.types';
 import { useRolesStore } from '@/stores/roles.store';
 import type { RoleMap } from '@/types/roles.types';
-import { ProjectTypes } from '@/features/projects/projects.utils';
 
 export default defineComponent({
 	name: 'WorkflowShareModal',

@@ -4,8 +4,8 @@ import type {
 	ProjectListItem,
 	ProjectSharingData,
 	ProjectType,
-} from '@/features/projects/projects.types';
-import { ProjectTypes } from '@/features/projects/projects.utils';
+} from '@/types/projects.types';
+import { ProjectTypes } from '@/types/projects.types';
 
 export const createProjectSharingData = (projectType?: ProjectType): ProjectSharingData => ({
 	id: faker.string.uuid(),
