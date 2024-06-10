@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { PropType } from 'vue';
 import type { GenericValue } from 'n8n-workflow';
-import { computed, useCssModule } from 'vue';
+import { computed } from 'vue';
 
 const props = defineProps({
 	content: {
@@ -11,8 +11,6 @@ const props = defineProps({
 		type: String,
 	},
 });
-
-const $style = useCssModule();
 
 const splitTextBySearch = (
 	text = '',

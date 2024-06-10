@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, useCssModule } from 'vue';
+import { computed } from 'vue';
 import type { INodeUi, Schema } from '@/Interface';
 import { checkExhaustive } from '@/utils/typeGuards';
 import { shorten } from '@/utils/typesUtils';
@@ -20,7 +20,6 @@ type Props = {
 };
 
 const props = defineProps<Props>();
-const $style = useCssModule();
 
 const isSchemaValueArray = computed(() => Array.isArray(props.schema.value));
 const schemaArray = computed(
