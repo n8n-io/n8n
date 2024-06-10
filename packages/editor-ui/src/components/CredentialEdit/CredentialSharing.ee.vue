@@ -87,7 +87,7 @@ import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectListItem, ProjectSharingData, Project } from '@/types/projects.types';
 import { ProjectTypes } from '@/types/projects.types';
-import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import type { PermissionsMap } from '@/permissions';
 import type { CredentialScope } from '@n8n/permissions';
 import type { EventBus } from 'n8n-design-system/utils';
