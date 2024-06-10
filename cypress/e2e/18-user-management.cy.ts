@@ -1,5 +1,5 @@
 import { INSTANCE_MEMBERS, INSTANCE_OWNER, INSTANCE_ADMIN } from '../constants';
-import { MainSidebar, SettingsSidebar, SettingsUsersPage, WorkflowPage } from '../pages';
+import { MainSidebar, SettingsSidebar, SettingsUsersPage } from '../pages';
 import { PersonalSettingsPage } from '../pages/settings-personal';
 import { getVisibleSelect } from '../utils';
 import { errorToast, successToast } from '../pages/notifications';
@@ -25,7 +25,6 @@ const updatedPersonalData = {
 };
 
 const usersSettingsPage = new SettingsUsersPage();
-const workflowPage = new WorkflowPage();
 const personalSettingsPage = new PersonalSettingsPage();
 const settingsSidebar = new SettingsSidebar();
 const mainSidebar = new MainSidebar();
