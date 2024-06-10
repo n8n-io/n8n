@@ -98,7 +98,6 @@ export const LICENSE_QUOTAS = {
 	USERS_LIMIT: 'quota:users',
 	WORKFLOW_HISTORY_PRUNE_LIMIT: 'quota:workflowHistoryPrune',
 	TEAM_PROJECT_LIMIT: 'quota:maxTeamProjects',
-	CONCURRENCY_PRODUCTION_LIMIT: 'quota:maxConcurrentProductionExecutions',
 } as const;
 export const UNLIMITED_LICENSE_QUOTA = -1;
 

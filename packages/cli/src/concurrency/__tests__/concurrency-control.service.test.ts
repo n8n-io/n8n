@@ -2,17 +2,15 @@ import { mock } from 'jest-mock-extended';
 import config from '@/config';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import type { Logger } from '@/Logger';
-import { InvalidConcurrencyCapError } from '@/errors/invalid-concurrency-cap.error';
+import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit.error';
 import { ConcurrencyQueue } from '../concurrency-queue';
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
 import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import type { License } from '@/License';
 import type { IExecutingWorkflowData } from '@/Interfaces';
 
 describe('ConcurrencyControlService', () => {
 	const logger = mock<Logger>();
 	const executionRepository = mock<ExecutionRepository>();
-	const license = mock<License>();
 
 	afterEach(() => {
 		config.set('executions.concurrency.productionLimit', -1);
@@ -31,7 +29,7 @@ describe('ConcurrencyControlService', () => {
 			/**
 			 * Act
 			 */
-			const service = new ConcurrencyControlService(logger, executionRepository, license);
+			const service = new ConcurrencyControlService(logger, executionRepository);
 
 			/**
 			 * Assert
@@ -52,12 +50,12 @@ describe('ConcurrencyControlService', () => {
 				/**
 				 * Act
 				 */
-				new ConcurrencyControlService(logger, executionRepository, license);
+				new ConcurrencyControlService(logger, executionRepository);
 			} catch (error) {
 				/**
 				 * Assert
 				 */
-				expect(error).toBeInstanceOf(InvalidConcurrencyCapError);
+				expect(error).toBeInstanceOf(InvalidConcurrencyLimitError);
 			}
 		});
 
@@ -70,7 +68,7 @@ describe('ConcurrencyControlService', () => {
 			/**
 			 * Act
 			 */
-			const service = new ConcurrencyControlService(logger, executionRepository, license);
+			const service = new ConcurrencyControlService(logger, executionRepository);
 
 			/**
 			 * Assert
@@ -88,7 +86,7 @@ describe('ConcurrencyControlService', () => {
 			/**
 			 * Act
 			 */
-			const service = new ConcurrencyControlService(logger, executionRepository, license);
+			const service = new ConcurrencyControlService(logger, executionRepository);
 
 			/**
 			 * Act
@@ -107,7 +105,7 @@ describe('ConcurrencyControlService', () => {
 			/**
 			 * Act
 			 */
-			const service = new ConcurrencyControlService(logger, executionRepository, license);
+			const service = new ConcurrencyControlService(logger, executionRepository);
 
 			/**
 			 * Assert
@@ -131,7 +129,7 @@ describe('ConcurrencyControlService', () => {
 					 */
 					config.set('executions.concurrency.productionLimit', 1);
 
-					const service = new ConcurrencyControlService(logger, executionRepository, license);
+					const service = new ConcurrencyControlService(logger, executionRepository);
 					const enqueueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
 					/**
@@ -152,7 +150,7 @@ describe('ConcurrencyControlService', () => {
 				 */
 				config.set('executions.concurrency.productionLimit', 1);
 
-				const service = new ConcurrencyControlService(logger, executionRepository, license);
+				const service = new ConcurrencyControlService(logger, executionRepository);
 				const enqueueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
 				/**
@@ -176,7 +174,7 @@ describe('ConcurrencyControlService', () => {
 					 */
 					config.set('executions.concurrency.productionLimit', 1);
 
-					const service = new ConcurrencyControlService(logger, executionRepository, license);
+					const service = new ConcurrencyControlService(logger, executionRepository);
 					const dequeueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
 					/**
@@ -197,7 +195,7 @@ describe('ConcurrencyControlService', () => {
 				 */
 				config.set('executions.concurrency.productionLimit', 1);
 
-				const service = new ConcurrencyControlService(logger, executionRepository, license);
+				const service = new ConcurrencyControlService(logger, executionRepository);
 				const dequeueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
 				/**
@@ -221,7 +219,7 @@ describe('ConcurrencyControlService', () => {
 					 */
 					config.set('executions.concurrency.productionLimit', 1);
 
-					const service = new ConcurrencyControlService(logger, executionRepository, license);
+					const service = new ConcurrencyControlService(logger, executionRepository);
 					const removeSpy = jest.spyOn(ConcurrencyQueue.prototype, 'remove');
 
 					/**
@@ -244,7 +242,7 @@ describe('ConcurrencyControlService', () => {
 					 */
 					config.set('executions.concurrency.productionLimit', 1);
 
-					const service = new ConcurrencyControlService(logger, executionRepository, license);
+					const service = new ConcurrencyControlService(logger, executionRepository);
 					const removeSpy = jest.spyOn(ConcurrencyQueue.prototype, 'remove');
 
 					/**
@@ -267,7 +265,7 @@ describe('ConcurrencyControlService', () => {
 				 */
 				config.set('executions.concurrency.productionLimit', 2);
 
-				const service = new ConcurrencyControlService(logger, executionRepository, license);
+				const service = new ConcurrencyControlService(logger, executionRepository);
 
 				jest
 					.spyOn(ConcurrencyQueue.prototype, 'getAll')
@@ -306,7 +304,7 @@ describe('ConcurrencyControlService', () => {
 				 */
 				config.set('executions.concurrency.productionLimit', -1);
 
-				const service = new ConcurrencyControlService(logger, executionRepository, license);
+				const service = new ConcurrencyControlService(logger, executionRepository);
 				const enqueueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
 				/**
@@ -329,7 +327,7 @@ describe('ConcurrencyControlService', () => {
 				 */
 				config.set('executions.concurrency.productionLimit', -1);
 
-				const service = new ConcurrencyControlService(logger, executionRepository, license);
+				const service = new ConcurrencyControlService(logger, executionRepository);
 				const dequeueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
 				/**
@@ -351,7 +349,7 @@ describe('ConcurrencyControlService', () => {
 				 */
 				config.set('executions.concurrency.productionLimit', -1);
 
-				const service = new ConcurrencyControlService(logger, executionRepository, license);
+				const service = new ConcurrencyControlService(logger, executionRepository);
 				const removeSpy = jest.spyOn(ConcurrencyQueue.prototype, 'remove');
 
 				/**

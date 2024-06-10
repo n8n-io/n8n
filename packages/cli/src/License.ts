@@ -357,12 +357,6 @@ export class License {
 		return this.getFeatureValue(LICENSE_QUOTAS.TEAM_PROJECT_LIMIT) ?? 0;
 	}
 
-	getConcurrencyProductionLimit() {
-		return (
-			this.getFeatureValue(LICENSE_QUOTAS.CONCURRENCY_PRODUCTION_LIMIT) ?? UNLIMITED_LICENSE_QUOTA
-		);
-	}
-
 	getPlanName(): string {
 		return this.getFeatureValue('planName') ?? 'Community';
 	}

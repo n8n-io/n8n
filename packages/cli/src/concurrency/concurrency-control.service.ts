@@ -3,9 +3,8 @@ import config from '@/config';
 import { Service } from 'typedi';
 import { ConcurrencyQueue } from './concurrency-queue';
 import { UnknownExecutionModeError } from '@/errors/unknown-execution-mode.error';
-import { InvalidConcurrencyCapError } from '@/errors/invalid-concurrency-cap.error';
+import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit.error';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { License } from '@/License';
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
 import type { IExecutingWorkflowData } from '@/Interfaces';
 
@@ -20,12 +19,11 @@ export class ConcurrencyControlService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
-		private readonly license: License,
 	) {
-		this.productionLimit = this.getProductionLimit();
+		this.productionLimit = config.getEnv('executions.concurrency.productionLimit');
 
 		if (this.productionLimit === 0) {
-			throw new InvalidConcurrencyCapError(this.productionLimit);
+			throw new InvalidConcurrencyLimitError(this.productionLimit);
 		}
 
 		if (this.productionLimit < -1) {
@@ -58,7 +56,7 @@ export class ConcurrencyControlService {
 	 * Block or let through an execution based on concurrency capacity.
 	 */
 	async throttle({ mode, executionId }: { mode: ExecutionMode; executionId: string }) {
-		if (!this.isEnabled || this.isUncapped(mode)) return;
+		if (!this.isEnabled || this.isUnlimited(mode)) return;
 
 		await this.productionQueue.enqueue(executionId);
 	}
@@ -67,7 +65,7 @@ export class ConcurrencyControlService {
 	 * Release capacity back so the next execution in the production queue can proceed.
 	 */
 	release({ mode }: { mode: ExecutionMode }) {
-		if (!this.isEnabled || this.isUncapped(mode)) return;
+		if (!this.isEnabled || this.isUnlimited(mode)) return;
 
 		this.productionQueue.dequeue();
 	}
@@ -76,7 +74,7 @@ export class ConcurrencyControlService {
 	 * Remove an execution from the production queue, releasing capacity back.
 	 */
 	remove({ mode, executionId }: { mode: ExecutionMode; executionId: string }) {
-		if (!this.isEnabled || this.isUncapped(mode)) return;
+		if (!this.isEnabled || this.isUnlimited(mode)) return;
 
 		this.productionQueue.remove(executionId);
 	}
@@ -110,18 +108,6 @@ export class ConcurrencyControlService {
 	//             private
 	// ----------------------------------
 
-	private getProductionLimit() {
-		const envLimit = config.getEnv('executions.concurrency.productionLimit');
-
-		if (config.getEnv('deployment.type') === 'cloud') {
-			if (process.env.N8N_CLOUD_OVERRIDE_CONCURRENCY_PRODUCTION_LIMIT === 'true') return envLimit;
-
-			return this.license.getConcurrencyProductionLimit();
-		}
-
-		return envLimit;
-	}
-
 	private logInit() {
 		this.log('Enabled');
 
@@ -133,7 +119,7 @@ export class ConcurrencyControlService {
 		);
 	}
 
-	private isUncapped(mode: ExecutionMode) {
+	private isUnlimited(mode: ExecutionMode) {
 		if (
 			mode === 'error' ||
 			mode === 'integrated' ||
