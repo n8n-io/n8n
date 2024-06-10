@@ -185,7 +185,7 @@ export interface IExecutionsCurrentSummary {
 	startedAt: Date;
 	mode: WorkflowExecuteMode;
 	workflowId: string;
-	status?: ExecutionStatus;
+	status: ExecutionStatus;
 }
 
 export interface IExecutingWorkflowData {
