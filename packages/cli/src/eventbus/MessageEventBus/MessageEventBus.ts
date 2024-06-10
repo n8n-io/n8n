@@ -22,7 +22,6 @@ import type { EventMessageAuditOptions } from '../EventMessageClasses/EventMessa
 import { EventMessageAudit } from '../EventMessageClasses/EventMessageAudit';
 import type { EventMessageWorkflowOptions } from '../EventMessageClasses/EventMessageWorkflow';
 import { EventMessageWorkflow } from '../EventMessageClasses/EventMessageWorkflow';
-import { isLogStreamingEnabled } from './MessageEventBusHelper';
 import type { EventMessageNodeOptions } from '../EventMessageClasses/EventMessageNode';
 import { EventMessageNode } from '../EventMessageClasses/EventMessageNode';
 import {
@@ -37,6 +36,7 @@ import {
 	EventMessageAiNode,
 	type EventMessageAiNodeOptions,
 } from '../EventMessageClasses/EventMessageAiNode';
+import { License } from '@/License';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all' | 'unfinished';
 
@@ -69,6 +69,7 @@ export class MessageEventBus extends EventEmitter {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly orchestrationService: OrchestrationService,
 		private readonly recoveryService: ExecutionRecoveryService,
+		private readonly license: License,
 	) {
 		super();
 	}
@@ -350,7 +351,7 @@ export class MessageEventBus extends EventEmitter {
 
 	shouldSendMsg(msg: EventMessageTypes): boolean {
 		return (
-			isLogStreamingEnabled() &&
+			this.license.isLogStreamingEnabled() &&
 			Object.keys(this.destinations).length > 0 &&
 			this.hasAnyDestinationSubscribedToEvent(msg)
 		);
