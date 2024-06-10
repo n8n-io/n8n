@@ -20,6 +20,11 @@ describe('useCanvasPanning()', () => {
 	let element: HTMLElement;
 	let elementRef: Ref<null | HTMLElement>;
 
+	beforeAll(() => {
+		// Mocks for useDeviceSupport
+		Object.defineProperty(window, 'matchMedia', { value: vi.fn().mockImplementation(() => true) });
+	});
+
 	beforeEach(() => {
 		element = document.createElement('div');
 		element.id = 'node-view';

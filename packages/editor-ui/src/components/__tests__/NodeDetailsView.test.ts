@@ -60,6 +60,8 @@ describe('NodeDetailsView', () => {
 
 	beforeAll(() => {
 		server = setupServer();
+		// Mocks for useDeviceSupport
+		Object.defineProperty(window, 'matchMedia', { value: vi.fn().mockImplementation(() => true) });
 	});
 
 	afterEach(() => {
