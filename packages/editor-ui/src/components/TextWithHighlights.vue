@@ -2,7 +2,6 @@
 import type { PropType } from 'vue';
 import type { GenericValue } from 'n8n-workflow';
 import { computed, useCssModule } from 'vue';
-import { sanitizeHtml } from '@/utils/htmlUtils';
 
 const props = defineProps({
 	content: {
@@ -40,21 +39,6 @@ const parts = computed(() => {
 		? splitTextBySearch(props.content, props.search)
 		: [];
 });
-
-const contentWithNewLines = computed(() => {
-	if (typeof props.content === 'string') {
-		return sanitizeHtml(props.content).replaceAll(
-			'\n',
-			`<span class="${$style.newLine}">\\n</span>`,
-		);
-	}
-
-	if (typeof props.content === 'object') {
-		return JSON.stringify(props.content, null, 2);
-	}
-
-	return props.content;
-});
 </script>
 
 <template>
@@ -66,7 +50,14 @@ const contentWithNewLines = computed(() => {
 			<span v-else-if="part.content" :key="`span-${index}`">{{ part.content }}</span>
 		</template>
 	</span>
-	<span v-else :class="$style.content" v-html="contentWithNewLines" />
+	<span v-else :class="$style.content">
+		<template v-if="typeof props.content === 'string'">
+			<span v-for="(line, index) in props.content.split('\n')" :key="`line-${index}`">
+				<span v-if="index > 0" :class="$style.newLine">\n</span>{{ line }}
+			</span>
+		</template>
+		<span v-else v-text="props.content" />
+	</span>
 </template>
 
 <style lang="scss" module>

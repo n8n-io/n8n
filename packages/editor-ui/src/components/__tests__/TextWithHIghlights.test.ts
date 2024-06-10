@@ -21,7 +21,9 @@ describe('TextWithHighlights', () => {
 			},
 		});
 
-		expect(wrapper.html()).toEqual('<span class="content">Test content</span>');
+		expect(wrapper.html()).toEqual(
+			'<span class="content"><span><!--v-if-->Test content</span></span>',
+		);
 		expect(wrapper.html()).not.toContain('<mark>');
 	});
 
@@ -32,7 +34,7 @@ describe('TextWithHighlights', () => {
 			},
 		});
 
-		expect(wrapper.html()).toEqual('<span class="content">1</span>');
+		expect(wrapper.html()).toEqual('<span class="content"><span>1</span></span>');
 		expect(wrapper.html()).not.toContain('<mark>');
 	});
 
@@ -42,7 +44,9 @@ describe('TextWithHighlights', () => {
 				content: { hello: 'world' },
 			},
 		});
-		expect(wrapper.html()).toEqual('<span class="content">{\n  "hello": "world"\n}</span>');
+		expect(wrapper.html()).toEqual(
+			'<span class="content"><span>{\n  "hello": "world"\n}</span></span>',
+		);
 		expect(wrapper.html()).not.toContain('<mark>');
 	});
 
@@ -54,7 +58,9 @@ describe('TextWithHighlights', () => {
 			},
 		});
 
-		expect(wrapper.html()).toEqual('<span class="content">{\n  "hello": "world"\n}</span>');
+		expect(wrapper.html()).toEqual(
+			'<span class="content"><span>{\n  "hello": "world"\n}</span></span>',
+		);
 		expect(wrapper.html()).not.toContain('<mark>');
 	});
 
@@ -108,7 +114,7 @@ describe('TextWithHighlights', () => {
 		});
 
 		expect(wrapper.html()).toContain(
-			'<span class="content">Line 1<span class="newLine">\\n</span> Line 2<span class="newLine">\\n</span>Line 3</span>',
+			'<span class="content"><span><!--v-if-->Line 1</span><span><span class="newLine">\\n</span> Line 2</span><span><span class="newLine">\\n</span>Line 3</span></span>',
 		);
 	});
 });

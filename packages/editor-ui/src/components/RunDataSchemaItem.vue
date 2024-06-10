@@ -5,7 +5,6 @@ import { checkExhaustive } from '@/utils/typeGuards';
 import { shorten } from '@/utils/typesUtils';
 import { getMappedExpression } from '@/utils/mappingUtils';
 import TextWithHighlights from './TextWithHighlights.vue';
-import { sanitizeHtml } from '@/utils/htmlUtils';
 
 type Props = {
 	schema: Schema;
@@ -40,14 +39,10 @@ const key = computed((): string | undefined => {
 const schemaName = computed(() =>
 	isSchemaParentTypeArray.value ? `${props.schema.type}[${props.schema.key}]` : props.schema.key,
 );
-const text = computed(() => {
-	if (Array.isArray(props.schema.value)) return '';
 
-	return sanitizeHtml(shorten(props.schema.value, 600, 0)).replaceAll(
-		'\n',
-		`<span class="${$style.newLine}">\\n</span>`,
-	);
-});
+const text = computed(() =>
+	Array.isArray(props.schema.value) ? '' : shorten(props.schema.value, 600, 0),
+);
 
 const dragged = computed(() => props.draggingPath === props.schema.path);
 
@@ -121,7 +116,11 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 				/>
 			</span>
 		</div>
-		<span v-if="text" :class="$style.text" v-html="text" />
+		<span v-if="text" :class="$style.text">
+			<template v-for="(line, index) in text.split('\n')" :key="`line-${index}`">
+				<span v-if="index > 0" :class="$style.newLine">\n</span>{{ line }}
+			</template>
+		</span>
 		<input v-if="level > 0 && isSchemaValueArray" :id="subKey" type="checkbox" checked />
 		<label v-if="level > 0 && isSchemaValueArray" :class="$style.toggle" :for="subKey">
 			<font-awesome-icon icon="angle-up" />
