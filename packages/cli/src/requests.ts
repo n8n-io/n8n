@@ -606,5 +606,8 @@ export declare namespace ProjectRequest {
 //           /nps-survey
 // ----------------------------------
 export declare namespace NpsSurveyRequest {
+	// can be refactored to
+	// type NpsSurveyUpdate = AuthenticatedRequest<{}, {}, NpsSurveyState>;
+	// once some schema validation is added
 	type NpsSurveyUpdate = AuthenticatedRequest<{}, {}, unknown>;
 }
