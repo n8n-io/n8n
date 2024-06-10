@@ -42,60 +42,98 @@ describe('HooksService', () => {
 	});
 
 	it('hooksService.inviteUsers should call userService.inviteUsers', async () => {
+		// ARRANGE
 		const usersToInvite: Parameters<typeof userService.inviteUsers>[1] = [
 			{ email: 'test@n8n.io', role: 'global:member' },
 		];
 
+		// ACT
 		await hooksService.inviteUsers(mockedUser, usersToInvite);
+
+		// ASSERT
 		expect(userService.inviteUsers).toHaveBeenCalledWith(mockedUser, usersToInvite);
 	});
 
 	it('hooksService.issueCookie should call authService.issueCookie', async () => {
+		// ARRANGE
 		const res = {
 			cookie: jest.fn(),
 		} as unknown as Response;
 
+		// ACT
 		hooksService.issueCookie(res, mockedUser);
+
+		// ASSERT
 		expect(authService.issueCookie).toHaveBeenCalledWith(res, mockedUser);
 	});
 
 	it('hooksService.findOneUser should call userRepository.findOne', async () => {
+		// ARRANGE
 		const filter = { where: { id: '1' } };
+
+		// ACT
 		await hooksService.findOneUser(filter);
+
+		// ASSERT
 		expect(userRepository.findOne).toHaveBeenCalledWith(filter);
 	});
 
 	it('hooksService.saveUser should call userRepository.save', async () => {
+		// ACT
 		await hooksService.saveUser(mockedUser);
+
+		// ASSERT
+
 		expect(userRepository.save).toHaveBeenCalledWith(mockedUser);
 	});
 
 	it('hooksService.updateSettings should call settingRepository.update', async () => {
+		// ARRANGE
 		const filter = { key: 'test' };
 		const set = { value: 'true' };
+
+		// ACT
 		await hooksService.updateSettings(filter, set);
+
+		// ASSERT
 		expect(settingsRepository.update).toHaveBeenCalledWith(filter, set);
 	});
 
 	it('hooksService.workflowsCount should call workflowRepository.count', async () => {
+		// ARRANGE
 		const filter = { where: { active: true } };
+
+		// ACT
 		await hooksService.workflowsCount(filter);
+
+		// ASSERT
 		expect(workflowRepository.count).toHaveBeenCalledWith(filter);
 	});
 
 	it('hooksService.credentialsCount should call credentialRepository.count', async () => {
+		// ARRANGE
 		const filter = { where: {} };
+
+		// ACT
 		await hooksService.credentialsCount(filter);
+
+		// ASSERT
 		expect(credentialsRepository.count).toHaveBeenCalledWith(filter);
 	});
 
 	it('hooksService.settingsCount should call settingsRepository.count', async () => {
+		// ARRANGE
 		const filter = { where: { key: 'test' } };
+
+		// ACT
 		await hooksService.settingsCount(filter);
+
+		// ASSERT
 		expect(settingsRepository.count).toHaveBeenCalledWith(filter);
 	});
 
 	it('hooksService.authMiddleware should call authService.authMiddleware', async () => {
+		// ARRANGE
 		const res = {
 			cookie: jest.fn(),
 		} as unknown as Response;
@@ -106,12 +144,18 @@ describe('HooksService', () => {
 
 		const next = jest.fn();
 
+		// ACT
 		await hooksService.authMiddleware(req, res, next);
+
+		// ASSERT
 		expect(authService.authMiddleware).toHaveBeenCalledWith(req, res, next);
 	});
 
 	it('hooksService.dbCollections should return valid repositories', async () => {
+		// ACT
 		const collections = hooksService.dbCollections();
+
+		// ASSERT
 		expect(collections).toHaveProperty('User');
 		expect(collections).toHaveProperty('Settings');
 		expect(collections).toHaveProperty('Credentials');
