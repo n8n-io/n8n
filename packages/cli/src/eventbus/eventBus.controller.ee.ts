@@ -5,7 +5,7 @@ import type {
 } from 'n8n-workflow';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 
-import { RestController, Get, Post, Delete, GlobalScope } from '@/decorators';
+import { RestController, Get, Post, Delete, GlobalScope, Licensed } from '@/decorators';
 import { AuthenticatedRequest } from '@/requests';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
@@ -20,7 +20,6 @@ import {
 } from './MessageEventBusDestination/MessageEventBusDestinationSyslog.ee';
 import { MessageEventBusDestinationWebhook } from './MessageEventBusDestination/MessageEventBusDestinationWebhook.ee';
 import type { MessageEventBusDestination } from './MessageEventBusDestination/MessageEventBusDestination.ee';
-import { logStreamingLicensedMiddleware } from './middleware/logStreamingEnabled.middleware.ee';
 
 // ----------------------------------------
 // TypeGuards
@@ -60,7 +59,8 @@ export class EventBusControllerEE {
 	// Destinations
 	// ----------------------------------------
 
-	@Get('/destination', { middlewares: [logStreamingLicensedMiddleware] })
+	@Licensed('feat:logStreaming')
+	@Get('/destination')
 	@GlobalScope('eventBusDestination:list')
 	async getDestination(req: express.Request): Promise<MessageEventBusDestinationOptions[]> {
 		if (isWithIdString(req.query)) {
@@ -70,7 +70,8 @@ export class EventBusControllerEE {
 		}
 	}
 
-	@Post('/destination', { middlewares: [logStreamingLicensedMiddleware] })
+	@Licensed('feat:logStreaming')
+	@Post('/destination')
 	@GlobalScope('eventBusDestination:create')
 	async postDestination(req: AuthenticatedRequest): Promise<any> {
 		let result: MessageEventBusDestination | undefined;
@@ -114,7 +115,8 @@ export class EventBusControllerEE {
 		throw new BadRequestError('Body is not configuring MessageEventBusDestinationOptions');
 	}
 
-	@Get('/testmessage', { middlewares: [logStreamingLicensedMiddleware] })
+	@Licensed('feat:logStreaming')
+	@Get('/testmessage')
 	@GlobalScope('eventBusDestination:test')
 	async sendTestMessage(req: express.Request): Promise<boolean> {
 		if (isWithIdString(req.query)) {
@@ -123,7 +125,8 @@ export class EventBusControllerEE {
 		return false;
 	}
 
-	@Delete('/destination', { middlewares: [logStreamingLicensedMiddleware] })
+	@Licensed('feat:logStreaming')
+	@Delete('/destination')
 	@GlobalScope('eventBusDestination:delete')
 	async deleteDestination(req: AuthenticatedRequest) {
 		if (isWithIdString(req.query)) {
