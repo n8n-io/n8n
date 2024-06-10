@@ -28,7 +28,6 @@ import {
 	EventMessageGeneric,
 	eventMessageGenericDestinationTestEvent,
 } from '../EventMessageClasses/EventMessageGeneric';
-import { METRICS_EVENT_NAME } from '../MessageEventBusDestination/Helpers.ee';
 import type { AbstractEventMessageOptions } from '../EventMessageClasses/AbstractEventMessageOptions';
 import { getEventMessageObjectByType } from '../EventMessageClasses/Helpers';
 import { ExecutionRecoveryService } from '../../executions/execution-recovery.service';
@@ -330,7 +329,7 @@ export class MessageEventBus extends EventEmitter {
 	}
 
 	private async emitMessage(msg: EventMessageTypes) {
-		this.emit(METRICS_EVENT_NAME, msg);
+		this.emit('metrics.messageEventBus.Event', msg);
 
 		// generic emit for external modules to capture events
 		// this is for internal use ONLY and not for use with custom destinations!
