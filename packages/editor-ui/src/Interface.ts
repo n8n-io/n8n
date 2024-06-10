@@ -381,6 +381,7 @@ export interface IExecutionBase {
 	id?: string;
 	finished: boolean;
 	mode: WorkflowExecuteMode;
+	status: ExecutionStatus;
 	retryOf?: string;
 	retrySuccessId?: string;
 	startedAt: Date;
@@ -404,7 +405,6 @@ export interface IExecutionPushResponse {
 
 export interface IExecutionResponse extends IExecutionBase {
 	id: string;
-	status: string;
 	data?: IRunExecutionData;
 	workflowData: IWorkflowDb;
 	executedNode?: string;
