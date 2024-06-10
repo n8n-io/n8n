@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { getDropdownItems } from '@/__tests__/utils';
 import { useRoute, useRouter } from 'vue-router';
-import ProjectSettings from '@/components/Projects/ProjectSettings.vue';
+import ProjectSettings from '@/views/ProjectSettings.vue';
 import { useProjectsStore } from '@/stores/projects.store';
 import { VIEWS } from '@/constants';
 import { useUsersStore } from '@/stores/users.store';
