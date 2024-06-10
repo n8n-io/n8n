@@ -88,7 +88,9 @@ function onSelected(item: INodeCreateElement) {
 
 		const icon = item.properties.iconUrl
 			? `${baseUrl}${item.properties.iconUrl}`
-			: item.properties.icon?.split(':')[1];
+			: typeof item.properties.icon === 'string'
+				? item.properties.icon?.split(':')[1]
+				: undefined;
 
 		const transformedActions = nodeActions?.map((a) =>
 			transformNodeType(a, item.properties.displayName, 'action'),

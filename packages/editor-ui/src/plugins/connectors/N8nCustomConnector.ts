@@ -169,7 +169,7 @@ export class N8nConnector extends AbstractConnector {
 
 	targetGap: number;
 
-	overrideTargetEndpoint: Endpoint | null;
+	overrideTargetEndpoint: Endpoint;
 
 	getEndpointOffset?: (e: Endpoint) => number | null;
 
@@ -517,7 +517,7 @@ export class N8nConnector extends AbstractConnector {
 	}
 
 	resetTargetEndpoint() {
-		this.overrideTargetEndpoint = null;
+		this.overrideTargetEndpoint = null as unknown as Endpoint;
 	}
 
 	_computeBezier(paintInfo: N8nConnectorPaintGeometry) {
