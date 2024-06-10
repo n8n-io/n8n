@@ -166,8 +166,7 @@ jobs:
           # We have to provide custom ci-build-id key to make sure that this workflow could be run multiple times
           # in the same parent workflow
           ci-build-id: ${{ needs.prepare.outputs.uuid }}
-          spec: '/__w/n8n/n8n/cypress/${{ inputs.spec }}'
-          config-file: /__w/n8n/n8n/cypress/cypress.config.js
+          spec: '${{ inputs.spec }}'
         env:
           NODE_OPTIONS: --dns-result-order=ipv4first
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
