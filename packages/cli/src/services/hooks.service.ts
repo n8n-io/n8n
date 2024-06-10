@@ -35,7 +35,7 @@ export class HooksService {
 	/**
 	 * Invite users to instance during signup
 	 */
-	async inviteUsers(owner: AuthUser, attributes: Invitation[]) {
+	async inviteUsers(owner: User, attributes: Invitation[]) {
 		return await this.userService.inviteUsers(owner, attributes);
 	}
 
