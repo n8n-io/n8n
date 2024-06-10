@@ -148,9 +148,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		}
 	}
 
-	async function fetchExecution(
-		id: string,
-	): Promise<Omit<IExecutionResponse, 'status'> | undefined> {
+	async function fetchExecution(id: string): Promise<IExecutionResponse | undefined> {
 		const response = await makeRestApiRequest<IExecutionFlattedResponse>(
 			rootStore.getRestApiContext,
 			'GET',
