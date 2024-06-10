@@ -256,7 +256,7 @@ export const schema = {
 
 		concurrency: {
 			productionLimit: {
-				doc: 'Max production executions allowed to run concurrently in main mode. -1 to disable.',
+				doc: "Max production executions allowed to run concurrently, in main process for regular mode and in worker for queue mode. Default for main mode is `-1` (disabled). Default for queue mode is taken from the worker's `--concurrency` flag.",
 				format: Number,
 				default: -1,
 				env: 'N8N_CONCURRENCY_PRODUCTION_LIMIT',
