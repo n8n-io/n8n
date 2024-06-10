@@ -11,6 +11,7 @@ import type { UserService } from '@/services/user.service';
 import { HooksService } from '@/services/hooks.service';
 import type { Invitation } from '@/Interfaces';
 import type { AuthenticatedRequest } from '@/requests';
+import type { AuthUserRepository } from '@/databases/repositories/authUser.repository';
 
 describe('HooksService', () => {
 	const mockedUser = mock<AuthUser>();
@@ -20,6 +21,7 @@ describe('HooksService', () => {
 	const settingsRepository = mock<SettingsRepository>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const credentialsRepository = mock<CredentialsRepository>();
+	const authUserRepository = mock<AuthUserRepository>();
 	const hooksService = new HooksService(
 		userService,
 		authService,
@@ -27,6 +29,7 @@ describe('HooksService', () => {
 		settingsRepository,
 		workflowRepository,
 		credentialsRepository,
+		authUserRepository,
 	);
 
 	beforeEach(() => {
@@ -55,7 +58,7 @@ describe('HooksService', () => {
 		expect(authService.issueCookie).toHaveBeenCalledWith(res, mockedUser);
 	});
 
-	it('hooksService.findOneUser should call userRepository.findOne', async () => {
+	it('hooksService.findOneUser should call authUserRepository.findOne', async () => {
 		// ARRANGE
 		const filter = { where: { id: '1' } };
 
@@ -63,7 +66,7 @@ describe('HooksService', () => {
 		await hooksService.findOneUser(filter);
 
 		// ASSERT
-		expect(userRepository.findOne).toHaveBeenCalledWith(filter);
+		expect(authUserRepository.findOne).toHaveBeenCalledWith(filter);
 	});
 
 	it('hooksService.saveUser should call userRepository.save', async () => {

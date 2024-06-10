@@ -12,6 +12,7 @@ import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
 import type { Settings } from '@db/entities/Settings';
 import { UserService } from '@/services/user.service';
 import type { AuthenticatedRequest } from '@/requests';
@@ -30,6 +31,7 @@ export class HooksService {
 		private readonly settingsRepository: SettingsRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly credentialsRepository: CredentialsRepository,
+		private readonly authUserRepository: AuthUserRepository,
 	) {}
 
 	/**
@@ -52,8 +54,8 @@ export class HooksService {
 	 * 1. To know whether the instance owner is already setup
 	 * 2. To know when to update the user's profile also in cloud
 	 */
-	async findOneUser(filter: FindOneOptions<User>) {
-		return await this.userRepository.findOne(filter);
+	async findOneUser(filter: FindOneOptions<AuthUser>) {
+		return await this.authUserRepository.findOne(filter);
 	}
 
 	/**
