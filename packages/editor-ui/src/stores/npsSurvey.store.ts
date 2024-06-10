@@ -90,7 +90,10 @@ export const useNpsSurveyStore = defineStore('npsSurvey', () => {
 		const updatedState: NpsSurveyState = {
 			waitingForResponse: true,
 			lastShownAt: Date.now(),
-			ignoredCount: 0,
+			ignoredCount:
+				currentSurveyState.value && 'ignoredCount' in currentSurveyState.value
+					? currentSurveyState.value.ignoredCount
+					: 0,
 		};
 		await updateNpsSurveyState(rootStore.getRestApiContext, updatedState);
 		currentSurveyState.value = updatedState;
