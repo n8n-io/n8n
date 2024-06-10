@@ -1,18 +1,21 @@
 import { Service } from 'typedi';
-import { UserService } from '@/services/user.service';
-import type { AssignableRole, User } from '@/databases/entities/User';
-import { AuthService } from '@/auth/auth.service';
 import type { NextFunction, Response } from 'express';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import type { FindManyOptions, FindOneOptions, FindOptionsWhere } from '@n8n/typeorm';
-import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
-import type { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
-import type { Settings } from '@/databases/entities/Settings';
+
+import { AuthService } from '@/auth/auth.service';
+import type { AuthUser } from '@db/entities/AuthUser';
+import type { User } from '@db/entities/User';
+import { UserRepository } from '@db/repositories/user.repository';
+import { SettingsRepository } from '@db/repositories/settings.repository';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import type { Settings } from '@db/entities/Settings';
+import { UserService } from '@/services/user.service';
 import type { AuthenticatedRequest } from '@/requests';
+import type { Invitation } from '@/Interfaces';
 
 /**
  * Exposes functionality to be used by the cloud BE hooks.
@@ -32,7 +35,7 @@ export class HooksService {
 	/**
 	 * Invite users to instance during signup
 	 */
-	async inviteUsers(owner: User, attributes: Array<{ email: string; role: AssignableRole }>) {
+	async inviteUsers(owner: AuthUser, attributes: Invitation[]) {
 		return await this.userService.inviteUsers(owner, attributes);
 	}
 
@@ -40,7 +43,7 @@ export class HooksService {
 	 * Set the n8n-auth cookie in the response to auto-login
 	 * the user after instance is provisioned
 	 */
-	issueCookie(res: Response, user: User) {
+	issueCookie(res: Response, user: AuthUser) {
 		return this.authService.issueCookie(res, user);
 	}
 

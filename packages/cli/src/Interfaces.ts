@@ -35,7 +35,7 @@ import type PCancelable from 'p-cancelable';
 import type { AuthProviderType } from '@db/entities/AuthIdentity';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { TagEntity } from '@db/entities/TagEntity';
-import type { GlobalRole, User } from '@db/entities/User';
+import type { AssignableRole, GlobalRole, User } from '@db/entities/User';
 import type { CredentialsRepository } from '@db/repositories/credentials.repository';
 import type { SettingsRepository } from '@db/repositories/settings.repository';
 import type { UserRepository } from '@db/repositories/user.repository';
@@ -632,6 +632,11 @@ export interface PublicUser {
 	inviteAcceptUrl?: string;
 	isOwner?: boolean;
 	featureFlags?: FeatureFlags;
+}
+
+export interface Invitation {
+	email: string;
+	role: AssignableRole;
 }
 
 export interface N8nApp {

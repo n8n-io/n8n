@@ -1,34 +1,26 @@
-import { UserService } from '@/services/user.service';
-import { HooksService } from '@/services/hooks.service';
-import { User } from '@/databases/entities/User';
-import { mockInstance } from '../../shared/mocking';
-import { v4 as uuid } from 'uuid';
-import { AuthService } from '@/auth/auth.service';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { Response } from 'express';
+import { mock } from 'jest-mock-extended';
 
-let hooksService: HooksService;
-
-const mockedUser = Object.assign(new User(), {
-	id: uuid(),
-	password: 'passwordHash',
-	mfaEnabled: false,
-	mfaSecret: 'test',
-	mfaRecoveryCodes: ['test'],
-	updatedAt: new Date(),
-});
+import type { AuthUser } from '@db/entities/AuthUser';
+import type { CredentialsRepository } from '@db/repositories/credentials.repository';
+import type { SettingsRepository } from '@db/repositories/settings.repository';
+import type { UserRepository } from '@db/repositories/user.repository';
+import type { WorkflowRepository } from '@db/repositories/workflow.repository';
+import type { AuthService } from '@/auth/auth.service';
+import type { UserService } from '@/services/user.service';
+import { HooksService } from '@/services/hooks.service';
+import type { Invitation } from '@/Interfaces';
+import type { AuthenticatedRequest } from '@/requests';
 
 describe('HooksService', () => {
-	const userService = mockInstance(UserService);
-	const authService = mockInstance(AuthService);
-	const userRepository = mockInstance(UserRepository);
-	const settingsRepository = mockInstance(SettingsRepository);
-	const workflowRepository = mockInstance(WorkflowRepository);
-	const credentialsRepository = mockInstance(CredentialsRepository);
-	hooksService = new HooksService(
+	const mockedUser = mock<AuthUser>();
+	const userService = mock<UserService>();
+	const authService = mock<AuthService>();
+	const userRepository = mock<UserRepository>();
+	const settingsRepository = mock<SettingsRepository>();
+	const workflowRepository = mock<WorkflowRepository>();
+	const credentialsRepository = mock<CredentialsRepository>();
+	const hooksService = new HooksService(
 		userService,
 		authService,
 		userRepository,
@@ -43,9 +35,7 @@ describe('HooksService', () => {
 
 	it('hooksService.inviteUsers should call userService.inviteUsers', async () => {
 		// ARRANGE
-		const usersToInvite: Parameters<typeof userService.inviteUsers>[1] = [
-			{ email: 'test@n8n.io', role: 'global:member' },
-		];
+		const usersToInvite: Invitation[] = [{ email: 'test@n8n.io', role: 'global:member' }];
 
 		// ACT
 		await hooksService.inviteUsers(mockedUser, usersToInvite);
@@ -56,9 +46,7 @@ describe('HooksService', () => {
 
 	it('hooksService.issueCookie should call authService.issueCookie', async () => {
 		// ARRANGE
-		const res = {
-			cookie: jest.fn(),
-		} as unknown as Response;
+		const res = mock<Response>();
 
 		// ACT
 		hooksService.issueCookie(res, mockedUser);
@@ -134,13 +122,9 @@ describe('HooksService', () => {
 
 	it('hooksService.authMiddleware should call authService.authMiddleware', async () => {
 		// ARRANGE
-		const res = {
-			cookie: jest.fn(),
-		} as unknown as Response;
+		const res = mock<Response>();
 
-		const req = {
-			cookie: jest.fn(),
-		} as unknown as Response;
+		const req = mock<AuthenticatedRequest>();
 
 		const next = jest.fn();
 
