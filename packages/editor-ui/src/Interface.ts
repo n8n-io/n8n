@@ -1205,6 +1205,8 @@ export type Modals = {
 	[key: string]: ModalState;
 };
 
+export type ModalKey = keyof Modals;
+
 export type ModalState = {
 	open: boolean;
 	mode?: string | null;
@@ -1919,39 +1921,6 @@ export type EnterpriseEditionFeatureKey =
 	| 'WorkflowHistory'
 	| 'WorkerView'
 	| 'AdvancedPermissions';
-
-export type ModalKey =
-	| 'about'
-	| 'chatEmbed'
-	| 'changePassword'
-	| 'editCredential'
-	| 'selectCredential'
-	| 'deleteUser'
-	| 'inviteUser'
-	| 'duplicate'
-	| 'tagsManager'
-	| 'versions'
-	| 'settings'
-	| 'lmChat'
-	| 'workflowShare'
-	| 'personalization'
-	| 'contactPrompt'
-	| 'npsSurvey'
-	| 'activation'
-	| 'onboardingCallSignup'
-	| 'communityPackageInstall'
-	| 'communityPackageManageConfirm'
-	| 'importCurl'
-	| 'generateCurl'
-	| 'settingsLogStream'
-	| 'sourceControlPush'
-	| 'sourceControlPull'
-	| 'debugPaywall'
-	| 'mfaSetup'
-	| 'workflowHistoryVersionRestore'
-	| 'suggestedTemplatePreview'
-	| 'setupCredentials'
-	| 'externalSecretsProvider';
 
 export type EnterpriseEditionFeatureValue = keyof Omit<IN8nUISettings['enterprise'], 'projects'>;
 

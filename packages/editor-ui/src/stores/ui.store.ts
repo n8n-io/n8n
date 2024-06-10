@@ -55,6 +55,7 @@ import type {
 	AppliedThemeOption,
 	NotificationOptions,
 	ModalState,
+	ModalKey,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@/stores/n8nRoot.store';
@@ -278,19 +279,19 @@ export const useUIStore = defineStore(STORES.UI, {
 			return this.modals[VERSIONS_MODAL_KEY].open;
 		},
 		isModalOpen() {
-			return (name: string) => this.modals[name].open;
+			return (name: ModalKey) => this.modals[name].open;
 		},
 		isModalActive() {
-			return (name: string) => this.modalStack.length > 0 && name === this.modalStack[0];
+			return (name: ModalKey) => this.modalStack.length > 0 && name === this.modalStack[0];
 		},
 		getModalActiveId() {
-			return (name: string) => this.modals[name].activeId;
+			return (name: ModalKey) => this.modals[name].activeId;
 		},
 		getModalMode() {
-			return (name: string) => this.modals[name].mode;
+			return (name: ModalKey) => this.modals[name].mode;
 		},
 		getModalData() {
-			return (name: string) => this.modals[name].data;
+			return (name: ModalKey) => this.modals[name].data;
 		},
 		getFakeDoorByLocation() {
 			return (location: IFakeDoorLocation) =>
