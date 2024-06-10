@@ -2178,7 +2178,11 @@ export default defineComponent({
 					}
 				}
 
-				return await this.importWorkflowData(workflowData!, 'paste', false);
+				if (!workflowData) {
+					return;
+				}
+
+				return await this.importWorkflowData(workflowData, 'paste', false);
 			}
 		},
 
@@ -2205,7 +2209,7 @@ export default defineComponent({
 
 		// Imports the given workflow data into the current workflow
 		async importWorkflowData(
-			workflowData: IWorkflowToShare,
+			workflowData: IWorkflowDataUpdate,
 			source: string,
 			importTags = true,
 		): Promise<void> {
@@ -2342,7 +2346,7 @@ export default defineComponent({
 			}
 		},
 
-		removeUnknownCredentials(workflow: IWorkflowToShare) {
+		removeUnknownCredentials(workflow: IWorkflowDataUpdate) {
 			if (!workflow?.nodes) return;
 
 			for (const node of workflow.nodes) {
