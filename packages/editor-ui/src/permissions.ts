@@ -13,12 +13,9 @@ export type PermissionsMap<T> = {
 	[K in ExtractAfterColon<T>]: boolean;
 };
 
-const mapScopesToPermissions = <T extends Scope>(
-	scopes: T[],
-	scopeSet: Set<T>,
-): PermissionsMap<T> =>
+const mapScopesToPermissions = <T extends Scope>(scopes: T[], scopeSet: Set<T>) =>
 	scopes.reduce(
-		(permissions: PermissionsMap<T>, scope: T) => ({
+		(permissions, scope) => ({
 			...permissions,
 			[scope.split(':')[1]]: scopeSet.has(scope),
 		}),

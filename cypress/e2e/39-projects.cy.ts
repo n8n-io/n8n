@@ -409,32 +409,32 @@ describe('Projects', () => {
 			// Create a workflow and a credential in the Home project
 			workflowsPage.getters.workflowCards().should('not.have.length');
 			workflowsPage.getters.newWorkflowButtonCard().click();
-			createWorkflow('Test_workflow_1.json', 'Workflow in Home project');
+			projects.createWorkflow('Test_workflow_1.json', 'Workflow in Home project');
 
 			projects.getHomeButton().click();
 			projects.getProjectTabCredentials().should('be.visible').click();
 			credentialsPage.getters.emptyListCreateCredentialButton().click();
-			createCredential('Credential in Home project');
+			projects.createCredential('Credential in Home project');
 
 			// Create a project and add a credential and a workflow to it
-			createProject('Project 1');
+			projects.createProject('Project 1');
 			projects.getProjectTabCredentials().click();
 			credentialsPage.getters.emptyListCreateCredentialButton().click();
-			createCredential('Credential in Project 1');
+			projects.createCredential('Credential in Project 1');
 
 			projects.getProjectTabWorkflows().click();
 			workflowsPage.getters.newWorkflowButtonCard().click();
-			createWorkflow('Test_workflow_1.json', 'Workflow in Project 1');
+			projects.createWorkflow('Test_workflow_1.json', 'Workflow in Project 1');
 
 			// Create another project and add a credential and a workflow to it
-			createProject('Project 2');
+			projects.createProject('Project 2');
 			projects.getProjectTabCredentials().click();
 			credentialsPage.getters.emptyListCreateCredentialButton().click();
-			createCredential('Credential in Project 2');
+			projects.createCredential('Credential in Project 2');
 
 			projects.getProjectTabWorkflows().click();
 			workflowsPage.getters.newWorkflowButtonCard().click();
-			createWorkflow('Test_workflow_1.json', 'Workflow in Project 2');
+			projects.createWorkflow('Test_workflow_1.json', 'Workflow in Project 2');
 
 			// Move the workflow owned by me from Home to Project 1
 			projects.getHomeButton().click();
@@ -550,35 +550,3 @@ describe('Projects', () => {
 		});
 	});
 });
-
-function createProject(name: string) {
-	projects.getAddProjectButton().should('be.visible').click();
-	projects
-		.getProjectNameInput()
-		.should('be.visible')
-		.should('be.focused')
-		.should('have.value', 'My project')
-		.clear()
-		.type(name);
-	projects.getProjectSettingsSaveButton().click();
-}
-
-function createWorkflow(fixtureKey: string, name: string) {
-	workflowPage.getters
-		.workflowImportInput()
-		.selectFile(`cypress/fixtures/${fixtureKey}`, { force: true });
-	workflowPage.actions.setWorkflowName(name);
-	workflowPage.getters.saveButton().should('contain', 'Saved');
-	workflowPage.actions.zoomToFit();
-}
-
-function createCredential(name: string) {
-	credentialsModal.getters.newCredentialModal().should('be.visible');
-	credentialsModal.getters.newCredentialTypeSelect().should('be.visible');
-	credentialsModal.getters.newCredentialTypeOption('Notion API').click();
-	credentialsModal.getters.newCredentialTypeButton().click();
-	credentialsModal.getters.connectionParameter('Internal Integration Secret').type('1234567890');
-	credentialsModal.actions.setName(name);
-	credentialsModal.actions.save();
-	credentialsModal.actions.close();
-}

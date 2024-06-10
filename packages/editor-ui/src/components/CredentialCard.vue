@@ -156,7 +156,6 @@ function moveResource() {
 					:actions="actions"
 					theme="dark"
 					@action="onAction"
-					@click.stop
 				/>
 			</div>
 		</template>
