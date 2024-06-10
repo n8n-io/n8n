@@ -157,6 +157,17 @@ export default defineComponent({
 		credentialOwnerName(): string {
 			return this.credentialsStore.getCredentialOwnerNameById(`${this.credentialId}`);
 		},
+		credentialDataHomeProject(): ProjectSharingData | undefined {
+			const credentialContainsProjectSharingData = (
+				data: ICredentialDataDecryptedObject,
+			): data is { homeProject: ProjectSharingData } => {
+				return 'homeProject' in data;
+			};
+
+			return this.credentialData && credentialContainsProjectSharingData(this.credentialData)
+				? this.credentialData.homeProject
+				: undefined;
+		},
 		isCredentialSharedWithCurrentUser(): boolean {
 			return (
 				Array.isArray(this.credentialData.sharedWithProjects)
@@ -172,13 +183,11 @@ export default defineComponent({
 			return this.projectsStore.personalProjects.filter(
 				(project) =>
 					project.id !== this.credential?.homeProject?.id &&
-					project.id !== (this.credentialData?.homeProject as ProjectSharingData)?.id,
+					project.id !== this.credentialDataHomeProject?.id,
 			);
 		},
 		homeProject(): ProjectSharingData | undefined {
-			return (
-				this.credential?.homeProject ?? (this.credentialData?.homeProject as ProjectSharingData)
-			);
+			return this.credential?.homeProject ?? this.credentialDataHomeProject;
 		},
 		isHomeTeamProject(): boolean {
 			return this.homeProject?.type === ProjectTypes.Team;
