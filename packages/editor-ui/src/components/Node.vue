@@ -108,9 +108,9 @@
 			</div>
 
 			<div
-				v-if="showDisabledLinethrough"
+				v-if="showDisabledLineThrough"
 				:class="{
-					'disabled-linethrough': true,
+					'disabled-line-through': true,
 					success: !['unknown'].includes(nodeExecutionStatus) && workflowDataItems > 0,
 				}"
 			></div>
@@ -187,7 +187,7 @@ import {
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
 	MANUAL_TRIGGER_NODE_TYPE,
 	NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS,
-	NOT_DUPLICATABE_NODE_TYPES,
+	NOT_DUPLICATABLE_NODE_TYPES,
 	SIMULATE_NODE_TYPE,
 	SIMULATE_TRIGGER_NODE_TYPE,
 	WAIT_TIME_UNLIMITED,
@@ -287,7 +287,7 @@ export default defineComponent({
 		},
 		isDuplicatable(): boolean {
 			if (!this.nodeType) return true;
-			if (NOT_DUPLICATABE_NODE_TYPES.includes(this.nodeType.name)) return false;
+			if (NOT_DUPLICATABLE_NODE_TYPES.includes(this.nodeType.name)) return false;
 			return (
 				this.nodeType.maxNodes === undefined || this.sameTypeNodes.length < this.nodeType.maxNodes
 			);
@@ -493,7 +493,7 @@ export default defineComponent({
 		position(): XYPosition {
 			return this.node ? this.node.position : [0, 0];
 		},
-		showDisabledLinethrough(): boolean {
+		showDisabledLineThrough(): boolean {
 			return (
 				!this.isConfigurableNode &&
 				!!(this.data?.disabled && this.inputs.length === 1 && this.outputs.length === 1)
@@ -1118,7 +1118,7 @@ export default defineComponent({
 	}
 }
 
-.disabled-linethrough {
+.disabled-line-through {
 	border: 1px solid var(--color-foreground-dark);
 	position: absolute;
 	top: 49px;
@@ -1189,7 +1189,7 @@ export default defineComponent({
 	overflow: auto;
 }
 
-.disabled-linethrough {
+.disabled-line-through {
 	z-index: 8;
 }
 

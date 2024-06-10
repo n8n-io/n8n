@@ -134,16 +134,6 @@ export type EndpointStyle = {
 	hoverMessage?: string;
 };
 
-export type EndpointMeta = {
-	__meta?: {
-		nodeName: string;
-		nodeId: string;
-		index: number;
-		totalEndpoints: number;
-		endpointLabelLength: number;
-	};
-};
-
 export interface IUpdateInformation<T extends NodeParameterValueType = NodeParameterValueType> {
 	name: string;
 	key?: string;
@@ -260,7 +250,7 @@ export interface IWorkflowDataUpdate {
 }
 
 export interface IWorkflowToShare extends IWorkflowDataUpdate {
-	meta?: WorkflowMetadata;
+	meta: WorkflowMetadata;
 }
 
 export interface NewWorkflowResponse {
@@ -381,6 +371,7 @@ export interface IExecutionBase {
 	id?: string;
 	finished: boolean;
 	mode: WorkflowExecuteMode;
+	status: ExecutionStatus;
 	retryOf?: string;
 	retrySuccessId?: string;
 	startedAt: Date;
@@ -404,23 +395,9 @@ export interface IExecutionPushResponse {
 
 export interface IExecutionResponse extends IExecutionBase {
 	id: string;
-	status: string;
 	data?: IRunExecutionData;
 	workflowData: IWorkflowDb;
 	executedNode?: string;
-}
-
-export interface IExecutionShortResponse {
-	id: string;
-	workflowData: {
-		id: string;
-		name: string;
-	};
-	mode: WorkflowExecuteMode;
-	finished: boolean;
-	startedAt: Date;
-	stoppedAt: Date;
-	executionTime?: number;
 }
 
 export interface IExecutionsListResponse {
@@ -432,6 +409,7 @@ export interface IExecutionsListResponse {
 export interface IExecutionsCurrentSummaryExtended {
 	id: string;
 	finished?: boolean;
+	status: ExecutionStatus;
 	mode: WorkflowExecuteMode;
 	retryOf?: string | null;
 	retrySuccessId?: string | null;
