@@ -2,7 +2,7 @@ import { Service } from 'typedi';
 import { UserService } from '@/services/user.service';
 import type { AssignableRole, User } from '@/databases/entities/User';
 import { AuthService } from '@/auth/auth.service';
-import type { Response } from 'express';
+import type { NextFunction, Response } from 'express';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
@@ -12,6 +12,7 @@ import type { FindManyOptions, FindOneOptions, FindOptionsWhere } from '@n8n/typ
 import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 import type { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
 import type { Settings } from '@/databases/entities/Settings';
+import type { AuthenticatedRequest } from '@/requests';
 
 /**
  * Exposes functionality to be used by the cloud BE hooks.
@@ -71,7 +72,7 @@ export class HooksService {
 	 * Count the number of workflows
 	 * 1. To enforce the active workflow limits in cloud
 	 */
-	async workflowCount(filter: FindManyOptions<WorkflowEntity>) {
+	async workflowsCount(filter: FindManyOptions<WorkflowEntity>) {
 		return await this.workflowRepository.count(filter);
 	}
 
@@ -79,7 +80,7 @@ export class HooksService {
 	 * Count the number of credentials
 	 * 1. To enforce the max credential limits in cloud
 	 */
-	async credentialCount(filter: FindManyOptions<CredentialsEntity>) {
+	async credentialsCount(filter: FindManyOptions<CredentialsEntity>) {
 		return await this.credentialsRepository.count(filter);
 	}
 
@@ -89,5 +90,13 @@ export class HooksService {
 	 */
 	async settingsCount(filter: FindManyOptions<Settings>) {
 		return await this.settingsRepository.count(filter);
+	}
+
+	/**
+	 * Add auth middleware to routes injected via the hooks
+	 * 1. To authenticate the /proxy routes in the hooks
+	 */
+	async authMiddleware(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+		return await this.authService.authMiddleware(req, res, next);
 	}
 }

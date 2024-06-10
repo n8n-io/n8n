@@ -77,15 +77,15 @@ describe('HooksService', () => {
 		expect(settingsRepository.update).toHaveBeenCalledWith(filter, set);
 	});
 
-	it('hooksService.workflowCount should call workflowRepository.count', async () => {
+	it('hooksService.workflowsCount should call workflowRepository.count', async () => {
 		const filter = { where: { active: true } };
-		await hooksService.workflowCount(filter);
+		await hooksService.workflowsCount(filter);
 		expect(workflowRepository.count).toHaveBeenCalledWith(filter);
 	});
 
-	it('hooksService.credentialCount should call credentialRepository.count', async () => {
+	it('hooksService.credentialsCount should call credentialRepository.count', async () => {
 		const filter = { where: {} };
-		await hooksService.credentialCount(filter);
+		await hooksService.credentialsCount(filter);
 		expect(credentialsRepository.count).toHaveBeenCalledWith(filter);
 	});
 
@@ -93,5 +93,20 @@ describe('HooksService', () => {
 		const filter = { where: { key: 'test' } };
 		await hooksService.settingsCount(filter);
 		expect(settingsRepository.count).toHaveBeenCalledWith(filter);
+	});
+
+	it('hooksService.authMiddleware should call authService.authMiddleware', async () => {
+		const res = {
+			cookie: jest.fn(),
+		} as unknown as Response;
+
+		const req = {
+			cookie: jest.fn(),
+		} as unknown as Response;
+
+		const next = jest.fn();
+
+		await hooksService.authMiddleware(req, res, next);
+		expect(authService.authMiddleware).toHaveBeenCalledWith(req, res);
 	});
 });
