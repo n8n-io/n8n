@@ -43,6 +43,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useToast } from '@/composables/useToast';
+import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 
 export default defineComponent({
 	name: 'ContactPromptModal',
@@ -65,17 +66,17 @@ export default defineComponent({
 		};
 	},
 	computed: {
-		...mapStores(useRootStore, useSettingsStore),
+		...mapStores(useRootStore, useSettingsStore, useNpsSurveyStore),
 		title(): string {
-			if (this.settingsStore.promptsData && this.settingsStore.promptsData.title) {
-				return this.settingsStore.promptsData.title;
+			if (this.npsSurveyStore.promptsData?.title) {
+				return this.npsSurveyStore.promptsData.title;
 			}
 
 			return 'You’re a power user 💪';
 		},
 		description(): string {
-			if (this.settingsStore.promptsData && this.settingsStore.promptsData.message) {
-				return this.settingsStore.promptsData.message;
+			if (this.npsSurveyStore.promptsData?.message) {
+				return this.npsSurveyStore.promptsData.message;
 			}
 
 			return 'Your experience with n8n can help us improve — for you and our entire community.';

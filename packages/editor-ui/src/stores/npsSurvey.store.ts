@@ -25,6 +25,7 @@ export const useNpsSurveyStore = defineStore('npsSurvey', () => {
 	const shouldShowNpsSurveyNext = ref<boolean>(false);
 	const currentSurveyState = ref<NpsSurveyState | undefined>();
 	const currentUserId = ref<string | undefined>();
+	const promptsData = ref<IN8nPrompts | undefined>();
 
 	function setupNpsSurveyOnLogin(userId: string, settings?: IUserSettings): void {
 		currentUserId.value = userId;
@@ -135,12 +136,16 @@ export const useNpsSurveyStore = defineStore('npsSurvey', () => {
 			return;
 		}
 
-		const promptsData: IN8nPrompts = await getPromptsData(
-			settingsStore.settings.instanceId,
-			currentUserId.value ?? '',
-		);
+		try {
+			promptsData.value = await getPromptsData(
+				settingsStore.settings.instanceId,
+				currentUserId.value ?? '',
+			);
+		} catch (e) {
+			console.error('Failed to fetch prompts data');
+		}
 
-		if (promptsData?.showContactPrompt) {
+		if (promptsData.value?.showContactPrompt) {
 			uiStore.openModal(CONTACT_PROMPT_MODAL_KEY);
 		} else {
 			await useNpsSurveyStore().showNpsSurveyIfPossible();
@@ -148,6 +153,7 @@ export const useNpsSurveyStore = defineStore('npsSurvey', () => {
 	}
 
 	return {
+		promptsData,
 		resetNpsSurveyOnLogOut,
 		showNpsSurveyIfPossible,
 		ignoreNpsSurvey,
