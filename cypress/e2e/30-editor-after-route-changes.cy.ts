@@ -188,7 +188,7 @@ describe('Editor zoom should work after route changes', () => {
 		cy.enableFeature('workflowHistory');
 		cy.signin({ email: INSTANCE_OWNER.email, password: INSTANCE_OWNER.password });
 		workflowPage.actions.visit();
-		cy.createFixtureWorkflow('Lots_of_nodes.json', `Lots of nodes`);
+		cy.createFixtureWorkflow('Lots_of_nodes.json', 'Lots of nodes');
 		workflowPage.actions.saveWorkflowOnButtonClick();
 	});
 

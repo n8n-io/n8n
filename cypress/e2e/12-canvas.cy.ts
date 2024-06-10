@@ -1,3 +1,5 @@
+import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
+import { NDV, WorkflowExecutionsTab } from '../pages';
 import {
 	MANUAL_TRIGGER_NODE_NAME,
 	MANUAL_TRIGGER_NODE_DISPLAY_NAME,
@@ -7,8 +9,6 @@ import {
 	SWITCH_NODE_NAME,
 	MERGE_NODE_NAME,
 } from './../constants';
-import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
-import { NDV, WorkflowExecutionsTab } from '../pages';
 
 const WorkflowPage = new WorkflowPageClass();
 const ExecutionsTab = new WorkflowExecutionsTab();
@@ -258,7 +258,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 
 		WorkflowPage.actions.pinchToZoom(1, 'zoomOut');
 		// Zoom in 1x + Zoom out 1x should reset to default (=1)
-		WorkflowPage.getters.nodeView().should('have.css', 'transform', `matrix(1, 0, 0, 1, 0, 0)`);
+		WorkflowPage.getters.nodeView().should('have.css', 'transform', 'matrix(1, 0, 0, 1, 0, 0)');
 
 		WorkflowPage.actions.pinchToZoom(1, 'zoomOut');
 		WorkflowPage.getters
