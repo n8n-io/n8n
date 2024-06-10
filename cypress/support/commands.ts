@@ -1,4 +1,5 @@
 import 'cypress-real-events';
+import FakeTimers from '@sinonjs/fake-timers';
 import { WorkflowPage } from '../pages';
 import {
 	BACKEND_BASE_URL,
@@ -7,7 +8,6 @@ import {
 	INSTANCE_OWNER,
 	N8N_AUTH_COOKIE,
 } from '../constants';
-import FakeTimers from '@sinonjs/fake-timers';
 
 Cypress.Commands.add('setAppDate', (targetDate: number | Date) => {
 	cy.window().then((win) => {

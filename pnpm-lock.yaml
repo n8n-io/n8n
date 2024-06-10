@@ -50,9 +50,6 @@ importers:
       '@n8n_io/eslint-config':
         specifier: workspace:*
         version: link:packages/@n8n_io/eslint-config
-      '@sinonjs/fake-timers':
-        specifier: ^11.2.2
-        version: 11.2.2
       '@types/jest':
         specifier: ^29.5.3
         version: 29.5.3
@@ -128,6 +125,9 @@ importers:
       '@ngneat/falso':
         specifier: ^6.4.0
         version: 6.4.0
+      '@sinonjs/fake-timers':
+        specifier: ^11.2.2
+        version: 11.2.2
       cross-env:
         specifier: ^7.0.3
         version: 7.0.3

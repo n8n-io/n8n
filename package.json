@@ -35,7 +35,6 @@
   },
   "devDependencies": {
     "@n8n_io/eslint-config": "workspace:*",
-    "@sinonjs/fake-timers": "^11.2.2",
     "@types/jest": "^29.5.3",
     "@types/supertest": "^6.0.2",
     "@vitest/coverage-v8": "^1.6.0",

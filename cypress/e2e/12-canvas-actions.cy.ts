@@ -1,4 +1,5 @@
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
+import { successToast } from '../pages/notifications';
 import {
 	MANUAL_TRIGGER_NODE_NAME,
 	MANUAL_TRIGGER_NODE_DISPLAY_NAME,
@@ -8,7 +9,6 @@ import {
 	IF_NODE_NAME,
 	HTTP_REQUEST_NODE_NAME,
 } from './../constants';
-import { successToast } from '../pages/notifications';
 
 const WorkflowPage = new WorkflowPageClass();
 describe('Canvas Actions', () => {
