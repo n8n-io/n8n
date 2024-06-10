@@ -28,6 +28,7 @@ export class CredentialsModal extends BasePage {
 		usersSelect: () => cy.getByTestId('project-sharing-select').filter(':visible'),
 		testSuccessTag: () => cy.getByTestId('credentials-config-container-test-success'),
 	};
+
 	actions = {
 		addUser: (email: string) => {
 			this.getters.usersSelect().click();
@@ -45,7 +46,7 @@ export class CredentialsModal extends BasePage {
 			if (test) cy.wait('@testCredential');
 			this.getters.saveButton().should('contain.text', 'Saved');
 		},
-		saveSharing: (test = false) => {
+		saveSharing: () => {
 			cy.intercept('PUT', '/rest/credentials/*/share').as('shareCredential');
 			this.getters.saveButton().click({ force: true });
 			cy.wait('@shareCredential');

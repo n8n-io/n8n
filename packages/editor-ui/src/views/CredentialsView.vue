@@ -63,6 +63,7 @@
 import type { ICredentialsResponse, ICredentialTypeMap } from '@/Interface';
 import { defineComponent } from 'vue';
 
+import type { IResource } from '@/components/layouts/ResourcesListLayout.vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import CredentialCard from '@/components/CredentialCard.vue';
 import type { ICredentialType } from 'n8n-workflow';
@@ -106,8 +107,14 @@ export default defineComponent({
 			useExternalSecretsStore,
 			useProjectsStore,
 		),
-		allCredentials(): ICredentialsResponse[] {
-			return this.credentialsStore.allCredentials;
+		allCredentials(): IResource[] {
+			return this.credentialsStore.allCredentials.map((credential) => ({
+				id: credential.id,
+				name: credential.name,
+				value: '',
+				updatedAt: credential.updatedAt,
+				createdAt: credential.createdAt,
+			}));
 		},
 		allCredentialTypes(): ICredentialType[] {
 			return this.credentialsStore.allCredentialTypes;

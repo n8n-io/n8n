@@ -120,7 +120,7 @@ export class Telemetry {
 		}
 	}
 
-	page(route: Route) {
+	page(route: RouteLocation) {
 		if (this.rudderStack) {
 			if (route.path === this.previousPath) {
 				// avoid duplicate requests query is changed for example on search page
@@ -128,8 +128,8 @@ export class Telemetry {
 			}
 			this.previousPath = route.path;
 
-			const pageName = route.name;
-			let properties: { [key: string]: string } = {};
+			const pageName = String(route.name);
+			let properties: Record<string, unknown> = {};
 			if (route.meta?.telemetry && typeof route.meta.telemetry.getProperties === 'function') {
 				properties = route.meta.telemetry.getProperties(route);
 			}
@@ -330,7 +330,7 @@ export class Telemetry {
 
 export const telemetry = new Telemetry();
 
-export const TelemetryPlugin: Plugin<{}> = {
+export const TelemetryPlugin: Plugin = {
 	install(app) {
 		app.config.globalProperties.$telemetry = telemetry;
 	},
