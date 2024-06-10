@@ -26,7 +26,7 @@ export const t = function (
 
 	// only support flat keys
 	if (lang[path] !== undefined) {
-		return format(lang[path], options);
+		return format(lang[path], ...(options ? [options] : []));
 	}
 
 	return '';
@@ -44,8 +44,8 @@ export async function use(l: string) {
 	} catch (e) {}
 }
 
-export const i18n = function (fn: N8nLocaleTranslateFn) {
+export function i18n(fn: N8nLocaleTranslateFn) {
 	i18nHandler = fn || i18nHandler;
-};
+}
 
 export default { use, t, i18n };

@@ -2,7 +2,7 @@
 	<div
 		:class="$style.wrapper"
 		:style="iconStyleData"
-		@click="(e) => $emit('click')"
+		@click="() => $emit('click')"
 		@mouseover="showTooltip = true"
 		@mouseleave="showTooltip = false"
 	>
@@ -126,7 +126,7 @@ export default defineComponent({
 
 			const restUrl = this.rootStore.getRestUrl;
 
-			if (nodeType.icon) {
+			if (typeof nodeType.icon === 'string') {
 				const [type, path] = nodeType.icon.split(':');
 				const returnData: NodeIconData = {
 					type,

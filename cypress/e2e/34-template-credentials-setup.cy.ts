@@ -50,7 +50,7 @@ describe('Template credentials setup', () => {
 		clickUseWorkflowButtonByTitle('Promote new Shopify products on Twitter and Telegram');
 
 		templateCredentialsSetupPage.getters
-			.title(`Set up 'Promote new Shopify products on Twitter and Telegram' template`)
+			.title("Set up 'Promote new Shopify products on Twitter and Telegram' template")
 			.should('be.visible');
 	});
 
@@ -58,7 +58,7 @@ describe('Template credentials setup', () => {
 		templateCredentialsSetupPage.visitTemplateCredentialSetupPage(testTemplate.id);
 
 		templateCredentialsSetupPage.getters
-			.title(`Set up 'Promote new Shopify products on Twitter and Telegram' template`)
+			.title("Set up 'Promote new Shopify products on Twitter and Telegram' template")
 			.should('be.visible');
 
 		templateCredentialsSetupPage.getters

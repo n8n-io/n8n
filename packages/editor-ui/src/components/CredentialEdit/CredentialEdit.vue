@@ -1115,8 +1115,6 @@ export default defineComponent({
 						oauthTokenData: {} as CredentialInformation,
 					};
 
-					this.credentialsStore.enableOAuthCredential(credential);
-
 					// Close the window
 					if (oauthPopup) {
 						oauthPopup.close();
@@ -1164,7 +1162,7 @@ export default defineComponent({
 
 			this.credentialData = {
 				...this.credentialData,
-				scopes,
+				scopes: scopes as unknown as CredentialInformation,
 				homeProject,
 			};
 		},

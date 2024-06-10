@@ -3,6 +3,7 @@ import Chainable = Cypress.Chainable;
 
 export class VariablesPage extends BasePage {
 	url = '/variables';
+
 	getters = {
 		unavailableResourcesList: () => cy.getByTestId('unavailable-resources-list'),
 		emptyResourcesList: () => cy.getByTestId('empty-resources-list'),
@@ -14,7 +15,7 @@ export class VariablesPage extends BasePage {
 		createVariableButton: () => cy.getByTestId('resources-list-add'),
 		variablesRows: () => cy.getByTestId('variables-row'),
 		variablesEditableRows: () =>
-			cy.getByTestId('variables-row').filter((index, row) => !!row.querySelector('input')),
+			cy.getByTestId('variables-row').filter((_, row) => !!row.querySelector('input')),
 		variableRow: (key: string) =>
 			this.getters.variablesRows().contains(key).parents('[data-test-id="variables-row"]'),
 		editableRowCancelButton: (row: Chainable<JQuery<HTMLElement>>) =>

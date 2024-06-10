@@ -8,7 +8,7 @@ describe('Expression editor modal', () => {
 	beforeEach(() => {
 		WorkflowPage.actions.visit();
 		WorkflowPage.actions.addInitialNodeToCanvas('Schedule');
-		cy.on('uncaught:exception', (err) => err.name !== 'ExpressionError');
+		cy.on('uncaught:exception', (error) => error.name !== 'ExpressionError');
 	});
 
 	describe('Static data', () => {

@@ -12,6 +12,8 @@ import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { testingNodeTypes, mockNodeTypesToArray } from '@/__tests__/defaults';
 import { setupServer } from '@/__tests__/server';
+import { NodeConnectionType } from 'n8n-workflow';
+import type { IConnections } from 'n8n-workflow';
 
 const renderComponent = createComponentRenderer(WorkflowLMChatModal, {
 	props: {
@@ -23,25 +25,25 @@ const renderComponent = createComponentRenderer(WorkflowLMChatModal, {
 async function createPiniaWithAINodes(options = { withConnections: true, withAgentNode: true }) {
 	const { withConnections, withAgentNode } = options;
 	const workflowId = uuid();
+	const connections: IConnections = {
+		'Chat Trigger': {
+			main: [
+				[
+					{
+						node: 'Agent',
+						type: NodeConnectionType.Main,
+						index: 0,
+					},
+				],
+			],
+		},
+	};
+
 	const workflow = createTestWorkflow({
 		id: workflowId,
 		name: 'Test Workflow',
-		connections: withConnections
-			? {
-					'Chat Trigger': {
-						main: [
-							[
-								{
-									node: 'Agent',
-									type: 'main',
-									index: 0,
-								},
-							],
-						],
-					},
-				}
-			: {},
 		active: true,
+		...(withConnections ? { connections } : {}),
 		nodes: [
 			createTestNode({
 				name: 'Chat Trigger',
