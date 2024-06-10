@@ -16,9 +16,7 @@ Cypress.Commands.add('createFixtureWorkflow', (fixtureKey, workflowName) => {
 	const workflowPage = new WorkflowPage();
 
 	// We need to force the click because the input is hidden
-	workflowPage.getters
-		.workflowImportInput()
-		.selectFile(`cypress/fixtures/${fixtureKey}`, { force: true });
+	workflowPage.getters.workflowImportInput().selectFile(`fixtures/${fixtureKey}`, { force: true });
 
 	cy.waitForLoad(false);
 	workflowPage.actions.setWorkflowName(workflowName);

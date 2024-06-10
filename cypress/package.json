@@ -1,0 +1,20 @@
+{
+  "name": "n8n-cypress",
+  "private": true,
+  "scripts": {
+    "cypress:install": "cypress install",
+    "cypress:open": "CYPRESS_BASE_URL=http://localhost:8080 cypress open",
+    "test:e2e:ui": "scripts/run-e2e.js ui",
+    "test:e2e:dev": "scripts/run-e2e.js dev",
+    "test:e2e:all": "scripts/run-e2e.js all",
+    "start": "cd ..; pnpm start"
+  },
+  "devDependencies": {
+    "@ngneat/falso": "^6.4.0",
+    "cross-env": "^7.0.3",
+    "cypress": "^13.6.2",
+    "cypress-otp": "^1.0.3",
+    "cypress-real-events": "^1.11.0",
+    "start-server-and-test": "^2.0.3"
+  }
+}

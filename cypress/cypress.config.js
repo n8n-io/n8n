@@ -18,6 +18,9 @@ module.exports = defineConfig({
 		screenshotOnRunFailure: true,
 		experimentalInteractiveRunEvents: true,
 		experimentalSessionAndOrigin: true,
+		specPattern: 'e2e/**/*.ts',
+		supportFile: 'support/e2e.ts',
+		fixturesFolder: 'fixtures',
 	},
 	env: {
 		MAX_PINNED_DATA_SIZE: process.env.VUE_APP_MAX_PINNED_DATA_SIZE

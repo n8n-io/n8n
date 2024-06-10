@@ -50,9 +50,6 @@ importers:
       '@n8n_io/eslint-config':
         specifier: workspace:*
         version: link:packages/@n8n_io/eslint-config
-      '@ngneat/falso':
-        specifier: ^6.4.0
-        version: 6.4.0
       '@types/jest':
         specifier: ^29.5.3
         version: 29.5.3
@@ -62,18 +59,6 @@ importers:
       '@vitest/coverage-v8':
         specifier: ^1.6.0
         version: 1.6.0(vitest@1.6.0(@types/node@18.16.16)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1))
-      cross-env:
-        specifier: ^7.0.3
-        version: 7.0.3
-      cypress:
-        specifier: ^13.6.2
-        version: 13.6.2
-      cypress-otp:
-        specifier: ^1.0.3
-        version: 1.0.3
-      cypress-real-events:
-        specifier: ^1.11.0
-        version: 1.11.0(cypress@13.6.2)
       jest:
         specifier: ^29.6.2
         version: 29.6.2(@types/node@18.16.16)
@@ -104,9 +89,6 @@ importers:
       run-script-os:
         specifier: ^1.0.7
         version: 1.1.6
-      start-server-and-test:
-        specifier: ^2.0.3
-        version: 2.0.3
       supertest:
         specifier: ^7.0.0
         version: 7.0.0
@@ -137,6 +119,27 @@ importers:
       vue-tsc:
         specifier: ^2.0.19
         version: 2.0.19(typescript@5.4.2)
+
+  cypress:
+    devDependencies:
+      '@ngneat/falso':
+        specifier: ^6.4.0
+        version: 6.4.0
+      cross-env:
+        specifier: ^7.0.3
+        version: 7.0.3
+      cypress:
+        specifier: ^13.6.2
+        version: 13.6.2
+      cypress-otp:
+        specifier: ^1.0.3
+        version: 1.0.3
+      cypress-real-events:
+        specifier: ^1.11.0
+        version: 1.11.0(cypress@13.6.2)
+      start-server-and-test:
+        specifier: ^2.0.3
+        version: 2.0.3
 
   packages/@n8n/chat:
     dependencies:
@@ -13341,6 +13344,9 @@ packages:
   vue-component-type-helpers@2.0.19:
     resolution: {integrity: sha512-cN3f1aTxxKo4lzNeQAkVopswuImUrb5Iurll9Gaw5cqpnbTAxtEMM1mgi6ou4X79OCyqYv1U1mzBHJkzmiK82w==}
 
+  vue-component-type-helpers@2.0.21:
+    resolution: {integrity: sha512-3NaicyZ7N4B6cft4bfb7dOnPbE9CjLcx+6wZWAg5zwszfO4qXRh+U52dN5r5ZZfc6iMaxKCEcoH9CmxxoFZHLg==}
+
   vue-demi@0.14.5:
     resolution: {integrity: sha512-o9NUVpl/YlsGJ7t+xuqJKx8EBGf1quRhCiT6D/J0pfwmk9zUwYkC7yrF4SZCe6fETvSM3UNL2edcbYrSyc4QHA==}
     engines: {node: '>=12'}
@@ -18969,7 +18975,7 @@ snapshots:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.4.21(typescript@5.4.2)
-      vue-component-type-helpers: 2.0.19
+      vue-component-type-helpers: 2.0.21
     transitivePeerDependencies:
       - encoding
       - prettier
@@ -21459,7 +21465,7 @@ snapshots:
       cli-table3: 0.6.3
       commander: 6.2.1
       common-tags: 1.8.2
-      dayjs: 1.11.6
+      dayjs: 1.11.10
       debug: 4.3.4(supports-color@8.1.1)
       enquirer: 2.3.6
       eventemitter2: 6.4.7
@@ -28514,6 +28520,8 @@ snapshots:
   vue-component-type-helpers@1.8.25: {}
 
   vue-component-type-helpers@2.0.19: {}
+
+  vue-component-type-helpers@2.0.21: {}
 
   vue-demi@0.14.5(vue@3.4.21(typescript@5.4.2)):
     dependencies:
