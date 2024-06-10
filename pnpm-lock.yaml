@@ -156,6 +156,9 @@ importers:
       '@types/uuid':
         specifier: ^8.3.2
         version: 8.3.4
+      eslint-plugin-cypress:
+        specifier: ^3.3.0
+        version: 3.3.0(eslint@8.57.0)
       n8n-workflow:
         specifier: workspace:*
         version: link:../packages/workflow
@@ -7905,6 +7908,11 @@ packages:
         optional: true
       eslint-import-resolver-webpack:
         optional: true
+
+  eslint-plugin-cypress@3.3.0:
+    resolution: {integrity: sha512-HPHMPzYBIshzJM8wqgKSKHG2p/8R0Gbg4Pb3tcdC9WrmkuqxiKxSKbjunUrajhV5l7gCIFrh1P7C7GuBqH6YuQ==}
+    peerDependencies:
+      eslint: '>=7'
 
   eslint-plugin-import@2.29.1:
     resolution: {integrity: sha512-BbPC0cuExzhiMo4Ff1BTVwHpjjv28C5R+btTOGaCRC7UEz801up0JadwkeSk5Ued6TG34uaczuVuH6qyy5YUxw==}
@@ -22227,6 +22235,11 @@ snapshots:
       eslint-import-resolver-typescript: 3.6.1(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.4.2))(eslint-plugin-import@2.29.1)(eslint@8.57.0)
     transitivePeerDependencies:
       - supports-color
+
+  eslint-plugin-cypress@3.3.0(eslint@8.57.0):
+    dependencies:
+      eslint: 8.57.0
+      globals: 13.20.0
 
   eslint-plugin-import@2.29.1(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.4.2))(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0):
     dependencies:
