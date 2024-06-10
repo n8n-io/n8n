@@ -7,5 +7,6 @@
 		"types": ["cypress", "node"]
 	},
 	"include": ["**/*.ts"],
-	"exclude": ["**/dist/**/*", "**/node_modules/**/*"]
+	"exclude": ["**/dist/**/*", "**/node_modules/**/*"],
+	"references": [{ "path": "../packages/workflow/tsconfig.build.json" }]
 }

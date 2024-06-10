@@ -47,9 +47,13 @@
 	--color-canvas-background-l: 18%;
 	--color-canvas-dot: var(--prim-gray-670);
 	--color-canvas-read-only-line: var(--prim-gray-800);
-	--color-canvas-node-background: var(--prim-gray-740);
-	--color-canvas-node-pinned-border: var(--prim-color-secondary-tint-100);
 	--color-canvas-selected: var(--prim-gray-0-alpha-025);
+
+	// Nodes
+	--color-node-background: var(--prim-gray-740);
+	--color-node-executing-background: var(--prim-gray-670);
+	--color-node-executing-other-background: var(--prim-gray-670);
+	--color-node-pinned-border: var(--prim-color-secondary-tint-100);
 	--node-type-main-color: var(--prim-gray-420);
 
 	// Sticky

@@ -137,7 +137,7 @@ describe('Data pinning', () => {
 
 		ndv.actions.pastePinnedData([
 			{
-				test: '1'.repeat(Cypress.env('MAX_PINNED_DATA_SIZE')),
+				test: '1'.repeat(Cypress.env('MAX_PINNED_DATA_SIZE') as number),
 			},
 		]);
 		errorToast().should('contain', 'Workflow has reached the maximum allowed pinned data size');
@@ -165,6 +165,7 @@ describe('Data pinning', () => {
 		ndv.actions.close();
 
 		workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, true, true);
+		// eslint-disable-next-line @typescript-eslint/no-use-before-define
 		setExpressionOnStringValueInSet(`{{ $('${HTTP_REQUEST_NODE_NAME}').item`);
 
 		const output = '[Object: {"json": {"http": 123}, "pairedItem": {"item": 0}}]';

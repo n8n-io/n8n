@@ -1,7 +1,4 @@
-import { WorkflowPage } from '../pages';
 import { errorToast, successToast } from '../pages/notifications';
-
-const workflowPage = new WorkflowPage();
 
 const INVALID_NAMES = [
 	'https://n8n.io',

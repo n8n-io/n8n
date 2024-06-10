@@ -1,7 +1,7 @@
 // Load type definitions that come with Cypress module
 /// <reference types="cypress" />
 
-import { Interception } from 'cypress/types/net-stubbing';
+import type { Interception } from 'cypress/types/net-stubbing';
 
 interface SigninPayload {
 	email: string;
@@ -18,7 +18,7 @@ declare global {
 			config(key: keyof SuiteConfigOverrides): boolean;
 			getByTestId(
 				selector: string,
-				...args: (Partial<Loggable & Timeoutable & Withinable & Shadow> | undefined)[]
+				...args: Array<Partial<Loggable & Timeoutable & Withinable & Shadow> | undefined>
 			): Chainable<JQuery<HTMLElement>>;
 			findChildByTestId(childTestId: string): Chainable<JQuery<HTMLElement>>;
 			createFixtureWorkflow(fixtureKey: string, workflowName: string): void;
@@ -36,7 +36,7 @@ declare global {
 			readClipboard(): Chainable<string>;
 			paste(pastePayload: string): void;
 			drag(
-				selector: string | Cypress.Chainable<JQuery<HTMLElement>>,
+				selector: string | Chainable<JQuery<HTMLElement>>,
 				target: [number, number],
 				options?: { abs?: boolean; index?: number; realMouse?: boolean; clickToFinish?: boolean },
 			): void;
@@ -45,8 +45,11 @@ declare global {
 			shouldNotHaveConsoleErrors(): void;
 			window(): Chainable<
 				AUTWindow & {
+					innerWidth: number;
+					innerHeight: number;
+					preventNodeViewBeforeUnload?: boolean;
 					featureFlags: {
-						override: (feature: string, value: any) => void;
+						override: (feature: string, value: unknown) => void;
 					};
 				}
 			>;

@@ -42,7 +42,7 @@ export function closeCredentialModal() {
 	getCredentialModalCloseButton().click();
 }
 
-export function setCredentialValues(values: Record<string, any>, save = true) {
+export function setCredentialValues(values: Record<string, string>, save = true) {
 	Object.entries(values).forEach(([key, value]) => {
 		setCredentialConnectionParameterInputByName(key, value);
 	});
