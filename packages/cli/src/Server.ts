@@ -23,10 +23,11 @@ import { Queue } from '@/Queue';
 import { WorkflowsController } from '@/workflows/workflows.controller';
 import { EDITOR_UI_DIST_DIR, inDevelopment, inE2ETests, N8N_VERSION, Time } from '@/constants';
 import { CredentialsController } from '@/credentials/credentials.controller';
-import type { APIRequest, CurlHelper } from '@/requests';
+import type { APIRequest } from '@/requests';
 import { registerController } from '@/decorators';
 import { AuthController } from '@/controllers/auth.controller';
 import { BinaryDataController } from '@/controllers/binaryData.controller';
+import { CurlController } from '@/controllers/curl.controller';
 import { DynamicNodeParametersController } from '@/controllers/dynamicNodeParameters.controller';
 import { MeController } from '@/controllers/me.controller';
 import { MFAController } from '@/controllers/mfa.controller';
@@ -46,7 +47,6 @@ import type { ICredentialsOverwrite } from '@/Interfaces';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import * as ResponseHelper from '@/ResponseHelper';
-import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { EventBusController } from '@/eventbus/eventBus.controller';
 import { EventBusControllerEE } from '@/eventbus/eventBus.controller.ee';
 import { LicenseController } from '@/license/license.controller';
@@ -70,7 +70,6 @@ import { OrchestrationController } from './controllers/orchestration.controller'
 import { WorkflowHistoryController } from './workflows/workflowHistory/workflowHistory.controller.ee';
 import { InvitationController } from './controllers/invitation.controller';
 // import { CollaborationService } from './collaboration/collaboration.service';
-import { BadRequestError } from './errors/response-errors/bad-request.error';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { ProjectController } from './controllers/project.controller';
 import { RoleController } from './controllers/role.controller';
@@ -153,6 +152,7 @@ export class Server extends AbstractServer {
 			AIController,
 			ProjectController,
 			RoleController,
+			CurlController,
 		];
 
 		if (
@@ -268,23 +268,6 @@ export class Server extends AbstractServer {
 		} catch (error) {
 			this.logger.warn(`Source Control initialization failed: ${error.message}`);
 		}
-
-		// ----------------------------------------
-		// curl-converter
-		// ----------------------------------------
-		this.app.post(
-			`/${this.restEndpoint}/curl-to-json`,
-			ResponseHelper.send(async (req: CurlHelper.ToJson) => {
-				const curlCommand = req.body.curlCommand ?? '';
-
-				try {
-					const parameters = toHttpNodeParameters(curlCommand);
-					return ResponseHelper.flattenObject(parameters, 'parameters');
-				} catch (e) {
-					throw new BadRequestError('Invalid cURL command');
-				}
-			}),
-		);
 
 		// ----------------------------------------
 		// Options

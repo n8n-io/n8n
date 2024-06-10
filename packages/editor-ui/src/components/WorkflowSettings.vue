@@ -384,7 +384,7 @@ import type { WorkflowScope } from '@n8n/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { ProjectTypes } from '@/features/projects/projects.utils';
+import { ProjectTypes } from '@/types/projects.types';
 
 export default defineComponent({
 	name: 'WorkflowSettings',

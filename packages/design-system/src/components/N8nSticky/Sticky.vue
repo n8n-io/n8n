@@ -27,6 +27,7 @@
 					:content="modelValue"
 					:with-multi-breaks="true"
 					@markdown-click="onMarkdownClick"
+					@update-content="onUpdateModelValue"
 				/>
 			</div>
 			<div

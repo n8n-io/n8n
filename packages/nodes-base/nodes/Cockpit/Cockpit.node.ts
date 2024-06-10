@@ -24,7 +24,7 @@ export class Cockpit implements INodeType {
 		displayName: 'Cockpit',
 		name: 'cockpit',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:cockpit.png',
+		icon: { light: 'file:cockpit.svg', dark: 'file:cockpit.dark.svg' },
 		group: ['output'],
 		version: 1,
 		subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',

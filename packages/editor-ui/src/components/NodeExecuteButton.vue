@@ -1,20 +1,25 @@
 <template>
 	<div>
-		<n8n-tooltip placement="bottom" :disabled="!disabledHint">
+		<n8n-tooltip placement="right" :disabled="!tooltipText">
 			<template #content>
-				<div>{{ disabledHint }}</div>
+				<div>{{ tooltipText }}</div>
 			</template>
 			<div>
 				<n8n-button
 					v-bind="$attrs"
-					:loading="nodeRunning && !isListeningForEvents && !isListeningForWorkflowEvents"
+					:loading
 					:disabled="disabled || !!disabledHint"
 					:label="buttonLabel"
 					:type="type"
 					:size="size"
 					:icon="!isListeningForEvents && !hideIcon ? 'flask' : undefined"
 					:transparent-background="transparent"
-					:title="!isTriggerNode ? $locale.baseText('ndv.execute.testNode.description') : ''"
+					:title="
+						!isTriggerNode && !tooltipText
+							? $locale.baseText('ndv.execute.testNode.description')
+							: ''
+					"
+					@mouseover="onMouseOver"
 					@click="onClick"
 				/>
 			</div>
@@ -46,6 +51,10 @@ import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useUIStore } from '@/stores/ui.store';
 import { useRouter } from 'vue-router';
 
+const NODE_TEST_STEP_POPUP_COUNT_KEY = 'N8N_NODE_TEST_STEP_POPUP_COUNT';
+const MAX_POPUP_COUNT = 10;
+const POPUP_UPDATE_DELAY = 3000;
+
 export default defineComponent({
 	inheritAttrs: false,
 	props: {
@@ -76,6 +85,9 @@ export default defineComponent({
 		hideIcon: {
 			type: Boolean,
 		},
+		tooltip: {
+			type: String,
+		},
 	},
 	emits: ['stopExecution', 'execute'],
 	setup(props) {
@@ -91,6 +103,7 @@ export default defineComponent({
 			pinnedData,
 			runWorkflow,
 			stopCurrentExecution,
+			lastPopupCountUpdate: 0,
 			...useToast(),
 			...useMessage(),
 		};
@@ -193,6 +206,12 @@ export default defineComponent({
 
 			return '';
 		},
+		tooltipText(): string {
+			if (this.disabledHint) return this.disabledHint;
+			if (this.tooltip && !this.loading && this.testStepButtonPopupCount() < MAX_POPUP_COUNT)
+				return this.tooltip;
+			return '';
+		},
 		buttonLabel(): string {
 			if (this.isListeningForEvents || this.isListeningForWorkflowEvents) {
 				return this.$locale.baseText('ndv.execute.stopListening');
@@ -220,6 +239,10 @@ export default defineComponent({
 
 			return this.$locale.baseText('ndv.execute.testNode');
 		},
+
+		loading(): boolean {
+			return this.nodeRunning && !this.isListeningForEvents && !this.isListeningForWorkflowEvents;
+		},
 	},
 	methods: {
 		async stopWaitingForWebhook() {
@@ -228,6 +251,22 @@ export default defineComponent({
 			} catch (error) {
 				this.showError(error, this.$locale.baseText('ndv.execute.stopWaitingForWebhook.error'));
 				return;
+			}
+		},
+
+		testStepButtonPopupCount() {
+			return Number(localStorage.getItem(NODE_TEST_STEP_POPUP_COUNT_KEY));
+		},
+
+		onMouseOver() {
+			const count = this.testStepButtonPopupCount();
+
+			if (count < MAX_POPUP_COUNT && !this.disabledHint && this.tooltipText) {
+				const now = Date.now();
+				if (!this.lastPopupCountUpdate || now - this.lastPopupCountUpdate >= POPUP_UPDATE_DELAY) {
+					localStorage.setItem(NODE_TEST_STEP_POPUP_COUNT_KEY, `${count + 1}`);
+					this.lastPopupCountUpdate = now;
+				}
 			}
 		},
 

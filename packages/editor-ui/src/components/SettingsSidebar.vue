@@ -31,7 +31,7 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
-import { hasPermission } from '@/rbac/permissions';
+import { hasPermission } from '@/utils/rbac/permissions';
 
 export default defineComponent({
 	name: 'SettingsSidebar',

@@ -99,9 +99,9 @@ export class Start extends BaseCommand {
 
 			await this.externalHooks?.run('n8n.stop', []);
 
-			if (Container.get(OrchestrationService).isMultiMainSetupEnabled) {
-				await this.activeWorkflowManager.removeAllTriggerAndPollerBasedWorkflows();
+			await this.activeWorkflowManager.removeAllTriggerAndPollerBasedWorkflows();
 
+			if (Container.get(OrchestrationService).isMultiMainSetupEnabled) {
 				await Container.get(OrchestrationService).shutdown();
 			}
 
@@ -179,6 +179,8 @@ export class Start extends BaseCommand {
 
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
+		Container.get(WaitTracker).init();
+		this.logger.debug('Wait tracker init complete');
 		await this.initBinaryDataService();
 		this.logger.debug('Binary data service init complete');
 		await this.initExternalHooks();

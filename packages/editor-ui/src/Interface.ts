@@ -55,7 +55,7 @@ import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 import type { Component } from 'vue';
 import type { Scope } from '@n8n/permissions';
 import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
-import type { ProjectSharingData } from '@/features/projects/projects.types';
+import type { ProjectSharingData } from '@/types/projects.types';
 import type { Connection } from '@jsplumb/core';
 import type { BaseTextKey } from './plugins/i18n';
 
@@ -381,6 +381,7 @@ export interface IExecutionBase {
 	id?: string;
 	finished: boolean;
 	mode: WorkflowExecuteMode;
+	status: ExecutionStatus;
 	retryOf?: string;
 	retrySuccessId?: string;
 	startedAt: Date;
@@ -404,7 +405,6 @@ export interface IExecutionPushResponse {
 
 export interface IExecutionResponse extends IExecutionBase {
 	id: string;
-	status: string;
 	data?: IRunExecutionData;
 	workflowData: IWorkflowDb;
 	executedNode?: string;
@@ -930,6 +930,7 @@ export type SimplifiedNodeType = Pick<
 	| 'group'
 	| 'icon'
 	| 'iconUrl'
+	| 'iconColor'
 	| 'badgeIconUrl'
 	| 'codex'
 	| 'defaults'
@@ -1661,13 +1662,9 @@ export declare namespace DynamicNodeParameters {
 }
 
 export interface EnvironmentVariable {
-	id: number;
+	id: string;
 	key: string;
 	value: string;
-}
-
-export interface TemporaryEnvironmentVariable extends Omit<EnvironmentVariable, 'id'> {
-	id: string;
 }
 
 export type ExecutionFilterMetadata = {
