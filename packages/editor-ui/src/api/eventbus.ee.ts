@@ -47,7 +47,3 @@ export async function getDestinationsFromBackend(
 ): Promise<MessageEventBusDestinationOptions[]> {
 	return await makeRestApiRequest(context, 'GET', '/eventbus/destination');
 }
-
-export async function getExecutionEvents(context: IRestApiContext, executionId: string) {
-	return await makeRestApiRequest(context, 'GET', `/eventbus/execution/${executionId}`);
-}
