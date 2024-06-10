@@ -322,6 +322,7 @@ import type {
 	IPushDataExecutionFinished,
 	AIAssistantConnectionInfo,
 	NodeFilterType,
+	GetExecutionResponse,
 } from '@/Interface';
 
 import { type RouteLocation, useRouter } from 'vue-router';
@@ -690,7 +691,7 @@ export default defineComponent({
 
 			return returnClasses;
 		},
-		workflowExecution(): IExecutionResponse | null {
+		workflowExecution(): GetExecutionResponse | null {
 			return this.workflowsStore.getWorkflowExecution;
 		},
 		workflowRunning(): boolean {
@@ -1302,7 +1303,7 @@ export default defineComponent({
 		async openExecution(executionId: string) {
 			this.canvasStore.startLoading();
 			this.resetWorkspace();
-			let data: IExecutionResponse | undefined;
+			let data: GetExecutionResponse | undefined;
 			try {
 				data = await this.workflowsStore.getExecution(executionId);
 			} catch (error) {

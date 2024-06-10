@@ -163,14 +163,16 @@ export default defineComponent({
 					? this.credentialData.sharedWithProjects
 					: []
 			).some((sharee) => {
-				return sharee.id === this.usersStore.currentUser?.id;
+				return typeof sharee === 'object' && 'id' in sharee
+					? sharee.id === this.usersStore.currentUser?.id
+					: false;
 			});
 		},
 		projects(): ProjectListItem[] {
 			return this.projectsStore.personalProjects.filter(
 				(project) =>
 					project.id !== this.credential?.homeProject?.id &&
-					project.id !== (this.credentialData?.homeProject as IDataObject)?.id,
+					project.id !== (this.credentialData?.homeProject as ProjectSharingData)?.id,
 			);
 		},
 		homeProject(): ProjectSharingData | undefined {

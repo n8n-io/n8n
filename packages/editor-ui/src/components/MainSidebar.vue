@@ -106,7 +106,13 @@
 </template>
 
 <script lang="ts">
-import type { CloudPlanAndUsageData, IExecutionResponse, IMenuItem, IVersion } from '@/Interface';
+import type {
+	CloudPlanAndUsageData,
+	GetExecutionResponse,
+	IExecutionResponse,
+	IMenuItem,
+	IVersion,
+} from '@/Interface';
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
 
 import { useMessage } from '@/composables/useMessage';
@@ -193,7 +199,7 @@ export default defineComponent({
 		showUserArea(): boolean {
 			return hasPermission(['authenticated']);
 		},
-		workflowExecution(): IExecutionResponse | null {
+		workflowExecution(): IExecutionResponse | GetExecutionResponse | null {
 			return this.workflowsStore.getWorkflowExecution;
 		},
 		userMenuItems(): object[] {

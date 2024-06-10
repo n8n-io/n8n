@@ -102,7 +102,7 @@
 
 <script lang="ts">
 import { type PropType, defineComponent } from 'vue';
-import type { IExecutionResponse, INodeUi } from '@/Interface';
+import type { GetExecutionResponse, IExecutionResponse, INodeUi } from '@/Interface';
 import type {
 	INodeTypeDescription,
 	IRunData,
@@ -232,7 +232,7 @@ export default defineComponent({
 		workflowRunning(): boolean {
 			return this.uiStore.isActionActive('workflowRunning');
 		},
-		workflowExecution(): IExecutionResponse | null {
+		workflowExecution(): IExecutionResponse | GetExecutionResponse | null {
 			return this.workflowsStore.getWorkflowExecution;
 		},
 		workflowRunData(): IRunData | null {

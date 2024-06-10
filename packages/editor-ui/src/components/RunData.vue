@@ -590,6 +590,7 @@ import type {
 import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 
 import type {
+	GetExecutionResponse,
 	IExecutionResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
@@ -876,7 +877,7 @@ export default defineComponent({
 
 			return [];
 		},
-		workflowExecution(): IExecutionResponse | null {
+		workflowExecution(): IExecutionResponse | GetExecutionResponse | null {
 			return this.workflowsStore.getWorkflowExecution;
 		},
 		workflowRunData(): IRunData | null {

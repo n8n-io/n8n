@@ -400,18 +400,7 @@ export interface IExecutionResponse extends IExecutionBase {
 	executedNode?: string;
 }
 
-export interface IExecutionShortResponse {
-	id: string;
-	workflowData: {
-		id: string;
-		name: string;
-	};
-	mode: WorkflowExecuteMode;
-	finished: boolean;
-	startedAt: Date;
-	stoppedAt: Date;
-	executionTime?: number;
-}
+export type GetExecutionResponse = Omit<IExecutionResponse, 'status'>;
 
 export interface IExecutionsListResponse {
 	count: number;

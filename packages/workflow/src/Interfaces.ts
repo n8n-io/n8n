@@ -340,7 +340,13 @@ export interface ICredentialData {
 }
 
 // The encrypted credentials which the nodes can access
-export type CredentialInformation = string | number | boolean | IDataObject | IDataObject[];
+export type CredentialInformation =
+	| string
+	| string[]
+	| number
+	| boolean
+	| IDataObject
+	| IDataObject[];
 
 // The encrypted credentials which the nodes can access
 export interface ICredentialDataDecryptedObject {
@@ -1571,7 +1577,7 @@ export interface INodeTypeBaseDescription {
 	icon?: Themed<Icon>;
 	iconColor?: NodeIconColor;
 	iconUrl?: Themed<string>;
-	badgeIconUrl?: string;
+	badgeIconUrl?: Themed<string>;
 	group: string[];
 	description: string;
 	documentationUrl?: string;

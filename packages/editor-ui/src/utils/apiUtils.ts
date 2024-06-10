@@ -1,7 +1,12 @@
 import type { AxiosRequestConfig, Method, RawAxiosRequestHeaders } from 'axios';
 import axios from 'axios';
 import type { GenericValue, IDataObject } from 'n8n-workflow';
-import type { IExecutionFlattedResponse, IExecutionResponse, IRestApiContext } from '@/Interface';
+import type {
+	GetExecutionResponse,
+	IExecutionFlattedResponse,
+	IExecutionResponse,
+	IRestApiContext,
+} from '@/Interface';
 import { parse } from 'flatted';
 
 const BROWSER_ID_STORAGE_KEY = 'n8n-browserId';
@@ -177,11 +182,10 @@ export async function patch(
  */
 export function unflattenExecutionData(
 	fullExecutionData: IExecutionFlattedResponse,
-): IExecutionResponse {
+): GetExecutionResponse {
 	// Unflatten the data
-	const returnData: IExecutionResponse = {
+	const returnData: Omit<IExecutionResponse, 'status'> = {
 		...fullExecutionData,
-		status: 'unknown',
 		workflowData: fullExecutionData.workflowData,
 		data: parse(fullExecutionData.data),
 	};

@@ -26,7 +26,7 @@ export const t = function (
 
 	// only support flat keys
 	if (lang[path] !== undefined) {
-		return format(lang[path], options);
+		return format(lang[path], ...(options ? [options] : []));
 	}
 
 	return '';
