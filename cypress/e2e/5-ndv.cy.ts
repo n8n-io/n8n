@@ -5,6 +5,7 @@ import { NDV, WorkflowPage } from '../pages';
 import { NodeCreator } from '../pages/features/node-creator';
 import { clickCreateNewCredential } from '../composables/ndv';
 import { setCredentialValues } from '../composables/modals/credential-modal';
+import { successToast } from '../pages/notifications';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -734,7 +735,7 @@ describe('NDV', () => {
 		ndv.getters.triggerPanelExecuteButton().realClick();
 		cy.wait('@workflowRun').then(() => {
 			ndv.getters.triggerPanelExecuteButton().should('contain', 'Test step');
-			workflowPage.getters.successToast().should('exist');
+			successToast().should('exist');
 		});
 	});
 

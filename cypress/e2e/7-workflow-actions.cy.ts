@@ -12,6 +12,7 @@ import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { WorkflowsPage as WorkflowsPageClass } from '../pages/workflows';
 import { getVisibleSelect } from '../utils';
 import { WorkflowExecutionsTab } from '../pages';
+import { errorToast, successToast } from '../pages/notifications';
 
 const NEW_WORKFLOW_NAME = 'Something else';
 const DUPLICATE_WORKFLOW_NAME = 'Duplicated workflow';
@@ -58,19 +59,19 @@ describe('Workflow Actions', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME);
 		WorkflowPage.actions.saveWorkflowOnButtonClick();
-		WorkflowPage.getters.successToast().should('exist');
+		successToast().should('exist');
 		WorkflowPage.actions.clickWorkflowActivator();
-		WorkflowPage.getters.errorToast().should('exist');
+		errorToast().should('exist');
 	});
 
 	it('should be be able to activate workflow when nodes with errors are disabled', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME);
 		WorkflowPage.actions.saveWorkflowOnButtonClick();
-		WorkflowPage.getters.successToast().should('exist');
+		successToast().should('exist');
 		// First, try to activate the workflow with errors
 		WorkflowPage.actions.clickWorkflowActivator();
-		WorkflowPage.getters.errorToast().should('exist');
+		errorToast().should('exist');
 		// Now, disable the node with errors
 		WorkflowPage.getters.canvasNodes().last().click();
 		WorkflowPage.actions.hitDisableNodeShortcut();
@@ -160,7 +161,7 @@ describe('Workflow Actions', () => {
 		cy.get('body').type(META_KEY, { delay: 500, release: false }).type('a');
 		cy.get('.jtk-drag-selected').should('have.length', 2);
 		cy.get('body').type(META_KEY, { delay: 500, release: false }).type('c');
-		WorkflowPage.getters.successToast().should('exist');
+		successToast().should('exist');
 	});
 
 	it('should paste nodes (both current and old node versions)', () => {
@@ -225,7 +226,7 @@ describe('Workflow Actions', () => {
 				// Save settings
 				WorkflowPage.getters.workflowSettingsSaveButton().click();
 				WorkflowPage.getters.workflowSettingsModal().should('not.exist');
-				WorkflowPage.getters.successToast().should('exist');
+				successToast().should('exist');
 			});
 		}).as('loadWorkflows');
 	});
@@ -243,7 +244,7 @@ describe('Workflow Actions', () => {
 		WorkflowPage.getters.workflowMenuItemDelete().click();
 		cy.get('div[role=dialog][aria-modal=true]').should('be.visible');
 		cy.get('button.btn--confirm').should('be.visible').click();
-		WorkflowPage.getters.successToast().should('exist');
+		successToast().should('exist');
 		cy.url().should('include', WorkflowPages.url);
 	});
 
@@ -272,7 +273,7 @@ describe('Workflow Actions', () => {
 				.contains('Duplicate')
 				.should('be.visible');
 			WorkflowPage.getters.duplicateWorkflowModal().find('button').contains('Duplicate').click();
-			WorkflowPage.getters.errorToast().should('not.exist');
+			errorToast().should('not.exist');
 		}
 
 		beforeEach(() => {
@@ -317,14 +318,14 @@ describe('Workflow Actions', () => {
 		WorkflowPage.actions.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.saveWorkflowOnButtonClick();
 		WorkflowPage.getters.executeWorkflowButton().click();
-		WorkflowPage.getters.successToast().should('contain.text', 'Workflow executed successfully');
+		successToast().should('contain.text', 'Workflow executed successfully');
 	});
 
 	it('should run workflow using keyboard shortcut', () => {
 		WorkflowPage.actions.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.saveWorkflowOnButtonClick();
 		cy.get('body').type(META_KEY, { delay: 500, release: false }).type('{enter}');
-		WorkflowPage.getters.successToast().should('contain.text', 'Workflow executed successfully');
+		successToast().should('contain.text', 'Workflow executed successfully');
 	});
 
 	it('should not run empty workflows', () => {
@@ -336,9 +337,8 @@ describe('Workflow Actions', () => {
 		WorkflowPage.getters.executeWorkflowButton().should('be.disabled');
 		// Keyboard shortcut should not work
 		cy.get('body').type(META_KEY, { delay: 500, release: false }).type('{enter}');
-		WorkflowPage.getters.successToast().should('not.exist');
+		successToast().should('not.exist');
 	});
-
 });
 
 describe('Menu entry Push To Git', () => {

@@ -48,11 +48,6 @@ export class WorkflowPage extends BasePage {
 		canvasNodePlusEndpointByName: (nodeName: string, index = 0) => {
 			return cy.get(this.getters.getEndpointSelector('plus', nodeName, index));
 		},
-		successToast: () => cy.get('.el-notification:has(.el-notification--success)'),
-		warningToast: () => cy.get('.el-notification:has(.el-notification--warning)'),
-		errorToast: (options?: CyGetOptions) =>
-			cy.get('.el-notification:has(.el-notification--error)', options),
-		infoToast: () => cy.get('.el-notification:has(.el-notification--info)'),
 		activatorSwitch: () => cy.getByTestId('workflow-activate-switch'),
 		workflowMenu: () => cy.getByTestId('workflow-menu'),
 		firstStepButton: () => cy.getByTestId('canvas-add-button'),
@@ -442,9 +437,6 @@ export class WorkflowPage extends BasePage {
 				left: +$el[0].style.left.replace('px', ''),
 				top: +$el[0].style.top.replace('px', ''),
 			}));
-		},
-		clearNotifications: () => {
-			this.getters.successToast().find('.el-notification__closeBtn').click({ multiple: true });
 		},
 	};
 }

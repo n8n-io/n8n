@@ -2,6 +2,7 @@ import { INSTANCE_MEMBERS, INSTANCE_OWNER, INSTANCE_ADMIN } from '../constants';
 import { MainSidebar, SettingsSidebar, SettingsUsersPage, WorkflowPage } from '../pages';
 import { PersonalSettingsPage } from '../pages/settings-personal';
 import { getVisibleSelect } from '../utils';
+import { errorToast, successToast } from '../pages/notifications';
 
 /**
  * User A - Instance owner
@@ -174,7 +175,7 @@ describe('User Management', { disableAutoLogin: true }, () => {
 		usersSettingsPage.getters.deleteDataRadioButton().click();
 		usersSettingsPage.getters.deleteDataInput().type('delete all data');
 		usersSettingsPage.getters.deleteUserButton().click();
-		workflowPage.getters.successToast().should('contain', 'User deleted');
+		successToast().should('contain', 'User deleted');
 	});
 
 	it('should delete user and transfer their data', () => {
@@ -184,7 +185,7 @@ describe('User Management', { disableAutoLogin: true }, () => {
 		usersSettingsPage.getters.userSelectDropDown().click();
 		usersSettingsPage.getters.userSelectOptions().first().click();
 		usersSettingsPage.getters.deleteUserButton().click();
-		workflowPage.getters.successToast().should('contain', 'User deleted');
+		successToast().should('contain', 'User deleted');
 	});
 
 	it(`should allow user to change their personal data`, () => {
@@ -196,7 +197,7 @@ describe('User Management', { disableAutoLogin: true }, () => {
 		personalSettingsPage.getters
 			.currentUserName()
 			.should('contain', `${updatedPersonalData.newFirstName} ${updatedPersonalData.newLastName}`);
-		workflowPage.getters.successToast().should('contain', 'Personal details updated');
+		successToast().should('contain', 'Personal details updated');
 	});
 
 	it(`shouldn't allow user to set weak password`, () => {
@@ -211,10 +212,7 @@ describe('User Management', { disableAutoLogin: true }, () => {
 		personalSettingsPage.actions.loginAndVisit(INSTANCE_OWNER.email, INSTANCE_OWNER.password);
 		personalSettingsPage.getters.changePasswordLink().click();
 		personalSettingsPage.actions.updatePassword('iCannotRemember', updatedPersonalData.newPassword);
-		workflowPage.getters
-			.errorToast()
-			.closest('div')
-			.should('contain', 'Provided current password is incorrect.');
+		errorToast().closest('div').should('contain', 'Provided current password is incorrect.');
 	});
 
 	it(`should change current user password`, () => {
@@ -224,7 +222,7 @@ describe('User Management', { disableAutoLogin: true }, () => {
 			INSTANCE_OWNER.password,
 			updatedPersonalData.newPassword,
 		);
-		workflowPage.getters.successToast().should('contain', 'Password updated');
+		successToast().should('contain', 'Password updated');
 		personalSettingsPage.actions.loginWithNewData(
 			INSTANCE_OWNER.email,
 			updatedPersonalData.newPassword,
@@ -248,7 +246,7 @@ describe('User Management', { disableAutoLogin: true }, () => {
 			updatedPersonalData.newPassword,
 		);
 		personalSettingsPage.actions.updateEmail(updatedPersonalData.newEmail);
-		workflowPage.getters.successToast().should('contain', 'Personal details updated');
+		successToast().should('contain', 'Personal details updated');
 		personalSettingsPage.actions.loginWithNewData(
 			updatedPersonalData.newEmail,
 			updatedPersonalData.newPassword,

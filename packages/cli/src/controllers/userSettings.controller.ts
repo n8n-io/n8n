@@ -1,7 +1,8 @@
 import { Patch, RestController } from '@/decorators';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NpsSurveyRequest } from '@/requests';
 import { UserService } from '@/services/user.service';
-import { ApplicationError, type NpsSurveyState } from 'n8n-workflow';
+import type { NpsSurveyState } from 'n8n-workflow';
 
 function getNpsSurveyState(state: unknown): NpsSurveyState | undefined {
 	if (typeof state !== 'object' || state === null) {
@@ -41,7 +42,7 @@ export class UserSettingsController {
 	async updateNpsSurvey(req: NpsSurveyRequest.NpsSurveyUpdate): Promise<void> {
 		const state = getNpsSurveyState(req.body);
 		if (!state) {
-			throw new ApplicationError('Invalid nps survey state structure');
+			throw new BadRequestError('Invalid nps survey state structure');
 		}
 
 		await this.userService.updateSettings(req.user.id, {

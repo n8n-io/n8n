@@ -6,6 +6,7 @@ import {
 	BACKEND_BASE_URL,
 } from '../constants';
 import { WorkflowPage, NDV } from '../pages';
+import { errorToast } from '../pages/notifications';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -139,9 +140,7 @@ describe('Data pinning', () => {
 				test: '1'.repeat(Cypress.env('MAX_PINNED_DATA_SIZE')),
 			},
 		]);
-		workflowPage.getters
-			.errorToast()
-			.should('contain', 'Workflow has reached the maximum allowed pinned data size');
+		errorToast().should('contain', 'Workflow has reached the maximum allowed pinned data size');
 	});
 
 	it('Should show an error when pin data JSON in invalid', () => {
@@ -151,10 +150,8 @@ describe('Data pinning', () => {
 		ndv.getters.pinDataButton().should('not.exist');
 		ndv.getters.editPinnedDataButton().should('be.visible');
 
-		ndv.actions.setPinnedData('[ { "name": "First item", "code": 2dsa }]')
-		workflowPage.getters
-			.errorToast()
-			.should('contain', 'Unable to save due to invalid JSON');
+		ndv.actions.setPinnedData('[ { "name": "First item", "code": 2dsa }]');
+		errorToast().should('contain', 'Unable to save due to invalid JSON');
 	});
 
 	it('Should be able to reference paired items in a node located before pinned data', () => {

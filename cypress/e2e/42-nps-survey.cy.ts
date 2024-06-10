@@ -1,3 +1,4 @@
+import { clearNotifications } from '../pages/notifications';
 import {
 	getNpsSurvey,
 	getNpsSurveyClose,
@@ -77,7 +78,7 @@ describe('NpsSurvey', () => {
 		// can ignore survey and it won't show up again
 		workflowPage.actions.visit(true, NOW);
 		workflowPage.actions.saveWorkflowOnButtonClick();
-		workflowPage.actions.clearNotifications();
+		clearNotifications();
 
 		getNpsSurvey().should('be.visible');
 		getNpsSurveyClose().click();
@@ -90,7 +91,7 @@ describe('NpsSurvey', () => {
 		// shows up seven days later to ignore again
 		workflowPage.actions.visit(true, NOW + SEVEN_DAYS + 10000);
 		workflowPage.actions.saveWorkflowOnButtonClick();
-		workflowPage.actions.clearNotifications();
+		clearNotifications();
 		getNpsSurvey().should('be.visible');
 		getNpsSurveyClose().click();
 		getNpsSurvey().should('not.be.visible');
@@ -102,7 +103,7 @@ describe('NpsSurvey', () => {
 		// shows up seven days later to ignore again
 		workflowPage.actions.visit(true, NOW + SEVEN_DAYS * 2 + 10000 * 2);
 		workflowPage.actions.saveWorkflowOnButtonClick();
-		workflowPage.actions.clearNotifications();
+		clearNotifications();
 		getNpsSurvey().should('be.visible');
 		getNpsSurveyClose().click();
 		getNpsSurvey().should('not.be.visible');
