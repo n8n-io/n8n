@@ -34,7 +34,7 @@ describe('Template credentials setup', () => {
 		});
 		cy.intercept('GET', '**/rest/settings', (req) => {
 			// Disable cache
-			delete req.headers['if-none-match']
+			delete req.headers['if-none-match'];
 			req.reply((res) => {
 				if (res.body.data) {
 					// Disable custom templates host if it has been overridden by another intercept
@@ -117,6 +117,7 @@ describe('Template credentials setup', () => {
 			const workflow = JSON.parse(workflowJSON);
 
 			expect(workflow.meta).to.haveOwnProperty('templateId', testTemplate.id.toString());
+			expect(workflow.meta).not.to.haveOwnProperty('templateCredsSetupCompleted');
 			workflow.nodes.forEach((node: any) => {
 				expect(Object.keys(node.credentials ?? {})).to.have.lengthOf(1);
 			});
