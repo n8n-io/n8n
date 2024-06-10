@@ -1572,8 +1572,9 @@ export default defineComponent({
 			if (e.key === 's' && ctrlModifier && !readOnly) {
 				e.stopPropagation();
 				e.preventDefault();
+				const workflowIsSaved = !this.uiStore.stateIsDirty;
 
-				if (this.isReadOnlyRoute || this.readOnlyEnv) {
+				if (this.isReadOnlyRoute || this.readOnlyEnv || workflowIsSaved) {
 					return;
 				}
 

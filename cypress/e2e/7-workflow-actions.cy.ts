@@ -36,6 +36,20 @@ describe('Workflow Actions', () => {
 		WorkflowPage.getters.isWorkflowSaved();
 	});
 
+	it('should not save already saved workflow', () => {
+		cy.intercept('PATCH', '/rest/workflows/*').as('saveWorkflow');
+		WorkflowPage.actions.saveWorkflowOnButtonClick();
+		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.saveWorkflowOnButtonClick();
+		cy.wait('@saveWorkflow');
+		WorkflowPage.getters.isWorkflowSaved();
+		// Try to save a few times
+		WorkflowPage.actions.saveWorkflowUsingKeyboardShortcut();
+		WorkflowPage.actions.saveWorkflowUsingKeyboardShortcut();
+		// Should be saved only once
+		cy.get('@saveWorkflow.all').should('have.length', 1);
+	});
+
 	it('should not be able to activate unsaved workflow', () => {
 		WorkflowPage.getters.activatorSwitch().find('input').first().should('be.disabled');
 	});
