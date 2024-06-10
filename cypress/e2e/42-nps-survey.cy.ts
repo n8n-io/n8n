@@ -29,8 +29,8 @@ describe('NpsSurvey', () => {
 					res.body.data.telemetry = {
 						enabled: true,
 						config: {
-							key: '1zPn9bgWPzlQc0p8Gj1uiK6DOTn',
-							url: 'https://telemetry.n8n.io',
+							key: 'test',
+							url: 'https://telemetry-test.n8n.io',
 						},
 					};
 				}
@@ -75,8 +75,8 @@ describe('NpsSurvey', () => {
 					res.body.data.telemetry = {
 						enabled: true,
 						config: {
-							key: '1zPn9bgWPzlQc0p8Gj1uiK6DOTn',
-							url: 'https://telemetry.n8n.io',
+							key: 'test',
+							url: 'https://telemetry-test.n8n.io',
 						},
 					};
 				}
