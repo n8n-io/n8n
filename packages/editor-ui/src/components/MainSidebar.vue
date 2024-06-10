@@ -209,10 +209,8 @@ export default defineComponent({
 			];
 		},
 		mainMenuItems(): IMenuItem[] {
-			const items: IMenuItem[] = [];
-
 			const defaultSettingsRoute = this.findFirstAccessibleSettingsRoute();
-			const regularItems: IMenuItem[] = [
+			const items: IMenuItem[] = [
 				{
 					id: 'cloud-admin',
 					position: 'bottom',
@@ -318,7 +316,7 @@ export default defineComponent({
 					],
 				},
 			];
-			return [...items, ...regularItems];
+			return items;
 		},
 		userIsTrialing(): boolean {
 			return this.cloudPlanStore.userIsTrialing;
@@ -342,12 +340,7 @@ export default defineComponent({
 		}
 
 		void this.$nextTick(() => {
-			if (window.innerWidth < 900 || this.uiStore.isNodeView) {
-				this.uiStore.sidebarMenuCollapsed = true;
-			} else {
-				this.uiStore.sidebarMenuCollapsed = false;
-			}
-
+			this.uiStore.sidebarMenuCollapsed = window.innerWidth < 900;
 			this.fullyExpanded = !this.isCollapsed;
 		});
 
@@ -577,6 +570,12 @@ export default defineComponent({
 
 @media screen and (max-height: 470px) {
 	:global(#help) {
+		display: none;
+	}
+}
+
+@media screen and (max-height: 800px) {
+	:global(.n8n-menu-item:has(#settings)) {
 		display: none;
 	}
 }
