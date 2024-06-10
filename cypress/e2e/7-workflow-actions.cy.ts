@@ -36,6 +36,20 @@ describe('Workflow Actions', () => {
 		WorkflowPage.getters.isWorkflowSaved();
 	});
 
+	it('should not save already saved workflow', () => {
+		cy.intercept('PATCH', '/rest/workflows/*').as('saveWorkflow');
+		WorkflowPage.actions.saveWorkflowOnButtonClick();
+		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.saveWorkflowOnButtonClick();
+		cy.wait('@saveWorkflow');
+		WorkflowPage.getters.isWorkflowSaved();
+		// Try to save a few times
+		WorkflowPage.actions.saveWorkflowUsingKeyboardShortcut();
+		WorkflowPage.actions.saveWorkflowUsingKeyboardShortcut();
+		// Should be saved only once
+		cy.get('@saveWorkflow.all').should('have.length', 1);
+	});
+
 	it('should not be able to activate unsaved workflow', () => {
 		WorkflowPage.getters.activatorSwitch().find('input').first().should('be.disabled');
 	});
@@ -311,6 +325,32 @@ describe('Workflow Actions', () => {
 
 		WorkflowPage.getters.canvasNodePlusEndpointByName(EDIT_FIELDS_SET_NODE_NAME).click();
 		WorkflowPage.getters.nodeCreatorSearchBar().should('be.visible');
+	});
+
+	it('should run workflow on button click', () => {
+		WorkflowPage.actions.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.saveWorkflowOnButtonClick();
+		WorkflowPage.getters.executeWorkflowButton().click();
+		WorkflowPage.getters.successToast().should('contain.text', 'Workflow executed successfully');
+	});
+
+	it('should run workflow using keyboard shortcut', () => {
+		WorkflowPage.actions.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.saveWorkflowOnButtonClick();
+		cy.get('body').type(META_KEY, { delay: 500, release: false }).type('{enter}');
+		WorkflowPage.getters.successToast().should('contain.text', 'Workflow executed successfully');
+	});
+
+	it('should not run empty workflows', () => {
+		// Clear the canvas
+		cy.get('body').type(META_KEY, { delay: 500, release: false }).type('a');
+		cy.get('body').type('{backspace}');
+		WorkflowPage.getters.canvasNodes().should('have.length', 0);
+		// Button should be disabled
+		WorkflowPage.getters.executeWorkflowButton().should('be.disabled');
+		// Keyboard shortcut should not work
+		cy.get('body').type(META_KEY, { delay: 500, release: false }).type('{enter}');
+		WorkflowPage.getters.successToast().should('not.exist');
 	});
 });
 

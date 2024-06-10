@@ -55,7 +55,7 @@ import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 import type { Component } from 'vue';
 import type { Scope } from '@n8n/permissions';
 import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
-import type { ProjectSharingData } from '@/features/projects/projects.types';
+import type { ProjectSharingData } from '@/types/projects.types';
 import type { Connection } from '@jsplumb/core';
 import type { BaseTextKey } from './plugins/i18n';
 
@@ -132,16 +132,6 @@ export type EndpointStyle = {
 	showOutputLabel?: boolean;
 	size?: string;
 	hoverMessage?: string;
-};
-
-export type EndpointMeta = {
-	__meta?: {
-		nodeName: string;
-		nodeId: string;
-		index: number;
-		totalEndpoints: number;
-		endpointLabelLength: number;
-	};
 };
 
 export interface IUpdateInformation<T extends NodeParameterValueType = NodeParameterValueType> {
@@ -260,7 +250,7 @@ export interface IWorkflowDataUpdate {
 }
 
 export interface IWorkflowToShare extends IWorkflowDataUpdate {
-	meta?: WorkflowMetadata;
+	meta: WorkflowMetadata;
 }
 
 export interface NewWorkflowResponse {
@@ -381,6 +371,7 @@ export interface IExecutionBase {
 	id?: string;
 	finished: boolean;
 	mode: WorkflowExecuteMode;
+	status: ExecutionStatus;
 	retryOf?: string;
 	retrySuccessId?: string;
 	startedAt: Date;
@@ -404,23 +395,9 @@ export interface IExecutionPushResponse {
 
 export interface IExecutionResponse extends IExecutionBase {
 	id: string;
-	status: string;
 	data?: IRunExecutionData;
 	workflowData: IWorkflowDb;
 	executedNode?: string;
-}
-
-export interface IExecutionShortResponse {
-	id: string;
-	workflowData: {
-		id: string;
-		name: string;
-	};
-	mode: WorkflowExecuteMode;
-	finished: boolean;
-	startedAt: Date;
-	stoppedAt: Date;
-	executionTime?: number;
 }
 
 export interface IExecutionsListResponse {
@@ -432,6 +409,7 @@ export interface IExecutionsListResponse {
 export interface IExecutionsCurrentSummaryExtended {
 	id: string;
 	finished?: boolean;
+	status: ExecutionStatus;
 	mode: WorkflowExecuteMode;
 	retryOf?: string | null;
 	retrySuccessId?: string | null;
@@ -930,6 +908,7 @@ export type SimplifiedNodeType = Pick<
 	| 'group'
 	| 'icon'
 	| 'iconUrl'
+	| 'iconColor'
 	| 'badgeIconUrl'
 	| 'codex'
 	| 'defaults'

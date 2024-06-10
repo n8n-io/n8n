@@ -240,7 +240,7 @@ const validationError = computed<string | null>(() => {
 
 	if (error) {
 		if ('messageKey' in error) {
-			return t(error.messageKey, error.options as object);
+			return t(error.messageKey, error.options);
 		} else if ('message' in error) {
 			return error.message;
 		}

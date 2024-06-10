@@ -64,7 +64,7 @@ describe('Import workflow', () => {
 			workflowPage.getters.workflowMenuItemImportFromFile().click();
 			workflowPage.getters
 				.workflowImportInput()
-				.selectFile('cypress/fixtures/Test_workflow-actions_paste-data.json', { force: true });
+				.selectFile('fixtures/Test_workflow-actions_paste-data.json', { force: true });
 			cy.waitForLoad(false);
 			workflowPage.actions.zoomToFit();
 			workflowPage.getters.canvasNodes().should('have.length', 5);

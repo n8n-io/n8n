@@ -35,8 +35,8 @@ import { useRootStore } from './n8nRoot.store';
 import { useNodeTypesStore } from './nodeTypes.store';
 import { useSettingsStore } from './settings.store';
 import { isEmpty } from '@/utils/typesUtils';
-import type { ProjectSharingData } from '@/features/projects/projects.types';
-import { splitName } from '@/features/projects/projects.utils';
+import type { ProjectSharingData } from '@/types/projects.types';
+import { splitName } from '@/utils/projects.utils';
 
 const DEFAULT_CREDENTIAL_NAME = 'Unnamed credential';
 const DEFAULT_CREDENTIAL_POSTFIX = 'account';
@@ -235,9 +235,6 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 					},
 				};
 			}
-		},
-		enableOAuthCredential(credential: ICredentialsResponse): void {
-			// enable oauth event to track change between modals
 		},
 		async fetchCredentialTypes(forceFetch: boolean): Promise<void> {
 			if (this.allCredentialTypes.length > 0 && !forceFetch) {

@@ -175,11 +175,9 @@ export async function patch(
  *
  * @param {IExecutionFlattedResponse} fullExecutionData The data to unflatten
  */
-export function unflattenExecutionData(
-	fullExecutionData: IExecutionFlattedResponse,
-): Omit<IExecutionResponse, 'status'> {
+export function unflattenExecutionData(fullExecutionData: IExecutionFlattedResponse) {
 	// Unflatten the data
-	const returnData: Omit<IExecutionResponse, 'status'> = {
+	const returnData: IExecutionResponse = {
 		...fullExecutionData,
 		workflowData: fullExecutionData.workflowData,
 		data: parse(fullExecutionData.data),

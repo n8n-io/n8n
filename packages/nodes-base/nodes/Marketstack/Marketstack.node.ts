@@ -30,7 +30,7 @@ export class Marketstack implements INodeType {
 		displayName: 'Marketstack',
 		name: 'marketstack',
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		icon: 'file:marketstack.svg',
+		icon: { light: 'file:marketstack.svg', dark: 'file:marketstack.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		description: 'Consume Marketstack API',

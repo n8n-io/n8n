@@ -6,7 +6,6 @@ export type Resource =
 	| 'credential'
 	| 'externalSecretsProvider'
 	| 'externalSecret'
-	| 'eventBusEvent'
 	| 'eventBusDestination'
 	| 'ldap'
 	| 'license'
@@ -45,7 +44,6 @@ export type EventBusDestinationScope = ResourceScope<
 	'eventBusDestination',
 	DefaultOperations | 'test'
 >;
-export type EventBusEventScope = ResourceScope<'eventBusEvent', DefaultOperations | 'query'>;
 export type LdapScope = ResourceScope<'ldap', 'manage' | 'sync'>;
 export type LicenseScope = ResourceScope<'license', 'manage'>;
 export type LogStreamingScope = ResourceScope<'logStreaming', 'manage'>;
@@ -70,7 +68,6 @@ export type Scope =
 	| CredentialScope
 	| ExternalSecretProviderScope
 	| ExternalSecretScope
-	| EventBusEventScope
 	| EventBusDestinationScope
 	| LdapScope
 	| LicenseScope
