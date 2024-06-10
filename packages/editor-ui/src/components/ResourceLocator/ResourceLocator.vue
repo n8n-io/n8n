@@ -669,6 +669,11 @@ export default defineComponent({
 			const paramsKey = this.currentRequestKey;
 			const cachedResponse = this.cachedResponses[paramsKey];
 
+			if (this.credentialsNotSet) {
+				this.setResponse(paramsKey, { error: true });
+				return;
+			}
+
 			if (this.requiresSearchFilter && !params.filter) {
 				return;
 			}
