@@ -5,12 +5,7 @@ import type {
 	TriggerPanelDefinition,
 } from 'n8n-workflow';
 import { nodeConnectionTypes } from 'n8n-workflow';
-import type {
-	IExecutionResponse,
-	GetExecutionResponse,
-	ICredentialsResponse,
-	NewCredentialsModal,
-} from '@/Interface';
+import type { IExecutionResponse, ICredentialsResponse, NewCredentialsModal } from '@/Interface';
 import type { jsPlumbDOMElement } from '@jsplumb/browser-ui';
 import type { Connection } from '@jsplumb/core';
 
@@ -80,7 +75,7 @@ export function isTriggerPanelObject(
 }
 
 export function isFullExecutionResponse(
-	execution: IExecutionResponse | GetExecutionResponse | null,
+	execution: IExecutionResponse | null,
 ): execution is IExecutionResponse {
 	return !!execution && 'status' in execution;
 }

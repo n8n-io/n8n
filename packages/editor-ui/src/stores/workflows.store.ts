@@ -31,7 +31,6 @@ import type {
 	WorkflowMetadata,
 	IExecutionFlattedResponse,
 	IWorkflowTemplateNode,
-	GetExecutionResponse,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import type {
@@ -111,7 +110,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const activeWorkflowExecution = ref<ExecutionSummary | null>(null);
 	const currentWorkflowExecutions = ref<ExecutionSummary[]>([]);
 	const finishedExecutionsCount = ref(0);
-	const workflowExecutionData = ref<IExecutionResponse | GetExecutionResponse | null>(null);
+	const workflowExecutionData = ref<IExecutionResponse | null>(null);
 	const workflowExecutionPairedItemMappings = ref<Record<string, Set<string>>>({});
 	const activeExecutionId = ref<string | null>(null);
 	const subWorkflowExecutionError = ref<Error | null>(null);
@@ -619,9 +618,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return newName;
 	}
 
-	function setWorkflowExecutionData(
-		workflowResultData: IExecutionResponse | GetExecutionResponse | null,
-	) {
+	function setWorkflowExecutionData(workflowResultData: IExecutionResponse | null) {
 		workflowExecutionData.value = workflowResultData;
 		workflowExecutionPairedItemMappings.value = getPairedItemsMapping(workflowResultData);
 	}
@@ -1304,7 +1301,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return output.results;
 	}
 
-	async function getExecution(id: string): Promise<GetExecutionResponse | undefined> {
+	async function getExecution(id: string): Promise<IExecutionResponse | undefined> {
 		const rootStore = useRootStore();
 		const response = await makeRestApiRequest<IExecutionFlattedResponse | undefined>(
 			rootStore.getRestApiContext,

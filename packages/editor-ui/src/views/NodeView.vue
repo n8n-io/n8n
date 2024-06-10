@@ -322,7 +322,6 @@ import type {
 	IPushDataExecutionFinished,
 	AIAssistantConnectionInfo,
 	NodeFilterType,
-	GetExecutionResponse,
 } from '@/Interface';
 
 import { type RouteLocation, useRouter } from 'vue-router';
@@ -691,7 +690,7 @@ export default defineComponent({
 
 			return returnClasses;
 		},
-		workflowExecution(): GetExecutionResponse | null {
+		workflowExecution(): IExecutionResponse | null {
 			return this.workflowsStore.getWorkflowExecution;
 		},
 		workflowRunning(): boolean {
@@ -1303,7 +1302,7 @@ export default defineComponent({
 		async openExecution(executionId: string) {
 			this.canvasStore.startLoading();
 			this.resetWorkspace();
-			let data: GetExecutionResponse | undefined;
+			let data: IExecutionResponse | undefined;
 			try {
 				data = await this.workflowsStore.getExecution(executionId);
 			} catch (error) {
@@ -1998,11 +1997,13 @@ export default defineComponent({
 			void this.getNodesToSave(nodes).then((data) => {
 				const workflowToCopy: IWorkflowToShare = {
 					meta: {
-						...(this.workflowsStore.workflow.meta ?? {}),
+						...this.workflowsStore.workflow.meta,
 						instanceId: this.rootStore.instanceId,
 					},
 					...data,
 				};
+
+				delete workflowToCopy.meta.templateCredsSetupCompleted;
 
 				this.workflowHelpers.removeForeignCredentialsFromWorkflow(
 					workflowToCopy,
