@@ -1,3 +1,4 @@
+import { INSTANCE_ADMIN } from '../constants';
 import { clearNotifications } from '../pages/notifications';
 import {
 	getNpsSurvey,
@@ -16,6 +17,11 @@ const SEVEN_DAYS = ONE_DAY * 7;
 const ABOUT_SIX_MONTHS = ONE_DAY * 30 * 6 + ONE_DAY;
 
 describe('NpsSurvey', () => {
+	beforeEach(() => {
+		cy.resetDatabase();
+		cy.signin(INSTANCE_ADMIN);
+	});
+
 	it('shows nps survey to recently activated user and can submit email ', () => {
 		cy.intercept('/rest/settings', { middleware: true }, (req) => {
 			req.on('response', (res) => {
