@@ -2,6 +2,7 @@ import { BasePage } from './base';
 
 export class WorkflowsPage extends BasePage {
 	url = '/home/workflows';
+
 	getters = {
 		newWorkflowButtonCard: () => cy.getByTestId('new-workflow-card'),
 		newWorkflowTemplateCard: () => cy.getByTestId('new-workflow-template-card'),

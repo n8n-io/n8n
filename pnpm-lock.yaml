@@ -121,7 +121,7 @@ importers:
         version: 2.0.19(typescript@5.4.2)
 
   cypress:
-    devDependencies:
+    dependencies:
       '@ngneat/falso':
         specifier: ^6.4.0
         version: 6.4.0
@@ -140,6 +140,16 @@ importers:
       start-server-and-test:
         specifier: ^2.0.3
         version: 2.0.3
+      uuid:
+        specifier: 8.3.2
+        version: 8.3.2
+    devDependencies:
+      '@types/uuid':
+        specifier: ^8.3.2
+        version: 8.3.4
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../packages/workflow
 
   packages/@n8n/chat:
     dependencies:
@@ -5735,9 +5745,6 @@ packages:
 
   '@types/uuid@8.3.4':
     resolution: {integrity: sha512-c/I8ZRb51j+pYGAu5CrFMRxqZ2ke4y2grEBO5AUjgSkSk+qT2Ea+OdWElz/OiMf5MNpn2b17kuVBwZLQJXzihw==}
-
-  '@types/uuid@9.0.0':
-    resolution: {integrity: sha512-kr90f+ERiQtKWMz5rP32ltJ/BtULDI5RVO0uavn1HQUOwjx0R1h0rnDYNL0CepF1zL5bSY6FISAfd9tOdDhU5Q==}
 
   '@types/uuid@9.0.7':
     resolution: {integrity: sha512-WUtIVRUZ9i5dYXefDEAI7sh9/O7jGvHg7Df/5O/gtH3Yabe5odI3UWopVR1qbPXQtvOxWu3mM4XxlYeZtMWF4g==}
@@ -13159,10 +13166,6 @@ packages:
     resolution: {integrity: sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==}
     hasBin: true
 
-  uuid@9.0.0:
-    resolution: {integrity: sha512-MXcSTerfPa4uqyzStbRoTgt5XIe3x5+42+q1sDuy3R5MDk66URdLMOZe5aPX/SQd+kuYAh0FdP/pO28IkQyTeg==}
-    hasBin: true
-
   uuid@9.0.1:
     resolution: {integrity: sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==}
     hasBin: true
@@ -19579,8 +19582,6 @@ snapshots:
 
   '@types/uuid@8.3.4': {}
 
-  '@types/uuid@9.0.0': {}
-
   '@types/uuid@9.0.7': {}
 
   '@types/validator@13.7.10': {}
@@ -24548,11 +24549,11 @@ snapshots:
     dependencies:
       '@types/asn1': 0.2.0
       '@types/node': 18.16.16
-      '@types/uuid': 9.0.0
+      '@types/uuid': 9.0.7
       asn1: 0.2.6
       debug: 4.3.4(supports-color@8.1.1)
       strict-event-emitter-types: 2.0.0
-      uuid: 9.0.0
+      uuid: 9.0.1
     transitivePeerDependencies:
       - supports-color
 
@@ -28339,8 +28340,6 @@ snapshots:
   uuencode@0.0.4: {}
 
   uuid@8.3.2: {}
-
-  uuid@9.0.0: {}
 
   uuid@9.0.1: {}
 
