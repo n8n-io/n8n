@@ -151,7 +151,13 @@ function moveResource() {
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
 				<ProjectCardBadge :resource="data" :personal-project="projectsStore.personalProject" />
-				<n8n-action-toggle :actions="actions" theme="dark" @action="onAction" @click.stop />
+				<n8n-action-toggle
+					data-test-id="credential-card-actions"
+					:actions="actions"
+					theme="dark"
+					@action="onAction"
+					@click.stop
+				/>
 			</div>
 		</template>
 	</n8n-card>
