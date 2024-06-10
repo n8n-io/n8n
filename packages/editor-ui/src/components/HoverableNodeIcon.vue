@@ -126,7 +126,7 @@ export default defineComponent({
 
 			const restUrl = this.rootStore.getRestUrl;
 
-			if (nodeType.icon && typeof nodeType.icon === 'string') {
+			if (typeof nodeType.icon === 'string') {
 				const [type, path] = nodeType.icon.split(':');
 				const returnData: NodeIconData = {
 					type,

@@ -126,12 +126,7 @@ export default defineComponent({
 		const contentArea = document.getElementById('content');
 		if (contentArea) {
 			// When leaving this page, store current scroll position in route data
-			if (
-				this.$route.meta?.setScrollPosition &&
-				typeof this.$route.meta.setScrollPosition === 'function'
-			) {
-				this.$route.meta.setScrollPosition(contentArea.scrollTop);
-			}
+			this.$route.meta?.setScrollPosition?.(contentArea.scrollTop);
 		}
 
 		this.trackSearch();

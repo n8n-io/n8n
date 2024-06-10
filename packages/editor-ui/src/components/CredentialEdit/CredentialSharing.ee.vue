@@ -169,11 +169,9 @@ export default defineComponent({
 				: undefined;
 		},
 		isCredentialSharedWithCurrentUser(): boolean {
-			return (
-				Array.isArray(this.credentialData.sharedWithProjects)
-					? this.credentialData.sharedWithProjects
-					: []
-			).some((sharee) => {
+			if (!Array.isArray(this.credentialData.sharedWithProjects)) return false;
+
+			return this.credentialData.sharedWithProjects.some((sharee) => {
 				return typeof sharee === 'object' && 'id' in sharee
 					? sharee.id === this.usersStore.currentUser?.id
 					: false;

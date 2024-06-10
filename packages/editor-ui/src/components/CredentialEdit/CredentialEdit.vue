@@ -1115,8 +1115,6 @@ export default defineComponent({
 						oauthTokenData: {} as CredentialInformation,
 					};
 
-					this.credentialsStore.enableOAuthCredential(credential);
-
 					// Close the window
 					if (oauthPopup) {
 						oauthPopup.close();
