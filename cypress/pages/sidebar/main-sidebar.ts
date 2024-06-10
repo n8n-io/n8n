@@ -1,8 +1,6 @@
 import { BasePage } from '../base';
 import { WorkflowsPage } from '../workflows';
 
-const workflowsPage = new WorkflowsPage();
-
 export class MainSidebar extends BasePage {
 	getters = {
 		menuItem: (id: string) => cy.getByTestId('menu-item').get('#' + id),
@@ -16,6 +14,7 @@ export class MainSidebar extends BasePage {
 		userMenu: () => cy.get('div[class="action-dropdown-container"]'),
 		logo: () => cy.getByTestId('n8n-logo'),
 	};
+
 	actions = {
 		goToSettings: () => {
 			this.getters.settings().should('be.visible');
