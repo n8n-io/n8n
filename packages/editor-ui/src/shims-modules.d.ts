@@ -1,3 +1,21 @@
+/**
+ * Modules
+ */
+
+declare module 'vue-agile';
+
+/**
+ * File types
+ */
+
+declare module '*.json';
+declare module '*.svg';
+declare module '*.png';
+declare module '*.jpg';
+declare module '*.jpeg';
+declare module '*.gif';
+declare module '*.webp';
+
 declare module 'v3-infinite-loading' {
 	import { Plugin, DefineComponent } from 'vue';
 

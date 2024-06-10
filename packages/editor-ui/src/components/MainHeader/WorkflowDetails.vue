@@ -207,6 +207,10 @@ const isWorkflowHistoryButtonDisabled = computed(() => {
 	return isNewWorkflow.value;
 });
 
+const workflowTagIds = computed(() => {
+	return (props.workflow.tags ?? []).map((tag) => (typeof tag === 'string' ? tag : tag.id));
+});
+
 watch(
 	() => props.workflow.id,
 	() => {
@@ -403,7 +407,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			const exportData: IWorkflowToShare = {
 				...data,
 				meta: {
-					...(props.workflow.meta ?? {}),
+					...props.workflow.meta,
 					instanceId: rootStore.instanceId,
 				},
 				tags: (tags ?? []).map((tagId) => {
@@ -601,7 +605,7 @@ function showCreateWorkflowSuccessToast(id?: string) {
 			<TagsContainer
 				v-else
 				:key="workflow.id"
-				:tag-ids="workflow.tags"
+				:tag-ids="workflowTagIds"
 				:clickable="true"
 				:responsive="true"
 				data-test-id="workflow-tags"

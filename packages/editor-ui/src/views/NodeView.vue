@@ -1572,8 +1572,9 @@ export default defineComponent({
 			if (e.key === 's' && ctrlModifier && !readOnly) {
 				e.stopPropagation();
 				e.preventDefault();
+				const workflowIsSaved = !this.uiStore.stateIsDirty;
 
-				if (this.isReadOnlyRoute || this.readOnlyEnv) {
+				if (this.isReadOnlyRoute || this.readOnlyEnv || workflowIsSaved) {
 					return;
 				}
 
@@ -1997,11 +1998,13 @@ export default defineComponent({
 			void this.getNodesToSave(nodes).then((data) => {
 				const workflowToCopy: IWorkflowToShare = {
 					meta: {
-						...(this.workflowsStore.workflow.meta ?? {}),
+						...this.workflowsStore.workflow.meta,
 						instanceId: this.rootStore.instanceId,
 					},
 					...data,
 				};
+
+				delete workflowToCopy.meta.templateCredsSetupCompleted;
 
 				this.workflowHelpers.removeForeignCredentialsFromWorkflow(
 					workflowToCopy,
@@ -2176,7 +2179,11 @@ export default defineComponent({
 					}
 				}
 
-				return await this.importWorkflowData(workflowData!, 'paste', false);
+				if (!workflowData) {
+					return;
+				}
+
+				return await this.importWorkflowData(workflowData, 'paste', false);
 			}
 		},
 
@@ -2203,7 +2210,7 @@ export default defineComponent({
 
 		// Imports the given workflow data into the current workflow
 		async importWorkflowData(
-			workflowData: IWorkflowToShare,
+			workflowData: IWorkflowDataUpdate,
 			source: string,
 			importTags = true,
 		): Promise<void> {
@@ -2340,7 +2347,7 @@ export default defineComponent({
 			}
 		},
 
-		removeUnknownCredentials(workflow: IWorkflowToShare) {
+		removeUnknownCredentials(workflow: IWorkflowDataUpdate) {
 			if (!workflow?.nodes) return;
 
 			for (const node of workflow.nodes) {

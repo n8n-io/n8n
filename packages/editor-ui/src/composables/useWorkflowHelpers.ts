@@ -39,7 +39,6 @@ import type {
 	IWorkflowData,
 	IWorkflowDataUpdate,
 	IWorkflowDb,
-	IWorkflowTemplateNode,
 	TargetItem,
 	XYPosition,
 } from '@/Interface';
@@ -308,11 +307,7 @@ function getNodes(): INodeUi[] {
 }
 
 // Returns a workflow instance.
-function getWorkflow(
-	nodes: Array<INodeUi | IWorkflowTemplateNode>,
-	connections: IConnections,
-	copyData?: boolean,
-): Workflow {
+function getWorkflow(nodes: INodeUi[], connections: IConnections, copyData?: boolean): Workflow {
 	return useWorkflowsStore().getWorkflow(nodes, connections, copyData);
 }
 
