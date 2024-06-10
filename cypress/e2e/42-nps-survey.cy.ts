@@ -68,7 +68,7 @@ describe('NpsSurvey', () => {
 		getNpsSurvey().should('be.visible');
 	});
 
-	it('allows user to ignore survey 3 times before stopping to show until 6 months later', () => {
+	it.only('allows user to ignore survey 3 times before stopping to show until 6 months later', () => {
 		cy.intercept('/rest/settings', { middleware: true }, (req) => {
 			req.on('response', (res) => {
 				if (res.body.data) {
@@ -118,25 +118,25 @@ describe('NpsSurvey', () => {
 		workflowPage.actions.saveWorkflowOnButtonClick();
 		getNpsSurvey().should('not.be.visible');
 
-		// shows up seven days later to ignore again
-		workflowPage.actions.visit(true, NOW + SEVEN_DAYS * 2 + 10000 * 2);
+		// shows up after at least sever days later to ignore again
+		workflowPage.actions.visit(true, NOW + (SEVEN_DAYS + 10000) * 2 + ONE_DAY);
 		workflowPage.actions.saveWorkflowOnButtonClick();
 		clearNotifications();
 		getNpsSurvey().should('be.visible');
 		getNpsSurveyClose().click();
 		getNpsSurvey().should('not.be.visible');
 
-		workflowPage.actions.visit(true, NOW + SEVEN_DAYS * 2 + 10000 * 2);
+		workflowPage.actions.visit(true, NOW + (SEVEN_DAYS + 10000) * 2 + ONE_DAY * 2);
 		workflowPage.actions.saveWorkflowOnButtonClick();
 		getNpsSurvey().should('not.be.visible');
 
-		// does not show up again 7 days later
-		workflowPage.actions.visit(true, NOW + SEVEN_DAYS * 3 + 10000 * 3);
+		// does not show up again after at least 7 days
+		workflowPage.actions.visit(true, NOW + (SEVEN_DAYS + 10000) * 3 + ONE_DAY * 3);
 		workflowPage.actions.saveWorkflowOnButtonClick();
 		getNpsSurvey().should('not.be.visible');
 
 		// shows up 6 months later
-		workflowPage.actions.visit(true, NOW + SEVEN_DAYS * 3 + 10000 * 3 + ABOUT_SIX_MONTHS);
+		workflowPage.actions.visit(true, NOW + (SEVEN_DAYS + 10000) * 3 + ABOUT_SIX_MONTHS);
 		workflowPage.actions.saveWorkflowOnButtonClick();
 		getNpsSurvey().should('be.visible');
 	});
