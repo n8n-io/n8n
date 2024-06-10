@@ -79,9 +79,13 @@
 	--color-canvas-background-l: 99%;
 	--color-canvas-dot: var(--prim-gray-120);
 	--color-canvas-read-only-line: var(--prim-gray-30);
-	--color-canvas-node-background: var(--color-background-xlight);
-	--color-canvas-node-pinned-border: var(--color-secondary);
 	--color-canvas-selected: var(--prim-gray-70);
+
+	// Nodes
+	--color-node-background: var(--color-background-xlight);
+	--color-node-executing-background: var(--color-primary-tint-3);
+	--color-node-executing-other-background: var(--color-primary-tint-3);
+	--color-node-pinned-border: var(--color-secondary);
 	--node-type-main-color: var(--prim-gray-490);
 
 	// Sticky
