@@ -68,7 +68,7 @@ describe('NpsSurvey', () => {
 		getNpsSurvey().should('be.visible');
 	});
 
-	it.only('allows user to ignore survey 3 times before stopping to show until 6 months later', () => {
+	it('allows user to ignore survey 3 times before stopping to show until 6 months later', () => {
 		cy.intercept('/rest/settings', { middleware: true }, (req) => {
 			req.on('response', (res) => {
 				if (res.body.data) {
