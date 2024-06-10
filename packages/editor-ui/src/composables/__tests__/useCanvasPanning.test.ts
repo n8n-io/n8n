@@ -74,7 +74,7 @@ describe('useCanvasPanning()', () => {
 			const { onMouseDown, onMouseMove, onMouseUp } = useCanvasPanning(elementRef);
 
 			onMouseDown(new MouseEvent('mousedown', { button: 1 }), true);
-			onMouseUp(new MouseEvent('mouseup'));
+			onMouseUp();
 
 			expect(removeEventListenerSpy).toHaveBeenCalledWith('mousemove', onMouseMove);
 		});

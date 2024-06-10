@@ -9,6 +9,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { createTestNode } from '@/__tests__/mocks';
 import type { Connection } from '@vue-flow/core';
 import type { IConnection } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 describe('useCanvasOperations', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
@@ -200,9 +201,9 @@ describe('useCanvasOperations', () => {
 
 			const connection: Connection = {
 				source: nodeA.id,
-				sourceHandle: 'outputs/main/0',
+				sourceHandle: `outputs/${NodeConnectionType.Main}/0`,
 				target: nodeB.id,
-				targetHandle: 'inputs/main/0',
+				targetHandle: `inputs/${NodeConnectionType.Main}/0`,
 			};
 
 			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValueOnce(nodeA).mockReturnValueOnce(nodeB);
@@ -211,8 +212,8 @@ describe('useCanvasOperations', () => {
 
 			expect(addConnectionSpy).toHaveBeenCalledWith({
 				connection: [
-					{ index: 0, node: nodeA.name, type: 'main' },
-					{ index: 0, node: nodeB.name, type: 'main' },
+					{ index: 0, node: nodeA.name, type: NodeConnectionType.Main },
+					{ index: 0, node: nodeB.name, type: NodeConnectionType.Main },
 				],
 			});
 			expect(uiStore.stateIsDirty).toBe(true);
@@ -269,9 +270,9 @@ describe('useCanvasOperations', () => {
 
 			const connection: Connection = {
 				source: nodeA.id,
-				sourceHandle: 'outputs/main/0',
+				sourceHandle: `outputs/${NodeConnectionType.Main}/0`,
 				target: nodeB.id,
-				targetHandle: 'inputs/main/0',
+				targetHandle: `inputs/${NodeConnectionType.Main}/0`,
 			};
 
 			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValueOnce(nodeA).mockReturnValueOnce(nodeB);
@@ -280,8 +281,8 @@ describe('useCanvasOperations', () => {
 
 			expect(removeConnectionSpy).toHaveBeenCalledWith({
 				connection: [
-					{ index: 0, node: nodeA.name, type: 'main' },
-					{ index: 0, node: nodeB.name, type: 'main' },
+					{ index: 0, node: nodeA.name, type: NodeConnectionType.Main },
+					{ index: 0, node: nodeB.name, type: NodeConnectionType.Main },
 				],
 			});
 		});
@@ -294,8 +295,8 @@ describe('useCanvasOperations', () => {
 				.mockImplementation(() => {});
 
 			const connection: [IConnection, IConnection] = [
-				{ node: 'sourceNode', type: 'type', index: 1 },
-				{ node: 'targetNode', type: 'type', index: 2 },
+				{ node: 'sourceNode', type: NodeConnectionType.Main, index: 1 },
+				{ node: 'targetNode', type: NodeConnectionType.Main, index: 2 },
 			];
 
 			canvasOperations.revertDeleteConnection(connection);
