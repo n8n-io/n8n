@@ -658,12 +658,15 @@ export default defineComponent({
 				this.showTriggerNodeTooltip = false;
 			}
 		},
-		nodeRunData(newValue) {
-			if (!this.data) {
-				return;
-			}
+		nodeRunData: {
+			deep: true,
+			handler(newValue) {
+				if (!this.data) {
+					return;
+				}
 
-			this.$emit('run', { name: this.data.name, data: newValue, waiting: !!this.waiting });
+				this.$emit('run', { name: this.data.name, data: newValue, waiting: !!this.waiting });
+			},
 		},
 	},
 	created() {
