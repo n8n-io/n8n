@@ -34,7 +34,6 @@ import type {
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import type {
-	IAbstractEventMessage,
 	IConnection,
 	IConnections,
 	IDataObject,
