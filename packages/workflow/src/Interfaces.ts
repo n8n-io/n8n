@@ -116,21 +116,21 @@ export interface IUser {
 	lastName: string;
 }
 
+export type ProjectSharingData = {
+	id: string;
+	name: string | null;
+	type: 'personal' | 'team' | 'public';
+	createdAt: string;
+	updatedAt: string;
+};
+
 export interface ICredentialsDecrypted {
 	id: string;
 	name: string;
 	type: string;
 	data?: ICredentialDataDecryptedObject;
-	homeProject?: {
-		id: string;
-		name: string | null;
-		type: 'personal' | 'team' | 'public';
-	};
-	sharedWithProjects?: Array<{
-		id: string;
-		name: string | null;
-		type: 'personal' | 'team' | 'public';
-	}>;
+	homeProject?: ProjectSharingData;
+	sharedWithProjects?: ProjectSharingData[];
 }
 
 export interface ICredentialsEncrypted {
@@ -340,7 +340,13 @@ export interface ICredentialData {
 }
 
 // The encrypted credentials which the nodes can access
-export type CredentialInformation = string | number | boolean | IDataObject | IDataObject[];
+export type CredentialInformation =
+	| string
+	| string[]
+	| number
+	| boolean
+	| IDataObject
+	| IDataObject[];
 
 // The encrypted credentials which the nodes can access
 export interface ICredentialDataDecryptedObject {
@@ -1530,7 +1536,7 @@ export interface INodeIssueObjectProperty {
 export interface INodeIssueData {
 	node: string;
 	type: INodeIssueTypes;
-	value: boolean | string | string[] | INodeIssueObjectProperty;
+	value: null | boolean | string | string[] | INodeIssueObjectProperty;
 }
 
 export interface INodeIssues {
@@ -1571,7 +1577,7 @@ export interface INodeTypeBaseDescription {
 	icon?: Themed<Icon>;
 	iconColor?: NodeIconColor;
 	iconUrl?: Themed<string>;
-	badgeIconUrl?: string;
+	badgeIconUrl?: Themed<string>;
 	group: string[];
 	description: string;
 	documentationUrl?: string;

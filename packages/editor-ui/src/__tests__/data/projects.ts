@@ -1,5 +1,10 @@
 import { faker } from '@faker-js/faker';
-import type { ProjectListItem, ProjectSharingData, ProjectType } from '@/types/projects.types';
+import type {
+	Project,
+	ProjectListItem,
+	ProjectSharingData,
+	ProjectType,
+} from '@/types/projects.types';
 import { ProjectTypes } from '@/types/projects.types';
 
 export const createProjectSharingData = (projectType?: ProjectType): ProjectSharingData => ({
@@ -19,3 +24,16 @@ export const createProjectListItem = (projectType?: ProjectType): ProjectListIte
 		updatedAt: faker.date.recent().toISOString(),
 	};
 };
+
+export function createTestProject(data: Partial<Project>): Project {
+	return {
+		id: faker.string.uuid(),
+		name: faker.lorem.words({ min: 1, max: 3 }),
+		createdAt: faker.date.past().toISOString(),
+		updatedAt: faker.date.recent().toISOString(),
+		type: 'team',
+		relations: [],
+		scopes: [],
+		...data,
+	};
+}

@@ -155,7 +155,7 @@ export const usePostHog = defineStore('posthog', () => {
 			trackExperimentsDebounced(featureFlags.value);
 		} else {
 			// depend on client side evaluation if serverside evaluation fails
-			window.posthog?.onFeatureFlags?.((keys: string[], map: FeatureFlags) => {
+			window.posthog?.onFeatureFlags?.((_, map: FeatureFlags) => {
 				featureFlags.value = map;
 
 				// must be debounced because it is called multiple times by posthog
