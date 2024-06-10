@@ -48,5 +48,20 @@ const parts = computed(() => {
 			<span v-else-if="part.content" :key="`span-${index}`">{{ part.content }}</span>
 		</template>
 	</span>
-	<span v-else>{{ props.content }}</span>
+	<span v-else :class="$style.content">
+		<template v-if="typeof props.content === 'string'">
+			<span v-for="(line, index) in props.content.split('\n')" :key="`line-${index}`">
+				<span v-if="index > 0" :class="$style.newLine">\n</span>{{ line }}
+			</span>
+		</template>
+		<span v-else v-text="props.content" />
+	</span>
 </template>
+
+<style lang="scss" module>
+:root .content .newLine {
+	font-family: var(--font-family-monospace);
+	color: var(--color-line-break);
+	padding-right: 2px;
+}
+</style>
