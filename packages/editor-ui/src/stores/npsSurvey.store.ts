@@ -61,7 +61,6 @@ export const useNpsSurveyStore = defineStore('npsSurvey', () => {
 		}
 
 		const timeSinceLastShown = Date.now() - lastShownAt;
-		console.log('yo', Date.now(), timeSinceLastShown);
 		if ('responded' in currentSurveyState.value && timeSinceLastShown < SIX_MONTHS_IN_MILLIS) {
 			return;
 		}
