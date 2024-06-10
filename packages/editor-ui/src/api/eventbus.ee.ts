@@ -31,7 +31,7 @@ export async function deleteDestinationFromDb(context: IRestApiContext, destinat
 export async function sendTestMessageToDestination(
 	context: IRestApiContext,
 	destination: ApiMessageEventBusDestinationOptions,
-) {
+): Promise<boolean> {
 	const data: IDataObject = {
 		...destination,
 	};

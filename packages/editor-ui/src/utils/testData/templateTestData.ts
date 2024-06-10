@@ -7,6 +7,7 @@ export const newWorkflowTemplateNode = ({
 	type,
 	...optionalOpts
 }: Pick<IWorkflowTemplateNode, 'type'> &
+	Pick<IWorkflowTemplateNode, 'id'> &
 	Partial<IWorkflowTemplateNode>): IWorkflowTemplateNode => ({
 	type,
 	name: faker.commerce.productName(),
@@ -306,7 +307,6 @@ export const fullSaveEmailAttachmentsToNextCloudTemplate = {
 export const fullCreateApiEndpointTemplate = {
 	id: 1750,
 	name: 'Creating an API endpoint',
-	recentViews: 9899,
 	totalViews: 13265,
 	createdAt: '2022-07-06T14:45:19.659Z',
 	description:
@@ -393,7 +393,6 @@ export const fullCreateApiEndpointTemplate = {
 			},
 		},
 	},
-	lastUpdatedBy: 1,
 	workflowInfo: {
 		nodeCount: 2,
 		nodeTypes: {},

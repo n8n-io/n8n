@@ -14,11 +14,7 @@
 		"types": [
 			"vitest/globals",
 			"unplugin-icons/types/vue",
-			"./src/shims.d.ts",
-			"./src/shims-vue.d.ts",
-			"./src/v3-infinite-loading.d.ts",
-			"../workflow/src/types.d.ts",
-			"../design-system/src/shims-markdown-it.d.ts"
+			"../design-system/src/shims-modules.d.ts"
 		],
 		"paths": {
 			"@/*": ["./src/*"],
