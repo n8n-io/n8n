@@ -67,7 +67,7 @@ describe('NDV', () => {
 	});
 
 	it('should disconect Switch outputs if rules order was changed', () => {
-		cy.createFixtureWorkflow('NDV-test-switch_reorder.json', `NDV test switch reorder`);
+		cy.createFixtureWorkflow('NDV-test-switch_reorder.json', 'NDV test switch reorder');
 		workflowPage.actions.zoomToFit();
 
 		workflowPage.actions.executeWorkflow();
@@ -305,7 +305,7 @@ describe('NDV', () => {
 	it('should display parameter hints correctly', () => {
 		workflowPage.actions.visit();
 
-		cy.createFixtureWorkflow('Test_workflow_3.json', `My test workflow`);
+		cy.createFixtureWorkflow('Test_workflow_3.json', 'My test workflow');
 		workflowPage.actions.openNode('Set1');
 
 		ndv.actions.typeIntoParameterInput('value', '='); // switch to expressions
@@ -333,7 +333,7 @@ describe('NDV', () => {
 			}
 			ndv.getters.parameterInput('name').click(); // remove focus from input, hide expression preview
 
-			ndv.actions.validateExpressionPreview('value', output || input);
+			ndv.actions.validateExpressionPreview('value', output ?? input);
 			ndv.getters.parameterInput('value').clear();
 		});
 	});
@@ -436,7 +436,7 @@ describe('NDV', () => {
 		}
 
 		it('should traverse floating nodes with mouse', () => {
-			cy.createFixtureWorkflow('Floating_Nodes.json', `Floating Nodes`);
+			cy.createFixtureWorkflow('Floating_Nodes.json', 'Floating Nodes');
 			workflowPage.getters.canvasNodes().first().dblclick();
 			getFloatingNodeByPosition('inputMain').should('not.exist');
 			getFloatingNodeByPosition('outputMain').should('exist');
@@ -482,7 +482,7 @@ describe('NDV', () => {
 		});
 
 		it('should traverse floating nodes with keyboard', () => {
-			cy.createFixtureWorkflow('Floating_Nodes.json', `Floating Nodes`);
+			cy.createFixtureWorkflow('Floating_Nodes.json', 'Floating Nodes');
 			workflowPage.getters.canvasNodes().first().dblclick();
 			getFloatingNodeByPosition('inputMain').should('not.exist');
 			getFloatingNodeByPosition('outputMain').should('exist');
@@ -597,7 +597,7 @@ describe('NDV', () => {
 	});
 
 	it('Should render xml and html tags as strings and can search', () => {
-		cy.createFixtureWorkflow('Test_workflow_xml_output.json', `test`);
+		cy.createFixtureWorkflow('Test_workflow_xml_output.json', 'test');
 
 		workflowPage.actions.executeWorkflow();
 
@@ -741,7 +741,7 @@ describe('NDV', () => {
 	it('should allow selecting item for expressions', () => {
 		workflowPage.actions.visit();
 
-		cy.createFixtureWorkflow('Test_workflow_3.json', `My test workflow`);
+		cy.createFixtureWorkflow('Test_workflow_3.json', 'My test workflow');
 		workflowPage.actions.openNode('Set');
 
 		ndv.actions.typeIntoParameterInput('value', '='); // switch to expressions
