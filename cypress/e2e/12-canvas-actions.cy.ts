@@ -1,4 +1,5 @@
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
+import { successToast } from '../pages/notifications';
 import {
 	MANUAL_TRIGGER_NODE_NAME,
 	MANUAL_TRIGGER_NODE_DISPLAY_NAME,
@@ -166,8 +167,8 @@ describe('Canvas Actions', () => {
 				.findChildByTestId('execute-node-button')
 				.click({ force: true });
 			WorkflowPage.actions.executeNode(CODE_NODE_NAME);
-			WorkflowPage.getters.successToast().should('have.length', 2);
-			WorkflowPage.getters.successToast().should('contain.text', 'Node executed successfully');
+			successToast().should('have.length', 2);
+			successToast().should('contain.text', 'Node executed successfully');
 		});
 
 		it('should disable and enable node', () => {
@@ -201,10 +202,10 @@ describe('Canvas Actions', () => {
 		WorkflowPage.actions.selectAll();
 
 		WorkflowPage.actions.hitCopy();
-		WorkflowPage.getters.successToast().should('contain', 'Copied!');
+		successToast().should('contain', 'Copied!');
 
 		WorkflowPage.actions.copyNode(CODE_NODE_NAME);
-		WorkflowPage.getters.successToast().should('contain', 'Copied!');
+		successToast().should('contain', 'Copied!');
 	});
 
 	it('should select/deselect all nodes', () => {
