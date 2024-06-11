@@ -72,8 +72,8 @@
 			</div>
 			<div v-if="!readOnlyEnv" :class="['text-center', 'mt-2xl', $style.actionsContainer]">
 				<a
-					v-if="isSalesUser"
-					:href="getTemplateRepositoryURL()"
+					v-if="isSalesUser && templateRepositoryURL"
+					:href="templateRepositoryURL"
 					:class="$style.emptyStateCard"
 					target="_blank"
 				>
@@ -267,6 +267,9 @@ const WorkflowsView = defineComponent({
 				? this.$locale.baseText('workflows.project.add')
 				: this.$locale.baseText('workflows.add');
 		},
+		templateRepositoryURL() {
+			return this.templatesStore.websiteTemplateRepositoryURL;
+		},
 	},
 	watch: {
 		'filters.tags'() {
@@ -307,9 +310,6 @@ const WorkflowsView = defineComponent({
 			this.$telemetry.track('User clicked add workflow button', {
 				source: 'Workflows list',
 			});
-		},
-		getTemplateRepositoryURL() {
-			return this.templatesStore.websiteTemplateRepositoryURL;
 		},
 		trackCategoryLinkClick(category: string) {
 			this.$telemetry.track(`User clicked Browse ${category} Templates`, {
