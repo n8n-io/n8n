@@ -3,6 +3,10 @@
 
 import type { IN8nUISettings } from 'n8n-workflow';
 
+Cypress.Keyboard.defaults({
+	keystrokeDelay: 0,
+});
+
 interface SigninPayload {
 	email: string;
 	password: string;
