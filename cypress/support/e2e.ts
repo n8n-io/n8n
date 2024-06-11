@@ -31,13 +31,10 @@ beforeEach(() => {
 
 	// Always intercept the request to test credentials and return a success
 	cy.intercept('POST', '/rest/credentials/test', {
-		statusCode: 200,
-		body: {
-			data: { status: 'success', message: 'Tested successfully' },
-		},
-	});
+		data: { status: 'success', message: 'Tested successfully' },
+	}).as('credentialTest');
 
-	cy.intercept({ pathname: '/api/health' }, { status: 'OK' });
+	cy.intercept({ pathname: '/api/health' }, { status: 'OK' }).as('healthCheck');
 	cy.intercept({ pathname: '/api/versions/*' }, [
 		{
 			name: '1.45.1',
@@ -61,5 +58,5 @@ beforeEach(() => {
 			nodes: [],
 			description: 'Includes <strong>core functionality</strong> and <strong>bug fixes</strong>',
 		},
-	]);
+	]).as('getVersions');
 });

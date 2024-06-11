@@ -122,8 +122,7 @@ describe('Undo/Redo', () => {
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		cy.get('body').type('{esc}');
 		cy.get('body').type('{esc}');
-		WorkflowPage.actions.selectAll();
-		cy.get('body').type('{backspace}');
+		WorkflowPage.actions.hitDeleteAllNodes();
 		WorkflowPage.getters.canvasNodes().should('have.have.length', 0);
 		WorkflowPage.actions.hitUndo();
 		WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
@@ -208,7 +207,7 @@ describe('Undo/Redo', () => {
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		cy.get('body').type('{esc}');
 		cy.get('body').type('{esc}');
-		WorkflowPage.actions.selectAll();
+		WorkflowPage.actions.hitSelectAll();
 		WorkflowPage.actions.hitDisableNodeShortcut();
 		WorkflowPage.getters.disabledNodes().should('have.length', 2);
 		WorkflowPage.actions.hitUndo();

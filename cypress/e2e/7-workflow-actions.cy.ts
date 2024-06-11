@@ -1,7 +1,6 @@
 import {
 	CODE_NODE_NAME,
 	MANUAL_TRIGGER_NODE_NAME,
-	META_KEY,
 	SCHEDULE_TRIGGER_NODE_NAME,
 	EDIT_FIELDS_SET_NODE_NAME,
 	NOTION_NODE_NAME,
@@ -134,13 +133,13 @@ describe('Workflow Actions', () => {
 		);
 		cy.reload();
 		cy.get('.el-loading-mask').should('exist');
-		cy.get('body').type(META_KEY, { release: false }).type('s');
-		cy.get('body').type(META_KEY, { release: false }).type('s');
-		cy.get('body').type(META_KEY, { release: false }).type('s');
+		WorkflowPage.actions.hitSaveWorkflow();
+		WorkflowPage.actions.hitSaveWorkflow();
+		WorkflowPage.actions.hitSaveWorkflow();
 		cy.wrap(null).then(() => expect(interceptCalledCount).to.eq(0));
 		cy.waitForLoad();
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
-		cy.get('body').type(META_KEY, { release: false }).type('s');
+		WorkflowPage.actions.hitSaveWorkflow();
 		cy.wait('@saveWorkflow');
 		cy.wrap(null).then(() => expect(interceptCalledCount).to.eq(1));
 	});
@@ -170,9 +169,10 @@ describe('Workflow Actions', () => {
 		WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
 
 		cy.get('#node-creator').should('not.exist');
-		cy.get('body').type(META_KEY, { delay: 500, release: false }).type('a');
+
+		WorkflowPage.actions.hitSelectAll();
 		cy.get('.jtk-drag-selected').should('have.length', 2);
-		cy.get('body').type(META_KEY, { delay: 500, release: false }).type('c');
+		WorkflowPage.actions.hitCopy();
 		successToast().should('exist');
 	});
 
@@ -336,19 +336,18 @@ describe('Workflow Actions', () => {
 	it('should run workflow using keyboard shortcut', () => {
 		WorkflowPage.actions.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.saveWorkflowOnButtonClick();
-		cy.get('body').type(META_KEY, { delay: 500, release: false }).type('{enter}');
+		WorkflowPage.actions.hitExecuteWorkflow();
 		successToast().should('contain.text', 'Workflow executed successfully');
 	});
 
 	it('should not run empty workflows', () => {
 		// Clear the canvas
-		cy.get('body').type(META_KEY, { delay: 500, release: false }).type('a');
-		cy.get('body').type('{backspace}');
+		WorkflowPage.actions.hitDeleteAllNodes();
 		WorkflowPage.getters.canvasNodes().should('have.length', 0);
 		// Button should be disabled
 		WorkflowPage.getters.executeWorkflowButton().should('be.disabled');
 		// Keyboard shortcut should not work
-		cy.get('body').type(META_KEY, { delay: 500, release: false }).type('{enter}');
+		WorkflowPage.actions.hitExecuteWorkflow();
 		successToast().should('not.exist');
 	});
 });

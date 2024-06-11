@@ -117,7 +117,7 @@ describe('Template credentials setup', () => {
 
 		// Focus the canvas so the copy to clipboard works
 		workflowPage.getters.canvasNodes().eq(0).realClick();
-		workflowPage.actions.selectAll();
+		workflowPage.actions.hitSelectAll();
 		workflowPage.actions.hitCopy();
 
 		cy.grantBrowserPermissions('clipboardReadWrite', 'clipboardSanitizedWrite');
@@ -197,7 +197,7 @@ describe('Template credentials setup', () => {
 
 			// Focus the canvas so the copy to clipboard works
 			workflowPage.getters.canvasNodes().eq(0).realClick();
-			workflowPage.actions.selectAll();
+			workflowPage.actions.hitSelectAll();
 			workflowPage.actions.hitCopy();
 
 			cy.grantBrowserPermissions('clipboardReadWrite', 'clipboardSanitizedWrite');

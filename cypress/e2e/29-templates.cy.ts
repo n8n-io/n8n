@@ -156,7 +156,7 @@ describe('Workflow templates', () => {
 			cy.url().should('include', '/workflow/new');
 			workflowPage.actions.saveWorkflowOnButtonClick();
 
-			workflowPage.actions.selectAll();
+			workflowPage.actions.hitSelectAll();
 			workflowPage.actions.hitCopy();
 
 			cy.grantBrowserPermissions('clipboardReadWrite', 'clipboardSanitizedWrite');
