@@ -1,11 +1,10 @@
-import { INSTANCE_ADMIN, INSTANCE_OWNER } from '../constants';
 import { SettingsPage } from '../pages/settings';
 
 const settingsPage = new SettingsPage();
 
 describe('Admin user', { disableAutoLogin: true }, () => {
 	it('should see same Settings sub menu items as instance owner', () => {
-		cy.signin(INSTANCE_OWNER);
+		cy.signinAsOwner();
 		cy.visit(settingsPage.url);
 
 		let ownerMenuItems = 0;
@@ -15,7 +14,7 @@ describe('Admin user', { disableAutoLogin: true }, () => {
 		});
 
 		cy.signout();
-		cy.signin(INSTANCE_ADMIN);
+		cy.signinAsAdmin();
 		cy.visit(settingsPage.url);
 
 		settingsPage.getters.menuItems().should('have.length', ownerMenuItems);

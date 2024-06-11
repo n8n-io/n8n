@@ -283,7 +283,7 @@ export class WorkflowPage extends BasePage {
 		},
 		saveWorkflowUsingKeyboardShortcut: () => {
 			cy.intercept('POST', '/rest/workflows').as('createWorkflow');
-			cy.get('body').type(META_KEY, { release: false }).type('s');
+			this.actions.hitSaveWorkflow();
 		},
 		deleteNode: (name: string) => {
 			this.getters.canvasNodeByName(name).first().click();
@@ -339,35 +339,43 @@ export class WorkflowPage extends BasePage {
 				});
 			});
 		},
+		/** Certain keyboard shortcuts are not possible on Cypress via a simple `.type`, and some delays are needed to emulate these events */
+		hitComboShortcut: (modifier: string, key: string) => {
+			cy.get('body').wait(100).type(modifier, { delay: 100, release: false }).type(key);
+		},
 		hitUndo: () => {
-			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('z');
+			this.actions.hitComboShortcut(`{${META_KEY}}`, 'z');
 		},
 		hitRedo: () => {
-			cy.get('body')
-				.type(META_KEY, { delay: 500, release: false })
-				.type('{shift}', { release: false })
-				.type('z');
+			cy.get('body').type(`{${META_KEY}+shift+z}`);
 		},
-		selectAll: () => {
-			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('a');
+		hitSelectAll: () => {
+			this.actions.hitComboShortcut(`{${META_KEY}}`, 'a');
+		},
+		hitDeleteAllNodes: () => {
+			this.actions.hitSelectAll();
+			cy.get('body').type('{backspace}');
 		},
 		hitDisableNodeShortcut: () => {
 			cy.get('body').type('d');
 		},
 		hitCopy: () => {
-			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('c');
+			this.actions.hitComboShortcut(`{${META_KEY}}`, 'c');
 		},
 		hitPinNodeShortcut: () => {
 			cy.get('body').type('p');
 		},
-		hitExecuteWorkflowShortcut: () => {
-			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('{enter}');
+		hitSaveWorkflow: () => {
+			cy.get('body').type(`{${META_KEY}+s}`);
 		},
-		hitDuplicateNodeShortcut: () => {
-			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('d');
+		hitExecuteWorkflow: () => {
+			cy.get('body').type(`{${META_KEY}+enter}`);
 		},
-		hitAddStickyShortcut: () => {
-			cy.get('body').type('{shift}', { delay: 500, release: false }).type('S');
+		hitDuplicateNode: () => {
+			cy.get('body').type(`{${META_KEY}+d}`);
+		},
+		hitAddSticky: () => {
+			cy.get('body').type('{shift+S}');
 		},
 		executeWorkflow: () => {
 			this.getters.executeWorkflowButton().click();
