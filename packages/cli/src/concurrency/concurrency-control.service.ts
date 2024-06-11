@@ -7,6 +7,7 @@ import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
 import type { IExecutingWorkflowData } from '@/Interfaces';
+import { InternalHooks } from '@/InternalHooks';
 
 @Service()
 export class ConcurrencyControlService {
@@ -16,9 +17,12 @@ export class ConcurrencyControlService {
 
 	private readonly productionQueue: ConcurrencyQueue;
 
+	private readonly limitsToReport = [5, 10, 20, 50, 100, 200];
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly internalHooks: InternalHooks,
 	) {
 		this.productionLimit = config.getEnv('executions.concurrency.productionLimit');
 
@@ -42,9 +46,16 @@ export class ConcurrencyControlService {
 
 		this.isEnabled = true;
 
-		this.productionQueue.on('execution-throttled', async (executionId: string) => {
-			this.log('Execution throttled', { executionId });
-		});
+		this.productionQueue.on(
+			'execution-throttled',
+			async ({ executionId, capacity }: { executionId: string; capacity: number }) => {
+				this.log('Execution throttled', { executionId });
+
+				if (this.shouldReport(capacity)) {
+					await this.internalHooks.onConcurrencyLimitHit({ threshold: capacity });
+				}
+			},
+		);
 
 		this.productionQueue.on('execution-released', async (executionId: string) => {
 			this.log('Execution released', { executionId });
@@ -138,5 +149,9 @@ export class ConcurrencyControlService {
 
 	private log(message: string, meta?: object) {
 		this.logger.info(['[Concurrency Control]', message].join(' '), meta);
+	}
+
+	private shouldReport(capacity: number) {
+		return config.getEnv('deployment.type') === 'cloud' && this.limitsToReport.includes(capacity);
 	}
 }
