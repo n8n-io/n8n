@@ -64,6 +64,30 @@ describe('GlobalConfig', () => {
 				endpoint: '',
 			},
 		},
+		userManagement: {
+			emails: {
+				mode: 'smtp',
+				smtp: {
+					host: '',
+					port: 465,
+					secure: true,
+					sender: '',
+					startTLS: true,
+					auth: {
+						pass: '',
+						user: '',
+						privateKey: '',
+						serviceClient: '',
+					},
+				},
+				template: {
+					credentialsShared: '',
+					invite: '',
+					passwordReset: '',
+					workflowShared: '',
+				},
+			},
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {

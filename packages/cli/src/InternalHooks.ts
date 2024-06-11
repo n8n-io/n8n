@@ -2,6 +2,7 @@ import { Service } from 'typedi';
 import { snakeCase } from 'change-case';
 import os from 'node:os';
 import { get as pslGet } from 'psl';
+import { GlobalConfig } from '@n8n/config';
 import type {
 	AuthenticationMethod,
 	ExecutionStatus,
@@ -34,7 +35,6 @@ import { License } from '@/License';
 import { EventsService } from '@/services/events.service';
 import { NodeTypes } from '@/NodeTypes';
 import { Telemetry } from '@/telemetry';
-import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@db/entities/Project';
 import type { ProjectRole } from '@db/entities/ProjectRelation';
 import { ProjectRelationRepository } from './databases/repositories/projectRelation.repository';
@@ -128,7 +128,7 @@ export class InternalHooks {
 			},
 			n8n_deployment_type: config.getEnv('deployment.type'),
 			n8n_binary_data_mode: binaryDataConfig.mode,
-			smtp_set_up: config.getEnv('userManagement.emails.mode') === 'smtp',
+			smtp_set_up: this.globalConfig.userManagement.emails.mode === 'smtp',
 			ldap_allowed: authenticationMethod === 'ldap',
 			saml_enabled: authenticationMethod === 'saml',
 			license_plan_name: this.license.getPlanName(),

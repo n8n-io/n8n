@@ -1,6 +1,13 @@
 import { Config, Nested } from './decorators';
-import { DatabaseConfig } from './configs/database';
 import { CredentialsConfig } from './configs/credentials';
+import { DatabaseConfig } from './configs/database';
+import { EmailConfig } from './configs/email';
+
+@Config
+class UserManagementConfig {
+	@Nested
+	emails: EmailConfig;
+}
 
 @Config
 export class GlobalConfig {
@@ -9,4 +16,7 @@ export class GlobalConfig {
 
 	@Nested
 	credentials: CredentialsConfig;
+
+	@Nested
+	userManagement: UserManagementConfig;
 }
