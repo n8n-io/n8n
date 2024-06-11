@@ -1,5 +1,5 @@
-import { BasePage } from './base';
 import { getVisiblePopper, getVisibleSelect } from '../utils';
+import { BasePage } from './base';
 
 export class NDV extends BasePage {
 	getters = {
@@ -178,7 +178,7 @@ export class NDV extends BasePage {
 			this.actions.savePinnedData();
 		},
 		clearParameterInput: (parameterName: string) => {
-			this.getters.parameterInput(parameterName).type(`{selectall}{backspace}`);
+			this.getters.parameterInput(parameterName).type('{selectall}{backspace}');
 		},
 		typeIntoParameterInput: (
 			parameterName: string,
@@ -187,7 +187,7 @@ export class NDV extends BasePage {
 		) => {
 			this.getters.parameterInput(parameterName).type(content, opts);
 		},
-		selectOptionInParameterDropdown: (parameterName: string, content: string) => {
+		selectOptionInParameterDropdown: (_: string, content: string) => {
 			getVisibleSelect().find('.option-headline').contains(content).click();
 		},
 		rename: (newName: string) => {
@@ -285,7 +285,7 @@ export class NDV extends BasePage {
 				parseSpecialCharSequences: false,
 				delay,
 			});
-			this.actions.validateExpressionPreview(fieldName, `node doesn't exist`);
+			this.actions.validateExpressionPreview(fieldName, "node doesn't exist");
 		},
 		openSettings: () => {
 			this.getters.nodeSettingsTab().click();

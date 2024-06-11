@@ -403,6 +403,7 @@ import { useAIStore } from '@/stores/ai.store';
 import { useStorage } from '@/composables/useStorage';
 import { isJSPlumbEndpointElement, isJSPlumbConnection } from '@/utils/typeGuards';
 import { usePostHog } from '@/stores/posthog.store';
+import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -464,7 +465,7 @@ export default defineComponent({
 				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 				const saved = await this.workflowHelpers.saveCurrentWorkflow({}, false);
 				if (saved) {
-					await this.settingsStore.fetchPromptsData();
+					await this.npsSurveyStore.fetchPromptsData();
 				}
 				this.uiStore.stateIsDirty = false;
 
@@ -605,6 +606,7 @@ export default defineComponent({
 			useExecutionsStore,
 			useProjectsStore,
 			useAIStore,
+			useNpsSurveyStore,
 		),
 		nativelyNumberSuffixedDefaults(): string[] {
 			return this.nodeTypesStore.nativelyNumberSuffixedDefaults;
@@ -1235,7 +1237,7 @@ export default defineComponent({
 		async onSaveKeyboardShortcut(e: KeyboardEvent) {
 			let saved = await this.workflowHelpers.saveCurrentWorkflow();
 			if (saved) {
-				await this.settingsStore.fetchPromptsData();
+				await this.npsSurveyStore.fetchPromptsData();
 
 				if (this.$route.name === VIEWS.EXECUTION_DEBUG) {
 					await this.$router.replace({
@@ -1572,8 +1574,9 @@ export default defineComponent({
 			if (e.key === 's' && ctrlModifier && !readOnly) {
 				e.stopPropagation();
 				e.preventDefault();
+				const workflowIsSaved = !this.uiStore.stateIsDirty;
 
-				if (this.isReadOnlyRoute || this.readOnlyEnv) {
+				if (this.isReadOnlyRoute || this.readOnlyEnv || workflowIsSaved) {
 					return;
 				}
 
@@ -1997,11 +2000,13 @@ export default defineComponent({
 			void this.getNodesToSave(nodes).then((data) => {
 				const workflowToCopy: IWorkflowToShare = {
 					meta: {
-						...(this.workflowsStore.workflow.meta ?? {}),
+						...this.workflowsStore.workflow.meta,
 						instanceId: this.rootStore.instanceId,
 					},
 					...data,
 				};
+
+				delete workflowToCopy.meta.templateCredsSetupCompleted;
 
 				this.workflowHelpers.removeForeignCredentialsFromWorkflow(
 					workflowToCopy,
@@ -2176,7 +2181,11 @@ export default defineComponent({
 					}
 				}
 
-				return await this.importWorkflowData(workflowData!, 'paste', false);
+				if (!workflowData) {
+					return;
+				}
+
+				return await this.importWorkflowData(workflowData, 'paste', false);
 			}
 		},
 
@@ -2203,7 +2212,7 @@ export default defineComponent({
 
 		// Imports the given workflow data into the current workflow
 		async importWorkflowData(
-			workflowData: IWorkflowToShare,
+			workflowData: IWorkflowDataUpdate,
 			source: string,
 			importTags = true,
 		): Promise<void> {
@@ -2340,7 +2349,7 @@ export default defineComponent({
 			}
 		},
 
-		removeUnknownCredentials(workflow: IWorkflowToShare) {
+		removeUnknownCredentials(workflow: IWorkflowDataUpdate) {
 			if (!workflow?.nodes) return;
 
 			for (const node of workflow.nodes) {
@@ -3789,7 +3798,7 @@ export default defineComponent({
 					);
 					if (confirmModal === MODAL_CONFIRM) {
 						const saved = await this.workflowHelpers.saveCurrentWorkflow();
-						if (saved) await this.settingsStore.fetchPromptsData();
+						if (saved) await this.npsSurveyStore.fetchPromptsData();
 					} else if (confirmModal === MODAL_CANCEL) {
 						return;
 					}

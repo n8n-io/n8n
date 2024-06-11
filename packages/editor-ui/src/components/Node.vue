@@ -563,7 +563,7 @@ export default defineComponent({
 						returnStyles['border-style'] = 'solid';
 					}
 				} else if (!!this.waiting || this.showPinnedDataInfo) {
-					borderColor = '--color-canvas-node-pinned-border';
+					borderColor = '--color-node-pinned-border';
 				} else if (this.nodeExecutionStatus === 'unknown') {
 					borderColor = '--color-foreground-xdark';
 				} else if (this.workflowDataItems) {
@@ -658,12 +658,15 @@ export default defineComponent({
 				this.showTriggerNodeTooltip = false;
 			}
 		},
-		nodeRunData(newValue) {
-			if (!this.data) {
-				return;
-			}
+		nodeRunData: {
+			deep: true,
+			handler(newValue) {
+				if (!this.data) {
+					return;
+				}
 
-			this.$emit('run', { name: this.data.name, data: newValue, waiting: !!this.waiting });
+				this.$emit('run', { name: this.data.name, data: newValue, waiting: !!this.waiting });
+			},
 		},
 	},
 	created() {
@@ -906,10 +909,10 @@ export default defineComponent({
 			height: 100%;
 			border: 2px solid var(--color-foreground-xdark);
 			border-radius: var(--border-radius-large);
-			background-color: var(--color-canvas-node-background);
-			--color-background-node-icon-badge: var(--color-canvas-node-background);
+			background-color: var(--color-node-background);
+			--color-background-node-icon-badge: var(--color-node-background);
 			&.executing {
-				background-color: $node-background-executing !important;
+				background-color: var(--color-node-executing-background) !important;
 
 				.node-executing-info {
 					display: inline-block;
@@ -990,7 +993,7 @@ export default defineComponent({
 				border-radius: 50px;
 
 				&.executing {
-					background-color: $node-background-executing-other !important;
+					background-color: var(--color-node-executing-other-background) !important;
 				}
 
 				.node-executing-info {

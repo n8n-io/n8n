@@ -1,4 +1,5 @@
 import 'cypress-real-events';
+import FakeTimers from '@sinonjs/fake-timers';
 import { WorkflowPage } from '../pages';
 import {
 	BACKEND_BASE_URL,
@@ -8,6 +9,16 @@ import {
 	N8N_AUTH_COOKIE,
 } from '../constants';
 
+Cypress.Commands.add('setAppDate', (targetDate: number | Date) => {
+	cy.window().then((win) => {
+		FakeTimers.withGlobal(win).install({
+			now: targetDate,
+			toFake: ['Date'],
+			shouldAdvanceTime: true,
+		});
+	});
+});
+
 Cypress.Commands.add('getByTestId', (selector, ...args) => {
 	return cy.get(`[data-test-id="${selector}"]`, ...args);
 });
@@ -16,9 +27,7 @@ Cypress.Commands.add('createFixtureWorkflow', (fixtureKey, workflowName) => {
 	const workflowPage = new WorkflowPage();
 
 	// We need to force the click because the input is hidden
-	workflowPage.getters
-		.workflowImportInput()
-		.selectFile(`cypress/fixtures/${fixtureKey}`, { force: true });
+	workflowPage.getters.workflowImportInput().selectFile(`fixtures/${fixtureKey}`, { force: true });
 
 	cy.waitForLoad(false);
 	workflowPage.actions.setWorkflowName(workflowName);
@@ -46,7 +55,7 @@ Cypress.Commands.add('waitForLoad', (waitForIntercepts = true) => {
 });
 
 Cypress.Commands.add('signin', ({ email, password }) => {
-	Cypress.session.clearAllSavedSessions();
+	void Cypress.session.clearAllSavedSessions();
 	cy.session([email, password], () =>
 		cy.request({
 			method: 'POST',
@@ -128,7 +137,7 @@ Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) =>
 });
 
 Cypress.Commands.add('drag', (selector, pos, options) => {
-	const index = options?.index || 0;
+	const index = options?.index ?? 0;
 	const [xDiff, yDiff] = pos;
 	const element = typeof selector === 'string' ? cy.get(selector).eq(index) : selector;
 	element.should('exist');

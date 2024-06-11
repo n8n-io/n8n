@@ -42,6 +42,7 @@ import { confirmEmail, getCloudUserInfo } from '@/api/cloudPlans';
 import { useRBACStore } from '@/stores/rbac.store';
 import type { Scope } from '@n8n/permissions';
 import { inviteUsers, acceptInvitation } from '@/api/invitation';
+import { useNpsSurveyStore } from './npsSurvey.store';
 
 const isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
 const isInstanceOwner = (user: IUserResponse | null) => user?.role === ROLE.Owner;
@@ -110,6 +111,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const defaultScopes: Scope[] = [];
 			useRBACStore().setGlobalScopes(user.globalScopes || defaultScopes);
 			usePostHog().init(user.featureFlags);
+			useNpsSurveyStore().setupNpsSurveyOnLogin(user.id, user.settings);
 		},
 		unsetCurrentUser() {
 			this.currentUserId = null;
@@ -185,6 +187,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			useCloudPlanStore().reset();
 			usePostHog().reset();
 			useUIStore().clearBannerStack();
+			useNpsSurveyStore().resetNpsSurveyOnLogOut();
 		},
 		async createOwner(params: {
 			firstName: string;
