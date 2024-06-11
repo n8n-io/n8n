@@ -44,9 +44,16 @@ describe('Workflow templates', () => {
 	});
 
 	it('Redirects to website when visiting templates page directly', () => {
+		cy.intercept(
+			{
+				hostname: 'n8n.io',
+				pathname: '/workflows',
+			},
+			'Mock Template Page',
+		).as('templatesPage');
+
 		cy.visit(templatesPage.url);
-		cy.origin('https://n8n.io', () => {
-			cy.url().should('include', 'https://n8n.io/workflows');
-		});
+
+		cy.wait('@templatesPage');
 	});
 });
