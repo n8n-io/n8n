@@ -3,7 +3,6 @@ import type { DeleteResult } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
 import EventEmitter from 'events';
 import uniqby from 'lodash/uniqBy';
-import { jsonParse } from 'n8n-workflow';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
 import config from '@/config';
@@ -28,8 +27,6 @@ import {
 	EventMessageGeneric,
 	eventMessageGenericDestinationTestEvent,
 } from '../EventMessageClasses/EventMessageGeneric';
-import type { AbstractEventMessageOptions } from '../EventMessageClasses/AbstractEventMessageOptions';
-import { getEventMessageObjectByType } from '../EventMessageClasses/Helpers';
 import { ExecutionRecoveryService } from '../../executions/execution-recovery.service';
 import {
 	EventMessageAiNode,
@@ -244,17 +241,6 @@ export class MessageEventBus extends EventEmitter {
 			await this.orchestrationService.publish('restartEventBus');
 		}
 		return result;
-	}
-
-	async handleRedisEventBusMessage(messageString: string) {
-		const eventData = jsonParse<AbstractEventMessageOptions>(messageString);
-		if (eventData) {
-			const eventMessage = getEventMessageObjectByType(eventData);
-			if (eventMessage) {
-				await this.send(eventMessage);
-			}
-		}
-		return eventData;
 	}
 
 	private async trySendingUnsent(msgs?: EventMessageTypes[]) {
