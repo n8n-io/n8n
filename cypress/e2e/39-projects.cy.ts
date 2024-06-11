@@ -68,6 +68,11 @@ describe('Projects', { disableAutoLogin: true }, () => {
 
 		credentialsModal.actions.close();
 		credentialsPage.getters.credentialCards().should('have.length', 1);
+		credentialsPage.getters
+			.credentialCards()
+			.first()
+			.find('.n8n-node-icon img')
+			.should('be.visible');
 
 		projects.getProjectTabWorkflows().click();
 		workflowsPage.getters.workflowCards().should('have.length', 1);
