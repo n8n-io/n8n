@@ -32,6 +32,26 @@ import { Logger } from '@/Logger';
 import { UrlService } from './url.service';
 import { InternalHooks } from '@/InternalHooks';
 import { isApiEnabled } from '@/PublicApi';
+import axios from 'axios';
+
+type CloudPlan = {
+	planId: number;
+	monthlyExecutionsLimit: number;
+	activeWorkflowsLimit: number;
+	credentialsLimit: number;
+	isActive: boolean;
+	displayName: string;
+	expirationDate: string;
+	metadata: {
+		version: 'v1';
+		group: 'opt-out' | 'opt-in' | 'trial';
+		slug: 'pro-1' | 'pro-2' | 'starter' | 'trial-1';
+		trial?: {
+			length: number;
+			gracePeriod: number;
+		};
+	};
+};
 
 @Service()
 export class FrontendService {
@@ -220,6 +240,26 @@ export class FrontendService {
 				licensePruneTime: -1,
 			},
 		};
+
+		if (config.getEnv('deployment.type') === 'cloud') {
+			void this.setCloudPlan();
+		}
+	}
+
+	private async setCloudPlan() {
+		try {
+			const response = await axios
+				.create({ baseURL: this.urlService.getInstanceBaseUrl() })
+				.get<CloudPlan>('/rest/admin/cloud-plan');
+
+			this.settings.n8nMetadata = {
+				...this.settings.n8nMetadata,
+				cloudPlan: response.data,
+			};
+		} catch (e) {
+			const error = e instanceof Error ? e : new Error(`${e}`);
+			this.logger.error('Failed to fetch cloud plan', error);
+		}
 	}
 
 	async generateTypes() {

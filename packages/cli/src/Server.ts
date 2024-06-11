@@ -96,8 +96,8 @@ export class Server extends AbstractServer {
 		this.loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
 
 		if (!config.getEnv('endpoints.disableUi')) {
-			// eslint-disable-next-line @typescript-eslint/no-var-requires
-			this.frontendService = Container.get(require('@/services/frontend.service').FrontendService);
+			const frontendServiceModule = await import('@/services/frontend.service');
+			this.frontendService = Container.get(frontendServiceModule.FrontendService);
 		}
 
 		this.presetCredentialsLoaded = false;

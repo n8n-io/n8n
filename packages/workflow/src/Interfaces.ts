@@ -2574,7 +2574,7 @@ export interface IN8nUISettings {
 	releaseChannel: 'stable' | 'beta' | 'nightly' | 'dev';
 	n8nMetadata?: {
 		userId?: string;
-		[key: string]: string | number | undefined;
+		[key: string]: string | number | object | undefined;
 	};
 	versionNotifications: IVersionNotificationSettings;
 	instanceId: string;

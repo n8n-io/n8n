@@ -172,6 +172,16 @@ export class Start extends BaseCommand {
 		}
 
 		await super.init();
+
+		if (!config.getEnv('endpoints.disableUi')) {
+			/**
+			 * Construct `FrontendService` before `ActiveWorkflowManager` so
+			 * cloud plan is available for telemetry before server start.
+			 */
+			const frontendServiceModule = await import('@/services/frontend.service');
+			Container.get(frontendServiceModule.FrontendService);
+		}
+
 		this.activeWorkflowManager = Container.get(ActiveWorkflowManager);
 
 		await this.initLicense();
