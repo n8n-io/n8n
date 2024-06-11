@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@ngneat/falso": "^6.4.0",
+    "@sinonjs/fake-timers": "^11.2.2",
     "cross-env": "^7.0.3",
     "cypress": "^13.6.2",
     "cypress-otp": "^1.0.3",
