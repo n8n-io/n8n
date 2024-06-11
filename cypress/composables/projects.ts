@@ -39,9 +39,7 @@ export function createProject(name: string) {
 }
 
 export function createWorkflow(fixtureKey: string, name: string) {
-	workflowPage.getters
-		.workflowImportInput()
-		.selectFile(`cypress/fixtures/${fixtureKey}`, { force: true });
+	workflowPage.getters.workflowImportInput().selectFile(`fixtures/${fixtureKey}`, { force: true });
 	workflowPage.actions.setWorkflowName(name);
 	workflowPage.getters.saveButton().should('contain', 'Saved');
 	workflowPage.actions.zoomToFit();
