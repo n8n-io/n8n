@@ -31,7 +31,7 @@ describe('CredentialsView', () => {
 		afterAll(() => {
 			vi.resetAllMocks();
 		});
-		it('should use necessary keys from credential object', () => {
+		it('should have ResourcesListLayout render with necessary keys from credential object', () => {
 			const homeProject: ProjectSharingData = {
 				id: '1',
 				name: 'test',
