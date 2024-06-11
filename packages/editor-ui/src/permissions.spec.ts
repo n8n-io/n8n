@@ -78,6 +78,7 @@ describe('permissions', () => {
 					'credential:delete',
 					'credential:list',
 					'credential:share',
+					'credential:move',
 				],
 			} as ICredentialsResponse),
 		).toEqual({
@@ -87,6 +88,7 @@ describe('permissions', () => {
 			delete: true,
 			list: true,
 			share: true,
+			move: true,
 		});
 	});
 
@@ -101,6 +103,7 @@ describe('permissions', () => {
 					'workflow:list',
 					'workflow:share',
 					'workflow:execute',
+					'workflow:move',
 				],
 			} as IWorkflowDb),
 		).toEqual({
@@ -111,6 +114,7 @@ describe('permissions', () => {
 			list: true,
 			share: true,
 			execute: true,
+			move: true,
 		});
 	});
 });
