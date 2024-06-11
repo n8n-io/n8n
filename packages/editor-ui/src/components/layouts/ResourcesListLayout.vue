@@ -169,6 +169,7 @@ export type IResource = {
 	createdAt?: string;
 	homeProject?: ProjectSharingData;
 	scopes?: Scope[];
+	type?: string;
 };
 
 interface IFilters {
