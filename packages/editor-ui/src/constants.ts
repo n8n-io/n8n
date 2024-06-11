@@ -51,7 +51,7 @@ export const WORKFLOW_LM_CHAT_MODAL_KEY = 'lmChat';
 export const WORKFLOW_SHARE_MODAL_KEY = 'workflowShare';
 export const PERSONALIZATION_MODAL_KEY = 'personalization';
 export const CONTACT_PROMPT_MODAL_KEY = 'contactPrompt';
-export const VALUE_SURVEY_MODAL_KEY = 'valueSurvey';
+export const NPS_SURVEY_MODAL_KEY = 'npsSurvey';
 export const WORKFLOW_ACTIVE_MODAL_KEY = 'activation';
 export const ONBOARDING_CALL_SIGNUP_MODAL_KEY = 'onboardingCallSignup';
 export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
@@ -753,7 +753,7 @@ export const APPEND_ATTRIBUTION_DEFAULT_PATH = 'parameters.options.appendAttribu
 
 export const DRAG_EVENT_DATA_KEY = 'nodesAndConnections';
 
-export const NOT_DUPLICATABE_NODE_TYPES = [FORM_TRIGGER_NODE_TYPE];
+export const NOT_DUPLICATABLE_NODE_TYPES = [FORM_TRIGGER_NODE_TYPE];
 export const UPDATE_WEBHOOK_ID_NODE_TYPES = [FORM_TRIGGER_NODE_TYPE];
 
 export const CREATOR_HUB_URL = 'https://creators.n8n.io/hub';
@@ -767,6 +767,10 @@ export const TIME = {
 	HOUR: 60 * 60 * 1000,
 	DAY: 24 * 60 * 60 * 1000,
 };
+
+export const THREE_DAYS_IN_MILLIS = 3 * TIME.DAY;
+export const SEVEN_DAYS_IN_MILLIS = 7 * TIME.DAY;
+export const SIX_MONTHS_IN_MILLIS = 6 * 30 * TIME.DAY;
 
 /**
  * Mouse button codes

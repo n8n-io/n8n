@@ -1,5 +1,9 @@
-import { CODE_NODE_NAME, SET_NODE_NAME, EDIT_FIELDS_SET_NODE_NAME } from './../constants';
-import { SCHEDULE_TRIGGER_NODE_NAME } from '../constants';
+import {
+	SCHEDULE_TRIGGER_NODE_NAME,
+	CODE_NODE_NAME,
+	SET_NODE_NAME,
+	EDIT_FIELDS_SET_NODE_NAME,
+} from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { MessageBox as MessageBoxClass } from '../pages/modals/message-box';
 import { NDV } from '../pages/ndv';
@@ -338,8 +342,8 @@ describe('Undo/Redo', () => {
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
 		cy.get(WorkflowPage.getters.getEndpointSelector('input', 'Switch')).should('have.length', 1);
 		cy.get(WorkflowPage.getters.getEndpointSelector('input', 'Switch'))
-			.should('have.css', 'left', `637px`)
-			.should('have.css', 'top', `501px`);
+			.should('have.css', 'left', '637px')
+			.should('have.css', 'top', '501px');
 
 		cy.fixture('Test_workflow_form_switch.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
@@ -353,8 +357,8 @@ describe('Undo/Redo', () => {
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
 		cy.get(WorkflowPage.getters.getEndpointSelector('input', 'Switch')).should('have.length', 1);
 		cy.get(WorkflowPage.getters.getEndpointSelector('input', 'Switch'))
-			.should('have.css', 'left', `637px`)
-			.should('have.css', 'top', `501px`);
+			.should('have.css', 'left', '637px')
+			.should('have.css', 'top', '501px');
 	});
 
 	it('should not undo/redo when NDV or a modal is open', () => {

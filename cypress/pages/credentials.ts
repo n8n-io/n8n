@@ -2,6 +2,7 @@ import { BasePage } from './base';
 
 export class CredentialsPage extends BasePage {
 	url = '/home/credentials';
+
 	getters = {
 		emptyListCreateCredentialButton: () => cy.getByTestId('empty-resources-list').find('button'),
 		createCredentialButton: () => cy.getByTestId('resources-list-add'),
@@ -23,6 +24,7 @@ export class CredentialsPage extends BasePage {
 		filtersTrigger: () => cy.getByTestId('resources-list-filters-trigger'),
 		filtersDropdown: () => cy.getByTestId('resources-list-filters-dropdown'),
 	};
+
 	actions = {
 		search: (searchString: string) => {
 			const searchInput = this.getters.searchInput();

@@ -4,8 +4,8 @@ import './commands';
 before(() => {
 	cy.resetDatabase();
 
-	Cypress.on('uncaught:exception', (err) => {
-		return !err.message.includes('ResizeObserver');
+	Cypress.on('uncaught:exception', (error) => {
+		return !error.message.includes('ResizeObserver');
 	});
 });
 

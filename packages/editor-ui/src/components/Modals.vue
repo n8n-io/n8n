@@ -41,9 +41,9 @@
 			<UpdatesPanel />
 		</ModalRoot>
 
-		<ModalRoot :name="VALUE_SURVEY_MODAL_KEY" :keep-alive="true">
+		<ModalRoot :name="NPS_SURVEY_MODAL_KEY" :keep-alive="true">
 			<template #default="{ active }">
-				<ValueSurvey :is-active="active" />
+				<NpsSurvey :is-active="active" />
 			</template>
 		</ModalRoot>
 
@@ -187,7 +187,7 @@ import {
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
 	TAGS_MANAGER_MODAL_KEY,
-	VALUE_SURVEY_MODAL_KEY,
+	NPS_SURVEY_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
 	WORKFLOW_LM_CHAT_MODAL_KEY,
@@ -220,7 +220,7 @@ import OnboardingCallSignupModal from './OnboardingCallSignupModal.vue';
 import PersonalizationModal from './PersonalizationModal.vue';
 import TagsManager from './TagsManager/TagsManager.vue';
 import UpdatesPanel from './UpdatesPanel.vue';
-import ValueSurvey from './ValueSurvey.vue';
+import NpsSurvey from './NpsSurvey.vue';
 import WorkflowLMChat from './WorkflowLMChat.vue';
 import WorkflowSettings from './WorkflowSettings.vue';
 import DeleteUserModal from './DeleteUserModal.vue';
@@ -257,7 +257,7 @@ export default defineComponent({
 		PersonalizationModal,
 		TagsManager,
 		UpdatesPanel,
-		ValueSurvey,
+		NpsSurvey,
 		WorkflowLMChat,
 		WorkflowSettings,
 		WorkflowShareModal,
@@ -291,7 +291,7 @@ export default defineComponent({
 		WORKFLOW_LM_CHAT_MODAL_KEY,
 		WORKFLOW_SETTINGS_MODAL_KEY,
 		WORKFLOW_SHARE_MODAL_KEY,
-		VALUE_SURVEY_MODAL_KEY,
+		NPS_SURVEY_MODAL_KEY,
 		WORKFLOW_ACTIVE_MODAL_KEY,
 		IMPORT_CURL_MODAL_KEY,
 		GENERATE_CURL_MODAL_KEY,
