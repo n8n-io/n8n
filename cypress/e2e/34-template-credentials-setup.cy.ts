@@ -8,10 +8,19 @@ import { WorkflowPage } from '../pages/workflow';
 import * as formStep from '../composables/setup-template-form-step';
 import { getSetupWorkflowCredentialsButton } from '../composables/setup-workflow-credentials-button';
 import * as setupCredsModal from '../composables/modals/workflow-credential-setup-modal';
+import TestTemplate1 from '../fixtures/Test_Template_1.json';
+import TestTemplate2 from '../fixtures/Test_Template_2.json';
 
 const workflowPage = new WorkflowPage();
 
-const testTemplate = templateCredentialsSetupPage.testData.simpleTemplate;
+const testTemplate = {
+	id: 1205,
+	data: TestTemplate1,
+};
+const templateWithoutCredentials = {
+	id: 1344,
+	data: TestTemplate2,
+};
 
 // NodeView uses beforeunload listener that will show a browser
 // native popup, which will block cypress from continuing / exiting.
@@ -29,19 +38,19 @@ Cypress.on('window:before:load', (win) => {
 
 describe('Template credentials setup', () => {
 	beforeEach(() => {
-		cy.intercept('GET', `https://api.n8n.io/api/templates/workflows/${testTemplate.id}`, {
-			fixture: testTemplate.fixture,
+		cy.intercept(
+			'GET',
+			`https://api.n8n.io/api/templates/workflows/${testTemplate.id}`,
+			testTemplate.data,
+		).as('getTemplatePreview');
+		cy.intercept(
+			'GET',
+			`https://api.n8n.io/api/workflows/templates/${testTemplate.id}`,
+			testTemplate.data.workflow,
+		).as('getTemplate');
+		cy.overrideSettings({
+			templates: { enabled: true, host: 'https://api.n8n.io/api/' },
 		});
-		cy.intercept('GET', '**/rest/settings', (req) => {
-			// Disable cache
-			delete req.headers['if-none-match'];
-			req.reply((res) => {
-				if (res.body.data) {
-					// Disable custom templates host if it has been overridden by another intercept
-					res.body.data.templates = { enabled: true, host: 'https://api.n8n.io/api/' };
-				}
-			});
-		}).as('settingsRequest');
 	});
 
 	it('can be opened from template collection page', () => {
@@ -108,7 +117,7 @@ describe('Template credentials setup', () => {
 
 		// Focus the canvas so the copy to clipboard works
 		workflowPage.getters.canvasNodes().eq(0).realClick();
-		workflowPage.actions.selectAll();
+		workflowPage.actions.hitSelectAll();
 		workflowPage.actions.hitCopy();
 
 		cy.grantBrowserPermissions('clipboardReadWrite', 'clipboardSanitizedWrite');
@@ -125,11 +134,9 @@ describe('Template credentials setup', () => {
 	});
 
 	it('should work with a template that has no credentials (ADO-1603)', () => {
-		const templateWithoutCreds = templateCredentialsSetupPage.testData.templateWithoutCredentials;
-		cy.intercept('GET', `https://api.n8n.io/api/templates/workflows/${templateWithoutCreds.id}`, {
-			fixture: templateWithoutCreds.fixture,
-		});
-		templateCredentialsSetupPage.visitTemplateCredentialSetupPage(templateWithoutCreds.id);
+		const { id, data } = templateWithoutCredentials;
+		cy.intercept('GET', `https://api.n8n.io/api/templates/workflows/${id}`, data);
+		templateCredentialsSetupPage.visitTemplateCredentialSetupPage(id);
 
 		const expectedAppNames = ['1. Email (IMAP)', '2. Nextcloud'];
 		const expectedAppDescriptions = [
@@ -152,7 +159,7 @@ describe('Template credentials setup', () => {
 		workflowPage.getters.canvasNodes().should('have.length', 3);
 	});
 
-	describe('Credential setup from workflow editor', () => {
+	describe('Credential setup from workflow editor', { disableAutoLogin: true }, () => {
 		beforeEach(() => {
 			cy.resetDatabase();
 			cy.signinAsOwner();
@@ -190,7 +197,7 @@ describe('Template credentials setup', () => {
 
 			// Focus the canvas so the copy to clipboard works
 			workflowPage.getters.canvasNodes().eq(0).realClick();
-			workflowPage.actions.selectAll();
+			workflowPage.actions.hitSelectAll();
 			workflowPage.actions.hitCopy();
 
 			cy.grantBrowserPermissions('clipboardReadWrite', 'clipboardSanitizedWrite');

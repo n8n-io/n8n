@@ -5,18 +5,13 @@ import config from '@/config';
 import { SourceControlPreferencesService } from '@/environments/sourceControl/sourceControlPreferences.service.ee';
 import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
 import type { SourceControlledFile } from '@/environments/sourceControl/types/sourceControlledFile';
-import { WaitTracker } from '@/WaitTracker';
 
 import * as utils from '../shared/utils/';
 import { createUser } from '../shared/db/users';
-import { mockInstance } from '../../shared/mocking';
 import type { SuperAgentTest } from '../shared/types';
 
 let authOwnerAgent: SuperAgentTest;
 let owner: User;
-
-// This is necessary for the tests to shutdown cleanly.
-mockInstance(WaitTracker);
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['sourceControl', 'license', 'auth'],
