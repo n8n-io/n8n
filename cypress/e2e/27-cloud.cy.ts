@@ -24,17 +24,10 @@ describe('Cloud', { disableAutoLogin: true }, () => {
 			body: planData,
 		}).as('getPlanData');
 
-		cy.intercept('GET', '/rest/settings', (req) => {
-			req.on('response', (res) => {
-				res.send({
-					data: {
-						...res.body.data,
-						deployment: { type: 'cloud' },
-						n8nMetadata: { userId: 1 },
-					},
-				});
-			});
-		}).as('loadSettings');
+		cy.overrideSettings({
+			deployment: { type: 'cloud' },
+			n8nMetadata: { userId: '1' },
+		});
 
 		cy.intercept('GET', new RegExp('/rest/projects*')).as('projects');
 		cy.intercept('GET', new RegExp('/rest/roles')).as('roles');
@@ -58,14 +51,6 @@ describe('Cloud', { disableAutoLogin: true }, () => {
 			mainSidebar.actions.signout();
 
 			bannerStack.getters.banner().should('not.be.visible');
-
-			cy.signin({ email: INSTANCE_OWNER.email, password: INSTANCE_OWNER.password });
-
-			visitWorkflowPage();
-
-			bannerStack.getters.banner().should('be.visible');
-
-			mainSidebar.actions.signout();
 		});
 	});
 

@@ -1,6 +1,7 @@
 // Load type definitions that come with Cypress module
 /// <reference types="cypress" />
 
+import type { IN8nUISettings } from 'n8n-workflow';
 import type { Interception } from 'cypress/types/net-stubbing';
 
 interface SigninPayload {
@@ -25,7 +26,7 @@ declare global {
 			signin(payload: SigninPayload): void;
 			signinAsOwner(): void;
 			signout(): void;
-			interceptREST(method: string, url: string): Chainable<Interception>;
+			overrideSettings(value: Partial<IN8nUISettings>): void;
 			enableFeature(feature: string): void;
 			disableFeature(feature: string): void;
 			enableQueueMode(): void;

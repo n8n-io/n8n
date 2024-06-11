@@ -32,16 +32,9 @@ describe('Template credentials setup', () => {
 		cy.intercept('GET', `https://api.n8n.io/api/templates/workflows/${testTemplate.id}`, {
 			fixture: testTemplate.fixture,
 		});
-		cy.intercept('GET', '**/rest/settings', (req) => {
-			// Disable cache
-			delete req.headers['if-none-match'];
-			req.reply((res) => {
-				if (res.body.data) {
-					// Disable custom templates host if it has been overridden by another intercept
-					res.body.data.templates = { enabled: true, host: 'https://api.n8n.io/api/' };
-				}
-			});
-		}).as('settingsRequest');
+		cy.overrideSettings({
+			templates: { enabled: true, host: 'https://api.n8n.io/api/' },
+		});
 	});
 
 	it('can be opened from template collection page', () => {

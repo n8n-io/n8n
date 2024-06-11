@@ -7,17 +7,14 @@ const workflowsPage = new WorkflowsPage();
 const mainSidebar = new MainSidebar();
 
 describe('Workflow templates', () => {
+	const mockTemplateHost = (host: string) => {
+		cy.overrideSettings({
+			templates: { enabled: true, host },
+		});
+	};
+
 	beforeEach(() => {
-		cy.intercept('GET', '**/rest/settings', (req) => {
-			// Disable cache
-			delete req.headers['if-none-match'];
-			req.reply((res) => {
-				if (res.body.data) {
-					// Disable custom templates host if it has been overridden by another intercept
-					res.body.data.templates = { enabled: true, host: 'https://api.n8n.io/api/' };
-				}
-			});
-		}).as('settingsRequest');
+		mockTemplateHost('https://api.n8n.io/api/');
 	});
 
 	it('Opens website when clicking templates sidebar link', () => {

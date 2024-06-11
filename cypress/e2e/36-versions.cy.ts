@@ -1,4 +1,3 @@
-import { INSTANCE_OWNER } from '../constants';
 import { WorkflowsPage } from '../pages/workflows';
 import {
 	closeVersionUpdatesPanel,
@@ -11,22 +10,15 @@ const workflowsPage = new WorkflowsPage();
 
 describe('Versions', () => {
 	it('should open updates panel', () => {
-		cy.intercept('GET', '/rest/settings', (req) => {
-			req.continue((res) => {
-				if (res.body.hasOwnProperty('data')) {
-					res.body.data = {
-						...res.body.data,
-						releaseChannel: 'stable',
-						versionCli: '1.0.0',
-						versionNotifications: {
-							enabled: true,
-							endpoint: 'https://api.n8n.io/api/versions/',
-							infoUrl: 'https://docs.n8n.io/getting-started/installation/updating.html',
-						},
-					};
-				}
-			});
-		}).as('settings');
+		cy.overrideSettings({
+			releaseChannel: 'stable',
+			versionCli: '1.0.0',
+			versionNotifications: {
+				enabled: true,
+				endpoint: 'https://api.n8n.io/api/versions/',
+				infoUrl: 'https://docs.n8n.io/getting-started/installation/updating.html',
+			},
+		});
 
 		cy.intercept('GET', 'https://api.n8n.io/api/versions/1.0.0', [
 			{
@@ -53,10 +45,8 @@ describe('Versions', () => {
 			},
 		]);
 
-		cy.signin(INSTANCE_OWNER);
-
 		cy.visit(workflowsPage.url);
-		cy.wait('@settings');
+		cy.wait('@loadSettings');
 
 		getVersionUpdatesPanelOpenButton().should('contain', '2 updates');
 		openVersionUpdatesPanel();

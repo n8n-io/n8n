@@ -140,6 +140,9 @@ importers:
       cypress-real-events:
         specifier: ^1.11.0
         version: 1.11.0(cypress@13.6.2)
+      lodash:
+        specifier: 4.17.21
+        version: 4.17.21
       start-server-and-test:
         specifier: ^2.0.3
         version: 2.0.3
@@ -147,6 +150,9 @@ importers:
         specifier: 8.3.2
         version: 8.3.2
     devDependencies:
+      '@types/lodash':
+        specifier: ^4.14.195
+        version: 4.14.195
       '@types/uuid':
         specifier: ^8.3.2
         version: 8.3.4
