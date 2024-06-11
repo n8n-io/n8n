@@ -6,7 +6,6 @@ import {
 	getPublicApiUpgradeCTA,
 } from '../pages';
 import planData from '../fixtures/Plan_data_opt_in_trial.json';
-import { INSTANCE_OWNER } from '../constants';
 
 const mainSidebar = new MainSidebar();
 const bannerStack = new BannerStack();
@@ -23,6 +22,7 @@ describe('Cloud', { disableAutoLogin: true }, () => {
 		cy.intercept('GET', '/rest/admin/cloud-plan', {
 			body: planData,
 		}).as('getPlanData');
+		cy.intercept('GET', '/rest/cloud/proxy/user/me', {}).as('getCloudUserInfo');
 
 		cy.overrideSettings({
 			deployment: { type: 'cloud' },
@@ -42,7 +42,7 @@ describe('Cloud', { disableAutoLogin: true }, () => {
 
 	describe('BannerStack', () => {
 		it('should render trial banner for opt-in cloud user', () => {
-			cy.signin({ email: INSTANCE_OWNER.email, password: INSTANCE_OWNER.password });
+			cy.signinAsOwner();
 
 			visitWorkflowPage();
 
@@ -56,7 +56,7 @@ describe('Cloud', { disableAutoLogin: true }, () => {
 
 	describe('Admin Home', () => {
 		it('Should show admin button', () => {
-			cy.signin({ email: INSTANCE_OWNER.email, password: INSTANCE_OWNER.password });
+			cy.signinAsOwner();
 
 			visitWorkflowPage();
 
@@ -66,7 +66,7 @@ describe('Cloud', { disableAutoLogin: true }, () => {
 
 	describe('Public API', () => {
 		it('Should show upgrade CTA for Public API if user is trialing', () => {
-			cy.signin({ email: INSTANCE_OWNER.email, password: INSTANCE_OWNER.password });
+			cy.signinAsOwner();
 
 			visitPublicApiPage();
 			cy.wait(['@loadSettings', '@projects', '@roles', '@getPlanData']);

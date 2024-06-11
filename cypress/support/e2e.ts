@@ -1,6 +1,5 @@
 import cloneDeep from 'lodash/cloneDeep';
 import merge from 'lodash/merge';
-import { INSTANCE_OWNER } from '../constants';
 import { settings } from './commands';
 
 before(() => {
@@ -13,7 +12,7 @@ before(() => {
 
 beforeEach(() => {
 	if (!cy.config('disableAutoLogin')) {
-		cy.signin({ email: INSTANCE_OWNER.email, password: INSTANCE_OWNER.password });
+		cy.signinAsOwner();
 	}
 
 	cy.window().then((win): void => {

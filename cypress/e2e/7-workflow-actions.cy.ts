@@ -4,8 +4,6 @@ import {
 	META_KEY,
 	SCHEDULE_TRIGGER_NODE_NAME,
 	EDIT_FIELDS_SET_NODE_NAME,
-	INSTANCE_MEMBERS,
-	INSTANCE_OWNER,
 	NOTION_NODE_NAME,
 } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
@@ -357,14 +355,14 @@ describe('Workflow Actions', () => {
 
 describe('Menu entry Push To Git', () => {
 	it('should not show up in the menu for members', () => {
-		cy.signin(INSTANCE_MEMBERS[0]);
+		cy.signinAsMember(0);
 		cy.visit(WorkflowPages.url);
 		WorkflowPage.actions.visit();
 		WorkflowPage.getters.workflowMenuItemGitPush().should('not.exist');
 	});
 
 	it('should show up for owners', () => {
-		cy.signin(INSTANCE_OWNER);
+		cy.signinAsOwner();
 		cy.visit(WorkflowPages.url);
 		WorkflowPage.actions.visit();
 		WorkflowPage.getters.workflowMenuItemGitPush().should('exist');

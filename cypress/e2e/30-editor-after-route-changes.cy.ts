@@ -2,7 +2,6 @@ import {
 	CODE_NODE_NAME,
 	EDIT_FIELDS_SET_NODE_NAME,
 	IF_NODE_NAME,
-	INSTANCE_OWNER,
 	SCHEDULE_TRIGGER_NODE_NAME,
 } from '../constants';
 import {
@@ -125,7 +124,7 @@ describe('Editor actions should work', () => {
 	beforeEach(() => {
 		cy.enableFeature('debugInEditor');
 		cy.enableFeature('workflowHistory');
-		cy.signin({ email: INSTANCE_OWNER.email, password: INSTANCE_OWNER.password });
+		cy.signinAsOwner();
 		createNewWorkflowAndActivate();
 	});
 
@@ -186,7 +185,7 @@ describe('Editor zoom should work after route changes', () => {
 	beforeEach(() => {
 		cy.enableFeature('debugInEditor');
 		cy.enableFeature('workflowHistory');
-		cy.signin({ email: INSTANCE_OWNER.email, password: INSTANCE_OWNER.password });
+		cy.signinAsOwner();
 		workflowPage.actions.visit();
 		cy.createFixtureWorkflow('Lots_of_nodes.json', 'Lots of nodes');
 		workflowPage.actions.saveWorkflowOnButtonClick();

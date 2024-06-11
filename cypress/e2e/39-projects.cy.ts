@@ -1,10 +1,4 @@
-import {
-	INSTANCE_ADMIN,
-	INSTANCE_MEMBERS,
-	INSTANCE_OWNER,
-	MANUAL_TRIGGER_NODE_NAME,
-	NOTION_NODE_NAME,
-} from '../constants';
+import { INSTANCE_MEMBERS, MANUAL_TRIGGER_NODE_NAME, NOTION_NODE_NAME } from '../constants';
 import {
 	WorkflowsPage,
 	WorkflowPage,
@@ -23,7 +17,7 @@ const credentialsModal = new CredentialsModal();
 const executionsTab = new WorkflowExecutionsTab();
 const ndv = new NDV();
 
-describe('Projects', () => {
+describe('Projects', { disableAutoLogin: true }, () => {
 	before(() => {
 		cy.resetDatabase();
 		cy.enableFeature('sharing');
@@ -34,7 +28,7 @@ describe('Projects', () => {
 	});
 
 	it('should handle workflows and credentials and menu items', () => {
-		cy.signin(INSTANCE_ADMIN);
+		cy.signinAsAdmin();
 		cy.visit(workflowsPage.url);
 		workflowsPage.getters.workflowCards().should('not.have.length');
 
@@ -230,8 +224,7 @@ describe('Projects', () => {
 	});
 
 	it('should not show project add button and projects to a member if not invited to any project', () => {
-		cy.signout();
-		cy.signin(INSTANCE_MEMBERS[1]);
+		cy.signinAsMember(1);
 		cy.visit(workflowsPage.url);
 
 		projects.getAddProjectButton().should('not.exist');
@@ -249,7 +242,7 @@ describe('Projects', () => {
 		});
 
 		it('should filter credentials by project ID when creating new workflow or hard reloading an opened workflow', () => {
-			cy.signin(INSTANCE_OWNER);
+			cy.signinAsOwner();
 			cy.visit(workflowsPage.url);
 
 			// Create a project and add a credential to it

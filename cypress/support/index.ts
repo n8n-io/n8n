@@ -2,7 +2,6 @@
 /// <reference types="cypress" />
 
 import type { IN8nUISettings } from 'n8n-workflow';
-import type { Interception } from 'cypress/types/net-stubbing';
 
 interface SigninPayload {
 	email: string;
@@ -23,8 +22,11 @@ declare global {
 			): Chainable<JQuery<HTMLElement>>;
 			findChildByTestId(childTestId: string): Chainable<JQuery<HTMLElement>>;
 			createFixtureWorkflow(fixtureKey: string, workflowName: string): void;
+			/** @deprecated */
 			signin(payload: SigninPayload): void;
 			signinAsOwner(): void;
+			signinAsAdmin(): void;
+			signinAsMember(index?: number): void;
 			signout(): void;
 			overrideSettings(value: Partial<IN8nUISettings>): void;
 			enableFeature(feature: string): void;
