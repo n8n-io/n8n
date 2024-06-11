@@ -118,7 +118,7 @@ describe('NpsSurvey', () => {
 		workflowPage.actions.saveWorkflowOnButtonClick();
 		getNpsSurvey().should('not.be.visible');
 
-		// shows up after at least sever days later to ignore again
+		// shows up after at least seven days later to ignore again
 		workflowPage.actions.visit(true, NOW + (SEVEN_DAYS + 10000) * 2 + ONE_DAY);
 		workflowPage.actions.saveWorkflowOnButtonClick();
 		clearNotifications();
