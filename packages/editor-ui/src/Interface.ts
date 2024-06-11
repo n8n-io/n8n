@@ -742,18 +742,9 @@ export interface IUserListAction {
 }
 
 export interface IN8nPrompts {
-	message: string;
-	title: string;
-	showContactPrompt: boolean;
-	showValueSurvey: boolean;
-}
-
-export interface IN8nValueSurveyData {
-	[key: string]: string;
-}
-
-export interface IN8nPromptResponse {
-	updated: boolean;
+	message?: string;
+	title?: string;
+	showContactPrompt?: boolean;
 }
 
 export const enum UserManagementAuthenticationMethod {
@@ -1214,6 +1205,8 @@ export type Modals = {
 	[key: string]: ModalState;
 };
 
+export type ModalKey = keyof Modals;
+
 export type ModalState = {
 	open: boolean;
 	mode?: string | null;
@@ -1366,7 +1359,6 @@ export interface INodeCreatorState {
 export interface ISettingsState {
 	initialized: boolean;
 	settings: IN8nUISettings;
-	promptsData: IN8nPrompts;
 	userManagement: IUserManagementSettings;
 	templatesEndpointHealthy: boolean;
 	api: {
@@ -1931,3 +1923,7 @@ export type EnterpriseEditionFeatureKey =
 	| 'AdvancedPermissions';
 
 export type EnterpriseEditionFeatureValue = keyof Omit<IN8nUISettings['enterprise'], 'projects'>;
+
+export interface IN8nPromptResponse {
+	updated: boolean;
+}

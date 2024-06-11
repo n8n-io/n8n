@@ -34,7 +34,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 
 	let workflowW2Url = '';
 	it('should create C1, W1, W2, share W1 with U3, as U2', () => {
-		cy.signin(INSTANCE_MEMBERS[0]);
+		cy.signinAsMember(0);
 
 		cy.visit(credentialsPage.url);
 		credentialsPage.getters.emptyListCreateCredentialButton().click();
@@ -67,7 +67,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 	});
 
 	it('should create C2, share C2 with U1 and U2, as U3', () => {
-		cy.signin(INSTANCE_MEMBERS[1]);
+		cy.signinAsMember(1);
 
 		cy.visit(credentialsPage.url);
 		credentialsPage.getters.emptyListCreateCredentialButton().click();
@@ -83,7 +83,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 	});
 
 	it('should open W1, add node using C2 as U3', () => {
-		cy.signin(INSTANCE_MEMBERS[1]);
+		cy.signinAsMember(1);
 
 		cy.visit(workflowsPage.url);
 		workflowsPage.getters.workflowCards().should('have.length', 1);
@@ -99,7 +99,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 	});
 
 	it('should open W1, add node using C2 as U2', () => {
-		cy.signin(INSTANCE_MEMBERS[0]);
+		cy.signinAsMember(0);
 
 		cy.visit(workflowsPage.url);
 		workflowsPage.getters.workflowCards().should('have.length', 2);
@@ -119,7 +119,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 	});
 
 	it('should not have access to W2, as U3', () => {
-		cy.signin(INSTANCE_MEMBERS[1]);
+		cy.signinAsMember(1);
 
 		cy.visit(workflowW2Url);
 		cy.waitForLoad();
@@ -128,7 +128,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 	});
 
 	it('should have access to W1, W2, as U1', () => {
-		cy.signin(INSTANCE_OWNER);
+		cy.signinAsOwner();
 
 		cy.visit(workflowsPage.url);
 		workflowsPage.getters.workflowCards().should('have.length', 2);
@@ -144,7 +144,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 	});
 
 	it('should automatically test C2 when opened by U2 sharee', () => {
-		cy.signin(INSTANCE_MEMBERS[0]);
+		cy.signinAsMember(0);
 
 		cy.visit(credentialsPage.url);
 		credentialsPage.getters.credentialCard('Credential C2').click();
@@ -152,7 +152,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 	});
 
 	it('should work for admin role on credentials created by others (also can share it with themselves)', () => {
-		cy.signin(INSTANCE_MEMBERS[0]);
+		cy.signinAsMember(0);
 
 		cy.visit(credentialsPage.url);
 		credentialsPage.getters.createCredentialButton().click();
@@ -164,7 +164,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		credentialsModal.actions.close();
 
 		cy.signout();
-		cy.signin(INSTANCE_ADMIN);
+		cy.signinAsAdmin();
 		cy.visit(credentialsPage.url);
 		credentialsPage.getters.credentialCard('Credential C3').click();
 		credentialsModal.getters.testSuccessTag().should('be.visible');

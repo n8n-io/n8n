@@ -1,6 +1,6 @@
+import { v4 as uuid } from 'uuid';
 import { WorkflowsPage as WorkflowsPageClass } from '../pages/workflows';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
-import { v4 as uuid } from 'uuid';
 
 const WorkflowsPage = new WorkflowsPageClass();
 const WorkflowPage = new WorkflowPageClass();

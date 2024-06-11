@@ -49,6 +49,7 @@ import { useTagsStore } from '@/stores/tags.store';
 import { executionFilterToQueryFilter } from '@/utils/executionUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useDebounce } from '@/composables/useDebounce';
+import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 
 export default defineComponent({
 	name: 'WorkflowExecutionsList',
@@ -79,7 +80,7 @@ export default defineComponent({
 			if (confirmModal === MODAL_CONFIRM) {
 				const saved = await this.workflowHelpers.saveCurrentWorkflow({}, false);
 				if (saved) {
-					await this.settingsStore.fetchPromptsData();
+					await this.npsSurveyStore.fetchPromptsData();
 				}
 				this.uiStore.stateIsDirty = false;
 				next();
@@ -141,7 +142,7 @@ export default defineComponent({
 		};
 	},
 	computed: {
-		...mapStores(useTagsStore, useNodeTypesStore, useSettingsStore, useUIStore),
+		...mapStores(useTagsStore, useNodeTypesStore, useSettingsStore, useUIStore, useNpsSurveyStore),
 		temporaryExecution(): ExecutionSummary | undefined {
 			const isTemporary = !this.executions.find((execution) => execution.id === this.execution?.id);
 			return isTemporary ? this.execution : undefined;
