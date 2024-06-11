@@ -17,6 +17,7 @@ jobs:
   build:
     name: Install & Build
     runs-on: ubuntu-latest
+    if: ${{github.repository == 'n8n-io/n8n' || github.event_name != 'schedule'}}
     steps:
       - uses: actions/checkout@v4.1.1
       - run: corepack enable
@@ -39,6 +40,7 @@ jobs:
     name: SQLite Pooled
     runs-on: ubuntu-latest
     needs: build
+    if: ${{github.repository == 'n8n-io/n8n' || github.event_name != 'schedule'}}
     timeout-minutes: 20
     env:
       DB_TYPE: sqlite
@@ -66,6 +68,7 @@ jobs:
     name: MySQL
     runs-on: ubuntu-latest
     needs: build
+    if: ${{github.repository == 'n8n-io/n8n' || github.event_name != 'schedule'}}
     timeout-minutes: 20
     env:
       DB_MYSQLDB_PASSWORD: password
@@ -99,6 +102,7 @@ jobs:
     name: Postgres
     runs-on: ubuntu-latest
     needs: build
+    if: ${{github.repository == 'n8n-io/n8n' || github.event_name != 'schedule'}}
     timeout-minutes: 20
     env:
       DB_POSTGRESDB_PASSWORD: password
@@ -133,6 +137,7 @@ jobs:
     name: Notify Slack on failure
     runs-on: ubuntu-latest
     needs: [mysql, postgres]
+    if: ${{github.repository == 'n8n-io/n8n' || github.event_name != 'schedule'}}
     steps:
       - name: Notify Slack on failure
         uses: act10ns/slack@v2.0.0

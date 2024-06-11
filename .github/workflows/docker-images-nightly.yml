@@ -39,7 +39,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    if: ${{github.repository == 'n8n-io/n8n' || github.event_name != 'schedule'}}
     steps:
       - name: Call Start URL - optionally
         run: |
