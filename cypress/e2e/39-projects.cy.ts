@@ -401,5 +401,152 @@ describe('Projects', () => {
 				.first()
 				.should('contain.text', 'Notion account personal project');
 		});
+
+		it('should move resources between projects', () => {
+			cy.signin(INSTANCE_OWNER);
+			cy.visit(workflowsPage.url);
+
+			// Create a workflow and a credential in the Home project
+			workflowsPage.getters.workflowCards().should('not.have.length');
+			workflowsPage.getters.newWorkflowButtonCard().click();
+			projects.createWorkflow('Test_workflow_1.json', 'Workflow in Home project');
+
+			projects.getHomeButton().click();
+			projects.getProjectTabCredentials().should('be.visible').click();
+			credentialsPage.getters.emptyListCreateCredentialButton().click();
+			projects.createCredential('Credential in Home project');
+
+			// Create a project and add a credential and a workflow to it
+			projects.createProject('Project 1');
+			projects.getProjectTabCredentials().click();
+			credentialsPage.getters.emptyListCreateCredentialButton().click();
+			projects.createCredential('Credential in Project 1');
+
+			projects.getProjectTabWorkflows().click();
+			workflowsPage.getters.newWorkflowButtonCard().click();
+			projects.createWorkflow('Test_workflow_1.json', 'Workflow in Project 1');
+
+			// Create another project and add a credential and a workflow to it
+			projects.createProject('Project 2');
+			projects.getProjectTabCredentials().click();
+			credentialsPage.getters.emptyListCreateCredentialButton().click();
+			projects.createCredential('Credential in Project 2');
+
+			projects.getProjectTabWorkflows().click();
+			workflowsPage.getters.newWorkflowButtonCard().click();
+			projects.createWorkflow('Test_workflow_1.json', 'Workflow in Project 2');
+
+			// Move the workflow owned by me from Home to Project 1
+			projects.getHomeButton().click();
+			workflowsPage.getters
+				.workflowCards()
+				.should('have.length', 3)
+				.filter(':contains("Owned by me")')
+				.should('exist');
+			workflowsPage.getters.workflowCardActions('Workflow in Home project').click();
+			workflowsPage.getters.workflowMoveButton().click();
+
+			projects
+				.getResourceMoveModal()
+				.should('be.visible')
+				.find('button:contains("Next")')
+				.should('be.disabled');
+			projects.getProjectMoveSelect().click();
+			getVisibleSelect()
+				.find('li')
+				.should('have.length', 2)
+				.first()
+				.should('contain.text', 'Project 1')
+				.click();
+			projects.getResourceMoveModal().find('button:contains("Next")').click();
+
+			projects
+				.getResourceMoveConfirmModal()
+				.should('be.visible')
+				.find('button:contains("Confirm")')
+				.should('be.disabled');
+
+			projects
+				.getResourceMoveConfirmModal()
+				.find('input[type="checkbox"]')
+				.first()
+				.parents('label')
+				.click();
+			projects
+				.getResourceMoveConfirmModal()
+				.find('button:contains("Confirm")')
+				.should('be.disabled');
+			projects
+				.getResourceMoveConfirmModal()
+				.find('input[type="checkbox"]')
+				.last()
+				.parents('label')
+				.click();
+			projects
+				.getResourceMoveConfirmModal()
+				.find('button:contains("Confirm")')
+				.should('not.be.disabled')
+				.click();
+
+			workflowsPage.getters
+				.workflowCards()
+				.should('have.length', 3)
+				.filter(':contains("Owned by me")')
+				.should('not.exist');
+
+			// Move the credential from Project 1 to Project 2
+			projects.getMenuItems().first().click();
+			workflowsPage.getters.workflowCards().should('have.length', 2);
+			projects.getProjectTabCredentials().click();
+			credentialsPage.getters.credentialCards().should('have.length', 1);
+			credentialsPage.getters.credentialCardActions('Credential in Project 1').click();
+			credentialsPage.getters.credentialMoveButton().click();
+
+			projects
+				.getResourceMoveModal()
+				.should('be.visible')
+				.find('button:contains("Next")')
+				.should('be.disabled');
+			projects.getProjectMoveSelect().click();
+			getVisibleSelect()
+				.find('li')
+				.should('have.length', 1)
+				.first()
+				.should('contain.text', 'Project 2')
+				.click();
+			projects.getResourceMoveModal().find('button:contains("Next")').click();
+
+			projects
+				.getResourceMoveConfirmModal()
+				.should('be.visible')
+				.find('button:contains("Confirm")')
+				.should('be.disabled');
+
+			projects
+				.getResourceMoveConfirmModal()
+				.find('input[type="checkbox"]')
+				.first()
+				.parents('label')
+				.click();
+			projects
+				.getResourceMoveConfirmModal()
+				.find('button:contains("Confirm")')
+				.should('be.disabled');
+			projects
+				.getResourceMoveConfirmModal()
+				.find('input[type="checkbox"]')
+				.last()
+				.parents('label')
+				.click();
+			projects
+				.getResourceMoveConfirmModal()
+				.find('button:contains("Confirm")')
+				.should('not.be.disabled')
+				.click();
+			credentialsPage.getters.credentialCards().should('not.have.length');
+			projects.getMenuItems().last().click();
+			projects.getProjectTabCredentials().click();
+			credentialsPage.getters.credentialCards().should('have.length', 2);
+		});
 	});
 });
