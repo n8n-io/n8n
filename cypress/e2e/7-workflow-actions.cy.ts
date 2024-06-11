@@ -37,7 +37,7 @@ describe('Workflow Actions', () => {
 		WorkflowPage.getters.isWorkflowSaved();
 	});
 
-	it.skip('should not save already saved workflow', () => {
+	it('should not save already saved workflow', () => {
 		cy.intercept('PATCH', '/rest/workflows/*').as('saveWorkflow');
 		WorkflowPage.actions.saveWorkflowOnButtonClick();
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
