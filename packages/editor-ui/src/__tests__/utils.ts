@@ -39,12 +39,6 @@ export const waitAllPromises = async () => await new Promise((resolve) => setTim
 export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 	initialized: true,
 	settings: defaultSettings,
-	promptsData: {
-		message: '',
-		title: '',
-		showContactPrompt: false,
-		showValueSurvey: false,
-	},
 	userManagement: {
 		showSetupOnFirstLoad: false,
 		smtpSetup: false,

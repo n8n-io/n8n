@@ -14,7 +14,7 @@ import {
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
 	TAGS_MANAGER_MODAL_KEY,
-	VALUE_SURVEY_MODAL_KEY,
+	NPS_SURVEY_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
 	WORKFLOW_LM_CHAT_MODAL_KEY,
@@ -49,7 +49,7 @@ import OnboardingCallSignupModal from '@/components/OnboardingCallSignupModal.vu
 import PersonalizationModal from '@/components/PersonalizationModal.vue';
 import TagsManager from '@/components/TagsManager/TagsManager.vue';
 import UpdatesPanel from '@/components/UpdatesPanel.vue';
-import ValueSurvey from '@/components/ValueSurvey.vue';
+import NpsSurvey from '@/components/NpsSurvey.vue';
 import WorkflowLMChat from '@/components/WorkflowLMChat.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
 import DeleteUserModal from '@/components/DeleteUserModal.vue';
@@ -112,9 +112,9 @@ import ProjectMoveResourceConfirmModal from '@/components/Projects/ProjectMoveRe
 			<UpdatesPanel />
 		</ModalRoot>
 
-		<ModalRoot :name="VALUE_SURVEY_MODAL_KEY" :keep-alive="true">
+		<ModalRoot :name="NPS_SURVEY_MODAL_KEY" :keep-alive="true">
 			<template #default="{ active }">
-				<ValueSurvey :is-active="active" />
+				<NpsSurvey :is-active="active" />
 			</template>
 		</ModalRoot>
 
@@ -258,3 +258,76 @@ import ProjectMoveResourceConfirmModal from '@/components/Projects/ProjectMoveRe
 		</ModalRoot>
 	</div>
 </template>
+
+<script lang="ts">
+import { defineComponent } from 'vue';
+
+export default defineComponent({
+	name: 'Modals',
+	components: {
+		AboutModal,
+		ActivationModal,
+		ChatEmbedModal,
+		CommunityPackageInstallModal,
+		CommunityPackageManageConfirmModal,
+		ContactPromptModal,
+		ChangePasswordModal,
+		CredentialEdit,
+		CredentialsSelectModal,
+		DeleteUserModal,
+		DuplicateWorkflowDialog,
+		InviteUsersModal,
+		ModalRoot,
+		OnboardingCallSignupModal,
+		PersonalizationModal,
+		TagsManager,
+		UpdatesPanel,
+		NpsSurvey,
+		WorkflowLMChat,
+		WorkflowSettings,
+		WorkflowShareModal,
+		ImportCurlModal,
+		GenerateCurlModal,
+		EventDestinationSettingsModal,
+		SourceControlPushModal,
+		SourceControlPullModal,
+		ExternalSecretsProviderModal,
+		DebugPaywallModal,
+		MfaSetupModal,
+		WorkflowHistoryVersionRestoreModal,
+		SetupWorkflowCredentialsModal,
+	},
+	data: () => ({
+		CHAT_EMBED_MODAL_KEY,
+		COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
+		COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
+		CONTACT_PROMPT_MODAL_KEY,
+		CREDENTIAL_EDIT_MODAL_KEY,
+		CREDENTIAL_SELECT_MODAL_KEY,
+		ABOUT_MODAL_KEY,
+		CHANGE_PASSWORD_MODAL_KEY,
+		DELETE_USER_MODAL_KEY,
+		DUPLICATE_MODAL_KEY,
+		ONBOARDING_CALL_SIGNUP_MODAL_KEY,
+		PERSONALIZATION_MODAL_KEY,
+		INVITE_USER_MODAL_KEY,
+		TAGS_MANAGER_MODAL_KEY,
+		VERSIONS_MODAL_KEY,
+		WORKFLOW_LM_CHAT_MODAL_KEY,
+		WORKFLOW_SETTINGS_MODAL_KEY,
+		WORKFLOW_SHARE_MODAL_KEY,
+		VALUE_SURVEY_MODAL_KEY,
+		WORKFLOW_ACTIVE_MODAL_KEY,
+		IMPORT_CURL_MODAL_KEY,
+		GENERATE_CURL_MODAL_KEY,
+		LOG_STREAM_MODAL_KEY,
+		SOURCE_CONTROL_PUSH_MODAL_KEY,
+		SOURCE_CONTROL_PULL_MODAL_KEY,
+		EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
+		DEBUG_PAYWALL_MODAL_KEY,
+		MFA_SETUP_MODAL_KEY,
+		WORKFLOW_HISTORY_VERSION_RESTORE,
+		SETUP_CREDENTIALS_MODAL_KEY,
+	}),
+});
+</script>

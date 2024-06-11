@@ -3,8 +3,6 @@ import { getVisibleSelect } from '../utils';
 import { BasePage } from './base';
 import { NodeCreator } from './features/node-creator';
 
-type CyGetOptions = Parameters<(typeof cy)['get']>[1];
-
 const nodeCreator = new NodeCreator();
 export class WorkflowPage extends BasePage {
 	url = '/workflow/new';
@@ -49,11 +47,6 @@ export class WorkflowPage extends BasePage {
 		canvasNodePlusEndpointByName: (nodeName: string, index = 0) => {
 			return cy.get(this.getters.getEndpointSelector('plus', nodeName, index));
 		},
-		successToast: () => cy.get('.el-notification:has(.el-notification--success)'),
-		warningToast: () => cy.get('.el-notification:has(.el-notification--warning)'),
-		errorToast: (options?: CyGetOptions) =>
-			cy.get('.el-notification:has(.el-notification--error)', options),
-		infoToast: () => cy.get('.el-notification:has(.el-notification--info)'),
 		activatorSwitch: () => cy.getByTestId('workflow-activate-switch'),
 		workflowMenu: () => cy.getByTestId('workflow-menu'),
 		firstStepButton: () => cy.getByTestId('canvas-add-button'),
@@ -137,8 +130,11 @@ export class WorkflowPage extends BasePage {
 	};
 
 	actions = {
-		visit: (preventNodeViewUnload = true) => {
+		visit: (preventNodeViewUnload = true, appDate?: number) => {
 			cy.visit(this.url);
+			if (appDate) {
+				cy.setAppDate(appDate);
+			}
 			cy.waitForLoad();
 			cy.window().then((win) => {
 				win.preventNodeViewBeforeUnload = preventNodeViewUnload;

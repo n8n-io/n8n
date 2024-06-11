@@ -125,6 +125,9 @@ importers:
       '@ngneat/falso':
         specifier: ^6.4.0
         version: 6.4.0
+      '@sinonjs/fake-timers':
+        specifier: ^11.2.2
+        version: 11.2.2
       cross-env:
         specifier: ^7.0.3
         version: 7.0.3
@@ -4671,8 +4674,14 @@ packages:
   '@sinonjs/commons@2.0.0':
     resolution: {integrity: sha512-uLa0j859mMrg2slwQYdO/AkrOfmH+X6LTVmNTS9CqexuE2IvVORIkSpJLqePAbEnKJ77aMmCwr1NUZ57120Xcg==}
 
+  '@sinonjs/commons@3.0.1':
+    resolution: {integrity: sha512-K3mCHKQ9sVh8o1C9cxkwxaOmXoAMlDxC1mYyHrjqOWEcBjYr76t96zL2zlj5dUGZ3HSw240X1qgH3Mjf1yJWpQ==}
+
   '@sinonjs/fake-timers@10.0.2':
     resolution: {integrity: sha512-SwUDyjWnah1AaNl7kxsa7cfLhlTYoiyhDAIgyh+El30YvXs/o7OLXpYH88Zdhyx9JExKrmHDJ+10bwIcY80Jmw==}
+
+  '@sinonjs/fake-timers@11.2.2':
+    resolution: {integrity: sha512-G2piCSxQ7oWOxwGSAyFHfPIsyeJGXYtc6mFbnFA+kRXkiEnTl8c/8jul2S329iFBnDI9HGoeWWAZvuvOkZccgw==}
 
   '@smithy/abort-controller@2.0.15':
     resolution: {integrity: sha512-JkS36PIS3/UCbq/MaozzV7jECeL+BTt4R75bwY8i+4RASys4xOyUS1HsRyUNSqUXFP4QyCz5aNnh3ltuaxv+pw==}
@@ -13775,9 +13784,6 @@ packages:
   zod@3.23.8:
     resolution: {integrity: sha512-XBx9AXhXktjUqnepgTiE5flcKIYWi/rme0Eaj+5Y0lftuGBq+jyRu/md4WnuxqgP1ubdpNCsYEYPxrzVHD8d6g==}
 
-onlyBuiltDependencies:
-  - sqlite3
-
 snapshots:
 
   '@aashutoshrathi/word-wrap@1.2.6': {}
@@ -17781,9 +17787,17 @@ snapshots:
     dependencies:
       type-detect: 4.0.8
 
+  '@sinonjs/commons@3.0.1':
+    dependencies:
+      type-detect: 4.0.8
+
   '@sinonjs/fake-timers@10.0.2':
     dependencies:
       '@sinonjs/commons': 2.0.0
+
+  '@sinonjs/fake-timers@11.2.2':
+    dependencies:
+      '@sinonjs/commons': 3.0.1
 
   '@smithy/abort-controller@2.0.15':
     dependencies:
