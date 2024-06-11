@@ -1,7 +1,6 @@
 import type {
 	EnterpriseEditionFeatureKey,
 	EnterpriseEditionFeatureValue,
-	ModalKey,
 	NodeCreatorOpenSource,
 } from './Interface';
 import { NodeConnectionType } from 'n8n-workflow';
