@@ -1,4 +1,9 @@
-import { INSTANCE_MEMBERS, MANUAL_TRIGGER_NODE_NAME, NOTION_NODE_NAME } from '../constants';
+import {
+	INSTANCE_MEMBERS,
+	INSTANCE_OWNER,
+	MANUAL_TRIGGER_NODE_NAME,
+	NOTION_NODE_NAME,
+} from '../constants';
 import {
 	WorkflowsPage,
 	WorkflowPage,
