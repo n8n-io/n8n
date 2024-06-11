@@ -4,9 +4,15 @@ const sharedOptions = require('@n8n_io/eslint-config/shared');
  * @type {import('@types/eslint').ESLint.ConfigData}
  */
 module.exports = {
-	extends: ['@n8n_io/eslint-config/base'],
+	extends: ['@n8n_io/eslint-config/base', 'plugin:cypress/recommended'],
 
 	...sharedOptions(__dirname),
+
+	plugins: ['cypress'],
+
+	env: {
+		'cypress/globals': true,
+	},
 
 	rules: {
 		// TODO: remove these rules
@@ -20,5 +26,9 @@ module.exports = {
 		'@typescript-eslint/no-use-before-define': 'off',
 		'@typescript-eslint/promise-function-async': 'off',
 		'n8n-local-rules/no-uncaught-json-parse': 'off',
+
+		'cypress/no-assigning-return-values': 'warn',
+		'cypress/no-unnecessary-waiting': 'warn',
+		'cypress/unsafe-to-chain-command': 'warn',
 	},
 };

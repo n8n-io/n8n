@@ -345,7 +345,7 @@ describe('NDV', () => {
 		ndv.getters.parameterInput('remoteOptions').click();
 		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
 
-		ndv.actions.setInvalidExpression({ fieldName: 'fieldId', delay: 200 });
+		ndv.actions.setInvalidExpression({ fieldName: 'fieldId' });
 
 		ndv.getters.inputPanel().click(); // remove focus from input, hide expression preview
 
@@ -363,7 +363,7 @@ describe('NDV', () => {
 		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
 		ndv.getters.parameterInput('remoteOptions').click();
 
-		ndv.actions.setInvalidExpression({ fieldName: 'otherField', delay: 50 });
+		ndv.actions.setInvalidExpression({ fieldName: 'otherField' });
 
 		ndv.getters.nodeParameters().click(); // remove focus from input, hide expression preview
 
