@@ -199,7 +199,7 @@ describe('Canvas Actions', () => {
 	it('should copy selected nodes', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.actions.selectAll();
+		WorkflowPage.actions.hitSelectAll();
 
 		WorkflowPage.actions.hitCopy();
 		successToast().should('contain', 'Copied!');
@@ -211,7 +211,7 @@ describe('Canvas Actions', () => {
 	it('should select/deselect all nodes', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.actions.selectAll();
+		WorkflowPage.actions.hitSelectAll();
 		WorkflowPage.getters.selectedNodes().should('have.length', 2);
 		WorkflowPage.actions.deselectAll();
 		WorkflowPage.getters.selectedNodes().should('have.length', 0);
