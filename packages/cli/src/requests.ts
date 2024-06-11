@@ -601,3 +601,13 @@ export declare namespace ProjectRequest {
 	>;
 	type Delete = AuthenticatedRequest<{ projectId: string }, {}, {}, { transferId?: string }>;
 }
+
+// ----------------------------------
+//           /nps-survey
+// ----------------------------------
+export declare namespace NpsSurveyRequest {
+	// can be refactored to
+	// type NpsSurveyUpdate = AuthenticatedRequest<{}, {}, NpsSurveyState>;
+	// once some schema validation is added
+	type NpsSurveyUpdate = AuthenticatedRequest<{}, {}, unknown>;
+}

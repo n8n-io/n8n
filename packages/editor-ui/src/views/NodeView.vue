@@ -403,6 +403,7 @@ import { useAIStore } from '@/stores/ai.store';
 import { useStorage } from '@/composables/useStorage';
 import { isJSPlumbEndpointElement, isJSPlumbConnection } from '@/utils/typeGuards';
 import { usePostHog } from '@/stores/posthog.store';
+import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -464,7 +465,7 @@ export default defineComponent({
 				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 				const saved = await this.workflowHelpers.saveCurrentWorkflow({}, false);
 				if (saved) {
-					await this.settingsStore.fetchPromptsData();
+					await this.npsSurveyStore.fetchPromptsData();
 				}
 				this.uiStore.stateIsDirty = false;
 
@@ -605,6 +606,7 @@ export default defineComponent({
 			useExecutionsStore,
 			useProjectsStore,
 			useAIStore,
+			useNpsSurveyStore,
 		),
 		nativelyNumberSuffixedDefaults(): string[] {
 			return this.nodeTypesStore.nativelyNumberSuffixedDefaults;
@@ -1235,7 +1237,7 @@ export default defineComponent({
 		async onSaveKeyboardShortcut(e: KeyboardEvent) {
 			let saved = await this.workflowHelpers.saveCurrentWorkflow();
 			if (saved) {
-				await this.settingsStore.fetchPromptsData();
+				await this.npsSurveyStore.fetchPromptsData();
 
 				if (this.$route.name === VIEWS.EXECUTION_DEBUG) {
 					await this.$router.replace({
@@ -3796,7 +3798,7 @@ export default defineComponent({
 					);
 					if (confirmModal === MODAL_CONFIRM) {
 						const saved = await this.workflowHelpers.saveCurrentWorkflow();
-						if (saved) await this.settingsStore.fetchPromptsData();
+						if (saved) await this.npsSurveyStore.fetchPromptsData();
 					} else if (confirmModal === MODAL_CANCEL) {
 						return;
 					}

@@ -1,4 +1,5 @@
 import { NDV, WorkflowPage } from '../pages';
+import { clearNotifications } from '../pages/notifications';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -12,10 +13,7 @@ describe('ADO-2230 NDV Pagination Reset', () => {
 
 		// execute node outputting 10 pages, check output of first page
 		ndv.actions.execute();
-		workflowPage.getters
-			.successToast()
-			.find('.el-notification__closeBtn')
-			.click({ multiple: true });
+		clearNotifications();
 		ndv.getters.outputTbodyCell(1, 1).invoke('text').should('eq', 'Terry.Dach@hotmail.com');
 
 		// open 4th page, check output
@@ -27,10 +25,7 @@ describe('ADO-2230 NDV Pagination Reset', () => {
 		// output a lot less data
 		ndv.getters.parameterInput('randomDataCount').find('input').clear().type('20');
 		ndv.actions.execute();
-		workflowPage.getters
-			.successToast()
-			.find('.el-notification__closeBtn')
-			.click({ multiple: true });
+		clearNotifications();
 
 		// check we are back to second page now
 		ndv.getters.pagination().find('li.number').should('have.length', 2);

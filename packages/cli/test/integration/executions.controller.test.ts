@@ -19,9 +19,6 @@ const testServer = setupTestServer({ endpointGroups: ['executions'] });
 let owner: User;
 let member: User;
 
-// This is necessary for the tests to shutdown cleanly.
-mockInstance(WaitTracker);
-
 const saveExecution = async ({ belongingTo }: { belongingTo: User }) => {
 	const workflow = await createWorkflow({}, belongingTo);
 	return await createSuccessfulExecution(workflow);
