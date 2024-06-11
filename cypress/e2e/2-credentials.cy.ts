@@ -12,6 +12,7 @@ import {
 	TRELLO_NODE_NAME,
 } from '../constants';
 import { CredentialsModal, CredentialsPage, NDV, WorkflowPage } from '../pages';
+import { successToast } from '../pages/notifications';
 import { getVisibleSelect } from '../utils';
 
 const credentialsPage = new CredentialsPage();
@@ -153,7 +154,7 @@ describe('Credentials', () => {
 		credentialsModal.getters.credentialsEditModal().should('be.visible');
 		credentialsModal.getters.deleteButton().click();
 		cy.get('.el-message-box').find('button').contains('Yes').click();
-		workflowPage.getters.successToast().contains('Credential deleted');
+		successToast().contains('Credential deleted');
 		workflowPage.getters
 			.nodeCredentialsSelect()
 			.find('input')

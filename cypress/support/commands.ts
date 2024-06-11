@@ -1,4 +1,5 @@
 import 'cypress-real-events';
+import FakeTimers from '@sinonjs/fake-timers';
 import { WorkflowPage } from '../pages';
 import {
 	BACKEND_BASE_URL,
@@ -7,6 +8,16 @@ import {
 	INSTANCE_OWNER,
 	N8N_AUTH_COOKIE,
 } from '../constants';
+
+Cypress.Commands.add('setAppDate', (targetDate: number | Date) => {
+	cy.window().then((win) => {
+		FakeTimers.withGlobal(win).install({
+			now: targetDate,
+			toFake: ['Date'],
+			shouldAdvanceTime: true,
+		});
+	});
+});
 
 Cypress.Commands.add('getByTestId', (selector, ...args) => {
 	return cy.get(`[data-test-id="${selector}"]`, ...args);

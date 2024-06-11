@@ -6,22 +6,15 @@ import {
 	testLdapConnection,
 	updateLdapConfig,
 } from '@/api/ldap';
-import { getPromptsData, getSettings, submitContactInfo, submitValueSurvey } from '@/api/settings';
+import { getSettings, submitContactInfo } from '@/api/settings';
 import { testHealthEndpoint } from '@/api/templates';
-import type { EnterpriseEditionFeatureValue } from '@/Interface';
-import {
-	CONTACT_PROMPT_MODAL_KEY,
-	STORES,
-	VALUE_SURVEY_MODAL_KEY,
-	INSECURE_CONNECTION_WARNING,
-} from '@/constants';
 import type {
+	EnterpriseEditionFeatureValue,
 	ILdapConfig,
 	IN8nPromptResponse,
-	IN8nPrompts,
-	IN8nValueSurveyData,
 	ISettingsState,
 } from '@/Interface';
+import { STORES, INSECURE_CONNECTION_WARNING } from '@/constants';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import type {
 	IDataObject,
@@ -45,7 +38,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 	state: (): ISettingsState => ({
 		initialized: false,
 		settings: {} as IN8nUISettings,
-		promptsData: {} as IN8nPrompts,
 		userManagement: {
 			quota: -1,
 			showSetupOnFirstLoad: false,
@@ -311,31 +303,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 				},
 			};
 		},
-		setPromptsData(promptsData: IN8nPrompts): void {
-			this.promptsData = promptsData;
-		},
 		setAllowedModules(allowedModules: { builtIn?: string[]; external?: string[] }): void {
 			this.settings.allowedModules = allowedModules;
-		},
-		async fetchPromptsData(): Promise<void> {
-			if (!this.isTelemetryEnabled) {
-				return;
-			}
-
-			const uiStore = useUIStore();
-			const usersStore = useUsersStore();
-			const promptsData: IN8nPrompts = await getPromptsData(
-				this.settings.instanceId,
-				usersStore.currentUserId || '',
-			);
-
-			if (promptsData && promptsData.showContactPrompt) {
-				uiStore.openModal(CONTACT_PROMPT_MODAL_KEY);
-			} else if (promptsData && promptsData.showValueSurvey) {
-				uiStore.openModal(VALUE_SURVEY_MODAL_KEY);
-			}
-
-			this.setPromptsData(promptsData);
 		},
 		async submitContactInfo(email: string): Promise<IN8nPromptResponse | undefined> {
 			try {
@@ -344,18 +313,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 					this.settings.instanceId,
 					usersStore.currentUserId || '',
 					email,
-				);
-			} catch (error) {
-				return;
-			}
-		},
-		async submitValueSurvey(params: IN8nValueSurveyData): Promise<IN8nPromptResponse | undefined> {
-			try {
-				const usersStore = useUsersStore();
-				return await submitValueSurvey(
-					this.settings.instanceId,
-					usersStore.currentUserId || '',
-					params,
 				);
 			} catch (error) {
 				return;
