@@ -625,6 +625,9 @@ export class WorkflowDataProxy {
 			if (nodeName === undefined) {
 				executionData = that.connectionInputData;
 			} else {
+				const pinData = that.workflow.getPinDataOfNode(nodeName);
+				if (pinData) return pinData;
+
 				branchIndex = branchIndex || 0;
 				runIndex = runIndex === undefined ? -1 : runIndex;
 				executionData = that.getNodeExecutionData(nodeName, false, branchIndex, runIndex);
@@ -906,9 +909,17 @@ export class WorkflowDataProxy {
 			}
 
 			taskData =
-				that.runExecutionData!.resultData.runData[sourceData.previousNode][
+				that.runExecutionData!.resultData.runData[sourceData.previousNode]?.[
 					sourceData?.previousNodeRun || 0
 				];
+
+			const pinData = that.workflow.getPinDataOfNode(
+				sourceData.previousNode,
+			) as INodeExecutionData[];
+
+			if (!taskData && pinData) {
+				taskData = { data: { main: [pinData] }, startTime: 0, executionTime: 0, source: [] };
+			}
 
 			const previousNodeOutput = sourceData.previousNodeOutput || 0;
 			if (previousNodeOutput >= taskData.data!.main.length) {
