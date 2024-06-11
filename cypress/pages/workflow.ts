@@ -340,26 +340,27 @@ export class WorkflowPage extends BasePage {
 			});
 		},
 		/** Certain keyboard shortcuts are not possible on Cypress via a simple `.type`, and some delays are needed to emulate these events */
-		hitSpecialShortcut: (modifier: string, key: string) => {
+		hitComboShortcut: (modifier: string, key: string) => {
 			cy.get('body').wait(100).type(modifier, { delay: 100, release: false }).type(key);
 		},
 		hitUndo: () => {
-			this.actions.hitSpecialShortcut(`{${META_KEY}}`, 'z');
+			this.actions.hitComboShortcut(`{${META_KEY}}`, 'z');
 		},
 		hitRedo: () => {
 			cy.get('body').type(`{${META_KEY}+shift+z}`);
 		},
 		hitSelectAll: () => {
-			cy.get('body').type(`{${META_KEY}+a}`);
+			this.actions.hitComboShortcut(`{${META_KEY}}`, 'a');
 		},
 		hitDeleteAllNodes: () => {
-			cy.get('body').type(`{${META_KEY}+a}`).type('{backspace}');
+			this.actions.hitSelectAll();
+			cy.get('body').type('{backspace}');
 		},
 		hitDisableNodeShortcut: () => {
 			cy.get('body').type('d');
 		},
 		hitCopy: () => {
-			this.actions.hitSpecialShortcut(`{${META_KEY}}`, 'c');
+			this.actions.hitComboShortcut(`{${META_KEY}}`, 'c');
 		},
 		hitPinNodeShortcut: () => {
 			cy.get('body').type('p');
@@ -374,7 +375,7 @@ export class WorkflowPage extends BasePage {
 			cy.get('body').type(`{${META_KEY}+d}`);
 		},
 		hitAddSticky: () => {
-			cy.get('body').type('{shift+s}');
+			cy.get('body').type('{shift+S}');
 		},
 		executeWorkflow: () => {
 			this.getters.executeWorkflowButton().click();
