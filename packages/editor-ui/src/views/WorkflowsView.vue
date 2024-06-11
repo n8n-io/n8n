@@ -88,7 +88,7 @@
 				<div v-if="!readOnlyEnv" :class="['text-center', 'mt-2xl', $style.actionsContainer]">
 					<a
 						v-if="isSalesUser"
-						:href="templateRepositoryURL"
+						:href="getTemplateRepositoryURL()"
 						:class="$style.emptyStateCard"
 						target="_blank"
 					>
@@ -178,6 +178,7 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import ProjectTabs from '@/features/projects/components/ProjectTabs.vue';
+import { useTemplatesStore } from '@/stores/templates.store';
 
 type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
 
@@ -225,6 +226,7 @@ const WorkflowsView = defineComponent({
 			useSourceControlStore,
 			useTagsStore,
 			useProjectsStore,
+			useTemplatesStore,
 		),
 		readOnlyEnv(): boolean {
 			return this.sourceControlStore.preferences.branchReadOnly;
@@ -281,9 +283,6 @@ const WorkflowsView = defineComponent({
 				? this.$locale.baseText('workflows.project.add')
 				: this.$locale.baseText('workflows.add');
 		},
-		templateRepositoryURL() {
-			return this.templatesStore.websiteTemplateRepositoryURL;
-		},
 	},
 	watch: {
 		'filters.tags'() {
@@ -324,6 +323,9 @@ const WorkflowsView = defineComponent({
 			this.$telemetry.track('User clicked add workflow button', {
 				source: 'Workflows list',
 			});
+		},
+		getTemplateRepositoryURL() {
+			return this.templatesStore.websiteTemplateRepositoryURL;
 		},
 		trackCategoryLinkClick(category: string) {
 			this.$telemetry.track(`User clicked Browse ${category} Templates`, {
