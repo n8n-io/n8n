@@ -7,7 +7,7 @@ import CredentialsView from '@/views/CredentialsView.vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 
 vi.mock('@/components/layouts/ResourcesListLayout.vue', async (importOriginal) => {
-	const original = await importOriginal<ResourcesListLayout>();
+	const original = await importOriginal<typeof ResourcesListLayout>();
 	return {
 		default: {
 			...original.default,
