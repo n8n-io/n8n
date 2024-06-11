@@ -27,12 +27,15 @@ beforeEach(() => {
 			res.send({ data: merge(cloneDeep(defaultSettings), settings) });
 		});
 	}).as('loadSettings');
+
 	cy.intercept('GET', '/types/nodes.json').as('loadNodeTypes');
 
 	// Always intercept the request to test credentials and return a success
 	cy.intercept('POST', '/rest/credentials/test', {
 		data: { status: 'success', message: 'Tested successfully' },
 	}).as('credentialTest');
+
+	cy.intercept('POST', '/rest/license/renew', {});
 
 	cy.intercept({ pathname: '/api/health' }, { status: 'OK' }).as('healthCheck');
 	cy.intercept({ pathname: '/api/versions/*' }, [
