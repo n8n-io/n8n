@@ -69,6 +69,14 @@ const confirm = async () => {
 				<N8nText>
 					<i18n-t keypath="projects.move.resource.confirm.modal.label">
 						<template #resourceType>{{ props.data.resourceType }}</template>
+						<template #numberOfUsers>{{
+							i18n.baseText('projects.move.resource.confirm.modal.numberOfUsers', {
+								interpolate: {
+									numberOfUsers: props.data.resource.sharedWithProjects?.length ?? 0,
+								},
+								adjustToNumber: props.data.resource.sharedWithProjects?.length,
+							})
+						}}</template>
 					</i18n-t>
 				</N8nText>
 			</N8nCheckbox>
