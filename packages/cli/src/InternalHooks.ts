@@ -1263,9 +1263,6 @@ export class InternalHooks {
 	}
 
 	async onConcurrencyLimitHit({ threshold }: { threshold: number }) {
-		await this.telemetry.track('User hit concurrency limit', {
-			threshold,
-			// @TODO: cloud plan
-		});
+		await this.telemetry.track('User hit concurrency limit', { threshold });
 	}
 }

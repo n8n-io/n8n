@@ -51,6 +51,9 @@ export class ConcurrencyControlService {
 			async ({ executionId, capacity }: { executionId: string; capacity: number }) => {
 				this.log('Execution throttled', { executionId });
 
+				/**
+				 * Temporary until base data for cloud plans is collected.
+				 */
 				if (this.shouldReport(capacity)) {
 					await this.internalHooks.onConcurrencyLimitHit({ threshold: capacity });
 				}
