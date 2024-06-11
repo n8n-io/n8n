@@ -135,14 +135,14 @@ export const useNpsSurveyStore = defineStore('npsSurvey', () => {
 	}
 
 	async function fetchPromptsData(): Promise<void> {
-		if (!settingsStore.isTelemetryEnabled) {
+		if (!settingsStore.isTelemetryEnabled || !currentUserId.value) {
 			return;
 		}
 
 		try {
 			promptsData.value = await getPromptsData(
 				settingsStore.settings.instanceId,
-				currentUserId.value ?? '',
+				currentUserId.value,
 			);
 		} catch (e) {
 			console.error('Failed to fetch prompts data');
