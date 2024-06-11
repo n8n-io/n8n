@@ -128,9 +128,6 @@ importers:
       '@sinonjs/fake-timers':
         specifier: ^11.2.2
         version: 11.2.2
-      cross-env:
-        specifier: ^7.0.3
-        version: 7.0.3
       cypress:
         specifier: ^13.11.0
         version: 13.11.0
@@ -1306,6 +1303,9 @@ importers:
       '@types/uuid':
         specifier: ^8.3.2
         version: 8.3.4
+      cross-env:
+        specifier: ^7.0.3
+        version: 7.0.3
       miragejs:
         specifier: ^0.1.48
         version: 0.1.48
