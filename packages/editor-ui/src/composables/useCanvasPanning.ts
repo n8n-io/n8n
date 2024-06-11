@@ -24,7 +24,7 @@ export function useCanvasPanning(
 	/**
 	 * Updates the canvas offset position based on the mouse movement
 	 */
-	function panCanvas(e: MouseEvent) {
+	function panCanvas(e: MouseEvent | TouchEvent) {
 		const offsetPosition = uiStore.nodeViewOffsetPosition;
 
 		const [x, y] = getMousePosition(e);

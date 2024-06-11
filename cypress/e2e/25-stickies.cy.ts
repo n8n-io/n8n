@@ -1,7 +1,7 @@
+import type { Interception } from 'cypress/types/net-stubbing';
 import { META_KEY } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { getPopper } from '../utils';
-import { Interception } from 'cypress/types/net-stubbing';
 
 const workflowPage = new WorkflowPageClass();
 
@@ -34,15 +34,12 @@ describe('Canvas Actions', () => {
 		addDefaultSticky();
 		workflowPage.actions.deselectAll();
 		workflowPage.actions.addStickyFromContextMenu();
-		workflowPage.actions.hitAddStickyShortcut();
+		workflowPage.actions.hitAddSticky();
 
 		workflowPage.getters.stickies().should('have.length', 3);
 
 		// Should not add a sticky for ctrl+shift+s
-		cy.get('body')
-			.type(META_KEY, { delay: 500, release: false })
-			.type('{shift}', { release: false })
-			.type('s');
+		cy.get('body').type(`{${META_KEY}+shift+s}`);
 
 		workflowPage.getters.stickies().should('have.length', 3);
 		workflowPage.getters
@@ -91,7 +88,7 @@ describe('Canvas Actions', () => {
 
 		getPopper().should('be.visible');
 
-		workflowPage.actions.pickColor(2);
+		workflowPage.actions.pickColor();
 
 		workflowPage.actions.toggleColorPalette();
 
@@ -298,15 +295,6 @@ function stickyShouldBePositionedCorrectly(position: Position) {
 	workflowPage.getters.stickies().should(($el) => {
 		expect($el).to.have.css('top', `${yOffset + position.top}px`);
 		expect($el).to.have.css('left', `${xOffset + position.left}px`);
-	});
-}
-
-function stickyShouldHaveCorrectSize(size: [number, number]) {
-	const yOffset = 0;
-	const xOffset = 0;
-	workflowPage.getters.stickies().should(($el) => {
-		expect($el).to.have.css('height', `${yOffset + size[0]}px`);
-		expect($el).to.have.css('width', `${xOffset + size[1]}px`);
 	});
 }
 

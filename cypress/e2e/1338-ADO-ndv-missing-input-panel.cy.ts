@@ -1,5 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import { NDV, WorkflowPage as WorkflowPageClass } from '../pages';
+import { successToast } from '../pages/notifications';
 
 const workflowPage = new WorkflowPageClass();
 const ndv = new NDV();
@@ -16,7 +17,7 @@ describe('ADO-1338-ndv-missing-input-panel', () => {
 		workflowPage.getters.zoomToFitButton().click();
 		workflowPage.getters.executeWorkflowButton().click();
 		// Check success toast (works because Cypress waits enough for the element to show after the http request node has finished)
-		workflowPage.getters.successToast().should('be.visible');
+		successToast().should('be.visible');
 
 		workflowPage.actions.openNode('Discourse1');
 		ndv.getters.inputPanel().should('be.visible');

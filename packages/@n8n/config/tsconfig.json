@@ -6,7 +6,6 @@
 		"experimentalDecorators": true,
 		"strictPropertyInitialization": false,
 		"types": ["node", "jest"],
-		"noEmit": true,
 		"baseUrl": "src",
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
 	},

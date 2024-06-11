@@ -77,8 +77,12 @@ const plugins = [
 	}),
 	vue(),
 ];
-if (process.env.ENABLE_TYPE_CHECKING === 'true') {
-	plugins.push(checker({ vueTsc: true }));
+
+if (!process.env.VITEST) {
+	plugins.push({
+		...checker({ vueTsc: true }),
+		apply: 'build'
+	});
 }
 
 const { SENTRY_AUTH_TOKEN: authToken, RELEASE: release } = process.env;

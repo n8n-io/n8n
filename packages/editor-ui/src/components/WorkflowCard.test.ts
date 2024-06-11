@@ -10,19 +10,22 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IWorkflowDb } from '@/Interface';
+import { useRouter } from 'vue-router';
 
-const $router = {
-	push: vi.fn(),
-	resolve: vi.fn().mockImplementation(() => ({ href: '' })),
-};
-
-const renderComponent = createComponentRenderer(WorkflowCard, {
-	global: {
-		mocks: {
-			$router,
-		},
-	},
+vi.mock('vue-router', () => {
+	const push = vi.fn();
+	const resolve = vi.fn().mockReturnValue({ href: '' });
+	return {
+		useRouter: () => ({
+			push,
+			resolve,
+		}),
+		useRoute: () => ({}),
+		RouterLink: vi.fn(),
+	};
 });
+
+const renderComponent = createComponentRenderer(WorkflowCard);
 
 const createWorkflow = (overrides = {}): IWorkflowDb => ({
 	id: '1',
@@ -43,6 +46,7 @@ describe('WorkflowCard', () => {
 	let settingsStore: ReturnType<typeof useSettingsStore>;
 	let usersStore: ReturnType<typeof useUsersStore>;
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
+	let router: ReturnType<typeof useRouter>;
 
 	beforeEach(async () => {
 		pinia = createPinia();
@@ -51,6 +55,7 @@ describe('WorkflowCard', () => {
 		settingsStore = useSettingsStore();
 		usersStore = useUsersStore();
 		workflowsStore = useWorkflowsStore();
+		router = useRouter();
 		windowOpenSpy = vi.spyOn(window, 'open');
 	});
 
@@ -67,7 +72,7 @@ describe('WorkflowCard', () => {
 
 		await userEvent.click(cardTitle);
 		await waitFor(() => {
-			expect($router.push).toHaveBeenCalledWith({
+			expect(router.push).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOW,
 				params: { name: data.id },
 			});
@@ -79,7 +84,7 @@ describe('WorkflowCard', () => {
 		await user.keyboard('[ControlLeft>]');
 		await user.click(cardTitle);
 		await waitFor(() => {
-			expect($router.push).toHaveBeenCalledTimes(1);
+			expect(router.push).toHaveBeenCalledTimes(1);
 		});
 		expect(windowOpenSpy).toHaveBeenCalled();
 	});
@@ -98,7 +103,7 @@ describe('WorkflowCard', () => {
 
 		await userEvent.click(cardActions);
 		await waitFor(() => {
-			expect($router.push).not.toHaveBeenCalled();
+			expect(router.push).not.toHaveBeenCalled();
 		});
 
 		const actions = document.querySelector(`#${controllingId}`);
@@ -107,7 +112,7 @@ describe('WorkflowCard', () => {
 		});
 		await userEvent.click(actions!.querySelectorAll('li')[0]);
 		await waitFor(() => {
-			expect($router.push).toHaveBeenCalledWith({
+			expect(router.push).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOW,
 				params: { name: data.id },
 			});
