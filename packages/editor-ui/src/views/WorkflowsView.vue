@@ -72,7 +72,7 @@
 			</div>
 			<div v-if="!readOnlyEnv" :class="['text-center', 'mt-2xl', $style.actionsContainer]">
 				<a
-					v-if="isSalesUser && templateRepositoryURL"
+					v-if="isSalesUser"
 					:href="templateRepositoryURL"
 					:class="$style.emptyStateCard"
 					target="_blank"
