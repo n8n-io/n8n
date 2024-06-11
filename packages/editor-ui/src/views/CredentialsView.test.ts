@@ -40,6 +40,15 @@ describe('CredentialsView', () => {
 				updatedAt: '2021-05-05T00:00:00Z',
 			};
 			const scopes: Scope[] = ['credential:move', 'credential:delete'];
+			const sharedWithProjects: ProjectSharingData[] = [
+				{
+					id: '2',
+					name: 'test 2',
+					type: 'personal',
+					createdAt: '2021-05-05T00:00:00Z',
+					updatedAt: '2021-05-05T00:00:00Z',
+				},
+			];
 			vi.spyOn(credentialsStore, 'allCredentials', 'get').mockReturnValue([
 				{
 					id: '1',
@@ -49,6 +58,7 @@ describe('CredentialsView', () => {
 					updatedAt: '2021-05-05T00:00:00Z',
 					homeProject,
 					scopes,
+					sharedWithProjects,
 				},
 			]);
 			renderComponent();
@@ -59,6 +69,7 @@ describe('CredentialsView', () => {
 							type: 'test',
 							homeProject,
 							scopes,
+							sharedWithProjects,
 						}),
 					],
 				}),
