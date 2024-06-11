@@ -116,6 +116,7 @@ export default defineComponent({
 				createdAt: credential.createdAt,
 				homeProject: credential.homeProject,
 				scopes: credential.scopes,
+				type: credential.type,
 			}));
 		},
 		allCredentialTypes(): ICredentialType[] {
