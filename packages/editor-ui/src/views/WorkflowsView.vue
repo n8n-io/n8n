@@ -178,6 +178,7 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import ProjectTabs from '@/features/projects/components/ProjectTabs.vue';
+import { useTemplatesStore } from '@/stores/templates.store';
 
 type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
 
@@ -225,6 +226,7 @@ const WorkflowsView = defineComponent({
 			useSourceControlStore,
 			useTagsStore,
 			useProjectsStore,
+			useTemplatesStore,
 		),
 		readOnlyEnv(): boolean {
 			return this.sourceControlStore.preferences.branchReadOnly;
