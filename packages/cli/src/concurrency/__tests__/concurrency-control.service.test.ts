@@ -7,10 +7,12 @@ import { ConcurrencyQueue } from '../concurrency-queue';
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
 import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { IExecutingWorkflowData } from '@/Interfaces';
+import type { InternalHooks } from '@/InternalHooks';
 
 describe('ConcurrencyControlService', () => {
 	const logger = mock<Logger>();
 	const executionRepository = mock<ExecutionRepository>();
+	const internalHooks = mock<InternalHooks>();
 
 	afterEach(() => {
 		config.set('executions.concurrency.productionLimit', -1);
@@ -29,7 +31,7 @@ describe('ConcurrencyControlService', () => {
 			/**
 			 * Act
 			 */
-			const service = new ConcurrencyControlService(logger, executionRepository);
+			const service = new ConcurrencyControlService(logger, executionRepository, internalHooks);
 
 			/**
 			 * Assert
@@ -50,7 +52,7 @@ describe('ConcurrencyControlService', () => {
 				/**
 				 * Act
 				 */
-				new ConcurrencyControlService(logger, executionRepository);
+				new ConcurrencyControlService(logger, executionRepository, internalHooks);
 			} catch (error) {
 				/**
 				 * Assert
@@ -68,7 +70,7 @@ describe('ConcurrencyControlService', () => {
 			/**
 			 * Act
 			 */
-			const service = new ConcurrencyControlService(logger, executionRepository);
+			const service = new ConcurrencyControlService(logger, executionRepository, internalHooks);
 
 			/**
 			 * Assert
@@ -86,7 +88,7 @@ describe('ConcurrencyControlService', () => {
 			/**
 			 * Act
 			 */
-			const service = new ConcurrencyControlService(logger, executionRepository);
+			const service = new ConcurrencyControlService(logger, executionRepository, internalHooks);
 
 			/**
 			 * Act
@@ -105,7 +107,7 @@ describe('ConcurrencyControlService', () => {
 			/**
 			 * Act
 			 */
-			const service = new ConcurrencyControlService(logger, executionRepository);
+			const service = new ConcurrencyControlService(logger, executionRepository, internalHooks);
 
 			/**
 			 * Assert
@@ -129,7 +131,7 @@ describe('ConcurrencyControlService', () => {
 					 */
 					config.set('executions.concurrency.productionLimit', 1);
 
-					const service = new ConcurrencyControlService(logger, executionRepository);
+					const service = new ConcurrencyControlService(logger, executionRepository, internalHooks);
 					const enqueueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
 					/**
@@ -150,7 +152,7 @@ describe('ConcurrencyControlService', () => {
 				 */
 				config.set('executions.concurrency.productionLimit', 1);
 
-				const service = new ConcurrencyControlService(logger, executionRepository);
+				const service = new ConcurrencyControlService(logger, executionRepository, internalHooks);
 				const enqueueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
 				/**
@@ -174,7 +176,7 @@ describe('ConcurrencyControlService', () => {
 					 */
 					config.set('executions.concurrency.productionLimit', 1);
 
-					const service = new ConcurrencyControlService(logger, executionRepository);
+					const service = new ConcurrencyControlService(logger, executionRepository, internalHooks);
 					const dequeueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
 					/**
@@ -195,7 +197,7 @@ describe('ConcurrencyControlService', () => {
 				 */
 				config.set('executions.concurrency.productionLimit', 1);
 
-				const service = new ConcurrencyControlService(logger, executionRepository);
+				const service = new ConcurrencyControlService(logger, executionRepository, internalHooks);
 				const dequeueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
 				/**
@@ -219,7 +221,7 @@ describe('ConcurrencyControlService', () => {
 					 */
 					config.set('executions.concurrency.productionLimit', 1);
 
-					const service = new ConcurrencyControlService(logger, executionRepository);
+					const service = new ConcurrencyControlService(logger, executionRepository, internalHooks);
 					const removeSpy = jest.spyOn(ConcurrencyQueue.prototype, 'remove');
 
 					/**
@@ -242,7 +244,7 @@ describe('ConcurrencyControlService', () => {
 					 */
 					config.set('executions.concurrency.productionLimit', 1);
 
-					const service = new ConcurrencyControlService(logger, executionRepository);
+					const service = new ConcurrencyControlService(logger, executionRepository, internalHooks);
 					const removeSpy = jest.spyOn(ConcurrencyQueue.prototype, 'remove');
 
 					/**
@@ -265,7 +267,7 @@ describe('ConcurrencyControlService', () => {
 				 */
 				config.set('executions.concurrency.productionLimit', 2);
 
-				const service = new ConcurrencyControlService(logger, executionRepository);
+				const service = new ConcurrencyControlService(logger, executionRepository, internalHooks);
 
 				jest
 					.spyOn(ConcurrencyQueue.prototype, 'getAll')
@@ -304,7 +306,7 @@ describe('ConcurrencyControlService', () => {
 				 */
 				config.set('executions.concurrency.productionLimit', -1);
 
-				const service = new ConcurrencyControlService(logger, executionRepository);
+				const service = new ConcurrencyControlService(logger, executionRepository, internalHooks);
 				const enqueueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
 				/**
@@ -327,7 +329,7 @@ describe('ConcurrencyControlService', () => {
 				 */
 				config.set('executions.concurrency.productionLimit', -1);
 
-				const service = new ConcurrencyControlService(logger, executionRepository);
+				const service = new ConcurrencyControlService(logger, executionRepository, internalHooks);
 				const dequeueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
 				/**
@@ -349,7 +351,7 @@ describe('ConcurrencyControlService', () => {
 				 */
 				config.set('executions.concurrency.productionLimit', -1);
 
-				const service = new ConcurrencyControlService(logger, executionRepository);
+				const service = new ConcurrencyControlService(logger, executionRepository, internalHooks);
 				const removeSpy = jest.spyOn(ConcurrencyQueue.prototype, 'remove');
 
 				/**
