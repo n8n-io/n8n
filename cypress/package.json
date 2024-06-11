@@ -22,7 +22,6 @@
   "dependencies": {
     "@ngneat/falso": "^7.2.0",
     "@sinonjs/fake-timers": "^11.2.2",
-    "cross-env": "^7.0.3",
     "cypress": "^13.11.0",
     "cypress-otp": "^1.0.3",
     "cypress-real-events": "^1.12.0",
