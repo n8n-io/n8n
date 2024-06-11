@@ -24,7 +24,6 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 		orchestration: {},
 		workersView: {},
 		eventBusDestination: {},
-		eventBusEvent: {},
 		auditLogs: {},
 		banner: {},
 		communityPackage: {},
