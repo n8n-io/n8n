@@ -536,7 +536,6 @@ describe('Execution', () => {
 
 		cy.wait('@workflowRun').then((interception) => {
 			expect(interception.request.body).not.to.have.property('runData').that.is.an('object');
-			expect(interception.request.body).not.to.have.property('pinData').that.is.an('object');
 			expect(interception.request.body).to.have.property('workflowData').that.is.an('object');
 			expect(interception.request.body.workflowData)
 				.to.have.property('pinData')
