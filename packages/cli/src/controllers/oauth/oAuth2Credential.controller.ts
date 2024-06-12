@@ -16,7 +16,11 @@ interface CsrfStateParam {
 	cid: string;
 	token: string;
 }
-
+declare var console: {
+    log: (...args: any[]) => void;
+    error: (...args: any[]) => void;
+    // Add other methods as needed
+};
 @RestController('/oauth2-credential')
 export class OAuth2CredentialController extends AbstractOAuthController {
 	override oauthVersion = 2;
@@ -25,6 +29,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 	@Get('/auth')
 	async getAuthUri(req: OAuthRequest.OAuth2Credential.Auth): Promise<string> {
 		const credential = await this.getCredential(req);
+		console.log("ADMIN USERRRRR: ", req.user);
 		const additionalData = await this.getAdditionalData(req.user);
 		const decryptedDataOriginal = await this.getDecryptedData(credential, additionalData);
 
@@ -48,7 +53,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 
 		// Generate a CSRF prevention token and send it as an OAuth2 state string
 		const [csrfSecret, state] = this.createCsrfState(credential.id);
-
+		
 		const oAuthOptions = {
 			...this.convertCredentialToOptions(oauthCredentials),
 			state,
@@ -176,7 +181,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 					credentialId: credential.id,
 				});
 				return this.renderCallbackError(res, errorMessage);
-			}
+			}    
 
 			if (decryptedDataOriginal.oauthTokenData) {
 				// Only overwrite supplied data as some providers do for example just return the
