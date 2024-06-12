@@ -1,7 +1,7 @@
 import type { RequestHandler } from 'express';
 
 export const corsMiddleware: RequestHandler = (req, res, next) => {
-	if ('origin' in req.headers) {
+	// if ('origin' in req.headers) {
 		// Allow access also from frontend when developing
 		// res.header('Access-Control-Allow-Origin', req.headers.origin);
 		res.header('Access-Control-Allow-Origin', "https://api.camphor.co");
@@ -11,7 +11,9 @@ export const corsMiddleware: RequestHandler = (req, res, next) => {
 			'Access-Control-Allow-Headers',
 			'Origin, X-Requested-With, Content-Type, Accept, push-ref',
 		);
-	}
+	// }
+
+	res.header("X-Frame-Options", "DENY")
 
 	if (req.method === 'OPTIONS') {
 		res.writeHead(204).end();
