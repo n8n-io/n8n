@@ -1,6 +1,6 @@
 import Container, { Service } from 'typedi';
 import { Push } from '@/push';
-import { sleep } from 'n8n-workflow';
+import { jsonStringify, sleep } from 'n8n-workflow';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { getWorkflowHooksMain } from '@/WorkflowExecuteAdditionalData'; // @TODO: Dependency cycle
 import { InternalHooks } from '@/InternalHooks'; // @TODO: Dependency cycle if injected
@@ -25,6 +25,16 @@ export class ExecutionRecoveryService {
 		private readonly logger: Logger,
 	) {}
 
+	private queueRecovery: {
+		timeout?: NodeJS.Timeout;
+		batchSize: number;
+		rateMs: number;
+	} = {
+		timeout: undefined,
+		batchSize: 100, // @TODO: Config value
+		rateMs: 5000, // @TODO: Config value
+	};
+
 	/**
 	 * Amend key properties of a truncated execution using event logs in the FS.
 	 * Depending on the state of the logs, we may update only the status, or also
@@ -36,7 +46,8 @@ export class ExecutionRecoveryService {
 	async recoverFromLogs(executionId: string, messages: EventMessageTypes[]) {
 		if (messages.length === 0) {
 			await this.executionRepository.markAsCrashed(executionId);
-			this.log('Marked execution as crashed', { executionId });
+			this.logInfo('No logs available, marked execution as crashed', { executionId });
+			// @TODO: Run hooks and push to clients
 			return;
 		}
 
@@ -44,14 +55,12 @@ export class ExecutionRecoveryService {
 
 		if (!amendedExecution) return null;
 
-		this.log('Amended execution', { executionId: amendedExecution.id });
+		this.logInfo('Logs available, amended execution', { executionId: amendedExecution.id });
 
 		await this.executionRepository.updateExistingExecution(executionId, amendedExecution);
 
-		// @TODO: Should this run also for the `messages.length === 0` case?
 		await this.runHooks(amendedExecution);
 
-		// @TODO: Should this run also for the `messages.length === 0` case?
 		this.push.once('editorUiConnected', async () => {
 			await sleep(1000);
 			this.push.broadcast('executionRecovered', { executionId });
@@ -61,33 +70,63 @@ export class ExecutionRecoveryService {
 	}
 
 	/**
-	 * Mark an in-progress execution as crashed if absent from the Bull queue.
+	 * Schedule a queue recovery cycle for a batch of in-progress executions. This
+	 * cycle will mark a batch of in-progress executions as `crashed` if persisted
+	 * in DB but absent from the Bull Redis queue.
 	 */
-	async recoverFromQueue() {
+	scheduleQueueRecovery(rateMs = this.queueRecovery.rateMs) {
 		if (config.getEnv('executions.mode') === 'regular') return;
 
-		// @TODO: Timer
+		this.queueRecovery.timeout = setTimeout(async () => {
+			try {
+				const nextRateMs = await this.recoverFromQueue();
+				this.scheduleQueueRecovery(nextRateMs);
+			} catch (error) {
+				const msg = this.toErrorMsg(error);
 
-		const { Queue } = await import('@/Queue');
+				this.logError('Failed to recover executions from queue', { msg });
+				this.logError('Retrying...');
 
-		const currentExecutionIds =
-			await this.executionRepository.getCurrentExecutionIdsWithinLastHour();
+				this.scheduleQueueRecovery();
+			}
+		}, rateMs);
 
-		if (currentExecutionIds.length === 0) return;
+		const nextCycle = [this.queueRecovery.rateMs / (60 * 1000), 'min'].join(' ');
 
-		const currentJobs = await Container.get(Queue).getJobs(['active', 'waiting']);
-		const queuedExecutionIds = new Set(currentJobs.map((j) => j.data.executionId));
-
-		const danglingExecutionIds = currentExecutionIds.filter((id) => !queuedExecutionIds.has(id));
-
-		if (danglingExecutionIds.length === 0) return;
-
-		await this.executionRepository.markAsCrashed(danglingExecutionIds);
+		this.logDebug(`Scheduled queue recovery for next ${nextCycle}`);
 	}
 
 	// ----------------------------------
 	//             private
 	// ----------------------------------
+
+	private async recoverFromQueue() {
+		const { rateMs, batchSize } = this.queueRecovery;
+
+		const inProgressIds = await this.executionRepository.getLatestInProgressExecutionIds(batchSize);
+
+		if (inProgressIds.length === 0) return rateMs;
+
+		const { Queue } = await import('@/Queue');
+
+		const inProgressJobs = await Container.get(Queue).getJobs(['active', 'waiting']);
+
+		if (inProgressJobs.length === 0) return rateMs;
+
+		const inQueueIds = new Set(inProgressJobs.map((j) => j.data.executionId));
+
+		const danglingIds = inProgressIds.filter((id) => !inQueueIds.has(id));
+
+		if (danglingIds.length === 0) return rateMs;
+
+		await this.executionRepository.markAsCrashed(danglingIds);
+
+		this.logDebug('Recovered executions from queue', { danglingIds });
+
+		// if more to check, speed up next cycle
+
+		return inProgressIds.length >= this.queueRecovery.batchSize ? rateMs / 2 : rateMs;
+	}
 
 	private async amend(executionId: string, messages: EventMessageTypes[]) {
 		const { nodeMessages, workflowMessages } = this.toRelevantMessages(messages);
@@ -216,7 +255,21 @@ export class ExecutionRecoveryService {
 		await externalHooks.executeHookFunctions('workflowExecuteAfter', [run]);
 	}
 
-	private log(message: string, meta?: object) {
+	private logError(message: string, meta?: object) {
+		this.logger.error(['[Recovery]', message].join(' '), meta);
+	}
+
+	private logInfo(message: string, meta?: object) {
 		this.logger.info(['[Recovery]', message].join(' '), meta);
+	}
+
+	private logDebug(message: string, meta?: object) {
+		this.logger.debug(['[Recovery]', message].join(' '), meta);
+	}
+
+	private toErrorMsg(error: unknown) {
+		return error instanceof Error
+			? error.message
+			: jsonStringify(error, { replaceCircularRefs: true });
 	}
 }

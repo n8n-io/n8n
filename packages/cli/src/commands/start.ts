@@ -27,6 +27,7 @@ import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { WaitTracker } from '@/WaitTracker';
 import { BaseCommand } from './BaseCommand';
+import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -331,6 +332,8 @@ export class Start extends BaseCommand {
 		this.pruningService.startPruning();
 
 		if (config.getEnv('executions.mode') !== 'queue') return;
+
+		Container.get(ExecutionRecoveryService).scheduleQueueRecovery();
 
 		const orchestrationService = Container.get(OrchestrationService);
 

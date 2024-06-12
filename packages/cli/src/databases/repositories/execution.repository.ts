@@ -752,15 +752,15 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return executions.map(({ id }) => id);
 	}
 
-	async getCurrentExecutionIdsWithinLastHour() {
-		const oneHourAgo = new Date(Date.now() - 3_600_000);
-
+	/**
+	 * Retrieve a batch of 100 execution IDs with `new` or `running` status, in most recent order.
+	 */
+	async getLatestInProgressExecutionIds(batchSize: number) {
 		const executions = await this.find({
 			select: ['id'],
-			where: {
-				status: In(['new', 'running']),
-				startedAt: LessThanOrEqual(oneHourAgo),
-			},
+			where: { status: In(['new', 'running']) },
+			order: { startedAt: 'DESC' },
+			take: batchSize,
 		});
 
 		return executions.map(({ id }) => id);
