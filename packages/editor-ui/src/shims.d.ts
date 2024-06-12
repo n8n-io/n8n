@@ -1,11 +1,8 @@
-import { VNode, ComponentPublicInstance } from 'vue';
-import { PartialDeep } from 'type-fest';
-import { ExternalHooks } from '@/types/externalHooks';
+import type { VNode, ComponentPublicInstance } from 'vue';
+import type { PartialDeep } from 'type-fest';
+import type { ExternalHooks } from '@/types/externalHooks';
 
-declare module 'markdown-it-link-attributes';
-declare module 'markdown-it-emoji';
-declare module 'markdown-it-task-lists';
-declare module 'vue-agile';
+export {};
 
 declare global {
 	interface ImportMeta {
@@ -37,10 +34,3 @@ declare global {
 		findLast(predicate: (value: T, index: number, obj: T[]) => unknown, thisArg?: any): T;
 	}
 }
-
-declare module '*.svg';
-declare module '*.png';
-declare module '*.jpg';
-declare module '*.jpeg';
-declare module '*.gif';
-declare module '*.webp';

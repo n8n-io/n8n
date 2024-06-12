@@ -45,7 +45,7 @@ import { get } from 'lodash-es';
 import { useI18n } from './useI18n';
 import { EnableNodeToggleCommand } from '@/models/history';
 import { useTelemetry } from './useTelemetry';
-import { hasPermission } from '@/rbac/permissions';
+import { hasPermission } from '@/utils/rbac/permissions';
 import type { N8nPlusEndpoint } from '@/plugins/jsplumb/N8nPlusEndpointType';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { useCanvasStore } from '@/stores/canvas.store';
@@ -271,7 +271,7 @@ export function useNodeHelpers() {
 		}
 	}
 
-	function updateNodeParameterIssues(node: INodeUi, nodeType?: INodeTypeDescription): void {
+	function updateNodeParameterIssues(node: INodeUi, nodeType?: INodeTypeDescription | null): void {
 		const localNodeType = nodeType ?? nodeTypesStore.getNodeType(node.type, node.typeVersion);
 
 		if (localNodeType === null) {

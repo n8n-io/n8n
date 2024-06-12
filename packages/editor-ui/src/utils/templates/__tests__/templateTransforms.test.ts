@@ -11,6 +11,7 @@ describe('templateTransforms', () => {
 				getNodeType: vitest.fn(),
 			};
 			const node = newWorkflowTemplateNode({
+				id: 'twitter',
 				type: 'n8n-nodes-base.twitter',
 				credentials: {
 					twitterOAuth1Api: 'old1',
@@ -40,6 +41,7 @@ describe('templateTransforms', () => {
 				getNodeType: vitest.fn(),
 			};
 			const node = newWorkflowTemplateNode({
+				id: 'twitter',
 				type: 'n8n-nodes-base.twitter',
 			});
 			const toReplaceWith = {

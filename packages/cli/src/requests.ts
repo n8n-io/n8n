@@ -47,7 +47,7 @@ export class UserSettingsUpdatePayload {
 	@Expose()
 	@IsBoolean({ message: 'userActivated should be a boolean' })
 	@IsOptional()
-	userActivated: boolean;
+	userActivated?: boolean;
 
 	@Expose()
 	@IsBoolean({ message: 'allowSSOManualLogin should be a boolean' })
@@ -457,14 +457,6 @@ export declare namespace NodeRequest {
 }
 
 // ----------------------------------
-//           /curl-to-json
-// ----------------------------------
-
-export declare namespace CurlHelper {
-	type ToJson = AuthenticatedRequest<{}, {}, { curlCommand?: string }>;
-}
-
-// ----------------------------------
 //           /license
 // ----------------------------------
 
@@ -608,4 +600,14 @@ export declare namespace ProjectRequest {
 		{ name?: string; relations?: ProjectRelationPayload[] }
 	>;
 	type Delete = AuthenticatedRequest<{ projectId: string }, {}, {}, { transferId?: string }>;
+}
+
+// ----------------------------------
+//           /nps-survey
+// ----------------------------------
+export declare namespace NpsSurveyRequest {
+	// can be refactored to
+	// type NpsSurveyUpdate = AuthenticatedRequest<{}, {}, NpsSurveyState>;
+	// once some schema validation is added
+	type NpsSurveyUpdate = AuthenticatedRequest<{}, {}, unknown>;
 }

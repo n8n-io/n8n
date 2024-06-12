@@ -1,6 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { NDV, WorkflowExecutionsTab, WorkflowPage as WorkflowPageClass } from '../pages';
 import { SCHEDULE_TRIGGER_NODE_NAME, EDIT_FIELDS_SET_NODE_NAME } from '../constants';
+import { errorToast, successToast } from '../pages/notifications';
 
 const workflowPage = new WorkflowPageClass();
 const executionsTab = new WorkflowExecutionsTab();
@@ -68,7 +69,7 @@ describe('Execution', () => {
 		workflowPage.getters.clearExecutionDataButton().should('not.exist');
 
 		// Check success toast (works because Cypress waits enough for the element to show after the http request node has finished)
-		workflowPage.getters.successToast().should('be.visible');
+		successToast().should('be.visible');
 	});
 
 	it('should test manual workflow stop', () => {
@@ -127,7 +128,7 @@ describe('Execution', () => {
 		workflowPage.getters.clearExecutionDataButton().should('not.exist');
 
 		// Check success toast (works because Cypress waits enough for the element to show after the http request node has finished)
-		workflowPage.getters.successToast().should('be.visible');
+		successToast().should('be.visible');
 	});
 
 	it('should test webhook workflow', () => {
@@ -200,7 +201,7 @@ describe('Execution', () => {
 		workflowPage.getters.clearExecutionDataButton().should('not.exist');
 
 		// Check success toast (works because Cypress waits enough for the element to show after the http request node has finished)
-		workflowPage.getters.successToast().should('be.visible');
+		successToast().should('be.visible');
 	});
 
 	it('should test webhook workflow stop', () => {
@@ -274,7 +275,7 @@ describe('Execution', () => {
 		workflowPage.getters.clearExecutionDataButton().should('not.exist');
 
 		// Check success toast (works because Cypress waits enough for the element to show after the http request node has finished)
-		workflowPage.getters.successToast().should('be.visible');
+		successToast().should('be.visible');
 	});
 
 	describe('execution preview', () => {
@@ -286,7 +287,7 @@ describe('Execution', () => {
 			executionsTab.actions.deleteExecutionInPreview();
 
 			executionsTab.getters.successfulExecutionListItems().should('have.length', 0);
-			workflowPage.getters.successToast().contains('Execution deleted');
+			successToast().contains('Execution deleted');
 		});
 	});
 
@@ -512,8 +513,9 @@ describe('Execution', () => {
 			expect(interception.request.body).to.have.property('runData').that.is.an('object');
 			const expectedKeys = ['When clicking ‘Test workflow’', 'fetch 5 random users'];
 
-			expect(Object.keys(interception.request.body.runData)).to.have.lengthOf(expectedKeys.length);
-			expect(interception.request.body.runData).to.include.all.keys(expectedKeys);
+			const { runData } = interception.request.body as Record<string, object>;
+			expect(Object.keys(runData)).to.have.lengthOf(expectedKeys.length);
+			expect(runData).to.include.all.keys(expectedKeys);
 		});
 	});
 
@@ -537,10 +539,9 @@ describe('Execution', () => {
 			expect(interception.request.body).to.have.property('pinData').that.is.an('object');
 			const expectedPinnedDataKeys = ['Webhook'];
 
-			expect(Object.keys(interception.request.body.pinData)).to.have.lengthOf(
-				expectedPinnedDataKeys.length,
-			);
-			expect(interception.request.body.pinData).to.include.all.keys(expectedPinnedDataKeys);
+			const { pinData } = interception.request.body as Record<string, object>;
+			expect(Object.keys(pinData)).to.have.lengthOf(expectedPinnedDataKeys.length);
+			expect(pinData).to.include.all.keys(expectedPinnedDataKeys);
 		});
 
 		workflowPage.getters.clearExecutionDataButton().should('be.visible');
@@ -558,15 +559,12 @@ describe('Execution', () => {
 			const expectedPinnedDataKeys = ['Webhook'];
 			const expectedRunDataKeys = ['If', 'Webhook'];
 
-			expect(Object.keys(interception.request.body.pinData)).to.have.lengthOf(
-				expectedPinnedDataKeys.length,
-			);
-			expect(interception.request.body.pinData).to.include.all.keys(expectedPinnedDataKeys);
+			const { pinData, runData } = interception.request.body as Record<string, object>;
+			expect(Object.keys(pinData)).to.have.lengthOf(expectedPinnedDataKeys.length);
+			expect(pinData).to.include.all.keys(expectedPinnedDataKeys);
 
-			expect(Object.keys(interception.request.body.runData)).to.have.lengthOf(
-				expectedRunDataKeys.length,
-			);
-			expect(interception.request.body.runData).to.include.all.keys(expectedRunDataKeys);
+			expect(Object.keys(runData)).to.have.lengthOf(expectedRunDataKeys.length);
+			expect(runData).to.include.all.keys(expectedRunDataKeys);
 		});
 	});
 
@@ -590,7 +588,7 @@ describe('Execution', () => {
 		cy.wait('@workflowRun');
 		// Wait again for the websocket message to arrive and the UI to update.
 		cy.wait(100);
-		workflowPage.getters.errorToast({ timeout: 1 }).should('not.exist');
+		errorToast({ timeout: 1 }).should('not.exist');
 	});
 
 	it('should execute workflow partially up to the node that has issues', () => {
@@ -617,6 +615,6 @@ describe('Execution', () => {
 			.within(() => cy.get('.fa-check'))
 			.should('exist');
 
-		workflowPage.getters.errorToast().should('contain', `Problem in node ‘Telegram‘`);
+		errorToast().should('contain', 'Problem in node ‘Telegram‘');
 	});
 });

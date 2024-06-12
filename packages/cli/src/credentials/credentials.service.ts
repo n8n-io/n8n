@@ -275,7 +275,7 @@ export class CredentialsService {
 
 			if (typeof projectId === 'string' && project === null) {
 				throw new BadRequestError(
-					"You don't have the permissions to save the workflow in this project.",
+					"You don't have the permissions to save the credential in this project.",
 				);
 			}
 

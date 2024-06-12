@@ -190,7 +190,14 @@ const agentTypeProperty: INodeProperties = {
 	name: 'agent',
 	type: 'options',
 	noDataExpression: true,
+	// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 	options: [
+		{
+			name: 'Tools Agent',
+			value: 'toolsAgent',
+			description:
+				'Utilized unified Tool calling interface to select the appropriate tools and argument for execution',
+		},
 		{
 			name: 'Conversational Agent',
 			value: 'conversationalAgent',
@@ -219,12 +226,6 @@ const agentTypeProperty: INodeProperties = {
 			value: 'sqlAgent',
 			description: 'Answers questions about data in an SQL database',
 		},
-		{
-			name: 'Tools Agent',
-			value: 'toolsAgent',
-			description:
-				'Utilized unified Tool calling interface to select the appropriate tools and argument for execution',
-		},
 	],
 	default: '',
 };
@@ -234,6 +235,7 @@ export class Agent implements INodeType {
 		displayName: 'AI Agent',
 		name: 'agent',
 		icon: 'fa:robot',
+		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
 		description: 'Generates an action plan and executes it. Can use external tools.',

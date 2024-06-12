@@ -40,7 +40,7 @@ on:
       containers:
         description: 'Number of containers to run tests in.'
         required: false
-        default: '[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]'
+        default: '[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]'
         type: string
       pr_number:
         description: 'PR number to run tests for.'
@@ -87,7 +87,7 @@ jobs:
           git fetch origin pull/${{ inputs.pr_number }}/head
           git checkout FETCH_HEAD
 
-      - uses: pnpm/action-setup@v2.4.0
+      - uses: pnpm/action-setup@v4.0.0
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -103,6 +103,7 @@ jobs:
           VUE_APP_MAX_PINNED_DATA_SIZE: 16384
 
       - name: Cypress install
+        working-directory: cypress
         run: pnpm cypress:install
 
       - name: Cache build artifacts
@@ -138,7 +139,7 @@ jobs:
           git fetch origin pull/${{ inputs.pr_number }}/head
           git checkout FETCH_HEAD
 
-      - uses: pnpm/action-setup@v2.4.0
+      - uses: pnpm/action-setup@v4.0.0
 
       - name: Restore cached pnpm modules
         uses: actions/cache/restore@v4.0.0
@@ -155,6 +156,7 @@ jobs:
       - name: Cypress run
         uses: cypress-io/github-action@v6.6.1
         with:
+          working-directory: cypress
           install: false
           start: pnpm start
           wait-on: 'http://localhost:5678'
@@ -164,8 +166,7 @@ jobs:
           # We have to provide custom ci-build-id key to make sure that this workflow could be run multiple times
           # in the same parent workflow
           ci-build-id: ${{ needs.prepare.outputs.uuid }}
-          spec: '/__w/n8n/n8n/cypress/${{ inputs.spec }}'
-          config-file: /__w/n8n/n8n/cypress.config.js
+          spec: '${{ inputs.spec }}'
         env:
           NODE_OPTIONS: --dns-result-order=ipv4first
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}

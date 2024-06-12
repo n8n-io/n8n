@@ -5,16 +5,12 @@ import { createMember, createOwner } from './shared/db/users';
 import { createWorkflow, shareWorkflowWithUsers } from './shared/db/workflows';
 import * as testDb from './shared/testDb';
 import { setupTestServer } from './shared/utils';
-import { mockInstance } from '../shared/mocking';
-import { WaitTracker } from '@/WaitTracker';
+import { createTeamProject, linkUserToProject } from './shared/db/projects';
 
 const testServer = setupTestServer({ endpointGroups: ['executions'] });
 
 let owner: User;
 let member: User;
-
-// This is necessary for the tests to shutdown cleanly.
-mockInstance(WaitTracker);
 
 const saveExecution = async ({ belongingTo }: { belongingTo: User }) => {
 	const workflow = await createWorkflow({}, belongingTo);
@@ -45,6 +41,23 @@ describe('GET /executions', () => {
 });
 
 describe('GET /executions/:id', () => {
+	test('project viewers can view executions for workflows in the project', async () => {
+		// if sharing is not enabled, we're only returning the executions of
+		// personal workflows
+		testServer.license.enable('feat:sharing');
+
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:viewer');
+
+		const workflow = await createWorkflow({}, teamProject);
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await testServer.authAgentFor(member).get(`/executions/${execution.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toBeDefined();
+	});
+
 	test('only returns executions of shared workflows if sharing is enabled', async () => {
 		const workflow = await createWorkflow({}, owner);
 		await shareWorkflowWithUsers(workflow, [member]);

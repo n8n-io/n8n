@@ -39,7 +39,6 @@ import type {
 	IWorkflowData,
 	IWorkflowDataUpdate,
 	IWorkflowDb,
-	IWorkflowTemplateNode,
 	TargetItem,
 	XYPosition,
 } from '@/Interface';
@@ -68,7 +67,7 @@ import { tryToParseNumber } from '@/utils/typesUtils';
 import { useI18n } from '@/composables/useI18n';
 import type { useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useProjectsStore } from '@/stores/projects.store';
 
 export function resolveParameter<T = IDataObject>(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
@@ -308,11 +307,7 @@ function getNodes(): INodeUi[] {
 }
 
 // Returns a workflow instance.
-function getWorkflow(
-	nodes: Array<INodeUi | IWorkflowTemplateNode>,
-	connections: IConnections,
-	copyData?: boolean,
-): Workflow {
+function getWorkflow(nodes: INodeUi[], connections: IConnections, copyData?: boolean): Workflow {
 	return useWorkflowsStore().getWorkflow(nodes, connections, copyData);
 }
 

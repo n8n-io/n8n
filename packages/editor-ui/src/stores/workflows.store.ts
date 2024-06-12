@@ -34,7 +34,6 @@ import type {
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import type {
-	IAbstractEventMessage,
 	IConnection,
 	IConnections,
 	IDataObject,
@@ -73,7 +72,7 @@ import { getCredentialOnlyNodeTypeName } from '@/utils/credentialOnlyNodes';
 import { i18n } from '@/plugins/i18n';
 
 import { computed, ref } from 'vue';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from './settings.store';
 import { useUsersStore } from './users.store';
 
@@ -1432,15 +1431,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		});
 	}
 
-	async function getExecutionEvents(id: string): Promise<IAbstractEventMessage[]> {
-		const rootStore = useRootStore();
-		return await makeRestApiRequest(
-			rootStore.getRestApiContext,
-			'GET',
-			`/eventbus/execution/${id}`,
-		);
-	}
-
 	function getBinaryUrl(
 		binaryDataId: string,
 		action: 'view' | 'download',
@@ -1651,7 +1641,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		fetchExecutionDataById,
 		deleteExecution,
 		addToCurrentExecutions,
-		getExecutionEvents,
 		getBinaryUrl,
 		setNodePristine,
 		resetChatMessages,
