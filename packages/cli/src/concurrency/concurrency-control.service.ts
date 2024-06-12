@@ -7,7 +7,7 @@ import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
 import type { IExecutingWorkflowData } from '@/Interfaces';
-import { InternalHooks } from '@/InternalHooks';
+import { Telemetry } from '@/telemetry';
 
 @Service()
 export class ConcurrencyControlService {
@@ -22,7 +22,7 @@ export class ConcurrencyControlService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
-		private readonly internalHooks: InternalHooks,
+		private readonly telemetry: Telemetry,
 	) {
 		this.productionLimit = config.getEnv('executions.concurrency.productionLimit');
 
@@ -55,7 +55,7 @@ export class ConcurrencyControlService {
 				 * Temporary until base data for cloud plans is collected.
 				 */
 				if (this.shouldReport(capacity)) {
-					await this.internalHooks.onConcurrencyLimitHit({ threshold: capacity });
+					await this.telemetry.track('User hit concurrency limit', { threshold: capacity });
 				}
 			},
 		);
@@ -151,7 +151,7 @@ export class ConcurrencyControlService {
 	}
 
 	private log(message: string, meta?: object) {
-		this.logger.info(['[Concurrency Control]', message].join(' '), meta);
+		this.logger.debug(['[Concurrency Control]', message].join(' '), meta);
 	}
 
 	private shouldReport(capacity: number) {
