@@ -269,6 +269,12 @@ const WorkflowsView = defineComponent({
 		},
 	},
 	watch: {
+		filters: {
+			deep: true,
+			handler() {
+				this.saveFiltersOnQueryString();
+			},
+		},
 		'filters.tags'() {
 			this.sendFiltersTelemetry('tags');
 		},
@@ -295,7 +301,6 @@ const WorkflowsView = defineComponent({
 	methods: {
 		onFiltersUpdated(filters: Filters) {
 			this.filters = filters;
-			this.saveFiltersOnQueryString();
 		},
 		addWorkflow() {
 			this.uiStore.nodeViewInitialized = false;
