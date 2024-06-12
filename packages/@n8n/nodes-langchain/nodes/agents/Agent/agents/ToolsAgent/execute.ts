@@ -13,6 +13,7 @@ import type { ZodObject } from 'zod';
 import { z } from 'zod';
 import type { BaseOutputParser, StructuredOutputParser } from '@langchain/core/output_parsers';
 import { OutputFixingParser } from 'langchain/output_parsers';
+import { HumanMessage } from '@langchain/core/messages';
 import {
 	isChatInstance,
 	getPromptInputByType,
@@ -113,12 +114,30 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 		returnIntermediateSteps?: boolean;
 	};
 
+	const binaryData = this.getInputData(0, 'main')?.[0]?.binary ?? {};
+	const binaryMessages = Object.values(binaryData)
+		.filter((data) => data.mimeType.startsWith('image/'))
+		.map((data) => {
+			return {
+				type: 'image_url',
+				image_url: {
+					url: `data:image/jpeg;base64,${data.data}`,
+				},
+			};
+		});
+	const binaryMessage = new HumanMessage({
+		content: [...binaryMessages],
+	});
+	const convertedBinaryMessage = binaryMessage;
+	console.log('🚀 ~ toolsAgentExecute ~ convertedBinaryMessage:', convertedBinaryMessage);
 	const prompt = ChatPromptTemplate.fromMessages([
 		['system', `{system_message}${outputParser ? '\n\n{formatting_instructions}' : ''}`],
 		['placeholder', '{chat_history}'],
 		['human', '{input}'],
+		convertedBinaryMessage,
 		['placeholder', '{agent_scratchpad}'],
 	]);
+	// console.log('🚀 ~ toolsAgentExecute ~ prompt:', prompt.map);
 
 	const agent = createToolCallingAgent({
 		llm: model,
@@ -154,6 +173,12 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			if (input === undefined) {
 				throw new NodeOperationError(this.getNode(), 'The ‘text parameter is empty.');
 			}
+
+			// const binaryData = this.helpers.assertBinaryData(itemIndex, 'files');
+			// console.log('🚀 ~ toolsAgentExecute ~ binaryData:', binaryMessages);
+			// const binaryMessage = new HumanMessage({
+			// 	content: [...binaryMessages],
+			// });
 
 			const response = await executor.invoke({
 				input,
