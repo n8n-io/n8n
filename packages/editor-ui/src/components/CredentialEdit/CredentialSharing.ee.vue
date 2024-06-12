@@ -72,7 +72,11 @@
 </template>
 
 <script lang="ts">
-import type { ICredentialsResponse, IUserListAction } from '@/Interface';
+import type {
+	ICredentialsResponse,
+	ICredentialsDecryptedResponse,
+	IUserListAction,
+} from '@/Interface';
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { useMessage } from '@/composables/useMessage';
@@ -101,7 +105,7 @@ export default defineComponent({
 	},
 	props: {
 		credential: {
-			type: Object as PropType<ICredentialsResponse | null>,
+			type: Object as PropType<ICredentialsResponse | ICredentialsDecryptedResponse | null>,
 			default: null,
 		},
 		credentialId: {
