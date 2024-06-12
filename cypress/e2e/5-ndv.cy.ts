@@ -578,17 +578,17 @@ describe('NDV', () => {
 
 		workflowPage.actions.openNode('Edit Fields (old)');
 		ndv.actions.openSettings();
-		ndv.getters.nodeVersion().should('have.text', 'Set node version 2 (Latest version: 3.3)');
+		ndv.getters.nodeVersion().should('have.text', 'Set node version 2 (Latest version: 3.4)');
 		ndv.actions.close();
 
 		workflowPage.actions.openNode('Edit Fields (latest)');
 		ndv.actions.openSettings();
-		ndv.getters.nodeVersion().should('have.text', 'Edit Fields (Set) node version 3.3 (Latest)');
+		ndv.getters.nodeVersion().should('have.text', 'Edit Fields (Set) node version 3.4 (Latest)');
 		ndv.actions.close();
 
 		workflowPage.actions.openNode('Edit Fields (no typeVersion)');
 		ndv.actions.openSettings();
-		ndv.getters.nodeVersion().should('have.text', 'Edit Fields (Set) node version 3.3 (Latest)');
+		ndv.getters.nodeVersion().should('have.text', 'Edit Fields (Set) node version 3.4 (Latest)');
 		ndv.actions.close();
 
 		workflowPage.actions.openNode('Function');
