@@ -28,10 +28,7 @@
 
 			<template #beforeLowerMenu>
 				<BecomeTemplateCreatorCta v-if="fullyExpanded && !userIsTrialing" />
-				<ExecutionsUsage
-					v-if="fullyExpanded && userIsTrialing"
-					:cloud-plan-data="currentPlanAndUsageData"
-			/></template>
+			</template>
 			<template #menuSuffix>
 				<div>
 					<div
@@ -106,7 +103,7 @@
 </template>
 
 <script lang="ts">
-import type { CloudPlanAndUsageData, IExecutionResponse, IMenuItem, IVersion } from '@/Interface';
+import type { IExecutionResponse, IMenuItem, IVersion } from '@/Interface';
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
 
 import { useMessage } from '@/composables/useMessage';
@@ -123,7 +120,6 @@ import { useUsersStore } from '@/stores/users.store';
 import { useVersionsStore } from '@/stores/versions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useTemplatesStore } from '@/stores/templates.store';
-import ExecutionsUsage from '@/components/executions/ExecutionsUsage.vue';
 import BecomeTemplateCreatorCta from '@/components/BecomeTemplateCreatorCta/BecomeTemplateCreatorCta.vue';
 import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
 import { hasPermission } from '@/utils/rbac/permissions';
@@ -136,7 +132,6 @@ export default defineComponent({
 	name: 'MainSidebar',
 	components: {
 		GiftNotificationIcon,
-		ExecutionsUsage,
 		MainSidebarSourceControl,
 		BecomeTemplateCreatorCta,
 		ProjectNavigation,
@@ -320,15 +315,6 @@ export default defineComponent({
 		},
 		userIsTrialing(): boolean {
 			return this.cloudPlanStore.userIsTrialing;
-		},
-		currentPlanAndUsageData(): CloudPlanAndUsageData | null {
-			const planData = this.cloudPlanStore.currentPlanData;
-			const usage = this.cloudPlanStore.currentUsageData;
-			if (!planData || !usage) return null;
-			return {
-				...planData,
-				usage,
-			};
 		},
 	},
 	async mounted() {
