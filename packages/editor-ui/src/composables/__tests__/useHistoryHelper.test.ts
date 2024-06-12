@@ -50,11 +50,6 @@ const TestComponent = defineComponent({
 });
 
 describe('useHistoryHelper', () => {
-	beforeAll(() => {
-		// Mocks for useDeviceSupport
-		Object.defineProperty(window, 'matchMedia', { value: vi.fn().mockImplementation(() => true) });
-	});
-
 	beforeEach(() => {
 		undoMock.mockClear();
 		redoMock.mockClear();
