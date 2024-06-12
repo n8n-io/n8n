@@ -1,3 +1,15 @@
+## [1.45.1](https://github.com/n8n-io/n8n/compare/n8n@1.45.0...n8n@1.45.1) (2024-06-12)
+
+
+### Bug Fixes
+
+* **core:** Allow graceful shutdown for main with active executions ([#9661](https://github.com/n8n-io/n8n/issues/9661)) ([c12e588](https://github.com/n8n-io/n8n/commit/c12e588de8fa26b18cac92df65b4022575d4662c))
+* **core:** Fix optional chaining in continue on fail check ([#9667](https://github.com/n8n-io/n8n/issues/9667)) ([b6a81c8](https://github.com/n8n-io/n8n/commit/b6a81c8a8ace521d1db227b3a495c8a4ea137dd4))
+* **editor:** Render credentials editable when opening them from the node view ([#9678](https://github.com/n8n-io/n8n/issues/9678)) ([f5a3374](https://github.com/n8n-io/n8n/commit/f5a33742e11b6a26d222e6c30f62e18558027aed))
+* **Gotify Node:** Fix issue with self signed certificates not working ([#9647](https://github.com/n8n-io/n8n/issues/9647)) ([fc79d8b](https://github.com/n8n-io/n8n/commit/fc79d8b1105a13f9f2ac1216087278571f654bce))
+
+
+
 # [1.45.0](https://github.com/n8n-io/n8n/compare/n8n@1.44.0...n8n@1.45.0) (2024-06-05)
 
 
