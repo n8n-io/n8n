@@ -123,20 +123,23 @@ importers:
   cypress:
     dependencies:
       '@ngneat/falso':
-        specifier: ^6.4.0
-        version: 6.4.0
-      cross-env:
-        specifier: ^7.0.3
-        version: 7.0.3
+        specifier: ^7.2.0
+        version: 7.2.0
+      '@sinonjs/fake-timers':
+        specifier: ^11.2.2
+        version: 11.2.2
       cypress:
-        specifier: ^13.6.2
-        version: 13.6.2
+        specifier: ^13.11.0
+        version: 13.11.0
       cypress-otp:
         specifier: ^1.0.3
         version: 1.0.3
       cypress-real-events:
-        specifier: ^1.11.0
-        version: 1.11.0(cypress@13.6.2)
+        specifier: ^1.12.0
+        version: 1.12.0(cypress@13.11.0)
+      lodash:
+        specifier: 4.17.21
+        version: 4.17.21
       start-server-and-test:
         specifier: ^2.0.3
         version: 2.0.3
@@ -144,9 +147,15 @@ importers:
         specifier: 8.3.2
         version: 8.3.2
     devDependencies:
+      '@types/lodash':
+        specifier: ^4.14.195
+        version: 4.14.195
       '@types/uuid':
         specifier: ^8.3.2
         version: 8.3.4
+      eslint-plugin-cypress:
+        specifier: ^3.3.0
+        version: 3.3.0(eslint@8.57.0)
       n8n-workflow:
         specifier: workspace:*
         version: link:../packages/workflow
@@ -1294,6 +1303,9 @@ importers:
       '@types/uuid':
         specifier: ^8.3.2
         version: 8.3.4
+      cross-env:
+        specifier: ^7.0.3
+        version: 7.0.3
       miragejs:
         specifier: ^0.1.48
         version: 0.1.48
@@ -4115,8 +4127,8 @@ packages:
   '@ndelangen/get-tarball@3.0.7':
     resolution: {integrity: sha512-NqGfTZIZpRFef1GoVaShSSRwDC3vde3ThtTeqFdcYd6ipKqnfEVhjK2hUeHjCQUcptyZr2TONqcloFXM+5QBrQ==}
 
-  '@ngneat/falso@6.4.0':
-    resolution: {integrity: sha512-f6r036h2fX/AoHw1eV2t8+qWQwrbSrozs3zXMhhwoO7SJBc+DGMxRWEhFeYIinfwx0uhUH8ggx5+PDLzYESLOA==}
+  '@ngneat/falso@7.2.0':
+    resolution: {integrity: sha512-283EXBFd05kCbGuGSXgmvhCsQYEYzvD/eJaE7lxd05qRB0tgREvZX7TRlJ1KSp8nHxoK6Ws029G1Y30mt4IVAA==}
 
   '@nodelib/fs.scandir@2.1.5':
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
@@ -4671,8 +4683,14 @@ packages:
   '@sinonjs/commons@2.0.0':
     resolution: {integrity: sha512-uLa0j859mMrg2slwQYdO/AkrOfmH+X6LTVmNTS9CqexuE2IvVORIkSpJLqePAbEnKJ77aMmCwr1NUZ57120Xcg==}
 
+  '@sinonjs/commons@3.0.1':
+    resolution: {integrity: sha512-K3mCHKQ9sVh8o1C9cxkwxaOmXoAMlDxC1mYyHrjqOWEcBjYr76t96zL2zlj5dUGZ3HSw240X1qgH3Mjf1yJWpQ==}
+
   '@sinonjs/fake-timers@10.0.2':
     resolution: {integrity: sha512-SwUDyjWnah1AaNl7kxsa7cfLhlTYoiyhDAIgyh+El30YvXs/o7OLXpYH88Zdhyx9JExKrmHDJ+10bwIcY80Jmw==}
+
+  '@sinonjs/fake-timers@11.2.2':
+    resolution: {integrity: sha512-G2piCSxQ7oWOxwGSAyFHfPIsyeJGXYtc6mFbnFA+kRXkiEnTl8c/8jul2S329iFBnDI9HGoeWWAZvuvOkZccgw==}
 
   '@smithy/abort-controller@2.0.15':
     resolution: {integrity: sha512-JkS36PIS3/UCbq/MaozzV7jECeL+BTt4R75bwY8i+4RASys4xOyUS1HsRyUNSqUXFP4QyCz5aNnh3ltuaxv+pw==}
@@ -7287,13 +7305,13 @@ packages:
   cypress-otp@1.0.3:
     resolution: {integrity: sha512-o7LssfI0HRHa+TkaOE5/Aukv6M9vsoZAtYESr9m7Ky2i+HRNb2p/IRelE7Z0wJ/UK2f+nXAGZIfXqraf9EPDqw==}
 
-  cypress-real-events@1.11.0:
-    resolution: {integrity: sha512-4LXVRsyq+xBh5TmlEyO1ojtBXtN7xw720Pwb9rEE9rkJuXmeH3VyoR1GGayMGr+Itqf11eEjfDewtDmcx6PWPQ==}
+  cypress-real-events@1.12.0:
+    resolution: {integrity: sha512-oiy+4kGKkzc2PT36k3GGQqkGxNiVypheWjMtfyi89iIk6bYmTzeqxapaLHS3pnhZOX1IEbTDUVxh8T4Nhs1tyQ==}
     peerDependencies:
       cypress: ^4.x || ^5.x || ^6.x || ^7.x || ^8.x || ^9.x || ^10.x || ^11.x || ^12.x || ^13.x
 
-  cypress@13.6.2:
-    resolution: {integrity: sha512-TW3bGdPU4BrfvMQYv1z3oMqj71YI4AlgJgnrycicmPZAXtvywVFZW9DAToshO65D97rCWfG/kqMFsYB6Kp91gQ==}
+  cypress@13.11.0:
+    resolution: {integrity: sha512-NXXogbAxVlVje4XHX+Cx5eMFZv4Dho/2rIcdBHg9CNPFUGZdM4cRdgIgM7USmNYsC12XY0bZENEQ+KBk72fl+A==}
     engines: {node: ^16.0.0 || ^18.0.0 || >=20.0.0}
     hasBin: true
 
@@ -7890,6 +7908,11 @@ packages:
         optional: true
       eslint-import-resolver-webpack:
         optional: true
+
+  eslint-plugin-cypress@3.3.0:
+    resolution: {integrity: sha512-HPHMPzYBIshzJM8wqgKSKHG2p/8R0Gbg4Pb3tcdC9WrmkuqxiKxSKbjunUrajhV5l7gCIFrh1P7C7GuBqH6YuQ==}
+    peerDependencies:
+      eslint: '>=7'
 
   eslint-plugin-import@2.29.1:
     resolution: {integrity: sha512-BbPC0cuExzhiMo4Ff1BTVwHpjjv28C5R+btTOGaCRC7UEz801up0JadwkeSk5Ued6TG34uaczuVuH6qyy5YUxw==}
@@ -13775,9 +13798,6 @@ packages:
   zod@3.23.8:
     resolution: {integrity: sha512-XBx9AXhXktjUqnepgTiE5flcKIYWi/rme0Eaj+5Y0lftuGBq+jyRu/md4WnuxqgP1ubdpNCsYEYPxrzVHD8d6g==}
 
-onlyBuiltDependencies:
-  - sqlite3
-
 snapshots:
 
   '@aashutoshrathi/word-wrap@1.2.6': {}
@@ -17141,7 +17161,7 @@ snapshots:
       pump: 3.0.0
       tar-fs: 2.1.1
 
-  '@ngneat/falso@6.4.0':
+  '@ngneat/falso@7.2.0':
     dependencies:
       seedrandom: 3.0.5
       uuid: 8.3.2
@@ -17781,9 +17801,17 @@ snapshots:
     dependencies:
       type-detect: 4.0.8
 
+  '@sinonjs/commons@3.0.1':
+    dependencies:
+      type-detect: 4.0.8
+
   '@sinonjs/fake-timers@10.0.2':
     dependencies:
       '@sinonjs/commons': 2.0.0
+
+  '@sinonjs/fake-timers@11.2.2':
+    dependencies:
+      '@sinonjs/commons': 3.0.1
 
   '@smithy/abort-controller@2.0.15':
     dependencies:
@@ -21444,15 +21472,14 @@ snapshots:
     dependencies:
       otplib: 12.0.1
 
-  cypress-real-events@1.11.0(cypress@13.6.2):
+  cypress-real-events@1.12.0(cypress@13.11.0):
     dependencies:
-      cypress: 13.6.2
+      cypress: 13.11.0
 
-  cypress@13.6.2:
+  cypress@13.11.0:
     dependencies:
       '@cypress/request': 3.0.1
       '@cypress/xvfb': 1.2.4(supports-color@8.1.1)
-      '@types/node': 18.16.16
       '@types/sinonjs__fake-timers': 8.1.1
       '@types/sizzle': 2.3.3
       arch: 2.2.0
@@ -22208,6 +22235,11 @@ snapshots:
       eslint-import-resolver-typescript: 3.6.1(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.4.2))(eslint-plugin-import@2.29.1)(eslint@8.57.0)
     transitivePeerDependencies:
       - supports-color
+
+  eslint-plugin-cypress@3.3.0(eslint@8.57.0):
+    dependencies:
+      eslint: 8.57.0
+      globals: 13.20.0
 
   eslint-plugin-import@2.29.1(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.4.2))(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0):
     dependencies:

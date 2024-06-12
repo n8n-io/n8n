@@ -5,6 +5,7 @@ import { NDV, WorkflowPage } from '../pages';
 import { NodeCreator } from '../pages/features/node-creator';
 import { clickCreateNewCredential } from '../composables/ndv';
 import { setCredentialValues } from '../composables/modals/credential-modal';
+import { successToast } from '../pages/notifications';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -344,7 +345,7 @@ describe('NDV', () => {
 		ndv.getters.parameterInput('remoteOptions').click();
 		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
 
-		ndv.actions.setInvalidExpression({ fieldName: 'fieldId', delay: 200 });
+		ndv.actions.setInvalidExpression({ fieldName: 'fieldId' });
 
 		ndv.getters.inputPanel().click(); // remove focus from input, hide expression preview
 
@@ -362,7 +363,7 @@ describe('NDV', () => {
 		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
 		ndv.getters.parameterInput('remoteOptions').click();
 
-		ndv.actions.setInvalidExpression({ fieldName: 'otherField', delay: 50 });
+		ndv.actions.setInvalidExpression({ fieldName: 'otherField' });
 
 		ndv.getters.nodeParameters().click(); // remove focus from input, hide expression preview
 
@@ -734,7 +735,7 @@ describe('NDV', () => {
 		ndv.getters.triggerPanelExecuteButton().realClick();
 		cy.wait('@workflowRun').then(() => {
 			ndv.getters.triggerPanelExecuteButton().should('contain', 'Test step');
-			workflowPage.getters.successToast().should('exist');
+			successToast().should('exist');
 		});
 	});
 
