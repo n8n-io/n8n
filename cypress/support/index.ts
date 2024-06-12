@@ -1,7 +1,11 @@
 // Load type definitions that come with Cypress module
 /// <reference types="cypress" />
 
-import type { Interception } from 'cypress/types/net-stubbing';
+import type { IN8nUISettings } from 'n8n-workflow';
+
+Cypress.Keyboard.defaults({
+	keystrokeDelay: 0,
+});
 
 interface SigninPayload {
 	email: string;
@@ -22,10 +26,13 @@ declare global {
 			): Chainable<JQuery<HTMLElement>>;
 			findChildByTestId(childTestId: string): Chainable<JQuery<HTMLElement>>;
 			createFixtureWorkflow(fixtureKey: string, workflowName: string): void;
+			/** @deprecated */
 			signin(payload: SigninPayload): void;
 			signinAsOwner(): void;
+			signinAsAdmin(): void;
+			signinAsMember(index?: number): void;
 			signout(): void;
-			interceptREST(method: string, url: string): Chainable<Interception>;
+			overrideSettings(value: Partial<IN8nUISettings>): void;
 			enableFeature(feature: string): void;
 			disableFeature(feature: string): void;
 			enableQueueMode(): void;
@@ -54,6 +61,7 @@ declare global {
 				}
 			>;
 			resetDatabase(): void;
+			setAppDate(targetDate: number | Date): void;
 		}
 	}
 }

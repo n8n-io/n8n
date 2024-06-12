@@ -55,6 +55,7 @@ import type {
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { BaseTextKey } from '../../plugins/i18n';
+import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 
 const props = defineProps<{
 	workflow: IWorkflowDb;
@@ -72,6 +73,7 @@ const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
+const npsSurveyStore = useNpsSurveyStore();
 
 const router = useRouter();
 const route = useRoute();
@@ -250,7 +252,7 @@ async function onSaveButtonClick() {
 	if (saved) {
 		showCreateWorkflowSuccessToast(id);
 
-		await settingsStore.fetchPromptsData();
+		await npsSurveyStore.fetchPromptsData();
 
 		if (route.name === VIEWS.EXECUTION_DEBUG) {
 			await router.replace({

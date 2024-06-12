@@ -34,15 +34,12 @@ describe('Canvas Actions', () => {
 		addDefaultSticky();
 		workflowPage.actions.deselectAll();
 		workflowPage.actions.addStickyFromContextMenu();
-		workflowPage.actions.hitAddStickyShortcut();
+		workflowPage.actions.hitAddSticky();
 
 		workflowPage.getters.stickies().should('have.length', 3);
 
 		// Should not add a sticky for ctrl+shift+s
-		cy.get('body')
-			.type(META_KEY, { delay: 500, release: false })
-			.type('{shift}', { release: false })
-			.type('s');
+		cy.get('body').type(`{${META_KEY}+shift+s}`);
 
 		workflowPage.getters.stickies().should('have.length', 3);
 		workflowPage.getters

@@ -30,6 +30,7 @@ export class PersonalSettingsPage extends BasePage {
 			this.getters.themeSelector().click();
 			this.getters.selectOptionsVisible().should('have.length', 3);
 			this.getters.selectOptionsVisible().contains(theme).click();
+			this.getters.saveSettingsButton().realClick();
 		},
 		loginAndVisit: (email: string, password: string) => {
 			cy.signin({ email, password });

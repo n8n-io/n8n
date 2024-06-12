@@ -10,18 +10,22 @@
     "format": "prettier --write . --ignore-path ../.prettierignore",
     "lint": "eslint . --quiet",
     "lintfix": "eslint . --fix",
+    "develop": "cd ..; pnpm dev",
     "start": "cd ..; pnpm start"
   },
   "devDependencies": {
+    "@types/lodash": "^4.14.195",
     "@types/uuid": "^8.3.2",
+    "eslint-plugin-cypress": "^3.3.0",
     "n8n-workflow": "workspace:*"
   },
   "dependencies": {
-    "@ngneat/falso": "^6.4.0",
-    "cross-env": "^7.0.3",
-    "cypress": "^13.6.2",
+    "@ngneat/falso": "^7.2.0",
+    "@sinonjs/fake-timers": "^11.2.2",
+    "cypress": "^13.11.0",
     "cypress-otp": "^1.0.3",
-    "cypress-real-events": "^1.11.0",
+    "cypress-real-events": "^1.12.0",
+    "lodash": "4.17.21",
     "start-server-and-test": "^2.0.3",
     "uuid": "8.3.2"
   }

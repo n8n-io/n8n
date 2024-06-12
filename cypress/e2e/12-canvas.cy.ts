@@ -164,8 +164,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		cy.wait(500);
-		WorkflowPage.actions.selectAll();
-		cy.get('body').type('{backspace}');
+		WorkflowPage.actions.hitDeleteAllNodes();
 		WorkflowPage.getters.canvasNodes().should('have.length', 0);
 
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
@@ -181,8 +180,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		cy.wait(500);
-		WorkflowPage.actions.selectAll();
-		cy.get('body').type('{backspace}');
+		WorkflowPage.actions.hitDeleteAllNodes();
 		WorkflowPage.getters.canvasNodes().should('have.length', 0);
 
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
@@ -315,7 +313,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		cy.get('body').type('{esc}');
 
 		// Keyboard shortcut
-		WorkflowPage.actions.selectAll();
+		WorkflowPage.actions.hitSelectAll();
 		WorkflowPage.actions.hitDisableNodeShortcut();
 		WorkflowPage.getters.disabledNodes().should('have.length', 2);
 		WorkflowPage.actions.hitDisableNodeShortcut();
@@ -324,12 +322,12 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.actions.hitDisableNodeShortcut();
 		WorkflowPage.getters.disabledNodes().should('have.length', 1);
-		WorkflowPage.actions.selectAll();
+		WorkflowPage.actions.hitSelectAll();
 		WorkflowPage.actions.hitDisableNodeShortcut();
 		WorkflowPage.getters.disabledNodes().should('have.length', 2);
 
 		// Context menu
-		WorkflowPage.actions.selectAll();
+		WorkflowPage.actions.hitSelectAll();
 		WorkflowPage.actions.openContextMenu();
 		WorkflowPage.actions.contextMenuAction('toggle_activation');
 		WorkflowPage.getters.disabledNodes().should('have.length', 0);
@@ -341,7 +339,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.actions.openContextMenu();
 		WorkflowPage.actions.contextMenuAction('toggle_activation');
 		WorkflowPage.getters.disabledNodes().should('have.length', 1);
-		WorkflowPage.actions.selectAll();
+		WorkflowPage.actions.hitSelectAll();
 		WorkflowPage.actions.openContextMenu();
 		WorkflowPage.actions.contextMenuAction('toggle_activation');
 		WorkflowPage.getters.disabledNodes().should('have.length', 2);
@@ -383,8 +381,8 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.getters.canvasNodes().should('have.length', 3);
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
 
-		WorkflowPage.actions.selectAll();
-		WorkflowPage.actions.hitDuplicateNodeShortcut();
+		WorkflowPage.actions.hitSelectAll();
+		WorkflowPage.actions.hitDuplicateNode();
 		WorkflowPage.getters.canvasNodes().should('have.length', 5);
 	});
 
