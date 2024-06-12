@@ -33,9 +33,14 @@ declare global {
 			 */
 			createFixtureWorkflow(fixtureKey: string, workflowName?: string): void;
 			/** @deprecated */
+			createFixtureWorkflow(fixtureKey: string, workflowName: string): void;
+			/** @deprecated use signinAsOwner, signinAsAdmin or signinAsMember instead */
 			signin(payload: SigninPayload): void;
 			signinAsOwner(): void;
 			signinAsAdmin(): void;
+			/**
+			 * Omitting the index will default to index 0.
+			 */
 			signinAsMember(index?: number): void;
 			signout(): void;
 			overrideSettings(value: Partial<IN8nUISettings>): void;
