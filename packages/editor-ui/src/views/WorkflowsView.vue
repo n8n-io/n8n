@@ -301,7 +301,6 @@ const WorkflowsView = defineComponent({
 	methods: {
 		onFiltersUpdated(filters: Filters) {
 			this.filters = filters;
-			// this.saveFiltersOnQueryString();
 		},
 		addWorkflow() {
 			this.uiStore.nodeViewInitialized = false;
