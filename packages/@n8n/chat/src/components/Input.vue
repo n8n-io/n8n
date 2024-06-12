@@ -27,10 +27,6 @@ const chatTextArea = ref<HTMLTextAreaElement | null>(null);
 const input = ref('');
 
 const isSubmitDisabled = computed(() => {
-	console.log(
-		"🚀 ~ isSubmitDisabled ~ input.value === '' && files.value?.length === 0:",
-		files.value,
-	);
 	return (
 		(input.value === '' && !files.value?.length) ||
 		waitingForResponse.value ||
@@ -68,6 +64,7 @@ async function onSubmit(event: MouseEvent | KeyboardEvent) {
 	const messageText = input.value;
 	input.value = '';
 	await chatStore.sendMessage(messageText, Array.from(files.value ?? []));
+	reset();
 	files.value = null;
 }
 
@@ -85,10 +82,10 @@ function onFileRemove(file: File) {
 
 	for (let i = 0; i < files.value.length; i++) {
 		const currentFile = files.value[i];
-		console.log('🚀 ~ onFileRemove ~ currentFile:', currentFile);
 		if (file.name !== currentFile.name) dt.items.add(currentFile);
 	}
 
+	reset();
 	files.value = dt.files;
 	console.log('🚀 ~ onFileRemove ~ files.value:', files.value);
 }
