@@ -536,10 +536,13 @@ describe('Execution', () => {
 
 		cy.wait('@workflowRun').then((interception) => {
 			expect(interception.request.body).not.to.have.property('runData').that.is.an('object');
-			expect(interception.request.body).to.have.property('pinData').that.is.an('object');
+			expect(interception.request.body).to.have.property('workflowData').that.is.an('object');
+			expect(interception.request.body.workflowData)
+				.to.have.property('pinData')
+				.that.is.an('object');
 			const expectedPinnedDataKeys = ['Webhook'];
 
-			const { pinData } = interception.request.body as Record<string, object>;
+			const { pinData } = interception.request.body.workflowData as Record<string, object>;
 			expect(Object.keys(pinData)).to.have.lengthOf(expectedPinnedDataKeys.length);
 			expect(pinData).to.include.all.keys(expectedPinnedDataKeys);
 		});
@@ -555,14 +558,18 @@ describe('Execution', () => {
 
 		cy.wait('@workflowRun').then((interception) => {
 			expect(interception.request.body).to.have.property('runData').that.is.an('object');
-			expect(interception.request.body).to.have.property('pinData').that.is.an('object');
+			expect(interception.request.body).to.have.property('workflowData').that.is.an('object');
+			expect(interception.request.body.workflowData)
+				.to.have.property('pinData')
+				.that.is.an('object');
 			const expectedPinnedDataKeys = ['Webhook'];
 			const expectedRunDataKeys = ['If', 'Webhook'];
 
-			const { pinData, runData } = interception.request.body as Record<string, object>;
+			const { pinData } = interception.request.body.workflowData as Record<string, object>;
 			expect(Object.keys(pinData)).to.have.lengthOf(expectedPinnedDataKeys.length);
 			expect(pinData).to.include.all.keys(expectedPinnedDataKeys);
 
+			const { runData } = interception.request.body as Record<string, object>;
 			expect(Object.keys(runData)).to.have.lengthOf(expectedRunDataKeys.length);
 			expect(runData).to.include.all.keys(expectedRunDataKeys);
 		});
