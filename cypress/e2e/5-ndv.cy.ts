@@ -156,7 +156,7 @@ describe('NDV', () => {
 			'prop2',
 		];
 		function setupSchemaWorkflow() {
-			cy.createFixtureWorkflowWithUniqueName('Test_workflow_schema_test.json');
+			cy.createFixtureWorkflow('Test_workflow_schema_test.json');
 			workflowPage.actions.zoomToFit();
 			workflowPage.actions.openNode('Set');
 			ndv.actions.execute();

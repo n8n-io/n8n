@@ -10,7 +10,7 @@ describe('ADO-1338-ndv-missing-input-panel', () => {
 	});
 
 	it('should show the input and output panels when node is missing input and output data', () => {
-		cy.createFixtureWorkflowWithUniqueName('Test_ado_1338.json');
+		cy.createFixtureWorkflow('Test_ado_1338.json');
 
 		// Execute the workflow
 		workflowPage.getters.zoomToFitButton().click();

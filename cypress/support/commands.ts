@@ -25,24 +25,20 @@ Cypress.Commands.add('getByTestId', (selector, ...args) => {
 	return cy.get(`[data-test-id="${selector}"]`, ...args);
 });
 
-Cypress.Commands.add('createFixtureWorkflow', (fixtureKey, workflowName) => {
-	const workflowPage = new WorkflowPage();
-
-	// We need to force the click because the input is hidden
-	workflowPage.getters.workflowImportInput().selectFile(`fixtures/${fixtureKey}`, { force: true });
-
-	cy.waitForLoad(false);
-	workflowPage.actions.setWorkflowName(workflowName);
-	workflowPage.getters.saveButton().should('contain', 'Saved');
-	workflowPage.actions.zoomToFit();
-});
-
 Cypress.Commands.add(
-	'createFixtureWorkflowWithUniqueName',
-	(fixtureKey: string, workflowNamePrefix?: string) => {
-		const workflowName = getUniqueWorkflowName(workflowNamePrefix);
+	'createFixtureWorkflow',
+	(fixtureKey: string, workflowName = getUniqueWorkflowName()) => {
+		const workflowPage = new WorkflowPage();
 
-		cy.createFixtureWorkflow(fixtureKey, workflowName);
+		// We need to force the click because the input is hidden
+		workflowPage.getters
+			.workflowImportInput()
+			.selectFile(`fixtures/${fixtureKey}`, { force: true });
+
+		cy.waitForLoad(false);
+		workflowPage.actions.setWorkflowName(workflowName);
+		workflowPage.getters.saveButton().should('contain', 'Saved');
+		workflowPage.actions.zoomToFit();
 	},
 );
 

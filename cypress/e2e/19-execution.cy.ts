@@ -12,7 +12,7 @@ describe('Execution', () => {
 	});
 
 	it('should test manual workflow', () => {
-		cy.createFixtureWorkflowWithUniqueName('Manual_wait_set.json');
+		cy.createFixtureWorkflow('Manual_wait_set.json');
 
 		// Check workflow buttons
 		workflowPage.getters.executeWorkflowButton().should('be.visible');
@@ -72,7 +72,7 @@ describe('Execution', () => {
 	});
 
 	it('should test manual workflow stop', () => {
-		cy.createFixtureWorkflowWithUniqueName('Manual_wait_set.json');
+		cy.createFixtureWorkflow('Manual_wait_set.json');
 
 		// Check workflow buttons
 		workflowPage.getters.executeWorkflowButton().should('be.visible');
@@ -131,7 +131,7 @@ describe('Execution', () => {
 	});
 
 	it('should test webhook workflow', () => {
-		cy.createFixtureWorkflowWithUniqueName('Webhook_wait_set.json');
+		cy.createFixtureWorkflow('Webhook_wait_set.json');
 
 		// Check workflow buttons
 		workflowPage.getters.executeWorkflowButton().should('be.visible');
@@ -204,7 +204,7 @@ describe('Execution', () => {
 	});
 
 	it('should test webhook workflow stop', () => {
-		cy.createFixtureWorkflowWithUniqueName('Webhook_wait_set.json');
+		cy.createFixtureWorkflow('Webhook_wait_set.json');
 
 		// Check workflow buttons
 		workflowPage.getters.executeWorkflowButton().should('be.visible');
@@ -292,7 +292,7 @@ describe('Execution', () => {
 
 	describe('connections should be colored differently for pinned data', () => {
 		beforeEach(() => {
-			cy.createFixtureWorkflowWithUniqueName('Schedule_pinned.json');
+			cy.createFixtureWorkflow('Schedule_pinned.json');
 			workflowPage.actions.deselectAll();
 			workflowPage.getters.zoomToFitButton().click();
 
@@ -491,10 +491,7 @@ describe('Execution', () => {
 	});
 
 	it('should send proper payload for node rerun', () => {
-		cy.createFixtureWorkflowWithUniqueName(
-			'Multiple_trigger_node_rerun.json',
-			'Multiple trigger node rerun',
-		);
+		cy.createFixtureWorkflow('Multiple_trigger_node_rerun.json', 'Multiple trigger node rerun');
 
 		workflowPage.getters.zoomToFitButton().click();
 		workflowPage.getters.executeWorkflowButton().click();
@@ -519,7 +516,7 @@ describe('Execution', () => {
 	});
 
 	it('should send proper payload for manual node run', () => {
-		cy.createFixtureWorkflowWithUniqueName('Check_manual_node_run_for_pinned_and_rundata.json');
+		cy.createFixtureWorkflow('Check_manual_node_run_for_pinned_and_rundata.json');
 
 		workflowPage.getters.zoomToFitButton().click();
 
@@ -565,7 +562,7 @@ describe('Execution', () => {
 	});
 
 	it('should successfully execute partial executions with nodes attached to the second output', () => {
-		cy.createFixtureWorkflowWithUniqueName('Test_Workflow_pairedItem_incomplete_manual_bug.json');
+		cy.createFixtureWorkflow('Test_Workflow_pairedItem_incomplete_manual_bug.json');
 
 		cy.intercept('POST', '/rest/workflows/**/run').as('workflowRun');
 
@@ -585,9 +582,7 @@ describe('Execution', () => {
 	});
 
 	it('should execute workflow partially up to the node that has issues', () => {
-		cy.createFixtureWorkflowWithUniqueName(
-			'Test_workflow_partial_execution_with_missing_credentials.json',
-		);
+		cy.createFixtureWorkflow('Test_workflow_partial_execution_with_missing_credentials.json');
 
 		cy.intercept('POST', '/rest/workflows/**/run').as('workflowRun');
 

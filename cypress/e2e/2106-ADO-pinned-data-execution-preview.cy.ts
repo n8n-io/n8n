@@ -10,7 +10,7 @@ describe('ADO-2106 connections should be colored correctly for pinned data in ex
 	});
 
 	beforeEach(() => {
-		cy.createFixtureWorkflowWithUniqueName('Webhook_set_pinned.json');
+		cy.createFixtureWorkflow('Webhook_set_pinned.json');
 		workflowPage.actions.deselectAll();
 		workflowPage.getters.zoomToFitButton().click();
 
