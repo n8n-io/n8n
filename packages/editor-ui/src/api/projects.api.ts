@@ -1,4 +1,4 @@
-import type { IRestApiContext } from '@/Interface';
+import type { ICredentialsResponse, IRestApiContext } from '@/Interface';
 import { makeRestApiRequest } from '@/utils/apiUtils';
 import type {
 	Project,
@@ -25,6 +25,13 @@ export const getPersonalProject = async (context: IRestApiContext): Promise<Proj
 export const getProject = async (context: IRestApiContext, id: string): Promise<Project> => {
 	return await makeRestApiRequest(context, 'GET', `/projects/${id}`);
 };
+
+export async function getAllCredentialsAUserCanUseInAWorkflow(
+	context: IRestApiContext,
+	projectId: string,
+): Promise<Array<Pick<ICredentialsResponse, 'id' | 'name'>>> {
+	return await makeRestApiRequest(context, 'GET', `/projects/${projectId}/credentials`);
+}
 
 export const createProject = async (
 	context: IRestApiContext,

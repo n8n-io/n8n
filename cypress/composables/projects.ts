@@ -10,21 +10,22 @@ export const getProjectTabs = () => cy.getByTestId('project-tabs').find('a');
 export const getProjectTabWorkflows = () => getProjectTabs().filter('a[href$="/workflows"]');
 export const getProjectTabCredentials = () => getProjectTabs().filter('a[href$="/credentials"]');
 export const getProjectTabSettings = () => getProjectTabs().filter('a[href$="/settings"]');
+export const getProjectSettingsNameInput = () => cy.getByTestId('project-settings-name-input');
 export const getProjectSettingsSaveButton = () => cy.getByTestId('project-settings-save-button');
 export const getProjectSettingsCancelButton = () =>
 	cy.getByTestId('project-settings-cancel-button');
 export const getProjectSettingsDeleteButton = () =>
 	cy.getByTestId('project-settings-delete-button');
 export const getProjectMembersSelect = () => cy.getByTestId('project-members-select');
-export const addProjectMember = (email: string) => {
-	getProjectMembersSelect().click();
-	getProjectMembersSelect().get('.el-select-dropdown__item').contains(email.toLowerCase()).click();
-};
 export const getProjectNameInput = () => cy.get('#projectName');
 export const getResourceMoveModal = () => cy.getByTestId('project-move-resource-modal');
 export const getResourceMoveConfirmModal = () =>
 	cy.getByTestId('project-move-resource-confirm-modal');
 export const getProjectMoveSelect = () => cy.getByTestId('project-move-resource-modal-select');
+export const addProjectMember = (email: string) => {
+	getProjectMembersSelect().click();
+	getProjectMembersSelect().get('.el-select-dropdown__item').contains(email.toLowerCase()).click();
+};
 
 export function createProject(name: string) {
 	getAddProjectButton().should('be.visible').click();
@@ -55,3 +56,11 @@ export function createCredential(name: string) {
 	credentialsModal.actions.save();
 	credentialsModal.actions.close();
 }
+
+export const actions = {
+	createProject: (name: string) => {
+		getAddProjectButton().click();
+		getProjectSettingsNameInput().type(name);
+		getProjectSettingsSaveButton().click();
+	},
+};
