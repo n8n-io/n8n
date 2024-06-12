@@ -22,7 +22,12 @@ const i18n = useI18n();
 const rootStore = useRootStore();
 const workflowsStore = useWorkflowsStore();
 
-const tabs = ref([
+type ChatEmbedModalTabValue = 'cdn' | 'vue' | 'react' | 'other';
+type ChatEmbedModalTab = {
+	label: string;
+	value: ChatEmbedModalTabValue;
+};
+const tabs = ref<ChatEmbedModalTab[]>([
 	{
 		label: 'CDN Embed',
 		value: 'cdn',
@@ -40,7 +45,7 @@ const tabs = ref([
 		value: 'other',
 	},
 ]);
-const currentTab = ref('cdn');
+const currentTab = ref<ChatEmbedModalTabValue>('cdn');
 
 const webhookNode = computed(() => {
 	for (const type of [CHAT_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE]) {

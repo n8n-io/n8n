@@ -1,5 +1,5 @@
-import { BasePage } from './base';
 import { getVisiblePopper, getVisibleSelect } from '../utils';
+import { BasePage } from './base';
 
 export class NDV extends BasePage {
 	getters = {
@@ -63,7 +63,9 @@ export class NDV extends BasePage {
 		httpRequestNotice: () => cy.getByTestId('node-parameters-http-notice'),
 		nthParam: (n: number) => cy.getByTestId('node-parameters').find('.parameter-item').eq(n),
 		inputRunSelector: () => this.getters.inputPanel().findChildByTestId('run-selector'),
+		inputLinkRun: () => this.getters.inputPanel().findChildByTestId('link-run'),
 		outputRunSelector: () => this.getters.outputPanel().findChildByTestId('run-selector'),
+		outputLinkRun: () => this.getters.outputPanel().findChildByTestId('link-run'),
 		outputHoveringItem: () => this.getters.outputPanel().findChildByTestId('hovering-item'),
 		inputHoveringItem: () => this.getters.inputPanel().findChildByTestId('hovering-item'),
 		outputBranches: () => this.getters.outputPanel().findChildByTestId('branches'),
@@ -149,18 +151,14 @@ export class NDV extends BasePage {
 			cy.contains('Expression').invoke('show').click();
 			this.getters.inlineExpressionEditorInput().click();
 		},
-		setPinnedData: (data: object) => {
+		setPinnedData: (data: object | string) => {
+			const pinnedData = typeof data === 'string' ? data : JSON.stringify(data);
 			this.getters.editPinnedDataButton().click();
 
 			this.getters.pinnedDataEditor().click();
 			this.getters
 				.pinnedDataEditor()
-				.type(
-					`{selectall}{backspace}${JSON.stringify(data).replace(new RegExp('{', 'g'), '{{}')}`,
-					{
-						delay: 0,
-					},
-				);
+				.type(`{selectall}{backspace}${pinnedData.replace(new RegExp('{', 'g'), '{{}')}`);
 
 			this.actions.savePinnedData();
 		},
@@ -168,24 +166,21 @@ export class NDV extends BasePage {
 			this.getters.editPinnedDataButton().click();
 
 			this.getters.pinnedDataEditor().click();
-			this.getters
-				.pinnedDataEditor()
-				.type('{selectall}{backspace}', { delay: 0 })
-				.paste(JSON.stringify(data));
+			this.getters.pinnedDataEditor().type('{selectall}{backspace}').paste(JSON.stringify(data));
 
 			this.actions.savePinnedData();
 		},
 		clearParameterInput: (parameterName: string) => {
-			this.getters.parameterInput(parameterName).type(`{selectall}{backspace}`);
+			this.getters.parameterInput(parameterName).type('{selectall}{backspace}');
 		},
 		typeIntoParameterInput: (
 			parameterName: string,
 			content: string,
-			opts?: { parseSpecialCharSequences: boolean; delay?: number },
+			opts?: { parseSpecialCharSequences: boolean },
 		) => {
 			this.getters.parameterInput(parameterName).type(content, opts);
 		},
-		selectOptionInParameterDropdown: (parameterName: string, content: string) => {
+		selectOptionInParameterDropdown: (_: string, content: string) => {
 			getVisibleSelect().find('.option-headline').contains(content).click();
 		},
 		rename: (newName: string) => {
@@ -228,10 +223,10 @@ export class NDV extends BasePage {
 			getVisibleSelect().find('.el-select-dropdown__item').contains(runName).click();
 		},
 		toggleOutputRunLinking: () => {
-			this.getters.outputRunSelector().find('button').click();
+			this.getters.outputLinkRun().click();
 		},
 		toggleInputRunLinking: () => {
-			this.getters.inputRunSelector().find('button').click();
+			this.getters.inputLinkRun().click();
 		},
 		switchOutputBranch: (name: string) => {
 			this.getters.outputBranches().get('span').contains(name).click();
@@ -272,18 +267,15 @@ export class NDV extends BasePage {
 		setInvalidExpression: ({
 			fieldName,
 			invalidExpression,
-			delay,
 		}: {
 			fieldName: string;
 			invalidExpression?: string;
-			delay?: number;
 		}) => {
 			this.actions.typeIntoParameterInput(fieldName, '=');
 			this.actions.typeIntoParameterInput(fieldName, invalidExpression ?? "{{ $('unknown')", {
 				parseSpecialCharSequences: false,
-				delay,
 			});
-			this.actions.validateExpressionPreview(fieldName, `node doesn't exist`);
+			this.actions.validateExpressionPreview(fieldName, "node doesn't exist");
 		},
 		openSettings: () => {
 			this.getters.nodeSettingsTab().click();

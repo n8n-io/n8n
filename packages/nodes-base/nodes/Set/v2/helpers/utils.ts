@@ -9,6 +9,7 @@ import {
 	ApplicationError,
 	NodeOperationError,
 	deepCopy,
+	getValueDescription,
 	jsonParse,
 	validateFieldType,
 } from 'n8n-workflow';
@@ -184,7 +185,7 @@ export const validateEntry = (
 			} else {
 				throw new NodeOperationError(
 					node,
-					`'${name}' expects a ${type} but we got '${String(value)}' [item ${itemIndex}]`,
+					`'${name}' expects a ${type} but we got ${getValueDescription(value)} [item ${itemIndex}]`,
 					{ description },
 				);
 			}

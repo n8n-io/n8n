@@ -2,7 +2,10 @@
 	<div>
 		<n8n-loading :loading="loading" :rows="5" variant="p" />
 
-		<TemplateDetailsBlock v-if="!loading && template.nodes.length > 0" :title="blockTitle">
+		<TemplateDetailsBlock
+			v-if="!loading && template && template.nodes.length > 0"
+			:title="blockTitle"
+		>
 			<div :class="$style.icons">
 				<div
 					v-for="node in filterTemplateNodes(template.nodes)"
@@ -20,15 +23,18 @@
 		</TemplateDetailsBlock>
 
 		<TemplateDetailsBlock
-			v-if="!loading && template?.categories.length > 0"
+			v-if="!loading && isFullTemplatesCollection(template) && template.categories.length > 0"
 			:title="$locale.baseText('template.details.categories')"
 		>
 			<n8n-tags :tags="template.categories" @click:tag="redirectToCategory" />
 		</TemplateDetailsBlock>
 
-		<TemplateDetailsBlock v-if="!loading" :title="$locale.baseText('template.details.details')">
+		<TemplateDetailsBlock
+			v-if="!loading && template"
+			:title="$locale.baseText('template.details.details')"
+		>
 			<div :class="$style.text">
-				<n8n-text size="small" color="text-base">
+				<n8n-text v-if="isTemplatesWorkflow(template)" size="small" color="text-base">
 					{{ $locale.baseText('template.details.created') }}
 					<TimeAgo :date="template.createdAt" />
 					{{ $locale.baseText('template.details.by') }}
@@ -36,7 +42,11 @@
 				</n8n-text>
 			</div>
 			<div :class="$style.text">
-				<n8n-text v-if="template.totalViews !== 0" size="small" color="text-base">
+				<n8n-text
+					v-if="isTemplatesWorkflow(template) && template.totalViews !== 0"
+					size="small"
+					color="text-base"
+				>
 					{{ $locale.baseText('template.details.viewed') }}
 					{{ abbreviateNumber(template.totalViews) }}
 					{{ $locale.baseText('template.details.times') }}
@@ -53,10 +63,16 @@ import TemplateDetailsBlock from '@/components/TemplateDetailsBlock.vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { filterTemplateNodes } from '@/utils/nodeTypesUtils';
 import { abbreviateNumber } from '@/utils/typesUtils';
-import type { ITemplatesNode, ITemplatesWorkflow, ITemplatesWorkflowFull } from '@/Interface';
+import type {
+	ITemplatesCollection,
+	ITemplatesCollectionFull,
+	ITemplatesNode,
+	ITemplatesWorkflow,
+} from '@/Interface';
 import { mapStores } from 'pinia';
 import { useTemplatesStore } from '@/stores/templates.store';
 import TimeAgo from '@/components/TimeAgo.vue';
+import { isFullTemplatesCollection, isTemplatesWorkflow } from '@/utils/templates/typeGuards';
 
 export default defineComponent({
 	name: 'TemplateDetails',
@@ -66,14 +82,18 @@ export default defineComponent({
 		TimeAgo,
 	},
 	props: {
+		template: {
+			type: Object as PropType<
+				ITemplatesWorkflow | ITemplatesCollection | ITemplatesCollectionFull | null
+			>,
+			required: true,
+		},
 		blockTitle: {
 			type: String,
+			required: true,
 		},
 		loading: {
 			type: Boolean,
-		},
-		template: {
-			type: Object as PropType<ITemplatesWorkflow | ITemplatesWorkflowFull>,
 		},
 	},
 	computed: {
@@ -90,6 +110,8 @@ export default defineComponent({
 			this.templatesStore.resetSessionId();
 			void this.$router.push(`/templates?search=${node.displayName}`);
 		},
+		isFullTemplatesCollection,
+		isTemplatesWorkflow,
 	},
 });
 </script>

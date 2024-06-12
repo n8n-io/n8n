@@ -3,7 +3,6 @@ import config from '@/config';
 import axios from 'axios';
 import syslog from 'syslog-client';
 import { v4 as uuid } from 'uuid';
-import type { SuperAgentTest } from 'supertest';
 import type {
 	MessageEventBusDestinationSentryOptions,
 	MessageEventBusDestinationSyslogOptions,
@@ -23,11 +22,12 @@ import type { MessageEventBusDestinationWebhook } from '@/eventbus/MessageEventB
 import type { MessageEventBusDestinationSentry } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSentry.ee';
 import { EventMessageAudit } from '@/eventbus/EventMessageClasses/EventMessageAudit';
 import type { EventNamesTypes } from '@/eventbus/EventMessageClasses';
-import { ExecutionDataRecoveryService } from '@/eventbus/executionDataRecovery.service';
+import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 
 import * as utils from './shared/utils';
 import { createUser } from './shared/db/users';
 import { mockInstance } from '../shared/mocking';
+import type { SuperAgentTest } from './shared/types';
 
 jest.unmock('@/eventbus/MessageEventBus/MessageEventBus');
 jest.mock('axios');
@@ -80,7 +80,7 @@ async function confirmIdSent(id: string) {
 	expect(sent.find((msg) => msg.id === id)).toBeTruthy();
 }
 
-mockInstance(ExecutionDataRecoveryService);
+mockInstance(ExecutionRecoveryService);
 const testServer = utils.setupTestServer({
 	endpointGroups: ['eventBus'],
 	enabledFeatures: ['feat:logStreaming'],

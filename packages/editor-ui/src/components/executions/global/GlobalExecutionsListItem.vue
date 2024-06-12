@@ -51,7 +51,7 @@ const isRetriable = computed(() => executionHelpers.isExecutionRetriable(props.e
 const classes = computed(() => {
 	return {
 		[style.executionListItem]: true,
-		[style[props.execution.status ?? '']]: !!props.execution.status,
+		[style[props.execution.status]]: true,
 	};
 });
 

@@ -28,7 +28,7 @@ import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 type Tab = 'settings' | 'params';
 type Props = {
 	modelValue?: Tab;
-	nodeType?: INodeTypeDescription;
+	nodeType?: INodeTypeDescription | null;
 	pushRef?: string;
 };
 

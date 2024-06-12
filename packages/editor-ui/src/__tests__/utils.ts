@@ -4,10 +4,15 @@ import type { ISettingsState } from '@/Interface';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import { defaultSettings } from './defaults';
 
-export const retry = async (
-	assertion: () => ReturnType<typeof expect>,
-	{ interval = 20, timeout = 1000 } = {},
-) => {
+/**
+ * Retries the given assertion until it passes or the timeout is reached
+ *
+ * @example
+ * await retry(
+ *   () => expect(screen.getByText('Hello')).toBeInTheDocument()
+ * );
+ */
+export const retry = async (assertion: () => void, { interval = 20, timeout = 1000 } = {}) => {
 	return await new Promise((resolve, reject) => {
 		const startTime = Date.now();
 
@@ -15,9 +20,9 @@ export const retry = async (
 			setTimeout(() => {
 				try {
 					resolve(assertion());
-				} catch (err) {
+				} catch (error) {
 					if (Date.now() - startTime > timeout) {
-						reject(err);
+						reject(error);
 					} else {
 						tryAgain();
 					}
@@ -34,12 +39,6 @@ export const waitAllPromises = async () => await new Promise((resolve) => setTim
 export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 	initialized: true,
 	settings: defaultSettings,
-	promptsData: {
-		message: '',
-		title: '',
-		showContactPrompt: false,
-		showValueSurvey: false,
-	},
 	userManagement: {
 		showSetupOnFirstLoad: false,
 		smtpSetup: false,
