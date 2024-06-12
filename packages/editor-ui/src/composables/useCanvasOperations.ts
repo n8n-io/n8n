@@ -16,7 +16,6 @@ import type { Connection } from '@vue-flow/core';
 import { getUniqueNodeName, mapCanvasConnectionToLegacyConnection } from '@/utils/canvasUtilsV2';
 import type { IConnection } from 'n8n-workflow';
 import { useNDVStore } from '@/stores/ndv.store';
-import { nextTick } from 'vue';
 
 export function useCanvasOperations() {
 	const workflowsStore = useWorkflowsStore();

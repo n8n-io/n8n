@@ -8,7 +8,7 @@ import { useHistoryStore } from '@/stores/history.store';
 import { createPinia, setActivePinia } from 'pinia';
 import { createTestNode, createTestWorkflowObject } from '@/__tests__/mocks';
 import type { Connection } from '@vue-flow/core';
-import { IConnection, Workflow } from 'n8n-workflow';
+import type { IConnection } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 import { useNDVStore } from '@/stores/ndv.store';
 
