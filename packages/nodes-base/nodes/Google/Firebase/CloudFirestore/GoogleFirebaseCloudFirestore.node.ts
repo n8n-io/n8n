@@ -40,9 +40,40 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 			{
 				name: 'googleFirebaseCloudFirestoreOAuth2Api',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['googleFirebaseCloudFirestoreOAuth2Api'],
+					},
+				},
 			},
+			{
+				name: 'googleApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['serviceAccount'],
+					},
+				},
+			}
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'OAuth2 (recommended)',
+						value: 'googleFirebaseCloudFirestoreOAuth2Api',
+					},
+					{
+						name: 'Service Account',
+						value: 'serviceAccount',
+					},
+				],
+				default: 'googleFirebaseCloudFirestoreOAuth2Api',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
