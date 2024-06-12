@@ -118,7 +118,7 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 
-import type { ICredentialsResponse, IUser } from '@/Interface';
+import type { ICredentialsDecryptedResponse, ICredentialsResponse, IUser } from '@/Interface';
 
 import type {
 	CredentialInformation,
@@ -212,6 +212,7 @@ export default defineComponent({
 			credentialId: '',
 			credentialName: '',
 			credentialData: {} as ICredentialDataDecryptedObject,
+			currentCredential: null as ICredentialsResponse | ICredentialsDecryptedResponse | null,
 			modalBus: createEventBus(),
 			isDeleting: false,
 			isSaving: false,
@@ -273,13 +274,6 @@ export default defineComponent({
 		},
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
-		},
-		currentCredential(): ICredentialsResponse | null {
-			if (!this.credentialId) {
-				return null;
-			}
-
-			return this.credentialsStore.getCredentialById(this.credentialId);
 		},
 		credentialTypeName(): string | null {
 			if (this.mode === 'edit') {
@@ -638,9 +632,9 @@ export default defineComponent({
 			this.credentialId = (this.activeId ?? '') as string;
 
 			try {
-				const currentCredentials = (await this.credentialsStore.getCredentialData({
+				const currentCredentials = await this.credentialsStore.getCredentialData({
 					id: this.credentialId,
-				})) as unknown as ICredentialDataDecryptedObject;
+				});
 
 				if (!currentCredentials) {
 					throw new Error(
@@ -649,6 +643,8 @@ export default defineComponent({
 							this.credentialId,
 					);
 				}
+
+				this.currentCredential = currentCredentials;
 
 				this.credentialData = (currentCredentials.data as ICredentialDataDecryptedObject) || {};
 				if (currentCredentials.sharedWithProjects) {
@@ -869,6 +865,7 @@ export default defineComponent({
 			this.isSaving = false;
 			if (credential) {
 				this.credentialId = credential.id;
+				this.currentCredential = credential;
 
 				if (this.isCredentialTestable) {
 					this.isTesting = true;
