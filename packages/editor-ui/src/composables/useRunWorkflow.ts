@@ -219,7 +219,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			const startRunData: IStartRunData = {
 				workflowData,
 				runData: newRunData,
-				pinData: workflowData.pinData,
 				startNodes,
 			};
 			if ('destinationNode' in options) {
