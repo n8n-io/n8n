@@ -1,3 +1,17 @@
+## [1.44.2](https://github.com/n8n-io/n8n/compare/n8n@1.44.1...n8n@1.44.2) (2024-06-12)
+
+
+### Bug Fixes
+
+* **core:** Allow graceful shutdown for main with active executions ([#9661](https://github.com/n8n-io/n8n/issues/9661)) ([486a290](https://github.com/n8n-io/n8n/commit/486a290e1537af94df20292057f2f20a42dc7b49))
+* **core:** Fix optional chaining in continue on fail check ([#9667](https://github.com/n8n-io/n8n/issues/9667)) ([0434690](https://github.com/n8n-io/n8n/commit/0434690e4d9f64cca69dcc919bfda50dc87abcc6))
+* **core:** Start WaitTracker only in the main container ([#9600](https://github.com/n8n-io/n8n/issues/9600)) ([31a3260](https://github.com/n8n-io/n8n/commit/31a3260246154da66980e1897b3105877cf04fa5))
+* **editor:** Fix empty page for cloud users ([#9707](https://github.com/n8n-io/n8n/issues/9707)) ([d392ce8](https://github.com/n8n-io/n8n/commit/d392ce8d09f14d659ad4075651fd808c51488009))
+* **editor:** Render credentials editable when opening them from the node view ([#9678](https://github.com/n8n-io/n8n/issues/9678)) ([8c5a171](https://github.com/n8n-io/n8n/commit/8c5a171ee987b6c5b7d4f1f8d644428cd0ca1932))
+* **Gotify Node:** Fix issue with self signed certificates not working ([#9647](https://github.com/n8n-io/n8n/issues/9647)) ([1057c81](https://github.com/n8n-io/n8n/commit/1057c813e2dd9afb3bcd4fd3bcabeff450c10041))
+
+
+
 ## [1.44.1](https://github.com/n8n-io/n8n/compare/n8n@1.44.0...n8n@1.44.1) (2024-06-03)
 
 
