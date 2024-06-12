@@ -1,4 +1,3 @@
-import { v4 as uuid } from 'uuid';
 import { WorkflowsPage as WorkflowsPageClass } from '../pages/workflows';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
@@ -16,7 +15,7 @@ describe('Workflows', () => {
 		WorkflowsPage.getters.newWorkflowButtonCard().should('be.visible');
 		WorkflowsPage.getters.newWorkflowButtonCard().click();
 
-		cy.createFixtureWorkflow('Test_workflow_1.json', `Empty State Card Workflow ${uuid()}`);
+		cy.createFixtureWorkflowWithUniqueName('Test_workflow_1.json', `Empty State Card Workflow`);
 
 		WorkflowPage.getters.workflowTags().should('contain.text', 'some-tag-1');
 		WorkflowPage.getters.workflowTags().should('contain.text', 'some-tag-2');
@@ -27,7 +26,7 @@ describe('Workflows', () => {
 			cy.visit(WorkflowsPage.url);
 			WorkflowsPage.getters.createWorkflowButton().click();
 
-			cy.createFixtureWorkflow('Test_workflow_2.json', `My New Workflow ${uuid()}`);
+			cy.createFixtureWorkflowWithUniqueName('Test_workflow_2.json', `My New Workflow`);
 
 			WorkflowPage.getters.workflowTags().should('contain.text', 'other-tag-1');
 			WorkflowPage.getters.workflowTags().should('contain.text', 'other-tag-2');

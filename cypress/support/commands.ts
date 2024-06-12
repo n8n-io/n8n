@@ -9,6 +9,7 @@ import {
 	INSTANCE_OWNER,
 	N8N_AUTH_COOKIE,
 } from '../constants';
+import { getUniqueWorkflowName } from '../utils/workflowUtils';
 
 Cypress.Commands.add('setAppDate', (targetDate: number | Date) => {
 	cy.window().then((win) => {
@@ -35,6 +36,15 @@ Cypress.Commands.add('createFixtureWorkflow', (fixtureKey, workflowName) => {
 	workflowPage.getters.saveButton().should('contain', 'Saved');
 	workflowPage.actions.zoomToFit();
 });
+
+Cypress.Commands.add(
+	'createFixtureWorkflowWithUniqueName',
+	(fixtureKey: string, workflowNamePrefix?: string) => {
+		const workflowName = getUniqueWorkflowName(workflowNamePrefix);
+
+		cy.createFixtureWorkflow(fixtureKey, workflowName);
+	},
+);
 
 Cypress.Commands.add(
 	'findChildByTestId',

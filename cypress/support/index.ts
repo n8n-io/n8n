@@ -26,6 +26,7 @@ declare global {
 			): Chainable<JQuery<HTMLElement>>;
 			findChildByTestId(childTestId: string): Chainable<JQuery<HTMLElement>>;
 			createFixtureWorkflow(fixtureKey: string, workflowName: string): void;
+			createFixtureWorkflowWithUniqueName(fixtureKey: string, workflowNamePrefix?: string): void;
 			/** @deprecated */
 			signin(payload: SigninPayload): void;
 			signinAsOwner(): void;
