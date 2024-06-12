@@ -15,7 +15,7 @@ describe('Workflows', () => {
 		WorkflowsPage.getters.newWorkflowButtonCard().should('be.visible');
 		WorkflowsPage.getters.newWorkflowButtonCard().click();
 
-		cy.createFixtureWorkflowWithUniqueName('Test_workflow_1.json', `Empty State Card Workflow`);
+		cy.createFixtureWorkflowWithUniqueName('Test_workflow_1.json', 'Empty State Card Workflow');
 
 		WorkflowPage.getters.workflowTags().should('contain.text', 'some-tag-1');
 		WorkflowPage.getters.workflowTags().should('contain.text', 'some-tag-2');
@@ -26,7 +26,7 @@ describe('Workflows', () => {
 			cy.visit(WorkflowsPage.url);
 			WorkflowsPage.getters.createWorkflowButton().click();
 
-			cy.createFixtureWorkflowWithUniqueName('Test_workflow_2.json', `My New Workflow`);
+			cy.createFixtureWorkflowWithUniqueName('Test_workflow_2.json', 'My New Workflow');
 
 			WorkflowPage.getters.workflowTags().should('contain.text', 'other-tag-1');
 			WorkflowPage.getters.workflowTags().should('contain.text', 'other-tag-2');

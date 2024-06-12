@@ -54,7 +54,7 @@ describe('NDV', () => {
 	});
 
 	it('should change input and go back to canvas', () => {
-		cy.createFixtureWorkflow('NDV-test-select-input.json', `NDV test select input`);
+		cy.createFixtureWorkflow('NDV-test-select-input.json', 'NDV test select input');
 		workflowPage.actions.zoomToFit();
 		workflowPage.getters.canvasNodes().last().dblclick();
 		ndv.getters.inputSelect().click();
@@ -230,7 +230,7 @@ describe('NDV', () => {
 		it('should display large schema', () => {
 			cy.createFixtureWorkflow(
 				'Test_workflow_schema_test_pinned_data.json',
-				`NDV test schema view 2`,
+				'NDV test schema view 2',
 			);
 			workflowPage.actions.zoomToFit();
 			workflowPage.actions.openNode('Set');
@@ -573,7 +573,7 @@ describe('NDV', () => {
 	});
 
 	it('should show node name and version in settings', () => {
-		cy.createFixtureWorkflow('Test_workflow_ndv_version.json', `NDV test version`);
+		cy.createFixtureWorkflow('Test_workflow_ndv_version.json', 'NDV test version');
 
 		workflowPage.actions.openNode('Edit Fields (old)');
 		ndv.actions.openSettings();
@@ -710,7 +710,7 @@ describe('NDV', () => {
 		};
 		cy.createFixtureWorkflow(
 			'open_node_creator_for_connection.json',
-			`open_node_creator_for_connection`,
+			'open_node_creator_for_connection',
 		);
 
 		Object.entries(hintMapper).forEach(([node, group]) => {
