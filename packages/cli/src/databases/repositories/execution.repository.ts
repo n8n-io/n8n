@@ -285,6 +285,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		await this.update({ id: executionId }, { status });
 	}
 
+	async resetStartedAt(executionId: string) {
+		await this.update({ id: executionId }, { startedAt: new Date() });
+	}
+
 	async updateExistingExecution(executionId: string, execution: Partial<IExecutionResponse>) {
 		// Se isolate startedAt because it must be set when the execution starts and should never change.
 		// So we prevent updating it, if it's sent (it usually is and causes problems to executions that
@@ -597,6 +601,14 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		});
 	}
 
+	async cancel(executionId: string) {
+		await this.update({ id: executionId }, { status: 'canceled', stoppedAt: new Date() });
+	}
+
+	async cancelMany(executionIds: string[]) {
+		await this.update({ id: In(executionIds) }, { status: 'canceled', stoppedAt: new Date() });
+	}
+
 	// ----------------------------------
 	//            new API
 	// ----------------------------------
@@ -717,6 +729,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 			if (query.order?.stoppedAt === 'DESC') {
 				qb.orderBy({ 'execution.stoppedAt': 'DESC' });
+			} else if (query.order?.top) {
+				qb.orderBy(`(CASE WHEN execution.status = '${query.order.top}' THEN 0 ELSE 1 END)`);
 			} else {
 				qb.orderBy({ 'execution.id': 'DESC' });
 			}

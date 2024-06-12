@@ -79,13 +79,13 @@ describe('ExecutionsController', () => {
 				'should fetch executions per query',
 				async (rangeQuery) => {
 					workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['123']);
-					executionService.findAllRunningAndLatest.mockResolvedValue(NO_EXECUTIONS);
+					executionService.findLatestCurrentAndCompleted.mockResolvedValue(NO_EXECUTIONS);
 
 					const req = mock<ExecutionRequest.GetMany>({ rangeQuery });
 
 					await executionsController.getMany(req);
 
-					expect(executionService.findAllRunningAndLatest).not.toHaveBeenCalled();
+					expect(executionService.findLatestCurrentAndCompleted).not.toHaveBeenCalled();
 					expect(executionService.findRangeWithCount).toHaveBeenCalledWith(rangeQuery);
 				},
 			);
@@ -96,13 +96,13 @@ describe('ExecutionsController', () => {
 				'should fetch executions per query',
 				async (rangeQuery) => {
 					workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['123']);
-					executionService.findAllRunningAndLatest.mockResolvedValue(NO_EXECUTIONS);
+					executionService.findLatestCurrentAndCompleted.mockResolvedValue(NO_EXECUTIONS);
 
 					const req = mock<ExecutionRequest.GetMany>({ rangeQuery });
 
 					await executionsController.getMany(req);
 
-					expect(executionService.findAllRunningAndLatest).toHaveBeenCalled();
+					expect(executionService.findLatestCurrentAndCompleted).toHaveBeenCalled();
 					expect(executionService.findRangeWithCount).not.toHaveBeenCalled();
 				},
 			);
@@ -111,7 +111,7 @@ describe('ExecutionsController', () => {
 		describe('if both status and range provided', () => {
 			it('should fetch executions per query', async () => {
 				workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['123']);
-				executionService.findAllRunningAndLatest.mockResolvedValue(NO_EXECUTIONS);
+				executionService.findLatestCurrentAndCompleted.mockResolvedValue(NO_EXECUTIONS);
 
 				const rangeQuery: ExecutionSummaries.RangeQuery = {
 					kind: 'range',
@@ -124,7 +124,7 @@ describe('ExecutionsController', () => {
 
 				await executionsController.getMany(req);
 
-				expect(executionService.findAllRunningAndLatest).not.toHaveBeenCalled();
+				expect(executionService.findLatestCurrentAndCompleted).not.toHaveBeenCalled();
 				expect(executionService.findRangeWithCount).toHaveBeenCalledWith(rangeQuery);
 			});
 		});
