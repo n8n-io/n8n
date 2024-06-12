@@ -571,6 +571,37 @@ const setNode: LoadedClass<INodeType> = {
 	},
 };
 
+const manualTriggerNode: LoadedClass<INodeType> = {
+	sourcePath: '',
+	type: {
+		description: {
+			displayName: 'Manual Trigger',
+			name: 'n8n-nodes-base.manualTrigger',
+			icon: 'fa:mouse-pointer',
+			group: ['trigger'],
+			version: 1,
+			description: 'Runs the flow on clicking a button in n8n',
+			eventTriggerDescription: '',
+			maxNodes: 1,
+			defaults: {
+				name: 'When clicking ‘Test workflow’',
+				color: '#909298',
+			},
+			inputs: [],
+			outputs: ['main'],
+			properties: [
+				{
+					displayName:
+						'This node is where the workflow execution starts (when you click the ‘test’ button on the canvas).<br><br> <a data-action="showNodeCreator">Explore other ways to trigger your workflow</a> (e.g on a schedule, or a webhook)',
+					name: 'notice',
+					type: 'notice',
+					default: '',
+				},
+			],
+		},
+	}
+};
+
 export class NodeTypes implements INodeTypes {
 	nodeTypes: INodeTypeData = {
 		'n8n-nodes-base.stickyNote': stickyNode,
@@ -628,6 +659,7 @@ export class NodeTypes implements INodeTypes {
 				},
 			},
 		},
+		'n8n-nodes-base.manualTrigger': manualTriggerNode,
 	};
 
 	getByName(nodeType: string): INodeType | IVersionedNodeType {

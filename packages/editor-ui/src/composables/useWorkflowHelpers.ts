@@ -221,7 +221,22 @@ export function resolveParameter<T = IDataObject>(
 	ExpressionEvaluatorProxy.setEvaluator(
 		useSettingsStore().settings.expressions?.evaluator ?? 'tmpl',
 	);
-
+	console.log('================================================== getParameterValue');
+	console.log('parameter', parameter);
+	console.log('runExecutionData', runExecutionData);
+	console.log('runIndexCurrent', runIndexCurrent);
+	console.log('itemIndex', itemIndex);
+	console.log('activeNode!.name', activeNode!.name);
+	console.log('_connectionInputData', _connectionInputData);
+	console.log('manual');
+	console.log('additionalKeys', additionalKeys);
+	console.log('_executeData', _executeData);
+	console.log(false);
+	console.log({});
+	console.log('contextNode!.name', contextNode!.name);
+	console.log('==================================================');
+	console.log(workflow);
+	console.log('================================================== ');
 	return workflow.expression.getParameterValue(
 		parameter,
 		runExecutionData,

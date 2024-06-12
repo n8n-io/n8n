@@ -19,6 +19,7 @@ const getProxyFromFixture = (workflow: IWorkflowBase, run: IRun | null, activeNo
 
 	let executeData: IExecuteData | undefined;
 
+	console.log('taskData', taskData);
 	if (taskData) {
 		executeData = {
 			data: taskData.data!,
@@ -53,6 +54,18 @@ const getProxyFromFixture = (workflow: IWorkflowBase, run: IRun | null, activeNo
 };
 
 describe('WorkflowDataProxy', () => {
+	describe.only('Pinned data', () => {
+		const fixture = loadFixture('pindata');
+		const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'Not-pinned Set 1');
+
+		test('$(Pinned Set).item.json', () => {
+			console.log('===> TEST');
+			console.log(proxy.$('Pinned Set'));
+			console.log('===========================');
+			// expect(proxy.$('Pinned Set').item.json).toEqual({ firstName: 'Joe', lastName: 'Doe' });
+		});
+	});
+
 	describe('Base', () => {
 		const fixture = loadFixture('base');
 		const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'End');
