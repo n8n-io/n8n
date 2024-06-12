@@ -21,6 +21,8 @@ describe('WorkflowsView', () => {
 	let usersStore: ReturnType<typeof useUsersStore>;
 	let projectsStore: ReturnType<typeof useProjectsStore>;
 
+	const routerReplaceMock = vi.fn();
+
 	const renderComponent = createComponentRenderer(WorkflowsView, {
 		global: {
 			mocks: {
@@ -29,7 +31,7 @@ describe('WorkflowsView', () => {
 					params: {},
 				},
 				$router: {
-					replace: vi.fn(),
+					replace: routerReplaceMock,
 				},
 			},
 		},
@@ -90,11 +92,13 @@ describe('WorkflowsView', () => {
 		await waitFor(() => {
 			expect(getAllByTestId('resources-list-item').length).toBeLessThan(5);
 		});
+		expect(routerReplaceMock).toHaveBeenLastCalledWith({ query: { tags: '1' } });
 
 		await userEvent.click(getByTestId('workflows-filter-reset'));
 		await waitFor(() => {
 			expect(getAllByTestId('resources-list-item')).toHaveLength(5);
 		});
+		expect(routerReplaceMock).toHaveBeenLastCalledWith({ query: undefined });
 
 		await userEvent.click(
 			getAllByTestId('resources-list-item')[3].querySelector('.n8n-tag') as HTMLElement,
@@ -102,5 +106,6 @@ describe('WorkflowsView', () => {
 		await waitFor(() => {
 			expect(getAllByTestId('resources-list-item').length).toBeLessThan(5);
 		});
+		expect(routerReplaceMock).toHaveBeenLastCalledWith({ query: { tags: '1' } });
 	});
 });
