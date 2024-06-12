@@ -398,7 +398,6 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectSharingData } from '@/types/projects.types';
-import { ProjectTypes } from '@/types/projects.types';
 import { useAIStore } from '@/stores/ai.store';
 import { useStorage } from '@/composables/useStorage';
 import { isJSPlumbEndpointElement, isJSPlumbConnection } from '@/utils/typeGuards';
@@ -4815,7 +4814,7 @@ export default defineComponent({
 					);
 				}
 
-				options = { projectId: projectId };
+				options = { projectId };
 			}
 			await this.credentialsStore.fetchAllCredentialsForWorkflow(options);
 		},
