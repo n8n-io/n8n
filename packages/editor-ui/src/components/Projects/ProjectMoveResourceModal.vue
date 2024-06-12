@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import type { ICredentialsResponse, IWorkflowDb } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { useUIStore } from '@/stores/ui.store';
@@ -7,6 +7,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import Modal from '@/components/Modal.vue';
 import { PROJECT_MOVE_RESOURCE_CONFIRM_MODAL } from '@/constants';
 import { splitName } from '@/utils/projects.utils';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 const props = defineProps<{
 	modalName: string;
@@ -19,6 +20,7 @@ const props = defineProps<{
 const i18n = useI18n();
 const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
+const telemetry = useTelemetry();
 
 const projectId = ref<string | null>(null);
 const processedName = computed(() => {
@@ -48,6 +50,13 @@ const next = () => {
 		},
 	});
 };
+
+onMounted(() => {
+	telemetry.track(`User clicked to move a ${props.data.resourceType}`, {
+		[`${props.data.resourceType}_id`]: props.data.resource.id,
+		project_from_type: projectsStore.currentProject?.type ?? projectsStore.personalProject?.type,
+	});
+});
 </script>
 <template>
 	<Modal width="500px" :name="props.modalName" data-test-id="project-move-resource-modal">
