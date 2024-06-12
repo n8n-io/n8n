@@ -19,6 +19,7 @@ const workflowPage = new WorkflowPage();
 const nodeDetailsView = new NDV();
 
 const NEW_CREDENTIAL_NAME = 'Something else';
+const NEW_CREDENTIAL_NAME2 = 'Something else entirely';
 
 describe('Credentials', () => {
 	beforeEach(() => {
@@ -178,6 +179,24 @@ describe('Credentials', () => {
 			.nodeCredentialsSelect()
 			.find('input')
 			.should('have.value', NEW_CREDENTIAL_NAME);
+
+		// Reload page to make sure this also works when the credential hasn't been
+		// just created.
+		nodeDetailsView.actions.close();
+		workflowPage.actions.saveWorkflowOnButtonClick();
+		cy.reload();
+		workflowPage.getters.canvasNodes().last().click();
+		cy.get('body').type('{enter}');
+		workflowPage.getters.nodeCredentialsEditButton().click();
+		credentialsModal.getters.credentialsEditModal().should('be.visible');
+		credentialsModal.getters.name().click();
+		credentialsModal.actions.renameCredential(NEW_CREDENTIAL_NAME2);
+		credentialsModal.getters.saveButton().click();
+		credentialsModal.getters.closeButton().click();
+		workflowPage.getters
+			.nodeCredentialsSelect()
+			.find('input')
+			.should('have.value', NEW_CREDENTIAL_NAME2);
 	});
 
 	it('should setup generic authentication for HTTP node', () => {
