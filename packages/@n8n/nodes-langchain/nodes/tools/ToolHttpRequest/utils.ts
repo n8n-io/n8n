@@ -181,6 +181,13 @@ export const configureResponseOptimizer = (ctx: IExecuteFunctions, itemIndex: nu
 			| 'text'
 			| 'html';
 
+		let maxLength = 0;
+		const truncateResponse = ctx.getNodeParameter('truncateResponse', itemIndex, false) as boolean;
+
+		if (truncateResponse) {
+			maxLength = ctx.getNodeParameter('maxLength', itemIndex, 0) as number;
+		}
+
 		if (responseType === 'html') {
 			const cssSelector = ctx.getNodeParameter('cssSelector', itemIndex, '') as string;
 			const onlyContent = ctx.getNodeParameter('onlyContent', itemIndex, false) as boolean;
@@ -238,14 +245,24 @@ export const configureResponseOptimizer = (ctx: IExecuteFunctions, itemIndex: nu
 					returnData.push(value);
 				});
 
-				return JSON.stringify(returnData, null, 2);
+				const text = JSON.stringify(returnData, null, 2);
+
+				if (maxLength > 0 && text.length > maxLength) {
+					return text.substring(0, maxLength);
+				}
+
+				return text;
 			};
 		}
 
 		if (responseType === 'text') {
-			const maxLength = ctx.getNodeParameter('maxLength', itemIndex, 0) as number;
+			return (response: string | IDataObject) => {
+				if (typeof response === 'object') {
+					try {
+						response = JSON.stringify(response, null, 2);
+					} catch (error) {}
+				}
 
-			return <T>(response: T) => {
 				if (typeof response !== 'string') {
 					throw new NodeOperationError(
 						ctx.getNode(),
@@ -253,11 +270,31 @@ export const configureResponseOptimizer = (ctx: IExecuteFunctions, itemIndex: nu
 						{ itemIndex },
 					);
 				}
-				if (maxLength > 0 && response.length > maxLength) {
-					return response.substring(0, maxLength);
+
+				let text: string = '';
+
+				const $ = cheerio.load(response);
+				const bodyHtml = $('body').html();
+
+				if (bodyHtml) {
+					text = convert(bodyHtml, {
+						selectors: [
+							{ selector: 'a', options: { ignoreHref: true } },
+							{ selector: 'img', format: 'skip' },
+							{ selector: 'a', options: { linkBrackets: false } },
+							{ selector: 'p', options: { leadingLineBreaks: 1, trailingLineBreaks: 1 } },
+							{ selector: 'pre', options: { leadingLineBreaks: 1, trailingLineBreaks: 1 } },
+						],
+					});
+				} else {
+					text = response;
 				}
 
-				return response;
+				if (maxLength > 0 && text.length > maxLength) {
+					return text.substring(0, maxLength);
+				}
+
+				return text;
 			};
 		}
 
@@ -560,8 +597,12 @@ export const configureToolFunction = (
 		let options: IHttpRequestOptions | null = null;
 		let executionError: Error | undefined = undefined;
 
+		if (!toolParameters.length) {
+			query = '{}';
+		}
+
 		try {
-			if (query && toolParameters.length) {
+			if (query) {
 				let dataFromModel;
 
 				try {

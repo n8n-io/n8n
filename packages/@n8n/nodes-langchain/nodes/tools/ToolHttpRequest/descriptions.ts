@@ -370,18 +370,31 @@ export const optimizeResponseProperties: INodeProperties[] = [
 		description: 'Comma-separated list of selectors that would be excluded when extracting content',
 	},
 	{
-		displayName: 'Max Text Length',
+		displayName: 'Truncate Response',
+		name: 'truncateResponse',
+		type: 'boolean',
+		default: false,
+		hint: 'Helps save tokens',
+		displayOptions: {
+			show: {
+				optimizeResponse: [true],
+				responseType: ['text', 'html'],
+			},
+		},
+	},
+	{
+		displayName: 'Max Response Characters',
 		name: 'maxLength',
 		type: 'number',
-		default: 0,
-		hint: 'If set to 0, no limit will be applied',
+		default: 1000,
 		typeOptions: {
-			minValue: 0,
+			minValue: 1,
 		},
 		displayOptions: {
 			show: {
 				optimizeResponse: [true],
-				responseType: ['text'],
+				responseType: ['text', 'html'],
+				truncateResponse: [true],
 			},
 		},
 	},

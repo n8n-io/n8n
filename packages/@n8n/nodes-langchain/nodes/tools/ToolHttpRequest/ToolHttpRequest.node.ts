@@ -7,7 +7,7 @@ import type {
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError, tryToParseAlphanumericString } from 'n8n-workflow';
 
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
@@ -250,6 +250,20 @@ export class ToolHttpRequest implements INodeType {
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		const name = this.getNode().name.replace(/ /g, '_');
+		try {
+			tryToParseAlphanumericString(name);
+		} catch (error) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'The name of this tool is not a valid alphanumeric string',
+				{
+					itemIndex,
+					description:
+						"Only alphanumeric characters and underscores are allowed in the tool's name, and the name cannot start with a number",
+				},
+			);
+		}
+
 		const toolDescription = this.getNodeParameter('toolDescription', itemIndex) as string;
 		const sendQuery = this.getNodeParameter('sendQuery', itemIndex, false) as boolean;
 		const sendHeaders = this.getNodeParameter('sendHeaders', itemIndex, false) as boolean;
