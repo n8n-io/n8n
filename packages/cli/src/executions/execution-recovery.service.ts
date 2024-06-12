@@ -70,7 +70,8 @@ export class ExecutionRecoveryService {
 
 		const { Queue } = await import('@/Queue');
 
-		const currentExecutionIds = await this.executionRepository.allCurrentExecutionIds();
+		const currentExecutionIds =
+			await this.executionRepository.getCurrentExecutionIdsWithinLastHour();
 
 		if (currentExecutionIds.length === 0) return;
 
