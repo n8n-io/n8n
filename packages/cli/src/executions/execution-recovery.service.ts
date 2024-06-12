@@ -64,7 +64,7 @@ export class ExecutionRecoveryService {
 	 * Mark an in-progress execution as crashed if absent from the Bull queue.
 	 */
 	async recoverFromQueue() {
-		if (config.getEnv('executions.mode') !== 'queue') return;
+		if (config.getEnv('executions.mode') === 'regular') return;
 
 		// @TODO: Timer
 
