@@ -140,7 +140,7 @@ export class MessageEventBus extends EventEmitter {
 				const dbUnfinishedExecutionIds = (
 					await this.executionRepository.find({
 						where: {
-							status: In(['running', 'new', 'unknown']),
+							status: In(['running', 'unknown']),
 						},
 						select: ['id'],
 					})
