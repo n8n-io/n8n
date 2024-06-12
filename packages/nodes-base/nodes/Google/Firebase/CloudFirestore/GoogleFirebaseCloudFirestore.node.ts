@@ -188,6 +188,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 					items.map(async (item: IDataObject, i: number) => {
 						const collection = this.getNodeParameter('collection', i) as string;
 						const columns = this.getNodeParameter('columns', i) as string;
+						const documentId = this.getNodeParameter('documentId', i) as string;
 						const columnList = columns.split(',').map((column) => column.trim());
 						const document = { fields: {} };
 						columnList.map((column) => {
@@ -205,6 +206,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 							'POST',
 							`/${projectId}/databases/${database}/documents/${collection}`,
 							document,
+							{ documentId },
 						);
 
 						responseData.id = (responseData.name as string).split('/').pop();
