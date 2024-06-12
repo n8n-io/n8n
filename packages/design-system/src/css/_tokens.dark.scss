@@ -47,9 +47,13 @@
 	--color-canvas-background-l: 18%;
 	--color-canvas-dot: var(--prim-gray-670);
 	--color-canvas-read-only-line: var(--prim-gray-800);
-	--color-canvas-node-background: var(--prim-gray-740);
-	--color-canvas-node-pinned-border: var(--prim-color-secondary-tint-100);
 	--color-canvas-selected: var(--prim-gray-0-alpha-025);
+
+	// Nodes
+	--color-node-background: var(--prim-gray-740);
+	--color-node-executing-background: var(--prim-gray-670);
+	--color-node-executing-other-background: var(--prim-gray-670);
+	--color-node-pinned-border: var(--prim-color-secondary-tint-100);
 	--node-type-main-color: var(--prim-gray-420);
 
 	// Sticky
@@ -126,6 +130,8 @@
 	--color-code-gutterBackground: var(--prim-gray-670);
 	--color-code-gutterForeground: var(--prim-gray-320);
 	--color-code-tags-comment: var(--prim-gray-200);
+	--color-line-break: var(--prim-gray-420);
+	--color-code-line-break: var(--prim-color-secondary-tint-100);
 
 	// Variables
 	--color-variables-usage-font: var(--prim-color-alt-a-tint-300);
@@ -211,9 +217,9 @@
 	// Avatar
 	--color-avatar-font: var(--prim-gray-0);
 
-	// Value Survey
-	--color-value-survey-background: var(--prim-gray-740);
-	--color-value-survey-font: var(--prim-gray-0);
+	// NPS Survey
+	--color-nps-survey-background: var(--prim-gray-740);
+	--color-nps-survey-font: var(--prim-gray-0);
 
 	// Switch (Activation, boolean)
 	--color-switch-background: var(--prim-gray-820);

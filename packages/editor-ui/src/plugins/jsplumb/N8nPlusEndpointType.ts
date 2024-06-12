@@ -32,8 +32,6 @@ export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpo
 
 	messageOverlay: Overlay | null;
 
-	canvas: HTMLElement | null;
-
 	constructor(endpoint: Endpoint, params: N8nPlusEndpointParams) {
 		super(endpoint, params);
 
@@ -41,7 +39,6 @@ export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpo
 		this.label = '';
 		this.stalkOverlay = null;
 		this.messageOverlay = null;
-		this.canvas = null;
 
 		this.unbindEvents();
 		this.bindEvents();
@@ -111,7 +108,6 @@ export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpo
 			this[`${fnKey}Class`]('long-stalk');
 
 			if (this.label) {
-				// @ts-expect-error: Overlay interface is missing the `canvas` property
 				stalkOverlay.canvas.setAttribute('data-label', this.label);
 			}
 		}

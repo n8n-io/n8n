@@ -1,5 +1,6 @@
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { NDV } from '../pages/ndv';
+import { successToast } from '../pages/notifications';
 
 const WorkflowPage = new WorkflowPageClass();
 const ndv = new NDV();
@@ -28,13 +29,13 @@ describe('Code node', () => {
 		it('should execute the placeholder successfully in both modes', () => {
 			ndv.actions.execute();
 
-			WorkflowPage.getters.successToast().contains('Node executed successfully');
+			successToast().contains('Node executed successfully');
 			ndv.getters.parameterInput('mode').click();
 			ndv.actions.selectOptionInParameterDropdown('mode', 'Run Once for Each Item');
 
 			ndv.actions.execute();
 
-			WorkflowPage.getters.successToast().contains('Node executed successfully');
+			successToast().contains('Node executed successfully');
 		});
 	});
 

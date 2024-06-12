@@ -11,8 +11,9 @@ export const MAX_WORKFLOW_SIZE = 1024 * 1024 * 16; // Workflow size limit in byt
 export const MAX_EXPECTED_REQUEST_SIZE = 2048; // Expected maximum workflow request metadata (i.e. headers) size in bytes
 export const MAX_PINNED_DATA_SIZE = import.meta.env.VUE_APP_MAX_PINNED_DATA_SIZE
 	? parseInt(import.meta.env.VUE_APP_MAX_PINNED_DATA_SIZE, 10)
-	: 1024 * 1024 * 12; // Workflow pinned data size limit in bytes
-export const MAX_DISPLAY_DATA_SIZE = 1024 * 200;
+	: 1024 * 1024 * 12; // 12 MB; Workflow pinned data size limit in bytes
+export const MAX_DISPLAY_DATA_SIZE = 1024 * 1024; // 1 MB
+export const MAX_DISPLAY_DATA_SIZE_SCHEMA_VIEW = 1024 * 1024 * 4; // 4 MB
 export const MAX_DISPLAY_ITEMS_AUTO_ALL = 250;
 
 export const PLACEHOLDER_FILLED_AT_EXECUTION_TIME = '[filled at execution time]';
@@ -50,7 +51,7 @@ export const WORKFLOW_LM_CHAT_MODAL_KEY = 'lmChat';
 export const WORKFLOW_SHARE_MODAL_KEY = 'workflowShare';
 export const PERSONALIZATION_MODAL_KEY = 'personalization';
 export const CONTACT_PROMPT_MODAL_KEY = 'contactPrompt';
-export const VALUE_SURVEY_MODAL_KEY = 'valueSurvey';
+export const NPS_SURVEY_MODAL_KEY = 'npsSurvey';
 export const WORKFLOW_ACTIVE_MODAL_KEY = 'activation';
 export const ONBOARDING_CALL_SIGNUP_MODAL_KEY = 'onboardingCallSignup';
 export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
@@ -64,6 +65,8 @@ export const DEBUG_PAYWALL_MODAL_KEY = 'debugPaywall';
 export const MFA_SETUP_MODAL_KEY = 'mfaSetup';
 export const WORKFLOW_HISTORY_VERSION_RESTORE = 'workflowHistoryVersionRestore';
 export const SETUP_CREDENTIALS_MODAL_KEY = 'setupCredentials';
+export const PROJECT_MOVE_RESOURCE_MODAL = 'projectMoveResourceModal';
+export const PROJECT_MOVE_RESOURCE_CONFIRM_MODAL = 'projectMoveResourceConfirmModal';
 
 export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
 
@@ -766,6 +769,10 @@ export const TIME = {
 	HOUR: 60 * 60 * 1000,
 	DAY: 24 * 60 * 60 * 1000,
 };
+
+export const THREE_DAYS_IN_MILLIS = 3 * TIME.DAY;
+export const SEVEN_DAYS_IN_MILLIS = 7 * TIME.DAY;
+export const SIX_MONTHS_IN_MILLIS = 6 * 30 * TIME.DAY;
 
 /**
  * Mouse button codes

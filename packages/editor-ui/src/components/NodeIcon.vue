@@ -16,7 +16,7 @@
 </template>
 
 <script setup lang="ts">
-import type { IVersionNode } from '@/Interface';
+import type { IVersionNode, SimplifiedNodeType } from '@/Interface';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useUIStore } from '@/stores/ui.store';
 import { getBadgeIconUrl, getNodeIcon, getNodeIconUrl } from '@/utils/nodeTypesUtils';
@@ -30,7 +30,7 @@ interface NodeIconSource {
 }
 
 type Props = {
-	nodeType?: INodeTypeDescription | IVersionNode | null;
+	nodeType?: INodeTypeDescription | SimplifiedNodeType | IVersionNode | null;
 	size?: number;
 	disabled?: boolean;
 	circle?: boolean;
@@ -104,8 +104,6 @@ const iconSource = computed<NodeIconSource>(() => {
 		// Otherwise, extract it from icon prop
 		if (nodeType.icon) {
 			const icon = getNodeIcon(nodeType, uiStore.appliedTheme);
-			console.log(nodeType.icon, icon);
-
 			if (icon) {
 				const [type, path] = icon.split(':');
 				if (type === 'file') {

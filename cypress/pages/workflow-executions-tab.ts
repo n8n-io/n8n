@@ -26,6 +26,7 @@ export class WorkflowExecutionsTab extends BasePage {
 		executionDebugButton: () => cy.getByTestId('execution-debug-button'),
 		workflowExecutionPreviewIframe: () => cy.getByTestId('workflow-preview-iframe'),
 	};
+
 	actions = {
 		toggleNodeEnabled: (nodeName: string) => {
 			workflowPage.getters.canvasNodeByName(nodeName).click();

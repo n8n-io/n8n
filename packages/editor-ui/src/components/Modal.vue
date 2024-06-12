@@ -54,13 +54,14 @@ import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import type { EventBus } from 'n8n-design-system';
 import { useUIStore } from '@/stores/ui.store';
+import type { ModalKey } from '@/Interface';
 
 export default defineComponent({
 	name: 'Modal',
 	props: {
 		...ElDialog.props,
 		name: {
-			type: String,
+			type: String as PropType<ModalKey>,
 		},
 		title: {
 			type: String,

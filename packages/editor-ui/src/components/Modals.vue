@@ -1,3 +1,74 @@
+<script setup lang="ts">
+import {
+	ABOUT_MODAL_KEY,
+	CHAT_EMBED_MODAL_KEY,
+	CHANGE_PASSWORD_MODAL_KEY,
+	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
+	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
+	CONTACT_PROMPT_MODAL_KEY,
+	CREDENTIAL_EDIT_MODAL_KEY,
+	CREDENTIAL_SELECT_MODAL_KEY,
+	DELETE_USER_MODAL_KEY,
+	DUPLICATE_MODAL_KEY,
+	INVITE_USER_MODAL_KEY,
+	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
+	PERSONALIZATION_MODAL_KEY,
+	TAGS_MANAGER_MODAL_KEY,
+	NPS_SURVEY_MODAL_KEY,
+	VERSIONS_MODAL_KEY,
+	WORKFLOW_ACTIVE_MODAL_KEY,
+	WORKFLOW_LM_CHAT_MODAL_KEY,
+	WORKFLOW_SETTINGS_MODAL_KEY,
+	WORKFLOW_SHARE_MODAL_KEY,
+	IMPORT_CURL_MODAL_KEY,
+	LOG_STREAM_MODAL_KEY,
+	SOURCE_CONTROL_PUSH_MODAL_KEY,
+	SOURCE_CONTROL_PULL_MODAL_KEY,
+	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
+	DEBUG_PAYWALL_MODAL_KEY,
+	MFA_SETUP_MODAL_KEY,
+	WORKFLOW_HISTORY_VERSION_RESTORE,
+	SETUP_CREDENTIALS_MODAL_KEY,
+	GENERATE_CURL_MODAL_KEY,
+	PROJECT_MOVE_RESOURCE_MODAL,
+	PROJECT_MOVE_RESOURCE_CONFIRM_MODAL,
+} from '@/constants';
+
+import AboutModal from '@/components/AboutModal.vue';
+import ChatEmbedModal from '@/components/ChatEmbedModal.vue';
+import CommunityPackageManageConfirmModal from '@/components/CommunityPackageManageConfirmModal.vue';
+import CommunityPackageInstallModal from '@/components/CommunityPackageInstallModal.vue';
+import ChangePasswordModal from '@/components/ChangePasswordModal.vue';
+import ContactPromptModal from '@/components/ContactPromptModal.vue';
+import CredentialEdit from '@/components/CredentialEdit/CredentialEdit.vue';
+import InviteUsersModal from '@/components/InviteUsersModal.vue';
+import CredentialsSelectModal from '@/components/CredentialsSelectModal.vue';
+import DuplicateWorkflowDialog from '@/components/DuplicateWorkflowDialog.vue';
+import ModalRoot from '@/components/ModalRoot.vue';
+import OnboardingCallSignupModal from '@/components/OnboardingCallSignupModal.vue';
+import PersonalizationModal from '@/components/PersonalizationModal.vue';
+import TagsManager from '@/components/TagsManager/TagsManager.vue';
+import UpdatesPanel from '@/components/UpdatesPanel.vue';
+import NpsSurvey from '@/components/NpsSurvey.vue';
+import WorkflowLMChat from '@/components/WorkflowLMChat.vue';
+import WorkflowSettings from '@/components/WorkflowSettings.vue';
+import DeleteUserModal from '@/components/DeleteUserModal.vue';
+import ActivationModal from '@/components/ActivationModal.vue';
+import ImportCurlModal from '@/components/ImportCurlModal.vue';
+import GenerateCurlModal from '@/components/GenerateCurlModal.vue';
+import MfaSetupModal from '@/components/MfaSetupModal.vue';
+import WorkflowShareModal from '@/components/WorkflowShareModal.ee.vue';
+import EventDestinationSettingsModal from '@/components/SettingsLogStreaming/EventDestinationSettingsModal.ee.vue';
+import SourceControlPushModal from '@/components/SourceControlPushModal.ee.vue';
+import SourceControlPullModal from '@/components/SourceControlPullModal.ee.vue';
+import ExternalSecretsProviderModal from '@/components/ExternalSecretsProviderModal.ee.vue';
+import DebugPaywallModal from '@/components/DebugPaywallModal.vue';
+import WorkflowHistoryVersionRestoreModal from '@/components/WorkflowHistory/WorkflowHistoryVersionRestoreModal.vue';
+import SetupWorkflowCredentialsModal from '@/components/SetupWorkflowCredentialsModal/SetupWorkflowCredentialsModal.vue';
+import ProjectMoveResourceModal from '@/components/Projects/ProjectMoveResourceModal.vue';
+import ProjectMoveResourceConfirmModal from '@/components/Projects/ProjectMoveResourceConfirmModal.vue';
+</script>
+
 <template>
 	<div>
 		<ModalRoot :name="CONTACT_PROMPT_MODAL_KEY">
@@ -41,9 +112,9 @@
 			<UpdatesPanel />
 		</ModalRoot>
 
-		<ModalRoot :name="VALUE_SURVEY_MODAL_KEY" :keep-alive="true">
+		<ModalRoot :name="NPS_SURVEY_MODAL_KEY" :keep-alive="true">
 			<template #default="{ active }">
-				<ValueSurvey :is-active="active" />
+				<NpsSurvey :is-active="active" />
 			</template>
 		</ModalRoot>
 
@@ -167,142 +238,23 @@
 				/>
 			</template>
 		</ModalRoot>
+		<ModalRoot :name="PROJECT_MOVE_RESOURCE_MODAL">
+			<template #default="{ modalName, data }">
+				<ProjectMoveResourceModal
+					data-test-id="project-move-resource-modal"
+					:modal-name="modalName"
+					:data="data"
+				/>
+			</template>
+		</ModalRoot>
+		<ModalRoot :name="PROJECT_MOVE_RESOURCE_CONFIRM_MODAL">
+			<template #default="{ modalName, data }">
+				<ProjectMoveResourceConfirmModal
+					data-test-id="project-move-resource-confirm-modal"
+					:modal-name="modalName"
+					:data="data"
+				/>
+			</template>
+		</ModalRoot>
 	</div>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-import {
-	ABOUT_MODAL_KEY,
-	CHAT_EMBED_MODAL_KEY,
-	CHANGE_PASSWORD_MODAL_KEY,
-	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
-	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
-	CONTACT_PROMPT_MODAL_KEY,
-	CREDENTIAL_EDIT_MODAL_KEY,
-	CREDENTIAL_SELECT_MODAL_KEY,
-	DELETE_USER_MODAL_KEY,
-	DUPLICATE_MODAL_KEY,
-	INVITE_USER_MODAL_KEY,
-	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
-	PERSONALIZATION_MODAL_KEY,
-	TAGS_MANAGER_MODAL_KEY,
-	VALUE_SURVEY_MODAL_KEY,
-	VERSIONS_MODAL_KEY,
-	WORKFLOW_ACTIVE_MODAL_KEY,
-	WORKFLOW_LM_CHAT_MODAL_KEY,
-	WORKFLOW_SETTINGS_MODAL_KEY,
-	WORKFLOW_SHARE_MODAL_KEY,
-	IMPORT_CURL_MODAL_KEY,
-	LOG_STREAM_MODAL_KEY,
-	SOURCE_CONTROL_PUSH_MODAL_KEY,
-	SOURCE_CONTROL_PULL_MODAL_KEY,
-	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
-	DEBUG_PAYWALL_MODAL_KEY,
-	MFA_SETUP_MODAL_KEY,
-	WORKFLOW_HISTORY_VERSION_RESTORE,
-	SETUP_CREDENTIALS_MODAL_KEY,
-	GENERATE_CURL_MODAL_KEY,
-} from '@/constants';
-
-import AboutModal from './AboutModal.vue';
-import ChatEmbedModal from './ChatEmbedModal.vue';
-import CommunityPackageManageConfirmModal from './CommunityPackageManageConfirmModal.vue';
-import CommunityPackageInstallModal from './CommunityPackageInstallModal.vue';
-import ChangePasswordModal from './ChangePasswordModal.vue';
-import ContactPromptModal from './ContactPromptModal.vue';
-import CredentialEdit from './CredentialEdit/CredentialEdit.vue';
-import InviteUsersModal from './InviteUsersModal.vue';
-import CredentialsSelectModal from './CredentialsSelectModal.vue';
-import DuplicateWorkflowDialog from './DuplicateWorkflowDialog.vue';
-import ModalRoot from './ModalRoot.vue';
-import OnboardingCallSignupModal from './OnboardingCallSignupModal.vue';
-import PersonalizationModal from './PersonalizationModal.vue';
-import TagsManager from './TagsManager/TagsManager.vue';
-import UpdatesPanel from './UpdatesPanel.vue';
-import ValueSurvey from './ValueSurvey.vue';
-import WorkflowLMChat from './WorkflowLMChat.vue';
-import WorkflowSettings from './WorkflowSettings.vue';
-import DeleteUserModal from './DeleteUserModal.vue';
-import ActivationModal from './ActivationModal.vue';
-import ImportCurlModal from './ImportCurlModal.vue';
-import GenerateCurlModal from './GenerateCurlModal.vue';
-import MfaSetupModal from './MfaSetupModal.vue';
-import WorkflowShareModal from './WorkflowShareModal.ee.vue';
-import EventDestinationSettingsModal from '@/components/SettingsLogStreaming/EventDestinationSettingsModal.ee.vue';
-import SourceControlPushModal from '@/components/SourceControlPushModal.ee.vue';
-import SourceControlPullModal from '@/components/SourceControlPullModal.ee.vue';
-import ExternalSecretsProviderModal from '@/components/ExternalSecretsProviderModal.ee.vue';
-import DebugPaywallModal from '@/components/DebugPaywallModal.vue';
-import WorkflowHistoryVersionRestoreModal from '@/components/WorkflowHistory/WorkflowHistoryVersionRestoreModal.vue';
-import SetupWorkflowCredentialsModal from '@/components/SetupWorkflowCredentialsModal/SetupWorkflowCredentialsModal.vue';
-
-export default defineComponent({
-	name: 'Modals',
-	components: {
-		AboutModal,
-		ActivationModal,
-		ChatEmbedModal,
-		CommunityPackageInstallModal,
-		CommunityPackageManageConfirmModal,
-		ContactPromptModal,
-		ChangePasswordModal,
-		CredentialEdit,
-		CredentialsSelectModal,
-		DeleteUserModal,
-		DuplicateWorkflowDialog,
-		InviteUsersModal,
-		ModalRoot,
-		OnboardingCallSignupModal,
-		PersonalizationModal,
-		TagsManager,
-		UpdatesPanel,
-		ValueSurvey,
-		WorkflowLMChat,
-		WorkflowSettings,
-		WorkflowShareModal,
-		ImportCurlModal,
-		GenerateCurlModal,
-		EventDestinationSettingsModal,
-		SourceControlPushModal,
-		SourceControlPullModal,
-		ExternalSecretsProviderModal,
-		DebugPaywallModal,
-		MfaSetupModal,
-		WorkflowHistoryVersionRestoreModal,
-		SetupWorkflowCredentialsModal,
-	},
-	data: () => ({
-		CHAT_EMBED_MODAL_KEY,
-		COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
-		COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
-		CONTACT_PROMPT_MODAL_KEY,
-		CREDENTIAL_EDIT_MODAL_KEY,
-		CREDENTIAL_SELECT_MODAL_KEY,
-		ABOUT_MODAL_KEY,
-		CHANGE_PASSWORD_MODAL_KEY,
-		DELETE_USER_MODAL_KEY,
-		DUPLICATE_MODAL_KEY,
-		ONBOARDING_CALL_SIGNUP_MODAL_KEY,
-		PERSONALIZATION_MODAL_KEY,
-		INVITE_USER_MODAL_KEY,
-		TAGS_MANAGER_MODAL_KEY,
-		VERSIONS_MODAL_KEY,
-		WORKFLOW_LM_CHAT_MODAL_KEY,
-		WORKFLOW_SETTINGS_MODAL_KEY,
-		WORKFLOW_SHARE_MODAL_KEY,
-		VALUE_SURVEY_MODAL_KEY,
-		WORKFLOW_ACTIVE_MODAL_KEY,
-		IMPORT_CURL_MODAL_KEY,
-		GENERATE_CURL_MODAL_KEY,
-		LOG_STREAM_MODAL_KEY,
-		SOURCE_CONTROL_PUSH_MODAL_KEY,
-		SOURCE_CONTROL_PULL_MODAL_KEY,
-		EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
-		DEBUG_PAYWALL_MODAL_KEY,
-		MFA_SETUP_MODAL_KEY,
-		WORKFLOW_HISTORY_VERSION_RESTORE,
-		SETUP_CREDENTIALS_MODAL_KEY,
-	}),
-});
-</script>
