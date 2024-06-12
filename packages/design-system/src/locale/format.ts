@@ -6,6 +6,9 @@ const RE_NARGS = /(%|)\{([0-9a-zA-Z_]+)\}/g;
  *    https://github.com/Matt-Esch/string-template/index.js
  */
 export default function () {
+	const isReplacementGroup = (target: object, key: string): target is Record<string, unknown> =>
+		key in target;
+
 	function template(
 		value: string | ((...args: unknown[]) => string),
 		...args: Array<string | object>
@@ -15,21 +18,23 @@ export default function () {
 		}
 
 		const str = value;
+		let replacements: object = args;
 		if (args.length === 1 && typeof args[0] === 'object') {
-			args = args[0] as unknown as Array<string | object>;
+			replacements = args[0];
 		}
 
-		if (!args?.hasOwnProperty) {
-			args = {} as unknown as Array<string | object>;
+		if (!replacements?.hasOwnProperty) {
+			replacements = {};
 		}
 
-		return str.replace(RE_NARGS, (match, _, i, index: number) => {
-			let result: string | object | null;
+		return str.replace(RE_NARGS, (match, _, group: string, index: number): string => {
+			let result: string | null;
 
 			if (str[index - 1] === '{' && str[index + match.length] === '}') {
-				return i;
+				return `${group}`;
 			} else {
-				result = Object.hasOwn(args, i) ? args[i] : null;
+				result = isReplacementGroup(replacements, group) ? `${replacements[group]}` : null;
+
 				if (result === null || result === undefined) {
 					return '';
 				}

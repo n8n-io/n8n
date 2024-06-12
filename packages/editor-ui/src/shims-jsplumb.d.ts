@@ -1,5 +1,12 @@
-import type { Connection, Endpoint, EndpointRepresentation, AbstractConnector, Overlay } from '@jsplumb/core';
+import type {
+	Connection,
+	Endpoint,
+	EndpointRepresentation,
+	AbstractConnector,
+	Overlay,
+} from '@jsplumb/core';
 import type { NodeConnectionType } from 'n8n-workflow';
+import type { N8nEndpointLabelLength } from '@/plugins/jsplumb/N8nPlusEndpointType';
 
 declare module '@jsplumb/core' {
 	interface EndpointRepresentation {
@@ -27,8 +34,9 @@ declare module '@jsplumb/core' {
 			nodeName: string;
 			nodeId: string;
 			index: number;
+			nodeType?: string;
 			totalEndpoints: number;
-			endpointLabelLength: number;
+			endpointLabelLength?: N8nEndpointLabelLength;
 		};
-	};
+	}
 }

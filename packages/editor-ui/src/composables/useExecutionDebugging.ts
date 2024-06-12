@@ -15,6 +15,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useTelemetry } from './useTelemetry';
 import { useRootStore } from '@/stores/n8nRoot.store';
+import { isFullExecutionResponse } from '@/utils/typeGuards';
 
 export const useExecutionDebugging = () => {
 	const telemetry = useTelemetry();
@@ -131,7 +132,7 @@ export const useExecutionDebugging = () => {
 
 		telemetry.track('User clicked debug execution button', {
 			instance_id: useRootStore().instanceId,
-			exec_status: execution.status,
+			exec_status: isFullExecutionResponse(execution) ? execution.status : '',
 			override_pinned_data: pinnableNodes.length === pinnings,
 			all_exec_data_imported: missingNodeNames.length === 0,
 		});

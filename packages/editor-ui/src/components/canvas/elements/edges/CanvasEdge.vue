@@ -2,16 +2,19 @@
 /* eslint-disable vue/no-multiple-template-root */
 import type { Connection, EdgeProps } from '@vue-flow/core';
 import { BaseEdge, EdgeLabelRenderer, getBezierPath } from '@vue-flow/core';
+import CanvasEdgeToolbar from './CanvasEdgeToolbar.vue';
 import { computed, useCssModule } from 'vue';
-import { useI18n } from '@/composables/useI18n';
 
 const emit = defineEmits<{
 	delete: [connection: Connection];
 }>();
 
-const props = defineProps<EdgeProps>();
+const props = defineProps<
+	EdgeProps & {
+		hovered?: boolean;
+	}
+>();
 
-const i18n = useI18n();
 const $style = useCssModule();
 
 const edgeStyle = computed(() => ({
@@ -19,8 +22,19 @@ const edgeStyle = computed(() => ({
 	...props.style,
 }));
 
-const edgeLabelStyle = computed(() => ({
-	transform: `translate(-50%, -50%) translate(${path.value[1]}px,${path.value[2]}px)`,
+const isEdgeToolbarVisible = computed(() => props.selected || props.hovered);
+
+const edgeToolbarStyle = computed(() => {
+	return {
+		transform: `translate(-50%, -50%) translate(${path.value[1]}px,${path.value[2]}px)`,
+	};
+});
+
+const edgeToolbarClasses = computed(() => ({
+	[$style.edgeToolbar]: true,
+	[$style.edgeToolbarVisible]: isEdgeToolbarVisible.value,
+	nodrag: true,
+	nopan: true,
 }));
 
 const path = computed(() =>
@@ -60,24 +74,24 @@ function onDelete() {
 		:label-bg-style="{ fill: 'red' }"
 		:label-bg-padding="[2, 4]"
 		:label-bg-border-radius="2"
+		:class="$style.edge"
 	/>
 	<EdgeLabelRenderer>
-		<div :class="[$style.edgeToolbar, 'nodrag', 'nopan']" :style="edgeLabelStyle">
-			<N8nIconButton
-				data-test-id="delete-connection-button"
-				type="tertiary"
-				size="small"
-				icon="trash"
-				:title="i18n.baseText('node.delete')"
-				@click="onDelete"
-			/>
-		</div>
+		<CanvasEdgeToolbar :class="edgeToolbarClasses" :style="edgeToolbarStyle" @delete="onDelete" />
 	</EdgeLabelRenderer>
 </template>
 
 <style lang="scss" module>
 .edgeToolbar {
-	pointer-events: all;
 	position: absolute;
+	opacity: 0;
+
+	&.edgeToolbarVisible {
+		opacity: 1;
+	}
+
+	&:hover {
+		opacity: 1;
+	}
 }
 </style>

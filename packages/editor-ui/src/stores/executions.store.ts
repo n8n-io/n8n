@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import type { ExecutionStatus, IDataObject, ExecutionSummary } from 'n8n-workflow';
+import type { IDataObject, ExecutionSummary } from 'n8n-workflow';
 import type {
 	ExecutionFilterType,
 	ExecutionsQueryFilter,
@@ -83,7 +83,6 @@ export const useExecutionsStore = defineStore('executions', () => {
 	function addExecution(execution: ExecutionSummary) {
 		executionsById.value[execution.id] = {
 			...execution,
-			status: execution.status ?? getExecutionStatus(execution),
 			mode: execution.mode,
 		};
 	}
@@ -91,7 +90,6 @@ export const useExecutionsStore = defineStore('executions', () => {
 	function addCurrentExecution(execution: ExecutionSummary) {
 		currentExecutionsById.value[execution.id] = {
 			...execution,
-			status: execution.status ?? getExecutionStatus(execution),
 			mode: execution.mode,
 		};
 	}
@@ -111,24 +109,6 @@ export const useExecutionsStore = defineStore('executions', () => {
 		}
 		await fetchExecutions();
 		await startAutoRefreshInterval(workflowId);
-	}
-
-	function getExecutionStatus(execution: ExecutionSummary): ExecutionStatus {
-		if (execution.status) {
-			return execution.status;
-		} else {
-			if (execution.waitTill) {
-				return 'waiting';
-			} else if (execution.stoppedAt === undefined) {
-				return 'running';
-			} else if (execution.finished) {
-				return 'success';
-			} else if (execution.stoppedAt !== null) {
-				return 'error';
-			} else {
-				return 'unknown';
-			}
-		}
 	}
 
 	async function fetchExecutions(
@@ -274,7 +254,6 @@ export const useExecutionsStore = defineStore('executions', () => {
 		activeExecution,
 		fetchExecutions,
 		fetchExecution,
-		getExecutionStatus,
 		autoRefresh,
 		autoRefreshTimeout,
 		startAutoRefreshInterval,

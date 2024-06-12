@@ -486,7 +486,7 @@ export default defineComponent({
 		this.eventBus.on('refreshList', this.refreshList);
 		window.addEventListener('resize', this.setWidth);
 
-		useNDVStore().$subscribe((mutation, state) => {
+		useNDVStore().$subscribe((_mutation, _state) => {
 			// Update the width when main panel dimension change
 			this.setWidth();
 		});

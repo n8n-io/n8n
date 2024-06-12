@@ -1,5 +1,3 @@
-import { fileURLToPath, URL } from 'node:url';
-
 import { defineConfig } from 'vite';
 import checker from 'vite-plugin-checker';
 import { resolve } from 'path';
@@ -8,7 +6,7 @@ import icons from 'unplugin-icons/vite';
 import dts from 'vite-plugin-dts';
 
 const includeVue = process.env.INCLUDE_VUE === 'true';
-const srcPath = fileURLToPath(new URL('./src', import.meta.url));
+const srcPath = resolve(__dirname, 'src');
 
 const plugins = [
 	vue(),
@@ -18,7 +16,7 @@ const plugins = [
 	}),
 	dts(),
 ];
-if (process.env.ENABLE_TYPE_CHECKING === 'true') {
+if (!process.env.VITEST) {
 	plugins.push(checker({ vueTsc: true }));
 }
 

@@ -605,6 +605,7 @@ import {
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
 	MAX_DISPLAY_DATA_SIZE,
+	MAX_DISPLAY_DATA_SIZE_SCHEMA_VIEW,
 	MAX_DISPLAY_ITEMS_AUTO_ALL,
 	TEST_PIN_DATA,
 	HTML_NODE_TYPE,
@@ -744,11 +745,13 @@ export default defineComponent({
 			binaryDataPreviewActive: false,
 			dataSize: 0,
 			showData: false,
+			userEnabledShowData: false,
 			outputIndex: 0,
 			binaryDataDisplayVisible: false,
 			binaryDataDisplayData: null as IBinaryData | null,
 
 			MAX_DISPLAY_DATA_SIZE,
+			MAX_DISPLAY_DATA_SIZE_SCHEMA_VIEW,
 			MAX_DISPLAY_ITEMS_AUTO_ALL,
 			currentPage: 1,
 			pageSize: 10,
@@ -898,7 +901,7 @@ export default defineComponent({
 				: this.rawInputData.length;
 		},
 		dataSizeInMB(): string {
-			return (this.dataSize / 1024 / 1000).toLocaleString();
+			return (this.dataSize / (1024 * 1024)).toFixed(1);
 		},
 		maxOutputIndex(): number {
 			if (this.node === null || this.runIndex === undefined) {
@@ -1385,6 +1388,7 @@ export default defineComponent({
 		},
 		showTooMuchData() {
 			this.showData = true;
+			this.userEnabledShowData = true;
 			this.$telemetry.track('User clicked ndv button', {
 				node_type: this.activeNode?.type,
 				workflow_id: this.workflowsStore.workflowId,
@@ -1438,6 +1442,8 @@ export default defineComponent({
 		onDisplayModeChange(displayMode: IRunDataDisplayMode) {
 			const previous = this.displayMode;
 			this.ndvStore.setPanelDisplayMode({ pane: this.paneType, mode: displayMode });
+
+			if (!this.userEnabledShowData) this.updateShowData();
 
 			const dataContainerRef = this.$refs.dataContainer as Element | undefined;
 			if (dataContainerRef) {
@@ -1636,11 +1642,15 @@ export default defineComponent({
 			// Hide by default the data from being displayed
 			this.showData = false;
 			const jsonItems = this.inputDataPage.map((item) => item.json);
-			this.dataSize = JSON.stringify(jsonItems).length;
-			if (this.dataSize < this.MAX_DISPLAY_DATA_SIZE) {
-				// Data is reasonable small (< 200kb) so display it directly
-				this.showData = true;
-			}
+			const byteSize = new Blob([JSON.stringify(jsonItems)]).size;
+			this.dataSize = byteSize;
+			this.updateShowData();
+		},
+		updateShowData() {
+			// Display data if it is reasonably small (< 1MB)
+			this.showData =
+				(this.isSchemaView && this.dataSize < this.MAX_DISPLAY_DATA_SIZE_SCHEMA_VIEW) ||
+				this.dataSize < this.MAX_DISPLAY_DATA_SIZE;
 		},
 		onRunIndexChange(run: number) {
 			this.$emit('runChange', run);

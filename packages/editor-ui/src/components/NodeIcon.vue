@@ -16,7 +16,7 @@
 </template>
 
 <script setup lang="ts">
-import type { IVersionNode } from '@/Interface';
+import type { IVersionNode, SimplifiedNodeType } from '@/Interface';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useUIStore } from '@/stores/ui.store';
 import { getBadgeIconUrl, getNodeIcon, getNodeIconUrl } from '@/utils/nodeTypesUtils';
@@ -30,7 +30,7 @@ interface NodeIconSource {
 }
 
 type Props = {
-	nodeType?: INodeTypeDescription | IVersionNode | null;
+	nodeType?: INodeTypeDescription | SimplifiedNodeType | IVersionNode | null;
 	size?: number;
 	disabled?: boolean;
 	circle?: boolean;

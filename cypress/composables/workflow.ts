@@ -51,7 +51,7 @@ export function getNodeByName(name: string) {
 export function disableNode(name: string) {
 	const target = getNodeByName(name);
 	target.rightclick(name ? 'center' : 'topLeft', { force: true });
-	cy.getByTestId(`context-menu-item-toggle_activation`).click();
+	cy.getByTestId('context-menu-item-toggle_activation').click();
 }
 
 export function getConnectionBySourceAndTarget(source: string, target: string) {

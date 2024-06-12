@@ -47,7 +47,6 @@ import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import * as ResponseHelper from '@/ResponseHelper';
 import { EventBusController } from '@/eventbus/eventBus.controller';
-import { EventBusControllerEE } from '@/eventbus/eventBus.controller.ee';
 import { LicenseController } from '@/license/license.controller';
 import { setupPushServer, setupPushHandler } from '@/push';
 import { isLdapEnabled } from './Ldap/helpers';
@@ -72,6 +71,7 @@ import { InvitationController } from './controllers/invitation.controller';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { ProjectController } from './controllers/project.controller';
 import { RoleController } from './controllers/role.controller';
+import { UserSettingsController } from './controllers/userSettings.controller';
 
 const exec = promisify(callbackExec);
 
@@ -119,7 +119,6 @@ export class Server extends AbstractServer {
 
 		const controllers: Array<Class<object>> = [
 			EventBusController,
-			EventBusControllerEE,
 			AuthController,
 			LicenseController,
 			OAuth1CredentialController,
@@ -150,6 +149,7 @@ export class Server extends AbstractServer {
 			ProjectController,
 			RoleController,
 			CurlController,
+			UserSettingsController,
 		];
 
 		if (

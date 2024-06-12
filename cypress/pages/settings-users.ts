@@ -11,6 +11,7 @@ const settingsSidebar = new SettingsSidebar();
 
 export class SettingsUsersPage extends BasePage {
 	url = '/settings/users';
+
 	getters = {
 		setUpOwnerButton: () => cy.getByTestId('action-box').find('button').first(),
 		inviteButton: () => cy.getByTestId('settings-users-invite-button').last(),
@@ -34,6 +35,7 @@ export class SettingsUsersPage extends BasePage {
 		deleteUserButton: () => this.getters.confirmDeleteModal().find('button:contains("Delete")'),
 		deleteDataInput: () => cy.getByTestId('delete-data-input').find('input').first(),
 	};
+
 	actions = {
 		goToOwnerSetup: () => this.getters.setUpOwnerButton().click(),
 		loginAndVisit: (email: string, password: string, isOwner: boolean) => {
