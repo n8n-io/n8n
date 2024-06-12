@@ -753,7 +753,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	/**
-	 * Retrieve a batch of 100 execution IDs with `new` or `running` status, in most recent order.
+	 * Retrieve a batch of execution IDs with `new` or `running` status, in most recent order.
 	 */
 	async getLatestInProgressExecutionIds(batchSize: number) {
 		const executions = await this.find({
