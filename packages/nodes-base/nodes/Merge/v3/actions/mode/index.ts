@@ -1,26 +1,42 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { optionsDescription } from '../../../shared/descriptions';
+import { optionsDescription } from '../common.descriptions';
 
 export const description: INodeProperties[] = [
 	{
 		displayName: 'Mode',
 		name: 'mode',
 		type: 'options',
+		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 		options: [
 			{
 				name: 'Append',
 				value: 'append',
-				description: 'All items of input 1, then all items of input 2',
+				description: 'All items of Input 1, then all items from following inputs',
+				action: 'Append items',
 			},
 			{
-				name: 'Combine',
-				value: 'combine',
-				description: 'Merge matching items together',
+				name: 'Combine by Matching Fields',
+				value: 'combineByFields',
+				description: 'Combine items with the same field values',
+				action: 'Combine by fields',
+			},
+			{
+				name: 'Combine by Position',
+				value: 'combineByPosition',
+				description: 'Combine items based on their order',
+				action: 'Combine by position',
+			},
+			{
+				name: 'Combine by All Possible Combinations',
+				value: 'combineAll',
+				description: 'All possible item combinations (cross join)',
+				action: 'Combine all possible item combinations',
 			},
 			{
 				name: 'Choose Branch',
 				value: 'chooseBranch',
-				description: 'Output input data, without modifying it',
+				description: 'Output input data of a selected branch, without modifying it',
+				action: 'Choose branch',
 			},
 		],
 		default: 'append',
@@ -36,35 +52,7 @@ export const description: INodeProperties[] = [
 		},
 		description: 'How many inputs to create',
 	},
-	{
-		displayName: 'Combination Mode',
-		name: 'combinationMode',
-		type: 'options',
-		options: [
-			{
-				name: 'Merge By Fields',
-				value: 'mergeByFields',
-				description: 'Combine items with the same field values',
-			},
-			{
-				name: 'Merge By Position',
-				value: 'mergeByPosition',
-				description: 'Combine items based on their order',
-			},
-			{
-				name: 'Multiplex',
-				value: 'multiplex',
-				description: 'All possible item combinations (cross join)',
-			},
-		],
-		default: 'mergeByFields',
-		displayOptions: {
-			show: {
-				mode: ['combine'],
-			},
-		},
-	},
-	// mergeByFields ------------------------------------------------------------------
+	// combineByFields ------------------------------------------------------------------
 	{
 		displayName: 'Fields to Match',
 		name: 'mergeByFields',
@@ -104,8 +92,7 @@ export const description: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				mode: ['combine'],
-				combinationMode: ['mergeByFields'],
+				mode: ['combineByFields'],
 			},
 		},
 	},
@@ -144,8 +131,7 @@ export const description: INodeProperties[] = [
 		default: 'keepMatches',
 		displayOptions: {
 			show: {
-				mode: ['combine'],
-				combinationMode: ['mergeByFields'],
+				mode: ['combineByFields'],
 			},
 		},
 	},
@@ -170,8 +156,7 @@ export const description: INodeProperties[] = [
 		default: 'both',
 		displayOptions: {
 			show: {
-				mode: ['combine'],
-				combinationMode: ['mergeByFields'],
+				mode: ['combineByFields'],
 				joinMode: ['keepMatches'],
 			},
 		},
@@ -197,8 +182,7 @@ export const description: INodeProperties[] = [
 		default: 'both',
 		displayOptions: {
 			show: {
-				mode: ['combine'],
-				combinationMode: ['mergeByFields'],
+				mode: ['combineByFields'],
 				joinMode: ['keepNonMatches'],
 			},
 		},

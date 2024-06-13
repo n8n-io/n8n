@@ -14,7 +14,7 @@ import type {
 	MatchFieldsJoinMode,
 	MatchFieldsOptions,
 	MatchFieldsOutput,
-} from '../../shared/interfaces';
+} from '../helpers/interfaces';
 
 import {
 	addSourceField,
@@ -24,7 +24,7 @@ import {
 	findMatches,
 	mergeMatched,
 	selectMergeMethod,
-} from '../../shared/utils';
+} from '../helpers/utils';
 
 import { preparePairedItemDataArray } from '@utils/utilities';
 
@@ -36,11 +36,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		(type) => type === NodeConnectionType.Main,
 	);
 
-	let operation = this.getNodeParameter('mode', 0) as string;
-
-	if (operation === 'combine') {
-		operation = this.getNodeParameter('combinationMode', 0) as string;
-	}
+	const operation = this.getNodeParameter('mode', 0);
 
 	if (operation === 'append') {
 		for (let i = 0; i < inputs.length; i++) {
@@ -48,7 +44,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		}
 	}
 
-	if (operation === 'multiplex') {
+	if (operation === 'combineAll') {
 		const clashHandling = this.getNodeParameter(
 			'options.clashHandling.values',
 			0,
@@ -92,7 +88,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		return [returnData];
 	}
 
-	if (operation === 'mergeByPosition') {
+	if (operation === 'combineByPosition') {
 		const clashHandling = this.getNodeParameter(
 			'options.clashHandling.values',
 			0,
@@ -166,7 +162,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		}
 	}
 
-	if (operation === 'mergeByFields') {
+	if (operation === 'combineByFields') {
 		const matchFields = checkMatchFieldsInput(
 			this.getNodeParameter('mergeByFields.values', 0, []) as IDataObject[],
 		);

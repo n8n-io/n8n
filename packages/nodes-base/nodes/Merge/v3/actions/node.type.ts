@@ -1,6 +1,6 @@
 export type MergeType =
 	| 'append'
-	| 'multiplex'
-	| 'mergeByPosition'
-	| 'mergeByFields'
+	| 'combineByFields'
+	| 'combineByPosition'
+	| 'combineAll'
 	| 'chooseBranch';
