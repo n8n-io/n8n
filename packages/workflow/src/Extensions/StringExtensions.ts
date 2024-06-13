@@ -676,7 +676,7 @@ isUrl.doc = {
 
 isEmpty.doc = {
 	name: 'isEmpty',
-	description: 'Returns <code>true</code> if the string has no characters.',
+	description: 'Returns <code>true</code> if the string has no characters or is <code>null</code>',
 	section: 'validation',
 	returnType: 'boolean',
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-isEmpty',

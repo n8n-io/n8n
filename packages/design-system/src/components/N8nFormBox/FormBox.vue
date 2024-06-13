@@ -43,7 +43,7 @@ import N8nFormInputs from '../N8nFormInputs';
 import N8nHeading from '../N8nHeading';
 import N8nLink from '../N8nLink';
 import N8nButton from '../N8nButton';
-import type { IFormInput } from '@/types';
+import type { IFormInput } from 'n8n-design-system/types';
 import { createEventBus } from '../../utils';
 
 interface FormBoxProps {

@@ -31,7 +31,7 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
-import { hasPermission } from '@/rbac/permissions';
+import { hasPermission } from '@/utils/rbac/permissions';
 
 export default defineComponent({
 	name: 'SettingsSidebar',
@@ -192,11 +192,6 @@ export default defineComponent({
 		},
 		openUpdatesPanel() {
 			this.uiStore.openModal(VERSIONS_MODAL_KEY);
-		},
-		async navigateTo(routeName: (typeof VIEWS)[keyof typeof VIEWS]) {
-			if (this.$router.currentRoute.name !== routeName) {
-				await this.$router.push({ name: routeName });
-			}
 		},
 		async handleSelect(key: string) {
 			switch (key) {

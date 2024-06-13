@@ -84,4 +84,27 @@ describe('RunDataJsonSchema.vue', () => {
 		});
 		expect(container).toMatchSnapshot();
 	});
+
+	it('renders no data to show for data empty objects', () => {
+		const renderResult = renderComponent({
+			props: {
+				data: [{}, {}],
+			},
+		});
+
+		expect(renderResult.getByText(/No data to show/)).toBeInTheDocument();
+	});
+
+	test.each([[[{ tx: false }, { tx: false }]], [[{ tx: '' }, { tx: '' }]], [[{ tx: [] }]]])(
+		'renders schema instead of showing no data for %o',
+		(data) => {
+			const renderResult = renderComponent({
+				props: {
+					data,
+				},
+			});
+
+			expect(renderResult.queryByText(/No data to show/)).not.toBeInTheDocument();
+		},
+	);
 });

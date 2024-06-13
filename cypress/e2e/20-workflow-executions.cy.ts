@@ -1,6 +1,7 @@
+import type { RouteHandler } from 'cypress/types/net-stubbing';
 import { WorkflowPage } from '../pages';
 import { WorkflowExecutionsTab } from '../pages/workflow-executions-tab';
-import type { RouteHandler } from 'cypress/types/net-stubbing';
+import executionOutOfMemoryServerResponse from '../fixtures/responses/execution-out-of-memory-server-response.json';
 
 const workflowPage = new WorkflowPage();
 const executionsTab = new WorkflowExecutionsTab();
@@ -10,7 +11,7 @@ const executionsRefreshInterval = 4000;
 describe('Current Workflow Executions', () => {
 	beforeEach(() => {
 		workflowPage.actions.visit();
-		cy.createFixtureWorkflow('Test_workflow_4_executions_view.json', `My test workflow`);
+		cy.createFixtureWorkflow('Test_workflow_4_executions_view.json', 'My test workflow');
 	});
 
 	it('should render executions tab correctly', () => {
@@ -57,8 +58,8 @@ describe('Current Workflow Executions', () => {
 	});
 
 	it('should not redirect back to execution tab when slow request is not done before leaving the page', () => {
-		const throttleResponse: RouteHandler = (req) => {
-			return new Promise((resolve) => {
+		const throttleResponse: RouteHandler = async (req) => {
+			return await new Promise((resolve) => {
 				setTimeout(() => resolve(req.continue()), 2000);
 			});
 		};
@@ -72,7 +73,31 @@ describe('Current Workflow Executions', () => {
 		cy.url().should('not.include', '/executions');
 	});
 
-	it.only('should auto load more items if there is space and auto scroll', () => {
+	it('should error toast when server error message returned without stack trace', () => {
+		executionsTab.actions.createManualExecutions(1);
+		const message = 'Workflow did not finish, possible out-of-memory issue';
+		cy.intercept('GET', '/rest/executions/*', {
+			statusCode: 200,
+			body: executionOutOfMemoryServerResponse,
+		}).as('getExecution');
+
+		executionsTab.actions.switchToExecutionsTab();
+		cy.wait(['@getExecution']);
+
+		executionsTab.getters
+			.workflowExecutionPreviewIframe()
+			.should('be.visible')
+			.its('0.contentDocument.body') // Access the body of the iframe document
+			.should('not.be.empty') // Ensure the body is not empty
+			// eslint-disable-next-line @typescript-eslint/unbound-method
+			.then(cy.wrap)
+			.find('.el-notification:has(.el-notification--error)')
+			.should('be.visible')
+			.filter(`:contains("${message}")`)
+			.should('be.visible');
+	});
+
+	it('should auto load more items if there is space and auto scroll', () => {
 		cy.viewport(1280, 960);
 		executionsTab.actions.createManualExecutions(24);
 
@@ -110,6 +135,17 @@ describe('Current Workflow Executions', () => {
 		executionsTab.getters.executionListItems().first().should('be.visible');
 		executionsTab.getters.executionListItems().eq(14).should('not.be.visible');
 	});
+
+	it('should show workflow data in executions tab after hard reload', () => {
+		executionsTab.actions.switchToExecutionsTab();
+		checkMainHeaderELements();
+
+		cy.reload();
+		checkMainHeaderELements();
+
+		executionsTab.actions.switchToEditorTab();
+		checkMainHeaderELements();
+	});
 });
 
 const createMockExecutions = () => {
@@ -120,4 +156,11 @@ const createMockExecutions = () => {
 	// Then add some more successful ones
 	executionsTab.actions.toggleNodeEnabled('Error');
 	executionsTab.actions.createManualExecutions(4);
+};
+
+const checkMainHeaderELements = () => {
+	workflowPage.getters.workflowNameInputContainer().should('be.visible');
+	workflowPage.getters.workflowTagsContainer().should('be.visible');
+	workflowPage.getters.workflowMenu().should('be.visible');
+	workflowPage.getters.saveButton().should('be.visible');
 };

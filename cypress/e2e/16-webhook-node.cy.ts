@@ -1,5 +1,5 @@
-import { WorkflowPage, NDV, CredentialsModal } from '../pages';
 import { v4 as uuid } from 'uuid';
+import { WorkflowPage, NDV, CredentialsModal } from '../pages';
 import { cowBase64 } from '../support/binaryTestFiles';
 import { BACKEND_BASE_URL, EDIT_FIELDS_SET_NODE_NAME } from '../constants';
 import { getVisibleSelect } from '../utils';
@@ -75,7 +75,7 @@ const simpleWebhookCall = (options: SimpleWebhookCallOptions) => {
 	}
 };
 
-describe('Webhook Trigger node', async () => {
+describe('Webhook Trigger node', () => {
 	beforeEach(() => {
 		workflowPage.actions.visit();
 	});
@@ -121,10 +121,12 @@ describe('Webhook Trigger node', async () => {
 		workflowPage.actions.executeWorkflow();
 		cy.wait(waitForWebhook);
 
-		cy.request('GET', `${BACKEND_BASE_URL}/webhook-test/${webhookPath}`).then((response) => {
-			expect(response.status).to.eq(200);
-			expect(response.body.MyValue).to.eq(1234);
-		});
+		cy.request<{ MyValue: number }>('GET', `${BACKEND_BASE_URL}/webhook-test/${webhookPath}`).then(
+			(response) => {
+				expect(response.status).to.eq(200);
+				expect(response.body.MyValue).to.eq(1234);
+			},
+		);
 	});
 
 	it('should listen for a GET request and respond custom status code 201', () => {
@@ -161,10 +163,12 @@ describe('Webhook Trigger node', async () => {
 		workflowPage.actions.executeWorkflow();
 		cy.wait(waitForWebhook);
 
-		cy.request('GET', `${BACKEND_BASE_URL}/webhook-test/${webhookPath}`).then((response) => {
-			expect(response.status).to.eq(200);
-			expect(response.body.MyValue).to.eq(1234);
-		});
+		cy.request<{ MyValue: number }>('GET', `${BACKEND_BASE_URL}/webhook-test/${webhookPath}`).then(
+			(response) => {
+				expect(response.status).to.eq(200);
+				expect(response.body.MyValue).to.eq(1234);
+			},
+		);
 	});
 
 	it('should listen for a GET request and respond with last node binary data', () => {
@@ -200,10 +204,12 @@ describe('Webhook Trigger node', async () => {
 		workflowPage.actions.executeWorkflow();
 		cy.wait(waitForWebhook);
 
-		cy.request('GET', `${BACKEND_BASE_URL}/webhook-test/${webhookPath}`).then((response) => {
-			expect(response.status).to.eq(200);
-			expect(Object.keys(response.body).includes('data')).to.be.true;
-		});
+		cy.request<{ data: unknown }>('GET', `${BACKEND_BASE_URL}/webhook-test/${webhookPath}`).then(
+			(response) => {
+				expect(response.status).to.eq(200);
+				expect(Object.keys(response.body).includes('data')).to.be.true;
+			},
+		);
 	});
 
 	it('should listen for a GET request and respond with an empty body', () => {
@@ -217,10 +223,12 @@ describe('Webhook Trigger node', async () => {
 		});
 		ndv.actions.execute();
 		cy.wait(waitForWebhook);
-		cy.request('GET', `${BACKEND_BASE_URL}/webhook-test/${webhookPath}`).then((response) => {
-			expect(response.status).to.eq(200);
-			expect(response.body.MyValue).to.be.undefined;
-		});
+		cy.request<{ MyValue: unknown }>('GET', `${BACKEND_BASE_URL}/webhook-test/${webhookPath}`).then(
+			(response) => {
+				expect(response.status).to.eq(200);
+				expect(response.body.MyValue).to.be.undefined;
+			},
+		);
 	});
 
 	it('should listen for a GET request with Basic Authentication', () => {

@@ -22,6 +22,7 @@
 						data-test-id="node-execute-button"
 						:node-name="node.name"
 						:disabled="outputPanelEditMode.enabled && !isTriggerNode"
+						:tooltip="executeButtonTooltip"
 						size="small"
 						telemetry-source="parameters"
 						@execute="onNodeExecute"
@@ -138,6 +139,7 @@
 					:parameters="parametersSetting"
 					:node-values="nodeValues"
 					:is-read-only="isReadOnly"
+					:hide-delete="true"
 					:hidden-issues-inputs="hiddenIssuesInputs"
 					path="parameters"
 					@value-changed="valueChanged"
@@ -307,6 +309,19 @@ export default defineComponent({
 		isLatestNodeVersion(): boolean {
 			return !this.node?.typeVersion || this.latestVersion === this.node.typeVersion;
 		},
+		executeButtonTooltip(): string {
+			if (
+				this.node &&
+				this.isLatestNodeVersion &&
+				this.inputSize > 1 &&
+				!NodeHelpers.isSingleExecution(this.node.type, this.node.parameters)
+			) {
+				return this.$locale.baseText('nodeSettings.executeButtonTooltip.times', {
+					interpolate: { inputSize: this.inputSize },
+				});
+			}
+			return '';
+		},
 		nodeVersionTag(): string {
 			if (!this.nodeType || this.nodeType.hidden) {
 				return this.$locale.baseText('nodeSettings.deprecated');
@@ -422,6 +437,10 @@ export default defineComponent({
 			type: Boolean,
 			default: true,
 		},
+		inputSize: {
+			type: Number,
+			default: 0,
+		},
 	},
 	data() {
 		return {
@@ -441,7 +460,6 @@ export default defineComponent({
 				parameters: {},
 			} as INodeParameters,
 			nodeValuesInitialized: false, // Used to prevent nodeValues from being overwritten by defaults on reopening ndv
-
 			nodeSettings: [] as INodeProperties[],
 			COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 			CUSTOM_NODES_DOCS_URL,
@@ -450,7 +468,7 @@ export default defineComponent({
 		};
 	},
 	watch: {
-		node(newNode, oldNode) {
+		node() {
 			this.setNodeValues();
 		},
 	},

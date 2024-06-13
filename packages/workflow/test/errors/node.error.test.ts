@@ -12,11 +12,7 @@ describe('NodeError', () => {
 		const wrapped1 = new NodeOperationError(node, apiError);
 		const wrapped2 = new NodeOperationError(node, opsError);
 
-		expect(wrapped1.level).toEqual('error');
-		expect(wrapped1.message).toEqual('The service was not able to process your request');
-		expect(wrapped1.tags).toEqual(expect.objectContaining({ reWrapped: true }));
-		expect(wrapped2.level).toEqual('error');
-		expect(wrapped2.message).toEqual('Some operation failed');
-		expect(wrapped2.tags).toEqual(expect.objectContaining({ reWrapped: true }));
+		expect(wrapped1).toEqual(apiError);
+		expect(wrapped2).toEqual(opsError);
 	});
 });

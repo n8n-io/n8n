@@ -52,7 +52,7 @@ const markdownOptions = {
 	},
 };
 
-const messageComponents = options.messageComponents ?? {};
+const messageComponents = options?.messageComponents ?? {};
 </script>
 <template>
 	<div class="chat-message" :class="classes">

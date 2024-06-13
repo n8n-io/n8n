@@ -2,6 +2,7 @@
 	<RunData
 		ref="runData"
 		:node="node"
+		:workflow="workflow"
 		:run-index="runIndex"
 		:linked-runs="linkedRuns"
 		:can-link-runs="canLinkRuns"
@@ -100,9 +101,15 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { type PropType, defineComponent } from 'vue';
 import type { IExecutionResponse, INodeUi } from '@/Interface';
-import type { INodeTypeDescription, IRunData, IRunExecutionData, ITaskData } from 'n8n-workflow';
+import type {
+	INodeTypeDescription,
+	IRunData,
+	IRunExecutionData,
+	ITaskData,
+	Workflow,
+} from 'n8n-workflow';
 import RunData from './RunData.vue';
 import RunInfo from './RunInfo.vue';
 import { mapStores, storeToRefs } from 'pinia';
@@ -129,6 +136,10 @@ export default defineComponent({
 	name: 'OutputPanel',
 	components: { RunData, RunInfo, RunDataAi },
 	props: {
+		workflow: {
+			type: Object as PropType<Workflow>,
+			required: true,
+		},
 		runIndex: {
 			type: Number,
 			required: true,

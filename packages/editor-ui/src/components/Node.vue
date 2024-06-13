@@ -108,9 +108,9 @@
 			</div>
 
 			<div
-				v-if="showDisabledLinethrough"
+				v-if="showDisabledLineThrough"
 				:class="{
-					'disabled-linethrough': true,
+					'disabled-line-through': true,
 					success: !['unknown'].includes(nodeExecutionStatus) && workflowDataItems > 0,
 				}"
 			></div>
@@ -178,7 +178,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { type CSSProperties, defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import xss from 'xss';
 import { useStorage } from '@/composables/useStorage';
@@ -187,7 +187,7 @@ import {
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
 	MANUAL_TRIGGER_NODE_TYPE,
 	NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS,
-	NOT_DUPLICATABE_NODE_TYPES,
+	NOT_DUPLICATABLE_NODE_TYPES,
 	SIMULATE_NODE_TYPE,
 	SIMULATE_TRIGGER_NODE_TYPE,
 	WAIT_TIME_UNLIMITED,
@@ -245,6 +245,12 @@ export default defineComponent({
 			default: false,
 		},
 	},
+	emits: {
+		run: null,
+		runWorkflow: null,
+		removeNode: null,
+		toggleDisableNode: null,
+	},
 	setup(props) {
 		const workflowsStore = useWorkflowsStore();
 		const contextMenu = useContextMenu();
@@ -281,7 +287,7 @@ export default defineComponent({
 		},
 		isDuplicatable(): boolean {
 			if (!this.nodeType) return true;
-			if (NOT_DUPLICATABE_NODE_TYPES.includes(this.nodeType.name)) return false;
+			if (NOT_DUPLICATABLE_NODE_TYPES.includes(this.nodeType.name)) return false;
 			return (
 				this.nodeType.maxNodes === undefined || this.sameTypeNodes.length < this.nodeType.maxNodes
 			);
@@ -296,7 +302,9 @@ export default defineComponent({
 			return undefined;
 		},
 		nodeRunData(): ITaskData[] {
-			return this.workflowsStore.getWorkflowResultDataByNodeName(this.data?.name || '') || [];
+			if (!this.data) return [];
+
+			return this.workflowsStore.getWorkflowResultDataByNodeName(this.data.name) ?? [];
 		},
 		hasIssues(): boolean {
 			if (this.nodeExecutionStatus && ['crashed', 'error'].includes(this.nodeExecutionStatus))
@@ -324,7 +332,7 @@ export default defineComponent({
 				const { eventTriggerDescription } = this.nodeType;
 				return this.$locale
 					.nodeText()
-					.eventTriggerDescription(nodeName, eventTriggerDescription || '');
+					.eventTriggerDescription(nodeName, eventTriggerDescription ?? '');
 			} else {
 				return this.$locale.baseText('node.waitingForYouToCreateAnEventIn', {
 					interpolate: {
@@ -365,7 +373,7 @@ export default defineComponent({
 			);
 		},
 		isTriggerNode(): boolean {
-			return this.nodeTypesStore.isTriggerNode(this.data?.type || '');
+			return this.data ? this.nodeTypesStore.isTriggerNode(this.data.type) : false;
 		},
 		isTriggerNodeTooltipEmpty(): boolean {
 			return this.nodeType !== null ? this.nodeType.eventTriggerDescription === '' : false;
@@ -406,9 +414,7 @@ export default defineComponent({
 			return classes;
 		},
 		nodeWrapperStyles() {
-			const styles: {
-				[key: string]: string | number;
-			} = {
+			const styles: CSSProperties = {
 				left: this.position[0] + 'px',
 				top: this.position[1] + 'px',
 			};
@@ -490,7 +496,7 @@ export default defineComponent({
 		position(): XYPosition {
 			return this.node ? this.node.position : [0, 0];
 		},
-		showDisabledLinethrough(): boolean {
+		showDisabledLineThrough(): boolean {
 			return (
 				!this.isConfigurableNode &&
 				!!(this.data?.disabled && this.inputs.length === 1 && this.outputs.length === 1)
@@ -559,8 +565,8 @@ export default defineComponent({
 						returnStyles['border-width'] = '2px';
 						returnStyles['border-style'] = 'solid';
 					}
-				} else if (this.waiting || this.showPinnedDataInfo) {
-					borderColor = '--color-canvas-node-pinned-border';
+				} else if (!!this.waiting || this.showPinnedDataInfo) {
+					borderColor = '--color-node-pinned-border';
 				} else if (this.nodeExecutionStatus === 'unknown') {
 					borderColor = '--color-foreground-xdark';
 				} else if (this.workflowDataItems) {
@@ -655,12 +661,15 @@ export default defineComponent({
 				this.showTriggerNodeTooltip = false;
 			}
 		},
-		nodeRunData(newValue) {
-			if (!this.data) {
-				return;
-			}
+		nodeRunData: {
+			deep: true,
+			handler(newValue) {
+				if (!this.data) {
+					return;
+				}
 
-			this.$emit('run', { name: this.data.name, data: newValue, waiting: !!this.waiting });
+				this.$emit('run', { name: this.data.name, data: newValue, waiting: !!this.waiting });
+			},
 		},
 	},
 	created() {
@@ -678,7 +687,7 @@ export default defineComponent({
 		if (this.nodeRunData) {
 			setTimeout(() => {
 				this.$emit('run', {
-					name: this.data && this.data.name,
+					name: this.data?.name,
 					data: this.nodeRunData,
 					waiting: !!this.waiting,
 				});
@@ -906,10 +915,10 @@ export default defineComponent({
 			height: 100%;
 			border: 2px solid var(--color-foreground-xdark);
 			border-radius: var(--border-radius-large);
-			background-color: var(--color-canvas-node-background);
-			--color-background-node-icon-badge: var(--color-canvas-node-background);
+			background-color: var(--color-node-background);
+			--color-background-node-icon-badge: var(--color-node-background);
 			&.executing {
-				background-color: $node-background-executing !important;
+				background-color: var(--color-node-executing-background) !important;
 
 				.node-executing-info {
 					display: inline-block;
@@ -990,7 +999,7 @@ export default defineComponent({
 				border-radius: 50px;
 
 				&.executing {
-					background-color: $node-background-executing-other !important;
+					background-color: var(--color-node-executing-other-background) !important;
 				}
 
 				.node-executing-info {
@@ -1118,7 +1127,7 @@ export default defineComponent({
 	}
 }
 
-.disabled-linethrough {
+.disabled-line-through {
 	border: 1px solid var(--color-foreground-dark);
 	position: absolute;
 	top: 49px;
@@ -1189,7 +1198,7 @@ export default defineComponent({
 	overflow: auto;
 }
 
-.disabled-linethrough {
+.disabled-line-through {
 	z-index: 8;
 }
 

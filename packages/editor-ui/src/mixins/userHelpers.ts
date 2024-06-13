@@ -1,7 +1,6 @@
 import { defineComponent } from 'vue';
 import type { RouteLocation } from 'vue-router';
-import { hasPermission } from '@/rbac/permissions';
-import type { RouteConfig } from '@/types/router';
+import { hasPermission } from '@/utils/rbac/permissions';
 import type { PermissionTypeOptions } from '@/types/rbac';
 
 export const userHelpers = defineComponent({
@@ -16,7 +15,7 @@ export const userHelpers = defineComponent({
 			return this.canUserAccessRoute(this.$route);
 		},
 
-		canUserAccessRoute(route: RouteLocation & RouteConfig) {
+		canUserAccessRoute(route: RouteLocation) {
 			const middleware = route.meta?.middleware;
 			const middlewareOptions = route.meta?.middlewareOptions;
 

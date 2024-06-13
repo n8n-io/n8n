@@ -101,9 +101,9 @@ export default defineComponent({
 	},
 	computed: {
 		...mapStores(useUIStore, useUsersStore),
-		inviteMessage(): null | string {
+		inviteMessage(): string {
 			if (!this.inviter) {
-				return null;
+				return '';
 			}
 
 			return this.$locale.baseText('settings.signup.signUpInviterInfo', {

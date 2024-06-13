@@ -88,7 +88,9 @@ function onSelected(item: INodeCreateElement) {
 
 		const icon = item.properties.iconUrl
 			? `${baseUrl}${item.properties.iconUrl}`
-			: item.properties.icon?.split(':')[1];
+			: typeof item.properties.icon === 'string'
+				? item.properties.icon?.split(':')[1]
+				: undefined;
 
 		const transformedActions = nodeActions?.map((a) =>
 			transformNodeType(a, item.properties.displayName, 'action'),
@@ -137,6 +139,13 @@ function onSelected(item: INodeCreateElement) {
 			mode: 'nodes',
 			// Root search should include all nodes
 			searchItems: mergedNodes,
+		});
+	}
+
+	if (item.type === 'link') {
+		window.open(item.properties.url, '_blank');
+		telemetry.trackNodesPanel('nodeCreateList.onLinkSelected', {
+			link: item.properties.url,
 		});
 	}
 }
@@ -195,13 +204,13 @@ function onKeySelect(activeItemId: string) {
 
 registerKeyHook('MainViewArrowRight', {
 	keyboardKeys: ['ArrowRight', 'Enter'],
-	condition: (type) => ['subcategory', 'node', 'view'].includes(type),
+	condition: (type) => ['subcategory', 'node', 'link', 'view'].includes(type),
 	handler: onKeySelect,
 });
 
 registerKeyHook('MainViewArrowLeft', {
 	keyboardKeys: ['ArrowLeft'],
-	condition: (type) => ['subcategory', 'node', 'view'].includes(type),
+	condition: (type) => ['subcategory', 'node', 'link', 'view'].includes(type),
 	handler: arrowLeft,
 });
 </script>

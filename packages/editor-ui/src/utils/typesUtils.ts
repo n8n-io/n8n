@@ -63,6 +63,11 @@ export function stringSizeInBytes(input: string | IDataObject | IDataObject[] | 
 	return new Blob([typeof input === 'string' ? input : JSON.stringify(input)]).size;
 }
 
+export function toMegaBytes(bytes: number, decimalPlaces: number = 2): number {
+	const megabytes = bytes / 1024 / 1024;
+	return parseFloat(megabytes.toFixed(decimalPlaces));
+}
+
 export function shorten(s: string, limit: number, keep: number) {
 	if (s.length <= limit) {
 		return s;
@@ -161,3 +166,7 @@ export const getObjectKeys = <T extends object, K extends keyof T>(o: T): K[] =>
 export const tryToParseNumber = (value: string): number | string => {
 	return isNaN(+value) ? value : +value;
 };
+
+export function isPresent<T>(arg: T): arg is Exclude<T, null | undefined> {
+	return arg !== null && arg !== undefined;
+}

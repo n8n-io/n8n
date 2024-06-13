@@ -6,6 +6,7 @@ import type {
 	IExecuteData,
 	INodeTypeData,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 import { WorkflowDataProxy } from 'n8n-workflow';
 import { createTestWorkflowObject } from '@/__tests__/mocks';
 
@@ -91,7 +92,7 @@ const connections: IConnections = {
 			[
 				{
 					node: 'Function',
-					type: 'main',
+					type: NodeConnectionType.Main,
 					index: 0,
 				},
 			],
@@ -102,7 +103,7 @@ const connections: IConnections = {
 			[
 				{
 					node: 'Rename',
-					type: 'main',
+					type: NodeConnectionType.Main,
 					index: 0,
 				},
 			],
@@ -113,7 +114,7 @@ const connections: IConnections = {
 			[
 				{
 					node: 'End',
-					type: 'main',
+					type: NodeConnectionType.Main,
 					index: 0,
 				},
 			],

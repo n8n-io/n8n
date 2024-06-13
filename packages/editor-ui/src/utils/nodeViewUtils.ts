@@ -1,6 +1,6 @@
 import { isNumber, isValidNodeConnectionType } from '@/utils/typeGuards';
 import { NODE_OUTPUT_DEFAULT_KEY, STICKY_NODE_TYPE } from '@/constants';
-import type { EndpointMeta, EndpointStyle, IBounds, INodeUi, XYPosition } from '@/Interface';
+import type { EndpointStyle, IBounds, INodeUi, XYPosition } from '@/Interface';
 import type { ArrayAnchorSpec, ConnectorSpec, OverlaySpec, PaintStyle } from '@jsplumb/common';
 import type { Connection, Endpoint, SelectOptions } from '@jsplumb/core';
 import { N8nConnector } from '@/plugins/connectors/N8nCustomConnector';
@@ -16,6 +16,7 @@ import { NodeConnectionType } from 'n8n-workflow';
 import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 import { EVENT_CONNECTION_MOUSEOUT, EVENT_CONNECTION_MOUSEOVER } from '@jsplumb/browser-ui';
 import { useUIStore } from '@/stores/ui.store';
+import type { StyleValue } from 'vue';
 
 /*
 	Canvas constants and functions.
@@ -72,7 +73,7 @@ export const CONNECTOR_FLOWCHART_TYPE: ConnectorSpec = {
 		alwaysRespectStubs: false,
 		loopbackVerticalLength: NODE_SIZE + GRID_SIZE, // height of vertical segment when looping
 		loopbackMinimum: LOOPBACK_MINIMUM, // minimum length before flowchart loops around
-		getEndpointOffset(endpoint: Endpoint & EndpointMeta) {
+		getEndpointOffset(endpoint: Endpoint) {
 			const indexOffset = 10; // stub offset between different endpoints of same node
 			const index = endpoint?.__meta ? endpoint.__meta.index : 0;
 			const totalEndpoints = endpoint?.__meta ? endpoint.__meta.totalEndpoints : 0;
@@ -319,7 +320,7 @@ export const getOutputNameOverlay = (
 	options: {
 		id: OVERLAY_OUTPUT_NAME_LABEL,
 		visible: true,
-		create: (ep: Endpoint & EndpointMeta) => {
+		create: (ep: Endpoint) => {
 			const label = document.createElement('div');
 			label.innerHTML = labelText;
 			label.classList.add('node-output-endpoint-label');
@@ -609,7 +610,7 @@ export const getBackgroundStyles = (
 	scale: number,
 	offsetPosition: XYPosition,
 	executionPreview: boolean,
-) => {
+): StyleValue => {
 	const squareSize = GRID_SIZE * scale;
 	const dotSize = 1 * scale;
 	const dotPosition = (GRID_SIZE / 2) * scale;
@@ -623,7 +624,7 @@ export const getBackgroundStyles = (
 		};
 	}
 
-	const styles: object = {
+	const styles: StyleValue = {
 		'background-size': `${squareSize}px ${squareSize}px`,
 		'background-position': `left ${offsetPosition[0]}px top ${offsetPosition[1]}px`,
 	};
@@ -1119,7 +1120,7 @@ export const getPlusEndpoint = (
 ): Endpoint | undefined => {
 	const endpoints = getJSPlumbEndpoints(node, instance);
 	return endpoints.find(
-		(endpoint: Endpoint & EndpointMeta) =>
+		(endpoint: Endpoint) =>
 			endpoint.endpoint.type === 'N8nPlus' && endpoint?.__meta?.index === outputIndex,
 	);
 };

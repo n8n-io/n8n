@@ -30,10 +30,10 @@ import type {
 	NodeMetadataMap,
 	WorkflowMetadata,
 	IExecutionFlattedResponse,
+	IWorkflowTemplateNode,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import type {
-	IAbstractEventMessage,
 	IConnection,
 	IConnections,
 	IDataObject,
@@ -72,7 +72,7 @@ import { getCredentialOnlyNodeTypeName } from '@/utils/credentialOnlyNodes';
 import { i18n } from '@/plugins/i18n';
 
 import { computed, ref } from 'vue';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from './settings.store';
 import { useUsersStore } from './users.store';
 
@@ -174,7 +174,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const nodesIssuesExist = computed(() => {
 		for (const node of workflow.value.nodes) {
-			if (node.issues === undefined || Object.keys(node.issues).length === 0) {
+			const isNodeDisabled = node.disabled === true;
+			const noNodeIssues = node.issues === undefined || Object.keys(node.issues).length === 0;
+			if (isNodeDisabled || noNodeIssues) {
 				continue;
 			}
 
@@ -305,16 +307,38 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return workflow.value.nodes.map((node) => ({ ...node }));
 	}
 
-	function setNodePosition(id: string, position: INodeUi['position']): void {
+	function setNodePositionById(id: string, position: INodeUi['position']): void {
 		const node = workflow.value.nodes.find((n) => n.id === id);
 		if (!node) return;
 
 		setNodeValue({ name: node.name, key: 'position', value: position });
 	}
 
+	function convertTemplateNodeToNodeUi(node: IWorkflowTemplateNode): INodeUi {
+		const filteredCredentials = Object.keys(node.credentials ?? {}).reduce<INodeCredentials>(
+			(credentials, curr) => {
+				const credential = node?.credentials?.[curr];
+				if (!credential || typeof credential === 'string') {
+					return credentials;
+				}
+
+				credentials[curr] = credential;
+
+				return credentials;
+			},
+			{},
+		);
+
+		return {
+			...node,
+			credentials: filteredCredentials,
+		};
+	}
+
 	function getWorkflow(nodes: INodeUi[], connections: IConnections, copyData?: boolean): Workflow {
 		const nodeTypes = getNodeTypes();
 		let cachedWorkflowId: string | undefined = workflowId.value;
+
 		if (cachedWorkflowId && cachedWorkflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 			cachedWorkflowId = undefined;
 		}
@@ -327,7 +351,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			active: false,
 			nodeTypes,
 			settings: workflowSettings.value,
-			// @ts-ignore
 			pinData: pinnedWorkflowData.value,
 		});
 
@@ -1408,15 +1431,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		});
 	}
 
-	async function getExecutionEvents(id: string): Promise<IAbstractEventMessage[]> {
-		const rootStore = useRootStore();
-		return await makeRestApiRequest(
-			rootStore.getRestApiContext,
-			'GET',
-			`/eventbus/execution/${id}`,
-		);
-	}
-
 	function getBinaryUrl(
 		binaryDataId: string,
 		action: 'view' | 'download',
@@ -1464,6 +1478,43 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		return !!matchedChatNode;
 	}
+
+	//
+	// Start Canvas V2 Functions
+	//
+
+	function removeNodeById(nodeId: string): void {
+		const node = getNodeById(nodeId);
+		if (!node) {
+			return;
+		}
+
+		removeNode(node);
+
+		// @TODO When removing node connected between two nodes, create a connection between them
+	}
+
+	function removeNodeConnectionsById(nodeId: string): void {
+		const node = getNodeById(nodeId);
+		if (!node) {
+			return;
+		}
+
+		removeAllNodeConnection(node);
+	}
+
+	function removeNodeExecutionDataById(nodeId: string): void {
+		const node = getNodeById(nodeId);
+		if (!node) {
+			return;
+		}
+
+		clearNodeExecutionData(node.name);
+	}
+
+	//
+	// End Canvas V2 Functions
+	//
 
 	return {
 		workflow,
@@ -1520,6 +1571,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getPinDataSize,
 		getNodeTypes,
 		getNodes,
+		convertTemplateNodeToNodeUi,
 		getWorkflow,
 		getCurrentWorkflow,
 		getWorkflowFromUrl,
@@ -1589,12 +1641,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		fetchExecutionDataById,
 		deleteExecution,
 		addToCurrentExecutions,
-		getExecutionEvents,
 		getBinaryUrl,
 		setNodePristine,
 		resetChatMessages,
 		appendChatMessage,
 		checkIfNodeHasChatParent,
-		setNodePosition,
+		setNodePositionById,
+		removeNodeById,
+		removeNodeConnectionsById,
+		removeNodeExecutionDataById,
 	};
 });
