@@ -158,6 +158,8 @@ export class ExecutionRecoveryService {
 	}
 
 	private async runHooks(execution: IExecutionResponse) {
+		execution.data ??= { resultData: { runData: {} } };
+
 		await Container.get(InternalHooks).onWorkflowPostExecute(execution.id, execution.workflowData, {
 			data: execution.data,
 			finished: false,
