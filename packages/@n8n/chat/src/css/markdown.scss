@@ -1,0 +1,271 @@
+@import 'highlight.js/styles/github.css';
+
+// https://github.com/pxlrbt/markdown-css
+.chat-message-markdown {
+	overflow-x: auto;
+	html, body, div, span, applet, object, iframe, h1, h2, h3, h4, h5, h6, p, blockquote, pre, a, abbr, acronym, address, big, cite, code, del, dfn, em, img, ins, kbd, q, s, samp, small, strike, strong, sub, sup, tt, var, b, u, i, center, dl, dt, dd, ol, ul, li, fieldset, form, label, legend, table, caption, tbody, tfoot, thead, tr, th, td, article, aside, canvas, details, embed, figure, figcaption, footer, header, hgroup, menu, nav, output, ruby, section, summary, time, mark, audio, video {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font: inherit;
+    font-size: 100%;
+    vertical-align: baseline
+	}
+
+	html {
+    line-height: 1
+	}
+
+	ol,
+	ul {
+    list-style: none;
+		list-style-position: inside;
+	}
+
+	table {
+    border-collapse: collapse;
+    border-spacing: 0
+	}
+
+	caption,
+	th,
+	td {
+    text-align: left;
+    font-weight: normal;
+    vertical-align: middle
+	}
+
+	q,
+	blockquote {
+    quotes: none
+	}
+
+	q:before,
+	q:after,
+	blockquote:before,
+	blockquote:after {
+    content: "";
+    content: none
+	}
+
+	a img {
+    border: none
+	}
+
+	article, aside, details, figcaption, figure, footer, header, hgroup, main, menu, nav, section, summary {
+    display: block
+	}
+
+	* {
+    -moz-box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+    box-sizing: border-box
+	}
+
+	html {
+    font-size: 16px;
+    line-height: 1.6em;
+    -webkit-text-size-adjust: 100%
+	}
+
+	body {
+    background-color: #fff;
+    color: #545454;
+
+    text-rendering: optimizeLegibility;
+
+    max-width: 46em;
+    margin: 2em auto;
+
+    padding: 1.6em 3.15em;
+	}
+
+	h1 {
+    font-weight: 700;
+    color: #333;
+    font-size: 1.6em;
+    line-height: 1.3em;
+    margin-bottom: .78571em
+	}
+
+	h2 {
+    font-weight: 600;
+    color: #333;
+    font-size: 1.3em;
+    line-height: 1em;
+    margin-top: 2em;
+    margin-bottom: .6em
+	}
+
+	h3 {
+    font-weight: 600;
+    color: #333;
+    font-size: 1.15em;
+    line-height: 1em;
+    margin-top: 1em;
+    margin-bottom: .6em
+	}
+
+	h4 {
+    font-weight: 500;
+    color: #333;
+    font-size: 1em;
+    line-height: 1em;
+    margin-top: 1em;
+    margin-bottom: .6em
+	}
+
+	p {
+    margin-bottom: 1.57143em;
+    hyphens: auto
+	}
+
+	b, strong {
+    font-weight: 700;
+	}
+
+	i, em {
+    font-style: italic;
+	}
+
+	u {
+    text-decoration: none;
+    background-image: linear-gradient(to bottom, rgba(0, 0, 0, 0) 50%, var(--chat--color-primary) 50%);
+    background-repeat: repeat-x;
+    background-size: 2px 2px;
+    background-position: 0 1.05em
+	}
+
+	s {
+    color: #878787
+	}
+
+	a {
+    color: #e74c3c;
+    text-decoration: none
+	}
+
+	img {
+    max-width: 100%;
+    height: auto
+	}
+
+	blockquote {
+    display: block;
+    padding-left: 0.8em;
+    border-left: 0.2em solid #e74c3c;
+    background-color: transparent;
+	}
+
+	hr {
+    height: 1px;
+    border: 0;
+    background-color: var(--chat--color-medium);
+    margin: .7em auto .7em
+	}
+
+	/* LISTS */
+	ul li:before {
+    content: "•";
+    color: #e74c3c;
+    display: inline-block;
+    margin-right: 0.3em;
+    font-size: 1.5em;
+    vertical-align: middle;
+	}
+
+	ul ul {
+    margin-left: 1.25714em
+	}
+
+	ol ol {
+    margin-left: 1.25714em
+	}
+
+	ul, ol {
+    margin-bottom: 1.5em;
+	}
+
+	ul ul, ul ol,
+	ol ul, ol ol {
+    margin-bottom: 0;
+	}
+
+	ol {
+    counter-reset: ol;
+	}
+
+	ol li {
+    counter-increment: ol;
+	}
+
+	ol li:before {
+    content: counter(ol) ".";
+    color: var(--chat--color-primary);
+    text-align: right;
+    display: inline-block;
+    min-width: 1em;
+    margin-right: 0.5em
+	}
+
+	ol li p {
+    display: inline;
+	}
+
+	/* CODE */
+	code {
+    display: inline;
+    background: #fcfcfc;
+    border: 1px solid var(--chat--color-medium);
+    border-radius: .3em;
+    padding: 0.2em 0.5em;
+		font-family: monospace;
+    font-size: 0.7em;
+	}
+
+	pre {
+    display: block;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+	}
+
+	pre code {
+    display: block;
+    width: 100%;
+    line-height: 1.45em;
+
+    padding: 1.2em 1em;
+    margin: 0 0 1.5em;
+	}
+
+	.hljs {
+    padding: 0;
+	}
+
+	/*  TABLE */
+
+	table {
+    width: calc(100% + 3em);
+    margin-bottom: 1.5em;
+    margin-left: -1.5em;
+	}
+
+	table tr {
+    border-bottom: 1px solid var(--chat--color-medium);
+	}
+
+	table th {
+    font-weight: 700;
+	}
+
+	table td, table th {
+    vertical-align: top;
+    padding: .2em 1.5em;
+    font-size: .95em
+	}
+
+	thead tr {
+    border-bottom: 4px double var(--chat--color-medium);
+	}
+}

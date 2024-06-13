@@ -6,6 +6,7 @@ import type {
 	INodeTypeDescription,
 	MultiPartFormData,
 	INodeExecutionData,
+	IBinaryData,
 } from 'n8n-workflow';
 
 import { pick } from 'lodash';
@@ -353,67 +354,73 @@ export class ChatTrigger extends Node {
 		const options = context.getNodeParameter('options', {}) as IDataObject;
 		const { data, files } = req.body;
 
-		const newItems: INodeExecutionData[] = [];
+		// const newItems: INodeExecutionData[] = [];
 		const returnItem: INodeExecutionData = {
 			json: data,
 		};
 
 		if (files && Object.keys(files).length) {
+			returnItem.json.files = [] as Array<Omit<IBinaryData, 'data'>>;
 			returnItem.binary = {};
+
+			const count = 0;
+			for (const fileKey of Object.keys(files)) {
+				const processedFiles: MultiPartFormData.File[] = [];
+				let multiFile = false;
+
+				console.log('🚀 ~ ChatTrigger ~ handleFormData ~ files[fileKey]:', files[fileKey]);
+				if (Array.isArray(files[fileKey])) {
+					processedFiles.push(...(files[fileKey] as MultiPartFormData.File[]));
+					multiFile = true;
+				} else {
+					processedFiles.push(files[fileKey] as MultiPartFormData.File);
+				}
+
+				let fileIndex = 0;
+				for (const file of processedFiles) {
+					let binaryPropertyName = 'data';
+
+					// Remove the '[]' suffix from the binaryPropertyName if it exists
+					if (binaryPropertyName.endsWith('[]')) {
+						binaryPropertyName = binaryPropertyName.slice(0, -2);
+					}
+					if (options.binaryPropertyName) {
+						binaryPropertyName = `${options.binaryPropertyName.toString()}${count}`;
+					}
+
+					const binaryFile = await context.nodeHelpers.copyBinaryFile(
+						file.filepath,
+						file.originalFilename ?? file.newFilename,
+						file.mimetype,
+					);
+
+					const binaryKey = `${binaryPropertyName}${fileIndex}`;
+
+					const binaryInfo = {
+						...pick(binaryFile, [
+							'fileName',
+							'fileSize',
+							'fileType',
+							'mimeType',
+							'directory',
+							'fileExtension',
+						]),
+						binaryKey,
+					};
+
+					returnItem.binary = Object.assign(returnItem.binary ?? {}, {
+						[`${binaryKey}`]: binaryFile,
+					});
+					returnItem.json.files = [
+						...(returnItem.json.files as Array<Omit<IBinaryData, 'data'>>),
+						binaryInfo,
+					];
+					fileIndex += 1;
+				}
+			}
 		}
 
-		let count = 0;
-
-		for (const key of Object.keys(files)) {
-			const processFiles: MultiPartFormData.File[] = [];
-			let multiFile = false;
-			if (Array.isArray(files[key])) {
-				processFiles.push(...(files[key] as MultiPartFormData.File[]));
-				multiFile = true;
-			} else {
-				processFiles.push(files[key] as MultiPartFormData.File);
-			}
-
-			// let fileCount = 0;
-			for (const file of processFiles) {
-				// let binaryPropertyName = key;
-				// if (binaryPropertyName.endsWith('[]')) {
-				// 	binaryPropertyName = binaryPropertyName.slice(0, -2);
-				// }
-				// if (multiFile) {
-				// 	binaryPropertyName += fileCount++;
-				// }
-				// if (options.binaryPropertyName) {
-				// 	binaryPropertyName = `${options.binaryPropertyName}${count}`;
-				// }
-
-				const binaryFile = await context.nodeHelpers.copyBinaryFile(
-					file.filepath,
-					file.originalFilename ?? file.newFilename,
-					file.mimetype,
-				);
-
-				// returnItem.binary![binaryPropertyName] = binaryFile;
-				newItems.push({
-					binary: {
-						data: binaryFile,
-					},
-					json: {
-						mimeType: binaryFile.mimeType,
-						fileType: binaryFile.fileType,
-						fileName: binaryFile.fileName,
-						directory: binaryFile.directory,
-						fileExtension: binaryFile.fileExtension,
-						fileSize: binaryFile.fileSize,
-						...data,
-					},
-				});
-
-				// count += 1;
-			}
-		}
-
-		return newItems;
+		return returnItem;
 	}
 
 	async webhook(ctx: IWebhookFunctions): Promise<IWebhookResponseData> {
@@ -544,7 +551,7 @@ export class ChatTrigger extends Node {
 		let returnData: INodeExecutionData[];
 		const webhookResponse: IDataObject = { status: 200 };
 		if (req.contentType === 'multipart/form-data') {
-			returnData = await this.handleFormData(ctx);
+			returnData = [await this.handleFormData(ctx)];
 			return {
 				webhookResponse,
 				workflowData: [returnData],

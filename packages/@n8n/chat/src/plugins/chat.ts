@@ -29,6 +29,7 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 				id: uuidv4(),
 				text,
 				sender: 'user',
+				files,
 				createdAt: new Date().toISOString(),
 			};
 

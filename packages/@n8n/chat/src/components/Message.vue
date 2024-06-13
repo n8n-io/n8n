@@ -1,9 +1,14 @@
 <script lang="ts" setup>
 /* eslint-disable @typescript-eslint/naming-convention */
-import type { PropType } from 'vue';
-import { computed, toRefs } from 'vue';
+import type { PropType, Component } from 'vue';
+import { computed, ref, toRefs, onMounted } from 'vue';
 import VueMarkdown from 'vue-markdown-render';
 import hljs from 'highlight.js/lib/core';
+import javascript from 'highlight.js/lib/languages/javascript';
+import python from 'highlight.js/lib/languages/python';
+import xml from 'highlight.js/lib/languages/xml';
+import bash from 'highlight.js/lib/languages/bash';
+import MdiOpenInNew from 'virtual:icons/mdi/openInNew';
 import markdownLink from 'markdown-it-link-attributes';
 import type MarkdownIt from 'markdown-it';
 import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
@@ -16,8 +21,13 @@ const props = defineProps({
 	},
 });
 
+hljs.registerLanguage('javascript', javascript);
+hljs.registerLanguage('python', python);
+hljs.registerLanguage('xml', xml);
+hljs.registerLanguage('bash', bash);
 const { message } = toRefs(props);
 const { options } = useOptions();
+const messageContainer = ref<HTMLElement | null>(null);
 
 const messageText = computed(() => {
 	return (message.value as ChatMessageText).text || '&lt;Empty response&gt;';
@@ -40,6 +50,15 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 	});
 };
 
+const scrollToView = () => {
+	if (messageContainer.value) {
+		messageContainer.value.scrollIntoView({
+			behavior: 'smooth',
+			block: 'start',
+		});
+	}
+};
+
 const markdownOptions = {
 	highlight(str: string, lang: string) {
 		if (lang && hljs.getLanguage(lang)) {
@@ -52,10 +71,43 @@ const markdownOptions = {
 	},
 };
 
-const messageComponents = options?.messageComponents ?? {};
+const messageComponents = { ...(options?.messageComponents ?? {}) };
+
+defineExpose({ scrollToView });
+
+const fileSources = ref<Record<string, string>>({});
+
+const readFileAsDataURL = async (file: File): Promise<string> =>
+	await new Promise((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onload = () => resolve(reader.result as string);
+		reader.onerror = reject;
+		reader.readAsDataURL(file);
+	});
+
+const openImageInNewTab = (fileName: string) => {
+	const newWindow = window.open(fileSources.value[fileName]);
+	if (newWindow) {
+		newWindow.document.write(`<img src="${fileSources.value[fileName]}" />`);
+		newWindow.document.title = fileName;
+	}
+};
+onMounted(async () => {
+	if (message.value.files) {
+		for (const file of message.value.files) {
+			try {
+				const dataURL = await readFileAsDataURL(file);
+				fileSources.value[file.name] = dataURL;
+			} catch (error) {
+				console.error('Error reading file:', error);
+			}
+		}
+	}
+});
 </script>
+
 <template>
-	<div class="chat-message" :class="classes">
+	<div ref="messageContainer" class="chat-message" :class="classes">
 		<slot>
 			<template v-if="message.type === 'component' && messageComponents[message.key]">
 				<component :is="messageComponents[message.key]" v-bind="message.arguments" />
@@ -67,6 +119,19 @@ const messageComponents = options?.messageComponents ?? {};
 				:options="markdownOptions"
 				:plugins="[linksNewTabPlugin]"
 			/>
+			<div class="chat-message-files">
+				<div v-for="file in message.files ?? []" :key="file.name" class="chat-message-file">
+					<div
+						v-if="file.type.startsWith('image/')"
+						class="chat-message-file-image"
+						@click="openImageInNewTab(file.name)"
+					>
+						<img :src="fileSources[file.name]" :alt="file.name" />
+						<MdiOpenInNew height="18" width="18" class="chat-message-file-image-open" />
+					</div>
+					<div v-else>{{ file.name }}</div>
+				</div>
+			</div>
 		</slot>
 	</div>
 </template>
@@ -135,6 +200,35 @@ const messageComponents = options?.messageComponents ?? {};
 			padding: var(--chat--spacing);
 			background: var(--chat--message--pre--background);
 			border-radius: var(--chat--border-radius);
+		}
+	}
+
+	.chat-message-file-image {
+		position: relative;
+		width: fit-content;
+
+		img {
+			max-width: 300px;
+			width: fit-content;
+			max-height: 200px;
+			cursor: pointer;
+			&:hover {
+				filter: brightness(0.4);
+			}
+		}
+
+		&:hover .chat-message-file-image-open {
+			opacity: 1;
+		}
+		.chat-message-file-image-open {
+			position: absolute;
+			bottom: 0;
+			top: 0;
+			left: 0;
+			right: 0;
+			margin: auto;
+			opacity: 0;
+			pointer-events: none;
 		}
 	}
 }

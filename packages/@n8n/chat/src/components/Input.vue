@@ -87,7 +87,6 @@ function onFileRemove(file: File) {
 
 	reset();
 	files.value = dt.files;
-	console.log('🚀 ~ onFileRemove ~ files.value:', files.value);
 }
 </script>
 
