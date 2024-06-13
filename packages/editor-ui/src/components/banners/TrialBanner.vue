@@ -58,7 +58,7 @@ function onUpdatePlanClick() {
 		<template #mainContent>
 			<div :class="$style.content">
 				<span>{{ messageText }}</span>
-				<span> | </span>
+				<span :class="$style.pipe"> | </span>
 				<div :class="$style.usageCounter">
 					<div :class="$style.progressBarDiv">
 						<progress
@@ -71,12 +71,12 @@ function onUpdatePlanClick() {
 						></progress>
 					</div>
 					<div :class="$style.executionsCountSection">
-						<n8n-text size="xsmall" :color="trialHasExecutionsLeft ? 'text-dark' : 'danger'">
-							{{ currentExecutions }}/{{ maxExecutions }} </n8n-text
-						>&nbsp;<n8n-text
+						<N8nText size="xsmall" :color="trialHasExecutionsLeft ? 'text-dark' : 'danger'">
+							{{ currentExecutions }}/{{ maxExecutions }} </N8nText
+						>&nbsp;<N8nText
 							size="xsmall"
 							:color="trialHasExecutionsLeft ? 'text-dark' : 'danger'"
-							>{{ locale.baseText('executionUsage.label.executions') }}</n8n-text
+							>{{ locale.baseText('executionUsage.label.executions') }}</N8nText
 						>
 					</div>
 				</div>
@@ -94,7 +94,13 @@ function onUpdatePlanClick() {
 .content {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing-3xs);
+}
+
+.pipe {
+	display: inline-block;
+	font-size: var(--font-size-m);
+	padding: 0 0 2px;
 }
 
 .progressBarDiv {
