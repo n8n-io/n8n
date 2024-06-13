@@ -53,7 +53,7 @@ export class ExecutionsController {
 		const noRange = !query.range.lastId || !query.range.firstId;
 
 		if (noStatus && noRange) {
-			return await this.executionService.findAllRunningAndLatest(query);
+			return await this.executionService.findLatestCurrentAndCompleted(query);
 		}
 
 		return await this.executionService.findRangeWithCount(query);

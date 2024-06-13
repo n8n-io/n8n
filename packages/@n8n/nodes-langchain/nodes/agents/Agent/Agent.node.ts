@@ -302,6 +302,9 @@ export class Agent implements INodeType {
 			// Make Conversational Agent the default agent for versions 1.5 and below
 			{
 				...agentTypeProperty,
+				options: agentTypeProperty?.options?.filter(
+					(o) => 'value' in o && o.value !== 'toolsAgent',
+				),
 				displayOptions: { show: { '@version': [{ _cnd: { lte: 1.5 } }] } },
 				default: 'conversationalAgent',
 			},

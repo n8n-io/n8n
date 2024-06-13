@@ -15,6 +15,9 @@ import * as testDb from './shared/testDb';
 import { createUser } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
 import type { SuperAgentTest } from './shared/types';
+import { Telemetry } from '@/telemetry';
+
+mockInstance(Telemetry);
 
 describe('Webhook API', () => {
 	mockInstance(ExternalHooks);

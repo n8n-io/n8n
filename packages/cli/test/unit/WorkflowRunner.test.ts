@@ -9,11 +9,15 @@ import { setupTestServer } from '../integration/shared/utils';
 import { createUser } from '../integration/shared/db/users';
 import { createWorkflow } from '../integration/shared/db/workflows';
 import { createExecution } from '../integration/shared/db/executions';
+import { mockInstance } from '@test/mocking';
+import { Telemetry } from '@/telemetry';
 
 let owner: User;
 let runner: WorkflowRunner;
 let hookFunctions: IWorkflowExecuteHooks;
 setupTestServer({ endpointGroups: [] });
+
+mockInstance(Telemetry);
 
 class Watchers {
 	workflowExecuteAfter = jest.fn();

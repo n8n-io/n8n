@@ -46,34 +46,12 @@ jobs:
       collectCoverage: true
 
   lint:
-    name: Lint changes
-    runs-on: ubuntu-latest
+    name: Lint
+    uses: ./.github/workflows/linting-reusable.yml
     needs: install-and-build
-    steps:
-      - uses: actions/checkout@v4.1.1
-        with:
-          repository: n8n-io/n8n
-          ref: ${{ inputs.branch }}
-
-      - run: corepack enable
-      - uses: actions/setup-node@v4.0.2
-        with:
-          node-version: 20.x
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Restore cached build artifacts
-        uses: actions/cache/restore@v4.0.0
-        with:
-          path: ./packages/**/dist
-          key: ${{ github.sha }}-base:build
-
-      - name: Lint
-        env:
-          CI_LINT_MASTER: true
-        run: pnpm lint
+    with:
+      ref: ${{ inputs.branch }}
+      cacheKey: ${{ github.sha }}-base:build
 
   notify-on-failure:
     name: Notify Slack on failure
