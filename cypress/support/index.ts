@@ -32,8 +32,6 @@ declare global {
 			 * @param [workflowName] Optional name for the workflow. A random nanoid is used if not given
 			 */
 			createFixtureWorkflow(fixtureKey: string, workflowName?: string): void;
-			/** @deprecated */
-			createFixtureWorkflow(fixtureKey: string, workflowName: string): void;
 			/** @deprecated use signinAsOwner, signinAsAdmin or signinAsMember instead */
 			signin(payload: SigninPayload): void;
 			signinAsOwner(): void;
