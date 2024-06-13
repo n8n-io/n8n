@@ -366,36 +366,36 @@ function connectionInputData(
 
 	const workflowsStore = useWorkflowsStore();
 
-	if (workflowsStore.shouldReplaceInputDataWithPinData) {
-		const parentPinData = parentNode.reduce<INodeExecutionData[]>((acc, parentNodeName, index) => {
-			const pinData = workflowsStore.pinDataByNodeName(parentNodeName);
+	// if (workflowsStore.shouldReplaceInputDataWithPinData) {
+	// 	const parentPinData = parentNode.reduce<INodeExecutionData[]>((acc, parentNodeName, index) => {
+	// 		const pinData = workflowsStore.pinDataByNodeName(parentNodeName);
 
-			if (pinData) {
-				acc.push({
-					json: pinData[0],
-					pairedItem: {
-						item: index,
-						input: 1,
-					},
-				});
-			}
+	// 		if (pinData) {
+	// 			acc.push({
+	// 				json: pinData[0],
+	// 				pairedItem: {
+	// 					item: index,
+	// 					input: 1,
+	// 				},
+	// 			});
+	// 		}
 
-			return acc;
-		}, []);
+	// 		return acc;
+	// 	}, []);
 
-		if (parentPinData.length > 0) {
-			if (connectionInputData && connectionInputData.length > 0) {
-				parentPinData.forEach((parentPinDataEntry) => {
-					connectionInputData![0].json = {
-						...connectionInputData![0].json,
-						...parentPinDataEntry.json,
-					};
-				});
-			} else {
-				connectionInputData = parentPinData;
-			}
-		}
-	}
+	// 	if (parentPinData.length > 0) {
+	// 		if (connectionInputData && connectionInputData.length > 0) {
+	// 			parentPinData.forEach((parentPinDataEntry) => {
+	// 				connectionInputData![0].json = {
+	// 					...connectionInputData![0].json,
+	// 					...parentPinDataEntry.json,
+	// 				};
+	// 			});
+	// 		} else {
+	// 			connectionInputData = parentPinData;
+	// 		}
+	// 	}
+	// }
 
 	return connectionInputData;
 }
@@ -417,16 +417,16 @@ export function executeData(
 	// Find the parent node which has data
 	for (const parentNodeName of parentNodes) {
 		if (workflowsStore.shouldReplaceInputDataWithPinData) {
-			const parentPinData = workflowsStore.pinnedWorkflowData![parentNodeName];
+			// const parentPinData = workflowsStore.pinnedWorkflowData![parentNodeName];
 
 			// populate `executeData` from `pinData`
 
-			if (parentPinData) {
-				executeData.data = { main: [parentPinData] };
-				executeData.source = { main: [{ previousNode: parentNodeName }] };
+			// if (parentPinData) {
+			// 	executeData.data = { main: [parentPinData] };
+			// 	executeData.source = { main: [{ previousNode: parentNodeName }] };
 
-				return executeData;
-			}
+			// 	return executeData;
+			// }
 		}
 
 		// populate `executeData` from `runData`

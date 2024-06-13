@@ -662,6 +662,7 @@ export class WorkflowDataProxy {
 				};
 			},
 		) => {
+			console.log('yo', message, context);
 			if (isScriptingNode(that.activeNodeName, that.workflow) && context?.functionOverrides) {
 				// If the node in which the error is thrown is a function node,
 				// display a different error message in case there is one defined
@@ -913,9 +914,9 @@ export class WorkflowDataProxy {
 					sourceData?.previousNodeRun || 0
 				];
 
-			const pinData = that.workflow.getPinDataOfNode(
-				sourceData.previousNode,
-			) as INodeExecutionData[];
+			const pinData = that.workflow.getPinDataOfNode(sourceData.previousNode) as
+				| INodeExecutionData[]
+				| undefined;
 
 			if (!taskData && pinData) {
 				taskData = { data: { main: [pinData] }, startTime: 0, executionTime: 0, source: [] };
@@ -1029,8 +1030,15 @@ export class WorkflowDataProxy {
 										itemIndex = that.itemIndex;
 									}
 
-									const executionData = that.connectionInputData;
-									const input = executionData[itemIndex];
+									const pinnedData = that.workflow.getPinDataOfNode(nodeName);
+									const executionData = that.connectionInputData.length
+										? that.connectionInputData
+										: pinnedData;
+									const input = executionData?.[itemIndex];
+
+									if (pinnedData && !that.connectionInputData.length) {
+										return { json: input };
+									}
 									if (!input) {
 										throw createExpressionError('Can’t get data for expression', {
 											messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
