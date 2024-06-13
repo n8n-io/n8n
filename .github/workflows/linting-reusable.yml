@@ -4,12 +4,12 @@ on:
   workflow_call:
     inputs:
       ref:
-        description: 'GitHub ref to lint.'
+        description: GitHub ref to lint.
         required: false
         type: string
-        default: 'master'
+        default: master
       cacheKey:
-        description: 'Cache key for modules and build artifacts.'
+        description: Cache key for modules and build artifacts.
         required: false
         default: ''
         type: string
