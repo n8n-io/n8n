@@ -376,11 +376,11 @@ export const schema = {
 			interval: {
 				doc: 'How often (minutes) to check for queue recovery',
 				format: Number,
-				default: 999, // @TODO
+				default: 20, // @TODO: Confirm
 				env: 'N8N_EXECUTIONS_QUEUE_RECOVERY_INTERVAL',
 			},
 			batchSize: {
-				doc: 'Size of batch to check for queue recovery',
+				doc: 'Size of batch of executions to check for queue recovery',
 				format: Number,
 				default: 100,
 				env: 'N8N_EXECUTIONS_QUEUE_RECOVERY_BATCH',

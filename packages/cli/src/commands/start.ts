@@ -68,6 +68,8 @@ export class Start extends BaseCommand {
 
 	private pruningService: PruningService;
 
+	private executionRecoveryService: ExecutionRecoveryService;
+
 	constructor(argv: string[], cmdConfig: Config) {
 		super(argv, cmdConfig);
 		this.setInstanceType('main');
@@ -341,7 +343,9 @@ export class Start extends BaseCommand {
 
 		if (config.getEnv('executions.mode') !== 'queue') return;
 
-		Container.get(ExecutionRecoveryService).scheduleQueueRecovery();
+		this.executionRecoveryService = Container.get(ExecutionRecoveryService);
+
+		this.executionRecoveryService.scheduleQueueRecovery();
 
 		const orchestrationService = Container.get(OrchestrationService);
 
@@ -350,8 +354,14 @@ export class Start extends BaseCommand {
 		if (!orchestrationService.isMultiMainSetupEnabled) return;
 
 		orchestrationService.multiMainSetup
-			.on('leader-stepdown', () => this.pruningService.stopPruning())
-			.on('leader-takeover', () => this.pruningService.startPruning());
+			.on('leader-stepdown', () => {
+				this.pruningService.stopPruning();
+				this.executionRecoveryService.stopQueueRecovery();
+			})
+			.on('leader-takeover', () => {
+				this.pruningService.startPruning();
+				this.executionRecoveryService.scheduleQueueRecovery();
+			});
 	}
 
 	async catch(error: Error) {

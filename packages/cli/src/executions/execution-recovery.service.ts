@@ -14,6 +14,7 @@ import { ARTIFICIAL_TASK_DATA } from '@/constants';
 import { Logger } from '@/Logger';
 import config from '@/config';
 import { OnShutdown } from '@/decorators/OnShutdown';
+import type { QueueRecoverySettings } from './execution.types';
 
 /**
  * Service for recovering key properties in executions.
@@ -28,23 +29,7 @@ export class ExecutionRecoveryService {
 
 	private isShuttingDown = false;
 
-	private queueRecoverySettings: {
-		/**
-		 * ID of timeout for next scheduled recovery cycle.
-		 */
-		timeout?: NodeJS.Timeout;
-
-		/**
-		 * Number of in-progress executions to check per cycle.
-		 */
-		batchSize: number;
-
-		/**
-		 * Time to wait before the next cycle.
-		 */
-		waitMs: number;
-	} = {
-		timeout: undefined,
+	private readonly queueRecoverySettings: QueueRecoverySettings = {
 		batchSize: config.getEnv('executions.queueRecovery.batchSize'),
 		waitMs: config.getEnv('executions.queueRecovery.interval') * 60 * 1000,
 	};
@@ -57,7 +42,9 @@ export class ExecutionRecoveryService {
 
 		if (!amendedExecution) return null;
 
-		this.logger.info('Logs available, amended execution', { executionId: amendedExecution.id });
+		this.logger.info('[Recovery] Logs available, amended execution', {
+			executionId: amendedExecution.id,
+		});
 
 		await this.executionRepository.updateExistingExecution(executionId, amendedExecution);
 
@@ -72,14 +59,14 @@ export class ExecutionRecoveryService {
 	}
 
 	/**
-	 * Schedule a cycle to mark a batch of in-progress executions as `crashed`
-	 * if stored as in-progress but absent from the Bull queue.
+	 * Schedule a queue recovery cycle. See `recoverFromQueue` for details.
 	 */
 	scheduleQueueRecovery(waitMs = this.queueRecoverySettings.waitMs) {
 		if (config.getEnv('executions.mode') === 'regular') return;
+		if (config.getEnv('multiMainSetup.instanceType') === 'follower') return;
 
 		if (this.isShuttingDown) {
-			this.logger.warn('[Pruning] Cannot schedule recovery cycle while shutting down');
+			this.logger.warn('[Recovery] Cannot schedule recovery cycle while shutting down');
 			return;
 		}
 
@@ -99,7 +86,11 @@ export class ExecutionRecoveryService {
 
 		const nextCycle = [this.queueRecoverySettings.waitMs / (60 * 1000), 'min'].join(' ');
 
-		this.logger.debug(`Scheduled queue recovery for next ${nextCycle}`);
+		this.logger.debug(`[Recovery] Scheduled queue recovery for next ${nextCycle}`);
+	}
+
+	stopQueueRecovery() {
+		clearTimeout(this.queueRecoverySettings.timeout);
 	}
 
 	@OnShutdown()
@@ -115,7 +106,7 @@ export class ExecutionRecoveryService {
 	/**
 	 * Mark a batch of in-progress executions as `crashed` if stored in DB as
 	 * in-progress but absent from the Bull queue. Return the time to wait
-	 * before the next cycle.
+	 * until the next cycle.
 	 */
 	private async recoverFromQueue() {
 		const { waitMs, batchSize } = this.queueRecoverySettings;
