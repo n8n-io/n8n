@@ -13,8 +13,7 @@ import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
 import { Logger } from '@/Logger';
 import config from '@/config';
-
-// @TODO: clearTimeout on shutdown
+import { OnShutdown } from '@/decorators/OnShutdown';
 
 /**
  * Service for recovering key properties in executions.
@@ -27,14 +26,27 @@ export class ExecutionRecoveryService {
 		private readonly logger: Logger,
 	) {}
 
-	private queueRecovery: {
+	private isShuttingDown = false;
+
+	private queueRecoverySettings: {
+		/**
+		 * ID of timeout for next scheduled recovery cycle.
+		 */
 		timeout?: NodeJS.Timeout;
+
+		/**
+		 * Number of in-progress executions to check per cycle.
+		 */
 		batchSize: number;
-		rateMs: number;
+
+		/**
+		 * Time to wait before the next cycle.
+		 */
+		waitMs: number;
 	} = {
 		timeout: undefined,
-		batchSize: 100, // @TODO: Config value
-		rateMs: 5000, // @TODO: Config value
+		batchSize: config.getEnv('executions.queueRecovery.batchSize'),
+		waitMs: config.getEnv('executions.queueRecovery.interval') * 60 * 1000,
 	};
 
 	/**
@@ -45,7 +57,7 @@ export class ExecutionRecoveryService {
 
 		if (!amendedExecution) return null;
 
-		this.logInfo('Logs available, amended execution', { executionId: amendedExecution.id });
+		this.logger.info('Logs available, amended execution', { executionId: amendedExecution.id });
 
 		await this.executionRepository.updateExistingExecution(executionId, amendedExecution);
 
@@ -59,67 +71,79 @@ export class ExecutionRecoveryService {
 		return amendedExecution;
 	}
 
+	/**
+	 * Schedule a cycle to mark a batch of in-progress executions as `crashed`
+	 * if stored as in-progress but absent from the Bull queue.
+	 */
+	scheduleQueueRecovery(waitMs = this.queueRecoverySettings.waitMs) {
+		if (config.getEnv('executions.mode') === 'regular') return;
+
+		if (this.isShuttingDown) {
+			this.logger.warn('[Pruning] Cannot schedule recovery cycle while shutting down');
+			return;
+		}
+
+		this.queueRecoverySettings.timeout = setTimeout(async () => {
+			try {
+				const nextWaitMs = await this.recoverFromQueue();
+				this.scheduleQueueRecovery(nextWaitMs);
+			} catch (error) {
+				const msg = this.toErrorMsg(error);
+
+				this.logger.error('[Recovery] Failed to recover executions from queue', { msg });
+				this.logger.error('[Recovery] Retrying...');
+
+				this.scheduleQueueRecovery();
+			}
+		}, waitMs);
+
+		const nextCycle = [this.queueRecoverySettings.waitMs / (60 * 1000), 'min'].join(' ');
+
+		this.logger.debug(`Scheduled queue recovery for next ${nextCycle}`);
+	}
+
+	@OnShutdown()
+	shutdown() {
+		this.isShuttingDown = true;
+		clearTimeout(this.queueRecoverySettings.timeout);
+	}
+
 	// ----------------------------------
 	//             private
 	// ----------------------------------
 
 	/**
-	 * Amend `status`, `stoppedAt`, and (if possible) `data` properties of an execution.
+	 * Mark a batch of in-progress executions as `crashed` if stored in DB as
+	 * in-progress but absent from the Bull queue. Return the time to wait
+	 * before the next cycle.
 	 */
-	scheduleQueueRecovery(rateMs = this.queueRecovery.rateMs) {
-		if (config.getEnv('executions.mode') === 'regular') return;
-
-		this.queueRecovery.timeout = setTimeout(async () => {
-			try {
-				const nextRateMs = await this.recoverFromQueue();
-				this.scheduleQueueRecovery(nextRateMs);
-			} catch (error) {
-				const msg = this.toErrorMsg(error);
-
-				this.logError('Failed to recover executions from queue', { msg });
-				this.logError('Retrying...');
-
-				this.scheduleQueueRecovery();
-			}
-		}, rateMs);
-
-		const nextCycle = [this.queueRecovery.rateMs / (60 * 1000), 'min'].join(' ');
-
-		this.logDebug(`Scheduled queue recovery for next ${nextCycle}`);
-	}
-
-	// ----------------------------------
-	//             private
-	// ----------------------------------
-
 	private async recoverFromQueue() {
-		const { rateMs, batchSize } = this.queueRecovery;
+		const { waitMs, batchSize } = this.queueRecoverySettings;
 
 		const inProgressIds = await this.executionRepository.getLatestInProgressExecutionIds(batchSize);
 
-		if (inProgressIds.length === 0) return rateMs;
+		if (inProgressIds.length === 0) return waitMs;
 
 		const { Queue } = await import('@/Queue');
 
-		const inProgressJobs = await Container.get(Queue).getJobs(['active', 'waiting']);
+		const inQueueIds = await Container.get(Queue).getInProgressExecutionIds();
 
-		if (inProgressJobs.length === 0) return rateMs;
-
-		const inQueueIds = new Set(inProgressJobs.map((j) => j.data.executionId));
+		if (inQueueIds.size === 0) return waitMs;
 
 		const danglingIds = inProgressIds.filter((id) => !inQueueIds.has(id));
 
-		if (danglingIds.length === 0) return rateMs;
+		if (danglingIds.length === 0) return waitMs;
 
 		await this.executionRepository.markAsCrashed(danglingIds);
 
-		this.logDebug('Recovered executions from queue', { danglingIds });
-
 		// if more to check, speed up next cycle
 
-		return inProgressIds.length >= this.queueRecovery.batchSize ? rateMs / 2 : rateMs;
+		return inProgressIds.length >= this.queueRecoverySettings.batchSize ? waitMs / 2 : waitMs;
 	}
 
+	/**
+	 * Amend `status`, `stoppedAt`, and (if possible) `data` of an execution using event logs.
+	 */
 	private async amend(executionId: string, messages: EventMessageTypes[]) {
 		if (messages.length === 0) return await this.amendWithoutLogs(executionId);
 
@@ -264,18 +288,6 @@ export class ExecutionRecoveryService {
 		};
 
 		await externalHooks.executeHookFunctions('workflowExecuteAfter', [run]);
-	}
-
-	private logError(message: string, meta?: object) {
-		this.logger.error(['[Recovery]', message].join(' '), meta);
-	}
-
-	private logInfo(message: string, meta?: object) {
-		this.logger.info(['[Recovery]', message].join(' '), meta);
-	}
-
-	private logDebug(message: string, meta?: object) {
-		this.logger.debug(['[Recovery]', message].join(' '), meta);
 	}
 
 	private toErrorMsg(error: unknown) {

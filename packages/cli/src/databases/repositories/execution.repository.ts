@@ -271,9 +271,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			},
 		);
 
-		this.logger.info('[Execution Recovery] Marked executions as `crashed`', {
-			executionIds,
-		});
+		this.logger.info('Marked executions as `crashed`', { executionIds });
 	}
 
 	/**
