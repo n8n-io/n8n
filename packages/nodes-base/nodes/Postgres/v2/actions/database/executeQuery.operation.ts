@@ -25,7 +25,7 @@ const properties: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		placeholder: 'e.g. SELECT id, name FROM product WHERE quantity > $1 AND price <= $2',
-		noDataExpression: true,
+		noDataExpression: false,
 		required: true,
 		description:
 			"The SQL query to execute. You can use n8n expressions and $1, $2, $3, etc to refer to the 'Query Parameters' set in options below.",
