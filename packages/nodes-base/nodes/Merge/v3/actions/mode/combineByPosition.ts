@@ -13,7 +13,7 @@ import {
 	fuzzyCompareProperty,
 	numberInputsProperty,
 } from '../../helpers/descriptions';
-import { addSuffixToEntriesKeys, selectMergeMethod } from '../../helpers/utils';
+import { addSuffixToEntriesKeys, getMergeNodeInputs, selectMergeMethod } from '../../helpers/utils';
 
 import merge from 'lodash/merge';
 
@@ -59,68 +59,83 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	) as ClashResolveOptions;
 	const includeUnpaired = this.getNodeParameter('options.includeUnpaired', 0, false) as boolean;
 
-	let input1 = this.getInputData(0);
-	let input2 = this.getInputData(1);
+	const inputs = getMergeNodeInputs(this);
 
-	if (input1.length === 0 || input2.length === 0) {
+	const inputsData = inputs.map((_, i) => {
+		return this.getInputData(i) ?? [];
+	});
+
+	// let input1 = this.getInputData(0);
+	// let input2 = this.getInputData(1);
+
+	if ((inputsData.length === 2 && inputsData[0].length === 0) || inputsData[1].length === 0) {
 		// If data of any input is missing, return the data of
 		// the input that contains data
-		return [...input1, ...input2];
+		return [...inputsData[0], ...inputsData[1]];
 	}
 
-	if (clashHandling.resolveClash === 'preferInput1') {
-		[input1, input2] = [input2, input1];
+	let prefered = [];
+	if (clashHandling.resolveClash.includes('preferInput')) {
+		const preferedInputIndex = Number(clashHandling.resolveClash.replace('preferInput', '')) - 1;
+		prefered = inputsData.splice(preferedInputIndex, 1)[0];
+	} else {
+		prefered = inputsData.splice(inputsData.length - 1, 1)[0];
 	}
 
 	if (clashHandling.resolveClash === 'addSuffix') {
-		input1 = addSuffixToEntriesKeys(input1, '1');
-		input2 = addSuffixToEntriesKeys(input2, '2');
+		for (const [inputIndex, input] of inputsData.entries()) {
+			inputsData[inputIndex] = addSuffixToEntriesKeys(input, String(inputIndex + 1));
+		}
 	}
 
-	if (input1 === undefined || input1.length === 0) {
-		if (includeUnpaired) {
-			return input2;
-		}
-		return returnData;
-	}
+	// if (input1 === undefined || input1.length === 0) {
+	// 	if (includeUnpaired) {
+	// 		return input2;
+	// 	}
+	// 	return returnData;
+	// }
 
-	if (input2 === undefined || input2.length === 0) {
-		if (includeUnpaired) {
-			return input1;
-		}
-		return returnData;
-	}
+	// if (input2 === undefined || input2.length === 0) {
+	// 	if (includeUnpaired) {
+	// 		return input1;
+	// 	}
+	// 	return returnData;
+	// }
 
 	let numEntries: number;
 	if (includeUnpaired) {
-		numEntries = Math.max(input1.length, input2.length);
+		numEntries = Math.max(...inputsData.map((input) => input.length), prefered.length);
 	} else {
-		numEntries = Math.min(input1.length, input2.length);
+		numEntries = Math.min(...inputsData.map((input) => input.length), prefered.length);
 	}
 
 	const mergeIntoSingleObject = selectMergeMethod(clashHandling);
 
 	for (let i = 0; i < numEntries; i++) {
-		if (i >= input1.length) {
-			returnData.push(input2[i]);
-			continue;
-		}
-		if (i >= input2.length) {
-			returnData.push(input1[i]);
-			continue;
-		}
+		// if (i >= input1.length) {
+		// 	returnData.push(input2[i]);
+		// 	continue;
+		// }
+		// if (i >= input2.length) {
+		// 	returnData.push(input1[i]);
+		// 	continue;
+		// }
 
-		const entry1 = input1[i];
-		const entry2 = input2[i];
+		// const entry1 = input1[i];
+		const preferedEntry = prefered[i] ?? {};
+		const restEntries = inputsData.map((input) => input[i] ?? {});
 
 		returnData.push({
 			json: {
-				...mergeIntoSingleObject(entry1.json, entry2.json),
+				...mergeIntoSingleObject({}, ...restEntries.map((entry) => entry.json), preferedEntry.json),
 			},
 			binary: {
-				...merge({}, entry1.binary, entry2.binary),
+				...merge({}, ...restEntries.map((entry) => entry.binary), preferedEntry.binary),
 			},
-			pairedItem: [entry1.pairedItem as IPairedItemData, entry2.pairedItem as IPairedItemData],
+			pairedItem: [
+				...restEntries.map((entry) => entry.pairedItem as IPairedItemData).flat(),
+				preferedEntry.pairedItem as IPairedItemData,
+			],
 		});
 	}
 

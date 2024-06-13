@@ -9,6 +9,7 @@ import type {
 
 import { versionDescription } from './actions/versionDescription';
 import { router } from './actions/router';
+import { loadOptions } from './methods';
 
 export class MergeV3 implements INodeType {
 	description: INodeTypeDescription;
@@ -19,6 +20,10 @@ export class MergeV3 implements INodeType {
 			...versionDescription,
 		};
 	}
+
+	methods = {
+		loadOptions,
+	};
 
 	async execute(this: IExecuteFunctions) {
 		return await router.call(this);

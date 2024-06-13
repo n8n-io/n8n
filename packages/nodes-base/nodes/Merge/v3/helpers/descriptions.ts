@@ -34,24 +34,16 @@ export const clashHandlingProperties: INodeProperties = {
 			name: 'values',
 			values: [
 				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 					displayName: 'When Field Values Clash',
 					name: 'resolveClash',
+					// eslint-disable-next-line n8n-nodes-base/node-param-description-missing-from-dynamic-options
 					type: 'options',
 					default: '',
-					options: [
-						{
-							name: 'Always Add Input Number to Field Names',
-							value: 'addSuffix',
-						},
-						{
-							name: 'Prefer Input 1 Version',
-							value: 'preferInput1',
-						},
-						{
-							name: 'Prefer Input 2 Version',
-							value: 'preferInput2',
-						},
-					],
+					typeOptions: {
+						loadOptionsMethod: 'getResolveClashOptions',
+						loadOptionsDependsOn: ['numberInputs'],
+					},
 				},
 				{
 					displayName: 'Merging Nested Fields',
@@ -74,7 +66,7 @@ export const clashHandlingProperties: INodeProperties = {
 					hint: 'How to merge when there are sub-fields below the top-level ones',
 					displayOptions: {
 						show: {
-							resolveClash: ['preferInput1', 'preferInput2'],
+							resolveClash: [{ _cnd: { not: 'addSuffix' } }],
 						},
 					},
 				},
@@ -87,7 +79,7 @@ export const clashHandlingProperties: INodeProperties = {
 						"Whether to override the preferred input version for a field if it is empty and the other version isn't. Here 'empty' means undefined, null or an empty string.",
 					displayOptions: {
 						show: {
-							resolveClash: ['preferInput1', 'preferInput2'],
+							resolveClash: [{ _cnd: { not: 'addSuffix' } }],
 						},
 					},
 				},
