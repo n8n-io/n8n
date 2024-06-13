@@ -257,9 +257,9 @@ onBeforeMount(async () => {
 		</div>
 		<form @submit.prevent="onSubmit">
 			<fieldset>
-				<label for="name">{{ locale.baseText('projects.settings.name') }}</label>
+				<label for="projectName">{{ locale.baseText('projects.settings.name') }}</label>
 				<N8nFormInput
-					id="name"
+					id="projectName"
 					ref="nameInput"
 					v-model="formData.name"
 					label=""

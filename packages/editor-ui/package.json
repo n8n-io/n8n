@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "1.45.0",
+  "version": "1.46.0",
   "description": "Workflow Editor UI for n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -96,6 +96,7 @@
     "@types/lodash-es": "^4.17.6",
     "@types/luxon": "^3.2.0",
     "@types/uuid": "^8.3.2",
+    "cross-env": "^7.0.3",
     "miragejs": "^0.1.48",
     "unplugin-icons": "^0.17.0"
   },

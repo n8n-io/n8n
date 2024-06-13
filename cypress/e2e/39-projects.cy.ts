@@ -1,4 +1,9 @@
-import { INSTANCE_ADMIN, INSTANCE_MEMBERS, INSTANCE_OWNER, MANUAL_TRIGGER_NODE_NAME, NOTION_NODE_NAME } from '../constants';
+import {
+	INSTANCE_MEMBERS,
+	INSTANCE_OWNER,
+	MANUAL_TRIGGER_NODE_NAME,
+	NOTION_NODE_NAME,
+} from '../constants';
 import {
 	WorkflowsPage,
 	WorkflowPage,
@@ -17,7 +22,7 @@ const credentialsModal = new CredentialsModal();
 const executionsTab = new WorkflowExecutionsTab();
 const ndv = new NDV();
 
-describe('Projects', () => {
+describe('Projects', { disableAutoLogin: true }, () => {
 	before(() => {
 		cy.resetDatabase();
 		cy.enableFeature('sharing');
@@ -28,7 +33,7 @@ describe('Projects', () => {
 	});
 
 	it('should handle workflows and credentials and menu items', () => {
-		cy.signin(INSTANCE_ADMIN);
+		cy.signinAsAdmin();
 		cy.visit(workflowsPage.url);
 		workflowsPage.getters.workflowCards().should('not.have.length');
 
@@ -63,6 +68,11 @@ describe('Projects', () => {
 
 		credentialsModal.actions.close();
 		credentialsPage.getters.credentialCards().should('have.length', 1);
+		credentialsPage.getters
+			.credentialCards()
+			.first()
+			.find('.n8n-node-icon img')
+			.should('be.visible');
 
 		projects.getProjectTabWorkflows().click();
 		workflowsPage.getters.workflowCards().should('have.length', 1);
@@ -224,8 +234,7 @@ describe('Projects', () => {
 	});
 
 	it('should not show project add button and projects to a member if not invited to any project', () => {
-		cy.signout();
-		cy.signin(INSTANCE_MEMBERS[1]);
+		cy.signinAsMember(1);
 		cy.visit(workflowsPage.url);
 
 		projects.getAddProjectButton().should('not.exist');
@@ -243,7 +252,7 @@ describe('Projects', () => {
 		});
 
 		it('should filter credentials by project ID when creating new workflow or hard reloading an opened workflow', () => {
-			cy.signin(INSTANCE_OWNER);
+			cy.signinAsOwner();
 			cy.visit(workflowsPage.url);
 
 			// Create a project and add a credential to it
@@ -260,7 +269,9 @@ describe('Projects', () => {
 			credentialsModal.getters.newCredentialTypeSelect().should('be.visible');
 			credentialsModal.getters.newCredentialTypeOption('Notion API').click();
 			credentialsModal.getters.newCredentialTypeButton().click();
-			credentialsModal.getters.connectionParameter('Internal Integration Secret').type('1234567890');
+			credentialsModal.getters
+				.connectionParameter('Internal Integration Secret')
+				.type('1234567890');
 			credentialsModal.actions.setName('Notion account project 1');
 
 			cy.intercept('POST', '/rest/credentials').as('credentialSave');
@@ -283,7 +294,9 @@ describe('Projects', () => {
 			credentialsModal.getters.newCredentialTypeSelect().should('be.visible');
 			credentialsModal.getters.newCredentialTypeOption('Notion API').click();
 			credentialsModal.getters.newCredentialTypeButton().click();
-			credentialsModal.getters.connectionParameter('Internal Integration Secret').type('1234567890');
+			credentialsModal.getters
+				.connectionParameter('Internal Integration Secret')
+				.type('1234567890');
 			credentialsModal.actions.setName('Notion account project 2');
 
 			credentialsModal.actions.save();
@@ -303,12 +316,14 @@ describe('Projects', () => {
 			credentialsModal.getters.newCredentialTypeSelect().should('be.visible');
 			credentialsModal.getters.newCredentialTypeOption('Notion API').click();
 			credentialsModal.getters.newCredentialTypeButton().click();
-			credentialsModal.getters.connectionParameter('Internal Integration Secret').type('1234567890');
+			credentialsModal.getters
+				.connectionParameter('Internal Integration Secret')
+				.type('1234567890');
 			credentialsModal.actions.setName('Notion account personal project');
 
 			cy.intercept('POST', '/rest/credentials').as('credentialSave');
 			credentialsModal.actions.save();
-			cy.wait('@credentialSave')
+			cy.wait('@credentialSave');
 			credentialsModal.actions.close();
 
 			// Go to the first project and create a workflow
@@ -318,14 +333,22 @@ describe('Projects', () => {
 			workflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 			workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
 			workflowPage.getters.nodeCredentialsSelect().first().click();
-			getVisibleSelect().find('li').should('have.length', 2).first().should('contain.text', 'Notion account project 1');
+			getVisibleSelect()
+				.find('li')
+				.should('have.length', 2)
+				.first()
+				.should('contain.text', 'Notion account project 1');
 			ndv.getters.backToCanvas().click();
 			workflowPage.actions.saveWorkflowOnButtonClick();
 
 			cy.reload();
 			workflowPage.getters.canvasNodeByName(NOTION_NODE_NAME).should('be.visible').dblclick();
 			workflowPage.getters.nodeCredentialsSelect().first().click();
-			getVisibleSelect().find('li').should('have.length', 2).first().should('contain.text', 'Notion account project 1');
+			getVisibleSelect()
+				.find('li')
+				.should('have.length', 2)
+				.first()
+				.should('contain.text', 'Notion account project 1');
 			ndv.getters.backToCanvas().click();
 
 			// Go to the second project and create a workflow
@@ -335,14 +358,22 @@ describe('Projects', () => {
 			workflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 			workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
 			workflowPage.getters.nodeCredentialsSelect().first().click();
-			getVisibleSelect().find('li').should('have.length', 2).first().should('contain.text', 'Notion account project 2');
+			getVisibleSelect()
+				.find('li')
+				.should('have.length', 2)
+				.first()
+				.should('contain.text', 'Notion account project 2');
 			ndv.getters.backToCanvas().click();
 			workflowPage.actions.saveWorkflowOnButtonClick();
 
 			cy.reload();
 			workflowPage.getters.canvasNodeByName(NOTION_NODE_NAME).should('be.visible').dblclick();
 			workflowPage.getters.nodeCredentialsSelect().first().click();
-			getVisibleSelect().find('li').should('have.length', 2).first().should('contain.text', 'Notion account project 2');
+			getVisibleSelect()
+				.find('li')
+				.should('have.length', 2)
+				.first()
+				.should('contain.text', 'Notion account project 2');
 			ndv.getters.backToCanvas().click();
 
 			// Go to the Home project and create a workflow
@@ -356,15 +387,169 @@ describe('Projects', () => {
 			workflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 			workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
 			workflowPage.getters.nodeCredentialsSelect().first().click();
-			getVisibleSelect().find('li').should('have.length', 2).first().should('contain.text', 'Notion account personal project');
+			getVisibleSelect()
+				.find('li')
+				.should('have.length', 2)
+				.first()
+				.should('contain.text', 'Notion account personal project');
 			ndv.getters.backToCanvas().click();
 			workflowPage.actions.saveWorkflowOnButtonClick();
 
 			cy.reload();
 			workflowPage.getters.canvasNodeByName(NOTION_NODE_NAME).should('be.visible').dblclick();
 			workflowPage.getters.nodeCredentialsSelect().first().click();
-			getVisibleSelect().find('li').should('have.length', 2).first().should('contain.text', 'Notion account personal project');
+			getVisibleSelect()
+				.find('li')
+				.should('have.length', 2)
+				.first()
+				.should('contain.text', 'Notion account personal project');
+		});
 
+		it('should move resources between projects', () => {
+			cy.signin(INSTANCE_OWNER);
+			cy.visit(workflowsPage.url);
+
+			// Create a workflow and a credential in the Home project
+			workflowsPage.getters.workflowCards().should('not.have.length');
+			workflowsPage.getters.newWorkflowButtonCard().click();
+			projects.createWorkflow('Test_workflow_1.json', 'Workflow in Home project');
+
+			projects.getHomeButton().click();
+			projects.getProjectTabCredentials().should('be.visible').click();
+			credentialsPage.getters.emptyListCreateCredentialButton().click();
+			projects.createCredential('Credential in Home project');
+
+			// Create a project and add a credential and a workflow to it
+			projects.createProject('Project 1');
+			projects.getProjectTabCredentials().click();
+			credentialsPage.getters.emptyListCreateCredentialButton().click();
+			projects.createCredential('Credential in Project 1');
+
+			projects.getProjectTabWorkflows().click();
+			workflowsPage.getters.newWorkflowButtonCard().click();
+			projects.createWorkflow('Test_workflow_1.json', 'Workflow in Project 1');
+
+			// Create another project and add a credential and a workflow to it
+			projects.createProject('Project 2');
+			projects.getProjectTabCredentials().click();
+			credentialsPage.getters.emptyListCreateCredentialButton().click();
+			projects.createCredential('Credential in Project 2');
+
+			projects.getProjectTabWorkflows().click();
+			workflowsPage.getters.newWorkflowButtonCard().click();
+			projects.createWorkflow('Test_workflow_1.json', 'Workflow in Project 2');
+
+			// Move the workflow owned by me from Home to Project 1
+			projects.getHomeButton().click();
+			workflowsPage.getters
+				.workflowCards()
+				.should('have.length', 3)
+				.filter(':contains("Owned by me")')
+				.should('exist');
+			workflowsPage.getters.workflowCardActions('Workflow in Home project').click();
+			workflowsPage.getters.workflowMoveButton().click();
+
+			projects
+				.getResourceMoveModal()
+				.should('be.visible')
+				.find('button:contains("Next")')
+				.should('be.disabled');
+			projects.getProjectMoveSelect().click();
+			getVisibleSelect()
+				.find('li')
+				.should('have.length', 2)
+				.first()
+				.should('contain.text', 'Project 1')
+				.click();
+			projects.getResourceMoveModal().find('button:contains("Next")').click();
+
+			projects
+				.getResourceMoveConfirmModal()
+				.should('be.visible')
+				.find('button:contains("Confirm")')
+				.should('be.disabled');
+
+			projects
+				.getResourceMoveConfirmModal()
+				.find('input[type="checkbox"]')
+				.first()
+				.parents('label')
+				.click();
+			projects
+				.getResourceMoveConfirmModal()
+				.find('button:contains("Confirm")')
+				.should('be.disabled');
+			projects
+				.getResourceMoveConfirmModal()
+				.find('input[type="checkbox"]')
+				.last()
+				.parents('label')
+				.click();
+			projects
+				.getResourceMoveConfirmModal()
+				.find('button:contains("Confirm")')
+				.should('not.be.disabled')
+				.click();
+
+			workflowsPage.getters
+				.workflowCards()
+				.should('have.length', 3)
+				.filter(':contains("Owned by me")')
+				.should('not.exist');
+
+			// Move the credential from Project 1 to Project 2
+			projects.getMenuItems().first().click();
+			workflowsPage.getters.workflowCards().should('have.length', 2);
+			projects.getProjectTabCredentials().click();
+			credentialsPage.getters.credentialCards().should('have.length', 1);
+			credentialsPage.getters.credentialCardActions('Credential in Project 1').click();
+			credentialsPage.getters.credentialMoveButton().click();
+
+			projects
+				.getResourceMoveModal()
+				.should('be.visible')
+				.find('button:contains("Next")')
+				.should('be.disabled');
+			projects.getProjectMoveSelect().click();
+			getVisibleSelect()
+				.find('li')
+				.should('have.length', 1)
+				.first()
+				.should('contain.text', 'Project 2')
+				.click();
+			projects.getResourceMoveModal().find('button:contains("Next")').click();
+
+			projects
+				.getResourceMoveConfirmModal()
+				.should('be.visible')
+				.find('button:contains("Confirm")')
+				.should('be.disabled');
+
+			projects
+				.getResourceMoveConfirmModal()
+				.find('input[type="checkbox"]')
+				.first()
+				.parents('label')
+				.click();
+			projects
+				.getResourceMoveConfirmModal()
+				.find('button:contains("Confirm")')
+				.should('be.disabled');
+			projects
+				.getResourceMoveConfirmModal()
+				.find('input[type="checkbox"]')
+				.last()
+				.parents('label')
+				.click();
+			projects
+				.getResourceMoveConfirmModal()
+				.find('button:contains("Confirm")')
+				.should('not.be.disabled')
+				.click();
+			credentialsPage.getters.credentialCards().should('not.have.length');
+			projects.getMenuItems().last().click();
+			projects.getProjectTabCredentials().click();
+			credentialsPage.getters.credentialCards().should('have.length', 2);
 		});
 	});
 });

@@ -50,7 +50,7 @@ switch (scenario) {
 		break;
 	case 'dev':
 		runTests({
-			startCommand: 'dev',
+			startCommand: 'develop',
 			url: 'http://localhost:8080/favicon.ico',
 			testCommand: 'cypress open',
 			customEnv: {
@@ -59,10 +59,13 @@ switch (scenario) {
 		});
 		break;
 	case 'all':
+		const specSuiteFilter = process.argv[3];
+		const specParam = specSuiteFilter ? ` --spec **/*${specSuiteFilter}*` : '';
+
 		runTests({
 			startCommand: 'start',
 			url: 'http://localhost:5678/favicon.ico',
-			testCommand: 'cypress run --headless',
+			testCommand: `cypress run --headless ${specParam}`,
 		});
 		break;
 	default:

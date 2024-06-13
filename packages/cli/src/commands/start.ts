@@ -27,6 +27,10 @@ import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { WaitTracker } from '@/WaitTracker';
 import { BaseCommand } from './BaseCommand';
+import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
+import { ExecutionService } from '@/executions/execution.service';
+import { OwnershipService } from '@/services/ownership.service';
+import { WorkflowRunner } from '@/WorkflowRunner';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -288,6 +292,10 @@ export class Start extends BaseCommand {
 
 		await this.initPruning();
 
+		if (config.getEnv('executions.mode') === 'regular') {
+			await this.runEnqueuedExecutions();
+		}
+
 		// Start to get active workflows and run their triggers
 		await this.activeWorkflowManager.init();
 
@@ -346,5 +354,39 @@ export class Start extends BaseCommand {
 	async catch(error: Error) {
 		if (error.stack) this.logger.error(error.stack);
 		await this.exitWithCrash('Exiting due to an error.', error);
+	}
+
+	/**
+	 * During startup, we may find executions that had been enqueued at the time of shutdown.
+	 *
+	 * If so, start running any such executions concurrently up to the concurrency limit, and
+	 * enqueue any remaining ones until we have spare concurrency capacity again.
+	 */
+	private async runEnqueuedExecutions() {
+		const executions = await Container.get(ExecutionService).findAllEnqueuedExecutions();
+
+		if (executions.length === 0) return;
+
+		this.logger.debug(
+			'[Startup] Found enqueued executions to run',
+			executions.map((e) => e.id),
+		);
+
+		const ownershipService = Container.get(OwnershipService);
+		const workflowRunner = Container.get(WorkflowRunner);
+
+		for (const execution of executions) {
+			const project = await ownershipService.getWorkflowProjectCached(execution.workflowId);
+
+			const data: IWorkflowExecutionDataProcess = {
+				executionMode: execution.mode,
+				executionData: execution.data,
+				workflowData: execution.workflowData,
+				projectId: project.id,
+			};
+
+			// do not block - each execution either runs concurrently or is queued
+			void workflowRunner.run(data, undefined, false, execution.id);
+		}
 	}
 }

@@ -17,11 +17,13 @@ import { Push } from '@/push';
 import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
 import { createTeamProject, findProject, getPersonalProject } from '../../shared/db/projects';
-import { WaitTracker } from '@/WaitTracker';
 import { getLdapSynchronizations, saveLdapSynchronization } from '@/Ldap/helpers';
 import { createLdapConfig } from '../../shared/ldap';
 import { LdapService } from '@/Ldap/ldap.service';
 import { v4 as uuid } from 'uuid';
+import { Telemetry } from '@/telemetry';
+
+mockInstance(Telemetry);
 
 const oclifConfig = new Config({ root: __dirname });
 
@@ -40,9 +42,6 @@ beforeAll(async () => {
 	mockInstance(Push);
 	mockInstance(InternalHooks);
 	mockInstance(LoadNodesAndCredentials);
-	// This needs to be mocked, otherwise the time setInterval would prevent jest
-	// from exiting properly.
-	mockInstance(WaitTracker);
 	await testDb.init();
 	await oclifConfig.load();
 });

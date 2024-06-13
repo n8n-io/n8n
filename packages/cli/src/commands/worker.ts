@@ -273,7 +273,7 @@ export class Worker extends BaseCommand {
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
 
-		await Container.get(OrchestrationWorkerService).publishToEventLog(
+		await Container.get(MessageEventBus).send(
 			new EventMessageGeneric({
 				eventName: 'n8n.worker.started',
 				payload: {
@@ -317,8 +317,12 @@ export class Worker extends BaseCommand {
 		Worker.jobQueue = Container.get(Queue);
 		await Worker.jobQueue.init();
 		this.logger.debug('Queue singleton ready');
+
+		const envConcurrency = config.getEnv('executions.concurrency.productionLimit');
+		const concurrency = envConcurrency !== -1 ? envConcurrency : flags.concurrency;
+
 		void Worker.jobQueue.process(
-			flags.concurrency,
+			concurrency,
 			async (job) => await this.runJob(job, this.nodeTypes),
 		);
 

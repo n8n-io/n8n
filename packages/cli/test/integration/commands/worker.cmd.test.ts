@@ -15,13 +15,14 @@ import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
 import { RedisService } from '@/services/redis.service';
 import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
-import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 
 import * as testDb from '../shared/testDb';
 import { mockInstance } from '../../shared/mocking';
 
 const oclifConfig = new Config({ root: __dirname });
+
+let eventBus: MessageEventBus;
 
 beforeAll(async () => {
 	config.set('executions.mode', 'queue');
@@ -32,7 +33,7 @@ beforeAll(async () => {
 	mockInstance(CacheService);
 	mockInstance(ExternalSecretsManager);
 	mockInstance(BinaryDataService);
-	mockInstance(MessageEventBus);
+	eventBus = mockInstance(MessageEventBus);
 	mockInstance(LoadNodesAndCredentials);
 	mockInstance(CredentialTypes);
 	mockInstance(NodeTypes);
@@ -58,9 +59,7 @@ test('worker initializes all its components', async () => {
 	jest.spyOn(worker, 'initExternalSecrets').mockImplementation(async () => {});
 	jest.spyOn(worker, 'initEventBus').mockImplementation(async () => {});
 	jest.spyOn(worker, 'initOrchestration');
-	jest
-		.spyOn(OrchestrationWorkerService.prototype, 'publishToEventLog')
-		.mockImplementation(async () => {});
+	// jest.spyOn(MessageEventBus.prototype, 'send').mockImplementation(async () => {});
 	jest
 		.spyOn(OrchestrationHandlerWorkerService.prototype, 'initSubscriber')
 		.mockImplementation(async () => {});
@@ -79,7 +78,7 @@ test('worker initializes all its components', async () => {
 	expect(worker.initEventBus).toHaveBeenCalledTimes(1);
 	expect(worker.initOrchestration).toHaveBeenCalledTimes(1);
 	expect(OrchestrationHandlerWorkerService.prototype.initSubscriber).toHaveBeenCalledTimes(1);
-	expect(OrchestrationWorkerService.prototype.publishToEventLog).toHaveBeenCalledTimes(1);
+	expect(eventBus.send).toHaveBeenCalledTimes(1);
 	expect(worker.initQueue).toHaveBeenCalledTimes(1);
 
 	jest.restoreAllMocks();

@@ -1,4 +1,3 @@
-import { v4 as uuid } from 'uuid';
 import { WorkflowExecutionsTab, WorkflowPage as WorkflowPageClass } from '../pages';
 import { BACKEND_BASE_URL } from '../constants';
 
@@ -11,7 +10,7 @@ describe('ADO-2106 connections should be colored correctly for pinned data in ex
 	});
 
 	beforeEach(() => {
-		cy.createFixtureWorkflow('Webhook_set_pinned.json', `Webhook set pinned ${uuid()}`);
+		cy.createFixtureWorkflow('Webhook_set_pinned.json');
 		workflowPage.actions.deselectAll();
 		workflowPage.getters.zoomToFitButton().click();
 
@@ -37,8 +36,9 @@ describe('ADO-2106 connections should be colored correctly for pinned data in ex
 			.should('be.visible')
 			.its('0.contentDocument.body')
 			.should('not.be.empty')
+			// eslint-disable-next-line @typescript-eslint/unbound-method
 			.then(cy.wrap)
-			.find(`.jtk-connector[data-source-node="Webhook"][data-target-node="Set"]`)
+			.find('.jtk-connector[data-source-node="Webhook"][data-target-node="Set"]')
 			.should('have.class', 'success')
 			.should('have.class', 'has-run')
 			.should('not.have.class', 'pinned');
@@ -56,8 +56,9 @@ describe('ADO-2106 connections should be colored correctly for pinned data in ex
 			.should('be.visible')
 			.its('0.contentDocument.body')
 			.should('not.be.empty')
+			// eslint-disable-next-line @typescript-eslint/unbound-method
 			.then(cy.wrap)
-			.find(`.jtk-connector[data-source-node="Webhook"][data-target-node="Set"]`)
+			.find('.jtk-connector[data-source-node="Webhook"][data-target-node="Set"]')
 			.should('have.class', 'success')
 			.should('have.class', 'has-run')
 			.should('have.class', 'pinned');
