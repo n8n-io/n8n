@@ -16,6 +16,8 @@ describe('ExecutionService', () => {
 		mock(),
 		mock(),
 		mock(),
+		mock(),
+		mock(),
 	);
 
 	it('should error on retrying an aborted execution', async () => {
