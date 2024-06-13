@@ -1076,7 +1076,7 @@ export default defineComponent({
 
 					// Close the window
 					if (oauthPopup) {
-						
+						oauthPopup.close();
 					}
 				}
 			};
