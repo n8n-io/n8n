@@ -1,4 +1,3 @@
-import { v4 as uuid } from 'uuid';
 import { getVisibleSelect } from '../utils';
 import { MANUAL_TRIGGER_NODE_DISPLAY_NAME } from '../constants';
 import { NDV, WorkflowPage } from '../pages';
@@ -13,7 +12,7 @@ const ndv = new NDV();
 describe('NDV', () => {
 	beforeEach(() => {
 		workflowPage.actions.visit();
-		workflowPage.actions.renameWorkflow(uuid());
+		workflowPage.actions.renameWithUniqueName();
 		workflowPage.actions.saveWorkflowOnButtonClick();
 	});
 
@@ -55,7 +54,7 @@ describe('NDV', () => {
 	});
 
 	it('should change input and go back to canvas', () => {
-		cy.createFixtureWorkflow('NDV-test-select-input.json', `NDV test select input ${uuid()}`);
+		cy.createFixtureWorkflow('NDV-test-select-input.json', 'NDV test select input');
 		workflowPage.actions.zoomToFit();
 		workflowPage.getters.canvasNodes().last().dblclick();
 		ndv.getters.inputSelect().click();
@@ -157,7 +156,7 @@ describe('NDV', () => {
 			'prop2',
 		];
 		function setupSchemaWorkflow() {
-			cy.createFixtureWorkflow('Test_workflow_schema_test.json', `NDV test schema view ${uuid()}`);
+			cy.createFixtureWorkflow('Test_workflow_schema_test.json');
 			workflowPage.actions.zoomToFit();
 			workflowPage.actions.openNode('Set');
 			ndv.actions.execute();
@@ -231,7 +230,7 @@ describe('NDV', () => {
 		it('should display large schema', () => {
 			cy.createFixtureWorkflow(
 				'Test_workflow_schema_test_pinned_data.json',
-				`NDV test schema view ${uuid()}`,
+				'NDV test schema view 2',
 			);
 			workflowPage.actions.zoomToFit();
 			workflowPage.actions.openNode('Set');
@@ -306,7 +305,7 @@ describe('NDV', () => {
 	it('should display parameter hints correctly', () => {
 		workflowPage.actions.visit();
 
-		cy.createFixtureWorkflow('Test_workflow_3.json', 'My test workflow');
+		cy.createFixtureWorkflow('Test_workflow_3.json', 'My test workflow 1');
 		workflowPage.actions.openNode('Set1');
 
 		ndv.actions.typeIntoParameterInput('value', '='); // switch to expressions
@@ -574,7 +573,7 @@ describe('NDV', () => {
 	});
 
 	it('should show node name and version in settings', () => {
-		cy.createFixtureWorkflow('Test_workflow_ndv_version.json', `NDV test version ${uuid()}`);
+		cy.createFixtureWorkflow('Test_workflow_ndv_version.json', 'NDV test version');
 
 		workflowPage.actions.openNode('Edit Fields (old)');
 		ndv.actions.openSettings();
@@ -711,7 +710,7 @@ describe('NDV', () => {
 		};
 		cy.createFixtureWorkflow(
 			'open_node_creator_for_connection.json',
-			`open_node_creator_for_connection ${uuid()}`,
+			'open_node_creator_for_connection',
 		);
 
 		Object.entries(hintMapper).forEach(([node, group]) => {
@@ -742,7 +741,7 @@ describe('NDV', () => {
 	it('should allow selecting item for expressions', () => {
 		workflowPage.actions.visit();
 
-		cy.createFixtureWorkflow('Test_workflow_3.json', 'My test workflow');
+		cy.createFixtureWorkflow('Test_workflow_3.json', 'My test workflow 2');
 		workflowPage.actions.openNode('Set');
 
 		ndv.actions.typeIntoParameterInput('value', '='); // switch to expressions
