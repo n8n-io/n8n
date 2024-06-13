@@ -140,7 +140,7 @@ export class MessageEventBus extends EventEmitter {
 				const dbUnfinishedExecutionIds = (
 					await this.executionRepository.find({
 						where: {
-							status: In(['running', 'new', 'unknown']),
+							status: In(['running', 'unknown']),
 						},
 						select: ['id'],
 					})
@@ -176,7 +176,7 @@ export class MessageEventBus extends EventEmitter {
 					this.logWriter?.startRecoveryProcess();
 					for (const executionId of unfinishedExecutionIds) {
 						const logMesssages = unsentAndUnfinished.unfinishedExecutions[executionId];
-						await this.recoveryService.recoverFromLogs(executionId, logMesssages);
+						await this.recoveryService.recoverFromLogs(executionId, logMesssages ?? []);
 					}
 				}
 				// remove the recovery process flag file
@@ -357,7 +357,7 @@ export class MessageEventBus extends EventEmitter {
 
 	async getUnsentAndUnfinishedExecutions(): Promise<{
 		unsentMessages: EventMessageTypes[];
-		unfinishedExecutions: Record<string, EventMessageTypes[]>;
+		unfinishedExecutions: Record<string, EventMessageTypes[] | undefined>;
 	}> {
 		const queryResult = await this.logWriter?.getUnsentAndUnfinishedExecutions();
 		return queryResult;

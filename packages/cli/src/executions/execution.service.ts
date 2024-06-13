@@ -37,7 +37,10 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import config from '@/config';
 import { WaitTracker } from '@/WaitTracker';
 import type { ExecutionEntity } from '@/databases/entities/ExecutionEntity';
+import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
+import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
+import { License } from '@/License';
 
 export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
@@ -87,6 +90,8 @@ export class ExecutionService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly waitTracker: WaitTracker,
 		private readonly workflowRunner: WorkflowRunner,
+		private readonly concurrencyControl: ConcurrencyControlService,
+		private readonly license: License,
 	) {}
 
 	async findOne(
@@ -132,6 +137,8 @@ export class ExecutionService {
 			);
 			throw new NotFoundError(`The execution with the ID "${executionId}" does not exist.`);
 		}
+
+		if (execution.status === 'new') throw new QueuedExecutionRetryError();
 
 		if (!execution.data.executionData) throw new AbortedExecutionRetryError();
 
@@ -244,14 +251,14 @@ export class ExecutionService {
 			}
 		}
 
-		return await this.executionRepository.deleteExecutionsByFilter(
-			requestFilters,
-			sharedWorkflowIds,
-			{
-				deleteBefore,
-				ids,
-			},
-		);
+		if (requestFilters?.metadata && !this.license.isAdvancedExecutionFiltersEnabled()) {
+			delete requestFilters.metadata;
+		}
+
+		await this.executionRepository.deleteExecutionsByFilter(requestFilters, sharedWorkflowIds, {
+			deleteBefore,
+			ids,
+		});
 	}
 
 	async createErrorExecution(
@@ -359,31 +366,37 @@ export class ExecutionService {
 	}
 
 	/**
-	 * Find summaries of active and finished executions that satisfy a query.
+	 * Return:
 	 *
-	 * Return also the total count of all finished executions that satisfy the query,
-	 * and whether the total is an estimate or not. Active executions are excluded
-	 * from the total and count for pagination purposes.
+	 * - the latest summaries of current and completed executions that satisfy a query,
+	 * - the total count of all completed executions that satisfy the query, and
+	 * - whether the total of completed executions is an estimate.
+	 *
+	 * By default, "current" means executions starting and running. With concurrency
+	 * control, "current" means executions enqueued to start and running.
 	 */
-	async findAllRunningAndLatest(query: ExecutionSummaries.RangeQuery) {
-		const currentlyRunningStatuses: ExecutionStatus[] = ['new', 'running'];
-		const allStatuses = new Set(ExecutionStatusList);
-		currentlyRunningStatuses.forEach((status) => allStatuses.delete(status));
-		const notRunningStatuses: ExecutionStatus[] = Array.from(allStatuses);
+	async findLatestCurrentAndCompleted(query: ExecutionSummaries.RangeQuery) {
+		const currentStatuses: ExecutionStatus[] = ['new', 'running'];
 
-		const [activeResult, finishedResult] = await Promise.all([
-			this.findRangeWithCount({ ...query, status: currentlyRunningStatuses }),
+		const completedStatuses = ExecutionStatusList.filter((s) => !currentStatuses.includes(s));
+
+		const [current, completed] = await Promise.all([
 			this.findRangeWithCount({
 				...query,
-				status: notRunningStatuses,
+				status: currentStatuses,
+				order: { top: 'running' }, // ensure limit cannot exclude running
+			}),
+			this.findRangeWithCount({
+				...query,
+				status: completedStatuses,
 				order: { stoppedAt: 'DESC' },
 			}),
 		]);
 
 		return {
-			results: activeResult.results.concat(finishedResult.results),
-			count: finishedResult.count,
-			estimated: finishedResult.estimated,
+			results: current.results.concat(completed.results),
+			count: completed.count, // exclude current from count for pagination
+			estimated: completed.estimated,
 		};
 	}
 
@@ -394,6 +407,13 @@ export class ExecutionService {
 		const execution = await this.executionRepository.findOneBy({ id: executionId });
 
 		if (!execution) throw new NotFoundError('Execution not found');
+
+		if (execution.status === 'new') {
+			this.concurrencyControl.remove({ mode: execution.mode, executionId });
+			await this.executionRepository.cancel(executionId);
+
+			return;
+		}
 
 		const stopResult = await this.activeExecutions.stopExecution(execution.id);
 
@@ -431,5 +451,16 @@ export class ExecutionService {
 			finished: execution.finished,
 			status: execution.status,
 		};
+	}
+
+	async findAllEnqueuedExecutions() {
+		return await this.executionRepository.findMultipleExecutions(
+			{
+				select: ['id', 'mode'],
+				where: { status: 'new' },
+				order: { id: 'ASC' },
+			},
+			{ includeData: true, unflattenData: true },
+		);
 	}
 }

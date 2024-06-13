@@ -38,21 +38,9 @@ export class ExecutionRecoveryService {
 	};
 
 	/**
-	 * Amend key properties of a truncated execution using event logs in the FS.
-	 * Depending on the state of the logs, we may update only the status, or also
-	 * the `stoppedAt` timestamp and some execution data.
-	 *
-	 * In regular mode, logs may or may not be available. In queue mode, since
-	 * workers log to their own FS, only manual exections can be recovered.
+	 * Recover key properties of a truncated execution using event logs.
 	 */
 	async recoverFromLogs(executionId: string, messages: EventMessageTypes[]) {
-		if (messages.length === 0) {
-			await this.executionRepository.markAsCrashed(executionId);
-			this.logInfo('No logs available, marked execution as crashed', { executionId });
-			// @TODO: Run hooks and push to clients
-			return;
-		}
-
 		const amendedExecution = await this.amend(executionId, messages);
 
 		if (!amendedExecution) return null;
@@ -71,10 +59,12 @@ export class ExecutionRecoveryService {
 		return amendedExecution;
 	}
 
+	// ----------------------------------
+	//             private
+	// ----------------------------------
+
 	/**
-	 * Schedule a queue recovery cycle for a batch of in-progress executions. This
-	 * cycle will mark a batch of in-progress executions as `crashed` if persisted
-	 * in DB but absent from the Bull Redis queue.
+	 * Amend `status`, `stoppedAt`, and (if possible) `data` properties of an execution.
 	 */
 	scheduleQueueRecovery(rateMs = this.queueRecovery.rateMs) {
 		if (config.getEnv('executions.mode') === 'regular') return;
@@ -131,6 +121,8 @@ export class ExecutionRecoveryService {
 	}
 
 	private async amend(executionId: string, messages: EventMessageTypes[]) {
+		if (messages.length === 0) return await this.amendWithoutLogs(executionId);
+
 		const { nodeMessages, workflowMessages } = this.toRelevantMessages(messages);
 
 		if (nodeMessages.length === 0) return null;
@@ -188,6 +180,21 @@ export class ExecutionRecoveryService {
 		} as IExecutionResponse;
 	}
 
+	private async amendWithoutLogs(executionId: string) {
+		const exists = await this.executionRepository.exists({ where: { id: executionId } });
+
+		if (!exists) return null;
+
+		await this.executionRepository.markAsCrashed(executionId);
+
+		const execution = await this.executionRepository.findSingleExecution(executionId, {
+			includeData: true,
+			unflattenData: true,
+		});
+
+		return execution ?? null;
+	}
+
 	private toRelevantMessages(messages: EventMessageTypes[]) {
 		return messages.reduce<{
 			nodeMessages: EventMessageTypes[];
@@ -222,6 +229,8 @@ export class ExecutionRecoveryService {
 	}
 
 	private async runHooks(execution: IExecutionResponse) {
+		execution.data ??= { resultData: { runData: {} } };
+
 		await Container.get(InternalHooks).onWorkflowPostExecute(execution.id, execution.workflowData, {
 			data: execution.data,
 			finished: false,
