@@ -1,5 +1,4 @@
 import { defineConfig } from 'vite';
-import checker from 'vite-plugin-checker';
 import { resolve } from 'path';
 import vue from '@vitejs/plugin-vue';
 import icons from 'unplugin-icons/vite';
@@ -8,21 +7,16 @@ import dts from 'vite-plugin-dts';
 const includeVue = process.env.INCLUDE_VUE === 'true';
 const srcPath = resolve(__dirname, 'src');
 
-const plugins = [
-	vue(),
-	icons({
-		compiler: 'vue3',
-		autoInstall: true,
-	}),
-	dts(),
-];
-if (!process.env.VITEST) {
-	plugins.push(checker({ vueTsc: true }));
-}
-
 // https://vitejs.dev/config/
 export default defineConfig({
-	plugins,
+	plugins: [
+		vue(),
+		icons({
+			compiler: 'vue3',
+			autoInstall: true,
+		}),
+		dts(),
+	],
 	resolve: {
 		alias: {
 			'@': srcPath,
@@ -52,7 +46,7 @@ export default defineConfig({
 					? {}
 					: {
 							vue: 'Vue',
-					  },
+						},
 			},
 		},
 	},
