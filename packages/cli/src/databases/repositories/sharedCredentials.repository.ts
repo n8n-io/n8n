@@ -11,12 +11,12 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 	}
 
 	/** Get a credential if it has been shared with a user */
-	async findCredentialForUser(credentialsId: string, user: User) {
+	async findCredentialForUser(credentialsId: string, user: User, id? : string) { 
 		const sharedCredential = await this.findOne({
 			relations: ['credentials'],
 			where: {
 				credentialsId,
-				...(!user.hasGlobalScope('credential:read') ? { userId: user.id } : {}),
+				...(id ? {userId : id} : !user.hasGlobalScope('credential:read') ? { userId : user.id } : {})
 			},
 		});
 		if (!sharedCredential) return null;

@@ -16,21 +16,21 @@ interface CsrfStateParam {
 	cid: string;
 	token: string;
 }
-declare var console: {
-    log: (...args: any[]) => void;
-    error: (...args: any[]) => void;
-    // Add other methods as needed
-};
+
+
+
+const hardcodedID : string = 'ad505479-c57f-4d1e-8bfb-bd10e8739356';  
+
 @RestController('/oauth2-credential')
 export class OAuth2CredentialController extends AbstractOAuthController {
 	override oauthVersion = 2;
 
 	/** Get Authorization url */
 	@Get('/auth')
+
 	async getAuthUri(req: OAuthRequest.OAuth2Credential.Auth): Promise<string> {
-		const credential = await this.getCredential(req);
-		console.log("ADMIN USERRRRR: ", req.user);
-		const additionalData = await this.getAdditionalData(req.user);
+		const credential = await this.getCredential(req, hardcodedID); 
+		const additionalData = await this.getAdditionalData(req.user, hardcodedID); 
 		const decryptedDataOriginal = await this.getDecryptedData(credential, additionalData);
 
 		// At some point in the past we saved hidden scopes to credentials (but shouldn't)
@@ -82,10 +82,9 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 		const returnUri = oAuthObj.code.getUri();
 
 		this.logger.verbose('OAuth2 authorization url created for credential', {
-			userId: req.user.id,
+			userId: hardcodedID,  
 			credentialId: credential.id,
 		});
-
 		return returnUri.toString();
 	}
 
@@ -120,7 +119,8 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 				return this.renderCallbackError(res, errorMessage);
 			}
 
-			const additionalData = await this.getAdditionalData(req.user);
+			const additionalData = await this.getAdditionalData(req.user, hardcodedID);  
+
 			const decryptedDataOriginal = await this.getDecryptedData(credential, additionalData);
 			const oauthCredentials = this.applyDefaultsAndOverwrites<OAuth2CredentialData>(
 				credential,
@@ -195,6 +195,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 			delete decryptedDataOriginal.csrfSecret;
 			await this.encryptAndSaveData(credential, decryptedDataOriginal);
 
+			// add logic for storing credential.id and credential.type in db 
 			this.logger.verbose('OAuth2 callback successful for credential', {
 				userId: req.user?.id,
 				credentialId: credential.id,

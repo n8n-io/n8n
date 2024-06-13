@@ -1059,7 +1059,7 @@ export default defineComponent({
 
 			const receiveMessage = (event: MessageEvent) => {
 				// // TODO: Add check that it came from n8n
-				// if (event.origin !== 'http://example.org:8080') {
+				// if (event.origin !== 'http://localhost:5678') {
 				// 	return;
 				// }
 				if (event.data === 'success') {
@@ -1076,7 +1076,7 @@ export default defineComponent({
 
 					// Close the window
 					if (oauthPopup) {
-						oauthPopup.close();
+						
 					}
 				}
 			};
