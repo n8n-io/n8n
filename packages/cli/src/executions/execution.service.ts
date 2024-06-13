@@ -40,6 +40,7 @@ import type { ExecutionEntity } from '@/databases/entities/ExecutionEntity';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
+import { License } from '@/License';
 
 export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
@@ -90,6 +91,7 @@ export class ExecutionService {
 		private readonly waitTracker: WaitTracker,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly concurrencyControl: ConcurrencyControlService,
+		private readonly license: License,
 	) {}
 
 	async findOne(
@@ -247,6 +249,10 @@ export class ExecutionService {
 			} catch (error) {
 				throw new InternalServerError('Parameter "filter" contained invalid JSON string.');
 			}
+		}
+
+		if (requestFilters?.metadata && !this.license.isAdvancedExecutionFiltersEnabled()) {
+			delete requestFilters.metadata;
 		}
 
 		await this.executionRepository.deleteExecutionsByFilter(requestFilters, sharedWorkflowIds, {
