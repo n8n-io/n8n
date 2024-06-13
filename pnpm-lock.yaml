@@ -140,19 +140,16 @@ importers:
       lodash:
         specifier: 4.17.21
         version: 4.17.21
+      nanoid:
+        specifier: 3.3.6
+        version: 3.3.6
       start-server-and-test:
         specifier: ^2.0.3
         version: 2.0.3
-      uuid:
-        specifier: 8.3.2
-        version: 8.3.2
     devDependencies:
       '@types/lodash':
         specifier: ^4.14.195
         version: 4.14.195
-      '@types/uuid':
-        specifier: ^8.3.2
-        version: 8.3.4
       eslint-plugin-cypress:
         specifier: ^3.3.0
         version: 3.3.0(eslint@8.57.0)
