@@ -7,6 +7,7 @@
 		:filters="filters"
 		:additional-filters-handler="onFilter"
 		:type-props="{ itemSize: 77 }"
+		:loading="loading"
 		@click:add="addCredential"
 		@update:filters="filters = $event"
 	>
@@ -96,6 +97,7 @@ export default defineComponent({
 				type: '',
 			},
 			sourceControlStoreUnsubscribe: () => {},
+			loading: false,
 		};
 	},
 	computed: {
@@ -133,9 +135,6 @@ export default defineComponent({
 		},
 	},
 	watch: {
-		'filters.type'() {
-			this.sendFiltersTelemetry('type');
-		},
 		'$route.params.projectId'() {
 			void this.initialize();
 		},
@@ -161,6 +160,7 @@ export default defineComponent({
 			});
 		},
 		async initialize() {
+			this.loading = true;
 			const isVarsEnabled = useSettingsStore().isEnterpriseFeatureEnabled(
 				EnterpriseEditionFeature.Variables,
 			);
@@ -176,6 +176,7 @@ export default defineComponent({
 			];
 
 			await Promise.all(loadPromises);
+			this.loading = false;
 		},
 		onFilter(
 			resource: ICredentialsResponse,
@@ -198,9 +199,6 @@ export default defineComponent({
 			}
 
 			return matches;
-		},
-		sendFiltersTelemetry(source: string) {
-			(this.$refs.layout as IResourcesListLayoutInstance).sendFiltersTelemetry(source);
 		},
 	},
 });
