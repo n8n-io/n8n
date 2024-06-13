@@ -53,7 +53,7 @@ export async function upload(
 				table_name: tableName,
 			},
 		);
-		existingAssetArray = rowToUpdate[uploadColumnName];
+		existingAssetArray = rowToUpdate[uploadColumnName] ?? [];
 	}
 
 	// Get the binary data and prepare asset for upload
@@ -85,6 +85,7 @@ export async function upload(
 		'',
 		options,
 	);
+	//console.log('uploadAsset: ' + uploadAsset);
 
 	// now step 2 (attaching the asset to a column in a base)
 	for (let c = 0; c < uploadAsset.length; c++) {
@@ -106,11 +107,21 @@ export async function upload(
 		}
 
 		// merge with existing assets in this column or with [] and remove duplicates
-		rowInput[uploadColumnName] = [
-			// @ts-ignore:
-			...new Set([...rowInput[uploadColumnName], ...existingAssetArray]),
-		];
+		//console.log('existingAssetArray: ' + existingAssetArray);
+		//console.log('rowInput_uploadedColumnName: ' + rowInput[uploadColumnName]);
+
+		const mergedArray = existingAssetArray.concat(rowInput[uploadColumnName]);
+
+		// Remove duplicates based on "url", keeping the last one
+		const uniqueAssets = Array.from(
+			// @ts-ignore
+			mergedArray.reduce((map, asset) => map.set(asset.url, asset), new Map()).values(),
+		);
+
+		// Update the rowInput with the unique assets and store into body.row.
+		rowInput[uploadColumnName] = uniqueAssets;
 		body.row = rowInput;
+		//console.log(body.row);
 
 		// attach assets to table row
 		const responseData = await seaTableApiRequest.call(
@@ -120,6 +131,7 @@ export async function upload(
 			'/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/',
 			body,
 		);
+		//console.log('responseData: ' + responseData);
 
 		uploadAsset[c]['upload_successful'] = responseData.success;
 	}
