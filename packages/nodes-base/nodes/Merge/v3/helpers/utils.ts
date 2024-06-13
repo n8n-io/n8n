@@ -363,7 +363,7 @@ export function addSourceField(data: INodeExecutionData[], sourceField: string) 
 }
 
 export const configuredInputs = (parameters: INodeParameters) => {
-	return Array.from({ length: parameters.numberInputs as number }, (_, i) => ({
+	return Array.from({ length: (parameters.numberInputs as number) || 2 }, (_, i) => ({
 		type: `${NodeConnectionType.Main}`,
 		displayName: `Input ${(i + 1).toString()}`,
 	}));
