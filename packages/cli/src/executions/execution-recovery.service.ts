@@ -13,7 +13,7 @@ import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
 
 /**
- * Service for recovering executions truncated by an instance crash.
+ * Service for recovering key properties in executions.
  */
 @Service()
 export class ExecutionRecoveryService {
@@ -23,20 +23,9 @@ export class ExecutionRecoveryService {
 	) {}
 
 	/**
-	 * "Recovery" means (1) amending key properties of a truncated execution,
-	 * (2) running post-execution hooks, and (3) returning the amended execution
-	 * so the UI can reflect the error. "Recovery" does **not** mean injecting
-	 * execution data from the logs (they hold none), or resuming the execution
-	 * from the point of truncation, or re-running the whole execution.
-	 *
-	 * Recovery is only possible if event logs are available in the container.
-	 * In regular mode, logs should but might not be available, e.g. due to container
-	 * being recycled, max log size causing rotation, etc. In queue mode, as workers
-	 * log to their own filesystems, only manual exections can be recovered.
+	 * Recover key properties of a truncated execution using event logs.
 	 */
-	async recover(executionId: string, messages: EventMessageTypes[]) {
-		if (messages.length === 0) return null;
-
+	async recoverFromLogs(executionId: string, messages: EventMessageTypes[]) {
 		const amendedExecution = await this.amend(executionId, messages);
 
 		if (!amendedExecution) return null;
@@ -53,10 +42,16 @@ export class ExecutionRecoveryService {
 		return amendedExecution;
 	}
 
+	// ----------------------------------
+	//             private
+	// ----------------------------------
+
 	/**
-	 * Amend `status`, `stoppedAt`, and `data` of an execution using event log messages.
+	 * Amend `status`, `stoppedAt`, and (if possible) `data` properties of an execution.
 	 */
 	private async amend(executionId: string, messages: EventMessageTypes[]) {
+		if (messages.length === 0) return await this.amendWithoutLogs(executionId);
+
 		const { nodeMessages, workflowMessages } = this.toRelevantMessages(messages);
 
 		if (nodeMessages.length === 0) return null;
@@ -114,9 +109,20 @@ export class ExecutionRecoveryService {
 		} as IExecutionResponse;
 	}
 
-	// ----------------------------------
-	//             private
-	// ----------------------------------
+	private async amendWithoutLogs(executionId: string) {
+		const exists = await this.executionRepository.exists({ where: { id: executionId } });
+
+		if (!exists) return null;
+
+		await this.executionRepository.markAsCrashed(executionId);
+
+		const execution = await this.executionRepository.findSingleExecution(executionId, {
+			includeData: true,
+			unflattenData: true,
+		});
+
+		return execution ?? null;
+	}
 
 	private toRelevantMessages(messages: EventMessageTypes[]) {
 		return messages.reduce<{
@@ -152,6 +158,8 @@ export class ExecutionRecoveryService {
 	}
 
 	private async runHooks(execution: IExecutionResponse) {
+		execution.data ??= { resultData: { runData: {} } };
+
 		await Container.get(InternalHooks).onWorkflowPostExecute(execution.id, execution.workflowData, {
 			data: execution.data,
 			finished: false,
