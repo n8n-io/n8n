@@ -260,7 +260,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return String(executionId);
 	}
 
-	async markAsCrashed(executionIds: string[]) {
+	async markAsCrashed(executionIds: string | string[]) {
+		if (!Array.isArray(executionIds)) executionIds = [executionIds];
+
 		await this.update(
 			{ id: In(executionIds) },
 			{
@@ -268,6 +270,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				stoppedAt: new Date(),
 			},
 		);
+
+		this.logger.info('[Execution Recovery] Marked executions as `crashed`', {
+			executionIds,
+		});
 	}
 
 	/**
