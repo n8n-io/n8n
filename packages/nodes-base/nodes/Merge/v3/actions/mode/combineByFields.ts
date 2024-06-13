@@ -44,47 +44,10 @@ const multipleMatchesProperty: INodeProperties = {
 
 export const properties: INodeProperties[] = [
 	{
-		displayName: 'Fields to Match',
-		name: 'mergeByFields',
-		type: 'fixedCollection',
-		placeholder: 'Add Fields to Match',
-		default: { values: [{ field1: '', field2: '' }] },
-		typeOptions: {
-			multipleValues: true,
-		},
-		options: [
-			{
-				displayName: 'Values',
-				name: 'values',
-				values: [
-					{
-						displayName: 'Input 1 Field',
-						name: 'field1',
-						type: 'string',
-						default: '',
-						// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
-						placeholder: 'e.g. id',
-						hint: ' Enter the field name as text',
-						requiresDataPath: 'single',
-					},
-					{
-						displayName: 'Input 2 Field',
-						name: 'field2',
-						type: 'string',
-						default: '',
-						// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
-						placeholder: 'e.g. id',
-						hint: ' Enter the field name as text',
-						requiresDataPath: 'single',
-					},
-				],
-			},
-		],
-	},
-	{
 		displayName: 'Output Type',
 		name: 'joinMode',
 		type: 'options',
+		description: 'How to select the items to send to output',
 		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 		options: [
 			{
@@ -114,6 +77,70 @@ export const properties: INodeProperties[] = [
 			},
 		],
 		default: 'keepMatches',
+	},
+	{
+		displayName: 'Advanced Setup',
+		name: 'advanced',
+		type: 'boolean',
+		default: false,
+		hint: 'Enable when you are matching fields that are named differently in input 1 and input 2',
+	},
+	{
+		displayName: 'Fields to Match',
+		name: 'fieldsToMatchString',
+		type: 'string',
+		// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
+		placeholder: 'e.g. id, name',
+		default: '',
+		requiresDataPath: 'multiple',
+		displayOptions: {
+			show: {
+				advanced: [false],
+			},
+		},
+	},
+	{
+		displayName: 'Fields to Match',
+		name: 'mergeByFields',
+		type: 'fixedCollection',
+		placeholder: 'Add Fields to Match',
+		default: { values: [{ field1: '', field2: '' }] },
+		typeOptions: {
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				advanced: [true],
+			},
+		},
+		options: [
+			{
+				displayName: 'Values',
+				name: 'values',
+				values: [
+					{
+						displayName: 'Input 1 Field',
+						name: 'field1',
+						type: 'string',
+						default: '',
+						// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
+						placeholder: 'e.g. id',
+						hint: ' Enter the field name as text',
+						requiresDataPath: 'single',
+					},
+					{
+						displayName: 'Input 2 Field',
+						name: 'field2',
+						type: 'string',
+						default: '',
+						// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
+						placeholder: 'e.g. id',
+						hint: ' Enter the field name as text',
+						requiresDataPath: 'single',
+					},
+				],
+			},
+		],
 	},
 	{
 		displayName: 'Output Data From',
@@ -221,7 +248,7 @@ export const properties: INodeProperties[] = [
 
 const displayOptions = {
 	show: {
-		mode: ['combineByFields'],
+		operation: ['combineByFields'],
 	},
 };
 
@@ -229,10 +256,21 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
+	const advanced = this.getNodeParameter('advanced', 0) as boolean;
+	let matchFields;
 
-	const matchFields = checkMatchFieldsInput(
-		this.getNodeParameter('mergeByFields.values', 0, []) as IDataObject[],
-	);
+	if (advanced) {
+		matchFields = this.getNodeParameter('mergeByFields.values', 0, []) as IDataObject[];
+	} else {
+		matchFields = (this.getNodeParameter('fieldsToMatchString', 0, '') as string)
+			.split(',')
+			.map((f) => {
+				const field = f.trim();
+				return { field1: field, field2: field };
+			});
+	}
+
+	matchFields = checkMatchFieldsInput(matchFields);
 
 	const joinMode = this.getNodeParameter('joinMode', 0) as MatchFieldsJoinMode;
 	const outputDataFrom = this.getNodeParameter('outputDataFrom', 0, 'both') as MatchFieldsOutput;

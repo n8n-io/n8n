@@ -1,9 +1,10 @@
-import { NodeConnectionType, NodeHelpers, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 import { preparePairedItemDataArray, updateDisplayOptions } from '@utils/utilities';
 
 import { numberInputsProperty } from '../../helpers/descriptions';
+import { getMergeNodeInputs } from '../../helpers/utils';
 
 export const properties: INodeProperties[] = [
 	numberInputsProperty,
@@ -59,7 +60,7 @@ export const properties: INodeProperties[] = [
 
 const displayOptions = {
 	show: {
-		mode: ['chooseBranch'],
+		operation: ['chooseBranch'],
 	},
 };
 
@@ -68,9 +69,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
 
-	const inputs = NodeHelpers.getConnectionTypes(this.getNodeInputs()).filter(
-		(type) => type === NodeConnectionType.Main,
-	);
+	const inputs = getMergeNodeInputs(this);
 
 	const chooseBranchMode = this.getNodeParameter('chooseBranchMode', 0) as string;
 

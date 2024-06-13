@@ -1,8 +1,9 @@
-import { ApplicationError, NodeConnectionType } from 'n8n-workflow';
+import { ApplicationError, NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import type {
 	GenericValue,
 	IBinaryKeyData,
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeParameters,
 	IPairedItemData,
@@ -367,4 +368,10 @@ export const configuredInputs = (parameters: INodeParameters) => {
 		type: `${NodeConnectionType.Main}`,
 		displayName: `Input ${(i + 1).toString()}`,
 	}));
+};
+
+export const getMergeNodeInputs = (ctx: IExecuteFunctions) => {
+	return NodeHelpers.getConnectionTypes(ctx.getNodeInputs()).filter(
+		(type) => type === NodeConnectionType.Main,
+	);
 };

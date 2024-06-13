@@ -14,9 +14,11 @@ export const numberInputsProperty: INodeProperties = {
 	type: 'number',
 	default: 2,
 	typeOptions: {
-		minValue: 1,
+		minValue: 2,
+		maxValue: 10,
 	},
-	description: 'How many inputs to create',
+	description:
+		'The number of data inputs you want to merge. The node waits for all connected inputs to be executed.',
 };
 
 export const clashHandlingProperties: INodeProperties = {

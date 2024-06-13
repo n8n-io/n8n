@@ -3,7 +3,7 @@ import type { MergeType } from './node.type';
 import * as mode from './mode';
 
 export async function router(this: IExecuteFunctions) {
-	const operation = this.getNodeParameter('mode', 0) as MergeType;
+	const operation = this.getNodeParameter('operation', 0) as MergeType;
 
 	const returnData = await mode[operation].execute.call(this);
 

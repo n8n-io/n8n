@@ -11,8 +11,9 @@ export { append, chooseBranch, combineAll, combineByFields, combineByPosition };
 export const description: INodeProperties[] = [
 	{
 		displayName: 'Mode',
-		name: 'mode',
+		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 		options: [
 			{

@@ -43,7 +43,7 @@ export const properties: INodeProperties[] = [
 
 const displayOptions = {
 	show: {
-		mode: ['combineByPosition'],
+		operation: ['combineByPosition'],
 	},
 };
 
