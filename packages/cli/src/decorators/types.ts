@@ -20,6 +20,8 @@ export interface RateLimit {
 
 export type HandlerName = string;
 
+export type Arg = { type: 'req' | 'res' | 'body' | 'query' } | { type: 'param'; key: string };
+
 export interface AccessScope {
 	scope: Scope;
 	globalOnly: boolean;
@@ -34,6 +36,7 @@ export interface RouteMetadata {
 	rateLimit?: boolean | RateLimit;
 	licenseFeature?: BooleanLicenseFeature;
 	accessScope?: AccessScope;
+	args: Arg[];
 }
 
 export interface ControllerMetadata {

@@ -1,4 +1,5 @@
 import { Container, Service } from 'typedi';
+import type { ZodClass } from 'zod-class';
 import { Router } from 'express';
 import type { Application, Request, Response, RequestHandler } from 'express';
 import { rateLimit as expressRateLimit } from 'express-rate-limit';
@@ -21,6 +22,7 @@ import type {
 	RateLimit,
 	RouteMetadata,
 } from './types';
+import { ApplicationError } from 'n8n-workflow';
 
 const registry = new Map<Controller, ControllerMetadata>();
 
@@ -75,8 +77,36 @@ export class ControllerRegistry {
 		);
 
 		for (const [handlerName, route] of metadata.routes) {
-			const handler = async (req: Request, res: Response) =>
-				await controller[handlerName](req, res);
+			const argTypes = Reflect.getMetadata(
+				'design:paramtypes',
+				controller,
+				handlerName,
+			) as unknown[];
+			// eslint-disable-next-line @typescript-eslint/no-loop-func
+			const handler = async (req: Request, res: Response) => {
+				// TODO: remove this default args once all routes have been migrated
+				let args: unknown[] = [req, res];
+				if (route.args?.length) {
+					args = [];
+					for (let index = 0; index < route.args.length; index++) {
+						const arg = route.args[index];
+						if (arg.type === 'req') args.push(req);
+						else if (arg.type === 'res') args.push(res);
+						else if (arg.type === 'param') args.push(req.params[arg.key]);
+						else if (['body', 'query'].includes(arg.type)) {
+							const paramType = argTypes[index] as ZodClass;
+							if (paramType && 'parse' in paramType) {
+								const output = paramType.safeParse(req[arg.type]);
+								if (output.success) args.push(output.data);
+								else {
+									return res.status(400).json(output.error.errors[0]);
+								}
+							}
+						} else throw new ApplicationError('Unknown arg type: ' + arg.type);
+					}
+				}
+				return await controller[handlerName](...args);
+			};
 
 			router[route.method](
 				route.path,

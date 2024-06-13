@@ -1,50 +1,32 @@
-import express from 'express';
-import { BinaryDataService, FileNotFoundError, isValidNonDefaultMode } from 'n8n-core';
-import { Get, RestController } from '@/decorators';
-import { BinaryDataRequest } from '@/requests';
+import { Response } from 'express';
+import { BinaryDataService, FileNotFoundError } from 'n8n-core';
+import { Get, Query, Res, RestController } from '@/decorators';
+import { GetBinaryData } from '@/dtos/binaryData';
 
 @RestController('/binary-data')
 export class BinaryDataController {
 	constructor(private readonly binaryDataService: BinaryDataService) {}
 
 	@Get('/')
-	async get(req: BinaryDataRequest, res: express.Response) {
-		const { id: binaryDataId, action } = req.query;
-
-		if (!binaryDataId) {
-			return res.status(400).end('Missing binary data ID');
-		}
-
-		if (!binaryDataId.includes(':')) {
-			return res.status(400).end('Missing binary data mode');
-		}
-
-		const [mode] = binaryDataId.split(':');
-
-		if (!isValidNonDefaultMode(mode)) {
-			return res.status(400).end('Invalid binary data mode');
-		}
-
-		let { fileName, mimeType } = req.query;
-
+	async get(@Query query: GetBinaryData, @Res res: Response) {
 		try {
-			if (!fileName || !mimeType) {
+			if (!query.fileName || !query.mimeType) {
 				try {
-					const metadata = await this.binaryDataService.getMetadata(binaryDataId);
-					fileName = metadata.fileName;
-					mimeType = metadata.mimeType;
+					const metadata = await this.binaryDataService.getMetadata(query.id);
+					query.fileName = metadata.fileName;
+					query.mimeType = metadata.mimeType;
 					res.setHeader('Content-Length', metadata.fileSize);
 				} catch {}
 			}
 
-			if (mimeType) res.setHeader('Content-Type', mimeType);
+			if (query.mimeType) res.setHeader('Content-Type', query.mimeType);
 
-			if (action === 'download' && fileName) {
-				const encodedFilename = encodeURIComponent(fileName);
+			if (query.action === 'download' && query.fileName) {
+				const encodedFilename = encodeURIComponent(query.fileName);
 				res.setHeader('Content-Disposition', `attachment; filename="${encodedFilename}"`);
 			}
 
-			return await this.binaryDataService.getAsStream(binaryDataId);
+			return await this.binaryDataService.getAsStream(query.id);
 		} catch (error) {
 			if (error instanceof FileNotFoundError) return res.writeHead(404).end();
 			else throw error;

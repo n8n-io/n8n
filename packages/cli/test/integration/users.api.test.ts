@@ -672,9 +672,6 @@ describe('PATCH /users/:id/role', () => {
 		])('%s', async (_, payload) => {
 			const response = await adminAgent.patch(`/users/${member.id}/role`).send(payload);
 			expect(response.statusCode).toBe(400);
-			expect(response.body.message).toBe(
-				'newRoleName must be one of the following values: global:admin, global:member',
-			);
 		});
 	});
 

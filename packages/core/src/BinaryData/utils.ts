@@ -5,7 +5,7 @@ import concatStream from 'concat-stream';
 
 export const CONFIG_MODES = ['default', 'filesystem', 's3'] as const;
 
-const STORED_MODES = ['filesystem', 'filesystem-v2', 's3'] as const;
+export const STORED_MODES = ['filesystem', 'filesystem-v2', 's3'] as const;
 
 export function areConfigModes(modes: string[]): modes is BinaryData.ConfigMode[] {
 	return modes.every((m) => CONFIG_MODES.includes(m as BinaryData.ConfigMode));

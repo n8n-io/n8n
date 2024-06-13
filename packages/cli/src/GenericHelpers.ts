@@ -3,17 +3,10 @@ import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
-import type { UserRoleChangePayload, UserUpdatePayload } from '@/requests';
 import { BadRequestError } from './errors/response-errors/bad-request.error';
 
 export async function validateEntity(
-	entity:
-		| WorkflowEntity
-		| CredentialsEntity
-		| TagEntity
-		| User
-		| UserUpdatePayload
-		| UserRoleChangePayload,
+	entity: WorkflowEntity | CredentialsEntity | TagEntity | User,
 ): Promise<void> {
 	const errors = await validate(entity);
 

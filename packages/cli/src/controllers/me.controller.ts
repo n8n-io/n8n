@@ -1,19 +1,12 @@
-import validator from 'validator';
-import { plainToInstance } from 'class-transformer';
 import { type RequestHandler, Response } from 'express';
 import { randomBytes } from 'crypto';
 
 import { AuthService } from '@/auth/auth.service';
-import { Delete, Get, Patch, Post, RestController } from '@/decorators';
+import { Body, Delete, Get, Patch, Post, Req, Res, RestController } from '@/decorators';
+import { UserUpdateDTO } from '@/dtos/user/user.update';
 import { PasswordUtility } from '@/services/password.utility';
-import { validateEntity } from '@/GenericHelpers';
 import type { User } from '@db/entities/User';
-import {
-	AuthenticatedRequest,
-	MeRequest,
-	UserSettingsUpdatePayload,
-	UserUpdatePayload,
-} from '@/requests';
+import { AuthenticatedRequest, MeRequest } from '@/requests';
 import type { PublicUser } from '@/Interfaces';
 import { isSamlLicensedAndEnabled } from '@/sso/saml/samlHelpers';
 import { UserService } from '@/services/user.service';
@@ -24,6 +17,8 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { isApiEnabled } from '@/PublicApi';
 import { EventRelay } from '@/eventbus/event-relay.service';
+import { PasswordUpdateDTO } from '@/dtos/user/password.update';
+import { SettingsUpdateDTO } from '@/dtos/user/settings.update';
 
 export const isApiEnabledMiddleware: RequestHandler = (_, res, next) => {
 	if (isApiEnabled()) {
@@ -50,28 +45,13 @@ export class MeController {
 	 * Update the logged-in user's properties, except password.
 	 */
 	@Patch('/')
-	async updateCurrentUser(req: MeRequest.UserUpdate, res: Response): Promise<PublicUser> {
+	async updateCurrentUser(
+		@Req req: AuthenticatedRequest,
+		@Body payload: UserUpdateDTO,
+		@Res res: Response,
+	): Promise<PublicUser> {
 		const { id: userId, email: currentEmail } = req.user;
-		const payload = plainToInstance(UserUpdatePayload, req.body, { excludeExtraneousValues: true });
-
 		const { email } = payload;
-		if (!email) {
-			this.logger.debug('Request to update user email failed because of missing email in payload', {
-				userId,
-				payload,
-			});
-			throw new BadRequestError('Email is mandatory');
-		}
-
-		if (!validator.isEmail(email)) {
-			this.logger.debug('Request to update user email failed because of invalid email in payload', {
-				userId,
-				invalidEmail: email,
-			});
-			throw new BadRequestError('Invalid email address');
-		}
-
-		await validateEntity(payload);
 
 		// If SAML is enabled, we don't allow the user to change their email address
 		if (isSamlLicensedAndEnabled()) {
@@ -113,9 +93,13 @@ export class MeController {
 	 * Update the logged-in user's password.
 	 */
 	@Patch('/password')
-	async updatePassword(req: MeRequest.Password, res: Response) {
+	async updatePassword(
+		@Req req: AuthenticatedRequest,
+		@Body payload: PasswordUpdateDTO,
+		@Res res: Response,
+	) {
 		const { user } = req;
-		const { currentPassword, newPassword } = req.body;
+		const { currentPassword, newPassword } = payload;
 
 		// If SAML is enabled, we don't allow the user to change their email address
 		if (isSamlLicensedAndEnabled()) {
@@ -125,10 +109,6 @@ export class MeController {
 			throw new BadRequestError(
 				'With SAML enabled, users need to use their SAML provider to change passwords',
 			);
-		}
-
-		if (typeof currentPassword !== 'string' || typeof newPassword !== 'string') {
-			throw new BadRequestError('Invalid payload.');
 		}
 
 		if (!user.password) {
@@ -229,10 +209,10 @@ export class MeController {
 	 * Update the logged-in user's settings.
 	 */
 	@Patch('/settings')
-	async updateCurrentUserSettings(req: MeRequest.UserSettingsUpdate): Promise<User['settings']> {
-		const payload = plainToInstance(UserSettingsUpdatePayload, req.body, {
-			excludeExtraneousValues: true,
-		});
+	async updateCurrentUserSettings(
+		@Req req: AuthenticatedRequest,
+		@Body payload: SettingsUpdateDTO,
+	): Promise<User['settings']> {
 		const { id } = req.user;
 
 		await this.userService.updateSettings(id, payload);
