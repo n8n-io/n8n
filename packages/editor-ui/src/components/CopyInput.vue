@@ -21,72 +21,49 @@
 	</div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script setup lang="ts">
 import { useToast } from '@/composables/useToast';
-import { i18n } from '@/plugins/i18n';
 import { useClipboard } from '@/composables/useClipboard';
+import { i18n } from '@/plugins/i18n';
 
-export default defineComponent({
-	props: {
-		label: {
-			type: String,
-		},
-		hint: {
-			type: String,
-		},
-		value: {
-			type: String,
-		},
-		copyButtonText: {
-			type: String,
-			default(): string {
-				return i18n.baseText('generic.copy');
-			},
-		},
-		toastTitle: {
-			type: String,
-			default(): string {
-				return i18n.baseText('generic.copiedToClipboard');
-			},
-		},
-		toastMessage: {
-			type: String,
-		},
-		collapse: {
-			type: Boolean,
-			default: false,
-		},
-		size: {
-			type: String,
-			default: 'large',
-		},
-		redactValue: {
-			type: Boolean,
-			default: false,
-		},
+const props = withDefaults(
+	defineProps<{
+		label?: string;
+		hint?: string;
+		value?: string;
+		copyButtonText?: string;
+		toastTitle?: string;
+		toastMessage?: string;
+		collapse?: boolean;
+		size?: string;
+		redactValue?: boolean;
+	}>(),
+	{
+		copyButtonText: i18n.baseText('generic.copy'),
+		toastTitle: i18n.baseText('generic.copiedToClipboard'),
+		collapse: false,
+		size: 'large',
+		redactValue: false,
 	},
-	setup() {
-		const clipboard = useClipboard();
+);
 
-		return {
-			clipboard,
-			...useToast(),
-		};
-	},
-	methods: {
-		copy(): void {
-			this.$emit('copy');
-			void this.clipboard.copy(this.value ?? '');
+const emit = defineEmits<{
+	(event: 'copy'): void;
+}>();
 
-			this.showMessage({
-				title: this.toastTitle,
-				message: this.toastMessage,
-				type: 'success',
-			});
-		},
-	},
-});
+const clipboard = useClipboard();
+const { showMessage } = useToast();
+
+const copy = () => {
+	emit('copy');
+	void clipboard.copy(props.value ?? '');
+
+	showMessage({
+		title: props.toastTitle,
+		message: props.toastMessage,
+		type: 'success',
+	});
+};
 </script>
 
 <style lang="scss" module>

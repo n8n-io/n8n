@@ -21,47 +21,36 @@
 	</div>
 </template>
 
-<script lang="ts">
-import { type PropType, defineComponent } from 'vue';
-
+<script lang="ts" setup>
+import { defineProps, defineEmits } from 'vue';
+import type { IFormBoxConfig } from '@/Interface';
 import Logo from '@/components/Logo.vue';
 import SSOLogin from '@/components/SSOLogin.vue';
-import type { IFormBoxConfig } from '@/Interface';
 
-export default defineComponent({
-	name: 'AuthView',
-	components: {
-		Logo,
-		SSOLogin,
-	},
-	props: {
-		form: {
-			type: Object as PropType<IFormBoxConfig>,
-		},
-		formLoading: {
-			type: Boolean,
-			default: false,
-		},
-		subtitle: {
-			type: String,
-		},
-		withSso: {
-			type: Boolean,
-			default: false,
-		},
-	},
-	methods: {
-		onUpdate(e: { name: string; value: string }) {
-			this.$emit('update', e);
-		},
-		onSubmit(values: { [key: string]: string }) {
-			this.$emit('submit', values);
-		},
-		onSecondaryClick() {
-			this.$emit('secondaryClick');
-		},
-	},
-});
+defineProps<{
+	form: IFormBoxConfig;
+	formLoading: boolean;
+	subtitle?: string;
+	withSso: boolean;
+}>();
+
+const emit = defineEmits<{
+	(event: 'update', e: { name: string; value: string }): void;
+	(event: 'submit', values: { [key: string]: string }): void;
+	(event: 'secondaryClick'): void;
+}>();
+
+const onUpdate = (e: { name: string; value: string }) => {
+	emit('update', e);
+};
+
+const onSubmit = (values: { [key: string]: string }) => {
+	emit('submit', values);
+};
+
+const onSecondaryClick = () => {
+	emit('secondaryClick');
+};
 </script>
 
 <style lang="scss" module>

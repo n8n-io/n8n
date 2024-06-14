@@ -10,55 +10,43 @@
 	</n8n-text>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script setup lang="ts">
+import { computed, onMounted, ref, useCssModule } from 'vue';
 import { sanitizeHtml } from '@/utils/htmlUtils';
 
-export default defineComponent({
-	name: 'InputHint',
-	props: {
-		hint: {
-			type: String,
-		},
-		highlight: {
-			type: Boolean,
-		},
-		singleLine: {
-			type: Boolean,
-		},
-		renderHTML: {
-			type: Boolean,
-			default: false,
-		},
-	},
-	computed: {
-		classes() {
-			return {
-				[this.$style.singleline]: this.singleLine,
-				[this.$style.highlight]: this.highlight,
-			};
-		},
-		simplyText(): string {
-			if (this.hint) {
-				return String(this.hint)
-					.replace(/&/g, '&amp;') // allows us to keep spaces at the beginning of an expression
-					.replace(/</g, '&lt;') // prevent XSS exploits since we are rendering HTML
-					.replace(/>/g, '&gt;')
-					.replace(/"/g, '&quot;')
-					.replace(/ /g, '&nbsp;');
-			}
+const props = defineProps<{
+	hint?: string;
+	highlight?: boolean;
+	singleLine?: boolean;
+	renderHTML?: boolean;
+}>();
 
-			return '';
-		},
-	},
-	mounted() {
-		if (this.$refs.hint) {
-			(this.$refs.hint as Element).querySelectorAll('a').forEach((a) => (a.target = '_blank'));
-		}
-	},
-	methods: {
-		sanitizeHtml,
-	},
+const $style = useCssModule();
+
+const classes = computed(() => ({
+	[$style.singleline]: props.singleLine,
+	[$style.highlight]: props.highlight,
+}));
+
+const simplyText = computed((): string => {
+	if (props.hint) {
+		return String(props.hint)
+			.replace(/&/g, '&amp;') // allows us to keep spaces at the beginning of an expression
+			.replace(/</g, '&lt;') // prevent XSS exploits since we are rendering HTML
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;')
+			.replace(/ /g, '&nbsp;');
+	}
+
+	return '';
+});
+
+const hintRef = ref<HTMLElement | null>(null);
+
+onMounted(() => {
+	if (hintRef.value) {
+		hintRef.value.querySelectorAll('a').forEach((a) => (a.target = '_blank'));
+	}
 });
 </script>
 

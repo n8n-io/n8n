@@ -41,34 +41,32 @@
 	</Draggable>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script setup lang="ts">
+import { defineEmits, defineProps } from 'vue';
 import Draggable from './Draggable.vue';
 
-export default defineComponent({
-	components: {
-		Draggable,
-	},
-	props: {
-		canMoveRight: {
-			type: Boolean,
-		},
-		canMoveLeft: {
-			type: Boolean,
-		},
-	},
-	methods: {
-		onDrag(e: { x: number; y: number }) {
-			this.$emit('drag', e);
-		},
-		onDragStart() {
-			this.$emit('dragstart');
-		},
-		onDragEnd() {
-			this.$emit('dragend');
-		},
-	},
-});
+const emit = defineEmits<{
+	(event: 'drag', e: { x: number; y: number }): void;
+	(event: 'dragstart'): void;
+	(event: 'dragend'): void;
+}>();
+
+defineProps<{
+	canMoveRight: boolean;
+	canMoveLeft: boolean;
+}>();
+
+const onDrag = (e: { x: number; y: number }) => {
+	emit('drag', e);
+};
+
+const onDragStart = () => {
+	emit('dragstart');
+};
+
+const onDragEnd = () => {
+	emit('dragend');
+};
 </script>
 
 <style lang="scss" module>

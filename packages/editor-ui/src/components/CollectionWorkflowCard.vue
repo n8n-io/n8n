@@ -1,7 +1,7 @@
 <template>
 	<n8n-card :class="$style.card" v-bind="$attrs">
 		<template v-if="!loading" #header>
-			<span :class="$style.title" v-text="title" />
+			<span :class="$style.title" v-text="title"></span>
 		</template>
 		<n8n-loading :loading="loading" :rows="3" variant="p" />
 		<template v-if="!loading" #footer>
@@ -10,20 +10,13 @@
 	</n8n-card>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script setup lang="ts">
+import { defineProps } from 'vue';
 
-export default defineComponent({
-	name: 'Card',
-	props: {
-		loading: {
-			type: Boolean,
-		},
-		title: {
-			type: String,
-		},
-	},
-});
+defineProps<{
+	loading: boolean;
+	title: string;
+}>();
 </script>
 
 <style lang="scss" module>

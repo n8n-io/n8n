@@ -1,28 +1,28 @@
 <template>
-	<el-tag :type="theme" :disable-transitions="true" :class="$style.container">
+	<el-tag :type="props.theme" :disable-transitions="true" :class="$style.container">
 		<font-awesome-icon
-			:icon="theme === 'success' ? 'check-circle' : 'exclamation-triangle'"
-			:class="theme === 'success' ? $style.icon : $style.dangerIcon"
+			:icon="props.theme === 'success' ? 'check-circle' : 'exclamation-triangle'"
+			:class="props.theme === 'success' ? $style.icon : $style.dangerIcon"
 		/>
 		<div :class="$style.banner">
 			<div :class="$style.content">
 				<div>
-					<span :class="theme === 'success' ? $style.message : $style.dangerMessage">
-						{{ message }}&nbsp;
+					<span :class="props.theme === 'success' ? $style.message : $style.dangerMessage">
+						{{ props.message }}&nbsp;
 					</span>
-					<n8n-link v-if="details && !expanded" :bold="true" size="small" @click="expand">
+					<n8n-link v-if="props.details && !expanded" :bold="true" size="small" @click="expand">
 						<span :class="$style.moreDetails">More details</span>
 					</n8n-link>
 				</div>
 			</div>
 
-			<slot v-if="$slots.button" name="button" />
+			<slot v-if="slots.button" name="button" />
 			<n8n-button
-				v-else-if="buttonLabel"
-				:label="buttonLoading && buttonLoadingLabel ? buttonLoadingLabel : buttonLabel"
-				:title="buttonTitle"
-				:type="theme"
-				:loading="buttonLoading"
+				v-else-if="props.buttonLabel"
+				:label="props.buttonLoading && props.buttonLoadingLabel ? props.buttonLoadingLabel : props.buttonLabel"
+				:title="props.buttonTitle"
+				:type="props.theme"
+				:loading="props.buttonLoading"
 				size="small"
 				outline
 				@click.stop="onClick"
@@ -30,56 +30,39 @@
 		</div>
 
 		<div v-if="expanded" :class="$style.details">
-			{{ details }}
+			{{ props.details }}
 		</div>
 	</el-tag>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script lang="ts" setup>
+import { ref } from 'vue';
+import { defineProps, defineEmits, useSlots } from 'vue';
 
-export default defineComponent({
-	name: 'Banner',
-	props: {
-		theme: {
-			type: String,
-			validator: (value: string): boolean => ['success', 'danger'].indexOf(value) !== -1,
-		},
-		message: {
-			type: String,
-		},
-		buttonLabel: {
-			type: String,
-		},
-		buttonLoadingLabel: {
-			type: String,
-		},
-		buttonTitle: {
-			type: String,
-		},
-		details: {
-			type: String,
-		},
-		buttonLoading: {
-			type: Boolean,
-			default: false,
-		},
-	},
-	data() {
-		return {
-			expanded: false,
-		};
-	},
-	methods: {
-		expand() {
-			this.expanded = true;
-		},
-		onClick() {
-			this.expanded = false;
-			this.$emit('click');
-		},
-	},
-});
+interface Props {
+	theme: 'success' | 'danger';
+	message: string;
+	buttonLabel?: string;
+	buttonLoadingLabel?: string;
+	buttonTitle?: string;
+	details?: string;
+	buttonLoading?: boolean;
+}
+
+const props = defineProps<Props>();
+const emit = defineEmits(['click']);
+const slots = useSlots();
+
+const expanded = ref(false);
+
+function expand() {
+	expanded.value = true;
+}
+
+function onClick() {
+	expanded.value = false;
+	emit('click');
+}
 </script>
 
 <style module lang="scss">

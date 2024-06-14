@@ -14,22 +14,13 @@
 	</div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script setup lang="ts">
+import { defineProps } from 'vue';
 import GoBackButton from '@/components/GoBackButton.vue';
 
-export default defineComponent({
-	name: 'TemplatesView',
-	components: {
-		GoBackButton,
-	},
-	props: {
-		goBackEnabled: {
-			type: Boolean,
-			default: false,
-		},
-	},
-});
+defineProps<{
+	goBackEnabled?: boolean;
+}>();
 </script>
 
 <style lang="scss" module>

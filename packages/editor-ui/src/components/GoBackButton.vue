@@ -5,26 +5,21 @@
 	</div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script lang="ts" setup>
+import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { VIEWS } from '@/constants';
 
-export default defineComponent({
-	name: 'GoBackButton',
-	data() {
-		return {
-			routeHasHistory: false,
-		};
-	},
-	mounted() {
-		window.history.state ? (this.routeHasHistory = true) : (this.routeHasHistory = false);
-	},
-	methods: {
-		navigateTo() {
-			if (this.routeHasHistory) this.$router.go(-1);
-			else void this.$router.push({ name: VIEWS.TEMPLATES });
-		},
-	},
+const routeHasHistory = ref(false);
+const router = useRouter();
+
+const navigateTo = () => {
+	if (routeHasHistory.value) router.go(-1);
+	else void router.push({ name: VIEWS.TEMPLATES });
+};
+
+onMounted(() => {
+	routeHasHistory.value = !!window.history.state;
 });
 </script>
 

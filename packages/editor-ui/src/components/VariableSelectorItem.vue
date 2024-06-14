@@ -40,11 +40,11 @@
 					:key="option.key"
 					:item="option"
 					:extend-all="extendAll"
-					:allow-parent-select="option.allowParentSelect"
+					:allow-parent-select="option.allowParentSelect === true"
 					:redact-values="redactValues"
 					class="sub-level"
 					@item-selected="forwardItemSelected"
-				></variable-selector-item>
+				/>
 			</div>
 		</div>
 		<div v-else class="value clickable" @click="selectItem(item)">
@@ -59,86 +59,91 @@
 	</div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-import type { IVariableSelectorOption, IVariableItemSelected } from '@/Interface';
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue';
+import type { IVariableItemSelected, IVariableSelectorOption } from '@/Interface';
+import { useI18n } from '@/composables/useI18n';
 
-export default defineComponent({
-	name: 'VariableSelectorItem',
-	props: ['allowParentSelect', 'extendAll', 'item', 'redactValues'],
-	data() {
-		return {
-			extended: false,
-		};
-	},
-	computed: {
-		itemAddOperations() {
-			const returnOptions = [
-				{
-					command: 'raw',
-					displayName: 'Raw value',
-				},
-			];
-			if (this.item.dataType === 'array') {
-				returnOptions.push({
-					command: 'arrayLength',
-					displayName: 'Length',
-				});
-				returnOptions.push({
-					command: 'arrayValues',
-					displayName: 'Values',
-				});
-			} else if (this.item.dataType === 'object') {
-				returnOptions.push({
-					command: 'objectKeys',
-					displayName: 'Keys',
-				});
-				returnOptions.push({
-					command: 'objectValues',
-					displayName: 'Values',
-				});
-			}
+const props = defineProps<{
+	allowParentSelect?: boolean;
+	extendAll: boolean;
+	item: IVariableSelectorOption;
+	redactValues: boolean;
+}>();
 
-			return returnOptions;
-		},
-	},
-	mounted() {
-		if (this.extended) return;
+const emit = defineEmits<{
+	(event: 'itemSelected', item: IVariableItemSelected): void;
+}>();
 
-		const shouldAutoExtend =
-			[
-				this.$locale.baseText('variableSelectorItem.currentNode'),
-				this.$locale.baseText('variableSelectorItem.inputData'),
-				this.$locale.baseText('variableSelectorItem.binary'),
-				this.$locale.baseText('variableSelectorItem.json'),
-			].includes(this.item.name) && this.item.key === undefined;
+const i18n = useI18n();
+const extended = ref(false);
 
-		if (shouldAutoExtend) {
-			this.extended = true;
-		}
-	},
-	methods: {
-		optionSelected(command: string, item: IVariableSelectorOption) {
-			// By default it is raw
-			let variable = item.key;
-			if (command === 'arrayValues') {
-				variable = `${item.key}.join(', ')`;
-			} else if (command === 'arrayLength') {
-				variable = `${item.key}.length`;
-			} else if (command === 'objectKeys') {
-				variable = `Object.keys(${item.key}).join(', ')`;
-			} else if (command === 'objectValues') {
-				variable = `Object.values(${item.key}).join(', ')`;
-			}
-			this.$emit('itemSelected', { variable });
+const itemAddOperations = computed(() => {
+	const returnOptions = [
+		{
+			command: 'raw',
+			displayName: 'Raw value',
 		},
-		selectItem(item: IVariableSelectorOption) {
-			this.$emit('itemSelected', { variable: item.key });
-		},
-		forwardItemSelected(eventData: IVariableItemSelected) {
-			this.$emit('itemSelected', eventData);
-		},
-	},
+	];
+	if (props.item.dataType === 'array') {
+		returnOptions.push({
+			command: 'arrayLength',
+			displayName: 'Length',
+		});
+		returnOptions.push({
+			command: 'arrayValues',
+			displayName: 'Values',
+		});
+	} else if (props.item.dataType === 'object') {
+		returnOptions.push({
+			command: 'objectKeys',
+			displayName: 'Keys',
+		});
+		returnOptions.push({
+			command: 'objectValues',
+			displayName: 'Values',
+		});
+	}
+
+	return returnOptions;
+});
+function optionSelected(command: string, item: IVariableSelectorOption) {
+	// By default it is raw
+	let variable = item.key ?? '';
+	if (command === 'arrayValues') {
+		variable = `${item.key}.join(', ')`;
+	} else if (command === 'arrayLength') {
+		variable = `${item.key}.length`;
+	} else if (command === 'objectKeys') {
+		variable = `Object.keys(${item.key}).join(', ')`;
+	} else if (command === 'objectValues') {
+		variable = `Object.values(${item.key}).join(', ')`;
+	}
+	emit('itemSelected', { variable });
+}
+
+function selectItem(item: IVariableSelectorOption) {
+	emit('itemSelected', { variable: item.key ?? '' });
+}
+
+function forwardItemSelected(eventData: IVariableItemSelected) {
+	emit('itemSelected', eventData);
+}
+
+onMounted(() => {
+	if (extended.value) return;
+
+	const shouldAutoExtend =
+		[
+			i18n.baseText('variableSelectorItem.currentNode'),
+			i18n.baseText('variableSelectorItem.inputData'),
+			i18n.baseText('variableSelectorItem.binary'),
+			i18n.baseText('variableSelectorItem.json'),
+		].includes(props.item.name) && props.item.key === undefined;
+
+	if (shouldAutoExtend) {
+		extended.value = true;
+	}
 });
 </script>
 

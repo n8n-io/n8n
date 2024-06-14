@@ -5,27 +5,24 @@
 	</div>
 </template>
 
-<script lang="ts">
-import { type PropType, defineComponent } from 'vue';
-import type { EnterpriseEditionFeatureValue } from '@/Interface';
-import { mapStores } from 'pinia';
+<script lang="ts" setup>
+import { computed } from 'vue';
 import { useSettingsStore } from '@/stores/settings.store';
+import type { PropType } from 'vue';
+import type { EnterpriseEditionFeatureValue } from '@/Interface';
 
-export default defineComponent({
-	name: 'EnterpriseEdition',
-	props: {
-		features: {
-			type: Array as PropType<EnterpriseEditionFeatureValue[]>,
-			default: () => [],
-		},
+const props = defineProps({
+	features: {
+		type: Array as PropType<EnterpriseEditionFeatureValue[]>,
+		default: () => [],
 	},
-	computed: {
-		...mapStores(useSettingsStore),
-		canAccess(): boolean {
-			return this.features.reduce((acc: boolean, feature) => {
-				return acc && !!this.settingsStore.isEnterpriseFeatureEnabled(feature);
-			}, true);
-		},
-	},
+});
+
+const settingsStore = useSettingsStore();
+
+const canAccess = computed(() => {
+	return props.features.reduce((acc: boolean, feature) => {
+		return acc && !!settingsStore.isEnterpriseFeatureEnabled(feature);
+	}, true);
 });
 </script>
