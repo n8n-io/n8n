@@ -23,7 +23,7 @@ const CREDENTIAL_LIST_ITEM_ACTIONS = {
 const props = withDefaults(
 	defineProps<{
 		data: ICredentialsResponse;
-		readOnly: boolean;
+		readOnly?: boolean;
 	}>(),
 	{
 		data: () => ({
