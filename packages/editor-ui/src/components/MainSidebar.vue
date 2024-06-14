@@ -111,7 +111,7 @@ import GiftNotificationIcon from './GiftNotificationIcon.vue';
 
 import { useMessage } from '@/composables/useMessage';
 import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
-import { userHelpers } from '@/mixins/userHelpers';
+import { useUserHelpers } from '@/composables/useUserHelpers';
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
@@ -141,7 +141,6 @@ export default defineComponent({
 		BecomeTemplateCreatorCta,
 		ProjectNavigation,
 	},
-	mixins: [userHelpers],
 	setup() {
 		const externalHooks = useExternalHooks();
 		const { callDebounced } = useDebounce();
@@ -150,6 +149,7 @@ export default defineComponent({
 			externalHooks,
 			callDebounced,
 			...useMessage(),
+			...useUserHelpers(),
 		};
 	},
 	data() {

@@ -24,7 +24,7 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
-import { userHelpers } from '@/mixins/userHelpers';
+import { useUserHelpers } from '@/composables/useUserHelpers';
 import type { IFakeDoor } from '@/Interface';
 import type { IMenuItem } from 'n8n-design-system';
 import type { BaseTextKey } from '@/plugins/i18n';
@@ -35,7 +35,11 @@ import { hasPermission } from '@/utils/rbac/permissions';
 
 export default defineComponent({
 	name: 'SettingsSidebar',
-	mixins: [userHelpers],
+	setup() {
+		return {
+			...useUserHelpers(),
+		};
+	},
 	computed: {
 		...mapStores(useRootStore, useSettingsStore, useUIStore),
 		settingsFakeDoorFeatures(): IFakeDoor[] {
