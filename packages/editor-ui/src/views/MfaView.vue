@@ -89,6 +89,8 @@ const props = defineProps({
 	reportError: Boolean,
 });
 
+// #endregion
+
 // ---------------------------------------------------------------------------
 // #region Reactive properties
 // ---------------------------------------------------------------------------
@@ -107,11 +109,15 @@ const { reportError } = toRefs(props);
 
 const i18 = useI18n();
 
+// #endregion
+
 // ---------------------------------------------------------------------------
 // #region Emit
 // ---------------------------------------------------------------------------
 
 const emit = defineEmits(['onFormChanged', 'onBackClick', 'submit']);
+
+// #endregion
 
 // ---------------------------------------------------------------------------
 // #region Methods
@@ -210,6 +216,8 @@ const onSaveClick = () => {
 	formBus.value.emit('submit');
 };
 
+// #endregion
+
 // ---------------------------------------------------------------------------
 // #region Lifecycle hooks
 // ---------------------------------------------------------------------------
@@ -217,6 +225,8 @@ const onSaveClick = () => {
 onMounted(() => {
 	formInputs.value = [mfaTokenFieldWithDefaults()];
 });
+
+// #endregion
 </script>
 
 <style lang="scss" module>
