@@ -1,50 +1,40 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
-import type { PropType } from 'vue';
 import N8nFormInput from '../N8nFormInput';
-import type { IFormInput, Validatable } from '../../types';
+import type { IFormInput } from '../../types';
 import ResizeObserver from '../ResizeObserver';
 import type { EventBus } from '../../utils';
 import { createEventBus } from '../../utils';
 
-const props = defineProps({
-	inputs: {
-		type: Array as PropType<IFormInput[]>,
-		default: (): IFormInput[] => [],
-	},
-	eventBus: {
-		type: Object as PropType<EventBus>,
-		default: createEventBus,
-	},
-	columnView: {
-		type: Boolean,
-		default: false,
-	},
-	verticalSpacing: {
-		type: String,
-		default: '',
-		validator: (value: string): boolean => ['', 'xs', 's', 'm', 'm', 'l', 'xl'].includes(value),
-	},
-	teleported: {
-		type: Boolean,
-		default: true,
-	},
-	tagSize: {
-		type: String as PropType<'small' | 'medium'>,
-		default: 'small',
-		validator: (value: string): boolean => ['small', 'medium'].includes(value),
-	},
+export type FormInputsProps = {
+	inputs?: IFormInput[];
+	eventBus?: EventBus;
+	columnView?: boolean;
+	verticalSpacing?: '' | 'xs' | 's' | 'm' | 'l' | 'xl';
+	teleported?: boolean;
+	tagSize?: 'small' | 'medium';
+};
+
+type Value = string | number | boolean | null | undefined;
+
+const props = withDefaults(defineProps<FormInputsProps>(), {
+	inputs: () => [],
+	eventBus: createEventBus,
+	columnView: false,
+	verticalSpacing: '',
+	teleported: true,
+	tagSize: 'small',
 });
 
 const emit = defineEmits({
-	update: (_: { name: string; value: Validatable }) => true,
-	'update:modelValue': (_: Record<string, Validatable>) => true,
-	submit: (_: Record<string, Validatable>) => true,
+	update: (_: { name: string; value: Value }) => true,
+	'update:modelValue': (_: Record<string, Value>) => true,
+	submit: (_: Record<string, Value>) => true,
 	ready: (_: boolean) => true,
 });
 
 const showValidationWarnings = ref(false);
-const values = reactive<Record<string, Validatable>>({});
+const values = reactive<Record<string, Value>>({});
 const validity = ref<Record<string, boolean>>({});
 
 const filteredInputs = computed(() => {
@@ -61,9 +51,9 @@ watch(isReadyToSubmit, (ready) => {
 	emit('ready', ready);
 });
 
-function onUpdateModelValue(name: string, value: unknown) {
-	values[name] = value as Validatable;
-	emit('update', { name, value: value as Validatable });
+function onUpdateModelValue(name: string, value: Value) {
+	values[name] = value;
+	emit('update', { name, value });
 	emit('update:modelValue', values);
 }
 
@@ -81,15 +71,12 @@ function onSubmit() {
 		return;
 	}
 
-	const toSubmit = filteredInputs.value.reduce<Record<string, Validatable>>(
-		(valuesToSubmit, input) => {
-			if (values[input.name]) {
-				valuesToSubmit[input.name] = values[input.name];
-			}
-			return valuesToSubmit;
-		},
-		{},
-	);
+	const toSubmit = filteredInputs.value.reduce<Record<string, Value>>((valuesToSubmit, input) => {
+		if (values[input.name]) {
+			valuesToSubmit[input.name] = values[input.name];
+		}
+		return valuesToSubmit;
+	}, {});
 
 	emit('submit', toSubmit);
 }
@@ -136,7 +123,7 @@ onMounted(() => {
 						:show-validation-warnings="showValidationWarnings"
 						:teleported="teleported"
 						:tag-size="tagSize"
-						@update:model-value="(value) => onUpdateModelValue(input.name, value)"
+						@update:model-value="(value) => onUpdateModelValue(input.name, value as Value)"
 						@validate="(value) => onValidate(input.name, value)"
 						@enter="onSubmit"
 					/>
