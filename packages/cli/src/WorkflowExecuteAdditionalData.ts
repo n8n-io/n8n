@@ -71,6 +71,7 @@ import { WorkflowRepository } from './databases/repositories/workflow.repository
 import { UrlService } from './services/url.service';
 import { WorkflowExecutionService } from './workflows/workflowExecution.service';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
+import { EventSender } from './eventbus/event-sender';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -394,15 +395,22 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 	const logger = Container.get(Logger);
 	const internalHooks = Container.get(InternalHooks);
 	const eventsService = Container.get(EventsService);
+	const eventSender = Container.get(EventSender);
 	return {
 		nodeExecuteBefore: [
 			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
-				void internalHooks.onNodeBeforeExecute(this.executionId, this.workflowData, nodeName);
+				const { executionId, workflowData: workflow } = this;
+
+				void internalHooks.onNodeBeforeExecute(executionId, workflow, nodeName);
+				eventSender.emit('node-pre-execute', { executionId, workflow, nodeName });
 			},
 		],
 		nodeExecuteAfter: [
 			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
-				void internalHooks.onNodePostExecute(this.executionId, this.workflowData, nodeName);
+				const { executionId, workflowData: workflow } = this;
+
+				void internalHooks.onNodePostExecute(executionId, workflow, nodeName);
+				eventSender.emit('node-post-execute', { executionId, workflow, nodeName });
 			},
 		],
 		workflowExecuteBefore: [],
@@ -541,20 +549,30 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 	const logger = Container.get(Logger);
 	const internalHooks = Container.get(InternalHooks);
 	const eventsService = Container.get(EventsService);
+	const eventSender = Container.get(EventSender);
 	return {
 		nodeExecuteBefore: [
 			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
-				void internalHooks.onNodeBeforeExecute(this.executionId, this.workflowData, nodeName);
+				const { executionId, workflowData: workflow } = this;
+
+				void internalHooks.onNodeBeforeExecute(executionId, workflow, nodeName);
+				eventSender.emit('node-pre-execute', { executionId, workflow, nodeName });
 			},
 		],
 		nodeExecuteAfter: [
 			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
-				void internalHooks.onNodePostExecute(this.executionId, this.workflowData, nodeName);
+				const { executionId, workflowData: workflow } = this;
+
+				void internalHooks.onNodePostExecute(executionId, workflow, nodeName);
+				eventSender.emit('node-post-execute', { executionId, workflow, nodeName });
 			},
 		],
 		workflowExecuteBefore: [
 			async function (): Promise<void> {
-				void internalHooks.onWorkflowBeforeExecute(this.executionId, this.workflowData);
+				const { executionId, workflowData } = this;
+
+				void internalHooks.onWorkflowBeforeExecute(executionId, workflowData);
+				eventSender.emit('workflow-pre-execute', { executionId, data: workflowData });
 			},
 		],
 		workflowExecuteAfter: [
@@ -622,9 +640,17 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 					eventsService.emit('workflowExecutionCompleted', this.workflowData, fullRunData);
 				}
 			},
-			async function (this: WorkflowHooks, fullRunData: IRun): Promise<void> {
-				// send tracking and event log events, but don't wait for them
-				void internalHooks.onWorkflowPostExecute(this.executionId, this.workflowData, fullRunData);
+			async function (this: WorkflowHooks, runData: IRun): Promise<void> {
+				const { executionId, workflowData: workflow } = this;
+
+				void internalHooks.onWorkflowPostExecute(executionId, workflow, runData);
+				eventSender.emit('workflow-post-execute', {
+					workflowId: workflow.id,
+					workflowName: workflow.name,
+					executionId,
+					success: runData.status === 'success',
+					isManual: runData.mode === 'manual',
+				});
 			},
 			async function (this: WorkflowHooks, fullRunData: IRun) {
 				const externalHooks = Container.get(ExternalHooks);
@@ -765,6 +791,7 @@ async function executeWorkflow(
 
 	const nodeTypes = Container.get(NodeTypes);
 	const activeExecutions = Container.get(ActiveExecutions);
+	const eventSender = Container.get(EventSender);
 
 	const workflowData =
 		options.loadedWorkflowData ??
@@ -905,6 +932,14 @@ async function executeWorkflow(
 	await externalHooks.run('workflow.postExecute', [data, workflowData, executionId]);
 
 	void internalHooks.onWorkflowPostExecute(executionId, workflowData, data, additionalData.userId);
+	eventSender.emit('workflow-post-execute', {
+		workflowId: workflowData.id,
+		workflowName: workflowData.name,
+		executionId,
+		success: data.status === 'success',
+		isManual: data.mode === 'manual',
+		userId: additionalData.userId,
+	});
 
 	// subworkflow either finished, or is in status waiting due to a wait node, both cases are considered successes here
 	if (data.finished === true || data.status === 'waiting') {

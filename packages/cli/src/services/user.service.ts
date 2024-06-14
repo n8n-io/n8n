@@ -12,6 +12,7 @@ import { InternalHooks } from '@/InternalHooks';
 import { UrlService } from '@/services/url.service';
 import type { UserRequest } from '@/requests';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { EventSender } from '@/eventbus/event-sender';
 
 @Service()
 export class UserService {
@@ -20,6 +21,7 @@ export class UserService {
 		private readonly userRepository: UserRepository,
 		private readonly mailer: UserManagementMailer,
 		private readonly urlService: UrlService,
+		private readonly eventSender: EventSender,
 	) {}
 
 	async update(userId: string, data: Partial<User>) {
@@ -155,6 +157,10 @@ export class UserService {
 						public_api: false,
 						email_sent: result.emailSent,
 						invitee_role: role, // same role for all invited users
+					});
+					this.eventSender.emit('user-invited', {
+						user: owner,
+						targetUserId: Object.values(toInviteUsers),
 					});
 				} catch (e) {
 					if (e instanceof Error) {

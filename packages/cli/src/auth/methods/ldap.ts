@@ -12,6 +12,7 @@ import {
 	updateLdapUserOnLocalDb,
 } from '@/Ldap/helpers';
 import type { User } from '@db/entities/User';
+import { EventSender } from '@/eventbus/event-sender';
 
 export const handleLdapLogin = async (
 	loginId: string,
@@ -54,6 +55,7 @@ export const handleLdapLogin = async (
 				user_type: 'ldap',
 				was_disabled_ldap_user: false,
 			});
+			Container.get(EventSender).emit('user-signed-up', { user });
 			return user;
 		}
 	} else {

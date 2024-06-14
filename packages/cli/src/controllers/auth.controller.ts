@@ -24,6 +24,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { ApplicationError } from 'n8n-workflow';
 import { UserRepository } from '@/databases/repositories/user.repository';
+import { EventSender } from '@/eventbus/event-sender';
 
 @RestController()
 export class AuthController {
@@ -35,6 +36,7 @@ export class AuthController {
 		private readonly userService: UserService,
 		private readonly license: License,
 		private readonly userRepository: UserRepository,
+		private readonly eventSender: EventSender,
 		private readonly postHog?: PostHogClient,
 	) {}
 
@@ -90,10 +92,9 @@ export class AuthController {
 			}
 
 			this.authService.issueCookie(res, user, req.browserId);
-			void this.internalHooks.onUserLoginSuccess({
-				user,
-				authenticationMethod: usedAuthenticationMethod,
-			});
+			const authenticationMethod = usedAuthenticationMethod;
+			void this.internalHooks.onUserLoginSuccess({ user, authenticationMethod });
+			this.eventSender.emit('user-logged-in', { user, authenticationMethod });
 
 			return await this.userService.toPublic(user, { posthog: this.postHog, withScopes: true });
 		}
@@ -101,6 +102,10 @@ export class AuthController {
 			user: email,
 			authenticationMethod: usedAuthenticationMethod,
 			reason: 'wrong credentials',
+		});
+		this.eventSender.emit('user-login-failed', {
+			authenticationMethod: usedAuthenticationMethod,
+			userEmail: email,
 		});
 		throw new AuthError('Wrong username or password. Do you have caps lock on?');
 	}
@@ -177,6 +182,7 @@ export class AuthController {
 		}
 
 		void this.internalHooks.onUserInviteEmailClick({ inviter, invitee });
+		this.eventSender.emit('user-invite-email-click', { inviter, invitee });
 
 		const { firstName, lastName } = inviter;
 		return { inviter: { firstName, lastName } };

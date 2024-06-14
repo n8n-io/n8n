@@ -23,6 +23,7 @@ import { InternalHooks } from '@/InternalHooks';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { isApiEnabled } from '@/PublicApi';
+import { EventSender } from '@/eventbus/event-sender';
 
 export const isApiEnabledMiddleware: RequestHandler = (_, res, next) => {
 	if (isApiEnabled()) {
@@ -42,6 +43,7 @@ export class MeController {
 		private readonly userService: UserService,
 		private readonly passwordUtility: PasswordUtility,
 		private readonly userRepository: UserRepository,
+		private readonly eventSender: EventSender,
 	) {}
 
 	/**
@@ -101,6 +103,7 @@ export class MeController {
 			user,
 			fields_changed: updatedKeys,
 		});
+		this.eventSender.emit('user-updated', { user, fieldsChanged: updatedKeys });
 
 		const publicUser = await this.userService.toPublic(user);
 
@@ -153,6 +156,7 @@ export class MeController {
 			user: updatedUser,
 			fields_changed: ['password'],
 		});
+		this.eventSender.emit('user-updated', { user: updatedUser, fieldsChanged: ['password'] });
 
 		await this.externalHooks.run('user.password.update', [updatedUser.email, updatedUser.password]);
 
@@ -204,6 +208,7 @@ export class MeController {
 			user: req.user,
 			public_api: false,
 		});
+		this.eventSender.emit('api-key-created', { user: req.user });
 
 		return { apiKey };
 	}
@@ -227,6 +232,7 @@ export class MeController {
 			user: req.user,
 			public_api: false,
 		});
+		this.eventSender.emit('api-key-deleted', { user: req.user });
 
 		return { success: true };
 	}

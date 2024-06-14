@@ -125,7 +125,7 @@ export class AuditorService extends EventEmitter {
 	 * Node
 	 */
 
-	private nodePreExecute({ executionId, nodeName, workflow }: AuditEventArgs['node-pre-execute']) {
+	private nodePreExecute({ executionId, workflow, nodeName }: AuditEventArgs['node-pre-execute']) {
 		void this.eventBus.sendNodeEvent({
 			eventName: 'n8n.node.started',
 			payload: {
@@ -211,11 +211,10 @@ export class AuditorService extends EventEmitter {
 		});
 	}
 
-	@Redactable()
-	private userLoginFailed({ user, ...rest }: AuditEventArgs['user-login-failed']) {
+	private userLoginFailed(arg: AuditEventArgs['user-login-failed']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.login.failed',
-			payload: { ...user, ...rest },
+			payload: arg,
 		});
 	}
 

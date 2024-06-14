@@ -30,6 +30,7 @@ import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflo
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { EventSender } from '@/eventbus/event-sender';
 
 export = {
 	createWorkflow: [
@@ -56,6 +57,10 @@ export = {
 
 			await Container.get(ExternalHooks).run('workflow.afterCreate', [createdWorkflow]);
 			void Container.get(InternalHooks).onWorkflowCreated(req.user, createdWorkflow, project, true);
+			Container.get(EventSender).emit('workflow-created', {
+				workflow: createdWorkflow,
+				user: req.user,
+			});
 
 			return res.json(createdWorkflow);
 		},
@@ -233,6 +238,10 @@ export = {
 
 			await Container.get(ExternalHooks).run('workflow.afterUpdate', [updateData]);
 			void Container.get(InternalHooks).onWorkflowSaved(req.user, updateData, true);
+			Container.get(EventSender).emit('workflow-saved', {
+				user: req.user,
+				workflow: updateData,
+			});
 
 			return res.json(updatedWorkflow);
 		},

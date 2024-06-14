@@ -41,6 +41,7 @@ import { In, type FindOptionsRelations } from '@n8n/typeorm';
 import type { Project } from '@/databases/entities/Project';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 import { z } from 'zod';
+import { EventSender } from '@/eventbus/event-sender';
 
 @RestController('/workflows')
 export class WorkflowsController {
@@ -64,6 +65,7 @@ export class WorkflowsController {
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectService: ProjectService,
 		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly eventSender: EventSender,
 	) {}
 
 	@Post('/')
@@ -175,6 +177,7 @@ export class WorkflowsController {
 
 		await this.externalHooks.run('workflow.afterCreate', [savedWorkflow]);
 		void this.internalHooks.onWorkflowCreated(req.user, newWorkflow, project!, false);
+		this.eventSender.emit('workflow-created', { user: req.user, workflow: savedWorkflow });
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, savedWorkflow.id);
 

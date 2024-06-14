@@ -11,6 +11,7 @@ import type { IExecutionResponse } from '@/Interfaces';
 import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
+import { EventSender } from '@/eventbus/event-sender';
 
 /**
  * Service for recovering key properties in executions.
@@ -20,6 +21,7 @@ export class ExecutionRecoveryService {
 	constructor(
 		private readonly push: Push,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly eventSender: EventSender,
 	) {}
 
 	/**
@@ -168,6 +170,13 @@ export class ExecutionRecoveryService {
 			startedAt: execution.startedAt,
 			stoppedAt: execution.stoppedAt,
 			status: execution.status,
+		});
+		this.eventSender.emit('workflow-post-execute', {
+			workflowId: execution.workflowData.id,
+			workflowName: execution.workflowData.name,
+			executionId: execution.id,
+			success: execution.status === 'success',
+			isManual: execution.mode === 'manual',
 		});
 
 		const externalHooks = getWorkflowHooksMain(

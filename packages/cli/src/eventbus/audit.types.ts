@@ -33,7 +33,7 @@ export type AuditEventArgs = {
 	'workflow-post-execute': {
 		executionId: string;
 		success: boolean;
-		userId: string;
+		userId?: string;
 		workflowId: string;
 		isManual: boolean;
 		workflowName: string;
@@ -81,7 +81,7 @@ export type AuditEventArgs = {
 	};
 
 	'user-login-failed': {
-		user: UserLike;
+		userEmail: string;
 		authenticationMethod: AuthenticationMethod;
 		reason?: string;
 	};
@@ -153,10 +153,10 @@ export type AuditEventArgs = {
 		inputString: string;
 		packageName: string;
 		success: boolean;
-		packageVersion: string;
-		packageNodeNames: string[];
-		packageAuthor: string;
-		packageAuthorEmail: string;
+		packageVersion?: string;
+		packageNodeNames?: string[];
+		packageAuthor?: string;
+		packageAuthorEmail?: string;
 		failureReason?: string;
 	};
 

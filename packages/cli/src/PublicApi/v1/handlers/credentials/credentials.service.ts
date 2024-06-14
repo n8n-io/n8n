@@ -18,6 +18,7 @@ import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { InternalHooks } from '@/InternalHooks';
+import { EventSender } from '@/eventbus/event-sender';
 
 export async function getCredentials(credentialId: string): Promise<ICredentialsDb | null> {
 	return await Container.get(CredentialsRepository).findOneBy({ id: credentialId });
@@ -59,6 +60,12 @@ export async function saveCredential(
 		credential_id: credential.id,
 		public_api: true,
 	});
+	Container.get(EventSender).emit('credentials-created', {
+		user,
+		credentialName: credential.name,
+		credentialType: credential.type,
+		credentialId: credential.id,
+	});
 
 	return await Db.transaction(async (transactionManager) => {
 		const savedCredential = await transactionManager.save<CredentialsEntity>(credential);
@@ -94,6 +101,12 @@ export async function removeCredential(
 		credential_name: credentials.name,
 		credential_type: credentials.type,
 		credential_id: credentials.id,
+	});
+	Container.get(EventSender).emit('credentials-deleted', {
+		user,
+		credentialName: credentials.name,
+		credentialType: credentials.type,
+		credentialId: credentials.id,
 	});
 	return await Container.get(CredentialsRepository).remove(credentials);
 }
