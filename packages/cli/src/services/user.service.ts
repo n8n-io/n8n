@@ -169,6 +169,7 @@ export class UserService {
 							message_type: 'New user invite',
 							public_api: false,
 						});
+						this.eventSender.emit('email-failed', { user: owner, messageType: 'New user invite' });
 						this.logger.error('Failed to send email', {
 							userId: owner.id,
 							inviteAcceptUrl,

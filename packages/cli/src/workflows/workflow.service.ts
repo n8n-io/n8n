@@ -218,7 +218,11 @@ export class WorkflowService {
 
 		await this.externalHooks.run('workflow.afterUpdate', [updatedWorkflow]);
 		void Container.get(InternalHooks).onWorkflowSaved(user, updatedWorkflow, false);
-		this.eventSender.emit('workflow-saved', { user, workflow: updatedWorkflow });
+		this.eventSender.emit('workflow-saved', {
+			user,
+			workflowId: updatedWorkflow.id,
+			workflowName: updatedWorkflow.name,
+		});
 
 		if (updatedWorkflow.active) {
 			// When the workflow is supposed to be active add it again
@@ -277,7 +281,7 @@ export class WorkflowService {
 		await this.binaryDataService.deleteMany(idsForDeletion);
 
 		void Container.get(InternalHooks).onWorkflowDeleted(user, workflowId, false);
-		this.eventSender.emit('workflow-deleted', { user, workflow });
+		this.eventSender.emit('workflow-deleted', { user, workflowId });
 		await this.externalHooks.run('workflow.afterDelete', [workflowId]);
 
 		return workflow;

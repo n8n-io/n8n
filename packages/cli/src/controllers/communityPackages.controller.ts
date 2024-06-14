@@ -118,11 +118,11 @@ export class CommunityPackagesController {
 			});
 			this.eventSender.emit('community-package-installed', {
 				user: req.user,
+				inputString: name,
 				packageName: parsed.packageName,
 				success: false,
 				packageVersion: parsed.version,
 				failureReason: errorMessage,
-				inputString: name,
 			});
 
 			let message = [`Error loading package "${name}" `, errorMessage].join(':');
@@ -314,7 +314,7 @@ export class CommunityPackagesController {
 				packageName: name,
 				packageVersionCurrent: previouslyInstalledPackage.installedVersion,
 				packageVersionNew: newInstalledPackage.installedVersion,
-				packageNodeNames: newInstalledPackage.installedNodes.map((node) => node.name),
+				packageNodeNames: newInstalledPackage.installedNodes.map((n) => n.name),
 				packageAuthor: newInstalledPackage.authorName,
 				packageAuthorEmail: newInstalledPackage.authorEmail,
 			});

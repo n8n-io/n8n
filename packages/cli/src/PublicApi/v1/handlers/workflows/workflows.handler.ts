@@ -240,7 +240,8 @@ export = {
 			void Container.get(InternalHooks).onWorkflowSaved(req.user, updateData, true);
 			Container.get(EventSender).emit('workflow-saved', {
 				user: req.user,
-				workflow: updateData,
+				workflowId: updateData.id,
+				workflowName: updateData.name,
 			});
 
 			return res.json(updatedWorkflow);

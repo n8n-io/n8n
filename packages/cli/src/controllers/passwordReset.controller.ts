@@ -125,6 +125,7 @@ export class PasswordResetController {
 				message_type: 'Reset password',
 				public_api: false,
 			});
+			this.eventSender.emit('email-failed', { user, messageType: 'Reset password' });
 			if (error instanceof Error) {
 				throw new InternalServerError(`Please contact your administrator: ${error.message}`);
 			}

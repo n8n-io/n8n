@@ -68,21 +68,21 @@ export class AuditorService extends EventEmitter {
 	}
 
 	@Redactable()
-	private workflowDeleted({ user, workflow }: AuditEventArgs['workflow-deleted']) {
+	private workflowDeleted({ user, workflowId }: AuditEventArgs['workflow-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.deleted',
-			payload: { ...user, workflow: workflow.id },
+			payload: { ...user, workflowId },
 		});
 	}
 
 	@Redactable()
-	private workflowSaved({ user, workflow }: AuditEventArgs['workflow-saved']) {
+	private workflowSaved({ user, workflowId, workflowName }: AuditEventArgs['workflow-saved']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.updated',
 			payload: {
 				...user,
-				workflowId: workflow.id,
-				workflowName: workflow.name,
+				workflowId,
+				workflowName,
 			},
 		});
 	}
@@ -122,32 +122,32 @@ export class AuditorService extends EventEmitter {
 	 * Node
 	 */
 
-	private nodePreExecute({ executionId, workflow, nodeName }: AuditEventArgs['node-pre-execute']) {
+	private nodePreExecute({ workflow, executionId, nodeName }: AuditEventArgs['node-pre-execute']) {
 		void this.eventBus.sendNodeEvent({
 			eventName: 'n8n.node.started',
 			payload: {
-				executionId,
-				nodeName,
 				workflowId: workflow.id,
 				workflowName: workflow.name,
+				executionId,
 				nodeType: workflow.nodes.find((n) => n.name === nodeName)?.type,
+				nodeName,
 			},
 		});
 	}
 
 	private nodePostExecute({
+		workflow,
 		executionId,
 		nodeName,
-		workflow,
 	}: AuditEventArgs['node-post-execute']) {
 		void this.eventBus.sendNodeEvent({
 			eventName: 'n8n.node.finished',
 			payload: {
-				executionId,
-				nodeName,
 				workflowId: workflow.id,
 				workflowName: workflow.name,
+				executionId,
 				nodeType: workflow.nodes.find((n) => n.name === nodeName)?.type,
+				nodeName,
 			},
 		});
 	}

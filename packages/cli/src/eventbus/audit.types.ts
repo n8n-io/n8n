@@ -17,12 +17,13 @@ export type AuditEventArgs = {
 
 	'workflow-deleted': {
 		user: UserLike;
-		workflow: IWorkflowBase;
+		workflowId: string;
 	};
 
 	'workflow-saved': {
 		user: UserLike;
-		workflow: IWorkflowBase;
+		workflowId: string;
+		workflowName: string;
 	};
 
 	'workflow-pre-execute': {

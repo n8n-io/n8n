@@ -98,12 +98,9 @@ export class MeController {
 
 		this.authService.issueCookie(res, user, req.browserId);
 
-		const updatedKeys = Object.keys(payload);
-		void this.internalHooks.onUserUpdate({
-			user,
-			fields_changed: updatedKeys,
-		});
-		this.eventSender.emit('user-updated', { user, fieldsChanged: updatedKeys });
+		const fieldsChanged = Object.keys(payload);
+		void this.internalHooks.onUserUpdate({ user, fields_changed: fieldsChanged });
+		this.eventSender.emit('user-updated', { user, fieldsChanged });
 
 		const publicUser = await this.userService.toPublic(user);
 
@@ -152,10 +149,7 @@ export class MeController {
 
 		this.authService.issueCookie(res, updatedUser, req.browserId);
 
-		void this.internalHooks.onUserUpdate({
-			user: updatedUser,
-			fields_changed: ['password'],
-		});
+		void this.internalHooks.onUserUpdate({ user: updatedUser, fields_changed: ['password'] });
 		this.eventSender.emit('user-updated', { user: updatedUser, fieldsChanged: ['password'] });
 
 		await this.externalHooks.run('user.password.update', [updatedUser.email, updatedUser.password]);
@@ -204,10 +198,7 @@ export class MeController {
 
 		await this.userService.update(req.user.id, { apiKey });
 
-		void this.internalHooks.onApiKeyCreated({
-			user: req.user,
-			public_api: false,
-		});
+		void this.internalHooks.onApiKeyCreated({ user: req.user, public_api: false });
 		this.eventSender.emit('api-key-created', { user: req.user });
 
 		return { apiKey };
@@ -228,10 +219,7 @@ export class MeController {
 	async deleteAPIKey(req: AuthenticatedRequest) {
 		await this.userService.update(req.user.id, { apiKey: null });
 
-		void this.internalHooks.onApiKeyDeleted({
-			user: req.user,
-			public_api: false,
-		});
+		void this.internalHooks.onApiKeyDeleted({ user: req.user, public_api: false });
 		this.eventSender.emit('api-key-deleted', { user: req.user });
 
 		return { success: true };

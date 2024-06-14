@@ -177,7 +177,7 @@ export class WorkflowsController {
 
 		await this.externalHooks.run('workflow.afterCreate', [savedWorkflow]);
 		void this.internalHooks.onWorkflowCreated(req.user, newWorkflow, project!, false);
-		this.eventSender.emit('workflow-created', { user: req.user, workflow: savedWorkflow });
+		this.eventSender.emit('workflow-created', { user: req.user, workflow: newWorkflow });
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, savedWorkflow.id);
 

@@ -158,7 +158,6 @@ export class CredentialsController {
 			credential_id: credential.id,
 			public_api: false,
 		});
-
 		this.eventSender.emit('credentials-created', {
 			user: req.user,
 			credentialName: newCredential.name,

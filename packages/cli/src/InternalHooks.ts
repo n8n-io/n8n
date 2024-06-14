@@ -517,29 +517,23 @@ export class InternalHooks {
 	}
 
 	async onApiKeyDeleted(apiKeyDeletedData: { user: User; public_api: boolean }): Promise<void> {
-		void Promise.all([
-			this.telemetry.track('API key deleted', {
-				user_id: apiKeyDeletedData.user.id,
-				public_api: apiKeyDeletedData.public_api,
-			}),
-		]);
+		void this.telemetry.track('API key deleted', {
+			user_id: apiKeyDeletedData.user.id,
+			public_api: apiKeyDeletedData.public_api,
+		});
 	}
 
 	async onApiKeyCreated(apiKeyCreatedData: { user: User; public_api: boolean }): Promise<void> {
-		void Promise.all([
-			this.telemetry.track('API key created', {
-				user_id: apiKeyCreatedData.user.id,
-				public_api: apiKeyCreatedData.public_api,
-			}),
-		]);
+		void this.telemetry.track('API key created', {
+			user_id: apiKeyCreatedData.user.id,
+			public_api: apiKeyCreatedData.public_api,
+		});
 	}
 
 	async onUserPasswordResetRequestClick(userPasswordResetData: { user: User }): Promise<void> {
-		void Promise.all([
-			this.telemetry.track('User requested password reset while logged out', {
-				user_id: userPasswordResetData.user.id,
-			}),
-		]);
+		void this.telemetry.track('User requested password reset while logged out', {
+			user_id: userPasswordResetData.user.id,
+		});
 	}
 
 	async onInstanceOwnerSetup(instanceOwnerSetupData: { user_id: string }): Promise<void> {
@@ -696,17 +690,15 @@ export class InternalHooks {
 		package_author?: string;
 		package_author_email?: string;
 	}): Promise<void> {
-		void Promise.all([
-			this.telemetry.track('cnr package updated', {
-				user_id: updateData.user.id,
-				package_name: updateData.package_name,
-				package_version_current: updateData.package_version_current,
-				package_version_new: updateData.package_version_new,
-				package_node_names: updateData.package_node_names,
-				package_author: updateData.package_author,
-				package_author_email: updateData.package_author_email,
-			}),
-		]);
+		void this.telemetry.track('cnr package updated', {
+			user_id: updateData.user.id,
+			package_name: updateData.package_name,
+			package_version_current: updateData.package_version_current,
+			package_version_new: updateData.package_version_new,
+			package_node_names: updateData.package_node_names,
+			package_author: updateData.package_author,
+			package_author_email: updateData.package_author_email,
+		});
 	}
 
 	async onCommunityPackageDeleteFinished(deleteData: {
