@@ -5,7 +5,6 @@
 		</span>
 		<div
 			v-else
-			v-on-click-outside="disableNameEdit"
 			:class="[$style.headline, $style['headline-editable']]"
 			@keydown.stop
 			@click="enableNameEdit"
