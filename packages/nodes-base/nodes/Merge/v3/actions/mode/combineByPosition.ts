@@ -8,11 +8,7 @@ import type {
 import { updateDisplayOptions } from '@utils/utilities';
 
 import type { ClashResolveOptions } from '../../helpers/interfaces';
-import {
-	clashHandlingProperties,
-	fuzzyCompareProperty,
-	numberInputsProperty,
-} from '../../helpers/descriptions';
+import { clashHandlingProperties, numberInputsProperty } from '../../helpers/descriptions';
 import { addSuffixToEntriesKeys, getMergeNodeInputs, selectMergeMethod } from '../../helpers/utils';
 
 import merge from 'lodash/merge';
@@ -27,15 +23,13 @@ export const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			clashHandlingProperties,
-			fuzzyCompareProperty,
 			{
 				displayName: 'Include Any Unpaired Items',
 				name: 'includeUnpaired',
 				type: 'boolean',
 				default: false,
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description:
-					'If there are different numbers of items in input 1 and input 2, whether to include the ones at the end with nothing to pair with',
+					'Whether unpaired items should be included in the result when there are differing numbers of items among the inputs',
 			},
 		],
 	},
@@ -61,25 +55,24 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 	const inputs = getMergeNodeInputs(this);
 
-	const inputsData = inputs.map((_, i) => {
-		return this.getInputData(i) ?? [];
-	});
+	let prefered: INodeExecutionData[] = [];
+	let preferedInputIndex: number;
+	const inputsData: INodeExecutionData[][] = [];
 
-	// let input1 = this.getInputData(0);
-	// let input2 = this.getInputData(1);
-
-	if ((inputsData.length === 2 && inputsData[0].length === 0) || inputsData[1].length === 0) {
-		// If data of any input is missing, return the data of
-		// the input that contains data
-		return [...inputsData[0], ...inputsData[1]];
+	if (clashHandling?.resolveClash?.includes('preferInput')) {
+		preferedInputIndex = Number(clashHandling.resolveClash.replace('preferInput', '')) - 1;
+	} else {
+		preferedInputIndex = inputs.length - 1;
 	}
 
-	let prefered = [];
-	if (clashHandling.resolveClash.includes('preferInput')) {
-		const preferedInputIndex = Number(clashHandling.resolveClash.replace('preferInput', '')) - 1;
-		prefered = inputsData.splice(preferedInputIndex, 1)[0];
-	} else {
-		prefered = inputsData.splice(inputsData.length - 1, 1)[0];
+	for (let i = 0; i < inputs.length; i++) {
+		const inputData = this.getInputData(i) ?? [];
+
+		if (i === preferedInputIndex) {
+			prefered = [...inputData];
+		} else {
+			inputsData.push([...inputData]);
+		}
 	}
 
 	if (clashHandling.resolveClash === 'addSuffix') {
@@ -88,54 +81,41 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		}
 	}
 
-	// if (input1 === undefined || input1.length === 0) {
-	// 	if (includeUnpaired) {
-	// 		return input2;
-	// 	}
-	// 	return returnData;
-	// }
-
-	// if (input2 === undefined || input2.length === 0) {
-	// 	if (includeUnpaired) {
-	// 		return input1;
-	// 	}
-	// 	return returnData;
-	// }
-
 	let numEntries: number;
 	if (includeUnpaired) {
 		numEntries = Math.max(...inputsData.map((input) => input.length), prefered.length);
 	} else {
 		numEntries = Math.min(...inputsData.map((input) => input.length), prefered.length);
+		if (numEntries === 0) return returnData;
 	}
 
 	const mergeIntoSingleObject = selectMergeMethod(clashHandling);
 
 	for (let i = 0; i < numEntries; i++) {
-		// if (i >= input1.length) {
-		// 	returnData.push(input2[i]);
-		// 	continue;
-		// }
-		// if (i >= input2.length) {
-		// 	returnData.push(input1[i]);
-		// 	continue;
-		// }
-
-		// const entry1 = input1[i];
 		const preferedEntry = prefered[i] ?? {};
 		const restEntries = inputsData.map((input) => input[i] ?? {});
 
+		const json = {
+			...mergeIntoSingleObject(
+				{},
+				...restEntries.map((entry) => entry.json ?? {}),
+				preferedEntry.json ?? {},
+			),
+		};
+
+		const binary = {
+			...merge({}, ...restEntries.map((entry) => entry.binary ?? {}), preferedEntry.binary ?? {}),
+		};
+
+		const pairedItem = [
+			...restEntries.map((entry) => entry.pairedItem as IPairedItemData).flat(),
+			preferedEntry.pairedItem as IPairedItemData,
+		].filter((item) => item !== undefined);
+
 		returnData.push({
-			json: {
-				...mergeIntoSingleObject({}, ...restEntries.map((entry) => entry.json), preferedEntry.json),
-			},
-			binary: {
-				...merge({}, ...restEntries.map((entry) => entry.binary), preferedEntry.binary),
-			},
-			pairedItem: [
-				...restEntries.map((entry) => entry.pairedItem as IPairedItemData).flat(),
-				preferedEntry.pairedItem as IPairedItemData,
-			],
+			json,
+			binary,
+			pairedItem,
 		});
 	}
 
