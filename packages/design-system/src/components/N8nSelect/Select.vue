@@ -9,7 +9,7 @@ type InnerSelectRef = InstanceType<typeof ElSelect>;
 
 const props = defineProps({
 	modelValue: {
-		type: [String, Number, Array] as PropType<string | number | string[]>,
+		type: [String, Number, Array, Boolean] as PropType<string | number | string[] | boolean | null>,
 		default: '',
 	},
 	size: {
@@ -104,7 +104,7 @@ defineExpose({
 		<ElSelect
 			v-bind="{ ...$props, ...listeners }"
 			ref="innerSelect"
-			:model-value="modelValue"
+			:model-value="modelValue ?? undefined"
 			:size="computedSize"
 			:class="$style[classes]"
 			:popper-class="popperClasses"
