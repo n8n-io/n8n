@@ -35,7 +35,7 @@ const cssClasses = useCssModule();
 const innerSelect = ref<InnerSelectRef | null>(null);
 
 const listeners = computed(() => {
-	return Object.entries(attrs).reduce((acc, [key, value]) => {
+	return Object.entries(attrs).reduce<Record<string, unknown>>((acc, [key, value]) => {
 		if (isEventBindingElementAttribute(value, key)) {
 			acc[key] = value;
 		}
