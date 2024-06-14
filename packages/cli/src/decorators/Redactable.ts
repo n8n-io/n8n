@@ -1,6 +1,6 @@
 import type { UserLike } from '@/eventbus/audit.types';
 
-function markRedactable(userLike: UserLike) {
+function toRedactable(userLike: UserLike) {
 	return {
 		userId: userLike.id,
 		_email: userLike.email,
@@ -30,7 +30,7 @@ export const Redactable =
 			const userLike = args[index]?.[fieldName];
 
 			// @ts-expect-error Sensitive properties prepended with underscore
-			if (userLike) args[index][fieldName] = markRedactable(userLike);
+			if (userLike) args[index][fieldName] = toRedactable(userLike);
 
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 			return originalMethod.apply(this, args);
