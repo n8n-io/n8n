@@ -1,9 +1,3 @@
-<template>
-	<div ref="root">
-		<slot :bp="breakpoint"></slot>
-	</div>
-</template>
-
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue';
 
@@ -61,3 +55,9 @@ onBeforeUnmount(() => {
 	}
 });
 </script>
+
+<template>
+	<div ref="root">
+		<slot :bp="breakpoint"></slot>
+	</div>
+</template>
