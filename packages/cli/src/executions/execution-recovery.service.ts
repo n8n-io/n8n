@@ -27,12 +27,12 @@ export class ExecutionRecoveryService {
 		private readonly logger: Logger,
 	) {}
 
-	private isShuttingDown = false;
-
 	private readonly queueRecoverySettings: QueueRecoverySettings = {
 		batchSize: config.getEnv('executions.queueRecovery.batchSize'),
 		waitMs: config.getEnv('executions.queueRecovery.interval') * 60 * 1000,
 	};
+
+	private isShuttingDown = false;
 
 	/**
 	 * Recover key properties of a truncated execution using event logs.
@@ -59,16 +59,10 @@ export class ExecutionRecoveryService {
 	}
 
 	/**
-	 * Schedule a queue recovery cycle. See `recoverFromQueue` for details.
+	 * Schedule a cycle to mark dangling executions as crashed in queue mode.
 	 */
 	scheduleQueueRecovery(waitMs = this.queueRecoverySettings.waitMs) {
-		if (config.getEnv('executions.mode') === 'regular') return;
-		if (config.getEnv('multiMainSetup.instanceType') === 'follower') return;
-
-		if (this.isShuttingDown) {
-			this.logger.warn('[Recovery] Cannot schedule recovery cycle while shutting down');
-			return;
-		}
+		if (!this.shouldScheduleQueueRecovery()) return;
 
 		this.queueRecoverySettings.timeout = setTimeout(async () => {
 			try {
@@ -77,16 +71,16 @@ export class ExecutionRecoveryService {
 			} catch (error) {
 				const msg = this.toErrorMsg(error);
 
-				this.logger.error('[Recovery] Failed to recover executions from queue', { msg });
+				this.logger.error('[Recovery] Failed to recover dangling executions from queue', { msg });
 				this.logger.error('[Recovery] Retrying...');
 
 				this.scheduleQueueRecovery();
 			}
 		}, waitMs);
 
-		const nextCycle = [this.queueRecoverySettings.waitMs / (60 * 1000), 'min'].join(' ');
+		const wait = [this.queueRecoverySettings.waitMs / (60 * 1000), 'min'].join(' ');
 
-		this.logger.debug(`[Recovery] Scheduled queue recovery for next ${nextCycle}`);
+		this.logger.debug(`[Recovery] Scheduled queue recovery for next ${wait}`);
 	}
 
 	stopQueueRecovery() {
@@ -96,7 +90,7 @@ export class ExecutionRecoveryService {
 	@OnShutdown()
 	shutdown() {
 		this.isShuttingDown = true;
-		clearTimeout(this.queueRecoverySettings.timeout);
+		this.stopQueueRecovery();
 	}
 
 	// ----------------------------------
@@ -104,32 +98,32 @@ export class ExecutionRecoveryService {
 	// ----------------------------------
 
 	/**
-	 * Mark a batch of in-progress executions as `crashed` if stored in DB as
-	 * in-progress but absent from the Bull queue. Return the time to wait
-	 * until the next cycle.
+	 * Mark in-progress executions as `crashed` if stored in DB `new` or `running`
+	 * but absent from the queue. Return time until next recovery cycle.
 	 */
 	private async recoverFromQueue() {
 		const { waitMs, batchSize } = this.queueRecoverySettings;
 
-		const inProgressIds = await this.executionRepository.getLatestInProgressExecutionIds(batchSize);
+		const storedIds = await this.executionRepository.getLatestInProgressExecutionIds(batchSize);
 
-		if (inProgressIds.length === 0) return waitMs;
+		if (storedIds.length === 0) return waitMs;
 
 		const { Queue } = await import('@/Queue');
 
-		const inQueueIds = await Container.get(Queue).getInProgressExecutionIds();
+		const queuedIds = await Container.get(Queue).getInProgressExecutionIds();
 
-		if (inQueueIds.size === 0) return waitMs;
+		if (queuedIds.size === 0) return waitMs;
 
-		const danglingIds = inProgressIds.filter((id) => !inQueueIds.has(id));
+		const danglingIds = storedIds.filter((id) => !queuedIds.has(id));
 
 		if (danglingIds.length === 0) return waitMs;
 
 		await this.executionRepository.markAsCrashed(danglingIds);
 
-		// if more to check, speed up next cycle
+		// if this cycle used up the whole batch size, it is possible for there to be
+		// dangling executions outside this check, so speed up next cycle
 
-		return inProgressIds.length >= this.queueRecoverySettings.batchSize ? waitMs / 2 : waitMs;
+		return storedIds.length >= this.queueRecoverySettings.batchSize ? waitMs / 2 : waitMs;
 	}
 
 	/**
@@ -285,5 +279,13 @@ export class ExecutionRecoveryService {
 		return error instanceof Error
 			? error.message
 			: jsonStringify(error, { replaceCircularRefs: true });
+	}
+
+	private shouldScheduleQueueRecovery() {
+		return (
+			config.getEnv('executions.mode') === 'queue' &&
+			config.getEnv('multiMainSetup.instanceType') === 'leader' &&
+			!this.isShuttingDown
+		);
 	}
 }
