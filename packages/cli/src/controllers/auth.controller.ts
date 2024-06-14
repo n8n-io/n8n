@@ -92,8 +92,11 @@ export class AuthController {
 			}
 
 			this.authService.issueCookie(res, user, req.browserId);
-			const authenticationMethod = usedAuthenticationMethod;
-			this.eventSender.emit('user-logged-in', { user, authenticationMethod });
+
+			this.eventSender.emit('user-logged-in', {
+				user,
+				authenticationMethod: usedAuthenticationMethod,
+			});
 
 			return await this.userService.toPublic(user, { posthog: this.postHog, withScopes: true });
 		}
