@@ -13,7 +13,8 @@ export async function search(
 ): Promise<INodeExecutionData[]> {
 	const tableName = this.getNodeParameter('tableName', index) as string;
 	const searchColumn = this.getNodeParameter('searchColumn', index) as string;
-	let searchTerm = this.getNodeParameter('searchTerm', index) as any; // string or integer
+	const searchTerm = this.getNodeParameter('searchTerm', index) as string | number;
+	let searchTermString = String(searchTerm) as string;
 	const insensitive = this.getNodeParameter('insensitive', index) as boolean;
 	const wildcard = this.getNodeParameter('wildcard', index) as boolean;
 	const simple = this.getNodeParameter('simple', index) as boolean;
@@ -25,14 +26,12 @@ export async function search(
 	let sqlQuery = `SELECT * FROM \`${tableName}\` WHERE \`${searchColumn}\``;
 
 	if (insensitive) {
-		searchTerm = searchTerm.toLowerCase();
+		searchTermString = searchTermString.toLowerCase();
 		sqlQuery = `SELECT * FROM \`${tableName}\` WHERE lower(\`${searchColumn}\`)`;
 	}
 
-	if (wildcard && isNaN(searchTerm)) sqlQuery = sqlQuery + ' LIKE "%' + searchTerm + '%"';
-	else if (!wildcard && isNaN(searchTerm)) sqlQuery = sqlQuery + ' = "' + searchTerm + '"';
-	else if (wildcard && !isNaN(searchTerm)) sqlQuery = sqlQuery + ' LIKE %' + searchTerm + '%';
-	else if (!wildcard && !isNaN(searchTerm)) sqlQuery = sqlQuery + ' = ' + searchTerm;
+	if (wildcard) sqlQuery = sqlQuery + ' LIKE "%' + searchTermString + '%"';
+	else if (!wildcard) sqlQuery = sqlQuery + ' = "' + searchTermString + '"';
 
 	const sqlResult = (await seaTableApiRequest.call(
 		this,

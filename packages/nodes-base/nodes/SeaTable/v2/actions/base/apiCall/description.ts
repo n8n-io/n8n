@@ -30,7 +30,7 @@ export const baseApiCallDescription: BaseProperties = [
 			},
 		},
 		required: true,
-		default: '',
+		default: 'POST',
 	},
 	{
 		displayName: 'Hint: The Authentication header is included automatically.',
@@ -56,20 +56,17 @@ export const baseApiCallDescription: BaseProperties = [
 		required: true,
 		default: '',
 		placeholder: '/dtable-server/...',
-		description:
-			'The URL has to start with /dtable-server/ or /dtable-db/. All possible requests can be found at the SeaTable API Reference at https://api.seatable.io \
-        Please be aware that only request from the section Base Operations that use an Base-Token for the authentication are allowed to use.',
+		description: 'The URL has to start with /dtable-server/ or /dtable-db/. All possible requests can be found at the SeaTable API Reference at https://api.seatable.io Please be aware that only request from the section Base Operations that use an Base-Token for the authentication are allowed to use.',
 	},
 	{
 		displayName: 'Query String Parameters',
 		name: 'apiParams',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
-		description:
-			'These params will be URL-encoded and appended to the URL when making the request.',
+		description: 'These params will be URL-encoded and appended to the URL when making the request',
 		options: [
 			{
 				name: 'apiParamsValues',
@@ -115,11 +112,10 @@ export const baseApiCallDescription: BaseProperties = [
 			'Only valid JSON is accepted. n8n will pass anything you enter as raw input. For example, {"foo", "bar"} is perfectly valid. Of cause you can use variables from n8n inside your JSON.',
 	},
 	{
-		displayName: 'Response object parameter name',
+		displayName: 'Response Object Parameter Name',
 		name: 'responseObjectName',
 		type: 'string',
 		placeholder: 'Leave it empty or use a value like "rows", "metadata", "views" etc.',
-		required: false,
 		displayOptions: {
 			show: {
 				resource: ['base'],

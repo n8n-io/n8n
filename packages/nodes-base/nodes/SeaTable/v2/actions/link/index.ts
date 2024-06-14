@@ -1,8 +1,9 @@
 import * as add from './add';
+import * as list from './list';
 import * as remove from './remove';
 import type { INodeProperties } from 'n8n-workflow';
 
-export { add, remove };
+export { add, list, remove };
 
 export const descriptions: INodeProperties[] = [
 	{
@@ -23,6 +24,12 @@ export const descriptions: INodeProperties[] = [
 				action: 'Add a row link',
 			},
 			{
+				name: 'List',
+				value: 'list',
+				description: 'List all links of a specific row',
+				action: 'List row links',
+			},
+			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove a link between two rows from a link column',
@@ -32,5 +39,6 @@ export const descriptions: INodeProperties[] = [
 		default: 'add',
 	},
 	...add.description,
+	...list.description,
 	...remove.description,
 ];

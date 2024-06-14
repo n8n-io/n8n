@@ -26,7 +26,7 @@ export const descriptions: INodeProperties[] = [
 				name: 'Upload',
 				value: 'upload',
 				description: 'Add a file/image to an existing row',
-				action: 'Upload a file/image',
+				action: 'Upload a file or image',
 			},
 		],
 		default: 'upload',

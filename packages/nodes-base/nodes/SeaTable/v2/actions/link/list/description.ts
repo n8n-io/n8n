@@ -1,12 +1,12 @@
 import type { LinkProperties } from '../../Interfaces';
 
-export const linkRemoveDescription: LinkProperties = [
+export const listLinkDescription: LinkProperties = [
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Table Name (Source)',
+		displayName: 'Table Name 32',
 		name: 'tableName',
 		type: 'options',
-		placeholder: 'Name of table',
+		placeholder: 'Select a table',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getTableNameAndId',
@@ -14,7 +14,7 @@ export const linkRemoveDescription: LinkProperties = [
 		displayOptions: {
 			show: {
 				resource: ['link'],
-				operation: ['remove'],
+				operation: ['list'],
 			},
 		},
 		default: '',
@@ -30,45 +30,37 @@ export const linkRemoveDescription: LinkProperties = [
 		displayOptions: {
 			show: {
 				resource: ['link'],
-				operation: ['remove'],
+				operation: ['list'],
 			},
 		},
 		typeOptions: {
 			loadOptionsDependsOn: ['tableName'],
-			loadOptionsMethod: 'getLinkColumns',
+			loadOptionsMethod: 'getLinkColumnsWithColumnKey',
 		},
 		required: true,
 		default: '',
 		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description:
-			'Choose from the list of specify the Link Column by using an expression. You have to provide it in the way "column_name:::link_id:::other_table_id".',
+			'Choose from the list of specify the Link Column by using an expression. You have to provide it in the way "column_name:::link_id:::other_table_id:::column_key".',
 	},
 	{
-		displayName: 'Row ID From the Source Table',
-		name: 'linkColumnSourceId',
-		type: 'string',
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+		displayName: 'Row ID',
+		name: 'rowId',
+		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		required: true,
+		typeOptions: {
+			loadOptionsDependsOn: ['tableName'],
+			loadOptionsMethod: 'getRowIds',
+		},
 		displayOptions: {
 			show: {
 				resource: ['link'],
-				operation: ['remove'],
+				operation: ['list'],
 			},
 		},
-		required: true,
 		default: '',
-		description: 'Provide the row ID of table you selected',
-	},
-	{
-		displayName: 'Row ID From the Target Table',
-		name: 'linkColumnTargetId',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: ['link'],
-				operation: ['remove'],
-			},
-		},
-		required: true,
-		default: '',
-		description: 'Provide the row ID of table you want to link',
 	},
 ];

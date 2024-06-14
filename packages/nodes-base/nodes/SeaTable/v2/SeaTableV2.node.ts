@@ -5,7 +5,7 @@ import type {
 	INodeTypeBaseDescription,
 } from 'n8n-workflow';
 
-import { versionDescription } from './actions/versionDescription';
+import { versionDescription } from './actions/SeaTable.node';
 import { loadOptions } from './methods';
 import { router } from './actions/router';
 

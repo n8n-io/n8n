@@ -2,6 +2,7 @@ import type { RowProperties } from '../../Interfaces';
 
 export const rowCreateDescription: RowProperties = [
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Table Name',
 		name: 'tableName',
 		type: 'options',
@@ -17,6 +18,7 @@ export const rowCreateDescription: RowProperties = [
 			},
 		},
 		default: '',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description:
 			'The name of SeaTable table to access. Choose from the list, or specify a name using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
@@ -76,9 +78,11 @@ export const rowCreateDescription: RowProperties = [
 				name: 'columnValues',
 				values: [
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 						displayName: 'Column Name',
 						name: 'columnName',
 						type: 'options',
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 						description:
 							'Choose from the list, or specify the column name using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
@@ -105,10 +109,10 @@ export const rowCreateDescription: RowProperties = [
 		},
 		default: {},
 		description:
-			'Add destination column with its value. Provide the value in this way:<br>Date: YYYY-MM-DD or YYYY-MM-DD hh:mm<br>Duration: time in seconds<br>Checkbox: true, on or 1<br>Multi-Select: comma separated list',
+			'Add destination column with its value. Provide the value in this way. Date: YYYY-MM-DD or YYYY-MM-DD hh:mm. Duration: time in seconds. Checkbox: true, on or 1. Multi-Select: comma-separated list.',
 	},
 	{
-		displayName: 'Save to "Big Data" backend',
+		displayName: 'Save to "Big Data" Backend',
 		name: 'bigdata',
 		type: 'boolean',
 		displayOptions: {
@@ -118,7 +122,8 @@ export const rowCreateDescription: RowProperties = [
 			},
 		},
 		default: false,
-		description: 'This requires the activation of the Big Data backend in the base.',
+		description:
+			'Whether write to Big Data backend (true) or not (false). True requires the activation of the Big Data backend in the base.',
 	},
 	{
 		displayName: 'Hint: Link, files, images or digital signatures have to be added separately.',

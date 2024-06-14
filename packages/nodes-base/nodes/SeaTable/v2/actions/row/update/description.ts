@@ -2,6 +2,7 @@ import type { RowProperties } from '../../Interfaces';
 
 export const rowUpdateDescription: RowProperties = [
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Table Name',
 		name: 'tableName',
 		type: 'options',
@@ -17,13 +18,18 @@ export const rowUpdateDescription: RowProperties = [
 			},
 		},
 		default: '',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description:
 			'The name of SeaTable table to access. Choose from the list, or specify a name using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Row ID',
 		name: 'rowId',
 		type: 'options',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsDependsOn: ['tableName'],
@@ -93,9 +99,11 @@ export const rowUpdateDescription: RowProperties = [
 				name: 'columnValues',
 				values: [
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 						displayName: 'Column Name',
 						name: 'columnName',
 						type: 'options',
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 						description:
 							'Choose from the list, or specify the column name using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
@@ -122,7 +130,7 @@ export const rowUpdateDescription: RowProperties = [
 		},
 		default: {},
 		description:
-			'Add destination column with its value. Provide the value in this way:<br>Date: YYYY-MM-DD or YYYY-MM-DD hh:mm<br>Duration: time in seconds<br>Checkbox: true, on or 1<br>Multi-Select: comma separated list',
+			'Add destination column with its value. Provide the value in this way:Date: YYYY-MM-DD or YYYY-MM-DD hh:mmDuration: time in secondsCheckbox: true, on or 1Multi-Select: comma-separated list.',
 	},
 	{
 		displayName: 'Hint: Link, files, images or digital signatures have to be added separately.',

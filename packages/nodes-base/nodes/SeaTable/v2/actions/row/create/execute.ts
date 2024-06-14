@@ -64,7 +64,6 @@ export async function create(
 	// save to normal backend
 	else {
 		body.row = rowInput;
-
 		const responseData = await seaTableApiRequest.call(
 			this,
 			{},

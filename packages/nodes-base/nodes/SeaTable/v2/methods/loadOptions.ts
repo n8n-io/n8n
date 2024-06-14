@@ -110,6 +110,40 @@ export async function getLinkColumns(this: ILoadOptionsFunctions): Promise<INode
 	return returnData;
 }
 
+export async function getLinkColumnsWithColumnKey(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
+	const returnData: INodePropertyOptions[] = [];
+	const table = this.getCurrentNodeParameter('tableName') as string;
+
+	const tableName = table.split(':::')[0];
+	const tableId = table.split(':::')[1];
+
+	if (tableName) {
+		const columns = await seaTableApiRequest.call(
+			this,
+			{},
+			'GET',
+			'/dtable-server/api/v1/dtables/{{dtable_uuid}}/columns',
+			{},
+			{ table_name: tableName },
+		);
+		for (const col of columns.columns) {
+			if (col.type === 'link') {
+				// make sure that the "other table id" is returned and not the same table id again.
+				const otid =
+					tableId !== col.data.other_table_id ? col.data.other_table_id : col.data.table_id;
+
+				returnData.push({
+					name: col.name,
+					value: col.name + ':::' + col.data.link_id + ':::' + otid + ':::' + col.key,
+				});
+			}
+		}
+	}
+	return returnData;
+}
+
 export async function getAssetColumns(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
@@ -179,9 +213,14 @@ export async function getTableUpdateAbleColumns(
 }
 
 export async function getRowIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const tableName = this.getNodeParameter('tableName') as string;
-	const returnData: INodePropertyOptions[] = [];
+	const table = this.getCurrentNodeParameter('tableName') as string;
+	let tableName = table;
 
+	if (table.indexOf(':::') !== -1) {
+		tableName = table.split(':::')[0];
+	}
+
+	const returnData: INodePropertyOptions[] = [];
 	if (tableName) {
 		const sqlResult = await seaTableApiRequest.call(
 			this,

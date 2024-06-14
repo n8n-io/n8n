@@ -2,7 +2,7 @@ import type { AssetProperties } from '../../Interfaces';
 
 export const assetGetPublicURLDescription: AssetProperties = [
 	{
-		displayName: 'Asset path',
+		displayName: 'Asset Path',
 		name: 'assetPath',
 		type: 'string',
 		placeholder: '/images/2023-09/logo.png',
@@ -14,6 +14,5 @@ export const assetGetPublicURLDescription: AssetProperties = [
 			},
 		},
 		default: '',
-		description: '',
 	},
 ];

@@ -2,6 +2,7 @@ import type { RowProperties } from '../../Interfaces';
 
 export const rowSearchDescription: RowProperties = [
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Table Name',
 		name: 'tableName',
 		type: 'options',
@@ -17,11 +18,13 @@ export const rowSearchDescription: RowProperties = [
 			},
 		},
 		default: '',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description:
 			'The name of SeaTable table to access. Choose from the list, or specify a name using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Column',
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+		displayName: 'Column Name',
 		name: 'searchColumn',
 		type: 'options',
 		displayOptions: {
@@ -36,10 +39,12 @@ export const rowSearchDescription: RowProperties = [
 		},
 		required: true,
 		default: '',
-		description: 'Select the column to be searched. Not all column types are supported for search.',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
+		description:
+			'Select the column to be searched. Not all column types are supported for search. Choose from the list, or specify a name using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Search term',
+		displayName: 'Search Term',
 		name: 'searchTerm',
 		type: 'string',
 		displayOptions: {
@@ -64,10 +69,10 @@ export const rowSearchDescription: RowProperties = [
 		},
 		default: false,
 		description:
-			'FALSE: The search distinguish between uppercase and lowercase characters. TRUE: Search ignores case sensitivity.',
+			'Whether the search ignores case sensitivity (true). Otherwise, it distinguishes between uppercase and lowercase characters.',
 	},
 	{
-		displayName: 'Activate wildcard search',
+		displayName: 'Activate Wildcard Search',
 		name: 'wildcard',
 		type: 'boolean',
 		displayOptions: {
@@ -78,10 +83,10 @@ export const rowSearchDescription: RowProperties = [
 		},
 		default: false,
 		description:
-			'FALSE: The search only results perfect matches. TRUE: Finds a row even if the search value is part of a string.',
+			'Whether the search only results perfect matches (true). Otherwise, it finds a row even if the search value is part of a string (false).',
 	},
 	{
-		displayName: 'Simplify output',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		default: true,
@@ -91,7 +96,6 @@ export const rowSearchDescription: RowProperties = [
 				operation: ['search'],
 			},
 		},
-		description:
-			'Simplified returns only the columns of your base. Non-simplified will return additional columns like _ctime (=creation time), _mtime (=modification time) etc.',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 ];

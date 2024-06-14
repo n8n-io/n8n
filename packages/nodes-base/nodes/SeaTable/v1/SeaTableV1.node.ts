@@ -25,7 +25,7 @@ import {
 import type { TColumnsUiValues, TColumnValue } from './types';
 
 import type { ICtx, IRow, IRowObject } from './Interfaces';
-import { versionDescription } from './VersionDescription';
+import { versionDescription } from './SeaTable.node';
 
 export class SeaTableV1 implements INodeType {
 	description: INodeTypeDescription;

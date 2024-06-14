@@ -29,6 +29,12 @@ export const descriptions: INodeProperties[] = [
 				action: 'Create a row',
 			},
 			{
+				name: 'Delete',
+				value: 'remove',
+				description: 'Delete a row',
+				action: 'Delete a row',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get the content of a row',
@@ -37,8 +43,14 @@ export const descriptions: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'list',
-				description: 'Get many rows from a table of view',
+				description: 'Get many rows from a table or a table view',
 				action: 'Get many rows',
+			},
+			{
+				name: 'Lock',
+				value: 'lock',
+				description: 'Lock a row to prevent further changes',
+				action: 'Add a row lock',
 			},
 			{
 				name: 'Search',
@@ -47,28 +59,16 @@ export const descriptions: INodeProperties[] = [
 				action: 'Search a row by keyword',
 			},
 			{
-				name: 'Update',
-				value: 'update',
-				description: 'Update the content of a row',
-				action: 'Update a row',
-			},
-			{
-				name: 'Delete',
-				value: 'remove',
-				description: 'Delete a row',
-				action: 'Delete a row',
-			},
-			{
-				name: 'Lock',
-				value: 'lock',
-				description: 'Lock a row to prevent further changes.',
-				action: 'Add a row lock',
-			},
-			{
 				name: 'Unlock',
 				value: 'unlock',
 				description: 'Remove the lock from a row',
 				action: 'Remove a row lock',
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update the content of a row',
+				action: 'Update a row',
 			},
 		],
 		default: 'create',
