@@ -80,7 +80,8 @@ export class ExecutionRecoveryService {
 
 		const wait = [this.queueRecoverySettings.waitMs / (60 * 1000), 'min'].join(' ');
 
-		this.logger.debug(`[Recovery] Scheduled queue recovery for next ${wait}`);
+		this.logger.debug('[Recovery] Completed queue recovery');
+		this.logger.debug(`[Recovery] Next queue recovery in ${wait}`);
 	}
 
 	stopQueueRecovery() {
