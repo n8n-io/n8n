@@ -421,18 +421,6 @@ export class InternalHooks {
 		void this.telemetry.track('User changed role', { user_id: user.id, ...rest });
 	}
 
-	async onUserReinvite(userReinviteData: {
-		user: User;
-		target_user_id: string;
-		public_api: boolean;
-	}): Promise<void> {
-		void this.telemetry.track('User resent new user invite email', {
-			user_id: userReinviteData.user.id,
-			target_user_id: userReinviteData.target_user_id,
-			public_api: userReinviteData.public_api,
-		});
-	}
-
 	async onUserRetrievedUser(userRetrievedData: {
 		user_id: string;
 		public_api: boolean;
