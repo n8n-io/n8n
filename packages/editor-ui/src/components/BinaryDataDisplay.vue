@@ -20,7 +20,6 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { mapStores } from 'pinia';
 import type { IBinaryData, IRunData } from 'n8n-workflow';
 import BinaryDataDisplayEmbed from '@/components/BinaryDataDisplayEmbed.vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -36,10 +35,10 @@ const emit = defineEmits<{
 }>();
 
 const nodeHelpers = useNodeHelpers();
-const { workflowsStore } = mapStores(useWorkflowsStore);
+const workflowsStore = useWorkflowsStore();
 
 const workflowRunData = computed<IRunData | null>(() => {
-	const workflowExecution = workflowsStore().getWorkflowExecution;
+	const workflowExecution = workflowsStore.getWorkflowExecution;
 	if (workflowExecution === null) {
 		return null;
 	}
