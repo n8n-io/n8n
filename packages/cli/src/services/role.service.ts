@@ -27,6 +27,7 @@ import { combineScopes, type Resource, type Scope } from '@n8n/permissions';
 import { Service } from 'typedi';
 import { ApplicationError } from 'n8n-workflow';
 import { License } from '@/License';
+import type { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
 
 export type RoleNamespace = 'global' | 'project' | 'credential' | 'workflow';
 
@@ -96,6 +97,8 @@ const ROLE_NAMES: Record<
 	'workflow:editor': 'Workflow Editor',
 };
 
+export type ScopesField = { scopes: Scope[] };
+
 @Service()
 export class RoleService {
 	constructor(private readonly license: License) {}
@@ -158,6 +161,11 @@ export class RoleService {
 		userProjectRelations: ProjectRelation[],
 	): ListQuery.Workflow.WithScopes;
 	addScopes(
+		rawCredential: CredentialsEntity,
+		user: User,
+		userProjectRelations: ProjectRelation[],
+	): CredentialsEntity & ScopesField;
+	addScopes(
 		rawCredential:
 			| ListQuery.Credentials.WithSharing
 			| ListQuery.Credentials.WithOwnedByAndSharedWith,
@@ -166,13 +174,17 @@ export class RoleService {
 	): ListQuery.Credentials.WithScopes;
 	addScopes(
 		rawEntity:
+			| CredentialsEntity
 			| ListQuery.Workflow.WithSharing
 			| ListQuery.Credentials.WithOwnedByAndSharedWith
 			| ListQuery.Credentials.WithSharing
 			| ListQuery.Workflow.WithOwnedByAndSharedWith,
 		user: User,
 		userProjectRelations: ProjectRelation[],
-	): ListQuery.Workflow.WithScopes | ListQuery.Credentials.WithScopes {
+	):
+		| (CredentialsEntity & ScopesField)
+		| ListQuery.Workflow.WithScopes
+		| ListQuery.Credentials.WithScopes {
 		const shared = rawEntity.shared;
 		const entity = rawEntity as ListQuery.Workflow.WithScopes | ListQuery.Credentials.WithScopes;
 
