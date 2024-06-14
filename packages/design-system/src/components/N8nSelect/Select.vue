@@ -1,37 +1,58 @@
 <script setup lang="ts">
-import { computed, ref, useAttrs, useCssModule } from 'vue';
+import type { PropType } from 'vue';
+import { computed, ref, useAttrs } from 'vue';
 import { ElSelect } from 'element-plus';
 import type { SelectSize } from 'n8n-design-system/types';
-import type { PropType } from 'vue';
 import { isEventBindingElementAttribute } from '../../utils';
 
 type InnerSelectRef = InstanceType<typeof ElSelect>;
 
 const props = defineProps({
-	modelValue: {
-		type: [String, Number, Array, Boolean] as PropType<string | number | string[] | boolean | null>,
-		default: '',
-	},
+	...ElSelect.props,
+	modelValue: {},
 	size: {
 		type: String as PropType<SelectSize>,
-		default: 'large' as const,
+		default: 'large',
 	},
-	placeholder: String,
-	disabled: Boolean,
-	filterable: Boolean,
-	defaultFirstOption: Boolean,
-	multiple: Boolean,
-	filterMethod: Function,
-	loading: Boolean,
-	loadingText: String,
-	popperClass: String,
-	popperAppendToBody: Boolean,
-	limitPopperWidth: Boolean,
-	noDataText: String,
+	placeholder: {
+		type: String,
+	},
+	disabled: {
+		type: Boolean,
+	},
+	filterable: {
+		type: Boolean,
+	},
+	defaultFirstOption: {
+		type: Boolean,
+	},
+	multiple: {
+		type: Boolean,
+	},
+	filterMethod: {
+		type: Function,
+	},
+	loading: {
+		type: Boolean,
+	},
+	loadingText: {
+		type: String,
+	},
+	popperClass: {
+		type: String,
+	},
+	popperAppendToBody: {
+		type: Boolean,
+	},
+	limitPopperWidth: {
+		type: Boolean,
+	},
+	noDataText: {
+		type: String,
+	},
 });
 
 const attrs = useAttrs();
-const cssClasses = useCssModule();
 const innerSelect = ref<InnerSelectRef | null>(null);
 
 const listeners = computed(() => {
@@ -58,14 +79,6 @@ const computedSize = computed(() => {
 
 const classes = computed(() => {
 	return props.size === 'xlarge' ? 'xlarge' : '';
-});
-
-const popperClasses = computed(() => {
-	const popperPropClasses = props.popperClass ?? '';
-
-	return props.limitPopperWidth
-		? `${popperPropClasses} ${cssClasses.limitPopperWidth}`
-		: popperPropClasses;
 });
 
 const focus = () => {
@@ -106,8 +119,8 @@ defineExpose({
 			ref="innerSelect"
 			:model-value="modelValue ?? undefined"
 			:size="computedSize"
+			popper-class=""
 			:class="$style[classes]"
-			:popper-class="popperClasses"
 		>
 			<template v-if="$slots.prefix" #prefix>
 				<slot name="prefix" />
@@ -125,15 +138,6 @@ defineExpose({
 	--input-font-size: var(--font-size-m);
 	input {
 		height: 48px;
-	}
-}
-
-.limitPopperWidth {
-	width: 0;
-
-	li > span {
-		text-overflow: ellipsis;
-		overflow-x: hidden;
 	}
 }
 
