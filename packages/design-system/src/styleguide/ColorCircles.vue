@@ -1,14 +1,3 @@
-<template>
-	<div :class="$style.section">
-		<div v-for="color in colors" :key="color" :class="$style.container">
-			<div :class="$style.circle" :style="{ backgroundColor: `var(${color})` }"></div>
-			<span>{{ color }}</span>
-			<span :class="$style.hsl">{{ getHSLValue(color) }}</span>
-			<span :class="$style.color">{{ getHexValue(color) }}</span>
-		</div>
-	</div>
-</template>
-
 <script lang="ts">
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
@@ -108,6 +97,17 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div :class="$style.section">
+		<div v-for="color in colors" :key="color" :class="$style.container">
+			<div :class="$style.circle" :style="{ backgroundColor: `var(${color})` }"></div>
+			<span>{{ color }}</span>
+			<span :class="$style.hsl">{{ getHSLValue(color) }}</span>
+			<span :class="$style.color">{{ getHexValue(color) }}</span>
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 .section {
