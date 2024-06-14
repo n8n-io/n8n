@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events';
 import { Service } from 'typedi';
 import { MessageEventBus } from './MessageEventBus/MessageEventBus';
-import { Redacted } from '@/decorators/Redacted';
+import { Redactable } from '@/decorators/Redactable';
 import type { AuditEventArgs } from './audit.types';
 import type { IWorkflowBase } from 'n8n-workflow';
 
@@ -58,7 +58,7 @@ export class AuditorService extends EventEmitter {
 	 * Workflow
 	 */
 
-	@Redacted()
+	@Redactable()
 	private workflowCreated({ user, workflow }: AuditEventArgs['workflow-created']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.created',
@@ -70,7 +70,7 @@ export class AuditorService extends EventEmitter {
 		});
 	}
 
-	@Redacted()
+	@Redactable()
 	private workflowDeleted({ user, workflow }: AuditEventArgs['workflow-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.deleted',
@@ -78,7 +78,7 @@ export class AuditorService extends EventEmitter {
 		});
 	}
 
-	@Redacted()
+	@Redactable()
 	private workflowSaved({ user, workflow }: AuditEventArgs['workflow-saved']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.updated',
@@ -159,7 +159,7 @@ export class AuditorService extends EventEmitter {
 	 * User
 	 */
 
-	@Redacted()
+	@Redactable()
 	private userDeleted(arg: AuditEventArgs['user-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.deleted',
@@ -167,7 +167,7 @@ export class AuditorService extends EventEmitter {
 		});
 	}
 
-	@Redacted()
+	@Redactable()
 	private userInvited({ user, targetUserId }: AuditEventArgs['user-invited']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.invited',
@@ -175,7 +175,7 @@ export class AuditorService extends EventEmitter {
 		});
 	}
 
-	@Redacted()
+	@Redactable()
 	private userReinvited({ user, targetUserId }: AuditEventArgs['user-reinvited']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.reinvited',
@@ -183,7 +183,7 @@ export class AuditorService extends EventEmitter {
 		});
 	}
 
-	@Redacted()
+	@Redactable()
 	private userUpdated({ user, fieldsChanged }: AuditEventArgs['user-updated']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.updated',
@@ -195,7 +195,7 @@ export class AuditorService extends EventEmitter {
 	 * Auth
 	 */
 
-	@Redacted()
+	@Redactable()
 	private userSignedUp(arg: AuditEventArgs['user-signed-up']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.signedup',
@@ -203,7 +203,7 @@ export class AuditorService extends EventEmitter {
 		});
 	}
 
-	@Redacted()
+	@Redactable()
 	private userLoggedIn({ user, authenticationMethod }: AuditEventArgs['user-logged-in']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.login.success',
@@ -211,7 +211,7 @@ export class AuditorService extends EventEmitter {
 		});
 	}
 
-	@Redacted()
+	@Redactable()
 	private userLoginFailed({ user, ...rest }: AuditEventArgs['user-login-failed']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.login.failed',
@@ -223,8 +223,8 @@ export class AuditorService extends EventEmitter {
 	 * Click
 	 */
 
-	@Redacted('inviter')
-	@Redacted('invitee')
+	@Redactable('inviter')
+	@Redactable('invitee')
 	private userInviteEmailClick(arg: AuditEventArgs['user-invite-email-click']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.invitation.accepted',
@@ -232,7 +232,7 @@ export class AuditorService extends EventEmitter {
 		});
 	}
 
-	@Redacted()
+	@Redactable()
 	private userPasswordResetEmailClick(arg: AuditEventArgs['user-password-reset-email-click']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.reset',
@@ -240,7 +240,7 @@ export class AuditorService extends EventEmitter {
 		});
 	}
 
-	@Redacted()
+	@Redactable()
 	private userPasswordResetRequestClick(arg: AuditEventArgs['user-password-reset-request-click']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.reset.requested',
@@ -252,7 +252,7 @@ export class AuditorService extends EventEmitter {
 	 * API key
 	 */
 
-	@Redacted()
+	@Redactable()
 	private apiKeyCreated(arg: AuditEventArgs['api-key-created']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.api.created',
@@ -260,7 +260,7 @@ export class AuditorService extends EventEmitter {
 		});
 	}
 
-	@Redacted()
+	@Redactable()
 	private apiKeyDeleted(arg: AuditEventArgs['api-key-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.api.deleted',
@@ -272,7 +272,7 @@ export class AuditorService extends EventEmitter {
 	 * Emailing
 	 */
 
-	@Redacted()
+	@Redactable()
 	private emailFailed({ user, messageType }: AuditEventArgs['email-failed']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.email.failed',
@@ -284,7 +284,7 @@ export class AuditorService extends EventEmitter {
 	 * Credentials
 	 */
 
-	@Redacted()
+	@Redactable()
 	private credentialsCreated({ user, ...rest }: AuditEventArgs['credentials-created']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.created',
@@ -292,7 +292,7 @@ export class AuditorService extends EventEmitter {
 		});
 	}
 
-	@Redacted()
+	@Redactable()
 	private credentialsDeleted({ user, ...rest }: AuditEventArgs['credentials-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.deleted',
@@ -300,7 +300,7 @@ export class AuditorService extends EventEmitter {
 		});
 	}
 
-	@Redacted()
+	@Redactable()
 	private credentialsShared({ user, ...rest }: AuditEventArgs['credentials-shared']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.shared',
@@ -308,7 +308,7 @@ export class AuditorService extends EventEmitter {
 		});
 	}
 
-	@Redacted()
+	@Redactable()
 	private credentialsUpdated({ user, ...rest }: AuditEventArgs['credentials-updated']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.updated',
@@ -320,7 +320,7 @@ export class AuditorService extends EventEmitter {
 	 * Community package
 	 */
 
-	@Redacted()
+	@Redactable()
 	private communityPackageInstalled({
 		user,
 		...rest
@@ -331,7 +331,7 @@ export class AuditorService extends EventEmitter {
 		});
 	}
 
-	@Redacted()
+	@Redactable()
 	private communityPackageUpdated({ user, ...rest }: AuditEventArgs['community-package-updated']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.package.updated',
@@ -339,7 +339,7 @@ export class AuditorService extends EventEmitter {
 		});
 	}
 
-	@Redacted()
+	@Redactable()
 	private communityPackageDeleted({ user, ...rest }: AuditEventArgs['community-package-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.package.deleted',
