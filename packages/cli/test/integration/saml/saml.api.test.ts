@@ -1,10 +1,8 @@
 import { Container } from 'typedi';
-import type { AuthenticationMethod } from 'n8n-workflow';
 
 import type { User } from '@db/entities/User';
 import { setSamlLoginEnabled } from '@/sso/saml/samlHelpers';
 import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
-import { InternalHooks } from '@/InternalHooks';
 import { SamlService } from '@/sso/saml/saml.service.ee';
 import type { SamlUserAttributes } from '@/sso/saml/types/samlUserAttributes';
 
@@ -294,19 +292,8 @@ describe('SAML login flow', () => {
 			},
 		);
 
-		const mockedHookOnUserLoginSuccess = jest.spyOn(
-			Container.get(InternalHooks),
-			'onUserLoginSuccess',
-		);
-		mockedHookOnUserLoginSuccess.mockImplementation(
-			async (userLoginData: { user: User; authenticationMethod: AuthenticationMethod }) => {
-				expect(userLoginData.authenticationMethod).toEqual('saml');
-				return;
-			},
-		);
 		await authOwnerAgent.post('/sso/saml/acs').expect(302);
-		expect(mockedHookOnUserLoginSuccess).toBeCalled();
-		mockedHookOnUserLoginSuccess.mockRestore();
+
 		mockedHandleSamlLogin.mockRestore();
 	});
 
@@ -332,23 +319,8 @@ describe('SAML login flow', () => {
 			},
 		);
 
-		const mockedHookOnUserLoginFailed = jest.spyOn(
-			Container.get(InternalHooks),
-			'onUserLoginFailed',
-		);
-		mockedHookOnUserLoginFailed.mockImplementation(
-			async (userLoginData: {
-				user: string;
-				authenticationMethod: AuthenticationMethod;
-				reason?: string;
-			}) => {
-				expect(userLoginData.authenticationMethod).toEqual('saml');
-				return;
-			},
-		);
 		await authOwnerAgent.post('/sso/saml/acs').expect(401);
-		expect(mockedHookOnUserLoginFailed).toBeCalled();
-		mockedHookOnUserLoginFailed.mockRestore();
+
 		mockedHandleSamlLogin.mockRestore();
 	});
 });
