@@ -97,7 +97,7 @@ export type QueueRecoverySettings = {
 	batchSize: number;
 
 	/**
-	 * Time to wait before the next cycle.
+	 * Time (in milliseconds) to wait before the next cycle.
 	 */
 	waitMs: number;
 };

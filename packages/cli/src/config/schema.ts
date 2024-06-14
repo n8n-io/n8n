@@ -376,7 +376,7 @@ export const schema = {
 			interval: {
 				doc: 'How often (minutes) to check for queue recovery',
 				format: Number,
-				default: 20, // @TODO: Confirm
+				default: 180,
 				env: 'N8N_EXECUTIONS_QUEUE_RECOVERY_INTERVAL',
 			},
 			batchSize: {
