@@ -178,7 +178,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, getCurrentInstance } from 'vue';
+import { defineComponent } from 'vue';
 import type { PropType, CSSProperties } from 'vue';
 import { mapStores } from 'pinia';
 import xss from 'xss';

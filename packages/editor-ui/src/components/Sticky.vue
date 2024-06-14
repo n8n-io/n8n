@@ -103,7 +103,8 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, getCurrentInstance, PropType, ref, type StyleValue } from 'vue';
+import { defineComponent, ref } from 'vue';
+import type { PropType, StyleValue } from 'vue';
 import { mapStores } from 'pinia';
 
 import { isNumber, isString } from '@/utils/typeGuards';
@@ -114,7 +115,7 @@ import type {
 	XYPosition,
 } from '@/Interface';
 
-import {
+import type {
 	ConnectionTypes,
 	INodeInputConfiguration,
 	INodeOutputConfiguration,
@@ -298,6 +299,17 @@ export default defineComponent({
 			return this.uiStore.isActionActive('workflowRunning');
 		},
 	},
+	mounted() {
+		// Initialize the node
+		if (this.data !== null) {
+			try {
+				this.addNode(this.data);
+			} catch (error) {
+				// This breaks when new nodes are loaded into store but workflow tab is not currently active
+				// Shouldn't affect anything
+			}
+		}
+	},
 	methods: {
 		onShowPopover() {
 			this.setForceActions(true);
@@ -333,7 +345,7 @@ export default defineComponent({
 		onMarkdownClick(link: HTMLAnchorElement) {
 			if (link) {
 				const isOnboardingNote = this.name === QUICKSTART_NOTE_NAME;
-				const isWelcomeVideo = link.querySelector('img[alt="n8n quickstart video"');
+				const isWelcomeVideo = link.querySelector('img[alt="n8n quickstart video"]');
 				const type =
 					isOnboardingNote && isWelcomeVideo
 						? 'welcome_video'
@@ -417,17 +429,6 @@ export default defineComponent({
 				e.stopPropagation();
 			}
 		},
-	},
-	mounted() {
-		// Initialize the node
-		if (this.data !== null) {
-			try {
-				this.addNode(this.data);
-			} catch (error) {
-				// This breaks when new nodes are loaded into store but workflow tab is not currently active
-				// Shouldn't affect anything
-			}
-		}
 	},
 });
 </script>

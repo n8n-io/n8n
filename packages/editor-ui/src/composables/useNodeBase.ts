@@ -1,6 +1,4 @@
-import { computed, defineComponent, getCurrentInstance, ref } from 'vue';
-import type { PropType } from 'vue';
-import { mapStores } from 'pinia';
+import { computed, getCurrentInstance, ref } from 'vue';
 
 import type { INodeUi } from '@/Interface';
 import {
