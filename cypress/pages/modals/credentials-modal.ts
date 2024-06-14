@@ -55,7 +55,7 @@ export class CredentialsModal extends BasePage {
 		close: () => {
 			this.getters.closeButton().click();
 		},
-		fillCredentialsForm: () => {
+		fillCredentialsForm: (closeModal = true) => {
 			this.getters.credentialsEditModal().should('be.visible');
 			this.getters.credentialInputs().should('have.length.greaterThan', 0);
 			this.getters
@@ -65,14 +65,23 @@ export class CredentialsModal extends BasePage {
 					cy.wrap($el).type('test');
 				});
 			this.getters.saveButton().click();
-			this.getters.closeButton().click();
+			if (closeModal) {
+				this.getters.closeButton().click();
+			}
+		},
+		createNewCredential: (type: string, closeModal = true) => {
+			this.getters.newCredentialModal().should('be.visible');
+			this.getters.newCredentialTypeSelect().should('be.visible');
+			this.getters.newCredentialTypeOption(type).click();
+			this.getters.newCredentialTypeButton().click();
+			this.actions.fillCredentialsForm(closeModal);
 		},
 		renameCredential: (newName: string) => {
 			this.getters.nameInput().type('{selectall}');
 			this.getters.nameInput().type(newName);
 			this.getters.nameInput().type('{enter}');
 		},
-		changeTab: (tabName: string) => {
+		changeTab: (tabName: 'Sharing') => {
 			this.getters.menuItem(tabName).click();
 		},
 	};
