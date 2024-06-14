@@ -18,23 +18,21 @@
 </template>
 
 <script setup lang="ts">
-import { useRouter } from 'vue-router';
 import type { BaseTextKey } from '@/plugins/i18n';
+import { useRouter } from 'vue-router';
+import { VIEWS } from '@/constants';
+const router = useRouter();
 
 const props = defineProps<{
 	messageKey: BaseTextKey;
-	errorCode?: number;
+	errorCode: number;
 	redirectTextKey: BaseTextKey;
-	redirectPage?: string;
+	redirectPage?: keyof typeof VIEWS;
 }>();
 
-const router = useRouter();
-
-const onButtonClick = () => {
-	if (props.redirectPage) {
-		void router.push({ name: props.redirectPage });
-	}
-};
+function onButtonClick() {
+	void router.push({ name: props.redirectPage ?? VIEWS.HOMEPAGE });
+}
 </script>
 
 <style lang="scss" module>
