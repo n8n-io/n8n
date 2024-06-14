@@ -80,7 +80,7 @@ export class ExecutionRecoveryService {
 
 		const wait = [this.queueRecoverySettings.waitMs / (60 * 1000), 'min'].join(' ');
 
-		this.logger.debug(`[Recovery] Next queue recovery in ${wait}`);
+		this.logger.debug(`[Recovery] Scheduled queue recovery check for next ${wait}`);
 	}
 
 	stopQueueRecovery() {
@@ -106,21 +106,32 @@ export class ExecutionRecoveryService {
 
 		const storedIds = await this.executionRepository.getInProgressExecutionIds(batchSize);
 
-		if (storedIds.length === 0) return waitMs;
+		if (storedIds.length === 0) {
+			this.logger.debug('[Recovery] Completed queue recovery check, no dangling executions');
+			return waitMs;
+		}
 
 		const { Queue } = await import('@/Queue');
 
 		const queuedIds = await Container.get(Queue).getInProgressExecutionIds();
 
-		if (queuedIds.size === 0) return waitMs;
+		if (queuedIds.size === 0) {
+			this.logger.debug('[Recovery] Completed queue recovery check, no dangling executions');
+			return waitMs;
+		}
 
 		const danglingIds = storedIds.filter((id) => !queuedIds.has(id));
 
-		if (danglingIds.length === 0) return waitMs;
+		if (danglingIds.length === 0) {
+			this.logger.debug('[Recovery] Completed queue recovery check, no dangling executions');
+			return waitMs;
+		}
 
 		await this.executionRepository.markAsCrashed(danglingIds);
 
-		this.logger.debug('[Recovery] Completed queue recovery');
+		this.logger.info('[Recovery] Completed queue recovery check, recovered dangling executions', {
+			danglingIds,
+		});
 
 		// if this cycle used up the whole batch size, it is possible for there to be
 		// dangling executions outside this check, so speed up next cycle
