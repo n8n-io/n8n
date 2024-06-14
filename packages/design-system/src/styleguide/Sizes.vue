@@ -1,59 +1,53 @@
-<script lang="ts">
+<script setup lang="ts">
 import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
+import { ref, onMounted, onUnmounted, reactive } from 'vue';
 
-export default defineComponent({
-	name: 'Sizes',
-	props: {
-		variables: {
-			type: Array as PropType<string[]>,
-			required: true,
-		},
-		attr: {
-			type: String,
-			default: '',
-		},
+// Define props with their types
+const props = defineProps({
+	variables: {
+		type: Array as PropType<string[]>,
+		required: true,
 	},
-	data() {
-		return {
-			observer: null as null | MutationObserver,
-			sizes: {} as Record<string, { rem: string; px: number }>,
-		};
+	attr: {
+		type: String,
+		default: '',
 	},
-	created() {
-		const setSizes = () => {
-			this.variables.forEach((variable: string) => {
-				const style = getComputedStyle(document.body);
-				const rem = style.getPropertyValue(variable);
-				const px = parseFloat(rem.replace('rem', '')) * 16;
+});
 
-				this.sizes = {
-					...this.sizes,
-					[variable]: { rem, px },
-				};
-			});
-		};
+const sizes = reactive<Record<string, { rem: string; px: number }>>({});
+const observer = ref<MutationObserver | null>(null);
 
-		setSizes();
+const setSizes = () => {
+	for (const variable of props.variables) {
+		const style = getComputedStyle(document.body);
+		const rem = style.getPropertyValue(variable);
+		const px = parseFloat(rem.replace('rem', '')) * 16; // Assuming default font-size is 16px
 
-		// when theme class is added or removed, reset color values
-		this.observer = new MutationObserver((mutationsList) => {
-			for (const mutation of mutationsList) {
-				if (mutation.type === 'attributes') {
-					setSizes();
-				}
+		sizes[variable] = { rem, px };
+	}
+};
+
+onMounted(() => {
+	setSizes();
+
+	// Observing attributes changes in body to recompute sizes
+	const mutationObserverCallback = (mutationsList: MutationRecord[]) => {
+		for (const mutation of mutationsList) {
+			if (mutation.type === 'attributes') {
+				setSizes();
 			}
-		});
-		const body = document.querySelector('body');
-		if (body) {
-			this.observer.observe(body, { attributes: true });
 		}
-	},
-	unmounted() {
-		if (this.observer) {
-			this.observer.disconnect();
-		}
-	},
+	};
+
+	const body = document.querySelector('body');
+	if (body) {
+		observer.value = new MutationObserver(mutationObserverCallback);
+		observer.value.observe(body, { attributes: true });
+	}
+});
+
+onUnmounted(() => {
+	observer.value?.disconnect();
 });
 </script>
 
