@@ -11,6 +11,7 @@ import {
 	createNewCredential,
 	deleteCredential,
 	getAllCredentials,
+	getAllCredentialsForWorkflow,
 	getCredentialData,
 	getCredentialsNewName,
 	getCredentialTypes,
@@ -259,6 +260,15 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 				isEmpty(filter) ? undefined : filter,
 				includeScopes,
 			);
+			this.setCredentials(credentials);
+			return credentials;
+		},
+		async fetchAllCredentialsForWorkflow(
+			options: { workflowId: string } | { projectId: string },
+		): Promise<ICredentialsResponse[]> {
+			const rootStore = useRootStore();
+
+			const credentials = await getAllCredentialsForWorkflow(rootStore.getRestApiContext, options);
 			this.setCredentials(credentials);
 			return credentials;
 		},
