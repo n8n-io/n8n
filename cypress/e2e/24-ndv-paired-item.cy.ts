@@ -1,4 +1,3 @@
-import { v4 as uuid } from 'uuid';
 import { WorkflowPage, NDV } from '../pages';
 
 const workflowPage = new WorkflowPage();
@@ -7,7 +6,7 @@ const ndv = new NDV();
 describe('NDV', () => {
 	beforeEach(() => {
 		workflowPage.actions.visit();
-		workflowPage.actions.renameWorkflow(uuid());
+		workflowPage.actions.renameWithUniqueName();
 		workflowPage.actions.saveWorkflowOnButtonClick();
 	});
 

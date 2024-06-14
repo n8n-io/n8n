@@ -1,4 +1,3 @@
-import { v4 as uuid } from 'uuid';
 import { WorkflowExecutionsTab, WorkflowPage as WorkflowPageClass } from '../pages';
 import { BACKEND_BASE_URL } from '../constants';
 
@@ -11,7 +10,7 @@ describe('ADO-2106 connections should be colored correctly for pinned data in ex
 	});
 
 	beforeEach(() => {
-		cy.createFixtureWorkflow('Webhook_set_pinned.json', `Webhook set pinned ${uuid()}`);
+		cy.createFixtureWorkflow('Webhook_set_pinned.json');
 		workflowPage.actions.deselectAll();
 		workflowPage.getters.zoomToFitButton().click();
 
