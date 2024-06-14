@@ -5,9 +5,6 @@ import { Redactable } from '@/decorators/Redactable';
 import type { AuditEventArgs } from './audit.types';
 import type { IWorkflowBase } from 'n8n-workflow';
 
-// @TODO: Emit all these events
-// @TODO: Remove eventbus from InternalHooks
-
 /**
  * Service for adding events from `EventSender` to the audit log.
  */
