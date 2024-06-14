@@ -464,31 +464,25 @@ export class InternalHooks {
 	}
 
 	async onUserUpdate(userUpdateData: { user: User; fields_changed: string[] }): Promise<void> {
-		void Promise.all([
-			this.telemetry.track('User changed personal settings', {
-				user_id: userUpdateData.user.id,
-				fields_changed: userUpdateData.fields_changed,
-			}),
-		]);
+		void this.telemetry.track('User changed personal settings', {
+			user_id: userUpdateData.user.id,
+			fields_changed: userUpdateData.fields_changed,
+		});
 	}
 
 	async onUserInviteEmailClick(userInviteClickData: {
 		inviter: User;
 		invitee: User;
 	}): Promise<void> {
-		void Promise.all([
-			this.telemetry.track('User clicked invite link from email', {
-				user_id: userInviteClickData.invitee.id,
-			}),
-		]);
+		void this.telemetry.track('User clicked invite link from email', {
+			user_id: userInviteClickData.invitee.id,
+		});
 	}
 
 	async onUserPasswordResetEmailClick(userPasswordResetData: { user: User }): Promise<void> {
-		void Promise.all([
-			this.telemetry.track('User clicked password reset link from email', {
-				user_id: userPasswordResetData.user.id,
-			}),
-		]);
+		void this.telemetry.track('User clicked password reset link from email', {
+			user_id: userPasswordResetData.user.id,
+		});
 	}
 
 	async onUserTransactionalEmail(userTransactionalEmailData: {
@@ -547,12 +541,10 @@ export class InternalHooks {
 			was_disabled_ldap_user: boolean;
 		},
 	): Promise<void> {
-		void Promise.all([
-			this.telemetry.track('User signed up', {
-				user_id: user.id,
-				...userSignupData,
-			}),
-		]);
+		void this.telemetry.track('User signed up', {
+			user_id: user.id,
+			...userSignupData,
+		});
 	}
 
 	async onEmailFailed(failedEmailData: {
@@ -565,11 +557,9 @@ export class InternalHooks {
 			| 'Credentials shared';
 		public_api: boolean;
 	}): Promise<void> {
-		void Promise.all([
-			this.telemetry.track('Instance failed to send transactional email to user', {
-				user_id: failedEmailData.user.id,
-			}),
-		]);
+		void this.telemetry.track('Instance failed to send transactional email to user', {
+			user_id: failedEmailData.user.id,
+		});
 	}
 
 	/**
@@ -586,16 +576,14 @@ export class InternalHooks {
 		const project = await this.sharedCredentialsRepository.findCredentialOwningProject(
 			userCreatedCredentialsData.credential_id,
 		);
-		void Promise.all([
-			this.telemetry.track('User created credentials', {
-				user_id: userCreatedCredentialsData.user.id,
-				credential_type: userCreatedCredentialsData.credential_type,
-				credential_id: userCreatedCredentialsData.credential_id,
-				instance_id: this.instanceSettings.instanceId,
-				project_id: project?.id,
-				project_type: project?.type,
-			}),
-		]);
+		void this.telemetry.track('User created credentials', {
+			user_id: userCreatedCredentialsData.user.id,
+			credential_type: userCreatedCredentialsData.credential_type,
+			credential_id: userCreatedCredentialsData.credential_id,
+			instance_id: this.instanceSettings.instanceId,
+			project_id: project?.id,
+			project_type: project?.type,
+		});
 	}
 
 	async onUserSharedCredentials(userSharedCredentialsData: {
@@ -607,17 +595,15 @@ export class InternalHooks {
 		user_ids_sharees_added: string[];
 		sharees_removed: number | null;
 	}): Promise<void> {
-		void Promise.all([
-			this.telemetry.track('User updated cred sharing', {
-				user_id: userSharedCredentialsData.user.id,
-				credential_type: userSharedCredentialsData.credential_type,
-				credential_id: userSharedCredentialsData.credential_id,
-				user_id_sharer: userSharedCredentialsData.user_id_sharer,
-				user_ids_sharees_added: userSharedCredentialsData.user_ids_sharees_added,
-				sharees_removed: userSharedCredentialsData.sharees_removed,
-				instance_id: this.instanceSettings.instanceId,
-			}),
-		]);
+		void this.telemetry.track('User updated cred sharing', {
+			user_id: userSharedCredentialsData.user.id,
+			credential_type: userSharedCredentialsData.credential_type,
+			credential_id: userSharedCredentialsData.credential_id,
+			user_id_sharer: userSharedCredentialsData.user_id_sharer,
+			user_ids_sharees_added: userSharedCredentialsData.user_ids_sharees_added,
+			sharees_removed: userSharedCredentialsData.sharees_removed,
+			instance_id: this.instanceSettings.instanceId,
+		});
 	}
 
 	async onUserUpdatedCredentials(userUpdatedCredentialsData: {
@@ -626,13 +612,11 @@ export class InternalHooks {
 		credential_type: string;
 		credential_id: string;
 	}): Promise<void> {
-		void Promise.all([
-			this.telemetry.track('User updated credentials', {
-				user_id: userUpdatedCredentialsData.user.id,
-				credential_type: userUpdatedCredentialsData.credential_type,
-				credential_id: userUpdatedCredentialsData.credential_id,
-			}),
-		]);
+		void this.telemetry.track('User updated credentials', {
+			user_id: userUpdatedCredentialsData.user.id,
+			credential_type: userUpdatedCredentialsData.credential_type,
+			credential_id: userUpdatedCredentialsData.credential_id,
+		});
 	}
 
 	async onUserDeletedCredentials(userUpdatedCredentialsData: {
@@ -641,14 +625,12 @@ export class InternalHooks {
 		credential_type: string;
 		credential_id: string;
 	}): Promise<void> {
-		void Promise.all([
-			this.telemetry.track('User deleted credentials', {
-				user_id: userUpdatedCredentialsData.user.id,
-				credential_type: userUpdatedCredentialsData.credential_type,
-				credential_id: userUpdatedCredentialsData.credential_id,
-				instance_id: this.instanceSettings.instanceId,
-			}),
-		]);
+		void this.telemetry.track('User deleted credentials', {
+			user_id: userUpdatedCredentialsData.user.id,
+			credential_type: userUpdatedCredentialsData.credential_type,
+			credential_id: userUpdatedCredentialsData.credential_id,
+			instance_id: this.instanceSettings.instanceId,
+		});
 	}
 
 	/**
@@ -666,19 +648,17 @@ export class InternalHooks {
 		package_author_email?: string;
 		failure_reason?: string;
 	}): Promise<void> {
-		void Promise.all([
-			this.telemetry.track('cnr package install finished', {
-				user_id: installationData.user.id,
-				input_string: installationData.input_string,
-				package_name: installationData.package_name,
-				success: installationData.success,
-				package_version: installationData.package_version,
-				package_node_names: installationData.package_node_names,
-				package_author: installationData.package_author,
-				package_author_email: installationData.package_author_email,
-				failure_reason: installationData.failure_reason,
-			}),
-		]);
+		void this.telemetry.track('cnr package install finished', {
+			user_id: installationData.user.id,
+			input_string: installationData.input_string,
+			package_name: installationData.package_name,
+			success: installationData.success,
+			package_version: installationData.package_version,
+			package_node_names: installationData.package_node_names,
+			package_author: installationData.package_author,
+			package_author_email: installationData.package_author_email,
+			failure_reason: installationData.failure_reason,
+		});
 	}
 
 	async onCommunityPackageUpdateFinished(updateData: {
@@ -709,16 +689,14 @@ export class InternalHooks {
 		package_author?: string;
 		package_author_email?: string;
 	}): Promise<void> {
-		void Promise.all([
-			this.telemetry.track('cnr package deleted', {
-				user_id: deleteData.user.id,
-				package_name: deleteData.package_name,
-				package_version: deleteData.package_version,
-				package_node_names: deleteData.package_node_names,
-				package_author: deleteData.package_author,
-				package_author_email: deleteData.package_author_email,
-			}),
-		]);
+		void this.telemetry.track('cnr package deleted', {
+			user_id: deleteData.user.id,
+			package_name: deleteData.package_name,
+			package_version: deleteData.package_version,
+			package_node_names: deleteData.package_node_names,
+			package_author: deleteData.package_author,
+			package_author_email: deleteData.package_author_email,
+		});
 	}
 
 	async onLdapSyncFinished(data: {
