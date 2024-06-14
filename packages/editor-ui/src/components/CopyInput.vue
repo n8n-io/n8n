@@ -38,16 +38,14 @@ type Props = {
 	redactValue?: boolean;
 };
 
-const i18n = useI18n();
-
 const props = withDefaults(defineProps<Props>(), {
 	value: '',
 	placeholder: '',
 	label: '',
 	hint: '',
 	size: 'medium',
-	copyButtonText: i18n.baseText('generic.copy'),
-	toastTitle: i18n.baseText('generic.copiedToClipboard'),
+	copyButtonText: useI18n().baseText('generic.copy'),
+	toastTitle: useI18n().baseText('generic.copiedToClipboard'),
 });
 const emit = defineEmits<{
 	(event: 'copy'): void;
