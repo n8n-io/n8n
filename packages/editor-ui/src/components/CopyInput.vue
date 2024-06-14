@@ -30,7 +30,7 @@ type Props = {
 	hint?: string;
 	value?: string;
 	copyButtonText: string;
-	toastTitle: string;
+	toastTitle?: string;
 	toastMessage?: string;
 	size?: 'medium' | 'large';
 	collapse?: boolean;
@@ -42,7 +42,6 @@ const props = withDefaults(defineProps<Props>(), {
 	placeholder: '',
 	label: '',
 	hint: '',
-	toastMessage: undefined,
 	size: 'medium',
 });
 const emit = defineEmits<{
