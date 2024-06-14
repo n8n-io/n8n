@@ -1,22 +1,3 @@
-<template>
-	<table :class="$style.table">
-		<tr>
-			<th :class="$style.row">Name</th>
-			<th :class="$style.row">rem</th>
-			<th :class="$style.row">px</th>
-		</tr>
-		<tr
-			v-for="variable in variables"
-			:key="variable"
-			:style="attr ? { [attr]: `var(${variable})` } : {}"
-		>
-			<td>{{ variable }}</td>
-			<td>{{ sizes[variable].rem }}</td>
-			<td>{{ sizes[variable].px }}</td>
-		</tr>
-	</table>
-</template>
-
 <script lang="ts">
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
@@ -75,6 +56,25 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<table :class="$style.table">
+		<tr>
+			<th :class="$style.row">Name</th>
+			<th :class="$style.row">rem</th>
+			<th :class="$style.row">px</th>
+		</tr>
+		<tr
+			v-for="variable in variables"
+			:key="variable"
+			:style="attr ? { [attr]: `var(${variable})` } : {}"
+		>
+			<td>{{ variable }}</td>
+			<td>{{ sizes[variable].rem }}</td>
+			<td>{{ sizes[variable].px }}</td>
+		</tr>
+	</table>
+</template>
 
 <style lang="scss" module>
 .table {
