@@ -1,4 +1,8 @@
-import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import {
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	type INodeProperties,
+} from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -21,7 +25,11 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	const inputs = getMergeNodeInputs(this);
 
 	for (let i = 0; i < inputs.length; i++) {
-		returnData.push.apply(returnData, this.getInputData(i));
+		try {
+			returnData.push.apply(returnData, this.getInputData(i));
+		} catch (error) {
+			// do not throw error if input is missing
+		}
 	}
 
 	return returnData;

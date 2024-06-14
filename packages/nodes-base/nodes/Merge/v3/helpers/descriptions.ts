@@ -26,7 +26,7 @@ export const clashHandlingProperties: INodeProperties = {
 	name: 'clashHandling',
 	type: 'fixedCollection',
 	default: {
-		values: { resolveClash: 'preferInput2', mergeMode: 'deepMerge', overrideEmpty: false },
+		values: { resolveClash: 'preferLast', mergeMode: 'deepMerge', overrideEmpty: false },
 	},
 	options: [
 		{

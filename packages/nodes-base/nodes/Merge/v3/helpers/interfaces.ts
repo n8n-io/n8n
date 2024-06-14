@@ -9,7 +9,7 @@ export type MatchFieldsOptions = {
 };
 
 type ClashMergeMode = 'deepMerge' | 'shallowMerge';
-type ClashResolveMode = 'addSuffix' | 'preferInput1' | 'preferInput2';
+type ClashResolveMode = 'addSuffix' | 'preferInput1' | 'preferLast';
 
 export type ClashResolveOptions = {
 	resolveClash: ClashResolveMode;

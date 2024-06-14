@@ -79,11 +79,12 @@ export const properties: INodeProperties[] = [
 		default: 'keepMatches',
 	},
 	{
-		displayName: 'Advanced Setup',
+		displayName: 'Match Fields with Different Names',
 		name: 'advanced',
 		type: 'boolean',
 		default: false,
-		hint: 'Enable when you are matching fields that are named differently in input 1 and input 2',
+		description:
+			'Whether name(s) of field to match are different in input 1 and input 2 enable this option',
 	},
 	{
 		displayName: 'Fields to Match',

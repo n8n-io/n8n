@@ -254,11 +254,11 @@ export function mergeMatched(
 			];
 		} else {
 			const preferInput1 = 'preferInput1';
-			const preferInput2 = 'preferInput2';
+			const preferLast = 'preferLast';
 
 			if (resolveClash === undefined) {
 				if (joinMode !== 'enrichInput2') {
-					resolveClash = 'preferInput2';
+					resolveClash = 'preferLast';
 				} else {
 					resolveClash = 'preferInput1';
 				}
@@ -284,7 +284,7 @@ export function mergeMatched(
 				];
 			}
 
-			if (resolveClash === preferInput2) {
+			if (resolveClash === preferLast) {
 				json = mergeIntoSingleObject({ ...entry.json }, ...matches.map((item) => item.json));
 				binary = mergeIntoSingleObject(
 					{ ...entry.binary },

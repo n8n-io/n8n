@@ -10,9 +10,13 @@ export async function getResolveClashOptions(
 			name: 'Always Add Input Number to Field Names',
 			value: 'addSuffix',
 		},
+		{
+			name: `Prefer Last Input(${numberOfInputs}) Version`,
+			value: 'preferLast',
+		},
 	];
 
-	for (let i = 0; i < numberOfInputs; i++) {
+	for (let i = 0; i < numberOfInputs - 1; i++) {
 		outputOptions.push({
 			name: `Prefer Input ${i + 1} Version`,
 			value: `preferInput${i + 1}`,

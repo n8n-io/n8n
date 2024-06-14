@@ -112,11 +112,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			preferedEntry.pairedItem as IPairedItemData,
 		].filter((item) => item !== undefined);
 
-		returnData.push({
-			json,
-			binary,
-			pairedItem,
-		});
+		returnData.push({ json, binary, pairedItem });
 	}
 
 	return returnData;
