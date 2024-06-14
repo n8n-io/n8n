@@ -139,7 +139,7 @@
 </template>
 
 <script setup lang="ts">
-import { defineComponent, ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
+import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import { createEventBus } from 'n8n-design-system/utils';
 import type { IRunData, ConnectionTypes } from 'n8n-workflow';
 import { jsonParse, NodeHelpers, NodeConnectionType } from 'n8n-workflow';
