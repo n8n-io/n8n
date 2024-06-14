@@ -98,13 +98,13 @@ export class ExecutionRecoveryService {
 	// ----------------------------------
 
 	/**
-	 * Mark in-progress executions as `crashed` if stored in DB `new` or `running`
+	 * Mark in-progress executions as `crashed` if stored in DB as `new` or `running`
 	 * but absent from the queue. Return time until next recovery cycle.
 	 */
 	private async recoverFromQueue() {
 		const { waitMs, batchSize } = this.queueRecoverySettings;
 
-		const storedIds = await this.executionRepository.getLatestInProgressExecutionIds(batchSize);
+		const storedIds = await this.executionRepository.getInProgressExecutionIds(batchSize);
 
 		if (storedIds.length === 0) return waitMs;
 
