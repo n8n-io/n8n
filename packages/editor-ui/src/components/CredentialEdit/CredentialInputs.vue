@@ -12,7 +12,7 @@
 			<ParameterInputExpanded
 				v-else
 				:parameter="parameter"
-				:value="getCredentialData(parameter.name)"
+				:value="credentialDataValues[parameter.name]"
 				:documentation-url="documentationUrl"
 				:show-validation-warnings="showValidationWarnings"
 				:label="{ size: 'medium' }"
@@ -31,6 +31,7 @@ import type {
 } from 'n8n-workflow';
 import type { IUpdateInformation } from '@/Interface';
 import ParameterInputExpanded from '../ParameterInputExpanded.vue';
+import { computed } from 'vue';
 
 type Props = {
 	credentialProperties: INodeProperties[];
@@ -40,6 +41,10 @@ type Props = {
 };
 
 const props = defineProps<Props>();
+
+const credentialDataValues = computed(
+	() => props.credentialData as Record<string, NodeParameterValueType>,
+);
 
 const emit = defineEmits<{
 	(event: 'update', value: IUpdateInformation): void;
@@ -52,10 +57,6 @@ function valueChanged(parameterData: IUpdateInformation) {
 		name,
 		value: parameterData.value,
 	});
-}
-
-function getCredentialData(parameterName: string) {
-	return props.credentialData[parameterName] as NodeParameterValueType;
 }
 </script>
 

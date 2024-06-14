@@ -1,7 +1,7 @@
 <template>
 	<ExpandableInputBase :model-value="modelValue" :placeholder="placeholder">
 		<input
-			ref="input"
+			ref="inputRef"
 			v-on-click-outside="onClickOutside"
 			class="el-input__inner"
 			:value="modelValue"
@@ -36,11 +36,11 @@ const emit = defineEmits<{
 	(event: 'esc'): void;
 }>();
 
-const input = ref<HTMLInputElement>();
+const inputRef = ref<HTMLInputElement>();
 
 onMounted(() => {
 	// autofocus on input element is not reliable
-	if (props.autofocus && input.value) {
+	if (props.autofocus && inputRef.value) {
 		focus();
 	}
 	props.eventBus?.on('focus', focus);
@@ -51,26 +51,26 @@ onBeforeUnmount(() => {
 });
 
 function focus() {
-	if (input.value) {
-		input.value.focus();
+	if (inputRef.value) {
+		inputRef.value.focus();
 	}
 }
 
 function onInput() {
-	if (input.value) {
-		emit('update:model-value', input.value.value);
+	if (inputRef.value) {
+		emit('update:model-value', inputRef.value.value);
 	}
 }
 
 function onEnter() {
-	if (input.value) {
-		emit('enter', input.value.value);
+	if (inputRef.value) {
+		emit('enter', inputRef.value.value);
 	}
 }
 
 function onClickOutside(e: Event) {
-	if (e.type === 'click' && input.value) {
-		emit('blur', input.value.value);
+	if (e.type === 'click' && inputRef.value) {
+		emit('blur', inputRef.value.value);
 	}
 }
 

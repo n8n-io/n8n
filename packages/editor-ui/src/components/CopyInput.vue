@@ -23,6 +23,7 @@
 
 <script setup lang="ts">
 import { useClipboard } from '@/composables/useClipboard';
+import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 
 type Props = {
@@ -37,12 +38,16 @@ type Props = {
 	redactValue?: boolean;
 };
 
+const i18n = useI18n();
+
 const props = withDefaults(defineProps<Props>(), {
 	value: '',
 	placeholder: '',
 	label: '',
 	hint: '',
 	size: 'medium',
+	copyButtonText: i18n.baseText('generic.copy'),
+	toastTitle: i18n.baseText('generic.copiedToClipboard'),
 });
 const emit = defineEmits<{
 	(event: 'copy'): void;
