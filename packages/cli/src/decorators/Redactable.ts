@@ -29,7 +29,7 @@ export const Redactable =
 
 			const userLike = args[index]?.[fieldName];
 
-			// @ts-expect-error Sensitive properties prepended with underscore
+			// @ts-expect-error Transformation
 			if (userLike) args[index][fieldName] = toRedactable(userLike);
 
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
