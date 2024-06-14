@@ -6,6 +6,7 @@ import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { Logger } from '@/Logger';
 import { jsonStringify } from 'n8n-workflow';
 import { OnShutdown } from '@/decorators/OnShutdown';
+import { OrchestrationService } from './orchestration.service';
 
 @Service()
 export class PruningService {
@@ -26,7 +27,22 @@ export class PruningService {
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly binaryDataService: BinaryDataService,
+		private readonly orchestrationService: OrchestrationService,
 	) {}
+
+	/**
+	 * @important Requires `OrchestrationService` to be initialized.
+	 */
+	init() {
+		const { isLeader, isMultiMainSetupEnabled } = this.orchestrationService;
+
+		if (isLeader) this.startPruning();
+
+		if (isMultiMainSetupEnabled) {
+			this.orchestrationService.multiMainSetup.on('leader-takeover', () => this.startPruning());
+			this.orchestrationService.multiMainSetup.on('leader-stepdown', () => this.stopPruning());
+		}
+	}
 
 	private isPruningEnabled() {
 		if (
