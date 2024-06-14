@@ -94,6 +94,8 @@ export const properties: INodeProperties[] = [
 		placeholder: 'e.g. id, name',
 		default: '',
 		requiresDataPath: 'multiple',
+		description: 'Specify the fields to use for matching input items',
+		hint: 'Drag or type the input field name',
 		displayOptions: {
 			show: {
 				advanced: [false],
@@ -109,6 +111,8 @@ export const properties: INodeProperties[] = [
 		typeOptions: {
 			multipleValues: true,
 		},
+		description: 'Specify the fields to use for matching input items',
+		hint: 'Drag or type the input field name',
 		displayOptions: {
 			show: {
 				advanced: [true],

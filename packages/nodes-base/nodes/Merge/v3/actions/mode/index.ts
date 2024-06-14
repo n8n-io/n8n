@@ -4,9 +4,10 @@ import * as append from './append';
 import * as chooseBranch from './chooseBranch';
 import * as combineAll from './combineAll';
 import * as combineByFields from './combineByFields';
+import * as combineBySql from './combineBySql';
 import * as combineByPosition from './combineByPosition';
 
-export { append, chooseBranch, combineAll, combineByFields, combineByPosition };
+export { append, chooseBranch, combineAll, combineByFields, combineBySql, combineByPosition };
 
 export const description: INodeProperties[] = [
 	{
@@ -21,6 +22,12 @@ export const description: INodeProperties[] = [
 				value: 'append',
 				description: 'All items of Input 1, then all items from following inputs',
 				action: 'Append items',
+			},
+			{
+				name: 'Combine by SQL',
+				value: 'combineBySql',
+				description: 'Combine items using SQL',
+				action: 'Combine by SQL',
 			},
 			{
 				name: 'Combine by Matching Fields',
@@ -48,11 +55,12 @@ export const description: INodeProperties[] = [
 			},
 		],
 		default: 'append',
-		description: 'How data of branches should be merged',
+		description: 'How input data should be merged',
 	},
 	...append.description,
 	...combineAll.description,
 	...combineByFields.description,
+	...combineBySql.description,
 	...combineByPosition.description,
 	...chooseBranch.description,
 ];
