@@ -18,77 +18,64 @@
 				:show-length="true"
 			/>
 			<RunDataHtml v-else-if="binaryData.fileType === 'html'" :input-html="data" />
-			<embed v-else :src="embedSource" class="binary-data" :class="embedClass()" />
+			<embed v-else :src="embedSource" class="binary-data" :class="embedClass" />
 		</span>
 	</span>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
+<script setup lang="ts">
+import { ref, onMounted, computed } from 'vue';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IBinaryData } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 import type { PropType } from 'vue';
 import VueJsonPretty from 'vue-json-pretty';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import RunDataHtml from '@/components/RunDataHtml.vue';
 
-export default defineComponent({
-	name: 'BinaryDataDisplayEmbed',
-	components: {
-		VueJsonPretty,
-		RunDataHtml,
+const props = defineProps({
+	binaryData: {
+		type: Object as PropType<IBinaryData>,
+		required: true,
 	},
-	props: {
-		binaryData: {
-			type: Object as PropType<IBinaryData>,
-			required: true,
-		},
-	},
-	data() {
-		return {
-			isLoading: true,
-			embedSource: '',
-			error: false,
-			data: '',
-		};
-	},
-	computed: {
-		...mapStores(useWorkflowsStore),
-	},
-	async mounted() {
-		const { id, data, fileName, fileType, mimeType } = this.binaryData;
-		const isJSONData = fileType === 'json';
-		const isHTMLData = fileType === 'html';
+});
 
-		if (!id) {
-			if (isJSONData || isHTMLData) {
-				this.data = jsonParse(atob(data));
-			} else {
-				this.embedSource = 'data:' + mimeType + ';base64,' + data;
-			}
+const isLoading = ref(true);
+const embedSource = ref('');
+const error = ref(false);
+const data = ref('');
+
+const workflowsStore = useWorkflowsStore();
+
+const embedClass = computed(() => {
+	return [props.binaryData.fileType ?? 'other'];
+});
+
+onMounted(async () => {
+	const { id, data: binaryData, fileName, fileType, mimeType } = props.binaryData;
+	const isJSONData = fileType === 'json';
+	const isHTMLData = fileType === 'html';
+
+	if (!id) {
+		if (isJSONData || isHTMLData) {
+			data.value = jsonParse(atob(binaryData));
 		} else {
-			try {
-				const binaryUrl = this.workflowsStore.getBinaryUrl(id, 'view', fileName ?? '', mimeType);
-				if (isJSONData || isHTMLData) {
-					const fetchedData = await fetch(binaryUrl, { credentials: 'include' });
-					this.data = await (isJSONData ? fetchedData.json() : fetchedData.text());
-				} else {
-					this.embedSource = binaryUrl;
-				}
-			} catch (e) {
-				this.error = true;
-			}
+			embedSource.value = 'data:' + mimeType + ';base64,' + binaryData;
 		}
+	} else {
+		try {
+			const binaryUrl = workflowsStore.getBinaryUrl(id, 'view', fileName ?? '', mimeType);
+			if (isJSONData || isHTMLData) {
+				const fetchedData = await fetch(binaryUrl, { credentials: 'include' });
+				data.value = await (isJSONData ? fetchedData.json() : fetchedData.text());
+			} else {
+				embedSource.value = binaryUrl;
+			}
+		} catch (e) {
+			error.value = true;
+		}
+	}
 
-		this.isLoading = false;
-	},
-	methods: {
-		embedClass(): string[] {
-			const { fileType } = this.binaryData;
-			return [fileType ?? 'other'];
-		},
-	},
+	isLoading.value = false;
 });
 </script>
 
