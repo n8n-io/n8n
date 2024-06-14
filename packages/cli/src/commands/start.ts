@@ -199,7 +199,10 @@ export class Start extends BaseCommand {
 	}
 
 	async initOrchestration() {
-		if (config.getEnv('executions.mode') !== 'queue') return;
+		if (config.getEnv('executions.mode') === 'regular') {
+			config.set('multiMainSetup.instanceType', 'leader');
+			return;
+		}
 
 		if (
 			config.getEnv('multiMainSetup.enabled') &&
