@@ -160,10 +160,10 @@ export class AuditorService extends EventEmitter {
 	 */
 
 	@Redactable()
-	private userDeleted(arg: AuditEventArgs['user-deleted']) {
+	private userDeleted({ user }: AuditEventArgs['user-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.deleted',
-			payload: arg,
+			payload: user,
 		});
 	}
 
@@ -196,10 +196,10 @@ export class AuditorService extends EventEmitter {
 	 */
 
 	@Redactable()
-	private userSignedUp(arg: AuditEventArgs['user-signed-up']) {
+	private userSignedUp({ user }: AuditEventArgs['user-signed-up']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.signedup',
-			payload: arg,
+			payload: user,
 		});
 	}
 
@@ -211,7 +211,9 @@ export class AuditorService extends EventEmitter {
 		});
 	}
 
-	private userLoginFailed(arg: AuditEventArgs['user-login-failed']) {
+	private userLoginFailed(
+		arg: AuditEventArgs['user-login-failed'] /* exception: no `UserLike` to redact */,
+	) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.login.failed',
 			payload: arg,
@@ -232,18 +234,20 @@ export class AuditorService extends EventEmitter {
 	}
 
 	@Redactable()
-	private userPasswordResetEmailClick(arg: AuditEventArgs['user-password-reset-email-click']) {
+	private userPasswordResetEmailClick({ user }: AuditEventArgs['user-password-reset-email-click']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.reset',
-			payload: arg,
+			payload: user,
 		});
 	}
 
 	@Redactable()
-	private userPasswordResetRequestClick(arg: AuditEventArgs['user-password-reset-request-click']) {
+	private userPasswordResetRequestClick({
+		user,
+	}: AuditEventArgs['user-password-reset-request-click']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.reset.requested',
-			payload: arg,
+			payload: user,
 		});
 	}
 
@@ -252,18 +256,18 @@ export class AuditorService extends EventEmitter {
 	 */
 
 	@Redactable()
-	private apiKeyCreated(arg: AuditEventArgs['api-key-created']) {
+	private apiKeyCreated({ user }: AuditEventArgs['api-key-created']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.api.created',
-			payload: arg,
+			payload: user,
 		});
 	}
 
 	@Redactable()
-	private apiKeyDeleted(arg: AuditEventArgs['api-key-deleted']) {
+	private apiKeyDeleted({ user }: AuditEventArgs['api-key-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.api.deleted',
-			payload: arg,
+			payload: user,
 		});
 	}
 
