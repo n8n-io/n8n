@@ -131,6 +131,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useDebounce } from '@/composables/useDebounce';
 import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
 import ProjectNavigation from '@/components/Projects/ProjectNavigation.vue';
+import { useRoute, useRouter } from 'vue-router';
 
 export default defineComponent({
 	name: 'MainSidebar',
@@ -144,12 +145,14 @@ export default defineComponent({
 	setup() {
 		const externalHooks = useExternalHooks();
 		const { callDebounced } = useDebounce();
+		const router = useRouter();
+		const route = useRoute();
 
 		return {
 			externalHooks,
 			callDebounced,
 			...useMessage(),
-			...useUserHelpers(),
+			...useUserHelpers(router, route),
 		};
 	},
 	data() {

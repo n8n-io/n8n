@@ -32,12 +32,15 @@ import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { hasPermission } from '@/utils/rbac/permissions';
+import { useRoute, useRouter } from 'vue-router';
 
 export default defineComponent({
 	name: 'SettingsSidebar',
 	setup() {
+		const router = useRouter();
+		const route = useRoute();
 		return {
-			...useUserHelpers(),
+			...useUserHelpers(router, route),
 		};
 	},
 	computed: {

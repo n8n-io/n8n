@@ -1,12 +1,8 @@
-import type { RouteLocation } from 'vue-router';
-import { useRouter, useRoute } from 'vue-router';
+import type { RouteLocation, RouteLocationNormalizedLoaded, Router } from 'vue-router';
 import { hasPermission } from '@/utils/rbac/permissions';
 import type { PermissionTypeOptions } from '@/types/rbac';
 
-export function useUserHelpers() {
-	const router = useRouter();
-	const route = useRoute();
-
+export function useUserHelpers(router: Router, route: RouteLocationNormalizedLoaded) {
 	const canUserAccessRouteByName = (name: string) => {
 		const resolvedRoute = router.resolve({ name });
 
