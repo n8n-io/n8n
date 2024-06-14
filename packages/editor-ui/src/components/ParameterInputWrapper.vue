@@ -45,234 +45,194 @@
 	</div>
 </template>
 
-<script lang="ts">
-import { mapStores } from 'pinia';
-import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
-
-import type { INodeUi, IUpdateInformation, InputSize, TargetItem } from '@/Interface';
+<script setup lang="ts">
+import type { IUpdateInformation, InputSize } from '@/Interface';
 import ParameterInput from '@/components/ParameterInput.vue';
 import InputHint from '@/components/ParameterInputHint.vue';
-import { useEnvironmentsStore } from '@/stores/environments.ee.store';
+import {
+	isResourceLocatorValue,
+	type IDataObject,
+	type INodeProperties,
+	type INodePropertyMode,
+	type IParameterLabel,
+	type NodeParameterValueType,
+	type Result,
+} from 'n8n-workflow';
+
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import useEnvironmentsStore from '@/stores/environments.ee.store';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useNDVStore } from '@/stores/ndv.store';
+import { stringifyExpressionResult } from '@/utils/expressions';
 import { isValueExpression, parseResourceMapperFieldName } from '@/utils/nodeTypesUtils';
-import type {
-	IDataObject,
-	INodeProperties,
-	INodePropertyMode,
-	IParameterLabel,
-	NodeParameterValueType,
-	Result,
-} from 'n8n-workflow';
-import { isResourceLocatorValue } from 'n8n-workflow';
-
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
+import { computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { stringifyExpressionResult } from '@/utils/expressions';
 
-export default defineComponent({
-	name: 'ParameterInputWrapper',
-	components: {
-		ParameterInput,
-		InputHint,
-	},
-	props: {
-		additionalExpressionData: {
-			type: Object as PropType<IDataObject>,
-			default: () => ({}),
-		},
-		isReadOnly: {
-			type: Boolean,
-		},
-		rows: {
-			type: Number,
-			default: 5,
-		},
-		isAssignment: {
-			type: Boolean,
-		},
-		parameter: {
-			type: Object as PropType<INodeProperties>,
-			required: true,
-		},
-		path: {
-			type: String,
-			required: true,
-		},
-		modelValue: {
-			type: [String, Number, Boolean, Array, Object] as PropType<NodeParameterValueType>,
-		},
-		droppable: {
-			type: Boolean,
-		},
-		activeDrop: {
-			type: Boolean,
-		},
-		forceShowExpression: {
-			type: Boolean,
-		},
-		hint: {
-			type: String,
-			required: false,
-		},
-		hideHint: {
-			type: Boolean,
-			required: false,
-		},
-		inputSize: {
-			type: String as PropType<InputSize>,
-		},
-		hideIssues: {
-			type: Boolean,
-		},
-		documentationUrl: {
-			type: String as PropType<string | undefined>,
-		},
-		errorHighlight: {
-			type: Boolean,
-		},
-		isForCredential: {
-			type: Boolean,
-		},
-		eventSource: {
-			type: String,
-		},
-		label: {
-			type: Object as PropType<IParameterLabel>,
-			default: () => ({
-				size: 'small',
-			}),
-		},
-		eventBus: {
-			type: Object as PropType<EventBus>,
-			default: () => createEventBus(),
-		},
-	},
-	setup() {
-		const router = useRouter();
-		const workflowHelpers = useWorkflowHelpers({ router });
+type Props = {
+	parameter: INodeProperties;
+	path: string;
+	modelValue: NodeParameterValueType;
+	additionalExpressionData?: IDataObject;
+	rows?: number;
+	isReadOnly?: boolean;
+	isAssignment?: boolean;
+	droppable?: boolean;
+	activeDrop?: boolean;
+	forceShowExpression?: boolean;
+	hint?: string;
+	hideHint?: boolean;
+	inputSize?: InputSize;
+	hideIssues?: boolean;
+	documentationUrl?: string;
+	errorHighlight?: boolean;
+	isForCredential?: boolean;
+	eventSource?: string;
+	label?: IParameterLabel;
+	eventBus?: EventBus;
+};
 
-		return {
-			workflowHelpers,
-		};
-	},
-	computed: {
-		...mapStores(useNDVStore, useExternalSecretsStore, useEnvironmentsStore),
-		isValueExpression() {
-			return isValueExpression(this.parameter, this.modelValue);
-		},
-		activeNode(): INodeUi | null {
-			return this.ndvStore.activeNode;
-		},
-		selectedRLMode(): INodePropertyMode | undefined {
-			if (
-				typeof this.modelValue !== 'object' ||
-				this.parameter.type !== 'resourceLocator' ||
-				!isResourceLocatorValue(this.modelValue)
-			) {
-				return undefined;
-			}
-
-			const mode = this.modelValue.mode;
-			if (mode) {
-				return this.parameter.modes?.find((m: INodePropertyMode) => m.name === mode);
-			}
-
-			return undefined;
-		},
-		parameterHint(): string | undefined {
-			if (this.isValueExpression) {
-				return undefined;
-			}
-			if (this.selectedRLMode?.hint) {
-				return this.selectedRLMode.hint;
-			}
-
-			return this.hint;
-		},
-		targetItem(): TargetItem | null {
-			return this.ndvStore.hoveringItem;
-		},
-		isInputParentOfActiveNode(): boolean {
-			return this.ndvStore.isInputParentOfActiveNode;
-		},
-		evaluatedExpression(): Result<unknown, Error> {
-			const value = isResourceLocatorValue(this.modelValue)
-				? this.modelValue.value
-				: this.modelValue;
-
-			if (!this.activeNode || !this.isValueExpression || typeof value !== 'string') {
-				return { ok: false, error: new Error() };
-			}
-
-			try {
-				let opts: Parameters<typeof this.workflowHelpers.resolveExpression>[2] = {
-					isForCredential: this.isForCredential,
-				};
-				if (this.ndvStore.isInputParentOfActiveNode) {
-					opts = {
-						...opts,
-						targetItem: this.targetItem ?? undefined,
-						inputNodeName: this.ndvStore.ndvInputNodeName,
-						inputRunIndex: this.ndvStore.ndvInputRunIndex,
-						inputBranchIndex: this.ndvStore.ndvInputBranchIndex,
-						additionalKeys: this.resolvedAdditionalExpressionData,
-					};
-				}
-
-				return { ok: true, result: this.workflowHelpers.resolveExpression(value, undefined, opts) };
-			} catch (error) {
-				return { ok: false, error };
-			}
-		},
-		evaluatedExpressionValue(): unknown {
-			const evaluated = this.evaluatedExpression;
-			return evaluated.ok ? evaluated.result : null;
-		},
-		evaluatedExpressionString(): string | null {
-			return stringifyExpressionResult(this.evaluatedExpression);
-		},
-		expressionOutput(): string | null {
-			if (this.isValueExpression && this.evaluatedExpressionString) {
-				return this.evaluatedExpressionString;
-			}
-
-			return null;
-		},
-		resolvedAdditionalExpressionData() {
-			return {
-				$vars: this.environmentsStore.variablesAsObject,
-				...(this.externalSecretsStore.isEnterpriseExternalSecretsEnabled && this.isForCredential
-					? { $secrets: this.externalSecretsStore.secretsAsObject }
-					: {}),
-				...this.additionalExpressionData,
-			};
-		},
-		parsedParameterName() {
-			return parseResourceMapperFieldName(this.parameter?.name ?? '');
-		},
-	},
-	methods: {
-		onFocus() {
-			this.$emit('focus');
-		},
-		onBlur() {
-			this.$emit('blur');
-		},
-		onDrop(data: string) {
-			this.$emit('drop', data);
-		},
-		onValueChanged(parameterData: IUpdateInformation) {
-			this.$emit('update', parameterData);
-		},
-		onTextInput(parameterData: IUpdateInformation) {
-			this.$emit('textInput', parameterData);
-		},
-	},
+const props = withDefaults(defineProps<Props>(), {
+	additionalExpressionData: () => ({}),
+	rows: 5,
+	label: () => ({ size: 'small' }),
+	eventBus: () => createEventBus(),
 });
+
+const emit = defineEmits<{
+	(event: 'focus'): void;
+	(event: 'blur'): void;
+	(event: 'drop', value: string): void;
+	(event: 'update', value: IUpdateInformation): void;
+	(event: 'textInput', value: IUpdateInformation): void;
+}>();
+
+const router = useRouter();
+const workflowHelpers = useWorkflowHelpers({ router });
+
+const ndvStore = useNDVStore();
+const externalSecretsStore = useExternalSecretsStore();
+const environmentsStore = useEnvironmentsStore();
+
+const isExpression = computed(() => {
+	return isValueExpression(props.parameter, props.modelValue);
+});
+
+const activeNode = computed(() => ndvStore.activeNode);
+
+const selectedRLMode = computed(() => {
+	if (
+		typeof props.modelValue !== 'object' ||
+		props.parameter.type !== 'resourceLocator' ||
+		!isResourceLocatorValue(props.modelValue)
+	) {
+		return undefined;
+	}
+
+	const mode = props.modelValue.mode;
+	if (mode) {
+		return props.parameter.modes?.find((m: INodePropertyMode) => m.name === mode);
+	}
+
+	return undefined;
+});
+
+const parameterHint = computed(() => {
+	if (isExpression.value) {
+		return undefined;
+	}
+	if (selectedRLMode.value?.hint) {
+		return selectedRLMode.value.hint;
+	}
+
+	return props.hint;
+});
+
+const targetItem = computed(() => ndvStore.hoveringItem);
+
+const isInputParentOfActiveNode = computed(() => ndvStore.isInputParentOfActiveNode);
+
+const evaluatedExpression = computed<Result<unknown, Error>>(() => {
+	const value = isResourceLocatorValue(props.modelValue)
+		? props.modelValue.value
+		: props.modelValue;
+
+	if (!activeNode.value || !isExpression.value || typeof value !== 'string') {
+		return { ok: false, error: new Error() };
+	}
+
+	try {
+		let opts: Parameters<typeof workflowHelpers.resolveExpression>[2] = {
+			isForCredential: props.isForCredential,
+		};
+		if (ndvStore.isInputParentOfActiveNode) {
+			opts = {
+				...opts,
+				targetItem: targetItem.value ?? undefined,
+				inputNodeName: ndvStore.ndvInputNodeName,
+				inputRunIndex: ndvStore.ndvInputRunIndex,
+				inputBranchIndex: ndvStore.ndvInputBranchIndex,
+				additionalKeys: resolvedAdditionalExpressionData.value,
+			};
+		}
+
+		return { ok: true, result: workflowHelpers.resolveExpression(value, undefined, opts) };
+	} catch (error) {
+		return { ok: false, error };
+	}
+});
+
+const evaluatedExpressionValue = computed(() => {
+	const evaluated = evaluatedExpression.value;
+	return evaluated.ok ? evaluated.result : null;
+});
+
+const evaluatedExpressionString = computed(() => {
+	return stringifyExpressionResult(evaluatedExpression.value);
+});
+
+const expressionOutput = computed(() => {
+	if (isExpression.value && evaluatedExpressionString.value) {
+		return evaluatedExpressionString.value;
+	}
+
+	return null;
+});
+
+const resolvedAdditionalExpressionData = computed(() => {
+	return {
+		$vars: environmentsStore.variablesAsObject,
+		...(externalSecretsStore.isEnterpriseExternalSecretsEnabled && props.isForCredential
+			? { $secrets: externalSecretsStore.secretsAsObject }
+			: {}),
+		...props.additionalExpressionData,
+	};
+});
+
+const parsedParameterName = computed(() => {
+	return parseResourceMapperFieldName(props.parameter?.name ?? '');
+});
+
+function onFocus() {
+	emit('focus');
+}
+
+function onBlur() {
+	emit('blur');
+}
+
+function onDrop(data: string) {
+	emit('drop', data);
+}
+
+function onValueChanged(parameterData: IUpdateInformation) {
+	emit('update', parameterData);
+}
+
+function onTextInput(parameterData: IUpdateInformation) {
+	emit('textInput', parameterData);
+}
 </script>
 
 <style lang="scss" module>

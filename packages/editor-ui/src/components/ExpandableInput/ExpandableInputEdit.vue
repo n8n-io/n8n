@@ -15,58 +15,66 @@
 	</ExpandableInputBase>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-import ExpandableInputBase from './ExpandableInputBase.vue';
-import type { PropType } from 'vue';
+<script setup lang="ts">
 import type { EventBus } from 'n8n-design-system';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
+import ExpandableInputBase from './ExpandableInputBase.vue';
 
-export default defineComponent({
-	name: 'ExpandableInputEdit',
-	components: { ExpandableInputBase },
-	props: {
-		modelValue: {
-			type: String,
-			required: true,
-		},
-		placeholder: { type: String, required: true },
-		maxlength: { type: Number },
-		autofocus: { type: Boolean },
-		eventBus: {
-			type: Object as PropType<EventBus>,
-		},
-	},
-	emits: ['update:modelValue', 'enter', 'blur', 'esc'],
-	mounted() {
-		// autofocus on input element is not reliable
-		if (this.autofocus && this.$refs.input) {
-			this.focus();
-		}
-		this.eventBus?.on('focus', this.focus);
-	},
-	beforeUnmount() {
-		this.eventBus?.off('focus', this.focus);
-	},
-	methods: {
-		focus() {
-			if (this.$refs.input) {
-				(this.$refs.input as HTMLInputElement).focus();
-			}
-		},
-		onInput() {
-			this.$emit('update:modelValue', (this.$refs.input as HTMLInputElement).value);
-		},
-		onEnter() {
-			this.$emit('enter', (this.$refs.input as HTMLInputElement).value);
-		},
-		onClickOutside(e: Event) {
-			if (e.type === 'click') {
-				this.$emit('blur', (this.$refs.input as HTMLInputElement).value);
-			}
-		},
-		onEscape() {
-			this.$emit('esc');
-		},
-	},
+type Props = {
+	modelValue: string;
+	placeholder: string;
+	maxlength?: number;
+	autofocus?: boolean;
+	eventBus?: EventBus;
+};
+
+const props = defineProps<Props>();
+const emit = defineEmits<{
+	(event: 'update:model-value', value: string): void;
+	(event: 'enter', value: string): void;
+	(event: 'blur', value: string): void;
+	(event: 'esc'): void;
+}>();
+
+const input = ref<HTMLInputElement>();
+
+onMounted(() => {
+	// autofocus on input element is not reliable
+	if (props.autofocus && input.value) {
+		focus();
+	}
+	props.eventBus?.on('focus', focus);
 });
+
+onBeforeUnmount(() => {
+	props.eventBus?.off('focus', focus);
+});
+
+function focus() {
+	if (input.value) {
+		input.value.focus();
+	}
+}
+
+function onInput() {
+	if (input.value) {
+		emit('update:model-value', input.value.value);
+	}
+}
+
+function onEnter() {
+	if (input.value) {
+		emit('enter', input.value.value);
+	}
+}
+
+function onClickOutside(e: Event) {
+	if (e.type === 'click' && input.value) {
+		emit('blur', input.value.value);
+	}
+}
+
+function onEscape() {
+	emit('esc');
+}
 </script>
