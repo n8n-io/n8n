@@ -80,7 +80,6 @@ export class ExecutionRecoveryService {
 
 		const wait = [this.queueRecoverySettings.waitMs / (60 * 1000), 'min'].join(' ');
 
-		this.logger.debug('[Recovery] Completed queue recovery');
 		this.logger.debug(`[Recovery] Next queue recovery in ${wait}`);
 	}
 
@@ -120,6 +119,8 @@ export class ExecutionRecoveryService {
 		if (danglingIds.length === 0) return waitMs;
 
 		await this.executionRepository.markAsCrashed(danglingIds);
+
+		this.logger.debug('[Recovery] Completed queue recovery');
 
 		// if this cycle used up the whole batch size, it is possible for there to be
 		// dangling executions outside this check, so speed up next cycle
