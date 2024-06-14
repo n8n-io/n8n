@@ -147,7 +147,6 @@ export class WorkflowRunner {
 			await this.enqueueExecution(executionId, data, loadStaticData, realtime);
 		} else {
 			await this.runMainProcess(executionId, data, loadStaticData, executionId);
-			void Container.get(InternalHooks).onWorkflowBeforeExecute(executionId, data);
 			this.eventSender.emit('workflow-pre-execute', { executionId, data });
 		}
 

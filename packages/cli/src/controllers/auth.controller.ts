@@ -93,16 +93,10 @@ export class AuthController {
 
 			this.authService.issueCookie(res, user, req.browserId);
 			const authenticationMethod = usedAuthenticationMethod;
-			void this.internalHooks.onUserLoginSuccess({ user, authenticationMethod });
 			this.eventSender.emit('user-logged-in', { user, authenticationMethod });
 
 			return await this.userService.toPublic(user, { posthog: this.postHog, withScopes: true });
 		}
-		void this.internalHooks.onUserLoginFailed({
-			user: email,
-			authenticationMethod: usedAuthenticationMethod,
-			reason: 'wrong credentials',
-		});
 		this.eventSender.emit('user-login-failed', {
 			authenticationMethod: usedAuthenticationMethod,
 			userEmail: email,

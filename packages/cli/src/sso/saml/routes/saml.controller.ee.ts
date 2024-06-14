@@ -128,10 +128,6 @@ export class SamlController {
 				}
 			}
 			if (loginResult.authenticatedUser) {
-				void this.internalHooks.onUserLoginSuccess({
-					user: loginResult.authenticatedUser,
-					authenticationMethod: 'saml',
-				});
 				this.eventSender.emit('user-logged-in', {
 					user: loginResult.authenticatedUser,
 					authenticationMethod: 'saml',
@@ -150,10 +146,6 @@ export class SamlController {
 					return res.status(202).send(loginResult.attributes);
 				}
 			}
-			void this.internalHooks.onUserLoginFailed({
-				user: loginResult.attributes.email ?? 'unknown',
-				authenticationMethod: 'saml',
-			});
 			this.eventSender.emit('user-login-failed', {
 				userEmail: loginResult.attributes.email ?? 'unknown',
 				authenticationMethod: 'saml',
@@ -163,10 +155,6 @@ export class SamlController {
 			if (isConnectionTestRequest(req)) {
 				return res.send(getSamlConnectionTestFailedView((error as Error).message));
 			}
-			void this.internalHooks.onUserLoginFailed({
-				user: 'unknown',
-				authenticationMethod: 'saml',
-			});
 			this.eventSender.emit('user-login-failed', {
 				userEmail: 'unknown',
 				authenticationMethod: 'saml',

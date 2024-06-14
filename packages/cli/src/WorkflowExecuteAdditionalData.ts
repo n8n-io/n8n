@@ -393,7 +393,6 @@ export function hookFunctionsPreExecute(): IWorkflowExecuteHooks {
  */
 function hookFunctionsSave(): IWorkflowExecuteHooks {
 	const logger = Container.get(Logger);
-	const internalHooks = Container.get(InternalHooks);
 	const eventsService = Container.get(EventsService);
 	const eventSender = Container.get(EventSender);
 	return {
@@ -401,7 +400,6 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
 				const { executionId, workflowData: workflow } = this;
 
-				void internalHooks.onNodeBeforeExecute(executionId, workflow, nodeName);
 				eventSender.emit('node-pre-execute', { executionId, workflow, nodeName });
 			},
 		],
@@ -409,7 +407,6 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
 				const { executionId, workflowData: workflow } = this;
 
-				void internalHooks.onNodePostExecute(executionId, workflow, nodeName);
 				eventSender.emit('node-post-execute', { executionId, workflow, nodeName });
 			},
 		],
@@ -555,7 +552,6 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
 				const { executionId, workflowData: workflow } = this;
 
-				void internalHooks.onNodeBeforeExecute(executionId, workflow, nodeName);
 				eventSender.emit('node-pre-execute', { executionId, workflow, nodeName });
 			},
 		],
@@ -563,7 +559,6 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
 				const { executionId, workflowData: workflow } = this;
 
-				void internalHooks.onNodePostExecute(executionId, workflow, nodeName);
 				eventSender.emit('node-post-execute', { executionId, workflow, nodeName });
 			},
 		],
@@ -571,7 +566,6 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 			async function (): Promise<void> {
 				const { executionId, workflowData } = this;
 
-				void internalHooks.onWorkflowBeforeExecute(executionId, workflowData);
 				eventSender.emit('workflow-pre-execute', { executionId, data: workflowData });
 			},
 		],
@@ -819,7 +813,7 @@ async function executeWorkflow(
 		executionId = options.parentExecutionId ?? (await activeExecutions.add(runData));
 	}
 
-	void internalHooks.onWorkflowBeforeExecute(executionId || '', runData);
+	Container.get(EventSender).emit('workflow-pre-execute', { executionId, data: runData });
 
 	let data;
 	try {
