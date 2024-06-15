@@ -398,7 +398,6 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectSharingData } from '@/types/projects.types';
-import { ProjectTypes } from '@/types/projects.types';
 import { useAIStore } from '@/stores/ai.store';
 import { useStorage } from '@/composables/useStorage';
 import { isJSPlumbEndpointElement, isJSPlumbConnection } from '@/utils/typeGuards';
@@ -4798,20 +4797,26 @@ export default defineComponent({
 		},
 		async loadCredentials(): Promise<void> {
 			const workflow = this.workflowsStore.getWorkflowById(this.currentWorkflow);
-			let projectId: string | undefined;
+			let options: { workflowId: string } | { projectId: string };
+
 			if (workflow) {
-				projectId =
-					workflow.homeProject?.type === ProjectTypes.Personal
-						? this.projectsStore.personalProject?.id
-						: workflow?.homeProject?.id ?? this.projectsStore.currentProjectId;
+				options = { workflowId: workflow.id };
 			} else {
 				const queryParam =
 					typeof this.$route.query?.projectId === 'string'
 						? this.$route.query?.projectId
 						: undefined;
-				projectId = queryParam ?? this.projectsStore.personalProject?.id;
+				const projectId = queryParam ?? this.projectsStore.personalProject?.id;
+
+				if (projectId === undefined) {
+					throw new Error(
+						'Could not find projectId in the query nor could I find the personal project in the project store',
+					);
+				}
+
+				options = { projectId };
 			}
-			await this.credentialsStore.fetchAllCredentials(projectId, false);
+			await this.credentialsStore.fetchAllCredentialsForWorkflow(options);
 		},
 		async loadVariables(): Promise<void> {
 			await this.environmentsStore.fetchAllVariables();
