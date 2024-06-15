@@ -450,9 +450,9 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	};
 });
 
-// /**
-//  * Helper function for listening to credential changes in the store
-//  */
+/**
+ * Helper function for listening to credential changes in the store
+ */
 export const listenForCredentialChanges = (opts: {
 	store: CredentialsStore;
 	onCredentialCreated?: (credential: ICredentialsResponse) => void;
