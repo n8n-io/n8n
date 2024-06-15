@@ -13,6 +13,18 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 	const state = ref<CommunityNodesState>({ availablePackageCount: -1, installedPackages: {} });
 
 	// ---------------------------------------------------------------------------
+	// #region Computed
+	// ---------------------------------------------------------------------------
+
+	const getInstalledPackages = computed(() => {
+		return Object.values(state.value.installedPackages).sort((a, b) =>
+			a.packageName.localeCompare(b.packageName),
+		);
+	});
+
+	// #endregion
+
+	// ---------------------------------------------------------------------------
 	// #region Methods
 	// ---------------------------------------------------------------------------
 
@@ -93,26 +105,14 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 		return (name: string): PublicInstalledPackage => state.value.installedPackages[name];
 	});
 
-	// ---------------------------------------------------------------------------
-	// #region Computed
-	// ---------------------------------------------------------------------------
-
-	const getInstalledPackages = computed(() => {
-		return Object.values(state.value.installedPackages).sort((a, b) =>
-			a.packageName.localeCompare(b.packageName),
-		);
-	});
-
-	// #endregion
-
 	return {
+		getInstalledPackageByName,
+		getInstalledPackages,
 		fetchAvailableCommunityPackageCount,
 		fetchInstalledPackages,
 		installPackage,
 		uninstallPackage,
 		updatePackage,
-		getInstalledPackageByName,
-		getInstalledPackages,
-		availablePackageCount: state.value.availablePackageCount,
+		...state,
 	};
 });
