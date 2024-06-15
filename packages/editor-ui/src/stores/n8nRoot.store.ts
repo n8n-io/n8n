@@ -1,12 +1,13 @@
 import { CLOUD_BASE_URL_PRODUCTION, CLOUD_BASE_URL_STAGING, STORES } from '@/constants';
-import type { IRestApiContext, RootState } from '@/Interface';
-import { setGlobalState, type IDataObject } from 'n8n-workflow';
+import type { RootState } from '@/Interface';
+import { setGlobalState } from 'n8n-workflow';
 import { defineStore } from 'pinia';
+import { computed, ref } from 'vue';
 
 const { VUE_APP_URL_BASE_API } = import.meta.env;
 
-export const useRootStore = defineStore(STORES.ROOT, {
-	state: (): RootState => ({
+export const useRootStore = defineStore(STORES.ROOT, () => {
+	const state = ref({
 		baseUrl: VUE_APP_URL_BASE_API ?? window.BASE_PATH,
 		restEndpoint:
 			!window.REST_ENDPOINT || window.REST_ENDPOINT === '{{REST_ENDPOINT}}'
@@ -31,106 +32,145 @@ export const useRootStore = defineStore(STORES.ROOT, {
 		isNpmAvailable: false,
 		instanceId: '',
 		binaryDataMode: 'default',
-	}),
-	getters: {
-		getBaseUrl(): string {
-			return this.baseUrl;
-		},
+	});
 
-		getFormUrl(): string {
-			return `${this.urlBaseWebhook}${this.endpointForm}`;
-		},
+	// ---------------------------------------------------------------------------
+	// #region Computed
+	// ---------------------------------------------------------------------------
 
-		getFormTestUrl(): string {
-			return `${this.urlBaseEditor}${this.endpointFormTest}`;
-		},
+	const getBaseUrl = computed(() => state.value.baseUrl);
+	const getFormUrl = computed(() => `${state.value.urlBaseWebhook}${state.value.endpointForm}`);
+	const getFormTestUrl = computed(
+		() => `${state.value.urlBaseEditor}${state.value.endpointFormTest}`,
+	);
+	const getFormWaitingUrl = computed(
+		() => `${state.value.baseUrl}${state.value.endpointFormWaiting}`,
+	);
+	const getWebhookUrl = computed(
+		() => `${state.value.urlBaseWebhook}${state.value.endpointWebhook}`,
+	);
+	const getWebhookTestUrl = computed(
+		() => `${state.value.urlBaseEditor}${state.value.endpointWebhookTest}`,
+	);
+	const getRestUrl = computed(() => `${state.value.baseUrl}${state.value.restEndpoint}`);
+	const getRestCloudApiContext = computed(() => ({
+		baseUrl: window.location.host.includes('stage-app.n8n.cloud')
+			? CLOUD_BASE_URL_STAGING
+			: CLOUD_BASE_URL_PRODUCTION,
+		pushRef: '',
+	}));
+	const getRestApiContext = computed(() => ({
+		baseUrl: getRestUrl.value,
+		pushRef: state.value.pushRef,
+	}));
 
-		getFormWaitingUrl(): string {
-			return `${this.baseUrl}${this.endpointFormWaiting}`;
-		},
+	// #endregion
 
-		getWebhookUrl(): string {
-			return `${this.urlBaseWebhook}${this.endpointWebhook}`;
-		},
+	// ---------------------------------------------------------------------------
+	// #region Methods
+	// ---------------------------------------------------------------------------
 
-		getWebhookTestUrl(): string {
-			return `${this.urlBaseEditor}${this.endpointWebhookTest}`;
-		},
+	const setUrlBaseWebhook = (urlBaseWebhook: string) => {
+		const url = urlBaseWebhook.endsWith('/') ? urlBaseWebhook : `${urlBaseWebhook}/`;
+		state.value.urlBaseWebhook = url;
+	};
 
-		getRestUrl(): string {
-			return `${this.baseUrl}${this.restEndpoint}`;
-		},
+	const setUrlBaseEditor = (urlBaseEditor: string) => {
+		const url = urlBaseEditor.endsWith('/') ? urlBaseEditor : `${urlBaseEditor}/`;
+		state.value.urlBaseEditor = url;
+	};
 
-		getRestCloudApiContext(): IRestApiContext {
-			return {
-				baseUrl: window.location.host.includes('stage-app.n8n.cloud')
-					? CLOUD_BASE_URL_STAGING
-					: CLOUD_BASE_URL_PRODUCTION,
-				pushRef: '',
-			};
-		},
+	const setEndpointForm = (endpointForm: string) => {
+		state.value.endpointForm = endpointForm;
+	};
 
-		getRestApiContext(): IRestApiContext {
-			return {
-				baseUrl: this.getRestUrl,
-				pushRef: this.pushRef,
-			};
-		},
-	},
-	actions: {
-		setUrlBaseWebhook(urlBaseWebhook: string): void {
-			const url = urlBaseWebhook.endsWith('/') ? urlBaseWebhook : `${urlBaseWebhook}/`;
-			this.urlBaseWebhook = url;
-		},
-		setUrlBaseEditor(urlBaseEditor: string): void {
-			const url = urlBaseEditor.endsWith('/') ? urlBaseEditor : `${urlBaseEditor}/`;
-			this.urlBaseEditor = url;
-		},
-		setEndpointForm(endpointForm: string): void {
-			this.endpointForm = endpointForm;
-		},
-		setEndpointFormTest(endpointFormTest: string): void {
-			this.endpointFormTest = endpointFormTest;
-		},
-		setEndpointFormWaiting(endpointFormWaiting: string): void {
-			this.endpointFormWaiting = endpointFormWaiting;
-		},
-		setEndpointWebhook(endpointWebhook: string): void {
-			this.endpointWebhook = endpointWebhook;
-		},
-		setEndpointWebhookTest(endpointWebhookTest: string): void {
-			this.endpointWebhookTest = endpointWebhookTest;
-		},
-		setTimezone(timezone: string): void {
-			this.timezone = timezone;
-			setGlobalState({ defaultTimezone: timezone });
-		},
-		setExecutionTimeout(executionTimeout: number): void {
-			this.executionTimeout = executionTimeout;
-		},
-		setMaxExecutionTimeout(maxExecutionTimeout: number): void {
-			this.maxExecutionTimeout = maxExecutionTimeout;
-		},
-		setVersionCli(version: string): void {
-			this.versionCli = version;
-		},
-		setInstanceId(instanceId: string): void {
-			this.instanceId = instanceId;
-		},
-		setOauthCallbackUrls(urls: IDataObject): void {
-			this.oauthCallbackUrls = urls;
-		},
-		setN8nMetadata(metadata: IDataObject): void {
-			this.n8nMetadata = metadata as RootState['n8nMetadata'];
-		},
-		setDefaultLocale(locale: string): void {
-			this.defaultLocale = locale;
-		},
-		setIsNpmAvailable(isNpmAvailable: boolean): void {
-			this.isNpmAvailable = isNpmAvailable;
-		},
-		setBinaryDataMode(binaryDataMode: string): void {
-			this.binaryDataMode = binaryDataMode;
-		},
-	},
+	const setEndpointFormTest = (endpointFormTest: string) => {
+		state.value.endpointFormTest = endpointFormTest;
+	};
+
+	const setEndpointFormWaiting = (endpointFormWaiting: string) => {
+		state.value.endpointFormWaiting = endpointFormWaiting;
+	};
+
+	const setEndpointWebhook = (endpointWebhook: string) => {
+		state.value.endpointWebhook = endpointWebhook;
+	};
+
+	const setEndpointWebhookTest = (endpointWebhookTest: string) => {
+		state.value.endpointWebhookTest = endpointWebhookTest;
+	};
+
+	const setTimezone = (timezone: string) => {
+		state.value.timezone = timezone;
+		setGlobalState({ defaultTimezone: timezone });
+	};
+
+	const setExecutionTimeout = (executionTimeout: number) => {
+		state.value.executionTimeout = executionTimeout;
+	};
+
+	const setMaxExecutionTimeout = (maxExecutionTimeout: number) => {
+		state.value.maxExecutionTimeout = maxExecutionTimeout;
+	};
+
+	const setVersionCli = (version: string) => {
+		state.value.versionCli = version;
+	};
+
+	const setInstanceId = (instanceId: string) => {
+		state.value.instanceId = instanceId;
+	};
+
+	const setOauthCallbackUrls = (urls: RootState['oauthCallbackUrls']) => {
+		state.value.oauthCallbackUrls = urls;
+	};
+
+	const setN8nMetadata = (metadata: RootState['n8nMetadata']) => {
+		state.value.n8nMetadata = metadata;
+	};
+
+	const setDefaultLocale = (locale: string) => {
+		state.value.defaultLocale = locale;
+	};
+
+	const setIsNpmAvailable = (isNpmAvailable: boolean) => {
+		state.value.isNpmAvailable = isNpmAvailable;
+	};
+
+	const setBinaryDataMode = (binaryDataMode: string) => {
+		state.value.binaryDataMode = binaryDataMode;
+	};
+
+	// #endregion
+
+	return {
+		state,
+		getBaseUrl,
+		getFormUrl,
+		getFormTestUrl,
+		getFormWaitingUrl,
+		getWebhookUrl,
+		getWebhookTestUrl,
+		getRestUrl,
+		getRestCloudApiContext,
+		getRestApiContext,
+		setUrlBaseWebhook,
+		setUrlBaseEditor,
+		setEndpointForm,
+		setEndpointFormTest,
+		setEndpointFormWaiting,
+		setEndpointWebhook,
+		setEndpointWebhookTest,
+		setTimezone,
+		setExecutionTimeout,
+		setMaxExecutionTimeout,
+		setVersionCli,
+		setInstanceId,
+		setOauthCallbackUrls,
+		setN8nMetadata,
+		setDefaultLocale,
+		setIsNpmAvailable,
+		setBinaryDataMode,
+		...state,
+	};
 });
