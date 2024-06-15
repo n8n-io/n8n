@@ -113,5 +113,6 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 		updatePackage,
 		getInstalledPackageByName,
 		getInstalledPackages,
+		availablePackageCount: state.value.availablePackageCount,
 	};
 });
