@@ -507,7 +507,12 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 		agentOptions.secureOptions = crypto.constants.SSL_OP_LEGACY_SERVER_CONNECT;
 	}
 
-	axiosConfig.httpsAgent = new Agent(agentOptions);
+	axiosConfig.httpsAgent = new Agent({
+		...agentOptions,
+		keepAlive: true,
+		maxSockets: 1000,
+		keepAliveMsecs: 5000,
+	});
 
 	axiosConfig.beforeRedirect = getBeforeRedirectFn(agentOptions, axiosConfig);
 
@@ -909,7 +914,13 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 	if (n8nRequest.skipSslCertificateValidation === true) {
 		agentOptions.rejectUnauthorized = false;
 	}
-	axiosRequest.httpsAgent = new Agent(agentOptions);
+
+	axiosRequest.httpsAgent = new Agent({
+		...agentOptions,
+		keepAlive: true,
+		maxSockets: 1000,
+		keepAliveMsecs: 5000,
+	});
 
 	axiosRequest.beforeRedirect = getBeforeRedirectFn(agentOptions, axiosRequest);
 
