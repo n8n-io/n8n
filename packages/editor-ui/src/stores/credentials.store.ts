@@ -38,6 +38,174 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	const state = ref<ICredentialsState>({ credentialTypes: {}, credentials: {} });
 
 	// ---------------------------------------------------------------------------
+	// #region Computed
+	// ---------------------------------------------------------------------------
+
+	const credentialTypesById = computed(() => {
+		return state.value.credentialTypes;
+	});
+
+	const allCredentialTypes = computed(() => {
+		return Object.values(state.value.credentialTypes).sort((a, b) =>
+			a.displayName.localeCompare(b.displayName),
+		);
+	});
+
+	const allCredentials = computed(() => {
+		return Object.values(state.value.credentials).sort((a, b) => a.name.localeCompare(b.name));
+	});
+
+	const allCredentialsByType = computed(() => {
+		const credentials = allCredentials.value;
+		const types = allCredentialTypes.value;
+		return types.reduce(
+			(accu: { [type: string]: ICredentialsResponse[] }, type: ICredentialType) => {
+				accu[type.name] = credentials.filter(
+					(cred: ICredentialsResponse) => cred.type === type.name,
+				);
+				return accu;
+			},
+			{},
+		);
+	});
+
+	const allUsableCredentialsByType = computed(() => {
+		const credentials = allCredentials.value;
+		const types = allCredentialTypes.value;
+
+		return types.reduce(
+			(accu: { [type: string]: ICredentialsResponse[] }, type: ICredentialType) => {
+				accu[type.name] = credentials.filter((cred: ICredentialsResponse) => {
+					return cred.type === type.name;
+				});
+
+				return accu;
+			},
+			{},
+		);
+	});
+
+	const allUsableCredentialsForNode = computed(() => {
+		return (node: INodeUi): ICredentialsResponse[] => {
+			let credentials: ICredentialsResponse[] = [];
+			const nodeType = useNodeTypesStore().getNodeType(node.type, node.typeVersion);
+			if (nodeType?.credentials) {
+				nodeType.credentials.forEach((cred) => {
+					credentials = credentials.concat(allUsableCredentialsByType.value[cred.name]);
+				});
+			}
+			return credentials.sort((a, b) => {
+				const aDate = new Date(a.updatedAt);
+				const bDate = new Date(b.updatedAt);
+				return aDate.getTime() - bDate.getTime();
+			});
+		};
+	});
+
+	const getCredentialTypeByName = computed(() => {
+		return (type: string): ICredentialType | undefined => state.value.credentialTypes[type];
+	});
+
+	const getCredentialById = computed(() => {
+		return (id: string): ICredentialsResponse => state.value.credentials[id];
+	});
+
+	const getCredentialByIdAndType = computed(() => {
+		return (id: string, type: string): ICredentialsResponse | undefined => {
+			const credential = state.value.credentials[id];
+			return !credential || credential.type !== type ? undefined : credential;
+		};
+	});
+
+	const getCredentialsByType = computed(() => {
+		return (credentialType: string): ICredentialsResponse[] => {
+			return allCredentialsByType.value[credentialType] || [];
+		};
+	});
+
+	const getUsableCredentialByType = computed(() => {
+		return (credentialType: string): ICredentialsResponse[] => {
+			return allUsableCredentialsByType.value[credentialType] || [];
+		};
+	});
+
+	const getNodesWithAccess = computed(() => {
+		return (credentialTypeName: string) => {
+			const nodeTypesStore = useNodeTypesStore();
+			const allNodeTypes: INodeTypeDescription[] = nodeTypesStore.allNodeTypes;
+
+			return allNodeTypes.filter((nodeType: INodeTypeDescription) => {
+				if (!nodeType.credentials) {
+					return false;
+				}
+
+				for (const credentialTypeDescription of nodeType.credentials) {
+					if (credentialTypeDescription.name === credentialTypeName) {
+						return true;
+					}
+				}
+
+				return false;
+			});
+		};
+	});
+
+	const getScopesByCredentialType = computed(() => {
+		return (credentialTypeName: string) => {
+			const credentialType = getCredentialTypeByName.value(credentialTypeName);
+			if (!credentialType) {
+				return [];
+			}
+
+			const scopeProperty = credentialType.properties.find((p) => p.name === 'scope');
+
+			if (
+				!scopeProperty ||
+				!scopeProperty.default ||
+				typeof scopeProperty.default !== 'string' ||
+				scopeProperty.default === ''
+			) {
+				return [];
+			}
+
+			let { default: scopeDefault } = scopeProperty;
+
+			// disregard expressions for display
+			scopeDefault = scopeDefault.replace(/^=/, '').replace(/\{\{.*\}\}/, '');
+
+			if (/ /.test(scopeDefault)) return scopeDefault.split(' ');
+
+			if (/,/.test(scopeDefault)) return scopeDefault.split(',');
+
+			return [scopeDefault];
+		};
+	});
+
+	const getCredentialOwnerName = computed(() => {
+		return (credential: ICredentialsResponse | IUsedCredential | undefined): string => {
+			const { firstName, lastName, email } = splitName(credential?.homeProject?.name ?? '');
+
+			return credential?.homeProject?.name
+				? `${firstName} ${lastName} (${email})`
+				: i18n.baseText('credentialEdit.credentialSharing.info.sharee.fallback');
+		};
+	});
+
+	const getCredentialOwnerNameById = computed(() => {
+		return (credentialId: string): string => {
+			const credential = getCredentialById.value(credentialId);
+
+			return getCredentialOwnerName.value(credential);
+		};
+	});
+
+	const httpOnlyCredentialTypes = computed(() => {
+		return allCredentialTypes.value.filter((credentialType) => credentialType.httpRequestNode);
+	});
+
+	// #endregion
+
+	// ---------------------------------------------------------------------------
 	// #region Methods
 	// ---------------------------------------------------------------------------
 
@@ -246,175 +414,22 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	};
 	// #endregion
 
-	// ---------------------------------------------------------------------------
-	// #region Computed
-	// ---------------------------------------------------------------------------
-
-	const credentialTypesById = computed(() => {
-		return state.value.credentialTypes;
-	});
-
-	const allCredentialTypes = computed(() => {
-		return Object.values(state.value.credentialTypes).sort((a, b) =>
-			a.displayName.localeCompare(b.displayName),
-		);
-	});
-
-	const allCredentials = computed(() => {
-		return Object.values(state.value.credentials).sort((a, b) => a.name.localeCompare(b.name));
-	});
-
-	const allCredentialsByType = computed(() => {
-		const credentials = allCredentials.value;
-		const types = allCredentialTypes.value;
-		return types.reduce(
-			(accu: { [type: string]: ICredentialsResponse[] }, type: ICredentialType) => {
-				accu[type.name] = credentials.filter(
-					(cred: ICredentialsResponse) => cred.type === type.name,
-				);
-				return accu;
-			},
-			{},
-		);
-	});
-
-	const allUsableCredentialsByType = computed(() => {
-		const credentials = allCredentials.value;
-		const types = allCredentialTypes.value;
-
-		return types.reduce(
-			(accu: { [type: string]: ICredentialsResponse[] }, type: ICredentialType) => {
-				accu[type.name] = credentials.filter((cred: ICredentialsResponse) => {
-					return cred.type === type.name;
-				});
-
-				return accu;
-			},
-			{},
-		);
-	});
-
-	const allUsableCredentialsForNode = computed(() => {
-		return (node: INodeUi): ICredentialsResponse[] => {
-			let credentials: ICredentialsResponse[] = [];
-			const nodeType = useNodeTypesStore().getNodeType(node.type, node.typeVersion);
-			if (nodeType?.credentials) {
-				nodeType.credentials.forEach((cred) => {
-					credentials = credentials.concat(allUsableCredentialsByType.value[cred.name]);
-				});
-			}
-			return credentials.sort((a, b) => {
-				const aDate = new Date(a.updatedAt);
-				const bDate = new Date(b.updatedAt);
-				return aDate.getTime() - bDate.getTime();
-			});
-		};
-	});
-
-	const getCredentialTypeByName = computed(() => {
-		return (type: string): ICredentialType | undefined => state.value.credentialTypes[type];
-	});
-
-	const getCredentialById = computed(() => {
-		return (id: string): ICredentialsResponse => state.value.credentials[id];
-	});
-
-	const getCredentialByIdAndType = computed(() => {
-		return (id: string, type: string): ICredentialsResponse | undefined => {
-			const credential = state.value.credentials[id];
-			return !credential || credential.type !== type ? undefined : credential;
-		};
-	});
-
-	const getCredentialsByType = computed(() => {
-		return (credentialType: string): ICredentialsResponse[] => {
-			return allCredentialsByType.value[credentialType] || [];
-		};
-	});
-
-	const getUsableCredentialByType = computed(() => {
-		return (credentialType: string): ICredentialsResponse[] => {
-			return allUsableCredentialsByType.value[credentialType] || [];
-		};
-	});
-
-	const getNodesWithAccess = computed(() => {
-		return (credentialTypeName: string) => {
-			const nodeTypesStore = useNodeTypesStore();
-			const allNodeTypes: INodeTypeDescription[] = nodeTypesStore.allNodeTypes;
-
-			return allNodeTypes.filter((nodeType: INodeTypeDescription) => {
-				if (!nodeType.credentials) {
-					return false;
-				}
-
-				for (const credentialTypeDescription of nodeType.credentials) {
-					if (credentialTypeDescription.name === credentialTypeName) {
-						return true;
-					}
-				}
-
-				return false;
-			});
-		};
-	});
-
-	const getScopesByCredentialType = computed(() => {
-		return (credentialTypeName: string) => {
-			const credentialType = getCredentialTypeByName.value(credentialTypeName);
-			if (!credentialType) {
-				return [];
-			}
-
-			const scopeProperty = credentialType.properties.find((p) => p.name === 'scope');
-
-			if (
-				!scopeProperty ||
-				!scopeProperty.default ||
-				typeof scopeProperty.default !== 'string' ||
-				scopeProperty.default === ''
-			) {
-				return [];
-			}
-
-			let { default: scopeDefault } = scopeProperty;
-
-			// disregard expressions for display
-			scopeDefault = scopeDefault.replace(/^=/, '').replace(/\{\{.*\}\}/, '');
-
-			if (/ /.test(scopeDefault)) return scopeDefault.split(' ');
-
-			if (/,/.test(scopeDefault)) return scopeDefault.split(',');
-
-			return [scopeDefault];
-		};
-	});
-
-	const getCredentialOwnerName = computed(() => {
-		return (credential: ICredentialsResponse | IUsedCredential | undefined): string => {
-			const { firstName, lastName, email } = splitName(credential?.homeProject?.name ?? '');
-
-			return credential?.homeProject?.name
-				? `${firstName} ${lastName} (${email})`
-				: i18n.baseText('credentialEdit.credentialSharing.info.sharee.fallback');
-		};
-	});
-
-	const getCredentialOwnerNameById = computed(() => {
-		return (credentialId: string): string => {
-			const credential = getCredentialById.value(credentialId);
-
-			return getCredentialOwnerName.value(credential);
-		};
-	});
-
-	const httpOnlyCredentialTypes = computed(() => {
-		return allCredentialTypes.value.filter((credentialType) => credentialType.httpRequestNode);
-	});
-
-	// #endregion
-
 	return {
+		getCredentialOwnerName,
+		getCredentialsByType,
+		getCredentialById,
+		getCredentialTypeByName,
+		getCredentialByIdAndType,
+		getNodesWithAccess,
+		getUsableCredentialByType,
+		credentialTypesById,
+		httpOnlyCredentialTypes,
+		getScopesByCredentialType,
+		getCredentialOwnerNameById,
+		allUsableCredentialsForNode,
+		allCredentials,
+		allCredentialTypes,
+		allUsableCredentialsByType,
 		setCredentialTypes,
 		addCredentials,
 		setCredentials,
@@ -432,21 +447,6 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		testCredential,
 		getCredentialTranslation,
 		setCredentialSharedWith,
-		getCredentialOwnerName,
-		getCredentialsByType,
-		getCredentialById,
-		getCredentialTypeByName,
-		getCredentialByIdAndType,
-		getNodesWithAccess,
-		getUsableCredentialByType,
-		credentialTypesById,
-		httpOnlyCredentialTypes,
-		getScopesByCredentialType,
-		getCredentialOwnerNameById,
-		allUsableCredentialsForNode,
-		allCredentials,
-		allCredentialTypes,
-		allUsableCredentialsByType,
 	};
 });
 
