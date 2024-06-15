@@ -412,6 +412,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			credentialType,
 		});
 	};
+
 	// #endregion
 
 	return {
