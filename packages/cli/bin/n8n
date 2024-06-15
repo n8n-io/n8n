@@ -45,6 +45,7 @@ require('reflect-metadata');
 
 if (process.env.NODEJS_PREFER_IPV4 === 'true') {
 	require('dns').setDefaultResultOrder('ipv4first');
+	require('net').setDefaultAutoSelectFamily(false);
 }
 
 (async () => {
