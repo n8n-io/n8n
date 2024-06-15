@@ -43,10 +43,10 @@ require('express-async-errors');
 require('source-map-support').install();
 require('reflect-metadata');
 
-if (process.env.NODEJS_PREFER_IPV4 === 'true') {
-	require('dns').setDefaultResultOrder('ipv4first');
-	require('net').setDefaultAutoSelectFamily(false);
-}
+// if (process.env.NODEJS_PREFER_IPV4 === 'true') {
+require('dns').setDefaultResultOrder('ipv4first');
+require('net').setDefaultAutoSelectFamily(false);
+// }
 
 (async () => {
 	const oclif = await import('@oclif/core');
