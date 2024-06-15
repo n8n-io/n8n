@@ -161,7 +161,7 @@ const onBackClick = () => {
 	showRecoveryCodeForm.value = false;
 	hasAnyChanges.value = true;
 	formInputs.value = [mfaTokenFieldWithDefaults()];
-	emit('onBackClick', FORM.MFA_RECOVERY_CODE);
+	emit('onBackClick', MFA_FORM.MFA_RECOVERY_CODE);
 };
 
 const onSubmit = async (form: { token: string; recoveryCode: string }) => {
