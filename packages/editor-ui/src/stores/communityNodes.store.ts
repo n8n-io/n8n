@@ -3,21 +3,23 @@ import { getAvailableCommunityPackageCount } from '@/api/settings';
 import { defineStore } from 'pinia';
 import { useRootStore } from './n8nRoot.store';
 import type { PublicInstalledPackage } from 'n8n-workflow';
-import type { CommunityNodesState, CommunityPackageMap } from '@/Interface';
+import type { CommunityPackageMap } from '@/Interface';
 import { STORES } from '@/constants';
 import { computed, ref } from 'vue';
 
 const LOADER_DELAY = 300;
 
 export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => {
-	const state = ref<CommunityNodesState>({ availablePackageCount: -1, installedPackages: {} });
+	const availablePackageCount = ref(-1);
+
+	const installedPackages = ref<CommunityPackageMap>({});
 
 	// ---------------------------------------------------------------------------
 	// #region Computed
 	// ---------------------------------------------------------------------------
 
 	const getInstalledPackages = computed(() => {
-		return Object.values(state.value.installedPackages).sort((a, b) =>
+		return Object.values(installedPackages.value).sort((a, b) =>
 			a.packageName.localeCompare(b.packageName),
 		);
 	});
@@ -29,13 +31,13 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 	// ---------------------------------------------------------------------------
 
 	const fetchAvailableCommunityPackageCount = async (): Promise<void> => {
-		if (state.value.availablePackageCount === -1) {
-			state.value.availablePackageCount = await getAvailableCommunityPackageCount();
+		if (availablePackageCount.value === -1) {
+			availablePackageCount.value = await getAvailableCommunityPackageCount();
 		}
 	};
 
 	const setInstalledPackages = (packages: PublicInstalledPackage[]) => {
-		state.value.installedPackages = packages.reduce(
+		installedPackages.value = packages.reduce(
 			(packageMap: CommunityPackageMap, pack: PublicInstalledPackage) => {
 				packageMap[pack.packageName] = pack;
 				return packageMap;
@@ -77,12 +79,12 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 	};
 
 	const removePackageByName = (name: string): void => {
-		const { [name]: removedPackage, ...remainingPackages } = state.value.installedPackages;
-		state.value.installedPackages = remainingPackages;
+		const { [name]: removedPackage, ...remainingPackages } = installedPackages.value;
+		installedPackages.value = remainingPackages;
 	};
 
 	const updatePackageObject = (newPackage: PublicInstalledPackage) => {
-		state.value.installedPackages[newPackage.packageName] = newPackage;
+		installedPackages.value[newPackage.packageName] = newPackage;
 	};
 
 	const updatePackage = async (packageName: string): Promise<void> => {
@@ -102,15 +104,13 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 	// #endregion
 
 	const getInstalledPackageByName = computed(() => {
-		return (name: string): PublicInstalledPackage => state.value.installedPackages[name];
+		return (name: string): PublicInstalledPackage => installedPackages.value[name];
 	});
-
-	const getAvailablePackageCount = computed(() => state.value.availablePackageCount);
 
 	return {
 		getInstalledPackageByName,
 		getInstalledPackages,
-		getAvailablePackageCount,
+		availablePackageCount,
 		fetchAvailableCommunityPackageCount,
 		fetchInstalledPackages,
 		installPackage,
