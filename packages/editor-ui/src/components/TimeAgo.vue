@@ -2,7 +2,7 @@
 import { format, register } from 'timeago.js';
 import { convertToHumanReadableDate } from '@/utils/typesUtils';
 import { computed, onBeforeMount } from 'vue';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useI18n } from '@/composables/useI18n';
 
 type Props = {
@@ -17,7 +17,7 @@ const props = withDefaults(defineProps<Props>(), {
 const rootStore = useRootStore();
 const i18n = useI18n();
 
-const defaultLocale = computed(() => rootStore.defaultLocale);
+const defaultLocale = computed(() => rootStore.getDefaultLocale);
 const formatted = computed(() => {
 	const text = format(props.date, defaultLocale.value);
 

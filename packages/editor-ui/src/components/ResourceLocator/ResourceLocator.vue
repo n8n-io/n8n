@@ -148,7 +148,7 @@ import type { DynamicNodeParameters, IResourceLocatorResultExpanded } from '@/In
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -624,7 +624,7 @@ export default defineComponent({
 		},
 		trackEvent(event: string, params?: { [key: string]: string }): void {
 			this.$telemetry.track(event, {
-				instance_id: this.rootStore.instanceId,
+				instance_id: this.rootStore.getInstanceId,
 				workflow_id: this.workflowsStore.workflowId,
 				node_type: this.node?.type,
 				resource: this.node?.parameters && this.node.parameters.resource,

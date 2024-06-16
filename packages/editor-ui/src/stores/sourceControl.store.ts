@@ -2,7 +2,7 @@ import { computed, reactive } from 'vue';
 import { defineStore } from 'pinia';
 import { EnterpriseEditionFeature } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import * as vcApi from '@/api/sourceControl';
 import type { SourceControlPreferences, SshKeyTypes } from '@/Interface';
 import type { TupleToUnion } from '@/utils/typeHelpers';

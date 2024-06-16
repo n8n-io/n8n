@@ -5,7 +5,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import type { ITelemetrySettings } from 'n8n-workflow';
@@ -40,7 +40,7 @@ export default defineComponent({
 		},
 		currentUserId(userId) {
 			if (this.isTelemetryEnabled) {
-				this.$telemetry.identify(this.rootStore.instanceId, userId);
+				this.$telemetry.identify(this.rootStore.getInstanceId, userId);
 			}
 		},
 		isTelemetryEnabledOnRoute(enabled) {
@@ -62,10 +62,10 @@ export default defineComponent({
 				return;
 
 			this.$telemetry.init(this.telemetry, {
-				instanceId: this.rootStore.instanceId,
+				instanceId: this.rootStore.getInstanceId,
 				userId: this.currentUserId,
 				projectId: this.projectsStore.personalProject?.id,
-				versionCli: this.rootStore.versionCli,
+				versionCli: this.rootStore.getVersionCli,
 			});
 
 			this.isTelemetryInitialized = true;

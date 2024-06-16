@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref, watch, computed } from 'vue';
 import { useRoute } from 'vue-router';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import * as projectsApi from '@/api/projects.api';
 import * as workflowsEEApi from '@/api/workflows.ee';
 import * as credentialsEEApi from '@/api/credentials.ee';

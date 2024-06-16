@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { STORES, TIME } from '@/constants';
 import { ref, computed } from 'vue';
 import { useSettingsStore } from './settings.store';
-import { useRootStore } from './n8nRoot.store';
+import { useRootStore } from './root.store';
 import type { IPushData } from '../Interface';
 
 export interface PushState {
@@ -26,7 +26,7 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 
-	const pushRef = computed(() => rootStore.pushRef);
+	const pushRef = computed(() => rootStore.getPushRef);
 	const pushSource = ref<WebSocket | EventSource | null>(null);
 	const reconnectTimeout = ref<NodeJS.Timeout | null>(null);
 	const connectRetries = ref(0);
@@ -84,7 +84,7 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 
 		const useWebSockets = settingsStore.pushBackend === 'websocket';
 
-		const { getRestUrl: restUrl } = rootStore;
+		const restUrl = rootStore.getRestUrl;
 		const url = `/push?pushRef=${pushRef.value}`;
 
 		if (useWebSockets) {
@@ -116,7 +116,7 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 		isConnectionOpen.value = true;
 		connectRetries.value = 0;
 		lostConnection.value = false;
-		rootStore.pushConnectionActive = true;
+		rootStore.setPushConnectionActive();
 		pushSource.value?.removeEventListener('open', onConnectionSuccess);
 
 		if (outgoingQueue.value.length) {

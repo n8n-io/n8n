@@ -2,7 +2,7 @@ import { getNextVersions } from '@/api/versions';
 import { STORES, VERSIONS_MODAL_KEY } from '@/constants';
 import type { IVersion, IVersionNotificationSettings, IVersionsState } from '@/Interface';
 import { defineStore } from 'pinia';
-import { useRootStore } from './n8nRoot.store';
+import { useRootStore } from './root.store';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 
@@ -40,8 +40,8 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, {
 				const { enabled, endpoint } = this.versionNotificationSettings;
 				if (enabled && endpoint) {
 					const rootStore = useRootStore();
-					const currentVersion = rootStore.versionCli;
-					const instanceId = rootStore.instanceId;
+					const currentVersion = rootStore.getVersionCli;
+					const instanceId = rootStore.getInstanceId;
 					const versions = await getNextVersions(endpoint, currentVersion, instanceId);
 					this.setVersions({ versions, currentVersion });
 				}

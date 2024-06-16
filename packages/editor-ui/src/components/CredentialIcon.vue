@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { ICredentialType } from 'n8n-workflow';
 import NodeIcon from '@/components/NodeIcon.vue';

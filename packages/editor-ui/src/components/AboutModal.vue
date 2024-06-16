@@ -13,7 +13,7 @@
 						<n8n-text>{{ $locale.baseText('about.n8nVersion') }}</n8n-text>
 					</el-col>
 					<el-col :span="16">
-						<n8n-text>{{ rootStore.versionCli }}</n8n-text>
+						<n8n-text>{{ rootStore.getVersionCli }}</n8n-text>
 					</el-col>
 				</el-row>
 				<el-row>
@@ -39,7 +39,7 @@
 						<n8n-text>{{ $locale.baseText('about.instanceID') }}</n8n-text>
 					</el-col>
 					<el-col :span="16">
-						<n8n-text>{{ rootStore.instanceId }}</n8n-text>
+						<n8n-text>{{ rootStore.getInstanceId }}</n8n-text>
 					</el-col>
 				</el-row>
 			</div>
@@ -65,7 +65,7 @@ import { createEventBus } from 'n8n-design-system/utils';
 import Modal from './Modal.vue';
 import { ABOUT_MODAL_KEY } from '../constants';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 
 export default defineComponent({
 	name: 'About',

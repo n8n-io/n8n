@@ -2,7 +2,7 @@ import { createTag, deleteTag, getTags, updateTag } from '@/api/tags';
 import { STORES } from '@/constants';
 import type { ITag, ITagsState } from '@/Interface';
 import { defineStore } from 'pinia';
-import { useRootStore } from './n8nRoot.store';
+import { useRootStore } from './root.store';
 import { useWorkflowsStore } from './workflows.store';
 
 export const useTagsStore = defineStore(STORES.TAGS, {

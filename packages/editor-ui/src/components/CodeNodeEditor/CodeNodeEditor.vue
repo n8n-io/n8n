@@ -65,7 +65,7 @@ import { CODE_EXECUTION_MODES, CODE_LANGUAGES } from 'n8n-workflow';
 
 import { ASK_AI_EXPERIMENT, CODE_NODE_TYPE } from '@/constants';
 import { codeNodeEditorEventBus } from '@/event-bus';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { usePostHog } from '@/stores/posthog.store';
 
 import { readOnlyEditorExtensions, writableEditorExtensions } from './baseExtensions';
@@ -375,7 +375,7 @@ export default defineComponent({
 
 				// TODO: Still has to get updated for Python and JSON
 				this.$telemetry.track('User autocompleted code', {
-					instance_id: this.rootStore.instanceId,
+					instance_id: this.rootStore.getInstanceId,
 					node_type: CODE_NODE_TYPE,
 					field_name: this.mode === 'runOnceForAllItems' ? 'jsCodeAllItems' : 'jsCodeEachItem',
 					field_type: 'code',

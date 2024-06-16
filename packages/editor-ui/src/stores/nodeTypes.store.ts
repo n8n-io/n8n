@@ -24,7 +24,7 @@ import type {
 import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useCredentialsStore } from './credentials.store';
-import { useRootStore } from './n8nRoot.store';
+import { useRootStore } from './root.store';
 import {
 	getCredentialOnlyNodeType,
 	getCredentialTypeName,
@@ -236,7 +236,10 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 				if (nodeInformation.translation) {
 					const nodeType = nodeInformation.name.replace('n8n-nodes-base.', '');
 
-					addNodeTranslation({ [nodeType]: nodeInformation.translation }, rootStore.defaultLocale);
+					addNodeTranslation(
+						{ [nodeType]: nodeInformation.translation },
+						rootStore.getDefaultLocale,
+					);
 				}
 			});
 			if (replace) this.setNodeTypes(nodesInformation);
@@ -268,7 +271,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 			const headers = await getNodeTranslationHeaders(rootStore.getRestApiContext);
 
 			if (headers) {
-				addHeaders(headers, rootStore.defaultLocale);
+				addHeaders(headers, rootStore.getDefaultLocale);
 			}
 		},
 		async getNodeParameterOptions(

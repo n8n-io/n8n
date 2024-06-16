@@ -12,7 +12,7 @@ import {
 } from '@/constants';
 
 import type { BaseTextKey } from '@/plugins/i18n';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
 import { TriggerView, RegularView, AIView, AINodesView } from '../viewsData';
@@ -37,7 +37,7 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 
 const { mergedNodes, actions } = useNodeCreatorStore();
-const { baseUrl } = useRootStore();
+const { getBaseUrl: baseUrl } = useRootStore();
 const { pushViewStack, popViewStack } = useViewStacks();
 
 const { registerKeyHook } = useKeyboardNavigation();

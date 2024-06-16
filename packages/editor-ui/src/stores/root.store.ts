@@ -39,26 +39,56 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 	// ---------------------------------------------------------------------------
 
 	const getBaseUrl = computed(() => state.value.baseUrl);
+
 	const getFormUrl = computed(() => `${state.value.urlBaseWebhook}${state.value.endpointForm}`);
+
 	const getFormTestUrl = computed(
 		() => `${state.value.urlBaseEditor}${state.value.endpointFormTest}`,
 	);
+
 	const getFormWaitingUrl = computed(
 		() => `${state.value.baseUrl}${state.value.endpointFormWaiting}`,
 	);
+
 	const getWebhookUrl = computed(
 		() => `${state.value.urlBaseWebhook}${state.value.endpointWebhook}`,
 	);
+
+	const getPushRef = computed(() => state.value.pushRef);
+
+	const getBinaryDataMode = computed(() => state.value.binaryDataMode);
+
+	const getDefaultLocale = computed(() => state.value.defaultLocale);
+
+	const getUrlBaseEditor = computed(() => state.value.urlBaseEditor);
+
+	const getInstanceId = computed(() => state.value.instanceId);
+
+	const getVersionCli = computed(() => state.value.versionCli);
+
+	const pushConnectionActive = computed(() => state.value.pushConnectionActive);
+
+	const getOAuthCallbackUrls = computed(() => state.value.oauthCallbackUrls);
+
 	const getWebhookTestUrl = computed(
 		() => `${state.value.urlBaseEditor}${state.value.endpointWebhookTest}`,
 	);
+
 	const getRestUrl = computed(() => `${state.value.baseUrl}${state.value.restEndpoint}`);
+
+	const getExecutionTimeout = computed(() => state.value.executionTimeout);
+
+	const getMaxExecutionTimeout = computed(() => state.value.maxExecutionTimeout);
+
+	const getTimezone = computed(() => state.value.timezone);
+
 	const getRestCloudApiContext = computed(() => ({
 		baseUrl: window.location.host.includes('stage-app.n8n.cloud')
 			? CLOUD_BASE_URL_STAGING
 			: CLOUD_BASE_URL_PRODUCTION,
 		pushRef: '',
 	}));
+
 	const getRestApiContext = computed(() => ({
 		baseUrl: getRestUrl.value,
 		pushRef: state.value.pushRef,
@@ -73,6 +103,14 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 	const setUrlBaseWebhook = (urlBaseWebhook: string) => {
 		const url = urlBaseWebhook.endsWith('/') ? urlBaseWebhook : `${urlBaseWebhook}/`;
 		state.value.urlBaseWebhook = url;
+	};
+
+	const setPushConnectionActive = () => {
+		state.value.pushConnectionActive = true;
+	};
+
+	const setPushConnectionInactive = () => {
+		state.value.pushConnectionActive = false;
 	};
 
 	const setUrlBaseEditor = (urlBaseEditor: string) => {
@@ -144,7 +182,6 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 	// #endregion
 
 	return {
-		state,
 		getBaseUrl,
 		getFormUrl,
 		getFormTestUrl,
@@ -154,6 +191,19 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		getRestUrl,
 		getRestCloudApiContext,
 		getRestApiContext,
+		getUrlBaseEditor,
+		getVersionCli,
+		getInstanceId,
+		getPushRef,
+		getDefaultLocale,
+		getBinaryDataMode,
+		pushConnectionActive,
+		getOAuthCallbackUrls,
+		getExecutionTimeout,
+		getMaxExecutionTimeout,
+		getTimezone,
+		setPushConnectionInactive,
+		setPushConnectionActive,
 		setUrlBaseWebhook,
 		setUrlBaseEditor,
 		setEndpointForm,
@@ -171,6 +221,5 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		setDefaultLocale,
 		setIsNpmAvailable,
 		setBinaryDataMode,
-		...state,
 	};
 });

@@ -10,7 +10,7 @@ import {
 	SLACK_NODE_TYPE,
 	TELEGRAM_NODE_TYPE,
 } from '@/constants';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -78,7 +78,7 @@ export class Telemetry {
 		this.identify(instanceId, userId, versionCli, projectId);
 
 		this.flushPageEvents();
-		this.track('Session started', { session_id: rootStore.pushRef });
+		this.track('Session started', { session_id: rootStore.getPushRef });
 	}
 
 	identify(instanceId: string, userId?: string, versionCli?: string, projectId?: string) {
@@ -110,7 +110,7 @@ export class Telemetry {
 
 		const updatedProperties = {
 			...properties,
-			version_cli: useRootStore().versionCli,
+			version_cli: useRootStore().getVersionCli,
 		};
 
 		this.rudderStack.track(event, updatedProperties);
@@ -155,7 +155,7 @@ export class Telemetry {
 
 	trackAskAI(event: string, properties: IDataObject = {}) {
 		if (this.rudderStack) {
-			properties.session_id = useRootStore().pushRef;
+			properties.session_id = useRootStore().getPushRef;
 			properties.ndv_session_id = useNDVStore().pushRef;
 
 			switch (event) {

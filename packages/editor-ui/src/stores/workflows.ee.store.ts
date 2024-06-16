@@ -1,6 +1,6 @@
 import { setWorkflowSharedWith } from '@/api/workflows.ee';
 import { EnterpriseEditionFeature, STORES } from '@/constants';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { defineStore } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';

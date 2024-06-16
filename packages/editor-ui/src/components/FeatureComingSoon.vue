@@ -30,7 +30,7 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import type { IFakeDoor } from '@/Interface';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -53,7 +53,7 @@ export default defineComponent({
 			return this.usersStore.currentUserId || '';
 		},
 		instanceId(): string {
-			return this.rootStore.instanceId;
+			return this.rootStore.getInstanceId;
 		},
 		featureInfo(): IFakeDoor | undefined {
 			return this.uiStore.getFakeDoorById(this.featureId);
@@ -63,7 +63,7 @@ export default defineComponent({
 		openLinkPage() {
 			if (this.featureInfo) {
 				window.open(
-					`${this.featureInfo.linkURL}&u=${this.instanceId}#${this.userId}&v=${this.rootStore.versionCli}`,
+					`${this.featureInfo.linkURL}&u=${this.instanceId}#${this.userId}&v=${this.rootStore.getVersionCli}`,
 					'_blank',
 				);
 				this.$telemetry.track('user clicked feature waiting list button', {

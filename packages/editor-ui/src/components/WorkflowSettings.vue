@@ -375,7 +375,7 @@ import type { WorkflowSettings } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from 'n8n-design-system/utils';
@@ -494,8 +494,8 @@ export default defineComponent({
 		},
 	},
 	async mounted() {
-		this.executionTimeout = this.rootStore.executionTimeout;
-		this.maxExecutionTimeout = this.rootStore.maxExecutionTimeout;
+		this.executionTimeout = this.rootStore.getExecutionTimeout;
+		this.maxExecutionTimeout = this.rootStore.getMaxExecutionTimeout;
 
 		if (!this.workflowId || this.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 			this.showMessage({
@@ -511,7 +511,7 @@ export default defineComponent({
 		this.defaultValues.saveDataErrorExecution = this.settingsStore.saveDataErrorExecution;
 		this.defaultValues.saveDataSuccessExecution = this.settingsStore.saveDataSuccessExecution;
 		this.defaultValues.saveManualExecutions = this.settingsStore.saveManualExecutions;
-		this.defaultValues.timezone = this.rootStore.timezone;
+		this.defaultValues.timezone = this.rootStore.getTimezone;
 		this.defaultValues.workflowCallerPolicy = this.settingsStore.workflowCallerPolicyDefaultOption;
 
 		this.isLoading = true;
@@ -556,10 +556,10 @@ export default defineComponent({
 				.workflowCallerPolicy as WorkflowSettings.CallerPolicy;
 		}
 		if (workflowSettings.executionTimeout === undefined) {
-			workflowSettings.executionTimeout = this.rootStore.executionTimeout;
+			workflowSettings.executionTimeout = this.rootStore.getExecutionTimeout;
 		}
 		if (workflowSettings.maxExecutionTimeout === undefined) {
-			workflowSettings.maxExecutionTimeout = this.rootStore.maxExecutionTimeout;
+			workflowSettings.maxExecutionTimeout = this.rootStore.getMaxExecutionTimeout;
 		}
 		if (workflowSettings.executionOrder === undefined) {
 			workflowSettings.executionOrder = 'v0';

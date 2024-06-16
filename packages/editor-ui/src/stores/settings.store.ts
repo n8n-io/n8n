@@ -25,7 +25,7 @@ import type {
 } from 'n8n-workflow';
 import { ExpressionEvaluatorProxy } from 'n8n-workflow';
 import { defineStore } from 'pinia';
-import { useRootStore } from './n8nRoot.store';
+import { useRootStore } from './root.store';
 import { useUIStore } from './ui.store';
 import { useUsersStore } from './users.store';
 import { useVersionsStore } from './versions.store';
@@ -256,7 +256,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			}
 
 			const isV1BannerDismissedPermanently = (settings.banners?.dismissed || []).includes('V1');
-			if (!isV1BannerDismissedPermanently && useRootStore().versionCli.startsWith('1.')) {
+			if (!isV1BannerDismissedPermanently && useRootStore().getVersionCli.startsWith('1.')) {
 				useUIStore().pushBannerToStack('V1');
 			}
 		},

@@ -1,4 +1,4 @@
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -10,7 +10,7 @@ import { useRouter } from 'vue-router';
 import { ExpressionError, type IPinData, type IRunData, type Workflow } from 'n8n-workflow';
 import type * as router from 'vue-router';
 
-vi.mock('@/stores/n8nRoot.store', () => ({
+vi.mock('@/stores/root.store', () => ({
 	useRootStore: vi.fn().mockReturnValue({ pushConnectionActive: true }),
 }));
 
@@ -110,7 +110,7 @@ describe('useRunWorkflow({ router })', () => {
 	describe('runWorkflowApi()', () => {
 		it('should throw an error if push connection is not active', async () => {
 			const { runWorkflowApi } = useRunWorkflow({ router });
-			rootStore.pushConnectionActive = false;
+			rootStore.setPushConnectionInactive();
 
 			await expect(runWorkflowApi({} as IStartRunData)).rejects.toThrow(
 				'workflowRun.noActiveConnectionToTheServer',
@@ -119,7 +119,7 @@ describe('useRunWorkflow({ router })', () => {
 
 		it('should successfully run a workflow', async () => {
 			const { runWorkflowApi } = useRunWorkflow({ router });
-			rootStore.pushConnectionActive = true;
+			rootStore.setPushConnectionActive();
 
 			const mockResponse = { executionId: '123', waitingForWebhook: false };
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockResponse);
@@ -135,7 +135,7 @@ describe('useRunWorkflow({ router })', () => {
 		it('should handle workflow run failure', async () => {
 			const { runWorkflowApi } = useRunWorkflow({ router });
 
-			rootStore.pushConnectionActive = true;
+			rootStore.setPushConnectionActive();
 			vi.mocked(workflowsStore).runWorkflow.mockRejectedValue(new Error('Failed to run workflow'));
 
 			await expect(runWorkflowApi({} as IStartRunData)).rejects.toThrow('Failed to run workflow');
@@ -145,7 +145,7 @@ describe('useRunWorkflow({ router })', () => {
 		it('should set waitingForWebhook if response indicates waiting', async () => {
 			const { runWorkflowApi } = useRunWorkflow({ router });
 
-			rootStore.pushConnectionActive = true;
+			rootStore.setPushConnectionActive();
 			const mockResponse = { executionId: '123', waitingForWebhook: true };
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockResponse);
 

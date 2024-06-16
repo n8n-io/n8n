@@ -5,7 +5,7 @@ import { useClipboard } from '@/composables/useClipboard';
 import { useToast } from '@/composables/useToast';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import type {
 	IDataObject,
 	INodeProperties,
@@ -51,14 +51,14 @@ const parameters = computed<INodeProperties[]>(() => {
 });
 
 const n8nVersion = computed(() => {
-	const baseUrl = rootStore.urlBaseEditor;
+	const baseUrl = rootStore.getUrlBaseEditor;
 	let instanceType = 'Self Hosted';
 
 	if (baseUrl.includes('n8n.cloud')) {
 		instanceType = 'Cloud';
 	}
 
-	return rootStore.versionCli + ` (${instanceType})`;
+	return rootStore.getVersionCli + ` (${instanceType})`;
 });
 
 const hasManyInputItems = computed(() => {
@@ -339,7 +339,7 @@ function copyErrorDetails() {
 
 	n8nDetails.n8nVersion = n8nVersion.value;
 
-	n8nDetails.binaryDataMode = rootStore.binaryDataMode;
+	n8nDetails.binaryDataMode = rootStore.getBinaryDataMode;
 
 	if (error.cause) {
 		n8nDetails.cause = error.cause;

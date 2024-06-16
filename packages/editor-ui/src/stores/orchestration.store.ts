@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import type { IPushDataWorkerStatusPayload } from '../Interface';
-import { useRootStore } from './n8nRoot.store';
+import { useRootStore } from './root.store';
 import { sendGetWorkerStatus } from '../api/orchestration';
 
 export const WORKER_HISTORY_LENGTH = 100;

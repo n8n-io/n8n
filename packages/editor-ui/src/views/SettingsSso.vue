@@ -7,7 +7,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 
 const IdentityProviderSettingsType = {
 	URL: 'url',
@@ -106,7 +106,7 @@ const onSave = async () => {
 		}
 
 		telemetry.track('User updated single sign on settings', {
-			instance_id: rootStore.instanceId,
+			instance_id: rootStore.getInstanceId,
 			identity_provider: ipsType.value === 'url' ? 'metadata' : 'xml',
 			is_active: ssoStore.isSamlLoginEnabled,
 		});

@@ -11,7 +11,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import type { TelemetryEventData } from '@/hooks/types';
 import type { INodeUi } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 
 export interface UserSavedCredentialsEventData {
 	credential_type: string;
@@ -26,7 +26,7 @@ export const getUserSavedCredentialsEventData = (meta: UserSavedCredentialsEvent
 	return {
 		eventName: 'User saved credentials',
 		properties: {
-			instance_id: rootStore.instanceId,
+			instance_id: rootStore.getInstanceId,
 			credential_type: meta.credential_type,
 			credential_id: meta.credential_id,
 			workflow_id: workflowsStore.workflowId,

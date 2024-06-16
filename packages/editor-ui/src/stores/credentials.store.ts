@@ -32,7 +32,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { defineStore } from 'pinia';
-import { useRootStore } from './n8nRoot.store';
+import { useRootStore } from './root.store';
 import { useNodeTypesStore } from './nodeTypes.store';
 import { useSettingsStore } from './settings.store';
 import { isEmpty } from '@/utils/typesUtils';

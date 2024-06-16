@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { VALID_EMAIL_REGEX, NPS_SURVEY_MODAL_KEY } from '@/constants';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import ModalDrawer from '@/components/ModalDrawer.vue';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
@@ -52,7 +52,7 @@ const isEmailValid = computed(
 async function closeDialog(): Promise<void> {
 	if (form.value.value === '') {
 		telemetry.track('User responded value survey score', {
-			instance_id: rootStore.instanceId,
+			instance_id: rootStore.getInstanceId,
 			nps: '',
 		});
 
@@ -60,7 +60,7 @@ async function closeDialog(): Promise<void> {
 	}
 	if (form.value.value !== '' && form.value.email === '') {
 		telemetry.track('User responded value survey email', {
-			instance_id: rootStore.instanceId,
+			instance_id: rootStore.getInstanceId,
 			email: '',
 			nps: form.value.value,
 		});
@@ -76,7 +76,7 @@ async function selectSurveyValue(value: string) {
 	showButtons.value = false;
 
 	telemetry.track('User responded value survey score', {
-		instance_id: rootStore.instanceId,
+		instance_id: rootStore.getInstanceId,
 		nps: form.value.value,
 	});
 
@@ -86,7 +86,7 @@ async function selectSurveyValue(value: string) {
 async function send() {
 	if (isEmailValid.value) {
 		telemetry.track('User responded value survey email', {
-			instance_id: rootStore.instanceId,
+			instance_id: rootStore.getInstanceId,
 			email: form.value.email,
 			nps: form.value.value,
 		});
@@ -112,7 +112,7 @@ watch(
 	(isActive) => {
 		if (isActive) {
 			telemetry.track('User shown value survey', {
-				instance_id: rootStore.instanceId,
+				instance_id: rootStore.getInstanceId,
 			});
 		}
 	},

@@ -16,7 +16,7 @@ import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useNDVStore } from '@/stores/ndv.store';
 import { usePostHog } from '@/stores/posthog.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import {
@@ -154,7 +154,7 @@ async function onSubmit() {
 	startLoading();
 
 	try {
-		const version = useRootStore().versionCli;
+		const version = useRootStore().getVersionCli;
 		const model =
 			usePostHog().getVariant(ASK_AI_EXPERIMENT.name) === ASK_AI_EXPERIMENT.gpt4
 				? 'gpt-4'
@@ -166,7 +166,7 @@ async function onSubmit() {
 				schema: schemas.parentNodesSchemas,
 				inputSchema: schemas.inputSchema!,
 				ndvPushRef: useNDVStore().pushRef,
-				pushRef: useRootStore().pushRef,
+				pushRef: useRootStore().getPushRef,
 			},
 			model,
 			n8nVersion: version,

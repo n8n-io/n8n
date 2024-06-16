@@ -629,7 +629,7 @@ import { useToast } from '@/composables/useToast';
 import { isEqual, isObject } from 'lodash-es';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import RunDataPinButton from '@/components/RunDataPinButton.vue';
 
 const RunDataTable = defineAsyncComponent(
@@ -1146,7 +1146,7 @@ export default defineComponent({
 						node: this.node.type,
 						errorMessage: error.message,
 						nodeVersion: this.node.typeVersion,
-						n8nVersion: this.rootStore.versionCli,
+						n8nVersion: this.rootStore.getVersionCli,
 					},
 					{
 						withPostHog: true,

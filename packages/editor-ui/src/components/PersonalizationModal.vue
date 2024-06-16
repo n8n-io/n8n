@@ -146,7 +146,7 @@ import { getAccountAge } from '@/utils/userUtils';
 import type { GenericValue } from 'n8n-workflow';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useUsersStore } from '@/stores/users.store';
 import { createEventBus } from 'n8n-design-system/utils';
 import { usePostHog } from '@/stores/posthog.store';
@@ -700,7 +700,7 @@ export default defineComponent({
 					...values,
 					version: SURVEY_VERSION,
 					personalization_survey_submitted_at: new Date().toISOString(),
-					personalization_survey_n8n_version: this.rootStore.versionCli,
+					personalization_survey_n8n_version: this.rootStore.getVersionCli,
 				};
 
 				await this.externalHooks.run(
@@ -728,7 +728,7 @@ export default defineComponent({
 					licenseRequestSucceeded = true;
 					this.$telemetry.track('User registered for self serve trial', {
 						email: this.usersStore.currentUser?.email,
-						instance_id: this.rootStore.instanceId,
+						instance_id: this.rootStore.getInstanceId,
 					});
 				}
 			} catch (e) {

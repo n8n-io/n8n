@@ -18,7 +18,7 @@ import { useWorkflowHistoryStore } from '@/stores/workflowHistory.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { telemetry } from '@/plugins/telemetry';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 
 type WorkflowHistoryActionRecord = {
 	[K in Uppercase<WorkflowHistoryActionTypes[number]>]: Lowercase<K>;
@@ -78,7 +78,7 @@ const evaluatedPruneTime = computed(() => Math.floor(workflowHistoryStore.evalua
 
 const sendTelemetry = (event: string) => {
 	telemetry.track(event, {
-		instance_id: useRootStore().instanceId,
+		instance_id: useRootStore().getInstanceId,
 		workflow_id: workflowId.value,
 	});
 };

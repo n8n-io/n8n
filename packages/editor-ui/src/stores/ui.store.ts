@@ -60,7 +60,7 @@ import type {
 	ModalKey,
 } from '@/Interface';
 import { defineStore } from 'pinia';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { getCurlToJson } from '@/api/curlHelper';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -472,7 +472,7 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		async getNextOnboardingPrompt(): Promise<IOnboardingCallPrompt | null> {
 			const rootStore = useRootStore();
-			const instanceId = rootStore.instanceId;
+			const instanceId = rootStore.getInstanceId;
 			const { currentUser } = useUsersStore();
 			if (currentUser) {
 				return await fetchNextOnboardingPrompt(instanceId, currentUser);
@@ -481,7 +481,7 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		async applyForOnboardingCall(email: string): Promise<string | null> {
 			const rootStore = useRootStore();
-			const instanceId = rootStore.instanceId;
+			const instanceId = rootStore.getInstanceId;
 			const { currentUser } = useUsersStore();
 			if (currentUser) {
 				return await applyForOnboardingCall(instanceId, currentUser, email);
@@ -490,7 +490,7 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		async submitContactEmail(email: string, agree: boolean): Promise<string | null> {
 			const rootStore = useRootStore();
-			const instanceId = rootStore.instanceId;
+			const instanceId = rootStore.getInstanceId;
 			const { currentUser } = useUsersStore();
 			if (currentUser) {
 				return await submitEmailOnSignup(

@@ -93,7 +93,7 @@ import { useMessage } from '@/composables/useMessage';
 import CopyInput from '@/components/CopyInput.vue';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
@@ -124,7 +124,7 @@ export default defineComponent({
 		if (!this.isPublicApiEnabled) return;
 
 		void this.getApiKey();
-		const baseUrl = this.rootStore.baseUrl;
+		const baseUrl = this.rootStore.getBaseUrl;
 		const apiPath = this.settingsStore.publicApiPath;
 		const latestVersion = this.settingsStore.publicApiLatestVersion;
 		this.swaggerUIEnabled = this.settingsStore.isSwaggerUIEnabled;

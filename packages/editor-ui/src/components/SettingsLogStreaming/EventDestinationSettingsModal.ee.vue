@@ -210,7 +210,7 @@ import EventSelection from '@/components/SettingsLogStreaming/EventSelection.ee.
 import type { EventBus } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 
 export default defineComponent({
 	name: 'EventDestinationSettingsModal',
@@ -503,7 +503,7 @@ export default defineComponent({
 				};
 
 				useTelemetry().track('User updated log streaming destination', {
-					instance_id: useRootStore().instanceId,
+					instance_id: useRootStore().getInstanceId,
 					destination_type: destinationType,
 					is_complete: isComplete(),
 					is_active: this.destination.enabled,

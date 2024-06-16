@@ -336,7 +336,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useSegment } from '@/stores/segment.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useTagsStore } from '@/stores/tags.store';
@@ -901,7 +901,7 @@ export default defineComponent({
 				await this.initView();
 				if (window.parent) {
 					window.parent.postMessage(
-						JSON.stringify({ command: 'n8nReady', version: this.rootStore.versionCli }),
+						JSON.stringify({ command: 'n8nReady', version: this.rootStore.getVersionCli }),
 						'*',
 					);
 				}
@@ -2000,7 +2000,7 @@ export default defineComponent({
 				const workflowToCopy: IWorkflowToShare = {
 					meta: {
 						...this.workflowsStore.workflow.meta,
-						instanceId: this.rootStore.instanceId,
+						instanceId: this.rootStore.getInstanceId,
 					},
 					...data,
 				};
@@ -2255,7 +2255,7 @@ export default defineComponent({
 
 				this.removeUnknownCredentials(workflowData);
 
-				const currInstanceId = this.rootStore.instanceId;
+				const currInstanceId = this.rootStore.getInstanceId;
 
 				const nodeGraph = JSON.stringify(
 					TelemetryHelpers.generateNodesGraph(

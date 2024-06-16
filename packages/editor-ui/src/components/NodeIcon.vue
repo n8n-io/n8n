@@ -17,7 +17,7 @@
 
 <script setup lang="ts">
 import type { IVersionNode, SimplifiedNodeType } from '@/Interface';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useUIStore } from '@/stores/ui.store';
 import { getBadgeIconUrl, getNodeIcon, getNodeIconUrl } from '@/utils/nodeTypesUtils';
 import type { INodeTypeDescription } from 'n8n-workflow';

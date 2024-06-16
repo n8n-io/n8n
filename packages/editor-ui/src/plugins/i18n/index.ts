@@ -7,7 +7,7 @@ import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } f
 import type { INodeTranslationHeaders } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import englishBaseText from './locales/en.json';
 import {
 	deriveMiddleKey,
@@ -344,7 +344,7 @@ export class I18nClass {
 	}
 
 	localizeNodeName(nodeName: string, type: string) {
-		const isEnglishLocale = useRootStore().defaultLocale === 'en';
+		const isEnglishLocale = useRootStore().getDefaultLocale === 'en';
 
 		if (isEnglishLocale) return nodeName;
 
