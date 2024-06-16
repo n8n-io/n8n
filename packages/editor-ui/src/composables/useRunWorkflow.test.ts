@@ -10,10 +10,6 @@ import { useRouter } from 'vue-router';
 import { ExpressionError, type IPinData, type IRunData, type Workflow } from 'n8n-workflow';
 import type * as router from 'vue-router';
 
-vi.mock('@/stores/root.store', () => ({
-	useRootStore: vi.fn().mockReturnValue({ pushConnectionActive: true }),
-}));
-
 vi.mock('@/stores/workflows.store', () => ({
 	useWorkflowsStore: vi.fn().mockReturnValue({
 		runWorkflow: vi.fn(),
@@ -95,7 +91,7 @@ describe('useRunWorkflow({ router })', () => {
 	let workflowHelpers: ReturnType<typeof useWorkflowHelpers>;
 
 	beforeAll(() => {
-		const pinia = createTestingPinia();
+		const pinia = createTestingPinia({ stubActions: false });
 
 		setActivePinia(pinia);
 
@@ -110,6 +106,7 @@ describe('useRunWorkflow({ router })', () => {
 	describe('runWorkflowApi()', () => {
 		it('should throw an error if push connection is not active', async () => {
 			const { runWorkflowApi } = useRunWorkflow({ router });
+
 			rootStore.setPushConnectionInactive();
 
 			await expect(runWorkflowApi({} as IStartRunData)).rejects.toThrow(
@@ -119,6 +116,7 @@ describe('useRunWorkflow({ router })', () => {
 
 		it('should successfully run a workflow', async () => {
 			const { runWorkflowApi } = useRunWorkflow({ router });
+
 			rootStore.setPushConnectionActive();
 
 			const mockResponse = { executionId: '123', waitingForWebhook: false };
