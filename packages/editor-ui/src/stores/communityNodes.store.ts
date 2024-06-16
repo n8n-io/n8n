@@ -105,14 +105,16 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 		return (name: string): PublicInstalledPackage => state.value.installedPackages[name];
 	});
 
+	const getAvailablePackageCount = computed(() => state.value.availablePackageCount);
+
 	return {
 		getInstalledPackageByName,
 		getInstalledPackages,
+		getAvailablePackageCount,
 		fetchAvailableCommunityPackageCount,
 		fetchInstalledPackages,
 		installPackage,
 		uninstallPackage,
 		updatePackage,
-		...state,
 	};
 });

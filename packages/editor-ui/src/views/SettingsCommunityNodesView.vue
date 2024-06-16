@@ -98,7 +98,7 @@ export default defineComponent({
 	computed: {
 		...mapStores(useCommunityNodesStore, useSettingsStore, useUIStore, usePushConnectionStore),
 		getEmptyStateDescription(): string {
-			const packageCount = this.communityNodesStore.availablePackageCount;
+			const packageCount = this.communityNodesStore.getAvailablePackageCount;
 
 			if (this.settingsStore.isDesktopDeployment) {
 				return this.$locale.baseText('contextual.communityNodes.unavailable.description.desktop');
