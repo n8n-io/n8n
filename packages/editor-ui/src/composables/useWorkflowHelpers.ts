@@ -417,16 +417,16 @@ export function executeData(
 	// Find the parent node which has data
 	for (const parentNodeName of parentNodes) {
 		if (workflowsStore.shouldReplaceInputDataWithPinData) {
-			// const parentPinData = workflowsStore.pinnedWorkflowData![parentNodeName];
+			const parentPinData = workflowsStore.pinnedWorkflowData![parentNodeName];
 
 			// populate `executeData` from `pinData`
 
-			// if (parentPinData) {
-			// 	executeData.data = { main: [parentPinData] };
-			// 	executeData.source = { main: [{ previousNode: parentNodeName }] };
+			if (parentPinData) {
+				executeData.data = { main: [parentPinData] };
+				executeData.source = { main: [{ previousNode: parentNodeName }] };
 
-			// 	return executeData;
-			// }
+				return executeData;
+			}
 		}
 
 		// populate `executeData` from `runData`
