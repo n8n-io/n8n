@@ -97,7 +97,28 @@ exports[`components > N8nDatatable > should render correctly 1`] = `
   <div class="pagination">
     <n8n-pagination-stub pagesize="10" total="15" currentpage="1" pagercount="5" layout="prev, pager, next" pagesizes="10,20,30,40,50,100" popperclass="" prevtext="" previcon="[object Object]" nexttext="" nexticon="[object Object]" small="false" background="true" disabled="false" hideonsinglepage="false"></n8n-pagination-stub>
     <div class="pageSizeSelector">
-      <n8n-select-stub modelvalue="10" autocomplete="off" automaticdropdown="false" size="mini" effect="light" disabled="false" clearable="false" filterable="false" allowcreate="false" loading="false" popperoptions="[object Object]" remote="false" multiple="false" multiplelimit="0" defaultfirstoption="false" reservekeyword="true" valuekey="value" collapsetags="false" collapsetagstooltip="false" maxcollapsetags="1" teleported="true" persistent="true" clearicon="[object Object]" fitinputwidth="false" suffixicon="[object Object]" tagtype="info" validateevent="true" remoteshowsuffix="false" suffixtransition="true" placement="bottom-start" popperappendtobody="false" limitpopperwidth="false"></n8n-select-stub>
+      <div class="n8n-select container withPrepend">
+        <div class="prepend">Page size</div>
+        <div class="el-select el-select--small" popperappendtobody="false" limitpopperwidth="false">
+          <div class="select-trigger el-tooltip__trigger el-tooltip__trigger">
+            <!--v-if-->
+            <!-- fix: https://github.com/element-plus/element-plus/issues/11415 -->
+            <!--v-if-->
+            <div class="el-input el-input--small el-input--suffix">
+              <!-- input -->
+              <!-- prepend slot -->
+              <!--v-if-->
+              <div class="el-input__wrapper">
+                <!-- prefix slot -->
+                <!--v-if--><input class="el-input__inner" type="text" readonly="" autocomplete="off" tabindex="0" placeholder="Select"><!-- suffix slot --><span class="el-input__suffix"><span class="el-input__suffix-inner"><i class="el-icon el-select__caret el-select__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" d="M831.872 340.864 512 652.672 192.128 340.864a30.592 30.592 0 0 0-42.752 0 29.12 29.12 0 0 0 0 41.6L489.664 714.24a32 32 0 0 0 44.672 0l340.288-331.712a29.12 29.12 0 0 0 0-41.728 30.592 30.592 0 0 0-42.752 0z"></path></svg></i><!--v-if--><!--v-if--><!--v-if--><!--v-if--><!--v-if--><!--v-if--></span></span>
+              </div><!-- append slot -->
+              <!--v-if-->
+            </div>
+          </div>
+          <!--teleport start-->
+          <!--teleport end-->
+        </div>
+      </div>
     </div>
   </div>
 </div>"
