@@ -45,23 +45,37 @@ export function createTestNodeTypes(data: INodeTypeData = {}): INodeTypes {
 	};
 }
 
-export function createTestWorkflowObject(options: {
+export function createTestWorkflowObject({
+	id = uuid(),
+	name = 'Test Workflow',
+	nodes = [],
+	connections = {},
+	active = false,
+	nodeTypes = {},
+	staticData = {},
+	settings = {},
+	pinData = {},
+}: {
 	id?: string;
 	name?: string;
-	nodes: INode[];
-	connections: IConnections;
+	nodes?: INode[];
+	connections?: IConnections;
 	active?: boolean;
 	nodeTypes?: INodeTypeData;
 	staticData?: IDataObject;
 	settings?: IWorkflowSettings;
 	pinData?: IPinData;
-}) {
+} = {}) {
 	return new Workflow({
-		...options,
-		id: options.id ?? uuid(),
-		active: options.active ?? false,
-		nodeTypes: createTestNodeTypes(options.nodeTypes),
-		connections: options.connections ?? {},
+		id,
+		name,
+		nodes,
+		connections,
+		active,
+		staticData,
+		settings,
+		pinData,
+		nodeTypes: createTestNodeTypes(nodeTypes),
 	});
 }
 
