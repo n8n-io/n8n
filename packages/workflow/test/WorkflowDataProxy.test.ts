@@ -22,7 +22,7 @@ const getProxyFromFixture = (workflow: IWorkflowBase, run: IRun | null, activeNo
 	if (taskData) {
 		executeData = {
 			data: taskData.data!,
-			node: {} as INode,
+			node: workflow.nodes.find((node) => node.name === activeNode) as INode,
 			source: {
 				main: taskData.source,
 			},
@@ -45,7 +45,7 @@ const getProxyFromFixture = (workflow: IWorkflowBase, run: IRun | null, activeNo
 		activeNode,
 		lastNodeConnectionInputData ?? [],
 		{},
-		'integrated',
+		'manual',
 		{},
 		executeData,
 	);
@@ -53,45 +53,10 @@ const getProxyFromFixture = (workflow: IWorkflowBase, run: IRun | null, activeNo
 	return dataProxy.getDataProxy();
 };
 
-// TODO:
-// - Ideally we should load proxy and fixtures the same way as in the tests above
-// 	 so run data and workflow data is split in 2 files and we should take care od the type errors here
-// const getPairedItemProxy = (activeNode: string) => {
-// 	const workflow = Helpers.readJsonFileSync<IWorkflowBase>(
-// 		'test/fixtures/WorkflowDataProxy/pindata_workflow.json',
-// 	);
-// 	const dataProxy = new WorkflowDataProxy(
-// 		new Workflow({
-// 			id: '123',
-// 			name: 'test workflow',
-// 			nodes: workflow.nodes,
-// 			connections: workflow.connections,
-// 			active: false,
-// 			nodeTypes: Helpers.NodeTypes(),
-// 			pinData: workflow.pinData ?? {},
-// 		}),
-// 		workflow.runExecutionData || {},
-// 		0,
-// 		0,
-// 		activeNode,
-// 		workflow.connectionInputData,
-// 		workflow.siblingParameters,
-// 		'manual',
-// 		{},
-// 		workflow.executeData,
-// 	);
-// 	return dataProxy.getDataProxy();
-// };
-
-// TODO:
-// Looks like pairedItem getter in WorkflowDataProxy is doing it's job
-// just not sure why are we getting undefined here
-// Also need to test NotPinnedSet2 for $(PinnedSet).first().json
 describe('Pinned data', () => {
 	const fixture = loadFixture('pinData');
 	const proxy = getProxyFromFixture(fixture.workflow, null, 'NotPinnedSet1');
 
-	// const proxy = getPairedItemProxy('NotPinnedSet1');
 	test('$(PinnedSet).item.json', () => {
 		expect(proxy.$('PinnedSet').item.json).toEqual({ firstName: 'Joe', lastName: 'Smith' });
 	});
