@@ -17,6 +17,8 @@ import {
 	createWaitingExecution,
 } from '../shared/db/executions';
 import type { SuperAgentTest } from '../shared/types';
+import { mockInstance } from '@test/mocking';
+import { Telemetry } from '@/telemetry';
 
 let owner: User;
 let user1: User;
@@ -25,6 +27,8 @@ let authOwnerAgent: SuperAgentTest;
 let authUser1Agent: SuperAgentTest;
 let authUser2Agent: SuperAgentTest;
 let workflowRunner: ActiveWorkflowManager;
+
+mockInstance(Telemetry);
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 

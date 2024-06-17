@@ -1,4 +1,3 @@
-import { v4 as uuid } from 'uuid';
 import { NDV, WorkflowPage as WorkflowPageClass } from '../pages';
 import { successToast } from '../pages/notifications';
 
@@ -11,7 +10,7 @@ describe('ADO-1338-ndv-missing-input-panel', () => {
 	});
 
 	it('should show the input and output panels when node is missing input and output data', () => {
-		cy.createFixtureWorkflow('Test_ado_1338.json', uuid());
+		cy.createFixtureWorkflow('Test_ado_1338.json');
 
 		// Execute the workflow
 		workflowPage.getters.zoomToFitButton().click();
