@@ -151,12 +151,12 @@ const isItemActive = (item: IMenuItem): boolean => {
 };
 
 const getInitials = (label: string): string => {
-	const words = label.split(' ');
+	const words = label.split(' ').map((word) => [...new Intl.Segmenter().segment(word)]);
 
 	if (words.length === 1) {
-		return words[0].substring(0, 2);
+		return words[0][0].segment + words[0][1].segment;
 	} else {
-		return words[0].charAt(0) + words[1].charAt(0);
+		return words[0][0].segment + words[1][0].segment;
 	}
 };
 </script>
