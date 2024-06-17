@@ -15,6 +15,7 @@ import { Logger } from '@/Logger';
 import config from '@/config';
 import { OnShutdown } from '@/decorators/OnShutdown';
 import type { QueueRecoverySettings } from './execution.types';
+import { OrchestrationService } from '@/services/orchestration.service';
 
 /**
  * Service for recovering key properties in executions.
@@ -22,10 +23,28 @@ import type { QueueRecoverySettings } from './execution.types';
 @Service()
 export class ExecutionRecoveryService {
 	constructor(
+		private readonly logger: Logger,
 		private readonly push: Push,
 		private readonly executionRepository: ExecutionRepository,
-		private readonly logger: Logger,
+		private readonly orchestrationService: OrchestrationService,
 	) {}
+
+	/**
+	 * @important Requires `OrchestrationService` to be initialized on queue mode.
+	 */
+	init() {
+		if (config.getEnv('executions.mode') === 'regular') return;
+
+		const { isLeader, isMultiMainSetupEnabled } = this.orchestrationService;
+
+		if (isLeader) this.scheduleQueueRecovery();
+
+		if (isMultiMainSetupEnabled) {
+			this.orchestrationService.multiMainSetup
+				.on('leader-takeover', () => this.scheduleQueueRecovery())
+				.on('leader-stepdown', () => this.stopQueueRecovery());
+		}
+	}
 
 	private readonly queueRecoverySettings: QueueRecoverySettings = {
 		batchSize: config.getEnv('executions.queueRecovery.batchSize'),
