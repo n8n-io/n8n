@@ -1,3 +1,4 @@
+import { RedactableError } from '@/errors/redactable.error';
 import type { UserLike } from '@/eventbus/audit.types';
 
 function toRedactable(userLike: UserLike) {
@@ -32,6 +33,8 @@ export const Redactable =
 
 		propertyDescriptor.value = function (...args: MethodArgs) {
 			const index = args.findIndex((arg) => arg[fieldName] !== undefined);
+
+			if (index === -1) throw new RedactableError(fieldName, args.toString());
 
 			const userLike = args[index]?.[fieldName];
 
