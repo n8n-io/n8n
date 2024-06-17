@@ -1037,7 +1037,7 @@ export class WorkflowDataProxy {
 									const input = executionData?.[itemIndex];
 
 									if (pinnedData && !that.connectionInputData.length) {
-										return { json: input };
+										return input;
 									}
 									if (!input) {
 										throw createExpressionError('Can’t get data for expression', {
@@ -1089,6 +1089,7 @@ export class WorkflowDataProxy {
 								}
 								return pairedItemMethod;
 							}
+
 							if (property === 'first') {
 								ensureNodeExecutionData();
 								return (branchIndex?: number, runIndex?: number) => {

@@ -53,12 +53,56 @@ const getProxyFromFixture = (workflow: IWorkflowBase, run: IRun | null, activeNo
 	return dataProxy.getDataProxy();
 };
 
-describe('Pinned data', () => {
+describe.only('Pinned data', () => {
 	const fixture = loadFixture('pinData');
 	const proxy = getProxyFromFixture(fixture.workflow, null, 'NotPinnedSet1');
 
 	test('$(PinnedSet).item.json', () => {
 		expect(proxy.$('PinnedSet').item.json).toEqual({ firstName: 'Joe', lastName: 'Smith' });
+	});
+
+	test('$(PinnedSet).item.json.firstName', () => {
+		expect(proxy.$('PinnedSet').item.json.firstName).toEqual('Joe');
+	});
+
+	test('$(PinnedSet).pairedItem().json.firstName', () => {
+		expect(proxy.$('PinnedSet').pairedItem().json.firstName).toEqual('Joe');
+	});
+
+	test('$(PinnedSet).first().json.firstName', () => {
+		expect(proxy.$('PinnedSet').first().json.firstName).toEqual('Joe');
+	});
+
+	test('$(PinnedSet).first().json.firstName', () => {
+		expect(proxy.$('PinnedSet').first().json.firstName).toEqual('Joe');
+	});
+
+	test('$(PinnedSet).last().json.firstName', () => {
+		expect(proxy.$('PinnedSet').last().json.firstName).toEqual('Joan');
+	});
+
+	test('$(PinnedSet).all()[0].json.firstName', () => {
+		expect(proxy.$('PinnedSet').all()[0].json.firstName).toEqual('Joe');
+	});
+
+	test('$(PinnedSet).all()[1].json.firstName', () => {
+		expect(proxy.$('PinnedSet').all()[1].json.firstName).toEqual('Joan');
+	});
+
+	test('$(PinnedSet).all()[2]', () => {
+		expect(proxy.$('PinnedSet').all()[2]).toBeUndefined();
+	});
+
+	test('$(PinnedSet).itemMatching(0).json.firstName', () => {
+		expect(proxy.$('PinnedSet').itemMatching(0).json.firstName).toEqual('Joe');
+	});
+
+	test('$(PinnedSet).itemMatching(1).json.firstName', () => {
+		expect(proxy.$('PinnedSet').itemMatching(1).json.firstName).toEqual('Joan');
+	});
+
+	test('$(PinnedSet).itemMatching(2)', () => {
+		expect(proxy.$('PinnedSet').itemMatching(2)).toBeUndefined();
 	});
 });
 
