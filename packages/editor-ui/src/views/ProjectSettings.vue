@@ -266,6 +266,7 @@ onBeforeMount(async () => {
 					type="text"
 					name="name"
 					required
+					data-test-id="project-settings-name-input"
 					@input="onNameInput"
 					@validate="isValid = $event"
 				/>

@@ -150,4 +150,36 @@ export class UserRepository extends Repository<User> {
 		// This is blocked by TypeORM having concurrency issues with transactions
 		return await createInner(this.manager);
 	}
+
+	/**
+	 * Find the user that owns the personal project that owns the workflow.
+	 *
+	 * Returns null if the workflow does not exist or is owned by a team project.
+	 */
+	async findPersonalOwnerForWorkflow(workflowId: string): Promise<User | null> {
+		return await this.findOne({
+			where: {
+				projectRelations: {
+					role: 'project:personalOwner',
+					project: { sharedWorkflows: { workflowId, role: 'workflow:owner' } },
+				},
+			},
+		});
+	}
+
+	/**
+	 * Find the user that owns the personal project.
+	 *
+	 * Returns null if the project does not exist or is not a personal project.
+	 */
+	async findPersonalOwnerForProject(projectId: string): Promise<User | null> {
+		return await this.findOne({
+			where: {
+				projectRelations: {
+					role: 'project:personalOwner',
+					projectId,
+				},
+			},
+		});
+	}
 }

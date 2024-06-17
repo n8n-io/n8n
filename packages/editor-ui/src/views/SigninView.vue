@@ -21,10 +21,10 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import AuthView from './AuthView.vue';
-import MfaView, { FORM } from './MfaView.vue';
+import MfaView from './MfaView.vue';
 import { useToast } from '@/composables/useToast';
 import type { IFormBoxConfig } from '@/Interface';
-import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS } from '@/constants';
+import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS, MFA_FORM } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -183,13 +183,13 @@ export default defineComponent({
 		},
 		onBackClick(fromForm: string) {
 			this.reportError = false;
-			if (fromForm === FORM.MFA_TOKEN) {
+			if (fromForm === MFA_FORM.MFA_TOKEN) {
 				this.showMfaView = false;
 				this.loading = false;
 			}
 		},
 		onFormChanged(toForm: string) {
-			if (toForm === FORM.MFA_RECOVERY_CODE) {
+			if (toForm === MFA_FORM.MFA_RECOVERY_CODE) {
 				this.reportError = false;
 			}
 		},
