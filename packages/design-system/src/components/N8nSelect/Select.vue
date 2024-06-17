@@ -119,7 +119,7 @@ defineExpose({
 			ref="innerSelect"
 			:model-value="modelValue ?? undefined"
 			:size="computedSize"
-			popper-class=""
+			:popper-class="popperClass"
 			:class="$style[classes]"
 		>
 			<template v-if="$slots.prefix" #prefix>
