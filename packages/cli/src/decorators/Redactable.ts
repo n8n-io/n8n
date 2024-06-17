@@ -13,9 +13,15 @@ function toRedactable(userLike: UserLike) {
 type FieldName = 'user' | 'inviter' | 'invitee';
 
 /**
- * Mark redactable properties in a `UserLike` field in an `AuditorService`
+ * Mark redactable properties in a `UserLike` field in an `AuditEventRelay`
  * method arg. These properties will be later redacted by the log streaming
- * destination based on user prefs. Relevant only for `n8n.audit.*` logs.
+ * destination based on user prefs. Only for `n8n.audit.*` logs.
+ *
+ * @example
+ *
+ * `{ id: '123'; email: 'test@example.com', role: 'some-role' }` ->
+ * `{ userId: '123'; _email: 'test@example.com', globalRole: 'some-role' }`
+ * ```
  */
 export const Redactable =
 	(fieldName: FieldName = 'user'): MethodDecorator =>
