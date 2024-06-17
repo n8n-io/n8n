@@ -25,11 +25,20 @@ declare global {
 				...args: Array<Partial<Loggable & Timeoutable & Withinable & Shadow> | undefined>
 			): Chainable<JQuery<HTMLElement>>;
 			findChildByTestId(childTestId: string): Chainable<JQuery<HTMLElement>>;
-			createFixtureWorkflow(fixtureKey: string, workflowName: string): void;
-			/** @deprecated */
+			/**
+			 * Creates a workflow from the given fixture and optionally renames it.
+			 *
+			 * @param fixtureKey
+			 * @param [workflowName] Optional name for the workflow. A random nanoid is used if not given
+			 */
+			createFixtureWorkflow(fixtureKey: string, workflowName?: string): void;
+			/** @deprecated use signinAsOwner, signinAsAdmin or signinAsMember instead */
 			signin(payload: SigninPayload): void;
 			signinAsOwner(): void;
 			signinAsAdmin(): void;
+			/**
+			 * Omitting the index will default to index 0.
+			 */
 			signinAsMember(index?: number): void;
 			signout(): void;
 			overrideSettings(value: Partial<IN8nUISettings>): void;
