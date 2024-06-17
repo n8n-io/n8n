@@ -562,4 +562,10 @@ export default defineComponent({
 		display: none;
 	}
 }
+
+@media screen and (max-height: 800px) {
+	:global(.n8n-menu-item:has(#settings)) {
+		display: none;
+	}
+}
 </style>
