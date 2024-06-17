@@ -20,7 +20,7 @@ import { EventMessageWorkflow } from '@/eventbus/EventMessageClasses/EventMessag
 import type { EventMessageTypes as EventMessage } from '@/eventbus/EventMessageClasses';
 import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 import { NodeConnectionType } from 'n8n-workflow';
-import type { EventSender } from '@/eventbus/event-sender';
+import type { EventRelay } from '@/eventbus/event-relay.service';
 import { mock } from 'jest-mock-extended';
 
 /**
@@ -187,7 +187,7 @@ describe('ExecutionRecoveryService', () => {
 		executionRecoveryService = new ExecutionRecoveryService(
 			push,
 			executionRepository,
-			mock<EventSender>(),
+			mock<EventRelay>(),
 		);
 	});
 

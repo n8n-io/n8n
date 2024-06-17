@@ -6,7 +6,6 @@ import url from 'url';
 import { Get, Post, RestController, GlobalScope } from '@/decorators';
 import { AuthService } from '@/auth/auth.service';
 import { AuthenticatedRequest } from '@/requests';
-import { InternalHooks } from '@/InternalHooks';
 import querystring from 'querystring';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { AuthError } from '@/errors/response-errors/auth.error';
@@ -28,7 +27,7 @@ import {
 import { SamlService } from '../saml.service.ee';
 import { SamlConfiguration } from '../types/requests';
 import { getInitSSOFormView } from '../views/initSsoPost';
-import { EventSender } from '@/eventbus/event-sender';
+import { EventRelay } from '@/eventbus/event-relay.service';
 
 @RestController('/sso/saml')
 export class SamlController {
@@ -36,8 +35,7 @@ export class SamlController {
 		private readonly authService: AuthService,
 		private readonly samlService: SamlService,
 		private readonly urlService: UrlService,
-		private readonly internalHooks: InternalHooks,
-		private readonly eventSender: EventSender,
+		private readonly eventRelay: EventRelay,
 	) {}
 
 	@Get('/metadata', { skipAuth: true })
@@ -128,7 +126,7 @@ export class SamlController {
 				}
 			}
 			if (loginResult.authenticatedUser) {
-				this.eventSender.emit('user-logged-in', {
+				this.eventRelay.emit('user-logged-in', {
 					user: loginResult.authenticatedUser,
 					authenticationMethod: 'saml',
 				});
@@ -146,7 +144,7 @@ export class SamlController {
 					return res.status(202).send(loginResult.attributes);
 				}
 			}
-			this.eventSender.emit('user-login-failed', {
+			this.eventRelay.emit('user-login-failed', {
 				userEmail: loginResult.attributes.email ?? 'unknown',
 				authenticationMethod: 'saml',
 			});
@@ -155,7 +153,7 @@ export class SamlController {
 			if (isConnectionTestRequest(req)) {
 				return res.send(getSamlConnectionTestFailedView((error as Error).message));
 			}
-			this.eventSender.emit('user-login-failed', {
+			this.eventRelay.emit('user-login-failed', {
 				userEmail: 'unknown',
 				authenticationMethod: 'saml',
 			});

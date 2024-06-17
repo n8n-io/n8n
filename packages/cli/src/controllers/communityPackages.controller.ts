@@ -14,7 +14,7 @@ import { Push } from '@/push';
 import { CommunityPackagesService } from '@/services/communityPackages.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { EventSender } from '@/eventbus/event-sender';
+import { EventRelay } from '@/eventbus/event-relay.service';
 
 const {
 	PACKAGE_NOT_INSTALLED,
@@ -39,7 +39,7 @@ export class CommunityPackagesController {
 		private readonly push: Push,
 		private readonly internalHooks: InternalHooks,
 		private readonly communityPackagesService: CommunityPackagesService,
-		private readonly eventSender: EventSender,
+		private readonly eventRelay: EventRelay,
 	) {}
 
 	// TODO: move this into a new decorator `@IfConfig('executions.mode', 'queue')`
@@ -116,7 +116,7 @@ export class CommunityPackagesController {
 				package_version: parsed.version,
 				failure_reason: errorMessage,
 			});
-			this.eventSender.emit('community-package-installed', {
+			this.eventRelay.emit('community-package-installed', {
 				user: req.user,
 				inputString: name,
 				packageName: parsed.packageName,
@@ -154,7 +154,7 @@ export class CommunityPackagesController {
 			package_author: installedPackage.authorName,
 			package_author_email: installedPackage.authorEmail,
 		});
-		this.eventSender.emit('community-package-installed', {
+		this.eventRelay.emit('community-package-installed', {
 			user: req.user,
 			inputString: name,
 			packageName: parsed.packageName,
@@ -253,7 +253,7 @@ export class CommunityPackagesController {
 			package_author: installedPackage.authorName,
 			package_author_email: installedPackage.authorEmail,
 		});
-		this.eventSender.emit('community-package-deleted', {
+		this.eventRelay.emit('community-package-deleted', {
 			user: req.user,
 			packageName: name,
 			packageVersion: installedPackage.installedVersion,
@@ -309,7 +309,7 @@ export class CommunityPackagesController {
 				package_author: newInstalledPackage.authorName,
 				package_author_email: newInstalledPackage.authorEmail,
 			});
-			this.eventSender.emit('community-package-updated', {
+			this.eventRelay.emit('community-package-updated', {
 				user: req.user,
 				packageName: name,
 				packageVersionCurrent: previouslyInstalledPackage.installedVersion,

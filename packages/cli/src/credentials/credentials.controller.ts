@@ -29,7 +29,7 @@ import { In } from '@n8n/typeorm';
 import { SharedCredentials } from '@/databases/entities/SharedCredentials';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 import { z } from 'zod';
-import { EventSender } from '@/eventbus/event-sender';
+import { EventRelay } from '@/eventbus/event-relay.service';
 
 @RestController('/credentials')
 export class CredentialsController {
@@ -43,7 +43,7 @@ export class CredentialsController {
 		private readonly userManagementMailer: UserManagementMailer,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
-		private readonly eventSender: EventSender,
+		private readonly eventRelay: EventRelay,
 	) {}
 
 	@Get('/', { middlewares: listQueryMiddleware })
@@ -158,7 +158,7 @@ export class CredentialsController {
 			credential_id: credential.id,
 			public_api: false,
 		});
-		this.eventSender.emit('credentials-created', {
+		this.eventRelay.emit('credentials-created', {
 			user: req.user,
 			credentialName: newCredential.name,
 			credentialType: credential.type,
@@ -218,7 +218,7 @@ export class CredentialsController {
 			credential_type: credential.type,
 			credential_id: credential.id,
 		});
-		this.eventSender.emit('credentials-updated', {
+		this.eventRelay.emit('credentials-updated', {
 			user: req.user,
 			credentialName: credential.name,
 			credentialType: credential.type,
@@ -259,7 +259,7 @@ export class CredentialsController {
 			credential_type: credential.type,
 			credential_id: credential.id,
 		});
-		this.eventSender.emit('credentials-deleted', {
+		this.eventRelay.emit('credentials-deleted', {
 			user: req.user,
 			credentialName: credential.name,
 			credentialType: credential.type,
@@ -333,7 +333,7 @@ export class CredentialsController {
 			user_ids_sharees_added: newShareeIds,
 			sharees_removed: amountRemoved,
 		});
-		this.eventSender.emit('credentials-shared', {
+		this.eventRelay.emit('credentials-shared', {
 			user: req.user,
 			credentialName: credential.name,
 			credentialType: credential.type,

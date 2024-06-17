@@ -17,7 +17,7 @@ import { toError } from '@/utils';
 
 import type { InviteEmailData, PasswordResetData, SendEmailResult } from './Interfaces';
 import { NodeMailer } from './NodeMailer';
-import { EventSender } from '@/eventbus/event-sender';
+import { EventRelay } from '@/eventbus/event-relay.service';
 
 type Template = HandlebarsTemplateDelegate<unknown>;
 type TemplateName = 'invite' | 'passwordReset' | 'workflowShared' | 'credentialsShared';
@@ -145,7 +145,7 @@ export class UserManagementMailer {
 				message_type: 'Workflow shared',
 				public_api: false,
 			});
-			Container.get(EventSender).emit('email-failed', {
+			Container.get(EventRelay).emit('email-failed', {
 				user: sharer,
 				messageType: 'Workflow shared',
 			});
@@ -204,7 +204,7 @@ export class UserManagementMailer {
 				message_type: 'Credentials shared',
 				public_api: false,
 			});
-			Container.get(EventSender).emit('email-failed', {
+			Container.get(EventRelay).emit('email-failed', {
 				user: sharer,
 				messageType: 'Credentials shared',
 			});

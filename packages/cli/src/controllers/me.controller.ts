@@ -23,7 +23,7 @@ import { InternalHooks } from '@/InternalHooks';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { isApiEnabled } from '@/PublicApi';
-import { EventSender } from '@/eventbus/event-sender';
+import { EventRelay } from '@/eventbus/event-relay.service';
 
 export const isApiEnabledMiddleware: RequestHandler = (_, res, next) => {
 	if (isApiEnabled()) {
@@ -43,7 +43,7 @@ export class MeController {
 		private readonly userService: UserService,
 		private readonly passwordUtility: PasswordUtility,
 		private readonly userRepository: UserRepository,
-		private readonly eventSender: EventSender,
+		private readonly eventRelay: EventRelay,
 	) {}
 
 	/**
@@ -100,7 +100,7 @@ export class MeController {
 
 		const fieldsChanged = Object.keys(payload);
 		void this.internalHooks.onUserUpdate({ user, fields_changed: fieldsChanged });
-		this.eventSender.emit('user-updated', { user, fieldsChanged });
+		this.eventRelay.emit('user-updated', { user, fieldsChanged });
 
 		const publicUser = await this.userService.toPublic(user);
 
@@ -150,7 +150,7 @@ export class MeController {
 		this.authService.issueCookie(res, updatedUser, req.browserId);
 
 		void this.internalHooks.onUserUpdate({ user: updatedUser, fields_changed: ['password'] });
-		this.eventSender.emit('user-updated', { user: updatedUser, fieldsChanged: ['password'] });
+		this.eventRelay.emit('user-updated', { user: updatedUser, fieldsChanged: ['password'] });
 
 		await this.externalHooks.run('user.password.update', [updatedUser.email, updatedUser.password]);
 
@@ -199,7 +199,7 @@ export class MeController {
 		await this.userService.update(req.user.id, { apiKey });
 
 		void this.internalHooks.onApiKeyCreated({ user: req.user, public_api: false });
-		this.eventSender.emit('api-key-created', { user: req.user });
+		this.eventRelay.emit('api-key-created', { user: req.user });
 
 		return { apiKey };
 	}
@@ -220,7 +220,7 @@ export class MeController {
 		await this.userService.update(req.user.id, { apiKey: null });
 
 		void this.internalHooks.onApiKeyDeleted({ user: req.user, public_api: false });
-		this.eventSender.emit('api-key-deleted', { user: req.user });
+		this.eventRelay.emit('api-key-deleted', { user: req.user });
 
 		return { success: true };
 	}

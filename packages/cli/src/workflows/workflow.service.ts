@@ -32,7 +32,7 @@ import type { Scope } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
 import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
-import { EventSender } from '@/eventbus/event-sender';
+import { EventRelay } from '@/eventbus/event-relay.service';
 
 @Service()
 export class WorkflowService {
@@ -52,7 +52,7 @@ export class WorkflowService {
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly projectService: ProjectService,
 		private readonly executionRepository: ExecutionRepository,
-		private readonly eventSender: EventSender,
+		private readonly eventRelay: EventRelay,
 	) {}
 
 	async getMany(user: User, options?: ListQuery.Options, includeScopes?: boolean) {
@@ -218,7 +218,7 @@ export class WorkflowService {
 
 		await this.externalHooks.run('workflow.afterUpdate', [updatedWorkflow]);
 		void Container.get(InternalHooks).onWorkflowSaved(user, updatedWorkflow, false);
-		this.eventSender.emit('workflow-saved', {
+		this.eventRelay.emit('workflow-saved', {
 			user,
 			workflowId: updatedWorkflow.id,
 			workflowName: updatedWorkflow.name,
@@ -281,7 +281,7 @@ export class WorkflowService {
 		await this.binaryDataService.deleteMany(idsForDeletion);
 
 		void Container.get(InternalHooks).onWorkflowDeleted(user, workflowId, false);
-		this.eventSender.emit('workflow-deleted', { user, workflowId });
+		this.eventRelay.emit('workflow-deleted', { user, workflowId });
 		await this.externalHooks.run('workflow.afterDelete', [workflowId]);
 
 		return workflow;

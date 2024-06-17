@@ -37,7 +37,7 @@ import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import { InternalHooks } from '@/InternalHooks';
 import { Logger } from '@/Logger';
 import { WorkflowStaticDataService } from '@/workflows/workflowStaticData.service';
-import { EventSender } from './eventbus/event-sender';
+import { EventRelay } from './eventbus/event-relay.service';
 
 @Service()
 export class WorkflowRunner {
@@ -53,7 +53,7 @@ export class WorkflowRunner {
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly permissionChecker: PermissionChecker,
-		private readonly eventSender: EventSender,
+		private readonly eventRelay: EventRelay,
 	) {
 		if (this.executionsMode === 'queue') {
 			this.jobQueue = Container.get(Queue);
@@ -147,7 +147,7 @@ export class WorkflowRunner {
 			await this.enqueueExecution(executionId, data, loadStaticData, realtime);
 		} else {
 			await this.runMainProcess(executionId, data, loadStaticData, executionId);
-			this.eventSender.emit('workflow-pre-execute', { executionId, data });
+			this.eventRelay.emit('workflow-pre-execute', { executionId, data });
 		}
 
 		// only run these when not in queue mode or when the execution is manual,
@@ -166,7 +166,7 @@ export class WorkflowRunner {
 						executionData,
 						data.userId,
 					);
-					this.eventSender.emit('workflow-post-execute', {
+					this.eventRelay.emit('workflow-post-execute', {
 						workflowId: data.workflowData.id,
 						workflowName: data.workflowData.name,
 						executionId,

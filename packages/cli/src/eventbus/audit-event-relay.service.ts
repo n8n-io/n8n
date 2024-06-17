@@ -1,54 +1,54 @@
-import { EventEmitter } from 'node:events';
 import { Service } from 'typedi';
 import { MessageEventBus } from './MessageEventBus/MessageEventBus';
 import { Redactable } from '@/decorators/Redactable';
+import { EventRelay } from './event-relay.service';
 import type { AuditEventArgs } from './audit.types';
 import type { IWorkflowBase } from 'n8n-workflow';
 
-/**
- * Service for adding events from `EventSender` to the audit log.
- */
 @Service()
-export class AuditorService extends EventEmitter {
-	constructor(private readonly eventBus: MessageEventBus) {
-		super();
+export class AuditEventRelay {
+	constructor(
+		private readonly eventRelay: EventRelay,
+		private readonly eventBus: MessageEventBus,
+	) {
 		this.setupHandlers();
 	}
 
-	on<K extends keyof AuditEventArgs>(eventName: K, handler: (arg: AuditEventArgs[K]) => void) {
-		super.on(eventName, handler);
-		return this;
-	}
-
 	private setupHandlers() {
-		this.on('workflow-created', (arg) => this.workflowCreated(arg));
-		this.on('workflow-deleted', (arg) => this.workflowDeleted(arg));
-		this.on('workflow-saved', (arg) => this.workflowSaved(arg));
-		this.on('workflow-pre-execute', (arg) => this.workflowPreExecute(arg));
-		this.on('workflow-post-execute', (arg) => this.workflowPostExecute(arg));
-		this.on('node-pre-execute', (arg) => this.nodePreExecute(arg));
-		this.on('node-post-execute', (arg) => this.nodePostExecute(arg));
-		this.on('user-deleted', (arg) => this.userDeleted(arg));
-		this.on('user-invited', (arg) => this.userInvited(arg));
-		this.on('user-reinvited', (arg) => this.userReinvited(arg));
-		this.on('user-updated', (arg) => this.userUpdated(arg));
-		this.on('user-signed-up', (arg) => this.userSignedUp(arg));
-		this.on('user-logged-in', (arg) => this.userLoggedIn(arg));
-		this.on('user-login-failed', (arg) => this.userLoginFailed(arg));
-		this.on('user-invite-email-click', (arg) => this.userInviteEmailClick(arg));
-		this.on('user-password-reset-email-click', (arg) => this.userPasswordResetEmailClick(arg));
-		this.on('user-password-reset-request-click', (arg) => this.userPasswordResetRequestClick(arg));
-		this.on('api-key-created', (arg) => this.apiKeyCreated(arg));
-		this.on('api-key-deleted', (arg) => this.apiKeyDeleted(arg));
-		this.on('email-failed', (arg) => this.emailFailed(arg));
-		this.on('credentials-created', (arg) => this.credentialsCreated(arg));
-		this.on('credentials-deleted', (arg) => this.credentialsDeleted(arg));
-		this.on('credentials-shared', (arg) => this.credentialsShared(arg));
-		this.on('credentials-updated', (arg) => this.credentialsUpdated(arg));
-		this.on('credentials-deleted', (arg) => this.credentialsDeleted(arg));
-		this.on('community-package-installed', (arg) => this.communityPackageInstalled(arg));
-		this.on('community-package-updated', (arg) => this.communityPackageUpdated(arg));
-		this.on('community-package-deleted', (arg) => this.communityPackageDeleted(arg));
+		this.eventRelay.on('workflow-created', (event) => this.workflowCreated(event));
+		this.eventRelay.on('workflow-deleted', (event) => this.workflowDeleted(event));
+		this.eventRelay.on('workflow-saved', (event) => this.workflowSaved(event));
+		this.eventRelay.on('workflow-pre-execute', (event) => this.workflowPreExecute(event));
+		this.eventRelay.on('workflow-post-execute', (event) => this.workflowPostExecute(event));
+		this.eventRelay.on('node-pre-execute', (event) => this.nodePreExecute(event));
+		this.eventRelay.on('node-post-execute', (event) => this.nodePostExecute(event));
+		this.eventRelay.on('user-deleted', (event) => this.userDeleted(event));
+		this.eventRelay.on('user-invited', (event) => this.userInvited(event));
+		this.eventRelay.on('user-reinvited', (event) => this.userReinvited(event));
+		this.eventRelay.on('user-updated', (event) => this.userUpdated(event));
+		this.eventRelay.on('user-signed-up', (event) => this.userSignedUp(event));
+		this.eventRelay.on('user-logged-in', (event) => this.userLoggedIn(event));
+		this.eventRelay.on('user-login-failed', (event) => this.userLoginFailed(event));
+		this.eventRelay.on('user-invite-email-click', (event) => this.userInviteEmailClick(event));
+		this.eventRelay.on('user-password-reset-email-click', (event) =>
+			this.userPasswordResetEmailClick(event),
+		);
+		this.eventRelay.on('user-password-reset-request-click', (event) =>
+			this.userPasswordResetRequestClick(event),
+		);
+		this.eventRelay.on('api-key-created', (event) => this.apiKeyCreated(event));
+		this.eventRelay.on('api-key-deleted', (event) => this.apiKeyDeleted(event));
+		this.eventRelay.on('email-failed', (event) => this.emailFailed(event));
+		this.eventRelay.on('credentials-created', (event) => this.credentialsCreated(event));
+		this.eventRelay.on('credentials-deleted', (event) => this.credentialsDeleted(event));
+		this.eventRelay.on('credentials-shared', (event) => this.credentialsShared(event));
+		this.eventRelay.on('credentials-updated', (event) => this.credentialsUpdated(event));
+		this.eventRelay.on('credentials-deleted', (event) => this.credentialsDeleted(event));
+		this.eventRelay.on('community-package-installed', (event) =>
+			this.communityPackageInstalled(event),
+		);
+		this.eventRelay.on('community-package-updated', (event) => this.communityPackageUpdated(event));
+		this.eventRelay.on('community-package-deleted', (event) => this.communityPackageDeleted(event));
 	}
 
 	/**
@@ -111,10 +111,10 @@ export class AuditorService extends EventEmitter {
 		});
 	}
 
-	private workflowPostExecute(arg: AuditEventArgs['workflow-post-execute']) {
+	private workflowPostExecute(event: AuditEventArgs['workflow-post-execute']) {
 		void this.eventBus.sendWorkflowEvent({
 			eventName: 'n8n.workflow.success',
-			payload: arg,
+			payload: event,
 		});
 	}
 
@@ -209,11 +209,11 @@ export class AuditorService extends EventEmitter {
 	}
 
 	private userLoginFailed(
-		arg: AuditEventArgs['user-login-failed'] /* exception: no `UserLike` to redact */,
+		event: AuditEventArgs['user-login-failed'] /* exception: no `UserLike` to redact */,
 	) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.login.failed',
-			payload: arg,
+			payload: event,
 		});
 	}
 
@@ -223,10 +223,10 @@ export class AuditorService extends EventEmitter {
 
 	@Redactable('inviter')
 	@Redactable('invitee')
-	private userInviteEmailClick(arg: AuditEventArgs['user-invite-email-click']) {
+	private userInviteEmailClick(event: AuditEventArgs['user-invite-email-click']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.invitation.accepted',
-			payload: arg,
+			payload: event,
 		});
 	}
 

@@ -28,7 +28,7 @@ import { Project } from '@/databases/entities/Project';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ProjectService } from '@/services/project.service';
-import { EventSender } from '@/eventbus/event-sender';
+import { EventRelay } from '@/eventbus/event-relay.service';
 
 @RestController('/users')
 export class UsersController {
@@ -45,7 +45,7 @@ export class UsersController {
 		private readonly workflowService: WorkflowService,
 		private readonly credentialsService: CredentialsService,
 		private readonly projectService: ProjectService,
-		private readonly eventSender: EventSender,
+		private readonly eventRelay: EventRelay,
 	) {}
 
 	static ERROR_MESSAGES = {
@@ -258,7 +258,7 @@ export class UsersController {
 			telemetryData,
 			publicApi: false,
 		});
-		this.eventSender.emit('user-deleted', { user: req.user });
+		this.eventRelay.emit('user-deleted', { user: req.user });
 
 		await this.externalHooks.run('user.deleted', [await this.userService.toPublic(userToDelete)]);
 
