@@ -202,7 +202,10 @@ export class Start extends BaseCommand {
 	}
 
 	async initOrchestration() {
-		if (config.getEnv('executions.mode') !== 'queue') return;
+		if (config.getEnv('executions.mode') === 'regular') {
+			config.set('multiMainSetup.instanceType', 'leader');
+			return;
+		}
 
 		if (
 			config.getEnv('multiMainSetup.enabled') &&
@@ -293,7 +296,7 @@ export class Start extends BaseCommand {
 
 		await this.server.start();
 
-		await this.initPruning();
+		Container.get(PruningService).init();
 
 		if (config.getEnv('executions.mode') === 'regular') {
 			await this.runEnqueuedExecutions();
@@ -334,34 +337,6 @@ export class Start extends BaseCommand {
 				}
 			});
 		}
-	}
-
-	async initPruning() {
-		this.pruningService = Container.get(PruningService);
-
-		this.pruningService.startPruning();
-
-		if (config.getEnv('executions.mode') !== 'queue') return;
-
-		this.executionRecoveryService = Container.get(ExecutionRecoveryService);
-
-		this.executionRecoveryService.scheduleQueueRecovery();
-
-		const orchestrationService = Container.get(OrchestrationService);
-
-		await orchestrationService.init();
-
-		if (!orchestrationService.isMultiMainSetupEnabled) return;
-
-		orchestrationService.multiMainSetup
-			.on('leader-stepdown', () => {
-				this.pruningService.stopPruning();
-				this.executionRecoveryService.stopQueueRecovery();
-			})
-			.on('leader-takeover', () => {
-				this.pruningService.startPruning();
-				this.executionRecoveryService.scheduleQueueRecovery();
-			});
 	}
 
 	async catch(error: Error) {

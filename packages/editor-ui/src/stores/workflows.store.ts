@@ -938,6 +938,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 	}
 
+	function setNodes(nodes: INodeUi[]): void {
+		workflow.value.nodes = nodes;
+	}
+
+	function setConnections(connections: IConnections): void {
+		workflow.value.connections = connections;
+	}
+
 	function resetAllNodesIssues(): boolean {
 		workflow.value.nodes.forEach((node) => {
 			node.issues = undefined;
@@ -1650,5 +1658,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		removeNodeById,
 		removeNodeConnectionsById,
 		removeNodeExecutionDataById,
+		setNodes,
+		setConnections,
 	};
 });

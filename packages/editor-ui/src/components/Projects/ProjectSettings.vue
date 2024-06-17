@@ -262,6 +262,7 @@ onBeforeMount(async () => {
 					v-model="formData.name"
 					type="text"
 					name="name"
+					data-test-id="project-settings-name-input"
 					@input="onNameInput"
 				/>
 			</fieldset>
