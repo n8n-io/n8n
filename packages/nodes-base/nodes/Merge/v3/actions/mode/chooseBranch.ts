@@ -4,7 +4,7 @@ import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n
 import { preparePairedItemDataArray, updateDisplayOptions } from '@utils/utilities';
 
 import { numberInputsProperty } from '../../helpers/descriptions';
-import { getMergeNodeInputs } from '../../helpers/utils';
+import { getMergeNodeInputs, getNodeInputOrError } from '../../helpers/utils';
 
 export const properties: INodeProperties[] = [
 	numberInputsProperty,
@@ -69,7 +69,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
 
-	const inputs = getMergeNodeInputs(this);
+	const inputs = getMergeNodeInputs.call(this);
 
 	const chooseBranchMode = this.getNodeParameter('chooseBranchMode', 0) as string;
 
@@ -87,7 +87,9 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					},
 				);
 			}
-			returnData.push.apply(returnData, this.getInputData(parseInt(String(useDataOfInput)) - 1));
+			const inputData = getNodeInputOrError.call(this, parseInt(String(useDataOfInput)) - 1);
+
+			returnData.push.apply(returnData, inputData);
 		}
 		if (output === 'empty') {
 			const pairedItem = [

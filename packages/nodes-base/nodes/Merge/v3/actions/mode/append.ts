@@ -22,7 +22,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
 
-	const inputs = getMergeNodeInputs(this);
+	const inputs = getMergeNodeInputs.call(this);
 
 	for (let i = 0; i < inputs.length; i++) {
 		try {

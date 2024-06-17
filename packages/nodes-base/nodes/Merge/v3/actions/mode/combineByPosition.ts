@@ -1,15 +1,21 @@
-import type {
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-	IPairedItemData,
+import {
+	NodeExecutionOutput,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	type INodeProperties,
+	type IPairedItemData,
 } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
 import type { ClashResolveOptions } from '../../helpers/interfaces';
 import { clashHandlingProperties, numberInputsProperty } from '../../helpers/descriptions';
-import { addSuffixToEntriesKeys, getMergeNodeInputs, selectMergeMethod } from '../../helpers/utils';
+import {
+	addSuffixToEntriesKeys,
+	getMergeNodeInputs,
+	getNodeInputOrError,
+	selectMergeMethod,
+} from '../../helpers/utils';
 
 import merge from 'lodash/merge';
 
@@ -53,7 +59,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	) as ClashResolveOptions;
 	const includeUnpaired = this.getNodeParameter('options.includeUnpaired', 0, false) as boolean;
 
-	const inputs = getMergeNodeInputs(this);
+	const inputs = getMergeNodeInputs.call(this);
 
 	let prefered: INodeExecutionData[] = [];
 	let preferedInputIndex: number;
@@ -66,7 +72,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	}
 
 	for (let i = 0; i < inputs.length; i++) {
-		const inputData = this.getInputData(i) ?? [];
+		const inputData = getNodeInputOrError.call(this, i);
 
 		if (i === preferedInputIndex) {
 			prefered = [...inputData];
@@ -86,7 +92,17 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		numEntries = Math.max(...inputsData.map((input) => input.length), prefered.length);
 	} else {
 		numEntries = Math.min(...inputsData.map((input) => input.length), prefered.length);
-		if (numEntries === 0) return returnData;
+		if (numEntries === 0) {
+			return new NodeExecutionOutput(
+				[returnData],
+				[
+					{
+						message:
+							'Consider enabling "Include Any Unpaired Items" in options or check your inputs',
+					},
+				],
+			);
+		}
 	}
 
 	const mergeIntoSingleObject = selectMergeMethod(clashHandling);

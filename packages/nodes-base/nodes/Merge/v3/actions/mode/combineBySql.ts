@@ -9,7 +9,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { getResolvables, updateDisplayOptions } from '@utils/utilities';
 import { numberInputsProperty } from '../../helpers/descriptions';
-import { getMergeNodeInputs } from '../../helpers/utils';
+import { getMergeNodeInputs, getNodeInputOrError } from '../../helpers/utils';
 
 import alasql from 'alasql';
 import type { Database } from 'alasql';
@@ -57,13 +57,13 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	const returnData: INodeExecutionData[] = [];
 	const pairedItem: IPairedItemData[] = [];
 
-	const inputs = getMergeNodeInputs(this);
+	const inputs = getMergeNodeInputs.call(this);
 
 	const db: typeof Database = new (alasql as any).Database(nodeId);
 
 	try {
 		for (let i = 0; i < inputs.length; i++) {
-			const inputData = this.getInputData(i) ?? [];
+			const inputData = getNodeInputOrError.call(this, i);
 
 			inputData.forEach((item, index) => {
 				if (item.pairedItem === undefined) {

@@ -370,8 +370,19 @@ export const configuredInputs = (parameters: INodeParameters) => {
 	}));
 };
 
-export const getMergeNodeInputs = (ctx: IExecuteFunctions) => {
-	return NodeHelpers.getConnectionTypes(ctx.getNodeInputs()).filter(
+export function getMergeNodeInputs(this: IExecuteFunctions) {
+	return NodeHelpers.getConnectionTypes(this.getNodeInputs()).filter(
 		(type) => type === NodeConnectionType.Main,
 	);
-};
+}
+
+export function getNodeInputOrError(this: IExecuteFunctions, input: number) {
+	let inputData: INodeExecutionData[];
+	try {
+		inputData = this.getInputData(input) ?? [];
+	} catch (error) {
+		return [];
+	}
+
+	return inputData;
+}
