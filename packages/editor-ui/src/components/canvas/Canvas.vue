@@ -14,6 +14,7 @@ const $style = useCssModule();
 const emit = defineEmits<{
 	'update:modelValue': [elements: CanvasElement[]];
 	'update:node:position': [id: string, position: { x: number; y: number }];
+	'update:node:active': [id: string];
 	'delete:node': [id: string];
 	'delete:connection': [connection: Connection];
 	'create:connection': [connection: Connection];
@@ -50,6 +51,10 @@ function onNodeDragStop(e: NodeDragEvent) {
 	e.nodes.forEach((node) => {
 		emit('update:node:position', node.id, node.position);
 	});
+}
+
+function onSetNodeActive(id: string) {
+	emit('update:node:active', id);
 }
 
 function onDeleteNode(id: string) {
@@ -97,7 +102,7 @@ function onMouseLeaveEdge(event: EdgeMouseEvent) {
 		@connect="onConnect"
 	>
 		<template #node-canvas-node="canvasNodeProps">
-			<CanvasNode v-bind="canvasNodeProps" @delete="onDeleteNode" />
+			<CanvasNode v-bind="canvasNodeProps" @delete="onDeleteNode" @activate="onSetNodeActive" />
 		</template>
 
 		<template #edge-canvas-edge="canvasEdgeProps">

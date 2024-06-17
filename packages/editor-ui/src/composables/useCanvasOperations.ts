@@ -6,15 +6,22 @@ import { useHistoryStore } from '@/stores/history.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { MoveNodeCommand, RemoveConnectionCommand, RemoveNodeCommand } from '@/models/history';
+import {
+	MoveNodeCommand,
+	RemoveConnectionCommand,
+	RemoveNodeCommand,
+	RenameNodeCommand,
+} from '@/models/history';
 import type { Connection } from '@vue-flow/core';
-import { mapCanvasConnectionToLegacyConnection } from '@/utils/canvasUtilsV2';
+import { getUniqueNodeName, mapCanvasConnectionToLegacyConnection } from '@/utils/canvasUtilsV2';
 import type { IConnection } from 'n8n-workflow';
+import { useNDVStore } from '@/stores/ndv.store';
 
 export function useCanvasOperations() {
 	const workflowsStore = useWorkflowsStore();
 	const historyStore = useHistoryStore();
 	const uiStore = useUIStore();
+	const ndvStore = useNDVStore();
 
 	const telemetry = useTelemetry();
 	const externalHooks = useExternalHooks();
@@ -49,6 +56,45 @@ export function useCanvasOperations() {
 				historyStore.stopRecordingUndo();
 			}
 		}
+	}
+
+	async function renameNode(currentName: string, newName: string, { trackHistory = false } = {}) {
+		if (currentName === newName) {
+			return;
+		}
+
+		if (trackHistory) {
+			historyStore.startRecordingUndo();
+		}
+
+		newName = getUniqueNodeName(newName, workflowsStore.canvasNames);
+
+		// Rename the node and update the connections
+		const workflow = workflowsStore.getCurrentWorkflow(true);
+		workflow.renameNode(currentName, newName);
+
+		if (trackHistory) {
+			historyStore.pushCommandToUndo(new RenameNodeCommand(currentName, newName));
+		}
+
+		// Update also last selected node and execution data
+		workflowsStore.renameNodeSelectedAndExecution({ old: currentName, new: newName });
+
+		workflowsStore.setNodes(Object.values(workflow.nodes));
+		workflowsStore.setConnections(workflow.connectionsBySourceNode);
+
+		const isRenamingActiveNode = ndvStore.activeNodeName === currentName;
+		if (isRenamingActiveNode) {
+			ndvStore.activeNodeName = newName;
+		}
+
+		if (trackHistory) {
+			historyStore.stopRecordingUndo();
+		}
+	}
+
+	async function revertRenameNode(currentName: string, previousName: string) {
+		await renameNode(currentName, previousName);
 	}
 
 	function deleteNode(id: string, { trackHistory = false, trackBulk = true } = {}) {
@@ -98,6 +144,19 @@ export function useCanvasOperations() {
 				workflow_id: workflowsStore.workflowId,
 			});
 		}
+	}
+
+	function setNodeActive(id: string) {
+		const node = workflowsStore.getNodeById(id);
+		if (!node) {
+			return;
+		}
+
+		ndvStore.activeNodeName = node.name;
+	}
+
+	function setNodeActiveByName(name: string) {
+		ndvStore.activeNodeName = name;
 	}
 
 	/**
@@ -204,6 +263,10 @@ export function useCanvasOperations() {
 
 	return {
 		updateNodePosition,
+		setNodeActive,
+		setNodeActiveByName,
+		renameNode,
+		revertRenameNode,
 		deleteNode,
 		revertDeleteNode,
 		trackDeleteNode,
