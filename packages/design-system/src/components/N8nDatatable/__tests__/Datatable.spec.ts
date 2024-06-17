@@ -3,13 +3,13 @@ import N8nDatatable from '../Datatable.vue';
 import { rows, columns } from './data';
 
 const stubs = [
-	// Ideally we'd like to stub N8nSelect, but it doesn't work
+	'n8n-option',
+	'n8n-button',
+	// Ideally we'd like to stub N8nSelect & N8nPagination, but it doesn't work
 	// after migrating to setup script:
 	// https://github.com/vuejs/vue-test-utils/issues/2048
 	// 'n8n-select',
-	'n8n-option',
-	'n8n-button',
-	'n8n-pagination',
+	// 'n8n-pagination',
 ];
 
 describe('components', () => {
