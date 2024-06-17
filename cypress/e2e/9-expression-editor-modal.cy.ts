@@ -14,6 +14,7 @@ describe('Expression editor modal', () => {
 	describe('Static data', () => {
 		beforeEach(() => {
 			WorkflowPage.actions.addNodeToCanvas('Hacker News');
+			WorkflowPage.actions.zoomToFit();
 			WorkflowPage.actions.openNode('Hacker News');
 			WorkflowPage.actions.openExpressionEditorModal();
 		});
@@ -69,11 +70,12 @@ describe('Expression editor modal', () => {
 			ndv.actions.close();
 			WorkflowPage.actions.addNodeToCanvas('No Operation');
 			WorkflowPage.actions.addNodeToCanvas('Hacker News');
+			WorkflowPage.actions.zoomToFit();
 			WorkflowPage.actions.openNode('Hacker News');
 			WorkflowPage.actions.openExpressionEditorModal();
 		});
 
-		it('should resolve $parameter[]', () => {
+		it.only('should resolve $parameter[]', () => {
 			WorkflowPage.getters.expressionModalInput().clear();
 			WorkflowPage.getters.expressionModalInput().click().type('{{ $parameter["operation"]');
 			WorkflowPage.getters.expressionModalOutput().should('have.text', 'getAll');

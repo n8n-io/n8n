@@ -14,6 +14,7 @@ describe('Inline expression editor', () => {
 	describe('Static data', () => {
 		beforeEach(() => {
 			WorkflowPage.actions.addNodeToCanvas('Hacker News');
+			WorkflowPage.actions.zoomToFit();
 			WorkflowPage.actions.openNode('Hacker News');
 			WorkflowPage.actions.openInlineExpressionEditor();
 		});
@@ -75,6 +76,7 @@ describe('Inline expression editor', () => {
 			ndv.actions.close();
 			WorkflowPage.actions.addNodeToCanvas('No Operation');
 			WorkflowPage.actions.addNodeToCanvas('Hacker News');
+			WorkflowPage.actions.zoomToFit();
 			WorkflowPage.actions.openNode('Hacker News');
 			WorkflowPage.actions.openInlineExpressionEditor();
 		});

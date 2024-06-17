@@ -18,6 +18,8 @@ describe('Data mapping', () => {
 		cy.fixture('Test_workflow-actions_paste-data.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
+		workflowPage.actions.zoomToFit();
+
 		workflowPage.actions.openNode('Set');
 		ndv.actions.executePrevious();
 		ndv.actions.switchInputMode('Table');
@@ -49,6 +51,7 @@ describe('Data mapping', () => {
 		cy.fixture('Test_workflow_3.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
+		workflowPage.actions.zoomToFit();
 
 		workflowPage.actions.openNode('Set');
 		ndv.actions.switchInputMode('Table');
@@ -111,6 +114,7 @@ describe('Data mapping', () => {
 		cy.fixture('Test_workflow_3.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
+		workflowPage.actions.zoomToFit();
 
 		workflowPage.actions.openNode('Set');
 		ndv.actions.switchInputMode('JSON');
@@ -149,6 +153,7 @@ describe('Data mapping', () => {
 		cy.fixture('Test_workflow_3.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
+		workflowPage.actions.zoomToFit();
 
 		workflowPage.actions.openNode('Set');
 		ndv.actions.clearParameterInput('value');
@@ -250,6 +255,7 @@ describe('Data mapping', () => {
 		cy.fixture('Test_workflow_3.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
+		workflowPage.actions.zoomToFit();
 
 		workflowPage.actions.openNode('Set');
 
@@ -281,6 +287,7 @@ describe('Data mapping', () => {
 		cy.fixture('Test_workflow_3.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
+		workflowPage.actions.zoomToFit();
 
 		workflowPage.actions.openNode('Set');
 		ndv.actions.typeIntoParameterInput('value', 'test_value');
@@ -308,6 +315,7 @@ describe('Data mapping', () => {
 		cy.fixture('Test_workflow_3.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
+		workflowPage.actions.zoomToFit();
 
 		workflowPage.actions.openNode('Set');
 		ndv.actions.clearParameterInput('value');

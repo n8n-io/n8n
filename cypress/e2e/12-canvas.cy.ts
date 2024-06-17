@@ -69,7 +69,9 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		for (let i = 0; i < 2; i++) {
 			WorkflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, true);
-			WorkflowPage.getters.nodeViewBackground().click(600 + i * 100, 200, { force: true });
+			WorkflowPage.getters
+				.nodeViewBackground()
+				.click((i + 1) * 200, (i + 1) * 200, { force: true });
 		}
 		WorkflowPage.actions.zoomToFit();
 
