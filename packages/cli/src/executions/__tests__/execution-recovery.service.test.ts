@@ -1,8 +1,8 @@
 import Container from 'typedi';
 import { stringify } from 'flatted';
+import { NodeConnectionType, randomInt } from 'n8n-workflow';
 
 import { mockInstance } from '@test/mocking';
-import { randomInteger } from '@test-integration/random';
 import { createWorkflow } from '@test-integration/db/workflows';
 import { createExecution } from '@test-integration/db/executions';
 import * as testDb from '@test-integration/testDb';
@@ -19,7 +19,6 @@ import { EventMessageNode } from '@/eventbus/EventMessageClasses/EventMessageNod
 import { EventMessageWorkflow } from '@/eventbus/EventMessageClasses/EventMessageWorkflow';
 import type { EventMessageTypes as EventMessage } from '@/eventbus/EventMessageClasses';
 import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
-import { NodeConnectionType } from 'n8n-workflow';
 import { OrchestrationService } from '@/services/orchestration.service';
 import config from '@/config';
 
@@ -234,7 +233,7 @@ describe('ExecutionRecoveryService', () => {
 				/**
 				 * Arrange
 				 */
-				const inexistentExecutionId = randomInteger(100).toString();
+				const inexistentExecutionId = randomInt(100).toString();
 				const noMessages: EventMessage[] = [];
 
 				/**
@@ -284,7 +283,7 @@ describe('ExecutionRecoveryService', () => {
 				/**
 				 * Arrange
 				 */
-				const inexistentExecutionId = randomInteger(100).toString();
+				const inexistentExecutionId = randomInt(100).toString();
 				const messages = setupMessages(inexistentExecutionId, 'Some workflow');
 
 				/**

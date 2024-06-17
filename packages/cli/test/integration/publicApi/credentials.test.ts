@@ -1,10 +1,11 @@
 import { Container } from 'typedi';
+import { randomString } from 'n8n-workflow';
 
 import type { User } from '@db/entities/User';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 
-import { randomApiKey, randomName, randomString } from '../shared/random';
+import { randomApiKey, randomName } from '../shared/random';
 import * as utils from '../shared/utils/';
 import type { CredentialPayload, SaveCredentialFunction } from '../shared/types';
 import * as testDb from '../shared/testDb';

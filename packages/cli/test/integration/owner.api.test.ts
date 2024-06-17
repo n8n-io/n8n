@@ -1,7 +1,10 @@
+import { Container } from 'typedi';
 import validator from 'validator';
 
 import config from '@/config';
 import type { User } from '@db/entities/User';
+import { UserRepository } from '@db/repositories/user.repository';
+
 import {
 	randomEmail,
 	randomInvalidPassword,
@@ -11,8 +14,6 @@ import {
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
 import { createUserShell } from './shared/db/users';
-import { UserRepository } from '@db/repositories/user.repository';
-import Container from 'typedi';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['owner'] });
 
