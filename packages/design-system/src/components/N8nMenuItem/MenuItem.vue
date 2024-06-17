@@ -97,6 +97,7 @@ import N8nIcon from '../N8nIcon';
 import ConditionalRouterLink from '../ConditionalRouterLink';
 import type { IMenuItem } from '../../types';
 import { doesMenuItemMatchCurrentRoute } from './routerUtil';
+import { getInitials } from './labelUtil';
 
 interface MenuItemProps {
 	item: IMenuItem;
@@ -148,16 +149,6 @@ const isItemActive = (item: IMenuItem): boolean => {
 	const hasActiveChild =
 		Array.isArray(item.children) && item.children.some((child) => isActive(child));
 	return isActive(item) || hasActiveChild;
-};
-
-const getInitials = (label: string): string => {
-	const words = label.split(' ').map((word) => [...new Intl.Segmenter().segment(word)]);
-
-	if (words.length === 1) {
-		return words[0][0].segment + words[0][1].segment;
-	} else {
-		return words[0][0].segment + words[1][0].segment;
-	}
 };
 </script>
 
