@@ -98,9 +98,19 @@ export default defineComponent({
 	beforeMount() {
 		this.pushConnection.initialize();
 	},
-	mounted() {
+	async mounted() {
 		this.dirtyState = this.uiStore.stateIsDirty;
 		this.syncTabsWithRoute(this.$route);
+
+		const workflowId = this.$route.params.name as string;
+		const workflow = await this.workflowsStore.fetchWorkflow(workflowId);
+
+		this.workflowsStore.setWorkflowId(workflowId);
+
+		if (workflow.active) {
+			this.workflowsStore.setWorkflowActive(workflowId);
+			this.workflowsStore.setActive(workflow.active);
+		}
 	},
 	beforeUnmount() {
 		this.pushConnection.terminate();
