@@ -1,10 +1,11 @@
 import { Service } from 'typedi';
-import { CONTROLLER_BASE_PATH } from './constants';
+import { getControllerMetadata } from './controller.registry';
 
 export const RestController =
 	(basePath: `/${string}` = '/'): ClassDecorator =>
-	(target: object) => {
-		Reflect.defineMetadata(CONTROLLER_BASE_PATH, basePath, target);
+	(target) => {
+		const metadata = getControllerMetadata(target);
+		metadata.basePath = basePath;
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return Service()(target);
 	};

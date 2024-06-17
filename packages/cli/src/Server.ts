@@ -10,7 +10,7 @@ import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import helmet from 'helmet';
-import { type Class, InstanceSettings } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 import type { IN8nUISettings } from 'n8n-workflow';
 
 // @ts-ignore
@@ -19,59 +19,59 @@ import timezones from 'google-timezones-json';
 import config from '@/config';
 import { Queue } from '@/Queue';
 
-import { WorkflowsController } from '@/workflows/workflows.controller';
 import { EDITOR_UI_DIST_DIR, inDevelopment, inE2ETests, N8N_VERSION, Time } from '@/constants';
-import { CredentialsController } from '@/credentials/credentials.controller';
 import type { APIRequest } from '@/requests';
-import { registerController } from '@/decorators';
-import { AuthController } from '@/controllers/auth.controller';
-import { BinaryDataController } from '@/controllers/binaryData.controller';
-import { CurlController } from '@/controllers/curl.controller';
-import { DynamicNodeParametersController } from '@/controllers/dynamicNodeParameters.controller';
-import { MeController } from '@/controllers/me.controller';
-import { MFAController } from '@/controllers/mfa.controller';
-import { NodeTypesController } from '@/controllers/nodeTypes.controller';
-import { OAuth1CredentialController } from '@/controllers/oauth/oAuth1Credential.controller';
-import { OAuth2CredentialController } from '@/controllers/oauth/oAuth2Credential.controller';
-import { OwnerController } from '@/controllers/owner.controller';
-import { PasswordResetController } from '@/controllers/passwordReset.controller';
-import { TagsController } from '@/controllers/tags.controller';
-import { TranslationController } from '@/controllers/translation.controller';
-import { UsersController } from '@/controllers/users.controller';
-import { WorkflowStatisticsController } from '@/controllers/workflowStatistics.controller';
-import { ExternalSecretsController } from '@/ExternalSecrets/ExternalSecrets.controller.ee';
-import { ExecutionsController } from '@/executions/executions.controller';
+import { ControllerRegistry } from '@/decorators';
 import { isApiEnabled, loadPublicApiVersions } from '@/PublicApi';
 import type { ICredentialsOverwrite } from '@/Interfaces';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import * as ResponseHelper from '@/ResponseHelper';
-import { EventBusController } from '@/eventbus/eventBus.controller';
-import { LicenseController } from '@/license/license.controller';
 import { setupPushServer, setupPushHandler } from '@/push';
-import { isLdapEnabled } from './Ldap/helpers';
-import { AbstractServer } from './AbstractServer';
-import { PostHogClient } from './posthog';
+import { isLdapEnabled } from '@/Ldap/helpers';
+import { AbstractServer } from '@/AbstractServer';
+import { PostHogClient } from '@/posthog';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
-import { InternalHooks } from './InternalHooks';
-import { SamlController } from './sso/saml/routes/saml.controller.ee';
-import { SamlService } from './sso/saml/saml.service.ee';
-import { VariablesController } from './environments/variables/variables.controller.ee';
+import { InternalHooks } from '@/InternalHooks';
+import { SamlService } from '@/sso/saml/saml.service.ee';
 import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
-import { SourceControlController } from '@/environments/sourceControl/sourceControl.controller.ee';
-import { AIController } from '@/controllers/ai.controller';
 
-import { handleMfaDisable, isMfaFeatureEnabled } from './Mfa/helpers';
-import type { FrontendService } from './services/frontend.service';
-import { ActiveWorkflowsController } from './controllers/activeWorkflows.controller';
-import { OrchestrationController } from './controllers/orchestration.controller';
-import { WorkflowHistoryController } from './workflows/workflowHistory/workflowHistory.controller.ee';
-import { InvitationController } from './controllers/invitation.controller';
-// import { CollaborationService } from './collaboration/collaboration.service';
+import { handleMfaDisable, isMfaFeatureEnabled } from '@/Mfa/helpers';
+import type { FrontendService } from '@/services/frontend.service';
+// import { CollaborationService } from '@/collaboration/collaboration.service';
 import { OrchestrationService } from '@/services/orchestration.service';
-import { ProjectController } from './controllers/project.controller';
-import { RoleController } from './controllers/role.controller';
-import { UserSettingsController } from './controllers/userSettings.controller';
+
+import '@/controllers/activeWorkflows.controller';
+import '@/controllers/ai.controller';
+import '@/controllers/auth.controller';
+import '@/controllers/binaryData.controller';
+import '@/controllers/curl.controller';
+import '@/controllers/dynamicNodeParameters.controller';
+import '@/controllers/invitation.controller';
+import '@/controllers/me.controller';
+import '@/controllers/nodeTypes.controller';
+import '@/controllers/oauth/oAuth1Credential.controller';
+import '@/controllers/oauth/oAuth2Credential.controller';
+import '@/controllers/orchestration.controller';
+import '@/controllers/owner.controller';
+import '@/controllers/passwordReset.controller';
+import '@/controllers/project.controller';
+import '@/controllers/role.controller';
+import '@/controllers/tags.controller';
+import '@/controllers/translation.controller';
+import '@/controllers/users.controller';
+import '@/controllers/userSettings.controller';
+import '@/controllers/workflowStatistics.controller';
+import '@/credentials/credentials.controller';
+import '@/environments/sourceControl/sourceControl.controller.ee';
+import '@/environments/variables/variables.controller.ee';
+import '@/eventbus/eventBus.controller';
+import '@/executions/executions.controller';
+import '@/ExternalSecrets/ExternalSecrets.controller.ee';
+import '@/license/license.controller';
+import '@/sso/saml/routes/saml.controller.ee';
+import '@/workflows/workflowHistory/workflowHistory.controller.ee';
+import '@/workflows/workflows.controller';
 
 const exec = promisify(callbackExec);
 
@@ -116,79 +116,36 @@ export class Server extends AbstractServer {
 
 	private async registerControllers() {
 		const { app } = this;
-
-		const controllers: Array<Class<object>> = [
-			EventBusController,
-			AuthController,
-			LicenseController,
-			OAuth1CredentialController,
-			OAuth2CredentialController,
-			OwnerController,
-			MeController,
-			DynamicNodeParametersController,
-			NodeTypesController,
-			PasswordResetController,
-			TagsController,
-			TranslationController,
-			UsersController,
-			SamlController,
-			SourceControlController,
-			WorkflowStatisticsController,
-			ExternalSecretsController,
-			OrchestrationController,
-			WorkflowHistoryController,
-			BinaryDataController,
-			VariablesController,
-			InvitationController,
-			VariablesController,
-			ActiveWorkflowsController,
-			WorkflowsController,
-			ExecutionsController,
-			CredentialsController,
-			AIController,
-			ProjectController,
-			RoleController,
-			CurlController,
-			UserSettingsController,
-		];
-
 		if (
 			process.env.NODE_ENV !== 'production' &&
 			Container.get(OrchestrationService).isMultiMainSetupEnabled
 		) {
-			const { DebugController } = await import('@/controllers/debug.controller');
-			controllers.push(DebugController);
+			await import('@/controllers/debug.controller');
 		}
 
 		if (isLdapEnabled()) {
 			const { LdapService } = await import('@/Ldap/ldap.service');
-			const { LdapController } = await require('@/Ldap/ldap.controller');
+			await require('@/Ldap/ldap.controller');
 			await Container.get(LdapService).init();
-			controllers.push(LdapController);
 		}
 
 		if (config.getEnv('nodes.communityPackages.enabled')) {
-			const { CommunityPackagesController } = await import(
-				'@/controllers/communityPackages.controller'
-			);
-			controllers.push(CommunityPackagesController);
+			await import('@/controllers/communityPackages.controller');
 		}
 
 		if (inE2ETests) {
-			const { E2EController } = await import('./controllers/e2e.controller');
-			controllers.push(E2EController);
+			await import('@/controllers/e2e.controller');
 		}
 
 		if (isMfaFeatureEnabled()) {
-			controllers.push(MFAController);
+			await import('@/controllers/mfa.controller');
 		}
 
 		if (!config.getEnv('endpoints.disableUi')) {
-			const { CtaController } = await import('@/controllers/cta.controller');
-			controllers.push(CtaController);
+			await import('@/controllers/cta.controller');
 		}
 
-		controllers.forEach((controller) => registerController(app, controller));
+		Container.get(ControllerRegistry).activate(app);
 	}
 
 	async configure(): Promise<void> {
