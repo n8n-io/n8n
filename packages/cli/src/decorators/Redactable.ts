@@ -1,5 +1,5 @@
 import { RedactableError } from '@/errors/redactable.error';
-import type { UserLike } from '@/eventbus/audit.types';
+import type { UserLike } from '@/eventbus/event.types';
 
 function toRedactable(userLike: UserLike) {
 	return {
@@ -14,15 +14,16 @@ function toRedactable(userLike: UserLike) {
 type FieldName = 'user' | 'inviter' | 'invitee';
 
 /**
- * Mark redactable properties in a `UserLike` field in an `AuditEventRelay`
+ * Mark redactable properties in a `{ user: UserLike }` field in an `AuditEventRelay`
  * method arg. These properties will be later redacted by the log streaming
  * destination based on user prefs. Only for `n8n.audit.*` logs.
  *
+ * Also transform `id` to `userId` and `role` to `globalRole`.
+ *
  * @example
  *
- * `{ id: '123'; email: 'test@example.com', role: 'some-role' }` ->
- * `{ userId: '123'; _email: 'test@example.com', globalRole: 'some-role' }`
- * ```
+ * { id: '123'; email: 'test@example.com', role: 'some-role' } ->
+ * { userId: '123'; _email: 'test@example.com', globalRole: 'some-role' }
  */
 export const Redactable =
 	(fieldName: FieldName = 'user'): MethodDecorator =>

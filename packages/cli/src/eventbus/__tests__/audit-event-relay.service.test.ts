@@ -1,7 +1,7 @@
 import { mock } from 'jest-mock-extended';
 import { AuditEventRelay } from '../audit-event-relay.service';
 import type { MessageEventBus } from '../MessageEventBus/MessageEventBus';
-import type { AuditEventArgs } from '../audit.types';
+import type { Event } from '../event.types';
 import type { EventRelay } from '../event-relay.service';
 
 describe('AuditorService', () => {
@@ -14,7 +14,7 @@ describe('AuditorService', () => {
 	});
 
 	it('should handle `user-deleted` event', () => {
-		const arg: AuditEventArgs['user-deleted'] = {
+		const arg: Event['user-deleted'] = {
 			user: {
 				id: '123',
 				email: 'john@n8n.io',
@@ -40,7 +40,7 @@ describe('AuditorService', () => {
 	});
 
 	it('should handle `user-invite-email-click` event', () => {
-		const arg: AuditEventArgs['user-invite-email-click'] = {
+		const arg: Event['user-invite-email-click'] = {
 			inviter: {
 				id: '123',
 				email: 'john@n8n.io',

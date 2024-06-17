@@ -9,7 +9,10 @@ export type UserLike = {
 	role: string;
 };
 
-export type AuditEventArgs = {
+/**
+ * Events sent by services and consumed by relays, e.g. `AuditEventRelay`.
+ */
+export type Event = {
 	'workflow-created': {
 		user: UserLike;
 		workflow: IWorkflowBase;

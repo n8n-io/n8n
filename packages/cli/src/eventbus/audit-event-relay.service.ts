@@ -2,7 +2,7 @@ import { Service } from 'typedi';
 import { MessageEventBus } from './MessageEventBus/MessageEventBus';
 import { Redactable } from '@/decorators/Redactable';
 import { EventRelay } from './event-relay.service';
-import type { AuditEventArgs } from './audit.types';
+import type { Event } from './event.types';
 import type { IWorkflowBase } from 'n8n-workflow';
 
 @Service()
@@ -56,7 +56,7 @@ export class AuditEventRelay {
 	 */
 
 	@Redactable()
-	private workflowCreated({ user, workflow }: AuditEventArgs['workflow-created']) {
+	private workflowCreated({ user, workflow }: Event['workflow-created']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.created',
 			payload: {
@@ -68,7 +68,7 @@ export class AuditEventRelay {
 	}
 
 	@Redactable()
-	private workflowDeleted({ user, workflowId }: AuditEventArgs['workflow-deleted']) {
+	private workflowDeleted({ user, workflowId }: Event['workflow-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.deleted',
 			payload: { ...user, workflowId },
@@ -76,7 +76,7 @@ export class AuditEventRelay {
 	}
 
 	@Redactable()
-	private workflowSaved({ user, workflowId, workflowName }: AuditEventArgs['workflow-saved']) {
+	private workflowSaved({ user, workflowId, workflowName }: Event['workflow-saved']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.updated',
 			payload: {
@@ -87,7 +87,7 @@ export class AuditEventRelay {
 		});
 	}
 
-	private workflowPreExecute({ data, executionId }: AuditEventArgs['workflow-pre-execute']) {
+	private workflowPreExecute({ data, executionId }: Event['workflow-pre-execute']) {
 		const payload =
 			'executionData' in data
 				? {
@@ -111,7 +111,7 @@ export class AuditEventRelay {
 		});
 	}
 
-	private workflowPostExecute(event: AuditEventArgs['workflow-post-execute']) {
+	private workflowPostExecute(event: Event['workflow-post-execute']) {
 		void this.eventBus.sendWorkflowEvent({
 			eventName: 'n8n.workflow.success',
 			payload: event,
@@ -122,7 +122,7 @@ export class AuditEventRelay {
 	 * Node
 	 */
 
-	private nodePreExecute({ workflow, executionId, nodeName }: AuditEventArgs['node-pre-execute']) {
+	private nodePreExecute({ workflow, executionId, nodeName }: Event['node-pre-execute']) {
 		void this.eventBus.sendNodeEvent({
 			eventName: 'n8n.node.started',
 			payload: {
@@ -135,11 +135,7 @@ export class AuditEventRelay {
 		});
 	}
 
-	private nodePostExecute({
-		workflow,
-		executionId,
-		nodeName,
-	}: AuditEventArgs['node-post-execute']) {
+	private nodePostExecute({ workflow, executionId, nodeName }: Event['node-post-execute']) {
 		void this.eventBus.sendNodeEvent({
 			eventName: 'n8n.node.finished',
 			payload: {
@@ -157,7 +153,7 @@ export class AuditEventRelay {
 	 */
 
 	@Redactable()
-	private userDeleted({ user }: AuditEventArgs['user-deleted']) {
+	private userDeleted({ user }: Event['user-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.deleted',
 			payload: user,
@@ -165,7 +161,7 @@ export class AuditEventRelay {
 	}
 
 	@Redactable()
-	private userInvited({ user, targetUserId }: AuditEventArgs['user-invited']) {
+	private userInvited({ user, targetUserId }: Event['user-invited']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.invited',
 			payload: { ...user, targetUserId },
@@ -173,7 +169,7 @@ export class AuditEventRelay {
 	}
 
 	@Redactable()
-	private userReinvited({ user, targetUserId }: AuditEventArgs['user-reinvited']) {
+	private userReinvited({ user, targetUserId }: Event['user-reinvited']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.reinvited',
 			payload: { ...user, targetUserId },
@@ -181,7 +177,7 @@ export class AuditEventRelay {
 	}
 
 	@Redactable()
-	private userUpdated({ user, fieldsChanged }: AuditEventArgs['user-updated']) {
+	private userUpdated({ user, fieldsChanged }: Event['user-updated']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.updated',
 			payload: { ...user, fieldsChanged },
@@ -193,7 +189,7 @@ export class AuditEventRelay {
 	 */
 
 	@Redactable()
-	private userSignedUp({ user }: AuditEventArgs['user-signed-up']) {
+	private userSignedUp({ user }: Event['user-signed-up']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.signedup',
 			payload: user,
@@ -201,7 +197,7 @@ export class AuditEventRelay {
 	}
 
 	@Redactable()
-	private userLoggedIn({ user, authenticationMethod }: AuditEventArgs['user-logged-in']) {
+	private userLoggedIn({ user, authenticationMethod }: Event['user-logged-in']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.login.success',
 			payload: { ...user, authenticationMethod },
@@ -209,7 +205,7 @@ export class AuditEventRelay {
 	}
 
 	private userLoginFailed(
-		event: AuditEventArgs['user-login-failed'] /* exception: no `UserLike` to redact */,
+		event: Event['user-login-failed'] /* exception: no `UserLike` to redact */,
 	) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.login.failed',
@@ -223,7 +219,7 @@ export class AuditEventRelay {
 
 	@Redactable('inviter')
 	@Redactable('invitee')
-	private userInviteEmailClick(event: AuditEventArgs['user-invite-email-click']) {
+	private userInviteEmailClick(event: Event['user-invite-email-click']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.invitation.accepted',
 			payload: event,
@@ -231,7 +227,7 @@ export class AuditEventRelay {
 	}
 
 	@Redactable()
-	private userPasswordResetEmailClick({ user }: AuditEventArgs['user-password-reset-email-click']) {
+	private userPasswordResetEmailClick({ user }: Event['user-password-reset-email-click']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.reset',
 			payload: user,
@@ -239,9 +235,7 @@ export class AuditEventRelay {
 	}
 
 	@Redactable()
-	private userPasswordResetRequestClick({
-		user,
-	}: AuditEventArgs['user-password-reset-request-click']) {
+	private userPasswordResetRequestClick({ user }: Event['user-password-reset-request-click']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.reset.requested',
 			payload: user,
@@ -253,7 +247,7 @@ export class AuditEventRelay {
 	 */
 
 	@Redactable()
-	private apiKeyCreated({ user }: AuditEventArgs['api-key-created']) {
+	private apiKeyCreated({ user }: Event['api-key-created']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.api.created',
 			payload: user,
@@ -261,7 +255,7 @@ export class AuditEventRelay {
 	}
 
 	@Redactable()
-	private apiKeyDeleted({ user }: AuditEventArgs['api-key-deleted']) {
+	private apiKeyDeleted({ user }: Event['api-key-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.api.deleted',
 			payload: user,
@@ -273,7 +267,7 @@ export class AuditEventRelay {
 	 */
 
 	@Redactable()
-	private emailFailed({ user, messageType }: AuditEventArgs['email-failed']) {
+	private emailFailed({ user, messageType }: Event['email-failed']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.email.failed',
 			payload: { ...user, messageType },
@@ -285,7 +279,7 @@ export class AuditEventRelay {
 	 */
 
 	@Redactable()
-	private credentialsCreated({ user, ...rest }: AuditEventArgs['credentials-created']) {
+	private credentialsCreated({ user, ...rest }: Event['credentials-created']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.created',
 			payload: { ...user, ...rest },
@@ -293,7 +287,7 @@ export class AuditEventRelay {
 	}
 
 	@Redactable()
-	private credentialsDeleted({ user, ...rest }: AuditEventArgs['credentials-deleted']) {
+	private credentialsDeleted({ user, ...rest }: Event['credentials-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.deleted',
 			payload: { ...user, ...rest },
@@ -301,7 +295,7 @@ export class AuditEventRelay {
 	}
 
 	@Redactable()
-	private credentialsShared({ user, ...rest }: AuditEventArgs['credentials-shared']) {
+	private credentialsShared({ user, ...rest }: Event['credentials-shared']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.shared',
 			payload: { ...user, ...rest },
@@ -309,7 +303,7 @@ export class AuditEventRelay {
 	}
 
 	@Redactable()
-	private credentialsUpdated({ user, ...rest }: AuditEventArgs['credentials-updated']) {
+	private credentialsUpdated({ user, ...rest }: Event['credentials-updated']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.updated',
 			payload: { ...user, ...rest },
@@ -321,10 +315,7 @@ export class AuditEventRelay {
 	 */
 
 	@Redactable()
-	private communityPackageInstalled({
-		user,
-		...rest
-	}: AuditEventArgs['community-package-installed']) {
+	private communityPackageInstalled({ user, ...rest }: Event['community-package-installed']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.package.installed',
 			payload: { ...user, ...rest },
@@ -332,7 +323,7 @@ export class AuditEventRelay {
 	}
 
 	@Redactable()
-	private communityPackageUpdated({ user, ...rest }: AuditEventArgs['community-package-updated']) {
+	private communityPackageUpdated({ user, ...rest }: Event['community-package-updated']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.package.updated',
 			payload: { ...user, ...rest },
@@ -340,7 +331,7 @@ export class AuditEventRelay {
 	}
 
 	@Redactable()
-	private communityPackageDeleted({ user, ...rest }: AuditEventArgs['community-package-deleted']) {
+	private communityPackageDeleted({ user, ...rest }: Event['community-package-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.package.deleted',
 			payload: { ...user, ...rest },
