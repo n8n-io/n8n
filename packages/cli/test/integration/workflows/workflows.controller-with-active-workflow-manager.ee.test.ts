@@ -5,6 +5,10 @@ import * as testDb from '../shared/testDb';
 import { createUser } from '../shared/db/users';
 import { createWorkflowWithTrigger } from '../shared/db/workflows';
 import { createTeamProject } from '../shared/db/projects';
+import { mockInstance } from '@test/mocking';
+import { Telemetry } from '@/telemetry';
+
+mockInstance(Telemetry);
 
 let member: User;
 let anotherMember: User;

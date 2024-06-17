@@ -1,4 +1,4 @@
-import { v4 as uuid } from 'uuid';
+import { nanoid } from 'nanoid';
 import { WorkflowPage, NDV, CredentialsModal } from '../pages';
 import { cowBase64 } from '../support/binaryTestFiles';
 import { BACKEND_BASE_URL, EDIT_FIELDS_SET_NODE_NAME } from '../constants';
@@ -81,28 +81,28 @@ describe('Webhook Trigger node', () => {
 	});
 
 	it('should listen for a GET request', () => {
-		simpleWebhookCall({ method: 'GET', webhookPath: uuid(), executeNow: true });
+		simpleWebhookCall({ method: 'GET', webhookPath: nanoid(), executeNow: true });
 	});
 
 	it('should listen for a POST request', () => {
-		simpleWebhookCall({ method: 'POST', webhookPath: uuid(), executeNow: true });
+		simpleWebhookCall({ method: 'POST', webhookPath: nanoid(), executeNow: true });
 	});
 
 	it('should listen for a DELETE request', () => {
-		simpleWebhookCall({ method: 'DELETE', webhookPath: uuid(), executeNow: true });
+		simpleWebhookCall({ method: 'DELETE', webhookPath: nanoid(), executeNow: true });
 	});
 	it('should listen for a HEAD request', () => {
-		simpleWebhookCall({ method: 'HEAD', webhookPath: uuid(), executeNow: true });
+		simpleWebhookCall({ method: 'HEAD', webhookPath: nanoid(), executeNow: true });
 	});
 	it('should listen for a PATCH request', () => {
-		simpleWebhookCall({ method: 'PATCH', webhookPath: uuid(), executeNow: true });
+		simpleWebhookCall({ method: 'PATCH', webhookPath: nanoid(), executeNow: true });
 	});
 	it('should listen for a PUT request', () => {
-		simpleWebhookCall({ method: 'PUT', webhookPath: uuid(), executeNow: true });
+		simpleWebhookCall({ method: 'PUT', webhookPath: nanoid(), executeNow: true });
 	});
 
 	it('should listen for a GET request and respond with Respond to Webhook node', () => {
-		const webhookPath = uuid();
+		const webhookPath = nanoid();
 		simpleWebhookCall({
 			method: 'GET',
 			webhookPath,
@@ -130,7 +130,7 @@ describe('Webhook Trigger node', () => {
 	});
 
 	it('should listen for a GET request and respond custom status code 201', () => {
-		const webhookPath = uuid();
+		const webhookPath = nanoid();
 		simpleWebhookCall({
 			method: 'GET',
 			webhookPath,
@@ -147,7 +147,7 @@ describe('Webhook Trigger node', () => {
 	});
 
 	it('should listen for a GET request and respond with last node', () => {
-		const webhookPath = uuid();
+		const webhookPath = nanoid();
 		simpleWebhookCall({
 			method: 'GET',
 			webhookPath,
@@ -172,7 +172,7 @@ describe('Webhook Trigger node', () => {
 	});
 
 	it('should listen for a GET request and respond with last node binary data', () => {
-		const webhookPath = uuid();
+		const webhookPath = nanoid();
 		simpleWebhookCall({
 			method: 'GET',
 			webhookPath,
@@ -213,7 +213,7 @@ describe('Webhook Trigger node', () => {
 	});
 
 	it('should listen for a GET request and respond with an empty body', () => {
-		const webhookPath = uuid();
+		const webhookPath = nanoid();
 		simpleWebhookCall({
 			method: 'GET',
 			webhookPath,
@@ -232,7 +232,7 @@ describe('Webhook Trigger node', () => {
 	});
 
 	it('should listen for a GET request with Basic Authentication', () => {
-		const webhookPath = uuid();
+		const webhookPath = nanoid();
 		simpleWebhookCall({
 			method: 'GET',
 			webhookPath,
@@ -275,7 +275,7 @@ describe('Webhook Trigger node', () => {
 	});
 
 	it('should listen for a GET request with Header Authentication', () => {
-		const webhookPath = uuid();
+		const webhookPath = nanoid();
 		simpleWebhookCall({
 			method: 'GET',
 			webhookPath,

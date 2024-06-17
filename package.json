@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.45.0",
+  "version": "1.46.0",
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
@@ -13,13 +13,16 @@
     "build": "turbo run build",
     "build:backend": "pnpm --filter=!@n8n/chat --filter=!@n8n/codemirror-lang --filter=!n8n-design-system --filter=!n8n-editor-ui build",
     "build:frontend": "pnpm --filter=@n8n/chat --filter=@n8n/codemirror-lang --filter=n8n-design-system --filter=n8n-editor-ui build",
-    "typecheck": "pnpm --filter=!@n8n/chat --filter=!@n8n/storybook --filter=!n8n-core --filter=!n8n-editor-ui --filter=!n8n-workflow --filter=!n8n typecheck",
+    "typecheck": "pnpm --filter=!@n8n/storybook --filter=!n8n-core --filter=!n8n-workflow --filter=!n8n typecheck",
     "dev": "turbo run dev --parallel --filter=!n8n-design-system --filter=!@n8n/chat",
     "dev:ai": "turbo run dev --parallel --filter=@n8n/nodes-langchain --filter=n8n --filter=n8n-core",
     "clean": "turbo run clean --parallel",
     "format": "turbo run format && node scripts/format.mjs",
     "lint": "turbo run lint",
     "lintfix": "turbo run lintfix",
+    "lint:backend": "pnpm --filter=!@n8n/chat --filter=!@n8n/codemirror-lang --filter=!n8n-design-system --filter=!n8n-editor-ui --filter=!n8n-nodes-base --filter=!@n8n/n8n-nodes-langchain lint",
+    "lint:nodes": "pnpm --filter=n8n-nodes-base --filter=@n8n/n8n-nodes-langchain lint",
+    "lint:frontend": "pnpm --filter=@n8n/chat --filter=@n8n/codemirror-lang --filter=n8n-design-system --filter=n8n-editor-ui lint",
     "optimize-svg": "find ./packages -name '*.svg' ! -name 'pipedrive.svg' -print0 | xargs -0 -P16 -L20 npx svgo",
     "start": "run-script-os",
     "start:default": "cd packages/cli/bin && ./n8n",
@@ -55,7 +58,6 @@
     "turbo": "1.13.3",
     "typescript": "*",
     "vite": "^5.2.12",
-    "vite-plugin-checker": "^0.6.4",
     "vitest": "^1.6.0",
     "vue-tsc": "^2.0.19"
   },
@@ -83,7 +85,6 @@
       "pyodide@0.23.4": "patches/pyodide@0.23.4.patch",
       "@types/express-serve-static-core@4.17.43": "patches/@types__express-serve-static-core@4.17.43.patch",
       "@types/ws@8.5.4": "patches/@types__ws@8.5.4.patch",
-      "vite-plugin-checker@0.6.4": "patches/vite-plugin-checker@0.6.4.patch",
       "@types/uuencode@0.0.3": "patches/@types__uuencode@0.0.3.patch"
     }
   }
