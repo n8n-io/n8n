@@ -9,15 +9,16 @@ export class CredentialsModal extends BasePage {
 		newCredentialTypeOption: (credentialType: string) =>
 			cy.getByTestId('new-credential-type-select-option').contains(credentialType),
 		newCredentialTypeButton: () => cy.getByTestId('new-credential-type-button'),
-		connectionParameters: () => cy.getByTestId('credential-connection-parameter'),
 		connectionParameter: (fieldName: string) =>
-			this.getters.connectionParameters().find(`:contains('${fieldName}') .n8n-input input`),
+			this.getters.credentialInputs().find(`:contains('${fieldName}') .n8n-input input`),
 		name: () => cy.getByTestId('credential-name'),
 		nameInput: () => cy.getByTestId('credential-name').find('input'),
 		// Saving of the credentials takes a while on the CI so we need to increase the timeout
 		saveButton: () => cy.getByTestId('credential-save-button', { timeout: 5000 }),
 		deleteButton: () => cy.getByTestId('credential-delete-button'),
 		closeButton: () => this.getters.editCredentialModal().find('.el-dialog__close').first(),
+		oauthConnectButton: () => cy.getByTestId('oauth-connect-button'),
+		oauthConnectSuccessBanner: () => cy.getByTestId('oauth-connect-success-banner'),
 		credentialsEditModal: () => cy.getByTestId('credential-edit-dialog'),
 		credentialsAuthTypeSelector: () => cy.getByTestId('node-auth-type-selector'),
 		credentialAuthTypeRadioButtons: () =>
@@ -68,6 +69,13 @@ export class CredentialsModal extends BasePage {
 			if (closeModal) {
 				this.getters.closeButton().click();
 			}
+		},
+		fillField: (fieldName: string, value: string) => {
+			this.getters
+				.credentialInputs()
+				.getByTestId(`parameter-input-${fieldName}`)
+				.find('input')
+				.type(value);
 		},
 		createNewCredential: (type: string, closeModal = true) => {
 			this.getters.newCredentialModal().should('be.visible');
