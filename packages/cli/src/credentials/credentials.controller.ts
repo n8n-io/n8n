@@ -52,6 +52,14 @@ export class CredentialsController {
 		});
 	}
 
+	@Get('/for-workflow')
+	async getProjectCredentials(req: CredentialRequest.ForWorkflow) {
+		const options = z
+			.union([z.object({ workflowId: z.string() }), z.object({ projectId: z.string() })])
+			.parse(req.query);
+		return await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(req.user, options);
+	}
+
 	@Get('/new')
 	async generateUniqueName(req: CredentialRequest.NewName) {
 		const requestedName = req.query.name ?? config.getEnv('credentials.defaultName');
