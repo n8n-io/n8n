@@ -2,7 +2,6 @@ import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
 import { defineConfig, mergeConfig } from 'vite';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
-import checker from 'vite-plugin-checker';
 
 import packageJSON from './package.json';
 import { vitestConfig } from '../design-system/vite.config.mts';
@@ -77,13 +76,6 @@ const plugins = [
 	}),
 	vue(),
 ];
-
-if (!process.env.VITEST) {
-	plugins.push({
-		...checker({ vueTsc: true }),
-		apply: 'build'
-	});
-}
 
 const { SENTRY_AUTH_TOKEN: authToken, RELEASE: release } = process.env;
 if (release && authToken) {

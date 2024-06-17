@@ -65,6 +65,8 @@ export const DEBUG_PAYWALL_MODAL_KEY = 'debugPaywall';
 export const MFA_SETUP_MODAL_KEY = 'mfaSetup';
 export const WORKFLOW_HISTORY_VERSION_RESTORE = 'workflowHistoryVersionRestore';
 export const SETUP_CREDENTIALS_MODAL_KEY = 'setupCredentials';
+export const PROJECT_MOVE_RESOURCE_MODAL = 'projectMoveResourceModal';
+export const PROJECT_MOVE_RESOURCE_CONFIRM_MODAL = 'projectMoveResourceConfirmModal';
 
 export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
 
@@ -687,6 +689,11 @@ export const EXPERIMENTS_TO_TRACK = [
 	AI_ASSISTANT_EXPERIMENT.name,
 	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT.name,
 ];
+
+export const MFA_FORM = {
+	MFA_TOKEN: 'MFA_TOKEN',
+	MFA_RECOVERY_CODE: 'MFA_RECOVERY_CODE',
+} as const;
 
 export const MFA_AUTHENTICATION_REQUIRED_ERROR_CODE = 998;
 

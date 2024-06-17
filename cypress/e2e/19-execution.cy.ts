@@ -1,4 +1,3 @@
-import { v4 as uuid } from 'uuid';
 import { NDV, WorkflowExecutionsTab, WorkflowPage as WorkflowPageClass } from '../pages';
 import { SCHEDULE_TRIGGER_NODE_NAME, EDIT_FIELDS_SET_NODE_NAME } from '../constants';
 import { errorToast, successToast } from '../pages/notifications';
@@ -13,7 +12,7 @@ describe('Execution', () => {
 	});
 
 	it('should test manual workflow', () => {
-		cy.createFixtureWorkflow('Manual_wait_set.json', `Manual wait set ${uuid()}`);
+		cy.createFixtureWorkflow('Manual_wait_set.json');
 
 		// Check workflow buttons
 		workflowPage.getters.executeWorkflowButton().should('be.visible');
@@ -73,7 +72,7 @@ describe('Execution', () => {
 	});
 
 	it('should test manual workflow stop', () => {
-		cy.createFixtureWorkflow('Manual_wait_set.json', `Manual wait set ${uuid()}`);
+		cy.createFixtureWorkflow('Manual_wait_set.json');
 
 		// Check workflow buttons
 		workflowPage.getters.executeWorkflowButton().should('be.visible');
@@ -132,7 +131,7 @@ describe('Execution', () => {
 	});
 
 	it('should test webhook workflow', () => {
-		cy.createFixtureWorkflow('Webhook_wait_set.json', `Webhook wait set ${uuid()}`);
+		cy.createFixtureWorkflow('Webhook_wait_set.json');
 
 		// Check workflow buttons
 		workflowPage.getters.executeWorkflowButton().should('be.visible');
@@ -205,7 +204,7 @@ describe('Execution', () => {
 	});
 
 	it('should test webhook workflow stop', () => {
-		cy.createFixtureWorkflow('Webhook_wait_set.json', `Webhook wait set ${uuid()}`);
+		cy.createFixtureWorkflow('Webhook_wait_set.json');
 
 		// Check workflow buttons
 		workflowPage.getters.executeWorkflowButton().should('be.visible');
@@ -293,7 +292,7 @@ describe('Execution', () => {
 
 	describe('connections should be colored differently for pinned data', () => {
 		beforeEach(() => {
-			cy.createFixtureWorkflow('Schedule_pinned.json', `Schedule pinned ${uuid()}`);
+			cy.createFixtureWorkflow('Schedule_pinned.json');
 			workflowPage.actions.deselectAll();
 			workflowPage.getters.zoomToFitButton().click();
 
@@ -492,10 +491,7 @@ describe('Execution', () => {
 	});
 
 	it('should send proper payload for node rerun', () => {
-		cy.createFixtureWorkflow(
-			'Multiple_trigger_node_rerun.json',
-			`Multiple trigger node rerun ${uuid()}`,
-		);
+		cy.createFixtureWorkflow('Multiple_trigger_node_rerun.json', 'Multiple trigger node rerun');
 
 		workflowPage.getters.zoomToFitButton().click();
 		workflowPage.getters.executeWorkflowButton().click();
@@ -520,10 +516,7 @@ describe('Execution', () => {
 	});
 
 	it('should send proper payload for manual node run', () => {
-		cy.createFixtureWorkflow(
-			'Check_manual_node_run_for_pinned_and_rundata.json',
-			`Check manual node run for pinned and rundata ${uuid()}`,
-		);
+		cy.createFixtureWorkflow('Check_manual_node_run_for_pinned_and_rundata.json');
 
 		workflowPage.getters.zoomToFitButton().click();
 
@@ -536,10 +529,13 @@ describe('Execution', () => {
 
 		cy.wait('@workflowRun').then((interception) => {
 			expect(interception.request.body).not.to.have.property('runData').that.is.an('object');
-			expect(interception.request.body).to.have.property('pinData').that.is.an('object');
+			expect(interception.request.body).to.have.property('workflowData').that.is.an('object');
+			expect(interception.request.body.workflowData)
+				.to.have.property('pinData')
+				.that.is.an('object');
 			const expectedPinnedDataKeys = ['Webhook'];
 
-			const { pinData } = interception.request.body as Record<string, object>;
+			const { pinData } = interception.request.body.workflowData as Record<string, object>;
 			expect(Object.keys(pinData)).to.have.lengthOf(expectedPinnedDataKeys.length);
 			expect(pinData).to.include.all.keys(expectedPinnedDataKeys);
 		});
@@ -555,24 +551,25 @@ describe('Execution', () => {
 
 		cy.wait('@workflowRun').then((interception) => {
 			expect(interception.request.body).to.have.property('runData').that.is.an('object');
-			expect(interception.request.body).to.have.property('pinData').that.is.an('object');
+			expect(interception.request.body).to.have.property('workflowData').that.is.an('object');
+			expect(interception.request.body.workflowData)
+				.to.have.property('pinData')
+				.that.is.an('object');
 			const expectedPinnedDataKeys = ['Webhook'];
 			const expectedRunDataKeys = ['If', 'Webhook'];
 
-			const { pinData, runData } = interception.request.body as Record<string, object>;
+			const { pinData } = interception.request.body.workflowData as Record<string, object>;
 			expect(Object.keys(pinData)).to.have.lengthOf(expectedPinnedDataKeys.length);
 			expect(pinData).to.include.all.keys(expectedPinnedDataKeys);
 
+			const { runData } = interception.request.body as Record<string, object>;
 			expect(Object.keys(runData)).to.have.lengthOf(expectedRunDataKeys.length);
 			expect(runData).to.include.all.keys(expectedRunDataKeys);
 		});
 	});
 
 	it('should successfully execute partial executions with nodes attached to the second output', () => {
-		cy.createFixtureWorkflow(
-			'Test_Workflow_pairedItem_incomplete_manual_bug.json',
-			'My test workflow',
-		);
+		cy.createFixtureWorkflow('Test_Workflow_pairedItem_incomplete_manual_bug.json');
 
 		cy.intercept('POST', '/rest/workflows/**/run').as('workflowRun');
 
@@ -592,10 +589,7 @@ describe('Execution', () => {
 	});
 
 	it('should execute workflow partially up to the node that has issues', () => {
-		cy.createFixtureWorkflow(
-			'Test_workflow_partial_execution_with_missing_credentials.json',
-			'My test workflow',
-		);
+		cy.createFixtureWorkflow('Test_workflow_partial_execution_with_missing_credentials.json');
 
 		cy.intercept('POST', '/rest/workflows/**/run').as('workflowRun');
 

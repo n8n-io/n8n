@@ -1,7 +1,11 @@
 // Load type definitions that come with Cypress module
 /// <reference types="cypress" />
 
-import type { Interception } from 'cypress/types/net-stubbing';
+import type { IN8nUISettings } from 'n8n-workflow';
+
+Cypress.Keyboard.defaults({
+	keystrokeDelay: 0,
+});
 
 interface SigninPayload {
 	email: string;
@@ -21,11 +25,23 @@ declare global {
 				...args: Array<Partial<Loggable & Timeoutable & Withinable & Shadow> | undefined>
 			): Chainable<JQuery<HTMLElement>>;
 			findChildByTestId(childTestId: string): Chainable<JQuery<HTMLElement>>;
-			createFixtureWorkflow(fixtureKey: string, workflowName: string): void;
+			/**
+			 * Creates a workflow from the given fixture and optionally renames it.
+			 *
+			 * @param fixtureKey
+			 * @param [workflowName] Optional name for the workflow. A random nanoid is used if not given
+			 */
+			createFixtureWorkflow(fixtureKey: string, workflowName?: string): void;
+			/** @deprecated use signinAsOwner, signinAsAdmin or signinAsMember instead */
 			signin(payload: SigninPayload): void;
 			signinAsOwner(): void;
+			signinAsAdmin(): void;
+			/**
+			 * Omitting the index will default to index 0.
+			 */
+			signinAsMember(index?: number): void;
 			signout(): void;
-			interceptREST(method: string, url: string): Chainable<Interception>;
+			overrideSettings(value: Partial<IN8nUISettings>): void;
 			enableFeature(feature: string): void;
 			disableFeature(feature: string): void;
 			enableQueueMode(): void;

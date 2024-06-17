@@ -176,7 +176,10 @@ export class UserManagementMailer {
 			const result = await this.mailer.sendMail({
 				emailRecipients,
 				subject: `${sharer.firstName} has shared an n8n credential with you`,
-				body: populateTemplate({ credentialsName, credentialsListUrl: `${baseUrl}/credentials` }),
+				body: populateTemplate({
+					credentialsName,
+					credentialsListUrl: `${baseUrl}/home/credentials`,
+				}),
 			});
 
 			if (!result) return { emailSent: false };

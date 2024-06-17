@@ -34,7 +34,7 @@ describe('User Management', { disableAutoLogin: true }, () => {
 		cy.enableFeature('sharing');
 	});
 
-	it.only('should login and logout', () => {
+	it('should login and logout', () => {
 		cy.visit('/');
 		cy.get('input[name="email"]').type(INSTANCE_OWNER.email);
 		cy.get('input[name="password"]').type(INSTANCE_OWNER.password);

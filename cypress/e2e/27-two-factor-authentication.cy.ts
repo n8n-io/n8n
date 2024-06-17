@@ -34,9 +34,8 @@ const signinPage = new SigninPage();
 const personalSettingsPage = new PersonalSettingsPage();
 const mainSidebar = new MainSidebar();
 
-describe('Two-factor authentication', () => {
+describe('Two-factor authentication', { disableAutoLogin: true }, () => {
 	beforeEach(() => {
-		void Cypress.session.clearAllSavedSessions();
 		cy.request('POST', `${BACKEND_BASE_URL}/rest/e2e/reset`, {
 			owner: user,
 			members: [],

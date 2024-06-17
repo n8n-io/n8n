@@ -17,34 +17,22 @@
 	</div>
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
 import type { BaseTextKey } from '@/plugins/i18n';
-import { type PropType, defineComponent } from 'vue';
+import { useRouter } from 'vue-router';
+import { VIEWS } from '@/constants';
+const router = useRouter();
 
-export default defineComponent({
-	name: 'ErrorView',
-	props: {
-		messageKey: {
-			type: String as PropType<BaseTextKey>,
-			required: true,
-		},
-		errorCode: {
-			type: Number,
-		},
-		redirectTextKey: {
-			type: String as PropType<BaseTextKey>,
-			required: true,
-		},
-		redirectPage: {
-			type: String,
-		},
-	},
-	methods: {
-		onButtonClick() {
-			void this.$router.push({ name: this.redirectPage });
-		},
-	},
-});
+const props = defineProps<{
+	messageKey: BaseTextKey;
+	errorCode: number;
+	redirectTextKey: BaseTextKey;
+	redirectPage?: keyof typeof VIEWS;
+}>();
+
+function onButtonClick() {
+	void router.push({ name: props.redirectPage ?? VIEWS.HOMEPAGE });
+}
 </script>
 
 <style lang="scss" module>

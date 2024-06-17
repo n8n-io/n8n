@@ -159,6 +159,7 @@ import { useRoute } from 'vue-router';
 
 // eslint-disable-next-line unused-imports/no-unused-imports, @typescript-eslint/no-unused-vars
 import type { BaseTextKey } from '@/plugins/i18n';
+import type { Scope } from '@n8n/permissions';
 
 export type IResource = {
 	id: string;
@@ -167,6 +168,9 @@ export type IResource = {
 	updatedAt?: string;
 	createdAt?: string;
 	homeProject?: ProjectSharingData;
+	scopes?: Scope[];
+	type?: string;
+	sharedWithProjects?: ProjectSharingData[];
 };
 
 interface IFilters {
