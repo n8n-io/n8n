@@ -887,9 +887,8 @@ export default defineComponent({
 					this.testedSuccessfully = false;
 				}
 
-				const usesExternalSecrets = Object.entries(credentialDetails.data || {}).some(
-					([, value]) =>
-						typeof value !== 'object' && /=.*\{\{[^}]*\$secrets\.[^}]+}}.*/.test(`${value}`),
+				const usesExternalSecrets = Object.entries(credentialDetails.data || {}).some(([, value]) =>
+					/=.*\{\{[^}]*\$secrets\.[^}]+}}.*/.test(`${value}`),
 				);
 
 				const trackProperties: ITelemetryTrackProperties = {

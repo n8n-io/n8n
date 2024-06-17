@@ -97,9 +97,7 @@ export function getMappedResult(
 	} else if (typeof prevValue === 'string' && isExpression(prevValue) && prevValue.length > 1) {
 		return `${prevValue} ${newParamValue}`;
 	} else if (prevValue && ['string', 'json'].includes(parameter.type)) {
-		return prevValue === '=' || typeof prevValue === 'object'
-			? `=${newParamValue}`
-			: `=${prevValue} ${newParamValue}`;
+		return prevValue === '=' ? `=${newParamValue}` : `=${prevValue} ${newParamValue}`;
 	}
 
 	return `=${newParamValue}`;

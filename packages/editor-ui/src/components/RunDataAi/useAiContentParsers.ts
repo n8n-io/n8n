@@ -132,11 +132,7 @@ const outputTypeParsers: {
 						} else if (content.id.includes('SystemMessage')) {
 							message = `**System Message:** ${message}`;
 						}
-						if (
-							execData.action &&
-							typeof execData.action !== 'object' &&
-							execData.action !== 'getMessages'
-						) {
+						if (execData.action && execData.action !== 'getMessages') {
 							message = `## Action: ${execData.action}\n\n${message}`;
 						}
 
