@@ -620,17 +620,17 @@ export class WorkflowDataProxy {
 		const that = this;
 
 		const getNodeOutput = (nodeName?: string, branchIndex?: number, runIndex?: number) => {
-			let executionData: INodeExecutionData[];
-
 			if (nodeName === undefined) {
-				executionData = that.connectionInputData;
-			} else {
+				return that.connectionInputData;
+			}
+
+			branchIndex = branchIndex || 0;
+			runIndex = runIndex === undefined ? -1 : runIndex;
+
+			const executionData = that.getNodeExecutionData(nodeName, false, branchIndex, runIndex);
+			if (!executionData.length && nodeName) {
 				const pinData = that.workflow.getPinDataOfNode(nodeName);
 				if (pinData) return pinData;
-
-				branchIndex = branchIndex || 0;
-				runIndex = runIndex === undefined ? -1 : runIndex;
-				executionData = that.getNodeExecutionData(nodeName, false, branchIndex, runIndex);
 			}
 
 			return executionData;

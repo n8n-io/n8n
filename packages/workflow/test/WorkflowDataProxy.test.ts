@@ -53,7 +53,7 @@ const getProxyFromFixture = (workflow: IWorkflowBase, run: IRun | null, activeNo
 	return dataProxy.getDataProxy();
 };
 
-describe.only('Pinned data', () => {
+describe('Pinned data', () => {
 	const fixture = loadFixture('pinData');
 	const proxy = getProxyFromFixture(fixture.workflow, null, 'NotPinnedSet1');
 
