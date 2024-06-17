@@ -1,125 +1,106 @@
 {
-	"nodes": [
-		{
-			"parameters": {
-				"assignments": {
-					"assignments": [
-						{
-							"id": "3058c300-b377-41b7-9c90-a01372f9b581",
-							"name": "firstName",
-							"value": "Joe",
-							"type": "string"
-						},
-						{
-							"id": "bb871662-c23c-4234-ac0c-b78c279bbf34",
-							"name": "lastName",
-							"value": "Smith",
-							"type": "string"
-						}
-					]
-				},
-				"options": {}
-			},
-			"id": "13db2063-7e95-4f7d-a2fe-feffe017cb33",
-			"name": "PinnedSet",
-			"type": "n8n-nodes-base.set",
-			"typeVersion": 3.3,
-			"position": [900, 260]
-		},
-		{
-			"parameters": {
-				"assignments": {
-					"assignments": [
-						{
-							"id": "a482f1fd-4815-4da4-a733-7beafb43c500",
-							"name": "fooo",
-							"value": "={{ $('PinnedSet').item.json }}",
-							"type": "string"
-						}
-					]
-				},
-				"options": {}
-			},
-			"id": "f9687458-ea9f-4763-a3ee-23defdf5fb0a",
-			"name": "NotPinnedSet1",
-			"type": "n8n-nodes-base.set",
-			"typeVersion": 3.3,
-			"position": [1100, 260]
-		},
-		{
-			"parameters": {
-				"assignments": {
-					"assignments": [
-						{
-							"id": "70d4e908-8c3f-4629-95b8-3e95bff0d78b",
-							"name": "foo",
-							"value": "={{ $('PinnedSet').first().json.firstName }}",
-							"type": "string"
-						}
-					]
-				},
-				"options": {}
-			},
-			"id": "e619c0dd-6675-4b10-80d3-4cedcd6464e6",
-			"name": "NotPinnedSet2",
-			"type": "n8n-nodes-base.set",
-			"typeVersion": 3.3,
-			"position": [1320, 260]
-		},
-		{
-			"parameters": {},
-			"id": "2299ecee-d729-4f67-814d-452fa811f54c",
-			"name": "Start",
-			"type": "n8n-nodes-base.manualTrigger",
-			"position": [700, 260],
-			"typeVersion": 1
-		}
-	],
-	"connections": {
-		"PinnedSet": {
-			"main": [
-				[
-					{
-						"node": "NotPinnedSet1",
-						"type": "main",
-						"index": 0
-					}
-				]
-			]
-		},
-		"NotPinnedSet1": {
-			"main": [
-				[
-					{
-						"node": "NotPinnedSet2",
-						"type": "main",
-						"index": 0
-					}
-				]
-			]
-		},
-		"Start": {
-			"main": [
-				[
-					{
-						"node": "PinnedSet",
-						"type": "main",
-						"index": 0
-					}
-				]
-			]
-		}
-	},
-	"pinData": {
-		"PinnedSet": [
-			{
-				"firstName": "Joe",
-				"lastName": "Smith"
-			},
-			{
-				"firstName": "Joan",
-				"lastName": "Somebody"
-			}
-		]
-	}
+  "meta": {
+    "instanceId": "a786b722078489c1fa382391a9f3476c2784761624deb2dfb4634827256d51a0"
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3058c300-b377-41b7-9c90-a01372f9b581",
+              "name": "firstName",
+              "value": "Joe",
+              "type": "string"
+            },
+            {
+              "id": "bb871662-c23c-4234-ac0c-b78c279bbf34",
+              "name": "lastName",
+              "value": "Smith",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "baee2bf4-5083-4cbe-8e51-4eddcf859ef5",
+      "name": "PinnedSet",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        1120,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a482f1fd-4815-4da4-a733-7beafb43c500",
+              "name": "test",
+              "value": "={{ $('PinnedSet').all().json }}\n{{ $('PinnedSet').item.json.firstName }}\n{{ $('PinnedSet').first().json.firstName }}\n{{ $('PinnedSet').itemMatching(0).json.firstName }}\n{{ $('PinnedSet').itemMatching(1).json.firstName }}\n{{ $('PinnedSet').last().json.firstName }}\n{{ $('PinnedSet').all()[0].json.firstName }}\n{{ $('PinnedSet').all()[1].json.firstName }}\n\n{{ $input.first().json.firstName }}\n{{ $input.last().json.firstName }}\n{{ $input.item.json.firstName }}\n\n{{ $json.firstName }}\n{{ $data.firstName }}\n\n{{ $items()[0].json.firstName }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2a543169-e2c1-4764-ac63-09534310b2b9",
+      "name": "NotPinnedSet1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        1360,
+        380
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "f36672e5-8c87-480e-a5b8-de9da6b63192",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "position": [
+        920,
+        380
+      ],
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "PinnedSet": {
+      "main": [
+        [
+          {
+            "node": "NotPinnedSet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "PinnedSet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {
+    "PinnedSet": [
+      {
+        "firstName": "Joe",
+        "lastName": "Smith"
+      },
+      {
+        "firstName": "Joan",
+        "lastName": "Summers"
+      }
+    ]
+  }
 }

@@ -29,6 +29,7 @@ import { deepCopy } from './utils';
 import { getGlobalState } from './GlobalState';
 import { ApplicationError } from './errors/application.error';
 import { SCRIPTING_NODE_TYPES } from './Constants';
+import { getPinDataIfManualExecution } from './WorkflowDataProxyHelpers';
 
 export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
 	return Boolean(
@@ -283,7 +284,7 @@ export class WorkflowDataProxy {
 
 			if (
 				!that.runExecutionData.resultData.runData.hasOwnProperty(nodeName) &&
-				!that.workflow.getPinDataOfNode(nodeName)
+				!getPinDataIfManualExecution(that.workflow, nodeName, that.mode)
 			) {
 				throw new ExpressionError('Referenced node is unexecuted', {
 					runIndex: that.runIndex,
@@ -627,10 +628,16 @@ export class WorkflowDataProxy {
 			branchIndex = branchIndex || 0;
 			runIndex = runIndex === undefined ? -1 : runIndex;
 
-			const executionData = that.getNodeExecutionData(nodeName, false, branchIndex, runIndex);
-			if (!executionData.length && nodeName) {
-				const pinData = that.workflow.getPinDataOfNode(nodeName);
-				if (pinData) return pinData;
+			let executionData: INodeExecutionData[];
+			try {
+				executionData = that.getNodeExecutionData(nodeName, false, branchIndex, runIndex);
+			} catch (e) {
+				const pinData = getPinDataIfManualExecution(that.workflow, nodeName, that.mode);
+				if (pinData) {
+					return pinData;
+				}
+
+				throw e;
 			}
 
 			return executionData;
@@ -675,7 +682,7 @@ export class WorkflowDataProxy {
 
 			if (context?.nodeCause) {
 				const nodeName = context.nodeCause;
-				const pinData = this.workflow.getPinDataOfNode(nodeName);
+				const pinData = getPinDataIfManualExecution(that.workflow, nodeName, that.mode);
 
 				if (pinData) {
 					if (!context) {
@@ -789,7 +796,7 @@ export class WorkflowDataProxy {
 
 				const previousNodeOutputData =
 					taskData?.data?.main?.[previousNodeOutput] ??
-					(that.workflow.getPinDataOfNode(sourceData.previousNode) as INodeExecutionData[]);
+					(getPinDataIfManualExecution(that.workflow, sourceData.previousNode, that.mode) || []);
 				const source = taskData?.source ?? [];
 
 				if (pairedItem.item >= previousNodeOutputData.length) {
@@ -914,9 +921,11 @@ export class WorkflowDataProxy {
 					sourceData?.previousNodeRun || 0
 				];
 
-			const pinData = that.workflow.getPinDataOfNode(sourceData.previousNode) as
-				| INodeExecutionData[]
-				| undefined;
+			const pinData = getPinDataIfManualExecution(
+				that.workflow,
+				sourceData.previousNode,
+				that.mode,
+			);
 
 			if (!taskData && pinData) {
 				taskData = { data: { main: [pinData] }, startTime: 0, executionTime: 0, source: [] };
@@ -965,7 +974,7 @@ export class WorkflowDataProxy {
 				const ensureNodeExecutionData = () => {
 					if (
 						!that?.runExecutionData?.resultData?.runData.hasOwnProperty(nodeName) &&
-						!that.workflow.getPinDataOfNode(nodeName)
+						!getPinDataIfManualExecution(that.workflow, nodeName, that.mode)
 					) {
 						throw createExpressionError('Referenced node is unexecuted', {
 							runIndex: that.runIndex,
@@ -1030,7 +1039,11 @@ export class WorkflowDataProxy {
 										itemIndex = that.itemIndex;
 									}
 
-									const pinnedData = that.workflow.getPinDataOfNode(nodeName);
+									const pinnedData = getPinDataIfManualExecution(
+										that.workflow,
+										nodeName,
+										that.mode,
+									);
 									const executionData = that.connectionInputData.length
 										? that.connectionInputData
 										: pinnedData;
