@@ -10,6 +10,7 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
+import { randomBytes } from 'crypto';
 
 export async function jiraSoftwareCloudApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
@@ -262,4 +263,20 @@ export async function getUsers(this: ILoadOptionsFunctions): Promise<INodeProper
 		.sort((a: INodePropertyOptions, b: INodePropertyOptions) => {
 			return a.name.toLowerCase() > b.name.toLowerCase() ? 1 : -1;
 		});
+}
+
+export function generateWebhookSecret(length: number): string {
+	let result = '';
+	const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+	const charactersLength = characters.length;
+
+	while (result.length < length) {
+		const buffer = randomBytes(length);
+		for (let i = 0; i < buffer.length && result.length < length; ++i) {
+			const randomValue = buffer[i] % charactersLength;
+			result += characters[randomValue];
+		}
+	}
+
+	return result;
 }

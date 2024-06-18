@@ -1,3 +1,4 @@
+import { createHmac } from 'crypto';
 import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
@@ -9,7 +10,13 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { allEvents, eventExists, getId, jiraSoftwareCloudApiRequest } from './GenericFunctions';
+import {
+	allEvents,
+	eventExists,
+	getId,
+	jiraSoftwareCloudApiRequest,
+	generateWebhookSecret,
+} from './GenericFunctions';
 
 export class JiraTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -42,16 +49,6 @@ export class JiraTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						jiraVersion: ['server'],
-					},
-				},
-			},
-			{
-				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
-				name: 'httpQueryAuth',
-				displayName: 'Credentials to Authenticate Webhook',
-				displayOptions: {
-					show: {
-						authenticateWebhook: [true],
 					},
 				},
 			},
@@ -441,6 +438,7 @@ export class JiraTrigger implements INodeType {
 					events,
 					filters: {},
 					excludeBody: false,
+					secret: '',
 				};
 
 				if (additionalFields.filter) {
@@ -456,21 +454,30 @@ export class JiraTrigger implements INodeType {
 				const parameters: any = {};
 
 				if (authenticateWebhook) {
-					let httpQueryAuth;
-					try {
-						httpQueryAuth = await this.getCredentials('httpQueryAuth');
-					} catch (e) {
-						throw new NodeOperationError(
-							this.getNode(),
-							new Error('Could not retrieve HTTP Query Auth credentials', { cause: e }),
-						);
+					if (nodeVersion === 1) {
+						let httpQueryAuth;
+						try {
+							httpQueryAuth = await this.getCredentials('httpQueryAuth');
+						} catch (e) {
+							throw new NodeOperationError(
+								this.getNode(),
+								new Error('Could not retrieve HTTP Query Auth credentials', { cause: e }),
+							);
+						}
+						if (!httpQueryAuth.name && !httpQueryAuth.value) {
+							throw new NodeOperationError(this.getNode(), 'HTTP Query Auth credentials are empty');
+						}
+						parameters[encodeURIComponent(httpQueryAuth.name as string)] = Buffer.from(
+							httpQueryAuth.value as string,
+						).toString('base64');
+					} else {
+						if (!webhookData.secret) {
+							// Generate a cryptographically strong random string
+							// It should be 20 chars with the alphabet A-Z, a-z, 0-9
+							webhookData.secret = generateWebhookSecret(20);
+						}
+						body.secret = webhookData.secret as string;
 					}
-					if (!httpQueryAuth.name && !httpQueryAuth.value) {
-						throw new NodeOperationError(this.getNode(), 'HTTP Query Auth credentials are empty');
-					}
-					parameters[encodeURIComponent(httpQueryAuth.name as string)] = Buffer.from(
-						httpQueryAuth.value as string,
-					).toString('base64');
 				}
 
 				if (additionalFields.includeFields) {
@@ -515,9 +522,10 @@ export class JiraTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const nodeVersion = this.getNode().typeVersion;
-		const bodyData = this.getBodyData();
+		const bodyData = this.getBodyData() || {};
 		const queryData = this.getQueryData() as IDataObject;
 		const response = this.getResponseObject();
+		const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
 
 		let authenticateWebhook = false;
 
@@ -532,39 +540,56 @@ export class JiraTrigger implements INodeType {
 		}
 
 		if (authenticateWebhook) {
-			let httpQueryAuth: ICredentialDataDecryptedObject | undefined;
+			if (nodeVersion === 1) {
+				let httpQueryAuth: ICredentialDataDecryptedObject | undefined;
 
-			try {
-				httpQueryAuth = await this.getCredentials('httpQueryAuth');
-			} catch (error) {}
+				try {
+					httpQueryAuth = await this.getCredentials('httpQueryAuth');
+				} catch (error) {}
 
-			if (httpQueryAuth === undefined || !httpQueryAuth.name || !httpQueryAuth.value) {
-				response
-					.status(403)
-					.json({ message: 'Auth settings are not valid, some data are missing' });
+				if (httpQueryAuth === undefined || !httpQueryAuth.name || !httpQueryAuth.value) {
+					response
+						.status(403)
+						.json({ message: 'Auth settings are not valid, some data are missing' });
 
-				return {
-					noWebhookResponse: true,
-				};
+					return {
+						noWebhookResponse: true,
+					};
+				}
+
+				const paramName = httpQueryAuth.name as string;
+				const paramValue = Buffer.from(httpQueryAuth.value as string).toString('base64');
+
+				if (!queryData.hasOwnProperty(paramName) || queryData[paramName] !== paramValue) {
+					response.status(401).json({ message: 'Provided authentication data is not valid' });
+
+					return {
+						noWebhookResponse: true,
+					};
+				}
+
+				delete queryData[paramName];
+			} else if (!additionalFields.excludeBody) {
+				// There's no signature if we have no body
+				const webhookData = this.getWorkflowStaticData('node');
+				const headers = this.getHeaderData() as IDataObject;
+				const rawBody = this.getRequestObject().rawBody;
+				const computedSignature = createHmac('sha256', webhookData.secret as string)
+					.update(rawBody)
+					.digest('hex');
+
+				if (headers['x-hub-signature'] !== `sha256=${computedSignature}`) {
+					this.logger.warn(
+						`[${this.getWorkflow().name}][${this.getNode().name}] - Jira Trigger webhook signature not valid from ${this.getRequestObject().ip}`,
+					);
+					response.status(401).json({ message: 'Signature not valid' });
+					return {
+						noWebhookResponse: true,
+					};
+				}
 			}
-
-			const paramName = httpQueryAuth.name as string;
-			const paramValue = Buffer.from(httpQueryAuth.value as string).toString('base64');
-
-			if (!queryData.hasOwnProperty(paramName) || queryData[paramName] !== paramValue) {
-				response.status(403).json({ message: 'Provided authentication data is not valid' });
-
-				return {
-					noWebhookResponse: true,
-				};
-			}
-
-			delete queryData[paramName];
-
-			Object.assign(bodyData, queryData);
-		} else {
-			Object.assign(bodyData, queryData);
 		}
+		Object.assign(bodyData, queryData);
 
 		return {
 			workflowData: [this.helpers.returnJsonArray(bodyData)],
