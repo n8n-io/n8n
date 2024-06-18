@@ -26,6 +26,10 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 
 	const rootStore = useRootStore();
 
+	// ---------------------------------------------------------------------------
+	// #region Computed
+	// ---------------------------------------------------------------------------
+
 	const allNodeTypes = computed(() => {
 		return Object.values(nodeTypes.value).reduce<INodeTypeDescription[]>(
 			(allNodeTypes, nodeType) => {
@@ -192,6 +196,27 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		return nodesByOutputType;
 	});
 
+	const isConfigurableNode = computed(() => {
+		return (workflow: Workflow, node: INode, nodeTypeName: string): boolean => {
+			const nodeType = getNodeType.value(nodeTypeName);
+			if (nodeType === null) {
+				return false;
+			}
+			const inputs = NodeHelpers.getNodeInputs(workflow, node, nodeType);
+			const inputTypes = NodeHelpers.getConnectionTypes(inputs);
+
+			return inputTypes
+				? inputTypes.filter((input) => input !== NodeConnectionType.Main).length > 0
+				: false;
+		};
+	});
+
+	// #endregion
+
+	// ---------------------------------------------------------------------------
+	// #region Methods
+	// ---------------------------------------------------------------------------
+
 	const setNodeTypes = (newNodeTypes: INodeTypeDescription[] = []) => {
 		const nodeTypes = groupNodeTypesByNameAndType(newNodeTypes);
 		nodeTypes.value = {
@@ -275,6 +300,8 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		}
 	};
 
+	// #endregion
+
 	return {
 		nodeTypes,
 		allNodeTypes,
@@ -289,6 +316,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		nativelyNumberSuffixedDefaults,
 		visibleNodeTypesByOutputConnectionTypeNames,
 		visibleNodeTypesByInputConnectionTypeNames,
+		isConfigurableNode,
 		getResourceMapperFields,
 		getResourceLocatorResults,
 		getNodeParameterOptions,
