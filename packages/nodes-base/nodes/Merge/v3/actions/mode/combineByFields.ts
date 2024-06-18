@@ -346,7 +346,6 @@ export async function execute(
 	}
 
 	const matches = findMatches(input1, input2, matchFields, options);
-	console.log(matches);
 
 	if (joinMode === 'keepMatches' || joinMode === 'keepEverything') {
 		let output: INodeExecutionData[] = [];
