@@ -471,3 +471,12 @@ export const getBadgeIconUrl = (
 ): string | null => {
 	return getThemedValue(nodeType.badgeIconUrl, theme);
 };
+
+export const getNodeIconColor = (
+	nodeType?: INodeTypeDescription | SimplifiedNodeType | IVersionNode | null,
+) => {
+	if (nodeType && 'iconColor' in nodeType && nodeType.iconColor) {
+		return `var(--color-node-icon-${nodeType.iconColor})`;
+	}
+	return nodeType?.defaults?.color?.toString();
+};
