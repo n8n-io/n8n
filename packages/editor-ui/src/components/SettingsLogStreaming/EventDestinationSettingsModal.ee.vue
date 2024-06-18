@@ -210,7 +210,7 @@ import EventSelection from '@/components/SettingsLogStreaming/EventSelection.ee.
 import type { EventBus } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 
 export default defineComponent({
 	name: 'EventDestinationSettingsModal',
