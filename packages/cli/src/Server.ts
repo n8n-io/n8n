@@ -1,8 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-shadow */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Container, Service } from 'typedi';
 import { exec as callbackExec } from 'child_process';
 import { access as fsAccess } from 'fs/promises';
@@ -13,13 +8,19 @@ import helmet from 'helmet';
 import { InstanceSettings } from 'n8n-core';
 import type { IN8nUISettings } from 'n8n-workflow';
 
-// @ts-ignore
+// @ts-expect-error missing types
 import timezones from 'google-timezones-json';
 
 import config from '@/config';
-import { Queue } from '@/Queue';
 
-import { EDITOR_UI_DIST_DIR, inDevelopment, inE2ETests, N8N_VERSION, Time } from '@/constants';
+import {
+	EDITOR_UI_DIST_DIR,
+	inDevelopment,
+	inE2ETests,
+	inProduction,
+	N8N_VERSION,
+	Time,
+} from '@/constants';
 import type { APIRequest } from '@/requests';
 import { ControllerRegistry } from '@/decorators';
 import { isApiEnabled, loadPublicApiVersions } from '@/PublicApi';
@@ -33,12 +34,8 @@ import { AbstractServer } from '@/AbstractServer';
 import { PostHogClient } from '@/posthog';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { InternalHooks } from '@/InternalHooks';
-import { SamlService } from '@/sso/saml/saml.service.ee';
-import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
-
 import { handleMfaDisable, isMfaFeatureEnabled } from '@/Mfa/helpers';
 import type { FrontendService } from '@/services/frontend.service';
-// import { CollaborationService } from '@/collaboration/collaboration.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 
 import '@/controllers/activeWorkflows.controller';
@@ -63,13 +60,10 @@ import '@/controllers/users.controller';
 import '@/controllers/userSettings.controller';
 import '@/controllers/workflowStatistics.controller';
 import '@/credentials/credentials.controller';
-import '@/environments/sourceControl/sourceControl.controller.ee';
-import '@/environments/variables/variables.controller.ee';
 import '@/eventbus/eventBus.controller';
 import '@/executions/executions.controller';
 import '@/ExternalSecrets/ExternalSecrets.controller.ee';
 import '@/license/license.controller';
-import '@/sso/saml/routes/saml.controller.ee';
 import '@/workflows/workflowHistory/workflowHistory.controller.ee';
 import '@/workflows/workflows.controller';
 
@@ -81,11 +75,15 @@ export class Server extends AbstractServer {
 
 	private presetCredentialsLoaded: boolean;
 
-	private loadNodesAndCredentials: LoadNodesAndCredentials;
-
 	private frontendService?: FrontendService;
 
-	constructor() {
+	constructor(
+		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+		private readonly internalHooks: InternalHooks,
+		private readonly orchestrationService: OrchestrationService,
+		private readonly controllerRegistry: ControllerRegistry,
+		private readonly postHogClient: PostHogClient,
+	) {
 		super('main');
 
 		this.testWebhooksEnabled = true;
@@ -93,11 +91,9 @@ export class Server extends AbstractServer {
 	}
 
 	async start() {
-		this.loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
-
 		if (!config.getEnv('endpoints.disableUi')) {
-			// eslint-disable-next-line @typescript-eslint/no-var-requires
-			this.frontendService = Container.get(require('@/services/frontend.service').FrontendService);
+			const { FrontendService } = await import('@/services/frontend.service');
+			this.frontendService = Container.get(FrontendService);
 		}
 
 		this.presetCredentialsLoaded = false;
@@ -110,22 +106,17 @@ export class Server extends AbstractServer {
 			void this.loadNodesAndCredentials.setupHotReload();
 		}
 
-		void Container.get(InternalHooks).onServerStarted();
-		// Container.get(CollaborationService);
+		void this.internalHooks.onServerStarted();
 	}
 
-	private async registerControllers() {
-		const { app } = this;
-		if (
-			process.env.NODE_ENV !== 'production' &&
-			Container.get(OrchestrationService).isMultiMainSetupEnabled
-		) {
+	private async registerAdditionalControllers() {
+		if (!inProduction && this.orchestrationService.isMultiMainSetupEnabled) {
 			await import('@/controllers/debug.controller');
 		}
 
 		if (isLdapEnabled()) {
 			const { LdapService } = await import('@/Ldap/ldap.service');
-			await require('@/Ldap/ldap.controller');
+			await import('@/Ldap/ldap.controller');
 			await Container.get(LdapService).init();
 		}
 
@@ -145,7 +136,33 @@ export class Server extends AbstractServer {
 			await import('@/controllers/cta.controller');
 		}
 
-		Container.get(ControllerRegistry).activate(app);
+		// ----------------------------------------
+		// SAML
+		// ----------------------------------------
+
+		// initialize SamlService if it is licensed, even if not enabled, to
+		// set up the initial environment
+		try {
+			const { SamlService } = await import('@/sso/saml/saml.service.ee');
+			await Container.get(SamlService).init();
+			await import('@/sso/saml/routes/saml.controller.ee');
+		} catch (error) {
+			this.logger.warn(`SAML initialization failed: ${(error as Error).message}`);
+		}
+
+		// ----------------------------------------
+		// Source Control
+		// ----------------------------------------
+		try {
+			const { SourceControlService } = await import(
+				'@/environments/sourceControl/sourceControl.service.ee'
+			);
+			await Container.get(SourceControlService).init();
+			await import('@/environments/sourceControl/sourceControl.controller.ee');
+			await import('@/environments/variables/variables.controller.ee');
+		} catch (error) {
+			this.logger.warn(`Source Control initialization failed: ${(error as Error).message}`);
+		}
 	}
 
 	async configure(): Promise<void> {
@@ -166,7 +183,7 @@ export class Server extends AbstractServer {
 			await this.externalHooks.run('frontend.settings', [frontendService.getSettings()]);
 		}
 
-		await Container.get(PostHogClient).init();
+		await this.postHogClient.init();
 
 		const publicApiEndpoint = config.getEnv('publicApi.path');
 
@@ -195,33 +212,16 @@ export class Server extends AbstractServer {
 		setupPushHandler(restEndpoint, app);
 
 		if (config.getEnv('executions.mode') === 'queue') {
+			const { Queue } = await import('@/Queue');
 			await Container.get(Queue).init();
 		}
 
 		await handleMfaDisable();
 
-		await this.registerControllers();
+		await this.registerAdditionalControllers();
 
-		// ----------------------------------------
-		// SAML
-		// ----------------------------------------
-
-		// initialize SamlService if it is licensed, even if not enabled, to
-		// set up the initial environment
-		try {
-			await Container.get(SamlService).init();
-		} catch (error) {
-			this.logger.warn(`SAML initialization failed: ${error.message}`);
-		}
-
-		// ----------------------------------------
-		// Source Control
-		// ----------------------------------------
-		try {
-			await Container.get(SourceControlService).init();
-		} catch (error) {
-			this.logger.warn(`Source Control initialization failed: ${error.message}`);
-		}
+		// register all known controllers
+		this.controllerRegistry.activate(app);
 
 		// ----------------------------------------
 		// Options
@@ -230,6 +230,7 @@ export class Server extends AbstractServer {
 		// Returns all the available timezones
 		this.app.get(
 			`/${this.restEndpoint}/options/timezones`,
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 			ResponseHelper.send(async () => timezones),
 		);
 

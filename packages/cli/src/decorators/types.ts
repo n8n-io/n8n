@@ -1,4 +1,5 @@
 import type { RequestHandler } from 'express';
+import type { Class } from 'n8n-core';
 import type { BooleanLicenseFeature } from '@/Interfaces';
 import type { Scope } from '@n8n/permissions';
 
@@ -30,7 +31,7 @@ export interface RouteMetadata {
 	middlewares: RequestHandler[];
 	usesTemplates: boolean;
 	skipAuth: boolean;
-	rateLimit?: RateLimit;
+	rateLimit?: boolean | RateLimit;
 	licenseFeature?: BooleanLicenseFeature;
 	accessScope?: AccessScope;
 }
@@ -41,4 +42,5 @@ export interface ControllerMetadata {
 	routes: Map<HandlerName, RouteMetadata>;
 }
 
-export type Controller = Record<HandlerName, (...args: unknown[]) => Promise<unknown>>;
+export type Controller = Class<object> &
+	Record<HandlerName, (...args: unknown[]) => Promise<unknown>>;

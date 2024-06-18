@@ -22,9 +22,9 @@ import type {
 	RouteMetadata,
 } from './types';
 
-const registry = new Map<Function, ControllerMetadata>();
+const registry = new Map<Controller, ControllerMetadata>();
 
-export const getControllerMetadata = (controllerClass: Function) => {
+export const getControllerMetadata = (controllerClass: Controller) => {
 	let metadata = registry.get(controllerClass);
 	if (!metadata) {
 		metadata = {
@@ -37,7 +37,7 @@ export const getControllerMetadata = (controllerClass: Function) => {
 	return metadata;
 };
 
-export const getRouteMetadata = (controllerClass: Function, handlerName: HandlerName) => {
+export const getRouteMetadata = (controllerClass: Controller, handlerName: HandlerName) => {
 	const metadata = getControllerMetadata(controllerClass);
 	let route = metadata.routes.get(handlerName);
 	if (!route) {
@@ -60,11 +60,11 @@ export class ControllerRegistry {
 		}
 	}
 
-	private activateController(app: Application, controllerClass: Function) {
+	private activateController(app: Application, controllerClass: Controller) {
 		const metadata = registry.get(controllerClass)!;
 
 		const router = Router({ mergeParams: true });
-		const prefix = `/${[config.getEnv('endpoints.rest'), metadata.basePath].join('/')}`
+		const prefix = `/${config.getEnv('endpoints.rest')}/${metadata.basePath}`
 			.replace(/\/+/g, '/')
 			.replace(/\/$/, '');
 		app.use(prefix, router);
@@ -94,7 +94,8 @@ export class ControllerRegistry {
 		}
 	}
 
-	private createRateLimitMiddleware(rateLimit: RateLimit): RequestHandler {
+	private createRateLimitMiddleware(rateLimit: true | RateLimit): RequestHandler {
+		if (typeof rateLimit === 'boolean') rateLimit = {};
 		return expressRateLimit({
 			windowMs: rateLimit.windowMs,
 			limit: rateLimit.limit,

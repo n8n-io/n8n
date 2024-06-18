@@ -11,7 +11,7 @@ import type { AuthService } from '@/auth/auth.service';
 import type { License } from '@/License';
 import type { SuperAgentTest } from '@test-integration/types';
 
-describe('registerController', () => {
+describe('ControllerRegistry', () => {
 	const license = mock<License>();
 	const authService = mock<AuthService>();
 	let agent: SuperAgentTest;
@@ -32,7 +32,7 @@ describe('registerController', () => {
 				return { ok: true };
 			}
 
-			@Get('/rate-limited', { rateLimit: {} })
+			@Get('/rate-limited', { rateLimit: true })
 			rateLimited() {
 				return { ok: true };
 			}
@@ -71,7 +71,7 @@ describe('registerController', () => {
 			}
 		}
 
-		it('should not require auth unless configured', async () => {
+		it('should not require auth if configured to skip', async () => {
 			await agent.get('/rest/test/no-auth').expect(200);
 			expect(authService.authMiddleware).not.toHaveBeenCalled();
 		});
@@ -100,7 +100,7 @@ describe('registerController', () => {
 			authService.authMiddleware.mockImplementation(async (_req, _res, next) => next());
 		});
 
-		it('should not allow when feature is not available', async () => {
+		it('should disallow when feature is missing', async () => {
 			license.isFeatureEnabled.calledWith('feat:sharing').mockReturnValue(false);
 			await agent.get('/rest/test/with-sharing').expect(403);
 			expect(license.isFeatureEnabled).toHaveBeenCalled();
