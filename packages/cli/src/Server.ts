@@ -79,9 +79,7 @@ export class Server extends AbstractServer {
 
 	constructor(
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
-		private readonly internalHooks: InternalHooks,
 		private readonly orchestrationService: OrchestrationService,
-		private readonly controllerRegistry: ControllerRegistry,
 		private readonly postHogClient: PostHogClient,
 	) {
 		super('main');
@@ -106,7 +104,7 @@ export class Server extends AbstractServer {
 			void this.loadNodesAndCredentials.setupHotReload();
 		}
 
-		void this.internalHooks.onServerStarted();
+		void Container.get(InternalHooks).onServerStarted();
 	}
 
 	private async registerAdditionalControllers() {
@@ -221,7 +219,7 @@ export class Server extends AbstractServer {
 		await this.registerAdditionalControllers();
 
 		// register all known controllers
-		this.controllerRegistry.activate(app);
+		Container.get(ControllerRegistry).activate(app);
 
 		// ----------------------------------------
 		// Options
