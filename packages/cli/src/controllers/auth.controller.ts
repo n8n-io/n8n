@@ -103,6 +103,7 @@ export class AuthController {
 		this.eventRelay.emit('user-login-failed', {
 			authenticationMethod: usedAuthenticationMethod,
 			userEmail: email,
+			reason: 'wrong credentials',
 		});
 		throw new AuthError('Wrong username or password. Do you have caps lock on?');
 	}
