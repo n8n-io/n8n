@@ -57,6 +57,8 @@ export class ExecutionRecoveryService {
 	 * Recover key properties of a truncated execution using event logs.
 	 */
 	async recoverFromLogs(executionId: string, messages: EventMessageTypes[]) {
+		if (this.orchestrationService.isFollower) return;
+
 		const amendedExecution = await this.amend(executionId, messages);
 
 		if (!amendedExecution) return null;

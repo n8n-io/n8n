@@ -19,7 +19,12 @@
 import type { IVersionNode, SimplifiedNodeType } from '@/Interface';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useUIStore } from '@/stores/ui.store';
-import { getBadgeIconUrl, getNodeIcon, getNodeIconUrl } from '@/utils/nodeTypesUtils';
+import {
+	getBadgeIconUrl,
+	getNodeIcon,
+	getNodeIconColor,
+	getNodeIconUrl,
+} from '@/utils/nodeTypesUtils';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { computed } from 'vue';
 
@@ -75,14 +80,7 @@ const iconType = computed(() => {
 	return 'unknown';
 });
 
-const color = computed(() => {
-	const nodeType = props.nodeType;
-
-	if (nodeType && 'iconColor' in nodeType && nodeType.iconColor) {
-		return `var(--color-node-icon-${nodeType.iconColor})`;
-	}
-	return nodeType?.defaults?.color?.toString() ?? props.colorDefault ?? '';
-});
+const color = computed(() => getNodeIconColor(props.nodeType) ?? props.colorDefault ?? '');
 
 const iconSource = computed<NodeIconSource>(() => {
 	const nodeType = props.nodeType;
@@ -104,6 +102,7 @@ const iconSource = computed<NodeIconSource>(() => {
 		// Otherwise, extract it from icon prop
 		if (nodeType.icon) {
 			const icon = getNodeIcon(nodeType, uiStore.appliedTheme);
+
 			if (icon) {
 				const [type, path] = icon.split(':');
 				if (type === 'file') {

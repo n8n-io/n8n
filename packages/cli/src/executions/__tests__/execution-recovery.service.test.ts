@@ -180,6 +180,7 @@ describe('ExecutionRecoveryService', () => {
 	let executionRecoveryService: ExecutionRecoveryService;
 	let orchestrationService: OrchestrationService;
 	let executionRepository: ExecutionRepository;
+	let orchestrationService: OrchestrationService;
 
 	beforeAll(async () => {
 		await testDb.init();
@@ -194,6 +195,10 @@ describe('ExecutionRecoveryService', () => {
 			executionRepository,
 			orchestrationService,
 		);
+	});
+
+	beforeEach(() => {
+		config.set('multiMainSetup.instanceType', 'leader');
 	});
 
 	afterEach(async () => {
@@ -269,7 +274,29 @@ describe('ExecutionRecoveryService', () => {
 	});
 
 	describe('recoverFromLogs', () => {
-		describe('if no messages', () => {
+		describe('if follower', () => {
+			test('should do nothing', async () => {
+				/**
+				 * Arrange
+				 */
+				config.set('multiMainSetup.instanceType', 'follower');
+				// @ts-expect-error Private method
+				const amendSpy = jest.spyOn(executionRecoveryService, 'amend');
+				const messages = setupMessages('123', 'Some workflow');
+
+				/**
+				 * Act
+				 */
+				await executionRecoveryService.recoverFromLogs('123', messages);
+
+				/**
+				 * Assert
+				 */
+				expect(amendSpy).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('if leader, with 0 messages', () => {
 			test('should return `null` if no execution found', async () => {
 				/**
 				 * Arrange
@@ -319,7 +346,7 @@ describe('ExecutionRecoveryService', () => {
 			});
 		});
 
-		describe('if messages', () => {
+		describe('if leader, with 1+ messages', () => {
 			test('should return `null` if no execution found', async () => {
 				/**
 				 * Arrange
