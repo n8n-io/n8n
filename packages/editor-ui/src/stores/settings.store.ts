@@ -25,7 +25,7 @@ import type {
 } from 'n8n-workflow';
 import { ExpressionEvaluatorProxy } from 'n8n-workflow';
 import { defineStore } from 'pinia';
-import { useRootStore } from './n8nRoot.store';
+import { useRootStore } from './root.store';
 import { useUIStore } from './ui.store';
 import { useUsersStore } from './users.store';
 import { useVersionsStore } from './versions.store';
@@ -262,7 +262,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		async getSettings(): Promise<void> {
 			const rootStore = useRootStore();
-			const settings = await getSettings(rootStore.getRestApiContext);
+			const settings = await getSettings(rootStore.restApiContext);
 
 			this.setSettings(settings);
 			this.settings.communityNodesEnabled = settings.communityNodesEnabled;
@@ -325,37 +325,37 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		async getApiKey(): Promise<string | null> {
 			const rootStore = useRootStore();
-			const { apiKey } = await getApiKey(rootStore.getRestApiContext);
+			const { apiKey } = await getApiKey(rootStore.restApiContext);
 			return apiKey;
 		},
 		async createApiKey(): Promise<string | null> {
 			const rootStore = useRootStore();
-			const { apiKey } = await createApiKey(rootStore.getRestApiContext);
+			const { apiKey } = await createApiKey(rootStore.restApiContext);
 			return apiKey;
 		},
 		async deleteApiKey(): Promise<void> {
 			const rootStore = useRootStore();
-			await deleteApiKey(rootStore.getRestApiContext);
+			await deleteApiKey(rootStore.restApiContext);
 		},
 		async getLdapConfig() {
 			const rootStore = useRootStore();
-			return await getLdapConfig(rootStore.getRestApiContext);
+			return await getLdapConfig(rootStore.restApiContext);
 		},
 		async getLdapSynchronizations(pagination: { page: number }) {
 			const rootStore = useRootStore();
-			return await getLdapSynchronizations(rootStore.getRestApiContext, pagination);
+			return await getLdapSynchronizations(rootStore.restApiContext, pagination);
 		},
 		async testLdapConnection() {
 			const rootStore = useRootStore();
-			return await testLdapConnection(rootStore.getRestApiContext);
+			return await testLdapConnection(rootStore.restApiContext);
 		},
 		async updateLdapConfig(ldapConfig: ILdapConfig) {
 			const rootStore = useRootStore();
-			return await updateLdapConfig(rootStore.getRestApiContext, ldapConfig);
+			return await updateLdapConfig(rootStore.restApiContext, ldapConfig);
 		},
 		async runLdapSync(data: IDataObject) {
 			const rootStore = useRootStore();
-			return await runLdapSync(rootStore.getRestApiContext, data);
+			return await runLdapSync(rootStore.restApiContext, data);
 		},
 		setSaveDataErrorExecution(newValue: string) {
 			this.saveDataErrorExecution = newValue;
@@ -368,7 +368,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		async getTimezones(): Promise<IDataObject> {
 			const rootStore = useRootStore();
-			return await makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/options/timezones');
+			return await makeRestApiRequest(rootStore.restApiContext, 'GET', '/options/timezones');
 		},
 	},
 });

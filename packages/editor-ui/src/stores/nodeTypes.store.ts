@@ -14,7 +14,7 @@ import type {
 import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useCredentialsStore } from './credentials.store';
-import { useRootStore } from './n8nRoot.store';
+import { useRootStore } from './root.store';
 import * as utils from '@/utils/credentialOnlyNodes';
 import { groupNodeTypesByNameAndType } from '@/utils/nodeTypes/nodeTypeTransforms';
 import { computed, ref } from 'vue';
@@ -235,7 +235,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	};
 
 	const getNodeTypes = async () => {
-		const nodeTypes = await nodeTypesApi.getNodeTypes(rootStore.getBaseUrl);
+		const nodeTypes = await nodeTypesApi.getNodeTypes(rootStore.baseUrl);
 		if (nodeTypes.length) {
 			setNodeTypes(nodeTypes);
 		}
@@ -248,7 +248,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	};
 
 	const getNodeTranslationHeaders = async () => {
-		const headers = await nodeTypesApi.getNodeTranslationHeaders(rootStore.getRestApiContext);
+		const headers = await nodeTypesApi.getNodeTranslationHeaders(rootStore.restApiContext);
 
 		if (headers) {
 			addHeaders(headers, rootStore.defaultLocale);
@@ -256,20 +256,20 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	};
 
 	const getNodeParameterOptions = async (sendData: DynamicNodeParameters.OptionsRequest) => {
-		return await nodeTypesApi.getNodeParameterOptions(rootStore.getRestApiContext, sendData);
+		return await nodeTypesApi.getNodeParameterOptions(rootStore.restApiContext, sendData);
 	};
 
 	const getResourceLocatorResults = async (
 		sendData: DynamicNodeParameters.ResourceLocatorResultsRequest,
 	) => {
-		return await nodeTypesApi.getResourceLocatorResults(rootStore.getRestApiContext, sendData);
+		return await nodeTypesApi.getResourceLocatorResults(rootStore.restApiContext, sendData);
 	};
 
 	const getResourceMapperFields = async (
 		sendData: DynamicNodeParameters.ResourceMapperFieldsRequest,
 	) => {
 		try {
-			return await nodeTypesApi.getResourceMapperFields(rootStore.getRestApiContext, sendData);
+			return await nodeTypesApi.getResourceMapperFields(rootStore.restApiContext, sendData);
 		} catch (error) {
 			return null;
 		}
