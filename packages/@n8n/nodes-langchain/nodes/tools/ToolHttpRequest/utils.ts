@@ -10,12 +10,6 @@ import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow'
 
 import { getOAuth2AdditionalParameters } from 'n8n-nodes-base/dist/nodes/HttpRequest/GenericFunctions';
 
-import set from 'lodash/set';
-import get from 'lodash/get';
-import unset from 'lodash/unset';
-
-import cheerio from 'cheerio';
-import { convert } from 'html-to-text';
 import type {
 	ParameterInputType,
 	ParametersValues,
@@ -24,6 +18,16 @@ import type {
 	SendIn,
 	ToolParameter,
 } from './interfaces';
+
+import set from 'lodash/set';
+import get from 'lodash/get';
+import unset from 'lodash/unset';
+
+import cheerio from 'cheerio';
+import { convert } from 'html-to-text';
+
+import { Readability } from '@mozilla/readability';
+import { JSDOM } from 'jsdom';
 
 const genericCredentialRequest = async (ctx: IExecuteFunctions, itemIndex: number) => {
 	const genericType = ctx.getNodeParameter('genericAuthType', itemIndex) as string;
@@ -228,24 +232,12 @@ const textOptimizer = (ctx: IExecuteFunctions, itemIndex: number, maxLength: num
 			);
 		}
 
-		let text: string = '';
+		const dom = new JSDOM(response);
+		const article = new Readability(dom.window.document, {
+			keepClasses: true,
+		}).parse();
 
-		const $ = cheerio.load(response);
-		const bodyHtml = $('body').html();
-
-		if (bodyHtml) {
-			text = convert(bodyHtml, {
-				selectors: [
-					{ selector: 'a', options: { ignoreHref: true } },
-					{ selector: 'img', format: 'skip' },
-					{ selector: 'a', options: { linkBrackets: false } },
-					{ selector: 'p', options: { leadingLineBreaks: 1, trailingLineBreaks: 1 } },
-					{ selector: 'pre', options: { leadingLineBreaks: 1, trailingLineBreaks: 1 } },
-				],
-			});
-		} else {
-			text = response;
-		}
+		const text = article?.textContent || '';
 
 		if (maxLength > 0 && text.length > maxLength) {
 			return text.substring(0, maxLength);
