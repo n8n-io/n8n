@@ -65,7 +65,7 @@ import { CODE_EXECUTION_MODES, CODE_LANGUAGES } from 'n8n-workflow';
 
 import { ASK_AI_EXPERIMENT, CODE_NODE_TYPE } from '@/constants';
 import { codeNodeEditorEventBus } from '@/event-bus';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { usePostHog } from '@/stores/posthog.store';
 
 import { readOnlyEditorExtensions, writableEditorExtensions } from './baseExtensions';
