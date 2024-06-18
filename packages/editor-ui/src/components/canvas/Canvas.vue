@@ -15,6 +15,7 @@ const emit = defineEmits<{
 	'update:modelValue': [elements: CanvasElement[]];
 	'update:node:position': [id: string, position: { x: number; y: number }];
 	'update:node:active': [id: string];
+	'update:node:selected': [id?: string];
 	'delete:node': [id: string];
 	'delete:connection': [connection: Connection];
 	'create:connection': [connection: Connection];
@@ -55,6 +56,11 @@ function onNodeDragStop(e: NodeDragEvent) {
 
 function onSetNodeActive(id: string) {
 	emit('update:node:active', id);
+}
+
+function onSelectNode() {
+	const selectedNodeId = getSelectedNodes.value[getSelectedNodes.value.length - 1]?.id;
+	emit('update:node:selected', selectedNodeId);
 }
 
 function onDeleteNode(id: string) {
@@ -102,7 +108,12 @@ function onMouseLeaveEdge(event: EdgeMouseEvent) {
 		@connect="onConnect"
 	>
 		<template #node-canvas-node="canvasNodeProps">
-			<CanvasNode v-bind="canvasNodeProps" @delete="onDeleteNode" @activate="onSetNodeActive" />
+			<CanvasNode
+				v-bind="canvasNodeProps"
+				@delete="onDeleteNode"
+				@select="onSelectNode"
+				@activate="onSetNodeActive"
+			/>
 		</template>
 
 		<template #edge-canvas-edge="canvasEdgeProps">

@@ -20,12 +20,25 @@ import type {
 import { useTagsStore } from '@/stores/tags.store';
 import type { Connection } from '@vue-flow/core';
 import type { CanvasElement } from '@/types';
-import { EnterpriseEditionFeature, VIEWS } from '@/constants';
+import {
+	EnterpriseEditionFeature,
+	FORM_TRIGGER_NODE_TYPE,
+	VIEWS,
+	WEBHOOK_NODE_TYPE,
+} from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
-import type { ExecutionSummary, IConnection, INodeTypeDescription } from 'n8n-workflow';
+import {
+	ConnectionTypes,
+	ExecutionSummary,
+	IConnection,
+	INodeOutputConfiguration,
+	INodeTypeDescription,
+	INodeTypeNameVersion,
+	NodeHelpers,
+} from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
 import { v4 as uuid } from 'uuid';
@@ -35,10 +48,13 @@ import useEnvironmentsStore from '@/stores/environments.ee.store';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useCollaborationStore } from '@/stores/collaboration.store';
-import { getUniqueNodeName } from '@/utils/canvasUtilsV2';
+import { getUniqueNodeName, parseCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
 import { historyBus } from '@/models/history';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useExecutionsStore } from '@/stores/executions.store';
+import { useHistoryStore } from '@/stores/history.store';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useCanvasStore } from '@/stores/canvas.store';
 
 const NodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -55,6 +71,7 @@ const route = useRoute();
 const i18n = useI18n();
 const externalHooks = useExternalHooks();
 const toast = useToast();
+const workflowHelpers = useWorkflowHelpers({ router });
 
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
@@ -69,6 +86,8 @@ const externalSecretsStore = useExternalSecretsStore();
 const rootStore = useRootStore();
 const collaborationStore = useCollaborationStore();
 const executionsStore = useExecutionsStore();
+const historyStore = useHistoryStore();
+const canvasStore = useCanvasStore();
 
 const { runWorkflow } = useRunWorkflow({ router });
 const {
@@ -76,12 +95,14 @@ const {
 	renameNode,
 	revertRenameNode,
 	setNodeActive,
+	setNodeSelected,
 	deleteNode,
 	revertDeleteNode,
 	createConnection,
 	deleteConnection,
 	revertDeleteConnection,
 	setNodeActiveByName,
+	isConnectionAllowed,
 } = useCanvasOperations();
 
 const isLoading = ref(true);
@@ -267,6 +288,10 @@ function onSetNodeActive(id: string) {
 	setNodeActive(id);
 }
 
+function onSetNodeSelected(id?: string) {
+	setNodeSelected(id);
+}
+
 /**
  * Map new node connection format to the old one and add it to the store
  *
@@ -285,7 +310,7 @@ function onRevertDeleteConnection({ connection }: { connection: [IConnection, IC
 	revertDeleteConnection(connection);
 }
 
-async function onAddNodes(
+async function onAddNodesAndConnections(
 	{ nodes, connections }: AddedNodesAndConnections,
 	dragAndDrop = false,
 	position?: XYPosition,
@@ -361,12 +386,12 @@ type AddNodeOptions = {
 	isAutoAdd?: boolean;
 };
 
-async function onNodeCreate(node: AddNodeData, _options: AddNodeOptions = {}): Promise<INodeUi> {
+async function onNodeCreate(node: AddNodeData, options: AddNodeOptions = {}): Promise<INodeUi> {
 	if (!checkIfEditingIsAllowed()) {
 		throw new Error(i18n.baseText('nodeViewV2.showError.editingNotAllowed'));
 	}
 
-	const newNodeData = await createNodeWithDefaultCredentials(node);
+	const newNodeData = await createNodeData(node, options);
 	if (!newNodeData) {
 		throw new Error(i18n.baseText('nodeViewV2.showError.failedToCreateNode'));
 	}
@@ -383,89 +408,52 @@ async function onNodeCreate(node: AddNodeData, _options: AddNodeOptions = {}): P
 	// this.matchCredentials(node);
 
 	// @TODO Connect added node to last selected node
-	// const lastSelectedNode = uiStore.getLastSelectedNode;
-	// const lastSelectedNodeOutputIndex = uiStore.lastSelectedNodeOutputIndex;
-	// const lastSelectedNodeEndpointUuid = uiStore.lastSelectedNodeEndpointUuid;
-	// const lastSelectedConnection = canvasStore.lastSelectedConnection;
-	//
-	// historyStore.startRecordingUndo();
-	//
-	// const newNodeData = await injectNode(
-	// 	nodeTypeName,
-	// 	options,
-	// 	showDetail,
-	// 	trackHistory,
-	// 	isAutoAdd,
-	// );
-	// if (!newNodeData) {
-	// 	return;
-	// }
-	//
-	// const outputIndex = lastSelectedNodeOutputIndex || 0;
-	// const targetEndpoint = lastSelectedNodeEndpointUuid || '';
-	//
-	// // Handle connection of scoped_endpoint types
-	// if (lastSelectedNodeEndpointUuid && !isAutoAdd) {
-	// 	const lastSelectedEndpoint = this.instance.getEndpoint(lastSelectedNodeEndpointUuid);
-	// 	if (
-	// 		lastSelectedEndpoint &&
-	// 		this.checkNodeConnectionAllowed(
-	// 			lastSelectedNode,
-	// 			newNodeData,
-	// 			lastSelectedEndpoint.scope as NodeConnectionType,
-	// 		)
-	// 	) {
-	// 		const connectionType = lastSelectedEndpoint.scope as ConnectionTypes;
-	// 		const newNodeElement = this.instance.getManagedElement(newNodeData.id);
-	// 		const newNodeConnections = this.instance.getEndpoints(newNodeElement);
-	// 		const viableConnection = newNodeConnections.find((conn) => {
-	// 			return (
-	// 				conn.scope === connectionType &&
-	// 				lastSelectedEndpoint.parameters.connection !== conn.parameters.connection
-	// 			);
-	// 		});
-	//
-	// 		this.instance?.connect({
-	// 			uuids: [targetEndpoint, viableConnection?.uuid || ''],
-	// 			detachable: !this.isReadOnlyRoute && !this.readOnlyEnv,
-	// 		});
-	// 		this.historyStore.stopRecordingUndo();
-	// 		return;
-	// 	}
-	// }
-	// If a node is last selected then connect between the active and its child ones
-	// if (lastSelectedNode && !isAutoAdd) {
-	// 	await this.$nextTick();
-	//
-	// 	if (lastSelectedConnection?.__meta) {
-	// 		this.__deleteJSPlumbConnection(lastSelectedConnection, trackHistory);
-	//
-	// 		const targetNodeName = lastSelectedConnection.__meta.targetNodeName;
-	// 		const targetOutputIndex = lastSelectedConnection.__meta.targetOutputIndex;
-	// 		this.connectTwoNodes(
-	// 			newNodeData.name,
-	// 			0,
-	// 			targetNodeName,
-	// 			targetOutputIndex,
-	// 			NodeConnectionType.Main,
-	// 		);
-	// 	}
-	//
-	// 	// Connect active node to the newly created one
-	// 	this.connectTwoNodes(
-	// 		lastSelectedNode.name,
-	// 		outputIndex,
-	// 		newNodeData.name,
-	// 		0,
-	// 		NodeConnectionType.Main,
-	// 	);
-	// }
-	// this.historyStore.stopRecordingUndo();
+	const lastSelectedNode = uiStore.getLastSelectedNode;
+	const lastSelectedNodeOutputIndex = uiStore.lastSelectedNodeOutputIndex;
+	const lastSelectedNodeEndpointUuid = uiStore.lastSelectedNodeEndpointUuid;
+
+	historyStore.startRecordingUndo();
+
+	// @TODO Figure out how to add this
+	// const newNodeData = await initializeNodeData(node.type, options);
+
+	const outputIndex = lastSelectedNodeOutputIndex ?? 0;
+	const targetEndpoint = lastSelectedNodeEndpointUuid ?? '';
+
+	console.log({ lastSelectedNode, lastSelectedNodeEndpointUuid, newNodeData, targetEndpoint });
+
+	// Handle connection of scoped_endpoint types
+	if (lastSelectedNode && !options.isAutoAdd) {
+		if (lastSelectedNodeEndpointUuid) {
+			const { type: connectionType } = parseCanvasConnectionHandleString(
+				lastSelectedNodeEndpointUuid,
+			);
+			if (isConnectionAllowed(lastSelectedNode, newNodeData, connectionType)) {
+				onCreateConnection({
+					source: lastSelectedNode.id,
+					sourceHandle: targetEndpoint,
+					target: newNodeData.id,
+					targetHandle: `inputs/${connectionType}/0`,
+				});
+			}
+		} else {
+			// If a node is last selected then connect between the active and its child ones
+			// Connect active node to the newly created one
+			onCreateConnection({
+				source: lastSelectedNode.id,
+				sourceHandle: `outputs/${NodeConnectionType.Main}/${outputIndex}`,
+				target: newNodeData.id,
+				targetHandle: `inputs/${NodeConnectionType.Main}/0`,
+			});
+		}
+	}
+
+	historyStore.stopRecordingUndo();
 
 	return newNodeData;
 }
 
-async function createNodeWithDefaultCredentials(node: Partial<INodeUi>) {
+async function initializeNodeDataWithDefaultCredentials(node: AddNodeData) {
 	const nodeTypeDescription = nodeTypesStore.getNodeType(
 		node.type as string,
 	) as INodeTypeDescription;
@@ -486,320 +474,279 @@ async function createNodeWithDefaultCredentials(node: Partial<INodeUi>) {
 		parameters: {},
 	};
 
-	/**
-	 * @TODO Implement this
-	 */
+	const credentialPerType = nodeTypeDescription.credentials
+		?.map((type) => credentialsStore.getUsableCredentialByType(type.name))
+		.flat();
 
-	// // Load the default parameter values because only values which differ
-	// // from the defaults get saved
-	// if (nodeType !== null) {
-	// 	let nodeParameters = null;
-	// 	try {
-	// 		nodeParameters = NodeHelpers.getNodeParameters(
-	// 			nodeType.properties,
-	// 			node.parameters,
-	// 			true,
-	// 			false,
-	// 			node,
-	// 		);
-	// 	} catch (e) {
-	// 		console.error(
-	// 			i18n.baseText('nodeView.thereWasAProblemLoadingTheNodeParametersOfNode') +
-	// 			`: "${node.name}"`,
-	// 		);
-	// 		console.error(e);
-	// 	}
-	// 	node.parameters = nodeParameters !== null ? nodeParameters : {};
-	//
-	// 	// if it's a webhook and the path is empty set the UUID as the default path
-	// 	if (
-	// 		[WEBHOOK_NODE_TYPE, FORM_TRIGGER_NODE_TYPE].includes(node.type) &&
-	// 		node.parameters.path === ''
-	// 	) {
-	// 		node.parameters.path = node.webhookId as string;
-	// 	}
-	// }
-	// const credentialPerType = nodeTypeData.credentials
-	// 	?.map((type) => credentialsStore.getUsableCredentialByType(type.name))
-	// 	.flat();
-	//
-	// if (credentialPerType && credentialPerType.length === 1) {
-	// 	const defaultCredential = credentialPerType[0];
-	//
-	// 	const selectedCredentials = credentialsStore.getCredentialById(defaultCredential.id);
-	// 	const selected = { id: selectedCredentials.id, name: selectedCredentials.name };
-	// 	const credentials = {
-	// 		[defaultCredential.type]: selected,
-	// 	};
-	//
-	// 	await loadNodesProperties(
-	// 		[newNodeData].map((node) => ({ name: node.type, version: node.typeVersion })),
-	// 	);
-	//
-	// 	const nodeType = nodeTypesStore.getNodeType(newNodeData.type, newNodeData.typeVersion);
-	// 	const nodeParameters = NodeHelpers.getNodeParameters(
-	// 		nodeType?.properties ?? [],
-	// 		{},
-	// 		true,
-	// 		false,
-	// 		newNodeData,
-	// 	);
-	//
-	// 	if (nodeTypeData.credentials) {
-	// 		const authentication = nodeTypeData.credentials.find(
-	// 			(type) => type.name === defaultCredential.type,
-	// 		);
-	// 		if (authentication?.displayOptions?.hide) {
-	// 			return newNodeData;
-	// 		}
-	//
-	// 		const authDisplayOptions = authentication?.displayOptions?.show;
-	// 		if (!authDisplayOptions) {
-	// 			newNodeData.credentials = credentials;
-	// 			return newNodeData;
-	// 		}
-	//
-	// 		if (Object.keys(authDisplayOptions).length === 1 && authDisplayOptions.authentication) {
-	// 			// ignore complex case when there's multiple dependencies
-	// 			newNodeData.credentials = credentials;
-	//
-	// 			let parameters: { [key: string]: string } = {};
-	// 			for (const displayOption of Object.keys(authDisplayOptions)) {
-	// 				if (nodeParameters && !nodeParameters[displayOption]) {
-	// 					parameters = {};
-	// 					newNodeData.credentials = undefined;
-	// 					break;
-	// 				}
-	// 				const optionValue = authDisplayOptions[displayOption]?.[0];
-	// 				if (optionValue && typeof optionValue === 'string') {
-	// 					parameters[displayOption] = optionValue;
-	// 				}
-	// 				newNodeData.parameters = {
-	// 					...newNodeData.parameters,
-	// 					...parameters,
-	// 				};
-	// 			}
-	// 		}
-	// 	}
-	// }
+	if (credentialPerType && credentialPerType.length === 1) {
+		const defaultCredential = credentialPerType[0];
+
+		const selectedCredentials = credentialsStore.getCredentialById(defaultCredential.id);
+		const selected = { id: selectedCredentials.id, name: selectedCredentials.name };
+		const credentials = {
+			[defaultCredential.type]: selected,
+		};
+
+		await loadNodeTypesProperties([{ name: newNodeData.type, version: newNodeData.typeVersion }]);
+
+		const nodeType = nodeTypesStore.getNodeType(newNodeData.type, newNodeData.typeVersion);
+		const nodeParameters = NodeHelpers.getNodeParameters(
+			nodeType?.properties ?? [],
+			{},
+			true,
+			false,
+			newNodeData,
+		);
+
+		if (nodeTypeDescription.credentials) {
+			const authentication = nodeTypeDescription.credentials.find(
+				(type) => type.name === defaultCredential.type,
+			);
+			if (authentication?.displayOptions?.hide) {
+				return newNodeData;
+			}
+
+			const authDisplayOptions = authentication?.displayOptions?.show;
+			if (!authDisplayOptions) {
+				newNodeData.credentials = credentials;
+				return newNodeData;
+			}
+
+			if (Object.keys(authDisplayOptions).length === 1 && authDisplayOptions.authentication) {
+				// ignore complex case when there's multiple dependencies
+				newNodeData.credentials = credentials;
+
+				let parameters: { [key: string]: string } = {};
+				for (const displayOption of Object.keys(authDisplayOptions)) {
+					if (nodeParameters && !nodeParameters[displayOption]) {
+						parameters = {};
+						newNodeData.credentials = undefined;
+						break;
+					}
+					const optionValue = authDisplayOptions[displayOption]?.[0];
+					if (optionValue && typeof optionValue === 'string') {
+						parameters[displayOption] = optionValue;
+					}
+					newNodeData.parameters = {
+						...newNodeData.parameters,
+						...parameters,
+					};
+				}
+			}
+		}
+	}
 
 	return newNodeData;
 }
 
-/**
- * @TODO Implement if needed
- */
-// async loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
-// 	const allNodes: INodeTypeDescription[] = this.nodeTypesStore.allNodeTypes;
-//
-// const nodesToBeFetched: INodeTypeNameVersion[] = [];
-// allNodes.forEach((node) => {
-// 	const nodeVersions = Array.isArray(node.version) ? node.version : [node.version];
-// 	if (
-// 		!!nodeInfos.find((n) => n.name === node.name && nodeVersions.includes(n.version)) &&
-// 		!node.hasOwnProperty('properties')
-// 	) {
-// 		nodesToBeFetched.push({
-// 			name: node.name,
-// 			version: Array.isArray(node.version) ? node.version.slice(-1)[0] : node.version,
-// 		});
-// 	}
-// });
-//
-// if (nodesToBeFetched.length > 0) {
-// 	// Only call API if node information is actually missing
-// 	this.canvasStore.startLoading();
-// 	await this.nodeTypesStore.getNodesInformation(nodesToBeFetched);
-// 	this.canvasStore.stopLoading();
-// }
-// }
+async function loadNodeTypesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
+	const allNodeTypeDescriptions: INodeTypeDescription[] = nodeTypesStore.allNodeTypes;
+
+	const nodesToBeFetched: INodeTypeNameVersion[] = [];
+	allNodeTypeDescriptions.forEach((nodeTypeDescription) => {
+		const nodeVersions = Array.isArray(nodeTypeDescription.version)
+			? nodeTypeDescription.version
+			: [nodeTypeDescription.version];
+		if (
+			!!nodeInfos.find(
+				(n) => n.name === nodeTypeDescription.name && nodeVersions.includes(n.version),
+			) &&
+			!nodeTypeDescription.hasOwnProperty('properties')
+		) {
+			nodesToBeFetched.push({
+				name: nodeTypeDescription.name,
+				version: Array.isArray(nodeTypeDescription.version)
+					? nodeTypeDescription.version.slice(-1)[0]
+					: nodeTypeDescription.version,
+			});
+		}
+	});
+
+	if (nodesToBeFetched.length > 0) {
+		// Only call API if node information is actually missing
+		await nodeTypesStore.getNodesInformation(nodesToBeFetched);
+	}
+}
 
 /**
  * @TODO Probably not needed and can be merged into addNode
  */
-async function injectNode(
-	_nodeTypeName: string,
-	_options: AddNodeOptions = {},
-	_showDetail = true,
-	_trackHistory = false,
-	_isAutoAdd = false,
-) {
-	// const nodeTypeData: INodeTypeDescription | null =
-	// 	this.nodeTypesStore.getNodeType(nodeTypeName);
-	//
-	// if (nodeTypeData === null) {
-	// 	this.showMessage({
-	// 		title: i18n.baseText('nodeView.showMessage.addNodeButton.title'),
-	// 		message: i18n.baseText('nodeView.showMessage.addNodeButton.message', {
-	// 			interpolate: { nodeTypeName },
-	// 		}),
-	// 		type: 'error',
-	// 	});
-	// 	return;
-	// }
-	//
-	// if (
-	// 	nodeTypeData.maxNodes !== undefined &&
-	// 	this.workflowHelpers.getNodeTypeCount(nodeTypeName) >= nodeTypeData.maxNodes
-	// ) {
-	// 	this.showMaxNodeTypeError(nodeTypeData);
-	// 	return;
-	// }
-	//
-	// const newNodeData = await this.getNewNodeWithDefaultCredential(nodeTypeData, {
-	// 	name: options.name,
-	// });
-	//
-	// // when pulling new connection from node or injecting into a connection
-	// const lastSelectedNode = this.lastSelectedNode;
-	//
-	// if (options.position) {
-	// 	newNodeData.position = NodeViewUtils.getNewNodePosition(
-	// 		this.canvasStore.getNodesWithPlaceholderNode(),
-	// 		options.position,
-	// 	);
-	// } else if (lastSelectedNode) {
-	// 	const lastSelectedConnection = this.canvasStore.lastSelectedConnection;
-	// 	if (lastSelectedConnection) {
-	// 		// set when injecting into a connection
-	// 		const [diffX] = NodeViewUtils.getConnectorLengths(lastSelectedConnection);
-	// 		if (diffX <= NodeViewUtils.MAX_X_TO_PUSH_DOWNSTREAM_NODES) {
-	// 			this.pushDownstreamNodes(
-	// 				lastSelectedNode.name,
-	// 				NodeViewUtils.PUSH_NODES_OFFSET,
-	// 				trackHistory,
-	// 			);
-	// 		}
-	// 	}
-	//
-	// 	// set when pulling connections
-	// 	if (this.canvasStore.newNodeInsertPosition) {
-	// 		newNodeData.position = NodeViewUtils.getNewNodePosition(this.nodes, [
-	// 			this.canvasStore.newNodeInsertPosition[0] + NodeViewUtils.GRID_SIZE,
-	// 			this.canvasStore.newNodeInsertPosition[1] - NodeViewUtils.NODE_SIZE / 2,
-	// 		]);
-	// 		this.canvasStore.newNodeInsertPosition = null;
-	// 	} else {
-	// 		let yOffset = 0;
-	// 		const workflow = this.workflowHelpers.getCurrentWorkflow();
-	//
-	// 		if (lastSelectedConnection) {
-	// 			const sourceNodeType = this.nodeTypesStore.getNodeType(
-	// 				lastSelectedNode.type,
-	// 				lastSelectedNode.typeVersion,
-	// 			);
-	//
-	// 			if (sourceNodeType) {
-	// 				const offsets = [
-	// 					[-100, 100],
-	// 					[-140, 0, 140],
-	// 					[-240, -100, 100, 240],
-	// 				];
-	//
-	// 				const sourceNodeOutputs = NodeHelpers.getNodeOutputs(
-	// 					workflow,
-	// 					lastSelectedNode,
-	// 					sourceNodeType,
-	// 				);
-	// 				const sourceNodeOutputTypes = NodeHelpers.getConnectionTypes(sourceNodeOutputs);
-	//
-	// 				const sourceNodeOutputMainOutputs = sourceNodeOutputTypes.filter(
-	// 					(output) => output === NodeConnectionType.Main,
-	// 				);
-	//
-	// 				if (sourceNodeOutputMainOutputs.length > 1) {
-	// 					const offset = offsets[sourceNodeOutputMainOutputs.length - 2];
-	// 					const sourceOutputIndex = lastSelectedConnection.__meta
-	// 						? lastSelectedConnection.__meta.sourceOutputIndex
-	// 						: 0;
-	// 					yOffset = offset[sourceOutputIndex];
-	// 				}
-	// 			}
-	// 		}
-	//
-	// 		let outputs: Array<ConnectionTypes | INodeOutputConfiguration> = [];
-	// 		try {
-	// 			// It fails when the outputs are an expression. As those nodes have
-	// 			// normally no outputs by default and the only reason we need the
-	// 			// outputs here is to calculate the position, it is fine to assume
-	// 			// that they have no outputs and are so treated as a regular node
-	// 			// with only "main" outputs.
-	// 			outputs = NodeHelpers.getNodeOutputs(workflow, newNodeData, nodeTypeData);
-	// 		} catch (e) {}
-	// 		const outputTypes = NodeHelpers.getConnectionTypes(outputs);
-	// 		const lastSelectedNodeType = this.nodeTypesStore.getNodeType(
-	// 			lastSelectedNode.type,
-	// 			lastSelectedNode.typeVersion,
-	// 		);
-	//
-	// 		// If node has only scoped outputs, position it below the last selected node
-	// 		if (
-	// 			outputTypes.length > 0 &&
-	// 			outputTypes.every((outputName) => outputName !== NodeConnectionType.Main)
-	// 		) {
-	// 			const lastSelectedNodeWorkflow = workflow.getNode(lastSelectedNode.name);
-	// 			const lastSelectedInputs = NodeHelpers.getNodeInputs(
-	// 				workflow,
-	// 				lastSelectedNodeWorkflow,
-	// 				lastSelectedNodeType,
-	// 			);
-	// 			const lastSelectedInputTypes = NodeHelpers.getConnectionTypes(lastSelectedInputs);
-	//
-	// 			const scopedConnectionIndex = (lastSelectedInputTypes || [])
-	// 				.filter((input) => input !== NodeConnectionType.Main)
-	// 				.findIndex((inputType) => outputs[0] === inputType);
-	//
-	// 			newNodeData.position = NodeViewUtils.getNewNodePosition(
-	// 				this.nodes,
-	// 				[
-	// 					lastSelectedNode.position[0] +
-	// 					(NodeViewUtils.NODE_SIZE /
-	// 						(Math.max(lastSelectedNodeType?.inputs?.length ?? 1), 1)) *
-	// 					scopedConnectionIndex,
-	// 					lastSelectedNode.position[1] + NodeViewUtils.PUSH_NODES_OFFSET,
-	// 				],
-	// 				[100, 0],
-	// 			);
-	// 		} else {
-	// 			// Has only main outputs or no outputs at all
-	// 			const inputs = NodeHelpers.getNodeInputs(
-	// 				workflow,
-	// 				lastSelectedNode,
-	// 				lastSelectedNodeType,
-	// 			);
-	// 			const inputsTypes = NodeHelpers.getConnectionTypes(inputs);
-	//
-	// 			let pushOffset = NodeViewUtils.PUSH_NODES_OFFSET;
-	// 			if (!!inputsTypes.find((input) => input !== NodeConnectionType.Main)) {
-	// 				// If the node has scoped inputs, push it down a bit more
-	// 				pushOffset += 150;
-	// 			}
-	//
-	// 			// If a node is active then add the new node directly after the current one
-	// 			newNodeData.position = NodeViewUtils.getNewNodePosition(
-	// 				this.nodes,
-	// 				[lastSelectedNode.position[0] + pushOffset, lastSelectedNode.position[1] + yOffset],
-	// 				[100, 0],
-	// 			);
-	// 		}
-	// 	}
-	// } else {
-	// 	// If added node is a trigger and it's the first one added to the canvas
-	// 	// we place it at canvasAddButtonPosition to replace the canvas add button
-	// 	const position =
-	// 		this.nodeTypesStore.isTriggerNode(nodeTypeName) && !this.containsTrigger
-	// 			? this.canvasStore.canvasAddButtonPosition
-	// 			: // If no node is active find a free spot
-	// 			(this.lastClickPosition as XYPosition);
-	//
-	// 	newNodeData.position = NodeViewUtils.getNewNodePosition(this.nodes, position);
-	// }
-	//
+async function createNodeData(node: AddNodeData, options: AddNodeOptions = {}) {
+	const nodeTypeDescription: INodeTypeDescription | null = nodeTypesStore.getNodeType(node.type);
+	if (nodeTypeDescription === null) {
+		toast.showMessage({
+			title: i18n.baseText('nodeView.showMessage.addNodeButton.title'),
+			message: i18n.baseText('nodeView.showMessage.addNodeButton.message', {
+				interpolate: { nodeTypeName: node.type },
+			}),
+			type: 'error',
+		});
+		return;
+	}
+
+	if (
+		nodeTypeDescription.maxNodes !== undefined &&
+		workflowHelpers.getNodeTypeCount(node.type) >= nodeTypeDescription.maxNodes
+	) {
+		showMaxNodeTypeError(nodeTypeDescription);
+		return;
+	}
+
+	const newNodeData = await initializeNodeDataWithDefaultCredentials(node);
+
+	// When pulling new connection from node or injecting into a connection
+	const lastSelectedNode = uiStore.getLastSelectedNode;
+
+	if (node.position) {
+		newNodeData.position = NodeViewUtils.getNewNodePosition(
+			canvasStore.getNodesWithPlaceholderNode(),
+			node.position,
+		);
+	} else if (lastSelectedNode) {
+		const lastSelectedConnection = canvasStore.lastSelectedConnection;
+		// 		if (lastSelectedConnection) {
+		// 			// set when injecting into a connection
+		// 			const [diffX] = NodeViewUtils.getConnectorLengths(lastSelectedConnection);
+		// 			if (diffX <= NodeViewUtils.MAX_X_TO_PUSH_DOWNSTREAM_NODES) {
+		// 				pushDownstreamNodes(
+		// 					lastSelectedNode.name,
+		// 					NodeViewUtils.PUSH_NODES_OFFSET,
+		// 					trackHistory,
+		// 				);
+		// 			}
+		// }
+
+		// set when pulling connections
+		if (canvasStore.newNodeInsertPosition) {
+			newNodeData.position = NodeViewUtils.getNewNodePosition(workflowsStore.allNodes, [
+				canvasStore.newNodeInsertPosition[0] + NodeViewUtils.GRID_SIZE,
+				canvasStore.newNodeInsertPosition[1] - NodeViewUtils.NODE_SIZE / 2,
+			]);
+			canvasStore.newNodeInsertPosition = null;
+		} else {
+			let yOffset = 0;
+			const workflow = workflowsStore.getCurrentWorkflow();
+
+			if (lastSelectedConnection) {
+				const sourceNodeType = nodeTypesStore.getNodeType(
+					lastSelectedNode.type,
+					lastSelectedNode.typeVersion,
+				);
+
+				if (sourceNodeType) {
+					const offsets = [
+						[-100, 100],
+						[-140, 0, 140],
+						[-240, -100, 100, 240],
+					];
+
+					const sourceNodeOutputs = NodeHelpers.getNodeOutputs(
+						workflow,
+						lastSelectedNode,
+						sourceNodeType,
+					);
+					const sourceNodeOutputTypes = NodeHelpers.getConnectionTypes(sourceNodeOutputs);
+
+					const sourceNodeOutputMainOutputs = sourceNodeOutputTypes.filter(
+						(output) => output === NodeConnectionType.Main,
+					);
+
+					if (sourceNodeOutputMainOutputs.length > 1) {
+						const offset = offsets[sourceNodeOutputMainOutputs.length - 2];
+						const sourceOutputIndex = lastSelectedConnection.__meta
+							? lastSelectedConnection.__meta.sourceOutputIndex
+							: 0;
+						yOffset = offset[sourceOutputIndex];
+					}
+				}
+			}
+
+			let outputs: Array<ConnectionTypes | INodeOutputConfiguration> = [];
+			try {
+				// It fails when the outputs are an expression. As those nodes have
+				// normally no outputs by default and the only reason we need the
+				// outputs here is to calculate the position, it is fine to assume
+				// that they have no outputs and are so treated as a regular node
+				// with only "main" outputs.
+				outputs = NodeHelpers.getNodeOutputs(workflow, newNodeData, nodeTypeDescription);
+			} catch (e) {}
+			const outputTypes = NodeHelpers.getConnectionTypes(outputs);
+			const lastSelectedNodeType = nodeTypesStore.getNodeType(
+				lastSelectedNode.type,
+				lastSelectedNode.typeVersion,
+			);
+
+			// If node has only scoped outputs, position it below the last selected node
+			if (
+				outputTypes.length > 0 &&
+				outputTypes.every((outputName) => outputName !== NodeConnectionType.Main)
+			) {
+				const lastSelectedNodeWorkflow = workflow.getNode(lastSelectedNode.name);
+				if (!lastSelectedNodeWorkflow) {
+					return;
+				}
+
+				const lastSelectedInputs = NodeHelpers.getNodeInputs(
+					workflow,
+					lastSelectedNodeWorkflow,
+					lastSelectedNodeType,
+				);
+				const lastSelectedInputTypes = NodeHelpers.getConnectionTypes(lastSelectedInputs);
+
+				const scopedConnectionIndex = (lastSelectedInputTypes || [])
+					.filter((input) => input !== NodeConnectionType.Main)
+					.findIndex((inputType) => outputs[0] === inputType);
+
+				newNodeData.position = NodeViewUtils.getNewNodePosition(
+					workflowsStore.allNodes,
+					[
+						lastSelectedNode.position[0] +
+							(NodeViewUtils.NODE_SIZE / (Math.max(lastSelectedNodeType?.inputs?.length ?? 1), 1)) *
+								scopedConnectionIndex,
+						lastSelectedNode.position[1] + NodeViewUtils.PUSH_NODES_OFFSET,
+					],
+					[100, 0],
+				);
+			} else {
+				if (!lastSelectedNodeType) {
+					return;
+				}
+
+				// Has only main outputs or no outputs at all
+				const inputs = NodeHelpers.getNodeInputs(workflow, lastSelectedNode, lastSelectedNodeType);
+				const inputsTypes = NodeHelpers.getConnectionTypes(inputs);
+
+				let pushOffset = NodeViewUtils.PUSH_NODES_OFFSET;
+				if (!!inputsTypes.find((input) => input !== NodeConnectionType.Main)) {
+					// If the node has scoped inputs, push it down a bit more
+					pushOffset += 150;
+				}
+
+				// If a node is active then add the new node directly after the current one
+				newNodeData.position = NodeViewUtils.getNewNodePosition(
+					workflowsStore.allNodes,
+					[lastSelectedNode.position[0] + pushOffset, lastSelectedNode.position[1] + yOffset],
+					[100, 0],
+				);
+			}
+		}
+	} else {
+		// If added node is a trigger and it's the first one added to the canvas
+		// we place it at canvasAddButtonPosition to replace the canvas add button
+		// const position =
+		// 	nodeTypesStore.isTriggerNode(nodeTypeName) && !this.containsTrigger
+		// 		? canvasStore.canvasAddButtonPosition
+		// 		: // If no node is active find a free spot
+		// 			(this.lastClickPosition as XYPosition);
+		//
+		// newNodeData.position = NodeViewUtils.getNewNodePosition(workflowsStore.allNodes, position);
+	}
+
 	// const localizedName = this.locale.localizeNodeName(newNodeData.name, newNodeData.type);
 	//
 	// newNodeData.name = this.uniqueNodeName(localizedName);
 	//
-	// if (nodeTypeData.webhooks?.length) {
+	// if (nodeTypeDescription.webhooks?.length) {
 	// 	newNodeData.webhookId = uuid();
 	// }
 	//
@@ -807,7 +754,7 @@ async function injectNode(
 	// this.workflowsStore.setNodePristine(newNodeData.name, true);
 	//
 	// this.uiStore.stateIsDirty = true;
-	//
+
 	// if (nodeTypeName === STICKY_NODE_TYPE) {
 	// 	this.$telemetry.trackNodesPanel('nodeView.addSticky', {
 	// 		workflow_id: this.workflowsStore.workflowId,
@@ -829,20 +776,30 @@ async function injectNode(
 	//
 	// 	this.$telemetry.trackNodesPanel('nodeView.addNodeButton', trackProperties);
 	// }
-	//
-	// // Automatically deselect all nodes and select the current one and also active
-	// // current node. But only if it's added manually by the user (not by undo/redo mechanism)
+
+	// Automatically deselect all nodes and select the current one and also active
+	// current node. But only if it's added manually by the user (not by undo/redo mechanism)
 	// if (trackHistory) {
 	// 	this.deselectAllNodes();
 	// 	setTimeout(() => {
-	// 		this.nodeSelectedByName(
-	// 			newNodeData.name,
-	// 			showDetail && nodeTypeName !== STICKY_NODE_TYPE,
-	// 		);
+	// 		this.nodeSelectedByName(newNodeData.name, showDetail && nodeTypeName !== STICKY_NODE_TYPE);
 	// 	});
 	// }
-	//
-	// return newNodeData;
+
+	return newNodeData;
+}
+
+function showMaxNodeTypeError(nodeTypeDescription: INodeTypeDescription) {
+	const maxNodes = nodeTypeDescription.maxNodes;
+	toast.showMessage({
+		title: i18n.baseText('nodeView.showMessage.showMaxNodeTypeError.title'),
+		message: i18n.baseText('nodeView.showMessage.showMaxNodeTypeError.message', {
+			adjustToNumber: maxNodes,
+			interpolate: { nodeTypeDataDisplayName: nodeTypeDescription.displayName },
+		}),
+		type: 'error',
+		duration: 0,
+	});
 }
 
 function checkIfEditingIsAllowed(): boolean {
@@ -935,7 +892,7 @@ async function onPostMessageReceived(message: MessageEvent) {
 	} catch (e) {}
 }
 
-async function onSwitchSelectedNode(nodeName: string) {
+async function onSwitchActiveNode(nodeName: string) {
 	setNodeActiveByName(nodeName);
 }
 
@@ -981,6 +938,7 @@ function onUpdateNodeValue(parameterData: IUpdateInformation) {
 		:workflow-object="editableWorkflowObject"
 		@update:node:position="onUpdateNodePosition"
 		@update:node:active="onSetNodeActive"
+		@update:node:selected="onSetNodeSelected"
 		@delete:node="onDeleteNode"
 		@create:connection="onCreateConnection"
 		@delete:connection="onDeleteConnection"
@@ -994,7 +952,7 @@ function onUpdateNodeValue(parameterData: IUpdateInformation) {
 				:create-node-active="uiStore.isCreateNodeActive"
 				:node-view-scale="1"
 				@toggle-node-creator="onToggleNodeCreator"
-				@add-nodes="onAddNodes"
+				@add-nodes="onAddNodesAndConnections"
 			/>
 		</Suspense>
 		<Suspense>
@@ -1002,7 +960,7 @@ function onUpdateNodeValue(parameterData: IUpdateInformation) {
 				:read-only="isReadOnlyRoute || isReadOnlyEnvironment"
 				:is-production-execution-preview="isProductionExecutionPreview"
 				@value-changed="onUpdateNodeValue"
-				@switch-selected-node="onSwitchSelectedNode"
+				@switch-selected-node="onSwitchActiveNode"
 				@open-connection-node-creator="onOpenConnectionNodeCreator"
 			/>
 			<!--

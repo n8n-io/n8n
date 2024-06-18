@@ -14,14 +14,26 @@ import {
 } from '@/models/history';
 import type { Connection } from '@vue-flow/core';
 import { getUniqueNodeName, mapCanvasConnectionToLegacyConnection } from '@/utils/canvasUtilsV2';
-import type { IConnection } from 'n8n-workflow';
+import type {
+	ConnectionTypes,
+	IConnection,
+	INodeInputConfiguration,
+	NodeConnectionType,
+} from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useI18n } from '@/composables/useI18n';
+import { useToast } from '@/composables/useToast';
 
 export function useCanvasOperations() {
 	const workflowsStore = useWorkflowsStore();
 	const historyStore = useHistoryStore();
 	const uiStore = useUIStore();
 	const ndvStore = useNDVStore();
+	const nodeTypesStore = useNodeTypesStore();
+	const i18n = useI18n();
+	const toast = useToast();
 
 	const telemetry = useTelemetry();
 	const externalHooks = useExternalHooks();
@@ -159,6 +171,20 @@ export function useCanvasOperations() {
 		ndvStore.activeNodeName = name;
 	}
 
+	function setNodeSelected(id?: string) {
+		if (!id) {
+			uiStore.lastSelectedNode = '';
+			return;
+		}
+
+		const node = workflowsStore.getNodeById(id);
+		if (!node) {
+			return;
+		}
+
+		uiStore.lastSelectedNode = node.name;
+	}
+
 	/**
 	 * Connection operations
 	 */
@@ -166,7 +192,7 @@ export function useCanvasOperations() {
 	function createConnection(connection: Connection) {
 		const sourceNode = workflowsStore.getNodeById(connection.source);
 		const targetNode = workflowsStore.getNodeById(connection.target);
-		if (!sourceNode || !targetNode || !isConnectionAllowed(sourceNode, targetNode)) {
+		if (!sourceNode || !targetNode) {
 			return;
 		}
 
@@ -175,6 +201,11 @@ export function useCanvasOperations() {
 			targetNode,
 			connection,
 		);
+
+		if (!isConnectionAllowed(sourceNode, targetNode, mappedConnection[1].type)) {
+			return;
+		}
+
 		workflowsStore.addConnection({
 			connection: mappedConnection,
 		});
@@ -221,43 +252,48 @@ export function useCanvasOperations() {
 		});
 	}
 
-	// @TODO Figure out a way to improve this
-	function isConnectionAllowed(sourceNode: INodeUi, targetNode: INodeUi): boolean {
-		// const targetNodeType = nodeTypesStore.getNodeType(
-		// 	targetNode.type,
-		// 	targetNode.typeVersion,
-		// );
-		//
-		// if (targetNodeType?.inputs?.length) {
-		// 	const workflow = this.workflowHelpers.getCurrentWorkflow();
-		// 	const workflowNode = workflow.getNode(targetNode.name);
-		// 	let inputs: Array<ConnectionTypes | INodeInputConfiguration> = [];
-		// 	if (targetNodeType) {
-		// 		inputs = NodeHelpers.getNodeInputs(workflow, workflowNode, targetNodeType);
-		// 	}
-		//
-		// 	for (const input of inputs || []) {
-		// 		if (typeof input === 'string' || input.type !== targetInfoType || !input.filter) {
-		// 			// No filters defined or wrong connection type
-		// 			continue;
-		// 		}
-		//
-		// 		if (input.filter.nodes.length) {
-		// 			if (!input.filter.nodes.includes(sourceNode.type)) {
-		// 				this.dropPrevented = true;
-		// 				this.showToast({
-		// 					title: this.$locale.baseText('nodeView.showError.nodeNodeCompatible.title'),
-		// 					message: this.$locale.baseText('nodeView.showError.nodeNodeCompatible.message', {
-		// 						interpolate: { sourceNodeName: sourceNode.name, targetNodeName: targetNode.name },
-		// 					}),
-		// 					type: 'error',
-		// 					duration: 5000,
-		// 				});
-		// 				return false;
-		// 			}
-		// 		}
-		// 	}
-		// }
+	function isConnectionAllowed(
+		sourceNode: INodeUi,
+		targetNode: INodeUi,
+		targetNodeConnectionType: NodeConnectionType,
+	): boolean {
+		const targetNodeType = nodeTypesStore.getNodeType(targetNode.type, targetNode.typeVersion);
+
+		if (targetNodeType?.inputs?.length) {
+			const workflow = workflowsStore.getCurrentWorkflow();
+			const workflowNode = workflow.getNode(targetNode.name);
+			if (!workflowNode) {
+				return false;
+			}
+
+			let inputs: Array<ConnectionTypes | INodeInputConfiguration> = [];
+			if (targetNodeType) {
+				inputs = NodeHelpers.getNodeInputs(workflow, workflowNode, targetNodeType) || [];
+			}
+
+			for (const input of inputs) {
+				if (typeof input === 'string' || input.type !== targetNodeConnectionType || !input.filter) {
+					// No filters defined or wrong connection type
+					continue;
+				}
+
+				if (input.filter.nodes.length) {
+					if (!input.filter.nodes.includes(sourceNode.type)) {
+						// this.dropPrevented = true;
+						toast.showToast({
+							title: i18n.baseText('nodeView.showError.nodeNodeCompatible.title'),
+							message: i18n.baseText('nodeView.showError.nodeNodeCompatible.message', {
+								interpolate: { sourceNodeName: sourceNode.name, targetNodeName: targetNode.name },
+							}),
+							type: 'error',
+							duration: 5000,
+						});
+						return false;
+					}
+				}
+			}
+		}
+
 		return sourceNode.id !== targetNode.id;
 	}
 
@@ -265,6 +301,7 @@ export function useCanvasOperations() {
 		updateNodePosition,
 		setNodeActive,
 		setNodeActiveByName,
+		setNodeSelected,
 		renameNode,
 		revertRenameNode,
 		deleteNode,

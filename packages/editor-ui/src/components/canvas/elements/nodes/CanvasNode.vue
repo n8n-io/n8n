@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { Position } from '@vue-flow/core';
-import { computed, provide, toRef } from 'vue';
+import { computed, provide, toRef, watch } from 'vue';
 import type {
 	CanvasElementData,
 	CanvasConnectionPort,
@@ -17,6 +17,7 @@ import type { NodeProps } from '@vue-flow/core';
 
 const emit = defineEmits<{
 	delete: [id: string];
+	select: [id: string, selected: boolean];
 	activate: [id: string];
 }>();
 
@@ -35,6 +36,13 @@ const { mainInputs, nonMainInputs, mainOutputs, nonMainOutputs } = useNodeConnec
 const nodeType = computed(() => {
 	return nodeTypesStore.getNodeType(props.data.type, props.data.typeVersion);
 });
+
+watch(
+	() => props.selected,
+	(selected) => {
+		emit('select', props.id, selected);
+	},
+);
 
 /**
  * Inputs
