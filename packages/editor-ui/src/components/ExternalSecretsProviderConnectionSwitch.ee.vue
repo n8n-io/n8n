@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import type { PropType } from 'vue';
 import type { ExternalSecretsProvider } from '@/Interface';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useToast } from '@/composables/useToast';
@@ -12,24 +11,19 @@ const emit = defineEmits<{
 	(e: 'change', value: boolean): void;
 }>();
 
-const props = defineProps({
-	provider: {
-		type: Object as PropType<ExternalSecretsProvider>,
-		required: true,
+const props = withDefaults(
+	defineProps<{
+		provider: ExternalSecretsProvider;
+		eventBus?: EventBus;
+		disabled?: boolean;
+		beforeUpdate?: (value: boolean) => Promise<boolean>;
+	}>(),
+	{
+		eventBus: undefined,
+		disabled: false,
+		beforeUpdate: undefined,
 	},
-	eventBus: {
-		type: Object as PropType<EventBus>,
-		default: undefined,
-	},
-	disabled: {
-		type: Boolean,
-		default: false,
-	},
-	beforeUpdate: {
-		type: Function,
-		default: undefined,
-	},
-});
+);
 
 const loadingService = useLoadingService();
 const externalSecretsStore = useExternalSecretsStore();
