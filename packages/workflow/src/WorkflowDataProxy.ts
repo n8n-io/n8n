@@ -675,7 +675,6 @@ export class WorkflowDataProxy {
 				};
 			},
 		) => {
-			console.log('yo', message, context);
 			if (isScriptingNode(that.activeNodeName, that.workflow) && context?.functionOverrides) {
 				// If the node in which the error is thrown is a function node,
 				// display a different error message in case there is one defined
