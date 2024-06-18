@@ -35,6 +35,7 @@
 		</n8n-callout>
 
 		<BinaryDataDisplay
+			v-if="binaryDataDisplayData"
 			:window-visible="binaryDataDisplayVisible"
 			:display-data="binaryDataDisplayData"
 			@close="closeBinaryDataDisplay"

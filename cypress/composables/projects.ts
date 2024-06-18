@@ -10,6 +10,7 @@ export const getProjectTabs = () => cy.getByTestId('project-tabs').find('a');
 export const getProjectTabWorkflows = () => getProjectTabs().filter('a[href$="/workflows"]');
 export const getProjectTabCredentials = () => getProjectTabs().filter('a[href$="/credentials"]');
 export const getProjectTabSettings = () => getProjectTabs().filter('a[href$="/settings"]');
+export const getProjectSettingsNameInput = () => cy.getByTestId('project-settings-name-input');
 export const getProjectSettingsSaveButton = () => cy.getByTestId('project-settings-save-button');
 export const getProjectSettingsCancelButton = () =>
 	cy.getByTestId('project-settings-cancel-button');
@@ -55,3 +56,11 @@ export function createCredential(name: string) {
 	credentialsModal.actions.save();
 	credentialsModal.actions.close();
 }
+
+export const actions = {
+	createProject: (name: string) => {
+		getAddProjectButton().click();
+		getProjectSettingsNameInput().type(name);
+		getProjectSettingsSaveButton().click();
+	},
+};

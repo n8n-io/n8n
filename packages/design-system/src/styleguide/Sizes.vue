@@ -1,40 +1,45 @@
 <script setup lang="ts">
-import type { PropType } from 'vue';
-import { ref, onMounted, onUnmounted, reactive } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
+
+type Size = {
+	rem: string;
+	px: number;
+};
 
 // Define props with their types
-const props = defineProps({
-	variables: {
-		type: Array as PropType<string[]>,
-		required: true,
+const props = withDefaults(
+	defineProps<{
+		variables: string[];
+		attr?: string;
+	}>(),
+	{
+		attr: '',
 	},
-	attr: {
-		type: String,
-		default: '',
-	},
-});
+);
 
-const sizes = reactive<Record<string, { rem: string; px: number }>>({});
-const observer = ref<MutationObserver | null>(null);
+const getSizes = () => {
+	const style = getComputedStyle(document.body);
 
-const setSizes = () => {
+	const sizeByVariableName: Record<string, Size> = {};
 	for (const variable of props.variables) {
-		const style = getComputedStyle(document.body);
 		const rem = style.getPropertyValue(variable);
 		const px = parseFloat(rem.replace('rem', '')) * 16; // Assuming default font-size is 16px
 
-		sizes[variable] = { rem, px };
+		sizeByVariableName[variable] = { rem, px };
 	}
+
+	return sizeByVariableName;
 };
 
-onMounted(() => {
-	setSizes();
+const sizes = ref<Record<string, Size>>(getSizes());
+const observer = ref<MutationObserver | null>(null);
 
+onMounted(() => {
 	// Observing attributes changes in body to recompute sizes
 	const mutationObserverCallback = (mutationsList: MutationRecord[]) => {
 		for (const mutation of mutationsList) {
 			if (mutation.type === 'attributes') {
-				setSizes();
+				sizes.value = getSizes();
 			}
 		}
 	};

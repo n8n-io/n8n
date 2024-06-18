@@ -149,27 +149,29 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			if (!queryParams.relations) {
 				queryParams.relations = [];
 			}
-			(queryParams.relations as string[]).push('executionData');
+			(queryParams.relations as string[]).push('executionData', 'metadata');
 		}
 
 		const executions = await this.find(queryParams);
 
 		if (options?.includeData && options?.unflattenData) {
 			return executions.map((execution) => {
-				const { executionData, ...rest } = execution;
+				const { executionData, metadata, ...rest } = execution;
 				return {
 					...rest,
 					data: parse(executionData.data) as IRunExecutionData,
 					workflowData: executionData.workflowData,
+					customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 				} as IExecutionResponse;
 			});
 		} else if (options?.includeData) {
 			return executions.map((execution) => {
-				const { executionData, ...rest } = execution;
+				const { executionData, metadata, ...rest } = execution;
 				return {
 					...rest,
 					data: execution.executionData.data,
 					workflowData: execution.executionData.workflowData,
+					customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 				} as IExecutionFlattedDb;
 			});
 		}
@@ -219,7 +221,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			},
 		};
 		if (options?.includeData) {
-			findOptions.relations = ['executionData'];
+			findOptions.relations = ['executionData', 'metadata'];
 		}
 
 		const execution = await this.findOne(findOptions);
@@ -228,19 +230,21 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			return undefined;
 		}
 
-		const { executionData, ...rest } = execution;
+		const { executionData, metadata, ...rest } = execution;
 
 		if (options?.includeData && options?.unflattenData) {
 			return {
 				...rest,
 				data: parse(execution.executionData.data) as IRunExecutionData,
 				workflowData: execution.executionData.workflowData,
+				customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 			} as IExecutionResponse;
 		} else if (options?.includeData) {
 			return {
 				...rest,
 				data: execution.executionData.data,
 				workflowData: execution.executionData.workflowData,
+				customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 			} as IExecutionFlattedDb;
 		}
 
@@ -298,7 +302,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		// Se isolate startedAt because it must be set when the execution starts and should never change.
 		// So we prevent updating it, if it's sent (it usually is and causes problems to executions that
 		// are resumed after waiting for some time, as a new startedAt is set)
-		const { id, data, workflowId, workflowData, startedAt, ...executionInformation } = execution;
+		const { id, data, workflowId, workflowData, startedAt, customData, ...executionInformation } =
+			execution;
 		if (Object.keys(executionInformation).length > 0) {
 			await this.update({ id: executionId }, executionInformation);
 		}
