@@ -22,12 +22,8 @@ afterAll(async () => {
 	await testDb.terminate();
 });
 
-afterEach(async () => {
-	await testDb.truncate(['User']);
-});
-
 describe('WorkflowStaticDataService', () => {
-	it('should not changed workflow updatedAt when calling saveStaticData', async () => {
+	it('should not change workflow updatedAt when calling saveStaticData', async () => {
 		const workflowEntityOriginal = await createWorkflow();
 
 		const workflow = new Workflow({
@@ -50,7 +46,7 @@ describe('WorkflowStaticDataService', () => {
 		expect(workflowEntityNew?.updatedAt).toEqual(workflowEntityOriginal.updatedAt);
 	});
 
-	it('should not changed workflow updatedAt when calling saveStaticData', async () => {
+	it('should not change workflow updatedAt when calling saveStaticDataById', async () => {
 		const workflowEntityOriginal = await createWorkflow();
 		const staticData = { testValue: 1 };
 
