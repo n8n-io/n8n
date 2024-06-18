@@ -187,11 +187,16 @@ const emit = defineEmits([
 	'stopExecution',
 ]);
 
-const props = defineProps<{
-	readOnly: boolean;
-	renaming: boolean;
-	isProductionExecutionPreview: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		readOnly?: boolean;
+		renaming?: boolean;
+		isProductionExecutionPreview?: boolean;
+	}>(),
+	{
+		isProductionExecutionPreview: false,
+	},
+);
 
 const ndvStore = useNDVStore();
 const externalHooks = useExternalHooks();
