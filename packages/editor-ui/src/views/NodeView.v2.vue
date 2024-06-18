@@ -1001,6 +1001,7 @@ function onUpdateNodeValue(parameterData: IUpdateInformation) {
 			<NodeDetailsView
 				:read-only="isReadOnlyRoute || isReadOnlyEnvironment"
 				:is-production-execution-preview="isProductionExecutionPreview"
+				:renaming="false"
 				@value-changed="onUpdateNodeValue"
 				@switch-selected-node="onSwitchSelectedNode"
 				@open-connection-node-creator="onOpenConnectionNodeCreator"
