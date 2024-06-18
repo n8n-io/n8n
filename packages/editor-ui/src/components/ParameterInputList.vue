@@ -205,7 +205,7 @@ type Props = {
 	path?: string;
 	hideDelete?: boolean;
 	indent?: boolean;
-	isReadOnly?: boolean;
+	isReadOnly: boolean;
 	hiddenIssuesInputs?: string[];
 	entryIndex?: number;
 };
