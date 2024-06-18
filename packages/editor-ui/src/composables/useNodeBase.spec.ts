@@ -1,22 +1,20 @@
 import { useNodeBase } from '@/composables/useNodeBase';
 import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 import { createTestNode, createTestWorkflowObject } from '@/__tests__/mocks';
-import type { INodeUi } from '@/Interface';
-import type { INodeTypeDescription, Workflow } from 'n8n-workflow';
 import { createPinia, setActivePinia } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { findNodeTypeDescriptionByName } from '@/__tests__/defaults';
 import { SET_NODE_TYPE } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
-import { useDeviceSupport } from 'n8n-design-system';
+import type { INodeTypeDescription, Workflow } from 'n8n-workflow';
+import type { INodeUi } from '@/Interface';
+import type { Mock } from '@vitest/spy';
 
 describe('useNodeBase', () => {
 	let pinia: ReturnType<typeof createPinia>;
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
-	let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
 	let uiStore: ReturnType<typeof useUIStore>;
-	let instance: BrowserJsPlumbInstance;
+	let instance: Record<string, Mock>;
 	let workflowObject: Workflow;
 	let emit: (event: string, ...args: unknown[]) => void;
 	let node: INodeUi;
@@ -28,20 +26,19 @@ describe('useNodeBase', () => {
 		setActivePinia(pinia);
 
 		workflowsStore = useWorkflowsStore();
-		nodeTypesStore = useNodeTypesStore();
 		uiStore = useUIStore();
 
 		instance = {
 			addEndpoint: vi.fn().mockReturnValue({}),
-		} as BrowserJsPlumbInstance;
+		};
 		workflowObject = createTestWorkflowObject({ nodes: [], connections: {} });
 		node = createTestNode();
 		nodeTypeDescription = findNodeTypeDescriptionByName(SET_NODE_TYPE);
 		emit = vi.fn();
 
 		nodeBase = useNodeBase({
+			instance: instance as unknown as BrowserJsPlumbInstance,
 			name: node.name,
-			instance,
 			workflowObject,
 			isReadOnly: false,
 			emit,
@@ -142,7 +139,10 @@ describe('useNodeBase', () => {
 			const { mouseLeftClick } = nodeBase;
 
 			const isActionActiveFn = vi.fn().mockReturnValue(false);
+
+			// @ts-expect-error Pinia has a known issue when mocking getters, will be solved when migrating the uiStore to composition api
 			vi.spyOn(uiStore, 'isActionActive', 'get').mockReturnValue(isActionActiveFn);
+			// @ts-expect-error Pinia has a known issue when mocking getters, will be solved when migrating the uiStore to composition api
 			vi.spyOn(uiStore, 'isNodeSelected', 'get').mockReturnValue(() => false);
 
 			const event = new MouseEvent('click', {

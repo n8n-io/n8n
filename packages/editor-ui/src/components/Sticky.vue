@@ -19,9 +19,9 @@
 			<div v-show="isSelected" class="select-sticky-background" />
 			<div
 				v-touch:start="touchStart"
-				v-touch:end="nodeBase.touchEnd"
+				v-touch:end="touchEnd"
 				class="sticky-box"
-				@click.left="nodeBase.mouseLeftClick"
+				@click.left="mouseLeftClick"
 				@contextmenu="onContextMenu"
 			>
 				<n8n-sticky
@@ -200,7 +200,7 @@ export default defineComponent({
 			colorPopoverTrigger,
 			contextMenu,
 			forceActions,
-			nodeBase,
+			...nodeBase,
 			setForceActions,
 		};
 	},
@@ -295,7 +295,7 @@ export default defineComponent({
 		// Initialize the node
 		if (this.data !== null) {
 			try {
-				this.nodeBase.addNode(this.data);
+				this.addNode(this.data);
 			} catch (error) {
 				// This breaks when new nodes are loaded into store but workflow tab is not currently active
 				// Shouldn't affect anything
