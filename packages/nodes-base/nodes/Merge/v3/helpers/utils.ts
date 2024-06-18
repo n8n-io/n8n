@@ -370,19 +370,20 @@ export const configuredInputs = (parameters: INodeParameters) => {
 	}));
 };
 
-export function getMergeNodeInputs(this: IExecuteFunctions) {
-	return NodeHelpers.getConnectionTypes(this.getNodeInputs()).filter(
+export function getNodeInputsData(this: IExecuteFunctions) {
+	const returnData: INodeExecutionData[][] = [];
+
+	const inputs = NodeHelpers.getConnectionTypes(this.getNodeInputs()).filter(
 		(type) => type === NodeConnectionType.Main,
 	);
-}
 
-export function getNodeInputOrError(this: IExecuteFunctions, input: number) {
-	let inputData: INodeExecutionData[];
-	try {
-		inputData = this.getInputData(input) ?? [];
-	} catch (error) {
-		return [];
+	for (let i = 0; i < inputs.length; i++) {
+		try {
+			returnData.push(this.getInputData(i));
+		} catch (error) {
+			returnData.push([]);
+		}
 	}
 
-	return inputData;
+	return returnData;
 }

@@ -4,7 +4,6 @@ import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n
 import { preparePairedItemDataArray, updateDisplayOptions } from '@utils/utilities';
 
 import { numberInputsProperty } from '../../helpers/descriptions';
-import { getMergeNodeInputs, getNodeInputOrError } from '../../helpers/utils';
 
 export const properties: INodeProperties[] = [
 	numberInputsProperty,
@@ -66,10 +65,11 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
+export async function execute(
+	this: IExecuteFunctions,
+	inputsData: INodeExecutionData[][],
+): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
-
-	const inputs = getMergeNodeInputs.call(this);
 
 	const chooseBranchMode = this.getNodeParameter('chooseBranchMode', 0) as string;
 
@@ -78,16 +78,17 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 		if (output === 'specifiedInput') {
 			const useDataOfInput = this.getNodeParameter('useDataOfInput', 0) as number;
-			if (useDataOfInput > inputs.length) {
+			if (useDataOfInput > inputsData.length) {
 				throw new NodeOperationError(
 					this.getNode(),
 					`The input ${useDataOfInput} is not allowed.`,
 					{
-						description: `The node has only ${inputs.length} inputs, so selecting input ${useDataOfInput} is not possible.`,
+						description: `The node has only ${inputsData.length} inputs, so selecting input ${useDataOfInput} is not possible.`,
 					},
 				);
 			}
-			const inputData = getNodeInputOrError.call(this, parseInt(String(useDataOfInput)) - 1);
+
+			const inputData = inputsData[parseInt(String(useDataOfInput)) - 1];
 
 			returnData.push.apply(returnData, inputData);
 		}

@@ -10,12 +10,7 @@ import { updateDisplayOptions } from '@utils/utilities';
 
 import type { ClashResolveOptions } from '../../helpers/interfaces';
 import { clashHandlingProperties, numberInputsProperty } from '../../helpers/descriptions';
-import {
-	addSuffixToEntriesKeys,
-	getMergeNodeInputs,
-	getNodeInputOrError,
-	selectMergeMethod,
-} from '../../helpers/utils';
+import { addSuffixToEntriesKeys, selectMergeMethod } from '../../helpers/utils';
 
 import merge from 'lodash/merge';
 
@@ -49,7 +44,10 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
+export async function execute(
+	this: IExecuteFunctions,
+	inputsData: INodeExecutionData[][],
+): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
 
 	const clashHandling = this.getNodeParameter(
@@ -59,27 +57,15 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	) as ClashResolveOptions;
 	const includeUnpaired = this.getNodeParameter('options.includeUnpaired', 0, false) as boolean;
 
-	const inputs = getMergeNodeInputs.call(this);
-
-	let prefered: INodeExecutionData[] = [];
 	let preferedInputIndex: number;
-	const inputsData: INodeExecutionData[][] = [];
 
 	if (clashHandling?.resolveClash?.includes('preferInput')) {
 		preferedInputIndex = Number(clashHandling.resolveClash.replace('preferInput', '')) - 1;
 	} else {
-		preferedInputIndex = inputs.length - 1;
+		preferedInputIndex = inputsData.length - 1;
 	}
 
-	for (let i = 0; i < inputs.length; i++) {
-		const inputData = getNodeInputOrError.call(this, i);
-
-		if (i === preferedInputIndex) {
-			prefered = [...inputData];
-		} else {
-			inputsData.push([...inputData]);
-		}
-	}
+	const prefered = inputsData[preferedInputIndex];
 
 	if (clashHandling.resolveClash === 'addSuffix') {
 		for (const [inputIndex, input] of inputsData.entries()) {

@@ -32,7 +32,10 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
+export async function execute(
+	this: IExecuteFunctions,
+	inputsData: INodeExecutionData[][],
+): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
 
 	const clashHandling = this.getNodeParameter(
@@ -41,8 +44,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		{},
 	) as ClashResolveOptions;
 
-	let input1 = this.getInputData(0);
-	let input2 = this.getInputData(1);
+	let input1 = inputsData[0];
+	let input2 = inputsData[1];
 
 	if (clashHandling.resolveClash === 'preferInput1') {
 		[input1, input2] = [input2, input1];

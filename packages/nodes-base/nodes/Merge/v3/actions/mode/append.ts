@@ -7,7 +7,6 @@ import {
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { numberInputsProperty } from '../../helpers/descriptions';
-import { getMergeNodeInputs } from '../../helpers/utils';
 
 export const properties: INodeProperties[] = [numberInputsProperty];
 
@@ -19,17 +18,14 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
+export async function execute(
+	this: IExecuteFunctions,
+	inputsData: INodeExecutionData[][],
+): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
 
-	const inputs = getMergeNodeInputs.call(this);
-
-	for (let i = 0; i < inputs.length; i++) {
-		try {
-			returnData.push.apply(returnData, this.getInputData(i));
-		} catch (error) {
-			// do not throw error if input is missing
-		}
+	for (let i = 0; i < inputsData.length; i++) {
+		returnData.push.apply(returnData, inputsData[i]);
 	}
 
 	return returnData;

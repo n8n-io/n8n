@@ -259,7 +259,10 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
+export async function execute(
+	this: IExecuteFunctions,
+	inputsData: INodeExecutionData[][],
+): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
 	const advanced = this.getNodeParameter('advanced', 0) as boolean;
 	let matchFields;
@@ -286,8 +289,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 	const nodeVersion = this.getNode().typeVersion;
 
-	let input1 = this.getInputData(0);
-	let input2 = this.getInputData(1);
+	let input1 = inputsData[0];
+	let input2 = inputsData[1];
 
 	if (nodeVersion < 2.1) {
 		input1 = checkInput(
@@ -343,6 +346,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	}
 
 	const matches = findMatches(input1, input2, matchFields, options);
+	console.log(matches);
 
 	if (joinMode === 'keepMatches' || joinMode === 'keepEverything') {
 		let output: INodeExecutionData[] = [];
