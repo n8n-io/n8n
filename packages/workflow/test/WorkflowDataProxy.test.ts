@@ -307,7 +307,7 @@ describe('WorkflowDataProxy', () => {
 		});
 	});
 
-	describe('Pinned data', () => {
+	describe('Pinned data with manual execution', () => {
 		const fixture = loadFixture('pinData');
 		const proxy = getProxyFromFixture(fixture.workflow, null, 'NotPinnedSet1', 'manual');
 
@@ -357,6 +357,10 @@ describe('WorkflowDataProxy', () => {
 
 		test('$(PinnedSet).itemMatching(2)', () => {
 			expect(proxy.$('PinnedSet').itemMatching(2)).toBeUndefined();
+		});
+
+		test('$node[PinnedSet].json.firstName', () => {
+			expect(proxy.$node.PinnedSet.json.firstName).toEqual('Joe');
 		});
 	});
 });
