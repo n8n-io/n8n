@@ -1,6 +1,6 @@
 import * as nodeTypesApi from '@/api/nodeTypes';
 import { HTTP_REQUEST_NODE_TYPE, STORES, CREDENTIAL_ONLY_HTTP_NODE_VERSION } from '@/constants';
-import type { DynamicNodeParameters } from '@/Interface';
+import type { DynamicNodeParameters, NodeTypesByTypeNameAndVersion } from '@/Interface';
 import { addHeaders, addNodeTranslation } from '@/plugins/i18n';
 import { omit } from '@/utils/typesUtils';
 import type {
@@ -22,7 +22,7 @@ import { computed, ref } from 'vue';
 export type NodeTypesStore = ReturnType<typeof useNodeTypesStore>;
 
 export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
-	const nodeTypes = ref<INodeTypeDescription | {}>({});
+	const nodeTypes = ref<NodeTypesByTypeNameAndVersion>({});
 
 	const rootStore = useRootStore();
 
@@ -58,7 +58,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 				return getCredentialOnlyNodeType.value(nodeTypeName, version);
 			}
 
-			const nodeVersions = nodeTypes[nodeTypeName];
+			const nodeVersions = nodeTypes.value[nodeTypeName];
 
 			if (!nodeVersions) return null;
 
@@ -70,7 +70,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 
 	const getNodeVersions = computed(() => {
 		return (nodeTypeName: string): number[] => {
-			return Object.keys(nodeTypes[nodeTypeName] ?? {}).map(Number);
+			return Object.keys(nodeTypes.value[nodeTypeName] ?? {}).map(Number);
 		};
 	});
 
@@ -212,7 +212,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		replace = true,
 	): Promise<INodeTypeDescription[]> => {
 		const nodesInformation = await nodeTypesApi.getNodesInformation(
-			rootStore.getRestApiContext,
+			rootStore.restApiContext,
 			nodeInfos,
 		);
 
