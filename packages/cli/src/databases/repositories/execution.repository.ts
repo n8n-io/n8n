@@ -275,9 +275,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			},
 		);
 
-		this.logger.info('[Execution Recovery] Marked executions as `crashed`', {
-			executionIds,
-		});
+		this.logger.info('Marked executions as `crashed`', { executionIds });
 	}
 
 	/**
@@ -770,6 +768,20 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	async getAllIds() {
 		const executions = await this.find({ select: ['id'], order: { id: 'ASC' } });
+
+		return executions.map(({ id }) => id);
+	}
+
+	/**
+	 * Retrieve a batch of execution IDs with `new` or `running` status, in most recent order.
+	 */
+	async getInProgressExecutionIds(batchSize: number) {
+		const executions = await this.find({
+			select: ['id'],
+			where: { status: In(['new', 'running']) },
+			order: { startedAt: 'DESC' },
+			take: batchSize,
+		});
 
 		return executions.map(({ id }) => id);
 	}
