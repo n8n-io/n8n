@@ -20,6 +20,8 @@ import { EventMessageWorkflow } from '@/eventbus/EventMessageClasses/EventMessag
 import type { EventMessageTypes as EventMessage } from '@/eventbus/EventMessageClasses';
 import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 import { NodeConnectionType } from 'n8n-workflow';
+import { OrchestrationService } from '@/services/orchestration.service';
+import config from '@/config';
 
 /**
  * Workflow producing an execution whose data will be truncated by an instance crash.
@@ -175,6 +177,7 @@ describe('ExecutionRecoveryService', () => {
 	let executionRecoveryService: ExecutionRecoveryService;
 	let push: Push;
 	let executionRepository: ExecutionRepository;
+	let orchestrationService: OrchestrationService;
 
 	beforeAll(async () => {
 		await testDb.init();
@@ -182,7 +185,17 @@ describe('ExecutionRecoveryService', () => {
 		mockInstance(InternalHooks);
 		push = mockInstance(Push);
 		executionRepository = Container.get(ExecutionRepository);
-		executionRecoveryService = new ExecutionRecoveryService(push, executionRepository);
+		orchestrationService = Container.get(OrchestrationService);
+
+		executionRecoveryService = new ExecutionRecoveryService(
+			push,
+			executionRepository,
+			orchestrationService,
+		);
+	});
+
+	beforeEach(() => {
+		config.set('multiMainSetup.instanceType', 'leader');
 	});
 
 	afterEach(async () => {
@@ -194,7 +207,29 @@ describe('ExecutionRecoveryService', () => {
 	});
 
 	describe('recoverFromLogs', () => {
-		describe('if no messages', () => {
+		describe('if follower', () => {
+			test('should do nothing', async () => {
+				/**
+				 * Arrange
+				 */
+				config.set('multiMainSetup.instanceType', 'follower');
+				// @ts-expect-error Private method
+				const amendSpy = jest.spyOn(executionRecoveryService, 'amend');
+				const messages = setupMessages('123', 'Some workflow');
+
+				/**
+				 * Act
+				 */
+				await executionRecoveryService.recoverFromLogs('123', messages);
+
+				/**
+				 * Assert
+				 */
+				expect(amendSpy).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('if leader, with 0 messages', () => {
 			test('should return `null` if no execution found', async () => {
 				/**
 				 * Arrange
@@ -244,7 +279,7 @@ describe('ExecutionRecoveryService', () => {
 			});
 		});
 
-		describe('if messages', () => {
+		describe('if leader, with 1+ messages', () => {
 			test('should return `null` if no execution found', async () => {
 				/**
 				 * Arrange
