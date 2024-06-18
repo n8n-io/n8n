@@ -85,7 +85,7 @@ export const useUsageStore = defineStore('usage', () => {
 	};
 
 	const requestEnterpriseLicenseTrial = async () => {
-		await requestLicenseTrial(rootStore.getRestApiContext);
+		await requestLicenseTrial(rootStore.restApiContext);
 	};
 
 	return {
