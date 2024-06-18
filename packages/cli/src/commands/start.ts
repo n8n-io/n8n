@@ -31,6 +31,7 @@ import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { ExecutionService } from '@/executions/execution.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowRunner } from '@/WorkflowRunner';
+import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -64,8 +65,6 @@ export class Start extends BaseCommand {
 	protected activeWorkflowManager: ActiveWorkflowManager;
 
 	protected server = Container.get(Server);
-
-	private pruningService: PruningService;
 
 	constructor(argv: string[], cmdConfig: Config) {
 		super(argv, cmdConfig);
@@ -199,7 +198,10 @@ export class Start extends BaseCommand {
 	}
 
 	async initOrchestration() {
-		if (config.getEnv('executions.mode') !== 'queue') return;
+		if (config.getEnv('executions.mode') === 'regular') {
+			config.set('multiMainSetup.instanceType', 'leader');
+			return;
+		}
 
 		if (
 			config.getEnv('multiMainSetup.enabled') &&
@@ -290,7 +292,8 @@ export class Start extends BaseCommand {
 
 		await this.server.start();
 
-		await this.initPruning();
+		Container.get(PruningService).init();
+		Container.get(ExecutionRecoveryService).init();
 
 		if (config.getEnv('executions.mode') === 'regular') {
 			await this.runEnqueuedExecutions();
@@ -331,24 +334,6 @@ export class Start extends BaseCommand {
 				}
 			});
 		}
-	}
-
-	async initPruning() {
-		this.pruningService = Container.get(PruningService);
-
-		this.pruningService.startPruning();
-
-		if (config.getEnv('executions.mode') !== 'queue') return;
-
-		const orchestrationService = Container.get(OrchestrationService);
-
-		await orchestrationService.init();
-
-		if (!orchestrationService.isMultiMainSetupEnabled) return;
-
-		orchestrationService.multiMainSetup
-			.on('leader-stepdown', () => this.pruningService.stopPruning())
-			.on('leader-takeover', () => this.pruningService.startPruning());
 	}
 
 	async catch(error: Error) {

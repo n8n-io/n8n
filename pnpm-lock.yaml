@@ -110,6 +110,9 @@ importers:
       vitest:
         specifier: ^1.6.0
         version: 1.6.0(@types/node@18.16.16)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1)
+      vitest-mock-extended:
+        specifier: ^1.3.1
+        version: 1.3.1(typescript@5.4.2)(vitest@1.6.0(@types/node@18.16.16)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1))
       vue-tsc:
         specifier: ^2.0.19
         version: 2.0.19(typescript@5.4.2)
@@ -12760,6 +12763,14 @@ packages:
     peerDependencies:
       typescript: ^5.4.2
 
+  ts-essentials@9.4.2:
+    resolution: {integrity: sha512-mB/cDhOvD7pg3YCLk2rOtejHjjdSi9in/IBYE13S+8WA5FBSraYf4V/ws55uvs0IvQ/l0wBOlXy5yBNZ9Bl8ZQ==}
+    peerDependencies:
+      typescript: ^5.4.2
+    peerDependenciesMeta:
+      typescript:
+        optional: true
+
   ts-ics@1.2.2:
     resolution: {integrity: sha512-L7T5JQi99qQ2Uv7AoCHUZ8Mx1bJYo7qBZtBckuHueR90I3WVdW5NC/tOqTVgu18c3zj08du+xlgWlTIcE+Foxw==}
     peerDependencies:
@@ -13244,6 +13255,12 @@ packages:
         optional: true
       terser:
         optional: true
+
+  vitest-mock-extended@1.3.1:
+    resolution: {integrity: sha512-OpghYjh4BDuQ/Mzs3lFMQ1QRk9D8/2O9T47MLUA5eLn7K4RWIy+MfIivYOWEyxjTENjsBnzgMihDjyNalN/K0Q==}
+    peerDependencies:
+      typescript: ^5.4.2
+      vitest: '>=0.31.1'
 
   vitest@1.6.0:
     resolution: {integrity: sha512-H5r/dN06swuFnzNFhq/dnz37bPXnq8xB2xB5JOVk8K09rUtoeNN+LHWkoQ0A/i3hvbUKKcCei9KpbxqHMLhLLA==}
@@ -27877,6 +27894,10 @@ snapshots:
     dependencies:
       typescript: 5.4.2
 
+  ts-essentials@9.4.2(typescript@5.4.2):
+    optionalDependencies:
+      typescript: 5.4.2
+
   ts-ics@1.2.2(date-fns@2.30.0)(lodash@4.17.21)(zod@3.23.8):
     dependencies:
       date-fns: 2.30.0
@@ -28371,6 +28392,12 @@ snapshots:
       fsevents: 2.3.3
       sass: 1.64.1
       terser: 5.16.1
+
+  vitest-mock-extended@1.3.1(typescript@5.4.2)(vitest@1.6.0(@types/node@18.16.16)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1)):
+    dependencies:
+      ts-essentials: 9.4.2(typescript@5.4.2)
+      typescript: 5.4.2
+      vitest: 1.6.0(@types/node@18.16.16)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1)
 
   vitest@1.6.0(@types/node@18.16.16)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1):
     dependencies:

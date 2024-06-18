@@ -306,7 +306,8 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 						if (!showForm) continue;
 
 						const { webhookSuffix } = (node.parameters.options ?? {}) as IDataObject;
-						const suffix = webhookSuffix ? `/${webhookSuffix}` : '';
+						const suffix =
+							webhookSuffix && typeof webhookSuffix !== 'object' ? `/${webhookSuffix}` : '';
 						testUrl = `${rootStore.getFormWaitingUrl}/${runWorkflowApiResponse.executionId}${suffix}`;
 					}
 
