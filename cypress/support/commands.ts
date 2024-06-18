@@ -9,6 +9,7 @@ import {
 	INSTANCE_OWNER,
 	N8N_AUTH_COOKIE,
 } from '../constants';
+import { getUniqueWorkflowName } from '../utils/workflowUtils';
 
 Cypress.Commands.add('setAppDate', (targetDate: number | Date) => {
 	cy.window().then((win) => {
@@ -24,17 +25,22 @@ Cypress.Commands.add('getByTestId', (selector, ...args) => {
 	return cy.get(`[data-test-id="${selector}"]`, ...args);
 });
 
-Cypress.Commands.add('createFixtureWorkflow', (fixtureKey, workflowName) => {
-	const workflowPage = new WorkflowPage();
+Cypress.Commands.add(
+	'createFixtureWorkflow',
+	(fixtureKey: string, workflowName = getUniqueWorkflowName()) => {
+		const workflowPage = new WorkflowPage();
 
-	// We need to force the click because the input is hidden
-	workflowPage.getters.workflowImportInput().selectFile(`fixtures/${fixtureKey}`, { force: true });
+		// We need to force the click because the input is hidden
+		workflowPage.getters
+			.workflowImportInput()
+			.selectFile(`fixtures/${fixtureKey}`, { force: true });
 
-	cy.waitForLoad(false);
-	workflowPage.actions.setWorkflowName(workflowName);
-	workflowPage.getters.saveButton().should('contain', 'Saved');
-	workflowPage.actions.zoomToFit();
-});
+		cy.waitForLoad(false);
+		workflowPage.actions.setWorkflowName(workflowName);
+		workflowPage.getters.saveButton().should('contain', 'Saved');
+		workflowPage.actions.zoomToFit();
+	},
+);
 
 Cypress.Commands.add(
 	'findChildByTestId',

@@ -39,6 +39,7 @@
 			:button-label="$locale.baseText('credentialEdit.credentialConfig.reconnect')"
 			:button-title="$locale.baseText('credentialEdit.credentialConfig.reconnectOAuth2Credential')"
 			@click="$emit('oauth')"
+			data-test-id="oauth-connect-success-banner"
 		>
 			<template v-if="isGoogleOAuthType" #button>
 				<p
@@ -118,6 +119,7 @@
 			"
 			:is-google-o-auth-type="isGoogleOAuthType"
 			@click="$emit('oauth')"
+			data-test-id="oauth-connect-button"
 		/>
 
 		<n8n-text v-if="isMissingCredentials" color="text-base" size="medium">

@@ -45,7 +45,6 @@ import LoadingView from '@/views/LoadingView.vue';
 import Telemetry from '@/components/Telemetry.vue';
 import { HIRING_BANNER, VIEWS } from '@/constants';
 
-import { userHelpers } from '@/mixins/userHelpers';
 import { loadLanguage } from '@/plugins/i18n';
 import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -74,7 +73,6 @@ export default defineComponent({
 		Modals,
 		AIAssistantChat,
 	},
-	mixins: [userHelpers],
 	setup() {
 		return {
 			...useGlobalLinkActions(),

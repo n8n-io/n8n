@@ -9,9 +9,12 @@ import type { SourceControlledFile } from '@/environments/sourceControl/types/so
 import * as utils from '../shared/utils/';
 import { createUser } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
+import { mockInstance } from '@test/mocking';
+import { Telemetry } from '@/telemetry';
 
 let authOwnerAgent: SuperAgentTest;
 let owner: User;
+mockInstance(Telemetry);
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['sourceControl', 'license', 'auth'],

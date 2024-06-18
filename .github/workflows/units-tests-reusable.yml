@@ -4,24 +4,24 @@ on:
   workflow_call:
     inputs:
       ref:
-        description: 'GitHub ref to test.'
+        description: GitHub ref to test.
         required: false
         type: string
-        default: 'master'
+        default: master
       nodeVersion:
-        description: 'Version of node to use.'
+        description: Version of node to use.
         required: false
         type: string
         default: 20.x
       cacheKey:
-        description: 'Cache key for modules and build artifacts.'
+        description: Cache key for modules and build artifacts.
         required: false
         default: ''
         type: string
       collectCoverage:
         required: false
-        default: 'false'
-        type: string
+        default: false
+        type: boolean
 
 jobs:
   unit-test:
@@ -66,7 +66,7 @@ jobs:
         run: pnpm test:frontend
 
       - name: Upload coverage to Codecov
-        if: ${{ inputs.collectCoverage == 'true' }}
+        if: inputs.collectCoverage
         uses: codecov/codecov-action@v3
         with:
           files: packages/@n8n/chat/coverage/cobertura-coverage.xml,packages/@n8n/nodes-langchain/coverage/cobertura-coverage.xml,packages/@n8n/permissions/coverage/cobertura-coverage.xml,packages/@n8n/client-oauth2/coverage/cobertura-coverage.xml,packages/cli/coverage/cobertura-coverage.xml,packages/core/coverage/cobertura-coverage.xml,packages/design-system/coverage/cobertura-coverage.xml,packages/@n8n/codemirror-lang/coverage/cobertura-coverage.xml,packages/editor-ui/coverage/cobertura-coverage.xml,packages/nodes-base/coverage/cobertura-coverage.xml,packages/workflow/coverage/cobertura-coverage.xml
