@@ -14,12 +14,6 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'communityPackage:uninstall',
 	'communityPackage:update',
 	'communityPackage:list',
-	'eventBusEvent:create',
-	'eventBusEvent:read',
-	'eventBusEvent:update',
-	'eventBusEvent:delete',
-	'eventBusEvent:query',
-	'eventBusEvent:create',
 	'eventBusDestination:create',
 	'eventBusDestination:read',
 	'eventBusDestination:update',
@@ -81,7 +75,6 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 export const GLOBAL_ADMIN_SCOPES = GLOBAL_OWNER_SCOPES.concat();
 
 export const GLOBAL_MEMBER_SCOPES: Scope[] = [
-	'eventBusEvent:read',
 	'eventBusDestination:list',
 	'eventBusDestination:test',
 	'tag:create',

@@ -5,9 +5,10 @@ import type {
 	TriggerPanelDefinition,
 } from 'n8n-workflow';
 import { nodeConnectionTypes } from 'n8n-workflow';
-import type { ICredentialsResponse, NewCredentialsModal } from '@/Interface';
+import type { IExecutionResponse, ICredentialsResponse, NewCredentialsModal } from '@/Interface';
 import type { jsPlumbDOMElement } from '@jsplumb/browser-ui';
 import type { Connection } from '@jsplumb/core';
+import type { RouteLocationRaw } from 'vue-router';
 
 /*
 	Type guards used in editor-ui project
@@ -72,4 +73,17 @@ export function isTriggerPanelObject(
 	triggerPanel: INodeTypeDescription['triggerPanel'],
 ): triggerPanel is TriggerPanelDefinition {
 	return triggerPanel !== undefined && typeof triggerPanel === 'object' && triggerPanel !== null;
+}
+
+export function isFullExecutionResponse(
+	execution: IExecutionResponse | null,
+): execution is IExecutionResponse {
+	return !!execution && 'status' in execution;
+}
+
+export function isRouteLocationRaw(value: unknown): value is RouteLocationRaw {
+	return (
+		typeof value === 'string' ||
+		(typeof value === 'object' && value !== null && ('name' in value || 'path' in value))
+	);
 }

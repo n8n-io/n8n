@@ -22,7 +22,7 @@ import type { MessageEventBusDestinationWebhook } from '@/eventbus/MessageEventB
 import type { MessageEventBusDestinationSentry } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSentry.ee';
 import { EventMessageAudit } from '@/eventbus/EventMessageClasses/EventMessageAudit';
 import type { EventNamesTypes } from '@/eventbus/EventMessageClasses';
-import { ExecutionDataRecoveryService } from '@/eventbus/executionDataRecovery.service';
+import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 
 import * as utils from './shared/utils';
 import { createUser } from './shared/db/users';
@@ -80,7 +80,7 @@ async function confirmIdSent(id: string) {
 	expect(sent.find((msg) => msg.id === id)).toBeTruthy();
 }
 
-mockInstance(ExecutionDataRecoveryService);
+mockInstance(ExecutionRecoveryService);
 const testServer = utils.setupTestServer({
 	endpointGroups: ['eventBus'],
 	enabledFeatures: ['feat:logStreaming'],

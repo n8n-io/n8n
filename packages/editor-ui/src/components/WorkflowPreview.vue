@@ -27,7 +27,6 @@ import { onMounted, onBeforeUnmount, ref, computed, watch } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import type { IWorkflowDb, IWorkflowTemplate } from '@/Interface';
-import { useRootStore } from '@/stores/n8nRoot.store';
 import { useExecutionsStore } from '@/stores/executions.store';
 
 const props = withDefaults(
@@ -44,6 +43,9 @@ const props = withDefaults(
 	{
 		loading: false,
 		mode: 'workflow',
+		workflow: undefined,
+		executionId: undefined,
+		executionMode: undefined,
 		loaderType: 'image',
 		canOpenNDV: true,
 		hideNodeIssues: false,
@@ -56,7 +58,6 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const toast = useToast();
-const rootStore = useRootStore();
 const executionsStore = useExecutionsStore();
 
 const iframeRef = ref<HTMLIFrameElement | null>(null);
@@ -73,8 +74,8 @@ const iframeSrc = computed(() => {
 const showPreview = computed(() => {
 	return (
 		!props.loading &&
-		((props.mode === 'workflow' && props.workflow) ||
-			(props.mode === 'execution' && props.executionId)) &&
+		((props.mode === 'workflow' && !!props.workflow) ||
+			(props.mode === 'execution' && !!props.executionId)) &&
 		ready.value
 	);
 });
@@ -114,7 +115,7 @@ const loadExecution = () => {
 			JSON.stringify({
 				command: 'openExecution',
 				executionId: props.executionId,
-				executionMode: props.executionMode || '',
+				executionMode: props.executionMode ?? '',
 				canOpenNDV: props.canOpenNDV,
 			}),
 			'*',

@@ -118,7 +118,7 @@
 import { mapStores } from 'pinia';
 import { defineComponent, type PropType } from 'vue';
 
-import type { ICredentialsResponse, IUser } from '@/Interface';
+import type { ICredentialsDecryptedResponse, ICredentialsResponse, IUser } from '@/Interface';
 
 import type {
 	CredentialInformation,
@@ -215,6 +215,7 @@ export default defineComponent({
 			credentialId: '',
 			credentialName: '',
 			credentialData: {} as ICredentialDataDecryptedObject,
+			currentCredential: null as ICredentialsResponse | ICredentialsDecryptedResponse | null,
 			modalBus: createEventBus(),
 			isDeleting: false,
 			isSaving: false,
@@ -276,13 +277,6 @@ export default defineComponent({
 		},
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
-		},
-		currentCredential(): ICredentialsResponse | null {
-			if (!this.credentialId) {
-				return null;
-			}
-
-			return this.credentialsStore.getCredentialById(this.credentialId);
 		},
 		credentialTypeName(): string | null {
 			if (this.mode === 'edit') {
@@ -643,9 +637,9 @@ export default defineComponent({
 			this.credentialId = (this.activeId ?? '') as string;
 
 			try {
-				const currentCredentials = (await this.credentialsStore.getCredentialData({
+				const currentCredentials = await this.credentialsStore.getCredentialData({
 					id: this.credentialId,
-				})) as unknown as ICredentialDataDecryptedObject;
+				});
 
 				if (!currentCredentials) {
 					throw new Error(
@@ -654,6 +648,8 @@ export default defineComponent({
 							this.credentialId,
 					);
 				}
+
+				this.currentCredential = currentCredentials;
 
 				this.credentialData = (currentCredentials.data as ICredentialDataDecryptedObject) || {};
 				if (currentCredentials.sharedWithProjects) {
@@ -875,6 +871,7 @@ export default defineComponent({
 			this.isSaving = false;
 			if (credential) {
 				this.credentialId = credential.id;
+				this.currentCredential = credential;
 
 				if (this.isCredentialTestable) {
 					this.isTesting = true;
@@ -1093,20 +1090,17 @@ export default defineComponent({
 
 			const params =
 				'scrollbars=no,resizable=yes,status=no,titlebar=noe,location=no,toolbar=no,menubar=no,width=500,height=700';
-			const oauthPopup = window.open(url, 'OAuth2 Authorization', params);
+			const oauthPopup = window.open(url, 'OAuth Authorization', params);
 
 			this.credentialData = {
 				...this.credentialData,
 				oauthTokenData: null as unknown as CredentialInformation,
 			};
 
+			const oauthChannel = new BroadcastChannel('oauth-callback');
 			const receiveMessage = (event: MessageEvent) => {
-				// // TODO: Add check that it came from n8n
-				// if (event.origin !== 'http://example.org:8080') {
-				// 	return;
-				// }
 				if (event.data === 'success') {
-					window.removeEventListener('message', receiveMessage, false);
+					oauthChannel.removeEventListener('message', receiveMessage);
 
 					// Set some kind of data that status changes.
 					// As data does not get displayed directly it does not matter what data.
@@ -1115,16 +1109,13 @@ export default defineComponent({
 						oauthTokenData: {} as CredentialInformation,
 					};
 
-					this.credentialsStore.enableOAuthCredential(credential);
-
 					// Close the window
 					if (oauthPopup) {
 						oauthPopup.close();
 					}
 				}
 			};
-
-			window.addEventListener('message', receiveMessage, false);
+			oauthChannel.addEventListener('message', receiveMessage);
 		},
 		async onAuthTypeChanged(type: string): Promise<void> {
 			if (!this.activeNodeType?.credentials) {
@@ -1164,7 +1155,7 @@ export default defineComponent({
 
 			this.credentialData = {
 				...this.credentialData,
-				scopes,
+				scopes: scopes as unknown as CredentialInformation,
 				homeProject,
 			};
 		},

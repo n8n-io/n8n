@@ -36,6 +36,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { ProjectRelation } from '@/databases/entities/ProjectRelation';
 import { RoleService } from '@/services/role.service';
+import { UserRepository } from '@/databases/repositories/user.repository';
 
 export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
@@ -54,6 +55,7 @@ export class CredentialsService {
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectService: ProjectService,
 		private readonly roleService: RoleService,
+		private readonly userRepository: UserRepository,
 	) {}
 
 	async getMany(
@@ -143,6 +145,70 @@ export class CredentialsService {
 		});
 
 		return credentials;
+	}
+
+	/**
+	 * @param user The user making the request
+	 * @param options.workflowId The workflow that is being edited
+	 * @param options.projectId The project owning the workflow This is useful
+	 * for workflows that have not been saved yet.
+	 */
+	async getCredentialsAUserCanUseInAWorkflow(
+		user: User,
+		options: { workflowId: string } | { projectId: string },
+	) {
+		// necessary to get the scopes
+		const projectRelations = await this.projectService.getProjectRelationsForUser(user);
+
+		// get all credentials the user has access to
+		const allCredentials = await this.credentialsRepository.findCredentialsForUser(user, [
+			'credential:read',
+		]);
+
+		// get all credentials the workflow or project has access to
+		const allCredentialsForWorkflow =
+			'workflowId' in options
+				? (await this.findAllCredentialIdsForWorkflow(options.workflowId)).map((c) => c.id)
+				: (await this.findAllCredentialIdsForProject(options.projectId)).map((c) => c.id);
+
+		// the intersection of both is all credentials the user can use in this
+		// workflow or project
+		const intersection = allCredentials.filter((c) => allCredentialsForWorkflow.includes(c.id));
+
+		return intersection
+			.map((c) => this.roleService.addScopes(c, user, projectRelations))
+			.map((c) => ({
+				id: c.id,
+				name: c.name,
+				type: c.type,
+				scopes: c.scopes,
+			}));
+	}
+
+	async findAllCredentialIdsForWorkflow(workflowId: string): Promise<CredentialsEntity[]> {
+		// If the workflow is owned by a personal project and the owner of the
+		// project has global read permissions it can use all personal credentials.
+		const user = await this.userRepository.findPersonalOwnerForWorkflow(workflowId);
+		if (user?.hasGlobalScope('credential:read')) {
+			return await this.credentialsRepository.findAllPersonalCredentials();
+		}
+
+		// Otherwise the workflow can only use credentials from projects it's part
+		// of.
+		return await this.credentialsRepository.findAllCredentialsForWorkflow(workflowId);
+	}
+
+	async findAllCredentialIdsForProject(projectId: string): Promise<CredentialsEntity[]> {
+		// If this is a personal project and the owner of the project has global
+		// read permissions then all workflows in that project can use all
+		// credentials of all personal projects.
+		const user = await this.userRepository.findPersonalOwnerForProject(projectId);
+		if (user?.hasGlobalScope('credential:read')) {
+			return await this.credentialsRepository.findAllPersonalCredentials();
+		}
+
+		// Otherwise only the credentials in this project can be used.
+		return await this.credentialsRepository.findAllCredentialsForProject(projectId);
 	}
 
 	/**

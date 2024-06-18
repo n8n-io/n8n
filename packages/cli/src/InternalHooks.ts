@@ -1261,4 +1261,8 @@ export class InternalHooks {
 	}) {
 		return await this.telemetry.track('Project settings updated', data);
 	}
+
+	async onConcurrencyLimitHit({ threshold }: { threshold: number }) {
+		await this.telemetry.track('User hit concurrency limit', { threshold });
+	}
 }

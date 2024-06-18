@@ -34,7 +34,6 @@ import type {
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import type {
-	IAbstractEventMessage,
 	IConnection,
 	IConnections,
 	IDataObject,
@@ -939,6 +938,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 	}
 
+	function setNodes(nodes: INodeUi[]): void {
+		workflow.value.nodes = nodes;
+	}
+
+	function setConnections(connections: IConnections): void {
+		workflow.value.connections = connections;
+	}
+
 	function resetAllNodesIssues(): boolean {
 		workflow.value.nodes.forEach((node) => {
 			node.issues = undefined;
@@ -1432,15 +1439,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		});
 	}
 
-	async function getExecutionEvents(id: string): Promise<IAbstractEventMessage[]> {
-		const rootStore = useRootStore();
-		return await makeRestApiRequest(
-			rootStore.getRestApiContext,
-			'GET',
-			`/eventbus/execution/${id}`,
-		);
-	}
-
 	function getBinaryUrl(
 		binaryDataId: string,
 		action: 'view' | 'download',
@@ -1651,7 +1649,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		fetchExecutionDataById,
 		deleteExecution,
 		addToCurrentExecutions,
-		getExecutionEvents,
 		getBinaryUrl,
 		setNodePristine,
 		resetChatMessages,
@@ -1661,5 +1658,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		removeNodeById,
 		removeNodeConnectionsById,
 		removeNodeExecutionDataById,
+		setNodes,
+		setConnections,
 	};
 });

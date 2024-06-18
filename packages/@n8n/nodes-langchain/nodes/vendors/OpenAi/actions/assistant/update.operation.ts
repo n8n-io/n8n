@@ -67,7 +67,7 @@ const properties: INodeProperties[] = [
 				description:
 					'Whether to augments the assistant with knowledge from outside its model, such as proprietary product information or documents, find more <a href="https://platform.openai.com/docs/assistants/tools/knowledge-retrieval" target="_blank">here</a>',
 			},
-			{ ...modelRLC, required: false },
+			{ ...modelRLC('modelSearch'), required: false },
 			{
 				displayName: 'Name',
 				name: 'name',

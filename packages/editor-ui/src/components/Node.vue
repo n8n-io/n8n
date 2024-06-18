@@ -108,9 +108,9 @@
 			</div>
 
 			<div
-				v-if="showDisabledLinethrough"
+				v-if="showDisabledLineThrough"
 				:class="{
-					'disabled-linethrough': true,
+					'disabled-line-through': true,
 					success: !['unknown'].includes(nodeExecutionStatus) && workflowDataItems > 0,
 				}"
 			></div>
@@ -187,7 +187,7 @@ import {
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
 	MANUAL_TRIGGER_NODE_TYPE,
 	NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS,
-	NOT_DUPLICATABE_NODE_TYPES,
+	NOT_DUPLICATABLE_NODE_TYPES,
 	SIMULATE_NODE_TYPE,
 	SIMULATE_TRIGGER_NODE_TYPE,
 	WAIT_TIME_UNLIMITED,
@@ -287,7 +287,7 @@ export default defineComponent({
 		},
 		isDuplicatable(): boolean {
 			if (!this.nodeType) return true;
-			if (NOT_DUPLICATABE_NODE_TYPES.includes(this.nodeType.name)) return false;
+			if (NOT_DUPLICATABLE_NODE_TYPES.includes(this.nodeType.name)) return false;
 			return (
 				this.nodeType.maxNodes === undefined || this.sameTypeNodes.length < this.nodeType.maxNodes
 			);
@@ -493,7 +493,7 @@ export default defineComponent({
 		position(): XYPosition {
 			return this.node ? this.node.position : [0, 0];
 		},
-		showDisabledLinethrough(): boolean {
+		showDisabledLineThrough(): boolean {
 			return (
 				!this.isConfigurableNode &&
 				!!(this.data?.disabled && this.inputs.length === 1 && this.outputs.length === 1)
@@ -563,7 +563,7 @@ export default defineComponent({
 						returnStyles['border-style'] = 'solid';
 					}
 				} else if (!!this.waiting || this.showPinnedDataInfo) {
-					borderColor = '--color-canvas-node-pinned-border';
+					borderColor = '--color-node-pinned-border';
 				} else if (this.nodeExecutionStatus === 'unknown') {
 					borderColor = '--color-foreground-xdark';
 				} else if (this.workflowDataItems) {
@@ -658,12 +658,15 @@ export default defineComponent({
 				this.showTriggerNodeTooltip = false;
 			}
 		},
-		nodeRunData(newValue) {
-			if (!this.data) {
-				return;
-			}
+		nodeRunData: {
+			deep: true,
+			handler(newValue) {
+				if (!this.data) {
+					return;
+				}
 
-			this.$emit('run', { name: this.data.name, data: newValue, waiting: !!this.waiting });
+				this.$emit('run', { name: this.data.name, data: newValue, waiting: !!this.waiting });
+			},
 		},
 	},
 	created() {
@@ -906,10 +909,10 @@ export default defineComponent({
 			height: 100%;
 			border: 2px solid var(--color-foreground-xdark);
 			border-radius: var(--border-radius-large);
-			background-color: var(--color-canvas-node-background);
-			--color-background-node-icon-badge: var(--color-canvas-node-background);
+			background-color: var(--color-node-background);
+			--color-background-node-icon-badge: var(--color-node-background);
 			&.executing {
-				background-color: $node-background-executing !important;
+				background-color: var(--color-node-executing-background) !important;
 
 				.node-executing-info {
 					display: inline-block;
@@ -990,7 +993,7 @@ export default defineComponent({
 				border-radius: 50px;
 
 				&.executing {
-					background-color: $node-background-executing-other !important;
+					background-color: var(--color-node-executing-other-background) !important;
 				}
 
 				.node-executing-info {
@@ -1118,7 +1121,7 @@ export default defineComponent({
 	}
 }
 
-.disabled-linethrough {
+.disabled-line-through {
 	border: 1px solid var(--color-foreground-dark);
 	position: absolute;
 	top: 49px;
@@ -1189,7 +1192,7 @@ export default defineComponent({
 	overflow: auto;
 }
 
-.disabled-linethrough {
+.disabled-line-through {
 	z-index: 8;
 }
 

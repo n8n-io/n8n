@@ -6,13 +6,16 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useHistoryStore } from '@/stores/history.store';
 import { createPinia, setActivePinia } from 'pinia';
-import { createTestNode } from '@/__tests__/mocks';
+import { createTestNode, createTestWorkflowObject } from '@/__tests__/mocks';
 import type { Connection } from '@vue-flow/core';
 import type { IConnection } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
+import { useNDVStore } from '@/stores/ndv.store';
 
 describe('useCanvasOperations', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let uiStore: ReturnType<typeof useUIStore>;
+	let ndvStore: ReturnType<typeof useNDVStore>;
 	let historyStore: ReturnType<typeof useHistoryStore>;
 	let canvasOperations: ReturnType<typeof useCanvasOperations>;
 
@@ -22,6 +25,7 @@ describe('useCanvasOperations', () => {
 
 		workflowsStore = useWorkflowsStore();
 		uiStore = useUIStore();
+		ndvStore = useNDVStore();
 		historyStore = useHistoryStore();
 		canvasOperations = useCanvasOperations();
 	});
@@ -133,6 +137,93 @@ describe('useCanvasOperations', () => {
 		});
 	});
 
+	describe('renameNode', () => {
+		it('should rename node', async () => {
+			const oldName = 'Old Node';
+			const newName = 'New Node';
+
+			const workflowObject = createTestWorkflowObject();
+			workflowObject.renameNode = vi.fn();
+
+			vi.spyOn(workflowsStore, 'getCurrentWorkflow').mockReturnValue(workflowObject);
+
+			workflowsStore.getNodeByName = vi.fn().mockReturnValue({ name: oldName });
+			ndvStore.activeNodeName = oldName;
+
+			await canvasOperations.renameNode(oldName, newName);
+
+			expect(workflowObject.renameNode).toHaveBeenCalledWith(oldName, newName);
+			expect(ndvStore.activeNodeName).toBe(newName);
+		});
+
+		it('should not rename node when new name is same as old name', async () => {
+			const oldName = 'Old Node';
+			workflowsStore.getNodeByName = vi.fn().mockReturnValue({ name: oldName });
+			ndvStore.activeNodeName = oldName;
+
+			await canvasOperations.renameNode(oldName, oldName);
+
+			expect(ndvStore.activeNodeName).toBe(oldName);
+		});
+	});
+
+	describe('revertRenameNode', () => {
+		it('should revert node renaming', async () => {
+			const oldName = 'Old Node';
+			const currentName = 'New Node';
+			workflowsStore.getNodeByName = vi.fn().mockReturnValue({ name: currentName });
+			ndvStore.activeNodeName = currentName;
+
+			await canvasOperations.revertRenameNode(currentName, oldName);
+
+			expect(ndvStore.activeNodeName).toBe(oldName);
+		});
+
+		it('should not revert node renaming when old name is same as new name', async () => {
+			const oldName = 'Old Node';
+			workflowsStore.getNodeByName = vi.fn().mockReturnValue({ name: oldName });
+			ndvStore.activeNodeName = oldName;
+
+			await canvasOperations.revertRenameNode(oldName, oldName);
+
+			expect(ndvStore.activeNodeName).toBe(oldName);
+		});
+	});
+
+	describe('setNodeActive', () => {
+		it('should set active node name when node exists', () => {
+			const nodeId = 'node1';
+			const nodeName = 'Node 1';
+			workflowsStore.getNodeById = vi.fn().mockReturnValue({ name: nodeName });
+			ndvStore.activeNodeName = '';
+
+			canvasOperations.setNodeActive(nodeId);
+
+			expect(ndvStore.activeNodeName).toBe(nodeName);
+		});
+
+		it('should not change active node name when node does not exist', () => {
+			const nodeId = 'node1';
+			workflowsStore.getNodeById = vi.fn().mockReturnValue(undefined);
+			ndvStore.activeNodeName = 'Existing Node';
+
+			canvasOperations.setNodeActive(nodeId);
+
+			expect(ndvStore.activeNodeName).toBe('Existing Node');
+		});
+	});
+
+	describe('setNodeActiveByName', () => {
+		it('should set active node name', () => {
+			const nodeName = 'Node 1';
+			ndvStore.activeNodeName = '';
+
+			canvasOperations.setNodeActiveByName(nodeName);
+
+			expect(ndvStore.activeNodeName).toBe(nodeName);
+		});
+	});
+
 	describe('createConnection', () => {
 		it('should not create a connection if source node does not exist', () => {
 			const addConnectionSpy = vi
@@ -200,9 +291,9 @@ describe('useCanvasOperations', () => {
 
 			const connection: Connection = {
 				source: nodeA.id,
-				sourceHandle: 'outputs/main/0',
+				sourceHandle: `outputs/${NodeConnectionType.Main}/0`,
 				target: nodeB.id,
-				targetHandle: 'inputs/main/0',
+				targetHandle: `inputs/${NodeConnectionType.Main}/0`,
 			};
 
 			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValueOnce(nodeA).mockReturnValueOnce(nodeB);
@@ -211,8 +302,8 @@ describe('useCanvasOperations', () => {
 
 			expect(addConnectionSpy).toHaveBeenCalledWith({
 				connection: [
-					{ index: 0, node: nodeA.name, type: 'main' },
-					{ index: 0, node: nodeB.name, type: 'main' },
+					{ index: 0, node: nodeA.name, type: NodeConnectionType.Main },
+					{ index: 0, node: nodeB.name, type: NodeConnectionType.Main },
 				],
 			});
 			expect(uiStore.stateIsDirty).toBe(true);
@@ -269,9 +360,9 @@ describe('useCanvasOperations', () => {
 
 			const connection: Connection = {
 				source: nodeA.id,
-				sourceHandle: 'outputs/main/0',
+				sourceHandle: `outputs/${NodeConnectionType.Main}/0`,
 				target: nodeB.id,
-				targetHandle: 'inputs/main/0',
+				targetHandle: `inputs/${NodeConnectionType.Main}/0`,
 			};
 
 			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValueOnce(nodeA).mockReturnValueOnce(nodeB);
@@ -280,8 +371,8 @@ describe('useCanvasOperations', () => {
 
 			expect(removeConnectionSpy).toHaveBeenCalledWith({
 				connection: [
-					{ index: 0, node: nodeA.name, type: 'main' },
-					{ index: 0, node: nodeB.name, type: 'main' },
+					{ index: 0, node: nodeA.name, type: NodeConnectionType.Main },
+					{ index: 0, node: nodeB.name, type: NodeConnectionType.Main },
 				],
 			});
 		});
@@ -294,8 +385,8 @@ describe('useCanvasOperations', () => {
 				.mockImplementation(() => {});
 
 			const connection: [IConnection, IConnection] = [
-				{ node: 'sourceNode', type: 'type', index: 1 },
-				{ node: 'targetNode', type: 'type', index: 2 },
+				{ node: 'sourceNode', type: NodeConnectionType.Main, index: 1 },
+				{ node: 'targetNode', type: NodeConnectionType.Main, index: 2 },
 			];
 
 			canvasOperations.revertDeleteConnection(connection);

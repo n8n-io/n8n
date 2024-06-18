@@ -1,3 +1,4 @@
+import type { ICredentialType } from 'n8n-workflow';
 import {
 	GMAIL_NODE_NAME,
 	HTTP_REQUEST_NODE_NAME,
@@ -11,6 +12,7 @@ import {
 	TRELLO_NODE_NAME,
 } from '../constants';
 import { CredentialsModal, CredentialsPage, NDV, WorkflowPage } from '../pages';
+import { successToast } from '../pages/notifications';
 import { getVisibleSelect } from '../utils';
 
 const credentialsPage = new CredentialsPage();
@@ -19,6 +21,7 @@ const workflowPage = new WorkflowPage();
 const nodeDetailsView = new NDV();
 
 const NEW_CREDENTIAL_NAME = 'Something else';
+const NEW_CREDENTIAL_NAME2 = 'Something else entirely';
 
 describe('Credentials', () => {
 	beforeEach(() => {
@@ -152,7 +155,7 @@ describe('Credentials', () => {
 		credentialsModal.getters.credentialsEditModal().should('be.visible');
 		credentialsModal.getters.deleteButton().click();
 		cy.get('.el-message-box').find('button').contains('Yes').click();
-		workflowPage.getters.successToast().contains('Credential deleted');
+		successToast().contains('Credential deleted');
 		workflowPage.getters
 			.nodeCredentialsSelect()
 			.find('input')
@@ -178,6 +181,24 @@ describe('Credentials', () => {
 			.nodeCredentialsSelect()
 			.find('input')
 			.should('have.value', NEW_CREDENTIAL_NAME);
+
+		// Reload page to make sure this also works when the credential hasn't been
+		// just created.
+		nodeDetailsView.actions.close();
+		workflowPage.actions.saveWorkflowOnButtonClick();
+		cy.reload();
+		workflowPage.getters.canvasNodes().last().click();
+		cy.get('body').type('{enter}');
+		workflowPage.getters.nodeCredentialsEditButton().click();
+		credentialsModal.getters.credentialsEditModal().should('be.visible');
+		credentialsModal.getters.name().click();
+		credentialsModal.actions.renameCredential(NEW_CREDENTIAL_NAME2);
+		credentialsModal.getters.saveButton().click();
+		credentialsModal.getters.closeButton().click();
+		workflowPage.getters
+			.nodeCredentialsSelect()
+			.find('input')
+			.should('have.value', NEW_CREDENTIAL_NAME2);
 	});
 
 	it('should setup generic authentication for HTTP node', () => {
@@ -209,7 +230,7 @@ describe('Credentials', () => {
 			req.headers['cache-control'] = 'no-cache, no-store';
 
 			req.on('response', (res) => {
-				const credentials = res.body || [];
+				const credentials: ICredentialType[] = res.body || [];
 
 				const index = credentials.findIndex((c) => c.name === 'slackOAuth2Api');
 

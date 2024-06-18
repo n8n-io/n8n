@@ -15,6 +15,7 @@ const objToMap = <TKey extends string, T>(obj: Record<TKey, T>) => {
 describe('useCredentialSetupState', () => {
 	const nodesByName = {
 		Twitter: {
+			id: 'twitter',
 			name: 'Twitter',
 			type: 'n8n-nodes-base.twitter',
 			position: [720, -220],
@@ -58,12 +59,14 @@ describe('useCredentialSetupState', () => {
 		it('returns credentials grouped when the credential names are the same', () => {
 			const [node1, node2] = [
 				newWorkflowTemplateNode({
+					id: 'twitter',
 					type: 'n8n-nodes-base.twitter',
 					credentials: {
 						twitterOAuth1Api: 'credential',
 					},
 				}) as IWorkflowTemplateNodeWithCredentials,
 				newWorkflowTemplateNode({
+					id: 'telegram',
 					type: 'n8n-nodes-base.telegram',
 					credentials: {
 						telegramApi: 'credential',

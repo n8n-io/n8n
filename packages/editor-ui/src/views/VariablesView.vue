@@ -122,7 +122,7 @@ const resourceToEnvironmentVariable = (data: IResource): EnvironmentVariable => 
 	return {
 		id: data.id,
 		key: data.name,
-		value: data.value,
+		value: 'value' in data ? data.value : '',
 	};
 };
 
