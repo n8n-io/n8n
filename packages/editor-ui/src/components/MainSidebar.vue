@@ -111,7 +111,7 @@ import GiftNotificationIcon from './GiftNotificationIcon.vue';
 
 import { useMessage } from '@/composables/useMessage';
 import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
-import { userHelpers } from '@/mixins/userHelpers';
+import { useUserHelpers } from '@/composables/useUserHelpers';
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
@@ -131,6 +131,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useDebounce } from '@/composables/useDebounce';
 import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
 import ProjectNavigation from '@/components/Projects/ProjectNavigation.vue';
+import { useRoute, useRouter } from 'vue-router';
 
 export default defineComponent({
 	name: 'MainSidebar',
@@ -141,15 +142,17 @@ export default defineComponent({
 		BecomeTemplateCreatorCta,
 		ProjectNavigation,
 	},
-	mixins: [userHelpers],
 	setup() {
 		const externalHooks = useExternalHooks();
 		const { callDebounced } = useDebounce();
+		const router = useRouter();
+		const route = useRoute();
 
 		return {
 			externalHooks,
 			callDebounced,
 			...useMessage(),
+			...useUserHelpers(router, route),
 		};
 	},
 	data() {
