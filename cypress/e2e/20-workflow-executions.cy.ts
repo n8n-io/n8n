@@ -2,6 +2,7 @@ import type { RouteHandler } from 'cypress/types/net-stubbing';
 import { WorkflowPage } from '../pages';
 import { WorkflowExecutionsTab } from '../pages/workflow-executions-tab';
 import executionOutOfMemoryServerResponse from '../fixtures/responses/execution-out-of-memory-server-response.json';
+import { getVisibleSelect } from '../utils';
 
 const workflowPage = new WorkflowPage();
 const executionsTab = new WorkflowExecutionsTab();
@@ -136,15 +137,39 @@ describe('Current Workflow Executions', () => {
 		executionsTab.getters.executionListItems().eq(14).should('not.be.visible');
 	});
 
-	it('should show workflow data in executions tab after hard reload', () => {
+	it('should show workflow data in executions tab after hard reload and modify name and tags', () => {
 		executionsTab.actions.switchToExecutionsTab();
 		checkMainHeaderELements();
+		workflowPage.getters.saveButton().find('button').should('not.exist');
+		workflowPage.getters.tagPills().should('have.length', 2);
+
+		workflowPage.getters.workflowTags().click();
+		getVisibleSelect().find('li:contains("Manage tags")').click();
+		cy.get('button:contains("Add new")').click();
+		cy.getByTestId('tags-table').find('input').type('nutag').type('{enter}');
+		cy.get('button:contains("Done")').click();
+
+		// workflowPage.getters.createTagButton().click();
+		// workflowPage.actions.addTags('nutag');
+		// workflowPage.getters.tagPills().should('have.length', 3);
+		// workflowPage.getters.nthTagPill(1).click();
 
 		cy.reload();
 		checkMainHeaderELements();
+		workflowPage.getters.saveButton().find('button').should('not.exist');
+		workflowPage.getters.workflowTags().click();
+		workflowPage.getters.tagsInDropdown().first().should('have.text', 'nutag').click();
+		workflowPage.getters.tagPills().should('have.length', 3);
 
 		executionsTab.actions.switchToEditorTab();
 		checkMainHeaderELements();
+		workflowPage.getters.saveButton().find('button').should('not.exist');
+		workflowPage.getters.tagPills().should('have.length', 3);
+
+		executionsTab.actions.switchToExecutionsTab();
+		checkMainHeaderELements();
+		workflowPage.getters.saveButton().find('button').should('not.exist');
+		workflowPage.getters.tagPills().should('have.length', 3);
 	});
 });
 

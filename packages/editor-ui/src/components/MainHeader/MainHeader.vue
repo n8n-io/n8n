@@ -62,7 +62,11 @@ onMounted(async () => {
 	dirtyState.value = uiStore.stateIsDirty;
 	syncTabsWithRoute(route);
 
-	if (workflowsStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+	if (
+		workflowsStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID &&
+		!!route.params.name &&
+		route.params.name !== 'new'
+	) {
 		const workflowId = route.params.name as string;
 		const fetchedWorkflow = await workflowsStore.fetchWorkflow(workflowId);
 		const tagIds = (fetchedWorkflow.tags as ITag[] | undefined)?.map((tag) => tag.id) ?? [];
