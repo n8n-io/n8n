@@ -12,7 +12,7 @@ import {
 	natives,
 } from '@/plugins/codemirror/completions/datatype.completions';
 
-import { mockNodes, mockProxy } from './mock';
+import { mockProxy } from './mock';
 import type { CompletionSource, CompletionResult } from '@codemirror/autocomplete';
 import { CompletionContext } from '@codemirror/autocomplete';
 import { EditorState } from '@codemirror/state';
@@ -30,6 +30,7 @@ import {
 	STRING_RECOMMENDED_OPTIONS,
 } from '../constants';
 import { set, uniqBy } from 'lodash-es';
+import { mockNodes } from '@/__tests__/mocks';
 
 let externalSecretsStore: ReturnType<typeof useExternalSecretsStore>;
 let uiStore: ReturnType<typeof useUIStore>;
