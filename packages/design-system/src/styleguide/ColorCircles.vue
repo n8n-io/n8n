@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, reactive } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import type { PropType } from 'vue';
 import { getHex, resolveHSLCalc } from './ColorCircles.utils';
 
@@ -10,23 +10,28 @@ const props = defineProps({
 	},
 });
 
-const hsl = reactive<{ [color: string]: string }>({});
-const observer = ref<MutationObserver | null>(null);
+const getColors = () => {
+	const style = getComputedStyle(document.body);
 
-const setColors = () => {
+	const hslColors: Record<string, string> = {};
 	for (const color of props.colors) {
-		const style = getComputedStyle(document.body);
-		hsl[color] = style.getPropertyValue(color);
+		const colorValue = style.getPropertyValue(color);
+		if (colorValue) {
+			hslColors[color] = colorValue;
+		}
 	}
+
+	return hslColors;
 };
 
-onMounted(() => {
-	setColors();
+const hsl = ref<{ [color: string]: string }>(getColors());
+const observer = ref<MutationObserver | null>(null);
 
+onMounted(() => {
 	observer.value = new MutationObserver((mutationsList) => {
 		for (const mutation of mutationsList) {
 			if (mutation.type === 'attributes') {
-				setColors();
+				hsl.value = getColors();
 			}
 		}
 	});
@@ -42,8 +47,8 @@ onUnmounted(() => {
 });
 
 // Expose functions for template usage
-const getHexValue = (color: string) => getHex(hsl[color]);
-const getHSLValue = (color: string) => resolveHSLCalc(hsl[color]);
+const getHexValue = (color: string) => getHex(hsl.value[color]);
+const getHSLValue = (color: string) => resolveHSLCalc(hsl.value[color]);
 </script>
 
 <template>
