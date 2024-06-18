@@ -28,16 +28,12 @@ import { ref, onMounted, computed } from 'vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IBinaryData } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
-import type { PropType } from 'vue';
 import VueJsonPretty from 'vue-json-pretty';
 import RunDataHtml from '@/components/RunDataHtml.vue';
 
-const props = defineProps({
-	binaryData: {
-		type: Object as PropType<IBinaryData>,
-		required: true,
-	},
-});
+const props = defineProps<{
+	binaryData: IBinaryData;
+}>();
 
 const isLoading = ref(true);
 const embedSource = ref('');
