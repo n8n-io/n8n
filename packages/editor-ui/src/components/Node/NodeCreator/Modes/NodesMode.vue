@@ -24,6 +24,8 @@ import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue'
 import NoResults from '../Panel/NoResults.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { getNodeIcon, getNodeIconColor, getNodeIconUrl } from '@/utils/nodeTypesUtils';
+import { useUIStore } from '@/stores/ui.store';
 
 export interface Props {
 	rootView: 'trigger' | 'action';
@@ -35,6 +37,8 @@ const emit = defineEmits({
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
+const uiStore = useUIStore();
+const rootStore = useRootStore();
 
 const { mergedNodes, actions } = useNodeCreatorStore();
 const { baseUrl } = useRootStore();
@@ -86,11 +90,10 @@ function onSelected(item: INodeCreateElement) {
 			return;
 		}
 
-		const icon = item.properties.iconUrl
-			? `${baseUrl}${item.properties.iconUrl}`
-			: typeof item.properties.icon === 'string'
-				? item.properties.icon?.split(':')[1]
-				: undefined;
+		const iconUrl = getNodeIconUrl(item.properties, uiStore.appliedTheme);
+		const icon = iconUrl
+			? rootStore.baseUrl + iconUrl
+			: getNodeIcon(item.properties, uiStore.appliedTheme)?.split(':')[1];
 
 		const transformedActions = nodeActions?.map((a) =>
 			transformNodeType(a, item.properties.displayName, 'action'),
@@ -100,9 +103,9 @@ function onSelected(item: INodeCreateElement) {
 			subcategory: item.properties.displayName,
 			title: item.properties.displayName,
 			nodeIcon: {
-				color: item.properties.defaults?.color?.toString(),
+				color: getNodeIconColor(item.properties),
 				icon,
-				iconType: item.properties.iconUrl ? 'file' : 'icon',
+				iconType: iconUrl ? 'file' : 'icon',
 			},
 
 			rootView: activeViewStack.value.rootView,

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { PropType } from 'vue';
 import { ref, onMounted, onUnmounted } from 'vue';
 
 type Size = {
@@ -8,16 +7,15 @@ type Size = {
 };
 
 // Define props with their types
-const props = defineProps({
-	variables: {
-		type: Array as PropType<string[]>,
-		required: true,
+const props = withDefaults(
+	defineProps<{
+		variables: string[];
+		attr?: string;
+	}>(),
+	{
+		attr: '',
 	},
-	attr: {
-		type: String,
-		default: '',
-	},
-});
+);
 
 const getSizes = () => {
 	const style = getComputedStyle(document.body);

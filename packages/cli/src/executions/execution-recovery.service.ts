@@ -1,6 +1,6 @@
 import Container, { Service } from 'typedi';
 import { Push } from '@/push';
-import { sleep } from 'n8n-workflow';
+import { jsonStringify, sleep } from 'n8n-workflow';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { getWorkflowHooksMain } from '@/WorkflowExecuteAdditionalData'; // @TODO: Dependency cycle
 import { InternalHooks } from '@/InternalHooks'; // @TODO: Dependency cycle if injected
@@ -11,6 +11,11 @@ import type { IExecutionResponse } from '@/Interfaces';
 import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
+import { Logger } from '@/Logger';
+import config from '@/config';
+import { OnShutdown } from '@/decorators/OnShutdown';
+import type { QueueRecoverySettings } from './execution.types';
+import { OrchestrationService } from '@/services/orchestration.service';
 
 /**
  * Service for recovering key properties in executions.
@@ -18,17 +23,49 @@ import { ARTIFICIAL_TASK_DATA } from '@/constants';
 @Service()
 export class ExecutionRecoveryService {
 	constructor(
+		private readonly logger: Logger,
 		private readonly push: Push,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly orchestrationService: OrchestrationService,
 	) {}
+
+	/**
+	 * @important Requires `OrchestrationService` to be initialized on queue mode.
+	 */
+	init() {
+		if (config.getEnv('executions.mode') === 'regular') return;
+
+		const { isLeader, isMultiMainSetupEnabled } = this.orchestrationService;
+
+		if (isLeader) this.scheduleQueueRecovery();
+
+		if (isMultiMainSetupEnabled) {
+			this.orchestrationService.multiMainSetup
+				.on('leader-takeover', () => this.scheduleQueueRecovery())
+				.on('leader-stepdown', () => this.stopQueueRecovery());
+		}
+	}
+
+	private readonly queueRecoverySettings: QueueRecoverySettings = {
+		batchSize: config.getEnv('executions.queueRecovery.batchSize'),
+		waitMs: config.getEnv('executions.queueRecovery.interval') * 60 * 1000,
+	};
+
+	private isShuttingDown = false;
 
 	/**
 	 * Recover key properties of a truncated execution using event logs.
 	 */
 	async recoverFromLogs(executionId: string, messages: EventMessageTypes[]) {
+		if (this.orchestrationService.isFollower) return;
+
 		const amendedExecution = await this.amend(executionId, messages);
 
 		if (!amendedExecution) return null;
+
+		this.logger.info('[Recovery] Logs available, amended execution', {
+			executionId: amendedExecution.id,
+		});
 
 		await this.executionRepository.updateExistingExecution(executionId, amendedExecution);
 
@@ -42,12 +79,89 @@ export class ExecutionRecoveryService {
 		return amendedExecution;
 	}
 
+	/**
+	 * Schedule a cycle to mark dangling executions as crashed in queue mode.
+	 */
+	scheduleQueueRecovery(waitMs = this.queueRecoverySettings.waitMs) {
+		if (!this.shouldScheduleQueueRecovery()) return;
+
+		this.queueRecoverySettings.timeout = setTimeout(async () => {
+			try {
+				const nextWaitMs = await this.recoverFromQueue();
+				this.scheduleQueueRecovery(nextWaitMs);
+			} catch (error) {
+				const msg = this.toErrorMsg(error);
+
+				this.logger.error('[Recovery] Failed to recover dangling executions from queue', { msg });
+				this.logger.error('[Recovery] Retrying...');
+
+				this.scheduleQueueRecovery();
+			}
+		}, waitMs);
+
+		const wait = [this.queueRecoverySettings.waitMs / (60 * 1000), 'min'].join(' ');
+
+		this.logger.debug(`[Recovery] Scheduled queue recovery check for next ${wait}`);
+	}
+
+	stopQueueRecovery() {
+		clearTimeout(this.queueRecoverySettings.timeout);
+	}
+
+	@OnShutdown()
+	shutdown() {
+		this.isShuttingDown = true;
+		this.stopQueueRecovery();
+	}
+
 	// ----------------------------------
 	//             private
 	// ----------------------------------
 
 	/**
-	 * Amend `status`, `stoppedAt`, and (if possible) `data` properties of an execution.
+	 * Mark in-progress executions as `crashed` if stored in DB as `new` or `running`
+	 * but absent from the queue. Return time until next recovery cycle.
+	 */
+	private async recoverFromQueue() {
+		const { waitMs, batchSize } = this.queueRecoverySettings;
+
+		const storedIds = await this.executionRepository.getInProgressExecutionIds(batchSize);
+
+		if (storedIds.length === 0) {
+			this.logger.debug('[Recovery] Completed queue recovery check, no dangling executions');
+			return waitMs;
+		}
+
+		const { Queue } = await import('@/Queue');
+
+		const queuedIds = await Container.get(Queue).getInProgressExecutionIds();
+
+		if (queuedIds.size === 0) {
+			this.logger.debug('[Recovery] Completed queue recovery check, no dangling executions');
+			return waitMs;
+		}
+
+		const danglingIds = storedIds.filter((id) => !queuedIds.has(id));
+
+		if (danglingIds.length === 0) {
+			this.logger.debug('[Recovery] Completed queue recovery check, no dangling executions');
+			return waitMs;
+		}
+
+		await this.executionRepository.markAsCrashed(danglingIds);
+
+		this.logger.info('[Recovery] Completed queue recovery check, recovered dangling executions', {
+			danglingIds,
+		});
+
+		// if this cycle used up the whole batch size, it is possible for there to be
+		// dangling executions outside this check, so speed up next cycle
+
+		return storedIds.length >= this.queueRecoverySettings.batchSize ? waitMs / 2 : waitMs;
+	}
+
+	/**
+	 * Amend `status`, `stoppedAt`, and (if possible) `data` of an execution using event logs.
 	 */
 	private async amend(executionId: string, messages: EventMessageTypes[]) {
 		if (messages.length === 0) return await this.amendWithoutLogs(executionId);
@@ -193,5 +307,19 @@ export class ExecutionRecoveryService {
 		};
 
 		await externalHooks.executeHookFunctions('workflowExecuteAfter', [run]);
+	}
+
+	private toErrorMsg(error: unknown) {
+		return error instanceof Error
+			? error.message
+			: jsonStringify(error, { replaceCircularRefs: true });
+	}
+
+	private shouldScheduleQueueRecovery() {
+		return (
+			config.getEnv('executions.mode') === 'queue' &&
+			config.getEnv('multiMainSetup.instanceType') === 'leader' &&
+			!this.isShuttingDown
+		);
 	}
 }

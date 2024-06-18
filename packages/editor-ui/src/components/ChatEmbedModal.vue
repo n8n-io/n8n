@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import type { PropType } from 'vue';
 import { computed, ref } from 'vue';
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
@@ -11,12 +10,14 @@ import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
 import JsEditor from '@/components/JsEditor/JsEditor.vue';
 import { useI18n } from '@/composables/useI18n';
 
-const props = defineProps({
-	modalBus: {
-		type: Object as PropType<EventBus>,
-		default: () => createEventBus(),
+const props = withDefaults(
+	defineProps<{
+		modalBus?: EventBus;
+	}>(),
+	{
+		modalBus: () => createEventBus(),
 	},
-});
+);
 
 const i18n = useI18n();
 const rootStore = useRootStore();

@@ -410,7 +410,7 @@ export default defineComponent({
 			return this.cachedResponses[this.currentRequestKey] || null;
 		},
 		currentQueryResults(): IResourceLocatorResultExpanded[] {
-			const results = this.currentResponse ? this.currentResponse.results : [];
+			const results = this.currentResponse?.results ?? [];
 
 			return results.map(
 				(result: INodeListSearchItems): IResourceLocatorResultExpanded => ({
@@ -648,6 +648,11 @@ export default defineComponent({
 			}
 		},
 		loadResourcesDebounced() {
+			if (this.currentResponse?.error) {
+				// Clear error response immediately when retrying to show loading state
+				delete this.cachedResponses[this.currentRequestKey];
+			}
+
 			void this.callDebounced(this.loadResources, {
 				debounceTime: 1000,
 				trailing: true,
@@ -663,6 +668,11 @@ export default defineComponent({
 			const params = this.currentRequestParams;
 			const paramsKey = this.currentRequestKey;
 			const cachedResponse = this.cachedResponses[paramsKey];
+
+			if (this.credentialsNotSet) {
+				this.setResponse(paramsKey, { error: true });
+				return;
+			}
 
 			if (this.requiresSearchFilter && !params.filter) {
 				return;

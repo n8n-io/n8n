@@ -371,6 +371,21 @@ export const schema = {
 			default: 10000,
 			env: 'EXECUTIONS_DATA_PRUNE_MAX_COUNT',
 		},
+
+		queueRecovery: {
+			interval: {
+				doc: 'How often (minutes) to check for queue recovery',
+				format: Number,
+				default: 180,
+				env: 'N8N_EXECUTIONS_QUEUE_RECOVERY_INTERVAL',
+			},
+			batchSize: {
+				doc: 'Size of batch of executions to check for queue recovery',
+				format: Number,
+				default: 100,
+				env: 'N8N_EXECUTIONS_QUEUE_RECOVERY_BATCH',
+			},
+		},
 	},
 
 	queue: {

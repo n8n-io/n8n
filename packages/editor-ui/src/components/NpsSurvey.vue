@@ -9,11 +9,9 @@ import { createEventBus } from 'n8n-design-system/utils';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 
-const props = defineProps({
-	isActive: {
-		type: Boolean,
-	},
-});
+const props = defineProps<{
+	isActive?: boolean;
+}>();
 
 const rootStore = useRootStore();
 const i18n = useI18n();
