@@ -204,6 +204,7 @@ describe('ExecutionRecoveryService', () => {
 		config.load(config.default);
 		jest.restoreAllMocks();
 		await testDb.truncate(['Execution', 'ExecutionData', 'Workflow']);
+		executionRecoveryService.shutdown();
 	});
 
 	afterAll(async () => {
