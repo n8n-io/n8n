@@ -648,10 +648,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function setWorkflowTagIds(tags: string[]) {
-		workflow.value = {
-			...workflow.value,
-			tags,
-		};
+		workflow.value.tags = tags;
 	}
 
 	function addWorkflowTagIds(tags: string[]) {

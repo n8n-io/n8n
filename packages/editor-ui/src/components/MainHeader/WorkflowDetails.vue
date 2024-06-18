@@ -309,6 +309,7 @@ async function onTagsBlur() {
 	tagsSaving.value = false;
 	if (saved) {
 		isTagsEditEnabled.value = false;
+		workflowsStore.setWorkflowTagIds(tags);
 	}
 }
 
