@@ -15,7 +15,7 @@ export const testDbPrefix = 'n8n_test_';
  */
 export async function init() {
 	const dbType = config.getEnv('database.type');
-	const testDbName = `${testDbPrefix}${randomString(6, 10)}_${Date.now()}`;
+	const testDbName = `${testDbPrefix}${randomString(6, 10).toLowerCase()}_${Date.now()}`;
 
 	if (dbType === 'postgresdb') {
 		const bootstrapPostgres = await new Connection(
