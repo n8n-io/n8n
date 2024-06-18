@@ -218,10 +218,10 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	// ---------------------------------------------------------------------------
 
 	const setNodeTypes = (newNodeTypes: INodeTypeDescription[] = []) => {
-		const nodeTypes = groupNodeTypesByNameAndType(newNodeTypes);
+		const groupedNodeTypes = groupNodeTypesByNameAndType(newNodeTypes);
 		nodeTypes.value = {
 			...nodeTypes.value,
-			...nodeTypes,
+			...groupedNodeTypes,
 		};
 	};
 
