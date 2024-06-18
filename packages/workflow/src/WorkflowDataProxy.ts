@@ -242,12 +242,12 @@ export class WorkflowDataProxy {
 		});
 	}
 
-	private getNodeExecutionOrPinnedData(
-		nodeName?: string,
-		branchIndex?: number,
-		runIndex?: number,
+	private getNodeExecutionOrPinnedData({
+		nodeName,
+		branchIndex,
+		runIndex,
 		shortSyntax = false,
-	) {
+	}: { nodeName?: string; branchIndex?: number; runIndex?: number; shortSyntax?: boolean } = {}) {
 		if (nodeName === undefined) {
 			return this.connectionInputData;
 		}
@@ -408,12 +408,10 @@ export class WorkflowDataProxy {
 					}
 
 					if (['binary', 'data', 'json'].includes(name)) {
-						const executionData = that.getNodeExecutionOrPinnedData(
+						const executionData = that.getNodeExecutionOrPinnedData({
 							nodeName,
-							undefined,
-							undefined,
 							shortSyntax,
-						);
+						});
 
 						if (executionData.length === 0) {
 							if (that.workflow.getParentNodes(nodeName).length === 0) {
@@ -1111,11 +1109,11 @@ export class WorkflowDataProxy {
 							if (property === 'first') {
 								ensureNodeExecutionData();
 								return (branchIndex?: number, runIndex?: number) => {
-									const executionData = that.getNodeExecutionOrPinnedData(
+									const executionData = that.getNodeExecutionOrPinnedData({
 										nodeName,
 										branchIndex,
 										runIndex,
-									);
+									});
 									if (executionData[0]) return executionData[0];
 									return undefined;
 								};
@@ -1123,11 +1121,11 @@ export class WorkflowDataProxy {
 							if (property === 'last') {
 								ensureNodeExecutionData();
 								return (branchIndex?: number, runIndex?: number) => {
-									const executionData = that.getNodeExecutionOrPinnedData(
+									const executionData = that.getNodeExecutionOrPinnedData({
 										nodeName,
 										branchIndex,
 										runIndex,
-									);
+									});
 									if (!executionData.length) return undefined;
 									if (executionData[executionData.length - 1]) {
 										return executionData[executionData.length - 1];
@@ -1138,7 +1136,7 @@ export class WorkflowDataProxy {
 							if (property === 'all') {
 								ensureNodeExecutionData();
 								return (branchIndex?: number, runIndex?: number) =>
-									that.getNodeExecutionOrPinnedData(nodeName, branchIndex, runIndex);
+									that.getNodeExecutionOrPinnedData({ nodeName, branchIndex, runIndex });
 							}
 							if (property === 'context') {
 								return that.nodeContextGetter(nodeName);
