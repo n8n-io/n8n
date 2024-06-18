@@ -8,6 +8,7 @@ import IconDelete from 'virtual:icons/mdi/delete';
 import { computed, type FunctionalComponent } from 'vue';
 import prettyBytes from 'pretty-bytes';
 import { Tooltip } from 'floating-vue';
+import 'floating-vue/dist/style.css';
 
 const props = defineProps<{
 	// The file to display

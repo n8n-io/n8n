@@ -1,16 +1,18 @@
 <script lang="ts" setup>
 /* eslint-disable @typescript-eslint/naming-convention */
-import type { PropType, Component } from 'vue';
+import type { PropType } from 'vue';
 import { computed, ref, toRefs, onMounted } from 'vue';
 import VueMarkdown from 'vue-markdown-render';
 import hljs from 'highlight.js/lib/core';
 import javascript from 'highlight.js/lib/languages/javascript';
+import typescript from 'highlight.js/lib/languages/typescript';
 import python from 'highlight.js/lib/languages/python';
 import xml from 'highlight.js/lib/languages/xml';
 import bash from 'highlight.js/lib/languages/bash';
 import MdiOpenInNew from 'virtual:icons/mdi/openInNew';
 import markdownLink from 'markdown-it-link-attributes';
 import type MarkdownIt from 'markdown-it';
+import MessageActions from './MessageActions.vue';
 import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
 import { useOptions } from '@n8n/chat/composables';
 
@@ -22,12 +24,21 @@ const props = defineProps({
 });
 
 hljs.registerLanguage('javascript', javascript);
+hljs.registerLanguage('typescript', typescript);
 hljs.registerLanguage('python', python);
 hljs.registerLanguage('xml', xml);
 hljs.registerLanguage('bash', bash);
+
 const { message } = toRefs(props);
 const { options } = useOptions();
 const messageContainer = ref<HTMLElement | null>(null);
+const fileSources = ref<Record<string, string>>({});
+
+const messageActions = computed(() => {
+	const actions = options.messageActions ?? [];
+
+	return actions.filter((action) => action.sender === message.value.sender);
+});
 
 const messageText = computed(() => {
 	return (message.value as ChatMessageText).text || '&lt;Empty response&gt;';
@@ -75,8 +86,6 @@ const messageComponents = { ...(options?.messageComponents ?? {}) };
 
 defineExpose({ scrollToView });
 
-const fileSources = ref<Record<string, string>>({});
-
 const readFileAsDataURL = async (file: File): Promise<string> =>
 	await new Promise((resolve, reject) => {
 		const reader = new FileReader();
@@ -93,6 +102,7 @@ const openImageInNewTab = (fileName: string) => {
 	}
 };
 onMounted(async () => {
+	console.log('🚀 ~ onMounted ~ message.value.files:', message.value);
 	if (message.value.files) {
 		for (const file of message.value.files) {
 			try {
@@ -108,6 +118,12 @@ onMounted(async () => {
 
 <template>
 	<div ref="messageContainer" class="chat-message" :class="classes">
+		<MessageActions
+			v-if="messageActions.length"
+			class="chat-message-actions"
+			:placement="message.sender === 'user' ? 'left' : 'right'"
+			:message-actions="messageActions"
+		/>
 		<slot>
 			<template v-if="message.type === 'component' && messageComponents[message.key]">
 				<component :is="messageComponents[message.key]" v-bind="message.arguments" />
@@ -136,13 +152,32 @@ onMounted(async () => {
 	</div>
 </template>
 
-<style lang="scss">
+<style lang="scss" scoped>
 .chat-message {
 	display: block;
+	position: relative;
 	max-width: 80%;
 	font-size: var(--chat--message--font-size, 1rem);
 	padding: var(--chat--message--padding, var(--chat--spacing));
 	border-radius: var(--chat--message--border-radius, var(--chat--border-radius));
+
+	.chat-message-actions {
+		position: absolute;
+		bottom: 100%;
+		left: 0;
+		display: none;
+	}
+
+	&.chat-message-from-user .chat-message-actions {
+		left: auto;
+		right: 0;
+	}
+
+	&:hover {
+		.chat-message-actions {
+			display: flex;
+		}
+	}
 
 	p {
 		line-height: var(--chat--message-line-height, 1.8);
@@ -151,7 +186,7 @@ onMounted(async () => {
 
 	// Default message gap is half of the spacing
 	+ .chat-message {
-		margin-top: var(--chat--message--margin-bottom, calc(var(--chat--spacing) * 0.5));
+		margin-top: var(--chat--message--margin-bottom, calc(var(--chat--spacing) * 1));
 	}
 
 	// Spacing between messages from different senders is double the individual message gap

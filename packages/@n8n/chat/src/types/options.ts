@@ -1,4 +1,13 @@
-import type { Component, Ref } from 'vue';
+import type { Component, FunctionalComponent, Ref, SVGAttributes } from 'vue';
+import type { ChatMessage } from './messages';
+
+export interface MessageAction {
+	label: string;
+	sender: ChatMessage['sender'];
+	icon: FunctionalComponent<SVGAttributes>;
+	action: (message: ChatMessage) => void;
+}
+
 export interface ChatOptions {
 	webhookUrl: string;
 	webhookConfig?: {
@@ -30,6 +39,7 @@ export interface ChatOptions {
 	theme?: {};
 	messageComponents?: Record<string, Component>;
 	disabled?: Ref<boolean>;
-	allowFileUploads?: boolean;
-	allowedFilesMimeTypes?: string[];
+	allowFileUploads?: Ref<boolean> | boolean;
+	allowedFilesMimeTypes?: Ref<string> | string;
+	messageActions?: MessageAction[];
 }

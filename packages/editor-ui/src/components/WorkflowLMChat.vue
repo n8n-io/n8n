@@ -17,7 +17,44 @@
 		<template #content>
 			<div class="workflow-lm-chat" data-test-id="workflow-lm-chat-dialog">
 				<div class="messages ignore-key-press">
-					<MessagesList :messages="messages" />
+					<MessagesList :messages="messages">
+						<template #beforeMessage="{ message }">
+							<div v-if="message.sender === 'bot'" class="message-options no-select-on-click">
+								<n8n-info-tip type="tooltip" theme="info-light" tooltip-placement="right">
+									<div v-if="message.id">
+										<n8n-text :bold="true" size="small">
+											<span @click.stop="displayExecution(message.id)">
+												{{ locale.baseText('chat.window.chat.chatMessageOptions.executionId') }}:
+												<a href="#" class="link">{{ message.id }}</a>
+											</span>
+										</n8n-text>
+									</div>
+								</n8n-info-tip>
+							</div>
+
+							<div
+								v-if="message.sender === 'user'"
+								class="message-options message-options--user no-select-on-click"
+							>
+								<div
+									class="option"
+									:title="locale.baseText('chat.window.chat.chatMessageOptions.repostMessage')"
+									data-test-id="repost-message-button"
+									@click="repostMessage(message)"
+								>
+									<font-awesome-icon icon="redo" />
+								</div>
+								<div
+									class="option"
+									:title="locale.baseText('chat.window.chat.chatMessageOptions.reuseMessage')"
+									data-test-id="reuse-message-button"
+									@click="reuseMessage(message)"
+								>
+									<font-awesome-icon icon="copy" />
+								</div>
+							</div>
+						</template>
+					</MessagesList>
 					<!-- <div
 						v-for="message in messages"
 						:key="`${message.executionId}__${message.sender}`"
@@ -78,7 +115,7 @@
 			</div>
 		</template>
 		<template #footer>
-			<ChatInput />
+			<ChatInput class="messages-input" />
 			<n8n-info-tip class="mt-s">
 				{{ locale.baseText('chatEmbed.infoTip.description') }}
 				<a @click="uiStore.openModal(CHAT_EMBED_MODAL_KEY)">
@@ -139,6 +176,7 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	MODAL_CONFIRM,
+	VIEWS,
 	WORKFLOW_LM_CHAT_MODAL_KEY,
 } from '@/constants';
 
@@ -155,7 +193,16 @@ import type { Chat, ChatMessage, ChatOptions } from '@n8n/chat/types';
 import { useI18n } from '@/composables/useI18n';
 import { ChatOptionsSymbol, ChatSymbol } from '@n8n/chat/constants';
 import { useAIStore } from '@/stores/ai.store';
-import type { IDataObject, INode, INodeType, ITaskData, IUser } from 'n8n-workflow';
+import type {
+	BinaryFileType,
+	IBinaryData,
+	IDataObject,
+	INode,
+	INodeParameters,
+	INodeType,
+	ITaskData,
+	IUser,
+} from 'n8n-workflow';
 import {
 	CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE,
 	NodeConnectionType,
@@ -171,6 +218,8 @@ import { useMessage } from '@/composables/useMessage';
 import { usePinnedData } from '@/composables/usePinnedData';
 import { get } from 'lodash-es';
 import { isEmpty } from '@/utils/typesUtils';
+import MdiContentCopy from 'virtual:icons/mdi/contentCopy';
+import MdiRefresh from 'virtual:icons/mdi/refresh';
 
 const RunDataAi = defineAsyncComponent(
 	async () => await import('@/components/RunDataAi/RunDataAi.vue'),
@@ -206,11 +255,12 @@ const aiStore = useAIStore();
 const uiStore = useUIStore();
 
 const { showError } = useToast();
-const messages: Ref<ChatMessage[]> = ref([]);
+const messages: Ref<ChatMessage[]> = ref(generateNTestMessages(3));
 const currentSessionId = ref<string>(String(Date.now()));
 const isDisabled = ref(false);
 
 const connectedNode = ref<INode | null>(null);
+const chatTrigger = ref<INode | null>(null);
 const currentMessage = ref<string>('');
 const modalBus = createEventBus();
 const node = ref<INode | null>(null);
@@ -226,6 +276,15 @@ const previousMessageIndex = ref(0);
 const userName = computed(() => usersStore.currentUser?.firstName ?? 'there');
 const latestConnectionInfo = computed(() => aiStore.latestConnectionInfo);
 const isLoading = computed(() => uiStore.isActionActive('workflowRunning'));
+const allowFileUploads = computed(() => {
+	return (chatTrigger.value?.parameters?.options as INodeParameters)?.allowFileUploads === true;
+});
+const allowedFilesMimeTypes = computed(() => {
+	return (
+		(chatTrigger.value?.parameters?.options as INodeParameters)?.allowedFilesMimeType?.toString() ??
+		''
+	);
+});
 const locale = useI18n();
 
 const chatOptions: ChatOptions = {
@@ -243,12 +302,34 @@ const chatOptions: ChatOptions = {
 	mode: 'window',
 	showWindowCloseButton: true,
 	disabled: isDisabled,
+	allowFileUploads,
+	allowedFilesMimeTypes,
+	messageActions: [
+		{
+			label: locale.baseText('chat.window.chat.chatMessageOptions.repostMessage'),
+			sender: 'user',
+			action: repostMessage,
+			icon: MdiRefresh,
+		},
+		{
+			label: locale.baseText('chat.window.chat.chatMessageOptions.reuseMessage'),
+			sender: 'user',
+			icon: MdiContentCopy,
+			action: reuseMessage,
+		},
+		{
+			label: locale.baseText('chat.window.chat.chatMessageOptions.reuseMessage'),
+			sender: 'bot',
+			icon: MdiContentCopy,
+			action: reuseMessage,
+		},
+	],
 };
 
 const chatConfig: Chat = {
 	messages,
 	sendMessage,
-	initialMessages: ref(generateNTestMessages(400)),
+	initialMessages: ref([]),
 	currentSessionId,
 	waitingForResponse: isLoading,
 };
@@ -257,21 +338,15 @@ function generateNTestMessages(amount: number): ChatMessage[] {
 	const messagesTest: ChatMessage[] = [];
 	for (let i = 0; i < amount; i++) {
 		messagesTest.push({
-			text: `Check out this markdown babyyyy
+			text: `
+Check out this markdown babyyyy
 
-			## Test
+## Test
+- Test
+- Test 2
+\`\`\`ts
+const test = 123;
 
-			\`\`\`js
-			const test = 123;
-			\`\`\`
-			`,
-			sender: i % 2 === 0 ? 'bot' : 'user',
-			createdAt: new Date().toISOString(),
-			id: uuid(),
-		});
-	}
-	return messagesTest;
-}
 
 function getTriggerNode(): INode | null {
 	const workflow = workflowHelpers.getCurrentWorkflow();
@@ -285,15 +360,38 @@ function getTriggerNode(): INode | null {
 
 	return triggerNode[0];
 }
+\`\`\`
+`.trim(),
+			sender: i % 2 === 0 ? 'user' : 'bot',
+			createdAt: new Date().toISOString(),
+			id: uuid(),
+		});
+	}
+	return messagesTest;
+}
+
+function getTriggerNode() {
+	const workflow = workflowHelpers.getCurrentWorkflow();
+	const triggerNode = workflow.queryNodes((nodeType: INodeType) =>
+		[CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE].includes(nodeType.description.name),
+	);
+
+	if (!triggerNode.length) {
+		chatTrigger.value = null;
+	}
+
+	chatTrigger.value = triggerNode[0];
+}
 
 function setNode() {
-	const triggerNode = getTriggerNode();
+	const triggerNode = chatTrigger.value;
 	if (!triggerNode) {
 		return;
 	}
 
 	const workflow = workflowHelpers.getCurrentWorkflow();
 	const childNodes = workflow.getChildNodes(triggerNode.name);
+	console.log('🚀 ~ setNode ~ childNodes:', childNodes);
 
 	for (const childNode of childNodes) {
 		// Look for the first connected node with metadata
@@ -312,7 +410,7 @@ function setNode() {
 }
 
 function setConnectedNode() {
-	const triggerNode = getTriggerNode();
+	const triggerNode = chatTrigger.value;
 
 	if (!triggerNode) {
 		showError(new Error('Chat Trigger Node could not be found!'), 'Trigger Node not found');
@@ -366,8 +464,28 @@ function setConnectedNode() {
 	connectedNode.value = chatNode;
 }
 
-async function startWorkflowWithMessage(message: string): Promise<void> {
-	const triggerNode = getTriggerNode();
+async function convertFileToBinaryData(file: File): Promise<IBinaryData> {
+	const reader = new FileReader();
+	return await new Promise((resolve, reject) => {
+		reader.onload = () => {
+			const binaryData: IBinaryData = {
+				data: (reader.result as string).split('base64')?.[1] ?? '',
+				mimeType: file.type,
+				fileName: file.name,
+				fileSize: `${file.size} bytes`,
+				fileExtension: file.name.split('.').pop() ?? '',
+				fileType: file.type.split('/')[0] as BinaryFileType,
+			};
+			resolve(binaryData);
+		};
+		reader.onerror = () => {
+			reject(new Error('Failed to convert file to binary data'));
+		};
+		reader.readAsDataURL(file);
+	});
+}
+async function startWorkflowWithMessage(message: string, files?: File[]): Promise<void> {
+	const triggerNode = chatTrigger.value;
 
 	if (!triggerNode) {
 		showError(new Error('Chat Trigger Node could not be found!'), 'Trigger Node not found');
@@ -385,6 +503,7 @@ async function startWorkflowWithMessage(message: string): Promise<void> {
 	const usersStore = useUsersStore();
 	const currentUser = usersStore.currentUser ?? ({} as IUser);
 
+	const binaryData = files ? await convertFileToBinaryData(files[0]) : null;
 	const nodeData: ITaskData = {
 		startTime: new Date().getTime(),
 		executionTime: 0,
@@ -398,6 +517,11 @@ async function startWorkflowWithMessage(message: string): Promise<void> {
 							action: 'sendMessage',
 							[inputKey]: message,
 						},
+						binary: binaryData
+							? {
+									data: binaryData,
+								}
+							: undefined,
 					},
 				],
 			],
@@ -420,7 +544,7 @@ async function startWorkflowWithMessage(message: string): Promise<void> {
 	waitForExecution(response.executionId);
 }
 
-function waitForExecution(_executionId?: string) {
+function waitForExecution(executionId?: string) {
 	const waitInterval = setInterval(() => {
 		if (!isLoading.value) {
 			clearInterval(waitInterval);
@@ -448,8 +572,7 @@ function waitForExecution(_executionId?: string) {
 				text: responseMessage,
 				sender: 'bot',
 				createdAt: new Date().toISOString(),
-				id: uuid(),
-				// executionId,
+				id: executionId ?? uuid(),
 			});
 
 			void nextTick(() => {
@@ -459,6 +582,7 @@ function waitForExecution(_executionId?: string) {
 		}
 	}, 500);
 }
+
 function extractResponseMessage(responseData?: IDataObject) {
 	if (!responseData || isEmpty(responseData)) {
 		return locale.baseText('chat.window.chat.response.empty');
@@ -473,7 +597,8 @@ function extractResponseMessage(responseData?: IDataObject) {
 	return get(responseData, matchedPath) as string;
 }
 
-async function sendMessage(message: string) {
+async function sendMessage(message: string, files?: File[]) {
+	console.log('🚀 ~ sendMessage ~ files:', files);
 	if (message.trim() === '') {
 		showError(
 			new Error(locale.baseText('chat.window.chat.provideMessage')),
@@ -482,7 +607,7 @@ async function sendMessage(message: string) {
 		return;
 	}
 
-	const pinnedChatData = usePinnedData(getTriggerNode());
+	const pinnedChatData = usePinnedData(chatTrigger.value);
 	if (pinnedChatData.hasData.value) {
 		const confirmResult = await useMessage().confirm(
 			locale.baseText('chat.window.chat.unpinAndExecute.description'),
@@ -498,22 +623,47 @@ async function sendMessage(message: string) {
 		pinnedChatData.unsetData('unpin-and-send-chat-message-modal');
 	}
 
-	messages.value.push({
+	const newMessage: ChatMessage = {
 		text: message,
 		sender: 'user',
 		createdAt: new Date().toISOString(),
 		id: uuid(),
-	});
+		files,
+	};
+	messages.value.push(newMessage);
 
-	// currentMessage.value = '';
 	previousMessageIndex.value = 0;
-	// await this.$nextTick();
-	// this.scrollToLatestMessage();
-	await startWorkflowWithMessage(message);
+	await startWorkflowWithMessage(newMessage.text, files);
 }
+
+function displayExecution(executionId: string) {
+	const workflow = workflowHelpers.getCurrentWorkflow();
+	const route = router.resolve({
+		name: VIEWS.EXECUTION_PREVIEW,
+		params: { name: workflow.id, executionId },
+	});
+	window.open(route.href, '_blank');
+}
+
+function repostMessage(message: ChatMessage) {
+	console.log('🚀 ~ repostMessage ~ message:', message);
+	if (message.type === 'text') {
+		void sendMessage(message.text);
+	}
+}
+function reuseMessage(message: ChatMessage) {
+	console.log('🚀 ~ reuseMessage ~ message:', message);
+	if (message.type === 'text') {
+	}
+	// this.currentMessage = message.text;
+	// const inputField = this.$refs.inputField as HTMLInputElement;
+	// inputField.focus();
+}
+
 provide(ChatSymbol, chatConfig);
 provide(ChatOptionsSymbol, chatOptions);
 onMounted(() => {
+	getTriggerNode();
 	setConnectedNode();
 	// this.messages = this.getChatMessages();
 	setNode();
@@ -917,6 +1067,7 @@ onMounted(() => {
 	align-items: center;
 }
 .workflow-lm-chat {
+	--chat--spacing: var(--spacing-m);
 	color: $custom-font-black;
 	font-size: var(--font-size-s);
 	display: flex;
@@ -937,6 +1088,7 @@ onMounted(() => {
 			margin: 0 var(--spacing-s) var(--spacing-s);
 		}
 	}
+
 	.messages {
 		background-color: var(--color-lm-chat-messages-background);
 		border: 1px solid var(--color-foreground-base);
@@ -946,80 +1098,32 @@ onMounted(() => {
 		overflow: hidden auto;
 		padding-top: 1.5em;
 		margin-right: 1em;
+	}
 
-		.chat-message {
-			float: left;
-			margin: var(--spacing-2xs) var(--spacing-s);
+	.message-options {
+		color: #aaa;
+		display: none;
+		font-size: 0.9em;
+		height: 26px;
+		position: absolute;
+		text-align: left;
+		top: -1.2em;
+		width: 120px;
+		z-index: 10;
+
+		.option {
+			cursor: pointer;
+			display: inline-block;
+			width: 28px;
 		}
 
-		.message {
-			float: left;
-			position: relative;
-			width: 100%;
-
-			.content {
-				border-radius: var(--border-radius-base);
-				line-height: 1.5;
-				margin: var(--spacing-2xs) var(--spacing-s);
-				max-width: 75%;
-				padding: 1em;
-				white-space: pre-wrap;
-				overflow-x: auto;
-
-				&.bot {
-					background-color: var(--color-lm-chat-bot-background);
-					color: var(--color-lm-chat-bot-color);
-					float: left;
-					border-bottom-left-radius: 0;
-
-					.message-options {
-						left: 1.5em;
-					}
-				}
-
-				&.user {
-					background-color: var(--color-lm-chat-user-background);
-					color: var(--color-lm-chat-user-color);
-					float: right;
-					text-align: right;
-					border-bottom-right-radius: 0;
-
-					.message-options {
-						right: 1.5em;
-						text-align: right;
-					}
-				}
-
-				.message-options {
-					color: #aaa;
-					display: none;
-					font-size: 0.9em;
-					height: 26px;
-					position: absolute;
-					text-align: left;
-					top: -1.2em;
-					width: 120px;
-					z-index: 10;
-
-					.option {
-						cursor: pointer;
-						display: inline-block;
-						width: 28px;
-					}
-
-					.link {
-						text-decoration: underline;
-					}
-				}
-
-				&:hover {
-					.message-options {
-						display: initial;
-					}
-				}
-			}
+		.link {
+			text-decoration: underline;
 		}
 	}
+}
+.messages-input {
+	--chat--textarea--resize: auto;
 }
 
 .workflow-lm-chat-footer {

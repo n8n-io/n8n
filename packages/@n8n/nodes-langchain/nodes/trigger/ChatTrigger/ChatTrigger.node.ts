@@ -457,18 +457,6 @@ export class ChatTrigger extends Node {
 		const req = ctx.getRequestObject();
 		console.log('🚀 ~ ChatTrigger ~ webhook ~ isMultipart:', isMultipart);
 
-		// if (isMultipart) {
-		// 	// const files = bodyData.files?.files || [];
-		// 	// const binaryDataFiles = files.map(async (file: File) => {
-		// 	// const preparedBinaryData = await this.helpers.prepareBinaryData(
-		// 	// 	binaryData,
-		// 	// 	undefined,
-		// 	// 	responseContentType || undefined,
-		// 	// );
-		// 	// return preparedBinaryData;
-		// 	// });
-		// 	// const resolvedBinaryData = await Promise.all(binaryDataFiles);
-		// }
 		if (nodeMode === 'hostedChat') {
 			try {
 				await validateAuth(ctx);
@@ -482,14 +470,6 @@ export class ChatTrigger extends Node {
 				}
 				throw error;
 			}
-
-			// const prepareOutput = setupOutputConnection(this, 'POST', {
-			// 	jwtPayload: validationData,
-			// });
-
-			// if (options.binaryData) {
-			// 	return await this.handleBinaryData(context, prepareOutput);
-			// }
 
 			// Show the chat on GET request
 			if (webhookName === 'setup') {

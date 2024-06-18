@@ -47,7 +47,7 @@ export const WorkflowChat: Story = {
 	args: {
 		webhookUrl: 'http://localhost:5678/webhook/d984fd87-fb24-478f-87c1-a2511f013c99/chat',
 		mode: 'fullscreen',
-		allowedFilesMimeTypes: ['image/*'],
+		allowedFilesMimeTypes: 'image/*',
 		allowFileUploads: true,
 		showWelcomeScreen: false,
 		initialMessages: [],

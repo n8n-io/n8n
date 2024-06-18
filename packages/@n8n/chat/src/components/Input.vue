@@ -1,21 +1,11 @@
 <script setup lang="ts">
 import IconSend from 'virtual:icons/mdi/send';
 import IconFilePlus from 'virtual:icons/mdi/filePlus';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, unref } from 'vue';
 import { useFileDialog } from '@vueuse/core';
 import ChatFile from './ChatFile.vue';
 import { useI18n, useChat, useOptions } from '@n8n/chat/composables';
 import { chatEventBus } from '@n8n/chat/event-buses';
-
-const {
-	open: openFileDialog,
-	reset,
-	onChange,
-} = useFileDialog({
-	// accept: 'image/*', // Set to accept only image files
-	multiple: true,
-	reset: false,
-});
 
 const { options } = useOptions();
 const chatStore = useChat();
@@ -38,8 +28,18 @@ const isInputDisabled = computed(() => options.disabled?.value === true);
 const isFileUploadDisabled = computed(
 	() => isFileUploadAllowed.value && waitingForResponse.value && !options.disabled?.value,
 );
-const isFileUploadAllowed = computed(() => options.allowFileUploads);
-const allowedFileTypes = computed(() => options.allowedFilesMimeTypes);
+const isFileUploadAllowed = computed(() => unref(options.allowFileUploads) === true);
+const allowedFileTypes = computed(() => unref(options.allowedFilesMimeTypes));
+
+const {
+	open: openFileDialog,
+	reset,
+	onChange,
+} = useFileDialog({
+	accept: allowedFileTypes.value, // Set to accept only image files
+	multiple: true,
+	reset: false,
+});
 
 onChange((newFiles) => {
 	if (!newFiles) return;
@@ -99,7 +99,6 @@ function onFileRemove(file: File) {
 			<textarea
 				ref="chatTextArea"
 				v-model="input"
-				rows="1"
 				:disabled="isInputDisabled"
 				:placeholder="t('inputPlaceholder')"
 				@keydown.enter="onSubmitKeydown"
@@ -125,8 +124,12 @@ function onFileRemove(file: File) {
 	justify-content: center;
 	align-items: center;
 	width: 100%;
-	background: white;
+	background: var(--chat--input--background, white);
 	flex-direction: column;
+
+	* {
+		box-sizing: border-box;
+	}
 }
 .chat-inputs {
 	width: 100%;
@@ -140,8 +143,9 @@ function onFileRemove(file: File) {
 		width: 100%;
 		border: 0;
 		padding: var(--chat--spacing);
-		max-height: var(--chat--textarea--height);
-		resize: none;
+		// max-height: var(--chat--textarea--height);
+		height: 100%;
+		resize: var(--chat--textarea--resize, none);
 	}
 }
 
