@@ -10,7 +10,7 @@ import type {
 	IExecutionsListResponse,
 	IExecutionsStopData,
 } from '@/Interface';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { makeRestApiRequest, unflattenExecutionData } from '@/utils/apiUtils';
 import { executionFilterToQueryFilter, getDefaultExecutionFilters } from '@/utils/executionUtils';
 
@@ -119,7 +119,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		loading.value = true;
 		try {
 			const data = await makeRestApiRequest<IExecutionsListResponse>(
-				rootStore.getRestApiContext,
+				rootStore.restApiContext,
 				'GET',
 				'/executions',
 				{
@@ -150,7 +150,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 	async function fetchExecution(id: string): Promise<IExecutionResponse | undefined> {
 		const response = await makeRestApiRequest<IExecutionFlattedResponse>(
-			rootStore.getRestApiContext,
+			rootStore.restApiContext,
 			'GET',
 			`/executions/${id}`,
 		);
@@ -186,7 +186,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 	async function stopCurrentExecution(executionId: string): Promise<IExecutionsStopData> {
 		return await makeRestApiRequest(
-			rootStore.getRestApiContext,
+			rootStore.restApiContext,
 			'POST',
 			`/executions/${executionId}/stop`,
 		);
@@ -194,7 +194,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 	async function retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean> {
 		return await makeRestApiRequest(
-			rootStore.getRestApiContext,
+			rootStore.restApiContext,
 			'POST',
 			`/executions/${id}/retry`,
 			loadWorkflow
@@ -207,7 +207,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 	async function deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void> {
 		await makeRestApiRequest(
-			rootStore.getRestApiContext,
+			rootStore.restApiContext,
 			'POST',
 			'/executions/delete',
 			sendData as unknown as IDataObject,
