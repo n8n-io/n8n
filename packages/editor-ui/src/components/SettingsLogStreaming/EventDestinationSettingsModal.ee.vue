@@ -459,7 +459,7 @@ export default defineComponent({
 		onModalClose() {
 			if (!this.hasOnceBeenSaved) {
 				this.workflowsStore.removeNode(this.node);
-				if (this.nodeParameters.id) {
+				if (this.nodeParameters.id && typeof this.nodeParameters.id !== 'object') {
 					this.logStreamingStore.removeDestination(this.nodeParameters.id.toString());
 				}
 			}
@@ -480,7 +480,9 @@ export default defineComponent({
 				this.uiStore.stateIsDirty = false;
 
 				const destinationType = (
-					this.nodeParameters.__type ? `${this.nodeParameters.__type}` : 'unknown'
+					this.nodeParameters.__type && typeof this.nodeParameters.__type !== 'object'
+						? `${this.nodeParameters.__type}`
+						: 'unknown'
 				)
 					.replace('$$MessageEventBusDestination', '')
 					.toLowerCase();
