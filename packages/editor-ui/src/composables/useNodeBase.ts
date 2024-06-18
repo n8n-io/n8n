@@ -621,10 +621,8 @@ export function useNodeBase({
 	}
 
 	function touchEnd(_e: MouseEvent) {
-		if (deviceSupport.isTouchDevice) {
-			if (uiStore.isActionActive('dragActive')) {
-				uiStore.removeActiveAction('dragActive');
-			}
+		if (deviceSupport.isTouchDevice && uiStore.isActionActive('dragActive')) {
+			uiStore.removeActiveAction('dragActive');
 		}
 	}
 

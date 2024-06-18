@@ -22,7 +22,7 @@
 		>
 			<div
 				v-touch:start="touchStart"
-				v-touch:end="touchEnd"
+				v-touch:end="nodeBase.touchEnd"
 				:class="nodeClass"
 				:style="nodeStyle"
 				@click.left="onClick"
@@ -272,7 +272,7 @@ export default defineComponent({
 			type: Boolean,
 		},
 		workflow: {
-			type: Object as () => Workflow,
+			type: Object as PropType<Workflow>,
 			required: true,
 		},
 	},
@@ -306,7 +306,7 @@ export default defineComponent({
 			nodeHelpers,
 			pinnedData,
 			deviceSupport,
-			...nodeBase,
+			nodeBase,
 			callDebounced,
 		};
 	},
@@ -452,8 +452,8 @@ export default defineComponent({
 				'node-wrapper--config': this.isConfigNode,
 			};
 
-			if (this.outputs.length) {
-				const outputTypes = NodeHelpers.getConnectionTypes(this.outputs);
+			if (this.nodeBase.outputs.length) {
+				const outputTypes = NodeHelpers.getConnectionTypes(this.nodeBase.outputs);
 				const otherOutputs = outputTypes.filter(
 					(outputName) => outputName !== NodeConnectionType.Main,
 				);
@@ -549,7 +549,11 @@ export default defineComponent({
 		showDisabledLineThrough(): boolean {
 			return (
 				!this.isConfigurableNode &&
-				!!(this.data?.disabled && this.inputs.length === 1 && this.outputs.length === 1)
+				!!(
+					this.data?.disabled &&
+					this.nodeBase.inputs.length === 1 &&
+					this.nodeBase.outputs.length === 1
+				)
 			);
 		},
 		shortNodeType(): string {
@@ -637,7 +641,7 @@ export default defineComponent({
 			);
 		},
 		shiftOutputCount(): boolean {
-			return !!(this.nodeType && this.outputs.length > 2);
+			return !!(this.nodeType && this.nodeBase.outputs.length > 2);
 		},
 		shouldShowTriggerTooltip(): boolean {
 			return (
@@ -734,7 +738,7 @@ export default defineComponent({
 		// Initialize the node
 		if (this.data !== null) {
 			try {
-				this.addNode(this.data);
+				this.nodeBase.addNode(this.data);
 			} catch (error) {
 				// This breaks when new nodes are loaded into store but workflow tab is not currently active
 				// Shouldn't affect anything
@@ -842,7 +846,7 @@ export default defineComponent({
 			if (isDoubleClick) {
 				this.setNodeActive();
 			} else {
-				this.mouseLeftClick(event);
+				this.nodeBase.mouseLeftClick(event);
 			}
 		},
 

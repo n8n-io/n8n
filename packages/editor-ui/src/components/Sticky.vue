@@ -19,9 +19,9 @@
 			<div v-show="isSelected" class="select-sticky-background" />
 			<div
 				v-touch:start="touchStart"
-				v-touch:end="touchEnd"
+				v-touch:end="nodeBase.touchEnd"
 				class="sticky-box"
-				@click.left="mouseLeftClick"
+				@click.left="nodeBase.mouseLeftClick"
 				@contextmenu="onContextMenu"
 			>
 				<n8n-sticky
@@ -115,13 +115,7 @@ import type {
 	XYPosition,
 } from '@/Interface';
 
-import type {
-	ConnectionTypes,
-	INodeInputConfiguration,
-	INodeOutputConfiguration,
-	INodeTypeDescription,
-	Workflow,
-} from 'n8n-workflow';
+import type { INodeTypeDescription, Workflow } from 'n8n-workflow';
 import { QUICKSTART_NOTE_NAME } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -172,7 +166,7 @@ export default defineComponent({
 			type: Boolean,
 		},
 		workflow: {
-			type: Object as () => Workflow,
+			type: Object as PropType<Workflow>,
 			required: true,
 		},
 	},
@@ -206,7 +200,7 @@ export default defineComponent({
 			colorPopoverTrigger,
 			contextMenu,
 			forceActions,
-			...nodeBase,
+			nodeBase,
 			setForceActions,
 		};
 	},
@@ -214,8 +208,6 @@ export default defineComponent({
 		return {
 			isResizing: false,
 			isTouchActive: false,
-			inputs: [] as Array<ConnectionTypes | INodeInputConfiguration>,
-			outputs: [] as Array<ConnectionTypes | INodeOutputConfiguration>,
 		};
 	},
 	computed: {
@@ -303,7 +295,7 @@ export default defineComponent({
 		// Initialize the node
 		if (this.data !== null) {
 			try {
-				this.addNode(this.data);
+				this.nodeBase.addNode(this.data);
 			} catch (error) {
 				// This breaks when new nodes are loaded into store but workflow tab is not currently active
 				// Shouldn't affect anything
