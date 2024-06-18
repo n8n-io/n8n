@@ -31,6 +31,8 @@ interface Props {
 const props = defineProps<Props>();
 
 const { callDebounced } = useDebounce();
+const uiStore = useUIStore();
+
 const width = ref(window.innerWidth);
 
 const bp = computed(() => {
@@ -77,7 +79,7 @@ const onResizeEnd = async () => {
 	await nextTick();
 
 	const bannerHeight = await getBannerRowHeight();
-	useUIStore().updateBannersHeight(bannerHeight);
+	uiStore.updateBannersHeight(bannerHeight);
 };
 
 onMounted(() => {
