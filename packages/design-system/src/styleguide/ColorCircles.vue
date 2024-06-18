@@ -1,14 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
-import type { PropType } from 'vue';
 import { getHex, resolveHSLCalc } from './ColorCircles.utils';
 
-const props = defineProps({
-	colors: {
-		type: Array as PropType<string[]>,
-		required: true,
-	},
-});
+const props = defineProps<{ colors: string[] }>();
 
 const getColors = () => {
 	const style = getComputedStyle(document.body);
