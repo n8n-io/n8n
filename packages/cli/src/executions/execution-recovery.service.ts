@@ -11,6 +11,7 @@ import type { IExecutionResponse } from '@/Interfaces';
 import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
+import { OrchestrationService } from '@/services/orchestration.service';
 
 /**
  * Service for recovering key properties in executions.
@@ -20,12 +21,15 @@ export class ExecutionRecoveryService {
 	constructor(
 		private readonly push: Push,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly orchestrationService: OrchestrationService,
 	) {}
 
 	/**
 	 * Recover key properties of a truncated execution using event logs.
 	 */
 	async recoverFromLogs(executionId: string, messages: EventMessageTypes[]) {
+		if (this.orchestrationService.isFollower) return;
+
 		const amendedExecution = await this.amend(executionId, messages);
 
 		if (!amendedExecution) return null;
