@@ -75,7 +75,7 @@ describe('Expression editor modal', () => {
 			WorkflowPage.actions.openExpressionEditorModal();
 		});
 
-		it.only('should resolve $parameter[]', () => {
+		it('should resolve $parameter[]', () => {
 			WorkflowPage.getters.expressionModalInput().clear();
 			WorkflowPage.getters.expressionModalInput().click().type('{{ $parameter["operation"]');
 			WorkflowPage.getters.expressionModalOutput().should('have.text', 'getAll');
