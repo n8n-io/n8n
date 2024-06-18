@@ -44,7 +44,7 @@ const getProxyFromFixture = (
 	let pinData: IPinData = {};
 	if (workflow.pinData) {
 		// json key is stored as part of workflow
-		// but dropping when copy/pasting
+		// but dropped when copy/pasting
 		// so adding here to keep updating tests simple
 		for (let nodeName in workflow.pinData) {
 			pinData[nodeName] = workflow.pinData[nodeName].map((item) => ({ json: item }));
