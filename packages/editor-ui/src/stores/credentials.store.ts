@@ -20,7 +20,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { defineStore } from 'pinia';
-import { useRootStore } from './n8nRoot.store';
+import { useRootStore } from './root.store';
 import { useNodeTypesStore } from './nodeTypes.store';
 import { useSettingsStore } from './settings.store';
 import { isEmpty } from '@/utils/typesUtils';
@@ -257,7 +257,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			return;
 		}
 		const rootStore = useRootStore();
-		const credentialTypes = await credentialsApi.getCredentialTypes(rootStore.getBaseUrl);
+		const credentialTypes = await credentialsApi.getCredentialTypes(rootStore.baseUrl);
 		setCredentialTypes(credentialTypes);
 	};
 
@@ -272,7 +272,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		};
 
 		const credentials = await credentialsApi.getAllCredentials(
-			rootStore.getRestApiContext,
+			rootStore.restApiContext,
 			isEmpty(filter) ? undefined : filter,
 			includeScopes,
 		);
@@ -286,7 +286,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		const rootStore = useRootStore();
 
 		const credentials = await credentialsApi.getAllCredentialsForWorkflow(
-			rootStore.getRestApiContext,
+			rootStore.restApiContext,
 			options,
 		);
 		setCredentials(credentials);
@@ -299,7 +299,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		id: string;
 	}): Promise<ICredentialsResponse | ICredentialsDecryptedResponse | undefined> => {
 		const rootStore = useRootStore();
-		return await credentialsApi.getCredentialData(rootStore.getRestApiContext, id);
+		return await credentialsApi.getCredentialData(rootStore.restApiContext, id);
 	};
 
 	const createNewCredential = async (
@@ -309,7 +309,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		const rootStore = useRootStore();
 		const settingsStore = useSettingsStore();
 		const credential = await credentialsApi.createNewCredential(
-			rootStore.getRestApiContext,
+			rootStore.restApiContext,
 			data,
 			projectId,
 		);
@@ -334,7 +334,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	}): Promise<ICredentialsResponse> => {
 		const { id, data } = params;
 		const rootStore = useRootStore();
-		const credential = await credentialsApi.updateCredential(rootStore.getRestApiContext, id, data);
+		const credential = await credentialsApi.updateCredential(rootStore.restApiContext, id, data);
 
 		upsertCredential(credential);
 
@@ -343,7 +343,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 
 	const deleteCredential = async ({ id }: { id: string }) => {
 		const rootStore = useRootStore();
-		const deleted = await credentialsApi.deleteCredential(rootStore.getRestApiContext, id);
+		const deleted = await credentialsApi.deleteCredential(rootStore.restApiContext, id);
 		if (deleted) {
 			const { [id]: deletedCredential, ...rest } = state.value.credentials;
 			state.value.credentials = rest;
@@ -352,19 +352,19 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 
 	const oAuth2Authorize = async (data: ICredentialsResponse): Promise<string> => {
 		const rootStore = useRootStore();
-		return await credentialsApi.oAuth2CredentialAuthorize(rootStore.getRestApiContext, data);
+		return await credentialsApi.oAuth2CredentialAuthorize(rootStore.restApiContext, data);
 	};
 
 	const oAuth1Authorize = async (data: ICredentialsResponse): Promise<string> => {
 		const rootStore = useRootStore();
-		return await credentialsApi.oAuth1CredentialAuthorize(rootStore.getRestApiContext, data);
+		return await credentialsApi.oAuth1CredentialAuthorize(rootStore.restApiContext, data);
 	};
 
 	const testCredential = async (
 		data: ICredentialsDecrypted,
 	): Promise<INodeCredentialTestResult> => {
 		const rootStore = useRootStore();
-		return await credentialsApi.testCredential(rootStore.getRestApiContext, { credentials: data });
+		return await credentialsApi.testCredential(rootStore.restApiContext, { credentials: data });
 	};
 
 	const getNewCredentialName = async (params: { credentialTypeName: string }): Promise<string> => {
@@ -378,7 +378,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 					newName.length > 0 ? `${newName} ${DEFAULT_CREDENTIAL_POSTFIX}` : DEFAULT_CREDENTIAL_NAME;
 			}
 			const rootStore = useRootStore();
-			const res = await credentialsApi.getCredentialsNewName(rootStore.getRestApiContext, newName);
+			const res = await credentialsApi.getCredentialsNewName(rootStore.restApiContext, newName);
 			return res.name;
 		} catch (e) {
 			return DEFAULT_CREDENTIAL_NAME;
@@ -391,7 +391,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	}): Promise<ICredentialsResponse> => {
 		if (useSettingsStore().isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
 			await credentialsEeApi.setCredentialSharedWith(
-				useRootStore().getRestApiContext,
+				useRootStore().restApiContext,
 				payload.credentialId,
 				{
 					shareWithIds: payload.sharedWithProjects.map((project) => project.id),
@@ -408,7 +408,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 
 	const getCredentialTranslation = async (credentialType: string): Promise<object> => {
 		const rootStore = useRootStore();
-		return await makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/credential-translation', {
+		return await makeRestApiRequest(rootStore.restApiContext, 'GET', '/credential-translation', {
 			credentialType,
 		});
 	};
