@@ -1,36 +1,32 @@
+import { Container } from 'typedi';
+
 import { Reset } from '@/commands/user-management/reset';
 import { InternalHooks } from '@/InternalHooks';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { NodeTypes } from '@/NodeTypes';
-import Container from 'typedi';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import { SettingsRepository } from '@db/repositories/settings.repository';
 import { UserRepository } from '@db/repositories/user.repository';
 
+import { setupTestCommand } from '@test-integration/utils/testCommand';
 import { mockInstance } from '../../shared/mocking';
 import * as testDb from '../shared/testDb';
 import { createMember, createUser } from '../shared/db/users';
 import { createWorkflow } from '../shared/db/workflows';
-import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
 import { getPersonalProject } from '../shared/db/projects';
 import { encryptCredentialData, saveCredential } from '../shared/db/credentials';
 import { randomCredentialPayload } from '../shared/random';
-import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
 
-beforeAll(async () => {
-	mockInstance(InternalHooks);
-	mockInstance(LoadNodesAndCredentials);
-	mockInstance(NodeTypes);
-	await testDb.init();
-});
+mockInstance(InternalHooks);
+mockInstance(LoadNodesAndCredentials);
+mockInstance(NodeTypes);
+const command = setupTestCommand(Reset);
 
 beforeEach(async () => {
 	await testDb.truncate(['User']);
-});
-
-afterAll(async () => {
-	await testDb.terminate();
 });
 
 // eslint-disable-next-line n8n-local-rules/no-skipped-tests
@@ -65,7 +61,7 @@ test('user-management:reset should reset DB to default user state', async () => 
 	//
 	// ACT
 	//
-	await Reset.run();
+	await command.run();
 
 	//
 	// ASSERT
