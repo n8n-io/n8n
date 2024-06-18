@@ -3,11 +3,12 @@ import type {
 	IDataObject,
 	IHttpRequestOptions,
 	IRequestOptionsSimplified,
-	IOAuth2Options,
 	ExecutionError,
 	NodeApiError,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
+
+import { getOAuth2AdditionalParameters } from 'n8n-nodes-base/dist/nodes/HttpRequest/GenericFunctions';
 
 import set from 'lodash/set';
 import get from 'lodash/get';
@@ -24,66 +25,96 @@ import type {
 	ToolParameter,
 } from './interfaces';
 
-const getOAuth2AdditionalParameters = (nodeCredentialType: string) => {
-	const oAuth2Options: { [credentialType: string]: IOAuth2Options } = {
-		bitlyOAuth2Api: {
-			tokenType: 'Bearer',
-		},
-		boxOAuth2Api: {
-			includeCredentialsOnRefreshOnBody: true,
-		},
-		ciscoWebexOAuth2Api: {
-			tokenType: 'Bearer',
-		},
-		clickUpOAuth2Api: {
-			keepBearer: false,
-			tokenType: 'Bearer',
-		},
-		goToWebinarOAuth2Api: {
-			tokenExpiredStatusCode: 403,
-		},
-		hubspotDeveloperApi: {
-			tokenType: 'Bearer',
-			includeCredentialsOnRefreshOnBody: true,
-		},
-		hubspotOAuth2Api: {
-			tokenType: 'Bearer',
-			includeCredentialsOnRefreshOnBody: true,
-		},
-		lineNotifyOAuth2Api: {
-			tokenType: 'Bearer',
-		},
-		linkedInOAuth2Api: {
-			tokenType: 'Bearer',
-		},
-		mailchimpOAuth2Api: {
-			tokenType: 'Bearer',
-		},
-		mauticOAuth2Api: {
-			includeCredentialsOnRefreshOnBody: true,
-		},
-		microsoftDynamicsOAuth2Api: {
-			property: 'id_token',
-		},
-		philipsHueOAuth2Api: {
-			tokenType: 'Bearer',
-		},
-		raindropOAuth2Api: {
-			includeCredentialsOnRefreshOnBody: true,
-		},
-		shopifyOAuth2Api: {
-			tokenType: 'Bearer',
-			keyToIncludeInAccessTokenHeader: 'X-Shopify-Access-Token',
-		},
-		slackOAuth2Api: {
-			tokenType: 'Bearer',
-			property: 'authed_user.access_token',
-		},
-		stravaOAuth2Api: {
-			includeCredentialsOnRefreshOnBody: true,
-		},
+const genericCredentialRequest = async (ctx: IExecuteFunctions, itemIndex: number) => {
+	const genericType = ctx.getNodeParameter('genericAuthType', itemIndex) as string;
+
+	if (genericType === 'httpBasicAuth' || genericType === 'httpDigestAuth') {
+		const basicAuth = await ctx.getCredentials('httpBasicAuth', itemIndex);
+		const sendImmediately = genericType === 'httpDigestAuth' ? false : undefined;
+
+		return async (options: IHttpRequestOptions) => {
+			options.auth = {
+				username: basicAuth.user as string,
+				password: basicAuth.password as string,
+				sendImmediately,
+			};
+			return await ctx.helpers.httpRequest(options);
+		};
+	}
+
+	if (genericType === 'httpHeaderAuth') {
+		const headerAuth = await ctx.getCredentials('httpHeaderAuth', itemIndex);
+
+		return async (options: IHttpRequestOptions) => {
+			options.headers![headerAuth.name as string] = headerAuth.value;
+			return await ctx.helpers.httpRequest(options);
+		};
+	}
+
+	if (genericType === 'httpQueryAuth') {
+		const queryAuth = await ctx.getCredentials('httpQueryAuth', itemIndex);
+
+		return async (options: IHttpRequestOptions) => {
+			if (!options.qs) {
+				options.qs = {};
+			}
+			options.qs[queryAuth.name as string] = queryAuth.value;
+			return await ctx.helpers.httpRequest(options);
+		};
+	}
+
+	if (genericType === 'httpCustomAuth') {
+		const customAuth = await ctx.getCredentials('httpCustomAuth', itemIndex);
+
+		return async (options: IHttpRequestOptions) => {
+			const auth = jsonParse<IRequestOptionsSimplified>((customAuth.json as string) || '{}', {
+				errorMessage: 'Invalid Custom Auth JSON',
+			});
+			if (auth.headers) {
+				options.headers = { ...options.headers, ...auth.headers };
+			}
+			if (auth.body) {
+				options.body = { ...(options.body as IDataObject), ...auth.body };
+			}
+			if (auth.qs) {
+				options.qs = { ...options.qs, ...auth.qs };
+			}
+			return await ctx.helpers.httpRequest(options);
+		};
+	}
+
+	if (genericType === 'oAuth1Api') {
+		return async (options: IHttpRequestOptions) => {
+			return await ctx.helpers.requestOAuth1.call(ctx, 'oAuth1Api', options);
+		};
+	}
+
+	if (genericType === 'oAuth2Api') {
+		return async (options: IHttpRequestOptions) => {
+			return await ctx.helpers.requestOAuth2.call(ctx, 'oAuth1Api', options, {
+				tokenType: 'Bearer',
+			});
+		};
+	}
+
+	throw new NodeOperationError(ctx.getNode(), `The type ${genericType} is not supported`, {
+		itemIndex,
+	});
+};
+
+const predefinedCredentialRequest = async (ctx: IExecuteFunctions, itemIndex: number) => {
+	const predefinedType = ctx.getNodeParameter('nodeCredentialType', itemIndex) as string;
+	const additionalOptions = getOAuth2AdditionalParameters(predefinedType);
+
+	return async (options: IHttpRequestOptions) => {
+		return await ctx.helpers.requestWithAuthentication.call(
+			ctx,
+			predefinedType,
+			options,
+			additionalOptions && { oauth2: additionalOptions },
+			itemIndex,
+		);
 	};
-	return oAuth2Options[nodeCredentialType];
 };
 
 export const configureHttpRequestFunction = async (
@@ -91,84 +122,215 @@ export const configureHttpRequestFunction = async (
 	credentialsType: 'predefinedCredentialType' | 'genericCredentialType' | 'none',
 	itemIndex: number,
 ) => {
-	if (credentialsType === 'genericCredentialType') {
-		const genericType = ctx.getNodeParameter('genericAuthType', itemIndex) as string;
-
-		if (genericType === 'httpBasicAuth' || genericType === 'httpDigestAuth') {
-			const basicAuth = await ctx.getCredentials('httpBasicAuth', itemIndex);
-			const sendImmediately = genericType === 'httpDigestAuth' ? false : undefined;
-
+	switch (credentialsType) {
+		case 'genericCredentialType':
+			return await genericCredentialRequest(ctx, itemIndex);
+		case 'predefinedCredentialType':
+			return await predefinedCredentialRequest(ctx, itemIndex);
+		default:
 			return async (options: IHttpRequestOptions) => {
-				options.auth = {
-					username: basicAuth.user as string,
-					password: basicAuth.password as string,
-					sendImmediately,
-				};
 				return await ctx.helpers.httpRequest(options);
 			};
-		} else if (genericType === 'httpHeaderAuth') {
-			const headerAuth = await ctx.getCredentials('httpHeaderAuth', itemIndex);
+	}
+};
 
-			return async (options: IHttpRequestOptions) => {
-				options.headers![headerAuth.name as string] = headerAuth.value;
-				return await ctx.helpers.httpRequest(options);
-			};
-		} else if (genericType === 'httpQueryAuth') {
-			const queryAuth = await ctx.getCredentials('httpQueryAuth', itemIndex);
-
-			return async (options: IHttpRequestOptions) => {
-				if (!options.qs) {
-					options.qs = {};
-				}
-				options.qs[queryAuth.name as string] = queryAuth.value;
-				return await ctx.helpers.httpRequest(options);
-			};
-		} else if (genericType === 'httpCustomAuth') {
-			const customAuth = await ctx.getCredentials('httpCustomAuth', itemIndex);
-
-			return async (options: IHttpRequestOptions) => {
-				const auth = jsonParse<IRequestOptionsSimplified>((customAuth.json as string) || '{}', {
-					errorMessage: 'Invalid Custom Auth JSON',
-				});
-				if (auth.headers) {
-					options.headers = { ...options.headers, ...auth.headers };
-				}
-				if (auth.body) {
-					options.body = { ...(options.body as IDataObject), ...auth.body };
-				}
-				if (auth.qs) {
-					options.qs = { ...options.qs, ...auth.qs };
-				}
-				return await ctx.helpers.httpRequest(options);
-			};
-		} else if (genericType === 'oAuth1Api') {
-			return async (options: IHttpRequestOptions) => {
-				return await ctx.helpers.requestOAuth1.call(ctx, 'oAuth1Api', options);
-			};
-		} else if (genericType === 'oAuth2Api') {
-			return async (options: IHttpRequestOptions) => {
-				return await ctx.helpers.requestOAuth2.call(ctx, 'oAuth1Api', options, {
-					tokenType: 'Bearer',
-				});
-			};
-		}
-	} else if (credentialsType === 'predefinedCredentialType') {
-		const predefinedType = ctx.getNodeParameter('nodeCredentialType', itemIndex) as string;
-		const additionalOptions = getOAuth2AdditionalParameters(predefinedType);
-
-		return async (options: IHttpRequestOptions) => {
-			return await ctx.helpers.requestWithAuthentication.call(
-				ctx,
-				predefinedType,
-				options,
-				additionalOptions && { oauth2: additionalOptions },
-				itemIndex,
-			);
-		};
+const defaultOptimizer = <T>(response: T) => {
+	if (typeof response === 'string') {
+		return response;
+	}
+	if (typeof response === 'object') {
+		return JSON.stringify(response, null, 2);
 	}
 
-	return async (options: IHttpRequestOptions) => {
-		return await ctx.helpers.httpRequest(options);
+	return String(response);
+};
+
+const htmlOptimizer = (ctx: IExecuteFunctions, itemIndex: number, maxLength: number) => {
+	const cssSelector = ctx.getNodeParameter('cssSelector', itemIndex, '') as string;
+	const onlyContent = ctx.getNodeParameter('onlyContent', itemIndex, false) as boolean;
+	let elementsToOmit: string[] = [];
+
+	if (onlyContent) {
+		const elementsToOmitUi = ctx.getNodeParameter('elementsToOmit', itemIndex, '') as
+			| string
+			| string[];
+
+		if (typeof elementsToOmitUi === 'string') {
+			elementsToOmit = elementsToOmitUi
+				.split(',')
+				.filter((s) => s)
+				.map((s) => s.trim());
+		}
+	}
+
+	return <T>(response: T) => {
+		if (typeof response !== 'string') {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				`The response type must be a string. Received: ${typeof response}`,
+				{ itemIndex },
+			);
+		}
+		const returnData: string[] = [];
+		const html = cheerio.load(response);
+		const htmlElements = html(cssSelector);
+
+		htmlElements.each((_, el) => {
+			let value = html(el).html() || '';
+
+			if (onlyContent) {
+				let htmlToTextOptions;
+
+				if (elementsToOmit?.length) {
+					htmlToTextOptions = {
+						selectors: elementsToOmit.map((selector) => ({
+							selector,
+							format: 'skip',
+						})),
+					};
+				}
+
+				value = convert(value, htmlToTextOptions);
+			}
+
+			value = value
+				.trim()
+				.replace(/^\s+|\s+$/g, '')
+				.replace(/(\r\n|\n|\r)/gm, '')
+				.replace(/\s+/g, ' ');
+
+			returnData.push(value);
+		});
+
+		const text = JSON.stringify(returnData, null, 2);
+
+		if (maxLength > 0 && text.length > maxLength) {
+			return text.substring(0, maxLength);
+		}
+
+		return text;
+	};
+};
+
+const textOptimizer = (ctx: IExecuteFunctions, itemIndex: number, maxLength: number) => {
+	return (response: string | IDataObject) => {
+		if (typeof response === 'object') {
+			try {
+				response = JSON.stringify(response, null, 2);
+			} catch (error) {}
+		}
+
+		if (typeof response !== 'string') {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				`The response type must be a string. Received: ${typeof response}`,
+				{ itemIndex },
+			);
+		}
+
+		let text: string = '';
+
+		const $ = cheerio.load(response);
+		const bodyHtml = $('body').html();
+
+		if (bodyHtml) {
+			text = convert(bodyHtml, {
+				selectors: [
+					{ selector: 'a', options: { ignoreHref: true } },
+					{ selector: 'img', format: 'skip' },
+					{ selector: 'a', options: { linkBrackets: false } },
+					{ selector: 'p', options: { leadingLineBreaks: 1, trailingLineBreaks: 1 } },
+					{ selector: 'pre', options: { leadingLineBreaks: 1, trailingLineBreaks: 1 } },
+				],
+			});
+		} else {
+			text = response;
+		}
+
+		if (maxLength > 0 && text.length > maxLength) {
+			return text.substring(0, maxLength);
+		}
+
+		return text;
+	};
+};
+
+const jsonOptimizer = (ctx: IExecuteFunctions, itemIndex: number) => {
+	return (response: string): string => {
+		let responseData: IDataObject | IDataObject[] | string = response;
+
+		if (typeof responseData === 'string') {
+			responseData = jsonParse(response);
+		}
+
+		if (typeof responseData !== 'object' || !responseData) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				'The response type must be an object or an array of objects',
+				{ itemIndex },
+			);
+		}
+
+		const dataField = ctx.getNodeParameter('dataField', itemIndex, '') as string;
+		let returnData: IDataObject[] = [];
+
+		if (!Array.isArray(responseData)) {
+			if (dataField) {
+				const data = responseData[dataField] as IDataObject | IDataObject[];
+				if (Array.isArray(data)) {
+					responseData = data;
+				} else {
+					responseData = [data];
+				}
+			} else {
+				responseData = [responseData];
+			}
+		} else {
+			if (dataField) {
+				responseData = responseData.map((data) => data[dataField]) as IDataObject[];
+			}
+		}
+
+		const fieldsToInclude = ctx.getNodeParameter('fieldsToInclude', itemIndex, 'all') as
+			| 'all'
+			| 'selected'
+			| 'except';
+
+		let fields: string | string[] = [];
+
+		if (fieldsToInclude !== 'all') {
+			fields = ctx.getNodeParameter('fields', itemIndex, []) as string[] | string;
+
+			if (typeof fields === 'string') {
+				fields = fields.split(',').map((field) => field.trim());
+			}
+		} else {
+			returnData = responseData;
+		}
+
+		if (fieldsToInclude === 'selected') {
+			for (const item of responseData) {
+				const newItem: IDataObject = {};
+
+				for (const field of fields) {
+					set(newItem, field, get(item, field));
+				}
+
+				returnData.push(newItem);
+			}
+		}
+
+		if (fieldsToInclude === 'except') {
+			for (const item of responseData) {
+				for (const field of fields) {
+					unset(item, field);
+				}
+
+				returnData.push(item);
+			}
+		}
+
+		return JSON.stringify(returnData, null, 2);
 	};
 };
 
@@ -188,206 +350,17 @@ export const configureResponseOptimizer = (ctx: IExecuteFunctions, itemIndex: nu
 			maxLength = ctx.getNodeParameter('maxLength', itemIndex, 0) as number;
 		}
 
-		if (responseType === 'html') {
-			const cssSelector = ctx.getNodeParameter('cssSelector', itemIndex, '') as string;
-			const onlyContent = ctx.getNodeParameter('onlyContent', itemIndex, false) as boolean;
-			let elementsToOmit: string[] = [];
-
-			if (onlyContent) {
-				const elementsToOmitUi = ctx.getNodeParameter('elementsToOmit', itemIndex, '') as
-					| string
-					| string[];
-
-				if (typeof elementsToOmitUi === 'string') {
-					elementsToOmit = elementsToOmitUi
-						.split(',')
-						.filter((s) => s)
-						.map((s) => s.trim());
-				}
-			}
-
-			return <T>(response: T) => {
-				if (typeof response !== 'string') {
-					throw new NodeOperationError(
-						ctx.getNode(),
-						`The response type must be a string. Received: ${typeof response}`,
-						{ itemIndex },
-					);
-				}
-				const returnData: string[] = [];
-				const html = cheerio.load(response);
-				const htmlElements = html(cssSelector);
-
-				htmlElements.each((_, el) => {
-					let value = html(el).html() || '';
-
-					if (onlyContent) {
-						let htmlToTextOptions;
-
-						if (elementsToOmit?.length) {
-							htmlToTextOptions = {
-								selectors: elementsToOmit.map((selector) => ({
-									selector,
-									format: 'skip',
-								})),
-							};
-						}
-
-						value = convert(value, htmlToTextOptions);
-					}
-
-					value = value
-						.trim()
-						.replace(/^\s+|\s+$/g, '')
-						.replace(/(\r\n|\n|\r)/gm, '')
-						.replace(/\s+/g, ' ');
-
-					returnData.push(value);
-				});
-
-				const text = JSON.stringify(returnData, null, 2);
-
-				if (maxLength > 0 && text.length > maxLength) {
-					return text.substring(0, maxLength);
-				}
-
-				return text;
-			};
-		}
-
-		if (responseType === 'text') {
-			return (response: string | IDataObject) => {
-				if (typeof response === 'object') {
-					try {
-						response = JSON.stringify(response, null, 2);
-					} catch (error) {}
-				}
-
-				if (typeof response !== 'string') {
-					throw new NodeOperationError(
-						ctx.getNode(),
-						`The response type must be a string. Received: ${typeof response}`,
-						{ itemIndex },
-					);
-				}
-
-				let text: string = '';
-
-				const $ = cheerio.load(response);
-				const bodyHtml = $('body').html();
-
-				if (bodyHtml) {
-					text = convert(bodyHtml, {
-						selectors: [
-							{ selector: 'a', options: { ignoreHref: true } },
-							{ selector: 'img', format: 'skip' },
-							{ selector: 'a', options: { linkBrackets: false } },
-							{ selector: 'p', options: { leadingLineBreaks: 1, trailingLineBreaks: 1 } },
-							{ selector: 'pre', options: { leadingLineBreaks: 1, trailingLineBreaks: 1 } },
-						],
-					});
-				} else {
-					text = response;
-				}
-
-				if (maxLength > 0 && text.length > maxLength) {
-					return text.substring(0, maxLength);
-				}
-
-				return text;
-			};
-		}
-
-		if (responseType === 'json') {
-			return (response: string): string => {
-				let responseData: IDataObject | IDataObject[] | string = response;
-
-				if (typeof responseData === 'string') {
-					responseData = jsonParse(response);
-				}
-
-				if (typeof responseData !== 'object' || !responseData) {
-					throw new NodeOperationError(
-						ctx.getNode(),
-						'The response type must be an object or an array of objects',
-						{ itemIndex },
-					);
-				}
-
-				const dataField = ctx.getNodeParameter('dataField', itemIndex, '') as string;
-				let returnData: IDataObject[] = [];
-
-				if (!Array.isArray(responseData)) {
-					if (dataField) {
-						const data = responseData[dataField] as IDataObject | IDataObject[];
-						if (Array.isArray(data)) {
-							responseData = data;
-						} else {
-							responseData = [data];
-						}
-					} else {
-						responseData = [responseData];
-					}
-				} else {
-					if (dataField) {
-						responseData = responseData.map((data) => data[dataField]) as IDataObject[];
-					}
-				}
-
-				const fieldsToInclude = ctx.getNodeParameter('fieldsToInclude', itemIndex, 'all') as
-					| 'all'
-					| 'selected'
-					| 'except';
-
-				let fields: string | string[] = [];
-
-				if (fieldsToInclude !== 'all') {
-					fields = ctx.getNodeParameter('fields', itemIndex, []) as string[] | string;
-
-					if (typeof fields === 'string') {
-						fields = fields.split(',').map((field) => field.trim());
-					}
-				} else {
-					returnData = responseData;
-				}
-
-				if (fieldsToInclude === 'selected') {
-					for (const item of responseData) {
-						const newItem: IDataObject = {};
-
-						for (const field of fields) {
-							set(newItem, field, get(item, field));
-						}
-
-						returnData.push(newItem);
-					}
-				}
-
-				if (fieldsToInclude === 'except') {
-					for (const item of responseData) {
-						for (const field of fields) {
-							unset(item, field);
-						}
-
-						returnData.push(item);
-					}
-				}
-
-				return JSON.stringify(returnData, null, 2);
-			};
+		switch (responseType) {
+			case 'html':
+				return htmlOptimizer(ctx, itemIndex, maxLength);
+			case 'text':
+				return textOptimizer(ctx, itemIndex, maxLength);
+			case 'json':
+				return jsonOptimizer(ctx, itemIndex);
 		}
 	}
 
-	return <T>(response: T) => {
-		if (typeof response === 'string') {
-			return response;
-		}
-		if (typeof response === 'object') {
-			return JSON.stringify(response, null, 2);
-		}
-
-		return String(response);
-	};
+	return defaultOptimizer;
 };
 
 const extractPlaceholders = (text: string): string[] => {
@@ -477,10 +450,10 @@ function prepareParameters(
 				}
 
 				parameters.push(parameter);
-			} else {
+			} else if (entry.value) {
 				// if value has placeholders push them to parameters
 				parameters.push(
-					...extractParametersFromText(placeholders, entry.value as string, sendIn, entry.name),
+					...extractParametersFromText(placeholders, entry.value, sendIn, entry.name),
 				);
 				values[entry.name] = entry.value; //push to user provided values
 			}
@@ -505,18 +478,31 @@ const MODEL_INPUT_DESCRIPTION = {
 	body: 'Body parameters for request as key value pairs',
 };
 
-export const updateParametersAndOptions = (
-	ctx: IExecuteFunctions,
-	itemIndex: number,
-	toolParameters: ToolParameter[],
-	placeholdersDefinitions: PlaceholderDefinition[],
-	requestOptions: IHttpRequestOptions,
-	rawRequestOptions: { [key: string]: string },
-	requestOptionsProperty: 'headers' | 'qs' | 'body',
-	inputTypePropertyName: string,
-	jsonPropertyName: string,
-	parametersPropertyName: string,
-) => {
+export const updateParametersAndOptions = (options: {
+	ctx: IExecuteFunctions;
+	itemIndex: number;
+	toolParameters: ToolParameter[];
+	placeholdersDefinitions: PlaceholderDefinition[];
+	requestOptions: IHttpRequestOptions;
+	rawRequestOptions: { [key: string]: string };
+	requestOptionsProperty: 'headers' | 'qs' | 'body';
+	inputTypePropertyName: string;
+	jsonPropertyName: string;
+	parametersPropertyName: string;
+}) => {
+	const {
+		ctx,
+		itemIndex,
+		toolParameters,
+		placeholdersDefinitions,
+		requestOptions,
+		rawRequestOptions,
+		requestOptionsProperty,
+		inputTypePropertyName,
+		jsonPropertyName,
+		parametersPropertyName,
+	} = options;
+
 	const inputType = ctx.getNodeParameter(
 		inputTypePropertyName,
 		itemIndex,
@@ -556,6 +542,14 @@ export const updateParametersAndOptions = (
 	};
 };
 
+const getParametersDescription = (parameters: ToolParameter[]) =>
+	parameters
+		.map(
+			(p) =>
+				`${p.name}: (description: ${p.description ?? ''}, type: ${p.type ?? 'string'}, required: ${!!p.required})`,
+		)
+		.join(',\n ');
+
 export const prepareToolDescription = (
 	toolDescription: string,
 	toolParameters: ToolParameter[],
@@ -566,16 +560,8 @@ export const prepareToolDescription = (
 		description += `
 	Tool expects valid stringified JSON object with ${toolParameters.length} properties.
 	Property names with description, type and required status:
-
-	${toolParameters
-		.filter((p) => p.name)
-		.map(
-			(p) =>
-				`${p.name}: (description: ${p.description || ''}, type: ${p.type || 'string'}, required: ${!!p.required})`,
-		)
-		.join(',\n ')}
-
-		ALL parameters marked as required must be provided`;
+	${getParametersDescription(toolParameters)}
+	ALL parameters marked as required must be provided`;
 	}
 
 	return description;
@@ -740,15 +726,13 @@ export const configureToolFunction = (
 			if (options) {
 				options.url = encodeURI(options.url);
 
-				if (!Object.keys(options.headers as IDataObject).length) {
+				if (options.headers && !Object.keys(options.headers).length) {
 					delete options.headers;
 				}
-
-				if (!Object.keys(options.qs as IDataObject).length) {
+				if (options.qs && !Object.keys(options.qs).length) {
 					delete options.qs;
 				}
-
-				if (!Object.keys(options.body as IDataObject).length) {
+				if (options.body && !Object.keys(options.body).length) {
 					delete options.body;
 				}
 			}

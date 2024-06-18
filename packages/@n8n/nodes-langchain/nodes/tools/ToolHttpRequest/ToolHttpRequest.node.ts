@@ -326,48 +326,48 @@ export class ToolHttpRequest implements INodeType {
 		);
 
 		if (sendQuery) {
-			updateParametersAndOptions(
-				this,
+			updateParametersAndOptions({
+				ctx: this,
 				itemIndex,
 				toolParameters,
 				placeholdersDefinitions,
 				requestOptions,
 				rawRequestOptions,
-				'qs',
-				'specifyQuery',
-				'jsonQuery',
-				'parametersQuery.values',
-			);
+				requestOptionsProperty: 'qs',
+				inputTypePropertyName: 'specifyQuery',
+				jsonPropertyName: 'jsonQuery',
+				parametersPropertyName: 'parametersQuery.values',
+			});
 		}
 
 		if (sendHeaders) {
-			updateParametersAndOptions(
-				this,
+			updateParametersAndOptions({
+				ctx: this,
 				itemIndex,
 				toolParameters,
 				placeholdersDefinitions,
 				requestOptions,
 				rawRequestOptions,
-				'headers',
-				'specifyHeaders',
-				'jsonHeaders',
-				'parametersHeaders.values',
-			);
+				requestOptionsProperty: 'headers',
+				inputTypePropertyName: 'specifyHeaders',
+				jsonPropertyName: 'jsonHeaders',
+				parametersPropertyName: 'parametersHeaders.values',
+			});
 		}
 
 		if (sendBody) {
-			updateParametersAndOptions(
-				this,
+			updateParametersAndOptions({
+				ctx: this,
 				itemIndex,
 				toolParameters,
 				placeholdersDefinitions,
 				requestOptions,
 				rawRequestOptions,
-				'body',
-				'specifyBody',
-				'jsonBody',
-				'parametersBody.values',
-			);
+				requestOptionsProperty: 'body',
+				inputTypePropertyName: 'specifyBody',
+				jsonPropertyName: 'jsonBody',
+				parametersPropertyName: 'parametersBody.values',
+			});
 		}
 
 		for (const placeholder of placeholdersDefinitions) {
