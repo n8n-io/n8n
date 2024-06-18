@@ -153,8 +153,10 @@ async function onSubmit() {
 
 	startLoading();
 
+	const rootStore = useRootStore();
+
 	try {
-		const version = useRootStore().versionCli;
+		const version = rootStore.versionCli;
 		const model =
 			usePostHog().getVariant(ASK_AI_EXPERIMENT.name) === ASK_AI_EXPERIMENT.gpt4
 				? 'gpt-4'
@@ -166,7 +168,7 @@ async function onSubmit() {
 				schema: schemas.parentNodesSchemas,
 				inputSchema: schemas.inputSchema!,
 				ndvPushRef: useNDVStore().pushRef,
-				pushRef: useRootStore().pushRef,
+				pushRef: rootStore.pushRef,
 			},
 			model,
 			n8nVersion: version,
