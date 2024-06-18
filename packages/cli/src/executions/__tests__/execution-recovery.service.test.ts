@@ -180,7 +180,6 @@ describe('ExecutionRecoveryService', () => {
 	let executionRecoveryService: ExecutionRecoveryService;
 	let orchestrationService: OrchestrationService;
 	let executionRepository: ExecutionRepository;
-	let orchestrationService: OrchestrationService;
 
 	beforeAll(async () => {
 		await testDb.init();
