@@ -33,7 +33,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import useEnvironmentsStore from '@/stores/environments.ee.store';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useCollaborationStore } from '@/stores/collaboration.store';
 import { getUniqueNodeName } from '@/utils/canvasUtilsV2';
 import { historyBus } from '@/models/history';
@@ -1001,6 +1001,7 @@ function onUpdateNodeValue(parameterData: IUpdateInformation) {
 			<NodeDetailsView
 				:read-only="isReadOnlyRoute || isReadOnlyEnvironment"
 				:is-production-execution-preview="isProductionExecutionPreview"
+				:renaming="false"
 				@value-changed="onUpdateNodeValue"
 				@switch-selected-node="onSwitchSelectedNode"
 				@open-connection-node-creator="onOpenConnectionNodeCreator"
