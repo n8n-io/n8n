@@ -7,9 +7,12 @@ import { createWorkflow } from '@test-integration/db/workflows';
 import { createExecution } from '@test-integration/db/executions';
 import * as testDb from '@test-integration/testDb';
 
+import { NodeConnectionType } from 'n8n-workflow';
+import { mock } from 'jest-mock-extended';
+import { OrchestrationService } from '@/services/orchestration.service';
+import config from '@/config';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-
 import { InternalHooks } from '@/InternalHooks';
 import { Push } from '@/push';
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
@@ -17,11 +20,10 @@ import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import { EventMessageNode } from '@/eventbus/EventMessageClasses/EventMessageNode';
 import { EventMessageWorkflow } from '@/eventbus/EventMessageClasses/EventMessageWorkflow';
+
 import type { EventMessageTypes as EventMessage } from '@/eventbus/EventMessageClasses';
 import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
-import { NodeConnectionType } from 'n8n-workflow';
-import { OrchestrationService } from '@/services/orchestration.service';
-import config from '@/config';
+import type { Logger } from '@/Logger';
 
 /**
  * Workflow producing an execution whose data will be truncated by an instance crash.
@@ -174,20 +176,20 @@ export const setupMessages = (executionId: string, workflowName: string): EventM
 };
 
 describe('ExecutionRecoveryService', () => {
-	let executionRecoveryService: ExecutionRecoveryService;
 	let push: Push;
-	let executionRepository: ExecutionRepository;
+	let executionRecoveryService: ExecutionRecoveryService;
 	let orchestrationService: OrchestrationService;
+	let executionRepository: ExecutionRepository;
 
 	beforeAll(async () => {
 		await testDb.init();
-
-		mockInstance(InternalHooks);
 		push = mockInstance(Push);
 		executionRepository = Container.get(ExecutionRepository);
 		orchestrationService = Container.get(OrchestrationService);
 
+		mockInstance(InternalHooks);
 		executionRecoveryService = new ExecutionRecoveryService(
+			mock<Logger>(),
 			push,
 			executionRepository,
 			orchestrationService,
@@ -199,11 +201,76 @@ describe('ExecutionRecoveryService', () => {
 	});
 
 	afterEach(async () => {
+		config.load(config.default);
+		jest.restoreAllMocks();
 		await testDb.truncate(['Execution', 'ExecutionData', 'Workflow']);
+		executionRecoveryService.shutdown();
 	});
 
 	afterAll(async () => {
 		await testDb.terminate();
+	});
+
+	describe('scheduleQueueRecovery', () => {
+		describe('queue mode', () => {
+			it('if leader, should schedule queue recovery', () => {
+				/**
+				 * Arrange
+				 */
+				config.set('executions.mode', 'queue');
+				jest.spyOn(orchestrationService, 'isLeader', 'get').mockReturnValue(true);
+				const scheduleSpy = jest.spyOn(executionRecoveryService, 'scheduleQueueRecovery');
+
+				/**
+				 * Act
+				 */
+				executionRecoveryService.init();
+
+				/**
+				 * Assert
+				 */
+				expect(scheduleSpy).toHaveBeenCalled();
+			});
+
+			it('if follower, should do nothing', () => {
+				/**
+				 * Arrange
+				 */
+				config.set('executions.mode', 'queue');
+				jest.spyOn(orchestrationService, 'isLeader', 'get').mockReturnValue(false);
+				const scheduleSpy = jest.spyOn(executionRecoveryService, 'scheduleQueueRecovery');
+
+				/**
+				 * Act
+				 */
+				executionRecoveryService.init();
+
+				/**
+				 * Assert
+				 */
+				expect(scheduleSpy).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('regular mode', () => {
+			it('should do nothing', () => {
+				/**
+				 * Arrange
+				 */
+				config.set('executions.mode', 'regular');
+				const scheduleSpy = jest.spyOn(executionRecoveryService, 'scheduleQueueRecovery');
+
+				/**
+				 * Act
+				 */
+				executionRecoveryService.init();
+
+				/**
+				 * Assert
+				 */
+				expect(scheduleSpy).not.toHaveBeenCalled();
+			});
+		});
 	});
 
 	describe('recoverFromLogs', () => {
