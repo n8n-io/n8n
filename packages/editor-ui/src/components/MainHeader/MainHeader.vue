@@ -65,7 +65,7 @@ onMounted(async () => {
 	if (workflowsStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 		const workflowId = route.params.name as string;
 		const fetchedWorkflow = await workflowsStore.fetchWorkflow(workflowId);
-		const tagIds = (fetchedWorkflow.tags as ITag[]).map((tag) => tag.id);
+		const tagIds = (fetchedWorkflow.tags as ITag[] | undefined)?.map((tag) => tag.id) ?? [];
 		workflowsStore.setWorkflowId(workflowId);
 		workflowsStore.setWorkflowTagIds(tagIds);
 
