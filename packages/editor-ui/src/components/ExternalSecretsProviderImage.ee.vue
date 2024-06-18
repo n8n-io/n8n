@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import type { PropType } from 'vue';
 import type { ExternalSecretsProvider } from '@/Interface';
 import { computed } from 'vue';
 
@@ -8,12 +7,9 @@ import doppler from '../assets/images/doppler.webp';
 import vault from '../assets/images/hashicorp.webp';
 import awsSecretsManager from '../assets/images/aws-secrets-manager.svg';
 
-const props = defineProps({
-	provider: {
-		type: Object as PropType<ExternalSecretsProvider>,
-		required: true,
-	},
-});
+const props = defineProps<{
+	provider: ExternalSecretsProvider;
+}>();
 
 const image = computed(
 	() =>
