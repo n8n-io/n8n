@@ -102,6 +102,7 @@ const iconSource = computed<NodeIconSource>(() => {
 		// Otherwise, extract it from icon prop
 		if (nodeType.icon) {
 			const icon = getNodeIcon(nodeType, uiStore.appliedTheme);
+
 			if (icon) {
 				const [type, path] = icon.split(':');
 				if (type === 'file') {
