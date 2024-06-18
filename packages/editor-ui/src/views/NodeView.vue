@@ -901,7 +901,7 @@ export default defineComponent({
 				await this.initView();
 				if (window.parent) {
 					window.parent.postMessage(
-						JSON.stringify({ command: 'n8nReady', version: this.rootStore.getVersionCli }),
+						JSON.stringify({ command: 'n8nReady', version: this.rootStore.versionCli }),
 						'*',
 					);
 				}
@@ -2000,7 +2000,7 @@ export default defineComponent({
 				const workflowToCopy: IWorkflowToShare = {
 					meta: {
 						...this.workflowsStore.workflow.meta,
-						instanceId: this.rootStore.getInstanceId,
+						instanceId: this.rootStore.instanceId,
 					},
 					...data,
 				};
@@ -2255,7 +2255,7 @@ export default defineComponent({
 
 				this.removeUnknownCredentials(workflowData);
 
-				const currInstanceId = this.rootStore.getInstanceId;
+				const currInstanceId = this.rootStore.instanceId;
 
 				const nodeGraph = JSON.stringify(
 					TelemetryHelpers.generateNodesGraph(

@@ -1146,7 +1146,7 @@ export default defineComponent({
 						node: this.node.type,
 						errorMessage: error.message,
 						nodeVersion: this.node.typeVersion,
-						n8nVersion: this.rootStore.getVersionCli,
+						n8nVersion: this.rootStore.versionCli,
 					},
 					{
 						withPostHog: true,

@@ -78,7 +78,7 @@ const evaluatedPruneTime = computed(() => Math.floor(workflowHistoryStore.evalua
 
 const sendTelemetry = (event: string) => {
 	telemetry.track(event, {
-		instance_id: useRootStore().getInstanceId,
+		instance_id: useRootStore().instanceId,
 		workflow_id: workflowId.value,
 	});
 };

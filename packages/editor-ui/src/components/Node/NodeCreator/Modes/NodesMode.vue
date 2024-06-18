@@ -37,7 +37,7 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 
 const { mergedNodes, actions } = useNodeCreatorStore();
-const { getBaseUrl: baseUrl } = useRootStore();
+const { baseUrl } = useRootStore();
 const { pushViewStack, popViewStack } = useViewStacks();
 
 const { registerKeyHook } = useKeyboardNavigation();

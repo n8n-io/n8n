@@ -26,7 +26,7 @@ const filePath = computed(() => {
 		return null;
 	}
 
-	return rootStore.getBaseUrl + themeIconUrl;
+	return rootStore.baseUrl + themeIconUrl;
 });
 
 const relevantNode = computed(() => {

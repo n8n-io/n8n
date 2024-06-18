@@ -95,7 +95,7 @@ export default defineComponent({
 			useAIStore,
 		),
 		defaultLocale(): string {
-			return this.rootStore.getDefaultLocale;
+			return this.rootStore.defaultLocale;
 		},
 		isDemoMode(): boolean {
 			return this.$route.name === VIEWS.DEMO;

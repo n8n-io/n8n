@@ -26,7 +26,7 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 
-	const pushRef = computed(() => rootStore.getPushRef);
+	const pushRef = computed(() => rootStore.pushRef);
 	const pushSource = ref<WebSocket | EventSource | null>(null);
 	const reconnectTimeout = ref<NodeJS.Timeout | null>(null);
 	const connectRetries = ref(0);
@@ -84,7 +84,7 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 
 		const useWebSockets = settingsStore.pushBackend === 'websocket';
 
-		const restUrl = rootStore.getRestUrl;
+		const restUrl = rootStore.restUrl;
 		const url = `/push?pushRef=${pushRef.value}`;
 
 		if (useWebSockets) {

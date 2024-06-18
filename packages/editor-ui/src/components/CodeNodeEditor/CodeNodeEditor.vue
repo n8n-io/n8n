@@ -375,7 +375,7 @@ export default defineComponent({
 
 				// TODO: Still has to get updated for Python and JSON
 				this.$telemetry.track('User autocompleted code', {
-					instance_id: this.rootStore.getInstanceId,
+					instance_id: this.rootStore.instanceId,
 					node_type: CODE_NODE_TYPE,
 					field_name: this.mode === 'runOnceForAllItems' ? 'jsCodeAllItems' : 'jsCodeEachItem',
 					field_type: 'code',

@@ -344,7 +344,7 @@ export class I18nClass {
 	}
 
 	localizeNodeName(nodeName: string, type: string) {
-		const isEnglishLocale = useRootStore().getDefaultLocale === 'en';
+		const isEnglishLocale = useRootStore().defaultLocale === 'en';
 
 		if (isEnglishLocale) return nodeName;
 

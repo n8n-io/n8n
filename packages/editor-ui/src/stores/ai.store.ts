@@ -51,7 +51,7 @@ export const useAIStore = defineStore('ai', () => {
 	}
 
 	async function generateCurl(payload: GenerateCurlPayload) {
-		return await aiApi.generateCurl(rootStore.getRestApiContext, payload);
+		return await aiApi.generateCurl(rootStore.restApiContext, payload);
 	}
 
 	return {

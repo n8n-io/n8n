@@ -12,7 +12,7 @@ export default defineComponent({
 	computed: {
 		...mapStores(useRootStore, useUIStore),
 		basePath(): string {
-			return this.rootStore.getBaseUrl;
+			return this.rootStore.baseUrl;
 		},
 		logoPath(): string {
 			return this.basePath + this.uiStore.logo;

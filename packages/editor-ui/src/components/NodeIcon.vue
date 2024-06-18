@@ -86,7 +86,7 @@ const color = computed(() => {
 
 const iconSource = computed<NodeIconSource>(() => {
 	const nodeType = props.nodeType;
-	const baseUrl = rootStore.getBaseUrl;
+	const baseUrl = rootStore.baseUrl;
 
 	if (nodeType) {
 		// If node type has icon data, use it
@@ -123,7 +123,7 @@ const badge = computed(() => {
 	if (nodeType && 'badgeIconUrl' in nodeType && nodeType.badgeIconUrl) {
 		return {
 			type: 'file',
-			src: rootStore.getBaseUrl + getBadgeIconUrl(nodeType, uiStore.appliedTheme),
+			src: rootStore.baseUrl + getBadgeIconUrl(nodeType, uiStore.appliedTheme),
 		};
 	}
 

@@ -700,7 +700,7 @@ export default defineComponent({
 					...values,
 					version: SURVEY_VERSION,
 					personalization_survey_submitted_at: new Date().toISOString(),
-					personalization_survey_n8n_version: this.rootStore.getVersionCli,
+					personalization_survey_n8n_version: this.rootStore.versionCli,
 				};
 
 				await this.externalHooks.run(
@@ -728,7 +728,7 @@ export default defineComponent({
 					licenseRequestSucceeded = true;
 					this.$telemetry.track('User registered for self serve trial', {
 						email: this.usersStore.currentUser?.email,
-						instance_id: this.rootStore.getInstanceId,
+						instance_id: this.rootStore.instanceId,
 					});
 				}
 			} catch (e) {

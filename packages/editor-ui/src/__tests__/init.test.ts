@@ -63,7 +63,7 @@ describe('Init', () => {
 			vi.spyOn(settingsStore, 'isCloudDeployment', 'get').mockReturnValue(true);
 			vi.spyOn(settingsStore, 'isTemplatesEnabled', 'get').mockReturnValue(true);
 			vi.spyOn(sourceControlStore, 'isEnterpriseSourceControlEnabled', 'get').mockReturnValue(true);
-			vi.mocked(useRootStore).mockReturnValue({ getDefaultLocale: 'es' } as ReturnType<
+			vi.mocked(useRootStore).mockReturnValue({ defaultLocale: 'es' } as ReturnType<
 				typeof useRootStore
 			>);
 			vi.mock('@/hooks/register', () => ({

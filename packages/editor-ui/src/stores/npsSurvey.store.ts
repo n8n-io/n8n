@@ -96,7 +96,7 @@ export const useNpsSurveyStore = defineStore('npsSurvey', () => {
 					? currentSurveyState.value.ignoredCount
 					: 0,
 		};
-		await updateNpsSurveyState(rootStore.getRestApiContext, updatedState);
+		await updateNpsSurveyState(rootStore.restApiContext, updatedState);
 		currentSurveyState.value = updatedState;
 	}
 
@@ -107,7 +107,7 @@ export const useNpsSurveyStore = defineStore('npsSurvey', () => {
 			responded: true,
 			lastShownAt: currentSurveyState.value.lastShownAt,
 		};
-		await updateNpsSurveyState(rootStore.getRestApiContext, updatedState);
+		await updateNpsSurveyState(rootStore.restApiContext, updatedState);
 		currentSurveyState.value = updatedState;
 	}
 
@@ -128,7 +128,7 @@ export const useNpsSurveyStore = defineStore('npsSurvey', () => {
 			lastShownAt: currentSurveyState.value.lastShownAt,
 			ignoredCount: ignoredCount + 1,
 		};
-		await updateNpsSurveyState(rootStore.getRestApiContext, updatedState);
+		await updateNpsSurveyState(rootStore.restApiContext, updatedState);
 		currentSurveyState.value = updatedState;
 	}
 

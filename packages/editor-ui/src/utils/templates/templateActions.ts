@@ -37,7 +37,7 @@ export async function createWorkflowFromTemplate(opts: {
 }) {
 	const { credentialOverrides, nodeTypeProvider, rootStore, template, workflowsStore } = opts;
 
-	const workflowData = await getNewWorkflow(rootStore.getRestApiContext, { name: template.name });
+	const workflowData = await getNewWorkflow(rootStore.restApiContext, { name: template.name });
 	const nodesWithCreds = replaceAllTemplateNodeCredentials(
 		nodeTypeProvider,
 		template.workflow.nodes,

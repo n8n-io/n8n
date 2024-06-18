@@ -40,8 +40,8 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, {
 				const { enabled, endpoint } = this.versionNotificationSettings;
 				if (enabled && endpoint) {
 					const rootStore = useRootStore();
-					const currentVersion = rootStore.getVersionCli;
-					const instanceId = rootStore.getInstanceId;
+					const currentVersion = rootStore.versionCli;
+					const instanceId = rootStore.instanceId;
 					const versions = await getNextVersions(endpoint, currentVersion, instanceId);
 					this.setVersions({ versions, currentVersion });
 				}

@@ -279,12 +279,12 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 					if (node.type === FORM_TRIGGER_NODE_TYPE && node.typeVersion === 1) {
 						const webhookPath = (node.parameters.path as string) || node.webhookId;
-						testUrl = `${rootStore.getWebhookTestUrl}/${webhookPath}/${FORM_TRIGGER_PATH_IDENTIFIER}`;
+						testUrl = `${rootStore.webhookTestUrl}/${webhookPath}/${FORM_TRIGGER_PATH_IDENTIFIER}`;
 					}
 
 					if (node.type === FORM_TRIGGER_NODE_TYPE && node.typeVersion > 1) {
 						const webhookPath = (node.parameters.path as string) || node.webhookId;
-						testUrl = `${rootStore.getFormTestUrl}/${webhookPath}`;
+						testUrl = `${rootStore.formTestUrl}/${webhookPath}`;
 					}
 
 					if (
@@ -307,7 +307,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 						const { webhookSuffix } = (node.parameters.options ?? {}) as IDataObject;
 						const suffix = webhookSuffix ? `/${webhookSuffix}` : '';
-						testUrl = `${rootStore.getFormWaitingUrl}/${runWorkflowApiResponse.executionId}${suffix}`;
+						testUrl = `${rootStore.formWaitingUrl}/${runWorkflowApiResponse.executionId}${suffix}`;
 					}
 
 					if (testUrl) openPopUpWindow(testUrl);

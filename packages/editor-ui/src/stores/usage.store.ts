@@ -65,19 +65,19 @@ export const useUsageStore = defineStore('usage', () => {
 	};
 
 	const getLicenseInfo = async () => {
-		const data = await getLicense(rootStore.getRestApiContext);
+		const data = await getLicense(rootStore.restApiContext);
 		setData(data);
 	};
 
 	const activateLicense = async (activationKey: string) => {
-		const data = await activateLicenseKey(rootStore.getRestApiContext, { activationKey });
+		const data = await activateLicenseKey(rootStore.restApiContext, { activationKey });
 		setData(data);
 		await settingsStore.getSettings();
 	};
 
 	const refreshLicenseManagementToken = async () => {
 		try {
-			const data = await renewLicense(rootStore.getRestApiContext);
+			const data = await renewLicense(rootStore.restApiContext);
 			setData(data);
 		} catch (error) {
 			await getLicenseInfo();

@@ -779,9 +779,9 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 
 		let baseUrl;
 		if (showUrlFor === 'test') {
-			baseUrl = isForm ? rootStore.getFormTestUrl : rootStore.getWebhookTestUrl;
+			baseUrl = isForm ? rootStore.formTestUrl : rootStore.webhookTestUrl;
 		} else {
-			baseUrl = isForm ? rootStore.getFormUrl : rootStore.getWebhookUrl;
+			baseUrl = isForm ? rootStore.formUrl : rootStore.webhookUrl;
 		}
 
 		const workflowId = workflowsStore.workflowId;

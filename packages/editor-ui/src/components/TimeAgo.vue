@@ -17,7 +17,7 @@ const props = withDefaults(defineProps<Props>(), {
 const rootStore = useRootStore();
 const i18n = useI18n();
 
-const defaultLocale = computed(() => rootStore.getDefaultLocale);
+const defaultLocale = computed(() => rootStore.defaultLocale);
 const formatted = computed(() => {
 	const text = format(props.date, defaultLocale.value);
 

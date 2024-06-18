@@ -37,7 +37,7 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, {
 		},
 		async fetchInstalledPackages(): Promise<void> {
 			const rootStore = useRootStore();
-			const installedPackages = await getInstalledCommunityNodes(rootStore.getRestApiContext);
+			const installedPackages = await getInstalledCommunityNodes(rootStore.restApiContext);
 			this.setInstalledPackages(installedPackages);
 			const timeout = installedPackages.length > 0 ? 0 : LOADER_DELAY;
 			setTimeout(() => {
@@ -47,7 +47,7 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, {
 		async installPackage(packageName: string): Promise<void> {
 			try {
 				const rootStore = useRootStore();
-				await installNewPackage(rootStore.getRestApiContext, packageName);
+				await installNewPackage(rootStore.restApiContext, packageName);
 				await this.fetchInstalledPackages();
 			} catch (error) {
 				throw error;
@@ -56,7 +56,7 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, {
 		async uninstallPackage(packageName: string): Promise<void> {
 			try {
 				const rootStore = useRootStore();
-				await uninstallPackage(rootStore.getRestApiContext, packageName);
+				await uninstallPackage(rootStore.restApiContext, packageName);
 				this.removePackageByName(packageName);
 			} catch (error) {
 				throw error;
@@ -67,7 +67,7 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, {
 				const rootStore = useRootStore();
 				const packageToUpdate: PublicInstalledPackage = this.getInstalledPackageByName(packageName);
 				const updatedPackage: PublicInstalledPackage = await updatePackage(
-					rootStore.getRestApiContext,
+					rootStore.restApiContext,
 					packageToUpdate.packageName,
 				);
 				this.updatePackageObject(updatedPackage);

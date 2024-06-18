@@ -42,7 +42,7 @@ export const useBecomeTemplateCreatorStore = defineStore(STORES.BECOME_TEMPLATE_
 	};
 
 	const fetchBecomeCreatorCta = async () => {
-		const becomeCreatorCta = await getBecomeCreatorCta(rootStore.getRestApiContext);
+		const becomeCreatorCta = await getBecomeCreatorCta(rootStore.restApiContext);
 
 		ctaMeetsCriteria.value = becomeCreatorCta;
 	};

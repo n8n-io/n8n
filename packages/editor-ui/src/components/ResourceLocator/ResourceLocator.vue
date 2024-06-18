@@ -624,7 +624,7 @@ export default defineComponent({
 		},
 		trackEvent(event: string, params?: { [key: string]: string }): void {
 			this.$telemetry.track(event, {
-				instance_id: this.rootStore.getInstanceId,
+				instance_id: this.rootStore.instanceId,
 				workflow_id: this.workflowsStore.workflowId,
 				node_type: this.node?.type,
 				resource: this.node?.parameters && this.node.parameters.resource,

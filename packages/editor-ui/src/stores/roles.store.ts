@@ -37,7 +37,7 @@ export const useRolesStore = defineStore('roles', () => {
 	);
 
 	const fetchRoles = async () => {
-		roles.value = await rolesApi.getRoles(rootStore.getRestApiContext);
+		roles.value = await rolesApi.getRoles(rootStore.restApiContext);
 	};
 
 	return {

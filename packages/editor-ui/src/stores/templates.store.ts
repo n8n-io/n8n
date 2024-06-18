@@ -128,7 +128,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 			const defaultParameters: Record<string, string> = {
 				...TEMPLATES_URLS.UTM_QUERY,
 				utm_instance: this.currentN8nPath,
-				utm_n8n_version: rootStore.getVersionCli,
+				utm_n8n_version: rootStore.versionCli,
 				utm_awc: String(workflowsStore.activeWorkflows.length),
 			};
 			const userRole: string | null | undefined =

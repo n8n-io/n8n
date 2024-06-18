@@ -51,14 +51,14 @@ const parameters = computed<INodeProperties[]>(() => {
 });
 
 const n8nVersion = computed(() => {
-	const baseUrl = rootStore.getUrlBaseEditor;
+	const baseUrl = rootStore.urlBaseEditor;
 	let instanceType = 'Self Hosted';
 
 	if (baseUrl.includes('n8n.cloud')) {
 		instanceType = 'Cloud';
 	}
 
-	return rootStore.getVersionCli + ` (${instanceType})`;
+	return rootStore.versionCli + ` (${instanceType})`;
 });
 
 const hasManyInputItems = computed(() => {
@@ -339,7 +339,7 @@ function copyErrorDetails() {
 
 	n8nDetails.n8nVersion = n8nVersion.value;
 
-	n8nDetails.binaryDataMode = rootStore.getBinaryDataMode;
+	n8nDetails.binaryDataMode = rootStore.binaryDataMode;
 
 	if (error.cause) {
 		n8nDetails.cause = error.cause;

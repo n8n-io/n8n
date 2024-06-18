@@ -23,7 +23,7 @@ vi.mock('@/stores/ndv.store', () => ({
 
 vi.mock('@/stores/root.store', () => ({
 	useRootStore: vi.fn(() => ({
-		getInstanceId: 'test-instance-id',
+		instanceId: 'test-instance-id',
 	})),
 }));
 

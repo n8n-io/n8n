@@ -38,59 +38,53 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 	// #region Computed
 	// ---------------------------------------------------------------------------
 
-	const getBaseUrl = computed(() => state.value.baseUrl);
+	const baseUrl = computed(() => state.value.baseUrl);
 
-	const getFormUrl = computed(() => `${state.value.urlBaseWebhook}${state.value.endpointForm}`);
+	const formUrl = computed(() => `${state.value.urlBaseWebhook}${state.value.endpointForm}`);
 
-	const getFormTestUrl = computed(
-		() => `${state.value.urlBaseEditor}${state.value.endpointFormTest}`,
-	);
+	const formTestUrl = computed(() => `${state.value.urlBaseEditor}${state.value.endpointFormTest}`);
 
-	const getFormWaitingUrl = computed(
-		() => `${state.value.baseUrl}${state.value.endpointFormWaiting}`,
-	);
+	const formWaitingUrl = computed(() => `${state.value.baseUrl}${state.value.endpointFormWaiting}`);
 
-	const getWebhookUrl = computed(
-		() => `${state.value.urlBaseWebhook}${state.value.endpointWebhook}`,
-	);
+	const webhookUrl = computed(() => `${state.value.urlBaseWebhook}${state.value.endpointWebhook}`);
 
-	const getPushRef = computed(() => state.value.pushRef);
+	const pushRef = computed(() => state.value.pushRef);
 
-	const getBinaryDataMode = computed(() => state.value.binaryDataMode);
+	const binaryDataMode = computed(() => state.value.binaryDataMode);
 
-	const getDefaultLocale = computed(() => state.value.defaultLocale);
+	const defaultLocale = computed(() => state.value.defaultLocale);
 
-	const getUrlBaseEditor = computed(() => state.value.urlBaseEditor);
+	const urlBaseEditor = computed(() => state.value.urlBaseEditor);
 
-	const getInstanceId = computed(() => state.value.instanceId);
+	const instanceId = computed(() => state.value.instanceId);
 
-	const getVersionCli = computed(() => state.value.versionCli);
+	const versionCli = computed(() => state.value.versionCli);
 
 	const pushConnectionActive = computed(() => state.value.pushConnectionActive);
 
-	const getOAuthCallbackUrls = computed(() => state.value.oauthCallbackUrls);
+	const OAuthCallbackUrls = computed(() => state.value.oauthCallbackUrls);
 
-	const getWebhookTestUrl = computed(
+	const webhookTestUrl = computed(
 		() => `${state.value.urlBaseEditor}${state.value.endpointWebhookTest}`,
 	);
 
-	const getRestUrl = computed(() => `${state.value.baseUrl}${state.value.restEndpoint}`);
+	const restUrl = computed(() => `${state.value.baseUrl}${state.value.restEndpoint}`);
 
-	const getExecutionTimeout = computed(() => state.value.executionTimeout);
+	const executionTimeout = computed(() => state.value.executionTimeout);
 
-	const getMaxExecutionTimeout = computed(() => state.value.maxExecutionTimeout);
+	const maxExecutionTimeout = computed(() => state.value.maxExecutionTimeout);
 
-	const getTimezone = computed(() => state.value.timezone);
+	const timezone = computed(() => state.value.timezone);
 
-	const getRestCloudApiContext = computed(() => ({
+	const restCloudApiContext = computed(() => ({
 		baseUrl: window.location.host.includes('stage-app.n8n.cloud')
 			? CLOUD_BASE_URL_STAGING
 			: CLOUD_BASE_URL_PRODUCTION,
 		pushRef: '',
 	}));
 
-	const getRestApiContext = computed(() => ({
-		baseUrl: getRestUrl.value,
+	const restApiContext = computed(() => ({
+		baseUrl: restUrl.value,
 		pushRef: state.value.pushRef,
 	}));
 
@@ -182,26 +176,26 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 	// #endregion
 
 	return {
-		getBaseUrl,
-		getFormUrl,
-		getFormTestUrl,
-		getFormWaitingUrl,
-		getWebhookUrl,
-		getWebhookTestUrl,
-		getRestUrl,
-		getRestCloudApiContext,
-		getRestApiContext,
-		getUrlBaseEditor,
-		getVersionCli,
-		getInstanceId,
-		getPushRef,
-		getDefaultLocale,
-		getBinaryDataMode,
+		baseUrl,
+		formUrl,
+		formTestUrl,
+		formWaitingUrl,
+		webhookUrl,
+		webhookTestUrl,
+		restUrl,
+		restCloudApiContext,
+		restApiContext,
+		urlBaseEditor,
+		versionCli,
+		instanceId,
+		pushRef,
+		defaultLocale,
+		binaryDataMode,
 		pushConnectionActive,
-		getOAuthCallbackUrls,
-		getExecutionTimeout,
-		getMaxExecutionTimeout,
-		getTimezone,
+		OAuthCallbackUrls,
+		executionTimeout,
+		maxExecutionTimeout,
+		timezone,
 		setPushConnectionInactive,
 		setPushConnectionActive,
 		setUrlBaseWebhook,

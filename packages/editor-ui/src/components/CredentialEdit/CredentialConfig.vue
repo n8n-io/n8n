@@ -236,7 +236,7 @@ export default defineComponent({
 		};
 	},
 	async beforeMount() {
-		if (this.rootStore.getDefaultLocale === 'en') return;
+		if (this.rootStore.defaultLocale === 'en') return;
 
 		this.uiStore.activeCredentialType = this.credentialType.name;
 
@@ -250,7 +250,7 @@ export default defineComponent({
 
 		addCredentialTranslation(
 			{ [this.credentialType.name]: credTranslation },
-			this.rootStore.getDefaultLocale,
+			this.rootStore.defaultLocale,
 		);
 	},
 	computed: {
@@ -328,7 +328,7 @@ export default defineComponent({
 				this.credentialTypeName === 'oAuth2Api' || this.parentTypes.includes('oAuth2Api')
 					? 'oauth2'
 					: 'oauth1';
-			return this.rootStore.getOAuthCallbackUrls[oauthType as keyof {}];
+			return this.rootStore.OAuthCallbackUrls[oauthType as keyof {}];
 		},
 		showOAuthSuccessBanner(): boolean {
 			return (

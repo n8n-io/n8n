@@ -337,7 +337,7 @@ export default defineComponent({
 		},
 	},
 	async mounted() {
-		this.basePath = this.rootStore.getBaseUrl;
+		this.basePath = this.rootStore.baseUrl;
 		if (this.$refs.user) {
 			void this.externalHooks.run('mainSidebar.mounted', {
 				userRef: this.$refs.user as Element,

@@ -10,13 +10,13 @@
 import { useUIStore } from '@/stores/ui.store';
 import { useRootStore } from '@/stores/root.store';
 
-const { getBaseUrl } = useRootStore();
+const { baseUrl } = useRootStore();
 const type = useUIStore().appliedTheme === 'dark' ? '.dark.png' : '.png';
 const googleAuthButtons = {
-	'--google-auth-btn-normal': `url(${getBaseUrl}google-auth/normal${type}`,
-	'--google-auth-btn-focus': `url(${getBaseUrl}google-auth/focus${type}`,
-	'--google-auth-btn-pressed': `url(${getBaseUrl}google-auth/pressed${type}`,
-	'--google-auth-btn-disabled': `url(${getBaseUrl}google-auth/disabled${type}`,
+	'--google-auth-btn-normal': `url(${baseUrl}google-auth/normal${type}`,
+	'--google-auth-btn-focus': `url(${baseUrl}google-auth/focus${type}`,
+	'--google-auth-btn-pressed': `url(${baseUrl}google-auth/pressed${type}`,
+	'--google-auth-btn-disabled': `url(${baseUrl}google-auth/disabled${type}`,
 };
 </script>
 

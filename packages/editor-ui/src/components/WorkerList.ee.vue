@@ -80,7 +80,7 @@ export default defineComponent({
 		setPageTitle(`n8n - ${this.pageTitle}`);
 
 		this.$telemetry.track('User viewed worker view', {
-			instance_id: this.rootStore.getInstanceId,
+			instance_id: this.rootStore.instanceId,
 		});
 	},
 	beforeMount() {

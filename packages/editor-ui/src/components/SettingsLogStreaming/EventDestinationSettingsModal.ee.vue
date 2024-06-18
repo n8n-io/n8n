@@ -503,7 +503,7 @@ export default defineComponent({
 				};
 
 				useTelemetry().track('User updated log streaming destination', {
-					instance_id: useRootStore().getInstanceId,
+					instance_id: useRootStore().instanceId,
 					destination_type: destinationType,
 					is_complete: isComplete(),
 					is_active: this.destination.enabled,

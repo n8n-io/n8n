@@ -67,7 +67,7 @@ const webhookNode = computed(() => {
 });
 
 const webhookUrl = computed(() => {
-	const url = `${rootStore.getWebhookUrl}${
+	const url = `${rootStore.webhookUrl}${
 		webhookNode.value ? `/${webhookNode.value.node.webhookId}` : ''
 	}`;
 

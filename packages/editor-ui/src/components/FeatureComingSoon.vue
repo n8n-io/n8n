@@ -53,7 +53,7 @@ export default defineComponent({
 			return this.usersStore.currentUserId || '';
 		},
 		instanceId(): string {
-			return this.rootStore.getInstanceId;
+			return this.rootStore.instanceId;
 		},
 		featureInfo(): IFakeDoor | undefined {
 			return this.uiStore.getFakeDoorById(this.featureId);
@@ -63,7 +63,7 @@ export default defineComponent({
 		openLinkPage() {
 			if (this.featureInfo) {
 				window.open(
-					`${this.featureInfo.linkURL}&u=${this.instanceId}#${this.userId}&v=${this.rootStore.getVersionCli}`,
+					`${this.featureInfo.linkURL}&u=${this.instanceId}#${this.userId}&v=${this.rootStore.versionCli}`,
 					'_blank',
 				);
 				this.$telemetry.track('user clicked feature waiting list button', {

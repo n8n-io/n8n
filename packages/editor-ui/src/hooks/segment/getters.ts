@@ -26,7 +26,7 @@ export const getUserSavedCredentialsEventData = (meta: UserSavedCredentialsEvent
 	return {
 		eventName: 'User saved credentials',
 		properties: {
-			instance_id: rootStore.getInstanceId,
+			instance_id: rootStore.instanceId,
 			credential_type: meta.credential_type,
 			credential_id: meta.credential_id,
 			workflow_id: workflowsStore.workflowId,

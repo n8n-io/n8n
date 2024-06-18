@@ -106,7 +106,7 @@ const onSave = async () => {
 		}
 
 		telemetry.track('User updated single sign on settings', {
-			instance_id: rootStore.getInstanceId,
+			instance_id: rootStore.instanceId,
 			identity_provider: ipsType.value === 'url' ? 'metadata' : 'xml',
 			is_active: ssoStore.isSamlLoginEnabled,
 		});

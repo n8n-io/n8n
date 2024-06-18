@@ -230,16 +230,13 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 			replace = true,
 		): Promise<INodeTypeDescription[]> {
 			const rootStore = useRootStore();
-			const nodesInformation = await getNodesInformation(rootStore.getRestApiContext, nodeInfos);
+			const nodesInformation = await getNodesInformation(rootStore.restApiContext, nodeInfos);
 
 			nodesInformation.forEach((nodeInformation) => {
 				if (nodeInformation.translation) {
 					const nodeType = nodeInformation.name.replace('n8n-nodes-base.', '');
 
-					addNodeTranslation(
-						{ [nodeType]: nodeInformation.translation },
-						rootStore.getDefaultLocale,
-					);
+					addNodeTranslation({ [nodeType]: nodeInformation.translation }, rootStore.defaultLocale);
 				}
 			});
 			if (replace) this.setNodeTypes(nodesInformation);
@@ -253,7 +250,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 		},
 		async getNodeTypes(): Promise<void> {
 			const rootStore = useRootStore();
-			const nodeTypes = await getNodeTypes(rootStore.getBaseUrl);
+			const nodeTypes = await getNodeTypes(rootStore.baseUrl);
 			if (nodeTypes.length) {
 				this.setNodeTypes(nodeTypes);
 			}
@@ -268,30 +265,30 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 		},
 		async getNodeTranslationHeaders(): Promise<void> {
 			const rootStore = useRootStore();
-			const headers = await getNodeTranslationHeaders(rootStore.getRestApiContext);
+			const headers = await getNodeTranslationHeaders(rootStore.restApiContext);
 
 			if (headers) {
-				addHeaders(headers, rootStore.getDefaultLocale);
+				addHeaders(headers, rootStore.defaultLocale);
 			}
 		},
 		async getNodeParameterOptions(
 			sendData: DynamicNodeParameters.OptionsRequest,
 		): Promise<INodePropertyOptions[]> {
 			const rootStore = useRootStore();
-			return await getNodeParameterOptions(rootStore.getRestApiContext, sendData);
+			return await getNodeParameterOptions(rootStore.restApiContext, sendData);
 		},
 		async getResourceLocatorResults(
 			sendData: DynamicNodeParameters.ResourceLocatorResultsRequest,
 		): Promise<INodeListSearchResult> {
 			const rootStore = useRootStore();
-			return await getResourceLocatorResults(rootStore.getRestApiContext, sendData);
+			return await getResourceLocatorResults(rootStore.restApiContext, sendData);
 		},
 		async getResourceMapperFields(
 			sendData: DynamicNodeParameters.ResourceMapperFieldsRequest,
 		): Promise<ResourceMapperFields | null> {
 			const rootStore = useRootStore();
 			try {
-				return await getResourceMapperFields(rootStore.getRestApiContext, sendData);
+				return await getResourceMapperFields(rootStore.restApiContext, sendData);
 			} catch (error) {
 				return null;
 			}

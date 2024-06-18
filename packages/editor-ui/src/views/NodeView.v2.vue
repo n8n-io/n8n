@@ -154,7 +154,7 @@ async function initialize() {
 
 	if (window.parent) {
 		window.parent.postMessage(
-			JSON.stringify({ command: 'n8nReady', version: rootStore.getVersionCli }),
+			JSON.stringify({ command: 'n8nReady', version: rootStore.versionCli }),
 			'*',
 		);
 	}

@@ -74,7 +74,7 @@ export async function initializeAuthenticatedFeatures() {
 		} catch (e) {}
 	}
 
-	if (rootStore.getDefaultLocale !== 'en') {
+	if (rootStore.defaultLocale !== 'en') {
 		await nodeTypesStore.getNodeTranslationHeaders();
 	}
 

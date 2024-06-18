@@ -79,7 +79,7 @@ export const useAutocompleteTelemetry = ({
 		const category = expressionExtensionsCategories.value[completion];
 
 		const payload = {
-			instance_id: rootStore.getInstanceId,
+			instance_id: rootStore.instanceId,
 			node_type: ndvStore.activeNode?.type,
 			field_name: path,
 			field_type: 'expression',

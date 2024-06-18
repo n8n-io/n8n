@@ -131,7 +131,7 @@ export const useExecutionDebugging = () => {
 		}
 
 		telemetry.track('User clicked debug execution button', {
-			instance_id: useRootStore().getInstanceId,
+			instance_id: useRootStore().instanceId,
 			exec_status: isFullExecutionResponse(execution) ? execution.status : '',
 			override_pinned_data: pinnableNodes.length === pinnings,
 			all_exec_data_imported: missingNodeNames.length === 0,

@@ -79,7 +79,7 @@ export const usePostHog = defineStore('posthog', () => {
 	}
 
 	const identify = () => {
-		const instanceId = rootStore.getInstanceId;
+		const instanceId = rootStore.instanceId;
 		const user = usersStore.currentUser;
 		const traits: Record<string, string | number> = { instance_id: instanceId };
 
@@ -128,7 +128,7 @@ export const usePostHog = defineStore('posthog', () => {
 			return;
 		}
 
-		const instanceId = rootStore.getInstanceId;
+		const instanceId = rootStore.instanceId;
 		const distinctId = `${instanceId}#${userId}`;
 
 		const options: Parameters<typeof window.posthog.init>[1] = {

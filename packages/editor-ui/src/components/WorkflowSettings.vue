@@ -494,8 +494,8 @@ export default defineComponent({
 		},
 	},
 	async mounted() {
-		this.executionTimeout = this.rootStore.getExecutionTimeout;
-		this.maxExecutionTimeout = this.rootStore.getMaxExecutionTimeout;
+		this.executionTimeout = this.rootStore.executionTimeout;
+		this.maxExecutionTimeout = this.rootStore.maxExecutionTimeout;
 
 		if (!this.workflowId || this.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 			this.showMessage({
@@ -511,7 +511,7 @@ export default defineComponent({
 		this.defaultValues.saveDataErrorExecution = this.settingsStore.saveDataErrorExecution;
 		this.defaultValues.saveDataSuccessExecution = this.settingsStore.saveDataSuccessExecution;
 		this.defaultValues.saveManualExecutions = this.settingsStore.saveManualExecutions;
-		this.defaultValues.timezone = this.rootStore.getTimezone;
+		this.defaultValues.timezone = this.rootStore.timezone;
 		this.defaultValues.workflowCallerPolicy = this.settingsStore.workflowCallerPolicyDefaultOption;
 
 		this.isLoading = true;
@@ -556,10 +556,10 @@ export default defineComponent({
 				.workflowCallerPolicy as WorkflowSettings.CallerPolicy;
 		}
 		if (workflowSettings.executionTimeout === undefined) {
-			workflowSettings.executionTimeout = this.rootStore.getExecutionTimeout;
+			workflowSettings.executionTimeout = this.rootStore.executionTimeout;
 		}
 		if (workflowSettings.maxExecutionTimeout === undefined) {
-			workflowSettings.maxExecutionTimeout = this.rootStore.getMaxExecutionTimeout;
+			workflowSettings.maxExecutionTimeout = this.rootStore.maxExecutionTimeout;
 		}
 		if (workflowSettings.executionOrder === undefined) {
 			workflowSettings.executionOrder = 'v0';

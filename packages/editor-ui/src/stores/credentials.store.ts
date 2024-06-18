@@ -242,7 +242,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 				return;
 			}
 			const rootStore = useRootStore();
-			const credentialTypes = await getCredentialTypes(rootStore.getBaseUrl);
+			const credentialTypes = await getCredentialTypes(rootStore.baseUrl);
 			this.setCredentialTypes(credentialTypes);
 		},
 		async fetchAllCredentials(
@@ -256,7 +256,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 			};
 
 			const credentials = await getAllCredentials(
-				rootStore.getRestApiContext,
+				rootStore.restApiContext,
 				isEmpty(filter) ? undefined : filter,
 				includeScopes,
 			);
@@ -268,7 +268,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 		): Promise<ICredentialsResponse[]> {
 			const rootStore = useRootStore();
 
-			const credentials = await getAllCredentialsForWorkflow(rootStore.getRestApiContext, options);
+			const credentials = await getAllCredentialsForWorkflow(rootStore.restApiContext, options);
 			this.setCredentials(credentials);
 			return credentials;
 		},
@@ -278,7 +278,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 			id: string;
 		}): Promise<ICredentialsResponse | ICredentialsDecryptedResponse | undefined> {
 			const rootStore = useRootStore();
-			return await getCredentialData(rootStore.getRestApiContext, id);
+			return await getCredentialData(rootStore.restApiContext, id);
 		},
 		async createNewCredential(
 			data: ICredentialsDecrypted,
@@ -286,7 +286,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 		): Promise<ICredentialsResponse> {
 			const rootStore = useRootStore();
 			const settingsStore = useSettingsStore();
-			const credential = await createNewCredential(rootStore.getRestApiContext, data, projectId);
+			const credential = await createNewCredential(rootStore.restApiContext, data, projectId);
 
 			if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
 				this.upsertCredential(credential);
@@ -307,7 +307,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 		}): Promise<ICredentialsResponse> {
 			const { id, data } = params;
 			const rootStore = useRootStore();
-			const credential = await updateCredential(rootStore.getRestApiContext, id, data);
+			const credential = await updateCredential(rootStore.restApiContext, id, data);
 
 			this.upsertCredential(credential);
 
@@ -315,7 +315,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 		},
 		async deleteCredential({ id }: { id: string }) {
 			const rootStore = useRootStore();
-			const deleted = await deleteCredential(rootStore.getRestApiContext, id);
+			const deleted = await deleteCredential(rootStore.restApiContext, id);
 			if (deleted) {
 				const { [id]: deletedCredential, ...rest } = this.credentials;
 				this.credentials = rest;
@@ -323,15 +323,15 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 		},
 		async oAuth2Authorize(data: ICredentialsResponse): Promise<string> {
 			const rootStore = useRootStore();
-			return await oAuth2CredentialAuthorize(rootStore.getRestApiContext, data);
+			return await oAuth2CredentialAuthorize(rootStore.restApiContext, data);
 		},
 		async oAuth1Authorize(data: ICredentialsResponse): Promise<string> {
 			const rootStore = useRootStore();
-			return await oAuth1CredentialAuthorize(rootStore.getRestApiContext, data);
+			return await oAuth1CredentialAuthorize(rootStore.restApiContext, data);
 		},
 		async testCredential(data: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 			const rootStore = useRootStore();
-			return await testCredential(rootStore.getRestApiContext, { credentials: data });
+			return await testCredential(rootStore.restApiContext, { credentials: data });
 		},
 		async getNewCredentialName(params: { credentialTypeName: string }): Promise<string> {
 			try {
@@ -346,7 +346,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 							: DEFAULT_CREDENTIAL_NAME;
 				}
 				const rootStore = useRootStore();
-				const res = await getCredentialsNewName(rootStore.getRestApiContext, newName);
+				const res = await getCredentialsNewName(rootStore.restApiContext, newName);
 				return res.name;
 			} catch (e) {
 				return DEFAULT_CREDENTIAL_NAME;
@@ -357,7 +357,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 			credentialId: string;
 		}): Promise<ICredentialsResponse> {
 			if (useSettingsStore().isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
-				await setCredentialSharedWith(useRootStore().getRestApiContext, payload.credentialId, {
+				await setCredentialSharedWith(useRootStore().restApiContext, payload.credentialId, {
 					shareWithIds: payload.sharedWithProjects.map((project) => project.id),
 				});
 
@@ -371,14 +371,9 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 
 		async getCredentialTranslation(credentialType: string): Promise<object> {
 			const rootStore = useRootStore();
-			return await makeRestApiRequest(
-				rootStore.getRestApiContext,
-				'GET',
-				'/credential-translation',
-				{
-					credentialType,
-				},
-			);
+			return await makeRestApiRequest(rootStore.restApiContext, 'GET', '/credential-translation', {
+				credentialType,
+			});
 		},
 	},
 });

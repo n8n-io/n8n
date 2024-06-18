@@ -472,7 +472,7 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		async getNextOnboardingPrompt(): Promise<IOnboardingCallPrompt | null> {
 			const rootStore = useRootStore();
-			const instanceId = rootStore.getInstanceId;
+			const instanceId = rootStore.instanceId;
 			const { currentUser } = useUsersStore();
 			if (currentUser) {
 				return await fetchNextOnboardingPrompt(instanceId, currentUser);
@@ -481,7 +481,7 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		async applyForOnboardingCall(email: string): Promise<string | null> {
 			const rootStore = useRootStore();
-			const instanceId = rootStore.getInstanceId;
+			const instanceId = rootStore.instanceId;
 			const { currentUser } = useUsersStore();
 			if (currentUser) {
 				return await applyForOnboardingCall(instanceId, currentUser, email);
@@ -490,7 +490,7 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		async submitContactEmail(email: string, agree: boolean): Promise<string | null> {
 			const rootStore = useRootStore();
-			const instanceId = rootStore.getInstanceId;
+			const instanceId = rootStore.instanceId;
 			const { currentUser } = useUsersStore();
 			if (currentUser) {
 				return await submitEmailOnSignup(
@@ -552,7 +552,7 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		async getCurlToJson(curlCommand: string): Promise<CurlToJSONResponse> {
 			const rootStore = useRootStore();
-			const parameters = await getCurlToJson(rootStore.getRestApiContext, curlCommand);
+			const parameters = await getCurlToJson(rootStore.restApiContext, curlCommand);
 
 			// Normalize placeholder values
 			if (parameters['parameters.url']) {
@@ -594,7 +594,7 @@ export const useUIStore = defineStore(STORES.UI, {
 			type: 'temporary' | 'permanent' = 'temporary',
 		): Promise<void> {
 			if (type === 'permanent') {
-				await dismissBannerPermanently(useRootStore().getRestApiContext, {
+				await dismissBannerPermanently(useRootStore().restApiContext, {
 					bannerName: name,
 					dismissedBanners: useSettingsStore().permanentlyDismissedBanners,
 				});

@@ -89,7 +89,7 @@ export default defineComponent({
 		closeDialog(): void {
 			if (!this.isEmailValid) {
 				this.$telemetry.track('User closed email modal', {
-					instance_id: this.rootStore.getInstanceId,
+					instance_id: this.rootStore.instanceId,
 					email: null,
 				});
 			}
@@ -102,7 +102,7 @@ export default defineComponent({
 
 				if (response.updated) {
 					this.$telemetry.track('User closed email modal', {
-						instance_id: this.rootStore.getInstanceId,
+						instance_id: this.rootStore.instanceId,
 						email: this.email,
 					});
 					this.showMessage({

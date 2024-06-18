@@ -12,7 +12,7 @@
 			<template #menuSuffix>
 				<div :class="$style.versionContainer">
 					<n8n-link size="small" @click="onVersionClick">
-						{{ $locale.baseText('settings.version') }} {{ rootStore.getVersionCli }}
+						{{ $locale.baseText('settings.version') }} {{ rootStore.versionCli }}
 					</n8n-link>
 				</div>
 			</template>

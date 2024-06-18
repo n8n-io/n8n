@@ -52,7 +52,7 @@ const isEmailValid = computed(
 async function closeDialog(): Promise<void> {
 	if (form.value.value === '') {
 		telemetry.track('User responded value survey score', {
-			instance_id: rootStore.getInstanceId,
+			instance_id: rootStore.instanceId,
 			nps: '',
 		});
 
@@ -60,7 +60,7 @@ async function closeDialog(): Promise<void> {
 	}
 	if (form.value.value !== '' && form.value.email === '') {
 		telemetry.track('User responded value survey email', {
-			instance_id: rootStore.getInstanceId,
+			instance_id: rootStore.instanceId,
 			email: '',
 			nps: form.value.value,
 		});
@@ -76,7 +76,7 @@ async function selectSurveyValue(value: string) {
 	showButtons.value = false;
 
 	telemetry.track('User responded value survey score', {
-		instance_id: rootStore.getInstanceId,
+		instance_id: rootStore.instanceId,
 		nps: form.value.value,
 	});
 
@@ -86,7 +86,7 @@ async function selectSurveyValue(value: string) {
 async function send() {
 	if (isEmailValid.value) {
 		telemetry.track('User responded value survey email', {
-			instance_id: rootStore.getInstanceId,
+			instance_id: rootStore.instanceId,
 			email: form.value.email,
 			nps: form.value.value,
 		});
@@ -112,7 +112,7 @@ watch(
 	(isActive) => {
 		if (isActive) {
 			telemetry.track('User shown value survey', {
-				instance_id: rootStore.getInstanceId,
+				instance_id: rootStore.instanceId,
 			});
 		}
 	},

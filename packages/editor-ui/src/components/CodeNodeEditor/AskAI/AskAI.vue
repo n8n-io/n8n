@@ -131,7 +131,7 @@ function stopLoading() {
 }
 
 async function onSubmit() {
-	const { getRestApiContext } = useRootStore();
+	const { restApiContext } = useRootStore();
 	const { activeNode } = useNDVStore();
 	const { showMessage } = useToast();
 	const { alert } = useMessage();
@@ -154,19 +154,19 @@ async function onSubmit() {
 	startLoading();
 
 	try {
-		const version = useRootStore().getVersionCli;
+		const version = useRootStore().versionCli;
 		const model =
 			usePostHog().getVariant(ASK_AI_EXPERIMENT.name) === ASK_AI_EXPERIMENT.gpt4
 				? 'gpt-4'
 				: 'gpt-3.5-turbo-16k';
 
-		const { code } = await generateCodeForPrompt(getRestApiContext, {
+		const { code } = await generateCodeForPrompt(restApiContext, {
 			question: prompt.value,
 			context: {
 				schema: schemas.parentNodesSchemas,
 				inputSchema: schemas.inputSchema!,
 				ndvPushRef: useNDVStore().pushRef,
-				pushRef: useRootStore().getPushRef,
+				pushRef: useRootStore().pushRef,
 			},
 			model,
 			n8nVersion: version,

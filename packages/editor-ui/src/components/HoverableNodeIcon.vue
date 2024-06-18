@@ -124,7 +124,7 @@ export default defineComponent({
 				return (nodeType as ITemplatesNode).iconData;
 			}
 
-			const restUrl = this.rootStore.getRestUrl;
+			const restUrl = this.rootStore.restUrl;
 
 			if (typeof nodeType.icon === 'string') {
 				const [type, path] = nodeType.icon.split(':');

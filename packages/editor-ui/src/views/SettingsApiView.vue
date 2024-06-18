@@ -124,7 +124,7 @@ export default defineComponent({
 		if (!this.isPublicApiEnabled) return;
 
 		void this.getApiKey();
-		const baseUrl = this.rootStore.getBaseUrl;
+		const baseUrl = this.rootStore.baseUrl;
 		const apiPath = this.settingsStore.publicApiPath;
 		const latestVersion = this.settingsStore.publicApiLatestVersion;
 		this.swaggerUIEnabled = this.settingsStore.isSwaggerUIEnabled;

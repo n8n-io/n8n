@@ -40,7 +40,7 @@ export default defineComponent({
 		},
 		currentUserId(userId) {
 			if (this.isTelemetryEnabled) {
-				this.$telemetry.identify(this.rootStore.getInstanceId, userId);
+				this.$telemetry.identify(this.rootStore.instanceId, userId);
 			}
 		},
 		isTelemetryEnabledOnRoute(enabled) {
@@ -62,10 +62,10 @@ export default defineComponent({
 				return;
 
 			this.$telemetry.init(this.telemetry, {
-				instanceId: this.rootStore.getInstanceId,
+				instanceId: this.rootStore.instanceId,
 				userId: this.currentUserId,
 				projectId: this.projectsStore.personalProject?.id,
-				versionCli: this.rootStore.getVersionCli,
+				versionCli: this.rootStore.versionCli,
 			});
 
 			this.isTelemetryInitialized = true;
