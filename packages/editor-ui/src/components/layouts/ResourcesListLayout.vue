@@ -146,7 +146,7 @@
 import { computed, defineComponent, nextTick, ref, onMounted, watch } from 'vue';
 import type { PropType } from 'vue';
 
-import type { ProjectSharingData } from '@/features/projects/projects.types';
+import type { ProjectSharingData } from '@/types/projects.types';
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
@@ -159,15 +159,19 @@ import { useRoute } from 'vue-router';
 
 // eslint-disable-next-line unused-imports/no-unused-imports, @typescript-eslint/no-unused-vars
 import type { BaseTextKey } from '@/plugins/i18n';
+import type { Scope } from '@n8n/permissions';
 
-export interface IResource {
+export type IResource = {
 	id: string;
 	name: string;
 	value: string;
 	updatedAt?: string;
 	createdAt?: string;
 	homeProject?: ProjectSharingData;
-}
+	scopes?: Scope[];
+	type?: string;
+	sharedWithProjects?: ProjectSharingData[];
+};
 
 interface IFilters {
 	search: string;
@@ -254,7 +258,7 @@ export default defineComponent({
 		const hasFilters = ref(false);
 		const filtersModel = ref(props.filters);
 		const currentPage = ref(1);
-		const rowsPerPage = ref<number | '*'>(10);
+		const rowsPerPage = ref<number>(10);
 		const resettingFilters = ref(false);
 		const search = ref<HTMLElement | null>(null);
 
@@ -291,11 +295,11 @@ export default defineComponent({
 					case 'lastUpdated':
 						return props.sortFns.lastUpdated
 							? props.sortFns.lastUpdated(a, b)
-							: new Date(b.updatedAt).valueOf() - new Date(a.updatedAt).valueOf();
+							: new Date(b.updatedAt ?? '').valueOf() - new Date(a.updatedAt ?? '').valueOf();
 					case 'lastCreated':
 						return props.sortFns.lastCreated
 							? props.sortFns.lastCreated(a, b)
-							: new Date(b.createdAt).valueOf() - new Date(a.createdAt).valueOf();
+							: new Date(b.createdAt ?? '').valueOf() - new Date(a.createdAt ?? '').valueOf();
 					case 'nameAsc':
 						return props.sortFns.nameAsc
 							? props.sortFns.nameAsc(a, b)
@@ -328,7 +332,7 @@ export default defineComponent({
 			);
 		};
 
-		const setRowsPerPage = (numberOfRowsPerPage: number | '*') => {
+		const setRowsPerPage = (numberOfRowsPerPage: number) => {
 			rowsPerPage.value = numberOfRowsPerPage;
 		};
 

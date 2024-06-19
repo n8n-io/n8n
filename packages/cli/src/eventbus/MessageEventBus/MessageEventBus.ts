@@ -3,7 +3,6 @@ import type { DeleteResult } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
 import EventEmitter from 'events';
 import uniqby from 'lodash/uniqBy';
-import { jsonParse } from 'n8n-workflow';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
 import config from '@/config';
@@ -22,21 +21,18 @@ import type { EventMessageAuditOptions } from '../EventMessageClasses/EventMessa
 import { EventMessageAudit } from '../EventMessageClasses/EventMessageAudit';
 import type { EventMessageWorkflowOptions } from '../EventMessageClasses/EventMessageWorkflow';
 import { EventMessageWorkflow } from '../EventMessageClasses/EventMessageWorkflow';
-import { isLogStreamingEnabled } from './MessageEventBusHelper';
 import type { EventMessageNodeOptions } from '../EventMessageClasses/EventMessageNode';
 import { EventMessageNode } from '../EventMessageClasses/EventMessageNode';
 import {
 	EventMessageGeneric,
 	eventMessageGenericDestinationTestEvent,
 } from '../EventMessageClasses/EventMessageGeneric';
-import { METRICS_EVENT_NAME } from '../MessageEventBusDestination/Helpers.ee';
-import type { AbstractEventMessageOptions } from '../EventMessageClasses/AbstractEventMessageOptions';
-import { getEventMessageObjectByType } from '../EventMessageClasses/Helpers';
-import { ExecutionDataRecoveryService } from '../executionDataRecovery.service';
+import { ExecutionRecoveryService } from '../../executions/execution-recovery.service';
 import {
 	EventMessageAiNode,
 	type EventMessageAiNodeOptions,
 } from '../EventMessageClasses/EventMessageAiNode';
+import { License } from '@/License';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all' | 'unfinished';
 
@@ -68,7 +64,8 @@ export class MessageEventBus extends EventEmitter {
 		private readonly eventDestinationsRepository: EventDestinationsRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly orchestrationService: OrchestrationService,
-		private readonly recoveryService: ExecutionDataRecoveryService,
+		private readonly recoveryService: ExecutionRecoveryService,
+		private readonly license: License,
 	) {
 		super();
 	}
@@ -143,7 +140,7 @@ export class MessageEventBus extends EventEmitter {
 				const dbUnfinishedExecutionIds = (
 					await this.executionRepository.find({
 						where: {
-							status: In(['running', 'new', 'unknown']),
+							status: In(['running', 'unknown']),
 						},
 						select: ['id'],
 					})
@@ -178,19 +175,8 @@ export class MessageEventBus extends EventEmitter {
 					// start actual recovery process and write recovery process flag file
 					this.logWriter?.startRecoveryProcess();
 					for (const executionId of unfinishedExecutionIds) {
-						this.logger.warn(`Attempting to recover execution ${executionId}`);
-						if (!unsentAndUnfinished.unfinishedExecutions[executionId]?.length) {
-							this.logger.debug(
-								`No event messages found, marking execution ${executionId} as 'crashed'`,
-							);
-							await this.executionRepository.markAsCrashed([executionId]);
-						} else {
-							await this.recoveryService.recoverExecutionData(
-								executionId,
-								unsentAndUnfinished.unfinishedExecutions[executionId],
-								true,
-							);
-						}
+						const logMesssages = unsentAndUnfinished.unfinishedExecutions[executionId];
+						await this.recoveryService.recoverFromLogs(executionId, logMesssages ?? []);
 					}
 				}
 				// remove the recovery process flag file
@@ -245,17 +231,6 @@ export class MessageEventBus extends EventEmitter {
 			await this.orchestrationService.publish('restartEventBus');
 		}
 		return result;
-	}
-
-	async handleRedisEventBusMessage(messageString: string) {
-		const eventData = jsonParse<AbstractEventMessageOptions>(messageString);
-		if (eventData) {
-			const eventMessage = getEventMessageObjectByType(eventData);
-			if (eventMessage) {
-				await this.send(eventMessage);
-			}
-		}
-		return eventData;
 	}
 
 	private async trySendingUnsent(msgs?: EventMessageTypes[]) {
@@ -330,7 +305,7 @@ export class MessageEventBus extends EventEmitter {
 	}
 
 	private async emitMessage(msg: EventMessageTypes) {
-		this.emit(METRICS_EVENT_NAME, msg);
+		this.emit('metrics.messageEventBus.Event', msg);
 
 		// generic emit for external modules to capture events
 		// this is for internal use ONLY and not for use with custom destinations!
@@ -351,7 +326,7 @@ export class MessageEventBus extends EventEmitter {
 
 	shouldSendMsg(msg: EventMessageTypes): boolean {
 		return (
-			isLogStreamingEnabled() &&
+			this.license.isLogStreamingEnabled() &&
 			Object.keys(this.destinations).length > 0 &&
 			this.hasAnyDestinationSubscribedToEvent(msg)
 		);
@@ -382,7 +357,7 @@ export class MessageEventBus extends EventEmitter {
 
 	async getUnsentAndUnfinishedExecutions(): Promise<{
 		unsentMessages: EventMessageTypes[];
-		unfinishedExecutions: Record<string, EventMessageTypes[]>;
+		unfinishedExecutions: Record<string, EventMessageTypes[] | undefined>;
 	}> {
 		const queryResult = await this.logWriter?.getUnsentAndUnfinishedExecutions();
 		return queryResult;

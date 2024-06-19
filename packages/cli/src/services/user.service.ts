@@ -4,7 +4,7 @@ import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workf
 
 import type { User, AssignableRole } from '@db/entities/User';
 import { UserRepository } from '@db/repositories/user.repository';
-import type { PublicUser } from '@/Interfaces';
+import type { Invitation, PublicUser } from '@/Interfaces';
 import type { PostHogClient } from '@/posthog';
 import { Logger } from '@/Logger';
 import { UserManagementMailer } from '@/UserManagement/email';
@@ -178,14 +178,14 @@ export class UserService {
 		);
 	}
 
-	async inviteUsers(owner: User, attributes: Array<{ email: string; role: AssignableRole }>) {
-		const emails = attributes.map(({ email }) => email);
+	async inviteUsers(owner: User, invitations: Invitation[]) {
+		const emails = invitations.map(({ email }) => email);
 
 		const existingUsers = await this.userRepository.findManyByEmail(emails);
 
 		const existUsersEmails = existingUsers.map((user) => user.email);
 
-		const toCreateUsers = attributes.filter(({ email }) => !existUsersEmails.includes(email));
+		const toCreateUsers = invitations.filter(({ email }) => !existUsersEmails.includes(email));
 
 		const pendingUsersToInvite = existingUsers.filter((email) => email.isPending);
 
@@ -222,7 +222,7 @@ export class UserService {
 		const usersInvited = await this.sendEmails(
 			owner,
 			Object.fromEntries(createdUsers),
-			attributes[0].role, // same role for all invited users
+			invitations[0].role, // same role for all invited users
 		);
 
 		return { usersInvited, usersCreated: toCreateUsers.map(({ email }) => email) };

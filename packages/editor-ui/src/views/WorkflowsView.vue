@@ -158,8 +158,8 @@ import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
-import { useProjectsStore } from '@/features/projects/projects.store';
-import ProjectTabs from '@/features/projects/components/ProjectTabs.vue';
+import { useProjectsStore } from '@/stores/projects.store';
+import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import { useTemplatesStore } from '@/stores/templates.store';
 
 type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
@@ -269,6 +269,12 @@ const WorkflowsView = defineComponent({
 		},
 	},
 	watch: {
+		filters: {
+			deep: true,
+			handler() {
+				this.saveFiltersOnQueryString();
+			},
+		},
 		'filters.tags'() {
 			this.sendFiltersTelemetry('tags');
 		},
@@ -295,7 +301,6 @@ const WorkflowsView = defineComponent({
 	methods: {
 		onFiltersUpdated(filters: Filters) {
 			this.filters = filters;
-			this.saveFiltersOnQueryString();
 		},
 		addWorkflow() {
 			this.uiStore.nodeViewInitialized = false;

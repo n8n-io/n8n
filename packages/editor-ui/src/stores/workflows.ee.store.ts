@@ -1,12 +1,12 @@
 import { setWorkflowSharedWith } from '@/api/workflows.ee';
 import { EnterpriseEditionFeature, STORES } from '@/constants';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { defineStore } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { i18n } from '@/plugins/i18n';
-import type { ProjectSharingData } from '@/features/projects/projects.types';
-import { splitName } from '@/features/projects/projects.utils';
+import type { ProjectSharingData } from '@/types/projects.types';
+import { splitName } from '@/utils/projects.utils';
 
 export const useWorkflowsEEStore = defineStore(STORES.WORKFLOWS_EE, {
 	state() {
@@ -51,7 +51,7 @@ export const useWorkflowsEEStore = defineStore(STORES.WORKFLOWS_EE, {
 			const settingsStore = useSettingsStore();
 
 			if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
-				await setWorkflowSharedWith(rootStore.getRestApiContext, payload.workflowId, {
+				await setWorkflowSharedWith(rootStore.restApiContext, payload.workflowId, {
 					shareWithIds: payload.sharedWithProjects.map((p) => p.id),
 				});
 

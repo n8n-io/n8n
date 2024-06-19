@@ -21,7 +21,7 @@ export interface IExecutionResult {
 	workflowName: string;
 	executionTime: number; // Given in seconds with decimals for milliseconds
 	finished: boolean;
-	executionStatus: ExecutionStatus;
+	executionStatus: ExecutionStatus | 'warning';
 	error?: string;
 	changes?: object;
 	coveredNodes: {
@@ -36,7 +36,7 @@ interface IExecutionError {
 
 export interface IWorkflowExecutionProgress {
 	workflowId: string;
-	status: ExecutionStatus;
+	status: ExecutionStatus | 'warning';
 }
 
 export interface INodeSpecialCases {

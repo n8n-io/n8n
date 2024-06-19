@@ -16,10 +16,15 @@
 </template>
 
 <script setup lang="ts">
-import type { IVersionNode } from '@/Interface';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import type { IVersionNode, SimplifiedNodeType } from '@/Interface';
+import { useRootStore } from '@/stores/root.store';
 import { useUIStore } from '@/stores/ui.store';
-import { getBadgeIconUrl, getNodeIcon, getNodeIconUrl } from '@/utils/nodeTypesUtils';
+import {
+	getBadgeIconUrl,
+	getNodeIcon,
+	getNodeIconColor,
+	getNodeIconUrl,
+} from '@/utils/nodeTypesUtils';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { computed } from 'vue';
 
@@ -30,7 +35,7 @@ interface NodeIconSource {
 }
 
 type Props = {
-	nodeType?: INodeTypeDescription | IVersionNode | null;
+	nodeType?: INodeTypeDescription | SimplifiedNodeType | IVersionNode | null;
 	size?: number;
 	disabled?: boolean;
 	circle?: boolean;
@@ -75,18 +80,11 @@ const iconType = computed(() => {
 	return 'unknown';
 });
 
-const color = computed(() => {
-	const nodeType = props.nodeType;
-
-	if (nodeType && 'iconColor' in nodeType && nodeType.iconColor) {
-		return `var(--color-node-icon-${nodeType.iconColor})`;
-	}
-	return nodeType?.defaults?.color?.toString() ?? props.colorDefault ?? '';
-});
+const color = computed(() => getNodeIconColor(props.nodeType) ?? props.colorDefault ?? '');
 
 const iconSource = computed<NodeIconSource>(() => {
 	const nodeType = props.nodeType;
-	const baseUrl = rootStore.getBaseUrl;
+	const baseUrl = rootStore.baseUrl;
 
 	if (nodeType) {
 		// If node type has icon data, use it
@@ -104,7 +102,6 @@ const iconSource = computed<NodeIconSource>(() => {
 		// Otherwise, extract it from icon prop
 		if (nodeType.icon) {
 			const icon = getNodeIcon(nodeType, uiStore.appliedTheme);
-			console.log(nodeType.icon, icon);
 
 			if (icon) {
 				const [type, path] = icon.split(':');
@@ -125,7 +122,7 @@ const badge = computed(() => {
 	if (nodeType && 'badgeIconUrl' in nodeType && nodeType.badgeIconUrl) {
 		return {
 			type: 'file',
-			src: rootStore.getBaseUrl + getBadgeIconUrl(nodeType, uiStore.appliedTheme),
+			src: rootStore.baseUrl + getBadgeIconUrl(nodeType, uiStore.appliedTheme),
 		};
 	}
 

@@ -1,0 +1,31 @@
+{
+  "name": "n8n-cypress",
+  "private": true,
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "cypress:install": "cypress install",
+    "test:e2e:ui": "scripts/run-e2e.js ui",
+    "test:e2e:dev": "scripts/run-e2e.js dev",
+    "test:e2e:all": "scripts/run-e2e.js all",
+    "format": "prettier --write . --ignore-path ../.prettierignore",
+    "lint": "eslint . --quiet",
+    "lintfix": "eslint . --fix",
+    "develop": "cd ..; pnpm dev",
+    "start": "cd ..; pnpm start"
+  },
+  "devDependencies": {
+    "@types/lodash": "^4.14.195",
+    "eslint-plugin-cypress": "^3.3.0",
+    "n8n-workflow": "workspace:*"
+  },
+  "dependencies": {
+    "@ngneat/falso": "^7.2.0",
+    "@sinonjs/fake-timers": "^11.2.2",
+    "cypress": "^13.11.0",
+    "cypress-otp": "^1.0.3",
+    "cypress-real-events": "^1.12.0",
+    "lodash": "4.17.21",
+    "nanoid": "3.3.6",
+    "start-server-and-test": "^2.0.3"
+  }
+}

@@ -63,6 +63,7 @@ export class EventsService extends EventEmitter {
 						await Container.get(UserService).updateSettings(owner.id, {
 							firstSuccessfulWorkflowId: workflowId,
 							userActivated: true,
+							userActivatedAt: runData.startedAt.getTime(),
 						});
 					}
 

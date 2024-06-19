@@ -21,6 +21,13 @@ export const enum MessageEventBusDestinationTypeNames {
 	syslog = '$$MessageEventBusDestinationSyslog',
 }
 
+export const messageEventBusDestinationTypeNames = [
+	MessageEventBusDestinationTypeNames.abstract,
+	MessageEventBusDestinationTypeNames.webhook,
+	MessageEventBusDestinationTypeNames.sentry,
+	MessageEventBusDestinationTypeNames.syslog,
+];
+
 // ===============================
 // Event Message Interfaces
 // ===============================

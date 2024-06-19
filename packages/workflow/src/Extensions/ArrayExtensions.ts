@@ -352,7 +352,7 @@ compact.doc = {
 
 isEmpty.doc = {
 	name: 'isEmpty',
-	description: 'Returns <code>true</code> if the array has no elements',
+	description: 'Returns <code>true</code> if the array has no elements or is <code>null</code>',
 	examples: [
 		{ example: '[].isEmpty()', evaluated: 'true' },
 		{ example: "['quick', 'brown', 'fox'].isEmpty()", evaluated: 'false' },
