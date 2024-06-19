@@ -1,14 +1,15 @@
+import { setActivePinia } from 'pinia';
+import { createTestingPinia } from '@pinia/testing';
+import { useRouter } from 'vue-router';
+import type router from 'vue-router';
+import { ExpressionError, type IPinData, type IRunData, type Workflow } from 'n8n-workflow';
+
 import { useRootStore } from '@/stores/root.store';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
-import { createTestingPinia } from '@pinia/testing';
-import { setActivePinia } from 'pinia';
 import type { IStartRunData, IWorkflowData } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useRouter } from 'vue-router';
-import { ExpressionError, type IPinData, type IRunData, type Workflow } from 'n8n-workflow';
-import type * as router from 'vue-router';
 
 vi.mock('@/stores/workflows.store', () => ({
 	useWorkflowsStore: vi.fn().mockReturnValue({
