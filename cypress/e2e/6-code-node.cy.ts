@@ -1,3 +1,4 @@
+import { nanoid } from 'nanoid';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { NDV } from '../pages/ndv';
 import { successToast } from '../pages/notifications';
@@ -85,7 +86,7 @@ describe('Code node', () => {
 				cy.getByTestId('ask-ai-cta-tooltip-no-prompt').should('exist');
 				cy.getByTestId('ask-ai-prompt-input')
 					// Type random 14 character string
-					.type([...Array(14)].map(() => ((Math.random() * 36) | 0).toString(36)).join(''));
+					.type(nanoid(14));
 
 				cy.getByTestId('ask-ai-cta').realHover();
 				cy.getByTestId('ask-ai-cta-tooltip-prompt-too-short').should('exist');
@@ -93,14 +94,14 @@ describe('Code node', () => {
 				cy.getByTestId('ask-ai-prompt-input')
 					.clear()
 					// Type random 15 character string
-					.type([...Array(15)].map(() => ((Math.random() * 36) | 0).toString(36)).join(''));
+					.type(nanoid(15));
 				cy.getByTestId('ask-ai-cta').should('be.enabled');
 
 				cy.getByTestId('ask-ai-prompt-counter').should('contain.text', '15 / 600');
 			});
 
 			it('should send correct schema and replace code', () => {
-				const prompt = [...Array(20)].map(() => ((Math.random() * 36) | 0).toString(36)).join('');
+				const prompt = nanoid(20);
 				cy.get('#tab-ask-ai').click();
 				ndv.actions.executePrevious();
 
@@ -130,7 +131,7 @@ describe('Code node', () => {
 			});
 
 			it('should show error based on status code', () => {
-				const prompt = [...Array(20)].map(() => ((Math.random() * 36) | 0).toString(36)).join('');
+				const prompt = nanoid(20);
 				cy.get('#tab-ask-ai').click();
 				ndv.actions.executePrevious();
 
