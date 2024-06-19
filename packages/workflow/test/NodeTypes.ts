@@ -599,7 +599,7 @@ const manualTriggerNode: LoadedClass<INodeType> = {
 				},
 			],
 		},
-	}
+	},
 };
 
 export class NodeTypes implements INodeTypes {
