@@ -66,7 +66,7 @@ export function createPage({
 		</head>
 		<body>
 			<script type="module">
-				import { createChat } from 'https://cdn.jsdelivr.net/npm/@olegivaniv/chat@0.20.0/chat.bundle.es.js';
+				import { createChat } from 'https://cdn.jsdelivr.net/npm/@olegivaniv/chat@0.21.0/chat.bundle.es.js';
 
 				(async function () {
 					const authentication = '${sanitizedAuthentication}';
