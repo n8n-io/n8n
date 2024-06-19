@@ -1,22 +1,13 @@
 import type { Scope } from '@n8n/permissions';
-import type { RouteScopeMetadata } from './types';
-import { CONTROLLER_ROUTE_SCOPES } from './constants';
+import { getRouteMetadata } from './controller.registry';
+import type { Controller } from './types';
 
-const Scoped = (scope: Scope | Scope[], { globalOnly } = { globalOnly: false }) => {
-	return (target: Function | object, handlerName?: string) => {
-		const controllerClass = handlerName ? target.constructor : target;
-		const scopes = (Reflect.getMetadata(CONTROLLER_ROUTE_SCOPES, controllerClass) ??
-			{}) as RouteScopeMetadata;
-
-		const metadata = {
-			scopes: Array.isArray(scope) ? scope : [scope],
-			globalOnly,
-		};
-
-		scopes[handlerName ?? '*'] = metadata;
-		Reflect.defineMetadata(CONTROLLER_ROUTE_SCOPES, scopes, controllerClass);
+const Scoped =
+	(scope: Scope, { globalOnly } = { globalOnly: false }): MethodDecorator =>
+	(target, handlerName) => {
+		const routeMetadata = getRouteMetadata(target.constructor as Controller, String(handlerName));
+		routeMetadata.accessScope = { scope, globalOnly };
 	};
-};
 
 /**
  * Decorator for a controller method to ensure the user has a scope,
@@ -34,9 +25,7 @@ const Scoped = (scope: Scope | Scope[], { globalOnly } = { globalOnly: false }) 
  * }
  * ```
  */
-export const GlobalScope = (scope: Scope | Scope[]) => {
-	return Scoped(scope, { globalOnly: true });
-};
+export const GlobalScope = (scope: Scope) => Scoped(scope, { globalOnly: true });
 
 /**
  * Decorator for a controller method to ensure the user has a scope,
@@ -55,6 +44,4 @@ export const GlobalScope = (scope: Scope | Scope[]) => {
  * ```
  */
 
-export const ProjectScope = (scope: Scope | Scope[]) => {
-	return Scoped(scope);
-};
+export const ProjectScope = (scope: Scope) => Scoped(scope);
