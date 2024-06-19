@@ -247,34 +247,46 @@ describe('fileTypeFromMimeType', () => {
 	});
 });
 
+const repeat = (fn: () => void, times = 10) => Array(times).fill(0).forEach(fn);
+
 describe('randomInt', () => {
 	it('should generate random integers', () => {
-		const result = randomInt(10);
-		expect(result).toBeLessThanOrEqual(10);
-		expect(result).toBeGreaterThanOrEqual(0);
+		repeat(() => {
+			const result = randomInt(10);
+			expect(result).toBeLessThanOrEqual(10);
+			expect(result).toBeGreaterThanOrEqual(0);
+		});
 	});
 
 	it('should generate random in range', () => {
-		const result = randomInt(10, 100);
-		expect(result).toBeLessThanOrEqual(100);
-		expect(result).toBeGreaterThanOrEqual(10);
+		repeat(() => {
+			const result = randomInt(10, 100);
+			expect(result).toBeLessThanOrEqual(100);
+			expect(result).toBeGreaterThanOrEqual(10);
+		});
 	});
 });
 
 describe('randomString', () => {
 	it('should return a random string of the specified length', () => {
-		const result = randomString(42);
-		expect(result).toHaveLength(42);
+		repeat(() => {
+			const result = randomString(42);
+			expect(result).toHaveLength(42);
+		});
 	});
 
 	it('should return a random string of the in the length range', () => {
-		const result = randomString(10, 100);
-		expect(result.length).toBeGreaterThanOrEqual(10);
-		expect(result.length).toBeLessThanOrEqual(100);
+		repeat(() => {
+			const result = randomString(10, 100);
+			expect(result.length).toBeGreaterThanOrEqual(10);
+			expect(result.length).toBeLessThanOrEqual(100);
+		});
 	});
 
 	it('should only contain characters from the specified character set', () => {
-		const result = randomString(1000);
-		result.split('').every((char) => ALPHABET.includes(char));
+		repeat(() => {
+			const result = randomString(1000);
+			result.split('').every((char) => ALPHABET.includes(char));
+		});
 	});
 });

@@ -187,7 +187,7 @@ export function randomInt(min: number, max: number): number;
  * Generates a random integer within a specified range.
  *
  * @param {number} min - The lower bound of the range. If `max` is not provided, this value is used as the upper bound and the lower bound is set to 0.
- * @param {number} [max] - The upper bound of the range.
+ * @param {number} [max] - The upper bound of the range, inclusive.
  * @returns {number} A random integer within the specified range.
  */
 export function randomInt(min: number, max?: number): number {
@@ -195,7 +195,7 @@ export function randomInt(min: number, max?: number): number {
 		max = min;
 		min = 0;
 	}
-	return min + (crypto.getRandomValues(new Uint32Array(1))[0] % (max - min));
+	return min + (crypto.getRandomValues(new Uint32Array(1))[0] % (max - min + 1));
 }
 
 export function randomString(length: number): string;
@@ -208,7 +208,7 @@ export function randomString(minLength: number, maxLength: number): string;
  * @returns {string} A random alphanumeric string of the specified length or within the specified range of lengths.
  */
 export function randomString(minLength: number, maxLength?: number): string {
-	const length = maxLength === undefined ? minLength : randomInt(minLength, maxLength + 1);
+	const length = maxLength === undefined ? minLength : randomInt(minLength, maxLength);
 	return [...crypto.getRandomValues(new Uint32Array(length))]
 		.map((byte) => ALPHABET[byte % ALPHABET.length])
 		.join('');
