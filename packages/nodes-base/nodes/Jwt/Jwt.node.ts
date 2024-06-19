@@ -261,6 +261,19 @@ export class Jwt implements INodeType {
 						},
 					},
 					{
+            displayName: 'Key ID',
+            name: 'kid',
+            type: 'string',
+            placeholder: 'e.g. 123456',
+						default: '',
+						description: 'The kid (key ID) claim is an optional header claim, used to specify the key for validating the signature.',
+            displayOptions: {
+							show: {
+								'/operation': ['sign'],
+							},
+						},
+          },
+					{
 						displayName: 'Override Algorithm',
 						name: 'algorithm',
 						type: 'options',
@@ -349,6 +362,7 @@ export class Jwt implements INodeType {
 				ignoreExpiration?: boolean;
 				ignoreNotBefore?: boolean;
 				clockTolerance?: number;
+				kid?: string;
 			};
 
 			try {
@@ -375,6 +389,16 @@ export class Jwt implements INodeType {
 						secretOrPrivateKey = formatPrivateKey(credentials.privateKey);
 					}
 
+					if (options.kid) {
+					const token = jwt.sign(payload, secretOrPrivateKey, {
+						algorithm: options.algorithm ?? credentials.algorithm,
+						keyid: options.kid,
+					});
+					returnData.push({
+						json: { token },
+						pairedItem: itemIndex,
+					});
+				} else {
 					const token = jwt.sign(payload, secretOrPrivateKey, {
 						algorithm: options.algorithm ?? credentials.algorithm,
 					});
