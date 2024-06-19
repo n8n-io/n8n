@@ -330,7 +330,7 @@ export function preparePairedItemDataArray(
 	return [pairedItem];
 }
 
-export const sanitazeDataPathKey = (item: IDataObject, key: string) => {
+export const sanitizeDataPathKey = (item: IDataObject, key: string) => {
 	if (item[key] !== undefined) {
 		return key;
 	}
