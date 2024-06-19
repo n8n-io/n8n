@@ -52,6 +52,7 @@ export class Ssh implements INodeType {
 		displayName: 'SSH',
 		name: 'ssh',
 		icon: 'fa:terminal',
+		iconColor: 'black',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

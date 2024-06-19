@@ -23,7 +23,7 @@ export class TypeformTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Typeform Trigger',
 		name: 'typeformTrigger',
-		icon: 'file:typeform.svg',
+		icon: { light: 'file:typeform.svg', dark: 'file:typeform.dark.svg' },
 		group: ['trigger'],
 		version: [1, 1.1],
 		subtitle: '=Form ID: {{$parameter["formId"]}}',

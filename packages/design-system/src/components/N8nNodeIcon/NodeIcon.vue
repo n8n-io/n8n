@@ -83,7 +83,7 @@ const badgeSize = computed((): number => {
 			return 10;
 		case 18:
 		default:
-			return 8;
+			return 12;
 	}
 });
 
@@ -142,9 +142,10 @@ const badgeStyleData = computed((): Record<string, string> => {
 	text-align: center;
 }
 .nodeIconImage {
-	width: 100%;
 	max-width: 100%;
 	max-height: 100%;
+	width: auto;
+	height: auto;
 }
 
 .badge {

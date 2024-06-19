@@ -24,14 +24,14 @@ import InlineTextEdit from '@/components/InlineTextEdit.vue';
 import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
 import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
 
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useProjectsStore } from '@/stores/projects.store';
 
 import { saveAs } from 'file-saver';
 import { useTitleChange } from '@/composables/useTitleChange';
@@ -41,7 +41,7 @@ import { useToast } from '@/composables/useToast';
 import { getWorkflowPermissions } from '@/permissions';
 import { createEventBus } from 'n8n-design-system/utils';
 import { nodeViewEventBus } from '@/event-bus';
-import { hasPermission } from '@/rbac/permissions';
+import { hasPermission } from '@/utils/rbac/permissions';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
@@ -55,6 +55,7 @@ import type {
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { BaseTextKey } from '../../plugins/i18n';
+import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 
 const props = defineProps<{
 	workflow: IWorkflowDb;
@@ -72,6 +73,7 @@ const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
+const npsSurveyStore = useNpsSurveyStore();
 
 const router = useRouter();
 const route = useRoute();
@@ -207,6 +209,10 @@ const isWorkflowHistoryButtonDisabled = computed(() => {
 	return isNewWorkflow.value;
 });
 
+const workflowTagIds = computed(() => {
+	return (props.workflow.tags ?? []).map((tag) => (typeof tag === 'string' ? tag : tag.id));
+});
+
 watch(
 	() => props.workflow.id,
 	() => {
@@ -246,7 +252,7 @@ async function onSaveButtonClick() {
 	if (saved) {
 		showCreateWorkflowSuccessToast(id);
 
-		await settingsStore.fetchPromptsData();
+		await npsSurveyStore.fetchPromptsData();
 
 		if (route.name === VIEWS.EXECUTION_DEBUG) {
 			await router.replace({
@@ -403,7 +409,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			const exportData: IWorkflowToShare = {
 				...data,
 				meta: {
-					...(props.workflow.meta ?? {}),
+					...props.workflow.meta,
 					instanceId: rootStore.instanceId,
 				},
 				tags: (tags ?? []).map((tagId) => {
@@ -601,7 +607,7 @@ function showCreateWorkflowSuccessToast(id?: string) {
 			<TagsContainer
 				v-else
 				:key="workflow.id"
-				:tag-ids="workflow.tags"
+				:tag-ids="workflowTagIds"
 				:clickable="true"
 				:responsive="true"
 				data-test-id="workflow-tags"

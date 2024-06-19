@@ -1,14 +1,14 @@
 import { computed, reactive } from 'vue';
 import { defineStore } from 'pinia';
 import type { CloudPlanState } from '@/Interface';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { getAdminPanelLoginCode, getCurrentPlan, getCurrentUsage } from '@/api/cloudPlans';
 import { DateTime } from 'luxon';
 import { CLOUD_TRIAL_CHECK_INTERVAL, STORES } from '@/constants';
-import { hasPermission } from '@/rbac/permissions';
+import { hasPermission } from '@/utils/rbac/permissions';
 
 const DEFAULT_STATE: CloudPlanState = {
 	initialized: false,
@@ -72,7 +72,7 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 	};
 
 	const getAutoLoginCode = async (): Promise<{ code: string }> => {
-		return await getAdminPanelLoginCode(rootStore.getRestApiContext);
+		return await getAdminPanelLoginCode(rootStore.restApiContext);
 	};
 
 	const getOwnerCurrentPlan = async () => {
@@ -80,7 +80,7 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		state.loadingPlan = true;
 		let plan;
 		try {
-			plan = await getCurrentPlan(rootStore.getRestApiContext);
+			plan = await getCurrentPlan(rootStore.restApiContext);
 			state.data = plan;
 			state.loadingPlan = false;
 
@@ -100,7 +100,7 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 	};
 
 	const getInstanceCurrentUsage = async () => {
-		const usage = await getCurrentUsage({ baseUrl: rootStore.getBaseUrl, pushRef: '' });
+		const usage = await getCurrentUsage({ baseUrl: rootStore.baseUrl, pushRef: '' });
 		state.usage = usage;
 		return usage;
 	};

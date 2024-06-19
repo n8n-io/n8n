@@ -1,13 +1,13 @@
 import { META_KEY } from '../constants';
-import { BasePage } from './base';
 import { getVisibleSelect } from '../utils';
+import { getUniqueWorkflowName } from '../utils/workflowUtils';
+import { BasePage } from './base';
 import { NodeCreator } from './features/node-creator';
-
-type CyGetOptions = Parameters<(typeof cy)['get']>[1];
 
 const nodeCreator = new NodeCreator();
 export class WorkflowPage extends BasePage {
 	url = '/workflow/new';
+
 	getters = {
 		workflowNameInputContainer: () => cy.getByTestId('workflow-name-input', { timeout: 5000 }),
 		workflowNameInput: () =>
@@ -48,11 +48,6 @@ export class WorkflowPage extends BasePage {
 		canvasNodePlusEndpointByName: (nodeName: string, index = 0) => {
 			return cy.get(this.getters.getEndpointSelector('plus', nodeName, index));
 		},
-		successToast: () => cy.get('.el-notification:has(.el-notification--success)'),
-		warningToast: () => cy.get('.el-notification:has(.el-notification--warning)'),
-		errorToast: (options?: CyGetOptions) =>
-			cy.get('.el-notification:has(.el-notification--error)', options),
-		infoToast: () => cy.get('.el-notification:has(.el-notification--info)'),
 		activatorSwitch: () => cy.getByTestId('workflow-activate-switch'),
 		workflowMenu: () => cy.getByTestId('workflow-menu'),
 		firstStepButton: () => cy.getByTestId('canvas-add-button'),
@@ -134,12 +129,15 @@ export class WorkflowPage extends BasePage {
 		colors: () => cy.getByTestId('color'),
 		contextMenuAction: (action: string) => cy.getByTestId(`context-menu-item-${action}`),
 	};
+
 	actions = {
-		visit: (preventNodeViewUnload = true) => {
+		visit: (preventNodeViewUnload = true, appDate?: number) => {
 			cy.visit(this.url);
+			if (appDate) {
+				cy.setAppDate(appDate);
+			}
 			cy.waitForLoad();
 			cy.window().then((win) => {
-				// @ts-ignore
 				win.preventNodeViewBeforeUnload = preventNodeViewUnload;
 			});
 		},
@@ -286,7 +284,7 @@ export class WorkflowPage extends BasePage {
 		},
 		saveWorkflowUsingKeyboardShortcut: () => {
 			cy.intercept('POST', '/rest/workflows').as('createWorkflow');
-			cy.get('body').type(META_KEY, { release: false }).type('s');
+			this.actions.hitSaveWorkflow();
 		},
 		deleteNode: (name: string) => {
 			this.getters.canvasNodeByName(name).first().click();
@@ -314,6 +312,9 @@ export class WorkflowPage extends BasePage {
 			cy.get('body').type(newName);
 			cy.get('body').type('{enter}');
 		},
+		renameWithUniqueName: () => {
+			this.actions.renameWorkflow(getUniqueWorkflowName());
+		},
 		addTags: (tags: string | string[]) => {
 			if (!Array.isArray(tags)) tags = [tags];
 
@@ -329,46 +330,56 @@ export class WorkflowPage extends BasePage {
 			cy.getByTestId('zoom-to-fit').click();
 		},
 		pinchToZoom: (steps: number, mode: 'zoomIn' | 'zoomOut' = 'zoomIn') => {
-			// Pinch-to-zoom simulates a 'wheel' event with ctrlKey: true (same as zooming by scrolling)
-			this.getters.nodeViewBackground().trigger('wheel', {
-				force: true,
-				bubbles: true,
-				ctrlKey: true,
-				pageX: cy.window().innerWidth / 2,
-				pageY: cy.window().innerHeight / 2,
-				deltaMode: 1,
-				deltaY: mode === 'zoomOut' ? steps : -steps,
+			cy.window().then((win) => {
+				// Pinch-to-zoom simulates a 'wheel' event with ctrlKey: true (same as zooming by scrolling)
+				this.getters.nodeViewBackground().trigger('wheel', {
+					force: true,
+					bubbles: true,
+					ctrlKey: true,
+					pageX: win.innerWidth / 2,
+					pageY: win.innerHeight / 2,
+					deltaMode: 1,
+					deltaY: mode === 'zoomOut' ? steps : -steps,
+				});
 			});
 		},
+		/** Certain keyboard shortcuts are not possible on Cypress via a simple `.type`, and some delays are needed to emulate these events */
+		hitComboShortcut: (modifier: string, key: string) => {
+			cy.get('body').wait(100).type(modifier, { delay: 100, release: false }).type(key);
+		},
 		hitUndo: () => {
-			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('z');
+			this.actions.hitComboShortcut(`{${META_KEY}}`, 'z');
 		},
 		hitRedo: () => {
-			cy.get('body')
-				.type(META_KEY, { delay: 500, release: false })
-				.type('{shift}', { release: false })
-				.type('z');
+			cy.get('body').type(`{${META_KEY}+shift+z}`);
 		},
-		selectAll: () => {
-			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('a');
+		hitSelectAll: () => {
+			this.actions.hitComboShortcut(`{${META_KEY}}`, 'a');
+		},
+		hitDeleteAllNodes: () => {
+			this.actions.hitSelectAll();
+			cy.get('body').type('{backspace}');
 		},
 		hitDisableNodeShortcut: () => {
 			cy.get('body').type('d');
 		},
 		hitCopy: () => {
-			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('c');
+			this.actions.hitComboShortcut(`{${META_KEY}}`, 'c');
 		},
 		hitPinNodeShortcut: () => {
 			cy.get('body').type('p');
 		},
-		hitExecuteWorkflowShortcut: () => {
-			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('{enter}');
+		hitSaveWorkflow: () => {
+			cy.get('body').type(`{${META_KEY}+s}`);
 		},
-		hitDuplicateNodeShortcut: () => {
-			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('d');
+		hitExecuteWorkflow: () => {
+			cy.get('body').type(`{${META_KEY}+enter}`);
 		},
-		hitAddStickyShortcut: () => {
-			cy.get('body').type('{shift}', { delay: 500, release: false }).type('S');
+		hitDuplicateNode: () => {
+			cy.get('body').type(`{${META_KEY}+d}`);
+		},
+		hitAddSticky: () => {
+			cy.get('body').type('{shift+S}');
 		},
 		executeWorkflow: () => {
 			this.getters.executeWorkflowButton().click();
@@ -388,11 +399,7 @@ export class WorkflowPage extends BasePage {
 
 			this.actions.addNodeToCanvas(newNodeName, false, false, action);
 		},
-		deleteNodeBetweenNodes: (
-			sourceNodeName: string,
-			targetNodeName: string,
-			newNodeName: string,
-		) => {
+		deleteNodeBetweenNodes: (sourceNodeName: string, targetNodeName: string) => {
 			this.getters.getConnectionBetweenNodes(sourceNodeName, targetNodeName).first().realHover();
 			this.getters
 				.getConnectionActionsBetweenNodes(sourceNodeName, targetNodeName)
@@ -415,7 +422,7 @@ export class WorkflowPage extends BasePage {
 				.find('[data-test-id="change-sticky-color"]')
 				.click({ force: true });
 		},
-		pickColor: (index: number) => {
+		pickColor: () => {
 			this.getters.colors().eq(1).click();
 		},
 		editSticky: (content: string) => {

@@ -100,6 +100,7 @@ import type {
 	WorkflowExecuteMode,
 	CallbackManager,
 	INodeParameters,
+	EnsureTypeOptions,
 } from 'n8n-workflow';
 import {
 	ExpressionError,
@@ -2329,6 +2330,99 @@ export const validateValueAgainstSchema = (
 	return validationResult.newValue;
 };
 
+export function ensureType(
+	toType: EnsureTypeOptions,
+	parameterValue: any,
+	parameterName: string,
+	errorOptions?: { itemIndex?: number; runIndex?: number; nodeCause?: string },
+): string | number | boolean | object {
+	let returnData = parameterValue;
+
+	if (returnData === null) {
+		throw new ExpressionError(`Parameter '${parameterName}' must not be null`, errorOptions);
+	}
+
+	if (returnData === undefined) {
+		throw new ExpressionError(
+			`Parameter '${parameterName}' could not be 'undefined'`,
+			errorOptions,
+		);
+	}
+
+	if (['object', 'array', 'json'].includes(toType)) {
+		if (typeof returnData !== 'object') {
+			// if value is not an object and is string try to parse it, else throw an error
+			if (typeof returnData === 'string' && returnData.length) {
+				try {
+					const parsedValue = JSON.parse(returnData);
+					returnData = parsedValue;
+				} catch (error) {
+					throw new ExpressionError(`Parameter '${parameterName}' could not be parsed`, {
+						...errorOptions,
+						description: error.message,
+					});
+				}
+			} else {
+				throw new ExpressionError(
+					`Parameter '${parameterName}' must be an ${toType}, but we got '${String(parameterValue)}'`,
+					errorOptions,
+				);
+			}
+		} else if (toType === 'json') {
+			// value is an object, make sure it is valid JSON
+			try {
+				JSON.stringify(returnData);
+			} catch (error) {
+				throw new ExpressionError(`Parameter '${parameterName}' is not valid JSON`, {
+					...errorOptions,
+					description: error.message,
+				});
+			}
+		}
+
+		if (toType === 'array' && !Array.isArray(returnData)) {
+			// value is not an array, but has to be
+			throw new ExpressionError(
+				`Parameter '${parameterName}' must be an array, but we got object`,
+				errorOptions,
+			);
+		}
+	}
+
+	try {
+		if (toType === 'string') {
+			if (typeof returnData === 'object') {
+				returnData = JSON.stringify(returnData);
+			} else {
+				returnData = String(returnData);
+			}
+		}
+
+		if (toType === 'number') {
+			returnData = Number(returnData);
+			if (Number.isNaN(returnData)) {
+				throw new ExpressionError(
+					`Parameter '${parameterName}' must be a number, but we got '${parameterValue}'`,
+					errorOptions,
+				);
+			}
+		}
+
+		if (toType === 'boolean') {
+			returnData = Boolean(returnData);
+		}
+	} catch (error) {
+		if (error instanceof ExpressionError) throw error;
+
+		throw new ExpressionError(`Parameter '${parameterName}' could not be converted to ${toType}`, {
+			...errorOptions,
+			description: error.message,
+		});
+	}
+
+	return returnData;
+}
+
 /**
  * Returns the requested resolved (all expressions replaced) node parameters.
  *
@@ -2397,6 +2491,15 @@ export function getNodeParameter(
 	// This is outside the try/catch because it throws errors with proper messages
 	if (options?.extractValue) {
 		returnData = extractValue(returnData, parameterName, node, nodeType, itemIndex);
+	}
+
+	// Make sure parameter value is the type specified in the ensureType option, if needed convert it
+	if (options?.ensureType) {
+		returnData = ensureType(options.ensureType, returnData, parameterName, {
+			itemIndex,
+			runIndex,
+			nodeCause: node.name,
+		});
 	}
 
 	// Validate parameter value if it has a schema defined(RMC) or validateType defined

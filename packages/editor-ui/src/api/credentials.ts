@@ -28,10 +28,20 @@ export async function getCredentialsNewName(
 export async function getAllCredentials(
 	context: IRestApiContext,
 	filter?: object,
+	includeScopes?: boolean,
 ): Promise<ICredentialsResponse[]> {
 	return await makeRestApiRequest(context, 'GET', '/credentials', {
-		includeScopes: true,
+		...(includeScopes ? { includeScopes } : {}),
 		...(filter ? { filter } : {}),
+	});
+}
+
+export async function getAllCredentialsForWorkflow(
+	context: IRestApiContext,
+	options: { workflowId: string } | { projectId: string },
+): Promise<ICredentialsResponse[]> {
+	return await makeRestApiRequest(context, 'GET', '/credentials/for-workflow', {
+		...options,
 	});
 }
 

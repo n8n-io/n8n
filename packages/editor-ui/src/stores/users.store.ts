@@ -32,7 +32,7 @@ import type {
 } from '@/Interface';
 import { getPersonalizedNodeTypes } from '@/utils/userUtils';
 import { defineStore } from 'pinia';
-import { useRootStore } from './n8nRoot.store';
+import { useRootStore } from './root.store';
 import { usePostHog } from './posthog.store';
 import { useSettingsStore } from './settings.store';
 import { useUIStore } from './ui.store';
@@ -42,6 +42,7 @@ import { confirmEmail, getCloudUserInfo } from '@/api/cloudPlans';
 import { useRBACStore } from '@/stores/rbac.store';
 import type { Scope } from '@n8n/permissions';
 import { inviteUsers, acceptInvitation } from '@/api/invitation';
+import { useNpsSurveyStore } from './npsSurvey.store';
 
 const isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
 const isInstanceOwner = (user: IUserResponse | null) => user?.role === ROLE.Owner;
@@ -110,6 +111,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const defaultScopes: Scope[] = [];
 			useRBACStore().setGlobalScopes(user.globalScopes || defaultScopes);
 			usePostHog().init(user.featureFlags);
+			useNpsSurveyStore().setupNpsSurveyOnLogin(user.id, user.settings);
 		},
 		unsetCurrentUser() {
 			this.currentUserId = null;
@@ -157,7 +159,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		},
 		async loginWithCookie(): Promise<void> {
 			const rootStore = useRootStore();
-			const user = await loginCurrentUser(rootStore.getRestApiContext);
+			const user = await loginCurrentUser(rootStore.restApiContext);
 			if (!user) {
 				return;
 			}
@@ -171,7 +173,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			mfaRecoveryCode?: string;
 		}): Promise<void> {
 			const rootStore = useRootStore();
-			const user = await login(rootStore.getRestApiContext, params);
+			const user = await login(rootStore.restApiContext, params);
 			if (!user) {
 				return;
 			}
@@ -180,11 +182,12 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		},
 		async logout(): Promise<void> {
 			const rootStore = useRootStore();
-			await logout(rootStore.getRestApiContext);
+			await logout(rootStore.restApiContext);
 			this.unsetCurrentUser();
 			useCloudPlanStore().reset();
 			usePostHog().reset();
 			useUIStore().clearBannerStack();
+			useNpsSurveyStore().resetNpsSurveyOnLogOut();
 		},
 		async createOwner(params: {
 			firstName: string;
@@ -193,7 +196,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			password: string;
 		}): Promise<void> {
 			const rootStore = useRootStore();
-			const user = await setupOwner(rootStore.getRestApiContext, params);
+			const user = await setupOwner(rootStore.restApiContext, params);
 			const settingsStore = useSettingsStore();
 			if (user) {
 				this.setCurrentUser(user);
@@ -205,7 +208,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			inviterId: string;
 		}): Promise<{ inviter: { firstName: string; lastName: string } }> {
 			const rootStore = useRootStore();
-			return await validateSignupToken(rootStore.getRestApiContext, params);
+			return await validateSignupToken(rootStore.restApiContext, params);
 		},
 		async acceptInvitation(params: {
 			inviteeId: string;
@@ -215,18 +218,18 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			password: string;
 		}): Promise<void> {
 			const rootStore = useRootStore();
-			const user = await acceptInvitation(rootStore.getRestApiContext, params);
+			const user = await acceptInvitation(rootStore.restApiContext, params);
 			if (user) {
 				this.setCurrentUser(user);
 			}
 		},
 		async sendForgotPasswordEmail(params: { email: string }): Promise<void> {
 			const rootStore = useRootStore();
-			await sendForgotPasswordEmail(rootStore.getRestApiContext, params);
+			await sendForgotPasswordEmail(rootStore.restApiContext, params);
 		},
 		async validatePasswordToken(params: { token: string }): Promise<void> {
 			const rootStore = useRootStore();
-			await validatePasswordToken(rootStore.getRestApiContext, params);
+			await validatePasswordToken(rootStore.restApiContext, params);
 		},
 		async changePassword(params: {
 			token: string;
@@ -234,7 +237,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			mfaToken?: string;
 		}): Promise<void> {
 			const rootStore = useRootStore();
-			await changePassword(rootStore.getRestApiContext, params);
+			await changePassword(rootStore.restApiContext, params);
 		},
 		async updateUser(params: {
 			id: string;
@@ -243,15 +246,12 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			email: string;
 		}): Promise<void> {
 			const rootStore = useRootStore();
-			const user = await updateCurrentUser(rootStore.getRestApiContext, params);
+			const user = await updateCurrentUser(rootStore.restApiContext, params);
 			this.addUsers([user]);
 		},
 		async updateUserSettings(settings: IUpdateUserSettingsReqPayload): Promise<void> {
 			const rootStore = useRootStore();
-			const updatedSettings = await updateCurrentUserSettings(
-				rootStore.getRestApiContext,
-				settings,
-			);
+			const updatedSettings = await updateCurrentUserSettings(rootStore.restApiContext, settings);
 			if (this.currentUser) {
 				this.currentUser.settings = updatedSettings;
 				this.addUsers([this.currentUser]);
@@ -263,7 +263,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		): Promise<void> {
 			const rootStore = useRootStore();
 			const updatedSettings = await updateOtherUserSettings(
-				rootStore.getRestApiContext,
+				rootStore.restApiContext,
 				userId,
 				settings,
 			);
@@ -278,26 +278,26 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			currentPassword: string;
 		}): Promise<void> {
 			const rootStore = useRootStore();
-			await updateCurrentUserPassword(rootStore.getRestApiContext, {
+			await updateCurrentUserPassword(rootStore.restApiContext, {
 				newPassword: password,
 				currentPassword,
 			});
 		},
 		async deleteUser(params: { id: string; transferId?: string }): Promise<void> {
 			const rootStore = useRootStore();
-			await deleteUser(rootStore.getRestApiContext, params);
+			await deleteUser(rootStore.restApiContext, params);
 			this.deleteUserById(params.id);
 		},
 		async fetchUsers(): Promise<void> {
 			const rootStore = useRootStore();
-			const users = await getUsers(rootStore.getRestApiContext);
+			const users = await getUsers(rootStore.restApiContext);
 			this.addUsers(users);
 		},
 		async inviteUsers(
 			params: Array<{ email: string; role: InvitableRoleName }>,
 		): Promise<IInviteResponse[]> {
 			const rootStore = useRootStore();
-			const users = await inviteUsers(rootStore.getRestApiContext, params);
+			const users = await inviteUsers(rootStore.restApiContext, params);
 			this.addUsers(
 				users.map(({ user }, index) => ({
 					isPending: true,
@@ -309,18 +309,18 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		},
 		async reinviteUser({ email, role }: { email: string; role: InvitableRoleName }): Promise<void> {
 			const rootStore = useRootStore();
-			const invitationResponse = await inviteUsers(rootStore.getRestApiContext, [{ email, role }]);
+			const invitationResponse = await inviteUsers(rootStore.restApiContext, [{ email, role }]);
 			if (!invitationResponse[0].user.emailSent) {
 				throw Error(invitationResponse[0].error);
 			}
 		},
 		async getUserPasswordResetLink(params: { id: string }): Promise<{ link: string }> {
 			const rootStore = useRootStore();
-			return await getPasswordResetLink(rootStore.getRestApiContext, params);
+			return await getPasswordResetLink(rootStore.restApiContext, params);
 		},
 		async submitPersonalizationSurvey(results: IPersonalizationLatestVersion): Promise<void> {
 			const rootStore = useRootStore();
-			await submitPersonalizationSurvey(rootStore.getRestApiContext, results);
+			await submitPersonalizationSurvey(rootStore.restApiContext, results);
 			this.setPersonalizationAnswers(results);
 		},
 		async showPersonalizationSurvey(): Promise<void> {
@@ -334,16 +334,16 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		},
 		async getMfaQR(): Promise<{ qrCode: string; secret: string; recoveryCodes: string[] }> {
 			const rootStore = useRootStore();
-			return await getMfaQR(rootStore.getRestApiContext);
+			return await getMfaQR(rootStore.restApiContext);
 		},
 		async verifyMfaToken(data: { token: string }): Promise<void> {
 			const rootStore = useRootStore();
-			return await verifyMfaToken(rootStore.getRestApiContext, data);
+			return await verifyMfaToken(rootStore.restApiContext, data);
 		},
 		async enableMfa(data: { token: string }) {
 			const rootStore = useRootStore();
 			const usersStore = useUsersStore();
-			await enableMfa(rootStore.getRestApiContext, data);
+			await enableMfa(rootStore.restApiContext, data);
 			const currentUser = usersStore.currentUser;
 			if (currentUser) {
 				currentUser.mfaEnabled = true;
@@ -352,7 +352,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		async disabledMfa() {
 			const rootStore = useRootStore();
 			const usersStore = useUsersStore();
-			await disableMfa(rootStore.getRestApiContext);
+			await disableMfa(rootStore.restApiContext);
 			const currentUser = usersStore.currentUser;
 			if (currentUser) {
 				currentUser.mfaEnabled = false;
@@ -361,19 +361,19 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		async fetchUserCloudAccount() {
 			let cloudUser: Cloud.UserAccount | null = null;
 			try {
-				cloudUser = await getCloudUserInfo(useRootStore().getRestApiContext);
+				cloudUser = await getCloudUserInfo(useRootStore().restApiContext);
 				this.currentUserCloudInfo = cloudUser;
 			} catch (error) {
 				throw new Error(error);
 			}
 		},
 		async confirmEmail() {
-			await confirmEmail(useRootStore().getRestApiContext);
+			await confirmEmail(useRootStore().restApiContext);
 		},
 
 		async updateGlobalRole({ id, newRoleName }: UpdateGlobalRolePayload) {
 			const rootStore = useRootStore();
-			await updateGlobalRole(rootStore.getRestApiContext, { id, newRoleName });
+			await updateGlobalRole(rootStore.restApiContext, { id, newRoleName });
 			await this.fetchUsers();
 		},
 	},

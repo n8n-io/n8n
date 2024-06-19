@@ -16,7 +16,7 @@ import MappingModeSelect from './MappingModeSelect.vue';
 import MatchingColumnsSelect from './MatchingColumnsSelect.vue';
 import MappingFields from './MappingFields.vue';
 import { fieldCannotBeDeleted, parseResourceMapperFieldName } from '@/utils/nodeTypesUtils';
-import { isResourceMapperValue } from '@/utils/typeGuards';
+import { isFullExecutionResponse, isResourceMapperValue } from '@/utils/typeGuards';
 import { i18n as locale } from '@/plugins/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -78,7 +78,12 @@ watch(
 watch(
 	() => workflowsStore.getWorkflowExecution,
 	async (data) => {
-		if (data?.status === 'success' && state.paramValue.mappingMode === 'autoMapInputData') {
+		if (
+			data &&
+			isFullExecutionResponse(data) &&
+			data.status === 'success' &&
+			state.paramValue.mappingMode === 'autoMapInputData'
+		) {
 			await initFetching(true);
 		}
 	},

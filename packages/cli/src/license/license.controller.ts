@@ -1,5 +1,5 @@
 import { Get, Post, RestController, GlobalScope } from '@/decorators';
-import { LicenseRequest } from '@/requests';
+import { AuthenticatedRequest, LicenseRequest } from '@/requests';
 import { LicenseService } from './license.service';
 
 @RestController('/license')
@@ -9,6 +9,12 @@ export class LicenseController {
 	@Get('/')
 	async getLicenseData() {
 		return await this.licenseService.getLicenseData();
+	}
+
+	@Post('/enterprise/request_trial')
+	@GlobalScope('license:manage')
+	async requestEnterpriseTrial(req: AuthenticatedRequest) {
+		await this.licenseService.requestEnterpriseTrial(req.user);
 	}
 
 	@Post('/activate')

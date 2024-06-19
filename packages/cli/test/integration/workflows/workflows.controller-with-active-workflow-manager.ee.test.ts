@@ -5,8 +5,10 @@ import * as testDb from '../shared/testDb';
 import { createUser } from '../shared/db/users';
 import { createWorkflowWithTrigger } from '../shared/db/workflows';
 import { createTeamProject } from '../shared/db/projects';
-import { mockInstance } from '../../shared/mocking';
-import { WaitTracker } from '@/WaitTracker';
+import { mockInstance } from '@test/mocking';
+import { Telemetry } from '@/telemetry';
+
+mockInstance(Telemetry);
 
 let member: User;
 let anotherMember: User;
@@ -15,9 +17,6 @@ const testServer = utils.setupTestServer({
 	endpointGroups: ['workflows'],
 	enabledFeatures: ['feat:sharing', 'feat:advancedPermissions'],
 });
-
-// This is necessary for the tests to shutdown cleanly.
-mockInstance(WaitTracker);
 
 beforeAll(async () => {
 	member = await createUser({ role: 'global:member' });

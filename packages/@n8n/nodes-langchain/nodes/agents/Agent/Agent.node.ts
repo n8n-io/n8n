@@ -235,6 +235,7 @@ export class Agent implements INodeType {
 		displayName: 'AI Agent',
 		name: 'agent',
 		icon: 'fa:robot',
+		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
 		description: 'Generates an action plan and executes it. Can use external tools.',
@@ -301,6 +302,9 @@ export class Agent implements INodeType {
 			// Make Conversational Agent the default agent for versions 1.5 and below
 			{
 				...agentTypeProperty,
+				options: agentTypeProperty?.options?.filter(
+					(o) => 'value' in o && o.value !== 'toolsAgent',
+				),
 				displayOptions: { show: { '@version': [{ _cnd: { lte: 1.5 } }] } },
 				default: 'conversationalAgent',
 			},
