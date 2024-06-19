@@ -156,7 +156,7 @@
     "@supabase/supabase-js": "2.43.4",
     "@xata.io/client": "0.28.4",
     "basic-auth": "2.0.1",
-    "cheerio": "1.0.0-rc.6",
+    "cheerio": "1.0.0-rc.12",
     "cohere-ai": "7.10.1",
     "d3-dsv": "2.0.0",
     "epub2": "3.0.2",
