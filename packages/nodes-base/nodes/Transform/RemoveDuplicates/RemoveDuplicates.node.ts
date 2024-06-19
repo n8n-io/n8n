@@ -10,7 +10,8 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 import { prepareFieldsArray } from '../utils/utils';
-import { compareItems, flattenKeys, validateInputData } from './utils';
+import { compareItems, validateInputData } from './utils';
+import { flattenKeys } from '@utils/utilities';
 
 export class RemoveDuplicates implements INodeType {
 	description: INodeTypeDescription = {

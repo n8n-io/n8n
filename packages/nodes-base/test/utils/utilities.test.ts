@@ -1,4 +1,5 @@
 import {
+	flattenKeys,
 	fuzzyCompare,
 	getResolvables,
 	keysToLowercase,
@@ -152,5 +153,59 @@ describe('shuffleArray', () => {
 		expect(toShuffle).not.toEqual(array);
 		expect(toShuffle).toHaveLength(array.length);
 		expect(toShuffle).toEqual(expect.arrayContaining(array));
+	});
+});
+
+describe('flattenKeys', () => {
+	const name = 'Lisa';
+	const city1 = 'Berlin';
+	const city2 = 'Schoenwald';
+	const withNestedObject = {
+		name,
+		address: { city: city1 },
+	};
+
+	const withNestedArrays = {
+		name,
+		addresses: [{ city: city1 }, { city: city2 }],
+	};
+
+	it('should handle empty object', () => {
+		const flattenedObj = flattenKeys({});
+		expect(flattenedObj).toEqual({});
+	});
+
+	it('should flatten object with nested object', () => {
+		const flattenedObj = flattenKeys(withNestedObject);
+		expect(flattenedObj).toEqual({
+			name,
+			'address.city': city1,
+		});
+	});
+
+	it('should handle object with nested arrays', () => {
+		const flattenedObj = flattenKeys(withNestedArrays);
+		expect(flattenedObj).toEqual({
+			name,
+			'addresses.0.city': city1,
+			'addresses.1.city': city2,
+		});
+	});
+
+	it('should flatten object with nested object and specified prefix', () => {
+		const flattenedObj = flattenKeys(withNestedObject, ['test']);
+		expect(flattenedObj).toEqual({
+			'test.name': name,
+			'test.address.city': city1,
+		});
+	});
+
+	it('should handle object with nested arrays and specified prefix', () => {
+		const flattenedObj = flattenKeys(withNestedArrays, ['test']);
+		expect(flattenedObj).toEqual({
+			'test.name': name,
+			'test.addresses.0.city': city1,
+			'test.addresses.1.city': city2,
+		});
 	});
 });

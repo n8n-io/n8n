@@ -8,7 +8,7 @@ import type {
 
 import { ApplicationError, jsonParse, randomInt } from 'n8n-workflow';
 
-import { isEqual, isNull, merge } from 'lodash';
+import { isEqual, isNull, merge, isObject, reduce } from 'lodash';
 
 /**
  * Creates an array of elements split into groups the length of `size`.
@@ -50,6 +50,21 @@ export const shuffleArray = <T>(array: T[]): void => {
 		const j = randomInt(i + 1);
 		[array[i], array[j]] = [array[j], array[i]];
 	}
+};
+
+/**
+ * Flattens an object with deep data
+ * @param {IDataObject} data The object to flatten
+ * @param {string[]} prefix The prefix to add to each key in the returned flat object
+ */
+export const flattenKeys = (obj: IDataObject, prefix: string[] = []): IDataObject => {
+	return !isObject(obj)
+		? { [prefix.join('.')]: obj }
+		: reduce(
+				obj,
+				(cum, next, key) => merge(cum, flattenKeys(next as IDataObject, [...prefix, key])),
+				{},
+			);
 };
 
 /**

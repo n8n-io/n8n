@@ -13,11 +13,8 @@ import { NodeOperationError, deepCopy } from 'n8n-workflow';
 import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';
 import isEqual from 'lodash/isEqual';
-import isObject from 'lodash/isObject';
 import lt from 'lodash/lt';
-import merge from 'lodash/merge';
 import pick from 'lodash/pick';
-import reduce from 'lodash/reduce';
 import set from 'lodash/set';
 import unset from 'lodash/unset';
 
@@ -45,15 +42,9 @@ const compareItems = (
 	return result;
 };
 
-const flattenKeys = (obj: IDataObject, path: string[] = []): IDataObject => {
-	return !isObject(obj)
-		? { [path.join('.')]: obj }
-		: reduce(obj, (cum, next, key) => merge(cum, flattenKeys(next as IDataObject, [...path, key])), {}); //prettier-ignore
-};
-
 import { sortByCode } from '../V3/helpers/utils';
 import * as summarize from './summarize.operation';
-import { shuffleArray } from '@utils/utilities';
+import { flattenKeys, shuffleArray } from '@utils/utilities';
 
 export class ItemListsV2 implements INodeType {
 	description: INodeTypeDescription;

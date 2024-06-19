@@ -1,6 +1,5 @@
 import { NodeVM } from '@n8n/vm2';
 import type {
-	IDataObject,
 	IExecuteFunctions,
 	IBinaryData,
 	INode,
@@ -11,9 +10,6 @@ import { ApplicationError, NodeOperationError } from 'n8n-workflow';
 
 import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
-import isObject from 'lodash/isObject';
-import merge from 'lodash/merge';
-import reduce from 'lodash/reduce';
 
 export const compareItems = (
 	obj: INodeExecutionData,
@@ -37,12 +33,6 @@ export const compareItems = (
 		}
 	}
 	return result;
-};
-
-export const flattenKeys = (obj: IDataObject, path: string[] = []): IDataObject => {
-	return !isObject(obj)
-		? { [path.join('.')]: obj }
-		: reduce(obj, (cum, next, key) => merge(cum, flattenKeys(next as IDataObject, [...path, key])), {}); //prettier-ignore
 };
 
 export const prepareFieldsArray = (fields: string | string[], fieldName = 'Fields') => {
