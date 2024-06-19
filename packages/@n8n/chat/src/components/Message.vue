@@ -152,7 +152,7 @@ onMounted(async () => {
 	</div>
 </template>
 
-<style lang="scss" scoped>
+<style lang="scss">
 .chat-message {
 	display: block;
 	position: relative;

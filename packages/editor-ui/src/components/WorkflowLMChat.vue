@@ -196,8 +196,10 @@ import { useAIStore } from '@/stores/ai.store';
 import type {
 	BinaryFileType,
 	IBinaryData,
+	IBinaryKeyData,
 	IDataObject,
 	INode,
+	INodeExecutionData,
 	INodeParameters,
 	INodeType,
 	ITaskData,
@@ -484,6 +486,32 @@ async function convertFileToBinaryData(file: File): Promise<IBinaryData> {
 		reader.readAsDataURL(file);
 	});
 }
+
+async function getKeyedFiles(files: File[]): Promise<IBinaryKeyData> {
+	const binaryData: IBinaryKeyData = {};
+
+	await Promise.all(
+		files.map(async (file, index) => {
+			const data = await convertFileToBinaryData(file);
+			const key = `data${index}`;
+
+			binaryData[key] = data;
+		}),
+	);
+
+	return binaryData;
+}
+
+function extractFileMeta(file: File): IDataObject {
+	return {
+		fileName: file.name,
+		fileSize: `${file.size} bytes`,
+		fileExtension: file.name.split('.').pop() ?? '',
+		fileType: file.type.split('/')[0],
+		mimeType: file.type,
+	};
+}
+
 async function startWorkflowWithMessage(message: string, files?: File[]): Promise<void> {
 	const triggerNode = chatTrigger.value;
 
@@ -503,28 +531,28 @@ async function startWorkflowWithMessage(message: string, files?: File[]): Promis
 	const usersStore = useUsersStore();
 	const currentUser = usersStore.currentUser ?? ({} as IUser);
 
-	const binaryData = files ? await convertFileToBinaryData(files[0]) : null;
+	const inputPayload: INodeExecutionData = {
+		json: {
+			sessionId: `test-${currentUser.id || 'unknown'}`,
+			action: 'sendMessage',
+			[inputKey]: message,
+		},
+	};
+
+	if (files && files.length > 0) {
+		const filesMeta = files.map((file) => extractFileMeta(file));
+		const binaryData = await getKeyedFiles(files);
+		console.log('🚀 ~ startWorkflowWithMessage ~ binaryData:', binaryData);
+
+		inputPayload.json.files = filesMeta;
+		inputPayload.binary = binaryData;
+	}
 	const nodeData: ITaskData = {
 		startTime: new Date().getTime(),
 		executionTime: 0,
 		executionStatus: 'success',
 		data: {
-			main: [
-				[
-					{
-						json: {
-							sessionId: `test-${currentUser.id || 'unknown'}`,
-							action: 'sendMessage',
-							[inputKey]: message,
-						},
-						binary: binaryData
-							? {
-									data: binaryData,
-								}
-							: undefined,
-					},
-				],
-			],
+			main: [[inputPayload]],
 		},
 		source: [null],
 	};
@@ -1124,6 +1152,19 @@ onMounted(() => {
 }
 .messages-input {
 	--chat--textarea--resize: auto;
+	--chat--input--background: var(--input-background-color, var(--color-foreground-xlight));
+	--chat--input--text-color: var(--input-font-color, var(--color-text-dark));
+	--chat--input--send--button--background: var(
+		--button-background-color,
+		var(--color-button-primary-background)
+	);
+	--chat--input--send--button--color: var(--button-font-color, var(--color-button-primary-font));
+	--chat--textarea--max-height: auto;
+	--chat--input--send--button--background-hover: var(
+		--button-hover-background-color,
+		(--color-button-primary-hover-active-focus-background)
+	);
+	--chat--input--send--button--color-hover: var(--button-hover-font-color, var(--color-button-primary-font));
 }
 
 .workflow-lm-chat-footer {

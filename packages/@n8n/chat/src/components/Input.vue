@@ -124,7 +124,6 @@ function onFileRemove(file: File) {
 	justify-content: center;
 	align-items: center;
 	width: 100%;
-	background: var(--chat--input--background, white);
 	flex-direction: column;
 
 	* {
@@ -143,16 +142,19 @@ function onFileRemove(file: File) {
 		width: 100%;
 		border: 0;
 		padding: var(--chat--spacing);
-		// max-height: var(--chat--textarea--height);
+		min-height: var(--chat--textarea--height);
+		max-height: var(--chat--textarea--max-height, var(--chat--textarea--height));
 		height: 100%;
+		background: var(--chat--input--background, white);
 		resize: var(--chat--textarea--resize, none);
+		color: var(--chat--input--text-color, initial);
 	}
 }
 
 .chat-input-send-button {
 	height: var(--chat--textarea--height);
 	width: var(--chat--textarea--height);
-	background: white;
+	background: var(--chat--input--send--button--background, white);
 	cursor: pointer;
 	color: var(--chat--input--send--button--color, var(--chat--color-secondary));
 	border: 0;
@@ -164,7 +166,11 @@ function onFileRemove(file: File) {
 
 	&:hover,
 	&:focus {
-		color: var(--chat--color-secondary-shade-50);
+		background: var(
+			--chat--input--send--button--background-hover,
+			var(--chat--input--send--button--background)
+		);
+		color: var(--chat--input--send--button--color-hover, var(--chat--color-secondary-shade-50));
 	}
 
 	&[disabled] {

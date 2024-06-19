@@ -2,271 +2,626 @@
 
 // https://github.com/pxlrbt/markdown-css
 .chat-message-markdown {
-	overflow-x: auto;
-	html, body, div, span, applet, object, iframe, h1, h2, h3, h4, h5, h6, p, blockquote, pre, a, abbr, acronym, address, big, cite, code, del, dfn, em, img, ins, kbd, q, s, samp, small, strike, strong, sub, sup, tt, var, b, u, i, center, dl, dt, dd, ol, ul, li, fieldset, form, label, legend, table, caption, tbody, tfoot, thead, tr, th, td, article, aside, canvas, details, embed, figure, figcaption, footer, header, hgroup, menu, nav, output, ruby, section, summary, time, mark, audio, video {
-    margin: 0;
-    padding: 0;
-    border: 0;
-    font: inherit;
-    font-size: 100%;
-    vertical-align: baseline
+		/*
+		universalize.css (v1.0.2) — by Alexander Sandberg (https://alexandersandberg.com)
+		------------------------------------------------------------------------------
+
+		Based on Sanitize.css (https://github.com/csstools/sanitize.css).
+
+		(all) = Used for all browsers.
+		x lines = Applies to x lines down, including current line.
+
+		------------------------------------------------------------------------------
+	*/
+
+	/*
+		1. Use default UI font (all)
+		2. Make font size more accessible to everyone (all)
+		3. Make line height consistent (all)
+		4. Prevent font size adjustment after orientation changes (IE, iOS)
+		5. Prevent overflow from long words (all)
+	*/
+	font-size: 125%; /* 2 */
+	line-height: 1.6; /* 3 */
+	-webkit-text-size-adjust: 100%; /* 4 */
+	word-break: break-word; /* 5 */
+
+	/*
+		Prevent padding and border from affecting width (all)
+	*/
+	*,
+	::before,
+	::after {
+		box-sizing: border-box;
 	}
 
-	html {
-    line-height: 1
+	/*
+		1. Inherit text decoration (all)
+		2. Inherit vertical alignment (all)
+	*/
+	::before,
+	::after {
+		text-decoration: inherit; /* 1 */
+		vertical-align: inherit; /* 2 */
 	}
 
-	ol,
-	ul {
-    list-style: none;
-		list-style-position: inside;
+
+
+	/*
+		Remove inconsistent and unnecessary margins
+	*/
+	body, /* (all) */
+	dl dl, /* (Chrome, Edge, IE, Safari) 5 lines */
+	dl ol,
+	dl ul,
+	ol dl,
+	ul dl,
+	ol ol, /* (Edge 18-, IE) 4 lines */
+	ol ul,
+	ul ol,
+	ul ul,
+	button, /* (Safari) 3 lines */
+	input,
+	select,
+	textarea { /* (Firefox, Safari) */
+		margin: 0;
 	}
 
-	table {
-    border-collapse: collapse;
-    border-spacing: 0
+	/*
+		1. Show overflow (IE18-, IE)
+		2. Correct sizing (Firefox)
+	*/
+	hr {
+		overflow: visible;
+		height: 0;
 	}
 
-	caption,
-	th,
-	td {
-    text-align: left;
-    font-weight: normal;
-    vertical-align: middle
+	/*
+		Add correct display
+	*/
+	main, /* (IE11) */
+	details { /* (Edge 18-, IE) */
+		display: block;
 	}
 
-	q,
-	blockquote {
-    quotes: none
+	summary { /* (all) */
+		display: list-item;
 	}
 
-	q:before,
-	q:after,
-	blockquote:before,
-	blockquote:after {
-    content: "";
-    content: none
+	/*
+		Remove style on navigation lists (all)
+	*/
+	nav ol,
+	nav ul {
+		list-style: none;
+		padding: 0;
 	}
 
-	a img {
-    border: none
+	/*
+		1. Use default monospace UI font (all)
+		2. Correct font sizing (all)
+	*/
+	pre,
+	code,
+	kbd,
+	samp {
+		font-family:
+			/* macOS 10.10+ */ "Menlo",
+			/* Windows 6+ */ "Consolas",
+			/* Android 4+ */ "Roboto Mono",
+			/* Ubuntu 10.10+ */ "Ubuntu Monospace",
+			/* KDE Plasma 5+ */ "Noto Mono",
+			/* KDE Plasma 4+ */ "Oxygen Mono",
+			/* Linux/OpenOffice fallback */ "Liberation Mono",
+			/* fallback */ monospace,
+			/* macOS emoji */ "Apple Color Emoji",
+			/* Windows emoji */ "Segoe UI Emoji",
+			/* Windows emoji */ "Segoe UI Symbol",
+			/* Linux emoji */ "Noto Color Emoji"; /* 1 */
+
+		font-size: 1em; /* 2 */
 	}
 
-	article, aside, details, figcaption, figure, footer, header, hgroup, main, menu, nav, section, summary {
-    display: block
+	/*
+		1. Change cursor for <abbr> elements (all)
+		2. Add correct text decoration (Edge 18-, IE, Safari)
+	*/
+	abbr[title] {
+		cursor: help; /* 1 */
+		text-decoration: underline; /* 2 */
+		-webkit-text-decoration: underline dotted;
+						text-decoration: underline dotted; /* 2 */
 	}
 
-	* {
-    -moz-box-sizing: border-box;
-    -webkit-box-sizing: border-box;
-    box-sizing: border-box
+	/*
+		Add correct font weight (Chrome, Edge, Safari)
+	*/
+	b,
+	strong {
+		font-weight: bolder;
 	}
 
-	html {
-    font-size: 16px;
-    line-height: 1.6em;
-    -webkit-text-size-adjust: 100%
+	/*
+		Add correct font size (all)
+	*/
+	small {
+		font-size: 80%;
 	}
+
+	/*
+		Change alignment on media elements (all)
+	*/
+	audio,
+	canvas,
+	iframe,
+	img,
+	svg,
+	video {
+		vertical-align: middle;
+	}
+
+	/*
+		Remove border on iframes (all)
+	*/
+	iframe {
+		border-style: none;
+	}
+
+	/*
+		Change fill color to match text (all)
+	*/
+	svg:not([fill]) {
+		fill: currentColor;
+	}
+
+	/*
+		Hide overflow (IE11)
+	*/
+	svg:not(:root) {
+		overflow: hidden;
+	}
+
+	/*
+		Show overflow (Edge 18-, IE)
+	*/
+	button,
+	input {
+		overflow: visible;
+	}
+
+	/*
+		Remove inheritance of text transform (Edge 18-, Firefox, IE)
+	*/
+	button,
+	select {
+		text-transform: none;
+	}
+
+	/*
+		Correct inability to style buttons (iOS, Safari)
+	*/
+	button,
+	[type="button"],
+	[type="reset"],
+	[type="submit"] {
+		-webkit-appearance: button;
+	}
+
+	/*
+		1. Fix inconsistent appearance (all)
+		2. Correct padding (Firefox)
+	*/
+	fieldset {
+		border: 1px solid #666; /* 1 */
+		padding: 0.35em 0.75em 0.625em; /* 2 */
+	}
+
+	/*
+		1. Correct color inheritance from <fieldset> (IE)
+		2. Correct text wrapping (Edge 18-, IE)
+	*/
+	legend {
+		color: inherit; /* 1 */
+		display: table; /* 2 */
+		max-width: 100%; /* 2 */
+		white-space: normal; /* 2 */
+	}
+
+	/*
+		1. Add correct display (Edge 18-, IE)
+		2. Add correct vertical alignment (Chrome, Edge, Firefox)
+	*/
+	progress {
+		display: inline-block; /* 1 */
+		vertical-align: baseline; /* 2 */
+	}
+
+	/*
+		1. Remove default vertical scrollbar (IE)
+		2. Change resize direction (all)
+	*/
+	textarea {
+		overflow: auto; /* 1 */
+		resize: vertical; /* 2 */
+	}
+
+	/*
+		1. Correct outline style (Safari)
+		2. Correct odd appearance (Chrome, Edge, Safari)
+	*/
+	[type="search"] {
+		outline-offset: -2px; /* 1 */
+		-webkit-appearance: textfield; /* 2 */
+	}
+
+	/*
+		Correct cursor style of increment and decrement buttons (Safari)
+	*/
+	::-webkit-inner-spin-button,
+	::-webkit-outer-spin-button {
+		height: auto;
+	}
+
+	/*
+		Correct text style (Chrome, Edge, Safari)
+	*/
+	::-webkit-input-placeholder {
+		color: inherit;
+		opacity: 0.54;
+	}
+
+	/*
+		Remove inner padding (Chrome, Edge, Safari on macOS)
+	*/
+	::-webkit-search-decoration {
+		-webkit-appearance: none;
+	}
+
+	/*
+		1. Inherit font properties (Safari)
+		2. Correct inability to style upload buttons (iOS, Safari)
+	*/
+	::-webkit-file-upload-button {
+		font: inherit; /* 1 */
+		-webkit-appearance: button; /* 2 */
+	}
+
+	/*
+		Remove inner border and padding of focus outlines (Firefox)
+	*/
+	::-moz-focus-inner {
+		border-style: none;
+		padding: 0;
+	}
+
+	/*
+		Restore focus outline style (Firefox)
+	*/
+	:-moz-focusring {
+		outline: 1px dotted ButtonText;
+	}
+
+	/*
+		Remove :invalid styles (Firefox)
+	*/
+	:-moz-ui-invalid {
+		box-shadow: none;
+	}
+
+	/*
+		Change cursor on busy elements (all)
+	*/
+	[aria-busy="true"] {
+		cursor: progress;
+	}
+
+	/*
+		Change cursor on control elements (all)
+	*/
+	[aria-controls] {
+		cursor: pointer;
+	}
+
+	/*
+		Change cursor on disabled, non-editable, or inoperable elements (all)
+	*/
+	[aria-disabled="true"],
+	[disabled] {
+		cursor: not-allowed;
+	}
+
+	/*
+		Change display on visually hidden accessible elements (all)
+	*/
+	[aria-hidden="false"][hidden] {
+		display: inline;
+		display: initial;
+	}
+
+	[aria-hidden="false"][hidden]:not(:focus) {
+		clip: rect(0, 0, 0, 0);
+		position: absolute;
+	}
+
+	/*
+		Print out URLs after links (all)
+	*/
+	@media print {
+		a[href^="http"]::after {
+			content: " (" attr(href) ")";
+		}
+	}
+	/* ----- Variables ----- */
+
+	/* Light mode default, dark mode if recognized as preferred */
+	:root {
+		--background-main: #fefefe;
+		--background-element: #eee;
+		--background-inverted: #282a36;
+		--text-main: #1f1f1f;
+		--text-alt: #333;
+		--text-inverted: #fefefe;
+		--border-element: #282a36;
+		--theme: #7a283a;
+		--theme-light: hsl(0, 25%, 65%);
+		--theme-dark: hsl(0, 25%, 45%);
+	}
+
+	/* @media (prefers-color-scheme: dark) {
+		:root {
+			--background-main: #282a36;
+			--text-main: #fefefe;
+		}
+	} */
+	/* ----- Base ----- */
 
 	body {
-    background-color: #fff;
-    color: #545454;
+		margin: auto;
+		max-width: 36rem;
+		min-height: 100%;
+		overflow-x: hidden;
+	}
+	/* ----- Typography ----- */
 
-    text-rendering: optimizeLegibility;
-
-    max-width: 46em;
-    margin: 2em auto;
-
-    padding: 1.6em 3.15em;
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6 {
+		margin: 3.2rem 0 0.8em;
 	}
 
+	/*
+		Heading sizes based on a modular scale of 1.25 (all)
+	*/
 	h1 {
-    font-weight: 700;
-    color: #333;
-    font-size: 1.6em;
-    line-height: 1.3em;
-    margin-bottom: .78571em
+		font-size: 2.441rem;
+		line-height: 1.1;
 	}
 
 	h2 {
-    font-weight: 600;
-    color: #333;
-    font-size: 1.3em;
-    line-height: 1em;
-    margin-top: 2em;
-    margin-bottom: .6em
+		font-size: 1.953rem;
+		line-height: 1.15;
 	}
 
 	h3 {
-    font-weight: 600;
-    color: #333;
-    font-size: 1.15em;
-    line-height: 1em;
-    margin-top: 1em;
-    margin-bottom: .6em
+		font-size: 1.563rem;
+		line-height: 1.2;
 	}
 
 	h4 {
-    font-weight: 500;
-    color: #333;
-    font-size: 1em;
-    line-height: 1em;
-    margin-top: 1em;
-    margin-bottom: .6em
+		font-size: 1.25rem;
+		line-height: 1.3;
 	}
 
-	p {
-    margin-bottom: 1.57143em;
-    hyphens: auto
+	h5 {
+		font-size: 1rem;
+		line-height: 1.4;
 	}
 
-	b, strong {
-    font-weight: 700;
+	h6 {
+		font-size: 1rem;
+		line-height: 1.4;
+
+		/* differentiate from h5, somehow. color or style? */
 	}
 
-	i, em {
-    font-style: italic;
+	p,
+	ul,
+	ol,
+	figure {
+		margin: 0.6rem 0 1.2rem;
 	}
 
-	u {
-    text-decoration: none;
-    background-image: linear-gradient(to bottom, rgba(0, 0, 0, 0) 50%, var(--chat--color-primary) 50%);
-    background-repeat: repeat-x;
-    background-size: 2px 2px;
-    background-position: 0 1.05em
+	/*
+		Subtitles
+		- Change to header h* + span instead?
+		- Add support for taglines (small title above main) as well? Needs <header>:
+			header > span:first-child
+	*/
+	h1 span,
+	h2 span,
+	h3 span,
+	h4 span,
+	h5 span,
+	h6 span {
+		display: block;
+		font-size: 1em;
+		font-style: italic;
+		font-weight: normal;
+		line-height: 1.3;
+		margin-top: 0.3em;
 	}
 
-	s {
-    color: #878787
+	h1 span {
+		font-size: 0.6em;
 	}
 
-	a {
-    color: #e74c3c;
-    text-decoration: none
+	h2 span {
+		font-size: 0.7em;
 	}
 
-	img {
-    max-width: 100%;
-    height: auto
+	h3 span {
+		font-size: 0.8em;
+	}
+
+	h4 span {
+		font-size: 0.9em;
+	}
+
+	small {
+		font-size: 1em;
+		opacity: 0.8; /* or some other way of differentiating it from body text */
+	}
+
+	mark {
+		background: pink; /* change to proper color, based on theme */
+	}
+
+	/*
+		Define a custom tab-size in browsers that support it.
+	*/
+	pre {
+		-moz-tab-size: 4;
+			-o-tab-size: 4;
+				tab-size: 4;
+	}
+
+	/*
+		Long underlined text can be hard to read for dyslexics. Replace with bold.
+	*/
+	ins {
+		text-decoration: none;
+		font-weight: bolder;
 	}
 
 	blockquote {
-    display: block;
-    padding-left: 0.8em;
-    border-left: 0.2em solid #e74c3c;
-    background-color: transparent;
+		border-left: 0.3rem solid #7a283a;
+		border-left: 0.3rem solid var(--theme);
+		margin: 0.6rem 0 1.2rem 0;
+		padding-left: 2rem;
 	}
 
-	hr {
-    height: 1px;
-    border: 0;
-    background-color: var(--chat--color-medium);
-    margin: .7em auto .7em
+	blockquote p {
+		font-size: 1.2em;
+		font-style: italic;
 	}
 
-	/* LISTS */
-	ul li:before {
-    content: "•";
-    color: #e74c3c;
-    display: inline-block;
-    margin-right: 0.3em;
-    font-size: 1.5em;
-    vertical-align: middle;
+	figure {
+		margin: 0;
+	}
+	/* ----- Layout ----- */
+
+	body {
+		background: #fefefe;
+		background: var(--background-main);
+		color: #1f1f1f;
+		color: var(--text-main);
 	}
 
-	ul ul {
-    margin-left: 1.25714em
+	a {
+		color: #7a283a;
+		color: var(--theme);
+		text-decoration: underline;
 	}
 
-	ol ol {
-    margin-left: 1.25714em
+	a:hover {
+		color: hsl(0, 25%, 65%);
+		color: var(--theme-light);
 	}
 
-	ul, ol {
-    margin-bottom: 1.5em;
+	a:active {
+		color: hsl(0, 25%, 45%);
+		color: var(--theme-dark);
 	}
 
-	ul ul, ul ol,
-	ol ul, ol ol {
-    margin-bottom: 0;
+	:focus {
+		outline: 3px solid hsl(0, 25%, 65%);
+		outline: 3px solid var(--theme-light);
+		outline-offset: 3px;
 	}
 
-	ol {
-    counter-reset: ol;
+	input {
+		background: #eee;
+		background: var(--background-element);
+		padding: 0.5rem 0.65rem;
+		border-radius: 0.5rem;
+		border: 2px solid #282a36;
+		border: 2px solid var(--border-element);
+		font-size: 1rem;
 	}
 
-	ol li {
-    counter-increment: ol;
+	mark {
+		background: pink; /* change to proper color, based on theme */
+		padding: 0.1em 0.15em;
 	}
 
-	ol li:before {
-    content: counter(ol) ".";
-    color: var(--chat--color-primary);
-    text-align: right;
-    display: inline-block;
-    min-width: 1em;
-    margin-right: 0.5em
-	}
-
-	ol li p {
-    display: inline;
-	}
-
-	/* CODE */
+	kbd, /* different style for kbd? */
 	code {
-    display: inline;
-    background: #fcfcfc;
-    border: 1px solid var(--chat--color-medium);
-    border-radius: .3em;
-    padding: 0.2em 0.5em;
-		font-family: monospace;
-    font-size: 0.7em;
+		background: #eee;
+		padding: 0.1em 0.25em;
+		border-radius: 0.2rem;
+		-webkit-box-decoration-break: clone;
+						box-decoration-break: clone;
+	}
+
+	kbd > kbd {
+		padding-left: 0;
+		padding-right: 0;
 	}
 
 	pre {
-    display: block;
-    background: transparent;
-    padding: 0;
-    margin: 0;
+		-moz-tab-size: 4;
+			-o-tab-size: 4;
+				tab-size: 4;
 	}
 
 	pre code {
-    display: block;
-    width: 100%;
-    line-height: 1.45em;
+		display: block;
+		padding: 0.3em 0.7em;
+		word-break: normal;
+		overflow-x: auto;
+	}
+	/* ----- Forms ----- */
+	/* ----- Misc ----- */
 
-    padding: 1.2em 1em;
-    margin: 0 0 1.5em;
-		overflow: auto;
+	[tabindex="-1"]:focus {
+		outline: none;
 	}
 
-	.hljs {
-    padding: 0;
+	[hidden] {
+		display: none;
 	}
 
-	/*  TABLE */
-
-	table {
-    width: calc(100% + 3em);
-    margin-bottom: 1.5em;
-    margin-left: -1.5em;
+	[aria-disabled],
+	[disabled] {
+		cursor: not-allowed !important;
+		pointer-events: none !important;
 	}
 
-	table tr {
-    border-bottom: 1px solid var(--chat--color-medium);
+	/*
+		Style anchor links only
+	*/
+	a[href^='#']::after {
+		content: '';
 	}
 
-	table th {
-    font-weight: 700;
+	/*
+		Skip link
+	*/
+	body > a:first-child {
+		background: #7a283a;
+		background: var(--theme);
+		border-radius: 0.2rem;
+		color: #fefefe;
+		color: var(--text-inverted);
+		padding: 0.3em 0.5em;
+		position: absolute;
+		top: -10rem;
 	}
 
-	table td, table th {
-    vertical-align: top;
-    padding: .2em 1.5em;
-    font-size: .95em
-	}
-
-	thead tr {
-    border-bottom: 4px double var(--chat--color-medium);
+	body > a:first-child:focus {
+		top: 1rem;
 	}
 }

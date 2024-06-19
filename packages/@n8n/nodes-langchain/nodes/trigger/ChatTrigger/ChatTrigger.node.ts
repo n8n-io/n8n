@@ -24,7 +24,7 @@ export class ChatTrigger extends Node {
 		icon: 'fa:comments',
 		iconColor: 'black',
 		group: ['trigger'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Runs the workflow when an n8n generated webchat is submitted',
 		defaults: {
 			name: 'When chat message received',
@@ -203,6 +203,37 @@ export class ChatTrigger extends Node {
 				type: 'collection',
 				displayOptions: {
 					show: {
+						public: [false],
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
+				},
+				placeholder: 'Add Field',
+				default: {},
+				options: [
+					{
+						displayName: 'Allow File Uploads',
+						name: 'allowFileUploads',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to allow file uploads in the chat',
+					},
+					{
+						displayName: 'Allowed Files Mime Type',
+						name: 'allowedFilesMimeType',
+						type: 'string',
+						default: 'image/*,text/*,audio/*, application/pdf',
+						placeholder: 'e.g. image/*,text/*,audio/*, application/pdf',
+						description:
+							'Allowed file types for upload. Comma-separated list of <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types" target="_blank">MIME types</a>.',
+					},
+				],
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				displayOptions: {
+					show: {
 						mode: ['hostedChat', 'webhook'],
 						public: [true],
 					},
@@ -366,12 +397,8 @@ export class ChatTrigger extends Node {
 			const count = 0;
 			for (const fileKey of Object.keys(files)) {
 				const processedFiles: MultiPartFormData.File[] = [];
-				let multiFile = false;
-
-				console.log('🚀 ~ ChatTrigger ~ handleFormData ~ files[fileKey]:', files[fileKey]);
 				if (Array.isArray(files[fileKey])) {
 					processedFiles.push(...(files[fileKey] as MultiPartFormData.File[]));
-					multiFile = true;
 				} else {
 					processedFiles.push(files[fileKey] as MultiPartFormData.File);
 				}
@@ -397,14 +424,7 @@ export class ChatTrigger extends Node {
 					const binaryKey = `${binaryPropertyName}${fileIndex}`;
 
 					const binaryInfo = {
-						...pick(binaryFile, [
-							'fileName',
-							'fileSize',
-							'fileType',
-							'mimeType',
-							'directory',
-							'fileExtension',
-						]),
+						...pick(binaryFile, ['fileName', 'fileSize', 'fileType', 'mimeType', 'fileExtension']),
 						binaryKey,
 					};
 
@@ -446,16 +466,10 @@ export class ChatTrigger extends Node {
 			allowedFilesMimeType?: string;
 		};
 
+		const req = ctx.getRequestObject();
 		const webhookName = ctx.getWebhookName();
 		const mode = ctx.getMode() === 'manual' ? 'test' : 'production';
 		const bodyData = ctx.getBodyData() ?? {};
-
-		const isMultipart = ctx
-			.getRequestObject()
-			.headers['content-type']?.includes('multipart/form-data');
-
-		const req = ctx.getRequestObject();
-		console.log('🚀 ~ ChatTrigger ~ webhook ~ isMultipart:', isMultipart);
 
 		if (nodeMode === 'hostedChat') {
 			try {
@@ -500,6 +514,8 @@ export class ChatTrigger extends Node {
 					mode,
 					instanceId,
 					authentication,
+					allowFileUploads: options.allowFileUploads,
+					allowedFilesMimeType: options.allowedFilesMimeType,
 				});
 
 				res.status(200).send(page).end();

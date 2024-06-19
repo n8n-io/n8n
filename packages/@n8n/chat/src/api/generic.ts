@@ -5,15 +5,22 @@ async function getAccessToken() {
 export async function authenticatedFetch<T>(...args: Parameters<typeof fetch>): Promise<T> {
 	const accessToken = await getAccessToken();
 
+	// Check if body is form data and if so set content type to undefined
+	const body = args[1]?.body;
+	const headers = {
+		'Content-Type': 'application/json',
+		...(accessToken ? { authorization: `Bearer ${accessToken}` } : {}),
+		...args[1]?.headers,
+	};
+
+	if (body instanceof FormData && 'Content-Type' in headers) {
+		delete headers['Content-Type'];
+	}
 	const response = await fetch(args[0], {
 		...args[1],
 		mode: 'cors',
 		cache: 'no-cache',
-		headers: {
-			// 'Content-Type': 'application/json',
-			...(accessToken ? { authorization: `Bearer ${accessToken}` } : {}),
-			...args[1]?.headers,
-		},
+		headers,
 	});
 
 	return (await response.json()) as T;
