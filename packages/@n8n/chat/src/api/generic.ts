@@ -5,16 +5,15 @@ async function getAccessToken() {
 export async function authenticatedFetch<T>(...args: Parameters<typeof fetch>): Promise<T> {
 	const accessToken = await getAccessToken();
 
-	// Check if body is form data and if so set content type to undefined
 	const body = args[1]?.body;
-	const headers = {
-		'Content-Type': 'application/json',
+	const headers: RequestInit['headers'] & { 'Content-Type'?: string } = {
 		...(accessToken ? { authorization: `Bearer ${accessToken}` } : {}),
 		...args[1]?.headers,
 	};
 
-	if (body instanceof FormData && 'Content-Type' in headers) {
-		delete headers['Content-Type'];
+	// Set content type to json if it is not a FormData
+	if (!(body instanceof FormData)) {
+		headers['Content-Type'] = 'application/json';
 	}
 	const response = await fetch(args[0], {
 		...args[1],
