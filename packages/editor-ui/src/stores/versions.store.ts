@@ -17,6 +17,10 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 	const { showToast } = useToast();
 	const uiStore = useUIStore();
 
+	// ---------------------------------------------------------------------------
+	// #region Computed
+	// ---------------------------------------------------------------------------
+
 	const hasVersionUpdates = computed(() => {
 		return nextVersions.value.length > 0;
 	});
@@ -28,6 +32,12 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 	const infoUrl = computed(() => {
 		return versionNotificationSettings.value.infoUrl;
 	});
+
+	// #endregion
+
+	// ---------------------------------------------------------------------------
+	// #region Methods
+	// ---------------------------------------------------------------------------
 
 	const fetchVersions = async () => {
 		try {
@@ -84,6 +94,8 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 			});
 		}
 	};
+
+	// #endregion
 
 	return {
 		currentVersion,
