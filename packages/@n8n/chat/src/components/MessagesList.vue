@@ -23,11 +23,7 @@ watch(
 	() => {
 		const lastMessageComponent = messageComponents.value[messageComponents.value.length - 1];
 		if (lastMessageComponent) {
-			// lastMessageComponent.messageContainer;
-			// console.log(
-			// 	'🚀 ~ watch ~ lastMessageComponent.messageContainer:',
-			// 	);
-			lastMessageComponent.scrollToView()
+			lastMessageComponent.scrollToView();
 		}
 		// if (messageComponent.value) {
 		// 	// messageComponent.value.scrollToBottom();

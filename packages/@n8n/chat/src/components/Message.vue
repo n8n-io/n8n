@@ -98,7 +98,6 @@ const openImageInNewTab = (fileName: string) => {
 	}
 };
 onMounted(async () => {
-	console.log('🚀 ~ onMounted ~ message.value.files:', message.value);
 	if (message.value.files) {
 		for (const file of message.value.files) {
 			try {

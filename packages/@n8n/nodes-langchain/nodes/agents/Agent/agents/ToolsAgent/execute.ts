@@ -129,7 +129,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 		content: [...binaryMessages],
 	});
 	const convertedBinaryMessage = binaryMessage;
-	console.log('🚀 ~ toolsAgentExecute ~ convertedBinaryMessage:', convertedBinaryMessage);
+
 	const prompt = ChatPromptTemplate.fromMessages([
 		['system', `{system_message}${outputParser ? '\n\n{formatting_instructions}' : ''}`],
 		['placeholder', '{chat_history}'],
@@ -137,7 +137,6 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 		convertedBinaryMessage,
 		['placeholder', '{agent_scratchpad}'],
 	]);
-	// console.log('🚀 ~ toolsAgentExecute ~ prompt:', prompt.map);
 
 	const agent = createToolCallingAgent({
 		llm: model,

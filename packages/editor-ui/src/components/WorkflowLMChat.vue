@@ -247,36 +247,28 @@ interface MemoryOutput {
 }
 
 const router = useRouter();
-const externalHooks = useExternalHooks();
+// const externalHooks = useExternalHooks();
 const workflowHelpers = useWorkflowHelpers({ router });
 const { runWorkflow } = useRunWorkflow({ router });
-const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
-const aiStore = useAIStore();
+// const aiStore = useAIStore();
 const uiStore = useUIStore();
 
 const { showError } = useToast();
-const messages: Ref<ChatMessage[]> = ref(generateNTestMessages(3));
+const messages: Ref<ChatMessage[]> = ref([]);
 const currentSessionId = ref<string>(String(Date.now()));
 const isDisabled = ref(false);
 
 const connectedNode = ref<INode | null>(null);
 const chatTrigger = ref<INode | null>(null);
-const currentMessage = ref<string>('');
+// const currentMessage = ref<string>('');
 const modalBus = createEventBus();
 const node = ref<INode | null>(null);
 const previousMessageIndex = ref(0);
-// connectedNode: null as INodeUi | null,
-// currentMessage: '',
-// messages: [] as ChatMessage[],
-// modalBus: createEventBus(),
-// node: null as INodeUi | null,
-// WORKFLOW_LM_CHAT_MODAL_KEY,
-// previousMessageIndex: 0,
 
-const userName = computed(() => usersStore.currentUser?.firstName ?? 'there');
-const latestConnectionInfo = computed(() => aiStore.latestConnectionInfo);
+// const userName = computed(() => usersStore.currentUser?.firstName ?? 'there');
+// const latestConnectionInfo = computed(() => aiStore.latestConnectionInfo);
 const isLoading = computed(() => uiStore.isActionActive('workflowRunning'));
 const allowFileUploads = computed(() => {
 	return (chatTrigger.value?.parameters?.options as INodeParameters)?.allowFileUploads === true;
@@ -393,7 +385,6 @@ function setNode() {
 
 	const workflow = workflowHelpers.getCurrentWorkflow();
 	const childNodes = workflow.getChildNodes(triggerNode.name);
-	console.log('🚀 ~ setNode ~ childNodes:', childNodes);
 
 	for (const childNode of childNodes) {
 		// Look for the first connected node with metadata
@@ -542,7 +533,6 @@ async function startWorkflowWithMessage(message: string, files?: File[]): Promis
 	if (files && files.length > 0) {
 		const filesMeta = files.map((file) => extractFileMeta(file));
 		const binaryData = await getKeyedFiles(files);
-		console.log('🚀 ~ startWorkflowWithMessage ~ binaryData:', binaryData);
 
 		inputPayload.json.files = filesMeta;
 		inputPayload.binary = binaryData;
@@ -626,7 +616,6 @@ function extractResponseMessage(responseData?: IDataObject) {
 }
 
 async function sendMessage(message: string, files?: File[]) {
-	console.log('🚀 ~ sendMessage ~ files:', files);
 	if (message.trim() === '') {
 		showError(
 			new Error(locale.baseText('chat.window.chat.provideMessage')),
@@ -674,13 +663,11 @@ function displayExecution(executionId: string) {
 }
 
 function repostMessage(message: ChatMessage) {
-	console.log('🚀 ~ repostMessage ~ message:', message);
 	if (message.type === 'text') {
 		void sendMessage(message.text);
 	}
 }
 function reuseMessage(message: ChatMessage) {
-	console.log('🚀 ~ reuseMessage ~ message:', message);
 	if (message.type === 'text') {
 	}
 	// this.currentMessage = message.text;
@@ -695,8 +682,6 @@ onMounted(() => {
 	setConnectedNode();
 	// this.messages = this.getChatMessages();
 	setNode();
-
-	console.log('🚀 ~ onMounted ~ messages', connectedNode, node);
 });
 // export default defineComponent({
 // 	name: 'WorkflowLMChat',
@@ -1164,7 +1149,10 @@ onMounted(() => {
 		--button-hover-background-color,
 		(--color-button-primary-hover-active-focus-background)
 	);
-	--chat--input--send--button--color-hover: var(--button-hover-font-color, var(--color-button-primary-font));
+	--chat--input--send--button--color-hover: var(
+		--button-hover-font-color,
+		var(--color-button-primary-font)
+	);
 }
 
 .workflow-lm-chat-footer {
