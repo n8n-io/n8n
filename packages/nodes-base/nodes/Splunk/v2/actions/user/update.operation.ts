@@ -1,5 +1,7 @@
-import type { INodeExecutionData, INodeProperties, IExecuteFunctions } from 'n8n-workflow';
+import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
+import { formatFeed, getId, populate } from '../../helpers/utils';
+import { splunkApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
@@ -62,8 +64,29 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+export async function execute(
+	this: IExecuteFunctions,
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	// https://docs.splunk.com/Documentation/Splunk/8.2.2/RESTREF/RESTaccess#authentication.2Fusers.2F.7Bname.7D
+
+	const body = {} as IDataObject;
+	const { roles, ...rest } = this.getNodeParameter('updateFields', i) as IDataObject & {
+		roles: string[];
+	};
+
+	populate(
+		{
+			...(roles && { roles }),
+			...rest,
+		},
+		body,
+	);
+
+	const partialEndpoint = '/services/authentication/users/';
+	const userId = getId.call(this, i, 'userId', partialEndpoint);
+	const endpoint = `${partialEndpoint}/${userId}`;
+	const returnData = await splunkApiRequest.call(this, 'POST', endpoint, body).then(formatFeed);
 
 	return returnData;
 }

@@ -1,5 +1,7 @@
-import type { INodeExecutionData, INodeProperties, IExecuteFunctions } from 'n8n-workflow';
+import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
+import { formatSearch, populate, toUnixEpoch } from '../../helpers/utils';
+import { splunkApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
@@ -211,8 +213,40 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+export async function execute(
+	this: IExecuteFunctions,
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	// https://docs.splunk.com/Documentation/Splunk/8.2.2/RESTREF/RESTsearch#search.2Fjobs
+
+	const body = {
+		search: this.getNodeParameter('search', i),
+	} as IDataObject;
+
+	const { earliest_time, latest_time, index_earliest, index_latest, ...rest } =
+		this.getNodeParameter('additionalFields', i) as IDataObject & {
+			earliest_time?: string;
+			latest_time?: string;
+			index_earliest?: string;
+			index_latest?: string;
+		};
+
+	populate(
+		{
+			...(earliest_time && { earliest_time: toUnixEpoch(earliest_time) }),
+			...(latest_time && { latest_time: toUnixEpoch(latest_time) }),
+			...(index_earliest && { index_earliest: toUnixEpoch(index_earliest) }),
+			...(index_latest && { index_latest: toUnixEpoch(index_latest) }),
+			...rest,
+		},
+		body,
+	);
+
+	const endpoint = '/services/search/jobs';
+	const responseData = await splunkApiRequest.call(this, 'POST', endpoint, body);
+
+	const getEndpoint = `/services/search/jobs/${responseData.response.sid}`;
+	const returnData = await splunkApiRequest.call(this, 'GET', getEndpoint).then(formatSearch);
 
 	return returnData;
 }

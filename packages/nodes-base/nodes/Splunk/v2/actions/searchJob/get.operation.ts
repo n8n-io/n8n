@@ -1,5 +1,7 @@
-import type { INodeExecutionData, INodeProperties, IExecuteFunctions } from 'n8n-workflow';
+import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
+import { splunkApiRequest } from '../../transport';
+import { formatSearch, getId } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	{
@@ -21,8 +23,16 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+export async function execute(
+	this: IExecuteFunctions,
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	// https://docs.splunk.com/Documentation/Splunk/8.2.2/RESTREF/RESTsearch#search.2Fjobs.2F.7Bsearch_id.7D
+
+	const partialEndpoint = '/services/search/jobs/';
+	const searchJobId = getId.call(this, i, 'searchJobId', partialEndpoint);
+	const endpoint = `${partialEndpoint}/${searchJobId}`;
+	const returnData = await splunkApiRequest.call(this, 'GET', endpoint).then(formatSearch);
 
 	return returnData;
 }

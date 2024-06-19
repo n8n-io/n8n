@@ -1,5 +1,8 @@
-import type { INodeExecutionData, INodeProperties, IExecuteFunctions } from 'n8n-workflow';
+import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
+import { formatFeed, populate } from '../../helpers/utils';
+import { splunkApiRequest } from '../../transport';
+import type { SplunkFeedResponse } from '../../types';
 
 const properties: INodeProperties[] = [
 	{
@@ -64,8 +67,32 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+export async function execute(
+	this: IExecuteFunctions,
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	// https://docs.splunk.com/Documentation/Splunk/8.2.2/RESTREF/RESTaccess#authentication.2Fusers
+
+	const roles = this.getNodeParameter('roles', i) as string[];
+
+	const body = {
+		name: this.getNodeParameter('name', i),
+		roles,
+		password: this.getNodeParameter('password', i),
+	} as IDataObject;
+
+	const additionalFields = this.getNodeParameter('additionalFields', i);
+
+	populate(additionalFields, body);
+
+	const endpoint = '/services/authentication/users';
+	const responseData = (await splunkApiRequest.call(
+		this,
+		'POST',
+		endpoint,
+		body,
+	)) as SplunkFeedResponse;
+	const returnData = formatFeed(responseData);
 
 	return returnData;
 }

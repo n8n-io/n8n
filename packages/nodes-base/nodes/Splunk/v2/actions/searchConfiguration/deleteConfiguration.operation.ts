@@ -1,5 +1,7 @@
-import type { INodeExecutionData, INodeProperties, IExecuteFunctions } from 'n8n-workflow';
+import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
+import { splunkApiRequest } from '../../transport';
+import { getId } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	{
@@ -21,8 +23,22 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+export async function execute(
+	this: IExecuteFunctions,
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	// https://docs.splunk.com/Documentation/Splunk/8.2.2/RESTREF/RESTsearch#saved.2Fsearches.2F.7Bname.7D
+
+	const partialEndpoint = '/services/saved/searches/';
+	const searchConfigurationId = getId.call(
+		this,
+		i,
+		'searchConfigurationId',
+		'/search/saved/searches/',
+	); // id endpoint differs from operation endpoint
+	const endpoint = `${partialEndpoint}/${searchConfigurationId}`;
+
+	const returnData = await splunkApiRequest.call(this, 'DELETE', endpoint);
 
 	return returnData;
 }

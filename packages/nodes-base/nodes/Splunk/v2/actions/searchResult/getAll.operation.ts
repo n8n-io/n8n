@@ -1,5 +1,7 @@
-import type { INodeExecutionData, INodeProperties, IExecuteFunctions } from 'n8n-workflow';
+import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
+import { splunkApiRequest } from '../../transport';
+import { formatResults, populate, setCount } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	{
@@ -99,8 +101,31 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+export async function execute(
+	this: IExecuteFunctions,
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	// https://docs.splunk.com/Documentation/Splunk/latest/RESTREF/RESTsearch#search.2Fjobs.2F.7Bsearch_id.7D.2Fresults
+
+	const searchJobId = this.getNodeParameter('searchJobId', i);
+
+	const qs = {} as IDataObject;
+	const filters = this.getNodeParameter('filters', i) as IDataObject & {
+		keyValueMatch?: { keyValuePair?: { key: string; value: string } };
+	};
+	const options = this.getNodeParameter('options', i);
+
+	const keyValuePair = filters?.keyValueMatch?.keyValuePair;
+
+	if (keyValuePair?.key && keyValuePair?.value) {
+		qs.search = `search ${keyValuePair.key}=${keyValuePair.value}`;
+	}
+
+	populate(options, qs);
+	setCount.call(this, qs);
+
+	const endpoint = `/services/search/jobs/${searchJobId}/results`;
+	const returnData = await splunkApiRequest.call(this, 'GET', endpoint, {}, qs).then(formatResults);
 
 	return returnData;
 }

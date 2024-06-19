@@ -1,5 +1,8 @@
-import type { INodeExecutionData, INodeProperties, IExecuteFunctions } from 'n8n-workflow';
+import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
+import { formatFeed, populate, setCount } from '../../helpers/utils';
+import { splunkApiRequest } from '../../transport';
+import type { SplunkFeedResponse } from '../../types';
 
 const properties: INodeProperties[] = [
 	{
@@ -97,8 +100,27 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+export async function execute(
+	this: IExecuteFunctions,
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	// https://docs.splunk.com/Documentation/Splunk/8.2.2/RESTREF/RESTsearch#search.2Fjobs
+
+	const qs = {} as IDataObject;
+	const options = this.getNodeParameter('options', i);
+
+	populate(options, qs);
+	setCount.call(this, qs);
+
+	const endpoint = '/services/search/jobs';
+	const responseData = (await splunkApiRequest.call(
+		this,
+		'GET',
+		endpoint,
+		{},
+		qs,
+	)) as SplunkFeedResponse;
+	const returnData = formatFeed(responseData);
 
 	return returnData;
 }
