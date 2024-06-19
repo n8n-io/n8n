@@ -16,7 +16,7 @@ import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useNDVStore } from '@/stores/ndv.store';
 import { usePostHog } from '@/stores/posthog.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import {
@@ -131,7 +131,7 @@ function stopLoading() {
 }
 
 async function onSubmit() {
-	const { getRestApiContext } = useRootStore();
+	const { restApiContext } = useRootStore();
 	const { activeNode } = useNDVStore();
 	const { showMessage } = useToast();
 	const { alert } = useMessage();
@@ -153,20 +153,22 @@ async function onSubmit() {
 
 	startLoading();
 
+	const rootStore = useRootStore();
+
 	try {
-		const version = useRootStore().versionCli;
+		const version = rootStore.versionCli;
 		const model =
 			usePostHog().getVariant(ASK_AI_EXPERIMENT.name) === ASK_AI_EXPERIMENT.gpt4
 				? 'gpt-4'
 				: 'gpt-3.5-turbo-16k';
 
-		const { code } = await generateCodeForPrompt(getRestApiContext, {
+		const { code } = await generateCodeForPrompt(restApiContext, {
 			question: prompt.value,
 			context: {
 				schema: schemas.parentNodesSchemas,
 				inputSchema: schemas.inputSchema!,
 				ndvPushRef: useNDVStore().pushRef,
-				pushRef: useRootStore().pushRef,
+				pushRef: rootStore.pushRef,
 			},
 			model,
 			n8nVersion: version,

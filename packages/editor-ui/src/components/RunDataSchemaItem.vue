@@ -22,6 +22,9 @@ type Props = {
 const props = defineProps<Props>();
 
 const isSchemaValueArray = computed(() => Array.isArray(props.schema.value));
+const schemaArray = computed(
+	() => (isSchemaValueArray.value ? props.schema.value : []) as Schema[],
+);
 const isSchemaParentTypeArray = computed(() => props.parent?.type === 'array');
 const isFlat = computed(
 	() =>
@@ -35,6 +38,7 @@ const key = computed((): string | undefined => {
 const schemaName = computed(() =>
 	isSchemaParentTypeArray.value ? `${props.schema.type}[${props.schema.key}]` : props.schema.key,
 );
+
 const text = computed(() =>
 	Array.isArray(props.schema.value) ? '' : shorten(props.schema.value, 600, 0),
 );
@@ -71,9 +75,10 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 			return 'sun';
 		case 'undefined':
 			return 'ban';
+		default:
+			checkExhaustive(type);
+			return '';
 	}
-
-	checkExhaustive(type);
 };
 </script>
 
@@ -110,14 +115,18 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 				/>
 			</span>
 		</div>
-		<span v-if="text" :class="$style.text">{{ text }}</span>
+		<span v-if="text" :class="$style.text">
+			<template v-for="(line, index) in text.split('\n')" :key="`line-${index}`">
+				<span v-if="index > 0" :class="$style.newLine">\n</span>{{ line }}
+			</template>
+		</span>
 		<input v-if="level > 0 && isSchemaValueArray" :id="subKey" type="checkbox" checked />
 		<label v-if="level > 0 && isSchemaValueArray" :class="$style.toggle" :for="subKey">
 			<font-awesome-icon icon="angle-up" />
 		</label>
 		<div v-if="isSchemaValueArray" :class="{ [$style.sub]: true, [$style.flat]: isFlat }">
 			<run-data-schema-item
-				v-for="(s, i) in schema.value"
+				v-for="(s, i) in schemaArray"
 				:key="`${s.type}-${level}-${i}`"
 				:schema="s"
 				:level="level + 1"
@@ -282,6 +291,12 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 	font-size: var(--font-size-2xs);
 	overflow: hidden;
 	word-break: break-word;
+
+	.newLine {
+		font-family: var(--font-family-monospace);
+		color: var(--color-line-break);
+		padding-right: 2px;
+	}
 }
 
 .toggle {

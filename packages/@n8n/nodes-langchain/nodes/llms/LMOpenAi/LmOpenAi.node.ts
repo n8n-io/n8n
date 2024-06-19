@@ -28,7 +28,7 @@ export class LmOpenAi implements INodeType {
 		displayName: 'OpenAI Model',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'lmOpenAi',
-		icon: 'file:openAi.svg',
+		icon: { light: 'file:openAiLight.svg', dark: 'file:openAiLight.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		description: 'For advanced usage with an AI chain',

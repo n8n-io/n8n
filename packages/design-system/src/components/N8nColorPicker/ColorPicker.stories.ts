@@ -11,7 +11,7 @@ export default {
 		},
 		size: {
 			control: 'select',
-			options: ['mini', 'small', 'medium', 'large'],
+			options: ['small', 'large'],
 		},
 		showAlpha: {
 			control: 'boolean',
@@ -52,7 +52,7 @@ const DefaultTemplate: StoryFn = (args, { argTypes }) => ({
 export const Default = DefaultTemplate.bind({});
 Default.args = {
 	disabled: false,
-	size: 'medium',
+	size: 'small',
 	showAlpha: false,
 	colorFormat: '',
 	popperClass: '',

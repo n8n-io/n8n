@@ -1,5 +1,4 @@
 import { Container } from 'typedi';
-import type { SuperAgentTest } from 'supertest';
 
 import type { User } from '@db/entities/User';
 import config from '@/config';
@@ -9,14 +8,13 @@ import type { SourceControlledFile } from '@/environments/sourceControl/types/so
 
 import * as utils from '../shared/utils/';
 import { createUser } from '../shared/db/users';
-import { mockInstance } from '../../shared/mocking';
-import { WaitTracker } from '@/WaitTracker';
+import type { SuperAgentTest } from '../shared/types';
+import { mockInstance } from '@test/mocking';
+import { Telemetry } from '@/telemetry';
 
 let authOwnerAgent: SuperAgentTest;
 let owner: User;
-
-// This is necessary for the tests to shutdown cleanly.
-mockInstance(WaitTracker);
+mockInstance(Telemetry);
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['sourceControl', 'license', 'auth'],

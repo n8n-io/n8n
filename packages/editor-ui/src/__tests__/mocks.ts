@@ -13,25 +13,25 @@ import { NodeHelpers, Workflow } from 'n8n-workflow';
 import { uuid } from '@jsplumb/util';
 import { defaultMockNodeTypes } from '@/__tests__/defaults';
 import type { INodeUi, ITag, IUsedCredential, IWorkflowDb, WorkflowMetadata } from '@/Interface';
-import type { ProjectSharingData } from '@/features/projects/projects.types';
+import type { ProjectSharingData } from '@/types/projects.types';
+import type { RouteLocationNormalized } from 'vue-router';
 
 export function createTestNodeTypes(data: INodeTypeData = {}): INodeTypes {
-	const getResolvedKey = (key: string) => {
-		const resolvedKeyParts = key.split(/[\/.]/);
-		return resolvedKeyParts[resolvedKeyParts.length - 1];
-	};
-
 	const nodeTypes = {
 		...defaultMockNodeTypes,
 		...Object.keys(data).reduce<INodeTypeData>((acc, key) => {
-			acc[getResolvedKey(key)] = data[key];
+			acc[key] = data[key];
 
 			return acc;
 		}, {}),
 	};
 
+	function getKnownTypes(): IDataObject {
+		return {};
+	}
+
 	function getByName(nodeType: string): INodeType | IVersionedNodeType {
-		return nodeTypes[getResolvedKey(nodeType)].type;
+		return nodeTypes[nodeType].type;
 	}
 
 	function getByNameAndVersion(nodeType: string, version?: number): INodeType {
@@ -39,28 +39,43 @@ export function createTestNodeTypes(data: INodeTypeData = {}): INodeTypes {
 	}
 
 	return {
+		getKnownTypes,
 		getByName,
 		getByNameAndVersion,
 	};
 }
 
-export function createTestWorkflowObject(options: {
+export function createTestWorkflowObject({
+	id = uuid(),
+	name = 'Test Workflow',
+	nodes = [],
+	connections = {},
+	active = false,
+	nodeTypes = {},
+	staticData = {},
+	settings = {},
+	pinData = {},
+}: {
 	id?: string;
 	name?: string;
-	nodes: INode[];
-	connections: IConnections;
+	nodes?: INode[];
+	connections?: IConnections;
 	active?: boolean;
 	nodeTypes?: INodeTypeData;
 	staticData?: IDataObject;
 	settings?: IWorkflowSettings;
 	pinData?: IPinData;
-}) {
+} = {}) {
 	return new Workflow({
-		...options,
-		id: options.id ?? uuid(),
-		active: options.active ?? false,
-		nodeTypes: createTestNodeTypes(options.nodeTypes),
-		connections: options.connections ?? {},
+		id,
+		name,
+		nodes,
+		connections,
+		active,
+		staticData,
+		settings,
+		pinData,
+		nodeTypes: createTestNodeTypes(nodeTypes),
 	});
 }
 
@@ -92,14 +107,38 @@ export function createTestWorkflow(options: {
 	} as IWorkflowDb;
 }
 
-export function createTestNode(
-	node: Partial<INode> & { name: INode['name']; type: INode['type'] },
-): INode {
+export function createTestNode(node: Partial<INode> = {}): INode {
 	return {
 		id: uuid(),
+		name: 'Node',
+		type: 'n8n-nodes-base.test',
 		typeVersion: 1,
 		position: [0, 0] as [number, number],
 		parameters: {},
 		...node,
+	};
+}
+
+export function createTestRouteLocation({
+	path = '',
+	params = {},
+	fullPath = path,
+	hash = '',
+	matched = [],
+	redirectedFrom = undefined,
+	name = path,
+	meta = {},
+	query = {},
+}: Partial<RouteLocationNormalized> = {}): RouteLocationNormalized {
+	return {
+		path,
+		params,
+		fullPath,
+		hash,
+		matched,
+		redirectedFrom,
+		name,
+		meta,
+		query,
 	};
 }

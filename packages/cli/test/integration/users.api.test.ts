@@ -1,11 +1,15 @@
 import Container from 'typedi';
-import type { SuperAgentTest } from 'supertest';
+import { v4 as uuid } from 'uuid';
 
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UsersController } from '@/controllers/users.controller';
 import type { User } from '@db/entities/User';
+import { ProjectRepository } from '@db/repositories/project.repository';
+import { ProjectRelationRepository } from '@db/repositories/projectRelation.repository';
 import { UserRepository } from '@db/repositories/user.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { CacheService } from '@/services/cache/cache.service';
 import { ExecutionService } from '@/executions/execution.service';
 
 import {
@@ -21,24 +25,16 @@ import { randomCredentialPayload } from './shared/random';
 import * as utils from './shared/utils/';
 import * as testDb from './shared/testDb';
 import { mockInstance } from '../shared/mocking';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
+import type { SuperAgentTest } from './shared/types';
 import { createTeamProject, getPersonalProject, linkUserToProject } from './shared/db/projects';
-import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
-import { CacheService } from '@/services/cache/cache.service';
-import { v4 as uuid } from 'uuid';
+import { Telemetry } from '@/telemetry';
 
+mockInstance(Telemetry);
 mockInstance(ExecutionService);
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['users'],
 	enabledFeatures: ['feat:advancedPermissions'],
-});
-
-let projectRepository: ProjectRepository;
-
-beforeAll(() => {
-	projectRepository = Container.get(ProjectRepository);
 });
 
 describe('GET /users', () => {
@@ -240,6 +236,39 @@ describe('GET /users', () => {
 				expect(response.body).toEqual({ data: [{ firstName: expect.any(String) }] });
 			});
 		});
+	});
+});
+
+describe('GET /users/:id/password-reset-link', () => {
+	let owner: User;
+	let admin: User;
+	let member: User;
+
+	beforeAll(async () => {
+		await testDb.truncate(['User']);
+
+		[owner, admin, member] = await Promise.all([createOwner(), createAdmin(), createMember()]);
+	});
+
+	it('should allow owners to generate password reset links for admins and members', async () => {
+		const ownerAgent = testServer.authAgentFor(owner);
+		await ownerAgent.get(`/users/${owner.id}/password-reset-link`).expect(200);
+		await ownerAgent.get(`/users/${admin.id}/password-reset-link`).expect(200);
+		await ownerAgent.get(`/users/${member.id}/password-reset-link`).expect(200);
+	});
+
+	it('should allow admins to generate password reset links for admins and members, but not owners', async () => {
+		const adminAgent = testServer.authAgentFor(admin);
+		await adminAgent.get(`/users/${owner.id}/password-reset-link`).expect(403);
+		await adminAgent.get(`/users/${admin.id}/password-reset-link`).expect(200);
+		await adminAgent.get(`/users/${member.id}/password-reset-link`).expect(200);
+	});
+
+	it('should not allow members to generate password reset links for anyone', async () => {
+		const memberAgent = testServer.authAgentFor(member);
+		await memberAgent.get(`/users/${owner.id}/password-reset-link`).expect(403);
+		await memberAgent.get(`/users/${admin.id}/password-reset-link`).expect(403);
+		await memberAgent.get(`/users/${member.id}/password-reset-link`).expect(403);
 	});
 });
 
@@ -552,6 +581,15 @@ describe('DELETE /users/:id', () => {
 
 		const user = await getUserById(owner.id);
 
+		expect(user).toBeDefined();
+	});
+
+	test('should fail to delete the instance owner', async () => {
+		const admin = await createAdmin();
+		const adminAgent = testServer.authAgentFor(admin);
+		await adminAgent.delete(`/users/${owner.id}`).expect(403);
+
+		const user = await getUserById(owner.id);
 		expect(user).toBeDefined();
 	});
 
@@ -876,7 +914,7 @@ describe('PATCH /users/:id/role', () => {
 			createTeamProject(),
 		]);
 
-		const [credential1, credential2, credential3] = await Promise.all([
+		await Promise.all([
 			saveCredential(randomCredentialPayload(), {
 				user,
 				role: 'credential:owner',

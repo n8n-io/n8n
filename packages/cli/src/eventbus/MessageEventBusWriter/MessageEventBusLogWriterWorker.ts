@@ -103,10 +103,6 @@ if (!isMainThread) {
 					appendMessageSync(data);
 					parentPort?.postMessage({ command, data: true });
 					break;
-				case 'pauseLogging':
-					loggingPaused = true;
-					clearInterval(fileStatTimer);
-					break;
 				case 'initialize':
 					const settings: MessageEventBusLogWriterOptions = {
 						logFullBasePath: (data as MessageEventBusLogWriterOptions).logFullBasePath ?? '',

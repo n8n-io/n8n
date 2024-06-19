@@ -7,7 +7,7 @@ exports[`N8nInput > should render correctly 1`] = `
   <!--v-if-->
   <div class="el-input__wrapper">
     <!-- prefix slot -->
-    <!--v-if--><input class="el-input__inner" name="input" rows="2" maxlength="Infinity" title="" type="text" autocomplete="off" tabindex="0" placeholder=""><!-- suffix slot -->
+    <!--v-if--><input class="el-input__inner" name="input" rows="2" title="" type="text" autocomplete="off" tabindex="0" placeholder=""><!-- suffix slot -->
     <!--v-if-->
   </div><!-- append slot -->
   <!--v-if-->

@@ -92,13 +92,7 @@ export class ActiveWorkflows {
 
 				throw new WorkflowActivationError(
 					`There was a problem activating the workflow: "${error.message}"`,
-					{
-						cause: error,
-						node: triggerNode,
-						level: ['ETIMEDOUT', 'ECONNREFUSED'].some((code) => error.message.includes(code))
-							? 'warning'
-							: 'error',
-					},
+					{ cause: error, node: triggerNode },
 				);
 			}
 		}
@@ -187,7 +181,7 @@ export class ActiveWorkflows {
 			const cronTimeParts = cronTime.split(' ');
 			if (cronTimeParts.length > 0 && cronTimeParts[0].includes('*')) {
 				throw new ApplicationError(
-					'The polling interval is too short. It has to be at least a minute!',
+					'The polling interval is too short. It has to be at least a minute.',
 				);
 			}
 

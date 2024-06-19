@@ -3,14 +3,14 @@ import type { ITelemetrySettings, ITelemetryTrackProperties, IDataObject } from 
 import type { RouteLocation } from 'vue-router';
 
 import type { INodeCreateElement, IUpdateInformation } from '@/Interface';
-import type { IUserNodesPanelSession } from './telemetry.types';
+import type { IUserNodesPanelSession, RudderStack } from './telemetry.types';
 import {
 	APPEND_ATTRIBUTION_DEFAULT_PATH,
 	MICROSOFT_TEAMS_NODE_TYPE,
 	SLACK_NODE_TYPE,
 	TELEGRAM_NODE_TYPE,
 } from '@/constants';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -22,7 +22,7 @@ export class Telemetry {
 
 	private previousPath: string;
 
-	private get rudderStack() {
+	private get rudderStack(): RudderStack | undefined {
 		return window.rudderanalytics;
 	}
 
@@ -92,12 +92,12 @@ export class Telemetry {
 			traits.user_cloud_id = settingsStore.settings?.n8nMetadata?.userId ?? '';
 		}
 		if (userId) {
-			this.rudderStack.identify(
+			this.rudderStack?.identify(
 				`${instanceId}#${userId}${projectId ? '#' + projectId : ''}`,
 				traits,
 			);
 		} else {
-			this.rudderStack.reset();
+			this.rudderStack?.reset();
 		}
 	}
 
@@ -120,7 +120,7 @@ export class Telemetry {
 		}
 	}
 
-	page(route: Route) {
+	page(route: RouteLocation) {
 		if (this.rudderStack) {
 			if (route.path === this.previousPath) {
 				// avoid duplicate requests query is changed for example on search page
@@ -128,8 +128,8 @@ export class Telemetry {
 			}
 			this.previousPath = route.path;
 
-			const pageName = route.name;
-			let properties: { [key: string]: string } = {};
+			const pageName = String(route.name);
+			let properties: Record<string, unknown> = {};
 			if (route.meta?.telemetry && typeof route.meta.telemetry.getProperties === 'function') {
 				properties = route.meta.telemetry.getProperties(route);
 			}
@@ -282,6 +282,9 @@ export class Telemetry {
 
 	private initRudderStack(key: string, url: string, options: IDataObject) {
 		window.rudderanalytics = window.rudderanalytics || [];
+		if (!this.rudderStack) {
+			return;
+		}
 
 		this.rudderStack.methods = [
 			'load',
@@ -298,6 +301,10 @@ export class Telemetry {
 
 		this.rudderStack.factory = (method: string) => {
 			return (...args: unknown[]) => {
+				if (!this.rudderStack) {
+					throw new Error('RudderStack not initialized');
+				}
+
 				const argsCopy = [method, ...args];
 				this.rudderStack.push(argsCopy);
 
@@ -330,7 +337,7 @@ export class Telemetry {
 
 export const telemetry = new Telemetry();
 
-export const TelemetryPlugin: Plugin<{}> = {
+export const TelemetryPlugin: Plugin = {
 	install(app) {
 		app.config.globalProperties.$telemetry = telemetry;
 	},

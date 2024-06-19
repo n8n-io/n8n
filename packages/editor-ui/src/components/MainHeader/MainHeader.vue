@@ -80,17 +80,11 @@ export default defineComponent({
 		workflow(): IWorkflowDb {
 			return this.workflowsStore.workflow;
 		},
-		workflowName(): string {
-			return this.workflowsStore.workflowName;
-		},
 		currentWorkflow(): string {
-			return this.$route.params.name || this.workflowsStore.workflowId;
+			return String(this.$route.params.name || this.workflowsStore.workflowId);
 		},
 		onWorkflowPage(): boolean {
-			return (
-				this.$route.meta &&
-				(this.$route.meta.nodeView || this.$route.meta.keepWorkflowAlive === true)
-			);
+			return !!(this.$route.meta.nodeView || this.$route.meta.keepWorkflowAlive);
 		},
 		readOnly(): boolean {
 			return this.sourceControlStore.preferences.branchReadOnly;
@@ -104,9 +98,21 @@ export default defineComponent({
 	beforeMount() {
 		this.pushConnection.initialize();
 	},
-	mounted() {
+	async mounted() {
 		this.dirtyState = this.uiStore.stateIsDirty;
 		this.syncTabsWithRoute(this.$route);
+
+		if (this.workflowsStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+			const workflowId = this.$route.params.name as string;
+			const workflow = await this.workflowsStore.fetchWorkflow(workflowId);
+
+			this.workflowsStore.setWorkflowId(workflowId);
+
+			if (workflow.active) {
+				this.workflowsStore.setWorkflowActive(workflowId);
+				this.workflowsStore.setActive(workflow.active);
+			}
+		}
 	},
 	beforeUnmount() {
 		this.pushConnection.terminate();
@@ -127,11 +133,15 @@ export default defineComponent({
 				this.activeHeaderTab = MAIN_HEADER_TABS.WORKFLOW;
 			}
 
-			if (to.params.name !== 'new') {
+			if (to.params.name !== 'new' && typeof to.params.name === 'string') {
 				this.workflowToReturnTo = to.params.name;
 			}
 
-			if (from?.name === VIEWS.EXECUTION_PREVIEW && to.params.name === from.params.name) {
+			if (
+				from?.name === VIEWS.EXECUTION_PREVIEW &&
+				to.params.name === from.params.name &&
+				typeof from.params.executionId === 'string'
+			) {
 				this.executionToReturnTo = from.params.executionId;
 			}
 		},

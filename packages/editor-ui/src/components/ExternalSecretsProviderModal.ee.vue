@@ -2,7 +2,6 @@
 import Modal from './Modal.vue';
 import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY, MODAL_CONFIRM } from '@/constants';
 import { computed, onMounted, ref } from 'vue';
-import type { PropType } from 'vue';
 import type { EventBus } from 'n8n-design-system/utils';
 import { useExternalSecretsProvider } from '@/composables/useExternalSecretsProvider';
 import { useI18n } from '@/composables/useI18n';
@@ -21,12 +20,9 @@ import ExternalSecretsProviderImage from '@/components/ExternalSecretsProviderIm
 import ExternalSecretsProviderConnectionSwitch from '@/components/ExternalSecretsProviderConnectionSwitch.ee.vue';
 import { createEventBus } from 'n8n-design-system/utils';
 
-const props = defineProps({
-	data: {
-		type: Object as PropType<{ eventBus: EventBus; name: string }>,
-		default: () => ({}),
-	},
-});
+const props = defineProps<{
+	data: { eventBus: EventBus; name: string };
+}>();
 
 const defaultProviderData: Record<string, Partial<ExternalSecretsProviderData>> = {
 	infisical: {

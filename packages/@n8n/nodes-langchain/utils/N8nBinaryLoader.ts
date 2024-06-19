@@ -3,14 +3,14 @@ import { createWriteStream } from 'fs';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError, BINARY_ENCODING } from 'n8n-workflow';
 
-import type { TextSplitter } from 'langchain/text_splitter';
+import type { TextSplitter } from '@langchain/textsplitters';
 import type { Document } from '@langchain/core/documents';
-import { CSVLoader } from 'langchain/document_loaders/fs/csv';
-import { DocxLoader } from 'langchain/document_loaders/fs/docx';
+import { CSVLoader } from '@langchain/community/document_loaders/fs/csv';
+import { DocxLoader } from '@langchain/community/document_loaders/fs/docx';
 import { JSONLoader } from 'langchain/document_loaders/fs/json';
-import { PDFLoader } from 'langchain/document_loaders/fs/pdf';
+import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf';
 import { TextLoader } from 'langchain/document_loaders/fs/text';
-import { EPubLoader } from 'langchain/document_loaders/fs/epub';
+import { EPubLoader } from '@langchain/community/document_loaders/fs/epub';
 import { file as tmpFile, type DirectoryResult } from 'tmp-promise';
 
 import { getMetadataFiltersValues } from './helpers';
@@ -186,7 +186,7 @@ export class N8nBinaryLoader {
 		}
 
 		const loadedDoc = this.textSplitter
-			? await loader.loadAndSplit(this.textSplitter)
+			? await this.textSplitter.splitDocuments(await loader.load())
 			: await loader.load();
 
 		docs.push(...loadedDoc);

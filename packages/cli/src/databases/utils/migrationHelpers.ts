@@ -190,9 +190,7 @@ export const wrapMigration = (migration: Migration) => {
 			},
 		});
 	} else {
-		throw new ApplicationError(
-			'At least on migration is missing the method `up`. Make sure all migrations are valid.',
-		);
+		throw new ApplicationError(`Migration "${migration.name}" is missing the method \`up\`.`);
 	}
 	if (down) {
 		Object.assign(migration.prototype, {

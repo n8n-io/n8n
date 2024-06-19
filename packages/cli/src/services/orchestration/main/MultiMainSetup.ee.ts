@@ -62,7 +62,7 @@ export class MultiMainSetup extends EventEmitter {
 			if (config.getEnv('multiMainSetup.instanceType') === 'leader') {
 				config.set('multiMainSetup.instanceType', 'follower');
 
-				this.emit('leader-stepdown'); // lost leadership - stop triggers, pollers, pruning, wait-tracking
+				this.emit('leader-stepdown'); // lost leadership - stop triggers, pollers, pruning, wait-tracking, queue recovery
 
 				EventReporter.info('[Multi-main setup] Leader failed to renew leader key');
 			}
@@ -78,7 +78,7 @@ export class MultiMainSetup extends EventEmitter {
 			config.set('multiMainSetup.instanceType', 'follower');
 
 			/**
-			 * Lost leadership - stop triggers, pollers, pruning, wait tracking, license renewal
+			 * Lost leadership - stop triggers, pollers, pruning, wait tracking, license renewal, queue recovery
 			 */
 			this.emit('leader-stepdown');
 
@@ -101,7 +101,7 @@ export class MultiMainSetup extends EventEmitter {
 			await this.redisPublisher.setExpiration(this.leaderKey, this.leaderKeyTtl);
 
 			/**
-			 * Gained leadership - start triggers, pollers, pruning, wait-tracking, license renewal
+			 * Gained leadership - start triggers, pollers, pruning, wait-tracking, license renewal, queue recovery
 			 */
 			this.emit('leader-takeover');
 		} else {

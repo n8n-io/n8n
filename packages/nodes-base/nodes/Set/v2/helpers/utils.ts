@@ -4,12 +4,12 @@ import type {
 	IExecuteFunctions,
 	INode,
 	INodeExecutionData,
-	ValidationResult,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
 	NodeOperationError,
 	deepCopy,
+	getValueDescription,
 	jsonParse,
 	validateFieldType,
 } from 'n8n-workflow';
@@ -56,13 +56,17 @@ export function composeReturnItem(
 	inputItem: INodeExecutionData,
 	newFields: IDataObject,
 	options: SetNodeOptions,
+	nodeVersion: number,
 ) {
 	const newItem: INodeExecutionData = {
 		json: {},
 		pairedItem: { item: itemIndex },
 	};
 
-	if (options.includeBinary && inputItem.binary !== undefined) {
+	const includeBinary =
+		(nodeVersion >= 3.4 && !options.stripBinary && options.include !== 'none') ||
+		(nodeVersion < 3.4 && !!options.includeBinary);
+	if (includeBinary && inputItem.binary !== undefined) {
 		// Create a shallow copy of the binary data so that the old
 		// data references which do not get changed still stay behind
 		// but the incoming data does not get changed.
@@ -185,7 +189,7 @@ export const validateEntry = (
 			} else {
 				throw new NodeOperationError(
 					node,
-					`'${name}' expects a ${type} but we got '${String(value)}' [item ${itemIndex}]`,
+					`'${name}' expects a ${type} but we got ${getValueDescription(value)} [item ${itemIndex}]`,
 					{ description },
 				);
 			}
@@ -200,7 +204,7 @@ export const validateEntry = (
 
 	if (!validationResult.valid) {
 		if (ignoreErrors) {
-			validationResult.newValue = value as ValidationResult['newValue'];
+			return { name, value: value ?? null };
 		} else {
 			const message = `${validationResult.errorMessage} [item ${itemIndex}]`;
 			throw new NodeOperationError(node, message, {
@@ -212,7 +216,7 @@ export const validateEntry = (
 
 	return {
 		name,
-		value: validationResult.newValue === undefined ? null : validationResult.newValue,
+		value: validationResult.newValue ?? null,
 	};
 };
 

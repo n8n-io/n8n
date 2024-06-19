@@ -2,7 +2,7 @@ import { getNextVersions } from '@/api/versions';
 import { STORES, VERSIONS_MODAL_KEY } from '@/constants';
 import type { IVersion, IVersionNotificationSettings, IVersionsState } from '@/Interface';
 import { defineStore } from 'pinia';
-import { useRootStore } from './n8nRoot.store';
+import { useRootStore } from './root.store';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 

@@ -1,7 +1,12 @@
-import type { SuperAgentTest } from 'supertest';
+import { Container } from 'typedi';
 import { IsNull } from '@n8n/typeorm';
 import validator from 'validator';
+
+import config from '@/config';
 import type { User } from '@db/entities/User';
+import { UserRepository } from '@db/repositories/user.repository';
+import { ProjectRepository } from '@db/repositories/project.repository';
+
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import {
 	randomApiKey,
@@ -12,15 +17,38 @@ import {
 } from './shared/random';
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
-import { addApiKey, createUser, createUserShell } from './shared/db/users';
-import Container from 'typedi';
-import { UserRepository } from '@db/repositories/user.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { addApiKey, createOwner, createUser, createUserShell } from './shared/db/users';
+import type { SuperAgentTest } from './shared/types';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['me'] });
 
 beforeEach(async () => {
 	await testDb.truncate(['User']);
+	config.set('publicApi.disabled', false);
+});
+
+describe('When public API is disabled', () => {
+	let owner: User;
+	let authAgent: SuperAgentTest;
+
+	beforeEach(async () => {
+		owner = await createOwner();
+		await addApiKey(owner);
+		authAgent = testServer.authAgentFor(owner);
+		config.set('publicApi.disabled', true);
+	});
+
+	test('POST /me/api-key should 404', async () => {
+		await authAgent.post('/me/api-key').expect(404);
+	});
+
+	test('GET /me/api-key should 404', async () => {
+		await authAgent.get('/me/api-key').expect(404);
+	});
+
+	test('DELETE /me/api-key should 404', async () => {
+		await authAgent.delete('/me/api-key').expect(404);
+	});
 });
 
 describe('Owner shell', () => {

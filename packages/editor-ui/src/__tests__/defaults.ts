@@ -1,11 +1,16 @@
 import type { INodeTypeData, INodeTypeDescription, IN8nUISettings } from 'n8n-workflow';
-import { AGENT_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
+import {
+	AGENT_NODE_TYPE,
+	SET_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+} from '@/constants';
 import nodeTypesJson from '../../../nodes-base/dist/types/nodes.json';
 import aiNodeTypesJson from '../../../@n8n/nodes-langchain/dist/types/nodes.json';
 
 const allNodeTypes = [...nodeTypesJson, ...aiNodeTypesJson];
 
-function findNodeWithName(name: string): INodeTypeDescription {
+export function findNodeTypeDescriptionByName(name: string): INodeTypeDescription {
 	return allNodeTypes.find((node) => node.name === name) as INodeTypeDescription;
 }
 
@@ -13,25 +18,32 @@ export const testingNodeTypes: INodeTypeData = {
 	[MANUAL_TRIGGER_NODE_TYPE]: {
 		sourcePath: '',
 		type: {
-			description: findNodeWithName(MANUAL_TRIGGER_NODE_TYPE),
+			description: findNodeTypeDescriptionByName(MANUAL_TRIGGER_NODE_TYPE),
+		},
+	},
+	[SET_NODE_TYPE]: {
+		sourcePath: '',
+		type: {
+			description: findNodeTypeDescriptionByName(SET_NODE_TYPE),
 		},
 	},
 	[CHAT_TRIGGER_NODE_TYPE]: {
 		sourcePath: '',
 		type: {
-			description: findNodeWithName(CHAT_TRIGGER_NODE_TYPE),
+			description: findNodeTypeDescriptionByName(CHAT_TRIGGER_NODE_TYPE),
 		},
 	},
 	[AGENT_NODE_TYPE]: {
 		sourcePath: '',
 		type: {
-			description: findNodeWithName(AGENT_NODE_TYPE),
+			description: findNodeTypeDescriptionByName(AGENT_NODE_TYPE),
 		},
 	},
 };
 
 export const defaultMockNodeTypes: INodeTypeData = {
 	[MANUAL_TRIGGER_NODE_TYPE]: testingNodeTypes[MANUAL_TRIGGER_NODE_TYPE],
+	[SET_NODE_TYPE]: testingNodeTypes[SET_NODE_TYPE],
 };
 
 export function mockNodeTypesToArray(nodeTypes: INodeTypeData): INodeTypeDescription[] {
@@ -148,6 +160,9 @@ export const defaultSettings: IN8nUISettings = {
 	ai: {
 		enabled: false,
 		provider: '',
+		features: {
+			generateCurl: false,
+		},
 	},
 	workflowHistory: {
 		pruneTime: 0,

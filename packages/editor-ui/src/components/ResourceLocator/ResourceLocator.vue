@@ -144,11 +144,11 @@
 </template>
 
 <script lang="ts">
-import type { IResourceLocatorReqParams, IResourceLocatorResultExpanded } from '@/Interface';
+import type { DynamicNodeParameters, IResourceLocatorResultExpanded } from '@/Interface';
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -197,9 +197,7 @@ export default defineComponent({
 			required: true,
 		},
 		modelValue: {
-			type: [Object, String] as PropType<
-				INodeParameterResourceLocator | NodeParameterValue | undefined
-			>,
+			type: Object as PropType<INodeParameterResourceLocator>,
 		},
 		inputSize: {
 			type: String,
@@ -221,8 +219,7 @@ export default defineComponent({
 			default: '',
 		},
 		expressionComputedValue: {
-			type: String,
-			default: '',
+			type: {} as PropType<unknown>,
 		},
 		isReadOnly: {
 			type: Boolean,
@@ -230,6 +227,7 @@ export default defineComponent({
 		},
 		expressionDisplayValue: {
 			type: String,
+			default: '',
 		},
 		forceShowExpression: {
 			type: Boolean,
@@ -248,6 +246,7 @@ export default defineComponent({
 		},
 		path: {
 			type: String,
+			required: true,
 		},
 		loadOptionsMethod: {
 			type: String,
@@ -308,7 +307,8 @@ export default defineComponent({
 			return !!(node?.credentials && Object.keys(node.credentials).length === 1);
 		},
 		credentialsNotSet(): boolean {
-			const nodeType = this.nodeTypesStore.getNodeType(this.node?.type);
+			if (!this.node) return false;
+			const nodeType = this.nodeTypesStore.getNodeType(this.node.type);
 			if (nodeType) {
 				const usesCredentials =
 					nodeType.credentials !== undefined && nodeType.credentials.length > 0;
@@ -387,8 +387,8 @@ export default defineComponent({
 			filter: string;
 		} {
 			return {
-				parameters: this.node.parameters,
-				credentials: this.node.credentials,
+				parameters: this.node?.parameters ?? {},
+				credentials: this.node?.credentials ?? {},
 				filter: this.searchFilter,
 			};
 		},
@@ -410,7 +410,7 @@ export default defineComponent({
 			return this.cachedResponses[this.currentRequestKey] || null;
 		},
 		currentQueryResults(): IResourceLocatorResultExpanded[] {
-			const results = this.currentResponse ? this.currentResponse.results : [];
+			const results = this.currentResponse?.results ?? [];
 
 			return results.map(
 				(result: INodeListSearchItems): IResourceLocatorResultExpanded => ({
@@ -486,7 +486,7 @@ export default defineComponent({
 		this.eventBus.on('refreshList', this.refreshList);
 		window.addEventListener('resize', this.setWidth);
 
-		useNDVStore().$subscribe((mutation, state) => {
+		useNDVStore().$subscribe((_mutation, _state) => {
 			// Update the width when main panel dimension change
 			this.setWidth();
 		});
@@ -506,10 +506,10 @@ export default defineComponent({
 				this.width = containerRef?.offsetWidth;
 			}
 		},
-		getLinkAlt(entity: string) {
+		getLinkAlt(entity: NodeParameterValue) {
 			if (this.selectedMode === 'list' && entity) {
 				return this.$locale.baseText('resourceLocator.openSpecificResource', {
-					interpolate: { entity, appName: this.appName },
+					interpolate: { entity: entity.toString(), appName: this.appName },
 				});
 			}
 			return this.$locale.baseText('resourceLocator.openResource', {
@@ -520,7 +520,7 @@ export default defineComponent({
 			this.cachedResponses = {};
 			this.trackEvent('User refreshed resource locator list');
 		},
-		onKeyDown(e: MouseEvent) {
+		onKeyDown(e: KeyboardEvent) {
 			if (this.resourceDropdownVisible && !this.isSearchable) {
 				this.eventBus.emit('keyDown', e);
 			}
@@ -555,10 +555,14 @@ export default defineComponent({
 				return;
 			}
 			const id = node.credentials[credentialKey].id;
+			if (!id) {
+				return;
+			}
 			this.uiStore.openExistingCredential(id);
 		},
 		createNewCredential(): void {
-			const nodeType = this.nodeTypesStore.getNodeType(this.node?.type);
+			if (!this.node) return;
+			const nodeType = this.nodeTypesStore.getNodeType(this.node.type);
 			if (!nodeType) {
 				return;
 			}
@@ -644,6 +648,11 @@ export default defineComponent({
 			}
 		},
 		loadResourcesDebounced() {
+			if (this.currentResponse?.error) {
+				// Clear error response immediately when retrying to show loading state
+				delete this.cachedResponses[this.currentRequestKey];
+			}
+
 			void this.callDebounced(this.loadResources, {
 				debounceTime: 1000,
 				trailing: true,
@@ -660,15 +669,24 @@ export default defineComponent({
 			const paramsKey = this.currentRequestKey;
 			const cachedResponse = this.cachedResponses[paramsKey];
 
+			if (this.credentialsNotSet) {
+				this.setResponse(paramsKey, { error: true });
+				return;
+			}
+
 			if (this.requiresSearchFilter && !params.filter) {
 				return;
 			}
 
-			let paginationToken: unknown = null;
+			if (!this.node) {
+				return;
+			}
+
+			let paginationToken: string | undefined;
 
 			try {
 				if (cachedResponse) {
-					const nextPageToken = cachedResponse.nextPageToken;
+					const nextPageToken = cachedResponse.nextPageToken as string;
 					if (nextPageToken) {
 						paginationToken = nextPageToken;
 						this.setResponse(paramsKey, { loading: true });
@@ -690,11 +708,12 @@ export default defineComponent({
 					this.parameter,
 					params.parameters,
 				) as INodeParameters;
-				const loadOptionsMethod = this.getPropertyArgument(this.currentMode, 'searchListMethod') as
-					| string
-					| undefined;
+				const loadOptionsMethod = this.getPropertyArgument(
+					this.currentMode,
+					'searchListMethod',
+				) as string;
 
-				const requestParams: IResourceLocatorReqParams = {
+				const requestParams: DynamicNodeParameters.ResourceLocatorResultsRequest = {
 					nodeTypeAndVersion: {
 						name: this.node.type,
 						version: this.node.typeVersion,
@@ -703,9 +722,15 @@ export default defineComponent({
 					methodName: loadOptionsMethod,
 					currentNodeParameters: resolvedNodeParameters,
 					credentials: this.node.credentials,
-					...(params.filter ? { filter: params.filter } : {}),
-					...(paginationToken ? { paginationToken } : {}),
 				};
+
+				if (params.filter) {
+					requestParams.filter = params.filter;
+				}
+
+				if (paginationToken) {
+					requestParams.paginationToken = paginationToken;
+				}
 
 				const response = await this.nodeTypesStore.getResourceLocatorResults(requestParams);
 

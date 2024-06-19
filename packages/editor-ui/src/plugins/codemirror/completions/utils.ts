@@ -61,21 +61,6 @@ export function longestCommonPrefix(...strings: string[]) {
 export const prefixMatch = (first: string, second: string) =>
 	first.startsWith(second) && first !== second;
 
-/**
- * Make a function to bring selected elements to the start of an array, in order.
- */
-export const setRank = (selected: string[]) => (full: string[]) => {
-	const fullCopy = [...full];
-
-	[...selected].reverse().forEach((s) => {
-		const index = fullCopy.indexOf(s);
-
-		if (index !== -1) fullCopy.unshift(fullCopy.splice(index, 1)[0]);
-	});
-
-	return fullCopy;
-};
-
 export const isPseudoParam = (candidate: string) => {
 	const PSEUDO_PARAMS = ['notice']; // user input disallowed
 
@@ -272,4 +257,16 @@ export const isCompletionSection = (
 	section: CompletionSection | string | undefined,
 ): section is CompletionSection => {
 	return typeof section === 'object';
+};
+
+export const getDisplayType = (value: unknown): string => {
+	if (Array.isArray(value)) {
+		if (value.length > 0) {
+			return `${getDisplayType(value[0])}[]`;
+		}
+		return 'Array';
+	}
+	if (value === null) return 'null';
+	if (typeof value === 'object') return 'Object';
+	return (typeof value).toLocaleLowerCase();
 };

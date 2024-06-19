@@ -158,9 +158,7 @@ export const setupTestServer = ({
 
 					case 'eventBus':
 						const { EventBusController } = await import('@/eventbus/eventBus.controller');
-						const { EventBusControllerEE } = await import('@/eventbus/eventBus.controller.ee');
 						registerController(app, EventBusController);
-						registerController(app, EventBusControllerEE);
 						break;
 
 					case 'auth':
@@ -266,6 +264,13 @@ export const setupTestServer = ({
 					case 'role':
 						const { RoleController } = await import('@/controllers/role.controller');
 						registerController(app, RoleController);
+						break;
+
+					case 'dynamic-node-parameters':
+						const { DynamicNodeParametersController } = await import(
+							'@/controllers/dynamicNodeParameters.controller'
+						);
+						registerController(app, DynamicNodeParametersController);
 						break;
 				}
 			}

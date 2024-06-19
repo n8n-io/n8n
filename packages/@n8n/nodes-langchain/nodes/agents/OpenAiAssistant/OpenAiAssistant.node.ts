@@ -31,7 +31,7 @@ export class OpenAiAssistant implements INodeType {
 			alias: ['LangChain'],
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Agents'],
+				AI: ['Agents', 'Root Nodes'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -392,6 +392,6 @@ export class OpenAiAssistant implements INodeType {
 			}
 		}
 
-		return await this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

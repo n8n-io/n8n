@@ -125,5 +125,5 @@ export async function openAiFunctionsAgentExecute(
 		}
 	}
 
-	return await this.prepareOutputData(returnData);
+	return [returnData];
 }

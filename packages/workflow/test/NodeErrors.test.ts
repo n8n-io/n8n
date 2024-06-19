@@ -81,7 +81,7 @@ describe('NodeErrors tests', () => {
 		const nodeOperationError = new NodeOperationError(node, 'ENOTFOUND test error message');
 
 		expect(nodeOperationError.message).toEqual(
-			'The connection cannot be established, this usually occurs due to an incorrect host(domain) value',
+			'The connection cannot be established, this usually occurs due to an incorrect host (domain) value',
 		);
 	});
 
@@ -89,7 +89,7 @@ describe('NodeErrors tests', () => {
 		const nodeApiError = new NodeApiError(node, { message: 'ENOTFOUND test error message' });
 
 		expect(nodeApiError.message).toEqual(
-			'The connection cannot be established, this usually occurs due to an incorrect host(domain) value',
+			'The connection cannot be established, this usually occurs due to an incorrect host (domain) value',
 		);
 	});
 
