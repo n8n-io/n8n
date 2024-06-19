@@ -266,7 +266,8 @@ export class Jwt implements INodeType {
 						type: 'string',
 						placeholder: 'e.g. 123456',
 						default: '',
-						description: 'The kid (key ID) claim is an optional header claim, used to specify the key for validating the signature.',
+						description:
+							'The kid (key ID) claim is an optional header claim, used to specify the key for validating the signature',
 						displayOptions: {
 							show: {
 								'/operation': ['sign'],
@@ -393,7 +394,7 @@ export class Jwt implements INodeType {
 							algorithm: options.algorithm ?? credentials.algorithm,
 							keyid: options.kid,
 						});
-						
+
 						returnData.push({
 							json: { token },
 							pairedItem: itemIndex,
