@@ -10,8 +10,8 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 import { prepareFieldsArray } from '../utils/utils';
-import { compareItems, validateInputData } from './utils';
-import { flattenKeys } from '@utils/utilities';
+import { validateInputData } from './utils';
+import { compareItems, flattenKeys } from '@utils/utilities';
 
 export class RemoveDuplicates implements INodeType {
 	description: INodeTypeDescription = {
@@ -212,7 +212,7 @@ export class RemoveDuplicates implements INodeType {
 		const removedIndexes: number[] = [];
 		let temp = newItems[0];
 		for (let index = 1; index < newItems.length; index++) {
-			if (compareItems(newItems[index], temp, keys, disableDotNotation, this.getNode())) {
+			if (compareItems(newItems[index], temp, keys, disableDotNotation)) {
 				removedIndexes.push(newItems[index].json.__INDEX as unknown as number);
 			} else {
 				temp = newItems[index];

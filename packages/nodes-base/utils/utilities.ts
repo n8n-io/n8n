@@ -8,7 +8,7 @@ import type {
 
 import { ApplicationError, jsonParse, randomInt } from 'n8n-workflow';
 
-import { isEqual, isNull, merge, isObject, reduce } from 'lodash';
+import { isEqual, isNull, merge, isObject, reduce, get } from 'lodash';
 
 /**
  * Creates an array of elements split into groups the length of `size`.
@@ -95,6 +95,38 @@ export function flatten<T>(nestedArray: T[][]) {
 
 	return result as any;
 }
+
+/**
+ * Compares the values of specified keys in two objects.
+ *
+ * @param {T} obj1 - The first object to compare.
+ * @param {T} obj2 - The second object to compare.
+ * @param {string[]} keys - An array of keys to compare.
+ * @param {boolean} disableDotNotation - Whether to use dot notation to access nested properties.
+ * @returns {boolean} - Whether the values of the specified keys are equal in both objects.
+ */
+export const compareItems = <T extends { json: Record<string, unknown> }>(
+	obj1: T,
+	obj2: T,
+	keys: string[],
+	disableDotNotation: boolean = false,
+): boolean => {
+	let result = true;
+	for (const key of keys) {
+		if (!disableDotNotation) {
+			if (!isEqual(get(obj1.json, key), get(obj2.json, key))) {
+				result = false;
+				break;
+			}
+		} else {
+			if (!isEqual(obj1.json[key], obj2.json[key])) {
+				result = false;
+				break;
+			}
+		}
+	}
+	return result;
+};
 
 export function updateDisplayOptions(
 	displayOptions: IDisplayOptions,

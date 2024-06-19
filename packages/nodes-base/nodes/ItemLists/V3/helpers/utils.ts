@@ -2,38 +2,10 @@ import { NodeVM } from '@n8n/vm2';
 import type {
 	IExecuteFunctions,
 	IBinaryData,
-	INode,
 	INodeExecutionData,
 	GenericValue,
 } from 'n8n-workflow';
 import { ApplicationError, NodeOperationError } from 'n8n-workflow';
-
-import get from 'lodash/get';
-import isEqual from 'lodash/isEqual';
-
-export const compareItems = (
-	obj: INodeExecutionData,
-	obj2: INodeExecutionData,
-	keys: string[],
-	disableDotNotation: boolean,
-	_node: INode,
-) => {
-	let result = true;
-	for (const key of keys) {
-		if (!disableDotNotation) {
-			if (!isEqual(get(obj.json, key), get(obj2.json, key))) {
-				result = false;
-				break;
-			}
-		} else {
-			if (!isEqual(obj.json[key], obj2.json[key])) {
-				result = false;
-				break;
-			}
-		}
-	}
-	return result;
-};
 
 export const prepareFieldsArray = (fields: string | string[], fieldName = 'Fields') => {
 	if (typeof fields === 'string') {

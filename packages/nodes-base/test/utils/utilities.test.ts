@@ -1,4 +1,5 @@
 import {
+	compareItems,
 	flattenKeys,
 	fuzzyCompare,
 	getResolvables,
@@ -207,5 +208,47 @@ describe('flattenKeys', () => {
 			'test.addresses.0.city': city1,
 			'test.addresses.1.city': city2,
 		});
+	});
+});
+
+describe('compareItems', () => {
+	it('should return true if all values of specified keys are equal', () => {
+		const obj1 = { json: { a: 1, b: 2, c: 3 } };
+		const obj2 = { json: { a: 1, b: 2, c: 3 } };
+		const keys = ['a', 'b', 'c'];
+		const result = compareItems(obj1, obj2, keys);
+		expect(result).toBe(true);
+	});
+
+	it('should return false if any values of specified keys are not equal', () => {
+		const obj1 = { json: { a: 1, b: 2, c: 3 } };
+		const obj2 = { json: { a: 1, b: 2, c: 4 } };
+		const keys = ['a', 'b', 'c'];
+		const result = compareItems(obj1, obj2, keys);
+		expect(result).toBe(false);
+	});
+
+	it('should return true if all values of specified keys are equal using dot notation', () => {
+		const obj1 = { json: { a: { b: { c: 1 } } } };
+		const obj2 = { json: { a: { b: { c: 1 } } } };
+		const keys = ['a.b.c'];
+		const result = compareItems(obj1, obj2, keys);
+		expect(result).toBe(true);
+	});
+
+	it('should return false if any values of specified keys are not equal using dot notation', () => {
+		const obj1 = { json: { a: { b: { c: 1 } } } };
+		const obj2 = { json: { a: { b: { c: 2 } } } };
+		const keys = ['a.b.c'];
+		const result = compareItems(obj1, obj2, keys);
+		expect(result).toBe(false);
+	});
+
+	it('should return true if all values of specified keys are equal using bracket notation', () => {
+		const obj1 = { json: { 'a.b': { 'c.d': 1 } } };
+		const obj2 = { json: { 'a.b': { 'c.d': 1 } } };
+		const keys = ['a.b.c.d'];
+		const result = compareItems(obj1, obj2, keys, true);
+		expect(result).toBe(true);
 	});
 });

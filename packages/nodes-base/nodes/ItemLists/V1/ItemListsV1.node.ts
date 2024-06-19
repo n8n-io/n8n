@@ -1,7 +1,6 @@
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	INode,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeBaseDescription,
@@ -17,33 +16,9 @@ import pick from 'lodash/pick';
 import set from 'lodash/set';
 import unset from 'lodash/unset';
 
-const compareItems = (
-	obj: INodeExecutionData,
-	obj2: INodeExecutionData,
-	keys: string[],
-	disableDotNotation: boolean,
-	_node: INode,
-) => {
-	let result = true;
-	for (const key of keys) {
-		if (!disableDotNotation) {
-			if (!isEqual(get(obj.json, key), get(obj2.json, key))) {
-				result = false;
-				break;
-			}
-		} else {
-			if (!isEqual(obj.json[key], obj2.json[key])) {
-				result = false;
-				break;
-			}
-		}
-	}
-	return result;
-};
-
+import { flattenKeys, shuffleArray, compareItems } from '@utils/utilities';
 import { sortByCode } from '../V3/helpers/utils';
 import * as summarize from './summarize.operation';
-import { flattenKeys, shuffleArray } from '@utils/utilities';
 
 export class ItemListsV1 implements INodeType {
 	description: INodeTypeDescription;
@@ -1211,7 +1186,7 @@ return 0;`,
 				const removedIndexes: number[] = [];
 				let temp = newItems[0];
 				for (let index = 1; index < newItems.length; index++) {
-					if (compareItems(newItems[index], temp, keys, disableDotNotation, this.getNode())) {
+					if (compareItems(newItems[index], temp, keys, disableDotNotation)) {
 						removedIndexes.push(newItems[index].json.__INDEX as unknown as number);
 					} else {
 						temp = newItems[index];
