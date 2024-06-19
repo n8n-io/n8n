@@ -1,6 +1,7 @@
 import type { IRestApiContext } from '@/Interface';
 import { makeRestApiRequest } from '@/utils/apiUtils';
-import type { IDataObject, MessageEventBusDestinationOptions } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow/Interfaces';
+import type { MessageEventBusDestinationOptions } from 'n8n-workflow/MessageEventBus';
 
 export type ApiMessageEventBusDestinationOptions = MessageEventBusDestinationOptions & {
 	id: string;

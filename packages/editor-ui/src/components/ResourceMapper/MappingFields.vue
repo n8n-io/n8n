@@ -8,7 +8,7 @@ import type {
 	NodePropertyTypes,
 	ResourceMapperField,
 	ResourceMapperValue,
-} from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterIssues from '@/components//ParameterIssues.vue';
 import ParameterOptions from '@/components//ParameterOptions.vue';

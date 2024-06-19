@@ -1,5 +1,5 @@
 import type { Completion } from '@codemirror/autocomplete';
-import type { DocMetadata, DocMetadataArgument, DocMetadataExample } from 'n8n-workflow';
+import type { DocMetadata, DocMetadataArgument, DocMetadataExample } from 'n8n-workflow/Extensions';
 import { sanitizeHtml } from '@/utils/htmlUtils';
 import { i18n } from '@/plugins/i18n';
 

@@ -46,18 +46,23 @@
 </template>
 
 <script setup lang="ts">
-import type { IUpdateInformation, InputSize } from '@/Interface';
+import { computed } from 'vue';
+import { useRouter } from 'vue-router';
+import { createEventBus, type EventBus } from 'n8n-design-system/utils/event-bus';
+import type { InputSize } from 'n8n-design-system/types/input';
+import type {
+	IDataObject,
+	INodeProperties,
+	INodePropertyMode,
+	IParameterLabel,
+	NodeParameterValueType,
+	Result,
+} from 'n8n-workflow/Interfaces';
+import { isResourceLocatorValue } from 'n8n-workflow/WorkflowDataProxy';
+
+import type { IUpdateInformation } from '@/Interface';
 import ParameterInput from '@/components/ParameterInput.vue';
 import InputHint from '@/components/ParameterInputHint.vue';
-import {
-	isResourceLocatorValue,
-	type IDataObject,
-	type INodeProperties,
-	type INodePropertyMode,
-	type IParameterLabel,
-	type NodeParameterValueType,
-	type Result,
-} from 'n8n-workflow';
 
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import useEnvironmentsStore from '@/stores/environments.ee.store';
@@ -65,10 +70,6 @@ import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { stringifyExpressionResult } from '@/utils/expressions';
 import { isValueExpression, parseResourceMapperFieldName } from '@/utils/nodeTypesUtils';
-import type { EventBus } from 'n8n-design-system/utils';
-import { createEventBus } from 'n8n-design-system/utils';
-import { computed } from 'vue';
-import { useRouter } from 'vue-router';
 
 type Props = {
 	parameter: INodeProperties;

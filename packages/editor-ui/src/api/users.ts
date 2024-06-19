@@ -5,7 +5,7 @@ import type {
 	IUserResponse,
 	InvitableRoleName,
 } from '@/Interface';
-import type { IDataObject, IUserSettings } from 'n8n-workflow';
+import type { IDataObject, IUserSettings } from 'n8n-workflow/Interfaces';
 import { makeRestApiRequest } from '@/utils/apiUtils';
 
 export interface IUpdateUserSettingsReqPayload {

@@ -42,7 +42,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { computed, onMounted, onBeforeUnmount } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow/Interfaces';
 
 interface Props {
 	rootNode: INodeUi;

@@ -6,7 +6,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useRootStore } from '@/stores/root.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow/Interfaces';
 import type { INodeUi } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { createWorkflowFromTemplate } from '@/utils/templates/templateActions';

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
 import dateformat from 'dateformat';
-import type { UserAction } from 'n8n-design-system';
+import type { UserAction } from 'n8n-design-system/types/user';
+
 import type {
 	WorkflowHistory,
 	WorkflowVersionId,

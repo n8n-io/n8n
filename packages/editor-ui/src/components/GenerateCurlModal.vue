@@ -40,11 +40,11 @@
 import Modal from '@/components/Modal.vue';
 import { GENERATE_CURL_MODAL_KEY } from '@/constants';
 import { ref } from 'vue';
-import { createEventBus } from 'n8n-design-system/utils';
+import { createEventBus } from 'n8n-design-system/utils/event-bus';
+import type { IFormInput } from 'n8n-design-system/types/form';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@/composables/useI18n';
 import { useAIStore } from '@/stores/ai.store';
-import type { IFormInput } from 'n8n-design-system';
 import { useToast } from '@/composables/useToast';
 import { useImportCurlCommand } from '@/composables/useImportCurlCommand';
 import { useUIStore } from '@/stores/ui.store';

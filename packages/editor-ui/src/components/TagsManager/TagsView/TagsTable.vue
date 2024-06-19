@@ -109,10 +109,11 @@
 
 <script lang="ts">
 import type { ElTable } from 'element-plus';
+import { defineComponent } from 'vue';
+import type { N8nInput } from 'n8n-design-system/components';
+
 import { MAX_TAG_NAME_LENGTH } from '@/constants';
 import type { ITagRow } from '@/Interface';
-import { defineComponent } from 'vue';
-import type { N8nInput } from 'n8n-design-system';
 
 type TableRef = InstanceType<typeof ElTable>;
 type N8nInputRef = InstanceType<typeof N8nInput>;

@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import Modal from './Modal.vue';
 import { SOURCE_CONTROL_PULL_MODAL_KEY } from '@/constants';
-import type { EventBus } from 'n8n-design-system/utils';
+import type { EventBus } from 'n8n-design-system/utils/event-bus';
 import type { SourceControlAggregatedFile } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { useLoadingService } from '@/composables/useLoadingService';

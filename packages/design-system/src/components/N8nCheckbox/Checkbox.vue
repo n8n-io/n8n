@@ -23,22 +23,20 @@
 <script lang="ts" setup>
 import { ref } from 'vue';
 import { ElCheckbox } from 'element-plus';
-import type { CheckboxValueType } from 'element-plus';
-import N8nInputLabel from '../N8nInputLabel';
+import type { CheckboxValueType, CheckboxProps } from 'element-plus';
+import N8nInputLabel from '../N8nInputLabel/InputLabel.vue';
 
 const LABEL_SIZE = ['small', 'medium'] as const;
 
-interface CheckboxProps {
+defineOptions({ name: 'N8nCheckbox' });
+
+interface Props extends Pick<CheckboxProps, 'disabled' | 'indeterminate' | 'modelValue'> {
 	label?: string;
-	disabled?: boolean;
 	tooltipText?: string;
-	indeterminate?: boolean;
-	modelValue?: boolean;
 	labelSize?: (typeof LABEL_SIZE)[number];
 }
 
-defineOptions({ name: 'N8nCheckbox' });
-withDefaults(defineProps<CheckboxProps>(), {
+withDefaults(defineProps<Props>(), {
 	disabled: false,
 	indeterminate: false,
 	modelValue: false,

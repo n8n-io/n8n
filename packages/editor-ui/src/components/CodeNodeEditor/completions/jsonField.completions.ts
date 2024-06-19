@@ -4,7 +4,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { isAllowedInDotNotation } from '@/plugins/codemirror/completions/utils';
 import { useI18n } from '@/composables/useI18n';
-import type { IPinData, IRunData, IDataObject } from 'n8n-workflow';
+import type { IPinData, IRunData, IDataObject } from 'n8n-workflow/Interfaces';
 
 function useJsonFieldCompletions() {
 	const i18n = useI18n();

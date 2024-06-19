@@ -1,30 +1,21 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
-import { uid } from '../../utils';
-import { ElColorPicker } from 'element-plus';
-import N8nInput from '../N8nInput';
-
-export type ColorPickerProps = {
-	disabled?: boolean;
-	size?: 'small' | 'large';
-	showAlpha?: boolean;
-	colorFormat?: 'hex' | 'rgb' | 'hsl' | 'hsv';
-	popperClass?: string;
-	predefine?: string[];
-	modelValue?: string;
-	showInput?: boolean;
-	name?: string;
-};
+import { ElColorPicker, type ColorPickerProps } from 'element-plus';
+import { uid } from '../../utils/uid';
+import N8nInput from '../N8nInput/Input.vue';
 
 defineOptions({ name: 'N8nColorPicker' });
-const props = withDefaults(defineProps<ColorPickerProps>(), {
-	disabled: false,
+
+interface Props
+	extends Pick<ColorPickerProps, 'disabled' | 'showAlpha' | 'colorFormat' | 'popperClass'> {
+	modelValue: string | undefined;
+	size?: 'small' | 'large';
+	showInput?: boolean;
+	name?: string;
+}
+
+const props = withDefaults(defineProps<Props>(), {
 	size: 'large',
-	showAlpha: false,
-	colorFormat: 'hex',
-	popperClass: '',
-	predefine: undefined,
-	modelValue: undefined,
 	showInput: true,
 	name: uid('color-picker'),
 });

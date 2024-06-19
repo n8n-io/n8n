@@ -3,7 +3,7 @@ import { computed, h, provide, toRef, useCssModule } from 'vue';
 import type { CanvasConnectionPort, CanvasElementPortWithPosition } from '@/types';
 
 import { Handle } from '@vue-flow/core';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow/Interfaces';
 import CanvasHandleMainInput from '@/components/canvas/elements/handles/render-types/CanvasHandleMainInput.vue';
 import CanvasHandleMainOutput from '@/components/canvas/elements/handles/render-types/CanvasHandleMainOutput.vue';
 import CanvasHandleNonMain from '@/components/canvas/elements/handles/render-types/CanvasHandleNonMain.vue';

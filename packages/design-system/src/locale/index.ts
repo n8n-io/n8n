@@ -1,11 +1,6 @@
 import defaultLang from '../locale/lang/en';
 import createFormatTemplate from './format';
-import type { N8nLocale, N8nLocaleTranslateFn } from 'n8n-design-system/types';
-
-// import { ElementLocale } from 'element-plus';
-// import ElementLang from 'element-plus/lib/locale/lang/en';
-//
-// ElementLocale.use(ElementLang);
+import type { N8nLocale, N8nLocaleTranslateFn } from '../types/i18n';
 
 const format = createFormatTemplate();
 let lang = defaultLang;

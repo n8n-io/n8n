@@ -47,15 +47,19 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import { mapStores } from 'pinia';
+import {
+	type MessageEventBusDestinationOptions,
+	defaultMessageEventBusDestinationOptions,
+} from 'n8n-workflow/MessageEventBus';
+import { deepCopy } from 'n8n-workflow/utils';
+import type { EventBus } from 'n8n-design-system/utils/event-bus';
+
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
 import { useMessage } from '@/composables/useMessage';
 import { useLogStreamingStore } from '@/stores/logStreaming.store';
-import type { PropType } from 'vue';
-import { mapStores } from 'pinia';
-import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
-import { deepCopy, defaultMessageEventBusDestinationOptions } from 'n8n-workflow';
 import type { BaseTextKey } from '@/plugins/i18n';
-import type { EventBus } from 'n8n-design-system';
 
 export const DESTINATION_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',

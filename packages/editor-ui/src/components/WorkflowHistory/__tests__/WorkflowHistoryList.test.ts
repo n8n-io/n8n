@@ -2,7 +2,8 @@ import { within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createPinia, setActivePinia } from 'pinia';
 import { faker } from '@faker-js/faker';
-import type { UserAction } from 'n8n-design-system';
+import type { UserAction } from 'n8n-design-system/types/user';
+
 import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowHistoryList from '@/components/WorkflowHistory/WorkflowHistoryList.vue';
 import type { WorkflowHistoryActionTypes } from '@/types/workflowHistory';

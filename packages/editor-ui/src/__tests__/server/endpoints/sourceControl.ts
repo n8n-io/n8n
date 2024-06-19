@@ -1,6 +1,6 @@
 import type { Server, Request } from 'miragejs';
 import { Response } from 'miragejs';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow/utils';
 import type { AppSchema } from '@/__tests__/server/types';
 import type { SourceControlPreferences } from '@/Interface';
 

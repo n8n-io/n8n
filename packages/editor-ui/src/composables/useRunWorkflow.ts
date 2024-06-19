@@ -11,11 +11,12 @@ import type {
 	IRunExecutionData,
 	ITaskData,
 	IPinData,
-	Workflow,
 	StartNodeData,
 	IRun,
-} from 'n8n-workflow';
-import { NodeConnectionType, FORM_TRIGGER_PATH_IDENTIFIER } from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
+import { NodeConnectionType } from 'n8n-workflow/Interfaces';
+import { FORM_TRIGGER_PATH_IDENTIFIER } from 'n8n-workflow/Constants';
+import type { Workflow } from 'n8n-workflow/Workflow';
 
 import { useToast } from '@/composables/useToast';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';

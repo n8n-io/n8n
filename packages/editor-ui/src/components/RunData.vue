@@ -585,10 +585,11 @@ import type {
 	IRunData,
 	IRunExecutionData,
 	NodeHint,
-	NodeError,
-	Workflow,
-} from 'n8n-workflow';
-import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
+import * as NodeHelpers from 'n8n-workflow/NodeHelpers';
+import { NodeConnectionType } from 'n8n-workflow/Interfaces';
+import type { Workflow } from 'n8n-workflow/Workflow';
+import type { NodeError } from 'n8n-workflow/errors';
 
 import type {
 	IExecutionResponse,

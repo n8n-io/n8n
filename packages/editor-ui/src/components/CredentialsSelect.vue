@@ -49,7 +49,7 @@
 </template>
 
 <script lang="ts">
-import type { ICredentialType } from 'n8n-workflow';
+import type { ICredentialType } from 'n8n-workflow/Interfaces';
 import { defineComponent } from 'vue';
 import ScopesNotice from '@/components/ScopesNotice.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';

@@ -169,30 +169,33 @@
 <script lang="ts">
 import { get, set, unset } from 'lodash-es';
 import { mapStores } from 'pinia';
-import { useLogStreamingStore } from '@/stores/logStreaming.store';
-import { useNDVStore } from '@/stores/ndv.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import ParameterInputList from '@/components/ParameterInputList.vue';
-import type { IMenuItem, INodeUi, IUpdateInformation } from '@/Interface';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 import type {
 	IDataObject,
 	NodeParameterValue,
-	MessageEventBusDestinationOptions,
 	INodeParameters,
 	NodeParameterValueType,
-} from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
 import {
-	deepCopy,
+	type MessageEventBusDestinationOptions,
 	messageEventBusDestinationTypeNames,
 	defaultMessageEventBusDestinationOptions,
 	defaultMessageEventBusDestinationWebhookOptions,
 	MessageEventBusDestinationTypeNames,
 	defaultMessageEventBusDestinationSyslogOptions,
 	defaultMessageEventBusDestinationSentryOptions,
-} from 'n8n-workflow';
-import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
+} from 'n8n-workflow/MessageEventBus';
+import { deepCopy } from 'n8n-workflow/utils';
+import { createEventBus, type EventBus } from 'n8n-design-system/utils/event-bus';
+import type { IMenuItem } from 'n8n-design-system/types/menu';
+
 import { LOG_STREAM_MODAL_KEY, MODAL_CONFIRM } from '@/constants';
+import { useLogStreamingStore } from '@/stores/logStreaming.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import ParameterInputList from '@/components/ParameterInputList.vue';
+import type { INodeUi, IUpdateInformation } from '@/Interface';
 import Modal from '@/components/Modal.vue';
 import { useMessage } from '@/composables/useMessage';
 import { useUIStore } from '@/stores/ui.store';
@@ -207,8 +210,6 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import InlineNameEdit from '@/components/InlineNameEdit.vue';
 import SaveButton from '@/components/SaveButton.vue';
 import EventSelection from '@/components/SettingsLogStreaming/EventSelection.ee.vue';
-import type { EventBus } from 'n8n-design-system';
-import { createEventBus } from 'n8n-design-system/utils';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useRootStore } from '@/stores/root.store';
 

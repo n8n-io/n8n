@@ -60,7 +60,7 @@ import {
 } from '@/constants';
 import CommunityPackageCard from '@/components/CommunityPackageCard.vue';
 import { useToast } from '@/composables/useToast';
-import type { PublicInstalledPackage } from 'n8n-workflow';
+import type { PublicInstalledPackage } from 'n8n-workflow/Interfaces';
 
 import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 import { useUIStore } from '@/stores/ui.store';

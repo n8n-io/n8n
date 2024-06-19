@@ -1,5 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia';
-import type { IN8nUISettings } from 'n8n-workflow';
+import type { IN8nUISettings } from 'n8n-workflow/Interfaces';
 import { useWorkflowHistoryStore } from '@/stores/workflowHistory.store';
 import { useSettingsStore } from '@/stores/settings.store';
 

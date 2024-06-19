@@ -106,14 +106,16 @@
 </template>
 
 <script lang="ts">
-import type { CloudPlanAndUsageData, IExecutionResponse, IMenuItem, IVersion } from '@/Interface';
-import GiftNotificationIcon from './GiftNotificationIcon.vue';
+import { defineComponent } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { mapStores } from 'pinia';
+import type { IMenuItem } from 'n8n-design-system/types/menu';
 
+import type { CloudPlanAndUsageData, IExecutionResponse, IVersion } from '@/Interface';
+import GiftNotificationIcon from './GiftNotificationIcon.vue';
 import { useMessage } from '@/composables/useMessage';
 import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
 import { useUserHelpers } from '@/composables/useUserHelpers';
-import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -131,7 +133,6 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useDebounce } from '@/composables/useDebounce';
 import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
 import ProjectNavigation from '@/components/Projects/ProjectNavigation.vue';
-import { useRoute, useRouter } from 'vue-router';
 
 export default defineComponent({
 	name: 'MainSidebar',

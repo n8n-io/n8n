@@ -118,7 +118,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { createEventBus } from 'n8n-design-system/utils';
+import { createEventBus } from 'n8n-design-system/utils/event-bus';
 
 import Modal from './Modal.vue';
 import {
@@ -140,7 +140,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
-import type { ITelemetryTrackProperties } from 'n8n-workflow';
+import type { ITelemetryTrackProperties } from 'n8n-workflow/Interfaces';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { isNavigationFailure } from 'vue-router';
 import ProjectSharing from '@/components/Projects/ProjectSharing.vue';

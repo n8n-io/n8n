@@ -92,8 +92,12 @@ import { useSegment } from '@/stores/segment.store';
 import { getMappedResult } from '@/utils/mappingUtils';
 import { hasExpressionMapping, hasOnlyListMode, isValueExpression } from '@/utils/nodeTypesUtils';
 import { isResourceLocatorValue } from '@/utils/typeGuards';
-import { createEventBus } from 'n8n-design-system/utils';
-import type { INodeProperties, IParameterLabel, NodeParameterValueType } from 'n8n-workflow';
+import { createEventBus } from 'n8n-design-system/utils/event-bus';
+import type {
+	INodeProperties,
+	IParameterLabel,
+	NodeParameterValueType,
+} from 'n8n-workflow/Interfaces';
 import InlineExpressionTip from './InlineExpressionEditor/InlineExpressionTip.vue';
 
 type Props = {

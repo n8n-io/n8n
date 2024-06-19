@@ -4,7 +4,7 @@ import type {
 	IRestApiContext,
 	InvitableRoleName,
 } from '@/Interface';
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow/Interfaces';
 import { makeRestApiRequest } from '@/utils/apiUtils';
 
 type AcceptInvitationParams = {

@@ -40,7 +40,7 @@
 </template>
 
 <script lang="ts">
-import type { INodeProperties, NodeParameterValueType } from 'n8n-workflow';
+import type { INodeProperties, NodeParameterValueType } from 'n8n-workflow/Interfaces';
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { isResourceLocatorValue } from '@/utils/typeGuards';

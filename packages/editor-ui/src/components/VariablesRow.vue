@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import type { ComponentPublicInstance } from 'vue';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
-import type { Rule, RuleGroup } from '@/Interface';
+import type { Rule, RuleGroup } from 'n8n-design-system/types/form';
+
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import { useClipboard } from '@/composables/useClipboard';

@@ -1,5 +1,5 @@
 import N8nInput from './Input.vue';
-import N8nIcon from '../N8nIcon';
+import N8nIcon from '../N8nIcon/Icon.vue';
 import { action } from '@storybook/addon-actions';
 import type { StoryFn } from '@storybook/vue3';
 

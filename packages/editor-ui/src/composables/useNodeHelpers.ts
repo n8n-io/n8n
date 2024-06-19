@@ -5,7 +5,9 @@ import {
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 } from '@/constants';
 
-import { NodeHelpers, NodeConnectionType, ExpressionEvaluatorProxy } from 'n8n-workflow';
+import * as NodeHelpers from 'n8n-workflow/NodeHelpers';
+import * as ExpressionEvaluatorProxy from 'n8n-workflow/ExpressionEvaluatorProxy';
+import { NodeConnectionType } from 'n8n-workflow/Interfaces';
 import type {
 	INodeProperties,
 	INodeCredentialDescription,
@@ -15,7 +17,6 @@ import type {
 	INodeIssueObjectProperty,
 	ConnectionTypes,
 	INodeInputConfiguration,
-	Workflow,
 	INodeExecutionData,
 	ITaskDataConnections,
 	IRunData,
@@ -26,7 +27,8 @@ import type {
 	INodeCredentialsDetails,
 	INodeParameters,
 	ITaskData,
-} from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
+import type { Workflow } from 'n8n-workflow/Workflow';
 
 import type {
 	ICredentialsResponse,

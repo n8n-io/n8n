@@ -3,7 +3,7 @@ import { Response } from 'miragejs';
 import type { SamlPreferences, SamlPreferencesExtractedData } from '@/Interface';
 import { faker } from '@faker-js/faker';
 import type { AppSchema } from '@/__tests__/server/types';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow/utils';
 
 let samlConfig: SamlPreferences & SamlPreferencesExtractedData = {
 	metadata: '<?xml version="1.0"?>',

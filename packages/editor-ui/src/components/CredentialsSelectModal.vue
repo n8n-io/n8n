@@ -65,7 +65,7 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import { createEventBus } from 'n8n-design-system/utils';
+import { createEventBus } from 'n8n-design-system/utils/event-bus';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export default defineComponent({

@@ -14,7 +14,7 @@ import {
 } from '@/models/history';
 import type { Connection } from '@vue-flow/core';
 import { getUniqueNodeName, mapCanvasConnectionToLegacyConnection } from '@/utils/canvasUtilsV2';
-import type { IConnection } from 'n8n-workflow';
+import type { IConnection } from 'n8n-workflow/Interfaces';
 import { useNDVStore } from '@/stores/ndv.store';
 
 export function useCanvasOperations() {

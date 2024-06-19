@@ -4,7 +4,7 @@ import { snakeCase } from 'lodash-es';
 import { useSessionStorage } from '@vueuse/core';
 
 import { N8nButton, N8nInput, N8nTooltip } from 'n8n-design-system/components';
-import type { CodeExecutionMode, INodeExecutionData } from 'n8n-workflow';
+import type { CodeExecutionMode, INodeExecutionData } from 'n8n-workflow/Interfaces';
 
 import type { BaseTextKey } from '@/plugins/i18n';
 import type { INodeUi, Schema } from '@/Interface';

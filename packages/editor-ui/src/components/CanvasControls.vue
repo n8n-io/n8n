@@ -62,7 +62,7 @@ import { onBeforeMount, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useCanvasStore } from '@/stores/canvas.store';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
-import { useDeviceSupport } from 'n8n-design-system';
+import { useDeviceSupport } from 'n8n-design-system/composables/useDeviceSupport';
 
 const canvasStore = useCanvasStore();
 const { zoomToFit, zoomIn, zoomOut, resetZoom } = canvasStore;

@@ -13,16 +13,11 @@ defineOptions({
 	inheritAttrs: false,
 });
 
-const props = defineProps({
-	// @ts-expect-error TS doesn't understand this but it works
-	...RouterLink.props,
-	// Make to optional
-	to: {
-		type: [String, Object] as unknown as () => string | RouterLinkProps['to'] | undefined,
-		default: undefined,
-	},
-	// <a> element "props" are passed as attributes
-}) as Partial<RouterLinkProps>;
+interface Props extends Omit<RouterLinkProps, 'to'> {
+	to?: string | RouterLinkProps['to'];
+}
+
+const props = defineProps<Props>();
 const attrs = useAttrs();
 </script>
 

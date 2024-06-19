@@ -58,8 +58,8 @@ import {
 import { useI18n } from '@/composables/useI18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { SimplifiedNodeType } from '@/Interface';
-import type { INodeTypeDescription, Themed } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import type { INodeTypeDescription, Themed } from 'n8n-workflow/Interfaces';
+import { NodeConnectionType } from 'n8n-workflow/Interfaces';
 import { useTemplatesStore } from '@/stores/templates.store';
 
 export interface NodeViewItemSection {

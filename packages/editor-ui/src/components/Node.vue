@@ -193,7 +193,8 @@ import {
 	SIMULATE_TRIGGER_NODE_TYPE,
 	WAIT_TIME_UNLIMITED,
 } from '@/constants';
-import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow/Interfaces';
+import * as NodeHelpers from 'n8n-workflow/NodeHelpers';
 import type {
 	ConnectionTypes,
 	ExecutionSummary,
@@ -201,9 +202,9 @@ import type {
 	INodeOutputConfiguration,
 	INodeTypeDescription,
 	ITaskData,
-	NodeOperationError,
-	Workflow,
-} from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
+import type { NodeOperationError } from 'n8n-workflow/errors';
+import type { Workflow } from 'n8n-workflow/Workflow';
 
 import NodeIcon from '@/components/NodeIcon.vue';
 import TitledList from '@/components/TitledList.vue';
@@ -221,7 +222,7 @@ import { type ContextMenuTarget, useContextMenu } from '@/composables/useContext
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { usePinnedData } from '@/composables/usePinnedData';
-import { useDeviceSupport } from 'n8n-design-system';
+import { useDeviceSupport } from 'n8n-design-system/composables/useDeviceSupport';
 import { useDebounce } from '@/composables/useDebounce';
 import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 import { useCanvasStore } from '@/stores/canvas.store';

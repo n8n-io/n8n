@@ -4,6 +4,8 @@ import { history } from '@codemirror/commands';
 import { type EditorState, Prec, type SelectionRange } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, toValue, watch } from 'vue';
+import type { IDataObject } from 'n8n-workflow/Interfaces';
+import { createEventBus, type EventBus } from 'n8n-design-system/utils/event-bus';
 
 import { useExpressionEditor } from '@/composables/useExpressionEditor';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
@@ -17,8 +19,6 @@ import { n8nAutocompletion, n8nLang } from '@/plugins/codemirror/n8nLang';
 import { useNDVStore } from '@/stores/ndv.store';
 import type { Segment } from '@/types/expressions';
 import { removeExpressionPrefix } from '@/utils/expressions';
-import { createEventBus, type EventBus } from 'n8n-design-system/utils';
-import type { IDataObject } from 'n8n-workflow';
 import { inputTheme } from './theme';
 import { infoBoxTooltips } from '@/plugins/codemirror/tooltips/InfoBoxTooltip';
 

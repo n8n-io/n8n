@@ -1,29 +1,29 @@
 import { computed, getCurrentInstance, ref } from 'vue';
+import type { EndpointSpec } from '@jsplumb/common';
+import { useDeviceSupport } from 'n8n-design-system/composables/useDeviceSupport';
+import { NodeConnectionType } from 'n8n-workflow/Interfaces';
+import * as NodeHelpers from 'n8n-workflow/NodeHelpers';
+import type {
+	ConnectionTypes,
+	INodeInputConfiguration,
+	INodeTypeDescription,
+	INodeOutputConfiguration,
+} from 'n8n-workflow/Interfaces';
+import type { Workflow } from 'n8n-workflow/Workflow';
 
-import type { INodeUi } from '@/Interface';
 import {
 	NO_OP_NODE_TYPE,
 	NODE_CONNECTION_TYPE_ALLOW_MULTIPLE,
 	NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS,
 	NODE_MIN_INPUT_ITEMS_COUNT,
 } from '@/constants';
-
-import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
-import type {
-	ConnectionTypes,
-	INodeInputConfiguration,
-	INodeTypeDescription,
-	INodeOutputConfiguration,
-	Workflow,
-} from 'n8n-workflow';
+import type { INodeUi } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 import type { Endpoint, EndpointOptions } from '@jsplumb/core';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
-import type { EndpointSpec } from '@jsplumb/common';
-import { useDeviceSupport } from 'n8n-design-system';
 import type { N8nEndpointLabelLength } from '@/plugins/jsplumb/N8nPlusEndpointType';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import { useI18n } from '@/composables/useI18n';

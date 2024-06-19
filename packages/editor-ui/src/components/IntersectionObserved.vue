@@ -7,8 +7,7 @@
 <script lang="ts">
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
-import type { EventBus } from 'n8n-design-system/utils';
-import { createEventBus } from 'n8n-design-system/utils';
+import { createEventBus, type EventBus } from 'n8n-design-system/utils/event-bus';
 
 export default defineComponent({
 	name: 'IntersectionObserved',

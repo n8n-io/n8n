@@ -16,8 +16,8 @@
 </template>
 
 <script setup lang="ts">
-import type { EventBus } from 'n8n-design-system';
 import { onBeforeUnmount, onMounted, ref } from 'vue';
+import type { EventBus } from 'n8n-design-system/utils/event-bus';
 import ExpandableInputBase from './ExpandableInputBase.vue';
 
 type Props = {

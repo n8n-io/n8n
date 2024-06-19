@@ -14,7 +14,7 @@ import type {
 	INodeProperties,
 	INodeTypeDescription,
 	NodeParameterValue,
-} from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
 import { computed, onMounted, ref } from 'vue';
 
 export interface Props {

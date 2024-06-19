@@ -58,7 +58,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IWorkflowDataUpdate } from '@/Interface';
 import { useUsersStore } from '@/stores/users.store';
-import { createEventBus } from 'n8n-design-system/utils';
+import { createEventBus } from 'n8n-design-system/utils/event-bus';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRouter } from 'vue-router';

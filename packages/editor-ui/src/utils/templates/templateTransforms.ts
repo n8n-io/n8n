@@ -6,7 +6,7 @@ import type {
 	INodeCredentialDescription,
 	INodeCredentials,
 	INodeCredentialsDetails,
-} from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
 
 export type IWorkflowTemplateNodeWithCredentials = IWorkflowTemplateNode &
 	Required<Pick<IWorkflowTemplateNode, 'credentials'>>;

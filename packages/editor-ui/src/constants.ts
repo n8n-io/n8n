@@ -3,7 +3,7 @@ import type {
 	EnterpriseEditionFeatureValue,
 	NodeCreatorOpenSource,
 } from './Interface';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow/Interfaces';
 import type { CanvasNodeHandleInjectionData, CanvasNodeInjectionData } from '@/types';
 import type { InjectionKey } from 'vue';
 

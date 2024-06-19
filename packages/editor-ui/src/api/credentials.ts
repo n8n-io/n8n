@@ -10,7 +10,7 @@ import type {
 	IDataObject,
 	INodeCredentialTestRequest,
 	INodeCredentialTestResult,
-} from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
 import axios from 'axios';
 
 export async function getCredentialTypes(baseUrl: string): Promise<ICredentialType[]> {

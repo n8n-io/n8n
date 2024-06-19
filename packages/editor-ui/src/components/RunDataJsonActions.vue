@@ -40,7 +40,7 @@ import type { PropType } from 'vue';
 import { mapStores, storeToRefs } from 'pinia';
 import jp from 'jsonpath';
 import type { INodeUi } from '@/Interface';
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow/Interfaces';
 import { clearJsonKey, convertPath } from '@/utils/typesUtils';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';

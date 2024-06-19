@@ -1,3 +1,50 @@
+import type { Component } from 'vue';
+import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
+import type { Connection } from '@jsplumb/core';
+import type { Scope } from '@n8n/permissions';
+import type { IMenuItem } from 'n8n-design-system/types/menu';
+import type { NodeCreatorTag } from 'n8n-design-system/types/node-creator-node';
+import type {
+	GenericValue,
+	IConnections,
+	ICredentialsDecrypted,
+	ICredentialsEncrypted,
+	ICredentialType,
+	IDataObject,
+	INode,
+	INodeIssues,
+	INodeParameters,
+	INodeTypeDescription,
+	IPinData,
+	IRunExecutionData,
+	IRun,
+	IRunData,
+	ITaskData,
+	IWorkflowSettings as IWorkflowSettingsWorkflow,
+	WorkflowExecuteMode,
+	PublicInstalledPackage,
+	INodeTypeNameVersion,
+	ILoadOptions,
+	INodeCredentials,
+	INodeListSearchItems,
+	NodeParameterValueType,
+	IDisplayOptions,
+	ExecutionSummary,
+	FeatureFlags,
+	ITelemetryTrackProperties,
+	IUserManagementSettings,
+	WorkflowSettings,
+	IUserSettings,
+	IN8nUISettings,
+	BannerName,
+	INodeExecutionData,
+	INodeProperties,
+	NodeConnectionType,
+	INodeCredentialsDetails,
+	StartNodeData,
+} from 'n8n-workflow/Interfaces';
+import type { ExecutionStatus } from 'n8n-workflow/ExecutionStatus';
+
 import type {
 	AI_NODE_CREATOR_VIEW,
 	CREDENTIAL_EDIT_MODAL_KEY,
@@ -9,57 +56,10 @@ import type {
 	VIEWS,
 	ROLE,
 } from '@/constants';
-import type { IMenuItem, NodeCreatorTag } from 'n8n-design-system';
-import {
-	type GenericValue,
-	type IConnections,
-	type ICredentialsDecrypted,
-	type ICredentialsEncrypted,
-	type ICredentialType,
-	type IDataObject,
-	type INode,
-	type INodeIssues,
-	type INodeParameters,
-	type INodeTypeDescription,
-	type IPinData,
-	type IRunExecutionData,
-	type IRun,
-	type IRunData,
-	type ITaskData,
-	type IWorkflowSettings as IWorkflowSettingsWorkflow,
-	type WorkflowExecuteMode,
-	type PublicInstalledPackage,
-	type INodeTypeNameVersion,
-	type ILoadOptions,
-	type INodeCredentials,
-	type INodeListSearchItems,
-	type NodeParameterValueType,
-	type IDisplayOptions,
-	type ExecutionSummary,
-	type FeatureFlags,
-	type ExecutionStatus,
-	type ITelemetryTrackProperties,
-	type IUserManagementSettings,
-	type WorkflowSettings,
-	type IUserSettings,
-	type IN8nUISettings,
-	type BannerName,
-	type INodeExecutionData,
-	type INodeProperties,
-	type NodeConnectionType,
-	type INodeCredentialsDetails,
-	type StartNodeData,
-} from 'n8n-workflow';
 import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
-import type { Component } from 'vue';
-import type { Scope } from '@n8n/permissions';
-import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
 import type { ProjectSharingData } from '@/types/projects.types';
-import type { Connection } from '@jsplumb/core';
 import type { BaseTextKey } from './plugins/i18n';
-
-export * from 'n8n-design-system/types';
 
 declare global {
 	interface Window {

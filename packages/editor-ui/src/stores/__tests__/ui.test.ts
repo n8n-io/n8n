@@ -1,24 +1,24 @@
 import { createPinia, setActivePinia } from 'pinia';
+import { merge } from 'lodash-es';
+
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
-import { merge } from 'lodash-es';
-import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
-import { useRootStore } from '@/stores/root.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import * as cloudPlanApi from '@/api/cloudPlans';
+import type { IRole } from '@/Interface';
+import { ROLE } from '@/constants';
+
+import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import {
 	getTrialExpiredUserResponse,
 	getTrialingUserResponse,
 	getUserCloudInfo,
 	getNotTrialingUserResponse,
 } from './utils/cloudStoreUtils';
-import type { IRole } from '@/Interface';
-import { ROLE } from '@/constants';
 
 let uiStore: ReturnType<typeof useUIStore>;
 let settingsStore: ReturnType<typeof useSettingsStore>;
-let rootStore: ReturnType<typeof useRootStore>;
 let cloudPlanStore: ReturnType<typeof useCloudPlanStore>;
 
 function setUser(role: IRole) {
@@ -52,7 +52,6 @@ describe('UI store', () => {
 		setActivePinia(createPinia());
 		uiStore = useUIStore();
 		settingsStore = useSettingsStore();
-		rootStore = useRootStore();
 
 		cloudPlanStore = useCloudPlanStore();
 

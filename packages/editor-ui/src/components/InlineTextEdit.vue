@@ -24,7 +24,7 @@
 import { defineComponent } from 'vue';
 import ExpandableInputEdit from '@/components/ExpandableInput/ExpandableInputEdit.vue';
 import ExpandableInputPreview from '@/components/ExpandableInput/ExpandableInputPreview.vue';
-import { createEventBus } from 'n8n-design-system/utils';
+import { createEventBus } from 'n8n-design-system/utils/event-bus';
 
 export default defineComponent({
 	name: 'InlineTextEdit',

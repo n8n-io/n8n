@@ -17,8 +17,10 @@ import type {
 
 import { computed, ref } from 'vue';
 import { transformNodeType } from '@/components/Node/NodeCreator/utils';
-import type { INodeInputConfiguration } from 'n8n-workflow';
-import { NodeConnectionType, nodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
+import type { INodeInputConfiguration } from 'n8n-workflow/Interfaces';
+import { NodeConnectionType, nodeConnectionTypes } from 'n8n-workflow/Interfaces';
+import * as NodeHelpers from 'n8n-workflow/NodeHelpers';
+
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useNDVStore } from '@/stores/ndv.store';

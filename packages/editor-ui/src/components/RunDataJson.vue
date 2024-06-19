@@ -78,7 +78,7 @@
 import { defineAsyncComponent, defineComponent, ref } from 'vue';
 import type { PropType } from 'vue';
 import VueJsonPretty from 'vue-json-pretty';
-import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow/Interfaces';
 import Draggable from '@/components/Draggable.vue';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { isString } from '@/utils/typeGuards';

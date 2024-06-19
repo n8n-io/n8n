@@ -3,8 +3,8 @@ import type {
 	INodeTypeDescription,
 	NodeConnectionType,
 	TriggerPanelDefinition,
-} from 'n8n-workflow';
-import { nodeConnectionTypes } from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
+import { nodeConnectionTypes } from 'n8n-workflow/Interfaces';
 import type { IExecutionResponse, ICredentialsResponse, NewCredentialsModal } from '@/Interface';
 import type { jsPlumbDOMElement } from '@jsplumb/browser-ui';
 import type { Connection } from '@jsplumb/core';

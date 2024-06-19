@@ -20,7 +20,7 @@
 			/>
 			<div v-if="multipleValues">
 				<div
-					v-for="(value, index) in mutableValues[property.name]"
+					v-for="(_, index) in mutableValues[property.name]"
 					:key="property.name + index"
 					class="parameter-item"
 				>
@@ -126,8 +126,13 @@ import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import type { IUpdateInformation } from '@/Interface';
 
-import type { INodeParameters, INodeProperties, INodePropertyCollection } from 'n8n-workflow';
-import { deepCopy, isINodePropertyCollectionList } from 'n8n-workflow';
+import type {
+	INodeParameters,
+	INodeProperties,
+	INodePropertyCollection,
+} from 'n8n-workflow/Interfaces';
+import { deepCopy } from 'n8n-workflow/utils';
+import { isINodePropertyCollectionList } from 'n8n-workflow/type-guards';
 
 import { get } from 'lodash-es';
 

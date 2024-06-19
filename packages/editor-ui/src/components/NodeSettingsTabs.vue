@@ -16,8 +16,8 @@ import {
 } from '@/constants';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { INodeTypeDescription } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow/Interfaces';
+import { NodeConnectionType } from 'n8n-workflow/Interfaces';
 import { computed } from 'vue';
 
 import { useExternalHooks } from '@/composables/useExternalHooks';

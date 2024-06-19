@@ -48,7 +48,7 @@ import { mapStores } from 'pinia';
 import { get } from 'lodash-es';
 import { useStorage } from '@/composables/useStorage';
 
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow/Interfaces';
 import PanelDragButton from './PanelDragButton.vue';
 
 import { LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH, MAIN_NODE_PANEL_WIDTH } from '@/constants';

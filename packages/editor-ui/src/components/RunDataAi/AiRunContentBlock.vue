@@ -71,7 +71,7 @@ import VueMarkdown from 'vue-markdown-render';
 import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
-import { NodeConnectionType, type IDataObject } from 'n8n-workflow';
+import { NodeConnectionType, type IDataObject } from 'n8n-workflow/Interfaces';
 
 const props = defineProps<{
 	runData: IAiDataContent;

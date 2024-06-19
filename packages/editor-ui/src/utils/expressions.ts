@@ -1,7 +1,10 @@
+import { ExpressionError } from 'n8n-workflow/errors';
+import * as ExpressionParser from 'n8n-workflow/Extensions/ExpressionParser';
+import type { Result } from 'n8n-workflow/Interfaces';
+
 import { i18n } from '@/plugins/i18n';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { ResolvableState } from '@/types/expressions';
-import { ExpressionError, ExpressionParser, type Result } from 'n8n-workflow';
 
 export const isExpression = (expr: unknown) => {
 	if (typeof expr !== 'string') return false;

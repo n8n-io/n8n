@@ -1,6 +1,6 @@
 import type { StoryFn } from '@storybook/vue3';
 import N8nAlert from './Alert.vue';
-import N8nIcon from '../N8nIcon';
+import N8nIcon from '../N8nIcon/Icon.vue';
 
 export default {
 	title: 'Atoms/Alert',

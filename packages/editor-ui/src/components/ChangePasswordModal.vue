@@ -34,10 +34,10 @@ import { defineComponent } from 'vue';
 import { CHANGE_PASSWORD_MODAL_KEY } from '../constants';
 import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
-import type { IFormInputs } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
-import { createEventBus } from 'n8n-design-system/utils';
+import type { IFormInputs } from 'n8n-design-system/types/form';
+import { createEventBus } from 'n8n-design-system/utils/event-bus';
 
 export default defineComponent({
 	name: 'ChangePasswordModal',

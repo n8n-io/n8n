@@ -65,8 +65,8 @@
 <script lang="ts" setup>
 import type { Ref } from 'vue';
 import { computed, ref, watch } from 'vue';
-import type { ITaskSubRunMetadata, ITaskDataConnections } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import type { ITaskSubRunMetadata, ITaskDataConnections } from 'n8n-workflow/Interfaces';
+import { NodeConnectionType } from 'n8n-workflow/Interfaces';
 import type { IAiData, IAiDataContent, INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';

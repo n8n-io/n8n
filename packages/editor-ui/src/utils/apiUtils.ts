@@ -1,6 +1,6 @@
 import type { AxiosRequestConfig, Method, RawAxiosRequestHeaders } from 'axios';
 import axios from 'axios';
-import type { GenericValue, IDataObject } from 'n8n-workflow';
+import type { GenericValue, IDataObject } from 'n8n-workflow/Interfaces';
 import type { IExecutionFlattedResponse, IExecutionResponse, IRestApiContext } from '@/Interface';
 import { parse } from 'flatted';
 

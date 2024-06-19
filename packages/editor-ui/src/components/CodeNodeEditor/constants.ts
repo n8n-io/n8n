@@ -1,6 +1,6 @@
 import { STICKY_NODE_TYPE } from '@/constants';
 import type { Diagnostic } from '@codemirror/lint';
-import type { CodeExecutionMode, CodeNodeEditorLanguage } from 'n8n-workflow';
+import type { CodeExecutionMode, CodeNodeEditorLanguage } from 'n8n-workflow/Interfaces';
 
 export const NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION = [STICKY_NODE_TYPE];
 

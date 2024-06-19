@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
-import type { EventBus } from 'n8n-design-system/utils';
-import { createEventBus } from 'n8n-design-system/utils';
+import { createEventBus, type EventBus } from 'n8n-design-system/utils/event-bus';
 import Modal from './Modal.vue';
 import { CHAT_EMBED_MODAL_KEY, CHAT_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from '../constants';
 import { useRootStore } from '@/stores/root.store';

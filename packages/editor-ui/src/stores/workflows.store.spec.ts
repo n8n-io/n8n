@@ -8,7 +8,7 @@ import {
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IExecutionResponse, INodeUi, IWorkflowDb, IWorkflowSettings } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import type { ExecutionSummary, IConnection, INodeExecutionData } from 'n8n-workflow';
+import type { ExecutionSummary, IConnection, INodeExecutionData } from 'n8n-workflow/Interfaces';
 import { stringSizeInBytes } from '@/utils/typesUtils';
 import { dataPinningEventBus } from '@/event-bus';
 import { useUIStore } from '@/stores/ui.store';

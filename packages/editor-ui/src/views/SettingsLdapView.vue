@@ -140,30 +140,24 @@
 <script lang="ts">
 import type { CSSProperties } from 'vue';
 import { defineComponent } from 'vue';
-import { capitalizeFirstLetter } from '@/utils/htmlUtils';
-import { convertToDisplayDate } from '@/utils/typesUtils';
-import { useToast } from '@/composables/useToast';
-import { useMessage } from '@/composables/useMessage';
-import type {
-	ILdapConfig,
-	ILdapSyncData,
-	ILdapSyncTable,
-	IFormInput,
-	IFormInputs,
-	IUser,
-} from '@/Interface';
-import { MODAL_CONFIRM } from '@/constants';
-
 import humanizeDuration from 'humanize-duration';
 import { ElTable, ElTableColumn } from 'element-plus';
 import type { Events } from 'v3-infinite-loading';
 import InfiniteLoading from 'v3-infinite-loading';
 import { mapStores } from 'pinia';
+import type { TableColumnCtx } from 'element-plus';
+import { createEventBus } from 'n8n-design-system/utils/event-bus';
+import type { IFormInput, IFormInputs } from 'n8n-design-system/types/form';
+
+import { capitalizeFirstLetter } from '@/utils/htmlUtils';
+import { convertToDisplayDate } from '@/utils/typesUtils';
+import { useToast } from '@/composables/useToast';
+import { useMessage } from '@/composables/useMessage';
+import type { ILdapConfig, ILdapSyncData, ILdapSyncTable, IUser } from '@/Interface';
+import { MODAL_CONFIRM } from '@/constants';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
-import { createEventBus } from 'n8n-design-system/utils';
-import type { TableColumnCtx } from 'element-plus';
 
 type TableRow = {
 	status: string;

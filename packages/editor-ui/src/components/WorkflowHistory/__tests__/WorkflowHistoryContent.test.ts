@@ -3,7 +3,8 @@ import type { MockInstance } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import type { UserAction } from 'n8n-design-system';
+import type { UserAction } from 'n8n-design-system/types/user';
+
 import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowHistoryContent from '@/components/WorkflowHistory/WorkflowHistoryContent.vue';
 import type { WorkflowHistoryActionTypes } from '@/types/workflowHistory';

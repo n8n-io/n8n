@@ -145,17 +145,17 @@
 <script lang="ts">
 import { computed, defineComponent, nextTick, ref, onMounted, watch } from 'vue';
 import type { PropType } from 'vue';
+import { useRoute } from 'vue-router';
+import type { DatatableColumn } from 'n8n-design-system/types/datatable';
 
 import type { ProjectSharingData } from '@/types/projects.types';
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
 import { useUsersStore } from '@/stores/users.store';
-import type { DatatableColumn } from 'n8n-design-system';
 import { useI18n } from '@/composables/useI18n';
 import { useDebounce } from '@/composables/useDebounce';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useRoute } from 'vue-router';
 
 // eslint-disable-next-line unused-imports/no-unused-imports, @typescript-eslint/no-unused-vars
 import type { BaseTextKey } from '@/plugins/i18n';

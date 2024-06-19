@@ -9,8 +9,8 @@ import type {
 	INodeTypeDescription,
 	ResourceMapperField,
 	ResourceMapperValue,
-} from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
+import * as NodeHelpers from 'n8n-workflow/NodeHelpers';
 import { computed, onMounted, reactive, watch } from 'vue';
 import MappingModeSelect from './MappingModeSelect.vue';
 import MatchingColumnsSelect from './MatchingColumnsSelect.vue';

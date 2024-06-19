@@ -38,9 +38,10 @@ import type {
 	IRunData,
 	IRunExecutionData,
 	IWorkflowDataProxyAdditionalKeys,
-	Workflow,
-} from 'n8n-workflow';
-import { NodeConnectionType, WorkflowDataProxy } from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
+import type { Workflow } from 'n8n-workflow/Workflow';
+import { WorkflowDataProxy } from 'n8n-workflow/WorkflowDataProxy';
+import { NodeConnectionType } from 'n8n-workflow/Interfaces';
 
 import VariableSelectorItem from '@/components/VariableSelectorItem.vue';
 import type { INodeUi, IVariableItemSelected, IVariableSelectorOption } from '@/Interface';

@@ -36,7 +36,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useKeyboardNavigation } from './useKeyboardNavigation';
 
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import type { INodeInputFilter, NodeConnectionType, Themed } from 'n8n-workflow';
+import type { INodeInputFilter, NodeConnectionType, Themed } from 'n8n-workflow/Interfaces';
 import { useCanvasStore } from '@/stores/canvas.store';
 
 interface ViewStack {

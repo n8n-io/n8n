@@ -102,17 +102,18 @@
 
 <script lang="ts">
 import { type PropType, defineComponent } from 'vue';
-import type { IExecutionResponse, INodeUi } from '@/Interface';
+import { mapStores, storeToRefs } from 'pinia';
 import type {
 	INodeTypeDescription,
 	IRunData,
 	IRunExecutionData,
 	ITaskData,
-	Workflow,
-} from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
+import type { Workflow } from 'n8n-workflow/Workflow';
+
+import type { IExecutionResponse, INodeUi } from '@/Interface';
 import RunData from './RunData.vue';
 import RunInfo from './RunInfo.vue';
-import { mapStores, storeToRefs } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';

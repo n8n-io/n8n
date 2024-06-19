@@ -44,7 +44,7 @@ import Modal from '@/components/Modal.vue';
 import { IMPORT_CURL_MODAL_KEY } from '@/constants';
 import { onMounted, ref } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
-import { createEventBus } from 'n8n-design-system/utils';
+import { createEventBus } from 'n8n-design-system/utils/event-bus';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@/composables/useI18n';
 import { useImportCurlCommand } from '@/composables/useImportCurlCommand';

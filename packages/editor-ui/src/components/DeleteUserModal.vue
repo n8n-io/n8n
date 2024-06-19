@@ -82,7 +82,7 @@ import Modal from '@/components/Modal.vue';
 import type { IUser } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
-import { createEventBus } from 'n8n-design-system/utils';
+import { createEventBus } from 'n8n-design-system/utils/event-bus';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectListItem, ProjectSharingData } from '@/types/projects.types';
 import ProjectSharing from '@/components/Projects/ProjectSharing.vue';

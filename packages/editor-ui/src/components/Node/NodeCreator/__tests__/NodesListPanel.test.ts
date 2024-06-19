@@ -2,7 +2,7 @@ import { defineComponent, nextTick, watch } from 'vue';
 import type { PropType } from 'vue';
 import { createPinia } from 'pinia';
 import { screen, fireEvent } from '@testing-library/vue';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow/Interfaces';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { mockSimplifiedNodeType } from './utils';
 import NodesListPanel from '../Panel/NodesListPanel.vue';
@@ -104,7 +104,7 @@ describe('NodesListPanel', () => {
 					},
 				},
 				setup(props) {
-					const { setActions, setMergeNodes, setSelectedView } = useNodeCreatorStore();
+					const { setMergeNodes, setSelectedView } = useNodeCreatorStore();
 
 					watch(
 						() => props.nodeTypes,

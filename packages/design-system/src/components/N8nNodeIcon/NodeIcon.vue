@@ -39,7 +39,7 @@
 import { computed } from 'vue';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import type { Placement } from 'element-plus';
-import N8nTooltip from '../N8nTooltip';
+import N8nTooltip from '../N8nTooltip/Tooltip.vue';
 
 interface NodeIconProps {
 	type: 'file' | 'icon' | 'unknown';

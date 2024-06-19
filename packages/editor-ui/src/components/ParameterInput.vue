@@ -465,15 +465,12 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, onUpdated, ref, watch } from 'vue';
-
+import { useRouter } from 'vue-router';
 import { get } from 'lodash-es';
+import { N8nInput, N8nSelect } from 'n8n-design-system/components';
+import { createEventBus, type EventBus } from 'n8n-design-system/utils/event-bus';
+import type { InputSize } from 'n8n-design-system/types/input';
 
-import type {
-	INodeUi,
-	INodeUpdatePropertiesInformation,
-	IUpdateInformation,
-	InputSize,
-} from '@/Interface';
 import type {
 	CodeExecutionMode,
 	CodeNodeEditorLanguage,
@@ -486,9 +483,11 @@ import type {
 	INodePropertyOptions,
 	IParameterLabel,
 	NodeParameterValueType,
-} from 'n8n-workflow';
-import { CREDENTIAL_EMPTY_VALUE, NodeHelpers } from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
+import * as NodeHelpers from 'n8n-workflow/NodeHelpers';
+import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow/Constants';
 
+import type { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import CredentialsSelect from '@/components/CredentialsSelect.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
@@ -519,10 +518,6 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
-import { N8nInput, N8nSelect } from 'n8n-design-system';
-import type { EventBus } from 'n8n-design-system/utils';
-import { createEventBus } from 'n8n-design-system/utils';
-import { useRouter } from 'vue-router';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 

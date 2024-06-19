@@ -3,7 +3,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useSSOStore } from '@/stores/sso.store';
 import { merge } from 'lodash-es';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
-import type { IN8nUISettings } from 'n8n-workflow';
+import type { IN8nUISettings } from 'n8n-workflow/Interfaces';
 
 let ssoStore: ReturnType<typeof useSSOStore>;
 let settingsStore: ReturnType<typeof useSettingsStore>;

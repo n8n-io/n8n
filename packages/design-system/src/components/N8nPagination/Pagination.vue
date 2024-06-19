@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { paginationProps, ElPagination } from 'element-plus';
+import { ElPagination, type PaginationProps } from 'element-plus';
 
-defineProps({
-	...paginationProps,
-});
+interface Props extends Partial<Omit<PaginationProps, 'layout'>> {}
+defineProps<Props>();
+defineOptions({ name: 'N8nPagination' });
 </script>
 
 <template>

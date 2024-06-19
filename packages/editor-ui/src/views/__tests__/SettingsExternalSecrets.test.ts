@@ -1,15 +1,15 @@
 import { createTestingPinia } from '@pinia/testing';
 import { merge } from 'lodash-es';
+
 import { EnterpriseEditionFeature, STORES } from '@/constants';
-import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import SettingsExternalSecrets from '@/views/SettingsExternalSecrets.vue';
-import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
-import { createComponentRenderer } from '@/__tests__/render';
 import { useSettingsStore } from '@/stores/settings.store';
+
 import { setupServer } from '@/__tests__/server';
+import { createComponentRenderer } from '@/__tests__/render';
+import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 
 let pinia: ReturnType<typeof createTestingPinia>;
-let externalSecretsStore: ReturnType<typeof useExternalSecretsStore>;
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let server: ReturnType<typeof setupServer>;
 
@@ -28,7 +28,6 @@ describe('SettingsExternalSecrets', () => {
 				},
 			},
 		});
-		externalSecretsStore = useExternalSecretsStore(pinia);
 		settingsStore = useSettingsStore();
 
 		await settingsStore.getSettings();

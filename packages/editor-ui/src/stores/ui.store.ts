@@ -69,7 +69,7 @@ import { hasPermission } from '@/utils/rbac/permissions';
 import { useTelemetryStore } from '@/stores/telemetry.store';
 import { useUsersStore } from '@/stores/users.store';
 import { dismissBannerPermanently } from '@/api/ui';
-import type { BannerName } from 'n8n-workflow';
+import type { BannerName } from 'n8n-workflow/Interfaces';
 import {
 	addThemeToBody,
 	getPreferredTheme,

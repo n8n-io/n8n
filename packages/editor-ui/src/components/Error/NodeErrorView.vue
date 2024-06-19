@@ -11,10 +11,8 @@ import type {
 	INodeProperties,
 	INodePropertyCollection,
 	INodePropertyOptions,
-	NodeApiError,
-	NodeError,
-	NodeOperationError,
-} from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
+import type { NodeApiError, NodeError, NodeOperationError } from 'n8n-workflow/errors';
 import { sanitizeHtml } from '@/utils/htmlUtils';
 import { MAX_DISPLAY_DATA_SIZE } from '@/constants';
 import type { BaseTextKey } from '@/plugins/i18n';

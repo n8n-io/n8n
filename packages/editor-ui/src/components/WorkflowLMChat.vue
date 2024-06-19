@@ -119,7 +119,13 @@
 
 <script lang="ts">
 import { defineAsyncComponent, defineComponent } from 'vue';
+import { useRouter } from 'vue-router';
 import { mapStores } from 'pinia';
+import { get, last } from 'lodash-es';
+import { createEventBus } from 'n8n-design-system/utils/event-bus';
+import type { IDataObject, INodeType, INode, ITaskData } from 'n8n-workflow/Interfaces';
+import { NodeConnectionType } from 'n8n-workflow/Interfaces';
+import * as NodeHelpers from 'n8n-workflow/NodeHelpers';
 
 import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
@@ -138,21 +144,15 @@ import {
 	WORKFLOW_LM_CHAT_MODAL_KEY,
 } from '@/constants';
 
-import { get, last } from 'lodash-es';
-
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { createEventBus } from 'n8n-design-system/utils';
-import type { IDataObject, INodeType, INode, ITaskData } from 'n8n-workflow';
-import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 import type { INodeUi, IUser } from '@/Interface';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 
 // eslint-disable-next-line import/no-unresolved
 import MessageTyping from '@n8n/chat/components/MessageTyping.vue';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useRouter } from 'vue-router';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { usePinnedData } from '@/composables/usePinnedData';

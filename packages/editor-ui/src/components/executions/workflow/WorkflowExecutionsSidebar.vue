@@ -71,7 +71,7 @@ import WorkflowExecutionsCard from '@/components/executions/workflow/WorkflowExe
 import WorkflowExecutionsInfoAccordion from '@/components/executions/workflow/WorkflowExecutionsInfoAccordion.vue';
 import ExecutionsFilter from '@/components/executions/ExecutionsFilter.vue';
 import { VIEWS } from '@/constants';
-import type { ExecutionSummary } from 'n8n-workflow';
+import type { ExecutionSummary } from 'n8n-workflow/Interfaces';
 import type { RouteRecord } from 'vue-router';
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';

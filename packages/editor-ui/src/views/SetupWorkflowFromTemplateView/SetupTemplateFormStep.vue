@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import N8nHeading from 'n8n-design-system/components/N8nHeading';
+import N8nHeading from 'n8n-design-system/components/N8nHeading/Heading.vue';
+
 import NodeIcon from '@/components/NodeIcon.vue';
 import CredentialPicker from '@/components/CredentialPicker/CredentialPicker.vue';
 import IconSuccess from './IconSuccess.vue';

@@ -26,8 +26,8 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { IBinaryData } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import type { IBinaryData } from 'n8n-workflow/Interfaces';
+import { jsonParse } from 'n8n-workflow/utils';
 import VueJsonPretty from 'vue-json-pretty';
 import RunDataHtml from '@/components/RunDataHtml.vue';
 

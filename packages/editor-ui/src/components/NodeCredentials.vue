@@ -125,7 +125,7 @@ import type {
 	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
-} from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
 
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';

@@ -12,7 +12,7 @@ import { ArcSegment, AbstractConnector, StraightSegment } from '@jsplumb/core';
 import type { AnchorPlacement, ConnectorOptions, Geometry, PaintAxis } from '@jsplumb/common';
 import { BezierSegment } from '@jsplumb/connector-bezier';
 import { isArray } from 'lodash-es';
-import { deepCopy } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow/utils';
 
 export type N8nConnectorOptions = ConnectorOptions;
 interface N8nConnectorPaintGeometry extends PaintGeometry {

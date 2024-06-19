@@ -21,7 +21,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { mapStores } from 'pinia';
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
-import type { EventBus } from 'n8n-design-system';
+import type { EventBus } from 'n8n-design-system/utils/event-bus';
 import { ElDrawer } from 'element-plus';
 
 export default defineComponent({

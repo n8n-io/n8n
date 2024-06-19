@@ -10,7 +10,7 @@ import type {
 	ExecutionOptions,
 	ExecutionSummary,
 	IDataObject,
-} from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
 import { makeRestApiRequest } from '@/utils/apiUtils';
 
 export async function getNewWorkflow(context: IRestApiContext, data?: IDataObject) {

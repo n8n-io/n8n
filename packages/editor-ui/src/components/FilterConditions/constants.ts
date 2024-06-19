@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import type { FilterConditionValue, FilterOptionsValue } from 'n8n-workflow';
+import type { FilterConditionValue, FilterOptionsValue } from 'n8n-workflow/Interfaces';
 import type { FilterOperator, FilterOperatorGroup } from './types';
 
 export const DEFAULT_MAX_CONDITIONS = 10;

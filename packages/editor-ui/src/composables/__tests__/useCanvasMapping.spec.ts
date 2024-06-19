@@ -1,7 +1,7 @@
 import type { Ref } from 'vue';
 import { ref } from 'vue';
-import { NodeConnectionType } from 'n8n-workflow';
-import type { Workflow } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow/Interfaces';
+import type { Workflow } from 'n8n-workflow/Workflow';
 import { createPinia, setActivePinia } from 'pinia';
 import { mock } from 'vitest-mock-extended';
 

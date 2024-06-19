@@ -1,7 +1,7 @@
 import type { PropType } from 'vue';
 import { defineComponent, h } from 'vue';
-import type { DatatableRow } from '../../../types';
-import N8nButton from '../../N8nButton';
+import N8nButton from '../../N8nButton/Button.vue';
+import type { DatatableRow } from '../../../types/datatable';
 
 export const ActionComponent = defineComponent({
 	props: {

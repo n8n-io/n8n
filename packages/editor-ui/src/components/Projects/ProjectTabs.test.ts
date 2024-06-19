@@ -1,8 +1,10 @@
-import { createComponentRenderer } from '@/__tests__/render';
+import { useRoute } from 'vue-router';
+
 import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
-import { useRoute, useRouter } from 'vue-router';
-import { createTestProject } from '@/__tests__/data/projects';
 import { useProjectsStore } from '@/stores/projects.store';
+
+import { createComponentRenderer } from '@/__tests__/render';
+import { createTestProject } from '@/__tests__/data/projects';
 
 vi.mock('vue-router', () => {
 	const params = {};
@@ -34,15 +36,11 @@ vi.mock('@/utils/rbac/permissions', () => ({
 
 const renderComponent = createComponentRenderer(ProjectTabs);
 
-let router: ReturnType<typeof useRouter>;
 let route: ReturnType<typeof useRoute>;
-let projectsStore: ReturnType<typeof useProjectsStore>;
 
 describe('ProjectTabs', () => {
 	beforeEach(() => {
 		route = useRoute();
-		router = useRouter();
-		projectsStore = useProjectsStore();
 	});
 
 	it('should render home tabs', async () => {

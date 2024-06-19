@@ -7,7 +7,7 @@ import type {
 	AssignmentValue,
 	INode,
 	INodeProperties,
-} from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
 import { v4 as uuid } from 'uuid';
 import { computed, reactive, watch } from 'vue';
 import DropArea from '../DropArea/DropArea.vue';

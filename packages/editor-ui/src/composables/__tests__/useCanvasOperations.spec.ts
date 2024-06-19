@@ -1,7 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import type { Connection } from '@vue-flow/core';
-import type { IConnection } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import type { IConnection } from 'n8n-workflow/Interfaces';
+import { NodeConnectionType } from 'n8n-workflow/Interfaces';
 
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import type { CanvasElement } from '@/types';

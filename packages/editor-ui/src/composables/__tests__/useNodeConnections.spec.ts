@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow/Interfaces';
 import { useNodeConnections } from '@/composables/useNodeConnections';
 import type { CanvasElementData } from '@/types';
 

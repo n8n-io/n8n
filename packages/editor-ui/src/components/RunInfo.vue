@@ -45,7 +45,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import type { ITaskData } from 'n8n-workflow';
+import type { ITaskData } from 'n8n-workflow/Interfaces';
 import { convertToDisplayDateComponents } from '@/utils/formatters/dateFormatter';
 
 export default defineComponent({

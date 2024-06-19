@@ -9,10 +9,21 @@ import {
 	type MaybeRefOrGetter,
 	type Ref,
 } from 'vue';
-
+import { debounce, isEqual } from 'lodash-es';
+import { useRouter } from 'vue-router';
 import { ensureSyntaxTree } from '@codemirror/language';
-import type { IDataObject } from 'n8n-workflow';
-import { Expression, ExpressionExtensions } from 'n8n-workflow';
+import { closeCompletion, completionStatus } from '@codemirror/autocomplete';
+import {
+	Compartment,
+	EditorSelection,
+	EditorState,
+	type Extension,
+	type SelectionRange,
+} from '@codemirror/state';
+import { EditorView, type ViewUpdate } from '@codemirror/view';
+import type { IDataObject } from 'n8n-workflow/Interfaces';
+import { ExpressionExtensions } from 'n8n-workflow/Extensions';
+import { Expression } from 'n8n-workflow/Expression';
 
 import { EXPRESSION_EDITOR_PARSER_TIMEOUT } from '@/constants';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -27,17 +38,6 @@ import {
 	getResolvableState,
 	isEmptyExpression,
 } from '@/utils/expressions';
-import { closeCompletion, completionStatus } from '@codemirror/autocomplete';
-import {
-	Compartment,
-	EditorSelection,
-	EditorState,
-	type Extension,
-	type SelectionRange,
-} from '@codemirror/state';
-import { EditorView, type ViewUpdate } from '@codemirror/view';
-import { debounce, isEqual } from 'lodash-es';
-import { useRouter } from 'vue-router';
 import { useI18n } from '../composables/useI18n';
 import { useWorkflowsStore } from '../stores/workflows.store';
 import { useAutocompleteTelemetry } from './useAutocompleteTelemetry';

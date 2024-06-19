@@ -149,7 +149,7 @@ import type {
 	ICredentialType,
 	INodeProperties,
 	INodeTypeDescription,
-} from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
 import { getAppNameFromCredType, isCommunityPackageName } from '@/utils/nodeTypesUtils';
 
 import Banner from '../Banner.vue';

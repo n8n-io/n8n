@@ -117,6 +117,8 @@
 <script lang="ts">
 import { mapStores } from 'pinia';
 import { defineComponent, type PropType } from 'vue';
+import type { IMenuItem } from 'n8n-design-system/types/menu';
+import { createEventBus } from 'n8n-design-system/utils/event-bus';
 
 import type { ICredentialsDecryptedResponse, ICredentialsResponse, IUser } from '@/Interface';
 
@@ -131,8 +133,8 @@ import type {
 	INodeProperties,
 	INodeTypeDescription,
 	ITelemetryTrackProperties,
-} from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
+import * as NodeHelpers from 'n8n-workflow/NodeHelpers';
 import CredentialIcon from '@/components/CredentialIcon.vue';
 
 import { useToast } from '@/composables/useToast';
@@ -148,8 +150,6 @@ import { CREDENTIAL_EDIT_MODAL_KEY, EnterpriseEditionFeature, MODAL_CONFIRM } fr
 import FeatureComingSoon from '@/components/FeatureComingSoon.vue';
 import type { PermissionsMap } from '@/permissions';
 import { getCredentialPermissions } from '@/permissions';
-import type { IMenuItem } from 'n8n-design-system';
-import { createEventBus } from 'n8n-design-system/utils';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';

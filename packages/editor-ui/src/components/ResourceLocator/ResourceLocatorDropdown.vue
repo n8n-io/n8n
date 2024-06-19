@@ -81,9 +81,8 @@
 import type { IResourceLocatorResultExpanded } from '@/Interface';
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
-import type { EventBus } from 'n8n-design-system/utils';
-import { createEventBus } from 'n8n-design-system/utils';
-import type { NodeParameterValue } from 'n8n-workflow';
+import type { NodeParameterValue } from 'n8n-workflow/Interfaces';
+import { createEventBus, type EventBus } from 'n8n-design-system/utils/event-bus';
 
 const SEARCH_BAR_HEIGHT_PX = 40;
 const SCROLL_MARGIN_PX = 10;

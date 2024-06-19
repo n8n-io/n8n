@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import type { ElementPlusSizePropType, InputSize } from 'n8n-design-system/types';
-import { ElInputNumber } from 'element-plus';
 import { computed } from 'vue';
+import { ElInputNumber } from 'element-plus';
+import type { InputSize } from '../../types/input';
+import type { ElementPlusSizePropType } from '../../types/form';
 
 type InputNumberProps = {
 	size?: InputSize;

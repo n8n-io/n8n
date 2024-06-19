@@ -56,8 +56,8 @@
 
 <script lang="ts" setup>
 import { onMounted, onUnmounted, ref } from 'vue';
-import N8nIcon from '../N8nIcon';
 import type { RouteLocationRaw } from 'vue-router';
+import N8nIcon from '../N8nIcon/Icon.vue';
 
 interface TabOptions {
 	value: string;

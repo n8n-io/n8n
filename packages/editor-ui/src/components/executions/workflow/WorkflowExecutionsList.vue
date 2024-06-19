@@ -37,7 +37,7 @@ import {
 	VIEWS,
 } from '@/constants';
 import type { ExecutionFilterType, IWorkflowDb } from '@/Interface';
-import type { ExecutionSummary, IDataObject } from 'n8n-workflow';
+import type { ExecutionSummary, IDataObject } from 'n8n-workflow/Interfaces';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { getNodeViewTab } from '@/utils/canvasUtils';

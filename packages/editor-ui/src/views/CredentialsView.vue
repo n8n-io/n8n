@@ -66,7 +66,7 @@ import { defineComponent } from 'vue';
 import type { IResource } from '@/components/layouts/ResourcesListLayout.vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import CredentialCard from '@/components/CredentialCard.vue';
-import type { ICredentialType } from 'n8n-workflow';
+import type { ICredentialType } from 'n8n-workflow/Interfaces';
 import { CREDENTIAL_SELECT_MODAL_KEY, EnterpriseEditionFeature } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';

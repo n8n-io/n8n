@@ -2,7 +2,7 @@ import { MAIN_HEADER_TABS, VIEWS } from '@/constants';
 import type { IZoomConfig } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { ConnectionDetachedParams } from '@jsplumb/core';
-import type { IConnection } from 'n8n-workflow';
+import type { IConnection } from 'n8n-workflow/Interfaces';
 import type { RouteLocation } from 'vue-router';
 
 /*

@@ -4,7 +4,7 @@ import type {
 	INodePropertyTypeOptions,
 	ResourceMapperField,
 	ResourceMapperFields,
-} from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
 import { computed, reactive, watch } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
 import { useNodeSpecificationValues } from '@/composables/useNodeSpecificationValues';

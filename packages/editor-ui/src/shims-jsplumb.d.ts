@@ -5,7 +5,7 @@ import type {
 	AbstractConnector,
 	Overlay,
 } from '@jsplumb/core';
-import type { NodeConnectionType } from 'n8n-workflow';
+import type { NodeConnectionType } from 'n8n-workflow/Interfaces';
 import type { N8nEndpointLabelLength } from '@/plugins/jsplumb/N8nPlusEndpointType';
 
 declare module '@jsplumb/core' {

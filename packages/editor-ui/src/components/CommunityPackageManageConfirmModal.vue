@@ -39,7 +39,7 @@ import { COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, COMMUNITY_PACKAGE_MANAGE_ACTIONS }
 import { useToast } from '@/composables/useToast';
 import { mapStores } from 'pinia';
 import { useCommunityNodesStore } from '@/stores/communityNodes.store';
-import { createEventBus } from 'n8n-design-system/utils';
+import { createEventBus } from 'n8n-design-system/utils/event-bus';
 
 export default defineComponent({
 	name: 'CommunityPackageManageConfirmModal',

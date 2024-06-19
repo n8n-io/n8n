@@ -119,15 +119,20 @@
 </template>
 
 <script setup lang="ts">
+import { computed, ref, watch } from 'vue';
+import * as NodeHelpers from 'n8n-workflow/NodeHelpers';
+import type {
+	ConnectionTypes,
+	INodeInputConfiguration,
+	INodeTypeDescription,
+} from 'n8n-workflow/Interfaces';
+
 import type { INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { computed, ref, watch } from 'vue';
-import { NodeHelpers } from 'n8n-workflow';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import NodeIcon from '@/components/NodeIcon.vue';
 import TitledList from '@/components/TitledList.vue';
-import type { ConnectionTypes, INodeInputConfiguration, INodeTypeDescription } from 'n8n-workflow';
 import { useDebounce } from '@/composables/useDebounce';
 
 interface Props {

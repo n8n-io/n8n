@@ -1,6 +1,6 @@
 import type { IRestApiContext, Schema } from '@/Interface';
 import { makeRestApiRequest } from '@/utils/apiUtils';
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow/Interfaces';
 
 export interface GenerateCurlPayload {
 	service: string;

@@ -144,6 +144,23 @@
 </template>
 
 <script lang="ts">
+import stringify from 'fast-json-stable-stringify';
+import { mapStores } from 'pinia';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
+import { useRouter } from 'vue-router';
+import type {
+	INode,
+	INodeCredentials,
+	INodeListSearchItems,
+	INodeParameterResourceLocator,
+	INodeParameters,
+	INodeProperties,
+	INodePropertyMode,
+	NodeParameterValue,
+} from 'n8n-workflow/Interfaces';
+import { createEventBus, type EventBus } from 'n8n-design-system/utils/event-bus';
+
 import type { DynamicNodeParameters, IResourceLocatorResultExpanded } from '@/Interface';
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
@@ -155,26 +172,9 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getAppNameFromNodeName, getMainAuthField, hasOnlyListMode } from '@/utils/nodeTypesUtils';
 import { isResourceLocatorValue } from '@/utils/typeGuards';
-import stringify from 'fast-json-stable-stringify';
-import type { EventBus } from 'n8n-design-system/utils';
-import { createEventBus } from 'n8n-design-system/utils';
-import type {
-	INode,
-	INodeCredentials,
-	INodeListSearchItems,
-	INodeParameterResourceLocator,
-	INodeParameters,
-	INodeProperties,
-	INodePropertyMode,
-	NodeParameterValue,
-} from 'n8n-workflow';
-import { mapStores } from 'pinia';
-import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
 import { useDebounce } from '@/composables/useDebounce';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useRouter } from 'vue-router';
 
 interface IResourceLocatorQuery {
 	results: INodeListSearchItems[];

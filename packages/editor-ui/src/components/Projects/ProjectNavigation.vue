@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
-import type { IMenuItem } from 'n8n-design-system/types';
+import type { IMenuItem } from 'n8n-design-system/types/menu';
+
 import { useI18n } from '@/composables/useI18n';
 import { VIEWS } from '@/constants';
 import { useProjectsStore } from '@/stores/projects.store';

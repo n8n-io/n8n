@@ -40,10 +40,10 @@
 
 <script lang="ts" setup>
 import { onMounted, ref } from 'vue';
-import N8nText from '../N8nText';
-import N8nIcon from '../N8nIcon';
-import type { IconColor } from 'n8n-design-system/types/icon';
-import { createEventBus, type EventBus } from '../../utils';
+import N8nText from '../N8nText/Text.vue';
+import N8nIcon from '../N8nIcon/Icon.vue';
+import type { IconColor } from '../../types/icon';
+import { createEventBus, type EventBus } from '../../utils/event-bus';
 
 interface IAccordionItem {
 	id: string;

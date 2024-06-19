@@ -8,13 +8,13 @@
 </template>
 
 <script lang="ts">
-import AuthView from './AuthView.vue';
 import { defineComponent } from 'vue';
-
-import { useToast } from '@/composables/useToast';
-import type { IFormBoxConfig } from '@/Interface';
-import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
+import type { IFormBoxConfig } from 'n8n-design-system/types/form';
+
+import AuthView from './AuthView.vue';
+import { useToast } from '@/composables/useToast';
+import { VIEWS } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';

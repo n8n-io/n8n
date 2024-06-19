@@ -7,8 +7,8 @@
 <script lang="ts" setup>
 import type { FontAwesomeIconProps } from '@fortawesome/vue-fontawesome';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import type { IconSize, IconColor } from 'n8n-design-system/types/icon';
-import N8nText from '../N8nText';
+import N8nText from '../N8nText/Text.vue';
+import type { IconSize, IconColor } from '../../types/icon';
 
 interface IconProps {
 	icon: FontAwesomeIconProps['icon'];

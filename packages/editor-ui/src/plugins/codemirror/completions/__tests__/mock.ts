@@ -1,5 +1,5 @@
-import type { INode, IRunExecutionData, IExecuteData } from 'n8n-workflow';
-import { WorkflowDataProxy } from 'n8n-workflow';
+import type { INode, IRunExecutionData, IExecuteData } from 'n8n-workflow/Interfaces';
+import { WorkflowDataProxy } from 'n8n-workflow/WorkflowDataProxy';
 import { createTestWorkflowObject, mockNodes } from '@/__tests__/mocks';
 import { mock } from 'vitest-mock-extended';
 

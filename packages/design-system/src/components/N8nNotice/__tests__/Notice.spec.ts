@@ -1,6 +1,6 @@
 import { render } from '@testing-library/vue';
 import N8nNotice from '../Notice.vue';
-import { N8nText } from 'n8n-design-system/components';
+import N8nText from '../../N8nText/Text.vue';
 
 describe('components', () => {
 	describe('N8nNotice', () => {

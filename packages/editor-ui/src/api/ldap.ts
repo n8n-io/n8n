@@ -1,6 +1,6 @@
 import type { ILdapConfig, ILdapSyncData, IRestApiContext } from '@/Interface';
 import { makeRestApiRequest } from '@/utils/apiUtils';
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow/Interfaces';
 
 export async function getLdapConfig(context: IRestApiContext): Promise<ILdapConfig> {
 	return await makeRestApiRequest(context, 'GET', '/ldap/config');

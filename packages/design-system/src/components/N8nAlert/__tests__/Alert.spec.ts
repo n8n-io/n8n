@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/vue';
 import N8nAlert from '../Alert.vue';
-import N8nIcon from '../../N8nIcon';
+import N8nIcon from '../../N8nIcon/Icon.vue';
 
 describe('components', () => {
 	describe('N8nAlert', () => {

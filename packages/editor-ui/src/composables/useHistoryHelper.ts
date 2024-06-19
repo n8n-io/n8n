@@ -1,15 +1,15 @@
+import { onMounted, onUnmounted, nextTick } from 'vue';
+import type { RouteLocationNormalizedLoaded } from 'vue-router';
+import { useDeviceSupport } from 'n8n-design-system/composables/useDeviceSupport';
+
 import { MAIN_HEADER_TABS } from '@/constants';
 import { useNDVStore } from '@/stores/ndv.store';
 import type { Undoable } from '@/models/history';
 import { BulkCommand, Command } from '@/models/history';
 import { useHistoryStore } from '@/stores/history.store';
 import { useUIStore } from '@/stores/ui.store';
-
-import { onMounted, onUnmounted, nextTick } from 'vue';
-import { useDeviceSupport } from 'n8n-design-system';
 import { getNodeViewTab } from '@/utils/canvasUtils';
-import type { RouteLocationNormalizedLoaded } from 'vue-router';
-import { useTelemetry } from './useTelemetry';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { useDebounce } from '@/composables/useDebounce';
 
 const UNDO_REDO_DEBOUNCE_INTERVAL = 100;

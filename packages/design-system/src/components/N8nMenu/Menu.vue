@@ -57,9 +57,9 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { ElMenu } from 'element-plus';
-import N8nMenuItem from '../N8nMenuItem';
-import type { IMenuItem } from '../../types';
+import N8nMenuItem from '../N8nMenuItem/MenuItem.vue';
 import { doesMenuItemMatchCurrentRoute } from '../N8nMenuItem/routerUtil';
+import type { IMenuItem } from '../../types/menu';
 
 interface MenuProps {
 	type?: 'primary' | 'secondary';

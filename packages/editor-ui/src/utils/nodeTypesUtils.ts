@@ -29,7 +29,7 @@ import type {
 	NodeParameterValueType,
 	ResourceMapperField,
 	Themed,
-} from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
 
 /*
 	Constants and utility functions mainly used to get information about

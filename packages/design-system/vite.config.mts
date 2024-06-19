@@ -33,8 +33,6 @@ export default mergeConfig(
 		plugins: [vue()],
 		resolve: {
 			alias: {
-				'@': resolve(__dirname, 'src'),
-				'n8n-design-system': resolve(__dirname, 'src'),
 				lodash: 'lodash-es',
 			},
 		},

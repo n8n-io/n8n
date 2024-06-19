@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useUIStore } from '@/stores/ui.store';
 import { computed, useSlots } from 'vue';
-import type { BannerName } from 'n8n-workflow';
+import type { BannerName } from 'n8n-workflow/Interfaces';
 
 interface Props {
 	name: BannerName;

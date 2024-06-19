@@ -22,7 +22,7 @@ import {
 } from '@/hooks/utils/hooksNodesPanel';
 import { useSegment } from '@/stores/segment.store';
 import type { PartialDeep } from 'type-fest';
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow/Interfaces';
 import type { INodeUi } from '@/Interface';
 import type { ExternalHooks } from '@/types';
 

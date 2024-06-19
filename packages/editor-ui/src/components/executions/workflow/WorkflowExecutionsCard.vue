@@ -87,7 +87,7 @@ import type { IExecutionUIData } from '@/composables/useExecutionHelpers';
 import { VIEWS } from '@/constants';
 import ExecutionsTime from '@/components/executions/ExecutionsTime.vue';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
-import type { ExecutionSummary } from 'n8n-workflow';
+import type { ExecutionSummary } from 'n8n-workflow/Interfaces';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 

@@ -1,5 +1,8 @@
 <script lang="ts" setup>
 import { computed, ref, onBeforeMount, onBeforeUnmount } from 'vue';
+import { uid } from 'n8n-design-system/utils/uid';
+import type { DatatableColumn } from 'n8n-design-system/types/datatable';
+
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
@@ -15,8 +18,7 @@ import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import VariablesRow from '@/components/VariablesRow.vue';
 
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
-import type { DatatableColumn, EnvironmentVariable } from '@/Interface';
-import { uid } from 'n8n-design-system/utils';
+import type { EnvironmentVariable } from '@/Interface';
 import { getVariablesPermissions } from '@/permissions';
 import type { BaseTextKey } from '@/plugins/i18n';
 

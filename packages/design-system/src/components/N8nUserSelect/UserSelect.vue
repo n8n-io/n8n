@@ -32,11 +32,12 @@
 
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
-import N8nUserInfo from '../N8nUserInfo';
-import N8nSelect from '../N8nSelect';
-import N8nOption from '../N8nOption';
+import N8nUserInfo from '../N8nUserInfo/UserInfo.vue';
+import N8nSelect from '../N8nSelect/Select.vue';
+import N8nOption from '../N8nOption/Option.vue';
 import { useI18n } from '../../composables/useI18n';
-import type { IUser, SelectSize } from '../../types';
+import type { IUser } from '../../types/user';
+import type { SelectSize } from '../../types/select';
 
 interface UserSelectProps {
 	users?: IUser[];

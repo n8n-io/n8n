@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { computed, reactive, ref, onMounted } from 'vue';
-import type { Rule, RuleGroup } from 'n8n-design-system/types';
+import type { Rule, RuleGroup } from 'n8n-design-system/types/form';
+
 import { MODAL_CONFIRM } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';

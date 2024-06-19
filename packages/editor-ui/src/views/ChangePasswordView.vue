@@ -9,13 +9,13 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import type { IFormBoxConfig } from 'n8n-design-system/types/form';
+
 import AuthView from '@/views/AuthView.vue';
 import { useToast } from '@/composables/useToast';
-
-import { defineComponent } from 'vue';
-import type { IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH, VIEWS } from '@/constants';
-import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
 
 export default defineComponent({

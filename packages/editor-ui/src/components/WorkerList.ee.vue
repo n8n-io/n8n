@@ -20,18 +20,19 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
+import { useRouter } from 'vue-router';
 import { mapStores } from 'pinia';
+import type { ExecutionStatus } from 'n8n-workflow/ExecutionStatus';
+
 import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import type { IPushDataWorkerStatusPayload } from '@/Interface';
-import type { ExecutionStatus } from 'n8n-workflow';
 import { useUIStore } from '@/stores/ui.store';
 import { useOrchestrationStore } from '@/stores/orchestration.store';
 import { setPageTitle } from '@/utils/htmlUtils';
 import WorkerCard from './Workers/WorkerCard.ee.vue';
 import { usePushConnection } from '@/composables/usePushConnection';
-import { useRouter } from 'vue-router';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useRootStore } from '@/stores/root.store';
 

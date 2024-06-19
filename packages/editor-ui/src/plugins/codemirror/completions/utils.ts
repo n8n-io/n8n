@@ -1,12 +1,4 @@
-import {
-	CREDENTIAL_EDIT_MODAL_KEY,
-	HTTP_REQUEST_NODE_TYPE,
-	SPLIT_IN_BATCHES_NODE_TYPE,
-} from '@/constants';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { resolveParameter, useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useNDVStore } from '@/stores/ndv.store';
-import { useUIStore } from '@/stores/ui.store';
+import { useRouter } from 'vue-router';
 import {
 	insertCompletionText,
 	type Completion,
@@ -18,8 +10,17 @@ import type { EditorView } from '@codemirror/view';
 import type { TransactionSpec } from '@codemirror/state';
 import type { SyntaxNode } from '@lezer/common';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
-import { useRouter } from 'vue-router';
-import type { DocMetadata } from 'n8n-workflow';
+import type { DocMetadata } from 'n8n-workflow/Extensions';
+
+import {
+	CREDENTIAL_EDIT_MODAL_KEY,
+	HTTP_REQUEST_NODE_TYPE,
+	SPLIT_IN_BATCHES_NODE_TYPE,
+} from '@/constants';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { resolveParameter, useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useUIStore } from '@/stores/ui.store';
 import { escapeMappingString } from '@/utils/mappingUtils';
 
 /**

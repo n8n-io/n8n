@@ -167,8 +167,8 @@ import type {
 	INodeProperties,
 	NodeParameterValue,
 	NodeParameterValueType,
-} from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
+import { deepCopy } from 'n8n-workflow/utils';
 import { computed, defineAsyncComponent, onErrorCaptured, ref, watch } from 'vue';
 
 import type { IUpdateInformation } from '@/Interface';
@@ -490,10 +490,6 @@ function onButtonAction(parameter: INodeProperties) {
 		default:
 			return;
 	}
-}
-
-function isNodeAuthField(name: string): boolean {
-	return nodeAuthFields.value.find((field) => field.name === name) !== undefined;
 }
 
 function shouldHideAuthRelatedParameter(parameter: INodeProperties): boolean {

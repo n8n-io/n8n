@@ -9,7 +9,11 @@ import {
 import { defineStore } from 'pinia';
 
 import { useSettingsStore } from '@/stores/settings.store';
-import type { INodeTypeDescription, IRun, ITelemetryTrackProperties } from 'n8n-workflow';
+import type {
+	INodeTypeDescription,
+	IRun,
+	ITelemetryTrackProperties,
+} from 'n8n-workflow/Interfaces';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUsersStore } from '@/stores/users.store';

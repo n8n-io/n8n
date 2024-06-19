@@ -1,7 +1,10 @@
-import { useI18n } from '@/composables/useI18n';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { Ref } from 'vue';
 import { computed } from 'vue';
+import type { Workflow } from 'n8n-workflow/Workflow';
+import * as NodeHelpers from 'n8n-workflow/NodeHelpers';
+
+import { useI18n } from '@/composables/useI18n';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type {
 	CanvasConnection,
 	CanvasConnectionPort,
@@ -12,8 +15,6 @@ import {
 	mapLegacyConnectionsToCanvasConnections,
 	mapLegacyEndpointsToCanvasConnectionPort,
 } from '@/utils/canvasUtilsV2';
-import type { Workflow } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
 
 export function useCanvasMapping({

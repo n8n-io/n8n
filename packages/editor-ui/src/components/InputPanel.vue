@@ -149,9 +149,10 @@ import type {
 	IConnectedNode,
 	INodeOutputConfiguration,
 	INodeTypeDescription,
-	Workflow,
-} from 'n8n-workflow';
-import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
+import { NodeConnectionType } from 'n8n-workflow/Interfaces';
+import type { Workflow } from 'n8n-workflow/Workflow';
+import * as NodeHelpers from 'n8n-workflow/NodeHelpers';
 import { mapStores } from 'pinia';
 import { defineComponent, type PropType } from 'vue';
 import InputNodeSelect from './InputNodeSelect.vue';

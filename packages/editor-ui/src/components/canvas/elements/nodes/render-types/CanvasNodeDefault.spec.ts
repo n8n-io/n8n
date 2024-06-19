@@ -1,6 +1,6 @@
 import CanvasNodeDefault from '@/components/canvas/elements/nodes/render-types/CanvasNodeDefault.vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow/Interfaces';
 import { createCanvasNodeProvide } from '@/__tests__/data';
 
 const renderComponent = createComponentRenderer(CanvasNodeDefault);

@@ -60,10 +60,10 @@
 
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue';
-import N8nInput from '../N8nInput';
-import N8nMarkdown from '../N8nMarkdown';
+import N8nInput from '../N8nInput/Input.vue';
+import N8nMarkdown from '../N8nMarkdown/Markdown.vue';
 import N8nResizeWrapper, { type ResizeData } from '../N8nResizeWrapper/ResizeWrapper.vue';
-import N8nText from '../N8nText';
+import N8nText from '../N8nText/Text.vue';
 import { useI18n } from '../../composables/useI18n';
 
 interface StickyProps {

@@ -6,7 +6,7 @@
 				<th :class="$style.tableRightMargin"></th>
 			</tr>
 			<tr
-				v-for="(row, index1) in tableData.data"
+				v-for="(_, index1) in tableData.data"
 				:key="index1"
 				:class="{ [$style.hoveringRow]: isHoveringRow(index1) }"
 			>
@@ -37,7 +37,7 @@
 								:data="getExpression(column)"
 								:disabled="!mappingEnabled"
 								@dragstart="onDragStart"
-								@dragend="(column) => onDragEnd(column, 'column')"
+								@dragend="(column: string) => onDragEnd(column, 'column')"
 							>
 								<template #preview="{ canDrop }">
 									<MappingPill :html="shorten(column, 16, 2)" :can-drop="canDrop" />
@@ -168,7 +168,7 @@ import { mapStores } from 'pinia';
 import type { INodeUi, ITableData, NDVState } from '@/Interface';
 import { shorten } from '@/utils/typesUtils';
 import { getPairedItemId } from '@/utils/pairedItemUtils';
-import type { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow/Interfaces';
 import Draggable from './Draggable.vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';

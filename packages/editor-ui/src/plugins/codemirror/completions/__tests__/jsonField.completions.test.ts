@@ -1,28 +1,16 @@
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-
-import * as workflowHelpers from '@/composables/useWorkflowHelpers';
-import * as utils from '@/plugins/codemirror/completions/utils';
-import { extensions, natives } from '@/plugins/codemirror/completions/datatype.completions';
-
 import type { CompletionSource, CompletionResult } from '@codemirror/autocomplete';
 import { CompletionContext } from '@codemirror/autocomplete';
 import { EditorState } from '@codemirror/state';
-import { n8nLang } from '@/plugins/codemirror/n8nLang';
-import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
-import { useUIStore } from '@/stores/ui.store';
-import { useSettingsStore } from '@/stores/settings.store';
 
-let externalSecretsStore: ReturnType<typeof useExternalSecretsStore>;
-let uiStore: ReturnType<typeof useUIStore>;
-let settingsStore: ReturnType<typeof useSettingsStore>;
+import * as workflowHelpers from '@/composables/useWorkflowHelpers';
+import * as utils from '@/plugins/codemirror/completions/utils';
+import { n8nLang } from '@/plugins/codemirror/n8nLang';
+import { extensions, natives } from '@/plugins/codemirror/completions/datatype.completions';
 
 beforeEach(async () => {
 	setActivePinia(createTestingPinia());
-
-	externalSecretsStore = useExternalSecretsStore();
-	uiStore = useUIStore();
-	settingsStore = useSettingsStore();
 
 	vi.spyOn(utils, 'receivesNoBinaryData').mockReturnValue(true); // hide $binary
 	vi.spyOn(utils, 'isSplitInBatchesAbsent').mockReturnValue(false); // show context

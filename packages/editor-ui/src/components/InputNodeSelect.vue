@@ -1,11 +1,13 @@
 <script lang="ts" setup>
+import { computed } from 'vue';
+import type { IConnectedNode } from 'n8n-workflow/Interfaces';
+import type { Workflow } from 'n8n-workflow/Workflow';
+
 import { useI18n } from '@/composables/useI18n';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isPresent } from '@/utils/typesUtils';
-import type { IConnectedNode, Workflow } from 'n8n-workflow';
-import { computed } from 'vue';
 import NodeIcon from './NodeIcon.vue';
 
 type Props = {

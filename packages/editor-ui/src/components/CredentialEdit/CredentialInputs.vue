@@ -28,7 +28,7 @@ import type {
 	ICredentialDataDecryptedObject,
 	INodeProperties,
 	NodeParameterValueType,
-} from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
 import type { IUpdateInformation } from '@/Interface';
 import ParameterInputExpanded from '../ParameterInputExpanded.vue';
 import { computed } from 'vue';

@@ -13,7 +13,7 @@
 				v-for="tag in tags"
 				:key="tag.id"
 				:class="{ clickable: !tag.hidden }"
-				@click="(e) => onClick(e, tag)"
+				@click="(e: MouseEvent) => onClick(e, tag)"
 			>
 				<el-tag
 					v-if="tag.isCount"
@@ -55,7 +55,7 @@ import IntersectionObserver from './IntersectionObserver.vue';
 import IntersectionObserved from './IntersectionObserved.vue';
 import { mapStores } from 'pinia';
 import { useTagsStore } from '@/stores/tags.store';
-import { createEventBus } from 'n8n-design-system/utils';
+import { createEventBus } from 'n8n-design-system/utils/event-bus';
 import { debounce } from 'lodash-es';
 
 // random upper limit if none is set to minimize performance impact of observers

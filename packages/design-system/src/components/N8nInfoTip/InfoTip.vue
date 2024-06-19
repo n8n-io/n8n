@@ -35,8 +35,8 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import type { Placement } from 'element-plus';
-import N8nIcon from '../N8nIcon';
-import N8nTooltip from '../N8nTooltip';
+import N8nIcon from '../N8nIcon/Icon.vue';
+import N8nTooltip from '../N8nTooltip/Tooltip.vue';
 
 const THEME = ['info', 'info-light', 'warning', 'danger', 'success'] as const;
 const TYPE = ['note', 'tooltip'] as const;

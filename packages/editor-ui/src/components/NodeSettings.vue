@@ -183,6 +183,7 @@
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
+import type { EventBus } from 'n8n-design-system/utils/event-bus';
 import type {
 	INodeTypeDescription,
 	INodeParameters,
@@ -190,16 +191,15 @@ import type {
 	NodeParameterValue,
 	ConnectionTypes,
 	NodeParameterValueType,
-} from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
+import { NodeConnectionType } from 'n8n-workflow/Interfaces';
+import { deepCopy } from 'n8n-workflow/utils';
+import * as NodeHelpers from 'n8n-workflow/NodeHelpers';
 import {
-	NodeHelpers,
-	NodeConnectionType,
-	deepCopy,
 	isINodePropertyCollectionList,
 	isINodePropertiesList,
 	isINodePropertyOptionsList,
-	displayParameter,
-} from 'n8n-workflow';
+} from 'n8n-workflow/type-guards';
 import type {
 	INodeUi,
 	INodeUpdatePropertiesInformation,
@@ -232,7 +232,6 @@ import { useHistoryStore } from '@/stores/history.store';
 import { RenameNodeCommand } from '@/models/history';
 import useWorkflowsEEStore from '@/stores/workflows.ee.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import type { EventBus } from 'n8n-design-system';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { importCurlEventBus } from '@/event-bus';
@@ -1037,7 +1036,10 @@ export default defineComponent({
 					);
 				}
 
-				if (!hasValidOptions && displayParameter(nodeParameterValues, prop, this.node)) {
+				if (
+					!hasValidOptions &&
+					NodeHelpers.displayParameter(nodeParameterValues, prop, this.node)
+				) {
 					unset(nodeParameterValues as object, prop.name);
 				}
 			});

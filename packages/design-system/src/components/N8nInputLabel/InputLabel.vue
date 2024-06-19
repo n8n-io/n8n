@@ -46,10 +46,10 @@
 </template>
 
 <script lang="ts" setup>
-import N8nText from '../N8nText';
-import N8nIcon from '../N8nIcon';
-import N8nTooltip from '../N8nTooltip';
-import type { TextColor } from 'n8n-design-system/types/text';
+import N8nText from '../N8nText/Text.vue';
+import N8nIcon from '../N8nIcon/Icon.vue';
+import N8nTooltip from '../N8nTooltip/Tooltip.vue';
+import type { TextColor } from '../../types/text';
 
 const SIZE = ['small', 'medium'] as const;
 

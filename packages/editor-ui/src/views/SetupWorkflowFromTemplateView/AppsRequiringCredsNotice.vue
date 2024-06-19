@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import N8nNotice from 'n8n-design-system/components/N8nNotice';
+import N8nNotice from 'n8n-design-system/components/N8nNotice/Notice.vue';
+
 import { formatList } from '@/utils/formatters/listFormatter';
 import { useI18n } from '@/composables/useI18n';
 import type {

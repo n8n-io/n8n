@@ -13,7 +13,7 @@ import { getFixedNodesList } from '@/utils/nodeViewUtils';
 import type { NodeTypeProvider } from '@/utils/nodeTypes/nodeTypeTransforms';
 import type { TemplateCredentialKey } from '@/utils/templates/templateTransforms';
 import { replaceAllTemplateNodeCredentials } from '@/utils/templates/templateTransforms';
-import type { INodeCredentialsDetails } from 'n8n-workflow';
+import type { INodeCredentialsDetails } from 'n8n-workflow/Interfaces';
 import type { RouteLocationRaw, Router } from 'vue-router';
 import type { TemplatesStore } from '@/stores/templates.store';
 import type { NodeTypesStore } from '@/stores/nodeTypes.store';

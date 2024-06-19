@@ -1,7 +1,7 @@
 import type { CanvasElementData } from '@/types';
 import type { MaybeRef } from 'vue';
 import { computed, unref } from 'vue';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow/Interfaces';
 
 export function useNodeConnections({
 	inputs,

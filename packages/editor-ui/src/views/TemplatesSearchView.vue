@@ -95,7 +95,7 @@ import type {
 	ITemplatesQuery,
 	ITemplatesCategory,
 } from '@/Interface';
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow/Interfaces';
 import { setPageTitle } from '@/utils/htmlUtils';
 import { CREATOR_HUB_URL, VIEWS } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';

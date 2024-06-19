@@ -92,10 +92,10 @@
 import { computed, useCssModule } from 'vue';
 import { useRoute } from 'vue-router';
 import { ElSubMenu, ElMenuItem } from 'element-plus';
-import N8nTooltip from '../N8nTooltip';
-import N8nIcon from '../N8nIcon';
-import ConditionalRouterLink from '../ConditionalRouterLink';
-import type { IMenuItem } from '../../types';
+import N8nTooltip from '../N8nTooltip/Tooltip.vue';
+import N8nIcon from '../N8nIcon/Icon.vue';
+import ConditionalRouterLink from '../ConditionalRouterLink/ConditionalRouterLink.vue';
+import type { IMenuItem } from '../../types/menu';
 import { doesMenuItemMatchCurrentRoute } from './routerUtil';
 import { getInitials } from './labelUtil';
 

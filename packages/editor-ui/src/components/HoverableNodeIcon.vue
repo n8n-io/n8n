@@ -43,7 +43,7 @@
 import { type StyleValue, defineComponent, type PropType } from 'vue';
 
 import type { ITemplatesNode } from '@/Interface';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow/Interfaces';
 import { mapStores } from 'pinia';
 import { useRootStore } from '@/stores/root.store';
 

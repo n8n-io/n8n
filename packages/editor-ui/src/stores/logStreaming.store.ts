@@ -1,4 +1,4 @@
-import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
+import type { MessageEventBusDestinationOptions } from 'n8n-workflow/MessageEventBus';
 import { defineStore } from 'pinia';
 import {
 	deleteDestinationFromDb,

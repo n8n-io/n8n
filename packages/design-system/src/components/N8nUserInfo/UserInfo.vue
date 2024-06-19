@@ -27,9 +27,9 @@
 
 <script lang="ts" setup>
 import { computed, useCssModule } from 'vue';
-import N8nText from '../N8nText';
-import N8nAvatar from '../N8nAvatar';
-import N8nBadge from '../N8nBadge';
+import N8nText from '../N8nText/Text.vue';
+import N8nAvatar from '../N8nAvatar/Avatar.vue';
+import N8nBadge from '../N8nBadge/Badge.vue';
 import { useI18n } from '../../composables/useI18n';
 
 interface UsersInfoProps {

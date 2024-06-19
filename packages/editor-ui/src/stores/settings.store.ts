@@ -1,3 +1,13 @@
+import { defineStore } from 'pinia';
+import type {
+	IDataObject,
+	LogLevel,
+	IN8nUISettings,
+	ITelemetrySettings,
+	WorkflowSettings,
+} from 'n8n-workflow/Interfaces';
+import * as ExpressionEvaluatorProxy from 'n8n-workflow/ExpressionEvaluatorProxy';
+
 import { createApiKey, deleteApiKey, getApiKey } from '@/api/api-keys';
 import {
 	getLdapConfig,
@@ -16,15 +26,6 @@ import type {
 } from '@/Interface';
 import { STORES, INSECURE_CONNECTION_WARNING } from '@/constants';
 import { UserManagementAuthenticationMethod } from '@/Interface';
-import type {
-	IDataObject,
-	LogLevel,
-	IN8nUISettings,
-	ITelemetrySettings,
-	WorkflowSettings,
-} from 'n8n-workflow';
-import { ExpressionEvaluatorProxy } from 'n8n-workflow';
-import { defineStore } from 'pinia';
 import { useRootStore } from './root.store';
 import { useUIStore } from './ui.store';
 import { useUsersStore } from './users.store';

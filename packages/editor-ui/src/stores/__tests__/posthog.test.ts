@@ -4,7 +4,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/root.store';
 import { useTelemetryStore } from '@/stores/telemetry.store';
-import type { IN8nUISettings } from 'n8n-workflow';
+import type { IN8nUISettings } from 'n8n-workflow/Interfaces';
 import { LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/constants';
 import { nextTick } from 'vue';
 import { defaultSettings } from '../../__tests__/defaults';

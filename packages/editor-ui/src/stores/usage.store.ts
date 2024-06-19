@@ -4,7 +4,6 @@ import type { UsageState } from '@/Interface';
 import { activateLicenseKey, getLicense, renewLicense, requestLicenseTrial } from '@/api/usage';
 import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
 
 export type UsageTelemetry = {
 	instance_id: string;
@@ -35,7 +34,6 @@ const DEFAULT_STATE: UsageState = {
 export const useUsageStore = defineStore('usage', () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
-	const usersStore = useUsersStore();
 
 	const state = reactive<UsageState>(DEFAULT_STATE);
 

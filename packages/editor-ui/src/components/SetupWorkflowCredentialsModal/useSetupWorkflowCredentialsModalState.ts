@@ -1,5 +1,5 @@
 import { computed } from 'vue';
-import type { INodeCredentialsDetails } from 'n8n-workflow';
+import type { INodeCredentialsDetails } from 'n8n-workflow/Interfaces';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';

@@ -9,7 +9,7 @@ import {
 	type INode,
 	type NodeParameterValue,
 	type FilterOptionsValue,
-} from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
 import { computed, reactive, watch } from 'vue';
 import { useNDVStore } from '@/stores/ndv.store';
 import {

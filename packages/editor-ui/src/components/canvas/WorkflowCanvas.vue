@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import Canvas from '@/components/canvas/Canvas.vue';
 import { toRef, useCssModule } from 'vue';
-import type { Workflow } from 'n8n-workflow';
+import type { Workflow } from 'n8n-workflow/Workflow';
 import type { IWorkflowDb } from '@/Interface';
+import Canvas from '@/components/canvas/Canvas.vue';
 import { useCanvasMapping } from '@/composables/useCanvasMapping';
 
 const props = defineProps<{

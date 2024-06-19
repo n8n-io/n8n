@@ -1,7 +1,7 @@
 import CanvasNode from '@/components/canvas/elements/nodes/CanvasNode.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createPinia, setActivePinia } from 'pinia';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow/Interfaces';
 import { fireEvent } from '@testing-library/vue';
 import { createCanvasNodeProps } from '@/__tests__/data';
 
@@ -78,7 +78,7 @@ describe('CanvasNode', () => {
 
 	describe('toolbar', () => {
 		it('should render toolbar when node is hovered', async () => {
-			const { getByTestId, container } = renderComponent({
+			const { getByTestId } = renderComponent({
 				props: {
 					...createCanvasNodeProps(),
 				},

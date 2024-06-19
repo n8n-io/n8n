@@ -1,7 +1,7 @@
 import type { Mock, MockInstance } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { waitFor } from '@testing-library/vue';
-import type { ExecutionSummary } from 'n8n-workflow';
+import type { ExecutionSummary } from 'n8n-workflow/Interfaces';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';

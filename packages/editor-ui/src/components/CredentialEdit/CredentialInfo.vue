@@ -41,7 +41,7 @@
 import { defineComponent } from 'vue';
 
 import TimeAgo from '../TimeAgo.vue';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow/Interfaces';
 
 export default defineComponent({
 	name: 'CredentialInfo',

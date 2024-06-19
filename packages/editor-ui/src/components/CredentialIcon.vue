@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useRootStore } from '@/stores/root.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import type { ICredentialType } from 'n8n-workflow';
+import type { ICredentialType } from 'n8n-workflow/Interfaces';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { getThemedValue } from '@/utils/nodeTypesUtils';
 import { useUIStore } from '@/stores/ui.store';

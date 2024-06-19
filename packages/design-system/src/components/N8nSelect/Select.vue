@@ -1,55 +1,18 @@
 <script setup lang="ts">
-import type { PropType } from 'vue';
 import { computed, ref, useAttrs } from 'vue';
-import { ElSelect } from 'element-plus';
-import type { SelectSize } from 'n8n-design-system/types';
-import { isEventBindingElementAttribute } from '../../utils';
+import { ElSelect, type ISelectProps } from 'element-plus';
+import type { SelectSize } from '../../types/select';
+import { isEventBindingElementAttribute } from '../../utils/typeguards';
 
 type InnerSelectRef = InstanceType<typeof ElSelect>;
 
-const props = defineProps({
-	...ElSelect.props,
-	modelValue: {},
-	size: {
-		type: String as PropType<SelectSize>,
-		default: 'large',
-	},
-	placeholder: {
-		type: String,
-	},
-	disabled: {
-		type: Boolean,
-	},
-	filterable: {
-		type: Boolean,
-	},
-	defaultFirstOption: {
-		type: Boolean,
-	},
-	multiple: {
-		type: Boolean,
-	},
-	filterMethod: {
-		type: Function,
-	},
-	loading: {
-		type: Boolean,
-	},
-	loadingText: {
-		type: String,
-	},
-	popperClass: {
-		type: String,
-	},
-	popperAppendToBody: {
-		type: Boolean,
-	},
-	limitPopperWidth: {
-		type: Boolean,
-	},
-	noDataText: {
-		type: String,
-	},
+defineOptions({ name: 'N8nSelect' });
+
+interface Props extends Partial<Omit<ISelectProps, 'size'>> {
+	size: SelectSize;
+}
+const props = withDefaults(defineProps<Props>(), {
+	size: 'large',
 });
 
 const attrs = useAttrs();
@@ -64,7 +27,7 @@ const listeners = computed(() => {
 	}, {});
 });
 
-const computedSize = computed(() => {
+const size = computed<ISelectProps['size']>(() => {
 	if (props.size === 'mini') {
 		return 'small';
 	}
@@ -118,7 +81,7 @@ defineExpose({
 			v-bind="{ ...$props, ...listeners }"
 			ref="innerSelect"
 			:model-value="modelValue ?? undefined"
-			:size="computedSize"
+			:size="size"
 			:popper-class="popperClass"
 			:class="$style[classes]"
 		>

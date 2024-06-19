@@ -10,8 +10,8 @@ import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { Segment } from '@/types/expressions';
-import { createEventBus, type EventBus } from 'n8n-design-system/utils';
-import type { IDataObject } from 'n8n-workflow';
+import { createEventBus, type EventBus } from 'n8n-design-system/utils/event-bus';
+import type { IDataObject } from 'n8n-workflow/Interfaces';
 import type { EditorState, SelectionRange } from '@codemirror/state';
 
 const isFocused = ref(false);

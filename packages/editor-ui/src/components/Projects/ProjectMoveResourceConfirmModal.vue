@@ -1,11 +1,12 @@
 <script lang="ts" setup>
 import { ref, computed } from 'vue';
+import { N8nCheckbox, N8nText } from 'n8n-design-system/components';
+
 import type { ICredentialsResponse, IWorkflowDb } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { useUIStore } from '@/stores/ui.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import Modal from '@/components/Modal.vue';
-import { N8nCheckbox, N8nText } from 'n8n-design-system';
 import { useToast } from '@/composables/useToast';
 import { useTelemetry } from '@/composables/useTelemetry';
 

@@ -106,6 +106,8 @@
 import { defineComponent, ref } from 'vue';
 import type { PropType, StyleValue } from 'vue';
 import { mapStores } from 'pinia';
+import type { INodeTypeDescription } from 'n8n-workflow/Interfaces';
+import type { Workflow } from 'n8n-workflow/Workflow';
 
 import { isNumber, isString } from '@/utils/typeGuards';
 import type {
@@ -114,15 +116,13 @@ import type {
 	IUpdateInformation,
 	XYPosition,
 } from '@/Interface';
-
-import type { INodeTypeDescription, Workflow } from 'n8n-workflow';
 import { QUICKSTART_NOTE_NAME } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useContextMenu } from '@/composables/useContextMenu';
-import { useDeviceSupport } from 'n8n-design-system';
+import { useDeviceSupport } from 'n8n-design-system/composables/useDeviceSupport';
 import { GRID_SIZE } from '@/utils/nodeViewUtils';
 import { useToast } from '@/composables/useToast';
 import { assert } from '@/utils/assert';

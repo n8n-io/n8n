@@ -1,8 +1,8 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { mock } from 'vitest-mock-extended';
-import { NodeConnectionType } from 'n8n-workflow';
-import type { IConnections, INode } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow/Interfaces';
+import type { IConnections, INode } from 'n8n-workflow/Interfaces';
 
 import WorkflowLMChatModal from '@/components/WorkflowLMChat.vue';
 import { WORKFLOW_LM_CHAT_MODAL_KEY } from '@/constants';

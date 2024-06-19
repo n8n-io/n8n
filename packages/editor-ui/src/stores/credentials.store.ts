@@ -18,7 +18,7 @@ import type {
 	ICredentialType,
 	INodeCredentialTestResult,
 	INodeTypeDescription,
-} from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
 import { defineStore } from 'pinia';
 import { useRootStore } from './root.store';
 import { useNodeTypesStore } from './nodeTypes.store';

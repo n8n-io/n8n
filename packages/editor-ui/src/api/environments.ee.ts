@@ -1,6 +1,6 @@
 import type { EnvironmentVariable, IRestApiContext } from '@/Interface';
 import { makeRestApiRequest } from '@/utils/apiUtils';
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow/Interfaces';
 
 export async function getVariables(context: IRestApiContext): Promise<EnvironmentVariable[]> {
 	return await makeRestApiRequest(context, 'GET', '/variables');

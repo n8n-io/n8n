@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, computed, useCssModule } from 'vue';
-import type { ExecutionSummary } from 'n8n-workflow';
+import type { ExecutionSummary } from 'n8n-workflow/Interfaces';
 import { useI18n } from '@/composables/useI18n';
 import { VIEWS, WAIT_TIME_UNLIMITED } from '@/constants';
 import { useRouter } from 'vue-router';

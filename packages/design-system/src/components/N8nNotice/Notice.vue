@@ -18,8 +18,8 @@
 <script lang="ts" setup>
 import { computed, ref, useCssModule } from 'vue';
 import sanitize from 'sanitize-html';
-import N8nText from '../../components/N8nText';
-import { uid } from '../../utils';
+import N8nText from '../N8nText/Text.vue';
+import { uid } from '../../utils/uid';
 
 interface NoticeProps {
 	id?: string;

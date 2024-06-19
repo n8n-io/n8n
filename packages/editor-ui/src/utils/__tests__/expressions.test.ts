@@ -1,4 +1,4 @@
-import { ExpressionError } from 'n8n-workflow';
+import { ExpressionError } from 'n8n-workflow/errors';
 import { stringifyExpressionResult } from '../expressions';
 
 describe('stringifyExpressionResult()', () => {

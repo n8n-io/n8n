@@ -1,4 +1,4 @@
-import type { ExecutionSummary } from 'n8n-workflow';
+import type { ExecutionSummary } from 'n8n-workflow/Interfaces';
 import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
 import { useI18n } from '@/composables/useI18n';
 

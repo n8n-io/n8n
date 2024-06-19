@@ -1,5 +1,7 @@
 <script lang="ts" setup>
-import { onBeforeMount, onBeforeUnmount, onMounted, ref } from 'vue';
+import { onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
+import { storeToRefs } from 'pinia';
+
 import GlobalExecutionsList from '@/components/executions/global/GlobalExecutionsList.vue';
 import { setPageTitle } from '@/utils/htmlUtils';
 import { useI18n } from '@/composables/useI18n';
@@ -8,7 +10,6 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useToast } from '@/composables/useToast';
-import { storeToRefs } from 'pinia';
 import type { ExecutionFilterType } from '@/Interface';
 
 const i18n = useI18n();
@@ -18,8 +19,6 @@ const workflowsStore = useWorkflowsStore();
 const executionsStore = useExecutionsStore();
 
 const toast = useToast();
-
-const animationsEnabled = ref(false);
 
 const { executionsCount, executionsCountEstimated, filters, allExecutions } =
 	storeToRefs(executionsStore);

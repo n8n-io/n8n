@@ -4,6 +4,6 @@ exports[`N8nInfoTip > should render correctly as note 1`] = `"<div class="n8n-in
 
 exports[`N8nInfoTip > should render correctly as tooltip 1`] = `
 "<div class="n8n-info-tip infoTip info tooltip bold">
-  <n8n-tooltip-stub popperclass="tooltipPopper" role="tooltip" showafter="0" hideafter="200" autoclose="0" boundariespadding="0" gpuacceleration="true" offset="12" placement="top" popperoptions="[object Object]" strategy="absolute" effect="dark" enterable="true" pure="false" focusonshow="false" trapping="false" stoppoppermouseevent="true" virtualtriggering="false" content="" rawcontent="false" persistent="false" teleported="true" disabled="false" open="false" trigger="hover" triggerkeys="Enter,Space" arrowoffset="5" showarrow="true" justifybuttons="flex-end" buttons="" class=""></n8n-tooltip-stub>
+  <n8n-tooltip-stub placement="top" popperclass="tooltipPopper" content="" justifybuttons="flex-end" buttons="" showarrow="false" disabled="false" virtualtriggering="false" open="false" rawcontent="false" persistent="false" teleported="false" enterable="false" pure="false" focusonshow="false" trapping="false" stoppoppermouseevent="false" gpuacceleration="false" showafter="0" class=""></n8n-tooltip-stub>
 </div>"
 `;

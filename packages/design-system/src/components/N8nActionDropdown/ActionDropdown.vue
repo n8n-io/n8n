@@ -59,10 +59,10 @@
 // is designed to be used in card components.
 import { ref, useCssModule, useAttrs, computed } from 'vue';
 import { ElDropdown, ElDropdownMenu, ElDropdownItem, type Placement } from 'element-plus';
-import N8nIcon from '../N8nIcon';
-import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
-import type { ActionDropdownItem } from '../../types';
-import type { IconSize } from 'n8n-design-system/types/icon';
+import N8nIcon from '../N8nIcon/Icon.vue';
+import N8nKeyboardShortcut from '../N8nKeyboardShortcut/N8nKeyboardShortcut.vue';
+import type { ActionDropdownItem } from '../../types/action-dropdown';
+import type { IconSize } from '../../types/icon';
 
 const TRIGGER = ['click', 'hover'] as const;
 
@@ -84,6 +84,8 @@ const props = withDefaults(defineProps<ActionDropdownProps>(), {
 	trigger: 'click',
 	hideArrow: false,
 });
+
+defineOptions({ name: 'N8nActionDropdown' });
 
 const $attrs = useAttrs();
 const testIdPrefix = $attrs['data-test-id'];

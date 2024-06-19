@@ -20,12 +20,13 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import type { IFormBoxConfig } from 'n8n-design-system/types/form';
+
 import AuthView from './AuthView.vue';
 import MfaView from './MfaView.vue';
 import { useToast } from '@/composables/useToast';
-import type { IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS, MFA_FORM } from '@/constants';
-import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';

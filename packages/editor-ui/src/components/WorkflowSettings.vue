@@ -371,14 +371,14 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 } from '@/constants';
 
-import type { WorkflowSettings } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
+import type { WorkflowSettings } from 'n8n-workflow/Interfaces';
+import { deepCopy } from 'n8n-workflow/utils';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useRootStore } from '@/stores/root.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { createEventBus } from 'n8n-design-system/utils';
+import { createEventBus } from 'n8n-design-system/utils/event-bus';
 import type { PermissionsMap } from '@/permissions';
 import type { WorkflowScope } from '@n8n/permissions';
 import { getWorkflowPermissions } from '@/permissions';

@@ -1,12 +1,6 @@
-import {
-	HTTP_REQUEST_NODE_TYPE,
-	MODAL_CONFIRM,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-	VIEWS,
-	WEBHOOK_NODE_TYPE,
-} from '@/constants';
-
+import { v4 as uuid } from 'uuid';
+import type { useRouter } from 'vue-router';
+import { get, isEqual } from 'lodash-es';
 import type {
 	IConnections,
 	IDataObject,
@@ -26,9 +20,11 @@ import type {
 	IWorkflowIssues,
 	IWorkflowSettings,
 	NodeParameterValue,
-	Workflow,
-} from 'n8n-workflow';
-import { NodeConnectionType, ExpressionEvaluatorProxy, NodeHelpers } from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
+import { NodeConnectionType } from 'n8n-workflow/Interfaces';
+import * as ExpressionEvaluatorProxy from 'n8n-workflow/ExpressionEvaluatorProxy';
+import type { Workflow } from 'n8n-workflow/Workflow';
+import * as NodeHelpers from 'n8n-workflow/NodeHelpers';
 
 import type {
 	ICredentialsResponse,
@@ -42,13 +38,17 @@ import type {
 	TargetItem,
 	XYPosition,
 } from '@/Interface';
-
+import {
+	HTTP_REQUEST_NODE_TYPE,
+	MODAL_CONFIRM,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+	VIEWS,
+	WEBHOOK_NODE_TYPE,
+} from '@/constants';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-
-import { get, isEqual } from 'lodash-es';
-
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useRootStore } from '@/stores/root.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -57,7 +57,6 @@ import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getSourceItems } from '@/utils/pairedItemUtils';
-import { v4 as uuid } from 'uuid';
 import { useSettingsStore } from '@/stores/settings.store';
 import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -65,7 +64,6 @@ import { useCanvasStore } from '@/stores/canvas.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useI18n } from '@/composables/useI18n';
-import type { useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useProjectsStore } from '@/stores/projects.store';
 

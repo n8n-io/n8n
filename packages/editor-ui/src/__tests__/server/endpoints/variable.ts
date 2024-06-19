@@ -1,7 +1,7 @@
 import type { Request, Server } from 'miragejs';
 import { Response } from 'miragejs';
 import type { AppSchema } from '../types';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow/utils';
 import type { EnvironmentVariable } from '@/Interface';
 
 export function routesForVariables(server: Server) {

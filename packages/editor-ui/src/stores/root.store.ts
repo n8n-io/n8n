@@ -1,8 +1,9 @@
-import { CLOUD_BASE_URL_PRODUCTION, CLOUD_BASE_URL_STAGING, STORES } from '@/constants';
-import type { RootState } from '@/Interface';
-import { setGlobalState } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
+import { setGlobalState } from 'n8n-workflow/GlobalState';
+
+import { CLOUD_BASE_URL_PRODUCTION, CLOUD_BASE_URL_STAGING, STORES } from '@/constants';
+import type { RootState } from '@/Interface';
 
 const { VUE_APP_URL_BASE_API } = import.meta.env;
 

@@ -2,7 +2,9 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useRouter } from 'vue-router';
 import type router from 'vue-router';
-import { ExpressionError, type IPinData, type IRunData, type Workflow } from 'n8n-workflow';
+import type { IPinData, IRunData } from 'n8n-workflow/Interfaces';
+import { ExpressionError } from 'n8n-workflow/errors';
+import type { Workflow } from 'n8n-workflow/Workflow';
 
 import { useRootStore } from '@/stores/root.store';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';

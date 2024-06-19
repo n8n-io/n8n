@@ -1,12 +1,13 @@
 import { computed, reactive } from 'vue';
 import { defineStore } from 'pinia';
+import { DateTime } from 'luxon';
+
 import type { CloudPlanState } from '@/Interface';
 import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { getAdminPanelLoginCode, getCurrentPlan, getCurrentUsage } from '@/api/cloudPlans';
-import { DateTime } from 'luxon';
 import { CLOUD_TRIAL_CHECK_INTERVAL, STORES } from '@/constants';
 import { hasPermission } from '@/utils/rbac/permissions';
 
@@ -23,14 +24,6 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 	const usersStore = useUsersStore();
 
 	const state = reactive<CloudPlanState>(DEFAULT_STATE);
-
-	const setData = (data: CloudPlanState['data']) => {
-		state.data = data;
-	};
-
-	const setUsage = (data: CloudPlanState['usage']) => {
-		state.usage = data;
-	};
 
 	const reset = () => {
 		state.data = null;

@@ -39,12 +39,12 @@
 </template>
 
 <script lang="ts" setup>
-import N8nFormInputs from '../N8nFormInputs';
-import N8nHeading from '../N8nHeading';
-import N8nLink from '../N8nLink';
-import N8nButton from '../N8nButton';
-import type { IFormInput } from 'n8n-design-system/types';
-import { createEventBus } from '../../utils';
+import N8nFormInputs from '../N8nFormInputs/FormInputs.vue';
+import N8nHeading from '../N8nHeading/Heading.vue';
+import N8nLink from '../N8nLink/Link.vue';
+import N8nButton from '../N8nButton/Button.vue';
+import type { IFormInput } from '../../types/form';
+import { createEventBus } from '../../utils/event-bus';
 
 interface FormBoxProps {
 	title?: string;

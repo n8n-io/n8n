@@ -10,7 +10,7 @@ import { NO_NETWORK_ERROR_CODE } from '@/utils/apiUtils';
 import { useToast } from '@/composables/useToast';
 import { VIEWS } from '@/constants';
 import { useRoute, useRouter } from 'vue-router';
-import type { ExecutionSummary } from 'n8n-workflow';
+import type { ExecutionSummary } from 'n8n-workflow/Interfaces';
 import { useDebounce } from '@/composables/useDebounce';
 import { storeToRefs } from 'pinia';
 import { useTelemetry } from '@/composables/useTelemetry';

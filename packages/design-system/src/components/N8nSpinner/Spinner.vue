@@ -11,8 +11,8 @@
 </template>
 
 <script lang="ts" setup>
-import type { TextSize } from 'n8n-design-system/types/text';
-import N8nIcon from '../N8nIcon';
+import N8nIcon from '../N8nIcon/Icon.vue';
+import type { TextSize } from '../../types/text';
 
 const TYPE = ['dots', 'ring'] as const;
 

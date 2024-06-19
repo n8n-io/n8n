@@ -1,6 +1,6 @@
 import type { IRestApiContext, IShareWorkflowsPayload, IWorkflowsShareResponse } from '@/Interface';
 import { makeRestApiRequest } from '@/utils/apiUtils';
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow/Interfaces';
 
 export async function setWorkflowSharedWith(
 	context: IRestApiContext,

@@ -1,5 +1,5 @@
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
-import type { ExecutionSummary } from 'n8n-workflow';
+import type { ExecutionSummary } from 'n8n-workflow/Interfaces';
 import { i18n } from '@/plugins/i18n';
 import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
 

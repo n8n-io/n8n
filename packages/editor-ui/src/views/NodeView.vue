@@ -61,8 +61,8 @@
 						@run-workflow="onRunNode"
 						@moved="onNodeMoved"
 						@run="onNodeRun"
-						@remove-node="(name) => removeNode(name, true)"
-						@toggle-disable-node="(node) => toggleActivationNodes([node])"
+						@remove-node="(name: string) => removeNode(name, true)"
+						@toggle-disable-node="(node: INode) => toggleActivationNodes([node])"
 					>
 						<template #custom-tooltip>
 							<span
@@ -84,7 +84,7 @@
 						@deselect-all-nodes="deselectAllNodes"
 						@deselect-node="nodeDeselectedByName"
 						@node-selected="nodeSelectedByName"
-						@remove-node="(name) => removeNode(name, true)"
+						@remove-node="(name: string) => removeNode(name, true)"
 					/>
 				</div>
 			</div>
@@ -222,6 +222,7 @@ import {
 	INTERCEPT_BEFORE_DROP,
 } from '@jsplumb/core';
 import type { NotificationHandle } from 'element-plus';
+import { useDeviceSupport } from 'n8n-design-system/composables/useDeviceSupport';
 
 import {
 	FIRST_ONBOARDING_PROMPT_TIMEOUT,
@@ -287,19 +288,16 @@ import type {
 	ITaskData,
 	ITelemetryTrackProperties,
 	IWorkflowBase,
-	Workflow,
 	ConnectionTypes,
 	INodeOutputConfiguration,
 	IRun,
-} from 'n8n-workflow';
-import {
-	deepCopy,
-	jsonParse,
-	NodeConnectionType,
-	nodeConnectionTypes,
-	NodeHelpers,
-	TelemetryHelpers,
-} from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
+import type { Workflow } from 'n8n-workflow/Workflow';
+import { NodeConnectionType, nodeConnectionTypes } from 'n8n-workflow/Interfaces';
+import { deepCopy, jsonParse } from 'n8n-workflow/utils';
+import * as NodeHelpers from 'n8n-workflow/NodeHelpers';
+import * as TelemetryHelpers from 'n8n-workflow/TelemetryHelpers';
+
 import type {
 	NewConnectionInfo,
 	ICredentialsResponse,
@@ -389,7 +387,6 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useClipboard } from '@/composables/useClipboard';
 import { usePinnedData } from '@/composables/usePinnedData';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useDeviceSupport } from 'n8n-design-system';
 import { useDebounce } from '@/composables/useDebounce';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useCanvasPanning } from '@/composables/useCanvasPanning';

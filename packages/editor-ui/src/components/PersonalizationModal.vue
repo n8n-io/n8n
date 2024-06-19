@@ -55,6 +55,9 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
+import { createEventBus } from 'n8n-design-system/utils/event-bus';
+import type { IFormInputs } from 'n8n-design-system/types/form';
+
 import {
 	COMPANY_SIZE_100_499,
 	COMPANY_SIZE_1000_OR_MORE,
@@ -141,14 +144,13 @@ import {
 } from '@/constants';
 import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
-import type { IFormInputs, IPersonalizationLatestVersion, IUser } from '@/Interface';
+import type { IPersonalizationLatestVersion, IUser } from '@/Interface';
 import { getAccountAge } from '@/utils/userUtils';
-import type { GenericValue } from 'n8n-workflow';
+import type { GenericValue } from 'n8n-workflow/Interfaces';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/root.store';
 import { useUsersStore } from '@/stores/users.store';
-import { createEventBus } from 'n8n-design-system/utils';
 import { usePostHog } from '@/stores/posthog.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useUsageStore } from '@/stores/usage.store';

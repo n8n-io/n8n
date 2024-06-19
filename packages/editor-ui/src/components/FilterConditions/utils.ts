@@ -1,16 +1,15 @@
 import { resolveParameter } from '@/composables/useWorkflowHelpers';
 import { i18n } from '@/plugins/i18n';
 import { isExpression } from '@/utils/expressions';
-import {
-	FilterError,
-	executeFilterCondition,
-	validateFieldType,
-	type FilterConditionValue,
-	type FilterOperatorType,
-	type FilterOptionsValue,
-	type NodeParameterValue,
-	type INodeProperties,
-} from 'n8n-workflow';
+import type {
+	FilterConditionValue,
+	FilterOperatorType,
+	FilterOptionsValue,
+	NodeParameterValue,
+	INodeProperties,
+} from 'n8n-workflow/Interfaces';
+import { FilterError, executeFilterCondition } from 'n8n-workflow/NodeParameters/FilterParameter';
+import { validateFieldType } from 'n8n-workflow/TypeValidation';
 import { OPERATORS_BY_ID, type FilterOperatorId } from './constants';
 import type { ConditionResult, FilterOperator } from './types';
 

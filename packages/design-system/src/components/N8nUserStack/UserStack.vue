@@ -1,8 +1,8 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import type { IUser, UserStackGroups } from 'n8n-design-system/types';
-import N8nAvatar from '../N8nAvatar';
-import N8nUserInfo from '../N8nUserInfo';
+import N8nAvatar from '../N8nAvatar/Avatar.vue';
+import N8nUserInfo from '../N8nUserInfo/UserInfo.vue';
+import type { IUser, UserStackGroups } from '../../types/user';
 
 const props = withDefaults(
 	defineProps<{

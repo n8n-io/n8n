@@ -5,7 +5,11 @@ import {
 	mapCanvasConnectionToLegacyConnection,
 	parseCanvasConnectionHandleString,
 } from '@/utils/canvasUtilsV2';
-import { NodeConnectionType, type IConnections, type INodeTypeDescription } from 'n8n-workflow';
+import {
+	NodeConnectionType,
+	type IConnections,
+	type INodeTypeDescription,
+} from 'n8n-workflow/Interfaces';
 import type { CanvasConnection } from '@/types';
 import type { INodeUi } from '@/Interface';
 import type { Connection } from '@vue-flow/core';

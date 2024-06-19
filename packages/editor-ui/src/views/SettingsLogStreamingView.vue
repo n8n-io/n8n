@@ -76,6 +76,13 @@
 import { defineComponent, nextTick } from 'vue';
 import { mapStores } from 'pinia';
 import { v4 as uuid } from 'uuid';
+import {
+	defaultMessageEventBusDestinationOptions,
+	type MessageEventBusDestinationOptions,
+} from 'n8n-workflow/MessageEventBus';
+import { deepCopy } from 'n8n-workflow/utils';
+import { createEventBus } from 'n8n-design-system/utils/event-bus';
+
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { useCredentialsStore } from '@/stores/credentials.store';
@@ -83,10 +90,7 @@ import { useLogStreamingStore } from '@/stores/logStreaming.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { LOG_STREAM_MODAL_KEY, EnterpriseEditionFeature } from '@/constants';
-import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
-import { deepCopy, defaultMessageEventBusDestinationOptions } from 'n8n-workflow';
 import EventDestinationCard from '@/components/SettingsLogStreaming/EventDestinationCard.ee.vue';
-import { createEventBus } from 'n8n-design-system/utils';
 
 export default defineComponent({
 	name: 'SettingsLogStreamingView',

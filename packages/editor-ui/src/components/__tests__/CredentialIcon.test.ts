@@ -1,6 +1,6 @@
 import { createTestingPinia } from '@pinia/testing';
 import { mock } from 'vitest-mock-extended';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow/Interfaces';
 
 import CredentialIcon from '@/components/CredentialIcon.vue';
 import { STORES } from '@/constants';

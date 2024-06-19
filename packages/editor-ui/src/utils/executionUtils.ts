@@ -1,4 +1,6 @@
-import type { ExecutionStatus, IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow/Interfaces';
+import type { ExecutionStatus } from 'n8n-workflow/ExecutionStatus';
+
 import type { ExecutionFilterType, ExecutionsQueryFilter } from '@/Interface';
 import { isEmpty } from '@/utils/typesUtils';
 

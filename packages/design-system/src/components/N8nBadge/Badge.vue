@@ -7,8 +7,8 @@
 </template>
 
 <script lang="ts" setup>
-import type { TextSize } from 'n8n-design-system/types/text';
-import N8nText from '../N8nText';
+import N8nText from '../N8nText/Text.vue';
+import type { TextSize } from '../../types/text';
 
 const THEME = [
 	'default',

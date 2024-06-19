@@ -1,14 +1,14 @@
 <script setup lang="ts">
+import { computed, onBeforeUnmount } from 'vue';
 import type { EditorState, SelectionRange } from '@codemirror/state';
+import { N8nTooltip } from 'n8n-design-system/components';
 
 import { useI18n } from '@/composables/useI18n';
 import type { Segment } from '@/types/expressions';
 import ExpressionOutput from './ExpressionOutput.vue';
 import InlineExpressionTip from './InlineExpressionTip.vue';
 import { outputTheme } from './theme';
-import { computed, onBeforeUnmount } from 'vue';
 import { useNDVStore } from '@/stores/ndv.store';
-import { N8nTooltip } from 'n8n-design-system/components';
 
 interface InlineExpressionEditorOutputProps {
 	segments: Segment[];

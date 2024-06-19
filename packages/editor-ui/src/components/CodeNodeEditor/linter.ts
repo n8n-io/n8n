@@ -3,7 +3,7 @@ import { linter as createLinter } from '@codemirror/lint';
 import type { EditorView } from '@codemirror/view';
 import * as esprima from 'esprima-next';
 import type { Node } from 'estree';
-import type { CodeExecutionMode, CodeNodeEditorLanguage } from 'n8n-workflow';
+import type { CodeExecutionMode, CodeNodeEditorLanguage } from 'n8n-workflow/Interfaces';
 import { type PropType, defineComponent } from 'vue';
 
 import {

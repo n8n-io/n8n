@@ -26,7 +26,7 @@ import { mapStores } from 'pinia';
 import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
 import { useUserHelpers } from '@/composables/useUserHelpers';
 import type { IFakeDoor } from '@/Interface';
-import type { IMenuItem } from 'n8n-design-system';
+import type { IMenuItem } from 'n8n-design-system/types/menu';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';

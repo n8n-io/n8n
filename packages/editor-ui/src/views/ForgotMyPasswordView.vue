@@ -3,12 +3,12 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import type { IFormBoxConfig } from 'n8n-design-system/types/form';
+
 import AuthView from './AuthView.vue';
 import { useToast } from '@/composables/useToast';
-
-import { defineComponent } from 'vue';
-import type { IFormBoxConfig } from '@/Interface';
-import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 

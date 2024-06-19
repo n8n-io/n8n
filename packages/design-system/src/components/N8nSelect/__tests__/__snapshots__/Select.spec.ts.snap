@@ -3,7 +3,7 @@
 exports[`components > N8nSelect > should render correctly 1`] = `
 "<div class="n8n-select container">
   <!--v-if-->
-  <div class="el-select el-select--large" popperappendtobody="false" limitpopperwidth="false">
+  <div class="el-select el-select--large" scrollbaralwayson="false">
     <div class="select-trigger el-tooltip__trigger el-tooltip__trigger">
       <!--v-if-->
       <!-- fix: https://github.com/element-plus/element-plus/issues/11415 -->
@@ -20,6 +20,33 @@ exports[`components > N8nSelect > should render correctly 1`] = `
       </div>
     </div>
     <!--teleport start-->
+    <transition-stub name="el-zoom-in-top" appear="false" persisted="false" css="true">
+      <div style="z-index: 2001; position: absolute; left: 0px; top: 0px; display: none;" class="el-popper is-pure is-light el-select__popper" tabindex="-1" aria-hidden="true" role="tooltip" id="el-id-9090-0">
+        <div class="el-select-dropdown">
+          <div class="el-scrollbar" style="display: none;">
+            <div class="el-select-dropdown__wrap el-scrollbar__wrap el-scrollbar__wrap--hidden-default">
+              <ul class="el-scrollbar__view el-select-dropdown__list" style="">
+                <!--v-if-->
+                <li class="el-select-dropdown__item" hovering="false" selected="false">1</li>
+                <li class="el-select-dropdown__item" hovering="false" selected="false">2</li>
+                <li class="el-select-dropdown__item" hovering="false" selected="false">3</li>
+              </ul>
+            </div>
+            <transition-stub name="el-scrollbar-fade" appear="false" persisted="true" css="true">
+              <div class="el-scrollbar__bar is-horizontal" style="display: none;">
+                <div class="el-scrollbar__thumb" style="width: 0px; transform: translateX(0%);"></div>
+              </div>
+            </transition-stub>
+            <transition-stub name="el-scrollbar-fade" appear="false" persisted="true" css="true">
+              <div class="el-scrollbar__bar is-vertical" style="display: none;">
+                <div class="el-scrollbar__thumb" style="height: 0px; transform: translateY(0%);"></div>
+              </div>
+            </transition-stub>
+          </div>
+          <p class="el-select-dropdown__empty">No data</p>
+        </div><span class="el-popper__arrow" style="position: absolute;" data-popper-arrow=""></span>
+      </div>
+    </transition-stub>
     <!--teleport end-->
   </div>
 </div>"

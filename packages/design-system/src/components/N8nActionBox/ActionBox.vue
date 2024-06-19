@@ -36,11 +36,11 @@
 </template>
 
 <script lang="ts" setup>
-import N8nButton from '../N8nButton';
-import N8nHeading from '../N8nHeading';
-import N8nText from '../N8nText';
-import N8nCallout, { type CalloutTheme } from '../N8nCallout';
-import type { ButtonType } from 'n8n-design-system/types/button';
+import N8nButton from '../N8nButton/Button.vue';
+import N8nHeading from '../N8nHeading/Heading.vue';
+import N8nText from '../N8nText/Text.vue';
+import N8nCallout, { type CalloutTheme } from '../N8nCallout/Callout.vue';
+import type { ButtonType } from '../../types/button';
 
 interface ActionBoxProps {
 	emoji: string;

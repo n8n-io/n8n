@@ -50,7 +50,7 @@
 </template>
 
 <script lang="ts">
-import type { INodeTypeDescription, IWebhookDescription } from 'n8n-workflow';
+import type { INodeTypeDescription, IWebhookDescription } from 'n8n-workflow/Interfaces';
 import { defineComponent } from 'vue';
 
 import { useToast } from '@/composables/useToast';

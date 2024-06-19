@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import { computed, ref, watch, onBeforeMount, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
-import { deepCopy } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow/utils';
+
 import { useUsersStore } from '@/stores/users.store';
 import type { IUser } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';

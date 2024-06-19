@@ -1,28 +1,31 @@
+import { ref } from 'vue';
+import type { useRouter } from 'vue-router';
+import { parse } from 'flatted';
+import type {
+	IDataObject,
+	INodeTypeNameVersion,
+	IRun,
+	IRunExecutionData,
+	IWorkflowBase,
+	IExecuteContextData,
+	INodeTypeDescription,
+} from 'n8n-workflow/Interfaces';
+import type {
+	ExpressionError,
+	SubworkflowOperationError,
+	NodeOperationError,
+} from 'n8n-workflow/errors';
+import * as TelemetryHelpers from 'n8n-workflow/TelemetryHelpers';
+
 import type {
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
 	IPushData,
 	IPushDataExecutionFinished,
 } from '@/Interface';
-
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useTitleChange } from '@/composables/useTitleChange';
 import { useToast } from '@/composables/useToast';
-
-import type {
-	ExpressionError,
-	IDataObject,
-	INodeTypeNameVersion,
-	IRun,
-	IRunExecutionData,
-	IWorkflowBase,
-	SubworkflowOperationError,
-	IExecuteContextData,
-	NodeOperationError,
-	INodeTypeDescription,
-} from 'n8n-workflow';
-import { TelemetryHelpers } from 'n8n-workflow';
-
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/event-bus';
@@ -31,14 +34,11 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { parse } from 'flatted';
 import { useSegment } from '@/stores/segment.store';
-import { ref } from 'vue';
 import { useOrchestrationStore } from '@/stores/orchestration.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useCollaborationStore } from '@/stores/collaboration.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import type { useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';

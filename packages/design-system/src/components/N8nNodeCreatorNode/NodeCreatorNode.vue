@@ -2,7 +2,7 @@
 import { useI18n } from '../../composables/useI18n';
 import type { NodeCreatorTag } from '../../types/node-creator-node';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import N8nTooltip from '../N8nTooltip';
+import N8nTooltip from '../N8nTooltip/Tooltip.vue';
 import { ElTag } from 'element-plus';
 
 export interface Props {

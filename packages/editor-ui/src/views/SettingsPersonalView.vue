@@ -115,16 +115,18 @@
 </template>
 
 <script lang="ts">
+import { mapStores } from 'pinia';
+import { defineComponent } from 'vue';
+import { createEventBus } from 'n8n-design-system/utils/event-bus';
+import type { IFormInputs } from 'n8n-design-system/types/form';
+
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
-import type { IFormInputs, IUser, ThemeOption } from '@/Interface';
+import type { IUser, ThemeOption } from '@/Interface';
 import { CHANGE_PASSWORD_MODAL_KEY, MFA_DOCS_URL, MFA_SETUP_MODAL_KEY } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { mapStores } from 'pinia';
-import { defineComponent } from 'vue';
-import { createEventBus } from 'n8n-design-system/utils';
 
 export default defineComponent({
 	name: 'SettingsPersonalView',

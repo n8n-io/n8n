@@ -1,7 +1,7 @@
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { mock } from 'vitest-mock-extended';
-import type { ICredentialType } from 'n8n-workflow';
+import type { ICredentialType } from 'n8n-workflow/Interfaces';
 
 import type {
 	ICredentialsResponse,

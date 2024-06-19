@@ -20,8 +20,8 @@
 
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
-import N8nTag from '../N8nTag';
-import N8nLink from '../N8nLink';
+import N8nTag from '../N8nTag/Tag.vue';
+import N8nLink from '../N8nLink/Link.vue';
 import { useI18n } from '../../composables/useI18n';
 
 export interface ITag {

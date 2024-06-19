@@ -1,4 +1,10 @@
 <script lang="ts" setup>
+import { computed, ref, useCssModule, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import type { WorkflowScope } from '@n8n/permissions';
+import { createEventBus } from 'n8n-design-system/utils/event-bus';
+import type { ActionDropdownItem } from 'n8n-design-system/types/action-dropdown';
+
 import {
 	DUPLICATE_MODAL_KEY,
 	EnterpriseEditionFeature,
@@ -12,7 +18,6 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/constants';
 import type { PermissionsMap } from '@/permissions';
-import type { WorkflowScope } from '@n8n/permissions';
 
 import ShortenName from '@/components/ShortenName.vue';
 import TagsContainer from '@/components/TagsContainer.vue';
@@ -39,19 +44,11 @@ import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 
 import { getWorkflowPermissions } from '@/permissions';
-import { createEventBus } from 'n8n-design-system/utils';
 import { nodeViewEventBus } from '@/event-bus';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { useCanvasStore } from '@/stores/canvas.store';
-import { useRoute, useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { computed, ref, useCssModule, watch } from 'vue';
-import type {
-	ActionDropdownItem,
-	IWorkflowDataUpdate,
-	IWorkflowDb,
-	IWorkflowToShare,
-} from '@/Interface';
+import type { IWorkflowDataUpdate, IWorkflowDb, IWorkflowToShare } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { BaseTextKey } from '../../plugins/i18n';

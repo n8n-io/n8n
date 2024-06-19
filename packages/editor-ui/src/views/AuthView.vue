@@ -23,10 +23,10 @@
 
 <script lang="ts">
 import { type PropType, defineComponent } from 'vue';
+import type { IFormBoxConfig } from 'n8n-design-system/types/form';
 
 import Logo from '@/components/Logo.vue';
 import SSOLogin from '@/components/SSOLogin.vue';
-import type { IFormBoxConfig } from '@/Interface';
 
 export default defineComponent({
 	name: 'AuthView',

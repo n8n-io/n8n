@@ -60,13 +60,13 @@ import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isValueExpression as isValueExpressionUtil } from '@/utils/nodeTypesUtils';
-import { createEventBus } from 'n8n-design-system/utils';
+import { createEventBus } from 'n8n-design-system/utils/event-bus';
 import type {
 	INodeParameterResourceLocator,
 	INodeProperties,
 	IParameterLabel,
 	NodeParameterValueType,
-} from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
 import { computed, ref } from 'vue';
 import ParameterInputWrapper from './ParameterInputWrapper.vue';
 import ParameterOptions from './ParameterOptions.vue';

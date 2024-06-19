@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, onBeforeMount, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import N8nHeading from 'n8n-design-system/components/N8nHeading/Heading.vue';
+import N8nLink from 'n8n-design-system/components/N8nLink/Link.vue';
+
 import { useSetupTemplateStore } from './setupTemplate.store';
-import N8nHeading from 'n8n-design-system/components/N8nHeading';
-import N8nLink from 'n8n-design-system/components/N8nLink';
 import AppsRequiringCredsNotice from './AppsRequiringCredsNotice.vue';
 import SetupTemplateFormStep from './SetupTemplateFormStep.vue';
 import TemplatesView from '../TemplatesView.vue';

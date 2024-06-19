@@ -109,7 +109,11 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
+import { useRouter } from 'vue-router';
 import { mapStores } from 'pinia';
+import type { INodeTypeDescription } from 'n8n-workflow/Interfaces';
+import { createEventBus } from 'n8n-design-system/utils/event-bus';
+
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	VIEWS,
@@ -118,7 +122,6 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 } from '@/constants';
 import type { INodeUi } from '@/Interface';
-import type { INodeTypeDescription } from 'n8n-workflow';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
 import CopyInput from '@/components/CopyInput.vue';
@@ -127,8 +130,6 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { createEventBus } from 'n8n-design-system/utils';
-import { useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { isTriggerPanelObject } from '@/utils/typeGuards';
 

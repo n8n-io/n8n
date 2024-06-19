@@ -11,8 +11,8 @@ import type {
 	INodeTypeDescription,
 	ITaskData,
 	NodeInputConnections,
-} from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
+import { NodeConnectionType } from 'n8n-workflow/Interfaces';
 import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 import { EVENT_CONNECTION_MOUSEOUT, EVENT_CONNECTION_MOUSEOVER } from '@jsplumb/browser-ui';
 import { useUIStore } from '@/stores/ui.store';

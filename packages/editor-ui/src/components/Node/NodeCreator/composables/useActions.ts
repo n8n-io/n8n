@@ -1,5 +1,5 @@
 import { computed } from 'vue';
-import type { IDataObject, INodeParameters } from 'n8n-workflow';
+import type { IDataObject, INodeParameters } from 'n8n-workflow/Interfaces';
 import type {
 	ActionTypeDescription,
 	AddedNode,

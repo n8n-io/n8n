@@ -1,4 +1,4 @@
-import { deepCopy } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow/utils';
 import type {
 	ExecutionError,
 	GenericValue,
@@ -6,7 +6,7 @@ import type {
 	ITelemetryTrackProperties,
 	NodeParameterValue,
 	INode,
-} from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
 import { useNDVStore } from '@/stores/ndv.store';
 import type { TelemetryEventData } from '@/hooks/types';
 import type { INodeUi } from '@/Interface';

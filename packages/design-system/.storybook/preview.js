@@ -7,18 +7,10 @@ import './storybook.scss';
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { fas } from '@fortawesome/free-solid-svg-icons';
 
-import ElementPlus from 'element-plus';
-import lang from 'element-plus/lib/locale/lang/en';
-
 import { N8nPlugin } from '../src/plugin';
 
 setup((app) => {
 	library.add(fas);
-
-	app.use(ElementPlus, {
-		locale: lang,
-	});
-
 	app.use(N8nPlugin);
 });
 

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { IWorkflowDb, UserAction } from '@/Interface';
+import type { UserAction } from 'n8n-design-system/types/user';
+
+import type { IWorkflowDb } from '@/Interface';
 import type {
 	WorkflowVersion,
 	WorkflowHistoryActionTypes,

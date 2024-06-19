@@ -149,7 +149,7 @@ import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
 import { useMessage } from '@/composables/useMessage';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 import { MODAL_CONFIRM, VIEWS } from '@/constants';
-import type { ExecutionSummary } from 'n8n-workflow';
+import type { ExecutionSummary } from 'n8n-workflow/Interfaces';
 import type { IExecutionUIData } from '@/composables/useExecutionHelpers';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 import { useWorkflowsStore } from '@/stores/workflows.store';

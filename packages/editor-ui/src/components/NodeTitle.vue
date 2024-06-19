@@ -43,7 +43,7 @@
 
 <script setup lang="ts">
 import NodeIcon from '@/components/NodeIcon.vue';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow/Interfaces';
 import { computed, nextTick, ref } from 'vue';
 
 type Props = {

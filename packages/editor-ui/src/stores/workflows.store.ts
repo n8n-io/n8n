@@ -1,3 +1,32 @@
+import { computed, ref } from 'vue';
+import { defineStore } from 'pinia';
+import type {
+	IConnection,
+	IConnections,
+	IDataObject,
+	ExecutionSummary,
+	INode,
+	INodeConnections,
+	INodeCredentials,
+	INodeCredentialsDetails,
+	INodeExecutionData,
+	INodeIssueData,
+	INodeIssueObjectProperty,
+	INodeParameters,
+	INodeTypes,
+	IPinData,
+	IRun,
+	IRunData,
+	IRunExecutionData,
+	ITaskData,
+	IWorkflowSettings,
+	INodeType,
+} from 'n8n-workflow/Interfaces';
+import * as NodeHelpers from 'n8n-workflow/NodeHelpers';
+import { deepCopy } from 'n8n-workflow/utils';
+import { Workflow } from 'n8n-workflow/Workflow';
+import { findLast } from 'lodash-es';
+
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	DEFAULT_NEW_WORKFLOW_NAME,
@@ -32,32 +61,6 @@ import type {
 	IExecutionFlattedResponse,
 	IWorkflowTemplateNode,
 } from '@/Interface';
-import { defineStore } from 'pinia';
-import type {
-	IConnection,
-	IConnections,
-	IDataObject,
-	ExecutionSummary,
-	INode,
-	INodeConnections,
-	INodeCredentials,
-	INodeCredentialsDetails,
-	INodeExecutionData,
-	INodeIssueData,
-	INodeIssueObjectProperty,
-	INodeParameters,
-	INodeTypes,
-	IPinData,
-	IRun,
-	IRunData,
-	IRunExecutionData,
-	ITaskData,
-	IWorkflowSettings,
-	INodeType,
-} from 'n8n-workflow';
-import { deepCopy, NodeHelpers, Workflow } from 'n8n-workflow';
-import { findLast } from 'lodash-es';
-
 import { useRootStore } from '@/stores/root.store';
 import * as workflowsApi from '@/api/workflows';
 import { useUIStore } from '@/stores/ui.store';
@@ -70,11 +73,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { getCredentialOnlyNodeTypeName } from '@/utils/credentialOnlyNodes';
 import { i18n } from '@/plugins/i18n';
-
-import { computed, ref } from 'vue';
 import { useProjectsStore } from '@/stores/projects.store';
-import { useSettingsStore } from './settings.store';
-import { useUsersStore } from './users.store';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -436,8 +435,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function resetWorkflow() {
-		const usersStore = useUsersStore();
-		const settingsStore = useSettingsStore();
 		workflow.value = createEmptyWorkflow();
 	}
 

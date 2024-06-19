@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import type { N8nLocale } from 'n8n-design-system/types';
+import type { N8nLocale } from '../../types/i18n';
 
 export default {
 	'nds.auth.roles.owner': 'Owner',

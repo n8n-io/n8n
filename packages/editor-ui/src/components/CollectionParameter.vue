@@ -57,8 +57,8 @@ import type {
 	INodeProperties,
 	INodePropertyCollection,
 	INodePropertyOptions,
-} from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
+import { deepCopy } from 'n8n-workflow/utils';
 
 import { get } from 'lodash-es';
 

@@ -6,7 +6,7 @@ import Canvas from '@/components/canvas/Canvas.vue';
 import { createPinia, setActivePinia } from 'pinia';
 import type { CanvasConnection, CanvasElement } from '@/types';
 import { createCanvasConnection, createCanvasNodeElement } from '@/__tests__/data';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow/Interfaces';
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-expect-error

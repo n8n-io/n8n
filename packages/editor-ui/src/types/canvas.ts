@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-redundant-type-constituents */
-import type { ConnectionTypes, INodeTypeDescription } from 'n8n-workflow';
+import type { ConnectionTypes, INodeTypeDescription } from 'n8n-workflow/Interfaces';
 import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 import type { DefaultEdge, Node, NodeProps, Position } from '@vue-flow/core';
 import type { INodeUi } from '@/Interface';

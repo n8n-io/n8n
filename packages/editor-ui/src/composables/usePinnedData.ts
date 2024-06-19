@@ -1,7 +1,12 @@
+import type { MaybeRef } from 'vue';
+import { computed, unref } from 'vue';
+import type { INodeExecutionData, IPinData } from 'n8n-workflow/Interfaces';
+import * as NodeHelpers from 'n8n-workflow/NodeHelpers';
+import { NodeConnectionType } from 'n8n-workflow/Interfaces';
+import { jsonParse, jsonStringify } from 'n8n-workflow/utils';
+
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
-import type { INodeExecutionData, IPinData } from 'n8n-workflow';
-import { jsonParse, jsonStringify, NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import {
 	MAX_EXPECTED_REQUEST_SIZE,
 	MAX_PINNED_DATA_SIZE,
@@ -13,8 +18,6 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { INodeUi, IRunDataDisplayMode } from '@/Interface';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useTelemetry } from '@/composables/useTelemetry';
-import type { MaybeRef } from 'vue';
-import { computed, unref } from 'vue';
 import { useRootStore } from '@/stores/root.store';
 import { useNodeType } from '@/composables/useNodeType';
 import { useDataSchema } from './useDataSchema';

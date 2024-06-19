@@ -1,5 +1,6 @@
-import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { isObjectEmpty, NodeConnectionType } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow/Interfaces';
+import { NodeConnectionType } from 'n8n-workflow/Interfaces';
+import { isObjectEmpty } from 'n8n-workflow/utils';
 
 interface MemoryMessage {
 	lc: number;

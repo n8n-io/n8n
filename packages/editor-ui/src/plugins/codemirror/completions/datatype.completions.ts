@@ -1,9 +1,3 @@
-import { resolveParameter } from '@/composables/useWorkflowHelpers';
-import { VALID_EMAIL_REGEX } from '@/constants';
-import { i18n } from '@/plugins/i18n';
-import { useEnvironmentsStore } from '@/stores/environments.ee.store';
-import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
-
 import type {
 	Completion,
 	CompletionContext,
@@ -12,8 +6,12 @@ import type {
 } from '@codemirror/autocomplete';
 import { uniqBy } from 'lodash-es';
 import { DateTime } from 'luxon';
-import type { DocMetadata, IDataObject, NativeDoc } from 'n8n-workflow';
-import { Expression, ExpressionExtensions, NativeMethods, validateFieldType } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow/Interfaces';
+import { type DocMetadata, ExpressionExtensions, type NativeDoc } from 'n8n-workflow/Extensions';
+import { Expression } from 'n8n-workflow/Expression';
+import { NativeMethods } from 'n8n-workflow/NativeMethods';
+import { validateFieldType } from 'n8n-workflow/TypeValidation';
+
 import {
 	ARRAY_NUMBER_ONLY_METHODS,
 	ARRAY_RECOMMENDED_OPTIONS,
@@ -30,6 +28,11 @@ import {
 	STRING_RECOMMENDED_OPTIONS,
 	STRING_SECTIONS,
 } from './constants';
+import { resolveParameter } from '@/composables/useWorkflowHelpers';
+import { VALID_EMAIL_REGEX } from '@/constants';
+import { i18n } from '@/plugins/i18n';
+import { useEnvironmentsStore } from '@/stores/environments.ee.store';
+import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { createInfoBoxRenderer } from './infoBoxRenderer';
 import { luxonInstanceDocs } from './nativesAutocompleteDocs/luxon.instance.docs';
 import { luxonStaticDocs } from './nativesAutocompleteDocs/luxon.static.docs';

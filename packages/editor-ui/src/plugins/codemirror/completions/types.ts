@@ -1,4 +1,4 @@
-import type { DocMetadata } from 'n8n-workflow';
+import type { DocMetadata } from 'n8n-workflow/Extensions';
 
 export type Resolved = unknown;
 

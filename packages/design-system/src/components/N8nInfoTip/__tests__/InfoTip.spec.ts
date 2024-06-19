@@ -8,12 +8,7 @@ const stubs = ['n8n-tooltip'];
 
 describe('N8nInfoTip', () => {
 	it('should render correctly as note', () => {
-		const wrapper = render(N8nInfoTip, {
-			slots,
-			global: {
-				stubs,
-			},
-		});
+		const wrapper = render(N8nInfoTip, { slots });
 		expect(wrapper.html()).toMatchSnapshot();
 	});
 

@@ -8,7 +8,7 @@ import { mapStores } from 'pinia';
 import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
-import type { ITelemetrySettings } from 'n8n-workflow';
+import type { ITelemetrySettings } from 'n8n-workflow/Interfaces';
 import { useProjectsStore } from '@/stores/projects.store';
 
 export default defineComponent({

@@ -1,5 +1,5 @@
 import { type MaybeRefOrGetter, computed, toValue, watchEffect } from 'vue';
-import { ExpressionExtensions } from 'n8n-workflow';
+import { ExpressionExtensions } from 'n8n-workflow/Extensions';
 import { EditorView, type ViewUpdate } from '@codemirror/view';
 
 import { useNDVStore } from '@/stores/ndv.store';

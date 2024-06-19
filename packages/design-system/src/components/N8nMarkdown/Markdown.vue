@@ -27,7 +27,7 @@ import markdownEmoji from 'markdown-it-emoji';
 import markdownTaskLists from 'markdown-it-task-lists';
 import xss, { friendlyAttrValue, whiteList } from 'xss';
 
-import N8nLoading from '../N8nLoading';
+import N8nLoading from '../N8nLoading/Loading.vue';
 import { escapeMarkdown, toggleCheckbox } from '../../utils/markdown';
 
 interface IImage {

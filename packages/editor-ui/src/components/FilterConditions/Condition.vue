@@ -10,7 +10,7 @@ import type {
 	FilterOptionsValue,
 	INodeProperties,
 	NodeParameterValue,
-} from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
 import { computed, ref } from 'vue';
 import OperatorSelect from './OperatorSelect.vue';
 import { type FilterOperatorId } from './constants';

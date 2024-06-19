@@ -1,5 +1,5 @@
 import type { BaseTextKey } from '@/plugins/i18n';
-import type { FilterOperatorValue } from 'n8n-workflow';
+import type { FilterOperatorValue } from 'n8n-workflow/Interfaces';
 
 export interface FilterOperator extends FilterOperatorValue {
 	name: BaseTextKey;

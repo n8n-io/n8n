@@ -63,9 +63,12 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
+import type { IFormInputs } from 'n8n-design-system/types/form';
+import { createEventBus } from 'n8n-design-system/utils/event-bus';
+
 import { useToast } from '@/composables/useToast';
 import Modal from './Modal.vue';
-import type { IFormInputs, IInviteResponse, IUser, InvitableRoleName } from '@/Interface';
+import type { IInviteResponse, IUser, InvitableRoleName } from '@/Interface';
 import {
 	EnterpriseEditionFeature,
 	VALID_EMAIL_REGEX,
@@ -75,7 +78,6 @@ import {
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
-import { createEventBus } from 'n8n-design-system/utils';
 import { useClipboard } from '@/composables/useClipboard';
 
 const NAME_EMAIL_FORMAT_REGEX = /^.* <(.*)>$/;

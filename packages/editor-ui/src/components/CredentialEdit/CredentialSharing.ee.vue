@@ -79,8 +79,12 @@ import type {
 } from '@/Interface';
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
-import { useMessage } from '@/composables/useMessage';
 import { mapStores } from 'pinia';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow/Interfaces';
+import type { CredentialScope } from '@n8n/permissions';
+import type { EventBus } from 'n8n-design-system/utils/event-bus';
+
+import { useMessage } from '@/composables/useMessage';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -91,10 +95,7 @@ import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectListItem, ProjectSharingData, Project } from '@/types/projects.types';
 import { ProjectTypes } from '@/types/projects.types';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import type { PermissionsMap } from '@/permissions';
-import type { CredentialScope } from '@n8n/permissions';
-import type { EventBus } from 'n8n-design-system/utils';
 import { useRolesStore } from '@/stores/roles.store';
 import type { RoleMap } from '@/types/roles.types';
 

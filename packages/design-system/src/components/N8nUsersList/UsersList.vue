@@ -36,11 +36,11 @@
 
 <script lang="ts" setup>
 import { computed } from 'vue';
-import N8nActionToggle from '../N8nActionToggle';
-import N8nBadge from '../N8nBadge';
-import N8nUserInfo from '../N8nUserInfo';
-import type { IUser, UserAction } from '../../types';
+import N8nActionToggle from '../N8nActionToggle/ActionToggle.vue';
+import N8nBadge from '../N8nBadge/Badge.vue';
+import N8nUserInfo from '../N8nUserInfo/UserInfo.vue';
 import { useI18n } from '../../composables/useI18n';
+import type { IUser, UserAction } from '../../types/user';
 
 interface UsersListProps {
 	users: IUser[];

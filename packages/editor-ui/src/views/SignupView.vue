@@ -1,14 +1,14 @@
 <script lang="ts" setup>
+import { computed, onMounted, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import type { IFormBoxConfig } from 'n8n-design-system/types/form';
+
 import AuthView from '@/views/AuthView.vue';
 import { useToast } from '@/composables/useToast';
-
-import { computed, onMounted, ref } from 'vue';
-import type { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useI18n } from '@/composables/useI18n';
-import { useRoute, useRouter } from 'vue-router';
 
 const uiStore = useUIStore();
 const usersStore = useUsersStore();

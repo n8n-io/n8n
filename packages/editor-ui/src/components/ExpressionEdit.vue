@@ -98,7 +98,7 @@ import { useDebounce } from '@/composables/useDebounce';
 import type { Segment } from '@/types/expressions';
 import ExpressionOutput from './InlineExpressionEditor/ExpressionOutput.vue';
 import { outputTheme } from './ExpressionEditorModal/theme';
-import type { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow/Interfaces';
 
 export default defineComponent({
 	name: 'ExpressionEdit',

@@ -1,4 +1,4 @@
-import type { IN8nUISettings } from 'n8n-workflow';
+import type { IN8nUISettings } from 'n8n-workflow/Interfaces';
 
 export const defaultSettings: IN8nUISettings = {
 	allowedModules: {},

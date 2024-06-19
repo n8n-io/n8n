@@ -6,7 +6,7 @@ import type {
 	INodeTypeDescription,
 	INodeTypeNameVersion,
 	ResourceMapperFields,
-} from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
 import axios from 'axios';
 
 export async function getNodeTypes(baseUrl: string) {

@@ -93,13 +93,13 @@
 
 <script lang="ts" setup>
 import { computed, reactive, onMounted, ref, watch, useSlots } from 'vue';
-
-import N8nInput from '../N8nInput';
-import N8nSelect from '../N8nSelect';
-import N8nOption from '../N8nOption';
-import N8nInputLabel from '../N8nInputLabel';
-import N8nCheckbox from '../N8nCheckbox';
 import { ElSwitch } from 'element-plus';
+
+import N8nInput from '../N8nInput/Input.vue';
+import N8nSelect from '../N8nSelect/Select.vue';
+import N8nOption from '../N8nOption/Option.vue';
+import N8nInputLabel from '../N8nInputLabel/InputLabel.vue';
+import N8nCheckbox from '../N8nCheckbox/Checkbox.vue';
 
 import { getValidationError, VALIDATORS } from './validators';
 import type {
@@ -113,7 +113,7 @@ import type {
 	CheckboxModelValuePropType,
 	CheckboxLabelSizePropType,
 	InputAutocompletePropType,
-} from '../../types';
+} from '../../types/form';
 
 import { t } from '../../locale';
 

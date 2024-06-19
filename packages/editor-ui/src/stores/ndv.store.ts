@@ -13,8 +13,8 @@ import {
 	LOCAL_STORAGE_TABLE_HOVER_IS_ONBOARDED,
 	STORES,
 } from '@/constants';
-import type { INodeExecutionData, INodeIssues } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import type { INodeExecutionData, INodeIssues } from 'n8n-workflow/Interfaces';
+import { NodeConnectionType } from 'n8n-workflow/Interfaces';
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
 import { useWorkflowsStore } from './workflows.store';

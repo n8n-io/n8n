@@ -1,5 +1,5 @@
 import { defineComponent, ref } from 'vue';
-import { render, waitFor, within } from '@testing-library/vue';
+import { render, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import N8nSelect from '../Select.vue';
 import N8nOption from '../../N8nOption/Option.vue';
@@ -9,9 +9,7 @@ describe('components', () => {
 		it('should render correctly', () => {
 			const wrapper = render(N8nSelect, {
 				global: {
-					components: {
-						'n8n-option': N8nOption,
-					},
+					components: { N8nOption },
 				},
 				slots: {
 					default: [
@@ -47,18 +45,16 @@ describe('components', () => {
 					teleported: false,
 				},
 				global: {
-					components: {
-						'n8n-select': N8nSelect,
-						'n8n-option': N8nOption,
-					},
+					components: { N8nOption, N8nSelect },
 				},
 			});
-			const getOption = (value: string) => within(container as HTMLElement).getByText(value);
 
 			const textbox = container.querySelector('input')!;
 			await userEvent.click(textbox);
-			await waitFor(() => expect(getOption('1')).toBeVisible());
-			await userEvent.click(getOption('1'));
+
+			const firstOption = container.querySelector('ul > li');
+			await waitFor(() => expect(firstOption).toBeVisible());
+			await userEvent.click(firstOption!);
 
 			expect(textbox).toHaveValue('1');
 		});

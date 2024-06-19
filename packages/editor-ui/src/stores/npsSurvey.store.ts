@@ -9,7 +9,7 @@ import {
 	CONTACT_PROMPT_MODAL_KEY,
 } from '@/constants';
 import { useRootStore } from './root.store';
-import type { IUserSettings, NpsSurveyState } from 'n8n-workflow';
+import type { IUserSettings, NpsSurveyState } from 'n8n-workflow/Interfaces';
 import { useSettingsStore } from './settings.store';
 import { updateNpsSurveyState } from '@/api/npsSurvey';
 import type { IN8nPrompts } from '@/Interface';

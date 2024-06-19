@@ -9,8 +9,9 @@ import type {
 	IWorkflowSettings,
 	LoadedClass,
 	INodeTypeDescription,
-} from 'n8n-workflow';
-import { NodeHelpers, Workflow } from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
+import * as NodeHelpers from 'n8n-workflow/NodeHelpers';
+import { Workflow } from 'n8n-workflow/Workflow';
 import { uuid } from '@jsplumb/util';
 import { mock } from 'vitest-mock-extended';
 

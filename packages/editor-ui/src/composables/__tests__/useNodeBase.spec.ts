@@ -1,7 +1,8 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { mock, mockClear } from 'vitest-mock-extended';
 import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
-import type { INode, INodeTypeDescription, Workflow } from 'n8n-workflow';
+import type { INode, INodeTypeDescription } from 'n8n-workflow/Interfaces';
+import type { Workflow } from 'n8n-workflow/Workflow';
 
 import { useNodeBase } from '@/composables/useNodeBase';
 import { useWorkflowsStore } from '@/stores/workflows.store';

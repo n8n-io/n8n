@@ -140,11 +140,14 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
-import { createEventBus } from 'n8n-design-system/utils';
-import type { IRunData, ConnectionTypes } from 'n8n-workflow';
-import { jsonParse, NodeHelpers, NodeConnectionType } from 'n8n-workflow';
-import type { IUpdateInformation, TargetItem } from '@/Interface';
+import { useDeviceSupport } from 'n8n-design-system/composables/useDeviceSupport';
+import { createEventBus } from 'n8n-design-system/utils/event-bus';
+import type { IRunData, ConnectionTypes } from 'n8n-workflow/Interfaces';
+import { NodeConnectionType } from 'n8n-workflow/Interfaces';
+import * as NodeHelpers from 'n8n-workflow/NodeHelpers';
+import { jsonParse } from 'n8n-workflow/utils';
 
+import type { IUpdateInformation, TargetItem } from '@/Interface';
 import NodeSettings from '@/components/NodeSettings.vue';
 import NDVDraggablePanels from './NDVDraggablePanels.vue';
 
@@ -166,7 +169,6 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useDeviceSupport } from 'n8n-design-system';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useMessage } from '@/composables/useMessage';
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -180,7 +182,6 @@ import { storeToRefs } from 'pinia';
 const emit = defineEmits([
 	'saveKeyboardShortcut',
 	'valueChanged',
-	'nodeTypeSelected',
 	'switchSelectedNode',
 	'openConnectionNodeCreator',
 	'redrawNode',
@@ -419,8 +420,6 @@ const canLinkRuns = computed(
 
 const linked = computed(() => isLinkingEnabled.value && canLinkRuns.value);
 
-const inputPanelMargin = computed(() => (isTriggerNode.value ? 0 : 80));
-
 const featureRequestUrl = computed(() => {
 	if (!activeNodeType.value) {
 		return '';
@@ -593,10 +592,6 @@ const onLinkRunToInput = () => {
 
 const valueChanged = (parameterData: IUpdateInformation) => {
 	emit('valueChanged', parameterData);
-};
-
-const nodeTypeSelected = (nodeTypeName: string) => {
-	emit('nodeTypeSelected', nodeTypeName);
 };
 
 const onSwitchSelectedNode = (nodeTypeName: string) => {

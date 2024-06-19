@@ -1,11 +1,11 @@
-import type { N8nInput } from 'n8n-design-system';
+import type { N8nInput } from 'n8n-design-system/components';
 import type {
 	IConnections,
 	INodeProperties,
 	INodeTypeDescription,
 	ITelemetryTrackProperties,
 	NodeParameterValueType,
-} from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
 import type { RouteLocation } from 'vue-router';
 import type {
 	AuthenticationModalEventData,

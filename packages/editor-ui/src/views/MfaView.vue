@@ -69,17 +69,18 @@
 </template>
 
 <script setup lang="ts">
-import type { IFormInputs } from '@/Interface';
-import Logo from '../components/Logo.vue';
+import { onMounted, ref } from 'vue';
+import { toRefs } from '@vueuse/core';
+import type { IFormInputs } from 'n8n-design-system/types/form';
+
+import Logo from '@/components/Logo.vue';
 import {
 	MFA_AUTHENTICATION_RECOVERY_CODE_INPUT_MAX_LENGTH,
 	MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH,
 	MFA_FORM,
 } from '@/constants';
 import { mfaEventBus } from '@/event-bus';
-import { onMounted, ref } from 'vue';
 import { useI18n } from '@/composables/useI18n';
-import { toRefs } from '@vueuse/core';
 
 // ---------------------------------------------------------------------------
 // #region Props

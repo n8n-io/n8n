@@ -25,7 +25,7 @@
 
 <script lang="ts" setup>
 import { computed, useCssModule } from 'vue';
-import N8nIcon from '../N8nIcon';
+import N8nIcon from '../N8nIcon/Icon.vue';
 
 type AlertProps = {
 	title?: string;

@@ -20,7 +20,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { IBinaryData, IRunData } from 'n8n-workflow';
+import type { IBinaryData, IRunData } from 'n8n-workflow/Interfaces';
 import BinaryDataDisplayEmbed from '@/components/BinaryDataDisplayEmbed.vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';

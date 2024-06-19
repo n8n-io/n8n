@@ -1,8 +1,13 @@
 import type { Plugin } from 'vue';
 import axios from 'axios';
 import { createI18n } from 'vue-i18n';
-import { locale, type N8nLocaleTranslateFn } from 'n8n-design-system';
-import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
+import type {
+	INodeProperties,
+	INodePropertyCollection,
+	INodePropertyOptions,
+} from 'n8n-workflow/Interfaces';
+import * as locale from 'n8n-design-system/locale';
+import type { N8nLocaleTranslateFn } from 'n8n-design-system/types/i18n';
 
 import type { INodeTranslationHeaders } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';

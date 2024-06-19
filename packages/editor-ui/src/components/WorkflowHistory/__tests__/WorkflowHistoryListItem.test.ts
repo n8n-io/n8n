@@ -1,6 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
-import type { UserAction } from 'n8n-design-system';
+import type { UserAction } from 'n8n-design-system/types/user';
+
 import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowHistoryListItem from '@/components/WorkflowHistory/WorkflowHistoryListItem.vue';
 import type { WorkflowHistoryActionTypes } from '@/types/workflowHistory';

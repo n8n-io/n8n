@@ -8,8 +8,8 @@ import type { Extension } from '@codemirror/state';
 import { useBaseCompletions } from './completions/base.completions';
 import { jsSnippets } from './completions/js.snippets';
 
-import type { CodeExecutionMode } from 'n8n-workflow';
-import { CODE_EXECUTION_MODES } from 'n8n-workflow';
+import type { CodeExecutionMode } from 'n8n-workflow/Interfaces';
+import { CODE_EXECUTION_MODES } from 'n8n-workflow/Constants';
 import { useExecutionCompletions } from './completions/execution.completions';
 import { useItemFieldCompletions } from './completions/itemField.completions';
 import { useItemIndexCompletions } from './completions/itemIndex.completions';

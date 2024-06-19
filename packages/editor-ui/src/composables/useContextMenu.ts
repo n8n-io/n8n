@@ -1,11 +1,13 @@
-import type { ActionDropdownItem, XYPosition } from '@/Interface';
+import { computed, ref, watch } from 'vue';
+import type { INode, INodeTypeDescription } from 'n8n-workflow/Interfaces';
+import type { ActionDropdownItem } from 'n8n-design-system/types/action-dropdown';
+
+import type { XYPosition } from '@/Interface';
 import { NOT_DUPLICATABLE_NODE_TYPES, STICKY_NODE_TYPE } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { INode, INodeTypeDescription } from 'n8n-workflow';
-import { computed, ref, watch } from 'vue';
 import { getMousePosition } from '../utils/nodeViewUtils';
 import { useI18n } from './useI18n';
 import { usePinnedData } from './usePinnedData';

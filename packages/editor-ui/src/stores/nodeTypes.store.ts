@@ -19,9 +19,10 @@ import type {
 	INodeTypeDescription,
 	INodeTypeNameVersion,
 	ResourceMapperFields,
-	Workflow,
-} from 'n8n-workflow';
-import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
+} from 'n8n-workflow/Interfaces';
+import type { Workflow } from 'n8n-workflow/Workflow';
+import { NodeConnectionType } from 'n8n-workflow/Interfaces';
+import * as NodeHelpers from 'n8n-workflow/NodeHelpers';
 import { defineStore } from 'pinia';
 import { useCredentialsStore } from './credentials.store';
 import { useRootStore } from './root.store';

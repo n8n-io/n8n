@@ -26,7 +26,7 @@ import { useViewStacks } from '../composables/useViewStacks';
 
 import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow/Interfaces';
 import { useTelemetry } from '@/composables/useTelemetry';
 
 const emit = defineEmits({

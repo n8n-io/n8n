@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { ElOption } from 'element-plus';
+import { ElOption, type IOptionProps } from 'element-plus';
 
-defineProps({
-	...ElOption.props,
-	value: { type: [String, Number], required: true },
-});
+defineOptions({ name: 'N8nOption' });
+
+interface Props extends Partial<IOptionProps> {
+	value: string | number;
+}
+defineProps<Props>();
 </script>
 
 <template>

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ElPopover, popoverProps } from 'element-plus';
+import { ElPopover, type PopoverProps } from 'element-plus';
 
-defineProps({
-	...popoverProps,
-});
+// eslint-disable-next-line vue/prop-name-casing
+defineProps<PopoverProps>();
+defineOptions({ name: 'N8nPopover' });
 </script>
 
 <template>

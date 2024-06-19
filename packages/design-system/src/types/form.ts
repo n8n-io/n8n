@@ -1,4 +1,4 @@
-import type { N8nLocaleTranslateFnOptions } from 'n8n-design-system/types/i18n';
+import type { N8nLocaleTranslateFnOptions } from './i18n';
 
 export type Rule = { name: string; config?: unknown };
 
