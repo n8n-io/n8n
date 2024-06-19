@@ -13,7 +13,7 @@ import { awsApiRequestSOAP, awsApiRequestSOAPAllItems } from './GenericFunctions
 
 function setParameter(params: string[], base: string, values: string[]) {
 	for (let i = 0; i < values.length; i++) {
-		params.push(`${base}.${i + 1}=${values[i]}`);
+		params.push(`${base}.${i + 1}=${encodeURIComponent(values[i])}`);
 	}
 }
 
@@ -846,7 +846,7 @@ export class AwsSes implements INodeType {
 						const params = [
 							'Action=CreateCustomVerificationEmailTemplate',
 							`FailureRedirectionURL=${failureRedirectionURL}`,
-							`FromEmailAddress=${email}`,
+							`FromEmailAddress=${encodeURIComponent(email)}`,
 							`SuccessRedirectionURL=${successRedirectionURL}`,
 							`TemplateContent=${templateContent}`,
 							`TemplateName=${templateName}`,
@@ -1012,7 +1012,7 @@ export class AwsSes implements INodeType {
 
 						const params = [
 							`Message.Subject.Data=${encodeURIComponent(subject)}`,
-							`Source=${fromEmail}`,
+							`Source=${encodeURIComponent(fromEmail)}`,
 						];
 
 						if (isBodyHtml) {
