@@ -32,6 +32,7 @@ import type { Project } from '@db/entities/Project';
 import type { ProjectRole } from '@db/entities/ProjectRelation';
 import { ProjectRelationRepository } from './databases/repositories/projectRelation.repository';
 import { SharedCredentialsRepository } from './databases/repositories/sharedCredentials.repository';
+import { MessageEventBus } from './eventbus/MessageEventBus/MessageEventBus';
 
 @Service()
 export class InternalHooks {
@@ -45,6 +46,7 @@ export class InternalHooks {
 		private readonly license: License,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
+		private readonly _eventBus: MessageEventBus, // needed until we decouple telemetry
 	) {
 		eventsService.on(
 			'telemetry.onFirstProductionWorkflowSuccess',
