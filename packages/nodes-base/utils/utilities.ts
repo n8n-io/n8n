@@ -6,7 +6,7 @@ import type {
 	IPairedItemData,
 } from 'n8n-workflow';
 
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { ApplicationError, jsonParse, randomInt } from 'n8n-workflow';
 
 import { isEqual, isNull, merge } from 'lodash';
 
@@ -40,6 +40,17 @@ export function chunk<T>(array: T[], size = 1) {
 	}
 	return result as T[][];
 }
+
+/**
+ * Shuffles an array in place using the Fisher-Yates shuffle algorithm
+ * @param {Array} array The array to shuffle.
+ */
+export const shuffleArray = <T>(array: T[]): void => {
+	for (let i = array.length - 1; i > 0; i--) {
+		const j = randomInt(i + 1);
+		[array[i], array[j]] = [array[j], array[i]];
+	}
+};
 
 /**
  * Takes a multidimensional array and converts it to a one-dimensional array.

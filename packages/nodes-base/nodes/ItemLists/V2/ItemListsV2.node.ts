@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	IPairedItemData,
 } from 'n8n-workflow';
-import { NodeOperationError, deepCopy, randomInt } from 'n8n-workflow';
+import { NodeOperationError, deepCopy } from 'n8n-workflow';
 
 import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';
@@ -51,15 +51,9 @@ const flattenKeys = (obj: IDataObject, path: string[] = []): IDataObject => {
 		: reduce(obj, (cum, next, key) => merge(cum, flattenKeys(next as IDataObject, [...path, key])), {}); //prettier-ignore
 };
 
-const shuffleArray = (array: any[]) => {
-	for (let i = array.length - 1; i > 0; i--) {
-		const j = randomInt(i + 1);
-		[array[i], array[j]] = [array[j], array[i]];
-	}
-};
-
 import { sortByCode } from '../V3/helpers/utils';
 import * as summarize from './summarize.operation';
+import { shuffleArray } from '@utils/utilities';
 
 export class ItemListsV2 implements INodeType {
 	description: INodeTypeDescription;

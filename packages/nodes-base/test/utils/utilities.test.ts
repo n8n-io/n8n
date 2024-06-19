@@ -1,4 +1,10 @@
-import { fuzzyCompare, getResolvables, keysToLowercase, wrapData } from '@utils/utilities';
+import {
+	fuzzyCompare,
+	getResolvables,
+	keysToLowercase,
+	shuffleArray,
+	wrapData,
+} from '@utils/utilities';
 
 //most test cases for fuzzyCompare are done in Compare Datasets node tests
 describe('Test fuzzyCompare', () => {
@@ -135,5 +141,16 @@ describe('Test getResolvables', () => {
 			'{{ $json.pageHeight }}',
 			'{{ $json.welcomeMessage }}',
 		]);
+	});
+});
+
+describe('shuffleArray', () => {
+	it('should shuffle array', () => {
+		const array = [1, 2, 3, 4, 5];
+		const toShuffle = [...array];
+		shuffleArray(toShuffle);
+		expect(toShuffle).not.toEqual(array);
+		expect(toShuffle).toHaveLength(array.length);
+		expect(toShuffle).toEqual(expect.arrayContaining(array));
 	});
 });
