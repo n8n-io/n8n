@@ -1,6 +1,10 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-export const firedAlertOperations: INodeProperties[] = [
+import * as getReport from './getReport.operation';
+
+export { getReport };
+
+export const description: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -21,4 +25,6 @@ export const firedAlertOperations: INodeProperties[] = [
 		],
 		default: 'getReport',
 	},
+
+	...getReport.description,
 ];

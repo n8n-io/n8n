@@ -1,50 +1,7 @@
-import type { INodeProperties } from 'n8n-workflow';
+import type { INodeExecutionData, INodeProperties, IExecuteFunctions } from 'n8n-workflow';
+import { updateDisplayOptions } from '../../../../../utils/utilities';
 
-export const searchJobOperations: INodeProperties[] = [
-	{
-		displayName: 'Operation',
-		name: 'operation',
-		type: 'options',
-		noDataExpression: true,
-		displayOptions: {
-			show: {
-				resource: ['searchJob'],
-			},
-		},
-		options: [
-			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create a search job',
-				action: 'Create a search job',
-			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a search job',
-				action: 'Delete a search job',
-			},
-			{
-				name: 'Get',
-				value: 'get',
-				description: 'Retrieve a search job',
-				action: 'Get a search job',
-			},
-			{
-				name: 'Get Many',
-				value: 'getAll',
-				description: 'Retrieve many search jobs',
-				action: 'Get many search jobs',
-			},
-		],
-		default: 'create',
-	},
-];
-
-export const searchJobFields: INodeProperties[] = [
-	// ----------------------------------------
-	//            searchJob: create
-	// ----------------------------------------
+const properties: INodeProperties[] = [
 	{
 		displayName: 'Query',
 		name: 'search',
@@ -53,12 +10,6 @@ export const searchJobFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		displayOptions: {
-			show: {
-				resource: ['searchJob'],
-				operation: ['create'],
-			},
-		},
 	},
 	{
 		displayName: 'Additional Fields',
@@ -66,12 +17,6 @@ export const searchJobFields: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
-		displayOptions: {
-			show: {
-				resource: ['searchJob'],
-				operation: ['create'],
-			},
-		},
 		options: [
 			{
 				displayName: 'Ad Hoc Search Level',
@@ -255,141 +200,19 @@ export const searchJobFields: INodeProperties[] = [
 			},
 		],
 	},
-
-	// ----------------------------------------
-	//            searchJob: delete
-	// ----------------------------------------
-	{
-		displayName: 'Search ID',
-		name: 'searchJobId',
-		description: 'ID of the search job to delete',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['searchJob'],
-				operation: ['delete'],
-			},
-		},
-	},
-
-	// ----------------------------------------
-	//              searchJob: get
-	// ----------------------------------------
-	{
-		displayName: 'Search ID',
-		name: 'searchJobId',
-		description: 'ID of the search job to retrieve',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['searchJob'],
-				operation: ['get'],
-			},
-		},
-	},
-
-	// ----------------------------------------
-	//            searchJob: getAll
-	// ----------------------------------------
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		default: false,
-		description: 'Whether to return all results or only up to a given limit',
-		displayOptions: {
-			show: {
-				resource: ['searchJob'],
-				operation: ['getAll'],
-			},
-		},
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		default: 50,
-		description: 'Max number of results to return',
-		typeOptions: {
-			minValue: 1,
-		},
-		displayOptions: {
-			show: {
-				resource: ['searchJob'],
-				operation: ['getAll'],
-				returnAll: [false],
-			},
-		},
-	},
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Option',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: ['searchJob'],
-				operation: ['getAll'],
-			},
-		},
-		options: [
-			{
-				displayName: 'Sort Direction',
-				name: 'sort_dir',
-				type: 'options',
-				options: [
-					{
-						name: 'Ascending',
-						value: 'asc',
-					},
-					{
-						name: 'Descending',
-						value: 'desc',
-					},
-				],
-				default: 'asc',
-			},
-			{
-				displayName: 'Sort Key',
-				name: 'sort_key',
-				description: 'Key name to use for sorting',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Sort Mode',
-				name: 'sort_mode',
-				type: 'options',
-				options: [
-					{
-						name: 'Automatic',
-						value: 'auto',
-						description:
-							'If all field values are numeric, collate numerically. Otherwise, collate alphabetically.',
-					},
-					{
-						name: 'Alphabetic',
-						value: 'alpha',
-						description: 'Collate alphabetically, case-insensitive',
-					},
-					{
-						name: 'Alphabetic and Case-Sensitive',
-						value: 'alpha_case',
-						description: 'Collate alphabetically, case-sensitive',
-					},
-					{
-						name: 'Numeric',
-						value: 'num',
-						description: 'Collate numerically',
-					},
-				],
-				default: 'auto',
-			},
-		],
-	},
 ];
+
+const displayOptions = {
+	show: {
+		resource: ['searchJob'],
+		operation: ['create'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
+
+export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
+	const returnData: INodeExecutionData[] = [];
+
+	return returnData;
+}

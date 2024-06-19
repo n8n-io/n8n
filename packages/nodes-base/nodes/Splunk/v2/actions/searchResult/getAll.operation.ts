@@ -1,32 +1,7 @@
-import type { INodeProperties } from 'n8n-workflow';
+import type { INodeExecutionData, INodeProperties, IExecuteFunctions } from 'n8n-workflow';
+import { updateDisplayOptions } from '../../../../../utils/utilities';
 
-export const searchResultOperations: INodeProperties[] = [
-	{
-		displayName: 'Operation',
-		name: 'operation',
-		type: 'options',
-		noDataExpression: true,
-		displayOptions: {
-			show: {
-				resource: ['searchResult'],
-			},
-		},
-		options: [
-			{
-				name: 'Get Many',
-				value: 'getAll',
-				description: 'Retrieve many search results for a search job',
-				action: 'Get many search results',
-			},
-		],
-		default: 'getAll',
-	},
-];
-
-export const searchResultFields: INodeProperties[] = [
-	// ----------------------------------------
-	//           searchResult: getAll
-	// ----------------------------------------
+const properties: INodeProperties[] = [
 	{
 		displayName: 'Search ID',
 		name: 'searchJobId',
@@ -34,12 +9,6 @@ export const searchResultFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		displayOptions: {
-			show: {
-				resource: ['searchResult'],
-				operation: ['getAll'],
-			},
-		},
 	},
 	{
 		displayName: 'Return All',
@@ -47,12 +16,6 @@ export const searchResultFields: INodeProperties[] = [
 		type: 'boolean',
 		default: false,
 		description: 'Whether to return all results or only up to a given limit',
-		displayOptions: {
-			show: {
-				resource: ['searchResult'],
-				operation: ['getAll'],
-			},
-		},
 	},
 	{
 		displayName: 'Limit',
@@ -65,8 +28,6 @@ export const searchResultFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: ['searchResult'],
-				operation: ['getAll'],
 				returnAll: [false],
 			},
 		},
@@ -77,12 +38,6 @@ export const searchResultFields: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Filter',
 		default: {},
-		displayOptions: {
-			show: {
-				resource: ['searchResult'],
-				operation: ['getAll'],
-			},
-		},
 		options: [
 			{
 				displayName: 'Key-Value Match',
@@ -123,12 +78,6 @@ export const searchResultFields: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
-		displayOptions: {
-			show: {
-				resource: ['searchResult'],
-				operation: ['getAll'],
-			},
-		},
 		options: [
 			{
 				displayName: 'Add Summary to Metadata',
@@ -140,3 +89,18 @@ export const searchResultFields: INodeProperties[] = [
 		],
 	},
 ];
+
+const displayOptions = {
+	show: {
+		resource: ['searchResult'],
+		operation: ['getAll'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
+
+export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
+	const returnData: INodeExecutionData[] = [];
+
+	return returnData;
+}
