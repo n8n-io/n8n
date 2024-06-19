@@ -261,18 +261,18 @@ export class Jwt implements INodeType {
 						},
 					},
 					{
-            displayName: 'Key ID',
-            name: 'kid',
-            type: 'string',
-            placeholder: 'e.g. 123456',
+						displayName: 'Key ID',
+						name: 'kid',
+						type: 'string',
+						placeholder: 'e.g. 123456',
 						default: '',
 						description: 'The kid (key ID) claim is an optional header claim, used to specify the key for validating the signature.',
-            displayOptions: {
+						displayOptions: {
 							show: {
 								'/operation': ['sign'],
 							},
 						},
-          },
+					},
 					{
 						displayName: 'Override Algorithm',
 						name: 'algorithm',
@@ -388,25 +388,26 @@ export class Jwt implements INodeType {
 					} else {
 						secretOrPrivateKey = formatPrivateKey(credentials.privateKey);
 					}
-
 					if (options.kid) {
-					const token = jwt.sign(payload, secretOrPrivateKey, {
-						algorithm: options.algorithm ?? credentials.algorithm,
-						keyid: options.kid,
-					});
-					returnData.push({
-						json: { token },
-						pairedItem: itemIndex,
-					});
-				} else {
-					const token = jwt.sign(payload, secretOrPrivateKey, {
-						algorithm: options.algorithm ?? credentials.algorithm,
-					});
+						const token = jwt.sign(payload, secretOrPrivateKey, {
+							algorithm: options.algorithm ?? credentials.algorithm,
+							keyid: options.kid,
+						});
+						
+						returnData.push({
+							json: { token },
+							pairedItem: itemIndex,
+						});
+					} else {
+						const token = jwt.sign(payload, secretOrPrivateKey, {
+							algorithm: options.algorithm ?? credentials.algorithm,
+						});
 
-					returnData.push({
-						json: { token },
-						pairedItem: itemIndex,
-					});
+						returnData.push({
+							json: { token },
+							pairedItem: itemIndex,
+						});
+					}
 				}
 
 				if (operation === 'verify') {
