@@ -845,9 +845,9 @@ export class AwsSes implements INodeType {
 
 						const params = [
 							'Action=CreateCustomVerificationEmailTemplate',
-							`FailureRedirectionURL=${failureRedirectionURL}`,
+							`FailureRedirectionURL=${encodeURIComponent(failureRedirectionURL)}`,
 							`FromEmailAddress=${encodeURIComponent(email)}`,
-							`SuccessRedirectionURL=${successRedirectionURL}`,
+							`SuccessRedirectionURL=${encodeURIComponent(successRedirectionURL)}`,
 							`TemplateContent=${templateContent}`,
 							`TemplateName=${templateName}`,
 							`TemplateSubject=${templateSubject}`,
