@@ -389,26 +389,18 @@ export class Jwt implements INodeType {
 					} else {
 						secretOrPrivateKey = formatPrivateKey(credentials.privateKey);
 					}
-					if (options.kid) {
-						const token = jwt.sign(payload, secretOrPrivateKey, {
-							algorithm: options.algorithm ?? credentials.algorithm,
-							keyid: options.kid,
-						});
 
-						returnData.push({
-							json: { token },
-							pairedItem: itemIndex,
-						});
-					} else {
-						const token = jwt.sign(payload, secretOrPrivateKey, {
-							algorithm: options.algorithm ?? credentials.algorithm,
-						});
+					const signingOptions: jwt.SignOptions = {
+						algorithm: options.algorithm ?? credentials.algorithm,
+					};
+					if (options.kid) signingOptions.keyid = options.kid;
 
-						returnData.push({
-							json: { token },
-							pairedItem: itemIndex,
-						});
-					}
+					const token = jwt.sign(payload, secretOrPrivateKey, signingOptions);
+
+					returnData.push({
+						json: { token },
+						pairedItem: itemIndex,
+					});
 				}
 
 				if (operation === 'verify') {
