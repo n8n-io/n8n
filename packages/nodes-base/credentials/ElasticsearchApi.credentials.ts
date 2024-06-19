@@ -51,7 +51,6 @@ export class ElasticsearchApi implements ICredentialType {
 				username: '={{$credentials.username}}',
 				password: '={{$credentials.password}}',
 			},
-			skipSslCertificateValidation: '={{$credentials.ignoreSSLIssues}}',
 		},
 	};
 
@@ -59,6 +58,7 @@ export class ElasticsearchApi implements ICredentialType {
 		request: {
 			baseURL: '={{$credentials.baseUrl}}',
 			url: '/_xpack?human=false',
+			skipSslCertificateValidation: '={{$credentials.ignoreSSLIssues}}',
 		},
 	};
 }

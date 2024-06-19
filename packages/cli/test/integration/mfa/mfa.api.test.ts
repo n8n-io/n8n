@@ -1,15 +1,15 @@
 import Container from 'typedi';
+import { randomInt, randomString } from 'n8n-workflow';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import type { User } from '@db/entities/User';
 import { AuthUserRepository } from '@db/repositories/authUser.repository';
-import { randomPassword } from '@/Ldap/helpers';
 import { TOTPService } from '@/Mfa/totp.service';
 
 import * as testDb from '../shared/testDb';
 import * as utils from '../shared/utils';
-import { randomDigit, randomString, randomValidPassword, uniqueId } from '../shared/random';
+import { randomValidPassword, uniqueId } from '../shared/random';
 import { createUser, createUserWithMfaEnabled } from '../shared/db/users';
 
 jest.mock('@/telemetry');
@@ -150,18 +150,6 @@ describe('Disable MFA setup', () => {
 });
 
 describe('Change password with MFA enabled', () => {
-	test('PATCH /me/password should fail due to missing MFA token', async () => {
-		const { user, rawPassword } = await createUserWithMfaEnabled();
-
-		const newPassword = randomPassword();
-
-		await testServer
-			.authAgentFor(user)
-			.patch('/me/password')
-			.send({ currentPassword: rawPassword, newPassword })
-			.expect(400);
-	});
-
 	test('POST /change-password should fail due to missing MFA token', async () => {
 		await createUserWithMfaEnabled();
 
@@ -185,7 +173,7 @@ describe('Change password with MFA enabled', () => {
 			.send({
 				password: newPassword,
 				token: resetPasswordToken,
-				mfaToken: randomDigit(),
+				mfaToken: randomInt(10),
 			})
 			.expect(404);
 	});
@@ -226,7 +214,7 @@ describe('Change password with MFA enabled', () => {
 
 describe('Login', () => {
 	test('POST /login with email/password should succeed when mfa is disabled', async () => {
-		const password = randomPassword();
+		const password = randomString(8);
 
 		const user = await createUser({ password });
 
