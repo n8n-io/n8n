@@ -35,6 +35,7 @@
 		</n8n-callout>
 
 		<BinaryDataDisplay
+			v-if="binaryDataDisplayData"
 			:window-visible="binaryDataDisplayVisible"
 			:display-data="binaryDataDisplayData"
 			@close="closeBinaryDataDisplay"
@@ -629,7 +630,7 @@ import { useToast } from '@/composables/useToast';
 import { isEqual, isObject } from 'lodash-es';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import RunDataPinButton from '@/components/RunDataPinButton.vue';
 
 const RunDataTable = defineAsyncComponent(

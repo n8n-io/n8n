@@ -39,7 +39,7 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { useRouter } from 'vue-router';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';

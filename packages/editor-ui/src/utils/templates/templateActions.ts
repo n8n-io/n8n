@@ -6,7 +6,7 @@ import type {
 } from '@/Interface';
 import { getNewWorkflow } from '@/api/workflows';
 import { TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT, VIEWS } from '@/constants';
-import type { useRootStore } from '@/stores/n8nRoot.store';
+import type { useRootStore } from '@/stores/root.store';
 import type { PosthogStore } from '@/stores/posthog.store';
 import type { useWorkflowsStore } from '@/stores/workflows.store';
 import { getFixedNodesList } from '@/utils/nodeViewUtils';
@@ -37,7 +37,7 @@ export async function createWorkflowFromTemplate(opts: {
 }) {
 	const { credentialOverrides, nodeTypeProvider, rootStore, template, workflowsStore } = opts;
 
-	const workflowData = await getNewWorkflow(rootStore.getRestApiContext, { name: template.name });
+	const workflowData = await getNewWorkflow(rootStore.restApiContext, { name: template.name });
 	const nodesWithCreds = replaceAllTemplateNodeCredentials(
 		nodeTypeProvider,
 		template.workflow.nodes,
