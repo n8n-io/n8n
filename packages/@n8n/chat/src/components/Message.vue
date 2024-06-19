@@ -25,6 +25,11 @@ hljs.registerLanguage('python', python);
 hljs.registerLanguage('xml', xml);
 hljs.registerLanguage('bash', bash);
 
+defineSlots<{
+	beforeMessage(props: { message: ChatMessage }): ChatMessage;
+	default: { message: ChatMessage };
+}>();
+
 const { message } = toRefs(props);
 const { options } = useOptions();
 const messageContainer = ref<HTMLElement | null>(null);
@@ -113,12 +118,14 @@ onMounted(async () => {
 
 <template>
 	<div ref="messageContainer" class="chat-message" :class="classes">
-		<MessageActions
-			v-if="messageActions.length"
-			class="chat-message-actions"
-			:placement="message.sender === 'user' ? 'left' : 'right'"
-			:message-actions="messageActions"
-		/>
+		<div class="chat-message-actions">
+			<slot name="beforeMessage" v-bind="{ message }" />
+			<MessageActions
+				v-if="messageActions.length"
+				:placement="message.sender === 'user' ? 'left' : 'right'"
+				:message-actions="messageActions"
+			/>
+		</div>
 		<slot>
 			<template v-if="message.type === 'component' && messageComponents[message.key]">
 				<component :is="messageComponents[message.key]" v-bind="message.arguments" />
@@ -160,7 +167,8 @@ onMounted(async () => {
 		position: absolute;
 		bottom: 100%;
 		left: 0;
-		display: none;
+		opacity: 0;
+		transform: translateY(-0.25rem);
 	}
 
 	&.chat-message-from-user .chat-message-actions {
@@ -170,7 +178,7 @@ onMounted(async () => {
 
 	&:hover {
 		.chat-message-actions {
-			display: flex;
+			opacity: 1;
 		}
 	}
 

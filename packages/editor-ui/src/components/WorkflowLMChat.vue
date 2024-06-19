@@ -31,78 +31,9 @@
 									</div>
 								</n8n-info-tip>
 							</div>
-
-							<div
-								v-if="message.sender === 'user'"
-								class="message-options message-options--user no-select-on-click"
-							>
-								<div
-									class="option"
-									:title="locale.baseText('chat.window.chat.chatMessageOptions.repostMessage')"
-									data-test-id="repost-message-button"
-									@click="repostMessage(message)"
-								>
-									<font-awesome-icon icon="redo" />
-								</div>
-								<div
-									class="option"
-									:title="locale.baseText('chat.window.chat.chatMessageOptions.reuseMessage')"
-									data-test-id="reuse-message-button"
-									@click="reuseMessage(message)"
-								>
-									<font-awesome-icon icon="copy" />
-								</div>
-							</div>
 						</template>
 					</MessagesList>
-					<!-- <div
-						v-for="message in messages"
-						:key="`${message.executionId}__${message.sender}`"
-						ref="messageContainer"
-						:class="['message', message.sender]"
-					>
-						<div :class="['content', message.sender]">
-							{{ message.text }}
 
-							<div class="message-options no-select-on-click">
-								<n8n-info-tip
-									v-if="message.sender === 'bot'"
-									type="tooltip"
-									theme="info-light"
-									tooltip-placement="right"
-								>
-									<div v-if="message.executionId">
-										<n8n-text :bold="true" size="small">
-											<span @click.stop="displayExecution(message.executionId)">
-												{{ locale.baseText('chat.window.chat.chatMessageOptions.executionId') }}:
-												<a href="#" class="link">{{ message.executionId }}</a>
-											</span>
-										</n8n-text>
-									</div>
-								</n8n-info-tip>
-
-								<div
-									v-if="message.sender === 'user'"
-									class="option"
-									:title="locale.baseText('chat.window.chat.chatMessageOptions.repostMessage')"
-									data-test-id="repost-message-button"
-									@click="repostMessage(message)"
-								>
-									<font-awesome-icon icon="redo" />
-								</div>
-								<div
-									v-if="message.sender === 'user'"
-									class="option"
-									:title="locale.baseText('chat.window.chat.chatMessageOptions.reuseMessage')"
-									data-test-id="reuse-message-button"
-									@click="reuseMessage(message)"
-								>
-									<font-awesome-icon icon="copy" />
-								</div>
-							</div>
-						</div>
-					</div> -->
-					<!-- <MessageTyping v-if="isLoading" ref="messageContainer" /> -->
 				</div>
 				<div v-if="node && messages.length" class="logs-wrapper" data-test-id="lm-chat-logs">
 					<n8n-text class="logs-title" tag="p" size="large">{{
@@ -310,12 +241,6 @@ const chatOptions: ChatOptions = {
 			icon: MdiContentCopy,
 			action: reuseMessage,
 		},
-		{
-			label: locale.baseText('chat.window.chat.chatMessageOptions.reuseMessage'),
-			sender: 'bot',
-			icon: MdiContentCopy,
-			action: reuseMessage,
-		},
 	],
 };
 
@@ -326,42 +251,6 @@ const chatConfig: Chat = {
 	currentSessionId,
 	waitingForResponse: isLoading,
 };
-
-function generateNTestMessages(amount: number): ChatMessage[] {
-	const messagesTest: ChatMessage[] = [];
-	for (let i = 0; i < amount; i++) {
-		messagesTest.push({
-			text: `
-Check out this markdown babyyyy
-
-## Test
-- Test
-- Test 2
-\`\`\`ts
-const test = 123;
-
-
-function getTriggerNode(): INode | null {
-	const workflow = workflowHelpers.getCurrentWorkflow();
-	const triggerNode = workflow.queryNodes((nodeType: INodeType) =>
-		[CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE].includes(nodeType.description.name),
-	);
-
-	if (!triggerNode.length) {
-		return null;
-	}
-
-	return triggerNode[0];
-}
-\`\`\`
-`.trim(),
-			sender: i % 2 === 0 ? 'user' : 'bot',
-			createdAt: new Date().toISOString(),
-			id: uuid(),
-		});
-	}
-	return messagesTest;
-}
 
 function getTriggerNode() {
 	const workflow = workflowHelpers.getCurrentWorkflow();
@@ -1114,24 +1003,24 @@ onMounted(() => {
 
 	.message-options {
 		color: #aaa;
-		display: none;
+		// display: block;
 		font-size: 0.9em;
-		height: 26px;
-		position: absolute;
-		text-align: left;
-		top: -1.2em;
-		width: 120px;
-		z-index: 10;
+		// height: 26px;
+		// position: absolute;
+		// text-align: left;
+		// top: -1.2em;
+		// width: 120px;
+		// z-index: 10;
 
-		.option {
-			cursor: pointer;
-			display: inline-block;
-			width: 28px;
-		}
+		// .option {
+		// 	cursor: pointer;
+		// 	display: inline-block;
+		// 	width: 28px;
+		// }
 
-		.link {
-			text-decoration: underline;
-		}
+		// .link {
+		// 	text-decoration: underline;
+		// }
 	}
 }
 .messages-input {

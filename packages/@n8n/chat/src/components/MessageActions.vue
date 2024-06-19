@@ -3,7 +3,7 @@
 		<li v-for="action in messageActions" :key="action.label" class="chat-message-action">
 			<Tooltip class="chat-message-action-tooltip" :placement="placement">
 				<p class="chat-message-action-icon">
-					<Component :is="action.icon" height="0.7rem" width="0.7rem" color="white" />
+					<Component :is="action.icon" height="1rem" width="1rem" color="white" />
 				</p>
 				<template #popper>
 					<div class="chat-action-tooltip-label">{{ action.label }}</div>
@@ -34,6 +34,6 @@ defineProps<{
 	}
 }
 .chat-action-tooltip-label {
-	font-size: 0.5rem;
+	font-size: 1rem;
 }
 </style>

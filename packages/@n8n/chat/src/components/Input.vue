@@ -63,9 +63,9 @@ async function onSubmit(event: MouseEvent | KeyboardEvent) {
 
 	const messageText = input.value;
 	input.value = '';
-	await chatStore.sendMessage(messageText, Array.from(files.value ?? []));
 	reset();
 	files.value = null;
+	await chatStore.sendMessage(messageText, Array.from(files.value ?? []));
 }
 
 async function onSubmitKeydown(event: KeyboardEvent) {
