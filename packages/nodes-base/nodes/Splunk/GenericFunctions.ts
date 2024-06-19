@@ -113,13 +113,12 @@ export async function splunkApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ): Promise<any> {
-	const { authToken, baseUrl, allowUnauthorizedCerts } = (await this.getCredentials(
+	const { baseUrl, allowUnauthorizedCerts } = (await this.getCredentials(
 		'splunkApi',
 	)) as SplunkCredentials;
 
 	const options: IRequestOptions = {
 		headers: {
-			Authorization: `Bearer ${authToken}`,
 			'Content-Type': 'application/x-www-form-urlencoded',
 		},
 		method,
@@ -145,7 +144,11 @@ export async function splunkApiRequest(
 
 		do {
 			try {
-				const response = await this.helpers.request(options);
+				const response = await this.helpers.requestWithAuthentication.call(
+					this,
+					'splunkApi',
+					options,
+				);
 				result = await parseXml(response);
 				return result;
 			} catch (error) {
