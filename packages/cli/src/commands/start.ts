@@ -8,7 +8,7 @@ import { createReadStream, createWriteStream, existsSync } from 'fs';
 import { pipeline } from 'stream/promises';
 import replaceStream from 'replacestream';
 import glob from 'fast-glob';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse, randomString } from 'n8n-workflow';
 
 import config from '@/config';
 import { ActiveExecutions } from '@/ActiveExecutions';
@@ -265,12 +265,7 @@ export class Start extends BaseCommand {
 
 			if (tunnelSubdomain === '') {
 				// When no tunnel subdomain did exist yet create a new random one
-				const availableCharacters = 'abcdefghijklmnopqrstuvwxyz0123456789';
-				tunnelSubdomain = Array.from({ length: 24 })
-					.map(() =>
-						availableCharacters.charAt(Math.floor(Math.random() * availableCharacters.length)),
-					)
-					.join('');
+				tunnelSubdomain = randomString(24).toLowerCase();
 
 				this.instanceSettings.update({ tunnelSubdomain });
 			}
