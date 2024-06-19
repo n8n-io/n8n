@@ -7,7 +7,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, randomInt } from 'n8n-workflow';
 
 import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';
@@ -52,7 +52,7 @@ const flattenKeys = (obj: IDataObject, path: string[] = []): IDataObject => {
 
 const shuffleArray = (array: any[]) => {
 	for (let i = array.length - 1; i > 0; i--) {
-		const j = Math.floor(Math.random() * (i + 1));
+		const j = randomInt(i + 1);
 		[array[i], array[j]] = [array[j], array[i]];
 	}
 };

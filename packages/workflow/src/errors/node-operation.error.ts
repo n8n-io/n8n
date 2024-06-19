@@ -1,4 +1,4 @@
-import type { INode, JsonObject } from '..';
+import type { INode, JsonObject } from '@/Interfaces';
 import type { NodeOperationErrorOptions } from './node-api.error';
 import { NodeError } from './abstract/node.error';
 

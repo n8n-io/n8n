@@ -1,6 +1,6 @@
 import { CLOUD_BASE_URL_PRODUCTION, CLOUD_BASE_URL_STAGING, STORES } from '@/constants';
 import type { RootState } from '@/Interface';
-import { setGlobalState } from 'n8n-workflow';
+import { randomString, setGlobalState } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
@@ -26,7 +26,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		versionCli: '0.0.0',
 		oauthCallbackUrls: {},
 		n8nMetadata: {},
-		pushRef: Math.random().toString(36).substring(2, 15),
+		pushRef: randomString(10).toLowerCase(),
 		urlBaseWebhook: 'http://localhost:5678/',
 		urlBaseEditor: 'http://localhost:5678',
 		isNpmAvailable: false,
