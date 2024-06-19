@@ -2314,6 +2314,7 @@ export interface INodeGraphItem {
 	src_instance_id?: string;
 	agent?: string; //@n8n/n8n-nodes-langchain.agent
 	prompts?: IDataObject[] | IDataObject; //ai node's prompts, cloud only
+	toolSettings?: IDataObject; //various langchain tool's settings
 }
 
 export interface INodeNameIndex {
