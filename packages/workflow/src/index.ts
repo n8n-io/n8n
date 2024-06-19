@@ -34,6 +34,8 @@ export {
 	assert,
 	removeCircularRefs,
 	updateDisplayOptions,
+	randomInt,
+	randomString,
 } from './utils';
 export {
 	isINodeProperties,

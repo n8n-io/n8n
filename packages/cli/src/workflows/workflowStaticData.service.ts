@@ -3,6 +3,7 @@ import { type IDataObject, type Workflow, ErrorReporterProxy as ErrorReporter } 
 import { Logger } from '@/Logger';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { isWorkflowIdValid } from '@/utils';
+import config from '@/config';
 
 @Service()
 export class WorkflowStaticDataService {
@@ -43,8 +44,19 @@ export class WorkflowStaticDataService {
 
 	/** Saves the given static data on workflow */
 	async saveStaticDataById(workflowId: string, newStaticData: IDataObject): Promise<void> {
-		await this.workflowRepository.update(workflowId, {
-			staticData: newStaticData,
-		});
+		const qb = this.workflowRepository.createQueryBuilder('workflow');
+		await qb
+			.update()
+			.set({
+				staticData: newStaticData,
+				updatedAt: () => {
+					if (['mysqldb', 'mariadb'].includes(config.getEnv('database.type'))) {
+						return 'updatedAt';
+					}
+					return '"updatedAt"';
+				},
+			})
+			.where('id = :id', { id: workflowId })
+			.execute();
 	}
 }
