@@ -1,16 +1,13 @@
 <script lang="ts" setup>
-import { ref, watch, type PropType, computed } from 'vue';
+import { ref, watch, computed } from 'vue';
 import Message from '@n8n/chat/components/Message.vue';
 import type { ChatMessage } from '@n8n/chat/types';
 import MessageTyping from '@n8n/chat/components/MessageTyping.vue';
 import { useChat, useOptions } from '@n8n/chat/composables';
 
-const props = defineProps({
-	messages: {
-		type: Array as PropType<ChatMessage[]>,
-		required: true,
-	},
-});
+defineProps<{
+	messages: ChatMessage[];
+}>();
 
 defineSlots<{
 	beforeMessage(props: { message: ChatMessage }): ChatMessage;

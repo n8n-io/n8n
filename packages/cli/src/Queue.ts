@@ -101,6 +101,15 @@ export class Queue {
 		return await this.jobQueue.getJobs(jobTypes);
 	}
 
+	/**
+	 * Get IDs of executions that are currently in progress in the queue.
+	 */
+	async getInProgressExecutionIds() {
+		const inProgressJobs = await this.getJobs(['active', 'waiting']);
+
+		return new Set(inProgressJobs.map((job) => job.data.executionId));
+	}
+
 	async process(concurrency: number, fn: Bull.ProcessCallbackFunction<JobData>): Promise<void> {
 		return await this.jobQueue.process(concurrency, fn);
 	}

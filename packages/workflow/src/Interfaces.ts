@@ -622,8 +622,11 @@ export interface IN8nRequestOperationPaginationOffset extends IN8nRequestOperati
 	};
 }
 
+export type EnsureTypeOptions = 'string' | 'number' | 'boolean' | 'object' | 'array' | 'json';
 export interface IGetNodeParameterOptions {
 	contextNode?: INode;
+	// make sure that returned value would be of specified type, converts it if needed
+	ensureType?: EnsureTypeOptions;
 	// extract value from regex, works only when parameter type is resourceLocator
 	extractValue?: boolean;
 	// get raw value of parameter with unresolved expressions
@@ -2311,6 +2314,7 @@ export interface INodeGraphItem {
 	src_instance_id?: string;
 	agent?: string; //@n8n/n8n-nodes-langchain.agent
 	prompts?: IDataObject[] | IDataObject; //ai node's prompts, cloud only
+	toolSettings?: IDataObject; //various langchain tool's settings
 }
 
 export interface INodeNameIndex {

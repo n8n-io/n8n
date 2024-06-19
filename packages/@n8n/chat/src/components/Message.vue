@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 /* eslint-disable @typescript-eslint/naming-convention */
-import type { PropType } from 'vue';
 import { computed, ref, toRefs, onMounted } from 'vue';
 import VueMarkdown from 'vue-markdown-render';
 import hljs from 'highlight.js/lib/core';
@@ -16,12 +15,9 @@ import MessageActions from './MessageActions.vue';
 import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
 import { useOptions } from '@n8n/chat/composables';
 
-const props = defineProps({
-	message: {
-		type: Object as PropType<ChatMessage>,
-		required: true,
-	},
-});
+const props = defineProps<{
+	message: ChatMessage;
+}>();
 
 hljs.registerLanguage('javascript', javascript);
 hljs.registerLanguage('typescript', typescript);
