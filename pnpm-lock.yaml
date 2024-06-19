@@ -137,9 +137,6 @@ importers:
       lodash:
         specifier: 4.17.21
         version: 4.17.21
-      n8n-workflow:
-        specifier: workspace:*
-        version: link:../packages/workflow
       nanoid:
         specifier: 3.3.6
         version: 3.3.6
@@ -153,6 +150,9 @@ importers:
       eslint-plugin-cypress:
         specifier: ^3.3.0
         version: 3.3.0(eslint@8.57.0)
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../packages/workflow
 
   packages/@n8n/chat:
     dependencies:
