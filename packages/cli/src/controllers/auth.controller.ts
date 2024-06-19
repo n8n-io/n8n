@@ -39,7 +39,7 @@ export class AuthController {
 	) {}
 
 	/** Log in a user */
-	@Post('/login', { skipAuth: true, rateLimit: {} })
+	@Post('/login', { skipAuth: true, rateLimit: true })
 	async login(req: LoginRequest, res: Response): Promise<PublicUser | undefined> {
 		const { email, password, mfaToken, mfaRecoveryCode } = req.body;
 		if (!email) throw new ApplicationError('Email is required to log in');
