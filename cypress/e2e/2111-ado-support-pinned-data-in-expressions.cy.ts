@@ -12,7 +12,7 @@ describe('ADO-2111 expressions should support pinned data', () => {
 		cy.createFixtureWorkflow('Test_workflow_pinned_data_in_expressions.json', 'Expressions');
 
 		// test previous node unexecuted
-		workflowPage.actions.openNode('NotPinnedSet1');
+		workflowPage.actions.openNode('NotPinnedWithExpressions');
 		ndv.getters
 			.parameterExpressionPreview('value')
 			.eq(0)
@@ -58,5 +58,58 @@ describe('ADO-2111 expressions should support pinned data', () => {
 			.parameterExpressionPreview('value')
 			.eq(1)
 			.should('contain.text', '0,1\nJoan\n\nJoan\n\nJoan\n\nJoan\nJoan');
+	});
+
+	it('resets expressions after node is unpinned', () => {
+		cy.createFixtureWorkflow('Test_workflow_pinned_data_in_expressions.json', 'Expressions');
+
+		// test previous node unexecuted
+		workflowPage.actions.openNode('NotPinnedWithExpressions');
+		ndv.getters
+			.parameterExpressionPreview('value')
+			.eq(0)
+			.should('include.text', 'Joe\nJoe\nJoan\nJoan\nJoe\nJoan\n\nJoe\nJoan\n\nJoe');
+		ndv.getters
+			.parameterExpressionPreview('value')
+			.eq(1)
+			.should('contain.text', '0,0\nJoe\n\nJoe\n\nJoe\n\nJoe\nJoe');
+
+		ndv.actions.close();
+
+		// unpin pinned node
+		workflowPage.getters
+			.canvasNodeByName('PinnedSet')
+			.eq(0)
+			.find('.node-pin-data-icon')
+			.should('exist');
+		workflowPage.getters.canvasNodeByName('PinnedSet').eq(0).click();
+		workflowPage.actions.hitPinNodeShortcut();
+		workflowPage.getters
+			.canvasNodeByName('PinnedSet')
+			.eq(0)
+			.find('.node-pin-data-icon')
+			.should('not.exist');
+
+		workflowPage.actions.openNode('NotPinnedWithExpressions');
+		ndv.getters.nodeParameters().find('parameter-expression-preview-value').should('not.exist');
+
+		ndv.getters.parameterInput('value').eq(0).click();
+		ndv.getters
+			.inlineExpressionEditorOutput()
+			.should(
+				'have.text',
+				'[Execute node ‘PinnedSet’ for preview][Execute node ‘PinnedSet’ for preview][Execute node ‘PinnedSet’ for preview][Execute node ‘PinnedSet’ for preview][Execute node ‘PinnedSet’ for preview][Execute node ‘PinnedSet’ for preview][Execute previous nodes for preview][Execute previous nodes for preview][undefined]',
+			);
+
+		// close open expression
+		ndv.getters.inputLabel().eq(0).click();
+
+		ndv.getters.parameterInput('value').eq(1).click();
+		ndv.getters
+			.inlineExpressionEditorOutput()
+			.should(
+				'have.text',
+				'0,0[Execute node ‘PinnedSet’ for preview][Execute node ‘PinnedSet’ for preview][Execute previous nodes for preview][Execute previous nodes for preview][Execute previous nodes for preview]',
+			);
 	});
 });

@@ -24,7 +24,7 @@
         "options": {}
       },
       "id": "ac55ee16-4598-48bf-ace3-a48fed1d4ff3",
-      "name": "NotPinnedSet1",
+      "name": "NotPinnedWithExpressions",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.3,
       "position": [
@@ -78,7 +78,7 @@
       "main": [
         [
           {
-            "node": "NotPinnedSet1",
+            "node": "NotPinnedWithExpressions",
             "type": "main",
             "index": 0
           }
