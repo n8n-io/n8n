@@ -1,5 +1,10 @@
 import type { NodeParameterValue } from './Interfaces';
 
+export const DIGITS = '0123456789';
+export const UPPERCASE_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+export const LOWERCASE_LETTERS = UPPERCASE_LETTERS.toLowerCase();
+export const ALPHABET = [DIGITS, UPPERCASE_LETTERS, LOWERCASE_LETTERS].join('');
+
 export const BINARY_ENCODING = 'base64';
 export const WAIT_TIME_UNLIMITED = '3000-01-01T00:00:00.000Z';
 
