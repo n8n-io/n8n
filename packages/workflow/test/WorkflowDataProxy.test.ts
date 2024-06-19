@@ -308,7 +308,7 @@ describe('WorkflowDataProxy', () => {
 	});
 
 	describe('Pinned data with manual execution', () => {
-		const fixture = loadFixture('pinData');
+		const fixture = loadFixture('pindata');
 		const proxy = getProxyFromFixture(fixture.workflow, null, 'NotPinnedSet1', 'manual');
 
 		test('$(PinnedSet).item.json', () => {
