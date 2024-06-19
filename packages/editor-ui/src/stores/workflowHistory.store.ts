@@ -9,7 +9,7 @@ import type {
 	WorkflowVersionId,
 } from '@/types/workflowHistory';
 import * as whApi from '@/api/workflowHistory';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getNewWorkflow } from '@/api/workflows';
@@ -30,13 +30,13 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 		workflowId: string,
 		queryParams: WorkflowHistoryRequestParams,
 	): Promise<WorkflowHistory[]> =>
-		await whApi.getWorkflowHistory(rootStore.getRestApiContext, workflowId, queryParams);
+		await whApi.getWorkflowHistory(rootStore.restApiContext, workflowId, queryParams);
 
 	const getWorkflowVersion = async (
 		workflowId: string,
 		versionId: string,
 	): Promise<WorkflowVersion> =>
-		await whApi.getWorkflowVersion(rootStore.getRestApiContext, workflowId, versionId);
+		await whApi.getWorkflowVersion(rootStore.restApiContext, workflowId, versionId);
 
 	const downloadVersion = async (
 		workflowId: string,
@@ -65,7 +65,7 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 		]);
 		const { connections, nodes } = workflowVersion;
 		const { name } = workflow;
-		const newWorkflow = await getNewWorkflow(rootStore.getRestApiContext, {
+		const newWorkflow = await getNewWorkflow(rootStore.restApiContext, {
 			name: `${name} (${data.formattedCreatedAt})`,
 		});
 		const newWorkflowData: IWorkflowDataUpdate = {
