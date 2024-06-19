@@ -219,10 +219,10 @@ export class ChatTrigger extends Node {
 					},
 					{
 						displayName: 'Allowed Files Mime Type',
-						name: 'allowedFilesMimeType',
+						name: 'allowedFilesMimeTypes',
 						type: 'string',
-						default: 'image/*,text/*,audio/*, application/pdf',
-						placeholder: 'e.g. image/*,text/*,audio/*, application/pdf',
+						default: 'image/*, text/*, application/pdf',
+						placeholder: 'e.g. image/*, text/*, application/pdf',
 						description:
 							'Allowed file types for upload. Comma-separated list of <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types" target="_blank">MIME types</a>.',
 					},
@@ -255,15 +255,15 @@ export class ChatTrigger extends Node {
 					},
 					{
 						displayName: 'Allowed Files Mime Type',
-						name: 'allowedFilesMimeType',
+						name: 'allowedFilesMimeTypes',
 						type: 'string',
 						displayOptions: {
 							show: {
 								'/mode': ['hostedChat'],
 							},
 						},
-						default: 'image/*,video/*,audio/*',
-						placeholder: 'e.g. image/*,video/*,audio/*',
+						default: 'image/*, text/*, application/pdf',
+						placeholder: 'e.g. image/*, text/*, application/pdf',
 						description:
 							'Allowed file types for upload. Comma-separated list of <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types" target="_blank">MIME types</a>.',
 					},
@@ -463,7 +463,7 @@ export class ChatTrigger extends Node {
 			subtitle?: string;
 			title?: string;
 			allowFileUploads?: boolean;
-			allowedFilesMimeType?: string;
+			allowedFilesMimeTypes?: string;
 		};
 
 		const req = ctx.getRequestObject();
@@ -515,7 +515,7 @@ export class ChatTrigger extends Node {
 					instanceId,
 					authentication,
 					allowFileUploads: options.allowFileUploads,
-					allowedFilesMimeType: options.allowedFilesMimeType,
+					allowedFilesMimeTypes: options.allowedFilesMimeTypes,
 				});
 
 				res.status(200).send(page).end();

@@ -92,7 +92,7 @@ function onFileRemove(file: File) {
 
 <template>
 	<div class="chat-input">
-		<div class="chat-files">
+		<div v-if="files?.length" class="chat-files">
 			<ChatFile v-for="file in files" :key="file.name" :file="file" @remove="onFileRemove" />
 		</div>
 		<div class="chat-inputs">
@@ -125,6 +125,7 @@ function onFileRemove(file: File) {
 	align-items: center;
 	width: 100%;
 	flex-direction: column;
+	gap: 0.5rem;
 
 	* {
 		box-sizing: border-box;
@@ -135,13 +136,13 @@ function onFileRemove(file: File) {
 	display: flex;
 	justify-content: center;
 	align-items: center;
-
 	textarea {
 		font-family: inherit;
 		font-size: var(--chat--input--font-size, inherit);
 		width: 100%;
-		border: 0;
-		padding: var(--chat--spacing);
+		border: var(--chat--input--border, 0);
+		border-radius: var(--chat--input--border-radius, 0);
+		padding: 0.9rem;
 		min-height: var(--chat--textarea--height);
 		max-height: var(--chat--textarea--max-height, var(--chat--textarea--height));
 		height: 100%;
@@ -174,7 +175,7 @@ function onFileRemove(file: File) {
 	}
 
 	&[disabled] {
-		cursor: default;
+		cursor: no-drop;
 		color: var(--chat--color-disabled);
 	}
 }
@@ -185,8 +186,8 @@ function onFileRemove(file: File) {
 	overflow-x: hidden;
 	overflow-y: auto;
 	width: 100%;
-	padding: 0 var(--chat--spacing);
 	flex-direction: column;
 	max-height: 100px;
+	// margin-bottom: 0.5rem;
 }
 </style>

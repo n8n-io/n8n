@@ -273,8 +273,9 @@ const allowFileUploads = computed(() => {
 });
 const allowedFilesMimeTypes = computed(() => {
 	return (
-		(chatTrigger.value?.parameters?.options as INodeParameters)?.allowedFilesMimeType?.toString() ??
-		''
+		(
+			chatTrigger.value?.parameters?.options as INodeParameters
+		)?.allowedFilesMimeTypes?.toString() ?? ''
 	);
 });
 const locale = useI18n();
@@ -1134,23 +1135,30 @@ onMounted(() => {
 	}
 }
 .messages-input {
-	--chat--textarea--resize: auto;
-	--chat--input--background: var(--input-background-color, var(--color-foreground-xlight));
-	--chat--input--text-color: var(--input-font-color, var(--color-text-dark));
+	// --chat--textarea--resize: auto;
+	--chat--input--border: var(--input-border-color, var(--border-color-base))
+		var(--input-border-style, var(--border-style-base))
+		var(--input-border-width, var(--border-width-base));
+
+	--chat--input--border-radius: var(--input-border-radius, var(--border-radius-base));
 	--chat--input--send--button--background: var(
 		--button-background-color,
 		var(--color-button-primary-background)
 	);
-	--chat--input--send--button--color: var(--button-font-color, var(--color-button-primary-font));
-	--chat--textarea--max-height: auto;
 	--chat--input--send--button--background-hover: var(
 		--button-hover-background-color,
-		(--color-button-primary-hover-active-focus-background)
+		var(--color-button-primary-hover-active-focus-background)
 	);
-	--chat--input--send--button--color-hover: var(
-		--button-hover-font-color,
-		var(--color-button-primary-font)
-	);
+	--chat--input--send--button--color: var(--button-font-color, var(--color-button-primary-font));
+	--chat--input--send--button--color-hover: var(--color-button-primary-font);
+	[data-theme='dark'] & {
+		--chat--input--background: var(--input-background-color, var(--color-foreground-xlight));
+		--chat--input--text-color: var(--input-font-color, var(--color-text-dark));
+		--chat--input--send--button--color-hover: var(
+			--button-hover-font-color,
+			var(--color-button-primary-font)
+		);
+	}
 }
 
 .workflow-lm-chat-footer {
