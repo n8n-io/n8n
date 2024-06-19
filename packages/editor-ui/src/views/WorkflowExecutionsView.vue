@@ -117,29 +117,17 @@ async function initializeRoute() {
 }
 
 async function fetchWorkflow() {
-	let data: IWorkflowDb | undefined = workflowsStore.workflowsById[workflowId.value];
-	if (!data) {
-		try {
-			data = await workflowsStore.fetchWorkflow(workflowId.value);
-		} catch (error) {
-			toast.showError(error, i18n.baseText('nodeView.showError.openWorkflow.title'));
-			return;
-		}
+	try {
+		const data = await workflowsStore.fetchWorkflow(workflowId.value);
+		const tags = (data.tags ?? []) as ITag[];
+		workflow.value = data;
+		workflowsStore.setWorkflowName({ newName: data.name, setStateDirty: false });
+		workflowsStore.setWorkflowTagIds(tags.map(({ id }) => id) ?? []);
+		tagsStore.upsertTags(tags);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('nodeView.showError.openWorkflow.title'));
+		return;
 	}
-
-	if (!data) {
-		throw new Error(
-			i18n.baseText('nodeView.workflowWithIdCouldNotBeFound', {
-				interpolate: { workflowId: workflowId.value },
-			}),
-		);
-	}
-
-	const tags = (data.tags ?? []) as ITag[];
-	workflow.value = data;
-	workflowsStore.setWorkflowName({ newName: data.name, setStateDirty: false });
-	workflowsStore.setWorkflowTagIds(tags.map(({ id }) => id) ?? []);
-	tagsStore.upsertTags(tags);
 }
 
 async function onAutoRefreshToggle(value: boolean) {
