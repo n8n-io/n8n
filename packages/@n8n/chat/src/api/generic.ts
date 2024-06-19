@@ -63,9 +63,6 @@ export async function postWithFiles<T>(
 		...options,
 		method: 'POST',
 		body: formData,
-		headers: {
-			// 'Content-Type': 'multipart/form-data',
-		},
 	});
 }
 

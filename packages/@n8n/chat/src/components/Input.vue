@@ -36,7 +36,7 @@ const {
 	reset,
 	onChange,
 } = useFileDialog({
-	accept: allowedFileTypes.value, // Set to accept only image files
+	accept: unref(allowedFileTypes),
 	multiple: true,
 	reset: false,
 });

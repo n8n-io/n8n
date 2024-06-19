@@ -181,7 +181,6 @@ import {
 } from '@/constants';
 
 import { useUsersStore } from '@/stores/users.store';
-import { useExternalHooks } from '@/composables/useExternalHooks';
 
 // eslint-disable-next-line import/no-unresolved
 import MessagesList from '@n8n/chat/components/MessagesList.vue';
@@ -192,7 +191,6 @@ import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import type { Chat, ChatMessage, ChatOptions } from '@n8n/chat/types';
 import { useI18n } from '@/composables/useI18n';
 import { ChatOptionsSymbol, ChatSymbol } from '@n8n/chat/constants';
-import { useAIStore } from '@/stores/ai.store';
 import type {
 	BinaryFileType,
 	IBinaryData,
