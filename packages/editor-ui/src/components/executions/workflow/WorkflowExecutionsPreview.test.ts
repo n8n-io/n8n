@@ -49,7 +49,6 @@ const generateUndefinedNullOrString = () => {
 
 const executionDataFactory = (): ExecutionSummary => ({
 	id: faker.string.uuid(),
-	finished: faker.datatype.boolean(),
 	mode: faker.helpers.arrayElement(['manual', 'trigger']),
 	startedAt: faker.date.past(),
 	stoppedAt: faker.date.past(),

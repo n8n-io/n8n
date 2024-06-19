@@ -198,7 +198,6 @@ const MOCK_EXECUTION: Partial<IExecutionResponse> = {
 	startedAt: new Date('2024-01-23T16:26:10.003Z'),
 	stoppedAt: new Date('2024-01-23T16:26:10.011Z'),
 	status: 'success',
-	finished: true,
 };
 
 describe('pairedItemUtils', () => {
@@ -363,7 +362,6 @@ describe('pairedItemUtils', () => {
 				startedAt: new Date('2024-01-23T16:26:10.003Z'),
 				stoppedAt: new Date('2024-01-23T16:26:10.011Z'),
 				status: 'success',
-				finished: true,
 			};
 
 			for (let i = 0; i < MAX_ITEM_COUNT_FOR_PAIRING / 2; i++) {

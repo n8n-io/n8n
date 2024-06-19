@@ -230,7 +230,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			// nodes can be added as it gets pushed in
 			const executionData: IExecutionResponse = {
 				id: '__IN_PROGRESS__',
-				finished: false,
 				mode: 'manual',
 				status: 'running',
 				startedAt: new Date(),
@@ -406,11 +405,20 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					message: i18n.baseText('nodeView.showMessage.stopExecutionCatch.unsaved.message'),
 					type: 'success',
 				});
-			} else if (execution?.finished) {
+
+				return;
+			}
+
+			const finished =
+				execution.status === 'success' ||
+				execution.status === 'error' ||
+				execution.status === 'canceled' ||
+				execution.status === 'crashed';
+
+			if (finished) {
 				// execution finished before it could be stopped
 				const executedData = {
 					data: execution.data,
-					finished: execution.finished,
 					mode: execution.mode,
 					startedAt: execution.startedAt,
 					stoppedAt: execution.stoppedAt,

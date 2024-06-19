@@ -1346,13 +1346,20 @@ export default defineComponent({
 				workflowName: data.workflowData.name,
 				executionId,
 			});
+
+			const finished =
+				data.status === 'success' ||
+				data.status === 'error' ||
+				data.status === 'canceled' ||
+				data.status === 'crashed';
+
 			this.$telemetry.track('User opened read-only execution', {
 				workflow_id: data.workflowData.id,
 				execution_mode: data.mode,
-				execution_finished: data.finished,
+				execution_finished: finished,
 			});
 
-			if (!data.finished && data.data?.resultData?.error) {
+			if (!finished && data.data?.resultData?.error) {
 				// Check if any node contains an error
 				let nodeErrorFound = false;
 				if (data.data.resultData.runData) {
@@ -2061,12 +2068,20 @@ export default defineComponent({
 						),
 						type: 'success',
 					});
-				} else if (execution?.finished) {
+					return;
+				}
+
+				const finished =
+					execution.status === 'success' ||
+					execution.status === 'error' ||
+					execution.status === 'canceled' ||
+					execution.status === 'crashed';
+
+				if (finished) {
 					// execution finished before it could be stopped
 
 					const executedData = {
 						data: execution.data,
-						finished: execution.finished,
 						mode: execution.mode,
 						startedAt: execution.startedAt,
 						stoppedAt: execution.stoppedAt,

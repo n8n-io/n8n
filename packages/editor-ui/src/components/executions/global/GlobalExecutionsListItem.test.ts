@@ -50,7 +50,6 @@ describe('GlobalExecutionsListItem', () => {
 					status: 'error',
 					id: 123,
 					stoppedAt: '01-01-2024',
-					finished: false,
 					retryOf: undefined,
 					retrySuccessfulId: undefined,
 					waitTill: false,

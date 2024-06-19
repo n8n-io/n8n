@@ -368,7 +368,6 @@ export interface ICredentialsDecryptedResponse extends ICredentialsBase, ICreden
 
 export interface IExecutionBase {
 	id?: string;
-	finished: boolean;
 	mode: WorkflowExecuteMode;
 	status: ExecutionStatus;
 	retryOf?: string;
@@ -407,7 +406,6 @@ export interface IExecutionsListResponse {
 
 export interface IExecutionsCurrentSummaryExtended {
 	id: string;
-	finished?: boolean;
 	status: ExecutionStatus;
 	mode: WorkflowExecuteMode;
 	retryOf?: string | null;
@@ -419,7 +417,6 @@ export interface IExecutionsCurrentSummaryExtended {
 }
 
 export interface IExecutionsStopData {
-	finished?: boolean;
 	mode: WorkflowExecuteMode;
 	startedAt: Date;
 	stoppedAt: Date;
@@ -1653,7 +1650,6 @@ export type ExecutionFilterType = {
 export type ExecutionsQueryFilter = {
 	status?: ExecutionStatus[];
 	workflowId?: string;
-	finished?: boolean;
 	waitTill?: boolean;
 	metadata?: Array<{ key: string; value: string }>;
 	startedAfter?: string;

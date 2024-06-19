@@ -183,8 +183,6 @@ export function unflattenExecutionData(fullExecutionData: IExecutionFlattedRespo
 		data: parse(fullExecutionData.data),
 	};
 
-	returnData.finished = returnData.finished ? returnData.finished : false;
-
 	if (fullExecutionData.id) {
 		returnData.id = fullExecutionData.id;
 	}

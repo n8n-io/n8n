@@ -196,7 +196,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const getAllLoadedFinishedExecutions = computed(() => {
 		return currentWorkflowExecutions.value.filter(
-			(ex) => ex.finished === true || ex.stoppedAt !== undefined,
+			(ex) =>
+				ex.status === 'success' ||
+				ex.status === 'error' ||
+				ex.status === 'canceled' ||
+				ex.status === 'crashed',
 		);
 	});
 
@@ -1253,7 +1257,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				...(finishedActiveExecution.executionId !== undefined
 					? { id: finishedActiveExecution.executionId }
 					: {}),
-				finished: finishedActiveExecution.data.finished,
 				stoppedAt: finishedActiveExecution.data.stoppedAt,
 			},
 			...activeExecutions.value.slice(activeExecutionIndex + 1),
@@ -1402,7 +1405,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		try {
 			const rootStore = useRootStore();
-			if ((!requestFilter.status || !requestFilter.finished) && isEmpty(requestFilter.metadata)) {
+			if (!requestFilter.status && isEmpty(requestFilter.metadata)) {
 				retrievedActiveExecutions = await workflowsApi.getActiveExecutions(
 					rootStore.restApiContext,
 					{
