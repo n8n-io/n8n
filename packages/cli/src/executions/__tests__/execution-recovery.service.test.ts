@@ -347,6 +347,28 @@ describe('ExecutionRecoveryService', () => {
 		});
 
 		describe('if leader, with 1+ messages', () => {
+			test('should return `null` if execution succeeded', async () => {
+				/**
+				 * Arrange
+				 */
+				const workflow = await createWorkflow();
+				const execution = await createExecution({ status: 'success' }, workflow);
+				const messages = setupMessages(execution.id, 'Some workflow');
+
+				/**
+				 * Act
+				 */
+				const amendedExecution = await executionRecoveryService.recoverFromLogs(
+					execution.id,
+					messages,
+				);
+
+				/**
+				 * Assert
+				 */
+				expect(amendedExecution).toBeNull();
+			});
+
 			test('should return `null` if no execution found', async () => {
 				/**
 				 * Arrange
