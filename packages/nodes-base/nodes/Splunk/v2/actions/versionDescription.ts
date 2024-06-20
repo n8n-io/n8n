@@ -45,10 +45,6 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'search',
 				},
 				{
-					name: 'Search Result',
-					value: 'searchResult',
-				},
-				{
 					name: 'User',
 					value: 'user',
 				},
