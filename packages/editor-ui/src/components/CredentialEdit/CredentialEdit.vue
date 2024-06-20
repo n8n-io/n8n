@@ -887,8 +887,9 @@ export default defineComponent({
 					this.testedSuccessfully = false;
 				}
 
-				const usesExternalSecrets = Object.entries(credentialDetails.data || {}).some(([, value]) =>
-					/=.*\{\{[^}]*\$secrets\.[^}]+}}.*/.test(`${value}`),
+				const usesExternalSecrets = Object.entries(credentialDetails.data || {}).some(
+					([, value]) =>
+						typeof value !== 'object' && /=.*\{\{[^}]*\$secrets\.[^}]+}}.*/.test(`${value}`),
 				);
 
 				const trackProperties: ITelemetryTrackProperties = {
@@ -1090,20 +1091,17 @@ export default defineComponent({
 
 			const params =
 				'scrollbars=no,resizable=yes,status=no,titlebar=noe,location=no,toolbar=no,menubar=no,width=500,height=700';
-			const oauthPopup = window.open(url, 'OAuth2 Authorization', params);
+			const oauthPopup = window.open(url, 'OAuth Authorization', params);
 
 			this.credentialData = {
 				...this.credentialData,
 				oauthTokenData: null as unknown as CredentialInformation,
 			};
 
+			const oauthChannel = new BroadcastChannel('oauth-callback');
 			const receiveMessage = (event: MessageEvent) => {
-				// // TODO: Add check that it came from n8n
-				// if (event.origin !== 'http://example.org:8080') {
-				// 	return;
-				// }
 				if (event.data === 'success') {
-					window.removeEventListener('message', receiveMessage, false);
+					oauthChannel.removeEventListener('message', receiveMessage);
 
 					// Set some kind of data that status changes.
 					// As data does not get displayed directly it does not matter what data.
@@ -1118,8 +1116,7 @@ export default defineComponent({
 					}
 				}
 			};
-
-			window.addEventListener('message', receiveMessage, false);
+			oauthChannel.addEventListener('message', receiveMessage);
 		},
 		async onAuthTypeChanged(type: string): Promise<void> {
 			if (!this.activeNodeType?.credentials) {

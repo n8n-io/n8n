@@ -23,20 +23,16 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-const props = defineProps({
-	radius: {
-		type: Number,
-		required: true,
+const props = withDefaults(
+	defineProps<{
+		radius: number;
+		progress: number;
+		strokeWidth?: number;
+	}>(),
+	{
+		strokeWidth: 4,
 	},
-	progress: {
-		type: Number,
-		required: true,
-	},
-	strokeWidth: {
-		type: Number,
-		default: 4,
-	},
-});
+);
 
 // for SVG viewbox and stroke array
 const diameter = computed(() => 2 * (props.radius + props.strokeWidth));

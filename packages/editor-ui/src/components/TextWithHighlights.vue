@@ -1,16 +1,11 @@
 <script lang="ts" setup>
-import type { PropType } from 'vue';
 import type { GenericValue } from 'n8n-workflow';
 import { computed } from 'vue';
 
-const props = defineProps({
-	content: {
-		type: [Object, String, Number] as PropType<GenericValue>,
-	},
-	search: {
-		type: String,
-	},
-});
+const props = defineProps<{
+	content: GenericValue;
+	search?: string;
+}>();
 
 const splitTextBySearch = (
 	text = '',

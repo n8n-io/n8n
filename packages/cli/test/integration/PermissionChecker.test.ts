@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { Container } from 'typedi';
 import type { INode, WorkflowSettings } from 'n8n-workflow';
-import { SubworkflowOperationError, Workflow } from 'n8n-workflow';
+import { SubworkflowOperationError, Workflow, randomInt } from 'n8n-workflow';
 
 import config from '@/config';
 import type { User } from '@db/entities/User';
@@ -15,11 +15,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 
 import { mockInstance } from '../shared/mocking';
-import {
-	randomCredentialPayload as randomCred,
-	randomName,
-	randomPositiveDigit,
-} from '../integration/shared/random';
+import { randomCredentialPayload as randomCred, randomName } from '../integration/shared/random';
 import { LicenseMocker } from '../integration/shared/license';
 import * as testDb from '../integration/shared/testDb';
 import type { SaveCredentialFunction } from '../integration/shared/types';
@@ -77,7 +73,7 @@ const ownershipService = mockInstance(OwnershipService);
 
 const createWorkflow = async (nodes: INode[], workflowOwner?: User): Promise<WorkflowEntity> => {
 	const workflowDetails = {
-		id: randomPositiveDigit().toString(),
+		id: randomInt(1, 10).toString(),
 		name: 'test',
 		active: false,
 		connections: {},

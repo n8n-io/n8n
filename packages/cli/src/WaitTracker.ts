@@ -30,19 +30,19 @@ export class WaitTracker {
 		private readonly orchestrationService: OrchestrationService,
 	) {}
 
+	/**
+	 * @important Requires `OrchestrationService` to be initialized.
+	 */
 	init() {
-		const { isSingleMainSetup, isLeader, multiMainSetup } = this.orchestrationService;
-
-		if (isSingleMainSetup) {
-			this.startTracking();
-			return;
-		}
+		const { isLeader, isMultiMainSetupEnabled } = this.orchestrationService;
 
 		if (isLeader) this.startTracking();
 
-		multiMainSetup
-			.on('leader-takeover', () => this.startTracking())
-			.on('leader-stepdown', () => this.stopTracking());
+		if (isMultiMainSetupEnabled) {
+			this.orchestrationService.multiMainSetup
+				.on('leader-takeover', () => this.startTracking())
+				.on('leader-stepdown', () => this.stopTracking());
+		}
 	}
 
 	private startTracking() {

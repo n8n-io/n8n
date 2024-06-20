@@ -62,7 +62,7 @@ import { type Ref, computed, nextTick, onBeforeUnmount, onMounted, ref, watch } 
 
 import { ASK_AI_EXPERIMENT, CODE_NODE_TYPE } from '@/constants';
 import { codeNodeEditorEventBus } from '@/event-bus';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { usePostHog } from '@/stores/posthog.store';
 
 import { useMessage } from '@/composables/useMessage';

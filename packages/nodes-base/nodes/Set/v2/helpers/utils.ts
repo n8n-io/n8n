@@ -56,13 +56,17 @@ export function composeReturnItem(
 	inputItem: INodeExecutionData,
 	newFields: IDataObject,
 	options: SetNodeOptions,
+	nodeVersion: number,
 ) {
 	const newItem: INodeExecutionData = {
 		json: {},
 		pairedItem: { item: itemIndex },
 	};
 
-	if (options.includeBinary && inputItem.binary !== undefined) {
+	const includeBinary =
+		(nodeVersion >= 3.4 && !options.stripBinary && options.include !== 'none') ||
+		(nodeVersion < 3.4 && !!options.includeBinary);
+	if (includeBinary && inputItem.binary !== undefined) {
 		// Create a shallow copy of the binary data so that the old
 		// data references which do not get changed still stay behind
 		// but the incoming data does not get changed.

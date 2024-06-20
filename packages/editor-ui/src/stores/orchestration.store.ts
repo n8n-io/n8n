@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import type { IPushDataWorkerStatusPayload } from '../Interface';
-import { useRootStore } from './n8nRoot.store';
+import { useRootStore } from './root.store';
 import { sendGetWorkerStatus } from '../api/orchestration';
 
 export const WORKER_HISTORY_LENGTH = 100;
@@ -56,7 +56,7 @@ export const useOrchestrationStore = defineStore('orchestrationManager', {
 			const rootStore = useRootStore();
 			if (!this.statusInterval) {
 				this.statusInterval = setInterval(async () => {
-					await sendGetWorkerStatus(rootStore.getRestApiContext);
+					await sendGetWorkerStatus(rootStore.restApiContext);
 					this.removeStaleWorkers();
 				}, 1000);
 			}
