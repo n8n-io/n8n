@@ -100,5 +100,7 @@ n8n is [fair-code](https://faircode.io) distributed under the
 
 Proprietary licenses are available for enterprise customers. [Get in touch](mailto:license@n8n.io)
 
+test
+
 Additional information about the license model can be found in the
 [docs](https://docs.n8n.io/reference/license/).
