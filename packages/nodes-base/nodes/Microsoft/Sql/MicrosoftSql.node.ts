@@ -278,7 +278,7 @@ export class MicrosoftSql implements INodeType {
 						});
 					}
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						returnData.push({
 							json: { error: error.message },
 							pairedItem: [{ item: i }],
@@ -357,7 +357,7 @@ export class MicrosoftSql implements INodeType {
 				{ itemData },
 			);
 		} catch (error) {
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(error)) {
 				responseData = items;
 			} else {
 				await pool.close();
