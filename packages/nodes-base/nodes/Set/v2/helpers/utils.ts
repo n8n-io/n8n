@@ -18,7 +18,7 @@ import get from 'lodash/get';
 import set from 'lodash/set';
 import unset from 'lodash/unset';
 
-import { getResolvables, sanitazeDataPathKey } from '../../../../utils/utilities';
+import { getResolvables, sanitizeDataPathKey } from '../../../../utils/utilities';
 import type { SetNodeOptions } from './interfaces';
 import { INCLUDE } from './interfaces';
 
@@ -38,13 +38,13 @@ const configureFieldHelper = (dotNotation?: boolean) => {
 	} else {
 		return {
 			set: (item: IDataObject, key: string, value: IDataObject) => {
-				item[sanitazeDataPathKey(item, key)] = value;
+				item[sanitizeDataPathKey(item, key)] = value;
 			},
 			get: (item: IDataObject, key: string) => {
-				return item[sanitazeDataPathKey(item, key)];
+				return item[sanitizeDataPathKey(item, key)];
 			},
 			unset: (item: IDataObject, key: string) => {
-				delete item[sanitazeDataPathKey(item, key)];
+				delete item[sanitizeDataPathKey(item, key)];
 			},
 		};
 	}
