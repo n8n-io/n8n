@@ -193,7 +193,6 @@ export class Start extends BaseCommand {
 
 		Container.get(WaitTracker).init();
 		this.logger.debug('Wait tracker init complete');
-    
 		await this.initBinaryDataService();
 		this.logger.debug('Binary data service init complete');
 		await this.initExternalHooks();
