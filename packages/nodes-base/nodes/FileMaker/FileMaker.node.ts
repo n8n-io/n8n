@@ -809,7 +809,7 @@ export class FileMaker implements INodeType {
 				}
 				returnData.push({ json: response, pairedItem: { item: i } });
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({
 						json: { error: error.message },
 						pairedItem: { item: i },

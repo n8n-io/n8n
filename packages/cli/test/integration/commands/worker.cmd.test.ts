@@ -1,85 +1,51 @@
-import { Config } from '@oclif/core';
+import { BinaryDataService } from 'n8n-core';
+import { mock } from 'jest-mock-extended';
+
 import { Worker } from '@/commands/worker';
 import config from '@/config';
-import { Telemetry } from '@/telemetry';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
-import { BinaryDataService } from 'n8n-core';
-import { CacheService } from '@/services/cache/cache.service';
-import { RedisServicePubSubPublisher } from '@/services/redis/RedisServicePubSubPublisher';
-import { RedisServicePubSubSubscriber } from '@/services/redis/RedisServicePubSubSubscriber';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { CredentialTypes } from '@/CredentialTypes';
-import { NodeTypes } from '@/NodeTypes';
 import { InternalHooks } from '@/InternalHooks';
-import { PostHogClient } from '@/posthog';
-import { RedisService } from '@/services/redis.service';
 import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
-import { OrchestrationService } from '@/services/orchestration.service';
+import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
+import { License } from '@/License';
+import { ExternalHooks } from '@/ExternalHooks';
+import { type JobQueue, Queue } from '@/Queue';
 
-import * as testDb from '../shared/testDb';
+import { setupTestCommand } from '@test-integration/utils/testCommand';
 import { mockInstance } from '../../shared/mocking';
 
-const oclifConfig = new Config({ root: __dirname });
+config.set('executions.mode', 'queue');
+config.set('binaryDataManager.availableModes', 'filesystem');
+mockInstance(InternalHooks);
+mockInstance(LoadNodesAndCredentials);
+const binaryDataService = mockInstance(BinaryDataService);
+const externalHooks = mockInstance(ExternalHooks);
+const externalSecretsManager = mockInstance(ExternalSecretsManager);
+const license = mockInstance(License);
+const messageEventBus = mockInstance(MessageEventBus);
+const orchestrationHandlerWorkerService = mockInstance(OrchestrationHandlerWorkerService);
+const queue = mockInstance(Queue);
+const orchestrationWorkerService = mockInstance(OrchestrationWorkerService);
+const command = setupTestCommand(Worker);
 
-let eventBus: MessageEventBus;
-
-beforeAll(async () => {
-	config.set('executions.mode', 'queue');
-	config.set('binaryDataManager.availableModes', 'filesystem');
-	mockInstance(Telemetry);
-	mockInstance(PostHogClient);
-	mockInstance(InternalHooks);
-	mockInstance(CacheService);
-	mockInstance(ExternalSecretsManager);
-	mockInstance(BinaryDataService);
-	eventBus = mockInstance(MessageEventBus);
-	mockInstance(LoadNodesAndCredentials);
-	mockInstance(CredentialTypes);
-	mockInstance(NodeTypes);
-	mockInstance(RedisService);
-	mockInstance(RedisServicePubSubPublisher);
-	mockInstance(RedisServicePubSubSubscriber);
-	mockInstance(OrchestrationService);
-	await testDb.init();
-	await oclifConfig.load();
-});
-
-afterAll(async () => {
-	await testDb.terminate();
-});
+queue.getBullObjectInstance.mockReturnValue(mock<JobQueue>({ on: jest.fn() }));
 
 test('worker initializes all its components', async () => {
-	const worker = new Worker([], oclifConfig);
-
-	jest.spyOn(worker, 'init');
-	jest.spyOn(worker, 'initLicense').mockImplementation(async () => {});
-	jest.spyOn(worker, 'initBinaryDataService').mockImplementation(async () => {});
-	jest.spyOn(worker, 'initExternalHooks').mockImplementation(async () => {});
-	jest.spyOn(worker, 'initExternalSecrets').mockImplementation(async () => {});
-	jest.spyOn(worker, 'initEventBus').mockImplementation(async () => {});
-	jest.spyOn(worker, 'initOrchestration');
-	// jest.spyOn(MessageEventBus.prototype, 'send').mockImplementation(async () => {});
-	jest
-		.spyOn(OrchestrationHandlerWorkerService.prototype, 'initSubscriber')
-		.mockImplementation(async () => {});
-	jest.spyOn(RedisServicePubSubPublisher.prototype, 'init').mockImplementation(async () => {});
-	jest.spyOn(worker, 'initQueue').mockImplementation(async () => {});
-
-	await worker.init();
+	const worker = await command.run();
 
 	expect(worker.queueModeId).toBeDefined();
 	expect(worker.queueModeId).toContain('worker');
 	expect(worker.queueModeId.length).toBeGreaterThan(15);
-	expect(worker.initLicense).toHaveBeenCalledTimes(1);
-	expect(worker.initBinaryDataService).toHaveBeenCalledTimes(1);
-	expect(worker.initExternalHooks).toHaveBeenCalledTimes(1);
-	expect(worker.initExternalSecrets).toHaveBeenCalledTimes(1);
-	expect(worker.initEventBus).toHaveBeenCalledTimes(1);
-	expect(worker.initOrchestration).toHaveBeenCalledTimes(1);
-	expect(OrchestrationHandlerWorkerService.prototype.initSubscriber).toHaveBeenCalledTimes(1);
-	expect(eventBus.send).toHaveBeenCalledTimes(1);
-	expect(worker.initQueue).toHaveBeenCalledTimes(1);
-
-	jest.restoreAllMocks();
+	expect(license.init).toHaveBeenCalledTimes(1);
+	expect(binaryDataService.init).toHaveBeenCalledTimes(1);
+	expect(externalHooks.init).toHaveBeenCalledTimes(1);
+	expect(externalSecretsManager.init).toHaveBeenCalledTimes(1);
+	expect(messageEventBus.initialize).toHaveBeenCalledTimes(1);
+	expect(queue.init).toHaveBeenCalledTimes(1);
+	expect(queue.process).toHaveBeenCalledTimes(1);
+	expect(orchestrationWorkerService.init).toHaveBeenCalledTimes(1);
+	expect(orchestrationHandlerWorkerService.initWithOptions).toHaveBeenCalledTimes(1);
+	expect(messageEventBus.send).toHaveBeenCalledTimes(1);
 });

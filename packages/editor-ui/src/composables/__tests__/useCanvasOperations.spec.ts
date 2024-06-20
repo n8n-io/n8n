@@ -1,3 +1,8 @@
+import { createPinia, setActivePinia } from 'pinia';
+import type { Connection } from '@vue-flow/core';
+import type { IConnection } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
+
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import type { CanvasElement } from '@/types';
 import type { INodeUi } from '@/Interface';
@@ -5,12 +10,8 @@ import { RemoveNodeCommand } from '@/models/history';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useHistoryStore } from '@/stores/history.store';
-import { createPinia, setActivePinia } from 'pinia';
-import { createTestNode, createTestWorkflowObject } from '@/__tests__/mocks';
-import type { Connection } from '@vue-flow/core';
-import type { IConnection } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
 import { useNDVStore } from '@/stores/ndv.store';
+import { createTestNode, createTestWorkflowObject } from '@/__tests__/mocks';
 
 describe('useCanvasOperations', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
@@ -248,23 +249,6 @@ describe('useCanvasOperations', () => {
 			vi.spyOn(workflowsStore, 'getNodeById')
 				.mockReturnValueOnce(createTestNode())
 				.mockReturnValueOnce(undefined);
-
-			canvasOperations.createConnection(connection);
-
-			expect(addConnectionSpy).not.toHaveBeenCalled();
-			expect(uiStore.stateIsDirty).toBe(false);
-		});
-
-		// @TODO Implement once the isConnectionAllowed method is implemented
-		it.skip('should not create a connection if connection is not allowed', () => {
-			const addConnectionSpy = vi
-				.spyOn(workflowsStore, 'addConnection')
-				.mockImplementation(() => {});
-			const connection: Connection = { source: 'sourceNode', target: 'targetNode' };
-
-			vi.spyOn(workflowsStore, 'getNodeById')
-				.mockReturnValueOnce(createTestNode())
-				.mockReturnValueOnce(createTestNode());
 
 			canvasOperations.createConnection(connection);
 

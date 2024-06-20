@@ -1,7 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { CliWorkflowOperationError, SubworkflowOperationError } from 'n8n-workflow';
 import type { INode } from 'n8n-workflow';
-import { STARTING_NODES } from './constants';
+import { STARTING_NODES } from '@/constants';
 
 /**
  * Returns if the given id is a valid workflow id

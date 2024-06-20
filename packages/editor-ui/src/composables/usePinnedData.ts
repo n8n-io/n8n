@@ -15,8 +15,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { MaybeRef } from 'vue';
 import { computed, unref } from 'vue';
-import { useRootStore } from '@/stores/n8nRoot.store';
-import { storeToRefs } from 'pinia';
+import { useRootStore } from '@/stores/root.store';
 import { useNodeType } from '@/composables/useNodeType';
 import { useDataSchema } from './useDataSchema';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -52,7 +51,6 @@ export function usePinnedData(
 	const externalHooks = useExternalHooks();
 	const { getInputDataWithPinned } = useDataSchema();
 
-	const { pushRef } = storeToRefs(rootStore);
 	const { isSubNodeType, isMultipleOutputsNodeType } = useNodeType({
 		node,
 	});
@@ -197,7 +195,7 @@ export function usePinnedData(
 		const telemetryPayload = {
 			pinning_source: source,
 			node_type: targetNode?.type,
-			push_ref: pushRef.value,
+			push_ref: rootStore.pushRef,
 			data_size: stringSizeInBytes(data.value),
 			view: displayMode,
 			run_index: runIndex,
@@ -221,7 +219,7 @@ export function usePinnedData(
 		telemetry.track('Ndv data pinning failure', {
 			pinning_source: source,
 			node_type: targetNode?.type,
-			push_ref: pushRef.value,
+			push_ref: rootStore.pushRef,
 			data_size: stringSizeInBytes(data.value),
 			view: displayMode,
 			run_index: runIndex,
@@ -259,7 +257,7 @@ export function usePinnedData(
 
 		telemetry.track('User unpinned ndv data', {
 			node_type: targetNode?.type,
-			push_ref: pushRef.value,
+			push_ref: rootStore.pushRef,
 			run_index: runIndex,
 			source,
 			data_size: stringSizeInBytes(data.value),

@@ -78,6 +78,8 @@ export class NDV extends BasePage {
 		resourceLocatorErrorMessage: () => cy.getByTestId('rlc-error-container'),
 		resourceLocatorModeSelector: (paramName: string) =>
 			this.getters.resourceLocator(paramName).find('[data-test-id="rlc-mode-selector"]'),
+		resourceLocatorSearch: (paramName: string) =>
+			this.getters.resourceLocator(paramName).findChildByTestId('rlc-search'),
 		resourceMapperFieldsContainer: () => cy.getByTestId('mapping-fields-container'),
 		resourceMapperSelectColumn: () => cy.getByTestId('matching-column-select'),
 		resourceMapperRemoveFieldButton: (fieldName: string) =>

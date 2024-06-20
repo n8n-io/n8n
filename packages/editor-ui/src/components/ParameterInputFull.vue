@@ -25,7 +25,7 @@
 			type="mapping"
 			:disabled="isDropDisabled"
 			:sticky="true"
-			:sticky-offset="isValueExpression ? [26, 3] : [3, 3]"
+			:sticky-offset="isExpression ? [26, 3] : [3, 3]"
 			@drop="onDrop"
 		>
 			<template #default="{ droppable, activeDrop }">
@@ -77,276 +77,208 @@
 	</n8n-input-label>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-import type { PropType } from 'vue';
-import { mapStores } from 'pinia';
+<script setup lang="ts">
+import { computed, ref } from 'vue';
 
-import type { INodeUi, IRunDataDisplayMode, IUpdateInformation } from '@/Interface';
+import type { IUpdateInformation } from '@/Interface';
 
-import ParameterOptions from '@/components/ParameterOptions.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
+import ParameterInputWrapper from '@/components/ParameterInputWrapper.vue';
+import ParameterOptions from '@/components/ParameterOptions.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
-import { hasExpressionMapping, hasOnlyListMode, isValueExpression } from '@/utils/nodeTypesUtils';
-import { isResourceLocatorValue } from '@/utils/typeGuards';
-import ParameterInputWrapper from '@/components/ParameterInputWrapper.vue';
-import type {
-	INodeProperties,
-	INodePropertyMode,
-	IParameterLabel,
-	NodeParameterValueType,
-} from 'n8n-workflow';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useSegment } from '@/stores/segment.store';
 import { getMappedResult } from '@/utils/mappingUtils';
+import { hasExpressionMapping, hasOnlyListMode, isValueExpression } from '@/utils/nodeTypesUtils';
+import { isResourceLocatorValue } from '@/utils/typeGuards';
 import { createEventBus } from 'n8n-design-system/utils';
+import type { INodeProperties, IParameterLabel, NodeParameterValueType } from 'n8n-workflow';
 import InlineExpressionTip from './InlineExpressionEditor/InlineExpressionTip.vue';
 
-export default defineComponent({
-	name: 'ParameterInputFull',
-	components: {
-		ParameterOptions,
-		DraggableTarget,
-		ParameterInputWrapper,
-		InlineExpressionTip,
-	},
-	props: {
-		displayOptions: {
-			type: Boolean,
-			default: false,
-		},
-		optionsPosition: {
-			type: String as PropType<'bottom' | 'top'>,
-			default: 'top',
-		},
-		hideHint: {
-			type: Boolean,
-			default: false,
-		},
-		isReadOnly: {
-			type: Boolean,
-			default: false,
-		},
-		rows: {
-			type: Number,
-			default: 5,
-		},
-		isAssignment: {
-			type: Boolean,
-			default: false,
-		},
-		hideLabel: {
-			type: Boolean,
-			default: false,
-		},
-		hideIssues: {
-			type: Boolean,
-			default: false,
-		},
-		parameter: {
-			type: Object as PropType<INodeProperties>,
-			required: true,
-		},
-		path: {
-			type: String,
-			required: true,
-		},
-		value: {
-			type: [Number, String, Boolean, Array, Object] as PropType<NodeParameterValueType>,
-		},
-		label: {
-			type: Object as PropType<IParameterLabel>,
-			default: () => ({
-				size: 'small',
-			}),
-		},
-		entryIndex: {
-			type: Number,
-			default: undefined,
-		},
-	},
-	setup() {
-		const eventBus = createEventBus();
-		const i18n = useI18n();
+type Props = {
+	parameter: INodeProperties;
+	path: string;
+	value: NodeParameterValueType;
+	label?: IParameterLabel;
+	displayOptions?: boolean;
+	optionsPosition?: 'bottom' | 'top';
+	hideHint?: boolean;
+	isReadOnly?: boolean;
+	rows?: number;
+	isAssignment?: boolean;
+	hideLabel?: boolean;
+	hideIssues?: boolean;
+	entryIndex?: number;
+};
 
-		return {
-			i18n,
-			eventBus,
-			...useToast(),
-		};
-	},
-	data() {
-		return {
-			focused: false,
-			menuExpanded: false,
-			forceShowExpression: false,
-		};
-	},
-	computed: {
-		...mapStores(useNDVStore),
-		node(): INodeUi | null {
-			return this.ndvStore.activeNode;
-		},
-		hint(): string {
-			return this.i18n.nodeText().hint(this.parameter, this.path);
-		},
-		isInputTypeString(): boolean {
-			return this.parameter.type === 'string';
-		},
-		isInputTypeNumber(): boolean {
-			return this.parameter.type === 'number';
-		},
-		isResourceLocator(): boolean {
-			return this.parameter.type === 'resourceLocator';
-		},
-		isDropDisabled(): boolean {
-			return this.parameter.noDataExpression || this.isReadOnly || this.isResourceLocator;
-		},
-		isValueExpression(): boolean {
-			return isValueExpression(this.parameter, this.value);
-		},
-		showExpressionSelector(): boolean {
-			return this.isResourceLocator ? !hasOnlyListMode(this.parameter) : true;
-		},
-		isInputDataEmpty(): boolean {
-			return this.ndvStore.isNDVDataEmpty('input');
-		},
-		displayMode(): IRunDataDisplayMode {
-			return this.ndvStore.inputPanelDisplayMode;
-		},
-		showDragnDropTip(): boolean {
-			return (
-				this.focused &&
-				(this.isInputTypeString || this.isInputTypeNumber) &&
-				!this.isValueExpression &&
-				!this.isDropDisabled &&
-				(!this.ndvStore.hasInputData || !this.isInputDataEmpty) &&
-				!this.ndvStore.isMappingOnboarded &&
-				this.ndvStore.isInputParentOfActiveNode
-			);
-		},
-	},
-	methods: {
-		onFocus() {
-			this.focused = true;
-			if (!this.parameter.noDataExpression) {
-				this.ndvStore.setMappableNDVInputFocus(this.parameter.displayName);
-			}
-			this.ndvStore.setFocusedInputPath(this.path ?? '');
-		},
-		onBlur() {
-			this.focused = false;
-			if (
-				!this.parameter.noDataExpression &&
-				this.ndvStore.focusedMappableInput === this.parameter.displayName
-			) {
-				this.ndvStore.setMappableNDVInputFocus('');
-			}
-			this.ndvStore.setFocusedInputPath('');
-			this.$emit('blur');
-		},
-		onMenuExpanded(expanded: boolean) {
-			this.menuExpanded = expanded;
-		},
-		optionSelected(command: string) {
-			this.eventBus.emit('optionSelected', command);
-		},
-		valueChanged(parameterData: IUpdateInformation) {
-			this.$emit('update', parameterData);
-		},
-		onTextInput(parameterData: IUpdateInformation) {
-			if (isValueExpression(this.parameter, parameterData.value)) {
-				this.eventBus.emit('optionSelected', 'addExpression');
-			}
-		},
-		onDrop(newParamValue: string) {
-			const value = this.value;
-			const updatedValue = getMappedResult(this.parameter, newParamValue, value);
-			const prevValue =
-				this.isResourceLocator && isResourceLocatorValue(value) ? value.value : value;
-
-			if (updatedValue.startsWith('=')) {
-				this.forceShowExpression = true;
-			}
-			setTimeout(() => {
-				if (this.node) {
-					let parameterData;
-					if (this.isResourceLocator) {
-						if (!isResourceLocatorValue(this.value)) {
-							parameterData = {
-								node: this.node.name,
-								name: this.path,
-								value: { __rl: true, value: updatedValue, mode: '' },
-							};
-						} else if (
-							this.value.mode === 'list' &&
-							this.parameter.modes &&
-							this.parameter.modes.length > 1
-						) {
-							let mode =
-								this.parameter.modes.find((mode: INodePropertyMode) => mode.name === 'id') || null;
-							if (!mode) {
-								mode = this.parameter.modes.filter(
-									(mode: INodePropertyMode) => mode.name !== 'list',
-								)[0];
-							}
-
-							parameterData = {
-								node: this.node.name,
-								name: this.path,
-								value: { __rl: true, value: updatedValue, mode: mode ? mode.name : '' },
-							};
-						} else {
-							parameterData = {
-								node: this.node.name,
-								name: this.path,
-								value: { __rl: true, value: updatedValue, mode: this.value.mode },
-							};
-						}
-					} else {
-						parameterData = {
-							node: this.node.name,
-							name: this.path,
-							value: updatedValue,
-						};
-					}
-
-					this.valueChanged(parameterData);
-					this.eventBus.emit('drop', updatedValue);
-
-					if (!this.ndvStore.isMappingOnboarded) {
-						this.showMessage({
-							title: this.i18n.baseText('dataMapping.success.title'),
-							message: this.i18n.baseText('dataMapping.success.moreInfo'),
-							type: 'success',
-							dangerouslyUseHTMLString: true,
-						});
-
-						this.ndvStore.setMappingOnboarded();
-					}
-
-					this.ndvStore.setMappingTelemetry({
-						dest_node_type: this.node.type,
-						dest_parameter: this.path,
-						dest_parameter_mode:
-							typeof prevValue === 'string' && prevValue.startsWith('=') ? 'expression' : 'fixed',
-						dest_parameter_empty: prevValue === '' || prevValue === undefined,
-						dest_parameter_had_mapping:
-							typeof prevValue === 'string' &&
-							prevValue.startsWith('=') &&
-							hasExpressionMapping(prevValue),
-						success: true,
-					});
-
-					const segment = useSegment();
-					segment.track(segment.EVENTS.MAPPED_DATA);
-				}
-				this.forceShowExpression = false;
-			}, 200);
-		},
-	},
+const props = withDefaults(defineProps<Props>(), {
+	optionsPosition: 'top',
+	hideHint: false,
+	isReadOnly: false,
+	rows: 5,
+	hideLabel: false,
+	hideIssues: false,
+	label: () => ({ size: 'small' }),
 });
+const emit = defineEmits<{
+	(event: 'blur'): void;
+	(event: 'update', value: IUpdateInformation): void;
+}>();
+
+const i18n = useI18n();
+const toast = useToast();
+
+const eventBus = ref(createEventBus());
+const focused = ref(false);
+const menuExpanded = ref(false);
+const forceShowExpression = ref(false);
+
+const ndvStore = useNDVStore();
+
+const node = computed(() => ndvStore.activeNode);
+const hint = computed(() => i18n.nodeText().hint(props.parameter, props.path));
+const isInputTypeString = computed(() => props.parameter.type === 'string');
+const isInputTypeNumber = computed(() => props.parameter.type === 'number');
+const isResourceLocator = computed(() => props.parameter.type === 'resourceLocator');
+const isDropDisabled = computed(
+	() => props.parameter.noDataExpression || props.isReadOnly || isResourceLocator.value,
+);
+const isExpression = computed(() => isValueExpression(props.parameter, props.value));
+const showExpressionSelector = computed(() =>
+	isResourceLocator.value ? !hasOnlyListMode(props.parameter) : true,
+);
+const isInputDataEmpty = computed(() => ndvStore.isNDVDataEmpty('input'));
+const showDragnDropTip = computed(
+	() =>
+		focused.value &&
+		(isInputTypeString.value || isInputTypeNumber.value) &&
+		!isExpression.value &&
+		!isDropDisabled.value &&
+		(!ndvStore.hasInputData || !isInputDataEmpty.value) &&
+		!ndvStore.isMappingOnboarded &&
+		ndvStore.isInputParentOfActiveNode,
+);
+
+function onFocus() {
+	focused.value = true;
+	if (!props.parameter.noDataExpression) {
+		ndvStore.setMappableNDVInputFocus(props.parameter.displayName);
+	}
+	ndvStore.setFocusedInputPath(props.path ?? '');
+}
+
+function onBlur() {
+	focused.value = false;
+	if (
+		!props.parameter.noDataExpression &&
+		ndvStore.focusedMappableInput === props.parameter.displayName
+	) {
+		ndvStore.setMappableNDVInputFocus('');
+	}
+	ndvStore.setFocusedInputPath('');
+	emit('blur');
+}
+
+function onMenuExpanded(expanded: boolean) {
+	menuExpanded.value = expanded;
+}
+
+function optionSelected(command: string) {
+	eventBus.value.emit('optionSelected', command);
+}
+
+function valueChanged(parameterData: IUpdateInformation) {
+	emit('update', parameterData);
+}
+
+function onTextInput(parameterData: IUpdateInformation) {
+	if (isValueExpression(props.parameter, parameterData.value)) {
+		eventBus.value.emit('optionSelected', 'addExpression');
+	}
+}
+
+function onDrop(newParamValue: string) {
+	const value = props.value;
+	const updatedValue = getMappedResult(props.parameter, newParamValue, value);
+	const prevValue = isResourceLocator.value && isResourceLocatorValue(value) ? value.value : value;
+
+	if (updatedValue.startsWith('=')) {
+		forceShowExpression.value = true;
+	}
+	setTimeout(() => {
+		if (node.value) {
+			let parameterData;
+			if (isResourceLocator.value) {
+				if (!isResourceLocatorValue(props.value)) {
+					parameterData = {
+						node: node.value.name,
+						name: props.path,
+						value: { __rl: true, value: updatedValue, mode: '' },
+					};
+				} else if (
+					props.value.mode === 'list' &&
+					props.parameter.modes &&
+					props.parameter.modes.length > 1
+				) {
+					let mode = props.parameter.modes.find((m) => m.name === 'id') ?? null;
+					if (!mode) {
+						mode = props.parameter.modes.filter((m) => m.name !== 'list')[0];
+					}
+
+					parameterData = {
+						node: node.value.name,
+						name: props.path,
+						value: { __rl: true, value: updatedValue, mode: mode ? mode.name : '' },
+					};
+				} else {
+					parameterData = {
+						node: node.value.name,
+						name: props.path,
+						value: { __rl: true, value: updatedValue, mode: props.value?.mode },
+					};
+				}
+			} else {
+				parameterData = {
+					node: node.value.name,
+					name: props.path,
+					value: updatedValue,
+				};
+			}
+
+			valueChanged(parameterData);
+			eventBus.value.emit('drop', updatedValue);
+
+			if (!ndvStore.isMappingOnboarded) {
+				toast.showMessage({
+					title: i18n.baseText('dataMapping.success.title'),
+					message: i18n.baseText('dataMapping.success.moreInfo'),
+					type: 'success',
+					dangerouslyUseHTMLString: true,
+				});
+
+				ndvStore.setMappingOnboarded();
+			}
+
+			ndvStore.setMappingTelemetry({
+				dest_node_type: node.value.type,
+				dest_parameter: props.path,
+				dest_parameter_mode:
+					typeof prevValue === 'string' && prevValue.startsWith('=') ? 'expression' : 'fixed',
+				dest_parameter_empty: prevValue === '' || prevValue === undefined,
+				dest_parameter_had_mapping:
+					typeof prevValue === 'string' &&
+					prevValue.startsWith('=') &&
+					hasExpressionMapping(prevValue),
+				success: true,
+			});
+
+			const segment = useSegment();
+			segment.track(segment.EVENTS.MAPPED_DATA);
+		}
+		forceShowExpression.value = false;
+	}, 200);
+}
 </script>
 
 <style lang="scss" module>

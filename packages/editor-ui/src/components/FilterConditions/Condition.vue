@@ -105,13 +105,13 @@ const rightParameter = computed<INodeProperties>(() => {
 
 const debouncedEmitUpdate = debounce(() => emit('update', condition.value), { debounceTime: 500 });
 
-const onLeftValueChange = (update: IUpdateInformation<NodeParameterValue>): void => {
-	condition.value.leftValue = update.value;
+const onLeftValueChange = (update: IUpdateInformation): void => {
+	condition.value.leftValue = update.value as NodeParameterValue;
 	debouncedEmitUpdate();
 };
 
-const onRightValueChange = (update: IUpdateInformation<NodeParameterValue>): void => {
-	condition.value.rightValue = update.value;
+const onRightValueChange = (update: IUpdateInformation): void => {
+	condition.value.rightValue = update.value as NodeParameterValue;
 	debouncedEmitUpdate();
 };
 

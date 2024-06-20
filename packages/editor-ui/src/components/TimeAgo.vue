@@ -2,7 +2,7 @@
 import { format, register } from 'timeago.js';
 import { convertToHumanReadableDate } from '@/utils/typesUtils';
 import { computed, onBeforeMount } from 'vue';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useI18n } from '@/composables/useI18n';
 
 type Props = {
