@@ -378,7 +378,7 @@ export class AwsSqs implements INodeType {
 				const result = responseData.SendMessageResponse.SendMessageResult;
 				returnData.push(result as IDataObject);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ error: error.description });
 					continue;
 				}
