@@ -3,5 +3,5 @@ export interface IMessage {
 	to?: string;
 	topic?: string;
 	content?: string;
-	propagat_mode?: string;
+	propagate_mode?: string;
 }
