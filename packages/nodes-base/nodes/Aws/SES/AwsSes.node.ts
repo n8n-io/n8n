@@ -1,3 +1,4 @@
+import qs from 'node:querystring';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -843,22 +844,20 @@ export class AwsSes implements INodeType {
 
 						const templateSubject = this.getNodeParameter('templateSubject', i) as string;
 
-						const params = [
-							'Action=CreateCustomVerificationEmailTemplate',
-							`FailureRedirectionURL=${encodeURIComponent(failureRedirectionURL)}`,
-							`FromEmailAddress=${encodeURIComponent(email)}`,
-							`SuccessRedirectionURL=${encodeURIComponent(successRedirectionURL)}`,
-							`TemplateContent=${templateContent}`,
-							`TemplateName=${templateName}`,
-							`TemplateSubject=${templateSubject}`,
-						];
-
 						responseData = await awsApiRequestSOAP.call(
 							this,
 							'email',
 							'POST',
 							'',
-							params.join('&'),
+							qs.stringify({
+								Action: 'CreateCustomVerificationEmailTemplate',
+								FromEmailAddress: email,
+								SuccessRedirectionURL: successRedirectionURL,
+								FailureRedirectionURL: failureRedirectionURL,
+								TemplateName: templateName,
+								TemplateSubject: templateSubject,
+								TemplateContent: templateContent,
+							}),
 						);
 
 						responseData = responseData.CreateCustomVerificationEmailTemplateResponse;

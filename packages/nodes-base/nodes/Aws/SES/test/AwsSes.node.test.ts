@@ -61,9 +61,7 @@ describe('AwsSes Node', () => {
 			output: {
 				nodeExecutionOrder: ['Start'],
 				nodeData: {
-					'AWS SES': [
-						[ { json: { success: 'true' } } ],
-					],
+					'AWS SES': [[{ json: { success: 'true' } }]],
 				},
 			},
 			nock: {
@@ -75,17 +73,18 @@ describe('AwsSes Node', () => {
 						requestBody: (body: any) => {
 							assert.deepEqual(qs.parse(body), {
 								Action: 'CreateCustomVerificationEmailTemplate',
-								FailureRedirectionURL: 'http://failure.url/',
 								FromEmailAddress: 'test+user@example.com',
 								SuccessRedirectionURL: 'http://success.url/',
-								TemplateContent: 'testContent',
+								FailureRedirectionURL: 'http://failure.url/',
 								TemplateName: 'testTemplate',
-								TemplateSubject: 'testSubject'
+								TemplateSubject: 'testSubject',
+								TemplateContent: 'testContent',
 							});
 							return true;
 						},
 						statusCode: 200,
-						responseBody: '<CreateCustomVerificationEmailTemplateResponse><success>true</success></CreateCustomVerificationEmailTemplateResponse>',
+						responseBody:
+							'<CreateCustomVerificationEmailTemplateResponse><success>true</success></CreateCustomVerificationEmailTemplateResponse>',
 					},
 				],
 			},
