@@ -429,7 +429,7 @@ export class RespondToWebhook implements INodeType {
 
 			this.sendResponse(response);
 		} catch (error) {
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(error)) {
 				const itemData = generatePairedItemData(items.length);
 				const returnData = this.helpers.constructExecutionMetaData(
 					[{ json: { error: error.message } }],
