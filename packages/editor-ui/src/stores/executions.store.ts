@@ -58,15 +58,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 	);
 
 	const currentExecutionsById = ref<Record<string, ExecutionSummary>>({});
-	const currentExecutions = computed(() => {
-		const data = Object.values(currentExecutionsById.value);
-
-		data.sort((a, b) => {
-			return new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime();
-		});
-
-		return data;
-	});
+	const currentExecutions = computed(() => Object.values(currentExecutionsById.value));
 
 	const currentExecutionsByWorkflowId = computed(() =>
 		currentExecutions.value.reduce<Record<string, ExecutionSummary[]>>((acc, execution) => {
