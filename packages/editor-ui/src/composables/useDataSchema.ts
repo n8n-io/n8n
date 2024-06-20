@@ -9,6 +9,7 @@ import { merge } from 'lodash-es';
 import { generatePath } from '@/utils/mappingUtils';
 import { isObj } from '@/utils/typeGuards';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { isPresent } from '@/utils/typesUtils';
 
 export function useDataSchema() {
 	function getSchema(
@@ -126,10 +127,40 @@ export function useDataSchema() {
 		return inputData;
 	}
 
+	function schemaMatches(schema: Schema, search: string): boolean {
+		const searchLower = search.toLocaleLowerCase();
+		return (
+			!!schema.key?.toLocaleLowerCase().includes(searchLower) ||
+			(typeof schema.value === 'string' && schema.value.toLocaleLowerCase().includes(searchLower))
+		);
+	}
+
+	function filterSchema(schema: Schema, search: string): Schema | null {
+		if (!search.trim()) return schema;
+
+		if (Array.isArray(schema.value)) {
+			const filteredValue = schema.value
+				.map((value) => filterSchema(value, search))
+				.filter(isPresent);
+
+			if (filteredValue.length === 0) {
+				return schemaMatches(schema, search) ? schema : null;
+			}
+
+			return {
+				...schema,
+				value: filteredValue,
+			};
+		}
+
+		return schemaMatches(schema, search) ? schema : null;
+	}
+
 	return {
 		getSchema,
 		getSchemaForExecutionData,
 		getNodeInputData,
 		getInputDataWithPinned,
+		filterSchema,
 	};
 }

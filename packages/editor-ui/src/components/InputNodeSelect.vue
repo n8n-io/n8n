@@ -157,7 +157,8 @@ function onInputNodeChange(value: string) {
 
 <style lang="scss" module>
 .select {
-	max-width: 224px;
+	--max-select-width: 224px;
+	max-width: var(--max-select-width);
 
 	:global(.el-input--suffix .el-input__inner) {
 		padding-left: calc(var(--spacing-l) + var(--spacing-4xs));
@@ -180,6 +181,10 @@ function onInputNodeChange(value: string) {
 .title {
 	color: var(--color-text-dark);
 	font-weight: var(--font-weight-regular);
+	max-width: var(--max-select-width);
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
 }
 
 .disabled .title {
@@ -187,6 +192,8 @@ function onInputNodeChange(value: string) {
 }
 
 .subtitle {
+	margin-left: auto;
+	padding-left: var(--spacing-2xs);
 	color: var(--color-text-light);
 	font-weight: var(--font-weight-regular);
 }

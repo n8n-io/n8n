@@ -1,6 +1,7 @@
 <template>
 	<RunData
 		:node="currentNode"
+		:nodes="isMappingMode ? rootNodesParents : parentNodes"
 		:workflow="workflow"
 		:run-index="runIndex"
 		:linked-runs="linkedRuns"

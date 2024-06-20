@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted, type StyleValue } from 'vue';
 import { useI18n } from '@/composables/useI18n';
-import type { NodePanelType } from '@/Interface';
+import type { IRunDataDisplayMode, NodePanelType } from '@/Interface';
 
 type Props = {
 	modelValue: string;
 	paneType?: NodePanelType;
+	displayMode?: IRunDataDisplayMode;
 	isAreaActive?: boolean;
 };
 
-const COLLAPSED_WIDTH = '34px';
-const OPEN_WIDTH = '200px';
+const COLLAPSED_WIDTH = '30px';
+const OPEN_WIDTH = '204px';
 const OPEN_MIN_WIDTH = '120px';
 
 const emit = defineEmits<{
@@ -20,6 +21,7 @@ const emit = defineEmits<{
 
 const props = withDefaults(defineProps<Props>(), {
 	paneType: 'output',
+	displayMode: 'schema',
 	isAreaActive: false,
 });
 
@@ -27,11 +29,17 @@ const locale = useI18n();
 
 const inputRef = ref<HTMLInputElement | null>(null);
 const opened = ref(false);
-const placeholder = computed(() =>
-	props.paneType === 'input'
-		? locale.baseText('ndv.search.placeholder.input')
-		: locale.baseText('ndv.search.placeholder.output'),
-);
+const placeholder = computed(() => {
+	if (props.paneType === 'output') {
+		return locale.baseText('ndv.search.placeholder.output');
+	}
+
+	if (props.displayMode === 'schema') {
+		return locale.baseText('ndv.search.placeholder.input.schema');
+	}
+
+	return locale.baseText('ndv.search.placeholder.input');
+});
 
 const style = computed<StyleValue>(() =>
 	opened.value ? { maxWidth: OPEN_WIDTH, minWidth: OPEN_MIN_WIDTH } : { maxWidth: COLLAPSED_WIDTH },
@@ -104,8 +112,17 @@ onUnmounted(() => {
 		cursor: pointer;
 	}
 
+	:global(.el-input__prefix) {
+		left: 8px;
+	}
+
+	&:global(.el-input--prefix .el-input__inner) {
+		padding-left: 30px;
+	}
+
 	input {
 		border: 0;
+		opacity: 0;
 		background: transparent;
 		cursor: pointer;
 	}
@@ -115,10 +132,12 @@ onUnmounted(() => {
 	.ioSearchIcon {
 		cursor: default;
 	}
+
 	input {
 		border: var(--input-border-color, var(--border-color-base))
 			var(--input-border-style, var(--border-style-base)) var(--border-width-base);
 		background: var(--input-background-color, var(--color-foreground-xlight));
+		opacity: 1;
 		cursor: text;
 	}
 }
