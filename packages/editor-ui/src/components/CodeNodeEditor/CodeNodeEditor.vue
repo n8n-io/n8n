@@ -18,7 +18,7 @@
 				data-test-id="code-node-tab-code"
 			>
 				<div
-					ref="codeNodeEditor"
+					ref="codeNodeEditorRef"
 					:class="['ph-no-capture', 'code-editor-tabs', $style.editorInput]"
 				/>
 				<slot name="suffix" />
@@ -33,8 +33,8 @@
 					:key="activeTab"
 					:has-changes="hasChanges"
 					@replace-code="onReplaceCode"
-					@started-loading="isLoadingAIResponse = true"
-					@finished-loading="isLoadingAIResponse = false"
+					@started-loading="onAiLoadStart"
+					@finished-loading="onAiLoadEnd"
 				/>
 			</el-tab-pane>
 		</el-tabs>
@@ -258,7 +258,7 @@ function getCurrentEditorContent() {
 
 async function onBeforeTabLeave(_activeName: string, oldActiveName: string) {
 	// Confirm dialog if leaving ask-ai tab during loading
-	if (oldActiveName === 'ask-ai' && isLoadingAIResponse) {
+	if (oldActiveName === 'ask-ai' && isLoadingAIResponse.value) {
 		const confirmModal = await message.alert(i18n.baseText('codeNodeEditor.askAi.sureLeaveTab'), {
 			title: i18n.baseText('codeNodeEditor.askAi.areYouSure'),
 			confirmButtonText: i18n.baseText('codeNodeEditor.askAi.switchTab'),
@@ -382,6 +382,14 @@ function trackCompletion(viewUpdate: ViewUpdate) {
 			inserted_text: insertedText,
 		});
 	} catch {}
+}
+
+function onAiLoadStart() {
+	isLoadingAIResponse.value = true;
+}
+
+function onAiLoadEnd() {
+	isLoadingAIResponse.value = false;
 }
 </script>
 
