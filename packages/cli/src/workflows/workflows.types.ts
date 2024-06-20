@@ -1,4 +1,3 @@
-import type { IUser } from 'n8n-workflow';
 import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { SlimProject } from '@/requests';
@@ -21,6 +20,6 @@ export interface CredentialUsedByWorkflow {
 	name: string;
 	type?: string;
 	currentUserHasAccess: boolean;
-	ownedBy?: IUser | null;
-	sharedWith?: IUser[];
+	homeProject: SlimProject | null;
+	sharedWithProjects: SlimProject[];
 }
