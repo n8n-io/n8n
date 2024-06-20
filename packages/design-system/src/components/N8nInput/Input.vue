@@ -1,154 +1,99 @@
 <template>
-	<el-input
-		:size="computedSize"
-		:class="['n8n-input', ...classes]"
-		:autoComplete="autocomplete"
-		:name="name"
+	<ElInput
 		ref="innerInput"
-		v-bind="{ ...$props, ...$attrs }"
+		:model-value="modelValue"
+		:type="type"
+		:size="resolvedSize"
+		:class="['n8n-input', ...classes]"
+		:autocomplete="autocomplete"
+		:name="name"
+		:placeholder="placeholder"
+		:disabled="disabled"
+		:readonly="readonly"
+		:clearable="clearable"
+		:rows="rows"
+		:title="title"
+		v-bind="$attrs"
 	>
-		<template #prepend v-if="$slots.prepend">
+		<template v-if="$slots.prepend" #prepend>
 			<slot name="prepend" />
 		</template>
-		<template #append v-if="$slots.append">
+		<template v-if="$slots.append" #append>
 			<slot name="append" />
 		</template>
-		<template #prefix v-if="$slots.prefix">
+		<template v-if="$slots.prefix" #prefix>
 			<slot name="prefix" />
 		</template>
-		<template #suffix v-if="$slots.suffix">
+		<template v-if="$slots.suffix" #suffix>
 			<slot name="suffix" />
 		</template>
-	</el-input>
+	</ElInput>
 </template>
 
-<script lang="ts">
+<script lang="ts" setup>
+import { computed, ref } from 'vue';
 import { ElInput } from 'element-plus';
-import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
 import { uid } from '../../utils';
+import type { InputSize, InputType } from 'n8n-design-system/types/input';
+import type { ElementPlusSizePropType, InputAutocompletePropType } from 'n8n-design-system/types';
 
-type InputRef = InstanceType<typeof ElInput>;
+interface InputProps {
+	modelValue?: string | number;
+	type?: InputType;
+	size?: InputSize;
+	placeholder?: string;
+	disabled?: boolean;
+	readonly?: boolean;
+	clearable?: boolean;
+	rows?: number;
+	maxlength?: number;
+	title?: string;
+	name?: string;
+	autocomplete?: InputAutocompletePropType;
+}
 
-export default defineComponent({
-	name: 'n8n-input',
-	components: {
-		ElInput,
-	},
-	props: {
-		modelValue: {
-			type: [String, Number] as PropType<string | number>,
-			default: '',
-		},
-		type: {
-			type: String,
-			validator: (value: string): boolean =>
-				['text', 'textarea', 'number', 'password', 'email'].includes(value),
-		},
-		size: {
-			type: String,
-			default: 'large',
-			validator: (value: string): boolean =>
-				['mini', 'small', 'medium', 'large', 'xlarge'].includes(value),
-		},
-		placeholder: {
-			type: String,
-			default: '',
-		},
-		disabled: {
-			type: Boolean,
-			default: false,
-		},
-		readonly: {
-			type: Boolean,
-			default: false,
-		},
-		clearable: {
-			type: Boolean,
-			default: false,
-		},
-		rows: {
-			type: Number,
-			default: 2,
-		},
-		maxlength: {
-			type: Number,
-			default: Infinity,
-		},
-		title: {
-			type: String,
-			default: '',
-		},
-		name: {
-			type: String,
-			default: () => uid('input'),
-		},
-		autocomplete: {
-			type: String,
-			default: 'off',
-		},
-	},
-	computed: {
-		computedSize(): string | undefined {
-			if (this.size === 'xlarge') {
-				return undefined;
-			}
-
-			return this.size;
-		},
-		classes(): string[] {
-			const classes = [];
-			if (this.size === 'xlarge') {
-				classes.push('xlarge');
-			}
-			if (this.type === 'password') {
-				classes.push('ph-no-capture');
-			}
-			return classes;
-		},
-	},
-	methods: {
-		focus() {
-			const innerInput = this.$refs.innerInput as InputRef | undefined;
-
-			if (!innerInput) return;
-
-			const inputElement = innerInput.$el.querySelector(
-				this.type === 'textarea' ? 'textarea' : 'input',
-			);
-
-			if (!inputElement) return;
-
-			inputElement.focus();
-		},
-		blur() {
-			const innerInput = this.$refs.innerInput as InputRef | undefined;
-
-			if (!innerInput) return;
-
-			const inputElement = innerInput.$el.querySelector(
-				this.type === 'textarea' ? 'textarea' : 'input',
-			);
-
-			if (!inputElement) return;
-
-			inputElement.blur();
-		},
-		select() {
-			const innerInput = this.$refs.innerInput as InputRef | undefined;
-
-			if (!innerInput) return;
-
-			const inputElement = innerInput.$el.querySelector(
-				this.type === 'textarea' ? 'textarea' : 'input',
-			);
-
-			if (!inputElement) return;
-
-			inputElement.select();
-		},
-	},
+defineOptions({ name: 'N8nInput' });
+const props = withDefaults(defineProps<InputProps>(), {
+	modelValue: '',
+	type: 'text',
+	size: 'large',
+	placeholder: '',
+	disabled: false,
+	readonly: false,
+	clearable: false,
+	rows: 2,
+	maxlength: Infinity,
+	title: '',
+	name: () => uid('input'),
+	autocomplete: 'off',
 });
+
+const resolvedSize = computed(
+	() => (props.size === 'xlarge' ? undefined : props.size) as ElementPlusSizePropType,
+);
+
+const classes = computed(() => {
+	const applied: string[] = [];
+	if (props.size === 'xlarge') {
+		applied.push('xlarge');
+	}
+	if (props.type === 'password') {
+		applied.push('ph-no-capture');
+	}
+	return applied;
+});
+
+const innerInput = ref<InstanceType<typeof ElInput>>();
+const inputElement = computed(() => {
+	if (!innerInput?.value) return;
+	const inputType = props.type === 'textarea' ? 'textarea' : 'input';
+	return (innerInput.value.$el as HTMLElement).querySelector(inputType);
+});
+
+const focus = () => inputElement.value?.focus();
+const blur = () => inputElement.value?.blur();
+const select = () => inputElement.value?.select();
+defineExpose({ focus, blur, select });
 </script>
 
 <style lang="scss" module>

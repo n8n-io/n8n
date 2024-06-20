@@ -1,4 +1,7 @@
 import OTPAuth from 'otpauth';
+import { Service } from 'typedi';
+
+@Service()
 export class TOTPService {
 	generateSecret(): string {
 		return new OTPAuth.Secret()?.base32;

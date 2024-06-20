@@ -156,7 +156,7 @@ export class Mindee implements INodeType {
 				default: 'predict',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Input Binary Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				required: true,
@@ -167,8 +167,7 @@ export class Mindee implements INodeType {
 						resource: ['receipt', 'invoice'],
 					},
 				},
-				description:
-					'Name of the binary property which containsthe data for the file to be uploaded',
+				hint: 'The name of the input binary field containing the file to be uploaded',
 			},
 			{
 				displayName: 'RAW Data',
@@ -353,7 +352,7 @@ export class Mindee implements INodeType {
 					returnData.push(responseData as IDataObject);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ error: error.message });
 					continue;
 				}

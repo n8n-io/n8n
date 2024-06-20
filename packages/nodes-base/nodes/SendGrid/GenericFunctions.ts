@@ -1,16 +1,16 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
+	IRequestOptions,
 } from 'n8n-workflow';
 
 export async function sendGridApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	endpoint: string,
-	method: string,
+	method: IHttpRequestMethods,
 
 	body: any = {},
 	qs: IDataObject = {},
@@ -18,7 +18,7 @@ export async function sendGridApiRequest(
 ): Promise<any> {
 	const host = 'api.sendgrid.com/v3';
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		method,
 		qs,
 		body,
@@ -34,13 +34,13 @@ export async function sendGridApiRequest(
 		Object.assign(options, option);
 	}
 
-	return this.helpers.requestWithAuthentication.call(this, 'sendGridApi', options);
+	return await this.helpers.requestWithAuthentication.call(this, 'sendGridApi', options);
 }
 
 export async function sendGridApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	endpoint: string,
-	method: string,
+	method: IHttpRequestMethods,
 	propertyName: string,
 
 	body: any = {},

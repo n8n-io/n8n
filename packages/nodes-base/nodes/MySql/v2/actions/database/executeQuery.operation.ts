@@ -8,11 +8,10 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import type { QueryRunner, QueryWithValues } from '../../helpers/interfaces';
 
-import { getResolvables, updateDisplayOptions } from '@utils/utilities';
-
 import { prepareQueryAndReplacements, replaceEmptyStringsByNulls } from '../../helpers/utils';
 
 import { optionsCollection } from '../common.descriptions';
+import { getResolvables, updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
@@ -81,6 +80,13 @@ export async function execute(
 		}
 
 		const preparedQuery = prepareQueryAndReplacements(rawQuery, values);
+
+		if ((nodeOptions.nodeVersion as number) >= 2.3) {
+			const parsedNumbers = preparedQuery.values.map((value) => {
+				return Number(value) ? Number(value) : value;
+			});
+			preparedQuery.values = parsedNumbers;
+		}
 
 		queries.push(preparedQuery);
 	}

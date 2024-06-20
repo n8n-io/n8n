@@ -1,6 +1,5 @@
-import type { INodeUi } from '@/Interface';
+import type { INodeUi, XYPosition } from '@/Interface';
 import type { IConnection } from 'n8n-workflow';
-import type { XYPosition } from '../Interface';
 import { createEventBus } from 'n8n-design-system/utils';
 
 // Command names don't serve any particular purpose in the app
@@ -48,7 +47,9 @@ export class BulkCommand extends Undoable {
 
 export class MoveNodeCommand extends Command {
 	nodeName: string;
+
 	oldPosition: XYPosition;
+
 	newPosition: XYPosition;
 
 	constructor(nodeName: string, oldPosition: XYPosition, newPosition: XYPosition) {
@@ -74,7 +75,7 @@ export class MoveNodeCommand extends Command {
 	}
 
 	async revert(): Promise<void> {
-		return new Promise<void>((resolve) => {
+		return await new Promise<void>((resolve) => {
 			historyBus.emit('nodeMove', {
 				nodeName: this.nodeName,
 				position: this.oldPosition,
@@ -101,7 +102,7 @@ export class AddNodeCommand extends Command {
 	}
 
 	async revert(): Promise<void> {
-		return new Promise<void>((resolve) => {
+		return await new Promise<void>((resolve) => {
 			historyBus.emit('revertAddNode', { node: this.node });
 			resolve();
 		});
@@ -125,7 +126,7 @@ export class RemoveNodeCommand extends Command {
 	}
 
 	async revert(): Promise<void> {
-		return new Promise<void>((resolve) => {
+		return await new Promise<void>((resolve) => {
 			historyBus.emit('revertRemoveNode', { node: this.node });
 			resolve();
 		});
@@ -155,7 +156,7 @@ export class AddConnectionCommand extends Command {
 	}
 
 	async revert(): Promise<void> {
-		return new Promise<void>((resolve) => {
+		return await new Promise<void>((resolve) => {
 			historyBus.emit('revertAddConnection', { connection: this.connectionData });
 			resolve();
 		});
@@ -185,7 +186,7 @@ export class RemoveConnectionCommand extends Command {
 	}
 
 	async revert(): Promise<void> {
-		return new Promise<void>((resolve) => {
+		return await new Promise<void>((resolve) => {
 			setTimeout(() => {
 				historyBus.emit('revertRemoveConnection', { connection: this.connectionData });
 				resolve();
@@ -196,7 +197,9 @@ export class RemoveConnectionCommand extends Command {
 
 export class EnableNodeToggleCommand extends Command {
 	nodeName: string;
+
 	oldState: boolean;
+
 	newState: boolean;
 
 	constructor(nodeName: string, oldState: boolean, newState: boolean) {
@@ -217,7 +220,7 @@ export class EnableNodeToggleCommand extends Command {
 	}
 
 	async revert(): Promise<void> {
-		return new Promise<void>((resolve) => {
+		return await new Promise<void>((resolve) => {
 			historyBus.emit('enableNodeToggle', {
 				nodeName: this.nodeName,
 				isDisabled: this.oldState,
@@ -229,6 +232,7 @@ export class EnableNodeToggleCommand extends Command {
 
 export class RenameNodeCommand extends Command {
 	currentName: string;
+
 	newName: string;
 
 	constructor(currentName: string, newName: string) {
@@ -250,7 +254,7 @@ export class RenameNodeCommand extends Command {
 	}
 
 	async revert(): Promise<void> {
-		return new Promise<void>((resolve) => {
+		return await new Promise<void>((resolve) => {
 			historyBus.emit('revertRenameNode', {
 				currentName: this.currentName,
 				newName: this.newName,

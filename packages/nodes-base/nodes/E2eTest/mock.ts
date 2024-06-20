@@ -51,6 +51,15 @@ export const resourceMapperFields: ResourceMapperFields = {
 			display: true,
 			type: 'string',
 		},
+		{
+			id: 'age',
+			displayName: 'Age',
+			defaultMatch: false,
+			canBeUsedToMatch: false,
+			required: false,
+			display: true,
+			type: 'number',
+		},
 	],
 };
 

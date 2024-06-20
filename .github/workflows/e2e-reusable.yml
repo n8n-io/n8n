@@ -40,7 +40,7 @@ on:
       containers:
         description: 'Number of containers to run tests in.'
         required: false
-        default: '[1, 2, 3, 4, 5, 6, 7, 8]'
+        default: '[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]'
         type: string
       pr_number:
         description: 'PR number to run tests for.'
@@ -76,7 +76,7 @@ jobs:
       image: cypress/${{ inputs.run-env }}
       options: --user 1001
     steps:
-      - uses: actions/checkout@v3.5.3
+      - uses: actions/checkout@v4.1.1
         with:
           repository: n8n-io/n8n
           ref: ${{ inputs.branch }}
@@ -87,24 +87,27 @@ jobs:
           git fetch origin pull/${{ inputs.pr_number }}/head
           git checkout FETCH_HEAD
 
-      - uses: pnpm/action-setup@v2.4.0
+      - uses: pnpm/action-setup@v4.0.0
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Cypress build
-        uses: cypress-io/github-action@v5.8.3
+        uses: cypress-io/github-action@v6.6.1
         with:
           # Disable running of tests within install job
           runTests: false
           install: false
           build: pnpm build
+        env:
+          VUE_APP_MAX_PINNED_DATA_SIZE: 16384
 
       - name: Cypress install
+        working-directory: cypress
         run: pnpm cypress:install
 
       - name: Cache build artifacts
-        uses: actions/cache/save@v3.3.1
+        uses: actions/cache/save@v4.0.0
         with:
           path: |
             /github/home/.cache
@@ -125,7 +128,7 @@ jobs:
         # running the same tests multiple times
         containers: ${{ fromJSON( inputs.spec == 'e2e/*' && inputs.containers || '[1]' ) }}
     steps:
-      - uses: actions/checkout@v3.5.3
+      - uses: actions/checkout@v4.1.1
         with:
           repository: n8n-io/n8n
           ref: ${{ inputs.branch }}
@@ -136,10 +139,10 @@ jobs:
           git fetch origin pull/${{ inputs.pr_number }}/head
           git checkout FETCH_HEAD
 
-      - uses: pnpm/action-setup@v2.4.0
+      - uses: pnpm/action-setup@v4.0.0
 
       - name: Restore cached pnpm modules
-        uses: actions/cache/restore@v3.3.1
+        uses: actions/cache/restore@v4.0.0
         with:
           path: |
             /github/home/.cache
@@ -151,8 +154,9 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Cypress run
-        uses: cypress-io/github-action@v5.8.3
+        uses: cypress-io/github-action@v6.6.1
         with:
+          working-directory: cypress
           install: false
           start: pnpm start
           wait-on: 'http://localhost:5678'
@@ -162,14 +166,14 @@ jobs:
           # We have to provide custom ci-build-id key to make sure that this workflow could be run multiple times
           # in the same parent workflow
           ci-build-id: ${{ needs.prepare.outputs.uuid }}
-          spec: '/__w/n8n/n8n/cypress/${{ inputs.spec }}'
-          config-file: /__w/n8n/n8n/cypress.config.js
+          spec: '${{ inputs.spec }}'
         env:
           NODE_OPTIONS: --dns-result-order=ipv4first
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           E2E_TESTS: true
           COMMIT_INFO_MESSAGE: 🌳 ${{ inputs.branch }} 🖥️ ${{ inputs.run-env }} 🤖 ${{ inputs.user }} 🗃️ ${{ inputs.spec }}
+          SHELL: /bin/sh
 
   # Check if all tests passed and set the output variable
   check_testing_matrix:

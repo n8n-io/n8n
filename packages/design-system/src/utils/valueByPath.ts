@@ -9,6 +9,6 @@
  */
 export function getValueByPath<T = any>(object: any, path: string): T {
 	return path.split('.').reduce((acc, part) => {
-		return acc && acc[part];
+		return acc?.[part];
 	}, object);
 }

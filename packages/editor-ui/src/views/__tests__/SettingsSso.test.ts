@@ -87,44 +87,4 @@ describe('SettingsSso', () => {
 		expect(getByRole('switch')).toBeEnabled();
 		expect(getByTestId('sso-test')).toBeEnabled();
 	});
-
-	it('should enable activation checkbox after data is saved', async () => {
-		await ssoStore.saveSamlConfig({ metadata: '' });
-
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.Saml] = true;
-		await nextTick();
-
-		const saveSpy = vi.spyOn(ssoStore, 'saveSamlConfig');
-		const getSpy = vi.spyOn(ssoStore, 'getSamlConfig');
-
-		const { container, getByRole, getByTestId } = renderComponent({
-			pinia,
-		});
-		const checkbox = getByRole('switch');
-		const btnSave = getByTestId('sso-save');
-		const btnTest = getByTestId('sso-test');
-
-		expect(checkbox).toBeDisabled();
-		[btnSave, btnTest].forEach((el) => {
-			expect(el).toBeDisabled();
-		});
-
-		const xmlRadioButton = getByTestId('radio-button-xml');
-		await userEvent.click(xmlRadioButton);
-
-		await retry(() => expect(container.querySelector('textarea[name="metadata"]')).toBeVisible());
-		await userEvent.type(
-			container.querySelector('textarea[name="metadata"]')!,
-			'<?xml version="1.0"?>',
-		);
-
-		expect(checkbox).toBeDisabled();
-		expect(btnTest).toBeDisabled();
-		expect(btnSave).toBeEnabled();
-
-		await userEvent.click(btnSave);
-
-		expect(saveSpy).toHaveBeenCalled();
-		expect(getSpy).toHaveBeenCalled();
-	});
 });

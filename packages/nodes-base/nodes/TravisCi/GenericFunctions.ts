@@ -1,11 +1,11 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -13,7 +13,7 @@ import get from 'lodash/get';
 
 export async function travisciApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject | string = {},
 	qs: IDataObject = {},
@@ -21,7 +21,7 @@ export async function travisciApiRequest(
 	option: IDataObject = {},
 ) {
 	const credentials = await this.getCredentials('travisCiApi');
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		headers: {
 			'Travis-API-Version': '3',
 			Accept: 'application/json',
@@ -52,7 +52,7 @@ export async function travisciApiRequest(
 export async function travisciApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: IDataObject = {},

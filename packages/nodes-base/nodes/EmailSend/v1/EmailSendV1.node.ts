@@ -226,7 +226,7 @@ export class EmailSendV1 implements INodeType {
 					},
 				});
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({
 						json: {
 							error: error.message,
@@ -241,6 +241,6 @@ export class EmailSendV1 implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

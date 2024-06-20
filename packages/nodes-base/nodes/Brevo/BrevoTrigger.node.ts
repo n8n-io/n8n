@@ -14,6 +14,9 @@ export class BrevoTrigger implements INodeType {
 			{
 				name: 'sendInBlueApi',
 				required: true,
+				displayOptions: {
+					show: {},
+				},
 			},
 		],
 		displayName: 'Brevo Trigger',
@@ -243,7 +246,7 @@ export class BrevoTrigger implements INodeType {
 
 				const responseData = await BrevoWebhookApi.createWebHook(this, type, events, webhookUrl);
 
-				if (responseData === undefined || responseData.id === undefined) {
+				if (responseData?.id === undefined) {
 					// Required data is missing so was not successful
 					return false;
 				}

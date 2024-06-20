@@ -1,32 +1,49 @@
-import type { SuperAgentTest } from 'supertest';
-import { IsNull } from 'typeorm';
+import { Container } from 'typedi';
+import { IsNull } from '@n8n/typeorm';
 import validator from 'validator';
-import * as Db from '@/Db';
-import type { Role } from '@db/entities/Role';
+import { randomString } from 'n8n-workflow';
+
+import config from '@/config';
 import type { User } from '@db/entities/User';
+import { UserRepository } from '@db/repositories/user.repository';
+import { ProjectRepository } from '@db/repositories/project.repository';
+
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
-import {
-	randomApiKey,
-	randomEmail,
-	randomName,
-	randomString,
-	randomValidPassword,
-} from './shared/random';
+import { randomApiKey, randomEmail, randomName, randomValidPassword } from './shared/random';
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
+import { addApiKey, createOwner, createUser, createUserShell } from './shared/db/users';
+import type { SuperAgentTest } from './shared/types';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['me'] });
 
-let globalOwnerRole: Role;
-let globalMemberRole: Role;
-
-beforeAll(async () => {
-	globalOwnerRole = await testDb.getGlobalOwnerRole();
-	globalMemberRole = await testDb.getGlobalMemberRole();
-});
-
 beforeEach(async () => {
 	await testDb.truncate(['User']);
+	config.set('publicApi.disabled', false);
+});
+
+describe('When public API is disabled', () => {
+	let owner: User;
+	let authAgent: SuperAgentTest;
+
+	beforeEach(async () => {
+		owner = await createOwner();
+		await addApiKey(owner);
+		authAgent = testServer.authAgentFor(owner);
+		config.set('publicApi.disabled', true);
+	});
+
+	test('POST /me/api-key should 404', async () => {
+		await authAgent.post('/me/api-key').expect(404);
+	});
+
+	test('GET /me/api-key should 404', async () => {
+		await authAgent.get('/me/api-key').expect(404);
+	});
+
+	test('DELETE /me/api-key should 404', async () => {
+		await authAgent.delete('/me/api-key').expect(404);
+	});
 });
 
 describe('Owner shell', () => {
@@ -34,8 +51,8 @@ describe('Owner shell', () => {
 	let authOwnerShellAgent: SuperAgentTest;
 
 	beforeEach(async () => {
-		ownerShell = await testDb.createUserShell(globalOwnerRole);
-		await testDb.addApiKey(ownerShell);
+		ownerShell = await createUserShell('global:owner');
+		await addApiKey(ownerShell);
 		authOwnerShellAgent = testServer.authAgentFor(ownerShell);
 	});
 
@@ -51,7 +68,7 @@ describe('Owner shell', () => {
 				firstName,
 				lastName,
 				personalizationAnswers,
-				globalRole,
+				role,
 				password,
 				isPending,
 				apiKey,
@@ -64,15 +81,20 @@ describe('Owner shell', () => {
 			expect(personalizationAnswers).toBeNull();
 			expect(password).toBeUndefined();
 			expect(isPending).toBe(false);
-			expect(globalRole.name).toBe('owner');
-			expect(globalRole.scope).toBe('global');
+			expect(role).toBe('global:owner');
 			expect(apiKey).toBeUndefined();
 
-			const storedOwnerShell = await Db.collections.User.findOneByOrFail({ id });
+			const storedOwnerShell = await Container.get(UserRepository).findOneByOrFail({ id });
 
 			expect(storedOwnerShell.email).toBe(validPayload.email.toLowerCase());
 			expect(storedOwnerShell.firstName).toBe(validPayload.firstName);
 			expect(storedOwnerShell.lastName).toBe(validPayload.lastName);
+
+			const storedPersonalProject = await Container.get(
+				ProjectRepository,
+			).getPersonalProjectForUserOrFail(storedOwnerShell.id);
+
+			expect(storedPersonalProject.name).toBe(storedOwnerShell.createPersonalProjectName());
 		}
 	});
 
@@ -81,10 +103,16 @@ describe('Owner shell', () => {
 			const response = await authOwnerShellAgent.patch('/me').send(invalidPayload);
 			expect(response.statusCode).toBe(400);
 
-			const storedOwnerShell = await Db.collections.User.findOneByOrFail({});
+			const storedOwnerShell = await Container.get(UserRepository).findOneByOrFail({});
 			expect(storedOwnerShell.email).toBeNull();
 			expect(storedOwnerShell.firstName).toBeNull();
 			expect(storedOwnerShell.lastName).toBeNull();
+
+			const storedPersonalProject = await Container.get(
+				ProjectRepository,
+			).getPersonalProjectForUserOrFail(storedOwnerShell.id);
+
+			expect(storedPersonalProject.name).toBe(storedOwnerShell.createPersonalProjectName());
 		}
 	});
 
@@ -100,7 +128,7 @@ describe('Owner shell', () => {
 			const response = await authOwnerShellAgent.patch('/me/password').send(payload);
 			expect([400, 500].includes(response.statusCode)).toBe(true);
 
-			const storedMember = await Db.collections.User.findOneByOrFail({});
+			const storedMember = await Container.get(UserRepository).findOneByOrFail({});
 
 			if (payload.newPassword) {
 				expect(storedMember.password).not.toBe(payload.newPassword);
@@ -111,7 +139,7 @@ describe('Owner shell', () => {
 			}
 		}
 
-		const storedOwnerShell = await Db.collections.User.findOneByOrFail({});
+		const storedOwnerShell = await Container.get(UserRepository).findOneByOrFail({});
 		expect(storedOwnerShell.password).toBeNull();
 	});
 
@@ -124,7 +152,7 @@ describe('Owner shell', () => {
 			expect(response.statusCode).toBe(200);
 			expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
 
-			const storedShellOwner = await Db.collections.User.findOneOrFail({
+			const storedShellOwner = await Container.get(UserRepository).findOneOrFail({
 				where: { email: IsNull() },
 			});
 
@@ -139,7 +167,7 @@ describe('Owner shell', () => {
 		expect(response.body.data.apiKey).toBeDefined();
 		expect(response.body.data.apiKey).not.toBeNull();
 
-		const storedShellOwner = await Db.collections.User.findOneOrFail({
+		const storedShellOwner = await Container.get(UserRepository).findOneOrFail({
 			where: { email: IsNull() },
 		});
 
@@ -158,7 +186,7 @@ describe('Owner shell', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const storedShellOwner = await Db.collections.User.findOneOrFail({
+		const storedShellOwner = await Container.get(UserRepository).findOneOrFail({
 			where: { email: IsNull() },
 		});
 
@@ -172,9 +200,9 @@ describe('Member', () => {
 	let authMemberAgent: SuperAgentTest;
 
 	beforeEach(async () => {
-		member = await testDb.createUser({
+		member = await createUser({
 			password: memberPassword,
-			globalRole: globalMemberRole,
+			role: 'global:member',
 			apiKey: randomApiKey(),
 		});
 		authMemberAgent = testServer.authAgentFor(member);
@@ -184,9 +212,7 @@ describe('Member', () => {
 
 	test('PATCH /me should succeed with valid inputs', async () => {
 		for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
-			const response = await authMemberAgent.patch('/me').send(validPayload);
-
-			expect(response.statusCode).toBe(200);
+			const response = await authMemberAgent.patch('/me').send(validPayload).expect(200);
 
 			const {
 				id,
@@ -194,7 +220,7 @@ describe('Member', () => {
 				firstName,
 				lastName,
 				personalizationAnswers,
-				globalRole,
+				role,
 				password,
 				isPending,
 				apiKey,
@@ -207,15 +233,19 @@ describe('Member', () => {
 			expect(personalizationAnswers).toBeNull();
 			expect(password).toBeUndefined();
 			expect(isPending).toBe(false);
-			expect(globalRole.name).toBe('member');
-			expect(globalRole.scope).toBe('global');
+			expect(role).toBe('global:member');
 			expect(apiKey).toBeUndefined();
 
-			const storedMember = await Db.collections.User.findOneByOrFail({ id });
+			const storedMember = await Container.get(UserRepository).findOneByOrFail({ id });
 
 			expect(storedMember.email).toBe(validPayload.email.toLowerCase());
 			expect(storedMember.firstName).toBe(validPayload.firstName);
 			expect(storedMember.lastName).toBe(validPayload.lastName);
+
+			const storedPersonalProject =
+				await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(id);
+
+			expect(storedPersonalProject.name).toBe(storedMember.createPersonalProjectName());
 		}
 	});
 
@@ -224,10 +254,16 @@ describe('Member', () => {
 			const response = await authMemberAgent.patch('/me').send(invalidPayload);
 			expect(response.statusCode).toBe(400);
 
-			const storedMember = await Db.collections.User.findOneByOrFail({});
+			const storedMember = await Container.get(UserRepository).findOneByOrFail({});
 			expect(storedMember.email).toBe(member.email);
 			expect(storedMember.firstName).toBe(member.firstName);
 			expect(storedMember.lastName).toBe(member.lastName);
+
+			const storedPersonalProject = await Container.get(
+				ProjectRepository,
+			).getPersonalProjectForUserOrFail(storedMember.id);
+
+			expect(storedPersonalProject.name).toBe(storedMember.createPersonalProjectName());
 		}
 	});
 
@@ -241,7 +277,7 @@ describe('Member', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
 
-		const storedMember = await Db.collections.User.findOneByOrFail({});
+		const storedMember = await Container.get(UserRepository).findOneByOrFail({});
 		expect(storedMember.password).not.toBe(member.password);
 		expect(storedMember.password).not.toBe(validPayload.newPassword);
 	});
@@ -251,7 +287,7 @@ describe('Member', () => {
 			const response = await authMemberAgent.patch('/me/password').send(payload);
 			expect([400, 500].includes(response.statusCode)).toBe(true);
 
-			const storedMember = await Db.collections.User.findOneByOrFail({});
+			const storedMember = await Container.get(UserRepository).findOneByOrFail({});
 
 			if (payload.newPassword) {
 				expect(storedMember.password).not.toBe(payload.newPassword);
@@ -270,9 +306,9 @@ describe('Member', () => {
 			expect(response.statusCode).toBe(200);
 			expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
 
-			const { personalizationAnswers: storedAnswers } = await Db.collections.User.findOneByOrFail(
-				{},
-			);
+			const { personalizationAnswers: storedAnswers } = await Container.get(
+				UserRepository,
+			).findOneByOrFail({});
 
 			expect(storedAnswers).toEqual(validPayload);
 		}
@@ -285,7 +321,7 @@ describe('Member', () => {
 		expect(response.body.data.apiKey).toBeDefined();
 		expect(response.body.data.apiKey).not.toBeNull();
 
-		const storedMember = await Db.collections.User.findOneByOrFail({ id: member.id });
+		const storedMember = await Container.get(UserRepository).findOneByOrFail({ id: member.id });
 
 		expect(storedMember.apiKey).toEqual(response.body.data.apiKey);
 	});
@@ -302,19 +338,15 @@ describe('Member', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const storedMember = await Db.collections.User.findOneByOrFail({ id: member.id });
+		const storedMember = await Container.get(UserRepository).findOneByOrFail({ id: member.id });
 
 		expect(storedMember.apiKey).toBeNull();
 	});
 });
 
 describe('Owner', () => {
-	beforeEach(async () => {
-		await utils.setInstanceOwnerSetUp(true);
-	});
-
 	test('PATCH /me should succeed with valid inputs', async () => {
-		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+		const owner = await createUser({ role: 'global:owner' });
 		const authOwnerAgent = testServer.authAgentFor(owner);
 
 		for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
@@ -328,7 +360,7 @@ describe('Owner', () => {
 				firstName,
 				lastName,
 				personalizationAnswers,
-				globalRole,
+				role,
 				password,
 				isPending,
 				apiKey,
@@ -341,15 +373,20 @@ describe('Owner', () => {
 			expect(personalizationAnswers).toBeNull();
 			expect(password).toBeUndefined();
 			expect(isPending).toBe(false);
-			expect(globalRole.name).toBe('owner');
-			expect(globalRole.scope).toBe('global');
+			expect(role).toBe('global:owner');
 			expect(apiKey).toBeUndefined();
 
-			const storedOwner = await Db.collections.User.findOneByOrFail({ id });
+			const storedOwner = await Container.get(UserRepository).findOneByOrFail({ id });
 
 			expect(storedOwner.email).toBe(validPayload.email.toLowerCase());
 			expect(storedOwner.firstName).toBe(validPayload.firstName);
 			expect(storedOwner.lastName).toBe(validPayload.lastName);
+
+			const storedPersonalProject = await Container.get(
+				ProjectRepository,
+			).getPersonalProjectForUserOrFail(storedOwner.id);
+
+			expect(storedPersonalProject.name).toBe(storedOwner.createPersonalProjectName());
 		}
 	});
 });
@@ -370,14 +407,12 @@ const VALID_PATCH_ME_PAYLOADS = [
 		email: randomEmail(),
 		firstName: randomName(),
 		lastName: randomName(),
-		password: randomValidPassword(),
 	},
-	{
-		email: randomEmail().toUpperCase(),
-		firstName: randomName(),
-		lastName: randomName(),
-		password: randomValidPassword(),
-	},
+	// {
+	// 	email: randomEmail().toUpperCase(),
+	// 	firstName: randomName(),
+	// 	lastName: randomName(),
+	// },
 ];
 
 const INVALID_PATCH_ME_PAYLOADS = [

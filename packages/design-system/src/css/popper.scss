@@ -54,7 +54,7 @@
 	&[data-popper-placement^='top'] .el-popper__arrow {
 		bottom: -(var.$popover-arrow-size);
 		left: 50%;
-		margin-right: #{var.$tooltip-arrow-size * 0.5};
+		margin: 0 #{var.$tooltip-arrow-size * 0.5};
 		border-top-color: var.$popover-border-color;
 		border-bottom-width: 0;
 
@@ -69,7 +69,7 @@
 	&[data-popper-placement^='bottom'] .el-popper__arrow {
 		top: -(var.$popover-arrow-size);
 		left: 50%;
-		margin-right: #{var.$tooltip-arrow-size * 0.5};
+		margin: 0 #{var.$tooltip-arrow-size * 0.5};
 		border-top-width: 0;
 		border-bottom-color: var.$popover-border-color;
 
@@ -84,7 +84,7 @@
 	&[data-popper-placement^='right'] .el-popper__arrow {
 		top: 50%;
 		left: -(var.$popover-arrow-size);
-		margin-bottom: #{var.$tooltip-arrow-size * 0.5};
+		margin: #{var.$tooltip-arrow-size * 0.5} 0;
 		border-right-color: var.$popover-border-color;
 		border-left-width: 0;
 
@@ -99,7 +99,7 @@
 	&[data-popper-placement^='left'] .el-popper__arrow {
 		top: 50%;
 		right: -(var.$popover-arrow-size);
-		margin-bottom: #{var.$tooltip-arrow-size * 0.5};
+		margin: #{var.$tooltip-arrow-size * 0.5} 0;
 		border-right-width: 0;
 		border-left-color: var.$popover-border-color;
 

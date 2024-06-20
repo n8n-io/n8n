@@ -7,6 +7,8 @@ import {
 	addWhereClauses,
 	addSortRules,
 	replaceEmptyStringsByNulls,
+	escapeSqlIdentifier,
+	splitQueryToStatements,
 } from '../../v2/helpers/utils';
 
 const mySqlMockNode: INode = {
@@ -146,5 +148,57 @@ describe('Test MySql V2, replaceEmptyStringsByNulls', () => {
 		const replacedData = replaceEmptyStringsByNulls(data);
 		expect(replacedData).toBeDefined();
 		expect(replacedData).toEqual([{ json: { id: 1, name: '' } }]);
+	});
+});
+
+describe('Test MySql V2, escapeSqlIdentifier', () => {
+	it('should escape fully qualified identifier', () => {
+		const input = 'db_name.tbl_name.col_name';
+		const escapedIdentifier = escapeSqlIdentifier(input);
+		expect(escapedIdentifier).toEqual('`db_name`.`tbl_name`.`col_name`');
+	});
+
+	it('should escape table name only', () => {
+		const input = 'tbl_name';
+		const escapedIdentifier = escapeSqlIdentifier(input);
+		expect(escapedIdentifier).toEqual('`tbl_name`');
+	});
+
+	it('should escape fully qualified identifier with backticks', () => {
+		const input = '`db_name`.`tbl_name`.`col_name`';
+		const escapedIdentifier = escapeSqlIdentifier(input);
+		expect(escapedIdentifier).toEqual('`db_name`.`tbl_name`.`col_name`');
+	});
+
+	it('should escape identifier with dots', () => {
+		const input = '`db_name`.`some.dotted.tbl_name`';
+		const escapedIdentifier = escapeSqlIdentifier(input);
+		expect(escapedIdentifier).toEqual('`db_name`.`some.dotted.tbl_name`');
+	});
+});
+
+describe('Test MySql V2, splitQueryToStatements', () => {
+	it('should split query into statements', () => {
+		const query =
+			"insert into models (`created_at`, custom_ship_time, id) values ('2023-09-07 10:26:20', 'some random; data with a semicolon', 1); insert into models (`created_at`, custom_ship_time, id) values ('2023-09-07 10:27:55', 'random data without semicolon\n', 2);";
+
+		const statements = splitQueryToStatements(query);
+
+		expect(statements).toBeDefined();
+		expect(statements).toEqual([
+			"insert into models (`created_at`, custom_ship_time, id) values ('2023-09-07 10:26:20', 'some random; data with a semicolon', 1)",
+			"insert into models (`created_at`, custom_ship_time, id) values ('2023-09-07 10:27:55', 'random data without semicolon', 2)",
+		]);
+	});
+	it('should not split by ; inside string literal', () => {
+		const query =
+			"SELECT custom_ship_time FROM models WHERE models.custom_ship_time LIKE CONCAT('%', ';', '%') LIMIT 10";
+
+		const statements = splitQueryToStatements(query);
+
+		expect(statements).toBeDefined();
+		expect(statements).toEqual([
+			"SELECT custom_ship_time FROM models WHERE models.custom_ship_time LIKE CONCAT('%', ';', '%') LIMIT 10",
+		]);
 	});
 });

@@ -1,25 +1,25 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function lineApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
-	method: string,
-	resource: string,
+	method: IHttpRequestMethods,
+	_resource: string,
 
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
 ): Promise<any> {
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},

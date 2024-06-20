@@ -2,7 +2,7 @@ import type { SecretsProvider, SecretsProviderSettings, SecretsProviderState } f
 import InfisicalClient from 'infisical-node';
 import { populateClientWorkspaceConfigsHelper } from 'infisical-node/lib/helpers/key';
 import { getServiceTokenData } from 'infisical-node/lib/api/serviceTokenData';
-import type { IDataObject, INodeProperties } from 'n8n-workflow';
+import { ApplicationError, type IDataObject, type INodeProperties } from 'n8n-workflow';
 import { EXTERNAL_SECRETS_NAME_REGEX } from '../constants';
 
 export interface InfisicalSettings {
@@ -74,10 +74,10 @@ export class InfisicalProvider implements SecretsProvider {
 
 	async update(): Promise<void> {
 		if (!this.client) {
-			throw new Error('Updated attempted on Infisical when initialization failed');
+			throw new ApplicationError('Updated attempted on Infisical when initialization failed');
 		}
 		if (!(await this.test())[0]) {
-			throw new Error('Infisical provider test failed during update');
+			throw new ApplicationError('Infisical provider test failed during update');
 		}
 		const secrets = (await this.client.getAllSecrets({
 			environment: this.environment,
@@ -120,7 +120,7 @@ export class InfisicalProvider implements SecretsProvider {
 		if (serviceTokenData.scopes) {
 			return serviceTokenData.scopes[0].environment;
 		}
-		throw new Error("Couldn't find environment for Infisical");
+		throw new ApplicationError("Couldn't find environment for Infisical");
 	}
 
 	async test(): Promise<[boolean] | [boolean, string]> {

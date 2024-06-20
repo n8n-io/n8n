@@ -1,11 +1,11 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	IDataObject,
 	IHookFunctions,
 	IWebhookFunctions,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -17,7 +17,7 @@ const getBaseUrl = ({ environment, domain, subdomain }: ERPNextApiCredentials) =
 
 export async function erpNextApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject = {},
 	query: IDataObject = {},
@@ -27,7 +27,7 @@ export async function erpNextApiRequest(
 	const credentials = (await this.getCredentials('erpNextApi')) as ERPNextApiCredentials;
 	const baseUrl = getBaseUrl(credentials);
 
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		headers: {
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
@@ -68,7 +68,7 @@ export async function erpNextApiRequest(
 export async function erpNextApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject,
 	query: IDataObject = {},

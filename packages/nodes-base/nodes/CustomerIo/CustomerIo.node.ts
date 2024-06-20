@@ -16,7 +16,7 @@ export class CustomerIo implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Customer.io',
 		name: 'customerIo',
-		icon: 'file:customerio.svg',
+		icon: { light: 'file:customerio.svg', dark: 'file:customerio.dark.svg' },
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -335,7 +335,7 @@ export class CustomerIo implements INodeType {
 					returnData.push(responseData as unknown as IDataObject);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ error: error.message });
 					continue;
 				}

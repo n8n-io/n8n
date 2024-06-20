@@ -1,8 +1,8 @@
-import { resolveParameter } from '@/mixins/workflowHelpers';
+import { resolveParameter } from '@/composables/useWorkflowHelpers';
 import { prefixMatch, longestCommonPrefix } from './utils';
-import type { IDataObject } from 'n8n-workflow';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { Resolved } from './types';
+import { escapeMappingString } from '@/utils/mappingUtils';
 
 /**
  * Resolution-based completions offered at the start of bracket access notation.
@@ -36,7 +36,7 @@ export function bracketAccessCompletions(context: CompletionContext): Completion
 		return null;
 	}
 
-	if (resolved === null || resolved === undefined) return null;
+	if (resolved === null || resolved === undefined || typeof resolved !== 'object') return null;
 
 	let options = bracketAccessOptions(resolved);
 
@@ -58,7 +58,7 @@ export function bracketAccessCompletions(context: CompletionContext): Completion
 	};
 }
 
-function bracketAccessOptions(resolved: IDataObject) {
+function bracketAccessOptions(resolved: object) {
 	const SKIP = new Set(['__ob__', 'pairedItem']);
 
 	return Object.keys(resolved)
@@ -67,7 +67,7 @@ function bracketAccessOptions(resolved: IDataObject) {
 			const isNumber = !isNaN(parseInt(key)); // array or string index
 
 			return {
-				label: isNumber ? `${key}]` : `'${key}']`,
+				label: isNumber ? `${key}]` : `'${escapeMappingString(key)}']`,
 				type: 'keyword',
 			};
 		});

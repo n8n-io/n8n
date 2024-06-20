@@ -24,6 +24,6 @@ export class UserFilter extends BaseFilter {
 	isOwner?: boolean;
 
 	static async fromString(rawFilter: string) {
-		return this.toFilter(rawFilter, UserFilter);
+		return await this.toFilter(rawFilter, UserFilter);
 	}
 }

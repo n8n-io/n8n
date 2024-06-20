@@ -8,12 +8,17 @@ import {
 	getNodeAuthFields,
 	getNodeAuthOptions,
 	isAuthRelatedParameter,
-} from '@/utils';
-import type { INodeProperties, INodeTypeDescription, NodeParameterValue } from 'n8n-workflow';
+} from '@/utils/nodeTypesUtils';
+import type {
+	ICredentialType,
+	INodeProperties,
+	INodeTypeDescription,
+	NodeParameterValue,
+} from 'n8n-workflow';
 import { computed, onMounted, ref } from 'vue';
 
 export interface Props {
-	credentialType: Object;
+	credentialType: ICredentialType;
 }
 
 const emit = defineEmits<{
@@ -87,7 +92,7 @@ function shouldShowAuthOption(option: NodeAuthenticationOption): boolean {
 
 	let shouldDisplay = false;
 	Object.keys(authRelatedFieldsValues.value).forEach((fieldName) => {
-		if (option.displayOptions && option.displayOptions.show) {
+		if (option.displayOptions?.show) {
 			if (
 				option.displayOptions.show[fieldName]?.includes(authRelatedFieldsValues.value[fieldName])
 			) {
@@ -118,18 +123,18 @@ defineExpose({
 <template>
 	<div v-if="filteredNodeAuthOptions.length > 0" data-test-id="node-auth-type-selector">
 		<div v-for="parameter in authRelatedFields" :key="parameter.name" class="mb-l">
-			<parameter-input-full
+			<ParameterInputFull
 				:parameter="parameter"
 				:value="authRelatedFieldsValues[parameter.name] || parameter.default"
 				:path="parameter.name"
-				:displayOptions="false"
+				:display-options="false"
 				@update="valueChanged"
 			/>
 		</div>
 		<div>
 			<n8n-input-label
 				:label="$locale.baseText('credentialEdit.credentialConfig.authTypeSelectorLabel')"
-				:tooltipText="$locale.baseText('credentialEdit.credentialConfig.authTypeSelectorTooltip')"
+				:tooltip-text="$locale.baseText('credentialEdit.credentialConfig.authTypeSelectorTooltip')"
 				:required="true"
 			/>
 		</div>
@@ -140,7 +145,7 @@ defineExpose({
 			:label="prop.value"
 			:class="$style.authRadioButton"
 			border
-			@update:modelValue="onAuthTypeChange"
+			@update:model-value="onAuthTypeChange"
 			>{{ prop.name }}</el-radio
 		>
 	</div>

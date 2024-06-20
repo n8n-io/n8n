@@ -6,9 +6,8 @@ import type {
 	INodeParameters,
 } from 'n8n-workflow';
 
-import type { ColumnInfo, PgpDatabase, QueriesRunner } from '../../v2/helpers/interfaces';
-
 import { get } from 'lodash';
+import type { ColumnInfo, PgpDatabase, QueriesRunner } from '../../v2/helpers/interfaces';
 
 import * as deleteTable from '../../v2/actions/database/deleteTable.operation';
 import * as executeQuery from '../../v2/actions/database/executeQuery.operation';
@@ -89,7 +88,7 @@ describe('Test PostgresV2, deleteTable operation', () => {
 					},
 				],
 			},
-			options: { typeVersion: 2.1 },
+			options: { nodeVersion: 2.1 },
 		};
 		const nodeOptions = nodeParameters.options as IDataObject;
 
@@ -168,7 +167,7 @@ describe('Test PostgresV2, deleteTable operation', () => {
 				cachedResultName: 'my_table',
 			},
 			deleteCommand: 'drop',
-			options: { typeVersion: 2.1 },
+			options: { nodeVersion: 2.1 },
 		};
 		const nodeOptions = nodeParameters.options as IDataObject;
 
@@ -256,7 +255,7 @@ describe('Test PostgresV2, insert operation', () => {
 					},
 				],
 			},
-			options: { typeVersion: 2.1 },
+			options: { nodeVersion: 2.1 },
 		};
 		const columnsInfo: ColumnInfo[] = [
 			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO', udt_name: '' },
@@ -299,7 +298,7 @@ describe('Test PostgresV2, insert operation', () => {
 				mode: 'list',
 			},
 			dataMode: 'autoMapInputData',
-			options: { typeVersion: 2.1 },
+			options: { nodeVersion: 2.1 },
 		};
 		const columnsInfo: ColumnInfo[] = [
 			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO', udt_name: '' },
@@ -509,7 +508,7 @@ describe('Test PostgresV2, update operation', () => {
 			},
 			options: {
 				outputColumns: ['json', 'foo'],
-				typeVersion: 2.1,
+				nodeVersion: 2.1,
 			},
 		};
 		const columnsInfo: ColumnInfo[] = [
@@ -566,7 +565,7 @@ describe('Test PostgresV2, update operation', () => {
 			},
 			dataMode: 'autoMapInputData',
 			columnToMatchOn: 'id',
-			options: { typeVersion: 2.1 },
+			options: { nodeVersion: 2.1 },
 		};
 		const columnsInfo: ColumnInfo[] = [
 			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO', udt_name: '' },
@@ -669,7 +668,7 @@ describe('Test PostgresV2, upsert operation', () => {
 			},
 			options: {
 				outputColumns: ['json'],
-				typeVersion: 2.1,
+				nodeVersion: 2.1,
 			},
 		};
 		const columnsInfo: ColumnInfo[] = [
@@ -726,7 +725,7 @@ describe('Test PostgresV2, upsert operation', () => {
 			},
 			dataMode: 'autoMapInputData',
 			columnToMatchOn: 'id',
-			options: { typeVersion: 2.1 },
+			options: { nodeVersion: 2.1 },
 		};
 		const columnsInfo: ColumnInfo[] = [
 			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO', udt_name: '' },

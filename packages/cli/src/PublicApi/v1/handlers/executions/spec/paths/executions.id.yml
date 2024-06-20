@@ -4,7 +4,7 @@ get:
   tags:
     - Execution
   summary: Retrieve an execution
-  description: Retrieve an execution from you instance.
+  description: Retrieve an execution from your instance.
   parameters:
     - $ref: '../schemas/parameters/executionId.yml'
     - $ref: '../schemas/parameters/includeData.yml'

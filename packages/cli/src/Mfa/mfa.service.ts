@@ -1,43 +1,36 @@
 import { v4 as uuid } from 'uuid';
-import { AES, enc } from 'crypto-js';
-import { TOTPService } from './totp.service';
 import { Service } from 'typedi';
-import { UserRepository } from '@/databases/repositories';
+import { Cipher } from 'n8n-core';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
+import { TOTPService } from './totp.service';
 
 @Service()
 export class MfaService {
 	constructor(
-		private userRepository: UserRepository,
+		private authUserRepository: AuthUserRepository,
 		public totp: TOTPService,
-		private encryptionKey: string,
+		private cipher: Cipher,
 	) {}
 
-	public generateRecoveryCodes(n = 10) {
+	generateRecoveryCodes(n = 10) {
 		return Array.from(Array(n)).map(() => uuid());
 	}
 
-	public generateEncryptedRecoveryCodes() {
-		return this.generateRecoveryCodes().map((code) =>
-			AES.encrypt(code, this.encryptionKey).toString(),
-		);
-	}
-
-	public async saveSecretAndRecoveryCodes(userId: string, secret: string, recoveryCodes: string[]) {
+	async saveSecretAndRecoveryCodes(userId: string, secret: string, recoveryCodes: string[]) {
 		const { encryptedSecret, encryptedRecoveryCodes } = this.encryptSecretAndRecoveryCodes(
 			secret,
 			recoveryCodes,
 		);
-		return this.userRepository.update(userId, {
-			mfaSecret: encryptedSecret,
-			mfaRecoveryCodes: encryptedRecoveryCodes,
-		});
+
+		const user = await this.authUserRepository.findOneByOrFail({ id: userId });
+		user.mfaSecret = encryptedSecret;
+		user.mfaRecoveryCodes = encryptedRecoveryCodes;
+		await this.authUserRepository.save(user);
 	}
 
-	public encryptSecretAndRecoveryCodes(rawSecret: string, rawRecoveryCodes: string[]) {
-		const encryptedSecret = AES.encrypt(rawSecret, this.encryptionKey).toString(),
-			encryptedRecoveryCodes = rawRecoveryCodes.map((code) =>
-				AES.encrypt(code, this.encryptionKey).toString(),
-			);
+	encryptSecretAndRecoveryCodes(rawSecret: string, rawRecoveryCodes: string[]) {
+		const encryptedSecret = this.cipher.encrypt(rawSecret),
+			encryptedRecoveryCodes = rawRecoveryCodes.map((code) => this.cipher.encrypt(code));
 		return {
 			encryptedRecoveryCodes,
 			encryptedSecret,
@@ -46,34 +39,51 @@ export class MfaService {
 
 	private decryptSecretAndRecoveryCodes(mfaSecret: string, mfaRecoveryCodes: string[]) {
 		return {
-			decryptedSecret: AES.decrypt(mfaSecret, this.encryptionKey).toString(enc.Utf8),
-			decryptedRecoveryCodes: mfaRecoveryCodes.map((code) =>
-				AES.decrypt(code, this.encryptionKey).toString(enc.Utf8),
-			),
+			decryptedSecret: this.cipher.decrypt(mfaSecret),
+			decryptedRecoveryCodes: mfaRecoveryCodes.map((code) => this.cipher.decrypt(code)),
 		};
 	}
 
-	public async getSecretAndRecoveryCodes(userId: string) {
-		const { mfaSecret, mfaRecoveryCodes } = await this.userRepository.findOneOrFail({
-			where: { id: userId },
-			select: ['id', 'mfaSecret', 'mfaRecoveryCodes'],
+	async getSecretAndRecoveryCodes(userId: string) {
+		const { mfaSecret, mfaRecoveryCodes } = await this.authUserRepository.findOneByOrFail({
+			id: userId,
 		});
 		return this.decryptSecretAndRecoveryCodes(mfaSecret ?? '', mfaRecoveryCodes ?? []);
 	}
 
-	public async enableMfa(userId: string) {
-		await this.userRepository.update(userId, { mfaEnabled: true });
+	async validateMfa(
+		userId: string,
+		mfaToken: string | undefined,
+		mfaRecoveryCode: string | undefined,
+	) {
+		const user = await this.authUserRepository.findOneByOrFail({ id: userId });
+		if (mfaToken) {
+			const decryptedSecret = this.cipher.decrypt(user.mfaSecret!);
+			return this.totp.verifySecret({ secret: decryptedSecret, token: mfaToken });
+		} else if (mfaRecoveryCode) {
+			const validCodes = user.mfaRecoveryCodes.map((code) => this.cipher.decrypt(code));
+			const index = validCodes.indexOf(mfaRecoveryCode);
+			if (index === -1) return false;
+			// remove used recovery code
+			validCodes.splice(index, 1);
+			user.mfaRecoveryCodes = validCodes.map((code) => this.cipher.encrypt(code));
+			await this.authUserRepository.save(user);
+			return true;
+		}
+		return false;
 	}
 
-	public encryptRecoveryCodes(mfaRecoveryCodes: string[]) {
-		return mfaRecoveryCodes.map((code) => AES.encrypt(code, this.encryptionKey).toString());
+	async enableMfa(userId: string) {
+		const user = await this.authUserRepository.findOneByOrFail({ id: userId });
+		user.mfaEnabled = true;
+		return await this.authUserRepository.save(user);
 	}
 
-	public async disableMfa(userId: string) {
-		await this.userRepository.update(userId, {
-			mfaEnabled: false,
-			mfaSecret: null,
-			mfaRecoveryCodes: [],
-		});
+	async disableMfa(userId: string) {
+		const user = await this.authUserRepository.findOneByOrFail({ id: userId });
+		user.mfaEnabled = false;
+		user.mfaSecret = null;
+		user.mfaRecoveryCodes = [];
+		return await this.authUserRepository.save(user);
 	}
 }

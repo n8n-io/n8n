@@ -1,152 +1,66 @@
-/**
- * Permissions table implementation
- *
- * @usage getCredentialPermissions(user, credential).isOwner;
- */
-
 import type { IUser, ICredentialsResponse, IWorkflowDb } from '@/Interface';
-import { EnterpriseEditionFeature, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
-import { useSettingsStore } from './stores/settings.store';
+import type {
+	CredentialScope,
+	ProjectScope,
+	Scope,
+	WorkflowScope,
+	VariableScope,
+} from '@n8n/permissions';
+import type { Project } from '@/types/projects.types';
 
-export const enum UserRole {
-	InstanceOwner = 'isInstanceOwner',
-	ResourceOwner = 'isOwner',
-	ResourceEditor = 'isEditor',
-	ResourceSharee = 'isSharee',
-}
-
-export type IPermissions = Record<string, boolean>;
-
-type IPermissionsTableRowTestFn = (permissions: IPermissions) => boolean;
-
-export interface IPermissionsTableRow {
-	name: string;
-	test: string[] | IPermissionsTableRowTestFn;
-}
-
-export type IPermissionsTable = IPermissionsTableRow[];
-
-/**
- * Returns the permissions for the given user and resource
- *
- * @param user
- * @param table
- */
-export const parsePermissionsTable = (
-	user: IUser | null,
-	table: IPermissionsTable,
-): IPermissions => {
-	const genericTable = [{ name: UserRole.InstanceOwner, test: () => user?.isOwner }];
-
-	return [...genericTable, ...table].reduce((permissions: IPermissions, row) => {
-		permissions[row.name] = Array.isArray(row.test)
-			? row.test.some((ability) => permissions[ability])
-			: (row.test as IPermissionsTableRowTestFn)(permissions);
-
-		return permissions;
-	}, {});
+type ExtractAfterColon<T> = T extends `${infer _Prefix}:${infer Suffix}` ? Suffix : never;
+export type PermissionsMap<T> = {
+	[K in ExtractAfterColon<T>]: boolean;
 };
 
-/**
- * User permissions definition
- */
-
-export const getCredentialPermissions = (user: IUser | null, credential: ICredentialsResponse) => {
-	const settingsStore = useSettingsStore();
-	const isSharingEnabled = settingsStore.isEnterpriseFeatureEnabled(
-		EnterpriseEditionFeature.Sharing,
+const mapScopesToPermissions = <T extends Scope>(scopes: T[], scopeSet: Set<T>) =>
+	scopes.reduce(
+		(permissions, scope) => ({
+			...permissions,
+			[scope.split(':')[1]]: scopeSet.has(scope),
+		}),
+		{} as PermissionsMap<T>,
 	);
 
-	const table: IPermissionsTable = [
-		{
-			name: UserRole.ResourceOwner,
-			test: () =>
-				!!(credential && credential.ownedBy && credential.ownedBy.id === user?.id) ||
-				!isSharingEnabled,
-		},
-		{
-			name: UserRole.ResourceSharee,
-			test: () =>
-				!!(
-					credential &&
-					credential.sharedWith &&
-					credential.sharedWith.find((sharee) => sharee.id === user?.id)
-				),
-		},
-		{
-			name: 'read',
-			test: [UserRole.ResourceOwner, UserRole.InstanceOwner, UserRole.ResourceSharee],
-		},
-		{ name: 'save', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
-		{ name: 'updateName', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
-		{ name: 'updateConnection', test: [UserRole.ResourceOwner] },
-		{ name: 'updateSharing', test: [UserRole.ResourceOwner] },
-		{ name: 'updateNodeAccess', test: [UserRole.ResourceOwner] },
-		{ name: 'delete', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
-		{ name: 'use', test: [UserRole.ResourceOwner, UserRole.ResourceSharee] },
-	];
-
-	return parsePermissionsTable(user, table);
-};
-
-export const getWorkflowPermissions = (user: IUser | null, workflow: IWorkflowDb) => {
-	const settingsStore = useSettingsStore();
-	const isSharingEnabled = settingsStore.isEnterpriseFeatureEnabled(
-		EnterpriseEditionFeature.Sharing,
+export const getCredentialPermissions = (
+	credential: ICredentialsResponse,
+): PermissionsMap<CredentialScope> =>
+	mapScopesToPermissions(
+		[
+			'credential:create',
+			'credential:read',
+			'credential:update',
+			'credential:delete',
+			'credential:list',
+			'credential:share',
+			'credential:move',
+		],
+		new Set(credential?.scopes ?? []),
 	);
-	const isNewWorkflow = workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID;
 
-	const table: IPermissionsTable = [
-		{
-			name: UserRole.ResourceOwner,
-			test: () =>
-				!!(isNewWorkflow || (workflow && workflow.ownedBy && workflow.ownedBy.id === user?.id)) ||
-				!isSharingEnabled,
-		},
-		{
-			name: UserRole.ResourceSharee,
-			test: () =>
-				!!(
-					workflow &&
-					workflow.sharedWith &&
-					workflow.sharedWith.find((sharee) => sharee.id === user?.id)
-				),
-		},
-		{
-			name: 'read',
-			test: [UserRole.ResourceOwner, UserRole.InstanceOwner, UserRole.ResourceSharee],
-		},
-		{ name: 'save', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
-		{ name: 'updateName', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
-		{ name: 'updateConnection', test: [UserRole.ResourceOwner] },
-		{ name: 'updateSharing', test: [UserRole.ResourceOwner] },
-		{ name: 'updateNodeAccess', test: [UserRole.ResourceOwner] },
-		{ name: 'delete', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
-		{
-			name: 'use',
-			test: [UserRole.ResourceOwner, UserRole.InstanceOwner, UserRole.ResourceSharee],
-		},
-	];
+export const getWorkflowPermissions = (workflow: IWorkflowDb): PermissionsMap<WorkflowScope> =>
+	mapScopesToPermissions(
+		[
+			'workflow:create',
+			'workflow:read',
+			'workflow:update',
+			'workflow:delete',
+			'workflow:list',
+			'workflow:share',
+			'workflow:execute',
+			'workflow:move',
+		],
+		new Set(workflow?.scopes ?? []),
+	);
 
-	return parsePermissionsTable(user, table);
-};
+export const getProjectPermissions = (project: Project | null): PermissionsMap<ProjectScope> =>
+	mapScopesToPermissions(
+		['project:create', 'project:read', 'project:update', 'project:delete', 'project:list'],
+		new Set(project?.scopes ?? []),
+	);
 
-export const getVariablesPermissions = (user: IUser | null) => {
-	const table: IPermissionsTable = [
-		{
-			name: 'create',
-			test: [UserRole.InstanceOwner],
-		},
-		{
-			name: 'edit',
-			test: [UserRole.InstanceOwner],
-		},
-		{
-			name: 'delete',
-			test: [UserRole.InstanceOwner],
-		},
-		{ name: 'use', test: () => true },
-	];
-
-	return parsePermissionsTable(user, table);
-};
+export const getVariablesPermissions = (user: IUser | null): PermissionsMap<VariableScope> =>
+	mapScopesToPermissions(
+		['variable:create', 'variable:read', 'variable:update', 'variable:delete', 'variable:list'],
+		new Set(user?.globalScopes ?? []),
+	);

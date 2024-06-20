@@ -1,15 +1,15 @@
-import type { OptionsWithUri } from 'request';
-
 import { simpleParser } from 'mailparser';
 
 import type {
 	IBinaryKeyData,
 	IDataObject,
 	IExecuteFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	INode,
 	INodeExecutionData,
 	IPollFunctions,
+	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
@@ -43,14 +43,14 @@ import { getGoogleAccessToken } from '../GenericFunctions';
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
 ) {
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		headers: {
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
@@ -265,7 +265,7 @@ export async function encodeEmail(email: IEmail) {
 export async function googleApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 
 	body: any = {},
@@ -435,25 +435,48 @@ export function prepareEmailsInput(
 export function prepareEmailBody(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	itemIndex: number,
+	appendAttribution = false,
+	instanceId?: string,
 ) {
 	const emailType = this.getNodeParameter('emailType', itemIndex) as string;
+	let message = (this.getNodeParameter('message', itemIndex, '') as string).trim();
 
-	let body = '';
-	let htmlBody = '';
-
-	if (emailType === 'html') {
-		htmlBody = (this.getNodeParameter('message', itemIndex, '') as string).trim();
-	} else {
-		body = (this.getNodeParameter('message', itemIndex, '') as string).trim();
+	if (appendAttribution) {
+		const attributionText = 'This email was sent automatically with ';
+		const link = `https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=${encodeURIComponent(
+			'n8n-nodes-base.gmail',
+		)}${instanceId ? '_' + instanceId : ''}`;
+		if (emailType === 'html') {
+			message = `
+			${message}
+			<br>
+			<br>
+			---
+			<br>
+			<em>${attributionText}<a href="${link}" target="_blank">n8n</a></em>
+			`;
+		} else {
+			message = `${message}\n\n---\n${attributionText}n8n\n${'https://n8n.io'}`;
+		}
 	}
 
-	return { body, htmlBody };
+	const body = {
+		body: '',
+		htmlBody: '',
+	};
+
+	if (emailType === 'html') {
+		body.htmlBody = message;
+	} else {
+		body.body = message;
+	}
+
+	return body;
 }
 
 export async function prepareEmailAttachments(
 	this: IExecuteFunctions,
 	options: IDataObject,
-	items: INodeExecutionData[],
 	itemIndex: number,
 ) {
 	const attachmentsList: IDataObject[] = [];
@@ -512,7 +535,6 @@ export function unescapeSnippets(items: INodeExecutionData[]) {
 
 export async function replyToEmail(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
 	gmailId: string,
 	options: IDataObject,
 	itemIndex: number,
@@ -534,7 +556,6 @@ export async function replyToEmail(
 		attachments = await prepareEmailAttachments.call(
 			this,
 			options.attachmentsUi as IDataObject,
-			items,
 			itemIndex,
 		);
 		if (attachments.length) {
@@ -614,7 +635,7 @@ export async function replyToEmail(
 		threadId,
 	};
 
-	return googleApiRequest.call(this, 'POST', '/gmail/v1/users/me/messages/send', body, qs);
+	return await googleApiRequest.call(this, 'POST', '/gmail/v1/users/me/messages/send', body, qs);
 }
 
 export async function simplifyOutput(

@@ -11,14 +11,13 @@ import { NodeApiError } from 'n8n-workflow';
 
 export async function uprocApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string,
 	_option: IDataObject = {},
 ): Promise<any> {
 	const options: IHttpRequestOptions = {
-		method: method as IHttpRequestMethods,
+		method,
 		qs,
 		body,
 		url: 'https://api.uproc.io/api/v2/process',
@@ -28,6 +27,7 @@ export async function uprocApiRequest(
 	try {
 		return await this.helpers.httpRequestWithAuthentication.call(this, 'uprocApi', options);
 	} catch (error) {
+		if (error instanceof NodeApiError) throw error;
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

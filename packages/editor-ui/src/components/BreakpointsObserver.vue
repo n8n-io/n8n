@@ -1,12 +1,15 @@
 <template>
 	<span>
-		<slot v-bind:bp="bp" v-bind:value="value" />
+		<slot :bp="bp" :value="value" />
 	</span>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script setup lang="ts">
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { BREAKPOINT_SM, BREAKPOINT_MD, BREAKPOINT_LG, BREAKPOINT_XL } from '@/constants';
+import { useUIStore } from '@/stores/ui.store';
+import { getBannerRowHeight } from '@/utils/htmlUtils';
+import { useDebounce } from '@/composables/useDebounce';
 
 /**
  * matching element.io https://element.eleme.io/#/en-US/component/layout#col-attributes
@@ -16,83 +19,74 @@ import { BREAKPOINT_SM, BREAKPOINT_MD, BREAKPOINT_LG, BREAKPOINT_XL } from '@/co
  * lg >= 1200
  * xl >= 1920
  */
+interface Props {
+	valueXS?: number;
+	valueXL?: number;
+	valueLG?: number;
+	valueMD?: number;
+	valueSM?: number;
+	valueDefault?: number;
+}
 
-import { genericHelpers } from '@/mixins/genericHelpers';
-import { debounceHelper } from '@/mixins/debounce';
-import { useUIStore } from '@/stores';
-import { getBannerRowHeight } from '@/utils';
+const props = defineProps<Props>();
 
-export default defineComponent({
-	name: 'BreakpointsObserver',
-	mixins: [genericHelpers, debounceHelper],
-	props: ['valueXS', 'valueXL', 'valueLG', 'valueMD', 'valueSM', 'valueDefault'],
-	data() {
-		return {
-			width: window.innerWidth,
-		};
-	},
-	created() {
-		window.addEventListener('resize', this.onResize);
-	},
-	beforeUnmount() {
-		window.removeEventListener('resize', this.onResize);
-	},
-	methods: {
-		onResize() {
-			void this.callDebounced('onResizeEnd', { debounceTime: 50 });
-		},
-		async onResizeEnd() {
-			this.width = window.innerWidth;
-			await this.$nextTick();
+const { callDebounced } = useDebounce();
+const uiStore = useUIStore();
 
-			const bannerHeight = await getBannerRowHeight();
-			useUIStore().updateBannersHeight(bannerHeight);
-		},
-	},
-	computed: {
-		bp(): string {
-			if (this.width < BREAKPOINT_SM) {
-				return 'XS';
-			}
+const width = ref(window.innerWidth);
 
-			if (this.width >= BREAKPOINT_XL) {
-				return 'XL';
-			}
+const bp = computed(() => {
+	if (width.value < BREAKPOINT_SM) {
+		return 'XS';
+	}
+	if (width.value >= BREAKPOINT_XL) {
+		return 'XL';
+	}
+	if (width.value >= BREAKPOINT_LG) {
+		return 'LG';
+	}
+	if (width.value >= BREAKPOINT_MD) {
+		return 'MD';
+	}
+	return 'SM';
+});
 
-			if (this.width >= BREAKPOINT_LG) {
-				return 'LG';
-			}
+const value = computed(() => {
+	if (props.valueXS && width.value < BREAKPOINT_SM) {
+		return props.valueXS;
+	}
+	if (props.valueXL && width.value >= BREAKPOINT_XL) {
+		return props.valueXL;
+	}
+	if (props.valueLG && width.value >= BREAKPOINT_LG) {
+		return props.valueLG;
+	}
+	if (props.valueMD && width.value >= BREAKPOINT_MD) {
+		return props.valueMD;
+	}
+	if (props.valueSM) {
+		return props.valueSM;
+	}
+	return props.valueDefault;
+});
 
-			if (this.width >= BREAKPOINT_MD) {
-				return 'MD';
-			}
+const onResize = () => {
+	void callDebounced(onResizeEnd, { debounceTime: 50 });
+};
 
-			return 'SM';
-		},
+const onResizeEnd = async () => {
+	width.value = window.innerWidth;
+	await nextTick();
 
-		value(): any | undefined {
-			if (this.valueXS !== undefined && this.width < BREAKPOINT_SM) {
-				return this.valueXS;
-			}
+	const bannerHeight = await getBannerRowHeight();
+	uiStore.updateBannersHeight(bannerHeight);
+};
 
-			if (this.valueXL !== undefined && this.width >= BREAKPOINT_XL) {
-				return this.valueXL;
-			}
+onMounted(() => {
+	window.addEventListener('resize', onResize);
+});
 
-			if (this.valueLG !== undefined && this.width >= BREAKPOINT_LG) {
-				return this.valueLG;
-			}
-
-			if (this.valueMD !== undefined && this.width >= BREAKPOINT_MD) {
-				return this.valueMD;
-			}
-
-			if (this.valueSM !== undefined) {
-				return this.valueSM;
-			}
-
-			return this.valueDefault;
-		},
-	},
+onBeforeUnmount(() => {
+	window.removeEventListener('resize', onResize);
 });
 </script>

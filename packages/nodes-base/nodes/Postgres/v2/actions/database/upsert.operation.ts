@@ -6,10 +6,9 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { updateDisplayOptions } from '@utils/utilities';
-
 import type {
 	PgpDatabase,
+	PostgresNodeOptions,
 	QueriesRunner,
 	QueryValues,
 	QueryWithValues,
@@ -22,9 +21,11 @@ import {
 	prepareItem,
 	replaceEmptyStringsByNulls,
 	configureTableSchemaUpdater,
+	convertArraysToPostgresFormat,
 } from '../../helpers/utils';
 
 import { optionsCollection } from '../common.descriptions';
+import { updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
@@ -54,7 +55,7 @@ const properties: INodeProperties[] = [
 	},
 	{
 		displayName: `
-		In this mode, make sure incoming data fields are named the same as the columns in your table. If needed, use a 'Set' node before this node to change the field names.
+		In this mode, make sure incoming data fields are named the same as the columns in your table. If needed, use an 'Edit Fields' node before this node to change the field names.
 		`,
 		name: 'notice',
 		type: 'notice',
@@ -171,7 +172,7 @@ const properties: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				'@version': [2.2],
+				'@version': [{ _cnd: { gte: 2.2 } }],
 			},
 		},
 	},
@@ -194,11 +195,11 @@ export async function execute(
 	this: IExecuteFunctions,
 	runQueries: QueriesRunner,
 	items: INodeExecutionData[],
-	nodeOptions: IDataObject,
+	nodeOptions: PostgresNodeOptions,
 	db: PgpDatabase,
 ): Promise<INodeExecutionData[]> {
 	items = replaceEmptyStringsByNulls(items, nodeOptions.replaceEmptyStrings as boolean);
-	const nodeVersion = nodeOptions.typeVersion as number;
+	const nodeVersion = nodeOptions.nodeVersion as number;
 
 	let schema = this.getNodeParameter('schema', 0, undefined, {
 		extractValue: true,
@@ -270,6 +271,10 @@ export async function execute(
 
 		tableSchema = await updateTableSchema(db, tableSchema, schema, table);
 
+		if (nodeVersion >= 2.4) {
+			convertArraysToPostgresFormat(item, tableSchema, this.getNode(), i);
+		}
+
 		item = checkItemAgainstSchema(this.getNode(), item, tableSchema, i);
 
 		let values: QueryValues = [schema, table];
@@ -305,5 +310,5 @@ export async function execute(
 		queries.push({ query, values });
 	}
 
-	return runQueries(queries, items, nodeOptions);
+	return await runQueries(queries, items, nodeOptions);
 }

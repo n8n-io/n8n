@@ -1,67 +1,68 @@
 <template>
 	<div :class="$style.container" data-test-id="node-credentials-config-container">
-		<banner
+		<Banner
 			v-show="showValidationWarning"
 			theme="danger"
 			:message="
 				$locale.baseText(
 					`credentialEdit.credentialConfig.pleaseCheckTheErrorsBelow${
-						credentialPermissions.isOwner ? '' : '.sharee'
+						credentialPermissions.update ? '' : '.sharee'
 					}`,
 					{ interpolate: { owner: credentialOwnerName } },
 				)
 			"
 		/>
 
-		<banner
+		<Banner
 			v-if="authError && !showValidationWarning"
 			theme="danger"
 			:message="
 				$locale.baseText(
 					`credentialEdit.credentialConfig.couldntConnectWithTheseSettings${
-						credentialPermissions.isOwner ? '' : '.sharee'
+						credentialPermissions.update ? '' : '.sharee'
 					}`,
 					{ interpolate: { owner: credentialOwnerName } },
 				)
 			"
 			:details="authError"
-			:buttonLabel="$locale.baseText('credentialEdit.credentialConfig.retry')"
-			buttonLoadingLabel="Retrying"
-			:buttonTitle="$locale.baseText('credentialEdit.credentialConfig.retryCredentialTest')"
-			:buttonLoading="isRetesting"
+			:button-label="$locale.baseText('credentialEdit.credentialConfig.retry')"
+			button-loading-label="Retrying"
+			:button-title="$locale.baseText('credentialEdit.credentialConfig.retryCredentialTest')"
+			:button-loading="isRetesting"
 			@click="$emit('retest')"
 		/>
 
-		<banner
+		<Banner
 			v-show="showOAuthSuccessBanner && !showValidationWarning"
 			theme="success"
 			:message="$locale.baseText('credentialEdit.credentialConfig.accountConnected')"
-			:buttonLabel="$locale.baseText('credentialEdit.credentialConfig.reconnect')"
-			:buttonTitle="$locale.baseText('credentialEdit.credentialConfig.reconnectOAuth2Credential')"
+			:button-label="$locale.baseText('credentialEdit.credentialConfig.reconnect')"
+			:button-title="$locale.baseText('credentialEdit.credentialConfig.reconnectOAuth2Credential')"
 			@click="$emit('oauth')"
+			data-test-id="oauth-connect-success-banner"
 		>
-			<template #button v-if="isGoogleOAuthType">
+			<template v-if="isGoogleOAuthType" #button>
 				<p
-					v-text="`${$locale.baseText('credentialEdit.credentialConfig.reconnect')}:`"
 					:class="$style.googleReconnectLabel"
+					v-text="`${$locale.baseText('credentialEdit.credentialConfig.reconnect')}:`"
 				/>
 				<GoogleAuthButton @click="$emit('oauth')" />
 			</template>
-		</banner>
+		</Banner>
 
-		<banner
+		<Banner
 			v-show="testedSuccessfully && !showValidationWarning"
 			theme="success"
 			:message="$locale.baseText('credentialEdit.credentialConfig.connectionTestedSuccessfully')"
-			:buttonLabel="$locale.baseText('credentialEdit.credentialConfig.retry')"
-			:buttonLoadingLabel="$locale.baseText('credentialEdit.credentialConfig.retrying')"
-			:buttonTitle="$locale.baseText('credentialEdit.credentialConfig.retryCredentialTest')"
-			:buttonLoading="isRetesting"
-			@click="$emit('retest')"
+			:button-label="$locale.baseText('credentialEdit.credentialConfig.retry')"
+			:button-loading-label="$locale.baseText('credentialEdit.credentialConfig.retrying')"
+			:button-title="$locale.baseText('credentialEdit.credentialConfig.retryCredentialTest')"
+			:button-loading="isRetesting"
 			data-test-id="credentials-config-container-test-success"
+			@click="$emit('retest')"
 		/>
 
-		<template v-if="credentialPermissions.updateConnection">
+		<template v-if="credentialPermissions.update">
 			<n8n-notice v-if="documentationUrl && credentialProperties.length" theme="warning">
 				{{ $locale.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
 				<span class="ml-4xs">
@@ -73,25 +74,25 @@
 
 			<AuthTypeSelector
 				v-if="showAuthTypeSelector && isNewCredential"
-				:credentialType="credentialType"
-				@authTypeChanged="onAuthTypeChange"
+				:credential-type="credentialType"
+				@auth-type-changed="onAuthTypeChange"
 			/>
 
 			<CopyInput
-				v-if="isOAuthType && credentialProperties.length"
+				v-if="isOAuthType && !allOAuth2BasePropertiesOverridden"
 				:label="$locale.baseText('credentialEdit.credentialConfig.oAuthRedirectUrl')"
 				:value="oAuthCallbackUrl"
-				:copyButtonText="$locale.baseText('credentialEdit.credentialConfig.clickToCopy')"
+				:copy-button-text="$locale.baseText('credentialEdit.credentialConfig.clickToCopy')"
 				:hint="
 					$locale.baseText('credentialEdit.credentialConfig.subtitle', { interpolate: { appName } })
 				"
-				:toastTitle="
+				:toast-title="
 					$locale.baseText('credentialEdit.credentialConfig.redirectUrlCopiedToClipboard')
 				"
-				:redactValue="true"
+				:redact-value="true"
 			/>
 		</template>
-		<enterprise-edition v-else :features="[EnterpriseEditionFeature.Sharing]">
+		<EnterpriseEdition v-else :features="[EnterpriseEditionFeature.Sharing]">
 			<div>
 				<n8n-info-tip :bold="false">
 					{{
@@ -101,26 +102,24 @@
 					}}
 				</n8n-info-tip>
 			</div>
-		</enterprise-edition>
+		</EnterpriseEdition>
 
 		<CredentialInputs
-			v-if="credentialType && credentialPermissions.updateConnection"
-			:credentialData="credentialData"
-			:credentialProperties="credentialProperties"
-			:documentationUrl="documentationUrl"
-			:showValidationWarnings="showValidationWarning"
+			v-if="credentialType && credentialPermissions.update"
+			:credential-data="credentialData"
+			:credential-properties="credentialProperties"
+			:documentation-url="documentationUrl"
+			:show-validation-warnings="showValidationWarning"
 			@update="onDataChange"
 		/>
 
 		<OauthButton
 			v-if="
-				isOAuthType &&
-				requiredPropertiesFilled &&
-				!isOAuthConnected &&
-				credentialPermissions.isOwner
+				isOAuthType && requiredPropertiesFilled && !isOAuthConnected && credentialPermissions.update
 			"
-			:isGoogleOAuthType="isGoogleOAuthType"
+			:is-google-o-auth-type="isGoogleOAuthType"
 			@click="$emit('oauth')"
+			data-test-id="oauth-connect-button"
 		/>
 
 		<n8n-text v-if="isMissingCredentials" color="text-base" size="medium">
@@ -142,10 +141,16 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 
-import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
-import { getAppNameFromCredType, isCommunityPackageName } from '@/utils';
+import type {
+	ICredentialDataDecryptedObject,
+	ICredentialType,
+	INodeProperties,
+	INodeTypeDescription,
+} from 'n8n-workflow';
+import { getAppNameFromCredType, isCommunityPackageName } from '@/utils/nodeTypesUtils';
 
 import Banner from '../Banner.vue';
 import CopyInput from '../CopyInput.vue';
@@ -153,14 +158,15 @@ import CredentialInputs from './CredentialInputs.vue';
 import OauthButton from './OauthButton.vue';
 import { addCredentialTranslation } from '@/plugins/i18n';
 import { BUILTIN_CREDENTIALS_DOCS_URL, DOCS_DOMAIN, EnterpriseEditionFeature } from '@/constants';
-import type { IPermissions } from '@/permissions';
+import type { PermissionsMap } from '@/permissions';
+import type { CredentialScope } from '@n8n/permissions';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import type { ICredentialsResponse } from '@/Interface';
+import type { ICredentialsResponse, IUpdateInformation } from '@/Interface';
 import AuthTypeSelector from '@/components/CredentialEdit/AuthTypeSelector.vue';
 import GoogleAuthButton from './GoogleAuthButton.vue';
 import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
@@ -178,15 +184,21 @@ export default defineComponent({
 	},
 	props: {
 		credentialType: {
-			type: Object,
+			type: Object as PropType<ICredentialType>,
+			required: true,
 		},
 		credentialProperties: {
-			type: Array,
+			type: Array as PropType<INodeProperties[]>,
+			required: true,
 		},
 		parentTypes: {
-			type: Array,
+			type: Array as PropType<string[]>,
+			default: () => [],
 		},
-		credentialData: {},
+		credentialData: {
+			type: Object as PropType<ICredentialDataDecryptedObject>,
+			required: true,
+		},
 		credentialId: {
 			type: String,
 			default: '',
@@ -204,6 +216,9 @@ export default defineComponent({
 		isOAuthType: {
 			type: Boolean,
 		},
+		allOAuth2BasePropertiesOverridden: {
+			type: Boolean,
+		},
 		isOAuthConnected: {
 			type: Boolean,
 		},
@@ -211,8 +226,8 @@ export default defineComponent({
 			type: Boolean,
 		},
 		credentialPermissions: {
-			type: Object,
-			default: (): IPermissions => ({}),
+			type: Object as PropType<PermissionsMap<CredentialScope>>,
+			default: () => ({}) as PermissionsMap<CredentialScope>,
 		},
 		requiredPropertiesFilled: {
 			type: Boolean,
@@ -270,7 +285,7 @@ export default defineComponent({
 				return '';
 			}
 
-			const appName = getAppNameFromCredType((this.credentialType as ICredentialType).displayName);
+			const appName = getAppNameFromCredType(this.credentialType.displayName);
 
 			return (
 				appName ||
@@ -278,17 +293,17 @@ export default defineComponent({
 			);
 		},
 		credentialTypeName(): string {
-			return (this.credentialType as ICredentialType)?.name;
+			return this.credentialType?.name;
 		},
 		credentialOwnerName(): string {
 			return this.credentialsStore.getCredentialOwnerNameById(`${this.credentialId}`);
 		},
 		documentationUrl(): string {
-			const type = this.credentialType as ICredentialType;
+			const type = this.credentialType;
 			const activeNode = this.ndvStore.activeNode;
 			const isCommunityNode = activeNode ? isCommunityPackageName(activeNode.type) : false;
 
-			const documentationUrl = type && type.documentationUrl;
+			const documentationUrl = type?.documentationUrl;
 
 			if (!documentationUrl) {
 				return '';
@@ -306,7 +321,7 @@ export default defineComponent({
 
 			if (url.hostname === DOCS_DOMAIN) {
 				url.searchParams.set('utm_source', 'n8n_app');
-				url.searchParams.set('utm_medium', 'left_nav_menu');
+				url.searchParams.set('utm_medium', 'credential_settings');
 				url.searchParams.set('utm_campaign', 'create_new_credentials_modal');
 			}
 
@@ -323,7 +338,7 @@ export default defineComponent({
 				this.credentialTypeName === 'oAuth2Api' || this.parentTypes.includes('oAuth2Api')
 					? 'oauth2'
 					: 'oauth1';
-			return this.rootStore.oauthCallbackUrls[oauthType as keyof {}];
+			return this.rootStore.OAuthCallbackUrls[oauthType as keyof {}];
 		},
 		showOAuthSuccessBanner(): boolean {
 			return (
@@ -344,7 +359,7 @@ export default defineComponent({
 		getCredentialOptions(type: string): ICredentialsResponse[] {
 			return this.credentialsStore.allUsableCredentialsByType[type];
 		},
-		onDataChange(event: { name: string; value: string | number | boolean | Date | null }): void {
+		onDataChange(event: IUpdateInformation): void {
 			this.$emit('update', event);
 		},
 		onDocumentationUrlClick(): void {

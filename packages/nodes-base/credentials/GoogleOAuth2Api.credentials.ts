@@ -1,4 +1,4 @@
-import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties, Icon } from 'n8n-workflow';
 
 export class GoogleOAuth2Api implements ICredentialType {
 	name = 'googleOAuth2Api';
@@ -9,7 +9,7 @@ export class GoogleOAuth2Api implements ICredentialType {
 
 	documentationUrl = 'google/oauth-generic';
 
-	icon = 'file:icons/Google.svg';
+	icon: Icon = 'file:icons/Google.svg';
 
 	properties: INodeProperties[] = [
 		{

@@ -1,10 +1,10 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
+	IRequestOptions,
 	IWebhookFunctions,
 	JsonObject,
 } from 'n8n-workflow';
@@ -12,7 +12,7 @@ import { NodeApiError } from 'n8n-workflow';
 
 export async function eventbriteApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},
@@ -20,7 +20,7 @@ export async function eventbriteApiRequest(
 	uri?: string,
 	option: IDataObject = {},
 ): Promise<any> {
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		headers: {},
 		method,
 		qs,
@@ -56,7 +56,7 @@ export async function eventbriteApiRequest(
 export async function eventbriteApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},

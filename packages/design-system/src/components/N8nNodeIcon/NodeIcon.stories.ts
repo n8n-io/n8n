@@ -38,3 +38,11 @@ Hoverable.args = {
 	nodeTypeName: 'We ❤️ n8n',
 	showTooltip: true,
 };
+
+export const Unknown = DefaultTemplate.bind({});
+Unknown.args = {
+	type: 'unknown',
+	nodeTypeName: '',
+	size: 40,
+	color: 'red',
+};

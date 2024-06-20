@@ -1,3 +1,4 @@
+import { exec } from 'child_process';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -5,8 +6,6 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-
-import { exec } from 'child_process';
 
 export interface IExecReturnData {
 	exitCode: number;
@@ -27,7 +26,7 @@ async function execPromise(command: string): Promise<IExecReturnData> {
 		stdout: '',
 	};
 
-	return new Promise((resolve, _reject) => {
+	return await new Promise((resolve, _reject) => {
 		exec(command, { cwd: process.cwd() }, (error, stdout, stderr) => {
 			returnData.stdout = stdout.trim();
 			returnData.stderr = stderr.trim();
@@ -48,6 +47,7 @@ export class ExecuteCommand implements INodeType {
 		displayName: 'Execute Command',
 		name: 'executeCommand',
 		icon: 'fa:terminal',
+		iconColor: 'crimson',
 		group: ['transform'],
 		version: 1,
 		description: 'Executes a command on the host',
@@ -112,7 +112,7 @@ export class ExecuteCommand implements INodeType {
 					},
 				});
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnItems.push({
 						json: {
 							error: error.message,
@@ -127,6 +127,6 @@ export class ExecuteCommand implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnItems);
+		return [returnItems];
 	}
 }

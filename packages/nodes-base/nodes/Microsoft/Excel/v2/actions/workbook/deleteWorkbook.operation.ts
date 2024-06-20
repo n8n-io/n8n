@@ -1,8 +1,8 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { updateDisplayOptions } from '@utils/utilities';
 import { microsoftApiRequest } from '../../transport';
 import { workbookRLC } from '../common.descriptions';
+import { updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [workbookRLC];
 
@@ -60,7 +60,7 @@ export async function execute(
 				returnData.push(...executionData);
 			}
 		} catch (error) {
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(error)) {
 				const executionErrorData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray({ error: error.message }),
 					{ itemData: { item: i } },

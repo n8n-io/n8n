@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-loop-func */
+import { NodeConnectionType, type IDataObject } from 'n8n-workflow';
 import type { WorkflowTestData } from '@test/nodes/types';
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import * as Helpers from '@test/nodes/Helpers';
-import type { IDataObject } from 'n8n-workflow';
 
 describe('Execute Stop and Error Node', () => {
 	const tests: WorkflowTestData[] = [
@@ -49,12 +49,12 @@ describe('Execute Stop and Error Node', () => {
 								[
 									{
 										node: 'Stop and Error1',
-										type: 'main',
+										type: NodeConnectionType.Main,
 										index: 0,
 									},
 									{
 										node: 'Stop and Error',
-										type: 'main',
+										type: NodeConnectionType.Main,
 										index: 0,
 									},
 								],
@@ -88,7 +88,7 @@ describe('Execute Stop and Error Node', () => {
 			const stopAndError1RunData = result.data.resultData.runData['Stop and Error1'];
 			const stopAndError1Object = (
 				(stopAndError1RunData as unknown as IDataObject[])[0].error as IDataObject
-			).cause;
+			).errorResponse;
 
 			expect(stopAndError1Object).toEqual({
 				code: 404,

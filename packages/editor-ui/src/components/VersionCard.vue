@@ -1,5 +1,11 @@
 <template>
-	<a v-if="version" :href="version.documentationUrl" target="_blank" :class="$style.card">
+	<a
+		v-if="version"
+		:href="version.documentationUrl"
+		target="_blank"
+		:class="$style.card"
+		data-test-id="version-card"
+	>
 		<div :class="$style.header">
 			<div>
 				<div :class="$style.name">
@@ -24,51 +30,44 @@
 			</div>
 		</div>
 		<div
-			:class="$style.divider"
 			v-if="version.description || (version.nodes && version.nodes.length)"
+			:class="$style.divider"
 		></div>
 		<div>
 			<div
 				v-if="version.description"
-				v-html="version.description"
 				:class="$style.description"
+				v-html="version.description"
 			></div>
 			<div v-if="version.nodes && version.nodes.length > 0" :class="$style.nodes">
 				<NodeIcon
 					v-for="node in version.nodes"
 					:key="node.name"
-					:nodeType="node"
-					:title="$options.nodeName(node)"
+					:node-type="node"
+					:title="nodeName(node)"
 				/>
 			</div>
 		</div>
 	</a>
 </template>
 
-<script lang="ts">
-import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
+<script setup lang="ts">
 import NodeIcon from './NodeIcon.vue';
 import TimeAgo from './TimeAgo.vue';
 import Badge from './Badge.vue';
 import WarningTooltip from './WarningTooltip.vue';
-import type { IVersionNode } from '@/Interface';
-import type { IVersion } from '@/Interface';
+import type { IVersion, IVersionNode } from '@/Interface';
+import { useI18n } from '@/composables/useI18n';
 
-export default defineComponent({
-	name: 'VersionCard',
-	components: { NodeIcon, TimeAgo, Badge, WarningTooltip },
-	props: {
-		version: {
-			type: Object as PropType<IVersion>,
-			required: true,
-		},
-	},
-	// @ts-ignore
-	nodeName(node: IVersionNode): string {
-		return node !== null ? node.displayName : this.$locale.baseText('versionCard.unknown');
-	},
-});
+defineProps<{
+	version: IVersion;
+}>();
+
+const i18n = useI18n();
+
+const nodeName = (node: IVersionNode): string => {
+	return node !== null ? node.displayName : i18n.baseText('versionCard.unknown');
+};
 </script>
 
 <style module lang="scss">

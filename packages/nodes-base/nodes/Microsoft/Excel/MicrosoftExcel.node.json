@@ -15,5 +15,5 @@
 			}
 		]
 	},
-	"alias": ["CSV", "Spreadsheet"]
+	"alias": ["_Excel", "Excel", "Sheet", "CSV", "Spreadsheet"]
 }

@@ -1,11 +1,15 @@
-import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
 import {
 	getRangeString,
 	prepareSheetData,
 	untilSheetSelected,
 } from '../../helpers/GoogleSheets.utils';
-import { dataLocationOnSheet, outputFormatting } from './commonDescription';
 import type {
 	ILookupValues,
 	RangeDetectionOptions,
@@ -13,6 +17,29 @@ import type {
 	SheetRangeData,
 	ValueRenderOption,
 } from '../../helpers/GoogleSheets.types';
+
+import { dataLocationOnSheet, outputFormatting } from './commonDescription';
+
+const combineFiltersOptions: INodeProperties = {
+	displayName: 'Combine Filters',
+	name: 'combineFilters',
+	type: 'options',
+	description:
+		'How to combine the conditions defined in "Filters": AND requires all conditions to be true, OR requires at least one condition to be true',
+	options: [
+		{
+			name: 'AND',
+			value: 'AND',
+			description: 'Only rows that meet all the conditions are selected',
+		},
+		{
+			name: 'OR',
+			value: 'OR',
+			description: 'Rows that meet at least one condition are selected',
+		},
+	],
+	default: 'AND',
+};
 
 export const description: SheetProperties = [
 	{
@@ -64,6 +91,33 @@ export const description: SheetProperties = [
 		},
 	},
 	{
+		...combineFiltersOptions,
+		default: 'OR',
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { lt: 4.3 } }],
+				resource: ['sheet'],
+				operation: ['read'],
+			},
+			hide: {
+				...untilSheetSelected,
+			},
+		},
+	},
+	{
+		...combineFiltersOptions,
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 4.3 } }],
+				resource: ['sheet'],
+				operation: ['read'],
+			},
+			hide: {
+				...untilSheetSelected,
+			},
+		},
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
@@ -79,8 +133,8 @@ export const description: SheetProperties = [
 			},
 		},
 		options: [
-			...dataLocationOnSheet,
-			...outputFormatting,
+			dataLocationOnSheet,
+			outputFormatting,
 			{
 				displayName: 'When Filter Has Multiple Matches',
 				name: 'returnAllMatches',
@@ -110,60 +164,98 @@ export async function execute(
 	sheet: GoogleSheet,
 	sheetName: string,
 ): Promise<INodeExecutionData[]> {
-	const options = this.getNodeParameter('options', 0, {});
-	const outputFormattingOption =
-		((options.outputFormatting as IDataObject)?.values as IDataObject) || {};
+	const items = this.getInputData();
+	const nodeVersion = this.getNode().typeVersion;
+	let length = 1;
 
-	const dataLocationOnSheetOptions =
-		((options.dataLocationOnSheet as IDataObject)?.values as RangeDetectionOptions) || {};
-
-	if (dataLocationOnSheetOptions.rangeDefinition === undefined) {
-		dataLocationOnSheetOptions.rangeDefinition = 'detectAutomatically';
+	if (nodeVersion > 4.1) {
+		length = items.length;
 	}
 
-	const range = getRangeString(sheetName, dataLocationOnSheetOptions);
+	const returnData: INodeExecutionData[] = [];
 
-	const valueRenderMode = (outputFormattingOption.general ||
-		'UNFORMATTED_VALUE') as ValueRenderOption;
-	const dateTimeRenderOption = (outputFormattingOption.date || 'FORMATTED_STRING') as string;
+	for (let itemIndex = 0; itemIndex < length; itemIndex++) {
+		const options = this.getNodeParameter('options', itemIndex, {});
+		const outputFormattingOption =
+			((options.outputFormatting as IDataObject)?.values as IDataObject) || {};
 
-	const sheetData = (await sheet.getData(
-		range,
-		valueRenderMode,
-		dateTimeRenderOption,
-	)) as SheetRangeData;
+		const dataLocationOnSheetOptions =
+			((options.dataLocationOnSheet as IDataObject)?.values as RangeDetectionOptions) || {};
 
-	if (sheetData === undefined || sheetData.length === 0) {
-		return [];
-	}
-
-	const { data, headerRow, firstDataRow } = prepareSheetData(sheetData, dataLocationOnSheetOptions);
-
-	let returnData = [];
-
-	const lookupValues = this.getNodeParameter('filtersUI.values', 0, []) as ILookupValues[];
-
-	if (lookupValues.length) {
-		const returnAllMatches = options.returnAllMatches === 'returnAllMatches' ? true : false;
-
-		const items = this.getInputData();
-		for (let i = 1; i < items.length; i++) {
-			const itemLookupValues = this.getNodeParameter('filtersUI.values', i, []) as ILookupValues[];
-			if (itemLookupValues.length) {
-				lookupValues.push(...itemLookupValues);
-			}
+		if (dataLocationOnSheetOptions.rangeDefinition === undefined) {
+			dataLocationOnSheetOptions.rangeDefinition = 'detectAutomatically';
 		}
 
-		returnData = await sheet.lookupValues(
-			data as string[][],
-			headerRow,
-			firstDataRow,
-			lookupValues,
-			returnAllMatches,
+		const range = getRangeString(sheetName, dataLocationOnSheetOptions);
+
+		const valueRenderMode = (outputFormattingOption.general ||
+			'UNFORMATTED_VALUE') as ValueRenderOption;
+		const dateTimeRenderOption = (outputFormattingOption.date || 'FORMATTED_STRING') as string;
+
+		const sheetData = (await sheet.getData(
+			range,
+			valueRenderMode,
+			dateTimeRenderOption,
+		)) as SheetRangeData;
+
+		if (sheetData === undefined || sheetData.length === 0) {
+			return [];
+		}
+
+		const { data, headerRow, firstDataRow } = prepareSheetData(
+			sheetData,
+			dataLocationOnSheetOptions,
 		);
-	} else {
-		returnData = sheet.structureArrayDataByColumn(data as string[][], headerRow, firstDataRow);
+
+		let responseData = [];
+
+		const lookupValues = this.getNodeParameter(
+			'filtersUI.values',
+			itemIndex,
+			[],
+		) as ILookupValues[];
+
+		if (lookupValues.length) {
+			const returnAllMatches = options.returnAllMatches === 'returnAllMatches' ? true : false;
+
+			if (nodeVersion <= 4.1) {
+				for (let i = 1; i < items.length; i++) {
+					const itemLookupValues = this.getNodeParameter(
+						'filtersUI.values',
+						i,
+						[],
+					) as ILookupValues[];
+					if (itemLookupValues.length) {
+						lookupValues.push(...itemLookupValues);
+					}
+				}
+			}
+
+			const combineFilters = this.getNodeParameter('combineFilters', itemIndex, 'OR') as
+				| 'AND'
+				| 'OR';
+
+			responseData = await sheet.lookupValues(
+				data as string[][],
+				headerRow,
+				firstDataRow,
+				lookupValues,
+				returnAllMatches,
+				combineFilters,
+			);
+		} else {
+			responseData = sheet.structureArrayDataByColumn(data as string[][], headerRow, firstDataRow);
+		}
+
+		returnData.push(
+			...responseData.map((item) => {
+				return {
+					json: item,
+					pairedItem: { item: itemIndex },
+				};
+			}),
+		);
 	}
 
-	return this.helpers.returnJsonArray(returnData);
+	return returnData;
 }

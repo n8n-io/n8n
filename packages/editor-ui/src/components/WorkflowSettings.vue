@@ -2,13 +2,13 @@
 	<Modal
 		:name="WORKFLOW_SETTINGS_MODAL_KEY"
 		width="65%"
-		maxHeight="80%"
+		max-height="80%"
 		:title="
 			$locale.baseText('workflowSettings.settingsFor', {
 				interpolate: { workflowName, workflowId },
 			})
 		"
-		:eventBus="modalBus"
+		:event-bus="modalBus"
 		:scrollable="true"
 	>
 		<template #content>
@@ -67,7 +67,7 @@
 						</n8n-select>
 					</el-col>
 				</el-row>
-				<div v-if="isSharingEnabled">
+				<div v-if="isSharingEnabled" data-test-id="workflow-caller-policy">
 					<el-row>
 						<el-col :span="10" class="setting-name">
 							{{ $locale.baseText('workflowSettings.callerPolicy') + ':' }}
@@ -109,11 +109,12 @@
 						</el-col>
 						<el-col :span="14">
 							<n8n-input
+								v-model="workflowSettings.callerIds"
 								:disabled="readOnlyEnv"
 								:placeholder="$locale.baseText('workflowSettings.callerIds.placeholder')"
 								type="text"
-								v-model="workflowSettings.callerIds"
-								@update:modelValue="onCallerIdsInput"
+								data-test-id="workflow-caller-policy-workflow-ids"
+								@update:model-value="onCallerIdsInput"
 							/>
 						</el-col>
 					</el-row>
@@ -278,16 +279,16 @@
 							<el-switch
 								ref="inputField"
 								:disabled="readOnlyEnv"
-								:modelValue="workflowSettings.executionTimeout > -1"
-								@update:modelValue="toggleTimeout"
+								:model-value="(workflowSettings.executionTimeout ?? -1) > -1"
 								active-color="#13ce66"
 								data-test-id="workflow-settings-timeout-workflow"
+								@update:model-value="toggleTimeout"
 							></el-switch>
 						</div>
 					</el-col>
 				</el-row>
 				<div
-					v-if="workflowSettings.executionTimeout > -1"
+					v-if="(workflowSettings.executionTimeout ?? -1) > -1"
 					data-test-id="workflow-settings-timeout-form"
 				>
 					<el-row>
@@ -303,9 +304,9 @@
 						<el-col :span="4">
 							<n8n-input
 								:disabled="readOnlyEnv"
-								:modelValue="timeoutHMS.hours"
-								@update:modelValue="(value) => setTimeout('hours', value)"
+								:model-value="timeoutHMS.hours"
 								:min="0"
+								@update:model-value="(value: string) => setTimeout('hours', value)"
 							>
 								<template #append>{{ $locale.baseText('workflowSettings.hours') }}</template>
 							</n8n-input>
@@ -313,10 +314,10 @@
 						<el-col :span="4" class="timeout-input">
 							<n8n-input
 								:disabled="readOnlyEnv"
-								:modelValue="timeoutHMS.minutes"
+								:model-value="timeoutHMS.minutes"
 								:min="0"
 								:max="60"
-								@update:modelValue="(value) => setTimeout('minutes', value)"
+								@update:model-value="(value: string) => setTimeout('minutes', value)"
 							>
 								<template #append>{{ $locale.baseText('workflowSettings.minutes') }}</template>
 							</n8n-input>
@@ -324,10 +325,10 @@
 						<el-col :span="4" class="timeout-input">
 							<n8n-input
 								:disabled="readOnlyEnv"
-								:modelValue="timeoutHMS.seconds"
+								:model-value="timeoutHMS.seconds"
 								:min="0"
 								:max="60"
-								@update:modelValue="(value) => setTimeout('seconds', value)"
+								@update:model-value="(value: string) => setTimeout('seconds', value)"
 							>
 								<template #append>{{ $locale.baseText('workflowSettings.seconds') }}</template>
 							</n8n-input>
@@ -354,9 +355,7 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 
-import { externalHooks } from '@/mixins/externalHooks';
-import { genericHelpers } from '@/mixins/genericHelpers';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import type {
 	ITimeoutHMS,
 	IUser,
@@ -374,23 +373,29 @@ import {
 
 import type { WorkflowSettings } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
-import {
-	useWorkflowsStore,
-	useSettingsStore,
-	useRootStore,
-	useWorkflowsEEStore,
-	useUsersStore,
-} from '@/stores';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useRootStore } from '@/stores/root.store';
+import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from 'n8n-design-system/utils';
+import type { PermissionsMap } from '@/permissions';
+import type { WorkflowScope } from '@n8n/permissions';
+import { getWorkflowPermissions } from '@/permissions';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { ProjectTypes } from '@/types/projects.types';
 
 export default defineComponent({
 	name: 'WorkflowSettings',
-	mixins: [externalHooks, genericHelpers],
 	components: {
 		Modal,
 	},
 	setup() {
+		const externalHooks = useExternalHooks();
+
 		return {
+			externalHooks,
 			...useToast(),
 		};
 	},
@@ -455,9 +460,13 @@ export default defineComponent({
 			useRootStore,
 			useUsersStore,
 			useSettingsStore,
+			useSourceControlStore,
 			useWorkflowsStore,
 			useWorkflowsEEStore,
 		),
+		readOnlyEnv(): boolean {
+			return this.sourceControlStore.preferences.branchReadOnly;
+		},
 		workflowName(): string {
 			return this.workflowsStore.workflowName;
 		},
@@ -465,7 +474,7 @@ export default defineComponent({
 			return this.workflowsStore.workflowId;
 		},
 		workflow(): IWorkflowDb {
-			return this.workflowsStore.workflow;
+			return this.workflowsStore.getWorkflowById(this.workflowId);
 		},
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
@@ -475,10 +484,13 @@ export default defineComponent({
 		},
 		workflowOwnerName(): string {
 			const fallback = this.$locale.baseText(
-				'workflowSettings.callerPolicy.options.workflowsFromSameOwner.fallback',
+				'workflowSettings.callerPolicy.options.workflowsFromSameProject',
 			);
 
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflowId}`, fallback);
+		},
+		workflowPermissions(): PermissionsMap<WorkflowScope> {
+			return getWorkflowPermissions(this.workflow);
 		},
 	},
 	async mounted() {
@@ -557,7 +569,7 @@ export default defineComponent({
 		this.timeoutHMS = this.convertToHMS(workflowSettings.executionTimeout);
 		this.isLoading = false;
 
-		void this.$externalHooks().run('workflowSettings.dialogVisibleChanged', {
+		void this.externalHooks.run('workflowSettings.dialogVisibleChanged', {
 			dialogVisible: true,
 		});
 		this.$telemetry.track('User opened workflow settings', {
@@ -566,13 +578,13 @@ export default defineComponent({
 	},
 	methods: {
 		onCallerIdsInput(str: string) {
-			this.workflowSettings.callerIds = /^[0-9,\s]+$/.test(str)
+			this.workflowSettings.callerIds = /^[a-zA-Z0-9,\s]+$/.test(str)
 				? str
-				: str.replace(/[^0-9,\s]/g, '');
+				: str.replace(/[^a-zA-Z0-9,\s]/g, '');
 		},
 		closeDialog() {
 			this.modalBus.emit('close');
-			void this.$externalHooks().run('workflowSettings.dialogVisibleChanged', {
+			void this.externalHooks.run('workflowSettings.dialogVisibleChanged', {
 				dialogVisible: false,
 			});
 		},
@@ -585,8 +597,6 @@ export default defineComponent({
 			};
 		},
 		async loadWorkflowCallerPolicyOptions() {
-			const currentUserIsOwner = this.workflow.ownedBy?.id === this.currentUser?.id;
-
 			this.workflowCallerPolicyOptions = [
 				{
 					key: 'none',
@@ -595,14 +605,12 @@ export default defineComponent({
 				{
 					key: 'workflowsFromSameOwner',
 					value: this.$locale.baseText(
-						'workflowSettings.callerPolicy.options.workflowsFromSameOwner',
+						this.workflow.homeProject?.type === ProjectTypes.Personal
+							? 'workflowSettings.callerPolicy.options.workflowsFromPersonalProject'
+							: 'workflowSettings.callerPolicy.options.workflowsFromTeamProject',
 						{
 							interpolate: {
-								owner: currentUserIsOwner
-									? this.$locale.baseText(
-											'workflowSettings.callerPolicy.options.workflowsFromSameOwner.owner',
-									  )
-									: this.workflowOwnerName,
+								projectName: this.workflowOwnerName,
 							},
 						},
 					),
@@ -631,7 +639,7 @@ export default defineComponent({
 										? this.$locale.baseText('workflowSettings.saveDataErrorExecutionOptions.save')
 										: this.$locale.baseText(
 												'workflowSettings.saveDataErrorExecutionOptions.doNotSave',
-										  ),
+											),
 							},
 						},
 					),
@@ -660,7 +668,7 @@ export default defineComponent({
 										? this.$locale.baseText('workflowSettings.saveDataSuccessExecutionOptions.save')
 										: this.$locale.baseText(
 												'workflowSettings.saveDataSuccessExecutionOptions.doNotSave',
-										  ),
+											),
 							},
 						},
 					),
@@ -687,19 +695,21 @@ export default defineComponent({
 						{
 							interpolate: {
 								defaultValue: this.defaultValues.saveExecutionProgress
-									? this.$locale.baseText('workflowSettings.saveExecutionProgressOptions.yes')
-									: this.$locale.baseText('workflowSettings.saveExecutionProgressOptions.no'),
+									? this.$locale.baseText('workflowSettings.saveExecutionProgressOptions.save')
+									: this.$locale.baseText(
+											'workflowSettings.saveExecutionProgressOptions.doNotSave',
+										),
 							},
 						},
 					),
 				},
 				{
 					key: true,
-					value: this.$locale.baseText('workflowSettings.saveExecutionProgressOptions.yes'),
+					value: this.$locale.baseText('workflowSettings.saveExecutionProgressOptions.save'),
 				},
 				{
 					key: false,
-					value: this.$locale.baseText('workflowSettings.saveExecutionProgressOptions.no'),
+					value: this.$locale.baseText('workflowSettings.saveExecutionProgressOptions.doNotSave'),
 				},
 			]);
 		},
@@ -710,18 +720,18 @@ export default defineComponent({
 				value: this.$locale.baseText('workflowSettings.saveManualOptions.defaultSave', {
 					interpolate: {
 						defaultValue: this.defaultValues.saveManualExecutions
-							? this.$locale.baseText('workflowSettings.saveManualOptions.yes')
-							: this.$locale.baseText('workflowSettings.saveManualOptions.no'),
+							? this.$locale.baseText('workflowSettings.saveManualOptions.save')
+							: this.$locale.baseText('workflowSettings.saveManualOptions.doNotSave'),
 					},
 				}),
 			});
 			this.saveManualOptions.push({
 				key: true,
-				value: this.$locale.baseText('workflowSettings.saveManualOptions.yes'),
+				value: this.$locale.baseText('workflowSettings.saveManualOptions.save'),
 			});
 			this.saveManualOptions.push({
 				key: false,
-				value: this.$locale.baseText('workflowSettings.saveManualOptions.no'),
+				value: this.$locale.baseText('workflowSettings.saveManualOptions.doNotSave'),
 			});
 		},
 
@@ -752,7 +762,9 @@ export default defineComponent({
 			}
 		},
 		async loadWorkflows() {
-			const workflows = (await this.workflowsStore.fetchAllWorkflows()) as IWorkflowShortResponse[];
+			const workflows = (await this.workflowsStore.fetchAllWorkflows(
+				this.workflow.homeProject?.id,
+			)) as IWorkflowShortResponse[];
 			workflows.sort((a, b) => {
 				if (a.name.toLowerCase() < b.name.toLowerCase()) {
 					return -1;
@@ -816,7 +828,10 @@ export default defineComponent({
 			data.versionId = this.workflowsStore.workflowVersionId;
 
 			try {
-				const workflow = await this.workflowsStore.updateWorkflow(this.$route.params.name, data);
+				const workflow = await this.workflowsStore.updateWorkflow(
+					String(this.$route.params.name),
+					data,
+				);
 				this.workflowsStore.setWorkflowVersionId(workflow.versionId);
 			} catch (error) {
 				this.showError(
@@ -828,12 +843,9 @@ export default defineComponent({
 			}
 
 			// Get the settings without the defaults set for local workflow settings
-			const localWorkflowSettings: IWorkflowSettings = {};
-			for (const key of Object.keys(this.workflowSettings)) {
-				if (this.workflowSettings[key] !== 'DEFAULT') {
-					localWorkflowSettings[key] = this.workflowSettings[key];
-				}
-			}
+			const localWorkflowSettings = Object.fromEntries(
+				Object.entries(this.workflowSettings).filter(([, value]) => value !== 'DEFAULT'),
+			);
 
 			const oldSettings = deepCopy(this.workflowsStore.workflowSettings);
 
@@ -848,7 +860,7 @@ export default defineComponent({
 
 			this.closeDialog();
 
-			void this.$externalHooks().run('workflowSettings.saveSettings', { oldSettings });
+			void this.externalHooks.run('workflowSettings.saveSettings', { oldSettings });
 			this.$telemetry.track('User updated workflow settings', {
 				workflow_id: this.workflowsStore.workflowId,
 			});

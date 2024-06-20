@@ -1,17 +1,17 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function humanticAiApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},
@@ -20,7 +20,7 @@ export async function humanticAiApiRequest(
 ): Promise<any> {
 	try {
 		const credentials = await this.getCredentials('humanticAiApi');
-		let options: OptionsWithUri = {
+		let options = {
 			headers: {
 				'Content-Type': 'application/json',
 			},
@@ -29,7 +29,7 @@ export async function humanticAiApiRequest(
 			body,
 			uri: `https://api.humantic.ai/v1${resource}`,
 			json: true,
-		};
+		} satisfies IRequestOptions;
 
 		options = Object.assign({}, options, option);
 		options.qs.apikey = credentials.apiKey;

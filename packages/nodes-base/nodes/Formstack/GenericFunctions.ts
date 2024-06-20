@@ -6,10 +6,10 @@ import type {
 	IWebhookFunctions,
 	INodePropertyOptions,
 	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
-
-import type { OptionsWithUri } from 'request';
+import { ApplicationError, NodeApiError } from 'n8n-workflow';
 
 export interface IFormstackFieldDefinitionType {
 	id: string;
@@ -51,14 +51,14 @@ export const enum FormstackFieldFormat {
  */
 export async function apiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {},
 		method,
 		body,
@@ -93,7 +93,7 @@ export async function apiRequest(
  */
 export async function apiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject,
 	dataKey: string,
@@ -136,7 +136,7 @@ export async function getForms(this: ILoadOptionsFunctions): Promise<INodeProper
 	});
 
 	if (responseData.items === undefined) {
-		throw new Error('No data got returned');
+		throw new ApplicationError('No data got returned', { level: 'warning' });
 	}
 	const returnData: INodePropertyOptions[] = [];
 	for (const baseData of responseData.items) {
@@ -160,7 +160,7 @@ export async function getFields(
 	const responseData = await apiRequestAllItems.call(this, 'GET', endpoint, {}, 'fields');
 
 	if (responseData.items === undefined) {
-		throw new Error('No form fields meta data got returned');
+		throw new ApplicationError('No form fields meta data got returned', { level: 'warning' });
 	}
 
 	const fields = responseData.items as IFormstackFieldDefinitionType[];
@@ -185,7 +185,7 @@ export async function getSubmission(
 	const responseData = await apiRequestAllItems.call(this, 'GET', endpoint, {}, 'data');
 
 	if (responseData.items === undefined) {
-		throw new Error('No form fields meta data got returned');
+		throw new ApplicationError('No form fields meta data got returned', { level: 'warning' });
 	}
 
 	return responseData.items as IFormstackSubmissionFieldContainer[];

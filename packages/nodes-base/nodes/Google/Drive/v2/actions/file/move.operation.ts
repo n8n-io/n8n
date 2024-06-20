@@ -5,10 +5,10 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { updateDisplayOptions } from '@utils/utilities';
 import { driveRLC, fileRLC, folderRLC } from '../common.descriptions';
 import { googleApiRequest } from '../../transport';
 import { setParentFolder } from '../../helpers/utils';
+import { updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{

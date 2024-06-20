@@ -3,7 +3,7 @@ import BaseBanner from '@/components/banners/BaseBanner.vue';
 import { i18n as locale } from '@/plugins/i18n';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { computed } from 'vue';
-import { useUIStore } from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
 
 const trialDaysLeft = computed(() => {
 	const { trialDaysLeft } = useCloudPlanStore();
@@ -18,19 +18,19 @@ const messageText = computed(() => {
 });
 
 function onUpdatePlanClick() {
-	useUIStore().goToUpgrade('canvas-nav', 'upgrade-canvas-nav', 'redirect');
+	void useUIStore().goToUpgrade('canvas-nav', 'upgrade-canvas-nav', 'redirect');
 }
 </script>
 
 <template>
-	<base-banner name="TRIAL" theme="custom">
+	<BaseBanner name="TRIAL" theme="custom">
 		<template #mainContent>
 			<span>{{ messageText }}</span>
 		</template>
 		<template #trailingContent>
-			<n8n-button type="success" @click="onUpdatePlanClick" icon="gem" size="small">{{
+			<n8n-button type="success" icon="gem" size="small" @click="onUpdatePlanClick">{{
 				locale.baseText('generic.upgradeNow')
 			}}</n8n-button>
 		</template>
-	</base-banner>
+	</BaseBanner>
 </template>

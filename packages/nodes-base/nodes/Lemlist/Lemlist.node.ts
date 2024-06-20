@@ -7,6 +7,8 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import isEmpty from 'lodash/isEmpty';
+import omit from 'lodash/omit';
 import {
 	activityFields,
 	activityOperations,
@@ -21,9 +23,6 @@ import {
 } from './descriptions';
 
 import { lemlistApiRequest, lemlistApiRequestAllItems } from './GenericFunctions';
-
-import isEmpty from 'lodash/isEmpty';
-import omit from 'lodash/omit';
 
 export class Lemlist implements INodeType {
 	description: INodeTypeDescription = {
@@ -289,7 +288,7 @@ export class Lemlist implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
@@ -309,6 +308,6 @@ export class Lemlist implements INodeType {
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

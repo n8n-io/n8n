@@ -484,7 +484,7 @@ export class ConvertKit implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ error: error.message, json: {} });
 					continue;
 				}
@@ -492,6 +492,6 @@ export class ConvertKit implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

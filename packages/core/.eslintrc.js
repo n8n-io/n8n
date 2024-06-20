@@ -8,9 +8,15 @@ module.exports = {
 
 	...sharedOptions(__dirname),
 
+	parserOptions: {
+		project: './tsconfig.json',
+	},
+
 	ignorePatterns: ['bin/*.js'],
 
 	rules: {
+		complexity: 'error',
+
 		// TODO: Remove this
 		'import/order': 'off',
 		'@typescript-eslint/ban-ts-comment': ['error', { 'ts-ignore': true }],

@@ -1,20 +1,24 @@
+import type { ActionTypeDescription, ActionsRecord, SimplifiedNodeType } from '@/Interface';
+import { CUSTOM_API_CALL_KEY, HTTP_REQUEST_NODE_TYPE } from '@/constants';
 import { memoize, startCase } from 'lodash-es';
 import type {
+	ICredentialType,
+	INodeProperties,
 	INodePropertyCollection,
 	INodePropertyOptions,
-	INodeProperties,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { CUSTOM_API_CALL_KEY } from '@/constants';
-import type { ActionTypeDescription, SimplifiedNodeType, ActionsRecord } from '@/Interface';
 
 import { i18n } from '@/plugins/i18n';
+
+import { getCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 
 const PLACEHOLDER_RECOMMENDED_ACTION_KEY = 'placeholder_recommended';
 
 function translate(...args: Parameters<typeof i18n.baseText>) {
 	return i18n.baseText(...args);
 }
+
 // Memoize the translation function so we don't have to re-translate the same string
 // multiple times when generating the actions
 const cachedBaseText = memoize(translate, (...args) => JSON.stringify(args));
@@ -35,7 +39,7 @@ const customNodeActionsParsers: {
 				displayName: cachedBaseText('nodeCreator.actionsCategory.onEvent', {
 					interpolate: { event: startCase(categoryItem.name) },
 				}),
-				description: categoryItem.description || '',
+				description: categoryItem.description ?? '',
 				displayOptions: matchedProperty.displayOptions,
 				values: { eventsUi: { eventValues: [{ name: categoryItem.value }] } },
 			}),
@@ -52,10 +56,11 @@ function getNodeTypeBase(nodeTypeDescription: INodeTypeDescription, label?: stri
 		name: nodeTypeDescription.name,
 		group: nodeTypeDescription.group,
 		codex: {
-			label: label || '',
+			label: label ?? '',
 			categories: [category],
 		},
 		iconUrl: nodeTypeDescription.iconUrl,
+		outputs: nodeTypeDescription.outputs,
 		icon: nodeTypeDescription.icon,
 		defaults: nodeTypeDescription.defaults,
 	};
@@ -68,7 +73,7 @@ function operationsCategory(nodeTypeDescription: INodeTypeDescription): ActionTy
 		(property) => property.name?.toLowerCase() === 'operation',
 	);
 
-	if (!matchedProperty || !matchedProperty.options) return [];
+	if (!matchedProperty?.options) return [];
 
 	const filteredOutItems = (matchedProperty.options as INodePropertyOptions[]).filter(
 		(categoryItem: INodePropertyOptions) => !['*', '', ' '].includes(categoryItem.name),
@@ -102,7 +107,7 @@ function triggersCategory(nodeTypeDescription: INodeTypeDescription): ActionType
 
 	// Inject placeholder action if no events are available
 	// so user is able to add node to the canvas from the actions panel
-	if (!matchedProperty || !matchedProperty.options) {
+	if (!matchedProperty?.options) {
 		return [
 			{
 				...getNodeTypeBase(nodeTypeDescription),
@@ -134,7 +139,7 @@ function triggersCategory(nodeTypeDescription: INodeTypeDescription): ActionType
 				cachedBaseText('nodeCreator.actionsCategory.onEvent', {
 					interpolate: { event: startCase(categoryItem.name) },
 				}),
-			description: categoryItem.description || '',
+			description: categoryItem.description ?? '',
 			displayOptions: matchedProperty.displayOptions,
 			values: {
 				[matchedProperty.name]:
@@ -154,16 +159,32 @@ function resourceCategories(nodeTypeDescription: INodeTypeDescription): ActionTy
 	matchedProperties.forEach((property) => {
 		((property.options as INodePropertyOptions[]) || [])
 			.filter((option) => option.value !== CUSTOM_API_CALL_KEY)
-			.forEach((resourceOption, i, options) => {
+			.forEach((resourceOption, _i, options) => {
 				const isSingleResource = options.length === 1;
 
 				// Match operations for the resource by checking if displayOptions matches or contains the resource name
-				const operations = nodeTypeDescription.properties.find(
-					(operation) =>
-						operation.name === 'operation' &&
-						(operation.displayOptions?.show?.resource?.includes(resourceOption.value) ||
-							isSingleResource),
-				);
+				const operations = nodeTypeDescription.properties.find((operation) => {
+					const isOperation = operation.name === 'operation';
+					const isMatchingResource =
+						operation.displayOptions?.show?.resource?.includes(resourceOption.value) ??
+						isSingleResource;
+
+					// If the operation doesn't have a version defined, it should be
+					// available for all versions. Otherwise, make sure the node type
+					// version matches the operation version
+					const operationVersions = operation.displayOptions?.show?.['@version'];
+					const nodeTypeVersions = Array.isArray(nodeTypeDescription.version)
+						? nodeTypeDescription.version
+						: [nodeTypeDescription.version];
+
+					const isMatchingVersion = operationVersions
+						? operationVersions.some(
+								(version) => typeof version === 'number' && nodeTypeVersions.includes(version),
+							)
+						: true;
+
+					return isOperation && isMatchingResource && isMatchingVersion;
+				});
 
 				if (!operations?.options) return;
 
@@ -175,7 +196,7 @@ function resourceCategories(nodeTypeDescription: INodeTypeDescription): ActionTy
 						// We need to manually populate displayOptions as they are not present in the node description
 						// if the resource has only one option
 						const displayOptions = isSingleResource
-							? { show: { resource: [(options as INodePropertyOptions[])[0]?.value] } }
+							? { show: { resource: [options[0]?.value] } }
 							: operations?.displayOptions;
 
 						return {
@@ -225,7 +246,19 @@ export function useActionsGenerator() {
 	}
 
 	function getSimplifiedNodeType(node: INodeTypeDescription): SimplifiedNodeType {
-		const { displayName, defaults, description, name, group, icon, iconUrl, codex } = node;
+		const {
+			displayName,
+			defaults,
+			description,
+			name,
+			group,
+			icon,
+			iconUrl,
+			iconColor,
+			badgeIconUrl,
+			outputs,
+			codex,
+		} = node;
 
 		return {
 			displayName,
@@ -234,12 +267,18 @@ export function useActionsGenerator() {
 			name,
 			group,
 			icon,
+			iconColor,
 			iconUrl,
+			badgeIconUrl,
+			outputs,
 			codex,
 		};
 	}
 
-	function generateMergedNodesAndActions(nodeTypes: INodeTypeDescription[]) {
+	function generateMergedNodesAndActions(
+		nodeTypes: INodeTypeDescription[],
+		httpOnlyCredentials: ICredentialType[],
+	) {
 		const visibleNodeTypes = [...nodeTypes];
 		const actions: ActionsRecord<typeof mergedNodes> = {};
 		const mergedNodes: SimplifiedNodeType[] = [];
@@ -249,6 +288,20 @@ export function useActionsGenerator() {
 			.forEach((app) => {
 				const appActions = generateNodeActions(app);
 				actions[app.name] = appActions;
+
+				if (app.name === HTTP_REQUEST_NODE_TYPE) {
+					const credentialOnlyNodes = httpOnlyCredentials.map((credentialType) => {
+						const credsOnlyNode = getCredentialOnlyNodeType(app, credentialType);
+						if (credsOnlyNode) return getSimplifiedNodeType(credsOnlyNode);
+						return null;
+					});
+
+					const filteredNodes = credentialOnlyNodes.filter(
+						(node): node is SimplifiedNodeType => node !== null,
+					);
+
+					mergedNodes.push(...filteredNodes);
+				}
 
 				mergedNodes.push(getSimplifiedNodeType(app));
 			});

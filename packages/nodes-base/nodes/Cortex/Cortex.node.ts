@@ -1,7 +1,4 @@
-import { cortexApiRequest, getEntityLabel, prepareParameters, splitTags } from './GenericFunctions';
-
-import { analyzerFields, analyzersOperations } from './AnalyzerDescriptions';
-
+import { createHash } from 'crypto';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -11,18 +8,17 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import upperFirst from 'lodash/upperFirst';
+import * as changeCase from 'change-case';
+import { cortexApiRequest, getEntityLabel, prepareParameters, splitTags } from './GenericFunctions';
+
+import { analyzerFields, analyzersOperations } from './AnalyzerDescriptions';
 
 import { responderFields, respondersOperations } from './ResponderDescription';
 
 import { jobFields, jobOperations } from './JobDescription';
 
-import upperFirst from 'lodash/upperFirst';
-
 import type { IJob } from './AnalyzerInterface';
-
-import { createHash } from 'crypto';
-
-import * as changeCase from 'change-case';
 
 export class Cortex implements INodeType {
 	description: INodeTypeDescription = {
@@ -220,8 +216,6 @@ export class Cortex implements INodeType {
 								'',
 								options,
 							)) as IJob;
-
-							continue;
 						} else {
 							const observableValue = this.getNodeParameter('observableValue', i) as string;
 
@@ -381,7 +375,7 @@ export class Cortex implements INodeType {
 					returnData.push(responseData as IDataObject);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ error: error.message });
 					continue;
 				}

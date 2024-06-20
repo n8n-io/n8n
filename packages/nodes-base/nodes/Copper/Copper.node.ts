@@ -618,7 +618,7 @@ export class Copper implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ error: error.toString(), json: {} });
 					continue;
 				}
@@ -633,6 +633,6 @@ export class Copper implements INodeType {
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

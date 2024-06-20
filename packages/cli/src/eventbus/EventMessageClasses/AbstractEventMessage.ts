@@ -3,7 +3,7 @@ import { DateTime } from 'luxon';
 import type { EventMessageTypeNames, JsonObject } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import type { AbstractEventPayload } from './AbstractEventPayload';
-import { AbstractEventMessageOptions } from './AbstractEventMessageOptions';
+import type { AbstractEventMessageOptions } from './AbstractEventMessageOptions';
 import type { EventNamesTypes } from '.';
 
 function modifyUnderscoredKeys(

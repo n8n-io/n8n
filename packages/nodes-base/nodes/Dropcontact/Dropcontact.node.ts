@@ -294,7 +294,7 @@ export class Dropcontact implements INodeType {
 				if (!simplify) {
 					const waitTime = this.getNodeParameter('options.waitTime', 0, 45) as number;
 
-					const delay = async (ms: any) => new Promise((res) => setTimeout(res, ms * 1000));
+					const delay = async (ms: any) => await new Promise((res) => setTimeout(res, ms * 1000));
 					await delay(waitTime);
 					responseData = await dropcontactApiRequest.call(
 						this,
@@ -370,6 +370,6 @@ export class Dropcontact implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

@@ -1,5 +1,3 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IBinaryKeyData,
 	IDataObject,
@@ -7,6 +5,9 @@ import type {
 	IPollFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
+	IPairedItemData,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 
 interface IAttachment {
@@ -27,7 +28,7 @@ export interface IRecord {
  */
 export async function apiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: object,
 	query?: IDataObject,
@@ -41,7 +42,7 @@ export async function apiRequest(
 	// it as query string.
 	// query.api_key = credentials.apiKey;
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {},
 		method,
 		body,
@@ -59,7 +60,7 @@ export async function apiRequest(
 		delete options.body;
 	}
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
-	return this.helpers.requestWithAuthentication.call(this, authenticationMethod, options);
+	return await this.helpers.requestWithAuthentication.call(this, authenticationMethod, options);
 }
 
 /**
@@ -70,7 +71,7 @@ export async function apiRequest(
  */
 export async function apiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject,
 	query?: IDataObject,
@@ -100,10 +101,14 @@ export async function downloadRecordAttachments(
 	this: IExecuteFunctions | IPollFunctions,
 	records: IRecord[],
 	fieldNames: string[],
+	pairedItem?: IPairedItemData[],
 ): Promise<INodeExecutionData[]> {
 	const elements: INodeExecutionData[] = [];
 	for (const record of records) {
 		const element: INodeExecutionData = { json: {}, binary: {} };
+		if (pairedItem) {
+			element.pairedItem = pairedItem;
+		}
 		element.json = record as unknown as IDataObject;
 		for (const fieldName of fieldNames) {
 			if (record.fields[fieldName] !== undefined) {

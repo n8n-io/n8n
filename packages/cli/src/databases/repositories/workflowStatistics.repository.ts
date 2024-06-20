@@ -1,10 +1,10 @@
 import { Service } from 'typedi';
-import { DataSource, QueryFailedError, Repository } from 'typeorm';
+import { DataSource, MoreThanOrEqual, QueryFailedError, Repository } from '@n8n/typeorm';
 import config from '@/config';
-import type { StatisticsNames } from '../entities/WorkflowStatistics';
-import { WorkflowStatistics } from '../entities/WorkflowStatistics';
+import { StatisticsNames, WorkflowStatistics } from '../entities/WorkflowStatistics';
+import type { User } from '@/databases/entities/User';
 
-type StatisticsInsertResult = 'insert' | 'failed';
+type StatisticsInsertResult = 'insert' | 'failed' | 'alreadyExists';
 type StatisticsUpsertResult = StatisticsInsertResult | 'update';
 
 @Service()
@@ -21,6 +21,13 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 	): Promise<StatisticsInsertResult> {
 		// Try to insert the data loaded statistic
 		try {
+			const exists = await this.findOne({
+				where: {
+					workflowId,
+					name: eventName,
+				},
+			});
+			if (exists) return 'alreadyExists';
 			await this.insert({
 				workflowId,
 				name: eventName,
@@ -90,5 +97,21 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 			if (error instanceof QueryFailedError) return 'failed';
 			throw error;
 		}
+	}
+
+	async queryNumWorkflowsUserHasWithFiveOrMoreProdExecs(userId: User['id']): Promise<number> {
+		return await this.count({
+			where: {
+				workflow: {
+					shared: {
+						role: 'workflow:owner',
+						project: { projectRelations: { userId, role: 'project:personalOwner' } },
+					},
+					active: true,
+				},
+				name: StatisticsNames.productionSuccess,
+				count: MoreThanOrEqual(5),
+			},
+		});
 	}
 }

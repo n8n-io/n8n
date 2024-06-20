@@ -2,8 +2,19 @@ import type { ExecutionStatus, IDataObject } from 'n8n-workflow';
 import type { ExecutionFilterType, ExecutionsQueryFilter } from '@/Interface';
 import { isEmpty } from '@/utils/typesUtils';
 
+export function getDefaultExecutionFilters(): ExecutionFilterType {
+	return {
+		workflowId: 'all',
+		status: 'all',
+		startDate: '',
+		endDate: '',
+		tags: [],
+		metadata: [],
+	};
+}
+
 export const executionFilterToQueryFilter = (
-	filter: ExecutionFilterType,
+	filter: Partial<ExecutionFilterType>,
 ): ExecutionsQueryFilter => {
 	const queryFilter: IDataObject = {};
 	if (filter.workflowId !== 'all') {
@@ -31,7 +42,7 @@ export const executionFilterToQueryFilter = (
 			queryFilter.status = ['waiting'];
 			break;
 		case 'error':
-			queryFilter.status = ['failed', 'crashed', 'error'];
+			queryFilter.status = ['crashed', 'error'];
 			break;
 		case 'success':
 			queryFilter.status = ['success'];
@@ -44,4 +55,23 @@ export const executionFilterToQueryFilter = (
 			break;
 	}
 	return queryFilter;
+};
+
+export const openPopUpWindow = (
+	url: string,
+	options?: { width?: number; height?: number; alwaysInNewTab?: boolean },
+) => {
+	const windowWidth = window.innerWidth;
+	const smallScreen = windowWidth <= 800;
+	if (options?.alwaysInNewTab || smallScreen) {
+		window.open(url, '_blank');
+	} else {
+		const height = options?.width || 700;
+		const width = options?.height || window.innerHeight - 50;
+		const left = (window.innerWidth - height) / 2;
+		const top = 50;
+		const features = `width=${height},height=${width},left=${left},top=${top},resizable=yes,scrollbars=yes`;
+
+		window.open(url, '_blank', features);
+	}
 };

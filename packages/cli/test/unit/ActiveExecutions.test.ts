@@ -1,30 +1,32 @@
 import { ActiveExecutions } from '@/ActiveExecutions';
 import PCancelable from 'p-cancelable';
 import { v4 as uuid } from 'uuid';
-import { Container } from 'typedi';
 import type { IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
 import { createDeferredPromise } from 'n8n-workflow';
 import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
-import { ExecutionRepository } from '@db/repositories';
+import type { ExecutionRepository } from '@db/repositories/execution.repository';
+import { mock } from 'jest-mock-extended';
+import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import { mockInstance } from '@test/mocking';
 
 const FAKE_EXECUTION_ID = '15';
 const FAKE_SECOND_EXECUTION_ID = '20';
 
 const updateExistingExecution = jest.fn();
-const createNewExecution = jest.fn(async () => {
-	return { id: FAKE_EXECUTION_ID };
-});
+const createNewExecution = jest.fn(async () => FAKE_EXECUTION_ID);
 
-Container.set(ExecutionRepository, {
+const executionRepository = mock<ExecutionRepository>({
 	updateExistingExecution,
 	createNewExecution,
 });
+
+const concurrencyControl = mockInstance(ConcurrencyControlService, { isEnabled: false });
 
 describe('ActiveExecutions', () => {
 	let activeExecutions: ActiveExecutions;
 
 	beforeEach(() => {
-		activeExecutions = new ActiveExecutions();
+		activeExecutions = new ActiveExecutions(mock(), executionRepository, concurrencyControl);
 	});
 
 	afterEach(() => {
@@ -47,11 +49,7 @@ describe('ActiveExecutions', () => {
 
 	test('Should update execution if add is called with execution ID', async () => {
 		const newExecution = mockExecutionData();
-		const executionId = await activeExecutions.add(
-			newExecution,
-			undefined,
-			FAKE_SECOND_EXECUTION_ID,
-		);
+		const executionId = await activeExecutions.add(newExecution, FAKE_SECOND_EXECUTION_ID);
 
 		expect(executionId).toBe(FAKE_SECOND_EXECUTION_ID);
 		expect(activeExecutions.getActiveExecutions().length).toBe(1);
@@ -69,7 +67,7 @@ describe('ActiveExecutions', () => {
 
 	test('Should successfully attach execution to valid executionId', async () => {
 		const newExecution = mockExecutionData();
-		await activeExecutions.add(newExecution, undefined, FAKE_EXECUTION_ID);
+		await activeExecutions.add(newExecution, FAKE_EXECUTION_ID);
 		const deferredPromise = mockCancelablePromise();
 
 		expect(() =>
@@ -79,7 +77,7 @@ describe('ActiveExecutions', () => {
 
 	test('Should attach and resolve response promise to existing execution', async () => {
 		const newExecution = mockExecutionData();
-		await activeExecutions.add(newExecution, undefined, FAKE_EXECUTION_ID);
+		await activeExecutions.add(newExecution, FAKE_EXECUTION_ID);
 		const deferredPromise = await mockDeferredPromise();
 		activeExecutions.attachResponsePromise(FAKE_EXECUTION_ID, deferredPromise);
 		const fakeResponse = { data: { resultData: { runData: {} } } };
@@ -131,6 +129,7 @@ function mockExecutionData(): IWorkflowExecutionDataProcess {
 	return {
 		executionMode: 'manual',
 		workflowData: {
+			id: '123',
 			name: 'Test workflow 1',
 			active: false,
 			createdAt: new Date(),

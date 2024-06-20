@@ -1,24 +1,23 @@
 <template>
 	<n8n-popover
 		placement="bottom"
-		:teleported="false"
 		:width="width"
 		:popper-class="$style.popover"
 		:visible="show"
-		trigger="manual"
+		:teleported="false"
 		data-test-id="resource-locator-dropdown"
 	>
-		<div :class="$style.messageContainer" v-if="errorView">
+		<div v-if="errorView" :class="$style.messageContainer">
 			<slot name="error"></slot>
 		</div>
-		<div :class="$style.searchInput" v-if="filterable && !errorView" @keydown="onKeyDown">
+		<div v-if="filterable && !errorView" :class="$style.searchInput" @keydown="onKeyDown">
 			<n8n-input
-				:modelValue="filter"
-				:clearable="true"
-				@update:modelValue="onFilterInput"
 				ref="search"
+				:model-value="filter"
+				:clearable="true"
 				:placeholder="$locale.baseText('resourceLocator.search.placeholder')"
 				data-test-id="rlc-search"
+				@update:model-value="onFilterInput"
 			>
 				<template #prefix>
 					<font-awesome-icon :class="$style.searchIcon" icon="search" />
@@ -29,8 +28,8 @@
 			{{ $locale.baseText('resourceLocator.mode.list.searchRequired') }}
 		</div>
 		<div
-			:class="$style.messageContainer"
 			v-else-if="!errorView && sortedResources.length === 0 && !loading"
+			:class="$style.messageContainer"
 		>
 			{{ $locale.baseText('resourceLocator.mode.list.noResults') }}
 		</div>
@@ -42,7 +41,8 @@
 		>
 			<div
 				v-for="(result, i) in sortedResources"
-				:key="result.value"
+				:key="result.value.toString()"
+				:ref="`item-${i}`"
 				:class="{
 					[$style.resourceItem]: true,
 					[$style.selected]: result.value === modelValue,
@@ -52,7 +52,6 @@
 				@click="() => onItemClick(result.value)"
 				@mouseenter="() => onItemHover(i)"
 				@mouseleave="() => onItemHoverLeave()"
-				:ref="`item-${i}`"
 			>
 				<div :class="$style.resourceNameContainer">
 					<span>{{ result.name }}</span>
@@ -84,15 +83,16 @@ import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
+import type { NodeParameterValue } from 'n8n-workflow';
 
 const SEARCH_BAR_HEIGHT_PX = 40;
 const SCROLL_MARGIN_PX = 10;
 
 export default defineComponent({
-	name: 'resource-locator-dropdown',
+	name: 'ResourceLocatorDropdown',
 	props: {
 		modelValue: {
-			type: [String, Number],
+			type: [String, Number] as PropType<NodeParameterValue>,
 		},
 		show: {
 			type: Boolean,
@@ -127,22 +127,17 @@ export default defineComponent({
 			default: () => createEventBus(),
 		},
 	},
+	emits: ['update:modelValue', 'loadMore', 'filter'],
 	data() {
 		return {
 			hoverIndex: 0,
 			showHoverUrl: false,
 		};
 	},
-	mounted() {
-		this.eventBus.on('keyDown', this.onKeyDown);
-	},
-	beforeUnmount() {
-		this.eventBus.off('keyDown', this.onKeyDown);
-	},
 	computed: {
 		sortedResources(): IResourceLocatorResultExpanded[] {
 			const seen = new Set();
-			const { selected, notSelected } = this.resources.reduce(
+			const { selected, notSelected } = (this.resources ?? []).reduce(
 				(acc, item: IResourceLocatorResultExpanded) => {
 					if (seen.has(item.value)) {
 						return acc;
@@ -169,6 +164,29 @@ export default defineComponent({
 
 			return notSelected;
 		},
+	},
+	watch: {
+		show(value) {
+			if (value) {
+				this.hoverIndex = 0;
+				this.showHoverUrl = false;
+
+				setTimeout(() => {
+					if (value && this.filterable && this.$refs.search) {
+						(this.$refs.search as HTMLElement).focus();
+					}
+				}, 0);
+			}
+		},
+		loading() {
+			setTimeout(() => this.onResultsEnd(), 0); // in case of filtering
+		},
+	},
+	mounted() {
+		this.eventBus.on('keyDown', this.onKeyDown);
+	},
+	beforeUnmount() {
+		this.eventBus.off('keyDown', this.onKeyDown);
 	},
 	methods: {
 		openUrl(event: MouseEvent, url: string) {
@@ -216,7 +234,7 @@ export default defineComponent({
 		onFilterInput(value: string) {
 			this.$emit('filter', value);
 		},
-		onItemClick(selected: string) {
+		onItemClick(selected: string | number | boolean) {
 			this.$emit('update:modelValue', selected);
 		},
 		onItemHover(index: number) {
@@ -244,23 +262,6 @@ export default defineComponent({
 					this.$emit('loadMore');
 				}
 			}
-		},
-	},
-	watch: {
-		show(value) {
-			if (value) {
-				this.hoverIndex = 0;
-				this.showHoverUrl = false;
-
-				setTimeout(() => {
-					if (value && this.filterable && this.$refs.search) {
-						(this.$refs.search as HTMLElement).focus();
-					}
-				}, 0);
-			}
-		},
-		loading() {
-			setTimeout(() => this.onResultsEnd(), 0); // in case of filtering
 		},
 	},
 });

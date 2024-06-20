@@ -1,0 +1,72 @@
+{
+	"meta": {
+		"instanceId": "104a4d08d8897b8bdeb38aaca515021075e0bd8544c983c2bb8c86e6a8e6081c"
+	},
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "01b8609f-a345-41de-80bf-6d84276b5e7a",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [
+				700,
+				320
+			]
+		},
+		{
+			"parameters": {
+				"fileSelector": "C:/Test/image.jpg",
+				"options": {}
+			},
+			"id": "a1ea0fd0-cc95-4de2-bc58-bc980cb1d97e",
+			"name": "Read from Disk",
+			"type": "n8n-nodes-base.readWriteFile",
+			"typeVersion": 1,
+			"position": [
+				920,
+				320
+			]
+		},
+		{
+			"parameters": {
+				"operation": "write",
+				"fileName": "C:/Test/image-written.jpg",
+				"options": {}
+			},
+			"id": "94abac52-bd10-4b57-85b0-691c70989137",
+			"name": "Write to Disk",
+			"type": "n8n-nodes-base.readWriteFile",
+			"typeVersion": 1,
+			"position": [
+				1140,
+				320
+			]
+		}
+	],
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Read from Disk",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Read from Disk": {
+			"main": [
+				[
+					{
+						"node": "Write to Disk",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {}
+}

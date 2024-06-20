@@ -1,46 +1,46 @@
 <template>
 	<Modal
 		:name="modalName"
-		:eventBus="modalBus"
-		@enter="save"
+		:event-bus="modalBus"
 		:title="$locale.baseText('duplicateWorkflowDialog.duplicateWorkflow')"
 		:center="true"
 		width="420px"
+		@enter="save"
 	>
 		<template #content>
 			<div :class="$style.content">
 				<n8n-input
-					v-model="name"
 					ref="nameInput"
+					v-model="name"
 					:placeholder="$locale.baseText('duplicateWorkflowDialog.enterWorkflowName')"
 					:maxlength="MAX_WORKFLOW_NAME_LENGTH"
 				/>
 				<TagsDropdown
 					v-if="settingsStore.areTagsEnabled"
+					ref="dropdown"
 					v-model="currentTagIds"
-					:createEnabled="true"
-					:eventBus="dropdownBus"
+					:create-enabled="true"
+					:event-bus="dropdownBus"
+					:placeholder="$locale.baseText('duplicateWorkflowDialog.chooseOrCreateATag')"
 					@blur="onTagsBlur"
 					@esc="onTagsEsc"
-					:placeholder="$locale.baseText('duplicateWorkflowDialog.chooseOrCreateATag')"
-					ref="dropdown"
 				/>
 			</div>
 		</template>
 		<template #footer="{ close }">
 			<div :class="$style.footer">
 				<n8n-button
-					@click="save"
 					:loading="isSaving"
 					:label="$locale.baseText('duplicateWorkflowDialog.save')"
 					float="right"
+					@click="save"
 				/>
 				<n8n-button
 					type="secondary"
-					@click="close"
 					:disabled="isSaving"
 					:label="$locale.baseText('duplicateWorkflowDialog.cancel')"
 					float="right"
+					@click="close"
 				/>
 			</div>
 		</template>
@@ -51,27 +51,29 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { MAX_WORKFLOW_NAME_LENGTH, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import Modal from '@/components/Modal.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IWorkflowDataUpdate } from '@/Interface';
-import type { IPermissions } from '@/permissions';
-import { getWorkflowPermissions } from '@/permissions';
 import { useUsersStore } from '@/stores/users.store';
 import { createEventBus } from 'n8n-design-system/utils';
-import { useCredentialsStore } from '@/stores';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useRouter } from 'vue-router';
 
 export default defineComponent({
 	name: 'DuplicateWorkflow',
-	mixins: [workflowHelpers],
 	components: { TagsDropdown, Modal },
 	props: ['modalName', 'isActive', 'data'],
 	setup() {
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers({ router });
+
 		return {
 			...useToast(),
+			workflowHelpers,
 		};
 	},
 	data() {
@@ -87,27 +89,8 @@ export default defineComponent({
 			prevTagIds: currentTagIds,
 		};
 	},
-	async mounted() {
-		this.name = await this.workflowsStore.getDuplicateCurrentWorkflowName(this.data.name);
-		await this.$nextTick();
-		this.focusOnNameInput();
-	},
 	computed: {
 		...mapStores(useCredentialsStore, useUsersStore, useSettingsStore, useWorkflowsStore),
-		workflowPermissions(): IPermissions {
-			const isEmptyWorkflow = this.data.id === PLACEHOLDER_EMPTY_WORKFLOW_ID;
-			const isCurrentWorkflowEmpty =
-				this.workflowsStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID;
-
-			// If the workflow to be duplicated is empty and the current workflow is also empty
-			// we need to use the current workflow to get the permissions
-			const currentWorkflow =
-				isEmptyWorkflow && isCurrentWorkflowEmpty
-					? this.workflowsStore.workflow
-					: this.workflowsStore.getWorkflowById(this.data.id);
-
-			return getWorkflowPermissions(this.usersStore.currentUser, currentWorkflow);
-		},
 	},
 	watch: {
 		isActive(active) {
@@ -116,13 +99,18 @@ export default defineComponent({
 			}
 		},
 	},
+	async mounted() {
+		this.name = await this.workflowsStore.getDuplicateCurrentWorkflowName(this.data.name);
+		await this.$nextTick();
+		this.focusOnNameInput();
+	},
 	methods: {
 		focusOnSelect() {
 			this.dropdownBus.emit('focus');
 		},
 		focusOnNameInput() {
 			const inputRef = this.$refs.nameInput as HTMLElement | undefined;
-			if (inputRef && inputRef.focus) {
+			if (inputRef?.focus) {
 				inputRef.focus();
 			}
 		},
@@ -152,17 +140,24 @@ export default defineComponent({
 			try {
 				let workflowToUpdate: IWorkflowDataUpdate | undefined;
 				if (currentWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-					const { createdAt, updatedAt, usedCredentials, ...workflow } =
-						await this.workflowsStore.fetchWorkflow(this.data.id);
+					const {
+						createdAt,
+						updatedAt,
+						usedCredentials,
+						id,
+						homeProject,
+						sharedWithProjects,
+						...workflow
+					} = await this.workflowsStore.fetchWorkflow(this.data.id);
 					workflowToUpdate = workflow;
 
-					this.removeForeignCredentialsFromWorkflow(
+					this.workflowHelpers.removeForeignCredentialsFromWorkflow(
 						workflowToUpdate,
 						this.credentialsStore.allCredentials,
 					);
 				}
 
-				const saved = await this.saveAsNewWorkflow({
+				const saved = await this.workflowHelpers.saveAsNewWorkflow({
 					name,
 					data: workflowToUpdate,
 					tags: this.currentTagIds,
@@ -176,7 +171,7 @@ export default defineComponent({
 					this.$telemetry.track('User duplicated workflow', {
 						old_workflow_id: currentWorkflowId,
 						workflow_id: this.data.id,
-						sharing_role: this.workflowPermissions.isOwner ? 'owner' : 'sharee',
+						sharing_role: this.workflowHelpers.getWorkflowProjectRole(this.data.id),
 					});
 				}
 			} catch (error) {

@@ -2,9 +2,12 @@ import { createPinia, setActivePinia } from 'pinia';
 import { usePostHog } from '@/stores/posthog.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useTelemetryStore } from '@/stores/telemetry.store';
 import type { IN8nUISettings } from 'n8n-workflow';
+import { LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/constants';
+import { nextTick } from 'vue';
+import { defaultSettings } from '../../__tests__/defaults';
 
 const DEFAULT_POSTHOG_SETTINGS: IN8nUISettings['posthog'] = {
 	enabled: true,
@@ -19,6 +22,7 @@ const CURRENT_INSTANCE_ID = '456';
 
 function setSettings(overrides?: Partial<IN8nUISettings>) {
 	useSettingsStore().setSettings({
+		...defaultSettings,
 		posthog: DEFAULT_POSTHOG_SETTINGS,
 		instanceId: CURRENT_INSTANCE_ID,
 		...overrides,
@@ -55,7 +59,6 @@ function setup() {
 
 	vi.spyOn(window.posthog, 'init');
 	vi.spyOn(window.posthog, 'identify');
-	vi.spyOn(window.Storage.prototype, 'setItem');
 	vi.spyOn(telemetryStore, 'track');
 }
 
@@ -117,7 +120,7 @@ describe('Posthog store', () => {
 			});
 		});
 
-		it('sets override feature flags', () => {
+		it('sets override feature flags', async () => {
 			const TEST = 'test';
 			const flags = {
 				[TEST]: 'variant',
@@ -126,17 +129,17 @@ describe('Posthog store', () => {
 			posthog.init(flags);
 
 			window.featureFlags?.override(TEST, 'override');
+			await nextTick();
 
 			expect(posthog.getVariant('test')).toEqual('override');
 			expect(window.posthog?.init).toHaveBeenCalled();
-			expect(window.localStorage.setItem).toHaveBeenCalledWith(
-				'N8N_EXPERIMENT_OVERRIDES',
+			expect(window.localStorage.getItem(LOCAL_STORAGE_EXPERIMENT_OVERRIDES)).toEqual(
 				JSON.stringify({ test: 'override' }),
 			);
 
 			window.featureFlags?.override('other_test', 'override');
-			expect(window.localStorage.setItem).toHaveBeenCalledWith(
-				'N8N_EXPERIMENT_OVERRIDES',
+			await nextTick();
+			expect(window.localStorage.getItem(LOCAL_STORAGE_EXPERIMENT_OVERRIDES)).toEqual(
 				JSON.stringify({ test: 'override', other_test: 'override' }),
 			);
 		});

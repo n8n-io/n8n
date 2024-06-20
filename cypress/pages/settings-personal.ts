@@ -1,13 +1,14 @@
+import generateOTPToken from 'cypress-otp';
 import { ChangePasswordModal } from './modals/change-password-modal';
 import { MfaSetupModal } from './modals/mfa-setup-modal';
 import { BasePage } from './base';
-import generateOTPToken from 'cypress-otp';
 
 const changePasswordModal = new ChangePasswordModal();
 const mfaSetupModal = new MfaSetupModal();
 
 export class PersonalSettingsPage extends BasePage {
 	url = '/settings/personal';
+
 	secret = '';
 
 	getters = {
@@ -20,8 +21,17 @@ export class PersonalSettingsPage extends BasePage {
 		saveSettingsButton: () => cy.getByTestId('save-settings-button'),
 		enableMfaButton: () => cy.getByTestId('enable-mfa-button'),
 		disableMfaButton: () => cy.getByTestId('disable-mfa-button'),
+		themeSelector: () => cy.getByTestId('theme-select'),
+		selectOptionsVisible: () => cy.get('.el-select-dropdown:visible .el-select-dropdown__item'),
 	};
+
 	actions = {
+		changeTheme: (theme: 'System default' | 'Dark' | 'Light') => {
+			this.getters.themeSelector().click();
+			this.getters.selectOptionsVisible().should('have.length', 3);
+			this.getters.selectOptionsVisible().contains(theme).click();
+			this.getters.saveSettingsButton().realClick();
+		},
 		loginAndVisit: (email: string, password: string) => {
 			cy.signin({ email, password });
 			cy.visit(this.url);
@@ -60,11 +70,14 @@ export class PersonalSettingsPage extends BasePage {
 		enableMfa: () => {
 			cy.visit(this.url);
 			this.getters.enableMfaButton().click();
+			cy.wait('@getMfaQrCode');
+			mfaSetupModal.getters.copySecretToClipboardButton().should('be.visible');
 			mfaSetupModal.getters.copySecretToClipboardButton().realClick();
 			cy.readClipboard().then((secret) => {
 				const token = generateOTPToken(secret);
 
 				mfaSetupModal.getters.tokenInput().type(token);
+				mfaSetupModal.getters.downloadRecoveryCodesButton().should('be.visible');
 				mfaSetupModal.getters.downloadRecoveryCodesButton().click();
 				mfaSetupModal.getters.saveButton().click();
 			});

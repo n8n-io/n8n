@@ -10,8 +10,8 @@
 			<n8n-form-box
 				v-bind="form"
 				data-test-id="auth-form"
-				:buttonLoading="formLoading"
-				@secondaryClick="onSecondaryClick"
+				:button-loading="formLoading"
+				@secondary-click="onSecondaryClick"
 				@submit="onSubmit"
 				@update="onUpdate"
 			>
@@ -22,10 +22,11 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { type PropType, defineComponent } from 'vue';
 
 import Logo from '@/components/Logo.vue';
 import SSOLogin from '@/components/SSOLogin.vue';
+import type { IFormBoxConfig } from '@/Interface';
 
 export default defineComponent({
 	name: 'AuthView',
@@ -34,7 +35,9 @@ export default defineComponent({
 		SSOLogin,
 	},
 	props: {
-		form: {},
+		form: {
+			type: Object as PropType<IFormBoxConfig>,
+		},
 		formLoading: {
 			type: Boolean,
 			default: false,

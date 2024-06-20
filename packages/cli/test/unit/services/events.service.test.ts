@@ -1,28 +1,27 @@
-import type { IRun, WorkflowExecuteMode, ILogger } from 'n8n-workflow';
-import { LoggerProxy } from 'n8n-workflow';
+import type { IRun, WorkflowExecuteMode } from 'n8n-workflow';
 import {
 	QueryFailedError,
 	type DataSource,
 	type EntityManager,
 	type EntityMetadata,
-} from 'typeorm';
+} from '@n8n/typeorm';
 import { mocked } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
 
 import config from '@/config';
 import type { User } from '@db/entities/User';
 import type { WorkflowStatistics } from '@db/entities/WorkflowStatistics';
-import { WorkflowStatisticsRepository } from '@db/repositories';
+import { WorkflowStatisticsRepository } from '@db/repositories/workflowStatistics.repository';
 import { EventsService } from '@/services/events.service';
 import { UserService } from '@/services/user.service';
 import { OwnershipService } from '@/services/ownership.service';
-import { mockInstance } from '../../integration/shared/utils';
-
-jest.mock('@/UserManagement/UserManagementHelper', () => ({ getWorkflowOwner: jest.fn() }));
+import { mockInstance } from '../../shared/mocking';
+import type { Project } from '@/databases/entities/Project';
 
 describe('EventsService', () => {
 	const dbType = config.getEnv('database.type');
 	const fakeUser = mock<User>({ id: 'abcde-fghij' });
+	const fakeProject = mock<Project>({ id: '12345-67890', type: 'personal' });
 	const ownershipService = mockInstance(OwnershipService);
 	const userService = mockInstance(UserService);
 
@@ -36,13 +35,14 @@ describe('EventsService', () => {
 	});
 	Object.assign(entityManager, { connection: dataSource });
 
-	LoggerProxy.init(mock<ILogger>());
 	config.set('diagnostics.enabled', true);
 	config.set('deployment.type', 'n8n-testing');
-	mocked(ownershipService.getWorkflowOwnerCached).mockResolvedValue(fakeUser);
+	mocked(ownershipService.getWorkflowProjectCached).mockResolvedValue(fakeProject);
+	mocked(ownershipService.getProjectOwnerCached).mockResolvedValue(fakeUser);
 	const updateSettingsMock = jest.spyOn(userService, 'updateSettings').mockImplementation();
 
 	const eventsService = new EventsService(
+		mock(),
 		new WorkflowStatisticsRepository(dataSource),
 		ownershipService,
 	);
@@ -92,6 +92,7 @@ describe('EventsService', () => {
 			expect(updateSettingsMock).toHaveBeenCalledTimes(1);
 			expect(onFirstProductionWorkflowSuccess).toBeCalledTimes(1);
 			expect(onFirstProductionWorkflowSuccess).toHaveBeenNthCalledWith(1, {
+				project_id: fakeProject.id,
 				user_id: fakeUser.id,
 				workflow_id: workflow.id,
 			});
@@ -159,6 +160,7 @@ describe('EventsService', () => {
 			expect(onFirstWorkflowDataLoad).toBeCalledTimes(1);
 			expect(onFirstWorkflowDataLoad).toHaveBeenNthCalledWith(1, {
 				user_id: fakeUser.id,
+				project_id: fakeProject.id,
 				workflow_id: workflowId,
 				node_type: node.type,
 				node_id: node.id,
@@ -186,6 +188,7 @@ describe('EventsService', () => {
 			expect(onFirstWorkflowDataLoad).toBeCalledTimes(1);
 			expect(onFirstWorkflowDataLoad).toHaveBeenNthCalledWith(1, {
 				user_id: fakeUser.id,
+				project_id: fakeProject.id,
 				workflow_id: workflowId,
 				node_type: node.type,
 				node_id: node.id,

@@ -30,15 +30,15 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3.5.3
+        uses: actions/checkout@v4.1.1
         with:
           fetch-depth: 0
           ref: ${{ github.event.inputs.base-branch }}
 
-      - uses: pnpm/action-setup@v2.4.0
-      - uses: actions/setup-node@v3.7.0
+      - run: corepack enable
+      - uses: actions/setup-node@v4.0.2
         with:
-          node-version: 18.x
+          node-version: 20.x
 
       - run: npm install --prefix=.github/scripts --no-package-lock
 

@@ -1,5 +1,7 @@
-import type { INode } from '../src/Interfaces';
-import { NodeApiError, NodeOperationError } from '../src/NodeErrors';
+import type { INode } from '@/Interfaces';
+import { NodeOperationError } from '@/errors';
+import { NodeApiError } from '@/errors/node-api.error';
+import { UNKNOWN_ERROR_DESCRIPTION, UNKNOWN_ERROR_MESSAGE } from '../src/Constants';
 
 const node: INode = {
 	id: '1',
@@ -16,9 +18,7 @@ describe('NodeErrors tests', () => {
 	it('should return unknown error message', () => {
 		const nodeApiError = new NodeApiError(node, {});
 
-		expect(nodeApiError.message).toEqual(
-			'UNKNOWN ERROR - check the detailed error for more information',
-		);
+		expect(nodeApiError.message).toEqual(UNKNOWN_ERROR_MESSAGE);
 	});
 
 	it('should return the error message', () => {
@@ -81,7 +81,7 @@ describe('NodeErrors tests', () => {
 		const nodeOperationError = new NodeOperationError(node, 'ENOTFOUND test error message');
 
 		expect(nodeOperationError.message).toEqual(
-			'The connection cannot be established, this usually occurs due to an incorrect host(domain) value',
+			'The connection cannot be established, this usually occurs due to an incorrect host (domain) value',
 		);
 	});
 
@@ -89,7 +89,7 @@ describe('NodeErrors tests', () => {
 		const nodeApiError = new NodeApiError(node, { message: 'ENOTFOUND test error message' });
 
 		expect(nodeApiError.message).toEqual(
-			'The connection cannot be established, this usually occurs due to an incorrect host(domain) value',
+			'The connection cannot be established, this usually occurs due to an incorrect host (domain) value',
 		);
 	});
 
@@ -109,9 +109,8 @@ describe('NodeErrors tests', () => {
 
 		expect(nodeOperationError.message).toEqual('The server closed the connection unexpectedly');
 
-		expect(nodeOperationError.description).toEqual(
-			'GETADDRINFO test error message - test error description',
-		);
+		//description should not include error message
+		expect(nodeOperationError.description).toEqual('test error description');
 	});
 
 	it('should remove description if it is equal to message, NodeOperationError', () => {
@@ -172,5 +171,93 @@ describe('NodeErrors tests', () => {
 		expect(nodeOperationError.message).toEqual(
 			'Forbidden by access permissions, make sure you have the right permissions',
 		);
+	});
+});
+
+describe('NodeApiError message and description logic', () => {
+	it('case: customMessage && customDescription, result: message === customMessage; description === customDescription', () => {
+		const apiError = { message: 'Original message', code: 404 };
+		const nodeApiError = new NodeApiError(node, apiError, {
+			message: 'Custom message',
+			description: 'Custom description',
+		});
+
+		expect(nodeApiError.message).toEqual('Custom message');
+		expect(nodeApiError.description).toEqual('Custom description');
+		expect(nodeApiError.messages).toContain('Original message');
+	});
+
+	it('case: customMessage && !customDescription && extractedMessage, result: message === customMessage; description === extractedMessage', () => {
+		const apiError = {
+			message: 'Original message',
+			code: 404,
+			response: { data: { error: { message: 'Extracted message' } } },
+		};
+		const nodeApiError = new NodeApiError(node, apiError, {
+			message: 'Custom message',
+		});
+
+		expect(nodeApiError.message).toEqual('Custom message');
+		expect(nodeApiError.description).toEqual('Extracted message');
+		expect(nodeApiError.messages).toContain('Original message');
+	});
+
+	it('case: customMessage && !customDescription && !extractedMessage, result: message === customMessage; !description', () => {
+		const apiError = {
+			message: '',
+			code: 404,
+			response: { data: { error: { foo: 'Extracted message' } } },
+		};
+		const nodeApiError = new NodeApiError(node, apiError, {
+			message: 'Custom message',
+		});
+
+		expect(nodeApiError.message).toEqual('Custom message');
+		expect(nodeApiError.description).toBeFalsy();
+		expect(nodeApiError.messages.length).toBe(0);
+	});
+
+	it('case: !customMessage && httpCodeMapping && extractedMessage, result: message === httpCodeMapping; description === extractedMessage', () => {
+		const apiError = {
+			message: 'Original message',
+			code: 404,
+			response: { data: { error: { message: 'Extracted message' } } },
+		};
+		const nodeApiError = new NodeApiError(node, apiError);
+
+		expect(nodeApiError.message).toEqual('The resource you are requesting could not be found');
+		expect(nodeApiError.description).toEqual('Extracted message');
+		expect(nodeApiError.messages).toContain('Original message');
+	});
+
+	it('case: !customMessage && httpCodeMapping && !extractedMessage, result: message === httpCodeMapping; !description', () => {
+		const apiError = {
+			message: '',
+			code: 500,
+		};
+		const nodeApiError = new NodeApiError(node, apiError);
+
+		expect(nodeApiError.message).toEqual('The service was not able to process your request');
+		expect(nodeApiError.description).toBeFalsy();
+	});
+
+	it('case: !customMessage && !httpCodeMapping && extractedMessage, result: message === extractedMessage; !description', () => {
+		const apiError = {
+			message: '',
+			code: 300,
+			response: { data: { error: { message: 'Extracted message' } } },
+		};
+		const nodeApiError = new NodeApiError(node, apiError);
+
+		expect(nodeApiError.message).toEqual('Extracted message');
+		expect(nodeApiError.description).toBeFalsy();
+	});
+
+	it('case: !customMessage && !httpCodeMapping && !extractedMessage, result: message === UNKNOWN_ERROR_MESSAGE; description === UNKNOWN_ERROR_DESCRIPTION', () => {
+		const apiError = {};
+		const nodeApiError = new NodeApiError(node, apiError);
+
+		expect(nodeApiError.message).toEqual(UNKNOWN_ERROR_MESSAGE);
+		expect(nodeApiError.description).toEqual(UNKNOWN_ERROR_DESCRIPTION);
 	});
 });

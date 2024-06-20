@@ -1,3 +1,4 @@
+import { createVerify } from 'crypto';
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -10,8 +11,6 @@ import type {
 
 import type { Profile } from './GenericFunctions';
 import { getTriggerName, livePublicKey, testPublicKey, wiseApiRequest } from './GenericFunctions';
-
-import { createVerify } from 'crypto';
 
 export class WiseTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -65,6 +64,11 @@ export class WiseTrigger implements INodeType {
 						name: 'Balance Credit',
 						value: 'balanceCredit',
 						description: 'Triggered every time a balance account is credited',
+					},
+					{
+						name: 'Balance Update',
+						value: 'balanceUpdate',
+						description: 'Triggered every time a balance account is credited or debited',
 					},
 					{
 						name: 'Transfer Active Case',
