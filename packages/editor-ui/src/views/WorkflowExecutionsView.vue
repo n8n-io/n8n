@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import WorkflowExecutionsList from '@/components/executions/workflow/WorkflowExecutionsList.vue';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useI18n } from '@/composables/useI18n';
-import type { ExecutionFilterType, ITag, IWorkflowDb } from '@/Interface';
+import type { ExecutionFilterType, IWorkflowDb } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { NO_NETWORK_ERROR_CODE } from '@/utils/apiUtils';
@@ -119,11 +119,8 @@ async function initializeRoute() {
 async function fetchWorkflow() {
 	try {
 		const data = await workflowsStore.fetchWorkflow(workflowId.value);
-		const tags = (data.tags ?? []) as ITag[];
+		workflowsStore.initState(data);
 		workflow.value = data;
-		workflowsStore.setWorkflowName({ newName: data.name, setStateDirty: false });
-		workflowsStore.setWorkflowTagIds(tags.map(({ id }) => id) ?? []);
-		tagsStore.upsertTags(tags);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('nodeView.showError.openWorkflow.title'));
 		return;

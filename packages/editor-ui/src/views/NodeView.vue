@@ -1482,14 +1482,7 @@ export default defineComponent({
 
 			this.resetWorkspace();
 
-			this.workflowsStore.addWorkflow(workflow);
-			this.workflowsStore.setActive(workflow.active || false);
-			this.workflowsStore.setWorkflowId(workflow.id);
-			this.workflowsStore.setWorkflowName({ newName: workflow.name, setStateDirty: false });
-			this.workflowsStore.setWorkflowSettings(workflow.settings ?? {});
-			this.workflowsStore.setWorkflowPinData(workflow.pinData ?? {});
-			this.workflowsStore.setWorkflowVersionId(workflow.versionId);
-			this.workflowsStore.setWorkflowMetadata(workflow.meta);
+			this.workflowsStore.initState(workflow);
 
 			if (workflow.sharedWithProjects) {
 				this.workflowsEEStore.setWorkflowSharedWith({
@@ -1501,11 +1494,6 @@ export default defineComponent({
 			if (workflow.usedCredentials) {
 				this.workflowsStore.setUsedCredentials(workflow.usedCredentials);
 			}
-
-			const tags = (workflow.tags ?? []) as ITag[];
-			const tagIds = tags.map((tag) => tag.id);
-			this.workflowsStore.setWorkflowTagIds(tagIds || []);
-			this.tagsStore.upsertTags(tags);
 
 			await this.addNodes(workflow.nodes, workflow.connections);
 

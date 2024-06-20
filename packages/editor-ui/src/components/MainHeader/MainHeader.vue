@@ -2,7 +2,6 @@
 import { ref, computed, watch, onBeforeMount, onMounted } from 'vue';
 import type { RouteLocation, RouteLocationRaw } from 'vue-router';
 import { useRouter, useRoute } from 'vue-router';
-import type { ITag } from '@/Interface';
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
 import TabBar from '@/components/MainHeader/TabBar.vue';
 import {
@@ -61,23 +60,6 @@ onBeforeMount(() => {
 onMounted(async () => {
 	dirtyState.value = uiStore.stateIsDirty;
 	syncTabsWithRoute(route);
-
-	if (
-		workflowsStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID &&
-		!!route.params.name &&
-		route.params.name !== 'new'
-	) {
-		const workflowId = route.params.name as string;
-		const fetchedWorkflow = await workflowsStore.fetchWorkflow(workflowId);
-		const tagIds = (fetchedWorkflow.tags as ITag[] | undefined)?.map((tag) => tag.id) ?? [];
-		workflowsStore.setWorkflowId(workflowId);
-		workflowsStore.setWorkflowTagIds(tagIds);
-
-		if (fetchedWorkflow.active) {
-			workflowsStore.setWorkflowActive(workflowId);
-			workflowsStore.setActive(fetchedWorkflow.active);
-		}
-	}
 });
 
 function syncTabsWithRoute(to: RouteLocation, from?: RouteLocation): void {

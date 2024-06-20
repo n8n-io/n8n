@@ -11,7 +11,7 @@
 			@load-more="$emit('load-more')"
 			@retry-execution="onRetryExecution"
 		/>
-		<div v-if="!hidePreview && execution" :class="$style.content">
+		<div v-if="!hidePreview" :class="$style.content">
 			<router-view
 				name="executionPreview"
 				:execution="execution"
