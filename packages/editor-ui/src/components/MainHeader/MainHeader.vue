@@ -43,7 +43,7 @@ const hideMenuBar = computed(() =>
 	Boolean(activeNode.value && activeNode.value.type !== STICKY_NODE_TYPE),
 );
 const workflow = computed(() => workflowsStore.workflow);
-const currentWorkflow = computed(() =>
+const workflowId = computed(() =>
 	String(router.currentRoute.value.params.name || workflowsStore.workflowId),
 );
 const onWorkflowPage = computed(() => !!(route.meta.nodeView || route.meta.keepWorkflowAlive));
@@ -132,7 +132,7 @@ async function navigateToWorkflowView(openInNewTab: boolean) {
 
 async function navigateToExecutionsView(openInNewTab: boolean) {
 	const routeWorkflowId =
-		currentWorkflow.value === PLACEHOLDER_EMPTY_WORKFLOW_ID ? 'new' : currentWorkflow.value;
+		workflowId.value === PLACEHOLDER_EMPTY_WORKFLOW_ID ? 'new' : workflowId.value;
 	const executionToReturnToValue = executionsStore.activeExecution?.id || executionToReturnTo.value;
 	const routeToNavigateTo: RouteLocationRaw = executionToReturnToValue
 		? {
@@ -149,7 +149,7 @@ async function navigateToExecutionsView(openInNewTab: boolean) {
 		window.open(href, '_blank');
 	} else if (route.name !== routeToNavigateTo.name) {
 		dirtyState.value = uiStore.stateIsDirty;
-		workflowToReturnTo.value = currentWorkflow.value;
+		workflowToReturnTo.value = workflowId.value;
 		activeHeaderTab.value = MAIN_HEADER_TABS.EXECUTIONS;
 		await router.push(routeToNavigateTo);
 	}
