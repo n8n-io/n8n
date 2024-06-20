@@ -131,6 +131,8 @@ export class NDV extends BasePage {
 		nodeRunErrorIndicator: () => cy.getByTestId('node-run-info-danger'),
 		nodeRunErrorMessage: () => cy.getByTestId('node-error-message'),
 		nodeRunErrorDescription: () => cy.getByTestId('node-error-description'),
+		schemaViewNode: () => cy.getByTestId('run-data-schema-node'),
+		schemaViewNodeHeader: () => cy.getByTestId('run-data-schema-node-header'),
 	};
 
 	actions = {
@@ -211,6 +213,9 @@ export class NDV extends BasePage {
 		selectInputNode: (nodeName: string) => {
 			this.getters.inputSelect().find('.el-select').click();
 			this.getters.inputOption().contains(nodeName).click();
+		},
+		expandSchemaViewNode: (nodeName: string) => {
+			this.getters.schemaViewNodeHeader().contains(nodeName).click();
 		},
 		addDefaultPinnedData: () => {
 			this.actions.editPinnedData();

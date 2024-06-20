@@ -57,9 +57,9 @@ describe('NDV', () => {
 		cy.createFixtureWorkflow('NDV-test-select-input.json', 'NDV test select input');
 		workflowPage.actions.zoomToFit();
 		workflowPage.getters.canvasNodes().last().dblclick();
+		ndv.actions.switchInputMode('Table');
 		ndv.getters.inputSelect().click();
 		ndv.getters.inputOption().last().click();
-		ndv.getters.inputDataContainer().find('[class*=schema_]').should('exist');
 		ndv.getters.inputDataContainer().should('contain', 'start');
 		ndv.getters.backToCanvas().click();
 		ndv.getters.container().should('not.be.visible');
