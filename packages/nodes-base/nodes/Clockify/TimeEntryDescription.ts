@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const timeEntryOperations: INodeProperties[] = [
 	{
@@ -119,9 +119,6 @@ export const timeEntryFields: INodeProperties[] = [
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
@@ -143,7 +140,6 @@ export const timeEntryFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
 				displayName: 'Tag Names or IDs',
 				name: 'tagIds',
 				type: 'multiOptions',
@@ -304,9 +300,6 @@ export const timeEntryFields: INodeProperties[] = [
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
@@ -334,7 +327,6 @@ export const timeEntryFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
 				displayName: 'Tag Names or IDs',
 				name: 'tagIds',
 				type: 'multiOptions',

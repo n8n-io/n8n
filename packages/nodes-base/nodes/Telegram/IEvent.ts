@@ -1,8 +1,7 @@
-
 interface EventBody {
 	photo?: [
 		{
-			file_id: string,
+			file_id: string;
 		},
 	];
 	document?: {

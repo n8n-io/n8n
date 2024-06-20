@@ -1,84 +1,93 @@
 <template>
 	<span>
-		<div v-if="isLoading">
-			Loading binary data...
-		</div>
-		<div v-else-if="error">
-			Error loading binary data
-		</div>
+		<div v-if="isLoading">Loading binary data...</div>
+		<div v-else-if="error">Error loading binary data</div>
 		<span v-else>
-			<video v-if="binaryData.mimeType && binaryData.mimeType.startsWith('video/')" controls autoplay>
-				<source :src="embedSource" :type="binaryData.mimeType">
+			<video v-if="binaryData.fileType === 'video'" controls autoplay>
+				<source :src="embedSource" :type="binaryData.mimeType" />
 				{{ $locale.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
 			</video>
-			<embed v-else :src="embedSource" class="binary-data" :class="embedClass()"/>
+			<audio v-else-if="binaryData.fileType === 'audio'" controls autoplay>
+				<source :src="embedSource" :type="binaryData.mimeType" />
+				{{ $locale.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
+			</audio>
+			<VueJsonPretty
+				v-else-if="binaryData.fileType === 'json'"
+				:data="data"
+				:deep="3"
+				:show-length="true"
+			/>
+			<RunDataHtml v-else-if="binaryData.fileType === 'html'" :input-html="data" />
+			<embed v-else :src="embedSource" class="binary-data" :class="embedClass" />
 		</span>
 	</span>
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
+import { ref, onMounted, computed } from 'vue';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { IBinaryData } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import VueJsonPretty from 'vue-json-pretty';
+import RunDataHtml from '@/components/RunDataHtml.vue';
 
+const props = defineProps<{
+	binaryData: IBinaryData;
+}>();
 
-import mixins from 'vue-typed-mixins';
-import { restApi } from '@/components/mixins/restApi';
+const isLoading = ref(true);
+const embedSource = ref('');
+const error = ref(false);
+const data = ref('');
 
-export default mixins(
-	restApi,
-)
-	.extend({
-		name: 'BinaryDataDisplayEmbed',
-		props: [
-			'binaryData', // IBinaryDisplayData
-		],
-		data() {
-			return {
-				isLoading: true,
-				embedSource: '',
-				error: false,
-			};
-		},
-		async mounted() {
-			if(!this.binaryData.id) {
-				this.embedSource = 'data:' + this.binaryData.mimeType + ';base64,' + this.binaryData.data;
-				this.isLoading = false;
-				return;
+const workflowsStore = useWorkflowsStore();
+
+const embedClass = computed(() => {
+	return [props.binaryData.fileType ?? 'other'];
+});
+
+onMounted(async () => {
+	const { id, data: binaryData, fileName, fileType, mimeType } = props.binaryData;
+	const isJSONData = fileType === 'json';
+	const isHTMLData = fileType === 'html';
+
+	if (!id) {
+		if (isJSONData || isHTMLData) {
+			data.value = jsonParse(atob(binaryData));
+		} else {
+			embedSource.value = 'data:' + mimeType + ';base64,' + binaryData;
+		}
+	} else {
+		try {
+			const binaryUrl = workflowsStore.getBinaryUrl(id, 'view', fileName ?? '', mimeType);
+			if (isJSONData || isHTMLData) {
+				const fetchedData = await fetch(binaryUrl, { credentials: 'include' });
+				data.value = await (isJSONData ? fetchedData.json() : fetchedData.text());
+			} else {
+				embedSource.value = binaryUrl;
 			}
+		} catch (e) {
+			error.value = true;
+		}
+	}
 
-			try {
-				const bufferString = await this.restApi().getBinaryBufferString(this.binaryData!.id!);
-				this.embedSource = 'data:' + this.binaryData.mimeType + ';base64,' + bufferString;
-				this.isLoading = false;
-			} catch (e) {
-				this.isLoading = false;
-				this.error = true;
-			}
-		},
-		methods: {
-			embedClass(): string[] {
-				// @ts-ignore
-				if (this.binaryData! !== null && this.binaryData!.mimeType! !== undefined && (this.binaryData!.mimeType! as string).startsWith('image')) {
-					return ['image'];
-				}
-				return ['other'];
-			},
-		},
-	});
+	isLoading.value = false;
+});
 </script>
 
 <style lang="scss">
-
 .binary-data {
-    background-color: var(--color-foreground-xlight);
+	background-color: var(--color-foreground-xlight);
 
-    &.image {
-        max-height: calc(100% - 1em);
-        max-width: calc(100% - 1em);
-    }
+	&.image {
+		max-height: calc(100% - 1em);
+		max-width: calc(100% - 1em);
+	}
 
-    &.other {
-        height: calc(100% - 1em);
-        width: calc(100% - 1em);
-    }
+	&.other,
+	&.pdf {
+		height: calc(100% - 1em);
+		width: calc(100% - 1em);
+	}
 }
-
 </style>

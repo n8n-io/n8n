@@ -1,31 +1,32 @@
-import { OptionsWithUri } from 'request';
+import { createHash } from 'crypto';
 
-import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	IExecuteFunctions,
+	IHookFunctions,
+	IHttpRequestMethods,
+	ILoadOptionsFunctions,
 	INodeProperties,
+	IRequestOptions,
 	IWebhookFunctions,
-	NodeApiError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { upperFirst } from 'lodash';
-
-import { createHash } from 'crypto';
+import upperFirst from 'lodash/upperFirst';
 
 export async function webexApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		method,
 		body,
 		qs,
@@ -36,7 +37,7 @@ export async function webexApiRequest(
 		if (Object.keys(option).length !== 0) {
 			options = Object.assign({}, options, option);
 		}
-		if (Object.keys(body).length === 0) {
+		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
 		if (Object.keys(qs).length === 0) {
@@ -47,20 +48,19 @@ export async function webexApiRequest(
 			tokenType: 'Bearer',
 		});
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
 export async function webexApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
 	options: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -73,13 +73,10 @@ export async function webexApiRequestAllItems(
 			...options,
 		});
 		if (responseData.headers.link) {
-			uri = responseData.headers['link'].split(';')[0].replace('<', '').replace('>', '');
+			uri = responseData.headers.link.split(';')[0].replace('<', '').replace('>', '');
 		}
-		returnData.push.apply(returnData, responseData.body[propertyName]);
-	} while (
-		responseData.headers['link'] !== undefined &&
-		responseData.headers['link'].includes('rel="next"')
-	);
+		returnData.push.apply(returnData, responseData.body[propertyName] as IDataObject[]);
+	} while (responseData.headers.link?.includes('rel="next"'));
 	return returnData;
 }
 
@@ -133,14 +130,19 @@ export function mapResource(event: string) {
 	)[event];
 }
 
-export function getAttachemnts(attachements: IDataObject[]) {
+function removeEmptyProperties(rest: { [key: string]: any }) {
+	return Object.keys(rest)
+		.filter((k) => rest[k] !== '')
+		.reduce((a, k) => ({ ...a, [k]: rest[k] }), {});
+}
+
+export function getAttachments(attachments: IDataObject[]) {
 	const _attachments: IDataObject[] = [];
-	for (const attachment of attachements) {
+	for (const attachment of attachments) {
 		const body: IDataObject[] = [];
 		const actions: IDataObject[] = [];
 		for (const element of ((attachment?.elementsUi as IDataObject)
 			.elementValues as IDataObject[]) || []) {
-			// tslint:disable-next-line: no-any
 			const { type, ...rest } = element as { type: string; [key: string]: any };
 			if (type.startsWith('input')) {
 				body.push({
@@ -153,7 +155,6 @@ export function getAttachemnts(attachements: IDataObject[]) {
 		}
 		for (const action of ((attachment?.actionsUi as IDataObject).actionValues as IDataObject[]) ||
 			[]) {
-			// tslint:disable-next-line: no-any
 			const { type, ...rest } = action as { type: string; [key: string]: any };
 			actions.push({ type: `Action.${upperFirst(type)}`, ...removeEmptyProperties(rest) });
 		}
@@ -626,13 +627,6 @@ export function getInputTextProperties(): INodeProperties[] {
 			description: 'The initial value for this field',
 		},
 	];
-}
-
-// tslint:disable-next-line: no-any
-function removeEmptyProperties(rest: { [key: string]: any }) {
-	return Object.keys(rest)
-		.filter((k) => rest[k] !== '')
-		.reduce((a, k) => ({ ...a, [k]: rest[k] }), {});
 }
 
 export function getAutomaticSecret(credentials: ICredentialDataDecryptedObject) {

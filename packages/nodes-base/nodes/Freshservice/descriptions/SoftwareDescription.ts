@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const softwareOperations: INodeProperties[] = [
 	{
@@ -31,10 +31,10 @@ export const softwareOperations: INodeProperties[] = [
 				action: 'Get a software application',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all software applications',
-				action: 'Get all software applications',
+				description: 'Retrieve many software applications',
+				action: 'Get many software applications',
 			},
 			{
 				name: 'Update',

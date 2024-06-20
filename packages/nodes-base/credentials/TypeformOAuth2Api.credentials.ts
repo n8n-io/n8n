@@ -1,12 +1,16 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 const scopes = ['webhooks:write', 'webhooks:read', 'forms:read'];
 
 export class TypeformOAuth2Api implements ICredentialType {
 	name = 'typeformOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'Typeform OAuth2 API';
+
 	documentationUrl = 'typeform';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',

@@ -1,20 +1,15 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import {
-	twakeApiRequest,
-} from './GenericFunctions';
+import { twakeApiRequest } from './GenericFunctions';
 
 export class Twake implements INodeType {
 	description: INodeTypeDescription = {
@@ -93,9 +88,7 @@ export class Twake implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'message',
-						],
+						resource: ['message'],
 					},
 				},
 				options: [
@@ -117,13 +110,12 @@ export class Twake implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
+						operation: ['send'],
 					},
 				},
 				default: '',
-				description: 'Channel\'s ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Channel\'s ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Content',
@@ -132,9 +124,7 @@ export class Twake implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
+						operation: ['send'],
 					},
 				},
 				default: '',
@@ -147,9 +137,7 @@ export class Twake implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
+						operation: ['send'],
 					},
 				},
 				default: {},
@@ -196,15 +184,13 @@ export class Twake implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length;
-		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			if (resource === 'message') {
 				if (operation === 'send') {
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const message: IDataObject = {
 						channel_id: this.getNodeParameter('channelId', i),

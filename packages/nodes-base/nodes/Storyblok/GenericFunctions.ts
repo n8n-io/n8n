@@ -1,22 +1,25 @@
-import {
-	OptionsWithUri,
-} from 'request';
-
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject, NodeApiError,
+	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-export async function storyblokApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function storyblokApiRequest(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	resource: string,
+	body: IDataObject = {},
+	qs: IDataObject = {},
+	option: IDataObject = {},
+) {
 	const authenticationMethod = this.getNodeParameter('source', 0) as string;
 
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -38,23 +41,32 @@ export async function storyblokApiRequest(this: IHookFunctions | IExecuteFunctio
 
 		options.uri = `https://api.storyblok.com${resource}`;
 
-		Object.assign(options.qs, { token: credentials.apiKey });
+		Object.assign(options.qs ?? {}, { token: credentials.apiKey });
 	} else {
 		const credentials = await this.getCredentials('storyblokManagementApi');
 
 		options.uri = `https://mapi.storyblok.com${resource}`;
 
-		Object.assign(options.headers, { 'Authorization': credentials.accessToken });
+		if (options.headers) {
+			Object.assign(options.headers, { Authorization: credentials.accessToken });
+		}
 	}
 
 	try {
-		return this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
-export async function storyblokApiRequestAllItems(this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions, propertyName: string, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function storyblokApiRequestAllItems(
+	this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions,
+	propertyName: string,
+	method: IHttpRequestMethods,
+	resource: string,
+	body: IDataObject = {},
+	query: IDataObject = {},
+) {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -66,15 +78,13 @@ export async function storyblokApiRequestAllItems(this: IHookFunctions | ILoadOp
 	do {
 		responseData = await storyblokApiRequest.call(this, method, resource, body, query);
 		query.page++;
-		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (
-		responseData[propertyName].length !== 0
-	);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+	} while (responseData[propertyName].length !== 0);
 
 	return returnData;
 }
 
-export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
 		result = JSON.parse(json!);

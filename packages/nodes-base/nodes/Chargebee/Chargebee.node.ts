@@ -1,13 +1,15 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
+	JsonObject,
 	NodeParameterValue,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 interface CustomProperty {
 	name: string;
@@ -281,7 +283,7 @@ export class Chargebee implements INodeType {
 									},
 								],
 								default: 'after',
-								description: 'Operation to decide where the the data should be mapped to',
+								description: 'Operation to decide where the data should be mapped to',
 							},
 							{
 								displayName: 'Date',
@@ -328,7 +330,7 @@ export class Chargebee implements INodeType {
 									},
 								],
 								default: 'gt',
-								description: 'Operation to decide where the the data should be mapped to',
+								description: 'Operation to decide where the data should be mapped to',
 							},
 							{
 								displayName: 'Amount',
@@ -447,8 +449,7 @@ export class Chargebee implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
-		let item: INodeExecutionData;
+		const returnData: INodeExecutionData[] = [];
 
 		const credentials = await this.getCredentials('chargebeeApi');
 
@@ -461,11 +462,10 @@ export class Chargebee implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 			try {
-				item = items[i];
-				const resource = this.getNodeParameter('resource', i) as string;
-				const operation = this.getNodeParameter('operation', i) as string;
+				const resource = this.getNodeParameter('resource', i);
+				const operation = this.getNodeParameter('operation', i);
 
-				let requestMethod = 'GET';
+				let requestMethod: IHttpRequestMethods = 'GET';
 				let endpoint = '';
 				body = {};
 				qs = {};
@@ -484,7 +484,7 @@ export class Chargebee implements INodeType {
 								key === 'customProperties' &&
 								(properties.customProperties as IDataObject).property !== undefined
 							) {
-								for (const customProperty of (properties.customProperties as IDataObject)!
+								for (const customProperty of (properties.customProperties as IDataObject)
 									.property! as CustomProperty[]) {
 									qs[customProperty.name] = customProperty.value;
 								}
@@ -493,7 +493,7 @@ export class Chargebee implements INodeType {
 							}
 						}
 
-						endpoint = `customers`;
+						endpoint = 'customers';
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -591,38 +591,50 @@ export class Chargebee implements INodeType {
 						pass: '',
 					},
 					json: true,
-				};
+				} satisfies IRequestOptions;
 
 				let responseData;
 
 				try {
-					responseData = await this.helpers.request!(options);
+					responseData = await this.helpers.request(options);
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 
 				if (resource === 'invoice' && operation === 'list') {
 					responseData.list.forEach((data: IDataObject) => {
-						returnData.push(data.invoice as IDataObject);
+						responseData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ ...(data.invoice as IDataObject) }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...responseData);
 					});
 				} else if (resource === 'invoice' && operation === 'pdfUrl') {
 					const data: IDataObject = {};
 					Object.assign(data, items[i].json);
 
 					data.pdfUrl = responseData.download.download_url;
-					returnData.push(data);
+					responseData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ ...data }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...responseData);
 				} else {
-					returnData.push(responseData);
+					responseData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...responseData);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+				if (this.continueOnFail(error)) {
+					returnData.push({ error: error.message, json: {}, itemIndex: i });
 					continue;
 				}
 				throw error;
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return [returnData];
 	}
 }

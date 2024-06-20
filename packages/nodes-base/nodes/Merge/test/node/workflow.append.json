@@ -1,0 +1,123 @@
+{
+	"name": "merge tests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "9f880c6f-b5e0-4453-b1d7-550beb1febe8",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [820, 380]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {id: 1},\n  {id: 2},\n  {id: 3}, \n];"
+			},
+			"id": "263d9c7f-32d4-4112-b271-73d09b73809a",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [1020, 220]
+		},
+		{
+			"parameters": {},
+			"id": "82ff69e1-596b-48dd-b724-388ef454a822",
+			"name": "Merge",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [1280, 360]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {id: 4},\n  {id: 5},\n  {id: 6}, \n];"
+			},
+			"id": "3defcf5a-ec5e-4d23-a1f6-a99b7362a241",
+			"name": "Code1",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [1040, 540]
+		}
+	],
+	"pinData": {
+		"Merge": [
+			{
+				"json": {
+					"id": 1
+				}
+			},
+			{
+				"json": {
+					"id": 2
+				}
+			},
+			{
+				"json": {
+					"id": 3
+				}
+			},
+			{
+				"json": {
+					"id": 4
+				}
+			},
+			{
+				"json": {
+					"id": 5
+				}
+			},
+			{
+				"json": {
+					"id": 6
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Code1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code1": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "7082c0c9-60ab-4bcb-adbd-89e56e0bddd6",
+	"id": "107",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}

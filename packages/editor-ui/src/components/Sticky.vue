@@ -1,74 +1,231 @@
 <template>
-	<div class="sticky-wrapper" :style="stickyPosition" :id="nodeId">
+	<div
+		:id="nodeId"
+		:ref="data?.name"
+		class="sticky-wrapper"
+		:style="stickyPosition"
+		:data-name="data?.name"
+		data-test-id="sticky"
+	>
 		<div
-			:class="{'sticky-default': true, 'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}"
+			:class="{
+				'sticky-default': true,
+				'touch-active': isTouchActive,
+				'is-touch-device': deviceSupport.isTouchDevice,
+				'is-read-only': isReadOnly,
+			}"
 			:style="stickySize"
 		>
-			<div class="select-sticky-background" v-show="isSelected" />
+			<div v-show="isSelected" class="select-sticky-background" />
 			<div
-				class="sticky-box"
-				:data-name="data.name"
-				:ref="data.name"
-				@click.left="mouseLeftClick"
 				v-touch:start="touchStart"
 				v-touch:end="touchEnd"
+				class="sticky-box"
+				@click.left="mouseLeftClick"
+				@contextmenu="onContextMenu"
 			>
 				<n8n-sticky
-					:content.sync="node.parameters.content"
+					v-if="node"
+					:id="node.id"
+					:model-value="node.parameters.content"
 					:height="node.parameters.height"
 					:width="node.parameters.width"
 					:scale="nodeViewScale"
-					:id="node.id"
-					:readOnly="isReadOnly"
-					:defaultText="defaultText"
-					:editMode="isActive && !isReadOnly"
-					:gridSize="gridSize"
-					@input="onInputChange"
+					:background-color="node.parameters.color"
+					:read-only="isReadOnly"
+					:default-text="defaultText"
+					:edit-mode="isActive && !isReadOnly"
+					:grid-size="gridSize"
 					@edit="onEdit"
 					@resizestart="onResizeStart"
 					@resize="onResize"
 					@resizeend="onResizeEnd"
 					@markdown-click="onMarkdownClick"
+					@update:model-value="onInputChange"
 				/>
 			</div>
 
-			<div v-show="showActions" class="sticky-options no-select-on-click">
-				<div v-touch:tap="deleteNode" class="option" :title="$locale.baseText('node.deleteNode')" >
+			<div
+				v-show="showActions"
+				:class="{ 'sticky-options': true, 'no-select-on-click': true, 'force-show': forceActions }"
+			>
+				<div
+					v-touch:tap="deleteNode"
+					class="option"
+					data-test-id="delete-sticky"
+					:title="$locale.baseText('node.delete')"
+				>
 					<font-awesome-icon icon="trash" />
 				</div>
+				<n8n-popover
+					effect="dark"
+					:popper-style="{ width: '208px' }"
+					trigger="click"
+					placement="top"
+					@show="onShowPopover"
+					@hide="onHidePopover"
+				>
+					<template #reference>
+						<div
+							ref="colorPopoverTrigger"
+							class="option"
+							data-test-id="change-sticky-color"
+							:title="$locale.baseText('node.changeColor')"
+						>
+							<font-awesome-icon icon="palette" />
+						</div>
+					</template>
+					<div class="content">
+						<div
+							v-for="(_, index) in Array.from({ length: 7 })"
+							:key="index"
+							class="color"
+							data-test-id="color"
+							:class="`sticky-color-${index + 1}`"
+							:style="{
+								'border-width': '1px',
+								'border-style': 'solid',
+								'border-color': 'var(--color-foreground-xdark)',
+								'background-color': `var(--color-sticky-background-${index + 1})`,
+								'box-shadow':
+									(index === 0 && node?.parameters.color === '') ||
+									index + 1 === node?.parameters.color
+										? `0 0 0 1px var(--color-sticky-background-${index + 1})`
+										: 'none',
+							}"
+							@click="changeColor(index + 1)"
+						></div>
+					</div>
+				</n8n-popover>
 			</div>
 		</div>
 	</div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent, ref } from 'vue';
+import type { PropType, StyleValue } from 'vue';
+import { mapStores } from 'pinia';
 
-import mixins from 'vue-typed-mixins';
-import { externalHooks } from '@/components/mixins/externalHooks';
-import { nodeBase } from '@/components/mixins/nodeBase';
-import { nodeHelpers } from '@/components/mixins/nodeHelpers';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
-import { getStyleTokenValue, isNumber, isString } from './helpers';
-import { INodeUi, XYPosition } from '@/Interface';
+import { isNumber, isString } from '@/utils/typeGuards';
+import type {
+	INodeUi,
+	INodeUpdatePropertiesInformation,
+	IUpdateInformation,
+	XYPosition,
+} from '@/Interface';
 
-import {
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import type { INodeTypeDescription, Workflow } from 'n8n-workflow';
 import { QUICKSTART_NOTE_NAME } from '@/constants';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useContextMenu } from '@/composables/useContextMenu';
+import { useDeviceSupport } from 'n8n-design-system';
+import { GRID_SIZE } from '@/utils/nodeViewUtils';
+import { useToast } from '@/composables/useToast';
+import { assert } from '@/utils/assert';
+import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
+import { useCanvasStore } from '@/stores/canvas.store';
+import { useHistoryStore } from '@/stores/history.store';
+import { useNodeBase } from '@/composables/useNodeBase';
 
-export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).extend({
+export default defineComponent({
 	name: 'Sticky',
 	props: {
 		nodeViewScale: {
 			type: Number,
+			default: 1,
 		},
 		gridSize: {
 			type: Number,
+			default: GRID_SIZE,
+		},
+		name: {
+			type: String,
+			required: true,
+		},
+		instance: {
+			type: Object as PropType<BrowserJsPlumbInstance>,
+			required: true,
+		},
+		isReadOnly: {
+			type: Boolean,
+		},
+		isActive: {
+			type: Boolean,
+		},
+		hideActions: {
+			type: Boolean,
+		},
+		disableSelecting: {
+			type: Boolean,
+		},
+		showCustomTooltip: {
+			type: Boolean,
+		},
+		workflow: {
+			type: Object as PropType<Workflow>,
+			required: true,
 		},
 	},
+	emits: { removeNode: null, nodeSelected: null },
+	setup(props, { emit }) {
+		const deviceSupport = useDeviceSupport();
+		const toast = useToast();
+		const colorPopoverTrigger = ref<HTMLDivElement>();
+		const forceActions = ref(false);
+		const setForceActions = (value: boolean) => {
+			forceActions.value = value;
+		};
+		const contextMenu = useContextMenu((action) => {
+			if (action === 'change_color') {
+				setForceActions(true);
+				colorPopoverTrigger.value?.click();
+			}
+		});
+
+		const nodeBase = useNodeBase({
+			name: props.name,
+			instance: props.instance,
+			workflowObject: props.workflow,
+			isReadOnly: props.isReadOnly,
+			emit: emit as (event: string, ...args: unknown[]) => void,
+		});
+
+		return {
+			deviceSupport,
+			toast,
+			colorPopoverTrigger,
+			contextMenu,
+			forceActions,
+			...nodeBase,
+			setForceActions,
+		};
+	},
+	data() {
+		return {
+			isResizing: false,
+			isTouchActive: false,
+		};
+	},
 	computed: {
-		defaultText (): string {
+		...mapStores(
+			useNodeTypesStore,
+			useUIStore,
+			useNDVStore,
+			useCanvasStore,
+			useWorkflowsStore,
+			useHistoryStore,
+		),
+		data(): INodeUi | null {
+			return this.workflowsStore.getNodeByName(this.name);
+		},
+		nodeId(): string {
+			return this.data?.id || '';
+		},
+		defaultText(): string {
 			if (!this.nodeType) {
 				return '';
 			}
@@ -77,16 +234,20 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 			return content && isString(content.default) ? content.default : '';
 		},
-		isSelected (): boolean {
-			return this.$store.getters.getSelectedNodes.find((node: INodeUi) => node.name === this.data.name);
+		isSelected(): boolean {
+			return (
+				this.uiStore.getSelectedNodes.find((node: INodeUi) => node.name === this.data?.name) !==
+				undefined
+			);
 		},
-		nodeType (): INodeTypeDescription | null {
-			return this.data && this.$store.getters['nodeTypes/getNodeType'](this.data.type, this.data.typeVersion);
+		nodeType(): INodeTypeDescription | null {
+			return this.data && this.nodeTypesStore.getNodeType(this.data.type, this.data.typeVersion);
 		},
-		node (): INodeUi | undefined { // same as this.data but reactive..
-			return this.$store.getters.nodesByName[this.name] as INodeUi | undefined;
+		node(): INodeUi | null {
+			// same as this.data but reactive..
+			return this.workflowsStore.getNodeByName(this.name);
 		},
-		position (): XYPosition {
+		position(): XYPosition {
 			if (this.node) {
 				return this.node.position;
 			} else {
@@ -94,12 +255,12 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			}
 		},
 		height(): number {
-			return this.node && isNumber(this.node.parameters.height)? this.node.parameters.height : 0;
+			return this.node && isNumber(this.node.parameters.height) ? this.node.parameters.height : 0;
 		},
 		width(): number {
-			return this.node && isNumber(this.node.parameters.width)? this.node.parameters.width : 0;
+			return this.node && isNumber(this.node.parameters.width) ? this.node.parameters.width : 0;
 		},
-		stickySize(): object {
+		stickySize(): StyleValue {
 			const returnStyles: {
 				[key: string]: string | number;
 			} = {
@@ -109,7 +270,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 			return returnStyles;
 		},
-		stickyPosition (): object {
+		stickyPosition(): StyleValue {
 			const returnStyles: {
 				[key: string]: string | number;
 			} = {
@@ -121,55 +282,86 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			return returnStyles;
 		},
 		showActions(): boolean {
-			return !(this.hideActions || this.isReadOnly || this.workflowRunning || this.isResizing);
+			return (
+				!(this.hideActions || this.isReadOnly || this.workflowRunning || this.isResizing) ||
+				this.forceActions
+			);
 		},
-		workflowRunning (): boolean {
-			return this.$store.getters.isActionActive('workflowRunning');
+		workflowRunning(): boolean {
+			return this.uiStore.isActionActive('workflowRunning');
 		},
 	},
-	data () {
-		return {
-			isResizing: false,
-			isTouchActive: false,
-		};
+	mounted() {
+		// Initialize the node
+		if (this.data !== null) {
+			try {
+				this.addNode(this.data);
+			} catch (error) {
+				// This breaks when new nodes are loaded into store but workflow tab is not currently active
+				// Shouldn't affect anything
+			}
+		}
 	},
 	methods: {
-		deleteNode () {
-			Vue.nextTick(() => {
-				// Wait a tick else vue causes problems because the data is gone
-				this.$emit('removeNode', this.data.name);
+		onShowPopover() {
+			this.setForceActions(true);
+		},
+		onHidePopover() {
+			this.setForceActions(false);
+		},
+		async deleteNode() {
+			assert(this.data);
+			// Wait a tick else vue causes problems because the data is gone
+			await this.$nextTick();
+			this.$emit('removeNode', this.data.name);
+		},
+		changeColor(index: number) {
+			this.workflowsStore.updateNodeProperties({
+				name: this.name,
+				properties: {
+					parameters: {
+						...this.node?.parameters,
+						color: index,
+					},
+					position: this.node?.position ?? [0, 0],
+				},
 			});
 		},
 		onEdit(edit: boolean) {
 			if (edit && !this.isActive && this.node) {
-				this.$store.commit('setActiveNode', this.node.name);
-			}
-			else if (this.isActive && !edit) {
-				this.$store.commit('setActiveNode', null);
+				this.ndvStore.activeNodeName = this.node.name;
+			} else if (this.isActive && !edit) {
+				this.ndvStore.activeNodeName = null;
 			}
 		},
-		onMarkdownClick ( link:HTMLAnchorElement, event: Event ) {
+		onMarkdownClick(link: HTMLAnchorElement) {
 			if (link) {
 				const isOnboardingNote = this.name === QUICKSTART_NOTE_NAME;
-				const isWelcomeVideo = link.querySelector('img[alt="n8n quickstart video"');
-				const type = isOnboardingNote && isWelcomeVideo ? 'welcome_video' : isOnboardingNote && link.getAttribute('href') === '/templates' ? 'templates' : 'other';
+				const isWelcomeVideo = link.querySelector('img[alt="n8n quickstart video"]');
+				const type =
+					isOnboardingNote && isWelcomeVideo
+						? 'welcome_video'
+						: isOnboardingNote && link.getAttribute('href') === '/templates'
+							? 'templates'
+							: 'other';
 
-				this.$telemetry.track('User clicked note link', { type } );
+				this.$telemetry.track('User clicked note link', { type });
 			}
 		},
 		onInputChange(content: string) {
-			this.setParameters({content});
+			if (!this.node) {
+				return;
+			}
+			this.node.parameters.content = content;
+			this.setParameters({ content });
 		},
 		onResizeStart() {
 			this.isResizing = true;
 			if (!this.isSelected && this.node) {
 				this.$emit('nodeSelected', this.node.name, false, true);
 			}
-			if (this.node) {
-				this.instance.destroyDraggable(this.node.id); // todo avoid destroying if possible
-			}
 		},
-		onResize({height, width, dX, dY}:  { width: number, height: number, dX: number, dY: number }) {
+		onResize({ height, width, dX, dY }: { width: number; height: number; dX: number; dY: number }) {
 			if (!this.node) {
 				return;
 			}
@@ -181,22 +373,23 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 		onResizeEnd() {
 			this.isResizing = false;
-			this.__makeInstanceDraggable(this.data);
 		},
-		setParameters(params: {content?: string, height?: number, width?: number}) {
+		setParameters(params: { content?: string; height?: number; width?: number; color?: string }) {
 			if (this.node) {
 				const nodeParameters = {
 					content: isString(params.content) ? params.content : this.node.parameters.content,
 					height: isNumber(params.height) ? params.height : this.node.parameters.height,
 					width: isNumber(params.width) ? params.width : this.node.parameters.width,
+					color: isString(params.color) ? params.color : this.node.parameters.color,
 				};
 
-				const updateInformation = {
+				const updateInformation: IUpdateInformation = {
+					key: this.node.id,
 					name: this.node.name,
 					value: nodeParameters,
 				};
 
-				this.$store.commit('setNodeParameters', updateInformation);
+				this.workflowsStore.setNodeParameters(updateInformation);
 			}
 		},
 		setPosition(position: XYPosition) {
@@ -204,26 +397,32 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				return;
 			}
 
-			const updateInformation = {
+			const updateInformation: INodeUpdatePropertiesInformation = {
 				name: this.node.name,
 				properties: {
 					position,
 				},
 			};
 
-			this.$store.commit('updateNodeProperties', updateInformation);
+			this.workflowsStore.updateNodeProperties(updateInformation);
 		},
-		touchStart () {
-			if (this.isTouchDevice === true && this.isMacOs === false && this.isTouchActive === false) {
+		touchStart() {
+			if (this.deviceSupport.isTouchDevice && !this.deviceSupport.isMacOs && !this.isTouchActive) {
 				this.isTouchActive = true;
 				setTimeout(() => {
 					this.isTouchActive = false;
 				}, 2000);
 			}
 		},
+		onContextMenu(e: MouseEvent): void {
+			if (this.node && !this.isActive) {
+				this.contextMenu.open(e, { source: 'node-right-click', node: this.node });
+			} else {
+				e.stopPropagation();
+			}
+		},
 	},
 });
-
 </script>
 
 <style lang="scss" scoped>
@@ -231,8 +430,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	position: absolute;
 
 	.sticky-default {
-		position: absolute;
-
 		.sticky-box {
 			width: 100%;
 			height: 100%;
@@ -244,6 +441,10 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				display: flex;
 				cursor: pointer;
 			}
+		}
+
+		&.is-read-only {
+			pointer-events: none;
 		}
 
 		.sticky-options {
@@ -268,9 +469,13 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				}
 
 				&:hover {
-					color: $--color-primary;
+					color: $color-primary;
 				}
 			}
+		}
+
+		.force-show {
+			display: flex;
 		}
 
 		&.is-touch-device .sticky-options {
@@ -287,7 +492,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 .select-sticky-background {
 	display: block;
 	position: absolute;
-	background-color: hsla(var(--color-foreground-base-h), var(--color-foreground-base-s), var(--color-foreground-base-l), 60%);
+	background-color: var(--color-canvas-selected);
 	border-radius: var(--border-radius-xlarge);
 	overflow: hidden;
 	height: calc(100% + 16px);
@@ -295,5 +500,23 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	left: -8px;
 	top: -8px;
 	z-index: 0;
+}
+
+.content {
+	display: flex;
+	flex-direction: row;
+	width: fit-content;
+	gap: var(--spacing-2xs);
+}
+
+.color {
+	width: 20px;
+	height: 20px;
+	border-radius: 50%;
+	border-color: var(--color-primary-shade-1);
+
+	&:hover {
+		cursor: pointer;
+	}
 }
 </style>

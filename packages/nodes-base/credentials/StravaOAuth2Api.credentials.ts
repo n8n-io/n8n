@@ -1,10 +1,14 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class StravaOAuth2Api implements ICredentialType {
 	name = 'stravaOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'Strava OAuth2 API';
+
 	documentationUrl = 'strava';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',

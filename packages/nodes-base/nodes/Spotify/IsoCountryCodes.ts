@@ -218,7 +218,7 @@ export const isoCountryCodes = [
 		alpha2: 'CR',
 	},
 	{
-		name: 'Côte d\'Ivoire',
+		name: "Côte d'Ivoire",
 		alpha2: 'CI',
 	},
 	{
@@ -470,7 +470,7 @@ export const isoCountryCodes = [
 		alpha2: 'KI',
 	},
 	{
-		name: 'Korea (the Democratic People\'s Republic of)',
+		name: "Korea (the Democratic People's Republic of)",
 		alpha2: 'KP',
 	},
 	{
@@ -486,7 +486,7 @@ export const isoCountryCodes = [
 		alpha2: 'KG',
 	},
 	{
-		name: 'Lao People\'s Democratic Republic (the)',
+		name: "Lao People's Democratic Republic (the)",
 		alpha2: 'LA',
 	},
 	{

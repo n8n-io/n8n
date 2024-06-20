@@ -5,10 +5,10 @@ export interface IDeferredPromise<T> {
 	resolve: (result: T) => void;
 }
 
-export async function createDeferredPromise<T>(): Promise<IDeferredPromise<T>> {
-	return new Promise<IDeferredPromise<T>>((resolveCreate) => {
+export async function createDeferredPromise<T = void>(): Promise<IDeferredPromise<T>> {
+	return await new Promise<IDeferredPromise<T>>((resolveCreate) => {
 		const promise = new Promise<T>((resolve, reject) => {
-			resolveCreate({ promise: async () => promise, resolve, reject });
+			resolveCreate({ promise: async () => await promise, resolve, reject });
 		});
 	});
 }

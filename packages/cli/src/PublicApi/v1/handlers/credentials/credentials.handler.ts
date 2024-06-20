@@ -1,12 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-import express from 'express';
+import type express from 'express';
 
-import { CredentialsHelper } from '../../../../CredentialsHelper';
-import { CredentialTypes } from '../../../../CredentialTypes';
-import { CredentialsEntity } from '../../../../databases/entities/CredentialsEntity';
-import { CredentialRequest } from '../../../../requests';
-import { CredentialTypeRequest } from '../../../types';
-import { authorize } from '../../shared/middlewares/global.middleware';
+import { CredentialsHelper } from '@/CredentialsHelper';
+import { CredentialTypes } from '@/CredentialTypes';
+import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import type { CredentialTypeRequest, CredentialRequest } from '../../../types';
+import { projectScope } from '../../shared/middlewares/global.middleware';
 import { validCredentialsProperties, validCredentialType } from './credentials.middleware';
 
 import {
@@ -19,10 +18,10 @@ import {
 	saveCredential,
 	toJsonSchema,
 } from './credentials.service';
+import { Container } from 'typedi';
 
 export = {
 	createCredential: [
-		authorize(['owner', 'member']),
 		validCredentialType,
 		validCredentialsProperties,
 		async (
@@ -38,11 +37,6 @@ export = {
 
 				const savedCredential = await saveCredential(newCredential, req.user, encryptedData);
 
-				// LoggerProxy.verbose('New credential created', {
-				// 	credentialId: newCredential.id,
-				// 	ownerId: req.user.id,
-				// });
-
 				return res.json(sanitizeCredentials(savedCredential));
 			} catch ({ message, httpStatusCode }) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -51,7 +45,7 @@ export = {
 		},
 	],
 	deleteCredential: [
-		authorize(['owner', 'member']),
+		projectScope('credential:delete', 'credential'),
 		async (
 			req: CredentialRequest.Delete,
 			res: express.Response,
@@ -59,13 +53,10 @@ export = {
 			const { id: credentialId } = req.params;
 			let credential: CredentialsEntity | undefined;
 
-			if (req.user.globalRole.name !== 'owner') {
-				const shared = await getSharedCredentials(req.user.id, credentialId, [
-					'credentials',
-					'role',
-				]);
+			if (!['global:owner', 'global:admin'].includes(req.user.role)) {
+				const shared = await getSharedCredentials(req.user.id, credentialId);
 
-				if (shared?.role.name === 'owner') {
+				if (shared?.role === 'credential:owner') {
 					credential = shared.credentials;
 				}
 			} else {
@@ -76,25 +67,22 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			await removeCredential(credential);
-			credential.id = Number(credentialId);
-
+			await removeCredential(req.user, credential);
 			return res.json(sanitizeCredentials(credential));
 		},
 	],
 
 	getCredentialType: [
-		authorize(['owner', 'member']),
 		async (req: CredentialTypeRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { credentialTypeName } = req.params;
 
 			try {
-				CredentialTypes().getByName(credentialTypeName);
+				Container.get(CredentialTypes).getByName(credentialTypeName);
 			} catch (error) {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			const schema = new CredentialsHelper('')
+			const schema = Container.get(CredentialsHelper)
 				.getCredentialsProperties(credentialTypeName)
 				.filter((property) => property.type !== 'hidden');
 

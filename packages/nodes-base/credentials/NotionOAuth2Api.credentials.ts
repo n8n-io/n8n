@@ -1,10 +1,14 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class NotionOAuth2Api implements ICredentialType {
 	name = 'notionOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'Notion OAuth2 API';
+
 	documentationUrl = 'notion';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',

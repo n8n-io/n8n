@@ -1,4 +1,3 @@
-
 export interface IEcommerceProduct {
 	active?: string;
 	product_name?: string;

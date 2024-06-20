@@ -1,36 +1,13 @@
 {
+	"extends": "../../tsconfig.json",
 	"compilerOptions": {
-		"lib": [
-			"dom",
-			"es2019"
-		],
-		"types": [
-			"node",
-			"jest"
-		],
-		"module": "commonjs",
-		"removeComments": true,
-		"forceConsistentCasingInFileNames": true,
-		"esModuleInterop": true,
-		"noImplicitReturns": true,
-		"strict": true,
-		"noUnusedLocals": true,
-		"preserveConstEnums": true,
-		"declaration": true,
-		"outDir": "./dist/",
-		"target": "es2019",
-		"moduleResolution": "node",
-		"sourceMap": true,
-		"useUnknownInCatchVariables": false,
+		"rootDir": ".",
+		"baseUrl": "src",
+		"paths": {
+			"@/*": ["./*"]
+		},
+		"lib": ["es2020", "es2022.error", "dom"],
+		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
 	},
-	"include": [
-		"**/*.d.ts",
-		"src/**/*",
-		"test/**/*"
-	],
-	"exclude": [
-		"dist/**/*",
-		"node_modules/**/*",
-		"**/*.spec.ts"
-	]
+	"include": ["src/**/*.ts", "test/**/*.ts"]
 }

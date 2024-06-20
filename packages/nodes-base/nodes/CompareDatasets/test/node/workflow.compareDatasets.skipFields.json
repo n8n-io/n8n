@@ -1,0 +1,897 @@
+{
+	"name": "skip fields dot test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "eb18dcd4-3251-493f-ae3f-d4a89b16cee8",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [400, 800]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n\t{\n\t\tid: 1,\n\t\tdata: {\n\t\t\tname: 'John',\n\t\t\tage: 31,\n            active: true,\n\t\t},\n\t\taddress: {\n\t\t\tcity: 'New York',\n\t\t\tcountry: 'USA',\n\t\t},\n\t},\n\t{\n\t\tid: 2,\n\t\tdata: {\n\t\t\tname: 'Jane',\n\t\t\tage: 26,\n            active: true,\n\t\t},\n\t\taddress: {\n\t\t\tcity: 'London',\n\t\t\tcountry: 'UK',\n\t\t},\n\t},\n\t{\n\t\tid: 3,\n\t\tdata: {\n\t\t\tname: 'Jack',\n\t\t\tage: 36,\n            active: true,\n\t\t},\n\t\taddress: {\n\t\t\tcity: 'Paris',\n\t\t\tcountry: 'France',\n\t\t},\n\t},\n]"
+			},
+			"id": "77327bfe-a4a8-49b8-a237-2f264536e5e3",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [660, 640]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n\t{\n\t\tid: 1,\n\t\tdata: {\n\t\t\tname: 'John',\n\t\t\tage: 30,\n            active: false,\n\t\t},\n\t\taddress: {\n\t\t\tcity: 'New York',\n\t\t\tcountry: 'us',\n            \n\t\t},\n\t},\n\t{\n\t\tid: 2,\n\t\tdata: {\n\t\t\tname: 'Jane',\n\t\t\tage: 25,\n            active: false,\n\t\t},\n\t\taddress: {\n\t\t\tcity: 'London',\n\t\t\tcountry: 'uk',\n\t\t},\n\t},\n\t{\n\t\tid: 3,\n\t\tdata: {\n\t\t\tname: 'Jack',\n\t\t\tage: 35,\n            active: false,\n\t\t},\n\t\taddress: {\n\t\t\tcity: 'Paris',\n\t\t\tcountry: 'fr',\n\t\t},\n\t},\n]"
+			},
+			"id": "8ea09201-1ed6-4f9c-afb4-1261142a74a3",
+			"name": "Code1",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [660, 920]
+		},
+		{
+			"parameters": {
+				"mergeByFields": {
+					"values": [
+						{
+							"field1": "id",
+							"field2": "id"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "750c4213-42e0-4e66-96b0-24dcb82d3d67",
+			"name": "Any skipped",
+			"type": "n8n-nodes-base.compareDatasets",
+			"typeVersion": 2.1,
+			"position": [1020, 220]
+		},
+		{
+			"parameters": {
+				"mergeByFields": {
+					"values": [
+						{
+							"field1": "id",
+							"field2": "id"
+						}
+					]
+				},
+				"options": {
+					"skipFields": "data, address"
+				}
+			},
+			"id": "2912ebdb-ddb8-4c53-a357-66e8b20ff947",
+			"name": "skip whole object",
+			"type": "n8n-nodes-base.compareDatasets",
+			"typeVersion": 2.1,
+			"position": [1020, 420]
+		},
+		{
+			"parameters": {
+				"mergeByFields": {
+					"values": [
+						{
+							"field1": "id",
+							"field2": "id"
+						}
+					]
+				},
+				"options": {
+					"skipFields": "data.age, data.active, address.country"
+				}
+			},
+			"id": "9ea72e2e-f062-4ae7-bfb1-9266848d0f3c",
+			"name": "skip each key",
+			"type": "n8n-nodes-base.compareDatasets",
+			"typeVersion": 2.1,
+			"position": [1020, 620]
+		},
+		{
+			"parameters": {
+				"mergeByFields": {
+					"values": [
+						{
+							"field1": "id",
+							"field2": "id"
+						}
+					]
+				},
+				"options": {
+					"skipFields": "address.country"
+				}
+			},
+			"id": "fca0048b-a493-4ca4-861b-2ca8216fbfba",
+			"name": "skipped contain contry",
+			"type": "n8n-nodes-base.compareDatasets",
+			"typeVersion": 2.1,
+			"position": [1040, 1060]
+		},
+		{
+			"parameters": {
+				"mergeByFields": {
+					"values": [
+						{
+							"field1": "id",
+							"field2": "id"
+						}
+					]
+				},
+				"options": {
+					"skipFields": "data, address.country"
+				}
+			},
+			"id": "498b2f65-1117-4ff2-acde-a51049fd9b89",
+			"name": "skip object and key",
+			"type": "n8n-nodes-base.compareDatasets",
+			"typeVersion": 2.1,
+			"position": [1040, 860],
+			"continueOnFail": true
+		},
+		{
+			"parameters": {
+				"mergeByFields": {
+					"values": [
+						{
+							"field1": "id",
+							"field2": "id"
+						}
+					]
+				},
+				"options": {
+					"skipFields": "data.age, address.country"
+				}
+			},
+			"id": "77ad3a73-8683-41ed-9040-cef1a2895704",
+			"name": "skip includes age and contry",
+			"type": "n8n-nodes-base.compareDatasets",
+			"typeVersion": 2.1,
+			"position": [1040, 1260]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "be74368b-6d04-43ae-ad01-e2efbd2758c3",
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [1340, 240]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "4cb1a37a-ce93-4a3e-b613-8ae9e8265718",
+			"name": "Set1",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [1340, 380]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "ab00a0a0-34be-4a65-a1de-8f69db895b76",
+			"name": "Set2",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [1340, 520]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "b23e2bf9-9a4b-4f87-a21f-cd24c56af3c1",
+			"name": "Set3",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [1340, 660]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "2cf57ec3-72c4-43e2-ad28-6755b19cc8f3",
+			"name": "Set4",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [1340, 800]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "fdf62bd3-5e54-43cd-b70e-be159aa1722f",
+			"name": "Set5",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [1340, 940]
+		}
+	],
+	"pinData": {
+		"Set": [
+			{
+				"json": {
+					"keys": {
+						"id": 1
+					},
+					"same": {
+						"id": 1
+					},
+					"different": {
+						"data": {
+							"inputA": {
+								"name": "John",
+								"age": 31,
+								"active": true
+							},
+							"inputB": {
+								"name": "John",
+								"age": 30,
+								"active": false
+							}
+						},
+						"address": {
+							"inputA": {
+								"city": "New York",
+								"country": "USA"
+							},
+							"inputB": {
+								"city": "New York",
+								"country": "us"
+							}
+						}
+					}
+				}
+			},
+			{
+				"json": {
+					"keys": {
+						"id": 2
+					},
+					"same": {
+						"id": 2
+					},
+					"different": {
+						"data": {
+							"inputA": {
+								"name": "Jane",
+								"age": 26,
+								"active": true
+							},
+							"inputB": {
+								"name": "Jane",
+								"age": 25,
+								"active": false
+							}
+						},
+						"address": {
+							"inputA": {
+								"city": "London",
+								"country": "UK"
+							},
+							"inputB": {
+								"city": "London",
+								"country": "uk"
+							}
+						}
+					}
+				}
+			},
+			{
+				"json": {
+					"keys": {
+						"id": 3
+					},
+					"same": {
+						"id": 3
+					},
+					"different": {
+						"data": {
+							"inputA": {
+								"name": "Jack",
+								"age": 36,
+								"active": true
+							},
+							"inputB": {
+								"name": "Jack",
+								"age": 35,
+								"active": false
+							}
+						},
+						"address": {
+							"inputA": {
+								"city": "Paris",
+								"country": "France"
+							},
+							"inputB": {
+								"city": "Paris",
+								"country": "fr"
+							}
+						}
+					}
+				}
+			}
+		],
+		"Set1": [
+			{
+				"json": {
+					"id": 1,
+					"data": {
+						"name": "John",
+						"age": 31,
+						"active": true
+					},
+					"address": {
+						"city": "New York",
+						"country": "USA"
+					}
+				}
+			},
+			{
+				"json": {
+					"id": 2,
+					"data": {
+						"name": "Jane",
+						"age": 26,
+						"active": true
+					},
+					"address": {
+						"city": "London",
+						"country": "UK"
+					}
+				}
+			},
+			{
+				"json": {
+					"id": 3,
+					"data": {
+						"name": "Jack",
+						"age": 36,
+						"active": true
+					},
+					"address": {
+						"city": "Paris",
+						"country": "France"
+					}
+				}
+			}
+		],
+		"Set2": [
+			{
+				"json": {
+					"id": 1,
+					"data": {
+						"name": "John",
+						"age": 31,
+						"active": true
+					},
+					"address": {
+						"city": "New York",
+						"country": "USA"
+					}
+				}
+			},
+			{
+				"json": {
+					"id": 2,
+					"data": {
+						"name": "Jane",
+						"age": 26,
+						"active": true
+					},
+					"address": {
+						"city": "London",
+						"country": "UK"
+					}
+				}
+			},
+			{
+				"json": {
+					"id": 3,
+					"data": {
+						"name": "Jack",
+						"age": 36,
+						"active": true
+					},
+					"address": {
+						"city": "Paris",
+						"country": "France"
+					}
+				}
+			}
+		],
+		"Set3": [
+			{
+				"json": {
+					"id": 1,
+					"data": {
+						"name": "John",
+						"age": 31,
+						"active": true
+					},
+					"address": {
+						"city": "New York",
+						"country": "USA"
+					}
+				}
+			},
+			{
+				"json": {
+					"id": 2,
+					"data": {
+						"name": "Jane",
+						"age": 26,
+						"active": true
+					},
+					"address": {
+						"city": "London",
+						"country": "UK"
+					}
+				}
+			},
+			{
+				"json": {
+					"id": 3,
+					"data": {
+						"name": "Jack",
+						"age": 36,
+						"active": true
+					},
+					"address": {
+						"city": "Paris",
+						"country": "France"
+					}
+				}
+			}
+		],
+		"Set5": [
+			{
+				"json": {
+					"keys": {
+						"id": 1
+					},
+					"same": {
+						"id": 1
+					},
+					"different": {
+						"data": {
+							"inputA": {
+								"name": "John",
+								"active": true
+							},
+							"inputB": {
+								"name": "John",
+								"active": false
+							}
+						},
+						"address": {
+							"inputA": {
+								"city": "New York"
+							},
+							"inputB": {
+								"city": "New York"
+							}
+						}
+					},
+					"skipped": {
+						"data": {
+							"inputA": {
+								"age": 31
+							},
+							"inputB": {
+								"age": 30
+							}
+						},
+						"address": {
+							"inputA": {
+								"country": "USA"
+							},
+							"inputB": {
+								"country": "us"
+							}
+						}
+					}
+				}
+			},
+			{
+				"json": {
+					"keys": {
+						"id": 2
+					},
+					"same": {
+						"id": 2
+					},
+					"different": {
+						"data": {
+							"inputA": {
+								"name": "Jane",
+								"active": true
+							},
+							"inputB": {
+								"name": "Jane",
+								"active": false
+							}
+						},
+						"address": {
+							"inputA": {
+								"city": "London"
+							},
+							"inputB": {
+								"city": "London"
+							}
+						}
+					},
+					"skipped": {
+						"data": {
+							"inputA": {
+								"age": 26
+							},
+							"inputB": {
+								"age": 25
+							}
+						},
+						"address": {
+							"inputA": {
+								"country": "UK"
+							},
+							"inputB": {
+								"country": "uk"
+							}
+						}
+					}
+				}
+			},
+			{
+				"json": {
+					"keys": {
+						"id": 3
+					},
+					"same": {
+						"id": 3
+					},
+					"different": {
+						"data": {
+							"inputA": {
+								"name": "Jack",
+								"active": true
+							},
+							"inputB": {
+								"name": "Jack",
+								"active": false
+							}
+						},
+						"address": {
+							"inputA": {
+								"city": "Paris"
+							},
+							"inputB": {
+								"city": "Paris"
+							}
+						}
+					},
+					"skipped": {
+						"data": {
+							"inputA": {
+								"age": 36
+							},
+							"inputB": {
+								"age": 35
+							}
+						},
+						"address": {
+							"inputA": {
+								"country": "France"
+							},
+							"inputB": {
+								"country": "fr"
+							}
+						}
+					}
+				}
+			}
+		],
+		"Set4": [
+			{
+				"json": {
+					"keys": {
+						"id": 1
+					},
+					"same": {
+						"id": 1
+					},
+					"different": {
+						"data": {
+							"inputA": {
+								"name": "John",
+								"age": 31,
+								"active": true
+							},
+							"inputB": {
+								"name": "John",
+								"age": 30,
+								"active": false
+							}
+						},
+						"address": {
+							"inputA": {
+								"city": "New York"
+							},
+							"inputB": {
+								"city": "New York"
+							}
+						}
+					},
+					"skipped": {
+						"address": {
+							"inputA": {
+								"country": "USA"
+							},
+							"inputB": {
+								"country": "us"
+							}
+						}
+					}
+				}
+			},
+			{
+				"json": {
+					"keys": {
+						"id": 2
+					},
+					"same": {
+						"id": 2
+					},
+					"different": {
+						"data": {
+							"inputA": {
+								"name": "Jane",
+								"age": 26,
+								"active": true
+							},
+							"inputB": {
+								"name": "Jane",
+								"age": 25,
+								"active": false
+							}
+						},
+						"address": {
+							"inputA": {
+								"city": "London"
+							},
+							"inputB": {
+								"city": "London"
+							}
+						}
+					},
+					"skipped": {
+						"address": {
+							"inputA": {
+								"country": "UK"
+							},
+							"inputB": {
+								"country": "uk"
+							}
+						}
+					}
+				}
+			},
+			{
+				"json": {
+					"keys": {
+						"id": 3
+					},
+					"same": {
+						"id": 3
+					},
+					"different": {
+						"data": {
+							"inputA": {
+								"name": "Jack",
+								"age": 36,
+								"active": true
+							},
+							"inputB": {
+								"name": "Jack",
+								"age": 35,
+								"active": false
+							}
+						},
+						"address": {
+							"inputA": {
+								"city": "Paris"
+							},
+							"inputB": {
+								"city": "Paris"
+							}
+						}
+					},
+					"skipped": {
+						"address": {
+							"inputA": {
+								"country": "France"
+							},
+							"inputB": {
+								"country": "fr"
+							}
+						}
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Code1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Any skipped",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "skip whole object",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "skip each key",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "skip object and key",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "skipped contain contry",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "skip includes age and contry",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code1": {
+			"main": [
+				[
+					{
+						"node": "Any skipped",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "skip whole object",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "skip each key",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "skip object and key",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "skipped contain contry",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "skip includes age and contry",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Any skipped": {
+			"main": [
+				[],
+				[],
+				[
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"skip whole object": {
+			"main": [
+				[],
+				[
+					{
+						"node": "Set1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"skip each key": {
+			"main": [
+				[],
+				[
+					{
+						"node": "Set2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"skip object and key": {
+			"main": [
+				[],
+				[
+					{
+						"node": "Set3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"skipped contain contry": {
+			"main": [
+				[],
+				[],
+				[
+					{
+						"node": "Set4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"skip includes age and contry": {
+			"main": [
+				[],
+				[],
+				[
+					{
+						"node": "Set5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "853bfbd2-7a94-4859-98e2-ad4df10bf922",
+	"id": "146",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}

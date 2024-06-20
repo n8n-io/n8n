@@ -3,14 +3,11 @@
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"details": "Execute command allows you to run terminal commands on the computer/server hosting your n8n instance. Useful for executing a shell script or interacting with your n8n instance programmatically via the CLI.",
-	"categories": [
-		"Development",
-		"Core Nodes"
-	],
+	"categories": ["Development", "Core Nodes"],
 	"resources": {
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.executeCommand/"
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executecommand/"
 			}
 		],
 		"generic": [
@@ -26,15 +23,8 @@
 			}
 		]
 	},
-	"alias": [
-		"Shell",
-		"Command",
-		"OS",
-		"Bash"
-	],
+	"alias": ["Shell", "Command", "OS", "Bash"],
 	"subcategories": {
-		"Core Nodes": [
-			"Helpers"
-		]
+		"Core Nodes": ["Helpers"]
 	}
 }

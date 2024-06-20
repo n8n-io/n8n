@@ -1,74 +1,17 @@
-/* eslint-disable import/no-cycle */
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable no-param-reassign */
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-import { Request, Response } from 'express';
-import { parse, stringify } from 'flatted';
-
-// eslint-disable-next-line import/no-cycle
+import type { Request, Response } from 'express';
+import picocolors from 'picocolors';
 import {
-	IExecutionDb,
-	IExecutionFlatted,
-	IExecutionFlattedDb,
-	IExecutionResponse,
-	IWorkflowDb,
-} from '.';
+	ErrorReporterProxy as ErrorReporter,
+	FORM_TRIGGER_PATH_IDENTIFIER,
+	NodeApiError,
+} from 'n8n-workflow';
+import { Readable } from 'node:stream';
 
-/**
- * Special Error which allows to return also an error code and http status code
- *
- * @export
- * @class ResponseError
- * @extends {Error}
- */
-export class ResponseError extends Error {
-	// The HTTP status code of  response
-	httpStatusCode?: number;
-
-	// The error code in the response
-	errorCode?: number;
-
-	// The error hint the response
-	hint?: string;
-
-	/**
-	 * Creates an instance of ResponseError.
-	 * Must be used inside a block with `ResponseHelper.send()`.
-	 *
-	 * @param {string} message The error message
-	 * @param {number} [errorCode] The error code which can be used by frontend to identify the actual error
-	 * @param {number} [httpStatusCode] The HTTP status code the response should have
-	 * @param {string} [hint] The error hint to provide a context (webhook related)
-	 * @memberof ResponseError
-	 */
-	constructor(message: string, errorCode?: number, httpStatusCode?: number, hint?: string) {
-		super(message);
-		this.name = 'ResponseError';
-
-		if (errorCode) {
-			this.errorCode = errorCode;
-		}
-		if (httpStatusCode) {
-			this.httpStatusCode = httpStatusCode;
-		}
-		if (hint) {
-			this.hint = hint;
-		}
-	}
-}
-
-export function basicAuthAuthorizationError(resp: Response, realm: string, message?: string) {
-	resp.statusCode = 401;
-	resp.setHeader('WWW-Authenticate', `Basic realm="${realm}"`);
-	resp.json({ code: resp.statusCode, message });
-}
-
-export function jwtAuthAuthorizationError(resp: Response, message?: string) {
-	resp.statusCode = 403;
-	resp.json({ code: resp.statusCode, message });
-}
+import { inDevelopment } from '@/constants';
+import { ResponseError } from './errors/response-errors/abstract/response.error';
+import Container from 'typedi';
+import { Logger } from './Logger';
 
 export function sendSuccessResponse(
 	res: Response,
@@ -85,6 +28,11 @@ export function sendSuccessResponse(
 		res.header(responseHeader);
 	}
 
+	if (data instanceof Readable) {
+		data.pipe(res);
+		return;
+	}
+
 	if (raw === true) {
 		if (typeof data === 'string') {
 			res.send(data);
@@ -98,132 +46,124 @@ export function sendSuccessResponse(
 	}
 }
 
-export function sendErrorResponse(res: Response, error: ResponseError) {
+/**
+ * Checks if the given error is a ResponseError. It can be either an
+ * instance of ResponseError or an error which has the same properties.
+ * The latter case is for external hooks.
+ */
+function isResponseError(error: Error): error is ResponseError {
+	if (error instanceof ResponseError) {
+		return true;
+	}
+
+	if (error instanceof Error) {
+		return (
+			'httpStatusCode' in error &&
+			typeof error.httpStatusCode === 'number' &&
+			'errorCode' in error &&
+			typeof error.errorCode === 'number'
+		);
+	}
+
+	return false;
+}
+
+interface ErrorResponse {
+	code: number;
+	message: string;
+	hint?: string;
+	stacktrace?: string;
+}
+
+export function sendErrorResponse(res: Response, error: Error) {
 	let httpStatusCode = 500;
-	if (error.httpStatusCode) {
-		httpStatusCode = error.httpStatusCode;
-	}
 
-	if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
-		console.error('ERROR RESPONSE');
-		console.error(error);
-	}
-
-	const response = {
+	const response: ErrorResponse = {
 		code: 0,
-		message: 'Unknown error',
-		hint: '',
+		message: error.message ?? 'Unknown error',
 	};
 
-	if (error.name === 'NodeApiError') {
+	if (isResponseError(error)) {
+		if (inDevelopment) {
+			Container.get(Logger).error(picocolors.red([error.httpStatusCode, error.message].join(' ')));
+		}
+
+		//render custom 404 page for form triggers
+		const { originalUrl } = res.req;
+		if (error.errorCode === 404 && originalUrl) {
+			const basePath = originalUrl.split('/')[1];
+			const isLegacyFormTrigger = originalUrl.includes(FORM_TRIGGER_PATH_IDENTIFIER);
+			const isFormTrigger = basePath.includes('form');
+
+			if (isFormTrigger || isLegacyFormTrigger) {
+				const isTestWebhook = basePath.includes('test');
+				res.status(404);
+				return res.render('form-trigger-404', { isTestWebhook });
+			}
+		}
+
+		httpStatusCode = error.httpStatusCode;
+
+		if (error.errorCode) {
+			response.code = error.errorCode;
+		}
+		if (error.hint) {
+			response.hint = error.hint;
+		}
+	}
+
+	if (error instanceof NodeApiError) {
+		if (inDevelopment) {
+			Container.get(Logger).error([picocolors.red(error.name), error.message].join(' '));
+		}
+
 		Object.assign(response, error);
 	}
 
-	if (error.errorCode) {
-		response.code = error.errorCode;
+	if (error.stack && inDevelopment) {
+		response.stacktrace = error.stack;
 	}
-	if (error.message) {
-		response.message = error.message;
-	}
-	if (error.hint) {
-		response.hint = error.hint;
-	}
-	if (error.stack && process.env.NODE_ENV !== 'production') {
-		// @ts-ignore
-		response.stack = error.stack;
-	}
+
 	res.status(httpStatusCode).json(response);
 }
 
-const isUniqueConstraintError = (error: Error) =>
+export const isUniqueConstraintError = (error: Error) =>
 	['unique', 'duplicate'].some((s) => error.message.toLowerCase().includes(s));
+
+export function reportError(error: Error) {
+	if (!(error instanceof ResponseError) || error.httpStatusCode > 404) {
+		ErrorReporter.error(error);
+	}
+}
 
 /**
  * A helper function which does not just allow to return Promises it also makes sure that
  * all the responses have the same format
  *
  *
- * @export
  * @param {(req: Request, res: Response) => Promise<any>} processFunction The actual function to process the request
- * @returns
  */
 
-export function send(processFunction: (req: Request, res: Response) => Promise<any>, raw = false) {
-	// eslint-disable-next-line consistent-return
-	return async (req: Request, res: Response) => {
+export function send<T, R extends Request, S extends Response>(
+	processFunction: (req: R, res: S) => Promise<T>,
+	raw = false,
+) {
+	return async (req: R, res: S) => {
 		try {
 			const data = await processFunction(req, res);
 
-			sendSuccessResponse(res, data, raw);
+			if (!res.headersSent) sendSuccessResponse(res, data, raw);
 		} catch (error) {
-			if (error instanceof Error && isUniqueConstraintError(error)) {
-				error.message = 'There is already an entry with this name';
+			if (error instanceof Error) {
+				reportError(error);
+
+				if (isUniqueConstraintError(error)) {
+					error.message = 'There is already an entry with this name';
+				}
 			}
 
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			sendErrorResponse(res, error);
 		}
 	};
-}
-
-/**
- * Flattens the Execution data.
- * As it contains a lot of references which normally would be saved as duplicate data
- * with regular JSON.stringify it gets flattened which keeps the references in place.
- *
- * @export
- * @param {IExecutionDb} fullExecutionData The data to flatten
- * @returns {IExecutionFlatted}
- */
-export function flattenExecutionData(fullExecutionData: IExecutionDb): IExecutionFlatted {
-	// Flatten the data
-	const returnData: IExecutionFlatted = {
-		data: stringify(fullExecutionData.data),
-		mode: fullExecutionData.mode,
-		// @ts-ignore
-		waitTill: fullExecutionData.waitTill,
-		startedAt: fullExecutionData.startedAt,
-		stoppedAt: fullExecutionData.stoppedAt,
-		finished: fullExecutionData.finished ? fullExecutionData.finished : false,
-		workflowId: fullExecutionData.workflowId,
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		workflowData: fullExecutionData.workflowData!,
-	};
-
-	if (fullExecutionData.id !== undefined) {
-		returnData.id = fullExecutionData.id.toString();
-	}
-
-	if (fullExecutionData.retryOf !== undefined) {
-		returnData.retryOf = fullExecutionData.retryOf.toString();
-	}
-
-	if (fullExecutionData.retrySuccessId !== undefined) {
-		returnData.retrySuccessId = fullExecutionData.retrySuccessId.toString();
-	}
-
-	return returnData;
-}
-
-/**
- * Unflattens the Execution data.
- *
- * @export
- * @param {IExecutionFlattedDb} fullExecutionData The data to unflatten
- * @returns {IExecutionResponse}
- */
-export function unflattenExecutionData(fullExecutionData: IExecutionFlattedDb): IExecutionResponse {
-	const returnData: IExecutionResponse = {
-		id: fullExecutionData.id.toString(),
-		workflowData: fullExecutionData.workflowData as IWorkflowDb,
-		data: parse(fullExecutionData.data),
-		mode: fullExecutionData.mode,
-		waitTill: fullExecutionData.waitTill ? fullExecutionData.waitTill : undefined,
-		startedAt: fullExecutionData.startedAt,
-		stoppedAt: fullExecutionData.stoppedAt,
-		finished: fullExecutionData.finished ? fullExecutionData.finished : false,
-		workflowId: fullExecutionData.workflowId,
-	};
-
-	return returnData;
 }

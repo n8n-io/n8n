@@ -1,24 +1,25 @@
-import {
-	OptionsWithUri,
-} from 'request';
-
-import {
-	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	IHookFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import {
-	ICredentialDataDecryptedObject,
+import type {
 	IDataObject,
+	IExecuteFunctions,
+	IHookFunctions,
+	IHttpRequestMethods,
+	ILoadOptionsFunctions,
+	INodeListSearchItems,
+	INodePropertyOptions,
+	IRequestOptions,
 	JsonObject,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function jiraSoftwareCloudApiRequest(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	endpoint: string,
+	method: IHttpRequestMethods,
+	body: any = {},
+	query?: IDataObject,
+	uri?: string,
+	option: IDataObject = {},
+): Promise<any> {
 	const jiraVersion = this.getNodeParameter('jiraVersion', 0) as string;
 
 	let domain = '';
@@ -32,7 +33,7 @@ export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecut
 		credentialType = 'jiraSoftwareCloudApi';
 	}
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
@@ -49,23 +50,34 @@ export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecut
 		Object.assign(options, option);
 	}
 
-	if (Object.keys(body).length === 0) {
+	if (Object.keys(body as IDataObject).length === 0) {
 		delete options.body;
 	}
 
 	if (Object.keys(query || {}).length === 0) {
 		delete options.qs;
 	}
-
 	try {
 		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
+		if (error.description?.includes?.("Field 'priority' cannot be set")) {
+			throw new NodeApiError(this.getNode(), error as JsonObject, {
+				message:
+					"Field 'priority' cannot be set. You need to add the Priority field to your Jira Project's Issue Types.",
+			});
+		}
+		throw error;
 	}
 }
 
-export async function jiraSoftwareCloudApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, endpoint: string, method: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function jiraSoftwareCloudApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	endpoint: string,
+	method: IHttpRequestMethods,
+	body: any = {},
+	query: IDataObject = {},
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -77,17 +89,18 @@ export async function jiraSoftwareCloudApiRequestAllItems(this: IHookFunctions |
 
 	do {
 		responseData = await jiraSoftwareCloudApiRequest.call(this, endpoint, method, body, query);
-		returnData.push.apply(returnData, responseData[propertyName]);
-		query.startAt = responseData.startAt + responseData.maxResults;
-		body.startAt = responseData.startAt + responseData.maxResults;
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		query.startAt = (responseData.startAt as number) + (responseData.maxResults as number);
+		body.startAt = (responseData.startAt as number) + (responseData.maxResults as number);
 	} while (
-		(responseData.startAt + responseData.maxResults < responseData.total)
+		(responseData.startAt as number) + (responseData.maxResults as number) <
+		responseData.total
 	);
 
 	return returnData;
 }
 
-export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
 		result = JSON.parse(json!);
@@ -111,11 +124,11 @@ export function getId(url: string) {
 }
 
 export function simplifyIssueOutput(responseData: {
-	names: { [key: string]: string },
-	fields: IDataObject,
-	id: string,
-	key: string,
-	self: string
+	names: { [key: string]: string };
+	fields: IDataObject;
+	id: string;
+	key: string;
+	self: string;
 }) {
 	const mappedFields: IDataObject = {
 		id: responseData.id,
@@ -194,3 +207,59 @@ export const allEvents = [
 	'worklog_updated',
 	'worklog_deleted',
 ];
+
+export function filterSortSearchListItems(items: INodeListSearchItems[], filter?: string) {
+	return items
+		.filter(
+			(item) =>
+				!filter ||
+				item.name.toLowerCase().includes(filter.toLowerCase()) ||
+				item.value.toString().toLowerCase().includes(filter.toLowerCase()),
+		)
+		.sort((a, b) => {
+			if (a.name.toLocaleLowerCase() < b.name.toLocaleLowerCase()) {
+				return -1;
+			}
+			if (a.name.toLocaleLowerCase() > b.name.toLocaleLowerCase()) {
+				return 1;
+			}
+			return 0;
+		});
+}
+
+export async function getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+	const jiraVersion = this.getCurrentNodeParameter('jiraVersion') as string;
+	const maxResults = 1000;
+	const query: IDataObject = { maxResults };
+	let endpoint = '/api/2/users/search';
+
+	if (jiraVersion === 'server') {
+		endpoint = '/api/2/user/search';
+		query.username = "'";
+	}
+
+	const users = [];
+	let hasNextPage: boolean;
+
+	do {
+		const usersPage = (await jiraSoftwareCloudApiRequest.call(
+			this,
+			endpoint,
+			'GET',
+			{},
+			{ ...query, startAt: users.length },
+		)) as IDataObject[];
+		users.push(...usersPage);
+		hasNextPage = usersPage.length === maxResults;
+	} while (hasNextPage);
+
+	return users
+		.filter((user) => user.active)
+		.map((user) => ({
+			name: user.displayName as string,
+			value: (user.accountId ?? user.name) as string,
+		}))
+		.sort((a: INodePropertyOptions, b: INodePropertyOptions) => {
+			return a.name.toLowerCase() > b.name.toLowerCase() ? 1 : -1;
+		});
+}

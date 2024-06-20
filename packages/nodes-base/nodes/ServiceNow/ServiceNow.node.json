@@ -2,10 +2,7 @@
 	"node": "n8n-nodes-base.serviceNow",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Productivity",
-		"Communication"
-	],
+	"categories": ["Productivity", "Communication"],
 	"resources": {
 		"credentialDocumentation": [
 			{
@@ -14,7 +11,7 @@
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.serviceNow/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.servicenow/"
 			}
 		]
 	}

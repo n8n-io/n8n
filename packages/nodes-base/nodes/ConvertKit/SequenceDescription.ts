@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const sequenceOperations: INodeProperties[] = [
 	{
@@ -19,10 +19,10 @@ export const sequenceOperations: INodeProperties[] = [
 				action: 'Add a subscriber',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all sequences',
-				action: 'Get all sequences',
+				description: 'Get many sequences',
+				action: 'Get many sequences',
 			},
 			{
 				name: 'Get Subscriptions',

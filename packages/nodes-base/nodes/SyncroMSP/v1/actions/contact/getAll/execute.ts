@@ -1,18 +1,12 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-} from 'n8n-workflow';
+import { apiRequest, apiRequestAllItems } from '../../../transport';
 
-import {
-	apiRequest, apiRequestAllItems
-} from '../../../transport';
-
-export async function getAll(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
-	const returnAll = this.getNodeParameter('returnAll', index) as boolean;
+export async function getAll(
+	this: IExecuteFunctions,
+	index: number,
+): Promise<INodeExecutionData[]> {
+	const returnAll = this.getNodeParameter('returnAll', index);
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'GET';
@@ -24,8 +18,8 @@ export async function getAll(this: IExecuteFunctions, index: number): Promise<IN
 		responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
 		return this.helpers.returnJsonArray(responseData);
 	} else {
-		const limit = this.getNodeParameter('limit', index) as IDataObject;
+		const limit = this.getNodeParameter('limit', index);
 		responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-		return this.helpers.returnJsonArray((responseData.contacts).splice(0, limit));
+		return this.helpers.returnJsonArray(responseData.contacts.splice(0, limit) as IDataObject[]);
 	}
 }

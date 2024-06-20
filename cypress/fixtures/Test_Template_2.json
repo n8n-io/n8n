@@ -1,0 +1,182 @@
+{
+	"workflow": {
+			"id": 1344,
+			"name": "Save email attachments to Nextcloud",
+			"views": 650,
+			"recentViews": 9887,
+			"totalViews": 650,
+			"createdAt": "2021-11-29T13:59:16.771Z",
+			"description": "This workflow will take all emails you put into a certain folder, upload any attachements to Nextcloud, and mark the emails as read (configurable).\n\nAttachements will be saved with automatically generated filenames:\n`2021-01-01_From-Sender-Name_Filename-of-attachement.pdf`\n\nInstructions:\n1. **Allow lodash to be used in n8n** (or rewrite the code...)\n  `NODE_FUNCTION_ALLOW_EXTERNAL=lodash` (environment variable)\n2. Import workflow\n3. Set credentials for Email & Nextcloud nodes\n4. Configure to use correct folder / custom filters\n5. Activate\n\nCustom filter examples:\n- Only unread emails:\n  `Custom Email Config` = `[\"UNSEEN\"]`\n- Filter emails by 'to' address:\n  `Custom Email Config` = `[[\"TO\", \"example+invoices@posteo.de\"]]`",
+			"workflow": {
+					"nodes": [
+							{
+									"name": "IMAP Email",
+									"type": "n8n-nodes-base.emailReadImap",
+									"position": [
+											240,
+											420
+									],
+									"parameters": {
+											"format": "resolved",
+											"mailbox": "Invoices",
+											"options": {
+													"customEmailConfig": "[\"ALL\"]"
+											}
+									},
+									"typeVersion": 1
+							},
+							{
+									"name": "Nextcloud",
+									"type": "n8n-nodes-base.nextCloud",
+									"position": [
+											940,
+											420
+									],
+									"parameters": {
+											"path": "=Documents/Invoices/{{$json[\"date\"]}}_{{$json[\"from\"]}}_{{$binary.file.fileName}}",
+											"binaryDataUpload": true,
+											"binaryPropertyName": "file"
+									},
+									"typeVersion": 1
+							},
+							{
+									"name": "Map each attachment",
+									"type": "n8n-nodes-base.function",
+									"position": [
+											620,
+											420
+									],
+									"parameters": {
+											"functionCode": "const _ = require('lodash')\n\nconst sanitize = str => _.chain(str)\n  .replace(/[^A-Za-z0-9&.-]/g, '-') // sanitise via whitelist of characters\n  .replace(/-(?=-)/g, '') // remove repeated dashes - https://regexr.com/6ag8h\n  .trim('-') // trim any leading/trailing dashes\n  .truncate({\n    length: 60,\n    omission: '-' // when the string ends with '-', you'll know it was truncated\n  })\n  .value()\n\nconst result = _.flatMap(items.map(item => {\n  //console.log({item})\n\n  // Maps each attachment to a separate item\n  return _.values(item.binary).map(file => {\n    console.log(\"Saving attachement:\", file.fileName, 'from:', ...item.json.from.value)\n    \n    // sanitize filename but exclude extension\n    const filename_parts = file.fileName.split('.')\n    const ext = _.slice(filename_parts, filename_parts.length-1)\n    const filename_main = _.join(_.dropRight(filename_parts), '.')\n    file.fileName = sanitize(filename_main) + '.' + ext\n    \n    return {\n      json: {\n        from: sanitize(item.json.from.value[0].name),\n        date: sanitize(new Date(item.json.date).toISOString().split(\"T\")[0]) // get date part \"2020-01-01\"\n      }, \n      binary: { file }\n    }\n  })\n}))\n\n//console.log(result)\nreturn result"
+									},
+									"typeVersion": 1
+							}
+					],
+					"connections": {
+							"IMAP Email": {
+									"main": [
+											[
+													{
+															"node": "Map each attachment",
+															"type": "main",
+															"index": 0
+													}
+											]
+									]
+							},
+							"Map each attachment": {
+									"main": [
+											[
+													{
+															"node": "Nextcloud",
+															"type": "main",
+															"index": 0
+													}
+											]
+									]
+							}
+					}
+			},
+			"lastUpdatedBy": 11,
+			"workflowInfo": {
+					"nodeCount": 3,
+					"nodeTypes": {
+							"n8n-nodes-base.function": {
+									"count": 1
+							},
+							"n8n-nodes-base.nextCloud": {
+									"count": 1
+							},
+							"n8n-nodes-base.emailReadImap": {
+									"count": 1
+							}
+					}
+			},
+			"user": {
+					"username": "tennox"
+			},
+			"nodes": [
+					{
+							"id": 10,
+							"icon": "fa:inbox",
+							"name": "n8n-nodes-base.emailReadImap",
+							"defaults": {
+									"name": "Email Trigger (IMAP)",
+									"color": "#44AA22"
+							},
+							"iconData": {
+									"icon": "inbox",
+									"type": "icon"
+							},
+							"categories": [
+									{
+											"id": 6,
+											"name": "Communication"
+									},
+									{
+											"id": 9,
+											"name": "Core Nodes"
+									}
+							],
+							"displayName": "Email Trigger (IMAP)",
+							"typeVersion": 2
+					},
+					{
+							"id": 14,
+							"icon": "fa:code",
+							"name": "n8n-nodes-base.function",
+							"defaults": {
+									"name": "Function",
+									"color": "#FF9922"
+							},
+							"iconData": {
+									"icon": "code",
+									"type": "icon"
+							},
+							"categories": [
+									{
+											"id": 5,
+											"name": "Development"
+									},
+									{
+											"id": 9,
+											"name": "Core Nodes"
+									}
+							],
+							"displayName": "Function",
+							"typeVersion": 1
+					},
+					{
+							"id": 25,
+							"icon": "file:nextcloud.svg",
+							"name": "n8n-nodes-base.nextCloud",
+							"defaults": {
+									"name": "Nextcloud"
+							},
+							"iconData": {
+									"type": "file",
+									"fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgNzYgNTEiIGZpbGw9IiNmZmYiIGZpbGwtcnVsZT0iZXZlbm9kZCIgc3Ryb2tlPSIjMDAwIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjx1c2UgeGxpbms6aHJlZj0iI0EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9IkEiIG92ZXJmbG93PSJ2aXNpYmxlIj48cGF0aCBkPSJNMzcuNTMzIDBjLTcuNzcgMC0xNC4zNTUgNS4yNjgtMTYuMzk2IDEyLjM3OS0xLjc3OC0zLjgxOS01LjU5Ny02LjQ1My0xMC4wNzUtNi40NTNDNS4wMDQgNS45MjYgMCAxMC45MzEgMCAxNy4wNTRhMTEuMTYgMTEuMTYgMCAwIDAgMTEuMTI4IDExLjEyOGM0LjQxMiAwIDguMjk3LTIuNjM0IDEwLjA3NS02LjQ1M2ExNi45OSAxNi45OSAwIDAgMCAxNi4zMyAxMi4zNzljNy43MDQgMCAxNC4yODktNS4yMDIgMTYuMzk2LTEyLjI0OCAxLjc3OCAzLjY4NyA1LjU5NyA2LjI1NiA5Ljk0MyA2LjI1NkExMS4xNiAxMS4xNiAwIDAgMCA3NSAxNi45ODljMC02LjEyNC01LjAwNC0xMS4wNjItMTEuMTI4LTExLjA2Mi00LjM0NiAwLTguMTY1IDIuNTY4LTkuOTQzIDYuMjU2QzUxLjgyMiA1LjIwMiA0NS4zMDMgMCAzNy41MzMgMHptMCA2LjUxOWExMC40OCAxMC40OCAwIDAgMSAxMC41MzUgMTAuNTM2QTEwLjQ4IDEwLjQ4IDAgMCAxIDM3LjUzMyAyNy41OWExMC40OCAxMC40OCAwIDAgMS0xMC41MzYtMTAuNTM1QTEwLjQ4IDEwLjQ4IDAgMCAxIDM3LjUzMyA2LjUxOXptLTI2LjQwNSA1LjkyNmE0LjU4IDQuNTggMCAwIDEgNC42MDkgNC42MDkgNC41OCA0LjU4IDAgMCAxLTQuNjA5IDQuNjA5IDQuNTggNC41OCAwIDAgMS00LjYwOS00LjYwOSA0LjU4IDQuNTggMCAwIDEgNC42MDktNC42MDl6bTUyLjc0NCAwYTQuNTggNC41OCAwIDAgMSA0LjYwOSA0LjYwOSA0LjYwOSA0LjYwOSAwIDEgMS05LjIxOCAwYy4wNjYtMi41NjggMi4wNDEtNC42MDkgNC42MDktNC42MDl6TTE5LjE3NiA0MS45NTdjMS44MjcgMCAyLjg1IDEuMzAxIDIuODUgMy4yNTIgMCAuMTg2LS4xNTUuMzQxLS4zNDEuMzQxSDE2Ljc2Yy4wMzEgMS43MzQgMS4yMzkgMi43MjYgMi42MzMgMi43MjZhMi44OSAyLjg5IDAgMCAwIDEuNzk2LS42MTljLjE4Ni0uMTI0LjM0MS0uMDkzLjQzNC4wOTNsLjA5My4xNTVjLjA5My4xNTUuMDYyLjMxLS4wOTMuNDM0YTMuODQgMy44NCAwIDAgMS0yLjI2MS43NDNjLTIuMDEzIDAtMy41NjItMS40NTYtMy41NjItMy41NjIuMDMxLTIuMjMgMS41MTgtMy41NjIgMy4zNzYtMy41NjJ6bTEuODg5IDIuOTExYy0uMDYyLTEuNDI1LS45MjktMi4xMzctMS45Mi0yLjEzNy0xLjE0NiAwLTIuMTM3Ljc0My0yLjM1NCAyLjEzN2g0LjI3NHptMTAuMjUzLTEuOTJ2LS43NzQtMS42MTFjMC0uMjE3LjEyNC0uMzQxLjM0MS0uMzQxaC4yNDhjLjIxNyAwIC4zMS4xMjQuMzEuMzQxdjEuNjExaDEuMzk0Yy4yMTcgMCAuMzQxLjEyNC4zNDEuMzQxdi4wOTNjMCAuMjE3LS4xMjQuMzEtLjM0MS4zMWgtMS4zOTR2My40MDdjMCAxLjU4Ljk2IDEuNzY2IDEuNDg3IDEuNzk2LjI3OS4wMzEuMzcyLjA5My4zNzIuMzQxdi4xODZjMCAuMjE3LS4wOTMuMzEtLjM3Mi4zMS0xLjQ4NyAwLTIuMzg1LS44OTgtMi4zODUtMi41MDl2LTMuNXptNy4wOTMtLjk5MWMxLjE3NyAwIDEuOTIuNDk2IDIuMjYxLjc3NC4xNTUuMTI0LjE4Ni4yNzkuMDMxLjQ2NWwtLjA5My4xNTVjLS4xMjQuMTg2LS4yNzkuMTg2LS40NjUuMDYyLS4zMS0uMjE3LS44OTgtLjYxOS0xLjcwMy0uNjE5LTEuNDg3IDAtMi42NjQgMS4xMTUtMi42NjQgMi43NTcgMCAxLjYxMSAxLjE3NyAyLjcyNiAyLjY2NCAyLjcyNi45NiAwIDEuNjExLS40MzQgMS45Mi0uNzEyLjE4Ni0uMTI0LjMxLS4wOTMuNDM0LjA5M2wuMDkzLjEyNGMuMDkzLjE4Ni4wNjIuMzEtLjA5My40NjVhMy44MSAzLjgxIDAgMCAxLTIuNDE2Ljg2N2MtMi4wMTMgMC0zLjU2Mi0xLjQ1Ni0zLjU2Mi0zLjU2Mi4wMzEtMi4xMDYgMS41OC0zLjU5MyAzLjU5My0zLjU5M3ptNC4xMTktMi4xOTljMC0uMjE3LS4xMjQtLjM0MS4wOTMtLjM0MWguMjQ4Yy4yMTcgMCAuNTU4LjEyNC41NTguMzQxdjcuNDAzYzAgLjg2Ny40MDMuOTYuNzEyLjk5MS4xNTUgMCAuMjc5LjA5My4yNzkuMzF2LjIxN2MwIC4yMTctLjA5My4zNDEtLjM0MS4zNDEtLjU1NyAwLTEuNTQ5LS4xODYtMS41NDktMS42NzN2LTcuNTg5em02LjM1IDIuMTk5YzEuOTgyIDAgMy41OTMgMS41MTggMy41OTMgMy41MzEgMCAyLjA0NC0xLjYxMSAzLjU5My0zLjU5MyAzLjU5M3MtMy41OTMtMS41NDktMy41OTMtMy41OTNjMC0yLjAxMyAxLjYxMS0zLjUzMSAzLjU5My0zLjUzMXptMCA2LjMxOWMxLjQ1NiAwIDIuNjMzLTEuMTc3IDIuNjMzLTIuNzg4IDAtMS41NDktMS4xNzctMi42OTUtMi42MzMtMi42OTVhMi42NyAyLjY3IDAgMCAwLTIuNjY0IDIuNjk1Yy4wMzEgMS41OCAxLjIwOCAyLjc4OCAyLjY2NCAyLjc4OHptMTUuNDU2LTYuMzE5YTIuNDUgMi40NSAwIDAgMSAyLjIzIDEuMzYzaC4wMzFzLS4wMzEtLjIxNy0uMDMxLS41MjZ2LTMuMDY2YzAtLjIxNy0uMDkzLS4zNDEuMTI0LS4zNDFoLjI0OGMuMjE3IDAgLjU1OC4xMjQuNTU4LjM0MXY4LjgyN2MwIC4yMTctLjA5My4zNDEtLjMxLjM0MWgtLjIxN2MtLjIxNyAwLS4zNDEtLjA5My0uMzQxLS4zMXYtLjUyN2MwLS4yNDguMDYyLS40MzQuMDYyLS40MzRoLS4wMzFzLS41ODkgMS40MjUtMi4zNTQgMS40MjVjLTEuODI3IDAtMi45NzMtMS40NTYtMi45NzMtMy41NjItLjA2Mi0yLjEwNiAxLjIwOC0zLjUzMSAzLjAwNC0zLjUzMWgwem0uMDMxIDYuMzE5YzEuMTQ2IDAgMi4xOTktLjgwNSAyLjE5OS0yLjc1NyAwLTEuMzk0LS43MTItMi43MjYtMi4xNjgtMi43MjYtMS4yMDggMC0yLjE5OS45OTEtMi4xOTkgMi43MjYuMDMxIDEuNjczLjg5OCAyLjc1NyAyLjE2OCAyLjc1N3ptLTU2LjU1OC42NWguMjQ4Yy4yMTcgMCAuMzQxLS4xMjQuMzQxLS4zNDF2LTYuNjI4YzAtMS4wNTMgMS4xNDYtMS43OTYgMi40NDctMS43OTZzMi40NDcuNzQzIDIuNDQ3IDEuNzk2djYuNjU5YzAgLjIxNy4xMjQuMzQxLjM0MS4zNDFoLjI0OGMuMjE3IDAgLjMxLS4xMjQuMzEtLjM0MXYtNi43MjFjMC0xLjc2Ni0xLjc2NS0yLjYzMy0zLjM3Ni0yLjYzM2gwIDAgMCAwYy0xLjU0OSAwLTMuMzE0Ljg2Ny0zLjMxNCAyLjYzM3Y2LjY5YzAgLjIxNy4wOTMuMzQxLjMxLjM0MXptNTEuNjk1LTYuODE0aC0uMjQ4Yy0uMjE3IDAtLjM0MS4xMjQtLjM0MS4zNDF2My43NDhjMCAxLjA1My0uNjgxIDIuMDEzLTIuMDEzIDIuMDEzLTEuMzAxIDAtMi4wMTMtLjk2LTIuMDEzLTIuMDEzdi0zLjc0OGMwLS4yMTctLjEyNC0uMzQxLS4zNDEtLjM0MUg1NC4zYy0uMjE3IDAtLjMxLjEyNC0uMzEuMzQxdjMuOTk2YzAgMS43NjUgMS4zMDEgMi42MzMgMi45MTIgMi42MzNoMCAwIDAgMGMxLjYxMSAwIDIuOTExLS44NjcgMi45MTEtMi42MzN2LTMuOTk2Yy4wMzEtLjIxNy0uMDkzLS4zNDEtLjMxLS4zNDFoMHptLTMwLjY2NC0uMDMxYy0uMDYyIDAtLjE1NS4wNjItLjIxNy4xNTVsLTEuMjM5IDEuNDg3LS45MjkgMS4xMTUtMS40MjUtMS43MDQtLjc3NC0uOTI5Yy0uMDYyLS4wOTMtLjE1NS0uMTI0LS4yMTctLjEyNHMtLjE1NS4wMzEtLjI0OC4wOTNsLS4xODYuMTU1Yy0uMTU1LjEyNC0uMTU1LjI3OS0uMDMxLjQ2NWwxLjIzOSAxLjQ4NyAxLjA1MyAxLjIzOS0xLjUxOCAxLjgyN2gwbC0uNzc0LjkyOWMtLjEyNC4xNTUtLjEyNC4zNDEuMDMxLjQ5NmwuMTg2LjE1NWMuMTU1LjEyNC4zMS4wOTMuNDY1LS4wNjJsMS4yMzktMS40ODcuOTI5LTEuMTE1IDEuNDI1IDEuNzA0aDBsLjc3NC45MjljLjEyNC4xNTUuMzEuMTg2LjQ2NS4wMzFsLjE4Ni0uMTU1Yy4xNTUtLjEyNC4xNTUtLjI3OS4wMzEtLjQ2NWwtMS4yMzktMS40ODctMS4wNTMtMS4yMzkgMS41MTgtMS44MjdoMGwuNzc0LS45MjljLjEyNC0uMTU1LjEyNC0uMzQxLS4wMzEtLjQ5NWwtLjE4Ni0uMTg2Yy0uMDkzLS4wNjItLjE1NS0uMDkzLS4yNDgtLjA2MmgweiIgZmlsbD0iIzAwODJjOSIgZmlsbC1ydWxlPSJub256ZXJvIiBzdHJva2U9Im5vbmUiLz48L3N5bWJvbD48L3N2Zz4="
+							},
+							"categories": [
+									{
+											"id": 3,
+											"name": "Data & Storage"
+									}
+							],
+							"displayName": "Nextcloud",
+							"typeVersion": 1
+					}
+			],
+			"categories": [
+					{
+							"id": 2,
+							"name": "Sales"
+					},
+					{
+							"id": 8,
+							"name": "Finance & Accounting"
+					}
+			],
+			"image": []
+	}
+}

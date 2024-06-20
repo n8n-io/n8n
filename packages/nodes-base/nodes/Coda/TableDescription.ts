@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const tableOperations: INodeProperties[] = [
 	{
@@ -27,12 +27,13 @@ export const tableOperations: INodeProperties[] = [
 			{
 				name: 'Get All Columns',
 				value: 'getAllColumns',
+				description: 'Get all columns in a table',
 				action: 'Get all columns',
 			},
 			{
 				name: 'Get All Rows',
 				value: 'getAllRows',
-				description: 'Get all the rows',
+				description: 'Get all rows in a table',
 				action: 'Get all rows',
 			},
 			{
@@ -323,9 +324,6 @@ export const tableFields: INodeProperties[] = [
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description:
 					'Query used to filter returned rows, specified as &lt;column_id_or_name&gt;:&lt;value&gt;. If you\'d like to use a column name instead of an ID, you must quote it (e.g., "My Column":123). Also note that value is a JSON value; if you\'d like to use a string, you must surround it in quotes (e.g., "groceries").',

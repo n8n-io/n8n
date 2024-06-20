@@ -1,4 +1,4 @@
-import {
+import type {
 	IDataObject,
 	IHookFunctions,
 	INodeType,
@@ -12,12 +12,10 @@ import {
 	formatSubmission,
 	koBoToolboxApiRequest,
 	loadForms,
-	parseStringList
+	parseStringList,
 } from './GenericFunctions';
 
-import {
-	options,
-} from './Options';
+import { options } from './Options';
 
 export class KoBoToolboxTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -29,7 +27,6 @@ export class KoBoToolboxTrigger implements INodeType {
 		description: 'Process KoBoToolbox submissions',
 		defaults: {
 			name: 'KoBoToolbox Trigger',
-			color: '#64C0FF',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -57,7 +54,8 @@ export class KoBoToolboxTrigger implements INodeType {
 				},
 				required: true,
 				default: '',
-				description: 'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Trigger On',
@@ -76,13 +74,12 @@ export class KoBoToolboxTrigger implements INodeType {
 		],
 	};
 
-	// @ts-ignore
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
-				const formId = this.getNodeParameter('formId') as string; //tslint:disable-line:variable-name
+				const formId = this.getNodeParameter('formId') as string;
 				const webhooks = await koBoToolboxApiRequest.call(this, {
 					url: `/api/v2/assets/${formId}/hooks/`,
 				});
@@ -99,7 +96,7 @@ export class KoBoToolboxTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const workflow = this.getWorkflow();
-				const formId = this.getNodeParameter('formId') as string; //tslint:disable-line:variable-name
+				const formId = this.getNodeParameter('formId') as string;
 
 				const response = await koBoToolboxApiRequest.call(this, {
 					method: 'POST',
@@ -121,7 +118,7 @@ export class KoBoToolboxTrigger implements INodeType {
 
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
-				const formId = this.getNodeParameter('formId') as string; //tslint:disable-line:variable-name
+				const formId = this.getNodeParameter('formId') as string;
 				try {
 					await koBoToolboxApiRequest.call(this, {
 						method: 'DELETE',
@@ -146,23 +143,21 @@ export class KoBoToolboxTrigger implements INodeType {
 		const req = this.getRequestObject();
 		const formatOptions = this.getNodeParameter('formatOptions') as IDataObject;
 
+		// prettier-ignore
 		const responseData = formatOptions.reformat
-			? formatSubmission(req.body, parseStringList(formatOptions.selectMask as string), parseStringList(formatOptions.numberMask as string))
+			? formatSubmission(req.body as IDataObject, parseStringList(formatOptions.selectMask as string), parseStringList(formatOptions.numberMask as string))
 			: req.body;
 
 		if (formatOptions.download) {
 			// Download related attachments
 			return {
 				workflowData: [
-					[await downloadAttachments.call(this, responseData, formatOptions)],
+					[await downloadAttachments.call(this, responseData as IDataObject, formatOptions)],
 				],
 			};
-		}
-		else {
+		} else {
 			return {
-				workflowData: [
-					this.helpers.returnJsonArray([responseData]),
-				],
+				workflowData: [this.helpers.returnJsonArray([responseData])],
 			};
 		}
 	}

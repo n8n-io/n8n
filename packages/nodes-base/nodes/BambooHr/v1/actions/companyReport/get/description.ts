@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const companyReportGetDescription: INodeProperties[] = [
 	{
@@ -88,6 +88,13 @@ export const companyReportGetDescription: INodeProperties[] = [
 				type: 'boolean',
 				default: true,
 				description: 'Whether to apply the standard duplicate field filtering or not',
+			},
+			{
+				displayName: 'Only Current',
+				name: 'onlyCurrent',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to hide future dated values from the history table fields or not',
 			},
 		],
 	},

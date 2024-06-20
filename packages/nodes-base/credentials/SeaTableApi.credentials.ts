@@ -1,21 +1,24 @@
-import { ICredentialType, INodeProperties, INodePropertyOptions } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties, INodePropertyOptions } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 
 // Get options for timezones
 const timezones: INodePropertyOptions[] = moment.tz
 	.countries()
-	.reduce((timezones: INodePropertyOptions[], country: string) => {
+	.reduce((tz: INodePropertyOptions[], country: string) => {
 		const zonesForCountry = moment.tz
 			.zonesForCountry(country)
 			.map((zone) => ({ value: zone, name: zone }));
-		return timezones.concat(zonesForCountry);
+		return tz.concat(zonesForCountry);
 	}, []);
 
 export class SeaTableApi implements ICredentialType {
 	name = 'seaTableApi';
+
 	displayName = 'SeaTable API';
+
 	documentationUrl = 'seaTable';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Environment',
@@ -49,6 +52,7 @@ export class SeaTableApi implements ICredentialType {
 			displayName: 'API Token (of a Base)',
 			name: 'token',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{

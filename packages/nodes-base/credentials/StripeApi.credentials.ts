@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -7,16 +7,21 @@ import {
 
 export class StripeApi implements ICredentialType {
 	name = 'stripeApi';
+
 	displayName = 'Stripe API';
+
 	documentationUrl = 'stripe';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Secret Key',
 			name: 'secretKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
@@ -25,6 +30,7 @@ export class StripeApi implements ICredentialType {
 			},
 		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://api.stripe.com/v1',

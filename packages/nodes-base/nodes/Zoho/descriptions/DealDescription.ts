@@ -1,12 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-import {
-	currencies,
-	makeCustomFieldsFixedCollection,
-	makeGetAllFields,
-} from './SharedFields';
+import { currencies, makeCustomFieldsFixedCollection, makeGetAllFields } from './SharedFields';
 
 export const dealOperations: INodeProperties[] = [
 	{
@@ -16,9 +10,7 @@ export const dealOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
+				resource: ['deal'],
 			},
 		},
 		options: [
@@ -47,10 +39,10 @@ export const dealOperations: INodeProperties[] = [
 				action: 'Get a deal',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all contacts',
-				action: 'Get all deals',
+				description: 'Get many contacts',
+				action: 'Get many deals',
 			},
 			{
 				name: 'Update',
@@ -75,12 +67,8 @@ export const dealFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['deal'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -91,18 +79,15 @@ export const dealFields: INodeProperties[] = [
 	{
 		displayName: 'Deal Name',
 		name: 'dealName',
-		description: 'Name of the deal. If a record with this deal name exists it will be updated, otherwise a new one will be created.',
+		description:
+			'Name of the deal. If a record with this deal name exists it will be updated, otherwise a new one will be created.',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['deal'],
+				operation: ['upsert'],
 			},
 		},
 	},
@@ -113,7 +98,8 @@ export const dealFields: INodeProperties[] = [
 		displayName: 'Stage Name or ID',
 		name: 'stage',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		default: [],
 		typeOptions: {
@@ -121,13 +107,8 @@ export const dealFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'create',
-					'upsert',
-				],
+				resource: ['deal'],
+				operation: ['create', 'upsert'],
 			},
 		},
 	},
@@ -139,13 +120,8 @@ export const dealFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'create',
-					'upsert',
-				],
+				resource: ['deal'],
+				operation: ['create', 'upsert'],
 			},
 		},
 		options: [
@@ -182,7 +158,7 @@ export const dealFields: INodeProperties[] = [
 				name: 'Lead_Conversion_Time',
 				type: 'number',
 				default: '',
-				description: 'Averge number of days to convert the lead into a deal',
+				description: 'Average number of days to convert the lead into a deal',
 			},
 			{
 				displayName: 'Next Step',
@@ -196,7 +172,7 @@ export const dealFields: INodeProperties[] = [
 				name: 'Overall_Sales_Duration',
 				type: 'number',
 				default: '',
-				description: 'Averge number of days to convert the lead into a deal and to win the deal',
+				description: 'Average number of days to convert the lead into a deal and to win the deal',
 			},
 			{
 				displayName: 'Probability',
@@ -214,7 +190,7 @@ export const dealFields: INodeProperties[] = [
 				name: 'Sales_Cycle_Duration',
 				type: 'number',
 				default: 0,
-				description: 'Averge number of days for the deal to be won',
+				description: 'Average number of days for the deal to be won',
 			},
 		],
 	},
@@ -231,12 +207,8 @@ export const dealFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['deal'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -253,12 +225,8 @@ export const dealFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['deal'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -280,12 +248,8 @@ export const dealFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['deal'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -297,12 +261,8 @@ export const dealFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['deal'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -344,7 +304,7 @@ export const dealFields: INodeProperties[] = [
 				name: 'Lead_Conversion_Time',
 				type: 'number',
 				default: '',
-				description: 'Averge number of days to convert the lead into a deal',
+				description: 'Average number of days to convert the lead into a deal',
 			},
 			{
 				displayName: 'Next Step',
@@ -358,7 +318,7 @@ export const dealFields: INodeProperties[] = [
 				name: 'Overall_Sales_Duration',
 				type: 'number',
 				default: '',
-				description: 'Averge number of days to convert the lead into a deal and to win the deal',
+				description: 'Average number of days to convert the lead into a deal and to win the deal',
 			},
 			{
 				displayName: 'Probability',
@@ -376,16 +336,17 @@ export const dealFields: INodeProperties[] = [
 				name: 'Sales_Cycle_Duration',
 				type: 'number',
 				default: 0,
-				description: 'Averge number of days to win the deal',
+				description: 'Average number of days to win the deal',
 			},
 			{
 				displayName: 'Stage Name or ID',
 				name: 'Stage',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-					typeOptions: {
-						loadOptionsMethod: 'getDealStage',
-					},
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getDealStage',
+				},
 				default: [],
 			},
 		],

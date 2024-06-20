@@ -1,14 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { awsApiRequestSOAP, awsApiRequestSOAPAllItems } from './GenericFunctions';
 
@@ -90,11 +89,11 @@ export class AwsSes implements INodeType {
 						action: 'Get a custom verification email',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description:
-							'Get all the existing custom verification email templates for your account',
-						action: 'Get all custom verifications',
+							'Get many of the existing custom verification email templates for your account',
+						action: 'Get many custom verifications',
 					},
 					{
 						name: 'Send',
@@ -143,9 +142,6 @@ export class AwsSes implements INodeType {
 				displayName: 'Template Content',
 				name: 'templateContent',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				displayOptions: {
 					show: {
 						resource: ['customVerificationEmail'],
@@ -307,9 +303,6 @@ export class AwsSes implements INodeType {
 						displayName: 'Template Content',
 						name: 'templateContent',
 						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
 						description:
 							'The content of the custom verification email. The total size of the email must be less than 10 MB. The message body may contain HTML',
 						default: '',
@@ -407,9 +400,6 @@ export class AwsSes implements INodeType {
 				displayName: 'Body',
 				name: 'body',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				displayOptions: {
 					show: {
 						resource: ['email'],
@@ -647,10 +637,10 @@ export class AwsSes implements INodeType {
 						action: 'Get a template',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get all templates',
-						action: 'Get all templates',
+						description: 'Get many templates',
+						action: 'Get many templates',
 					},
 					{
 						name: 'Update',
@@ -796,7 +786,7 @@ export class AwsSes implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available templates to display them to user so that he can
+			// Get all the available templates to display them to user so that they can
 			// select them easily
 			async getTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -826,10 +816,10 @@ export class AwsSes implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -854,7 +844,7 @@ export class AwsSes implements INodeType {
 						const templateSubject = this.getNodeParameter('templateSubject', i) as string;
 
 						const params = [
-							`Action=CreateCustomVerificationEmailTemplate`,
+							'Action=CreateCustomVerificationEmailTemplate',
 							`FailureRedirectionURL=${failureRedirectionURL}`,
 							`FromEmailAddress=${email}`,
 							`SuccessRedirectionURL=${successRedirectionURL}`,
@@ -878,7 +868,7 @@ export class AwsSes implements INodeType {
 						const templateName = this.getNodeParameter('templateName', i) as string;
 
 						const params = [
-							`Action=DeleteCustomVerificationEmailTemplate`,
+							'Action=DeleteCustomVerificationEmailTemplate',
 							`TemplateName=${templateName}`,
 						];
 
@@ -909,9 +899,9 @@ export class AwsSes implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await awsApiRequestSOAPAllItems.call(
 								this,
 								'ListCustomVerificationEmailTemplatesResponse.ListCustomVerificationEmailTemplatesResult.CustomVerificationEmailTemplates.member',
@@ -920,7 +910,7 @@ export class AwsSes implements INodeType {
 								'/?Action=ListCustomVerificationEmailTemplates',
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = await awsApiRequestSOAP.call(
 								this,
@@ -941,10 +931,10 @@ export class AwsSes implements INodeType {
 
 						const templateName = this.getNodeParameter('templateName', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const params = [
-							`Action=SendCustomVerificationEmail`,
+							'Action=SendCustomVerificationEmail',
 							`TemplateName=${templateName}`,
 							`EmailAddress=${email}`,
 						];
@@ -967,10 +957,10 @@ export class AwsSes implements INodeType {
 					if (operation === 'update') {
 						const templateName = this.getNodeParameter('templateName', i) as string;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						const params = [
-							`Action=UpdateCustomVerificationEmailTemplate`,
+							'Action=UpdateCustomVerificationEmailTemplate',
 							`TemplateName=${templateName}`,
 						];
 
@@ -1018,13 +1008,16 @@ export class AwsSes implements INodeType {
 
 						const isBodyHtml = this.getNodeParameter('isBodyHtml', i) as boolean;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
-						const params = [`Message.Subject.Data=${subject}`, `Source=${fromEmail}`];
+						const params = [
+							`Message.Subject.Data=${encodeURIComponent(subject)}`,
+							`Source=${fromEmail}`,
+						];
 
 						if (isBodyHtml) {
 							params.push(`Message.Body.Html.Data=${encodeURIComponent(message)}`);
-							params.push(`Message.Body.Html.Charset=UTF-8`);
+							params.push('Message.Body.Html.Charset=UTF-8');
 						} else {
 							params.push(`Message.Body.Text.Data=${encodeURIComponent(message)}`);
 						}
@@ -1093,7 +1086,7 @@ export class AwsSes implements INodeType {
 
 						const fromEmail = this.getNodeParameter('fromEmail', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const templateDataUi = this.getNodeParameter('templateDataUi', i) as IDataObject;
 
@@ -1150,8 +1143,7 @@ export class AwsSes implements INodeType {
 						}
 
 						if (templateDataUi) {
-							const templateDataValues = (templateDataUi as IDataObject)
-								.templateDataValues as IDataObject[];
+							const templateDataValues = templateDataUi.templateDataValues as IDataObject[];
 							const templateData: IDataObject = {};
 							if (templateDataValues !== undefined) {
 								for (const templateDataValue of templateDataValues) {
@@ -1181,7 +1173,7 @@ export class AwsSes implements INodeType {
 
 						const htmlPart = this.getNodeParameter('htmlPart', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const params = [
 							`Template.TemplateName=${templateName}`,
@@ -1234,9 +1226,9 @@ export class AwsSes implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await awsApiRequestSOAPAllItems.call(
 								this,
 								'ListTemplatesResponse.ListTemplatesResult.TemplatesMetadata.member',
@@ -1245,7 +1237,7 @@ export class AwsSes implements INodeType {
 								'/?Action=ListTemplates',
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = await awsApiRequestSOAP.call(
 								this,
@@ -1262,7 +1254,7 @@ export class AwsSes implements INodeType {
 					if (operation === 'update') {
 						const templateName = this.getNodeParameter('templateName', i) as string;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						const params = [`Template.TemplateName=${templateName}`];
 
@@ -1288,23 +1280,24 @@ export class AwsSes implements INodeType {
 						responseData = responseData.UpdateTemplateResponse;
 					}
 				}
-
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else {
-					if (responseData !== undefined) {
-						returnData.push(responseData as IDataObject);
-					}
-				}
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+				if (this.continueOnFail(error)) {
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 					continue;
 				}
 				throw error;
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return [returnData];
 	}
 }

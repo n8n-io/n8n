@@ -1,12 +1,23 @@
-import { OptionsWithUri } from 'request';
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+	IHookFunctions,
+	IWebhookFunctions,
+	IHttpRequestMethods,
+	IRequestOptions,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import { IDataObject, IHookFunctions, IWebhookFunctions, NodeApiError } from 'n8n-workflow';
+/**
+ * Return the base API URL based on the user's environment.
+ */
+const getBaseUrl = ({ environment, domain, subdomain }: ERPNextApiCredentials) =>
+	environment === 'cloudHosted' ? `https://${subdomain}.${domain}` : domain;
 
 export async function erpNextApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject = {},
 	query: IDataObject = {},
@@ -16,7 +27,7 @@ export async function erpNextApiRequest(
 	const credentials = (await this.getCredentials('erpNextApi')) as ERPNextApiCredentials;
 	const baseUrl = getBaseUrl(credentials);
 
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		headers: {
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
@@ -26,16 +37,16 @@ export async function erpNextApiRequest(
 		qs: query,
 		uri: uri || `${baseUrl}${resource}`,
 		json: true,
-		rejectUnauthorized: !credentials.allowUnauthorizedCerts as boolean,
+		rejectUnauthorized: !credentials.allowUnauthorizedCerts,
 	};
 
 	options = Object.assign({}, options, option);
 
-	if (!Object.keys(options.body).length) {
+	if (!Object.keys(options.body as IDataObject).length) {
 		delete options.body;
 	}
 
-	if (!Object.keys(options.qs).length) {
+	if (!Object.keys(options.qs as IDataObject).length) {
 		delete options.qs;
 	}
 	try {
@@ -50,40 +61,32 @@ export async function erpNextApiRequest(
 				message: 'Please ensure the subdomain is correct.',
 			});
 		}
-
-		throw new NodeApiError(this.getNode(), error);
+		throw error;
 	}
 }
 
 export async function erpNextApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject,
 	query: IDataObject = {},
 ) {
-	// tslint:disable-next-line: no-any
 	const returnData: any[] = [];
 
 	let responseData;
-	query!.limit_start = 0;
-	query!.limit_page_length = 1000;
+	query.limit_start = 0;
+	query.limit_page_length = 1000;
 
 	do {
 		responseData = await erpNextApiRequest.call(this, method, resource, body, query);
-		returnData.push.apply(returnData, responseData[propertyName]);
-		query!.limit_start += query!.limit_page_length - 1;
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		query.limit_start += query.limit_page_length - 1;
 	} while (responseData.data && responseData.data.length > 0);
 
 	return returnData;
 }
-
-/**
- * Return the base API URL based on the user's environment.
- */
-const getBaseUrl = ({ environment, domain, subdomain }: ERPNextApiCredentials) =>
-	environment === 'cloudHosted' ? `https://${subdomain}.erpnext.com` : domain;
 
 type ERPNextApiCredentials = {
 	apiKey: string;

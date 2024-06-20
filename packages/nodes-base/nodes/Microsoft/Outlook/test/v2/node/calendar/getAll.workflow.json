@@ -1,0 +1,112 @@
+{
+  "name": "My workflow 21",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "e524f588-b6a3-4849-8777-b32a8a755ae5",
+      "name": "When clicking \"Execute Workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        820,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "calendar",
+        "limit": 2,
+        "filters": {
+          "custom": "canEdit eq true"
+        }
+      },
+      "id": "baff6798-0304-4255-bdb0-dd3f2659373b",
+      "name": "Microsoft Outlook",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        360
+      ],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "iXJCki7i5Vz0bdks",
+          "name": "Microsoft Outlook account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Microsoft Outlook": [
+      {
+        "json": {
+          "id": "AAAXXXYYYnnnT6b9RLP0CKzHiJrRBwBZf4De-LkrSqpPI8eyjUmAAAAAAAEGAABZf4De-LkrSqpPI8eyjUmAAAAJ9-JDAAA=",
+          "name": "Calendar",
+          "color": "auto",
+          "hexColor": "",
+          "isDefaultCalendar": true,
+          "changeKey": "WX+A3vy5K0qqTyPHso1JgAAACfdHfw==",
+          "canShare": true,
+          "canViewPrivateItems": true,
+          "canEdit": true,
+          "allowedOnlineMeetingProviders": [
+            "teamsForBusiness"
+          ],
+          "defaultOnlineMeetingProvider": "teamsForBusiness",
+          "isTallyingResponses": true,
+          "isRemovable": false,
+          "owner": {
+            "name": "User Name",
+            "address": "test@mail.com"
+          }
+        }
+      },
+      {
+        "json": {
+          "id": "AAAXXXYYYnnnT6b9RLP0CKzHiJrRBwBZf4De-LkrSqpPI8eyjUmAAAAAAAEGAABZf4De-LkrSqpPI8eyjUmAAACLtRvBAAA=",
+          "name": "Third calendar",
+          "color": "lightYellow",
+          "hexColor": "#fde300",
+          "isDefaultCalendar": false,
+          "changeKey": "WX+A3vy5K0qqTyPHso1JgAAAi67hIw==",
+          "canShare": true,
+          "canViewPrivateItems": true,
+          "canEdit": true,
+          "allowedOnlineMeetingProviders": [
+            "teamsForBusiness"
+          ],
+          "defaultOnlineMeetingProvider": "teamsForBusiness",
+          "isTallyingResponses": false,
+          "isRemovable": true,
+          "owner": {
+            "name": "User Name",
+            "address": "test@mail.com"
+          }
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking \"Execute Workflow\"": {
+      "main": [
+        [
+          {
+            "node": "Microsoft Outlook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "8f4e7775-0476-4506-a183-1365265b446a",
+  "id": "1CYHzBXQw1nfPGtB",
+  "meta": {
+    "instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+  },
+  "tags": []
+}

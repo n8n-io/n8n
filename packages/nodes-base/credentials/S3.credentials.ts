@@ -1,9 +1,12 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class S3 implements ICredentialType {
 	name = 's3';
+
 	displayName = 'S3';
+
 	documentationUrl = 's3';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'S3 Endpoint',
@@ -37,6 +40,13 @@ export class S3 implements ICredentialType {
 			name: 'forcePathStyle',
 			type: 'boolean',
 			default: false,
+		},
+		{
+			displayName: 'Ignore SSL Issues',
+			name: 'ignoreSSLIssues',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to connect even if SSL certificate validation is not possible',
 		},
 	];
 }

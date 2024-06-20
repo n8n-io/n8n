@@ -1,7 +1,4 @@
-
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const activityOperations: INodeProperties[] = [
 	{
@@ -11,9 +8,7 @@ export const activityOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
+				resource: ['activity'],
 			},
 		},
 		options: [
@@ -28,12 +23,6 @@ export const activityOperations: INodeProperties[] = [
 				value: 'get',
 				description: 'Get an activity',
 				action: 'Get an activity',
-			},
-			{
-				name: 'Get All',
-				value: 'getAll',
-				description: 'Get all activities',
-				action: 'Get all activities',
 			},
 			{
 				name: 'Get Comments',
@@ -52,6 +41,12 @@ export const activityOperations: INodeProperties[] = [
 				value: 'getLaps',
 				description: 'Get all activity laps',
 				action: 'Get all activity laps',
+			},
+			{
+				name: 'Get Many',
+				value: 'getAll',
+				description: 'Get many activities',
+				action: 'Get many activities',
 			},
 			{
 				name: 'Get Streams',
@@ -77,7 +72,6 @@ export const activityOperations: INodeProperties[] = [
 ];
 
 export const activityFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                activity:create                           */
 	/* -------------------------------------------------------------------------- */
@@ -88,12 +82,8 @@ export const activityFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['activity'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -106,16 +96,81 @@ export const activityFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['activity'],
+				operation: ['create'],
+				'@version': [1],
 			},
 		},
 		default: '',
 		description: 'Type of activity. For example - Run, Ride etc.',
+	},
+	{
+		displayName: 'Sport Type',
+		name: 'sport_type',
+		type: 'options',
+		options: [
+			{ name: 'Alpine Ski', value: 'AlpineSki' },
+			{ name: 'Backcountry Ski', value: 'BackcountrySki' },
+			{ name: 'Badminton', value: 'Badminton' },
+			{ name: 'Canoeing', value: 'Canoeing' },
+			{ name: 'Crossfit', value: 'Crossfit' },
+			{ name: 'EBike Ride', value: 'EBikeRide' },
+			{ name: 'Elliptical', value: 'Elliptical' },
+			{ name: 'EMountain Bike Ride', value: 'EMountainBikeRide' },
+			{ name: 'Golf', value: 'Golf' },
+			{ name: 'Gravel Ride', value: 'GravelRide' },
+			{ name: 'Handcycle', value: 'Handcycle' },
+			{ name: 'HIIT', value: 'HighIntensityIntervalTraining' },
+			{ name: 'Hike', value: 'Hike' },
+			{ name: 'Ice Skate', value: 'IceSkate' },
+			{ name: 'Inline Skate', value: 'InlineSkate' },
+			{ name: 'Kayaking', value: 'Kayaking' },
+			{ name: 'Kitesurf', value: 'Kitesurf' },
+			{ name: 'Mountain Bike Ride', value: 'MountainBikeRide' },
+			{ name: 'Nordic Ski', value: 'NordicSki' },
+			{ name: 'Pickleball', value: 'Pickleball' },
+			{ name: 'Pilates', value: 'Pilates' },
+			{ name: 'Racquetball', value: 'Racquetball' },
+			{ name: 'Ride', value: 'Ride' },
+			{ name: 'Rock Climbing', value: 'RockClimbing' },
+			{ name: 'Roller Ski', value: 'RollerSki' },
+			{ name: 'Rowing', value: 'Rowing' },
+			{ name: 'Run', value: 'Run' },
+			{ name: 'Sail', value: 'Sail' },
+			{ name: 'Skateboard', value: 'Skateboard' },
+			{ name: 'Snowboard', value: 'Snowboard' },
+			{ name: 'Snowshoe', value: 'Snowshoe' },
+			{ name: 'Soccer', value: 'Soccer' },
+			{ name: 'Squash', value: 'Squash' },
+			{ name: 'Stair Stepper', value: 'StairStepper' },
+			{ name: 'Stand Up Paddling', value: 'StandUpPaddling' },
+			{ name: 'Surfing', value: 'Surfing' },
+			{ name: 'Swim', value: 'Swim' },
+			{ name: 'Table Tennis', value: 'TableTennis' },
+			{ name: 'Tennis', value: 'Tennis' },
+			{ name: 'Trail Run', value: 'TrailRun' },
+			{ name: 'Velomobile', value: 'Velomobile' },
+			{ name: 'Virtual Ride', value: 'VirtualRide' },
+			{ name: 'Virtual Row', value: 'VirtualRow' },
+			{ name: 'Virtual Run', value: 'VirtualRun' },
+			{ name: 'Walk', value: 'Walk' },
+			{ name: 'Weight Training', value: 'WeightTraining' },
+			{ name: 'Wheelchair', value: 'Wheelchair' },
+			{ name: 'Windsurf', value: 'Windsurf' },
+			{ name: 'Workout', value: 'Workout' },
+			{ name: 'Yoga', value: 'Yoga' },
+		],
+		default: 'Run',
+		description: 'Type of sport',
+		displayOptions: {
+			show: {
+				resource: ['activity'],
+				operation: ['create'],
+			},
+			hide: {
+				'@version': [1],
+			},
+		},
 	},
 	{
 		displayName: 'Start Date',
@@ -125,12 +180,8 @@ export const activityFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['activity'],
+				operation: ['create'],
 			},
 		},
 		description: 'ISO 8601 formatted date time',
@@ -142,12 +193,8 @@ export const activityFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['activity'],
+				operation: ['create'],
 			},
 		},
 		typeOptions: {
@@ -164,12 +211,8 @@ export const activityFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['activity'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -217,12 +260,8 @@ export const activityFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['activity'],
+				operation: ['update'],
 			},
 		},
 		default: '',
@@ -236,12 +275,8 @@ export const activityFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['activity'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -264,7 +299,16 @@ export const activityFields: INodeProperties[] = [
 				name: 'gear_id',
 				type: 'string',
 				default: '',
-				description: 'Identifier for the gear associated with the activity. ‘none’ clears gear from activity.',
+				description:
+					'Identifier for the gear associated with the activity. ‘none’ clears gear from activity.',
+			},
+			{
+				displayName: 'Mute Activity',
+				name: 'hide_from_home',
+				type: 'boolean',
+				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				description: 'Do not publish to Home or Club feeds',
 			},
 			{
 				displayName: 'Name',
@@ -279,6 +323,75 @@ export const activityFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'Type of activity. For example - Run, Ride etc.',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+			},
+			{
+				displayName: 'Sport Type',
+				name: 'sport_type',
+				type: 'options',
+				options: [
+					{ name: 'Alpine Ski', value: 'AlpineSki' },
+					{ name: 'Backcountry Ski', value: 'BackcountrySki' },
+					{ name: 'Badminton', value: 'Badminton' },
+					{ name: 'Canoeing', value: 'Canoeing' },
+					{ name: 'Crossfit', value: 'Crossfit' },
+					{ name: 'EBike Ride', value: 'EBikeRide' },
+					{ name: 'Elliptical', value: 'Elliptical' },
+					{ name: 'EMountain Bike Ride', value: 'EMountainBikeRide' },
+					{ name: 'Golf', value: 'Golf' },
+					{ name: 'Gravel Ride', value: 'GravelRide' },
+					{ name: 'Handcycle', value: 'Handcycle' },
+					{ name: 'HIIT', value: 'HighIntensityIntervalTraining' },
+					{ name: 'Hike', value: 'Hike' },
+					{ name: 'Ice Skate', value: 'IceSkate' },
+					{ name: 'Inline Skate', value: 'InlineSkate' },
+					{ name: 'Kayaking', value: 'Kayaking' },
+					{ name: 'Kitesurf', value: 'Kitesurf' },
+					{ name: 'Mountain Bike Ride', value: 'MountainBikeRide' },
+					{ name: 'Nordic Ski', value: 'NordicSki' },
+					{ name: 'Pickleball', value: 'Pickleball' },
+					{ name: 'Pilates', value: 'Pilates' },
+					{ name: 'Racquetball', value: 'Racquetball' },
+					{ name: 'Ride', value: 'Ride' },
+					{ name: 'Rock Climbing', value: 'RockClimbing' },
+					{ name: 'Roller Ski', value: 'RollerSki' },
+					{ name: 'Rowing', value: 'Rowing' },
+					{ name: 'Run', value: 'Run' },
+					{ name: 'Sail', value: 'Sail' },
+					{ name: 'Skateboard', value: 'Skateboard' },
+					{ name: 'Snowboard', value: 'Snowboard' },
+					{ name: 'Snowshoe', value: 'Snowshoe' },
+					{ name: 'Soccer', value: 'Soccer' },
+					{ name: 'Squash', value: 'Squash' },
+					{ name: 'Stair Stepper', value: 'StairStepper' },
+					{ name: 'Stand Up Paddling', value: 'StandUpPaddling' },
+					{ name: 'Surfing', value: 'Surfing' },
+					{ name: 'Swim', value: 'Swim' },
+					{ name: 'Table Tennis', value: 'TableTennis' },
+					{ name: 'Tennis', value: 'Tennis' },
+					{ name: 'Trail Run', value: 'TrailRun' },
+					{ name: 'Velomobile', value: 'Velomobile' },
+					{ name: 'Virtual Ride', value: 'VirtualRide' },
+					{ name: 'Virtual Row', value: 'VirtualRow' },
+					{ name: 'Virtual Run', value: 'VirtualRun' },
+					{ name: 'Walk', value: 'Walk' },
+					{ name: 'Weight Training', value: 'WeightTraining' },
+					{ name: 'Wheelchair', value: 'Wheelchair' },
+					{ name: 'Windsurf', value: 'Windsurf' },
+					{ name: 'Workout', value: 'Workout' },
+					{ name: 'Yoga', value: 'Yoga' },
+				],
+				default: 'Run',
+				description: 'Type of sport',
+				displayOptions: {
+					hide: {
+						'@version': [1],
+					},
+				},
 			},
 			{
 				displayName: 'Trainer',
@@ -300,12 +413,8 @@ export const activityFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['activity'],
+				operation: ['get'],
 			},
 		},
 		default: '',
@@ -322,16 +431,8 @@ export const activityFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'getComments',
-					'getLaps',
-					'getKudos',
-					'getZones',
-					'getStreams',
-				],
+				resource: ['activity'],
+				operation: ['getComments', 'getLaps', 'getKudos', 'getZones', 'getStreams'],
 			},
 		},
 		default: '',
@@ -343,15 +444,8 @@ export const activityFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'getComments',
-					'getLaps',
-					'getKudos',
-					'getZones',
-				],
+				resource: ['activity'],
+				operation: ['getComments', 'getLaps', 'getKudos', 'getZones'],
 			},
 		},
 		default: false,
@@ -363,18 +457,9 @@ export const activityFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'getComments',
-					'getLaps',
-					'getKudos',
-					'getZones',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['activity'],
+				operation: ['getComments', 'getLaps', 'getKudos', 'getZones'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -436,12 +521,8 @@ export const activityFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'getStreams',
-				],
+				resource: ['activity'],
+				operation: ['getStreams'],
 			},
 		},
 		required: true,
@@ -457,12 +538,8 @@ export const activityFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['activity'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -474,15 +551,9 @@ export const activityFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['activity'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {

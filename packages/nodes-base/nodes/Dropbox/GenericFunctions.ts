@@ -1,29 +1,27 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
-
-import { OptionsWithUri } from 'request';
-
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IHookFunctions,
+	IHttpRequestMethods,
+	IRequestOptions,
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 /**
  * Make an API request to Dropbox
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
 export async function dropboxApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: object,
 	query: IDataObject = {},
-	headers: object = {},
+	headers: IDataObject = {},
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers,
 		method,
 		qs: query,
@@ -47,20 +45,19 @@ export async function dropboxApiRequest(
 			return await this.helpers.requestOAuth2.call(this, 'dropboxOAuth2Api', options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
 export async function dropboxpiRequestAllItems(
 	this: IExecuteFunctions | IHookFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
 	headers: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const resource = this.getNodeParameter('resource', 0) as string;
 
@@ -73,20 +70,27 @@ export async function dropboxpiRequestAllItems(
 
 	let responseData;
 	do {
-		responseData = await dropboxApiRequest.call(this, method, endpoint, body, query, headers);
+		responseData = await dropboxApiRequest.call(
+			this,
+			method,
+			endpoint,
+			body as IDataObject,
+			query,
+			headers,
+		);
 		const cursor = responseData.cursor;
 		if (cursor !== undefined) {
 			endpoint = paginationEndpoint[resource] as string;
 			body = { cursor };
 		}
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.has_more !== false);
 
 	return returnData;
 }
 
-export function getRootDirectory(this: IHookFunctions | IExecuteFunctions) {
-	return dropboxApiRequest.call(
+export async function getRootDirectory(this: IHookFunctions | IExecuteFunctions) {
+	return await dropboxApiRequest.call(
 		this,
 		'POST',
 		'https://api.dropboxapi.com/2/users/get_current_account',

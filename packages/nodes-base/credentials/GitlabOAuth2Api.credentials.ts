@@ -1,10 +1,14 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class GitlabOAuth2Api implements ICredentialType {
 	name = 'gitlabOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'GitLab OAuth2 API';
+
 	documentationUrl = 'gitlab';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',

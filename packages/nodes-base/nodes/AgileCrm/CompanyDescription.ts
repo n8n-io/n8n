@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const companyOperations: INodeProperties[] = [
 	{
@@ -31,10 +31,10 @@ export const companyOperations: INodeProperties[] = [
 				action: 'Get a company',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all companies',
-				action: 'Get all companies',
+				description: 'Get many companies',
+				action: 'Get many companies',
 			},
 			{
 				name: 'Update',
@@ -266,9 +266,6 @@ export const companyFields: INodeProperties[] = [
 		displayName: 'Filters (JSON)',
 		name: 'filterJson',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		displayOptions: {
 			show: {
 				resource: ['company'],
@@ -382,11 +379,47 @@ export const companyFields: INodeProperties[] = [
 		options: [
 			{
 				displayName: 'Address',
-				name: 'email',
-				type: 'string',
-				placeholder: 'name@email.com',
-				default: '',
+				name: 'addressOptions',
+				type: 'fixedCollection',
+				default: {},
 				description: 'Company address',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						displayName: 'Address Properties',
+						name: 'addressProperties',
+						values: [
+							{
+								displayName: 'Type',
+								name: 'subtype',
+								type: 'options',
+								required: true,
+								default: '',
+								description: 'Type of address',
+								options: [
+									{
+										name: 'Postal',
+										value: 'postal',
+									},
+									{
+										name: 'Office',
+										value: 'office',
+									},
+								],
+							},
+							{
+								displayName: 'Address',
+								name: 'address',
+								type: 'string',
+								required: true,
+								default: '',
+								description: 'Full address',
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Email',
@@ -658,11 +691,47 @@ export const companyFields: INodeProperties[] = [
 		options: [
 			{
 				displayName: 'Address',
-				name: 'email',
-				type: 'string',
-				placeholder: 'name@email.com',
-				default: '',
+				name: 'addressOptions',
+				type: 'fixedCollection',
+				default: {},
 				description: 'Company address',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						displayName: 'Address Properties',
+						name: 'addressProperties',
+						values: [
+							{
+								displayName: 'Type',
+								name: 'subtype',
+								type: 'options',
+								required: true,
+								default: '',
+								description: 'Type of address',
+								options: [
+									{
+										name: 'Postal',
+										value: 'postal',
+									},
+									{
+										name: 'Office',
+										value: 'office',
+									},
+								],
+							},
+							{
+								displayName: 'Address',
+								name: 'address',
+								type: 'string',
+								required: true,
+								default: '',
+								description: 'Full address',
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Email',

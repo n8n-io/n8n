@@ -8,7 +8,7 @@ Certain base text strings accept [singular and plural versions](https://kazupon.
 
 ```json
 {
-	"tagsView.inUse": "{count} workflow | {count} workflows",
+	"tagsView.inUse": "{count} workflow | {count} workflows"
 }
 ```
 
@@ -43,7 +43,7 @@ As a convenience, the base text file may contain the special key `_reusableBaseT
 	"duplicateWorkflowDialog.save": "@:_reusableBaseText.save",
 	"saveButton.save": "@:_reusableBaseText.save",
 	"saveButton.saving": "🇩🇪 Saving",
-	"saveButton.saved": "🇩🇪 Saved",
+	"saveButton.saved": "🇩🇪 Saved"
 }
 ```
 
@@ -93,7 +93,7 @@ Currently only the keys `oauth.clientId` and `oauth.clientSecret` are supported 
 ```json
 {
 	"_reusableDynamicText.oauth2.clientId": "🇩🇪 Client ID",
-	"_reusableDynamicText.oauth2.clientSecret": "🇩🇪 Client Secret",
+	"_reusableDynamicText.oauth2.clientSecret": "🇩🇪 Client Secret"
 }
 ```
 
@@ -105,7 +105,7 @@ Webhook node:
 
 ```json
 {
-	"nodeView.eventTriggerDescription": "🇩🇪 Waiting for you to call the Test URL",
+	"nodeView.eventTriggerDescription": "🇩🇪 Waiting for you to call the Test URL"
 }
 ```
 

@@ -1,3 +1,4 @@
+import type { INodeProperties } from 'n8n-workflow';
 import * as create from './create';
 import * as del from './del';
 import * as members from './members';
@@ -5,18 +6,8 @@ import * as restore from './restore';
 import * as addUser from './addUser';
 import * as statistics from './statistics';
 import * as search from './search';
-import { INodeProperties } from 'n8n-workflow';
 
-export {
-	create,
-	del as delete,
-	members,
-	restore,
-	addUser,
-	statistics,
-	search,
-};
-
+export { create, del as delete, members, restore, addUser, statistics, search };
 
 export const descriptions: INodeProperties[] = [
 	{
@@ -26,9 +17,7 @@ export const descriptions: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'channel',
-				],
+				resource: ['channel'],
 			},
 		},
 		options: [

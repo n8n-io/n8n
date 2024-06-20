@@ -1,0 +1,148 @@
+{
+	"name": "xml tests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "745d1191-f221-4eda-9d09-611233f97edd",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [460, 520]
+		},
+		{
+			"parameters": {
+				"mode": "jsonToxml",
+				"options": {}
+			},
+			"id": "fb48ca4c-5ae2-4c57-9ca9-2080d06dbf65",
+			"name": "XML",
+			"type": "n8n-nodes-base.xml",
+			"typeVersion": 1,
+			"position": [960, 280]
+		},
+		{
+			"parameters": {
+				"jsCode": "return {\n  data: {\n    id: 1,\n    firstName: 'Adam',\n    secondName: 'Smith',\n    fullName: 'Adam Smith',\n  }\n}"
+			},
+			"id": "6a04ca32-c9cc-4cb1-a6b9-3a505b1c2dd5",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [700, 400]
+		},
+		{
+			"parameters": {
+				"mode": "jsonToxml",
+				"options": {
+					"headless": true
+				}
+			},
+			"id": "cd740e65-5117-4bec-a3b3-6863ba25f232",
+			"name": "XML1",
+			"type": "n8n-nodes-base.xml",
+			"typeVersion": 1,
+			"position": [960, 500]
+		},
+		{
+			"parameters": {
+				"jsCode": "return {\n\"data\":\n'<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?> <data> <id>1</id> <firstName>Adam</firstName> <secondName>Smith</secondName> <fullName>Adam Smith</fullName> </data>'\n}"
+			},
+			"id": "817afbf7-9342-403f-8dc0-c4a3905fde4d",
+			"name": "Code1",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [680, 640]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "f0f37a8f-9136-42e8-be34-f32b77e4aa88",
+			"name": "XML2",
+			"type": "n8n-nodes-base.xml",
+			"typeVersion": 1,
+			"position": [940, 700]
+		}
+	],
+	"pinData": {
+		"XML": [
+			{
+				"json": {
+					"data": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<data>\n  <id>1</id>\n  <firstName>Adam</firstName>\n  <secondName>Smith</secondName>\n  <fullName>Adam Smith</fullName>\n</data>"
+				}
+			}
+		],
+		"XML1": [
+			{
+				"json": {
+					"data": "<data>\n  <id>1</id>\n  <firstName>Adam</firstName>\n  <secondName>Smith</secondName>\n  <fullName>Adam Smith</fullName>\n</data>"
+				}
+			}
+		],
+		"XML2": [
+			{
+				"json": {
+					"data": {
+						"id": "1",
+						"firstName": "Adam",
+						"secondName": "Smith",
+						"fullName": "Adam Smith"
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Code1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "XML",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "XML1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code1": {
+			"main": [
+				[
+					{
+						"node": "XML2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "c1fde9d5-f27c-4e62-bc5c-8be787dcc227",
+	"id": "109",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}

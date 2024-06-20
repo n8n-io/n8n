@@ -1,4 +1,4 @@
-import { EmployeeProperties } from '../../Interfaces';
+import type { EmployeeProperties } from '../../Interfaces';
 import { updateEmployeeSharedDescription } from './sharedDescription';
 
 export const employeeUpdateDescription: EmployeeProperties = [
@@ -30,7 +30,7 @@ export const employeeUpdateDescription: EmployeeProperties = [
 		description:
 			'Whether the employee to create was added to a pay schedule synced with Trax Payroll',
 	},
-	...updateEmployeeSharedDescription(true),
+	...(updateEmployeeSharedDescription(true) as EmployeeProperties),
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',

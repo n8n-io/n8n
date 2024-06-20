@@ -1,10 +1,14 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class OAuth1Api implements ICredentialType {
 	name = 'oAuth1Api';
+
 	displayName = 'OAuth1 API';
+
 	documentationUrl = 'httpRequest';
+
 	genericAuth = true;
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Authorization URL',
@@ -24,6 +28,7 @@ export class OAuth1Api implements ICredentialType {
 			displayName: 'Consumer Key',
 			name: 'consumerKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 			required: true,
 		},
@@ -31,6 +36,7 @@ export class OAuth1Api implements ICredentialType {
 			displayName: 'Consumer Secret',
 			name: 'consumerSecret',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 			required: true,
 		},

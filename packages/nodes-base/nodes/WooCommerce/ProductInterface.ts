@@ -1,4 +1,4 @@
-import { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 
 export interface IDimension {
 	height?: string;
@@ -13,5 +13,13 @@ export interface IImage {
 }
 
 export interface IProduct {
-	[index: string]: string | number | string[] | number[] | IDataObject | IDataObject[] | IImage[] | IDimension;
+	[index: string]:
+		| string
+		| number
+		| string[]
+		| number[]
+		| IDataObject
+		| IDataObject[]
+		| IImage[]
+		| IDimension;
 }

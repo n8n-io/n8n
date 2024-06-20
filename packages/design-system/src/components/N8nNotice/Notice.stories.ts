@@ -1,7 +1,5 @@
-/* tslint:disable:variable-name */
-
 import N8nNotice from './Notice.vue';
-import {StoryFn} from "@storybook/vue";
+import type { StoryFn } from '@storybook/vue3';
 
 export default {
 	title: 'Atoms/Notice',
@@ -14,20 +12,23 @@ export default {
 	},
 };
 
-const SlotTemplate: StoryFn = (args, {argTypes}) => ({
+const SlotTemplate: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nNotice,
 	},
-	template: `<n8n-notice v-bind="$props">This is a notice! Thread carefully from this point forward.</n8n-notice>`,
+	template:
+		'<n8n-notice v-bind="args">This is a notice! Thread carefully from this point forward.</n8n-notice>',
 });
 
-const PropTemplate: StoryFn = (args, {argTypes}) => ({
+const PropTemplate: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nNotice,
 	},
-	template: `<n8n-notice v-bind="$props"/>`,
+	template: '<n8n-notice v-bind="args"/>',
 });
 
 export const Warning = SlotTemplate.bind({});
@@ -53,19 +54,21 @@ Info.args = {
 export const Sanitized = PropTemplate.bind({});
 Sanitized.args = {
 	theme: 'warning',
-	content: '<script>alert(1)</script> This content contains a script tag and is <strong>sanitized</strong>.',
+	content:
+		'<script>alert(1)</script> This content contains a script tag and is <strong>sanitized</strong>.',
 };
 
-export const Truncated = PropTemplate.bind({});
-Truncated.args = {
+export const FullContent = PropTemplate.bind({});
+FullContent.args = {
 	theme: 'warning',
-	truncate: true,
-	content: 'This content is long and will be truncated at 150 characters. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+	content: 'This is just the summary. <a data-key="toggle-expand">Show more</a>',
+	fullContent:
+		'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod ut labore et dolore magna aliqua. <a data-key="show-less">Show less</a>',
 };
 
 export const HtmlEdgeCase = PropTemplate.bind({});
 HtmlEdgeCase.args = {
 	theme: 'warning',
-	truncate: true,
-	content: 'This content is long and will be truncated at 150 characters. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod <a href="">read the documentation</a> ut labore et dolore magna aliqua.',
+	content:
+		'This content is long and will be truncated at 150 characters. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod <a href="">read the documentation</a> ut labore et dolore magna aliqua.',
 };

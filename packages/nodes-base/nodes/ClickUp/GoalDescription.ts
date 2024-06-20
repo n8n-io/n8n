@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const goalOperations: INodeProperties[] = [
 	{
@@ -31,10 +31,10 @@ export const goalOperations: INodeProperties[] = [
 				action: 'Get a goal',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all goals',
-				action: 'Get all goals',
+				description: 'Get many goals',
+				action: 'Get many goals',
 			},
 			{
 				name: 'Update',
@@ -105,9 +105,6 @@ export const goalFields: INodeProperties[] = [
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
@@ -249,9 +246,6 @@ export const goalFields: INodeProperties[] = [
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{

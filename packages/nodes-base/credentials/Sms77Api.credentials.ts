@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -7,16 +7,22 @@ import {
 
 export class Sms77Api implements ICredentialType {
 	name = 'sms77Api';
-	displayName = 'Sms77 API';
+
+	// eslint-disable-next-line n8n-nodes-base/cred-class-field-display-name-miscased
+	displayName = 'seven API';
+
 	documentationUrl = 'sms77';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
@@ -25,10 +31,24 @@ export class Sms77Api implements ICredentialType {
 			},
 		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: 'https://gateway.sms77.io/api',
-			url: '/balance',
+			baseURL: 'https://gateway.seven.io/api',
+			url: '/hooks',
+			qs: {
+				action: 'read',
+			},
 		},
+		rules: [
+			{
+				type: 'responseSuccessBody',
+				properties: {
+					key: 'success',
+					message: 'Invalid API Key',
+					value: undefined,
+				},
+			},
+		],
 	};
 }

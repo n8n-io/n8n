@@ -1,4 +1,5 @@
-import {
+import type {
+	IExecuteFunctions,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -6,69 +7,33 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	IRequestOptions,
 } from 'n8n-workflow';
 
-import {
-	taskFields,
-	taskOperations,
-} from './descriptions/TaskDescription';
+import { taskFields, taskOperations } from './descriptions/TaskDescription';
 
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { destinationFields, destinationOperations } from './descriptions/DestinationDescription';
 
-import {
-	destinationFields,
-	destinationOperations,
-} from './descriptions/DestinationDescription';
+import { resourceLoaders } from './GenericFunctions';
 
-import {
-	resourceLoaders,
-} from './GenericFunctions';
+import { recipientFields, recipientOperations } from './descriptions/RecipientDescription';
 
-import {
-	recipientFields,
-	recipientOperations,
-} from './descriptions/RecipientDescription';
+import { organizationFields, organizationOperations } from './descriptions/OrganizationDescription';
 
-import {
-	organizationFields,
-	organizationOperations,
-} from './descriptions/OrganizationDescription';
+import { adminFields, adminOperations } from './descriptions/AdministratorDescription';
 
-import {
-	adminFields,
-	adminOperations,
-} from './descriptions/AdministratorDescription';
+import { hubFields, hubOperations } from './descriptions/HubDescription';
 
-import {
-	hubFields,
-	hubOperations,
-} from './descriptions/HubDescription';
-
-import {
-	workerFields,
-	workerOperations,
-} from './descriptions/WorkerDescription';
+import { workerFields, workerOperations } from './descriptions/WorkerDescription';
 
 // import {
 // 	webhookFields,
 // 	webhookOperations,
 // } from './descriptions/WebhookDescription';
 
-import {
-	containerFields,
-	containerOperations,
-} from './descriptions/ContainerDescription';
+import { containerFields, containerOperations } from './descriptions/ContainerDescription';
 
-import {
-	teamFields,
-	teamOperations,
-} from './descriptions/TeamDescription';
-
-import {
-	OptionsWithUri,
-} from 'request';
+import { teamFields, teamOperations } from './descriptions/TeamDescription';
 
 import { Onfleet as OnfleetMethods } from './Onfleet';
 export class Onfleet implements INodeType {
@@ -81,7 +46,6 @@ export class Onfleet implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Onfleet API',
 		defaults: {
-			color: '#AA81F3',
 			name: 'Onfleet',
 		},
 		inputs: ['main'],
@@ -171,10 +135,13 @@ export class Onfleet implements INodeType {
 
 	methods = {
 		credentialTest: {
-			async onfleetApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
+			async onfleetApiTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as IDataObject;
 
-				const options: OptionsWithUri = {
+				const options: IRequestOptions = {
 					headers: {
 						'Content-Type': 'application/json',
 						'User-Agent': 'n8n-onfleet',
@@ -206,10 +173,11 @@ export class Onfleet implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		const items = this.getInputData();
 
+		// eslint-disable-next-line @typescript-eslint/ban-types
 		const operations: { [key: string]: Function } = {
 			task: OnfleetMethods.executeTaskOperations,
 			destination: OnfleetMethods.executeDestinationOperations,
@@ -226,6 +194,6 @@ export class Onfleet implements INodeType {
 		const responseData = await operations[resource].call(this, `${resource}s`, operation, items);
 
 		// Map data to n8n data
-		return [this.helpers.returnJsonArray(responseData)];
+		return [this.helpers.returnJsonArray(responseData as IDataObject)];
 	}
 }

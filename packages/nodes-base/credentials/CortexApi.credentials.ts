@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -7,13 +7,17 @@ import {
 
 export class CortexApi implements ICredentialType {
 	name = 'cortexApi';
+
 	displayName = 'Cortex API';
+
 	documentationUrl = 'cortex';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
 			name: 'cortexApiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{

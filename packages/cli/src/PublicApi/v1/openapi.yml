@@ -9,21 +9,31 @@ info:
   license:
     name: Sustainable Use License
     url: https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md
-  version: 1.0.0
+  version: 1.1.1
 externalDocs:
   description: n8n API documentation
   url: https://docs.n8n.io/api/
 servers:
   - url: /api/v1
 tags:
+  - name: User
+    description: Operations about users
+  - name: Audit
+    description: Operations about security audit
   - name: Execution
     description: Operations about executions
   - name: Workflow
     description: Operations about workflows
   - name: Credential
     description: Operations about credentials
+  - name: Tags
+    description: Operations about tags
+  - name: SourceControl
+    description: Operations about source control
 
 paths:
+  /audit:
+    $ref: './handlers/audit/spec/paths/audit.yml'
   /credentials:
     $ref: './handlers/credentials/spec/paths/credentials.yml'
   /credentials/{id}:
@@ -34,6 +44,10 @@ paths:
     $ref: './handlers/executions/spec/paths/executions.yml'
   /executions/{id}:
     $ref: './handlers/executions/spec/paths/executions.id.yml'
+  /tags:
+    $ref: './handlers/tags/spec/paths/tags.yml'
+  /tags/{id}:
+    $ref: './handlers/tags/spec/paths/tags.id.yml'
   /workflows:
     $ref: './handlers/workflows/spec/paths/workflows.yml'
   /workflows/{id}:
@@ -42,6 +56,14 @@ paths:
     $ref: './handlers/workflows/spec/paths/workflows.id.activate.yml'
   /workflows/{id}/deactivate:
     $ref: './handlers/workflows/spec/paths/workflows.id.deactivate.yml'
+  /workflows/{id}/tags:
+    $ref: './handlers/workflows/spec/paths/workflows.id.tags.yml'
+  /users:
+    $ref: './handlers/users/spec/paths/users.yml'
+  /users/{id}:
+    $ref: './handlers/users/spec/paths/users.id.yml'
+  /source-control/pull:
+    $ref: './handlers/sourceControl/spec/paths/sourceControl.yml'
 components:
   schemas:
     $ref: './shared/spec/schemas/_index.yml'

@@ -1,4 +1,4 @@
-import { EmployeeProperties } from '../../Interfaces';
+import type { EmployeeProperties } from '../../Interfaces';
 
 export const employeeGetDescription: EmployeeProperties = [
 	{

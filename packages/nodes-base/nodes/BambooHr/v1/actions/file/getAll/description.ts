@@ -1,4 +1,4 @@
-import { FileProperties } from '../../Interfaces';
+import type { FileProperties } from '../../Interfaces';
 
 export const fileGetAllDescription: FileProperties = [
 	{

@@ -1,71 +1,164 @@
 <template>
 	<div :class="$style.container">
-		<n8n-menu :router="true" :default-active="$route.path" type="secondary">
-			<div :class="$style.returnButton" @click="onReturn">
-				<i :class="$style.icon">
-					<font-awesome-icon icon="arrow-left" />
-				</i>
-				<n8n-heading slot="title" size="large" :bold="true">{{ $locale.baseText('settings') }}</n8n-heading>
-			</div>
-			<n8n-menu-item index="/settings/personal" v-if="canAccessPersonalSettings()" :class="$style.tab">
-				<i :class="$style.icon">
-					<font-awesome-icon icon="user-circle" />
-				</i>
-				<span slot="title">{{ $locale.baseText('settings.personal') }}</span>
-			</n8n-menu-item>
-			<n8n-menu-item index="/settings/users" v-if="canAccessUsersSettings()" :class="$style.tab">
-				<i :class="$style.icon">
-					<font-awesome-icon icon="user-friends" />
-				</i>
-				<span slot="title">{{ $locale.baseText('settings.users') }}</span>
-			</n8n-menu-item>
-			<n8n-menu-item index="/settings/api" v-if="canAccessApiSettings()" :class="$style.tab">
-				<i :class="$style.icon">
-					<font-awesome-icon icon="plug" />
-				</i>
-				<span slot="title">{{ $locale.baseText('settings.n8napi') }}</span>
-			</n8n-menu-item>
-			<n8n-menu-item
-				v-for="fakeDoor in settingsFakeDoorFeatures"
-				v-bind:key="fakeDoor.featureName"
-				:index="`/settings/coming-soon/${fakeDoor.id}`"
-				:class="$style.tab"
-			>
-				<i :class="$style.icon">
-					<font-awesome-icon :icon="fakeDoor.icon" />
-				</i>
-				<span slot="title">{{ $locale.baseText(fakeDoor.featureName) }}</span>
-			</n8n-menu-item>
-			<n8n-menu-item index="/settings/community-nodes" v-if="canAccessCommunityNodes()" :class="$style.tab">
-				<i :class="$style.icon">
-					<font-awesome-icon icon="cube" />
-				</i>
-				<span slot="title">{{ $locale.baseText('settings.communityNodes') }}</span>
-			</n8n-menu-item>
+		<n8n-menu :items="sidebarMenuItems" @select="handleSelect">
+			<template #header>
+				<div :class="$style.returnButton" data-test-id="settings-back" @click="$emit('return')">
+					<i class="mr-xs">
+						<font-awesome-icon icon="arrow-left" />
+					</i>
+					<n8n-heading size="large" :bold="true">{{ $locale.baseText('settings') }}</n8n-heading>
+				</div>
+			</template>
+			<template #menuSuffix>
+				<div :class="$style.versionContainer">
+					<n8n-link size="small" @click="onVersionClick">
+						{{ $locale.baseText('settings.version') }} {{ rootStore.versionCli }}
+					</n8n-link>
+				</div>
+			</template>
 		</n8n-menu>
-		<div :class="$style.versionContainer">
-			<n8n-link @click="onVersionClick" size="small">
-				{{ $locale.baseText('settings.version') }} {{ versionCli }}
-			</n8n-link>
-		</div>
 	</div>
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
-import { mapGetters } from 'vuex';
-import { ABOUT_MODAL_KEY, VIEWS } from '@/constants';
-import { userHelpers } from './mixins/userHelpers';
-import { IFakeDoor } from '@/Interface';
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
+import { useUserHelpers } from '@/composables/useUserHelpers';
+import type { IFakeDoor } from '@/Interface';
+import type { IMenuItem } from 'n8n-design-system';
+import type { BaseTextKey } from '@/plugins/i18n';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useRootStore } from '@/stores/root.store';
+import { hasPermission } from '@/utils/rbac/permissions';
+import { useRoute, useRouter } from 'vue-router';
 
-export default mixins(
-	userHelpers,
-).extend({
+export default defineComponent({
 	name: 'SettingsSidebar',
+	setup() {
+		const router = useRouter();
+		const route = useRoute();
+		return {
+			...useUserHelpers(router, route),
+		};
+	},
 	computed: {
-		...mapGetters('settings', ['versionCli']),
+		...mapStores(useRootStore, useSettingsStore, useUIStore),
 		settingsFakeDoorFeatures(): IFakeDoor[] {
-			return this.$store.getters['ui/getFakeDoorByLocation']('settings');
+			return this.uiStore.getFakeDoorByLocation('settings');
+		},
+		sidebarMenuItems(): IMenuItem[] {
+			const menuItems: IMenuItem[] = [
+				{
+					id: 'settings-usage-and-plan',
+					icon: 'chart-bar',
+					label: this.$locale.baseText('settings.usageAndPlan.title'),
+					position: 'top',
+					available: this.canAccessUsageAndPlan(),
+					route: { to: { name: VIEWS.USAGE } },
+				},
+				{
+					id: 'settings-personal',
+					icon: 'user-circle',
+					label: this.$locale.baseText('settings.personal'),
+					position: 'top',
+					available: this.canAccessPersonalSettings(),
+					route: { to: { name: VIEWS.PERSONAL_SETTINGS } },
+				},
+				{
+					id: 'settings-users',
+					icon: 'user-friends',
+					label: this.$locale.baseText('settings.users'),
+					position: 'top',
+					available: this.canAccessUsersSettings(),
+					route: { to: { name: VIEWS.USERS_SETTINGS } },
+				},
+				{
+					id: 'settings-api',
+					icon: 'plug',
+					label: this.$locale.baseText('settings.n8napi'),
+					position: 'top',
+					available: this.canAccessApiSettings(),
+					route: { to: { name: VIEWS.API_SETTINGS } },
+				},
+				{
+					id: 'settings-external-secrets',
+					icon: 'vault',
+					label: this.$locale.baseText('settings.externalSecrets.title'),
+					position: 'top',
+					available: this.canAccessExternalSecrets(),
+					route: { to: { name: VIEWS.EXTERNAL_SECRETS_SETTINGS } },
+				},
+
+				{
+					id: 'settings-source-control',
+					icon: 'code-branch',
+					label: this.$locale.baseText('settings.sourceControl.title'),
+					position: 'top',
+					available: this.canAccessSourceControl(),
+					route: { to: { name: VIEWS.SOURCE_CONTROL } },
+				},
+				{
+					id: 'settings-sso',
+					icon: 'user-lock',
+					label: this.$locale.baseText('settings.sso'),
+					position: 'top',
+					available: this.canAccessSso(),
+					route: { to: { name: VIEWS.SSO_SETTINGS } },
+				},
+				{
+					id: 'settings-ldap',
+					icon: 'network-wired',
+					label: this.$locale.baseText('settings.ldap'),
+					position: 'top',
+					available: this.canAccessLdapSettings(),
+					route: { to: { name: VIEWS.LDAP_SETTINGS } },
+				},
+				{
+					id: 'settings-workersview',
+					icon: 'project-diagram',
+					label: this.$locale.baseText('mainSidebar.workersView'),
+					position: 'top',
+					available:
+						this.settingsStore.isQueueModeEnabled &&
+						hasPermission(['rbac'], { rbac: { scope: 'workersView:manage' } }),
+					route: { to: { name: VIEWS.WORKER_VIEW } },
+				},
+			];
+
+			for (const item of this.settingsFakeDoorFeatures) {
+				if (item.uiLocations.includes('settings')) {
+					menuItems.push({
+						id: item.id,
+						icon: item.icon ?? 'question',
+						label: this.$locale.baseText(item.featureName as BaseTextKey),
+						position: 'top',
+						available: true,
+						activateOnRoutePaths: [`/settings/coming-soon/${item.id}`],
+					});
+				}
+			}
+
+			menuItems.push({
+				id: 'settings-log-streaming',
+				icon: 'sign-in-alt',
+				label: this.$locale.baseText('settings.log-streaming'),
+				position: 'top',
+				available: this.canAccessLogStreamingSettings(),
+				route: { to: { name: VIEWS.LOG_STREAMING_SETTINGS } },
+			});
+
+			menuItems.push({
+				id: 'settings-community-nodes',
+				icon: 'cube',
+				label: this.$locale.baseText('settings.communityNodes'),
+				position: 'top',
+				available: this.canAccessCommunityNodes(),
+				route: { to: { name: VIEWS.COMMUNITY_NODES } },
+			});
+
+			return menuItems;
 		},
 	},
 	methods: {
@@ -79,13 +172,43 @@ export default mixins(
 			return this.canUserAccessRouteByName(VIEWS.COMMUNITY_NODES);
 		},
 		canAccessApiSettings(): boolean {
-			return this.canUserAccessRouteByName(VIEWS.API_SETTINGS);
+			return (
+				this.settingsStore.isPublicApiEnabled && this.canUserAccessRouteByName(VIEWS.API_SETTINGS)
+			);
+		},
+		canAccessLdapSettings(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.LDAP_SETTINGS);
+		},
+		canAccessLogStreamingSettings(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.LOG_STREAMING_SETTINGS);
+		},
+		canAccessUsageAndPlan(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.USAGE);
+		},
+		canAccessExternalSecrets(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.EXTERNAL_SECRETS_SETTINGS);
+		},
+		canAccessSourceControl(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.SOURCE_CONTROL);
+		},
+		canAccessSso(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.SSO_SETTINGS);
 		},
 		onVersionClick() {
-			this.$store.dispatch('ui/openModal', ABOUT_MODAL_KEY);
+			this.uiStore.openModal(ABOUT_MODAL_KEY);
 		},
-		onReturn() {
-			this.$router.push({name: VIEWS.HOMEPAGE});
+		openUpdatesPanel() {
+			this.uiStore.openModal(VERSIONS_MODAL_KEY);
+		},
+		async handleSelect(key: string) {
+			switch (key) {
+				case 'users': // Fakedoor feature added via hooks when user management is disabled on cloud
+				case 'logging':
+					this.$router.push({ name: VIEWS.FAKE_DOOR, params: { featureId: key } }).catch(() => {});
+					break;
+				default:
+					break;
+			}
 		},
 	},
 });
@@ -93,47 +216,29 @@ export default mixins(
 
 <style lang="scss" module>
 .container {
-	min-width: 200px;
+	min-width: $sidebar-expanded-width;
 	height: 100%;
 	background-color: var(--color-background-xlight);
 	border-right: var(--border-base);
 	position: relative;
-	padding: var(--spacing-s);
-}
-
-.tab {
-	margin-bottom: var(--spacing-2xs);
+	overflow: auto;
 }
 
 .returnButton {
-	composes: tab;
-	margin-bottom: var(--spacing-xl);
-	padding: 0 var(--spacing-xs);
-	height: 38px;
-	display: flex;
-	align-items: center;
-	color: var(--color-text-base);
-	font-size: var(--font-size-s);
+	padding: var(--spacing-s) var(--spacing-l);
 	cursor: pointer;
-
-	i {
-		color: var(--color-text-light);
-	}
-
-	&:hover > * {
+	&:hover {
 		color: var(--color-primary);
 	}
 }
 
-.icon {
-	width: 16px;
-	display: inline-flex;
-	margin-right: 10px;
+.versionContainer {
+	padding: var(--spacing-xs) var(--spacing-l);
 }
 
-.versionContainer {
-	position: absolute;
-	left: 20px;
-	bottom: 20px;
+@media screen and (max-height: 420px) {
+	.versionContainer {
+		display: none;
+	}
 }
 </style>

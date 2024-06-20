@@ -1,13 +1,7 @@
-import {
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import {
-	apiRequestAllItems,
-} from '../transport';
+import { apiRequestAllItems } from '../transport';
 
 // Get all the available channels
 
@@ -28,11 +22,14 @@ export async function getCustomers(this: ILoadOptionsFunctions): Promise<INodePr
 	}
 
 	returnData.sort((a, b) => {
-		if (a.name < b.name) { return -1; }
-		if (a.name > b.name) { return 1; }
+		if (a.name < b.name) {
+			return -1;
+		}
+		if (a.name > b.name) {
+			return 1;
+		}
 		return 0;
 	});
 
 	return returnData;
 }
-

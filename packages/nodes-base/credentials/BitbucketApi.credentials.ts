@@ -1,9 +1,12 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class BitbucketApi implements ICredentialType {
 	name = 'bitbucketApi';
+
 	displayName = 'Bitbucket API';
+
 	documentationUrl = 'bitbucket';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Username',
@@ -15,6 +18,7 @@ export class BitbucketApi implements ICredentialType {
 			displayName: 'App Password',
 			name: 'appPassword',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

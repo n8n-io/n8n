@@ -1,44 +1,45 @@
 <template>
-	<TemplatesView :goBackEnabled="true">
-		<template v-slot:header>
+	<TemplatesView :go-back-enabled="true">
+		<template #header>
 			<div v-if="!notFoundError" :class="$style.wrapper">
 				<div :class="$style.title">
 					<n8n-heading v-if="template && template.name" tag="h1" size="2xlarge">{{
 						template.name
 					}}</n8n-heading>
 					<n8n-text v-if="template && template.name" color="text-base" size="small">
-						{{ $locale.baseText('templates.workflow') }}
+						{{ $locale.baseText('generic.workflow') }}
 					</n8n-text>
 					<n8n-loading :loading="!template || !template.name" :rows="2" variant="h1" />
 				</div>
 				<div :class="$style.button">
 					<n8n-button
 						v-if="template"
+						data-test-id="use-template-button"
 						:label="$locale.baseText('template.buttons.useThisWorkflowButton')"
 						size="large"
-						@click="openWorkflow(template.id, $event)"
+						@click="openTemplateSetup(templateId, $event)"
 					/>
 					<n8n-loading :loading="!template" :rows="1" variant="button" />
 				</div>
 			</div>
-			<div :class="$style.notFound" v-else>
+			<div v-else :class="$style.notFound">
 				<n8n-text color="text-base">{{ $locale.baseText('templates.workflowsNotFound') }}</n8n-text>
 			</div>
 		</template>
-		<template v-if="!notFoundError" v-slot:content>
+		<template v-if="!notFoundError" #content>
 			<div :class="$style.image">
 				<WorkflowPreview
 					v-if="showPreview"
 					:loading="loading"
-					:workflow="template && template.workflow"
+					:workflow="template?.workflow"
 					@close="onHidePreview"
 				/>
 			</div>
 			<div :class="$style.content">
-				<div :class="$style.markdown">
+				<div :class="$style.markdown" data-test-id="template-description">
 					<n8n-markdown
-						:content="template && template.description"
-						:images="template && template.image"
+						:content="template?.description"
+						:images="template?.image"
 						:loading="loading"
 					/>
 				</div>
@@ -55,29 +56,44 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+
 import TemplateDetails from '@/components/TemplateDetails.vue';
 import TemplatesView from './TemplatesView.vue';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 
-import { ITemplatesWorkflow, ITemplatesWorkflowFull } from '@/Interface';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
-import mixins from 'vue-typed-mixins';
-import { setPageTitle } from '@/components/helpers';
-import { VIEWS } from '@/constants';
+import type { ITemplatesWorkflowFull } from '@/Interface';
+import { setPageTitle } from '@/utils/htmlUtils';
+import { useTemplatesStore } from '@/stores/templates.store';
+import { usePostHog } from '@/stores/posthog.store';
+import { useTemplateWorkflow } from '@/utils/templates/templateActions';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
-export default mixins(workflowHelpers).extend({
+export default defineComponent({
 	name: 'TemplatesWorkflowView',
 	components: {
 		TemplateDetails,
 		TemplatesView,
 		WorkflowPreview,
 	},
+	setup() {
+		const externalHooks = useExternalHooks();
+
+		return {
+			externalHooks,
+		};
+	},
 	computed: {
-		template(): ITemplatesWorkflow | ITemplatesWorkflowFull {
-			return this.$store.getters['templates/getTemplateById'](this.templateId);
+		...mapStores(useTemplatesStore, usePostHog),
+		template(): ITemplatesWorkflowFull | null {
+			return this.templatesStore.getFullTemplateById(this.templateId);
 		},
 		templateId() {
-			return this.$route.params.id;
+			return Array.isArray(this.$route.params.id)
+				? this.$route.params.id[0]
+				: this.$route.params.id;
 		},
 	},
 	data() {
@@ -87,56 +103,57 @@ export default mixins(workflowHelpers).extend({
 			notFoundError: false,
 		};
 	},
-	methods: {
-		openWorkflow(id: string, e: PointerEvent) {
-			this.$telemetry.track('User inserted workflow template', {
-				source: 'workflow',
-				template_id: id,
-				wf_template_repo_session_id: this.$store.getters['templates/currentSessionId'],
-			});
-
-			if (e.metaKey || e.ctrlKey) {
-				const route = this.$router.resolve({ name: VIEWS.TEMPLATE_IMPORT, params: { id } });
-				window.open(route.href, '_blank');
-				return;
-			} else {
-				this.$router.push({ name: VIEWS.TEMPLATE_IMPORT, params: { id } });
-			}
-		},
-		onHidePreview() {
-			this.showPreview = false;
-		},
-		scrollToTop() {
-			window.scrollTo({
-				top: 0,
-			});
-		},
-	},
 	watch: {
 		template(template: ITemplatesWorkflowFull) {
 			if (template) {
 				setPageTitle(`n8n - Template template: ${template.name}`);
-			}
-			else {
-				setPageTitle(`n8n - Templates`);
+			} else {
+				setPageTitle('n8n - Templates');
 			}
 		},
 	},
 	async mounted() {
 		this.scrollToTop();
 
-		if (this.template && (this.template as ITemplatesWorkflowFull).full) {
+		if (this.template && this.template.full) {
 			this.loading = false;
 			return;
 		}
 
 		try {
-			await this.$store.dispatch('templates/getTemplateById', this.templateId);
+			await this.templatesStore.fetchTemplateById(this.templateId);
 		} catch (e) {
 			this.notFoundError = true;
 		}
 
 		this.loading = false;
+	},
+	methods: {
+		async openTemplateSetup(id: string, e: PointerEvent) {
+			await useTemplateWorkflow({
+				posthogStore: this.posthogStore,
+				router: this.$router,
+				templateId: id,
+				inNewBrowserTab: e.metaKey || e.ctrlKey,
+				externalHooks: this.externalHooks,
+				nodeTypesStore: useNodeTypesStore(),
+				telemetry: this.$telemetry,
+				templatesStore: useTemplatesStore(),
+				source: 'template_preview',
+			});
+		},
+		onHidePreview() {
+			this.showPreview = false;
+		},
+		scrollToTop() {
+			const contentArea = document.getElementById('content');
+
+			if (contentArea) {
+				contentArea.scrollTo({
+					top: 0,
+				});
+			}
+		},
 	},
 });
 </script>
@@ -161,6 +178,10 @@ export default mixins(workflowHelpers).extend({
 
 .image {
 	width: 100%;
+	height: 500px;
+	border: var(--border-base);
+	border-radius: var(--border-radius-large);
+	overflow: hidden;
 
 	img {
 		width: 100%;
@@ -172,7 +193,7 @@ export default mixins(workflowHelpers).extend({
 	display: flex;
 	justify-content: space-between;
 
-	@media (max-width: $--breakpoint-xs) {
+	@media (max-width: $breakpoint-xs) {
 		display: block;
 	}
 }
@@ -182,7 +203,7 @@ export default mixins(workflowHelpers).extend({
 	padding-right: var(--spacing-2xl);
 	margin-bottom: var(--spacing-l);
 
-	@media (max-width: $--breakpoint-xs) {
+	@media (max-width: $breakpoint-xs) {
 		width: 100%;
 	}
 }

@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const spaceTagOperations: INodeProperties[] = [
 	{
@@ -25,10 +25,10 @@ export const spaceTagOperations: INodeProperties[] = [
 				action: 'Delete a space tag',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all space tags',
-				action: 'Get all space tags',
+				description: 'Get many space tags',
+				action: 'Get many space tags',
 			},
 			{
 				name: 'Update',

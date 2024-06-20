@@ -1,122 +1,231 @@
 <template>
-	<div v-if="webhooksNode.length" class="webhoooks">
-		<div class="clickable headline" :class="{expanded: !isMinimized}" @click="isMinimized=!isMinimized" :title="isMinimized ? $locale.baseText('nodeWebhooks.clickToDisplayWebhookUrls') : $locale.baseText('nodeWebhooks.clickToHideWebhookUrls')">
-			<font-awesome-icon icon="angle-down" class="minimize-button minimize-icon" />
-			{{ $locale.baseText('nodeWebhooks.webhookUrls') }}
+	<div v-if="webhooksNode.length && visibleWebhookUrls.length > 0" class="webhooks">
+		<div
+			class="clickable headline"
+			:class="{ expanded: !isMinimized }"
+			:title="isMinimized ? baseText.clickToDisplay : baseText.clickToHide"
+			@click="isMinimized = !isMinimized"
+		>
+			<font-awesome-icon icon="angle-right" class="minimize-button minimize-icon" />
+			{{ baseText.toggleTitle }}
 		</div>
 		<el-collapse-transition>
-			<div class="node-webhooks" v-if="!isMinimized">
-				<div class="url-selection">
+			<div v-if="!isMinimized" class="node-webhooks">
+				<div v-if="!isProductionOnly" class="url-selection">
 					<el-row>
 						<el-col :span="24">
-							<n8n-radio-buttons
-								v-model="showUrlFor"
-								:options="[
-									{ label: this.$locale.baseText('nodeWebhooks.testUrl'), value: 'test'},
-									{ label: this.$locale.baseText('nodeWebhooks.productionUrl'), value: 'production'},
-								]"
-							/>
+							<n8n-radio-buttons v-model="showUrlFor" :options="urlOptions" />
 						</el-col>
 					</el-row>
 				</div>
 
-				<n8n-tooltip v-for="(webhook, index) in webhooksNode" :key="index" class="item"  :content="$locale.baseText('nodeWebhooks.clickToCopyWebhookUrls')" placement="left">
-					<div class="webhook-wrapper">
-							<div class="http-field">
-								<div class="http-method">
-									{{getWebhookExpressionValue(webhook, 'httpMethod')}}<br />
-								</div>
+				<n8n-tooltip
+					v-for="(webhook, index) in visibleWebhookUrls"
+					:key="index"
+					class="item"
+					:content="baseText.clickToCopy"
+					placement="left"
+				>
+					<div v-if="isWebhookMethodVisible(webhook)" class="webhook-wrapper">
+						<div class="http-field">
+							<div class="http-method">{{ getWebhookHttpMethod(webhook) }}<br /></div>
+						</div>
+						<div class="url-field">
+							<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(webhook)">
+								{{ getWebhookUrlDisplay(webhook) }}<br />
 							</div>
-							<div class="url-field">
-								<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(webhook)">
-									{{getWebhookUrlDisplay(webhook)}}<br />
-								</div>
+						</div>
+					</div>
+					<div v-else class="webhook-wrapper">
+						<div class="url-field-full-width">
+							<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(webhook)">
+								{{ getWebhookUrlDisplay(webhook) }}<br />
 							</div>
+						</div>
 					</div>
 				</n8n-tooltip>
-
 			</div>
 		</el-collapse-transition>
 	</div>
 </template>
 
 <script lang="ts">
+import type { INodeTypeDescription, IWebhookDescription } from 'n8n-workflow';
+import { defineComponent } from 'vue';
+
+import { useToast } from '@/composables/useToast';
 import {
-	INodeTypeDescription,
-	IWebhookDescription,
-} from 'n8n-workflow';
+	CHAT_TRIGGER_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
+	OPEN_URL_PANEL_TRIGGER_NODE_TYPES,
+	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
+} from '@/constants';
+import { useClipboard } from '@/composables/useClipboard';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useRouter } from 'vue-router';
 
-import { WEBHOOK_NODE_TYPE } from '@/constants';
-import { copyPaste } from '@/components/mixins/copyPaste';
-import { showMessage } from '@/components/mixins/showMessage';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
-
-import mixins from 'vue-typed-mixins';
-
-export default mixins(
-	copyPaste,
-	showMessage,
-	workflowHelpers,
-)
-	.extend({
-		name: 'NodeWebhooks',
-		props: [
-			'node', // NodeUi
-			'nodeType', // INodeTypeDescription
-		],
-		data () {
-			return {
-				isMinimized: this.nodeType && this.nodeType.name !== WEBHOOK_NODE_TYPE,
-				showUrlFor: 'test',
-			};
+export default defineComponent({
+	name: 'NodeWebhooks',
+	props: [
+		'node', // NodeUi
+		'nodeType', // INodeTypeDescription
+	],
+	setup() {
+		const router = useRouter();
+		const clipboard = useClipboard();
+		const workflowHelpers = useWorkflowHelpers({ router });
+		return {
+			clipboard,
+			workflowHelpers,
+			...useToast(),
+		};
+	},
+	data() {
+		return {
+			isMinimized: this.nodeType && !OPEN_URL_PANEL_TRIGGER_NODE_TYPES.includes(this.nodeType.name),
+			showUrlFor: 'test',
+		};
+	},
+	computed: {
+		isProductionOnly(): boolean {
+			return this.nodeType && PRODUCTION_ONLY_TRIGGER_NODE_TYPES.includes(this.nodeType.name);
 		},
-		computed: {
-			webhooksNode (): IWebhookDescription[] {
-				if (this.nodeType === null || this.nodeType.webhooks === undefined) {
-					return [];
+		urlOptions(): Array<{ label: string; value: string }> {
+			return [
+				...(this.isProductionOnly ? [] : [{ label: this.baseText.testUrl, value: 'test' }]),
+				{
+					label: this.baseText.productionUrl,
+					value: 'production',
+				},
+			];
+		},
+		visibleWebhookUrls(): IWebhookDescription[] {
+			return this.webhooksNode.filter((webhook) => {
+				if (typeof webhook.ndvHideUrl === 'string') {
+					return !this.workflowHelpers.getWebhookExpressionValue(webhook, 'ndvHideUrl');
 				}
 
-				return (this.nodeType as INodeTypeDescription).webhooks!.filter(webhookData => webhookData.restartWebhook !== true);
-			},
+				return !webhook.ndvHideUrl;
+			});
 		},
-		methods: {
-			copyWebhookUrl (webhookData: IWebhookDescription): void {
-				const webhookUrl = this.getWebhookUrlDisplay(webhookData);
-				this.copyToClipboard(webhookUrl);
+		webhooksNode(): IWebhookDescription[] {
+			if (this.nodeType === null || this.nodeType.webhooks === undefined) {
+				return [];
+			}
 
-				this.$showMessage({
-					title: this.$locale.baseText('nodeWebhooks.showMessage.title'),
-					type: 'success',
-				});
-				this.$telemetry.track('User copied webhook URL', {
-					pane: 'parameters',
-					type: `${this.showUrlFor} url`,
-				});
-			},
-			getWebhookUrlDisplay (webhookData: IWebhookDescription): string {
-				if (this.node) {
-					return this.getWebhookUrl(webhookData, this.node, this.showUrlFor);
+			return (this.nodeType as INodeTypeDescription).webhooks!.filter(
+				(webhookData) => webhookData.restartWebhook !== true,
+			);
+		},
+		baseText() {
+			const nodeType = this.nodeType.name;
+			switch (nodeType) {
+				case CHAT_TRIGGER_NODE_TYPE:
+					return {
+						toggleTitle: this.$locale.baseText('nodeWebhooks.webhookUrls.chatTrigger'),
+						clickToDisplay: this.$locale.baseText(
+							'nodeWebhooks.clickToDisplayWebhookUrls.formTrigger',
+						),
+						clickToHide: this.$locale.baseText('nodeWebhooks.clickToHideWebhookUrls.chatTrigger'),
+						clickToCopy: this.$locale.baseText('nodeWebhooks.clickToCopyWebhookUrls.chatTrigger'),
+						testUrl: this.$locale.baseText('nodeWebhooks.testUrl'),
+						productionUrl: this.$locale.baseText('nodeWebhooks.productionUrl'),
+						copyTitle: this.$locale.baseText('nodeWebhooks.showMessage.title.chatTrigger'),
+						copyMessage: this.$locale.baseText('nodeWebhooks.showMessage.message.chatTrigger'),
+					};
+
+				case FORM_TRIGGER_NODE_TYPE:
+					return {
+						toggleTitle: this.$locale.baseText('nodeWebhooks.webhookUrls.formTrigger'),
+						clickToDisplay: this.$locale.baseText(
+							'nodeWebhooks.clickToDisplayWebhookUrls.formTrigger',
+						),
+						clickToHide: this.$locale.baseText('nodeWebhooks.clickToHideWebhookUrls.formTrigger'),
+						clickToCopy: this.$locale.baseText('nodeWebhooks.clickToCopyWebhookUrls.formTrigger'),
+						testUrl: this.$locale.baseText('nodeWebhooks.testUrl'),
+						productionUrl: this.$locale.baseText('nodeWebhooks.productionUrl'),
+						copyTitle: this.$locale.baseText('nodeWebhooks.showMessage.title.formTrigger'),
+						copyMessage: this.$locale.baseText('nodeWebhooks.showMessage.message.formTrigger'),
+					};
+
+				default:
+					return {
+						toggleTitle: this.$locale.baseText('nodeWebhooks.webhookUrls'),
+						clickToDisplay: this.$locale.baseText('nodeWebhooks.clickToDisplayWebhookUrls'),
+						clickToHide: this.$locale.baseText('nodeWebhooks.clickToHideWebhookUrls'),
+						clickToCopy: this.$locale.baseText('nodeWebhooks.clickToCopyWebhookUrls'),
+						testUrl: this.$locale.baseText('nodeWebhooks.testUrl'),
+						productionUrl: this.$locale.baseText('nodeWebhooks.productionUrl'),
+						copyTitle: this.$locale.baseText('nodeWebhooks.showMessage.title'),
+						copyMessage: undefined,
+					};
+			}
+		},
+	},
+	watch: {
+		node() {
+			this.isMinimized = !OPEN_URL_PANEL_TRIGGER_NODE_TYPES.includes(this.nodeType.name);
+		},
+	},
+	methods: {
+		copyWebhookUrl(webhookData: IWebhookDescription): void {
+			const webhookUrl = this.getWebhookUrlDisplay(webhookData);
+			void this.clipboard.copy(webhookUrl);
+
+			this.showMessage({
+				title: this.baseText.copyTitle,
+				message: this.baseText.copyMessage,
+				type: 'success',
+			});
+			this.$telemetry.track('User copied webhook URL', {
+				pane: 'parameters',
+				type: `${this.showUrlFor} url`,
+			});
+		},
+		getWebhookUrlDisplay(webhookData: IWebhookDescription): string {
+			if (this.node) {
+				return this.workflowHelpers.getWebhookUrl(
+					webhookData,
+					this.node,
+					this.isProductionOnly ? 'production' : this.showUrlFor,
+				);
+			}
+			return '';
+		},
+		isWebhookMethodVisible(webhook: IWebhookDescription): boolean {
+			try {
+				const method = this.workflowHelpers.getWebhookExpressionValue(webhook, 'httpMethod', false);
+				if (Array.isArray(method) && method.length !== 1) {
+					return false;
 				}
-				return '';
-			},
+			} catch (error) {}
+
+			if (typeof webhook.ndvHideMethod === 'string') {
+				return !this.workflowHelpers.getWebhookExpressionValue(webhook, 'ndvHideMethod');
+			}
+
+			return !webhook.ndvHideMethod;
 		},
-		watch: {
-			node () {
-				this.isMinimized = this.nodeType.name !== WEBHOOK_NODE_TYPE;
-			},
+
+		getWebhookHttpMethod(webhook: IWebhookDescription): string {
+			const method = this.workflowHelpers.getWebhookExpressionValue(webhook, 'httpMethod', false);
+			if (Array.isArray(method)) {
+				return method[0];
+			}
+			return method;
 		},
-	});
+	},
+});
 </script>
 
 <style scoped lang="scss">
-
-.webhoooks {
+.webhooks {
 	padding-bottom: var(--spacing-xs);
 	margin: var(--spacing-xs) 0;
 	border-bottom: 1px solid var(--color-text-lighter);
 
 	.headline {
-		color: $--color-primary;
+		color: $color-primary;
 		font-weight: 600;
 		font-size: var(--font-size-2xs);
 	}
@@ -126,7 +235,7 @@ export default mixins(
 	position: absolute;
 	width: 50px;
 	display: inline-block;
-	top: calc(50% - 8px)
+	top: calc(50% - 8px);
 }
 
 .http-method {
@@ -160,6 +269,10 @@ export default mixins(
 	width: calc(100% - 60px);
 	margin-left: 55px;
 }
+.url-field-full-width {
+	display: inline-block;
+	margin: 5px 10px;
+}
 
 .url-selection {
 	margin-top: var(--spacing-xs);
@@ -178,10 +291,10 @@ export default mixins(
 	transition-property: transform;
 }
 .expanded .minimize-button {
-	-webkit-transform: rotate(180deg);
-	-moz-transform: rotate(180deg);
-	-o-transform: rotate(180deg);
-	transform: rotate(180deg);
+	-webkit-transform: rotate(90deg);
+	-moz-transform: rotate(90deg);
+	-o-transform: rotate(90deg);
+	transform: rotate(90deg);
 }
 
 .webhook-url {

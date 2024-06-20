@@ -1,101 +1,19 @@
 <template>
-	<n8n-button
-		:class="`icon-button ${$style['icon-button']} ${$style[size]}`"
-		v-bind="$props"
-		v-on="$listeners"
-	/>
+	<N8nButton square v-bind="{ ...$attrs, ...$props }" />
 </template>
 
-<script lang="ts">
+<script lang="ts" setup>
+import type { IconButtonProps } from 'n8n-design-system/types/button';
 import N8nButton from '../N8nButton';
 
-import Vue from 'vue';
-
-export default Vue.extend({
-	name: 'n8n-icon-button',
-	components: {
-		N8nButton,
-	},
-	props: {
-		type: {
-			type: String,
-			default: 'primary',
-		},
-		size: {
-			type: String,
-			default: 'medium',
-		},
-		loading: {
-			type: Boolean,
-			default: false,
-		},
-		outline: {
-			type: Boolean,
-			default: false,
-		},
-		text: {
-			type: Boolean,
-			default: false,
-		},
-		disabled: {
-			type: Boolean,
-			default: false,
-		},
-		active: {
-			type: Boolean,
-			default: false,
-		},
-		icon: {
-			type: [String, Array],
-			required: true,
-		},
-		float: {
-			type: String,
-			validator: (value: string): boolean =>
-				['left', 'right'].includes(value),
-		},
-		circle: {
-			type: Boolean,
-			default: true,
-		},
-		circle: {
-			type: Boolean,
-			default: true,
-		},
-	},
+defineOptions({ name: 'N8nIconButton' });
+withDefaults(defineProps<IconButtonProps>(), {
+	type: 'primary',
+	size: 'medium',
+	loading: false,
+	outline: false,
+	text: false,
+	disabled: false,
+	active: false,
 });
 </script>
-
-<style lang="scss" module>
-.icon-button {
-	padding: 0;
-	display: inline-flex;
-	justify-content: center;
-	align-items: center;
-}
-
-.mini {
-	height: 22px;
-	width: 22px;
-}
-
-.small {
-	height: 26px;
-	width: 26px;
-}
-
-.medium {
-	height: 30px;
-	width: 30px;
-}
-
-.large {
-	height: 42px;
-	width: 42px;
-}
-
-.xlarge {
-	height: 46px;
-	width: 46px;
-}
-</style>

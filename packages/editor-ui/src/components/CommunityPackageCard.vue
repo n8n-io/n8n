@@ -4,7 +4,7 @@
 			<n8n-loading :class="$style.loader" variant="p" :rows="1" />
 			<n8n-loading :class="$style.loader" variant="p" :rows="1" />
 		</div>
-		<div v-else :class="$style.packageCard">
+		<div v-else-if="communityPackage" :class="$style.packageCard">
 			<div :class="$style.cardInfoContainer">
 				<div :class="$style.cardTitle">
 					<n8n-text :bold="true" size="large">{{ communityPackage.packageName }}</n8n-text>
@@ -19,7 +19,8 @@
 					</n8n-text>
 					<n8n-text size="small" color="text-light">
 						<span v-for="(node, index) in communityPackage.installedNodes" :key="node.name">
-							{{ node.name }}<span v-if="index != communityPackage.installedNodes.length - 1">,</span>
+							{{ node.name
+							}}<span v-if="index != communityPackage.installedNodes.length - 1">,</span>
 						</span>
 					</n8n-text>
 				</div>
@@ -29,21 +30,27 @@
 					v{{ communityPackage.installedVersion }}
 				</n8n-text>
 				<n8n-tooltip v-if="communityPackage.failedLoading === true" placement="top">
-					<div slot="content">
-						{{ $locale.baseText('settings.communityNodes.failedToLoad.tooltip') }}
-					</div>
+					<template #content>
+						<div>
+							{{ $locale.baseText('settings.communityNodes.failedToLoad.tooltip') }}
+						</div>
+					</template>
 					<n8n-icon icon="exclamation-triangle" color="danger" size="large" />
 				</n8n-tooltip>
 				<n8n-tooltip v-else-if="communityPackage.updateAvailable" placement="top">
-					<div slot="content">
-						{{ $locale.baseText('settings.communityNodes.updateAvailable.tooltip') }}
-					</div>
-					<n8n-button type="outline" label="Update" @click="onUpdateClick"/>
+					<template #content>
+						<div>
+							{{ $locale.baseText('settings.communityNodes.updateAvailable.tooltip') }}
+						</div>
+					</template>
+					<n8n-button outline label="Update" @click="onUpdateClick" />
 				</n8n-tooltip>
 				<n8n-tooltip v-else placement="top">
-					<div slot="content">
-						{{ $locale.baseText('settings.communityNodes.upToDate.tooltip') }}
-					</div>
+					<template #content>
+						<div>
+							{{ $locale.baseText('settings.communityNodes.upToDate.tooltip') }}
+						</div>
+					</template>
 					<n8n-icon icon="check-circle" color="text-light" size="large" />
 				</n8n-tooltip>
 				<div :class="$style.cardActions">
@@ -55,21 +62,19 @@
 </template>
 
 <script lang="ts">
-import { PublicInstalledPackage } from 'n8n-workflow';
-import mixins from 'vue-typed-mixins';
-import {
-	NPM_PACKAGE_DOCS_BASE_URL,
-	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
-} from '../constants';
-import { showMessage } from './mixins/showMessage';
+import { useUIStore } from '@/stores/ui.store';
+import type { PublicInstalledPackage } from 'n8n-workflow';
+import { mapStores } from 'pinia';
+import { defineComponent } from 'vue';
+import { NPM_PACKAGE_DOCS_BASE_URL, COMMUNITY_PACKAGE_MANAGE_ACTIONS } from '@/constants';
 
-export default mixins(
-	showMessage,
-).extend({
+export default defineComponent({
 	name: 'CommunityPackageCard',
 	props: {
 		communityPackage: {
-			type: Object as () => PublicInstalledPackage,
+			type: Object as () => PublicInstalledPackage | null,
+			required: false,
+			default: null,
 		},
 		loading: {
 			type: Boolean,
@@ -91,8 +96,12 @@ export default mixins(
 			],
 		};
 	},
+	computed: {
+		...mapStores(useUIStore),
+	},
 	methods: {
 		async onAction(value: string) {
+			if (!this.communityPackage) return;
 			switch (value) {
 				case COMMUNITY_PACKAGE_MANAGE_ACTIONS.VIEW_DOCS:
 					this.$telemetry.track('user clicked to browse the cnr package documentation', {
@@ -102,14 +111,15 @@ export default mixins(
 					window.open(`${NPM_PACKAGE_DOCS_BASE_URL}${this.communityPackage.packageName}`, '_blank');
 					break;
 				case COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL:
-					this.$store.dispatch('ui/openCommunityPackageUninstallConfirmModal', this.communityPackage.packageName);
+					this.uiStore.openCommunityPackageUninstallConfirmModal(this.communityPackage.packageName);
 					break;
 				default:
 					break;
 			}
 		},
 		onUpdateClick() {
-			this.$store.dispatch('ui/openCommunityPackageUpdateConfirmModal', this.communityPackage.packageName);
+			if (!this.communityPackage) return;
+			this.uiStore.openCommunityPackageUpdateConfirmModal(this.communityPackage.packageName);
 		},
 	},
 });
@@ -124,7 +134,8 @@ export default mixins(
 	background-color: var(--color-background-xlight);
 }
 
-.packageCard, .cardSkeleton {
+.packageCard,
+.cardSkeleton {
 	display: flex;
 	flex-basis: 100%;
 	justify-content: space-between;

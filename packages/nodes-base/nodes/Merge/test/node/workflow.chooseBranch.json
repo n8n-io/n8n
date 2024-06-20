@@ -1,0 +1,174 @@
+{
+	"name": "merge tests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "9f880c6f-b5e0-4453-b1d7-550beb1febe8",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [820, 380]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {id: 1},\n  {id: 2},\n  {id: 3}, \n];"
+			},
+			"id": "263d9c7f-32d4-4112-b271-73d09b73809a",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [1020, 220]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {id: 4},\n  {id: 5},\n  {id: 6}, \n];"
+			},
+			"id": "3defcf5a-ec5e-4d23-a1f6-a99b7362a241",
+			"name": "Code1",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [1040, 540]
+		},
+		{
+			"parameters": {
+				"mode": "chooseBranch"
+			},
+			"id": "7120cd6f-29f3-4f5b-aa25-babebd6335d3",
+			"name": "Merge",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [1300, 240]
+		},
+		{
+			"parameters": {
+				"mode": "chooseBranch",
+				"output": "input2"
+			},
+			"id": "5dbe68d4-bf2f-40ea-a9ae-ee83b4030fa5",
+			"name": "Merge1",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [1300, 380]
+		},
+		{
+			"parameters": {
+				"mode": "chooseBranch",
+				"output": "empty"
+			},
+			"id": "3b2885c3-5c2e-4972-910a-50ff8e173d11",
+			"name": "Merge2",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [1300, 520]
+		}
+	],
+	"pinData": {
+		"Merge": [
+			{
+				"json": {
+					"id": 1
+				}
+			},
+			{
+				"json": {
+					"id": 2
+				}
+			},
+			{
+				"json": {
+					"id": 3
+				}
+			}
+		],
+		"Merge1": [
+			{
+				"json": {
+					"id": 4
+				}
+			},
+			{
+				"json": {
+					"id": 5
+				}
+			},
+			{
+				"json": {
+					"id": 6
+				}
+			}
+		],
+		"Merge2": [
+			{
+				"json": {}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Code1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code1": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge1",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge2",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "dc43b494-33dc-4671-9004-e5e53170732c",
+	"id": "107",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}

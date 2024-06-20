@@ -1,26 +1,28 @@
 <template>
 	<div :class="$style.list">
-		<div v-for="node in slicedNodes" :class="[$style.container, $style[size]]" :key="node.name">
-			<NodeIcon
-				:nodeType="node"
-				:size="size === 'md'? 24: 18"
-				:showTooltip="true"
-			/>
+		<div v-for="node in slicedNodes" :key="node.name" :class="[$style.container, $style[size]]">
+			<NodeIcon :node-type="node" :size="size === 'md' ? 24 : 18" :show-tooltip="true" />
 		</div>
-		<div :class="[$style.button, size === 'md' ? $style.buttonMd : $style.buttonSm]" v-if="filteredCoreNodes.length > limit + 1">
+		<div
+			v-if="filteredCoreNodes.length > limit + 1"
+			:class="[$style.button, size === 'md' ? $style.buttonMd : $style.buttonSm]"
+		>
 			+{{ hiddenNodes }}
 		</div>
 	</div>
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
-import { genericHelpers } from '@/components/mixins/genericHelpers';
-import { ITemplatesNode } from '@/Interface';
-import mixins from 'vue-typed-mixins';
-import { filterTemplateNodes } from './helpers';
-export default mixins(genericHelpers).extend({
+import type { ITemplatesNode } from '@/Interface';
+import { filterTemplateNodes } from '@/utils/nodeTypesUtils';
+
+export default defineComponent({
 	name: 'NodeList',
+	components: {
+		NodeIcon,
+	},
 	props: {
 		nodes: {
 			type: Array,
@@ -33,9 +35,6 @@ export default mixins(genericHelpers).extend({
 			type: String,
 			default: 'sm',
 		},
-	},
-	components: {
-		NodeIcon,
 	},
 	computed: {
 		filteredCoreNodes() {

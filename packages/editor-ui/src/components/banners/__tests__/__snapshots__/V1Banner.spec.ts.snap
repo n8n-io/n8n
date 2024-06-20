@@ -1,0 +1,70 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`V1 Banner > should render banner 1`] = `
+<div>
+  <n8n-callout
+    class="v1container"
+    data-test-id="banners-V1"
+    icon="info-circle"
+    icon-size="medium"
+    round-corners="false"
+    theme="warning"
+  >
+    <div
+      class="mainContent keepSpace"
+    >
+      
+      <span>
+        n8n has been updated to version 1, introducing some breaking changes. Please consult the 
+        <a
+          href="https://docs.n8n.io/1-0-migration-checklist"
+          target="_blank"
+        >
+          migration guide
+        </a>
+         for more information.
+      </span>
+      <!--v-if-->
+      
+    </div>
+  </n8n-callout>
+</div>
+`;
+
+exports[`V1 Banner > should render banner with dismiss call if user is owner 1`] = `
+<div>
+  <n8n-callout
+    class="v1container"
+    data-test-id="banners-V1"
+    icon="info-circle"
+    icon-size="medium"
+    round-corners="false"
+    theme="warning"
+  >
+    <div
+      class="mainContent keepSpace"
+    >
+      
+      <span>
+        n8n has been updated to version 1, introducing some breaking changes. Please consult the 
+        <a
+          href="https://docs.n8n.io/1-0-migration-checklist"
+          target="_blank"
+        >
+          migration guide
+        </a>
+         for more information.
+      </span>
+      <a
+        class="link"
+        data-test-id="banner-confirm-v1"
+      >
+        <span>
+          Don't show again
+        </span>
+      </a>
+      
+    </div>
+  </n8n-callout>
+</div>
+`;

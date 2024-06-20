@@ -1,22 +1,25 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
 	IHttpRequestHelper,
-	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
 export class MetabaseApi implements ICredentialType {
 	name = 'metabaseApi';
+
 	displayName = 'Metabase API';
+
 	documentationUrl = 'metabase';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Session Token',
 			name: 'sessionToken',
 			type: 'hidden',
+
 			typeOptions: {
 				expirable: true,
 			},
@@ -60,6 +63,7 @@ export class MetabaseApi implements ICredentialType {
 		})) as { id: string };
 		return { sessionToken: id };
 	}
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
@@ -68,6 +72,7 @@ export class MetabaseApi implements ICredentialType {
 			},
 		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials?.url}}',

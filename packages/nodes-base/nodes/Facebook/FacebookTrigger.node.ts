@@ -1,14 +1,16 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
-import {
+import { createHmac } from 'crypto';
+import type {
 	IDataObject,
+	IHookFunctions,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	IWebhookFunctions,
 	IWebhookResponseData,
-	NodeApiError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { v4 as uuid } from 'uuid';
 
@@ -16,7 +18,7 @@ import { snakeCase } from 'change-case';
 
 import { facebookApiRequest, getAllFields, getFields } from './GenericFunctions';
 
-import { createHmac } from 'crypto';
+import type { FacebookWebhookSubscription } from './types';
 
 export class FacebookTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -60,6 +62,17 @@ export class FacebookTrigger implements INodeType {
 				required: true,
 				default: '',
 				description: 'Facebook APP ID',
+			},
+			{
+				displayName: 'To watch Whatsapp business account events use the Whatsapp trigger node',
+				name: 'whatsappBusinessAccountNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						object: ['whatsappBusinessAccount'],
+					},
+				},
 			},
 			{
 				displayName: 'Object',
@@ -160,7 +173,7 @@ export class FacebookTrigger implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available organizations to display them to user so that he can
+			// Get all the available organizations to display them to user so that they can
 			// select them easily
 			async getObjectFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const object = this.getCurrentNodeParameter('object') as string;
@@ -169,7 +182,6 @@ export class FacebookTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -177,18 +189,28 @@ export class FacebookTrigger implements INodeType {
 				const object = this.getNodeParameter('object') as string;
 				const appId = this.getNodeParameter('appId') as string;
 
-				const { data } = await facebookApiRequest.call(this, 'GET', `/${appId}/subscriptions`, {});
+				const { data } = (await facebookApiRequest.call(
+					this,
+					'GET',
+					`/${appId}/subscriptions`,
+					{},
+				)) as { data: FacebookWebhookSubscription[] };
 
-				for (const webhook of data) {
-					if (
-						webhook.target === webhookUrl &&
-						webhook.object === object &&
-						webhook.status === true
-					) {
-						return true;
-					}
+				const subscription = data.find((webhook) => webhook.object === object && webhook.status);
+
+				if (!subscription) {
+					return false;
 				}
-				return false;
+
+				if (subscription.callback_url !== webhookUrl) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`The Facebook App ID ${appId} already has a webhook subscription. Delete it or use another App before executing the trigger. Due to Facebook API limitations, you can have just one trigger per App.`,
+						{ level: 'warning' },
+					);
+				}
+
+				return true;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
@@ -220,7 +242,7 @@ export class FacebookTrigger implements INodeType {
 
 				if (responseData.success !== true) {
 					// Facebook did not return success, so something went wrong
-					throw new NodeApiError(this.getNode(), responseData, {
+					throw new NodeApiError(this.getNode(), responseData as JsonObject, {
 						message: 'Facebook webhook creation response did not contain the expected data.',
 					});
 				}
@@ -243,7 +265,7 @@ export class FacebookTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const bodyData = this.getBodyData() as IDataObject;
+		const bodyData = this.getBodyData();
 		const query = this.getQueryData() as IDataObject;
 		const res = this.getResponseObject();
 		const req = this.getRequestObject();
@@ -268,7 +290,6 @@ export class FacebookTrigger implements INodeType {
 		// validate signature if app secret is set
 		if (credentials.appSecret !== '') {
 			const computedSignature = createHmac('sha1', credentials.appSecret as string)
-				//@ts-ignore
 				.update(req.rawBody)
 				.digest('hex');
 			if (headerData['x-hub-signature'] !== `sha1=${computedSignature}`) {

@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -7,13 +7,17 @@ import {
 
 export class GrafanaApi implements ICredentialType {
 	name = 'grafanaApi';
+
 	displayName = 'Grafana API';
+
 	documentationUrl = 'grafana';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 			required: true,
 		},
@@ -27,6 +31,7 @@ export class GrafanaApi implements ICredentialType {
 			required: true,
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {

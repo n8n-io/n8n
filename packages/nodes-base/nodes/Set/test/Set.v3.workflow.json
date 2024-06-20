@@ -1,0 +1,786 @@
+{
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+	},
+	"nodes": [
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"name": "test",
+							"stringValue": "foo"
+						}
+					]
+				},
+				"include": "none",
+				"options": {}
+			},
+			"id": "d425fb32-2bbc-445d-8fec-0e1288adf6d8",
+			"name": "Keep None",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3,
+			"position": [800, 2680]
+		},
+		{
+			"parameters": {},
+			"id": "82a50bee-4dd1-4bb0-9513-71a54d37b51f",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [160, 1460]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    \"string\": {\n      test2: \"hello\",\n      test3: \" \",\n      test4: \"\",\n      test5: \"3\",\n      test6: \"3,14\",\n      test7: \"3.14\",\n      test8: \"false\",\n      test8: \"TRUE\",\n      test9: \"false\",\n      test10: \"1\",\n      test11: '[\"apples\", \"oranges\"]',\n      test12: '\"apples\", \"oranges\"',\n      test13: '[1, 2]',\n      test14: '{\"a\": 1, \"b\": { \"c\": 10, \"d\": \"test\"}}',\n      test15: '{\"a\": 1}',\n      test16: \"null\",\n      test17: \"undefined\",\n      test18: \"0\",\n    },\n    \"number\": {\n      test1: 52472,\n      test2: -1,\n      test3: 0,\n      test4: 1.334535,\n      test5: null,\n      test6: undefined,\n      test7: 1,\n    },\n    \"boolean\": {\n      // test1: 1,\n      // test2: 0,\n      test3: true,\n      test4: false,\n    },\n    \"date\": {\n      test1: $now,\n      test2: \"2023-08-01T12:34:56Z\",\n      test3: \"2016-05-25T09:24:15.123\",\n      test4: \"Tue, 01 Nov 2016 13:23:12 +0630\",\n      test5: \"2017-05-15 09:24:15\",\n      test6: \"1542674993\",\n      test7: 1542674993,\n    },\n    \"array\": {\n      test13: [1,2,3,4],\n    },\n    \"object\": {\n      obj: {\n        objKey: 2,\n        objArray: [1,2,3,4],\n        objBool: true\n      }\n    },\n  }\n];"
+			},
+			"id": "70c10657-5d81-46c5-b931-966024d7ce45",
+			"name": "Code1",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [640, 1460]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"name": "numberToString1",
+							"stringValue": "={{ $json.number.test1 }}"
+						},
+						{
+							"name": "numberToString2",
+							"stringValue": "={{ $json.number.test2 }}"
+						},
+						{
+							"name": "numberToString3",
+							"stringValue": "={{ $json.number.test4 }}"
+						},
+						{
+							"name": "boolToString1",
+							"stringValue": "={{ $json.boolean.test3 }}"
+						},
+						{
+							"name": "boolToString2",
+							"stringValue": "={{ $json.boolean.test4 }}"
+						},
+						{
+							"name": "arrayToString1",
+							"stringValue": "={{ $json.array.test13 }}"
+						},
+						{
+							"name": "objectToString1",
+							"stringValue": "={{ $json.object.obj }}"
+						}
+					]
+				},
+				"include": "none",
+				"options": {}
+			},
+			"id": "4c53fe8b-f01f-496e-83cd-e89070ed8ced",
+			"name": "To String",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3,
+			"position": [1000, 1080]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"name": "stringToNumber1",
+							"type": "numberValue",
+							"numberValue": "={{ $json.string.test5 }}"
+						},
+						{
+							"name": "stringToNumber2",
+							"type": "numberValue",
+							"numberValue": "={{ $json.string.test7 }}"
+						},
+						{
+							"name": "boolToNumber1",
+							"type": "numberValue",
+							"numberValue": "={{ $json.boolean.test3 }}"
+						},
+						{
+							"name": "boolToNumber2",
+							"type": "numberValue",
+							"numberValue": "={{ $json.boolean.test4 }}"
+						}
+					]
+				},
+				"include": "none",
+				"options": {}
+			},
+			"id": "d6c951b9-4b55-46cc-945a-d6f8f82d157a",
+			"name": "To Number",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3,
+			"position": [1000, 1280]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"name": "stringToBoolean1",
+							"type": "booleanValue",
+							"booleanValue": "={{ $json.string.test8 }}"
+						},
+						{
+							"name": "stringToBoolean3",
+							"type": "booleanValue",
+							"booleanValue": "={{ $json.string.test9 }}"
+						},
+						{
+							"name": "stringToBoolean4",
+							"type": "booleanValue",
+							"booleanValue": "={{ $json.string.test10 }}"
+						},
+						{
+							"name": "stringToBoolean5",
+							"type": "booleanValue",
+							"booleanValue": "={{ $json.string.test18 }}"
+						},
+						{
+							"name": "numberToBoolean1",
+							"type": "booleanValue",
+							"booleanValue": "={{ $json.number.test3 }}"
+						},
+						{
+							"name": "numberToBoolean2",
+							"type": "booleanValue",
+							"booleanValue": "={{ $json.number.test7 }}"
+						}
+					]
+				},
+				"include": "none",
+				"options": {}
+			},
+			"id": "a1b841e9-c0fc-4c6a-9090-29fb317d506a",
+			"name": "To Boolean",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3,
+			"position": [1000, 1460]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"name": "stringToArray1",
+							"type": "arrayValue",
+							"arrayValue": "={{ $json.string.test11 }}"
+						},
+						{
+							"name": "stringToArray2",
+							"type": "arrayValue",
+							"arrayValue": "={{ $json.string.test13 }}"
+						},
+						{
+							"name": "arrayToArray1",
+							"type": "arrayValue",
+							"arrayValue": "={{ $json.array.test13 }}"
+						}
+					]
+				},
+				"include": "none",
+				"options": {}
+			},
+			"id": "7b9d4152-3ded-446d-a5e8-6bf562f077ab",
+			"name": "To Array",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3,
+			"position": [1000, 1660]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"name": "stringToObject1",
+							"type": "objectValue",
+							"objectValue": "={{ $json.string.test14 }}"
+						},
+						{
+							"name": "stringToObject2",
+							"type": "objectValue",
+							"objectValue": "={{ $json.string.test15 }}"
+						}
+					]
+				},
+				"include": "none",
+				"options": {}
+			},
+			"id": "f50a1fce-acd8-439e-86f6-ddc39d21490d",
+			"name": "To Object",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3,
+			"position": [1000, 1840]
+		},
+		{
+			"parameters": {
+				"content": "### Strict type checking",
+				"height": 1063.125,
+				"width": 369.6875
+			},
+			"id": "29b19a78-3d26-4582-b7b3-4194b8891e0f",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [880, 1020]
+		},
+		{
+			"parameters": {
+				"content": "### Loose type checking",
+				"height": 1058.046875,
+				"width": 310.703125
+			},
+			"id": "54a01a58-9d93-49d6-8964-a2a4e6b6e341",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [1340, 1020]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"name": "stringToNumber1",
+							"type": "numberValue",
+							"numberValue": "={{ $json.string.test2 }}"
+						},
+						{
+							"name": "stringToNumber2",
+							"type": "numberValue",
+							"numberValue": "={{ $json.string.test3 }}"
+						},
+						{
+							"name": "stringToNumber3",
+							"type": "numberValue",
+							"numberValue": "={{ $json.string.test9 }}"
+						},
+						{
+							"name": "arrayToNumber1",
+							"type": "numberValue",
+							"numberValue": "={{ $json.array.test13 }}"
+						}
+					]
+				},
+				"include": "none",
+				"options": {
+					"ignoreConversionErrors": true
+				}
+			},
+			"id": "e28c0f50-7309-428c-99a8-8bacdc6e11a4",
+			"name": "To Number1",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3,
+			"position": [1440, 1080]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"name": "stringToBoolean1",
+							"type": "booleanValue",
+							"booleanValue": "={{ $json.string.test5 }}"
+						},
+						{
+							"name": "stringToBoolean2",
+							"type": "booleanValue",
+							"booleanValue": "=3,14"
+						},
+						{
+							"name": "stringToBoolean3",
+							"type": "booleanValue",
+							"booleanValue": "={{ $json.string.test7 }}"
+						},
+						{
+							"name": "stringToBoolean4",
+							"type": "booleanValue",
+							"booleanValue": "={{ $json.string.test11 }}"
+						},
+						{
+							"name": "stringToBoolean5",
+							"type": "booleanValue",
+							"booleanValue": "={{ $json.string.test12 }}"
+						},
+						{
+							"name": "stringToBoolean6",
+							"type": "booleanValue",
+							"booleanValue": "={{ $json.string.test17 }}"
+						},
+						{
+							"name": "numberToBoolean1",
+							"type": "booleanValue",
+							"booleanValue": "={{ $json.number.test1 }}"
+						},
+						{
+							"name": "numberToBoolean2",
+							"type": "booleanValue",
+							"booleanValue": "={{ $json.number.test4 }}"
+						}
+					]
+				},
+				"include": "none",
+				"options": {
+					"ignoreConversionErrors": true
+				}
+			},
+			"id": "ee602441-15de-4b9f-91b7-b96e3ca6eb64",
+			"name": "To Boolean1",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3,
+			"position": [1440, 1280]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"name": "stringToArray1",
+							"type": "arrayValue",
+							"arrayValue": "={{ $json.string.test2 }}"
+						},
+						{
+							"name": "stringToArray2",
+							"type": "arrayValue",
+							"arrayValue": "={{ $json.string.test5 }}"
+						}
+					]
+				},
+				"include": "none",
+				"options": {
+					"ignoreConversionErrors": true
+				}
+			},
+			"id": "d2aa68a0-5a23-4f75-9fae-35777cb19ae3",
+			"name": "To Array1",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3,
+			"position": [1440, 1460]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"name": "stringToObject1",
+							"type": "objectValue",
+							"objectValue": "={{ $json.string.test14 }}"
+						},
+						{
+							"name": "stringToObject2",
+							"type": "objectValue",
+							"objectValue": "={{ $json.string.test15 }}"
+						}
+					]
+				},
+				"include": "none",
+				"options": {
+					"ignoreConversionErrors": true
+				}
+			},
+			"id": "98250306-4ec5-4ddc-abe4-3a6558ab26fd",
+			"name": "To Object1",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3,
+			"position": [1440, 1660]
+		},
+		{
+			"parameters": {},
+			"id": "7c79bfc1-02ca-43b8-b75f-0c2afcc80187",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [940, 680]
+		},
+		{
+			"parameters": {},
+			"id": "fdf64186-6911-4f0e-8ebd-534eb3b5e28f",
+			"name": "No Operation, do nothing1",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1200, 680]
+		},
+		{
+			"parameters": {
+				"content": "### Keep Input Fields",
+				"height": 752.046875,
+				"width": 310.703125
+			},
+			"id": "c51416d4-e560-4337-ab56-efbf90ead55b",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [700, 2120]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"name": "test",
+							"stringValue": "foo"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "b1e0a125-adc5-4048-b34f-309f8c752ef4",
+			"name": "Keep All",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3,
+			"position": [800, 2180]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"name": "test",
+							"stringValue": "foo"
+						}
+					]
+				},
+				"include": "selected",
+				"includeFields": "name,object",
+				"options": {}
+			},
+			"id": "b47927f2-170f-4b07-8e1d-d29959263772",
+			"name": "Keep Selected",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3,
+			"position": [800, 2340]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"name": "test",
+							"stringValue": "foo"
+						}
+					]
+				},
+				"include": "except",
+				"excludeFields": "age,name",
+				"options": {}
+			},
+			"id": "741bd22b-9572-43f9-ada1-0c03d06ec2c7",
+			"name": "Keep All Except",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3,
+			"position": [800, 2500]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [{name: 'John Doe', age: 32, object: {nested: true}}, {name: 'Jane Doe', age: 35, object: {nested: true}}]"
+			},
+			"id": "c120da29-6807-4059-9a2a-13b9032f93cd",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [480, 2420]
+		}
+	],
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Code1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code1": {
+			"main": [
+				[
+					{
+						"node": "To String",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "To Number",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "To Boolean",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "To Array",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "To Object",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"No Operation, do nothing": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"No Operation, do nothing1": {
+			"main": [
+				[
+					{
+						"node": "To Number1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "To Boolean1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "To Array1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "To Object1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Keep All",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Keep Selected",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Keep All Except",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Keep None",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Keep None": [
+			{
+				"json": { "test": "foo" }
+			},
+			{
+				"json": { "test": "foo" }
+			}
+		],
+		"To String": [
+			{
+				"json": {
+					"numberToString1": "52472",
+					"numberToString2": "-1",
+					"numberToString3": "1.334535",
+					"boolToString1": "true",
+					"boolToString2": "false",
+					"arrayToString1": "[1,2,3,4]",
+					"objectToString1": "{\"objKey\":2,\"objArray\":[1,2,3,4],\"objBool\":true}"
+				}
+			}
+		],
+		"To Number": [
+			{
+				"json": {
+					"stringToNumber1": 3,
+					"stringToNumber2": 3.14,
+					"boolToNumber1": 1,
+					"boolToNumber2": 0
+				}
+			}
+		],
+		"To Boolean": [
+			{
+				"json": {
+					"stringToBoolean1": true,
+					"stringToBoolean3": false,
+					"stringToBoolean4": true,
+					"stringToBoolean5": false,
+					"numberToBoolean1": false,
+					"numberToBoolean2": true
+				}
+			}
+		],
+		"To Array": [
+			{
+				"json": {
+					"stringToArray1": ["apples", "oranges"],
+					"stringToArray2": [1, 2],
+					"arrayToArray1": [1, 2, 3, 4]
+				}
+			}
+		],
+		"To Object": [
+			{
+				"json": {
+					"stringToObject1": {
+						"a": 1,
+						"b": {
+							"c": 10,
+							"d": "test"
+						}
+					},
+					"stringToObject2": {
+						"a": 1
+					}
+				}
+			}
+		],
+		"To Number1": [
+			{
+				"json": {
+					"stringToNumber1": "hello",
+					"stringToNumber2": 0,
+					"stringToNumber3": "false",
+					"arrayToNumber1": [1, 2, 3, 4]
+				}
+			}
+		],
+		"To Boolean1": [
+			{
+				"json": {
+					"stringToBoolean1": "3",
+					"stringToBoolean2": "3,14",
+					"stringToBoolean3": "3.14",
+					"stringToBoolean4": "[\"apples\", \"oranges\"]",
+					"stringToBoolean5": "\"apples\", \"oranges\"",
+					"stringToBoolean6": "undefined",
+					"numberToBoolean1": 52472,
+					"numberToBoolean2": 1.334535
+				}
+			}
+		],
+		"To Array1": [
+			{
+				"json": {
+					"stringToArray1": "hello",
+					"stringToArray2": "3"
+				}
+			}
+		],
+		"To Object1": [
+			{
+				"json": {
+					"stringToObject1": {
+						"a": 1,
+						"b": {
+							"c": 10,
+							"d": "test"
+						}
+					},
+					"stringToObject2": {
+						"a": 1
+					}
+				}
+			}
+		],
+		"Keep All": [
+			{
+				"json": {
+					"name": "John Doe",
+					"age": 32,
+					"object": {
+						"nested": true
+					},
+					"test": "foo"
+				}
+			},
+			{
+				"json": {
+					"name": "Jane Doe",
+					"age": 35,
+					"object": {
+						"nested": true
+					},
+					"test": "foo"
+				}
+			}
+		],
+		"Keep Selected": [
+			{
+				"json": {
+					"name": "John Doe",
+					"object": {
+						"nested": true
+					},
+					"test": "foo"
+				}
+			},
+			{
+				"json": {
+					"name": "Jane Doe",
+					"object": {
+						"nested": true
+					},
+					"test": "foo"
+				}
+			}
+		],
+		"Keep All Except": [
+			{
+				"json": {
+					"object": {
+						"nested": true
+					},
+					"test": "foo"
+				}
+			},
+			{
+				"json": {
+					"object": {
+						"nested": true
+					},
+					"test": "foo"
+				}
+			}
+		]
+	}
+}

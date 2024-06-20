@@ -1,9 +1,6 @@
-import {
+import type {
 	IHookFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
@@ -12,13 +9,8 @@ import {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import {
-	keapApiRequest,
-} from './GenericFunctions';
-
-import {
-	capitalCase,
- } from 'change-case';
+import { capitalCase } from 'change-case';
+import { keapApiRequest } from './GenericFunctions';
 
 export class KeapTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -54,7 +46,8 @@ export class KeapTrigger implements INodeType {
 				displayName: 'Event Name or ID',
 				name: 'eventId',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getEvents',
 				},
@@ -73,7 +66,7 @@ export class KeapTrigger implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the event types to display them to user so that he can
+			// Get all the event types to display them to user so that they can
 			// select them easily
 			async getEvents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -91,7 +84,6 @@ export class KeapTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -102,9 +94,11 @@ export class KeapTrigger implements INodeType {
 				const responseData = await keapApiRequest.call(this, 'GET', '/hooks', {});
 
 				for (const existingData of responseData) {
-					if (existingData.hookUrl === webhookUrl
-					&&	existingData.eventKey === eventId
-					&&	existingData.status === 'Verified') {
+					if (
+						existingData.hookUrl === webhookUrl &&
+						existingData.eventKey === eventId &&
+						existingData.status === 'Verified'
+					) {
 						// The webhook exists already
 						webhookData.webhookId = existingData.key;
 						return true;
@@ -138,7 +132,6 @@ export class KeapTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 
 				if (webhookData.webhookId !== undefined) {
-
 					try {
 						await keapApiRequest.call(this, 'DELETE', `/hooks/${webhookData.webhookId}`);
 					} catch (error) {
@@ -146,7 +139,7 @@ export class KeapTrigger implements INodeType {
 					}
 
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 				}
 
@@ -158,7 +151,7 @@ export class KeapTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const rawData = this.getNodeParameter('rawData') as boolean;
 		const headers = this.getHeaderData() as IDataObject;
-		const bodyData = this.getBodyData() as IDataObject;
+		const bodyData = this.getBodyData();
 
 		if (headers['x-hook-secret']) {
 			// Is a create webhook confirmation request
@@ -172,9 +165,7 @@ export class KeapTrigger implements INodeType {
 
 		if (rawData) {
 			return {
-				workflowData: [
-					this.helpers.returnJsonArray(bodyData),
-				],
+				workflowData: [this.helpers.returnJsonArray(bodyData)],
 			};
 		}
 
@@ -189,9 +180,7 @@ export class KeapTrigger implements INodeType {
 			});
 		}
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(responseData),
-			],
+			workflowData: [this.helpers.returnJsonArray(responseData)],
 		};
 	}
 }

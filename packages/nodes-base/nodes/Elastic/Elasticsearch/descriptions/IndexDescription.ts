@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import * as placeholders from './placeholders';
 
@@ -30,9 +30,9 @@ export const indexOperations: INodeProperties[] = [
 				action: 'Get an index',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all indices',
+				action: 'Get many indices',
 			},
 		],
 		default: 'create',

@@ -1,0 +1,223 @@
+{
+	"name": "itemLists test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "6c90bf81-0c0e-4c5f-9f0c-297f06d9668a",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-440, 260]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {id: 1, char: 'a'},\n  {id: 2, char: 'b'},\n  {id: 3, char: 'c'},\n  {id: 4, char: 'd'},\n  {id: 5, char: 'e'},\n];"
+			},
+			"id": "2e0011d5-c6a0-4a40-ab8c-9d011cde40d5",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [-180, 260]
+		},
+		{
+			"parameters": {
+				"operation": "aggregateItems",
+				"fieldsToAggregate": {
+					"fieldToAggregate": [
+						{
+							"fieldToAggregate": "id",
+							"renameField": true,
+							"outputFieldName": "data"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "d95ca3a3-fb43-4037-846e-b87103dec1a3",
+			"name": "fields aggregate and rename",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 1,
+			"position": [80, 0]
+		},
+		{
+			"parameters": {
+				"operation": "aggregateItems",
+				"aggregate": "aggregateAllItemData"
+			},
+			"id": "4c1bc7be-7611-418d-aad5-8642b1cc0781",
+			"name": "aggregate all fields into list",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 1,
+			"position": [80, 320]
+		},
+		{
+			"parameters": {
+				"operation": "aggregateItems",
+				"aggregate": "aggregateAllItemData",
+				"include": "specifiedFields",
+				"fieldsToInclude": {
+					"fields": [
+						{
+							"fieldName": "id"
+						}
+					]
+				}
+			},
+			"id": "951de23c-2018-437b-961e-8ae7d7fd1a82",
+			"name": "aggregate selected fields into list",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 1,
+			"position": [80, 500]
+		},
+		{
+			"parameters": {
+				"operation": "aggregateItems",
+				"aggregate": "aggregateAllItemData",
+				"destinationFieldName": "output",
+				"include": "allFieldsExcept",
+				"fieldsToExclude": {
+					"fields": [
+						{
+							"fieldName": "char"
+						}
+					]
+				}
+			},
+			"id": "b62c02ee-5edb-473d-a755-7fb8700641fa",
+			"name": "aggregate all fields except selected into list",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 1,
+			"position": [80, 700]
+		}
+	],
+	"pinData": {
+		"fields aggregate and rename": [
+			{
+				"json": {
+					"data": [1, 2, 3, 4, 5]
+				}
+			}
+		],
+		"aggregate all fields into list": [
+			{
+				"json": {
+					"data": [
+						{
+							"id": 1,
+							"char": "a"
+						},
+						{
+							"id": 2,
+							"char": "b"
+						},
+						{
+							"id": 3,
+							"char": "c"
+						},
+						{
+							"id": 4,
+							"char": "d"
+						},
+						{
+							"id": 5,
+							"char": "e"
+						}
+					]
+				}
+			}
+		],
+		"aggregate selected fields into list": [
+			{
+				"json": {
+					"data": [
+						{
+							"id": 1
+						},
+						{
+							"id": 2
+						},
+						{
+							"id": 3
+						},
+						{
+							"id": 4
+						},
+						{
+							"id": 5
+						}
+					]
+				}
+			}
+		],
+		"aggregate all fields except selected into list": [
+			{
+				"json": {
+					"output": [
+						{
+							"id": 1
+						},
+						{
+							"id": 2
+						},
+						{
+							"id": 3
+						},
+						{
+							"id": 4
+						},
+						{
+							"id": 5
+						}
+					]
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "fields aggregate and rename",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "aggregate all fields into list",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "aggregate selected fields into list",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "aggregate all fields except selected into list",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "9bf7c52b-b118-4dad-bfef-7db41828393b",
+	"id": "105",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}

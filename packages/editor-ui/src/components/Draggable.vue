@@ -1,120 +1,158 @@
 <template>
-	<div
-		:class="{[$style.dragging]: isDragging }"
+	<component
+		:is="tag"
+		ref="wrapper"
+		:class="{ [$style.dragging]: isDragging }"
 		@mousedown="onDragStart"
 	>
-		<slot :isDragging="isDragging"></slot>
+		<slot :is-dragging="isDragging"></slot>
 
 		<Teleport to="body">
-			<div
-				ref="draggable"
-				:class="$style.draggable"
-				:style="draggableStyle"
-				v-show="isDragging"
-			>
-				<slot name="preview" :canDrop="canDrop"></slot>
+			<div v-show="isDragging" ref="draggable" :class="$style.draggable" :style="draggableStyle">
+				<slot name="preview" :can-drop="canDrop" :el="draggingEl"></slot>
 			</div>
 		</Teleport>
-	</div>
+	</component>
 </template>
 
 <script lang="ts">
-import { XYPosition } from '@/Interface';
-import Vue from 'vue';
+import type { XYPosition } from '@/Interface';
+import { useNDVStore } from '@/stores/ndv.store';
+import { mapStores } from 'pinia';
+import { defineComponent } from 'vue';
 
-// @ts-ignore
-import Teleport from 'vue2-teleport';
-
-export default Vue.extend({
-	components: {
-		Teleport,
-	},
+export default defineComponent({
+	name: 'Draggable',
 	props: {
 		disabled: {
 			type: Boolean,
 		},
 		type: {
 			type: String,
+			required: true,
 		},
 		data: {
 			type: String,
 		},
+		tag: {
+			type: String,
+			default: 'div',
+		},
+		targetDataKey: {
+			type: String,
+		},
 	},
 	data() {
+		const draggablePosition = {
+			x: -100,
+			y: -100,
+		};
+
 		return {
 			isDragging: false,
-			draggablePosition: {
-				x: -100,
-				y: -100,
+			draggablePosition,
+			draggingEl: null as null | HTMLElement,
+			draggableStyle: {
+				transform: `translate(${draggablePosition.x}px, ${draggablePosition.y}px)`,
 			},
+			animationFrameId: 0,
 		};
 	},
 	computed: {
-		draggableStyle(): { top: string; left: string; } {
-			return {
-				top: `${this.draggablePosition.y}px`,
-				left: `${this.draggablePosition.x}px`,
-			};
-		},
+		...mapStores(useNDVStore),
 		canDrop(): boolean {
-			return this.$store.getters['ui/canDraggableDrop'];
+			return this.ndvStore.canDraggableDrop;
 		},
 		stickyPosition(): XYPosition | null {
-			return this.$store.getters['ui/draggableStickyPos'];
+			return this.ndvStore.draggableStickyPos;
 		},
 	},
 	methods: {
-		onDragStart(e: DragEvent) {
+		setDraggableStyle() {
+			this.draggableStyle = {
+				transform: `translate(${this.draggablePosition.x}px, ${this.draggablePosition.y}px)`,
+			};
+		},
+		onDragStart(e: MouseEvent) {
 			if (this.disabled) {
+				return;
+			}
+
+			this.draggingEl = e.target as HTMLElement;
+			if (this.targetDataKey && this.draggingEl.dataset?.target !== this.targetDataKey) {
+				this.draggingEl = this.draggingEl.closest(
+					`[data-target="${this.targetDataKey}"]`,
+				) as HTMLElement;
+			}
+
+			if (this.targetDataKey && this.draggingEl?.dataset?.target !== this.targetDataKey) {
 				return;
 			}
 
 			e.preventDefault();
 			e.stopPropagation();
-			this.isDragging = true;
-			this.$store.commit('ui/draggableStartDragging', {type: this.type, data: this.data || ''});
 
-			this.$emit('dragstart');
-			document.body.style.cursor = 'grabbing';
+			this.isDragging = false;
+			this.draggablePosition = { x: e.pageX, y: e.pageY };
+			this.setDraggableStyle();
 
 			window.addEventListener('mousemove', this.onDrag);
 			window.addEventListener('mouseup', this.onDragEnd);
 
-			this.draggablePosition = { x: e.pageX, y: e.pageY };
+			// blur so that any focused inputs update value
+			const activeElement = document.activeElement as HTMLElement;
+			if (activeElement) {
+				activeElement.blur();
+			}
 		},
 		onDrag(e: MouseEvent) {
+			e.preventDefault();
+			e.stopPropagation();
+
 			if (this.disabled) {
 				return;
 			}
 
-			e.preventDefault();
-			e.stopPropagation();
+			if (!this.isDragging) {
+				this.isDragging = true;
 
-			if (this.canDrop && this.stickyPosition) {
-				this.draggablePosition = { x: this.stickyPosition[0], y: this.stickyPosition[1]};
-			}
-			else {
-				this.draggablePosition = { x: e.pageX, y: e.pageY };
+				const data =
+					this.targetDataKey && this.draggingEl ? this.draggingEl.dataset.value : this.data || '';
+				this.ndvStore.draggableStartDragging({
+					type: this.type,
+					data: data || '',
+					dimensions: this.draggingEl?.getBoundingClientRect() ?? null,
+				});
+
+				this.$emit('dragstart', this.draggingEl);
+				document.body.style.cursor = 'grabbing';
 			}
 
-			this.$emit('drag', this.draggablePosition);
+			this.animationFrameId = window.requestAnimationFrame(() => {
+				if (this.canDrop && this.stickyPosition) {
+					this.draggablePosition = { x: this.stickyPosition[0], y: this.stickyPosition[1] };
+				} else {
+					this.draggablePosition = { x: e.pageX, y: e.pageY };
+				}
+				this.setDraggableStyle();
+				this.$emit('drag', this.draggablePosition);
+			});
 		},
-		onDragEnd(e: MouseEvent) {
+		onDragEnd() {
 			if (this.disabled) {
 				return;
 			}
-
-			e.preventDefault();
-			e.stopPropagation();
 
 			document.body.style.cursor = 'unset';
 			window.removeEventListener('mousemove', this.onDrag);
 			window.removeEventListener('mouseup', this.onDragEnd);
+			window.cancelAnimationFrame(this.animationFrameId);
 
 			setTimeout(() => {
-				this.$emit('dragend');
+				this.$emit('dragend', this.draggingEl);
 				this.isDragging = false;
-				this.$store.commit('ui/draggableStopDragging');
+				this.draggingEl = null;
+				this.ndvStore.draggableStopDragging();
 			}, 0);
 		},
 	},
@@ -130,10 +168,12 @@ export default Vue.extend({
 .draggable {
 	position: fixed;
 	z-index: 9999999;
+	top: 0;
+	left: 0;
 }
 
 .draggable-data-transfer {
-	width: 0px;
-	height: 0px;
+	width: 0;
+	height: 0;
 }
 </style>

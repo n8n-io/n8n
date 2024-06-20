@@ -2,26 +2,31 @@
 	<AuthView
 		v-if="config"
 		:form="config"
-		:formLoading="loading"
+		:form-loading="loading"
 		@submit="onSubmit"
-		@input="onInput"
+		@update="onInput"
 	/>
 </template>
 
 <script lang="ts">
-import AuthView from './AuthView.vue';
-import { showMessage } from '@/components/mixins/showMessage';
+import AuthView from '@/views/AuthView.vue';
+import { useToast } from '@/composables/useToast';
 
-import mixins from 'vue-typed-mixins';
-import { IFormBoxConfig } from '@/Interface';
-import { VIEWS } from '@/constants';
+import { defineComponent } from 'vue';
+import type { IFormBoxConfig } from '@/Interface';
+import { MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH, VIEWS } from '@/constants';
+import { mapStores } from 'pinia';
+import { useUsersStore } from '@/stores/users.store';
 
-export default mixins(
-	showMessage,
-).extend({
+export default defineComponent({
 	name: 'ChangePasswordView',
 	components: {
 		AuthView,
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
 		return {
@@ -30,8 +35,11 @@ export default mixins(
 			config: null as null | IFormBoxConfig,
 		};
 	},
+	computed: {
+		...mapStores(useUsersStore),
+	},
 	async mounted() {
-		this.config = {
+		const form: IFormBoxConfig = {
 			title: this.$locale.baseText('auth.changePassword'),
 			buttonText: this.$locale.baseText('auth.changePassword'),
 			redirectText: this.$locale.baseText('auth.signin'),
@@ -43,7 +51,7 @@ export default mixins(
 						label: this.$locale.baseText('auth.newPassword'),
 						type: 'password',
 						required: true,
-						validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],
+						validationRules: [{ name: 'DEFAULT_PASSWORD_RULES' }],
 						infoText: this.$locale.baseText('auth.defaultPasswordRequirements'),
 						autocomplete: 'new-password',
 						capitalize: true,
@@ -60,7 +68,7 @@ export default mixins(
 								validate: this.passwordsMatch,
 							},
 						},
-						validationRules: [{name: 'TWO_PASSWORDS_MATCH'}],
+						validationRules: [{ name: 'TWO_PASSWORDS_MATCH' }],
 						autocomplete: 'new-password',
 						capitalize: true,
 					},
@@ -68,19 +76,35 @@ export default mixins(
 			],
 		};
 
-		const token = this.$route.query.token;
-		const userId = this.$route.query.userId;
+		const token = this.getResetToken();
+		const mfaEnabled = this.getMfaEnabled();
+
+		if (mfaEnabled) {
+			form.inputs.push({
+				name: 'mfaToken',
+				initialValue: '',
+				properties: {
+					required: true,
+					label: this.$locale.baseText('mfa.code.input.label'),
+					placeholder: this.$locale.baseText('mfa.code.input.placeholder'),
+					maxlength: MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH,
+					capitalize: true,
+					validateOnBlur: true,
+				},
+			});
+		}
+
+		this.config = form;
+
 		try {
 			if (!token) {
 				throw new Error(this.$locale.baseText('auth.changePassword.missingTokenError'));
 			}
-			if (!userId) {
-				throw new Error(this.$locale.baseText('auth.changePassword.missingUserIdError'));
-			}
 
-			await this.$store.dispatch('users/validatePasswordToken', {token, userId});
+			await this.usersStore.validatePasswordToken({ token });
 		} catch (e) {
-			this.$showMessage({title: this.$locale.baseText('auth.changePassword.tokenValidationError'), type: 'error'});
+			this.showError(e, this.$locale.baseText('auth.changePassword.tokenValidationError'));
+			void this.$router.replace({ name: VIEWS.SIGNIN });
 		}
 	},
 	methods: {
@@ -97,27 +121,49 @@ export default mixins(
 
 			return false;
 		},
-		onInput(e: {name: string, value: string}) {
+		onInput(e: { name: string; value: string }) {
 			if (e.name === 'password') {
 				this.password = e.value;
 			}
 		},
-		async onSubmit() {
+		getResetToken() {
+			return !this.$route.query.token || typeof this.$route.query.token !== 'string'
+				? null
+				: this.$route.query.token;
+		},
+		getMfaEnabled() {
+			if (!this.$route.query.mfaEnabled) return null;
+			return this.$route.query.mfaEnabled === 'true' ? true : false;
+		},
+		async onSubmit(values: { mfaToken: string }) {
 			try {
 				this.loading = true;
-				const token = this.$route.query.token;
-				const userId = this.$route.query.userId;
-				await this.$store.dispatch('users/changePassword', {token, userId, password: this.password});
+				const token = this.getResetToken();
 
-				this.$showMessage({
-					type: 'success',
-					title: this.$locale.baseText('auth.changePassword.passwordUpdated'),
-					message: this.$locale.baseText('auth.changePassword.passwordUpdatedMessage'),
-				});
+				if (token) {
+					const changePasswordParameters = {
+						token,
+						password: this.password,
+						...(values.mfaToken && { mfaToken: values.mfaToken }),
+					};
 
-				await this.$router.push({ name: VIEWS.SIGNIN });
+					await this.usersStore.changePassword(changePasswordParameters);
+
+					this.showMessage({
+						type: 'success',
+						title: this.$locale.baseText('auth.changePassword.passwordUpdated'),
+						message: this.$locale.baseText('auth.changePassword.passwordUpdatedMessage'),
+					});
+
+					await this.$router.push({ name: VIEWS.SIGNIN });
+				} else {
+					this.showError(
+						new Error(this.$locale.baseText('auth.validation.missingParameters')),
+						this.$locale.baseText('auth.changePassword.error'),
+					);
+				}
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('auth.changePassword.error'));
+				this.showError(error, this.$locale.baseText('auth.changePassword.error'));
 			}
 			this.loading = false;
 		},

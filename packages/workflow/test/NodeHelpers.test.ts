@@ -1,12 +1,15 @@
-import { INodeParameters, INodeProperties, NodeHelpers } from '../src';
+import type { INode, INodeParameters, INodeProperties, INodeTypeDescription } from '@/Interfaces';
+import type { Workflow } from '@/Workflow';
 
-describe('Workflow', () => {
-	describe('getParameterValue', () => {
+import { getNodeParameters, getNodeHints, isSingleExecution } from '@/NodeHelpers';
+
+describe('NodeHelpers', () => {
+	describe('getNodeParameters', () => {
 		const tests: Array<{
 			description: string;
 			input: {
 				nodePropertiesArray: INodeProperties[];
-				nodeValues: INodeParameters;
+				nodeValues: INodeParameters | null;
 			};
 			output: {
 				noneDisplayedFalse: {
@@ -2249,7 +2252,7 @@ describe('Workflow', () => {
 			},
 			{
 				description:
-					'One property which is dependeny on two identically named properties of which only one gets displayed with different options. No value set at all.',
+					'One property which is dependency on two identically named properties of which only one gets displayed with different options. No value set at all.',
 				input: {
 					nodePropertiesArray: [
 						{
@@ -2360,7 +2363,7 @@ describe('Workflow', () => {
 			},
 			{
 				description:
-					'One property which is dependeny on two identically named properties of which only one gets displayed with different options. No value set at all. Order reversed',
+					'One property which is dependency on two identically named properties of which only one gets displayed with different options. No value set at all. Order reversed',
 				input: {
 					nodePropertiesArray: [
 						{
@@ -2471,7 +2474,7 @@ describe('Workflow', () => {
 			},
 			{
 				description:
-					'One property which is dependeny on two identically named properties of which only one gets displayed with different options. No value set at all.',
+					'One property which is dependency on two identically named properties of which only one gets displayed with different options. No value set at all.',
 				input: {
 					nodePropertiesArray: [
 						{
@@ -3335,12 +3338,67 @@ describe('Workflow', () => {
 					},
 				},
 			},
+			{
+				description: 'nodeValues is null (for example when resolving expression fails)',
+				input: {
+					nodePropertiesArray: [
+						{
+							displayName: 'Custom Properties',
+							name: 'customPropertiesUi',
+							placeholder: 'Add Custom Property',
+							type: 'fixedCollection',
+							typeOptions: {
+								multipleValues: true,
+							},
+							default: {},
+							options: [
+								{
+									name: 'customPropertiesValues',
+									displayName: 'Custom Property',
+									values: [
+										{
+											displayName: 'Property Name or ID',
+											name: 'property',
+											type: 'options',
+											typeOptions: {
+												loadOptionsMethod: 'getDealCustomProperties',
+											},
+											default: '',
+											description:
+												'Name of the property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+										},
+										{
+											displayName: 'Value',
+											name: 'value',
+											type: 'string',
+											default: '',
+											required: true,
+											description: 'Value of the property',
+										},
+									],
+								},
+							],
+						},
+					],
+					nodeValues: null,
+				},
+				output: {
+					noneDisplayedFalse: {
+						defaultsFalse: {},
+						defaultsTrue: {},
+					},
+					noneDisplayedTrue: {
+						defaultsFalse: {},
+						defaultsTrue: {},
+					},
+				},
+			},
 		];
 
 		for (const testData of tests) {
 			test(testData.description, () => {
 				// returnDefaults: false | returnNoneDisplayed: false
-				let result = NodeHelpers.getNodeParameters(
+				let result = getNodeParameters(
 					testData.input.nodePropertiesArray,
 					testData.input.nodeValues,
 					false,
@@ -3350,7 +3408,7 @@ describe('Workflow', () => {
 				expect(result).toEqual(testData.output.noneDisplayedFalse.defaultsFalse);
 
 				// returnDefaults: true | returnNoneDisplayed: false
-				result = NodeHelpers.getNodeParameters(
+				result = getNodeParameters(
 					testData.input.nodePropertiesArray,
 					testData.input.nodeValues,
 					true,
@@ -3360,7 +3418,7 @@ describe('Workflow', () => {
 				expect(result).toEqual(testData.output.noneDisplayedFalse.defaultsTrue);
 
 				// returnDefaults: false | returnNoneDisplayed: true
-				result = NodeHelpers.getNodeParameters(
+				result = getNodeParameters(
 					testData.input.nodePropertiesArray,
 					testData.input.nodeValues,
 					false,
@@ -3370,7 +3428,7 @@ describe('Workflow', () => {
 				expect(result).toEqual(testData.output.noneDisplayedTrue.defaultsFalse);
 
 				// returnDefaults: true | returnNoneDisplayed: true
-				result = NodeHelpers.getNodeParameters(
+				result = getNodeParameters(
 					testData.input.nodePropertiesArray,
 					testData.input.nodeValues,
 					true,
@@ -3380,5 +3438,121 @@ describe('Workflow', () => {
 				expect(result).toEqual(testData.output.noneDisplayedTrue.defaultsTrue);
 			});
 		}
+	});
+
+	describe('getNodeHints', () => {
+		//TODO: Add more tests here when hints are added to some node types
+		test('should return node hints if present in node type', () => {
+			const testType = {
+				hints: [
+					{
+						message: 'TEST HINT',
+					},
+				],
+			} as INodeTypeDescription;
+
+			const workflow = {} as unknown as Workflow;
+
+			const node: INode = {
+				name: 'Test Node Hints',
+			} as INode;
+			const nodeType = testType;
+
+			const hints = getNodeHints(workflow, node, nodeType);
+
+			expect(hints).toHaveLength(1);
+			expect(hints[0].message).toEqual('TEST HINT');
+		});
+		test('should not include hint if displayCondition is false', () => {
+			const testType = {
+				hints: [
+					{
+						message: 'TEST HINT',
+						displayCondition: 'FALSE DISPLAY CONDITION EXPESSION',
+					},
+				],
+			} as INodeTypeDescription;
+
+			const workflow = {
+				expression: {
+					getSimpleParameterValue(
+						_node: string,
+						_parameter: string,
+						_mode: string,
+						_additionalData = {},
+					) {
+						return false;
+					},
+				},
+			} as unknown as Workflow;
+
+			const node: INode = {
+				name: 'Test Node Hints',
+			} as INode;
+			const nodeType = testType;
+
+			const hints = getNodeHints(workflow, node, nodeType);
+
+			expect(hints).toHaveLength(0);
+		});
+		test('should include hint if displayCondition is true', () => {
+			const testType = {
+				hints: [
+					{
+						message: 'TEST HINT',
+						displayCondition: 'TRUE DISPLAY CONDITION EXPESSION',
+					},
+				],
+			} as INodeTypeDescription;
+
+			const workflow = {
+				expression: {
+					getSimpleParameterValue(
+						_node: string,
+						_parameter: string,
+						_mode: string,
+						_additionalData = {},
+					) {
+						return true;
+					},
+				},
+			} as unknown as Workflow;
+
+			const node: INode = {
+				name: 'Test Node Hints',
+			} as INode;
+			const nodeType = testType;
+
+			const hints = getNodeHints(workflow, node, nodeType);
+
+			expect(hints).toHaveLength(1);
+		});
+	});
+	describe('isSingleExecution', () => {
+		test('should determine based on node parameters if it would be executed once', () => {
+			expect(isSingleExecution('n8n-nodes-base.code', {})).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.code', { mode: 'runOnceForEachItem' })).toEqual(
+				false,
+			);
+			expect(isSingleExecution('n8n-nodes-base.executeWorkflow', {})).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.executeWorkflow', { mode: 'each' })).toEqual(false);
+			expect(isSingleExecution('n8n-nodes-base.crateDb', {})).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.crateDb', { operation: 'update' })).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.timescaleDb', {})).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.timescaleDb', { operation: 'update' })).toEqual(
+				true,
+			);
+			expect(isSingleExecution('n8n-nodes-base.microsoftSql', {})).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.microsoftSql', { operation: 'update' })).toEqual(
+				true,
+			);
+			expect(isSingleExecution('n8n-nodes-base.microsoftSql', { operation: 'delete' })).toEqual(
+				true,
+			);
+			expect(isSingleExecution('n8n-nodes-base.questDb', {})).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.mongoDb', { operation: 'insert' })).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.mongoDb', { operation: 'update' })).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.redis', {})).toEqual(true);
+		});
 	});
 });

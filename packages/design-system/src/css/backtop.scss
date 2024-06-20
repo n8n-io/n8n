@@ -1,0 +1,22 @@
+@use 'mixins/mixins';
+@use './common/var';
+
+@include mixins.b(backtop) {
+	position: fixed;
+	background-color: var.$backtop-background-color;
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	color: var.$backtop-font-color;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 20px;
+	box-shadow: 0 0 6px rgba(0, 0, 0, 0.12);
+	cursor: pointer;
+	z-index: 5;
+
+	&:hover {
+		background-color: var.$backtop-hover-background-color;
+	}
+}

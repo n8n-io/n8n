@@ -1,13 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import * as employee from './employee';
 import * as employeeDocument from './employeeDocument';
 import * as file from './file';
 import * as companyReport from './companyReport';
 
-import { BambooHr } from './Interfaces';
+import type { BambooHr } from './Interfaces';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
@@ -41,7 +39,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				operationResult.push(...(await companyReport[bamboohr.operation].execute.call(this, i)));
 			}
 		} catch (err) {
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(err)) {
 				operationResult.push({ json: this.getInputData(i)[0].json, error: err });
 			} else {
 				throw err;

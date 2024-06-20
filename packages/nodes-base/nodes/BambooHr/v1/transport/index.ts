@@ -1,8 +1,12 @@
-import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import { OptionsWithUrl } from 'request';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IHookFunctions,
+	ILoadOptionsFunctions,
+	JsonObject,
+	IRequestOptions,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 /**
  * Make an API request to Mattermost
@@ -24,7 +28,7 @@ export async function apiRequest(
 	//set-up uri
 	const uri = `https://api.bamboohr.com/api/gateway.php/${subdomain}/v1/${endpoint}`;
 
-	const options: OptionsWithUrl = {
+	const options: IRequestOptions = {
 		method,
 		body,
 		qs: query,
@@ -54,6 +58,6 @@ export async function apiRequest(
 	} catch (error) {
 		const description = error?.response?.headers['x-bamboohr-error-messsage'] || '';
 		const message = error?.message || '';
-		throw new NodeApiError(this.getNode(), error, { message, description });
+		throw new NodeApiError(this.getNode(), error as JsonObject, { message, description });
 	}
 }

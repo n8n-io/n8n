@@ -1,67 +1,59 @@
 <template>
-	<span :class="['n8n-avatar', $style.container]"	v-on="$listeners">
-		<avatar
+	<span :class="['n8n-avatar', $style.container]" v-bind="$attrs">
+		<Avatar
 			v-if="firstName"
 			:size="getSize(size)"
 			:name="firstName + ' ' + lastName"
 			variant="marble"
 			:colors="getColors(colors)"
 		/>
-		<div
-			v-else
-			:class="[$style.empty, $style[size]]"
-		>
-		</div>
-		<span v-if="firstName" :class="$style.initials">{{initials}}</span>
+		<div v-else :class="[$style.empty, $style[size]]"></div>
+		<span v-if="firstName" :class="$style.initials">{{ initials }}</span>
 	</span>
 </template>
 
-<script lang="ts">
-import Avatar from 'vue2-boring-avatars';
+<script lang="ts" setup>
+import { computed } from 'vue';
+import Avatar from 'vue-boring-avatars';
 
-const sizes: {[size: string]: number} = {
+interface AvatarProps {
+	firstName: string;
+	lastName: string;
+	size?: string;
+	colors?: string[];
+}
+
+defineOptions({ name: 'N8nAvatar' });
+const props = withDefaults(defineProps<AvatarProps>(), {
+	firstName: '',
+	lastName: '',
+	size: 'medium',
+	colors: () => [
+		'--color-primary',
+		'--color-secondary',
+		'--color-avatar-accent-1',
+		'--color-avatar-accent-2',
+		'--color-primary-tint-1',
+	],
+});
+
+const initials = computed(
+	() =>
+		(props.firstName ? props.firstName.charAt(0) : '') +
+		(props.lastName ? props.lastName.charAt(0) : ''),
+);
+
+const getColors = (colors: string[]): string[] => {
+	const style = getComputedStyle(document.body);
+	return colors.map((color: string) => style.getPropertyValue(color));
+};
+
+const sizes: { [size: string]: number } = {
 	small: 28,
 	large: 48,
 	medium: 40,
 };
-
-import Vue from 'vue';
-
-export default Vue.extend({
-	name: 'n8n-avatar',
-	props: {
-		firstName: {
-			type: String,
-		},
-		lastName: {
-			type: String,
-		},
-		size: {
-			type: String,
-			default: 'medium',
-		},
-		colors: {
-			default: () => (['--color-primary', '--color-secondary', '--color-avatar-accent-1', '--color-avatar-accent-2', '--color-primary-tint-1']),
-		},
-	},
-	components: {
-		Avatar,
-	},
-	computed: {
-		initials() {
-			return (this.firstName ? this.firstName.charAt(0): '') + (this.lastName? this.lastName.charAt(0): '');
-		},
-	},
-	methods: {
-		getColors(colors): string[] {
-			const style = getComputedStyle(document.body);
-			return colors.map((color: string) => style.getPropertyValue(color));
-		},
-		getSize(size: string): number {
-			return sizes[size];
-		},
-	},
-});
+const getSize = (size: string): number => sizes[size];
 </script>
 
 <style lang="scss" module>
@@ -75,14 +67,14 @@ export default Vue.extend({
 .empty {
 	border-radius: 50%;
 	background-color: var(--color-foreground-dark);
-	opacity: .3;
+	opacity: 0.3;
 }
 
 .initials {
 	position: absolute;
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
-	color: var(--color-text-xlight);
+	color: var(--color-avatar-font);
 	text-shadow: 0px 1px 6px rgba(25, 11, 9, 0.3);
 }
 

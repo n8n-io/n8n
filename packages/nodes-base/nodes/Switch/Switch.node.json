@@ -2,13 +2,11 @@
 	"node": "n8n-nodes-base.switch",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Core Nodes"
-	],
+	"categories": ["Core Nodes"],
 	"resources": {
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.switch/"
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.switch/"
 			}
 		],
 		"generic": [
@@ -34,19 +32,8 @@
 			}
 		]
 	},
-	"alias": [
-		"Router",
-		"If",
-		"Path",
-		"Filter",
-		"Condition",
-		"Logic",
-		"Branch",
-		"Case"
-	],
+	"alias": ["Router", "If", "Path", "Filter", "Condition", "Logic", "Branch", "Case"],
 	"subcategories": {
-		"Core Nodes": [
-			"Flow"
-		]
+		"Core Nodes": ["Flow"]
 	}
 }

@@ -1,0 +1,8 @@
+name: includeRole
+in: query
+description: Whether to include the user's role or not.
+required: false
+schema:
+  type: boolean
+  example: true
+  default: false

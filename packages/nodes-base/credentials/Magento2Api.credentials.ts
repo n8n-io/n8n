@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -7,8 +7,11 @@ import {
 
 export class Magento2Api implements ICredentialType {
 	name = 'magento2Api';
+
 	displayName = 'Magento 2 API';
+
 	documentationUrl = 'magento2';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Host',
@@ -20,9 +23,11 @@ export class Magento2Api implements ICredentialType {
 			displayName: 'Access Token',
 			name: 'accessToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials.host}}',

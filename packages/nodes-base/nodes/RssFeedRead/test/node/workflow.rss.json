@@ -1,0 +1,87 @@
+{
+	"name": "rss feed test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "e5fd1ef8-5528-4626-a523-7668969b2123",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [880, 400]
+		},
+		{
+			"parameters": {
+				"url": "https://lorem-rss.herokuapp.com/feed?length=3"
+			},
+			"id": "9c40a026-fa38-4c91-a4a1-5332f762c3dd",
+			"name": "RSS Read",
+			"type": "n8n-nodes-base.rssFeedRead",
+			"typeVersion": 1,
+			"position": [1080, 400]
+		}
+	],
+	"pinData": {
+		"RSS Read": [
+			{
+				"json": {
+					"creator": "John Smith",
+					"title": "Lorem ipsum 2023-02-09T13:40:00Z",
+					"link": "http://example.com/test/1675950000",
+					"pubDate": "Thu, 09 Feb 2023 13:40:00 GMT",
+					"dc:creator": "John Smith",
+					"content": "Fugiat excepteur exercitation tempor ut aute sunt pariatur veniam pariatur dolor.",
+					"contentSnippet": "Fugiat excepteur exercitation tempor ut aute sunt pariatur veniam pariatur dolor.",
+					"guid": "http://example.com/test/1675950000",
+					"isoDate": "2023-02-09T13:40:00.000Z"
+				}
+			},
+			{
+				"json": {
+					"creator": "John Smith",
+					"title": "Lorem ipsum 2023-02-09T13:39:00Z",
+					"link": "http://example.com/test/1675949940",
+					"pubDate": "Thu, 09 Feb 2023 13:39:00 GMT",
+					"dc:creator": "John Smith",
+					"content": "Laboris quis nulla tempor eu ullamco est esse qui aute commodo aliqua occaecat.",
+					"contentSnippet": "Laboris quis nulla tempor eu ullamco est esse qui aute commodo aliqua occaecat.",
+					"guid": "http://example.com/test/1675949940",
+					"isoDate": "2023-02-09T13:39:00.000Z"
+				}
+			},
+			{
+				"json": {
+					"creator": "John Smith",
+					"title": "Lorem ipsum 2023-02-09T13:38:00Z",
+					"link": "http://example.com/test/1675949880",
+					"pubDate": "Thu, 09 Feb 2023 13:38:00 GMT",
+					"dc:creator": "John Smith",
+					"content": "Irure labore dolor dolore sint aliquip eu anim aute anim et nulla adipisicing nostrud.",
+					"contentSnippet": "Irure labore dolor dolore sint aliquip eu anim aute anim et nulla adipisicing nostrud.",
+					"guid": "http://example.com/test/1675949880",
+					"isoDate": "2023-02-09T13:38:00.000Z"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "RSS Read",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "d0662c8d-35a5-424b-a55f-3a2baf4f860e",
+	"id": "113",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}

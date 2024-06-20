@@ -1,13 +1,13 @@
 <template>
 	<transition name="slide">
-		<slot></slot>
+		<slot />
 	</transition>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'SlideTransition',
 });
 </script>
@@ -15,10 +15,10 @@ export default Vue.extend({
 <style lang="scss" scoped>
 .slide-leave-active,
 .slide-enter-active {
-	transition: 0.3s ease;
+	transition: 200ms ease;
 }
 .slide-leave-to,
-.slide-enter {
+.slide-enter-from {
 	transform: translateX(100%);
 }
 </style>

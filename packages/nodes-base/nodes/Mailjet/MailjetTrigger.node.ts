@@ -1,18 +1,13 @@
-import {
+import type {
 	IHookFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import {
-	mailjetApiRequest,
-} from './GenericFunctions';
+import { mailjetApiRequest } from './GenericFunctions';
 
 export class MailjetTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -77,14 +72,12 @@ export class MailjetTrigger implements INodeType {
 				description: 'Determines which resource events the webhook is triggered for',
 			},
 		],
-
 	};
 
-	// @ts-ignore
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
-				const endpoint = `/v3/rest/eventcallbackurl`;
+				const endpoint = '/v3/rest/eventcallbackurl';
 				const responseData = await mailjetApiRequest.call(this, 'GET', endpoint);
 
 				const event = this.getNodeParameter('event') as string;
@@ -121,7 +114,7 @@ export class MailjetTrigger implements INodeType {
 				const endpoint = `/v3/rest/eventcallbackurl/${webhookData.webhookId}`;
 				try {
 					await mailjetApiRequest.call(this, 'DELETE', endpoint);
-				} catch(error) {
+				} catch (error) {
 					return false;
 				}
 				delete webhookData.webhookId;
@@ -130,13 +123,10 @@ export class MailjetTrigger implements INodeType {
 		},
 	};
 
-	//@ts-ignore
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(req.body),
-			],
+			workflowData: [this.helpers.returnJsonArray(req.body as IDataObject[])],
 		};
 	}
 }

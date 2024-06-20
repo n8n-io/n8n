@@ -1,16 +1,15 @@
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 import { cockpitApiRequest } from './GenericFunctions';
 
 export async function getSingleton(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	resourceName: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	return cockpitApiRequest.call(this, 'get', `/singletons/get/${resourceName}`);
+	return await cockpitApiRequest.call(this, 'GET', `/singletons/get/${resourceName}`);
 }
 
 export async function getAllSingletonNames(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 ): Promise<string[]> {
-	return cockpitApiRequest.call(this, 'GET', `/singletons/listSingletons`, {});
+	return await cockpitApiRequest.call(this, 'GET', '/singletons/listSingletons', {});
 }

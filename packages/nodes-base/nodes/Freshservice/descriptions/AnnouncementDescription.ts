@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const announcementOperations: INodeProperties[] = [
 	{
@@ -31,10 +31,10 @@ export const announcementOperations: INodeProperties[] = [
 				action: 'Get an announcement',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all announcements',
-				action: 'Get all announcements',
+				description: 'Retrieve many announcements',
+				action: 'Get many announcements',
 			},
 			{
 				name: 'Update',

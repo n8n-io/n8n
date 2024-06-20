@@ -2,9 +2,7 @@
 	"node": "n8n-nodes-base.wufooTrigger",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Communication"
-	],
+	"categories": ["Communication"],
 	"resources": {
 		"credentialDocumentation": [
 			{
@@ -13,11 +11,9 @@
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.wufooTrigger/"
+				"url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.wufootrigger/"
 			}
 		]
 	},
-	"alias": [
-		"Form"
-	]
+	"alias": ["Form"]
 }

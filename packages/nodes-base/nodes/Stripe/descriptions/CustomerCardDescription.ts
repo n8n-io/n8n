@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const customerCardOperations: INodeProperties[] = [
 	{
@@ -31,9 +29,7 @@ export const customerCardOperations: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'customerCard',
-				],
+				resource: ['customerCard'],
 			},
 		},
 	},
@@ -52,12 +48,8 @@ export const customerCardFields: INodeProperties[] = [
 		description: 'ID of the customer to be associated with this card',
 		displayOptions: {
 			show: {
-				resource: [
-					'customerCard',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['customerCard'],
+				operation: ['add'],
 			},
 		},
 	},
@@ -65,18 +57,15 @@ export const customerCardFields: INodeProperties[] = [
 		displayName: 'Card Token',
 		name: 'token',
 		type: 'string',
+		typeOptions: { password: true },
 		required: true,
 		default: '',
 		placeholder: 'tok_1IMfKdJhRTnqS5TKQVG1LI9o',
 		description: 'Token representing sensitive card information',
 		displayOptions: {
 			show: {
-				resource: [
-					'customerCard',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['customerCard'],
+				operation: ['add'],
 			},
 		},
 	},
@@ -93,12 +82,8 @@ export const customerCardFields: INodeProperties[] = [
 		description: 'ID of the customer whose card to remove',
 		displayOptions: {
 			show: {
-				resource: [
-					'customerCard',
-				],
-				operation: [
-					'remove',
-				],
+				resource: ['customerCard'],
+				operation: ['remove'],
 			},
 		},
 	},
@@ -111,12 +96,8 @@ export const customerCardFields: INodeProperties[] = [
 		description: 'ID of the card to remove',
 		displayOptions: {
 			show: {
-				resource: [
-					'customerCard',
-				],
-				operation: [
-					'remove',
-				],
+				resource: ['customerCard'],
+				operation: ['remove'],
 			},
 		},
 	},
@@ -133,12 +114,8 @@ export const customerCardFields: INodeProperties[] = [
 		description: 'ID of the customer whose card to retrieve',
 		displayOptions: {
 			show: {
-				resource: [
-					'customerCard',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['customerCard'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -151,12 +128,8 @@ export const customerCardFields: INodeProperties[] = [
 		description: 'ID of the source to retrieve',
 		displayOptions: {
 			show: {
-				resource: [
-					'customerCard',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['customerCard'],
+				operation: ['get'],
 			},
 		},
 	},

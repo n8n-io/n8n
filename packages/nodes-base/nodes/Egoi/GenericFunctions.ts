@@ -1,13 +1,13 @@
-import { OptionsWithUrl } from 'request';
-
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 interface IContact {
 	tags: [];
@@ -19,27 +19,18 @@ const fieldCache: {
 	[key: string]: IDataObject[];
 } = {};
 
-export async function getFields(this: IExecuteFunctions, listId: string) {
-	if (fieldCache[listId]) {
-		return fieldCache[listId];
-	}
-	fieldCache[listId] = await egoiApiRequest.call(this, 'GET', `/lists/${listId}/fields`);
-	return fieldCache[listId];
-}
-
 export async function egoiApiRequest(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
-	headers?: object,
-	// tslint:disable-next-line:no-any
+	_headers?: object,
 ): Promise<any> {
 	const credentials = await this.getCredentials('egoiApi');
 
-	const options: OptionsWithUrl = {
+	const options: IRequestOptions = {
 		headers: {
 			accept: 'application/json',
 			Apikey: `${credentials.apiKey}`,
@@ -51,26 +42,33 @@ export async function egoiApiRequest(
 		json: true,
 	};
 
-	if (Object.keys(body).length === 0) {
+	if (Object.keys(body as IDataObject).length === 0) {
 		delete options.body;
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
+}
+
+export async function getFields(this: IExecuteFunctions, listId: string) {
+	if (fieldCache[listId]) {
+		return fieldCache[listId];
+	}
+	fieldCache[listId] = await egoiApiRequest.call(this, 'GET', `/lists/${listId}/fields`);
+	return fieldCache[listId];
 }
 
 export async function egoiApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -81,7 +79,7 @@ export async function egoiApiRequestAllItems(
 
 	do {
 		responseData = await egoiApiRequest.call(this, method, endpoint, body, query);
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 		query.offset += query.count;
 	} while (responseData[propertyName] && responseData[propertyName].length !== 0);
 
@@ -101,10 +99,9 @@ export async function simplify(this: IExecuteFunctions, contacts: IContact[], li
 
 	for (const contact of contacts) {
 		const extras = contact.extra.reduce(
-			// tslint:disable-next-line:no-any
-			(acumulator: IDataObject, currentValue: IDataObject): any => {
+			(accumulator: IDataObject, currentValue: IDataObject): any => {
 				const key = fieldsKeyValue[currentValue.field_id as string] as string;
-				return { [key]: currentValue.value, ...acumulator };
+				return { [key]: currentValue.value, ...accumulator };
 			},
 			{},
 		);

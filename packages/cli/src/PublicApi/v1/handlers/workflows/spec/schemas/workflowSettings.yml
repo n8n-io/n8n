@@ -17,8 +17,11 @@ properties:
     maxLength: 3600
   errorWorkflow:
     type: string
-    example: 10
+    example: 'VzqKEW0ShTXA5vPj'
     description: The ID of the workflow that contains the error trigger node.
   timezone:
     type: string
     example: America/New_York
+  executionOrder:
+    type: string
+    example: v1

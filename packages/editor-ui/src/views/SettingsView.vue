@@ -1,27 +1,40 @@
+<script lang="ts" setup>
+import { onMounted, ref } from 'vue';
+import type { HistoryState } from 'vue-router';
+import { useRouter } from 'vue-router';
+import { VIEWS } from '@/constants';
+import SettingsSidebar from '@/components/SettingsSidebar.vue';
+import { isRouteLocationRaw } from '@/utils/typeGuards';
+
+const router = useRouter();
+
+const previousRoute = ref<HistoryState[string] | undefined>();
+
+function onReturn() {
+	void router.push(
+		isRouteLocationRaw(previousRoute.value) ? previousRoute.value : { name: VIEWS.HOMEPAGE },
+	);
+}
+
+onMounted(() => {
+	previousRoute.value = router.options.history.state.back;
+});
+</script>
+
 <template>
 	<div :class="$style.container">
-		<SettingsSidebar />
+		<SettingsSidebar @return="onReturn" />
 		<div :class="$style.contentContainer">
 			<div :class="$style.content">
-				<slot>
-				</slot>
+				<!--
+					Because we're using nested routes the props are going to be bind to the top level route
+					so we need to pass them down to the child component
+				-->
+				<router-view name="settingsView" v-bind="$attrs" />
 			</div>
 		</div>
 	</div>
 </template>
-
-<script lang="ts">
-import Vue from 'vue';
-
-import SettingsSidebar from '../components/SettingsSidebar.vue';
-
-export default Vue.extend({
-	name: 'SettingsView',
-	components: {
-		SettingsSidebar,
-	},
-});
-</script>
 
 <style lang="scss" module>
 .container {

@@ -1,27 +1,26 @@
-import { OptionsWithUri } from 'request';
-
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function bitlyApiRequest(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		headers: {},
 		method,
 		qs,
@@ -30,7 +29,7 @@ export async function bitlyApiRequest(
 		json: true,
 	};
 	options = Object.assign({}, options, option);
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
 
@@ -39,14 +38,14 @@ export async function bitlyApiRequest(
 			const credentials = await this.getCredentials('bitlyApi');
 			options.headers = { Authorization: `Bearer ${credentials.accessToken}` };
 
-			return await this.helpers.request!(options);
+			return await this.helpers.request(options);
 		} else {
-			return await this.helpers.requestOAuth2!.call(this, 'bitlyOAuth2Api', options, {
+			return await this.helpers.requestOAuth2.call(this, 'bitlyOAuth2Api', options, {
 				tokenType: 'Bearer',
 			});
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -57,12 +56,11 @@ export async function bitlyApiRequest(
 export async function bitlyApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -72,10 +70,10 @@ export async function bitlyApiRequestAllItems(
 
 	do {
 		responseData = await bitlyApiRequest.call(this, method, resource, body, query, uri);
-		returnData.push.apply(returnData, responseData[propertyName]);
-		if (responseData.pagination && responseData.pagination.next) {
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		if (responseData.pagination?.next) {
 			uri = responseData.pagination.next;
 		}
-	} while (responseData.pagination !== undefined && responseData.pagination.next !== undefined);
+	} while (responseData.pagination?.next !== undefined);
 	return returnData;
 }
