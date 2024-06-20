@@ -41,6 +41,8 @@ export abstract class BaseCommand extends Command {
 
 	protected shutdownService: ShutdownService = Container.get(ShutdownService);
 
+	protected license: License;
+
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.
 	 */
@@ -269,13 +271,13 @@ export abstract class BaseCommand extends Command {
 	}
 
 	async initLicense(): Promise<void> {
-		const license = Container.get(License);
-		await license.init(this.instanceType ?? 'main');
+		this.license = Container.get(License);
+		await this.license.init(this.instanceType ?? 'main');
 
 		const activationKey = config.getEnv('license.activationKey');
 
 		if (activationKey) {
-			const hasCert = (await license.loadCertStr()).length > 0;
+			const hasCert = (await this.license.loadCertStr()).length > 0;
 
 			if (hasCert) {
 				return this.logger.debug('Skipping license activation');
@@ -283,7 +285,7 @@ export abstract class BaseCommand extends Command {
 
 			try {
 				this.logger.debug('Attempting license activation');
-				await license.activate(activationKey);
+				await this.license.activate(activationKey);
 				this.logger.debug('License init complete');
 			} catch (e) {
 				this.logger.error('Could not activate license', e as Error);

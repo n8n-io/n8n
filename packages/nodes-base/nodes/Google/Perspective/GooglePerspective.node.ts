@@ -23,7 +23,7 @@ export class GooglePerspective implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Perspective',
 		name: 'googlePerspective',
-		icon: 'file:perspective.svg',
+		icon: { light: 'file:googlePerspective.svg', dark: 'file:googlePerspective.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		description: 'Consume Google Perspective API',
@@ -262,7 +262,7 @@ export class GooglePerspective implements INodeType {
 					);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

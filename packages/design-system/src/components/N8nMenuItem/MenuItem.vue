@@ -19,9 +19,12 @@
 					:icon="item.icon"
 					:size="item.customIconSize || 'large'"
 				/>
-				<span :class="$style.label">{{ item.label }}</span>
+				<span v-if="!compact" :class="$style.label">{{ item.label }}</span>
+				<span v-if="!item.icon && compact" :class="[$style.label, $style.compactLabel]">{{
+					getInitials(item.label)
+				}}</span>
 			</template>
-			<n8n-menu-item
+			<N8nMenuItem
 				v-for="child in availableChildren"
 				:key="child.id"
 				:item="child"
@@ -52,6 +55,7 @@
 					}"
 					data-test-id="menu-item"
 					:index="item.id"
+					:disabled="item.disabled"
 					@click="handleSelect?.(item)"
 				>
 					<N8nIcon
@@ -60,7 +64,10 @@
 						:icon="item.icon"
 						:size="item.customIconSize || 'large'"
 					/>
-					<span :class="$style.label">{{ item.label }}</span>
+					<span v-if="!compact" :class="$style.label">{{ item.label }}</span>
+					<span v-if="!item.icon && compact" :class="[$style.label, $style.compactLabel]">{{
+						getInitials(item.label)
+					}}</span>
 					<N8nTooltip
 						v-if="item.secondaryIcon"
 						:placement="item.secondaryIcon?.tooltip?.placement || 'right'"
@@ -74,6 +81,7 @@
 							:size="item.secondaryIcon.size || 'small'"
 						/>
 					</N8nTooltip>
+					<N8nSpinner v-if="item.isLoading" :class="$style.loading" size="small" />
 				</ElMenuItem>
 			</ConditionalRouterLink>
 		</N8nTooltip>
@@ -89,6 +97,7 @@ import N8nIcon from '../N8nIcon';
 import ConditionalRouterLink from '../ConditionalRouterLink';
 import type { IMenuItem } from '../../types';
 import { doesMenuItemMatchCurrentRoute } from './routerUtil';
+import { getInitials } from './labelUtil';
 
 interface MenuItemProps {
 	item: IMenuItem;
@@ -237,12 +246,21 @@ const isItemActive = (item: IMenuItem): boolean => {
 	margin: 0 !important;
 	border-radius: var(--border-radius-base) !important;
 	overflow: hidden;
+
+	&.compact {
+		padding: var(--spacing-2xs) 0 !important;
+		justify-content: center;
+	}
 }
 
 .icon {
 	min-width: var(--spacing-s);
 	margin-right: var(--spacing-xs);
 	text-align: center;
+}
+
+.loading {
+	margin-left: var(--spacing-xs);
 }
 
 .secondaryIcon {
@@ -259,6 +277,10 @@ const isItemActive = (item: IMenuItem): boolean => {
 	user-select: none;
 }
 
+.compactLabel {
+	text-overflow: unset;
+}
+
 .item + .item {
 	margin-top: 8px !important;
 }
@@ -270,9 +292,6 @@ const isItemActive = (item: IMenuItem): boolean => {
 		visibility: visible !important;
 		width: initial !important;
 		height: initial !important;
-	}
-	.label {
-		display: none;
 	}
 	.secondaryIcon {
 		display: none;

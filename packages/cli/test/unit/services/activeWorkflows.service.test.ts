@@ -5,6 +5,7 @@ import type { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { ActiveWorkflowsService } from '@/services/activeWorkflows.service';
 import { mock } from 'jest-mock-extended';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 
 describe('ActiveWorkflowsService', () => {
 	const user = mock<User>();
@@ -61,20 +62,24 @@ describe('ActiveWorkflowsService', () => {
 		const workflowId = 'workflowId';
 
 		it('should throw a BadRequestError a user does not have access to the workflow id', async () => {
-			sharedWorkflowRepository.hasAccess.mockResolvedValue(false);
+			sharedWorkflowRepository.findWorkflowForUser.mockResolvedValue(null);
 			await expect(service.getActivationError(workflowId, user)).rejects.toThrow(BadRequestError);
 
-			expect(sharedWorkflowRepository.hasAccess).toHaveBeenCalledWith(workflowId, user);
+			expect(sharedWorkflowRepository.findWorkflowForUser).toHaveBeenCalledWith(workflowId, user, [
+				'workflow:read',
+			]);
 			expect(activationErrorsService.get).not.toHaveBeenCalled();
 		});
 
 		it('should return the error when the user has access', async () => {
-			sharedWorkflowRepository.hasAccess.mockResolvedValue(true);
+			sharedWorkflowRepository.findWorkflowForUser.mockResolvedValue(new WorkflowEntity());
 			activationErrorsService.get.mockResolvedValue('some-error');
 			const error = await service.getActivationError(workflowId, user);
 
 			expect(error).toEqual('some-error');
-			expect(sharedWorkflowRepository.hasAccess).toHaveBeenCalledWith(workflowId, user);
+			expect(sharedWorkflowRepository.findWorkflowForUser).toHaveBeenCalledWith(workflowId, user, [
+				'workflow:read',
+			]);
 			expect(activationErrorsService.get).toHaveBeenCalledWith(workflowId);
 		});
 	});

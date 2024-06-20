@@ -26,12 +26,14 @@ export function createExpressionTelemetryPayload(
 		handlebar_error_count: erroringResolvables.length,
 		short_errors: erroringResolvables.map((r) => r.resolved ?? null),
 		full_errors: erroringResolvables.map((erroringResolvable) => {
-			if (!erroringResolvable.fullError) return null;
+			if (erroringResolvable.fullError) {
+				return {
+					...exposeErrorProperties(erroringResolvable.fullError),
+					stack: erroringResolvable.fullError.stack,
+				};
+			}
 
-			return {
-				...exposeErrorProperties(erroringResolvable.fullError),
-				stack: erroringResolvable.fullError.stack,
-			};
+			return null;
 		}),
 	};
 }

@@ -92,6 +92,7 @@ export async function execute(
 				const parser = createCSVParser({
 					delimiter: options.delimiter as string,
 					fromLine: options.fromLine as number,
+					encoding: options.encoding as BufferEncoding,
 					bom: options.enableBOM as boolean,
 					to: maxRowCount > -1 ? maxRowCount : undefined,
 					columns: options.headerRow !== false,
@@ -208,7 +209,7 @@ export async function execute(
 				error.message = `The file selected in 'Input Binary Field' is not in ${fileFormat} format`;
 				errorDescription = `Try to change the operation or select a ${fileFormat} file in 'Input Binary Field'`;
 			}
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(error)) {
 				returnData.push({
 					json: {
 						error: error.message,

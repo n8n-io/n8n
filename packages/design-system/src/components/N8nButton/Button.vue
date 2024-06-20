@@ -7,7 +7,10 @@
 		:aria-busy="ariaBusy"
 		:href="href"
 		aria-live="polite"
-		v-bind="$attrs"
+		v-bind="{
+			...$attrs,
+			...(props.nativeType ? { type: props.nativeType } : {}),
+		}"
 	>
 		<span v-if="loading || icon" :class="$style.icon">
 			<N8nSpinner v-if="loading" :size="size" />
@@ -23,7 +26,7 @@
 import { useCssModule, computed, useAttrs, watchEffect } from 'vue';
 import N8nIcon from '../N8nIcon';
 import N8nSpinner from '../N8nSpinner';
-import type { ButtonProps } from '@/types/button';
+import type { ButtonProps } from 'n8n-design-system/types/button';
 
 const $style = useCssModule();
 const $attrs = useAttrs();

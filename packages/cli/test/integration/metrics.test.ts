@@ -5,12 +5,12 @@ import request from 'supertest';
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';
 import { MetricsService } from '@/services/metrics.service';
-import { ExecutionDataRecoveryService } from '@/eventbus/executionDataRecovery.service';
+import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 
 import { setupTestServer } from './shared/utils';
 import { mockInstance } from '../shared/mocking';
 
-mockInstance(ExecutionDataRecoveryService);
+mockInstance(ExecutionRecoveryService);
 jest.unmock('@/eventbus/MessageEventBus/MessageEventBus');
 config.set('endpoints.metrics.enable', true);
 config.set('endpoints.metrics.includeDefaultMetrics', false);

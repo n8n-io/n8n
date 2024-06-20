@@ -15,7 +15,7 @@ export class Msg91 implements INodeType {
 		displayName: 'MSG91',
 		name: 'msg91',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:msg91.png',
+		icon: { light: 'file:msg91.svg', dark: 'file:msg91.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

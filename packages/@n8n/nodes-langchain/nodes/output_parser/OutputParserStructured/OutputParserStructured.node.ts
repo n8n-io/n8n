@@ -13,11 +13,15 @@ import type { JSONSchema7 } from 'json-schema';
 import { StructuredOutputParser } from 'langchain/output_parsers';
 import { OutputParserException } from '@langchain/core/output_parsers';
 import get from 'lodash/get';
-import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
-import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
-import { makeResolverFromLegacyOptions } from '@n8n/vm2';
+import type { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { logWrapper } from '../../../utils/logWrapper';
+import { generateSchema, getSandboxWithZod } from '../../../utils/schemaParsing';
+import {
+	inputSchemaField,
+	jsonSchemaExampleField,
+	schemaTypeField,
+} from '../../../utils/descriptions';
 
 const STRUCTURED_OUTPUT_KEY = '__structured__output';
 const STRUCTURED_OUTPUT_OBJECT_KEY = '__structured__output__object';
@@ -87,8 +91,8 @@ export class OutputParserStructured implements INodeType {
 		name: 'outputParserStructured',
 		icon: 'fa:code',
 		group: ['transform'],
-		version: [1, 1.1],
-		defaultVersion: 1.1,
+		version: [1, 1.1, 1.2],
+		defaultVersion: 1.2,
 		description: 'Return data in a defined JSON format',
 		defaults: {
 			name: 'Structured Output Parser',
@@ -115,6 +119,106 @@ export class OutputParserStructured implements INodeType {
 		outputNames: ['Output Parser'],
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			{ ...schemaTypeField, displayOptions: { show: { '@version': [{ _cnd: { gte: 1.2 } }] } } },
+			{
+				...jsonSchemaExampleField,
+				default: `{
+	"state": "California",
+	"cities": ["Los Angeles", "San Francisco", "San Diego"]
+}`,
+			},
+			{
+				...inputSchemaField,
+				displayName: 'JSON Schema',
+				description: 'JSON Schema to structure and validate the output against',
+				default: `{
+	"type": "object",
+	"properties": {
+		"state": {
+			"type": "string"
+		},
+		"cities": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			}
+		}
+	}
+}`,
+			},
+			{
+				displayName: 'Schema Type',
+				name: 'schemaType',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Generate From JSON Example',
+						value: 'fromJson',
+						description: 'Generate a schema from an example JSON object',
+					},
+					{
+						name: 'Define Below',
+						value: 'manual',
+						description: 'Define the JSON schema manually',
+					},
+				],
+				default: 'fromJson',
+				description: 'How to specify the schema for the function',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.2 } }],
+					},
+				},
+			},
+			{
+				displayName: 'JSON Example',
+				name: 'jsonSchemaExample',
+				type: 'json',
+				default: `{
+	"state": "California",
+	"cities": ["Los Angeles", "San Francisco", "San Diego"]
+}`,
+				noDataExpression: true,
+				typeOptions: {
+					rows: 10,
+				},
+				displayOptions: {
+					show: {
+						schemaType: ['fromJson'],
+					},
+				},
+				description: 'Example JSON object to use to generate the schema',
+			},
+			{
+				displayName: 'Input Schema',
+				name: 'inputSchema',
+				type: 'json',
+				default: `{
+	"type": "object",
+	"properties": {
+		"state": {
+			"type": "string"
+		},
+		"cities": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			}
+		}
+	}
+}`,
+				noDataExpression: true,
+				typeOptions: {
+					rows: 10,
+				},
+				displayOptions: {
+					show: {
+						schemaType: ['manual'],
+					},
+				},
+				description: 'Schema to use for the function',
+			},
 			{
 				displayName: 'JSON Schema',
 				name: 'jsonSchema',
@@ -138,6 +242,11 @@ export class OutputParserStructured implements INodeType {
 					rows: 10,
 				},
 				required: true,
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { lte: 1.1 } }],
+					},
+				},
 			},
 			{
 				displayName:
@@ -145,72 +254,36 @@ export class OutputParserStructured implements INodeType {
 				name: 'notice',
 				type: 'notice',
 				default: '',
+				displayOptions: {
+					hide: {
+						schemaType: ['fromJson'],
+					},
+				},
 			},
 		],
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		const schema = this.getNodeParameter('jsonSchema', itemIndex) as string;
+		const schemaType = this.getNodeParameter('schemaType', itemIndex, '') as 'fromJson' | 'manual';
+		// We initialize these even though one of them will always be empty
+		// it makes it easer to navigate the ternary operator
+		const jsonExample = this.getNodeParameter('jsonSchemaExample', itemIndex, '') as string;
+		let inputSchema: string;
 
-		let itemSchema: JSONSchema7;
-		try {
-			itemSchema = jsonParse<JSONSchema7>(schema);
-
-			// If the type is not defined, we assume it's an object
-			if (itemSchema.type === undefined) {
-				itemSchema = {
-					type: 'object',
-					properties: itemSchema.properties ?? (itemSchema as { [key: string]: JSONSchema7 }),
-				};
-			}
-		} catch (error) {
-			throw new NodeOperationError(this.getNode(), 'Error during parsing of JSON Schema.');
+		if (this.getNode().typeVersion <= 1.1) {
+			inputSchema = this.getNodeParameter('jsonSchema', itemIndex, '') as string;
+		} else {
+			inputSchema = this.getNodeParameter('inputSchema', itemIndex, '') as string;
 		}
 
-		const vmResolver = makeResolverFromLegacyOptions({
-			external: {
-				modules: ['json-schema-to-zod', 'zod'],
-				transitive: false,
-			},
-			resolve(moduleName, parentDirname) {
-				if (moduleName === 'json-schema-to-zod') {
-					return require.resolve(
-						'@n8n/n8n-nodes-langchain/node_modules/json-schema-to-zod/dist/cjs/jsonSchemaToZod.js',
-						{
-							paths: [parentDirname],
-						},
-					);
-				}
-				if (moduleName === 'zod') {
-					return require.resolve('@n8n/n8n-nodes-langchain/node_modules/zod.cjs', {
-						paths: [parentDirname],
-					});
-				}
-				return;
-			},
-			builtin: [],
-		});
-		const context = getSandboxContext.call(this, itemIndex);
-		// Make sure to remove the description from root schema
-		const { description, ...restOfSchema } = itemSchema;
-		const sandboxedSchema = new JavaScriptSandbox(
-			context,
-			`
-				const { z } = require('zod');
-				const { parseSchema } = require('json-schema-to-zod');
-				const zodSchema = parseSchema(${JSON.stringify(restOfSchema)});
-				const itemSchema = new Function('z', 'return (' + zodSchema + ')')(z)
-				return itemSchema
-			`,
-			itemIndex,
-			this.helpers,
-			{ resolver: vmResolver },
-		);
+		const jsonSchema =
+			schemaType === 'fromJson' ? generateSchema(jsonExample) : jsonParse<JSONSchema7>(inputSchema);
 
+		const zodSchemaSandbox = getSandboxWithZod(this, jsonSchema, 0);
 		const nodeVersion = this.getNode().typeVersion;
 		try {
 			const parser = await N8nStructuredOutputParser.fromZedJsonSchema(
-				sandboxedSchema,
+				zodSchemaSandbox,
 				nodeVersion,
 			);
 			return {

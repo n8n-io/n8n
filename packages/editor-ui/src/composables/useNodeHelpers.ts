@@ -38,7 +38,6 @@ import type {
 import { isString } from '@/utils/typeGuards';
 import { isObject } from '@/utils/objectUtils';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
@@ -46,8 +45,7 @@ import { get } from 'lodash-es';
 import { useI18n } from './useI18n';
 import { EnableNodeToggleCommand } from '@/models/history';
 import { useTelemetry } from './useTelemetry';
-import { getCredentialPermissions } from '@/permissions';
-import { hasPermission } from '@/rbac/permissions';
+import { hasPermission } from '@/utils/rbac/permissions';
 import type { N8nPlusEndpoint } from '@/plugins/jsplumb/N8nPlusEndpointType';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { useCanvasStore } from '@/stores/canvas.store';
@@ -79,10 +77,14 @@ export function useNodeHelpers() {
 
 		if (!isObject(parameters)) return false;
 
-		const { resource, operation } = parameters;
-		if (!isString(resource) || !isString(operation)) return false;
+		if ('resource' in parameters && 'operation' in parameters) {
+			const { resource, operation } = parameters;
+			if (!isString(resource) || !isString(operation)) return false;
 
-		return resource.includes(CUSTOM_API_CALL_KEY) || operation.includes(CUSTOM_API_CALL_KEY);
+			return resource.includes(CUSTOM_API_CALL_KEY) || operation.includes(CUSTOM_API_CALL_KEY);
+		}
+
+		return false;
 	}
 
 	function getParameterValue(nodeValues: INodeParameters, parameterName: string, path: string) {
@@ -269,7 +271,7 @@ export function useNodeHelpers() {
 		}
 	}
 
-	function updateNodeParameterIssues(node: INodeUi, nodeType?: INodeTypeDescription): void {
+	function updateNodeParameterIssues(node: INodeUi, nodeType?: INodeTypeDescription | null): void {
 		const localNodeType = nodeType ?? nodeTypesStore.getNodeType(node.type, node.typeVersion);
 
 		if (localNodeType === null) {
@@ -430,14 +432,7 @@ export function useNodeHelpers() {
 					};
 				}
 
-				const usersStore = useUsersStore();
-				const currentUser = usersStore.currentUser;
-				userCredentials = credentialsStore
-					.getCredentialsByType(credentialTypeDescription.name)
-					.filter((credential: ICredentialsResponse) => {
-						const permissions = getCredentialPermissions(currentUser, credential);
-						return permissions.use;
-					});
+				userCredentials = credentialsStore.getCredentialsByType(credentialTypeDescription.name);
 
 				if (userCredentials === null) {
 					userCredentials = [];
@@ -529,7 +524,7 @@ export function useNodeHelpers() {
 			workflowsStore.setNodeIssue({
 				node: node.name,
 				type: 'credentials',
-				value: issues === null ? null : issues.credentials,
+				value: issues?.credentials ?? null,
 			});
 		}
 	}
@@ -721,12 +716,12 @@ export function useNodeHelpers() {
 
 		const allNodeConnections = workflowsStore.outgoingConnectionsByNodeName(sourceNode.name);
 
-		const connectionType = Object.keys(allNodeConnections)[0];
+		const connectionType = Object.keys(allNodeConnections)[0] as NodeConnectionType;
 		const nodeConnections = allNodeConnections[connectionType];
 		const outputMap = NodeViewUtils.getOutputSummary(
 			data,
 			nodeConnections || [],
-			(connectionType as ConnectionTypes) ?? NodeConnectionType.Main,
+			connectionType ?? NodeConnectionType.Main,
 		);
 		const sourceNodeType = nodeTypesStore.getNodeType(sourceNode.type, sourceNode.typeVersion);
 
@@ -741,7 +736,7 @@ export function useNodeHelpers() {
 								parseInt(sourceOutputIndex, 10),
 								targetNode,
 								parseInt(targetInputIndex, 10),
-								connectionType as ConnectionTypes,
+								connectionType,
 								sourceNodeType,
 								canvasStore.jsPlumbInstance,
 							);

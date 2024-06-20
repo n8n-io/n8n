@@ -1,4 +1,4 @@
-import type { INode } from '..';
+import type { INode } from '@/Interfaces';
 import { ExecutionBaseError } from './abstract/execution-base.error';
 
 /**
@@ -8,10 +8,6 @@ export class WorkflowOperationError extends ExecutionBaseError {
 	node: INode | undefined;
 
 	timestamp: number;
-
-	lineNumber: number | undefined;
-
-	description: string | undefined;
 
 	constructor(message: string, node?: INode, description?: string) {
 		super(message, { cause: undefined });

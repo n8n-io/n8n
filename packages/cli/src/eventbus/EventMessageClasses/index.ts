@@ -66,11 +66,3 @@ export type EventMessageTypes =
 	| EventMessageAudit
 	| EventMessageNode
 	| EventMessageAiNode;
-
-export interface FailedEventSummary {
-	lastNodeExecuted: string;
-	executionId: string;
-	name: string;
-	event: string;
-	timestamp: string;
-}

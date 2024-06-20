@@ -1,3 +1,5 @@
+import { mock } from 'vitest-mock-extended';
+import type { IWorkflowTemplateNode } from '@/Interface';
 import { keyFromCredentialTypeAndName } from '@/utils/templates/templateTransforms';
 import type { IWorkflowTemplateNodeWithCredentials } from '@/utils/templates/templateTransforms';
 import type { CredentialUsages } from '@/views/SetupWorkflowFromTemplateView/useCredentialSetupState';
@@ -5,8 +7,7 @@ import {
 	getAppCredentials,
 	groupNodeCredentialsByKey,
 } from '@/views/SetupWorkflowFromTemplateView/useCredentialSetupState';
-import * as testData from './setupTemplate.store.testData';
-import { newWorkflowTemplateNode } from '@/utils/testData/templateTestData';
+import { nodeTypeTelegram, nodeTypeTwitter } from '@/utils/testData/nodeTypeTestData';
 
 const objToMap = <TKey extends string, T>(obj: Record<TKey, T>) => {
 	return new Map(Object.entries(obj)) as Map<TKey, T>;
@@ -15,6 +16,7 @@ const objToMap = <TKey extends string, T>(obj: Record<TKey, T>) => {
 describe('useCredentialSetupState', () => {
 	const nodesByName = {
 		Twitter: {
+			id: 'twitter',
 			name: 'Twitter',
 			type: 'n8n-nodes-base.twitter',
 			position: [720, -220],
@@ -39,7 +41,7 @@ describe('useCredentialSetupState', () => {
 				groupNodeCredentialsByKey([
 					{
 						node: nodesByName.Twitter,
-						requiredCredentials: testData.nodeTypeTwitterV1.credentials,
+						requiredCredentials: nodeTypeTwitter.credentials!,
 					},
 				]),
 			).toEqual(
@@ -57,13 +59,15 @@ describe('useCredentialSetupState', () => {
 
 		it('returns credentials grouped when the credential names are the same', () => {
 			const [node1, node2] = [
-				newWorkflowTemplateNode({
+				mock<IWorkflowTemplateNode>({
+					id: 'twitter',
 					type: 'n8n-nodes-base.twitter',
 					credentials: {
 						twitterOAuth1Api: 'credential',
 					},
 				}) as IWorkflowTemplateNodeWithCredentials,
-				newWorkflowTemplateNode({
+				mock<IWorkflowTemplateNode>({
+					id: 'telegram',
 					type: 'n8n-nodes-base.telegram',
 					credentials: {
 						telegramApi: 'credential',
@@ -75,11 +79,11 @@ describe('useCredentialSetupState', () => {
 				groupNodeCredentialsByKey([
 					{
 						node: node1,
-						requiredCredentials: testData.nodeTypeTwitterV1.credentials,
+						requiredCredentials: nodeTypeTwitter.credentials!,
 					},
 					{
 						node: node2,
-						requiredCredentials: testData.nodeTypeTelegramV1.credentials,
+						requiredCredentials: nodeTypeTelegram.credentials!,
 					},
 				]),
 			).toEqual(

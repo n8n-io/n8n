@@ -125,7 +125,7 @@ export class Html implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'HTML',
 		name: 'html',
-		icon: 'file:html.svg',
+		icon: { light: 'file:html.svg', dark: 'file:html.dark.svg' },
 		group: ['transform'],
 		version: [1, 1.1, 1.2],
 		subtitle: '={{ $parameter["operation"] }}',
@@ -427,7 +427,7 @@ export class Html implements INodeType {
 			table += '<tbody>';
 			itemsData.forEach((entry, entryIndex) => {
 				const rowsAttributes = this.getNodeParameter(
-					'options.rowsAttributes',
+					'options.rowAttributes',
 					entryIndex,
 					'',
 				) as string;
@@ -588,7 +588,7 @@ export class Html implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({
 						json: {
 							error: error.message,

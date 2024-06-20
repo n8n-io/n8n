@@ -1,7 +1,9 @@
 import fs from 'node:fs/promises';
+import { mock } from 'jest-mock-extended';
 import { ObjectStoreManager } from '@/BinaryData/ObjectStore.manager';
 import { ObjectStoreService } from '@/ObjectStore/ObjectStore.service.ee';
 import { isStream } from '@/ObjectStore/utils';
+import type { MetadataResponseHeaders } from '@/ObjectStore/types';
 import { mockInstance, toFileId, toStream } from './utils';
 
 jest.mock('fs/promises');
@@ -74,11 +76,13 @@ describe('getMetadata()', () => {
 		const mimeType = 'text/plain';
 		const fileName = 'file.txt';
 
-		objectStoreService.getMetadata.mockResolvedValue({
-			'content-length': '1',
-			'content-type': mimeType,
-			'x-amz-meta-filename': fileName,
-		});
+		objectStoreService.getMetadata.mockResolvedValue(
+			mock<MetadataResponseHeaders>({
+				'content-length': '1',
+				'content-type': mimeType,
+				'x-amz-meta-filename': fileName,
+			}),
+		);
 
 		const metadata = await objectStoreManager.getMetadata(fileId);
 

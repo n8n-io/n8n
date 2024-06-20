@@ -1,0 +1,69 @@
+{
+	"meta": {
+		"instanceId": "4a31be0d29cfa6246ba62b359030d712af57b98c5dfe6a7ee8beee0a46c5b5a4"
+	},
+	"nodes": [
+		{
+			"parameters": {
+				"operation": "get"
+			},
+			"id": "5b084875-bd5e-4731-9591-18d2c8996945",
+			"name": "",
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.1,
+			"position": [
+				900,
+				460
+			]
+		},
+		{
+			"parameters": {},
+			"id": "449ab540-d9d7-480d-b131-05e9989a69cd",
+			"name": "When clicking ‘Test workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [
+				460,
+				460
+			]
+		},
+		{
+			"parameters": {
+				"operation": "get"
+			},
+			"id": "3a791321-6f0c-4f92-91e5-20e1be0d4964",
+			"name": "Gmail",
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.1,
+			"position": [
+				680,
+				460
+			]
+		}
+	],
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "Gmail",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Gmail": {
+			"main": [
+				[
+					{
+						"node": "Gmail1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {}
+}
