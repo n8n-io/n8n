@@ -85,7 +85,7 @@ export class License {
 			? async () => await this.usageMetricsService.collectUsageMetrics()
 			: async () => [];
 		const collectPassthroughData = isMainInstance
-			? async () => await this.usageMetricsService.getActiveWorkflowIds()
+			? async () => await this.usageMetricsService.collectPassthroughData()
 			: async () => ({});
 
 		const renewalEnabled = this.renewalEnabled(instanceType);

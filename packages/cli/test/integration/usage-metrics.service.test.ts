@@ -10,8 +10,8 @@ describe('UsageMetricsService', () => {
 		workflowRepository,
 	);
 
-	describe('getActiveWorkflowIds', () => {
-		test('should return active workflow IDs', async () => {
+	describe('collectPassthroughData', () => {
+		test('should return an object with active workflow IDs', async () => {
 			/**
 			 * Arrange
 			 */
@@ -21,7 +21,7 @@ describe('UsageMetricsService', () => {
 			/**
 			 * Act
 			 */
-			const result = await usageMetricsService.getActiveWorkflowIds();
+			const result = await usageMetricsService.collectPassthroughData();
 
 			/**
 			 * Assert

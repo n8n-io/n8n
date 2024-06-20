@@ -74,7 +74,7 @@ export class ReadBinaryFile implements INodeType {
 				newItem.binary![dataPropertyName] = await this.helpers.prepareBinaryData(stream, filePath);
 				returnData.push(newItem);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({
 						json: {
 							error: (error as Error).message,
