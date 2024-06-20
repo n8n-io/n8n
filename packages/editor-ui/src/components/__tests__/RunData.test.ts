@@ -9,7 +9,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import type { INodeUi, IRunDataDisplayMode } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { setActivePinia } from 'pinia';
-import { defaultMockNodeTypes } from '@/__tests__/defaults';
+import { defaultNodeTypes } from '@/__tests__/mocks';
 
 const nodes = [
 	{
@@ -145,7 +145,7 @@ describe('RunData', () => {
 					},
 				},
 				[STORES.NODE_TYPES]: {
-					nodeTypes: defaultMockNodeTypes,
+					nodeTypes: defaultNodeTypes,
 				},
 			},
 		});

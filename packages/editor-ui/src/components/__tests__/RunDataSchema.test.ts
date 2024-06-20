@@ -4,25 +4,26 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { userEvent } from '@testing-library/user-event';
 import { cleanup, within } from '@testing-library/vue';
 import { createPinia, setActivePinia } from 'pinia';
-import { defaultMockNodeTypesArray } from '@/__tests__/defaults';
-import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
+import { createTestNode, defaultNodeDescriptions } from '@/__tests__/mocks';
 import { SET_NODE_TYPE } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { mock } from 'vitest-mock-extended';
+import type { IWorkflowDb } from '@/Interface';
 
 const mockNode1 = createTestNode({
 	name: 'Set1',
 	type: SET_NODE_TYPE,
-	typeVersion: 3,
+	typeVersion: 1,
 });
 
 const mockNode2 = createTestNode({
 	name: 'Set2',
 	type: SET_NODE_TYPE,
-	typeVersion: 3,
+	typeVersion: 1,
 });
 
 async function setupStore() {
-	const workflow = createTestWorkflow({
+	const workflow = mock<IWorkflowDb>({
 		id: '123',
 		name: 'Test Workflow',
 		connections: {},
@@ -36,7 +37,7 @@ async function setupStore() {
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 
-	nodeTypesStore.setNodeTypes(defaultMockNodeTypesArray);
+	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
 	workflowsStore.workflow = workflow;
 
 	return pinia;
