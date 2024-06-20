@@ -210,9 +210,9 @@ export default function useCanvasMouseSelect() {
 
 	const instance = computed(() => canvasStore.jsPlumbInstance);
 
-	onMounted(() => {
+	function initializeCanvasMouseSelect() {
 		_createSelectBox();
-	});
+	}
 
 	return {
 		selectActive,
@@ -222,5 +222,6 @@ export default function useCanvasMouseSelect() {
 		nodeDeselected,
 		nodeSelected,
 		deselectAllNodes,
+		initializeCanvasMouseSelect,
 	};
 }
