@@ -156,6 +156,7 @@ import { useRouter } from 'vue-router';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { usePinnedData } from '@/composables/usePinnedData';
+import { isEmpty } from '@/utils/typesUtils';
 
 const RunDataAi = defineAsyncComponent(
 	async () => await import('@/components/RunDataAi/RunDataAi.vue'),
@@ -228,7 +229,8 @@ export default defineComponent({
 
 		setTimeout(() => {
 			this.scrollToLatestMessage();
-			this.$refs.inputField?.focus();
+			const inputField = this.$refs.inputField as HTMLInputElement | null;
+			inputField?.focus();
 		}, 0);
 	},
 	methods: {
@@ -494,7 +496,9 @@ export default defineComponent({
 			this.waitForExecution(response.executionId);
 		},
 		extractResponseMessage(responseData?: IDataObject) {
-			if (!responseData) return '<NO RESPONSE FOUND>';
+			if (!responseData || isEmpty(responseData)) {
+				return this.$locale.baseText('chat.window.chat.response.empty');
+			}
 
 			// Paths where the response message might be located
 			const paths = ['output', 'text', 'response.text'];
@@ -513,10 +517,13 @@ export default defineComponent({
 					const lastNodeExecuted =
 						this.workflowsStore.getWorkflowExecution?.data?.resultData.lastNodeExecuted;
 
-					const nodeResponseDataArray = get(
-						this.workflowsStore.getWorkflowExecution?.data?.resultData.runData,
-						lastNodeExecuted,
-					) as ITaskData[];
+					if (!lastNodeExecuted) return;
+
+					const nodeResponseDataArray =
+						get(
+							this.workflowsStore.getWorkflowExecution?.data?.resultData.runData,
+							lastNodeExecuted,
+						) ?? [];
 
 					const nodeResponseData = nodeResponseDataArray[nodeResponseDataArray.length - 1];
 

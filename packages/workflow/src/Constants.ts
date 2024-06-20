@@ -1,3 +1,10 @@
+import type { NodeParameterValue } from './Interfaces';
+
+export const DIGITS = '0123456789';
+export const UPPERCASE_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+export const LOWERCASE_LETTERS = UPPERCASE_LETTERS.toLowerCase();
+export const ALPHABET = [DIGITS, UPPERCASE_LETTERS, LOWERCASE_LETTERS].join('');
+
 export const BINARY_ENCODING = 'base64';
 export const WAIT_TIME_UNLIMITED = '3000-01-01T00:00:00.000Z';
 
@@ -7,8 +14,7 @@ export const CODE_LANGUAGES = ['javaScript', 'python'] as const;
 export const CODE_EXECUTION_MODES = ['runOnceForAllItems', 'runOnceForEachItem'] as const;
 
 // Arbitrary value to represent an empty credential value
-export const CREDENTIAL_EMPTY_VALUE =
-	'__n8n_EMPTY_VALUE_7b1af746-3729-4c60-9b9b-e08eb29e58da' as const;
+export const CREDENTIAL_EMPTY_VALUE = '__n8n_EMPTY_VALUE_7b1af746-3729-4c60-9b9b-e08eb29e58da';
 
 export const FORM_TRIGGER_PATH_IDENTIFIER = 'n8n-form';
 
@@ -58,8 +64,41 @@ export const CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE =
 	'@n8n/n8n-nodes-langchain.chainSummarization';
 export const CODE_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolCode';
 export const WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolWorkflow';
+export const HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolHttpRequest';
 
 export const LANGCHAIN_CUSTOM_TOOLS = [
 	CODE_TOOL_LANGCHAIN_NODE_TYPE,
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
+	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
 ];
+
+//nodes that would execute only once with such parameters
+//add 'undefined' to parameters values if it is parameter's default value
+export const SINGLE_EXECUTION_NODES: { [key: string]: { [key: string]: NodeParameterValue[] } } = {
+	'n8n-nodes-base.code': {
+		mode: [undefined, 'runOnceForAllItems'],
+	},
+	'n8n-nodes-base.executeWorkflow': {
+		mode: [undefined, 'once'],
+	},
+	'n8n-nodes-base.crateDb': {
+		operation: [undefined, 'update'], // default insert
+	},
+	'n8n-nodes-base.timescaleDb': {
+		operation: [undefined, 'update'], // default insert
+	},
+	'n8n-nodes-base.microsoftSql': {
+		operation: [undefined, 'update', 'delete'], // default insert
+	},
+	'n8n-nodes-base.questDb': {
+		operation: [undefined], // default insert
+	},
+	'n8n-nodes-base.mongoDb': {
+		operation: ['insert', 'update'],
+	},
+	'n8n-nodes-base.redis': {
+		operation: [undefined], // default info
+	},
+};
+
+export const OBFUSCATED_ERROR_MESSAGE = 'Internal error';

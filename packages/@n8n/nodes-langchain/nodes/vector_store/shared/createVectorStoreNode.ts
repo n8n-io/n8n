@@ -12,6 +12,7 @@ import type {
 	INodeType,
 	ILoadOptionsFunctions,
 	INodeListSearchResult,
+	Icon,
 } from 'n8n-workflow';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { Document } from '@langchain/core/documents';
@@ -27,7 +28,7 @@ interface NodeMeta {
 	name: string;
 	description: string;
 	docsUrl: string;
-	icon: string;
+	icon: Icon;
 	credentials?: INodeCredentialDescription[];
 }
 interface VectorStoreNodeConstructorArgs {
@@ -240,7 +241,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					void logAiEvent(this, 'n8n.ai.vector.store.searched', { query: prompt });
 				}
 
-				return await this.prepareOutputData(resultData);
+				return [resultData];
 			}
 
 			if (mode === 'insert') {
@@ -270,7 +271,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					}
 				}
 
-				return await this.prepareOutputData(resultData);
+				return [resultData];
 			}
 
 			throw new NodeOperationError(

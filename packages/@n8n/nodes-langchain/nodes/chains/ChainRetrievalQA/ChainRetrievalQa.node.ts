@@ -30,7 +30,7 @@ export class ChainRetrievalQa implements INodeType {
 			alias: ['LangChain'],
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Chains'],
+				AI: ['Chains', 'Root Nodes'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -181,7 +181,7 @@ export class ChainRetrievalQa implements INodeType {
 				const response = await chain.withConfig(getTracingConfig(this)).invoke({ query });
 				returnData.push({ json: { response } });
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
 					continue;
 				}
@@ -189,6 +189,6 @@ export class ChainRetrievalQa implements INodeType {
 				throw error;
 			}
 		}
-		return await this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

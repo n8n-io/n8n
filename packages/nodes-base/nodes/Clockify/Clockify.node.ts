@@ -35,7 +35,7 @@ export class Clockify implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Clockify',
 		name: 'clockify',
-		icon: 'file:clockify.svg',
+		icon: { light: 'file:clockify.svg', dark: 'file:clockify.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -839,7 +839,7 @@ export class Clockify implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ error: error.message, json: {} });
 					continue;
 				}

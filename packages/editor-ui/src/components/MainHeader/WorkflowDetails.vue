@@ -11,6 +11,8 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/constants';
+import type { PermissionsMap } from '@/permissions';
+import type { WorkflowScope } from '@n8n/permissions';
 
 import ShortenName from '@/components/ShortenName.vue';
 import TagsContainer from '@/components/TagsContainer.vue';
@@ -22,13 +24,14 @@ import InlineTextEdit from '@/components/InlineTextEdit.vue';
 import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
 import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
 
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useProjectsStore } from '@/stores/projects.store';
 
 import { saveAs } from 'file-saver';
 import { useTitleChange } from '@/composables/useTitleChange';
@@ -38,7 +41,7 @@ import { useToast } from '@/composables/useToast';
 import { getWorkflowPermissions } from '@/permissions';
 import { createEventBus } from 'n8n-design-system/utils';
 import { nodeViewEventBus } from '@/event-bus';
-import { hasPermission } from '@/rbac/permissions';
+import { hasPermission } from '@/utils/rbac/permissions';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
@@ -51,8 +54,8 @@ import type {
 } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import type { MessageBoxInputData } from 'element-plus';
 import type { BaseTextKey } from '../../plugins/i18n';
+import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 
 const props = defineProps<{
 	workflow: IWorkflowDb;
@@ -69,6 +72,8 @@ const tagsStore = useTagsStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
+const projectsStore = useProjectsStore();
+const npsSurveyStore = useNpsSurveyStore();
 
 const router = useRouter();
 const route = useRoute();
@@ -122,8 +127,8 @@ const onExecutionsTab = computed(() => {
 	].includes((route.name as string) || '');
 });
 
-const workflowPermissions = computed(() => {
-	return getWorkflowPermissions(usersStore.currentUser, props.workflow);
+const workflowPermissions = computed<PermissionsMap<WorkflowScope>>(() => {
+	return getWorkflowPermissions(workflowsStore.getWorkflowById(props.workflow.id));
 });
 
 const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
@@ -174,7 +179,7 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 		disabled: !onWorkflowPage.value || isNewWorkflow.value,
 	});
 
-	if (workflowPermissions.value.delete && !props.readOnly) {
+	if ((workflowPermissions.value.delete && !props.readOnly) || isNewWorkflow.value) {
 		actions.push({
 			id: WORKFLOW_MENU_ACTIONS.DELETE,
 			label: locale.baseText('menuActions.delete'),
@@ -204,6 +209,10 @@ const isWorkflowHistoryButtonDisabled = computed(() => {
 	return isNewWorkflow.value;
 });
 
+const workflowTagIds = computed(() => {
+	return (props.workflow.tags ?? []).map((tag) => (typeof tag === 'string' ? tag : tag.id));
+});
+
 watch(
 	() => props.workflow.id,
 	() => {
@@ -212,18 +221,24 @@ watch(
 	},
 );
 
-async function onSaveButtonClick() {
-	// If the workflow is saving, do not allow another save
-	if (isWorkflowSaving.value) {
-		return;
-	}
-
+function getWorkflowId(): string | undefined {
 	let id: string | undefined = undefined;
 	if (props.workflow.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 		id = props.workflow.id;
 	} else if (route.params.name && route.params.name !== 'new') {
 		id = route.params.name as string;
 	}
+
+	return id;
+}
+
+async function onSaveButtonClick() {
+	// If the workflow is saving, do not allow another save
+	if (isWorkflowSaving.value) {
+		return;
+	}
+
+	const id = getWorkflowId();
 
 	const name = props.workflow.name;
 	const tags = props.workflow.tags as string[];
@@ -235,7 +250,9 @@ async function onSaveButtonClick() {
 	});
 
 	if (saved) {
-		await settingsStore.fetchPromptsData();
+		showCreateWorkflowSuccessToast(id);
+
+		await npsSurveyStore.fetchPromptsData();
 
 		if (route.name === VIEWS.EXECUTION_DEBUG) {
 			await router.replace({
@@ -337,9 +354,11 @@ async function onNameSubmit({
 	}
 
 	uiStore.addActiveAction('workflowSaving');
+	const id = getWorkflowId();
 	const saved = await workflowHelpers.saveCurrentWorkflow({ name });
 	if (saved) {
 		isNameEditEnabled.value = false;
+		showCreateWorkflowSuccessToast(id);
 	}
 	uiStore.removeActiveAction('workflowSaving');
 	onSubmit(saved);
@@ -371,7 +390,7 @@ async function handleFileImport(): Promise<void> {
 	}
 }
 
-async function onWorkflowMenuSelect(action: string): Promise<void> {
+async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void> {
 	switch (action) {
 		case WORKFLOW_MENU_ACTIONS.DUPLICATE: {
 			uiStore.openModalWithData({
@@ -390,7 +409,7 @@ async function onWorkflowMenuSelect(action: string): Promise<void> {
 			const exportData: IWorkflowToShare = {
 				...data,
 				meta: {
-					...(props.workflow.meta ?? {}),
+					...props.workflow.meta,
 					instanceId: rootStore.instanceId,
 				},
 				tags: (tags ?? []).map((tagId) => {
@@ -413,7 +432,7 @@ async function onWorkflowMenuSelect(action: string): Promise<void> {
 		}
 		case WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL: {
 			try {
-				const promptResponse = (await message.prompt(
+				const promptResponse = await message.prompt(
 					locale.baseText('mainSidebar.prompt.workflowUrl') + ':',
 					locale.baseText('mainSidebar.prompt.importWorkflowFromUrl') + ':',
 					{
@@ -422,9 +441,9 @@ async function onWorkflowMenuSelect(action: string): Promise<void> {
 						inputErrorMessage: locale.baseText('mainSidebar.prompt.invalidUrl'),
 						inputPattern: /^http[s]?:\/\/.*\.json$/i,
 					},
-				)) as MessageBoxInputData;
+				);
 
-				if ((promptResponse as unknown as string) === 'cancel') {
+				if (promptResponse.action === 'cancel') {
 					return;
 				}
 
@@ -505,7 +524,7 @@ async function onWorkflowMenuSelect(action: string): Promise<void> {
 				type: 'success',
 			});
 
-			await router.push({ name: VIEWS.NEW_WORKFLOW });
+			await router.push({ name: VIEWS.WORKFLOWS });
 			break;
 		}
 		default:
@@ -516,10 +535,32 @@ async function onWorkflowMenuSelect(action: string): Promise<void> {
 function goToUpgrade() {
 	void uiStore.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
 }
+
+function showCreateWorkflowSuccessToast(id?: string) {
+	if (!id || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(id)) {
+		let toastTitle = locale.baseText('workflows.create.personal.toast.title');
+		let toastText = locale.baseText('workflows.create.personal.toast.text');
+		if (projectsStore.currentProject) {
+			toastTitle = locale.baseText('workflows.create.project.toast.title', {
+				interpolate: { projectName: projectsStore.currentProject.name ?? '' },
+			});
+
+			toastText = locale.baseText('workflows.create.project.toast.text', {
+				interpolate: { projectName: projectsStore.currentProject.name ?? '' },
+			});
+		}
+
+		toast.showMessage({
+			title: toastTitle,
+			message: toastText,
+			type: 'success',
+		});
+	}
+}
 </script>
 
 <template>
-	<div class="container">
+	<div :class="$style.container">
 		<BreakpointsObserver :value-x-s="15" :value-s-m="25" :value-m-d="50" class="name-container">
 			<template #default="{ value }">
 				<ShortenName
@@ -566,7 +607,7 @@ function goToUpgrade() {
 			<TagsContainer
 				v-else
 				:key="workflow.id"
-				:tag-ids="workflow.tags"
+				:tag-ids="workflowTagIds"
 				:clickable="true"
 				:responsive="true"
 				data-test-id="workflow-tags"
@@ -623,6 +664,8 @@ function goToUpgrade() {
 					type="primary"
 					:saved="!uiStore.stateIsDirty && !isNewWorkflow"
 					:disabled="isWorkflowSaving || readOnly"
+					with-shortcut
+					:shortcut-tooltip="$locale.baseText('saveWorkflowButton.hint')"
 					data-test-id="workflow-save-button"
 					@click="onSaveButtonClick"
 				/>
@@ -662,14 +705,6 @@ function goToUpgrade() {
 <style scoped lang="scss">
 $--text-line-height: 24px;
 $--header-spacing: 20px;
-
-.container {
-	position: relative;
-	top: -1px;
-	width: 100%;
-	display: flex;
-	align-items: center;
-}
 
 .name-container {
 	margin-right: $--header-spacing;
@@ -727,6 +762,14 @@ $--header-spacing: 20px;
 </style>
 
 <style module lang="scss">
+.container {
+	position: relative;
+	top: -1px;
+	width: 100%;
+	display: flex;
+	align-items: center;
+}
+
 .group {
 	display: flex;
 	gap: var(--spacing-xs);

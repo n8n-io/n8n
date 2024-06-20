@@ -15,7 +15,7 @@ const BASE_STYLING = {
 	fontFamily: "Menlo, Consolas, 'DejaVu Sans Mono', monospace !important",
 	maxHeight: '400px',
 	tooltip: {
-		maxWidth: '300px',
+		maxWidth: '250px',
 		lineHeight: '1.3em',
 	},
 	diagnosticButton: {

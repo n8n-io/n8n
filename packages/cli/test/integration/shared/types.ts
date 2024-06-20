@@ -1,12 +1,13 @@
 import type { Application } from 'express';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
-import type { SuperAgentTest } from 'supertest';
+import type TestAgent from 'supertest/lib/agent';
 import type { Server } from 'http';
 
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { User } from '@db/entities/User';
 import type { BooleanLicenseFeature, ICredentialsDb, NumericLicenseFeature } from '@/Interfaces';
 import type { LicenseMocker } from './license';
+import type { Project } from '@/databases/entities/Project';
 
 type EndpointGroup =
 	| 'me'
@@ -32,7 +33,10 @@ type EndpointGroup =
 	| 'workflowHistory'
 	| 'binaryData'
 	| 'invitations'
-	| 'debug';
+	| 'debug'
+	| 'project'
+	| 'role'
+	| 'dynamic-node-parameters';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];
@@ -40,12 +44,14 @@ export interface SetupProps {
 	quotas?: Partial<{ [K in NumericLicenseFeature]: number }>;
 }
 
+export type SuperAgentTest = TestAgent;
+
 export interface TestServer {
 	app: Application;
 	httpServer: Server;
-	authAgentFor: (user: User) => SuperAgentTest;
-	publicApiAgentFor: (user: User) => SuperAgentTest;
-	authlessAgent: SuperAgentTest;
+	authAgentFor: (user: User) => TestAgent;
+	publicApiAgentFor: (user: User) => TestAgent;
+	authlessAgent: TestAgent;
 	license: LicenseMocker;
 }
 
@@ -57,5 +63,5 @@ export type CredentialPayload = {
 
 export type SaveCredentialFunction = (
 	credentialPayload: CredentialPayload,
-	{ user }: { user: User },
+	options: { user: User } | { project: Project },
 ) => Promise<CredentialsEntity & ICredentialsDb>;

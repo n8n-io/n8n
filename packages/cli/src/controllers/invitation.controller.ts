@@ -15,9 +15,10 @@ import { PostHogClient } from '@/posthog';
 import type { User } from '@/databases/entities/User';
 import { UserRepository } from '@db/repositories/user.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalHooks } from '@/InternalHooks';
 import { ExternalHooks } from '@/ExternalHooks';
+import { EventRelay } from '@/eventbus/event-relay.service';
 
 @RestController('/invitations')
 export class InvitationController {
@@ -31,13 +32,14 @@ export class InvitationController {
 		private readonly passwordUtility: PasswordUtility,
 		private readonly userRepository: UserRepository,
 		private readonly postHog: PostHogClient,
+		private readonly eventRelay: EventRelay,
 	) {}
 
 	/**
 	 * Send email invite(s) to one or multiple users and create user shell(s).
 	 */
 
-	@Post('/')
+	@Post('/', { rateLimit: { limit: 10 } })
 	@GlobalScope('user:create')
 	async inviteUser(req: UserRequest.Invite) {
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
@@ -55,7 +57,7 @@ export class InvitationController {
 			this.logger.debug(
 				'Request to send email invite(s) to user(s) failed because the user limit quota has been reached',
 			);
-			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
 		if (!config.getEnv('userManagement.isInstanceOwnerSetUp')) {
@@ -98,7 +100,7 @@ export class InvitationController {
 			}
 
 			if (invite.role === 'global:admin' && !this.license.isAdvancedPermissionsLicensed()) {
-				throw new UnauthorizedError(
+				throw new ForbiddenError(
 					'Cannot invite admin user without advanced permissions. Please upgrade to a license that includes this feature.',
 				);
 			}
@@ -170,6 +172,7 @@ export class InvitationController {
 			user_type: 'email',
 			was_disabled_ldap_user: false,
 		});
+		this.eventRelay.emit('user-signed-up', { user: updatedUser });
 
 		const publicInvitee = await this.userService.toPublic(invitee);
 

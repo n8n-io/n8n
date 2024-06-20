@@ -1,12 +1,19 @@
-import type { NodeCreatorOpenSource } from './Interface';
+import type {
+	EnterpriseEditionFeatureKey,
+	EnterpriseEditionFeatureValue,
+	NodeCreatorOpenSource,
+} from './Interface';
 import { NodeConnectionType } from 'n8n-workflow';
+import type { CanvasNodeHandleInjectionData, CanvasNodeInjectionData } from '@/types';
+import type { InjectionKey } from 'vue';
 
 export const MAX_WORKFLOW_SIZE = 1024 * 1024 * 16; // Workflow size limit in bytes
 export const MAX_EXPECTED_REQUEST_SIZE = 2048; // Expected maximum workflow request metadata (i.e. headers) size in bytes
 export const MAX_PINNED_DATA_SIZE = import.meta.env.VUE_APP_MAX_PINNED_DATA_SIZE
 	? parseInt(import.meta.env.VUE_APP_MAX_PINNED_DATA_SIZE, 10)
-	: 1024 * 1024 * 12; // Workflow pinned data size limit in bytes
-export const MAX_DISPLAY_DATA_SIZE = 1024 * 200;
+	: 1024 * 1024 * 12; // 12 MB; Workflow pinned data size limit in bytes
+export const MAX_DISPLAY_DATA_SIZE = 1024 * 1024; // 1 MB
+export const MAX_DISPLAY_DATA_SIZE_SCHEMA_VIEW = 1024 * 1024 * 4; // 4 MB
 export const MAX_DISPLAY_ITEMS_AUTO_ALL = 250;
 
 export const PLACEHOLDER_FILLED_AT_EXECUTION_TIME = '[filled at execution time]';
@@ -44,20 +51,22 @@ export const WORKFLOW_LM_CHAT_MODAL_KEY = 'lmChat';
 export const WORKFLOW_SHARE_MODAL_KEY = 'workflowShare';
 export const PERSONALIZATION_MODAL_KEY = 'personalization';
 export const CONTACT_PROMPT_MODAL_KEY = 'contactPrompt';
-export const VALUE_SURVEY_MODAL_KEY = 'valueSurvey';
+export const NPS_SURVEY_MODAL_KEY = 'npsSurvey';
 export const WORKFLOW_ACTIVE_MODAL_KEY = 'activation';
 export const ONBOARDING_CALL_SIGNUP_MODAL_KEY = 'onboardingCallSignup';
 export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
 export const COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY = 'communityPackageManageConfirm';
 export const IMPORT_CURL_MODAL_KEY = 'importCurl';
+export const GENERATE_CURL_MODAL_KEY = 'generateCurl';
 export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
 export const SOURCE_CONTROL_PUSH_MODAL_KEY = 'sourceControlPush';
 export const SOURCE_CONTROL_PULL_MODAL_KEY = 'sourceControlPull';
 export const DEBUG_PAYWALL_MODAL_KEY = 'debugPaywall';
 export const MFA_SETUP_MODAL_KEY = 'mfaSetup';
 export const WORKFLOW_HISTORY_VERSION_RESTORE = 'workflowHistoryVersionRestore';
-export const SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY = 'suggestedTemplatePreview';
 export const SETUP_CREDENTIALS_MODAL_KEY = 'setupCredentials';
+export const PROJECT_MOVE_RESOURCE_MODAL = 'projectMoveResourceModal';
+export const PROJECT_MOVE_RESOURCE_CONFIRM_MODAL = 'projectMoveResourceConfirmModal';
 
 export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
 
@@ -183,6 +192,8 @@ export const COMPRESSION_NODE_TYPE = 'n8n-nodes-base.compression';
 export const EDIT_IMAGE_NODE_TYPE = 'n8n-nodes-base.editImage';
 export const CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE =
 	'@n8n/n8n-nodes-langchain.chainSummarization';
+export const SIMULATE_NODE_TYPE = 'n8n-nodes-base.simulate';
+export const SIMULATE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.simulateTrigger';
 
 export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
 export const CREDENTIAL_ONLY_HTTP_NODE_VERSION = 4.1;
@@ -255,8 +266,10 @@ export const AI_CATEGORY_RETRIEVERS = 'Retrievers';
 export const AI_CATEGORY_EMBEDDING = 'Embeddings';
 export const AI_CATEGORY_DOCUMENT_LOADERS = 'Document Loaders';
 export const AI_CATEGORY_TEXT_SPLITTERS = 'Text Splitters';
+export const AI_CATEGORY_ROOT_NODES = 'Root Nodes';
 export const AI_UNCATEGORIZED_CATEGORY = 'Miscellaneous';
-
+export const AI_CODE_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolCode';
+export const AI_WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolWorkflow';
 export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fBVTZ3';
 
 // Node Connection Types
@@ -388,7 +401,6 @@ export const ROLE_OTHER = 'other';
 /** END OF PERSONALIZATION SURVEY */
 
 export const MODAL_CANCEL = 'cancel';
-export const MODAL_CLOSE = 'close';
 export const MODAL_CONFIRM = 'confirm';
 
 export const VALID_EMAIL_REGEX =
@@ -398,6 +410,7 @@ export const LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG = 'N8N_PIN_DATA_DISCOVERY
 export const LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG = 'N8N_PIN_DATA_DISCOVERY_CANVAS';
 export const LOCAL_STORAGE_MAPPING_IS_ONBOARDED = 'N8N_MAPPING_ONBOARDED';
 export const LOCAL_STORAGE_AUTOCOMPLETE_IS_ONBOARDED = 'N8N_AUTOCOMPLETE_ONBOARDED';
+export const LOCAL_STORAGE_TABLE_HOVER_IS_ONBOARDED = 'N8N_TABLE_HOVER_ONBOARDED';
 export const LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH = 'N8N_MAIN_PANEL_RELATIVE_WIDTH';
 export const LOCAL_STORAGE_ACTIVE_MODAL = 'N8N_ACTIVE_MODAL';
 export const LOCAL_STORAGE_THEME = 'N8N_THEME';
@@ -442,6 +455,7 @@ export const enum VIEWS {
 	VARIABLES = 'VariablesView',
 	NEW_WORKFLOW = 'NodeViewNew',
 	WORKFLOW = 'NodeViewExisting',
+	WORKFLOW_V2 = 'NodeViewV2',
 	DEMO = 'WorkflowDemo',
 	TEMPLATE_IMPORT = 'WorkflowTemplate',
 	WORKFLOW_ONBOARDING = 'WorkflowOnboarding',
@@ -469,9 +483,18 @@ export const enum VIEWS {
 	MFA_VIEW = 'MfaView',
 	WORKFLOW_HISTORY = 'WorkflowHistory',
 	WORKER_VIEW = 'WorkerView',
+	PROJECTS = 'Projects',
+	PROJECTS_WORKFLOWS = 'ProjectsWorkflows',
+	PROJECTS_CREDENTIALS = 'ProjectsCredentials',
+	PROJECT_SETTINGS = 'ProjectSettings',
 }
 
-export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
+export const EDITABLE_CANVAS_VIEWS = [
+	VIEWS.WORKFLOW,
+	VIEWS.NEW_WORKFLOW,
+	VIEWS.EXECUTION_DEBUG,
+	VIEWS.WORKFLOW_V2,
+];
 
 export const enum FAKE_DOOR_FEATURES {
 	ENVIRONMENTS = 'environments',
@@ -514,6 +537,7 @@ export const MAPPING_PARAMS = [
 	'$today',
 	'$vars',
 	'$workflow',
+	'$nodeVersion',
 ];
 
 export const DEFAULT_STICKY_HEIGHT = 160;
@@ -532,21 +556,25 @@ export const enum WORKFLOW_MENU_ACTIONS {
 /**
  * Enterprise edition
  */
-export const enum EnterpriseEditionFeature {
-	AdvancedExecutionFilters = 'advancedExecutionFilters',
-	Sharing = 'sharing',
-	Ldap = 'ldap',
-	LogStreaming = 'logStreaming',
-	Variables = 'variables',
-	Saml = 'saml',
-	SourceControl = 'sourceControl',
-	ExternalSecrets = 'externalSecrets',
-	AuditLogs = 'auditLogs',
-	DebugInEditor = 'debugInEditor',
-	WorkflowHistory = 'workflowHistory',
-	WorkerView = 'workerView',
-	AdvancedPermissions = 'advancedPermissions',
-}
+export const EnterpriseEditionFeature: Record<
+	EnterpriseEditionFeatureKey,
+	EnterpriseEditionFeatureValue
+> = {
+	AdvancedExecutionFilters: 'advancedExecutionFilters',
+	Sharing: 'sharing',
+	Ldap: 'ldap',
+	LogStreaming: 'logStreaming',
+	Variables: 'variables',
+	Saml: 'saml',
+	SourceControl: 'sourceControl',
+	ExternalSecrets: 'externalSecrets',
+	AuditLogs: 'auditLogs',
+	DebugInEditor: 'debugInEditor',
+	WorkflowHistory: 'workflowHistory',
+	WorkerView: 'workerView',
+	AdvancedPermissions: 'advancedPermissions',
+};
+
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
 export const enum MAIN_HEADER_TABS {
@@ -594,6 +622,7 @@ export const enum STORES {
 	UI = 'ui',
 	USERS = 'users',
 	WORKFLOWS = 'workflows',
+	WORKFLOWS_V2 = 'workflowsV2',
 	WORKFLOWS_EE = 'workflowsEE',
 	EXECUTIONS = 'executions',
 	NDV = 'ndv',
@@ -642,7 +671,29 @@ export const ASK_AI_EXPERIMENT = {
 
 export const TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT = '017_template_credential_setup_v2';
 
-export const EXPERIMENTS_TO_TRACK = [ASK_AI_EXPERIMENT.name, TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT];
+export const AI_ASSISTANT_EXPERIMENT = {
+	name: '19_ai_assistant_experiment',
+	control: 'control',
+	variant: 'variant',
+};
+
+export const CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT = {
+	name: '20_canvas_auto_add_manual_trigger',
+	control: 'control',
+	variant: 'variant',
+};
+
+export const EXPERIMENTS_TO_TRACK = [
+	ASK_AI_EXPERIMENT.name,
+	TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT,
+	AI_ASSISTANT_EXPERIMENT.name,
+	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT.name,
+];
+
+export const MFA_FORM = {
+	MFA_TOKEN: 'MFA_TOKEN',
+	MFA_RECOVERY_CODE: 'MFA_RECOVERY_CODE',
+} as const;
 
 export const MFA_AUTHENTICATION_REQUIRED_ERROR_CODE = 998;
 
@@ -709,7 +760,7 @@ export const APPEND_ATTRIBUTION_DEFAULT_PATH = 'parameters.options.appendAttribu
 
 export const DRAG_EVENT_DATA_KEY = 'nodesAndConnections';
 
-export const NOT_DUPLICATABE_NODE_TYPES = [FORM_TRIGGER_NODE_TYPE];
+export const NOT_DUPLICATABLE_NODE_TYPES = [FORM_TRIGGER_NODE_TYPE];
 export const UPDATE_WEBHOOK_ID_NODE_TYPES = [FORM_TRIGGER_NODE_TYPE];
 
 export const CREATOR_HUB_URL = 'https://creators.n8n.io/hub';
@@ -724,7 +775,9 @@ export const TIME = {
 	DAY: 24 * 60 * 60 * 1000,
 };
 
-export const SUGGESTED_TEMPLATES_FLAG = 'SHOW_N8N_SUGGESTED_TEMPLATES';
+export const THREE_DAYS_IN_MILLIS = 3 * TIME.DAY;
+export const SEVEN_DAYS_IN_MILLIS = 7 * TIME.DAY;
+export const SIX_MONTHS_IN_MILLIS = 6 * 30 * TIME.DAY;
 
 /**
  * Mouse button codes
@@ -794,3 +847,18 @@ export const INSECURE_CONNECTION_WARNING = `
 	</ul>
 </div>
 </body>`;
+
+export const AI_ASSISTANT_EXPERIMENT_URLS = {
+	FEEDBACK_FORM: 'https://chat.arro.co/to4639rATEMV',
+	SIGN_UP: 'https://adore.app.n8n.cloud/form/4704cce3-4cef-4dc8-b67f-8a510c5d561a',
+};
+
+export const AI_ASSISTANT_LOCAL_STORAGE_KEY = 'N8N_AI_ASSISTANT_EXPERIMENT';
+
+/**
+ * Injection Keys
+ */
+
+export const CanvasNodeKey = 'canvasNode' as unknown as InjectionKey<CanvasNodeInjectionData>;
+export const CanvasNodeHandleKey =
+	'canvasNodeHandle' as unknown as InjectionKey<CanvasNodeHandleInjectionData>;

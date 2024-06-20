@@ -34,6 +34,8 @@ export {
 	assert,
 	removeCircularRefs,
 	updateDisplayOptions,
+	randomInt,
+	randomString,
 } from './utils';
 export {
 	isINodeProperties,
@@ -51,7 +53,13 @@ export * as ExpressionParser from './Extensions/ExpressionParser';
 export { NativeMethods } from './NativeMethods';
 export * from './NodeParameters/FilterParameter';
 
-export type { DocMetadata, NativeDoc } from './Extensions';
+export type {
+	DocMetadata,
+	NativeDoc,
+	DocMetadataArgument,
+	DocMetadataExample,
+	Extension,
+} from './Extensions';
 
 declare module 'http' {
 	export interface IncomingMessage {

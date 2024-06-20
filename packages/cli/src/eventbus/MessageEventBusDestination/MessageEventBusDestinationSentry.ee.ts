@@ -7,7 +7,6 @@ import type {
 	MessageEventBusDestinationOptions,
 	MessageEventBusDestinationSentryOptions,
 } from 'n8n-workflow';
-import { isLogStreamingEnabled } from '../MessageEventBus/MessageEventBusHelper';
 import { eventMessageGenericDestinationTestEvent } from '../EventMessageClasses/EventMessageGeneric';
 import { N8N_VERSION } from '@/constants';
 import type { MessageEventBus, MessageWithCallback } from '../MessageEventBus/MessageEventBus';
@@ -57,7 +56,7 @@ export class MessageEventBusDestinationSentry
 		let sendResult = false;
 		if (!this.sentryClient) return sendResult;
 		if (msg.eventName !== eventMessageGenericDestinationTestEvent) {
-			if (!isLogStreamingEnabled()) return sendResult;
+			if (!this.license.isLogStreamingEnabled()) return sendResult;
 			if (!this.hasSubscribedToEvent(msg)) return sendResult;
 		}
 		try {

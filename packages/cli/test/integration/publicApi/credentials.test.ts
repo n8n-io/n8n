@@ -1,15 +1,17 @@
-import type { SuperAgentTest } from 'supertest';
-import type { User } from '@db/entities/User';
+import { Container } from 'typedi';
+import { randomString } from 'n8n-workflow';
 
-import { randomApiKey, randomName, randomString } from '../shared/random';
+import type { User } from '@db/entities/User';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+
+import { randomApiKey, randomName } from '../shared/random';
 import * as utils from '../shared/utils/';
 import type { CredentialPayload, SaveCredentialFunction } from '../shared/types';
 import * as testDb from '../shared/testDb';
 import { affixRoleToSaveCredential } from '../shared/db/credentials';
 import { addApiKey, createUser, createUserShell } from '../shared/db/users';
-import { CredentialsRepository } from '@db/repositories/credentials.repository';
-import Container from 'typedi';
-import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import type { SuperAgentTest } from '../shared/types';
 
 let owner: User;
 let member: User;
@@ -63,8 +65,16 @@ describe('POST /credentials', () => {
 		expect(credential.data).not.toBe(payload.data);
 
 		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
-			relations: ['user', 'credentials'],
-			where: { credentialsId: credential.id, userId: owner.id },
+			relations: { credentials: true },
+			where: {
+				credentialsId: credential.id,
+				project: {
+					type: 'personal',
+					projectRelations: {
+						userId: owner.id,
+					},
+				},
+			},
 		});
 
 		expect(sharedCredential.role).toEqual('credential:owner');
@@ -203,7 +213,7 @@ describe('DELETE /credentials/:id', () => {
 
 		const response = await authMemberAgent.delete(`/credentials/${savedCredential.id}`);
 
-		expect(response.statusCode).toBe(404);
+		expect(response.statusCode).toBe(403);
 
 		const shellCredential = await Container.get(CredentialsRepository).findOneBy({
 			id: savedCredential.id,

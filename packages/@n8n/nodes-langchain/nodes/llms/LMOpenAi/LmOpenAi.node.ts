@@ -9,8 +9,8 @@ import type {
 } from 'n8n-workflow';
 
 import { OpenAI, type ClientOptions } from '@langchain/openai';
-import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 
 type LmOpenAiOptions = {
 	baseURL?: string;
@@ -28,7 +28,7 @@ export class LmOpenAi implements INodeType {
 		displayName: 'OpenAI Model',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'lmOpenAi',
-		icon: 'file:openAi.svg',
+		icon: { light: 'file:openAiLight.svg', dark: 'file:openAiLight.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		description: 'For advanced usage with an AI chain',
@@ -240,10 +240,11 @@ export class LmOpenAi implements INodeType {
 			configuration,
 			timeout: options.timeout ?? 60000,
 			maxRetries: options.maxRetries ?? 2,
+			callbacks: [new N8nLlmTracing(this)],
 		});
 
 		return {
-			response: logWrapper(model, this),
+			response: model,
 		};
 	}
 }

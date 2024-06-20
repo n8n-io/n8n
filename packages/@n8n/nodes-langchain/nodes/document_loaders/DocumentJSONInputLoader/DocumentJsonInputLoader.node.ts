@@ -7,7 +7,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import type { TextSplitter } from 'langchain/text_splitter';
+import type { TextSplitter } from '@langchain/textsplitters';
 import { logWrapper } from '../../../utils/logWrapper';
 import { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
 import { getConnectionHintNoticeField, metadataFilterField } from '../../../utils/sharedFields';

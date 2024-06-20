@@ -210,6 +210,10 @@ function configureTransport(credentials: IDataObject, options: EmailSendOptions)
 		secure: credentials.secure as boolean,
 	};
 
+	if (typeof credentials.hostName === 'string' && credentials.hostName) {
+		connectionOptions.name = credentials.hostName;
+	}
+
 	if (credentials.user || credentials.password) {
 		connectionOptions.auth = {
 			user: credentials.user as string,
@@ -320,7 +324,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				},
 			});
 		} catch (error) {
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(error)) {
 				returnData.push({
 					json: {
 						error: error.message,

@@ -176,6 +176,7 @@ export class SourceControlGitService {
 		}
 		try {
 			await this.git.addRemote(SOURCE_CONTROL_ORIGIN, sourceControlPreferences.repositoryUrl);
+			this.logger.debug(`Git remote added: ${sourceControlPreferences.repositoryUrl}`);
 		} catch (error) {
 			if ((error as Error).message.includes('remote origin already exists')) {
 				this.logger.debug(`Git remote already exists: ${(error as Error).message}`);
@@ -189,6 +190,9 @@ export class SourceControlGitService {
 				: SOURCE_CONTROL_DEFAULT_NAME,
 			user.email ?? SOURCE_CONTROL_DEFAULT_EMAIL,
 		);
+
+		await this.trackRemoteIfReady(sourceControlPreferences.branchName);
+
 		if (sourceControlPreferences.initRepo) {
 			try {
 				const branches = await this.getBranches();
@@ -198,6 +202,28 @@ export class SourceControlGitService {
 			} catch (error) {
 				this.logger.debug(`Git init: ${(error as Error).message}`);
 			}
+		}
+	}
+
+	/**
+	 * If this is a new local repository being set up after remote is ready,
+	 * then set this local to start tracking remote's target branch.
+	 */
+	private async trackRemoteIfReady(targetBranch: string) {
+		if (!this.git) return;
+
+		await this.fetch();
+
+		const { currentBranch, branches: remoteBranches } = await this.getBranches();
+
+		if (!currentBranch && remoteBranches.some((b) => b === targetBranch)) {
+			await this.git.checkout(targetBranch);
+
+			const upstream = [SOURCE_CONTROL_ORIGIN, targetBranch].join('/');
+
+			await this.git.branch([`--set-upstream-to=${upstream}`, targetBranch]);
+
+			this.logger.info('Set local git repository to track remote', { upstream });
 		}
 	}
 

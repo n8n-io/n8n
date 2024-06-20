@@ -44,36 +44,30 @@
 					v-for="node in version.nodes"
 					:key="node.name"
 					:node-type="node"
-					:title="$options.nodeName(node)"
+					:title="nodeName(node)"
 				/>
 			</div>
 		</div>
 	</a>
 </template>
 
-<script lang="ts">
-import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
+<script setup lang="ts">
 import NodeIcon from './NodeIcon.vue';
 import TimeAgo from './TimeAgo.vue';
 import Badge from './Badge.vue';
 import WarningTooltip from './WarningTooltip.vue';
-import type { IVersionNode, IVersion } from '@/Interface';
+import type { IVersion, IVersionNode } from '@/Interface';
+import { useI18n } from '@/composables/useI18n';
 
-export default defineComponent({
-	name: 'VersionCard',
-	components: { NodeIcon, TimeAgo, Badge, WarningTooltip },
-	props: {
-		version: {
-			type: Object as PropType<IVersion>,
-			required: true,
-		},
-	},
-	// @ts-ignore
-	nodeName(node: IVersionNode): string {
-		return node !== null ? node.displayName : this.$locale.baseText('versionCard.unknown');
-	},
-});
+defineProps<{
+	version: IVersion;
+}>();
+
+const i18n = useI18n();
+
+const nodeName = (node: IVersionNode): string => {
+	return node !== null ? node.displayName : i18n.baseText('versionCard.unknown');
+};
 </script>
 
 <style module lang="scss">
