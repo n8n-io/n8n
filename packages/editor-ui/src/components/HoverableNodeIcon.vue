@@ -2,7 +2,7 @@
 	<div
 		:class="$style.wrapper"
 		:style="iconStyleData"
-		@click="(e) => $emit('click')"
+		@click="() => $emit('click')"
 		@mouseover="showTooltip = true"
 		@mouseleave="showTooltip = false"
 	>
@@ -40,16 +40,17 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { type StyleValue, defineComponent, type PropType } from 'vue';
 
 import type { ITemplatesNode } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { mapStores } from 'pinia';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 
 interface NodeIconData {
 	type: string;
 	path?: string;
+	icon?: string;
 	fileExtension?: string;
 	fileBuffer?: string;
 }
@@ -69,7 +70,8 @@ export default defineComponent({
 			default: false,
 		},
 		nodeType: {
-			type: Object,
+			type: Object as PropType<INodeTypeDescription>,
+			required: true,
 		},
 		size: {
 			type: Number,
@@ -82,9 +84,11 @@ export default defineComponent({
 				'max-width': this.size + 'px',
 			};
 		},
-		iconStyleData(): object {
-			const nodeType = this.nodeType as ITemplatesNode | null;
-			const color = nodeType ? nodeType.defaults && nodeType.defaults.color : '';
+		iconStyleData(): StyleValue {
+			const nodeType = this.nodeType;
+			const nodeTypeColor = nodeType?.defaults?.color;
+			const color = typeof nodeTypeColor === 'string' ? nodeTypeColor : '';
+
 			if (!this.size) {
 				return { color };
 			}
@@ -103,7 +107,7 @@ export default defineComponent({
 				}),
 			};
 		},
-		imageStyleData(): object {
+		imageStyleData(): StyleValue {
 			return {
 				width: '100%',
 				'max-width': '100%',
@@ -120,9 +124,9 @@ export default defineComponent({
 				return (nodeType as ITemplatesNode).iconData;
 			}
 
-			const restUrl = this.rootStore.getRestUrl;
+			const restUrl = this.rootStore.restUrl;
 
-			if (nodeType.icon) {
+			if (typeof nodeType.icon === 'string') {
 				const [type, path] = nodeType.icon.split(':');
 				const returnData: NodeIconData = {
 					type,

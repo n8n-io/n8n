@@ -571,6 +571,48 @@ describe('FilterParameter', () => {
 				});
 
 				it.each([
+					{ left: 0, expected: false },
+					{ left: 15, expected: false },
+					{ left: -15.4, expected: false },
+					{ left: NaN, expected: true },
+					{ left: null, expected: true },
+				])('number:empty($left) === $expected', ({ left, expected }) => {
+					const result = executeFilter(
+						filterFactory({
+							conditions: [
+								{
+									id: '1',
+									leftValue: left,
+									operator: { operation: 'empty', type: 'number' },
+								},
+							],
+						}),
+					);
+					expect(result).toBe(expected);
+				});
+
+				it.each([
+					{ left: 0, expected: true },
+					{ left: 15, expected: true },
+					{ left: -15.4, expected: true },
+					{ left: NaN, expected: false },
+					{ left: null, expected: false },
+				])('number:notEmpty($left) === $expected', ({ left, expected }) => {
+					const result = executeFilter(
+						filterFactory({
+							conditions: [
+								{
+									id: '1',
+									leftValue: left,
+									operator: { operation: 'notEmpty', type: 'number' },
+								},
+							],
+						}),
+					);
+					expect(result).toBe(expected);
+				});
+
+				it.each([
 					{ left: 0, right: 0, expected: true },
 					{ left: 15, right: 15, expected: true },
 					{ left: 15.34, right: 15.34, expected: true },
@@ -707,6 +749,42 @@ describe('FilterParameter', () => {
 
 			describe('dateTime', () => {
 				it.each([
+					{ left: '2023-11-15T17:10:49.113Z', expected: false },
+					{ left: null, expected: true },
+				])('dateTime:empty($left) === $expected', ({ left, expected }) => {
+					const result = executeFilter(
+						filterFactory({
+							conditions: [
+								{
+									id: '1',
+									leftValue: left,
+									operator: { operation: 'empty', type: 'dateTime' },
+								},
+							],
+						}),
+					);
+					expect(result).toBe(expected);
+				});
+
+				it.each([
+					{ left: '2023-11-15T17:10:49.113Z', expected: true },
+					{ left: null, expected: false },
+				])('dateTime:notEmpty($left) === $expected', ({ left, expected }) => {
+					const result = executeFilter(
+						filterFactory({
+							conditions: [
+								{
+									id: '1',
+									leftValue: left,
+									operator: { operation: 'notEmpty', type: 'dateTime' },
+								},
+							],
+						}),
+					);
+					expect(result).toBe(expected);
+				});
+
+				it.each([
 					{ left: '2023-11-15T17:10:49.113Z', right: '2023-11-15T17:10:49.113Z', expected: true },
 					{ left: '2023-11-15T17:10:49.113Z', right: '2023-11-15T17:12:49.113Z', expected: false },
 				])('dateTime:equals("$left", "$right") === $expected', ({ left, right, expected }) => {
@@ -838,6 +916,44 @@ describe('FilterParameter', () => {
 			});
 
 			describe('boolean', () => {
+				it.each([
+					{ left: true, expected: false },
+					{ left: false, expected: false },
+					{ left: null, expected: true },
+				])('boolean:empty($left) === $expected', ({ left, expected }) => {
+					const result = executeFilter(
+						filterFactory({
+							conditions: [
+								{
+									id: '1',
+									leftValue: left,
+									operator: { operation: 'empty', type: 'boolean' },
+								},
+							],
+						}),
+					);
+					expect(result).toBe(expected);
+				});
+
+				it.each([
+					{ left: true, expected: true },
+					{ left: false, expected: true },
+					{ left: null, expected: false },
+				])('boolean:notEmpty($left) === $expected', ({ left, expected }) => {
+					const result = executeFilter(
+						filterFactory({
+							conditions: [
+								{
+									id: '1',
+									leftValue: left,
+									operator: { operation: 'notEmpty', type: 'boolean' },
+								},
+							],
+						}),
+					);
+					expect(result).toBe(expected);
+				});
+
 				it.each([
 					{ left: true, expected: true },
 					{ left: false, expected: false },

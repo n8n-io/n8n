@@ -64,7 +64,7 @@ export default function useCanvasMouseSelect() {
 		selectActive.value = false;
 	}
 
-	function _getSelectionBox(event: MouseEvent) {
+	function _getSelectionBox(event: MouseEvent | TouchEvent) {
 		const [x, y] = getMousePositionWithinNodeView(event);
 		return {
 			x: Math.min(x, selectBox.value.x),
@@ -74,7 +74,7 @@ export default function useCanvasMouseSelect() {
 		};
 	}
 
-	function _getNodesInSelection(event: MouseEvent): INodeUi[] {
+	function _getNodesInSelection(event: MouseEvent | TouchEvent): INodeUi[] {
 		const returnNodes: INodeUi[] = [];
 		const selectionBox = _getSelectionBox(event);
 
@@ -128,9 +128,9 @@ export default function useCanvasMouseSelect() {
 		_updateSelectBox(e);
 	}
 
-	function mouseUpMouseSelect(e: MouseEvent) {
+	function mouseUpMouseSelect(e: MouseEvent | TouchEvent) {
 		// Ignore right-click
-		if (e.button === 2 || isContextMenuOpen.value) return;
+		if (('button' in e && e.button === 2) || isContextMenuOpen.value) return;
 
 		if (!selectActive.value) {
 			if (isTouchDevice && e.target instanceof HTMLElement) {
@@ -204,8 +204,8 @@ export default function useCanvasMouseSelect() {
 		uiStore.lastSelectedNode = null;
 		uiStore.lastSelectedNodeOutputIndex = null;
 
-		canvasStore.lastSelectedConnection = null;
 		canvasStore.newNodeInsertPosition = null;
+		canvasStore.setLastSelectedConnection(undefined);
 	}
 
 	const instance = computed(() => canvasStore.jsPlumbInstance);

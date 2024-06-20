@@ -92,16 +92,11 @@ export class WorkflowExecutionService {
 	}
 
 	async executeManually(
-		{
-			workflowData,
-			runData,
-			pinData,
-			startNodes,
-			destinationNode,
-		}: WorkflowRequest.ManualRunPayload,
+		{ workflowData, runData, startNodes, destinationNode }: WorkflowRequest.ManualRunPayload,
 		user: User,
 		pushRef?: string,
 	) {
+		const pinData = workflowData.pinData;
 		const pinnedTrigger = this.selectPinnedActivatorStarter(
 			workflowData,
 			startNodes?.map((nodeData) => nodeData.name),

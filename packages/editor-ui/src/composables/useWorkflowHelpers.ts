@@ -50,7 +50,7 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { get, isEqual } from 'lodash-es';
 
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useTemplatesStore } from '@/stores/templates.store';
@@ -67,7 +67,7 @@ import { tryToParseNumber } from '@/utils/typesUtils';
 import { useI18n } from '@/composables/useI18n';
 import type { useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useProjectsStore } from '@/stores/projects.store';
 
 export function resolveParameter<T = IDataObject>(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
@@ -779,9 +779,9 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 
 		let baseUrl;
 		if (showUrlFor === 'test') {
-			baseUrl = isForm ? rootStore.getFormTestUrl : rootStore.getWebhookTestUrl;
+			baseUrl = isForm ? rootStore.formTestUrl : rootStore.webhookTestUrl;
 		} else {
-			baseUrl = isForm ? rootStore.getFormUrl : rootStore.getWebhookUrl;
+			baseUrl = isForm ? rootStore.formUrl : rootStore.webhookUrl;
 		}
 
 		const workflowId = workflowsStore.workflowId;

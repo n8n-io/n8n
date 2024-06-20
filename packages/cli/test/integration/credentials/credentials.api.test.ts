@@ -1,6 +1,7 @@
 import { Container } from 'typedi';
 import type { Scope } from '@sentry/node';
 import { Credentials } from 'n8n-core';
+import { randomString } from 'n8n-workflow';
 
 import type { ListQuery } from '@/requests';
 import type { User } from '@db/entities/User';
@@ -9,7 +10,6 @@ import { ProjectRepository } from '@db/repositories/project.repository';
 import type { Project } from '@db/entities/Project';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
-import { ProjectService } from '@/services/project.service';
 
 import * as testDb from '../shared/testDb';
 import { setupTestServer } from '../shared/utils';
@@ -17,7 +17,6 @@ import {
 	randomCredentialPayload as payload,
 	randomCredentialPayload,
 	randomName,
-	randomString,
 } from '../shared/random';
 import {
 	saveCredential,
@@ -44,7 +43,6 @@ let authMemberAgent: SuperAgentTest;
 
 let projectRepository: ProjectRepository;
 let sharedCredentialsRepository: SharedCredentialsRepository;
-let projectService: ProjectService;
 
 beforeEach(async () => {
 	await testDb.truncate(['SharedCredentials', 'Credentials']);
@@ -65,7 +63,6 @@ beforeEach(async () => {
 
 	projectRepository = Container.get(ProjectRepository);
 	sharedCredentialsRepository = Container.get(SharedCredentialsRepository);
-	projectService = Container.get(ProjectService);
 });
 
 type GetAllResponse = { body: { data: ListQuery.Credentials.WithOwnedByAndSharedWith[] } };
@@ -145,7 +142,7 @@ describe('GET /credentials', () => {
 			// Team cred
 			expect(cred1.id).toBe(savedCredential1.id);
 			expect(cred1.scopes).toEqual(
-				['credential:read', 'credential:update', 'credential:delete'].sort(),
+				['credential:move', 'credential:read', 'credential:update', 'credential:delete'].sort(),
 			);
 
 			// Shared cred
@@ -172,7 +169,13 @@ describe('GET /credentials', () => {
 			// Shared cred
 			expect(cred2.id).toBe(savedCredential2.id);
 			expect(cred2.scopes).toEqual(
-				['credential:read', 'credential:update', 'credential:delete', 'credential:share'].sort(),
+				[
+					'credential:delete',
+					'credential:move',
+					'credential:read',
+					'credential:share',
+					'credential:update',
+				].sort(),
 			);
 		}
 
@@ -191,11 +194,12 @@ describe('GET /credentials', () => {
 			expect(cred1.scopes).toEqual(
 				[
 					'credential:create',
-					'credential:read',
-					'credential:update',
 					'credential:delete',
 					'credential:list',
+					'credential:move',
+					'credential:read',
 					'credential:share',
+					'credential:update',
 				].sort(),
 			);
 
@@ -204,11 +208,12 @@ describe('GET /credentials', () => {
 			expect(cred2.scopes).toEqual(
 				[
 					'credential:create',
-					'credential:read',
-					'credential:update',
 					'credential:delete',
 					'credential:list',
+					'credential:move',
+					'credential:read',
 					'credential:share',
+					'credential:update',
 				].sort(),
 			);
 		}
@@ -576,7 +581,13 @@ describe('POST /credentials', () => {
 		expect(encryptedData).not.toBe(payload.data);
 
 		expect(scopes).toEqual(
-			['credential:read', 'credential:update', 'credential:delete', 'credential:share'].sort(),
+			[
+				'credential:delete',
+				'credential:move',
+				'credential:read',
+				'credential:share',
+				'credential:update',
+			].sort(),
 		);
 
 		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
@@ -674,7 +685,7 @@ describe('POST /credentials', () => {
 			//
 			.expect(400, {
 				code: 400,
-				message: "You don't have the permissions to save the workflow in this project.",
+				message: "You don't have the permissions to save the credential in this project.",
 			});
 	});
 });
@@ -819,11 +830,12 @@ describe('PATCH /credentials/:id', () => {
 		expect(scopes).toEqual(
 			[
 				'credential:create',
-				'credential:read',
-				'credential:update',
 				'credential:delete',
 				'credential:list',
+				'credential:move',
+				'credential:read',
 				'credential:share',
+				'credential:update',
 			].sort(),
 		);
 

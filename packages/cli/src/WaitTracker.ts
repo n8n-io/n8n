@@ -27,23 +27,25 @@ export class WaitTracker {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly ownershipService: OwnershipService,
 		private readonly workflowRunner: WorkflowRunner,
-		readonly orchestrationService: OrchestrationService,
-	) {
-		const { isSingleMainSetup, isLeader, multiMainSetup } = orchestrationService;
+		private readonly orchestrationService: OrchestrationService,
+	) {}
 
-		if (isSingleMainSetup) {
-			this.startTracking();
-			return;
-		}
+	/**
+	 * @important Requires `OrchestrationService` to be initialized.
+	 */
+	init() {
+		const { isLeader, isMultiMainSetupEnabled } = this.orchestrationService;
 
 		if (isLeader) this.startTracking();
 
-		multiMainSetup
-			.on('leader-takeover', () => this.startTracking())
-			.on('leader-stepdown', () => this.stopTracking());
+		if (isMultiMainSetupEnabled) {
+			this.orchestrationService.multiMainSetup
+				.on('leader-takeover', () => this.startTracking())
+				.on('leader-stepdown', () => this.stopTracking());
+		}
 	}
 
-	startTracking() {
+	private startTracking() {
 		this.logger.debug('Wait tracker started tracking waiting executions');
 
 		// Poll every 60 seconds a list of upcoming executions

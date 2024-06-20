@@ -240,7 +240,7 @@ describe('POST /external-secrets/providers/:provider', () => {
 		const resp = await authOwnerAgent.post('/external-secrets/providers/dummy').send(testData);
 		expect(resp.status).toBe(200);
 
-		const confirmResp = await authOwnerAgent.get('/external-secrets/providers/dummy');
+		await authOwnerAgent.get('/external-secrets/providers/dummy');
 		expect((await getExternalSecretsSettings())?.dummy.settings).toEqual({
 			username: 'newuser',
 			password: 'testpass',

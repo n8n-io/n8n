@@ -4,6 +4,21 @@ import config from '@/config';
 import { RedisService } from '@/services/redis.service';
 import { mockInstance } from '../../shared/mocking';
 
+jest.mock('ioredis', () => {
+	const Redis = require('ioredis-mock');
+	if (typeof Redis === 'object') {
+		// the first mock is an ioredis shim because ioredis-mock depends on it
+		// https://github.com/stipsan/ioredis-mock/blob/master/src/index.js#L101-L111
+		return {
+			Command: { _transformer: { argument: {}, reply: {} } },
+		};
+	}
+	// second mock for our code
+	return function (...args: any) {
+		return new Redis(args);
+	};
+});
+
 mockInstance(Logger);
 const redisService = Container.get(RedisService);
 
@@ -12,25 +27,9 @@ function setDefaultConfig() {
 }
 
 const PUBSUB_CHANNEL = 'testchannel';
-const LIST_CHANNEL = 'testlist';
-const STREAM_CHANNEL = 'teststream';
 
 describe('RedisService', () => {
 	beforeAll(async () => {
-		jest.mock('ioredis', () => {
-			const Redis = require('ioredis-mock');
-			if (typeof Redis === 'object') {
-				// the first mock is an ioredis shim because ioredis-mock depends on it
-				// https://github.com/stipsan/ioredis-mock/blob/master/src/index.js#L101-L111
-				return {
-					Command: { _transformer: { argument: {}, reply: {} } },
-				};
-			}
-			// second mock for our code
-			return function (...args: any) {
-				return new Redis(args);
-			};
-		});
 		setDefaultConfig();
 	});
 
@@ -41,7 +40,7 @@ describe('RedisService', () => {
 		expect(sub).toBeDefined();
 
 		const mockHandler = jest.fn();
-		mockHandler.mockImplementation((channel: string, message: string) => {});
+		mockHandler.mockImplementation((_channel: string, _message: string) => {});
 		sub.addMessageHandler(PUBSUB_CHANNEL, mockHandler);
 		await sub.subscribe(PUBSUB_CHANNEL);
 		await pub.publish(PUBSUB_CHANNEL, 'test');

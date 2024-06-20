@@ -14,6 +14,7 @@ import { Push } from '@/push';
 import { CommunityPackagesService } from '@/services/communityPackages.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { EventRelay } from '@/eventbus/event-relay.service';
 
 const {
 	PACKAGE_NOT_INSTALLED,
@@ -38,6 +39,7 @@ export class CommunityPackagesController {
 		private readonly push: Push,
 		private readonly internalHooks: InternalHooks,
 		private readonly communityPackagesService: CommunityPackagesService,
+		private readonly eventRelay: EventRelay,
 	) {}
 
 	// TODO: move this into a new decorator `@IfConfig('executions.mode', 'queue')`
@@ -114,6 +116,14 @@ export class CommunityPackagesController {
 				package_version: parsed.version,
 				failure_reason: errorMessage,
 			});
+			this.eventRelay.emit('community-package-installed', {
+				user: req.user,
+				inputString: name,
+				packageName: parsed.packageName,
+				success: false,
+				packageVersion: parsed.version,
+				failureReason: errorMessage,
+			});
 
 			let message = [`Error loading package "${name}" `, errorMessage].join(':');
 			if (error instanceof Error && error.cause instanceof Error) {
@@ -143,6 +153,16 @@ export class CommunityPackagesController {
 			package_node_names: installedPackage.installedNodes.map((node) => node.name),
 			package_author: installedPackage.authorName,
 			package_author_email: installedPackage.authorEmail,
+		});
+		this.eventRelay.emit('community-package-installed', {
+			user: req.user,
+			inputString: name,
+			packageName: parsed.packageName,
+			success: true,
+			packageVersion: parsed.version,
+			packageNodeNames: installedPackage.installedNodes.map((node) => node.name),
+			packageAuthor: installedPackage.authorName,
+			packageAuthorEmail: installedPackage.authorEmail,
 		});
 
 		return installedPackage;
@@ -233,6 +253,14 @@ export class CommunityPackagesController {
 			package_author: installedPackage.authorName,
 			package_author_email: installedPackage.authorEmail,
 		});
+		this.eventRelay.emit('community-package-deleted', {
+			user: req.user,
+			packageName: name,
+			packageVersion: installedPackage.installedVersion,
+			packageNodeNames: installedPackage.installedNodes.map((node) => node.name),
+			packageAuthor: installedPackage.authorName,
+			packageAuthorEmail: installedPackage.authorEmail,
+		});
 	}
 
 	@Patch('/')
@@ -280,6 +308,15 @@ export class CommunityPackagesController {
 				package_node_names: newInstalledPackage.installedNodes.map((node) => node.name),
 				package_author: newInstalledPackage.authorName,
 				package_author_email: newInstalledPackage.authorEmail,
+			});
+			this.eventRelay.emit('community-package-updated', {
+				user: req.user,
+				packageName: name,
+				packageVersionCurrent: previouslyInstalledPackage.installedVersion,
+				packageVersionNew: newInstalledPackage.installedVersion,
+				packageNodeNames: newInstalledPackage.installedNodes.map((n) => n.name),
+				packageAuthor: newInstalledPackage.authorName,
+				packageAuthorEmail: newInstalledPackage.authorEmail,
 			});
 
 			return newInstalledPackage;

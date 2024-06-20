@@ -12,11 +12,14 @@ import {
 } from '../shared/db/workflows';
 import {
 	createErrorExecution,
+	createExecution,
 	createManyExecutions,
 	createSuccessfulExecution,
 	createWaitingExecution,
 } from '../shared/db/executions';
 import type { SuperAgentTest } from '../shared/types';
+import { mockInstance } from '@test/mocking';
+import { Telemetry } from '@/telemetry';
 
 let owner: User;
 let user1: User;
@@ -25,6 +28,8 @@ let authOwnerAgent: SuperAgentTest;
 let authUser1Agent: SuperAgentTest;
 let authUser2Agent: SuperAgentTest;
 let workflowRunner: ActiveWorkflowManager;
+
+mockInstance(Telemetry);
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
@@ -119,6 +124,49 @@ describe('GET /executions/:id', () => {
 		const response = await authUser1Agent.get(`/executions/${execution.id}`);
 
 		expect(response.statusCode).toBe(200);
+	});
+
+	test('member should not be able to fetch custom data when includeData is not set', async () => {
+		const workflow = await createWorkflow({}, user1);
+		const execution = await createExecution(
+			{
+				finished: true,
+				status: 'success',
+				metadata: [
+					{ key: 'test1', value: 'value1' },
+					{ key: 'test2', value: 'value2' },
+				],
+			},
+			workflow,
+		);
+
+		const response = await authUser1Agent.get(`/executions/${execution.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.customData).toBeUndefined();
+	});
+
+	test('member should be able to fetch custom data when includeData=true', async () => {
+		const workflow = await createWorkflow({}, user1);
+		const execution = await createExecution(
+			{
+				finished: true,
+				status: 'success',
+				metadata: [
+					{ key: 'test1', value: 'value1' },
+					{ key: 'test2', value: 'value2' },
+				],
+			},
+			workflow,
+		);
+
+		const response = await authUser1Agent.get(`/executions/${execution.id}?includeData=true`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.customData).toEqual({
+			test1: 'value1',
+			test2: 'value2',
+		});
 	});
 
 	test('member should not get an execution of another user without the workflow being shared', async () => {
@@ -225,6 +273,61 @@ describe('GET /executions', () => {
 		expect(stoppedAt).not.toBeNull();
 		expect(workflowId).toBe(successfulExecution.workflowId);
 		expect(waitTill).toBeNull();
+	});
+
+	test('should paginate two executions', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		const firstSuccessfulExecution = await createSuccessfulExecution(workflow);
+		const secondSuccessfulExecution = await createSuccessfulExecution(workflow);
+
+		await createErrorExecution(workflow);
+
+		const firstExecutionResponse = await authOwnerAgent.get('/executions').query({
+			status: 'success',
+			limit: 1,
+		});
+
+		expect(firstExecutionResponse.statusCode).toBe(200);
+		expect(firstExecutionResponse.body.data.length).toBe(1);
+		expect(firstExecutionResponse.body.nextCursor).toBeDefined();
+
+		const secondExecutionResponse = await authOwnerAgent.get('/executions').query({
+			status: 'success',
+			limit: 1,
+			cursor: firstExecutionResponse.body.nextCursor,
+		});
+
+		expect(secondExecutionResponse.statusCode).toBe(200);
+		expect(secondExecutionResponse.body.data.length).toBe(1);
+		expect(secondExecutionResponse.body.nextCursor).toBeNull();
+
+		const successfulExecutions = [firstSuccessfulExecution, secondSuccessfulExecution];
+		const executions = [...firstExecutionResponse.body.data, ...secondExecutionResponse.body.data];
+
+		for (let i = 0; i < executions.length; i++) {
+			const {
+				id,
+				finished,
+				mode,
+				retryOf,
+				retrySuccessId,
+				startedAt,
+				stoppedAt,
+				workflowId,
+				waitTill,
+			} = executions[i];
+
+			expect(id).toBeDefined();
+			expect(finished).toBe(true);
+			expect(mode).toEqual(successfulExecutions[i].mode);
+			expect(retrySuccessId).toBeNull();
+			expect(retryOf).toBeNull();
+			expect(startedAt).not.toBeNull();
+			expect(stoppedAt).not.toBeNull();
+			expect(workflowId).toBe(successfulExecutions[i].workflowId);
+			expect(waitTill).toBeNull();
+		}
 	});
 
 	test('should retrieve all error executions', async () => {

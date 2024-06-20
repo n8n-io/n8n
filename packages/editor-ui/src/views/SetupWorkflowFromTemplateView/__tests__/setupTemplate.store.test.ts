@@ -1,11 +1,70 @@
+import { setActivePinia } from 'pinia';
+import { createTestingPinia } from '@pinia/testing';
+import { mock } from 'vitest-mock-extended';
+import type { ICredentialType } from 'n8n-workflow';
+
+import type {
+	ICredentialsResponse,
+	ITemplatesWorkflowFull,
+	IWorkflowTemplateNode,
+} from '@/Interface';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { keyFromCredentialTypeAndName } from '@/utils/templates/templateTransforms';
 import { useSetupTemplateStore } from '@/views/SetupWorkflowFromTemplateView/setupTemplate.store';
-import { setActivePinia } from 'pinia';
-import * as testData from './setupTemplate.store.testData';
-import { createTestingPinia } from '@pinia/testing';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+
+import {
+	nodeTypeHttpRequest,
+	nodeTypeNextCloud,
+	nodeTypeReadImap,
+	nodeTypeTelegram,
+	nodeTypeTwitter,
+} from '@/utils/testData/nodeTypeTestData';
+import * as testData from './setupTemplate.store.testData';
+
+const mockCredentialsResponse = (id: string) =>
+	mock<ICredentialsResponse>({
+		id,
+		name: 'Telegram account',
+		type: 'telegramApi',
+	});
+
+const mockCredentialType = (name: string) => mock<ICredentialType>({ name });
+
+const mockTemplateNode = (name: string, type: string) =>
+	mock<IWorkflowTemplateNode>({
+		name,
+		type,
+		typeVersion: 1,
+		position: [0, 0],
+	});
+
+const testTemplate1 = mock<ITemplatesWorkflowFull>({
+	id: 1,
+	workflow: {
+		nodes: [
+			mockTemplateNode('IMAP Email', 'n8n-nodes-base.emailReadImap'),
+			mockTemplateNode('Nextcloud', 'n8n-nodes-base.nextCloud'),
+		],
+	},
+	full: true,
+});
+
+const testTemplate2 = mock<ITemplatesWorkflowFull>({
+	id: 2,
+	workflow: {
+		nodes: [
+			{
+				...mockTemplateNode('Telegram', 'n8n-nodes-base.telegram'),
+				credentials: {
+					telegramApi: 'telegram_habot',
+				},
+			},
+		],
+	},
+	full: true,
+});
 
 describe('SetupWorkflowFromTemplateView store', () => {
 	describe('setInitialCredentialsSelection', () => {
@@ -17,18 +76,13 @@ describe('SetupWorkflowFromTemplateView store', () => {
 			);
 
 			const credentialsStore = useCredentialsStore();
-			credentialsStore.setCredentialTypes([testData.credentialTypeTelegram]);
+			credentialsStore.setCredentialTypes([mockCredentialType('telegramApi')]);
 			const templatesStore = useTemplatesStore();
-			templatesStore.addWorkflows([testData.fullShopifyTelegramTwitterTemplate]);
+			templatesStore.addWorkflows([testTemplate2]);
 			const nodeTypesStore = useNodeTypesStore();
-			nodeTypesStore.setNodeTypes([
-				testData.nodeTypeTelegramV1,
-				testData.nodeTypeTwitterV1,
-				testData.nodeTypeShopifyTriggerV1,
-				testData.nodeTypeHttpRequestV1,
-			]);
+			nodeTypesStore.setNodeTypes([nodeTypeTelegram, nodeTypeTwitter, nodeTypeHttpRequest]);
 			const setupTemplateStore = useSetupTemplateStore();
-			setupTemplateStore.setTemplateId(testData.fullShopifyTelegramTwitterTemplate.id.toString());
+			setupTemplateStore.setTemplateId(testTemplate2.id.toString());
 		});
 
 		it("should select no credentials when there isn't any available", () => {
@@ -43,8 +97,9 @@ describe('SetupWorkflowFromTemplateView store', () => {
 
 		it("should select credential when there's only one", () => {
 			// Setup
+			const credentialId = 'YaSKdvEcT1TSFrrr1';
 			const credentialsStore = useCredentialsStore();
-			credentialsStore.setCredentials([testData.credentialsTelegram1]);
+			credentialsStore.setCredentials([mockCredentialsResponse(credentialId)]);
 
 			const setupTemplateStore = useSetupTemplateStore();
 
@@ -52,17 +107,14 @@ describe('SetupWorkflowFromTemplateView store', () => {
 			setupTemplateStore.setInitialCredentialSelection();
 
 			expect(setupTemplateStore.selectedCredentialIdByKey).toEqual({
-				[keyFromCredentialTypeAndName('telegramApi', 'telegram_habot')]: 'YaSKdvEcT1TSFrrr1',
+				[keyFromCredentialTypeAndName('telegramApi', 'telegram_habot')]: credentialId,
 			});
 		});
 
 		it('should select no credentials when there are more than 1 available', () => {
 			// Setup
 			const credentialsStore = useCredentialsStore();
-			credentialsStore.setCredentials([
-				testData.credentialsTelegram1,
-				testData.credentialsTelegram2,
-			]);
+			credentialsStore.setCredentials([mockCredentialsResponse('1'), mockCredentialsResponse('2')]);
 
 			const setupTemplateStore = useSetupTemplateStore();
 
@@ -83,7 +135,7 @@ describe('SetupWorkflowFromTemplateView store', () => {
 		])('should not auto-select credentials for %s', (credentialType, auth) => {
 			// Setup
 			const credentialsStore = useCredentialsStore();
-			credentialsStore.setCredentialTypes([testData.newCredentialType(credentialType)]);
+			credentialsStore.setCredentialTypes([mockCredentialType(credentialType)]);
 			credentialsStore.setCredentials([
 				testData.newCredential({
 					name: `${credentialType}Credential`,
@@ -93,6 +145,7 @@ describe('SetupWorkflowFromTemplateView store', () => {
 
 			const templatesStore = useTemplatesStore();
 			const workflow = testData.newFullOneNodeTemplate({
+				id: 'workflow',
 				name: 'Test',
 				type: 'n8n-nodes-base.httpRequest',
 				typeVersion: 1,
@@ -127,24 +180,17 @@ describe('SetupWorkflowFromTemplateView store', () => {
 
 			// Setup
 			const credentialsStore = useCredentialsStore();
-			credentialsStore.setCredentialTypes([testData.credentialTypeTelegram]);
+			credentialsStore.setCredentialTypes([mockCredentialType('telegramApi')]);
 			const templatesStore = useTemplatesStore();
-			templatesStore.addWorkflows([testData.fullSaveEmailAttachmentsToNextCloudTemplate]);
+			templatesStore.addWorkflows([testTemplate1]);
 			const nodeTypesStore = useNodeTypesStore();
-			nodeTypesStore.setNodeTypes([
-				testData.nodeTypeReadImapV1,
-				testData.nodeTypeReadImapV2,
-				testData.nodeTypeNextCloudV1,
-			]);
+			nodeTypesStore.setNodeTypes([nodeTypeReadImap, nodeTypeNextCloud]);
 			const setupTemplateStore = useSetupTemplateStore();
-			setupTemplateStore.setTemplateId(
-				testData.fullSaveEmailAttachmentsToNextCloudTemplate.id.toString(),
-			);
+			setupTemplateStore.setTemplateId(testTemplate1.id.toString());
 		});
 
-		const templateImapNode = testData.fullSaveEmailAttachmentsToNextCloudTemplate.workflow.nodes[0];
-		const templateNextcloudNode =
-			testData.fullSaveEmailAttachmentsToNextCloudTemplate.workflow.nodes[1];
+		const templateImapNode = testTemplate1.workflow.nodes[0];
+		const templateNextcloudNode = testTemplate1.workflow.nodes[1];
 
 		it('should return correct credential usages', () => {
 			const setupTemplateStore = useSetupTemplateStore();

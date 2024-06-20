@@ -148,7 +148,7 @@ import type { DynamicNodeParameters, IResourceLocatorResultExpanded } from '@/In
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -243,7 +243,6 @@ export default defineComponent({
 		},
 		node: {
 			type: Object as PropType<INode>,
-			required: true,
 		},
 		path: {
 			type: String,
@@ -308,7 +307,8 @@ export default defineComponent({
 			return !!(node?.credentials && Object.keys(node.credentials).length === 1);
 		},
 		credentialsNotSet(): boolean {
-			const nodeType = this.nodeTypesStore.getNodeType(this.node?.type);
+			if (!this.node) return false;
+			const nodeType = this.nodeTypesStore.getNodeType(this.node.type);
 			if (nodeType) {
 				const usesCredentials =
 					nodeType.credentials !== undefined && nodeType.credentials.length > 0;
@@ -387,8 +387,8 @@ export default defineComponent({
 			filter: string;
 		} {
 			return {
-				parameters: this.node.parameters,
-				credentials: this.node.credentials,
+				parameters: this.node?.parameters ?? {},
+				credentials: this.node?.credentials ?? {},
 				filter: this.searchFilter,
 			};
 		},
@@ -410,7 +410,7 @@ export default defineComponent({
 			return this.cachedResponses[this.currentRequestKey] || null;
 		},
 		currentQueryResults(): IResourceLocatorResultExpanded[] {
-			const results = this.currentResponse ? this.currentResponse.results : [];
+			const results = this.currentResponse?.results ?? [];
 
 			return results.map(
 				(result: INodeListSearchItems): IResourceLocatorResultExpanded => ({
@@ -486,7 +486,7 @@ export default defineComponent({
 		this.eventBus.on('refreshList', this.refreshList);
 		window.addEventListener('resize', this.setWidth);
 
-		useNDVStore().$subscribe((mutation, state) => {
+		useNDVStore().$subscribe((_mutation, _state) => {
 			// Update the width when main panel dimension change
 			this.setWidth();
 		});
@@ -561,7 +561,8 @@ export default defineComponent({
 			this.uiStore.openExistingCredential(id);
 		},
 		createNewCredential(): void {
-			const nodeType = this.nodeTypesStore.getNodeType(this.node?.type);
+			if (!this.node) return;
+			const nodeType = this.nodeTypesStore.getNodeType(this.node.type);
 			if (!nodeType) {
 				return;
 			}
@@ -647,6 +648,11 @@ export default defineComponent({
 			}
 		},
 		loadResourcesDebounced() {
+			if (this.currentResponse?.error) {
+				// Clear error response immediately when retrying to show loading state
+				delete this.cachedResponses[this.currentRequestKey];
+			}
+
 			void this.callDebounced(this.loadResources, {
 				debounceTime: 1000,
 				trailing: true,
@@ -663,7 +669,16 @@ export default defineComponent({
 			const paramsKey = this.currentRequestKey;
 			const cachedResponse = this.cachedResponses[paramsKey];
 
+			if (this.credentialsNotSet) {
+				this.setResponse(paramsKey, { error: true });
+				return;
+			}
+
 			if (this.requiresSearchFilter && !params.filter) {
+				return;
+			}
+
+			if (!this.node) {
 				return;
 			}
 

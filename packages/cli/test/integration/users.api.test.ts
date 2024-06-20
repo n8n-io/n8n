@@ -27,7 +27,9 @@ import * as testDb from './shared/testDb';
 import { mockInstance } from '../shared/mocking';
 import type { SuperAgentTest } from './shared/types';
 import { createTeamProject, getPersonalProject, linkUserToProject } from './shared/db/projects';
+import { Telemetry } from '@/telemetry';
 
+mockInstance(Telemetry);
 mockInstance(ExecutionService);
 
 const testServer = utils.setupTestServer({
@@ -912,7 +914,7 @@ describe('PATCH /users/:id/role', () => {
 			createTeamProject(),
 		]);
 
-		const [credential1, credential2, credential3] = await Promise.all([
+		await Promise.all([
 			saveCredential(randomCredentialPayload(), {
 				user,
 				role: 'credential:owner',

@@ -63,7 +63,7 @@ const styles = computed(() => {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background: var(--canvas-node--background, var(--color-canvas-node-background));
+	background: var(--canvas-node--background, var(--color-node-background));
 	border: 2px solid var(--canvas-node--border-color, var(--color-foreground-xdark));
 	border-radius: var(--border-radius-large);
 }

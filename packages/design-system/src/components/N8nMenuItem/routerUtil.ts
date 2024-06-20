@@ -1,4 +1,4 @@
-import type { IMenuItem } from '@/types';
+import type { IMenuItem } from 'n8n-design-system/types';
 import type { RouteLocationNormalizedLoaded, RouteLocationRaw } from 'vue-router';
 
 /**

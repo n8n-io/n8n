@@ -10,7 +10,8 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 import { prepareFieldsArray } from '../utils/utils';
-import { compareItems, flattenKeys } from './utils';
+import { validateInputData } from './utils';
+import { compareItems, flattenKeys } from '@utils/utilities';
 
 export class RemoveDuplicates implements INodeType {
 	description: INodeTypeDescription = {
@@ -19,7 +20,7 @@ export class RemoveDuplicates implements INodeType {
 		icon: 'file:removeDuplicates.svg',
 		group: ['transform'],
 		subtitle: '',
-		version: 1,
+		version: [1, 1.1],
 		description: 'Delete items with matching field values',
 		defaults: {
 			name: 'Remove Duplicates',
@@ -205,43 +206,13 @@ export class RemoveDuplicates implements INodeType {
 			return result;
 		});
 
-		for (const key of keys) {
-			let type: any = undefined;
-			for (const item of newItems) {
-				if (key === '') {
-					throw new NodeOperationError(this.getNode(), 'Name of field to compare is blank');
-				}
-				const value = !disableDotNotation ? get(item.json, key) : item.json[key];
-				if (value === undefined && disableDotNotation && key.includes('.')) {
-					throw new NodeOperationError(
-						this.getNode(),
-						`'${key}' field is missing from some input items`,
-						{
-							description:
-								"If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options",
-						},
-					);
-				} else if (value === undefined) {
-					throw new NodeOperationError(
-						this.getNode(),
-						`'${key}' field is missing from some input items`,
-					);
-				}
-				if (type !== undefined && value !== undefined && type !== typeof value) {
-					throw new NodeOperationError(this.getNode(), `'${key}' isn't always the same type`, {
-						description: 'The type of this field varies between items',
-					});
-				} else {
-					type = typeof value;
-				}
-			}
-		}
+		validateInputData(this.getNode(), newItems, keys, disableDotNotation);
 
 		// collect the original indexes of items to be removed
 		const removedIndexes: number[] = [];
 		let temp = newItems[0];
 		for (let index = 1; index < newItems.length; index++) {
-			if (compareItems(newItems[index], temp, keys, disableDotNotation, this.getNode())) {
+			if (compareItems(newItems[index], temp, keys, disableDotNotation)) {
 				removedIndexes.push(newItems[index].json.__INDEX as unknown as number);
 			} else {
 				temp = newItems[index];

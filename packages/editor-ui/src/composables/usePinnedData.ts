@@ -8,15 +8,14 @@ import {
 	MAX_WORKFLOW_SIZE,
 	PIN_DATA_NODE_TYPES_DENYLIST,
 } from '@/constants';
-import { stringSizeInBytes } from '@/utils/typesUtils';
+import { stringSizeInBytes, toMegaBytes } from '@/utils/typesUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { INodeUi, IRunDataDisplayMode } from '@/Interface';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { MaybeRef } from 'vue';
 import { computed, unref } from 'vue';
-import { useRootStore } from '@/stores/n8nRoot.store';
-import { storeToRefs } from 'pinia';
+import { useRootStore } from '@/stores/root.store';
 import { useNodeType } from '@/composables/useNodeType';
 import { useDataSchema } from './useDataSchema';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -52,7 +51,6 @@ export function usePinnedData(
 	const externalHooks = useExternalHooks();
 	const { getInputDataWithPinned } = useDataSchema();
 
-	const { pushRef } = storeToRefs(rootStore);
 	const { isSubNodeType, isMultipleOutputsNodeType } = useNodeType({
 		node,
 	});
@@ -158,19 +156,29 @@ export function usePinnedData(
 
 		if (newPinDataSize > MAX_PINNED_DATA_SIZE) {
 			toast.showError(
-				new Error(i18n.baseText('ndv.pinData.error.tooLarge.description')),
+				new Error(
+					i18n.baseText('ndv.pinData.error.tooLarge.description', {
+						interpolate: {
+							size: toMegaBytes(newPinDataSize),
+							limit: toMegaBytes(MAX_PINNED_DATA_SIZE),
+						},
+					}),
+				),
 				i18n.baseText('ndv.pinData.error.tooLarge.title'),
 			);
 
 			return false;
 		}
 
-		if (
-			stringSizeInBytes(workflowJson) + newPinDataSize >
-			MAX_WORKFLOW_SIZE - MAX_EXPECTED_REQUEST_SIZE
-		) {
+		const workflowSize = stringSizeInBytes(workflowJson) + newPinDataSize;
+		const limit = MAX_WORKFLOW_SIZE - MAX_EXPECTED_REQUEST_SIZE;
+		if (workflowSize > limit) {
 			toast.showError(
-				new Error(i18n.baseText('ndv.pinData.error.tooLargeWorkflow.description')),
+				new Error(
+					i18n.baseText('ndv.pinData.error.tooLargeWorkflow.description', {
+						interpolate: { size: toMegaBytes(workflowSize), limit: toMegaBytes(limit) },
+					}),
+				),
 				i18n.baseText('ndv.pinData.error.tooLargeWorkflow.title'),
 			);
 
@@ -187,7 +195,7 @@ export function usePinnedData(
 		const telemetryPayload = {
 			pinning_source: source,
 			node_type: targetNode?.type,
-			push_ref: pushRef.value,
+			push_ref: rootStore.pushRef,
 			data_size: stringSizeInBytes(data.value),
 			view: displayMode,
 			run_index: runIndex,
@@ -211,7 +219,7 @@ export function usePinnedData(
 		telemetry.track('Ndv data pinning failure', {
 			pinning_source: source,
 			node_type: targetNode?.type,
-			push_ref: pushRef.value,
+			push_ref: rootStore.pushRef,
 			data_size: stringSizeInBytes(data.value),
 			view: displayMode,
 			run_index: runIndex,
@@ -249,7 +257,7 @@ export function usePinnedData(
 
 		telemetry.track('User unpinned ndv data', {
 			node_type: targetNode?.type,
-			push_ref: pushRef.value,
+			push_ref: rootStore.pushRef,
 			run_index: runIndex,
 			source,
 			data_size: stringSizeInBytes(data.value),

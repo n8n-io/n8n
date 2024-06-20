@@ -1,12 +1,19 @@
 import { Container } from 'typedi';
+import type { FlowResult } from 'samlify/types/src/flow';
+import { randomString } from 'n8n-workflow';
+
 import config from '@/config';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
 import type { User } from '@db/entities/User';
+import { UserRepository } from '@db/repositories/user.repository';
+import { AuthIdentityRepository } from '@db/repositories/authIdentity.repository';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { AuthError } from '@/errors/response-errors/auth.error';
 import { License } from '@/License';
 import { PasswordUtility } from '@/services/password.utility';
+
 import type { SamlPreferences } from './types/samlPreferences';
 import type { SamlUserAttributes } from './types/samlUserAttributes';
-import type { FlowResult } from 'samlify/types/src/flow';
 import type { SamlAttributeMapping } from './types/samlAttributeMapping';
 import { SAML_LOGIN_ENABLED, SAML_LOGIN_LABEL } from './constants';
 import {
@@ -17,10 +24,6 @@ import {
 } from '../ssoHelpers';
 import { getServiceProviderConfigTestReturnUrl } from './serviceProvider.ee';
 import type { SamlConfiguration } from './types/requests';
-import { UserRepository } from '@db/repositories/user.repository';
-import { AuthIdentityRepository } from '@db/repositories/authIdentity.repository';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { AuthError } from '@/errors/response-errors/auth.error';
 
 /**
  *  Check whether the SAML feature is licensed and enabled in the instance
@@ -73,39 +76,18 @@ export const isSamlPreferences = (candidate: unknown): candidate is SamlPreferen
 	);
 };
 
-export function generatePassword(): string {
-	const length = 18;
-	const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-	const charsetNoNumbers = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-	const randomNumber = Math.floor(Math.random() * 10);
-	const randomUpper = charset.charAt(Math.floor(Math.random() * charsetNoNumbers.length));
-	const randomNumberPosition = Math.floor(Math.random() * length);
-	const randomUpperPosition = Math.floor(Math.random() * length);
-	let password = '';
-	for (let i = 0, n = charset.length; i < length; ++i) {
-		password += charset.charAt(Math.floor(Math.random() * n));
-	}
-	password =
-		password.substring(0, randomNumberPosition) +
-		randomNumber.toString() +
-		password.substring(randomNumberPosition);
-	password =
-		password.substring(0, randomUpperPosition) +
-		randomUpper +
-		password.substring(randomUpperPosition);
-	return password;
-}
-
 export async function createUserFromSamlAttributes(attributes: SamlUserAttributes): Promise<User> {
-	return await Container.get(UserRepository).manager.transaction(async (trx) => {
-		const { user } = await Container.get(UserRepository).createUserWithProject(
+	const randomPassword = randomString(18);
+	const userRepository = Container.get(UserRepository);
+	return await userRepository.manager.transaction(async (trx) => {
+		const { user } = await userRepository.createUserWithProject(
 			{
 				email: attributes.email.toLowerCase(),
 				firstName: attributes.firstName,
 				lastName: attributes.lastName,
 				role: 'global:member',
 				// generates a password that is not used or known to the user
-				password: await Container.get(PasswordUtility).hash(generatePassword()),
+				password: await Container.get(PasswordUtility).hash(randomPassword),
 			},
 			trx,
 		);

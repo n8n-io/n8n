@@ -1,7 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { CliWorkflowOperationError, SubworkflowOperationError } from 'n8n-workflow';
 import type { INode } from 'n8n-workflow';
-import { STARTING_NODES } from './constants';
+import { STARTING_NODES } from '@/constants';
 
 /**
  * Returns if the given id is a valid workflow id
@@ -91,4 +90,6 @@ export function rightDiff<T1, T2>(
  * Can be used to make sure the type is exhausted
  * in switch statements or if/else chains.
  */
-export const assertNever = (value: never) => {};
+export const assertNever = (_value: never) => {};
+
+export const isPositiveInteger = (maybeInt: string) => /^[1-9]\d*$/.test(maybeInt);

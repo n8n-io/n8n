@@ -18,6 +18,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalHooks } from '@/InternalHooks';
 import { ExternalHooks } from '@/ExternalHooks';
+import { EventRelay } from '@/eventbus/event-relay.service';
 
 @RestController('/invitations')
 export class InvitationController {
@@ -31,13 +32,14 @@ export class InvitationController {
 		private readonly passwordUtility: PasswordUtility,
 		private readonly userRepository: UserRepository,
 		private readonly postHog: PostHogClient,
+		private readonly eventRelay: EventRelay,
 	) {}
 
 	/**
 	 * Send email invite(s) to one or multiple users and create user shell(s).
 	 */
 
-	@Post('/')
+	@Post('/', { rateLimit: { limit: 10 } })
 	@GlobalScope('user:create')
 	async inviteUser(req: UserRequest.Invite) {
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
@@ -170,6 +172,7 @@ export class InvitationController {
 			user_type: 'email',
 			was_disabled_ldap_user: false,
 		});
+		this.eventRelay.emit('user-signed-up', { user: updatedUser });
 
 		const publicInvitee = await this.userService.toPublic(invitee);
 
