@@ -1,9 +1,10 @@
 import { NodeVM } from '@n8n/vm2';
-import { type IExecuteFunctions, type INodeExecutionData, NodeOperationError } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import { NodeOperationError, randomInt } from 'n8n-workflow';
 
 export const shuffleArray = (array: any[]) => {
 	for (let i = array.length - 1; i > 0; i--) {
-		const j = Math.floor(Math.random() * (i + 1));
+		const j = randomInt(i + 1);
 		[array[i], array[j]] = [array[j], array[i]];
 	}
 };

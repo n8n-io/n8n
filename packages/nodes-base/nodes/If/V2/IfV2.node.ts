@@ -101,7 +101,7 @@ export class IfV2 implements INodeType {
 					falseItems.push(item);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					falseItems.push(item);
 				} else {
 					throw error;

@@ -179,7 +179,7 @@ return item;`,
 						__dirname,
 					);
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						returnData.push({ json: { error: error.message } });
 						continue;
 					} else {
@@ -226,7 +226,7 @@ return item;`,
 
 				returnData.push(returnItem);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({
 						json: {
 							error: error.message,

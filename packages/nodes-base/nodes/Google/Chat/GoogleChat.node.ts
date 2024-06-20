@@ -538,7 +538,7 @@ export class GoogleChat implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					// Return the actual reason as error
 					if (operation === 'download') {
 						items[i].json = { error: error.message };

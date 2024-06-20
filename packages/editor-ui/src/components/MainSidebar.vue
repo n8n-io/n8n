@@ -273,7 +273,7 @@ export default defineComponent({
 				{
 					id: 'help',
 					icon: 'question',
-					label: 'Help',
+					label: this.$locale.baseText('mainSidebar.help'),
 					position: 'bottom',
 					children: [
 						{
