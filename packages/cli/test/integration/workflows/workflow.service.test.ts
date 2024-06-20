@@ -38,6 +38,7 @@ beforeAll(async () => {
 		mock(),
 		mock(),
 		mock(),
+		mock(),
 	);
 });
 
