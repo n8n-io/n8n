@@ -6,7 +6,7 @@
   "homepage": "https://n8n.io",
   "repository": {
     "type": "git",
-    "url": "https://github.com/n8n-io/n8n-nodes-langchain.git"
+    "url": "git+https://github.com/n8n-io/n8n.git"
   },
   "main": "index.js",
   "scripts": {
