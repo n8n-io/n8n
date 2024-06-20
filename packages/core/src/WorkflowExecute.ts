@@ -44,6 +44,7 @@ import {
 	ApplicationError,
 	NodeExecutionOutput,
 	sleep,
+	OBFUSCATED_ERROR_MESSAGE,
 } from 'n8n-workflow';
 import get from 'lodash/get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
@@ -1304,13 +1305,12 @@ export class WorkflowExecute {
 						} catch (error) {
 							this.runExecutionData.resultData.lastNodeExecuted = executionData.node.name;
 
+							const message =
+								error instanceof ApplicationError ? error.message : OBFUSCATED_ERROR_MESSAGE;
+
 							const e = error as unknown as ExecutionBaseError;
 
-							executionError = {
-								...e,
-								message: e.message,
-								stack: e.stack,
-							};
+							executionError = { ...e, message, stack: e.stack };
 
 							Logger.debug(`Running node "${executionNode.name}" finished with error`, {
 								node: executionNode.name,

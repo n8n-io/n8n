@@ -142,7 +142,7 @@ export async function sqlAgentAgentExecute(
 
 			returnData.push({ json: response });
 		} catch (error) {
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(error)) {
 				returnData.push({ json: { error: error.message }, pairedItem: { item: i } });
 				continue;
 			}

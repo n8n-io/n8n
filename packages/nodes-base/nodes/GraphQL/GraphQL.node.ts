@@ -509,7 +509,7 @@ export class GraphQL implements INodeType {
 					throw new NodeApiError(this.getNode(), response.errors as JsonObject, { message });
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const errorData = this.helpers.returnJsonArray({
 						$error: error,
 						json: this.getInputData(itemIndex),
