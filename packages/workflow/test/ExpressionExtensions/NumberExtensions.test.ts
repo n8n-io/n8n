@@ -77,6 +77,12 @@ describe('Data Transformation Functions', () => {
 					'2015-05-19T20:00:00.000-04:00',
 				);
 			});
+
+			test('from microseconds', () => {
+				expect(evaluate('={{ (1704085200000000).toDateTime("us").toISO() }}')).toEqual(
+					'2024-01-01T00:00:00.000-05:00',
+				);
+			});
 		});
 
 		describe('toInt', () => {

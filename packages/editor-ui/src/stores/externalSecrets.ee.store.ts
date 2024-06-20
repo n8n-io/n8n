@@ -1,7 +1,7 @@
 import { computed, reactive } from 'vue';
 import { defineStore } from 'pinia';
 import { EnterpriseEditionFeature } from '@/constants';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import * as externalSecretsApi from '@/api/externalSecrets.ee';
 import { connectProvider } from '@/api/externalSecrets.ee';
@@ -67,7 +67,7 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 	async function fetchAllSecrets() {
 		if (rbacStore.hasScope('externalSecret:list')) {
 			try {
-				state.secrets = await externalSecretsApi.getExternalSecrets(rootStore.getRestApiContext);
+				state.secrets = await externalSecretsApi.getExternalSecrets(rootStore.restApiContext);
 			} catch (error) {
 				state.secrets = {};
 			}
@@ -75,7 +75,7 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 	}
 
 	async function reloadProvider(id: string) {
-		const { updated } = await externalSecretsApi.reloadProvider(rootStore.getRestApiContext, id);
+		const { updated } = await externalSecretsApi.reloadProvider(rootStore.restApiContext, id);
 		if (updated) {
 			await fetchAllSecrets();
 		}
@@ -85,13 +85,13 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 
 	async function getProviders() {
 		state.providers = await externalSecretsApi.getExternalSecretsProviders(
-			rootStore.getRestApiContext,
+			rootStore.restApiContext,
 		);
 	}
 
 	async function testProviderConnection(id: string, data: ExternalSecretsProvider['data']) {
 		return await externalSecretsApi.testExternalSecretsProviderConnection(
-			rootStore.getRestApiContext,
+			rootStore.restApiContext,
 			id,
 			data,
 		);
@@ -99,7 +99,7 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 
 	async function getProvider(id: string) {
 		const provider = await externalSecretsApi.getExternalSecretsProvider(
-			rootStore.getRestApiContext,
+			rootStore.restApiContext,
 			id,
 		);
 
@@ -130,13 +130,13 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 	}
 
 	async function updateProviderConnected(id: string, value: boolean) {
-		await connectProvider(rootStore.getRestApiContext, id, value);
+		await connectProvider(rootStore.restApiContext, id, value);
 		await fetchAllSecrets();
 		updateStoredProvider(id, { connected: value, state: value ? 'connected' : 'initializing' });
 	}
 
 	async function updateProvider(id: string, { data }: Partial<ExternalSecretsProvider>) {
-		await externalSecretsApi.updateProvider(rootStore.getRestApiContext, id, data);
+		await externalSecretsApi.updateProvider(rootStore.restApiContext, id, data);
 		await fetchAllSecrets();
 		updateStoredProvider(id, { data });
 	}

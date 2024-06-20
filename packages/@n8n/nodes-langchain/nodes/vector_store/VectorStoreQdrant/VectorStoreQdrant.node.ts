@@ -46,7 +46,7 @@ export const VectorStoreQdrant = createVectorStoreNode({
 	methods: { listSearch: { qdrantCollectionsSearch } },
 	insertFields,
 	sharedFields,
-	async getVectorStoreClient(context, filter, embeddings, itemIndex) {
+	async getVectorStoreClient(context, _, embeddings, itemIndex) {
 		const collection = context.getNodeParameter('qdrantCollection', itemIndex, '', {
 			extractValue: true,
 		}) as string;

@@ -1,4 +1,5 @@
 import nock from 'nock';
+import type { IHttpRequestMethods } from 'n8n-workflow';
 
 import * as list from '../../../../v2/actions/drive/list.operation';
 
@@ -33,7 +34,7 @@ describe('test GoogleDriveV2: drive list', () => {
 		jest.unmock('../../../../v2/transport');
 	});
 
-	it('shuold be called with limit', async () => {
+	it('should be called with limit', async () => {
 		const nodeParameters = {
 			resource: 'drive',
 			operation: 'list',
@@ -54,7 +55,7 @@ describe('test GoogleDriveV2: drive list', () => {
 		);
 	});
 
-	it('shuold be called with returnAll true', async () => {
+	it('should be called with returnAll true', async () => {
 		const nodeParameters = {
 			resource: 'drive',
 			operation: 'list',

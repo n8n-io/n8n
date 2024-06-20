@@ -1,20 +1,27 @@
-import { defineComponent } from 'vue';
 import type { Diagnostic } from '@codemirror/lint';
 import { linter as createLinter } from '@codemirror/lint';
 import type { EditorView } from '@codemirror/view';
 import * as esprima from 'esprima-next';
 import type { Node } from 'estree';
-import type { CodeNodeEditorLanguage } from 'n8n-workflow';
+import type { CodeExecutionMode, CodeNodeEditorLanguage } from 'n8n-workflow';
+import { type PropType, defineComponent } from 'vue';
 
 import {
 	DEFAULT_LINTER_DELAY_IN_MS,
 	DEFAULT_LINTER_SEVERITY,
 	OFFSET_FOR_SCRIPT_WRAPPER,
 } from './constants';
-import { walk } from './utils';
 import type { RangeNode } from './types';
+import { walk } from './utils';
 
 export const linterExtension = defineComponent({
+	props: {
+		mode: {
+			type: String as PropType<CodeExecutionMode>,
+			required: true,
+		},
+		editor: { type: Object as PropType<EditorView | null>, default: null },
+	},
 	methods: {
 		createLinter(language: CodeNodeEditorLanguage) {
 			switch (language) {

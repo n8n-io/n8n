@@ -80,9 +80,9 @@ export interface ResizeData {
 }
 
 const $emit = defineEmits<{
-	(event: 'resizestart');
+	(event: 'resizestart'): void;
 	(event: 'resize', value: ResizeData): void;
-	(event: 'resizeend');
+	(event: 'resizeend'): void;
 }>();
 
 const enabledDirections = computed((): Direction[] => {
@@ -165,7 +165,7 @@ const resizerMove = (event: MouseEvent) => {
 		state.dir.value = targetResizer.dataset.dir.toLocaleLowerCase() as Direction;
 	}
 
-	document.body.style.cursor = directionsCursorMaps[state.dir.value];
+	document.body.style.cursor = directionsCursorMaps[state.dir.value as Direction];
 
 	state.x.value = event.pageX;
 	state.y.value = event.pageY;

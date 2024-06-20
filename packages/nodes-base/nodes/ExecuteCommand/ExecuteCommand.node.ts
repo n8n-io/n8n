@@ -47,6 +47,7 @@ export class ExecuteCommand implements INodeType {
 		displayName: 'Execute Command',
 		name: 'executeCommand',
 		icon: 'fa:terminal',
+		iconColor: 'crimson',
 		group: ['transform'],
 		version: 1,
 		description: 'Executes a command on the host',
@@ -111,7 +112,7 @@ export class ExecuteCommand implements INodeType {
 					},
 				});
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnItems.push({
 						json: {
 							error: error.message,

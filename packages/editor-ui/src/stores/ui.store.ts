@@ -24,7 +24,7 @@ import {
 	PERSONALIZATION_MODAL_KEY,
 	STORES,
 	TAGS_MANAGER_MODAL_KEY,
-	VALUE_SURVEY_MODAL_KEY,
+	NPS_SURVEY_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	VIEWS,
 	WORKFLOW_ACTIVE_MODAL_KEY,
@@ -37,9 +37,10 @@ import {
 	DEBUG_PAYWALL_MODAL_KEY,
 	N8N_PRICING_PAGE_URL,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
-	SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
 	SETUP_CREDENTIALS_MODAL_KEY,
 	GENERATE_CURL_MODAL_KEY,
+	PROJECT_MOVE_RESOURCE_MODAL,
+	PROJECT_MOVE_RESOURCE_CONFIRM_MODAL,
 } from '@/constants';
 import type {
 	CloudUpdateLinkSourceType,
@@ -54,17 +55,17 @@ import type {
 	NewCredentialsModal,
 	ThemeOption,
 	AppliedThemeOption,
-	SuggestedTemplates,
 	NotificationOptions,
 	ModalState,
+	ModalKey,
 } from '@/Interface';
 import { defineStore } from 'pinia';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { getCurlToJson } from '@/api/curlHelper';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { hasPermission } from '@/rbac/permissions';
+import { hasPermission } from '@/utils/rbac/permissions';
 import { useTelemetryStore } from '@/stores/telemetry.store';
 import { useUsersStore } from '@/stores/users.store';
 import { dismissBannerPermanently } from '@/api/ui';
@@ -106,7 +107,7 @@ export const useUIStore = defineStore(STORES.UI, {
 					PERSONALIZATION_MODAL_KEY,
 					INVITE_USER_MODAL_KEY,
 					TAGS_MANAGER_MODAL_KEY,
-					VALUE_SURVEY_MODAL_KEY,
+					NPS_SURVEY_MODAL_KEY,
 					VERSIONS_MODAL_KEY,
 					WORKFLOW_LM_CHAT_MODAL_KEY,
 					WORKFLOW_SETTINGS_MODAL_KEY,
@@ -119,8 +120,9 @@ export const useUIStore = defineStore(STORES.UI, {
 					EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
 					DEBUG_PAYWALL_MODAL_KEY,
 					WORKFLOW_HISTORY_VERSION_RESTORE,
-					SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
 					SETUP_CREDENTIALS_MODAL_KEY,
+					PROJECT_MOVE_RESOURCE_MODAL,
+					PROJECT_MOVE_RESOURCE_CONFIRM_MODAL,
 				].map((modalKey) => [modalKey, { open: false }]),
 			),
 			[DELETE_USER_MODAL_KEY]: {
@@ -190,11 +192,11 @@ export const useUIStore = defineStore(STORES.UI, {
 		addFirstStepOnLoad: false,
 		bannersHeight: 0,
 		bannerStack: [],
-		suggestedTemplates: undefined,
 		// Notifications that should show when a view is initialized
 		// This enables us to set a queue of notifications form outside (another component)
 		// and then show them when the view is initialized
 		pendingNotificationsForViews: {},
+		isCreateNodeActive: false,
 	}),
 	getters: {
 		appliedTheme(): AppliedThemeOption {
@@ -211,7 +213,7 @@ export const useUIStore = defineStore(STORES.UI, {
 			const settingsStore = useSettingsStore();
 			const deploymentType = settingsStore.deploymentType;
 
-			let contextKey = '';
+			let contextKey: '' | '.cloud' | '.desktop' = '';
 			if (deploymentType === 'cloud') {
 				contextKey = '.cloud';
 			} else if (deploymentType === 'desktop_mac' || deploymentType === 'desktop_win') {
@@ -265,7 +267,7 @@ export const useUIStore = defineStore(STORES.UI, {
 						},
 					},
 				},
-			};
+			} as const;
 		},
 		getLastSelectedNode(): INodeUi | null {
 			const workflowsStore = useWorkflowsStore();
@@ -281,19 +283,19 @@ export const useUIStore = defineStore(STORES.UI, {
 			return this.modals[VERSIONS_MODAL_KEY].open;
 		},
 		isModalOpen() {
-			return (name: string) => this.modals[name].open;
+			return (name: ModalKey) => this.modals[name].open;
 		},
 		isModalActive() {
-			return (name: string) => this.modalStack.length > 0 && name === this.modalStack[0];
+			return (name: ModalKey) => this.modalStack.length > 0 && name === this.modalStack[0];
 		},
 		getModalActiveId() {
-			return (name: string) => this.modals[name].activeId;
+			return (name: ModalKey) => this.modals[name].activeId;
 		},
 		getModalMode() {
-			return (name: string) => this.modals[name].mode;
+			return (name: ModalKey) => this.modals[name].mode;
 		},
 		getModalData() {
-			return (name: string) => this.modals[name].data;
+			return (name: ModalKey) => this.modals[name].data;
 		},
 		getFakeDoorByLocation() {
 			return (location: IFakeDoorLocation) =>
@@ -550,7 +552,7 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		async getCurlToJson(curlCommand: string): Promise<CurlToJSONResponse> {
 			const rootStore = useRootStore();
-			const parameters = await getCurlToJson(rootStore.getRestApiContext, curlCommand);
+			const parameters = await getCurlToJson(rootStore.restApiContext, curlCommand);
 
 			// Normalize placeholder values
 			if (parameters['parameters.url']) {
@@ -592,7 +594,7 @@ export const useUIStore = defineStore(STORES.UI, {
 			type: 'temporary' | 'permanent' = 'temporary',
 		): Promise<void> {
 			if (type === 'permanent') {
-				await dismissBannerPermanently(useRootStore().getRestApiContext, {
+				await dismissBannerPermanently(useRootStore().restApiContext, {
 					bannerName: name,
 					dismissedBanners: useSettingsStore().permanentlyDismissedBanners,
 				});
@@ -613,12 +615,6 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		clearBannerStack() {
 			this.bannerStack = [];
-		},
-		setSuggestedTemplates(templates: SuggestedTemplates) {
-			this.suggestedTemplates = templates;
-		},
-		deleteSuggestedTemplates() {
-			this.suggestedTemplates = undefined;
 		},
 		getNotificationsForView(view: VIEWS): NotificationOptions[] {
 			return this.pendingNotificationsForViews[view] ?? [];

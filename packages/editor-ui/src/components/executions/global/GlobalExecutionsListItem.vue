@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import type { PropType } from 'vue';
 import { ref, computed, useCssModule } from 'vue';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useI18n } from '@/composables/useI18n';
@@ -12,20 +11,16 @@ import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 
 const emit = defineEmits(['stop', 'select', 'retrySaved', 'retryOriginal', 'delete']);
 
-const props = defineProps({
-	execution: {
-		type: Object as PropType<ExecutionSummary>,
-		required: true,
+const props = withDefaults(
+	defineProps<{
+		execution: ExecutionSummary;
+		selected?: boolean;
+		workflowName?: string;
+	}>(),
+	{
+		selected: false,
 	},
-	selected: {
-		type: Boolean,
-		default: false,
-	},
-	workflowName: {
-		type: String,
-		default: undefined,
-	},
-});
+);
 
 const style = useCssModule();
 const i18n = useI18n();
@@ -51,7 +46,7 @@ const isRetriable = computed(() => executionHelpers.isExecutionRetriable(props.e
 const classes = computed(() => {
 	return {
 		[style.executionListItem]: true,
-		[style[props.execution.status ?? '']]: !!props.execution.status,
+		[style[props.execution.status]]: true,
 	};
 });
 

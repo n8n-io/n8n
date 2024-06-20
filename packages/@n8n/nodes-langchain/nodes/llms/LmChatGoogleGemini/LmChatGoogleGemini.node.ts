@@ -8,8 +8,8 @@ import {
 } from 'n8n-workflow';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import type { HarmBlockThreshold, HarmCategory, SafetySetting } from '@google/generative-ai';
-import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 import { harmCategories, harmThresholds } from './options';
 
 export class LmChatGoogleGemini implements INodeType {
@@ -224,10 +224,11 @@ export class LmChatGoogleGemini implements INodeType {
 			temperature: options.temperature,
 			maxOutputTokens: options.maxOutputTokens,
 			safetySettings,
+			callbacks: [new N8nLlmTracing(this)],
 		});
 
 		return {
-			response: logWrapper(model, this),
+			response: model,
 		};
 	}
 }

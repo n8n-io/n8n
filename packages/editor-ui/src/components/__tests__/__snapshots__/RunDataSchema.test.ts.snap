@@ -59,16 +59,26 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
                   </svg>
                   <!--v-if-->
                   <span
-                    class=""
+                    class="content"
                   >
-                    name
+                    
+                    <span>
+                      <!--v-if-->
+                      name
+                    </span>
+                    
                   </span>
                 </span>
               </div>
               <span
                 class="text"
               >
+                
+                
+                <!--v-if-->
                 John
+                
+                
               </span>
               <!--v-if-->
               <!--v-if-->
@@ -109,16 +119,26 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
                   </svg>
                   <!--v-if-->
                   <span
-                    class=""
+                    class="content"
                   >
-                    age
+                    
+                    <span>
+                      <!--v-if-->
+                      age
+                    </span>
+                    
                   </span>
                 </span>
               </div>
               <span
                 class="text"
               >
+                
+                
+                <!--v-if-->
                 22
+                
+                
               </span>
               <!--v-if-->
               <!--v-if-->
@@ -159,9 +179,14 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
                   </svg>
                   <!--v-if-->
                   <span
-                    class=""
+                    class="content"
                   >
-                    hobbies
+                    
+                    <span>
+                      <!--v-if-->
+                      hobbies
+                    </span>
+                    
                   </span>
                 </span>
               </div>
@@ -228,20 +253,37 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
                           fill="currentColor"
                         />
                       </svg>
-                      <span>
-                        hobbies
+                      <span
+                        class="content"
+                      >
+                        
+                        <span>
+                          <!--v-if-->
+                          hobbies
+                        </span>
+                        
                       </span>
                       <span
-                        class="arrayIndex"
+                        class="content arrayIndex"
                       >
-                        [0]
+                        
+                        <span>
+                          <!--v-if-->
+                          [0]
+                        </span>
+                        
                       </span>
                     </span>
                   </div>
                   <span
                     class="text"
                   >
+                    
+                    
+                    <!--v-if-->
                     surfing
+                    
+                    
                   </span>
                   <!--v-if-->
                   <!--v-if-->
@@ -280,20 +322,37 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
                           fill="currentColor"
                         />
                       </svg>
-                      <span>
-                        hobbies
+                      <span
+                        class="content"
+                      >
+                        
+                        <span>
+                          <!--v-if-->
+                          hobbies
+                        </span>
+                        
                       </span>
                       <span
-                        class="arrayIndex"
+                        class="content arrayIndex"
                       >
-                        [1]
+                        
+                        <span>
+                          <!--v-if-->
+                          [1]
+                        </span>
+                        
                       </span>
                     </span>
                   </div>
                   <span
                     class="text"
                   >
+                    
+                    
+                    <!--v-if-->
                     traveling
+                    
+                    
                   </span>
                   <!--v-if-->
                   <!--v-if-->
@@ -417,9 +476,14 @@ exports[`RunDataJsonSchema.vue > renders schema with spaces and dots 1`] = `
                   </svg>
                   <!--v-if-->
                   <span
-                    class=""
+                    class="content"
                   >
-                    hello world
+                    
+                    <span>
+                      <!--v-if-->
+                      hello world
+                    </span>
+                    
                   </span>
                 </span>
               </div>
@@ -486,13 +550,25 @@ exports[`RunDataJsonSchema.vue > renders schema with spaces and dots 1`] = `
                           fill="currentColor"
                         />
                       </svg>
-                      <span>
-                        hello world
+                      <span
+                        class="content"
+                      >
+                        
+                        <span>
+                          <!--v-if-->
+                          hello world
+                        </span>
+                        
                       </span>
                       <span
-                        class="arrayIndex"
+                        class="content arrayIndex"
                       >
-                        [0]
+                        
+                        <span>
+                          <!--v-if-->
+                          [0]
+                        </span>
+                        
                       </span>
                     </span>
                   </div>
@@ -561,9 +637,14 @@ exports[`RunDataJsonSchema.vue > renders schema with spaces and dots 1`] = `
                           </svg>
                           <!--v-if-->
                           <span
-                            class=""
+                            class="content"
                           >
-                            test
+                            
+                            <span>
+                              <!--v-if-->
+                              test
+                            </span>
+                            
                           </span>
                         </span>
                       </div>
@@ -632,16 +713,26 @@ exports[`RunDataJsonSchema.vue > renders schema with spaces and dots 1`] = `
                               </svg>
                               <!--v-if-->
                               <span
-                                class=""
+                                class="content"
                               >
-                                more to think about
+                                
+                                <span>
+                                  <!--v-if-->
+                                  more to think about
+                                </span>
+                                
                               </span>
                             </span>
                           </div>
                           <span
                             class="text"
                           >
+                            
+                            
+                            <!--v-if-->
                             1
+                            
+                            
                           </span>
                           <!--v-if-->
                           <!--v-if-->
@@ -685,16 +776,26 @@ exports[`RunDataJsonSchema.vue > renders schema with spaces and dots 1`] = `
                           </svg>
                           <!--v-if-->
                           <span
-                            class=""
+                            class="content"
                           >
-                            test.how
+                            
+                            <span>
+                              <!--v-if-->
+                              test.how
+                            </span>
+                            
                           </span>
                         </span>
                       </div>
                       <span
                         class="text"
                       >
+                        
+                        
+                        <!--v-if-->
                         ignore
+                        
+                        
                       </span>
                       <!--v-if-->
                       <!--v-if-->

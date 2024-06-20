@@ -14,7 +14,7 @@ import moment from 'moment-timezone';
 
 import * as losslessJSON from 'lossless-json';
 
-function convertLosslessNumber(key: any, value: any) {
+function convertLosslessNumber(_: any, value: any) {
 	if (value?.isLosslessNumber) {
 		return value.toString();
 	} else {

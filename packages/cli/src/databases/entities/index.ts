@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { AuthIdentity } from './AuthIdentity';
 import { AuthProviderSyncHistory } from './AuthProviderSyncHistory';
+import { AuthUser } from './AuthUser';
 import { CredentialsEntity } from './CredentialsEntity';
 import { EventDestinations } from './EventDestinations';
 import { ExecutionEntity } from './ExecutionEntity';
@@ -19,10 +20,13 @@ import { WorkflowStatistics } from './WorkflowStatistics';
 import { ExecutionMetadata } from './ExecutionMetadata';
 import { ExecutionData } from './ExecutionData';
 import { WorkflowHistory } from './WorkflowHistory';
+import { Project } from './Project';
+import { ProjectRelation } from './ProjectRelation';
 
 export const entities = {
 	AuthIdentity,
 	AuthProviderSyncHistory,
+	AuthUser,
 	CredentialsEntity,
 	EventDestinations,
 	ExecutionEntity,
@@ -41,4 +45,6 @@ export const entities = {
 	ExecutionMetadata,
 	ExecutionData,
 	WorkflowHistory,
+	Project,
+	ProjectRelation,
 };

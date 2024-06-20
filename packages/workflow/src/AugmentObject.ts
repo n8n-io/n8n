@@ -29,7 +29,7 @@ export function augmentArray<T>(data: T[]): T[] {
 	}
 
 	const proxy = new Proxy(data, {
-		deleteProperty(target, key: string) {
+		deleteProperty(_target, key: string) {
 			return Reflect.deleteProperty(getData(), key);
 		},
 		get(target, key: string, receiver): unknown {
@@ -59,7 +59,7 @@ export function augmentArray<T>(data: T[]): T[] {
 		ownKeys(target) {
 			return Reflect.ownKeys(newData ?? target);
 		},
-		set(target, key: string, newValue: unknown) {
+		set(_target, key: string, newValue: unknown) {
 			// Always proxy all objects. Like that we can check in get simply if it
 			// is a proxy and it does then not matter if it was already there from the
 			// beginning and it got proxied at some point or set later and so theoretically
@@ -143,7 +143,7 @@ export function augmentObject<T extends object>(data: T): T {
 			);
 		},
 
-		getOwnPropertyDescriptor(target, key) {
+		getOwnPropertyDescriptor(_target, key) {
 			if (deletedProperties.has(key)) return undefined;
 			return Object.getOwnPropertyDescriptor(key in newData ? newData : data, key);
 		},

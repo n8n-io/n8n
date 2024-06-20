@@ -5,64 +5,47 @@ import { CredentialAccessError, NodeOperationError, WorkflowOperationError } fro
 import config from '@/config';
 import { License } from '@/License';
 import { OwnershipService } from '@/services/ownership.service';
-import { UserRepository } from '@db/repositories/user.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { ProjectService } from '@/services/project.service';
 
 @Service()
 export class PermissionChecker {
 	constructor(
-		private readonly userRepository: UserRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
-		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly ownershipService: OwnershipService,
 		private readonly license: License,
+		private readonly projectService: ProjectService,
 	) {}
 
 	/**
-	 * Check if a user is permitted to execute a workflow.
+	 * Check if a workflow has the ability to execute based on the projects it's apart of.
 	 */
-	async check(workflowId: string, userId: string, nodes: INode[]) {
-		// allow if no nodes in this workflow use creds
-
+	async check(workflowId: string, nodes: INode[]) {
+		const homeProject = await this.ownershipService.getWorkflowProjectCached(workflowId);
+		const homeProjectOwner = await this.ownershipService.getProjectOwnerCached(homeProject.id);
+		if (homeProject.type === 'personal' && homeProjectOwner?.hasGlobalScope('credential:list')) {
+			// Workflow belongs to a project by a user with privileges
+			// so all credentials are usable. Skip credential checks.
+			return;
+		}
+		const projectIds = await this.projectService.findProjectsWorkflowIsIn(workflowId);
 		const credIdsToNodes = this.mapCredIdsToNodes(nodes);
 
 		const workflowCredIds = Object.keys(credIdsToNodes);
 
 		if (workflowCredIds.length === 0) return;
 
-		// allow if requesting user is instance owner
+		const accessible = await this.sharedCredentialsRepository.getFilteredAccessibleCredentials(
+			projectIds,
+			workflowCredIds,
+		);
 
-		const user = await this.userRepository.findOneOrFail({
-			where: { id: userId },
-		});
-
-		if (user.hasGlobalScope('workflow:execute')) return;
-
-		const isSharingEnabled = this.license.isSharingEnabled();
-
-		// allow if all creds used in this workflow are a subset of
-		// all creds accessible to users who have access to this workflow
-
-		let workflowUserIds = [userId];
-
-		if (workflowId && isSharingEnabled) {
-			workflowUserIds = await this.sharedWorkflowRepository.getSharedUserIds(workflowId);
+		for (const credentialsId of workflowCredIds) {
+			if (!accessible.includes(credentialsId)) {
+				const nodeToFlag = credIdsToNodes[credentialsId][0];
+				throw new CredentialAccessError(nodeToFlag, credentialsId, workflowId);
+			}
 		}
-
-		const accessibleCredIds = isSharingEnabled
-			? await this.sharedCredentialsRepository.getAccessibleCredentialIds(workflowUserIds)
-			: await this.sharedCredentialsRepository.getOwnedCredentialIds(workflowUserIds);
-
-		const inaccessibleCredIds = workflowCredIds.filter((id) => !accessibleCredIds.includes(id));
-
-		if (inaccessibleCredIds.length === 0) return;
-
-		// if disallowed, flag only first node using first inaccessible cred
-		const inaccessibleCredId = inaccessibleCredIds[0];
-		const nodeToFlag = credIdsToNodes[inaccessibleCredId][0];
-
-		throw new CredentialAccessError(nodeToFlag, inaccessibleCredId, workflowId);
 	}
 
 	async checkSubworkflowExecutePolicy(
@@ -91,14 +74,14 @@ export class PermissionChecker {
 		}
 
 		const parentWorkflowOwner =
-			await this.ownershipService.getWorkflowOwnerCached(parentWorkflowId);
+			await this.ownershipService.getWorkflowProjectCached(parentWorkflowId);
 
-		const subworkflowOwner = await this.ownershipService.getWorkflowOwnerCached(subworkflow.id);
+		const subworkflowOwner = await this.ownershipService.getWorkflowProjectCached(subworkflow.id);
 
 		const description =
 			subworkflowOwner.id === parentWorkflowOwner.id
 				? 'Change the settings of the sub-workflow so it can be called by this one.'
-				: `${subworkflowOwner.firstName} (${subworkflowOwner.email}) can make this change. You may need to tell them the ID of the sub-workflow, which is ${subworkflow.id}`;
+				: `An admin for the ${subworkflowOwner.name} project can make this change. You may need to tell them the ID of the sub-workflow, which is ${subworkflow.id}`;
 
 		const errorToThrow = new WorkflowOperationError(
 			`Target workflow ID ${subworkflow.id} may not be called`,

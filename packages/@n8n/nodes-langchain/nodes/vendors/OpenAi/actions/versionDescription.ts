@@ -46,6 +46,7 @@ const configureNodeInputs = (resource: string, operation: string, hideTools: str
 	if (resource === 'assistant' && operation === 'message') {
 		return [
 			{ type: NodeConnectionType.Main },
+			{ type: NodeConnectionType.AiMemory, displayName: 'Memory', maxConnections: 1 },
 			{ type: NodeConnectionType.AiTool, displayName: 'Tools' },
 		];
 	}
@@ -66,19 +67,19 @@ const configureNodeInputs = (resource: string, operation: string, hideTools: str
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'OpenAI',
 	name: 'openAi',
-	icon: 'file:openAi.svg',
+	icon: { light: 'file:openAi.svg', dark: 'file:openAi.dark.svg' },
 	group: ['transform'],
-	version: [1, 1.1, 1.2, 1.3],
+	version: [1, 1.1, 1.2, 1.3, 1.4],
 	subtitle: `={{(${prettifyOperation})($parameter.resource, $parameter.operation)}}`,
 	description: 'Message an assistant or GPT, analyze images, generate audio, etc.',
 	defaults: {
 		name: 'OpenAI',
 	},
 	codex: {
-		alias: ['LangChain', 'ChatGPT', 'DallE'],
+		alias: ['LangChain', 'ChatGPT', 'DallE', 'whisper', 'audio', 'transcribe', 'tts', 'assistant'],
 		categories: ['AI'],
 		subcategories: {
-			AI: ['Agents', 'Miscellaneous'],
+			AI: ['Agents', 'Miscellaneous', 'Root Nodes'],
 		},
 		resources: {
 			primaryDocumentation: [

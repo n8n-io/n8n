@@ -757,6 +757,7 @@ export class EditImage implements INodeType {
 		displayName: 'Edit Image',
 		name: 'editImage',
 		icon: 'fa:image',
+		iconColor: 'purple',
 		group: ['transform'],
 		version: 1,
 		description: 'Edits an image like blur, resize or adding border and text',
@@ -1309,7 +1310,7 @@ export class EditImage implements INodeType {
 					}),
 				);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({
 						json: {
 							error: error.message,

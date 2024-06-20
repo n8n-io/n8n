@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { computed, getCurrentInstance, onMounted, defineComponent, h } from 'vue';
+import { computed, onMounted, defineComponent, h } from 'vue';
 import type { PropType } from 'vue';
 import type {
 	INodeCreateElement,
-	ActionTypeDescription,
 	NodeFilterType,
 	IUpdateInformation,
 	ActionCreateElement,
+	NodeCreateElement,
 } from '@/Interface';
 import {
 	HTTP_REQUEST_NODE_TYPE,
@@ -27,18 +27,17 @@ import { useViewStacks } from '../composables/useViewStacks';
 import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
 import type { IDataObject } from 'n8n-workflow';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 const emit = defineEmits({
-	nodeTypeSelected: (nodeTypes: string[]) => true,
+	nodeTypeSelected: (_nodeTypes: string[]) => true,
 });
-const instance = getCurrentInstance();
-const telemetry = instance?.proxy.$telemetry;
+const telemetry = useTelemetry();
 
 const { userActivated } = useUsersStore();
 const { popViewStack, updateCurrentViewStack } = useViewStacks();
 const { registerKeyHook } = useKeyboardNavigation();
 const {
-	getNodeTypesWithManualTrigger,
 	setAddedNodeActionParameters,
 	getActionData,
 	getPlaceholderTriggerActions,
@@ -133,13 +132,15 @@ function arrowLeft() {
 
 function onKeySelect(activeItemId: string) {
 	const mergedActions = [...actions.value, ...placeholderTriggerActions];
-	const activeAction = mergedActions.find((a) => a.uuid === activeItemId);
+	const activeAction = mergedActions.find((a): a is NodeCreateElement => a.uuid === activeItemId);
 
 	if (activeAction) onSelected(activeAction);
 }
 
 function onSelected(actionCreateElement: INodeCreateElement) {
-	const actionData = getActionData(actionCreateElement.properties as ActionTypeDescription);
+	if (actionCreateElement.type !== 'action') return;
+
+	const actionData = getActionData(actionCreateElement.properties);
 	const isPlaceholderTriggerAction = placeholderTriggerActions.some(
 		(p) => p.key === actionCreateElement.key,
 	);
@@ -211,6 +212,7 @@ const OrderSwitcher = defineComponent({
 	props: {
 		rootView: {
 			type: String as PropType<NodeFilterType>,
+			required: true,
 		},
 	},
 	setup(props, { slots }) {
@@ -232,7 +234,7 @@ onMounted(() => {
 
 <template>
 	<div :class="$style.container">
-		<OrderSwitcher :root-view="rootView">
+		<OrderSwitcher v-if="rootView" :root-view="rootView">
 			<template v-if="isTriggerRootView || parsedTriggerActionsBaseline.length !== 0" #triggers>
 				<!-- Triggers Category -->
 				<CategorizedItemsRenderer
@@ -255,7 +257,7 @@ onMounted(() => {
 							<span
 								v-html="
 									$locale.baseText('nodeCreator.actionsCallout.noTriggerItems', {
-										interpolate: { nodeName: subcategory },
+										interpolate: { nodeName: subcategory ?? '' },
 									})
 								"
 							/>
@@ -295,7 +297,7 @@ onMounted(() => {
 							<span
 								v-html="
 									$locale.baseText('nodeCreator.actionsCallout.noActionItems', {
-										interpolate: { nodeName: subcategory },
+										interpolate: { nodeName: subcategory ?? '' },
 									})
 								"
 							/>
@@ -316,7 +318,7 @@ onMounted(() => {
 				@click.prevent="addHttpNode"
 				v-html="
 					$locale.baseText('nodeCreator.actionsList.apiCall', {
-						interpolate: { node: subcategory },
+						interpolate: { node: subcategory ?? '' },
 					})
 				"
 			/>
