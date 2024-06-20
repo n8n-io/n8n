@@ -408,7 +408,7 @@ export class Kafka implements INodeType {
 
 			return [executionData];
 		} catch (error) {
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(error)) {
 				return [[{ json: { error: error.message }, pairedItem: itemData }]];
 			} else {
 				throw error;
