@@ -428,6 +428,7 @@ function checkIfEditingIsAllowed(): boolean {
  */
 
 function onMouseDown(e: MouseEvent | TouchEvent) {
+	// @TODO The function below uses the zoom level of the old canvas, update it to use the new one
 	// Save the location of the mouse click
 	lastClickPosition.value = getMousePositionWithinNodeView(e);
 }
