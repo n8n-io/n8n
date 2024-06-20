@@ -2,17 +2,32 @@ import { Service } from 'typedi';
 import config from '@/config';
 import { Logger } from '@/Logger';
 import ioRedis from 'ioredis';
-import type { RedisOptions } from 'ioredis';
+import type { Cluster, RedisOptions } from 'ioredis';
 import type { RedisClientType } from './RedisServiceBaseClasses';
+import { OnShutdown } from '@/decorators/OnShutdown';
 
 @Service()
 export class RedisClientService {
+	private readonly clients = new Set<ioRedis | Cluster>();
+
 	constructor(private readonly logger: Logger) {}
 
 	createClient(arg: { type: RedisClientType; extraOptions?: RedisOptions }) {
-		return this.clusterNodes().length > 0
-			? this.createClusterClient(arg)
-			: this.createRegularClient(arg);
+		const client =
+			this.clusterNodes().length > 0
+				? this.createClusterClient(arg)
+				: this.createRegularClient(arg);
+
+		this.clients.add(client);
+
+		return client;
+	}
+
+	@OnShutdown()
+	disconnectClients() {
+		for (const client of this.clients) {
+			client.disconnect();
+		}
 	}
 
 	/**
