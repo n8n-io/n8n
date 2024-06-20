@@ -11,7 +11,6 @@ import bash from 'highlight.js/lib/languages/bash';
 import MdiOpenInNew from 'virtual:icons/mdi/openInNew';
 import markdownLink from 'markdown-it-link-attributes';
 import type MarkdownIt from 'markdown-it';
-import MessageActions from './MessageActions.vue';
 import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
 import { useOptions } from '@n8n/chat/composables';
 
@@ -34,12 +33,6 @@ const { message } = toRefs(props);
 const { options } = useOptions();
 const messageContainer = ref<HTMLElement | null>(null);
 const fileSources = ref<Record<string, string>>({});
-
-const messageActions = computed(() => {
-	const actions = options.messageActions ?? [];
-
-	return actions.filter((action) => action.sender === message.value.sender);
-});
 
 const messageText = computed(() => {
 	return (message.value as ChatMessageText).text || '&lt;Empty response&gt;';
@@ -118,13 +111,8 @@ onMounted(async () => {
 
 <template>
 	<div ref="messageContainer" class="chat-message" :class="classes">
-		<div class="chat-message-actions">
+		<div v-if="$slots.beforeMessage" class="chat-message-actions">
 			<slot name="beforeMessage" v-bind="{ message }" />
-			<MessageActions
-				v-if="messageActions.length"
-				:placement="message.sender === 'user' ? 'left' : 'right'"
-				:message-actions="messageActions"
-			/>
 		</div>
 		<slot>
 			<template v-if="message.type === 'component' && messageComponents[message.key]">
@@ -169,6 +157,8 @@ onMounted(async () => {
 		left: 0;
 		opacity: 0;
 		transform: translateY(-0.25rem);
+		display: flex;
+		gap: 1rem;
 	}
 
 	&.chat-message-from-user .chat-message-actions {

@@ -1,11 +1,19 @@
 <script setup lang="ts">
 import IconSend from 'virtual:icons/mdi/send';
 import IconFilePlus from 'virtual:icons/mdi/filePlus';
-import { computed, onMounted, ref, unref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, unref } from 'vue';
 import { useFileDialog } from '@vueuse/core';
 import ChatFile from './ChatFile.vue';
 import { useI18n, useChat, useOptions } from '@n8n/chat/composables';
 import { chatEventBus } from '@n8n/chat/event-buses';
+
+export interface ArrowKeyDownPayload {
+	key: 'ArrowUp' | 'ArrowDown';
+	currentInputValue: string;
+}
+const emit = defineEmits<{
+	(event: 'arrowKeyDown', value: ArrowKeyDownPayload): void;
+}>();
 
 const { options } = useOptions();
 const chatStore = useChat();
@@ -15,6 +23,7 @@ const { t } = useI18n();
 const files = ref<FileList | null>(null);
 const chatTextArea = ref<HTMLTextAreaElement | null>(null);
 const input = ref('');
+const isSubmitting = ref(false);
 
 const isSubmitDisabled = computed(() => {
 	return (
@@ -47,12 +56,33 @@ onChange((newFiles) => {
 });
 
 onMounted(() => {
-	chatEventBus.on('focusInput', () => {
-		if (chatTextArea.value) {
-			chatTextArea.value.focus();
-		}
-	});
+	chatEventBus.on('focusInput', focusChatInput);
+	chatEventBus.on('blurInput', blurChatInput);
+	chatEventBus.on('setInputValue', setInputValue);
 });
+
+onUnmounted(() => {
+	chatEventBus.off('focusInput', focusChatInput);
+	chatEventBus.off('blurInput', blurChatInput);
+	chatEventBus.off('setInputValue', setInputValue);
+});
+
+function blurChatInput() {
+	if (chatTextArea.value) {
+		chatTextArea.value.blur();
+	}
+}
+
+function focusChatInput() {
+	if (chatTextArea.value) {
+		chatTextArea.value.focus();
+	}
+}
+
+function setInputValue(value: string) {
+	input.value = value;
+	focusChatInput();
+}
 
 async function onSubmit(event: MouseEvent | KeyboardEvent) {
 	event.preventDefault();
@@ -63,9 +93,11 @@ async function onSubmit(event: MouseEvent | KeyboardEvent) {
 
 	const messageText = input.value;
 	input.value = '';
+	isSubmitting.value = true;
+	await chatStore.sendMessage(messageText, Array.from(files.value ?? []));
+	isSubmitting.value = false;
 	reset();
 	files.value = null;
-	await chatStore.sendMessage(messageText, Array.from(files.value ?? []));
 }
 
 async function onSubmitKeydown(event: KeyboardEvent) {
@@ -88,11 +120,22 @@ function onFileRemove(file: File) {
 	reset();
 	files.value = dt.files;
 }
+
+function onKeyDown(event: KeyboardEvent) {
+	if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+		event.preventDefault();
+
+		emit('arrowKeyDown', {
+			key: event.key,
+			currentInputValue: input.value,
+		});
+	}
+}
 </script>
 
 <template>
-	<div class="chat-input">
-		<div v-if="files?.length" class="chat-files">
+	<div class="chat-input" @keydown.stop="onKeyDown">
+		<div v-if="files?.length && !isSubmitting" class="chat-files">
 			<ChatFile v-for="file in files" :key="file.name" :file="file" @remove="onFileRemove" />
 		</div>
 		<div class="chat-inputs">
@@ -136,6 +179,7 @@ function onFileRemove(file: File) {
 	display: flex;
 	justify-content: center;
 	align-items: center;
+
 	textarea {
 		font-family: inherit;
 		font-size: var(--chat--input--font-size, inherit);
@@ -149,6 +193,12 @@ function onFileRemove(file: File) {
 		background: var(--chat--input--background, white);
 		resize: var(--chat--textarea--resize, none);
 		color: var(--chat--input--text-color, initial);
+		outline: none;
+
+		&:focus,
+		&:hover {
+			border-color: var(--chat--input--border-active, 0);
+		}
 	}
 }
 

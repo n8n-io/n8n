@@ -17,7 +17,6 @@ const chatStore = useChat();
 const { options } = useOptions();
 const messageComponents = ref<Array<InstanceType<typeof Message>>>([]);
 const { initialMessages, waitingForResponse } = chatStore;
-const messageActions = computed(() => options.messageActions ?? []);
 watch(
 	() => messageComponents.value.length,
 	() => {

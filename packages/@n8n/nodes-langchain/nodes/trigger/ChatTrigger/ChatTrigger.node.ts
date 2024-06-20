@@ -385,7 +385,6 @@ export class ChatTrigger extends Node {
 		const options = context.getNodeParameter('options', {}) as IDataObject;
 		const { data, files } = req.body;
 
-		// const newItems: INodeExecutionData[] = [];
 		const returnItem: INodeExecutionData = {
 			json: data,
 		};

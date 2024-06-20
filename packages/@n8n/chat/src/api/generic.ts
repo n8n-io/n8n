@@ -14,6 +14,8 @@ export async function authenticatedFetch<T>(...args: Parameters<typeof fetch>): 
 	// Automatically set content type to application/json if body is FormData
 	if (body instanceof FormData) {
 		delete headers['Content-Type'];
+	} else {
+		headers['Content-Type'] = 'application/json';
 	}
 	const response = await fetch(args[0], {
 		...args[1],

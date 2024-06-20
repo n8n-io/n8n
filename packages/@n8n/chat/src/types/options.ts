@@ -1,12 +1,4 @@
-import type { Component, FunctionalComponent, Ref, SVGAttributes } from 'vue';
-import type { ChatMessage } from './messages';
-
-export interface MessageAction {
-	label: string;
-	sender: ChatMessage['sender'];
-	icon: FunctionalComponent<SVGAttributes>;
-	action: (message: ChatMessage) => void;
-}
+import type { Component, Ref } from 'vue';
 
 export interface ChatOptions {
 	webhookUrl: string;
@@ -41,5 +33,4 @@ export interface ChatOptions {
 	disabled?: Ref<boolean>;
 	allowFileUploads?: Ref<boolean> | boolean;
 	allowedFilesMimeTypes?: Ref<string> | string;
-	messageActions?: MessageAction[];
 }

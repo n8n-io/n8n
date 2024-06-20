@@ -121,7 +121,9 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			return {
 				type: 'image_url',
 				image_url: {
-					url: `data:image/jpeg;base64,${data.data}`,
+					url: data.data.includes('base64')
+						? data.data
+						: `data:${data.mimeType};base64,${data.data}`,
 				},
 			};
 		});
