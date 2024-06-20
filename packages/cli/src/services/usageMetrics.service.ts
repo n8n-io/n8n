@@ -31,7 +31,7 @@ export class UsageMetricsService {
 		];
 	}
 
-	async getActiveWorkflowIds() {
+	async collectPassthroughData() {
 		return {
 			activeWorkflowIds: await this.workflowRepository.getActiveIds(),
 		};
