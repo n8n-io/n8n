@@ -1,8 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 
 export class RefactorExecutionIndices1717498465932 implements ReversibleMigration {
-	transaction = false as const;
-
 	async up({ schemaBuilder, isPostgres, isSqlite }: MigrationContext) {
 		await schemaBuilder.dropIndex(
 			'execution_entity',
