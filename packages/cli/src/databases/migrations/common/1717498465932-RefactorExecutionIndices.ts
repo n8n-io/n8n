@@ -5,15 +5,19 @@ export class RefactorExecutionIndices1717498465932 implements ReversibleMigratio
 		await schemaBuilder.dropIndex(
 			'execution_entity',
 			['waitTill', 'id'], // covered by `waitTill, status` - `id` is unused
-			isPostgres ? 'IDX_85b981df7b444f905f8bf50747' : 'IDX_b94b45ce2c73ce46c54f20b5f9',
+			{
+				customIndexName: isPostgres
+					? 'IDX_85b981df7b444f905f8bf50747'
+					: 'IDX_b94b45ce2c73ce46c54f20b5f9',
+				skipIfMissing: true,
+			},
 		);
 
 		if (isSqlite) {
-			await schemaBuilder.dropIndex(
-				'execution_entity',
-				['stoppedAt'],
-				'idx_execution_entity_stopped_at', // duplicate of `IDX_execution_entity_stoppedAt`
-			);
+			await schemaBuilder.dropIndex('execution_entity', ['stoppedAt'], {
+				customIndexName: 'idx_execution_entity_stopped_at', // duplicate of `IDX_execution_entity_stoppedAt`
+				skipIfMissing: true,
+			});
 		}
 
 		await schemaBuilder.createIndex(
