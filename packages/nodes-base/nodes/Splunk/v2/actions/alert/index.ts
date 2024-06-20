@@ -12,7 +12,7 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: ['firedAlert'],
+				resource: ['alert'],
 			},
 		},
 		options: [

@@ -206,7 +206,7 @@ const properties: INodeProperties[] = [
 
 const displayOptions = {
 	show: {
-		resource: ['searchJob'],
+		resource: ['search'],
 		operation: ['create'],
 	},
 };

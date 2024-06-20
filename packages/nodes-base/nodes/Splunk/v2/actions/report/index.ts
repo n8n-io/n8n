@@ -14,7 +14,7 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: ['searchConfiguration'],
+				resource: ['report'],
 			},
 		},
 		options: [

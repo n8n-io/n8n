@@ -94,8 +94,8 @@ const properties: INodeProperties[] = [
 
 const displayOptions = {
 	show: {
-		resource: ['searchResult'],
-		operation: ['getAll'],
+		resource: ['search'],
+		operation: ['getResult'],
 	},
 };
 

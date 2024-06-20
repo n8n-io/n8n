@@ -7,7 +7,7 @@ const properties: INodeProperties[] = [];
 
 const displayOptions = {
 	show: {
-		resource: ['findAlert'],
+		resource: ['alert'],
 		operation: ['getReport'],
 	},
 };

@@ -1,10 +1,9 @@
 import type { AllEntities } from 'n8n-workflow';
 
 type NodeMap = {
-	firedAlert: 'getReport';
-	searchConfiguration: 'deleteConfiguration' | 'get' | 'getAll';
-	searchJob: 'create' | 'deleteJob' | 'get' | 'getAll';
-	searchResult: 'getAll';
+	alert: 'getReport';
+	report: 'deleteConfiguration' | 'get' | 'getAll';
+	search: 'create' | 'deleteJob' | 'get' | 'getAll' | 'getResult';
 	user: 'create' | 'deleteUser' | 'get' | 'getAll' | 'update';
 };
 

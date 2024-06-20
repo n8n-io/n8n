@@ -1,10 +1,9 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import * as fieldAlert from './firedAlert';
-import * as searchConfiguration from './searchConfiguration';
-import * as searchJob from './searchJob';
-import * as searchResult from './searchResult';
+import * as alert from './alert';
+import * as report from './report';
+import * as search from './search';
 import * as user from './user';
 
 export const versionDescription: INodeTypeDescription = {
@@ -34,16 +33,16 @@ export const versionDescription: INodeTypeDescription = {
 			noDataExpression: true,
 			options: [
 				{
-					name: 'Fired Alert',
-					value: 'firedAlert',
+					name: 'Alert',
+					value: 'alert',
 				},
 				{
-					name: 'Search Configuration',
-					value: 'searchConfiguration',
+					name: 'Report',
+					value: 'report',
 				},
 				{
-					name: 'Search Job',
-					value: 'searchJob',
+					name: 'Search',
+					value: 'search',
 				},
 				{
 					name: 'Search Result',
@@ -54,13 +53,12 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'user',
 				},
 			],
-			default: 'searchJob',
+			default: 'search',
 		},
 
-		...fieldAlert.description,
-		...searchConfiguration.description,
-		...searchJob.description,
-		...searchResult.description,
+		...alert.description,
+		...report.description,
+		...search.description,
 		...user.description,
 	],
 };

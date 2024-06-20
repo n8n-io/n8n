@@ -16,7 +16,7 @@ const properties: INodeProperties[] = [
 
 const displayOptions = {
 	show: {
-		resource: ['searchConfiguration'],
+		resource: ['report'],
 		operation: ['deleteConfiguration'],
 	},
 };

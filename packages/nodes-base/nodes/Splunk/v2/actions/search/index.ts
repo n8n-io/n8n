@@ -4,8 +4,9 @@ import * as create from './create.operation';
 import * as deleteJob from './deleteJob.operation';
 import * as get from './get.operation';
 import * as getAll from './getAll.operation';
+import * as getResult from './getResult.operation';
 
-export { create, deleteJob, get, getAll };
+export { create, deleteJob, get, getAll, getResult };
 
 export const description: INodeProperties[] = [
 	{
@@ -15,7 +16,7 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: ['searchJob'],
+				resource: ['search'],
 			},
 		},
 		options: [
@@ -43,6 +44,12 @@ export const description: INodeProperties[] = [
 				description: 'Retrieve many search jobs',
 				action: 'Get many search jobs',
 			},
+			{
+				name: 'Get Result',
+				value: 'getResult',
+				description: 'Get the result of a search job',
+				action: 'Get the result of a search job',
+			},
 		],
 		default: 'create',
 	},
@@ -51,4 +58,5 @@ export const description: INodeProperties[] = [
 	...deleteJob.description,
 	...get.description,
 	...getAll.description,
+	...getResult.description,
 ];

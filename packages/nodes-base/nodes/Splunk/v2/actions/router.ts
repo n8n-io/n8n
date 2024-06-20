@@ -1,10 +1,9 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import * as fieldAlert from './firedAlert';
-import * as searchConfiguration from './searchConfiguration';
-import * as searchJob from './searchJob';
-import * as searchResult from './searchResult';
+import * as alert from './alert';
+import * as report from './report';
+import * as search from './search';
 import * as user from './user';
 
 import set from 'lodash/set';
@@ -27,17 +26,14 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	for (let i = 0; i < items.length; i++) {
 		try {
 			switch (splunkNodeData.resource) {
-				case 'firedAlert':
-					responseData = await fieldAlert[splunkNodeData.operation].execute.call(this, i);
+				case 'alert':
+					responseData = await alert[splunkNodeData.operation].execute.call(this, i);
 					break;
-				case 'searchConfiguration':
-					responseData = await searchConfiguration[splunkNodeData.operation].execute.call(this, i);
+				case 'report':
+					responseData = await report[splunkNodeData.operation].execute.call(this, i);
 					break;
-				case 'searchJob':
-					responseData = await searchJob[splunkNodeData.operation].execute.call(this, i);
-					break;
-				case 'searchResult':
-					responseData = await searchResult[splunkNodeData.operation].execute.call(this, i);
+				case 'search':
+					responseData = await search[splunkNodeData.operation].execute.call(this, i);
 					break;
 				case 'user':
 					responseData = await user[splunkNodeData.operation].execute.call(this, i);
