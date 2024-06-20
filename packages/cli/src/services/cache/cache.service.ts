@@ -1,11 +1,10 @@
 import EventEmitter from 'node:events';
 
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 import { caching } from 'cache-manager';
 import { ApplicationError, jsonStringify } from 'n8n-workflow';
 
 import config from '@/config';
-import { getDefaultRedisClient, getRedisPrefix } from '@/services/redis/RedisServiceHelper';
 import { UncacheableValueError } from '@/errors/cache-errors/uncacheable-value.error';
 import { MalformedRefreshValueError } from '@/errors/cache-errors/malformed-refresh-value.error';
 import type {
@@ -29,8 +28,17 @@ export class CacheService extends EventEmitter {
 		const useRedis = backend === 'redis' || (backend === 'auto' && mode === 'queue');
 
 		if (useRedis) {
-			const keyPrefix = `${getRedisPrefix()}:${config.getEnv('cache.redis.prefix')}:`;
-			const redisClient = await getDefaultRedisClient({ keyPrefix }, 'client(cache)');
+			const { RedisClientService } = await import('../redis/redis-client.service');
+			const redisClientService = Container.get(RedisClientService);
+
+			const prefixBase = config.getEnv('redis.prefix');
+			const cachePrefix = config.getEnv('cache.redis.prefix');
+			const prefix = redisClientService.toValidPrefix(`${prefixBase}:${cachePrefix}:`);
+
+			const redisClient = redisClientService.createClient({
+				type: 'client(cache)',
+				extraOptions: { keyPrefix: prefix },
+			});
 
 			const { redisStoreUsingClient } = await import('@/services/cache/redis.cache-manager');
 			const redisStore = redisStoreUsingClient(redisClient, { ttl });

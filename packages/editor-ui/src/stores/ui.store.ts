@@ -24,7 +24,7 @@ import {
 	PERSONALIZATION_MODAL_KEY,
 	STORES,
 	TAGS_MANAGER_MODAL_KEY,
-	VALUE_SURVEY_MODAL_KEY,
+	NPS_SURVEY_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	VIEWS,
 	WORKFLOW_ACTIVE_MODAL_KEY,
@@ -39,6 +39,8 @@ import {
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 	SETUP_CREDENTIALS_MODAL_KEY,
 	GENERATE_CURL_MODAL_KEY,
+	PROJECT_MOVE_RESOURCE_MODAL,
+	PROJECT_MOVE_RESOURCE_CONFIRM_MODAL,
 } from '@/constants';
 import type {
 	CloudUpdateLinkSourceType,
@@ -55,14 +57,15 @@ import type {
 	AppliedThemeOption,
 	NotificationOptions,
 	ModalState,
+	ModalKey,
 } from '@/Interface';
 import { defineStore } from 'pinia';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { getCurlToJson } from '@/api/curlHelper';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { hasPermission } from '@/rbac/permissions';
+import { hasPermission } from '@/utils/rbac/permissions';
 import { useTelemetryStore } from '@/stores/telemetry.store';
 import { useUsersStore } from '@/stores/users.store';
 import { dismissBannerPermanently } from '@/api/ui';
@@ -104,7 +107,7 @@ export const useUIStore = defineStore(STORES.UI, {
 					PERSONALIZATION_MODAL_KEY,
 					INVITE_USER_MODAL_KEY,
 					TAGS_MANAGER_MODAL_KEY,
-					VALUE_SURVEY_MODAL_KEY,
+					NPS_SURVEY_MODAL_KEY,
 					VERSIONS_MODAL_KEY,
 					WORKFLOW_LM_CHAT_MODAL_KEY,
 					WORKFLOW_SETTINGS_MODAL_KEY,
@@ -118,6 +121,8 @@ export const useUIStore = defineStore(STORES.UI, {
 					DEBUG_PAYWALL_MODAL_KEY,
 					WORKFLOW_HISTORY_VERSION_RESTORE,
 					SETUP_CREDENTIALS_MODAL_KEY,
+					PROJECT_MOVE_RESOURCE_MODAL,
+					PROJECT_MOVE_RESOURCE_CONFIRM_MODAL,
 				].map((modalKey) => [modalKey, { open: false }]),
 			),
 			[DELETE_USER_MODAL_KEY]: {
@@ -278,19 +283,19 @@ export const useUIStore = defineStore(STORES.UI, {
 			return this.modals[VERSIONS_MODAL_KEY].open;
 		},
 		isModalOpen() {
-			return (name: string) => this.modals[name].open;
+			return (name: ModalKey) => this.modals[name].open;
 		},
 		isModalActive() {
-			return (name: string) => this.modalStack.length > 0 && name === this.modalStack[0];
+			return (name: ModalKey) => this.modalStack.length > 0 && name === this.modalStack[0];
 		},
 		getModalActiveId() {
-			return (name: string) => this.modals[name].activeId;
+			return (name: ModalKey) => this.modals[name].activeId;
 		},
 		getModalMode() {
-			return (name: string) => this.modals[name].mode;
+			return (name: ModalKey) => this.modals[name].mode;
 		},
 		getModalData() {
-			return (name: string) => this.modals[name].data;
+			return (name: ModalKey) => this.modals[name].data;
 		},
 		getFakeDoorByLocation() {
 			return (location: IFakeDoorLocation) =>
@@ -547,7 +552,7 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		async getCurlToJson(curlCommand: string): Promise<CurlToJSONResponse> {
 			const rootStore = useRootStore();
-			const parameters = await getCurlToJson(rootStore.getRestApiContext, curlCommand);
+			const parameters = await getCurlToJson(rootStore.restApiContext, curlCommand);
 
 			// Normalize placeholder values
 			if (parameters['parameters.url']) {
@@ -589,7 +594,7 @@ export const useUIStore = defineStore(STORES.UI, {
 			type: 'temporary' | 'permanent' = 'temporary',
 		): Promise<void> {
 			if (type === 'permanent') {
-				await dismissBannerPermanently(useRootStore().getRestApiContext, {
+				await dismissBannerPermanently(useRootStore().restApiContext, {
 					bannerName: name,
 					dismissedBanners: useSettingsStore().permanentlyDismissedBanners,
 				});

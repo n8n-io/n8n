@@ -72,7 +72,11 @@
 </template>
 
 <script lang="ts">
-import type { ICredentialsResponse, IUser, IUserListAction } from '@/Interface';
+import type {
+	ICredentialsResponse,
+	ICredentialsDecryptedResponse,
+	IUserListAction,
+} from '@/Interface';
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { useMessage } from '@/composables/useMessage';
@@ -83,20 +87,16 @@ import { useUIStore } from '@/stores/ui.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { EnterpriseEditionFeature } from '@/constants';
-import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
-import { useProjectsStore } from '@/features/projects/projects.store';
-import type {
-	ProjectListItem,
-	ProjectSharingData,
-	Project,
-} from '@/features/projects/projects.types';
+import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
+import { useProjectsStore } from '@/stores/projects.store';
+import type { ProjectListItem, ProjectSharingData, Project } from '@/types/projects.types';
+import { ProjectTypes } from '@/types/projects.types';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import type { PermissionsMap } from '@/permissions';
 import type { CredentialScope } from '@n8n/permissions';
 import type { EventBus } from 'n8n-design-system/utils';
 import { useRolesStore } from '@/stores/roles.store';
 import type { RoleMap } from '@/types/roles.types';
-import { ProjectTypes } from '@/features/projects/projects.utils';
 
 export default defineComponent({
 	name: 'CredentialSharing',
@@ -105,7 +105,7 @@ export default defineComponent({
 	},
 	props: {
 		credential: {
-			type: Object as PropType<ICredentialsResponse | null>,
+			type: Object as PropType<ICredentialsResponse | ICredentialsDecryptedResponse | null>,
 			default: null,
 		},
 		credentialId: {
@@ -161,22 +161,35 @@ export default defineComponent({
 		credentialOwnerName(): string {
 			return this.credentialsStore.getCredentialOwnerNameById(`${this.credentialId}`);
 		},
+		credentialDataHomeProject(): ProjectSharingData | undefined {
+			const credentialContainsProjectSharingData = (
+				data: ICredentialDataDecryptedObject,
+			): data is { homeProject: ProjectSharingData } => {
+				return 'homeProject' in data;
+			};
+
+			return this.credentialData && credentialContainsProjectSharingData(this.credentialData)
+				? this.credentialData.homeProject
+				: undefined;
+		},
 		isCredentialSharedWithCurrentUser(): boolean {
-			return (this.credentialData.sharedWithProjects ?? []).some((sharee: IUser) => {
-				return sharee.id === this.usersStore.currentUser?.id;
+			if (!Array.isArray(this.credentialData.sharedWithProjects)) return false;
+
+			return this.credentialData.sharedWithProjects.some((sharee) => {
+				return typeof sharee === 'object' && 'id' in sharee
+					? sharee.id === this.usersStore.currentUser?.id
+					: false;
 			});
 		},
 		projects(): ProjectListItem[] {
 			return this.projectsStore.personalProjects.filter(
 				(project) =>
 					project.id !== this.credential?.homeProject?.id &&
-					project.id !== this.credentialData?.homeProject?.id,
+					project.id !== this.credentialDataHomeProject?.id,
 			);
 		},
 		homeProject(): ProjectSharingData | undefined {
-			return (
-				this.credential?.homeProject ?? (this.credentialData?.homeProject as ProjectSharingData)
-			);
+			return this.credential?.homeProject ?? this.credentialDataHomeProject;
 		},
 		isHomeTeamProject(): boolean {
 			return this.homeProject?.type === ProjectTypes.Team;

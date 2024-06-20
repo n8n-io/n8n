@@ -103,10 +103,10 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, type StyleValue } from 'vue';
+import { defineComponent, ref } from 'vue';
+import type { PropType, StyleValue } from 'vue';
 import { mapStores } from 'pinia';
 
-import { nodeBase } from '@/mixins/nodeBase';
 import { isNumber, isString } from '@/utils/typeGuards';
 import type {
 	INodeUi,
@@ -115,7 +115,7 @@ import type {
 	XYPosition,
 } from '@/Interface';
 
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription, Workflow } from 'n8n-workflow';
 import { QUICKSTART_NOTE_NAME } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -126,10 +126,13 @@ import { useDeviceSupport } from 'n8n-design-system';
 import { GRID_SIZE } from '@/utils/nodeViewUtils';
 import { useToast } from '@/composables/useToast';
 import { assert } from '@/utils/assert';
+import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
+import { useCanvasStore } from '@/stores/canvas.store';
+import { useHistoryStore } from '@/stores/history.store';
+import { useNodeBase } from '@/composables/useNodeBase';
 
 export default defineComponent({
 	name: 'Sticky',
-	mixins: [nodeBase],
 	props: {
 		nodeViewScale: {
 			type: Number,
@@ -139,9 +142,36 @@ export default defineComponent({
 			type: Number,
 			default: GRID_SIZE,
 		},
+		name: {
+			type: String,
+			required: true,
+		},
+		instance: {
+			type: Object as PropType<BrowserJsPlumbInstance>,
+			required: true,
+		},
+		isReadOnly: {
+			type: Boolean,
+		},
+		isActive: {
+			type: Boolean,
+		},
+		hideActions: {
+			type: Boolean,
+		},
+		disableSelecting: {
+			type: Boolean,
+		},
+		showCustomTooltip: {
+			type: Boolean,
+		},
+		workflow: {
+			type: Object as PropType<Workflow>,
+			required: true,
+		},
 	},
 	emits: { removeNode: null, nodeSelected: null },
-	setup() {
+	setup(props, { emit }) {
 		const deviceSupport = useDeviceSupport();
 		const toast = useToast();
 		const colorPopoverTrigger = ref<HTMLDivElement>();
@@ -156,12 +186,21 @@ export default defineComponent({
 			}
 		});
 
+		const nodeBase = useNodeBase({
+			name: props.name,
+			instance: props.instance,
+			workflowObject: props.workflow,
+			isReadOnly: props.isReadOnly,
+			emit: emit as (event: string, ...args: unknown[]) => void,
+		});
+
 		return {
 			deviceSupport,
 			toast,
 			colorPopoverTrigger,
 			contextMenu,
 			forceActions,
+			...nodeBase,
 			setForceActions,
 		};
 	},
@@ -172,7 +211,20 @@ export default defineComponent({
 		};
 	},
 	computed: {
-		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),
+		...mapStores(
+			useNodeTypesStore,
+			useUIStore,
+			useNDVStore,
+			useCanvasStore,
+			useWorkflowsStore,
+			useHistoryStore,
+		),
+		data(): INodeUi | null {
+			return this.workflowsStore.getNodeByName(this.name);
+		},
+		nodeId(): string {
+			return this.data?.id || '';
+		},
 		defaultText(): string {
 			if (!this.nodeType) {
 				return '';
@@ -184,7 +236,7 @@ export default defineComponent({
 		},
 		isSelected(): boolean {
 			return (
-				this.uiStore.getSelectedNodes.find((node: INodeUi) => node.name === this.data.name) !==
+				this.uiStore.getSelectedNodes.find((node: INodeUi) => node.name === this.data?.name) !==
 				undefined
 			);
 		},
@@ -239,6 +291,17 @@ export default defineComponent({
 			return this.uiStore.isActionActive('workflowRunning');
 		},
 	},
+	mounted() {
+		// Initialize the node
+		if (this.data !== null) {
+			try {
+				this.addNode(this.data);
+			} catch (error) {
+				// This breaks when new nodes are loaded into store but workflow tab is not currently active
+				// Shouldn't affect anything
+			}
+		}
+	},
 	methods: {
 		onShowPopover() {
 			this.setForceActions(true);
@@ -274,7 +337,7 @@ export default defineComponent({
 		onMarkdownClick(link: HTMLAnchorElement) {
 			if (link) {
 				const isOnboardingNote = this.name === QUICKSTART_NOTE_NAME;
-				const isWelcomeVideo = link.querySelector('img[alt="n8n quickstart video"');
+				const isWelcomeVideo = link.querySelector('img[alt="n8n quickstart video"]');
 				const type =
 					isOnboardingNote && isWelcomeVideo
 						? 'welcome_video'

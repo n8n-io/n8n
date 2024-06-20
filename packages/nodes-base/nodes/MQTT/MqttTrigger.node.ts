@@ -7,7 +7,7 @@ import type {
 	IDeferredPromise,
 	IRun,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, randomString } from 'n8n-workflow';
 
 import * as mqtt from 'mqtt';
 import { formatPrivateKey } from '@utils/utilities';
@@ -109,8 +109,7 @@ export class MqttTrigger implements INodeType {
 		const host = credentials.host as string;
 		const brokerUrl = `${protocol}://${host}`;
 		const port = (credentials.port as number) || 1883;
-		const clientId =
-			(credentials.clientId as string) || `mqttjs_${Math.random().toString(16).substr(2, 8)}`;
+		const clientId = (credentials.clientId as string) || `mqttjs_${randomString(8).toLowerCase()}`;
 		const clean = credentials.clean as boolean;
 		const ssl = credentials.ssl as boolean;
 		const ca = formatPrivateKey(credentials.ca as string);

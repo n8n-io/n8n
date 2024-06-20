@@ -1,3 +1,233 @@
+<script setup lang="ts">
+import { computed } from 'vue';
+import type { IWorkflowDb, IUser } from '@/Interface';
+import {
+	DUPLICATE_MODAL_KEY,
+	MODAL_CONFIRM,
+	PROJECT_MOVE_RESOURCE_MODAL,
+	VIEWS,
+	WORKFLOW_SHARE_MODAL_KEY,
+} from '@/constants';
+import { useMessage } from '@/composables/useMessage';
+import { useToast } from '@/composables/useToast';
+import { getWorkflowPermissions } from '@/permissions';
+import dateformat from 'dateformat';
+import WorkflowActivator from '@/components/WorkflowActivator.vue';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import TimeAgo from '@/components/TimeAgo.vue';
+import type { ProjectSharingData } from '@/types/projects.types';
+import { useProjectsStore } from '@/stores/projects.store';
+import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
+import { useI18n } from '@/composables/useI18n';
+import { useRouter } from 'vue-router';
+import { useTelemetry } from '@/composables/useTelemetry';
+
+const WORKFLOW_LIST_ITEM_ACTIONS = {
+	OPEN: 'open',
+	SHARE: 'share',
+	DUPLICATE: 'duplicate',
+	DELETE: 'delete',
+	MOVE: 'move',
+};
+
+const props = withDefaults(
+	defineProps<{
+		data: IWorkflowDb;
+		readOnly?: boolean;
+	}>(),
+	{
+		data: () => ({
+			id: '',
+			createdAt: '',
+			updatedAt: '',
+			active: false,
+			connections: {},
+			nodes: [],
+			name: '',
+			sharedWithProjects: [],
+			homeProject: {} as ProjectSharingData,
+			versionId: '',
+		}),
+		readOnly: false,
+	},
+);
+
+const emit = defineEmits<{
+	(event: 'expand:tags'): void;
+	(event: 'click:tag', tagId: string, e: PointerEvent): void;
+}>();
+
+const toast = useToast();
+const message = useMessage();
+const locale = useI18n();
+const router = useRouter();
+const telemetry = useTelemetry();
+
+const settingsStore = useSettingsStore();
+const uiStore = useUIStore();
+const usersStore = useUsersStore();
+const workflowsStore = useWorkflowsStore();
+const projectsStore = useProjectsStore();
+
+const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
+const workflowPermissions = computed(() => getWorkflowPermissions(props.data));
+const actions = computed(() => {
+	const items = [
+		{
+			label: locale.baseText('workflows.item.open'),
+			value: WORKFLOW_LIST_ITEM_ACTIONS.OPEN,
+		},
+		{
+			label: locale.baseText('workflows.item.share'),
+			value: WORKFLOW_LIST_ITEM_ACTIONS.SHARE,
+		},
+	];
+
+	if (!props.readOnly) {
+		items.push({
+			label: locale.baseText('workflows.item.duplicate'),
+			value: WORKFLOW_LIST_ITEM_ACTIONS.DUPLICATE,
+		});
+	}
+
+	if (workflowPermissions.value.move) {
+		items.push({
+			label: locale.baseText('workflows.item.move'),
+			value: WORKFLOW_LIST_ITEM_ACTIONS.MOVE,
+		});
+	}
+
+	if (workflowPermissions.value.delete && !props.readOnly) {
+		items.push({
+			label: locale.baseText('workflows.item.delete'),
+			value: WORKFLOW_LIST_ITEM_ACTIONS.DELETE,
+		});
+	}
+
+	return items;
+});
+const formattedCreatedAtDate = computed(() => {
+	const currentYear = new Date().getFullYear().toString();
+
+	return dateformat(
+		props.data.createdAt,
+		`d mmmm${String(props.data.createdAt).startsWith(currentYear) ? '' : ', yyyy'}`,
+	);
+});
+
+async function onClick(event?: KeyboardEvent | PointerEvent) {
+	if (event?.ctrlKey || event?.metaKey) {
+		const route = router.resolve({
+			name: VIEWS.WORKFLOW,
+			params: { name: props.data.id },
+		});
+		window.open(route.href, '_blank');
+
+		return;
+	}
+
+	await router.push({
+		name: VIEWS.WORKFLOW,
+		params: { name: props.data.id },
+	});
+}
+
+function onClickTag(tagId: string, event: PointerEvent) {
+	event.stopPropagation();
+	emit('click:tag', tagId, event);
+}
+
+function onExpandTags() {
+	emit('expand:tags');
+}
+
+async function onAction(action: string) {
+	switch (action) {
+		case WORKFLOW_LIST_ITEM_ACTIONS.OPEN:
+			await onClick();
+			break;
+		case WORKFLOW_LIST_ITEM_ACTIONS.DUPLICATE:
+			uiStore.openModalWithData({
+				name: DUPLICATE_MODAL_KEY,
+				data: {
+					id: props.data.id,
+					name: props.data.name,
+					tags: (props.data.tags ?? []).map((tag) =>
+						typeof tag !== 'string' && 'id' in tag ? tag.id : tag,
+					),
+				},
+			});
+			break;
+		case WORKFLOW_LIST_ITEM_ACTIONS.SHARE:
+			uiStore.openModalWithData({
+				name: WORKFLOW_SHARE_MODAL_KEY,
+				data: { id: props.data.id },
+			});
+
+			telemetry.track('User opened sharing modal', {
+				workflow_id: props.data.id,
+				user_id_sharer: currentUser.value.id,
+				sub_view: 'Workflows listing',
+			});
+			break;
+		case WORKFLOW_LIST_ITEM_ACTIONS.DELETE:
+			await deleteWorkflow();
+			break;
+		case WORKFLOW_LIST_ITEM_ACTIONS.MOVE:
+			moveResource();
+			break;
+	}
+}
+
+async function deleteWorkflow() {
+	const deleteConfirmed = await message.confirm(
+		locale.baseText('mainSidebar.confirmMessage.workflowDelete.message', {
+			interpolate: { workflowName: props.data.name },
+		}),
+		locale.baseText('mainSidebar.confirmMessage.workflowDelete.headline'),
+		{
+			type: 'warning',
+			confirmButtonText: locale.baseText(
+				'mainSidebar.confirmMessage.workflowDelete.confirmButtonText',
+			),
+			cancelButtonText: locale.baseText(
+				'mainSidebar.confirmMessage.workflowDelete.cancelButtonText',
+			),
+		},
+	);
+
+	if (deleteConfirmed !== MODAL_CONFIRM) {
+		return;
+	}
+
+	try {
+		await workflowsStore.deleteWorkflow(props.data.id);
+	} catch (error) {
+		toast.showError(error, locale.baseText('generic.deleteWorkflowError'));
+		return;
+	}
+
+	// Reset tab title since workflow is deleted.
+	toast.showMessage({
+		title: locale.baseText('mainSidebar.showMessage.handleSelect1.title'),
+		type: 'success',
+	});
+}
+
+function moveResource() {
+	uiStore.openModalWithData({
+		name: PROJECT_MOVE_RESOURCE_MODAL,
+		data: {
+			resource: props.data,
+			resourceType: locale.baseText('generic.workflow').toLocaleLowerCase(),
+		},
+	});
+}
+</script>
+
 <template>
 	<n8n-card :class="$style.cardLink" @click="onClick">
 		<template #header>
@@ -49,203 +279,6 @@
 		</template>
 	</n8n-card>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-import type { PropType } from 'vue';
-import type { IWorkflowDb, IUser } from '@/Interface';
-import { DUPLICATE_MODAL_KEY, MODAL_CONFIRM, VIEWS, WORKFLOW_SHARE_MODAL_KEY } from '@/constants';
-import { useMessage } from '@/composables/useMessage';
-import { useToast } from '@/composables/useToast';
-import type { PermissionsMap } from '@/permissions';
-import type { WorkflowScope } from '@n8n/permissions';
-import { getWorkflowPermissions } from '@/permissions';
-import dateformat from 'dateformat';
-import WorkflowActivator from '@/components/WorkflowActivator.vue';
-import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import TimeAgo from '@/components/TimeAgo.vue';
-import type { ProjectSharingData } from '@/features/projects/projects.types';
-import { useProjectsStore } from '@/features/projects/projects.store';
-import ProjectCardBadge from '@/features/projects/components/ProjectCardBadge.vue';
-
-export const WORKFLOW_LIST_ITEM_ACTIONS = {
-	OPEN: 'open',
-	SHARE: 'share',
-	DUPLICATE: 'duplicate',
-	DELETE: 'delete',
-};
-
-export default defineComponent({
-	components: {
-		TimeAgo,
-		WorkflowActivator,
-		ProjectCardBadge,
-	},
-	props: {
-		data: {
-			type: Object as PropType<IWorkflowDb>,
-			required: true,
-			default: (): IWorkflowDb => ({
-				id: '',
-				createdAt: '',
-				updatedAt: '',
-				active: false,
-				connections: {},
-				nodes: [],
-				name: '',
-				sharedWithProjects: [],
-				homeProject: {} as ProjectSharingData,
-				versionId: '',
-			}),
-		},
-		readOnly: {
-			type: Boolean,
-			default: false,
-		},
-	},
-	setup() {
-		return {
-			...useToast(),
-			...useMessage(),
-		};
-	},
-	computed: {
-		...mapStores(useSettingsStore, useUIStore, useUsersStore, useWorkflowsStore, useProjectsStore),
-		currentUser(): IUser {
-			return this.usersStore.currentUser || ({} as IUser);
-		},
-		workflowPermissions(): PermissionsMap<WorkflowScope> {
-			return getWorkflowPermissions(this.data);
-		},
-		actions(): Array<{ label: string; value: string }> {
-			const actions = [
-				{
-					label: this.$locale.baseText('workflows.item.open'),
-					value: WORKFLOW_LIST_ITEM_ACTIONS.OPEN,
-				},
-				{
-					label: this.$locale.baseText('workflows.item.share'),
-					value: WORKFLOW_LIST_ITEM_ACTIONS.SHARE,
-				},
-			];
-
-			if (!this.readOnly) {
-				actions.push({
-					label: this.$locale.baseText('workflows.item.duplicate'),
-					value: WORKFLOW_LIST_ITEM_ACTIONS.DUPLICATE,
-				});
-			}
-
-			if (this.workflowPermissions.delete && !this.readOnly) {
-				actions.push({
-					label: this.$locale.baseText('workflows.item.delete'),
-					value: WORKFLOW_LIST_ITEM_ACTIONS.DELETE,
-				});
-			}
-
-			return actions;
-		},
-		formattedCreatedAtDate(): string {
-			const currentYear = new Date().getFullYear().toString();
-
-			return dateformat(
-				this.data.createdAt,
-				`d mmmm${String(this.data.createdAt).startsWith(currentYear) ? '' : ', yyyy'}`,
-			);
-		},
-	},
-	methods: {
-		async onClick(event?: KeyboardEvent | PointerEvent) {
-			if (event?.ctrlKey || event?.metaKey) {
-				const route = this.$router.resolve({
-					name: VIEWS.WORKFLOW,
-					params: { name: this.data.id },
-				});
-				window.open(route.href, '_blank');
-
-				return;
-			}
-
-			await this.$router.push({
-				name: VIEWS.WORKFLOW,
-				params: { name: this.data.id },
-			});
-		},
-		onClickTag(tagId: string, event: PointerEvent) {
-			event.stopPropagation();
-
-			this.$emit('click:tag', tagId, event);
-		},
-		onExpandTags() {
-			this.$emit('expand:tags');
-		},
-		async onAction(action: string) {
-			if (action === WORKFLOW_LIST_ITEM_ACTIONS.OPEN) {
-				await this.onClick();
-			} else if (action === WORKFLOW_LIST_ITEM_ACTIONS.DUPLICATE) {
-				this.uiStore.openModalWithData({
-					name: DUPLICATE_MODAL_KEY,
-					data: {
-						id: this.data.id,
-						name: this.data.name,
-						tags: (this.data.tags ?? []).map((tag) =>
-							typeof tag !== 'string' && 'id' in tag ? tag.id : tag,
-						),
-					},
-				});
-			} else if (action === WORKFLOW_LIST_ITEM_ACTIONS.SHARE) {
-				this.uiStore.openModalWithData({
-					name: WORKFLOW_SHARE_MODAL_KEY,
-					data: { id: this.data.id },
-				});
-
-				this.$telemetry.track('User opened sharing modal', {
-					workflow_id: this.data.id,
-					user_id_sharer: this.currentUser.id,
-					sub_view: 'Workflows listing',
-				});
-			} else if (action === WORKFLOW_LIST_ITEM_ACTIONS.DELETE) {
-				const deleteConfirmed = await this.confirm(
-					this.$locale.baseText('mainSidebar.confirmMessage.workflowDelete.message', {
-						interpolate: { workflowName: this.data.name },
-					}),
-					this.$locale.baseText('mainSidebar.confirmMessage.workflowDelete.headline'),
-					{
-						type: 'warning',
-						confirmButtonText: this.$locale.baseText(
-							'mainSidebar.confirmMessage.workflowDelete.confirmButtonText',
-						),
-						cancelButtonText: this.$locale.baseText(
-							'mainSidebar.confirmMessage.workflowDelete.cancelButtonText',
-						),
-					},
-				);
-
-				if (deleteConfirmed !== MODAL_CONFIRM) {
-					return;
-				}
-
-				try {
-					await this.workflowsStore.deleteWorkflow(this.data.id);
-				} catch (error) {
-					this.showError(error, this.$locale.baseText('generic.deleteWorkflowError'));
-					return;
-				}
-
-				// Reset tab title since workflow is deleted.
-				this.showMessage({
-					title: this.$locale.baseText('mainSidebar.showMessage.handleSelect1.title'),
-					type: 'success',
-				});
-			}
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .cardLink {

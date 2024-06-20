@@ -15,7 +15,7 @@ export class LoneScale implements INodeType {
 		displayName: 'LoneScale',
 		name: 'loneScale',
 		group: ['transform'],
-		icon: 'file:lonescale-logo.svg',
+		icon: { light: 'file:loneScale.svg', dark: 'file:loneScale.dark.svg' },
 		version: 1,
 		description: 'Create List, add / delete items',
 		subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
@@ -465,7 +465,7 @@ export class LoneScale implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

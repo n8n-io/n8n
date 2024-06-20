@@ -1,19 +1,20 @@
 <script lang="ts" setup>
 import type { CanvasConnection, CanvasElement } from '@/types';
-import type { NodeDragEvent, Connection } from '@vue-flow/core';
+import type { EdgeMouseEvent, NodeDragEvent, Connection } from '@vue-flow/core';
 import { useVueFlow, VueFlow, PanelPosition } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
 import { MiniMap } from '@vue-flow/minimap';
 import CanvasNode from './elements/nodes/CanvasNode.vue';
 import CanvasEdge from './elements/edges/CanvasEdge.vue';
-import { onMounted, onUnmounted, useCssModule } from 'vue';
+import { onMounted, onUnmounted, ref, useCssModule } from 'vue';
 
 const $style = useCssModule();
 
 const emit = defineEmits<{
 	'update:modelValue': [elements: CanvasElement[]];
 	'update:node:position': [id: string, position: { x: number; y: number }];
+	'update:node:active': [id: string];
 	'delete:node': [id: string];
 	'delete:connection': [connection: Connection];
 	'create:connection': [connection: Connection];
@@ -36,6 +37,8 @@ const props = withDefaults(
 
 const { getSelectedEdges, getSelectedNodes } = useVueFlow({ id: props.id });
 
+const hoveredEdges = ref<Record<string, boolean>>({});
+
 onMounted(() => {
 	document.addEventListener('keydown', onKeyDown);
 });
@@ -48,6 +51,10 @@ function onNodeDragStop(e: NodeDragEvent) {
 	e.nodes.forEach((node) => {
 		emit('update:node:position', node.id, node.position);
 	});
+}
+
+function onSetNodeActive(id: string) {
+	emit('update:node:active', id);
 }
 
 function onDeleteNode(id: string) {
@@ -68,6 +75,14 @@ function onKeyDown(e: KeyboardEvent) {
 		getSelectedNodes.value.forEach(({ id }) => onDeleteNode(id));
 	}
 }
+
+function onMouseEnterEdge(event: EdgeMouseEvent) {
+	hoveredEdges.value[event.edge.id] = true;
+}
+
+function onMouseLeaveEdge(event: EdgeMouseEvent) {
+	hoveredEdges.value[event.edge.id] = false;
+}
 </script>
 
 <template>
@@ -82,14 +97,20 @@ function onKeyDown(e: KeyboardEvent) {
 		:max-zoom="2"
 		data-test-id="canvas"
 		@node-drag-stop="onNodeDragStop"
+		@edge-mouse-enter="onMouseEnterEdge"
+		@edge-mouse-leave="onMouseLeaveEdge"
 		@connect="onConnect"
 	>
 		<template #node-canvas-node="canvasNodeProps">
-			<CanvasNode v-bind="canvasNodeProps" @delete="onDeleteNode" />
+			<CanvasNode v-bind="canvasNodeProps" @delete="onDeleteNode" @activate="onSetNodeActive" />
 		</template>
 
 		<template #edge-canvas-edge="canvasEdgeProps">
-			<CanvasEdge v-bind="canvasEdgeProps" @delete="onDeleteConnection" />
+			<CanvasEdge
+				v-bind="canvasEdgeProps"
+				:hovered="hoveredEdges[canvasEdgeProps.id]"
+				@delete="onDeleteConnection"
+			/>
 		</template>
 
 		<Background data-test-id="canvas-background" pattern-color="#aaa" :gap="16" />

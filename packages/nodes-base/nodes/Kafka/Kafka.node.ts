@@ -21,7 +21,7 @@ export class Kafka implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Kafka',
 		name: 'kafka',
-		icon: 'file:kafka.svg',
+		icon: { light: 'file:kafka.svg', dark: 'file:kafka.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		description: 'Sends messages to a Kafka topic',
@@ -408,7 +408,7 @@ export class Kafka implements INodeType {
 
 			return [executionData];
 		} catch (error) {
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(error)) {
 				return [[{ json: { error: error.message }, pairedItem: itemData }]];
 			} else {
 				throw error;

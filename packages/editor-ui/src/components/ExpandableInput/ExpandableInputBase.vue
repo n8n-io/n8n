@@ -5,23 +5,24 @@
 	</div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script setup lang="ts">
+import { computed } from 'vue';
 
-export default defineComponent({
-	name: 'ExpandableInputBase',
-	props: ['modelValue', 'placeholder', 'staticSize'],
-	computed: {
-		hiddenValue() {
-			let value = (this.modelValue as string).replace(/\s/g, '.'); // force input to expand on space chars
-			if (!value) {
-				// @ts-ignore
-				value = this.placeholder;
-			}
+type Props = {
+	modelValue: string;
+	placeholder?: string;
+	staticSize?: boolean;
+};
 
-			return `${value}`; // adjust for padding
-		},
-	},
+const props = withDefaults(defineProps<Props>(), { staticSize: false, placeholder: '' });
+
+const hiddenValue = computed(() => {
+	let value = props.modelValue.replace(/\s/g, '.'); // force input to expand on space chars
+	if (!value) {
+		value = props.placeholder;
+	}
+
+	return `${value}`; // adjust for padding
 });
 </script>
 
