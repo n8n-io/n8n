@@ -9,9 +9,8 @@ export async function executeWorkflow(testData: WorkflowTestData, nodeTypes: INo
 	if (testData.nock) {
 		const { baseUrl, mocks } = testData.nock;
 		const agent = nock(baseUrl);
-		mocks.forEach(({ method, path, statusCode, responseBody }) =>
-			// @ts-expect-error
-			agent[method](path).reply(statusCode, responseBody),
+		mocks.forEach(({ method, path, statusCode, requestBody, responseBody }) =>
+			agent[method](path, requestBody).reply(statusCode, responseBody),
 		);
 	}
 	const executionMode = testData.trigger?.mode ?? 'manual';
