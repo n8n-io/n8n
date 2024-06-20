@@ -2,7 +2,7 @@
 	"node": "n8n-nodes-base.twitter",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": ["Marketing & Content"],
+	"categories": ["Marketing"],
 	"resources": {
 		"credentialDocumentation": [
 			{
@@ -31,5 +31,6 @@
 				"url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/"
 			}
 		]
-	}
+	},
+	"alias": ["Tweet", "Twitter", "X", "X API"]
 }

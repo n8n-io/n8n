@@ -1,18 +1,17 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function figmaApiRequest(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},
@@ -22,7 +21,7 @@ export async function figmaApiRequest(
 ): Promise<any> {
 	const credentials = await this.getCredentials('figmaApi');
 
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		headers: { 'X-FIGMA-TOKEN': credentials.accessToken },
 		method,
 		body,

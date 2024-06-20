@@ -19,19 +19,20 @@ export async function apiRequest(
 	query: IDataObject = {},
 ) {
 	const credentials = await this.getCredentials('mattermostApi');
+	const baseUrl = (credentials.baseUrl as string).replace(/\/$/, '');
 
 	const options: IHttpRequestOptions = {
 		method,
 		body,
 		qs: query,
-		url: `${credentials.baseUrl}/api/v4/${endpoint}`,
+		url: `${baseUrl}/api/v4/${endpoint}`,
 		headers: {
 			'content-type': 'application/json; charset=utf-8',
 		},
 		skipSslCertificateValidation: credentials.allowUnauthorizedCerts as boolean,
 	};
 
-	return this.helpers.httpRequestWithAuthentication.call(this, 'mattermostApi', options);
+	return await this.helpers.httpRequestWithAuthentication.call(this, 'mattermostApi', options);
 }
 
 export async function apiRequestAllItems(

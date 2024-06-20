@@ -1,10 +1,14 @@
 import type Bull from 'bull';
-import type { RedisOptions } from 'ioredis';
-import { Service } from 'typedi';
-import type { IExecuteResponsePromiseData } from 'n8n-workflow';
-import config from '@/config';
+import Container, { Service } from 'typedi';
+import {
+	ApplicationError,
+	BINARY_ENCODING,
+	type IDataObject,
+	type ExecutionError,
+	type IExecuteResponsePromiseData,
+} from 'n8n-workflow';
 import { ActiveExecutions } from '@/ActiveExecutions';
-import * as WebhookHelpers from '@/WebhookHelpers';
+import config from '@/config';
 
 export type JobId = Bull.JobId;
 export type Job = Bull.Job<JobData>;
@@ -17,6 +21,7 @@ export interface JobData {
 
 export interface JobResponse {
 	success: boolean;
+	error?: ExecutionError;
 }
 
 export interface WebhookResponse {
@@ -31,42 +36,84 @@ export class Queue {
 	constructor(private activeExecutions: ActiveExecutions) {}
 
 	async init() {
-		const prefix = config.getEnv('queue.bull.prefix');
-		const redisOptions: RedisOptions = config.getEnv('queue.bull.redis');
-
-		// eslint-disable-next-line @typescript-eslint/naming-convention
 		const { default: Bull } = await import('bull');
+		const { RedisClientService } = await import('@/services/redis/redis-client.service');
 
-		// Disabling ready check is necessary as it allows worker to
-		// quickly reconnect to Redis if Redis crashes or is unreachable
-		// for some time. With it enabled, worker might take minutes to realize
-		// redis is back up and resume working.
-		// More here: https://github.com/OptimalBits/bull/issues/890
-		// @ts-ignore
-		this.jobQueue = new Bull('jobs', { prefix, redis: redisOptions, enableReadyCheck: false });
+		const redisClientService = Container.get(RedisClientService);
 
-		this.jobQueue.on('global:progress', (jobId, progress: WebhookResponse) => {
+		const bullPrefix = config.getEnv('queue.bull.prefix');
+		const prefix = redisClientService.toValidPrefix(bullPrefix);
+
+		this.jobQueue = new Bull('jobs', {
+			prefix,
+			settings: config.get('queue.bull.settings'),
+			createClient: (type) => redisClientService.createClient({ type: `${type}(bull)` }),
+		});
+
+		this.jobQueue.on('global:progress', (_jobId, progress: WebhookResponse) => {
 			this.activeExecutions.resolveResponsePromise(
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				progress.executionId,
-				WebhookHelpers.decodeWebhookResponse(progress.response),
+				this.decodeWebhookResponse(progress.response),
 			);
 		});
 	}
 
+	decodeWebhookResponse(response: IExecuteResponsePromiseData): IExecuteResponsePromiseData {
+		if (
+			typeof response === 'object' &&
+			typeof response.body === 'object' &&
+			(response.body as IDataObject)['__@N8nEncodedBuffer@__']
+		) {
+			response.body = Buffer.from(
+				(response.body as IDataObject)['__@N8nEncodedBuffer@__'] as string,
+				BINARY_ENCODING,
+			);
+		}
+
+		return response;
+	}
+
 	async add(jobData: JobData, jobOptions: object): Promise<Job> {
-		return this.jobQueue.add(jobData, jobOptions);
+		return await this.jobQueue.add(jobData, jobOptions);
 	}
 
 	async getJob(jobId: JobId): Promise<Job | null> {
-		return this.jobQueue.getJob(jobId);
+		return await this.jobQueue.getJob(jobId);
 	}
 
 	async getJobs(jobTypes: Bull.JobStatus[]): Promise<Job[]> {
-		return this.jobQueue.getJobs(jobTypes);
+		return await this.jobQueue.getJobs(jobTypes);
+	}
+
+	/**
+	 * Get IDs of executions that are currently in progress in the queue.
+	 */
+	async getInProgressExecutionIds() {
+		const inProgressJobs = await this.getJobs(['active', 'waiting']);
+
+		return new Set(inProgressJobs.map((job) => job.data.executionId));
+	}
+
+	async process(concurrency: number, fn: Bull.ProcessCallbackFunction<JobData>): Promise<void> {
+		return await this.jobQueue.process(concurrency, fn);
+	}
+
+	async ping(): Promise<string> {
+		return await this.jobQueue.client.ping();
+	}
+
+	async pause({
+		isLocal,
+		doNotWaitActive,
+	}: { isLocal?: boolean; doNotWaitActive?: boolean } = {}): Promise<void> {
+		return await this.jobQueue.pause(isLocal, doNotWaitActive);
 	}
 
 	getBullObjectInstance(): JobQueue {
+		if (this.jobQueue === undefined) {
+			// if queue is not initialized yet throw an error, since we do not want to hand around an undefined queue
+			throw new ApplicationError('Queue is not initialized yet!');
+		}
 		return this.jobQueue;
 	}
 

@@ -1,5 +1,5 @@
-import { IRestApiContext, ITag } from '@/Interface';
-import { makeRestApiRequest } from '@/utils';
+import type { IRestApiContext, ITag } from '@/Interface';
+import { makeRestApiRequest } from '@/utils/apiUtils';
 
 export async function getTags(context: IRestApiContext, withUsageCount = false): Promise<ITag[]> {
 	return await makeRestApiRequest(context, 'GET', '/tags', { withUsageCount });

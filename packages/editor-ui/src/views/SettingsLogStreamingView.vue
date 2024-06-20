@@ -6,7 +6,7 @@
 					{{ $locale.baseText(`settings.log-streaming.heading`) }}
 				</n8n-heading>
 				<template v-if="environment !== 'production'">
-					<strong>&nbsp;&nbsp;&nbsp;&nbsp;Disable License ({{ environment }})&nbsp;</strong>
+					<strong class="ml-m">Disable License ({{ environment }})&nbsp;</strong>
 					<el-switch v-model="disableLicense" size="large" data-test-id="disable-license-toggle" />
 				</template>
 			</div>
@@ -14,60 +14,54 @@
 		<template v-if="isLicensed">
 			<div class="mb-l">
 				<n8n-info-tip theme="info" type="note">
-					<template>
-						<span v-html="$locale.baseText('settings.log-streaming.infoText')"></span>
-					</template>
+					<span v-html="$locale.baseText('settings.log-streaming.infoText')"></span>
 				</n8n-info-tip>
 			</div>
 			<template v-if="storeHasItems()">
 				<el-row
-					:gutter="10"
 					v-for="item in sortedItemKeysByLabel"
 					:key="item.key"
+					:gutter="10"
 					:class="$style.destinationItem"
 				>
 					<el-col v-if="logStreamingStore.items[item.key]?.destination">
-						<event-destination-card
+						<EventDestinationCard
 							:destination="logStreamingStore.items[item.key]?.destination"
-							:eventBus="eventBus"
-							:isInstanceOwner="isInstanceOwner"
+							:event-bus="eventBus"
+							:readonly="!canManageLogStreaming"
 							@remove="onRemove(logStreamingStore.items[item.key]?.destination?.id)"
 							@edit="onEdit(logStreamingStore.items[item.key]?.destination?.id)"
 						/>
 					</el-col>
 				</el-row>
 				<div class="mt-m text-right">
-					<n8n-button v-if="isInstanceOwner" size="large" @click="addDestination">
+					<n8n-button v-if="canManageLogStreaming" size="large" @click="addDestination">
 						{{ $locale.baseText(`settings.log-streaming.add`) }}
 					</n8n-button>
 				</div>
 			</template>
-			<template v-else>
-				<div :class="$style.actionBoxContainer" data-test-id="action-box-licensed">
-					<n8n-action-box
-						:buttonText="$locale.baseText(`settings.log-streaming.add`)"
-						@click="addDestination"
-					>
-						<template #heading>
-							<span v-html="$locale.baseText(`settings.log-streaming.addFirstTitle`)" />
-						</template>
-					</n8n-action-box>
-				</div>
-			</template>
+			<div v-else data-test-id="action-box-licensed">
+				<n8n-action-box
+					:button-text="$locale.baseText(`settings.log-streaming.add`)"
+					@click:button="addDestination"
+				>
+					<template #heading>
+						<span v-html="$locale.baseText(`settings.log-streaming.addFirstTitle`)" />
+					</template>
+				</n8n-action-box>
+			</div>
 		</template>
 		<template v-else>
 			<div v-if="$locale.baseText('settings.log-streaming.infoText')" class="mb-l">
 				<n8n-info-tip theme="info" type="note">
-					<template>
-						<span v-html="$locale.baseText('settings.log-streaming.infoText')"></span>
-					</template>
+					<span v-html="$locale.baseText('settings.log-streaming.infoText')"></span>
 				</n8n-info-tip>
 			</div>
-			<div :class="$style.actionBoxContainer" data-test-id="action-box-unlicensed">
+			<div data-test-id="action-box-unlicensed">
 				<n8n-action-box
 					:description="$locale.baseText('settings.log-streaming.actionBox.description')"
-					:buttonText="$locale.baseText('settings.log-streaming.actionBox.button')"
-					@click="onContactUsClicked"
+					:button-text="$locale.baseText('settings.log-streaming.actionBox.button')"
+					@click:button="goToUpgrade"
 				>
 					<template #heading>
 						<span v-html="$locale.baseText('settings.log-streaming.actionBox.title')" />
@@ -79,45 +73,38 @@
 </template>
 
 <script lang="ts">
-import { v4 as uuid } from 'uuid';
+import { defineComponent, nextTick } from 'vue';
 import { mapStores } from 'pinia';
-import mixins from 'vue-typed-mixins';
-import { useWorkflowsStore } from '../stores/workflows';
-import { useUsersStore } from '../stores/users';
-import { useCredentialsStore } from '../stores/credentials';
-import { useLogStreamingStore } from '../stores/logStreamingStore';
-import { useSettingsStore } from '../stores/settings';
-import { useUIStore } from '../stores/ui';
-import { LOG_STREAM_MODAL_KEY, EnterpriseEditionFeature } from '../constants';
-import {
-	deepCopy,
-	defaultMessageEventBusDestinationOptions,
-	MessageEventBusDestinationOptions,
-} from 'n8n-workflow';
-import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
+import { v4 as uuid } from 'uuid';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { hasPermission } from '@/utils/rbac/permissions';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useLogStreamingStore } from '@/stores/logStreaming.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUIStore } from '@/stores/ui.store';
+import { LOG_STREAM_MODAL_KEY, EnterpriseEditionFeature } from '@/constants';
+import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
+import { deepCopy, defaultMessageEventBusDestinationOptions } from 'n8n-workflow';
 import EventDestinationCard from '@/components/SettingsLogStreaming/EventDestinationCard.ee.vue';
-import { createEventBus } from '@/event-bus';
+import { createEventBus } from 'n8n-design-system/utils';
 
-export default mixins().extend({
+export default defineComponent({
 	name: 'SettingsLogStreamingView',
-	props: {},
 	components: {
-		PageViewLayout,
 		EventDestinationCard,
 	},
+	props: {},
 	data() {
 		return {
 			eventBus: createEventBus(),
 			destinations: Array<MessageEventBusDestinationOptions>,
 			disableLicense: false,
 			allDestinations: [] as MessageEventBusDestinationOptions[],
-			isInstanceOwner: false,
 		};
 	},
 	async mounted() {
 		if (!this.isLicensed) return;
 
-		this.isInstanceOwner = this.usersStore.currentUser?.globalRole?.name === 'owner';
 		// Prepare credentialsStore so modals can pick up credentials
 		await this.credentialsStore.fetchCredentialTypes(false);
 		await this.credentialsStore.fetchAllCredentials();
@@ -141,7 +128,7 @@ export default mixins().extend({
 		// listen to modal closing and remove nodes from store
 		this.eventBus.on('closing', this.onBusClosing);
 	},
-	destroyed() {
+	beforeUnmount() {
 		this.eventBus.off('destinationWasSaved', this.onDestinationWasSaved);
 		this.eventBus.off('remove', this.onRemove);
 		this.eventBus.off('closing', this.onBusClosing);
@@ -152,7 +139,6 @@ export default mixins().extend({
 			useLogStreamingStore,
 			useWorkflowsStore,
 			useUIStore,
-			useUsersStore,
 			useCredentialsStore,
 		),
 		sortedItemKeysByLabel() {
@@ -166,8 +152,11 @@ export default mixins().extend({
 			return process.env.NODE_ENV;
 		},
 		isLicensed(): boolean {
-			if (this.disableLicense === true) return false;
+			if (this.disableLicense) return false;
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.LogStreaming);
+		},
+		canManageLogStreaming(): boolean {
+			return hasPermission(['rbac'], { rbac: { scope: 'logStreaming:manage' } });
 		},
 	},
 	methods: {
@@ -198,11 +187,8 @@ export default mixins().extend({
 			}
 			this.$forceUpdate();
 		},
-		onContactUsClicked() {
-			window.open('mailto:sales@n8n.io', '_blank');
-			this.$telemetry.track('user clicked contact us button', {
-				feature: EnterpriseEditionFeature.LogStreaming,
-			});
+		goToUpgrade() {
+			void this.uiStore.goToUpgrade('log-streaming', 'upgrade-log-streaming');
 		},
 		storeHasItems(): boolean {
 			return this.logStreamingStore.items && Object.keys(this.logStreamingStore.items).length > 0;
@@ -211,6 +197,7 @@ export default mixins().extend({
 			const newDestination = deepCopy(defaultMessageEventBusDestinationOptions);
 			newDestination.id = uuid();
 			this.logStreamingStore.addDestination(newDestination);
+			await nextTick();
 			this.uiStore.openModalWithData({
 				name: LOG_STREAM_MODAL_KEY,
 				data: {

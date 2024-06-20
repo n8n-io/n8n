@@ -1,16 +1,15 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 	IDataObject,
 	IHookFunctions,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
 
 export async function mailjetApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | IHookFunctions | ILoadOptionsFunctions,
-	method: string,
+	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
 	path: string,
 
 	body: any = {},
@@ -35,7 +34,7 @@ export async function mailjetApiRequest(
 		credentialType = 'mailjetSmsApi';
 	}
 
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		headers: {
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
@@ -51,12 +50,12 @@ export async function mailjetApiRequest(
 		delete options.body;
 	}
 
-	return this.helpers.requestWithAuthentication.call(this, credentialType, options);
+	return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 }
 
 export async function mailjetApiRequestAllItems(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 
 	body: any = {},

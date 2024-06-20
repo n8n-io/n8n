@@ -88,23 +88,6 @@ export class VenafiTlsProtectCloud implements INodeType {
 				}
 				return returnData;
 			},
-			async getApplicationServerTypes(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const { applicationServerTypes } = await venafiApiRequest.call(
-					this,
-					'GET',
-					'/outagedetection/v1/applicationservertypes',
-				);
-				for (const applicationServerType of applicationServerTypes) {
-					returnData.push({
-						name: applicationServerType.platformName,
-						value: applicationServerType.id,
-					});
-				}
-				return returnData;
-			},
 			async getCertificateIssuingTemplates(
 				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
@@ -157,10 +140,6 @@ export class VenafiTlsProtectCloud implements INodeType {
 						};
 
 						if (generateCsr) {
-							const applicationServerTypeId = this.getNodeParameter(
-								'applicationServerTypeId',
-								i,
-							) as string;
 							const commonName = this.getNodeParameter('commonName', i) as string;
 							const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -169,7 +148,6 @@ export class VenafiTlsProtectCloud implements INodeType {
 							const subjectAltNamesByType: ISubjectAltNamesByType = {};
 
 							body.isVaaSGenerated = true;
-							body.applicationServerTypeId = applicationServerTypeId;
 
 							csrAttributes.commonName = commonName;
 
@@ -323,7 +301,6 @@ export class VenafiTlsProtectCloud implements INodeType {
 								`/outagedetection/v1/certificates/${certificateId}/contents`,
 								{},
 								qs,
-								undefined,
 								{ encoding: null, json: false, resolveWithFullResponse: true, cert: true },
 							);
 						} else {
@@ -364,7 +341,6 @@ export class VenafiTlsProtectCloud implements INodeType {
 								`/outagedetection/v1/certificates/${certificateId}/keystore`,
 								body,
 								{},
-								undefined,
 								{ encoding: null, json: false, resolveWithFullResponse: true },
 							);
 						}
@@ -481,7 +457,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 					),
 				);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ json: { error: error.message } });
 					continue;
 				}

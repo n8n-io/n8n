@@ -2,12 +2,12 @@
 	<div
 		:class="$style.wrapper"
 		:style="iconStyleData"
-		@click="(e) => $emit('click')"
+		@click="() => $emit('click')"
 		@mouseover="showTooltip = true"
 		@mouseleave="showTooltip = false"
 	>
 		<div :class="$style.tooltip">
-			<n8n-tooltip placement="top" manual :value="showTooltip">
+			<n8n-tooltip placement="top" :visible="showTooltip">
 				<template #content>
 					<div v-text="nodeType.displayName"></div>
 				</template>
@@ -40,21 +40,22 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { type StyleValue, defineComponent, type PropType } from 'vue';
 
-import { ITemplatesNode } from '@/Interface';
-import { INodeTypeDescription } from 'n8n-workflow';
+import type { ITemplatesNode } from '@/Interface';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import { mapStores } from 'pinia';
-import { useRootStore } from '@/stores/n8nRootStore';
+import { useRootStore } from '@/stores/root.store';
 
 interface NodeIconData {
 	type: string;
 	path?: string;
+	icon?: string;
 	fileExtension?: string;
 	fileBuffer?: string;
 }
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'HoverableNodeIcon',
 	props: {
 		circle: {
@@ -69,7 +70,8 @@ export default Vue.extend({
 			default: false,
 		},
 		nodeType: {
-			type: Object,
+			type: Object as PropType<INodeTypeDescription>,
+			required: true,
 		},
 		size: {
 			type: Number,
@@ -82,9 +84,11 @@ export default Vue.extend({
 				'max-width': this.size + 'px',
 			};
 		},
-		iconStyleData(): object {
-			const nodeType = this.nodeType as ITemplatesNode | null;
-			const color = nodeType ? nodeType.defaults && nodeType!.defaults.color : '';
+		iconStyleData(): StyleValue {
+			const nodeType = this.nodeType;
+			const nodeTypeColor = nodeType?.defaults?.color;
+			const color = typeof nodeTypeColor === 'string' ? nodeTypeColor : '';
+
 			if (!this.size) {
 				return { color };
 			}
@@ -103,7 +107,7 @@ export default Vue.extend({
 				}),
 			};
 		},
-		imageStyleData(): object {
+		imageStyleData(): StyleValue {
 			return {
 				width: '100%',
 				'max-width': '100%',
@@ -120,9 +124,9 @@ export default Vue.extend({
 				return (nodeType as ITemplatesNode).iconData;
 			}
 
-			const restUrl = this.rootStore.getRestUrl;
+			const restUrl = this.rootStore.restUrl;
 
-			if (nodeType.icon) {
+			if (typeof nodeType.icon === 'string') {
 				const [type, path] = nodeType.icon.split(':');
 				const returnData: NodeIconData = {
 					type,

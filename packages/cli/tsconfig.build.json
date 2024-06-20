@@ -1,19 +1,10 @@
 {
-	"extends": "./tsconfig.json",
+	"extends": ["./tsconfig.json", "../../tsconfig.build.json"],
 	"compilerOptions": {
 		"rootDir": "src",
 		"outDir": "dist",
-		"types": ["node"],
-		"noEmit": false,
 		"tsBuildInfoFile": "dist/build.tsbuildinfo"
 	},
 	"include": ["src/**/*.ts"],
-	"exclude": ["test/**"],
-	"tsc-alias": {
-		"replacers": {
-			"base-url": {
-				"enabled": false
-			}
-		}
-	}
+	"exclude": ["test/**", "src/**/__tests__/**"]
 }

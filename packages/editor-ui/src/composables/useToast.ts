@@ -1,35 +1,48 @@
-import { Notification } from 'element-ui';
-import type { ElNotificationComponent, ElNotificationOptions } from 'element-ui/types/notification';
-import type { MessageType } from 'element-ui/types/message';
-import { sanitizeHtml } from '@/utils';
+import { ElNotification as Notification } from 'element-plus';
+import type { NotificationHandle, MessageBoxState } from 'element-plus';
+import type { NotificationOptions } from '@/Interface';
+import { sanitizeHtml } from '@/utils/htmlUtils';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useWorkflowsStore } from '@/stores';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useUIStore } from '@/stores/ui.store';
 import { useI18n } from './useI18n';
 import { useExternalHooks } from './useExternalHooks';
+import { VIEWS } from '@/constants';
 
-const messageDefaults: Partial<Omit<ElNotificationOptions, 'message'>> = {
+export interface NotificationErrorWithNodeAndDescription extends Error {
+	node: {
+		name: string;
+	};
+	description: string;
+}
+
+const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
 	dangerouslyUseHTMLString: true,
 	position: 'bottom-right',
 };
 
-const stickyNotificationQueue: ElNotificationComponent[] = [];
+const stickyNotificationQueue: NotificationHandle[] = [];
 
 export function useToast() {
 	const telemetry = useTelemetry();
 	const workflowsStore = useWorkflowsStore();
+	const uiStore = useUIStore();
 	const externalHooks = useExternalHooks();
 	const i18n = useI18n();
 
-	function showMessage(
-		messageData: Omit<ElNotificationOptions, 'message'> & { message?: string },
-		track = true,
-	) {
+	function showMessage(messageData: Partial<NotificationOptions>, track = true) {
 		messageData = { ...messageDefaults, ...messageData };
-		messageData.message = messageData.message
-			? sanitizeHtml(messageData.message)
-			: messageData.message;
 
-		const notification = Notification(messageData as ElNotificationOptions);
+		Object.defineProperty(messageData, 'message', {
+			value:
+				typeof messageData.message === 'string'
+					? sanitizeHtml(messageData.message)
+					: messageData.message,
+			writable: true,
+			enumerable: true,
+		});
+
+		const notification = Notification(messageData);
 
 		if (messageData.duration === 0) {
 			stickyNotificationQueue.push(notification);
@@ -39,6 +52,7 @@ export function useToast() {
 			telemetry.track('Instance FE emitted error', {
 				error_title: messageData.title,
 				error_message: messageData.message,
+				caused_by_credential: causedByCredential(messageData.message as string),
 				workflow_id: workflowsStore.workflowId,
 			});
 		}
@@ -48,16 +62,17 @@ export function useToast() {
 
 	function showToast(config: {
 		title: string;
-		message: string;
+		message: NotificationOptions['message'];
 		onClick?: () => void;
 		onClose?: () => void;
 		duration?: number;
 		customClass?: string;
 		closeOnClick?: boolean;
-		type?: MessageType;
+		type?: MessageBoxState['type'];
+		dangerouslyUseHTMLString?: boolean;
 	}) {
 		// eslint-disable-next-line prefer-const
-		let notification: ElNotificationComponent;
+		let notification: NotificationHandle;
 		if (config.closeOnClick) {
 			const cb = config.onClick;
 			config.onClick = () => {
@@ -79,12 +94,13 @@ export function useToast() {
 			duration: config.duration,
 			customClass: config.customClass,
 			type: config.type,
+			dangerouslyUseHTMLString: config.dangerouslyUseHTMLString ?? true,
 		});
 
 		return notification;
 	}
 
-	function collapsableDetails({ description, node }: Error) {
+	function collapsableDetails({ description, node }: NotificationErrorWithNodeAndDescription) {
 		if (!description) return '';
 
 		const errorDescription =
@@ -105,7 +121,7 @@ export function useToast() {
 	}
 
 	function showError(e: Error | unknown, title: string, message?: string) {
-		const error = e as Error;
+		const error = e as NotificationErrorWithNodeAndDescription;
 		const messageLine = message ? `${message}<br/>` : '';
 		showMessage(
 			{
@@ -120,7 +136,7 @@ export function useToast() {
 			false,
 		);
 
-		externalHooks.run('showMessage.showError', {
+		void externalHooks.run('showMessage.showError', {
 			title,
 			message,
 			errorMessage: error.message,
@@ -130,13 +146,55 @@ export function useToast() {
 			error_title: title,
 			error_description: message,
 			error_message: error.message,
+			caused_by_credential: causedByCredential(error.message),
 			workflow_id: workflowsStore.workflowId,
 		});
+	}
+
+	function showAlert(config: NotificationOptions): NotificationHandle {
+		return Notification(config);
+	}
+
+	function causedByCredential(message: string | undefined) {
+		if (!message) return false;
+
+		return message.includes('Credentials for') && message.includes('are not set');
+	}
+
+	function clearAllStickyNotifications() {
+		stickyNotificationQueue.forEach((notification) => {
+			if (notification) {
+				notification.close();
+			}
+		});
+
+		stickyNotificationQueue.length = 0;
+	}
+
+	// Pick up and display notifications for the given list of views
+	function showNotificationForViews(views: VIEWS[]) {
+		const notifications: NotificationOptions[] = [];
+		views.forEach((view) => {
+			notifications.push(...uiStore.getNotificationsForView(view));
+		});
+		if (notifications.length) {
+			notifications.forEach(async (notification) => {
+				// Notifications show on top of each other without this timeout
+				setTimeout(() => {
+					showMessage(notification);
+				}, 5);
+			});
+			// Clear the queue once all notifications are shown
+			uiStore.setNotificationsForView(VIEWS.WORKFLOW, []);
+		}
 	}
 
 	return {
 		showMessage,
 		showToast,
 		showError,
+		showAlert,
+		clearAllStickyNotifications,
+		showNotificationForViews,
 	};
 }

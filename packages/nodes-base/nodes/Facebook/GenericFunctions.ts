@@ -1,11 +1,10 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
+	IRequestOptions,
 	IWebhookFunctions,
 	JsonObject,
 } from 'n8n-workflow';
@@ -14,13 +13,8 @@ import { NodeApiError } from 'n8n-workflow';
 import { capitalCase } from 'change-case';
 
 export async function facebookApiRequest(
-	this:
-		| IHookFunctions
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| ILoadOptionsFunctions
-		| IWebhookFunctions,
-	method: string,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},
@@ -38,7 +32,7 @@ export async function facebookApiRequest(
 
 	qs.access_token = credentials.accessToken;
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			accept: 'application/json,text/*;q=0.99',
 		},
@@ -554,7 +548,6 @@ export function getFields(object: string) {
 		],
 	} as { [key: string]: any };
 
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 	return [{ name: '*', value: '*' }].concat(data[object] || []).map((fieldObject: IDataObject) => ({
 		...fieldObject,
 		name: fieldObject.value !== '*' ? capitalCase(fieldObject.value as string) : fieldObject.value,

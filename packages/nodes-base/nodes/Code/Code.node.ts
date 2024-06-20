@@ -1,24 +1,32 @@
 import type {
+	CodeExecutionMode,
+	CodeNodeEditorLanguage,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { getSandboxContext, Sandbox } from './Sandbox';
+import set from 'lodash/set';
+import { javascriptCodeDescription } from './descriptions/JavascriptCodeDescription';
+import { pythonCodeDescription } from './descriptions/PythonCodeDescription';
+import { JavaScriptSandbox } from './JavaScriptSandbox';
+import { PythonSandbox } from './PythonSandbox';
+import { getSandboxContext } from './Sandbox';
 import { standardizeOutput } from './utils';
-import type { CodeNodeMode } from './utils';
+
+const { CODE_ENABLE_STDOUT } = process.env;
 
 export class Code implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Code',
 		name: 'code',
-		icon: 'fa:code',
+		icon: 'file:code.svg',
 		group: ['transform'],
-		version: 1,
-		description: 'Run custom JavaScript code',
+		version: [1, 2],
+		defaultVersion: 2,
+		description: 'Run custom JavaScript or Python code',
 		defaults: {
 			name: 'Code',
-			color: '#FF9922',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -44,59 +52,100 @@ export class Code implements INodeType {
 				default: 'runOnceForAllItems',
 			},
 			{
-				displayName: 'JavaScript',
-				name: 'jsCode',
-				typeOptions: {
-					editor: 'codeNodeEditor',
-				},
-				type: 'string',
-				default: '', // set by component
-				description:
-					'JavaScript code to execute.<br><br>Tip: You can use luxon vars like <code>$today</code> for dates and <code>$jmespath</code> for querying JSON structures. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.function">Learn more</a>.',
+				displayName: 'Language',
+				name: 'language',
+				type: 'options',
 				noDataExpression: true,
+				displayOptions: {
+					show: {
+						'@version': [2],
+					},
+				},
+				options: [
+					{
+						name: 'JavaScript',
+						value: 'javaScript',
+					},
+					{
+						name: 'Python (Beta)',
+						value: 'python',
+					},
+				],
+				default: 'javaScript',
 			},
 			{
-				displayName:
-					'Type <code>$</code> for a list of <a target="_blank" href="https://docs.n8n.io/code-examples/methods-variables-reference/">special vars/methods</a>. Debug by using <code>console.log()</code> statements and viewing their output in the browser console.',
-				name: 'notice',
-				type: 'notice',
-				default: '',
+				displayName: 'Language',
+				name: 'language',
+				type: 'hidden',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+				default: 'javaScript',
 			},
+
+			...javascriptCodeDescription,
+			...pythonCodeDescription,
 		],
 	};
 
 	async execute(this: IExecuteFunctions) {
-		const nodeMode = this.getNodeParameter('mode', 0) as CodeNodeMode;
+		const nodeMode = this.getNodeParameter('mode', 0) as CodeExecutionMode;
 		const workflowMode = this.getMode();
+
+		const node = this.getNode();
+		const language: CodeNodeEditorLanguage =
+			node.typeVersion === 2
+				? (this.getNodeParameter('language', 0) as CodeNodeEditorLanguage)
+				: 'javaScript';
+		const codeParameterName = language === 'python' ? 'pythonCode' : 'jsCode';
+
+		const getSandbox = (index = 0) => {
+			const code = this.getNodeParameter(codeParameterName, index) as string;
+			const context = getSandboxContext.call(this, index);
+			if (nodeMode === 'runOnceForAllItems') {
+				context.items = context.$input.all();
+			} else {
+				context.item = context.$input.item;
+			}
+
+			const Sandbox = language === 'python' ? PythonSandbox : JavaScriptSandbox;
+			const sandbox = new Sandbox(context, code, index, this.helpers);
+			sandbox.on(
+				'output',
+				workflowMode === 'manual'
+					? this.sendMessageToUI
+					: CODE_ENABLE_STDOUT === 'true'
+						? (...args) =>
+								console.log(`[Workflow "${this.getWorkflow().id}"][Node "${node.name}"]`, ...args)
+						: () => {},
+			);
+			return sandbox;
+		};
 
 		// ----------------------------------
 		//        runOnceForAllItems
 		// ----------------------------------
 
 		if (nodeMode === 'runOnceForAllItems') {
-			const jsCodeAllItems = this.getNodeParameter('jsCode', 0) as string;
-
-			const context = getSandboxContext.call(this);
-			context.items = context.$input.all();
-			const sandbox = new Sandbox(context, jsCodeAllItems, workflowMode, this.helpers);
-
-			if (workflowMode === 'manual') {
-				sandbox.on('console.log', this.sendMessageToUI);
-			}
-
-			let result: INodeExecutionData[];
+			const sandbox = getSandbox();
+			let items: INodeExecutionData[];
 			try {
-				result = await sandbox.runCodeAllItems();
+				items = (await sandbox.runCodeAllItems()) as INodeExecutionData[];
 			} catch (error) {
-				if (!this.continueOnFail()) return Promise.reject(error);
-				result = [{ json: { error: error.message } }];
+				if (!this.continueOnFail(error)) {
+					set(error, 'node', node);
+					throw error;
+				}
+				items = [{ json: { error: error.message } }];
 			}
 
-			for (const item of result) {
+			for (const item of items) {
 				standardizeOutput(item.json);
 			}
 
-			return this.prepareOutputData(result);
+			return [items];
 		}
 
 		// ----------------------------------
@@ -108,22 +157,21 @@ export class Code implements INodeType {
 		const items = this.getInputData();
 
 		for (let index = 0; index < items.length; index++) {
-			const jsCodeEachItem = this.getNodeParameter('jsCode', index) as string;
-
-			const context = getSandboxContext.call(this, index);
-			context.item = context.$input.item;
-			const sandbox = new Sandbox(context, jsCodeEachItem, workflowMode, this.helpers);
-
-			if (workflowMode === 'manual') {
-				sandbox.on('console.log', this.sendMessageToUI);
-			}
-
+			const sandbox = getSandbox(index);
 			let result: INodeExecutionData | undefined;
 			try {
-				result = await sandbox.runCodeEachItem(index);
+				result = await sandbox.runCodeEachItem();
 			} catch (error) {
-				if (!this.continueOnFail()) return Promise.reject(error);
-				returnData.push({ json: { error: error.message } });
+				if (!this.continueOnFail(error)) {
+					set(error, 'node', node);
+					throw error;
+				}
+				returnData.push({
+					json: { error: error.message },
+					pairedItem: {
+						item: index,
+					},
+				});
 			}
 
 			if (result) {
@@ -135,6 +183,6 @@ export class Code implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

@@ -325,7 +325,7 @@ export class MicrosoftOneDrive implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					if (resource === 'file' && operation === 'download') {
 						items[i].json = { error: error.message };
 					} else {
@@ -348,9 +348,9 @@ export class MicrosoftOneDrive implements INodeType {
 		}
 		if (resource === 'file' && operation === 'download') {
 			// For file downloads the files get attached to the existing items
-			return this.prepareOutputData(items);
+			return [items];
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

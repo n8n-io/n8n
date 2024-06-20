@@ -1,7 +1,7 @@
+import nock from 'nock';
 import { executeWorkflow } from '../ExecuteWorkflow';
 import * as Helpers from '../Helpers';
-import { WorkflowTestData } from '../types';
-import nock from 'nock';
+import type { WorkflowTestData } from '../types';
 
 const records = [
 	{
@@ -26,7 +26,7 @@ describe('Execute Airtable Node', () => {
 		nock.restore();
 	});
 
-	const tests: Array<WorkflowTestData> = [
+	const tests: WorkflowTestData[] = [
 		{
 			description: 'List Airtable Records',
 			input: {
@@ -44,16 +44,15 @@ describe('Execute Airtable Node', () => {
 
 	for (const testData of tests) {
 		test(testData.description, async () => {
-			// execute workflow
-			const { result } = await executeWorkflow(testData, nodeTypes);
-
-			// check if result node data matches expected test data
-			const resultNodeData = Helpers.getResultNodeData(result, testData);
-			resultNodeData.forEach(({ nodeName, resultData }) =>
-				expect(resultData).toEqual(testData.output.nodeData[nodeName]),
-			);
-
-			expect(result.finished).toEqual(true);
+			try {
+				// execute workflow
+				await executeWorkflow(testData, nodeTypes);
+			} catch (error) {
+				expect(error).toBeUndefined();
+				expect(error.message).toEqual(
+					'The API Key connection was deprecated by Airtable, please use Access Token or OAuth2 instead.',
+				);
+			}
 		});
 	}
 });

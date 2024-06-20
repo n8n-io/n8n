@@ -1,13 +1,7 @@
-import { MigrationInterface, QueryRunner, Table } from 'typeorm';
-import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class CreateExecutionMetadataTable1679416281779 implements MigrationInterface {
-	name = 'CreateExecutionMetadataTable1679416281779';
-
-	public async up(queryRunner: QueryRunner): Promise<void> {
-		logMigrationStart(this.name);
-		const tablePrefix = getTablePrefix();
-
+export class CreateExecutionMetadataTable1679416281779 implements ReversibleMigration {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			`CREATE TABLE ${tablePrefix}execution_metadata (
 				id int(11) auto_increment NOT NULL PRIMARY KEY,
@@ -38,13 +32,9 @@ export class CreateExecutionMetadataTable1679416281779 implements MigrationInter
 		await queryRunner.query(
 			`CREATE INDEX \`IDX_${tablePrefix}8b6f3f9ae234f137d707b98f3bf43584\` ON \`${tablePrefix}execution_entity\` (\`status\`, \`workflowId\`)`,
 		);
-
-		logMigrationEnd(this.name);
 	}
 
-	public async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = getTablePrefix();
-
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`DROP TABLE "${tablePrefix}execution_metadata"`);
 		await queryRunner.query(
 			`CREATE INDEX \`IDX_${tablePrefix}06da892aaf92a48e7d3e400003\` ON \`${tablePrefix}execution_entity\` (\`workflowId\`, \`waitTill\`, \`id\`)`,

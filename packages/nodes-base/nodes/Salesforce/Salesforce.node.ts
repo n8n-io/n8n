@@ -7,6 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
@@ -1084,6 +1085,9 @@ export class Salesforce implements INodeType {
 						if (additionalFields.hasOptedOutOfEmail !== undefined) {
 							body.HasOptedOutOfEmail = additionalFields.hasOptedOutOfEmail as boolean;
 						}
+						if (additionalFields.hasOptedOutOfFax !== undefined) {
+							body.HasOptedOutOfFax = additionalFields.hasOptedOutOfFax as boolean;
+						}
 						if (additionalFields.email !== undefined) {
 							body.Email = additionalFields.email as string;
 						}
@@ -1122,6 +1126,9 @@ export class Salesforce implements INodeType {
 						}
 						if (additionalFields.industry !== undefined) {
 							body.Industry = additionalFields.industry as string;
+						}
+						if (additionalFields.fax !== undefined) {
+							body.Fax = additionalFields.fax as number;
 						}
 						if (additionalFields.firstname !== undefined) {
 							body.FirstName = additionalFields.firstname as string;
@@ -1163,7 +1170,7 @@ export class Salesforce implements INodeType {
 							}
 						}
 						let endpoint = '/sobjects/lead';
-						let method = 'POST';
+						let method: IHttpRequestMethods = 'POST';
 						if (operation === 'upsert') {
 							method = 'PATCH';
 							const externalId = this.getNodeParameter('externalId', 0) as string;
@@ -1189,6 +1196,9 @@ export class Salesforce implements INodeType {
 						}
 						if (updateFields.hasOptedOutOfEmail !== undefined) {
 							body.HasOptedOutOfEmail = updateFields.hasOptedOutOfEmail as boolean;
+						}
+						if (updateFields.hasOptedOutOfFax !== undefined) {
+							body.hasOptedOutOfFax = updateFields.hasOptedOutOfFax as boolean;
 						}
 						if (updateFields.lastname !== undefined) {
 							body.LastName = updateFields.lastname as string;
@@ -1237,6 +1247,9 @@ export class Salesforce implements INodeType {
 						}
 						if (updateFields.firstname !== undefined) {
 							body.FirstName = updateFields.firstname as string;
+						}
+						if (updateFields.fax !== undefined) {
+							body.Fax = updateFields.fax as number;
 						}
 						if (updateFields.leadSource !== undefined) {
 							body.LeadSource = updateFields.leadSource as string;
@@ -1485,7 +1498,7 @@ export class Salesforce implements INodeType {
 							}
 						}
 						let endpoint = '/sobjects/contact';
-						let method = 'POST';
+						let method: IHttpRequestMethods = 'POST';
 						if (operation === 'upsert') {
 							method = 'PATCH';
 							const externalId = this.getNodeParameter('externalId', 0) as string;
@@ -1737,7 +1750,7 @@ export class Salesforce implements INodeType {
 							body.RecordTypeId = additionalFields.recordTypeId as string;
 						}
 						let endpoint = `/sobjects/${customObject}`;
-						let method = 'POST';
+						let method: IHttpRequestMethods = 'POST';
 						if (operation === 'upsert') {
 							method = 'PATCH';
 							const externalId = this.getNodeParameter('externalId', 0) as string;
@@ -1932,7 +1945,7 @@ export class Salesforce implements INodeType {
 							}
 						}
 						let endpoint = '/sobjects/opportunity';
-						let method = 'POST';
+						let method: IHttpRequestMethods = 'POST';
 						if (operation === 'upsert') {
 							method = 'PATCH';
 							const externalId = this.getNodeParameter('externalId', 0) as string;
@@ -2181,7 +2194,7 @@ export class Salesforce implements INodeType {
 							}
 						}
 						let endpoint = '/sobjects/account';
-						let method = 'POST';
+						let method: IHttpRequestMethods = 'POST';
 						if (operation === 'upsert') {
 							method = 'PATCH';
 							const externalId = this.getNodeParameter('externalId', 0) as string;
@@ -2213,8 +2226,8 @@ export class Salesforce implements INodeType {
 						if (updateFields.phone !== undefined) {
 							body.Phone = updateFields.phone as string;
 						}
-						if (updateFields.owner !== undefined) {
-							body.OwnerId = updateFields.owner as string;
+						if (updateFields.ownerId !== undefined) {
+							body.OwnerId = updateFields.ownerId as string;
 						}
 						if (updateFields.sicDesc !== undefined) {
 							body.SicDesc = updateFields.sicDesc as string;
@@ -2842,7 +2855,7 @@ export class Salesforce implements INodeType {
 							Name: name,
 							ParentId: parentId,
 						};
-						if (items[i].binary && items[i].binary![binaryPropertyName]) {
+						if (items[i].binary?.[binaryPropertyName]) {
 							body.Body = items[i].binary![binaryPropertyName].data;
 							body.ContentType = items[i].binary![binaryPropertyName].mimeType;
 						} else {
@@ -2875,7 +2888,7 @@ export class Salesforce implements INodeType {
 						const body: IAttachment = {};
 						if (updateFields.binaryPropertyName !== undefined) {
 							const binaryPropertyName = updateFields.binaryPropertyName as string;
-							if (items[i].binary && items[i].binary![binaryPropertyName]) {
+							if (items[i].binary?.[binaryPropertyName]) {
 								body.Body = items[i].binary![binaryPropertyName].data;
 								body.ContentType = items[i].binary![binaryPropertyName].mimeType;
 							} else {
@@ -3071,7 +3084,7 @@ export class Salesforce implements INodeType {
 
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
@@ -3082,6 +3095,6 @@ export class Salesforce implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

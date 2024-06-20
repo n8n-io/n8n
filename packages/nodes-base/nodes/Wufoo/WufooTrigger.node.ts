@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -13,8 +14,6 @@ import { jsonParse } from 'n8n-workflow';
 import { wufooApiRequest } from './GenericFunctions';
 
 import type { IField, IWebhook } from './Interface';
-
-import { randomBytes } from 'crypto';
 
 export class WufooTrigger implements INodeType {
 	description: INodeTypeDescription = {

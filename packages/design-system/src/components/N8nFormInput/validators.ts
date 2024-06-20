@@ -1,4 +1,4 @@
-import { IValidator, RuleGroup, Validatable } from '../../types';
+import type { IValidator, RuleGroup, Validatable } from '../../types';
 
 export const emailRegex =
 	/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
@@ -20,7 +20,7 @@ export const requiredValidator: IValidator<{}> = {
 };
 
 export const minLengthValidator: IValidator<{ minimum: number }> = {
-	validate: (value: Validatable, config: { minimum: number }) => {
+	validate: (value: Validatable, config) => {
 		if (typeof value === 'string' && value.length < config.minimum) {
 			return {
 				messageKey: 'formInput.validator.minCharactersRequired',
@@ -76,7 +76,7 @@ export const emailValidator: IValidator<{}> = {
 };
 
 export const containsUpperCaseValidator: IValidator<{ minimum: number }> = {
-	validate: (value: Validatable, config: { minimum: number }) => {
+	validate: (value: Validatable, config) => {
 		if (typeof value !== 'string') {
 			return false;
 		}
@@ -94,7 +94,7 @@ export const containsUpperCaseValidator: IValidator<{ minimum: number }> = {
 };
 
 export const matchRegex: IValidator<{ regex: RegExp; message: string }> = {
-	validate: (value: Validatable, config: { regex: RegExp; message: string }) => {
+	validate: (value: Validatable, config) => {
 		if (!config.regex.test(`${value as string}`)) {
 			return {
 				message: config.message,

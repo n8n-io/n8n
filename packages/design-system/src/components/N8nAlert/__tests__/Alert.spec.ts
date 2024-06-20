@@ -14,21 +14,20 @@ describe('components', () => {
 		});
 
 		it('should render slots instead of props', () => {
-			const { container } = render(
-				N8nAlert,
-				{
-					props: { showIcon: false },
-					slots: {
-						title: 'Title',
-						default: 'Message',
-						aside: '<button>Click me</button>',
-						icon: '<n8n-icon icon="plus-circle" />',
+			const { container } = render(N8nAlert, {
+				props: { showIcon: false },
+				slots: {
+					title: 'Title',
+					default: 'Message',
+					aside: '<button>Click me</button>',
+					icon: '<n8n-icon icon="plus-circle" />',
+				},
+				global: {
+					components: {
+						'n8n-icon': N8nIcon,
 					},
 				},
-				(localVue) => {
-					localVue.component('n8n-icon', N8nIcon);
-				},
-			);
+			});
 			expect(screen.getByRole('alert')).toBeVisible();
 			expect(screen.getByText('Title')).toBeVisible();
 			expect(screen.getByText('Message')).toBeVisible();

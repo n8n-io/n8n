@@ -1,13 +1,11 @@
 import xss, { friendlyAttrValue } from 'xss';
+import { ALLOWED_HTML_ATTRIBUTES, ALLOWED_HTML_TAGS } from '@/constants';
 
 /*
 	Constants and utility functions that help in HTML, CSS and DOM manipulation
 */
 
 export function sanitizeHtml(dirtyHtml: string) {
-	const allowedAttributes = ['href', 'name', 'target', 'title', 'class', 'id'];
-	const allowedTags = ['p', 'strong', 'b', 'code', 'a', 'br', 'i', 'em', 'small'];
-
 	const sanitizedHtml = xss(dirtyHtml, {
 		onTagAttr: (tag, name, value) => {
 			if (tag === 'img' && name === 'src') {
@@ -19,8 +17,7 @@ export function sanitizeHtml(dirtyHtml: string) {
 				}
 			}
 
-			// Allow `allowedAttributes` and all `data-*` attributes
-			if (allowedAttributes.includes(name) || name.startsWith('data-')) {
+			if (ALLOWED_HTML_ATTRIBUTES.includes(name) || name.startsWith('data-')) {
 				return `${name}="${friendlyAttrValue(value)}"`;
 			}
 
@@ -28,17 +25,12 @@ export function sanitizeHtml(dirtyHtml: string) {
 			// Return nothing, means keep the default handling measure
 		},
 		onTag: (tag) => {
-			if (!allowedTags.includes(tag)) return '';
+			if (!ALLOWED_HTML_TAGS.includes(tag)) return '';
 			return;
 		},
 	});
 
 	return sanitizedHtml;
-}
-
-export function getStyleTokenValue(name: string): string {
-	const style = getComputedStyle(document.body);
-	return style.getPropertyValue(name);
 }
 
 export function setPageTitle(title: string) {
@@ -62,4 +54,12 @@ export function isChildOf(parent: Element, child: Element): boolean {
 
 export const capitalizeFirstLetter = (text: string): string => {
 	return text.charAt(0).toUpperCase() + text.slice(1);
+};
+
+export const getBannerRowHeight = async (): Promise<number> => {
+	return await new Promise((resolve) => {
+		setTimeout(() => {
+			resolve(document.getElementById('banners')?.clientHeight ?? 0);
+		}, 0);
+	});
 };

@@ -1,236 +1,412 @@
 <template>
 	<div
-		:class="$style['code-node-editor-container']"
+		ref="codeNodeEditorContainerRef"
+		:class="['code-node-editor', $style['code-node-editor-container'], language]"
 		@mouseover="onMouseOver"
 		@mouseout="onMouseOut"
-		ref="codeNodeEditorContainer"
 	>
-		<div ref="codeNodeEditor" class="ph-no-capture"></div>
-		<n8n-button
-			v-if="isCloud && (isEditorHovered || isEditorFocused)"
-			size="small"
-			type="tertiary"
-			:class="$style['ask-ai-button']"
-			@mousedown="onAskAiButtonClick"
+		<el-tabs
+			v-if="aiEnabled"
+			ref="tabs"
+			v-model="activeTab"
+			type="card"
+			:before-leave="onBeforeTabLeave"
 		>
-			{{ $locale.baseText('codeNodeEditor.askAi') }}
-		</n8n-button>
+			<el-tab-pane
+				:label="$locale.baseText('codeNodeEditor.tabs.code')"
+				name="code"
+				data-test-id="code-node-tab-code"
+			>
+				<div
+					ref="codeNodeEditorRef"
+					:class="['ph-no-capture', 'code-editor-tabs', $style.editorInput]"
+				/>
+				<slot name="suffix" />
+			</el-tab-pane>
+			<el-tab-pane
+				:label="$locale.baseText('codeNodeEditor.tabs.askAi')"
+				name="ask-ai"
+				data-test-id="code-node-tab-ai"
+			>
+				<!-- Key the AskAI tab to make sure it re-mounts when changing tabs -->
+				<AskAI
+					:key="activeTab"
+					:has-changes="hasChanges"
+					@replace-code="onReplaceCode"
+					@started-loading="onAiLoadStart"
+					@finished-loading="onAiLoadEnd"
+				/>
+			</el-tab-pane>
+		</el-tabs>
+		<!-- If AskAi not enabled, there's no point in rendering tabs -->
+		<div v-else :class="$style.fillHeight">
+			<div ref="codeNodeEditorRef" :class="['ph-no-capture', $style.fillHeight]" />
+			<slot name="suffix" />
+		</div>
 	</div>
 </template>
 
-<script lang="ts">
-import mixins from 'vue-typed-mixins';
-
-import { Compartment, EditorState } from '@codemirror/state';
-import { EditorView, ViewUpdate } from '@codemirror/view';
+<script setup lang="ts">
 import { javascript } from '@codemirror/lang-javascript';
+import { python } from '@codemirror/lang-python';
+import type { LanguageSupport } from '@codemirror/language';
+import type { Extension, Line } from '@codemirror/state';
+import { Compartment, EditorState } from '@codemirror/state';
+import type { ViewUpdate } from '@codemirror/view';
+import { EditorView } from '@codemirror/view';
+import type { CodeExecutionMode, CodeNodeEditorLanguage } from 'n8n-workflow';
+import { format } from 'prettier';
+import jsParser from 'prettier/plugins/babel';
+import * as estree from 'prettier/plugins/estree';
+import { type Ref, computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
-import { baseExtensions } from './baseExtensions';
-import { linterExtension } from './linter';
-import { completerExtension } from './completer';
-import { CODE_NODE_EDITOR_THEME } from './theme';
-import { workflowHelpers } from '@/mixins/workflowHelpers'; // for json field completions
-import { ASK_AI_MODAL_KEY, CODE_NODE_TYPE } from '@/constants';
+import { ASK_AI_EXPERIMENT, CODE_NODE_TYPE } from '@/constants';
 import { codeNodeEditorEventBus } from '@/event-bus';
-import { ALL_ITEMS_PLACEHOLDER, EACH_ITEM_PLACEHOLDER } from './constants';
-import { mapStores } from 'pinia';
-import { useRootStore } from '@/stores/n8nRootStore';
-import Modal from '../Modal.vue';
-import { useSettingsStore } from '@/stores/settings';
+import { useRootStore } from '@/stores/root.store';
+import { usePostHog } from '@/stores/posthog.store';
 
-export default mixins(linterExtension, completerExtension, workflowHelpers).extend({
-	name: 'code-node-editor',
-	components: { Modal },
-	props: {
-		mode: {
-			type: String,
-			validator: (value: string): boolean =>
-				['runOnceForAllItems', 'runOnceForEachItem'].includes(value),
-		},
-		isReadOnly: {
-			type: Boolean,
-			default: false,
-		},
-		jsCode: {
-			type: String,
-		},
-	},
-	data() {
-		return {
-			editor: null as EditorView | null,
-			linterCompartment: new Compartment(),
-			isEditorHovered: false,
-			isEditorFocused: false,
-		};
-	},
-	watch: {
-		mode() {
-			this.reloadLinter();
-			this.refreshPlaceholder();
-		},
-	},
-	computed: {
-		...mapStores(useRootStore),
-		isCloud() {
-			return useSettingsStore().deploymentType === 'cloud';
-		},
-		content(): string {
-			if (!this.editor) return '';
+import { useMessage } from '@/composables/useMessage';
+import { useSettingsStore } from '@/stores/settings.store';
+import AskAI from './AskAI/AskAI.vue';
+import { readOnlyEditorExtensions, writableEditorExtensions } from './baseExtensions';
+import { useCompleter } from './completer';
+import { CODE_PLACEHOLDERS } from './constants';
+import { useLinter } from './linter';
+import { codeNodeEditorTheme } from './theme';
+import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
 
-			return this.editor.state.doc.toString();
-		},
-		placeholder(): string {
-			return {
-				runOnceForAllItems: ALL_ITEMS_PLACEHOLDER,
-				runOnceForEachItem: EACH_ITEM_PLACEHOLDER,
-			}[this.mode];
-		},
-		previousPlaceholder(): string {
-			return {
-				runOnceForAllItems: EACH_ITEM_PLACEHOLDER,
-				runOnceForEachItem: ALL_ITEMS_PLACEHOLDER,
-			}[this.mode];
-		},
-	},
-	methods: {
-		onMouseOver(event: MouseEvent) {
-			const fromElement = event.relatedTarget as HTMLElement;
-			const ref = this.$refs.codeNodeEditorContainer as HTMLDivElement;
+type Props = {
+	mode: CodeExecutionMode;
+	modelValue: string;
+	aiButtonEnabled?: boolean;
+	fillParent?: boolean;
+	language?: CodeNodeEditorLanguage;
+	isReadOnly?: boolean;
+	rows?: number;
+};
 
-			if (!ref.contains(fromElement)) this.isEditorHovered = true;
-		},
-		onMouseOut(event: MouseEvent) {
-			const fromElement = event.relatedTarget as HTMLElement;
-			const ref = this.$refs.codeNodeEditorContainer as HTMLDivElement;
+const props = withDefaults(defineProps<Props>(), {
+	aiButtonEnabled: false,
+	fillParent: false,
+	language: 'javaScript',
+	isReadOnly: false,
+	rows: 4,
+});
+const emit = defineEmits<{
+	(event: 'update:modelValue', value: string): void;
+}>();
 
-			if (!ref.contains(fromElement)) this.isEditorHovered = false;
-		},
-		onAskAiButtonClick() {
-			this.$telemetry.track('User clicked ask ai button', { source: 'code' });
+const message = useMessage();
+const editor = ref(null) as Ref<EditorView | null>;
+const languageCompartment = ref(new Compartment());
+const linterCompartment = ref(new Compartment());
+const isEditorHovered = ref(false);
+const isEditorFocused = ref(false);
+const tabs = ref(['code', 'ask-ai']);
+const activeTab = ref('code');
+const hasChanges = ref(false);
+const isLoadingAIResponse = ref(false);
+const codeNodeEditorRef = ref<HTMLDivElement>();
+const codeNodeEditorContainerRef = ref<HTMLDivElement>();
 
-			this.uiStore.openModal(ASK_AI_MODAL_KEY);
-		},
-		reloadLinter() {
-			if (!this.editor) return;
+const { autocompletionExtension } = useCompleter(() => props.mode, editor);
+const { createLinter } = useLinter(() => props.mode, editor);
 
-			this.editor.dispatch({
-				effects: this.linterCompartment.reconfigure(this.linterExtension()),
-			});
-		},
-		refreshPlaceholder() {
-			if (!this.editor) return;
+const rootStore = useRootStore();
+const settingsStore = useSettingsStore();
+const posthog = usePostHog();
+const i18n = useI18n();
+const telemetry = useTelemetry();
 
-			if (!this.content.trim() || this.content.trim() === this.previousPlaceholder) {
-				this.editor.dispatch({
-					changes: { from: 0, to: this.content.length, insert: this.placeholder },
-				});
-			}
-		},
-		highlightLine(line: number | 'final') {
-			if (!this.editor) return;
+onMounted(() => {
+	if (!props.isReadOnly) codeNodeEditorEventBus.on('error-line-number', highlightLine);
 
-			if (line === 'final') {
-				this.editor.dispatch({
-					selection: { anchor: this.content.trim().length },
-				});
-				return;
-			}
+	const { isReadOnly, language } = props;
+	const extensions: Extension[] = [
+		...readOnlyEditorExtensions,
+		EditorState.readOnly.of(isReadOnly),
+		EditorView.editable.of(!isReadOnly),
+		codeNodeEditorTheme({
+			isReadOnly,
+			maxHeight: props.fillParent ? '100%' : '40vh',
+			minHeight: '20vh',
+			rows: props.rows,
+		}),
+	];
 
-			this.editor.dispatch({
-				selection: { anchor: this.editor.state.doc.line(line).from },
-			});
-		},
-		trackCompletion(viewUpdate: ViewUpdate) {
-			const completionTx = viewUpdate.transactions.find((tx) => tx.isUserEvent('input.complete'));
-
-			if (!completionTx) return;
-
-			try {
-				// @ts-ignore - undocumented fields
-				const { fromA, toB } = viewUpdate?.changedRanges[0];
-				const full = this.content.slice(fromA, toB);
-				const lastDotIndex = full.lastIndexOf('.');
-
-				let context = null;
-				let insertedText = null;
-
-				if (lastDotIndex === -1) {
-					context = '';
-					insertedText = full;
-				} else {
-					context = full.slice(0, lastDotIndex);
-					insertedText = full.slice(lastDotIndex + 1);
-				}
-
-				this.$telemetry.track('User autocompleted code', {
-					instance_id: this.rootStore.instanceId,
-					node_type: CODE_NODE_TYPE,
-					field_name: this.mode === 'runOnceForAllItems' ? 'jsCodeAllItems' : 'jsCodeEachItem',
-					field_type: 'code',
-					context,
-					inserted_text: insertedText,
-				});
-			} catch {}
-		},
-	},
-	destroyed() {
-		codeNodeEditorEventBus.off('error-line-number', this.highlightLine);
-	},
-	mounted() {
-		codeNodeEditorEventBus.on('error-line-number', this.highlightLine);
-
-		const stateBasedExtensions = [
-			this.linterCompartment.of(this.linterExtension()),
-			EditorState.readOnly.of(this.isReadOnly),
-			EditorView.domEventHandlers({
-				focus: () => {
-					this.isEditorFocused = true;
-				},
-				blur: () => {
-					this.isEditorFocused = false;
-				},
-			}),
-			EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
-				if (!viewUpdate.docChanged) return;
-
-				this.trackCompletion(viewUpdate);
-
-				this.$emit('valueChanged', this.content);
-			}),
-		];
-
-		// empty on first load, default param value
-		if (this.jsCode === '') {
-			this.$emit('valueChanged', this.placeholder);
+	if (!isReadOnly) {
+		const linter = createLinter(language);
+		if (linter) {
+			extensions.push(linterCompartment.value.of(linter));
 		}
 
-		const state = EditorState.create({
-			doc: this.jsCode === '' ? this.placeholder : this.jsCode,
-			extensions: [
-				...baseExtensions,
-				...stateBasedExtensions,
-				CODE_NODE_EDITOR_THEME,
-				javascript(),
-				this.autocompletionExtension(),
-			],
+		extensions.push(
+			...writableEditorExtensions,
+			EditorView.domEventHandlers({
+				focus: () => {
+					isEditorFocused.value = true;
+				},
+				blur: () => {
+					isEditorFocused.value = false;
+				},
+			}),
+
+			EditorView.updateListener.of((viewUpdate) => {
+				if (!viewUpdate.docChanged) return;
+
+				trackCompletion(viewUpdate);
+
+				const value = editor.value?.state.doc.toString();
+				if (value) {
+					emit('update:modelValue', value);
+				}
+				hasChanges.value = true;
+			}),
+		);
+	}
+
+	const [languageSupport, ...otherExtensions] = languageExtensions.value;
+	extensions.push(languageCompartment.value.of(languageSupport), ...otherExtensions);
+
+	const state = EditorState.create({
+		doc: props.modelValue ?? placeholder.value,
+		extensions,
+	});
+
+	editor.value = new EditorView({
+		parent: codeNodeEditorRef.value,
+		state,
+	});
+
+	// empty on first load, default param value
+	if (!props.modelValue) {
+		refreshPlaceholder();
+		emit('update:modelValue', placeholder.value);
+	}
+});
+
+onBeforeUnmount(() => {
+	if (!props.isReadOnly) codeNodeEditorEventBus.off('error-line-number', highlightLine);
+});
+
+const aiEnabled = computed(() => {
+	const isAiExperimentEnabled = [ASK_AI_EXPERIMENT.gpt3, ASK_AI_EXPERIMENT.gpt4].includes(
+		(posthog.getVariant(ASK_AI_EXPERIMENT.name) ?? '') as string,
+	);
+
+	return (
+		isAiExperimentEnabled && settingsStore.settings.ai.enabled && props.language === 'javaScript'
+	);
+});
+
+const placeholder = computed(() => {
+	return CODE_PLACEHOLDERS[props.language]?.[props.mode] ?? '';
+});
+
+// eslint-disable-next-line vue/return-in-computed-property
+const languageExtensions = computed<[LanguageSupport, ...Extension[]]>(() => {
+	switch (props.language) {
+		case 'javaScript':
+			return [javascript(), autocompletionExtension('javaScript')];
+		case 'python':
+			return [python(), autocompletionExtension('python')];
+	}
+});
+
+watch(
+	() => props.mode,
+	(_newMode, previousMode: CodeExecutionMode) => {
+		reloadLinter();
+
+		if (getCurrentEditorContent().trim() === CODE_PLACEHOLDERS[props.language]?.[previousMode]) {
+			refreshPlaceholder();
+		}
+	},
+);
+
+watch(
+	() => props.language,
+	(_newLanguage, previousLanguage: CodeNodeEditorLanguage) => {
+		if (getCurrentEditorContent().trim() === CODE_PLACEHOLDERS[previousLanguage]?.[props.mode]) {
+			refreshPlaceholder();
+		}
+
+		const [languageSupport] = languageExtensions.value;
+		editor.value?.dispatch({
+			effects: languageCompartment.value.reconfigure(languageSupport),
+		});
+		reloadLinter();
+	},
+);
+
+watch(
+	aiEnabled,
+	async (isEnabled) => {
+		if (isEnabled && !props.modelValue) {
+			emit('update:modelValue', placeholder.value);
+		}
+		await nextTick();
+		hasChanges.value = props.modelValue !== placeholder.value;
+	},
+	{ immediate: true },
+);
+
+function getCurrentEditorContent() {
+	return editor.value?.state.doc.toString() ?? '';
+}
+
+async function onBeforeTabLeave(_activeName: string, oldActiveName: string) {
+	// Confirm dialog if leaving ask-ai tab during loading
+	if (oldActiveName === 'ask-ai' && isLoadingAIResponse.value) {
+		const confirmModal = await message.alert(i18n.baseText('codeNodeEditor.askAi.sureLeaveTab'), {
+			title: i18n.baseText('codeNodeEditor.askAi.areYouSure'),
+			confirmButtonText: i18n.baseText('codeNodeEditor.askAi.switchTab'),
+			showClose: true,
+			showCancelButton: true,
 		});
 
-		this.editor = new EditorView({
-			parent: this.$refs.codeNodeEditor as HTMLDivElement,
-			state,
+		if (confirmModal === 'confirm') {
+			return true;
+		}
+
+		return false;
+	}
+
+	return true;
+}
+
+async function onReplaceCode(code: string) {
+	const formattedCode = await format(code, {
+		parser: 'babel',
+		plugins: [jsParser, estree],
+	});
+
+	editor.value?.dispatch({
+		changes: { from: 0, to: getCurrentEditorContent().length, insert: formattedCode },
+	});
+
+	activeTab.value = 'code';
+	hasChanges.value = false;
+}
+
+function onMouseOver(event: MouseEvent) {
+	const fromElement = event.relatedTarget as HTMLElement;
+	const containerRef = codeNodeEditorContainerRef.value;
+
+	if (!containerRef?.contains(fromElement)) isEditorHovered.value = true;
+}
+
+function onMouseOut(event: MouseEvent) {
+	const fromElement = event.relatedTarget as HTMLElement;
+	const containerRef = codeNodeEditorContainerRef.value;
+
+	if (!containerRef?.contains(fromElement)) isEditorHovered.value = false;
+}
+
+function reloadLinter() {
+	if (!editor.value) return;
+
+	const linter = createLinter(props.language);
+	if (linter) {
+		editor.value.dispatch({
+			effects: linterCompartment.value.reconfigure(linter),
 		});
-	},
-});
+	}
+}
+
+function refreshPlaceholder() {
+	if (!editor.value) return;
+
+	editor.value.dispatch({
+		changes: { from: 0, to: getCurrentEditorContent().length, insert: placeholder.value },
+	});
+}
+
+function getLine(lineNumber: number): Line | null {
+	try {
+		return editor.value?.state.doc.line(lineNumber) ?? null;
+	} catch {
+		return null;
+	}
+}
+
+function highlightLine(lineNumber: number | 'final') {
+	if (!editor.value) return;
+
+	if (lineNumber === 'final') {
+		editor.value.dispatch({
+			selection: { anchor: (props.modelValue ?? getCurrentEditorContent()).length },
+		});
+		return;
+	}
+
+	const line = getLine(lineNumber);
+
+	if (!line) return;
+
+	editor.value.dispatch({
+		selection: { anchor: line.from },
+	});
+}
+
+function trackCompletion(viewUpdate: ViewUpdate) {
+	const completionTx = viewUpdate.transactions.find((tx) => tx.isUserEvent('input.complete'));
+
+	if (!completionTx) return;
+
+	try {
+		// @ts-expect-error - undocumented fields
+		const { fromA, toB } = viewUpdate?.changedRanges[0];
+		const full = getCurrentEditorContent().slice(fromA, toB);
+		const lastDotIndex = full.lastIndexOf('.');
+
+		let context = null;
+		let insertedText = null;
+
+		if (lastDotIndex === -1) {
+			context = '';
+			insertedText = full;
+		} else {
+			context = full.slice(0, lastDotIndex);
+			insertedText = full.slice(lastDotIndex + 1);
+		}
+
+		// TODO: Still has to get updated for Python and JSON
+		telemetry.track('User autocompleted code', {
+			instance_id: rootStore.instanceId,
+			node_type: CODE_NODE_TYPE,
+			field_name: props.mode === 'runOnceForAllItems' ? 'jsCodeAllItems' : 'jsCodeEachItem',
+			field_type: 'code',
+			context,
+			inserted_text: insertedText,
+		});
+	} catch {}
+}
+
+function onAiLoadStart() {
+	isLoadingAIResponse.value = true;
+}
+
+function onAiLoadEnd() {
+	isLoadingAIResponse.value = false;
+}
 </script>
+
+<style scoped lang="scss">
+:deep(.el-tabs) {
+	.code-editor-tabs .cm-editor {
+		border: 0;
+	}
+}
+</style>
 
 <style lang="scss" module>
 .code-node-editor-container {
 	position: relative;
 }
 
-.ask-ai-button {
-	position: absolute;
-	top: var(--spacing-2xs);
-	right: var(--spacing-2xs);
+.fillHeight {
+	height: 100%;
 }
 </style>

@@ -1,28 +1,33 @@
 <template>
 	<div>
-		<div :class="$style.inputPanel" v-if="!hideInputAndOutput" :style="inputPanelStyles">
+		<NDVFloatingNodes
+			v-if="activeNode"
+			:root-node="activeNode"
+			@switch-selected-node="onSwitchSelectedNode"
+		/>
+		<div v-if="!hideInputAndOutput" :class="$style.inputPanel" :style="inputPanelStyles">
 			<slot name="input"></slot>
 		</div>
-		<div :class="$style.outputPanel" v-if="!hideInputAndOutput" :style="outputPanelStyles">
+		<div v-if="!hideInputAndOutput" :class="$style.outputPanel" :style="outputPanelStyles">
 			<slot name="output"></slot>
 		</div>
 		<div :class="$style.mainPanel" :style="mainPanelStyles">
 			<n8n-resize-wrapper
-				:isResizingEnabled="currentNodePaneType !== 'unknown'"
+				:is-resizing-enabled="currentNodePaneType !== 'unknown'"
 				:width="relativeWidthToPx(mainPanelDimensions.relativeWidth)"
-				:minWidth="MIN_PANEL_WIDTH"
-				:gridSize="20"
+				:min-width="MIN_PANEL_WIDTH"
+				:grid-size="20"
+				:supported-directions="supportedResizeDirections"
 				@resize="onResizeDebounced"
 				@resizestart="onResizeStart"
 				@resizeend="onResizeEnd"
-				:supportedDirections="supportedResizeDirections"
 			>
 				<div :class="$style.dragButtonContainer">
 					<PanelDragButton
-						:class="{ [$style.draggable]: true, [$style.visible]: isDragging }"
-						:canMoveLeft="canMoveLeft"
-						:canMoveRight="canMoveRight"
 						v-if="!hideInputAndOutput && isDraggable"
+						:class="{ [$style.draggable]: true, [$style.visible]: isDragging }"
+						:can-move-left="canMoveLeft"
+						:can-move-right="canMoveRight"
 						@dragstart="onDragStart"
 						@drag="onDrag"
 						@dragend="onDragEnd"
@@ -37,18 +42,20 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import { mapStores } from 'pinia';
 import { get } from 'lodash-es';
+import { useStorage } from '@/composables/useStorage';
 
-import { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import PanelDragButton from './PanelDragButton.vue';
 
 import { LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH, MAIN_NODE_PANEL_WIDTH } from '@/constants';
-import mixins from 'vue-typed-mixins';
-import { debounceHelper } from '@/mixins/debounce';
-import { mapStores } from 'pinia';
-import { useNDVStore } from '@/stores/ndv';
-import { NodePanelType } from '@/Interface';
+import { useNDVStore } from '@/stores/ndv.store';
+import { ndvEventBus } from '@/event-bus';
+import NDVFloatingNodes from '@/components/NDVFloatingNodes.vue';
+import { useDebounce } from '@/composables/useDebounce';
 
 const SIDE_MARGIN = 24;
 const SIDE_PANELS_MARGIN = 80;
@@ -64,10 +71,11 @@ const initialMainPanelWidth: { [key: string]: number } = {
 	wide: MAIN_NODE_PANEL_WIDTH * 2,
 };
 
-export default mixins(debounceHelper).extend({
+export default defineComponent({
 	name: 'NDVDraggablePanels',
 	components: {
 		PanelDragButton,
+		NDVFloatingNodes,
 	},
 	props: {
 		isDraggable: {
@@ -80,9 +88,14 @@ export default mixins(debounceHelper).extend({
 			type: Number,
 		},
 		nodeType: {
-			type: Object as PropType<INodeTypeDescription>,
+			type: Object as PropType<INodeTypeDescription | null>,
 			default: () => ({}),
 		},
+	},
+	setup() {
+		const { callDebounced } = useDebounce();
+
+		return { callDebounced };
 	},
 	data(): {
 		windowWidth: number;
@@ -118,9 +131,12 @@ export default mixins(debounceHelper).extend({
 		setTimeout(() => {
 			this.initialized = true;
 		}, 0);
+
+		ndvEventBus.on('setPositionByName', this.setPositionByName);
 	},
-	destroyed() {
+	beforeUnmount() {
 		window.removeEventListener('resize', this.setTotalWidth);
+		ndvEventBus.off('setPositionByName', this.setPositionByName);
 	},
 	computed: {
 		...mapStores(useNDVStore),
@@ -130,6 +146,9 @@ export default mixins(debounceHelper).extend({
 			relativeRight: number;
 		} {
 			return this.ndvStore.getMainPanelDimensions(this.currentNodePaneType);
+		},
+		activeNode() {
+			return this.ndvStore.activeNode;
 		},
 		supportedResizeDirections(): string[] {
 			const supportedDirections = ['right'];
@@ -244,6 +263,9 @@ export default mixins(debounceHelper).extend({
 		},
 	},
 	methods: {
+		onSwitchSelectedNode(node: string) {
+			this.$emit('switchSelectedNode', node);
+		},
 		getInitialLeftPosition(width: number) {
 			if (this.currentNodePaneType === 'dragless')
 				return this.pxToRelativeWidth(SIDE_MARGIN + 1 + this.fixedPanelWidth);
@@ -287,7 +309,7 @@ export default mixins(debounceHelper).extend({
 					panelType: this.currentNodePaneType,
 					dimensions: {
 						relativeLeft: 1 - this.mainPanelDimensions.relativeWidth - this.maximumRightPosition,
-						relativeRight: this.maximumRightPosition as number,
+						relativeRight: this.maximumRightPosition,
 					},
 				});
 				return;
@@ -300,6 +322,15 @@ export default mixins(debounceHelper).extend({
 					relativeRight: mainPanelRelativeRight,
 				},
 			});
+		},
+		setPositionByName(position: 'minLeft' | 'maxRight' | 'initial') {
+			const positionByName: Record<string, number> = {
+				minLeft: this.minimumLeftPosition,
+				maxRight: this.maximumRightPosition,
+				initial: this.getInitialLeftPosition(this.mainPanelDimensions.relativeWidth),
+			};
+
+			this.setPositions(positionByName[position]);
 		},
 		pxToRelativeWidth(px: number) {
 			return px / this.windowWidth;
@@ -315,7 +346,7 @@ export default mixins(debounceHelper).extend({
 		},
 		onResizeDebounced(data: { direction: string; x: number; width: number }) {
 			if (this.initialized) {
-				this.callDebounced('onResize', { debounceTime: 10, trailing: true }, data);
+				void this.callDebounced(this.onResize, { debounceTime: 10, trailing: true }, data);
 			}
 		},
 		onResize({ direction, x, width }: { direction: string; x: number; width: number }) {
@@ -332,9 +363,9 @@ export default mixins(debounceHelper).extend({
 			);
 		},
 		restorePositionData() {
-			const storedPanelWidthData = window.localStorage.getItem(
+			const storedPanelWidthData = useStorage(
 				`${LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH}_${this.currentNodePaneType}`,
-			);
+			).value;
 
 			if (storedPanelWidthData) {
 				const parsedWidth = parseFloat(storedPanelWidthData);
@@ -347,10 +378,8 @@ export default mixins(debounceHelper).extend({
 			return false;
 		},
 		storePositionData() {
-			window.localStorage.setItem(
-				`${LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH}_${this.currentNodePaneType}`,
-				this.mainPanelDimensions.relativeWidth.toString(),
-			);
+			useStorage(`${LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH}_${this.currentNodePaneType}`).value =
+				this.mainPanelDimensions.relativeWidth.toString();
 		},
 		onDragStart() {
 			this.isDragging = true;
@@ -435,6 +464,10 @@ export default mixins(debounceHelper).extend({
 
 .draggable {
 	visibility: hidden;
+}
+
+.double-width {
+	left: 90%;
 }
 
 .dragButtonContainer {

@@ -14,5 +14,6 @@
 				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.sms77/"
 			}
 		]
-	}
+	},
+	"alias": ["SMS", "Sms77"]
 }

@@ -1,39 +1,58 @@
 <template>
 	<div :class="$style.container">
-		<n8n-action-toggle
-			v-if="shouldShowOptions"
-			placement="bottom-end"
-			size="small"
-			color="foreground-xdark"
-			iconSize="small"
-			:actions="actions"
-			@action="(action) => $emit('optionSelected', action)"
-			@visible-change="onMenuToggle"
-		/>
-		<n8n-radio-buttons
-			v-if="parameter.noDataExpression !== true && showExpressionSelector"
-			size="small"
-			:value="selectedView"
-			:disabled="isReadOnly"
-			@input="onViewSelected"
-			:options="[
-				{ label: $locale.baseText('parameterInput.fixed'), value: 'fixed' },
-				{ label: $locale.baseText('parameterInput.expression'), value: 'expression' },
-			]"
-		/>
+		<div v-if="loading" :class="$style.loader">
+			<n8n-text v-if="loading" size="small">
+				<n8n-icon icon="sync-alt" size="xsmall" :spin="true" />
+				{{ loadingMessage }}
+			</n8n-text>
+		</div>
+		<div v-else :class="$style.controlsContainer">
+			<div
+				:class="{
+					[$style.noExpressionSelector]: !shouldShowExpressionSelector,
+				}"
+			>
+				<n8n-action-toggle
+					v-if="shouldShowOptions"
+					placement="bottom-end"
+					size="small"
+					color="foreground-xdark"
+					icon-size="small"
+					:actions="actions"
+					:icon-orientation="iconOrientation"
+					@action="(action: string) => $emit('update:modelValue', action)"
+					@visible-change="onMenuToggle"
+				/>
+			</div>
+			<n8n-radio-buttons
+				v-if="shouldShowExpressionSelector"
+				size="small"
+				:model-value="selectedView"
+				:disabled="isReadOnly"
+				:options="[
+					{ label: $locale.baseText('parameterInput.fixed'), value: 'fixed' },
+					{ label: $locale.baseText('parameterInput.expression'), value: 'expression' },
+				]"
+				@update:model-value="onViewSelected"
+			/>
+		</div>
 	</div>
 </template>
 
 <script lang="ts">
-import { NodeParameterValueType } from 'n8n-workflow';
-import Vue, { PropType } from 'vue';
-import { isValueExpression, isResourceLocatorValue } from '@/utils';
+import type { INodeProperties, NodeParameterValueType } from 'n8n-workflow';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import { isResourceLocatorValue } from '@/utils/typeGuards';
+import { isValueExpression } from '@/utils/nodeTypesUtils';
+import { i18n } from '@/plugins/i18n';
 
-export default Vue.extend({
-	name: 'parameter-options',
+export default defineComponent({
+	name: 'ParameterOptions',
 	props: {
 		parameter: {
-			type: Object,
+			type: Object as PropType<INodeProperties>,
+			required: true,
 		},
 		isReadOnly: {
 			type: Boolean,
@@ -49,7 +68,27 @@ export default Vue.extend({
 			type: Boolean,
 			default: true,
 		},
+		customActions: {
+			type: Array as PropType<Array<{ label: string; value: string; disabled?: boolean }>>,
+			default: () => [],
+		},
+		iconOrientation: {
+			type: String,
+			default: 'vertical',
+			validator: (value: string): boolean => ['horizontal', 'vertical'].includes(value),
+		},
+		loading: {
+			type: Boolean,
+			default: false,
+		},
+		loadingMessage: {
+			type: String,
+			default() {
+				return i18n.baseText('genericHelpers.loading');
+			},
+		},
 	},
+	emits: ['update:modelValue', 'menu-expanded'],
 	computed: {
 		isDefault(): boolean {
 			return this.parameter.default === this.value;
@@ -60,8 +99,11 @@ export default Vue.extend({
 		isHtmlEditor(): boolean {
 			return this.getArgument('editor') === 'htmlEditor';
 		},
+		shouldShowExpressionSelector(): boolean {
+			return this.parameter.noDataExpression !== true && this.showExpressionSelector;
+		},
 		shouldShowOptions(): boolean {
-			if (this.isReadOnly === true) {
+			if (this.isReadOnly) {
 				return false;
 			}
 
@@ -69,15 +111,11 @@ export default Vue.extend({
 				return false;
 			}
 
-			if (
-				this.parameter.typeOptions &&
-				this.parameter.typeOptions.editor &&
-				this.parameter.typeOptions.editor === 'codeNodeEditor'
-			) {
+			if (['codeNodeEditor', 'sqlEditor'].includes(this.parameter.typeOptions?.editor ?? '')) {
 				return false;
 			}
 
-			if (this.showOptions === true) {
+			if (this.showOptions) {
 				return true;
 			}
 
@@ -94,6 +132,10 @@ export default Vue.extend({
 			return !!this.getArgument('loadOptionsMethod') || !!this.getArgument('loadOptions');
 		},
 		actions(): Array<{ label: string; value: string; disabled?: boolean }> {
+			if (Array.isArray(this.customActions) && this.customActions.length > 0) {
+				return this.customActions;
+			}
+
 			if (this.isHtmlEditor && !this.isValueExpression) {
 				return [
 					{
@@ -135,11 +177,14 @@ export default Vue.extend({
 		},
 		onViewSelected(selected: string) {
 			if (selected === 'expression') {
-				this.$emit('optionSelected', this.isValueExpression ? 'openExpression' : 'addExpression');
+				this.$emit(
+					'update:modelValue',
+					this.isValueExpression ? 'openExpression' : 'addExpression',
+				);
 			}
 
 			if (selected === 'fixed' && this.isValueExpression) {
-				this.$emit('optionSelected', 'removeExpression');
+				this.$emit('update:modelValue', 'removeExpression');
 			}
 		},
 		getArgument(argumentName: string): string | number | boolean | undefined {
@@ -160,5 +205,27 @@ export default Vue.extend({
 <style lang="scss" module>
 .container {
 	display: flex;
+	min-height: 22px;
+}
+
+.loader {
+	padding-bottom: var(--spacing-4xs);
+
+	& > span {
+		line-height: 1em;
+	}
+}
+.controlsContainer {
+	display: flex;
+	align-items: center;
+	flex-direction: row;
+}
+
+.noExpressionSelector {
+	margin-bottom: var(--spacing-4xs);
+
+	span {
+		padding-right: 0 !important;
+	}
 }
 </style>

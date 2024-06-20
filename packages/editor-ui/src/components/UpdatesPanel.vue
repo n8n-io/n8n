@@ -1,5 +1,10 @@
 <template>
-	<ModalDrawer :name="VERSIONS_MODAL_KEY" direction="ltr" width="520px">
+	<ModalDrawer
+		:name="VERSIONS_MODAL_KEY"
+		direction="ltr"
+		width="520px"
+		data-test-id="version-updates-panel"
+	>
 		<template #header>
 			<span :class="$style.title">
 				{{ $locale.baseText('updatesPanel.weVeBeenBusy') }}
@@ -13,21 +18,25 @@
 							interpolate: { currentVersionName: currentVersion.name },
 						})
 					}}
-					<strong><TimeAgo :date="currentVersion.createdAt" /></strong
-					>{{ $locale.baseText('updatesPanel.andIs') }}
-					<strong>{{
-						$locale.baseText('updatesPanel.version', {
-							interpolate: {
-								numberOfVersions: nextVersions.length,
-								howManySuffix: nextVersions.length > 1 ? 's' : '',
-							},
-						})
-					}}</strong>
+					<strong>
+						<TimeAgo :date="currentVersion.createdAt" />
+					</strong>
+					{{ $locale.baseText('updatesPanel.andIs') }}
+					<strong>
+						{{
+							$locale.baseText('updatesPanel.version', {
+								interpolate: {
+									numberOfVersions: nextVersions.length,
+									howManySuffix: nextVersions.length > 1 ? 's' : '',
+								},
+							})
+						}}
+					</strong>
 					{{ $locale.baseText('updatesPanel.behindTheLatest') }}
 				</p>
 
 				<n8n-link v-if="infoUrl" :to="infoUrl" :bold="true">
-					<font-awesome-icon icon="info-circle"></font-awesome-icon>
+					<font-awesome-icon icon="info-circle" class="mr-2xs" />
 					<span>
 						{{ $locale.baseText('updatesPanel.howToUpdateYourN8nVersion') }}
 					</span>
@@ -43,17 +52,17 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
 import ModalDrawer from './ModalDrawer.vue';
 import TimeAgo from './TimeAgo.vue';
 import VersionCard from './VersionCard.vue';
 import { VERSIONS_MODAL_KEY } from '../constants';
 import { mapStores } from 'pinia';
-import { useVersionsStore } from '@/stores/versions';
-import { IVersion } from '@/Interface';
+import { useVersionsStore } from '@/stores/versions.store';
+import type { IVersion } from '@/Interface';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'UpdatesPanel',
 	components: {
 		ModalDrawer,

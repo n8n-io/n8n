@@ -1,8 +1,8 @@
 <template>
-	<div @keydown.stop class="duplicate-parameter">
+	<div class="duplicate-parameter" @keydown.stop>
 		<n8n-input-label
 			:label="$locale.nodeText().inputLabelDisplayName(parameter, path)"
-			:tooltipText="$locale.nodeText().inputLabelDescription(parameter, path)"
+			:tooltip-text="$locale.nodeText().inputLabelDescription(parameter, path)"
 			:underline="true"
 			size="small"
 			color="text-dark"
@@ -14,7 +14,7 @@
 			class="duplicate-parameter-item"
 			:class="parameter.type"
 		>
-			<div class="delete-item clickable" v-if="!isReadOnly">
+			<div v-if="!isReadOnly" class="delete-item clickable">
 				<font-awesome-icon
 					icon="trash"
 					:title="$locale.baseText('multipleParameter.deleteItem')"
@@ -38,27 +38,27 @@
 				</div>
 			</div>
 			<div v-if="parameter.type === 'collection'">
-				<collection-parameter
+				<CollectionParameter
 					:parameter="parameter"
 					:values="value"
-					:nodeValues="nodeValues"
+					:node-values="nodeValues"
 					:path="getPath(index)"
-					:hideDelete="hideDelete"
-					:isReadOnly="isReadOnly"
-					@valueChanged="valueChanged"
+					:hide-delete="hideDelete"
+					:is-read-only="isReadOnly"
+					@value-changed="valueChanged"
 				/>
 			</div>
 			<div v-else>
-				<parameter-input-full
+				<ParameterInputFull
 					class="duplicate-parameter-input-item"
 					:parameter="parameter"
 					:value="value"
-					:displayOptions="true"
-					:hideLabel="true"
+					:display-options="true"
+					:hide-label="true"
 					:path="getPath(index)"
-					@valueChanged="valueChanged"
-					inputSize="small"
-					:isReadOnly="isReadOnly"
+					input-size="small"
+					:is-read-only="isReadOnly"
+					@update="valueChanged"
 				/>
 			</div>
 		</div>
@@ -76,23 +76,25 @@
 				v-if="!isReadOnly"
 				type="tertiary"
 				block
-				@click="addItem()"
 				:label="addButtonText"
+				@click="addItem()"
 			/>
 		</div>
 	</div>
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
-import { IUpdateInformation } from '@/Interface';
-import { deepCopy, INodeParameters, INodeProperties } from 'n8n-workflow';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import type { IUpdateInformation } from '@/Interface';
+import type { INodeParameters, INodeProperties } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 import CollectionParameter from '@/components/CollectionParameter.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 
 import { get } from 'lodash-es';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'MultipleParameter',
 	components: {
 		CollectionParameter,
@@ -100,7 +102,7 @@ export default Vue.extend({
 	},
 	props: {
 		nodeValues: {
-			type: Object as PropType<Record<string, INodeParameters[]>>,
+			type: Object as PropType<INodeParameters>,
 			required: true,
 		},
 		parameter: {
@@ -125,17 +127,6 @@ export default Vue.extend({
 			mutableValues: [] as INodeParameters[],
 		};
 	},
-	watch: {
-		values: {
-			handler(newValues: INodeParameters[]) {
-				this.mutableValues = deepCopy(newValues);
-			},
-			deep: true,
-		},
-	},
-	created() {
-		this.mutableValues = deepCopy(this.values);
-	},
 	computed: {
 		addButtonText(): string {
 			if (
@@ -154,10 +145,21 @@ export default Vue.extend({
 			return !!this.parameter.typeOptions?.sortable;
 		},
 	},
+	watch: {
+		values: {
+			handler(newValues: INodeParameters[]) {
+				this.mutableValues = deepCopy(newValues);
+			},
+			deep: true,
+		},
+	},
+	created() {
+		this.mutableValues = deepCopy(this.values);
+	},
 	methods: {
 		addItem() {
 			const name = this.getPath();
-			const currentValue = get(this.nodeValues, name, [] as INodeParameters[]);
+			const currentValue = get(this.nodeValues, name, []) as INodeParameters[];
 
 			currentValue.push(deepCopy(this.parameter.default as INodeParameters));
 
@@ -207,6 +209,32 @@ export default Vue.extend({
 </script>
 
 <style scoped lang="scss">
+.duplicate-parameter {
+	:deep(.button) {
+		--button-background-color: var(--color-background-base);
+		--button-border-color: var(--color-foreground-base);
+	}
+
+	:deep(.duplicate-parameter-item) {
+		position: relative;
+
+		.multi > .delete-item {
+			top: 0.1em;
+		}
+	}
+
+	:deep(.duplicate-parameter-input-item) {
+		margin: 0.5em 0 0.25em 2em;
+	}
+
+	:deep(.duplicate-parameter-item + .duplicate-parameter-item) {
+		.collection-parameter-wrapper {
+			border-top: 1px dashed #999;
+			margin-top: var(--spacing-xs);
+		}
+	}
+}
+
 .duplicate-parameter-item {
 	~ .add-item-wrapper {
 		margin-top: var(--spacing-xs);
@@ -228,31 +256,6 @@ export default Vue.extend({
 	}
 }
 
-::v-deep {
-	.button {
-		--button-background-color: var(--color-background-base);
-		--button-border-color: var(--color-foreground-base);
-	}
-
-	.duplicate-parameter-item {
-		position: relative;
-
-		.multi > .delete-item {
-			top: 0.1em;
-		}
-	}
-
-	.duplicate-parameter-input-item {
-		margin: 0.5em 0 0.25em 2em;
-	}
-
-	.duplicate-parameter-item + .duplicate-parameter-item {
-		.collection-parameter-wrapper {
-			border-top: 1px dashed #999;
-			margin-top: var(--spacing-xs);
-		}
-	}
-}
 .no-items-exist {
 	margin: var(--spacing-xs) 0;
 }

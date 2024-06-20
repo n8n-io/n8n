@@ -1,25 +1,19 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	JsonObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 	IDataObject,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function paddleApiRequest(
-	this:
-		| IHookFunctions
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| ILoadOptionsFunctions
-		| IWebhookFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	endpoint: string,
-	method: string,
+	method: IHttpRequestMethods,
 
 	body: any = {},
 	_query?: IDataObject,
@@ -31,7 +25,7 @@ export async function paddleApiRequest(
 
 	const isSandbox = credentials.sandbox;
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		method,
 		headers: {
 			'content-type': 'application/json',
@@ -60,7 +54,7 @@ export async function paddleApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions,
 	propertyName: string,
 	endpoint: string,
-	method: string,
+	method: IHttpRequestMethods,
 
 	body: any = {},
 	query: IDataObject = {},

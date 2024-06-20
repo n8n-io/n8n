@@ -196,7 +196,12 @@ export class MailchimpTrigger implements INodeType {
 				try {
 					await mailchimpApiRequest.call(this, endpoint, 'GET');
 				} catch (error) {
-					if (error instanceof NodeApiError && error.cause && 'isAxiosError' in error.cause) {
+					if (
+						error instanceof NodeApiError &&
+						error.cause &&
+						'isAxiosError' in error.cause &&
+						'statusCode' in error.cause
+					) {
 						if (error.cause.statusCode === 404) {
 							return false;
 						}

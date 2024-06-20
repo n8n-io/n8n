@@ -2,7 +2,7 @@
 	<div :class="$style.template">
 		<div :class="$style.container">
 			<div :class="$style.header">
-				<div :class="$style.goBack" v-if="goBackEnabled">
+				<div v-if="goBackEnabled" :class="$style.goBack">
 					<GoBackButton />
 				</div>
 				<slot name="header"></slot>
@@ -15,10 +15,10 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import GoBackButton from '@/components/GoBackButton.vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'TemplatesView',
 	components: {
 		GoBackButton,

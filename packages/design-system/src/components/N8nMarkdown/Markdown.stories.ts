@@ -1,4 +1,4 @@
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 import N8nMarkdown from './Markdown.vue';
 
 export default {
@@ -18,24 +18,25 @@ export default {
 		loadingBlocks: {
 			control: {
 				type: 'select',
-				options: [1, 2, 3, 4, 5],
 			},
+			options: [1, 2, 3, 4, 5],
 		},
 		loadingRows: {
 			control: {
 				type: 'select',
-				options: [1, 2, 3, 4, 5],
 			},
+			options: [1, 2, 3, 4, 5],
 		},
 	},
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nMarkdown,
 	},
-	template: '<n8n-markdown v-bind="$props"></n8n-markdown>',
+	template: '<n8n-markdown v-bind="args"></n8n-markdown>',
 });
 
 export const Markdown = Template.bind({});
@@ -49,4 +50,19 @@ Markdown.args = {
 			url: 'https://community.n8n.io/uploads/default/optimized/2X/b/b737a95de4dfe0825d50ca098171e9f33a459e74_2_690x288.png',
 		},
 	],
+};
+
+const TemplateWithCheckboxes: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
+	props: Object.keys(argTypes),
+	components: {
+		N8nMarkdown,
+	},
+	template: '<n8n-markdown v-bind="args"></n8n-markdown>',
+});
+
+export const WithCheckboxes = TemplateWithCheckboxes.bind({});
+WithCheckboxes.args = {
+	content: '__TODO__\n- [ ] Buy milk\n- [X] Buy socks\n',
+	loading: false,
 };

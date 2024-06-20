@@ -8,8 +8,10 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { randomString } from 'n8n-workflow';
 
-import mqtt from 'mqtt';
+import * as mqtt from 'mqtt';
+import { formatPrivateKey } from '@utils/utilities';
 
 export class Mqtt implements INodeType {
 	description: INodeTypeDescription = {
@@ -45,7 +47,7 @@ export class Mqtt implements INodeType {
 				name: 'sendInputData',
 				type: 'boolean',
 				default: true,
-				description: 'Whether to send the the data the node receives as JSON',
+				description: 'Whether to send the data the node receives as JSON',
 			},
 			{
 				displayName: 'Message',
@@ -115,12 +117,12 @@ export class Mqtt implements INodeType {
 					const brokerUrl = `${protocol}://${host}`;
 					const port = (credentials.port as number) || 1883;
 					const clientId =
-						(credentials.clientId as string) || `mqttjs_${Math.random().toString(16).substr(2, 8)}`;
+						(credentials.clientId as string) || `mqttjs_${randomString(8).toLowerCase()}`;
 					const clean = credentials.clean as boolean;
 					const ssl = credentials.ssl as boolean;
-					const ca = credentials.ca as string;
-					const cert = credentials.cert as string;
-					const key = credentials.key as string;
+					const ca = formatPrivateKey(credentials.ca as string);
+					const cert = formatPrivateKey(credentials.cert as string);
+					const key = formatPrivateKey(credentials.key as string);
 					const rejectUnauthorized = credentials.rejectUnauthorized as boolean;
 
 					let client: mqtt.MqttClient;
@@ -155,7 +157,7 @@ export class Mqtt implements INodeType {
 						client = mqtt.connect(brokerUrl, clientOptions);
 					}
 
-					await new Promise((resolve, reject): any => {
+					await new Promise((resolve, reject) => {
 						client.on('connect', (test) => {
 							resolve(test);
 							client.end();
@@ -168,7 +170,7 @@ export class Mqtt implements INodeType {
 				} catch (error) {
 					return {
 						status: 'Error',
-						message: error.message,
+						message: (error as Error).message,
 					};
 				}
 				return {
@@ -188,8 +190,7 @@ export class Mqtt implements INodeType {
 		const host = credentials.host as string;
 		const brokerUrl = `${protocol}://${host}`;
 		const port = (credentials.port as number) || 1883;
-		const clientId =
-			(credentials.clientId as string) || `mqttjs_${Math.random().toString(16).substr(2, 8)}`;
+		const clientId = (credentials.clientId as string) || `mqttjs_${randomString(8).toLowerCase()}`;
 		const clean = credentials.clean as boolean;
 		const ssl = credentials.ssl as boolean;
 		const ca = credentials.ca as string;
@@ -232,7 +233,7 @@ export class Mqtt implements INodeType {
 
 		const sendInputData = this.getNodeParameter('sendInputData', 0) as boolean;
 
-		const data = await new Promise((resolve, reject): any => {
+		const data = await new Promise((resolve, reject) => {
 			client.on('connect', () => {
 				for (let i = 0; i < length; i++) {
 					let message;
@@ -256,7 +257,7 @@ export class Mqtt implements INodeType {
 					resolve([items]);
 				});
 
-				client.on('error', (e: string | undefined) => {
+				client.on('error', (e) => {
 					reject(e);
 				});
 			});

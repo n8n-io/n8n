@@ -1,20 +1,19 @@
 <template>
-	<n8n-card :class="$style.card" v-on="$listeners">
-		<template #header v-if="!loading">
-			<span v-text="title" :class="$style.title" />
+	<n8n-card :class="$style.card" v-bind="$attrs">
+		<template v-if="!loading" #header>
+			<span :class="$style.title" v-text="title" />
 		</template>
 		<n8n-loading :loading="loading" :rows="3" variant="p" />
-		<template #footer v-if="!loading">
+		<template v-if="!loading" #footer>
 			<slot name="footer" />
 		</template>
 	</n8n-card>
 </template>
 
 <script lang="ts">
-import { genericHelpers } from '@/mixins/genericHelpers';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 
-export default mixins(genericHelpers).extend({
+export default defineComponent({
 	name: 'Card',
 	props: {
 		loading: {
@@ -29,7 +28,7 @@ export default mixins(genericHelpers).extend({
 
 <style lang="scss" module>
 .card {
-	width: 240px !important;
+	min-width: 235px;
 	height: 140px;
 	margin-right: var(--spacing-2xs);
 	cursor: pointer;

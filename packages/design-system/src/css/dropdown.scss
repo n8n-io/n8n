@@ -2,11 +2,15 @@
 @use './common/var';
 @use './popper';
 
+@use 'element-plus/theme-chalk/src/dropdown-menu';
+
 @include mixins.b(dropdown) {
-	display: inline-block;
 	position: relative;
 	color: var(--color-text-dark);
 	font-size: var.$font-size-base;
+	display: inline-flex;
+	line-height: 1;
+	vertical-align: top;
 
 	.el-button-group {
 		display: block;
@@ -69,7 +73,6 @@
 }
 
 @include mixins.b(dropdown-menu) {
-	position: absolute;
 	top: 0;
 	left: 0;
 	z-index: 10;
@@ -78,7 +81,8 @@
 	background-color: var.$color-white;
 	border: 1px solid var(--border-color-light);
 	border-radius: var(--border-radius-base);
-	box-shadow: var.$dropdown-menu-box-shadow;
+	position: relative;
+	list-style: none;
 
 	@include mixins.e(item) {
 		list-style: none;
@@ -87,9 +91,10 @@
 		margin: 0;
 		font-size: var.$font-size-base;
 		font-weight: var(--font-weight-regular);
-		color: var(--color-text-dark);
+		color: var(--color-text-base);
 		cursor: pointer;
 		outline: none;
+		white-space: nowrap;
 		&:not(.is-disabled):hover,
 		&:focus {
 			background-color: var.$dropdown-menuItem-hover-fill;
@@ -111,14 +116,13 @@
 				content: '';
 				height: $divided-offset;
 				display: block;
-				margin: 0 -16px;
 				background-color: var.$color-white;
 			}
 		}
 
 		@include mixins.when(disabled) {
 			cursor: default;
-			color: var.$font-color-disabled-base;
+			color: var(--color-text-lighter);
 			pointer-events: none;
 		}
 	}
@@ -137,7 +141,6 @@
 
 				&:before {
 					height: $divided-offset;
-					margin: 0 -17px;
 				}
 			}
 		}
@@ -157,7 +160,6 @@
 
 				&:before {
 					height: $divided-offset;
-					margin: 0 -15px;
 				}
 			}
 		}
@@ -177,7 +179,6 @@
 
 				&:before {
 					height: $divided-offset;
-					margin: 0 -10px;
 				}
 			}
 		}

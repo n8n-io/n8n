@@ -1,5 +1,5 @@
-import type { NodeVMOptions } from 'vm2';
-import { NodeVM } from 'vm2';
+import type { NodeVMOptions } from '@n8n/vm2';
+import { NodeVM } from '@n8n/vm2';
 import type {
 	IExecuteFunctions,
 	IBinaryKeyData,
@@ -9,6 +9,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { deepCopy, NodeOperationError } from 'n8n-workflow';
+import { vmResolver } from '../Code/JavaScriptSandbox';
 
 export class Function implements INodeType {
 	description: INodeTypeDescription = {
@@ -39,7 +40,7 @@ export class Function implements INodeType {
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 					codeAutocomplete: 'function',
-					editor: 'code',
+					editor: 'jsEditor',
 					rows: 10,
 				},
 				type: 'string',
@@ -150,22 +151,8 @@ return items;`,
 		const options: NodeVMOptions = {
 			console: mode === 'manual' ? 'redirect' : 'inherit',
 			sandbox,
-			require: {
-				external: false as boolean | { modules: string[]; transitive: boolean },
-				builtin: [] as string[],
-			},
+			require: vmResolver,
 		};
-
-		if (process.env.NODE_FUNCTION_ALLOW_BUILTIN && typeof options.require === 'object') {
-			options.require.builtin = process.env.NODE_FUNCTION_ALLOW_BUILTIN.split(',');
-		}
-
-		if (process.env.NODE_FUNCTION_ALLOW_EXTERNAL && typeof options.require === 'object') {
-			options.require.external = {
-				modules: process.env.NODE_FUNCTION_ALLOW_EXTERNAL.split(','),
-				transitive: false,
-			};
-		}
 
 		const vm = new NodeVM(options);
 
@@ -217,7 +204,7 @@ return items;`,
 				}
 			}
 		} catch (error) {
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(error)) {
 				items = [{ json: { error: error.message } }];
 			} else {
 				// Try to find the line number which contains the error and attach to error message
@@ -233,10 +220,10 @@ return items;`,
 					}
 				}
 
-				return Promise.reject(error);
+				throw error;
 			}
 		}
 
-		return this.prepareOutputData(items);
+		return [items];
 	}
 }

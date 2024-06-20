@@ -1,5 +1,5 @@
 <template>
-	<resources-list-layout
+	<ResourcesListLayout
 		ref="layout"
 		resource-key="credentials"
 		:resources="allCredentials"
@@ -10,8 +10,24 @@
 		@click:add="addCredential"
 		@update:filters="filters = $event"
 	>
+		<template #header>
+			<ProjectTabs />
+		</template>
+		<template #add-button="{ disabled }">
+			<div>
+				<n8n-button
+					size="large"
+					block
+					:disabled="disabled"
+					data-test-id="resources-list-add"
+					@click="addCredential"
+				>
+					{{ addCredentialButtonText }}
+				</n8n-button>
+			</div>
+		</template>
 		<template #default="{ data }">
-			<credential-card data-test-id="resources-list-item" class="mb-2xs" :data="data" />
+			<CredentialCard data-test-id="resources-list-item" class="mb-2xs" :data="data" />
 		</template>
 		<template #filters="{ setKeyValue }">
 			<div class="mb-s">
@@ -23,13 +39,13 @@
 					class="mb-3xs"
 				/>
 				<n8n-select
-					:value="filters.type"
+					ref="typeInput"
+					:model-value="filters.type"
 					size="medium"
 					multiple
 					filterable
-					ref="typeInput"
 					:class="$style['type-input']"
-					@input="setKeyValue('type', $event)"
+					@update:model-value="setKeyValue('type', $event)"
 				>
 					<n8n-option
 						v-for="credentialType in allCredentialTypes"
@@ -40,60 +56,69 @@
 				</n8n-select>
 			</div>
 		</template>
-	</resources-list-layout>
+	</ResourcesListLayout>
 </template>
 
 <script lang="ts">
-import { showMessage } from '@/mixins/showMessage';
-import { ICredentialsResponse, ICredentialTypeMap, IUser } from '@/Interface';
-import mixins from 'vue-typed-mixins';
+import type { ICredentialsResponse, ICredentialTypeMap } from '@/Interface';
+import { defineComponent } from 'vue';
 
-import SettingsView from './SettingsView.vue';
+import type { IResource } from '@/components/layouts/ResourcesListLayout.vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
-import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
-import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import CredentialCard from '@/components/CredentialCard.vue';
-import { ICredentialType } from 'n8n-workflow';
-import TemplateCard from '@/components/TemplateCard.vue';
-import { debounceHelper } from '@/mixins/debounce';
-import ResourceOwnershipSelect from '@/components/forms/ResourceOwnershipSelect.ee.vue';
-import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
-import { CREDENTIAL_SELECT_MODAL_KEY } from '@/constants';
-import Vue from 'vue';
+import type { ICredentialType } from 'n8n-workflow';
+import { CREDENTIAL_SELECT_MODAL_KEY, EnterpriseEditionFeature } from '@/constants';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useUsersStore } from '@/stores/users';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useCredentialsStore } from '@/stores/credentials';
+import { useUIStore } from '@/stores/ui.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useProjectsStore } from '@/stores/projects.store';
+import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
+import useEnvironmentsStore from '@/stores/environments.ee.store';
+import { useSettingsStore } from '@/stores/settings.store';
 
-type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
+type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
 
-export default mixins(showMessage, debounceHelper).extend({
-	name: 'SettingsPersonalView',
+export default defineComponent({
+	name: 'CredentialsView',
 	components: {
 		ResourcesListLayout,
-		TemplateCard,
-		PageViewLayout,
-		PageViewLayoutList,
-		SettingsView,
 		CredentialCard,
-		ResourceOwnershipSelect,
-		ResourceFiltersDropdown,
+		ProjectTabs,
 	},
 	data() {
 		return {
 			filters: {
 				search: '',
-				ownedBy: '',
-				sharedWith: '',
+				homeProject: '',
 				type: '',
 			},
+			sourceControlStoreUnsubscribe: () => {},
 		};
 	},
 	computed: {
-		...mapStores(useCredentialsStore, useNodeTypesStore, useUIStore, useUsersStore),
-		allCredentials(): ICredentialsResponse[] {
-			return this.credentialsStore.allCredentials;
+		...mapStores(
+			useCredentialsStore,
+			useNodeTypesStore,
+			useUIStore,
+			useSourceControlStore,
+			useExternalSecretsStore,
+			useProjectsStore,
+		),
+		allCredentials(): IResource[] {
+			return this.credentialsStore.allCredentials.map((credential) => ({
+				id: credential.id,
+				name: credential.name,
+				value: '',
+				updatedAt: credential.updatedAt,
+				createdAt: credential.createdAt,
+				homeProject: credential.homeProject,
+				scopes: credential.scopes,
+				type: credential.type,
+				sharedWithProjects: credential.sharedWithProjects,
+			}));
 		},
 		allCredentialTypes(): ICredentialType[] {
 			return this.credentialsStore.allCredentialTypes;
@@ -101,6 +126,31 @@ export default mixins(showMessage, debounceHelper).extend({
 		credentialTypesById(): ICredentialTypeMap {
 			return this.credentialsStore.credentialTypesById;
 		},
+		addCredentialButtonText() {
+			return this.projectsStore.currentProject
+				? this.$locale.baseText('credentials.project.add')
+				: this.$locale.baseText('credentials.add');
+		},
+	},
+	watch: {
+		'filters.type'() {
+			this.sendFiltersTelemetry('type');
+		},
+		'$route.params.projectId'() {
+			void this.initialize();
+		},
+	},
+	mounted() {
+		this.sourceControlStoreUnsubscribe = this.sourceControlStore.$onAction(({ name, after }) => {
+			if (name === 'pullWorkfolder' && after) {
+				after(() => {
+					void this.initialize();
+				});
+			}
+		});
+	},
+	beforeUnmount() {
+		this.sourceControlStoreUnsubscribe();
 	},
 	methods: {
 		addCredential() {
@@ -111,18 +161,21 @@ export default mixins(showMessage, debounceHelper).extend({
 			});
 		},
 		async initialize() {
+			const isVarsEnabled = useSettingsStore().isEnterpriseFeatureEnabled(
+				EnterpriseEditionFeature.Variables,
+			);
+
 			const loadPromises = [
-				this.credentialsStore.fetchAllCredentials(),
+				this.credentialsStore.fetchAllCredentials(
+					this.$route?.params?.projectId as string | undefined,
+				),
 				this.credentialsStore.fetchCredentialTypes(false),
+				this.externalSecretsStore.fetchAllSecrets(),
+				this.nodeTypesStore.loadNodeTypesIfNotLoaded(),
+				isVarsEnabled ? useEnvironmentsStore().fetchAllVariables() : Promise.resolve(), // for expression resolution
 			];
 
-			if (this.nodeTypesStore.allNodeTypes.length === 0) {
-				loadPromises.push(this.nodeTypesStore.getNodeTypes());
-			}
-
 			await Promise.all(loadPromises);
-
-			this.usersStore.fetchUsers(); // Can be loaded in the background, used for filtering
 		},
 		onFilter(
 			resource: ICredentialsResponse,
@@ -148,11 +201,6 @@ export default mixins(showMessage, debounceHelper).extend({
 		},
 		sendFiltersTelemetry(source: string) {
 			(this.$refs.layout as IResourcesListLayoutInstance).sendFiltersTelemetry(source);
-		},
-	},
-	watch: {
-		'filters.type'() {
-			this.sendFiltersTelemetry('type');
 		},
 	},
 });

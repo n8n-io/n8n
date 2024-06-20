@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -8,8 +9,6 @@ import type {
 } from 'n8n-workflow';
 
 import { stravaApiRequest } from './GenericFunctions';
-
-import { randomBytes } from 'crypto';
 
 export class StravaTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -270,7 +269,7 @@ export class StravaTrigger implements INodeType {
 			return {};
 		}
 
-		if (resolveData) {
+		if (resolveData && body.aspect_type !== 'delete') {
 			let endpoint = `/athletes/${body.object_id}/stats`;
 			if (body.object_type === 'activity') {
 				endpoint = `/activities/${body.object_id}`;

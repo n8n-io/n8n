@@ -7,6 +7,7 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	IRequestOptions,
 } from 'n8n-workflow';
 
 import { taskFields, taskOperations } from './descriptions/TaskDescription';
@@ -33,8 +34,6 @@ import { workerFields, workerOperations } from './descriptions/WorkerDescription
 import { containerFields, containerOperations } from './descriptions/ContainerDescription';
 
 import { teamFields, teamOperations } from './descriptions/TeamDescription';
-
-import type { OptionsWithUri } from 'request';
 
 import { Onfleet as OnfleetMethods } from './Onfleet';
 export class Onfleet implements INodeType {
@@ -142,7 +141,7 @@ export class Onfleet implements INodeType {
 			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as IDataObject;
 
-				const options: OptionsWithUri = {
+				const options: IRequestOptions = {
 					headers: {
 						'Content-Type': 'application/json',
 						'User-Agent': 'n8n-onfleet',

@@ -2,7 +2,7 @@
 	<div class="item">
 		<div v-if="item.options" class="options">
 			<div v-if="item.options.length" class="headline clickable" @click="extended = !extended">
-				<div class="options-toggle" v-if="extendAll !== true">
+				<div v-if="extendAll !== true" class="options-toggle">
 					<font-awesome-icon v-if="extended" icon="angle-down" />
 					<font-awesome-icon v-else icon="angle-right" />
 				</div>
@@ -10,10 +10,10 @@
 					{{ item.name }}
 
 					<el-dropdown
+						v-if="allowParentSelect === true"
 						trigger="click"
 						@click.stop
 						@command="optionSelected($event, item)"
-						v-if="allowParentSelect === true"
 					>
 						<span class="el-dropdown-link clickable" @click.stop>
 							<font-awesome-icon
@@ -24,9 +24,9 @@
 						<template #dropdown>
 							<el-dropdown-menu>
 								<el-dropdown-item
-									:command="operation.command"
 									v-for="operation in itemAddOperations"
 									:key="operation.command"
+									:command="operation.command"
 									>{{ operation.displayName }}</el-dropdown-item
 								>
 							</el-dropdown-menu>
@@ -37,12 +37,13 @@
 			<div v-if="item.options && (extended === true || extendAll === true)">
 				<variable-selector-item
 					v-for="option in item.options"
-					:item="option"
 					:key="option.key"
-					:extendAll="extendAll"
-					:allowParentSelect="option.allowParentSelect"
+					:item="option"
+					:extend-all="extendAll"
+					:allow-parent-select="option.allowParentSelect"
+					:redact-values="redactValues"
 					class="sub-level"
-					@itemSelected="forwardItemSelected"
+					@item-selected="forwardItemSelected"
 				></variable-selector-item>
 			</div>
 		</div>
@@ -51,7 +52,7 @@
 				{{ item.name }}:
 				<font-awesome-icon icon="dot-circle" title="Select Item" />
 			</div>
-			<div class="item-value ph-no-capture">
+			<div :class="{ 'ph-no-capture': redactValues, 'item-value': true }">
 				{{ item.value !== undefined ? item.value : $locale.baseText('variableSelectorItem.empty') }}
 			</div>
 		</div>
@@ -59,27 +60,16 @@
 </template>
 
 <script lang="ts">
-import { IVariableSelectorOption, IVariableItemSelected } from '@/Interface';
-import { externalHooks } from '@/mixins/externalHooks';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
+import type { IVariableSelectorOption, IVariableItemSelected } from '@/Interface';
 
-export default mixins(externalHooks).extend({
+export default defineComponent({
 	name: 'VariableSelectorItem',
-	props: ['allowParentSelect', 'extendAll', 'item'],
-	mounted() {
-		if (this.extended) return;
-
-		const shouldAutoExtend =
-			[
-				this.$locale.baseText('variableSelectorItem.currentNode'),
-				this.$locale.baseText('variableSelectorItem.inputData'),
-				this.$locale.baseText('variableSelectorItem.binary'),
-				this.$locale.baseText('variableSelectorItem.json'),
-			].includes(this.item.name) && this.item.key === undefined;
-
-		if (shouldAutoExtend) {
-			this.extended = true;
-		}
+	props: ['allowParentSelect', 'extendAll', 'item', 'redactValues'],
+	data() {
+		return {
+			extended: false,
+		};
 	},
 	computed: {
 		itemAddOperations() {
@@ -112,10 +102,20 @@ export default mixins(externalHooks).extend({
 			return returnOptions;
 		},
 	},
-	data() {
-		return {
-			extended: false,
-		};
+	mounted() {
+		if (this.extended) return;
+
+		const shouldAutoExtend =
+			[
+				this.$locale.baseText('variableSelectorItem.currentNode'),
+				this.$locale.baseText('variableSelectorItem.inputData'),
+				this.$locale.baseText('variableSelectorItem.binary'),
+				this.$locale.baseText('variableSelectorItem.json'),
+			].includes(this.item.name) && this.item.key === undefined;
+
+		if (shouldAutoExtend) {
+			this.extended = true;
+		}
 	},
 	methods: {
 		optionSelected(command: string, item: IVariableSelectorOption) {

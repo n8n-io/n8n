@@ -1,4 +1,5 @@
-import {
+import type { RawAxiosRequestHeaders } from 'axios';
+import type {
 	ITemplatesCategory,
 	ITemplatesCollection,
 	ITemplatesQuery,
@@ -6,48 +7,52 @@ import {
 	ITemplatesCollectionResponse,
 	ITemplatesWorkflowResponse,
 	IWorkflowTemplate,
+	TemplateSearchFacet,
 } from '@/Interface';
-import { IDataObject } from 'n8n-workflow';
-import { get } from '@/utils';
+import { get } from '@/utils/apiUtils';
 
-function stringifyArray(arr: number[]) {
+function stringifyArray(arr: string[]) {
 	return arr.join(',');
 }
 
-export function testHealthEndpoint(apiEndpoint: string) {
-	return get(apiEndpoint, '/health');
+export async function testHealthEndpoint(apiEndpoint: string) {
+	return await get(apiEndpoint, '/health');
 }
 
-export function getCategories(
+export async function getCategories(
 	apiEndpoint: string,
-	headers?: IDataObject,
+	headers?: RawAxiosRequestHeaders,
 ): Promise<{ categories: ITemplatesCategory[] }> {
-	return get(apiEndpoint, '/templates/categories', undefined, headers);
+	return await get(apiEndpoint, '/templates/categories', undefined, headers);
 }
 
 export async function getCollections(
 	apiEndpoint: string,
 	query: ITemplatesQuery,
-	headers?: IDataObject,
+	headers?: RawAxiosRequestHeaders,
 ): Promise<{ collections: ITemplatesCollection[] }> {
 	return await get(
 		apiEndpoint,
 		'/templates/collections',
-		{ category: stringifyArray(query.categories || []), search: query.search },
+		{ category: query.categories, search: query.search },
 		headers,
 	);
 }
 
 export async function getWorkflows(
 	apiEndpoint: string,
-	query: { skip: number; limit: number; categories: number[]; search: string },
-	headers?: IDataObject,
-): Promise<{ totalWorkflows: number; workflows: ITemplatesWorkflow[] }> {
-	return get(
+	query: { page: number; limit: number; categories: string[]; search: string },
+	headers?: RawAxiosRequestHeaders,
+): Promise<{
+	totalWorkflows: number;
+	workflows: ITemplatesWorkflow[];
+	filters: TemplateSearchFacet[];
+}> {
+	return await get(
 		apiEndpoint,
-		'/templates/workflows',
+		'/templates/search',
 		{
-			skip: query.skip,
+			page: query.page,
 			rows: query.limit,
 			category: stringifyArray(query.categories),
 			search: query.search,
@@ -59,7 +64,7 @@ export async function getWorkflows(
 export async function getCollectionById(
 	apiEndpoint: string,
 	collectionId: string,
-	headers?: IDataObject,
+	headers?: RawAxiosRequestHeaders,
 ): Promise<{ collection: ITemplatesCollectionResponse }> {
 	return await get(apiEndpoint, `/templates/collections/${collectionId}`, undefined, headers);
 }
@@ -67,7 +72,7 @@ export async function getCollectionById(
 export async function getTemplateById(
 	apiEndpoint: string,
 	templateId: string,
-	headers?: IDataObject,
+	headers?: RawAxiosRequestHeaders,
 ): Promise<{ workflow: ITemplatesWorkflowResponse }> {
 	return await get(apiEndpoint, `/templates/workflows/${templateId}`, undefined, headers);
 }
@@ -75,7 +80,7 @@ export async function getTemplateById(
 export async function getWorkflowTemplate(
 	apiEndpoint: string,
 	templateId: string,
-	headers?: IDataObject,
+	headers?: RawAxiosRequestHeaders,
 ): Promise<IWorkflowTemplate> {
 	return await get(apiEndpoint, `/workflows/templates/${templateId}`, undefined, headers);
 }

@@ -1,7 +1,19 @@
-import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import {
+	type IExecuteFunctions,
+	type IDataObject,
+	type INodeExecutionData,
+	NodeOperationError,
+	type ResourceMapperField,
+} from 'n8n-workflow';
 import type { SheetProperties, ValueInputOption } from '../../helpers/GoogleSheets.types';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
-import { autoMapInputData, mapFields, untilSheetSelected } from '../../helpers/GoogleSheets.utils';
+import {
+	autoMapInputData,
+	cellFormatDefault,
+	checkForSchemaChanges,
+	mapFields,
+	untilSheetSelected,
+} from '../../helpers/GoogleSheets.utils';
 import { cellFormat, handlingExtraData } from './commonDescription';
 
 export const description: SheetProperties = [
@@ -30,6 +42,7 @@ export const description: SheetProperties = [
 			show: {
 				resource: ['sheet'],
 				operation: ['append'],
+				'@version': [3],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -40,7 +53,7 @@ export const description: SheetProperties = [
 	},
 	{
 		displayName:
-			"In this mode, make sure the incoming data is named the same as the columns in your Sheet. (Use a 'set' node before this node to change it if required.)",
+			"In this mode, make sure the incoming data is named the same as the columns in your Sheet. (Use an 'Edit Fields' node before this node to change it if required.)",
 		name: 'autoMapNotice',
 		type: 'notice',
 		default: '',
@@ -48,6 +61,7 @@ export const description: SheetProperties = [
 			show: {
 				operation: ['append'],
 				dataMode: ['autoMapInputData'],
+				'@version': [3],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -68,6 +82,7 @@ export const description: SheetProperties = [
 				resource: ['sheet'],
 				operation: ['append'],
 				dataMode: ['defineBelow'],
+				'@version': [3],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -102,6 +117,40 @@ export const description: SheetProperties = [
 		],
 	},
 	{
+		displayName: 'Columns',
+		name: 'columns',
+		type: 'resourceMapper',
+		noDataExpression: true,
+		default: {
+			mappingMode: 'defineBelow',
+			value: null,
+		},
+		required: true,
+		typeOptions: {
+			loadOptionsDependsOn: ['sheetName.value'],
+			resourceMapper: {
+				resourceMapperMethod: 'getMappingColumns',
+				mode: 'add',
+				fieldWords: {
+					singular: 'column',
+					plural: 'columns',
+				},
+				addAllFields: true,
+				multiKeyMatch: false,
+			},
+		},
+		displayOptions: {
+			show: {
+				resource: ['sheet'],
+				operation: ['append'],
+				'@version': [{ _cnd: { gte: 4 } }],
+			},
+			hide: {
+				...untilSheetSelected,
+			},
+		},
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
@@ -117,7 +166,7 @@ export const description: SheetProperties = [
 			},
 		},
 		options: [
-			...cellFormat,
+			cellFormat,
 			{
 				displayName: 'Data Location on Sheet',
 				name: 'locationDefine',
@@ -144,7 +193,19 @@ export const description: SheetProperties = [
 					},
 				],
 			},
-			...handlingExtraData,
+			handlingExtraData,
+			{
+				...handlingExtraData,
+				displayOptions: { show: { '/columns.mappingMode': ['autoMapInputData'] } },
+			},
+			{
+				displayName: 'Use Append',
+				name: 'useAppend',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to use append instead of update(default), this is more efficient but in some cases data might be misaligned',
+			},
 		],
 	},
 ];
@@ -156,7 +217,11 @@ export async function execute(
 	sheetId: string,
 ): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
-	const dataMode = this.getNodeParameter('dataMode', 0) as string;
+	const nodeVersion = this.getNode().typeVersion;
+	const dataMode =
+		nodeVersion < 4
+			? (this.getNodeParameter('dataMode', 0) as string)
+			: (this.getNodeParameter('columns.mappingMode', 0) as string);
 
 	if (!items.length || dataMode === 'nothing') return [];
 
@@ -166,6 +231,21 @@ export async function execute(
 	let headerRow = 1;
 	if (locationDefine?.headerRow) {
 		headerRow = locationDefine.headerRow as number;
+	}
+
+	if (nodeVersion >= 4.4 && dataMode !== 'autoMapInputData') {
+		//not possible to refresh columns when mode is autoMapInputData
+		const sheetData = await sheet.getData(sheetName, 'FORMATTED_VALUE');
+
+		if (sheetData?.[headerRow - 1] === undefined) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`Could not retrieve the column names from row ${headerRow}`,
+			);
+		}
+
+		const schema = this.getNodeParameter('columns.schema', 0) as ResourceMapperField[];
+		checkForSchemaChanges(this.getNode(), sheetData[headerRow - 1], schema);
 	}
 
 	let setData: IDataObject[] = [];
@@ -178,17 +258,42 @@ export async function execute(
 
 	if (setData.length === 0) {
 		return [];
+	} else if (options.useAppend) {
+		await sheet.appendSheetData(
+			setData,
+			sheetName,
+			headerRow,
+			(options.cellFormat as ValueInputOption) || cellFormatDefault(nodeVersion),
+			false,
+			undefined,
+			undefined,
+			options.useAppend as boolean,
+		);
 	} else {
 		await sheet.appendEmptyRowsOrColumns(sheetId, 1, 0);
+
+		await sheet.appendSheetData(
+			setData,
+			sheetName,
+			headerRow,
+			(options.cellFormat as ValueInputOption) || cellFormatDefault(nodeVersion),
+			false,
+		);
 	}
 
-	await sheet.appendSheetData(
-		setData,
-		sheetName,
-		headerRow,
-		(options.cellFormat as ValueInputOption) || 'RAW',
-		false,
-	);
-
-	return items;
+	if (nodeVersion < 4 || dataMode === 'autoMapInputData') {
+		return items.map((item, index) => {
+			item.pairedItem = { item: index };
+			return item;
+		});
+	} else {
+		const returnData: INodeExecutionData[] = [];
+		for (const [index, entry] of setData.entries()) {
+			returnData.push({
+				json: entry,
+				pairedItem: { item: index },
+			});
+		}
+		return returnData;
+	}
 }

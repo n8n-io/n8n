@@ -1,32 +1,29 @@
 <template>
 	<div>
 		<slot v-if="canAccess" />
-		<slot name="fallback" v-else />
+		<slot v-else name="fallback" />
 	</div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { EnterpriseEditionFeature } from '@/constants';
+import { type PropType, defineComponent } from 'vue';
+import type { EnterpriseEditionFeatureValue } from '@/Interface';
 import { mapStores } from 'pinia';
-import { useSettingsStore } from '@/stores/settings';
+import { useSettingsStore } from '@/stores/settings.store';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'EnterpriseEdition',
 	props: {
 		features: {
-			type: Array,
-			default: () => [] as EnterpriseEditionFeature[],
+			type: Array as PropType<EnterpriseEditionFeatureValue[]>,
+			default: () => [],
 		},
 	},
 	computed: {
 		...mapStores(useSettingsStore),
 		canAccess(): boolean {
 			return this.features.reduce((acc: boolean, feature) => {
-				return (
-					acc &&
-					!!this.settingsStore.isEnterpriseFeatureEnabled(feature as EnterpriseEditionFeature)
-				);
+				return acc && !!this.settingsStore.isEnterpriseFeatureEnabled(feature);
 			}, true);
 		},
 	},

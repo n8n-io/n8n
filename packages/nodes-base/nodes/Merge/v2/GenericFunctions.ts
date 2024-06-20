@@ -1,3 +1,4 @@
+import { ApplicationError } from 'n8n-workflow';
 import type {
 	GenericValue,
 	IBinaryKeyData,
@@ -6,12 +7,12 @@ import type {
 	IPairedItemData,
 } from 'n8n-workflow';
 
-import assign from 'lodash.assign';
-import assignWith from 'lodash.assignwith';
-import get from 'lodash.get';
-import merge from 'lodash.merge';
-import mergeWith from 'lodash.mergewith';
-import { fuzzyCompare } from '../../../utils/utilities';
+import assign from 'lodash/assign';
+import assignWith from 'lodash/assignWith';
+import get from 'lodash/get';
+import merge from 'lodash/merge';
+import mergeWith from 'lodash/mergeWith';
+import { fuzzyCompare, preparePairedItemDataArray } from '@utils/utilities';
 
 type PairToMatch = {
 	field1: string;
@@ -132,12 +133,8 @@ export function findMatches(
 	fieldsToMatch: PairToMatch[],
 	options: MatchFieldsOptions,
 ) {
-	let data1 = [...input1];
-	let data2 = [...input2];
-
-	if (options.joinMode === 'enrichInput2') {
-		[data1, data2] = [data2, data1];
-	}
+	const data1 = [...input1];
+	const data2 = [...input2];
 
 	const isEntriesEqual = fuzzyCompare(options.fuzzyCompare as boolean);
 	const disableDotNotation = options.disableDotNotation || false;
@@ -261,14 +258,11 @@ export function mergeMatched(
 
 		let json: IDataObject = {};
 		let binary: IBinaryKeyData = {};
+		let pairedItem: IPairedItemData[] = [];
 
 		if (resolveClash === 'addSuffix') {
-			let suffix1 = '1';
-			let suffix2 = '2';
-
-			if (joinMode === 'enrichInput2') {
-				[suffix1, suffix2] = [suffix2, suffix1];
-			}
+			const suffix1 = '1';
+			const suffix2 = '2';
 
 			[entry] = addSuffixToEntriesKeys([entry], suffix1);
 			matches = addSuffixToEntriesKeys(matches, suffix2);
@@ -278,16 +272,20 @@ export function mergeMatched(
 				{ ...entry.binary },
 				...matches.map((item) => item.binary as IDataObject),
 			);
+			pairedItem = [
+				...preparePairedItemDataArray(entry.pairedItem),
+				...matches.map((item) => preparePairedItemDataArray(item.pairedItem)).flat(),
+			];
 		} else {
-			let preferInput1 = 'preferInput1';
-			let preferInput2 = 'preferInput2';
-
-			if (joinMode === 'enrichInput2') {
-				[preferInput1, preferInput2] = [preferInput2, preferInput1];
-			}
+			const preferInput1 = 'preferInput1';
+			const preferInput2 = 'preferInput2';
 
 			if (resolveClash === undefined) {
-				resolveClash = 'preferInput2';
+				if (joinMode !== 'enrichInput2') {
+					resolveClash = 'preferInput2';
+				} else {
+					resolveClash = 'preferInput1';
+				}
 			}
 
 			if (resolveClash === preferInput1) {
@@ -302,6 +300,12 @@ export function mergeMatched(
 					...restMatches.map((item) => item.binary as IDataObject),
 					entry.binary as IDataObject,
 				);
+
+				pairedItem = [
+					...preparePairedItemDataArray(firstMatch.pairedItem),
+					...restMatches.map((item) => preparePairedItemDataArray(item.pairedItem)).flat(),
+					...preparePairedItemDataArray(entry.pairedItem),
+				];
 			}
 
 			if (resolveClash === preferInput2) {
@@ -310,13 +314,12 @@ export function mergeMatched(
 					{ ...entry.binary },
 					...matches.map((item) => item.binary as IDataObject),
 				);
+				pairedItem = [
+					...preparePairedItemDataArray(entry.pairedItem),
+					...matches.map((item) => preparePairedItemDataArray(item.pairedItem)).flat(),
+				];
 			}
 		}
-
-		const pairedItem = [
-			entry.pairedItem as IPairedItemData,
-			...matches.map((m) => m.pairedItem as IPairedItemData),
-		];
 
 		returnData.push({
 			json,
@@ -330,16 +333,18 @@ export function mergeMatched(
 
 export function checkMatchFieldsInput(data: IDataObject[]) {
 	if (data.length === 1 && data[0].field1 === '' && data[0].field2 === '') {
-		throw new Error(
+		throw new ApplicationError(
 			'You need to define at least one pair of fields in "Fields to Match" to match on',
+			{ level: 'warning' },
 		);
 	}
 	for (const [index, pair] of data.entries()) {
 		if (pair.field1 === '' || pair.field2 === '') {
-			throw new Error(
+			throw new ApplicationError(
 				`You need to define both fields in "Fields to Match" for pair ${index + 1},
 				 field 1 = '${pair.field1}'
 				 field 2 = '${pair.field2}'`,
+				{ level: 'warning' },
 			);
 		}
 	}
@@ -360,7 +365,10 @@ export function checkInput(
 			return get(entry.json, field, undefined) !== undefined;
 		});
 		if (!isPresent) {
-			throw new Error(`Field '${field}' is not present in any of items in '${inputLabel}'`);
+			throw new ApplicationError(
+				`Field '${field}' is not present in any of items in '${inputLabel}'`,
+				{ level: 'warning' },
+			);
 		}
 	}
 	return input;

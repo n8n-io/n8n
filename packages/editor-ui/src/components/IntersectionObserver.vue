@@ -5,14 +5,30 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
+import type { EventBus } from 'n8n-design-system/utils';
+import { createEventBus } from 'n8n-design-system/utils';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'IntersectionObserver',
-	props: ['threshold', 'enabled'],
+	props: {
+		threshold: {
+			type: Number,
+			default: 0,
+		},
+		enabled: {
+			type: Boolean,
+			default: false,
+		},
+		eventBus: {
+			type: Object as PropType<EventBus>,
+			default: () => createEventBus(),
+		},
+	},
 	data() {
 		return {
-			observer: null,
+			observer: null as IntersectionObserver | null,
 		};
 	},
 	mounted() {
@@ -35,19 +51,21 @@ export default Vue.extend({
 			});
 		}, options);
 
-		this.$data.observer = observer;
+		this.observer = observer;
 
-		this.$on('observe', (observed: Element) => {
-			observer.observe(observed);
+		this.eventBus.on('observe', (observed: Element) => {
+			if (observed) {
+				observer.observe(observed);
+			}
 		});
 
-		this.$on('unobserve', (observed: Element) => {
+		this.eventBus.on('unobserve', (observed: Element) => {
 			observer.unobserve(observed);
 		});
 	},
-	beforeDestroy() {
-		if (this.enabled) {
-			this.$data.observer.disconnect();
+	beforeUnmount() {
+		if (this.enabled && this.observer) {
+			this.observer.disconnect();
 		}
 	},
 });

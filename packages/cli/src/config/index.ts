@@ -1,29 +1,27 @@
 import convict from 'convict';
 import dotenv from 'dotenv';
-import { tmpdir } from 'os';
-import { mkdtempSync, readFileSync } from 'fs';
-import { join } from 'path';
-import { schema } from './schema';
+import { readFileSync } from 'fs';
+import { ApplicationError, setGlobalState } from 'n8n-workflow';
 import { inTest, inE2ETests } from '@/constants';
 
 if (inE2ETests) {
 	// Skip loading config from env variables in end-to-end tests
-	process.env = {
-		E2E_TESTS: 'true',
-		N8N_USER_FOLDER: mkdtempSync(join(tmpdir(), 'n8n-e2e-')),
-		EXECUTIONS_PROCESS: 'main',
-		N8N_DIAGNOSTICS_ENABLED: 'false',
-		N8N_PUBLIC_API_DISABLED: 'true',
-		EXTERNAL_FRONTEND_HOOKS_URLS: '',
-		N8N_PERSONALIZATION_ENABLED: 'false',
-	};
-} else if (inTest) {
+	process.env.N8N_DIAGNOSTICS_ENABLED = 'false';
 	process.env.N8N_PUBLIC_API_DISABLED = 'true';
-	process.env.N8N_PUBLIC_API_SWAGGERUI_DISABLED = 'true';
+	process.env.EXTERNAL_FRONTEND_HOOKS_URLS = '';
+	process.env.N8N_PERSONALIZATION_ENABLED = 'false';
+	process.env.N8N_AI_ENABLED = 'true';
+} else if (inTest) {
+	process.env.N8N_LOG_LEVEL = 'silent';
+	process.env.N8N_PUBLIC_API_DISABLED = 'true';
+	process.env.SKIP_STATISTICS_EVENTS = 'true';
+	process.env.N8N_SECURE_COOKIE = 'false';
 } else {
 	dotenv.config();
 }
 
+// Load schema after process.env has been overwritten
+import { schema } from './schema';
 const config = convict(schema, { args: [] });
 
 // eslint-disable-next-line @typescript-eslint/unbound-method
@@ -54,7 +52,7 @@ if (!inE2ETests && !inTest) {
 				} catch (error) {
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 					if (error.code === 'ENOENT') {
-						throw new Error(`The file "${fileName}" could not be found.`);
+						throw new ApplicationError('File not found', { extra: { fileName } });
 					}
 					throw error;
 				}
@@ -64,10 +62,42 @@ if (!inE2ETests && !inTest) {
 	});
 }
 
+// Validate Configuration
 config.validate({
 	allowed: 'strict',
+});
+const userManagement = config.get('userManagement');
+if (userManagement.jwtRefreshTimeoutHours >= userManagement.jwtSessionDurationHours) {
+	console.warn(
+		'N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS needs to smaller than N8N_USER_MANAGEMENT_JWT_DURATION_HOURS. Setting N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS to 0 for now.',
+	);
+
+	config.set('userManagement.jwtRefreshTimeoutHours', 0);
+}
+
+import colors from 'picocolors';
+const executionProcess = config.getEnv('executions.process');
+if (executionProcess) {
+	console.error(
+		colors.yellow('Please unset the deprecated env variable'),
+		colors.bold(colors.yellow('EXECUTIONS_PROCESS')),
+	);
+}
+if (executionProcess === 'own') {
+	console.error(
+		colors.bold(colors.red('Application failed to start because "Own" mode has been removed.')),
+	);
+	console.error(
+		colors.red(
+			'If you need the isolation and performance gains, please consider using queue mode instead.\n\n',
+		),
+	);
+	process.exit(-1);
+}
+
+setGlobalState({
+	defaultTimezone: config.getEnv('generic.timezone'),
 });
 
 // eslint-disable-next-line import/no-default-export
 export default config;
-export type Config = typeof config;

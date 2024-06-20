@@ -3,10 +3,10 @@
 		width="540px"
 		:name="COMMUNITY_PACKAGE_INSTALL_MODAL_KEY"
 		:title="$locale.baseText('settings.communityNodes.installModal.title')"
-		:eventBus="modalBus"
+		:event-bus="modalBus"
 		:center="true"
-		:beforeClose="onModalClose"
-		:showClose="!loading"
+		:before-close="onModalClose"
+		:show-close="!loading"
 	>
 		<template #content>
 			<div :class="[$style.descriptionContainer, 'p-s']">
@@ -14,8 +14,9 @@
 					<n8n-text>
 						{{ $locale.baseText('settings.communityNodes.installModal.description') }}
 					</n8n-text>
+					{{ ' ' }}
 					<n8n-link :to="COMMUNITY_NODES_INSTALLATION_DOCS_URL" @click="onMoreInfoTopClick">
-						{{ $locale.baseText('_reusableDynamicText.moreInfo') }}
+						{{ $locale.baseText('generic.moreInfo') }}
 					</n8n-link>
 				</div>
 				<n8n-button
@@ -29,15 +30,15 @@
 				<n8n-input-label
 					:class="$style.labelTooltip"
 					:label="$locale.baseText('settings.communityNodes.installModal.packageName.label')"
-					:tooltipText="
+					:tooltip-text="
 						$locale.baseText('settings.communityNodes.installModal.packageName.tooltip', {
 							interpolate: { npmURL: NPM_KEYWORD_SEARCH_URL },
 						})
 					"
 				>
 					<n8n-input
-						name="packageNameInput"
 						v-model="packageName"
+						name="packageNameInput"
 						type="text"
 						:maxlength="214"
 						:placeholder="
@@ -59,13 +60,14 @@
 					v-model="userAgreed"
 					:class="[$style.checkbox, checkboxWarning ? $style.error : '', 'mt-l']"
 					:disabled="loading"
-					@change="onCheckboxChecked"
+					data-test-id="user-agreement-checkbox"
+					@update:model-value="onCheckboxChecked"
 				>
 					<n8n-text>
 						{{ $locale.baseText('settings.communityNodes.installModal.checkbox.label') }} </n8n-text
 					><br />
 					<n8n-link :to="COMMUNITY_NODES_RISKS_DOCS_URL" @click="onLearnMoreLinkClick">{{
-						$locale.baseText('_reusableDynamicText.moreInfo')
+						$locale.baseText('generic.moreInfo')
 					}}</n8n-link>
 				</el-checkbox>
 			</div>
@@ -73,7 +75,7 @@
 		<template #footer>
 			<n8n-button
 				:loading="loading"
-				:disabled="packageName === '' || loading"
+				:disabled="!userAgreed || packageName === '' || loading"
 				:label="
 					loading
 						? $locale.baseText('settings.communityNodes.installModal.installButton.label.loading')
@@ -81,6 +83,7 @@
 				"
 				size="large"
 				float="right"
+				data-test-id="install-community-package-button"
 				@click="onInstallClick"
 			/>
 		</template>
@@ -88,23 +91,28 @@
 </template>
 
 <script lang="ts">
-import Modal from './Modal.vue';
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import { createEventBus } from 'n8n-design-system/utils';
+import Modal from '@/components/Modal.vue';
 import {
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 	NPM_KEYWORD_SEARCH_URL,
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 	COMMUNITY_NODES_RISKS_DOCS_URL,
-} from '../constants';
-import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/mixins/showMessage';
-import { mapStores } from 'pinia';
-import { useCommunityNodesStore } from '@/stores/communityNodes';
-import { createEventBus } from '@/event-bus';
+} from '@/constants';
+import { useToast } from '@/composables/useToast';
+import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'CommunityPackageInstallModal',
 	components: {
 		Modal,
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
 		return {
@@ -144,7 +152,7 @@ export default mixins(showMessage).extend({
 					await this.communityNodesStore.fetchInstalledPackages();
 					this.loading = false;
 					this.modalBus.emit('close');
-					this.$showMessage({
+					this.showMessage({
 						title: this.$locale.baseText('settings.communityNodes.messages.install.success'),
 						type: 'success',
 					});
@@ -152,7 +160,7 @@ export default mixins(showMessage).extend({
 					if (error.httpStatusCode && error.httpStatusCode === 400) {
 						this.infoTextErrorMessage = error.message;
 					} else {
-						this.$showError(
+						this.showError(
 							error,
 							this.$locale.baseText('settings.communityNodes.messages.install.error'),
 						);

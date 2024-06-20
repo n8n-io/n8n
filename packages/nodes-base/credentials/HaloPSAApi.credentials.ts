@@ -51,6 +51,7 @@ export class HaloPSAApi implements ICredentialType {
 			displayName: 'Client Secret',
 			name: 'client_secret',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 			required: true,
 			description: 'Must be your application client secret',

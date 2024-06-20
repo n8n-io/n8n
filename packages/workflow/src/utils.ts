@@ -1,4 +1,30 @@
-import type { BinaryFileType } from './Interfaces';
+import FormData from 'form-data';
+import { merge } from 'lodash';
+
+import { ALPHABET } from './Constants';
+import type { BinaryFileType, IDisplayOptions, INodeProperties, JsonObject } from './Interfaces';
+import { ApplicationError } from './errors/application.error';
+
+const readStreamClasses = new Set(['ReadStream', 'Readable', 'ReadableStream']);
+
+// NOTE: BigInt.prototype.toJSON is not available, which causes JSON.stringify to throw an error
+// as well as the flatted stringify method. This is a workaround for that.
+BigInt.prototype.toJSON = function () {
+	return this.toString();
+};
+
+export const isObjectEmpty = (obj: object | null | undefined): boolean => {
+	if (obj === undefined || obj === null) return true;
+	if (typeof obj === 'object') {
+		if (obj instanceof FormData) return obj.getLengthSync() === 0;
+		if (Array.isArray(obj)) return obj.length === 0;
+		if (obj instanceof Set || obj instanceof Map) return obj.size === 0;
+		if (ArrayBuffer.isView(obj) || obj instanceof ArrayBuffer) return obj.byteLength === 0;
+		if (Symbol.iterator in obj || readStreamClasses.has(obj.constructor.name)) return false;
+		return Object.keys(obj).length === 0;
+	}
+	return true;
+};
 
 export type Primitives = string | number | boolean | bigint | symbol | null | undefined;
 
@@ -55,7 +81,7 @@ export const jsonParse = <T>(jsonString: string, options?: JSONParseOptions<T>):
 		if (options?.fallbackValue !== undefined) {
 			return options.fallbackValue;
 		} else if (options?.errorMessage) {
-			throw new Error(options.errorMessage);
+			throw new ApplicationError(options.errorMessage);
 		}
 
 		throw error;
@@ -66,7 +92,7 @@ type JSONStringifyOptions = {
 	replaceCircularRefs?: boolean;
 };
 
-const replaceCircularReferences = <T>(value: T, knownObjects = new WeakSet()): T => {
+export const replaceCircularReferences = <T>(value: T, knownObjects = new WeakSet()): T => {
 	if (typeof value !== 'object' || value === null || value instanceof RegExp) return value;
 	if ('toJSON' in value && typeof value.toJSON === 'function') return value.toJSON() as T;
 	if (knownObjects.has(value)) return '[Circular Reference]' as T;
@@ -84,15 +110,18 @@ export const jsonStringify = (obj: unknown, options: JSONStringifyOptions = {}):
 };
 
 export const sleep = async (ms: number): Promise<void> =>
-	new Promise((resolve) => {
+	await new Promise((resolve) => {
 		setTimeout(resolve, ms);
 	});
 
 export function fileTypeFromMimeType(mimeType: string): BinaryFileType | undefined {
 	if (mimeType.startsWith('application/json')) return 'json';
+	if (mimeType.startsWith('text/html')) return 'html';
 	if (mimeType.startsWith('image/')) return 'image';
+	if (mimeType.startsWith('audio/')) return 'audio';
 	if (mimeType.startsWith('video/')) return 'video';
-	if (mimeType.startsWith('text/')) return 'text';
+	if (mimeType.startsWith('text/') || mimeType.startsWith('application/javascript')) return 'text';
+	if (mimeType.startsWith('application/pdf')) return 'pdf';
 	return;
 }
 
@@ -112,4 +141,75 @@ export function assert<T>(condition: T, msg?: string): asserts condition {
 		}
 		throw error;
 	}
+}
+
+export const isTraversableObject = (value: any): value is JsonObject => {
+	return value && typeof value === 'object' && !Array.isArray(value) && !!Object.keys(value).length;
+};
+
+export const removeCircularRefs = (obj: JsonObject, seen = new Set()) => {
+	seen.add(obj);
+	Object.entries(obj).forEach(([key, value]) => {
+		if (isTraversableObject(value)) {
+			// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+			seen.has(value) ? (obj[key] = { circularReference: true }) : removeCircularRefs(value, seen);
+			return;
+		}
+		if (Array.isArray(value)) {
+			value.forEach((val, index) => {
+				if (seen.has(val)) {
+					value[index] = { circularReference: true };
+					return;
+				}
+				if (isTraversableObject(val)) {
+					removeCircularRefs(val, seen);
+				}
+			});
+		}
+	});
+};
+
+export function updateDisplayOptions(
+	displayOptions: IDisplayOptions,
+	properties: INodeProperties[],
+) {
+	return properties.map((nodeProperty) => {
+		return {
+			...nodeProperty,
+			displayOptions: merge({}, nodeProperty.displayOptions, displayOptions),
+		};
+	});
+}
+
+export function randomInt(max: number): number;
+export function randomInt(min: number, max: number): number;
+/**
+ * Generates a random integer within a specified range.
+ *
+ * @param {number} min - The lower bound of the range. If `max` is not provided, this value is used as the upper bound and the lower bound is set to 0.
+ * @param {number} [max] - The upper bound of the range, not inclusive.
+ * @returns {number} A random integer within the specified range.
+ */
+export function randomInt(min: number, max?: number): number {
+	if (max === undefined) {
+		max = min;
+		min = 0;
+	}
+	return min + (crypto.getRandomValues(new Uint32Array(1))[0] % (max - min));
+}
+
+export function randomString(length: number): string;
+export function randomString(minLength: number, maxLength: number): string;
+/**
+ * Generates a random alphanumeric string of a specified length, or within a range of lengths.
+ *
+ * @param {number} minLength - If `maxLength` is not provided, this is the length of the string to generate. Otherwise, this is the lower bound of the range of possible lengths.
+ * @param {number} [maxLength] - The upper bound of the range of possible lengths. If provided, the actual length of the string will be a random number between `minLength` and `maxLength`, inclusive.
+ * @returns {string} A random alphanumeric string of the specified length or within the specified range of lengths.
+ */
+export function randomString(minLength: number, maxLength?: number): string {
+	const length = maxLength === undefined ? minLength : randomInt(minLength, maxLength + 1);
+	return [...crypto.getRandomValues(new Uint32Array(length))]
+		.map((byte) => ALPHABET[byte % ALPHABET.length])
+		.join('');
 }

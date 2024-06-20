@@ -3,21 +3,21 @@
 		placement="bottom"
 		:width="width"
 		:popper-class="$style.popover"
-		:value="show"
-		trigger="manual"
-		v-click-outside="onClickOutside"
+		:visible="show"
+		:teleported="false"
+		data-test-id="resource-locator-dropdown"
 	>
-		<div :class="$style.messageContainer" v-if="errorView">
+		<div v-if="errorView" :class="$style.messageContainer">
 			<slot name="error"></slot>
 		</div>
-		<div :class="$style.searchInput" v-if="filterable && !errorView" @keydown="onKeyDown">
+		<div v-if="filterable && !errorView" :class="$style.searchInput" @keydown="onKeyDown">
 			<n8n-input
-				size="medium"
-				:value="filter"
-				:clearable="true"
-				@input="onFilterInput"
 				ref="search"
+				:model-value="filter"
+				:clearable="true"
 				:placeholder="$locale.baseText('resourceLocator.search.placeholder')"
+				data-test-id="rlc-search"
+				@update:model-value="onFilterInput"
 			>
 				<template #prefix>
 					<font-awesome-icon :class="$style.searchIcon" icon="search" />
@@ -28,8 +28,8 @@
 			{{ $locale.baseText('resourceLocator.mode.list.searchRequired') }}
 		</div>
 		<div
-			:class="$style.messageContainer"
 			v-else-if="!errorView && sortedResources.length === 0 && !loading"
+			:class="$style.messageContainer"
 		>
 			{{ $locale.baseText('resourceLocator.mode.list.noResults') }}
 		</div>
@@ -41,17 +41,17 @@
 		>
 			<div
 				v-for="(result, i) in sortedResources"
-				:key="result.value"
+				:key="result.value.toString()"
+				:ref="`item-${i}`"
 				:class="{
 					[$style.resourceItem]: true,
-					[$style.selected]: result.value === value,
+					[$style.selected]: result.value === modelValue,
 					[$style.hovering]: hoverIndex === i,
 				}"
-				class="ph-no-capture"
+				data-test-id="rlc-item"
 				@click="() => onItemClick(result.value)"
 				@mouseenter="() => onItemHover(i)"
 				@mouseleave="() => onItemHoverLeave()"
-				:ref="`item-${i}`"
 			>
 				<div :class="$style.resourceNameContainer">
 					<span>{{ result.name }}</span>
@@ -78,17 +78,21 @@
 </template>
 
 <script lang="ts">
-import { IResourceLocatorResultExpanded } from '@/Interface';
-import Vue, { PropType } from 'vue';
+import type { IResourceLocatorResultExpanded } from '@/Interface';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import type { EventBus } from 'n8n-design-system/utils';
+import { createEventBus } from 'n8n-design-system/utils';
+import type { NodeParameterValue } from 'n8n-workflow';
 
 const SEARCH_BAR_HEIGHT_PX = 40;
 const SCROLL_MARGIN_PX = 10;
 
-export default Vue.extend({
-	name: 'resource-locator-dropdown',
+export default defineComponent({
+	name: 'ResourceLocatorDropdown',
 	props: {
-		value: {
-			type: [String, Number],
+		modelValue: {
+			type: [String, Number] as PropType<NodeParameterValue>,
 		},
 		show: {
 			type: Boolean,
@@ -118,27 +122,29 @@ export default Vue.extend({
 		width: {
 			type: Number,
 		},
+		eventBus: {
+			type: Object as PropType<EventBus>,
+			default: () => createEventBus(),
+		},
 	},
+	emits: ['update:modelValue', 'loadMore', 'filter'],
 	data() {
 		return {
 			hoverIndex: 0,
 			showHoverUrl: false,
 		};
 	},
-	mounted() {
-		this.$on('keyDown', this.onKeyDown);
-	},
 	computed: {
 		sortedResources(): IResourceLocatorResultExpanded[] {
 			const seen = new Set();
-			const { selected, notSelected } = this.resources.reduce(
+			const { selected, notSelected } = (this.resources ?? []).reduce(
 				(acc, item: IResourceLocatorResultExpanded) => {
 					if (seen.has(item.value)) {
 						return acc;
 					}
 					seen.add(item.value);
 
-					if (this.value && item.value === this.value) {
+					if (this.modelValue && item.value === this.modelValue) {
 						acc.selected = item;
 					} else {
 						acc.notSelected.push(item);
@@ -159,6 +165,29 @@ export default Vue.extend({
 			return notSelected;
 		},
 	},
+	watch: {
+		show(value) {
+			if (value) {
+				this.hoverIndex = 0;
+				this.showHoverUrl = false;
+
+				setTimeout(() => {
+					if (value && this.filterable && this.$refs.search) {
+						(this.$refs.search as HTMLElement).focus();
+					}
+				}, 0);
+			}
+		},
+		loading() {
+			setTimeout(() => this.onResultsEnd(), 0); // in case of filtering
+		},
+	},
+	mounted() {
+		this.eventBus.on('keyDown', this.onKeyDown);
+	},
+	beforeUnmount() {
+		this.eventBus.off('keyDown', this.onKeyDown);
+	},
 	methods: {
 		openUrl(event: MouseEvent, url: string) {
 			event.preventDefault();
@@ -167,18 +196,21 @@ export default Vue.extend({
 			window.open(url, '_blank');
 		},
 		onKeyDown(e: KeyboardEvent) {
-			const container = this.$refs.resultsContainer as HTMLElement;
+			const containerRef = this.$refs.resultsContainer as HTMLElement | undefined;
 
 			if (e.key === 'ArrowDown') {
 				if (this.hoverIndex < this.sortedResources.length - 1) {
 					this.hoverIndex++;
 
-					const items = this.$refs[`item-${this.hoverIndex}`] as HTMLElement[];
-					if (container && Array.isArray(items) && items.length === 1) {
-						const item = items[0];
-						if (item.offsetTop + item.clientHeight > container.scrollTop + container.offsetHeight) {
-							const top = item.offsetTop - container.offsetHeight + item.clientHeight;
-							container.scrollTo({ top });
+					const itemRefs = this.$refs[`item-${this.hoverIndex}`] as HTMLElement[] | undefined;
+					if (containerRef && Array.isArray(itemRefs) && itemRefs.length === 1) {
+						const item = itemRefs[0];
+						if (
+							item.offsetTop + item.clientHeight >
+							containerRef.scrollTop + containerRef.offsetHeight
+						) {
+							const top = item.offsetTop - containerRef.offsetHeight + item.clientHeight;
+							containerRef.scrollTo({ top });
 						}
 					}
 				}
@@ -187,26 +219,23 @@ export default Vue.extend({
 					this.hoverIndex--;
 
 					const searchOffset = this.filterable ? SEARCH_BAR_HEIGHT_PX : 0;
-					const items = this.$refs[`item-${this.hoverIndex}`] as HTMLElement[];
-					if (container && Array.isArray(items) && items.length === 1) {
-						const item = items[0];
-						if (item.offsetTop <= container.scrollTop + searchOffset) {
-							container.scrollTo({ top: item.offsetTop - searchOffset });
+					const itemRefs = this.$refs[`item-${this.hoverIndex}`] as HTMLElement[] | undefined;
+					if (containerRef && Array.isArray(itemRefs) && itemRefs.length === 1) {
+						const item = itemRefs[0];
+						if (item.offsetTop <= containerRef.scrollTop + searchOffset) {
+							containerRef.scrollTo({ top: item.offsetTop - searchOffset });
 						}
 					}
 				}
 			} else if (e.key === 'Enter') {
-				this.$emit('input', this.sortedResources[this.hoverIndex].value);
+				this.$emit('update:modelValue', this.sortedResources[this.hoverIndex].value);
 			}
 		},
 		onFilterInput(value: string) {
 			this.$emit('filter', value);
 		},
-		onClickOutside() {
-			this.$emit('hide');
-		},
-		onItemClick(selected: string) {
-			this.$emit('input', selected);
+		onItemClick(selected: string | number | boolean) {
+			this.$emit('update:modelValue', selected);
 		},
 		onItemHover(index: number) {
 			this.hoverIndex = index;
@@ -225,29 +254,14 @@ export default Vue.extend({
 				return;
 			}
 
-			const container = this.$refs.resultsContainer as HTMLElement;
-			if (container) {
-				const diff = container.offsetHeight - (container.scrollHeight - container.scrollTop);
+			const containerRef = this.$refs.resultsContainer as HTMLElement | undefined;
+			if (containerRef) {
+				const diff =
+					containerRef.offsetHeight - (containerRef.scrollHeight - containerRef.scrollTop);
 				if (diff > -SCROLL_MARGIN_PX && diff < SCROLL_MARGIN_PX) {
 					this.$emit('loadMore');
 				}
 			}
-		},
-	},
-	watch: {
-		show(toShow) {
-			if (toShow) {
-				this.hoverIndex = 0;
-				this.showHoverUrl = false;
-			}
-			setTimeout(() => {
-				if (toShow && this.filterable && this.$refs.search) {
-					(this.$refs.search as HTMLElement).focus();
-				}
-			}, 0);
-		},
-		loading() {
-			setTimeout(this.onResultsEnd, 0); // in case of filtering
 		},
 	},
 });
@@ -256,7 +270,7 @@ export default Vue.extend({
 <style lang="scss" module>
 :root .popover {
 	--content-height: 236px;
-	padding: 0;
+	padding: 0 !important;
 	border: var(--border-base);
 	display: flex;
 	max-height: calc(var(--content-height) + var(--spacing-xl));

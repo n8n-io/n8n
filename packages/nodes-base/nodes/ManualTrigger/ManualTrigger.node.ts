@@ -16,16 +16,16 @@ export class ManualTrigger implements INodeType {
 		eventTriggerDescription: '',
 		maxNodes: 1,
 		defaults: {
-			name: 'When clicking "Execute Workflow"',
+			name: 'When clicking ‘Test workflow’',
 			color: '#909298',
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
 		outputs: ['main'],
 		properties: [
 			{
 				displayName:
-					'This node is where a manual workflow execution starts. To make one, go back to the canvas and click ‘execute workflow’',
+					'This node is where the workflow execution starts (when you click the ‘test’ button on the canvas).<br><br> <a data-action="showNodeCreator">Explore other ways to trigger your workflow</a> (e.g on a schedule, or a webhook)',
 				name: 'notice',
 				type: 'notice',
 				default: '',

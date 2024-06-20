@@ -1,12 +1,14 @@
 import type { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
-import type { ConnectionsData } from '../helpers/interfaces';
+
 import { getTableSchema } from '../helpers/utils';
-import { Connections } from '../transport';
+import { configurePostgres } from '../transport';
+import type { PostgresNodeCredentials } from '../helpers/interfaces';
 
 export async function getColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const credentials = await this.getCredentials('postgres');
+	const credentials = (await this.getCredentials('postgres')) as PostgresNodeCredentials;
+	const options = { nodeVersion: this.getNode().typeVersion };
 
-	const { db } = (await Connections.getInstance(credentials)) as ConnectionsData;
+	const { db, sshClient } = await configurePostgres(credentials, options);
 
 	const schema = this.getNodeParameter('schema', 0, {
 		extractValue: true,
@@ -26,6 +28,11 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<INodeProp
 		}));
 	} catch (error) {
 		throw error;
+	} finally {
+		if (sshClient) {
+			sshClient.end();
+		}
+		if (!db.$pool.ending) await db.$pool.end();
 	}
 }
 

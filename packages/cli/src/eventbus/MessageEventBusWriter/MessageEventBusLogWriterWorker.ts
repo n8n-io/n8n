@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { appendFileSync, existsSync, rmSync, renameSync, openSync, closeSync } from 'fs';
 import { stat } from 'fs/promises';
 import { isMainThread, parentPort } from 'worker_threads';
@@ -23,6 +22,25 @@ function setKeepFiles(keepNumberOfFiles: number) {
 		keepNumberOfFiles = 1;
 	}
 	keepFiles = keepNumberOfFiles;
+}
+
+function buildRecoveryInProgressFileName(): string {
+	return `${logFileBasePath}.recoveryInProgress`;
+}
+
+function startRecoveryProcess() {
+	if (existsSync(buildRecoveryInProgressFileName())) {
+		return false;
+	}
+	const fileHandle = openSync(buildRecoveryInProgressFileName(), 'a');
+	closeSync(fileHandle);
+	return true;
+}
+
+function endRecoveryProcess() {
+	if (existsSync(buildRecoveryInProgressFileName())) {
+		rmSync(buildRecoveryInProgressFileName());
+	}
 }
 
 function buildLogFileNameWithCounter(counter?: number): string {
@@ -85,12 +103,7 @@ if (!isMainThread) {
 					appendMessageSync(data);
 					parentPort?.postMessage({ command, data: true });
 					break;
-				case 'pauseLogging':
-					loggingPaused = true;
-					clearInterval(fileStatTimer);
-					break;
 				case 'initialize':
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					const settings: MessageEventBusLogWriterOptions = {
 						logFullBasePath: (data as MessageEventBusLogWriterOptions).logFullBasePath ?? '',
 						keepNumberOfFiles: (data as MessageEventBusLogWriterOptions).keepNumberOfFiles ?? 10,
@@ -112,6 +125,14 @@ if (!isMainThread) {
 				case 'cleanLogs':
 					cleanAllLogs();
 					parentPort?.postMessage('cleanedAllLogs');
+					break;
+				case 'startRecoveryProcess':
+					const recoveryStarted = startRecoveryProcess();
+					parentPort?.postMessage({ command, data: recoveryStarted });
+					break;
+				case 'endRecoveryProcess':
+					endRecoveryProcess();
+					parentPort?.postMessage({ command, data: true });
 					break;
 				default:
 					break;

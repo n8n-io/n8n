@@ -1,30 +1,15 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-/* eslint-disable @typescript-eslint/naming-convention */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable @typescript-eslint/no-floating-promises */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import {
+	ApplicationError,
 	ErrorReporterProxy as ErrorReporter,
-	LoggerProxy as Logger,
 	WorkflowOperationError,
 } from 'n8n-workflow';
 import { Service } from 'typedi';
-import type { FindManyOptions, ObjectLiteral } from 'typeorm';
-import { Not, LessThanOrEqual } from 'typeorm';
-import { DateUtils } from 'typeorm/util/DateUtils';
-
-import config from '@/config';
-import * as Db from '@/Db';
-import * as ResponseHelper from '@/ResponseHelper';
-import type {
-	IExecutionFlattedDb,
-	IExecutionsStopData,
-	IWorkflowExecutionDataProcess,
-} from '@/Interfaces';
+import type { ExecutionStopResult, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { WorkflowRunner } from '@/WorkflowRunner';
-import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { OwnershipService } from '@/services/ownership.service';
+import { Logger } from '@/Logger';
+import { OrchestrationService } from '@/services/orchestration.service';
 
 @Service()
 export class WaitTracker {
@@ -37,55 +22,74 @@ export class WaitTracker {
 
 	mainTimer: NodeJS.Timeout;
 
-	constructor() {
-		// Poll every 60 seconds a list of upcoming executions
-		this.mainTimer = setInterval(() => {
-			this.getWaitingExecutions();
-		}, 60000);
+	constructor(
+		private readonly logger: Logger,
+		private readonly executionRepository: ExecutionRepository,
+		private readonly ownershipService: OwnershipService,
+		private readonly workflowRunner: WorkflowRunner,
+		private readonly orchestrationService: OrchestrationService,
+	) {}
 
-		this.getWaitingExecutions();
+	/**
+	 * @important Requires `OrchestrationService` to be initialized.
+	 */
+	init() {
+		const { isLeader, isMultiMainSetupEnabled } = this.orchestrationService;
+
+		if (isLeader) this.startTracking();
+
+		if (isMultiMainSetupEnabled) {
+			this.orchestrationService.multiMainSetup
+				.on('leader-takeover', () => this.startTracking())
+				.on('leader-stepdown', () => this.stopTracking());
+		}
 	}
 
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+	private startTracking() {
+		this.logger.debug('Wait tracker started tracking waiting executions');
+
+		// Poll every 60 seconds a list of upcoming executions
+		this.mainTimer = setInterval(() => {
+			void this.getWaitingExecutions();
+		}, 60000);
+
+		void this.getWaitingExecutions();
+	}
+
 	async getWaitingExecutions() {
-		Logger.debug('Wait tracker querying database for waiting executions');
-		// Find all the executions which should be triggered in the next 70 seconds
-		const findQuery: FindManyOptions<IExecutionFlattedDb> = {
-			select: ['id', 'waitTill'],
-			where: {
-				waitTill: LessThanOrEqual(new Date(Date.now() + 70000)),
-				status: Not('crashed'),
-			},
-			order: {
-				waitTill: 'ASC',
-			},
-		};
+		this.logger.debug('Wait tracker querying database for waiting executions');
 
-		const dbType = config.getEnv('database.type');
-		if (dbType === 'sqlite') {
-			// This is needed because of issue in TypeORM <> SQLite:
-			// https://github.com/typeorm/typeorm/issues/2286
-			(findQuery.where! as ObjectLiteral).waitTill = LessThanOrEqual(
-				DateUtils.mixedDateToUtcDatetimeString(new Date(Date.now() + 70000)),
-			);
-		}
-
-		const executions = await Db.collections.Execution.find(findQuery);
+		const executions = await this.executionRepository.getWaitingExecutions();
 
 		if (executions.length === 0) {
 			return;
 		}
 
 		const executionIds = executions.map((execution) => execution.id).join(', ');
-		Logger.debug(
+		this.logger.debug(
 			`Wait tracker found ${executions.length} executions. Setting timer for IDs: ${executionIds}`,
 		);
 
 		// Add timers for each waiting execution that they get started at the correct time
-		// eslint-disable-next-line no-restricted-syntax
+
 		for (const execution of executions) {
 			const executionId = execution.id;
 			if (this.waitingExecutions[executionId] === undefined) {
+				if (!(execution.waitTill instanceof Date)) {
+					// n8n expects waitTill to be a date object
+					// but for some reason it's not being converted
+					// we are handling this like this since it seems to address the issue
+					// for some users, as reported by Jon when using a custom image.
+					// Once we figure out why this it not a Date object, we can remove this.
+					ErrorReporter.error('Wait Till is not a date object', {
+						extra: {
+							variableType: typeof execution.waitTill,
+						},
+					});
+					if (typeof execution.waitTill === 'string') {
+						execution.waitTill = new Date(execution.waitTill);
+					}
+				}
 				const triggerTime = execution.waitTill!.getTime() - new Date().getTime();
 				this.waitingExecutions[executionId] = {
 					executionId,
@@ -97,7 +101,7 @@ export class WaitTracker {
 		}
 	}
 
-	async stopExecution(executionId: string): Promise<IExecutionsStopData> {
+	async stopExecution(executionId: string): Promise<ExecutionStopResult> {
 		if (this.waitingExecutions[executionId] !== undefined) {
 			// The waiting execution was already scheduled to execute.
 			// So stop timer and remove.
@@ -106,14 +110,22 @@ export class WaitTracker {
 		}
 
 		// Also check in database
-		const execution = await Db.collections.Execution.findOneBy({ id: executionId });
+		const fullExecutionData = await this.executionRepository.findSingleExecution(executionId, {
+			includeData: true,
+			unflattenData: true,
+		});
 
-		if (execution === null || !execution.waitTill) {
-			throw new Error(`The execution ID "${executionId}" could not be found.`);
+		if (!fullExecutionData) {
+			throw new ApplicationError('Execution not found.', {
+				extra: { executionId },
+			});
 		}
 
-		const fullExecutionData = ResponseHelper.unflattenExecutionData(execution);
-
+		if (!['new', 'unknown', 'waiting', 'running'].includes(fullExecutionData.status)) {
+			throw new WorkflowOperationError(
+				`Only running or waiting executions can be stopped and ${executionId} is currently ${fullExecutionData.status}.`,
+			);
+		}
 		// Set in execution in DB as failed and remove waitTill time
 		const error = new WorkflowOperationError('Workflow-Execution has been canceled!');
 
@@ -127,12 +139,7 @@ export class WaitTracker {
 		fullExecutionData.waitTill = null;
 		fullExecutionData.status = 'canceled';
 
-		await Db.collections.Execution.update(
-			executionId,
-			ResponseHelper.flattenExecutionData({
-				...fullExecutionData,
-			}) as IExecutionFlattedDb,
-		);
+		await this.executionRepository.updateExistingExecution(executionId, fullExecutionData);
 
 		return {
 			mode: fullExecutionData.mode,
@@ -144,46 +151,53 @@ export class WaitTracker {
 	}
 
 	startExecution(executionId: string) {
-		Logger.debug(`Wait tracker resuming execution ${executionId}`, { executionId });
+		this.logger.debug(`Wait tracker resuming execution ${executionId}`, { executionId });
 		delete this.waitingExecutions[executionId];
 
 		(async () => {
 			// Get the data to execute
-			const fullExecutionDataFlatted = await Db.collections.Execution.findOneBy({
-				id: executionId,
+			const fullExecutionData = await this.executionRepository.findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
 			});
 
-			if (fullExecutionDataFlatted === null) {
-				throw new Error(`The execution with the id "${executionId}" does not exist.`);
+			if (!fullExecutionData) {
+				throw new ApplicationError('Execution does not exist.', { extra: { executionId } });
 			}
-
-			const fullExecutionData = ResponseHelper.unflattenExecutionData(fullExecutionDataFlatted);
-
 			if (fullExecutionData.finished) {
-				throw new Error('The execution did succeed and can so not be started again.');
+				throw new ApplicationError('The execution did succeed and can so not be started again.');
 			}
 
 			if (!fullExecutionData.workflowData.id) {
-				throw new Error('Only saved workflows can be resumed.');
+				throw new ApplicationError('Only saved workflows can be resumed.');
 			}
-			const user = await getWorkflowOwner(fullExecutionData.workflowData.id);
+			const workflowId = fullExecutionData.workflowData.id;
+			const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
 
 			const data: IWorkflowExecutionDataProcess = {
 				executionMode: fullExecutionData.mode,
 				executionData: fullExecutionData.data,
 				workflowData: fullExecutionData.workflowData,
-				userId: user.id,
+				projectId: project.id,
 			};
 
 			// Start the execution again
-			const workflowRunner = new WorkflowRunner();
-			await workflowRunner.run(data, false, false, executionId);
+			await this.workflowRunner.run(data, false, false, executionId);
 		})().catch((error: Error) => {
 			ErrorReporter.error(error);
-			Logger.error(
+			this.logger.error(
 				`There was a problem starting the waiting execution with id "${executionId}": "${error.message}"`,
 				{ executionId },
 			);
+		});
+	}
+
+	stopTracking() {
+		this.logger.debug('Wait tracker shutting down');
+
+		clearInterval(this.mainTimer);
+		Object.keys(this.waitingExecutions).forEach((executionId) => {
+			clearTimeout(this.waitingExecutions[executionId].timer);
 		});
 	}
 }

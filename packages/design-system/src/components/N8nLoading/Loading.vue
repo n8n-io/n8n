@@ -1,5 +1,5 @@
 <template>
-	<el-skeleton
+	<ElSkeleton
 		:loading="loading"
 		:animated="animated"
 		:class="['n8n-loading', `n8n-loading-${variant}`]"
@@ -13,7 +13,7 @@
 						[$style.h1Last]: item === rows && rows > 1 && shrinkLast,
 					}"
 				>
-					<el-skeleton-item :variant="variant" />
+					<ElSkeletonItem :variant="variant" />
 				</div>
 			</div>
 			<div v-else-if="variant === 'p'">
@@ -24,64 +24,48 @@
 						[$style.pLast]: item === rows && rows > 1 && shrinkLast,
 					}"
 				>
-					<el-skeleton-item :variant="variant" />
+					<ElSkeletonItem :variant="variant" />
 				</div>
 			</div>
-			<div :class="$style.custom" v-else-if="variant === 'custom'">
-				<el-skeleton-item :variant="variant" />
+			<div v-else-if="variant === 'custom'" :class="$style.custom">
+				<ElSkeletonItem />
 			</div>
-			<el-skeleton-item v-else :variant="variant" />
+			<ElSkeletonItem v-else :variant="variant" />
 		</template>
-	</el-skeleton>
+	</ElSkeleton>
 </template>
 
-<script lang="ts">
-import { Skeleton as ElSkeleton, SkeletonItem as ElSkeletonItem } from 'element-ui';
+<script lang="ts" setup>
+import { ElSkeleton, ElSkeletonItem } from 'element-plus';
 
-import { defineComponent } from 'vue';
+const VARIANT = [
+	'custom',
+	'p',
+	'text',
+	'h1',
+	'h3',
+	'text',
+	'caption',
+	'button',
+	'image',
+	'circle',
+	'rect',
+] as const;
 
-export default defineComponent({
-	name: 'n8n-loading',
-	components: {
-		ElSkeleton,
-		ElSkeletonItem,
-	},
-	props: {
-		animated: {
-			type: Boolean,
-			default: true,
-		},
-		loading: {
-			type: Boolean,
-			default: true,
-		},
-		rows: {
-			type: Number,
-			default: 1,
-		},
-		shrinkLast: {
-			type: Boolean,
-			default: true,
-		},
-		variant: {
-			type: String,
-			default: 'p',
-			validator: (value: string): boolean =>
-				[
-					'custom',
-					'p',
-					'text',
-					'h1',
-					'h3',
-					'text',
-					'caption',
-					'button',
-					'image',
-					'circle',
-					'rect',
-				].includes(value),
-		},
-	},
+interface LoadingProps {
+	animated?: boolean;
+	loading?: boolean;
+	rows?: number;
+	shrinkLast?: boolean;
+	variant?: (typeof VARIANT)[number];
+}
+
+withDefaults(defineProps<LoadingProps>(), {
+	animated: true,
+	loading: true,
+	rows: 1,
+	shrinkLast: true,
+	variant: 'p',
 });
 </script>
 
@@ -99,7 +83,7 @@ export default defineComponent({
 </style>
 
 <style lang="scss">
-.n8n-loading-custom .el-skeleton {
+.n8n-loading-custom.el-skeleton {
 	&,
 	.el-skeleton__item {
 		width: 100%;

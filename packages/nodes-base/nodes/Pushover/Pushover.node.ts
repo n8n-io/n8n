@@ -92,7 +92,7 @@ export class Pushover implements INodeType {
 				default: '',
 				description: 'Your message',
 			},
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+
 			{
 				displayName: 'Priority',
 				name: 'priority',
@@ -196,13 +196,12 @@ export class Pushover implements INodeType {
 								displayName: 'Attachment Property',
 								values: [
 									{
-										displayName: 'Binary Property',
+										displayName: 'Input Binary Field',
 										name: 'binaryPropertyName',
 										type: 'string',
 										default: '',
 										placeholder: 'data',
-										description:
-											'Name of the binary properties which contain data which should be added to email as attachment',
+										hint: 'The name of the input binary field containing the file which should be added to email as attachment',
 									},
 								],
 							},
@@ -359,7 +358,7 @@ export class Pushover implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
@@ -370,6 +369,6 @@ export class Pushover implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

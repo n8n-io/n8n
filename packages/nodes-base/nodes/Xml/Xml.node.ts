@@ -5,13 +5,14 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, deepCopy } from 'n8n-workflow';
 
 export class Xml implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'XML',
 		name: 'xml',
 		icon: 'fa:file-code',
+		iconColor: 'purple',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["mode"]==="jsonToxml" ? "JSON to XML" : "XML to JSON"}}',
@@ -41,6 +42,18 @@ export class Xml implements INodeType {
 				],
 				default: 'xmlToJson',
 				description: 'From and to what format the data should be converted',
+			},
+			{
+				displayName:
+					"If your XML is inside a binary file, use the 'Extract from File' node to convert it to text first",
+				name: 'xmlNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						mode: ['xmlToJson'],
+					},
+				},
 			},
 
 			// ----------------------------------
@@ -249,7 +262,7 @@ export class Xml implements INodeType {
 					}
 
 					const json = await parser.parseStringPromise(item.json[dataPropertyName] as string);
-					returnData.push({ json });
+					returnData.push({ json: deepCopy(json) });
 				} else if (mode === 'jsonToxml') {
 					const builder = new Builder(options);
 
@@ -267,7 +280,7 @@ export class Xml implements INodeType {
 					});
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					items[itemIndex] = {
 						json: {
 							error: error.message,
@@ -282,6 +295,6 @@ export class Xml implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

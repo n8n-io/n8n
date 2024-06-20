@@ -1,5 +1,5 @@
 <template>
-	<TemplatesView :goBackEnabled="true">
+	<TemplatesView :go-back-enabled="true">
 		<template #header>
 			<div v-if="!notFoundError" :class="$style.wrapper">
 				<div :class="$style.title">
@@ -14,14 +14,15 @@
 				<div :class="$style.button">
 					<n8n-button
 						v-if="template"
+						data-test-id="use-template-button"
 						:label="$locale.baseText('template.buttons.useThisWorkflowButton')"
 						size="large"
-						@click="openWorkflow(template.id, $event)"
+						@click="openTemplateSetup(templateId, $event)"
 					/>
 					<n8n-loading :loading="!template" :rows="1" variant="button" />
 				</div>
 			</div>
-			<div :class="$style.notFound" v-else>
+			<div v-else :class="$style.notFound">
 				<n8n-text color="text-base">{{ $locale.baseText('templates.workflowsNotFound') }}</n8n-text>
 			</div>
 		</template>
@@ -30,15 +31,15 @@
 				<WorkflowPreview
 					v-if="showPreview"
 					:loading="loading"
-					:workflow="template && template.workflow"
+					:workflow="template?.workflow"
 					@close="onHidePreview"
 				/>
 			</div>
 			<div :class="$style.content">
-				<div :class="$style.markdown">
+				<div :class="$style.markdown" data-test-id="template-description">
 					<n8n-markdown
-						:content="template && template.description"
-						:images="template && template.image"
+						:content="template?.description"
+						:images="template?.image"
 						:loading="loading"
 					/>
 				</div>
@@ -55,32 +56,44 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+
 import TemplateDetails from '@/components/TemplateDetails.vue';
 import TemplatesView from './TemplatesView.vue';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 
-import { ITemplatesWorkflow, ITemplatesWorkflowFull } from '@/Interface';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
-import mixins from 'vue-typed-mixins';
-import { setPageTitle } from '@/utils';
-import { VIEWS } from '@/constants';
-import { mapStores } from 'pinia';
-import { useTemplatesStore } from '@/stores/templates';
+import type { ITemplatesWorkflowFull } from '@/Interface';
+import { setPageTitle } from '@/utils/htmlUtils';
+import { useTemplatesStore } from '@/stores/templates.store';
+import { usePostHog } from '@/stores/posthog.store';
+import { useTemplateWorkflow } from '@/utils/templates/templateActions';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
-export default mixins(workflowHelpers).extend({
+export default defineComponent({
 	name: 'TemplatesWorkflowView',
 	components: {
 		TemplateDetails,
 		TemplatesView,
 		WorkflowPreview,
 	},
+	setup() {
+		const externalHooks = useExternalHooks();
+
+		return {
+			externalHooks,
+		};
+	},
 	computed: {
-		...mapStores(useTemplatesStore),
-		template(): ITemplatesWorkflow | ITemplatesWorkflowFull {
-			return this.templatesStore.getTemplateById(this.templateId);
+		...mapStores(useTemplatesStore, usePostHog),
+		template(): ITemplatesWorkflowFull | null {
+			return this.templatesStore.getFullTemplateById(this.templateId);
 		},
 		templateId() {
-			return this.$route.params.id;
+			return Array.isArray(this.$route.params.id)
+				? this.$route.params.id[0]
+				: this.$route.params.id;
 		},
 	},
 	data() {
@@ -89,38 +102,6 @@ export default mixins(workflowHelpers).extend({
 			showPreview: true,
 			notFoundError: false,
 		};
-	},
-	methods: {
-		openWorkflow(id: string, e: PointerEvent) {
-			const telemetryPayload = {
-				source: 'workflow',
-				template_id: id,
-				wf_template_repo_session_id: this.templatesStore.currentSessionId,
-			};
-
-			this.$externalHooks().run('templatesWorkflowView.openWorkflow', telemetryPayload);
-			this.$telemetry.track('User inserted workflow template', telemetryPayload);
-
-			if (e.metaKey || e.ctrlKey) {
-				const route = this.$router.resolve({ name: VIEWS.TEMPLATE_IMPORT, params: { id } });
-				window.open(route.href, '_blank');
-				return;
-			} else {
-				this.$router.push({ name: VIEWS.TEMPLATE_IMPORT, params: { id } });
-			}
-		},
-		onHidePreview() {
-			this.showPreview = false;
-		},
-		scrollToTop() {
-			const contentArea = document.getElementById('content');
-
-			if (contentArea) {
-				contentArea.scrollTo({
-					top: 0,
-				});
-			}
-		},
 	},
 	watch: {
 		template(template: ITemplatesWorkflowFull) {
@@ -134,7 +115,7 @@ export default mixins(workflowHelpers).extend({
 	async mounted() {
 		this.scrollToTop();
 
-		if (this.template && (this.template as ITemplatesWorkflowFull).full) {
+		if (this.template && this.template.full) {
 			this.loading = false;
 			return;
 		}
@@ -146,6 +127,33 @@ export default mixins(workflowHelpers).extend({
 		}
 
 		this.loading = false;
+	},
+	methods: {
+		async openTemplateSetup(id: string, e: PointerEvent) {
+			await useTemplateWorkflow({
+				posthogStore: this.posthogStore,
+				router: this.$router,
+				templateId: id,
+				inNewBrowserTab: e.metaKey || e.ctrlKey,
+				externalHooks: this.externalHooks,
+				nodeTypesStore: useNodeTypesStore(),
+				telemetry: this.$telemetry,
+				templatesStore: useTemplatesStore(),
+				source: 'template_preview',
+			});
+		},
+		onHidePreview() {
+			this.showPreview = false;
+		},
+		scrollToTop() {
+			const contentArea = document.getElementById('content');
+
+			if (contentArea) {
+				contentArea.scrollTo({
+					top: 0,
+				});
+			}
+		},
 	},
 });
 </script>

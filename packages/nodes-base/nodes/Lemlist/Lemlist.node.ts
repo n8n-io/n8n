@@ -7,6 +7,8 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import isEmpty from 'lodash/isEmpty';
+import omit from 'lodash/omit';
 import {
 	activityFields,
 	activityOperations,
@@ -21,9 +23,6 @@ import {
 } from './descriptions';
 
 import { lemlistApiRequest, lemlistApiRequestAllItems } from './GenericFunctions';
-
-import isEmpty from 'lodash.isempty';
-import omit from 'lodash.omit';
 
 export class Lemlist implements INodeType {
 	description: INodeTypeDescription = {
@@ -123,7 +122,7 @@ export class Lemlist implements INodeType {
 
 						// https://developer.lemlist.com/#activities
 
-						const returnAll = this.getNodeParameter('returnAll', 0);
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const qs = {} as IDataObject;
 						const filters = this.getNodeParameter('filters', i);
@@ -132,11 +131,11 @@ export class Lemlist implements INodeType {
 							Object.assign(qs, filters);
 						}
 
-						responseData = await lemlistApiRequest.call(this, 'GET', '/activities', {}, qs);
-
-						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', 0);
-							responseData = responseData.slice(0, limit);
+						if (returnAll) {
+							responseData = await lemlistApiRequestAllItems.call(this, 'GET', '/activities', qs);
+						} else {
+							qs.limit = this.getNodeParameter('limit', i);
+							responseData = await lemlistApiRequest.call(this, 'GET', '/activities', {}, qs);
 						}
 					}
 				} else if (resource === 'campaign') {
@@ -151,13 +150,15 @@ export class Lemlist implements INodeType {
 
 						// https://developer.lemlist.com/#list-all-campaigns
 
-						responseData = await lemlistApiRequest.call(this, 'GET', '/campaigns');
-
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i);
-							responseData = responseData.slice(0, limit);
+						if (returnAll) {
+							responseData = await lemlistApiRequestAllItems.call(this, 'GET', '/campaigns', {});
+						} else {
+							const qs = {
+								limit: this.getNodeParameter('limit', i),
+							};
+							responseData = await lemlistApiRequest.call(this, 'GET', '/campaigns', {}, qs);
 						}
 					}
 				} else if (resource === 'lead') {
@@ -277,7 +278,7 @@ export class Lemlist implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (returnAll) {
-							responseData = await lemlistApiRequestAllItems.call(this, 'GET', '/unsubscribes');
+							responseData = await lemlistApiRequestAllItems.call(this, 'GET', '/unsubscribes', {});
 						} else {
 							const qs = {
 								limit: this.getNodeParameter('limit', i),
@@ -287,7 +288,7 @@ export class Lemlist implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
@@ -307,6 +308,6 @@ export class Lemlist implements INodeType {
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

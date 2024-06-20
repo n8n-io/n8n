@@ -10,9 +10,8 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
+import get from 'lodash/get';
 import { awsApiRequestSOAP } from './GenericFunctions';
-
-import get from 'lodash.get';
 
 export class AwsSnsTrigger implements INodeType {
 	description: INodeTypeDescription = {

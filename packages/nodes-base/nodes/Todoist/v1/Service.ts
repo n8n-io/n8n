@@ -1,3 +1,5 @@
+import type { IDataObject } from 'n8n-workflow';
+import type { Context } from '../GenericFunctions';
 import {
 	CloseHandler,
 	CreateHandler,
@@ -10,16 +12,13 @@ import {
 	UpdateHandler,
 } from './OperationHandler';
 
-import type { Context } from '../GenericFunctions';
-import type { IDataObject } from 'n8n-workflow';
-
 export class TodoistService implements Service {
 	async execute(
 		ctx: Context,
 		operation: OperationType,
 		itemIndex: number,
 	): Promise<TodoistResponse> {
-		return this.handlers[operation].handleOperation(ctx, itemIndex);
+		return await this.handlers[operation].handleOperation(ctx, itemIndex);
 	}
 
 	private handlers = {
@@ -35,17 +34,16 @@ export class TodoistService implements Service {
 	};
 }
 
-export enum OperationType {
-	create = 'create',
-	close = 'close',
-	delete = 'delete',
-	get = 'get',
-	getAll = 'getAll',
-	reopen = 'reopen',
-	update = 'update',
-	move = 'move',
-	sync = 'sync',
-}
+export type OperationType =
+	| 'create'
+	| 'close'
+	| 'delete'
+	| 'get'
+	| 'getAll'
+	| 'reopen'
+	| 'update'
+	| 'move'
+	| 'sync';
 
 export interface Section {
 	name: string;

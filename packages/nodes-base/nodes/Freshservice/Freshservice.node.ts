@@ -8,6 +8,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import { tz } from 'moment-timezone';
 import {
 	adjustAddress,
 	adjustAgentRoles,
@@ -56,8 +57,6 @@ import {
 } from './descriptions';
 
 import type { AddressFixedCollection, LoadedResource, LoadedUser, RolesParameter } from './types';
-
-import { tz } from 'moment-timezone';
 
 export class Freshservice implements INodeType {
 	description: INodeTypeDescription = {
@@ -236,7 +235,7 @@ export class Freshservice implements INodeType {
 				fields = fields
 					.concat(...asset_type_fields.map((data) => data.fields))
 					.map((data) => ({ name: data.label, id: data.name }));
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+
 				return toOptions(fields);
 			},
 
@@ -1372,7 +1371,7 @@ export class Freshservice implements INodeType {
 					responseData = responseData[special[resource]] ?? responseData[resource];
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
@@ -1390,6 +1389,6 @@ export class Freshservice implements INodeType {
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

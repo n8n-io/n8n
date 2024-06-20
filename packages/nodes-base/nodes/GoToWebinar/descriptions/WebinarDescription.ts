@@ -145,6 +145,7 @@ export const webinarFields: INodeProperties[] = [
 			{
 				displayName: 'Is Password Protected',
 				name: 'isPasswordProtected',
+
 				type: 'boolean',
 				default: false,
 			},
@@ -154,7 +155,6 @@ export const webinarFields: INodeProperties[] = [
 				type: 'options',
 				description:
 					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				required: true,
 				default: '',
 				placeholder: '2020-12-11T09:00:00Z',
 				typeOptions: {
@@ -406,6 +406,7 @@ export const webinarFields: INodeProperties[] = [
 			{
 				displayName: 'Is Password Protected',
 				name: 'isPasswordProtected',
+
 				type: 'boolean',
 				default: false,
 				description: 'Whether the webinar requires a password for attendees to join',

@@ -1,0 +1,72 @@
+{
+	"name": "My workflow 5",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "875e8784-eb59-40d8-ba45-129a5e29881c",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [580, 140]
+		},
+		{
+			"parameters": {
+				"resource": "table",
+				"operation": "deleteTable",
+				"workbook": {
+					"__rl": true,
+					"value": "01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I",
+					"mode": "list",
+					"cachedResultName": "ПРРО копія"
+				},
+				"worksheet": {
+					"__rl": true,
+					"value": "{A0883CFE-D27E-4ECC-B94B-981830AAD55B}",
+					"mode": "list",
+					"cachedResultName": "Sheet4"
+				},
+				"table": {
+					"__rl": true,
+					"value": "{92FBE3F5-3180-47EE-8549-40892C38DA7F}",
+					"mode": "list",
+					"cachedResultName": "Table3"
+				}
+			},
+			"id": "0e0ac1d2-242c-486a-9287-c70307645acc",
+			"name": "Microsoft Excel 365",
+			"type": "n8n-nodes-base.microsoftExcel",
+			"typeVersion": 2,
+			"position": [860, 140],
+			"credentials": {
+				"microsoftExcelOAuth2Api": {
+					"id": "70",
+					"name": "Microsoft Excel account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Microsoft Excel 365": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Excel 365",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {}
+}

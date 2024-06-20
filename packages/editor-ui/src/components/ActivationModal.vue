@@ -25,17 +25,19 @@
 
 		<template #footer="{ close }">
 			<div :class="$style.footer">
-				<el-checkbox :value="checked" @change="handleCheckboxChange">{{
-					$locale.baseText('activationModal.dontShowAgain')
+				<el-checkbox :model-value="checked" @update:model-value="handleCheckboxChange">{{
+					$locale.baseText('generic.dontShowAgain')
 				}}</el-checkbox>
-				<n8n-button @click="close" :label="$locale.baseText('activationModal.gotIt')" />
+				<n8n-button :label="$locale.baseText('activationModal.gotIt')" @click="close" />
 			</div>
 		</template>
 	</Modal>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import { createEventBus } from 'n8n-design-system/utils';
 
 import Modal from '@/components/Modal.vue';
 import {
@@ -44,14 +46,14 @@ import {
 	LOCAL_STORAGE_ACTIVATION_FLAG,
 	VIEWS,
 } from '../constants';
-import { getActivatableTriggerNodes, getTriggerNodeServiceName } from '@/utils';
-import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { createEventBus } from '@/event-bus';
+import { getActivatableTriggerNodes, getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useStorage } from '@/composables/useStorage';
+import { useExecutionsStore } from '@/stores/executions.store';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'ActivationModal',
 	components: {
 		Modal,
@@ -66,7 +68,7 @@ export default Vue.extend({
 	},
 	methods: {
 		async showExecutionsList() {
-			const activeExecution = this.workflowsStore.activeWorkflowExecution;
+			const activeExecution = this.executionsStore.activeExecution;
 			const currentWorkflow = this.workflowsStore.workflowId;
 
 			if (activeExecution) {
@@ -88,11 +90,11 @@ export default Vue.extend({
 		},
 		handleCheckboxChange(checkboxValue: boolean) {
 			this.checked = checkboxValue;
-			window.localStorage.setItem(LOCAL_STORAGE_ACTIVATION_FLAG, checkboxValue.toString());
+			useStorage(LOCAL_STORAGE_ACTIVATION_FLAG).value = checkboxValue.toString();
 		},
 	},
 	computed: {
-		...mapStores(useNodeTypesStore, useUIStore, useWorkflowsStore),
+		...mapStores(useNodeTypesStore, useUIStore, useWorkflowsStore, useExecutionsStore),
 		triggerContent(): string {
 			const foundTriggers = getActivatableTriggerNodes(this.workflowsStore.workflowTriggerNodes);
 			if (!foundTriggers.length) {

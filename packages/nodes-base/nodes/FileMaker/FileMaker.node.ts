@@ -7,10 +7,10 @@ import type {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import type { OptionsWithUri } from 'request';
 import {
 	getFields,
 	getPortals,
@@ -600,15 +600,7 @@ export class FileMaker implements INodeType {
 			// Get all the available topics to display them to user so that they can
 			// select them easily
 			async getLayouts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				let returnData: INodePropertyOptions[];
-
-				try {
-					returnData = await layoutsApiRequest.call(this);
-				} catch (error) {
-					throw new NodeOperationError(this.getNode(), error as Error);
-				}
-
-				return returnData;
+				return await layoutsApiRequest.call(this);
 			},
 			async getResponseLayouts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -617,12 +609,8 @@ export class FileMaker implements INodeType {
 					value: '',
 				});
 
-				let layouts;
-				try {
-					layouts = await layoutsApiRequest.call(this);
-				} catch (error) {
-					throw new NodeOperationError(this.getNode(), error as Error);
-				}
+				const layouts = await layoutsApiRequest.call(this);
+
 				for (const layout of layouts) {
 					returnData.push({
 						name: layout.name,
@@ -635,12 +623,10 @@ export class FileMaker implements INodeType {
 			async getFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				let fields;
-				try {
-					fields = await getFields.call(this);
-				} catch (error) {
-					throw new NodeOperationError(this.getNode(), error as Error);
-				}
+				const fields = await getFields.call(this);
+
+				if (!Array.isArray(fields)) return [];
+
 				for (const field of fields) {
 					returnData.push({
 						name: field.name,
@@ -653,12 +639,8 @@ export class FileMaker implements INodeType {
 			async getScripts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				let scripts;
-				try {
-					scripts = await getScripts.call(this);
-				} catch (error) {
-					throw new NodeOperationError(this.getNode(), error as Error);
-				}
+				const scripts = await getScripts.call(this);
+
 				for (const script of scripts) {
 					if (!script.isFolder) {
 						returnData.push({
@@ -673,12 +655,8 @@ export class FileMaker implements INodeType {
 			async getPortals(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				let portals;
-				try {
-					portals = await getPortals.call(this);
-				} catch (error) {
-					throw new NodeOperationError(this.getNode(), error as Error);
-				}
+				const portals = await getPortals.call(this);
+
 				Object.keys(portals as IDataObject).forEach((portal) => {
 					returnData.push({
 						name: portal,
@@ -698,13 +676,14 @@ export class FileMaker implements INodeType {
 		const credentials = await this.getCredentials('fileMaker');
 
 		let token;
+
 		try {
 			token = await getToken.call(this);
 		} catch (error) {
-			throw new NodeOperationError(this.getNode(), new Error('Login fail', { cause: error }));
+			throw new NodeOperationError(this.getNode(), error as string);
 		}
 
-		let requestOptions: OptionsWithUri;
+		let requestOptions: IRequestOptions;
 
 		const host = credentials.host as string;
 		const database = credentials.db as string;
@@ -713,8 +692,8 @@ export class FileMaker implements INodeType {
 
 		const action = this.getNodeParameter('action', 0) as string;
 
-		try {
-			for (let i = 0; i < items.length; i++) {
+		for (let i = 0; i < items.length; i++) {
+			try {
 				// Reset all values
 				requestOptions = {
 					uri: '',
@@ -818,31 +797,37 @@ export class FileMaker implements INodeType {
 				try {
 					response = await this.helpers.request(requestOptions);
 				} catch (error) {
-					response = error.response.body;
+					response = error.error;
 				}
 
 				if (typeof response === 'string') {
 					throw new NodeOperationError(
 						this.getNode(),
-						'Response body is not valid JSON. Change "Response Format" to "String"',
+						'DataAPI response body is not valid JSON. Is the DataAPI enabled?',
 						{ itemIndex: i },
 					);
 				}
-				returnData.push({ json: response });
-			}
-		} catch (error) {
-			await logout.call(this, token as string);
+				returnData.push({ json: response, pairedItem: { item: i } });
+			} catch (error) {
+				if (this.continueOnFail(error)) {
+					returnData.push({
+						json: { error: error.message },
+						pairedItem: { item: i },
+					});
+				} else {
+					if (error.node) {
+						throw error;
+					}
 
-			if (error.node) {
-				throw error;
+					throw new NodeOperationError(
+						this.getNode(),
+						`The action "${error.message}" is not implemented yet!`,
+					);
+				}
 			}
-
-			throw new NodeOperationError(
-				this.getNode(),
-				`The action "${error.message}" is not implemented yet!`,
-			);
 		}
 
-		return this.prepareOutputData(returnData);
+		await logout.call(this, token as string);
+		return [returnData];
 	}
 }

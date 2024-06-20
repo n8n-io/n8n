@@ -9,12 +9,9 @@ const ROOT_DIR = path.resolve(__dirname, '..');
 const SPEC_FILENAME = 'openapi.yml';
 const SPEC_THEME_FILENAME = 'swaggerTheme.css';
 
-const userManagementEnabled = process.env.N8N_USER_MANAGEMENT_DISABLED !== 'true';
 const publicApiEnabled = process.env.N8N_PUBLIC_API_DISABLED !== 'true';
 
-if (userManagementEnabled) {
-	copyUserManagementEmailTemplates();
-}
+copyUserManagementEmailTemplates();
 
 if (publicApiEnabled) {
 	copySwaggerTheme();
@@ -49,7 +46,7 @@ function bundleOpenApiSpecs(rootDir = ROOT_DIR, specFileName = SPEC_FILENAME) {
 		}, [])
 		.forEach((specPath) => {
 			const distSpecPath = path.resolve(rootDir, 'dist', specPath);
-			const command = `npm run swagger -- bundle src/${specPath} --type yaml --outfile ${distSpecPath}`;
+			const command = `pnpm openapi bundle src/${specPath} --output ${distSpecPath}`;
 			shell.exec(command, { silent: true });
 		});
 }

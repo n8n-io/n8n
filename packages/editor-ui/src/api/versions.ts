@@ -1,6 +1,6 @@
-import { IVersion } from '@/Interface';
+import type { IVersion } from '@/Interface';
 import { INSTANCE_ID_HEADER } from '@/constants';
-import { get } from '@/utils';
+import { get } from '@/utils/apiUtils';
 
 export async function getNextVersions(
 	endpoint: string,

@@ -1,27 +1,24 @@
-import { Column, Entity, ManyToOne, PrimaryColumn } from 'typeorm';
+import { Column, Entity, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 import { CredentialsEntity } from './CredentialsEntity';
-import { User } from './User';
-import { Role } from './Role';
-import { AbstractEntity } from './AbstractEntity';
-import { idStringifier } from '../utils/transformers';
+import { WithTimestamps } from './AbstractEntity';
+import { Project } from './Project';
+
+export type CredentialSharingRole = 'credential:owner' | 'credential:user';
 
 @Entity()
-export class SharedCredentials extends AbstractEntity {
-	@ManyToOne('Role', 'sharedCredentials', { nullable: false })
-	role: Role;
-
+export class SharedCredentials extends WithTimestamps {
 	@Column()
-	roleId: string;
-
-	@ManyToOne('User', 'sharedCredentials')
-	user: User;
-
-	@PrimaryColumn()
-	userId: string;
+	role: CredentialSharingRole;
 
 	@ManyToOne('CredentialsEntity', 'shared')
 	credentials: CredentialsEntity;
 
-	@PrimaryColumn({ transformer: idStringifier })
+	@PrimaryColumn()
 	credentialsId: string;
+
+	@ManyToOne('Project', 'sharedCredentials')
+	project: Project;
+
+	@PrimaryColumn()
+	projectId: string;
 }

@@ -654,6 +654,7 @@ export const certificateFields: INodeProperties[] = [
 				displayName: 'Keystore Password',
 				name: 'KeystorePassword',
 				type: 'string',
+				typeOptions: { password: true },
 				default: '',
 			},
 		],

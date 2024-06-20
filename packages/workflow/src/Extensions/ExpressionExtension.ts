@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { DateTime } from 'luxon';
-import { ExpressionExtensionError } from '../ExpressionError';
+import { ExpressionExtensionError } from '../errors/expression-extension.error';
 import { parse, visit, types, print } from 'recast';
 import { getOption } from 'recast/lib/util';
 import type { Config as EsprimaConfig } from 'esprima-next';
@@ -15,6 +15,8 @@ import type { ExpressionKind } from 'ast-types/gen/kinds';
 
 import type { ExpressionChunk, ExpressionCode } from './ExpressionParser';
 import { joinExpression, splitExpression } from './ExpressionParser';
+import { booleanExtensions } from './BooleanExtensions';
+import type { ExtensionMap } from './Extensions';
 
 const EXPRESSION_EXTENDER = 'extend';
 const EXPRESSION_EXTENDER_OPTIONAL = 'extendOptional';
@@ -27,12 +29,13 @@ function isNotEmpty(value: unknown) {
 	return !isEmpty(value);
 }
 
-export const EXTENSION_OBJECTS = [
+export const EXTENSION_OBJECTS: ExtensionMap[] = [
 	arrayExtensions,
 	dateExtensions,
 	numberExtensions,
 	objectExtensions,
 	stringExtensions,
+	booleanExtensions,
 ];
 
 // eslint-disable-next-line @typescript-eslint/ban-types
@@ -48,6 +51,7 @@ const EXPRESSION_EXTENSION_METHODS = Array.from(
 		...Object.keys(dateExtensions.functions),
 		...Object.keys(arrayExtensions.functions),
 		...Object.keys(objectExtensions.functions),
+		...Object.keys(booleanExtensions.functions),
 		...Object.keys(genericExtensions),
 	]),
 );
@@ -88,7 +92,6 @@ export const hasNativeMethod = (method: string): boolean => {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function parseWithEsprimaNext(source: string, options?: any): any {
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 	const ast = esprimaParse(source, {
 		loc: true,
 		locations: true,
@@ -125,6 +128,7 @@ export const extendTransform = (expression: string): { code: string } | undefine
 
 		// Polyfill optional chaining
 		visit(ast, {
+			// eslint-disable-next-line complexity
 			visitChainExpression(path) {
 				this.traverse(path);
 				const chainNumber = currentChain;
@@ -451,13 +455,12 @@ interface FoundFunction {
 	function: Function;
 }
 
-// eslint-disable-next-line @typescript-eslint/ban-types
 function findExtendedFunction(input: unknown, functionName: string): FoundFunction | undefined {
 	// eslint-disable-next-line @typescript-eslint/ban-types
 	let foundFunction: Function | undefined;
 	if (Array.isArray(input)) {
 		foundFunction = arrayExtensions.functions[functionName];
-	} else if (isDate(input) && functionName !== 'toDate') {
+	} else if (isDate(input) && functionName !== 'toDate' && functionName !== 'toDateTime') {
 		// If it's a string date (from $json), convert it to a Date object,
 		// unless that function is `toDate`, since `toDate` does something
 		// very different on date objects
@@ -471,6 +474,8 @@ function findExtendedFunction(input: unknown, functionName: string): FoundFuncti
 		foundFunction = dateExtensions.functions[functionName];
 	} else if (input !== null && typeof input === 'object') {
 		foundFunction = objectExtensions.functions[functionName];
+	} else if (typeof input === 'boolean') {
+		foundFunction = booleanExtensions.functions[functionName];
 	}
 
 	// Look for generic or builtin
@@ -479,12 +484,7 @@ function findExtendedFunction(input: unknown, functionName: string): FoundFuncti
 		const inputAny: any = input;
 		// This is likely a builtin we're implementing for another type
 		// (e.g. toLocaleString). We'll return that instead
-		if (
-			inputAny &&
-			functionName &&
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			typeof inputAny[functionName] === 'function'
-		) {
+		if (inputAny && functionName && typeof inputAny[functionName] === 'function') {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			return { type: 'native', function: inputAny[functionName] };
 		}
@@ -508,7 +508,6 @@ function findExtendedFunction(input: unknown, functionName: string): FoundFuncti
  * ```
  */
 export function extend(input: unknown, functionName: string, args: unknown[]) {
-	// eslint-disable-next-line @typescript-eslint/ban-types
 	const foundFunction = findExtendedFunction(input, functionName);
 
 	// No type specific or generic function found. Check to see if
@@ -522,7 +521,6 @@ export function extend(input: unknown, functionName: string, args: unknown[]) {
 		}
 
 		if (haveFunction.length > 1) {
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 			const lastType = `"${haveFunction.pop()!.typeName}"`;
 			const typeNames = `${haveFunction.map((v) => `"${v.typeName}"`).join(', ')}, and ${lastType}`;
 			throw new ExpressionExtensionError(

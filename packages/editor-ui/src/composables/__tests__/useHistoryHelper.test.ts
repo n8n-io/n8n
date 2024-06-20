@@ -3,18 +3,18 @@ import { MAIN_HEADER_TABS } from '@/constants';
 import { render } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { useHistoryHelper } from '../useHistoryHelper';
-import { defineComponent } from 'vue';
-import { Route } from 'vue-router';
+import { defineComponent, type PropType } from 'vue';
+import type { RouteLocationNormalizedLoaded } from 'vue-router';
 
 const undoMock = vi.fn();
 const redoMock = vi.fn();
-vi.mock('@/stores/ndv', () => ({
+vi.mock('@/stores/ndv.store', () => ({
 	useNDVStore: () => ({
 		activeNodeName: null,
 		activeNode: {},
 	}),
 }));
-vi.mock('@/stores/history', () => {
+vi.mock('@/stores/history.store', () => {
 	return {
 		useHistoryStore: () => ({
 			popUndoableToUndo: undoMock,
@@ -22,19 +22,27 @@ vi.mock('@/stores/history', () => {
 		}),
 	};
 });
-vi.mock('@/stores/ui');
-vi.mock('vue-router/composables', () => ({
+vi.mock('@/stores/ui.store', () => {
+	return {
+		useUIStore: () => ({
+			isAnyModalOpen: false,
+		}),
+	};
+});
+vi.mock('vue-router', () => ({
 	useRoute: () => ({}),
+	RouterLink: vi.fn(),
 }));
 
 const TestComponent = defineComponent({
 	props: {
 		route: {
-			type: Object,
+			type: Object as PropType<RouteLocationNormalizedLoaded>,
+			required: true,
 		},
 	},
 	setup(props) {
-		useHistoryHelper(props.route as Route);
+		useHistoryHelper(props.route);
 
 		return {};
 	},

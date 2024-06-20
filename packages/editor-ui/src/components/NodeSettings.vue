@@ -9,33 +9,36 @@
 		<div :class="$style.header">
 			<div class="header-side-menu">
 				<NodeTitle
+					v-if="node"
 					class="node-name"
-					:value="node && node.name"
-					:nodeType="nodeType"
-					:isReadOnly="isReadOnly"
-					@input="nameChanged"
+					:model-value="node.name"
+					:node-type="nodeType"
+					:read-only="isReadOnly"
+					@update:model-value="nameChanged"
 				></NodeTitle>
 				<div v-if="isExecutable">
 					<NodeExecuteButton
-						v-if="!blockUI"
+						v-if="!blockUI && node && nodeValid"
 						data-test-id="node-execute-button"
-						:nodeName="node.name"
+						:node-name="node.name"
 						:disabled="outputPanelEditMode.enabled && !isTriggerNode"
+						:tooltip="executeButtonTooltip"
 						size="small"
-						telemetrySource="parameters"
+						telemetry-source="parameters"
 						@execute="onNodeExecute"
-						@stopExecution="onStopExecution"
+						@stop-execution="onStopExecution"
 					/>
 				</div>
 			</div>
 			<NodeSettingsTabs
 				v-if="node && nodeValid"
-				v-model="openPanel"
-				:nodeType="nodeType"
-				:sessionId="sessionId"
+				:model-value="openPanel"
+				:node-type="nodeType"
+				:push-ref="pushRef"
+				@update:model-value="onTabSelect"
 			/>
 		</div>
-		<div class="node-is-not-valid" v-if="node && !nodeValid">
+		<div v-if="node && !nodeValid" class="node-is-not-valid">
 			<p :class="$style.warningIcon">
 				<font-awesome-icon icon="exclamation-triangle" />
 			</p>
@@ -46,8 +49,8 @@
 			</div>
 			<div v-if="isCommunityNode" :class="$style.descriptionContainer">
 				<div class="mb-l">
-					<i18n
-						path="nodeSettings.communityNodeUnknown.description"
+					<i18n-t
+						keypath="nodeSettings.communityNodeUnknown.description"
 						tag="span"
 						@click="onMissingNodeTextClick"
 					>
@@ -58,7 +61,7 @@
 								>{{ node.type.split('.')[0] }}</a
 							>
 						</template>
-					</i18n>
+					</i18n-t>
 				</div>
 				<n8n-link
 					:to="COMMUNITY_NODES_INSTALLATION_DOCS_URL"
@@ -67,7 +70,7 @@
 					{{ $locale.baseText('nodeSettings.communityNodeUnknown.installLink.text') }}
 				</n8n-link>
 			</div>
-			<i18n v-else path="nodeSettings.nodeTypeUnknown.description" tag="span">
+			<i18n-t v-else keypath="nodeSettings.nodeTypeUnknown.description" tag="span">
 				<template #action>
 					<a
 						:href="CUSTOM_NODES_DOCS_URL"
@@ -75,9 +78,9 @@
 						v-text="$locale.baseText('nodeSettings.nodeTypeUnknown.description.customNode')"
 					/>
 				</template>
-			</i18n>
+			</i18n-t>
 		</div>
-		<div class="node-parameters-wrapper" data-test-id="node-parameters" v-if="node && nodeValid">
+		<div v-if="node && nodeValid" class="node-parameters-wrapper" data-test-id="node-parameters">
 			<n8n-notice
 				v-if="hasForeignCredential"
 				:content="
@@ -87,29 +90,30 @@
 				"
 			/>
 			<div v-show="openPanel === 'params'">
-				<node-webhooks :node="node" :nodeType="nodeType" />
+				<NodeWebhooks :node="node" :node-type="nodeType" />
 
-				<parameter-input-list
+				<ParameterInputList
+					v-if="nodeValuesInitialized"
 					:parameters="parametersNoneSetting"
-					:hideDelete="true"
-					:nodeValues="nodeValues"
-					:isReadOnly="isReadOnly"
-					:hiddenIssuesInputs="hiddenIssuesInputs"
+					:hide-delete="true"
+					:node-values="nodeValues"
+					:is-read-only="isReadOnly"
+					:hidden-issues-inputs="hiddenIssuesInputs"
 					path="parameters"
-					@valueChanged="valueChanged"
+					@value-changed="valueChanged"
 					@activate="onWorkflowActivate"
-					@parameterBlur="onParameterBlur"
+					@parameter-blur="onParameterBlur"
 				>
-					<node-credentials
+					<NodeCredentials
 						:node="node"
 						:readonly="isReadOnly"
-						:showAll="true"
-						@credentialSelected="credentialSelected"
-						@valueChanged="valueChanged"
-						@blur="onParameterBlur"
+						:show-all="true"
 						:hide-issues="hiddenIssuesInputs.includes('credentials')"
+						@credential-selected="credentialSelected"
+						@value-changed="valueChanged"
+						@blur="onParameterBlur"
 					/>
-				</parameter-input-list>
+				</ParameterInputList>
 				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
 					<n8n-text>
 						{{ $locale.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
@@ -117,106 +121,144 @@
 				</div>
 
 				<div
-					v-if="isCustomApiCallSelected(nodeValues)"
+					v-if="nodeHelpers.isCustomApiCallSelected(nodeValues)"
 					class="parameter-item parameter-notice"
 					data-test-id="node-parameters-http-notice"
 				>
 					<n8n-notice
 						:content="
 							$locale.baseText('nodeSettings.useTheHttpRequestNode', {
-								interpolate: { nodeTypeDisplayName: nodeType.displayName },
+								interpolate: { nodeTypeDisplayName: nodeType?.displayName ?? '' },
 							})
 						"
 					/>
 				</div>
 			</div>
 			<div v-show="openPanel === 'settings'">
-				<parameter-input-list
+				<ParameterInputList
 					:parameters="parametersSetting"
-					:nodeValues="nodeValues"
-					:isReadOnly="isReadOnly"
-					:hiddenIssuesInputs="hiddenIssuesInputs"
+					:node-values="nodeValues"
+					:is-read-only="isReadOnly"
+					:hide-delete="true"
+					:hidden-issues-inputs="hiddenIssuesInputs"
 					path="parameters"
-					@valueChanged="valueChanged"
-					@parameterBlur="onParameterBlur"
+					@value-changed="valueChanged"
+					@parameter-blur="onParameterBlur"
 				/>
-				<parameter-input-list
+				<ParameterInputList
 					:parameters="nodeSettings"
-					:hideDelete="true"
-					:nodeValues="nodeValues"
-					:isReadOnly="isReadOnly"
-					:hiddenIssuesInputs="hiddenIssuesInputs"
+					:hide-delete="true"
+					:node-values="nodeValues"
+					:is-read-only="isReadOnly"
+					:hidden-issues-inputs="hiddenIssuesInputs"
 					path=""
-					@valueChanged="valueChanged"
-					@parameterBlur="onParameterBlur"
+					@value-changed="valueChanged"
+					@parameter-blur="onParameterBlur"
 				/>
+				<div class="node-version" data-test-id="node-version">
+					{{
+						$locale.baseText('nodeSettings.nodeVersion', {
+							interpolate: {
+								node: nodeType?.displayName as string,
+								version: (node.typeVersion ?? latestVersion).toString(),
+							},
+						})
+					}}
+					<span>({{ nodeVersionTag }})</span>
+				</div>
 			</div>
 		</div>
+		<NDVSubConnections
+			v-if="node"
+			ref="subConnections"
+			:root-node="node"
+			@switch-selected-node="onSwitchSelectedNode"
+			@open-connection-node-creator="onOpenConnectionNodeCreator"
+		/>
 		<n8n-block-ui :show="blockUI" />
 	</div>
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
-import {
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import type {
 	INodeTypeDescription,
 	INodeParameters,
 	INodeProperties,
-	NodeHelpers,
 	NodeParameterValue,
-	deepCopy,
+	ConnectionTypes,
+	NodeParameterValueType,
 } from 'n8n-workflow';
 import {
-	ICredentialsResponse,
+	NodeHelpers,
+	NodeConnectionType,
+	deepCopy,
+	isINodePropertyCollectionList,
+	isINodePropertiesList,
+	isINodePropertyOptionsList,
+	displayParameter,
+} from 'n8n-workflow';
+import type {
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IUpdateInformation,
 	IUsedCredential,
-	IUser,
 } from '@/Interface';
 
 import {
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 	CUSTOM_NODES_DOCS_URL,
 	MAIN_NODE_PANEL_WIDTH,
-	IMPORT_CURL_MODAL_KEY,
+	SHOULD_CLEAR_NODE_OUTPUTS,
 } from '@/constants';
 
 import NodeTitle from '@/components/NodeTitle.vue';
-import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
+import NDVSubConnections from '@/components/NDVSubConnections.vue';
 import { get, set, unset } from 'lodash-es';
 
-import { externalHooks } from '@/mixins/externalHooks';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
-
-import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
-import { isCommunityPackageName } from '@/utils';
-import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useHistoryStore } from '@/stores/history';
+import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useHistoryStore } from '@/stores/history.store';
 import { RenameNodeCommand } from '@/models/history';
-import useWorkflowsEEStore from '@/stores/workflows.ee';
-import { useCredentialsStore } from '@/stores/credentials';
-import { EventBus } from '@/event-bus';
+import useWorkflowsEEStore from '@/stores/workflows.ee.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import type { EventBus } from 'n8n-design-system';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { importCurlEventBus } from '@/event-bus';
+import { useToast } from '@/composables/useToast';
 
-export default mixins(externalHooks, nodeHelpers).extend({
+export default defineComponent({
 	name: 'NodeSettings',
 	components: {
 		NodeTitle,
 		NodeCredentials,
-		ParameterInputFull,
 		ParameterInputList,
 		NodeSettingsTabs,
 		NodeWebhooks,
+		NDVSubConnections,
 		NodeExecuteButton,
+	},
+	setup() {
+		const nodeHelpers = useNodeHelpers();
+		const externalHooks = useExternalHooks();
+		const { showMessage } = useToast();
+
+		return {
+			externalHooks,
+			nodeHelpers,
+			showMessage,
+		};
 	},
 	computed: {
 		...mapStores(
@@ -228,13 +270,21 @@ export default mixins(externalHooks, nodeHelpers).extend({
 			useWorkflowsStore,
 			useWorkflowsEEStore,
 		),
-		isCurlImportModalOpen(): boolean {
-			return this.uiStore.isModalOpen(IMPORT_CURL_MODAL_KEY);
-		},
 		isReadOnly(): boolean {
 			return this.readOnly || this.hasForeignCredential;
 		},
 		isExecutable(): boolean {
+			if (this.nodeType && this.node) {
+				const workflow = this.workflowsStore.getCurrentWorkflow();
+				const workflowNode = workflow.getNode(this.node.name);
+				const inputs = NodeHelpers.getNodeInputs(workflow, workflowNode!, this.nodeType);
+				const inputNames = NodeHelpers.getConnectionTypes(inputs);
+
+				if (!inputNames.includes(NodeConnectionType.Main) && !this.isTriggerNode) {
+					return false;
+				}
+			}
+
 			return this.executable || this.hasForeignCredential;
 		},
 		nodeTypeName(): string {
@@ -249,8 +299,44 @@ export default mixins(externalHooks, nodeHelpers).extend({
 
 			return '';
 		},
+		nodeTypeVersions(): number[] {
+			if (!this.node) return [];
+			return this.nodeTypesStore.getNodeVersions(this.node.type);
+		},
+		latestVersion(): number {
+			return Math.max(...this.nodeTypeVersions);
+		},
+		isLatestNodeVersion(): boolean {
+			return !this.node?.typeVersion || this.latestVersion === this.node.typeVersion;
+		},
+		executeButtonTooltip(): string {
+			if (
+				this.node &&
+				this.isLatestNodeVersion &&
+				this.inputSize > 1 &&
+				!NodeHelpers.isSingleExecution(this.node.type, this.node.parameters)
+			) {
+				return this.$locale.baseText('nodeSettings.executeButtonTooltip.times', {
+					interpolate: { inputSize: this.inputSize },
+				});
+			}
+			return '';
+		},
+		nodeVersionTag(): string {
+			if (!this.nodeType || this.nodeType.hidden) {
+				return this.$locale.baseText('nodeSettings.deprecated');
+			}
+
+			if (this.isLatestNodeVersion) {
+				return this.$locale.baseText('nodeSettings.latest');
+			}
+
+			return this.$locale.baseText('nodeSettings.latestVersion', {
+				interpolate: { version: this.latestVersion.toString() },
+			});
+		},
 		nodeTypeDescription(): string {
-			if (this.nodeType && this.nodeType.description) {
+			if (this.nodeType?.description) {
 				const shortNodeType = this.$locale.shortNodeType(this.nodeType.name);
 
 				return this.$locale.headerText({
@@ -288,16 +374,16 @@ export default mixins(externalHooks, nodeHelpers).extend({
 				return [];
 			}
 
-			return this.nodeType.properties;
+			return this.nodeType?.properties ?? [];
 		},
 		outputPanelEditMode(): { enabled: boolean; value: string } {
 			return this.ndvStore.outputPanelEditMode;
 		},
 		isCommunityNode(): boolean {
-			return isCommunityPackageName(this.node.type);
+			return !!this.node && isCommunityPackageName(this.node.type);
 		},
 		isTriggerNode(): boolean {
-			return this.nodeTypesStore.isTriggerNode(this.node.type);
+			return !!this.node && this.nodeTypesStore.isTriggerNode(this.node.type);
 		},
 		workflowOwnerName(): string {
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflowsStore.workflowId}`);
@@ -316,7 +402,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 			const credential = this.usedCredentials
 				? Object.values(this.usedCredentials).find((credential) => {
 						return credential.id === this.foreignCredentials[0];
-				  })
+					})
 				: undefined;
 
 			return this.credentialsStore.getCredentialOwnerName(credential);
@@ -329,11 +415,11 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		dragging: {
 			type: Boolean,
 		},
-		sessionId: {
+		pushRef: {
 			type: String,
 		},
 		nodeType: {
-			type: Object as PropType<INodeTypeDescription>,
+			type: Object as PropType<INodeTypeDescription | null>,
 		},
 		readOnly: {
 			type: Boolean,
@@ -351,112 +437,30 @@ export default mixins(externalHooks, nodeHelpers).extend({
 			type: Boolean,
 			default: true,
 		},
+		inputSize: {
+			type: Number,
+			default: 0,
+		},
 	},
 	data() {
 		return {
 			nodeValid: true,
 			nodeColor: null,
-			openPanel: 'params',
+			openPanel: 'params' as 'params' | 'settings',
 			nodeValues: {
 				color: '#ff0000',
 				alwaysOutputData: false,
 				executeOnce: false,
 				notesInFlow: false,
-				continueOnFail: false,
+				onError: 'stopWorkflow',
 				retryOnFail: false,
 				maxTries: 3,
 				waitBetweenTries: 1000,
 				notes: '',
 				parameters: {},
 			} as INodeParameters,
-
-			nodeSettings: [
-				{
-					displayName: this.$locale.baseText('nodeSettings.alwaysOutputData.displayName'),
-					name: 'alwaysOutputData',
-					type: 'boolean',
-					default: false,
-					noDataExpression: true,
-					description: this.$locale.baseText('nodeSettings.alwaysOutputData.description'),
-				},
-				{
-					displayName: this.$locale.baseText('nodeSettings.executeOnce.displayName'),
-					name: 'executeOnce',
-					type: 'boolean',
-					default: false,
-					noDataExpression: true,
-					description: this.$locale.baseText('nodeSettings.executeOnce.description'),
-				},
-				{
-					displayName: this.$locale.baseText('nodeSettings.retryOnFail.displayName'),
-					name: 'retryOnFail',
-					type: 'boolean',
-					default: false,
-					noDataExpression: true,
-					description: this.$locale.baseText('nodeSettings.retryOnFail.description'),
-				},
-				{
-					displayName: this.$locale.baseText('nodeSettings.maxTries.displayName'),
-					name: 'maxTries',
-					type: 'number',
-					typeOptions: {
-						minValue: 2,
-						maxValue: 5,
-					},
-					default: 3,
-					displayOptions: {
-						show: {
-							retryOnFail: [true],
-						},
-					},
-					noDataExpression: true,
-					description: this.$locale.baseText('nodeSettings.maxTries.description'),
-				},
-				{
-					displayName: this.$locale.baseText('nodeSettings.waitBetweenTries.displayName'),
-					name: 'waitBetweenTries',
-					type: 'number',
-					typeOptions: {
-						minValue: 0,
-						maxValue: 5000,
-					},
-					default: 1000,
-					displayOptions: {
-						show: {
-							retryOnFail: [true],
-						},
-					},
-					noDataExpression: true,
-					description: this.$locale.baseText('nodeSettings.waitBetweenTries.description'),
-				},
-				{
-					displayName: this.$locale.baseText('nodeSettings.continueOnFail.displayName'),
-					name: 'continueOnFail',
-					type: 'boolean',
-					default: false,
-					noDataExpression: true,
-					description: this.$locale.baseText('nodeSettings.continueOnFail.description'),
-				},
-				{
-					displayName: this.$locale.baseText('nodeSettings.notes.displayName'),
-					name: 'notes',
-					type: 'string',
-					typeOptions: {
-						rows: 5,
-					},
-					default: '',
-					noDataExpression: true,
-					description: this.$locale.baseText('nodeSettings.notes.description'),
-				},
-				{
-					displayName: this.$locale.baseText('nodeSettings.notesInFlow.displayName'),
-					name: 'notesInFlow',
-					type: 'boolean',
-					default: false,
-					noDataExpression: true,
-					description: this.$locale.baseText('nodeSettings.notesInFlow.description'),
-				},
-			] as INodeProperties[],
+			nodeValuesInitialized: false, // Used to prevent nodeValues from being overwritten by defaults on reopening ndv
+			nodeSettings: [] as INodeProperties[],
 			COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 			CUSTOM_NODES_DOCS_URL,
 			MAIN_NODE_PANEL_WIDTH,
@@ -464,34 +468,39 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		};
 	},
 	watch: {
-		node(newNode, oldNode) {
+		node() {
 			this.setNodeValues();
 		},
-		isCurlImportModalOpen(newValue, oldValue) {
-			if (newValue === false) {
-				let parameters = this.uiStore.getHttpNodeParameters || '';
+	},
+	mounted() {
+		this.populateHiddenIssuesSet();
+		this.populateSettings();
+		this.setNodeValues();
+		this.eventBus?.on('openSettings', this.openSettings);
 
-				if (!parameters) return;
-
-				try {
-					parameters = JSON.parse(parameters) as {
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						[key: string]: any;
-					};
-
-					//@ts-ignore
-					this.valueChanged({
-						node: this.node.name,
-						name: 'parameters',
-						value: parameters,
-					});
-
-					this.uiStore.setHttpNodeParameters({ name: IMPORT_CURL_MODAL_KEY, parameters: '' });
-				} catch {}
-			}
-		},
+		this.nodeHelpers.updateNodeParameterIssues(this.node as INodeUi, this.nodeType);
+		importCurlEventBus.on('setHttpNodeParameters', this.setHttpNodeParameters);
+	},
+	beforeUnmount() {
+		this.eventBus?.off('openSettings', this.openSettings);
+		importCurlEventBus.off('setHttpNodeParameters', this.setHttpNodeParameters);
 	},
 	methods: {
+		setHttpNodeParameters(parameters: NodeParameterValueType) {
+			try {
+				this.valueChanged({
+					node: this.node?.name,
+					name: 'parameters',
+					value: parameters,
+				});
+			} catch {}
+		},
+		onSwitchSelectedNode(node: string) {
+			this.$emit('switchSelectedNode', node);
+		},
+		onOpenConnectionNodeCreator(node: string, connectionType: ConnectionTypes) {
+			this.$emit('openConnectionNodeCreator', node, connectionType);
+		},
 		populateHiddenIssuesSet() {
 			if (!this.node || !this.workflowsStore.isNodePristine(this.node.name)) return;
 
@@ -502,6 +511,132 @@ export default mixins(externalHooks, nodeHelpers).extend({
 
 			this.workflowsStore.setNodePristine(this.node.name, false);
 		},
+		populateSettings() {
+			if (this.isExecutable && !this.isTriggerNode) {
+				this.nodeSettings.push(
+					...([
+						{
+							displayName: this.$locale.baseText('nodeSettings.alwaysOutputData.displayName'),
+							name: 'alwaysOutputData',
+							type: 'boolean',
+							default: false,
+							noDataExpression: true,
+							description: this.$locale.baseText('nodeSettings.alwaysOutputData.description'),
+						},
+						{
+							displayName: this.$locale.baseText('nodeSettings.executeOnce.displayName'),
+							name: 'executeOnce',
+							type: 'boolean',
+							default: false,
+							noDataExpression: true,
+							description: this.$locale.baseText('nodeSettings.executeOnce.description'),
+						},
+						{
+							displayName: this.$locale.baseText('nodeSettings.retryOnFail.displayName'),
+							name: 'retryOnFail',
+							type: 'boolean',
+							default: false,
+							noDataExpression: true,
+							description: this.$locale.baseText('nodeSettings.retryOnFail.description'),
+						},
+						{
+							displayName: this.$locale.baseText('nodeSettings.maxTries.displayName'),
+							name: 'maxTries',
+							type: 'number',
+							typeOptions: {
+								minValue: 2,
+								maxValue: 5,
+							},
+							default: 3,
+							displayOptions: {
+								show: {
+									retryOnFail: [true],
+								},
+							},
+							noDataExpression: true,
+							description: this.$locale.baseText('nodeSettings.maxTries.description'),
+						},
+						{
+							displayName: this.$locale.baseText('nodeSettings.waitBetweenTries.displayName'),
+							name: 'waitBetweenTries',
+							type: 'number',
+							typeOptions: {
+								minValue: 0,
+								maxValue: 5000,
+							},
+							default: 1000,
+							displayOptions: {
+								show: {
+									retryOnFail: [true],
+								},
+							},
+							noDataExpression: true,
+							description: this.$locale.baseText('nodeSettings.waitBetweenTries.description'),
+						},
+						{
+							displayName: this.$locale.baseText('nodeSettings.onError.displayName'),
+							name: 'onError',
+							type: 'options',
+							options: [
+								{
+									name: this.$locale.baseText(
+										'nodeSettings.onError.options.stopWorkflow.displayName',
+									),
+									value: 'stopWorkflow',
+									description: this.$locale.baseText(
+										'nodeSettings.onError.options.stopWorkflow.description',
+									),
+								},
+								{
+									name: this.$locale.baseText(
+										'nodeSettings.onError.options.continueRegularOutput.displayName',
+									),
+									value: 'continueRegularOutput',
+									description: this.$locale.baseText(
+										'nodeSettings.onError.options.continueRegularOutput.description',
+									),
+								},
+								{
+									name: this.$locale.baseText(
+										'nodeSettings.onError.options.continueErrorOutput.displayName',
+									),
+									value: 'continueErrorOutput',
+									description: this.$locale.baseText(
+										'nodeSettings.onError.options.continueErrorOutput.description',
+									),
+								},
+							],
+							default: 'stopWorkflow',
+							noDataExpression: true,
+							description: this.$locale.baseText('nodeSettings.onError.description'),
+						},
+					] as INodeProperties[]),
+				);
+			}
+			this.nodeSettings.push(
+				...([
+					{
+						displayName: this.$locale.baseText('nodeSettings.notes.displayName'),
+						name: 'notes',
+						type: 'string',
+						typeOptions: {
+							rows: 5,
+						},
+						default: '',
+						noDataExpression: true,
+						description: this.$locale.baseText('nodeSettings.notes.description'),
+					},
+					{
+						displayName: this.$locale.baseText('nodeSettings.notesInFlow.displayName'),
+						name: 'notesInFlow',
+						type: 'boolean',
+						default: false,
+						noDataExpression: true,
+						description: this.$locale.baseText('nodeSettings.notesInFlow.description'),
+					},
+				] as INodeProperties[]),
+			);
+		},
 		onParameterBlur(parameterName: string) {
 			this.hiddenIssuesInputs = this.hiddenIssuesInputs.filter((name) => name !== parameterName);
 		},
@@ -511,6 +646,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		},
 		onNodeExecute() {
 			this.hiddenIssuesInputs = [];
+			(this.$refs.subConnections as InstanceType<typeof NDVSubConnections>)?.showNodeInputsIssues();
 			this.$emit('execute');
 		},
 		setValue(name: string, value: NodeParameterValue) {
@@ -528,46 +664,65 @@ export default mixins(externalHooks, nodeHelpers).extend({
 				}
 			}
 
-			// Set the value via Vue.set that everything updates correctly in the UI
+			// Set the value so that everything updates correctly in the UI
 			if (nameParts.length === 0) {
 				// Data is on top level
 				if (value === null) {
 					// Property should be deleted
-					// @ts-ignore
-					Vue.delete(this.nodeValues, lastNamePart);
+					if (lastNamePart) {
+						const { [lastNamePart]: removedNodeValue, ...remainingNodeValues } = this.nodeValues;
+						this.nodeValues = remainingNodeValues;
+					}
 				} else {
 					// Value should be set
-					// @ts-ignore
-					Vue.set(this.nodeValues, lastNamePart, value);
+					this.nodeValues = {
+						...this.nodeValues,
+						[lastNamePart as string]: value,
+					};
 				}
 			} else {
 				// Data is on lower level
 				if (value === null) {
 					// Property should be deleted
-					// @ts-ignore
 					let tempValue = get(this.nodeValues, nameParts.join('.')) as
 						| INodeParameters
 						| INodeParameters[];
-					Vue.delete(tempValue as object, lastNamePart as string);
 
-					if (isArray === true && (tempValue as INodeParameters[]).length === 0) {
+					if (lastNamePart && !Array.isArray(tempValue)) {
+						const { [lastNamePart]: removedNodeValue, ...remainingNodeValues } = tempValue;
+						tempValue = remainingNodeValues;
+					}
+
+					if (isArray && Array.isArray(tempValue) && tempValue.length === 0) {
 						// If a value from an array got delete and no values are left
 						// delete also the parent
 						lastNamePart = nameParts.pop();
 						tempValue = get(this.nodeValues, nameParts.join('.')) as INodeParameters;
-						Vue.delete(tempValue as object, lastNamePart as string);
+						if (lastNamePart) {
+							const { [lastNamePart]: removedArrayNodeValue, ...remainingArrayNodeValues } =
+								tempValue;
+							tempValue = remainingArrayNodeValues;
+						}
 					}
 				} else {
 					// Value should be set
 					if (typeof value === 'object') {
-						// @ts-ignore
-						Vue.set(get(this.nodeValues, nameParts.join('.')), lastNamePart, deepCopy(value));
+						set(
+							get(this.nodeValues, nameParts.join('.')) as Record<string, unknown>,
+							lastNamePart as string,
+							deepCopy(value),
+						);
 					} else {
-						// @ts-ignore
-						Vue.set(get(this.nodeValues, nameParts.join('.')), lastNamePart, value);
+						set(
+							get(this.nodeValues, nameParts.join('.')) as Record<string, unknown>,
+							lastNamePart as string,
+							value,
+						);
 					}
 				}
 			}
+
+			this.nodeValues = { ...this.nodeValues };
 		},
 		credentialSelected(updateInformation: INodeUpdatePropertiesInformation) {
 			// Update the values on the node
@@ -577,10 +732,10 @@ export default mixins(externalHooks, nodeHelpers).extend({
 
 			if (node) {
 				// Update the issues
-				this.updateNodeCredentialIssues(node);
+				this.nodeHelpers.updateNodeCredentialIssues(node);
 			}
 
-			this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
+			void this.externalHooks.run('nodeSettings.credentialSelected', { updateInformation });
 		},
 		nameChanged(name: string) {
 			if (this.node) {
@@ -604,11 +759,21 @@ export default mixins(externalHooks, nodeHelpers).extend({
 			}
 			// Save the node name before we commit the change because
 			// we need the old name to rename the node properly
-			const nodeNameBefore = parameterData.node || this.node.name;
+			const nodeNameBefore = parameterData.node || this.node?.name;
+
+			if (!nodeNameBefore) {
+				return;
+			}
+
 			const node = this.workflowsStore.getNodeByName(nodeNameBefore);
 
 			if (node === null) {
 				return;
+			}
+
+			if (parameterData.name === 'onError') {
+				// If that parameter changes, we need to redraw the connections, as the error output may need to be added or removed
+				this.$emit('redrawRequired');
 			}
 
 			if (parameterData.name === 'name') {
@@ -642,44 +807,46 @@ export default mixins(externalHooks, nodeHelpers).extend({
 				// we do not edit it directly
 				nodeParameters = deepCopy(nodeParameters);
 
-				for (const parameterName of Object.keys(parameterData.value)) {
-					//@ts-ignore
-					newValue = parameterData.value[parameterName];
+				if (parameterData.value && typeof parameterData.value === 'object') {
+					for (const parameterName of Object.keys(parameterData.value)) {
+						//@ts-ignore
+						newValue = parameterData.value[parameterName];
 
-					// Remove the 'parameters.' from the beginning to just have the
-					// actual parameter name
-					const parameterPath = parameterName.split('.').slice(1).join('.');
+						// Remove the 'parameters.' from the beginning to just have the
+						// actual parameter name
+						const parameterPath = parameterName.split('.').slice(1).join('.');
 
-					// Check if the path is supposed to change an array and if so get
-					// the needed data like path and index
-					const parameterPathArray = parameterPath.match(/(.*)\[(\d+)\]$/);
+						// Check if the path is supposed to change an array and if so get
+						// the needed data like path and index
+						const parameterPathArray = parameterPath.match(/(.*)\[(\d+)\]$/);
 
-					// Apply the new value
-					//@ts-ignore
-					if (parameterData[parameterName] === undefined && parameterPathArray !== null) {
-						// Delete array item
-						const path = parameterPathArray[1];
-						const index = parameterPathArray[2];
-						const data = get(nodeParameters, path);
+						// Apply the new value
+						//@ts-ignore
+						if (parameterData[parameterName] === undefined && parameterPathArray !== null) {
+							// Delete array item
+							const path = parameterPathArray[1];
+							const index = parameterPathArray[2];
+							const data = get(nodeParameters, path);
 
-						if (Array.isArray(data)) {
-							data.splice(parseInt(index, 10), 1);
-							Vue.set(nodeParameters as object, path, data);
-						}
-					} else {
-						if (newValue === undefined) {
-							unset(nodeParameters as object, parameterPath);
+							if (Array.isArray(data)) {
+								data.splice(parseInt(index, 10), 1);
+								set(nodeParameters as object, path, data);
+							}
 						} else {
-							set(nodeParameters as object, parameterPath, newValue);
+							if (newValue === undefined) {
+								unset(nodeParameters as object, parameterPath);
+							} else {
+								set(nodeParameters as object, parameterPath, newValue);
+							}
 						}
-					}
 
-					this.$externalHooks().run('nodeSettings.valueChanged', {
-						parameterPath,
-						newValue,
-						parameters: this.parameters,
-						oldNodeParameters,
-					});
+						void this.externalHooks.run('nodeSettings.valueChanged', {
+							parameterPath,
+							newValue,
+							parameters: this.parameters,
+							oldNodeParameters,
+						});
+					}
 				}
 
 				// Get the parameters with the now new defaults according to the
@@ -706,8 +873,8 @@ export default mixins(externalHooks, nodeHelpers).extend({
 
 					this.workflowsStore.setNodeParameters(updateInformation);
 
-					this.updateNodeParameterIssues(node, nodeType);
-					this.updateNodeCredentialIssues(node);
+					this.nodeHelpers.updateNodeParameterIssuesByName(node.name);
+					this.nodeHelpers.updateNodeCredentialIssuesByName(node.name);
 				}
 			} else if (parameterData.name.startsWith('parameters.')) {
 				// A node parameter changed
@@ -715,6 +882,20 @@ export default mixins(externalHooks, nodeHelpers).extend({
 				const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 				if (!nodeType) {
 					return;
+				}
+
+				if (
+					parameterData.type &&
+					this.workflowsStore.nodeHasOutputConnection(node.name) &&
+					SHOULD_CLEAR_NODE_OUTPUTS[nodeType.name]?.eventTypes.includes(parameterData.type) &&
+					SHOULD_CLEAR_NODE_OUTPUTS[nodeType.name]?.parameterPaths.includes(parameterData.name)
+				) {
+					this.workflowsStore.removeAllNodeConnection(node, { preserveInputConnections: true });
+					this.showMessage({
+						type: 'warning',
+						title: this.$locale.baseText('nodeSettings.outputCleared.title'),
+						message: this.$locale.baseText('nodeSettings.outputCleared.message'),
+					});
 				}
 
 				// Get only the parameters which are different to the defaults
@@ -748,7 +929,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 
 					if (Array.isArray(data)) {
 						data.splice(parseInt(index, 10), 1);
-						Vue.set(nodeParameters as object, path, data);
+						set(nodeParameters as object, path, data);
 					}
 				} else {
 					if (newValue === undefined) {
@@ -756,6 +937,12 @@ export default mixins(externalHooks, nodeHelpers).extend({
 					} else {
 						set(nodeParameters as object, parameterPath, newValue);
 					}
+					// If value is updated, remove parameter values that have invalid options
+					// so getNodeParameters checks don't fail
+					this.removeMismatchedOptionValues(nodeType, nodeParameters, {
+						name: parameterPath,
+						value: newValue,
+					});
 				}
 
 				// Get the parameters with the now new defaults according to the
@@ -782,20 +969,24 @@ export default mixins(externalHooks, nodeHelpers).extend({
 
 				this.workflowsStore.setNodeParameters(updateInformation);
 
-				this.$externalHooks().run('nodeSettings.valueChanged', {
+				void this.externalHooks.run('nodeSettings.valueChanged', {
 					parameterPath,
 					newValue,
 					parameters: this.parameters,
 					oldNodeParameters,
 				});
 
-				this.updateNodeParameterIssues(node, nodeType);
-				this.updateNodeCredentialIssues(node);
+				this.nodeHelpers.updateNodeParameterIssuesByName(node.name);
+				this.nodeHelpers.updateNodeCredentialIssuesByName(node.name);
+				this.$telemetry.trackNodeParametersValuesChange(nodeType.name, parameterData);
 			} else {
 				// A property on the node itself changed
 
 				// Update data in settings
-				Vue.set(this.nodeValues, parameterData.name, newValue);
+				this.nodeValues = {
+					...this.nodeValues,
+					[parameterData.name]: newValue,
+				};
 
 				// Update data in vuex
 				const updateInformation = {
@@ -808,11 +999,56 @@ export default mixins(externalHooks, nodeHelpers).extend({
 			}
 		},
 		/**
+		 * Removes node values that are not valid options for the given parameter.
+		 * This can happen when there are multiple node parameters with the same name
+		 * but different options and display conditions
+		 * @param nodeType The node type description
+		 * @param nodeParameterValues Current node parameter values
+		 * @param updatedParameter The parameter that was updated. Will be used to determine which parameters to remove based on their display conditions and option values
+		 */
+		removeMismatchedOptionValues(
+			nodeType: INodeTypeDescription,
+			nodeParameterValues: INodeParameters | null,
+			updatedParameter: { name: string; value: NodeParameterValue },
+		) {
+			nodeType.properties.forEach((prop) => {
+				const displayOptions = prop.displayOptions;
+				// Not processing parameters that are not set or don't have options
+				if (!nodeParameterValues?.hasOwnProperty(prop.name) || !displayOptions || !prop.options) {
+					return;
+				}
+				// Only process the parameters that depend on the updated parameter
+				const showCondition = displayOptions.show?.[updatedParameter.name];
+				const hideCondition = displayOptions.hide?.[updatedParameter.name];
+				if (showCondition === undefined && hideCondition === undefined) {
+					return;
+				}
+
+				let hasValidOptions = true;
+
+				// Every value should be a possible option
+				if (isINodePropertyCollectionList(prop.options) || isINodePropertiesList(prop.options)) {
+					hasValidOptions = Object.keys(nodeParameterValues).every(
+						(key) => (prop.options ?? []).find((option) => option.name === key) !== undefined,
+					);
+				} else if (isINodePropertyOptionsList(prop.options)) {
+					hasValidOptions = !!prop.options.find(
+						(option) => option.value === nodeParameterValues[prop.name],
+					);
+				}
+
+				if (!hasValidOptions && displayParameter(nodeParameterValues, prop, this.node)) {
+					unset(nodeParameterValues as object, prop.name);
+				}
+			});
+		},
+		/**
 		 * Sets the values of the active node in the internal settings variables
 		 */
 		setNodeValues() {
+			// No node selected
 			if (!this.node) {
-				// No node selected
+				this.nodeValuesInitialized = true;
 				return;
 			}
 
@@ -822,61 +1058,104 @@ export default mixins(externalHooks, nodeHelpers).extend({
 				const foundNodeSettings = [];
 				if (this.node.color) {
 					foundNodeSettings.push('color');
-					Vue.set(this.nodeValues, 'color', this.node.color);
+					this.nodeValues = {
+						...this.nodeValues,
+						color: this.node.color,
+					};
 				}
 
 				if (this.node.notes) {
 					foundNodeSettings.push('notes');
-					Vue.set(this.nodeValues, 'notes', this.node.notes);
+					this.nodeValues = {
+						...this.nodeValues,
+						notes: this.node.notes,
+					};
 				}
 
 				if (this.node.alwaysOutputData) {
 					foundNodeSettings.push('alwaysOutputData');
-					Vue.set(this.nodeValues, 'alwaysOutputData', this.node.alwaysOutputData);
+					this.nodeValues = {
+						...this.nodeValues,
+						alwaysOutputData: this.node.alwaysOutputData,
+					};
 				}
 
 				if (this.node.executeOnce) {
 					foundNodeSettings.push('executeOnce');
-					Vue.set(this.nodeValues, 'executeOnce', this.node.executeOnce);
+					this.nodeValues = {
+						...this.nodeValues,
+						executeOnce: this.node.executeOnce,
+					};
 				}
 
 				if (this.node.continueOnFail) {
-					foundNodeSettings.push('continueOnFail');
-					Vue.set(this.nodeValues, 'continueOnFail', this.node.continueOnFail);
+					foundNodeSettings.push('onError');
+					this.nodeValues = {
+						...this.nodeValues,
+						onError: 'continueRegularOutput',
+					};
+				}
+
+				if (this.node.onError) {
+					foundNodeSettings.push('onError');
+					this.nodeValues = {
+						...this.nodeValues,
+						onError: this.node.onError,
+					};
 				}
 
 				if (this.node.notesInFlow) {
 					foundNodeSettings.push('notesInFlow');
-					Vue.set(this.nodeValues, 'notesInFlow', this.node.notesInFlow);
+					this.nodeValues = {
+						...this.nodeValues,
+						notesInFlow: this.node.notesInFlow,
+					};
 				}
 
 				if (this.node.retryOnFail) {
 					foundNodeSettings.push('retryOnFail');
-					Vue.set(this.nodeValues, 'retryOnFail', this.node.retryOnFail);
+					this.nodeValues = {
+						...this.nodeValues,
+						retryOnFail: this.node.retryOnFail,
+					};
 				}
 
 				if (this.node.maxTries) {
 					foundNodeSettings.push('maxTries');
-					Vue.set(this.nodeValues, 'maxTries', this.node.maxTries);
+					this.nodeValues = {
+						...this.nodeValues,
+						maxTries: this.node.maxTries,
+					};
 				}
 
 				if (this.node.waitBetweenTries) {
 					foundNodeSettings.push('waitBetweenTries');
-					Vue.set(this.nodeValues, 'waitBetweenTries', this.node.waitBetweenTries);
+					this.nodeValues = {
+						...this.nodeValues,
+						waitBetweenTries: this.node.waitBetweenTries,
+					};
 				}
 
 				// Set default node settings
 				for (const nodeSetting of this.nodeSettings) {
 					if (!foundNodeSettings.includes(nodeSetting.name)) {
 						// Set default value
-						Vue.set(this.nodeValues, nodeSetting.name, nodeSetting.default);
+						this.nodeValues = {
+							...this.nodeValues,
+							[nodeSetting.name]: nodeSetting.default,
+						};
 					}
 				}
 
-				Vue.set(this.nodeValues, 'parameters', deepCopy(this.node.parameters));
+				this.nodeValues = {
+					...this.nodeValues,
+					parameters: deepCopy(this.node.parameters),
+				};
 			} else {
 				this.nodeValid = false;
 			}
+
+			this.nodeValuesInitialized = true;
 		},
 		onMissingNodeTextClick(event: MouseEvent) {
 			if ((event.target as Element).localName === 'a') {
@@ -888,8 +1167,8 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		onMissingNodeLearnMoreLinkClick() {
 			this.$telemetry.track('user clicked cnr docs link', {
 				source: 'missing node modal source',
-				package_name: this.node.type.split('.')[0],
-				node_type: this.node.type,
+				package_name: this.node?.type.split('.')[0],
+				node_type: this.node?.type,
 			});
 		},
 		onStopExecution() {
@@ -898,16 +1177,9 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		openSettings() {
 			this.openPanel = 'settings';
 		},
-	},
-	mounted() {
-		this.populateHiddenIssuesSet();
-		this.setNodeValues();
-		this.eventBus?.on('openSettings', this.openSettings);
-
-		this.updateNodeParameterIssues(this.node as INodeUi, this.nodeType);
-	},
-	destroyed() {
-		this.eventBus?.off('openSettings', this.openSettings);
+		onTabSelect(tab: 'params' | 'settings') {
+			this.openPanel = tab;
+		},
 	},
 });
 </script>
@@ -928,8 +1200,10 @@ export default mixins(externalHooks, nodeHelpers).extend({
 }
 </style>
 
-<style lang="scss">
+<style lang="scss" scoped>
 .node-settings {
+	display: flex;
+	flex-direction: column;
 	overflow: hidden;
 	background-color: var(--color-background-xlight);
 	height: 100%;
@@ -962,9 +1236,9 @@ export default mixins(externalHooks, nodeHelpers).extend({
 	}
 
 	.node-parameters-wrapper {
-		height: 100%;
 		overflow-y: auto;
-		padding: 0 20px 200px 20px;
+		padding: 0 var(--spacing-m) var(--spacing-l) var(--spacing-m);
+		flex-grow: 1;
 	}
 
 	&.dragging {
@@ -1006,6 +1280,14 @@ export default mixins(externalHooks, nodeHelpers).extend({
 	position: absolute;
 	right: 7px;
 	top: -25px;
+}
+
+.node-version {
+	border-top: var(--border-base);
+	font-size: var(--font-size-xs);
+	font-size: var(--font-size-2xs);
+	padding: var(--spacing-xs) 0 var(--spacing-2xs) 0;
+	color: var(--color-text-light);
 }
 
 .parameter-value {

@@ -90,7 +90,7 @@ export class AwsRekognition implements INodeType {
 				default: 'detectFaces',
 			},
 			{
-				displayName: 'Binary Data',
+				displayName: 'Binary File',
 				name: 'binaryData',
 				type: 'boolean',
 				default: false,
@@ -104,7 +104,7 @@ export class AwsRekognition implements INodeType {
 				description: 'Whether the image to analyze should be taken from binary field',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Input Binary Field',
 				displayOptions: {
 					show: {
 						operation: ['analyze'],
@@ -115,7 +115,7 @@ export class AwsRekognition implements INodeType {
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
-				description: 'Object property name which holds binary data',
+				hint: 'The name of the input binary field containing the file to be written',
 				required: true,
 			},
 			{
@@ -389,64 +389,62 @@ export class AwsRekognition implements INodeType {
 
 						if (type === 'detectText') {
 							action = 'RekognitionService.DetectText';
-
-							body.Filters = {};
-
-							const box =
-								((additionalFields.regionsOfInterestUi as IDataObject)
-									?.regionsOfInterestValues as IDataObject[]) || [];
-
-							if (box.length !== 0) {
-								//@ts-ignore
-								body.Filters.RegionsOfInterest = box.map((entry: IDataObject) => {
-									return { BoundingBox: keysTPascalCase(entry) };
-								});
-							}
-
-							const wordFilter = (additionalFields.wordFilterUi as IDataObject) || {};
-							if (Object.keys(wordFilter).length !== 0) {
-								//@ts-ignore
-								body.Filters.WordFilter = keysTPascalCase(wordFilter);
-							}
-
-							const isBinaryData = this.getNodeParameter('binaryData', i);
-							if (isBinaryData) {
-								const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
-								const binaryPropertyData = this.helpers.assertBinaryData(i, binaryPropertyName);
-								Object.assign(body, {
-									Image: {
-										Bytes: binaryPropertyData.data,
-									},
-								});
-							} else {
-								const bucket = this.getNodeParameter('bucket', i) as string;
-								const name = this.getNodeParameter('name', i) as string;
-
-								Object.assign(body, {
-									Image: {
-										S3Object: {
-											Bucket: bucket,
-											Name: name,
-										},
-									},
-								});
-
-								if (additionalFields.version) {
-									//@ts-ignore
-									body.Image.S3Object.Version = additionalFields.version as string;
-								}
-							}
-
-							responseData = await awsApiRequestREST.call(
-								this,
-								'rekognition',
-								'POST',
-								'',
-								JSON.stringify(body),
-								{},
-								{ 'X-Amz-Target': action, 'Content-Type': 'application/x-amz-json-1.1' },
-							);
 						}
+						body.Filters = {};
+
+						const box =
+							((additionalFields.regionsOfInterestUi as IDataObject)
+								?.regionsOfInterestValues as IDataObject[]) || [];
+
+						if (box.length !== 0) {
+							//@ts-ignore
+							body.Filters.RegionsOfInterest = box.map((entry: IDataObject) => {
+								return { BoundingBox: keysTPascalCase(entry) };
+							});
+						}
+
+						const wordFilter = (additionalFields.wordFilterUi as IDataObject) || {};
+						if (Object.keys(wordFilter).length !== 0) {
+							//@ts-ignore
+							body.Filters.WordFilter = keysTPascalCase(wordFilter);
+						}
+
+						const isBinaryData = this.getNodeParameter('binaryData', i);
+						if (isBinaryData) {
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+							const binaryPropertyData = this.helpers.assertBinaryData(i, binaryPropertyName);
+							Object.assign(body, {
+								Image: {
+									Bytes: binaryPropertyData.data,
+								},
+							});
+						} else {
+							const bucket = this.getNodeParameter('bucket', i) as string;
+							const name = this.getNodeParameter('name', i) as string;
+
+							Object.assign(body, {
+								Image: {
+									S3Object: {
+										Bucket: bucket,
+										Name: name,
+									},
+								},
+							});
+
+							if (additionalFields.version) {
+								//@ts-ignore
+								body.Image.S3Object.Version = additionalFields.version as string;
+							}
+						}
+						responseData = await awsApiRequestREST.call(
+							this,
+							'rekognition',
+							'POST',
+							'',
+							JSON.stringify(body),
+							{},
+							{ 'X-Amz-Target': action, 'Content-Type': 'application/x-amz-json-1.1' },
+						);
 					}
 				}
 
@@ -456,7 +454,7 @@ export class AwsRekognition implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ error: error.message });
 					continue;
 				}

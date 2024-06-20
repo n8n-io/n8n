@@ -1,20 +1,24 @@
 <script setup lang="ts">
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
-import { IUpdateInformation, NodeAuthenticationOption } from '@/Interface';
-import { useNDVStore } from '@/stores/ndv';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
+import type { IUpdateInformation, NodeAuthenticationOption } from '@/Interface';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import {
 	getAuthTypeForNodeCredential,
 	getNodeAuthFields,
 	getNodeAuthOptions,
 	isAuthRelatedParameter,
-} from '@/utils';
-import { INodeProperties, INodeTypeDescription, NodeParameterValue } from 'n8n-workflow';
+} from '@/utils/nodeTypesUtils';
+import type {
+	ICredentialType,
+	INodeProperties,
+	INodeTypeDescription,
+	NodeParameterValue,
+} from 'n8n-workflow';
 import { computed, onMounted, ref } from 'vue';
-import Vue from 'vue';
 
 export interface Props {
-	credentialType: Object;
+	credentialType: ICredentialType;
 }
 
 const emit = defineEmits<{
@@ -27,7 +31,7 @@ const ndvStore = useNDVStore();
 const props = defineProps<Props>();
 
 const selected = ref('');
-const authRelatedFieldsValues = ref({} as { [key: string]: NodeParameterValue });
+const authRelatedFieldsValues = ref<{ [key: string]: NodeParameterValue }>({});
 
 onMounted(() => {
 	if (activeNodeType.value?.credentials) {
@@ -43,7 +47,10 @@ onMounted(() => {
 
 	// Populate default values of related fields
 	authRelatedFields.value.forEach((field) => {
-		Vue.set(authRelatedFieldsValues.value, field.name, field.default);
+		authRelatedFieldsValues.value = {
+			...authRelatedFieldsValues.value,
+			[field.name]: field.default as NodeParameterValue,
+		};
 	});
 });
 
@@ -85,7 +92,7 @@ function shouldShowAuthOption(option: NodeAuthenticationOption): boolean {
 
 	let shouldDisplay = false;
 	Object.keys(authRelatedFieldsValues.value).forEach((fieldName) => {
-		if (option.displayOptions && option.displayOptions.show) {
+		if (option.displayOptions?.show) {
 			if (
 				option.displayOptions.show[fieldName]?.includes(authRelatedFieldsValues.value[fieldName])
 			) {
@@ -102,7 +109,10 @@ function onAuthTypeChange(newType: string): void {
 }
 
 function valueChanged(data: IUpdateInformation): void {
-	Vue.set(authRelatedFieldsValues.value, data.name, data.value);
+	authRelatedFieldsValues.value = {
+		...authRelatedFieldsValues.value,
+		[data.name]: data.value as NodeParameterValue,
+	};
 }
 
 defineExpose({
@@ -113,18 +123,18 @@ defineExpose({
 <template>
 	<div v-if="filteredNodeAuthOptions.length > 0" data-test-id="node-auth-type-selector">
 		<div v-for="parameter in authRelatedFields" :key="parameter.name" class="mb-l">
-			<parameter-input-full
+			<ParameterInputFull
 				:parameter="parameter"
 				:value="authRelatedFieldsValues[parameter.name] || parameter.default"
 				:path="parameter.name"
-				:displayOptions="false"
-				@valueChanged="valueChanged"
+				:display-options="false"
+				@update="valueChanged"
 			/>
 		</div>
 		<div>
 			<n8n-input-label
 				:label="$locale.baseText('credentialEdit.credentialConfig.authTypeSelectorLabel')"
-				:tooltipText="$locale.baseText('credentialEdit.credentialConfig.authTypeSelectorTooltip')"
+				:tooltip-text="$locale.baseText('credentialEdit.credentialConfig.authTypeSelectorTooltip')"
 				:required="true"
 			/>
 		</div>
@@ -135,7 +145,7 @@ defineExpose({
 			:label="prop.value"
 			:class="$style.authRadioButton"
 			border
-			@change="onAuthTypeChange"
+			@update:model-value="onAuthTypeChange"
 			>{{ prop.name }}</el-radio
 		>
 	</div>

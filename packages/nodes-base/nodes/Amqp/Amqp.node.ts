@@ -1,4 +1,4 @@
-import type { ContainerOptions, Dictionary, EventContext } from 'rhea';
+import type { Connection, ContainerOptions, Dictionary, EventContext } from 'rhea';
 import { create_container } from 'rhea';
 
 import type {
@@ -7,6 +7,10 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	ICredentialTestFunctions,
+	INodeCredentialTestResult,
+	ICredentialsDecrypted,
+	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -15,7 +19,7 @@ export class Amqp implements INodeType {
 		displayName: 'AMQP Sender',
 		name: 'amqp',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:amqp.png',
+		icon: 'file:amqp.svg',
 		group: ['transform'],
 		version: 1,
 		description: 'Sends a raw-message via AMQP 1.0, executed once per item',
@@ -28,6 +32,7 @@ export class Amqp implements INodeType {
 			{
 				name: 'amqp',
 				required: true,
+				testedBy: 'amqpConnectionTest',
 			},
 		],
 		properties: [
@@ -93,6 +98,52 @@ export class Amqp implements INodeType {
 				],
 			},
 		],
+	};
+
+	methods = {
+		credentialTest: {
+			async amqpConnectionTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data as ICredentialDataDecryptedObject;
+				const connectOptions: ContainerOptions = {
+					reconnect: false,
+					host: credentials.hostname as string,
+					hostname: credentials.hostname as string,
+					port: credentials.port as number,
+					username: credentials.username ? (credentials.username as string) : undefined,
+					password: credentials.password ? (credentials.password as string) : undefined,
+					transport: credentials.transportType ? (credentials.transportType as string) : undefined,
+				};
+
+				let conn: Connection | undefined = undefined;
+				try {
+					const container = create_container();
+					await new Promise<void>((resolve, reject) => {
+						container.on('connection_open', function (_contex: EventContext) {
+							resolve();
+						});
+						container.on('disconnected', function (context: EventContext) {
+							reject(context.error ?? new Error('unknown error'));
+						});
+						conn = container.connect(connectOptions);
+					});
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: (error as Error).message,
+					};
+				} finally {
+					if (conn) (conn as Connection).close();
+				}
+
+				return {
+					status: 'OK',
+					message: 'Connection successful!',
+				};
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -176,7 +227,7 @@ export class Amqp implements INodeType {
 
 			return [this.helpers.returnJsonArray(responseData)];
 		} catch (error) {
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(error)) {
 				return [this.helpers.returnJsonArray({ error: error.message })];
 			} else {
 				throw error;

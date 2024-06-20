@@ -126,7 +126,7 @@
 			}
 		]
 	},
-	"alias": ["API", "Request", "URL", "Build"],
+	"alias": ["API", "Request", "URL", "Build", "cURL"],
 	"subcategories": {
 		"Core Nodes": ["Helpers"]
 	}

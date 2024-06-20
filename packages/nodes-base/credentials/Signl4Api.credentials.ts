@@ -12,6 +12,7 @@ export class Signl4Api implements ICredentialType {
 			displayName: 'Team Secret',
 			name: 'teamSecret',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 			description: 'The team secret is the last part of your SIGNL4 webhook URL',
 		},

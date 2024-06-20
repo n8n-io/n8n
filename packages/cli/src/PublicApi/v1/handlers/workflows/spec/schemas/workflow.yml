@@ -7,9 +7,9 @@ required:
   - settings
 properties:
   id:
-    type: number
+    type: string
     readOnly: true
-    example: 1
+    example: 2tUt1wbLX592XDdX
   name:
     type: string
     example: Workflow 1
@@ -35,7 +35,6 @@ properties:
     $ref: './workflowSettings.yml'
   staticData:
     example: { lastId: 1 }
-    nullable: true
     anyOf:
       - type: string
         format: 'jsonString'
@@ -45,5 +44,5 @@ properties:
   tags:
     type: array
     items:
-      $ref: './tag.yml'
+      $ref: '../../../tags/spec/schemas/tag.yml'
     readOnly: true

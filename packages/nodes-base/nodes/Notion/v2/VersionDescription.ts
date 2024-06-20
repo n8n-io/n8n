@@ -1,26 +1,28 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { databaseFields, databaseOperations } from '../DatabaseDescription';
-
-import { userFields, userOperations } from '../UserDescription';
-
-import { pageFields, pageOperations } from '../PageDescription';
-
-import { blockFields, blockOperations } from '../BlockDescription';
-
-import { databasePageFields, databasePageOperations } from '../DatabasePageDescription';
-
 import type { INodeTypeDescription } from 'n8n-workflow';
+import { databaseFields, databaseOperations } from '../shared/descriptions/DatabaseDescription';
+
+import { userFields, userOperations } from '../shared/descriptions/UserDescription';
+
+import { pageFields, pageOperations } from '../shared/descriptions/PageDescription';
+
+import { blockFields, blockOperations } from '../shared/descriptions/BlockDescription';
+
+import {
+	databasePageFields,
+	databasePageOperations,
+} from '../shared/descriptions/DatabasePageDescription';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Notion',
 	name: 'notion',
-	icon: 'file:notion.svg',
+	icon: { light: 'file:notion.svg', dark: 'file:notion.dark.svg' },
 	group: ['output'],
-	version: 2,
+	version: [2, 2.1, 2.2],
 	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 	description: 'Consume Notion API',
 	defaults: {
-		name: 'Notion (Beta)',
+		name: 'Notion',
 	},
 	inputs: ['main'],
 	outputs: ['main'],
@@ -74,10 +76,10 @@ export const versionDescription: INodeTypeDescription = {
 			default: '',
 		},
 		{
-			displayName: 'Version',
-			name: 'version',
-			type: 'hidden',
-			default: 2,
+			displayName: '',
+			name: 'Credentials',
+			type: 'credentials',
+			default: '',
 		},
 		{
 			displayName: 'Resource',

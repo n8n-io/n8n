@@ -8,6 +8,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import type {
 	OnfleetAdmins,
 	OnfleetCloneOverrideTaskOptions,
@@ -31,8 +32,6 @@ import type {
 } from './interfaces';
 
 import { onfleetApiRequest, onfleetApiRequestAllItems } from './GenericFunctions';
-
-import moment from 'moment-timezone';
 
 const formatAddress = (
 	unparsed: boolean,
@@ -880,7 +879,7 @@ export class Onfleet {
 				}
 			} catch (error) {
 				//@ts-ignore
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					responseData.push({ error: (error as IDataObject).toString() });
 					continue;
 				}
@@ -924,7 +923,7 @@ export class Onfleet {
 					responseData.push(await onfleetApiRequest.call(this, 'GET', path));
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					responseData.push({ error: (error as IDataObject).toString() });
 					continue;
 				}
@@ -966,7 +965,7 @@ export class Onfleet {
 					responseData.push(await onfleetApiRequest.call(this, 'GET', path));
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					responseData.push({ error: (error as IDataObject).toString() });
 					continue;
 				}
@@ -1023,7 +1022,7 @@ export class Onfleet {
 					responseData.push(await onfleetApiRequest.call(this, 'GET', path));
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					responseData.push({ error: (error as IDataObject).toString() });
 					continue;
 				}
@@ -1086,7 +1085,7 @@ export class Onfleet {
 					responseData.push({ success: true });
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					responseData.push({ error: (error as IDataObject).toString() });
 					continue;
 				}
@@ -1141,7 +1140,7 @@ export class Onfleet {
 					responseData.push(await onfleetApiRequest.call(this, 'PUT', path, hubData));
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					responseData.push({ error: (error as IDataObject).toString() });
 					continue;
 				}
@@ -1260,7 +1259,7 @@ export class Onfleet {
 					responseData.push(await onfleetApiRequest.call(this, 'POST', path, workerSchedule));
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					responseData.push({ error: (error as IDataObject).toString() });
 					continue;
 				}
@@ -1309,7 +1308,7 @@ export class Onfleet {
 					responseData.push({ success: true });
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					responseData.push({ error: (error as IDataObject).toString() });
 					continue;
 				}
@@ -1367,7 +1366,7 @@ export class Onfleet {
 					responseData.push(await onfleetApiRequest.call(this, 'PUT', path, { tasks, ...options }));
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					responseData.push({ error: (error as IDataObject).toString() });
 					continue;
 				}
@@ -1463,7 +1462,7 @@ export class Onfleet {
 					responseData.push(await onfleetApiRequest.call(this, 'POST', path, teamAutoDispatch));
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					responseData.push({ error: (error as IDataObject).toString() });
 					continue;
 				}

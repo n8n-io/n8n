@@ -1,11 +1,10 @@
 <template>
-	<!-- eslint-disable vue/no-mutating-props -->
 	<a
 		v-if="version"
-		:set="(version = version)"
 		:href="version.documentationUrl"
 		target="_blank"
 		:class="$style.card"
+		data-test-id="version-card"
 	>
 		<div :class="$style.header">
 			<div>
@@ -13,9 +12,7 @@
 					{{ `${$locale.baseText('versionCard.version')} ${version.name}` }}
 				</div>
 				<WarningTooltip v-if="version.hasSecurityIssue">
-					<template>
-						<span v-html="$locale.baseText('versionCard.thisVersionHasASecurityIssue')"></span>
-					</template>
+					<span v-html="$locale.baseText('versionCard.thisVersionHasASecurityIssue')"></span>
 				</WarningTooltip>
 				<Badge
 					v-if="version.hasSecurityFix"
@@ -33,49 +30,44 @@
 			</div>
 		</div>
 		<div
-			:class="$style.divider"
 			v-if="version.description || (version.nodes && version.nodes.length)"
+			:class="$style.divider"
 		></div>
 		<div>
 			<div
 				v-if="version.description"
-				v-html="version.description"
 				:class="$style.description"
+				v-html="version.description"
 			></div>
 			<div v-if="version.nodes && version.nodes.length > 0" :class="$style.nodes">
 				<NodeIcon
 					v-for="node in version.nodes"
 					:key="node.name"
-					:nodeType="node"
-					:title="$options.nodeName(node)"
+					:node-type="node"
+					:title="nodeName(node)"
 				/>
 			</div>
 		</div>
 	</a>
 </template>
 
-<script lang="ts">
-import Vue from 'vue';
+<script setup lang="ts">
 import NodeIcon from './NodeIcon.vue';
 import TimeAgo from './TimeAgo.vue';
 import Badge from './Badge.vue';
 import WarningTooltip from './WarningTooltip.vue';
-import { IVersionNode } from '@/Interface';
+import type { IVersion, IVersionNode } from '@/Interface';
+import { useI18n } from '@/composables/useI18n';
 
-Vue.component('NodeIcon', NodeIcon);
-Vue.component('TimeAgo', TimeAgo);
-Vue.component('Badge', Badge);
-Vue.component('WarningTooltip', WarningTooltip);
+defineProps<{
+	version: IVersion;
+}>();
 
-export default Vue.extend({
-	components: { NodeIcon, TimeAgo, Badge, WarningTooltip },
-	name: 'VersionCard',
-	props: ['version'],
-	// @ts-ignore
-	nodeName(node: IVersionNode): string {
-		return node !== null ? node.displayName : this.$locale.baseText('versionCard.unknown');
-	},
-});
+const i18n = useI18n();
+
+const nodeName = (node: IVersionNode): string => {
+	return node !== null ? node.displayName : i18n.baseText('versionCard.unknown');
+};
 </script>
 
 <style module lang="scss">

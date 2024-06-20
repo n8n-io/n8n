@@ -15,12 +15,13 @@
 		</div>
 		<n8n-tooltip :disabled="!disabled" placement="bottom">
 			<template #content>
-				<div>{{ $locale.baseText('workflowActivator.thisWorkflowHasNoTriggerNodes') }}</div>
+				<div>
+					{{ $locale.baseText('workflowActivator.thisWorkflowHasNoTriggerNodes') }}
+				</div>
 			</template>
 			<el-switch
 				v-loading="updatingWorkflowActivation"
-				:value="workflowActive"
-				@change="activeChanged"
+				:model-value="workflowActive"
 				:title="
 					workflowActive
 						? $locale.baseText('workflowActivator.deactivateWorkflow')
@@ -29,13 +30,13 @@
 				:disabled="disabled || updatingWorkflowActivation"
 				:active-color="getActiveColor"
 				inactive-color="#8899AA"
-				element-loading-spinner="el-icon-loading"
 				data-test-id="workflow-activate-switch"
+				@update:model-value="activeChanged"
 			>
 			</el-switch>
 		</n8n-tooltip>
 
-		<div class="could-not-be-started" v-if="couldNotBeStarted">
+		<div v-if="couldNotBeStarted" class="could-not-be-started">
 			<n8n-tooltip placement="top">
 				<template #content>
 					<div
@@ -43,29 +44,32 @@
 						v-html="$locale.baseText('workflowActivator.theWorkflowIsSetToBeActiveBut')"
 					></div>
 				</template>
-				<font-awesome-icon @click="displayActivationError" icon="exclamation-triangle" />
+				<font-awesome-icon icon="exclamation-triangle" @click="displayActivationError" />
 			</n8n-tooltip>
 		</div>
 	</div>
 </template>
 
 <script lang="ts">
-import { showMessage } from '@/mixins/showMessage';
-import { workflowActivate } from '@/mixins/workflowActivate';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useToast } from '@/composables/useToast';
+import { useWorkflowActivate } from '@/composables/useWorkflowActivate';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { mapStores } from 'pinia';
-import mixins from 'vue-typed-mixins';
-import { getActivatableTriggerNodes } from '@/utils';
+import { defineComponent } from 'vue';
+import { getActivatableTriggerNodes } from '@/utils/nodeTypesUtils';
 
-export default mixins(showMessage, workflowActivate).extend({
+export default defineComponent({
 	name: 'WorkflowActivator',
 	props: ['workflowActive', 'workflowId'],
+	setup() {
+		return {
+			...useToast(),
+			...useWorkflowActivate(),
+		};
+	},
 	computed: {
 		...mapStores(useUIStore, useWorkflowsStore),
-		getStateIsDirty(): boolean {
-			return this.uiStore.stateIsDirty;
-		},
 		nodesIssuesExist(): boolean {
 			return this.workflowsStore.nodesIssuesExist;
 		},
@@ -77,7 +81,7 @@ export default mixins(showMessage, workflowActivate).extend({
 			return this.workflowActive === true && this.isWorkflowActive !== this.workflowActive;
 		},
 		getActiveColor(): string {
-			if (this.couldNotBeStarted === true) {
+			if (this.couldNotBeStarted) {
 				return '#ff4949';
 			}
 			return '#13ce66';
@@ -105,7 +109,7 @@ export default mixins(showMessage, workflowActivate).extend({
 		async displayActivationError() {
 			let errorMessage: string;
 			try {
-				const errorData = await this.restApi().getActivationError(this.workflowId);
+				const errorData = await this.workflowsStore.getActivationError(this.workflowId);
 
 				if (errorData === undefined) {
 					errorMessage = this.$locale.baseText(
@@ -114,7 +118,7 @@ export default mixins(showMessage, workflowActivate).extend({
 				} else {
 					errorMessage = this.$locale.baseText(
 						'workflowActivator.showMessage.displayActivationError.message.errorDataNotUndefined',
-						{ interpolate: { message: errorData.error.message } },
+						{ interpolate: { message: errorData } },
 					);
 				}
 			} catch (error) {
@@ -123,11 +127,12 @@ export default mixins(showMessage, workflowActivate).extend({
 				);
 			}
 
-			this.$showMessage({
+			this.showMessage({
 				title: this.$locale.baseText('workflowActivator.showMessage.displayActivationError.title'),
 				message: errorMessage,
 				type: 'warning',
 				duration: 0,
+				dangerouslyUseHTMLString: true,
 			});
 		},
 	},
@@ -153,11 +158,7 @@ export default mixins(showMessage, workflowActivate).extend({
 
 .could-not-be-started {
 	display: inline-block;
-	color: #ff4949;
+	color: var(--color-text-danger);
 	margin-left: 0.5em;
-}
-
-::v-deep .el-loading-spinner {
-	margin-top: -10px;
 }
 </style>

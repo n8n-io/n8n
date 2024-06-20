@@ -1,12 +1,10 @@
-import { createMockExecuteFunction } from '../../../../test/nodes/Helpers';
-
+import type { IDataObject, INode } from 'n8n-workflow';
+import mysql2 from 'mysql2/promise';
 import { configureQueryRunner } from '../../v2/helpers/utils';
 import type { Mysql2Pool, QueryRunner } from '../../v2/helpers/interfaces';
 import { BATCH_MODE } from '../../v2/helpers/interfaces';
 
-import type { IDataObject, INode } from 'n8n-workflow';
-
-import mysql2 from 'mysql2/promise';
+import { createMockExecuteFunction } from '@test/nodes/Helpers';
 
 const mySqlMockNode: INode = {
 	id: '1',
@@ -23,7 +21,7 @@ const fakeConnection = {
 	format(query: string, values: any[]) {
 		return mysql2.format(query, values);
 	},
-	query: jest.fn(async () => Promise.resolve([{}])),
+	query: jest.fn(async () => [{}]),
 	release: jest.fn(),
 	beginTransaction: jest.fn(),
 	commit: jest.fn(),
@@ -35,7 +33,7 @@ const createFakePool = (connection: IDataObject) => {
 		getConnection() {
 			return connection;
 		},
-		query: jest.fn(async () => Promise.resolve([{}])),
+		query: jest.fn(async () => [{}]),
 	} as unknown as Mysql2Pool;
 };
 
@@ -44,8 +42,41 @@ describe('Test MySql V2, runQueries', () => {
 		jest.clearAllMocks();
 	});
 
+	describe('in single query batch mode', () => {
+		it('should set paired items correctly', async () => {
+			const nodeOptions = { queryBatching: BATCH_MODE.SINGLE, nodeVersion: 2 };
+			const pool = createFakePool(fakeConnection);
+			const mockExecuteFns = createMockExecuteFunction({}, mySqlMockNode);
+
+			// @ts-expect-error
+			pool.query = jest.fn(async () => [
+				[[{ finishedAt: '2023-12-30' }], [{ finishedAt: '2023-12-31' }]],
+			]);
+
+			const result = await configureQueryRunner.call(
+				mockExecuteFns,
+				nodeOptions,
+				pool,
+			)([
+				{ query: 'SELECT finishedAt FROM my_table WHERE id = ?', values: [123] },
+				{ query: 'SELECT finishedAt FROM my_table WHERE id = ?', values: [456] },
+			]);
+
+			expect(result).toEqual([
+				{
+					json: { finishedAt: '2023-12-30' },
+					pairedItem: { item: 0 },
+				},
+				{
+					json: { finishedAt: '2023-12-31' },
+					pairedItem: { item: 1 },
+				},
+			]);
+		});
+	});
+
 	it('should execute in "Single" mode, should return success true', async () => {
-		const nodeOptions: IDataObject = { queryBatching: BATCH_MODE.SINGLE };
+		const nodeOptions: IDataObject = { queryBatching: BATCH_MODE.SINGLE, nodeVersion: 2 };
 
 		const pool = createFakePool(fakeConnection);
 		const fakeExecuteFunction = createMockExecuteFunction({}, mySqlMockNode);
@@ -67,7 +98,7 @@ describe('Test MySql V2, runQueries', () => {
 
 		expect(result).toBeDefined();
 		expect(result).toHaveLength(1);
-		expect(result).toEqual([{ json: { success: true } }]);
+		expect(result).toEqual([{ json: { success: true }, pairedItem: [{ item: 0 }] }]);
 
 		expect(poolGetConnectionSpy).toBeCalledTimes(1);
 
@@ -81,7 +112,7 @@ describe('Test MySql V2, runQueries', () => {
 	});
 
 	it('should execute in "independently" mode, should return success true', async () => {
-		const nodeOptions: IDataObject = { queryBatching: BATCH_MODE.INDEPENDENTLY };
+		const nodeOptions: IDataObject = { queryBatching: BATCH_MODE.INDEPENDENTLY, nodeVersion: 2 };
 
 		const pool = createFakePool(fakeConnection);
 
@@ -108,7 +139,7 @@ describe('Test MySql V2, runQueries', () => {
 
 		expect(result).toBeDefined();
 		expect(result).toHaveLength(1);
-		expect(result).toEqual([{ json: { success: true } }]);
+		expect(result).toEqual([{ json: { success: true }, pairedItem: { item: 0 } }]);
 
 		expect(poolGetConnectionSpy).toBeCalledTimes(1);
 
@@ -126,7 +157,7 @@ describe('Test MySql V2, runQueries', () => {
 	});
 
 	it('should execute in "transaction" mode, should return success true', async () => {
-		const nodeOptions: IDataObject = { queryBatching: BATCH_MODE.TRANSACTION };
+		const nodeOptions: IDataObject = { queryBatching: BATCH_MODE.TRANSACTION, nodeVersion: 2 };
 
 		const pool = createFakePool(fakeConnection);
 
@@ -155,7 +186,7 @@ describe('Test MySql V2, runQueries', () => {
 
 		expect(result).toBeDefined();
 		expect(result).toHaveLength(1);
-		expect(result).toEqual([{ json: { success: true } }]);
+		expect(result).toEqual([{ json: { success: true }, pairedItem: { item: 0 } }]);
 
 		expect(poolGetConnectionSpy).toBeCalledTimes(1);
 

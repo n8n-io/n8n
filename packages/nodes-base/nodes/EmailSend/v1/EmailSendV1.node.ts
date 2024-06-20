@@ -31,12 +31,6 @@ const versionDescription: INodeTypeDescription = {
 		},
 	],
 	properties: [
-		{
-			displayName: 'Version 1',
-			name: 'notice',
-			type: 'notice',
-			default: '',
-		},
 		// TODO: Add choice for text as text or html  (maybe also from name)
 		{
 			displayName: 'From Email',
@@ -232,7 +226,7 @@ export class EmailSendV1 implements INodeType {
 					},
 				});
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({
 						json: {
 							error: error.message,
@@ -247,6 +241,6 @@ export class EmailSendV1 implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

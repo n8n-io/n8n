@@ -1,10 +1,10 @@
 import { afterAll, beforeAll } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { setupServer } from '@/__tests__/server';
-import { useEnvironmentsStore } from '@/stores/environments.ee';
-import { EnvironmentVariable } from '@/Interface';
+import { useEnvironmentsStore } from '@/stores/environments.ee.store';
+import type { EnvironmentVariable } from '@/Interface';
 
-describe('store', () => {
+describe('environments.store', () => {
 	let server: ReturnType<typeof setupServer>;
 	const seedRecordsCount = 3;
 

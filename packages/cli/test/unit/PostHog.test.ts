@@ -1,6 +1,8 @@
 import { PostHog } from 'posthog-node';
+import { InstanceSettings } from 'n8n-core';
 import { PostHogClient } from '@/posthog';
 import config from '@/config';
+import { mockInstance } from '../shared/mocking';
 
 jest.mock('posthog-node');
 
@@ -9,6 +11,8 @@ describe('PostHog', () => {
 	const userId = 'distinct-id';
 	const apiKey = 'api-key';
 	const apiHost = 'api-host';
+
+	const instanceSettings = mockInstance(InstanceSettings, { instanceId });
 
 	beforeAll(() => {
 		config.set('diagnostics.config.posthog.apiKey', apiKey);
@@ -21,17 +25,17 @@ describe('PostHog', () => {
 	});
 
 	it('inits PostHog correctly', async () => {
-		const ph = new PostHogClient();
-		await ph.init(instanceId);
+		const ph = new PostHogClient(instanceSettings);
+		await ph.init();
 
-		expect(PostHog.prototype.constructor).toHaveBeenCalledWith(apiKey, {host: apiHost});
+		expect(PostHog.prototype.constructor).toHaveBeenCalledWith(apiKey, { host: apiHost });
 	});
 
 	it('does not initialize or track if diagnostics are not enabled', async () => {
 		config.set('diagnostics.enabled', false);
 
-		const ph = new PostHogClient();
-		await ph.init(instanceId);
+		const ph = new PostHogClient(instanceSettings);
+		await ph.init();
 
 		ph.track({
 			userId: 'test',
@@ -50,8 +54,8 @@ describe('PostHog', () => {
 			test: true,
 		};
 
-		const ph = new PostHogClient();
-		await ph.init(instanceId);
+		const ph = new PostHogClient(instanceSettings);
+		await ph.init();
 
 		ph.track({
 			userId,
@@ -70,21 +74,18 @@ describe('PostHog', () => {
 
 	it('gets feature flags', async () => {
 		const createdAt = new Date();
-		const ph = new PostHogClient();
-		await ph.init(instanceId);
+		const ph = new PostHogClient(instanceSettings);
+		await ph.init();
 
-		ph.getFeatureFlags({
+		await ph.getFeatureFlags({
 			id: userId,
 			createdAt,
 		});
 
-		expect(PostHog.prototype.getAllFlags).toHaveBeenCalledWith(
-			`${instanceId}#${userId}`,
-			{
-				personProperties: {
-					created_at_timestamp: createdAt.getTime().toString(),
-				},
-			}
-		);
+		expect(PostHog.prototype.getAllFlags).toHaveBeenCalledWith(`${instanceId}#${userId}`, {
+			personProperties: {
+				created_at_timestamp: createdAt.getTime().toString(),
+			},
+		});
 	});
 });

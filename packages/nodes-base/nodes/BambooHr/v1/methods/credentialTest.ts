@@ -26,7 +26,7 @@ async function validateCredentials(
 		url: `https://api.bamboohr.com/api/gateway.php/${subdomain}/v1/employees/directory`,
 	};
 
-	return this.helpers.request(options);
+	return await this.helpers.request(options);
 }
 
 export async function bambooHrApiCredentialTest(

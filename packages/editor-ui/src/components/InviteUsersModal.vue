@@ -1,7 +1,6 @@
 <template>
 	<Modal
 		:name="INVITE_USER_MODAL_KEY"
-		@enter="onSubmit"
 		:title="
 			$locale.baseText(
 				showInviteUrls ? 'settings.users.copyInviteUrls' : 'settings.users.inviteNewUsers',
@@ -9,9 +8,19 @@
 		"
 		:center="true"
 		width="460px"
-		:eventBus="modalBus"
+		:event-bus="modalBus"
+		@enter="onSubmit"
 	>
 		<template #content>
+			<n8n-notice v-if="!isAdvancedPermissionsEnabled">
+				<i18n-t keypath="settings.users.advancedPermissions.warning">
+					<template #link>
+						<n8n-link size="small" @click="goToUpgradeAdvancedPermissions">
+							{{ $locale.baseText('settings.users.advancedPermissions.warning.link') }}
+						</n8n-link>
+					</template>
+				</i18n-t>
+			</n8n-notice>
 			<div v-if="showInviteUrls">
 				<n8n-users-list :users="invitedUsers">
 					<template #actions="{ user }">
@@ -33,49 +42,41 @@
 			<n8n-form-inputs
 				v-else
 				:inputs="config"
-				:eventBus="formBus"
-				:columnView="true"
-				@input="onInput"
+				:event-bus="formBus"
+				:column-view="true"
+				@update="onInput"
 				@submit="onSubmit"
 			/>
-			<n8n-info-tip v-if="!settingsStore.isSmtpSetup" class="mt-s">
-				<i18n path="settings.users.setupSMTPInfo">
-					<template #link>
-						<a
-							href="https://docs.n8n.io/reference/user-management.html#step-one-smtp"
-							target="_blank"
-						>
-							{{ $locale.baseText('settings.users.setupSMTPInfo.link') }}
-						</a>
-					</template>
-				</i18n>
-			</n8n-info-tip>
 		</template>
 		<template v-if="!showInviteUrls" #footer>
 			<n8n-button
 				:loading="loading"
 				:disabled="!enabledButton"
 				:label="buttonLabel"
-				@click="onSubmitClick"
 				float="right"
+				@click="onSubmitClick"
 			/>
 		</template>
 	</Modal>
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
-
-import { showMessage } from '@/mixins/showMessage';
-import { copyPaste } from '@/mixins/copyPaste';
-import Modal from './Modal.vue';
-import { IFormInputs, IInviteResponse, IUser } from '@/Interface';
-import { VALID_EMAIL_REGEX, INVITE_USER_MODAL_KEY } from '@/constants';
-import { ROLE } from '@/utils';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { useUsersStore } from '@/stores/users';
-import { useSettingsStore } from '@/stores/settings';
-import { createEventBus } from '@/event-bus';
+import { useToast } from '@/composables/useToast';
+import Modal from './Modal.vue';
+import type { IFormInputs, IInviteResponse, IUser, InvitableRoleName } from '@/Interface';
+import {
+	EnterpriseEditionFeature,
+	VALID_EMAIL_REGEX,
+	INVITE_USER_MODAL_KEY,
+	ROLE,
+} from '@/constants';
+import { useUsersStore } from '@/stores/users.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUIStore } from '@/stores/ui.store';
+import { createEventBus } from 'n8n-design-system/utils';
+import { useClipboard } from '@/composables/useClipboard';
 
 const NAME_EMAIL_FORMAT_REGEX = /^.* <(.*)>$/;
 
@@ -90,13 +91,21 @@ function getEmail(email: string): string {
 	return parsed;
 }
 
-export default mixins(showMessage, copyPaste).extend({
-	components: { Modal },
+export default defineComponent({
 	name: 'InviteUsersModal',
+	components: { Modal },
 	props: {
 		modalName: {
 			type: String,
 		},
+	},
+	setup() {
+		const clipboard = useClipboard();
+
+		return {
+			clipboard,
+			...useToast(),
+		};
 	},
 	data() {
 		return {
@@ -104,6 +113,7 @@ export default mixins(showMessage, copyPaste).extend({
 			formBus: createEventBus(),
 			modalBus: createEventBus(),
 			emails: '',
+			role: ROLE.Member as InvitableRoleName,
 			showInviteUrls: null as IInviteResponse[] | null,
 			loading: false,
 			INVITE_USER_MODAL_KEY,
@@ -129,7 +139,7 @@ export default mixins(showMessage, copyPaste).extend({
 			},
 			{
 				name: 'role',
-				initialValue: 'member',
+				initialValue: ROLE.Member,
 				properties: {
 					label: this.$locale.baseText('auth.role'),
 					required: true,
@@ -139,6 +149,11 @@ export default mixins(showMessage, copyPaste).extend({
 							value: ROLE.Member,
 							label: this.$locale.baseText('auth.roles.member'),
 						},
+						{
+							value: ROLE.Admin,
+							label: this.$locale.baseText('auth.roles.admin'),
+							disabled: !this.isAdvancedPermissionsEnabled,
+						},
 					],
 					capitalize: true,
 				},
@@ -146,7 +161,7 @@ export default mixins(showMessage, copyPaste).extend({
 		];
 	},
 	computed: {
-		...mapStores(useUsersStore, useSettingsStore),
+		...mapStores(useUsersStore, useSettingsStore, useUIStore),
 		emailsCount(): number {
 			return this.emails.split(',').filter((email: string) => !!email.trim()).length;
 		},
@@ -171,8 +186,13 @@ export default mixins(showMessage, copyPaste).extend({
 			return this.showInviteUrls
 				? this.usersStore.allUsers.filter((user) =>
 						this.showInviteUrls!.find((invite) => invite.user.id === user.id),
-				  )
+					)
 				: [];
+		},
+		isAdvancedPermissionsEnabled(): boolean {
+			return this.settingsStore.isEnterpriseFeatureEnabled(
+				EnterpriseEditionFeature.AdvancedPermissions,
+			);
 		},
 	},
 	methods: {
@@ -196,9 +216,12 @@ export default mixins(showMessage, copyPaste).extend({
 
 			return false;
 		},
-		onInput(e: { name: string; value: string }) {
+		onInput(e: { name: string; value: InvitableRoleName }) {
 			if (e.name === 'emails') {
 				this.emails = e.value;
+			}
+			if (e.name === 'role') {
+				this.role = e.value;
 			}
 		},
 		async onSubmit() {
@@ -207,14 +230,14 @@ export default mixins(showMessage, copyPaste).extend({
 
 				const emails = this.emails
 					.split(',')
-					.map((email) => ({ email: getEmail(email) }))
+					.map((email) => ({ email: getEmail(email), role: this.role }))
 					.filter((invite) => !!invite.email);
 
 				if (emails.length === 0) {
 					throw new Error(this.$locale.baseText('settings.users.noUsersToInvite'));
 				}
 
-				const invited: IInviteResponse[] = await this.usersStore.inviteUsers(emails);
+				const invited = await this.usersStore.inviteUsers(emails);
 				const erroredInvites = invited.filter((invite) => invite.error);
 				const successfulEmailInvites = invited.filter(
 					(invite) => !invite.error && invite.user.emailSent,
@@ -224,7 +247,7 @@ export default mixins(showMessage, copyPaste).extend({
 				);
 
 				if (successfulEmailInvites.length) {
-					this.$showMessage({
+					this.showMessage({
 						type: 'success',
 						title: this.$locale.baseText(
 							successfulEmailInvites.length > 1
@@ -241,10 +264,10 @@ export default mixins(showMessage, copyPaste).extend({
 
 				if (successfulUrlInvites.length) {
 					if (successfulUrlInvites.length === 1) {
-						this.copyToClipboard(successfulUrlInvites[0].user.inviteAcceptUrl);
+						void this.clipboard.copy(successfulUrlInvites[0].user.inviteAcceptUrl);
 					}
 
-					this.$showMessage({
+					this.showMessage({
 						type: 'success',
 						title: this.$locale.baseText(
 							successfulUrlInvites.length > 1
@@ -266,7 +289,7 @@ export default mixins(showMessage, copyPaste).extend({
 
 				if (erroredInvites.length) {
 					setTimeout(() => {
-						this.$showMessage({
+						this.showMessage({
 							type: 'error',
 							title: this.$locale.baseText('settings.users.usersEmailedError'),
 							message: this.$locale.baseText('settings.users.emailInvitesSentError', {
@@ -282,12 +305,12 @@ export default mixins(showMessage, copyPaste).extend({
 					this.modalBus.emit('close');
 				}
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('settings.users.usersInvitedError'));
+				this.showError(error, this.$locale.baseText('settings.users.usersInvitedError'));
 			}
 			this.loading = false;
 		},
 		showCopyInviteLinkToast(successfulUrlInvites: IInviteResponse[]) {
-			this.$showMessage({
+			this.showMessage({
 				type: 'success',
 				title: this.$locale.baseText(
 					successfulUrlInvites.length > 1
@@ -311,9 +334,12 @@ export default mixins(showMessage, copyPaste).extend({
 		},
 		onCopyInviteLink(user: IUser) {
 			if (user.inviteAcceptUrl && this.showInviteUrls) {
-				this.copyToClipboard(user.inviteAcceptUrl);
+				void this.clipboard.copy(user.inviteAcceptUrl);
 				this.showCopyInviteLinkToast([]);
 			}
+		},
+		goToUpgradeAdvancedPermissions() {
+			void this.uiStore.goToUpgrade('advanced-permissions', 'upgrade-advanced-permissions');
 		},
 	},
 });

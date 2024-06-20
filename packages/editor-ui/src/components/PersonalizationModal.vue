@@ -3,11 +3,11 @@
 		:name="PERSONALIZATION_MODAL_KEY"
 		:title="$locale.baseText('personalizationModal.customizeN8n')"
 		:subtitle="$locale.baseText('personalizationModal.theseQuestionsHelpUs')"
-		:centerTitle="true"
-		:showClose="false"
-		:eventBus="modalBus"
-		:closeOnClickModal="false"
-		:closeOnPressEscape="false"
+		:center-title="true"
+		:show-close="false"
+		:event-bus="modalBus"
+		:close-on-click-modal="false"
+		:close-on-press-escape="false"
 		width="460px"
 		data-test-id="personalization-form"
 		@enter="onSave"
@@ -15,20 +15,37 @@
 		<template #content>
 			<div :class="$style.container">
 				<n8n-form-inputs
+					v-model="formValues"
 					:inputs="survey"
-					:columnView="true"
-					:eventBus="formBus"
+					:column-view="true"
+					:event-bus="formBus"
+					:teleported="teleported"
+					tag-size="small"
 					@submit="onSubmit"
 				/>
+				<n8n-card v-if="canRegisterForEnterpriseTrial">
+					<n8n-checkbox v-model="registerForEnterpriseTrial">
+						<i18n-t keypath="personalizationModal.registerEmailForTrial">
+							<template #trial>
+								<strong>
+									{{ $locale.baseText('personalizationModal.registerEmailForTrial.enterprise') }}
+								</strong>
+							</template>
+						</i18n-t>
+						<n8n-text size="small" tag="div" color="text-light">
+							{{ $locale.baseText('personalizationModal.registerEmailForTrial.notice') }}
+						</n8n-text>
+					</n8n-checkbox>
+				</n8n-card>
 			</div>
 		</template>
 		<template #footer>
 			<div>
 				<n8n-button
-					@click="onSave"
 					:loading="isSaving"
 					:label="$locale.baseText('personalizationModal.getStarted')"
 					float="right"
+					@click="onSave"
 				/>
 			</div>
 		</template>
@@ -36,10 +53,8 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
-
-const SURVEY_VERSION = 'v4';
-
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import {
 	COMPANY_SIZE_100_499,
 	COMPANY_SIZE_1000_OR_MORE,
@@ -124,35 +139,88 @@ import {
 	REPORTED_SOURCE_OTHER_KEY,
 	VIEWS,
 } from '@/constants';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { showMessage } from '@/mixins/showMessage';
-import Modal from './Modal.vue';
-import { IFormInputs, IPersonalizationLatestVersion, IUser } from '@/Interface';
-import { getAccountAge } from '@/utils';
-import { GenericValue } from 'n8n-workflow';
-import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useSettingsStore } from '@/stores/settings';
-import { useRootStore } from '@/stores/n8nRootStore';
-import { useUsersStore } from '@/stores/users';
-import { createEventBus } from '@/event-bus';
+import { useToast } from '@/composables/useToast';
+import Modal from '@/components/Modal.vue';
+import type { IFormInputs, IPersonalizationLatestVersion, IUser } from '@/Interface';
+import { getAccountAge } from '@/utils/userUtils';
+import type { GenericValue } from 'n8n-workflow';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useRootStore } from '@/stores/root.store';
+import { useUsersStore } from '@/stores/users.store';
+import { createEventBus } from 'n8n-design-system/utils';
+import { usePostHog } from '@/stores/posthog.store';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useUsageStore } from '@/stores/usage.store';
+import { useMessage } from '@/composables/useMessage';
 
-export default mixins(showMessage, workflowHelpers).extend({
-	components: { Modal },
+const SURVEY_VERSION = 'v4';
+
+export default defineComponent({
 	name: 'PersonalizationModal',
+	components: { Modal },
+	props: {
+		teleported: {
+			type: Boolean,
+			default: true,
+		},
+	},
+	setup() {
+		const externalHooks = useExternalHooks();
+
+		return {
+			externalHooks,
+			...useToast(),
+			...useMessage(),
+		};
+	},
 	data() {
 		return {
+			formValues: {} as Record<string, string>,
 			isSaving: false,
 			PERSONALIZATION_MODAL_KEY,
 			otherWorkAreaFieldVisible: false,
 			otherCompanyIndustryFieldVisible: false,
 			showAllIndustryQuestions: true,
+			registerForEnterpriseTrial: false,
 			modalBus: createEventBus(),
 			formBus: createEventBus(),
+			domainBlocklist: [] as string[],
 		};
 	},
 	computed: {
-		...mapStores(useRootStore, useSettingsStore, useUIStore, useUsersStore),
+		...mapStores(
+			useRootStore,
+			useSettingsStore,
+			useUIStore,
+			useUsersStore,
+			useUsageStore,
+			usePostHog,
+		),
+		currentUser() {
+			return this.usersStore.currentUser;
+		},
+		canRegisterForEnterpriseTrial() {
+			if (
+				this.settingsStore.isCloudDeployment ||
+				this.domainBlocklist.length === 0 ||
+				!this.currentUser?.email
+			) {
+				return false;
+			}
+
+			const isSizeEligible = [COMPANY_SIZE_500_999, COMPANY_SIZE_1000_OR_MORE].includes(
+				this.formValues[COMPANY_SIZE_KEY],
+			);
+
+			const emailParts = this.currentUser.email.split('@');
+			const emailDomain = emailParts[emailParts.length - 1];
+			const isEmailEligible = !this.domainBlocklist.find(
+				(blocklistedDomain) => emailDomain === blocklistedDomain,
+			);
+
+			return isSizeEligible && isEmailEligible;
+		},
 		survey() {
 			const survey: IFormInputs = [
 				{
@@ -604,20 +672,28 @@ export default mixins(showMessage, workflowHelpers).extend({
 			return survey;
 		},
 	},
+	mounted() {
+		void this.loadDomainBlocklist();
+	},
 	methods: {
 		closeDialog() {
 			this.modalBus.emit('close');
 			// In case the redirect to canvas for new users didn't happen
 			// we try again after closing the modal
 			if (this.$route.name !== VIEWS.NEW_WORKFLOW) {
-				this.$router.replace({ name: VIEWS.NEW_WORKFLOW });
+				void this.$router.replace({ name: VIEWS.NEW_WORKFLOW });
 			}
+		},
+		async loadDomainBlocklist() {
+			try {
+				this.domainBlocklist = (await import('email-providers/common.json')).default;
+			} catch (error) {}
 		},
 		onSave() {
 			this.formBus.emit('submit');
 		},
 		async onSubmit(values: IPersonalizationLatestVersion): Promise<void> {
-			this.$data.isSaving = true;
+			this.isSaving = true;
 
 			try {
 				const survey: Record<string, GenericValue> = {
@@ -627,9 +703,14 @@ export default mixins(showMessage, workflowHelpers).extend({
 					personalization_survey_n8n_version: this.rootStore.versionCli,
 				};
 
-				this.$externalHooks().run('personalizationModal.onSubmit', survey);
+				await this.externalHooks.run(
+					'personalizationModal.onSubmit',
+					survey as IPersonalizationLatestVersion,
+				);
 
 				await this.usersStore.submitPersonalizationSurvey(survey as IPersonalizationLatestVersion);
+
+				this.posthogStore.setMetadata(survey, 'user');
 
 				if (Object.keys(values).length === 0) {
 					this.closeDialog();
@@ -637,11 +718,42 @@ export default mixins(showMessage, workflowHelpers).extend({
 
 				await this.fetchOnboardingPrompt();
 			} catch (e) {
-				this.$showError(e, 'Error while submitting results');
+				this.showError(e, 'Error while submitting results');
 			}
 
-			this.$data.isSaving = false;
+			let licenseRequestSucceeded = false;
+			try {
+				if (this.registerForEnterpriseTrial && this.canRegisterForEnterpriseTrial) {
+					await this.usageStore.requestEnterpriseLicenseTrial();
+					licenseRequestSucceeded = true;
+					this.$telemetry.track('User registered for self serve trial', {
+						email: this.usersStore.currentUser?.email,
+						instance_id: this.rootStore.instanceId,
+					});
+				}
+			} catch (e) {
+				this.showError(
+					e,
+					this.$locale.baseText('personalizationModal.registerEmailForTrial.error'),
+				);
+			}
+
+			this.isSaving = false;
 			this.closeDialog();
+
+			if (licenseRequestSucceeded) {
+				await this.alert(
+					this.$locale.baseText('personalizationModal.registerEmailForTrial.success.message'),
+					{
+						title: this.$locale.baseText(
+							'personalizationModal.registerEmailForTrial.success.title',
+						),
+						confirmButtonText: this.$locale.baseText(
+							'personalizationModal.registerEmailForTrial.success.button',
+						),
+					},
+				);
+			}
 		},
 		async fetchOnboardingPrompt() {
 			if (
@@ -649,29 +761,32 @@ export default mixins(showMessage, workflowHelpers).extend({
 				getAccountAge(this.usersStore.currentUser || ({} as IUser)) <= ONBOARDING_PROMPT_TIMEBOX
 			) {
 				const onboardingResponse = await this.uiStore.getNextOnboardingPrompt();
+
+				if (!onboardingResponse) {
+					return;
+				}
+
 				const promptTimeout =
 					onboardingResponse.toast_sequence_number === 1 ? FIRST_ONBOARDING_PROMPT_TIMEOUT : 1000;
 
-				if (onboardingResponse.title && onboardingResponse.description) {
-					setTimeout(async () => {
-						this.$showToast({
-							type: 'info',
-							title: onboardingResponse.title,
-							message: onboardingResponse.description,
-							duration: 0,
-							customClass: 'clickable',
-							closeOnClick: true,
-							onClick: () => {
-								this.$telemetry.track('user clicked onboarding toast', {
-									seq_num: onboardingResponse.toast_sequence_number,
-									title: onboardingResponse.title,
-									description: onboardingResponse.description,
-								});
-								this.uiStore.openModal(ONBOARDING_CALL_SIGNUP_MODAL_KEY);
-							},
-						});
-					}, promptTimeout);
-				}
+				setTimeout(async () => {
+					this.showToast({
+						type: 'info',
+						title: onboardingResponse.title,
+						message: onboardingResponse.description,
+						duration: 0,
+						customClass: 'clickable',
+						closeOnClick: true,
+						onClick: () => {
+							this.$telemetry.track('user clicked onboarding toast', {
+								seq_num: onboardingResponse.toast_sequence_number,
+								title: onboardingResponse.title,
+								description: onboardingResponse.description,
+							});
+							this.uiStore.openModal(ONBOARDING_CALL_SIGNUP_MODAL_KEY);
+						},
+					});
+				}, promptTimeout);
 			}
 		},
 	},

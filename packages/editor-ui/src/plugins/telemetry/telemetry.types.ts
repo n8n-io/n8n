@@ -1,11 +1,3 @@
-import type { Telemetry } from '.';
-
-declare module 'vue/types/vue' {
-	interface Vue {
-		$telemetry: Telemetry;
-	}
-}
-
 declare global {
 	interface Window {
 		rudderanalytics: RudderStack;
@@ -13,7 +5,7 @@ declare global {
 }
 
 export interface IUserNodesPanelSession {
-	sessionId: string;
+	pushRef: string;
 	data: IUserNodesPanelSessionData;
 }
 
@@ -27,7 +19,7 @@ interface IUserNodesPanelSessionData {
  * Simplified version of:
  * https://github.com/rudderlabs/rudder-sdk-js/blob/master/dist/rudder-sdk-js/index.d.ts
  */
-interface RudderStack extends Array<unknown> {
+export interface RudderStack extends Array<unknown> {
 	[key: string]: unknown;
 
 	methods: string[];
@@ -60,3 +52,5 @@ interface RudderStack extends Array<unknown> {
 
 	reset(): void;
 }
+
+export {};

@@ -6,14 +6,15 @@
 			firstItem && $style.first,
 			!loading && $style.loaded,
 		]"
+		data-test-id="template-card"
 		@click="onCardClick"
 	>
-		<div :class="$style.loading" v-if="loading">
-			<n8n-loading :rows="2" :shrinkLast="false" :loading="loading" />
+		<div v-if="loading" :class="$style.loading">
+			<n8n-loading :rows="2" :shrink-last="false" :loading="loading" />
 		</div>
-		<div v-else>
+		<div v-else-if="workflow">
 			<n8n-heading :bold="true" size="small">{{ workflow.name }}</n8n-heading>
-			<div :class="$style.content">
+			<div v-if="!simpleView" :class="$style.content">
 				<span v-if="workflow.totalViews">
 					<n8n-text size="small" color="text-light">
 						<font-awesome-icon icon="eye" />
@@ -30,14 +31,18 @@
 				>
 			</div>
 		</div>
-		<div :class="[$style.nodesContainer, useWorkflowButton && $style.hideOnHover]" v-if="!loading">
+		<div
+			v-if="!loading && workflow"
+			:class="[$style.nodesContainer, useWorkflowButton && $style.hideOnHover]"
+		>
 			<NodeList v-if="workflow.nodes" :nodes="workflow.nodes" :limit="nodesToBeShown" size="md" />
 		</div>
-		<div :class="$style.buttonContainer" v-if="useWorkflowButton">
+		<div v-if="useWorkflowButton" :class="$style.buttonContainer">
 			<n8n-button
 				v-if="useWorkflowButton"
 				outline
 				label="Use workflow"
+				data-test-id="use-workflow-button"
 				@click.stop="onUseWorkflowClick"
 			/>
 		</div>
@@ -45,14 +50,23 @@
 </template>
 
 <script lang="ts">
-import { genericHelpers } from '@/mixins/genericHelpers';
-import mixins from 'vue-typed-mixins';
-import { filterTemplateNodes, abbreviateNumber } from '@/utils';
+import { type PropType, defineComponent } from 'vue';
+import { filterTemplateNodes } from '@/utils/nodeTypesUtils';
+import { abbreviateNumber } from '@/utils/typesUtils';
 import NodeList from './NodeList.vue';
+import TimeAgo from '@/components/TimeAgo.vue';
+import type { ITemplatesWorkflow } from '@/Interface';
 
-export default mixins(genericHelpers).extend({
+export default defineComponent({
 	name: 'TemplateCard',
+	components: {
+		TimeAgo,
+		NodeList,
+	},
 	props: {
+		workflow: {
+			type: Object as PropType<ITemplatesWorkflow>,
+		},
 		lastItem: {
 			type: Boolean,
 			default: false,
@@ -61,18 +75,16 @@ export default mixins(genericHelpers).extend({
 			type: Boolean,
 			default: false,
 		},
-		workflow: {
-			type: Object,
-		},
 		useWorkflowButton: {
 			type: Boolean,
 		},
 		loading: {
 			type: Boolean,
 		},
-	},
-	components: {
-		NodeList,
+		simpleView: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	data() {
 		return {
@@ -119,6 +131,7 @@ export default mixins(genericHelpers).extend({
 	background-color: var(--color-background-xlight);
 
 	display: flex;
+	align-items: center;
 	padding: 0 var(--spacing-s) var(--spacing-s) var(--spacing-s);
 	background-color: var(--color-background-xlight);
 	cursor: pointer;

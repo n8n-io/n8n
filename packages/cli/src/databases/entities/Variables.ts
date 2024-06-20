@@ -1,10 +1,8 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity } from '@n8n/typeorm';
+import { WithStringId } from './AbstractEntity';
 
 @Entity()
-export class Variables {
-	@PrimaryGeneratedColumn()
-	id: number;
-
+export class Variables extends WithStringId {
 	@Column('text')
 	key: string;
 

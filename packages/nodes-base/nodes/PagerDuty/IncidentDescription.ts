@@ -297,10 +297,10 @@ export const incidentFields: INodeProperties[] = [
 					},
 					{
 						name: 'Assignees',
-						value: 'assigness',
+						value: 'assignees',
 					},
 					{
-						name: 'Conferenece Bridge',
+						name: 'Conference Bridge',
 						value: 'conferenceBridge',
 					},
 					{
@@ -550,7 +550,7 @@ export const incidentFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Hight',
+						name: 'High',
 						value: 'high',
 					},
 					{

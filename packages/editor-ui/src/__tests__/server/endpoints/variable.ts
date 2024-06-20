@@ -1,7 +1,8 @@
-import { Request, Response, Server } from 'miragejs';
-import { AppSchema } from '../types';
+import type { Request, Server } from 'miragejs';
+import { Response } from 'miragejs';
+import type { AppSchema } from '../types';
 import { jsonParse } from 'n8n-workflow';
-import { EnvironmentVariable } from '@/Interface';
+import type { EnvironmentVariable } from '@/Interface';
 
 export function routesForVariables(server: Server) {
 	server.get('/rest/variables', (schema: AppSchema) => {

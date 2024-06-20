@@ -1,5 +1,6 @@
-import { UserSettings } from 'n8n-core';
-import { Command, flags } from '@oclif/command';
+import { Container } from 'typedi';
+import { Command, Flags } from '@oclif/core';
+import { InstanceSettings } from 'n8n-core';
 
 import type { IBuildOptions } from '../src';
 import { buildFiles } from '../src';
@@ -14,21 +15,21 @@ export class Build extends Command {
 	];
 
 	static flags = {
-		help: flags.help({ char: 'h' }),
-		destination: flags.string({
+		help: Flags.help({ char: 'h' }),
+		destination: Flags.string({
 			char: 'd',
-			description: `The path to copy the compiles files to [default: ${UserSettings.getUserN8nFolderCustomExtensionPath()}]`,
+			description: `The path to copy the compiled files to [default: ${
+				Container.get(InstanceSettings).customExtensionDir
+			}]`,
 		}),
-		watch: flags.boolean({
+		watch: Flags.boolean({
 			description:
 				'Starts in watch mode and automatically builds and copies file whenever they change',
 		}),
 	};
 
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	async run() {
-		// eslint-disable-next-line @typescript-eslint/no-shadow
-		const { flags } = this.parse(Build);
+		const { flags } = await this.parse(Build);
 
 		this.log('\nBuild credentials and nodes');
 		this.log('=========================');
@@ -47,10 +48,10 @@ export class Build extends Command {
 
 			this.log(`The nodes got built and saved into the following folder:\n${outputDirectory}`);
 		} catch (error) {
-			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			this.log(`\nGOT ERROR: "${error.message}"`);
 			this.log('====================================');
-			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
 			this.log(error.stack);
 		}
 	}

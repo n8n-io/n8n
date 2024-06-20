@@ -1,18 +1,17 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function mailerliteApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions,
-	method: string,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
+	method: IHttpRequestMethods,
 	path: string,
 
 	body: any = {},
@@ -21,7 +20,7 @@ export async function mailerliteApiRequest(
 ): Promise<any> {
 	const credentials = await this.getCredentials('mailerLiteApi');
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'X-MailerLite-ApiKey': credentials.apiKey,
 		},
@@ -44,7 +43,7 @@ export async function mailerliteApiRequest(
 
 export async function mailerliteApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 
 	body: any = {},

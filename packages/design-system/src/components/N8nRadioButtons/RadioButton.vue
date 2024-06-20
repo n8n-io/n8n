@@ -7,9 +7,8 @@
 			[$style.container]: true,
 			[$style.hoverable]: !disabled,
 		}"
-		aria-checked="true"
+		:aria-checked="active"
 	>
-		<input type="radio" tabindex="-1" autocomplete="off" :class="$style.input" :value="value" />
 		<div
 			:class="{
 				[$style.button]: true,
@@ -18,40 +17,25 @@
 				[$style.disabled]: disabled,
 			}"
 			:data-test-id="`radio-button-${value}`"
-			@click="$emit('click')"
 		>
 			{{ label }}
 		</div>
 	</label>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script lang="ts" setup>
+interface RadioButtonProps {
+	label: string;
+	value: string;
+	active?: boolean;
+	disabled?: boolean;
+	size?: 'small' | 'medium';
+}
 
-export default defineComponent({
-	name: 'n8n-radio-button',
-	props: {
-		label: {
-			type: String,
-			required: true,
-		},
-		value: {
-			type: String,
-			required: true,
-		},
-		active: {
-			type: Boolean,
-			default: false,
-		},
-		size: {
-			type: String,
-			default: 'medium',
-			validator: (value: string): boolean => ['small', 'medium'].includes(value),
-		},
-		disabled: {
-			type: Boolean,
-		},
-	},
+withDefaults(defineProps<RadioButtonProps>(), {
+	active: false,
+	disabled: false,
+	size: 'medium',
 });
 </script>
 
@@ -76,7 +60,6 @@ export default defineComponent({
 }
 
 .button {
-	border-radius: 0;
 	display: flex;
 	align-items: center;
 	border-radius: var(--border-radius-base);

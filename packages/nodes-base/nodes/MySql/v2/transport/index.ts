@@ -1,11 +1,11 @@
+import { ApplicationError } from 'n8n-workflow';
 import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
 
 import mysql2 from 'mysql2/promise';
 import type { Client, ConnectConfig } from 'ssh2';
-import { rm, writeFile } from 'fs/promises';
 
-import { file } from 'tmp-promise';
 import type { Mysql2Pool } from '../helpers/interfaces';
+import { formatPrivateKey } from '@utils/utilities';
 
 async function createSshConnectConfig(credentials: IDataObject) {
 	if (credentials.sshAuthenticateWith === 'password') {
@@ -16,14 +16,11 @@ async function createSshConnectConfig(credentials: IDataObject) {
 			password: credentials.sshPassword as string,
 		} as ConnectConfig;
 	} else {
-		const { path } = await file({ prefix: 'n8n-ssh-' });
-		await writeFile(path, credentials.privateKey as string);
-
 		const options: ConnectConfig = {
-			host: credentials.host as string,
-			username: credentials.username as string,
-			port: credentials.port as number,
-			privateKey: path,
+			host: credentials.sshHost as string,
+			username: credentials.sshUser as string,
+			port: credentials.sshPort as number,
+			privateKey: formatPrivateKey(credentials.privateKey as string),
 		};
 
 		if (credentials.passphrase) {
@@ -40,7 +37,9 @@ export async function createPool(
 	sshClient?: Client,
 ): Promise<Mysql2Pool> {
 	if (credentials === undefined) {
-		throw new Error('Credentials not selected, select or add new credentials');
+		throw new ApplicationError('Credentials not selected, select or add new credentials', {
+			level: 'warning',
+		});
 	}
 	const {
 		ssl,
@@ -63,12 +62,12 @@ export async function createPool(
 		baseCredentials.ssl = {};
 
 		if (caCertificate) {
-			baseCredentials.ssl.ca = caCertificate;
+			baseCredentials.ssl.ca = formatPrivateKey(caCertificate as string);
 		}
 
 		if (clientCertificate || clientPrivateKey) {
-			baseCredentials.ssl.cert = clientCertificate;
-			baseCredentials.ssl.key = clientPrivateKey;
+			baseCredentials.ssl.cert = formatPrivateKey(clientCertificate as string);
+			baseCredentials.ssl.key = formatPrivateKey(clientPrivateKey as string);
 		}
 	}
 
@@ -77,6 +76,10 @@ export async function createPool(
 		multipleStatements: true,
 		supportBigNumbers: true,
 	};
+
+	if (options?.nodeVersion && (options.nodeVersion as number) >= 2.1) {
+		connectionOptions.dateStrings = true;
+	}
 
 	if (options?.connectionLimit) {
 		connectionOptions.connectionLimit = options.connectionLimit as number;
@@ -94,7 +97,9 @@ export async function createPool(
 		return mysql2.createPool(connectionOptions);
 	} else {
 		if (!sshClient) {
-			throw new Error('SSH Tunnel is enabled but no SSH Client was provided');
+			throw new ApplicationError('SSH Tunnel is enabled but no SSH Client was provided', {
+				level: 'warning',
+			});
 		}
 
 		const tunnelConfig = await createSshConnectConfig(credentials);
@@ -105,12 +110,6 @@ export async function createPool(
 			dstHost: credentials.host as string,
 			dstPort: credentials.port as number,
 		};
-
-		if (sshAuthenticateWith === 'privateKey') {
-			sshClient.on('end', async () => {
-				await rm(tunnelConfig.privateKey as string);
-			});
-		}
 
 		const poolSetup = new Promise<mysql2.Pool>((resolve, reject) => {
 			sshClient
@@ -134,6 +133,6 @@ export async function createPool(
 				.connect(tunnelConfig);
 		});
 
-		return poolSetup;
+		return await poolSetup;
 	}
 }

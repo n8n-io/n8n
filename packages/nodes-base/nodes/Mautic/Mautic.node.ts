@@ -10,6 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
+import { snakeCase } from 'change-case';
 import { mauticApiRequest, mauticApiRequestAllItems, validateJSON } from './GenericFunctions';
 
 import { contactFields, contactOperations } from './ContactDescription';
@@ -23,8 +24,6 @@ import { companyContactFields, companyContactOperations } from './CompanyContact
 import { contactSegmentFields, contactSegmentOperations } from './ContactSegmentDescription';
 
 import { campaignContactFields, campaignContactOperations } from './CampaignContactDescription';
-
-import { snakeCase } from 'change-case';
 
 export class Mautic implements INodeType {
 	description: INodeTypeDescription = {
@@ -623,7 +622,7 @@ export class Mautic implements INodeType {
 							body.lastActive = additionalFields.lastActive as string;
 						}
 						if (additionalFields.ownerId) {
-							body.ownerId = additionalFields.ownerId as string;
+							body.owner = additionalFields.ownerId as string;
 						}
 						if (additionalFields.addressUi) {
 							const addressValues = (additionalFields.addressUi as IDataObject)
@@ -738,7 +737,7 @@ export class Mautic implements INodeType {
 							body.lastActive = updateFields.lastActive as string;
 						}
 						if (updateFields.ownerId) {
-							body.ownerId = updateFields.ownerId as string;
+							body.owner = updateFields.ownerId as string;
 						}
 						if (updateFields.addressUi) {
 							const addressValues = (updateFields.addressUi as IDataObject)
@@ -1021,7 +1020,7 @@ export class Mautic implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ json: { error: (error as JsonObject).message } });
 					continue;
 				}
@@ -1029,6 +1028,6 @@ export class Mautic implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

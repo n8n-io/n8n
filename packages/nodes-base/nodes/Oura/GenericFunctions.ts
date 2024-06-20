@@ -1,18 +1,17 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function ouraApiRequest(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -20,7 +19,7 @@ export async function ouraApiRequest(
 	option: IDataObject = {},
 ) {
 	const credentials = await this.getCredentials('ouraApi');
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		headers: {
 			Authorization: `Bearer ${credentials.accessToken}`,
 		},

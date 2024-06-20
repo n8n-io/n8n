@@ -1,14 +1,26 @@
-import { ILogger, LoggerProxy } from 'n8n-workflow';
+import { Container } from 'typedi';
+import { mock } from 'jest-mock-extended';
+import { Duplex } from 'stream';
 
-const fakeLogger = {
-	log: () => {},
-	debug: () => {},
-	verbose: () => {},
-	info: () => {},
-	warn: () => {},
-	error: () => {},
-} as ILogger;
+import type { DeepPartial } from 'ts-essentials';
+import type { Class } from '@/Interfaces';
 
-export const initLogger = () => {
-	LoggerProxy.init(fakeLogger);
+export const mockInstance = <T>(
+	constructor: Class<T>,
+	data: DeepPartial<T> | undefined = undefined,
+) => {
+	const instance = mock<T>(data);
+	Container.set(constructor, instance);
+	return instance;
 };
+
+export function toStream(buffer: Buffer) {
+	const duplexStream = new Duplex();
+	duplexStream.push(buffer);
+	duplexStream.push(null);
+
+	return duplexStream;
+}
+
+export const toFileId = (workflowId: string, executionId: string, fileUuid: string) =>
+	`workflows/${workflowId}/executions/${executionId}/binary_data/${fileUuid}`;

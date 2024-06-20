@@ -4,7 +4,7 @@
 			<n8n-loading :class="$style.loader" variant="p" :rows="1" />
 			<n8n-loading :class="$style.loader" variant="p" :rows="1" />
 		</div>
-		<div v-else :class="$style.packageCard">
+		<div v-else-if="communityPackage" :class="$style.packageCard">
 			<div :class="$style.cardInfoContainer">
 				<div :class="$style.cardTitle">
 					<n8n-text :bold="true" size="large">{{ communityPackage.packageName }}</n8n-text>
@@ -43,7 +43,7 @@
 							{{ $locale.baseText('settings.communityNodes.updateAvailable.tooltip') }}
 						</div>
 					</template>
-					<n8n-button type="outline" label="Update" @click="onUpdateClick" />
+					<n8n-button outline label="Update" @click="onUpdateClick" />
 				</n8n-tooltip>
 				<n8n-tooltip v-else placement="top">
 					<template #content>
@@ -62,18 +62,19 @@
 </template>
 
 <script lang="ts">
-import { useUIStore } from '@/stores/ui';
-import { PublicInstalledPackage } from 'n8n-workflow';
+import { useUIStore } from '@/stores/ui.store';
+import type { PublicInstalledPackage } from 'n8n-workflow';
 import { mapStores } from 'pinia';
-import mixins from 'vue-typed-mixins';
-import { NPM_PACKAGE_DOCS_BASE_URL, COMMUNITY_PACKAGE_MANAGE_ACTIONS } from '../constants';
-import { showMessage } from '@/mixins/showMessage';
+import { defineComponent } from 'vue';
+import { NPM_PACKAGE_DOCS_BASE_URL, COMMUNITY_PACKAGE_MANAGE_ACTIONS } from '@/constants';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'CommunityPackageCard',
 	props: {
 		communityPackage: {
-			type: Object as () => PublicInstalledPackage,
+			type: Object as () => PublicInstalledPackage | null,
+			required: false,
+			default: null,
 		},
 		loading: {
 			type: Boolean,
@@ -100,6 +101,7 @@ export default mixins(showMessage).extend({
 	},
 	methods: {
 		async onAction(value: string) {
+			if (!this.communityPackage) return;
 			switch (value) {
 				case COMMUNITY_PACKAGE_MANAGE_ACTIONS.VIEW_DOCS:
 					this.$telemetry.track('user clicked to browse the cnr package documentation', {
@@ -116,6 +118,7 @@ export default mixins(showMessage).extend({
 			}
 		},
 		onUpdateClick() {
+			if (!this.communityPackage) return;
 			this.uiStore.openCommunityPackageUpdateConfirmModal(this.communityPackage.packageName);
 		},
 	},

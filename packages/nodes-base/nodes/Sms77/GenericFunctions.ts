@@ -1,27 +1,32 @@
-import type { IExecuteFunctions, IHookFunctions, IDataObject, JsonObject } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IHookFunctions,
+	IHttpRequestMethods,
+	IRequestOptions,
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import type { OptionsWithUri } from 'request';
-
 /**
- * Make an API request to Sms77
+ * Make an API request to seven
  *
  * @param {IHookFunctions | IExecuteFunctions} this
  * @param {object | undefined} data
  */
 export async function sms77ApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject,
 	qs: IDataObject = {},
 ): Promise<any> {
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			SentWith: 'n8n',
 		},
 		qs,
-		uri: `https://gateway.sms77.io/api${endpoint}`,
+		uri: `https://gateway.seven.io/api${endpoint}`,
 		json: true,
 		method,
 	};

@@ -2,7 +2,10 @@
 	<div>
 		<n8n-loading :loading="loading" :rows="5" variant="p" />
 
-		<template-details-block v-if="!loading && template.nodes.length > 0" :title="blockTitle">
+		<TemplateDetailsBlock
+			v-if="!loading && template && template.nodes.length > 0"
+			:title="blockTitle"
+		>
 			<div :class="$style.icons">
 				<div
 					v-for="node in filterTemplateNodes(template.nodes)"
@@ -10,66 +13,88 @@
 					:class="$style.icon"
 				>
 					<NodeIcon
-						:nodeType="node"
+						:node-type="node"
 						:size="24"
-						:showTooltip="true"
+						:show-tooltip="true"
 						@click="redirectToSearchPage(node)"
 					/>
 				</div>
 			</div>
-		</template-details-block>
+		</TemplateDetailsBlock>
 
-		<template-details-block
-			v-if="!loading && template?.categories.length > 0"
+		<TemplateDetailsBlock
+			v-if="!loading && isFullTemplatesCollection(template) && template.categories.length > 0"
 			:title="$locale.baseText('template.details.categories')"
 		>
-			<n8n-tags :tags="template.categories" @click="redirectToCategory" />
-		</template-details-block>
+			<n8n-tags :tags="template.categories" @click:tag="redirectToCategory" />
+		</TemplateDetailsBlock>
 
-		<template-details-block v-if="!loading" :title="$locale.baseText('template.details.details')">
+		<TemplateDetailsBlock
+			v-if="!loading && template"
+			:title="$locale.baseText('template.details.details')"
+		>
 			<div :class="$style.text">
-				<n8n-text size="small" color="text-base">
+				<n8n-text v-if="isTemplatesWorkflow(template)" size="small" color="text-base">
 					{{ $locale.baseText('template.details.created') }}
 					<TimeAgo :date="template.createdAt" />
-					<span>{{ $locale.baseText('template.details.by') }}</span>
-					<span v-if="template.user"> {{ template.user.username }}</span>
-					<span v-else> n8n team</span>
+					{{ $locale.baseText('template.details.by') }}
+					{{ template.user ? template.user.username : 'n8n team' }}
 				</n8n-text>
 			</div>
 			<div :class="$style.text">
-				<n8n-text v-if="template.totalViews !== 0" size="small" color="text-base">
+				<n8n-text
+					v-if="isTemplatesWorkflow(template) && template.totalViews !== 0"
+					size="small"
+					color="text-base"
+				>
 					{{ $locale.baseText('template.details.viewed') }}
 					{{ abbreviateNumber(template.totalViews) }}
 					{{ $locale.baseText('template.details.times') }}
 				</n8n-text>
 			</div>
-		</template-details-block>
+		</TemplateDetailsBlock>
 	</div>
 </template>
+
 <script lang="ts">
-import Vue, { PropType } from 'vue';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
 import TemplateDetailsBlock from '@/components/TemplateDetailsBlock.vue';
 import NodeIcon from '@/components/NodeIcon.vue';
-import { abbreviateNumber, filterTemplateNodes } from '@/utils';
-import { ITemplatesNode, ITemplatesWorkflow, ITemplatesWorkflowFull } from '@/Interface';
+import { filterTemplateNodes } from '@/utils/nodeTypesUtils';
+import { abbreviateNumber } from '@/utils/typesUtils';
+import type {
+	ITemplatesCollection,
+	ITemplatesCollectionFull,
+	ITemplatesNode,
+	ITemplatesWorkflow,
+} from '@/Interface';
 import { mapStores } from 'pinia';
-import { useTemplatesStore } from '@/stores/templates';
-export default Vue.extend({
+import { useTemplatesStore } from '@/stores/templates.store';
+import TimeAgo from '@/components/TimeAgo.vue';
+import { isFullTemplatesCollection, isTemplatesWorkflow } from '@/utils/templates/typeGuards';
+
+export default defineComponent({
 	name: 'TemplateDetails',
+	components: {
+		NodeIcon,
+		TemplateDetailsBlock,
+		TimeAgo,
+	},
 	props: {
+		template: {
+			type: Object as PropType<
+				ITemplatesWorkflow | ITemplatesCollection | ITemplatesCollectionFull | null
+			>,
+			required: true,
+		},
 		blockTitle: {
 			type: String,
+			required: true,
 		},
 		loading: {
 			type: Boolean,
 		},
-		template: {
-			type: Object as PropType<ITemplatesWorkflow | ITemplatesWorkflowFull>,
-		},
-	},
-	components: {
-		NodeIcon,
-		TemplateDetailsBlock,
 	},
 	computed: {
 		...mapStores(useTemplatesStore),
@@ -79,12 +104,14 @@ export default Vue.extend({
 		filterTemplateNodes,
 		redirectToCategory(id: string) {
 			this.templatesStore.resetSessionId();
-			this.$router.push(`/templates?categories=${id}`);
+			void this.$router.push(`/templates?categories=${id}`);
 		},
 		redirectToSearchPage(node: ITemplatesNode) {
 			this.templatesStore.resetSessionId();
-			this.$router.push(`/templates?search=${node.displayName}`);
+			void this.$router.push(`/templates?search=${node.displayName}`);
 		},
+		isFullTemplatesCollection,
+		isTemplatesWorkflow,
 	},
 });
 </script>

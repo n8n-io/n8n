@@ -20,21 +20,21 @@ import type { ICreateContactBody } from './ContactInterface';
 
 import { contactFields, contactOperations } from './ContactDescription';
 
-enum Status {
+const enum Status {
 	Open = 2,
 	Pending = 3,
 	Resolved = 4,
 	Closed = 5,
 }
 
-enum Priority {
+const enum Priority {
 	Low = 1,
 	Medium = 2,
 	High = 3,
 	Urgent = 4,
 }
 
-enum Source {
+const enum Source {
 	Email = 1,
 	Portal = 2,
 	Phone = 3,
@@ -75,7 +75,7 @@ export class Freshdesk implements INodeType {
 		displayName: 'Freshdesk',
 		name: 'freshdesk',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:freshdesk.png',
+		icon: 'file:freshdesk.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -1409,7 +1409,7 @@ export class Freshdesk implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
@@ -1420,6 +1420,6 @@ export class Freshdesk implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

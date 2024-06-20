@@ -3,41 +3,57 @@
 		<TagsTableHeader
 			:search="search"
 			:disabled="isHeaderDisabled()"
-			@searchChange="onSearchChange"
-			@createEnable="onCreateEnable"
+			@search-change="onSearchChange"
+			@create-enable="onCreateEnable"
 		/>
 		<TagsTable
-			:rows="rows"
-			:isLoading="isLoading"
-			:isSaving="isSaving"
-			:newName="newName"
-			@newNameChange="onNewNameChange"
-			@updateEnable="onUpdateEnable"
-			@deleteEnable="onDeleteEnable"
-			@cancelOperation="cancelOperation"
-			@applyOperation="applyOperation"
 			ref="tagsTable"
+			:rows="rows"
+			:is-loading="isLoading"
+			:is-saving="isSaving"
+			:new-name="newName"
 			data-test-id="tags-table"
+			@new-name-change="onNewNameChange"
+			@update-enable="onUpdateEnable"
+			@delete-enable="onDeleteEnable"
+			@cancel-operation="cancelOperation"
+			@apply-operation="applyOperation"
 		/>
 	</div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-import { ITag, ITagRow } from '@/Interface';
+import type { ITag, ITagRow } from '@/Interface';
 import TagsTableHeader from '@/components/TagsManager/TagsView/TagsTableHeader.vue';
 import TagsTable from '@/components/TagsManager/TagsView/TagsTable.vue';
 import { mapStores } from 'pinia';
-import { useUsersStore } from '@/stores/users';
+import { useUsersStore } from '@/stores/users.store';
+import { useRBACStore } from '@/stores/rbac.store';
 
 const matches = (name: string, filter: string) =>
 	name.toLowerCase().trim().includes(filter.toLowerCase().trim());
 
-export default Vue.extend({
-	components: { TagsTableHeader, TagsTable },
+export default defineComponent({
 	name: 'TagsView',
-	props: ['tags', 'isLoading'],
+	components: { TagsTableHeader, TagsTable },
+	props: {
+		tags: {
+			type: Array as () => ITag[],
+			required: true,
+		},
+		isLoading: {
+			type: Boolean,
+			required: true,
+		},
+	},
+	emits: {
+		update: null,
+		delete: null,
+		create: null,
+		disableCreate: null,
+	},
 	data() {
 		return {
 			createEnabled: false,
@@ -50,9 +66,9 @@ export default Vue.extend({
 		};
 	},
 	computed: {
-		...mapStores(useUsersStore),
+		...mapStores(useUsersStore, useRBACStore),
 		isCreateEnabled(): boolean {
-			return (this.tags || []).length === 0 || this.$data.createEnabled;
+			return (this.tags || []).length === 0 || this.createEnabled;
 		},
 		rows(): ITagRow[] {
 			const getUsage = (count: number | undefined) =>
@@ -60,17 +76,17 @@ export default Vue.extend({
 					? this.$locale.baseText('tagsView.inUse', { adjustToNumber: count })
 					: this.$locale.baseText('tagsView.notBeingUsed');
 
-			const disabled = this.isCreateEnabled || this.$data.updateId || this.$data.deleteId;
-			const tagRows = (this.tags || [])
-				.filter((tag: ITag) => this.stickyIds.has(tag.id) || matches(tag.name, this.$data.search))
+			const disabled = this.isCreateEnabled || !!this.updateId || !!this.deleteId;
+			const tagRows = (this.tags ?? [])
+				.filter((tag) => this.stickyIds.has(tag.id) || matches(tag.name, this.search))
 				.map(
-					(tag: ITag): ITagRow => ({
+					(tag): ITagRow => ({
 						tag,
 						usage: getUsage(tag.usageCount),
-						disable: disabled && tag.id !== this.deleteId && tag.id !== this.$data.updateId,
-						update: disabled && tag.id === this.$data.updateId,
-						delete: disabled && tag.id === this.$data.deleteId,
-						canDelete: this.usersStore.canUserDeleteTags,
+						disable: disabled && tag.id !== this.deleteId && tag.id !== this.updateId,
+						update: disabled && tag.id === this.updateId,
+						delete: disabled && tag.id === this.deleteId,
+						canDelete: this.rbacStore.hasScope('tag:delete'),
 					}),
 				);
 
@@ -82,13 +98,11 @@ export default Vue.extend({
 			this.newName = name;
 		},
 		onSearchChange(search: string): void {
-			this.$data.stickyIds.clear();
-			this.$data.search = search;
+			this.stickyIds.clear();
+			this.search = search;
 		},
 		isHeaderDisabled(): boolean {
-			return (
-				this.isLoading || !!(this.isCreateEnabled || this.$data.updateId || this.$data.deleteId)
-			);
+			return this.isLoading || !!(this.isCreateEnabled || this.updateId || this.deleteId);
 		},
 
 		onUpdateEnable(updateId: string): void {
@@ -99,10 +113,10 @@ export default Vue.extend({
 			this.newName = '';
 		},
 		updateTag(): void {
-			this.$data.isSaving = true;
+			this.isSaving = true;
 			const name = this.newName.trim();
 			const onUpdate = (updated: boolean) => {
-				this.$data.isSaving = false;
+				this.isSaving = false;
 				if (updated) {
 					this.stickyIds.add(this.updateId);
 					this.disableUpdate();
@@ -119,58 +133,58 @@ export default Vue.extend({
 			this.deleteId = '';
 		},
 		deleteTag(): void {
-			this.$data.isSaving = true;
+			this.isSaving = true;
 			const onDelete = (deleted: boolean) => {
 				if (deleted) {
 					this.disableDelete();
 				}
-				this.$data.isSaving = false;
+				this.isSaving = false;
 			};
 
 			this.$emit('delete', this.deleteId, onDelete);
 		},
 
 		onCreateEnable(): void {
-			this.$data.createEnabled = true;
-			this.$data.newName = '';
+			this.createEnabled = true;
+			this.newName = '';
 		},
 		disableCreate(): void {
-			this.$data.createEnabled = false;
+			this.createEnabled = false;
 			this.$emit('disableCreate');
 		},
 		createTag(): void {
-			this.$data.isSaving = true;
-			const name = this.$data.newName.trim();
-			const onCreate = (created: ITag | null, error?: Error) => {
+			this.isSaving = true;
+			const name = this.newName.trim();
+			const onCreate = (created: ITag | null) => {
 				if (created) {
 					this.stickyIds.add(created.id);
 					this.disableCreate();
 				}
-				this.$data.isSaving = false;
+				this.isSaving = false;
 			};
 
 			this.$emit('create', name, onCreate);
 		},
 
 		applyOperation(): void {
-			if (this.$data.isSaving) {
+			if (this.isSaving) {
 				return;
 			} else if (this.isCreateEnabled) {
 				this.createTag();
-			} else if (this.$data.updateId) {
+			} else if (this.updateId) {
 				this.updateTag();
-			} else if (this.$data.deleteId) {
+			} else if (this.deleteId) {
 				this.deleteTag();
 			}
 		},
 		cancelOperation(): void {
-			if (this.$data.isSaving) {
+			if (this.isSaving) {
 				return;
 			} else if (this.isCreateEnabled) {
 				this.disableCreate();
-			} else if (this.$data.updateId) {
+			} else if (this.updateId) {
 				this.disableUpdate();
-			} else if (this.$data.deleteId) {
+			} else if (this.deleteId) {
 				this.disableDelete();
 			}
 		},

@@ -1,23 +1,38 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
-/* eslint-disable import/no-dynamic-require */
-/* eslint-disable no-restricted-syntax */
 import { Service } from 'typedi';
-import * as Db from '@/Db';
-import type {
-	IExternalHooksClass,
-	IExternalHooksFileData,
-	IExternalHooksFunctions,
-} from '@/Interfaces';
-
+import type { IExternalHooksFileData, IExternalHooksFunctions } from '@/Interfaces';
 import config from '@/config';
+import { UserRepository } from '@db/repositories/user.repository';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { SettingsRepository } from '@db/repositories/settings.repository';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { ApplicationError } from 'n8n-workflow';
 
 @Service()
-export class ExternalHooks implements IExternalHooksClass {
+export class ExternalHooks {
 	externalHooks: {
 		[key: string]: Array<() => {}>;
 	} = {};
 
-	initDidRun = false;
+	private initDidRun = false;
+
+	private dbCollections: IExternalHooksFunctions['dbCollections'];
+
+	constructor(
+		userRepository: UserRepository,
+		settingsRepository: SettingsRepository,
+		credentialsRepository: CredentialsRepository,
+		workflowRepository: WorkflowRepository,
+	) {
+		/* eslint-disable @typescript-eslint/naming-convention */
+		this.dbCollections = {
+			User: userRepository,
+			Settings: settingsRepository,
+			Credentials: credentialsRepository,
+			Workflow: workflowRepository,
+		};
+		/* eslint-enable @typescript-eslint/naming-convention */
+	}
 
 	async init(): Promise<void> {
 		if (this.initDidRun) {
@@ -51,16 +66,15 @@ export class ExternalHooks implements IExternalHooksClass {
 						delete require.cache[require.resolve(hookFilePath)];
 					}
 
-					// eslint-disable-next-line import/no-dynamic-require
-					// eslint-disable-next-line global-require
 					const hookFile = require(hookFilePath) as IExternalHooksFileData;
 					this.loadHooks(hookFile);
-				} catch (error) {
-					throw new Error(
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/restrict-template-expressions
-						`Problem loading external hook file "${hookFilePath}": ${error.message}`,
-						{ cause: error as Error },
-					);
+				} catch (e) {
+					const error = e instanceof Error ? e : new Error(`${e}`);
+
+					throw new ApplicationError('Problem loading external hook file', {
+						extra: { errorMessage: error.message, hookFilePath },
+						cause: error,
+					});
 				}
 			}
 		}
@@ -85,18 +99,16 @@ export class ExternalHooks implements IExternalHooksClass {
 		}
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	async run(hookName: string, hookParameters?: any[]): Promise<void> {
-		const externalHookFunctions: IExternalHooksFunctions = {
-			dbCollections: Db.collections,
-		};
-
 		if (this.externalHooks[hookName] === undefined) {
 			return;
 		}
 
+		const externalHookFunctions: IExternalHooksFunctions = {
+			dbCollections: this.dbCollections,
+		};
+
 		for (const externalHookFunction of this.externalHooks[hookName]) {
-			// eslint-disable-next-line no-await-in-loop, @typescript-eslint/await-thenable
 			await externalHookFunction.apply(externalHookFunctions, hookParameters);
 		}
 	}

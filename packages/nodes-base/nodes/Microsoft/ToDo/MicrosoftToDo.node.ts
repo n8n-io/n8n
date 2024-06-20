@@ -9,6 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from './GenericFunctions';
 
 import { linkedResourceFields, linkedResourceOperations } from './LinkedResourceDescription';
@@ -16,8 +17,6 @@ import { linkedResourceFields, linkedResourceOperations } from './LinkedResource
 import { taskFields, taskOperations } from './TaskDescription';
 
 import { listFields, listOperations } from './ListDescription';
-
-import moment from 'moment-timezone';
 
 export class MicrosoftToDo implements INodeType {
 	description: INodeTypeDescription = {
@@ -221,6 +220,14 @@ export class MicrosoftToDo implements INodeType {
 							};
 						}
 
+						if (body.reminderDateTime) {
+							body.reminderDateTime = {
+								dateTime: moment.tz(body.reminderDateTime, timezone).format(),
+								timeZone: timezone,
+							};
+							body.isReminderOn = true;
+						}
+
 						responseData = await microsoftApiRequest.call(
 							this,
 							'POST',
@@ -302,6 +309,16 @@ export class MicrosoftToDo implements INodeType {
 								dateTime: moment.tz(body.dueDateTime, timezone).format(),
 								timeZone: timezone,
 							};
+						}
+
+						if (body.reminderDateTime) {
+							body.reminderDateTime = {
+								dateTime: moment.tz(body.reminderDateTime, timezone).format(),
+								timeZone: timezone,
+							};
+							body.isReminderOn = true;
+						} else {
+							body.isReminderOn = false;
 						}
 
 						responseData = await microsoftApiRequest.call(
@@ -397,7 +414,7 @@ export class MicrosoftToDo implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
@@ -415,6 +432,6 @@ export class MicrosoftToDo implements INodeType {
 
 			returnData.push(...executionData);
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

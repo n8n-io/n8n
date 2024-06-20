@@ -1,12 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import { getTablePrefix, logMigrationEnd, logMigrationStart } from '../../utils/migrationHelpers';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class MessageEventBusDestinations1671535397530 implements MigrationInterface {
-	name = 'MessageEventBusDestinations1671535397530';
-
-	async up(queryRunner: QueryRunner) {
-		logMigrationStart(this.name);
-		const tablePrefix = getTablePrefix();
+export class MessageEventBusDestinations1671535397530 implements ReversibleMigration {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			`CREATE TABLE ${tablePrefix}event_destinations (` +
 				'`id` varchar(36) PRIMARY KEY NOT NULL,' +
@@ -15,13 +10,9 @@ export class MessageEventBusDestinations1671535397530 implements MigrationInterf
 				'`updatedAt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP' +
 				") ENGINE='InnoDB';",
 		);
-		logMigrationEnd(this.name);
 	}
 
-	async down(queryRunner: QueryRunner) {
-		logMigrationStart(this.name);
-		const tablePrefix = getTablePrefix();
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`DROP TABLE "${tablePrefix}event_destinations"`);
-		logMigrationEnd(this.name);
 	}
 }

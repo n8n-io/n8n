@@ -1,47 +1,43 @@
 <template>
-	<div :class="classes" v-on="$listeners">
-		<div :class="$style.icon" v-if="$slots.prepend">
+	<div :class="classes" v-bind="$attrs">
+		<div v-if="$slots.prepend" :class="$style.icon">
 			<slot name="prepend" />
 		</div>
 		<div :class="$style.content">
-			<div :class="$style.header" v-if="$slots.header">
+			<div v-if="$slots.header" :class="$style.header">
 				<slot name="header" />
 			</div>
-			<div :class="$style.body" v-if="$slots.default">
+			<div v-if="$slots.default" :class="$style.body">
 				<slot />
 			</div>
-			<div :class="$style.footer" v-if="$slots.footer">
+			<div v-if="$slots.footer" :class="$style.footer">
 				<slot name="footer" />
 			</div>
 		</div>
-		<div :class="$style.actions" v-if="$slots.append">
+		<div v-if="$slots.append" :class="$style.append">
 			<slot name="append" />
 		</div>
 	</div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script lang="ts" setup>
+import { computed, useCssModule } from 'vue';
 
-export default defineComponent({
-	name: 'n8n-card',
-	inheritAttrs: true,
-	props: {
-		hoverable: {
-			type: Boolean,
-			default: false,
-		},
-	},
-	computed: {
-		classes(): Record<string, boolean> {
-			return {
-				card: true,
-				[this.$style.card]: true,
-				[this.$style.hoverable]: this.hoverable,
-			};
-		},
-	},
+interface CardProps {
+	hoverable?: boolean;
+}
+
+defineOptions({ name: 'N8nCard' });
+const props = withDefaults(defineProps<CardProps>(), {
+	hoverable: false,
 });
+
+const $style = useCssModule();
+const classes = computed(() => ({
+	card: true,
+	[$style.card]: true,
+	[$style.hoverable]: props.hoverable,
+}));
 </script>
 
 <style lang="scss" module>
@@ -82,7 +78,6 @@ export default defineComponent({
 
 .icon {
 	width: 24px;
-	height: 24px;
 	display: inline-flex;
 	justify-content: center;
 	align-items: center;
@@ -100,5 +95,11 @@ export default defineComponent({
 		color: var(--color-primary);
 		border-color: var(--color-primary);
 	}
+}
+
+.append {
+	display: flex;
+	align-items: center;
+	cursor: default;
 }
 </style>

@@ -1,39 +1,66 @@
 <template>
-	<n8n-tooltip placement="bottom" :disabled="!disabledHint">
-		<template #content>
-			<div>{{ disabledHint }}</div>
-		</template>
-		<div>
-			<n8n-button
-				:loading="nodeRunning && !isListeningForEvents && !isListeningForWorkflowEvents"
-				:disabled="disabled || !!disabledHint"
-				:label="buttonLabel"
-				:type="type"
-				:size="size"
-				:transparentBackground="transparent"
-				@click="onClick"
-			/>
-		</div>
-	</n8n-tooltip>
+	<div>
+		<n8n-tooltip placement="right" :disabled="!tooltipText">
+			<template #content>
+				<div>{{ tooltipText }}</div>
+			</template>
+			<div>
+				<n8n-button
+					v-bind="$attrs"
+					:loading
+					:disabled="disabled || !!disabledHint"
+					:label="buttonLabel"
+					:type="type"
+					:size="size"
+					:icon="!isListeningForEvents && !hideIcon ? 'flask' : undefined"
+					:transparent-background="transparent"
+					:title="
+						!isTriggerNode && !tooltipText
+							? $locale.baseText('ndv.execute.testNode.description')
+							: ''
+					"
+					@mouseover="onMouseOver"
+					@click="onClick"
+				/>
+			</div>
+		</n8n-tooltip>
+	</div>
 </template>
 
 <script lang="ts">
-import { WEBHOOK_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
-import { INodeUi } from '@/Interface';
-import { INodeTypeDescription } from 'n8n-workflow';
-import mixins from 'vue-typed-mixins';
-import { workflowRun } from '@/mixins/workflowRun';
-import { pinData } from '@/mixins/pinData';
-import { dataPinningEventBus } from '@/event-bus';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
+import {
+	WEBHOOK_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	MODAL_CONFIRM,
+	FORM_TRIGGER_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
+} from '@/constants';
+import type { INodeUi } from '@/Interface';
+import type { INodeTypeDescription } from 'n8n-workflow';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useMessage } from '@/composables/useMessage';
+import { useToast } from '@/composables/useToast';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { nodeViewEventBus } from '@/event-bus';
+import { usePinnedData } from '@/composables/usePinnedData';
+import { useRunWorkflow } from '@/composables/useRunWorkflow';
+import { useUIStore } from '@/stores/ui.store';
+import { useRouter } from 'vue-router';
 
-export default mixins(workflowRun, pinData).extend({
+const NODE_TEST_STEP_POPUP_COUNT_KEY = 'N8N_NODE_TEST_STEP_POPUP_COUNT';
+const MAX_POPUP_COUNT = 10;
+const POPUP_UPDATE_DELAY = 3000;
+
+export default defineComponent({
+	inheritAttrs: false,
 	props: {
 		nodeName: {
 			type: String,
+			required: true,
 		},
 		disabled: {
 			type: Boolean,
@@ -55,9 +82,34 @@ export default mixins(workflowRun, pinData).extend({
 		telemetrySource: {
 			type: String,
 		},
+		hideIcon: {
+			type: Boolean,
+		},
+		tooltip: {
+			type: String,
+		},
+	},
+	emits: ['stopExecution', 'execute'],
+	setup(props) {
+		const router = useRouter();
+		const workflowsStore = useWorkflowsStore();
+		const node = workflowsStore.getNodeByName(props.nodeName);
+		const pinnedData = usePinnedData(node);
+		const externalHooks = useExternalHooks();
+		const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
+
+		return {
+			externalHooks,
+			pinnedData,
+			runWorkflow,
+			stopCurrentExecution,
+			lastPopupCountUpdate: 0,
+			...useToast(),
+			...useMessage(),
+		};
 	},
 	computed: {
-		...mapStores(useNodeTypesStore, useNDVStore, useWorkflowsStore),
+		...mapStores(useNodeTypesStore, useNDVStore, useWorkflowsStore, useUIStore),
 		node(): INodeUi | null {
 			return this.workflowsStore.getNodeByName(this.nodeName);
 		},
@@ -69,26 +121,38 @@ export default mixins(workflowRun, pinData).extend({
 		},
 		nodeRunning(): boolean {
 			const triggeredNode = this.workflowsStore.executedNode;
-			const executingNode = this.workflowsStore.executingNode;
 			return (
 				this.workflowRunning &&
-				(executingNode === this.node.name || triggeredNode === this.node.name)
+				(this.workflowsStore.isNodeExecuting(this.node?.name ?? '') ||
+					triggeredNode === this.node?.name)
 			);
 		},
 		workflowRunning(): boolean {
 			return this.uiStore.isActionActive('workflowRunning');
 		},
 		isTriggerNode(): boolean {
+			if (!this.node) {
+				return false;
+			}
 			return this.nodeTypesStore.isTriggerNode(this.node.type);
 		},
 		isManualTriggerNode(): boolean {
 			return Boolean(this.nodeType && this.nodeType.name === MANUAL_TRIGGER_NODE_TYPE);
 		},
+		isChatNode(): boolean {
+			return Boolean(this.nodeType && this.nodeType.name === CHAT_TRIGGER_NODE_TYPE);
+		},
+		isChatChild(): boolean {
+			return this.workflowsStore.checkIfNodeHasChatParent(this.nodeName);
+		},
+		isFormTriggerNode(): boolean {
+			return Boolean(this.nodeType && this.nodeType.name === FORM_TRIGGER_NODE_TYPE);
+		},
 		isPollingTypeNode(): boolean {
-			return !!(this.nodeType && this.nodeType.polling);
+			return !!this.nodeType?.polling;
 		},
 		isScheduleTrigger(): boolean {
-			return !!(this.nodeType && this.nodeType.group.includes('schedule'));
+			return !!this.nodeType?.group.includes('schedule');
 		},
 		isWebhookNode(): boolean {
 			return Boolean(this.nodeType && this.nodeType.name === WEBHOOK_NODE_TYPE);
@@ -98,7 +162,7 @@ export default mixins(workflowRun, pinData).extend({
 			const executedNode = this.workflowsStore.executedNode;
 
 			return (
-				this.node &&
+				!!this.node &&
 				!this.node.disabled &&
 				this.isTriggerNode &&
 				waitingOnWebhook &&
@@ -115,9 +179,7 @@ export default mixins(workflowRun, pinData).extend({
 		},
 		hasIssues(): boolean {
 			return Boolean(
-				this.node &&
-					this.node.issues &&
-					(this.node.issues.parameters || this.node.issues.credentials),
+				this.node?.issues && (this.node.issues.parameters || this.node.issues.credentials),
 			);
 		},
 		disabledHint(): string {
@@ -125,7 +187,7 @@ export default mixins(workflowRun, pinData).extend({
 				return '';
 			}
 
-			if (this.isTriggerNode && this.node.disabled) {
+			if (this.isTriggerNode && this.node?.disabled) {
 				return this.$locale.baseText('ndv.execute.nodeIsDisabled');
 			}
 
@@ -144,6 +206,12 @@ export default mixins(workflowRun, pinData).extend({
 
 			return '';
 		},
+		tooltipText(): string {
+			if (this.disabledHint) return this.disabledHint;
+			if (this.tooltip && !this.loading && this.testStepButtonPopupCount() < MAX_POPUP_COUNT)
+				return this.tooltip;
+			return '';
+		},
 		buttonLabel(): string {
 			if (this.isListeningForEvents || this.isListeningForWorkflowEvents) {
 				return this.$locale.baseText('ndv.execute.stopListening');
@@ -153,63 +221,97 @@ export default mixins(workflowRun, pinData).extend({
 				return this.label;
 			}
 
+			if (this.isChatNode) {
+				return this.$locale.baseText('ndv.execute.testChat');
+			}
+
 			if (this.isWebhookNode) {
 				return this.$locale.baseText('ndv.execute.listenForTestEvent');
 			}
 
-			if (this.isPollingTypeNode || (this.nodeType && this.nodeType.mockManualExecution)) {
+			if (this.isFormTriggerNode) {
+				return this.$locale.baseText('ndv.execute.testStep');
+			}
+
+			if (this.isPollingTypeNode || this.nodeType?.mockManualExecution) {
 				return this.$locale.baseText('ndv.execute.fetchEvent');
 			}
 
-			if (this.isTriggerNode && !this.isScheduleTrigger && !this.isManualTriggerNode) {
-				return this.$locale.baseText('ndv.execute.listenForEvent');
-			}
+			return this.$locale.baseText('ndv.execute.testNode');
+		},
 
-			return this.$locale.baseText('ndv.execute.executeNode');
+		loading(): boolean {
+			return this.nodeRunning && !this.isListeningForEvents && !this.isListeningForWorkflowEvents;
 		},
 	},
 	methods: {
 		async stopWaitingForWebhook() {
 			try {
-				await this.restApi().removeTestWebhook(this.workflowsStore.workflowId);
+				await this.workflowsStore.removeTestWebhook(this.workflowsStore.workflowId);
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('ndv.execute.stopWaitingForWebhook.error'));
+				this.showError(error, this.$locale.baseText('ndv.execute.stopWaitingForWebhook.error'));
 				return;
 			}
 		},
 
+		testStepButtonPopupCount() {
+			return Number(localStorage.getItem(NODE_TEST_STEP_POPUP_COUNT_KEY));
+		},
+
+		onMouseOver() {
+			const count = this.testStepButtonPopupCount();
+
+			if (count < MAX_POPUP_COUNT && !this.disabledHint && this.tooltipText) {
+				const now = Date.now();
+				if (!this.lastPopupCountUpdate || now - this.lastPopupCountUpdate >= POPUP_UPDATE_DELAY) {
+					localStorage.setItem(NODE_TEST_STEP_POPUP_COUNT_KEY, `${count + 1}`);
+					this.lastPopupCountUpdate = now;
+				}
+			}
+		},
+
 		async onClick() {
-			if (this.isListeningForEvents) {
-				this.stopWaitingForWebhook();
+			// Show chat if it's a chat node or a child of a chat node with no input data
+			if (this.isChatNode || (this.isChatChild && this.ndvStore.isNDVDataEmpty('input'))) {
+				this.ndvStore.setActiveNodeName(null);
+				nodeViewEventBus.emit('openChat');
+			} else if (this.isListeningForEvents) {
+				await this.stopWaitingForWebhook();
 			} else if (this.isListeningForWorkflowEvents) {
+				await this.stopCurrentExecution();
 				this.$emit('stopExecution');
 			} else {
 				let shouldUnpinAndExecute = false;
-				if (this.hasPinData) {
-					shouldUnpinAndExecute = await this.confirmMessage(
+				if (this.pinnedData.hasData.value) {
+					const confirmResult = await this.confirm(
 						this.$locale.baseText('ndv.pinData.unpinAndExecute.description'),
 						this.$locale.baseText('ndv.pinData.unpinAndExecute.title'),
-						null,
-						this.$locale.baseText('ndv.pinData.unpinAndExecute.confirm'),
-						this.$locale.baseText('ndv.pinData.unpinAndExecute.cancel'),
+						{
+							confirmButtonText: this.$locale.baseText('ndv.pinData.unpinAndExecute.confirm'),
+							cancelButtonText: this.$locale.baseText('ndv.pinData.unpinAndExecute.cancel'),
+						},
 					);
+					shouldUnpinAndExecute = confirmResult === MODAL_CONFIRM;
 
-					if (shouldUnpinAndExecute) {
-						dataPinningEventBus.emit('data-unpinning', { source: 'unpin-and-execute-modal' });
-						this.workflowsStore.unpinData({ node: this.node });
+					if (shouldUnpinAndExecute && this.node) {
+						this.pinnedData.unsetData('unpin-and-execute-modal');
 					}
 				}
 
-				if (!this.hasPinData || shouldUnpinAndExecute) {
+				if (!this.pinnedData.hasData.value || shouldUnpinAndExecute) {
 					const telemetryPayload = {
 						node_type: this.nodeType ? this.nodeType.name : null,
 						workflow_id: this.workflowsStore.workflowId,
 						source: this.telemetrySource,
+						push_ref: this.ndvStore.pushRef,
 					};
 					this.$telemetry.track('User clicked execute node button', telemetryPayload);
-					this.$externalHooks().run('nodeExecuteButton.onClick', telemetryPayload);
+					await this.externalHooks.run('nodeExecuteButton.onClick', telemetryPayload);
 
-					this.runWorkflow(this.nodeName, 'RunData.ExecuteNodeButton');
+					await this.runWorkflow({
+						destinationNode: this.nodeName,
+						source: 'RunData.ExecuteNodeButton',
+					});
 					this.$emit('execute');
 				}
 			}

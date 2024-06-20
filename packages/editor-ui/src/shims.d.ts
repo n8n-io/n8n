@@ -1,8 +1,8 @@
-import Vue, { VNode } from 'vue';
+import type { VNode, ComponentPublicInstance } from 'vue';
+import type { PartialDeep } from 'type-fest';
+import type { ExternalHooks } from '@/types/externalHooks';
 
-declare module 'markdown-it-link-attributes';
-declare module 'markdown-it-emoji';
-declare module 'markdown-it-task-lists';
+export {};
 
 declare global {
 	interface ImportMeta {
@@ -11,17 +11,20 @@ declare global {
 			PROD: boolean;
 			NODE_ENV: 'development' | 'production';
 			VUE_APP_URL_BASE_API: string;
+			VUE_APP_MAX_PINNED_DATA_SIZE: string;
 		};
 	}
 
 	interface Window {
 		BASE_PATH: string;
 		REST_ENDPOINT: string;
+		n8nExternalHooks?: PartialDeep<ExternalHooks>;
+		preventNodeViewBeforeUnload?: boolean;
 	}
 
 	namespace JSX {
 		interface Element extends VNode {}
-		interface ElementClass extends Vue {}
+		interface ElementClass extends ComponentPublicInstance {}
 		interface IntrinsicElements {
 			[elem: string]: any;
 		}
