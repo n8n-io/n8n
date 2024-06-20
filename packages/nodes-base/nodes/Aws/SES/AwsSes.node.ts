@@ -1,3 +1,4 @@
+import qs from 'node:querystring';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -13,7 +14,7 @@ import { awsApiRequestSOAP, awsApiRequestSOAPAllItems } from './GenericFunctions
 
 function setParameter(params: string[], base: string, values: string[]) {
 	for (let i = 0; i < values.length; i++) {
-		params.push(`${base}.${i + 1}=${values[i]}`);
+		params.push(`${base}.${i + 1}=${encodeURIComponent(values[i])}`);
 	}
 }
 
@@ -843,22 +844,20 @@ export class AwsSes implements INodeType {
 
 						const templateSubject = this.getNodeParameter('templateSubject', i) as string;
 
-						const params = [
-							'Action=CreateCustomVerificationEmailTemplate',
-							`FailureRedirectionURL=${failureRedirectionURL}`,
-							`FromEmailAddress=${email}`,
-							`SuccessRedirectionURL=${successRedirectionURL}`,
-							`TemplateContent=${templateContent}`,
-							`TemplateName=${templateName}`,
-							`TemplateSubject=${templateSubject}`,
-						];
-
 						responseData = await awsApiRequestSOAP.call(
 							this,
 							'email',
 							'POST',
 							'',
-							params.join('&'),
+							qs.stringify({
+								Action: 'CreateCustomVerificationEmailTemplate',
+								FromEmailAddress: email,
+								SuccessRedirectionURL: successRedirectionURL,
+								FailureRedirectionURL: failureRedirectionURL,
+								TemplateName: templateName,
+								TemplateSubject: templateSubject,
+								TemplateContent: templateContent,
+							}),
 						);
 
 						responseData = responseData.CreateCustomVerificationEmailTemplateResponse;
@@ -1012,7 +1011,7 @@ export class AwsSes implements INodeType {
 
 						const params = [
 							`Message.Subject.Data=${encodeURIComponent(subject)}`,
-							`Source=${fromEmail}`,
+							`Source=${encodeURIComponent(fromEmail)}`,
 						];
 
 						if (isBodyHtml) {
@@ -1286,7 +1285,7 @@ export class AwsSes implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

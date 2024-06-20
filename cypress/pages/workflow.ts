@@ -1,5 +1,6 @@
 import { META_KEY } from '../constants';
 import { getVisibleSelect } from '../utils';
+import { getUniqueWorkflowName } from '../utils/workflowUtils';
 import { BasePage } from './base';
 import { NodeCreator } from './features/node-creator';
 
@@ -310,6 +311,9 @@ export class WorkflowPage extends BasePage {
 			cy.get('body').type('{selectall}');
 			cy.get('body').type(newName);
 			cy.get('body').type('{enter}');
+		},
+		renameWithUniqueName: () => {
+			this.actions.renameWorkflow(getUniqueWorkflowName());
 		},
 		addTags: (tags: string | string[]) => {
 			if (!Array.isArray(tags)) tags = [tags];

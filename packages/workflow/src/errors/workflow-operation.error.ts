@@ -1,4 +1,4 @@
-import type { INode } from '..';
+import type { INode } from '@/Interfaces';
 import { ExecutionBaseError } from './abstract/execution-base.error';
 
 /**

@@ -17,6 +17,7 @@ import type { NodeProps } from '@vue-flow/core';
 
 const emit = defineEmits<{
 	delete: [id: string];
+	activate: [id: string];
 }>();
 
 const props = defineProps<NodeProps<CanvasElementData>>();
@@ -97,6 +98,10 @@ provide(CanvasNodeKey, {
 function onDelete() {
 	emit('delete', props.id);
 }
+
+function onActivate() {
+	emit('activate', props.id);
+}
 </script>
 
 <template>
@@ -132,7 +137,7 @@ function onDelete() {
 			@delete="onDelete"
 		/>
 
-		<CanvasNodeRenderer v-if="nodeType">
+		<CanvasNodeRenderer v-if="nodeType" @dblclick="onActivate">
 			<NodeIcon :node-type="nodeType" :size="40" :shrink="false" />
 			<!--			:color-default="iconColorDefault"-->
 			<!--			:disabled="data.disabled"-->

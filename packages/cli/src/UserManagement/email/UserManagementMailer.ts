@@ -16,6 +16,7 @@ import { toError } from '@/utils';
 
 import type { InviteEmailData, PasswordResetData, SendEmailResult } from './Interfaces';
 import { NodeMailer } from './NodeMailer';
+import { EventRelay } from '@/eventbus/event-relay.service';
 
 type Template = HandlebarsTemplateDelegate<unknown>;
 type TemplateName = 'invite' | 'passwordReset' | 'workflowShared' | 'credentialsShared';
@@ -124,6 +125,10 @@ export class UserManagementMailer {
 				message_type: 'Workflow shared',
 				public_api: false,
 			});
+			Container.get(EventRelay).emit('email-failed', {
+				user: sharer,
+				messageType: 'Workflow shared',
+			});
 
 			const error = toError(e);
 
@@ -156,7 +161,10 @@ export class UserManagementMailer {
 			const result = await this.mailer.sendMail({
 				emailRecipients,
 				subject: `${sharer.firstName} has shared an n8n credential with you`,
-				body: populateTemplate({ credentialsName, credentialsListUrl: `${baseUrl}/credentials` }),
+				body: populateTemplate({
+					credentialsName,
+					credentialsListUrl: `${baseUrl}/home/credentials`,
+				}),
 			});
 
 			if (!result) return { emailSent: false };
@@ -175,6 +183,10 @@ export class UserManagementMailer {
 				user: sharer,
 				message_type: 'Credentials shared',
 				public_api: false,
+			});
+			Container.get(EventRelay).emit('email-failed', {
+				user: sharer,
+				messageType: 'Credentials shared',
 			});
 
 			const error = toError(e);

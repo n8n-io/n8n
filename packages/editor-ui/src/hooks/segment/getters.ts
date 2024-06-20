@@ -11,7 +11,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import type { TelemetryEventData } from '@/hooks/types';
 import type { INodeUi } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 
 export interface UserSavedCredentialsEventData {
 	credential_type: string;

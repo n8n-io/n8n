@@ -35,7 +35,6 @@ import type {
 } from '@/Interfaces';
 
 import config from '@/config';
-import { isAdvancedExecutionFiltersEnabled } from '@/executions/executionHelpers';
 import type { ExecutionData } from '../entities/ExecutionData';
 import { ExecutionEntity } from '../entities/ExecutionEntity';
 import { ExecutionMetadata } from '../entities/ExecutionMetadata';
@@ -71,7 +70,7 @@ function parseFiltersToQueryBuilder(
 	if (filters?.finished) {
 		qb.andWhere({ finished: filters.finished });
 	}
-	if (filters?.metadata && isAdvancedExecutionFiltersEnabled()) {
+	if (filters?.metadata) {
 		qb.leftJoin(ExecutionMetadata, 'md', 'md.executionId = execution.id');
 		for (const md of filters.metadata) {
 			qb.andWhere('md.key = :key AND md.value = :value', md);
@@ -152,27 +151,29 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			if (!queryParams.relations) {
 				queryParams.relations = [];
 			}
-			(queryParams.relations as string[]).push('executionData');
+			(queryParams.relations as string[]).push('executionData', 'metadata');
 		}
 
 		const executions = await this.find(queryParams);
 
 		if (options?.includeData && options?.unflattenData) {
 			return executions.map((execution) => {
-				const { executionData, ...rest } = execution;
+				const { executionData, metadata, ...rest } = execution;
 				return {
 					...rest,
 					data: parse(executionData.data) as IRunExecutionData,
 					workflowData: executionData.workflowData,
+					customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 				} as IExecutionResponse;
 			});
 		} else if (options?.includeData) {
 			return executions.map((execution) => {
-				const { executionData, ...rest } = execution;
+				const { executionData, metadata, ...rest } = execution;
 				return {
 					...rest,
 					data: execution.executionData.data,
 					workflowData: execution.executionData.workflowData,
+					customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 				} as IExecutionFlattedDb;
 			});
 		}
@@ -222,7 +223,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			},
 		};
 		if (options?.includeData) {
-			findOptions.relations = ['executionData'];
+			findOptions.relations = ['executionData', 'metadata'];
 		}
 
 		const execution = await this.findOne(findOptions);
@@ -231,19 +232,21 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			return undefined;
 		}
 
-		const { executionData, ...rest } = execution;
+		const { executionData, metadata, ...rest } = execution;
 
 		if (options?.includeData && options?.unflattenData) {
 			return {
 				...rest,
 				data: parse(execution.executionData.data) as IRunExecutionData,
 				workflowData: execution.executionData.workflowData,
+				customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 			} as IExecutionResponse;
 		} else if (options?.includeData) {
 			return {
 				...rest,
 				data: execution.executionData.data,
 				workflowData: execution.executionData.workflowData,
+				customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 			} as IExecutionFlattedDb;
 		}
 
@@ -263,7 +266,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return String(executionId);
 	}
 
-	async markAsCrashed(executionIds: string[]) {
+	async markAsCrashed(executionIds: string | string[]) {
+		if (!Array.isArray(executionIds)) executionIds = [executionIds];
+
 		await this.update(
 			{ id: In(executionIds) },
 			{
@@ -271,6 +276,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				stoppedAt: new Date(),
 			},
 		);
+
+		this.logger.info('Marked executions as `crashed`', { executionIds });
 	}
 
 	/**
@@ -287,11 +294,16 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		await this.update({ id: executionId }, { status });
 	}
 
+	async resetStartedAt(executionId: string) {
+		await this.update({ id: executionId }, { startedAt: new Date() });
+	}
+
 	async updateExistingExecution(executionId: string, execution: Partial<IExecutionResponse>) {
 		// Se isolate startedAt because it must be set when the execution starts and should never change.
 		// So we prevent updating it, if it's sent (it usually is and causes problems to executions that
 		// are resumed after waiting for some time, as a new startedAt is set)
-		const { id, data, workflowId, workflowData, startedAt, ...executionInformation } = execution;
+		const { id, data, workflowId, workflowData, startedAt, customData, ...executionInformation } =
+			execution;
 		if (Object.keys(executionInformation).length > 0) {
 			await this.update({ id: executionId }, executionInformation);
 		}
@@ -599,6 +611,14 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		});
 	}
 
+	async cancel(executionId: string) {
+		await this.update({ id: executionId }, { status: 'canceled', stoppedAt: new Date() });
+	}
+
+	async cancelMany(executionIds: string[]) {
+		await this.update({ id: In(executionIds) }, { status: 'canceled', stoppedAt: new Date() });
+	}
+
 	// ----------------------------------
 	//            new API
 	// ----------------------------------
@@ -719,6 +739,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 			if (query.order?.stoppedAt === 'DESC') {
 				qb.orderBy({ 'execution.stoppedAt': 'DESC' });
+			} else if (query.order?.top) {
+				qb.orderBy(`(CASE WHEN execution.status = '${query.order.top}' THEN 0 ELSE 1 END)`);
 			} else {
 				qb.orderBy({ 'execution.id': 'DESC' });
 			}
@@ -748,6 +770,20 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	async getAllIds() {
 		const executions = await this.find({ select: ['id'], order: { id: 'ASC' } });
+
+		return executions.map(({ id }) => id);
+	}
+
+	/**
+	 * Retrieve a batch of execution IDs with `new` or `running` status, in most recent order.
+	 */
+	async getInProgressExecutionIds(batchSize: number) {
+		const executions = await this.find({
+			select: ['id'],
+			where: { status: In(['new', 'running']) },
+			order: { startedAt: 'DESC' },
+			take: batchSize,
+		});
 
 		return executions.map(({ id }) => id);
 	}

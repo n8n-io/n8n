@@ -16,7 +16,16 @@ jest.mock('node:os', () => ({
 describe('InternalHooks', () => {
 	const telemetry = mock<Telemetry>();
 	const license = mock<License>();
-	const globalConfig = mock<GlobalConfig>();
+	const globalConfig = mock<GlobalConfig>({
+		database: {
+			type: 'sqlite',
+		},
+		userManagement: {
+			emails: {
+				mode: 'smtp',
+			},
+		},
+	});
 	const internalHooks = new InternalHooks(
 		globalConfig,
 		telemetry,
@@ -25,8 +34,8 @@ describe('InternalHooks', () => {
 		mock(),
 		mock(),
 		mock(),
-		mock(),
 		license,
+		mock(),
 		mock(),
 		mock(),
 	);

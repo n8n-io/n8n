@@ -2,6 +2,7 @@ import { v4 as uuid } from 'uuid';
 import { compare } from 'bcryptjs';
 import { Container } from 'typedi';
 import { mock } from 'jest-mock-extended';
+import { randomString } from 'n8n-workflow';
 
 import { AuthService } from '@/auth/auth.service';
 import { License } from '@/License';
@@ -12,6 +13,7 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { JwtService } from '@/services/jwt.service';
 import { UserManagementMailer } from '@/UserManagement/email';
 import { UserRepository } from '@db/repositories/user.repository';
+import { PasswordUtility } from '@/services/password.utility';
 
 import { mockInstance } from '../shared/mocking';
 import { getAuthToken, setupTestServer } from './shared/utils/';
@@ -19,12 +21,10 @@ import {
 	randomEmail,
 	randomInvalidPassword,
 	randomName,
-	randomString,
 	randomValidPassword,
 } from './shared/random';
 import * as testDb from './shared/testDb';
 import { createUser } from './shared/db/users';
-import { PasswordUtility } from '@/services/password.utility';
 
 config.set('userManagement.jwtSecret', randomString(5, 10));
 

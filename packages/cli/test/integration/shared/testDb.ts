@@ -1,13 +1,12 @@
+import { Container } from 'typedi';
 import type { DataSourceOptions, Repository } from '@n8n/typeorm';
 import { DataSource as Connection } from '@n8n/typeorm';
-import { Container } from 'typedi';
-import type { Class } from 'n8n-core';
 import { GlobalConfig } from '@n8n/config';
+import type { Class } from 'n8n-core';
+import { randomString } from 'n8n-workflow';
 
 import * as Db from '@/Db';
 import { getOptionOverrides } from '@db/config';
-
-import { randomString } from './random';
 
 export const testDbPrefix = 'n8n_test_';
 
@@ -17,7 +16,7 @@ export const testDbPrefix = 'n8n_test_';
 export async function init() {
 	const globalConfig = Container.get(GlobalConfig);
 	const dbType = globalConfig.database.type;
-	const testDbName = `${testDbPrefix}${randomString(6, 10)}_${Date.now()}`;
+	const testDbName = `${testDbPrefix}${randomString(6, 10).toLowerCase()}_${Date.now()}`;
 
 	if (dbType === 'postgresdb') {
 		const bootstrapPostgres = await new Connection(

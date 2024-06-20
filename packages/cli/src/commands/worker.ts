@@ -15,7 +15,7 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import config from '@/config';
 import type { Job, JobId, JobResponse, WebhookResponse } from '@/Queue';
 import { Queue } from '@/Queue';
-import { N8N_VERSION } from '@/constants';
+import { N8N_VERSION, inTest } from '@/constants';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { ICredentialsOverwrite } from '@/Interfaces';
@@ -318,8 +318,12 @@ export class Worker extends BaseCommand {
 		Worker.jobQueue = Container.get(Queue);
 		await Worker.jobQueue.init();
 		this.logger.debug('Queue singleton ready');
+
+		const envConcurrency = config.getEnv('executions.concurrency.productionLimit');
+		const concurrency = envConcurrency !== -1 ? envConcurrency : flags.concurrency;
+
 		void Worker.jobQueue.process(
-			flags.concurrency,
+			concurrency,
 			async (job) => await this.runJob(job, this.nodeTypes),
 		);
 
@@ -497,7 +501,7 @@ export class Worker extends BaseCommand {
 		}
 
 		// Make sure that the process does not close
-		await new Promise(() => {});
+		if (!inTest) await new Promise(() => {});
 	}
 
 	async catch(error: Error) {
