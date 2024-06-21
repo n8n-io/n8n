@@ -85,7 +85,8 @@ export class ActiveWorkflows {
 				if (triggerResponse !== undefined) {
 					// If a response was given save it
 
-					this.activeWorkflows[workflowId].triggerResponses!.push(triggerResponse);
+					// @ts-expect-error Initialized before the loop
+					this.activeWorkflows[workflowId].triggerResponses.push(triggerResponse);
 				}
 			} catch (e) {
 				const error = e instanceof Error ? e : new Error(`${e}`);
@@ -105,7 +106,8 @@ export class ActiveWorkflows {
 
 		for (const pollNode of pollingNodes) {
 			try {
-				this.activeWorkflows[workflowId].pollResponses!.push(
+				// @ts-expect-error Initialized before the loop
+				this.activeWorkflows[workflowId].pollResponses.push(
 					await this.activatePolling(
 						pollNode,
 						workflow,
