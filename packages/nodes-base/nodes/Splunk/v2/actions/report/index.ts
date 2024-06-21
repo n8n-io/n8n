@@ -1,10 +1,10 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import * as deleteConfiguration from './deleteConfiguration.operation';
+import * as deleteReport from './deleteReport.operation';
 import * as get from './get.operation';
 import * as getAll from './getAll.operation';
 
-export { deleteConfiguration, get, getAll };
+export { deleteReport, get, getAll };
 
 export const description: INodeProperties[] = [
 	{
@@ -20,7 +20,7 @@ export const description: INodeProperties[] = [
 		options: [
 			{
 				name: 'Delete',
-				value: 'deleteConfiguration',
+				value: 'deleteReport',
 				description: 'Delete a search configuration',
 				action: 'Delete a search configuration',
 			},
@@ -40,7 +40,7 @@ export const description: INodeProperties[] = [
 		default: 'getAll',
 	},
 
-	...deleteConfiguration.description,
+	...deleteReport.description,
 	...get.description,
 	...getAll.description,
 ];

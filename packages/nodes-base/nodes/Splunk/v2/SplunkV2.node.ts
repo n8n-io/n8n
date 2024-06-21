@@ -8,7 +8,7 @@ import type {
 
 import { router } from './actions/router';
 import { versionDescription } from './actions/versionDescription';
-import { loadOptions } from './methods';
+import { loadOptions, listSearch } from './methods';
 
 export class SplunkV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -20,7 +20,7 @@ export class SplunkV2 implements INodeType {
 		};
 	}
 
-	methods = { loadOptions };
+	methods = { loadOptions, listSearch };
 
 	async execute(this: IExecuteFunctions) {
 		return await router.call(this);
