@@ -1,9 +1,11 @@
+import deepEqual from 'deep-equal';
+import uniqWith from 'lodash/uniqWith';
+
 import { ExpressionError } from '../errors/expression.error';
 import { ExpressionExtensionError } from '../errors/expression-extension.error';
 import type { Extension, ExtensionMap } from './Extensions';
 import { compact as oCompact } from './ObjectExtensions';
-import deepEqual from 'deep-equal';
-import uniqWith from 'lodash/uniqWith';
+import { randomInt } from '../utils';
 
 function first(value: unknown[]): unknown {
 	return value[0];
@@ -49,7 +51,7 @@ function pluck(value: unknown[], extraArgs: unknown[]): unknown[] {
 
 function randomItem(value: unknown[]): unknown {
 	const len = value === undefined ? 0 : value.length;
-	return len ? value[Math.floor(Math.random() * len)] : undefined;
+	return len ? value[randomInt(len)] : undefined;
 }
 
 function unique(value: unknown[], extraArgs: string[]): unknown[] {
@@ -352,7 +354,7 @@ compact.doc = {
 
 isEmpty.doc = {
 	name: 'isEmpty',
-	description: 'Returns <code>true</code> if the array has no elements',
+	description: 'Returns <code>true</code> if the array has no elements or is <code>null</code>',
 	examples: [
 		{ example: '[].isEmpty()', evaluated: 'true' },
 		{ example: "['quick', 'brown', 'fox'].isEmpty()", evaluated: 'false' },

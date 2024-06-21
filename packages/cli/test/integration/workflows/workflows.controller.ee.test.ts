@@ -527,6 +527,35 @@ describe('GET /workflows/:workflowId', () => {
 		]);
 		expect(member2Workflow.sharedWithProjects).toHaveLength(1);
 	});
+
+	test('should return workflow credentials home project and shared with projects', async () => {
+		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
+		// Both users have access to the credential (none is owner)
+		await shareCredentialWithUsers(savedCredential, [anotherMember]);
+
+		const workflowPayload = makeWorkflow({
+			withPinData: false,
+			withCredential: { id: savedCredential.id, name: savedCredential.name },
+		});
+		const workflow = await createWorkflow(workflowPayload, member);
+		await shareWorkflowWithUsers(workflow, [anotherMember]);
+
+		const responseMember1 = await authMemberAgent.get(`/workflows/${workflow.id}`).expect(200);
+		const member1Workflow: WorkflowWithSharingsMetaDataAndCredentials = responseMember1.body.data;
+
+		expect(member1Workflow.usedCredentials).toMatchObject([
+			{
+				id: savedCredential.id,
+				name: savedCredential.name,
+				currentUserHasAccess: true,
+				homeProject: {
+					id: memberPersonalProject.id,
+				},
+				sharedWithProjects: [{ id: anotherMemberPersonalProject.id }],
+			},
+		]);
+		expect(member1Workflow.sharedWithProjects).toHaveLength(1);
+	});
 });
 
 describe('POST /workflows', () => {

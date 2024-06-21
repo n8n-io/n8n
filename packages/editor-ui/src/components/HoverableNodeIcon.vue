@@ -2,7 +2,7 @@
 	<div
 		:class="$style.wrapper"
 		:style="iconStyleData"
-		@click="(e) => $emit('click')"
+		@click="() => $emit('click')"
 		@mouseover="showTooltip = true"
 		@mouseleave="showTooltip = false"
 	>
@@ -45,7 +45,7 @@ import { type StyleValue, defineComponent, type PropType } from 'vue';
 import type { ITemplatesNode } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { mapStores } from 'pinia';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 
 interface NodeIconData {
 	type: string;
@@ -124,9 +124,9 @@ export default defineComponent({
 				return (nodeType as ITemplatesNode).iconData;
 			}
 
-			const restUrl = this.rootStore.getRestUrl;
+			const restUrl = this.rootStore.restUrl;
 
-			if (nodeType.icon) {
+			if (typeof nodeType.icon === 'string') {
 				const [type, path] = nodeType.icon.split(':');
 				const returnData: NodeIconData = {
 					type,

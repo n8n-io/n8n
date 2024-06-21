@@ -212,6 +212,10 @@ export function executeFilterCondition(
 			const right = rightValue as number;
 
 			switch (condition.operator.operation) {
+				case 'empty':
+					return !exists;
+				case 'notEmpty':
+					return exists;
 				case 'equals':
 					return left === right;
 				case 'notEquals':
@@ -229,6 +233,12 @@ export function executeFilterCondition(
 		case 'dateTime': {
 			const left = leftValue as DateTime;
 			const right = rightValue as DateTime;
+
+			if (condition.operator.operation === 'empty') {
+				return !exists;
+			} else if (condition.operator.operation === 'notEmpty') {
+				return exists;
+			}
 
 			if (!left || !right) {
 				return false;
@@ -254,6 +264,10 @@ export function executeFilterCondition(
 			const right = rightValue as boolean;
 
 			switch (condition.operator.operation) {
+				case 'empty':
+					return !exists;
+				case 'notEmpty':
+					return exists;
 				case 'true':
 					return left;
 				case 'false':

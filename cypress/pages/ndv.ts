@@ -1,5 +1,5 @@
-import { BasePage } from './base';
 import { getVisiblePopper, getVisibleSelect } from '../utils';
+import { BasePage } from './base';
 
 export class NDV extends BasePage {
 	getters = {
@@ -78,6 +78,8 @@ export class NDV extends BasePage {
 		resourceLocatorErrorMessage: () => cy.getByTestId('rlc-error-container'),
 		resourceLocatorModeSelector: (paramName: string) =>
 			this.getters.resourceLocator(paramName).find('[data-test-id="rlc-mode-selector"]'),
+		resourceLocatorSearch: (paramName: string) =>
+			this.getters.resourceLocator(paramName).findChildByTestId('rlc-search'),
 		resourceMapperFieldsContainer: () => cy.getByTestId('mapping-fields-container'),
 		resourceMapperSelectColumn: () => cy.getByTestId('matching-column-select'),
 		resourceMapperRemoveFieldButton: (fieldName: string) =>
@@ -158,12 +160,7 @@ export class NDV extends BasePage {
 			this.getters.pinnedDataEditor().click();
 			this.getters
 				.pinnedDataEditor()
-				.type(
-					`{selectall}{backspace}${pinnedData.replace(new RegExp('{', 'g'), '{{}')}`,
-					{
-						delay: 0,
-					},
-				);
+				.type(`{selectall}{backspace}${pinnedData.replace(new RegExp('{', 'g'), '{{}')}`);
 
 			this.actions.savePinnedData();
 		},
@@ -171,24 +168,21 @@ export class NDV extends BasePage {
 			this.getters.editPinnedDataButton().click();
 
 			this.getters.pinnedDataEditor().click();
-			this.getters
-				.pinnedDataEditor()
-				.type('{selectall}{backspace}', { delay: 0 })
-				.paste(JSON.stringify(data));
+			this.getters.pinnedDataEditor().type('{selectall}{backspace}').paste(JSON.stringify(data));
 
 			this.actions.savePinnedData();
 		},
 		clearParameterInput: (parameterName: string) => {
-			this.getters.parameterInput(parameterName).type(`{selectall}{backspace}`);
+			this.getters.parameterInput(parameterName).type('{selectall}{backspace}');
 		},
 		typeIntoParameterInput: (
 			parameterName: string,
 			content: string,
-			opts?: { parseSpecialCharSequences: boolean; delay?: number },
+			opts?: { parseSpecialCharSequences: boolean },
 		) => {
 			this.getters.parameterInput(parameterName).type(content, opts);
 		},
-		selectOptionInParameterDropdown: (parameterName: string, content: string) => {
+		selectOptionInParameterDropdown: (_: string, content: string) => {
 			getVisibleSelect().find('.option-headline').contains(content).click();
 		},
 		rename: (newName: string) => {
@@ -275,18 +269,15 @@ export class NDV extends BasePage {
 		setInvalidExpression: ({
 			fieldName,
 			invalidExpression,
-			delay,
 		}: {
 			fieldName: string;
 			invalidExpression?: string;
-			delay?: number;
 		}) => {
 			this.actions.typeIntoParameterInput(fieldName, '=');
 			this.actions.typeIntoParameterInput(fieldName, invalidExpression ?? "{{ $('unknown')", {
 				parseSpecialCharSequences: false,
-				delay,
 			});
-			this.actions.validateExpressionPreview(fieldName, `node doesn't exist`);
+			this.actions.validateExpressionPreview(fieldName, "node doesn't exist");
 		},
 		openSettings: () => {
 			this.getters.nodeSettingsTab().click();

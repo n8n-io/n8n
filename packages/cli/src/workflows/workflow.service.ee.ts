@@ -13,7 +13,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { Logger } from '@/Logger';
 import type {
-	CredentialUsedByWorkflow,
 	WorkflowWithSharingsAndCredentials,
 	WorkflowWithSharingsMetaDataAndCredentials,
 } from './workflows.types';
@@ -101,16 +100,15 @@ export class EnterpriseWorkflowService {
 		const userCredentialIds = userCredentials.map((credential) => credential.id);
 		workflowCredentials.forEach((credential) => {
 			const credentialId = credential.id;
-			const workflowCredential: CredentialUsedByWorkflow = {
+			const filledCred = this.ownershipService.addOwnedByAndSharedWith(credential);
+			workflow.usedCredentials?.push({
 				id: credentialId,
 				name: credential.name,
 				type: credential.type,
 				currentUserHasAccess: userCredentialIds.includes(credentialId),
-				sharedWith: [],
-				ownedBy: null,
-			};
-			credential = this.ownershipService.addOwnedByAndSharedWith(credential);
-			workflow.usedCredentials?.push(workflowCredential);
+				homeProject: filledCred.homeProject,
+				sharedWithProjects: filledCred.sharedWithProjects,
+			});
 		});
 	}
 

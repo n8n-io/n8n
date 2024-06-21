@@ -2,6 +2,7 @@ import { BasePage } from './base';
 
 export class WorkflowsPage extends BasePage {
 	url = '/home/workflows';
+
 	getters = {
 		newWorkflowButtonCard: () => cy.getByTestId('new-workflow-card'),
 		newWorkflowTemplateCard: () => cy.getByTestId('new-workflow-template-card'),
@@ -23,6 +24,8 @@ export class WorkflowsPage extends BasePage {
 			this.getters.workflowCard(workflowName).findChildByTestId('workflow-card-actions'),
 		workflowDeleteButton: () =>
 			cy.getByTestId('action-toggle-dropdown').filter(':visible').contains('Delete'),
+		workflowMoveButton: () =>
+			cy.getByTestId('action-toggle-dropdown').filter(':visible').contains('Move'),
 		workflowFilterButton: () => cy.getByTestId('resources-list-filters-trigger').filter(':visible'),
 		workflowTagsDropdown: () => cy.getByTestId('tags-dropdown'),
 		workflowTagItem: (tag: string) => cy.getByTestId('tag').contains(tag),

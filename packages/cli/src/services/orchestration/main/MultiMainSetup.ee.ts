@@ -2,16 +2,17 @@ import { EventEmitter } from 'node:events';
 import config from '@/config';
 import { Service } from 'typedi';
 import { TIME } from '@/constants';
-import { getRedisPrefix } from '@/services/redis/RedisServiceHelper';
 import { ErrorReporterProxy as EventReporter } from 'n8n-workflow';
 import { Logger } from '@/Logger';
 import { RedisServicePubSubPublisher } from '@/services/redis/RedisServicePubSubPublisher';
+import { RedisClientService } from '@/services/redis/redis-client.service';
 
 @Service()
 export class MultiMainSetup extends EventEmitter {
 	constructor(
 		private readonly logger: Logger,
 		private readonly redisPublisher: RedisServicePubSubPublisher,
+		private readonly redisClientService: RedisClientService,
 	) {
 		super();
 	}
@@ -20,13 +21,17 @@ export class MultiMainSetup extends EventEmitter {
 		return config.getEnv('redis.queueModeId');
 	}
 
-	private readonly leaderKey = getRedisPrefix() + ':main_instance_leader';
+	private leaderKey: string;
 
 	private readonly leaderKeyTtl = config.getEnv('multiMainSetup.ttl');
 
 	private leaderCheckInterval: NodeJS.Timer | undefined;
 
 	async init() {
+		const prefix = config.getEnv('redis.prefix');
+		const validPrefix = this.redisClientService.toValidPrefix(prefix);
+		this.leaderKey = validPrefix + ':main_instance_leader';
+
 		await this.tryBecomeLeader(); // prevent initial wait
 
 		this.leaderCheckInterval = setInterval(
@@ -62,7 +67,7 @@ export class MultiMainSetup extends EventEmitter {
 			if (config.getEnv('multiMainSetup.instanceType') === 'leader') {
 				config.set('multiMainSetup.instanceType', 'follower');
 
-				this.emit('leader-stepdown'); // lost leadership - stop triggers, pollers, pruning, wait-tracking
+				this.emit('leader-stepdown'); // lost leadership - stop triggers, pollers, pruning, wait-tracking, queue recovery
 
 				EventReporter.info('[Multi-main setup] Leader failed to renew leader key');
 			}
@@ -78,7 +83,7 @@ export class MultiMainSetup extends EventEmitter {
 			config.set('multiMainSetup.instanceType', 'follower');
 
 			/**
-			 * Lost leadership - stop triggers, pollers, pruning, wait tracking, license renewal
+			 * Lost leadership - stop triggers, pollers, pruning, wait tracking, license renewal, queue recovery
 			 */
 			this.emit('leader-stepdown');
 
@@ -101,7 +106,7 @@ export class MultiMainSetup extends EventEmitter {
 			await this.redisPublisher.setExpiration(this.leaderKey, this.leaderKeyTtl);
 
 			/**
-			 * Gained leadership - start triggers, pollers, pruning, wait-tracking, license renewal
+			 * Gained leadership - start triggers, pollers, pruning, wait-tracking, license renewal, queue recovery
 			 */
 			this.emit('leader-takeover');
 		} else {

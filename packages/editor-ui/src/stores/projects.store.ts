@@ -1,8 +1,10 @@
 import { defineStore } from 'pinia';
 import { ref, watch, computed } from 'vue';
 import { useRoute } from 'vue-router';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import * as projectsApi from '@/api/projects.api';
+import * as workflowsEEApi from '@/api/workflows.ee';
+import * as credentialsEEApi from '@/api/credentials.ee';
 import type {
 	Project,
 	ProjectCreateRequest,
@@ -14,11 +16,15 @@ import { ProjectTypes } from '@/types/projects.types';
 import { useSettingsStore } from '@/stores/settings.store';
 import { hasPermission } from '@/utils/rbac/permissions';
 import type { IWorkflowDb } from '@/Interface';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
 
 export const useProjectsStore = defineStore('projects', () => {
 	const route = useRoute();
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
+	const workflowsStore = useWorkflowsStore();
+	const credentialsStore = useCredentialsStore();
 
 	const projects = ref<ProjectListItem[]>([]);
 	const myProjects = ref<ProjectListItem[]>([]);
@@ -73,33 +79,33 @@ export const useProjectsStore = defineStore('projects', () => {
 	};
 
 	const getAllProjects = async () => {
-		projects.value = await projectsApi.getAllProjects(rootStore.getRestApiContext);
+		projects.value = await projectsApi.getAllProjects(rootStore.restApiContext);
 	};
 
 	const getMyProjects = async () => {
-		myProjects.value = await projectsApi.getMyProjects(rootStore.getRestApiContext);
+		myProjects.value = await projectsApi.getMyProjects(rootStore.restApiContext);
 	};
 
 	const getPersonalProject = async () => {
-		personalProject.value = await projectsApi.getPersonalProject(rootStore.getRestApiContext);
+		personalProject.value = await projectsApi.getPersonalProject(rootStore.restApiContext);
 	};
 
 	const fetchProject = async (id: string) =>
-		await projectsApi.getProject(rootStore.getRestApiContext, id);
+		await projectsApi.getProject(rootStore.restApiContext, id);
 
 	const getProject = async (id: string) => {
 		currentProject.value = await fetchProject(id);
 	};
 
 	const createProject = async (project: ProjectCreateRequest): Promise<Project> => {
-		const newProject = await projectsApi.createProject(rootStore.getRestApiContext, project);
+		const newProject = await projectsApi.createProject(rootStore.restApiContext, project);
 		await getProjectsCount();
 		myProjects.value = [...myProjects.value, newProject as unknown as ProjectListItem];
 		return newProject;
 	};
 
 	const updateProject = async (projectData: ProjectUpdateRequest): Promise<void> => {
-		await projectsApi.updateProject(rootStore.getRestApiContext, projectData);
+		await projectsApi.updateProject(rootStore.restApiContext, projectData);
 		const projectIndex = myProjects.value.findIndex((p) => p.id === projectData.id);
 		if (projectIndex !== -1) {
 			myProjects.value[projectIndex].name = projectData.name;
@@ -113,13 +119,13 @@ export const useProjectsStore = defineStore('projects', () => {
 	};
 
 	const deleteProject = async (projectId: string, transferId?: string): Promise<void> => {
-		await projectsApi.deleteProject(rootStore.getRestApiContext, projectId, transferId);
+		await projectsApi.deleteProject(rootStore.restApiContext, projectId, transferId);
 		await getProjectsCount();
 		myProjects.value = myProjects.value.filter((p) => p.id !== projectId);
 	};
 
 	const getProjectsCount = async () => {
-		projectsCount.value = await projectsApi.getProjectsCount(rootStore.getRestApiContext);
+		projectsCount.value = await projectsApi.getProjectsCount(rootStore.restApiContext);
 	};
 
 	const setProjectNavActiveIdByWorkflowHomeProject = async (
@@ -132,6 +138,24 @@ export const useProjectsStore = defineStore('projects', () => {
 			if (homeProject?.id && !currentProjectId.value) {
 				await getProject(homeProject?.id);
 			}
+		}
+	};
+
+	const moveResourceToProject = async (
+		resourceType: 'workflow' | 'credential',
+		resourceId: string,
+		projectId: string,
+	) => {
+		if (resourceType === 'workflow') {
+			await workflowsEEApi.moveWorkflowToProject(rootStore.restApiContext, resourceId, projectId);
+			await workflowsStore.fetchAllWorkflows(currentProjectId.value);
+		} else {
+			await credentialsEEApi.moveCredentialToProject(
+				rootStore.restApiContext,
+				resourceId,
+				projectId,
+			);
+			await credentialsStore.fetchAllCredentials(currentProjectId.value);
 		}
 	};
 
@@ -188,5 +212,6 @@ export const useProjectsStore = defineStore('projects', () => {
 		deleteProject,
 		getProjectsCount,
 		setProjectNavActiveIdByWorkflowHomeProject,
+		moveResourceToProject,
 	};
 });

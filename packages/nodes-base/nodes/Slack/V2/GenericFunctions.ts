@@ -8,7 +8,7 @@ import type {
 	IWebhookFunctions,
 } from 'n8n-workflow';
 
-import { NodeOperationError, jsonParse } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import get from 'lodash/get';
 
@@ -162,7 +162,7 @@ export function getMessageContent(
 			};
 			break;
 		case 'block':
-			content = jsonParse(this.getNodeParameter('blocksUi', i) as string);
+			content = this.getNodeParameter('blocksUi', i, {}, { ensureType: 'object' }) as IDataObject;
 
 			if (includeLinkToWorkflow && Array.isArray(content.blocks)) {
 				content.blocks.push({

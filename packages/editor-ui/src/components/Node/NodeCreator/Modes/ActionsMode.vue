@@ -146,11 +146,10 @@ function onSelected(actionCreateElement: INodeCreateElement) {
 	);
 
 	if (isPlaceholderTriggerAction && isTriggerRootView.value) {
-		const actionNode = actions.value[0].key;
-
-		emit('nodeTypeSelected', [actionData.key as string, actionNode]);
+		const actionNode = actions.value[0]?.key;
+		if (actionNode) emit('nodeTypeSelected', [actionData.key as string, actionNode]);
 	} else if (
-		actionData.key === OPEN_AI_NODE_TYPE &&
+		actionData?.key === OPEN_AI_NODE_TYPE &&
 		(actionData?.value as IDataObject)?.resource === 'assistant' &&
 		(actionData?.value as IDataObject)?.operation === 'message'
 	) {
@@ -200,7 +199,8 @@ function addHttpNode() {
 	emit('nodeTypeSelected', [HTTP_REQUEST_NODE_TYPE]);
 	if (telemetry) setAddedNodeActionParameters(updateData);
 
-	const app_identifier = actions.value[0].key;
+	const app_identifier = actions.value[0]?.key;
+	if (!app_identifier) return;
 	void useExternalHooks().run('nodeCreateList.onActionsCustmAPIClicked', {
 		app_identifier,
 	});

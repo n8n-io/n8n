@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import type { ExecutionStatus, IDataObject, ExecutionSummary } from 'n8n-workflow';
+import type { IDataObject, ExecutionSummary } from 'n8n-workflow';
 import type {
 	ExecutionFilterType,
 	ExecutionsQueryFilter,
@@ -10,7 +10,7 @@ import type {
 	IExecutionsListResponse,
 	IExecutionsStopData,
 } from '@/Interface';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { makeRestApiRequest, unflattenExecutionData } from '@/utils/apiUtils';
 import { executionFilterToQueryFilter, getDefaultExecutionFilters } from '@/utils/executionUtils';
 
@@ -83,7 +83,6 @@ export const useExecutionsStore = defineStore('executions', () => {
 	function addExecution(execution: ExecutionSummary) {
 		executionsById.value[execution.id] = {
 			...execution,
-			status: execution.status ?? getExecutionStatus(execution),
 			mode: execution.mode,
 		};
 	}
@@ -91,7 +90,6 @@ export const useExecutionsStore = defineStore('executions', () => {
 	function addCurrentExecution(execution: ExecutionSummary) {
 		currentExecutionsById.value[execution.id] = {
 			...execution,
-			status: execution.status ?? getExecutionStatus(execution),
 			mode: execution.mode,
 		};
 	}
@@ -113,24 +111,6 @@ export const useExecutionsStore = defineStore('executions', () => {
 		await startAutoRefreshInterval(workflowId);
 	}
 
-	function getExecutionStatus(execution: ExecutionSummary): ExecutionStatus {
-		if (execution.status) {
-			return execution.status;
-		} else {
-			if (execution.waitTill) {
-				return 'waiting';
-			} else if (execution.stoppedAt === undefined) {
-				return 'running';
-			} else if (execution.finished) {
-				return 'success';
-			} else if (execution.stoppedAt !== null) {
-				return 'error';
-			} else {
-				return 'unknown';
-			}
-		}
-	}
-
 	async function fetchExecutions(
 		filter = executionsFilters.value,
 		lastId?: string,
@@ -139,7 +119,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		loading.value = true;
 		try {
 			const data = await makeRestApiRequest<IExecutionsListResponse>(
-				rootStore.getRestApiContext,
+				rootStore.restApiContext,
 				'GET',
 				'/executions',
 				{
@@ -170,7 +150,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 	async function fetchExecution(id: string): Promise<IExecutionResponse | undefined> {
 		const response = await makeRestApiRequest<IExecutionFlattedResponse>(
-			rootStore.getRestApiContext,
+			rootStore.restApiContext,
 			'GET',
 			`/executions/${id}`,
 		);
@@ -206,7 +186,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 	async function stopCurrentExecution(executionId: string): Promise<IExecutionsStopData> {
 		return await makeRestApiRequest(
-			rootStore.getRestApiContext,
+			rootStore.restApiContext,
 			'POST',
 			`/executions/${executionId}/stop`,
 		);
@@ -214,7 +194,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 	async function retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean> {
 		return await makeRestApiRequest(
-			rootStore.getRestApiContext,
+			rootStore.restApiContext,
 			'POST',
 			`/executions/${id}/retry`,
 			loadWorkflow
@@ -227,7 +207,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 	async function deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void> {
 		await makeRestApiRequest(
-			rootStore.getRestApiContext,
+			rootStore.restApiContext,
 			'POST',
 			'/executions/delete',
 			sendData as unknown as IDataObject,
@@ -274,7 +254,6 @@ export const useExecutionsStore = defineStore('executions', () => {
 		activeExecution,
 		fetchExecutions,
 		fetchExecution,
-		getExecutionStatus,
 		autoRefresh,
 		autoRefreshTimeout,
 		startAutoRefreshInterval,

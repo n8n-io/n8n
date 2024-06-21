@@ -8,7 +8,7 @@ import {
 	saveDestinationToDb,
 	sendTestMessageToDestination,
 } from '../api/eventbus.ee';
-import { useRootStore } from './n8nRoot.store';
+import { useRootStore } from './root.store';
 
 export interface EventSelectionItem {
 	selected: boolean;
@@ -194,36 +194,33 @@ export const useLogStreamingStore = defineStore('logStreaming', {
 			const rootStore = useRootStore();
 			const selectedEvents = this.getSelectedEvents(destination.id);
 			try {
-				await saveDestinationToDb(rootStore.getRestApiContext, destination, selectedEvents);
+				await saveDestinationToDb(rootStore.restApiContext, destination, selectedEvents);
 				this.updateDestination(destination);
 				return true;
 			} catch (e) {
 				return false;
 			}
 		},
-		async sendTestMessage(destination: MessageEventBusDestinationOptions) {
+		async sendTestMessage(destination: MessageEventBusDestinationOptions): Promise<boolean> {
 			if (!hasDestinationId(destination)) {
 				return false;
 			}
 
 			const rootStore = useRootStore();
-			const testResult = await sendTestMessageToDestination(
-				rootStore.getRestApiContext,
-				destination,
-			);
+			const testResult = await sendTestMessageToDestination(rootStore.restApiContext, destination);
 			return testResult;
 		},
 		async fetchEventNames(): Promise<string[]> {
 			const rootStore = useRootStore();
-			return await getEventNamesFromBackend(rootStore.getRestApiContext);
+			return await getEventNamesFromBackend(rootStore.restApiContext);
 		},
 		async fetchDestinations(): Promise<MessageEventBusDestinationOptions[]> {
 			const rootStore = useRootStore();
-			return await getDestinationsFromBackend(rootStore.getRestApiContext);
+			return await getDestinationsFromBackend(rootStore.restApiContext);
 		},
 		async deleteDestination(destinationId: string) {
 			const rootStore = useRootStore();
-			await deleteDestinationFromDb(rootStore.getRestApiContext, destinationId);
+			await deleteDestinationFromDb(rootStore.restApiContext, destinationId);
 			this.removeDestination(destinationId);
 		},
 	},
