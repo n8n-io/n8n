@@ -110,8 +110,8 @@ export class LmChatAnthropic implements INodeType {
 				...modelField,
 				default: 'claude-3-sonnet-20240229',
 				displayOptions: {
-					hide: {
-						'@version': [{ _cnd: { gte: 1.2 } }, 1],
+					show: {
+						'@version': [1.1],
 					},
 				},
 			},
