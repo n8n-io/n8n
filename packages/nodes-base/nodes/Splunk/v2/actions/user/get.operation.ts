@@ -1,18 +1,10 @@
 import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { splunkApiRequest } from '../../transport';
-import { formatFeed, getId } from '../../helpers/utils';
+import { formatFeed } from '../../helpers/utils';
+import { userRLC } from '../../helpers/descriptions';
 
-const properties: INodeProperties[] = [
-	{
-		displayName: 'User ID',
-		name: 'userId',
-		description: 'ID of the user to retrieve',
-		type: 'string',
-		required: true,
-		default: '',
-	},
-];
+const properties: INodeProperties[] = [userRLC];
 
 const displayOptions = {
 	show: {
@@ -29,9 +21,9 @@ export async function execute(
 ): Promise<IDataObject | IDataObject[]> {
 	// https://docs.splunk.com/Documentation/Splunk/8.2.2/RESTREF/RESTaccess#authentication.2Fusers.2F.7Bname.7D
 
-	const partialEndpoint = '/services/authentication/users/';
-	const userId = getId.call(this, i, 'userId', '/services/authentication/users/');
-	const endpoint = `${partialEndpoint}/${userId}`;
+	const userId = this.getNodeParameter('userId', i, '', { extractValue: true }) as string;
+	const endpoint = `/services/authentication/users/${userId}`;
+
 	const returnData = await splunkApiRequest.call(this, 'GET', endpoint).then(formatFeed);
 
 	return returnData;

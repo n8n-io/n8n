@@ -1,17 +1,11 @@
 import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
-import { formatFeed, getId, populate } from '../../helpers/utils';
+import { formatFeed, populate } from '../../helpers/utils';
 import { splunkApiRequest } from '../../transport';
+import { userRLC } from '../../helpers/descriptions';
 
 const properties: INodeProperties[] = [
-	{
-		displayName: 'User ID',
-		name: 'userId',
-		description: 'ID of the user to update',
-		type: 'string',
-		required: true,
-		default: '',
-	},
+	userRLC,
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
@@ -83,9 +77,9 @@ export async function execute(
 		body,
 	);
 
-	const partialEndpoint = '/services/authentication/users/';
-	const userId = getId.call(this, i, 'userId', partialEndpoint);
-	const endpoint = `${partialEndpoint}/${userId}`;
+	const userId = this.getNodeParameter('userId', i, '', { extractValue: true }) as string;
+	const endpoint = `/services/authentication/users/${userId}`;
+
 	const returnData = await splunkApiRequest.call(this, 'POST', endpoint, body).then(formatFeed);
 
 	return returnData;

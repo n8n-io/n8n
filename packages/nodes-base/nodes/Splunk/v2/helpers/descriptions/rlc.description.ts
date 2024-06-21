@@ -17,26 +17,26 @@ export const reportRLC: INodeProperties = {
 				searchable: true,
 			},
 		},
-		{
-			displayName: 'Link',
-			name: 'url',
-			type: 'string',
-			placeholder:
-				'e.g. https://localhost:8089/servicesNS/nobody/search/saved/searches/Errors%20in%20the%20last%20hour',
-			extractValue: {
-				type: 'regex',
-				regex: '\\/([^/]+?)\\/?$',
-			},
-			validation: [
-				{
-					type: 'regex',
-					properties: {
-						regex: '.+\\/search\\/saved\\/searches\\/([^/]+?)\\/?$',
-						errorMessage: 'Not a valid report URL',
-					},
-				},
-			],
-		},
+		// {
+		// 	displayName: 'Link',
+		// 	name: 'url',
+		// 	type: 'string',
+		// 	placeholder:
+		// 		'e.g. https://localhost:8089/servicesNS/nobody/search/saved/searches/Errors%20in%20the%20last%20hour',
+		// 	extractValue: {
+		// 		type: 'regex',
+		// 		regex: '\\/([^/]+?)\\/?$',
+		// 	},
+		// 	validation: [
+		// 		{
+		// 			type: 'regex',
+		// 			properties: {
+		// 				regex: '.+\\/search\\/saved\\/searches\\/([^/]+?)\\/?$',
+		// 				errorMessage: 'Not a valid report URL',
+		// 			},
+		// 		},
+		// 	],
+		// },
 		{
 			displayName: 'ID',
 			name: 'id',
@@ -68,6 +68,32 @@ export const searchJobRLC: INodeProperties = {
 			name: 'id',
 			type: 'string',
 			placeholder: 'e.g. 1718944376.178',
+		},
+	],
+};
+
+export const userRLC: INodeProperties = {
+	displayName: 'User',
+	name: 'userId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			placeholder: 'Select a user...',
+			typeOptions: {
+				searchListMethod: 'searchUsers',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'ID',
+			name: 'id',
+			type: 'string',
+			placeholder: 'e.g. admin',
 		},
 	],
 };
