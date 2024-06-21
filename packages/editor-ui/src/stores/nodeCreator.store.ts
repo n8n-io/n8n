@@ -182,8 +182,6 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 			return;
 		}
 
-		console.log({ info });
-
 		uiStore.lastSelectedNode = sourceNode.name;
 		uiStore.lastSelectedNodeEndpointUuid = info.endpointUuid ?? null;
 		uiStore.lastSelectedNodeOutputIndex = info.index;

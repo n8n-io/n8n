@@ -74,9 +74,9 @@ export function createCanvasConnectionHandleString({
 	index = 0,
 }: {
 	mode: 'inputs' | 'outputs';
-	type: NodeConnectionType;
-	index: number;
-} = {}) {
+	type?: NodeConnectionType;
+	index?: number;
+}) {
 	return `${mode}/${type}/${index}`;
 }
 

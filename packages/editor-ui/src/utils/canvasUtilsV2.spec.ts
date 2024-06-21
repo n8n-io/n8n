@@ -4,6 +4,7 @@ import {
 	getUniqueNodeName,
 	mapCanvasConnectionToLegacyConnection,
 	parseCanvasConnectionHandleString,
+	createCanvasConnectionHandleString,
 } from '@/utils/canvasUtilsV2';
 import { NodeConnectionType, type IConnections, type INodeTypeDescription } from 'n8n-workflow';
 import type { CanvasConnection } from '@/types';
@@ -474,6 +475,35 @@ describe('parseCanvasConnectionHandleString', () => {
 			type: 'main',
 			index: 0,
 		});
+	});
+});
+
+describe('createCanvasConnectionHandleString', () => {
+	it('should create handle string with default values', () => {
+		const result = createCanvasConnectionHandleString({ mode: 'inputs' });
+		expect(result).toBe('inputs/main/0');
+	});
+
+	it('should create handle string with provided values', () => {
+		const result = createCanvasConnectionHandleString({
+			mode: 'outputs',
+			type: NodeConnectionType.AiMemory,
+			index: 2,
+		});
+		expect(result).toBe(`outputs/${NodeConnectionType.AiMemory}/2`);
+	});
+
+	it('should create handle string with mode and type only', () => {
+		const result = createCanvasConnectionHandleString({
+			mode: 'inputs',
+			type: NodeConnectionType.AiTool,
+		});
+		expect(result).toBe(`inputs/${NodeConnectionType.AiTool}/0`);
+	});
+
+	it('should create handle string with mode and index only', () => {
+		const result = createCanvasConnectionHandleString({ mode: 'outputs', index: 3 });
+		expect(result).toBe('outputs/main/3');
 	});
 });
 

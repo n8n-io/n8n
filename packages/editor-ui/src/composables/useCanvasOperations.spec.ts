@@ -1,6 +1,6 @@
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import type { CanvasElement } from '@/types';
-import type { INodeUi } from '@/Interface';
+import type { INodeUi, XYPosition } from '@/Interface';
 import { RemoveNodeCommand } from '@/models/history';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -11,6 +11,7 @@ import type { Connection } from '@vue-flow/core';
 import type { IConnection } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 import { useNDVStore } from '@/stores/ndv.store';
+import { ref } from 'vue';
 
 describe('useCanvasOperations', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
@@ -18,6 +19,9 @@ describe('useCanvasOperations', () => {
 	let ndvStore: ReturnType<typeof useNDVStore>;
 	let historyStore: ReturnType<typeof useHistoryStore>;
 	let canvasOperations: ReturnType<typeof useCanvasOperations>;
+
+	const lastClickPosition = ref<XYPosition>([450, 450]);
+	const router = create;
 
 	beforeEach(() => {
 		const pinia = createPinia();
