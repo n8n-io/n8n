@@ -879,7 +879,7 @@ export class Onfleet {
 				}
 			} catch (error) {
 				//@ts-ignore
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					responseData.push({ error: (error as IDataObject).toString() });
 					continue;
 				}
@@ -923,7 +923,7 @@ export class Onfleet {
 					responseData.push(await onfleetApiRequest.call(this, 'GET', path));
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					responseData.push({ error: (error as IDataObject).toString() });
 					continue;
 				}
@@ -965,7 +965,7 @@ export class Onfleet {
 					responseData.push(await onfleetApiRequest.call(this, 'GET', path));
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					responseData.push({ error: (error as IDataObject).toString() });
 					continue;
 				}
@@ -1022,7 +1022,7 @@ export class Onfleet {
 					responseData.push(await onfleetApiRequest.call(this, 'GET', path));
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					responseData.push({ error: (error as IDataObject).toString() });
 					continue;
 				}
@@ -1085,7 +1085,7 @@ export class Onfleet {
 					responseData.push({ success: true });
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					responseData.push({ error: (error as IDataObject).toString() });
 					continue;
 				}
@@ -1140,7 +1140,7 @@ export class Onfleet {
 					responseData.push(await onfleetApiRequest.call(this, 'PUT', path, hubData));
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					responseData.push({ error: (error as IDataObject).toString() });
 					continue;
 				}
@@ -1259,7 +1259,7 @@ export class Onfleet {
 					responseData.push(await onfleetApiRequest.call(this, 'POST', path, workerSchedule));
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					responseData.push({ error: (error as IDataObject).toString() });
 					continue;
 				}
@@ -1308,7 +1308,7 @@ export class Onfleet {
 					responseData.push({ success: true });
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					responseData.push({ error: (error as IDataObject).toString() });
 					continue;
 				}
@@ -1366,7 +1366,7 @@ export class Onfleet {
 					responseData.push(await onfleetApiRequest.call(this, 'PUT', path, { tasks, ...options }));
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					responseData.push({ error: (error as IDataObject).toString() });
 					continue;
 				}
@@ -1462,7 +1462,7 @@ export class Onfleet {
 					responseData.push(await onfleetApiRequest.call(this, 'POST', path, teamAutoDispatch));
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					responseData.push({ error: (error as IDataObject).toString() });
 					continue;
 				}

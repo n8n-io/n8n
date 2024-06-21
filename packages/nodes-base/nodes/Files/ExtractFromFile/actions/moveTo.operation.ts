@@ -169,7 +169,7 @@ export async function execute(
 				errorDescription =
 					"Try to change the operation or select a JSON file in 'Input Binary Field'";
 			}
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(error)) {
 				returnData.push({
 					json: {
 						error: error.message,

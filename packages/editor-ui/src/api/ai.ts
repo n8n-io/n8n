@@ -2,14 +2,6 @@ import type { IRestApiContext, Schema } from '@/Interface';
 import { makeRestApiRequest } from '@/utils/apiUtils';
 import type { IDataObject } from 'n8n-workflow';
 
-export interface DebugErrorPayload {
-	error: Error;
-}
-
-export interface DebugErrorResponse {
-	message: string;
-}
-
 export interface GenerateCurlPayload {
 	service: string;
 	request: string;
@@ -46,18 +38,6 @@ export async function generateCodeForPrompt(
 		n8nVersion,
 	} as IDataObject);
 }
-
-export const debugError = async (
-	context: IRestApiContext,
-	payload: DebugErrorPayload,
-): Promise<DebugErrorResponse> => {
-	return await makeRestApiRequest(
-		context,
-		'POST',
-		'/ai/debug-error',
-		payload as unknown as IDataObject,
-	);
-};
 
 export const generateCurl = async (
 	context: IRestApiContext,

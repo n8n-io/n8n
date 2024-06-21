@@ -30,6 +30,7 @@ export class Crypto implements INodeType {
 		displayName: 'Crypto',
 		name: 'crypto',
 		icon: 'fa:key',
+		iconColor: 'green',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["action"]}}',
@@ -531,7 +532,7 @@ export class Crypto implements INodeType {
 
 				returnData.push(newItem);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({
 						json: {
 							error: (error as JsonObject).message,

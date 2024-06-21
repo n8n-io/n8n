@@ -63,9 +63,7 @@ describe('BannerStack', () => {
 
 	it('should dismiss banner on click', async () => {
 		const { getByTestId } = renderComponent();
-		const dismissBannerSpy = vi
-			.spyOn(uiStore, 'dismissBanner')
-			.mockImplementation(async (banner, mode) => {});
+		const dismissBannerSpy = vi.spyOn(uiStore, 'dismissBanner').mockImplementation(async () => {});
 		expect(getByTestId('banners-V1')).toBeInTheDocument();
 		const closeTrialBannerButton = getByTestId('banner-V1-close');
 		expect(closeTrialBannerButton).toBeInTheDocument();
@@ -75,9 +73,7 @@ describe('BannerStack', () => {
 
 	it('should permanently dismiss banner on click', async () => {
 		const { getByTestId } = renderComponent();
-		const dismissBannerSpy = vi
-			.spyOn(uiStore, 'dismissBanner')
-			.mockImplementation(async (banner, mode) => {});
+		const dismissBannerSpy = vi.spyOn(uiStore, 'dismissBanner').mockImplementation(async () => {});
 
 		const permanentlyDismissBannerLink = getByTestId('banner-confirm-v1');
 		expect(permanentlyDismissBannerLink).toBeInTheDocument();

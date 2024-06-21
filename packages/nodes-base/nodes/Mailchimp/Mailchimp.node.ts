@@ -50,7 +50,7 @@ export class Mailchimp implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mailchimp',
 		name: 'mailchimp',
-		icon: 'file:mailchimp.svg',
+		icon: { light: 'file:mailchimp.svg', dark: 'file:mailchimp.dark.svg' },
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -2189,7 +2189,7 @@ export class Mailchimp implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ json: { error: error.message } });
 					continue;
 				}

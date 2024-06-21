@@ -92,6 +92,8 @@ function getSandbox(
 	// eslint-disable-next-line @typescript-eslint/unbound-method
 	context.executeWorkflow = this.executeWorkflow;
 	// eslint-disable-next-line @typescript-eslint/unbound-method
+	context.getWorkflowDataProxy = this.getWorkflowDataProxy;
+	// eslint-disable-next-line @typescript-eslint/unbound-method
 	context.logger = this.logger;
 
 	if (options?.addItems) {
@@ -315,7 +317,7 @@ export class Code implements INodeType {
 		try {
 			items = await sandbox.runCodeAllItems(options);
 		} catch (error) {
-			if (!this.continueOnFail()) throw error;
+			if (!this.continueOnFail(error)) throw error;
 			items = [{ json: { error: (error as Error).message } }];
 			if (options.multiOutput) {
 				items = [items];

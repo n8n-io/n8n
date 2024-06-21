@@ -14,6 +14,8 @@ import { Logger } from '@/Logger';
 import { mockInstance } from '../shared/mocking';
 import { createWorkflow } from './shared/db/workflows';
 import { createExecution, createSuccessfulExecution } from './shared/db/executions';
+import { mock } from 'jest-mock-extended';
+import type { OrchestrationService } from '@/services/orchestration.service';
 
 describe('softDeleteOnPruningCycle()', () => {
 	let pruningService: PruningService;
@@ -29,6 +31,7 @@ describe('softDeleteOnPruningCycle()', () => {
 			mockInstance(Logger),
 			Container.get(ExecutionRepository),
 			mockInstance(BinaryDataService),
+			mock<OrchestrationService>(),
 		);
 
 		workflow = await createWorkflow();

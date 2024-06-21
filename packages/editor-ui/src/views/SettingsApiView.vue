@@ -4,7 +4,7 @@
 			<n8n-heading size="2xlarge">
 				{{ $locale.baseText('settings.api') }}
 				<span :style="{ fontSize: 'var(--font-size-s)', color: 'var(--color-text-light)' }">
-					({{ $locale.baseText('beta') }})
+					({{ $locale.baseText('generic.beta') }})
 				</span>
 			</n8n-heading>
 		</div>
@@ -93,7 +93,7 @@ import { useMessage } from '@/composables/useMessage';
 import CopyInput from '@/components/CopyInput.vue';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';

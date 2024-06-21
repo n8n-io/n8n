@@ -5,12 +5,11 @@ import ChatComponent from '@n8n/chat/components/Chat.vue';
 import { ChatOptionsSymbol, ChatSymbol } from '@n8n/chat/constants';
 import type { Chat, ChatMessage, ChatOptions } from '@n8n/chat/types';
 import type { Ref } from 'vue';
-import { computed, provide, ref } from 'vue';
+import { computed, provide, ref, onMounted, onBeforeUnmount } from 'vue';
 import QuickReplies from './QuickReplies.vue';
 import { DateTime } from 'luxon';
 import { useAIStore } from '@/stores/ai.store';
 import { chatEventBus } from '@n8n/chat/event-buses';
-import { onMounted } from 'vue';
 import {
 	AI_ASSISTANT_EXPERIMENT_URLS,
 	AI_ASSISTANT_LOCAL_STORAGE_KEY,
@@ -19,7 +18,6 @@ import {
 import { useStorage } from '@/composables/useStorage';
 import { useMessage } from '@/composables/useMessage';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { onBeforeUnmount } from 'vue';
 
 const locale = useI18n();
 const telemetry = useTelemetry();
@@ -93,7 +91,7 @@ const thanksResponses: ChatMessage[] = [
 ];
 
 const initialMessageText = computed(() => {
-	if (latestConnectionInfo.value) {
+	if (latestConnectionInfo.value?.stepName) {
 		return locale.baseText('aiAssistantChat.initialMessage.nextStep', {
 			interpolate: { currentAction: latestConnectionInfo.value.stepName },
 		});

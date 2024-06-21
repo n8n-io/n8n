@@ -122,6 +122,16 @@ export default defineComponent({
 		TemplateList,
 		TemplatesView,
 	},
+	beforeRouteLeave(_to, _from, next) {
+		const contentArea = document.getElementById('content');
+		if (contentArea) {
+			// When leaving this page, store current scroll position in route data
+			this.$route.meta?.setScrollPosition?.(contentArea.scrollTop);
+		}
+
+		this.trackSearch();
+		next();
+	},
 	setup() {
 		const { callDebounced } = useDebounce();
 
@@ -198,8 +208,9 @@ export default defineComponent({
 
 		setTimeout(() => {
 			// Check if there is scroll position saved in route and scroll to it
-			if (this.$route.meta && this.$route.meta.scrollOffset > 0) {
-				this.scrollTo(this.$route.meta.scrollOffset, 'auto');
+			const scrollOffset = this.$route.meta?.scrollOffset;
+			if (typeof scrollOffset === 'number' && scrollOffset > 0) {
+				this.scrollTo(scrollOffset, 'auto');
 			}
 		}, 100);
 	},
@@ -404,21 +415,6 @@ export default defineComponent({
 				}
 			}, 0);
 		},
-	},
-	beforeRouteLeave(to, from, next) {
-		const contentArea = document.getElementById('content');
-		if (contentArea) {
-			// When leaving this page, store current scroll position in route data
-			if (
-				this.$route.meta?.setScrollPosition &&
-				typeof this.$route.meta.setScrollPosition === 'function'
-			) {
-				this.$route.meta.setScrollPosition(contentArea.scrollTop);
-			}
-		}
-
-		this.trackSearch();
-		next();
 	},
 });
 </script>

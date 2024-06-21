@@ -8,6 +8,7 @@ describe('InlineExpressionEditorOutput.vue', () => {
 			pinia: createTestingPinia(),
 			props: {
 				hoveringItemNumber: 0,
+				visible: true,
 				segments: [
 					{
 						from: 0,
@@ -56,6 +57,7 @@ describe('InlineExpressionEditorOutput.vue', () => {
 			pinia: createTestingPinia(),
 			props: {
 				hoveringItemNumber: 0,
+				visible: true,
 				segments: [
 					{
 						kind: 'plaintext',

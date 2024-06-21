@@ -16,7 +16,7 @@ import { formatPrivateKey, generatePairedItemData } from '../../utils/utilities'
 export class RespondToWebhook implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Respond to Webhook',
-		icon: 'file:webhook.svg',
+		icon: { light: 'file:webhook.svg', dark: 'file:webhook.dark.svg' },
 		name: 'respondToWebhook',
 		group: ['transform'],
 		version: [1, 1.1],
@@ -429,7 +429,7 @@ export class RespondToWebhook implements INodeType {
 
 			this.sendResponse(response);
 		} catch (error) {
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(error)) {
 				const itemData = generatePairedItemData(items.length);
 				const returnData = this.helpers.constructExecutionMetaData(
 					[{ json: { error: error.message } }],

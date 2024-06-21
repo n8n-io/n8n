@@ -1,10 +1,10 @@
+import { WorkflowPage, NDV } from '../pages';
+import { getVisibleSelect } from '../utils';
 import {
 	MANUAL_TRIGGER_NODE_NAME,
 	MANUAL_TRIGGER_NODE_DISPLAY_NAME,
 	SCHEDULE_TRIGGER_NODE_NAME,
 } from './../constants';
-import { WorkflowPage, NDV } from '../pages';
-import { getVisibleSelect } from '../utils';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -73,6 +73,7 @@ describe('Data mapping', () => {
 		ndv.actions.mapToParameter('value');
 
 		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.input[0].count }}');
+		ndv.getters.inlineExpressionEditorInput().type('{esc}');
 		ndv.getters.parameterExpressionPreview('value').should('include.text', '0');
 
 		ndv.getters.inputTbodyCell(1, 0).realHover();
@@ -169,7 +170,7 @@ describe('Data mapping', () => {
 	});
 
 	it('maps expressions from previous nodes', () => {
-		cy.createFixtureWorkflow('Test_workflow_3.json', `My test workflow`);
+		cy.createFixtureWorkflow('Test_workflow_3.json', 'My test workflow');
 		workflowPage.actions.zoomToFit();
 		workflowPage.actions.openNode('Set1');
 

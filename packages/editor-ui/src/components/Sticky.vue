@@ -1,10 +1,10 @@
 <template>
 	<div
 		:id="nodeId"
-		:ref="data.name"
+		:ref="data?.name"
 		class="sticky-wrapper"
 		:style="stickyPosition"
-		:data-name="data.name"
+		:data-name="data?.name"
 		data-test-id="sticky"
 	>
 		<div
@@ -25,6 +25,7 @@
 				@contextmenu="onContextMenu"
 			>
 				<n8n-sticky
+					v-if="node"
 					:id="node.id"
 					:model-value="node.parameters.content"
 					:height="node.parameters.height"
@@ -103,9 +104,9 @@
 
 <script lang="ts">
 import { defineComponent, ref } from 'vue';
+import type { PropType, StyleValue } from 'vue';
 import { mapStores } from 'pinia';
 
-import { nodeBase } from '@/mixins/nodeBase';
 import { isNumber, isString } from '@/utils/typeGuards';
 import type {
 	INodeUi,
@@ -114,7 +115,7 @@ import type {
 	XYPosition,
 } from '@/Interface';
 
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription, Workflow } from 'n8n-workflow';
 import { QUICKSTART_NOTE_NAME } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -122,20 +123,57 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useContextMenu } from '@/composables/useContextMenu';
 import { useDeviceSupport } from 'n8n-design-system';
+import { GRID_SIZE } from '@/utils/nodeViewUtils';
+import { useToast } from '@/composables/useToast';
+import { assert } from '@/utils/assert';
+import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
+import { useCanvasStore } from '@/stores/canvas.store';
+import { useHistoryStore } from '@/stores/history.store';
+import { useNodeBase } from '@/composables/useNodeBase';
 
 export default defineComponent({
 	name: 'Sticky',
-	mixins: [nodeBase],
 	props: {
 		nodeViewScale: {
 			type: Number,
+			default: 1,
 		},
 		gridSize: {
 			type: Number,
+			default: GRID_SIZE,
+		},
+		name: {
+			type: String,
+			required: true,
+		},
+		instance: {
+			type: Object as PropType<BrowserJsPlumbInstance>,
+			required: true,
+		},
+		isReadOnly: {
+			type: Boolean,
+		},
+		isActive: {
+			type: Boolean,
+		},
+		hideActions: {
+			type: Boolean,
+		},
+		disableSelecting: {
+			type: Boolean,
+		},
+		showCustomTooltip: {
+			type: Boolean,
+		},
+		workflow: {
+			type: Object as PropType<Workflow>,
+			required: true,
 		},
 	},
-	setup() {
+	emits: { removeNode: null, nodeSelected: null },
+	setup(props, { emit }) {
 		const deviceSupport = useDeviceSupport();
+		const toast = useToast();
 		const colorPopoverTrigger = ref<HTMLDivElement>();
 		const forceActions = ref(false);
 		const setForceActions = (value: boolean) => {
@@ -148,10 +186,45 @@ export default defineComponent({
 			}
 		});
 
-		return { deviceSupport, colorPopoverTrigger, contextMenu, forceActions, setForceActions };
+		const nodeBase = useNodeBase({
+			name: props.name,
+			instance: props.instance,
+			workflowObject: props.workflow,
+			isReadOnly: props.isReadOnly,
+			emit: emit as (event: string, ...args: unknown[]) => void,
+		});
+
+		return {
+			deviceSupport,
+			toast,
+			colorPopoverTrigger,
+			contextMenu,
+			forceActions,
+			...nodeBase,
+			setForceActions,
+		};
+	},
+	data() {
+		return {
+			isResizing: false,
+			isTouchActive: false,
+		};
 	},
 	computed: {
-		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),
+		...mapStores(
+			useNodeTypesStore,
+			useUIStore,
+			useNDVStore,
+			useCanvasStore,
+			useWorkflowsStore,
+			useHistoryStore,
+		),
+		data(): INodeUi | null {
+			return this.workflowsStore.getNodeByName(this.name);
+		},
+		nodeId(): string {
+			return this.data?.id || '';
+		},
 		defaultText(): string {
 			if (!this.nodeType) {
 				return '';
@@ -163,7 +236,7 @@ export default defineComponent({
 		},
 		isSelected(): boolean {
 			return (
-				this.uiStore.getSelectedNodes.find((node: INodeUi) => node.name === this.data.name) !==
+				this.uiStore.getSelectedNodes.find((node: INodeUi) => node.name === this.data?.name) !==
 				undefined
 			);
 		},
@@ -187,7 +260,7 @@ export default defineComponent({
 		width(): number {
 			return this.node && isNumber(this.node.parameters.width) ? this.node.parameters.width : 0;
 		},
-		stickySize(): object {
+		stickySize(): StyleValue {
 			const returnStyles: {
 				[key: string]: string | number;
 			} = {
@@ -197,7 +270,7 @@ export default defineComponent({
 
 			return returnStyles;
 		},
-		stickyPosition(): object {
+		stickyPosition(): StyleValue {
 			const returnStyles: {
 				[key: string]: string | number;
 			} = {
@@ -218,11 +291,16 @@ export default defineComponent({
 			return this.uiStore.isActionActive('workflowRunning');
 		},
 	},
-	data() {
-		return {
-			isResizing: false,
-			isTouchActive: false,
-		};
+	mounted() {
+		// Initialize the node
+		if (this.data !== null) {
+			try {
+				this.addNode(this.data);
+			} catch (error) {
+				// This breaks when new nodes are loaded into store but workflow tab is not currently active
+				// Shouldn't affect anything
+			}
+		}
 	},
 	methods: {
 		onShowPopover() {
@@ -232,6 +310,7 @@ export default defineComponent({
 			this.setForceActions(false);
 		},
 		async deleteNode() {
+			assert(this.data);
 			// Wait a tick else vue causes problems because the data is gone
 			await this.$nextTick();
 			this.$emit('removeNode', this.data.name);
@@ -239,7 +318,13 @@ export default defineComponent({
 		changeColor(index: number) {
 			this.workflowsStore.updateNodeProperties({
 				name: this.name,
-				properties: { parameters: { ...this.node.parameters, color: index } },
+				properties: {
+					parameters: {
+						...this.node?.parameters,
+						color: index,
+					},
+					position: this.node?.position ?? [0, 0],
+				},
 			});
 		},
 		onEdit(edit: boolean) {
@@ -249,10 +334,10 @@ export default defineComponent({
 				this.ndvStore.activeNodeName = null;
 			}
 		},
-		onMarkdownClick(link: HTMLAnchorElement, event: Event) {
+		onMarkdownClick(link: HTMLAnchorElement) {
 			if (link) {
 				const isOnboardingNote = this.name === QUICKSTART_NOTE_NAME;
-				const isWelcomeVideo = link.querySelector('img[alt="n8n quickstart video"');
+				const isWelcomeVideo = link.querySelector('img[alt="n8n quickstart video"]');
 				const type =
 					isOnboardingNote && isWelcomeVideo
 						? 'welcome_video'
@@ -264,6 +349,9 @@ export default defineComponent({
 			}
 		},
 		onInputChange(content: string) {
+			if (!this.node) {
+				return;
+			}
 			this.node.parameters.content = content;
 			this.setParameters({ content });
 		},
@@ -319,7 +407,7 @@ export default defineComponent({
 			this.workflowsStore.updateNodeProperties(updateInformation);
 		},
 		touchStart() {
-			if (this.deviceSupport.isTouchDevice && !this.isMacOs && !this.isTouchActive) {
+			if (this.deviceSupport.isTouchDevice && !this.deviceSupport.isMacOs && !this.isTouchActive) {
 				this.isTouchActive = true;
 				setTimeout(() => {
 					this.isTouchActive = false;

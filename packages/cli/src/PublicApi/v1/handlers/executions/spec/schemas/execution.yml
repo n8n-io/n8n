@@ -31,3 +31,5 @@ properties:
     type: string
     nullable: true
     format: date-time
+  customData:
+    type: object

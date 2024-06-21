@@ -19,11 +19,16 @@ export interface SandboxContext extends IWorkflowDataProxyData {
 export const REQUIRED_N8N_ITEM_KEYS = new Set(['json', 'binary', 'pairedItem', 'error']);
 
 export function getSandboxContext(this: IExecuteFunctions, index: number): SandboxContext {
+	const helpers = {
+		...this.helpers,
+		httpRequestWithAuthentication: this.helpers.httpRequestWithAuthentication.bind(this),
+		requestWithAuthenticationPaginated: this.helpers.requestWithAuthenticationPaginated.bind(this),
+	};
 	return {
 		// from NodeExecuteFunctions
 		$getNodeParameter: this.getNodeParameter,
 		$getWorkflowStaticData: this.getWorkflowStaticData,
-		helpers: this.helpers,
+		helpers,
 
 		// to bring in all $-prefixed vars and methods from WorkflowDataProxy
 		// $node, $items(), $parameter, $json, $env, etc.

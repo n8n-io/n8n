@@ -31,7 +31,7 @@ const { debounce } = useDebounce();
 const telemetry = useTelemetry();
 
 const props = withDefaults(defineProps<ExecutionFilterProps>(), {
-	workflows: [] as Array<IWorkflowDb | IWorkflowShortResponse>,
+	workflows: () => [] as Array<IWorkflowDb | IWorkflowShortResponse>,
 	popoverPlacement: 'bottom' as Placement,
 	teleported: true,
 });
