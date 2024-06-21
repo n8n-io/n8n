@@ -14,7 +14,7 @@ import type { ExecutionSummary } from 'n8n-workflow';
 import { useDebounce } from '@/composables/useDebounce';
 import { storeToRefs } from 'pinia';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useWorkflowInitState } from '@/composables/useWorkflowInitState';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 const executionsStore = useExecutionsStore();
 const workflowsStore = useWorkflowsStore();
@@ -25,7 +25,7 @@ const route = useRoute();
 const router = useRouter();
 const toast = useToast();
 const { callDebounced } = useDebounce();
-const workflowInitState = useWorkflowInitState();
+const workflowHelpers = useWorkflowHelpers({ router });
 
 const { filters } = storeToRefs(executionsStore);
 
@@ -122,7 +122,7 @@ async function fetchWorkflow() {
 	if (workflowsStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 		try {
 			const data = await workflowsStore.fetchWorkflow(workflowId.value);
-			await workflowInitState.run(data);
+			await workflowHelpers.initState(data);
 		} catch (error) {
 			toast.showError(error, i18n.baseText('nodeView.showError.openWorkflow.title'));
 		}
