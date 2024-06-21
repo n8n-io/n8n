@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "1.46.0",
+  "version": "1.47.0",
   "description": "n8n Workflow Automation Tool",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -181,7 +181,7 @@
     "uuid": "8.3.2",
     "validator": "13.7.0",
     "winston": "3.8.2",
-    "ws": "8.14.2",
+    "ws": "8.17.1",
     "xml2js": "0.6.2",
     "xmllint-wasm": "3.0.1",
     "yamljs": "0.3.0",
