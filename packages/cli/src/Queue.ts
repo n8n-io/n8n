@@ -25,9 +25,10 @@ import type {
 	WebhookResponse,
 } from './queue.types';
 
+// @TODO: Rename `Queue` to `QueueManager`?
+
 @Service()
 export class Queue {
-	// @TODO: Rename to `QueueManager`?
 	private jobQueue: n8nQueue;
 
 	private connection: Redis | Cluster;
