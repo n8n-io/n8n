@@ -1,6 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
 	NodeConnectionType,
+	type INodePropertyOptions,
 	type INodeProperties,
 	type IExecuteFunctions,
 	type INodeType,
@@ -22,6 +23,10 @@ const modelField: INodeProperties = {
 		{
 			name: 'Claude 3 Opus(20240229)',
 			value: 'claude-3-opus-20240229',
+		},
+		{
+			name: 'Claude 3.5 Sonnet(20240620)',
+			value: 'claude-3-5-sonnet-20240620',
 		},
 		{
 			name: 'Claude 3 Sonnet(20240229)',
@@ -60,7 +65,8 @@ export class LmChatAnthropic implements INodeType {
 		name: 'lmChatAnthropic',
 		icon: 'file:anthropic.svg',
 		group: ['transform'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
+		defaultVersion: 1.2,
 		description: 'Language Model Anthropic',
 		defaults: {
 			name: 'Anthropic Chat Model',
@@ -104,8 +110,20 @@ export class LmChatAnthropic implements INodeType {
 				...modelField,
 				default: 'claude-3-sonnet-20240229',
 				displayOptions: {
-					hide: {
-						'@version': [1],
+					show: {
+						'@version': [1.1],
+					},
+				},
+			},
+			{
+				...modelField,
+				default: 'claude-3-5-sonnet-20240620',
+				options: (modelField.options ?? []).filter(
+					(o): o is INodePropertyOptions => 'name' in o && !o.name.toString().startsWith('LEGACY'),
+				),
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.2 } }],
 					},
 				},
 			},
