@@ -73,11 +73,6 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 			return '';
 	}
 };
-
-const onToggleCollapse = (event: Event) => {
-	event.preventDefault();
-	(event.target as HTMLElement).scrollIntoView();
-};
 </script>
 
 <template>
@@ -120,14 +115,7 @@ const onToggleCollapse = (event: Event) => {
 				<TextWithHighlights :content="line" :search="props.search" />
 			</template>
 		</span>
-		<input
-			v-if="level > 0 && isSchemaValueArray"
-			:id="subKey"
-			type="checkbox"
-			inert
-			checked
-			@change="onToggleCollapse"
-		/>
+		<input v-if="level > 0 && isSchemaValueArray" :id="subKey" type="checkbox" inert checked />
 		<label v-if="level > 0 && isSchemaValueArray" :class="$style.toggle" :for="subKey">
 			<font-awesome-icon icon="angle-right" />
 		</label>
@@ -177,9 +165,9 @@ const onToggleCollapse = (event: Event) => {
 
 		~ .sub {
 			transition:
-				grid-template-rows 0.3s $ease-out-expo 0.1s,
-				opacity 0.3s $ease-out-expo 0s,
-				transform 0.3s $ease-out-expo 0s;
+				grid-template-rows 0.2s $ease-out-expo,
+				opacity 0.2s $ease-out-expo,
+				transform 0.2s $ease-out-expo;
 			transform: translateX(-8px);
 			opacity: 0;
 			margin-bottom: 0;
@@ -195,10 +183,6 @@ const onToggleCollapse = (event: Event) => {
 			}
 
 			~ .sub {
-				transition:
-					grid-template-rows 0.3s $ease-out-expo 0s,
-					opacity 0.3s $ease-out-expo 0.1s,
-					transform 0.3s $ease-out-expo 0.1s;
 				transform: translateX(0);
 				opacity: 1;
 				grid-template-rows: 1fr;
@@ -212,6 +196,7 @@ const onToggleCollapse = (event: Event) => {
 	grid-template-rows: 0fr;
 	overflow: hidden;
 	flex-basis: 100%;
+	scroll-margin: 64px;
 }
 
 .innerSub {
@@ -219,7 +204,7 @@ const onToggleCollapse = (event: Event) => {
 	flex-direction: column;
 	order: -1;
 
-	> div:first-child {
+	.innerSub > div:first-child {
 		margin-top: var(--spacing-2xs);
 	}
 }
@@ -321,7 +306,7 @@ const onToggleCollapse = (event: Event) => {
 	overflow: hidden;
 
 	svg {
-		transition: transform 0.3s $ease-out-expo;
+		transition: transform 0.2s $ease-out-expo;
 	}
 }
 </style>

@@ -1229,6 +1229,7 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
     class="schemaWrapper"
     data-v-46dade00=""
   >
+    <!--v-if-->
     
     <div
       class="node"
@@ -1240,56 +1241,67 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
         data-test-id="run-data-schema-node-header"
         data-v-46dade00=""
       >
-        <svg
-          aria-hidden="true"
-          class="svg-inline--fa fa-angle-right fa-w-8 expand"
-          data-icon="angle-right"
-          data-prefix="fas"
-          data-v-46dade00=""
-          focusable="false"
-          role="img"
-          viewBox="0 0 256 512"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            class=""
-            d="M224.3 273l-136 136c-9.4 9.4-24.6 9.4-33.9 0l-22.6-22.6c-9.4-9.4-9.4-24.6 0-33.9l96.4-96.4-96.4-96.4c-9.4-9.4-9.4-24.6 0-33.9L54.3 103c9.4-9.4 24.6-9.4 33.9 0l136 136c9.5 9.4 9.5 24.6.1 34z"
-            fill="currentColor"
-          />
-        </svg>
         <div
-          class="nodeIcon"
+          class="expand"
+          data-v-46dade00=""
+        >
+          <svg
+            aria-hidden="true"
+            class="svg-inline--fa fa-angle-right fa-w-8 expandIcon"
+            data-icon="angle-right"
+            data-prefix="fas"
+            data-v-46dade00=""
+            focusable="false"
+            role="img"
+            viewBox="0 0 256 512"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              class=""
+              d="M224.3 273l-136 136c-9.4 9.4-24.6 9.4-33.9 0l-22.6-22.6c-9.4-9.4-9.4-24.6 0-33.9l96.4-96.4-96.4-96.4c-9.4-9.4-9.4-24.6 0-33.9L54.3 103c9.4-9.4 24.6-9.4 33.9 0l136 136c9.5 9.4 9.5 24.6.1 34z"
+              fill="currentColor"
+            />
+          </svg>
+        </div>
+        <div
+          class="titleContainer"
+          data-test-id="run-data-schema-node-name"
           data-v-46dade00=""
         >
           <div
-            class="n8n-node-icon"
+            class="nodeIcon"
             data-v-46dade00=""
           >
             <div
-              class="nodeIconWrapper"
-              style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
+              class="n8n-node-icon"
+              data-v-46dade00=""
             >
-              <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-              
               <div
-                class="icon"
+                class="nodeIconWrapper"
+                style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
               >
-                <img
-                  class="nodeIconImage"
-                />
-                <!--v-if-->
+                <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
+                
+                <div
+                  class="icon"
+                >
+                  <img
+                    class="nodeIconImage"
+                  />
+                  <!--v-if-->
+                </div>
+                
               </div>
-              
             </div>
           </div>
+          <div
+            class="title"
+            data-v-46dade00=""
+          >
+            Set1
+          </div>
+          <!--v-if-->
         </div>
-        <div
-          class="title"
-          data-v-46dade00=""
-        >
-          Set1
-        </div>
-        <!--v-if-->
         <transition-stub
           appear="false"
           css="true"
@@ -1299,12 +1311,6 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
         >
           <!--v-if-->
         </transition-stub>
-        <div
-          class="depth"
-          data-v-46dade00=""
-        >
-          1 node back
-        </div>
       </div>
       <div
         class=""
@@ -1759,56 +1765,67 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
         data-test-id="run-data-schema-node-header"
         data-v-46dade00=""
       >
-        <svg
-          aria-hidden="true"
-          class="svg-inline--fa fa-angle-right fa-w-8 expand"
-          data-icon="angle-right"
-          data-prefix="fas"
-          data-v-46dade00=""
-          focusable="false"
-          role="img"
-          viewBox="0 0 256 512"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            class=""
-            d="M224.3 273l-136 136c-9.4 9.4-24.6 9.4-33.9 0l-22.6-22.6c-9.4-9.4-9.4-24.6 0-33.9l96.4-96.4-96.4-96.4c-9.4-9.4-9.4-24.6 0-33.9L54.3 103c9.4-9.4 24.6-9.4 33.9 0l136 136c9.5 9.4 9.5 24.6.1 34z"
-            fill="currentColor"
-          />
-        </svg>
         <div
-          class="nodeIcon"
+          class="expand"
+          data-v-46dade00=""
+        >
+          <svg
+            aria-hidden="true"
+            class="svg-inline--fa fa-angle-right fa-w-8 expandIcon"
+            data-icon="angle-right"
+            data-prefix="fas"
+            data-v-46dade00=""
+            focusable="false"
+            role="img"
+            viewBox="0 0 256 512"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              class=""
+              d="M224.3 273l-136 136c-9.4 9.4-24.6 9.4-33.9 0l-22.6-22.6c-9.4-9.4-9.4-24.6 0-33.9l96.4-96.4-96.4-96.4c-9.4-9.4-9.4-24.6 0-33.9L54.3 103c9.4-9.4 24.6-9.4 33.9 0l136 136c9.5 9.4 9.5 24.6.1 34z"
+              fill="currentColor"
+            />
+          </svg>
+        </div>
+        <div
+          class="titleContainer"
+          data-test-id="run-data-schema-node-name"
           data-v-46dade00=""
         >
           <div
-            class="n8n-node-icon"
+            class="nodeIcon"
             data-v-46dade00=""
           >
             <div
-              class="nodeIconWrapper"
-              style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
+              class="n8n-node-icon"
+              data-v-46dade00=""
             >
-              <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-              
               <div
-                class="icon"
+                class="nodeIconWrapper"
+                style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
               >
-                <img
-                  class="nodeIconImage"
-                />
-                <!--v-if-->
+                <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
+                
+                <div
+                  class="icon"
+                >
+                  <img
+                    class="nodeIconImage"
+                  />
+                  <!--v-if-->
+                </div>
+                
               </div>
-              
             </div>
           </div>
+          <div
+            class="title"
+            data-v-46dade00=""
+          >
+            Set2
+          </div>
+          <!--v-if-->
         </div>
-        <div
-          class="title"
-          data-v-46dade00=""
-        >
-          Set2
-        </div>
-        <!--v-if-->
         <transition-stub
           appear="false"
           css="true"
@@ -1818,12 +1835,6 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
         >
           <!--v-if-->
         </transition-stub>
-        <div
-          class="depth"
-          data-v-46dade00=""
-        >
-          2 nodes back
-        </div>
       </div>
       <div
         class=""

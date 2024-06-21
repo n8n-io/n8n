@@ -120,7 +120,11 @@
 			<slot name="input-select"></slot>
 		</div>
 
-		<div v-if="maxRunIndex > 0" v-show="!editMode.enabled" :class="$style.runSelector">
+		<div
+			v-if="maxRunIndex > 0 && !isInputSchemaView"
+			v-show="!editMode.enabled"
+			:class="$style.runSelector"
+		>
 			<slot v-if="inputSelectLocation === 'runs'" name="input-select"></slot>
 
 			<n8n-select
@@ -192,7 +196,7 @@
 				hasNodeRun &&
 				((dataCount > 0 && maxRunIndex === 0) || search) &&
 				!isArtificialRecoveredEventItem &&
-				!isInputSchemaView
+				!isSchemaView
 			"
 			v-show="!editMode.enabled && !hasRunError"
 			:class="[$style.itemsCount, { [$style.muted]: paneType === 'input' && maxRunIndex === 0 }]"
@@ -420,6 +424,7 @@
 					:output-index="currentOutputIndex"
 					:total-runs="maxRunIndex"
 					:search="search"
+					@clear:search="onSearchClear"
 				/>
 			</Suspense>
 

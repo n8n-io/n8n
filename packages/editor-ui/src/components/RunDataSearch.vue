@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted, type StyleValue } from 'vue';
+import { computed, ref, onMounted, onUnmounted, type StyleValue, watch } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import type { IRunDataDisplayMode, NodePanelType } from '@/Interface';
+import { useDebounce } from '@/composables/useDebounce';
 
 type Props = {
 	modelValue: string;
@@ -26,8 +27,10 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const locale = useI18n();
+const { debounce } = useDebounce();
 
 const inputRef = ref<HTMLInputElement | null>(null);
+const search = ref(props.modelValue ?? '');
 const opened = ref(false);
 const placeholder = computed(() => {
 	if (props.paneType === 'output') {
@@ -58,25 +61,42 @@ const documentKeyHandler = (event: KeyboardEvent) => {
 	}
 };
 
+const debouncedEmitUpdate = debounce(async (value: string) => emit('update:modelValue', value), {
+	debounceTime: 300,
+	trailing: true,
+});
+
 const onSearchUpdate = (value: string) => {
-	emit('update:modelValue', value);
+	search.value = value;
+	void debouncedEmitUpdate(value);
 };
+
 const onFocus = () => {
 	opened.value = true;
 	inputRef.value?.select();
 	emit('focus');
 };
+
 const onBlur = () => {
 	if (!props.modelValue) {
 		opened.value = false;
 	}
 };
+
 onMounted(() => {
 	document.addEventListener('keyup', documentKeyHandler);
 });
+
 onUnmounted(() => {
 	document.removeEventListener('keyup', documentKeyHandler);
 });
+
+watch(
+	() => props.modelValue,
+	(value) => {
+		search.value = value;
+	},
+);
 </script>
 
 <template>
@@ -88,7 +108,7 @@ onUnmounted(() => {
 			[$style.ioSearchOpened]: opened,
 		}"
 		:style="style"
-		:model-value="modelValue"
+		:model-value="search"
 		:placeholder="placeholder"
 		size="small"
 		@update:model-value="onSearchUpdate"

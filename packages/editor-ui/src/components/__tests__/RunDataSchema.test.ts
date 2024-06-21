@@ -74,7 +74,7 @@ describe('RunDataSchema.vue', () => {
 		expect(getAllByTestId('run-data-schema-empty').length).toBe(1);
 
 		// Expand second node
-		await userEvent.click(getAllByTestId('run-data-schema-node-header')[1]);
+		await userEvent.click(getAllByTestId('run-data-schema-node-name')[1]);
 		expect(getAllByTestId('run-data-schema-empty').length).toBe(2);
 	});
 
@@ -97,18 +97,19 @@ describe('RunDataSchema.vue', () => {
 		const { getAllByTestId } = renderComponent();
 		const nodes = getAllByTestId('run-data-schema-node');
 		expect(nodes.length).toBe(2);
-		const firstHeader = await within(nodes[0]).findByTestId('run-data-schema-node-header');
-		expect(firstHeader).toHaveTextContent('Set1');
-		expect(firstHeader).toHaveTextContent('1 node back');
-		expect(firstHeader).toHaveTextContent('2 items');
+		const firstNodeName = await within(nodes[0]).findByTestId('run-data-schema-node-name');
+		const firstNodeItemCount = await within(nodes[0]).findByTestId(
+			'run-data-schema-node-item-count',
+		);
+		expect(firstNodeName).toHaveTextContent('Set1');
+		expect(firstNodeItemCount).toHaveTextContent('2 items');
 		expect(within(nodes[0]).getByTestId('run-data-schema-node-schema')).toMatchSnapshot();
 
-		const secondHeader = await within(nodes[1]).findByTestId('run-data-schema-node-header');
-		expect(secondHeader).toHaveTextContent('Set2');
-		expect(secondHeader).toHaveTextContent('2 nodes back');
+		const secondNodeName = await within(nodes[1]).findByTestId('run-data-schema-node-name');
+		expect(secondNodeName).toHaveTextContent('Set2');
 
 		// Expand second node
-		await userEvent.click(secondHeader);
+		await userEvent.click(secondNodeName);
 		expect(within(nodes[1]).getByTestId('run-data-schema-node-schema')).toMatchSnapshot();
 	});
 

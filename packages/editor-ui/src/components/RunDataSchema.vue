@@ -21,6 +21,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useDebounce } from '@/composables/useDebounce';
 
 type Props = {
 	nodes?: IConnectedNode[];
@@ -56,14 +57,20 @@ const draggingPath = ref<string>('');
 const nodesOpen = ref<Partial<Record<string, boolean>>>({});
 const nodesData = ref<Partial<Record<string, { schema: Schema; itemsCount: number }>>>({});
 const nodesLoading = ref<Partial<Record<string, boolean>>>({});
+const disableScrollInView = ref(false);
 
 const ndvStore = useNDVStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
 const { getSchemaForExecutionData, filterSchema } = useDataSchema();
 const { getNodeInputData } = useNodeHelpers();
+const { debounce } = useDebounce();
 
-const nodeSchema = computed(() => getSchemaForExecutionData(props.data ?? []));
+const emit = defineEmits<{ (event: 'clear:search'): void }>();
+
+const nodeSchema = computed(() =>
+	filterSchema(getSchemaForExecutionData(props.data ?? []), props.search),
+);
 const nodes = computed(() => {
 	return props.nodes
 		.map((node) => {
@@ -89,6 +96,10 @@ const nodes = computed(() => {
 		})
 		.filter((node): node is SchemaNode => !!(node?.node && node.nodeType));
 });
+
+const filteredNodes = computed(() =>
+	nodes.value.filter((node) => !props.search || !isDataEmpty(node.schema)),
+);
 
 const isDataEmpty = (schema: Schema | null) => {
 	if (!schema) return true;
@@ -116,7 +127,8 @@ const loadNodeData = async (node: INodeUi) => {
 	};
 };
 
-const toggleOpenNode = async ({ node, schema, open }: SchemaNode) => {
+const toggleOpenNode = async ({ node, schema, open }: SchemaNode, exclusive = false) => {
+	disableScrollInView.value = false;
 	if (open) {
 		nodesOpen.value[node.name] = false;
 		return;
@@ -128,7 +140,11 @@ const toggleOpenNode = async ({ node, schema, open }: SchemaNode) => {
 		nodesLoading.value[node.name] = false;
 	}
 
-	nodesOpen.value[node.name] = true;
+	if (exclusive) {
+		nodesOpen.value = { [node.name]: true };
+	} else {
+		nodesOpen.value[node.name] = true;
+	}
 };
 
 const openAllNodes = async () => {
@@ -169,6 +185,23 @@ const onDragEnd = (el: HTMLElement, node: INodeUi, depth: number) => {
 	}, 1000); // ensure dest data gets set if drop
 };
 
+const onTransitionStart = debounce(
+	(event: TransitionEvent, nodeName: string) => {
+		if (
+			nodesOpen.value[nodeName] &&
+			event.target instanceof HTMLElement &&
+			!disableScrollInView.value
+		) {
+			event.target.scrollIntoView({
+				behavior: 'smooth',
+				block: 'nearest',
+				inline: 'nearest',
+			});
+		}
+	},
+	{ debounceTime: 100, trailing: true },
+);
+
 watch(
 	() => props.nodes,
 	() => {
@@ -182,17 +215,38 @@ watch(
 watch(
 	() => props.search,
 	(search, prevSearch) => {
-		if (!prevSearch.trim() && search.trim() && !allNodesOpen.value) {
+		if (!prevSearch?.trim() && search.trim() && !allNodesOpen.value) {
+			disableScrollInView.value = true;
 			void openAllNodes();
 		}
+
+		if (prevSearch?.trim() && !search.trim() && allNodesOpen.value && nodes.value.length > 0) {
+			nodesOpen.value = { [nodes.value[0].node.name]: true };
+		}
 	},
+	{ immediate: true },
 );
 </script>
 
 <template>
 	<div v-if="paneType === 'input'" :class="[$style.schemaWrapper, { highlightSchema: highlight }]">
+		<div v-if="search && nodes.length > 0 && filteredNodes.length === 0" :class="$style.noMatch">
+			<n8n-text tag="h3" size="large">{{
+				$locale.baseText('ndv.search.noNodeMatch.title')
+			}}</n8n-text>
+			<n8n-text>
+				<i18n-t keypath="ndv.search.noMatch.description" tag="span">
+					<template #link>
+						<a href="#" @click="emit('clear:search')">
+							{{ $locale.baseText('ndv.search.noMatch.description.link') }}
+						</a>
+					</template>
+				</i18n-t>
+			</n8n-text>
+		</div>
+
 		<div
-			v-for="currentNode in nodes"
+			v-for="currentNode in filteredNodes"
 			:key="currentNode.node.id"
 			data-test-id="run-data-schema-node"
 			:class="[$style.node, { [$style.open]: currentNode.open }]"
@@ -205,24 +259,37 @@ watch(
 					},
 				]"
 				data-test-id="run-data-schema-node-header"
-				@click="toggleOpenNode(currentNode)"
 			>
-				<font-awesome-icon :class="$style.expand" icon="angle-right" />
-				<div :class="$style.nodeIcon">
-					<NodeIcon :node-type="currentNode.nodeType" :size="12" />
+				<div :class="$style.expand" @click="toggleOpenNode(currentNode)">
+					<font-awesome-icon icon="angle-right" :class="$style.expandIcon" />
 				</div>
 
-				<div :class="$style.title">
-					{{ currentNode.node.name }}
+				<div
+					:class="$style.titleContainer"
+					data-test-id="run-data-schema-node-name"
+					@click="toggleOpenNode(currentNode, true)"
+				>
+					<div :class="$style.nodeIcon">
+						<NodeIcon :node-type="currentNode.nodeType" :size="12" />
+					</div>
+
+					<div :class="$style.title">
+						{{ currentNode.node.name }}
+					</div>
+					<font-awesome-icon
+						v-if="currentNode.nodeType.group.includes('trigger')"
+						:class="$style.triggerIcon"
+						icon="bolt"
+						size="xs"
+					/>
 				</div>
-				<font-awesome-icon
-					v-if="currentNode.nodeType.group.includes('trigger')"
-					:class="$style.triggerIcon"
-					icon="bolt"
-					size="xs"
-				/>
+
 				<Transition name="items">
-					<div v-if="currentNode.itemsCount && currentNode.open" :class="$style.items">
+					<div
+						v-if="currentNode.itemsCount && currentNode.open"
+						:class="$style.items"
+						data-test-id="run-data-schema-node-item-count"
+					>
 						{{
 							i18n.baseText('ndv.output.items', {
 								interpolate: { count: currentNode.itemsCount },
@@ -230,11 +297,6 @@ watch(
 						}}
 					</div>
 				</Transition>
-				<div :class="$style.depth">
-					{{
-						i18n.baseText('ndv.input.nodeDistance', { interpolate: { count: currentNode.depth } })
-					}}
-				</div>
 			</div>
 
 			<Draggable
@@ -247,24 +309,22 @@ watch(
 				<template #preview="{ canDrop, el }">
 					<MappingPill v-if="el" :html="el.outerHTML" :can-drop="canDrop" />
 				</template>
+
 				<Transition name="schema">
 					<div
 						v-if="currentNode.schema || search"
 						:class="[$style.schema, $style.animated]"
 						data-test-id="run-data-schema-node-schema"
+						@transitionstart="(event) => onTransitionStart(event, currentNode.node.name)"
 					>
-						<div :class="$style.innerSchema">
-							<n8n-info-tip v-if="isDataEmpty(currentNode.schema) && search" :class="$style.tip">
-								{{ i18n.baseText('dataMapping.schemaView.noMatches', { interpolate: { search } }) }}
-							</n8n-info-tip>
-
-							<n8n-info-tip
-								v-else-if="isDataEmpty(currentNode.schema)"
-								:class="$style.tip"
+						<div :class="$style.innerSchema" @transitionstart.stop>
+							<div
+								v-if="isDataEmpty(currentNode.schema)"
+								:class="$style.empty"
 								data-test-id="run-data-schema-empty"
 							>
 								{{ i18n.baseText('dataMapping.schemaView.emptyData') }}
-							</n8n-info-tip>
+							</div>
 
 							<RunDataSchemaItem
 								v-else-if="currentNode.schema"
@@ -285,14 +345,26 @@ watch(
 			</Draggable>
 		</div>
 	</div>
-	<div v-else :class="[$style.schemaWrapper, { highlightSchema: highlight }]">
-		<div :class="$style.schema" data-test-id="run-data-schema-node-schema">
-			<n8n-info-tip v-if="isDataEmpty(nodeSchema) && search" :class="$style.tip">
-				{{ i18n.baseText('dataMapping.schemaView.noMatches', { interpolate: { search } }) }}
-			</n8n-info-tip>
 
+	<div v-else :class="[$style.schemaWrapper, { highlightSchema: highlight }]">
+		<div v-if="isDataEmpty(nodeSchema) && search" :class="$style.noMatch">
+			<n8n-text tag="h3" size="large">{{
+				$locale.baseText('ndv.search.noNodeMatch.title')
+			}}</n8n-text>
+			<n8n-text>
+				<i18n-t keypath="ndv.search.noMatch.description" tag="span">
+					<template #link>
+						<a href="#" @click="emit('clear:search')">
+							{{ $locale.baseText('ndv.search.noMatch.description.link') }}
+						</a>
+					</template>
+				</i18n-t>
+			</n8n-text>
+		</div>
+
+		<div v-else :class="$style.schema" data-test-id="run-data-schema-node-schema">
 			<n8n-info-tip
-				v-else-if="isDataEmpty(nodeSchema)"
+				v-if="isDataEmpty(nodeSchema)"
 				:class="$style.tip"
 				data-test-id="run-data-schema-empty"
 			>
@@ -319,11 +391,13 @@ watch(
 @import '@/styles/variables';
 
 .schemaWrapper {
+	--header-height: 38px;
+	--title-spacing-left: 38px;
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-4xs);
 	padding: 0 0 var(--spacing-s) var(--spacing-s);
 	container: schema / inline-size;
+	min-height: 100%;
 
 	&.animating {
 		overflow: hidden;
@@ -331,14 +405,20 @@ watch(
 	}
 }
 
-.node .schema {
-	padding-left: var(--spacing-xl);
+.node {
+	.schema {
+		padding-left: var(--title-spacing-left);
+		scroll-margin-top: var(--header-height);
+	}
+
+	.empty {
+		padding-left: var(--spacing-l);
+	}
 }
 
 .schema {
 	display: grid;
 	grid-template-rows: 1fr;
-	overflow: hidden;
 
 	&.animated {
 		grid-template-rows: 0fr;
@@ -346,55 +426,74 @@ watch(
 		opacity: 0;
 
 		transition:
-			grid-template-rows 0.3s $ease-out-expo 0.1s,
-			opacity 0.3s $ease-out-expo 0s,
-			transform 0.3s $ease-out-expo 0s;
+			grid-template-rows 0.2s $ease-out-expo,
+			opacity 0.2s $ease-out-expo 0s,
+			transform 0.2s $ease-out-expo 0s;
 	}
+}
+
+.empty {
+	font-size: var(--font-size-2xs);
+	color: var(--color-text-light);
 }
 
 .innerSchema {
 	min-height: 0;
 
 	> div {
-		margin-bottom: var(--spacing-s);
+		margin-bottom: var(--spacing-xs);
 	}
+}
+
+.titleContainer {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-2xs);
+	flex-basis: 100%;
+	cursor: pointer;
 }
 
 .header {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-2xs);
 	position: sticky;
 	top: 0;
 	z-index: 1;
-	padding: var(--spacing-4xs) 0;
-	padding-left: var(--spacing-4xs);
+	padding-bottom: var(--spacing-2xs);
 	padding-right: var(--spacing-s);
 	background: var(--color-run-data-background);
+}
+
+.expand {
+	--expand-toggle-size: 30px;
+	width: var(--expand-toggle-size);
+	height: var(--expand-toggle-size);
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 	cursor: pointer;
 
 	&:hover,
 	&:active {
-		.title {
-			color: var(--color-primary);
-		}
+		color: var(--color-text-dark);
 	}
 }
 
-.expand {
-	transition: transform 0.3s $ease-out-expo;
+.expandIcon {
+	transition: transform 0.2s $ease-out-expo;
 }
 
 .open {
-	.expand {
+	.expandIcon {
 		transform: rotate(90deg);
 	}
 
 	.schema {
 		transition:
-			grid-template-rows 0.3s $ease-out-expo 0s,
-			opacity 0.3s $ease-out-expo 0.1s,
-			transform 0.3s $ease-out-expo 0.1s;
+			grid-template-rows 0.2s $ease-out-expo,
+			opacity 0.2s $ease-out-expo,
+			transform 0.2s $ease-out-expo;
 		grid-template-rows: 1fr;
 		opacity: 1;
 		transform: translateX(0);
@@ -405,37 +504,45 @@ watch(
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	padding: var(--spacing-2xs);
-	border: 1px solid var(--color-foreground-base);
+	padding: var(--spacing-3xs);
+	border: 1px solid var(--color-foreground-light);
 	border-radius: var(--border-radius-base);
-	background-color: var(--color-background-light);
+	background-color: var(--color-background-xlight);
+}
+
+.noMatch {
+	display: flex;
+	flex-grow: 1;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing-s) var(--spacing-s) var(--spacing-xl) var(--spacing-s);
+	text-align: center;
+
+	> * {
+		max-width: 316px;
+		margin-bottom: var(--spacing-2xs);
+	}
 }
 
 .title {
-	font-size: var(--font-size-xs);
+	font-size: var(--font-size-2xs);
 	color: var(--color-text-dark);
 }
 
-.tip {
-	padding-left: var(--spacing-l);
-}
-
-.items,
-.depth {
+.items {
 	flex-shrink: 0;
-	font-size: var(--font-size-xs);
+	font-size: var(--font-size-2xs);
 	color: var(--color-text-light);
+	margin-left: var(--spacing-2xs);
 
 	transition:
-		opacity 0.3s $ease-out-expo,
-		transform 0.3s $ease-out-expo;
-}
-
-.depth {
-	margin-left: auto;
+		opacity 0.2s $ease-out-expo,
+		transform 0.2s $ease-out-expo;
 }
 
 .triggerIcon {
+	margin-left: var(--spacing-2xs);
 	color: var(--color-primary);
 }
 
