@@ -102,6 +102,7 @@ let cachedWorkflow: Workflow | null = null;
 
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const tagsStore = useTagsStore();
+	const uiStore = useUIStore();
 
 	const workflow = ref<IWorkflowDb>(createEmptyWorkflow());
 	const usedCredentials = ref<Record<string, IUsedCredential>>({});
@@ -445,7 +446,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		addWorkflow(workflowData);
 		setActive(workflowData.active || false);
 		setWorkflowId(workflowData.id);
-		setWorkflowName({ newName: workflowData.name, setStateDirty: false });
+		setWorkflowName({ newName: workflowData.name, setStateDirty: uiStore.stateIsDirty });
 		setWorkflowSettings(workflowData.settings ?? {});
 		setWorkflowPinData(workflowData.pinData ?? {});
 		setWorkflowVersionId(workflowData.versionId);
@@ -497,7 +498,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function setWorkflowName(data: { newName: string; setStateDirty: boolean }) {
 		if (data.setStateDirty) {
-			const uiStore = useUIStore();
 			uiStore.stateIsDirty = true;
 		}
 		workflow.value.name = data.newName;
@@ -576,7 +576,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function setWorkflowActive(targetWorkflowId: string) {
-		const uiStore = useUIStore();
 		uiStore.stateIsDirty = false;
 		const index = activeWorkflows.value.indexOf(targetWorkflowId);
 		if (index === -1) {
@@ -728,7 +727,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			},
 		};
 
-		const uiStore = useUIStore();
 		uiStore.stateIsDirty = true;
 
 		dataPinningEventBus.emit('pin-data', { [payload.node.name]: storedPinData });
@@ -745,7 +743,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			pinData,
 		};
 
-		const uiStore = useUIStore();
 		uiStore.stateIsDirty = true;
 
 		dataPinningEventBus.emit('unpin-data', { [payload.node.name]: undefined });
@@ -842,7 +839,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			return;
 		}
 
-		const uiStore = useUIStore();
 		uiStore.stateIsDirty = true;
 
 		const connections =
@@ -860,8 +856,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function removeAllConnections(data: { setStateDirty: boolean }): void {
-		if (data && data.setStateDirty) {
-			const uiStore = useUIStore();
+		if (data?.setStateDirty) {
 			uiStore.stateIsDirty = true;
 		}
 
@@ -872,7 +867,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		node: INodeUi,
 		{ preserveInputConnections = false, preserveOutputConnections = false } = {},
 	): void {
-		const uiStore = useUIStore();
 		uiStore.stateIsDirty = true;
 
 		// Remove all source connections
@@ -917,7 +911,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function renameNodeSelectedAndExecution(nameData: { old: string; new: string }): void {
-		const uiStore = useUIStore();
 		uiStore.stateIsDirty = true;
 
 		// If node has any WorkflowResultData rename also that one that the data
@@ -1037,7 +1030,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function removeNode(node: INodeUi): void {
-		const uiStore = useUIStore();
 		const { [node.name]: removedNodeMetadata, ...remainingNodeMetadata } = nodeMetadata.value;
 		nodeMetadata.value = remainingNodeMetadata;
 
@@ -1064,7 +1056,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function removeAllNodes(data: { setStateDirty: boolean; removePinData: boolean }): void {
 		if (data.setStateDirty) {
-			const uiStore = useUIStore();
 			uiStore.stateIsDirty = true;
 		}
 
@@ -1087,7 +1078,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		if (nodeIndex !== -1) {
 			for (const key of Object.keys(updateInformation.properties)) {
-				const uiStore = useUIStore();
 				uiStore.stateIsDirty = true;
 
 				updateNodeAtIndex(nodeIndex, {
@@ -1109,7 +1099,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			);
 		}
 
-		const uiStore = useUIStore();
 		uiStore.stateIsDirty = true;
 
 		updateNodeAtIndex(nodeIndex, {
@@ -1131,7 +1120,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		const node = workflow.value.nodes[nodeIndex];
 
-		const uiStore = useUIStore();
 		uiStore.stateIsDirty = true;
 		const newParameters =
 			!!append && isObject(updateInformation.value)
