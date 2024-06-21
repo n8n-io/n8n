@@ -383,7 +383,7 @@ export class OpenAiAssistant implements INodeType {
 
 				returnData.push({ json: response });
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
 					continue;
 				}

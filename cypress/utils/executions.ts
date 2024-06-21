@@ -1,3 +1,4 @@
+import { nanoid } from 'nanoid';
 import type { IDataObject, IPinData, ITaskData, ITaskDataConnections } from 'n8n-workflow';
 import { clickExecuteWorkflowButton } from '../composables/workflow';
 
@@ -85,7 +86,7 @@ export function runMockWorkflowExecution({
 	runData: Array<ReturnType<typeof createMockNodeExecutionData>>;
 	workflowExecutionData?: ReturnType<typeof createMockWorkflowExecutionData>;
 }) {
-	const executionId = Math.random().toString(36).substring(4);
+	const executionId = nanoid(8);
 
 	cy.intercept('POST', '/rest/workflows/**/run', {
 		statusCode: 201,

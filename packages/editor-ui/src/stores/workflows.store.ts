@@ -58,7 +58,7 @@ import type {
 import { deepCopy, NodeHelpers, Workflow } from 'n8n-workflow';
 import { findLast } from 'lodash-es';
 
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import * as workflowsApi from '@/api/workflows';
 import { useUIStore } from '@/stores/ui.store';
 import { dataPinningEventBus } from '@/event-bus';
@@ -371,7 +371,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	async function getWorkflowFromUrl(url: string): Promise<IWorkflowDb> {
 		const rootStore = useRootStore();
-		return await makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/workflows/from-url', {
+		return await makeRestApiRequest(rootStore.restApiContext, 'GET', '/workflows/from-url', {
 			url,
 		});
 	}
@@ -379,7 +379,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	async function getActivationError(id: string): Promise<string | undefined> {
 		const rootStore = useRootStore();
 		return await makeRestApiRequest(
-			rootStore.getRestApiContext,
+			rootStore.restApiContext,
 			'GET',
 			`/active-workflows/error/${id}`,
 		);
@@ -393,7 +393,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		};
 
 		const workflows = await workflowsApi.getWorkflows(
-			rootStore.getRestApiContext,
+			rootStore.restApiContext,
 			isEmpty(filter) ? undefined : filter,
 		);
 		setWorkflows(workflows);
@@ -402,7 +402,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	async function fetchWorkflow(id: string): Promise<IWorkflowDb> {
 		const rootStore = useRootStore();
-		const workflow = await workflowsApi.getWorkflow(rootStore.getRestApiContext, id);
+		const workflow = await workflowsApi.getWorkflow(rootStore.restApiContext, id);
 		addWorkflow(workflow);
 		return workflow;
 	}
@@ -422,7 +422,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			};
 
 			workflowData = await workflowsApi.getNewWorkflow(
-				rootStore.getRestApiContext,
+				rootStore.restApiContext,
 				isEmpty(data) ? undefined : data,
 			);
 		} catch (e) {
@@ -544,7 +544,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	async function deleteWorkflow(id: string) {
 		const rootStore = useRootStore();
-		await makeRestApiRequest(rootStore.getRestApiContext, 'DELETE', `/workflows/${id}`);
+		await makeRestApiRequest(rootStore.restApiContext, 'DELETE', `/workflows/${id}`);
 		const { [id]: deletedWorkflow, ...workflows } = workflowsById.value;
 		workflowsById.value = workflows;
 	}
@@ -589,7 +589,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	async function fetchActiveWorkflows(): Promise<string[]> {
 		const rootStore = useRootStore();
-		const data = await workflowsApi.getActiveWorkflows(rootStore.getRestApiContext);
+		const data = await workflowsApi.getActiveWorkflows(rootStore.restApiContext);
 		activeWorkflows.value = data;
 		return data;
 	}
@@ -609,7 +609,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		let newName = `${currentWorkflowName}${DUPLICATE_POSTFFIX}`;
 		try {
 			const rootStore = useRootStore();
-			const newWorkflow = await workflowsApi.getNewWorkflow(rootStore.getRestApiContext, {
+			const newWorkflow = await workflowsApi.getNewWorkflow(rootStore.restApiContext, {
 				name: newName,
 			});
 			newName = newWorkflow.name;
@@ -1285,7 +1285,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			};
 		}
 		const rootStore = useRootStore();
-		return await makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/executions', sendData);
+		return await makeRestApiRequest(rootStore.restApiContext, 'GET', '/executions', sendData);
 	}
 
 	async function getActiveExecutions(
@@ -1299,7 +1299,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 		const rootStore = useRootStore();
 		const output = await makeRestApiRequest<{ results: IExecutionsCurrentSummaryExtended[] }>(
-			rootStore.getRestApiContext,
+			rootStore.restApiContext,
 			'GET',
 			'/executions',
 			sendData,
@@ -1311,7 +1311,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	async function getExecution(id: string): Promise<IExecutionResponse | undefined> {
 		const rootStore = useRootStore();
 		const response = await makeRestApiRequest<IExecutionFlattedResponse | undefined>(
-			rootStore.getRestApiContext,
+			rootStore.restApiContext,
 			'GET',
 			`/executions/${id}`,
 		);
@@ -1331,7 +1331,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 
 		return await makeRestApiRequest(
-			rootStore.getRestApiContext,
+			rootStore.restApiContext,
 			'POST',
 			'/workflows',
 			sendData as unknown as IDataObject,
@@ -1350,7 +1350,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 
 		return await makeRestApiRequest(
-			rootStore.getRestApiContext,
+			rootStore.restApiContext,
 			'PATCH',
 			`/workflows/${id}${forceSave ? '?forceSave=true' : ''}`,
 			data as unknown as IDataObject,
@@ -1366,7 +1366,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		try {
 			return await makeRestApiRequest(
-				rootStore.getRestApiContext,
+				rootStore.restApiContext,
 				'POST',
 				`/workflows/${startRunData.workflowData.id}/run`,
 				startRunData as unknown as IDataObject,
@@ -1385,7 +1385,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	async function removeTestWebhook(targetWorkflowId: string): Promise<boolean> {
 		const rootStore = useRootStore();
 		return await makeRestApiRequest(
-			rootStore.getRestApiContext,
+			rootStore.restApiContext,
 			'DELETE',
 			`/test-webhook/${targetWorkflowId}`,
 		);
@@ -1404,14 +1404,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			const rootStore = useRootStore();
 			if ((!requestFilter.status || !requestFilter.finished) && isEmpty(requestFilter.metadata)) {
 				retrievedActiveExecutions = await workflowsApi.getActiveExecutions(
-					rootStore.getRestApiContext,
+					rootStore.restApiContext,
 					{
 						workflowId: requestFilter.workflowId,
 					},
 				);
 			}
 			const retrievedFinishedExecutions = await workflowsApi.getExecutions(
-				rootStore.getRestApiContext,
+				rootStore.restApiContext,
 				requestFilter,
 			);
 			finishedExecutionsCount.value = retrievedFinishedExecutions.count;
@@ -1423,7 +1423,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	async function fetchExecutionDataById(executionId: string): Promise<IExecutionResponse | null> {
 		const rootStore = useRootStore();
-		return await workflowsApi.getExecutionData(rootStore.getRestApiContext, executionId);
+		return await workflowsApi.getExecutionData(rootStore.restApiContext, executionId);
 	}
 
 	function deleteExecution(execution: ExecutionSummary): void {
@@ -1446,7 +1446,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		mimeType: string,
 	): string {
 		const rootStore = useRootStore();
-		let restUrl = rootStore.getRestUrl;
+		let restUrl = rootStore.restUrl;
 		if (restUrl.startsWith('/')) restUrl = window.location.origin + restUrl;
 		const url = new URL(`${restUrl}/binary-data`);
 		url.searchParams.append('id', binaryDataId);

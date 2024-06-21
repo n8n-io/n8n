@@ -1109,6 +1109,12 @@ export class WorkflowDataProxy {
 							if (property === 'first') {
 								ensureNodeExecutionData();
 								return (branchIndex?: number, runIndex?: number) => {
+									branchIndex =
+										branchIndex ??
+										// default to the output the active node is connected to
+										that.workflow.getNodeConnectionIndexes(that.activeNodeName, nodeName)
+											?.sourceIndex ??
+										0;
 									const executionData = that.getNodeExecutionOrPinnedData({
 										nodeName,
 										branchIndex,
@@ -1121,6 +1127,12 @@ export class WorkflowDataProxy {
 							if (property === 'last') {
 								ensureNodeExecutionData();
 								return (branchIndex?: number, runIndex?: number) => {
+									branchIndex =
+										branchIndex ??
+										// default to the output the active node is connected to
+										that.workflow.getNodeConnectionIndexes(that.activeNodeName, nodeName)
+											?.sourceIndex ??
+										0;
 									const executionData = that.getNodeExecutionOrPinnedData({
 										nodeName,
 										branchIndex,
@@ -1135,8 +1147,15 @@ export class WorkflowDataProxy {
 							}
 							if (property === 'all') {
 								ensureNodeExecutionData();
-								return (branchIndex?: number, runIndex?: number) =>
-									that.getNodeExecutionOrPinnedData({ nodeName, branchIndex, runIndex });
+								return (branchIndex?: number, runIndex?: number) => {
+									branchIndex =
+										branchIndex ??
+										// default to the output the active node is connected to
+										that.workflow.getNodeConnectionIndexes(that.activeNodeName, nodeName)
+											?.sourceIndex ??
+										0;
+									return that.getNodeExecutionOrPinnedData({ nodeName, branchIndex, runIndex });
+								};
 							}
 							if (property === 'context') {
 								return that.nodeContextGetter(nodeName);
