@@ -85,6 +85,7 @@
       "dist/credentials/CrowdStrikeOAuth2Api.credentials.js",
       "dist/credentials/CrowdDevApi.credentials.js",
       "dist/credentials/CustomerIoApi.credentials.js",
+      "dist/credentials/DatadogApi.credentials.js",
       "dist/credentials/DeepLApi.credentials.js",
       "dist/credentials/DemioApi.credentials.js",
       "dist/credentials/DhlApi.credentials.js",
