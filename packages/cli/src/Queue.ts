@@ -116,8 +116,8 @@ export class Queue {
 		return await this.jobQueue.getJob(jobId);
 	}
 
-	async getJobsByState(jobTypes: BullJobState[]) {
-		return await this.jobQueue.getJobs(jobTypes);
+	async getJobsByState(states: BullJobState[]) {
+		return await this.jobQueue.getJobs(states);
 	}
 
 	getQueueOptions() {
