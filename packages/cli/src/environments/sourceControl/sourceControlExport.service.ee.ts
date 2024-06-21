@@ -235,13 +235,14 @@ export class SourceControlExportService {
 		data: ICredentialDataDecryptedObject,
 	): ICredentialDataDecryptedObject => {
 		for (const [key] of Object.entries(data)) {
+			const value = data[key];
 			try {
-				if (data[key] === null) {
+				if (value === null) {
 					delete data[key]; // remove invalid null values
-				} else if (typeof data[key] === 'object') {
-					data[key] = this.replaceCredentialData(data[key] as ICredentialDataDecryptedObject);
-				} else if (typeof data[key] === 'string') {
-					data[key] = stringContainsExpression(data[key] as string) ? data[key] : '';
+				} else if (typeof value === 'object') {
+					data[key] = this.replaceCredentialData(value as ICredentialDataDecryptedObject);
+				} else if (typeof value === 'string') {
+					data[key] = stringContainsExpression(value) ? data[key] : '';
 				} else if (typeof data[key] === 'number') {
 					// TODO: leaving numbers in for now, but maybe we should remove them
 					continue;

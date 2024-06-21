@@ -458,7 +458,7 @@ export class VaultProvider extends SecretsProvider {
 				)
 			)
 				.map((i) => (i.status === 'rejected' ? null : i.value))
-				.filter((v) => v !== null) as Array<[string, IDataObject]>,
+				.filter((v): v is [string, IDataObject] => v !== null),
 		);
 		const name = path.substring(0, path.length - 1);
 		return [name, data];
@@ -480,7 +480,7 @@ export class VaultProvider extends SecretsProvider {
 						return [basePath.substring(0, basePath.length - 1), value[1]];
 					}),
 				)
-			).filter((v) => v !== null) as Array<[string, IDataObject]>,
+			).filter((v): v is [string, IDataObject] => v !== null),
 		);
 		this.cachedSecrets = secrets;
 	}
