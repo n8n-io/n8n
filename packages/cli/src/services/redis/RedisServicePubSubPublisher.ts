@@ -1,10 +1,5 @@
 import { Service } from 'typedi';
-import type { AbstractEventMessage } from '@/eventbus/EventMessageClasses/AbstractEventMessage';
-import {
-	COMMAND_REDIS_CHANNEL,
-	EVENT_BUS_REDIS_CHANNEL,
-	WORKER_RESPONSE_REDIS_CHANNEL,
-} from './RedisServiceHelper';
+import { COMMAND_REDIS_CHANNEL, WORKER_RESPONSE_REDIS_CHANNEL } from './RedisConstants';
 import type {
 	RedisServiceCommandObject,
 	RedisServiceWorkerResponseObject,
@@ -22,10 +17,6 @@ export class RedisServicePubSubPublisher extends RedisServiceBaseSender {
 			await this.init();
 		}
 		await this.redisClient?.publish(channel, message);
-	}
-
-	async publishToEventLog(message: AbstractEventMessage): Promise<void> {
-		await this.publish(EVENT_BUS_REDIS_CHANNEL, message.toString());
 	}
 
 	async publishToCommandChannel(

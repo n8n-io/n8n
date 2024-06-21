@@ -216,8 +216,6 @@ export class Cortex implements INodeType {
 								'',
 								options,
 							)) as IJob;
-
-							continue;
 						} else {
 							const observableValue = this.getNodeParameter('observableValue', i) as string;
 
@@ -377,7 +375,7 @@ export class Cortex implements INodeType {
 					returnData.push(responseData as IDataObject);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ error: error.message });
 					continue;
 				}

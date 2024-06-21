@@ -1,8 +1,9 @@
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { STORES } from '@/constants';
+import { STORES, WORKFLOW_SHARE_MODAL_KEY } from '@/constants';
 import { createTestingPinia } from '@pinia/testing';
-import { fireEvent } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
+import { useUIStore } from '@/stores/ui.store';
 
 vi.mock('vue-router', async () => {
 	const actual = await import('vue-router');
@@ -46,7 +47,12 @@ const renderComponent = createComponentRenderer(WorkflowDetails, {
 	pinia: createTestingPinia({ initialState }),
 });
 
+let uiStore: ReturnType<typeof useUIStore>;
+
 describe('WorkflowDetails', () => {
+	beforeEach(() => {
+		uiStore = useUIStore();
+	});
 	it('renders workflow name and tags', async () => {
 		const workflow = {
 			id: '1',
@@ -87,12 +93,13 @@ describe('WorkflowDetails', () => {
 			},
 		});
 
-		await fireEvent.click(getByTestId('workflow-save-button'));
+		await userEvent.click(getByTestId('workflow-save-button'));
 		expect(onSaveButtonClick).toHaveBeenCalled();
 	});
 
 	it('opens share modal on share button click', async () => {
-		const onShareButtonClick = vi.fn();
+		const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+
 		const { getByTestId } = renderComponent({
 			props: {
 				workflow: {
@@ -102,14 +109,12 @@ describe('WorkflowDetails', () => {
 				},
 				readOnly: false,
 			},
-			global: {
-				mocks: {
-					onShareButtonClick,
-				},
-			},
 		});
 
-		await fireEvent.click(getByTestId('workflow-share-button'));
-		expect(onShareButtonClick).toHaveBeenCalled();
+		await userEvent.click(getByTestId('workflow-share-button'));
+		expect(openModalSpy).toHaveBeenCalledWith({
+			name: WORKFLOW_SHARE_MODAL_KEY,
+			data: { id: '1' },
+		});
 	});
 });

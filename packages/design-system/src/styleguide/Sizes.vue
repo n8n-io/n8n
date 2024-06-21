@@ -1,3 +1,61 @@
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue';
+
+type Size = {
+	rem: string;
+	px: number;
+};
+
+// Define props with their types
+const props = withDefaults(
+	defineProps<{
+		variables: string[];
+		attr?: string;
+	}>(),
+	{
+		attr: '',
+	},
+);
+
+const getSizes = () => {
+	const style = getComputedStyle(document.body);
+
+	const sizeByVariableName: Record<string, Size> = {};
+	for (const variable of props.variables) {
+		const rem = style.getPropertyValue(variable);
+		const px = parseFloat(rem.replace('rem', '')) * 16; // Assuming default font-size is 16px
+
+		sizeByVariableName[variable] = { rem, px };
+	}
+
+	return sizeByVariableName;
+};
+
+const sizes = ref<Record<string, Size>>(getSizes());
+const observer = ref<MutationObserver | null>(null);
+
+onMounted(() => {
+	// Observing attributes changes in body to recompute sizes
+	const mutationObserverCallback = (mutationsList: MutationRecord[]) => {
+		for (const mutation of mutationsList) {
+			if (mutation.type === 'attributes') {
+				sizes.value = getSizes();
+			}
+		}
+	};
+
+	const body = document.querySelector('body');
+	if (body) {
+		observer.value = new MutationObserver(mutationObserverCallback);
+		observer.value.observe(body, { attributes: true });
+	}
+});
+
+onUnmounted(() => {
+	observer.value?.disconnect();
+});
+</script>
+
 <template>
 	<table :class="$style.table">
 		<tr>
@@ -16,65 +74,6 @@
 		</tr>
 	</table>
 </template>
-
-<script lang="ts">
-import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
-
-export default defineComponent({
-	name: 'Sizes',
-	props: {
-		variables: {
-			type: Array as PropType<string[]>,
-			required: true,
-		},
-		attr: {
-			type: String,
-			default: '',
-		},
-	},
-	data() {
-		return {
-			observer: null as null | MutationObserver,
-			sizes: {} as Record<string, { rem: string; px: number }>,
-		};
-	},
-	created() {
-		const setSizes = () => {
-			this.variables.forEach((variable: string) => {
-				const style = getComputedStyle(document.body);
-				const rem = style.getPropertyValue(variable);
-				const px = parseFloat(rem.replace('rem', '')) * 16;
-
-				this.sizes = {
-					...this.sizes,
-					[variable]: { rem, px },
-				};
-			});
-		};
-
-		setSizes();
-
-		// when theme class is added or removed, reset color values
-		this.observer = new MutationObserver((mutationsList) => {
-			for (const mutation of mutationsList) {
-				if (mutation.type === 'attributes') {
-					setSizes();
-				}
-			}
-		});
-		const body = document.querySelector('body');
-		if (body) {
-			this.observer.observe(body, { attributes: true });
-		}
-	},
-	unmounted() {
-		if (this.observer) {
-			this.observer.disconnect();
-		}
-	},
-});
-</script>
 
 <style lang="scss" module>
 .table {

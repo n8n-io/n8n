@@ -192,7 +192,7 @@ export class Stackby implements INodeType {
 						responseData.map((data: any) => data.field) as INodeExecutionData[],
 					);
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						const executionErrorData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray({ error: error.message }),
 							{ itemData: { item: i } },
@@ -228,7 +228,7 @@ export class Stackby implements INodeType {
 
 					returnData.push(...executionData);
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						const executionErrorData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray({ error: error.message }),
 							{ itemData: { item: i } },
@@ -282,7 +282,7 @@ export class Stackby implements INodeType {
 					responseData.map((data: any) => data.field) as INodeExecutionData[],
 				);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const itemData = generatePairedItemData(items.length);
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
@@ -332,7 +332,7 @@ export class Stackby implements INodeType {
 						responseData.map((data: any) => data.field) as INodeExecutionData[],
 					);
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						const executionErrorData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray({ error: error.message }),
 							{ itemData: { item: i } },

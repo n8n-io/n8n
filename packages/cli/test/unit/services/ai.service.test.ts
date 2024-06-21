@@ -1,8 +1,6 @@
-import type { INode, INodeType } from 'n8n-workflow';
-import { ApplicationError, jsonParse, NodeOperationError } from 'n8n-workflow';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
 import { AIService } from '@/services/ai.service';
 import config from '@/config';
-import { debugErrorPromptTemplate } from '@/services/ai/prompts/debugError';
 import {
 	generateCurlCommandFallbackPromptTemplate,
 	generateCurlCommandPromptTemplate,
@@ -93,39 +91,6 @@ describe('AIService', () => {
 			await service.prompt(['message']);
 
 			expect(service.provider.invoke).toHaveBeenCalled();
-		});
-	});
-
-	describe('debugError', () => {
-		test('should call prompt with error and nodeType', async () => {
-			const service = new AIService();
-
-			const nodeType = {
-				description: {
-					displayName: 'Node Type',
-					name: 'nodeType',
-					properties: [],
-				},
-			} as unknown as INodeType;
-			const error = new NodeOperationError(
-				{
-					type: 'n8n-nodes-base.error',
-					typeVersion: 1,
-				} as INode,
-				'Error',
-			);
-
-			await service.debugError(error, nodeType);
-
-			const messages = await debugErrorPromptTemplate.formatMessages({
-				nodeType: nodeType.description.displayName,
-				error: JSON.stringify(error),
-				properties: JSON.stringify(nodeType.description.properties),
-				documentationUrl: 'https://docs.n8n.io',
-			});
-
-			expect(service.provider.model.invoke).toHaveBeenCalled();
-			expect(service.provider.model.invoke.mock.calls[0][0].messages).toEqual(messages);
 		});
 	});
 

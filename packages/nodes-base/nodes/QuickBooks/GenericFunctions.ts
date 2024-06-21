@@ -296,12 +296,7 @@ export async function loadResource(this: ILoadOptionsFunctions, resource: string
 /**
  * Populate the `Line` property in a request body.
  */
-export function processLines(
-	this: IExecuteFunctions,
-	body: IDataObject,
-	lines: IDataObject[],
-	resource: string,
-) {
+export function processLines(this: IExecuteFunctions, lines: IDataObject[], resource: string) {
 	lines.forEach((line) => {
 		if (resource === 'bill') {
 			if (line.DetailType === 'AccountBasedExpenseLineDetail') {

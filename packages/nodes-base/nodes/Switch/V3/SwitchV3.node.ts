@@ -378,7 +378,7 @@ export class SwitchV3 implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData[0].push({ json: { error: error.message } });
 					continue;
 				}

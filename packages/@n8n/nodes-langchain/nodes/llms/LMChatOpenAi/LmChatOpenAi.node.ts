@@ -8,15 +8,15 @@ import {
 } from 'n8n-workflow';
 
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
-import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatOpenAi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'OpenAI Chat Model',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'lmChatOpenAi',
-		icon: 'file:openAi.svg',
+		icon: { light: 'file:openAiLight.svg', dark: 'file:openAiLight.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		description: 'For advanced usage with an AI chain',
@@ -247,6 +247,7 @@ export class LmChatOpenAi implements INodeType {
 			timeout: options.timeout ?? 60000,
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
+			callbacks: [new N8nLlmTracing(this)],
 			modelKwargs: options.responseFormat
 				? {
 						response_format: { type: options.responseFormat },
@@ -255,7 +256,7 @@ export class LmChatOpenAi implements INodeType {
 		});
 
 		return {
-			response: logWrapper(model, this),
+			response: model,
 		};
 	}
 }

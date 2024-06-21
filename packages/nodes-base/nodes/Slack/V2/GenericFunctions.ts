@@ -5,14 +5,15 @@ import type {
 	IOAuth2Options,
 	IHttpRequestMethods,
 	IRequestOptions,
+	IWebhookFunctions,
 } from 'n8n-workflow';
 
-import { NodeOperationError, jsonParse } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import get from 'lodash/get';
 
 export async function slackApiRequest(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	method: IHttpRequestMethods,
 	resource: string,
 	body: object = {},
@@ -29,7 +30,7 @@ export async function slackApiRequest(
 		},
 		body,
 		qs: query,
-		uri: `https://slack.com/api${resource}`,
+		uri: resource.startsWith('https') ? resource : `https://slack.com/api${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);
@@ -78,6 +79,7 @@ export async function slackApiRequest(
 				},
 			);
 		}
+
 		throw new NodeOperationError(
 			this.getNode(),
 			'Slack error response: ' + JSON.stringify(response.error),
@@ -87,6 +89,7 @@ export async function slackApiRequest(
 		Object.assign(response, { message_timestamp: response.ts });
 		delete response.ts;
 	}
+
 	return response;
 }
 
@@ -159,7 +162,7 @@ export function getMessageContent(
 			};
 			break;
 		case 'block':
-			content = jsonParse(this.getNodeParameter('blocksUi', i) as string);
+			content = this.getNodeParameter('blocksUi', i, {}, { ensureType: 'object' }) as IDataObject;
 
 			if (includeLinkToWorkflow && Array.isArray(content.blocks)) {
 				content.blocks.push({

@@ -53,6 +53,46 @@ const getProxyFromFixture = (workflow: IWorkflowBase, run: IRun | null, activeNo
 };
 
 describe('WorkflowDataProxy', () => {
+	describe('$(If))', () => {
+		const fixture = loadFixture('multiple_outputs');
+		const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'Edit Fields');
+
+		test('last() should use the output the node is connected to by default', () => {
+			expect(proxy.$('If').last().json.code).toEqual(2);
+		});
+
+		test('last(0) should use the first output', () => {
+			expect(proxy.$('If').last(0)).toBeUndefined();
+		});
+
+		test('last(1) should use the second output', () => {
+			expect(proxy.$('If').last(1).json.code).toEqual(2);
+		});
+
+		test('first() should use the output the node is connected to by default', () => {
+			expect(proxy.$('If').first().json.code).toEqual(1);
+		});
+		test('first(0) should use the output the node is connected to by default', () => {
+			expect(proxy.$('If').first(0)).toBeUndefined();
+		});
+		test('first(1) should use the output the node is connected to by default', () => {
+			expect(proxy.$('If').first(1).json.code).toEqual(1);
+		});
+
+		test('all() should use the output the node is connected to by default', () => {
+			expect(proxy.$('If').all()[0].json.code).toEqual(1);
+			expect(proxy.$('If').all()[1].json.code).toEqual(2);
+		});
+		test('all(0) should use the output the node is connected to by default', () => {
+			expect(proxy.$('If').all(0)[0]).toBeUndefined();
+			expect(proxy.$('If').all(0)[1]).toBeUndefined();
+		});
+		test('all(1) should use the output the node is connected to by default', () => {
+			expect(proxy.$('If').all(1)[0].json.code).toEqual(1);
+			expect(proxy.$('If').all(1)[1].json.code).toEqual(2);
+		});
+	});
+
 	describe('Base', () => {
 		const fixture = loadFixture('base');
 		const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'End');

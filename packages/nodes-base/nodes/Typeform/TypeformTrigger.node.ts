@@ -10,7 +10,7 @@ import type {
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, randomString } from 'n8n-workflow';
 
 import type {
 	ITypeformAnswer,
@@ -23,7 +23,7 @@ export class TypeformTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Typeform Trigger',
 		name: 'typeformTrigger',
-		icon: 'file:typeform.svg',
+		icon: { light: 'file:typeform.svg', dark: 'file:typeform.dark.svg' },
 		group: ['trigger'],
 		version: [1, 1.1],
 		subtitle: '=Form ID: {{$parameter["formId"]}}',
@@ -177,7 +177,7 @@ export class TypeformTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 
 				const formId = this.getNodeParameter('formId') as string;
-				const webhookId = 'n8n-' + Math.random().toString(36).substring(2, 15);
+				const webhookId = 'n8n-' + randomString(10).toLowerCase();
 
 				const endpoint = `forms/${formId}/webhooks/${webhookId}`;
 

@@ -1,11 +1,12 @@
-import type { IUser } from '../Interface';
 import { setWorkflowSharedWith } from '@/api/workflows.ee';
 import { EnterpriseEditionFeature, STORES } from '@/constants';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { defineStore } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { i18n } from '@/plugins/i18n';
+import type { ProjectSharingData } from '@/types/projects.types';
+import { splitName } from '@/utils/projects.utils';
 
 export const useWorkflowsEEStore = defineStore(STORES.WORKFLOWS_EE, {
 	state() {
@@ -18,70 +19,40 @@ export const useWorkflowsEEStore = defineStore(STORES.WORKFLOWS_EE, {
 				fallback = i18n.baseText('workflows.shareModal.info.sharee.fallback'),
 			): string => {
 				const workflow = useWorkflowsStore().getWorkflowById(workflowId);
-				return workflow?.ownedBy?.firstName
-					? `${workflow.ownedBy.firstName} ${workflow.ownedBy.lastName} (${workflow.ownedBy.email})`
+				const { firstName, lastName, email } = splitName(workflow?.homeProject?.name ?? '');
+
+				return workflow?.homeProject?.name
+					? `${firstName} ${lastName ?? ''} ${email ? `(${email})` : ''}`
 					: fallback;
 			};
 		},
 	},
 	actions: {
-		setWorkflowOwnedBy(payload: { workflowId: string; ownedBy: Partial<IUser> }): void {
-			const workflowsStore = useWorkflowsStore();
-
-			workflowsStore.workflowsById[payload.workflowId] = {
-				...workflowsStore.workflowsById[payload.workflowId],
-				ownedBy: payload.ownedBy,
-			};
-			workflowsStore.workflow = {
-				...workflowsStore.workflow,
-				ownedBy: payload.ownedBy,
-			};
-		},
 		setWorkflowSharedWith(payload: {
 			workflowId: string;
-			sharedWith: Array<Partial<IUser>>;
+			sharedWithProjects: ProjectSharingData[];
 		}): void {
 			const workflowsStore = useWorkflowsStore();
 
 			workflowsStore.workflowsById[payload.workflowId] = {
 				...workflowsStore.workflowsById[payload.workflowId],
-				sharedWith: payload.sharedWith,
+				sharedWithProjects: payload.sharedWithProjects,
 			};
 			workflowsStore.workflow = {
 				...workflowsStore.workflow,
-				sharedWith: payload.sharedWith,
-			};
-		},
-		addWorkflowSharee(payload: { workflowId: string; sharee: Partial<IUser> }): void {
-			const workflowsStore = useWorkflowsStore();
-
-			workflowsStore.workflowsById[payload.workflowId] = {
-				...workflowsStore.workflowsById[payload.workflowId],
-				sharedWith: (workflowsStore.workflowsById[payload.workflowId].sharedWith || []).concat([
-					payload.sharee,
-				]),
-			};
-		},
-		removeWorkflowSharee(payload: { workflowId: string; sharee: Partial<IUser> }): void {
-			const workflowsStore = useWorkflowsStore();
-
-			workflowsStore.workflowsById[payload.workflowId] = {
-				...workflowsStore.workflowsById[payload.workflowId],
-				sharedWith: (workflowsStore.workflowsById[payload.workflowId].sharedWith || []).filter(
-					(sharee) => sharee.id !== payload.sharee.id,
-				),
+				sharedWithProjects: payload.sharedWithProjects,
 			};
 		},
 		async saveWorkflowSharedWith(payload: {
-			sharedWith: Array<Partial<IUser>>;
+			sharedWithProjects: ProjectSharingData[];
 			workflowId: string;
 		}): Promise<void> {
 			const rootStore = useRootStore();
 			const settingsStore = useSettingsStore();
 
 			if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
-				await setWorkflowSharedWith(rootStore.getRestApiContext, payload.workflowId, {
-					shareWithIds: payload.sharedWith.map((sharee) => sharee.id as string),
+				await setWorkflowSharedWith(rootStore.restApiContext, payload.workflowId, {
+					shareWithIds: payload.sharedWithProjects.map((p) => p.id),
 				});
 
 				this.setWorkflowSharedWith(payload);

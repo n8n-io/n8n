@@ -1,11 +1,13 @@
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUsersStore } from '@/stores/users.store';
 import { initializeCloudHooks } from '@/hooks/register';
 import { useVersionsStore } from '@/stores/versions.store';
+import { useProjectsStore } from '@/stores/projects.store';
+import { useRolesStore } from './stores/roles.store';
 
 let coreInitialized = false;
 let authenticatedFeaturesInitialized = false;
@@ -59,6 +61,8 @@ export async function initializeAuthenticatedFeatures() {
 	const rootStore = useRootStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const cloudPlanStore = useCloudPlanStore();
+	const projectsStore = useProjectsStore();
+	const rolesStore = useRolesStore();
 
 	if (sourceControlStore.isEnterpriseSourceControlEnabled) {
 		await sourceControlStore.getPreferences();
@@ -81,6 +85,12 @@ export async function initializeAuthenticatedFeatures() {
 			console.error('Failed to initialize cloud plan store:', e);
 		}
 	}
+	await Promise.all([
+		projectsStore.getMyProjects(),
+		projectsStore.getPersonalProject(),
+		projectsStore.getProjectsCount(),
+		rolesStore.fetchRoles(),
+	]);
 
 	authenticatedFeaturesInitialized = true;
 }

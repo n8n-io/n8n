@@ -49,6 +49,14 @@ export function createPage({
 			<title>Chat</title>
 			<link href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css" rel="stylesheet" />
 			<link href="https://cdn.jsdelivr.net/npm/@n8n/chat/style.css" rel="stylesheet" />
+			<style>
+				html,
+				body,
+				#n8n-chat {
+					width: 100%;
+					height: 100%;
+				}
+			</style>
 		</head>
 		<body>
 			<script type="module">

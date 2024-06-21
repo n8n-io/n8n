@@ -1,5 +1,6 @@
 <template>
 	<div
+		v-if="data"
 		:id="nodeId"
 		:ref="data.name"
 		:class="nodeWrapperClass"
@@ -98,7 +99,7 @@
 
 				<NodeIcon
 					class="node-icon"
-					:node-type="nodeType"
+					:node-type="iconNodeType"
 					:size="40"
 					:shrink="false"
 					:color-default="iconColorDefault"
@@ -107,9 +108,9 @@
 			</div>
 
 			<div
-				v-if="showDisabledLinethrough"
+				v-if="showDisabledLineThrough"
 				:class="{
-					'disabled-linethrough': true,
+					'disabled-line-through': true,
 					success: !['unknown'].includes(nodeExecutionStatus) && workflowDataItems > 0,
 				}"
 			></div>
@@ -178,17 +179,21 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
+import type { PropType, CSSProperties } from 'vue';
 import { mapStores } from 'pinia';
+import xss from 'xss';
 import { useStorage } from '@/composables/useStorage';
 import {
 	CUSTOM_API_CALL_KEY,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
 	MANUAL_TRIGGER_NODE_TYPE,
 	NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS,
-	NOT_DUPLICATABE_NODE_TYPES,
+	NOT_DUPLICATABLE_NODE_TYPES,
+	SIMULATE_NODE_TYPE,
+	SIMULATE_TRIGGER_NODE_TYPE,
 	WAIT_TIME_UNLIMITED,
 } from '@/constants';
-import { nodeBase } from '@/mixins/nodeBase';
+import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import type {
 	ConnectionTypes,
 	ExecutionSummary,
@@ -197,8 +202,8 @@ import type {
 	INodeTypeDescription,
 	ITaskData,
 	NodeOperationError,
+	Workflow,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 
 import NodeIcon from '@/components/NodeIcon.vue';
 import TitledList from '@/components/TitledList.vue';
@@ -218,6 +223,10 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { usePinnedData } from '@/composables/usePinnedData';
 import { useDeviceSupport } from 'n8n-design-system';
 import { useDebounce } from '@/composables/useDebounce';
+import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
+import { useCanvasStore } from '@/stores/canvas.store';
+import { useHistoryStore } from '@/stores/history.store';
+import { useNodeBase } from '@/composables/useNodeBase';
 
 export default defineComponent({
 	name: 'Node',
@@ -226,7 +235,6 @@ export default defineComponent({
 		FontAwesomeIcon,
 		NodeIcon,
 	},
-	mixins: [nodeBase],
 	props: {
 		isProductionExecutionPreview: {
 			type: Boolean,
@@ -240,8 +248,41 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
+		name: {
+			type: String,
+			required: true,
+		},
+		instance: {
+			type: Object as PropType<BrowserJsPlumbInstance>,
+			required: true,
+		},
+		isReadOnly: {
+			type: Boolean,
+		},
+		isActive: {
+			type: Boolean,
+		},
+		hideActions: {
+			type: Boolean,
+		},
+		disableSelecting: {
+			type: Boolean,
+		},
+		showCustomTooltip: {
+			type: Boolean,
+		},
+		workflow: {
+			type: Object as PropType<Workflow>,
+			required: true,
+		},
 	},
-	setup(props) {
+	emits: {
+		run: null,
+		runWorkflow: null,
+		removeNode: null,
+		toggleDisableNode: null,
+	},
+	setup(props, { emit }) {
 		const workflowsStore = useWorkflowsStore();
 		const contextMenu = useContextMenu();
 		const externalHooks = useExternalHooks();
@@ -251,23 +292,55 @@ export default defineComponent({
 		const deviceSupport = useDeviceSupport();
 		const { callDebounced } = useDebounce();
 
+		const nodeBase = useNodeBase({
+			name: props.name,
+			instance: props.instance,
+			workflowObject: props.workflow,
+			isReadOnly: props.isReadOnly,
+			emit: emit as (event: string, ...args: unknown[]) => void,
+		});
+
 		return {
 			contextMenu,
 			externalHooks,
 			nodeHelpers,
 			pinnedData,
 			deviceSupport,
+			...nodeBase,
 			callDebounced,
 		};
 	},
+	data() {
+		return {
+			isTouchActive: false,
+			nodeSubtitle: '',
+			showTriggerNodeTooltip: false,
+			pinDataDiscoveryTooltipVisible: false,
+			dragging: false,
+			unwatchWorkflowDataItems: () => {},
+		};
+	},
 	computed: {
-		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),
+		...mapStores(
+			useNodeTypesStore,
+			useCanvasStore,
+			useNDVStore,
+			useUIStore,
+			useWorkflowsStore,
+			useHistoryStore,
+		),
+		data(): INodeUi | null {
+			return this.workflowsStore.getNodeByName(this.name);
+		},
+		nodeId(): string {
+			return this.data?.id || '';
+		},
 		showPinnedDataInfo(): boolean {
 			return this.pinnedData.hasData.value && !this.isProductionExecutionPreview;
 		},
 		isDuplicatable(): boolean {
 			if (!this.nodeType) return true;
-			if (NOT_DUPLICATABE_NODE_TYPES.includes(this.nodeType.name)) return false;
+			if (NOT_DUPLICATABLE_NODE_TYPES.includes(this.nodeType.name)) return false;
 			return (
 				this.nodeType.maxNodes === undefined || this.sameTypeNodes.length < this.nodeType.maxNodes
 			);
@@ -282,7 +355,9 @@ export default defineComponent({
 			return undefined;
 		},
 		nodeRunData(): ITaskData[] {
-			return this.workflowsStore.getWorkflowResultDataByNodeName(this.data?.name || '') || [];
+			if (!this.data) return [];
+
+			return this.workflowsStore.getWorkflowResultDataByNodeName(this.data.name) ?? [];
 		},
 		hasIssues(): boolean {
 			if (this.nodeExecutionStatus && ['crashed', 'error'].includes(this.nodeExecutionStatus))
@@ -310,7 +385,7 @@ export default defineComponent({
 				const { eventTriggerDescription } = this.nodeType;
 				return this.$locale
 					.nodeText()
-					.eventTriggerDescription(nodeName, eventTriggerDescription || '');
+					.eventTriggerDescription(nodeName, eventTriggerDescription ?? '');
 			} else {
 				return this.$locale.baseText('node.waitingForYouToCreateAnEventIn', {
 					interpolate: {
@@ -323,6 +398,7 @@ export default defineComponent({
 			return !!this.nodeType?.polling;
 		},
 		isExecuting(): boolean {
+			if (!this.data) return false;
 			return this.workflowsStore.isNodeExecuting(this.data.name);
 		},
 		isSingleActiveTriggerNode(): boolean {
@@ -334,12 +410,15 @@ export default defineComponent({
 			return nodes.length === 1;
 		},
 		isManualTypeNode(): boolean {
-			return this.data.type === MANUAL_TRIGGER_NODE_TYPE;
+			return this.data?.type === MANUAL_TRIGGER_NODE_TYPE;
 		},
 		isConfigNode(): boolean {
-			return this.nodeTypesStore.isConfigNode(this.workflow, this.data, this.data?.type ?? '');
+			if (!this.data) return false;
+			return this.nodeTypesStore.isConfigNode(this.workflow, this.data, this.data.type ?? '');
 		},
 		isConfigurableNode(): boolean {
+			if (!this.data) return false;
+
 			return this.nodeTypesStore.isConfigurableNode(
 				this.workflow,
 				this.data,
@@ -347,7 +426,7 @@ export default defineComponent({
 			);
 		},
 		isTriggerNode(): boolean {
-			return this.nodeTypesStore.isTriggerNode(this.data?.type || '');
+			return this.data ? this.nodeTypesStore.isTriggerNode(this.data.type) : false;
 		},
 		isTriggerNodeTooltipEmpty(): boolean {
 			return this.nodeType !== null ? this.nodeType.eventTriggerDescription === '' : false;
@@ -363,10 +442,10 @@ export default defineComponent({
 			return this.workflowsStore.nodesByName[this.name] as INodeUi | undefined;
 		},
 		sameTypeNodes(): INodeUi[] {
-			return this.workflowsStore.allNodes.filter((node: INodeUi) => node.type === this.data.type);
+			return this.workflowsStore.allNodes.filter((node: INodeUi) => node.type === this.data?.type);
 		},
-		nodeWrapperClass(): object {
-			const classes = {
+		nodeWrapperClass() {
+			const classes: Record<string, boolean> = {
 				'node-wrapper': true,
 				'node-wrapper--trigger': this.isTriggerNode,
 				'node-wrapper--configurable': this.isConfigurableNode,
@@ -387,10 +466,8 @@ export default defineComponent({
 
 			return classes;
 		},
-		nodeWrapperStyles(): object {
-			const styles: {
-				[key: string]: string | number;
-			} = {
+		nodeWrapperStyles() {
+			const styles: CSSProperties = {
 				left: this.position[0] + 'px',
 				top: this.position[1] + 'px',
 			};
@@ -433,7 +510,7 @@ export default defineComponent({
 		nodeClass(): object {
 			return {
 				'node-box': true,
-				disabled: this.data.disabled,
+				disabled: this.data?.disabled,
 				executing: this.isExecuting,
 			};
 		},
@@ -450,11 +527,9 @@ export default defineComponent({
 			if (nodeExecutionRunData) {
 				nodeExecutionRunData.forEach((executionRunData) => {
 					if (executionRunData?.error) {
-						issues.push(
-							`${executionRunData.error.message}${
-								executionRunData.error.description ? ` (${executionRunData.error.description})` : ''
-							}`,
-						);
+						const { message, description } = executionRunData.error;
+						const issue = `${message}${description ? ` (${description})` : ''}`;
+						issues.push(xss(issue));
 					}
 				});
 			}
@@ -464,31 +539,31 @@ export default defineComponent({
 			return issues;
 		},
 		nodeDisabledTitle(): string {
-			return this.data.disabled
+			return this.data?.disabled
 				? this.$locale.baseText('node.enable')
 				: this.$locale.baseText('node.disable');
 		},
 		position(): XYPosition {
 			return this.node ? this.node.position : [0, 0];
 		},
-		showDisabledLinethrough(): boolean {
+		showDisabledLineThrough(): boolean {
 			return (
 				!this.isConfigurableNode &&
-				!!(this.data.disabled && this.inputs.length === 1 && this.outputs.length === 1)
+				!!(this.data?.disabled && this.inputs.length === 1 && this.outputs.length === 1)
 			);
 		},
 		shortNodeType(): string {
-			return this.$locale.shortNodeType(this.data.type);
+			return this.$locale.shortNodeType(this.data?.type ?? '');
 		},
 		nodeTitle(): string {
-			if (this.data.name === 'Start') {
+			if (this.data?.name === 'Start') {
 				return this.$locale.headerText({
 					key: 'headers.start.displayName',
 					fallback: 'Start',
 				});
 			}
 
-			return this.data.name;
+			return this.data?.name ?? '';
 		},
 		waiting(): string | undefined {
 			const workflowExecution = this.workflowsStore.getWorkflowExecution as ExecutionSummary;
@@ -516,7 +591,7 @@ export default defineComponent({
 		workflowRunning(): boolean {
 			return this.uiStore.isActionActive('workflowRunning');
 		},
-		nodeStyle(): object {
+		nodeStyle() {
 			const returnStyles: {
 				[key: string]: string;
 			} = {};
@@ -527,7 +602,7 @@ export default defineComponent({
 				borderColor = '--color-foreground-dark';
 			}
 
-			if (this.data.disabled) {
+			if (this.data?.disabled) {
 				borderColor = '--color-foreground-base';
 			} else if (!this.isExecuting) {
 				if (this.hasIssues && !this.hideNodeIssues) {
@@ -540,8 +615,8 @@ export default defineComponent({
 						returnStyles['border-width'] = '2px';
 						returnStyles['border-style'] = 'solid';
 					}
-				} else if (this.waiting || this.showPinnedDataInfo) {
-					borderColor = '--color-canvas-node-pinned-border';
+				} else if (!!this.waiting || this.showPinnedDataInfo) {
+					borderColor = '--color-node-pinned-border';
 				} else if (this.nodeExecutionStatus === 'unknown') {
 					borderColor = '--color-foreground-xdark';
 				} else if (this.workflowDataItems) {
@@ -557,7 +632,7 @@ export default defineComponent({
 		},
 		isSelected(): boolean {
 			return (
-				this.uiStore.getSelectedNodes.find((node: INodeUi) => node.name === this.data.name) !==
+				this.uiStore.getSelectedNodes.find((node: INodeUi) => node.name === this.data?.name) !==
 				undefined
 			);
 		},
@@ -585,6 +660,25 @@ export default defineComponent({
 				this.contextMenu.target.value.source === 'node-button' &&
 				this.contextMenu.target.value.node.name === this.data?.name
 			);
+		},
+		iconNodeType() {
+			if (
+				this.data?.type === SIMULATE_NODE_TYPE ||
+				this.data?.type === SIMULATE_TRIGGER_NODE_TYPE
+			) {
+				const icon = this.data.parameters?.icon as string;
+				const iconNodeType = this.workflow.expression.getSimpleParameterValue(
+					this.data,
+					icon,
+					'internal',
+					{},
+				);
+				if (iconNodeType && typeof iconNodeType === 'string') {
+					return this.nodeTypesStore.getNodeType(iconNodeType);
+				}
+			}
+
+			return this.nodeType;
 		},
 	},
 	watch: {
@@ -617,12 +711,15 @@ export default defineComponent({
 				this.showTriggerNodeTooltip = false;
 			}
 		},
-		nodeRunData(newValue) {
-			if (!this.data) {
-				return;
-			}
+		nodeRunData: {
+			deep: true,
+			handler(newValue) {
+				if (!this.data) {
+					return;
+				}
 
-			this.$emit('run', { name: this.data.name, data: newValue, waiting: !!this.waiting });
+				this.$emit('run', { name: this.data.name, data: newValue, waiting: !!this.waiting });
+			},
 		},
 	},
 	created() {
@@ -634,28 +731,28 @@ export default defineComponent({
 		}
 	},
 	mounted() {
+		// Initialize the node
+		if (this.data !== null) {
+			try {
+				this.addNode(this.data);
+			} catch (error) {
+				// This breaks when new nodes are loaded into store but workflow tab is not currently active
+				// Shouldn't affect anything
+			}
+		}
+
 		setTimeout(() => {
 			this.setSubtitle();
 		}, 0);
 		if (this.nodeRunData) {
 			setTimeout(() => {
 				this.$emit('run', {
-					name: this.data && this.data.name,
+					name: this.data?.name,
 					data: this.nodeRunData,
 					waiting: !!this.waiting,
 				});
 			}, 0);
 		}
-	},
-	data() {
-		return {
-			isTouchActive: false,
-			nodeSubtitle: '',
-			showTriggerNodeTooltip: false,
-			pinDataDiscoveryTooltipVisible: false,
-			dragging: false,
-			unwatchWorkflowDataItems: () => {},
-		};
 	},
 	methods: {
 		showPinDataDiscoveryTooltip(dataItemsCount: number): void {
@@ -663,7 +760,7 @@ export default defineComponent({
 				!this.isTriggerNode ||
 				this.isManualTypeNode ||
 				this.isScheduledGroup ||
-				this.uiStore.isModalActive ||
+				this.uiStore.isAnyModalOpen ||
 				dataItemsCount === 0
 			)
 				return;
@@ -674,13 +771,14 @@ export default defineComponent({
 			this.unwatchWorkflowDataItems();
 		},
 		setSubtitle() {
+			if (!this.data || !this.nodeType) return;
 			// why is this not a computed property? because it's a very expensive operation
 			// it requires expressions to resolve each subtitle...
 			// and ends up bogging down the UI with big workflows, for example when pasting a workflow or even opening a node...
 			// so we only update it when necessary (when node is mounted and when it's opened and closed (isActive))
 			try {
 				const nodeSubtitle =
-					this.nodeHelpers.getNodeSubtitle(this.data, this.nodeType, this.workflow) || '';
+					this.nodeHelpers.getNodeSubtitle(this.data, this.nodeType, this.workflow) ?? '';
 
 				this.nodeSubtitle = nodeSubtitle.includes(CUSTOM_API_CALL_KEY) ? '' : nodeSubtitle;
 			} catch (e) {
@@ -706,9 +804,9 @@ export default defineComponent({
 		},
 
 		executeNode() {
-			this.$emit('runWorkflow', this.data.name, 'Node.executeNode');
+			this.$emit('runWorkflow', this.data?.name, 'Node.executeNode');
 			this.$telemetry.track('User clicked node hover button', {
-				node_type: this.data.type,
+				node_type: this.data?.type,
 				button_name: 'execute',
 				workflow_id: this.workflowsStore.workflowId,
 			});
@@ -716,18 +814,18 @@ export default defineComponent({
 
 		deleteNode() {
 			this.$telemetry.track('User clicked node hover button', {
-				node_type: this.data.type,
+				node_type: this.data?.type,
 				button_name: 'delete',
 				workflow_id: this.workflowsStore.workflowId,
 			});
 
-			this.$emit('removeNode', this.data.name);
+			this.$emit('removeNode', this.data?.name);
 		},
 
 		toggleDisableNode(event: MouseEvent) {
 			(event.currentTarget as HTMLButtonElement).blur();
 			this.$telemetry.track('User clicked node hover button', {
-				node_type: this.data.type,
+				node_type: this.data?.type,
 				button_name: 'disable',
 				workflow_id: this.workflowsStore.workflowId,
 			});
@@ -738,7 +836,8 @@ export default defineComponent({
 			void this.callDebounced(this.onClickDebounced, { debounceTime: 50, trailing: true }, event);
 		},
 
-		onClickDebounced(event: MouseEvent) {
+		onClickDebounced(...args: unknown[]) {
+			const event = args[0] as MouseEvent;
 			const isDoubleClick = event.detail >= 2;
 			if (isDoubleClick) {
 				this.setNodeActive();
@@ -873,10 +972,10 @@ export default defineComponent({
 			height: 100%;
 			border: 2px solid var(--color-foreground-xdark);
 			border-radius: var(--border-radius-large);
-			background-color: var(--color-canvas-node-background);
-			--color-background-node-icon-badge: var(--color-canvas-node-background);
+			background-color: var(--color-node-background);
+			--color-background-node-icon-badge: var(--color-node-background);
 			&.executing {
-				background-color: $node-background-executing !important;
+				background-color: var(--color-node-executing-background) !important;
 
 				.node-executing-info {
 					display: inline-block;
@@ -957,7 +1056,7 @@ export default defineComponent({
 				border-radius: 50px;
 
 				&.executing {
-					background-color: $node-background-executing-other !important;
+					background-color: var(--color-node-executing-other-background) !important;
 				}
 
 				.node-executing-info {
@@ -1085,7 +1184,7 @@ export default defineComponent({
 	}
 }
 
-.disabled-linethrough {
+.disabled-line-through {
 	border: 1px solid var(--color-foreground-dark);
 	position: absolute;
 	top: 49px;
@@ -1156,7 +1255,7 @@ export default defineComponent({
 	overflow: auto;
 }
 
-.disabled-linethrough {
+.disabled-line-through {
 	z-index: 8;
 }
 
