@@ -123,6 +123,7 @@ async function fetchWorkflow() {
 	// In other words: are we coming from the Editor tab or browser loaded the Executions tab directly
 	if (workflowsStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 		try {
+			await workflowsStore.fetchActiveWorkflows();
 			const data = await workflowsStore.fetchWorkflow(workflowId.value);
 			await workflowHelpers.initState(data);
 			await nodeHelpers.addNodes(data.nodes, data.connections);
