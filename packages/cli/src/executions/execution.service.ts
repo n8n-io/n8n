@@ -9,7 +9,6 @@ import type {
 	ExecutionStatus,
 } from 'n8n-workflow';
 import {
-	ErrorReporterProxy as EventReporter,
 	ApplicationError,
 	ExecutionStatusList,
 	Workflow,
@@ -27,7 +26,6 @@ import { NodeTypes } from '@/NodeTypes';
 import { Queue } from '@/Queue';
 import type { ExecutionRequest, ExecutionSummaries } from './execution.types';
 import { WorkflowRunner } from '@/WorkflowRunner';
-import { getStatusUsingPreviousExecutionStatusMethod } from './executionHelpers';
 import type { IGetExecutionsQueryFilter } from '@db/repositories/execution.repository';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
@@ -109,12 +107,6 @@ export class ExecutionService {
 				executionId,
 			});
 			return undefined;
-		}
-
-		if (!execution.status) {
-			const { data, workflowData, ...rest } = execution;
-			EventReporter.info('Detected `null` execution status', { extra: { execution: rest } });
-			execution.status = getStatusUsingPreviousExecutionStatusMethod(execution);
 		}
 
 		return execution;
