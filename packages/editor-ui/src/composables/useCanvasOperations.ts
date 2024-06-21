@@ -245,6 +245,7 @@ export function useCanvasOperations({
 		},
 	) {
 		let currentPosition = position;
+		let lastAddedNode: INodeUi | undefined;
 		for (const { type, name, position: nodePosition, isAutoAdd, openDetail } of nodes) {
 			try {
 				await createNode(
@@ -265,7 +266,7 @@ export function useCanvasOperations({
 				continue;
 			}
 
-			const lastAddedNode = editableWorkflow.value.nodes[editableWorkflow.value.nodes.length - 1];
+			lastAddedNode = editableWorkflow.value.nodes[editableWorkflow.value.nodes.length - 1];
 			currentPosition = [
 				lastAddedNode.position[0] + NodeViewUtils.NODE_SIZE * 2 + NodeViewUtils.GRID_SIZE,
 				lastAddedNode.position[1],
@@ -273,7 +274,9 @@ export function useCanvasOperations({
 		}
 
 		// If the last added node has multiple inputs, move them down
-		const lastAddedNode = editableWorkflow.value.nodes[editableWorkflow.value.nodes.length - 1];
+		if (!lastAddedNode) {
+			return;
+		}
 		const lastNodeInputs = editableWorkflowObject.value.getParentNodesByDepth(
 			lastAddedNode.name,
 			1,
@@ -349,7 +352,10 @@ export function useCanvasOperations({
 	}
 
 	async function initializeNodeDataWithDefaultCredentials(node: AddNodeData) {
-		const nodeTypeDescription = nodeTypesStore.getNodeType(node.type) as INodeTypeDescription;
+		const nodeTypeDescription = nodeTypesStore.getNodeType(node.type);
+		if (!nodeTypeDescription) {
+			throw new Error(i18n.baseText('nodeViewV2.showError.failedToCreateNode'));
+		}
 
 		let nodeVersion = nodeTypeDescription.defaultVersion;
 		if (typeof nodeVersion === 'undefined') {
@@ -371,7 +377,7 @@ export function useCanvasOperations({
 			?.map((type) => credentialsStore.getUsableCredentialByType(type.name))
 			.flat();
 
-		if (credentialPerType && credentialPerType.length === 1) {
+		if (credentialPerType?.length === 1) {
 			const defaultCredential = credentialPerType[0];
 
 			const selectedCredentials = credentialsStore.getCredentialById(defaultCredential.id);
@@ -872,6 +878,8 @@ export function useCanvasOperations({
 		editableWorkflowObject,
 		triggerNodes,
 		lastClickPosition,
+		initializeNodeDataWithDefaultCredentials,
+		createNode,
 		addNodes,
 		updateNodePosition,
 		setNodeActive,

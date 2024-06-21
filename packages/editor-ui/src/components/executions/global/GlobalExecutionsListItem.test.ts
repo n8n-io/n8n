@@ -98,7 +98,7 @@ describe('GlobalExecutionsListItem', () => {
 		});
 
 		expect(
-			getByText(`1 Jan, 2022 at ${DateTime.fromJSDate(new Date(testDate)).toFormat('hh')}:00:00`),
+			getByText(`1 Jan, 2022 at ${DateTime.fromJSDate(new Date(testDate)).toFormat('HH')}:00:00`),
 		).toBeInTheDocument();
 	});
 });
