@@ -5,10 +5,8 @@ export function getPinDataIfManualExecution(
 	nodeName: string,
 	mode: WorkflowExecuteMode,
 ): INodeExecutionData[] | undefined {
-	const pinData = workflow.getPinDataOfNode(nodeName);
-	if (pinData && mode === 'manual') {
-		return pinData;
+	if (mode !== 'manual') {
+		return undefined;
 	}
-
-	return undefined;
+	return workflow.getPinDataOfNode(nodeName);
 }

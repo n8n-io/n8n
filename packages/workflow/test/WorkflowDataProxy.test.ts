@@ -356,31 +356,31 @@ describe('WorkflowDataProxy', () => {
 		});
 
 		test('$(PinnedSet).item.json.firstName', () => {
-			expect(proxy.$('PinnedSet').item.json.firstName).toEqual('Joe');
+			expect(proxy.$('PinnedSet').item.json.firstName).toBe('Joe');
 		});
 
 		test('$(PinnedSet).pairedItem().json.firstName', () => {
-			expect(proxy.$('PinnedSet').pairedItem().json.firstName).toEqual('Joe');
+			expect(proxy.$('PinnedSet').pairedItem().json.firstName).toBe('Joe');
 		});
 
 		test('$(PinnedSet).first().json.firstName', () => {
-			expect(proxy.$('PinnedSet').first().json.firstName).toEqual('Joe');
+			expect(proxy.$('PinnedSet').first().json.firstName).toBe('Joe');
 		});
 
 		test('$(PinnedSet).first().json.firstName', () => {
-			expect(proxy.$('PinnedSet').first().json.firstName).toEqual('Joe');
+			expect(proxy.$('PinnedSet').first().json.firstName).toBe('Joe');
 		});
 
 		test('$(PinnedSet).last().json.firstName', () => {
-			expect(proxy.$('PinnedSet').last().json.firstName).toEqual('Joan');
+			expect(proxy.$('PinnedSet').last().json.firstName).toBe('Joan');
 		});
 
 		test('$(PinnedSet).all()[0].json.firstName', () => {
-			expect(proxy.$('PinnedSet').all()[0].json.firstName).toEqual('Joe');
+			expect(proxy.$('PinnedSet').all()[0].json.firstName).toBe('Joe');
 		});
 
 		test('$(PinnedSet).all()[1].json.firstName', () => {
-			expect(proxy.$('PinnedSet').all()[1].json.firstName).toEqual('Joan');
+			expect(proxy.$('PinnedSet').all()[1].json.firstName).toBe('Joan');
 		});
 
 		test('$(PinnedSet).all()[2]', () => {
@@ -388,11 +388,11 @@ describe('WorkflowDataProxy', () => {
 		});
 
 		test('$(PinnedSet).itemMatching(0).json.firstName', () => {
-			expect(proxy.$('PinnedSet').itemMatching(0).json.firstName).toEqual('Joe');
+			expect(proxy.$('PinnedSet').itemMatching(0).json.firstName).toBe('Joe');
 		});
 
 		test('$(PinnedSet).itemMatching(1).json.firstName', () => {
-			expect(proxy.$('PinnedSet').itemMatching(1).json.firstName).toEqual('Joan');
+			expect(proxy.$('PinnedSet').itemMatching(1).json.firstName).toBe('Joan');
 		});
 
 		test('$(PinnedSet).itemMatching(2)', () => {
@@ -400,7 +400,7 @@ describe('WorkflowDataProxy', () => {
 		});
 
 		test('$node[PinnedSet].json.firstName', () => {
-			expect(proxy.$node.PinnedSet.json.firstName).toEqual('Joe');
+			expect(proxy.$node.PinnedSet.json.firstName).toBe('Joe');
 		});
 	});
 });

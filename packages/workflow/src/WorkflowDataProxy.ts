@@ -247,13 +247,14 @@ export class WorkflowDataProxy {
 		branchIndex,
 		runIndex,
 		shortSyntax = false,
-	}: { nodeName?: string; branchIndex?: number; runIndex?: number; shortSyntax?: boolean } = {}) {
-		if (nodeName === undefined) {
-			return this.connectionInputData;
-		}
-		let executionData: INodeExecutionData[];
+	}: {
+		nodeName: string;
+		branchIndex?: number;
+		runIndex?: number;
+		shortSyntax?: boolean;
+	}) {
 		try {
-			executionData = this.getNodeExecutionData(nodeName, shortSyntax, branchIndex, runIndex);
+			return this.getNodeExecutionData(nodeName, shortSyntax, branchIndex, runIndex);
 		} catch (e) {
 			const pinData = getPinDataIfManualExecution(this.workflow, nodeName, this.mode);
 			if (pinData) {
@@ -262,8 +263,6 @@ export class WorkflowDataProxy {
 
 			throw e;
 		}
-
-		return executionData;
 	}
 
 	/**
@@ -799,7 +798,8 @@ export class WorkflowDataProxy {
 
 				const previousNodeOutputData =
 					taskData?.data?.main?.[previousNodeOutput] ??
-					(getPinDataIfManualExecution(that.workflow, sourceData.previousNode, that.mode) || []);
+					getPinDataIfManualExecution(that.workflow, sourceData.previousNode, that.mode) ??
+					[];
 				const source = taskData?.source ?? [];
 
 				if (pairedItem.item >= previousNodeOutputData.length) {
@@ -924,14 +924,16 @@ export class WorkflowDataProxy {
 					sourceData?.previousNodeRun || 0
 				];
 
-			const pinData = getPinDataIfManualExecution(
-				that.workflow,
-				sourceData.previousNode,
-				that.mode,
-			);
+			if (!taskData) {
+				const pinData = getPinDataIfManualExecution(
+					that.workflow,
+					sourceData.previousNode,
+					that.mode,
+				);
 
-			if (!taskData && pinData) {
-				taskData = { data: { main: [pinData] }, startTime: 0, executionTime: 0, source: [] };
+				if (pinData) {
+					taskData = { data: { main: [pinData] }, startTime: 0, executionTime: 0, source: [] };
+				}
 			}
 
 			const previousNodeOutput = sourceData.previousNodeOutput || 0;
@@ -1042,19 +1044,20 @@ export class WorkflowDataProxy {
 										itemIndex = that.itemIndex;
 									}
 
-									const pinnedData = getPinDataIfManualExecution(
-										that.workflow,
-										nodeName,
-										that.mode,
-									);
-									const executionData = that.connectionInputData.length
-										? that.connectionInputData
-										: pinnedData;
-									const input = executionData?.[itemIndex];
+									if (!that.connectionInputData.length) {
+										const pinnedData = getPinDataIfManualExecution(
+											that.workflow,
+											nodeName,
+											that.mode,
+										);
 
-									if (pinnedData && !that.connectionInputData.length) {
-										return input;
+										if (pinnedData) {
+											return pinnedData[itemIndex];
+										}
 									}
+
+									const executionData = that.connectionInputData;
+									const input = executionData?.[itemIndex];
 									if (!input) {
 										throw createExpressionError('Can’t get data for expression', {
 											messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
