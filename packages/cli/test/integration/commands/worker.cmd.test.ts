@@ -11,7 +11,8 @@ import { OrchestrationHandlerWorkerService } from '@/services/orchestration/work
 import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
 import { License } from '@/License';
 import { ExternalHooks } from '@/ExternalHooks';
-import { type JobQueue, Queue } from '@/Queue';
+import { Queue } from '@/Queue';
+import type { n8nQueue } from '@/queue.types';
 
 import { setupTestCommand } from '@test-integration/utils/testCommand';
 import { mockInstance } from '../../shared/mocking';
@@ -30,7 +31,7 @@ const queue = mockInstance(Queue);
 const orchestrationWorkerService = mockInstance(OrchestrationWorkerService);
 const command = setupTestCommand(Worker);
 
-queue.getBullObjectInstance.mockReturnValue(mock<JobQueue>({ on: jest.fn() }));
+queue.getBullQueue.mockReturnValue(mock<n8nQueue>({ on: jest.fn() }));
 
 test('worker initializes all its components', async () => {
 	const worker = await command.run();
@@ -44,7 +45,6 @@ test('worker initializes all its components', async () => {
 	expect(externalSecretsManager.init).toHaveBeenCalledTimes(1);
 	expect(messageEventBus.initialize).toHaveBeenCalledTimes(1);
 	expect(queue.init).toHaveBeenCalledTimes(1);
-	expect(queue.process).toHaveBeenCalledTimes(1);
 	expect(orchestrationWorkerService.init).toHaveBeenCalledTimes(1);
 	expect(orchestrationHandlerWorkerService.initWithOptions).toHaveBeenCalledTimes(1);
 	expect(messageEventBus.send).toHaveBeenCalledTimes(1);

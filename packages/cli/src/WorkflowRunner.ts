@@ -28,7 +28,6 @@ import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { ExternalHooks } from '@/ExternalHooks';
 import type { IExecutionResponse, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
-import type { Job, JobData, JobResponse } from '@/Queue';
 import { Queue } from '@/Queue';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
@@ -38,6 +37,8 @@ import { InternalHooks } from '@/InternalHooks';
 import { Logger } from '@/Logger';
 import { WorkflowStaticDataService } from '@/workflows/workflowStaticData.service';
 import { EventRelay } from './eventbus/event-relay.service';
+import type { n8nJob, n8nJobData, n8nJobResult } from './queue.types';
+import { QueueEvents } from 'bullmq';
 
 @Service()
 export class WorkflowRunner {
@@ -364,7 +365,7 @@ export class WorkflowRunner {
 		loadStaticData?: boolean,
 		realtime?: boolean,
 	): Promise<void> {
-		const jobData: JobData = {
+		const jobData: n8nJobData = {
 			executionId,
 			loadStaticData: !!loadStaticData,
 		};
@@ -381,12 +382,13 @@ export class WorkflowRunner {
 			removeOnComplete: true,
 			removeOnFail: true,
 		};
-		let job: Job;
+		let job: n8nJob;
 		let hooks: WorkflowHooks;
 		try {
 			job = await this.jobQueue.add(jobData, jobOptions);
 
-			this.logger.info(`Started with job ID: ${job.id.toString()} (Execution ID: ${executionId})`);
+			// @TODO: job.id undefined?
+			this.logger.info(`Started with job ID: ${job.id ?? ''} (Execution ID: ${executionId})`);
 
 			hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerMain(
 				data.executionMode,
@@ -433,11 +435,24 @@ export class WorkflowRunner {
 					reject(error);
 				});
 
-				const jobData: Promise<JobResponse> = job.finished();
+				// @TODO: Is this the right way to replace job.finished?
+				// https://github.com/OptimalBits/bull/blob/75703e510fd7e3640cc031710a7ddc0c5b018f5a/REFERENCE.md?plain=1#L989
+
+				// const jobData: Promise<JobResult> = job.finished();
+
+				const jobData = (async () => {
+					const queueEvents = new QueueEvents('jobs');
+					try {
+						return await job.waitUntilFinished(queueEvents);
+					} catch (error) {
+						this.logger.error('[WorkflowRunner] Job failed or faced an error:', error);
+						throw error; // Re-throwing the error or handling it as needed
+					}
+				})();
 
 				const queueRecoveryInterval = config.getEnv('queue.bull.queueRecoveryInterval');
 
-				const racingPromises: Array<Promise<JobResponse>> = [jobData];
+				const racingPromises: Array<Promise<n8nJobResult>> = [jobData];
 
 				let clearWatchdogInterval;
 				if (queueRecoveryInterval > 0) {
@@ -455,9 +470,9 @@ export class WorkflowRunner {
 					 ************************************************ */
 					let watchDogInterval: NodeJS.Timeout | undefined;
 
-					const watchDog: Promise<JobResponse> = new Promise((res) => {
+					const watchDog: Promise<n8nJobResult> = new Promise((res) => {
 						watchDogInterval = setInterval(async () => {
-							const currentJob = await this.jobQueue.getJob(job.id);
+							const currentJob = await this.jobQueue.getJob(job.id ?? ''); // @TODO: job.id undefined?
 							// When null means job is finished (not found in queue)
 							if (currentJob === null) {
 								// Mimic worker's success message

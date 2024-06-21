@@ -136,7 +136,9 @@ export class ExecutionRecoveryService {
 
 		const { Queue } = await import('@/Queue');
 
-		const queuedIds = await Container.get(Queue).getInProgressExecutionIds();
+		const inProgressJobs = await Container.get(Queue).getJobsByState(['active', 'waiting']);
+
+		const queuedIds = new Set(inProgressJobs.map((job) => job.data.executionId));
 
 		if (queuedIds.size === 0) {
 			this.logger.debug('[Recovery] Completed queue recovery check, no dangling executions');

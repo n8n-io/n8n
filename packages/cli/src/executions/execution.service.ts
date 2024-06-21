@@ -423,7 +423,7 @@ export class ExecutionService {
 			// @TODO: Why are we swallowing this error in queue mode?
 		}
 
-		const activeJobs = await this.queue.getJobs(['active', 'waiting']);
+		const activeJobs = await this.queue.getJobsByState(['active', 'waiting']);
 		const job = activeJobs.find(({ data }) => data.executionId === execution.id);
 
 		if (job) {

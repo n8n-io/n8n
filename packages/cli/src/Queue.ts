@@ -1,56 +1,60 @@
-import type Bull from 'bull';
 import Container, { Service } from 'typedi';
+import type { Cluster, Redis } from 'ioredis';
 import {
 	ApplicationError,
 	BINARY_ENCODING,
 	type IDataObject,
-	type ExecutionError,
 	type IExecuteResponsePromiseData,
 } from 'n8n-workflow';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
+import { Logger } from '@/Logger';
 
-export type JobId = Bull.JobId;
-export type Job = Bull.Job<JobData>;
-export type JobQueue = Bull.Queue<JobData>;
-
-export interface JobData {
-	executionId: string;
-	loadStaticData: boolean;
-}
-
-export interface JobResponse {
-	success: boolean;
-	error?: ExecutionError;
-}
-
-export interface WebhookResponse {
-	executionId: string;
-	response: IExecuteResponsePromiseData;
-}
+import type {
+	Job as BullJob,
+	JobState as BullJobState,
+	JobsOptions as BullJobOptions,
+	QueueOptions as BullQueueOptions,
+} from 'bullmq';
+import type {
+	n8nJob,
+	n8nJobData,
+	n8nJobName,
+	n8nJobResult,
+	n8nQueue,
+	WebhookResponse,
+} from './queue.types';
 
 @Service()
 export class Queue {
-	private jobQueue: JobQueue;
+	// @TODO: Rename to `QueueManager`?
+	private jobQueue: n8nQueue;
 
-	constructor(private activeExecutions: ActiveExecutions) {}
+	private connection: Redis | Cluster;
+
+	private options: BullQueueOptions;
+
+	constructor(
+		private readonly activeExecutions: ActiveExecutions,
+		private readonly logger: Logger,
+	) {}
 
 	async init() {
-		const { default: Bull } = await import('bull');
+		const { Queue: BullQueue } = await import('bullmq');
 		const { RedisClientService } = await import('@/services/redis/redis-client.service');
 
-		const redisClientService = Container.get(RedisClientService);
+		const service = Container.get(RedisClientService);
+		const prefix = service.toValidPrefix(config.getEnv('queue.bull.prefix'));
+		this.connection = service.createClient({ type: 'client(bull)' });
 
-		const bullPrefix = config.getEnv('queue.bull.prefix');
-		const prefix = redisClientService.toValidPrefix(bullPrefix);
+		// @TODO: `client(bull)` is a placeholder - Where does `type` come from?
 
-		this.jobQueue = new Bull('jobs', {
-			prefix,
-			settings: config.get('queue.bull.settings'),
-			createClient: (type) => redisClientService.createClient({ type: `${type}(bull)` }),
-		});
+		this.options = { prefix, connection: this.connection };
 
-		this.jobQueue.on('global:progress', (_jobId, progress: WebhookResponse) => {
+		this.jobQueue = new BullQueue<n8nJobData, n8nJobResult, n8nJobName>('jobs', this.options);
+
+		// @TODO: Check that this still works
+		this.jobQueue.on('progress', (_job, progress: WebhookResponse) => {
 			this.activeExecutions.resolveResponsePromise(
 				progress.executionId,
 				this.decodeWebhookResponse(progress.response),
@@ -58,7 +62,80 @@ export class Queue {
 		});
 	}
 
-	decodeWebhookResponse(response: IExecuteResponsePromiseData): IExecuteResponsePromiseData {
+	/**
+	 * Add a job to the queue.
+	 */
+	async add(jobData: n8nJobData, options: BullJobOptions) {
+		return (await this.jobQueue.add('execution', jobData, options)) as n8nJob;
+	}
+
+	/**
+	 * Check if Redis connection is still reachable.
+	 */
+	async ping() {
+		return await this.connection.ping();
+	}
+
+	/**
+	 * Stop accepting jobs, but finish active jobs.
+	 *
+	 * @param `isLocal` Pause applies only to this worker, not to other workers.
+	 * @param `doNotWaitActive` Do not wait for active jobs to finish before resolving.
+	 */
+	async pause(_arg: { isLocal?: boolean; doNotWaitActive?: boolean } = {}): Promise<void> {
+		// @TODO: New behavior for `isLocal`?
+		// @TODO: New behavior for `doNotWaitActive`?
+		return await this.jobQueue.pause();
+	}
+
+	async stopJob(job: BullJob<n8nJobData, n8nJobResult, 'execution'>): Promise<boolean> {
+		try {
+			if (await job.isActive()) {
+				await job.updateProgress(-1);
+				return true;
+			}
+
+			await job.remove(); // inactive
+			return true;
+		} catch (e) {
+			this.logger.error('[Queue] Failed to stop job', {
+				job,
+				error: e instanceof Error ? e : new Error(`${e}`),
+			});
+
+			return false;
+		}
+	}
+
+	// ----------------------------------
+	//             getters
+	// ----------------------------------
+
+	async getJob(jobId: string) {
+		return await this.jobQueue.getJob(jobId);
+	}
+
+	async getJobsByState(jobTypes: BullJobState[]) {
+		return await this.jobQueue.getJobs(jobTypes);
+	}
+
+	getQueueOptions() {
+		return this.options;
+	}
+
+	getBullQueue() {
+		if (!this.jobQueue) throw new ApplicationError('Queue is not initialized yet');
+
+		return this.jobQueue;
+	}
+
+	// ----------------------------------
+	//             private
+	// ----------------------------------
+
+	private decodeWebhookResponse(
+		response: IExecuteResponsePromiseData,
+	): IExecuteResponsePromiseData {
 		if (
 			typeof response === 'object' &&
 			typeof response.body === 'object' &&
@@ -71,71 +148,5 @@ export class Queue {
 		}
 
 		return response;
-	}
-
-	async add(jobData: JobData, jobOptions: object): Promise<Job> {
-		return await this.jobQueue.add(jobData, jobOptions);
-	}
-
-	async getJob(jobId: JobId): Promise<Job | null> {
-		return await this.jobQueue.getJob(jobId);
-	}
-
-	async getJobs(jobTypes: Bull.JobStatus[]): Promise<Job[]> {
-		return await this.jobQueue.getJobs(jobTypes);
-	}
-
-	/**
-	 * Get IDs of executions that are currently in progress in the queue.
-	 */
-	async getInProgressExecutionIds() {
-		const inProgressJobs = await this.getJobs(['active', 'waiting']);
-
-		return new Set(inProgressJobs.map((job) => job.data.executionId));
-	}
-
-	async process(concurrency: number, fn: Bull.ProcessCallbackFunction<JobData>): Promise<void> {
-		return await this.jobQueue.process(concurrency, fn);
-	}
-
-	async ping(): Promise<string> {
-		return await this.jobQueue.client.ping();
-	}
-
-	async pause({
-		isLocal,
-		doNotWaitActive,
-	}: { isLocal?: boolean; doNotWaitActive?: boolean } = {}): Promise<void> {
-		return await this.jobQueue.pause(isLocal, doNotWaitActive);
-	}
-
-	getBullObjectInstance(): JobQueue {
-		if (this.jobQueue === undefined) {
-			// if queue is not initialized yet throw an error, since we do not want to hand around an undefined queue
-			throw new ApplicationError('Queue is not initialized yet!');
-		}
-		return this.jobQueue;
-	}
-
-	/**
-	 *
-	 * @param job A Job instance
-	 * @returns boolean true if we were able to securely stop the job
-	 */
-	async stopJob(job: Job): Promise<boolean> {
-		if (await job.isActive()) {
-			// Job is already running so tell it to stop
-			await job.progress(-1);
-			return true;
-		}
-		// Job did not get started yet so remove from queue
-		try {
-			await job.remove();
-			return true;
-		} catch (e) {
-			await job.progress(-1);
-		}
-
-		return false;
 	}
 }

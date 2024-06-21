@@ -276,7 +276,7 @@ importers:
         version: 0.0.10(encoding@0.1.13)
       '@langchain/community':
         specifier: 0.2.2
-        version: 0.2.2(@aws-sdk/client-bedrock-runtime@3.535.0)(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@2.5.0(encoding@0.1.13))(@google-cloud/storage@6.11.0(encoding@0.1.13))(@huggingface/inference@2.7.0)(@mozilla/readability@0.5.0)(@pinecone-database/pinecone@2.2.1)(@qdrant/js-client-rest@1.9.0(typescript@5.4.2))(@smithy/eventstream-codec@2.2.0)(@smithy/protocol-http@3.3.0)(@smithy/signature-v4@2.2.1)(@smithy/util-utf8@2.3.0)(@supabase/postgrest-js@1.15.2)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.4.2))(axios@1.6.7)(cheerio@1.0.0-rc.12)(cohere-ai@7.10.1(encoding@0.1.13))(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2(ts-toolbelt@9.6.0))(fast-xml-parser@4.3.5)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mammoth@1.7.2)(mysql2@3.10.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.12)(ws@8.17.1)
+        version: 0.2.2(@aws-sdk/client-bedrock-runtime@3.535.0)(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@2.5.0(encoding@0.1.13))(@google-cloud/storage@6.11.0(encoding@0.1.13))(@huggingface/inference@2.7.0)(@mozilla/readability@0.5.0)(@pinecone-database/pinecone@2.2.1)(@qdrant/js-client-rest@1.9.0(typescript@5.4.2))(@smithy/eventstream-codec@2.2.0)(@smithy/protocol-http@3.3.0)(@smithy/signature-v4@2.2.1)(@smithy/util-utf8@2.3.0)(@supabase/postgrest-js@1.15.2)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.4.2))(axios@1.6.7)(cheerio@1.0.0-rc.12)(cohere-ai@7.10.1(encoding@0.1.13))(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2(ts-toolbelt@9.6.0))(fast-xml-parser@4.3.5)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.4.1)(jsdom@23.0.1)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mammoth@1.7.2)(mysql2@3.10.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.12)(ws@8.17.1)
       '@langchain/core':
         specifier: 0.2.0
         version: 0.2.0
@@ -306,7 +306,7 @@ importers:
         version: 0.5.0
       '@n8n/typeorm':
         specifier: 0.3.20-10
-        version: 0.3.20-10(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.10.0)(pg@8.11.3)(redis@4.6.12)(sqlite3@5.1.7)
+        version: 0.3.20-10(@sentry/node@7.87.0)(ioredis@5.4.1)(mssql@10.0.2)(mysql2@3.10.0)(pg@8.11.3)(redis@4.6.12)(sqlite3@5.1.7)
       '@n8n/vm2':
         specifier: 3.9.20
         version: 3.9.20
@@ -354,7 +354,7 @@ importers:
         version: 2.1.0
       langchain:
         specifier: 0.2.2
-        version: 0.2.2(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@google-ai/generativelanguage@2.5.0(encoding@0.1.13))(@pinecone-database/pinecone@2.2.1)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.4.2))(axios@1.6.7)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2(ts-toolbelt@9.6.0))(fast-xml-parser@4.3.5)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(mammoth@1.7.2)(pdf-parse@1.1.1)(redis@4.6.12)(ws@8.17.1)
+        version: 0.2.2(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@google-ai/generativelanguage@2.5.0(encoding@0.1.13))(@pinecone-database/pinecone@2.2.1)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.4.2))(axios@1.6.7)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2(ts-toolbelt@9.6.0))(fast-xml-parser@4.3.5)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.4.1)(jsdom@23.0.1)(mammoth@1.7.2)(pdf-parse@1.1.1)(redis@4.6.12)(ws@8.17.1)
       lodash:
         specifier: 4.17.21
         version: 4.17.21
@@ -580,9 +580,9 @@ importers:
       bcryptjs:
         specifier: 2.4.3
         version: 2.4.3
-      bull:
-        specifier: 4.12.1
-        version: 4.12.1
+      bullmq:
+        specifier: 5.8.2
+        version: 5.8.2
       cache-manager:
         specifier: 5.2.3
         version: 5.2.3
@@ -6709,9 +6709,8 @@ packages:
     resolution: {integrity: sha512-DhS0XtiAuejkAY08iGOdDK35eex/yGNoezlWqGJTu9FqWFF/oBjUhpsusE9SXiI4culyDbOoFs+l3ar0VXhFqQ==}
     engines: {node: '>=12'}
 
-  bull@4.12.1:
-    resolution: {integrity: sha512-ft4hTmex7WGSHt56mydw9uRKskkvgiNwqTYiV9b6q3ubhplglQmjo9OZrHlcUVNwBqSBhnzlsJQ9N/Wd7nhENA==}
-    engines: {node: '>=12'}
+  bullmq@5.8.2:
+    resolution: {integrity: sha512-V64+Nz28FO9YEEUiDonG5KFhjihedML/OxuHpB0D5vV8aWcF1ui/5nmjDcCIyx4EXiUUDDypSUotjzcYu8gkeg==}
 
   busboy@1.6.0:
     resolution: {integrity: sha512-8SFQbg/0hQ9xy3UNTB0YEnsNBbWfhf7RtnzpL7TkBiTBRfrQ9Fxcnz7VJsleJpyp6rVLvXiuORqjlHi5q+PYuA==}
@@ -8944,6 +8943,10 @@ packages:
 
   ioredis@5.3.2:
     resolution: {integrity: sha512-1DKMMzlIHM02eBBVOFQ1+AolGjs6+xEcM4PDL7NqOS6szq7H9jSaEkIUH6/a5Hl241LzW6JLSiAbNvTQjUupUA==}
+    engines: {node: '>=12.22.0'}
+
+  ioredis@5.4.1:
+    resolution: {integrity: sha512-2YZsvl7jopIa1gaePkeMtd9rAcSjOOjPtpcLlOeusyO+XH2SK5ZcT+UCrElPP+WVIInh2TzeI4XW9ENaSLVVHA==}
     engines: {node: '>=12.22.0'}
 
   ip@2.0.1:
@@ -16712,7 +16715,7 @@ snapshots:
     transitivePeerDependencies:
       - encoding
 
-  '@langchain/community@0.2.2(@aws-sdk/client-bedrock-runtime@3.535.0)(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@2.5.0(encoding@0.1.13))(@google-cloud/storage@6.11.0(encoding@0.1.13))(@huggingface/inference@2.7.0)(@mozilla/readability@0.5.0)(@pinecone-database/pinecone@2.2.1)(@qdrant/js-client-rest@1.9.0(typescript@5.4.2))(@smithy/eventstream-codec@2.2.0)(@smithy/protocol-http@3.3.0)(@smithy/signature-v4@2.2.1)(@smithy/util-utf8@2.3.0)(@supabase/postgrest-js@1.15.2)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.4.2))(axios@1.6.7)(cheerio@1.0.0-rc.12)(cohere-ai@7.10.1(encoding@0.1.13))(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2(ts-toolbelt@9.6.0))(fast-xml-parser@4.3.5)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mammoth@1.7.2)(mysql2@3.10.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.12)(ws@8.17.1)':
+  '@langchain/community@0.2.2(@aws-sdk/client-bedrock-runtime@3.535.0)(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@2.5.0(encoding@0.1.13))(@google-cloud/storage@6.11.0(encoding@0.1.13))(@huggingface/inference@2.7.0)(@mozilla/readability@0.5.0)(@pinecone-database/pinecone@2.2.1)(@qdrant/js-client-rest@1.9.0(typescript@5.4.2))(@smithy/eventstream-codec@2.2.0)(@smithy/protocol-http@3.3.0)(@smithy/signature-v4@2.2.1)(@smithy/util-utf8@2.3.0)(@supabase/postgrest-js@1.15.2)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.4.2))(axios@1.6.7)(cheerio@1.0.0-rc.12)(cohere-ai@7.10.1(encoding@0.1.13))(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2(ts-toolbelt@9.6.0))(fast-xml-parser@4.3.5)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.4.1)(jsdom@23.0.1)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mammoth@1.7.2)(mysql2@3.10.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.12)(ws@8.17.1)':
     dependencies:
       '@langchain/core': 0.2.0
       '@langchain/openai': 0.0.33(encoding@0.1.13)
@@ -16720,7 +16723,7 @@ snapshots:
       expr-eval: 2.0.2
       flat: 5.0.2
       js-yaml: 4.1.0
-      langchain: 0.2.2(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@google-ai/generativelanguage@2.5.0(encoding@0.1.13))(@pinecone-database/pinecone@2.2.1)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.4.2))(axios@1.6.7)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2(ts-toolbelt@9.6.0))(fast-xml-parser@4.3.5)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(mammoth@1.7.2)(pdf-parse@1.1.1)(redis@4.6.12)(ws@8.17.1)
+      langchain: 0.2.2(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@google-ai/generativelanguage@2.5.0(encoding@0.1.13))(@pinecone-database/pinecone@2.2.1)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.4.2))(axios@1.6.7)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2(ts-toolbelt@9.6.0))(fast-xml-parser@4.3.5)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.4.1)(jsdom@23.0.1)(mammoth@1.7.2)(pdf-parse@1.1.1)(redis@4.6.12)(ws@8.17.1)
       langsmith: 0.1.12
       uuid: 9.0.1
       zod: 3.23.8
@@ -16749,7 +16752,7 @@ snapshots:
       epub2: 3.0.2(ts-toolbelt@9.6.0)
       html-to-text: 9.0.5
       ignore: 5.2.4
-      ioredis: 5.3.2
+      ioredis: 5.4.1
       jsdom: 23.0.1
       jsonwebtoken: 9.0.2
       lodash: 4.17.21
@@ -17045,36 +17048,6 @@ snapshots:
       esprima-next: 5.8.4
       recast: 0.22.0
 
-  '@n8n/typeorm@0.3.20-10(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.10.0)(pg@8.11.3)(redis@4.6.12)(sqlite3@5.1.7)':
-    dependencies:
-      '@n8n/p-retry': 6.2.0-2
-      '@sqltools/formatter': 1.2.5
-      app-root-path: 3.1.0
-      async-mutex: 0.5.0
-      buffer: 6.0.3
-      chalk: 4.1.2
-      dayjs: 1.11.10
-      debug: 4.3.4(supports-color@8.1.1)
-      dotenv: 16.3.1
-      glob: 10.3.10
-      mkdirp: 2.1.3
-      reflect-metadata: 0.2.2
-      sha.js: 2.4.11
-      tarn: 3.0.2
-      tslib: 2.6.2
-      uuid: 9.0.1
-      yargs: 17.7.2
-    optionalDependencies:
-      '@sentry/node': 7.87.0
-      ioredis: 5.3.2
-      mssql: 10.0.2
-      mysql2: 3.10.0
-      pg: 8.11.3
-      redis: 4.6.12
-      sqlite3: 5.1.7
-    transitivePeerDependencies:
-      - supports-color
-
   '@n8n/typeorm@0.3.20-10(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.10.0)(pg@8.11.3)(redis@4.6.13)(sqlite3@5.1.7)':
     dependencies:
       '@n8n/p-retry': 6.2.0-2
@@ -17101,6 +17074,36 @@ snapshots:
       mysql2: 3.10.0
       pg: 8.11.3
       redis: 4.6.13
+      sqlite3: 5.1.7
+    transitivePeerDependencies:
+      - supports-color
+
+  '@n8n/typeorm@0.3.20-10(@sentry/node@7.87.0)(ioredis@5.4.1)(mssql@10.0.2)(mysql2@3.10.0)(pg@8.11.3)(redis@4.6.12)(sqlite3@5.1.7)':
+    dependencies:
+      '@n8n/p-retry': 6.2.0-2
+      '@sqltools/formatter': 1.2.5
+      app-root-path: 3.1.0
+      async-mutex: 0.5.0
+      buffer: 6.0.3
+      chalk: 4.1.2
+      dayjs: 1.11.10
+      debug: 4.3.4(supports-color@8.1.1)
+      dotenv: 16.3.1
+      glob: 10.3.10
+      mkdirp: 2.1.3
+      reflect-metadata: 0.2.2
+      sha.js: 2.4.11
+      tarn: 3.0.2
+      tslib: 2.6.2
+      uuid: 9.0.1
+      yargs: 17.7.2
+    optionalDependencies:
+      '@sentry/node': 7.87.0
+      ioredis: 5.4.1
+      mssql: 10.0.2
+      mysql2: 3.10.0
+      pg: 8.11.3
+      redis: 4.6.12
       sqlite3: 5.1.7
     transitivePeerDependencies:
       - supports-color
@@ -20749,15 +20752,15 @@ snapshots:
       - supports-color
     optional: true
 
-  bull@4.12.1:
+  bullmq@5.8.2:
     dependencies:
       cron-parser: 4.9.0
-      get-port: 5.1.1
-      ioredis: 5.3.2
-      lodash: 4.17.21
+      ioredis: 5.4.1
       msgpackr: 1.10.1
+      node-abort-controller: 3.1.1
       semver: 7.6.0
-      uuid: 8.3.2
+      tslib: 2.6.2
+      uuid: 9.0.1
     transitivePeerDependencies:
       - supports-color
 
@@ -22971,7 +22974,8 @@ snapshots:
 
   get-port-please@3.1.2: {}
 
-  get-port@5.1.1: {}
+  get-port@5.1.1:
+    optional: true
 
   get-stream@5.2.0:
     dependencies:
@@ -23532,6 +23536,20 @@ snapshots:
       semver: 7.6.0
 
   ioredis@5.3.2:
+    dependencies:
+      '@ioredis/commands': 1.2.0
+      cluster-key-slot: 1.1.2
+      debug: 4.3.4(supports-color@8.1.1)
+      denque: 2.1.0
+      lodash.defaults: 4.2.0
+      lodash.isarguments: 3.1.0
+      redis-errors: 1.2.0
+      redis-parser: 3.0.0
+      standard-as-callback: 2.1.0
+    transitivePeerDependencies:
+      - supports-color
+
+  ioredis@5.4.1:
     dependencies:
       '@ioredis/commands': 1.2.0
       cluster-key-slot: 1.1.2
@@ -24463,7 +24481,7 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  langchain@0.2.2(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@google-ai/generativelanguage@2.5.0(encoding@0.1.13))(@pinecone-database/pinecone@2.2.1)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.4.2))(axios@1.6.7)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2(ts-toolbelt@9.6.0))(fast-xml-parser@4.3.5)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(mammoth@1.7.2)(pdf-parse@1.1.1)(redis@4.6.12)(ws@8.17.1):
+  langchain@0.2.2(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@google-ai/generativelanguage@2.5.0(encoding@0.1.13))(@pinecone-database/pinecone@2.2.1)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.4.2))(axios@1.6.7)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2(ts-toolbelt@9.6.0))(fast-xml-parser@4.3.5)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.4.1)(jsdom@23.0.1)(mammoth@1.7.2)(pdf-parse@1.1.1)(redis@4.6.12)(ws@8.17.1):
     dependencies:
       '@langchain/core': 0.2.0
       '@langchain/openai': 0.0.33(encoding@0.1.13)
@@ -24496,7 +24514,7 @@ snapshots:
       handlebars: 4.7.8
       html-to-text: 9.0.5
       ignore: 5.2.4
-      ioredis: 5.3.2
+      ioredis: 5.4.1
       jsdom: 23.0.1
       mammoth: 1.7.2
       pdf-parse: 1.1.1

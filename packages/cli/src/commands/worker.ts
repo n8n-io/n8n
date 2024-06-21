@@ -12,7 +12,7 @@ import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import config from '@/config';
-import type { Job, JobId, JobResponse, WebhookResponse } from '@/Queue';
+import type { n8nJob, n8nJobResult, WebhookResponse } from '@/queue.types';
 import { Queue } from '@/Queue';
 import { N8N_VERSION, inTest } from '@/constants';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
@@ -29,6 +29,7 @@ import type { WorkerJobStatusSummary } from '@/services/orchestration/worker/typ
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { BaseCommand } from './BaseCommand';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
+import { Worker as BullWorker } from 'bullmq';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -63,8 +64,10 @@ export class Worker extends BaseCommand {
 	async stopProcess() {
 		this.logger.info('Stopping n8n...');
 
-		// Stop accepting new jobs, `doNotWaitActive` allows reporting progress
-		await Worker.jobQueue.pause({ isLocal: true, doNotWaitActive: true });
+		await Worker.jobQueue.pause({
+			isLocal: true,
+			doNotWaitActive: true, // allows reporting progress
+		});
 
 		try {
 			await this.externalHooks?.run('n8n.stop', []);
@@ -92,7 +95,7 @@ export class Worker extends BaseCommand {
 		await this.exitSuccessFully();
 	}
 
-	async runJob(job: Job, nodeTypes: INodeTypes): Promise<JobResponse> {
+	async runJob(job: n8nJob, nodeTypes: INodeTypes): Promise<n8nJobResult> {
 		const { executionId, loadStaticData } = job.data;
 		const executionRepository = Container.get(ExecutionRepository);
 		const fullExecutionData = await executionRepository.findSingleExecution(executionId, {
@@ -176,7 +179,7 @@ export class Worker extends BaseCommand {
 					executionId,
 					response: WebhookHelpers.encodeWebhookResponse(response),
 				};
-				await job.progress(progress);
+				await job.updateProgress(progress); // @TODO: Check if this still works
 			},
 		];
 
@@ -321,12 +324,16 @@ export class Worker extends BaseCommand {
 		const envConcurrency = config.getEnv('executions.concurrency.productionLimit');
 		const concurrency = envConcurrency !== -1 ? envConcurrency : flags.concurrency;
 
-		void Worker.jobQueue.process(
-			concurrency,
-			async (job) => await this.runJob(job, this.nodeTypes),
-		);
+		const configSettings = config.get('queue.bull.settings');
 
-		Worker.jobQueue.getBullObjectInstance().on('global:progress', (jobId: JobId, progress) => {
+		new BullWorker('jobs', async (job: n8nJob) => await this.runJob(job, this.nodeTypes), {
+			concurrency,
+			...Worker.jobQueue.getQueueOptions(),
+			...configSettings,
+		});
+
+		// @TODO: Check if this listener still works
+		Worker.jobQueue.getBullQueue().on('progress', ({ id: jobId }: n8nJob, progress) => {
 			// Progress of a job got updated which does get used
 			// to communicate that a job got canceled.
 
@@ -342,7 +349,7 @@ export class Worker extends BaseCommand {
 
 		let lastTimer = 0;
 		let cumulativeTimeout = 0;
-		Worker.jobQueue.getBullObjectInstance().on('error', (error: Error) => {
+		Worker.jobQueue.getBullQueue().on('error', (error: Error) => {
 			if (error.toString().includes('ECONNREFUSED')) {
 				const now = Date.now();
 				if (now - lastTimer > 30000) {

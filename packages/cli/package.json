@@ -109,7 +109,7 @@
     "axios": "1.6.7",
     "basic-auth": "2.0.1",
     "bcryptjs": "2.4.3",
-    "bull": "4.12.1",
+    "bullmq": "5.8.2",
     "cache-manager": "5.2.3",
     "callsites": "3.1.0",
     "change-case": "4.1.2",
