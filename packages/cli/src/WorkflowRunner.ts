@@ -387,8 +387,7 @@ export class WorkflowRunner {
 		try {
 			job = await this.jobQueue.add(jobData, jobOptions);
 
-			// @TODO: job.id undefined?
-			this.logger.info(`Started with job ID: ${job.id ?? ''} (Execution ID: ${executionId})`);
+			this.logger.info(`Started with job ID: ${job.id} (Execution ID: ${executionId})`);
 
 			hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerMain(
 				data.executionMode,
@@ -472,7 +471,7 @@ export class WorkflowRunner {
 
 					const watchDog: Promise<n8nJobResult> = new Promise((res) => {
 						watchDogInterval = setInterval(async () => {
-							const currentJob = await this.jobQueue.getJob(job.id ?? ''); // @TODO: job.id undefined?
+							const currentJob = await this.jobQueue.getJob(job.id);
 							// When null means job is finished (not found in queue)
 							if (currentJob === null) {
 								// Mimic worker's success message
