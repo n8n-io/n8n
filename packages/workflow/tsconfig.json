@@ -6,6 +6,7 @@
 		"paths": {
 			"@/*": ["./*"]
 		},
+		"lib": ["es2020", "es2022.error", "dom"],
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts"]

@@ -264,7 +264,7 @@ export function configureQueryRunner(
 			} catch (err) {
 				const error = parseMySqlError.call(this, err, 0, formatedQueries);
 
-				if (!this.continueOnFail()) throw error;
+				if (!this.continueOnFail(err)) throw error;
 				returnData.push({ json: { message: error.message, error: { ...error } } });
 			}
 		} else {
@@ -302,7 +302,7 @@ export function configureQueryRunner(
 					} catch (err) {
 						const error = parseMySqlError.call(this, err, index, [formatedQuery]);
 
-						if (!this.continueOnFail()) {
+						if (!this.continueOnFail(err)) {
 							connection.release();
 							throw error;
 						}
@@ -352,7 +352,7 @@ export function configureQueryRunner(
 							connection.release();
 						}
 
-						if (!this.continueOnFail()) throw error;
+						if (!this.continueOnFail(err)) throw error;
 						returnData.push(prepareErrorItem(queries[index], error as Error, index));
 
 						// Return here because we already rolled back the transaction
