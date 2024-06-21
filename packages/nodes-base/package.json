@@ -183,6 +183,7 @@
       "dist/credentials/ImpervaWafApi.credentials.js",
       "dist/credentials/IntercomApi.credentials.js",
       "dist/credentials/InvoiceNinjaApi.credentials.js",
+      "dist/credentials/IrisDfirApi.credentials.js",
       "dist/credentials/IterableApi.credentials.js",
       "dist/credentials/JenkinsApi.credentials.js",
       "dist/credentials/JiraSoftwareCloudApi.credentials.js",
