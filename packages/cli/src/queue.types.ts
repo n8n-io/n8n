@@ -13,7 +13,7 @@ export type n8nJobResult = {
 	error?: ExecutionError;
 };
 
-export type n8nJob = BullJob<n8nJobData, n8nJobResult, 'execution'> & {
+export type n8nJob = BullJob<n8nJobData, n8nJobResult, n8nJobName> & {
 	id: string /* @TODO: Is this safe? Why did they make it `undefined`? */;
 };
 
