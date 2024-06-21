@@ -15,6 +15,7 @@ import { useDebounce } from '@/composables/useDebounce';
 import { storeToRefs } from 'pinia';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 const executionsStore = useExecutionsStore();
 const workflowsStore = useWorkflowsStore();
@@ -26,6 +27,7 @@ const router = useRouter();
 const toast = useToast();
 const { callDebounced } = useDebounce();
 const workflowHelpers = useWorkflowHelpers({ router });
+const nodeHelpers = useNodeHelpers();
 
 const { filters } = storeToRefs(executionsStore);
 
@@ -123,6 +125,7 @@ async function fetchWorkflow() {
 		try {
 			const data = await workflowsStore.fetchWorkflow(workflowId.value);
 			await workflowHelpers.initState(data);
+			await nodeHelpers.addNodes(data.nodes, data.connections);
 		} catch (error) {
 			toast.showError(error, i18n.baseText('nodeView.showError.openWorkflow.title'));
 		}

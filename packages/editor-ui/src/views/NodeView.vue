@@ -235,8 +235,6 @@ import {
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	VIEWS,
-	WEBHOOK_NODE_TYPE,
-	FORM_TRIGGER_NODE_TYPE,
 	TRIGGER_NODE_CREATOR_VIEW,
 	EnterpriseEditionFeature,
 	REGULAR_NODE_CREATOR_VIEW,
@@ -279,10 +277,8 @@ import type {
 	ExecutionSummary,
 	INode,
 	INodeConnections,
-	INodeCredentialsDetails,
 	INodeInputConfiguration,
 	INodeTypeDescription,
-	INodeTypeNameVersion,
 	IPinData,
 	ITaskData,
 	ITelemetryTrackProperties,
@@ -302,7 +298,6 @@ import {
 } from 'n8n-workflow';
 import type {
 	NewConnectionInfo,
-	ICredentialsResponse,
 	IExecutionResponse,
 	IWorkflowDb,
 	IWorkflowData,
@@ -350,7 +345,6 @@ import { getAccountAge } from '@/utils/userUtils';
 import { getConnectionInfo, getNodeViewTab } from '@/utils/canvasUtils';
 import {
 	AddConnectionCommand,
-	AddNodeCommand,
 	MoveNodeCommand,
 	RemoveConnectionCommand,
 	RemoveNodeCommand,
@@ -550,7 +544,6 @@ export default defineComponent({
 			moveCanvasKeyPressed: false,
 			stopExecutionInProgress: false,
 			blankRedirect: false,
-			credentialsUpdated: false,
 			pullConnActiveNodeName: null as string | null,
 			pullConnActive: false,
 			dropPrevented: false,
@@ -564,8 +557,6 @@ export default defineComponent({
 			showTriggerMissingTooltip: false,
 			workflowData: null as INewWorkflowData | null,
 			activeConnection: null as null | Connection,
-			isInsertingNodes: false,
-			isProductionExecutionPreview: false,
 			enterTimer: undefined as undefined | ReturnType<typeof setTimeout>,
 			exitTimer: undefined as undefined | ReturnType<typeof setTimeout>,
 			readOnlyNotification: null as null | NotificationHandle,
@@ -779,6 +770,9 @@ export default defineComponent({
 			const isCloudDeployment = this.settingsStore.isCloudDeployment;
 			return isCloudDeployment && experimentEnabled && !userHasSeenAIAssistantExperiment;
 		},
+		isProductionExecutionPreview(): boolean {
+			return this.nodeHelpers.isProductionExecutionPreview.value;
+		},
 	},
 	watch: {
 		// Listen to route changes and load the workflow accordingly
@@ -916,7 +910,7 @@ export default defineComponent({
 
 			setTimeout(() => {
 				void this.usersStore.showPersonalizationSurvey();
-				this.addPinDataConnections(this.workflowsStore.pinnedWorkflowData);
+				this.nodeHelpers.addPinDataConnections(this.workflowsStore.pinnedWorkflowData);
 			}, 0);
 		});
 
@@ -1007,7 +1001,7 @@ export default defineComponent({
 		historyBus.on('revertRenameNode', this.onRevertNameChange);
 		historyBus.on('enableNodeToggle', this.onRevertEnableToggle);
 
-		dataPinningEventBus.on('pin-data', this.addPinDataConnections);
+		dataPinningEventBus.on('pin-data', this.nodeHelpers.addPinDataConnections);
 		dataPinningEventBus.on('unpin-data', this.removePinDataConnections);
 		nodeViewEventBus.on('saveWorkflow', this.saveCurrentWorkflowExternal);
 
@@ -1033,7 +1027,7 @@ export default defineComponent({
 		historyBus.off('revertRenameNode', this.onRevertNameChange);
 		historyBus.off('enableNodeToggle', this.onRevertEnableToggle);
 
-		dataPinningEventBus.off('pin-data', this.addPinDataConnections);
+		dataPinningEventBus.off('pin-data', this.nodeHelpers.addPinDataConnections);
 		dataPinningEventBus.off('unpin-data', this.removePinDataConnections);
 		nodeViewEventBus.off('saveWorkflow', this.saveCurrentWorkflowExternal);
 	},
@@ -1334,7 +1328,7 @@ export default defineComponent({
 				this.workflowsStore.setUsedCredentials(data.workflowData.usedCredentials);
 			}
 
-			await this.addNodes(
+			await this.nodeHelpers.addNodes(
 				deepCopy(data.workflowData.nodes),
 				deepCopy(data.workflowData.connections),
 			);
@@ -1405,7 +1399,7 @@ export default defineComponent({
 			this.resetWorkspace();
 			data.workflow.nodes = NodeViewUtils.getFixedNodesList(data.workflow.nodes);
 
-			await this.addNodes(data.workflow.nodes as INodeUi[], data.workflow.connections);
+			await this.nodeHelpers.addNodes(data.workflow.nodes as INodeUi[], data.workflow.connections);
 
 			if (data.workflow.pinData) {
 				this.workflowsStore.setWorkflowPinData(data.workflow.pinData);
@@ -1457,7 +1451,7 @@ export default defineComponent({
 			const convertedNodes = data.workflow.nodes.map(
 				this.workflowsStore.convertTemplateNodeToNodeUi,
 			);
-			await this.addNodes(convertedNodes, data.workflow.connections);
+			await this.nodeHelpers.addNodes(convertedNodes, data.workflow.connections);
 			this.workflowData =
 				(await this.workflowsStore.getNewWorkflowData(
 					data.name,
@@ -1495,9 +1489,9 @@ export default defineComponent({
 				this.workflowsStore.setUsedCredentials(workflow.usedCredentials);
 			}
 
-			await this.addNodes(workflow.nodes, workflow.connections);
+			await this.nodeHelpers.addNodes(workflow.nodes, workflow.connections);
 
-			if (!this.credentialsUpdated) {
+			if (!this.nodeHelpers.credentialsUpdated.value) {
 				this.uiStore.stateIsDirty = false;
 			}
 			this.canvasStore.zoomToFit();
@@ -2328,7 +2322,7 @@ export default defineComponent({
 
 					this.workflowsStore.addWorkflowTagIds(tagIds);
 					setTimeout(() => {
-						this.addPinDataConnections(this.workflowsStore.pinnedWorkflowData);
+						this.nodeHelpers.addPinDataConnections(this.workflowsStore.pinnedWorkflowData);
 					});
 				}
 			} catch (error) {
@@ -2449,7 +2443,7 @@ export default defineComponent({
 					[defaultCredential.type]: selected,
 				};
 
-				await this.loadNodesProperties(
+				await this.nodeHelpers.loadNodesProperties(
 					[newNodeData].map((node) => ({ name: node.type, version: node.typeVersion })),
 				);
 				const nodeType = this.nodeTypesStore.getNodeType(newNodeData.type, newNodeData.typeVersion);
@@ -2691,7 +2685,7 @@ export default defineComponent({
 				newNodeData.webhookId = uuid();
 			}
 
-			await this.addNodes([newNodeData], undefined, trackHistory);
+			await this.nodeHelpers.addNodes([newNodeData], undefined, trackHistory);
 			this.workflowsStore.setNodePristine(newNodeData.name, true);
 
 			this.uiStore.stateIsDirty = true;
@@ -2799,7 +2793,7 @@ export default defineComponent({
 				},
 			] as [IConnection, IConnection];
 
-			this.__addConnection(connectionData);
+			this.nodeHelpers.addConnection(connectionData);
 		},
 		async addNode(
 			nodeTypeName: string,
@@ -3233,7 +3227,7 @@ export default defineComponent({
 					}
 					// When we add multiple nodes, this event could be fired hundreds of times for large workflows.
 					// And because the updateNodesInputIssues() method is quite expensive, we only call it if not in insert mode
-					if (!this.isInsertingNodes) {
+					if (!this.nodeHelpers.isInsertingNodes.value) {
 						this.nodeHelpers.updateNodesInputIssues();
 						this.resetEndpointsErrors();
 						setTimeout(() => {
@@ -3250,17 +3244,6 @@ export default defineComponent({
 			} catch (e) {
 				console.error(e);
 			}
-		},
-		addConectionsTestData() {
-			this.instance.connections.forEach((connection) => {
-				NodeViewUtils.addConnectionTestData(
-					connection.source,
-					connection.target,
-					connection?.connector?.hasOwnProperty('canvas')
-						? connection?.connector.canvas
-						: undefined,
-				);
-			});
 		},
 		onDragMove() {
 			const totalNodes = this.nodes.length;
@@ -3750,7 +3733,7 @@ export default defineComponent({
 			) {
 				const manualTriggerNode = this.canvasStore.getAutoAddManualTriggerNode();
 				if (manualTriggerNode) {
-					await this.addNodes([manualTriggerNode]);
+					await this.nodeHelpers.addNodes([manualTriggerNode]);
 					this.uiStore.lastSelectedNode = manualTriggerNode.name;
 				}
 			}
@@ -3844,52 +3827,6 @@ export default defineComponent({
 			// Once view is initialized, pick up all toast notifications
 			// waiting in the store and display them
 			this.showNotificationForViews([VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW]);
-		},
-		getOutputEndpointUUID(
-			nodeName: string,
-			connectionType: NodeConnectionType,
-			index: number,
-		): string | null {
-			const node = this.workflowsStore.getNodeByName(nodeName);
-			if (!node) {
-				return null;
-			}
-
-			return NodeViewUtils.getOutputEndpointUUID(node.id, connectionType, index);
-		},
-		getInputEndpointUUID(nodeName: string, connectionType: NodeConnectionType, index: number) {
-			const node = this.workflowsStore.getNodeByName(nodeName);
-			if (!node) {
-				return null;
-			}
-
-			return NodeViewUtils.getInputEndpointUUID(node.id, connectionType, index);
-		},
-		__addConnection(connection: [IConnection, IConnection]) {
-			const outputUuid = this.getOutputEndpointUUID(
-				connection[0].node,
-				connection[0].type,
-				connection[0].index,
-			);
-			const inputUuid = this.getInputEndpointUUID(
-				connection[1].node,
-				connection[1].type,
-				connection[1].index,
-			);
-			if (!outputUuid || !inputUuid) {
-				return;
-			}
-
-			const uuid: [string, string] = [outputUuid, inputUuid];
-			// Create connections in DOM
-			this.instance?.connect({
-				uuids: uuid,
-				detachable: !this.isReadOnlyRoute && !this.readOnlyEnv,
-			});
-
-			setTimeout(() => {
-				this.addPinDataConnections(this.workflowsStore.pinnedWorkflowData);
-			});
 		},
 		__removeConnection(connection: [IConnection, IConnection], removeVisualConnection = false) {
 			if (removeVisualConnection) {
@@ -4298,7 +4235,11 @@ export default defineComponent({
 			await this.$nextTick();
 
 			// Add the new updated nodes
-			await this.addNodes(Object.values(workflow.nodes), workflow.connectionsBySourceNode, false);
+			await this.nodeHelpers.addNodes(
+				Object.values(workflow.nodes),
+				workflow.connectionsBySourceNode,
+				false,
+			);
 
 			// Make sure that the node is selected again
 			this.deselectAllNodes();
@@ -4325,188 +4266,6 @@ export default defineComponent({
 				this.instance.deleteEveryConnection({ fireEvent: true });
 			}
 		},
-		matchCredentials(node: INodeUi) {
-			if (!node.credentials) {
-				return;
-			}
-			Object.entries(node.credentials).forEach(
-				([nodeCredentialType, nodeCredentials]: [string, INodeCredentialsDetails]) => {
-					const credentialOptions = this.credentialsStore.getCredentialsByType(nodeCredentialType);
-
-					// Check if workflows applies old credentials style
-					if (typeof nodeCredentials === 'string') {
-						nodeCredentials = {
-							id: null,
-							name: nodeCredentials,
-						};
-						this.credentialsUpdated = true;
-					}
-
-					if (nodeCredentials.id) {
-						// Check whether the id is matching with a credential
-						const credentialsId = nodeCredentials.id.toString(); // due to a fixed bug in the migration UpdateWorkflowCredentials (just sqlite) we have to cast to string and check later if it has been a number
-						const credentialsForId = credentialOptions.find(
-							(optionData: ICredentialsResponse) => optionData.id === credentialsId,
-						);
-						if (credentialsForId) {
-							if (
-								credentialsForId.name !== nodeCredentials.name ||
-								typeof nodeCredentials.id === 'number'
-							) {
-								node.credentials![nodeCredentialType] = {
-									id: credentialsForId.id,
-									name: credentialsForId.name,
-								};
-								this.credentialsUpdated = true;
-							}
-							return;
-						}
-					}
-
-					// No match for id found or old credentials type used
-					node.credentials![nodeCredentialType] = nodeCredentials;
-
-					// check if only one option with the name would exist
-					const credentialsForName = credentialOptions.filter(
-						(optionData: ICredentialsResponse) => optionData.name === nodeCredentials.name,
-					);
-
-					// only one option exists for the name, take it
-					if (credentialsForName.length === 1) {
-						node.credentials![nodeCredentialType].id = credentialsForName[0].id;
-						this.credentialsUpdated = true;
-					}
-				},
-			);
-		},
-		async addNodes(nodes: INodeUi[], connections?: IConnections, trackHistory = false) {
-			if (!nodes?.length) {
-				return;
-			}
-			this.isInsertingNodes = true;
-			// Before proceeding we must check if all nodes contain the `properties` attribute.
-			// Nodes are loaded without this information so we must make sure that all nodes
-			// being added have this information.
-			await this.loadNodesProperties(
-				nodes.map((node) => ({ name: node.type, version: node.typeVersion })),
-			);
-
-			// Add the node to the node-list
-			let nodeType: INodeTypeDescription | null;
-			nodes.forEach((node) => {
-				const newNode: INodeUi = {
-					...node,
-				};
-
-				if (!newNode.id) {
-					newNode.id = uuid();
-				}
-
-				nodeType = this.nodeTypesStore.getNodeType(newNode.type, newNode.typeVersion);
-
-				// Make sure that some properties always exist
-				if (!newNode.hasOwnProperty('disabled')) {
-					newNode.disabled = false;
-				}
-
-				if (!newNode.hasOwnProperty('parameters')) {
-					newNode.parameters = {};
-				}
-
-				// Load the default parameter values because only values which differ
-				// from the defaults get saved
-				if (nodeType !== null) {
-					let nodeParameters = null;
-					try {
-						nodeParameters = NodeHelpers.getNodeParameters(
-							nodeType.properties,
-							newNode.parameters,
-							true,
-							false,
-							node,
-						);
-					} catch (e) {
-						console.error(
-							this.$locale.baseText('nodeView.thereWasAProblemLoadingTheNodeParametersOfNode') +
-								`: "${newNode.name}"`,
-						);
-						console.error(e);
-					}
-					newNode.parameters = nodeParameters ?? {};
-
-					// if it's a webhook and the path is empty set the UUID as the default path
-					if (
-						[WEBHOOK_NODE_TYPE, FORM_TRIGGER_NODE_TYPE].includes(newNode.type) &&
-						newNode.parameters.path === ''
-					) {
-						newNode.parameters.path = newNode.webhookId as string;
-					}
-				}
-
-				// check and match credentials, apply new format if old is used
-				this.matchCredentials(newNode);
-				this.workflowsStore.addNode(newNode);
-				if (trackHistory) {
-					this.historyStore.pushCommandToUndo(new AddNodeCommand(newNode));
-				}
-			});
-
-			// Wait for the nodes to be rendered
-			await this.$nextTick();
-
-			this.instance?.setSuspendDrawing(true);
-
-			if (connections) {
-				await this.addConnections(connections);
-			}
-			// Add the node issues at the end as the node-connections are required
-			this.nodeHelpers.refreshNodeIssues();
-			this.nodeHelpers.updateNodesInputIssues();
-			this.resetEndpointsErrors();
-			this.isInsertingNodes = false;
-
-			// Now it can draw again
-			this.instance?.setSuspendDrawing(false, true);
-		},
-		async addConnections(connections: IConnections) {
-			const batchedConnectionData: Array<[IConnection, IConnection]> = [];
-
-			for (const sourceNode in connections) {
-				for (const type in connections[sourceNode]) {
-					connections[sourceNode][type].forEach((outwardConnections, sourceIndex) => {
-						if (outwardConnections) {
-							outwardConnections.forEach((targetData) => {
-								batchedConnectionData.push([
-									{
-										node: sourceNode,
-										type: getEndpointScope(type) ?? NodeConnectionType.Main,
-										index: sourceIndex,
-									},
-									{ node: targetData.node, type: targetData.type, index: targetData.index },
-								]);
-							});
-						}
-					});
-				}
-			}
-
-			// Process the connections in batches
-			await this.processConnectionBatch(batchedConnectionData);
-			setTimeout(this.addConectionsTestData, 0);
-		},
-
-		async processConnectionBatch(batchedConnectionData: Array<[IConnection, IConnection]>) {
-			const batchSize = 100;
-
-			for (let i = 0; i < batchedConnectionData.length; i += batchSize) {
-				const batch = batchedConnectionData.slice(i, i + batchSize);
-
-				batch.forEach((connectionData) => {
-					this.__addConnection(connectionData);
-				});
-			}
-		},
-
 		async addNodesToWorkflow(data: IWorkflowDataUpdate): Promise<IWorkflowDataUpdate> {
 			// Because nodes with the same name maybe already exist, it could
 			// be needed that they have to be renamed. Also could it be possible
@@ -4532,7 +4291,7 @@ export default defineComponent({
 			let newName: string;
 			const createNodes: INode[] = [];
 
-			await this.loadNodesProperties(
+			await this.nodeHelpers.loadNodesProperties(
 				data.nodes.map((node) => ({ name: node.type, version: node.typeVersion })),
 			);
 
@@ -4648,7 +4407,7 @@ export default defineComponent({
 
 			// Add the nodes with the changed node names, expressions and connections
 			this.historyStore.startRecordingUndo();
-			await this.addNodes(
+			await this.nodeHelpers.addNodes(
 				Object.values(tempWorkflow.nodes),
 				tempWorkflow.connectionsBySourceNode,
 				true,
@@ -4772,7 +4531,7 @@ export default defineComponent({
 			this.uiStore.resetSelectedNodes();
 			this.uiStore.nodeViewOffsetPosition = [0, 0];
 
-			this.credentialsUpdated = false;
+			this.nodeHelpers.credentialsUpdated.value = false;
 		},
 		async loadActiveWorkflows(): Promise<void> {
 			await this.workflowsStore.fetchActiveWorkflows();
@@ -4812,30 +4571,6 @@ export default defineComponent({
 		async loadSecrets(): Promise<void> {
 			await this.externalSecretsStore.fetchAllSecrets();
 		},
-		async loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
-			const allNodes: INodeTypeDescription[] = this.nodeTypesStore.allNodeTypes;
-
-			const nodesToBeFetched: INodeTypeNameVersion[] = [];
-			allNodes.forEach((node) => {
-				const nodeVersions = Array.isArray(node.version) ? node.version : [node.version];
-				if (
-					!!nodeInfos.find((n) => n.name === node.name && nodeVersions.includes(n.version)) &&
-					!node.hasOwnProperty('properties')
-				) {
-					nodesToBeFetched.push({
-						name: node.name,
-						version: Array.isArray(node.version) ? node.version.slice(-1)[0] : node.version,
-					});
-				}
-			});
-
-			if (nodesToBeFetched.length > 0) {
-				// Only call API if node information is actually missing
-				this.canvasStore.startLoading();
-				await this.nodeTypesStore.getNodesInformation(nodesToBeFetched);
-				this.canvasStore.stopLoading();
-			}
-		},
 		async onPostMessageReceived(message: MessageEvent) {
 			if (!message || typeof message.data !== 'string' || !message.data?.includes?.('"command"')) {
 				return;
@@ -4868,7 +4603,7 @@ export default defineComponent({
 					try {
 						// If this NodeView is used in preview mode (in iframe) it will not have access to the main app store
 						// so everything it needs has to be sent using post messages and passed down to child components
-						this.isProductionExecutionPreview = json.executionMode !== 'manual';
+						this.nodeHelpers.isProductionExecutionPreview.value = json.executionMode !== 'manual';
 
 						await this.openExecution(json.executionId);
 						this.canOpenNDV = json.canOpenNDV ?? true;
@@ -4905,48 +4640,6 @@ export default defineComponent({
 			if (workflowData !== undefined) {
 				await this.importWorkflowData(workflowData, 'url');
 			}
-		},
-		addPinDataConnections(pinData?: IPinData) {
-			if (!pinData) {
-				return;
-			}
-
-			Object.keys(pinData).forEach((nodeName) => {
-				const node = this.workflowsStore.getNodeByName(nodeName);
-				if (!node) {
-					return;
-				}
-
-				const nodeElement = document.getElementById(node.id);
-				if (!nodeElement) {
-					return;
-				}
-
-				const hasRun = this.workflowsStore.getWorkflowResultDataByNodeName(nodeName) !== null;
-				// In case we are showing a production execution preview we want
-				// to show pinned data connections as they wouldn't have been pinned
-				const classNames = this.isProductionExecutionPreview ? [] : ['pinned'];
-
-				if (hasRun) {
-					classNames.push('has-run');
-				}
-
-				const connections = this.instance?.getConnections({
-					source: nodeElement,
-				});
-
-				const connectionsArray = Array.isArray(connections)
-					? connections
-					: Object.values(connections);
-
-				connectionsArray.forEach((connection) => {
-					NodeViewUtils.addConnectionOutputSuccess(connection, {
-						total: pinData[nodeName].length,
-						iterations: 0,
-						classNames,
-					});
-				});
-			});
 		},
 		removePinDataConnections(pinData: IPinData) {
 			Object.keys(pinData).forEach((nodeName) => {
@@ -5065,7 +4758,7 @@ export default defineComponent({
 				});
 			}
 
-			this.addPinDataConnections(this.workflowsStore.pinnedWorkflowData);
+			this.nodeHelpers.addPinDataConnections(this.workflowsStore.pinnedWorkflowData);
 		},
 
 		async saveCurrentWorkflowExternal(callback: () => void) {
@@ -5096,7 +4789,7 @@ export default defineComponent({
 			// For some reason, returning node to canvas with old id
 			// makes it's endpoint to render at wrong position
 			node.id = uuid();
-			await this.addNodes([node]);
+			await this.nodeHelpers.addNodes([node]);
 		},
 		onRevertAddConnection({ connection }: { connection: [IConnection, IConnection] }) {
 			this.suspendRecordingDetachedConnections = true;
@@ -5105,7 +4798,7 @@ export default defineComponent({
 		},
 		async onRevertRemoveConnection({ connection }: { connection: [IConnection, IConnection] }) {
 			this.suspendRecordingDetachedConnections = true;
-			this.__addConnection(connection);
+			this.nodeHelpers.addConnection(connection);
 			this.suspendRecordingDetachedConnections = false;
 		},
 		async onRevertNameChange({ currentName, newName }: { currentName: string; newName: string }) {
