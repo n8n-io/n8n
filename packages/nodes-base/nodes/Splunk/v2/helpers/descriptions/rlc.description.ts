@@ -45,3 +45,29 @@ export const reportRLC: INodeProperties = {
 		},
 	],
 };
+
+export const searchJobRLC: INodeProperties = {
+	displayName: 'Search Job',
+	name: 'searchJobId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			placeholder: 'Select a search job...',
+			typeOptions: {
+				searchListMethod: 'searchJobs',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'ID',
+			name: 'id',
+			type: 'string',
+			placeholder: 'e.g. 1718944376.178',
+		},
+	],
+};

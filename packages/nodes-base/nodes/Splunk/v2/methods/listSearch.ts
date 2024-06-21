@@ -27,3 +27,29 @@ export async function searchReports(
 		}),
 	};
 }
+
+export async function searchJobs(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	const qs: IDataObject = {};
+
+	if (filter) {
+		qs.search = filter;
+	}
+
+	const endpoint = '/services/search/jobs';
+	const response = await splunkApiRequest
+		.call(this, 'GET', endpoint, undefined, qs)
+		.then(formatFeed);
+
+	return {
+		results: (response as IDataObject[]).map((entry: IDataObject) => {
+			return {
+				name: (entry.title as string).replace(/^\|\s*/, ''),
+				value: entry.id as string,
+				url: entry.entryUrl as string,
+			};
+		}),
+	};
+}

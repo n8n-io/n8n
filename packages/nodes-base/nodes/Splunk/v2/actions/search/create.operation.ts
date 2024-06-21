@@ -9,9 +9,13 @@ const properties: INodeProperties[] = [
 		name: 'search',
 		description:
 			'Search language string to execute, in Splunk\'s <a href="https://docs.splunk.com/Documentation/Splunk/latest/SearchReference/WhatsInThisManual">Search Processing Language</a>',
+		placeholder: 'e.g. search index=_internal | stats count by source',
 		type: 'string',
 		required: true,
 		default: '',
+		typeOptions: {
+			rows: 2,
+		},
 	},
 	{
 		displayName: 'Additional Fields',

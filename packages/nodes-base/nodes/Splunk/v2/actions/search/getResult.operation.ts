@@ -2,16 +2,10 @@ import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workfl
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { splunkApiRequest } from '../../transport';
 import { formatResults, populate, setCount } from '../../helpers/utils';
+import { searchJobRLC } from '../../helpers/descriptions';
 
 const properties: INodeProperties[] = [
-	{
-		displayName: 'Search ID',
-		name: 'searchJobId',
-		description: 'ID of the search whose results to retrieve',
-		type: 'string',
-		required: true,
-		default: '',
-	},
+	searchJobRLC,
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -107,7 +101,7 @@ export async function execute(
 ): Promise<IDataObject | IDataObject[]> {
 	// https://docs.splunk.com/Documentation/Splunk/latest/RESTREF/RESTsearch#search.2Fjobs.2F.7Bsearch_id.7D.2Fresults
 
-	const searchJobId = this.getNodeParameter('searchJobId', i);
+	const searchJobId = this.getNodeParameter('searchJobId', i, '', { extractValue: true }) as string;
 
 	const qs = {} as IDataObject;
 	const filters = this.getNodeParameter('filters', i) as IDataObject & {
