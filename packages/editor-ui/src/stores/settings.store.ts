@@ -70,6 +70,11 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		saveManualExecutions: false,
 	}),
 	getters: {
+		// @ts-ignore
+		debugInfo() {
+			// @ts-ignore
+			return this.settings;
+		},
 		isEnterpriseFeatureEnabled() {
 			return (feature: EnterpriseEditionFeatureValue): boolean =>
 				Boolean(this.settings.enterprise?.[feature]);

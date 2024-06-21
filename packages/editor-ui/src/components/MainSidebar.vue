@@ -132,6 +132,8 @@ import { useDebounce } from '@/composables/useDebounce';
 import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
 import ProjectNavigation from '@/components/Projects/ProjectNavigation.vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useClipboard } from '@/composables/useClipboard';
+import { useToast } from '@/composables/useToast';
 
 export default defineComponent({
 	name: 'MainSidebar',
@@ -316,6 +318,11 @@ export default defineComponent({
 							id: 'about',
 							icon: 'info',
 							label: this.$locale.baseText('mainSidebar.aboutN8n'),
+						},
+						{
+							id: 'debugInfo',
+							icon: 'bug',
+							label: 'Debug info',
 							position: 'bottom',
 						},
 					],
@@ -422,6 +429,17 @@ export default defineComponent({
 				}
 				case 'cloud-admin': {
 					void this.cloudPlanStore.redirectToDashboard();
+					break;
+				}
+				case 'debugInfo': {
+					const debugInfo = JSON.stringify(useSettingsStore().debugInfo);
+					useToast().showToast({
+						title: 'Info',
+						message: 'Copied debug info to clipboard',
+						type: 'info',
+						duration: 5000,
+					});
+					await useClipboard().copy(debugInfo);
 					break;
 				}
 				case 'quickstart':
