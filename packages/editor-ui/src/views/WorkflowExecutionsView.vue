@@ -8,17 +8,16 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { NO_NETWORK_ERROR_CODE } from '@/utils/apiUtils';
 import { useToast } from '@/composables/useToast';
-import { VIEWS } from '@/constants';
+import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
 import { useRoute, useRouter } from 'vue-router';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useDebounce } from '@/composables/useDebounce';
 import { storeToRefs } from 'pinia';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useTagsStore } from '@/stores/tags.store';
+import { useWorkflowInitState } from '@/composables/useWorkflowInitState';
 
 const executionsStore = useExecutionsStore();
 const workflowsStore = useWorkflowsStore();
-const tagsStore = useTagsStore();
 const nodeTypesStore = useNodeTypesStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -26,6 +25,7 @@ const route = useRoute();
 const router = useRouter();
 const toast = useToast();
 const { callDebounced } = useDebounce();
+const workflowInitState = useWorkflowInitState();
 
 const { filters } = storeToRefs(executionsStore);
 
@@ -117,14 +117,17 @@ async function initializeRoute() {
 }
 
 async function fetchWorkflow() {
-	try {
-		const data = await workflowsStore.fetchWorkflow(workflowId.value);
-		workflowsStore.initState(data);
-		workflow.value = data;
-	} catch (error) {
-		toast.showError(error, i18n.baseText('nodeView.showError.openWorkflow.title'));
-		return;
+	// Check if the workflow already has an ID
+	// In other words: are we coming from the Editor tab or browser loaded the Executions tab directly
+	if (workflowsStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+		try {
+			const data = await workflowsStore.fetchWorkflow(workflowId.value);
+			await workflowInitState.run(data);
+		} catch (error) {
+			toast.showError(error, i18n.baseText('nodeView.showError.openWorkflow.title'));
+		}
 	}
+	workflow.value = workflowsStore.workflow;
 }
 
 async function onAutoRefreshToggle(value: boolean) {

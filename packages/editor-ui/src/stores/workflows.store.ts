@@ -31,7 +31,6 @@ import type {
 	WorkflowMetadata,
 	IExecutionFlattedResponse,
 	IWorkflowTemplateNode,
-	ITag,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import type {
@@ -74,7 +73,6 @@ import { i18n } from '@/plugins/i18n';
 
 import { computed, ref } from 'vue';
 import { useProjectsStore } from '@/stores/projects.store';
-import { useTagsStore } from '@/stores/tags.store';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -101,7 +99,6 @@ let cachedWorkflowKey: string | null = '';
 let cachedWorkflow: Workflow | null = null;
 
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
-	const tagsStore = useTagsStore();
 	const uiStore = useUIStore();
 
 	const workflow = ref<IWorkflowDb>(createEmptyWorkflow());
@@ -440,22 +437,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function resetWorkflow() {
 		workflow.value = createEmptyWorkflow();
-	}
-
-	function initState(workflowData: IWorkflowDb) {
-		addWorkflow(workflowData);
-		setActive(workflowData.active || false);
-		setWorkflowId(workflowData.id);
-		setWorkflowName({ newName: workflowData.name, setStateDirty: uiStore.stateIsDirty });
-		setWorkflowSettings(workflowData.settings ?? {});
-		setWorkflowPinData(workflowData.pinData ?? {});
-		setWorkflowVersionId(workflowData.versionId);
-		setWorkflowMetadata(workflowData.meta);
-
-		const tags = (workflowData.tags ?? []) as ITag[];
-		const tagIds = tags.map((tag) => tag.id);
-		setWorkflowTagIds(tagIds || []);
-		tagsStore.upsertTags(tags);
 	}
 
 	function resetState() {
@@ -1589,7 +1570,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		fetchWorkflow,
 		getNewWorkflowData,
 		resetWorkflow,
-		initState,
 		resetState,
 		addExecutingNode,
 		removeExecutingNode,

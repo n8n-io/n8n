@@ -403,6 +403,7 @@ import { useStorage } from '@/composables/useStorage';
 import { isJSPlumbEndpointElement, isJSPlumbConnection } from '@/utils/typeGuards';
 import { usePostHog } from '@/stores/posthog.store';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
+import { useWorkflowInitState } from '@/composables/useWorkflowInitState';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -513,6 +514,7 @@ export default defineComponent({
 		const canvasPanning = useCanvasPanning(nodeViewRootRef, { onMouseMoveEnd });
 		const workflowHelpers = useWorkflowHelpers({ router });
 		const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
+		const workflowInitState = useWorkflowInitState();
 
 		return {
 			locale,
@@ -538,6 +540,7 @@ export default defineComponent({
 			...useMessage(),
 			...useUniqueNodeName(),
 			...useExecutionDebugging(),
+			workflowInitState,
 		};
 	},
 	data() {
@@ -1482,7 +1485,7 @@ export default defineComponent({
 
 			this.resetWorkspace();
 
-			this.workflowsStore.initState(workflow);
+			await this.workflowInitState.run(workflow);
 
 			if (workflow.sharedWithProjects) {
 				this.workflowsEEStore.setWorkflowSharedWith({
