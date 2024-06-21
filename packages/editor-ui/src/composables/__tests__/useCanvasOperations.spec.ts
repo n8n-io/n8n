@@ -62,11 +62,6 @@ describe('useCanvasOperations', () => {
 		nodeTypesStore = useNodeTypesStore();
 		credentialsStore = useCredentialsStore();
 
-		// nodeTypesStore.setNodeTypes([
-		// 	mockNodeTypeDescription(SET_NODE_TYPE),
-		// 	mockNodeTypeDescription(MANUAL_TRIGGER_NODE_TYPE),
-		// ]);
-
 		const workflowId = 'test';
 		workflowsStore.workflowsById[workflowId] = mock<IWorkflowDb>({
 			id: workflowId,
