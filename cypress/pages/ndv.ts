@@ -131,6 +131,8 @@ export class NDV extends BasePage {
 		nodeRunErrorIndicator: () => cy.getByTestId('node-run-info-danger'),
 		nodeRunErrorMessage: () => cy.getByTestId('node-error-message'),
 		nodeRunErrorDescription: () => cy.getByTestId('node-error-description'),
+		fixedCollectionParameter: (paramName: string) =>
+			cy.getByTestId(`fixed-collection-${paramName}`),
 	};
 
 	actions = {
@@ -301,6 +303,9 @@ export class NDV extends BasePage {
 		},
 		expressionSelectPrevItem: () => {
 			this.getters.inlineExpressionEditorItemPrevButton().click();
+		},
+		addItemToFixedCollection: (paramName: string) => {
+			this.getters.fixedCollectionParameter(paramName).getByTestId('fixed-collection-add').click();
 		},
 	};
 }
