@@ -638,12 +638,11 @@ const isFocused = ref(false);
 
 const displayValue = computed<string | number | boolean | null>(() => {
 	if (remoteParameterOptionsLoadingIssues.value) {
-		const type = nodeType.value;
-		if (!type || type?.codex?.categories?.includes(CORE_NODES_CATEGORY)) {
+		if (!nodeType.value || nodeType.value?.codex?.categories?.includes(CORE_NODES_CATEGORY)) {
 			return i18n.baseText('parameterInput.loadOptionsError');
 		}
 		return i18n.baseText('parameterInput.loadOptionsErrorService', {
-			interpolate: { service: type.displayName },
+			interpolate: { service: nodeType.value.displayName },
 		});
 	}
 
@@ -1399,7 +1398,7 @@ watch(
 	},
 );
 
-watch(remoteParameterOptionsLoading, async () => {
+watch(remoteParameterOptionsLoading, () => {
 	tempValue.value = displayValue.value as string;
 });
 
