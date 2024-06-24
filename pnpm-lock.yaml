@@ -1456,8 +1456,8 @@ importers:
         specifier: 6.3.0
         version: 6.3.0(gcp-metadata@5.2.0(encoding@0.1.13))(socks@2.7.1)
       mqtt:
-        specifier: 5.0.2
-        version: 5.0.2
+        specifier: 5.7.2
+        version: 5.7.2
       mssql:
         specifier: 10.0.2
         version: 10.0.2
@@ -2927,6 +2927,10 @@ packages:
 
   '@babel/runtime@7.23.6':
     resolution: {integrity: sha512-zHd0eUrf5GZoOWVCXp6koAKQTfZV07eit6bGPmJgnZdnSAvvZee6zniW2XMF7Cmc4ISOOnPy3QaSiIJGJkVEDQ==}
+    engines: {node: '>=6.9.0'}
+
+  '@babel/runtime@7.24.7':
+    resolution: {integrity: sha512-UwgBRMjJP+xv857DCngvqXI3Iq6J4v0wXmwc6sapg+zyhbwmQX67LUEFrkK5tbyJ30jGuG3ZvWpBiB9LCy1kWw==}
     engines: {node: '>=6.9.0'}
 
   '@babel/standalone@7.23.6':
@@ -6601,9 +6605,6 @@ packages:
   bl@4.1.0:
     resolution: {integrity: sha512-1W07cM9gS6DcLperZfFSj+bWLtaPGSOHWhPiGzXmvVJbRLdG82sH/Kn8EtW1VqWVA54AKf2h5k5BbnIbwF3h6w==}
 
-  bl@5.0.0:
-    resolution: {integrity: sha512-8vxFNZ0pflFfi0WXA3WQXlj6CaMEwsmh63I1CNp0q+wWv8sD0ARx1KovSQd0l2GkwrMIOyedq0EF1FxI+RCZLQ==}
-
   bl@6.0.12:
     resolution: {integrity: sha512-EnEYHilP93oaOa2MnmNEjAcovPS3JlQZOyzGXi3EyEpPhm9qWvdDp7BmAVEVusGzp8LlwQK56Av+OkDoRjzE0w==}
 
@@ -8193,6 +8194,10 @@ packages:
   fast-text-encoding@1.0.6:
     resolution: {integrity: sha512-VhXlQgj9ioXCqGstD37E/HBeqEGV/qOD/kmbVG8h5xKBYvM1L3lR1Zn4555cQ8GkYbJa8aJSipLPndE1k6zK2w==}
 
+  fast-unique-numbers@8.0.13:
+    resolution: {integrity: sha512-7OnTFAVPefgw2eBJ1xj2PGGR9FwYzSUso9decayHgCDX4sJkHLdcsYTytTg+tYv+wKF3U8gJuSBz2jJpQV4u/g==}
+    engines: {node: '>=16.1.0'}
+
   fast-xml-parser@4.2.5:
     resolution: {integrity: sha512-B9/wizE4WngqQftFPmdaMYlXoJlJOYxGQOanC77fq9k8+Z0v5dDSVh+3glErdIROP//s/jgb7ZuxKfB8nVyo0g==}
     hasBin: true
@@ -8736,8 +8741,8 @@ packages:
     resolution: {integrity: sha512-g+HZqgfbpXdCkme/Cd/mZkV0aV3BZZZSugecH03kl38m/Kmdx8jKjBikpDj2cr+Iynv4KpYEviojNdTJActJAg==}
     engines: {node: '>=16.0.0'}
 
-  help-me@4.2.0:
-    resolution: {integrity: sha512-TAOnTB8Tz5Dw8penUuzHVrKNKlCIbwwbHnXraNJxPwf8LRtE2HlM84RYuezMFcwOJmoYOCWVDyJ8TQGxn9PgxA==}
+  help-me@5.0.0:
+    resolution: {integrity: sha512-7xgomUX6ADmcYzFik0HzAxh/73YlKR9bmFzf51CZwR+b6YtzU2m0u49hQCqV6SvlqIqsaxovfwdvbnsw3b/zpg==}
 
   hexoid@1.0.0:
     resolution: {integrity: sha512-QFLV0taWQOZtvIRIAdBChesmogZrtuXvVWsFHZTk2SU+anspqZ2vMnoLg7IE1+Uk16N19APic1BuF8bC8c2m5g==}
@@ -9994,6 +9999,10 @@ packages:
   lower-case@2.0.2:
     resolution: {integrity: sha512-7fm3l3NAF9WfN6W3JOmf5drwpVqX78JtoGJ3A6W0a6ZnldM41w2fV5D490psKFTpMds8TJse/eHLFFsNHHjHgg==}
 
+  lru-cache@10.2.2:
+    resolution: {integrity: sha512-9hp3Vp2/hFQUiIwKo8XCeFVnrg8Pk3TYNPIR7tJADKi5YfcF7vEaK7avFHTlSy3kOKYaJQaalfEo6YuXdceBOQ==}
+    engines: {node: 14 || >=16.14}
+
   lru-cache@4.1.5:
     resolution: {integrity: sha512-sWZlbEP2OsHNkXrMl5GYk/jKk70MBng6UU4YI/qGDYbgf6YbP4EvmqISbXCoJiRKs+1bSpFHVgQxvJ17F2li5g==}
 
@@ -10393,11 +10402,11 @@ packages:
       socks:
         optional: true
 
-  mqtt-packet@8.2.0:
-    resolution: {integrity: sha512-21Vo7XdRXUw2qhdTfk8GeOl2jtb8Dkwd4dKxn/epvf37mxTxHodvBJoozTPZGVwh57JXlsh2ChsaxMsAfqxp+A==}
+  mqtt-packet@9.0.0:
+    resolution: {integrity: sha512-8v+HkX+fwbodsWAZIZTI074XIoxVBOmPeggQuDFCGg1SqNcC+uoRMWu7J6QlJPqIUIJXmjNYYHxBBLr1Y/Df4w==}
 
-  mqtt@5.0.2:
-    resolution: {integrity: sha512-JctWQpxjVVjn5LqAAhfgutMNMbHZf+puG9LnbWga0wRbWW7QVfHPu4Vz2iDSyHfGpW8HWLF+jb01vySDDzIKnQ==}
+  mqtt@5.7.2:
+    resolution: {integrity: sha512-b5xIA9J/K1LTubSWKaNYYLxYIusQdip6o9/8bRWad2TelRr8xLifjQt+SnamDAwMp3O6NdvR9E8ae7VMuN02kg==}
     engines: {node: '>=16.0.0'}
     hasBin: true
 
@@ -13346,8 +13355,8 @@ packages:
   vue-component-type-helpers@2.0.19:
     resolution: {integrity: sha512-cN3f1aTxxKo4lzNeQAkVopswuImUrb5Iurll9Gaw5cqpnbTAxtEMM1mgi6ou4X79OCyqYv1U1mzBHJkzmiK82w==}
 
-  vue-component-type-helpers@2.0.21:
-    resolution: {integrity: sha512-3NaicyZ7N4B6cft4bfb7dOnPbE9CjLcx+6wZWAg5zwszfO4qXRh+U52dN5r5ZZfc6iMaxKCEcoH9CmxxoFZHLg==}
+  vue-component-type-helpers@2.0.22:
+    resolution: {integrity: sha512-gPr2Ba7efUwy/Vfbuf735bHSVdN4ycoZUCHfypkI33M9DUH+ieRblLLVM2eImccFYaWNWwEzURx02EgoXDBmaQ==}
 
   vue-demi@0.14.5:
     resolution: {integrity: sha512-o9NUVpl/YlsGJ7t+xuqJKx8EBGf1quRhCiT6D/J0pfwmk9zUwYkC7yrF4SZCe6fETvSM3UNL2edcbYrSyc4QHA==}
@@ -13583,6 +13592,15 @@ packages:
 
   wordwrap@1.0.0:
     resolution: {integrity: sha512-gvVzJFlPycKc5dZN4yPkP8w7Dc37BtP1yczEneOb4uq34pXZcvrtRTmWV8W+Ume+XCxKgbjM+nevkyFPMybd4Q==}
+
+  worker-timers-broker@6.1.8:
+    resolution: {integrity: sha512-FUCJu9jlK3A8WqLTKXM9E6kAmI/dR1vAJ8dHYLMisLNB/n3GuaFIjJ7pn16ZcD1zCOf7P6H62lWIEBi+yz/zQQ==}
+
+  worker-timers-worker@7.0.71:
+    resolution: {integrity: sha512-ks/5YKwZsto1c2vmljroppOKCivB/ma97g9y77MAAz2TBBjPPgpoOiS1qYQKIgvGTr2QYPT3XhJWIB6Rj2MVPQ==}
+
+  worker-timers@7.1.8:
+    resolution: {integrity: sha512-R54psRKYVLuzff7c1OTFcq/4Hue5Vlz4bFtNEIarpSiCYhpifHU3aIQI29S84o1j87ePCYqbmEJPqwBTf+3sfw==}
 
   wrap-ansi@6.2.0:
     resolution: {integrity: sha512-r6lPcBGxZXlIcymEu7InxDMhdW0KDxpLgoFLcguasxCaJ/SOIZwINatK9KY/tf+ZrlywOKU0UDj3ATXUBfxJXA==}
@@ -15886,6 +15904,10 @@ snapshots:
       regenerator-runtime: 0.13.11
 
   '@babel/runtime@7.23.6':
+    dependencies:
+      regenerator-runtime: 0.14.1
+
+  '@babel/runtime@7.24.7':
     dependencies:
       regenerator-runtime: 0.14.1
 
@@ -18976,7 +18998,7 @@ snapshots:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.4.21(typescript@5.5.2)
-      vue-component-type-helpers: 2.0.21
+      vue-component-type-helpers: 2.0.22
     transitivePeerDependencies:
       - encoding
       - prettier
@@ -20620,12 +20642,6 @@ snapshots:
   bl@4.1.0:
     dependencies:
       buffer: 5.7.1
-      inherits: 2.0.4
-      readable-stream: 3.6.0
-
-  bl@5.0.0:
-    dependencies:
-      buffer: 6.0.3
       inherits: 2.0.4
       readable-stream: 3.6.0
 
@@ -22630,6 +22646,11 @@ snapshots:
 
   fast-text-encoding@1.0.6: {}
 
+  fast-unique-numbers@8.0.13:
+    dependencies:
+      '@babel/runtime': 7.24.7
+      tslib: 2.6.2
+
   fast-xml-parser@4.2.5:
     dependencies:
       strnum: 1.0.5
@@ -23294,10 +23315,7 @@ snapshots:
 
   helmet@7.1.0: {}
 
-  help-me@4.2.0:
-    dependencies:
-      glob: 8.1.0
-      readable-stream: 3.6.0
+  help-me@5.0.0: {}
 
   hexoid@1.0.0: {}
 
@@ -24769,6 +24787,8 @@ snapshots:
     dependencies:
       tslib: 2.6.2
 
+  lru-cache@10.2.2: {}
+
   lru-cache@4.1.5:
     dependencies:
       pseudomap: 1.0.2
@@ -25159,29 +25179,31 @@ snapshots:
       gcp-metadata: 5.2.0(encoding@0.1.13)
       socks: 2.7.1
 
-  mqtt-packet@8.2.0:
+  mqtt-packet@9.0.0:
     dependencies:
-      bl: 5.0.0
+      bl: 6.0.12
       debug: 4.3.4(supports-color@8.1.1)
       process-nextick-args: 2.0.1
     transitivePeerDependencies:
       - supports-color
 
-  mqtt@5.0.2:
+  mqtt@5.7.2:
     dependencies:
+      '@types/readable-stream': 4.0.10
+      '@types/ws': 8.5.10
       commist: 3.2.0
       concat-stream: 2.0.0
       debug: 4.3.4(supports-color@8.1.1)
-      duplexify: 4.1.2
-      help-me: 4.2.0
-      lru-cache: 7.18.3
+      help-me: 5.0.0
+      lru-cache: 10.2.2
       minimist: 1.2.8
-      mqtt-packet: 8.2.0
+      mqtt-packet: 9.0.0
       number-allocator: 1.0.14
       readable-stream: 4.4.2
       reinterval: 1.1.0
       rfdc: 1.3.0
       split2: 4.2.0
+      worker-timers: 7.1.8
       ws: 8.17.1
     transitivePeerDependencies:
       - bufferutil
@@ -28509,7 +28531,7 @@ snapshots:
 
   vue-component-type-helpers@2.0.19: {}
 
-  vue-component-type-helpers@2.0.21: {}
+  vue-component-type-helpers@2.0.22: {}
 
   vue-demi@0.14.5(vue@3.4.21(typescript@5.5.2)):
     dependencies:
@@ -28805,6 +28827,25 @@ snapshots:
   word-wrap@1.2.3: {}
 
   wordwrap@1.0.0: {}
+
+  worker-timers-broker@6.1.8:
+    dependencies:
+      '@babel/runtime': 7.24.7
+      fast-unique-numbers: 8.0.13
+      tslib: 2.6.2
+      worker-timers-worker: 7.0.71
+
+  worker-timers-worker@7.0.71:
+    dependencies:
+      '@babel/runtime': 7.24.7
+      tslib: 2.6.2
+
+  worker-timers@7.1.8:
+    dependencies:
+      '@babel/runtime': 7.24.7
+      tslib: 2.6.2
+      worker-timers-broker: 6.1.8
+      worker-timers-worker: 7.0.71
 
   wrap-ansi@6.2.0:
     dependencies:
