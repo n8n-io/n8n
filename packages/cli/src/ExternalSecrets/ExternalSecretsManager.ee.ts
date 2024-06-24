@@ -116,7 +116,7 @@ export class ExternalSecretsManager {
 			)
 		).map((i) => (i.status === 'rejected' ? null : i.value));
 		this.providers = Object.fromEntries(
-			(providers.filter((p) => p !== null) as SecretsProvider[]).map((s) => [s.name, s]),
+			providers.filter((p): p is SecretsProvider => p !== null).map((s) => [s.name, s]),
 		);
 		this.cachedSettings = settings;
 		await this.updateSecrets();

@@ -377,8 +377,10 @@ export function applyDeclarativeNodeOptionParameters(nodeType: INodeType): void 
 			],
 		};
 
-		if (parameters[existingRequestOptionsIndex]?.options) {
-			parameters[existingRequestOptionsIndex].options!.sort((a, b) => {
+		const options = parameters[existingRequestOptionsIndex]?.options;
+
+		if (options) {
+			options.sort((a, b) => {
 				if ('displayName' in a && 'displayName' in b) {
 					if (a.displayName < b.displayName) {
 						return -1;
