@@ -1524,7 +1524,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function initializeEditableWorkflow(id: string) {
 		const targetWorkflow = workflowsById.value[id];
-		const tags = (targetWorkflow.tags ?? []) as ITag[];
+		const tags = (targetWorkflow?.tags ?? []) as ITag[];
 		const tagIds = tags.map((tag) => tag.id);
 
 		addWorkflow(targetWorkflow);

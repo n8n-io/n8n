@@ -296,7 +296,7 @@ export function useCanvasOperations({
 	}
 
 	async function createNode(node: AddNodeData, options: AddNodeOptions = {}): Promise<INodeUi> {
-		const newNodeData = await initializeNodeData(node, options);
+		const newNodeData = await resolveNodeData(node, options);
 		if (!newNodeData) {
 			throw new Error(i18n.baseText('nodeViewV2.showError.failedToCreateNode'));
 		}
@@ -374,6 +374,19 @@ export function useCanvasOperations({
 			parameters: {},
 		};
 
+		await loadNodeTypesProperties([{ name: newNodeData.type, version: newNodeData.typeVersion }]);
+
+		const nodeType = nodeTypesStore.getNodeType(newNodeData.type, newNodeData.typeVersion);
+		const nodeParameters = NodeHelpers.getNodeParameters(
+			nodeType?.properties ?? [],
+			{},
+			true,
+			false,
+			newNodeData,
+		);
+
+		newNodeData.parameters = nodeParameters ?? {};
+
 		const credentialPerType = nodeTypeDescription.credentials
 			?.map((type) => credentialsStore.getUsableCredentialByType(type.name))
 			.flat();
@@ -386,17 +399,6 @@ export function useCanvasOperations({
 			const credentials = {
 				[defaultCredential.type]: selected,
 			};
-
-			await loadNodeTypesProperties([{ name: newNodeData.type, version: newNodeData.typeVersion }]);
-
-			const nodeType = nodeTypesStore.getNodeType(newNodeData.type, newNodeData.typeVersion);
-			const nodeParameters = NodeHelpers.getNodeParameters(
-				nodeType?.properties ?? [],
-				{},
-				true,
-				false,
-				newNodeData,
-			);
 
 			if (nodeTypeDescription.credentials) {
 				const authentication = nodeTypeDescription.credentials.find(
@@ -440,9 +442,9 @@ export function useCanvasOperations({
 	}
 
 	/**
-	 * @TODO Probably not needed and can be merged into addNode
+	 * Resolves the data for a new node
 	 */
-	async function initializeNodeData(node: AddNodeData, options: AddNodeOptions = {}) {
+	async function resolveNodeData(node: AddNodeData, options: AddNodeOptions = {}) {
 		const nodeTypeDescription: INodeTypeDescription | null = nodeTypesStore.getNodeType(node.type);
 		if (nodeTypeDescription === null) {
 			toast.showMessage({

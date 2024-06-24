@@ -5,6 +5,10 @@ import type { Workflow } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
 import { useCanvasMapping } from '@/composables/useCanvasMapping';
 
+defineOptions({
+	inheritAttrs: false,
+});
+
 const props = defineProps<{
 	id?: string;
 	workflow: IWorkflowDb;

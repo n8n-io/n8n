@@ -22,8 +22,7 @@ import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import type { ExecutionSummary, IConnection } from 'n8n-workflow';
-import type { NodeConnectionType } from 'n8n-workflow';
+import type { NodeConnectionType, ExecutionSummary, IConnection } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
@@ -35,7 +34,6 @@ import { historyBus } from '@/models/history';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useCanvasStore } from '@/stores/canvas.store';
-import useCanvasMouseSelect from '@/composables/useCanvasMouseSelect';
 
 const NodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -87,8 +85,6 @@ const {
 	editableWorkflowObject,
 	triggerNodes,
 } = useCanvasOperations({ router, lastClickPosition });
-
-const { getMousePositionWithinNodeView } = useCanvasMouseSelect();
 
 const isLoading = ref(true);
 const readOnlyNotification = ref<null | { visible: boolean }>(null);
@@ -427,14 +423,10 @@ function checkIfEditingIsAllowed(): boolean {
  * Mouse events
  */
 
-function onMouseDown(e: MouseEvent | TouchEvent) {
-	// @TODO The function below uses the zoom level of the old canvas, update it to use the new one
+function onClickPane(position: CanvasElement['position']) {
 	// Save the location of the mouse click
-	lastClickPosition.value = getMousePositionWithinNodeView(e);
-}
-
-function onMouseUp(e: MouseEvent | TouchEvent) {
-	canvasStore.newNodeInsertPosition = getMousePositionWithinNodeView(e);
+	lastClickPosition.value = [position.x, position.y];
+	canvasStore.newNodeInsertPosition = [position.x, position.y];
 }
 
 /**
@@ -457,8 +449,7 @@ onMounted(() => {
 		@delete:node="onDeleteNode"
 		@create:connection="onCreateConnection"
 		@delete:connection="onDeleteConnection"
-		@mousedown="onMouseDown"
-		@mouseup="onMouseUp"
+		@click:pane="onClickPane"
 	>
 		<div :class="$style.executionButtons">
 			<CanvasExecuteWorkflowButton @click="onRunWorkflow" />
