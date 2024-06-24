@@ -12,7 +12,7 @@ export class Vonage implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Vonage',
 		name: 'vonage',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
+
 		icon: { light: 'file:vonage.svg', dark: 'file:vonage.dark.svg' },
 		group: ['input'],
 		version: 1,

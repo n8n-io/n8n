@@ -7,6 +7,7 @@ import { License } from '@/License';
 import { OwnershipService } from '@/services/ownership.service';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { ProjectService } from '@/services/project.service';
+import { Logger } from '@/Logger';
 
 @Service()
 export class PermissionChecker {
@@ -15,6 +16,7 @@ export class PermissionChecker {
 		private readonly ownershipService: OwnershipService,
 		private readonly license: License,
 		private readonly projectService: ProjectService,
+		private readonly logger: Logger,
 	) {}
 
 	/**
@@ -68,7 +70,9 @@ export class PermissionChecker {
 		let policy =
 			subworkflow.settings?.callerPolicy ?? config.getEnv('workflows.callerPolicyDefaultOption');
 
-		if (!this.license.isSharingEnabled()) {
+		const isSharingEnabled = this.license.isSharingEnabled();
+
+		if (!isSharingEnabled) {
 			// Community version allows only same owner workflows
 			policy = 'workflowsFromSameOwner';
 		}
@@ -90,24 +94,56 @@ export class PermissionChecker {
 		);
 
 		if (policy === 'none') {
+			this.logger.warn('[PermissionChecker] Subworkflow execution denied', {
+				callerWorkflowId: parentWorkflowId,
+				subworkflowId: subworkflow.id,
+				reason: 'Subworkflow may not be called',
+				policy,
+				isSharingEnabled,
+			});
 			throw errorToThrow;
 		}
 
 		if (policy === 'workflowsFromAList') {
 			if (parentWorkflowId === undefined) {
+				this.logger.warn('[PermissionChecker] Subworkflow execution denied', {
+					reason: 'Subworkflow may be called only by workflows from an allowlist',
+					callerWorkflowId: parentWorkflowId,
+					subworkflowId: subworkflow.id,
+					policy,
+					isSharingEnabled,
+				});
 				throw errorToThrow;
 			}
+
 			const allowedCallerIds = subworkflow.settings.callerIds
 				?.split(',')
 				.map((id) => id.trim())
 				.filter((id) => id !== '');
 
 			if (!allowedCallerIds?.includes(parentWorkflowId)) {
+				this.logger.warn('[PermissionChecker] Subworkflow execution denied', {
+					reason: 'Subworkflow may be called only by workflows from an allowlist',
+					callerWorkflowId: parentWorkflowId,
+					subworkflowId: subworkflow.id,
+					allowlist: allowedCallerIds,
+					policy,
+					isSharingEnabled,
+				});
 				throw errorToThrow;
 			}
 		}
 
 		if (policy === 'workflowsFromSameOwner' && subworkflowOwner?.id !== parentWorkflowOwner.id) {
+			this.logger.warn('[PermissionChecker] Subworkflow execution denied', {
+				reason: 'Subworkflow may be called only by workflows owned by the same project',
+				callerWorkflowId: parentWorkflowId,
+				subworkflowId: subworkflow.id,
+				callerProjectId: parentWorkflowOwner.id,
+				subworkflowProjectId: subworkflowOwner.id,
+				policy,
+				isSharingEnabled,
+			});
 			throw errorToThrow;
 		}
 	}
