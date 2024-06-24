@@ -1047,10 +1047,8 @@ function getWorkflowHooksIntegrated(
 	const hookFunctions = hookFunctionsSave();
 	const preExecuteFunctions = hookFunctionsPreExecute();
 	for (const key of Object.keys(preExecuteFunctions)) {
-		if (hookFunctions[key] === undefined) {
-			hookFunctions[key] = [];
-		}
-		hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
+		const hooks = hookFunctions[key] ?? [];
+		hooks.push.apply(hookFunctions[key], preExecuteFunctions[key]);
 	}
 	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData);
 }
@@ -1069,10 +1067,8 @@ export function getWorkflowHooksWorkerExecuter(
 	const hookFunctions = hookFunctionsSaveWorker();
 	const preExecuteFunctions = hookFunctionsPreExecute();
 	for (const key of Object.keys(preExecuteFunctions)) {
-		if (hookFunctions[key] === undefined) {
-			hookFunctions[key] = [];
-		}
-		hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
+		const hooks = hookFunctions[key] ?? [];
+		hooks.push.apply(hookFunctions[key], preExecuteFunctions[key]);
 	}
 
 	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData, optionalParameters);
@@ -1139,18 +1135,14 @@ export function getWorkflowHooksMain(
 	const hookFunctions = hookFunctionsSave();
 	const pushFunctions = hookFunctionsPush();
 	for (const key of Object.keys(pushFunctions)) {
-		if (hookFunctions[key] === undefined) {
-			hookFunctions[key] = [];
-		}
-		hookFunctions[key]!.push.apply(hookFunctions[key], pushFunctions[key]);
+		const hooks = hookFunctions[key] ?? [];
+		hooks.push.apply(hookFunctions[key], pushFunctions[key]);
 	}
 
 	const preExecuteFunctions = hookFunctionsPreExecute();
 	for (const key of Object.keys(preExecuteFunctions)) {
-		if (hookFunctions[key] === undefined) {
-			hookFunctions[key] = [];
-		}
-		hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
+		const hooks = hookFunctions[key] ?? [];
+		hooks.push.apply(hookFunctions[key], preExecuteFunctions[key]);
 	}
 
 	if (!hookFunctions.nodeExecuteBefore) hookFunctions.nodeExecuteBefore = [];
