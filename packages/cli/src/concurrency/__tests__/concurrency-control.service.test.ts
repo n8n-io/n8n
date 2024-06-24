@@ -378,7 +378,7 @@ describe('ConcurrencyControlService', () => {
 	describe('telemetry', () => {
 		describe('on cloud', () => {
 			test.each(CLOUD_TEMP_REPORTABLE_THRESHOLDS)(
-				'for %d, should report temp cloud threshold if reached',
+				'for capacity %d, should report temp cloud threshold if reached',
 				(threshold) => {
 					/**
 					 * Arrange
@@ -403,7 +403,7 @@ describe('ConcurrencyControlService', () => {
 			);
 
 			test.each(CLOUD_TEMP_REPORTABLE_THRESHOLDS.map((t) => t - 1))(
-				'for %d, should not report temp cloud threshold if not reached',
+				'for capacity %d, should not report temp cloud threshold if not reached',
 				(threshold) => {
 					/**
 					 * Arrange
@@ -430,7 +430,7 @@ describe('ConcurrencyControlService', () => {
 			);
 
 			test.each(CLOUD_TEMP_REPORTABLE_THRESHOLDS.map((t) => t + 1))(
-				'for %d, should not report temp cloud threshold if exceeded',
+				'for capacity %d, should not report temp cloud threshold if exceeded',
 				(threshold) => {
 					/**
 					 * Arrange
