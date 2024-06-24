@@ -58,6 +58,12 @@ export class Queue {
 		});
 	}
 
+	async findRunningJobBy({ executionId }: { executionId: string }) {
+		const activeOrWaitingJobs = await this.getJobs(['active', 'waiting']);
+
+		return activeOrWaitingJobs.find(({ data }) => data.executionId === executionId) ?? null;
+	}
+
 	decodeWebhookResponse(response: IExecuteResponsePromiseData): IExecuteResponsePromiseData {
 		if (
 			typeof response === 'object' &&
