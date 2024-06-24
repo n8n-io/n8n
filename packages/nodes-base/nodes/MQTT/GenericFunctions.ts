@@ -43,7 +43,7 @@ export const createClient = async (credentials: MqttCredential): Promise<MqttCli
 	}
 
 	if (credentials.ssl) {
-		clientOptions.ca = formatPrivateKey(credentials.ca!);
+		clientOptions.ca = formatPrivateKey(credentials.ca);
 		clientOptions.cert = formatPrivateKey(credentials.cert);
 		clientOptions.key = formatPrivateKey(credentials.key);
 		clientOptions.rejectUnauthorized = credentials.rejectUnauthorized;
