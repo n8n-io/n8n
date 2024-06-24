@@ -20,6 +20,7 @@ import { combineScopes } from '@n8n/permissions';
 import type { Scope } from '@n8n/permissions';
 import { RoleService } from '@/services/role.service';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, Not } from '@n8n/typeorm';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalHooks } from '@/InternalHooks';

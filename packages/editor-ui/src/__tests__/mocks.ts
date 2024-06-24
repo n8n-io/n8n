@@ -2,95 +2,107 @@ import type {
 	INodeType,
 	INodeTypeData,
 	INodeTypes,
-	IVersionedNodeType,
 	IConnections,
 	IDataObject,
 	INode,
 	IPinData,
 	IWorkflowSettings,
+	LoadedClass,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeHelpers, Workflow } from 'n8n-workflow';
 import { uuid } from '@jsplumb/util';
-import { defaultMockNodeTypes } from '@/__tests__/defaults';
-import type { INodeUi, ITag, IUsedCredential, IWorkflowDb, WorkflowMetadata } from '@/Interface';
-import type { ProjectSharingData } from '@/types/projects.types';
-import type { RouteLocationNormalized } from 'vue-router';
+import { mock } from 'vitest-mock-extended';
 
-export function createTestNodeTypes(data: INodeTypeData = {}): INodeTypes {
-	const nodeTypes = {
-		...defaultMockNodeTypes,
-		...Object.keys(data).reduce<INodeTypeData>((acc, key) => {
-			acc[key] = data[key];
+import {
+	AGENT_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
+	CODE_NODE_TYPE,
+	EXECUTABLE_TRIGGER_NODE_TYPES,
+	MANUAL_TRIGGER_NODE_TYPE,
+	NO_OP_NODE_TYPE,
+	SET_NODE_TYPE,
+} from '@/constants';
 
-			return acc;
-		}, {}),
-	};
+const mockNode = (name: string, type: string, props: Partial<INode> = {}) =>
+	mock<INode>({ name, type, ...props });
 
-	function getKnownTypes(): IDataObject {
-		return {};
-	}
+const mockLoadedClass = (name: string) =>
+	mock<LoadedClass<INodeType>>({
+		type: mock<INodeType>({
+			// @ts-expect-error
+			description: mock<INodeTypeDescription>({
+				name,
+				displayName: name,
+				version: 1,
+				properties: [],
+				group: EXECUTABLE_TRIGGER_NODE_TYPES.includes(name) ? ['trigger'] : [],
+				inputs: ['main'],
+				outputs: ['main'],
+				documentationUrl: 'https://docs',
+				webhooks: undefined,
+			}),
+		}),
+	});
 
-	function getByName(nodeType: string): INodeType | IVersionedNodeType {
-		return nodeTypes[nodeType].type;
-	}
+export const mockNodes = [
+	mockNode('Manual Trigger', MANUAL_TRIGGER_NODE_TYPE),
+	mockNode('Set', SET_NODE_TYPE),
+	mockNode('Code', CODE_NODE_TYPE),
+	mockNode('Rename', SET_NODE_TYPE),
+	mockNode('Chat Trigger', CHAT_TRIGGER_NODE_TYPE),
+	mockNode('Agent', AGENT_NODE_TYPE),
+	mockNode('End', NO_OP_NODE_TYPE),
+];
 
-	function getByNameAndVersion(nodeType: string, version?: number): INodeType {
-		return NodeHelpers.getVersionedNodeType(getByName(nodeType), version);
-	}
+export const defaultNodeTypes = mockNodes.reduce<INodeTypeData>((acc, { type }) => {
+	acc[type] = mockLoadedClass(type);
+	return acc;
+}, {});
 
-	return {
-		getKnownTypes,
-		getByName,
-		getByNameAndVersion,
-	};
-}
+export const defaultNodeDescriptions = Object.values(defaultNodeTypes).map(
+	({ type }) => type.description,
+) as INodeTypeDescription[];
 
-export function createTestWorkflowObject(options: {
+const nodeTypes = mock<INodeTypes>({
+	getByName(nodeType) {
+		return defaultNodeTypes[nodeType].type;
+	},
+	getByNameAndVersion(nodeType: string, version?: number): INodeType {
+		return NodeHelpers.getVersionedNodeType(defaultNodeTypes[nodeType].type, version);
+	},
+});
+
+export function createTestWorkflowObject({
+	id = uuid(),
+	name = 'Test Workflow',
+	nodes = [],
+	connections = {},
+	active = false,
+	staticData = {},
+	settings = {},
+	pinData = {},
+}: {
 	id?: string;
 	name?: string;
-	nodes: INode[];
-	connections: IConnections;
+	nodes?: INode[];
+	connections?: IConnections;
 	active?: boolean;
-	nodeTypes?: INodeTypeData;
 	staticData?: IDataObject;
 	settings?: IWorkflowSettings;
 	pinData?: IPinData;
-}) {
+} = {}) {
 	return new Workflow({
-		...options,
-		id: options.id ?? uuid(),
-		active: options.active ?? false,
-		nodeTypes: createTestNodeTypes(options.nodeTypes),
-		connections: options.connections ?? {},
+		id,
+		name,
+		nodes,
+		connections,
+		active,
+		staticData,
+		settings,
+		pinData,
+		nodeTypes,
 	});
-}
-
-export function createTestWorkflow(options: {
-	id?: string;
-	name: string;
-	active?: boolean;
-	createdAt?: number | string;
-	updatedAt?: number | string;
-	nodes?: INodeUi[];
-	connections?: IConnections;
-	settings?: IWorkflowSettings;
-	tags?: ITag[] | string[];
-	pinData?: IPinData;
-	sharedWithProjects?: ProjectSharingData[];
-	homeProject?: ProjectSharingData;
-	versionId?: string;
-	usedCredentials?: IUsedCredential[];
-	meta?: WorkflowMetadata;
-}): IWorkflowDb {
-	return {
-		...options,
-		createdAt: options.createdAt ?? '',
-		updatedAt: options.updatedAt ?? '',
-		versionId: options.versionId ?? '',
-		id: options.id ?? uuid(),
-		active: options.active ?? false,
-		connections: options.connections ?? {},
-	} as IWorkflowDb;
 }
 
 export function createTestNode(node: Partial<INode> = {}): INode {
@@ -102,29 +114,5 @@ export function createTestNode(node: Partial<INode> = {}): INode {
 		position: [0, 0] as [number, number],
 		parameters: {},
 		...node,
-	};
-}
-
-export function createTestRouteLocation({
-	path = '',
-	params = {},
-	fullPath = path,
-	hash = '',
-	matched = [],
-	redirectedFrom = undefined,
-	name = path,
-	meta = {},
-	query = {},
-}: Partial<RouteLocationNormalized> = {}): RouteLocationNormalized {
-	return {
-		path,
-		params,
-		fullPath,
-		hash,
-		matched,
-		redirectedFrom,
-		name,
-		meta,
-		query,
 	};
 }

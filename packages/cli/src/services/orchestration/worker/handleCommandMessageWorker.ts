@@ -1,7 +1,7 @@
 import { jsonParse } from 'n8n-workflow';
 import Container from 'typedi';
 import type { RedisServiceCommandObject } from '@/services/redis/RedisServiceCommands';
-import { COMMAND_REDIS_CHANNEL } from '@/services/redis/RedisServiceHelper';
+import { COMMAND_REDIS_CHANNEL } from '@/services/redis/RedisConstants';
 import * as os from 'os';
 import { License } from '@/License';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
@@ -130,7 +130,6 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 						}
 
 						logger.debug(
-							// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 							`Received unknown command via channel ${COMMAND_REDIS_CHANNEL}: "${message.command}"`,
 						);
 						break;

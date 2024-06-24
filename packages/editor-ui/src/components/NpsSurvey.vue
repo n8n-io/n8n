@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { VALID_EMAIL_REGEX, NPS_SURVEY_MODAL_KEY } from '@/constants';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import ModalDrawer from '@/components/ModalDrawer.vue';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
@@ -9,11 +9,9 @@ import { createEventBus } from 'n8n-design-system/utils';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 
-const props = defineProps({
-	isActive: {
-		type: Boolean,
-	},
-});
+const props = defineProps<{
+	isActive?: boolean;
+}>();
 
 const rootStore = useRootStore();
 const i18n = useI18n();
@@ -156,7 +154,7 @@ watch(
 					</div>
 				</div>
 				<div v-else :class="$style.email">
-					<div :class="$style.input" @keyup.enter="send" data-test-id="nps-survey-email">
+					<div :class="$style.input" data-test-id="nps-survey-email" @keyup.enter="send">
 						<n8n-input
 							v-model="form.email"
 							:placeholder="YOUR_EMAIL_ADDRESS"

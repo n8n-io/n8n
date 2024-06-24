@@ -37,10 +37,12 @@ import { UserManagementMailer } from '@/UserManagement/email';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { ProjectService } from '@/services/project.service';
 import { ApplicationError } from 'n8n-workflow';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
 import type { Project } from '@/databases/entities/Project';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 import { z } from 'zod';
+import { EventRelay } from '@/eventbus/event-relay.service';
 
 @RestController('/workflows')
 export class WorkflowsController {
@@ -64,6 +66,7 @@ export class WorkflowsController {
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectService: ProjectService,
 		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly eventRelay: EventRelay,
 	) {}
 
 	@Post('/')
@@ -175,6 +178,7 @@ export class WorkflowsController {
 
 		await this.externalHooks.run('workflow.afterCreate', [savedWorkflow]);
 		void this.internalHooks.onWorkflowCreated(req.user, newWorkflow, project!, false);
+		this.eventRelay.emit('workflow-created', { user: req.user, workflow: newWorkflow });
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, savedWorkflow.id);
 

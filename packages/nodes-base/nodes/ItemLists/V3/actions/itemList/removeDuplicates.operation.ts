@@ -6,9 +6,9 @@ import isEqual from 'lodash/isEqual';
 import lt from 'lodash/lt';
 import pick from 'lodash/pick';
 
-import { compareItems, flattenKeys, prepareFieldsArray, typeToNumber } from '../../helpers/utils';
+import { prepareFieldsArray, typeToNumber } from '../../helpers/utils';
 import { disableDotNotationBoolean } from '../common.descriptions';
-import { updateDisplayOptions } from '@utils/utilities';
+import { compareItems, flattenKeys, updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
@@ -229,7 +229,7 @@ export async function execute(
 	const removedIndexes: number[] = [];
 	let temp = newItems[0];
 	for (let index = 1; index < newItems.length; index++) {
-		if (compareItems(newItems[index], temp, keys, disableDotNotation, this.getNode())) {
+		if (compareItems(newItems[index], temp, keys, disableDotNotation)) {
 			removedIndexes.push(newItems[index].json.__INDEX as unknown as number);
 		} else {
 			temp = newItems[index];

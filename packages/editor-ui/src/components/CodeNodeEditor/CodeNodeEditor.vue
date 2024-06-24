@@ -1,6 +1,6 @@
 <template>
 	<div
-		ref="codeNodeEditorContainer"
+		ref="codeNodeEditorContainerRef"
 		:class="['code-node-editor', $style['code-node-editor-container'], language]"
 		@mouseover="onMouseOver"
 		@mouseout="onMouseOut"
@@ -18,7 +18,7 @@
 				data-test-id="code-node-tab-code"
 			>
 				<div
-					ref="codeNodeEditor"
+					ref="codeNodeEditorRef"
 					:class="['ph-no-capture', 'code-editor-tabs', $style.editorInput]"
 				/>
 				<slot name="suffix" />
@@ -33,359 +33,364 @@
 					:key="activeTab"
 					:has-changes="hasChanges"
 					@replace-code="onReplaceCode"
-					@started-loading="isLoadingAIResponse = true"
-					@finished-loading="isLoadingAIResponse = false"
+					@started-loading="onAiLoadStart"
+					@finished-loading="onAiLoadEnd"
 				/>
 			</el-tab-pane>
 		</el-tabs>
 		<!-- If AskAi not enabled, there's no point in rendering tabs -->
 		<div v-else :class="$style.fillHeight">
-			<div ref="codeNodeEditor" :class="['ph-no-capture', $style.fillHeight]" />
+			<div ref="codeNodeEditorRef" :class="['ph-no-capture', $style.fillHeight]" />
 			<slot name="suffix" />
 		</div>
 	</div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-import type { PropType } from 'vue';
-import jsParser from 'prettier/plugins/babel';
-import { format } from 'prettier';
-import * as estree from 'prettier/plugins/estree';
-import { mapStores } from 'pinia';
+<script setup lang="ts">
+import { javascript } from '@codemirror/lang-javascript';
+import { python } from '@codemirror/lang-python';
 import type { LanguageSupport } from '@codemirror/language';
 import type { Extension, Line } from '@codemirror/state';
 import { Compartment, EditorState } from '@codemirror/state';
 import type { ViewUpdate } from '@codemirror/view';
 import { EditorView } from '@codemirror/view';
-import { javascript } from '@codemirror/lang-javascript';
-import { python } from '@codemirror/lang-python';
 import type { CodeExecutionMode, CodeNodeEditorLanguage } from 'n8n-workflow';
-import { CODE_EXECUTION_MODES, CODE_LANGUAGES } from 'n8n-workflow';
+import { format } from 'prettier';
+import jsParser from 'prettier/plugins/babel';
+import * as estree from 'prettier/plugins/estree';
+import { type Ref, computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import { ASK_AI_EXPERIMENT, CODE_NODE_TYPE } from '@/constants';
 import { codeNodeEditorEventBus } from '@/event-bus';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { usePostHog } from '@/stores/posthog.store';
 
-import { readOnlyEditorExtensions, writableEditorExtensions } from './baseExtensions';
-import { CODE_PLACEHOLDERS } from './constants';
-import { linterExtension } from './linter';
-import { completerExtension } from './completer';
-import { codeNodeEditorTheme } from './theme';
-import AskAI from './AskAI/AskAI.vue';
 import { useMessage } from '@/composables/useMessage';
 import { useSettingsStore } from '@/stores/settings.store';
+import AskAI from './AskAI/AskAI.vue';
+import { readOnlyEditorExtensions, writableEditorExtensions } from './baseExtensions';
+import { useCompleter } from './completer';
+import { CODE_PLACEHOLDERS } from './constants';
+import { useLinter } from './linter';
+import { codeNodeEditorTheme } from './theme';
+import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
 
-export default defineComponent({
-	name: 'CodeNodeEditor',
-	components: {
-		AskAI,
-	},
-	mixins: [linterExtension, completerExtension],
-	props: {
-		aiButtonEnabled: {
-			type: Boolean,
-			default: false,
-		},
-		fillParent: {
-			type: Boolean,
-			default: false,
-		},
-		mode: {
-			type: String as PropType<CodeExecutionMode>,
-			validator: (value: CodeExecutionMode): boolean => CODE_EXECUTION_MODES.includes(value),
-			required: true,
-		},
-		language: {
-			type: String as PropType<CodeNodeEditorLanguage>,
-			default: 'javaScript' as CodeNodeEditorLanguage,
-			validator: (value: CodeNodeEditorLanguage): boolean => CODE_LANGUAGES.includes(value),
-		},
-		isReadOnly: {
-			type: Boolean,
-			default: false,
-		},
-		rows: {
-			type: Number,
-			default: 4,
-		},
-		modelValue: {
-			type: String,
-			required: true,
-		},
-	},
-	setup() {
-		return {
-			...useMessage(),
-		};
-	},
-	data() {
-		return {
-			editor: null as EditorView | null,
-			languageCompartment: new Compartment(),
-			linterCompartment: new Compartment(),
-			isEditorHovered: false,
-			isEditorFocused: false,
-			tabs: ['code', 'ask-ai'],
-			activeTab: 'code',
-			hasChanges: false,
-			isLoadingAIResponse: false,
-		};
-	},
-	watch: {
-		mode(_newMode, previousMode: CodeExecutionMode) {
-			this.reloadLinter();
+type Props = {
+	mode: CodeExecutionMode;
+	modelValue: string;
+	aiButtonEnabled?: boolean;
+	fillParent?: boolean;
+	language?: CodeNodeEditorLanguage;
+	isReadOnly?: boolean;
+	rows?: number;
+};
 
-			if (
-				this.getCurrentEditorContent().trim() === CODE_PLACEHOLDERS[this.language]?.[previousMode]
-			) {
-				this.refreshPlaceholder();
-			}
-		},
-		language(_newLanguage, previousLanguage: CodeNodeEditorLanguage) {
-			if (
-				this.getCurrentEditorContent().trim() === CODE_PLACEHOLDERS[previousLanguage]?.[this.mode]
-			) {
-				this.refreshPlaceholder();
-			}
-
-			const [languageSupport] = this.languageExtensions;
-			this.editor?.dispatch({
-				effects: this.languageCompartment.reconfigure(languageSupport),
-			});
-		},
-		aiEnabled: {
-			immediate: true,
-			async handler(isEnabled) {
-				if (isEnabled && !this.modelValue) {
-					this.$emit('update:modelValue', this.placeholder);
-				}
-				await this.$nextTick();
-				this.hasChanges = this.modelValue !== this.placeholder;
-			},
-		},
-	},
-	computed: {
-		...mapStores(useRootStore, usePostHog, useSettingsStore),
-		aiEnabled(): boolean {
-			const isAiExperimentEnabled = [ASK_AI_EXPERIMENT.gpt3, ASK_AI_EXPERIMENT.gpt4].includes(
-				(this.posthogStore.getVariant(ASK_AI_EXPERIMENT.name) ?? '') as string,
-			);
-
-			return (
-				isAiExperimentEnabled &&
-				this.settingsStore.settings.ai.enabled &&
-				this.language === 'javaScript'
-			);
-		},
-		placeholder(): string {
-			return CODE_PLACEHOLDERS[this.language]?.[this.mode] ?? '';
-		},
-		// eslint-disable-next-line vue/return-in-computed-property
-		languageExtensions(): [LanguageSupport, ...Extension[]] {
-			switch (this.language) {
-				case 'javaScript':
-					return [javascript(), this.autocompletionExtension('javaScript')];
-				case 'python':
-					return [python(), this.autocompletionExtension('python')];
-			}
-		},
-	},
-	beforeUnmount() {
-		if (!this.isReadOnly) codeNodeEditorEventBus.off('error-line-number', this.highlightLine);
-	},
-	mounted() {
-		if (!this.isReadOnly) codeNodeEditorEventBus.on('error-line-number', this.highlightLine);
-
-		const { isReadOnly, language } = this;
-		const extensions: Extension[] = [
-			...readOnlyEditorExtensions,
-			EditorState.readOnly.of(isReadOnly),
-			EditorView.editable.of(!isReadOnly),
-			codeNodeEditorTheme({
-				isReadOnly,
-				maxHeight: this.fillParent ? '100%' : '40vh',
-				minHeight: '20vh',
-				rows: this.rows,
-			}),
-		];
-
-		if (!isReadOnly) {
-			const linter = this.createLinter(language);
-			if (linter) {
-				extensions.push(this.linterCompartment.of(linter));
-			}
-
-			extensions.push(
-				...writableEditorExtensions,
-				EditorView.domEventHandlers({
-					focus: () => {
-						this.isEditorFocused = true;
-					},
-					blur: () => {
-						this.isEditorFocused = false;
-					},
-				}),
-
-				EditorView.updateListener.of((viewUpdate) => {
-					if (!viewUpdate.docChanged) return;
-
-					this.trackCompletion(viewUpdate);
-
-					this.$emit('update:modelValue', this.editor?.state.doc.toString());
-					this.hasChanges = true;
-				}),
-			);
-		}
-
-		const [languageSupport, ...otherExtensions] = this.languageExtensions;
-		extensions.push(this.languageCompartment.of(languageSupport), ...otherExtensions);
-
-		const state = EditorState.create({
-			doc: this.modelValue ?? this.placeholder,
-			extensions,
-		});
-
-		this.editor = new EditorView({
-			parent: this.$refs.codeNodeEditor as HTMLDivElement,
-			state,
-		});
-
-		// empty on first load, default param value
-		if (!this.modelValue) {
-			this.refreshPlaceholder();
-			this.$emit('update:modelValue', this.placeholder);
-		}
-	},
-	methods: {
-		getCurrentEditorContent() {
-			return this.editor?.state.doc.toString() ?? '';
-		},
-		async onBeforeTabLeave(_activeName: string, oldActiveName: string) {
-			// Confirm dialog if leaving ask-ai tab during loading
-			if (oldActiveName === 'ask-ai' && this.isLoadingAIResponse) {
-				const confirmModal = await this.alert(
-					this.$locale.baseText('codeNodeEditor.askAi.sureLeaveTab'),
-					{
-						title: this.$locale.baseText('codeNodeEditor.askAi.areYouSure'),
-						confirmButtonText: this.$locale.baseText('codeNodeEditor.askAi.switchTab'),
-						showClose: true,
-						showCancelButton: true,
-					},
-				);
-
-				if (confirmModal === 'confirm') {
-					return true;
-				}
-
-				return false;
-			}
-
-			return true;
-		},
-		async onReplaceCode(code: string) {
-			const formattedCode = await format(code, {
-				parser: 'babel',
-				plugins: [jsParser, estree],
-			});
-
-			this.editor?.dispatch({
-				changes: { from: 0, to: this.getCurrentEditorContent().length, insert: formattedCode },
-			});
-
-			this.activeTab = 'code';
-			this.hasChanges = false;
-		},
-		onMouseOver(event: MouseEvent) {
-			const fromElement = event.relatedTarget as HTMLElement;
-			const ref = this.$refs.codeNodeEditorContainer as HTMLDivElement | undefined;
-
-			if (!ref?.contains(fromElement)) this.isEditorHovered = true;
-		},
-		onMouseOut(event: MouseEvent) {
-			const fromElement = event.relatedTarget as HTMLElement;
-			const ref = this.$refs.codeNodeEditorContainer as HTMLDivElement | undefined;
-
-			if (!ref?.contains(fromElement)) this.isEditorHovered = false;
-		},
-		reloadLinter() {
-			if (!this.editor) return;
-
-			const linter = this.createLinter(this.language);
-			if (linter) {
-				this.editor.dispatch({
-					effects: this.linterCompartment.reconfigure(linter),
-				});
-			}
-		},
-		refreshPlaceholder() {
-			if (!this.editor) return;
-
-			this.editor.dispatch({
-				changes: { from: 0, to: this.getCurrentEditorContent().length, insert: this.placeholder },
-			});
-		},
-		line(lineNumber: number): Line | null {
-			try {
-				return this.editor?.state.doc.line(lineNumber) ?? null;
-			} catch {
-				return null;
-			}
-		},
-		highlightLine(lineNumber: number | 'final') {
-			if (!this.editor) return;
-
-			if (lineNumber === 'final') {
-				this.editor.dispatch({
-					selection: { anchor: (this.modelValue ?? this.getCurrentEditorContent()).length },
-				});
-				return;
-			}
-
-			const line = this.line(lineNumber);
-
-			if (!line) return;
-
-			this.editor.dispatch({
-				selection: { anchor: line.from },
-			});
-		},
-		trackCompletion(viewUpdate: ViewUpdate) {
-			const completionTx = viewUpdate.transactions.find((tx) => tx.isUserEvent('input.complete'));
-
-			if (!completionTx) return;
-
-			try {
-				// @ts-ignore - undocumented fields
-				const { fromA, toB } = viewUpdate?.changedRanges[0];
-				const full = this.getCurrentEditorContent().slice(fromA, toB);
-				const lastDotIndex = full.lastIndexOf('.');
-
-				let context = null;
-				let insertedText = null;
-
-				if (lastDotIndex === -1) {
-					context = '';
-					insertedText = full;
-				} else {
-					context = full.slice(0, lastDotIndex);
-					insertedText = full.slice(lastDotIndex + 1);
-				}
-
-				// TODO: Still has to get updated for Python and JSON
-				this.$telemetry.track('User autocompleted code', {
-					instance_id: this.rootStore.instanceId,
-					node_type: CODE_NODE_TYPE,
-					field_name: this.mode === 'runOnceForAllItems' ? 'jsCodeAllItems' : 'jsCodeEachItem',
-					field_type: 'code',
-					context,
-					inserted_text: insertedText,
-				});
-			} catch {}
-		},
-	},
+const props = withDefaults(defineProps<Props>(), {
+	aiButtonEnabled: false,
+	fillParent: false,
+	language: 'javaScript',
+	isReadOnly: false,
+	rows: 4,
 });
+const emit = defineEmits<{
+	(event: 'update:modelValue', value: string): void;
+}>();
+
+const message = useMessage();
+const editor = ref(null) as Ref<EditorView | null>;
+const languageCompartment = ref(new Compartment());
+const linterCompartment = ref(new Compartment());
+const isEditorHovered = ref(false);
+const isEditorFocused = ref(false);
+const tabs = ref(['code', 'ask-ai']);
+const activeTab = ref('code');
+const hasChanges = ref(false);
+const isLoadingAIResponse = ref(false);
+const codeNodeEditorRef = ref<HTMLDivElement>();
+const codeNodeEditorContainerRef = ref<HTMLDivElement>();
+
+const { autocompletionExtension } = useCompleter(() => props.mode, editor);
+const { createLinter } = useLinter(() => props.mode, editor);
+
+const rootStore = useRootStore();
+const settingsStore = useSettingsStore();
+const posthog = usePostHog();
+const i18n = useI18n();
+const telemetry = useTelemetry();
+
+onMounted(() => {
+	if (!props.isReadOnly) codeNodeEditorEventBus.on('error-line-number', highlightLine);
+
+	const { isReadOnly, language } = props;
+	const extensions: Extension[] = [
+		...readOnlyEditorExtensions,
+		EditorState.readOnly.of(isReadOnly),
+		EditorView.editable.of(!isReadOnly),
+		codeNodeEditorTheme({
+			isReadOnly,
+			maxHeight: props.fillParent ? '100%' : '40vh',
+			minHeight: '20vh',
+			rows: props.rows,
+		}),
+	];
+
+	if (!isReadOnly) {
+		const linter = createLinter(language);
+		if (linter) {
+			extensions.push(linterCompartment.value.of(linter));
+		}
+
+		extensions.push(
+			...writableEditorExtensions,
+			EditorView.domEventHandlers({
+				focus: () => {
+					isEditorFocused.value = true;
+				},
+				blur: () => {
+					isEditorFocused.value = false;
+				},
+			}),
+
+			EditorView.updateListener.of((viewUpdate) => {
+				if (!viewUpdate.docChanged) return;
+
+				trackCompletion(viewUpdate);
+
+				const value = editor.value?.state.doc.toString();
+				if (value) {
+					emit('update:modelValue', value);
+				}
+				hasChanges.value = true;
+			}),
+		);
+	}
+
+	const [languageSupport, ...otherExtensions] = languageExtensions.value;
+	extensions.push(languageCompartment.value.of(languageSupport), ...otherExtensions);
+
+	const state = EditorState.create({
+		doc: props.modelValue ?? placeholder.value,
+		extensions,
+	});
+
+	editor.value = new EditorView({
+		parent: codeNodeEditorRef.value,
+		state,
+	});
+
+	// empty on first load, default param value
+	if (!props.modelValue) {
+		refreshPlaceholder();
+		emit('update:modelValue', placeholder.value);
+	}
+});
+
+onBeforeUnmount(() => {
+	if (!props.isReadOnly) codeNodeEditorEventBus.off('error-line-number', highlightLine);
+});
+
+const aiEnabled = computed(() => {
+	const isAiExperimentEnabled = [ASK_AI_EXPERIMENT.gpt3, ASK_AI_EXPERIMENT.gpt4].includes(
+		(posthog.getVariant(ASK_AI_EXPERIMENT.name) ?? '') as string,
+	);
+
+	return (
+		isAiExperimentEnabled && settingsStore.settings.ai.enabled && props.language === 'javaScript'
+	);
+});
+
+const placeholder = computed(() => {
+	return CODE_PLACEHOLDERS[props.language]?.[props.mode] ?? '';
+});
+
+// eslint-disable-next-line vue/return-in-computed-property
+const languageExtensions = computed<[LanguageSupport, ...Extension[]]>(() => {
+	switch (props.language) {
+		case 'javaScript':
+			return [javascript(), autocompletionExtension('javaScript')];
+		case 'python':
+			return [python(), autocompletionExtension('python')];
+	}
+});
+
+watch(
+	() => props.mode,
+	(_newMode, previousMode: CodeExecutionMode) => {
+		reloadLinter();
+
+		if (getCurrentEditorContent().trim() === CODE_PLACEHOLDERS[props.language]?.[previousMode]) {
+			refreshPlaceholder();
+		}
+	},
+);
+
+watch(
+	() => props.language,
+	(_newLanguage, previousLanguage: CodeNodeEditorLanguage) => {
+		if (getCurrentEditorContent().trim() === CODE_PLACEHOLDERS[previousLanguage]?.[props.mode]) {
+			refreshPlaceholder();
+		}
+
+		const [languageSupport] = languageExtensions.value;
+		editor.value?.dispatch({
+			effects: languageCompartment.value.reconfigure(languageSupport),
+		});
+		reloadLinter();
+	},
+);
+
+watch(
+	aiEnabled,
+	async (isEnabled) => {
+		if (isEnabled && !props.modelValue) {
+			emit('update:modelValue', placeholder.value);
+		}
+		await nextTick();
+		hasChanges.value = props.modelValue !== placeholder.value;
+	},
+	{ immediate: true },
+);
+
+function getCurrentEditorContent() {
+	return editor.value?.state.doc.toString() ?? '';
+}
+
+async function onBeforeTabLeave(_activeName: string, oldActiveName: string) {
+	// Confirm dialog if leaving ask-ai tab during loading
+	if (oldActiveName === 'ask-ai' && isLoadingAIResponse.value) {
+		const confirmModal = await message.alert(i18n.baseText('codeNodeEditor.askAi.sureLeaveTab'), {
+			title: i18n.baseText('codeNodeEditor.askAi.areYouSure'),
+			confirmButtonText: i18n.baseText('codeNodeEditor.askAi.switchTab'),
+			showClose: true,
+			showCancelButton: true,
+		});
+
+		if (confirmModal === 'confirm') {
+			return true;
+		}
+
+		return false;
+	}
+
+	return true;
+}
+
+async function onReplaceCode(code: string) {
+	const formattedCode = await format(code, {
+		parser: 'babel',
+		plugins: [jsParser, estree],
+	});
+
+	editor.value?.dispatch({
+		changes: { from: 0, to: getCurrentEditorContent().length, insert: formattedCode },
+	});
+
+	activeTab.value = 'code';
+	hasChanges.value = false;
+}
+
+function onMouseOver(event: MouseEvent) {
+	const fromElement = event.relatedTarget as HTMLElement;
+	const containerRef = codeNodeEditorContainerRef.value;
+
+	if (!containerRef?.contains(fromElement)) isEditorHovered.value = true;
+}
+
+function onMouseOut(event: MouseEvent) {
+	const fromElement = event.relatedTarget as HTMLElement;
+	const containerRef = codeNodeEditorContainerRef.value;
+
+	if (!containerRef?.contains(fromElement)) isEditorHovered.value = false;
+}
+
+function reloadLinter() {
+	if (!editor.value) return;
+
+	const linter = createLinter(props.language);
+	if (linter) {
+		editor.value.dispatch({
+			effects: linterCompartment.value.reconfigure(linter),
+		});
+	}
+}
+
+function refreshPlaceholder() {
+	if (!editor.value) return;
+
+	editor.value.dispatch({
+		changes: { from: 0, to: getCurrentEditorContent().length, insert: placeholder.value },
+	});
+}
+
+function getLine(lineNumber: number): Line | null {
+	try {
+		return editor.value?.state.doc.line(lineNumber) ?? null;
+	} catch {
+		return null;
+	}
+}
+
+function highlightLine(lineNumber: number | 'final') {
+	if (!editor.value) return;
+
+	if (lineNumber === 'final') {
+		editor.value.dispatch({
+			selection: { anchor: (props.modelValue ?? getCurrentEditorContent()).length },
+		});
+		return;
+	}
+
+	const line = getLine(lineNumber);
+
+	if (!line) return;
+
+	editor.value.dispatch({
+		selection: { anchor: line.from },
+	});
+}
+
+function trackCompletion(viewUpdate: ViewUpdate) {
+	const completionTx = viewUpdate.transactions.find((tx) => tx.isUserEvent('input.complete'));
+
+	if (!completionTx) return;
+
+	try {
+		// @ts-expect-error - undocumented fields
+		const { fromA, toB } = viewUpdate?.changedRanges[0];
+		const full = getCurrentEditorContent().slice(fromA, toB);
+		const lastDotIndex = full.lastIndexOf('.');
+
+		let context = null;
+		let insertedText = null;
+
+		if (lastDotIndex === -1) {
+			context = '';
+			insertedText = full;
+		} else {
+			context = full.slice(0, lastDotIndex);
+			insertedText = full.slice(lastDotIndex + 1);
+		}
+
+		// TODO: Still has to get updated for Python and JSON
+		telemetry.track('User autocompleted code', {
+			instance_id: rootStore.instanceId,
+			node_type: CODE_NODE_TYPE,
+			field_name: props.mode === 'runOnceForAllItems' ? 'jsCodeAllItems' : 'jsCodeEachItem',
+			field_type: 'code',
+			context,
+			inserted_text: insertedText,
+		});
+	} catch {}
+}
+
+function onAiLoadStart() {
+	isLoadingAIResponse.value = true;
+}
+
+function onAiLoadEnd() {
+	isLoadingAIResponse.value = false;
+}
 </script>
 
 <style scoped lang="scss">

@@ -89,7 +89,7 @@ describe('Current Workflow Executions', () => {
 			.should('be.visible')
 			.its('0.contentDocument.body') // Access the body of the iframe document
 			.should('not.be.empty') // Ensure the body is not empty
-			// eslint-disable-next-line @typescript-eslint/unbound-method
+
 			.then(cy.wrap)
 			.find('.el-notification:has(.el-notification--error)')
 			.should('be.visible')
