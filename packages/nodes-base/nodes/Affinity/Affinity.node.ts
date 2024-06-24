@@ -26,7 +26,7 @@ export class Affinity implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Affinity',
 		name: 'affinity',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
+
 		icon: { light: 'file:affinity.svg', dark: 'file:affinity.dark.svg' },
 		group: ['output'],
 		version: 1,

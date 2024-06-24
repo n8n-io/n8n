@@ -1275,7 +1275,6 @@ export interface ICredentialsDisplayOptions {
 		[key: string]: NodeParameterValue[] | undefined;
 	};
 	show?: {
-		// eslint-disable-next-line @typescript-eslint/naming-convention
 		'@version'?: number[];
 		[key: string]: NodeParameterValue[] | undefined;
 	};
@@ -1711,29 +1710,28 @@ export type ConnectionTypes =
 	| 'main';
 
 export const enum NodeConnectionType {
-	// eslint-disable-next-line @typescript-eslint/naming-convention
 	AiAgent = 'ai_agent',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiChain = 'ai_chain',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiDocument = 'ai_document',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiEmbedding = 'ai_embedding',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiLanguageModel = 'ai_languageModel',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiMemory = 'ai_memory',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiOutputParser = 'ai_outputParser',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiRetriever = 'ai_retriever',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiTextSplitter = 'ai_textSplitter',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiTool = 'ai_tool',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiVectorStore = 'ai_vectorStore',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	Main = 'main',
 }
 
