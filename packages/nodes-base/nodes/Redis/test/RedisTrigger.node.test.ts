@@ -44,7 +44,7 @@ describe('Redis Trigger Node', () => {
 		// manually trigger the node, like Workflow.runNode does
 		const triggerPromise = response.manualTriggerFunction!();
 
-		const onMessageCaptor = captor<Function>();
+		const onMessageCaptor = captor<(message: string, channel: string) => unknown>();
 		expect(mockRedisClient.pSubscribe).toHaveBeenCalledWith([channel], onMessageCaptor);
 		expect(triggerFunctions.emit).not.toHaveBeenCalled();
 
@@ -80,7 +80,7 @@ describe('Redis Trigger Node', () => {
 		expect(mockRedisClient.connect).toHaveBeenCalledTimes(1);
 		expect(mockRedisClient.ping).toHaveBeenCalledTimes(1);
 
-		const onMessageCaptor = captor<Function>();
+		const onMessageCaptor = captor<(message: string, channel: string) => unknown>();
 		expect(mockRedisClient.pSubscribe).toHaveBeenCalledWith([channel], onMessageCaptor);
 		expect(triggerFunctions.emit).not.toHaveBeenCalled();
 
@@ -106,14 +106,14 @@ describe('Redis Trigger Node', () => {
 		await new RedisTrigger().trigger.call(triggerFunctions);
 
 		const mockRedisClient = setupRedisClient(mock());
-		const onMessageCaptor = captor<Function>();
+		const onMessageCaptor = captor<(message: string, channel: string) => unknown>();
 		expect(mockRedisClient.pSubscribe).toHaveBeenCalledWith([channel], onMessageCaptor);
 
 		// simulate a message
 		const onMessage = onMessageCaptor.value;
 		onMessage('{"testing": true}', channel);
-		expect(triggerFunctions.emit).toHaveBeenCalledWith(
-			[[{ json: { message: { testing: true }, channel } }]],
-		);
+		expect(triggerFunctions.emit).toHaveBeenCalledWith([
+			[{ json: { message: { testing: true }, channel } }],
+		]);
 	});
 });
