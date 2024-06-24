@@ -91,7 +91,7 @@
   },
   "dependencies": {
     "@langchain/community": "0.2.2",
-    "@langchain/core": "0.2.0",
+    "@langchain/core": "0.2.9",
     "@langchain/openai": "0.0.33",
     "@langchain/pinecone": "0.0.6",
     "@n8n/client-oauth2": "workspace:*",

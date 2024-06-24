@@ -141,7 +141,7 @@
     "@langchain/anthropic": "0.1.21",
     "@langchain/cohere": "0.0.10",
     "@langchain/community": "0.2.13",
-    "@langchain/core": "0.2.0",
+    "@langchain/core": "0.2.9",
     "@langchain/google-genai": "0.0.16",
     "@langchain/groq": "0.0.12",
     "@langchain/mistralai": "0.0.22",
