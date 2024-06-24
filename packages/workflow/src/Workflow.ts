@@ -1,12 +1,3 @@
-/* eslint-disable @typescript-eslint/no-use-before-define */
-
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-for-in-array */
-
-/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-
 import type {
 	IConnections,
 	IExecuteResponsePromiseData,
@@ -47,7 +38,6 @@ import type {
 } from './Interfaces';
 import { Node, NodeConnectionType } from './Interfaces';
 import type { IDeferredPromise } from './DeferredPromise';
-
 import * as NodeHelpers from './NodeHelpers';
 import * as ObservableObject from './ObservableObject';
 import { RoutingNode } from './RoutingNode';
@@ -63,6 +53,32 @@ function dedupe<T>(arr: T[]): T[] {
 	return [...new Set(arr)];
 }
 
+function hasDotNotationBannedChar(nodeName: string) {
+	const DOT_NOTATION_BANNED_CHARS = /^(\d)|[\\ `!@#$%^&*()_+\-=[\]{};':"\\|,.<>?~]/g;
+	return DOT_NOTATION_BANNED_CHARS.test(nodeName);
+}
+
+function backslashEscape(nodeName: string) {
+	const BACKSLASH_ESCAPABLE_CHARS = /[.*+?^${}()|[\]\\]/g;
+	return nodeName.replace(BACKSLASH_ESCAPABLE_CHARS, (char) => `\\${char}`);
+}
+
+function dollarEscape(nodeName: string) {
+	return nodeName.replace(new RegExp('\\$', 'g'), '$$$$');
+}
+
+export interface WorkflowParameters {
+	id?: string;
+	name?: string;
+	nodes: INode[];
+	connections: IConnections;
+	active: boolean;
+	nodeTypes: INodeTypes;
+	staticData?: IDataObject;
+	settings?: IWorkflowSettings;
+	pinData?: IPinData;
+}
+
 export class Workflow {
 	id: string;
 
@@ -70,9 +86,9 @@ export class Workflow {
 
 	nodes: INodes = {};
 
-	connectionsBySourceNode: IConnections;
+	connectionsBySourceNode: IConnections = {};
 
-	connectionsByDestinationNode: IConnections;
+	connectionsByDestinationNode: IConnections = {};
 
 	nodeTypes: INodeTypes;
 
@@ -84,37 +100,34 @@ export class Workflow {
 
 	// To save workflow specific static data like for example
 	// ids of registered webhooks of nodes
-	staticData: IDataObject;
+	staticData: IDataObject = {};
 
 	testStaticData: IDataObject | undefined;
 
 	pinData?: IPinData;
 
-	// constructor(id: string | undefined, nodes: INode[], connections: IConnections, active: boolean, nodeTypes: INodeTypes, staticData?: IDataObject, settings?: IWorkflowSettings) {
-	constructor(parameters: {
-		id?: string;
-		name?: string;
-		nodes: INode[];
-		connections: IConnections;
-		active: boolean;
-		nodeTypes: INodeTypes;
-		staticData?: IDataObject;
-		settings?: IWorkflowSettings;
-		pinData?: IPinData;
-	}) {
+	constructor(parameters: WorkflowParameters) {
 		this.id = parameters.id as string; // @tech_debt Ensure this is not optional
 		this.name = parameters.name;
 		this.nodeTypes = parameters.nodeTypes;
-		this.pinData = parameters.pinData;
+		this.active = parameters.active || false;
+		this.settings = parameters.settings || {};
 
-		// Save nodes in workflow as object to be able to get the
-		// nodes easily by its name.
-		// Also directly add the default values of the node type.
-		let nodeType: INodeType | undefined;
-		for (const node of parameters.nodes) {
+		this.updateNodes(parameters.nodes);
+		this.updateConnections(parameters.connections);
+		this.updatePinData(parameters.pinData);
+		this.updateStaticData(parameters.staticData);
+
+		this.expression = new Expression(this);
+	}
+
+	updateNodes(nodes: INode[]) {
+		this.nodes = {};
+
+		for (const node of nodes) {
 			this.nodes[node.name] = node;
 
-			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 			if (nodeType === undefined) {
 				// Go on to next node when its type is not known.
@@ -122,10 +135,6 @@ export class Workflow {
 				// expression resolution also then when the unknown node
 				// does not get used.
 				continue;
-				// throw new ApplicationError(`Node with unknown node type`, {
-				// 	tags: { nodeType: node.type },
-				// 	extra: { node },
-				// });
 			}
 
 			// Add default values
@@ -138,61 +147,34 @@ export class Workflow {
 			);
 			node.parameters = nodeParameters !== null ? nodeParameters : {};
 		}
-		this.connectionsBySourceNode = parameters.connections;
-
-		// Save also the connections by the destination nodes
-		this.connectionsByDestinationNode = this.__getConnectionsByDestination(parameters.connections);
-
-		this.active = parameters.active || false;
-
-		this.staticData = ObservableObject.create(parameters.staticData || {}, undefined, {
-			ignoreEmptyOnFirstChild: true,
-		});
-
-		this.settings = parameters.settings || {};
-
-		this.expression = new Expression(this);
 	}
 
 	/**
-	 * The default connections are by source node. This function rewrites them by destination nodes
-	 * to easily find parent nodes.
-	 *
+	 * The default connections are by source node.
+	 * This function rewrites them by destination nodes to easily find parent nodes.
 	 */
-	__getConnectionsByDestination(connections: IConnections): IConnections {
-		const returnConnection: IConnections = {};
+	updateConnections(sourceConnections: IConnections) {
+		this.connectionsBySourceNode = sourceConnections;
 
-		let connectionInfo;
-		let maxIndex: number;
-		for (const sourceNode in connections) {
-			if (!connections.hasOwnProperty(sourceNode)) {
-				continue;
-			}
+		const returnConnections: IConnections = {};
 
-			for (const type of Object.keys(connections[sourceNode]) as NodeConnectionType[]) {
-				if (!connections[sourceNode].hasOwnProperty(type)) {
-					continue;
-				}
-				for (const inputIndex in connections[sourceNode][type]) {
-					if (!connections[sourceNode][type].hasOwnProperty(inputIndex)) {
-						continue;
-					}
-					for (connectionInfo of connections[sourceNode][type][inputIndex]) {
-						if (!returnConnection.hasOwnProperty(connectionInfo.node)) {
-							returnConnection[connectionInfo.node] = {};
-						}
-						if (!returnConnection[connectionInfo.node].hasOwnProperty(connectionInfo.type)) {
-							returnConnection[connectionInfo.node][connectionInfo.type] = [];
+		for (const sourceNode in sourceConnections) {
+			const nodeConnections = sourceConnections[sourceNode];
+			for (const connectionType in nodeConnections) {
+				const inputConnections = nodeConnections[connectionType];
+				for (const [inputIndex, connectionInfos] of Object.entries(inputConnections)) {
+					for (const { type, node, index } of connectionInfos) {
+						const returnConnection = (returnConnections[node] = returnConnections[node] || {});
+						const returnInputConnections = (returnConnection[type] = returnConnection[type] || []);
+
+						const maxIndex = returnInputConnections.length - 1;
+						for (let j = maxIndex; j < index; j++) {
+							returnInputConnections.push([]);
 						}
 
-						maxIndex = returnConnection[connectionInfo.node][connectionInfo.type].length - 1;
-						for (let j = maxIndex; j < connectionInfo.index; j++) {
-							returnConnection[connectionInfo.node][connectionInfo.type].push([]);
-						}
-
-						returnConnection[connectionInfo.node][connectionInfo.type][connectionInfo.index].push({
+						returnInputConnections[index].push({
 							node: sourceNode,
-							type,
+							type: type as NodeConnectionType,
 							index: parseInt(inputIndex, 10),
 						});
 					}
@@ -200,7 +182,17 @@ export class Workflow {
 			}
 		}
 
-		return returnConnection;
+		this.connectionsByDestinationNode = returnConnections;
+	}
+
+	updatePinData(pinData?: IPinData) {
+		this.pinData = pinData;
+	}
+
+	updateStaticData(staticData?: IDataObject) {
+		this.staticData = ObservableObject.create(staticData || {}, undefined, {
+			ignoreEmptyOnFirstChild: true,
+		});
 	}
 
 	/**
@@ -353,7 +345,6 @@ export class Workflow {
 
 	/**
 	 * Returns all the trigger nodes in the workflow.
-	 *
 	 */
 	getTriggerNodes(): INode[] {
 		return this.queryNodes((nodeType: INodeType) => !!nodeType.trigger);
@@ -361,7 +352,6 @@ export class Workflow {
 
 	/**
 	 * Returns all the poll nodes in the workflow
-	 *
 	 */
 	getPollNodes(): INode[] {
 		return this.queryNodes((nodeType: INodeType) => !!nodeType.poll);
@@ -487,11 +477,12 @@ export class Workflow {
 				);
 			}
 
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 			return returnArray;
 		}
 
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const returnData: any = {};
+		const returnData: Record<string, NodeParameterValueType> = {};
 
 		for (const parameterName of Object.keys(parameterValue || {})) {
 			returnData[parameterName] = this.renameNodeInParameterValue(
@@ -539,27 +530,21 @@ export class Workflow {
 		}
 
 		// Change all source connections
-		if (this.connectionsBySourceNode.hasOwnProperty(currentName)) {
-			this.connectionsBySourceNode[newName] = this.connectionsBySourceNode[currentName];
-			delete this.connectionsBySourceNode[currentName];
+		const sourceConnections = this.connectionsBySourceNode;
+		if (currentName in sourceConnections) {
+			sourceConnections[newName] = sourceConnections[currentName];
+			delete sourceConnections[currentName];
 		}
 
 		// Change all destination connections
-		let sourceNode: string;
-		let type: string;
-		let sourceIndex: string;
-		let connectionIndex: string;
-		let connectionData: IConnection;
-		for (sourceNode of Object.keys(this.connectionsBySourceNode)) {
-			for (type of Object.keys(this.connectionsBySourceNode[sourceNode])) {
-				for (sourceIndex of Object.keys(this.connectionsBySourceNode[sourceNode][type])) {
-					for (connectionIndex of Object.keys(
-						this.connectionsBySourceNode[sourceNode][type][parseInt(sourceIndex, 10)],
-					)) {
-						connectionData =
-							this.connectionsBySourceNode[sourceNode][type][parseInt(sourceIndex, 10)][
-								parseInt(connectionIndex, 10)
-							];
+		for (const sourceNode of Object.keys(sourceConnections)) {
+			const sourceNodeConnections = sourceConnections[sourceNode];
+			for (const type of Object.keys(sourceNodeConnections)) {
+				const inputConnections = sourceNodeConnections[type];
+				const sourceIndices = Object.keys(inputConnections).map((index) => parseInt(index, 10));
+				for (const sourceIndex of sourceIndices) {
+					for (const connectionIndex of Object.keys(inputConnections[sourceIndex])) {
+						const connectionData = inputConnections[sourceIndex][parseInt(connectionIndex, 10)];
 						if (connectionData.node === currentName) {
 							connectionData.node = newName;
 						}
@@ -569,9 +554,7 @@ export class Workflow {
 		}
 
 		// Use the updated connections to create updated connections by destination nodes
-		this.connectionsByDestinationNode = this.__getConnectionsByDestination(
-			this.connectionsBySourceNode,
-		);
+		this.updateConnections(sourceConnections);
 	}
 
 	/**
@@ -682,11 +665,7 @@ export class Workflow {
 	}
 
 	/**
-	 * Gets all the nodes which are connected nodes starting from
-	 * the given one
-	 *
-	 * @param {ConnectionTypes} [type='main']
-	 * @param {*} [depth=-1]
+	 * Gets all the nodes which are connected nodes starting from the given one
 	 */
 	getConnectedNodes(
 		connections: IConnections,
@@ -780,21 +759,20 @@ export class Workflow {
 
 	/**
 	 * Returns all the nodes before the given one
-	 *
-	 * @param {*} [maxDepth=-1]
 	 */
 	getParentNodesByDepth(nodeName: string, maxDepth = -1): IConnectedNode[] {
 		return this.searchNodesBFS(this.connectionsByDestinationNode, nodeName, maxDepth);
 	}
 
 	/**
-	 * Gets all the nodes which are connected nodes starting from
-	 * the given one
+	 * Gets all the nodes which are connected nodes starting from the given one
 	 * Uses BFS traversal
-	 *
-	 * @param {*} [maxDepth=-1]
 	 */
-	searchNodesBFS(connections: IConnections, sourceNode: string, maxDepth = -1): IConnectedNode[] {
+	private searchNodesBFS(
+		connections: IConnections,
+		sourceNode: string,
+		maxDepth = -1,
+	): IConnectedNode[] {
 		const returnConns: IConnectedNode[] = [];
 
 		const type: ConnectionTypes = 'main';
@@ -981,7 +959,7 @@ export class Workflow {
 	 *
 	 * @param {string[]} nodeNames The potential start nodes
 	 */
-	__getStartNode(nodeNames: string[]): INode | undefined {
+	private __getStartNode(nodeNames: string[]): INode | undefined {
 		// Check if there are any trigger or poll nodes and then return the first one
 		let node: INode;
 		let nodeType: INodeType;
@@ -1110,9 +1088,7 @@ export class Workflow {
 	}
 
 	/**
-	 * Runs the given trigger node so that it can trigger the workflow
-	 * when the node has data.
-	 *
+	 * Runs the given trigger node so that it can trigger the workflow when the node has data.
 	 */
 	async runTrigger(
 		node: INode,
@@ -1195,11 +1171,8 @@ export class Workflow {
 	}
 
 	/**
-	 * Runs the given trigger node so that it can trigger the workflow
-	 * when the node has data.
-	 *
+	 * Runs the given trigger node so that it can trigger the workflow when the node has data.
 	 */
-
 	async runPoll(
 		node: INode,
 		pollFunctions: IPollFunctions,
@@ -1224,9 +1197,7 @@ export class Workflow {
 	}
 
 	/**
-	 * Executes the webhook data to see what it should return and if the
-	 * workflow should be started or not
-	 *
+	 * Executes the webhook data to see what it should return and if the workflow should be started or not
 	 */
 	async runWebhook(
 		webhookData: IWebhookData,
@@ -1263,7 +1234,6 @@ export class Workflow {
 
 	/**
 	 * Executes the given node.
-	 *
 	 */
 	// eslint-disable-next-line complexity
 	async runNode(
@@ -1384,6 +1354,7 @@ export class Workflow {
 
 			const closingErrors = closeFunctionsResults
 				.filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 				.map((result) => result.reason);
 
 			if (closingErrors.length > 0) {
@@ -1478,20 +1449,4 @@ export class Workflow {
 			};
 		}
 	}
-}
-
-function hasDotNotationBannedChar(nodeName: string) {
-	const DOT_NOTATION_BANNED_CHARS = /^(\d)|[\\ `!@#$%^&*()_+\-=[\]{};':"\\|,.<>?~]/g;
-
-	return DOT_NOTATION_BANNED_CHARS.test(nodeName);
-}
-
-function backslashEscape(nodeName: string) {
-	const BACKSLASH_ESCAPABLE_CHARS = /[.*+?^${}()|[\]\\]/g;
-
-	return nodeName.replace(BACKSLASH_ESCAPABLE_CHARS, (char) => `\\${char}`);
-}
-
-function dollarEscape(nodeName: string) {
-	return nodeName.replace(new RegExp('\\$', 'g'), '$$$$');
 }
