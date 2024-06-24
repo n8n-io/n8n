@@ -50,10 +50,6 @@ export class DatadogApi implements ICredentialType {
 			'DD-API-KEY': credentials.apiKey,
 			'DD-APPLICATION-KEY': credentials.appKey,
 		};
-
-		if (requestOptions.method === 'GET') {
-			delete requestOptions.body;
-		}
 		if (!requestOptions.headers['DD-APPLICATION-KEY']) {
 			delete requestOptions.headers['DD-APPLICATION-KEY'];
 		}

@@ -42,11 +42,6 @@ export class ElasticApi implements ICredentialType {
 		requestOptions.headers = {
 			Authorization: 'ApiKey ' + credentials.apiKey,
 		};
-
-		if (requestOptions.method === 'GET') {
-			delete requestOptions.body;
-		}
-
 		return requestOptions;
 	}
 

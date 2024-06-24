@@ -49,11 +49,6 @@ export class IrisDfirApi implements ICredentialType {
 		requestOptions.headers = {
 			Authorization: 'Bearer ' + credentials.apiKey,
 		};
-
-		if (requestOptions.method === 'GET') {
-			delete requestOptions.body;
-		}
-
 		return requestOptions;
 	}
 

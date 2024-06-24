@@ -33,11 +33,6 @@ export class FilescanApi implements ICredentialType {
 		requestOptions.headers = {
 			'X-Api-Key': credentials.apiKey,
 		};
-
-		if (requestOptions.method === 'GET') {
-			delete requestOptions.body;
-		}
-
 		return requestOptions;
 	}
 
