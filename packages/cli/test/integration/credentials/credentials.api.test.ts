@@ -1,6 +1,7 @@
 import { Container } from 'typedi';
 import type { Scope } from '@sentry/node';
 import { Credentials } from 'n8n-core';
+import { randomString } from 'n8n-workflow';
 
 import type { ListQuery } from '@/requests';
 import type { User } from '@db/entities/User';
@@ -16,7 +17,6 @@ import {
 	randomCredentialPayload as payload,
 	randomCredentialPayload,
 	randomName,
-	randomString,
 } from '../shared/random';
 import {
 	saveCredential,

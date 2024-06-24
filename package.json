@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.46.0",
+  "version": "1.47.0",
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
@@ -77,7 +77,8 @@
       "semver": "^7.5.4",
       "tslib": "^2.6.2",
       "tsconfig-paths": "^4.2.0",
-      "typescript": "^5.4.2"
+      "typescript": "^5.5.2",
+      "ws": ">=8.17.1"
     },
     "patchedDependencies": {
       "typedi@0.10.0": "patches/typedi@0.10.0.patch",

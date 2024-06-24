@@ -48,7 +48,7 @@ async function onUpdateConnected(value: boolean) {
 
 		if (props.beforeUpdate) {
 			const result = await props.beforeUpdate(value);
-			if (result === false) {
+			if (!result) {
 				saving.value = false;
 				return;
 			}

@@ -48,6 +48,7 @@ describe('License', () => {
 			saveCertStr: expect.any(Function),
 			onFeatureChange: expect.any(Function),
 			collectUsageMetrics: expect.any(Function),
+			collectPassthroughData: expect.any(Function),
 			server: MOCK_SERVER_URL,
 			tenantId: 1,
 		});
@@ -68,6 +69,7 @@ describe('License', () => {
 			saveCertStr: expect.any(Function),
 			onFeatureChange: expect.any(Function),
 			collectUsageMetrics: expect.any(Function),
+			collectPassthroughData: expect.any(Function),
 			server: MOCK_SERVER_URL,
 			tenantId: 1,
 		});

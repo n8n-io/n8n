@@ -653,7 +653,7 @@ export class AirtableV1 implements INodeType {
 						rows.length = 0;
 					}
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						returnData.push({ json: { error: error.message } });
 						continue;
 					}
@@ -696,7 +696,7 @@ export class AirtableV1 implements INodeType {
 						rows.length = 0;
 					}
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						returnData.push({ json: { error: error.message } });
 						continue;
 					}
@@ -757,7 +757,7 @@ export class AirtableV1 implements INodeType {
 					}),
 				];
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ json: { error: error.message } });
 				} else {
 					throw error;
@@ -792,7 +792,7 @@ export class AirtableV1 implements INodeType {
 
 					returnData.push(...executionData);
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						returnData.push({ json: { error: error.message } });
 						continue;
 					}
@@ -880,7 +880,7 @@ export class AirtableV1 implements INodeType {
 						rows.length = 0;
 					}
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						returnData.push({ json: { error: error.message } });
 						continue;
 					}

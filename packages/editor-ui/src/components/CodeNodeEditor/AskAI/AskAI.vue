@@ -4,6 +4,7 @@ import { snakeCase } from 'lodash-es';
 import { useSessionStorage } from '@vueuse/core';
 
 import { N8nButton, N8nInput, N8nTooltip } from 'n8n-design-system/components';
+import { randomInt } from 'n8n-workflow';
 import type { CodeExecutionMode, INodeExecutionData } from 'n8n-workflow';
 
 import type { BaseTextKey } from '@/plugins/i18n';
@@ -208,7 +209,7 @@ function triggerLoadingChange() {
 
 		// Loading phrase change
 		if (!lastPhraseChange || timestamp - lastPhraseChange >= loadingPhraseUpdateMs) {
-			loadingPhraseIndex.value = Math.floor(Math.random() * loadingPhrasesCount);
+			loadingPhraseIndex.value = randomInt(loadingPhrasesCount);
 			lastPhraseChange = timestamp;
 		}
 

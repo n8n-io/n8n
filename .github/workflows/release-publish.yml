@@ -14,8 +14,11 @@ jobs:
 
     permissions:
       contents: write
+      id-token: write
 
     timeout-minutes: 60
+    env:
+      NPM_CONFIG_PROVENANCE: true
 
     steps:
       - name: Checkout

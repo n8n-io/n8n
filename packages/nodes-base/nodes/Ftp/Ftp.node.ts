@@ -548,7 +548,7 @@ export class Ftp implements INodeType {
 					});
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const pairedItem = generatePairedItemData(items.length);
 
 					return [[{ json: { error: error.message }, pairedItem }]];
@@ -816,7 +816,7 @@ export class Ftp implements INodeType {
 						}
 					}
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						returnItems.push({ json: { error: error.message }, pairedItem: { item: i } });
 						continue;
 					}

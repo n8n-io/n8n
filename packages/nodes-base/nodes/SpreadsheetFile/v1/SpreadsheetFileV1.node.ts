@@ -155,7 +155,7 @@ export class SpreadsheetFileV1 implements INodeType {
 						}
 					}
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						newItems.push({
 							json: {
 								error: error.message,
@@ -242,7 +242,7 @@ export class SpreadsheetFileV1 implements INodeType {
 
 				newItems.push(newItem);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					newItems.push({
 						json: {
 							error: error.message,

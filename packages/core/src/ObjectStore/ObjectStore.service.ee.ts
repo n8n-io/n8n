@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
-
 import { createHash } from 'node:crypto';
 import axios from 'axios';
 import { Service } from 'typedi';

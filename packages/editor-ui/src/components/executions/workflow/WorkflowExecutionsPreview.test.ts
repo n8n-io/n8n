@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { faker } from '@faker-js/faker';
 import { createRouter, createWebHistory } from 'vue-router';
 import { createPinia, PiniaVuePlugin, setActivePinia } from 'pinia';
-import type { ExecutionSummary } from 'n8n-workflow';
+import { randomInt, type ExecutionSummary } from 'n8n-workflow';
 import { useSettingsStore } from '@/stores/settings.store';
 import WorkflowExecutionsPreview from '@/components/executions/workflow/WorkflowExecutionsPreview.vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
@@ -33,7 +33,7 @@ const $route = {
 };
 
 const generateUndefinedNullOrString = () => {
-	switch (Math.floor(Math.random() * 4)) {
+	switch (randomInt(4)) {
 		case 0:
 			return undefined;
 		case 1:
