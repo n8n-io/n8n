@@ -1,8 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import type { Connection } from '@vue-flow/core';
-import type { IConnection, INodeTypeDescription } from 'n8n-workflow';
+import type { IConnection } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
-
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import type { CanvasElement } from '@/types';
 import type { ICredentialsResponse, INodeUi, IWorkflowDb, XYPosition } from '@/Interface';
@@ -11,23 +10,16 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useHistoryStore } from '@/stores/history.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { nextTick, ref } from 'vue';
+import { ref } from 'vue';
 import {
 	createTestNode,
 	createTestWorkflowObject,
-	defaultNodeTypes,
 	mockNode,
 	mockNodeTypeDescription,
 } from '@/__tests__/mocks';
 import { useRouter } from 'vue-router';
 import { mock } from 'vitest-mock-extended';
-import { MANUAL_TRIGGER_NODE_TYPE, SET_NODE_TYPE } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import {
-	nodeTypeHttpRequest,
-	nodeTypeTelegram,
-	nodeTypeTwitter,
-} from '@/utils/testData/nodeTypeTestData';
 import { useCredentialsStore } from '@/stores/credentials.store';
 
 vi.mock('vue-router', async () => {

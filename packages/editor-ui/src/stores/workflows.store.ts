@@ -77,7 +77,6 @@ import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from './settings.store';
 import { useUsersStore } from './users.store';
 import { useTagsStore } from '@/stores/tags.store';
-import { useExecutionsStore } from '@/stores/executions.store';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
