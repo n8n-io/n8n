@@ -14,6 +14,7 @@ export class RssFeedReadTrigger implements INodeType {
 		displayName: 'RSS Feed Trigger',
 		name: 'rssFeedReadTrigger',
 		icon: 'fa:rss',
+		iconColor: 'orange-red',
 		group: ['trigger'],
 		version: 1,
 		description: 'Starts a workflow when an RSS feed is updated',

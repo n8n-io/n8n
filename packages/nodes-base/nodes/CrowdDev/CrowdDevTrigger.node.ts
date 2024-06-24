@@ -36,7 +36,7 @@ export class CrowdDevTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'crowd.dev Trigger',
 		name: 'crowdDevTrigger',
-		icon: 'file:crowdDev.svg',
+		icon: { light: 'file:crowdDev.svg', dark: 'file:crowdDev.dark.svg' },
 		group: ['trigger'],
 		version: 1,
 		description: 'Starts the workflow when crowd.dev events occur.',
