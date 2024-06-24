@@ -48,14 +48,14 @@ export class ConcurrencyControlService {
 
 		this.productionQueue.on(
 			'execution-throttled',
-			async ({ executionId, capacity }: { executionId: string; capacity: number }) => {
+			async ({ executionId, queuedItems }: { executionId: string; queuedItems: number }) => {
 				this.log('Execution throttled', { executionId });
 
 				/**
 				 * Temporary until base data for cloud plans is collected.
 				 */
-				if (this.shouldReport(capacity)) {
-					await this.telemetry.track('User hit concurrency limit', { threshold: capacity });
+				if (this.shouldReport(queuedItems)) {
+					await this.telemetry.track('User hit concurrency limit', { threshold: queuedItems });
 				}
 			},
 		);
