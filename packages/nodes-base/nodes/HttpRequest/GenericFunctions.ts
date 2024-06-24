@@ -1,12 +1,11 @@
 import type { SecureContextOptions } from 'tls';
-import {
-	deepCopy,
-	type ICredentialDataDecryptedObject,
-	type IDataObject,
-	type INodeExecutionData,
-	type INodeProperties,
-	type IOAuth2Options,
-	type IRequestOptions,
+import type {
+	ICredentialDataDecryptedObject,
+	IDataObject,
+	INodeExecutionData,
+	INodeProperties,
+	IOAuth2Options,
+	IRequestOptions,
 } from 'n8n-workflow';
 
 import set from 'lodash/set';
@@ -61,7 +60,7 @@ export function sanitizeUiMessage(
 	authDataKeys: IAuthDataSanitizeKeys,
 	secrets?: string[],
 ) {
-	let sendRequest = deepCopy(request as unknown as IDataObject);
+	let sendRequest = request as unknown as IDataObject;
 
 	// Protect browser from sending large binary data
 	if (Buffer.isBuffer(sendRequest.body) && sendRequest.body.length > 250000) {
