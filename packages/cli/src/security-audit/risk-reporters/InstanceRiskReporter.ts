@@ -146,7 +146,6 @@ export class InstanceRiskReporter implements RiskReporter {
 		const { instanceId } = this.instanceSettings;
 
 		const response = await axios.get<n8n.Version[]>(BASE_URL + currentVersionName, {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
 			headers: { 'n8n-instance-id': instanceId },
 		});
 

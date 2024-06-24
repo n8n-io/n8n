@@ -86,7 +86,7 @@ import { toRefs } from '@vueuse/core';
 // ---------------------------------------------------------------------------
 
 const props = defineProps<{
-	reportError: Boolean;
+	reportError: boolean;
 }>();
 
 // #endregion

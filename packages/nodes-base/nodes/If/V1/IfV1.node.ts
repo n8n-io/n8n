@@ -22,7 +22,7 @@ export class IfV1 implements INodeType {
 				color: '#408000',
 			},
 			inputs: ['main'],
-			// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 			outputs: ['main', 'main'],
 			outputNames: ['true', 'false'],
 			properties: [

@@ -6,9 +6,9 @@ import isEqual from 'lodash/isEqual';
 import lt from 'lodash/lt';
 import pick from 'lodash/pick';
 
-import { compareItems, flattenKeys, updateDisplayOptions } from '@utils/utilities';
 import { prepareFieldsArray, typeToNumber } from '../../helpers/utils';
 import { disableDotNotationBoolean } from '../common.descriptions';
+import { compareItems, flattenKeys, updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{

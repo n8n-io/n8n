@@ -16,9 +16,9 @@ import pick from 'lodash/pick';
 import set from 'lodash/set';
 import unset from 'lodash/unset';
 
-import { flattenKeys, shuffleArray, compareItems } from '@utils/utilities';
 import { sortByCode } from '../V3/helpers/utils';
 import * as summarize from './summarize.operation';
+import { flattenKeys, shuffleArray, compareItems } from '@utils/utilities';
 
 export class ItemListsV1 implements INodeType {
 	description: INodeTypeDescription;

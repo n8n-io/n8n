@@ -14,7 +14,7 @@ export class CircleCi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'CircleCI',
 		name: 'circleCi',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
+
 		icon: { light: 'file:circleCi.svg', dark: 'file:circleCi.dark.svg' },
 		group: ['output'],
 		version: 1,

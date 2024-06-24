@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
-
 import { isObjectLiteral } from '@/utils';
 import { plainToInstance, instanceToPlain } from 'class-transformer';
 import { validate } from 'class-validator';
