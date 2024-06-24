@@ -154,7 +154,7 @@ watch(
 					</div>
 				</div>
 				<div v-else :class="$style.email">
-					<div :class="$style.input" @keyup.enter="send" data-test-id="nps-survey-email">
+					<div :class="$style.input" data-test-id="nps-survey-email" @keyup.enter="send">
 						<n8n-input
 							v-model="form.email"
 							:placeholder="YOUR_EMAIL_ADDRESS"

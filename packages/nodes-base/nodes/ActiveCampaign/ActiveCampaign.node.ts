@@ -81,7 +81,7 @@ export class ActiveCampaign implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'ActiveCampaign',
 		name: 'activeCampaign',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
+
 		icon: { light: 'file:activeCampaign.svg', dark: 'file:activeCampaign.dark.svg' },
 		group: ['transform'],
 		version: 1,

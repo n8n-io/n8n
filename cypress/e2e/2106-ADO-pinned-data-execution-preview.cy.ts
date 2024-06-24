@@ -36,7 +36,7 @@ describe('ADO-2106 connections should be colored correctly for pinned data in ex
 			.should('be.visible')
 			.its('0.contentDocument.body')
 			.should('not.be.empty')
-			// eslint-disable-next-line @typescript-eslint/unbound-method
+
 			.then(cy.wrap)
 			.find('.jtk-connector[data-source-node="Webhook"][data-target-node="Set"]')
 			.should('have.class', 'success')
@@ -56,7 +56,7 @@ describe('ADO-2106 connections should be colored correctly for pinned data in ex
 			.should('be.visible')
 			.its('0.contentDocument.body')
 			.should('not.be.empty')
-			// eslint-disable-next-line @typescript-eslint/unbound-method
+
 			.then(cy.wrap)
 			.find('.jtk-connector[data-source-node="Webhook"][data-target-node="Set"]')
 			.should('have.class', 'success')

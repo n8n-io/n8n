@@ -1087,9 +1087,8 @@ export class WorkflowExecute {
 								}
 
 								if (nodeSuccessData instanceof NodeExecutionOutput) {
-									// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 									const hints: NodeExecutionHint[] = nodeSuccessData.getHints();
-									// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+
 									executionHints.push(...hints);
 								}
 

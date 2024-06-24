@@ -130,7 +130,6 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 						}
 
 						logger.debug(
-							// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 							`Received unknown command via channel ${COMMAND_REDIS_CHANNEL}: "${message.command}"`,
 						);
 						break;
