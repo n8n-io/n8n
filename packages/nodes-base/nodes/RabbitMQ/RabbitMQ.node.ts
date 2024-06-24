@@ -20,7 +20,6 @@ export class RabbitMQ implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'RabbitMQ',
 		name: 'rabbitmq',
-
 		icon: 'file:rabbitmq.svg',
 		group: ['transform'],
 		version: [1, 1.1],

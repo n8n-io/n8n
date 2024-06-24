@@ -15,7 +15,6 @@ export class Flow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Flow',
 		name: 'flow',
-
 		icon: 'file:flow.svg',
 		group: ['output'],
 		version: 1,
