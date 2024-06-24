@@ -29,7 +29,6 @@ beforeEach(async () => {
 	await testDb.truncate(['User']);
 });
 
-// eslint-disable-next-line n8n-local-rules/no-skipped-tests
 test('user-management:reset should reset DB to default user state', async () => {
 	//
 	// ARRANGE

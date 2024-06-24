@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import { Container } from 'typedi';
 import type { Router } from 'express';
 import express from 'express';

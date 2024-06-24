@@ -12,9 +12,9 @@ import set from 'lodash/set';
 import isPlainObject from 'lodash/isPlainObject';
 
 import FormData from 'form-data';
+import get from 'lodash/get';
 import { formatPrivateKey } from '../../utils/utilities';
 import type { HttpSslAuthCredentials } from './interfaces';
-import get from 'lodash/get';
 
 export type BodyParameter = {
 	name: string;

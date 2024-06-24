@@ -18,7 +18,7 @@ export class Amqp implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AMQP Sender',
 		name: 'amqp',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
+
 		icon: 'file:amqp.svg',
 		group: ['transform'],
 		version: 1,

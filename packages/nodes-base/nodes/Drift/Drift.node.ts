@@ -13,7 +13,7 @@ export class Drift implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Drift',
 		name: 'drift',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
+
 		icon: { light: 'file:drift.svg', dark: 'file:drift.dark.svg' },
 		group: ['output'],
 		version: 1,
