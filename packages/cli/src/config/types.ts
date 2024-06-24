@@ -2,6 +2,7 @@
 
 import type { BinaryData } from 'n8n-core';
 import type { schema } from './schema';
+import type { RedisOptions } from 'ioredis';
 
 // -----------------------------------
 //          transformers
@@ -74,7 +75,7 @@ type ToReturnType<T extends ConfigOptionPath> = T extends NumericPath
 					: unknown;
 
 type ExceptionPaths = {
-	'queue.bull.redis': object;
+	'queue.bull.redis': RedisOptions;
 	binaryDataManager: BinaryData.Config;
 	'nodes.exclude': string[] | undefined;
 	'nodes.include': string[] | undefined;

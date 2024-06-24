@@ -32,7 +32,9 @@ COPY --from=builder /compiled /usr/local/lib/node_modules/n8n
 COPY docker/images/n8n/docker-entrypoint.sh /
 
 RUN \
-	pnpm rebuild --dir /usr/local/lib/node_modules/n8n sqlite3 && \
+	cd /usr/local/lib/node_modules/n8n && \
+	npm rebuild sqlite3 && \
+	cd - && \
 	ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
 	mkdir .n8n && \
 	chown node:node .n8n

@@ -1,5 +1,5 @@
 import { Service } from 'typedi';
-import { COMMAND_REDIS_CHANNEL } from '../../redis/RedisServiceHelper';
+import { COMMAND_REDIS_CHANNEL } from '../../redis/RedisConstants';
 import { OrchestrationHandlerService } from '../../orchestration.handler.base.service';
 import { handleCommandMessageWebhook } from './handleCommandMessageWebhook';
 

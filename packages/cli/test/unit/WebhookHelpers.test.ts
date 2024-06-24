@@ -1,6 +1,8 @@
 import { type Response } from 'express';
 import { mock } from 'jest-mock-extended';
+import { randomString } from 'n8n-workflow';
 import type { IHttpRequestMethods } from 'n8n-workflow';
+
 import type { IWebhookManager, WebhookCORSRequest, WebhookRequest } from '@/Interfaces';
 import { webhookRequestHandler } from '@/WebhookHelpers';
 
@@ -82,7 +84,7 @@ describe('WebhookHelpers', () => {
 			});
 
 			it('should handle wildcard origin', async () => {
-				const randomOrigin = (Math.random() * 10e6).toString(16);
+				const randomOrigin = randomString(10);
 				const req = mock<WebhookRequest | WebhookCORSRequest>({
 					method: 'OPTIONS',
 					headers: {

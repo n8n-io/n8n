@@ -9,7 +9,8 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 } from 'n8n-workflow';
-import { shuffleArray, sortByCode } from './utils';
+import { sortByCode } from './utils';
+import { shuffleArray } from '@utils/utilities';
 
 export class Sort implements INodeType {
 	description: INodeTypeDescription = {
