@@ -218,9 +218,9 @@ defineExpose({
 		content: '';
 		position: absolute;
 		top: -35%;
-		right: -30%;
+		right: -15%;
 		bottom: -35%;
-		left: -30%;
+		left: -15%;
 		z-index: -1;
 	}
 	.outputMain &,

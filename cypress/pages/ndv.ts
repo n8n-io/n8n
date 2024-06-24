@@ -133,6 +133,8 @@ export class NDV extends BasePage {
 		nodeRunErrorDescription: () => cy.getByTestId('node-error-description'),
 		fixedCollectionParameter: (paramName: string) =>
 			cy.getByTestId(`fixed-collection-${paramName}`),
+		schemaViewNode: () => cy.getByTestId('run-data-schema-node'),
+		schemaViewNodeName: () => cy.getByTestId('run-data-schema-node-name'),
 	};
 
 	actions = {
@@ -213,6 +215,9 @@ export class NDV extends BasePage {
 		selectInputNode: (nodeName: string) => {
 			this.getters.inputSelect().find('.el-select').click();
 			this.getters.inputOption().contains(nodeName).click();
+		},
+		expandSchemaViewNode: (nodeName: string) => {
+			this.getters.schemaViewNodeName().contains(nodeName).click();
 		},
 		addDefaultPinnedData: () => {
 			this.actions.editPinnedData();
