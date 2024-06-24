@@ -184,10 +184,6 @@ export default defineComponent({
 		isCollapsed(): boolean {
 			return this.uiStore.sidebarMenuCollapsed;
 		},
-		canUserAccessSettings(): boolean {
-			const accessibleRoute = this.findFirstAccessibleSettingsRoute();
-			return accessibleRoute !== null;
-		},
 		showUserArea(): boolean {
 			return hasPermission(['authenticated']);
 		},
@@ -207,7 +203,6 @@ export default defineComponent({
 			];
 		},
 		mainMenuItems(): IMenuItem[] {
-			const defaultSettingsRoute = this.findFirstAccessibleSettingsRoute();
 			const items: IMenuItem[] = [
 				{
 					id: 'cloud-admin',
@@ -253,15 +248,6 @@ export default defineComponent({
 					label: this.$locale.baseText('mainSidebar.executions'),
 					position: 'bottom',
 					route: { to: { name: VIEWS.EXECUTIONS } },
-				},
-				{
-					id: 'settings',
-					icon: 'cog',
-					label: this.$locale.baseText('settings'),
-					position: 'bottom',
-					available: this.canUserAccessSettings && this.usersStore.currentUser !== null,
-					activateOnRouteNames: [VIEWS.USERS_SETTINGS, VIEWS.API_SETTINGS, VIEWS.PERSONAL_SETTINGS],
-					route: { to: defaultSettingsRoute },
 				},
 				{
 					id: 'help',
@@ -414,24 +400,6 @@ export default defineComponent({
 					break;
 			}
 		},
-		findFirstAccessibleSettingsRoute() {
-			const settingsRoutes = this.$router
-				.getRoutes()
-				.find((route) => route.path === '/settings')
-				?.children.map((route) => route.name ?? '');
-
-			let defaultSettingsRoute = { name: VIEWS.USERS_SETTINGS };
-			for (const route of settingsRoutes ?? []) {
-				if (this.canUserAccessRouteByName(route.toString())) {
-					defaultSettingsRoute = {
-						name: route.toString() as VIEWS,
-					};
-					break;
-				}
-			}
-
-			return defaultSettingsRoute;
-		},
 		onResize(event: UIEvent) {
 			void this.callDebounced(this.onResizeEnd, { debounceTime: 100 }, event);
 		},
@@ -559,12 +527,6 @@ export default defineComponent({
 
 @media screen and (max-height: 470px) {
 	:global(#help) {
-		display: none;
-	}
-}
-
-@media screen and (max-height: 800px) {
-	:global(.n8n-menu-item:has(#settings)) {
 		display: none;
 	}
 }
