@@ -525,7 +525,7 @@ importers:
     dependencies:
       '@langchain/community':
         specifier: 0.2.2
-        version: 0.2.2(@aws-sdk/client-bedrock-runtime@3.535.0)(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@getzep/zep-js@0.9.0)(@google-cloud/storage@6.11.0(encoding@0.1.13))(@huggingface/inference@2.7.0)(@mozilla/readability@0.5.0)(@pinecone-database/pinecone@2.1.0)(@qdrant/js-client-rest@1.9.0(typescript@5.5.2))(@smithy/eventstream-codec@2.2.0)(@smithy/protocol-http@3.3.0)(@smithy/signature-v4@2.2.1)(@smithy/util-utf8@2.3.0)(@supabase/postgrest-js@1.15.2)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.5.2))(axios@1.6.7)(cheerio@1.0.0-rc.12)(cohere-ai@7.10.1(encoding@0.1.13))(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2)(fast-xml-parser@4.3.5)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mammoth@1.7.2)(mysql2@3.10.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.13)(ws@8.17.1)
+        version: 0.2.2(@aws-sdk/client-bedrock-runtime@3.535.0)(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@getzep/zep-js@0.9.0)(@google-cloud/storage@6.11.0(encoding@0.1.13))(@huggingface/inference@2.7.0)(@mozilla/readability@0.5.0)(@pinecone-database/pinecone@2.1.0)(@qdrant/js-client-rest@1.9.0(typescript@5.5.2))(@smithy/eventstream-codec@2.2.0)(@smithy/protocol-http@3.3.0)(@smithy/signature-v4@2.2.1)(@smithy/util-utf8@2.3.0)(@supabase/postgrest-js@1.15.2)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.5.2))(axios@1.6.7)(cheerio@1.0.0-rc.12)(cohere-ai@7.10.1(encoding@0.1.13))(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2)(fast-xml-parser@4.3.5)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mammoth@1.7.2)(mysql2@3.10.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.14)(ws@8.17.1)
       '@langchain/core':
         specifier: 0.2.0
         version: 0.2.0
@@ -549,7 +549,7 @@ importers:
         version: link:../@n8n/permissions
       '@n8n/typeorm':
         specifier: 0.3.20-10
-        version: 0.3.20-10(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.10.0)(pg@8.11.3)(redis@4.6.13)(sqlite3@5.1.7)
+        version: 0.3.20-10(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.10.0)(pg@8.11.3)(redis@4.6.14)(sqlite3@5.1.7)
       '@n8n_io/license-sdk':
         specifier: 2.13.0
         version: 2.13.0
@@ -678,7 +678,7 @@ importers:
         version: 9.0.2
       langchain:
         specifier: 0.2.2
-        version: 0.2.2(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@pinecone-database/pinecone@2.1.0)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.5.2))(axios@1.6.7)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2)(fast-xml-parser@4.3.5)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(mammoth@1.7.2)(pdf-parse@1.1.1)(redis@4.6.13)(ws@8.17.1)
+        version: 0.2.2(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@pinecone-database/pinecone@2.1.0)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.5.2))(axios@1.6.7)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2)(fast-xml-parser@4.3.5)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(mammoth@1.7.2)(pdf-parse@1.1.1)(redis@4.6.14)(ws@8.17.1)
       ldapts:
         specifier: 4.2.6
         version: 4.2.6
@@ -1501,8 +1501,8 @@ importers:
         specifier: 0.23.4
         version: 0.23.4(patch_hash=kzcwsjcayy5m6iezu7r4tdimjq)(encoding@0.1.13)
       redis:
-        specifier: 4.6.12
-        version: 4.6.12
+        specifier: 4.6.14
+        version: 4.6.14
       rfc2047:
         specifier: 4.0.1
         version: 4.0.1
@@ -4425,6 +4425,10 @@ packages:
 
   '@redis/client@1.5.14':
     resolution: {integrity: sha512-YGn0GqsRBFUQxklhY7v562VMOP0DcmlrHHs3IV1mFE3cbxe31IITUkqhBcIhVSI/2JqtWAJXg5mjV4aU+zD0HA==}
+    engines: {node: '>=14'}
+
+  '@redis/client@1.5.16':
+    resolution: {integrity: sha512-X1a3xQ5kEMvTib5fBrHKh6Y+pXbeKXqziYuxOUo1ojQNECg4M5Etd1qqyhMap+lFUOAh8S7UYevgJHOm4A+NOg==}
     engines: {node: '>=14'}
 
   '@redis/graph@1.1.1':
@@ -11763,6 +11767,9 @@ packages:
   redis@4.6.13:
     resolution: {integrity: sha512-MHgkS4B+sPjCXpf+HfdetBwbRz6vCtsceTmw1pHNYJAsYxrfpOP6dz+piJWGos8wqG7qb3vj/Rrc5qOlmInUuA==}
 
+  redis@4.6.14:
+    resolution: {integrity: sha512-GrNg/e33HtsQwNXL7kJT+iNFPSwE1IPmd7wzV3j4f2z0EYxZfZE7FVTmUysgAtqQQtg5NXF5SNLR9OdO/UHOfw==}
+
   redoc@2.1.3:
     resolution: {integrity: sha512-d7F9qLLxaiFW4GC03VkwlX9wuRIpx9aiIIf3o6mzMnqPfhxrn2IRKGndrkJeVdItgCfmg9jXZiFEowm60f1meQ==}
     engines: {node: '>=6.9', npm: '>=3.0.0'}
@@ -16791,7 +16798,7 @@ snapshots:
       - pyodide
       - supports-color
 
-  '@langchain/community@0.2.2(@aws-sdk/client-bedrock-runtime@3.535.0)(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@getzep/zep-js@0.9.0)(@google-cloud/storage@6.11.0(encoding@0.1.13))(@huggingface/inference@2.7.0)(@mozilla/readability@0.5.0)(@pinecone-database/pinecone@2.1.0)(@qdrant/js-client-rest@1.9.0(typescript@5.5.2))(@smithy/eventstream-codec@2.2.0)(@smithy/protocol-http@3.3.0)(@smithy/signature-v4@2.2.1)(@smithy/util-utf8@2.3.0)(@supabase/postgrest-js@1.15.2)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.5.2))(axios@1.6.7)(cheerio@1.0.0-rc.12)(cohere-ai@7.10.1(encoding@0.1.13))(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2)(fast-xml-parser@4.3.5)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mammoth@1.7.2)(mysql2@3.10.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.13)(ws@8.17.1)':
+  '@langchain/community@0.2.2(@aws-sdk/client-bedrock-runtime@3.535.0)(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@getzep/zep-js@0.9.0)(@google-cloud/storage@6.11.0(encoding@0.1.13))(@huggingface/inference@2.7.0)(@mozilla/readability@0.5.0)(@pinecone-database/pinecone@2.1.0)(@qdrant/js-client-rest@1.9.0(typescript@5.5.2))(@smithy/eventstream-codec@2.2.0)(@smithy/protocol-http@3.3.0)(@smithy/signature-v4@2.2.1)(@smithy/util-utf8@2.3.0)(@supabase/postgrest-js@1.15.2)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.5.2))(axios@1.6.7)(cheerio@1.0.0-rc.12)(cohere-ai@7.10.1(encoding@0.1.13))(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2)(fast-xml-parser@4.3.5)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mammoth@1.7.2)(mysql2@3.10.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.14)(ws@8.17.1)':
     dependencies:
       '@langchain/core': 0.2.0
       '@langchain/openai': 0.0.33(encoding@0.1.13)
@@ -16799,7 +16806,7 @@ snapshots:
       expr-eval: 2.0.2
       flat: 5.0.2
       js-yaml: 4.1.0
-      langchain: 0.2.2(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@pinecone-database/pinecone@2.1.0)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.5.2))(axios@1.6.7)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2)(fast-xml-parser@4.3.5)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(mammoth@1.7.2)(pdf-parse@1.1.1)(redis@4.6.13)(ws@8.17.1)
+      langchain: 0.2.2(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@pinecone-database/pinecone@2.1.0)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.5.2))(axios@1.6.7)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2)(fast-xml-parser@4.3.5)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(mammoth@1.7.2)(pdf-parse@1.1.1)(redis@4.6.14)(ws@8.17.1)
       langsmith: 0.1.12
       uuid: 9.0.1
       zod: 3.23.8
@@ -16835,7 +16842,7 @@ snapshots:
       mysql2: 3.10.0
       pdf-parse: 1.1.1
       pg: 8.11.3
-      redis: 4.6.13
+      redis: 4.6.14
       ws: 8.17.1
     transitivePeerDependencies:
       - '@gomomento/sdk-web'
@@ -17097,7 +17104,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@n8n/typeorm@0.3.20-10(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.10.0)(pg@8.11.3)(redis@4.6.13)(sqlite3@5.1.7)':
+  '@n8n/typeorm@0.3.20-10(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.10.0)(pg@8.11.3)(redis@4.6.14)(sqlite3@5.1.7)':
     dependencies:
       '@n8n/p-retry': 6.2.0-2
       '@sqltools/formatter': 1.2.5
@@ -17122,7 +17129,7 @@ snapshots:
       mssql: 10.0.2
       mysql2: 3.10.0
       pg: 8.11.3
-      redis: 4.6.13
+      redis: 4.6.14
       sqlite3: 5.1.7
     transitivePeerDependencies:
       - supports-color
@@ -17452,6 +17459,10 @@ snapshots:
     dependencies:
       '@redis/client': 1.5.14
 
+  '@redis/bloom@1.2.0(@redis/client@1.5.16)':
+    dependencies:
+      '@redis/client': 1.5.16
+
   '@redis/client@1.5.13':
     dependencies:
       cluster-key-slot: 1.1.2
@@ -17459,6 +17470,12 @@ snapshots:
       yallist: 4.0.0
 
   '@redis/client@1.5.14':
+    dependencies:
+      cluster-key-slot: 1.1.2
+      generic-pool: 3.9.0
+      yallist: 4.0.0
+
+  '@redis/client@1.5.16':
     dependencies:
       cluster-key-slot: 1.1.2
       generic-pool: 3.9.0
@@ -17472,6 +17489,10 @@ snapshots:
     dependencies:
       '@redis/client': 1.5.14
 
+  '@redis/graph@1.1.1(@redis/client@1.5.16)':
+    dependencies:
+      '@redis/client': 1.5.16
+
   '@redis/json@1.0.6(@redis/client@1.5.13)':
     dependencies:
       '@redis/client': 1.5.13
@@ -17479,6 +17500,10 @@ snapshots:
   '@redis/json@1.0.6(@redis/client@1.5.14)':
     dependencies:
       '@redis/client': 1.5.14
+
+  '@redis/json@1.0.6(@redis/client@1.5.16)':
+    dependencies:
+      '@redis/client': 1.5.16
 
   '@redis/search@1.1.6(@redis/client@1.5.13)':
     dependencies:
@@ -17488,6 +17513,10 @@ snapshots:
     dependencies:
       '@redis/client': 1.5.14
 
+  '@redis/search@1.1.6(@redis/client@1.5.16)':
+    dependencies:
+      '@redis/client': 1.5.16
+
   '@redis/time-series@1.0.5(@redis/client@1.5.13)':
     dependencies:
       '@redis/client': 1.5.13
@@ -17495,6 +17524,10 @@ snapshots:
   '@redis/time-series@1.0.5(@redis/client@1.5.14)':
     dependencies:
       '@redis/client': 1.5.14
+
+  '@redis/time-series@1.0.5(@redis/client@1.5.16)':
+    dependencies:
+      '@redis/client': 1.5.16
 
   '@redocly/ajv@8.11.0':
     dependencies:
@@ -24524,7 +24557,7 @@ snapshots:
       - encoding
       - supports-color
 
-  langchain@0.2.2(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@pinecone-database/pinecone@2.1.0)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.5.2))(axios@1.6.7)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2)(fast-xml-parser@4.3.5)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(mammoth@1.7.2)(pdf-parse@1.1.1)(redis@4.6.13)(ws@8.17.1):
+  langchain@0.2.2(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@pinecone-database/pinecone@2.1.0)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.5.2))(axios@1.6.7)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2)(fast-xml-parser@4.3.5)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(mammoth@1.7.2)(pdf-parse@1.1.1)(redis@4.6.14)(ws@8.17.1):
     dependencies:
       '@langchain/core': 0.2.0
       '@langchain/openai': 0.0.33(encoding@0.1.13)
@@ -24560,7 +24593,7 @@ snapshots:
       jsdom: 23.0.1
       mammoth: 1.7.2
       pdf-parse: 1.1.1
-      redis: 4.6.13
+      redis: 4.6.14
       ws: 8.17.1
     transitivePeerDependencies:
       - encoding
@@ -26680,6 +26713,15 @@ snapshots:
       '@redis/json': 1.0.6(@redis/client@1.5.14)
       '@redis/search': 1.1.6(@redis/client@1.5.14)
       '@redis/time-series': 1.0.5(@redis/client@1.5.14)
+
+  redis@4.6.14:
+    dependencies:
+      '@redis/bloom': 1.2.0(@redis/client@1.5.16)
+      '@redis/client': 1.5.16
+      '@redis/graph': 1.1.1(@redis/client@1.5.16)
+      '@redis/json': 1.0.6(@redis/client@1.5.16)
+      '@redis/search': 1.1.6(@redis/client@1.5.16)
+      '@redis/time-series': 1.0.5(@redis/client@1.5.16)
 
   redoc@2.1.3(core-js@3.35.0)(encoding@0.1.13)(mobx@6.12.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(styled-components@6.1.8(react-dom@18.2.0(react@18.2.0))(react@18.2.0)):
     dependencies:
