@@ -1,5 +1,7 @@
 import { Command, Flags } from '@oclif/core';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { DataSourceOptions as ConnectionOptions } from '@n8n/typeorm';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { MigrationExecutor, DataSource as Connection } from '@n8n/typeorm';
 import { Container } from 'typedi';
 import { Logger } from '@/Logger';
