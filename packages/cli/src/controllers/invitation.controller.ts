@@ -168,11 +168,12 @@ export class InvitationController {
 
 		this.authService.issueCookie(res, updatedUser, req.browserId);
 
-		void this.internalHooks.onUserSignup(updatedUser, {
+		const signUpMetadata = {
 			user_type: 'email',
 			was_disabled_ldap_user: false,
-		});
-		this.eventRelay.emit('user-signed-up', { user: updatedUser });
+		};
+
+		this.eventRelay.emit('user-signed-up', { user: updatedUser, signUpMetadata });
 
 		const publicInvitee = await this.userService.toPublic(invitee);
 

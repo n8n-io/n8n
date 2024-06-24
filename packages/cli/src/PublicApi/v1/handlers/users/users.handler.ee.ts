@@ -11,6 +11,7 @@ import {
 } from '../../shared/middlewares/global.middleware';
 import type { UserRequest } from '@/requests';
 import { InternalHooks } from '@/InternalHooks';
+import { EventRelay } from '@/eventbus/event-relay.service';
 
 export = {
 	getUser: [
@@ -28,12 +29,7 @@ export = {
 				});
 			}
 
-			const telemetryData = {
-				user_id: req.user.id,
-				public_api: true,
-			};
-
-			void Container.get(InternalHooks).onUserRetrievedUser(telemetryData);
+			void Container.get(EventRelay).emit('user-retrieved-user', { user });
 
 			return res.json(clean(user, { includeRole }));
 		},
@@ -51,12 +47,7 @@ export = {
 				offset,
 			});
 
-			const telemetryData = {
-				user_id: req.user.id,
-				public_api: true,
-			};
-
-			void Container.get(InternalHooks).onUserRetrievedAllUsers(telemetryData);
+			void Container.get(EventRelay).emit('user-retrieved-all-users', { user: req.user });
 
 			return res.json({
 				data: clean(users, { includeRole }),

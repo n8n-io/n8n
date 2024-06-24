@@ -10,6 +10,7 @@ import { encodeNextCursor } from '../../shared/services/pagination.service';
 import { InternalHooks } from '@/InternalHooks';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import { EventRelay } from '@/eventbus/event-relay.service';
 
 export = {
 	deleteExecution: [
@@ -78,9 +79,8 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			void Container.get(InternalHooks).onUserRetrievedExecution({
-				user_id: req.user.id,
-				public_api: true,
+			void Container.get(EventRelay).emit('user-retrieved-execution', {
+				user: req.user,
 			});
 
 			return res.json(replaceCircularReferences(execution));
@@ -129,10 +129,7 @@ export = {
 			const count =
 				await Container.get(ExecutionRepository).getExecutionsCountForPublicApi(filters);
 
-			void Container.get(InternalHooks).onUserRetrievedAllExecutions({
-				user_id: req.user.id,
-				public_api: true,
-			});
+			void Container.get(EventRelay).emit('user-retrieved-all-executions', { user: req.user });
 
 			return res.json({
 				data: replaceCircularReferences(executions),

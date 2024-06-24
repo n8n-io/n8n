@@ -253,12 +253,7 @@ export class UsersController {
 			await trx.delete(User, { id: userToDelete.id });
 		});
 
-		void this.internalHooks.onUserDeletion({
-			user: req.user,
-			telemetryData,
-			publicApi: false,
-		});
-		this.eventRelay.emit('user-deleted', { user: req.user });
+		this.eventRelay.emit('user-deleted', { user: req.user, ...telemetryData, public_api: true });
 
 		await this.externalHooks.run('user.deleted', [await this.userService.toPublic(userToDelete)]);
 

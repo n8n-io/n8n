@@ -14,12 +14,13 @@ import { UserService } from '@/services/user.service';
 import { Logger } from '@/Logger';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalHooks } from '@/InternalHooks';
+import { EventRelay } from '@/eventbus/event-relay.service';
 
 @RestController('/owner')
 export class OwnerController {
 	constructor(
 		private readonly logger: Logger,
-		private readonly internalHooks: InternalHooks,
+		private readonly eventRelay: EventRelay,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly authService: AuthService,
 		private readonly userService: UserService,
@@ -85,7 +86,7 @@ export class OwnerController {
 
 		this.authService.issueCookie(res, owner, req.browserId);
 
-		void this.internalHooks.onInstanceOwnerSetup({ user_id: owner.id });
+		this.eventRelay.emit('user-owner-setup', { user: owner });
 
 		return await this.userService.toPublic(owner, { posthog: this.postHog, withScopes: true });
 	}

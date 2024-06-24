@@ -3,11 +3,11 @@ import axios from 'axios';
 
 import { Logger } from '@/Logger';
 import { License } from '@/License';
-import { InternalHooks } from '@/InternalHooks';
 import type { User } from '@db/entities/User';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UrlService } from '@/services/url.service';
+import { EventRelay } from '@/eventbus/event-relay.service';
 
 type LicenseError = Error & { errorId?: keyof typeof LicenseErrors };
 
@@ -26,9 +26,9 @@ export class LicenseService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly license: License,
-		private readonly internalHooks: InternalHooks,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly urlService: UrlService,
+		private readonly eventRelay: EventRelay,
 	) {}
 
 	async getLicenseData() {
@@ -79,12 +79,12 @@ export class LicenseService {
 		} catch (e) {
 			const message = this.mapErrorMessage(e as LicenseError, 'renew');
 			// not awaiting so as not to make the endpoint hang
-			void this.internalHooks.onLicenseRenewAttempt({ success: false });
+			void this.eventRelay.emit('license-renew-attempted', { success: false });
 			throw new BadRequestError(message);
 		}
 
 		// not awaiting so as not to make the endpoint hang
-		void this.internalHooks.onLicenseRenewAttempt({ success: true });
+		void this.eventRelay.emit('license-renew-attempted', { success: true });
 	}
 
 	private mapErrorMessage(error: LicenseError, action: 'activate' | 'renew') {

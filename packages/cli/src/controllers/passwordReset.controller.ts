@@ -171,8 +171,7 @@ export class PasswordResetController {
 		}
 
 		this.logger.info('Reset-password token resolved successfully', { userId: user.id });
-		void this.internalHooks.onUserPasswordResetEmailClick({ user });
-		this.eventRelay.emit('user-password-reset-email-click', { user });
+		this.eventRelay.emit('user-clicked-password-reset-email', { user });
 	}
 
 	/**
@@ -221,11 +220,11 @@ export class PasswordResetController {
 		// if this user used to be an LDAP users
 		const ldapIdentity = user?.authIdentities?.find((i) => i.providerType === 'ldap');
 		if (ldapIdentity) {
-			void this.internalHooks.onUserSignup(user, {
+			const signUpMetadata = {
 				user_type: 'email',
 				was_disabled_ldap_user: true,
-			});
-			this.eventRelay.emit('user-signed-up', { user });
+			};
+			this.eventRelay.emit('user-signed-up', { user, signUpMetadata });
 		}
 
 		await this.externalHooks.run('user.password.update', [user.email, passwordHash]);

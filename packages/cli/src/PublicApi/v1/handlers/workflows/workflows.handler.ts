@@ -101,10 +101,7 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			void Container.get(InternalHooks).onUserRetrievedWorkflow({
-				user_id: req.user.id,
-				public_api: true,
-			});
+			void Container.get(EventRelay).emit('user-retrieved-workflow', { user: req.user });
 
 			return res.json(workflow);
 		},
@@ -163,10 +160,7 @@ export = {
 				...(!config.getEnv('workflowTagsDisabled') && { relations: ['tags'] }),
 			});
 
-			void Container.get(InternalHooks).onUserRetrievedAllWorkflows({
-				user_id: req.user.id,
-				public_api: true,
-			});
+			void Container.get(EventRelay).emit('user-retrieved-all-workflows', { user: req.user });
 
 			return res.json({
 				data: workflows,

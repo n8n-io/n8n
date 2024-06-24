@@ -17,6 +17,7 @@ import { License } from '@/License';
 import { UserRepository } from '@db/repositories/user.repository';
 import { UrlService } from '@/services/url.service';
 import type { AuthenticatedRequest } from '@/requests';
+import { EventRelay } from '@/eventbus/event-relay.service';
 
 async function createApiRouter(
 	version: string,
@@ -99,12 +100,14 @@ async function createApiRouter(
 
 						if (!user) return false;
 
-						void Container.get(InternalHooks).onUserInvokedApi({
-							user_id: user.id,
+						const invokedApiMetadata = {
+							user: user,
 							path: req.path,
 							method: req.method,
 							api_version: version,
-						});
+						};
+
+						void Container.get(EventRelay).emit('user-invoked-api', invokedApiMetadata);
 
 						req.user = user;
 

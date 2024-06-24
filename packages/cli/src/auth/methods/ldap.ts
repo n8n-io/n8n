@@ -51,11 +51,13 @@ export const handleLdapLogin = async (
 			await updateLdapUserOnLocalDb(identity, ldapAttributesValues);
 		} else {
 			const user = await createLdapUserOnLocalDb(ldapAttributesValues, ldapId);
-			void Container.get(InternalHooks).onUserSignup(user, {
+
+			const signUpMetadata = {
 				user_type: 'ldap',
 				was_disabled_ldap_user: false,
-			});
-			Container.get(EventRelay).emit('user-signed-up', { user });
+			};
+
+			Container.get(EventRelay).emit('user-signed-up', { user, signUpMetadata });
 			return user;
 		}
 	} else {

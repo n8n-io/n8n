@@ -35,7 +35,7 @@ export class AuditEventRelay {
 		this.eventRelay.on('user-password-reset-email-click', (event) =>
 			this.userPasswordResetEmailClick(event),
 		);
-		this.eventRelay.on('user-password-reset-request-click', (event) =>
+		this.eventRelay.on('user-clicked-password-reset-email', (event) =>
 			this.userPasswordResetRequestClick(event),
 		);
 		this.eventRelay.on('api-key-created', (event) => this.apiKeyCreated(event));

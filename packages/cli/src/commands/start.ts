@@ -32,6 +32,7 @@ import { ExecutionService } from '@/executions/execution.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
+import { EventRelay } from '@/eventbus/event-relay.service';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -107,7 +108,7 @@ export class Start extends BaseCommand {
 				await Container.get(OrchestrationService).shutdown();
 			}
 
-			await Container.get(InternalHooks).onN8nStop();
+			await Container.get(EventRelay).emit('n8n-stopped', {});
 
 			await Container.get(ActiveExecutions).shutdown();
 

@@ -268,7 +268,6 @@ export interface IWebhookManager {
 }
 
 export interface ITelemetryUserDeletionData {
-	user_id: string;
 	target_user_old_status: 'active' | 'invited';
 	migration_strategy?: 'transfer_data' | 'delete_data';
 	target_user_id?: string;
