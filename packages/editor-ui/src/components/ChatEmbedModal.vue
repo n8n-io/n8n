@@ -4,7 +4,7 @@ import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 import Modal from './Modal.vue';
 import { CHAT_EMBED_MODAL_KEY, CHAT_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from '../constants';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
 import JsEditor from '@/components/JsEditor/JsEditor.vue';
@@ -68,7 +68,7 @@ const webhookNode = computed(() => {
 });
 
 const webhookUrl = computed(() => {
-	const url = `${rootStore.getWebhookUrl}${
+	const url = `${rootStore.webhookUrl}${
 		webhookNode.value ? `/${webhookNode.value.node.webhookId}` : ''
 	}`;
 

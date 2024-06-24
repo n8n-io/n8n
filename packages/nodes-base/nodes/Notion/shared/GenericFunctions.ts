@@ -21,8 +21,8 @@ import { camelCase, capitalCase, snakeCase } from 'change-case';
 import moment from 'moment-timezone';
 
 import { validate as uuidValidate } from 'uuid';
-import { filters } from './descriptions/Filters';
 import set from 'lodash/set';
+import { filters } from './descriptions/Filters';
 
 function uuidValidateWithoutDashes(this: IExecuteFunctions, value: string) {
 	if (uuidValidate(value)) return true;

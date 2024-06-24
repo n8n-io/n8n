@@ -167,7 +167,7 @@ export class Zulip implements INodeType {
 							body.content = updateFields.content as string;
 						}
 						if (updateFields.propagateMode) {
-							body.propagat_mode = snakeCase(updateFields.propagateMode as string);
+							body.propagate_mode = snakeCase(updateFields.propagateMode as string);
 						}
 						if (updateFields.topic) {
 							body.topic = updateFields.topic as string;
@@ -457,7 +457,7 @@ export class Zulip implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

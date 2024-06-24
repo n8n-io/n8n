@@ -619,18 +619,9 @@ export class WorkflowDataProxy {
 	getDataProxy(): IWorkflowDataProxyData {
 		const that = this;
 
-		const getNodeOutput = (nodeName?: string, branchIndex?: number, runIndex?: number) => {
-			let executionData: INodeExecutionData[];
-
-			if (nodeName === undefined) {
-				executionData = that.connectionInputData;
-			} else {
-				branchIndex = branchIndex || 0;
-				runIndex = runIndex === undefined ? -1 : runIndex;
-				executionData = that.getNodeExecutionData(nodeName, false, branchIndex, runIndex);
-			}
-
-			return executionData;
+		const getNodeOutput = (nodeName: string, branchIndex: number, runIndex?: number) => {
+			runIndex = runIndex === undefined ? -1 : runIndex;
+			return that.getNodeExecutionData(nodeName, false, branchIndex, runIndex);
 		};
 
 		// replacing proxies with the actual data.
@@ -803,7 +794,7 @@ export class WorkflowDataProxy {
 				if (Array.isArray(itemPreviousNode.pairedItem)) {
 					// Item is based on multiple items so check all of them
 					const results = itemPreviousNode.pairedItem
-						// eslint-disable-next-line @typescript-eslint/no-loop-func
+
 						.map((item) => {
 							try {
 								const itemInput = item.input || 0;
@@ -1073,6 +1064,12 @@ export class WorkflowDataProxy {
 							if (property === 'first') {
 								ensureNodeExecutionData();
 								return (branchIndex?: number, runIndex?: number) => {
+									branchIndex =
+										branchIndex ??
+										// default to the output the active node is connected to
+										that.workflow.getNodeConnectionIndexes(that.activeNodeName, nodeName)
+											?.sourceIndex ??
+										0;
 									const executionData = getNodeOutput(nodeName, branchIndex, runIndex);
 									if (executionData[0]) return executionData[0];
 									return undefined;
@@ -1081,6 +1078,12 @@ export class WorkflowDataProxy {
 							if (property === 'last') {
 								ensureNodeExecutionData();
 								return (branchIndex?: number, runIndex?: number) => {
+									branchIndex =
+										branchIndex ??
+										// default to the output the active node is connected to
+										that.workflow.getNodeConnectionIndexes(that.activeNodeName, nodeName)
+											?.sourceIndex ??
+										0;
 									const executionData = getNodeOutput(nodeName, branchIndex, runIndex);
 									if (!executionData.length) return undefined;
 									if (executionData[executionData.length - 1]) {
@@ -1091,8 +1094,15 @@ export class WorkflowDataProxy {
 							}
 							if (property === 'all') {
 								ensureNodeExecutionData();
-								return (branchIndex?: number, runIndex?: number) =>
-									getNodeOutput(nodeName, branchIndex, runIndex);
+								return (branchIndex?: number, runIndex?: number) => {
+									branchIndex =
+										branchIndex ??
+										// default to the output the active node is connected to
+										that.workflow.getNodeConnectionIndexes(that.activeNodeName, nodeName)
+											?.sourceIndex ??
+										0;
+									return getNodeOutput(nodeName, branchIndex, runIndex);
+								};
 							}
 							if (property === 'context') {
 								return that.nodeContextGetter(nodeName);
@@ -1267,11 +1277,11 @@ export class WorkflowDataProxy {
 			$now: DateTime.now(),
 			$today: DateTime.now().set({ hour: 0, minute: 0, second: 0, millisecond: 0 }),
 			$jmesPath: jmespathWrapper,
-			// eslint-disable-next-line @typescript-eslint/naming-convention
+
 			DateTime,
-			// eslint-disable-next-line @typescript-eslint/naming-convention
+
 			Interval,
-			// eslint-disable-next-line @typescript-eslint/naming-convention
+
 			Duration,
 			...that.additionalKeys,
 			$getPairedItem: getPairedItem,

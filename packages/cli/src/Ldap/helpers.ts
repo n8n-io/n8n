@@ -1,8 +1,9 @@
-/* eslint-disable @typescript-eslint/no-use-before-define */
 import type { Entry as LdapUser } from 'ldapts';
 import { Filter } from 'ldapts/filters/Filter';
 import { Container } from 'typedi';
 import { validate } from 'jsonschema';
+import { randomString } from 'n8n-workflow';
+
 import * as Db from '@/Db';
 import config from '@/config';
 import { User } from '@db/entities/User';
@@ -37,13 +38,6 @@ export const getLdapLoginLabel = (): string => config.getEnv(LDAP_LOGIN_LABEL);
  * Retrieve the LDAP login enabled from the configuration object
  */
 export const isLdapLoginEnabled = (): boolean => config.getEnv(LDAP_LOGIN_ENABLED);
-
-/**
- * Return a random password to be assigned to the LDAP users
- */
-export const randomPassword = (): string => {
-	return Math.random().toString(36).slice(-8);
-};
 
 /**
  * Validate the structure of the LDAP configuration schema
@@ -161,7 +155,7 @@ export const mapLdapUserToDbUser = (
 	Object.assign(user, data);
 	if (toCreate) {
 		user.role = 'global:member';
-		user.password = randomPassword();
+		user.password = randomString(8);
 		user.disabled = false;
 	} else {
 		user.disabled = true;
@@ -278,7 +272,7 @@ export const createLdapAuthIdentity = async (user: User, ldapId: string) => {
 
 export const createLdapUserOnLocalDb = async (data: Partial<User>, ldapId: string) => {
 	const { user } = await Container.get(UserRepository).createUserWithProject({
-		password: randomPassword(),
+		password: randomString(8),
 		role: 'global:member',
 		...data,
 	});

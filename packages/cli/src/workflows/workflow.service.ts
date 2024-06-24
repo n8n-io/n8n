@@ -29,9 +29,12 @@ import { WorkflowSharingService } from './workflowSharing.service';
 import { ProjectService } from '@/services/project.service';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { Scope } from '@n8n/permissions';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
+import { EventRelay } from '@/eventbus/event-relay.service';
 
 @Service()
 export class WorkflowService {
@@ -51,6 +54,7 @@ export class WorkflowService {
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly projectService: ProjectService,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly eventRelay: EventRelay,
 	) {}
 
 	async getMany(user: User, options?: ListQuery.Options, includeScopes?: boolean) {
@@ -216,6 +220,11 @@ export class WorkflowService {
 
 		await this.externalHooks.run('workflow.afterUpdate', [updatedWorkflow]);
 		void Container.get(InternalHooks).onWorkflowSaved(user, updatedWorkflow, false);
+		this.eventRelay.emit('workflow-saved', {
+			user,
+			workflowId: updatedWorkflow.id,
+			workflowName: updatedWorkflow.name,
+		});
 
 		if (updatedWorkflow.active) {
 			// When the workflow is supposed to be active add it again
@@ -274,6 +283,7 @@ export class WorkflowService {
 		await this.binaryDataService.deleteMany(idsForDeletion);
 
 		void Container.get(InternalHooks).onWorkflowDeleted(user, workflowId, false);
+		this.eventRelay.emit('workflow-deleted', { user, workflowId });
 		await this.externalHooks.run('workflow.afterDelete', [workflowId]);
 
 		return workflow;

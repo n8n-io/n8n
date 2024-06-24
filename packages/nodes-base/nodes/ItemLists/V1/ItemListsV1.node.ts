@@ -1,7 +1,6 @@
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	INode,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeBaseDescription,
@@ -12,53 +11,14 @@ import { NodeOperationError } from 'n8n-workflow';
 import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';
 import isEqual from 'lodash/isEqual';
-import isObject from 'lodash/isObject';
 import lt from 'lodash/lt';
-import merge from 'lodash/merge';
 import pick from 'lodash/pick';
-import reduce from 'lodash/reduce';
 import set from 'lodash/set';
 import unset from 'lodash/unset';
 
-const compareItems = (
-	obj: INodeExecutionData,
-	obj2: INodeExecutionData,
-	keys: string[],
-	disableDotNotation: boolean,
-	_node: INode,
-) => {
-	let result = true;
-	for (const key of keys) {
-		if (!disableDotNotation) {
-			if (!isEqual(get(obj.json, key), get(obj2.json, key))) {
-				result = false;
-				break;
-			}
-		} else {
-			if (!isEqual(obj.json[key], obj2.json[key])) {
-				result = false;
-				break;
-			}
-		}
-	}
-	return result;
-};
-
-const flattenKeys = (obj: IDataObject, path: string[] = []): IDataObject => {
-	return !isObject(obj)
-		? { [path.join('.')]: obj }
-		: reduce(obj, (cum, next, key) => merge(cum, flattenKeys(next as IDataObject, [...path, key])), {}); //prettier-ignore
-};
-
-const shuffleArray = (array: any[]) => {
-	for (let i = array.length - 1; i > 0; i--) {
-		const j = Math.floor(Math.random() * (i + 1));
-		[array[i], array[j]] = [array[j], array[i]];
-	}
-};
-
 import { sortByCode } from '../V3/helpers/utils';
 import * as summarize from './summarize.operation';
+import { flattenKeys, shuffleArray, compareItems } from '@utils/utilities';
 
 export class ItemListsV1 implements INodeType {
 	description: INodeTypeDescription;
@@ -1226,7 +1186,7 @@ return 0;`,
 				const removedIndexes: number[] = [];
 				let temp = newItems[0];
 				for (let index = 1; index < newItems.length; index++) {
-					if (compareItems(newItems[index], temp, keys, disableDotNotation, this.getNode())) {
+					if (compareItems(newItems[index], temp, keys, disableDotNotation)) {
 						removedIndexes.push(newItems[index].json.__INDEX as unknown as number);
 					} else {
 						temp = newItems[index];

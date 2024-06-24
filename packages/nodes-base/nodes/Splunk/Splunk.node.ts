@@ -13,6 +13,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
+import set from 'lodash/set';
 import {
 	formatFeed,
 	formatResults,
@@ -37,7 +38,6 @@ import {
 } from './descriptions';
 
 import type { SplunkCredentials, SplunkFeedResponse } from './types';
-import set from 'lodash/set';
 
 export class Splunk implements INodeType {
 	description: INodeTypeDescription = {
@@ -456,7 +456,7 @@ export class Splunk implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ json: { error: error.cause.error }, pairedItem: { item: i } });
 					continue;
 				}

@@ -12,7 +12,7 @@ import {
 } from '@/constants';
 
 import type { BaseTextKey } from '@/plugins/i18n';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
 import { TriggerView, RegularView, AIView, AINodesView } from '../viewsData';
