@@ -210,8 +210,8 @@ export class Server extends AbstractServer {
 		setupPushHandler(restEndpoint, app);
 
 		if (config.getEnv('executions.mode') === 'queue') {
-			const { Queue } = await import('@/Queue');
-			await Container.get(Queue).init();
+			const { ScalingMode } = await import('@/scaling-mode/scaling-mode');
+			await Container.get(ScalingMode).setupQueue();
 		}
 
 		await handleMfaDisable();

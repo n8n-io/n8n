@@ -28,7 +28,8 @@ import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { ExternalHooks } from '@/ExternalHooks';
 import type { IExecutionResponse, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
-import { Queue } from '@/Queue';
+import type { Job, JobData, JobResult } from './scaling-mode/types';
+import { ScalingMode } from '@/scaling-mode/scaling-mode';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
@@ -37,12 +38,10 @@ import { InternalHooks } from '@/InternalHooks';
 import { Logger } from '@/Logger';
 import { WorkflowStaticDataService } from '@/workflows/workflowStaticData.service';
 import { EventRelay } from './eventbus/event-relay.service';
-import type { n8nJob, n8nJobData, n8nJobResult } from './queue.types';
-import { QueueEvents } from 'bullmq';
 
 @Service()
 export class WorkflowRunner {
-	private jobQueue: Queue;
+	private scalingMode: ScalingMode;
 
 	private executionsMode = config.getEnv('executions.mode');
 
@@ -57,7 +56,7 @@ export class WorkflowRunner {
 		private readonly eventRelay: EventRelay,
 	) {
 		if (this.executionsMode === 'queue') {
-			this.jobQueue = Container.get(Queue);
+			this.scalingMode = Container.get(ScalingMode);
 		}
 	}
 
@@ -365,7 +364,7 @@ export class WorkflowRunner {
 		loadStaticData?: boolean,
 		realtime?: boolean,
 	): Promise<void> {
-		const jobData: n8nJobData = {
+		const jobData: JobData = {
 			executionId,
 			loadStaticData: !!loadStaticData,
 		};
@@ -382,12 +381,10 @@ export class WorkflowRunner {
 			removeOnComplete: true,
 			removeOnFail: true,
 		};
-		let job: n8nJob;
+		let job: Job;
 		let hooks: WorkflowHooks;
 		try {
-			job = await this.jobQueue.add(jobData, jobOptions);
-
-			this.logger.info(`Started with job ID: ${job.id} (Execution ID: ${executionId})`);
+			job = await this.scalingMode.addJob(jobData, jobOptions);
 
 			hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerMain(
 				data.executionMode,
@@ -416,8 +413,7 @@ export class WorkflowRunner {
 			async (resolve, reject, onCancel) => {
 				onCancel.shouldReject = false;
 				onCancel(async () => {
-					const queue = Container.get(Queue);
-					await queue.stopJob(job);
+					await Container.get(ScalingMode).stopJob(job);
 
 					// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
 					// "workflowExecuteAfter" which we require.
@@ -434,24 +430,17 @@ export class WorkflowRunner {
 					reject(error);
 				});
 
-				// @TODO: Is this the right way to replace job.finished?
-				// https://github.com/OptimalBits/bull/blob/75703e510fd7e3640cc031710a7ddc0c5b018f5a/REFERENCE.md?plain=1#L989
-
+				/**
+				 * @TODO: Replacing `job.finished()` with `job.waitUntilFinished()` will require `QueueEvents`,
+				 * which might be avoidable complexity. Do we need to preserve `watchDogInterval` in `bullmq`?
+				 */
 				// const jobData: Promise<JobResult> = job.finished();
-
-				const jobData = (async () => {
-					const queueEvents = new QueueEvents('jobs');
-					try {
-						return await job.waitUntilFinished(queueEvents);
-					} catch (error) {
-						this.logger.error('[WorkflowRunner] Job failed or faced an error:', error);
-						throw error; // Re-throwing the error or handling it as needed
-					}
-				})();
+				// const jobData = job.waitUntilFinished(this.scalingMode.queueEvents);
 
 				const queueRecoveryInterval = config.getEnv('queue.bull.queueRecoveryInterval');
 
-				const racingPromises: Array<Promise<n8nJobResult>> = [jobData];
+				// const racingPromises: Array<Promise<JobResult>> = [jobData];
+				const racingPromises: Array<Promise<JobResult>> = [];
 
 				let clearWatchdogInterval;
 				if (queueRecoveryInterval > 0) {
@@ -469,9 +458,9 @@ export class WorkflowRunner {
 					 ************************************************ */
 					let watchDogInterval: NodeJS.Timeout | undefined;
 
-					const watchDog: Promise<n8nJobResult> = new Promise((res) => {
+					const watchDog: Promise<JobResult> = new Promise((res) => {
 						watchDogInterval = setInterval(async () => {
-							const currentJob = await this.jobQueue.getJob(job.id);
+							const currentJob = await this.scalingMode.getJob(job.id);
 							// When null means job is finished (not found in queue)
 							if (currentJob === null) {
 								// Mimic worker's success message
@@ -491,7 +480,7 @@ export class WorkflowRunner {
 				}
 
 				try {
-					await Promise.race(racingPromises);
+					// await Promise.race(racingPromises);
 					if (clearWatchdogInterval !== undefined) {
 						clearWatchdogInterval();
 					}

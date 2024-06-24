@@ -9,11 +9,10 @@ import { Workflow, sleep, ApplicationError } from 'n8n-workflow';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
-import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import config from '@/config';
-import type { n8nJob, n8nJobResult, WebhookResponse } from '@/queue.types';
-import { Queue } from '@/Queue';
+import type { Job, JobResult } from '@/scaling-mode/types';
+import { ScalingMode } from '@/scaling-mode/scaling-mode';
 import { N8N_VERSION, inTest } from '@/constants';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
@@ -28,8 +27,7 @@ import { OrchestrationWorkerService } from '@/services/orchestration/worker/orch
 import type { WorkerJobStatusSummary } from '@/services/orchestration/worker/types';
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { BaseCommand } from './BaseCommand';
-import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
-import { Worker as BullWorker } from 'bullmq';
+import { encodeWebhookResponse } from '@/scaling-mode/webhook-response';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -44,15 +42,21 @@ export class Worker extends BaseCommand {
 		}),
 	};
 
-	static runningJobs: {
-		[key: string]: PCancelable<IRun>;
-	} = {};
-
 	static runningJobsSummary: {
 		[jobId: string]: WorkerJobStatusSummary;
 	} = {};
 
-	static jobQueue: Queue;
+	/**
+	 * How many jobs this worker may run concurrently.
+	 *
+	 * Taken from env var `N8N_CONCURRENCY_PRODUCTION_LIMIT` if set to a value
+	 * other than -1, else taken from `--concurrency` flag.
+	 *
+	 * @docs https://docs.bullmq.io/guide/workers/concurrency#concurrency-factor
+	 */
+	concurrency: number;
+
+	scalingMode: ScalingMode;
 
 	redisSubscriber: RedisServicePubSubSubscriber;
 
@@ -64,10 +68,7 @@ export class Worker extends BaseCommand {
 	async stopProcess() {
 		this.logger.info('Stopping n8n...');
 
-		await Worker.jobQueue.pause({
-			isLocal: true,
-			doNotWaitActive: true, // allows reporting progress
-		});
+		await this.scalingMode.closeWorker();
 
 		try {
 			await this.externalHooks?.run('n8n.stop', []);
@@ -76,12 +77,12 @@ export class Worker extends BaseCommand {
 
 			// Wait for active workflow executions to finish
 			let count = 0;
-			while (Object.keys(Worker.runningJobs).length !== 0) {
+			while (Object.keys(this.scalingMode.getRunningJobIds()).length !== 0) {
 				if (count++ % 4 === 0) {
 					const waitLeft = Math.ceil((hardStopTimeMs - Date.now()) / 1000);
 					this.logger.info(
 						`Waiting for ${
-							Object.keys(Worker.runningJobs).length
+							Object.keys(this.scalingMode.getRunningJobIds()).length
 						} active executions to finish... (max wait ${waitLeft} more seconds)`,
 					);
 				}
@@ -95,7 +96,7 @@ export class Worker extends BaseCommand {
 		await this.exitSuccessFully();
 	}
 
-	async runJob(job: n8nJob, nodeTypes: INodeTypes): Promise<n8nJobResult> {
+	async runJob(job: Job, nodeTypes: INodeTypes): Promise<JobResult> {
 		const { executionId, loadStaticData } = job.data;
 		const executionRepository = Container.get(ExecutionRepository);
 		const fullExecutionData = await executionRepository.findSingleExecution(executionId, {
@@ -175,11 +176,11 @@ export class Worker extends BaseCommand {
 
 		additionalData.hooks.hookFunctions.sendResponse = [
 			async (response: IExecuteResponsePromiseData): Promise<void> => {
-				const progress: WebhookResponse = {
+				await job.updateProgress({
+					kind: 'webhook-response',
 					executionId,
-					response: WebhookHelpers.encodeWebhookResponse(response),
-				};
-				await job.updateProgress(progress); // @TODO: Check if this still works
+					response: encodeWebhookResponse(response),
+				});
 			},
 		];
 
@@ -206,7 +207,7 @@ export class Worker extends BaseCommand {
 			workflowRun = workflowExecute.run(workflow);
 		}
 
-		Worker.runningJobs[job.id] = workflowRun;
+		this.scalingMode.registerRunningJob(job.id, workflowRun);
 		Worker.runningJobsSummary[job.id] = {
 			jobId: job.id.toString(),
 			executionId,
@@ -221,7 +222,7 @@ export class Worker extends BaseCommand {
 		// Wait till the execution is finished
 		await workflowRun;
 
-		delete Worker.runningJobs[job.id];
+		this.scalingMode.deregisterRunningJob(job.id);
 		delete Worker.runningJobsSummary[job.id];
 
 		// do NOT call workflowExecuteAfter hook here, since it is being called from processSuccessExecution()
@@ -259,6 +260,7 @@ export class Worker extends BaseCommand {
 		this.logger.debug('Starting n8n worker...');
 		this.logger.debug(`Queue mode id: ${this.queueModeId}`);
 
+		await this.setConcurrency();
 		await super.init();
 
 		await this.initLicense();
@@ -271,8 +273,8 @@ export class Worker extends BaseCommand {
 		this.logger.debug('External secrets init complete');
 		await this.initEventBus();
 		this.logger.debug('Event bus init complete');
-		await this.initQueue();
-		this.logger.debug('Queue init complete');
+		await this.initScalingMode();
+		this.logger.debug('Scaling mode init complete');
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
 
@@ -303,86 +305,34 @@ export class Worker extends BaseCommand {
 		await Container.get(OrchestrationHandlerWorkerService).initWithOptions({
 			queueModeId: this.queueModeId,
 			redisPublisher: Container.get(OrchestrationWorkerService).redisPublisher,
-			getRunningJobIds: () => Object.keys(Worker.runningJobs),
+			getRunningJobIds: () => this.scalingMode.getRunningJobIds(),
 			getRunningJobsSummary: () => Object.values(Worker.runningJobsSummary),
 		});
 	}
 
-	async initQueue() {
+	async setConcurrency() {
 		const { flags } = await this.parse(Worker);
 
-		const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
-
-		this.logger.debug(
-			`Opening Redis connection to listen to messages with timeout ${redisConnectionTimeoutLimit}`,
-		);
-
-		Worker.jobQueue = Container.get(Queue);
-		await Worker.jobQueue.init();
-		this.logger.debug('Queue singleton ready');
-
 		const envConcurrency = config.getEnv('executions.concurrency.productionLimit');
-		const concurrency = envConcurrency !== -1 ? envConcurrency : flags.concurrency;
 
-		const configSettings = config.get('queue.bull.settings');
+		this.concurrency = envConcurrency !== -1 ? envConcurrency : flags.concurrency;
+	}
 
-		new BullWorker('jobs', async (job: n8nJob) => await this.runJob(job, this.nodeTypes), {
-			concurrency,
-			...Worker.jobQueue.getQueueOptions(),
-			...configSettings,
-		});
+	async initScalingMode() {
+		this.scalingMode = Container.get(ScalingMode);
 
-		// @TODO: Check if this listener still works
-		Worker.jobQueue.getBullQueue().on('progress', ({ id: jobId }: n8nJob, progress) => {
-			// Progress of a job got updated which does get used
-			// to communicate that a job got canceled.
+		await this.scalingMode.setupQueue();
 
-			if (progress === -1) {
-				// Job has to get canceled
-				if (Worker.runningJobs[jobId] !== undefined) {
-					// Job is processed by current worker so cancel
-					Worker.runningJobs[jobId].cancel();
-					delete Worker.runningJobs[jobId];
-				}
-			}
-		});
+		const processorFn = async (job: Job) => await this.runJob(job, this.nodeTypes);
 
-		let lastTimer = 0;
-		let cumulativeTimeout = 0;
-		Worker.jobQueue.getBullQueue().on('error', (error: Error) => {
-			if (error.toString().includes('ECONNREFUSED')) {
-				const now = Date.now();
-				if (now - lastTimer > 30000) {
-					// Means we had no timeout at all or last timeout was temporary and we recovered
-					lastTimer = now;
-					cumulativeTimeout = 0;
-				} else {
-					cumulativeTimeout += now - lastTimer;
-					lastTimer = now;
-					if (cumulativeTimeout > redisConnectionTimeoutLimit) {
-						this.logger.error(
-							`Unable to connect to Redis after ${redisConnectionTimeoutLimit}. Exiting process.`,
-						);
-						process.exit(1);
-					}
-				}
-				this.logger.warn('Redis unavailable - trying to reconnect...');
-			} else if (error.toString().includes('Error initializing Lua scripts')) {
-				// This is a non-recoverable error
-				// Happens when worker starts and Redis is unavailable
-				// Even if Redis comes back online, worker will be zombie
-				this.logger.error('Error initializing worker.');
-				process.exit(2);
-			} else {
-				this.logger.error('Error from queue: ', error);
+		await this.scalingMode.setupWorker(processorFn, { concurrency: this.concurrency });
 
-				if (error.message.includes('job stalled more than maxStalledCount')) {
-					throw new MaxStalledCountError(error);
-				}
-
-				throw error;
-			}
-		});
+		/**
+		 * @TODO Do we want to have the worker auto-remove jobs? Or make this configurable?
+		 *
+		 * https://docs.bullmq.io/guide/going-to-production#auto-job-removal
+		 * https://docs.bullmq.io/guide/workers/auto-removal-of-jobs
+		 */
 	}
 
 	async setupHealthMonitor() {
@@ -418,7 +368,7 @@ export class Worker extends BaseCommand {
 				// if it loses the connection to redis
 				try {
 					// Redis ping
-					await Worker.jobQueue.ping();
+					await this.scalingMode.pingStore();
 				} catch (e) {
 					this.logger.error('No Redis connection!', e as Error);
 					const error = new ServiceUnavailableError('No Redis connection!');
@@ -483,18 +433,16 @@ export class Worker extends BaseCommand {
 	}
 
 	async run() {
-		const { flags } = await this.parse(Worker);
-
 		this.logger.info('\nn8n worker is now ready');
 		this.logger.info(` * Version: ${N8N_VERSION}`);
-		this.logger.info(` * Concurrency: ${flags.concurrency}`);
+		this.logger.info(` * Concurrency: ${this.concurrency}`);
 		this.logger.info('');
 
 		if (config.getEnv('queue.health.active')) {
 			await this.setupHealthMonitor();
 		}
 
-		if (process.stdout.isTTY) {
+		if (!inTest && process.stdout.isTTY) {
 			process.stdin.setRawMode(true);
 			process.stdin.resume();
 			process.stdin.setEncoding('utf8');

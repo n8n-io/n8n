@@ -20,7 +20,6 @@ import type {
 	IDataObject,
 	IDeferredPromise,
 	IExecuteData,
-	IExecuteResponsePromiseData,
 	IHttpRequestMethods,
 	IN8nHttpFullResponse,
 	INode,
@@ -190,19 +189,6 @@ export function getWorkflowWebhooks(
 	}
 
 	return returnData;
-}
-
-export function encodeWebhookResponse(
-	response: IExecuteResponsePromiseData,
-): IExecuteResponsePromiseData {
-	if (typeof response === 'object' && Buffer.isBuffer(response.body)) {
-		response.body = {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
-			'__@N8nEncodedBuffer@__': response.body.toString(BINARY_ENCODING),
-		};
-	}
-
-	return response;
 }
 
 const normalizeFormData = <T>(values: Record<string, T | T[]>) => {

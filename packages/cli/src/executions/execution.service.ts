@@ -23,7 +23,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
-import { Queue } from '@/Queue';
+import { ScalingMode } from '@/scaling-mode/scaling-mode';
 import type { ExecutionRequest, ExecutionSummaries } from './execution.types';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import type { IGetExecutionsQueryFilter } from '@db/repositories/execution.repository';
@@ -81,7 +81,7 @@ export const allowedExecutionsQueryFilterFields = Object.keys(
 export class ExecutionService {
 	constructor(
 		private readonly logger: Logger,
-		private readonly queue: Queue,
+		private readonly scalingMode: ScalingMode,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
@@ -423,11 +423,11 @@ export class ExecutionService {
 			// @TODO: Why are we swallowing this error in queue mode?
 		}
 
-		const activeJobs = await this.queue.getJobsByState(['active', 'waiting']);
+		const activeJobs = await this.scalingMode.findJobsByState(['active', 'waiting']);
 		const job = activeJobs.find(({ data }) => data.executionId === execution.id);
 
 		if (job) {
-			await this.queue.stopJob(job);
+			await this.scalingMode.stopJob(job);
 		} else {
 			this.logger.debug('Job to stop no longer in queue', { jobId: execution.id });
 		}

@@ -5,7 +5,7 @@ import { ApplicationError } from 'n8n-workflow';
 import config from '@/config';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { WebhookServer } from '@/WebhookServer';
-import { Queue } from '@/Queue';
+import { ScalingMode } from '@/scaling-mode/scaling-mode';
 import { BaseCommand } from './BaseCommand';
 
 import { OrchestrationWebhookService } from '@/services/orchestration/webhook/orchestration.webhook.service';
@@ -94,7 +94,7 @@ export class Webhook extends BaseCommand {
 			);
 		}
 
-		await Container.get(Queue).init();
+		await Container.get(ScalingMode).setupQueue();
 		await this.server.start();
 		this.logger.debug(`Webhook listener ID: ${this.server.uniqueInstanceId}`);
 		this.logger.info('Webhook listener waiting for requests.');
