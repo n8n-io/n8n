@@ -9,6 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError, tryToParseAlphanumericString } from 'n8n-workflow';
 
+import { DynamicTool } from '@langchain/core/tools';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 import {
@@ -30,8 +31,6 @@ import {
 } from './descriptions';
 
 import type { PlaceholderDefinition, ToolParameter } from './interfaces';
-
-import { DynamicTool } from '@langchain/core/tools';
 
 export class ToolHttpRequest implements INodeType {
 	description: INodeTypeDescription = {

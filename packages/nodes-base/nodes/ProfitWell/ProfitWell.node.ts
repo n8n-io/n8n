@@ -23,7 +23,7 @@ export class ProfitWell implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'ProfitWell',
 		name: 'profitWell',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
+
 		icon: { light: 'file:profitwell.svg', dark: 'file:profitwell.dark.svg' },
 		group: ['output'],
 		version: 1,

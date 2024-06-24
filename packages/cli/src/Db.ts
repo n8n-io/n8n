@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
 import { Container } from 'typedi';
 import type { EntityManager } from '@n8n/typeorm';
 import { DataSource as Connection } from '@n8n/typeorm';

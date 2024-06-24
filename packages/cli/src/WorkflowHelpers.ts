@@ -219,7 +219,7 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 				credentialsById[nodeCredentialType][nodeCredentials.id];
 		}
 	}
-	/* eslint-enable no-await-in-loop */
+
 	return workflow;
 }
 

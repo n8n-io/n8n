@@ -794,7 +794,7 @@ export class WorkflowDataProxy {
 				if (Array.isArray(itemPreviousNode.pairedItem)) {
 					// Item is based on multiple items so check all of them
 					const results = itemPreviousNode.pairedItem
-						// eslint-disable-next-line @typescript-eslint/no-loop-func
+
 						.map((item) => {
 							try {
 								const itemInput = item.input || 0;
@@ -1277,11 +1277,11 @@ export class WorkflowDataProxy {
 			$now: DateTime.now(),
 			$today: DateTime.now().set({ hour: 0, minute: 0, second: 0, millisecond: 0 }),
 			$jmesPath: jmespathWrapper,
-			// eslint-disable-next-line @typescript-eslint/naming-convention
+
 			DateTime,
-			// eslint-disable-next-line @typescript-eslint/naming-convention
+
 			Interval,
-			// eslint-disable-next-line @typescript-eslint/naming-convention
+
 			Duration,
 			...that.additionalKeys,
 			$getPairedItem: getPairedItem,

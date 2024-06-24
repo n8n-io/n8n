@@ -10,15 +10,6 @@ import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow'
 
 import { getOAuth2AdditionalParameters } from 'n8n-nodes-base/dist/nodes/HttpRequest/GenericFunctions';
 
-import type {
-	ParameterInputType,
-	ParametersValues,
-	PlaceholderDefinition,
-	ParametersValues as RawParametersValues,
-	SendIn,
-	ToolParameter,
-} from './interfaces';
-
 import set from 'lodash/set';
 import get from 'lodash/get';
 import unset from 'lodash/unset';
@@ -28,6 +19,14 @@ import { convert } from 'html-to-text';
 
 import { Readability } from '@mozilla/readability';
 import { JSDOM } from 'jsdom';
+import type {
+	ParameterInputType,
+	ParametersValues,
+	PlaceholderDefinition,
+	ParametersValues as RawParametersValues,
+	SendIn,
+	ToolParameter,
+} from './interfaces';
 
 const genericCredentialRequest = async (ctx: IExecuteFunctions, itemIndex: number) => {
 	const genericType = ctx.getNodeParameter('genericAuthType', itemIndex) as string;

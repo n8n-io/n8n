@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type { INodeProperties } from 'n8n-workflow';
 
 export const webhookPath: INodeProperties = {
