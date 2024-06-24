@@ -680,7 +680,11 @@ export class InvoiceNinja implements INodeType {
 							];
 						}
 						if (additionalFields.paymentType) {
-							body.payment_type_id = additionalFields.paymentType as number;
+							if (apiVersion === 'v4') {
+								body.payment_type_id = additionalFields.paymentType as number;
+							} else if(apiVersion == 'v5') {
+								body.type_id = additionalFields.paymentType as number;
+							}
 						}
 						if (additionalFields.transferReference) {
 							body.transaction_reference = additionalFields.transferReference as string;
