@@ -4,6 +4,8 @@ import { mock } from 'jest-mock-extended';
 
 import type { BaseCommand } from '@/commands/BaseCommand';
 import * as testDb from '../testDb';
+import { TelemetryEventRelay } from '@/telemetry/telemetry-event-relay.service';
+import { mockInstance } from '@test/mocking';
 
 export const setupTestCommand = <T extends BaseCommand>(Command: Class<T>) => {
 	const config = mock<Config>();
@@ -18,6 +20,7 @@ export const setupTestCommand = <T extends BaseCommand>(Command: Class<T>) => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		mockInstance(TelemetryEventRelay);
 	});
 
 	afterAll(async () => {
