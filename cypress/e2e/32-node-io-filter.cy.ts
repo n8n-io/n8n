@@ -15,7 +15,6 @@ describe('Node IO Filter', () => {
 		workflowPage.getters.canvasNodes().first().dblclick();
 		ndv.actions.close();
 		workflowPage.getters.canvasNodes().first().dblclick();
-		cy.wait(500);
 		ndv.getters.outputDataContainer().should('be.visible');
 		cy.document().trigger('keyup', { key: '/' });
 
@@ -36,7 +35,6 @@ describe('Node IO Filter', () => {
 
 	it('should filter input/output data separately', () => {
 		workflowPage.getters.canvasNodes().eq(1).dblclick();
-		cy.wait(500);
 		ndv.getters.outputDataContainer().should('be.visible');
 		ndv.getters.inputDataContainer().should('be.visible');
 		ndv.actions.switchInputMode('Table');

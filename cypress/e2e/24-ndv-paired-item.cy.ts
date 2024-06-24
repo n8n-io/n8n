@@ -112,6 +112,9 @@ describe('NDV', () => {
 		workflowPage.actions.executeWorkflow();
 		workflowPage.actions.openNode('Set3');
 
+		ndv.actions.switchInputMode('Table');
+		ndv.actions.switchOutputMode('Table');
+
 		ndv.getters
 			.inputRunSelector()
 			.should('exist')
@@ -122,9 +125,6 @@ describe('NDV', () => {
 			.should('exist')
 			.find('input')
 			.should('include.value', '2 of 2 (6 items)');
-
-		ndv.actions.switchInputMode('Table');
-		ndv.actions.switchOutputMode('Table');
 
 		ndv.actions.changeOutputRunSelector('1 of 2 (6 items)');
 		ndv.getters.inputRunSelector().find('input').should('include.value', '1 of 2 (6 items)');
