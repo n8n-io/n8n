@@ -191,7 +191,7 @@ describe('Current Workflow Executions', () => {
 			.invoke('attr', 'title')
 			.should('eq', newWorkflowName);
 
-		newWorkflowName = 'Renamed workflow renamed again';
+		newWorkflowName = 'New workflow';
 		workflowPage.actions.renameWorkflow(newWorkflowName);
 		workflowPage.getters.isWorkflowSaved();
 		workflowPage.getters
