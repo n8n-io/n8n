@@ -18,6 +18,7 @@ import { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { WorkflowTagMapping } from '@db/entities/WorkflowTagMapping';
 import type { TagEntity } from '@db/entities/TagEntity';
 import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { isUniqueConstraintError } from '@/ResponseHelper';
 import type { SourceControlWorkflowVersionId } from './types/sourceControlWorkflowVersionId';

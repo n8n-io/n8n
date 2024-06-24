@@ -167,7 +167,7 @@ export class Zulip implements INodeType {
 							body.content = updateFields.content as string;
 						}
 						if (updateFields.propagateMode) {
-							body.propagat_mode = snakeCase(updateFields.propagateMode as string);
+							body.propagate_mode = snakeCase(updateFields.propagateMode as string);
 						}
 						if (updateFields.topic) {
 							body.topic = updateFields.topic as string;
