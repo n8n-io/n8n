@@ -243,7 +243,7 @@ export function useCanvasOperations({
 		}: {
 			dragAndDrop?: boolean;
 			position?: XYPosition;
-		},
+		} = {},
 	) {
 		let currentPosition = position;
 		let lastAddedNode: INodeUi | undefined;

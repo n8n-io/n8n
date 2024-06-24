@@ -18,7 +18,14 @@ import type {
 } from '@/Interface';
 import type { Connection } from '@vue-flow/core';
 import type { CanvasElement } from '@/types';
-import { EnterpriseEditionFeature, VIEWS } from '@/constants';
+import {
+	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT,
+	EnterpriseEditionFeature,
+	MODAL_CANCEL,
+	MODAL_CONFIRM,
+	NEW_WORKFLOW_ID,
+	VIEWS,
+} from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -34,6 +41,14 @@ import { historyBus } from '@/models/history';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useCanvasStore } from '@/stores/canvas.store';
+import { useMessage } from '@/composables/useMessage';
+import { useTitleChange } from '@/composables/useTitleChange';
+import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useHistoryStore } from '@/stores/history.store';
+import { useProjectsStore } from '@/stores/projects.store';
+import { usePostHog } from '@/stores/posthog.store';
 
 const NodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -47,8 +62,12 @@ const $style = useCssModule();
 const router = useRouter();
 const route = useRoute();
 const i18n = useI18n();
+const telemetry = useTelemetry();
 const externalHooks = useExternalHooks();
 const toast = useToast();
+const message = useMessage();
+const titleChange = useTitleChange();
+const workflowHelpers = useWorkflowHelpers({ router });
 
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
@@ -63,6 +82,9 @@ const rootStore = useRootStore();
 const collaborationStore = useCollaborationStore();
 const executionsStore = useExecutionsStore();
 const canvasStore = useCanvasStore();
+const npsSurveyStore = useNpsSurveyStore();
+const historyStore = useHistoryStore();
+const projectsStore = useProjectsStore();
 
 const lastClickPosition = ref<XYPosition>([450, 450]);
 
@@ -87,10 +109,12 @@ const {
 } = useCanvasOperations({ router, lastClickPosition });
 
 const isLoading = ref(true);
+const isBlankRedirect = ref(false);
 const readOnlyNotification = ref<null | { visible: boolean }>(null);
 
 const isProductionExecutionPreview = ref(false);
 const isExecutionPreview = ref(false);
+const isExecutionWaitingForWebhook = ref(false);
 
 const canOpenNDV = ref(true);
 const hideNodeIssues = ref(false);
@@ -117,8 +141,11 @@ const isCanvasAddButtonVisible = computed(() => {
  * Initialization
  */
 
-async function initialize() {
+async function initializeData() {
 	isLoading.value = true;
+
+	resetWorkspace();
+	titleChange.titleReset();
 
 	const loadPromises: Array<Promise<unknown>> = [
 		nodeTypesStore.getNodeTypes(),
@@ -151,8 +178,6 @@ async function initialize() {
 		);
 	}
 
-	workflowsStore.initializeEditableWorkflow(workflowId.value);
-
 	void externalHooks.run('workflow.open', {
 		workflowId: workflowsStore.workflow.id,
 		workflowName: workflowsStore.workflow.name,
@@ -167,23 +192,170 @@ async function initialize() {
 		executionsStore.activeExecution = selectedExecution;
 	}
 
-	addUndoRedoEventBindings();
-	addPostMessageEventBindings();
-
-	if (window.parent) {
-		window.parent.postMessage(
-			JSON.stringify({ command: 'n8nReady', version: rootStore.versionCli }),
-			'*',
-		);
-	}
+	// @TODO Implement this
+	// this.clipboard.onPaste.value = this.onClipboardPasteEvent;
 
 	isLoading.value = false;
 }
 
-onBeforeUnmount(() => {
-	removePostMessageEventBindings();
-	removeUndoRedoEventBindings();
-});
+async function initializeView() {
+	// In case the workflow got saved we do not have to run init
+	// as only the route changed but all the needed data is already loaded
+	if (route.params.action === 'workflowSave') {
+		uiStore.stateIsDirty = false;
+		return;
+	}
+
+	// This function is called on route change as well, so we need to do the following:
+	// - if the redirect is blank, then do nothing
+	// - if the route is the template import view, then open the template
+	// - if the user is leaving the current view without saving the changes, then show a confirmation modal
+	if (isBlankRedirect.value) {
+		isBlankRedirect.value = false;
+	} else if (route.name === VIEWS.TEMPLATE_IMPORT) {
+		// @TODO Implement template import
+		// const templateId = route.params.id;
+		// await openWorkflowTemplate(templateId.toString());
+	} else {
+		if (uiStore.stateIsDirty && !isReadOnlyEnvironment.value) {
+			const confirmModal = await message.confirm(
+				i18n.baseText('generic.unsavedWork.confirmMessage.message'),
+				{
+					title: i18n.baseText('generic.unsavedWork.confirmMessage.headline'),
+					type: 'warning',
+					confirmButtonText: i18n.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
+					cancelButtonText: i18n.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
+					showClose: true,
+				},
+			);
+
+			if (confirmModal === MODAL_CONFIRM) {
+				const saved = await workflowHelpers.saveCurrentWorkflow();
+				if (saved) {
+					await npsSurveyStore.fetchPromptsData();
+				}
+			} else if (confirmModal === MODAL_CANCEL) {
+				return;
+			}
+		}
+
+		// Get workflow id
+		let workflowIdParam: string | null = null;
+		if (route.params.workflowId) {
+			workflowIdParam = route.params.workflowId.toString();
+		}
+
+		historyStore.reset();
+
+		// If there is no workflow id, treat it as a new workflow
+		if (!workflowIdParam || workflowIdParam === NEW_WORKFLOW_ID) {
+			if (route.meta?.nodeView === true) {
+				await initializeViewForNewWorkflow();
+			}
+			return;
+		}
+
+		// Load workflow data
+		try {
+			await workflowsStore.fetchWorkflow(workflowIdParam);
+
+			titleChange.titleSet(workflow.value.name, 'IDLE');
+			// @TODO Implement this
+			// await openWorkflow(workflow);
+			// await checkAndInitDebugMode();
+
+			await workflowsStore.initializeEditableWorkflow(workflowIdParam);
+			await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(workflow.value.homeProject);
+
+			trackOpenWorkflowFromOnboardingTemplate();
+		} catch (error) {
+			toast.showError(error, i18n.baseText('openWorkflow.workflowNotFoundError'));
+
+			void router.push({
+				name: VIEWS.NEW_WORKFLOW,
+			});
+		}
+	}
+
+	await loadCredentials();
+	uiStore.nodeViewInitialized = true;
+
+	// Once view is initialized, pick up all toast notifications
+	// waiting in the store and display them
+	toast.showNotificationForViews([VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW]);
+}
+
+async function initializeViewForNewWorkflow() {
+	resetWorkspace();
+
+	await workflowsStore.getNewWorkflowData(undefined, projectsStore.currentProjectId);
+
+	workflowsStore.currentWorkflowExecutions = [];
+	executionsStore.activeExecution = null;
+	uiStore.stateIsDirty = false;
+	uiStore.nodeViewInitialized = true;
+	executionsStore.activeExecution = null;
+
+	// @TODO Implement this
+	// canvasStore.setZoomLevel(1, [0, 0]);
+	// canvasStore.zoomToFit();
+
+	// @TODO Implement this
+	// this.makeNewWorkflowShareable();
+
+	// Pre-populate the canvas with the manual trigger node if the experiment is enabled and the user is in the variant group
+	const { getVariant } = usePostHog();
+	if (
+		getVariant(CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT.name) ===
+		CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT.variant
+	) {
+		const manualTriggerNode = canvasStore.getAutoAddManualTriggerNode();
+		if (manualTriggerNode) {
+			await addNodes([manualTriggerNode]);
+			uiStore.lastSelectedNode = manualTriggerNode.name;
+		}
+	}
+}
+
+function resetWorkspace() {
+	workflowsStore.resetWorkflow();
+
+	onToggleNodeCreator({ createNodeActive: false });
+	nodeCreatorStore.setShowScrim(false);
+
+	// @TODO Implement this
+	// Reset nodes
+	// this.unbindEndpointEventListeners();
+	// this.deleteEveryEndpoint();
+
+	// Make sure that if there is a waiting test-webhook that it gets removed
+	if (isExecutionWaitingForWebhook.value) {
+		try {
+			void workflowsStore.removeTestWebhook(workflowsStore.workflowId);
+		} catch (error) {}
+	}
+	workflowsStore.resetState();
+	uiStore.removeActiveAction('workflowRunning');
+
+	uiStore.resetSelectedNodes();
+	uiStore.nodeViewOffsetPosition = [0, 0]; // @TODO Not sure if needed
+
+	// this.credentialsUpdated = false;
+}
+
+function trackOpenWorkflowFromOnboardingTemplate() {
+	if (workflow.value.meta?.onboardingId) {
+		telemetry.track(
+			`User opened workflow from onboarding template with ID ${workflow.value.meta.onboardingId}`,
+			{
+				workflow_id: workflowId.value,
+			},
+			{
+				withPostHog: true,
+			},
+		);
+	}
+}
 
 /**
  * Nodes
@@ -224,6 +396,31 @@ async function onRevertRenameNode({
 	newName: string;
 }) {
 	await revertRenameNode(currentName, newName);
+}
+
+/**
+ * Credentials
+ */
+
+async function loadCredentials() {
+	let options: { workflowId: string } | { projectId: string };
+
+	if (workflow.value) {
+		options = { workflowId: workflow.value.id };
+	} else {
+		const queryParam =
+			typeof route.query?.projectId === 'string' ? route.query?.projectId : undefined;
+		const projectId = queryParam ?? projectsStore.personalProject?.id;
+		if (projectId === undefined) {
+			throw new Error(
+				'Could not find projectId in the query nor could I find the personal project in the project store',
+			);
+		}
+
+		options = { projectId };
+	}
+
+	await credentialsStore.fetchAllCredentialsForWorkflow(options);
 }
 
 /**
@@ -294,6 +491,34 @@ async function openExecution(_executionId: string) {
 }
 
 /**
+ * Unload
+ */
+
+function addUnloadEventBindings() {
+	// window.addEventListener('beforeunload', this.onBeforeUnload);
+	// window.addEventListener('unload', this.onUnload);
+}
+
+function removeUnloadEventBindings() {
+	// window.removeEventListener('beforeunload', this.onBeforeUnload);
+	// window.removeEventListener('unload', this.onUnload);
+}
+
+/**
+ * Keboard
+ */
+
+function addKeyboardEventBindings() {
+	// document.addEventListener('keydown', this.keyDown);
+	// document.addEventListener('keyup', this.keyUp);
+}
+
+function removeKeyboardEventBindings() {
+	// document.removeEventListener('keydown', this.keyDown);
+	// document.removeEventListener('keyup', this.keyUp);
+}
+
+/**
  * History events
  */
 
@@ -323,6 +548,13 @@ function removeUndoRedoEventBindings() {
 
 function addPostMessageEventBindings() {
 	window.addEventListener('message', onPostMessageReceived);
+
+	if (window.parent) {
+		window.parent.postMessage(
+			JSON.stringify({ command: 'n8nReady', version: rootStore.versionCli }),
+			'*',
+		);
+	}
 }
 
 function removePostMessageEventBindings() {
@@ -424,7 +656,6 @@ function checkIfEditingIsAllowed(): boolean {
  */
 
 function onClickPane(position: CanvasElement['position']) {
-	// Save the location of the mouse click
 	lastClickPosition.value = [position.x, position.y];
 	canvasStore.newNodeInsertPosition = [position.x, position.y];
 }
@@ -433,8 +664,21 @@ function onClickPane(position: CanvasElement['position']) {
  * Lifecycle
  */
 
-onMounted(() => {
-	void initialize();
+onMounted(async () => {
+	await initializeData();
+	await initializeView();
+
+	addUndoRedoEventBindings();
+	addPostMessageEventBindings();
+	addKeyboardEventBindings();
+	addUnloadEventBindings();
+});
+
+onBeforeUnmount(() => {
+	removeUnloadEventBindings();
+	removeKeyboardEventBindings();
+	removePostMessageEventBindings();
+	removeUndoRedoEventBindings();
 });
 </script>
 

@@ -1,9 +1,11 @@
 import {
+	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT,
 	CHAT_TRIGGER_NODE_TYPE,
 	DEFAULT_NEW_WORKFLOW_NAME,
 	DUPLICATE_POSTFFIX,
 	ERROR_TRIGGER_NODE_TYPE,
 	MAX_WORKFLOW_NAME_LENGTH,
+	NEW_WORKFLOW_ID,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	START_NODE_TYPE,
 	STORES,
@@ -77,6 +79,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from './settings.store';
 import { useUsersStore } from './users.store';
 import { useTagsStore } from '@/stores/tags.store';
+import { usePostHog } from '@/stores/posthog.store';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -438,8 +441,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function resetWorkflow() {
-		const usersStore = useUsersStore();
-		const settingsStore = useSettingsStore();
 		workflow.value = createEmptyWorkflow();
 	}
 
