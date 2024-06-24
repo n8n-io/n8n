@@ -2,6 +2,7 @@ import type { RouteHandler } from 'cypress/types/net-stubbing';
 import { WorkflowPage } from '../pages';
 import { WorkflowExecutionsTab } from '../pages/workflow-executions-tab';
 import executionOutOfMemoryServerResponse from '../fixtures/responses/execution-out-of-memory-server-response.json';
+import { getVisibleSelect } from '../utils';
 
 const workflowPage = new WorkflowPage();
 const executionsTab = new WorkflowExecutionsTab();
@@ -89,7 +90,7 @@ describe('Current Workflow Executions', () => {
 			.should('be.visible')
 			.its('0.contentDocument.body') // Access the body of the iframe document
 			.should('not.be.empty') // Ensure the body is not empty
-			// eslint-disable-next-line @typescript-eslint/unbound-method
+
 			.then(cy.wrap)
 			.find('.el-notification:has(.el-notification--error)')
 			.should('be.visible')
@@ -136,15 +137,90 @@ describe('Current Workflow Executions', () => {
 		executionsTab.getters.executionListItems().eq(14).should('not.be.visible');
 	});
 
-	it('should show workflow data in executions tab after hard reload', () => {
+	it('should show workflow data in executions tab after hard reload and modify name and tags', () => {
 		executionsTab.actions.switchToExecutionsTab();
 		checkMainHeaderELements();
+		workflowPage.getters.saveButton().find('button').should('not.exist');
+		workflowPage.getters.tagPills().should('have.length', 2);
+
+		workflowPage.getters.workflowTags().click();
+		getVisibleSelect().find('li:contains("Manage tags")').click();
+		cy.get('button:contains("Add new")').click();
+		cy.getByTestId('tags-table').find('input').type('nutag').type('{enter}');
+		cy.get('button:contains("Done")').click();
 
 		cy.reload();
 		checkMainHeaderELements();
+		workflowPage.getters.saveButton().find('button').should('not.exist');
+		workflowPage.getters.workflowTags().click();
+		workflowPage.getters.tagsInDropdown().first().should('have.text', 'nutag').click();
+		workflowPage.getters.tagPills().should('have.length', 3);
+
+		let newWorkflowName = 'Renamed workflow';
+		workflowPage.actions.renameWorkflow(newWorkflowName);
+		workflowPage.getters.isWorkflowSaved();
+		workflowPage.getters
+			.workflowNameInputContainer()
+			.invoke('attr', 'title')
+			.should('eq', newWorkflowName);
 
 		executionsTab.actions.switchToEditorTab();
 		checkMainHeaderELements();
+		workflowPage.getters.saveButton().find('button').should('not.exist');
+		workflowPage.getters.tagPills().should('have.length', 3);
+		workflowPage.getters
+			.workflowNameInputContainer()
+			.invoke('attr', 'title')
+			.should('eq', newWorkflowName);
+
+		executionsTab.actions.switchToExecutionsTab();
+		checkMainHeaderELements();
+		workflowPage.getters.saveButton().find('button').should('not.exist');
+		workflowPage.getters.tagPills().should('have.length', 3);
+		workflowPage.getters
+			.workflowNameInputContainer()
+			.invoke('attr', 'title')
+			.should('eq', newWorkflowName);
+
+		executionsTab.actions.switchToEditorTab();
+		checkMainHeaderELements();
+		workflowPage.getters.saveButton().find('button').should('not.exist');
+		workflowPage.getters.tagPills().should('have.length', 3);
+		workflowPage.getters
+			.workflowNameInputContainer()
+			.invoke('attr', 'title')
+			.should('eq', newWorkflowName);
+
+		newWorkflowName = 'New workflow';
+		workflowPage.actions.renameWorkflow(newWorkflowName);
+		workflowPage.getters.isWorkflowSaved();
+		workflowPage.getters
+			.workflowNameInputContainer()
+			.invoke('attr', 'title')
+			.should('eq', newWorkflowName);
+		workflowPage.getters.workflowTags().click();
+		workflowPage.getters.tagsDropdown().find('.el-tag__close').first().click();
+		cy.get('body').click(0, 0);
+		workflowPage.getters.saveButton().find('button').should('not.exist');
+		workflowPage.getters.tagPills().should('have.length', 2);
+
+		executionsTab.actions.switchToExecutionsTab();
+		checkMainHeaderELements();
+		workflowPage.getters.saveButton().find('button').should('not.exist');
+		workflowPage.getters.tagPills().should('have.length', 2);
+		workflowPage.getters
+			.workflowNameInputContainer()
+			.invoke('attr', 'title')
+			.should('eq', newWorkflowName);
+
+		executionsTab.actions.switchToEditorTab();
+		checkMainHeaderELements();
+		workflowPage.getters.saveButton().find('button').should('not.exist');
+		workflowPage.getters.tagPills().should('have.length', 2);
+		workflowPage.getters
+			.workflowNameInputContainer()
+			.invoke('attr', 'title')
+			.should('eq', newWorkflowName);
 	});
 });
 

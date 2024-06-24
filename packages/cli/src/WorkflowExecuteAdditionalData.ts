@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-use-before-define */
-/* eslint-disable id-denylist */
+
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { WorkflowExecute } from 'n8n-core';

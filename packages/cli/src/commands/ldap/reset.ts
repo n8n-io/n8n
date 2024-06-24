@@ -9,6 +9,7 @@ import { Flags } from '@oclif/core';
 import { ApplicationError } from 'n8n-workflow';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { WorkflowService } from '@/workflows/workflow.service';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
