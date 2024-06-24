@@ -2,7 +2,15 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
-@TODO
+## 1.??.? @TODO: Update version
+
+### What changed?
+
+n8n upgraded its scaling mode from `bull@4.12.1` to `bullmq@5.8.2`.
+
+### When is action necessary?
+
+If you are using queue mode, before you upgrade, stop all running workflows, wait until all jobs in the queue have completed, stop all main instances, and stop all workers. Then upgrade the main instance and all workers to the new n8n version and restart them. Additionally, ensure you are running Redis version 5 or above, which supports Redis Streams.
 
 ## 1.47.0
 
