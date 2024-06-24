@@ -1,6 +1,7 @@
 import { ref, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
 import { v4 as uuid } from 'uuid';
+import type { Connection, ConnectionDetachedParams } from '@jsplumb/core';
 import { useHistoryStore } from '@/stores/history.store';
 import {
 	CUSTOM_API_CALL_KEY,
@@ -52,7 +53,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { get } from 'lodash-es';
 import { useI18n } from './useI18n';
-import { AddNodeCommand, EnableNodeToggleCommand } from '@/models/history';
+import { AddNodeCommand, EnableNodeToggleCommand, RemoveConnectionCommand } from '@/models/history';
 import { useTelemetry } from './useTelemetry';
 import { hasPermission } from '@/utils/rbac/permissions';
 import type { N8nPlusEndpoint } from '@/plugins/jsplumb/N8nPlusEndpointType';
@@ -60,6 +61,7 @@ import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { getEndpointScope } from '@/utils/nodeViewUtils';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { getConnectionInfo } from '@/utils/canvasUtils';
 
 declare namespace HttpRequestNode {
 	namespace V2 {
@@ -84,6 +86,7 @@ export function useNodeHelpers() {
 	const isInsertingNodes = ref(false);
 	const credentialsUpdated = ref(false);
 	const isProductionExecutionPreview = ref(false);
+	const pullConnActiveNodeName = ref<string | null>(null);
 
 	function hasProxyAuth(node: INodeUi): boolean {
 		return Object.keys(node.parameters).includes('nodeCredentialType');
@@ -848,6 +851,31 @@ export function useNodeHelpers() {
 		);
 	}
 
+	function deleteJSPlumbConnection(connection: Connection, trackHistory = false) {
+		// Make sure to remove the overlay else after the second move
+		// it visibly stays behind free floating without a connection.
+		connection.removeOverlays();
+
+		pullConnActiveNodeName.value = null; // prevent new connections when connectionDetached is triggered
+		canvasStore.jsPlumbInstance?.deleteConnection(connection); // on delete, triggers connectionDetached event which applies mutation to store
+		if (trackHistory && connection.__meta) {
+			const connectionData: [IConnection, IConnection] = [
+				{
+					index: connection.__meta?.sourceOutputIndex,
+					node: connection.__meta.sourceNodeName,
+					type: NodeConnectionType.Main,
+				},
+				{
+					index: connection.__meta?.targetOutputIndex,
+					node: connection.__meta.targetNodeName,
+					type: NodeConnectionType.Main,
+				},
+			];
+			const removeCommand = new RemoveConnectionCommand(connectionData);
+			historyStore.pushCommandToUndo(removeCommand);
+		}
+	}
+
 	async function loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
 		const allNodes: INodeTypeDescription[] = nodeTypesStore.allNodeTypes;
 
@@ -938,6 +966,32 @@ export function useNodeHelpers() {
 		});
 	}
 
+	function removePinDataConnections(pinData: IPinData) {
+		Object.keys(pinData).forEach((nodeName) => {
+			const node = workflowsStore.getNodeByName(nodeName);
+			if (!node) {
+				return;
+			}
+
+			const nodeElement = document.getElementById(node.id);
+			if (!nodeElement) {
+				return;
+			}
+
+			const connections = canvasStore.jsPlumbInstance?.getConnections({
+				source: nodeElement,
+			});
+
+			const connectionsArray = Array.isArray(connections)
+				? connections
+				: Object.values(connections);
+
+			canvasStore.jsPlumbInstance.setSuspendDrawing(true);
+			connectionsArray.forEach(NodeViewUtils.resetConnection);
+			canvasStore.jsPlumbInstance.setSuspendDrawing(false, true);
+		});
+	}
+
 	function getOutputEndpointUUID(
 		nodeName: string,
 		connectionType: NodeConnectionType,
@@ -988,6 +1042,65 @@ export function useNodeHelpers() {
 		setTimeout(() => {
 			addPinDataConnections(workflowsStore.pinnedWorkflowData);
 		});
+	}
+
+	function removeConnection(
+		connection: [IConnection, IConnection],
+		removeVisualConnection = false,
+	) {
+		if (removeVisualConnection) {
+			const sourceNode = workflowsStore.getNodeByName(connection[0].node);
+			const targetNode = workflowsStore.getNodeByName(connection[1].node);
+
+			if (!sourceNode || !targetNode) {
+				return;
+			}
+
+			const sourceElement = document.getElementById(sourceNode.id);
+			const targetElement = document.getElementById(targetNode.id);
+
+			if (sourceElement && targetElement) {
+				const connections = canvasStore.jsPlumbInstance?.getConnections({
+					source: sourceElement,
+					target: targetElement,
+				});
+
+				if (Array.isArray(connections)) {
+					connections.forEach((connectionInstance: Connection) => {
+						if (connectionInstance.__meta) {
+							// Only delete connections from specific indexes (if it can be determined by meta)
+							if (
+								connectionInstance.__meta.sourceOutputIndex === connection[0].index &&
+								connectionInstance.__meta.targetOutputIndex === connection[1].index
+							) {
+								deleteJSPlumbConnection(connectionInstance);
+							}
+						} else {
+							deleteJSPlumbConnection(connectionInstance);
+						}
+					});
+				}
+			}
+		}
+
+		workflowsStore.removeConnection({ connection });
+	}
+
+	function removeConnectionByConnectionInfo(
+		info: ConnectionDetachedParams,
+		removeVisualConnection = false,
+		trackHistory = false,
+	) {
+		const connectionInfo: [IConnection, IConnection] | null = getConnectionInfo(info);
+
+		if (connectionInfo) {
+			if (removeVisualConnection) {
+				deleteJSPlumbConnection(info.connection, trackHistory);
+			} else if (trackHistory) {
+				historyStore.pushCommandToUndo(new RemoveConnectionCommand(connectionInfo));
+			}
+			workflowsStore.removeConnection({ connection: connectionInfo });
+		}
 	}
 
 	async function addConnections(connections: IConnections) {
@@ -1129,9 +1242,14 @@ export function useNodeHelpers() {
 		isInsertingNodes,
 		credentialsUpdated,
 		isProductionExecutionPreview,
+		pullConnActiveNodeName,
+		deleteJSPlumbConnection,
 		loadNodesProperties,
 		addNodes,
 		addConnection,
+		removeConnection,
+		removeConnectionByConnectionInfo,
 		addPinDataConnections,
+		removePinDataConnections,
 	};
 }

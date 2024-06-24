@@ -279,7 +279,6 @@ import type {
 	INodeConnections,
 	INodeInputConfiguration,
 	INodeTypeDescription,
-	IPinData,
 	ITaskData,
 	ITelemetryTrackProperties,
 	IWorkflowBase,
@@ -544,7 +543,6 @@ export default defineComponent({
 			moveCanvasKeyPressed: false,
 			stopExecutionInProgress: false,
 			blankRedirect: false,
-			pullConnActiveNodeName: null as string | null,
 			pullConnActive: false,
 			dropPrevented: false,
 			connectionDragScope: {
@@ -1002,7 +1000,7 @@ export default defineComponent({
 		historyBus.on('enableNodeToggle', this.onRevertEnableToggle);
 
 		dataPinningEventBus.on('pin-data', this.nodeHelpers.addPinDataConnections);
-		dataPinningEventBus.on('unpin-data', this.removePinDataConnections);
+		dataPinningEventBus.on('unpin-data', this.nodeHelpers.removePinDataConnections);
 		nodeViewEventBus.on('saveWorkflow', this.saveCurrentWorkflowExternal);
 
 		this.canvasStore.isDemo = this.isDemo;
@@ -1028,7 +1026,7 @@ export default defineComponent({
 		historyBus.off('enableNodeToggle', this.onRevertEnableToggle);
 
 		dataPinningEventBus.off('pin-data', this.nodeHelpers.addPinDataConnections);
-		dataPinningEventBus.off('unpin-data', this.removePinDataConnections);
+		dataPinningEventBus.off('unpin-data', this.nodeHelpers.removePinDataConnections);
 		nodeViewEventBus.off('saveWorkflow', this.saveCurrentWorkflowExternal);
 	},
 	beforeMount() {
@@ -2861,7 +2859,7 @@ export default defineComponent({
 				await this.$nextTick();
 
 				if (lastSelectedConnection?.__meta) {
-					this.__deleteJSPlumbConnection(lastSelectedConnection, trackHistory);
+					this.nodeHelpers.deleteJSPlumbConnection(lastSelectedConnection, trackHistory);
 
 					const targetNodeName = lastSelectedConnection.__meta.targetNodeName;
 					const targetOutputIndex = lastSelectedConnection.__meta.targetOutputIndex;
@@ -2962,7 +2960,7 @@ export default defineComponent({
 					this.dropPrevented = false;
 					return;
 				}
-				if (this.pullConnActiveNodeName) {
+				if (this.nodeHelpers.pullConnActiveNodeName.value) {
 					const sourceNode = this.workflowsStore.getNodeById(connection.parameters.nodeId);
 					const connectionType = connection.parameters.type ?? NodeConnectionType.Main;
 					const overrideTargetEndpoint = connection?.connector
@@ -2970,8 +2968,12 @@ export default defineComponent({
 
 					if (sourceNode) {
 						const isTarget = connection.parameters.connection === 'target';
-						const sourceNodeName = isTarget ? this.pullConnActiveNodeName : sourceNode.name;
-						const targetNodeName = isTarget ? sourceNode.name : this.pullConnActiveNodeName;
+						const sourceNodeName = isTarget
+							? this.nodeHelpers.pullConnActiveNodeName.value
+							: sourceNode.name;
+						const targetNodeName = isTarget
+							? sourceNode.name
+							: this.nodeHelpers.pullConnActiveNodeName.value;
 						const outputIndex = connection.parameters.index;
 						NodeViewUtils.resetConnectionAfterPull(connection);
 						await this.$nextTick();
@@ -2983,7 +2985,7 @@ export default defineComponent({
 							overrideTargetEndpoint?.parameters?.index ?? 0,
 							connectionType,
 						);
-						this.pullConnActiveNodeName = null;
+						this.nodeHelpers.pullConnActiveNodeName.value = null;
 						this.dropPrevented = false;
 					}
 					return;
@@ -3131,7 +3133,7 @@ export default defineComponent({
 					)
 				) {
 					this.dropPrevented = true;
-					this.pullConnActiveNodeName = null;
+					this.nodeHelpers.pullConnActiveNodeName.value = null;
 					return false;
 				}
 
@@ -3195,7 +3197,7 @@ export default defineComponent({
 						info.connection,
 						() => {
 							this.activeConnection = null;
-							this.__deleteJSPlumbConnection(info.connection);
+							this.nodeHelpers.deleteJSPlumbConnection(info.connection);
 						},
 						() => {
 							this.insertNodeAfterSelected({
@@ -3361,7 +3363,7 @@ export default defineComponent({
 					},
 				] as [IConnection, IConnection];
 
-				this.__removeConnection(connectionInfo, false);
+				this.nodeHelpers.removeConnection(connectionInfo, false);
 			} catch (e) {
 				console.error(e);
 			}
@@ -3391,9 +3393,9 @@ export default defineComponent({
 				NodeViewUtils.showOutputNameLabel(info.sourceEndpoint, info.connection);
 
 				info.connection.removeOverlays();
-				this.__removeConnectionByConnectionInfo(info, false, false);
+				this.nodeHelpers.removeConnectionByConnectionInfo(info, false, false);
 
-				if (this.pullConnActiveNodeName) {
+				if (this.nodeHelpers.pullConnActiveNodeName.value) {
 					// establish new connection when dragging connection from one node to another
 					this.historyStore.startRecordingUndo();
 					const sourceNode = this.workflowsStore.getNodeById(info.connection.parameters.nodeId);
@@ -3413,11 +3415,11 @@ export default defineComponent({
 					this.connectTwoNodes(
 						sourceNodeName,
 						outputIndex,
-						this.pullConnActiveNodeName,
+						this.nodeHelpers.pullConnActiveNodeName.value,
 						overrideTargetEndpoint?.parameters?.index ?? 0,
 						NodeConnectionType.Main,
 					);
-					this.pullConnActiveNodeName = null;
+					this.nodeHelpers.pullConnActiveNodeName.value = null;
 					await this.$nextTick();
 					this.historyStore.stopRecordingUndo();
 				} else if (
@@ -3441,7 +3443,7 @@ export default defineComponent({
 			// manually
 			connection.overlays['midpoint-arrow']?.setVisible(false);
 			try {
-				this.pullConnActiveNodeName = null;
+				this.nodeHelpers.pullConnActiveNodeName.value = null;
 				this.pullConnActive = true;
 				this.canvasStore.newNodeInsertPosition = null;
 				NodeViewUtils.hideConnectionActions(connection);
@@ -3526,12 +3528,12 @@ export default defineComponent({
 						const endpoint = intersectingEndpoint.jtk.endpoint as Endpoint;
 						const node = this.workflowsStore.getNodeById(endpoint.parameters.nodeId);
 
-						this.pullConnActiveNodeName = node?.name ?? null;
+						this.nodeHelpers.pullConnActiveNodeName.value = node?.name ?? null;
 
 						NodeViewUtils.showDropConnectionState(connection, endpoint);
 					} else {
 						NodeViewUtils.showPullConnectionState(connection);
-						this.pullConnActiveNodeName = null;
+						this.nodeHelpers.pullConnActiveNodeName.value = null;
 					}
 				};
 
@@ -3827,84 +3829,6 @@ export default defineComponent({
 			// Once view is initialized, pick up all toast notifications
 			// waiting in the store and display them
 			this.showNotificationForViews([VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW]);
-		},
-		__removeConnection(connection: [IConnection, IConnection], removeVisualConnection = false) {
-			if (removeVisualConnection) {
-				const sourceNode = this.workflowsStore.getNodeByName(connection[0].node);
-				const targetNode = this.workflowsStore.getNodeByName(connection[1].node);
-
-				if (!sourceNode || !targetNode) {
-					return;
-				}
-
-				const sourceElement = document.getElementById(sourceNode.id);
-				const targetElement = document.getElementById(targetNode.id);
-
-				if (sourceElement && targetElement) {
-					const connections = this.instance?.getConnections({
-						source: sourceElement,
-						target: targetElement,
-					});
-
-					if (Array.isArray(connections)) {
-						connections.forEach((connectionInstance: Connection) => {
-							if (connectionInstance.__meta) {
-								// Only delete connections from specific indexes (if it can be determined by meta)
-								if (
-									connectionInstance.__meta.sourceOutputIndex === connection[0].index &&
-									connectionInstance.__meta.targetOutputIndex === connection[1].index
-								) {
-									this.__deleteJSPlumbConnection(connectionInstance);
-								}
-							} else {
-								this.__deleteJSPlumbConnection(connectionInstance);
-							}
-						});
-					}
-				}
-			}
-
-			this.workflowsStore.removeConnection({ connection });
-		},
-		__deleteJSPlumbConnection(connection: Connection, trackHistory = false) {
-			// Make sure to remove the overlay else after the second move
-			// it visibly stays behind free floating without a connection.
-			connection.removeOverlays();
-
-			this.pullConnActiveNodeName = null; // prevent new connections when connectionDetached is triggered
-			this.instance?.deleteConnection(connection); // on delete, triggers connectionDetached event which applies mutation to store
-			if (trackHistory && connection.__meta) {
-				const connectionData: [IConnection, IConnection] = [
-					{
-						index: connection.__meta?.sourceOutputIndex,
-						node: connection.__meta.sourceNodeName,
-						type: NodeConnectionType.Main,
-					},
-					{
-						index: connection.__meta?.targetOutputIndex,
-						node: connection.__meta.targetNodeName,
-						type: NodeConnectionType.Main,
-					},
-				];
-				const removeCommand = new RemoveConnectionCommand(connectionData);
-				this.historyStore.pushCommandToUndo(removeCommand);
-			}
-		},
-		__removeConnectionByConnectionInfo(
-			info: ConnectionDetachedParams,
-			removeVisualConnection = false,
-			trackHistory = false,
-		) {
-			const connectionInfo: [IConnection, IConnection] | null = getConnectionInfo(info);
-
-			if (connectionInfo) {
-				if (removeVisualConnection) {
-					this.__deleteJSPlumbConnection(info.connection, trackHistory);
-				} else if (trackHistory) {
-					this.historyStore.pushCommandToUndo(new RemoveConnectionCommand(connectionInfo));
-				}
-				this.workflowsStore.removeConnection({ connection: connectionInfo });
-			}
 		},
 		async duplicateNodes(nodes: INode[]): Promise<void> {
 			if (!this.editAllowedCheck()) {
@@ -4641,31 +4565,6 @@ export default defineComponent({
 				await this.importWorkflowData(workflowData, 'url');
 			}
 		},
-		removePinDataConnections(pinData: IPinData) {
-			Object.keys(pinData).forEach((nodeName) => {
-				const node = this.workflowsStore.getNodeByName(nodeName);
-				if (!node) {
-					return;
-				}
-
-				const nodeElement = document.getElementById(node.id);
-				if (!nodeElement) {
-					return;
-				}
-
-				const connections = this.instance?.getConnections({
-					source: nodeElement,
-				});
-
-				const connectionsArray = Array.isArray(connections)
-					? connections
-					: Object.values(connections);
-
-				this.instance.setSuspendDrawing(true);
-				connectionsArray.forEach(NodeViewUtils.resetConnection);
-				this.instance.setSuspendDrawing(false, true);
-			});
-		},
 		onToggleNodeCreator({ source, createNodeActive, nodeCreatorView }: ToggleNodeCreatorOptions) {
 			if (createNodeActive === this.createNodeActive) return;
 
@@ -4793,7 +4692,7 @@ export default defineComponent({
 		},
 		onRevertAddConnection({ connection }: { connection: [IConnection, IConnection] }) {
 			this.suspendRecordingDetachedConnections = true;
-			this.__removeConnection(connection, true);
+			this.nodeHelpers.removeConnection(connection, true);
 			this.suspendRecordingDetachedConnections = false;
 		},
 		async onRevertRemoveConnection({ connection }: { connection: [IConnection, IConnection] }) {
