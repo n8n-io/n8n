@@ -121,6 +121,7 @@ export class MemoryZep implements INodeType {
 				returnMessages: true,
 				inputKey: 'input',
 				outputKey: 'output',
+				separateMessages: true,
 			});
 
 			// Need to add ZepCloudChatMessageHistory to memory because MemoryManager expects it
@@ -128,6 +129,7 @@ export class MemoryZep implements INodeType {
 				client: memory.zepClient,
 				sessionId: memory.sessionId,
 				memoryType: memory.memoryType,
+				separateMessages: true,
 			});
 		} else {
 			if (!credentials.apiUrl) {
