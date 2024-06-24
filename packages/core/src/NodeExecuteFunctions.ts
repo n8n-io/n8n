@@ -3679,7 +3679,7 @@ export function getExecuteFunctions(
 					});
 				}
 
-				return inputData[inputName][inputIndex] as INodeExecutionData[];
+				return inputData[inputName][inputIndex];
 			},
 			getInputSourceData: (inputIndex = 0, inputName = 'main') => {
 				if (executeData?.source === null) {
