@@ -20,11 +20,9 @@ interface OAuth1CredentialData {
 }
 
 const algorithmMap = {
-	/* eslint-disable @typescript-eslint/naming-convention */
 	'HMAC-SHA256': 'sha256',
 	'HMAC-SHA512': 'sha512',
 	'HMAC-SHA1': 'sha1',
-	/* eslint-enable */
 } as const;
 
 @RestController('/oauth1-credential')
@@ -52,7 +50,7 @@ export class OAuth1CredentialController extends AbstractOAuthController {
 				secret: oauthCredentials.consumerSecret,
 			},
 			signature_method: signatureMethod,
-			// eslint-disable-next-line @typescript-eslint/naming-convention
+
 			hash_function(base, key) {
 				const algorithm = algorithmMap[signatureMethod] ?? 'sha1';
 				return createHmac(algorithm, key).update(base).digest('base64');

@@ -22,7 +22,9 @@ Range.prototype.getClientRects = vi.fn(() => ({
 
 export class IntersectionObserver {
 	root = null;
+
 	rootMargin = '';
+
 	thresholds = [];
 
 	disconnect() {
