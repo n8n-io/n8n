@@ -143,6 +143,7 @@
 </template>
 
 <script lang="ts">
+import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 import { ElDropdown } from 'element-plus';
 import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
@@ -165,7 +166,7 @@ export default defineComponent({
 	},
 	props: {
 		execution: {
-			type: Object as () => ExecutionSummary | null,
+			type: Object as PropType<ExecutionSummary>,
 			required: true,
 		},
 	},
