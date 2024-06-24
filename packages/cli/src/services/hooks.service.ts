@@ -1,6 +1,7 @@
 import { Service } from 'typedi';
 import type { NextFunction, Response } from 'express';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindManyOptions, FindOneOptions, FindOptionsWhere } from '@n8n/typeorm';
 
 import { AuthService } from '@/auth/auth.service';
