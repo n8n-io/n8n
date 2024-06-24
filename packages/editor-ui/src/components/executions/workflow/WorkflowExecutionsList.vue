@@ -110,7 +110,7 @@ export default defineComponent({
 			default: () => ({}),
 		},
 		execution: {
-			type: Object as PropType<ExecutionSummary>,
+			type: Object as PropType<ExecutionSummary> | null,
 			default: null,
 		},
 		loadingMore: {
@@ -179,10 +179,10 @@ export default defineComponent({
 	},
 	methods: {
 		async onDeleteCurrentExecution(): Promise<void> {
-			this.$emit('execution:delete', this.execution.id);
+			this.$emit('execution:delete', this.execution?.id);
 		},
 		async onStopExecution(): Promise<void> {
-			this.$emit('execution:stop', this.execution.id);
+			this.$emit('execution:stop', this.execution?.id);
 		},
 		async onRetryExecution(payload: { execution: ExecutionSummary; command: string }) {
 			const loadWorkflow = payload.command === 'current-workflow';
