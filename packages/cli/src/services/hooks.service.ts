@@ -18,6 +18,7 @@ import type { Settings } from '@db/entities/Settings';
 import { UserService } from '@/services/user.service';
 import type { AuthenticatedRequest } from '@/requests';
 import type { Invitation } from '@/Interfaces';
+import RudderStack, { type constructorOptions } from '@rudderstack/rudder-sdk-node';
 
 /**
  * Exposes functionality to be used by the cloud BE hooks.
@@ -104,6 +105,10 @@ export class HooksService {
 	 */
 	async authMiddleware(req: AuthenticatedRequest, res: Response, next: NextFunction) {
 		return await this.authService.authMiddleware(req, res, next);
+	}
+
+	getRudderStackClient(key: string, options: constructorOptions): RudderStack {
+		return new RudderStack(key, options);
 	}
 
 	/**
