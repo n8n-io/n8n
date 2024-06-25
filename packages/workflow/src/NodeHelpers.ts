@@ -1,7 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
@@ -379,8 +377,10 @@ export function applyDeclarativeNodeOptionParameters(nodeType: INodeType): void 
 			],
 		};
 
-		if (parameters[existingRequestOptionsIndex]?.options) {
-			parameters[existingRequestOptionsIndex].options!.sort((a, b) => {
+		const options = parameters[existingRequestOptionsIndex]?.options;
+
+		if (options) {
+			options.sort((a, b) => {
 				if ('displayName' in a && 'displayName' in b) {
 					if (a.displayName < b.displayName) {
 						return -1;

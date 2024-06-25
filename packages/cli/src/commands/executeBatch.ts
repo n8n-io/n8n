@@ -737,8 +737,10 @@ export class ExecuteBatch extends BaseCommand {
 												return;
 											}
 
-											if (nodeEdgeCases[nodeName].capResults !== undefined) {
-												executionDataArray.splice(nodeEdgeCases[nodeName].capResults!);
+											const capResults = nodeEdgeCases[nodeName].capResults;
+
+											if (capResults !== undefined) {
+												executionDataArray.splice(capResults);
 											}
 
 											if (nodeEdgeCases[nodeName].ignoredProperties !== undefined) {

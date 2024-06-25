@@ -24,14 +24,12 @@ export class ExternalHooks {
 		credentialsRepository: CredentialsRepository,
 		workflowRepository: WorkflowRepository,
 	) {
-		/* eslint-disable @typescript-eslint/naming-convention */
 		this.dbCollections = {
 			User: userRepository,
 			Settings: settingsRepository,
 			Credentials: credentialsRepository,
 			Workflow: workflowRepository,
 		};
-		/* eslint-enable @typescript-eslint/naming-convention */
 	}
 
 	async init(): Promise<void> {

@@ -174,16 +174,22 @@ describe('Data mapping', () => {
 		workflowPage.actions.zoomToFit();
 		workflowPage.actions.openNode('Set1');
 
-		ndv.actions.selectInputNode(SCHEDULE_TRIGGER_NODE_NAME);
+		ndv.actions.executePrevious();
+		ndv.actions.expandSchemaViewNode(SCHEDULE_TRIGGER_NODE_NAME);
 
-		ndv.getters.inputDataContainer().find('span').contains('count').realMouseDown();
-
+		const dataPill = ndv.getters
+			.inputDataContainer()
+			.findChildByTestId('run-data-schema-item')
+			.contains('count')
+			.should('be.visible');
+		dataPill.realMouseDown();
 		ndv.actions.mapToParameter('value');
 		ndv.getters
 			.inlineExpressionEditorInput()
 			.should('have.text', `{{ $('${SCHEDULE_TRIGGER_NODE_NAME}').item.json.input[0].count }}`);
 
 		ndv.actions.switchInputMode('Table');
+		ndv.actions.selectInputNode(SCHEDULE_TRIGGER_NODE_NAME);
 		ndv.actions.mapDataFromHeader(1, 'value');
 		ndv.getters
 			.inlineExpressionEditorInput()
@@ -194,7 +200,6 @@ describe('Data mapping', () => {
 
 		ndv.actions.selectInputNode('Set');
 
-		ndv.actions.executePrevious();
 		ndv.getters.executingLoader().should('not.exist');
 		ndv.getters.inputDataContainer().should('exist');
 		ndv.actions.validateExpressionPreview('value', '0 [object Object]');
@@ -291,14 +296,8 @@ describe('Data mapping', () => {
 		ndv.actions.executePrevious();
 		ndv.getters.executingLoader().should('not.exist');
 		ndv.getters.inputDataContainer().should('exist');
-		ndv.getters
-			.inputDataContainer()
-			.should('exist')
-			.find('span')
-			.contains('test_name')
-			.realMouseDown();
-		ndv.actions.mapToParameter('value');
-
+		ndv.actions.switchInputMode('Table');
+		ndv.actions.mapDataFromHeader(1, 'value');
 		ndv.actions.validateExpressionPreview('value', 'test_value');
 		ndv.actions.selectInputNode(SCHEDULE_TRIGGER_NODE_NAME);
 		ndv.actions.validateExpressionPreview('value', 'test_value');

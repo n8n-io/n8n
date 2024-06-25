@@ -232,12 +232,10 @@ export interface IExternalHooksFileData {
 
 export interface IExternalHooksFunctions {
 	dbCollections: {
-		/* eslint-disable @typescript-eslint/naming-convention */
 		User: UserRepository;
 		Settings: SettingsRepository;
 		Credentials: CredentialsRepository;
 		Workflow: WorkflowRepository;
-		/* eslint-enable @typescript-eslint/naming-convention */
 	};
 }
 

@@ -66,6 +66,7 @@ import '@/ExternalSecrets/ExternalSecrets.controller.ee';
 import '@/license/license.controller';
 import '@/workflows/workflowHistory/workflowHistory.controller.ee';
 import '@/workflows/workflows.controller';
+import { AuditEventRelay } from './eventbus/audit-event-relay.service';
 
 const exec = promisify(callbackExec);
 
@@ -252,6 +253,7 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 		const eventBus = Container.get(MessageEventBus);
 		await eventBus.initialize();
+		Container.get(AuditEventRelay).init();
 
 		if (this.endpointPresetCredentials !== '') {
 			// POST endpoint to set preset credentials

@@ -3,20 +3,21 @@ import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { merge } from 'lodash-es';
 import RunData from '@/components/RunData.vue';
-import { STORES, VIEWS } from '@/constants';
+import { SET_NODE_TYPE, STORES, VIEWS } from '@/constants';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { INodeUi, IRunDataDisplayMode } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { setActivePinia } from 'pinia';
+import { defaultNodeTypes } from '@/__tests__/mocks';
 
 const nodes = [
 	{
 		id: '1',
-		typeVersion: 1,
+		typeVersion: 3,
 		name: 'Test Node',
 		position: [0, 0],
-		type: 'test',
+		type: SET_NODE_TYPE,
 		parameters: {},
 	},
 ] as INodeUi[];
@@ -143,6 +144,9 @@ describe('RunData', () => {
 						},
 					},
 				},
+				[STORES.NODE_TYPES]: {
+					nodeTypes: defaultNodeTypes,
+				},
 			},
 		});
 
@@ -177,6 +181,7 @@ describe('RunData', () => {
 					name: 'Test Node',
 					position: [0, 0],
 				},
+				nodes: [{ name: 'Test Node', indicies: [], depth: 1 }],
 				runIndex: 0,
 				paneType: 'output',
 				isExecuting: false,
