@@ -29,7 +29,9 @@ import { WorkflowSharingService } from './workflowSharing.service';
 import { ProjectService } from '@/services/project.service';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { Scope } from '@n8n/permissions';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
 import { EventRelay } from '@/eventbus/event-relay.service';
