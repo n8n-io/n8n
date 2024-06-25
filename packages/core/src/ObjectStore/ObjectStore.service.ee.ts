@@ -65,7 +65,7 @@ export class ObjectStoreService {
 	async checkConnection() {
 		if (this.isReady) return;
 
-		return this.request('HEAD', this.host, this.bucket.name);
+		return await this.request('HEAD', this.host, this.bucket.name);
 	}
 
 	/**
@@ -74,7 +74,7 @@ export class ObjectStoreService {
 	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html
 	 */
 	async put(filename: string, buffer: Buffer, metadata: BinaryData.PreWriteMetadata = {}) {
-		if (this.isReadOnly) return this.blockWrite(filename);
+		if (this.isReadOnly) return await this.blockWrite(filename);
 
 		const headers: Record<string, string | number> = {
 			'Content-Length': buffer.length,
@@ -86,7 +86,7 @@ export class ObjectStoreService {
 
 		const path = `/${this.bucket.name}/${filename}`;
 
-		return this.request('PUT', this.host, path, { headers, body: buffer });
+		return await this.request('PUT', this.host, path, { headers, body: buffer });
 	}
 
 	/**
@@ -131,7 +131,7 @@ export class ObjectStoreService {
 	async deleteOne(fileId: string) {
 		const path = `${this.bucket.name}/${fileId}`;
 
-		return this.request('DELETE', this.host, path);
+		return await this.request('DELETE', this.host, path);
 	}
 
 	/**
@@ -156,7 +156,7 @@ export class ObjectStoreService {
 
 		const path = `${this.bucket.name}/?delete`;
 
-		return this.request('POST', this.host, path, { headers, body });
+		return await this.request('POST', this.host, path, { headers, body });
 	}
 
 	/**

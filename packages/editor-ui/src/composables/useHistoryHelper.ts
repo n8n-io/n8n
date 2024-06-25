@@ -26,7 +26,7 @@ export function useHistoryHelper(activeRoute: Route) {
 	const { isCtrlKeyPressed } = useDeviceSupport();
 
 	const undo = async () =>
-		callDebounced(
+		await callDebounced(
 			async () => {
 				const command = historyStore.popUndoableToUndo();
 				if (!command) {
@@ -55,7 +55,7 @@ export function useHistoryHelper(activeRoute: Route) {
 		);
 
 	const redo = async () =>
-		callDebounced(
+		await callDebounced(
 			async () => {
 				const command = historyStore.popUndoableToRedo();
 				if (!command) {

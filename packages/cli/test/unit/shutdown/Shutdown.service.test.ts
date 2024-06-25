@@ -104,7 +104,7 @@ describe('ShutdownService', () => {
 		});
 
 		it('should throw error if app is not shutting down', async () => {
-			await expect(async () => shutdownService.waitForShutdown()).rejects.toThrow(
+			await expect(async () => await shutdownService.waitForShutdown()).rejects.toThrow(
 				'App is not shutting down',
 			);
 		});

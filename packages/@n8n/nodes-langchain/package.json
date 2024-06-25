@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -148,7 +148,7 @@
     "openai": "4.20.0",
     "pdf-parse": "1.1.1",
     "pg": "8.11.3",
-    "redis": "4.6.11",
+    "redis": "4.6.12",
     "sqlite3": "5.1.6",
     "temp": "0.9.4",
     "typeorm": "0.3.17",

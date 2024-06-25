@@ -332,7 +332,7 @@ export class CacheService extends EventEmitter {
 
 		if (keys.length === 0) return;
 
-		return this.cache.store.mdel(...keys);
+		return await this.cache.store.mdel(...keys);
 	}
 
 	/**

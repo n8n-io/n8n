@@ -208,7 +208,7 @@ export abstract class AbstractServer {
 			// TODO UM: check if this needs validation with user management.
 			this.app.delete(
 				`/${this.restEndpoint}/test-webhook/:id`,
-				send(async (req) => testWebhooks.cancelWebhook(req.params.id)),
+				send(async (req) => await testWebhooks.cancelWebhook(req.params.id)),
 			);
 		}
 

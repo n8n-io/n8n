@@ -285,7 +285,7 @@ isInLast.doc = {
 
 minus.doc = {
 	name: 'minus',
-	description: 'Subtracts a given time period from a Date. Default unit is `minute`.',
+	description: 'Subtracts a given time period from a Date. Default unit is `milliseconds`.',
 	returnType: 'Date',
 	args: [
 		{ name: 'n', type: 'number' },
@@ -296,7 +296,7 @@ minus.doc = {
 
 plus.doc = {
 	name: 'plus',
-	description: 'Adds a given time period to a Date. Default unit is `minute`.',
+	description: 'Adds a given time period to a Date. Default unit is `milliseconds`.',
 	returnType: 'Date',
 	args: [
 		{ name: 'n', type: 'number' },

@@ -13,7 +13,7 @@ export class ExternalSecretsController {
 	@Get('/providers')
 	@RequireGlobalScope('externalSecretsProvider:list')
 	async getProviders() {
-		return this.secretsService.getProviders();
+		return await this.secretsService.getProviders();
 	}
 
 	@Get('/providers/:provider')

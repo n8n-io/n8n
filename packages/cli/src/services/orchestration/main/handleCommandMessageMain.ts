@@ -7,7 +7,7 @@ import { License } from '@/License';
 import { Logger } from '@/Logger';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { Push } from '@/push';
-import { MultiMainSetup } from './MultiMainSetup.ee';
+import { OrchestrationService } from '@/services/orchestration.service';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { TestWebhooks } from '@/TestWebhooks';
 
@@ -100,7 +100,7 @@ export async function handleCommandMessageMain(messageString: string) {
 							versionId,
 						});
 
-						await Container.get(MultiMainSetup).publish('workflowFailedToActivate', {
+						await Container.get(OrchestrationService).publish('workflowFailedToActivate', {
 							workflowId,
 							errorMessage: error.message,
 						});

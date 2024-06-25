@@ -136,7 +136,9 @@ import { deepCopy, isINodePropertyCollectionList } from 'n8n-workflow';
 
 import { get } from 'lodash-es';
 
-const ParameterInputList = defineAsyncComponent(async () => import('./ParameterInputList.vue'));
+const ParameterInputList = defineAsyncComponent(
+	async () => await import('./ParameterInputList.vue'),
+);
 
 export default defineComponent({
 	name: 'FixedCollectionParameter',

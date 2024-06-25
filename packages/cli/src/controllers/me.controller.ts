@@ -80,7 +80,6 @@ export class MeController {
 		await this.userService.update(userId, payload);
 		const user = await this.userRepository.findOneOrFail({
 			where: { id: userId },
-			relations: ['globalRole'],
 		});
 
 		this.logger.info('User updated successfully', { userId });
@@ -235,7 +234,6 @@ export class MeController {
 		const user = await this.userRepository.findOneOrFail({
 			select: ['settings'],
 			where: { id },
-			relations: ['globalRole'],
 		});
 
 		return user.settings;

@@ -9,6 +9,7 @@ vi.mock('vue-router', () => ({
 		path: '/workflows',
 		params: {},
 	})),
+	RouterLink: vi.fn(),
 }));
 
 vi.mock('@/stores/rbac.store', () => ({

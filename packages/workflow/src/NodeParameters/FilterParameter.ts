@@ -125,6 +125,19 @@ function parseFilterConditionValues(
 	return { ok: true, result: { left: parsedLeftValue.newValue, right: parsedRightValue.newValue } };
 }
 
+function parseRegexPattern(pattern: string): RegExp {
+	const regexMatch = (pattern || '').match(new RegExp('^/(.*?)/([gimusy]*)$'));
+	let regex: RegExp;
+
+	if (!regexMatch) {
+		regex = new RegExp((pattern || '').toString());
+	} else {
+		regex = new RegExp(regexMatch[1], regexMatch[2]);
+	}
+
+	return regex;
+}
+
 export function executeFilterCondition(
 	condition: FilterConditionValue,
 	filterOptions: FilterOptionsValue,
@@ -183,9 +196,9 @@ export function executeFilterCondition(
 				case 'notEndsWith':
 					return !left.endsWith(right);
 				case 'regex':
-					return new RegExp(right).test(left);
+					return parseRegexPattern(right).test(left);
 				case 'notRegex':
-					return !new RegExp(right).test(left);
+					return !parseRegexPattern(right).test(left);
 			}
 
 			break;

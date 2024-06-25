@@ -60,7 +60,7 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 	};
 
 	const pullWorkfolder = async (force: boolean) => {
-		return vcApi.pullWorkfolder(rootStore.getRestApiContext, { force });
+		return await vcApi.pullWorkfolder(rootStore.getRestApiContext, { force });
 	};
 
 	const setPreferences = (data: Partial<SourceControlPreferences>) => {
@@ -103,11 +103,11 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 	};
 
 	const getStatus = async () => {
-		return vcApi.getStatus(rootStore.getRestApiContext);
+		return await vcApi.getStatus(rootStore.getRestApiContext);
 	};
 
 	const getAggregatedStatus = async () => {
-		return vcApi.getAggregatedStatus(rootStore.getRestApiContext);
+		return await vcApi.getAggregatedStatus(rootStore.getRestApiContext);
 	};
 
 	return {

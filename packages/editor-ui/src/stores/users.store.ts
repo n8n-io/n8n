@@ -32,7 +32,7 @@ import type {
 	InvitableRoleName,
 } from '@/Interface';
 import { getCredentialPermissions } from '@/permissions';
-import { getPersonalizedNodeTypes, ROLE } from '@/utils/userUtils';
+import { getPersonalizedNodeTypes } from '@/utils/userUtils';
 import { defineStore } from 'pinia';
 import { useRootStore } from './n8nRoot.store';
 import { usePostHog } from './posthog.store';
@@ -46,7 +46,7 @@ import type { Scope } from '@n8n/permissions';
 import { inviteUsers, acceptInvitation } from '@/api/invitation';
 
 const isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
-const isInstanceOwner = (user: IUserResponse | null) => user?.globalRole?.name === ROLE.Owner;
+const isInstanceOwner = (user: IUserResponse | null) => user?.role === 'global:owner';
 const isDefaultUser = (user: IUserResponse | null) => isInstanceOwner(user) && isPendingUser(user);
 
 export const useUsersStore = defineStore(STORES.USERS, {
@@ -79,7 +79,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			return (userId: string): IUser | null => state.users[userId];
 		},
 		globalRoleName(): IRole {
-			return this.currentUser?.globalRole?.name ?? 'default';
+			return this.currentUser?.role ?? 'default';
 		},
 		personalizedNodeTypes(): string[] {
 			const user = this.currentUser;
@@ -215,7 +215,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			inviterId: string;
 		}): Promise<{ inviter: { firstName: string; lastName: string } }> {
 			const rootStore = useRootStore();
-			return validateSignupToken(rootStore.getRestApiContext, params);
+			return await validateSignupToken(rootStore.getRestApiContext, params);
 		},
 		async acceptInvitation(params: {
 			inviteeId: string;
@@ -326,7 +326,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		},
 		async getUserPasswordResetLink(params: { id: string }): Promise<{ link: string }> {
 			const rootStore = useRootStore();
-			return getPasswordResetLink(rootStore.getRestApiContext, params);
+			return await getPasswordResetLink(rootStore.getRestApiContext, params);
 		},
 		async submitPersonalizationSurvey(results: IPersonalizationLatestVersion): Promise<void> {
 			const rootStore = useRootStore();
@@ -344,11 +344,11 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		},
 		async getMfaQR(): Promise<{ qrCode: string; secret: string; recoveryCodes: string[] }> {
 			const rootStore = useRootStore();
-			return getMfaQR(rootStore.getRestApiContext);
+			return await getMfaQR(rootStore.getRestApiContext);
 		},
 		async verifyMfaToken(data: { token: string }): Promise<void> {
 			const rootStore = useRootStore();
-			return verifyMfaToken(rootStore.getRestApiContext, data);
+			return await verifyMfaToken(rootStore.getRestApiContext, data);
 		},
 		async enableMfa(data: { token: string }) {
 			const rootStore = useRootStore();

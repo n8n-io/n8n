@@ -9,7 +9,7 @@ export class LicenseController {
 
 	@Get('/')
 	async getLicenseData() {
-		return this.licenseService.getLicenseData();
+		return await this.licenseService.getLicenseData();
 	}
 
 	@Post('/activate')
@@ -17,14 +17,14 @@ export class LicenseController {
 	async activateLicense(req: LicenseRequest.Activate) {
 		const { activationKey } = req.body;
 		await this.licenseService.activateLicense(activationKey);
-		return this.getTokenAndData();
+		return await this.getTokenAndData();
 	}
 
 	@Post('/renew')
 	@RequireGlobalScope('license:manage')
 	async renewLicense() {
 		await this.licenseService.renewLicense();
-		return this.getTokenAndData();
+		return await this.getTokenAndData();
 	}
 
 	private async getTokenAndData() {

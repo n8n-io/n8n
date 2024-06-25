@@ -85,7 +85,7 @@ export class ShutdownService {
 		const handlers = Object.values(this.handlersByPriority).reverse();
 		for (const handlerGroup of handlers) {
 			await Promise.allSettled(
-				handlerGroup.map(async (handler) => this.shutdownComponent(handler)),
+				handlerGroup.map(async (handler) => await this.shutdownComponent(handler)),
 			);
 		}
 	}

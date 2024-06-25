@@ -232,7 +232,7 @@ export class SourceControlGitService {
 		}
 		await this.git.checkout(branch);
 		await this.git.branch([`--set-upstream-to=${SOURCE_CONTROL_ORIGIN}/${branch}`, branch]);
-		return this.getBranches();
+		return await this.getBranches();
 	}
 
 	async getCurrentBranch(): Promise<{ current: string; remote: string }> {
@@ -253,7 +253,7 @@ export class SourceControlGitService {
 		const currentBranch = await this.getCurrentBranch();
 		if (currentBranch.remote) {
 			const target = currentBranch.remote;
-			return this.git.diffSummary(['...' + target, '--ignore-all-space']);
+			return await this.git.diffSummary(['...' + target, '--ignore-all-space']);
 		}
 		return;
 	}
@@ -265,7 +265,7 @@ export class SourceControlGitService {
 		const currentBranch = await this.getCurrentBranch();
 		if (currentBranch.remote) {
 			const target = currentBranch.current;
-			return this.git.diffSummary([target, '--ignore-all-space']);
+			return await this.git.diffSummary([target, '--ignore-all-space']);
 		}
 		return;
 	}
@@ -274,7 +274,7 @@ export class SourceControlGitService {
 		if (!this.git) {
 			throw new ApplicationError('Git is not initialized (fetch)');
 		}
-		return this.git.fetch();
+		return await this.git.fetch();
 	}
 
 	async pull(options: { ffOnly: boolean } = { ffOnly: true }): Promise<PullResult> {
@@ -286,7 +286,7 @@ export class SourceControlGitService {
 			// eslint-disable-next-line @typescript-eslint/naming-convention
 			Object.assign(params, { '--ff-only': true });
 		}
-		return this.git.pull(params);
+		return await this.git.pull(params);
 	}
 
 	async push(
@@ -300,9 +300,9 @@ export class SourceControlGitService {
 			throw new ApplicationError('Git is not initialized ({)');
 		}
 		if (force) {
-			return this.git.push(SOURCE_CONTROL_ORIGIN, branch, ['-f']);
+			return await this.git.push(SOURCE_CONTROL_ORIGIN, branch, ['-f']);
 		}
-		return this.git.push(SOURCE_CONTROL_ORIGIN, branch);
+		return await this.git.push(SOURCE_CONTROL_ORIGIN, branch);
 	}
 
 	async stage(files: Set<string>, deletedFiles?: Set<string>): Promise<string> {
@@ -316,7 +316,7 @@ export class SourceControlGitService {
 				this.logger.debug(`Git rm: ${(error as Error).message}`);
 			}
 		}
-		return this.git.add(Array.from(files));
+		return await this.git.add(Array.from(files));
 	}
 
 	async resetBranch(
@@ -326,9 +326,9 @@ export class SourceControlGitService {
 			throw new ApplicationError('Git is not initialized (Promise)');
 		}
 		if (options?.hard) {
-			return this.git.raw(['reset', '--hard', options.target]);
+			return await this.git.raw(['reset', '--hard', options.target]);
 		}
-		return this.git.raw(['reset', options.target]);
+		return await this.git.raw(['reset', options.target]);
 		// built-in reset method does not work
 		// return this.git.reset();
 	}
@@ -337,7 +337,7 @@ export class SourceControlGitService {
 		if (!this.git) {
 			throw new ApplicationError('Git is not initialized (commit)');
 		}
-		return this.git.commit(message);
+		return await this.git.commit(message);
 	}
 
 	async status(): Promise<StatusResult> {

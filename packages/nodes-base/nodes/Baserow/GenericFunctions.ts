@@ -146,7 +146,7 @@ export class TableFieldMapper {
 		jwtToken: string,
 	): Promise<LoadedResource[]> {
 		const endpoint = `/api/database/fields/table/${table}/`;
-		return baserowApiRequest.call(this, 'GET', endpoint, jwtToken);
+		return await baserowApiRequest.call(this, 'GET', endpoint, jwtToken);
 	}
 
 	createMappings(tableFields: LoadedResource[]) {

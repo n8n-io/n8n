@@ -166,7 +166,7 @@ async function getChain(
 
 	// If there are no output parsers, create a simple LLM chain and execute the query
 	if (!outputParsers.length) {
-		return createSimpleLLMChain(context, llm, query, chatTemplate);
+		return await createSimpleLLMChain(context, llm, query, chatTemplate);
 	}
 
 	// If there's only one output parser, use it; otherwise, create a combined output parser

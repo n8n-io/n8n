@@ -93,6 +93,6 @@ export class FormTriggerV1 implements INodeType {
 	}
 
 	async webhook(this: IWebhookFunctions) {
-		return formWebhook(this);
+		return await formWebhook(this);
 	}
 }

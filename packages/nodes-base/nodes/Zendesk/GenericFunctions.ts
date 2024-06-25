@@ -53,7 +53,7 @@ export async function zendeskApiRequest(
 
 	const credentialType = authenticationMethod === 'apiToken' ? 'zendeskApi' : 'zendeskOAuth2Api';
 
-	return this.helpers.requestWithAuthentication.call(this, credentialType, options);
+	return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 }
 
 /**

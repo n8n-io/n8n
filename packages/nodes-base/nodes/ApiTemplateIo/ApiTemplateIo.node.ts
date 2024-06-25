@@ -350,11 +350,11 @@ export class ApiTemplateIo implements INodeType {
 	methods = {
 		loadOptions: {
 			async getImageTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return loadResource.call(this, 'image');
+				return await loadResource.call(this, 'image');
 			},
 
 			async getPdfTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return loadResource.call(this, 'pdf');
+				return await loadResource.call(this, 'pdf');
 			},
 		},
 	};

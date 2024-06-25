@@ -11,6 +11,7 @@ import { issueCookie, resolveJwtContent } from '@/auth/jwt';
 import { canSkipAuth } from '@/decorators/registerController';
 import { Logger } from '@/Logger';
 import { JwtService } from '@/services/jwt.service';
+import config from '@/config';
 
 const jwtFromRequest = (req: Request) => {
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -41,17 +42,29 @@ const userManagementJwtAuth = (): RequestHandler => {
 /**
  * middleware to refresh cookie before it expires
  */
-const refreshExpiringCookie: RequestHandler = async (req: AuthenticatedRequest, res, next) => {
+export const refreshExpiringCookie = (async (req: AuthenticatedRequest, res, next) => {
+	const jwtRefreshTimeoutHours = config.get('userManagement.jwtRefreshTimeoutHours');
+
+	let jwtRefreshTimeoutMilliSeconds: number;
+
+	if (jwtRefreshTimeoutHours === 0) {
+		const jwtSessionDurationHours = config.get('userManagement.jwtSessionDurationHours');
+
+		jwtRefreshTimeoutMilliSeconds = Math.floor(jwtSessionDurationHours * 0.25 * 60 * 60 * 1000);
+	} else {
+		jwtRefreshTimeoutMilliSeconds = Math.floor(jwtRefreshTimeoutHours * 60 * 60 * 1000);
+	}
+
 	const cookieAuth = jwtFromRequest(req);
-	if (cookieAuth && req.user) {
+
+	if (cookieAuth && req.user && jwtRefreshTimeoutHours !== -1) {
 		const cookieContents = jwt.decode(cookieAuth) as JwtPayload & { exp: number };
-		if (cookieContents.exp * 1000 - Date.now() < 259200000) {
-			// if cookie expires in < 3 days, renew it.
+		if (cookieContents.exp * 1000 - Date.now() < jwtRefreshTimeoutMilliSeconds) {
 			await issueCookie(res, req.user);
 		}
 	}
 	next();
-};
+}) satisfies RequestHandler;
 
 const passportMiddleware = passport.authenticate('jwt', { session: false }) as RequestHandler;
 

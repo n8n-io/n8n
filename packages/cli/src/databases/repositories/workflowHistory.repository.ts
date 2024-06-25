@@ -9,6 +9,6 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 	}
 
 	async deleteEarlierThan(date: Date) {
-		return this.delete({ createdAt: LessThan(date) });
+		return await this.delete({ createdAt: LessThan(date) });
 	}
 }

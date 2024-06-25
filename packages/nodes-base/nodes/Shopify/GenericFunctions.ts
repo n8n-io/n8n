@@ -78,7 +78,7 @@ export async function shopifyApiRequest(
 		}
 	}
 
-	return this.helpers.requestWithAuthentication.call(this, credentialType, options, {
+	return await this.helpers.requestWithAuthentication.call(this, credentialType, options, {
 		oauth2: oAuth2Options,
 	});
 }

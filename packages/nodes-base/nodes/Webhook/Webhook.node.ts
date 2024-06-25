@@ -119,11 +119,11 @@ export class Webhook extends Node {
 		}
 
 		if (options.binaryData) {
-			return this.handleBinaryData(context);
+			return await this.handleBinaryData(context);
 		}
 
 		if (req.contentType === 'multipart/form-data') {
-			return this.handleFormData(context);
+			return await this.handleFormData(context);
 		}
 
 		const nodeVersion = context.getNode().typeVersion;

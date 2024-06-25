@@ -284,7 +284,7 @@ export class RoutingNode {
 		runIndex: number,
 	): Promise<INodeExecutionData[]> {
 		if (typeof action === 'function') {
-			return action.call(executeSingleFunctions, inputData, responseData);
+			return await action.call(executeSingleFunctions, inputData, responseData);
 		}
 		if (action.type === 'rootProperty') {
 			try {
@@ -534,19 +534,20 @@ export class RoutingNode {
 		const executePaginationFunctions = {
 			...executeSingleFunctions,
 			makeRoutingRequest: async (requestOptions: DeclarativeRestApiSettings.ResultOptions) => {
-				return this.rawRoutingRequest(
+				return await this.rawRoutingRequest(
 					executeSingleFunctions,
 					requestOptions,
 					credentialType,
 					credentialsDecrypted,
-				).then(async (data) =>
-					this.postProcessResponseData(
-						executeSingleFunctions,
-						data,
-						requestData,
-						itemIndex,
-						runIndex,
-					),
+				).then(
+					async (data) =>
+						await this.postProcessResponseData(
+							executeSingleFunctions,
+							data,
+							requestData,
+							itemIndex,
+							runIndex,
+						),
 				);
 			},
 		};
@@ -649,14 +650,15 @@ export class RoutingNode {
 							requestData,
 							credentialType,
 							credentialsDecrypted,
-						).then(async (data) =>
-							this.postProcessResponseData(
-								executeSingleFunctions,
-								data,
-								requestData,
-								itemIndex,
-								runIndex,
-							),
+						).then(
+							async (data) =>
+								await this.postProcessResponseData(
+									executeSingleFunctions,
+									data,
+									requestData,
+									itemIndex,
+									runIndex,
+								),
 						);
 
 						(requestData.options[optionsType] as IDataObject)[properties.offsetParameter] =
@@ -694,14 +696,15 @@ export class RoutingNode {
 				requestData,
 				credentialType,
 				credentialsDecrypted,
-			).then(async (data) =>
-				this.postProcessResponseData(
-					executeSingleFunctions,
-					data,
-					requestData,
-					itemIndex,
-					runIndex,
-				),
+			).then(
+				async (data) =>
+					await this.postProcessResponseData(
+						executeSingleFunctions,
+						data,
+						requestData,
+						itemIndex,
+						runIndex,
+					),
 			);
 		}
 		return responseData;

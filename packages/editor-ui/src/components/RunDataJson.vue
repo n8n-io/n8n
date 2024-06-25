@@ -94,7 +94,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import TextWithHighlights from './TextWithHighlights.vue';
 
 const RunDataJsonActions = defineAsyncComponent(
-	async () => import('@/components/RunDataJsonActions.vue'),
+	async () => await import('@/components/RunDataJsonActions.vue'),
 );
 
 export default defineComponent({

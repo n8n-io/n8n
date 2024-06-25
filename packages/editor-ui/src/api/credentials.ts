@@ -22,22 +22,22 @@ export async function getCredentialsNewName(
 	context: IRestApiContext,
 	name?: string,
 ): Promise<{ name: string }> {
-	return makeRestApiRequest(context, 'GET', '/credentials/new', name ? { name } : {});
+	return await makeRestApiRequest(context, 'GET', '/credentials/new', name ? { name } : {});
 }
 
 export async function getAllCredentials(context: IRestApiContext): Promise<ICredentialsResponse[]> {
-	return makeRestApiRequest(context, 'GET', '/credentials');
+	return await makeRestApiRequest(context, 'GET', '/credentials');
 }
 
 export async function createNewCredential(
 	context: IRestApiContext,
 	data: ICredentialsDecrypted,
 ): Promise<ICredentialsResponse> {
-	return makeRestApiRequest(context, 'POST', '/credentials', data as unknown as IDataObject);
+	return await makeRestApiRequest(context, 'POST', '/credentials', data as unknown as IDataObject);
 }
 
 export async function deleteCredential(context: IRestApiContext, id: string): Promise<boolean> {
-	return makeRestApiRequest(context, 'DELETE', `/credentials/${id}`);
+	return await makeRestApiRequest(context, 'DELETE', `/credentials/${id}`);
 }
 
 export async function updateCredential(
@@ -45,14 +45,19 @@ export async function updateCredential(
 	id: string,
 	data: ICredentialsDecrypted,
 ): Promise<ICredentialsResponse> {
-	return makeRestApiRequest(context, 'PATCH', `/credentials/${id}`, data as unknown as IDataObject);
+	return await makeRestApiRequest(
+		context,
+		'PATCH',
+		`/credentials/${id}`,
+		data as unknown as IDataObject,
+	);
 }
 
 export async function getCredentialData(
 	context: IRestApiContext,
 	id: string,
 ): Promise<ICredentialsDecryptedResponse | ICredentialsResponse | undefined> {
-	return makeRestApiRequest(context, 'GET', `/credentials/${id}`, {
+	return await makeRestApiRequest(context, 'GET', `/credentials/${id}`, {
 		includeData: true,
 	});
 }
@@ -62,7 +67,7 @@ export async function oAuth1CredentialAuthorize(
 	context: IRestApiContext,
 	data: ICredentialsResponse,
 ): Promise<string> {
-	return makeRestApiRequest(
+	return await makeRestApiRequest(
 		context,
 		'GET',
 		'/oauth1-credential/auth',
@@ -75,7 +80,7 @@ export async function oAuth2CredentialAuthorize(
 	context: IRestApiContext,
 	data: ICredentialsResponse,
 ): Promise<string> {
-	return makeRestApiRequest(
+	return await makeRestApiRequest(
 		context,
 		'GET',
 		'/oauth2-credential/auth',
@@ -87,5 +92,10 @@ export async function testCredential(
 	context: IRestApiContext,
 	data: INodeCredentialTestRequest,
 ): Promise<INodeCredentialTestResult> {
-	return makeRestApiRequest(context, 'POST', '/credentials/test', data as unknown as IDataObject);
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		'/credentials/test',
+		data as unknown as IDataObject,
+	);
 }

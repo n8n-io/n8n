@@ -7,6 +7,7 @@ import type {
 	IPollFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
+	IPairedItemData,
 } from 'n8n-workflow';
 
 interface IAttachment {
@@ -59,7 +60,7 @@ export async function apiRequest(
 		delete options.body;
 	}
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
-	return this.helpers.requestWithAuthentication.call(this, authenticationMethod, options);
+	return await this.helpers.requestWithAuthentication.call(this, authenticationMethod, options);
 }
 
 /**
@@ -100,10 +101,14 @@ export async function downloadRecordAttachments(
 	this: IExecuteFunctions | IPollFunctions,
 	records: IRecord[],
 	fieldNames: string[],
+	pairedItem?: IPairedItemData[],
 ): Promise<INodeExecutionData[]> {
 	const elements: INodeExecutionData[] = [];
 	for (const record of records) {
 		const element: INodeExecutionData = { json: {}, binary: {} };
+		if (pairedItem) {
+			element.pairedItem = pairedItem;
+		}
 		element.json = record as unknown as IDataObject;
 		for (const fieldName of fieldNames) {
 			if (record.fields[fieldName] !== undefined) {

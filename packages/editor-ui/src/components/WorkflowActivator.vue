@@ -106,7 +106,7 @@ export default defineComponent({
 	},
 	methods: {
 		async activeChanged(newActiveState: boolean) {
-			return this.updateWorkflowActivation(this.workflowId, newActiveState);
+			return await this.updateWorkflowActivation(this.workflowId, newActiveState);
 		},
 		async displayActivationError() {
 			let errorMessage: string;

@@ -53,7 +53,7 @@ export async function saveManualTriggerWorkflow() {
 		],
 	};
 
-	return Container.get(WorkflowRepository).save(details);
+	return await Container.get(WorkflowRepository).save(details);
 }
 
 export const MOCK_09990_N8N_VERSION = {

@@ -29,5 +29,5 @@ export async function apiRequest(
 		json: true,
 	};
 
-	return this.helpers.requestWithAuthentication.call(this, 'wekanApi', options);
+	return await this.helpers.requestWithAuthentication.call(this, 'wekanApi', options);
 }

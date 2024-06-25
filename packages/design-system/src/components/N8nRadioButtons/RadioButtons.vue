@@ -10,7 +10,7 @@
 			:active="modelValue === option.value"
 			:size="size"
 			:disabled="disabled || option.disabled"
-			@click.prevent.stop="onClick(option)"
+			@click.prevent.stop="onClick(option, $event)"
 		/>
 	</div>
 </template>
@@ -47,12 +47,13 @@ export default defineComponent({
 			type: Boolean,
 		},
 	},
+	emits: ['update:modelValue'],
 	methods: {
-		onClick(option: { label: string; value: string; disabled?: boolean }) {
+		onClick(option: { label: string; value: string; disabled?: boolean }, event: MouseEvent) {
 			if (this.disabled || option.disabled) {
 				return;
 			}
-			this.$emit('update:modelValue', option.value);
+			this.$emit('update:modelValue', option.value, event);
 		},
 	},
 });

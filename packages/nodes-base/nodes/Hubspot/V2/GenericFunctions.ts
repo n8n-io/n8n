@@ -2004,5 +2004,5 @@ export async function validateCredentials(
 		options.headers = { Authorization: `Bearer ${appToken}` };
 	}
 
-	return this.helpers.request(options);
+	return await this.helpers.request(options);
 }

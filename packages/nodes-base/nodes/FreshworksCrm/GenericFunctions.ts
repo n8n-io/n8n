@@ -110,7 +110,7 @@ export async function handleListing(
 	const returnAll = this.getNodeParameter('returnAll', 0);
 
 	if (returnAll) {
-		return freshworksCrmApiRequestAllItems.call(this, method, endpoint, body, qs);
+		return await freshworksCrmApiRequestAllItems.call(this, method, endpoint, body, qs);
 	}
 
 	const responseData = await freshworksCrmApiRequestAllItems.call(this, method, endpoint, body, qs);

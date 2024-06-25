@@ -43,9 +43,8 @@ export function longestCommonPrefix(...strings: string[]) {
 // suggestions can be matched based on it.
 function extractSubExpression(userInput: string): string {
 	const dollarSignIndex = userInput.indexOf('$');
-	// If it's not a dollar sign expression just strip parentheses
 	if (dollarSignIndex === -1) {
-		userInput = userInput.replace(/^.+(\(|\[|{)/, '');
+		return userInput;
 	} else if (!stringLiteralRegex.test(userInput)) {
 		// If there is a dollar sign in the input and input is not a string literal,
 		// extract part of following the last $

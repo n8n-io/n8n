@@ -1,7 +1,6 @@
 import type { SuperAgentTest } from 'supertest';
 import { IsNull } from 'typeorm';
 import validator from 'validator';
-import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import {
@@ -13,20 +12,11 @@ import {
 } from './shared/random';
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
-import { getGlobalMemberRole, getGlobalOwnerRole } from './shared/db/roles';
 import { addApiKey, createUser, createUserShell } from './shared/db/users';
 import Container from 'typedi';
 import { UserRepository } from '@db/repositories/user.repository';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['me'] });
-
-let globalOwnerRole: Role;
-let globalMemberRole: Role;
-
-beforeAll(async () => {
-	globalOwnerRole = await getGlobalOwnerRole();
-	globalMemberRole = await getGlobalMemberRole();
-});
 
 beforeEach(async () => {
 	await testDb.truncate(['User']);
@@ -37,7 +27,7 @@ describe('Owner shell', () => {
 	let authOwnerShellAgent: SuperAgentTest;
 
 	beforeEach(async () => {
-		ownerShell = await createUserShell(globalOwnerRole);
+		ownerShell = await createUserShell('global:owner');
 		await addApiKey(ownerShell);
 		authOwnerShellAgent = testServer.authAgentFor(ownerShell);
 	});
@@ -54,7 +44,7 @@ describe('Owner shell', () => {
 				firstName,
 				lastName,
 				personalizationAnswers,
-				globalRole,
+				role,
 				password,
 				isPending,
 				apiKey,
@@ -67,8 +57,7 @@ describe('Owner shell', () => {
 			expect(personalizationAnswers).toBeNull();
 			expect(password).toBeUndefined();
 			expect(isPending).toBe(false);
-			expect(globalRole.name).toBe('owner');
-			expect(globalRole.scope).toBe('global');
+			expect(role).toBe('global:owner');
 			expect(apiKey).toBeUndefined();
 
 			const storedOwnerShell = await Container.get(UserRepository).findOneByOrFail({ id });
@@ -177,7 +166,7 @@ describe('Member', () => {
 	beforeEach(async () => {
 		member = await createUser({
 			password: memberPassword,
-			globalRole: globalMemberRole,
+			role: 'global:member',
 			apiKey: randomApiKey(),
 		});
 		authMemberAgent = testServer.authAgentFor(member);
@@ -197,7 +186,7 @@ describe('Member', () => {
 				firstName,
 				lastName,
 				personalizationAnswers,
-				globalRole,
+				role,
 				password,
 				isPending,
 				apiKey,
@@ -210,8 +199,7 @@ describe('Member', () => {
 			expect(personalizationAnswers).toBeNull();
 			expect(password).toBeUndefined();
 			expect(isPending).toBe(false);
-			expect(globalRole.name).toBe('member');
-			expect(globalRole.scope).toBe('global');
+			expect(role).toBe('global:member');
 			expect(apiKey).toBeUndefined();
 
 			const storedMember = await Container.get(UserRepository).findOneByOrFail({ id });
@@ -317,7 +305,7 @@ describe('Owner', () => {
 	});
 
 	test('PATCH /me should succeed with valid inputs', async () => {
-		const owner = await createUser({ globalRole: globalOwnerRole });
+		const owner = await createUser({ role: 'global:owner' });
 		const authOwnerAgent = testServer.authAgentFor(owner);
 
 		for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
@@ -331,7 +319,7 @@ describe('Owner', () => {
 				firstName,
 				lastName,
 				personalizationAnswers,
-				globalRole,
+				role,
 				password,
 				isPending,
 				apiKey,
@@ -344,8 +332,7 @@ describe('Owner', () => {
 			expect(personalizationAnswers).toBeNull();
 			expect(password).toBeUndefined();
 			expect(isPending).toBe(false);
-			expect(globalRole.name).toBe('owner');
-			expect(globalRole.scope).toBe('global');
+			expect(role).toBe('global:owner');
 			expect(apiKey).toBeUndefined();
 
 			const storedOwner = await Container.get(UserRepository).findOneByOrFail({ id });

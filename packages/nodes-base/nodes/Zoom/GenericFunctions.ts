@@ -49,7 +49,7 @@ export async function zoomApiRequest(
 }
 
 async function wait() {
-	return new Promise((resolve, _reject) => {
+	return await new Promise((resolve, _reject) => {
 		setTimeout(() => {
 			resolve(true);
 		}, 1000);

@@ -61,7 +61,7 @@ export const versionDescription: INodeTypeDescription = {
 				{
 					name: 'OAuth2',
 					value: 'oAuth2',
-					description: 'Manage messages, channels, and members on a server',
+					description: "Same features as 'Bot Token' with easier Bot installation",
 				},
 				{
 					name: 'Webhook',

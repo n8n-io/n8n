@@ -1,4 +1,4 @@
-import * as Config from '@oclif/config';
+import { Config } from '@oclif/core';
 
 import { InternalHooks } from '@/InternalHooks';
 import { ImportCredentialsCommand } from '@/commands/import/credentials';
@@ -7,6 +7,8 @@ import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { mockInstance } from '../../shared/mocking';
 import * as testDb from '../shared/testDb';
 import { getAllCredentials } from '../shared/db/credentials';
+
+const oclifConfig = new Config({ root: __dirname });
 
 beforeAll(async () => {
 	mockInstance(InternalHooks);
@@ -23,12 +25,11 @@ afterAll(async () => {
 });
 
 test('import:credentials should import a credential', async () => {
-	const config: Config.IConfig = new Config.Config({ root: __dirname });
 	const before = await getAllCredentials();
 	expect(before.length).toBe(0);
 	const importer = new ImportCredentialsCommand(
 		['--input=./test/integration/commands/importCredentials/credentials.json'],
-		config,
+		oclifConfig,
 	);
 	const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => {
 		throw new Error('process.exit');

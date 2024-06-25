@@ -194,10 +194,12 @@ export async function execute(
 		returnData = responseData.records as INodeExecutionData[];
 
 		if (options.downloadFields) {
+			const pairedItem = generatePairedItemData(items.length);
 			return await downloadRecordAttachments.call(
 				this,
 				responseData.records as IRecord[],
 				options.downloadFields as string[],
+				pairedItem,
 			);
 		}
 

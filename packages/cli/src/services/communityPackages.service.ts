@@ -59,22 +59,22 @@ export class CommunityPackagesService {
 	}
 
 	async findInstalledPackage(packageName: string) {
-		return this.installedPackageRepository.findOne({
+		return await this.installedPackageRepository.findOne({
 			where: { packageName },
 			relations: ['installedNodes'],
 		});
 	}
 
 	async isPackageInstalled(packageName: string) {
-		return this.installedPackageRepository.exist({ where: { packageName } });
+		return await this.installedPackageRepository.exist({ where: { packageName } });
 	}
 
 	async getAllInstalledPackages() {
-		return this.installedPackageRepository.find({ relations: ['installedNodes'] });
+		return await this.installedPackageRepository.find({ relations: ['installedNodes'] });
 	}
 
 	async removePackageFromDatabase(packageName: InstalledPackages) {
-		return this.installedPackageRepository.remove(packageName);
+		return await this.installedPackageRepository.remove(packageName);
 	}
 
 	async persistInstalledPackage(packageLoader: PackageDirectoryLoader) {
@@ -297,14 +297,14 @@ export class CommunityPackagesService {
 	}
 
 	async installNpmModule(packageName: string, version?: string): Promise<InstalledPackages> {
-		return this.installOrUpdateNpmModule(packageName, { version });
+		return await this.installOrUpdateNpmModule(packageName, { version });
 	}
 
 	async updateNpmModule(
 		packageName: string,
 		installedPackage: InstalledPackages,
 	): Promise<InstalledPackages> {
-		return this.installOrUpdateNpmModule(packageName, { installedPackage });
+		return await this.installOrUpdateNpmModule(packageName, { installedPackage });
 	}
 
 	async removeNpmModule(packageName: string, installedPackage: InstalledPackages): Promise<void> {

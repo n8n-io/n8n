@@ -26,11 +26,12 @@ export class AddJsonKeyPinData1659888469333 implements IrreversibleMigration {
 		const selectQuery = `SELECT id, ${columnName} FROM ${tableName} WHERE ${columnName} IS NOT NULL`;
 		await runInBatches<Workflow>(selectQuery, async (workflows) => {
 			await Promise.all(
-				this.makeUpdateParams(workflows).map(async (workflow) =>
-					runQuery(`UPDATE ${tableName} SET ${columnName} = :pinData WHERE id = :id;`, {
-						pinData: workflow.pinData,
-						id: workflow.id,
-					}),
+				this.makeUpdateParams(workflows).map(
+					async (workflow) =>
+						await runQuery(`UPDATE ${tableName} SET ${columnName} = :pinData WHERE id = :id;`, {
+							pinData: workflow.pinData,
+							id: workflow.id,
+						}),
 				),
 			);
 		});

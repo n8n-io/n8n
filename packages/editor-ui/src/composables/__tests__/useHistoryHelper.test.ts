@@ -31,6 +31,7 @@ vi.mock('@/stores/ui.store', () => {
 });
 vi.mock('vue-router', () => ({
 	useRoute: () => ({}),
+	RouterLink: vi.fn(),
 }));
 
 const TestComponent = defineComponent({

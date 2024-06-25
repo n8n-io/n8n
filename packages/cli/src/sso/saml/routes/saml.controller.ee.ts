@@ -107,7 +107,7 @@ export class SamlController {
 	@NoAuthRequired()
 	@Get(SamlUrls.acs, { middlewares: [samlLicensedMiddleware] })
 	async acsGet(req: SamlConfiguration.AcsRequest, res: express.Response) {
-		return this.acsHandler(req, res, 'redirect');
+		return await this.acsHandler(req, res, 'redirect');
 	}
 
 	/**
@@ -117,7 +117,7 @@ export class SamlController {
 	@NoAuthRequired()
 	@Post(SamlUrls.acs, { middlewares: [samlLicensedMiddleware] })
 	async acsPost(req: SamlConfiguration.AcsRequest, res: express.Response) {
-		return this.acsHandler(req, res, 'post');
+		return await this.acsHandler(req, res, 'post');
 	}
 
 	/**
@@ -198,7 +198,7 @@ export class SamlController {
 		} catch {
 			// ignore
 		}
-		return this.handleInitSSO(res, redirectUrl);
+		return await this.handleInitSSO(res, redirectUrl);
 	}
 
 	/**
@@ -209,7 +209,7 @@ export class SamlController {
 	@Get(SamlUrls.configTest, { middlewares: [samlLicensedMiddleware] })
 	@RequireGlobalScope('saml:manage')
 	async configTestGet(req: AuthenticatedRequest, res: express.Response) {
-		return this.handleInitSSO(res, getServiceProviderConfigTestReturnUrl());
+		return await this.handleInitSSO(res, getServiceProviderConfigTestReturnUrl());
 	}
 
 	private async handleInitSSO(res: express.Response, relayState?: string) {

@@ -17,8 +17,6 @@ import { UserService } from '@/services/user.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { mockInstance } from '../../shared/mocking';
 
-jest.mock('@/UserManagement/UserManagementHelper', () => ({ getWorkflowOwner: jest.fn() }));
-
 describe('EventsService', () => {
 	const dbType = config.getEnv('database.type');
 	const fakeUser = mock<User>({ id: 'abcde-fghij' });

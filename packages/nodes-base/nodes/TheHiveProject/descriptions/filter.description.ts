@@ -193,7 +193,7 @@ export const genericFiltersCollection: INodeProperties = {
 							description: 'Field is greater than value',
 						},
 						{
-							name: 'Greater Than Or Equal',
+							name: 'Greater Than Or Equal To',
 							value: '_gte',
 							description: 'Field is greater than or equal to value',
 						},
@@ -208,7 +208,7 @@ export const genericFiltersCollection: INodeProperties = {
 							description: 'Field is less than value',
 						},
 						{
-							name: 'Less Than Or Equal',
+							name: 'Less Than Or Equal To',
 							value: '_lte',
 							description: 'Field is less than or equal to value',
 						},

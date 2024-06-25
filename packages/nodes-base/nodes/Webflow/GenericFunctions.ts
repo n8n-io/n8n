@@ -47,7 +47,7 @@ export async function webflowApiRequest(
 	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
-	return this.helpers.requestWithAuthentication.call(this, credentialsType, options);
+	return await this.helpers.requestWithAuthentication.call(this, credentialsType, options);
 }
 
 export async function webflowApiRequestAllItems(

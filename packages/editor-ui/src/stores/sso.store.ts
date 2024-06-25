@@ -53,23 +53,23 @@ export const useSSOStore = defineStore('sso', () => {
 			isDefaultAuthenticationSaml.value,
 	);
 
-	const getSSORedirectUrl = async () => ssoApi.initSSO(rootStore.getRestApiContext);
+	const getSSORedirectUrl = async () => await ssoApi.initSSO(rootStore.getRestApiContext);
 
 	const toggleLoginEnabled = async (enabled: boolean) =>
-		ssoApi.toggleSamlConfig(rootStore.getRestApiContext, { loginEnabled: enabled });
+		await ssoApi.toggleSamlConfig(rootStore.getRestApiContext, { loginEnabled: enabled });
 
-	const getSamlMetadata = async () => ssoApi.getSamlMetadata(rootStore.getRestApiContext);
+	const getSamlMetadata = async () => await ssoApi.getSamlMetadata(rootStore.getRestApiContext);
 	const getSamlConfig = async () => {
 		const samlConfig = await ssoApi.getSamlConfig(rootStore.getRestApiContext);
 		state.samlConfig = samlConfig;
 		return samlConfig;
 	};
 	const saveSamlConfig = async (config: SamlPreferences) =>
-		ssoApi.saveSamlConfig(rootStore.getRestApiContext, config);
-	const testSamlConfig = async () => ssoApi.testSamlConfig(rootStore.getRestApiContext);
+		await ssoApi.saveSamlConfig(rootStore.getRestApiContext, config);
+	const testSamlConfig = async () => await ssoApi.testSamlConfig(rootStore.getRestApiContext);
 
 	const updateUser = async (params: { firstName: string; lastName: string }) =>
-		updateCurrentUser(rootStore.getRestApiContext, {
+		await updateCurrentUser(rootStore.getRestApiContext, {
 			id: usersStore.currentUser!.id,
 			email: usersStore.currentUser!.email!,
 			...params,

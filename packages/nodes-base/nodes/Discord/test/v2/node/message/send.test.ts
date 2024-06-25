@@ -102,6 +102,6 @@ describe('Test DiscordV2, message => send', () => {
 	};
 
 	for (const testData of tests) {
-		test(testData.description, async () => testNode(testData, nodeTypes));
+		test(testData.description, async () => await testNode(testData, nodeTypes));
 	}
 });

@@ -21,6 +21,6 @@ export class WorkflowFilter extends BaseFilter {
 	tags?: string[];
 
 	static async fromString(rawFilter: string) {
-		return this.toFilter(rawFilter, WorkflowFilter);
+		return await this.toFilter(rawFilter, WorkflowFilter);
 	}
 }

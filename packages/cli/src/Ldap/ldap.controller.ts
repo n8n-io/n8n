@@ -19,7 +19,7 @@ export class LdapController {
 	@Get('/config')
 	@RequireGlobalScope('ldap:manage')
 	async getConfig() {
-		return this.ldapService.loadConfig();
+		return await this.ldapService.loadConfig();
 	}
 
 	@Post('/test-connection')
@@ -55,7 +55,7 @@ export class LdapController {
 	@RequireGlobalScope('ldap:sync')
 	async getLdapSync(req: LdapConfiguration.GetSync) {
 		const { page = '0', perPage = '20' } = req.query;
-		return getLdapSynchronizations(parseInt(page, 10), parseInt(perPage, 10));
+		return await getLdapSynchronizations(parseInt(page, 10), parseInt(perPage, 10));
 	}
 
 	@Post('/sync')

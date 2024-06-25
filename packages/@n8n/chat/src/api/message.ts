@@ -7,7 +7,7 @@ import type {
 
 export async function loadPreviousSession(sessionId: string, options: ChatOptions) {
 	const method = options.webhookConfig?.method === 'POST' ? post : get;
-	return method<LoadPreviousSessionResponse>(
+	return await method<LoadPreviousSessionResponse>(
 		`${options.webhookUrl}`,
 		{
 			action: 'loadPreviousSession',
@@ -22,7 +22,7 @@ export async function loadPreviousSession(sessionId: string, options: ChatOption
 
 export async function sendMessage(message: string, sessionId: string, options: ChatOptions) {
 	const method = options.webhookConfig?.method === 'POST' ? post : get;
-	return method<SendMessageResponse>(
+	return await method<SendMessageResponse>(
 		`${options.webhookUrl}`,
 		{
 			action: 'sendMessage',

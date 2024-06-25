@@ -9,7 +9,7 @@ export class ActiveWorkflowsController {
 
 	@Get('/')
 	async getActiveWorkflows(req: ActiveWorkflowRequest.GetAllActive) {
-		return this.activeWorkflowsService.getAllActiveIdsFor(req.user);
+		return await this.activeWorkflowsService.getAllActiveIdsFor(req.user);
 	}
 
 	@Get('/error/:id')
@@ -18,6 +18,6 @@ export class ActiveWorkflowsController {
 			user,
 			params: { id: workflowId },
 		} = req;
-		return this.activeWorkflowsService.getActivationError(workflowId, user);
+		return await this.activeWorkflowsService.getActivationError(workflowId, user);
 	}
 }

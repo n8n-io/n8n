@@ -30,6 +30,6 @@ export class DiscordV2 implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		return router.call(this);
+		return await router.call(this);
 	}
 }

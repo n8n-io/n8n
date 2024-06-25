@@ -23,7 +23,6 @@ import { ExternalHooks } from '@/ExternalHooks';
 import type { User } from '@db/entities/User';
 import type { CredentialRequest, ListQuery } from '@/requests';
 import { CredentialTypes } from '@/CredentialTypes';
-import { RoleService } from '@/services/role.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { Logger } from '@/Logger';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
@@ -35,7 +34,7 @@ export type CredentialsGetSharedOptions =
 
 export class CredentialsService {
 	static async get(where: FindOptionsWhere<ICredentialsDb>, options?: { relations: string[] }) {
-		return Container.get(CredentialsRepository).findOne({
+		return await Container.get(CredentialsRepository).findOne({
 			relations: options?.relations,
 			where,
 		});
@@ -85,16 +84,11 @@ export class CredentialsService {
 		// global credential permissions. This allows the user to
 		// access credentials they don't own.
 		if (!options.allowGlobalScope || !user.hasGlobalScope(options.globalScope)) {
-			Object.assign(where, {
-				userId: user.id,
-				role: { name: 'owner' },
-			});
-			if (!relations.includes('role')) {
-				relations.push('role');
-			}
+			where.userId = user.id;
+			where.role = 'credential:owner';
 		}
 
-		return Container.get(SharedCredentialsRepository).findOne({ where, relations });
+		return await Container.get(SharedCredentialsRepository).findOne({ where, relations });
 	}
 
 	static async prepareCreateData(
@@ -180,7 +174,7 @@ export class CredentialsService {
 
 		// We sadly get nothing back from "update". Neither if it updated a record
 		// nor the new value. So query now the updated entry.
-		return Container.get(CredentialsRepository).findOneBy({ id: credentialId });
+		return await Container.get(CredentialsRepository).findOneBy({ id: credentialId });
 	}
 
 	static async save(
@@ -194,8 +188,6 @@ export class CredentialsService {
 
 		await Container.get(ExternalHooks).run('credentials.create', [encryptedData]);
 
-		const role = await Container.get(RoleService).findCredentialOwnerRole();
-
 		const result = await Db.transaction(async (transactionManager) => {
 			const savedCredential = await transactionManager.save<CredentialsEntity>(newCredential);
 
@@ -204,7 +196,7 @@ export class CredentialsService {
 			const newSharedCredential = new SharedCredentials();
 
 			Object.assign(newSharedCredential, {
-				role,
+				role: 'credential:owner',
 				user,
 				credentials: savedCredential,
 			});
@@ -231,7 +223,7 @@ export class CredentialsService {
 		credentials: ICredentialsDecrypted,
 	): Promise<INodeCredentialTestResult> {
 		const helper = Container.get(CredentialsHelper);
-		return helper.testCredentials(user, credentials.type, credentials);
+		return await helper.testCredentials(user, credentials.type, credentials);
 	}
 
 	// Take data and replace all sensitive values with a sentinel value.

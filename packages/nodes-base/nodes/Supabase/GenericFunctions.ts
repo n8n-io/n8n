@@ -312,7 +312,7 @@ export async function validateCredentials(
 		json: true,
 	};
 
-	return this.helpers.request(options);
+	return await this.helpers.request(options);
 }
 
 export function mapPairedItemsFrom<T>(iterable: Iterable<T> | ArrayLike<T>): IPairedItemData[] {

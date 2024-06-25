@@ -9,7 +9,7 @@ export class ExecutionDataRepository extends Repository<ExecutionData> {
 	}
 
 	async findByExecutionIds(executionIds: string[]) {
-		return this.find({
+		return await this.find({
 			select: ['workflowData'],
 			where: {
 				executionId: In(executionIds),

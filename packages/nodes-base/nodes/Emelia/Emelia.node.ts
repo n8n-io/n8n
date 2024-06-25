@@ -68,11 +68,11 @@ export class Emelia implements INodeType {
 
 		loadOptions: {
 			async getCampaigns(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'campaign');
+				return await loadResource.call(this, 'campaign');
 			},
 
 			async getContactLists(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'contactList');
+				return await loadResource.call(this, 'contactList');
 			},
 		},
 	};

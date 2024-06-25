@@ -153,7 +153,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Cypress run
-        uses: cypress-io/github-action@v5.8.3
+        uses: cypress-io/github-action@v6.6.1
         with:
           install: false
           start: pnpm start
@@ -172,6 +172,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           E2E_TESTS: true
           COMMIT_INFO_MESSAGE: 🌳 ${{ inputs.branch }} 🖥️ ${{ inputs.run-env }} 🤖 ${{ inputs.user }} 🗃️ ${{ inputs.spec }}
+          SHELL: /bin/sh
 
   # Check if all tests passed and set the output variable
   check_testing_matrix:

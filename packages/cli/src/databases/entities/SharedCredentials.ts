@@ -1,16 +1,14 @@
 import { Column, Entity, ManyToOne, PrimaryColumn } from 'typeorm';
 import { CredentialsEntity } from './CredentialsEntity';
 import { User } from './User';
-import { Role } from './Role';
 import { WithTimestamps } from './AbstractEntity';
+
+export type CredentialSharingRole = 'credential:owner' | 'credential:user';
 
 @Entity()
 export class SharedCredentials extends WithTimestamps {
-	@ManyToOne('Role', 'sharedCredentials', { nullable: false })
-	role: Role;
-
 	@Column()
-	roleId: string;
+	role: CredentialSharingRole;
 
 	@ManyToOne('User', 'sharedCredentials')
 	user: User;

@@ -11,7 +11,7 @@ import { License } from '@/License';
 import { N8N_VERSION } from '@/constants';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { SourceControlPreferencesService } from '../environments/sourceControl/sourceControlPreferences.service.ee';
-import { RoleRepository } from '@/databases/repositories/role.repository';
+import { UserRepository } from '@db/repositories/user.repository';
 
 type ExecutionTrackDataKey = 'manual_error' | 'manual_success' | 'prod_error' | 'prod_success';
 
@@ -97,7 +97,7 @@ export class Telemetry {
 					...this.executionCountsBuffer[workflowId],
 				});
 
-				return promise;
+				return await promise;
 			});
 
 		this.executionCountsBuffer = {};
@@ -111,13 +111,13 @@ export class Telemetry {
 			plan_name_current: this.license.getPlanName(),
 			quota: this.license.getTriggerLimit(),
 			usage: await this.workflowRepository.getActiveTriggerCount(),
-			role_count: await Container.get(RoleRepository).countUsersByRole(),
+			role_count: await Container.get(UserRepository).countUsersByRole(),
 			source_control_set_up: Container.get(SourceControlPreferencesService).isSourceControlSetup(),
 			branchName: sourceControlPreferences.branchName,
 			read_only_instance: sourceControlPreferences.branchReadOnly,
 		};
 		allPromises.push(this.track('pulse', pulsePacket));
-		return Promise.all(allPromises);
+		return await Promise.all(allPromises);
 	}
 
 	async trackWorkflowExecution(properties: IExecutionTrackProperties): Promise<void> {
@@ -155,7 +155,7 @@ export class Telemetry {
 	async trackN8nStop(): Promise<void> {
 		clearInterval(this.pulseIntervalReference);
 		void this.track('User instance stopped');
-		return new Promise<void>(async (resolve) => {
+		return await new Promise<void>(async (resolve) => {
 			await this.postHog.stop();
 
 			if (this.rudderStack) {
@@ -170,7 +170,7 @@ export class Telemetry {
 		[key: string]: string | number | boolean | object | undefined | null;
 	}): Promise<void> {
 		const { instanceId } = this.instanceSettings;
-		return new Promise<void>((resolve) => {
+		return await new Promise<void>((resolve) => {
 			if (this.rudderStack) {
 				this.rudderStack.identify(
 					{
@@ -191,7 +191,7 @@ export class Telemetry {
 		{ withPostHog } = { withPostHog: false }, // whether to additionally track with PostHog
 	): Promise<void> {
 		const { instanceId } = this.instanceSettings;
-		return new Promise<void>((resolve) => {
+		return await new Promise<void>((resolve) => {
 			if (this.rudderStack) {
 				const { user_id } = properties;
 				const updatedProperties: ITelemetryTrackProperties = {

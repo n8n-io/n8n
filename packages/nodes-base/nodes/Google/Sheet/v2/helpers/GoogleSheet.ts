@@ -401,7 +401,7 @@ export class GoogleSheet {
 			columnNamesList,
 			useAppend ? null : '',
 		);
-		return this.appendData(range, data, valueInputMode, lastRow, useAppend);
+		return await this.appendData(range, data, valueInputMode, lastRow, useAppend);
 	}
 
 	getColumnWithOffset(startColumn: string, offset: number): string {

@@ -41,7 +41,7 @@ export async function awsApiRequest(
 	if (Object.keys(option).length !== 0) {
 		Object.assign(requestOptions, option);
 	}
-	return this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions);
+	return await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions);
 }
 
 export async function awsApiRequestREST(

@@ -40,7 +40,7 @@ export async function ghostApiRequest(
 		json: true,
 	};
 
-	return this.helpers.requestWithAuthentication.call(this, credentialType, options);
+	return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 }
 
 export async function ghostApiRequestAllItems(

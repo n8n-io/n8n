@@ -61,9 +61,9 @@ export class EventBusControllerEE {
 	@RequireGlobalScope('eventBusDestination:list')
 	async getDestination(req: express.Request): Promise<MessageEventBusDestinationOptions[]> {
 		if (isWithIdString(req.query)) {
-			return eventBus.findDestination(req.query.id);
+			return await eventBus.findDestination(req.query.id);
 		} else {
-			return eventBus.findDestination();
+			return await eventBus.findDestination();
 		}
 	}
 
@@ -115,7 +115,7 @@ export class EventBusControllerEE {
 	@RequireGlobalScope('eventBusDestination:test')
 	async sendTestMessage(req: express.Request): Promise<boolean> {
 		if (isWithIdString(req.query)) {
-			return eventBus.testDestination(req.query.id);
+			return await eventBus.testDestination(req.query.id);
 		}
 		return false;
 	}
@@ -124,7 +124,7 @@ export class EventBusControllerEE {
 	@RequireGlobalScope('eventBusDestination:delete')
 	async deleteDestination(req: AuthenticatedRequest) {
 		if (isWithIdString(req.query)) {
-			return eventBus.removeDestination(req.query.id);
+			return await eventBus.removeDestination(req.query.id);
 		} else {
 			throw new BadRequestError('Query is missing id');
 		}

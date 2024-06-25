@@ -163,7 +163,7 @@ export class ToolCode implements INodeType {
 
 		const runFunction = async (query: string): Promise<string> => {
 			const sandbox = getSandbox(query, itemIndex);
-			return sandbox.runCode() as Promise<string>;
+			return await (sandbox.runCode() as Promise<string>);
 		};
 
 		return {

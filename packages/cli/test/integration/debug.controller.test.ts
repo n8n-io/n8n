@@ -7,6 +7,7 @@ import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 import { setupTestServer } from './shared/utils';
 import type { SuperAgentTest } from 'supertest';
 import { createOwner } from './shared/db/users';
+import { OrchestrationService } from '@/services/orchestration.service';
 import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 
 describe('DebugController', () => {
@@ -36,9 +37,9 @@ describe('DebugController', () => {
 			activeWorkflowRunner.allActiveInMemory.mockReturnValue([workflowId]);
 			activeWorkflowRunner.getAllWorkflowActivationErrors.mockResolvedValue(activationErrors);
 
-			jest.spyOn(MultiMainSetup.prototype, 'instanceId', 'get').mockReturnValue(instanceId);
+			jest.spyOn(OrchestrationService.prototype, 'instanceId', 'get').mockReturnValue(instanceId);
 			jest.spyOn(MultiMainSetup.prototype, 'fetchLeaderKey').mockResolvedValue(leaderKey);
-			jest.spyOn(MultiMainSetup.prototype, 'isLeader', 'get').mockReturnValue(true);
+			jest.spyOn(OrchestrationService.prototype, 'isLeader', 'get').mockReturnValue(true);
 
 			const response = await ownerAgent.get('/debug/multi-main-setup').expect(200);
 

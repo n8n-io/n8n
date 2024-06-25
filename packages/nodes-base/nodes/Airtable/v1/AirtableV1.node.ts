@@ -718,10 +718,12 @@ export class AirtableV1 implements INodeType {
 					const downloadFieldNames = (
 						this.getNodeParameter('downloadFieldNames', 0) as string
 					).split(',');
+					const pairedItem = generatePairedItemData(items.length);
 					const data = await downloadRecordAttachments.call(
 						this,
 						responseData.records as IRecord[],
 						downloadFieldNames,
+						pairedItem,
 					);
 					return [data];
 				}

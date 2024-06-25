@@ -102,7 +102,7 @@ describe('Workflow History Manager', () => {
 	const createWorkflowHistory = async (ageInDays = 2) => {
 		const workflow = await createWorkflow();
 		const time = DateTime.now().minus({ days: ageInDays }).toJSDate();
-		return createManyWorkflowHistoryItems(workflow.id, 10, time);
+		return await createManyWorkflowHistoryItems(workflow.id, 10, time);
 	};
 
 	const pruneAndAssertCount = async (finalCount = 10, initialCount = 10) => {

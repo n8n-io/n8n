@@ -25,7 +25,7 @@ import * as NodeExecuteFunctions from 'n8n-core';
 import { removeTrailingSlash } from './utils';
 import type { TestWebhookRegistration } from '@/services/test-webhook-registrations.service';
 import { TestWebhookRegistrationsService } from '@/services/test-webhook-registrations.service';
-import { MultiMainSetup } from './services/orchestration/main/MultiMainSetup.ee';
+import { OrchestrationService } from '@/services/orchestration.service';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 
 @Service()
@@ -34,7 +34,7 @@ export class TestWebhooks implements IWebhookManager {
 		private readonly push: Push,
 		private readonly nodeTypes: NodeTypes,
 		private readonly registrations: TestWebhookRegistrationsService,
-		private readonly multiMainSetup: MultiMainSetup,
+		private readonly orchestrationService: OrchestrationService,
 	) {}
 
 	private timeouts: { [webhookKey: string]: NodeJS.Timeout } = {};
@@ -101,7 +101,7 @@ export class TestWebhooks implements IWebhookManager {
 			throw new NotFoundError('Could not find node to process webhook.');
 		}
 
-		return new Promise(async (resolve, reject) => {
+		return await new Promise(async (resolve, reject) => {
 			try {
 				const executionMode = 'manual';
 				const executionId = await WebhookHelpers.executeWebhook(
@@ -144,12 +144,12 @@ export class TestWebhooks implements IWebhookManager {
 			 * the handler process commands the creator process to clear its test webhooks.
 			 */
 			if (
-				this.multiMainSetup.isEnabled &&
+				this.orchestrationService.isMultiMainSetupEnabled &&
 				sessionId &&
 				!this.push.getBackend().hasSessionId(sessionId)
 			) {
 				const payload = { webhookKey: key, workflowEntity, sessionId };
-				void this.multiMainSetup.publish('clear-test-webhooks', payload);
+				void this.orchestrationService.publish('clear-test-webhooks', payload);
 				return;
 			}
 
@@ -229,7 +229,10 @@ export class TestWebhooks implements IWebhookManager {
 			return false; // no webhooks found to start a workflow
 		}
 
-		const timeout = setTimeout(async () => this.cancelWebhook(workflow.id), TEST_WEBHOOK_TIMEOUT);
+		const timeout = setTimeout(
+			async () => await this.cancelWebhook(workflow.id),
+			TEST_WEBHOOK_TIMEOUT,
+		);
 
 		for (const webhook of webhooks) {
 			const key = this.registrations.toKey(webhook);

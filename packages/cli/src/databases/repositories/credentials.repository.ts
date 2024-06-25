@@ -20,11 +20,11 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 			credentialsId: credentialId,
 			userId: Not(In(userIds)),
 		};
-		return transaction.delete(SharedCredentials, conditions);
+		return await transaction.delete(SharedCredentials, conditions);
 	}
 
 	async findStartingWith(credentialName: string) {
-		return this.find({
+		return await this.find({
 			select: ['name'],
 			where: { name: Like(`${credentialName}%`) },
 		});
@@ -37,7 +37,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 			findManyOptions.where = { ...findManyOptions.where, id: In(credentialIds) };
 		}
 
-		return this.find(findManyOptions);
+		return await this.find(findManyOptions);
 	}
 
 	private toFindManyOptions(listQueryOptions?: ListQuery.Options) {
@@ -45,7 +45,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 
 		type Select = Array<keyof CredentialsEntity>;
 
-		const defaultRelations = ['shared', 'shared.role', 'shared.user'];
+		const defaultRelations = ['shared', 'shared.user'];
 		const defaultSelect: Select = ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'];
 
 		if (!listQueryOptions) return { select: defaultSelect, relations: defaultRelations };
@@ -81,9 +81,9 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		const findManyOptions: FindManyOptions<CredentialsEntity> = { where: { id: In(ids) } };
 
 		if (withSharings) {
-			findManyOptions.relations = ['shared', 'shared.user', 'shared.role'];
+			findManyOptions.relations = ['shared', 'shared.user'];
 		}
 
-		return this.find(findManyOptions);
+		return await this.find(findManyOptions);
 	}
 }

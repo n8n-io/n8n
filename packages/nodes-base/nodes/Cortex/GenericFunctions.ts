@@ -39,7 +39,7 @@ export async function cortexApiRequest(
 		delete options.qs;
 	}
 
-	return this.helpers.requestWithAuthentication.call(this, 'cortexApi', options);
+	return await this.helpers.requestWithAuthentication.call(this, 'cortexApi', options);
 }
 
 export function getEntityLabel(entity: IDataObject): string {

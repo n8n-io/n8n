@@ -57,7 +57,7 @@ export async function calendlyApiRequest(
 		delete options.qs;
 	}
 	options = Object.assign({}, options, option);
-	return this.helpers.requestWithAuthentication.call(this, 'calendlyApi', options);
+	return await this.helpers.requestWithAuthentication.call(this, 'calendlyApi', options);
 }
 
 export async function validateCredentials(
@@ -89,5 +89,5 @@ export async function validateCredentials(
 			uri: 'https://calendly.com/api/v1/users/me',
 		});
 	}
-	return this.helpers.request(options);
+	return await this.helpers.request(options);
 }

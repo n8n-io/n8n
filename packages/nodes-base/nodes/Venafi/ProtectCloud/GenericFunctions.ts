@@ -121,7 +121,7 @@ export async function encryptPassphrase(
 	let encryptedKeyStorePass = '';
 
 	const promise = async () => {
-		return new Promise((resolve, reject) => {
+		return await new Promise((resolve, reject) => {
 			nacl_factory.instantiate((nacl: any) => {
 				try {
 					const passphraseUTF8 = nacl.encode_utf8(passphrase) as string;
@@ -142,5 +142,5 @@ export async function encryptPassphrase(
 			});
 		});
 	};
-	return promise();
+	return await promise();
 }

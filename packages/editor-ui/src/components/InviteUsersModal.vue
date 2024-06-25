@@ -109,7 +109,7 @@ export default defineComponent({
 			formBus: createEventBus(),
 			modalBus: createEventBus(),
 			emails: '',
-			role: 'member',
+			role: ROLE.Member,
 			showInviteUrls: null as IInviteResponse[] | null,
 			loading: false,
 			INVITE_USER_MODAL_KEY,
@@ -135,7 +135,7 @@ export default defineComponent({
 			},
 			{
 				name: 'role',
-				initialValue: 'member',
+				initialValue: ROLE.Member,
 				properties: {
 					label: this.$locale.baseText('auth.role'),
 					required: true,

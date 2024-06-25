@@ -359,13 +359,13 @@ export class EmailReadImapV2 implements INodeType {
 								?.filename as string,
 						);
 						// Return it in the format n8n expects
-						return this.helpers.prepareBinaryData(partData as Buffer, fileName);
+						return await this.helpers.prepareBinaryData(partData as Buffer, fileName);
 					});
 
 				attachmentPromises.push(attachmentPromise);
 			}
 
-			return Promise.all(attachmentPromises);
+			return await Promise.all(attachmentPromises);
 		};
 
 		// Returns all the new unseen messages
@@ -618,7 +618,7 @@ export class EmailReadImapV2 implements INodeType {
 
 			// Connect to the IMAP server and open the mailbox
 			// that we get informed whenever a new email arrives
-			return imapConnect(config).then(async (conn) => {
+			return await imapConnect(config).then(async (conn) => {
 				conn.on('close', async (_hadError: boolean) => {
 					if (isCurrentlyReconnecting) {
 						this.logger.debug('Email Read Imap: Connected closed for forced reconnecting');

@@ -19,6 +19,6 @@ export class ExecutionMetadataService {
 			});
 		}
 
-		return this.executionMetadataRepository.save(metadataRows);
+		return await this.executionMetadataRepository.save(metadataRows);
 	}
 }

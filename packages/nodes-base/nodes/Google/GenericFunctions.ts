@@ -103,5 +103,5 @@ export async function getGoogleAccessToken(
 		json: true,
 	};
 
-	return this.helpers.request(options);
+	return await this.helpers.request(options);
 }

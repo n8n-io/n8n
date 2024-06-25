@@ -122,6 +122,6 @@ export class VectorStoreSupabaseInsert implements INodeType {
 			queryName,
 		});
 
-		return this.prepareOutputData(serializedDocuments);
+		return await this.prepareOutputData(serializedDocuments);
 	}
 }

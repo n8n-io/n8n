@@ -33,7 +33,7 @@ export const workflowActivate = defineComponent({
 	methods: {
 		async activateCurrentWorkflow(telemetrySource?: string) {
 			const workflowId = this.workflowsStore.workflowId;
-			return this.updateWorkflowActivation(workflowId, true, telemetrySource);
+			return await this.updateWorkflowActivation(workflowId, true, telemetrySource);
 		},
 		async updateWorkflowActivation(
 			workflowId: string | undefined,

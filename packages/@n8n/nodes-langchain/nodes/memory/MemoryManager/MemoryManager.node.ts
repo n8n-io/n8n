@@ -324,6 +324,6 @@ export class MemoryManager implements INodeType {
 			result.push(...executionData);
 		}
 
-		return this.prepareOutputData(result);
+		return await this.prepareOutputData(result);
 	}
 }

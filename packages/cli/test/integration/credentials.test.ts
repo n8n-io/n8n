@@ -1,28 +1,24 @@
+import { Container } from 'typedi';
 import type { SuperAgentTest } from 'supertest';
 
 import config from '@/config';
-import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 import type { ListQuery } from '@/requests';
-import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { License } from '@/License';
 
 import { randomCredentialPayload, randomName, randomString } from './shared/random';
 import * as testDb from './shared/testDb';
 import type { SaveCredentialFunction } from './shared/types';
 import * as utils from './shared/utils/';
 import { affixRoleToSaveCredential, shareCredentialWithUsers } from './shared/db/credentials';
-import { getCredentialOwnerRole, getGlobalMemberRole, getGlobalOwnerRole } from './shared/db/roles';
 import { createManyUsers, createUser } from './shared/db/users';
-import { CredentialsRepository } from '@db/repositories/credentials.repository';
-import Container from 'typedi';
-import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 
 // mock that credentialsSharing is not enabled
-jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(false);
+jest.spyOn(License.prototype, 'isSharingEnabled').mockReturnValue(false);
 const testServer = utils.setupTestServer({ endpointGroups: ['credentials'] });
 
-let globalOwnerRole: Role;
-let globalMemberRole: Role;
 let owner: User;
 let member: User;
 let secondMember: User;
@@ -31,15 +27,11 @@ let authMemberAgent: SuperAgentTest;
 let saveCredential: SaveCredentialFunction;
 
 beforeAll(async () => {
-	globalOwnerRole = await getGlobalOwnerRole();
-	globalMemberRole = await getGlobalMemberRole();
-	const credentialOwnerRole = await getCredentialOwnerRole();
+	owner = await createUser({ role: 'global:owner' });
+	member = await createUser({ role: 'global:member' });
+	secondMember = await createUser({ role: 'global:member' });
 
-	owner = await createUser({ globalRole: globalOwnerRole });
-	member = await createUser({ globalRole: globalMemberRole });
-	secondMember = await createUser({ globalRole: globalMemberRole });
-
-	saveCredential = affixRoleToSaveCredential(credentialOwnerRole);
+	saveCredential = affixRoleToSaveCredential('credential:owner');
 
 	authOwnerAgent = testServer.authAgentFor(owner);
 	authMemberAgent = testServer.authAgentFor(member);
@@ -74,7 +66,7 @@ describe('GET /credentials', () => {
 
 	test('should return only own creds for member', async () => {
 		const [member1, member2] = await createManyUsers(2, {
-			globalRole: globalMemberRole,
+			role: 'global:member',
 		});
 
 		const [savedCredential1] = await Promise.all([

@@ -1,5 +1,5 @@
-import { License } from '@/License';
 import { Container } from 'typedi';
+import { License } from '@/License';
 import { BaseCommand } from '../BaseCommand';
 
 export class LicenseInfoCommand extends BaseCommand {

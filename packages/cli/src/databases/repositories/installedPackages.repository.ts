@@ -41,7 +41,7 @@ export class InstalledPackagesRepository extends Repository<InstalledPackages> {
 
 				installedPackage.installedNodes.push(installedNode);
 
-				return manager.save(installedNode);
+				return await manager.save(installedNode);
 			});
 		});
 

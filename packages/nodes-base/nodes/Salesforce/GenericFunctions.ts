@@ -29,7 +29,7 @@ function getOptions(
 		method,
 		body,
 		qs,
-		uri: `${instanceUrl}/services/data/v39.0${endpoint}`,
+		uri: `${instanceUrl}/services/data/v59.0${endpoint}`,
 		json: true,
 	};
 
@@ -79,7 +79,7 @@ async function getAccessToken(
 		json: true,
 	};
 
-	return this.helpers.request(options);
+	return await this.helpers.request(options);
 }
 
 export async function salesforceApiRequest(

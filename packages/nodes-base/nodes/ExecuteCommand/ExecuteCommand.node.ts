@@ -26,7 +26,7 @@ async function execPromise(command: string): Promise<IExecReturnData> {
 		stdout: '',
 	};
 
-	return new Promise((resolve, _reject) => {
+	return await new Promise((resolve, _reject) => {
 		exec(command, { cwd: process.cwd() }, (error, stdout, stderr) => {
 			returnData.stdout = stdout.trim();
 			returnData.stderr = stderr.trim();

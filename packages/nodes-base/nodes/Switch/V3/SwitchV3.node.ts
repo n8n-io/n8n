@@ -100,7 +100,7 @@ export class SwitchV3 implements INodeType {
 					// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-number
 					default: '={{}}',
 					description:
-						"The output's index to which send an input item, use expressions to calculate what input item should be routed to which output, expression must return a number",
+						'The output index to send the input item to. Use an expression to calculate which input item should be routed to which output. The expression must return a number.',
 				},
 				{
 					displayName: 'Routing Rules',

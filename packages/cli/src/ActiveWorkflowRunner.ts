@@ -35,7 +35,7 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { ActiveExecutions } from '@/ActiveExecutions';
-import { ExecutionsService } from './executions/executions.service';
+import { ExecutionService } from './executions/execution.service';
 import {
 	STARTING_NODES,
 	WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
@@ -47,7 +47,7 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { WebhookService } from './services/webhook.service';
 import { Logger } from './Logger';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
+import { OrchestrationService } from '@/services/orchestration.service';
 import { ActivationErrorsService } from '@/ActivationErrors.service';
 import { ActiveWorkflowsService } from '@/services/activeWorkflows.service';
 import { WorkflowStaticDataService } from '@/workflows/workflowStaticData.service';
@@ -72,15 +72,15 @@ export class ActiveWorkflowRunner {
 		private readonly nodeTypes: NodeTypes,
 		private readonly webhookService: WebhookService,
 		private readonly workflowRepository: WorkflowRepository,
-		private readonly multiMainSetup: MultiMainSetup,
+		private readonly orchestrationService: OrchestrationService,
 		private readonly activationErrorsService: ActivationErrorsService,
-		private readonly executionService: ExecutionsService,
+		private readonly executionService: ExecutionService,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
 		private readonly activeWorkflowsService: ActiveWorkflowsService,
 	) {}
 
 	async init() {
-		await this.multiMainSetup.init();
+		await this.orchestrationService.init();
 
 		await this.addActiveWorkflows('init');
 
@@ -89,7 +89,7 @@ export class ActiveWorkflowRunner {
 	}
 
 	async getAllWorkflowActivationErrors() {
-		return this.activationErrorsService.getAll();
+		return await this.activationErrorsService.getAll();
 	}
 
 	/**
@@ -229,7 +229,7 @@ export class ActiveWorkflowRunner {
 	async clearWebhooks(workflowId: string) {
 		const workflowData = await this.workflowRepository.findOne({
 			where: { id: workflowId },
-			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
+			relations: ['shared', 'shared.user'],
 		});
 
 		if (workflowData === null) {
@@ -305,7 +305,7 @@ export class ActiveWorkflowRunner {
 		};
 
 		const workflowRunner = new WorkflowRunner();
-		return workflowRunner.run(runData, true, undefined, undefined, responsePromise);
+		return await workflowRunner.run(runData, true, undefined, undefined, responsePromise);
 	}
 
 	/**
@@ -470,25 +470,23 @@ export class ActiveWorkflowRunner {
 
 		if (dbWorkflows.length === 0) return;
 
-		this.logger.info(' ================================');
-		this.logger.info('   Start Active Workflows:');
-		this.logger.info(' ================================');
+		if (this.orchestrationService.isLeader) {
+			this.logger.info(' ================================');
+			this.logger.info('   Start Active Workflows:');
+			this.logger.info(' ================================');
+		}
 
 		for (const dbWorkflow of dbWorkflows) {
-			this.logger.info(`   - ${dbWorkflow.display()}`);
-			this.logger.debug(`Initializing active workflow ${dbWorkflow.display()} (startup)`, {
-				workflowName: dbWorkflow.name,
-				workflowId: dbWorkflow.id,
-			});
-
 			try {
-				await this.add(dbWorkflow.id, activationMode, dbWorkflow);
+				const wasActivated = await this.add(dbWorkflow.id, activationMode, dbWorkflow);
 
-				this.logger.verbose(`Successfully started workflow ${dbWorkflow.display()}`, {
-					workflowName: dbWorkflow.name,
-					workflowId: dbWorkflow.id,
-				});
-				this.logger.info('     => Started');
+				if (wasActivated) {
+					this.logger.verbose(`Successfully started workflow ${dbWorkflow.display()}`, {
+						workflowName: dbWorkflow.name,
+						workflowId: dbWorkflow.id,
+					});
+					this.logger.info('     => Started');
+				}
 			} catch (error) {
 				ErrorReporter.error(error);
 				this.logger.info(
@@ -571,21 +569,31 @@ export class ActiveWorkflowRunner {
 		 * again, and the new leader should take over the triggers and pollers that stopped
 		 * running when the former leader became unresponsive.
 		 */
-		if (this.multiMainSetup.isEnabled) {
+		if (this.orchestrationService.isMultiMainSetupEnabled) {
 			if (activationMode !== 'leadershipChange') {
-				shouldAddWebhooks = this.multiMainSetup.isLeader;
-				shouldAddTriggersAndPollers = this.multiMainSetup.isLeader;
+				shouldAddWebhooks = this.orchestrationService.isLeader;
+				shouldAddTriggersAndPollers = this.orchestrationService.isLeader;
 			} else {
 				shouldAddWebhooks = false;
-				shouldAddTriggersAndPollers = this.multiMainSetup.isLeader;
+				shouldAddTriggersAndPollers = this.orchestrationService.isLeader;
 			}
 		}
+
+		const shouldActivate = shouldAddWebhooks || shouldAddTriggersAndPollers;
 
 		try {
 			const dbWorkflow = existingWorkflow ?? (await this.workflowRepository.findById(workflowId));
 
 			if (!dbWorkflow) {
 				throw new WorkflowActivationError(`Failed to find workflow with ID "${workflowId}"`);
+			}
+
+			if (shouldActivate) {
+				this.logger.info(`   - ${dbWorkflow.display()}`);
+				this.logger.debug(`Initializing active workflow ${dbWorkflow.display()} (startup)`, {
+					workflowName: dbWorkflow.name,
+					workflowId: dbWorkflow.id,
+				});
 			}
 
 			workflow = new Workflow({
@@ -607,7 +615,7 @@ export class ActiveWorkflowRunner {
 				);
 			}
 
-			const sharing = dbWorkflow.shared.find((shared) => shared.role.name === 'owner');
+			const sharing = dbWorkflow.shared.find((shared) => shared.role === 'workflow:owner');
 
 			if (!sharing) {
 				throw new WorkflowActivationError(`Workflow ${dbWorkflow.display()} has no owner`);
@@ -644,6 +652,8 @@ export class ActiveWorkflowRunner {
 		// If for example webhooks get created it sometimes has to save the
 		// id of them in the static data. So make sure that data gets persisted.
 		await this.workflowStaticDataService.saveStaticData(workflow);
+
+		return shouldActivate;
 	}
 
 	/**
@@ -804,7 +814,7 @@ export class ActiveWorkflowRunner {
 		);
 
 		if (workflow.getTriggerNodes().length !== 0 || workflow.getPollNodes().length !== 0) {
-			this.logger.debug(`Adding triggers and pollers for workflow "${dbWorkflow.display()}"`);
+			this.logger.debug(`Adding triggers and pollers for workflow ${dbWorkflow.display()}`);
 
 			await this.activeWorkflows.add(
 				workflow.id,

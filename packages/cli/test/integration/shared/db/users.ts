@@ -1,33 +1,30 @@
 import Container from 'typedi';
 import { hash } from 'bcryptjs';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
-import type { Role } from '@db/entities/Role';
-import type { User } from '@db/entities/User';
+import type { GlobalRole, User } from '@db/entities/User';
 import { AuthIdentityRepository } from '@db/repositories/authIdentity.repository';
 import { UserRepository } from '@db/repositories/user.repository';
 import { TOTPService } from '@/Mfa/totp.service';
 import { MfaService } from '@/Mfa/mfa.service';
 
 import { randomApiKey, randomEmail, randomName, randomValidPassword } from '../random';
-import { getGlobalAdminRole, getGlobalMemberRole, getGlobalOwnerRole } from './roles';
 
 /**
  * Store a user in the DB, defaulting to a `member`.
  */
 export async function createUser(attributes: Partial<User> = {}): Promise<User> {
-	const { email, password, firstName, lastName, globalRole, ...rest } = attributes;
+	const { email, password, firstName, lastName, role, ...rest } = attributes;
 	const user = Container.get(UserRepository).create({
 		email: email ?? randomEmail(),
 		password: await hash(password ?? randomValidPassword(), 10),
 		firstName: firstName ?? randomName(),
 		lastName: lastName ?? randomName(),
-		globalRoleId: (globalRole ?? (await getGlobalMemberRole())).id,
-		globalRole,
+		role: role ?? 'global:member',
 		...rest,
 	});
 	user.computeIsOwner();
 
-	return Container.get(UserRepository).save(user);
+	return await Container.get(UserRepository).save(user);
 }
 
 export async function createLdapUser(attributes: Partial<User>, ldapId: string): Promise<User> {
@@ -70,29 +67,25 @@ export async function createUserWithMfaEnabled(
 }
 
 export async function createOwner() {
-	return createUser({ globalRole: await getGlobalOwnerRole() });
+	return await createUser({ role: 'global:owner' });
 }
 
 export async function createMember() {
-	return createUser({ globalRole: await getGlobalMemberRole() });
+	return await createUser({ role: 'global:member' });
 }
 
 export async function createAdmin() {
-	return createUser({ globalRole: await getGlobalAdminRole() });
+	return await createUser({ role: 'global:admin' });
 }
 
-export async function createUserShell(globalRole: Role): Promise<User> {
-	if (globalRole.scope !== 'global') {
-		throw new Error(`Invalid role received: ${JSON.stringify(globalRole)}`);
-	}
+export async function createUserShell(role: GlobalRole): Promise<User> {
+	const shell: Partial<User> = { role };
 
-	const shell: Partial<User> = { globalRoleId: globalRole.id };
-
-	if (globalRole.name !== 'owner') {
+	if (role !== 'global:owner') {
 		shell.email = randomEmail();
 	}
 
-	return Container.get(UserRepository).save(shell);
+	return await Container.get(UserRepository).save(shell);
 }
 
 /**
@@ -102,10 +95,7 @@ export async function createManyUsers(
 	amount: number,
 	attributes: Partial<User> = {},
 ): Promise<User[]> {
-	let { email, password, firstName, lastName, globalRole, ...rest } = attributes;
-	if (!globalRole) {
-		globalRole = await getGlobalMemberRole();
-	}
+	let { email, password, firstName, lastName, role, ...rest } = attributes;
 
 	const users = await Promise.all(
 		[...Array(amount)].map(async () =>
@@ -114,33 +104,33 @@ export async function createManyUsers(
 				password: await hash(password ?? randomValidPassword(), 10),
 				firstName: firstName ?? randomName(),
 				lastName: lastName ?? randomName(),
-				globalRole,
+				role: role ?? 'global:member',
 				...rest,
 			}),
 		),
 	);
 
-	return Container.get(UserRepository).save(users);
+	return await Container.get(UserRepository).save(users);
 }
 
 export async function addApiKey(user: User): Promise<User> {
 	user.apiKey = randomApiKey();
-	return Container.get(UserRepository).save(user);
+	return await Container.get(UserRepository).save(user);
 }
 
 export const getAllUsers = async () =>
-	Container.get(UserRepository).find({
-		relations: ['globalRole', 'authIdentities'],
+	await Container.get(UserRepository).find({
+		relations: ['authIdentities'],
 	});
 
 export const getUserById = async (id: string) =>
-	Container.get(UserRepository).findOneOrFail({
+	await Container.get(UserRepository).findOneOrFail({
 		where: { id },
-		relations: ['globalRole', 'authIdentities'],
+		relations: ['authIdentities'],
 	});
 
 export const getLdapIdentities = async () =>
-	Container.get(AuthIdentityRepository).find({
+	await Container.get(AuthIdentityRepository).find({
 		where: { providerType: 'ldap' },
 		relations: ['user'],
 	});

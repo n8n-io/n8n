@@ -1,12 +1,13 @@
-import { flags } from '@oclif/command';
+import { Container } from 'typedi';
+import { Flags, type Config } from '@oclif/core';
 import { sleep } from 'n8n-workflow';
+
 import config from '@/config';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { WebhookServer } from '@/WebhookServer';
 import { Queue } from '@/Queue';
 import { BaseCommand } from './BaseCommand';
-import { Container } from 'typedi';
-import type { IConfig } from '@oclif/config';
+
 import { OrchestrationWebhookService } from '@/services/orchestration/webhook/orchestration.webhook.service';
 import { OrchestrationHandlerWebhookService } from '@/services/orchestration/webhook/orchestration.handler.webhook.service';
 
@@ -16,12 +17,12 @@ export class Webhook extends BaseCommand {
 	static examples = ['$ n8n webhook'];
 
 	static flags = {
-		help: flags.help({ char: 'h' }),
+		help: Flags.help({ char: 'h' }),
 	};
 
 	protected server = Container.get(WebhookServer);
 
-	constructor(argv: string[], cmdConfig: IConfig) {
+	constructor(argv: string[], cmdConfig: Config) {
 		super(argv, cmdConfig);
 		this.setInstanceType('webhook');
 		if (this.queueModeId) {

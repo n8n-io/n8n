@@ -275,13 +275,13 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 			sendData: DynamicNodeParameters.OptionsRequest,
 		): Promise<INodePropertyOptions[]> {
 			const rootStore = useRootStore();
-			return getNodeParameterOptions(rootStore.getRestApiContext, sendData);
+			return await getNodeParameterOptions(rootStore.getRestApiContext, sendData);
 		},
 		async getResourceLocatorResults(
 			sendData: DynamicNodeParameters.ResourceLocatorResultsRequest,
 		): Promise<INodeListSearchResult> {
 			const rootStore = useRootStore();
-			return getResourceLocatorResults(rootStore.getRestApiContext, sendData);
+			return await getResourceLocatorResults(rootStore.getRestApiContext, sendData);
 		},
 		async getResourceMapperFields(
 			sendData: DynamicNodeParameters.ResourceMapperFieldsRequest,

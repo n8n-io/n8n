@@ -42,7 +42,7 @@ describe('CredentialsFlow', () => {
 					refresh_token: config.refreshToken,
 					scope: requestedScope,
 				});
-			return new Promise<{ headers: Headers; body: unknown }>((resolve) => {
+			return await new Promise<{ headers: Headers; body: unknown }>((resolve) => {
 				nockScope.once('request', (req) => {
 					resolve({
 						headers: req.headers,

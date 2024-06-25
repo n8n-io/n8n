@@ -232,5 +232,5 @@ export async function execute(
 		queries.push({ query, values });
 	}
 
-	return runQueries(queries, items, nodeOptions);
+	return await runQueries(queries, items, nodeOptions);
 }

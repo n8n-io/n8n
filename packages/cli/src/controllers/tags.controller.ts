@@ -32,7 +32,7 @@ export class TagsController {
 	@Get('/')
 	@RequireGlobalScope('tag:list')
 	async getAll(req: TagsRequest.GetAll) {
-		return this.tagService.getAll({ withUsageCount: req.query.withUsageCount === 'true' });
+		return await this.tagService.getAll({ withUsageCount: req.query.withUsageCount === 'true' });
 	}
 
 	@Post('/')
@@ -40,7 +40,7 @@ export class TagsController {
 	async createTag(req: TagsRequest.Create) {
 		const tag = this.tagService.toEntity({ name: req.body.name });
 
-		return this.tagService.save(tag, 'create');
+		return await this.tagService.save(tag, 'create');
 	}
 
 	@Patch('/:id(\\w+)')
@@ -48,7 +48,7 @@ export class TagsController {
 	async updateTag(req: TagsRequest.Update) {
 		const newTag = this.tagService.toEntity({ id: req.params.id, name: req.body.name.trim() });
 
-		return this.tagService.save(newTag, 'update');
+		return await this.tagService.save(newTag, 'update');
 	}
 
 	@Delete('/:id(\\w+)')

@@ -121,7 +121,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 			if (typeof credentialType.authenticate === 'function') {
 				// Special authentication function is defined
 
-				return credentialType.authenticate(credentials, requestOptions as IHttpRequestOptions);
+				return await credentialType.authenticate(
+					credentials,
+					requestOptions as IHttpRequestOptions,
+				);
 			}
 
 			if (typeof credentialType.authenticate === 'object') {
@@ -783,15 +786,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		const credential = await this.sharedCredentialsRepository.findOne({
 			where: {
-				role: {
-					scope: 'credential',
-					name: 'owner',
-				},
+				role: 'credential:owner',
 				user: {
-					globalRole: {
-						scope: 'global',
-						name: 'owner',
-					},
+					role: 'global:owner',
 				},
 				credentials: {
 					id: nodeCredential.id,

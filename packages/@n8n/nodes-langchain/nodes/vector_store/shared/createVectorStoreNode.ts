@@ -239,7 +239,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					resultData.push(...serializedDocs);
 				}
 
-				return this.prepareOutputData(resultData);
+				return await this.prepareOutputData(resultData);
 			}
 
 			if (mode === 'insert') {
@@ -267,7 +267,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					}
 				}
 
-				return this.prepareOutputData(resultData);
+				return await this.prepareOutputData(resultData);
 			}
 
 			throw new NodeOperationError(

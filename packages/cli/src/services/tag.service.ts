@@ -31,7 +31,7 @@ export class TagService {
 
 		await this.externalHooks.run(`tag.after${action}`, [tag]);
 
-		return savedTag;
+		return await savedTag;
 	}
 
 	async delete(id: string) {
@@ -41,7 +41,7 @@ export class TagService {
 
 		await this.externalHooks.run('tag.afterDelete', [id]);
 
-		return deleteResult;
+		return await deleteResult;
 	}
 
 	async getAll<T extends { withUsageCount: boolean }>(options?: T): Promise<GetAllResult<T>> {
@@ -59,9 +59,9 @@ export class TagService {
 			}) as GetAllResult<T>;
 		}
 
-		return this.tagRepository.find({
+		return await (this.tagRepository.find({
 			select: ['id', 'name', 'createdAt', 'updatedAt'],
-		}) as Promise<GetAllResult<T>>;
+		}) as Promise<GetAllResult<T>>);
 	}
 
 	/**

@@ -61,6 +61,6 @@ describe('Test MicrosoftExcelV2, table => convertToRange', () => {
 	};
 
 	for (const testData of tests) {
-		test(testData.description, async () => testNode(testData, nodeTypes));
+		test(testData.description, async () => await testNode(testData, nodeTypes));
 	}
 });

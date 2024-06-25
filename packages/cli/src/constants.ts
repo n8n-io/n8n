@@ -103,6 +103,7 @@ export const UM_FIX_INSTRUCTION =
 
 /**
  * Units of time in milliseconds
+ * @deprecated Please use constants.Time instead.
  */
 export const TIME = {
 	SECOND: 1000,
@@ -110,6 +111,28 @@ export const TIME = {
 	HOUR: 60 * 60 * 1000,
 	DAY: 24 * 60 * 60 * 1000,
 } as const;
+
+/**
+ * Convert time from any unit to any other unit
+ *
+ * Please amend conversions as necessary.
+ * Eventually this will superseed `TIME` above
+ */
+export const Time = {
+	seconds: {
+		toMilliseconds: 1000,
+	},
+	minutes: {
+		toMilliseconds: 60 * 1000,
+	},
+	hours: {
+		toMilliseconds: 60 * 60 * 1000,
+		toSeconds: 60 * 60,
+	},
+	days: {
+		toSeconds: 24 * 60 * 60,
+	},
+};
 
 export const MIN_PASSWORD_CHAR_LENGTH = 8;
 

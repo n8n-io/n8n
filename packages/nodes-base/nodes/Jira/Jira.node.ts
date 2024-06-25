@@ -356,7 +356,7 @@ export class Jira implements INodeType {
 			// Get all the users to display them to user so that they can
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return getUsers.call(this);
+				return await getUsers.call(this);
 			},
 
 			// Get all the groups to display them to user so that they can

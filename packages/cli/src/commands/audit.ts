@@ -1,12 +1,13 @@
-import { flags } from '@oclif/command';
+import { Container } from 'typedi';
+import { Flags } from '@oclif/core';
+import { ApplicationError } from 'n8n-workflow';
+
 import { SecurityAuditService } from '@/security-audit/SecurityAudit.service';
 import { RISK_CATEGORIES } from '@/security-audit/constants';
 import config from '@/config';
 import type { Risk } from '@/security-audit/types';
 import { BaseCommand } from './BaseCommand';
-import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
-import { ApplicationError } from 'n8n-workflow';
 
 export class SecurityAudit extends BaseCommand {
 	static description = 'Generate a security audit report for this n8n instance';
@@ -18,20 +19,20 @@ export class SecurityAudit extends BaseCommand {
 	];
 
 	static flags = {
-		help: flags.help({ char: 'h' }),
-		categories: flags.string({
+		help: Flags.help({ char: 'h' }),
+		categories: Flags.string({
 			default: RISK_CATEGORIES.join(','),
 			description: 'Comma-separated list of categories to include in the audit',
 		}),
 		// eslint-disable-next-line @typescript-eslint/naming-convention
-		'days-abandoned-workflow': flags.integer({
+		'days-abandoned-workflow': Flags.integer({
 			default: config.getEnv('security.audit.daysAbandonedWorkflow'),
 			description: 'Days for a workflow to be considered abandoned if not executed',
 		}),
 	};
 
 	async run() {
-		const { flags: auditFlags } = this.parse(SecurityAudit);
+		const { flags: auditFlags } = await this.parse(SecurityAudit);
 
 		const categories =
 			auditFlags.categories?.split(',').filter((c): c is Risk.Category => c !== '') ??

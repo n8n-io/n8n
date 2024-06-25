@@ -19,7 +19,7 @@ export class WorkflowHistoryService {
 	) {}
 
 	private async getSharedWorkflow(user: User, workflowId: string): Promise<SharedWorkflow | null> {
-		return this.sharedWorkflowRepository.findOne({
+		return await this.sharedWorkflowRepository.findOne({
 			where: {
 				...(!user.hasGlobalScope('workflow:read') && { userId: user.id }),
 				workflowId,
@@ -37,7 +37,7 @@ export class WorkflowHistoryService {
 		if (!sharedWorkflow) {
 			throw new SharedWorkflowNotFoundError('');
 		}
-		return this.workflowHistoryRepository.find({
+		return await this.workflowHistoryRepository.find({
 			where: {
 				workflowId: sharedWorkflow.workflowId,
 			},

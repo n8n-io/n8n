@@ -316,7 +316,7 @@ export class MySqlV1 implements INodeType {
 						);
 					}
 
-					return connection.query(rawQuery);
+					return await connection.query(rawQuery);
 				});
 
 				returnItems = ((await Promise.all(queryQueue)) as mysql2.OkPacket[][]).reduce(
@@ -398,8 +398,9 @@ export class MySqlV1 implements INodeType {
 				const updateSQL = `UPDATE ${table} SET ${columns
 					.map((column) => `${column} = ?`)
 					.join(',')} WHERE ${updateKey} = ?;`;
-				const queryQueue = updateItems.map(async (item) =>
-					connection.query(updateSQL, Object.values(item).concat(item[updateKey])),
+				const queryQueue = updateItems.map(
+					async (item) =>
+						await connection.query(updateSQL, Object.values(item).concat(item[updateKey])),
 				);
 				const queryResult = await Promise.all(queryQueue);
 				returnItems = this.helpers.returnJsonArray(

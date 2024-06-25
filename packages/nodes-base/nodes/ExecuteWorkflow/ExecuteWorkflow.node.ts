@@ -170,6 +170,23 @@ export class ExecuteWorkflow implements INodeType {
 				],
 				default: 'once',
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				default: {},
+				placeholder: 'Add Option',
+				options: [
+					{
+						displayName: 'Wait For Sub-Workflow Completion',
+						name: 'waitForSubWorkflow',
+						type: 'boolean',
+						default: true,
+						description:
+							'Whether the main workflow should wait for the sub-workflow to complete its execution before proceeding',
+					},
+				],
+			},
 		],
 	};
 
@@ -179,25 +196,37 @@ export class ExecuteWorkflow implements INodeType {
 		const items = this.getInputData();
 
 		if (mode === 'each') {
-			const returnData: INodeExecutionData[][] = [];
+			let returnData: INodeExecutionData[][] = [];
 
 			for (let i = 0; i < items.length; i++) {
 				try {
+					const waitForSubWorkflow = this.getNodeParameter(
+						'options.waitForSubWorkflow',
+						i,
+						true,
+					) as boolean;
 					const workflowInfo = await getWorkflowInfo.call(this, source, i);
-					const workflowResult: INodeExecutionData[][] = await this.executeWorkflow(workflowInfo, [
-						items[i],
-					]);
 
-					for (const [outputIndex, outputData] of workflowResult.entries()) {
-						for (const item of outputData) {
-							item.pairedItem = { item: i };
+					if (waitForSubWorkflow) {
+						const workflowResult: INodeExecutionData[][] = await this.executeWorkflow(
+							workflowInfo,
+							[items[i]],
+						);
+
+						for (const [outputIndex, outputData] of workflowResult.entries()) {
+							for (const item of outputData) {
+								item.pairedItem = { item: i };
+							}
+
+							if (returnData[outputIndex] === undefined) {
+								returnData[outputIndex] = [];
+							}
+
+							returnData[outputIndex].push(...outputData);
 						}
-
-						if (returnData[outputIndex] === undefined) {
-							returnData[outputIndex] = [];
-						}
-
-						returnData[outputIndex].push(...outputData);
+					} else {
+						void this.executeWorkflow(workflowInfo, [items[i]]);
+						returnData = [items];
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
@@ -214,7 +243,18 @@ export class ExecuteWorkflow implements INodeType {
 			return returnData;
 		} else {
 			try {
+				const waitForSubWorkflow = this.getNodeParameter(
+					'options.waitForSubWorkflow',
+					0,
+					true,
+				) as boolean;
 				const workflowInfo = await getWorkflowInfo.call(this, source);
+
+				if (!waitForSubWorkflow) {
+					void this.executeWorkflow(workflowInfo, items);
+					return [items];
+				}
+
 				const workflowResult: INodeExecutionData[][] = await this.executeWorkflow(
 					workflowInfo,
 					items,

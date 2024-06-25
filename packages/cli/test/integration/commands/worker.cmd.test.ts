@@ -1,5 +1,5 @@
+import { Config } from '@oclif/core';
 import { Worker } from '@/commands/worker';
-import * as Config from '@oclif/config';
 import config from '@/config';
 import { Telemetry } from '@/telemetry';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
@@ -16,11 +16,12 @@ import { PostHogClient } from '@/posthog';
 import { RedisService } from '@/services/redis.service';
 import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
 import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
-import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
+import { OrchestrationService } from '@/services/orchestration.service';
 
+import * as testDb from '../shared/testDb';
 import { mockInstance } from '../../shared/mocking';
 
-const oclifConfig: Config.IConfig = new Config.Config({ root: __dirname });
+const oclifConfig = new Config({ root: __dirname });
 
 beforeAll(async () => {
 	config.set('executions.mode', 'queue');
@@ -38,7 +39,12 @@ beforeAll(async () => {
 	mockInstance(RedisService);
 	mockInstance(RedisServicePubSubPublisher);
 	mockInstance(RedisServicePubSubSubscriber);
-	mockInstance(MultiMainSetup);
+	mockInstance(OrchestrationService);
+	await testDb.init();
+});
+
+afterAll(async () => {
+	await testDb.terminate();
 });
 
 test('worker initializes all its components', async () => {

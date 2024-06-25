@@ -48,16 +48,18 @@ export class AmqpTrigger implements INodeType {
 				name: 'clientname',
 				type: 'string',
 				default: '',
-				placeholder: 'for durable/persistent topic subscriptions, example: "n8n"',
+				placeholder: 'e.g. n8n',
 				description: 'Leave empty for non-durable topic subscriptions or queues',
+				hint: 'for durable/persistent topic subscriptions',
 			},
 			{
 				displayName: 'Subscription',
 				name: 'subscription',
 				type: 'string',
 				default: '',
-				placeholder: 'for durable/persistent topic subscriptions, example: "order-worker"',
+				placeholder: 'e.g. order-worker',
 				description: 'Leave empty for non-durable topic subscriptions or queues',
+				hint: 'for durable/persistent topic subscriptions',
 			},
 			{
 				displayName: 'Options',
@@ -270,6 +272,10 @@ export class AmqpTrigger implements INodeType {
 		const manualTriggerFunction = async () => {
 			await new Promise((resolve, reject) => {
 				const timeoutHandler = setTimeout(() => {
+					container.removeAllListeners('receiver_open');
+					container.removeAllListeners('message');
+					connection.close();
+
 					reject(
 						new Error(
 							'Aborted, no message received within 30secs. This 30sec timeout is only set for "manually triggered execution". Active Workflows will listen indefinitely.',

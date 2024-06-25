@@ -380,6 +380,6 @@ export class OpenAiAssistant implements INodeType {
 			returnData.push({ json: response });
 		}
 
-		return this.prepareOutputData(returnData);
+		return await this.prepareOutputData(returnData);
 	}
 }

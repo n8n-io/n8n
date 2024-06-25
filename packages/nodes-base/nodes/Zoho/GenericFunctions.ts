@@ -125,7 +125,7 @@ export async function handleListing(
 	const returnAll = this.getNodeParameter('returnAll', 0);
 
 	if (returnAll) {
-		return zohoApiRequestAllItems.call(this, method, endpoint, body, qs);
+		return await zohoApiRequestAllItems.call(this, method, endpoint, body, qs);
 	}
 
 	const responseData = await zohoApiRequestAllItems.call(this, method, endpoint, body, qs);

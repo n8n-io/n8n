@@ -41,9 +41,9 @@ export class Credentials extends ICredentials {
 			throw new ApplicationError('No data is set so nothing can be returned.');
 		}
 
-		const decryptedData = this.cipher.decrypt(this.data);
-
 		try {
+			const decryptedData = this.cipher.decrypt(this.data);
+
 			return jsonParse(decryptedData);
 		} catch (e) {
 			throw new ApplicationError(

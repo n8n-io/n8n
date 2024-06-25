@@ -8,5 +8,5 @@ export async function getNextVersions(
 	instanceId: string,
 ): Promise<IVersion[]> {
 	const headers = { [INSTANCE_ID_HEADER as string]: instanceId };
-	return get(endpoint, version, {}, headers);
+	return await get(endpoint, version, {}, headers);
 }

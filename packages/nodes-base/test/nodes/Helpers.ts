@@ -104,7 +104,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 	): Promise<IHttpRequestOptions> {
 		const credentialType = this.credentialTypes.getByName(typeName);
 		if (typeof credentialType.authenticate === 'function') {
-			return credentialType.authenticate(credentials, requestParams);
+			return await credentialType.authenticate(credentials, requestParams);
 		}
 		return requestParams;
 	}
@@ -390,7 +390,7 @@ export const testWorkflows = (workflows: string[]) => {
 	const nodeTypes = setup(tests);
 
 	for (const testData of tests) {
-		test(testData.description, async () => equalityTest(testData, nodeTypes));
+		test(testData.description, async () => await equalityTest(testData, nodeTypes));
 	}
 };
 

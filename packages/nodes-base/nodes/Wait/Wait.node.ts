@@ -392,15 +392,15 @@ export class Wait extends Webhook {
 
 	async webhook(context: IWebhookFunctions) {
 		const resume = context.getNodeParameter('resume', 0) as string;
-		if (resume === 'form') return formWebhook(context);
-		return super.webhook(context);
+		if (resume === 'form') return await formWebhook(context);
+		return await super.webhook(context);
 	}
 
 	async execute(context: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const resume = context.getNodeParameter('resume', 0) as string;
 
 		if (['webhook', 'form'].includes(resume)) {
-			return this.configureAndPutToWait(context);
+			return await this.configureAndPutToWait(context);
 		}
 
 		let waitTill: Date;
@@ -433,14 +433,14 @@ export class Wait extends Webhook {
 		if (waitValue < 65000) {
 			// If wait time is shorter than 65 seconds leave execution active because
 			// we just check the database every 60 seconds.
-			return new Promise((resolve) => {
+			return await new Promise((resolve) => {
 				const timer = setTimeout(() => resolve([context.getInputData()]), waitValue);
 				context.onExecutionCancellation(() => clearTimeout(timer));
 			});
 		}
 
 		// If longer than 65 seconds put execution to wait
-		return this.putToWait(context, waitTill);
+		return await this.putToWait(context, waitTill);
 	}
 
 	private async configureAndPutToWait(context: IExecuteFunctions) {
@@ -471,7 +471,7 @@ export class Wait extends Webhook {
 			}
 		}
 
-		return this.putToWait(context, waitTill);
+		return await this.putToWait(context, waitTill);
 	}
 
 	private async putToWait(context: IExecuteFunctions, waitTill: Date) {

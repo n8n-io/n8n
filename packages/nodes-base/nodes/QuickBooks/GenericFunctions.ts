@@ -169,7 +169,7 @@ export async function handleListing(
 	}
 
 	if (returnAll) {
-		return quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
+		return await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
 	} else {
 		const limit = this.getNodeParameter('limit', i);
 		qs.query += ` MAXRESULTS ${limit}`;

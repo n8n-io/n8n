@@ -39,7 +39,7 @@ export async function woocommerceApiRequest(
 		delete options.form;
 	}
 	options = Object.assign({}, options, option);
-	return this.helpers.requestWithAuthentication.call(this, 'wooCommerceApi', options);
+	return await this.helpers.requestWithAuthentication.call(this, 'wooCommerceApi', options);
 }
 
 export async function woocommerceApiRequestAllItems(

@@ -1,5 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import { NDV, WorkflowExecutionsTab, WorkflowPage as WorkflowPageClass } from '../pages';
+import { SCHEDULE_TRIGGER_NODE_NAME, EDIT_FIELDS_SET_NODE_NAME } from '../constants';
 
 const workflowPage = new WorkflowPageClass();
 const executionsTab = new WorkflowExecutionsTab();
@@ -405,6 +406,84 @@ describe('Execution', () => {
 
 			workflowPage.getters
 				.getConnectionBetweenNodes('Edit Fields2', 'Edit Fields3')
+				.should('have.class', 'success')
+				.should('have.class', 'pinned')
+				.should('have.class', 'has-run');
+		});
+
+		it('when connecting pinned node by output drag and drop', () => {
+			cy.drag(
+				workflowPage.getters.getEndpointSelector('output', SCHEDULE_TRIGGER_NODE_NAME),
+				[-200, -300],
+			);
+			workflowPage.getters.nodeCreatorSearchBar().should('be.visible');
+			workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, false);
+			cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [150, 200], {
+				clickToFinish: true,
+			});
+
+			workflowPage.getters
+				.getConnectionBetweenNodes('Schedule Trigger', 'Edit Fields8')
+				.should('have.class', 'success')
+				.should('have.class', 'pinned')
+				.should('not.have.class', 'has-run');
+
+			workflowPage.actions.executeWorkflow();
+
+			workflowPage.getters
+				.getConnectionBetweenNodes('Schedule Trigger', 'Edit Fields8')
+				.should('have.class', 'success')
+				.should('have.class', 'pinned')
+				.should('have.class', 'has-run');
+
+			cy.drag(workflowPage.getters.getEndpointSelector('output', 'Edit Fields2'), [-200, -300]);
+			workflowPage.getters.nodeCreatorSearchBar().should('be.visible');
+			workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, false);
+			cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [150, 200], {
+				clickToFinish: true,
+			});
+
+			workflowPage.getters
+				.getConnectionBetweenNodes('Edit Fields2', 'Edit Fields11')
+				.should('have.class', 'success')
+				.should('have.class', 'pinned')
+				.should('have.class', 'has-run');
+		});
+
+		it('when connecting pinned node after adding an unconnected node', () => {
+			workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
+
+			cy.draganddrop(
+				workflowPage.getters.getEndpointSelector('output', SCHEDULE_TRIGGER_NODE_NAME),
+				workflowPage.getters.getEndpointSelector('input', 'Edit Fields8'),
+			);
+			workflowPage.getters.zoomToFitButton().click();
+
+			workflowPage.getters
+				.getConnectionBetweenNodes('Schedule Trigger', 'Edit Fields8')
+				.should('have.class', 'success')
+				.should('have.class', 'pinned')
+				.should('not.have.class', 'has-run');
+
+			workflowPage.actions.executeWorkflow();
+
+			workflowPage.getters
+				.getConnectionBetweenNodes('Schedule Trigger', 'Edit Fields8')
+				.should('have.class', 'success')
+				.should('have.class', 'pinned')
+				.should('have.class', 'has-run');
+
+			workflowPage.actions.deselectAll();
+			workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
+			workflowPage.getters.zoomToFitButton().click();
+
+			cy.draganddrop(
+				workflowPage.getters.getEndpointSelector('output', 'Edit Fields7'),
+				workflowPage.getters.getEndpointSelector('input', 'Edit Fields11'),
+			);
+
+			workflowPage.getters
+				.getConnectionBetweenNodes('Edit Fields7', 'Edit Fields11')
 				.should('have.class', 'success')
 				.should('have.class', 'pinned')
 				.should('have.class', 'has-run');

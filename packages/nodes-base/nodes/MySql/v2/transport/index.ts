@@ -133,6 +133,6 @@ export async function createPool(
 				.connect(tunnelConfig);
 		});
 
-		return poolSetup;
+		return await poolSetup;
 	}
 }

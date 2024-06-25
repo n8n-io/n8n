@@ -1,8 +1,6 @@
 import { Request } from 'express';
 import { v4 as uuid } from 'uuid';
 import config from '@/config';
-import type { Role } from '@db/entities/Role';
-import { RoleRepository } from '@db/repositories/role.repository';
 import { SettingsRepository } from '@db/repositories/settings.repository';
 import { UserRepository } from '@db/repositories/user.repository';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -39,7 +37,6 @@ const tablesToTruncate = [
 	'installed_packages',
 	'installed_nodes',
 	'user',
-	'role',
 	'variables',
 ];
 
@@ -87,7 +84,6 @@ export class E2EController {
 
 	constructor(
 		license: License,
-		private readonly roleRepo: RoleRepository,
 		private readonly settingsRepo: SettingsRepository,
 		private readonly userRepo: UserRepository,
 		private readonly workflowRunner: ActiveWorkflowRunner,
@@ -148,7 +144,7 @@ export class E2EController {
 	private async truncateAll() {
 		for (const table of tablesToTruncate) {
 			try {
-				const { connection } = this.roleRepo.manager;
+				const { connection } = this.settingsRepo.manager;
 				await connection.query(
 					`DELETE FROM ${table}; DELETE FROM sqlite_sequence WHERE name=${table};`,
 				);
@@ -163,27 +159,12 @@ export class E2EController {
 		members: UserSetupPayload[],
 		admin: UserSetupPayload,
 	) {
-		const roles: Array<[Role['name'], Role['scope']]> = [
-			['owner', 'global'],
-			['member', 'global'],
-			['admin', 'global'],
-			['owner', 'workflow'],
-			['owner', 'credential'],
-			['user', 'credential'],
-			['editor', 'workflow'],
-		];
-
-		const [{ id: globalOwnerRoleId }, { id: globalMemberRoleId }, { id: globalAdminRoleId }] =
-			await this.roleRepo.save(
-				roles.map(([name, scope], index) => ({ name, scope, id: (index + 1).toString() })),
-			);
-
-		const instanceOwner = {
+		const instanceOwner = this.userRepo.create({
 			id: uuid(),
 			...owner,
 			password: await this.passwordUtility.hash(owner.password),
-			globalRoleId: globalOwnerRoleId,
-		};
+			role: 'global:owner',
+		});
 
 		if (owner?.mfaSecret && owner.mfaRecoveryCodes?.length) {
 			const { encryptedRecoveryCodes, encryptedSecret } =
@@ -192,12 +173,12 @@ export class E2EController {
 			instanceOwner.mfaRecoveryCodes = encryptedRecoveryCodes;
 		}
 
-		const adminUser = {
+		const adminUser = this.userRepo.create({
 			id: uuid(),
 			...admin,
 			password: await this.passwordUtility.hash(admin.password),
-			globalRoleId: globalAdminRoleId,
-		};
+			role: 'global:admin',
+		});
 
 		const users = [];
 
@@ -209,7 +190,7 @@ export class E2EController {
 					id: uuid(),
 					...payload,
 					password: await this.passwordUtility.hash(password),
-					globalRoleId: globalMemberRoleId,
+					role: 'global:member',
 				}),
 			);
 		}

@@ -44,7 +44,7 @@ describe('MeController', () => {
 				id: '123',
 				password: 'password',
 				authIdentities: [],
-				globalRoleId: '1',
+				role: 'global:owner',
 			});
 			const reqBody = { email: 'valid@email.com', firstName: 'John', lastName: 'Potato' };
 			const req = mock<MeRequest.UserUpdate>({ user, body: reqBody });
@@ -79,7 +79,7 @@ describe('MeController', () => {
 				id: '123',
 				password: 'password',
 				authIdentities: [],
-				globalRoleId: '1',
+				role: 'global:owner',
 			});
 			const reqBody = { email: 'valid@email.com', firstName: 'John', lastName: 'Potato' };
 			const req = mock<MeRequest.UserUpdate>({ user, body: reqBody });
@@ -88,7 +88,7 @@ describe('MeController', () => {
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 
 			// Add invalid data to the request payload
-			Object.assign(reqBody, { id: '0', globalRoleId: '42' });
+			Object.assign(reqBody, { id: '0', role: '42' });
 
 			await controller.updateCurrentUser(req, res);
 
@@ -99,7 +99,7 @@ describe('MeController', () => {
 			expect(updatedUser.firstName).toBe(reqBody.firstName);
 			expect(updatedUser.lastName).toBe(reqBody.lastName);
 			expect(updatedUser.id).not.toBe('0');
-			expect(updatedUser.globalRoleId).not.toBe('42');
+			expect(updatedUser.role).not.toBe('42');
 		});
 
 		it('should throw BadRequestError if beforeUpdate hook throws BadRequestError', async () => {
@@ -107,11 +107,11 @@ describe('MeController', () => {
 				id: '123',
 				password: 'password',
 				authIdentities: [],
-				globalRoleId: '1',
+				role: 'global:owner',
 			});
 			const reqBody = { email: 'valid@email.com', firstName: 'John', lastName: 'Potato' };
 			const req = mock<MeRequest.UserUpdate>({ user, body: reqBody });
-			userService.findOneOrFail.mockResolvedValue(user);
+			// userService.findOneOrFail.mockResolvedValue(user);
 
 			externalHooks.run.mockImplementationOnce(async (hookName) => {
 				if (hookName === 'user.profile.beforeUpdate') {

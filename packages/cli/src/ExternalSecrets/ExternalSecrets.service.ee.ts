@@ -134,7 +134,7 @@ export class ExternalSecretsService {
 		}
 		const { settings } = providerAndSettings;
 		const newData = this.unredact(data, settings.settings);
-		return Container.get(ExternalSecretsManager).testProviderSettings(providerName, newData);
+		return await Container.get(ExternalSecretsManager).testProviderSettings(providerName, newData);
 	}
 
 	async updateProvider(providerName: string) {
@@ -143,6 +143,6 @@ export class ExternalSecretsService {
 		if (!providerAndSettings) {
 			throw new ExternalSecretsProviderNotFoundError(providerName);
 		}
-		return Container.get(ExternalSecretsManager).updateProvider(providerName);
+		return await Container.get(ExternalSecretsManager).updateProvider(providerName);
 	}
 }

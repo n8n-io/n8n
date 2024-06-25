@@ -30,7 +30,7 @@ export class ActiveWebhooks implements IWebhookManager {
 	) {}
 
 	async getWebhookMethods(path: string) {
-		return this.webhookService.getWebhookMethods(path);
+		return await this.webhookService.getWebhookMethods(path);
 	}
 
 	async findAccessControlOptions(path: string, httpMethod: IHttpRequestMethods) {
@@ -84,7 +84,7 @@ export class ActiveWebhooks implements IWebhookManager {
 
 		const workflowData = await this.workflowRepository.findOne({
 			where: { id: webhook.workflowId },
-			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
+			relations: ['shared', 'shared.user'],
 		});
 
 		if (workflowData === null) {
@@ -120,7 +120,7 @@ export class ActiveWebhooks implements IWebhookManager {
 			throw new NotFoundError('Could not find node to process webhook.');
 		}
 
-		return new Promise((resolve, reject) => {
+		return await new Promise((resolve, reject) => {
 			const executionMode = 'webhook';
 			void WebhookHelpers.executeWebhook(
 				workflow,

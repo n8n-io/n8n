@@ -1,18 +1,22 @@
 import Container from 'typedi';
+import type { DeepPartial } from 'typeorm';
 import { v4 as uuid } from 'uuid';
+
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { getWorkflowEditorRole, getWorkflowOwnerRole } from './roles';
+import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
 
 export async function createManyWorkflows(
 	amount: number,
 	attributes: Partial<WorkflowEntity> = {},
 	user?: User,
 ) {
-	const workflowRequests = [...Array(amount)].map(async (_) => createWorkflow(attributes, user));
-	return Promise.all(workflowRequests);
+	const workflowRequests = [...Array(amount)].map(
+		async (_) => await createWorkflow(attributes, user),
+	);
+	return await Promise.all(workflowRequests);
 }
 
 /**
@@ -47,24 +51,23 @@ export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, u
 		await Container.get(SharedWorkflowRepository).save({
 			user,
 			workflow,
-			role: await getWorkflowOwnerRole(),
+			role: 'workflow:owner',
 		});
 	}
 	return workflow;
 }
 
 export async function shareWorkflowWithUsers(workflow: WorkflowEntity, users: User[]) {
-	const role = await getWorkflowEditorRole();
-	const sharedWorkflows = users.map((user) => ({
-		user,
-		workflow,
-		role,
+	const sharedWorkflows: Array<DeepPartial<SharedWorkflow>> = users.map((user) => ({
+		userId: user.id,
+		workflowId: workflow.id,
+		role: 'workflow:editor',
 	}));
-	return Container.get(SharedWorkflowRepository).save(sharedWorkflows);
+	return await Container.get(SharedWorkflowRepository).save(sharedWorkflows);
 }
 
 export async function getWorkflowSharing(workflow: WorkflowEntity) {
-	return Container.get(SharedWorkflowRepository).findBy({
+	return await Container.get(SharedWorkflowRepository).findBy({
 		workflowId: workflow.id,
 	});
 }
@@ -115,8 +118,8 @@ export async function createWorkflowWithTrigger(
 }
 
 export async function getAllWorkflows() {
-	return Container.get(WorkflowRepository).find();
+	return await Container.get(WorkflowRepository).find();
 }
 
 export const getWorkflowById = async (id: string) =>
-	Container.get(WorkflowRepository).findOneBy({ id });
+	await Container.get(WorkflowRepository).findOneBy({ id });

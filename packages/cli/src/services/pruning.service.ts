@@ -28,7 +28,7 @@ export class PruningService {
 		private readonly binaryDataService: BinaryDataService,
 	) {}
 
-	isPruningEnabled() {
+	private isPruningEnabled() {
 		if (
 			!config.getEnv('executions.pruneData') ||
 			inTest ||
@@ -52,6 +52,8 @@ export class PruningService {
 	 * @important Call this method only after DB migrations have completed.
 	 */
 	startPruning() {
+		if (!this.isPruningEnabled()) return;
+
 		if (this.isShuttingDown) {
 			this.logger.warn('[Pruning] Cannot start pruning while shutting down');
 			return;
@@ -64,6 +66,8 @@ export class PruningService {
 	}
 
 	stopPruning() {
+		if (!this.isPruningEnabled()) return;
+
 		this.logger.debug('[Pruning] Removing soft-deletion and hard-deletion timers');
 
 		clearInterval(this.softDeletionInterval);
@@ -74,7 +78,7 @@ export class PruningService {
 		const when = [rateMs / TIME.MINUTE, 'min'].join(' ');
 
 		this.softDeletionInterval = setInterval(
-			async () => this.softDeleteOnPruningCycle(),
+			async () => await this.softDeleteOnPruningCycle(),
 			this.rates.softDeletion,
 		);
 

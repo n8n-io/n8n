@@ -40,7 +40,7 @@ export class PythonSandbox extends Sandbox {
 	}
 
 	async runCode(): Promise<unknown> {
-		return this.runCodeInPython<unknown>();
+		return await this.runCodeInPython<unknown>();
 	}
 
 	async runCodeAllItems() {

@@ -4,7 +4,6 @@ import { InternalHooks } from '@/InternalHooks';
 import { LdapService } from '@/Ldap/ldap.service';
 import {
 	createLdapUserOnLocalDb,
-	getLdapUserRole,
 	getUserByEmail,
 	getAuthIdentityByLdapId,
 	isLdapEnabled,
@@ -50,8 +49,7 @@ export const handleLdapLogin = async (
 			const identity = await createLdapAuthIdentity(emailUser, ldapId);
 			await updateLdapUserOnLocalDb(identity, ldapAttributesValues);
 		} else {
-			const role = await getLdapUserRole();
-			const user = await createLdapUserOnLocalDb(role, ldapAttributesValues, ldapId);
+			const user = await createLdapUserOnLocalDb(ldapAttributesValues, ldapId);
 			void Container.get(InternalHooks).onUserSignup(user, {
 				user_type: 'ldap',
 				was_disabled_ldap_user: false,

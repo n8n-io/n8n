@@ -591,7 +591,9 @@ export class NotionV2 implements INodeType {
 						responseData = responseData.results;
 					}
 					if (download) {
-						responseData = await downloadFiles.call(this, responseData as FileRecord[]);
+						responseData = await downloadFiles.call(this, responseData as FileRecord[], [
+							{ item: i },
+						]);
 					}
 					if (simple) {
 						responseData = simplifyObjects(responseData, download);

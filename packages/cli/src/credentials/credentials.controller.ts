@@ -27,7 +27,7 @@ credentialsController.get(
 	'/',
 	listQueryMiddleware,
 	ResponseHelper.send(async (req: ListQuery.Request) => {
-		return CredentialsService.getMany(req.user, { listQueryOptions: req.listQueryOptions });
+		return await CredentialsService.getMany(req.user, { listQueryOptions: req.listQueryOptions });
 	}),
 );
 
@@ -105,7 +105,7 @@ credentialsController.post(
 			mergedCredentials.data = CredentialsService.unredact(mergedCredentials.data, decryptedData);
 		}
 
-		return CredentialsService.test(req.user, mergedCredentials);
+		return await CredentialsService.test(req.user, mergedCredentials);
 	}),
 );
 
@@ -147,7 +147,7 @@ credentialsController.patch(
 				allowGlobalScope: true,
 				globalScope: 'credential:update',
 			},
-			['credentials', 'role'],
+			['credentials'],
 		);
 
 		if (!sharing) {
@@ -163,7 +163,7 @@ credentialsController.patch(
 			);
 		}
 
-		if (sharing.role.name !== 'owner' && !req.user.hasGlobalScope('credential:update')) {
+		if (sharing.role !== 'credential:owner' && !req.user.hasGlobalScope('credential:update')) {
 			Container.get(Logger).info(
 				'Attempt to update credential blocked due to lack of permissions',
 				{
@@ -216,7 +216,7 @@ credentialsController.delete(
 				allowGlobalScope: true,
 				globalScope: 'credential:delete',
 			},
-			['credentials', 'role'],
+			['credentials'],
 		);
 
 		if (!sharing) {
@@ -232,7 +232,7 @@ credentialsController.delete(
 			);
 		}
 
-		if (sharing.role.name !== 'owner' && !req.user.hasGlobalScope('credential:delete')) {
+		if (sharing.role !== 'credential:owner' && !req.user.hasGlobalScope('credential:delete')) {
 			Container.get(Logger).info(
 				'Attempt to delete credential blocked due to lack of permissions',
 				{

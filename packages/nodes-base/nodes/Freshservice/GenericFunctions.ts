@@ -106,7 +106,7 @@ export async function handleListing(
 	const returnAll = this.getNodeParameter('returnAll', 0);
 
 	if (returnAll) {
-		return freshserviceApiRequestAllItems.call(this, method, endpoint, body, qs);
+		return await freshserviceApiRequestAllItems.call(this, method, endpoint, body, qs);
 	}
 
 	const responseData = await freshserviceApiRequestAllItems.call(this, method, endpoint, body, qs);

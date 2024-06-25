@@ -45,17 +45,17 @@ export class EventBusController {
 		if (isWithQueryString(req.query)) {
 			switch (req.query.query as EventMessageReturnMode) {
 				case 'sent':
-					return eventBus.getEventsSent();
+					return await eventBus.getEventsSent();
 				case 'unsent':
-					return eventBus.getEventsUnsent();
+					return await eventBus.getEventsUnsent();
 				case 'unfinished':
-					return eventBus.getUnfinishedExecutions();
+					return await eventBus.getUnfinishedExecutions();
 				case 'all':
 				default:
-					return eventBus.getEventsAll();
+					return await eventBus.getEventsAll();
 			}
 		} else {
-			return eventBus.getEventsAll();
+			return await eventBus.getEventsAll();
 		}
 	}
 
@@ -63,7 +63,7 @@ export class EventBusController {
 	@RequireGlobalScope('eventBusEvent:list')
 	async getFailedEvents(req: express.Request): Promise<FailedEventSummary[]> {
 		const amount = parseInt(req.query?.amount as string) ?? 5;
-		return eventBus.getEventsFailed(amount);
+		return await eventBus.getEventsFailed(amount);
 	}
 
 	@Get('/execution/:id')
@@ -74,7 +74,7 @@ export class EventBusController {
 			if (req.query?.logHistory) {
 				logHistory = parseInt(req.query.logHistory as string, 10);
 			}
-			return eventBus.getEventsByExecutionId(req.params.id, logHistory);
+			return await eventBus.getEventsByExecutionId(req.params.id, logHistory);
 		}
 		return;
 	}
@@ -88,7 +88,7 @@ export class EventBusController {
 			const applyToDb = req.query.applyToDb !== undefined ? !!req.query.applyToDb : true;
 			const messages = await eventBus.getEventsByExecutionId(id, logHistory);
 			if (messages.length > 0) {
-				return recoverExecutionDataFromEventLogMessages(id, messages, applyToDb);
+				return await recoverExecutionDataFromEventLogMessages(id, messages, applyToDb);
 			}
 		}
 		return;

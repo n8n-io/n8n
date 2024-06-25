@@ -12,11 +12,11 @@ export class PasswordUtility {
 		const SALT_ROUNDS = 10;
 		const salt = genSaltSync(SALT_ROUNDS);
 
-		return hash(plaintext, salt);
+		return await hash(plaintext, salt);
 	}
 
 	async compare(plaintext: string, hashed: string) {
-		return compare(plaintext, hashed);
+		return await compare(plaintext, hashed);
 	}
 
 	validate(plaintext?: string) {

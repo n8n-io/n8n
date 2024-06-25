@@ -521,6 +521,7 @@ export class NocoDB implements INodeType {
 								this,
 								responseData as IDataObject[],
 								downloadFieldNames,
+								[{ item: i }],
 							);
 							data.push(...response);
 						}
@@ -584,6 +585,7 @@ export class NocoDB implements INodeType {
 								this,
 								[responseData as IDataObject],
 								downloadFieldNames,
+								[{ item: i }],
 							);
 							const newItem = {
 								binary: data[0].binary,

@@ -76,5 +76,5 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			throw error;
 		}
 	}
-	return this.prepareOutputData(returnData);
+	return await this.prepareOutputData(returnData);
 }

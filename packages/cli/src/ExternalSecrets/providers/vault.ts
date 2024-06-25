@@ -436,7 +436,7 @@ export class VaultProvider extends SecretsProvider {
 				await Promise.allSettled(
 					listResp.data.data.keys.map(async (key): Promise<[string, IDataObject] | null> => {
 						if (key.endsWith('/')) {
-							return this.getKVSecrets(mountPath, kvVersion, path + key);
+							return await this.getKVSecrets(mountPath, kvVersion, path + key);
 						}
 						let secretPath = mountPath;
 						if (kvVersion === '2') {

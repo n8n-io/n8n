@@ -174,7 +174,7 @@ export class SamlService {
 			const lowerCasedEmail = attributes.email.toLowerCase();
 			const user = await Container.get(UserRepository).findOne({
 				where: { email: lowerCasedEmail },
-				relations: ['globalRole', 'authIdentities'],
+				relations: ['authIdentities'],
 			});
 			if (user) {
 				// Login path for existing users that are fully set up and that have a SAML authIdentity set up

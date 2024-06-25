@@ -38,7 +38,7 @@ export async function actionNetworkApiRequest(
 		delete options.qs;
 	}
 
-	return this.helpers.requestWithAuthentication.call(this, 'actionNetworkApi', options);
+	return await this.helpers.requestWithAuthentication.call(this, 'actionNetworkApi', options);
 }
 
 /**
@@ -218,7 +218,7 @@ export const adjustEventPayload = adjustLocation;
 // ----------------------------------------
 
 async function loadResource(this: ILoadOptionsFunctions, resource: string) {
-	return handleListing.call(this, 'GET', `/${resource}`, {}, {}, { returnAll: true });
+	return await handleListing.call(this, 'GET', `/${resource}`, {}, {}, { returnAll: true });
 }
 
 export const resourceLoaders = {

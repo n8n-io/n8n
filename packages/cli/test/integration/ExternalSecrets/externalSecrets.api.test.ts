@@ -35,7 +35,7 @@ const testServer = setupTestServer({
 const connectedDate = '2023-08-01T12:32:29.000Z';
 
 async function setExternalSecretsSettings(settings: ExternalSecretsSettings) {
-	return Container.get(SettingsRepository).saveEncryptedSecretsProviderSettings(
+	return await Container.get(SettingsRepository).saveEncryptedSecretsProviderSettings(
 		Container.get(Cipher).encrypt(settings),
 	);
 }
@@ -45,7 +45,7 @@ async function getExternalSecretsSettings(): Promise<ExternalSecretsSettings | n
 	if (encSettings === null) {
 		return null;
 	}
-	return jsonParse(Container.get(Cipher).decrypt(encSettings));
+	return await jsonParse(Container.get(Cipher).decrypt(encSettings));
 }
 
 const resetManager = async () => {

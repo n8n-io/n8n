@@ -23,7 +23,7 @@ async function getMetadata(
 		url: credentials.metadataUrl as string,
 		json: true,
 	};
-	return this.helpers.request(options);
+	return await this.helpers.request(options);
 }
 
 export async function mailchimpApiRequest(
