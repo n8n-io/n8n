@@ -352,6 +352,10 @@ const declarativeNodeOptionParameters: INodeProperties = {
 	],
 };
 
+/**
+ * Determines if the provided node type has any output types other than the main connection type.
+ * @param nodeType The node type to check.
+ */
 export function isSubNodeType(nodeType: Pick<INodeTypeDescription, 'outputs'> | null): boolean {
 	if (!nodeType || !nodeType.outputs || typeof nodeType.outputs === 'string') {
 		return false;
@@ -362,6 +366,7 @@ export function isSubNodeType(nodeType: Pick<INodeTypeDescription, 'outputs'> | 
 		: false;
 }
 
+/** Augments additional `Request Options` property on declarative node-type */
 export function applyDeclarativeNodeOptionParameters(nodeType: INodeType): void {
 	if (
 		nodeType.execute ||

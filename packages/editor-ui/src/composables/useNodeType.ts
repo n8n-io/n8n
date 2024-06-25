@@ -26,9 +26,7 @@ export function useNodeType(
 		return null;
 	});
 
-	const isSubNodeType = computed(() => {
-		return NodeHelpers.isSubNodeType(nodeType.value);
-	});
+	const isSubNodeType = computed(() => NodeHelpers.isSubNodeType(nodeType.value));
 
 	const isMultipleOutputsNodeType = computed(() => {
 		const outputs = nodeType.value?.outputs;
