@@ -38,6 +38,9 @@ describe('ADO-2111 expressions should support pinned data', () => {
 
 		// test previous node executed
 		ndv.actions.execute();
+		ndv.getters.inputTableRow(1).realHover();
+		cy.wait(50);
+
 		ndv.getters
 			.parameterExpressionPreview('value')
 			.eq(0)
@@ -58,6 +61,23 @@ describe('ADO-2111 expressions should support pinned data', () => {
 			.parameterExpressionPreview('value')
 			.eq(1)
 			.should('contain.text', '0,1\nJoan\n\nJoan\n\nJoan\n\nJoan\nJoan');
+
+		// check it resolved correctly on the backend
+		ndv.getters
+			.outputTbodyCell(1, 0)
+			.should('contain.text', 'Joe\\nJoe\\nJoan\\nJoan\\nJoe\\nJoan\\n\\nJoe\\nJoan\\n\\nJoe');
+
+		ndv.getters
+			.outputTbodyCell(2, 0)
+			.should('contain.text', 'Joe\\nJoe\\nJoan\\nJoan\\nJoe\\nJoan\\n\\nJoe\\nJoan\\n\\nJoe');
+
+		ndv.getters
+			.outputTbodyCell(1, 1)
+			.should('contain.text', '0,0\\nJoe\\n\\nJoe\\n\\nJoe\\n\\nJoe\\nJoe');
+
+		ndv.getters
+			.outputTbodyCell(2, 1)
+			.should('contain.text', '0,1\\nJoan\\n\\nJoan\\n\\nJoan\\n\\nJoan\\nJoan');
 	});
 
 	it('resets expressions after node is unpinned', () => {
