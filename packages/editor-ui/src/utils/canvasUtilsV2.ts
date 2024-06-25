@@ -68,6 +68,18 @@ export function parseCanvasConnectionHandleString(handle: string | null | undefi
 	};
 }
 
+export function createCanvasConnectionHandleString({
+	mode,
+	type = NodeConnectionType.Main,
+	index = 0,
+}: {
+	mode: 'inputs' | 'outputs';
+	type?: NodeConnectionType;
+	index?: number;
+}) {
+	return `${mode}/${type}/${index}`;
+}
+
 export function mapCanvasConnectionToLegacyConnection(
 	sourceNode: INodeUi,
 	targetNode: INodeUi,
