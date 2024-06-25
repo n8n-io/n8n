@@ -1,4 +1,3 @@
-import type { OptionsWithUri } from 'request';
 import FormData from 'form-data';
 
 import type {
@@ -8,6 +7,7 @@ import type {
 	IPollFunctions,
 	JsonObject,
 	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -29,7 +29,6 @@ import type {
 	IFile,
 } from './actions/Interfaces';
 
-// for date transformations
 import moment from 'moment';
 
 // remove last backslash
@@ -51,7 +50,7 @@ export async function getBaseAccessToken(
 ) {
 	if (ctx?.base?.access_token !== undefined) return;
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			Authorization: `Token ${ctx?.credentials?.token}`,
 		},
@@ -82,7 +81,7 @@ export async function seaTableApiRequest(
 	endpoint: string,
 	body: IDataObject | FormData | string | Buffer = {},
 	qs: IDataObject = {},
-	url: string | undefined = undefined,
+	url: string = '',
 	option: IDataObject = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('seaTableApi');
@@ -99,7 +98,7 @@ export async function seaTableApiRequest(
 			? `${ctx?.credentials?.token}`
 			: `${ctx?.base?.access_token}`;
 
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		uri: url || `${resolveBaseUri(ctx)}${endpointCtxExpr(ctx, endpoint)}`,
 		headers: {
 			Authorization: `Token ${token}`,
@@ -183,9 +182,6 @@ export function simplify_new(row: IRow) {
 	return row;
 }
 
-/*const uniquePredicate = (current: string, index: number, all: string[]) =>
-	all.indexOf(current) === index;
-const nonInternalPredicate = (name: string) => !Object.keys(schema.internalNames).includes(name);*/
 const namePredicate = (name: string) => (named: IName) => named.name === name;
 export const nameOfPredicate = (names: readonly IName[]) => (name: string) =>
 	names.find(namePredicate(name));
@@ -220,7 +216,6 @@ function getAssetPath(type: string, url: string) {
 	return url;
 }
 
-// CDB: neu von mir
 export function enrichColumns(
 	row: IRow,
 	metadata: IDtableMetadataColumn[],
@@ -228,7 +223,6 @@ export function enrichColumns(
 ): IRow {
 	Object.keys(row).forEach((key) => {
 		let columnDef = metadata.find((obj) => obj.name === key || obj.key === key);
-		//console.log(key + " is from type " + columnDef?.type);
 
 		if (columnDef?.type === 'collaborator') {
 			// collaborator is an array of strings.
@@ -344,7 +338,7 @@ export function splitStringColumnsToArrays(
 	return row;
 }
 
-// sollte eher heißen: remove nonUpdateColumnTypes and only use allowed columns!
+// remove nonUpdateColumnTypes and only use allowed columns!
 export function rowExport(row: IRowObject, columns: TDtableMetadataColumns): IRowObject {
 	let rowAllowed = {} as IRowObject;
 	columns.map((column) => {

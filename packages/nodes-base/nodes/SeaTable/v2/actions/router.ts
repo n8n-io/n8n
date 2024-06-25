@@ -12,14 +12,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	const operationResult: INodeExecutionData[] = [];
 	let responseData: IDataObject | IDataObject[] = [];
 
-	//console.log('ITEM LENGTH ' + items.length);
-
 	for (let i = 0; i < items.length; i++) {
 		const resource = this.getNodeParameter<SeaTable>('resource', i);
 		const operation = this.getNodeParameter('operation', i);
-
-		//console.log(operation);
-		//console.log(resource);
 
 		const seatable = {
 			resource,

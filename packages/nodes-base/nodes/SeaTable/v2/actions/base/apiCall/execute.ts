@@ -19,7 +19,6 @@ export async function apiCall(
 	for (const param of params) {
 		apiParams[`${param.key}`] = param.value;
 	}
-	console.log(apiParams);
 
 	const responseData = await seaTableApiRequest.call(
 		this,
@@ -29,9 +28,7 @@ export async function apiCall(
 		apiBody,
 		apiParams,
 	);
-	console.log(responseData);
 
-	// output
 	if (responseObjectName) {
 		return this.helpers.returnJsonArray(responseData[responseObjectName] as IDataObject[]);
 	} else {

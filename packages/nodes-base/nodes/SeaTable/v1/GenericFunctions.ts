@@ -3,9 +3,9 @@ import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	IPollFunctions,
-	JsonObject,
-	IHttpRequestMethods,
 	IRequestOptions,
+	IHttpRequestMethods,
+	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -67,7 +67,7 @@ function endpointCtxExpr(ctx: ICtx, endpoint: string): string {
 
 	return endpoint.replace(
 		/({{ *(access_token|dtable_uuid|server) *}})/g,
-		(match: string, _: string, name: TEndpointVariableName) => {
+		(match: string, expr: string, name: TEndpointVariableName) => {
 			return endpointVariables[name] || match;
 		},
 	);
@@ -78,7 +78,6 @@ export async function seaTableApiRequest(
 	ctx: ICtx,
 	method: IHttpRequestMethods,
 	endpoint: string,
-
 	body: any = {},
 	qs: IDataObject = {},
 	url: string | undefined = undefined,
@@ -228,7 +227,7 @@ export const split = (subject: string): string[] =>
 	normalize(subject)
 		.split(/\s*((?:[^\\,]*?(?:\\[\s\S])*)*?)\s*(?:,|$)/)
 		.filter((s) => s.length)
-		.map((s) => s.replace(/\\([\s\S])/gm, (_, $1) => $1));
+		.map((s) => s.replace(/\\([\s\S])/gm, ($0, $1) => $1));
 
 export function columnNamesToArray(columnNames: string): string[] {
 	return columnNames ? split(columnNames).filter(nonInternalPredicate).filter(uniquePredicate) : [];
