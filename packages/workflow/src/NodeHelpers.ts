@@ -10,6 +10,7 @@ import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 import uniqBy from 'lodash/uniqBy';
 
+import { NodeConnectionType } from './Interfaces';
 import type {
 	FieldType,
 	IContextObject,
@@ -351,8 +352,24 @@ const declarativeNodeOptionParameters: INodeProperties = {
 	],
 };
 
+export function isSubNodeType(nodeType: INodeTypeDescription | null): boolean {
+	if (!nodeType || !nodeType.outputs || typeof nodeType.outputs === 'string') {
+		return false;
+	}
+	const outputTypes = getConnectionTypes(nodeType.outputs);
+	return outputTypes
+		? outputTypes.filter((output) => output !== NodeConnectionType.Main).length > 0
+		: false;
+}
+
 export function applyDeclarativeNodeOptionParameters(nodeType: INodeType): void {
-	if (nodeType.execute || nodeType.trigger || nodeType.webhook || nodeType.description.polling) {
+	if (
+		nodeType.execute ||
+		nodeType.trigger ||
+		nodeType.webhook ||
+		nodeType.description.polling ||
+		isSubNodeType(nodeType.description)
+	) {
 		return;
 	}
 

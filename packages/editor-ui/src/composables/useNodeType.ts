@@ -3,7 +3,7 @@ import { computed, unref } from 'vue';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import type { INodeUi, SimplifiedNodeType } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 
 export function useNodeType(
 	options: {
@@ -27,13 +27,7 @@ export function useNodeType(
 	});
 
 	const isSubNodeType = computed(() => {
-		if (!nodeType.value?.outputs || typeof nodeType.value?.outputs === 'string') {
-			return false;
-		}
-		const outputTypes = NodeHelpers.getConnectionTypes(nodeType.value?.outputs);
-		return outputTypes
-			? outputTypes.filter((output) => output !== NodeConnectionType.Main).length > 0
-			: false;
+		return NodeHelpers.isSubNodeType(nodeType.value);
 	});
 
 	const isMultipleOutputsNodeType = computed(() => {
