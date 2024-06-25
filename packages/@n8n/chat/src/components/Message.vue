@@ -56,7 +56,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 };
 
 const scrollToView = () => {
-	if (messageContainer.value) {
+	if (messageContainer.value?.scrollIntoView) {
 		messageContainer.value.scrollIntoView({
 			behavior: 'smooth',
 			block: 'start',

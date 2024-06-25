@@ -60,7 +60,11 @@
 			</div>
 		</template>
 		<template #footer>
-			<ChatInput :class="$style.messagesInput" @arrow-key-down="onArrowKeyDown" />
+			<ChatInput
+				:class="$style.messagesInput"
+				data-test-id="lm-chat-inputs"
+				@arrow-key-down="onArrowKeyDown"
+			/>
 			<n8n-info-tip class="mt-s">
 				{{ locale.baseText('chatEmbed.infoTip.description') }}
 				<a @click="uiStore.openModal(CHAT_EMBED_MODAL_KEY)">

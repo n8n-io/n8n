@@ -218,10 +218,10 @@ export class ChatTrigger extends Node {
 						description: 'Whether to allow file uploads in the chat',
 					},
 					{
-						displayName: 'Allowed Files Mime Type',
+						displayName: 'Allowed File Mime Types',
 						name: 'allowedFilesMimeTypes',
 						type: 'string',
-						default: 'image/*, text/*, application/pdf',
+						default: '*',
 						placeholder: 'e.g. image/*, text/*, application/pdf',
 						description:
 							'Allowed file types for upload. Comma-separated list of <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types" target="_blank">MIME types</a>.',
@@ -254,7 +254,7 @@ export class ChatTrigger extends Node {
 						description: 'Whether to allow file uploads in the chat',
 					},
 					{
-						displayName: 'Allowed Files Mime Type',
+						displayName: 'Allowed File Mime Types',
 						name: 'allowedFilesMimeTypes',
 						type: 'string',
 						displayOptions: {
@@ -262,7 +262,7 @@ export class ChatTrigger extends Node {
 								'/mode': ['hostedChat'],
 							},
 						},
-						default: 'image/*, text/*, application/pdf',
+						default: '*',
 						placeholder: 'e.g. image/*, text/*, application/pdf',
 						description:
 							'Allowed file types for upload. Comma-separated list of <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types" target="_blank">MIME types</a>.',
