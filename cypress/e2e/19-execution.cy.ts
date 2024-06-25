@@ -1,6 +1,6 @@
 import { NDV, WorkflowExecutionsTab, WorkflowPage as WorkflowPageClass } from '../pages';
 import { SCHEDULE_TRIGGER_NODE_NAME, EDIT_FIELDS_SET_NODE_NAME } from '../constants';
-import { errorToast, successToast } from '../pages/notifications';
+import { clearNotifications, errorToast, successToast } from '../pages/notifications';
 
 const workflowPage = new WorkflowPageClass();
 const executionsTab = new WorkflowExecutionsTab();
@@ -62,13 +62,13 @@ describe('Execution', () => {
 			.within(() => cy.get('.fa-check'))
 			.should('exist');
 
+		successToast().should('be.visible');
+		clearNotifications();
+
 		// Clear execution data
 		workflowPage.getters.clearExecutionDataButton().should('be.visible');
 		workflowPage.getters.clearExecutionDataButton().click();
 		workflowPage.getters.clearExecutionDataButton().should('not.exist');
-
-		// Check success toast (works because Cypress waits enough for the element to show after the http request node has finished)
-		successToast().should('be.visible');
 	});
 
 	it('should test manual workflow stop', () => {
@@ -106,6 +106,9 @@ describe('Execution', () => {
 			.canvasNodeByName('Set')
 			.within(() => cy.get('.fa-check').should('not.exist'));
 
+		successToast().should('be.visible');
+		clearNotifications();
+
 		workflowPage.getters.stopExecutionButton().should('exist');
 		workflowPage.getters.stopExecutionButton().click();
 
@@ -121,13 +124,13 @@ describe('Execution', () => {
 			.canvasNodeByName('Set')
 			.within(() => cy.get('.fa-check').should('not.exist'));
 
+		successToast().should('be.visible');
+		clearNotifications();
+
 		// Clear execution data
 		workflowPage.getters.clearExecutionDataButton().should('be.visible');
 		workflowPage.getters.clearExecutionDataButton().click();
 		workflowPage.getters.clearExecutionDataButton().should('not.exist');
-
-		// Check success toast (works because Cypress waits enough for the element to show after the http request node has finished)
-		successToast().should('be.visible');
 	});
 
 	it('should test webhook workflow', () => {
@@ -194,13 +197,13 @@ describe('Execution', () => {
 			.within(() => cy.get('.fa-check'))
 			.should('exist');
 
+		successToast().should('be.visible');
+		clearNotifications();
+
 		// Clear execution data
 		workflowPage.getters.clearExecutionDataButton().should('be.visible');
 		workflowPage.getters.clearExecutionDataButton().click();
 		workflowPage.getters.clearExecutionDataButton().should('not.exist');
-
-		// Check success toast (works because Cypress waits enough for the element to show after the http request node has finished)
-		successToast().should('be.visible');
 	});
 
 	it('should test webhook workflow stop', () => {
@@ -239,6 +242,9 @@ describe('Execution', () => {
 			});
 		});
 
+		successToast().should('be.visible');
+		clearNotifications();
+
 		workflowPage.getters.stopExecutionButton().click();
 		// Check canvas nodes after 1st step (workflow passed the manual trigger node
 		workflowPage.getters
@@ -268,13 +274,13 @@ describe('Execution', () => {
 			.canvasNodeByName('Set')
 			.within(() => cy.get('.fa-check').should('not.exist'));
 
+		successToast().should('be.visible');
+		clearNotifications();
+
 		// Clear execution data
 		workflowPage.getters.clearExecutionDataButton().should('be.visible');
 		workflowPage.getters.clearExecutionDataButton().click();
 		workflowPage.getters.clearExecutionDataButton().should('not.exist');
-
-		// Check success toast (works because Cypress waits enough for the element to show after the http request node has finished)
-		successToast().should('be.visible');
 	});
 
 	describe('execution preview', () => {
