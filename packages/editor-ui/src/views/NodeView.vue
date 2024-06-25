@@ -839,8 +839,10 @@ export default defineComponent({
 	async mounted() {
 		// To be refactored (unref) when migrating to composition API
 		this.onMouseMoveEnd = this.mouseUp;
+		this.initializeCanvasMouseSelect();
 
 		this.resetWorkspace();
+
 		if (!this.nodeViewRef) {
 			this.showError(
 				new Error('NodeView reference not found'),

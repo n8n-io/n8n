@@ -24,39 +24,65 @@ import {
 	SET_NODE_TYPE,
 } from '@/constants';
 
-const mockNode = (name: string, type: string, props: Partial<INode> = {}) =>
-	mock<INode>({ name, type, ...props });
+export const mockNode = ({
+	id = uuid(),
+	name,
+	type,
+	position = [0, 0],
+}: {
+	id?: INode['id'];
+	name: INode['name'];
+	type: INode['type'];
+	position?: INode['position'];
+}) => mock<INode>({ id, name, type, position });
 
-const mockLoadedClass = (name: string) =>
+export const mockNodeTypeDescription = ({
+	name,
+	version = 1,
+	credentials = [],
+}: {
+	name: INodeTypeDescription['name'];
+	version?: INodeTypeDescription['version'];
+	credentials?: INodeTypeDescription['credentials'];
+}) =>
+	mock<INodeTypeDescription>({
+		name,
+		displayName: name,
+		version,
+		defaults: {
+			name,
+		},
+		defaultVersion: Array.isArray(version) ? version[version.length - 1] : version,
+		properties: [],
+		maxNodes: Infinity,
+		group: EXECUTABLE_TRIGGER_NODE_TYPES.includes(name) ? ['trigger'] : [],
+		inputs: ['main'],
+		outputs: ['main'],
+		credentials,
+		documentationUrl: 'https://docs',
+		webhooks: undefined,
+	});
+
+export const mockLoadedNodeType = (name: string) =>
 	mock<LoadedClass<INodeType>>({
 		type: mock<INodeType>({
 			// @ts-expect-error
-			description: mock<INodeTypeDescription>({
-				name,
-				displayName: name,
-				version: 1,
-				properties: [],
-				group: EXECUTABLE_TRIGGER_NODE_TYPES.includes(name) ? ['trigger'] : [],
-				inputs: ['main'],
-				outputs: ['main'],
-				documentationUrl: 'https://docs',
-				webhooks: undefined,
-			}),
+			description: mockNodeTypeDescription({ name }),
 		}),
 	});
 
 export const mockNodes = [
-	mockNode('Manual Trigger', MANUAL_TRIGGER_NODE_TYPE),
-	mockNode('Set', SET_NODE_TYPE),
-	mockNode('Code', CODE_NODE_TYPE),
-	mockNode('Rename', SET_NODE_TYPE),
-	mockNode('Chat Trigger', CHAT_TRIGGER_NODE_TYPE),
-	mockNode('Agent', AGENT_NODE_TYPE),
-	mockNode('End', NO_OP_NODE_TYPE),
+	mockNode({ name: 'Manual Trigger', type: MANUAL_TRIGGER_NODE_TYPE }),
+	mockNode({ name: 'Set', type: SET_NODE_TYPE }),
+	mockNode({ name: 'Code', type: CODE_NODE_TYPE }),
+	mockNode({ name: 'Rename', type: SET_NODE_TYPE }),
+	mockNode({ name: 'Chat Trigger', type: CHAT_TRIGGER_NODE_TYPE }),
+	mockNode({ name: 'Agent', type: AGENT_NODE_TYPE }),
+	mockNode({ name: 'End', type: NO_OP_NODE_TYPE }),
 ];
 
 export const defaultNodeTypes = mockNodes.reduce<INodeTypeData>((acc, { type }) => {
-	acc[type] = mockLoadedClass(type);
+	acc[type] = mockLoadedNodeType(type);
 	return acc;
 }, {});
 
