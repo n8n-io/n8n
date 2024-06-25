@@ -1200,7 +1200,7 @@ export class HubspotV2 implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ json: { error: (error as JsonObject).message } });
 				} else {
 					throw error;
@@ -3071,7 +3071,7 @@ export class HubspotV2 implements INodeType {
 							set(error, 'message', message);
 						}
 					}
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						returnData.push({
 							json: { error: (error as JsonObject).message },
 							pairedItem: { item: i },

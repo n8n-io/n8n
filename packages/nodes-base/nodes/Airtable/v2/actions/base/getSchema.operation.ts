@@ -48,7 +48,7 @@ export async function execute(
 			returnData.push(...executionData);
 		} catch (error) {
 			error = processAirtableError(error as NodeApiError, undefined, i);
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(error)) {
 				returnData.push({ json: { error: error.message } });
 				continue;
 			}

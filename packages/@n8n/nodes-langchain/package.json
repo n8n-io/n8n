@@ -1,12 +1,12 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "1.46.0",
+  "version": "1.47.0",
   "description": "",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
   "repository": {
     "type": "git",
-    "url": "https://github.com/n8n-io/n8n-nodes-langchain.git"
+    "url": "git+https://github.com/n8n-io/n8n.git"
   },
   "main": "index.js",
   "scripts": {

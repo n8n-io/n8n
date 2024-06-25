@@ -1,18 +1,18 @@
 import Container from 'typedi';
 import { stringify } from 'flatted';
+import { NodeConnectionType, randomInt } from 'n8n-workflow';
 
 import { mockInstance } from '@test/mocking';
-import { randomInteger } from '@test-integration/random';
 import { createWorkflow } from '@test-integration/db/workflows';
 import { createExecution } from '@test-integration/db/executions';
 import * as testDb from '@test-integration/testDb';
 
-import { NodeConnectionType } from 'n8n-workflow';
 import { mock } from 'jest-mock-extended';
 import { OrchestrationService } from '@/services/orchestration.service';
 import config from '@/config';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 import { InternalHooks } from '@/InternalHooks';
 import { Push } from '@/push';
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
@@ -21,8 +21,8 @@ import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import { EventMessageNode } from '@/eventbus/EventMessageClasses/EventMessageNode';
 import { EventMessageWorkflow } from '@/eventbus/EventMessageClasses/EventMessageWorkflow';
 
+import type { EventRelay } from '@/eventbus/event-relay.service';
 import type { EventMessageTypes as EventMessage } from '@/eventbus/EventMessageClasses';
-import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 import type { Logger } from '@/Logger';
 
 /**
@@ -193,6 +193,7 @@ describe('ExecutionRecoveryService', () => {
 			push,
 			executionRepository,
 			orchestrationService,
+			mock<EventRelay>(),
 		);
 	});
 
@@ -301,7 +302,7 @@ describe('ExecutionRecoveryService', () => {
 				/**
 				 * Arrange
 				 */
-				const inexistentExecutionId = randomInteger(100).toString();
+				const inexistentExecutionId = randomInt(100).toString();
 				const noMessages: EventMessage[] = [];
 
 				/**
@@ -373,7 +374,7 @@ describe('ExecutionRecoveryService', () => {
 				/**
 				 * Arrange
 				 */
-				const inexistentExecutionId = randomInteger(100).toString();
+				const inexistentExecutionId = randomInt(100).toString();
 				const messages = setupMessages(inexistentExecutionId, 'Some workflow');
 
 				/**

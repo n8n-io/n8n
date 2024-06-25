@@ -15,13 +15,13 @@ describe('Node IO Filter', () => {
 		workflowPage.getters.canvasNodes().first().dblclick();
 		ndv.actions.close();
 		workflowPage.getters.canvasNodes().first().dblclick();
-		cy.wait(500);
 		ndv.getters.outputDataContainer().should('be.visible');
+		ndv.getters.outputPanel().findChildByTestId('ndv-search').should('exist');
 		cy.document().trigger('keyup', { key: '/' });
 
 		const searchInput = ndv.getters.searchInput();
 
-		searchInput.filter(':focus').should('exist');
+		searchInput.should('have.focus');
 		ndv.getters.pagination().find('li').should('have.length', 3);
 		ndv.getters.outputDataContainer().find('mark').should('not.exist');
 
@@ -36,19 +36,18 @@ describe('Node IO Filter', () => {
 
 	it('should filter input/output data separately', () => {
 		workflowPage.getters.canvasNodes().eq(1).dblclick();
-		cy.wait(500);
 		ndv.getters.outputDataContainer().should('be.visible');
 		ndv.getters.inputDataContainer().should('be.visible');
 		ndv.actions.switchInputMode('Table');
+		ndv.getters.outputPanel().findChildByTestId('ndv-search').should('exist');
 		cy.document().trigger('keyup', { key: '/' });
 
-		ndv.getters.outputPanel().findChildByTestId('ndv-search').filter(':focus').should('not.exist');
+		ndv.getters.outputPanel().findChildByTestId('ndv-search').should('not.have.focus');
 
 		let focusedInput = ndv.getters
 			.inputPanel()
 			.findChildByTestId('ndv-search')
-			.filter(':focus')
-			.should('exist');
+			.should('have.focus');
 
 		const getInputPagination = () =>
 			ndv.getters.inputPanel().findChildByTestId('ndv-data-pagination');
@@ -82,13 +81,9 @@ describe('Node IO Filter', () => {
 
 		ndv.getters.outputDataContainer().trigger('mouseover');
 		cy.document().trigger('keyup', { key: '/' });
-		ndv.getters.inputPanel().findChildByTestId('ndv-search').filter(':focus').should('not.exist');
+		ndv.getters.inputPanel().findChildByTestId('ndv-search').should('not.have.focus');
 
-		focusedInput = ndv.getters
-			.outputPanel()
-			.findChildByTestId('ndv-search')
-			.filter(':focus')
-			.should('exist');
+		focusedInput = ndv.getters.outputPanel().findChildByTestId('ndv-search').should('have.focus');
 
 		getInputPagination().find('li').should('have.length', 3);
 		getInputCounter().contains('21 items').should('exist');

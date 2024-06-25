@@ -204,7 +204,7 @@ return items;`,
 				}
 			}
 		} catch (error) {
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(error)) {
 				items = [{ json: { error: error.message } }];
 			} else {
 				// Try to find the line number which contains the error and attach to error message

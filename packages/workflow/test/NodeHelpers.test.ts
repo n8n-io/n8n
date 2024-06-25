@@ -1,5 +1,5 @@
 import type { INode, INodeParameters, INodeProperties, INodeTypeDescription } from '@/Interfaces';
-import type { Workflow } from '../src';
+import type { Workflow } from '@/Workflow';
 
 import { getNodeParameters, getNodeHints, isSingleExecution } from '@/NodeHelpers';
 

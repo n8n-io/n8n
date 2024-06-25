@@ -6,7 +6,7 @@ import { faker } from '@faker-js/faker';
 import { STORES, VIEWS } from '@/constants';
 import ExecutionsList from '@/components/executions/global/GlobalExecutionsList.vue';
 import type { IWorkflowDb } from '@/Interface';
-import type { ExecutionSummary } from 'n8n-workflow';
+import { randomInt, type ExecutionSummary } from 'n8n-workflow';
 import { retry, SETTINGS_STORE_DEFAULT_STATE, waitAllPromises } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import { waitFor } from '@testing-library/vue';
@@ -22,7 +22,7 @@ vi.mock('vue-router', () => ({
 let pinia: ReturnType<typeof createTestingPinia>;
 
 const generateUndefinedNullOrString = () => {
-	switch (Math.floor(Math.random() * 4)) {
+	switch (randomInt(4)) {
 		case 0:
 			return undefined;
 		case 1:

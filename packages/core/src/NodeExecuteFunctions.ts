@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-/* eslint-disable @typescript-eslint/naming-convention */
+
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
@@ -121,6 +121,7 @@ import {
 	jsonParse,
 	ApplicationError,
 	sleep,
+	OBFUSCATED_ERROR_MESSAGE,
 } from 'n8n-workflow';
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
@@ -453,7 +454,6 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 		// Check support for sendImmediately
 		if (requestObject.auth.bearer !== undefined) {
 			axiosConfig.headers = Object.assign(axiosConfig.headers || {}, {
-				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				Authorization: `Bearer ${requestObject.auth.bearer}`,
 			});
 		} else {
@@ -3583,7 +3583,13 @@ export function getExecuteFunctions(
 					itemIndex,
 				),
 			getExecuteData: () => executeData,
-			continueOnFail: () => continueOnFail(node),
+			continueOnFail: (error?: Error) => {
+				const shouldContinue = continueOnFail(node);
+				if (error && shouldContinue && !(error instanceof ApplicationError)) {
+					error.message = OBFUSCATED_ERROR_MESSAGE;
+				}
+				return shouldContinue;
+			},
 			evaluateExpression: (expression: string, itemIndex: number) => {
 				return workflow.expression.resolveSimpleParameterValue(
 					`=${expression}`,
@@ -3673,7 +3679,7 @@ export function getExecuteFunctions(
 					});
 				}
 
-				return inputData[inputName][inputIndex] as INodeExecutionData[];
+				return inputData[inputName][inputIndex];
 			},
 			getInputSourceData: (inputIndex = 0, inputName = 'main') => {
 				if (executeData?.source === null) {

@@ -1371,7 +1371,7 @@ export class Freshservice implements INodeType {
 					responseData = responseData[special[resource]] ?? responseData[resource];
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

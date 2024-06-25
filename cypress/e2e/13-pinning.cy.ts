@@ -165,7 +165,7 @@ describe('Data pinning', () => {
 		ndv.actions.close();
 
 		workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, true, true);
-		// eslint-disable-next-line @typescript-eslint/no-use-before-define
+
 		setExpressionOnStringValueInSet(`{{ $('${HTTP_REQUEST_NODE_NAME}').item`);
 
 		const output = '[Object: {"json": {"http": 123}, "pairedItem": {"item": 0}}]';
