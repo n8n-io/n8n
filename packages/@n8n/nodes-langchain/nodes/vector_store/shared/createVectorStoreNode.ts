@@ -13,6 +13,9 @@ import type {
 	ILoadOptionsFunctions,
 	INodeListSearchResult,
 	Icon,
+	INodeInputConfiguration,
+	NodeInputsFn,
+	NodeOutputsFn,
 } from 'n8n-workflow';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { Document } from '@langchain/core/documents';
@@ -31,6 +34,7 @@ interface NodeMeta {
 	icon: Icon;
 	credentials?: INodeCredentialDescription[];
 }
+
 interface VectorStoreNodeConstructorArgs {
 	meta: NodeMeta;
 	methods?: {
@@ -69,6 +73,42 @@ function transformDescriptionForOperationMode(
 		displayOptions: { show: { mode: [mode] } },
 	}));
 }
+
+interface Parameters {
+	mode: 'load' | 'insert' | 'retrieve';
+}
+
+const inputsExpressionFn: NodeInputsFn<Parameters> = ({ mode }) => {
+	const inputs: INodeInputConfiguration[] = [
+		{
+			type: 'ai_embedding',
+			required: true,
+			maxConnections: 1,
+		},
+	];
+
+	if (['insert', 'load'].includes(mode)) {
+		inputs.push({ type: 'main' });
+	}
+
+	if (mode === 'insert') {
+		inputs.push({
+			type: 'ai_document',
+			required: true,
+			maxConnections: 1,
+		});
+	}
+	return inputs;
+};
+
+const outputsExpressionFn: NodeOutputsFn<Parameters> = (parameters) => {
+	const mode = parameters?.mode ?? 'retrieve';
+	if (mode === 'retrieve') {
+		return [{ displayName: 'Vector Store', type: 'ai_vectorStore' }];
+	}
+	return [{ type: 'main' }];
+};
+
 export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 	class VectorStoreNodeType implements INodeType {
 		description: INodeTypeDescription = {
@@ -95,31 +135,8 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 				},
 			},
 			credentials: args.meta.credentials,
-			// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-			inputs: `={{
-			((parameters) => {
-				const mode = parameters?.mode;
-				const inputs = [{ displayName: "Embedding", type: "${NodeConnectionType.AiEmbedding}", required: true, maxConnections: 1}]
-
-				if (['insert', 'load'].includes(mode)) {
-					inputs.push({ displayName: "", type: "${NodeConnectionType.Main}"})
-				}
-
-				if (mode === 'insert') {
-					inputs.push({ displayName: "Document", type: "${NodeConnectionType.AiDocument}", required: true, maxConnections: 1})
-				}
-				return inputs
-			})($parameter)
-		}}`,
-			outputs: `={{
-			((parameters) => {
-				const mode = parameters?.mode ?? 'retrieve';
-				if (mode === 'retrieve') {
-					return [{ displayName: "Vector Store", type: "${NodeConnectionType.AiVectorStore}"}]
-				}
-				return [{ displayName: "", type: "${NodeConnectionType.Main}"}]
-			})($parameter)
-		}}`,
+			inputs: `={{(${inputsExpressionFn})($parameter)}}`,
+			outputs: `={{(${outputsExpressionFn})($parameter)}}`,
 			properties: [
 				{
 					displayName: 'Operation Mode',

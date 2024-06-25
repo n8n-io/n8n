@@ -1,3 +1,4 @@
+import type { ConnectionTypes } from 'n8n-workflow';
 import { ROUTES } from '../constants';
 import { getManualChatModal } from './modals/chat-modal';
 
@@ -5,18 +6,7 @@ import { getManualChatModal } from './modals/chat-modal';
  * Types
  */
 
-export type EndpointType =
-	| 'ai_chain'
-	| 'ai_document'
-	| 'ai_embedding'
-	| 'ai_languageModel'
-	| 'ai_memory'
-	| 'ai_outputParser'
-	| 'ai_tool'
-	| 'ai_retriever'
-	| 'ai_textSplitter'
-	| 'ai_vectorRetriever'
-	| 'ai_vectorStore';
+type EndpointType = Exclude<ConnectionTypes, 'main' | 'ai_agent'>;
 
 /**
  * Getters

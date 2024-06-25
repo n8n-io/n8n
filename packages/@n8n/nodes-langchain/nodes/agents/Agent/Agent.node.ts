@@ -1,13 +1,13 @@
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
-	ConnectionTypes,
-	INodeInputConfiguration,
 	INodeInputFilter,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	INodeProperties,
+	NodeInputsFn,
+	ConnectionTypes,
 } from 'n8n-workflow';
 import { getTemplateNoticeField } from '../../../utils/sharedFields';
 import { promptTypeOptions, textInput } from '../../../utils/descriptions';
@@ -24,54 +24,33 @@ import { sqlAgentAgentExecute } from './agents/SqlAgent/execute';
 import { toolsAgentProperties } from './agents/ToolsAgent/description';
 import { toolsAgentExecute } from './agents/ToolsAgent/execute';
 
-// Function used in the inputs expression to figure out which inputs to
-// display based on the agent type
-function getInputs(
-	agent: 'toolsAgent' | 'conversationalAgent' | 'openAiFunctionsAgent' | 'reActAgent' | 'sqlAgent',
-	hasOutputParser?: boolean,
-): Array<ConnectionTypes | INodeInputConfiguration> {
-	interface SpecialInput {
-		type: ConnectionTypes;
-		filter?: INodeInputFilter;
-		required?: boolean;
-	}
+type AgentType =
+	| 'toolsAgent'
+	| 'conversationalAgent'
+	| 'openAiFunctionsAgent'
+	| 'reActAgent'
+	| 'sqlAgent'
+	| 'planAndExecuteAgent';
 
-	const getInputData = (
-		inputs: SpecialInput[],
-	): Array<ConnectionTypes | INodeInputConfiguration> => {
-		const displayNames: { [key: string]: string } = {
-			[NodeConnectionType.AiLanguageModel]: 'Model',
-			[NodeConnectionType.AiMemory]: 'Memory',
-			[NodeConnectionType.AiTool]: 'Tool',
-			[NodeConnectionType.AiOutputParser]: 'Output Parser',
-		};
+interface SpecialInput {
+	type: ConnectionTypes;
+	filter?: INodeInputFilter;
+	required?: boolean;
+}
 
-		return inputs.map(({ type, filter }) => {
-			const input: INodeInputConfiguration = {
-				type,
-				displayName: type in displayNames ? displayNames[type] : undefined,
-				required: type === NodeConnectionType.AiLanguageModel,
-				maxConnections: [NodeConnectionType.AiLanguageModel, NodeConnectionType.AiMemory].includes(
-					type as NodeConnectionType,
-				)
-					? 1
-					: undefined,
-			};
+interface Parameters {
+	agent: AgentType;
+	hasOutputParser?: boolean;
+}
 
-			if (filter) {
-				input.filter = filter;
-			}
-
-			return input;
-		});
-	};
-
+// Function used in the inputs expression to figure out which inputs to display based on the agent type
+const inputsExpressionFn: NodeInputsFn<Parameters> = ({ agent, hasOutputParser }) => {
 	let specialInputs: SpecialInput[] = [];
 
 	if (agent === 'conversationalAgent') {
 		specialInputs = [
 			{
-				type: NodeConnectionType.AiLanguageModel,
+				type: 'ai_languageModel',
 				filter: {
 					nodes: [
 						'@n8n/n8n-nodes-langchain.lmChatAnthropic',
@@ -85,20 +64,14 @@ function getInputs(
 					],
 				},
 			},
-			{
-				type: NodeConnectionType.AiMemory,
-			},
-			{
-				type: NodeConnectionType.AiTool,
-			},
-			{
-				type: NodeConnectionType.AiOutputParser,
-			},
+			{ type: 'ai_memory' },
+			{ type: 'ai_tool' },
+			{ type: 'ai_outputParser' },
 		];
 	} else if (agent === 'toolsAgent') {
 		specialInputs = [
 			{
-				type: NodeConnectionType.AiLanguageModel,
+				type: 'ai_languageModel',
 				filter: {
 					nodes: [
 						'@n8n/n8n-nodes-langchain.lmChatAnthropic',
@@ -109,21 +82,14 @@ function getInputs(
 					],
 				},
 			},
-			{
-				type: NodeConnectionType.AiMemory,
-			},
-			{
-				type: NodeConnectionType.AiTool,
-				required: true,
-			},
-			{
-				type: NodeConnectionType.AiOutputParser,
-			},
+			{ type: 'ai_memory' },
+			{ type: 'ai_tool', required: true },
+			{ type: 'ai_outputParser' },
 		];
 	} else if (agent === 'openAiFunctionsAgent') {
 		specialInputs = [
 			{
-				type: NodeConnectionType.AiLanguageModel,
+				type: 'ai_languageModel',
 				filter: {
 					nodes: [
 						'@n8n/n8n-nodes-langchain.lmChatOpenAi',
@@ -131,59 +97,40 @@ function getInputs(
 					],
 				},
 			},
-			{
-				type: NodeConnectionType.AiMemory,
-			},
-			{
-				type: NodeConnectionType.AiTool,
-				required: true,
-			},
-			{
-				type: NodeConnectionType.AiOutputParser,
-			},
+			{ type: 'ai_memory' },
+			{ type: 'ai_tool', required: true },
+			{ type: 'ai_outputParser' },
 		];
 	} else if (agent === 'reActAgent') {
 		specialInputs = [
-			{
-				type: NodeConnectionType.AiLanguageModel,
-			},
-			{
-				type: NodeConnectionType.AiTool,
-			},
-			{
-				type: NodeConnectionType.AiOutputParser,
-			},
+			{ type: 'ai_languageModel' },
+			{ type: 'ai_tool' },
+			{ type: 'ai_outputParser' },
 		];
 	} else if (agent === 'sqlAgent') {
-		specialInputs = [
-			{
-				type: NodeConnectionType.AiLanguageModel,
-			},
-			{
-				type: NodeConnectionType.AiMemory,
-			},
-		];
+		specialInputs = [{ type: 'ai_languageModel' }, { type: 'ai_memory' }];
 	} else if (agent === 'planAndExecuteAgent') {
 		specialInputs = [
-			{
-				type: NodeConnectionType.AiLanguageModel,
-			},
-			{
-				type: NodeConnectionType.AiTool,
-			},
-			{
-				type: NodeConnectionType.AiOutputParser,
-			},
+			{ type: 'ai_languageModel' },
+			{ type: 'ai_tool' },
+			{ type: 'ai_outputParser' },
 		];
 	}
 
 	if (hasOutputParser === false) {
-		specialInputs = specialInputs.filter(
-			(input) => input.type !== NodeConnectionType.AiOutputParser,
-		);
+		specialInputs = specialInputs.filter(({ type }) => type !== 'ai_outputParser');
 	}
-	return [NodeConnectionType.Main, ...getInputData(specialInputs)];
-}
+
+	return [
+		{ type: 'main' },
+		...specialInputs.map(({ type, filter }) => ({
+			type,
+			required: type === 'ai_languageModel',
+			maxConnections: ['ai_languageModel', 'ai_memory'].includes(type) ? 1 : undefined,
+			filter,
+		})),
+	];
+};
 
 const agentTypeProperty: INodeProperties = {
 	displayName: 'Agent',
@@ -259,13 +206,8 @@ export class Agent implements INodeType {
 				],
 			},
 		},
-		inputs: `={{
-			((agent, hasOutputParser) => {
-				${getInputs.toString()};
-				return getInputs(agent, hasOutputParser)
-			})($parameter.agent, $parameter.hasOutputParser === undefined || $parameter.hasOutputParser === true)
-		}}`,
-		outputs: [NodeConnectionType.Main],
+		inputs: `={{(${inputsExpressionFn})($parameter)}}`,
+		outputs: ['main'],
 		credentials: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed

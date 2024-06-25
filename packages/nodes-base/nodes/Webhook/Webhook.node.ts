@@ -36,7 +36,7 @@ import {
 import { WebhookAuthorizationError } from './error';
 import {
 	checkResponseModeConfiguration,
-	configuredOutputs,
+	outputsExpressionFn,
 	isIpWhitelisted,
 	setupOutputConnection,
 } from './utils';
@@ -70,7 +70,7 @@ export class Webhook extends Node {
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
-		outputs: `={{(${configuredOutputs})($parameter)}}`,
+		outputs: `={{(${outputsExpressionFn})($parameter)}}`,
 		credentials: credentialsProperty(this.authPropertyName),
 		webhooks: [defaultWebhookDescription],
 		properties: [

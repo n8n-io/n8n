@@ -1076,8 +1076,8 @@ export default defineComponent({
 		},
 	},
 	watch: {
-		node(newNode: INodeUi, prevNode: INodeUi) {
-			if (newNode.id === prevNode.id) return;
+		node(newNode?: INodeUi, prevNode?: INodeUi) {
+			if (newNode?.id === prevNode?.id) return;
 			this.init();
 		},
 		hasNodeRun() {

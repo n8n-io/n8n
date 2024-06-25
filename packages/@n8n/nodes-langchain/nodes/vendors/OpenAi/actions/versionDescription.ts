@@ -1,6 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type { INodeTypeDescription } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import type { INodeTypeDescription, NodeInputsFn } from 'n8n-workflow';
 
 import * as assistant from './assistant';
 import * as audio from './audio';
@@ -8,7 +7,27 @@ import * as file from './file';
 import * as image from './image';
 import * as text from './text';
 
-const prettifyOperation = (resource: string, operation: string) => {
+interface Parameters {
+	resource: 'assistant' | 'text' | 'image' | 'audio' | 'file' | 'recording';
+	operation:
+		| 'classify'
+		| 'delete'
+		| 'deleteAssistant'
+		| 'deleteFile'
+		| 'list'
+		| 'message'
+		| 'transcribe'
+		| 'translate';
+	hideTools?: 'hide';
+}
+
+const capitalize = (str: string) => {
+	const chars = str.split('');
+	chars[0] = chars[0].toUpperCase();
+	return chars.join('');
+};
+
+const subtitleExpressionFn = ({ resource, operation }: Parameters) => {
 	if (operation === 'deleteAssistant') {
 		return 'Delete Assistant';
 	}
@@ -25,12 +44,6 @@ const prettifyOperation = (resource: string, operation: string) => {
 		return 'Message Model';
 	}
 
-	const capitalize = (str: string) => {
-		const chars = str.split('');
-		chars[0] = chars[0].toUpperCase();
-		return chars.join('');
-	};
-
 	if (['transcribe', 'translate'].includes(operation)) {
 		resource = 'recording';
 	}
@@ -42,25 +55,17 @@ const prettifyOperation = (resource: string, operation: string) => {
 	return `${capitalize(operation)} ${capitalize(resource)}`;
 };
 
-const configureNodeInputs = (resource: string, operation: string, hideTools: string) => {
+const inputsExpressionFn: NodeInputsFn<Parameters> = ({ resource, operation, hideTools }) => {
 	if (resource === 'assistant' && operation === 'message') {
-		return [
-			{ type: NodeConnectionType.Main },
-			{ type: NodeConnectionType.AiMemory, displayName: 'Memory', maxConnections: 1 },
-			{ type: NodeConnectionType.AiTool, displayName: 'Tools' },
-		];
+		return [{ type: 'main' }, { type: 'ai_memory', maxConnections: 1 }, { type: 'ai_tool' }];
 	}
 	if (resource === 'text' && operation === 'message') {
 		if (hideTools === 'hide') {
-			return [NodeConnectionType.Main];
+			return [{ type: 'main' }];
 		}
-		return [
-			{ type: NodeConnectionType.Main },
-			{ type: NodeConnectionType.AiTool, displayName: 'Tools' },
-		];
+		return [{ type: 'main' }, { type: 'ai_tool' }];
 	}
-
-	return [NodeConnectionType.Main];
+	return [{ type: 'main' }];
 };
 
 // eslint-disable-next-line n8n-nodes-base/node-class-description-missing-subtitle
@@ -70,7 +75,7 @@ export const versionDescription: INodeTypeDescription = {
 	icon: { light: 'file:openAi.svg', dark: 'file:openAi.dark.svg' },
 	group: ['transform'],
 	version: [1, 1.1, 1.2, 1.3, 1.4],
-	subtitle: `={{(${prettifyOperation})($parameter.resource, $parameter.operation)}}`,
+	subtitle: `={{(${subtitleExpressionFn})($parameter)}}`,
 	description: 'Message an assistant or GPT, analyze images, generate audio, etc.',
 	defaults: {
 		name: 'OpenAI',
@@ -89,7 +94,7 @@ export const versionDescription: INodeTypeDescription = {
 			],
 		},
 	},
-	inputs: `={{(${configureNodeInputs})($parameter.resource, $parameter.operation, $parameter.hideTools)}}`,
+	inputs: `={{(${inputsExpressionFn})($parameter)}}`,
 	outputs: ['main'],
 	credentials: [
 		{

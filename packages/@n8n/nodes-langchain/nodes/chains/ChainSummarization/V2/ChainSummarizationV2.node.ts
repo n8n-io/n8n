@@ -5,7 +5,8 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	IDataObject,
+	NodeInputsFn,
+	INodeInputConfiguration,
 } from 'n8n-workflow';
 
 import { loadSummarizationChain } from 'langchain/chains';
@@ -20,23 +21,24 @@ import { REFINE_PROMPT_TEMPLATE, DEFAULT_PROMPT_TEMPLATE } from '../prompt';
 import { getChainPromptsArgs } from '../helpers';
 import { getTracingConfig } from '../../../../utils/tracing';
 
-function getInputs(parameters: IDataObject) {
-	const chunkingMode = parameters?.chunkingMode;
-	const operationMode = parameters?.operationMode;
-	const inputs = [
-		{ displayName: '', type: NodeConnectionType.Main },
+interface Parameters {
+	operationMode: 'nodeInputJson' | 'nodeInputBinary' | 'documentLoader';
+	chunkingMode: 'simple' | 'advanced';
+}
+
+const inputsExpressionFn: NodeInputsFn<Parameters> = ({ chunkingMode, operationMode }) => {
+	const inputs: INodeInputConfiguration[] = [
+		{ type: 'main' },
 		{
-			displayName: 'Model',
+			type: 'ai_languageModel',
 			maxConnections: 1,
-			type: NodeConnectionType.AiLanguageModel,
 			required: true,
 		},
 	];
 
 	if (operationMode === 'documentLoader') {
 		inputs.push({
-			displayName: 'Document',
-			type: NodeConnectionType.AiDocument,
+			type: 'ai_document',
 			required: true,
 			maxConnections: 1,
 		});
@@ -46,14 +48,14 @@ function getInputs(parameters: IDataObject) {
 	if (chunkingMode === 'advanced') {
 		inputs.push({
 			displayName: 'Text Splitter',
-			type: NodeConnectionType.AiTextSplitter,
+			type: 'ai_textSplitter',
 			required: false,
 			maxConnections: 1,
 		});
 		return inputs;
 	}
 	return inputs;
-}
+};
 
 export class ChainSummarizationV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -66,8 +68,7 @@ export class ChainSummarizationV2 implements INodeType {
 				name: 'Summarization Chain',
 				color: '#909298',
 			},
-			// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-			inputs: `={{ ((parameter) => { ${getInputs.toString()}; return getInputs(parameter) })($parameter) }}`,
+			inputs: `={{(${inputsExpressionFn})($parameter)}}`,
 			outputs: [NodeConnectionType.Main],
 			credentials: [],
 			properties: [

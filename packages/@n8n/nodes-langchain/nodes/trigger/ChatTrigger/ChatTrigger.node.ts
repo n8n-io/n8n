@@ -1,11 +1,12 @@
-import {
-	type IDataObject,
-	type IWebhookFunctions,
-	type IWebhookResponseData,
-	type INodeType,
-	type INodeTypeDescription,
-	NodeConnectionType,
+import type {
+	IDataObject,
+	IWebhookFunctions,
+	IWebhookResponseData,
+	INodeType,
+	INodeTypeDescription,
+	NodeInputsFn,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 import { pick } from 'lodash';
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import { createPage } from './templates';
@@ -13,6 +14,24 @@ import { validateAuth } from './GenericFunctions';
 import type { LoadPreviousSessionChatOption } from './types';
 
 const CHAT_TRIGGER_PATH_IDENTIFIER = 'chat';
+
+interface Parameters {
+	mode: 'hostedChat' | 'webhook';
+	options?: {
+		loadPreviousSession?: LoadPreviousSessionChatOption;
+	};
+}
+
+const inputsExpressionFn: NodeInputsFn<Parameters> = ({ options }) =>
+	options?.loadPreviousSession === 'memory'
+		? [
+				{
+					type: 'ai_memory',
+					maxConnections: 1,
+					required: true,
+				},
+			]
+		: [];
 
 export class ChatTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -38,23 +57,7 @@ export class ChatTrigger implements INodeType {
 		},
 		supportsCORS: true,
 		maxNodes: 1,
-		inputs: `={{ (() => {
-			if (!['hostedChat', 'webhook'].includes($parameter.mode)) {
-				return [];
-			}
-			if ($parameter.options?.loadPreviousSession !== 'memory') {
-				return [];
-			}
-
-			return [
-				{
-					displayName: 'Memory',
-					maxConnections: 1,
-					type: '${NodeConnectionType.AiMemory}',
-					required: true,
-				}
-			];
-		 })() }}`,
+		inputs: `={{(${inputsExpressionFn})($parameter)}}`,
 		outputs: ['main'],
 		credentials: [
 			{

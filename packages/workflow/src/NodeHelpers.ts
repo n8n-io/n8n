@@ -10,7 +10,7 @@ import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 import uniqBy from 'lodash/uniqBy';
 
-import { NodeConnectionType } from './Interfaces';
+import { NodeConnectionType, connectionDisplayNames } from './Interfaces';
 import type {
 	FieldType,
 	IContextObject,
@@ -359,7 +359,7 @@ const declarativeNodeOptionParameters: INodeProperties = {
 export function isSubNodeType(
 	typeDescription: Pick<INodeTypeDescription, 'outputs'> | null,
 ): boolean {
-	if (!typeDescription || !typeDescription.outputs || typeof typeDescription.outputs === 'string') {
+	if (!Array.isArray(typeDescription?.outputs)) {
 		return false;
 	}
 	const outputTypes = getConnectionTypes(typeDescription.outputs);
@@ -1259,22 +1259,32 @@ export function getNodeInputs(
 	node: INode,
 	nodeTypeData: INodeTypeDescription,
 ): Array<ConnectionTypes | INodeInputConfiguration> {
-	if (Array.isArray(nodeTypeData?.inputs)) {
-		return nodeTypeData.inputs;
+	let inputs: Array<ConnectionTypes | INodeInputConfiguration> = [];
+
+	if (Array.isArray(nodeTypeData.inputs)) {
+		inputs = nodeTypeData.inputs;
+	} else {
+		// Calculate the inputs dynamically
+		try {
+			inputs = (workflow.expression.getSimpleParameterValue(
+				node,
+				nodeTypeData.inputs,
+				'internal',
+				{},
+			) || []) as Array<ConnectionTypes | INodeInputConfiguration>;
+		} catch (e) {
+			console.warn('Could not calculate inputs dynamically for node: ', node.name);
+			return [];
+		}
 	}
 
-	// Calculate the outputs dynamically
-	try {
-		return (workflow.expression.getSimpleParameterValue(
-			node,
-			nodeTypeData.inputs,
-			'internal',
-			{},
-		) || []) as ConnectionTypes[];
-	} catch (e) {
-		console.warn('Could not calculate inputs dynamically for node: ', node.name);
-		return [];
-	}
+	inputs.forEach((input) => {
+		if (typeof input === 'object' && input.type !== 'main' && !input.displayName) {
+			input.displayName = connectionDisplayNames[input.type];
+		}
+	});
+
+	return inputs;
 }
 
 export function getNodeHints(
@@ -1363,11 +1373,17 @@ export function getNodeOutputs(
 				nodeTypeData.outputs,
 				'internal',
 				{},
-			) || []) as ConnectionTypes[];
+			) || []) as Array<ConnectionTypes | INodeOutputConfiguration>;
 		} catch (e) {
 			console.warn('Could not calculate outputs dynamically for node: ', node.name);
 		}
 	}
+
+	outputs.forEach((output) => {
+		if (typeof output === 'object' && output.type !== 'main' && !output.displayName) {
+			output.displayName = connectionDisplayNames[output.type];
+		}
+	});
 
 	if (node.onError === 'continueErrorOutput') {
 		// Copy the data to make sure that we do not change the data of the

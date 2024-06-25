@@ -7,9 +7,31 @@ import type {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
+	NodeOutputsFn,
 	NodeParameterValue,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
+
+interface Parameters {
+	mode: 'expression' | 'rules';
+	outputsAmount: number;
+	rules?: {
+		rules?: Array<{ outputKey: string }>;
+	};
+}
+
+const outputsExpressionFn: NodeOutputsFn<Parameters> = ({ mode, outputsAmount, rules }) => {
+	if (mode === 'expression') {
+		return Array.from({ length: outputsAmount }, (_, i) => ({
+			type: 'main',
+			displayName: i.toString(),
+		}));
+	}
+	return (rules?.rules ?? []).map((value) => ({
+		type: 'main',
+		displayName: value.outputKey,
+	}));
+};
 
 export class SwitchV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -23,27 +45,7 @@ export class SwitchV2 implements INodeType {
 				color: '#506000',
 			},
 			inputs: ['main'],
-
-			outputs: `={{
-					((parameters) => {
-						const rules = parameters.rules?.rules ?? [];
-						const mode = parameters.mode;
-
-						if (mode === 'expression') {
-							return Array
-								.from(
-									{ length: parameters.outputsAmount },
-									(_, i) => ({ type: "${NodeConnectionType.Main}", displayName: i.toString() })
-								)
-						}
-
-
-						return rules.map(value => {
-							return { type: "${NodeConnectionType.Main}", displayName: value.outputKey }
-						})
-					})($parameter)
-				}}`,
-
+			outputs: `={{(${outputsExpressionFn})($parameter)}}`,
 			properties: [
 				{
 					displayName: 'Mode',

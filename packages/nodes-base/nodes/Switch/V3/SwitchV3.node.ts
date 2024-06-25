@@ -1,43 +1,57 @@
 import type {
-	IDataObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodeOutputConfiguration,
 	INodeParameters,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
+	NodeOutputsFn,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import set from 'lodash/set';
 import { capitalize } from '@utils/utilities';
 
-const configuredOutputs = (parameters: INodeParameters) => {
-	const mode = parameters.mode as string;
+interface Parameters {
+	mode: 'expression' | 'rules';
+	numberOutputs: number;
+	rules?: {
+		values?: Array<{ outputKey: string }>;
+	};
+	options: {
+		fallbackOutput: 'none' | 'extra' | number;
+		renameFallbackOutput: string;
+	};
+}
 
+const outputsExpressionFn: NodeOutputsFn<Parameters> = ({
+	mode,
+	numberOutputs,
+	rules,
+	options,
+}) => {
 	if (mode === 'expression') {
-		return Array.from({ length: parameters.numberOutputs as number }, (_, i) => ({
-			type: `${NodeConnectionType.Main}`,
+		return Array.from({ length: numberOutputs }, (_, i) => ({
+			type: 'main',
 			displayName: i.toString(),
 		}));
-	} else {
-		const rules = ((parameters.rules as IDataObject)?.values as IDataObject[]) ?? [];
-		const ruleOutputs = rules.map((rule, index) => {
-			return {
-				type: `${NodeConnectionType.Main}`,
-				displayName: rule.outputKey || index.toString(),
-			};
-		});
-		if ((parameters.options as IDataObject)?.fallbackOutput === 'extra') {
-			const renameFallbackOutput = (parameters.options as IDataObject)?.renameFallbackOutput;
-			ruleOutputs.push({
-				type: `${NodeConnectionType.Main}`,
-				displayName: renameFallbackOutput || 'Fallback',
-			});
-		}
-		return ruleOutputs;
 	}
+
+	const ruleOutputs: INodeOutputConfiguration[] = (rules?.values ?? []).map((rule, index) => ({
+		type: 'main',
+		displayName: rule.outputKey || index.toString(),
+	}));
+
+	if (options?.fallbackOutput === 'extra') {
+		const { renameFallbackOutput } = options;
+		ruleOutputs.push({
+			type: 'main',
+			displayName: renameFallbackOutput || 'Fallback',
+		});
+	}
+	return ruleOutputs;
 };
 
 export class SwitchV3 implements INodeType {
@@ -53,7 +67,7 @@ export class SwitchV3 implements INodeType {
 				color: '#506000',
 			},
 			inputs: ['main'],
-			outputs: `={{(${configuredOutputs})($parameter)}}`,
+			outputs: `={{(${outputsExpressionFn})($parameter)}}`,
 			properties: [
 				{
 					displayName: 'Mode',

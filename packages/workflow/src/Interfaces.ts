@@ -69,7 +69,7 @@ export interface IConnection {
 	node: string;
 
 	// The type of the input on destination node (for example "main")
-	type: NodeConnectionType;
+	type: ConnectionTypes;
 
 	// The output/input-index of destination node (if node has multiple inputs/outputs of the same type)
 	index: number;
@@ -1707,33 +1707,21 @@ export type ConnectionTypes =
 	| 'ai_retriever'
 	| 'ai_textSplitter'
 	| 'ai_tool'
-	| 'ai_vectorRetriever'
 	| 'ai_vectorStore'
 	| 'main';
 
 export const enum NodeConnectionType {
 	AiAgent = 'ai_agent',
-
 	AiChain = 'ai_chain',
-
 	AiDocument = 'ai_document',
-
 	AiEmbedding = 'ai_embedding',
-
 	AiLanguageModel = 'ai_languageModel',
-
 	AiMemory = 'ai_memory',
-
 	AiOutputParser = 'ai_outputParser',
-
 	AiRetriever = 'ai_retriever',
-
 	AiTextSplitter = 'ai_textSplitter',
-
 	AiTool = 'ai_tool',
-
 	AiVectorStore = 'ai_vectorStore',
-
 	Main = 'main',
 }
 
@@ -1752,6 +1740,21 @@ export const nodeConnectionTypes: NodeConnectionType[] = [
 	NodeConnectionType.Main,
 ];
 
+export const connectionDisplayNames: Record<NodeConnectionType, string> = {
+	[NodeConnectionType.AiAgent]: 'Agent',
+	[NodeConnectionType.AiChain]: 'Chain',
+	[NodeConnectionType.AiDocument]: 'Document',
+	[NodeConnectionType.AiEmbedding]: 'Embedding',
+	[NodeConnectionType.AiLanguageModel]: 'Model',
+	[NodeConnectionType.AiMemory]: 'Memory',
+	[NodeConnectionType.AiOutputParser]: 'Output Parser',
+	[NodeConnectionType.AiRetriever]: 'Retriever',
+	[NodeConnectionType.AiTextSplitter]: 'Text Splitter',
+	[NodeConnectionType.AiTool]: 'Tool',
+	[NodeConnectionType.AiVectorStore]: 'Vector Store',
+	[NodeConnectionType.Main]: 'Main',
+};
+
 export interface INodeInputFilter {
 	// TODO: Later add more filter options like categories, subcatogries,
 	//       regex, allow to exclude certain nodes, ... ?
@@ -1760,20 +1763,22 @@ export interface INodeInputFilter {
 }
 
 export interface INodeInputConfiguration {
+	type: ConnectionTypes;
 	displayName?: string;
 	maxConnections?: number;
 	required?: boolean;
 	filter?: INodeInputFilter;
-	type: ConnectionTypes;
 }
+export type NodeInputsFn<T> = (params: T) => INodeInputConfiguration[];
 
 export interface INodeOutputConfiguration {
+	type: ConnectionTypes;
 	category?: 'error';
 	displayName?: string;
 	maxConnections?: number;
 	required?: boolean;
-	type: ConnectionTypes;
 }
+export type NodeOutputsFn<T> = (params: T) => INodeOutputConfiguration[];
 
 export type ExpressionString = `={{${string}}}`;
 

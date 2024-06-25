@@ -1,3 +1,4 @@
+import { mock } from 'jest-mock-extended';
 import type {
 	INode,
 	INodeParameters,
@@ -5,13 +6,15 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from '@/Interfaces';
-import type { Workflow } from '@/Workflow';
+import { Workflow } from '@/Workflow';
 import {
 	getNodeParameters,
 	getNodeHints,
 	isSingleExecution,
 	isSubNodeType,
 	applyDeclarativeNodeOptionParameters,
+	getNodeInputs,
+	getNodeOutputs,
 } from '@/NodeHelpers';
 
 describe('NodeHelpers', () => {
@@ -3565,6 +3568,61 @@ describe('NodeHelpers', () => {
 			expect(isSingleExecution('n8n-nodes-base.mongoDb', { operation: 'insert' })).toEqual(true);
 			expect(isSingleExecution('n8n-nodes-base.mongoDb', { operation: 'update' })).toEqual(true);
 			expect(isSingleExecution('n8n-nodes-base.redis', {})).toEqual(true);
+		});
+	});
+
+	describe('inputs/outputs', () => {
+		const node = mock<INode>({ parameters: { key: 'value' } });
+		const workflow = new Workflow({
+			nodes: [node],
+			connections: {},
+			active: false,
+			nodeTypes: mock(),
+		});
+
+		describe('getNodeInputs', () => {
+			it('should return the inputs if they are an array', () => {
+				const nodeType = { inputs: ['main'] } as INodeTypeDescription;
+				expect(getNodeInputs({} as Workflow, node, nodeType)).toEqual(nodeType.inputs);
+			});
+
+			it('should return dynamic inputs via an expression', () => {
+				const nodeType = mock<INodeTypeDescription>({
+					inputs: '={{[$parameter.key]}}',
+				});
+				expect(getNodeInputs(workflow, node, nodeType)).toEqual(['value']);
+			});
+		});
+
+		describe('getNodeOutputs', () => {
+			it('should return the outputs if they are an array', () => {
+				const nodeType = { outputs: ['main'] } as INodeTypeDescription;
+				expect(getNodeOutputs({} as Workflow, node, nodeType)).toEqual(nodeType.outputs);
+			});
+
+			it('should return dynamic outputs via a function', () => {
+				const nodeType = mock<INodeTypeDescription>({
+					outputs: '={{[$parameter.key]}}',
+				});
+				expect(getNodeOutputs(workflow, node, nodeType)).toEqual(['value']);
+			});
+
+			it('should rename success output and append an error output when onError is set to continueErrorOutput', () => {
+				const node = { onError: 'continueErrorOutput' } as INode;
+				const nodeType = { outputs: ['main'] } as INodeTypeDescription;
+
+				expect(getNodeOutputs({} as Workflow, node, nodeType)).toEqual([
+					{
+						displayName: 'Success',
+						type: 'main',
+					},
+					{
+						category: 'error',
+						type: 'main',
+						displayName: 'Error',
+					},
+				]);
+			});
 		});
 	});
 
