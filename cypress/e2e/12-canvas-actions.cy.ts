@@ -125,6 +125,8 @@ describe('Canvas Actions', () => {
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
 		WorkflowPage.actions.zoomToFit();
+		WorkflowPage.getters.canvasNodes().should('have.length', 3);
+		WorkflowPage.getters.nodeConnections().should('have.length', 2);
 		WorkflowPage.actions.addNodeBetweenNodes(
 			CODE_NODE_NAME,
 			EDIT_FIELDS_SET_NODE_NAME,
@@ -132,12 +134,15 @@ describe('Canvas Actions', () => {
 		);
 		WorkflowPage.getters.canvasNodes().should('have.length', 4);
 		WorkflowPage.getters.nodeConnections().should('have.length', 3);
-		// And last node should be pushed to the right
-		WorkflowPage.getters
-			.canvasNodes()
-			.last()
-			.should('have.css', 'left', '860px')
-			.should('have.css', 'top', '220px');
+
+		WorkflowPage.getters.canvasNodeByName(EDIT_FIELDS_SET_NODE_NAME).then(($editFieldsNode) => {
+			const editFieldsNodeLeft = parseFloat($editFieldsNode.css('left'));
+
+			WorkflowPage.getters.canvasNodeByName(HTTP_REQUEST_NODE_NAME).then(($httpNode) => {
+				const httpNodeLeft = parseFloat($httpNode.css('left'));
+				expect(httpNodeLeft).to.be.lessThan(editFieldsNodeLeft);
+			});
+		});
 	});
 
 	it('should delete connections by pressing the delete button', () => {

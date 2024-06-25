@@ -24,6 +24,7 @@ export const CUSTOM_API_CALL_NAME = 'Custom API Call';
 
 // workflows
 export const PLACEHOLDER_EMPTY_WORKFLOW_ID = '__EMPTY__';
+export const NEW_WORKFLOW_ID = 'new';
 export const DEFAULT_NODETYPE_VERSION = 1;
 export const DEFAULT_NEW_WORKFLOW_NAME = 'My workflow';
 export const MIN_WORKFLOW_NAME_LENGTH = 1;
