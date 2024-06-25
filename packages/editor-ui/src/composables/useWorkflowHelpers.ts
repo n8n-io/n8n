@@ -68,6 +68,7 @@ import { useI18n } from '@/composables/useI18n';
 import type { useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useProjectsStore } from '@/stores/projects.store';
+import { useTagsStore } from '@/stores/tags.store';
 
 export function resolveParameter<T = IDataObject>(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
@@ -483,6 +484,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 	const uiStore = useUIStore();
 	const nodeHelpers = useNodeHelpers();
 	const projectsStore = useProjectsStore();
+	const tagsStore = useTagsStore();
 
 	const toast = useToast();
 	const message = useMessage();
@@ -1189,6 +1191,25 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		}
 	}
 
+	async function initState(workflowData: IWorkflowDb): Promise<void> {
+		workflowsStore.addWorkflow(workflowData);
+		workflowsStore.setActive(workflowData.active || false);
+		workflowsStore.setWorkflowId(workflowData.id);
+		workflowsStore.setWorkflowName({
+			newName: workflowData.name,
+			setStateDirty: uiStore.stateIsDirty,
+		});
+		workflowsStore.setWorkflowSettings(workflowData.settings ?? {});
+		workflowsStore.setWorkflowPinData(workflowData.pinData ?? {});
+		workflowsStore.setWorkflowVersionId(workflowData.versionId);
+		workflowsStore.setWorkflowMetadata(workflowData.meta);
+
+		const tags = (workflowData.tags ?? []) as ITag[];
+		const tagIds = tags.map((tag) => tag.id);
+		workflowsStore.setWorkflowTagIds(tagIds || []);
+		tagsStore.upsertTags(tags);
+	}
+
 	return {
 		resolveParameter,
 		resolveRequiredParameters,
@@ -1214,5 +1235,6 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		dataHasChanged,
 		removeForeignCredentialsFromWorkflow,
 		getWorkflowProjectRole,
+		initState,
 	};
 }
