@@ -352,7 +352,7 @@ const declarativeNodeOptionParameters: INodeProperties = {
 	],
 };
 
-export function isSubNodeType(nodeType: INodeTypeDescription | null): boolean {
+export function isSubNodeType(nodeType: Pick<INodeTypeDescription, 'outputs'> | null): boolean {
 	if (!nodeType || !nodeType.outputs || typeof nodeType.outputs === 'string') {
 		return false;
 	}
