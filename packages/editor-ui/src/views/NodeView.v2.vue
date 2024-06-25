@@ -264,7 +264,7 @@ async function initializeView() {
 			// await openWorkflow(workflow);
 			// await checkAndInitDebugMode();
 
-			await workflowsStore.initializeEditableWorkflow(workflowIdParam);
+			workflowsStore.initializeEditableWorkflow(workflowIdParam);
 			await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(workflow.value.homeProject);
 
 			trackOpenWorkflowFromOnboardingTemplate();
