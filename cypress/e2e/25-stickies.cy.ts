@@ -26,6 +26,9 @@ function checkStickiesStyle(
 describe('Canvas Actions', () => {
 	beforeEach(() => {
 		workflowPage.actions.visit();
+		cy.get('#collapse-change-button').should('be.visible').click();
+		cy.get('#side-menu[class*=collapsed i]').should('be.visible');
+		workflowPage.actions.zoomToFit();
 	});
 
 	it('adds sticky to canvas with default text and position', () => {
