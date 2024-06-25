@@ -1,10 +1,10 @@
-import { v4 as uuid } from 'uuid';
 import { getVisibleSelect } from '../utils';
 import { MANUAL_TRIGGER_NODE_DISPLAY_NAME } from '../constants';
 import { NDV, WorkflowPage } from '../pages';
 import { NodeCreator } from '../pages/features/node-creator';
 import { clickCreateNewCredential } from '../composables/ndv';
 import { setCredentialValues } from '../composables/modals/credential-modal';
+import { successToast } from '../pages/notifications';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -12,7 +12,7 @@ const ndv = new NDV();
 describe('NDV', () => {
 	beforeEach(() => {
 		workflowPage.actions.visit();
-		workflowPage.actions.renameWorkflow(uuid());
+		workflowPage.actions.renameWithUniqueName();
 		workflowPage.actions.saveWorkflowOnButtonClick();
 	});
 
@@ -22,6 +22,14 @@ describe('NDV', () => {
 		ndv.getters.container().should('be.visible');
 		ndv.getters.backToCanvas().click();
 		ndv.getters.container().should('not.be.visible');
+	});
+
+	it('should show input panel when node is not connected', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Manual');
+		workflowPage.actions.deselectAll();
+		workflowPage.actions.addNodeToCanvas('Set');
+		workflowPage.getters.canvasNodes().last().dblclick();
+		ndv.getters.container().should('be.visible').should('contain', 'Wire me up');
 	});
 
 	it('should test webhook node', () => {
@@ -46,12 +54,13 @@ describe('NDV', () => {
 	});
 
 	it('should change input and go back to canvas', () => {
-		cy.createFixtureWorkflow('NDV-test-select-input.json', `NDV test select input ${uuid()}`);
+		cy.createFixtureWorkflow('NDV-test-select-input.json', 'NDV test select input');
 		workflowPage.actions.zoomToFit();
 		workflowPage.getters.canvasNodes().last().dblclick();
+		ndv.actions.switchInputMode('Table');
 		ndv.getters.inputSelect().click();
 		ndv.getters.inputOption().last().click();
-		ndv.getters.inputDataContainer().find('[class*=schema_]').should('exist');
+		ndv.getters.inputDataContainer().should('be.visible');
 		ndv.getters.inputDataContainer().should('contain', 'start');
 		ndv.getters.backToCanvas().click();
 		ndv.getters.container().should('not.be.visible');
@@ -59,7 +68,7 @@ describe('NDV', () => {
 	});
 
 	it('should disconect Switch outputs if rules order was changed', () => {
-		cy.createFixtureWorkflow('NDV-test-switch_reorder.json', `NDV test switch reorder`);
+		cy.createFixtureWorkflow('NDV-test-switch_reorder.json', 'NDV test switch reorder');
 		workflowPage.actions.zoomToFit();
 
 		workflowPage.actions.executeWorkflow();
@@ -105,13 +114,26 @@ describe('NDV', () => {
 	});
 
 	it('should show all validation errors when opening pasted node', () => {
-		cy.fixture('Test_workflow_ndv_errors.json').then((data) => {
-			cy.get('body').paste(JSON.stringify(data));
-			workflowPage.getters.canvasNodes().should('have.have.length', 1);
-			workflowPage.actions.openNode('Airtable');
-			cy.get('.has-issues').should('have.length', 3);
-			cy.get('[class*=hasIssues]').should('have.length', 1);
-		});
+		cy.createFixtureWorkflow('Test_workflow_ndv_errors.json', 'Validation errors');
+		workflowPage.getters.canvasNodes().should('have.have.length', 1);
+		workflowPage.actions.openNode('Airtable');
+		cy.get('.has-issues').should('have.length', 3);
+		cy.get('[class*=hasIssues]').should('have.length', 1);
+	});
+
+	it('should render run errors correctly', () => {
+		cy.createFixtureWorkflow('Test_workflow_ndv_run_error.json', 'Run error');
+		workflowPage.actions.openNode('Error');
+		ndv.actions.execute();
+		ndv.getters
+			.nodeRunErrorMessage()
+			.should('have.text', 'Info for expression missing from previous node');
+		ndv.getters
+			.nodeRunErrorDescription()
+			.should(
+				'contains.text',
+				"An expression here won't work because it uses .item and n8n can't figure out the matching item.",
+			);
 	});
 
 	it('should save workflow using keyboard shortcut from NDV', () => {
@@ -135,7 +157,7 @@ describe('NDV', () => {
 			'prop2',
 		];
 		function setupSchemaWorkflow() {
-			cy.createFixtureWorkflow('Test_workflow_schema_test.json', `NDV test schema view ${uuid()}`);
+			cy.createFixtureWorkflow('Test_workflow_schema_test.json');
 			workflowPage.actions.zoomToFit();
 			workflowPage.actions.openNode('Set');
 			ndv.actions.execute();
@@ -209,7 +231,7 @@ describe('NDV', () => {
 		it('should display large schema', () => {
 			cy.createFixtureWorkflow(
 				'Test_workflow_schema_test_pinned_data.json',
-				`NDV test schema view ${uuid()}`,
+				'NDV test schema view 2',
 			);
 			workflowPage.actions.zoomToFit();
 			workflowPage.actions.openNode('Set');
@@ -231,6 +253,9 @@ describe('NDV', () => {
 		workflowPage.actions.executeWorkflow();
 		workflowPage.actions.openNode('Set3');
 
+		ndv.actions.switchInputMode('Table');
+		ndv.actions.switchOutputMode('Table');
+
 		ndv.getters
 			.inputRunSelector()
 			.should('exist')
@@ -241,9 +266,6 @@ describe('NDV', () => {
 			.should('exist')
 			.find('input')
 			.should('include.value', '2 of 2 (6 items)');
-
-		ndv.actions.switchInputMode('Table');
-		ndv.actions.switchOutputMode('Table');
 
 		ndv.actions.changeOutputRunSelector('1 of 2 (6 items)');
 		ndv.getters.inputRunSelector().find('input').should('include.value', '1 of 2 (6 items)');
@@ -284,7 +306,7 @@ describe('NDV', () => {
 	it('should display parameter hints correctly', () => {
 		workflowPage.actions.visit();
 
-		cy.createFixtureWorkflow('Test_workflow_3.json', `My test workflow`);
+		cy.createFixtureWorkflow('Test_workflow_3.json', 'My test workflow 1');
 		workflowPage.actions.openNode('Set1');
 
 		ndv.actions.typeIntoParameterInput('value', '='); // switch to expressions
@@ -312,7 +334,7 @@ describe('NDV', () => {
 			}
 			ndv.getters.parameterInput('name').click(); // remove focus from input, hide expression preview
 
-			ndv.actions.validateExpressionPreview('value', output || input);
+			ndv.actions.validateExpressionPreview('value', output ?? input);
 			ndv.getters.parameterInput('value').clear();
 		});
 	});
@@ -323,9 +345,9 @@ describe('NDV', () => {
 		ndv.getters.parameterInput('remoteOptions').click();
 		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
 
-		ndv.actions.setInvalidExpression({ fieldName: 'fieldId', delay: 200 });
+		ndv.actions.setInvalidExpression({ fieldName: 'fieldId' });
 
-		ndv.getters.nodeParameters().click(); // remove focus from input, hide expression preview
+		ndv.getters.inputPanel().click(); // remove focus from input, hide expression preview
 
 		ndv.getters.parameterInput('remoteOptions').click();
 
@@ -341,7 +363,7 @@ describe('NDV', () => {
 		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
 		ndv.getters.parameterInput('remoteOptions').click();
 
-		ndv.actions.setInvalidExpression({ fieldName: 'otherField', delay: 50 });
+		ndv.actions.setInvalidExpression({ fieldName: 'otherField' });
 
 		ndv.getters.nodeParameters().click(); // remove focus from input, hide expression preview
 
@@ -395,7 +417,11 @@ describe('NDV', () => {
 	});
 
 	it('should not retrieve remote options when a parameter value changes', () => {
-		cy.intercept('/rest/dynamic-node-parameters/options?**', cy.spy().as('fetchParameterOptions'));
+		cy.intercept(
+			'POST',
+			'/rest/dynamic-node-parameters/options',
+			cy.spy().as('fetchParameterOptions'),
+		);
 		workflowPage.actions.addInitialNodeToCanvas('E2e Test', { action: 'Remote Options' });
 		// Type something into the field
 		ndv.actions.typeIntoParameterInput('otherField', 'test');
@@ -411,7 +437,7 @@ describe('NDV', () => {
 		}
 
 		it('should traverse floating nodes with mouse', () => {
-			cy.createFixtureWorkflow('Floating_Nodes.json', `Floating Nodes`);
+			cy.createFixtureWorkflow('Floating_Nodes.json', 'Floating Nodes');
 			workflowPage.getters.canvasNodes().first().dblclick();
 			getFloatingNodeByPosition('inputMain').should('not.exist');
 			getFloatingNodeByPosition('outputMain').should('exist');
@@ -457,7 +483,7 @@ describe('NDV', () => {
 		});
 
 		it('should traverse floating nodes with keyboard', () => {
-			cy.createFixtureWorkflow('Floating_Nodes.json', `Floating Nodes`);
+			cy.createFixtureWorkflow('Floating_Nodes.json', 'Floating Nodes');
 			workflowPage.getters.canvasNodes().first().dblclick();
 			getFloatingNodeByPosition('inputMain').should('not.exist');
 			getFloatingNodeByPosition('outputMain').should('exist');
@@ -548,21 +574,21 @@ describe('NDV', () => {
 	});
 
 	it('should show node name and version in settings', () => {
-		cy.createFixtureWorkflow('Test_workflow_ndv_version.json', `NDV test version ${uuid()}`);
+		cy.createFixtureWorkflow('Test_workflow_ndv_version.json', 'NDV test version');
 
 		workflowPage.actions.openNode('Edit Fields (old)');
 		ndv.actions.openSettings();
-		ndv.getters.nodeVersion().should('have.text', 'Set node version 2 (Latest version: 3.3)');
+		ndv.getters.nodeVersion().should('have.text', 'Set node version 2 (Latest version: 3.4)');
 		ndv.actions.close();
 
 		workflowPage.actions.openNode('Edit Fields (latest)');
 		ndv.actions.openSettings();
-		ndv.getters.nodeVersion().should('have.text', 'Edit Fields (Set) node version 3.3 (Latest)');
+		ndv.getters.nodeVersion().should('have.text', 'Edit Fields (Set) node version 3.4 (Latest)');
 		ndv.actions.close();
 
 		workflowPage.actions.openNode('Edit Fields (no typeVersion)');
 		ndv.actions.openSettings();
-		ndv.getters.nodeVersion().should('have.text', 'Edit Fields (Set) node version 3.3 (Latest)');
+		ndv.getters.nodeVersion().should('have.text', 'Edit Fields (Set) node version 3.4 (Latest)');
 		ndv.actions.close();
 
 		workflowPage.actions.openNode('Function');
@@ -572,7 +598,7 @@ describe('NDV', () => {
 	});
 
 	it('Should render xml and html tags as strings and can search', () => {
-		cy.createFixtureWorkflow('Test_workflow_xml_output.json', `test`);
+		cy.createFixtureWorkflow('Test_workflow_xml_output.json', 'test');
 
 		workflowPage.actions.executeWorkflow();
 
@@ -627,7 +653,7 @@ describe('NDV', () => {
 		ndv.getters.backToCanvas().click();
 		workflowPage.actions.executeWorkflow();
 		// Manual tigger node should show success indicator
-		workflowPage.actions.openNode('When clicking "Test workflow"');
+		workflowPage.actions.openNode('When clicking ‘Test workflow’');
 		ndv.getters.nodeRunSuccessIndicator().should('exist');
 		// Code node should show error
 		ndv.getters.backToCanvas().click();
@@ -685,7 +711,7 @@ describe('NDV', () => {
 		};
 		cy.createFixtureWorkflow(
 			'open_node_creator_for_connection.json',
-			`open_node_creator_for_connection ${uuid()}`,
+			'open_node_creator_for_connection',
 		);
 
 		Object.entries(hintMapper).forEach(([node, group]) => {
@@ -697,7 +723,7 @@ describe('NDV', () => {
 	});
 
 	it('Stop listening for trigger event from NDV', () => {
-		cy.intercept('POST', '/rest/workflows/run').as('workflowRun');
+		cy.intercept('POST', '/rest/workflows/**/run').as('workflowRun');
 		workflowPage.actions.addInitialNodeToCanvas('Local File Trigger', {
 			keepNdvOpen: true,
 			action: 'On Changes To A Specific File',
@@ -709,7 +735,34 @@ describe('NDV', () => {
 		ndv.getters.triggerPanelExecuteButton().realClick();
 		cy.wait('@workflowRun').then(() => {
 			ndv.getters.triggerPanelExecuteButton().should('contain', 'Test step');
-			workflowPage.getters.successToast().should('exist');
+			successToast().should('exist');
 		});
+	});
+
+	it('should allow selecting item for expressions', () => {
+		workflowPage.actions.visit();
+
+		cy.createFixtureWorkflow('Test_workflow_3.json', 'My test workflow 2');
+		workflowPage.actions.openNode('Set');
+
+		ndv.actions.typeIntoParameterInput('value', '='); // switch to expressions
+		ndv.actions.typeIntoParameterInput('value', '{{', {
+			parseSpecialCharSequences: false,
+		});
+		ndv.actions.typeIntoParameterInput('value', '$json.input[0].count');
+		ndv.getters.inlineExpressionEditorOutput().should('have.text', '0');
+
+		ndv.actions.expressionSelectNextItem();
+		ndv.getters.inlineExpressionEditorOutput().should('have.text', '1');
+		ndv.getters.inlineExpressionEditorItemInput().should('have.value', '1');
+		ndv.getters.inlineExpressionEditorItemNextButton().should('be.disabled');
+
+		ndv.actions.expressionSelectPrevItem();
+		ndv.getters.inlineExpressionEditorOutput().should('have.text', '0');
+		ndv.getters.inlineExpressionEditorItemInput().should('have.value', '0');
+		ndv.getters.inlineExpressionEditorItemPrevButton().should('be.disabled');
+
+		ndv.actions.expressionSelectItem(1);
+		ndv.getters.inlineExpressionEditorOutput().should('have.text', '1');
 	});
 });

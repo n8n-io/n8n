@@ -1,20 +1,13 @@
 import type Bull from 'bull';
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 import {
 	ApplicationError,
+	BINARY_ENCODING,
+	type IDataObject,
 	type ExecutionError,
 	type IExecuteResponsePromiseData,
 } from 'n8n-workflow';
 import { ActiveExecutions } from '@/ActiveExecutions';
-import { decodeWebhookResponse } from '@/helpers/decodeWebhookResponse';
-
-import {
-	getRedisClusterClient,
-	getRedisClusterNodes,
-	getRedisPrefix,
-	getRedisStandardClient,
-} from './services/redis/RedisServiceHelper';
-import type { RedisClientType } from './services/redis/RedisServiceBaseClasses';
 import config from '@/config';
 
 export type JobId = Bull.JobId;
@@ -43,34 +36,41 @@ export class Queue {
 	constructor(private activeExecutions: ActiveExecutions) {}
 
 	async init() {
-		const bullPrefix = config.getEnv('queue.bull.prefix');
-		const prefix = getRedisPrefix(bullPrefix);
-		const clusterNodes = getRedisClusterNodes();
-		const usesRedisCluster = clusterNodes.length > 0;
-
 		const { default: Bull } = await import('bull');
+		const { RedisClientService } = await import('@/services/redis/redis-client.service');
 
-		const { default: Redis } = await import('ioredis');
-		// Disabling ready check is necessary as it allows worker to
-		// quickly reconnect to Redis if Redis crashes or is unreachable
-		// for some time. With it enabled, worker might take minutes to realize
-		// redis is back up and resume working.
-		// More here: https://github.com/OptimalBits/bull/issues/890
+		const redisClientService = Container.get(RedisClientService);
+
+		const bullPrefix = config.getEnv('queue.bull.prefix');
+		const prefix = redisClientService.toValidPrefix(bullPrefix);
+
 		this.jobQueue = new Bull('jobs', {
 			prefix,
 			settings: config.get('queue.bull.settings'),
-			createClient: (type, clientConfig) =>
-				usesRedisCluster
-					? getRedisClusterClient(Redis, clientConfig, (type + '(bull)') as RedisClientType)
-					: getRedisStandardClient(Redis, clientConfig, (type + '(bull)') as RedisClientType),
+			createClient: (type) => redisClientService.createClient({ type: `${type}(bull)` }),
 		});
 
-		this.jobQueue.on('global:progress', (jobId, progress: WebhookResponse) => {
+		this.jobQueue.on('global:progress', (_jobId, progress: WebhookResponse) => {
 			this.activeExecutions.resolveResponsePromise(
 				progress.executionId,
-				decodeWebhookResponse(progress.response),
+				this.decodeWebhookResponse(progress.response),
 			);
 		});
+	}
+
+	decodeWebhookResponse(response: IExecuteResponsePromiseData): IExecuteResponsePromiseData {
+		if (
+			typeof response === 'object' &&
+			typeof response.body === 'object' &&
+			(response.body as IDataObject)['__@N8nEncodedBuffer@__']
+		) {
+			response.body = Buffer.from(
+				(response.body as IDataObject)['__@N8nEncodedBuffer@__'] as string,
+				BINARY_ENCODING,
+			);
+		}
+
+		return response;
 	}
 
 	async add(jobData: JobData, jobOptions: object): Promise<Job> {
@@ -85,6 +85,15 @@ export class Queue {
 		return await this.jobQueue.getJobs(jobTypes);
 	}
 
+	/**
+	 * Get IDs of executions that are currently in progress in the queue.
+	 */
+	async getInProgressExecutionIds() {
+		const inProgressJobs = await this.getJobs(['active', 'waiting']);
+
+		return new Set(inProgressJobs.map((job) => job.data.executionId));
+	}
+
 	async process(concurrency: number, fn: Bull.ProcessCallbackFunction<JobData>): Promise<void> {
 		return await this.jobQueue.process(concurrency, fn);
 	}
@@ -93,8 +102,11 @@ export class Queue {
 		return await this.jobQueue.client.ping();
 	}
 
-	async pause(isLocal?: boolean): Promise<void> {
-		return await this.jobQueue.pause(isLocal);
+	async pause({
+		isLocal,
+		doNotWaitActive,
+	}: { isLocal?: boolean; doNotWaitActive?: boolean } = {}): Promise<void> {
+		return await this.jobQueue.pause(isLocal, doNotWaitActive);
 	}
 
 	getBullObjectInstance(): JobQueue {

@@ -41,5 +41,13 @@ export class Smtp implements ICredentialType {
 			type: 'boolean',
 			default: true,
 		},
+		{
+			displayName: 'Client Host Name',
+			name: 'hostName',
+			type: 'string',
+			default: '',
+			placeholder: '',
+			description: 'The hostname of the client, used for identifying to the server',
+		},
 	];
 }

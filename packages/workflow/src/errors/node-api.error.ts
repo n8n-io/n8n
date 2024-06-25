@@ -1,7 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/naming-convention */
 
 import { parseString } from 'xml2js';
 import type {
@@ -113,7 +111,7 @@ const STATUS_CODE_MESSAGES: IStatusCodeMessages = {
  * with an HTTP error code, an error message and a description.
  */
 export class NodeApiError extends NodeError {
-	httpCode: string | null;
+	httpCode: string | null = null;
 
 	// eslint-disable-next-line complexity
 	constructor(
@@ -131,6 +129,10 @@ export class NodeApiError extends NodeError {
 			messageMapping,
 		}: NodeApiErrorOptions = {},
 	) {
+		if (errorResponse instanceof NodeApiError) {
+			return errorResponse;
+		}
+
 		super(node, errorResponse);
 
 		this.addToMessages(errorResponse.message as string);
@@ -145,7 +147,7 @@ export class NodeApiError extends NodeError {
 		}
 
 		// if not description provided, try to find it in the error object
-		// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+
 		if (
 			!description &&
 			(errorResponse.description || (errorResponse?.reason as IDataObject)?.description)
@@ -156,7 +158,7 @@ export class NodeApiError extends NodeError {
 		}
 
 		// if not message provided, try to find it in the error object or set description as message
-		// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+
 		if (
 			!message &&
 			(errorResponse.message || (errorResponse?.reason as IDataObject)?.message || description)
@@ -188,11 +190,7 @@ export class NodeApiError extends NodeError {
 				this.findProperty(errorResponse, ERROR_STATUS_PROPERTIES, ERROR_NESTING_PROPERTIES) ?? null;
 		}
 
-		if (level) {
-			this.level = level;
-		} else if (this.httpCode?.charAt(0) !== '5') {
-			this.level = 'warning';
-		}
+		this.level = level ?? 'warning';
 
 		if (
 			errorResponse?.response &&
@@ -265,10 +263,8 @@ export class NodeApiError extends NodeError {
 		parseString(xml, { explicitArray: false }, (_, result) => {
 			if (!result) return;
 
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			const topLevelKey = Object.keys(result)[0];
 			this.description = this.findProperty(
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
 				result[topLevelKey],
 				ERROR_MESSAGE_PROPERTIES,
 				['Error'].concat(ERROR_NESTING_PROPERTIES),

@@ -1,0 +1,37 @@
+{
+  "name": "@n8n/codemirror-lang",
+  "version": "0.3.0",
+  "description": "Language support package for CodeMirror 6 in n8n",
+  "private": true,
+  "sideEffects": false,
+  "main": "dist/index.js",
+  "module": "src/index.ts",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./src/index.ts",
+      "types": "./dist/index.d.ts"
+    },
+    "./*": "./*"
+  },
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "typecheck": "tsc --noEmit",
+    "generate:expressions:grammar": "lezer-generator --typeScript --output src/expressions/grammar.ts src/expressions/expressions.grammar",
+    "generate": "pnpm generate:expressions:grammar && pnpm format",
+    "build": "tsc -p tsconfig.build.json",
+    "test": "jest",
+    "lint": "eslint . --ext .ts --quiet",
+    "lintfix": "eslint . --ext .ts --fix",
+    "format": "prettier --write --ignore-path ../../.prettierignore src test"
+  },
+  "peerDependencies": {
+    "@codemirror/language": "*",
+    "@lezer/highlight": "*",
+    "@lezer/lr": "^1.4.0"
+  },
+  "devDependencies": {
+    "@lezer/generator": "^1.7.0"
+  }
+}

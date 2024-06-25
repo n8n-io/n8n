@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { PropType } from 'vue';
 import { computed } from 'vue';
 import N8nHeading from 'n8n-design-system/components/N8nHeading';
 import NodeIcon from '@/components/NodeIcon.vue';
@@ -17,21 +16,16 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import type { TemplateCredentialKey } from '@/utils/templates/templateTransforms';
 
 // Props
-const props = defineProps({
-	order: {
-		type: Number,
-		required: true,
+const props = withDefaults(
+	defineProps<{
+		order: number;
+		credentials: CredentialUsages;
+		selectedCredentialId: string | null;
+	}>(),
+	{
+		selectedCredentialId: null,
 	},
-	credentials: {
-		type: Object as PropType<CredentialUsages>,
-		required: true,
-	},
-	selectedCredentialId: {
-		type: String,
-		required: false,
-		default: null,
-	},
-});
+);
 
 const emit = defineEmits<{
 	(

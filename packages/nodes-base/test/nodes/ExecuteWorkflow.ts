@@ -9,8 +9,8 @@ export async function executeWorkflow(testData: WorkflowTestData, nodeTypes: INo
 	if (testData.nock) {
 		const { baseUrl, mocks } = testData.nock;
 		const agent = nock(baseUrl);
-		mocks.forEach(({ method, path, statusCode, responseBody }) =>
-			agent[method](path).reply(statusCode, responseBody),
+		mocks.forEach(({ method, path, statusCode, requestBody, responseBody }) =>
+			agent[method](path, requestBody).reply(statusCode, responseBody),
 		);
 	}
 	const executionMode = testData.trigger?.mode ?? 'manual';
@@ -24,11 +24,7 @@ export async function executeWorkflow(testData: WorkflowTestData, nodeTypes: INo
 	});
 	const waitPromise = await createDeferredPromise<IRun>();
 	const nodeExecutionOrder: string[] = [];
-	const additionalData = Helpers.WorkflowExecuteAdditionalData(
-		waitPromise,
-		nodeExecutionOrder,
-		testData,
-	);
+	const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise, nodeExecutionOrder);
 
 	let executionData: IRun;
 	const runExecutionData: IRunExecutionData = {
@@ -36,6 +32,7 @@ export async function executeWorkflow(testData: WorkflowTestData, nodeTypes: INo
 			runData: {},
 		},
 		executionData: {
+			metadata: {},
 			contextData: {},
 			waitingExecution: {},
 			waitingExecutionSource: null,

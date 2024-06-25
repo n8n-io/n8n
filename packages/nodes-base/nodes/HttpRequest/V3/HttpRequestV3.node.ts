@@ -29,14 +29,15 @@ import type { BodyParameter, IAuthDataSanitizeKeys } from '../GenericFunctions';
 import {
 	binaryContentTypes,
 	getOAuth2AdditionalParameters,
+	getSecrets,
 	prepareRequestBody,
 	reduceAsync,
 	replaceNullValues,
 	sanitizeUiMessage,
 	setAgentOptions,
 } from '../GenericFunctions';
-import { keysToLowercase } from '@utils/utilities';
 import type { HttpSslAuthCredentials } from '../interfaces';
+import { keysToLowercase } from '@utils/utilities';
 
 function toText<T>(data: T) {
 	if (typeof data === 'object' && data !== null) {
@@ -561,7 +562,7 @@ export class HttpRequestV3 implements INodeType {
 									type: 'string',
 									default: '',
 									description:
-										'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+										'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 								},
 								{
 									displayName: 'Value',
@@ -648,7 +649,7 @@ export class HttpRequestV3 implements INodeType {
 									type: 'string',
 									default: '',
 									description:
-										'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+										'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 								},
 								{
 									displayName: 'Value',
@@ -1010,7 +1011,7 @@ export class HttpRequestV3 implements INodeType {
 										},
 										{
 											displayName:
-												'Use the $response variables to access the data of the previous response. <a href="https://docs.n8n.io/code/builtin/http-node-variables/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.httpRequest" target="_blank">More info</a>',
+												'Use the $response variables to access the data of the previous response. Refer to the <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/#pagination/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.httpRequest" target="_blank">docs</a> for more info about pagination/',
 											name: 'webhookNotice',
 											displayOptions: {
 												hide: {
@@ -1299,7 +1300,12 @@ export class HttpRequestV3 implements INodeType {
 			requestInterval: number;
 		};
 
-		const sanitazedRequests: IDataObject[] = [];
+		const requests: Array<{
+			options: IRequestOptions;
+			authKeys: IAuthDataSanitizeKeys;
+			credentialType?: string;
+		}> = [];
+
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			if (authentication === 'genericCredentialType') {
 				genericCredentialType = this.getNodeParameter('genericAuthType', 0) as string;
@@ -1696,11 +1702,11 @@ export class HttpRequestV3 implements INodeType {
 				}
 			}
 
-			try {
-				const sanitazedRequestOptions = sanitizeUiMessage(requestOptions, authDataKeys);
-				this.sendMessageToUI(sanitazedRequestOptions);
-				sanitazedRequests.push(sanitazedRequestOptions);
-			} catch (e) {}
+			requests.push({
+				options: requestOptions,
+				authKeys: authDataKeys,
+				credentialType: nodeCredentialType,
+			});
 
 			if (pagination && pagination.paginationMode !== 'off') {
 				let continueExpression = '={{false}}';
@@ -1827,7 +1833,29 @@ export class HttpRequestV3 implements INodeType {
 				requestPromises.push(requestWithAuthentication);
 			}
 		}
-		const promisesResponses = await Promise.allSettled(requestPromises);
+
+		const sanitizedRequests: IDataObject[] = [];
+		const promisesResponses = await Promise.allSettled(
+			requestPromises.map(
+				async (requestPromise, itemIndex) =>
+					await requestPromise.finally(async () => {
+						try {
+							// Secrets need to be read after the request because secrets could have changed
+							// For example: OAuth token refresh, preAuthentication
+							const { options, authKeys, credentialType } = requests[itemIndex];
+							let secrets: string[] = [];
+							if (credentialType) {
+								const properties = this.getCredentialsProperties(credentialType);
+								const credentials = await this.getCredentials(credentialType, itemIndex);
+								secrets = getSecrets(properties, credentials);
+							}
+							const sanitizedRequestOptions = sanitizeUiMessage(options, authKeys, secrets);
+							sanitizedRequests.push(sanitizedRequestOptions);
+							this.sendMessageToUI(sanitizedRequestOptions);
+						} catch (e) {}
+					}),
+			),
+		);
 
 		let responseData: any;
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
@@ -1842,7 +1870,7 @@ export class HttpRequestV3 implements INodeType {
 						responseData.reason.error = Buffer.from(responseData.reason.error as Buffer).toString();
 					}
 					const error = new NodeApiError(this.getNode(), responseData as JsonObject, { itemIndex });
-					set(error, 'context.request', sanitazedRequests[itemIndex]);
+					set(error, 'context.request', sanitizedRequests[itemIndex]);
 					throw error;
 				} else {
 					removeCircularRefs(responseData.reason as JsonObject);

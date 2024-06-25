@@ -1,6 +1,6 @@
 import { render } from '@testing-library/vue';
 import UserStack from '../UserStack.vue';
-import { N8nAvatar, N8nUserInfo } from '@/main';
+import { N8nAvatar, N8nUserInfo } from 'n8n-design-system/main';
 
 describe('UserStack', () => {
 	it('should render flat user list', () => {

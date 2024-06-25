@@ -1,4 +1,4 @@
-import type { IExecuteFunctions, IWorkflowDataProxyData } from 'n8n-workflow';
+import type { IExecuteFunctions, INode, IWorkflowDataProxyData } from 'n8n-workflow';
 import { mock } from 'jest-mock-extended';
 import { normalizeItems } from 'n8n-core';
 import type { z } from 'zod';
@@ -12,7 +12,7 @@ describe('OutputParserStructured', () => {
 	});
 	const workflowDataProxy = mock<IWorkflowDataProxyData>({ $input: mock() });
 	thisArg.getWorkflowDataProxy.mockReturnValue(workflowDataProxy);
-	thisArg.getNode.mockReturnValue({ typeVersion: 1.1 });
+	thisArg.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.1 }));
 	thisArg.addInputData.mockReturnValue({ index: 0 });
 	thisArg.addOutputData.mockReturnValue();
 

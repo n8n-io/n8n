@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "1.39.0",
+  "version": "1.47.0",
   "description": "Core functionality of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -15,12 +15,14 @@
   "main": "dist/index",
   "types": "dist/index.d.ts",
   "bin": {
+    "n8n-copy-icons": "./bin/copy-icons",
     "n8n-generate-known": "./bin/generate-known",
+    "n8n-generate-translations": "./bin/generate-translations",
     "n8n-generate-ui-types": "./bin/generate-ui-types"
   },
   "scripts": {
     "clean": "rimraf dist .turbo",
-    "typecheck": "tsc",
+    "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
     "dev": "pnpm watch",
     "format": "prettier --write . --ignore-path ../../.prettierignore",
@@ -42,9 +44,6 @@
     "@types/mime-types": "^2.1.0",
     "@types/uuid": "^8.3.2",
     "@types/xml2js": "^0.4.14"
-  },
-  "peerDependencies": {
-    "n8n-nodes-base": "workspace:*"
   },
   "dependencies": {
     "@n8n/client-oauth2": "workspace:*",

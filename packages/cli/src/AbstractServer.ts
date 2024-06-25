@@ -154,7 +154,7 @@ export abstract class AbstractServer {
 
 		this.server.on('error', (error: Error & { code: string }) => {
 			if (error.code === 'EADDRINUSE') {
-				console.log(
+				this.logger.info(
 					`n8n's port ${PORT} is already in use. Do you have another instance of n8n running already?`,
 				);
 				process.exit(1);
@@ -167,7 +167,7 @@ export abstract class AbstractServer {
 
 		await this.setupHealthCheck();
 
-		console.log(`n8n ready on ${ADDRESS}, port ${PORT}`);
+		this.logger.info(`n8n ready on ${ADDRESS}, port ${PORT}`);
 	}
 
 	async start(): Promise<void> {
@@ -207,13 +207,6 @@ export abstract class AbstractServer {
 			// Register a handler
 			this.app.all(`/${this.endpointFormTest}/:path(*)`, webhookRequestHandler(testWebhooks));
 			this.app.all(`/${this.endpointWebhookTest}/:path(*)`, webhookRequestHandler(testWebhooks));
-
-			// Removes a test webhook
-			// TODO UM: check if this needs validation with user management.
-			this.app.delete(
-				`/${this.restEndpoint}/test-webhook/:id`,
-				send(async (req) => await testWebhooks.cancelWebhook(req.params.id)),
-			);
 		}
 
 		// Block bots from scanning the application
@@ -230,17 +223,27 @@ export abstract class AbstractServer {
 			this.setupDevMiddlewares();
 		}
 
+		if (this.testWebhooksEnabled) {
+			const testWebhooks = Container.get(TestWebhooks);
+			// Removes a test webhook
+			// TODO UM: check if this needs validation with user management.
+			this.app.delete(
+				`/${this.restEndpoint}/test-webhook/:id`,
+				send(async (req) => await testWebhooks.cancelWebhook(req.params.id)),
+			);
+		}
+
 		// Setup body parsing middleware after the webhook handlers are setup
 		this.app.use(bodyParser);
 
 		await this.configure();
 
 		if (!inTest) {
-			console.log(`Version: ${N8N_VERSION}`);
+			this.logger.info(`Version: ${N8N_VERSION}`);
 
 			const defaultLocale = config.getEnv('defaultLocale');
 			if (defaultLocale !== 'en') {
-				console.log(`Locale: ${defaultLocale}`);
+				this.logger.info(`Locale: ${defaultLocale}`);
 			}
 
 			await this.externalHooks.run('n8n.ready', [this, config]);

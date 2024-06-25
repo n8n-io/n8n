@@ -37,7 +37,7 @@ Must be one of the following:
 - `test` - Adding missing tests or correcting existing tests
 - `docs` - Documentation only changes
 - `refactor` - A code change that neither fixes a bug nor adds a feature
-- `build` - Changes that affect the build system or external dependencies (example scopes: gulp, broccoli, npm)
+- `build` - Changes that affect the build system or external dependencies (example scopes: broccoli, npm)
 - `ci` - Changes to our CI configuration files and scripts (e.g. Github actions)
 
 If the prefix is `feat`, `fix` or `perf`, it will appear in the changelog. However if there is any BREAKING CHANGE (see Footer section below), the commit will always appear in the changelog.

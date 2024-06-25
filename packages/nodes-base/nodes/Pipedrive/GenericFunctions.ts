@@ -236,14 +236,14 @@ export function pipedriveResolveCustomProperties(
 	const json = item.json as IDataObject;
 
 	// Iterate over all keys and replace the custom ones
-	for (const key of Object.keys(json)) {
+	for (const [key, value] of Object.entries(json)) {
 		if (customProperties[key] !== undefined) {
 			// Is a custom property
 			customPropertyData = customProperties[key];
 
 			// value is not set, so nothing to resolve
-			if (json[key] === null) {
-				json[customPropertyData.name] = json[key];
+			if (value === null) {
+				json[customPropertyData.name] = value;
 				delete json[key];
 				continue;
 			}
@@ -267,7 +267,7 @@ export function pipedriveResolveCustomProperties(
 					'timerange',
 				].includes(customPropertyData.field_type)
 			) {
-				json[customPropertyData.name] = json[key];
+				json[customPropertyData.name] = value;
 				delete json[key];
 				// type options
 			} else if (
@@ -275,15 +275,19 @@ export function pipedriveResolveCustomProperties(
 				customPropertyData.options
 			) {
 				const propertyOption = customPropertyData.options.find(
-					(option) => option.id.toString() === json[key]!.toString(),
+					(option) => option.id.toString() === value?.toString(),
 				);
 				if (propertyOption !== undefined) {
 					json[customPropertyData.name] = propertyOption.label;
 					delete json[key];
 				}
 				// type multioptions
-			} else if (['set'].includes(customPropertyData.field_type) && customPropertyData.options) {
-				const selectedIds = (json[key] as string).split(',');
+			} else if (
+				['set'].includes(customPropertyData.field_type) &&
+				customPropertyData.options &&
+				typeof value === 'string'
+			) {
+				const selectedIds = value.split(',');
 				const selectedLabels = customPropertyData.options
 					.filter((option) => selectedIds.includes(option.id.toString()))
 					.map((option) => option.label);

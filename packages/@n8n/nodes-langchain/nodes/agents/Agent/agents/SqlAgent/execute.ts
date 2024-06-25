@@ -28,7 +28,6 @@ const parseTablesString = (tablesString: string) =>
 
 export async function sqlAgentAgentExecute(
 	this: IExecuteFunctions,
-	nodeVersion: number,
 ): Promise<INodeExecutionData[][]> {
 	this.logger.verbose('Executing SQL Agent');
 
@@ -143,7 +142,7 @@ export async function sqlAgentAgentExecute(
 
 			returnData.push({ json: response });
 		} catch (error) {
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(error)) {
 				returnData.push({ json: { error: error.message }, pairedItem: { item: i } });
 				continue;
 			}
@@ -152,5 +151,5 @@ export async function sqlAgentAgentExecute(
 		}
 	}
 
-	return await this.prepareOutputData(returnData);
+	return [returnData];
 }

@@ -32,9 +32,19 @@ function parseSingleFilterValue(
 	type: FilterOperatorType,
 	strict = false,
 ): ValidationResult {
-	return type === 'any' || value === null || value === undefined
-		? ({ valid: true, newValue: value } as ValidationResult)
-		: validateFieldType('filter', value, type, { strict, parseStrings: true });
+	if (type === 'any' || value === null || value === undefined) {
+		return { valid: true, newValue: value } as ValidationResult;
+	}
+
+	if (type === 'boolean' && !strict) {
+		return { valid: true, newValue: Boolean(value) };
+	}
+
+	if (type === 'number' && Number.isNaN(value)) {
+		return { valid: true, newValue: value };
+	}
+
+	return validateFieldType('filter', value, type, { strict, parseStrings: true });
 }
 
 const withIndefiniteArticle = (noun: string): string => {
@@ -105,7 +115,13 @@ function parseFilterConditionValues(
 		};
 	}
 
-	return { ok: true, result: { left: parsedLeftValue.newValue, right: parsedRightValue.newValue } };
+	return {
+		ok: true,
+		result: {
+			left: parsedLeftValue.valid ? parsedLeftValue.newValue : undefined,
+			right: parsedRightValue.valid ? parsedRightValue.newValue : undefined,
+		},
+	};
 }
 
 function parseRegexPattern(pattern: string): RegExp {
@@ -137,7 +153,7 @@ export function executeFilterCondition(
 
 	let { left: leftValue, right: rightValue } = parsedValues.result;
 
-	const exists = leftValue !== undefined && leftValue !== null;
+	const exists = leftValue !== undefined && leftValue !== null && !Number.isNaN(leftValue);
 	if (condition.operator.operation === 'exists') {
 		return exists;
 	} else if (condition.operator.operation === 'notExists') {
@@ -196,6 +212,10 @@ export function executeFilterCondition(
 			const right = rightValue as number;
 
 			switch (condition.operator.operation) {
+				case 'empty':
+					return !exists;
+				case 'notEmpty':
+					return exists;
 				case 'equals':
 					return left === right;
 				case 'notEquals':
@@ -213,6 +233,12 @@ export function executeFilterCondition(
 		case 'dateTime': {
 			const left = leftValue as DateTime;
 			const right = rightValue as DateTime;
+
+			if (condition.operator.operation === 'empty') {
+				return !exists;
+			} else if (condition.operator.operation === 'notEmpty') {
+				return exists;
+			}
 
 			if (!left || !right) {
 				return false;
@@ -238,6 +264,10 @@ export function executeFilterCondition(
 			const right = rightValue as boolean;
 
 			switch (condition.operator.operation) {
+				case 'empty':
+					return !exists;
+				case 'notEmpty':
+					return exists;
 				case 'true':
 					return left;
 				case 'false':

@@ -6,7 +6,7 @@
 			:message="
 				$locale.baseText(
 					`credentialEdit.credentialConfig.pleaseCheckTheErrorsBelow${
-						credentialPermissions.update || credentialPermissions.isOwner ? '' : '.sharee'
+						credentialPermissions.update ? '' : '.sharee'
 					}`,
 					{ interpolate: { owner: credentialOwnerName } },
 				)
@@ -19,7 +19,7 @@
 			:message="
 				$locale.baseText(
 					`credentialEdit.credentialConfig.couldntConnectWithTheseSettings${
-						credentialPermissions.update || credentialPermissions.isOwner ? '' : '.sharee'
+						credentialPermissions.update ? '' : '.sharee'
 					}`,
 					{ interpolate: { owner: credentialOwnerName } },
 				)
@@ -38,6 +38,7 @@
 			:message="$locale.baseText('credentialEdit.credentialConfig.accountConnected')"
 			:button-label="$locale.baseText('credentialEdit.credentialConfig.reconnect')"
 			:button-title="$locale.baseText('credentialEdit.credentialConfig.reconnectOAuth2Credential')"
+			data-test-id="oauth-connect-success-banner"
 			@click="$emit('oauth')"
 		>
 			<template v-if="isGoogleOAuthType" #button>
@@ -114,12 +115,10 @@
 
 		<OauthButton
 			v-if="
-				isOAuthType &&
-				requiredPropertiesFilled &&
-				!isOAuthConnected &&
-				credentialPermissions.isOwner
+				isOAuthType && requiredPropertiesFilled && !isOAuthConnected && credentialPermissions.update
 			"
 			:is-google-o-auth-type="isGoogleOAuthType"
+			data-test-id="oauth-connect-button"
 			@click="$emit('oauth')"
 		/>
 
@@ -142,9 +141,15 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 
-import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	ICredentialDataDecryptedObject,
+	ICredentialType,
+	INodeProperties,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 import { getAppNameFromCredType, isCommunityPackageName } from '@/utils/nodeTypesUtils';
 
 import Banner from '../Banner.vue';
@@ -153,14 +158,15 @@ import CredentialInputs from './CredentialInputs.vue';
 import OauthButton from './OauthButton.vue';
 import { addCredentialTranslation } from '@/plugins/i18n';
 import { BUILTIN_CREDENTIALS_DOCS_URL, DOCS_DOMAIN, EnterpriseEditionFeature } from '@/constants';
-import type { IPermissions } from '@/permissions';
+import type { PermissionsMap } from '@/permissions';
+import type { CredentialScope } from '@n8n/permissions';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import type { ICredentialsResponse } from '@/Interface';
+import type { ICredentialsResponse, IUpdateInformation } from '@/Interface';
 import AuthTypeSelector from '@/components/CredentialEdit/AuthTypeSelector.vue';
 import GoogleAuthButton from './GoogleAuthButton.vue';
 import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
@@ -178,15 +184,21 @@ export default defineComponent({
 	},
 	props: {
 		credentialType: {
-			type: Object,
+			type: Object as PropType<ICredentialType>,
+			required: true,
 		},
 		credentialProperties: {
-			type: Array,
+			type: Array as PropType<INodeProperties[]>,
+			required: true,
 		},
 		parentTypes: {
-			type: Array,
+			type: Array as PropType<string[]>,
+			default: () => [],
 		},
-		credentialData: {},
+		credentialData: {
+			type: Object as PropType<ICredentialDataDecryptedObject>,
+			required: true,
+		},
 		credentialId: {
 			type: String,
 			default: '',
@@ -214,8 +226,8 @@ export default defineComponent({
 			type: Boolean,
 		},
 		credentialPermissions: {
-			type: Object,
-			default: (): IPermissions => ({}),
+			type: Object as PropType<PermissionsMap<CredentialScope>>,
+			default: () => ({}) as PermissionsMap<CredentialScope>,
 		},
 		requiredPropertiesFilled: {
 			type: Boolean,
@@ -273,7 +285,7 @@ export default defineComponent({
 				return '';
 			}
 
-			const appName = getAppNameFromCredType((this.credentialType as ICredentialType).displayName);
+			const appName = getAppNameFromCredType(this.credentialType.displayName);
 
 			return (
 				appName ||
@@ -281,13 +293,13 @@ export default defineComponent({
 			);
 		},
 		credentialTypeName(): string {
-			return (this.credentialType as ICredentialType)?.name;
+			return this.credentialType?.name;
 		},
 		credentialOwnerName(): string {
 			return this.credentialsStore.getCredentialOwnerNameById(`${this.credentialId}`);
 		},
 		documentationUrl(): string {
-			const type = this.credentialType as ICredentialType;
+			const type = this.credentialType;
 			const activeNode = this.ndvStore.activeNode;
 			const isCommunityNode = activeNode ? isCommunityPackageName(activeNode.type) : false;
 
@@ -326,7 +338,7 @@ export default defineComponent({
 				this.credentialTypeName === 'oAuth2Api' || this.parentTypes.includes('oAuth2Api')
 					? 'oauth2'
 					: 'oauth1';
-			return this.rootStore.oauthCallbackUrls[oauthType as keyof {}];
+			return this.rootStore.OAuthCallbackUrls[oauthType as keyof {}];
 		},
 		showOAuthSuccessBanner(): boolean {
 			return (
@@ -347,7 +359,7 @@ export default defineComponent({
 		getCredentialOptions(type: string): ICredentialsResponse[] {
 			return this.credentialsStore.allUsableCredentialsByType[type];
 		},
-		onDataChange(event: { name: string; value: string | number | boolean | Date | null }): void {
+		onDataChange(event: IUpdateInformation): void {
 			this.$emit('update', event);
 		},
 		onDocumentationUrlClick(): void {

@@ -13,6 +13,7 @@ export class LocalFileTrigger implements INodeType {
 		displayName: 'Local File Trigger',
 		name: 'localFileTrigger',
 		icon: 'fa:folder-open',
+		iconColor: 'black',
 		group: ['trigger'],
 		version: 1,
 		subtitle: '=Path: {{$parameter["path"]}}',

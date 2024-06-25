@@ -44,7 +44,7 @@ describe('CollaborationService', () => {
 			workflowId,
 		};
 
-		const expectActiveUsersChangedMessage = (userIds: string[]) => {
+		const expectActiveUsersChangedMessage = () => {
 			expect(push.sendToUsers).toHaveBeenCalledWith(
 				'activeWorkflowUsersChanged',
 				{
@@ -77,7 +77,7 @@ describe('CollaborationService', () => {
 				mockUserRepository.getByIds.mockResolvedValueOnce([{ id: userId } as User]);
 				await collaborationService.handleUserMessage(userId, message);
 
-				expectActiveUsersChangedMessage([userId]);
+				expectActiveUsersChangedMessage();
 			});
 		});
 
@@ -102,7 +102,7 @@ describe('CollaborationService', () => {
 				mockUserRepository.getByIds.mockResolvedValueOnce([{ id: userId } as User]);
 				await collaborationService.handleUserMessage(userId, message);
 
-				expectActiveUsersChangedMessage([userId]);
+				expectActiveUsersChangedMessage();
 			});
 		});
 	});

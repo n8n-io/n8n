@@ -21,6 +21,7 @@ export const defaultOptions: ChatOptions = {
 			footer: '',
 			getStarted: 'New Conversation',
 			inputPlaceholder: 'Type your question..',
+			closeButtonTooltip: 'Close chat',
 		},
 	},
 	theme: {},

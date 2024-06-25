@@ -32,6 +32,7 @@ export default defineComponent({
 	props: {
 		name: {
 			type: String,
+			required: true,
 		},
 		beforeClose: {
 			type: Function,

@@ -1,5 +1,5 @@
 import type { ActionDropdownItem, XYPosition } from '@/Interface';
-import { NOT_DUPLICATABE_NODE_TYPES, STICKY_NODE_TYPE } from '@/constants';
+import { NOT_DUPLICATABLE_NODE_TYPES, STICKY_NODE_TYPE } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -72,7 +72,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 	const canDuplicateNode = (node: INode): boolean => {
 		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
 		if (!nodeType) return false;
-		if (NOT_DUPLICATABE_NODE_TYPES.includes(nodeType.name)) return false;
+		if (NOT_DUPLICATABLE_NODE_TYPES.includes(nodeType.name)) return false;
 
 		return canAddNodeOfType(nodeType);
 	};

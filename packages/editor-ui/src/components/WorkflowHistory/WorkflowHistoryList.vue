@@ -138,7 +138,7 @@ const onItemMounted = ({
 			<span>
 				{{
 					i18n.baseText('workflowHistory.limit', {
-						interpolate: { evaluatedPruneTime: props.evaluatedPruneTime },
+						interpolate: { evaluatedPruneTime: String(props.evaluatedPruneTime) },
 					})
 				}}
 			</span>

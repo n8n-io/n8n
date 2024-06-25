@@ -168,7 +168,8 @@ export class Workflow {
 			if (!connections.hasOwnProperty(sourceNode)) {
 				continue;
 			}
-			for (const type in connections[sourceNode]) {
+
+			for (const type of Object.keys(connections[sourceNode]) as NodeConnectionType[]) {
 				if (!connections[sourceNode].hasOwnProperty(type)) {
 					continue;
 				}

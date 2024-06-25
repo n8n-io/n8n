@@ -2,6 +2,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
 import { type TestingPinia, createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
+import { waitFor } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
 
 describe('ExpressionParameterInput', () => {
@@ -57,10 +58,12 @@ describe('ExpressionParameterInput', () => {
 				},
 			});
 
-			const editor = container.querySelector('.cm-content') as HTMLDivElement;
-			expect(editor).toBeInTheDocument();
-			expect(editor.getAttribute('contenteditable')).toEqual('false');
-			expect(editor.getAttribute('aria-readonly')).toEqual('true');
+			await waitFor(() => {
+				const editor = container.querySelector('.cm-content') as HTMLDivElement;
+				expect(editor).toBeInTheDocument();
+				expect(editor.getAttribute('contenteditable')).toEqual('false');
+				expect(editor.getAttribute('aria-readonly')).toEqual('true');
+			});
 		});
 	});
 });

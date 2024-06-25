@@ -1,4 +1,5 @@
 import { Service } from 'typedi';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 
 import type { User } from '@db/entities/User';
@@ -25,7 +26,12 @@ export class UserOnboardingService {
 		const ownedWorkflowsIds = await this.sharedWorkflowRepository
 			.find({
 				where: {
-					userId: user.id,
+					project: {
+						projectRelations: {
+							role: 'project:personalOwner',
+							userId: user.id,
+						},
+					},
 					role: 'workflow:owner',
 				},
 				select: ['workflowId'],

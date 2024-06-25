@@ -105,6 +105,14 @@ export function addAdditionalFields(
 			}
 		}
 
+		if (
+			nodeVersion &&
+			nodeVersion >= 1.2 &&
+			additionalFields.disable_web_page_preview === undefined
+		) {
+			body.disable_web_page_preview = true;
+		}
+
 		delete additionalFields.appendAttribution;
 	}
 
@@ -194,7 +202,7 @@ export async function apiRequest(
 	const options: IRequestOptions = {
 		headers: {},
 		method,
-		uri: `https://api.telegram.org/bot${credentials.accessToken}/${endpoint}`,
+		uri: `${credentials.baseUrl}/bot${credentials.accessToken}/${endpoint}`,
 		body,
 		qs: query,
 		json: true,

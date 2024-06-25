@@ -86,7 +86,7 @@ onMounted(() => {
 		isActive: props.isActive,
 	});
 	isAuthorElementTruncated.value =
-		authorElement.value?.scrollWidth > authorElement.value?.clientWidth;
+		(authorElement.value?.scrollWidth ?? 0) > (authorElement.value?.clientWidth ?? 0);
 });
 </script>
 <template>

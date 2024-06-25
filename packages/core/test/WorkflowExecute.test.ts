@@ -1,5 +1,10 @@
 import type { IRun, WorkflowTestData } from 'n8n-workflow';
-import { ApplicationError, createDeferredPromise, Workflow } from 'n8n-workflow';
+import {
+	ApplicationError,
+	createDeferredPromise,
+	NodeExecutionOutput,
+	Workflow,
+} from 'n8n-workflow';
 import { WorkflowExecute } from '@/WorkflowExecute';
 
 import * as Helpers from './helpers';
@@ -191,5 +196,17 @@ describe('WorkflowExecute', () => {
 				expect(result.data.executionData!.nodeExecutionStack).toEqual([]);
 			});
 		}
+	});
+
+	describe('WorkflowExecute, NodeExecutionOutput type test', () => {
+		//TODO Add more tests here when execution hints are added to some node types
+		const nodeExecutionOutput = new NodeExecutionOutput(
+			[[{ json: { data: 123 } }]],
+			[{ message: 'TEXT HINT' }],
+		);
+
+		expect(nodeExecutionOutput).toBeInstanceOf(NodeExecutionOutput);
+		expect(nodeExecutionOutput[0][0].json.data).toEqual(123);
+		expect(nodeExecutionOutput.getHints()[0].message).toEqual('TEXT HINT');
 	});
 });

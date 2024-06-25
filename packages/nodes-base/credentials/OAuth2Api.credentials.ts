@@ -66,6 +66,9 @@ export class OAuth2Api implements ICredentialType {
 			default: '',
 			required: true,
 		},
+		// WARNING: if you are extending from this credentials and allow user to set their own scopes
+		// you HAVE TO add it to GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE in packages/cli/src/constants.ts
+		// track any updates to this behavior in N8N-7424
 		{
 			displayName: 'Scope',
 			name: 'scope',

@@ -627,7 +627,7 @@ export class Chargebee implements INodeType {
 					returnData.push(...responseData);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ error: error.message, json: {}, itemIndex: i });
 					continue;
 				}

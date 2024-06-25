@@ -1,5 +1,4 @@
 import {
-	EnterpriseEditionFeature,
 	HTTP_REQUEST_NODE_TYPE,
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
@@ -7,7 +6,6 @@ import {
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
-import { computed } from 'vue';
 
 import type {
 	IConnections,
@@ -51,16 +49,12 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 import { get, isEqual } from 'lodash-es';
 
-import type { IPermissions } from '@/permissions';
-import { getWorkflowPermissions } from '@/permissions';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/stores/users.store';
-import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getSourceItems } from '@/utils/pairedItemUtils';
 import { v4 as uuid } from 'uuid';
@@ -73,8 +67,10 @@ import { tryToParseNumber } from '@/utils/typesUtils';
 import { useI18n } from '@/composables/useI18n';
 import type { useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useProjectsStore } from '@/stores/projects.store';
+import { useTagsStore } from '@/stores/tags.store';
 
-export function resolveParameter(
+export function resolveParameter<T = IDataObject>(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
 	opts: {
 		targetItem?: TargetItem;
@@ -82,15 +78,50 @@ export function resolveParameter(
 		inputRunIndex?: number;
 		inputBranchIndex?: number;
 		additionalKeys?: IWorkflowDataProxyAdditionalKeys;
+		isForCredential?: boolean;
 	} = {},
-): IDataObject | null {
+): T | null {
 	let itemIndex = opts?.targetItem?.itemIndex || 0;
+
+	const workflow = getCurrentWorkflow();
+
+	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
+		$execution: {
+			id: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+			mode: 'test',
+			resumeUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+			resumeFormUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+		},
+		$vars: useEnvironmentsStore().variablesAsObject,
+
+		// deprecated
+		$executionId: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+		$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+
+		...opts.additionalKeys,
+	};
+
+	if (opts.isForCredential) {
+		// node-less expression resolution
+		return workflow.expression.getParameterValue(
+			parameter,
+			null,
+			0,
+			itemIndex,
+			'',
+			[],
+			'manual',
+			additionalKeys,
+			undefined,
+			false,
+			undefined,
+			'',
+		) as T;
+	}
 
 	const inputName = NodeConnectionType.Main;
 	const activeNode = useNDVStore().activeNode;
 	let contextNode = activeNode;
-
-	const workflow = getCurrentWorkflow();
 
 	if (activeNode) {
 		contextNode = workflow.getParentMainInputNode(activeNode);
@@ -159,22 +190,6 @@ export function resolveParameter(
 		_connectionInputData = [];
 	}
 
-	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-		$execution: {
-			id: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-			mode: 'test',
-			resumeUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-			resumeFormUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-		},
-		$vars: useEnvironmentsStore().variablesAsObject,
-
-		// deprecated
-		$executionId: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-		$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-
-		...opts.additionalKeys,
-	};
-
 	if (activeNode?.type === HTTP_REQUEST_NODE_TYPE) {
 		const EMPTY_RESPONSE = { statusCode: 200, headers: {}, body: {} };
 		const EMPTY_REQUEST = { headers: {}, body: {}, qs: {} };
@@ -221,7 +236,7 @@ export function resolveParameter(
 		false,
 		{},
 		contextNode!.name,
-	) as IDataObject;
+	) as T;
 }
 
 export function resolveRequiredParameters(
@@ -466,19 +481,15 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 	const rootStore = useRootStore();
 	const templatesStore = useTemplatesStore();
 	const workflowsStore = useWorkflowsStore();
-	const workflowsEEStore = useWorkflowsEEStore();
-	const usersStore = useUsersStore();
 	const uiStore = useUIStore();
 	const nodeHelpers = useNodeHelpers();
+	const projectsStore = useProjectsStore();
+	const tagsStore = useTagsStore();
 
 	const toast = useToast();
 	const message = useMessage();
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
-
-	const workflowPermissions = computed<IPermissions>(() => {
-		return getWorkflowPermissions(usersStore.currentUser, workflowsStore.workflow);
-	});
 
 	function getNodeTypesMaxCount() {
 		const nodes = workflowsStore.allNodes;
@@ -770,9 +781,9 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 
 		let baseUrl;
 		if (showUrlFor === 'test') {
-			baseUrl = isForm ? rootStore.getFormTestUrl : rootStore.getWebhookTestUrl;
+			baseUrl = isForm ? rootStore.formTestUrl : rootStore.webhookTestUrl;
 		} else {
-			baseUrl = isForm ? rootStore.getFormUrl : rootStore.getWebhookUrl;
+			baseUrl = isForm ? rootStore.formUrl : rootStore.webhookUrl;
 		}
 
 		const workflowId = workflowsStore.workflowId;
@@ -793,6 +804,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 			inputBranchIndex?: number;
 			c?: number;
 			additionalKeys?: IWorkflowDataProxyAdditionalKeys;
+			isForCredential?: boolean;
 		} = {},
 		stringifyObject = true,
 	) {
@@ -916,7 +928,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 			if (error.errorCode === 100) {
 				telemetry.track('User attempted to save locked workflow', {
 					workflowId: currentWorkflow,
-					sharing_role: workflowPermissions.value.isOwner ? 'owner' : 'sharee',
+					sharing_role: getWorkflowProjectRole(currentWorkflow),
 				});
 
 				const url = router.resolve({
@@ -994,7 +1006,9 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 			if (resetWebhookUrls) {
 				workflowDataRequest.nodes = workflowDataRequest.nodes!.map((node) => {
 					if (node.webhookId) {
-						node.webhookId = uuid();
+						const newId = uuid();
+						node.webhookId = newId;
+						node.parameters.path = newId;
 						changedNodes[node.name] = node.webhookId;
 					}
 					return node;
@@ -1011,15 +1025,6 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 			const workflowData = await workflowsStore.createNewWorkflow(workflowDataRequest);
 
 			workflowsStore.addWorkflow(workflowData);
-			if (
-				useSettingsStore().isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing) &&
-				usersStore.currentUser
-			) {
-				workflowsEEStore.setWorkflowOwnedBy({
-					workflowId: workflowData.id,
-					ownedBy: usersStore.currentUser,
-				});
-			}
 
 			if (openInNewWindow) {
 				const routeData = router.resolve({
@@ -1167,6 +1172,44 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		});
 	}
 
+	function getWorkflowProjectRole(workflowId: string): 'owner' | 'sharee' | 'member' {
+		const workflow = workflowsStore.workflowsById[workflowId];
+
+		if (
+			workflow?.homeProject?.id === projectsStore.personalProject?.id ||
+			workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID
+		) {
+			return 'owner';
+		} else if (
+			workflow?.sharedWithProjects?.some(
+				(project) => project.id === projectsStore.personalProject?.id,
+			)
+		) {
+			return 'sharee';
+		} else {
+			return 'member';
+		}
+	}
+
+	async function initState(workflowData: IWorkflowDb): Promise<void> {
+		workflowsStore.addWorkflow(workflowData);
+		workflowsStore.setActive(workflowData.active || false);
+		workflowsStore.setWorkflowId(workflowData.id);
+		workflowsStore.setWorkflowName({
+			newName: workflowData.name,
+			setStateDirty: uiStore.stateIsDirty,
+		});
+		workflowsStore.setWorkflowSettings(workflowData.settings ?? {});
+		workflowsStore.setWorkflowPinData(workflowData.pinData ?? {});
+		workflowsStore.setWorkflowVersionId(workflowData.versionId);
+		workflowsStore.setWorkflowMetadata(workflowData.meta);
+
+		const tags = (workflowData.tags ?? []) as ITag[];
+		const tagIds = tags.map((tag) => tag.id);
+		workflowsStore.setWorkflowTagIds(tagIds || []);
+		tagsStore.upsertTags(tags);
+	}
+
 	return {
 		resolveParameter,
 		resolveRequiredParameters,
@@ -1191,6 +1234,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		updateNodePositions,
 		dataHasChanged,
 		removeForeignCredentialsFromWorkflow,
-		workflowPermissions,
+		getWorkflowProjectRole,
+		initState,
 	};
 }

@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import type { PropType } from 'vue';
 import { watch, computed, ref, onMounted } from 'vue';
 import ExecutionsFilter from '@/components/executions/ExecutionsFilter.vue';
 import GlobalExecutionsListItem from '@/components/executions/global/GlobalExecutionsListItem.vue';
@@ -13,24 +12,18 @@ import type { ExecutionSummary } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExecutionsStore } from '@/stores/executions.store';
 
-const props = defineProps({
-	executions: {
-		type: Array as PropType<ExecutionSummary[]>,
-		default: () => [],
+const props = withDefaults(
+	defineProps<{
+		executions: ExecutionSummary[];
+		filters: ExecutionFilterType;
+		total: number;
+		estimated: boolean;
+	}>(),
+	{
+		total: 0,
+		estimated: false,
 	},
-	filters: {
-		type: Object as PropType<ExecutionFilterType>,
-		default: () => ({}),
-	},
-	total: {
-		type: Number,
-		default: 0,
-	},
-	estimated: {
-		type: Boolean,
-		default: false,
-	},
-});
+);
 
 const emit = defineEmits(['closeModal', 'execution:stop', 'update:autoRefresh', 'update:filters']);
 
@@ -454,9 +447,9 @@ async function onAutoRefreshToggle(value: boolean) {
 	left: 50%;
 	transform: translateX(-50%);
 	bottom: var(--spacing-3xl);
-	background: var(--color-background-dark);
+	background: var(--execution-selector-background);
 	border-radius: var(--border-radius-base);
-	color: var(--color-text-xlight);
+	color: var(--execution-selector-text);
 	font-size: var(--font-size-2xs);
 
 	button {
@@ -534,7 +527,7 @@ async function onAutoRefreshToggle(value: boolean) {
 .selectAll {
 	display: inline-block;
 	margin: 0 0 var(--spacing-s) var(--spacing-s);
-	color: var(--color-danger);
+	color: var(--execution-select-all-text);
 }
 
 .filterLoader {

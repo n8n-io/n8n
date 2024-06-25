@@ -9,16 +9,23 @@ import type {
 	ExecutionError,
 	IDataObject,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
 import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
 import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
 
-import { DynamicTool } from '@langchain/core/tools';
+import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
 import get from 'lodash/get';
 import isObject from 'lodash/isObject';
 import type { CallbackManagerForToolRun } from '@langchain/core/callbacks/manager';
+import type { JSONSchema7 } from 'json-schema';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-
+import type { DynamicZodObject } from '../../../types/zod.types';
+import { generateSchema, getSandboxWithZod } from '../../../utils/schemaParsing';
+import {
+	jsonSchemaExampleField,
+	schemaTypeField,
+	inputSchemaField,
+} from '../../../utils/descriptions';
 export class ToolWorkflow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Custom n8n Workflow Tool',
@@ -314,6 +321,21 @@ export class ToolWorkflow implements INodeType {
 					},
 				],
 			},
+			// ----------------------------------
+			//         Output Parsing
+			// ----------------------------------
+			{
+				displayName: 'Specify Input Schema',
+				name: 'specifyInputSchema',
+				type: 'boolean',
+				description:
+					'Whether to specify the schema for the function. This would require the LLM to provide the input in the correct format and would validate it against the schema.',
+				noDataExpression: true,
+				default: false,
+			},
+			{ ...schemaTypeField, displayOptions: { show: { specifyInputSchema: [true] } } },
+			jsonSchemaExampleField,
+			inputSchemaField,
 		],
 	};
 
@@ -321,8 +343,11 @@ export class ToolWorkflow implements INodeType {
 		const name = this.getNodeParameter('name', itemIndex) as string;
 		const description = this.getNodeParameter('description', itemIndex) as string;
 
+		const useSchema = this.getNodeParameter('specifyInputSchema', itemIndex) as boolean;
+		let tool: DynamicTool | DynamicStructuredTool | undefined = undefined;
+
 		const runFunction = async (
-			query: string,
+			query: string | IDataObject,
 			runManager?: CallbackManagerForToolRun,
 		): Promise<string> => {
 			const source = this.getNodeParameter('source', itemIndex) as string;
@@ -416,50 +441,86 @@ export class ToolWorkflow implements INodeType {
 			return response;
 		};
 
+		const toolHandler = async (
+			query: string | IDataObject,
+			runManager?: CallbackManagerForToolRun,
+		): Promise<string> => {
+			const { index } = this.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
+
+			let response: string = '';
+			let executionError: ExecutionError | undefined;
+			try {
+				response = await runFunction(query, runManager);
+			} catch (error) {
+				// TODO: Do some more testing. Issues here should actually fail the workflow
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				executionError = error;
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				response = `There was an error: "${error.message}"`;
+			}
+
+			if (typeof response === 'number') {
+				response = (response as number).toString();
+			}
+
+			if (isObject(response)) {
+				response = JSON.stringify(response, null, 2);
+			}
+
+			if (typeof response !== 'string') {
+				// TODO: Do some more testing. Issues here should actually fail the workflow
+				executionError = new NodeOperationError(this.getNode(), 'Wrong output type returned', {
+					description: `The response property should be a string, but it is an ${typeof response}`,
+				});
+				response = `There was an error: "${executionError.message}"`;
+			}
+
+			if (executionError) {
+				void this.addOutputData(NodeConnectionType.AiTool, index, executionError);
+			} else {
+				void this.addOutputData(NodeConnectionType.AiTool, index, [[{ json: { response } }]]);
+			}
+			return response;
+		};
+
+		const functionBase = {
+			name,
+			description,
+			func: toolHandler,
+		};
+
+		if (useSchema) {
+			try {
+				// We initialize these even though one of them will always be empty
+				// it makes it easer to navigate the ternary operator
+				const jsonExample = this.getNodeParameter('jsonSchemaExample', itemIndex, '') as string;
+				const inputSchema = this.getNodeParameter('inputSchema', itemIndex, '') as string;
+
+				const schemaType = this.getNodeParameter('schemaType', itemIndex) as 'fromJson' | 'manual';
+				const jsonSchema =
+					schemaType === 'fromJson'
+						? generateSchema(jsonExample)
+						: jsonParse<JSONSchema7>(inputSchema);
+
+				const zodSchemaSandbox = getSandboxWithZod(this, jsonSchema, 0);
+				const zodSchema = (await zodSchemaSandbox.runCode()) as DynamicZodObject;
+
+				tool = new DynamicStructuredTool<typeof zodSchema>({
+					schema: zodSchema,
+					...functionBase,
+				});
+			} catch (error) {
+				throw new NodeOperationError(
+					this.getNode(),
+					'Error during parsing of JSON Schema. \n ' + error,
+				);
+			}
+		} else {
+			tool = new DynamicTool(functionBase);
+		}
+
 		return {
-			response: new DynamicTool({
-				name,
-				description,
-
-				func: async (query: string, runManager?: CallbackManagerForToolRun): Promise<string> => {
-					const { index } = this.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
-
-					let response: string = '';
-					let executionError: ExecutionError | undefined;
-					try {
-						response = await runFunction(query, runManager);
-					} catch (error) {
-						// TODO: Do some more testing. Issues here should actually fail the workflow
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-						executionError = error;
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-						response = `There was an error: "${error.message}"`;
-					}
-
-					if (typeof response === 'number') {
-						response = (response as number).toString();
-					}
-
-					if (isObject(response)) {
-						response = JSON.stringify(response, null, 2);
-					}
-
-					if (typeof response !== 'string') {
-						// TODO: Do some more testing. Issues here should actually fail the workflow
-						executionError = new NodeOperationError(this.getNode(), 'Wrong output type returned', {
-							description: `The response property should be a string, but it is an ${typeof response}`,
-						});
-						response = `There was an error: "${executionError.message}"`;
-					}
-
-					if (executionError) {
-						void this.addOutputData(NodeConnectionType.AiTool, index, executionError);
-					} else {
-						void this.addOutputData(NodeConnectionType.AiTool, index, [[{ json: { response } }]]);
-					}
-					return response;
-				},
-			}),
+			response: tool,
 		};
 	}
 }

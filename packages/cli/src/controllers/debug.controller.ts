@@ -1,5 +1,5 @@
 import { Get, RestController } from '@/decorators';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
@@ -7,7 +7,7 @@ import { WorkflowRepository } from '@/databases/repositories/workflow.repository
 export class DebugController {
 	constructor(
 		private readonly orchestrationService: OrchestrationService,
-		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
+		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly workflowRepository: WorkflowRepository,
 	) {}
 
@@ -16,12 +16,12 @@ export class DebugController {
 		const leaderKey = await this.orchestrationService.multiMainSetup.fetchLeaderKey();
 
 		const triggersAndPollers = await this.workflowRepository.findIn(
-			this.activeWorkflowRunner.allActiveInMemory(),
+			this.activeWorkflowManager.allActiveInMemory(),
 		);
 
 		const webhooks = await this.workflowRepository.findWebhookBasedActiveWorkflows();
 
-		const activationErrors = await this.activeWorkflowRunner.getAllWorkflowActivationErrors();
+		const activationErrors = await this.activeWorkflowManager.getAllWorkflowActivationErrors();
 
 		return {
 			instanceId: this.orchestrationService.instanceId,

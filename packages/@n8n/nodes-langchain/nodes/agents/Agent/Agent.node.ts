@@ -7,6 +7,7 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	INodeProperties,
 } from 'n8n-workflow';
 import { getTemplateNoticeField } from '../../../utils/sharedFields';
 import { promptTypeOptions, textInput } from '../../../utils/descriptions';
@@ -20,11 +21,13 @@ import { reActAgentAgentProperties } from './agents/ReActAgent/description';
 import { reActAgentAgentExecute } from './agents/ReActAgent/execute';
 import { sqlAgentAgentProperties } from './agents/SqlAgent/description';
 import { sqlAgentAgentExecute } from './agents/SqlAgent/execute';
+import { toolsAgentProperties } from './agents/ToolsAgent/description';
+import { toolsAgentExecute } from './agents/ToolsAgent/execute';
 
 // Function used in the inputs expression to figure out which inputs to
 // display based on the agent type
 function getInputs(
-	agent: 'conversationalAgent' | 'openAiFunctionsAgent' | 'reActAgent' | 'sqlAgent',
+	agent: 'toolsAgent' | 'conversationalAgent' | 'openAiFunctionsAgent' | 'reActAgent' | 'sqlAgent',
 	hasOutputParser?: boolean,
 ): Array<ConnectionTypes | INodeInputConfiguration> {
 	interface SpecialInput {
@@ -43,7 +46,7 @@ function getInputs(
 			[NodeConnectionType.AiOutputParser]: 'Output Parser',
 		};
 
-		return inputs.map(({ type, filter, required }) => {
+		return inputs.map(({ type, filter }) => {
 			const input: INodeInputConfiguration = {
 				type,
 				displayName: type in displayNames ? displayNames[type] : undefined,
@@ -72,6 +75,7 @@ function getInputs(
 				filter: {
 					nodes: [
 						'@n8n/n8n-nodes-langchain.lmChatAnthropic',
+						'@n8n/n8n-nodes-langchain.lmChatGroq',
 						'@n8n/n8n-nodes-langchain.lmChatOllama',
 						'@n8n/n8n-nodes-langchain.lmChatOpenAi',
 						'@n8n/n8n-nodes-langchain.lmChatGooglePalm',
@@ -86,6 +90,31 @@ function getInputs(
 			},
 			{
 				type: NodeConnectionType.AiTool,
+			},
+			{
+				type: NodeConnectionType.AiOutputParser,
+			},
+		];
+	} else if (agent === 'toolsAgent') {
+		specialInputs = [
+			{
+				type: NodeConnectionType.AiLanguageModel,
+				filter: {
+					nodes: [
+						'@n8n/n8n-nodes-langchain.lmChatAnthropic',
+						'@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
+						'@n8n/n8n-nodes-langchain.lmChatMistralCloud',
+						'@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						'@n8n/n8n-nodes-langchain.lmChatGroq',
+					],
+				},
+			},
+			{
+				type: NodeConnectionType.AiMemory,
+			},
+			{
+				type: NodeConnectionType.AiTool,
+				required: true,
 			},
 			{
 				type: NodeConnectionType.AiOutputParser,
@@ -156,16 +185,62 @@ function getInputs(
 	return [NodeConnectionType.Main, ...getInputData(specialInputs)];
 }
 
+const agentTypeProperty: INodeProperties = {
+	displayName: 'Agent',
+	name: 'agent',
+	type: 'options',
+	noDataExpression: true,
+	// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+	options: [
+		{
+			name: 'Tools Agent',
+			value: 'toolsAgent',
+			description:
+				'Utilized unified Tool calling interface to select the appropriate tools and argument for execution',
+		},
+		{
+			name: 'Conversational Agent',
+			value: 'conversationalAgent',
+			description:
+				'Selects tools to accomplish its task and uses memory to recall previous conversations',
+		},
+		{
+			name: 'OpenAI Functions Agent',
+			value: 'openAiFunctionsAgent',
+			description:
+				"Utilizes OpenAI's Function Calling feature to select the appropriate tool and arguments for execution",
+		},
+		{
+			name: 'Plan and Execute Agent',
+			value: 'planAndExecuteAgent',
+			description:
+				'Plan and execute agents accomplish an objective by first planning what to do, then executing the sub tasks',
+		},
+		{
+			name: 'ReAct Agent',
+			value: 'reActAgent',
+			description: 'Strategically select tools to accomplish a given task',
+		},
+		{
+			name: 'SQL Agent',
+			value: 'sqlAgent',
+			description: 'Answers questions about data in an SQL database',
+		},
+	],
+	default: '',
+};
+
 export class Agent implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AI Agent',
 		name: 'agent',
 		icon: 'fa:robot',
+		iconColor: 'black',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
 		description: 'Generates an action plan and executes it. Can use external tools.',
 		subtitle:
-			"={{ {	conversationalAgent: 'Conversational Agent', openAiFunctionsAgent: 'OpenAI Functions Agent', reActAgent: 'ReAct Agent', sqlAgent: 'SQL Agent', planAndExecuteAgent: 'Plan and Execute Agent' }[$parameter.agent] }}",
+			"={{ {	toolsAgent: 'Tools Agent', conversationalAgent: 'Conversational Agent', openAiFunctionsAgent: 'OpenAI Functions Agent', reActAgent: 'ReAct Agent', sqlAgent: 'SQL Agent', planAndExecuteAgent: 'Plan and Execute Agent' }[$parameter.agent] }}",
 		defaults: {
 			name: 'AI Agent',
 			color: '#404040',
@@ -174,7 +249,7 @@ export class Agent implements INodeType {
 			alias: ['LangChain'],
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Agents'],
+				AI: ['Agents', 'Root Nodes'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -224,42 +299,20 @@ export class Agent implements INodeType {
 					},
 				},
 			},
+			// Make Conversational Agent the default agent for versions 1.5 and below
 			{
-				displayName: 'Agent',
-				name: 'agent',
-				type: 'options',
-				noDataExpression: true,
-				options: [
-					{
-						name: 'Conversational Agent',
-						value: 'conversationalAgent',
-						description:
-							'Selects tools to accomplish its task and uses memory to recall previous conversations',
-					},
-					{
-						name: 'OpenAI Functions Agent',
-						value: 'openAiFunctionsAgent',
-						description:
-							"Utilizes OpenAI's Function Calling feature to select the appropriate tool and arguments for execution",
-					},
-					{
-						name: 'Plan and Execute Agent',
-						value: 'planAndExecuteAgent',
-						description:
-							'Plan and execute agents accomplish an objective by first planning what to do, then executing the sub tasks',
-					},
-					{
-						name: 'ReAct Agent',
-						value: 'reActAgent',
-						description: 'Strategically select tools to accomplish a given task',
-					},
-					{
-						name: 'SQL Agent',
-						value: 'sqlAgent',
-						description: 'Answers questions about data in an SQL database',
-					},
-				],
+				...agentTypeProperty,
+				options: agentTypeProperty?.options?.filter(
+					(o) => 'value' in o && o.value !== 'toolsAgent',
+				),
+				displayOptions: { show: { '@version': [{ _cnd: { lte: 1.5 } }] } },
 				default: 'conversationalAgent',
+			},
+			// Make Tools Agent the default agent for versions 1.6 and above
+			{
+				...agentTypeProperty,
+				displayOptions: { show: { '@version': [{ _cnd: { gte: 1.6 } }] } },
+				default: 'toolsAgent',
 			},
 			{
 				...promptTypeOptions,
@@ -306,6 +359,7 @@ export class Agent implements INodeType {
 				},
 			},
 
+			...toolsAgentProperties,
 			...conversationalAgentProperties,
 			...openAiFunctionsAgentProperties,
 			...reActAgentAgentProperties,
@@ -320,12 +374,14 @@ export class Agent implements INodeType {
 
 		if (agentType === 'conversationalAgent') {
 			return await conversationalAgentExecute.call(this, nodeVersion);
+		} else if (agentType === 'toolsAgent') {
+			return await toolsAgentExecute.call(this);
 		} else if (agentType === 'openAiFunctionsAgent') {
 			return await openAiFunctionsAgentExecute.call(this, nodeVersion);
 		} else if (agentType === 'reActAgent') {
 			return await reActAgentAgentExecute.call(this, nodeVersion);
 		} else if (agentType === 'sqlAgent') {
-			return await sqlAgentAgentExecute.call(this, nodeVersion);
+			return await sqlAgentAgentExecute.call(this);
 		} else if (agentType === 'planAndExecuteAgent') {
 			return await planAndExecuteAgentExecute.call(this, nodeVersion);
 		}

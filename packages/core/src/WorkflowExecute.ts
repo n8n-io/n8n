@@ -34,6 +34,7 @@ import type {
 	WorkflowExecuteMode,
 	CloseFunction,
 	StartNodeData,
+	NodeExecutionHint,
 } from 'n8n-workflow';
 import {
 	LoggerProxy as Logger,
@@ -41,6 +42,9 @@ import {
 	NodeHelpers,
 	NodeConnectionType,
 	ApplicationError,
+	NodeExecutionOutput,
+	sleep,
+	OBFUSCATED_ERROR_MESSAGE,
 } from 'n8n-workflow';
 import get from 'lodash/get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
@@ -138,6 +142,10 @@ export class WorkflowExecute {
 		};
 
 		return this.processRunExecutionData(workflow);
+	}
+
+	static isAbortError(e?: ExecutionBaseError) {
+		return e?.message === 'AbortError';
 	}
 
 	forceInputNodeExecution(workflow: Workflow): boolean {
@@ -803,6 +811,7 @@ export class WorkflowExecute {
 		// Variables which hold temporary data for each node-execution
 		let executionData: IExecuteData;
 		let executionError: ExecutionBaseError | undefined;
+		let executionHints: NodeExecutionHint[] = [];
 		let executionNode: INode;
 		let nodeSuccessData: INodeExecutionData[][] | null | undefined;
 		let runIndex: number;
@@ -824,7 +833,7 @@ export class WorkflowExecute {
 		let lastExecutionTry = '';
 		let closeFunction: Promise<void> | undefined;
 
-		return new PCancelable(async (resolve, reject, onCancel) => {
+		return new PCancelable(async (resolve, _reject, onCancel) => {
 			// Let as many nodes listen to the abort signal, without getting the MaxListenersExceededWarning
 			setMaxListeners(Infinity, this.abortController.signal);
 
@@ -834,7 +843,6 @@ export class WorkflowExecute {
 				this.abortController.abort();
 				const fullRunData = this.getFullRunData(startedAt);
 				void this.executeHook('workflowExecuteAfter', [fullRunData]);
-				setTimeout(() => resolve(fullRunData), 10);
 			});
 
 			// eslint-disable-next-line complexity
@@ -893,6 +901,7 @@ export class WorkflowExecute {
 
 					nodeSuccessData = null;
 					executionError = undefined;
+					executionHints = [];
 					executionData =
 						this.runExecutionData.executionData!.nodeExecutionStack.shift() as IExecuteData;
 					executionNode = executionData.node;
@@ -1047,7 +1056,7 @@ export class WorkflowExecute {
 									workflowId: workflow.id,
 								});
 
-								const runNodeData = await workflow.runNode(
+								let runNodeData = await workflow.runNode(
 									executionData,
 									this.runExecutionData,
 									runIndex,
@@ -1056,7 +1065,32 @@ export class WorkflowExecute {
 									this.mode,
 									this.abortController.signal,
 								);
+
 								nodeSuccessData = runNodeData.data;
+
+								const didContinueOnFail = nodeSuccessData?.at(0)?.at(0)?.json?.error !== undefined;
+
+								while (didContinueOnFail && tryIndex !== maxTries - 1) {
+									await sleep(waitBetweenTries);
+
+									runNodeData = await workflow.runNode(
+										executionData,
+										this.runExecutionData,
+										runIndex,
+										this.additionalData,
+										NodeExecuteFunctions,
+										this.mode,
+										this.abortController.signal,
+									);
+
+									tryIndex++;
+								}
+
+								if (nodeSuccessData instanceof NodeExecutionOutput) {
+									const hints: NodeExecutionHint[] = nodeSuccessData.getHints();
+
+									executionHints.push(...hints);
+								}
 
 								if (nodeSuccessData && executionData.node.onError === 'continueErrorOutput') {
 									// If errorOutput is activated check all the output items for error data.
@@ -1241,7 +1275,7 @@ export class WorkflowExecute {
 										if (!inputData) {
 											return;
 										}
-										inputData.forEach((item, itemIndex) => {
+										inputData.forEach((_item, itemIndex) => {
 											pairedItem.push({
 												item: itemIndex,
 												input: inputIndex,
@@ -1270,13 +1304,12 @@ export class WorkflowExecute {
 						} catch (error) {
 							this.runExecutionData.resultData.lastNodeExecuted = executionData.node.name;
 
+							const message =
+								error instanceof ApplicationError ? error.message : OBFUSCATED_ERROR_MESSAGE;
+
 							const e = error as unknown as ExecutionBaseError;
 
-							executionError = {
-								...e,
-								message: e.message,
-								stack: e.stack,
-							};
+							executionError = { ...e, message, stack: e.stack };
 
 							Logger.debug(`Running node "${executionNode.name}" finished with error`, {
 								node: executionNode.name,
@@ -1293,6 +1326,7 @@ export class WorkflowExecute {
 					}
 
 					taskData = {
+						hints: executionHints,
 						startTime,
 						executionTime: new Date().getTime() - startTime,
 						source: !executionData.source ? [] : executionData.source.main,
@@ -1323,12 +1357,14 @@ export class WorkflowExecute {
 
 							// Add the execution data again so that it can get restarted
 							this.runExecutionData.executionData!.nodeExecutionStack.unshift(executionData);
-
-							await this.executeHook('nodeExecuteAfter', [
-								executionNode.name,
-								taskData,
-								this.runExecutionData,
-							]);
+							// Only execute the nodeExecuteAfter hook if the node did not get aborted
+							if (!WorkflowExecute.isAbortError(executionError)) {
+								await this.executeHook('nodeExecuteAfter', [
+									executionNode.name,
+									taskData,
+									this.runExecutionData,
+								]);
+							}
 
 							break;
 						}
@@ -1670,7 +1706,7 @@ export class WorkflowExecute {
 						return await this.processSuccessExecution(
 							startedAt,
 							workflow,
-							new WorkflowOperationError('Workflow has been canceled or timed out!'),
+							new WorkflowOperationError('Workflow has been canceled or timed out'),
 							closeFunction,
 						);
 					}
@@ -1770,8 +1806,10 @@ export class WorkflowExecute {
 		}
 
 		this.moveNodeMetadata();
-
-		await this.executeHook('workflowExecuteAfter', [fullRunData, newStaticData]);
+		// Prevent from running the hook if the error is an abort error as it was already handled
+		if (!WorkflowExecute.isAbortError(executionError)) {
+			await this.executeHook('workflowExecuteAfter', [fullRunData, newStaticData]);
+		}
 
 		if (closeFunction) {
 			try {

@@ -41,8 +41,28 @@ export class License {
 		private readonly usageMetricsService: UsageMetricsService,
 	) {}
 
-	async init(instanceType: N8nInstanceType = 'main') {
-		if (this.manager) {
+	/**
+	 * Whether this instance should renew the license - on init and periodically.
+	 */
+	private renewalEnabled(instanceType: N8nInstanceType) {
+		if (instanceType !== 'main') return false;
+
+		const autoRenewEnabled = config.getEnv('license.autoRenewEnabled');
+
+		/**
+		 * In multi-main setup, all mains start off with `unset` status and so renewal disabled.
+		 * On becoming leader or follower, each will enable or disable renewal, respectively.
+		 * This ensures the mains do not cause a 429 (too many requests) on license init.
+		 */
+		if (config.getEnv('multiMainSetup.enabled')) {
+			return autoRenewEnabled && config.getEnv('multiMainSetup.instanceType') === 'leader';
+		}
+
+		return autoRenewEnabled;
+	}
+
+	async init(instanceType: N8nInstanceType = 'main', forceRecreate = false) {
+		if (this.manager && !forceRecreate) {
 			this.logger.warn('License manager already initialized or shutting down');
 			return;
 		}
@@ -53,7 +73,6 @@ export class License {
 
 		const isMainInstance = instanceType === 'main';
 		const server = config.getEnv('license.serverUrl');
-		const autoRenewEnabled = isMainInstance && config.getEnv('license.autoRenewEnabled');
 		const offlineMode = !isMainInstance;
 		const autoRenewOffset = config.getEnv('license.autoRenewOffset');
 		const saveCertStr = isMainInstance
@@ -65,14 +84,19 @@ export class License {
 		const collectUsageMetrics = isMainInstance
 			? async () => await this.usageMetricsService.collectUsageMetrics()
 			: async () => [];
+		const collectPassthroughData = isMainInstance
+			? async () => await this.usageMetricsService.collectPassthroughData()
+			: async () => ({});
+
+		const renewalEnabled = this.renewalEnabled(instanceType);
 
 		try {
 			this.manager = new LicenseManager({
 				server,
 				tenantId: config.getEnv('license.tenantId'),
 				productIdentifier: `n8n-${N8N_VERSION}`,
-				autoRenewEnabled,
-				renewOnInit: autoRenewEnabled,
+				autoRenewEnabled: renewalEnabled,
+				renewOnInit: renewalEnabled,
 				autoRenewOffset,
 				offlineMode,
 				logger: this.logger,
@@ -80,6 +104,7 @@ export class License {
 				saveCertStr,
 				deviceFingerprint: () => this.instanceSettings.instanceId,
 				collectUsageMetrics,
+				collectPassthroughData,
 				onFeatureChange,
 			});
 
@@ -126,7 +151,7 @@ export class License {
 
 			if (this.orchestrationService.isMultiMainSetupEnabled && !isMultiMainLicensed) {
 				this.logger.debug(
-					'[Multi-main setup] License changed with no support for multi-main setup - no new followers will be allowed to init. To restore multi-main setup, please upgrade to a license that supporst this feature.',
+					'[Multi-main setup] License changed with no support for multi-main setup - no new followers will be allowed to init. To restore multi-main setup, please upgrade to a license that supports this feature.',
 				);
 			}
 		}
@@ -268,6 +293,18 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.WORKER_VIEW);
 	}
 
+	isProjectRoleAdminLicensed() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.PROJECT_ROLE_ADMIN);
+	}
+
+	isProjectRoleEditorLicensed() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.PROJECT_ROLE_EDITOR);
+	}
+
+	isProjectRoleViewerLicensed() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.PROJECT_ROLE_VIEWER);
+	}
+
 	getCurrentEntitlements() {
 		return this.manager?.getCurrentEntitlements() ?? [];
 	}
@@ -320,6 +357,10 @@ export class License {
 		);
 	}
 
+	getTeamProjectLimit() {
+		return this.getFeatureValue(LICENSE_QUOTAS.TEAM_PROJECT_LIMIT) ?? 0;
+	}
+
 	getPlanName(): string {
 		return this.getFeatureValue('planName') ?? 'Community';
 	}
@@ -334,5 +375,10 @@ export class License {
 
 	isWithinUsersLimit() {
 		return this.getUsersLimit() === UNLIMITED_LICENSE_QUOTA;
+	}
+
+	async reinit() {
+		this.manager?.reset();
+		await this.init('main', true);
 	}
 }

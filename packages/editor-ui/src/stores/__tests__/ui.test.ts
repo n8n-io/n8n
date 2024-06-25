@@ -4,7 +4,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { merge } from 'lodash-es';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import * as cloudPlanApi from '@/api/cloudPlans';
 import {
@@ -53,6 +53,7 @@ describe('UI store', () => {
 		uiStore = useUIStore();
 		settingsStore = useSettingsStore();
 		rootStore = useRootStore();
+
 		cloudPlanStore = useCloudPlanStore();
 
 		mockedCloudStore = vi.spyOn(cloudPlanStore, 'getAutoLoginCode');

@@ -1,17 +1,13 @@
 <script lang="ts" setup>
 import { useI18n } from '@/composables/useI18n';
-import type { PropType } from 'vue';
 
 const emit = defineEmits<{
 	(e: 'update:modelValue', feedback: 'positive' | 'negative'): void;
 }>();
 
-defineProps({
-	modelValue: {
-		type: String as PropType<'positive' | 'negative' | undefined>,
-		default: undefined,
-	},
-});
+defineProps<{
+	modelValue?: 'positive' | 'negative';
+}>();
 
 const i18n = useI18n();
 

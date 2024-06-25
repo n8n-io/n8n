@@ -1,45 +1,44 @@
 import { addVarType } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
-import { defineComponent } from 'vue';
+import { useI18n } from '@/composables/useI18n';
 
 const DEFAULT_MATCHER = '$prevNode';
 
 const escape = (str: string) => str.replace('$', '\\$');
 
-export const prevNodeCompletions = defineComponent({
-	methods: {
-		/**
-		 * Complete `$prevNode.` to `.name .outputIndex .runIndex`.
-		 */
-		prevNodeCompletions(
-			context: CompletionContext,
-			matcher = DEFAULT_MATCHER,
-		): CompletionResult | null {
-			const pattern = new RegExp(`${escape(matcher)}\..*`);
+export function usePrevNodeCompletions(matcher = DEFAULT_MATCHER) {
+	const i18n = useI18n();
 
-			const preCursor = context.matchBefore(pattern);
+	/**
+	 * Complete `$prevNode.` to `.name .outputIndex .runIndex`.
+	 */
+	const prevNodeCompletions = (context: CompletionContext): CompletionResult | null => {
+		const pattern = new RegExp(`${escape(matcher)}\..*`);
 
-			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
+		const preCursor = context.matchBefore(pattern);
 
-			const options: Completion[] = [
-				{
-					label: `${matcher}.name`,
-					info: this.$locale.baseText('codeNodeEditor.completer.$prevNode.name'),
-				},
-				{
-					label: `${matcher}.outputIndex`,
-					info: this.$locale.baseText('codeNodeEditor.completer.$prevNode.outputIndex'),
-				},
-				{
-					label: `${matcher}.runIndex`,
-					info: this.$locale.baseText('codeNodeEditor.completer.$prevNode.runIndex'),
-				},
-			];
+		if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
 
-			return {
-				from: preCursor.from,
-				options: options.map(addVarType),
-			};
-		},
-	},
-});
+		const options: Completion[] = [
+			{
+				label: `${matcher}.name`,
+				info: i18n.baseText('codeNodeEditor.completer.$prevNode.name'),
+			},
+			{
+				label: `${matcher}.outputIndex`,
+				info: i18n.baseText('codeNodeEditor.completer.$prevNode.outputIndex'),
+			},
+			{
+				label: `${matcher}.runIndex`,
+				info: i18n.baseText('codeNodeEditor.completer.$prevNode.runIndex'),
+			},
+		];
+
+		return {
+			from: preCursor.from,
+			options: options.map(addVarType),
+		};
+	};
+
+	return { prevNodeCompletions };
+}

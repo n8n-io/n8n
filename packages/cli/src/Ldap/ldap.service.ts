@@ -1,4 +1,5 @@
 import { Service } from 'typedi';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { QueryFailedError } from '@n8n/typeorm';
 import type { Entry as LdapUser, ClientOptions } from 'ldapts';
 import { Client } from 'ldapts';
@@ -349,7 +350,7 @@ export class LdapService {
 			localAdUsers,
 		);
 
-		this.logger.debug('LDAP - Users processed', {
+		this.logger.debug('LDAP - Users to process', {
 			created: usersToCreate.length,
 			updated: usersToUpdate.length,
 			disabled: usersToDisable.length,

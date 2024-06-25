@@ -3,41 +3,46 @@ import { v4 as uuid } from 'uuid';
 import config from '@/config';
 import { SettingsRepository } from '@db/repositories/settings.repository';
 import { UserRepository } from '@db/repositories/user.repository';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { License } from '@/License';
-import { LICENSE_FEATURES, inE2ETests } from '@/constants';
+import { LICENSE_FEATURES, LICENSE_QUOTAS, UNLIMITED_LICENSE_QUOTA, inE2ETests } from '@/constants';
 import { Patch, Post, RestController } from '@/decorators';
 import type { UserSetupPayload } from '@/requests';
-import type { BooleanLicenseFeature, IPushDataType } from '@/Interfaces';
+import type { BooleanLicenseFeature, IPushDataType, NumericLicenseFeature } from '@/Interfaces';
 import { MfaService } from '@/Mfa/mfa.service';
 import { Push } from '@/push';
 import { CacheService } from '@/services/cache/cache.service';
 import { PasswordUtility } from '@/services/password.utility';
+import Container from 'typedi';
+import { Logger } from '@/Logger';
+import { AuthUserRepository } from '@/databases/repositories/authUser.repository';
 
 if (!inE2ETests) {
-	console.error('E2E endpoints only allowed during E2E tests');
+	Container.get(Logger).error('E2E endpoints only allowed during E2E tests');
 	process.exit(1);
 }
 
 const tablesToTruncate = [
 	'auth_identity',
 	'auth_provider_sync_history',
-	'event_destinations',
-	'shared_workflow',
-	'shared_credentials',
-	'webhook_entity',
-	'workflows_tags',
 	'credentials_entity',
-	'tag_entity',
-	'workflow_statistics',
-	'workflow_entity',
+	'event_destinations',
 	'execution_entity',
-	'settings',
-	'installed_packages',
 	'installed_nodes',
+	'installed_packages',
+	'project',
+	'project_relation',
+	'settings',
+	'shared_credentials',
+	'shared_workflow',
+	'tag_entity',
 	'user',
 	'variables',
+	'webhook_entity',
+	'workflow_entity',
+	'workflow_statistics',
+	'workflows_tags',
 ];
 
 type ResetRequest = Request<
@@ -79,21 +84,36 @@ export class E2EController {
 		[LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES]: false,
 		[LICENSE_FEATURES.WORKER_VIEW]: false,
 		[LICENSE_FEATURES.ADVANCED_PERMISSIONS]: false,
+		[LICENSE_FEATURES.PROJECT_ROLE_ADMIN]: false,
+		[LICENSE_FEATURES.PROJECT_ROLE_EDITOR]: false,
+		[LICENSE_FEATURES.PROJECT_ROLE_VIEWER]: false,
+	};
+
+	private numericFeatures: Record<NumericLicenseFeature, number> = {
+		[LICENSE_QUOTAS.TRIGGER_LIMIT]: -1,
+		[LICENSE_QUOTAS.VARIABLES_LIMIT]: -1,
+		[LICENSE_QUOTAS.USERS_LIMIT]: -1,
+		[LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT]: -1,
+		[LICENSE_QUOTAS.TEAM_PROJECT_LIMIT]: 0,
 	};
 
 	constructor(
 		license: License,
 		private readonly settingsRepo: SettingsRepository,
-		private readonly userRepo: UserRepository,
-		private readonly workflowRunner: ActiveWorkflowRunner,
+		private readonly workflowRunner: ActiveWorkflowManager,
 		private readonly mfaService: MfaService,
 		private readonly cacheService: CacheService,
 		private readonly push: Push,
 		private readonly passwordUtility: PasswordUtility,
 		private readonly eventBus: MessageEventBus,
+		private readonly userRepository: UserRepository,
+		private readonly authUserRepository: AuthUserRepository,
 	) {
 		license.isFeatureEnabled = (feature: BooleanLicenseFeature) =>
 			this.enabledFeatures[feature] ?? false;
+		// eslint-disable-next-line @typescript-eslint/unbound-method
+		license.getFeatureValue<NumericLicenseFeature> = (feature: NumericLicenseFeature) =>
+			this.numericFeatures[feature] ?? UNLIMITED_LICENSE_QUOTA;
 	}
 
 	@Post('/reset', { skipAuth: true })
@@ -115,6 +135,12 @@ export class E2EController {
 	setFeature(req: Request<{}, {}, { feature: BooleanLicenseFeature; enabled: boolean }>) {
 		const { enabled, feature } = req.body;
 		this.enabledFeatures[feature] = enabled;
+	}
+
+	@Patch('/quota', { skipAuth: true })
+	setQuota(req: Request<{}, {}, { feature: NumericLicenseFeature; value: number }>) {
+		const { value, feature } = req.body;
+		this.numericFeatures[feature] = value;
 	}
 
 	@Patch('/queue-mode', { skipAuth: true })
@@ -149,7 +175,9 @@ export class E2EController {
 					`DELETE FROM ${table}; DELETE FROM sqlite_sequence WHERE name=${table};`,
 				);
 			} catch (error) {
-				console.warn('Dropping Table for E2E Reset error: ', error);
+				Container.get(Logger).warn('Dropping Table for E2E Reset error', {
+					error: error as Error,
+				});
 			}
 		}
 	}
@@ -159,34 +187,27 @@ export class E2EController {
 		members: UserSetupPayload[],
 		admin: UserSetupPayload,
 	) {
-		const instanceOwner = this.userRepo.create({
-			id: uuid(),
-			...owner,
-			password: await this.passwordUtility.hash(owner.password),
-			role: 'global:owner',
-		});
+		const userCreatePromises = [
+			this.userRepository.createUserWithProject({
+				id: uuid(),
+				...owner,
+				password: await this.passwordUtility.hash(owner.password),
+				role: 'global:owner',
+			}),
+		];
 
-		if (owner?.mfaSecret && owner.mfaRecoveryCodes?.length) {
-			const { encryptedRecoveryCodes, encryptedSecret } =
-				this.mfaService.encryptSecretAndRecoveryCodes(owner.mfaSecret, owner.mfaRecoveryCodes);
-			instanceOwner.mfaSecret = encryptedSecret;
-			instanceOwner.mfaRecoveryCodes = encryptedRecoveryCodes;
-		}
-
-		const adminUser = this.userRepo.create({
-			id: uuid(),
-			...admin,
-			password: await this.passwordUtility.hash(admin.password),
-			role: 'global:admin',
-		});
-
-		const users = [];
-
-		users.push(instanceOwner, adminUser);
+		userCreatePromises.push(
+			this.userRepository.createUserWithProject({
+				id: uuid(),
+				...admin,
+				password: await this.passwordUtility.hash(admin.password),
+				role: 'global:admin',
+			}),
+		);
 
 		for (const { password, ...payload } of members) {
-			users.push(
-				this.userRepo.create({
+			userCreatePromises.push(
+				this.userRepository.createUserWithProject({
 					id: uuid(),
 					...payload,
 					password: await this.passwordUtility.hash(password),
@@ -195,7 +216,17 @@ export class E2EController {
 			);
 		}
 
-		await this.userRepo.insert(users);
+		const [newOwner] = await Promise.all(userCreatePromises);
+
+		if (owner?.mfaSecret && owner.mfaRecoveryCodes?.length) {
+			const { encryptedRecoveryCodes, encryptedSecret } =
+				this.mfaService.encryptSecretAndRecoveryCodes(owner.mfaSecret, owner.mfaRecoveryCodes);
+
+			await this.authUserRepository.update(newOwner.user.id, {
+				mfaSecret: encryptedSecret,
+				mfaRecoveryCodes: encryptedRecoveryCodes,
+			});
+		}
 
 		await this.settingsRepo.update(
 			{ key: 'userManagement.isInstanceOwnerSetUp' },

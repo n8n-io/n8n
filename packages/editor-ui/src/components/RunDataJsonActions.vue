@@ -64,6 +64,7 @@ export default defineComponent({
 	props: {
 		node: {
 			type: Object as PropType<INodeUi>,
+			required: true,
 		},
 		paneType: {
 			type: String,
@@ -156,14 +157,14 @@ export default defineComponent({
 			const pathParts = newPath.split(']');
 			const index = pathParts[0].slice(1);
 			path = pathParts.slice(1).join(']');
-			startPath = `$item(${index}).$node["${this.node!.name}"].json`;
+			startPath = `$item(${index}).$node["${this.node.name}"].json`;
 
 			return { path, startPath };
 		},
 		getJsonParameterPath(): JsonPathData {
 			const newPath = convertPath(this.normalisedJsonPath);
 			const path = newPath.split(']').slice(1).join(']');
-			let startPath = `$node["${this.node!.name}"].json`;
+			let startPath = `$node["${this.node.name}"].json`;
 
 			if (this.distanceFromActive === 1) {
 				startPath = '$json';
@@ -221,7 +222,7 @@ export default defineComponent({
 			}[commandData.command];
 
 			this.$telemetry.track('User copied ndv data', {
-				node_type: this.activeNode.type,
+				node_type: this.activeNode?.type,
 				push_ref: this.pushRef,
 				run_index: this.runIndex,
 				view: 'json',

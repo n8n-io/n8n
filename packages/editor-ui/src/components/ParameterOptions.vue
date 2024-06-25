@@ -20,7 +20,7 @@
 					icon-size="small"
 					:actions="actions"
 					:icon-orientation="iconOrientation"
-					@action="(action) => $emit('update:modelValue', action)"
+					@action="(action: string) => $emit('update:modelValue', action)"
 					@visible-change="onMenuToggle"
 				/>
 			</div>
@@ -40,7 +40,7 @@
 </template>
 
 <script lang="ts">
-import type { NodeParameterValueType } from 'n8n-workflow';
+import type { INodeProperties, NodeParameterValueType } from 'n8n-workflow';
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { isResourceLocatorValue } from '@/utils/typeGuards';
@@ -51,7 +51,8 @@ export default defineComponent({
 	name: 'ParameterOptions',
 	props: {
 		parameter: {
-			type: Object,
+			type: Object as PropType<INodeProperties>,
+			required: true,
 		},
 		isReadOnly: {
 			type: Boolean,
@@ -87,6 +88,7 @@ export default defineComponent({
 			},
 		},
 	},
+	emits: ['update:modelValue', 'menu-expanded'],
 	computed: {
 		isDefault(): boolean {
 			return this.parameter.default === this.value;
@@ -109,7 +111,7 @@ export default defineComponent({
 				return false;
 			}
 
-			if (['codeNodeEditor', 'sqlEditor'].includes(this.parameter.typeOptions?.editor)) {
+			if (['codeNodeEditor', 'sqlEditor'].includes(this.parameter.typeOptions?.editor ?? '')) {
 				return false;
 			}
 

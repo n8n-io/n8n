@@ -71,4 +71,10 @@ async function onCloseClick() {
 	align-items: center;
 	gap: var(--spacing-l);
 }
+
+:global(.n8n-callout) {
+	border-top: 0;
+	border-left: 0;
+	border-right: 0;
+}
 </style>

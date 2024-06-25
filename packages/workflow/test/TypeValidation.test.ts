@@ -1,4 +1,4 @@
-import { validateFieldType } from '@/TypeValidation';
+import { getValueDescription, validateFieldType } from '@/TypeValidation';
 import { DateTime } from 'luxon';
 
 const VALID_ISO_DATES = [
@@ -228,6 +228,17 @@ describe('Type Validation', () => {
 				expect(validateFieldType('test', 42, 'string', options).newValue).toBe('42');
 				expect(validateFieldType('test', true, 'string', options).newValue).toBe('true');
 			});
+		});
+	});
+	describe('getValueDescription util function', () => {
+		it('should return correct description', () => {
+			expect(getValueDescription('foo')).toBe("'foo'");
+			expect(getValueDescription(42)).toBe("'42'");
+			expect(getValueDescription(true)).toBe("'true'");
+			expect(getValueDescription(null)).toBe("'null'");
+			expect(getValueDescription(undefined)).toBe("'undefined'");
+			expect(getValueDescription([{}])).toBe('array');
+			expect(getValueDescription({})).toBe('object');
 		});
 	});
 });

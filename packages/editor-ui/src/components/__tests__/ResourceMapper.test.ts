@@ -1,20 +1,17 @@
 import {
 	DEFAULT_SETUP,
 	MAPPING_COLUMNS_RESPONSE,
-	NODE_PARAMETER_VALUES,
 	UPDATED_SCHEMA,
 } from './utils/ResourceMapper.utils';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { waitAllPromises } from '@/__tests__/utils';
-import * as workflowHelpers from '@/composables/useWorkflowHelpers';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
-import type { SpyInstance } from 'vitest';
+import type { MockInstance } from 'vitest';
 
 let nodeTypeStore: ReturnType<typeof useNodeTypesStore>;
-let fetchFieldsSpy: SpyInstance;
-let resolveParameterSpy: SpyInstance;
+let fetchFieldsSpy: MockInstance;
 
 const renderComponent = createComponentRenderer(ResourceMapper, DEFAULT_SETUP);
 
@@ -24,9 +21,6 @@ describe('ResourceMapper.vue', () => {
 		fetchFieldsSpy = vi
 			.spyOn(nodeTypeStore, 'getResourceMapperFields')
 			.mockResolvedValue(MAPPING_COLUMNS_RESPONSE);
-		resolveParameterSpy = vi
-			.spyOn(workflowHelpers, 'resolveRequiredParameters')
-			.mockReturnValue(NODE_PARAMETER_VALUES);
 	});
 
 	afterEach(() => {
@@ -198,7 +192,7 @@ describe('ResourceMapper.vue', () => {
 	});
 
 	it('should render correct fields based on saved schema', async () => {
-		const { getByTestId, queryAllByTestId } = renderComponent(
+		const { getByTestId } = renderComponent(
 			{
 				props: {
 					node: {

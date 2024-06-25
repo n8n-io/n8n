@@ -23,16 +23,17 @@ const inlineInput = ref<InstanceType<typeof InlineExpressionEditorInput>>();
 type Props = {
 	path: string;
 	modelValue: string;
-	isReadOnly: boolean;
-	rows: number;
-	isAssignment: boolean;
-	additionalExpressionData: IDataObject;
-	eventBus: EventBus;
+	rows?: number;
+	additionalExpressionData?: IDataObject;
+	eventBus?: EventBus;
+	isReadOnly?: boolean;
+	isAssignment?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	rows: 5,
 	isAssignment: false,
+	isReadOnly: false,
 	additionalExpressionData: () => ({}),
 	eventBus: () => createEventBus(),
 });
@@ -48,9 +49,7 @@ const telemetry = useTelemetry();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 
-const hoveringItemNumber = computed(() => ndvStore.hoveringItemNumber);
 const isDragging = computed(() => ndvStore.isDraggableDragging);
-const noInputData = computed(() => ndvStore.hasInputData);
 
 function focus() {
 	if (inlineInput.value) {
@@ -166,9 +165,7 @@ defineExpose({ focus });
 			:editor-state="editorState"
 			:segments="segments"
 			:is-read-only="isReadOnly"
-			:no-input-data="noInputData"
 			:visible="isFocused"
-			:hovering-item-number="hoveringItemNumber"
 		/>
 	</div>
 </template>

@@ -3,7 +3,7 @@ import {
 	ErrorReporterProxy as ErrorReporter,
 	WorkflowOperationError,
 } from 'n8n-workflow';
-import { Container, Service } from 'typedi';
+import { Service } from 'typedi';
 import type { ExecutionStopResult, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
@@ -27,23 +27,25 @@ export class WaitTracker {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly ownershipService: OwnershipService,
 		private readonly workflowRunner: WorkflowRunner,
-		readonly orchestrationService: OrchestrationService,
-	) {
-		const { isSingleMainSetup, isLeader, multiMainSetup } = orchestrationService;
+		private readonly orchestrationService: OrchestrationService,
+	) {}
 
-		if (isSingleMainSetup) {
-			this.startTracking();
-			return;
-		}
+	/**
+	 * @important Requires `OrchestrationService` to be initialized.
+	 */
+	init() {
+		const { isLeader, isMultiMainSetupEnabled } = this.orchestrationService;
 
 		if (isLeader) this.startTracking();
 
-		multiMainSetup
-			.on('leader-takeover', () => this.startTracking())
-			.on('leader-stepdown', () => this.stopTracking());
+		if (isMultiMainSetupEnabled) {
+			this.orchestrationService.multiMainSetup
+				.on('leader-takeover', () => this.startTracking())
+				.on('leader-stepdown', () => this.stopTracking());
+		}
 	}
 
-	startTracking() {
+	private startTracking() {
 		this.logger.debug('Wait tracker started tracking waiting executions');
 
 		// Poll every 60 seconds a list of upcoming executions
@@ -137,10 +139,7 @@ export class WaitTracker {
 		fullExecutionData.waitTill = null;
 		fullExecutionData.status = 'canceled';
 
-		await Container.get(ExecutionRepository).updateExistingExecution(
-			executionId,
-			fullExecutionData,
-		);
+		await this.executionRepository.updateExistingExecution(executionId, fullExecutionData);
 
 		return {
 			mode: fullExecutionData.mode,
@@ -173,13 +172,13 @@ export class WaitTracker {
 				throw new ApplicationError('Only saved workflows can be resumed.');
 			}
 			const workflowId = fullExecutionData.workflowData.id;
-			const user = await this.ownershipService.getWorkflowOwnerCached(workflowId);
+			const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
 
 			const data: IWorkflowExecutionDataProcess = {
 				executionMode: fullExecutionData.mode,
 				executionData: fullExecutionData.data,
 				workflowData: fullExecutionData.workflowData,
-				userId: user.id,
+				projectId: project.id,
 			};
 
 			// Start the execution again

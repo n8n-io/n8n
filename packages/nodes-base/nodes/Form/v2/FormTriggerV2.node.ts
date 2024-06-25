@@ -76,11 +76,6 @@ const descriptionV2: INodeTypeDescription = {
 			type: 'collection',
 			placeholder: 'Add Option',
 			default: {},
-			displayOptions: {
-				hide: {
-					responseMode: ['responseNode'],
-				},
-			},
 			options: [
 				{
 					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
@@ -91,7 +86,14 @@ const descriptionV2: INodeTypeDescription = {
 					description:
 						'Whether to include the link “Form automated with n8n” at the bottom of the form',
 				},
-				respondWithOptions,
+				{
+					...respondWithOptions,
+					displayOptions: {
+						hide: {
+							'/responseMode': ['responseNode'],
+						},
+					},
+				},
 			],
 		},
 	],

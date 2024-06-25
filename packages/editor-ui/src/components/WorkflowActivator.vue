@@ -52,7 +52,7 @@
 
 <script lang="ts">
 import { useToast } from '@/composables/useToast';
-import { workflowActivate } from '@/mixins/workflowActivate';
+import { useWorkflowActivate } from '@/composables/useWorkflowActivate';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { mapStores } from 'pinia';
@@ -61,13 +61,11 @@ import { getActivatableTriggerNodes } from '@/utils/nodeTypesUtils';
 
 export default defineComponent({
 	name: 'WorkflowActivator',
-	mixins: [workflowActivate],
 	props: ['workflowActive', 'workflowId'],
-	setup(props, ctx) {
+	setup() {
 		return {
 			...useToast(),
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowActivate.setup?.(props, ctx),
+			...useWorkflowActivate(),
 		};
 	},
 	computed: {

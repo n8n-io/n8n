@@ -19,18 +19,21 @@ if (process.argv.length === 2) {
 }
 
 const nodeVersion = process.versions.node;
-const nodeVersionMajor = require('semver').major(nodeVersion);
+const { major, gte } = require('semver');
 
-if (![18, 20].includes(nodeVersionMajor)) {
+const MINIMUM_SUPPORTED_NODE_VERSION = '18.17.0';
+const ENFORCE_MIN_NODE_VERSION = process.env.E2E_TESTS !== 'true';
+
+if (
+	(ENFORCE_MIN_NODE_VERSION && !gte(nodeVersion, MINIMUM_SUPPORTED_NODE_VERSION)) ||
+	![18, 20, 22].includes(major(nodeVersion))
+) {
 	console.log(`
-	Your Node.js version (${nodeVersion}) is currently not supported by n8n.
-	Please use Node.js v18 (recommended), or v20 instead!
+	Your Node.js version ${nodeVersion} is currently not supported by n8n.
+	Please use Node.js v${MINIMUM_SUPPORTED_NODE_VERSION} (recommended), v20, or v22 instead!
 	`);
 	process.exit(1);
 }
-
-// Prevent oclif from loading ts-node and typescript
-process.env.OCLIF_TS_NODE = '0';
 
 // Disable nodejs custom inspection across the app
 const { inspect } = require('util');
@@ -46,5 +49,5 @@ if (process.env.NODEJS_PREFER_IPV4 === 'true') {
 
 (async () => {
 	const oclif = await import('@oclif/core');
-	await oclif.execute({});
+	await oclif.execute({ dir: __dirname });
 })();

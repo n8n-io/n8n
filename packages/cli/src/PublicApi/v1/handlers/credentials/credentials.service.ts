@@ -16,7 +16,9 @@ import type { CredentialRequest } from '@/requests';
 import { Container } from 'typedi';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { InternalHooks } from '@/InternalHooks';
+import { EventRelay } from '@/eventbus/event-relay.service';
 
 export async function getCredentials(credentialId: string): Promise<ICredentialsDb | null> {
 	return await Container.get(CredentialsRepository).findOneBy({ id: credentialId });
@@ -28,7 +30,7 @@ export async function getSharedCredentials(
 ): Promise<SharedCredentials | null> {
 	return await Container.get(SharedCredentialsRepository).findOne({
 		where: {
-			userId,
+			project: { projectRelations: { userId } },
 			credentialsId: credentialId,
 		},
 		relations: ['credentials'],
@@ -58,6 +60,12 @@ export async function saveCredential(
 		credential_id: credential.id,
 		public_api: true,
 	});
+	Container.get(EventRelay).emit('credentials-created', {
+		user,
+		credentialName: credential.name,
+		credentialType: credential.type,
+		credentialId: credential.id,
+	});
 
 	return await Db.transaction(async (transactionManager) => {
 		const savedCredential = await transactionManager.save<CredentialsEntity>(credential);
@@ -66,10 +74,15 @@ export async function saveCredential(
 
 		const newSharedCredential = new SharedCredentials();
 
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			user.id,
+			transactionManager,
+		);
+
 		Object.assign(newSharedCredential, {
 			role: 'credential:owner',
-			user,
 			credentials: savedCredential,
+			projectId: personalProject.id,
 		});
 
 		await transactionManager.save<SharedCredentials>(newSharedCredential);
@@ -88,6 +101,12 @@ export async function removeCredential(
 		credential_name: credentials.name,
 		credential_type: credentials.type,
 		credential_id: credentials.id,
+	});
+	Container.get(EventRelay).emit('credentials-deleted', {
+		user,
+		credentialName: credentials.name,
+		credentialType: credentials.type,
+		credentialId: credentials.id,
 	});
 	return await Container.get(CredentialsRepository).remove(credentials);
 }

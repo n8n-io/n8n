@@ -7,12 +7,12 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 import { BedrockChat } from '@langchain/community/chat_models/bedrock';
-import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 // Dependencies needed underneath the hood. We add them
 // here only to track where what dependency is used
 import '@aws-sdk/credential-provider-node';
 import '@aws-sdk/client-bedrock-runtime';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatAwsBedrock implements INodeType {
 	description: INodeTypeDescription = {
@@ -152,10 +152,11 @@ export class LmChatAwsBedrock implements INodeType {
 				accessKeyId: credentials.accessKeyId as string,
 				sessionToken: credentials.sessionToken as string,
 			},
+			callbacks: [new N8nLlmTracing(this)],
 		});
 
 		return {
-			response: logWrapper(model, this),
+			response: model,
 		};
 	}
 }

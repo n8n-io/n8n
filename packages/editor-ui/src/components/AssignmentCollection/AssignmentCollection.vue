@@ -13,7 +13,8 @@ import { computed, reactive, watch } from 'vue';
 import DropArea from '../DropArea/DropArea.vue';
 import ParameterOptions from '../ParameterOptions.vue';
 import Assignment from './Assignment.vue';
-import { inputDataToAssignments, nameFromExpression, typeFromExpression } from './utils';
+import { inputDataToAssignments, typeFromExpression } from './utils';
+import { propertyNameFromExpression } from '@/utils/mappingUtils';
 
 interface Props {
 	parameter: INodeProperties;
@@ -49,7 +50,7 @@ const issues = computed(() => {
 });
 
 const empty = computed(() => state.paramValue.assignments.length === 0);
-const activeDragField = computed(() => nameFromExpression(ndvStore.draggableData));
+const activeDragField = computed(() => propertyNameFromExpression(ndvStore.draggableData));
 const inputData = computed(() => ndvStore.ndvInputData?.[0]?.json);
 const actions = computed(() => {
 	return [
@@ -82,7 +83,7 @@ function addAssignment(): void {
 function dropAssignment(expression: string): void {
 	state.paramValue.assignments.push({
 		id: uuid(),
-		name: nameFromExpression(expression),
+		name: propertyNameFromExpression(expression),
 		value: `=${expression}`,
 		type: typeFromExpression(expression),
 	});

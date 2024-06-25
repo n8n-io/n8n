@@ -1,10 +1,10 @@
 {
   "name": "@n8n/chat",
-  "version": "0.12.0",
+  "version": "0.18.0",
   "scripts": {
     "dev": "pnpm run storybook",
-    "build": "pnpm type-check && pnpm build:vite && pnpm run build:individual && npm run build:prepare",
-    "build:full": "pnpm type-check && pnpm build:vite && pnpm build:vite:full && pnpm run build:individual && npm run build:prepare",
+    "build": "pnpm build:vite && pnpm run build:individual && npm run build:prepare",
+    "build:full": "pnpm build:vite && pnpm build:vite:full && pnpm run build:individual && npm run build:prepare",
     "build:vite": "vite build",
     "build:vite:full": "INCLUDE_VUE=true vite build",
     "build:individual": "unbuild",
@@ -13,7 +13,7 @@
     "preview": "vite preview",
     "test:dev": "vitest",
     "test": "vitest run --coverage",
-    "type-check": "vue-tsc --noEmit -p tsconfig.json --composite false",
+    "typecheck": "vue-tsc --noEmit",
     "lint": "eslint . --ext .js,.ts,.vue --quiet",
     "lintfix": "eslint . --ext .js,.ts,.vue --fix",
     "format": "prettier --write src/",
@@ -42,7 +42,7 @@
     "highlight.js": "^11.8.0",
     "markdown-it-link-attributes": "^4.0.1",
     "uuid": "^8.3.2",
-    "vue": "^3.3.4",
+    "vue": "^3.4.21",
     "vue-markdown-render": "^2.1.1"
   },
   "devDependencies": {

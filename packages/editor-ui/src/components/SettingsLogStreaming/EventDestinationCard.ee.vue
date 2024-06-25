@@ -35,7 +35,7 @@
 					active-color="#13ce66"
 					inactive-color="#8899AA"
 					data-test-id="workflow-activate-switch"
-					@update:model-value="onEnabledSwitched($event, destination.id)"
+					@update:model-value="onEnabledSwitched($event)"
 				>
 				</el-switch>
 
@@ -128,17 +128,19 @@ export default defineComponent({
 			}
 		},
 		async onClick(event: Event) {
+			const cardActions = this.$refs.cardActions as HTMLDivElement | null;
+			const target = event.target as HTMLDivElement | null;
 			if (
-				this.$refs.cardActions === event.target ||
-				this.$refs.cardActions?.contains(event.target) ||
-				event.target?.contains(this.$refs.cardActions)
+				cardActions === target ||
+				cardActions?.contains(target) ||
+				target?.contains(cardActions)
 			) {
 				return;
 			}
 
 			this.$emit('edit', this.destination.id);
 		},
-		onEnabledSwitched(state: boolean, destinationId: string) {
+		onEnabledSwitched(state: boolean) {
 			this.nodeParameters.enabled = state;
 			void this.saveDestination();
 		},

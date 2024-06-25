@@ -10,6 +10,7 @@ export class Filter extends VersionedNodeType {
 			displayName: 'Filter',
 			name: 'filter',
 			icon: 'fa:filter',
+			iconColor: 'light-blue',
 			group: ['transform'],
 			description: 'Remove items matching a condition',
 		};

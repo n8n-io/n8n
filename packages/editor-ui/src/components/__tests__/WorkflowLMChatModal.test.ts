@@ -1,17 +1,35 @@
-import WorkflowLMChatModal from '@/components/WorkflowLMChat.vue';
-import { AGENT_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE, WORKFLOW_LM_CHAT_MODAL_KEY } from '@/constants';
-import { createComponentRenderer } from '@/__tests__/render';
-import { fireEvent, waitFor } from '@testing-library/vue';
-import { uuid } from '@jsplumb/util';
-import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { createPinia, setActivePinia } from 'pinia';
+import { fireEvent, waitFor } from '@testing-library/vue';
+import { mock } from 'vitest-mock-extended';
+import { NodeConnectionType } from 'n8n-workflow';
+import type { IConnections, INode } from 'n8n-workflow';
+
+import WorkflowLMChatModal from '@/components/WorkflowLMChat.vue';
+import { WORKFLOW_LM_CHAT_MODAL_KEY } from '@/constants';
+import type { IWorkflowDb } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { testingNodeTypes, mockNodeTypesToArray } from '@/__tests__/defaults';
+
+import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
+import { defaultNodeDescriptions, mockNodes } from '@/__tests__/mocks';
+
+const connections: IConnections = {
+	'Chat Trigger': {
+		main: [
+			[
+				{
+					node: 'Agent',
+					type: NodeConnectionType.Main,
+					index: 0,
+				},
+			],
+		],
+	},
+};
 
 const renderComponent = createComponentRenderer(WorkflowLMChatModal, {
 	props: {
@@ -22,40 +40,14 @@ const renderComponent = createComponentRenderer(WorkflowLMChatModal, {
 
 async function createPiniaWithAINodes(options = { withConnections: true, withAgentNode: true }) {
 	const { withConnections, withAgentNode } = options;
-	const workflowId = uuid();
-	const workflow = createTestWorkflow({
-		id: workflowId,
-		name: 'Test Workflow',
-		connections: withConnections
-			? {
-					'Chat Trigger': {
-						main: [
-							[
-								{
-									node: 'Agent',
-									type: 'main',
-									index: 0,
-								},
-							],
-						],
-					},
-				}
-			: {},
-		active: true,
-		nodes: [
-			createTestNode({
-				name: 'Chat Trigger',
-				type: CHAT_TRIGGER_NODE_TYPE,
-			}),
-			...(withAgentNode
-				? [
-						createTestNode({
-							name: 'Agent',
-							type: AGENT_NODE_TYPE,
-						}),
-					]
-				: []),
-		],
+
+	const chatTriggerNode = mockNodes[4];
+	const agentNode = mockNodes[5];
+	const nodes: INode[] = [chatTriggerNode];
+	if (withAgentNode) nodes.push(agentNode);
+	const workflow = mock<IWorkflowDb>({
+		nodes,
+		...(withConnections ? { connections } : {}),
 	});
 
 	const pinia = createPinia();
@@ -65,12 +57,7 @@ async function createPiniaWithAINodes(options = { withConnections: true, withAge
 	const nodeTypesStore = useNodeTypesStore();
 	const uiStore = useUIStore();
 
-	nodeTypesStore.setNodeTypes(
-		mockNodeTypesToArray({
-			[CHAT_TRIGGER_NODE_TYPE]: testingNodeTypes[CHAT_TRIGGER_NODE_TYPE],
-			[AGENT_NODE_TYPE]: testingNodeTypes[AGENT_NODE_TYPE],
-		}),
-	);
+	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
 	workflowsStore.workflow = workflow;
 
 	await useSettingsStore().getSettings();
