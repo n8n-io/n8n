@@ -1,5 +1,5 @@
 // ----------------------------------
-//         sea-table
+//         SeaTable
 // ----------------------------------
 
 export type TSeaTableServerVersion = '2.0.6';
@@ -9,11 +9,13 @@ export type TSeaTableServerEdition = 'enterprise edition';
 //         dtable
 // ----------------------------------
 
+import type {
+	IDtableMetadataColumn,
+	IDtableMetadataTable,
+	TDtableViewColumn,
+} from './actions/Interfaces';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
-import type { IDtableMetadataColumn, IDtableMetadataTable, TDtableViewColumn } from './Interfaces';
 
-export type TInheritColumnTypeTime = 'ctime' | 'mtime';
-export type TInheritColumnTypeUser = 'creator' | 'last-modifier';
 export type TColumnType =
 	| 'text'
 	| 'long-text'
@@ -23,29 +25,40 @@ export type TColumnType =
 	| 'duration'
 	| 'single-select'
 	| 'multiple-select'
+	| 'image'
+	| 'file'
 	| 'email'
 	| 'url'
-	| 'rate'
 	| 'checkbox'
+	| 'rate'
 	| 'formula'
-	| TInheritColumnTypeTime
-	| TInheritColumnTypeUser
-	| 'auto-number';
+	| 'link-formula'
+	| 'geolocation'
+	| 'link'
+	| 'creator'
+	| 'ctime'
+	| 'last-modifier'
+	| 'mtime'
+	| 'auto-number'
+	| 'button'
+	| 'digital-sign';
 
-type TImplementInheritColumnKey = '_seq';
 export type TInheritColumnKey =
 	| '_id'
 	| '_creator'
 	| '_ctime'
 	| '_last_modifier'
 	| '_mtime'
-	| TImplementInheritColumnKey;
+	| '_seq'
+	| '_archived'
+	| '_locked'
+	| '_locked_by';
 
 export type TColumnValue = undefined | boolean | number | string | string[] | null;
 export type TColumnKey = TInheritColumnKey | string;
 
 export type TDtableMetadataTables = readonly IDtableMetadataTable[];
-export type TDtableMetadataColumns = readonly IDtableMetadataColumn[];
+export type TDtableMetadataColumns = IDtableMetadataColumn[];
 export type TDtableViewColumns = readonly TDtableViewColumn[];
 
 // ----------------------------------
@@ -82,3 +95,5 @@ export type TColumnsUiValues = Array<{
 	columnName: string;
 	columnValue: string;
 }>;
+
+export type APITypes = 'GET' | 'POST' | 'DELETE' | 'PUT';
