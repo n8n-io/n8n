@@ -354,13 +354,15 @@ const declarativeNodeOptionParameters: INodeProperties = {
 
 /**
  * Determines if the provided node type has any output types other than the main connection type.
- * @param nodeType The node type to check.
+ * @param typeDescription The node's type description to check.
  */
-export function isSubNodeType(nodeType: Pick<INodeTypeDescription, 'outputs'> | null): boolean {
-	if (!nodeType || !nodeType.outputs || typeof nodeType.outputs === 'string') {
+export function isSubNodeType(
+	typeDescription: Pick<INodeTypeDescription, 'outputs'> | null,
+): boolean {
+	if (!typeDescription || !typeDescription.outputs || typeof typeDescription.outputs === 'string') {
 		return false;
 	}
-	const outputTypes = getConnectionTypes(nodeType.outputs);
+	const outputTypes = getConnectionTypes(typeDescription.outputs);
 	return outputTypes
 		? outputTypes.filter((output) => output !== NodeConnectionType.Main).length > 0
 		: false;
