@@ -1,6 +1,6 @@
 import nock from 'nock';
-import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
 import type { IHttpRequestMethods } from 'n8n-workflow';
+import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
 
 jest.mock('../../../../v2/transport', () => {
 	const originalModule = jest.requireActual('../../../../v2/transport');

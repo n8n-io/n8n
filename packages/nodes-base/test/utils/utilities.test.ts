@@ -148,7 +148,7 @@ describe('Test getResolvables', () => {
 
 describe('shuffleArray', () => {
 	it('should shuffle array', () => {
-		const array = [1, 2, 3, 4, 5];
+		const array = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 		const toShuffle = [...array];
 		shuffleArray(toShuffle);
 		expect(toShuffle).not.toEqual(array);
