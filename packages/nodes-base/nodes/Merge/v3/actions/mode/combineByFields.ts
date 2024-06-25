@@ -44,42 +44,7 @@ const multipleMatchesProperty: INodeProperties = {
 
 export const properties: INodeProperties[] = [
 	{
-		displayName: 'Output Type',
-		name: 'joinMode',
-		type: 'options',
-		description: 'How to select the items to send to output',
-		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
-		options: [
-			{
-				name: 'Keep Matches',
-				value: 'keepMatches',
-				description: 'Items that match, merged together (inner join)',
-			},
-			{
-				name: 'Keep Non-Matches',
-				value: 'keepNonMatches',
-				description: "Items that don't match",
-			},
-			{
-				name: 'Keep Everything',
-				value: 'keepEverything',
-				description: "Items that match merged together, plus items that don't match (outer join)",
-			},
-			{
-				name: 'Enrich Input 1',
-				value: 'enrichInput1',
-				description: 'All of input 1, with data from input 2 added in (left join)',
-			},
-			{
-				name: 'Enrich Input 2',
-				value: 'enrichInput2',
-				description: 'All of input 2, with data from input 1 added in (right join)',
-			},
-		],
-		default: 'keepMatches',
-	},
-	{
-		displayName: 'Match Fields with Different Names',
+		displayName: 'Fields To Match Have Different Names',
 		name: 'advanced',
 		type: 'boolean',
 		default: false,
@@ -146,6 +111,41 @@ export const properties: INodeProperties[] = [
 				],
 			},
 		],
+	},
+	{
+		displayName: 'Output Type',
+		name: 'joinMode',
+		type: 'options',
+		description: 'How to select the items to send to output',
+		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+		options: [
+			{
+				name: 'Keep Matches',
+				value: 'keepMatches',
+				description: 'Items that match, merged together (inner join)',
+			},
+			{
+				name: 'Keep Non-Matches',
+				value: 'keepNonMatches',
+				description: "Items that don't match",
+			},
+			{
+				name: 'Keep Everything',
+				value: 'keepEverything',
+				description: "Items that match merged together, plus items that don't match (outer join)",
+			},
+			{
+				name: 'Enrich Input 1',
+				value: 'enrichInput1',
+				description: 'All of input 1, with data from input 2 added in (left join)',
+			},
+			{
+				name: 'Enrich Input 2',
+				value: 'enrichInput2',
+				description: 'All of input 2, with data from input 1 added in (right join)',
+			},
+		],
+		default: 'keepMatches',
 	},
 	{
 		displayName: 'Output Data From',

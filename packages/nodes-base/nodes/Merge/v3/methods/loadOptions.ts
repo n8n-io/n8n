@@ -5,6 +5,23 @@ export async function getResolveClashOptions(
 ): Promise<INodePropertyOptions[]> {
 	const numberOfInputs = this.getNodeParameter('numberInputs', 2) as number;
 
+	if (numberOfInputs <= 2) {
+		return [
+			{
+				name: 'Always Add Input Number to Field Names',
+				value: 'addSuffix',
+			},
+			{
+				name: 'Prefer Input 1 Version',
+				value: 'preferInput1',
+			},
+			{
+				name: 'Prefer Input 2 Version',
+				value: 'preferLast',
+			},
+		];
+	}
+
 	const outputOptions: INodePropertyOptions[] = [
 		{
 			name: 'Always Add Input Number to Field Names',

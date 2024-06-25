@@ -79,13 +79,9 @@ export async function execute(
 		if (output === 'specifiedInput') {
 			const useDataOfInput = this.getNodeParameter('useDataOfInput', 0) as number;
 			if (useDataOfInput > inputsData.length) {
-				throw new NodeOperationError(
-					this.getNode(),
-					`The input ${useDataOfInput} is not allowed.`,
-					{
-						description: `The node has only ${inputsData.length} inputs, so selecting input ${useDataOfInput} is not possible.`,
-					},
-				);
+				throw new NodeOperationError(this.getNode(), `Input ${useDataOfInput} doesn't exist`, {
+					description: `The node has only ${inputsData.length} inputs, so selecting input ${useDataOfInput} is not possible.`,
+				});
 			}
 
 			const inputData = inputsData[parseInt(String(useDataOfInput)) - 1];
