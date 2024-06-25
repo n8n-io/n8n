@@ -42,13 +42,9 @@ Cypress.Commands.add(
 	},
 );
 
-Cypress.Commands.add(
-	'findChildByTestId',
-	{ prevSubject: true },
-	(subject: Cypress.Chainable<JQuery<HTMLElement>>, childTestId) => {
-		return subject.find(`[data-test-id="${childTestId}"]`);
-	},
-);
+Cypress.Commands.addQuery('findChildByTestId', function (testId: string) {
+	return (subject: Cypress.Chainable) => subject.find(`[data-test-id="${testId}"]`);
+});
 
 Cypress.Commands.add('waitForLoad', (waitForIntercepts = true) => {
 	// These aliases are set-up before each test in cypress/support/e2e.ts

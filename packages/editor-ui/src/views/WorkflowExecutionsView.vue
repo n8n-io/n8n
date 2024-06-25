@@ -3,22 +3,22 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import WorkflowExecutionsList from '@/components/executions/workflow/WorkflowExecutionsList.vue';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useI18n } from '@/composables/useI18n';
-import type { ExecutionFilterType, ITag, IWorkflowDb } from '@/Interface';
+import type { ExecutionFilterType, IWorkflowDb } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { NO_NETWORK_ERROR_CODE } from '@/utils/apiUtils';
 import { useToast } from '@/composables/useToast';
-import { VIEWS } from '@/constants';
+import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
 import { useRoute, useRouter } from 'vue-router';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useDebounce } from '@/composables/useDebounce';
 import { storeToRefs } from 'pinia';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useTagsStore } from '@/stores/tags.store';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 const executionsStore = useExecutionsStore();
 const workflowsStore = useWorkflowsStore();
-const tagsStore = useTagsStore();
 const nodeTypesStore = useNodeTypesStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -26,6 +26,8 @@ const route = useRoute();
 const router = useRouter();
 const toast = useToast();
 const { callDebounced } = useDebounce();
+const workflowHelpers = useWorkflowHelpers({ router });
+const nodeHelpers = useNodeHelpers();
 
 const { filters } = storeToRefs(executionsStore);
 
@@ -117,29 +119,19 @@ async function initializeRoute() {
 }
 
 async function fetchWorkflow() {
-	let data: IWorkflowDb | undefined = workflowsStore.workflowsById[workflowId.value];
-	if (!data) {
+	// Check if the workflow already has an ID
+	// In other words: are we coming from the Editor tab or browser loaded the Executions tab directly
+	if (workflowsStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 		try {
-			data = await workflowsStore.fetchWorkflow(workflowId.value);
+			await workflowsStore.fetchActiveWorkflows();
+			const data = await workflowsStore.fetchWorkflow(workflowId.value);
+			await workflowHelpers.initState(data);
+			await nodeHelpers.addNodes(data.nodes, data.connections);
 		} catch (error) {
 			toast.showError(error, i18n.baseText('nodeView.showError.openWorkflow.title'));
-			return;
 		}
 	}
-
-	if (!data) {
-		throw new Error(
-			i18n.baseText('nodeView.workflowWithIdCouldNotBeFound', {
-				interpolate: { workflowId: workflowId.value },
-			}),
-		);
-	}
-
-	const tags = (data.tags ?? []) as ITag[];
-	workflow.value = data;
-	workflowsStore.setWorkflowName({ newName: data.name, setStateDirty: false });
-	workflowsStore.setWorkflowTagIds(tags.map(({ id }) => id) ?? []);
-	tagsStore.upsertTags(tags);
+	workflow.value = workflowsStore.workflow;
 }
 
 async function onAutoRefreshToggle(value: boolean) {
