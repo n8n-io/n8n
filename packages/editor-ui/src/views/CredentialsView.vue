@@ -80,8 +80,6 @@ import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import useEnvironmentsStore from '@/stores/environments.ee.store';
 import { useSettingsStore } from '@/stores/settings.store';
 
-type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
-
 export default defineComponent({
 	name: 'CredentialsView',
 	components: {

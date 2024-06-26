@@ -163,8 +163,6 @@ import { useProjectsStore } from '@/stores/projects.store';
 import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import { useTemplatesStore } from '@/stores/templates.store';
 
-type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
-
 interface Filters {
 	search: string;
 	homeProject: string;
