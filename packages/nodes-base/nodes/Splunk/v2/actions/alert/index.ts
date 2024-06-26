@@ -1,8 +1,9 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 import * as getReport from './getReport.operation';
+import * as getMetrics from './getMetrics.operation';
 
-export { getReport };
+export { getReport, getMetrics };
 
 export const description: INodeProperties[] = [
 	{
@@ -17,14 +18,21 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get Report',
+				name: 'Get Fired Alerts',
 				value: 'getReport',
 				description: 'Retrieve a fired alerts report',
 				action: 'Get a fired alerts report',
+			},
+			{
+				name: 'Get Metrics',
+				value: 'getMetrics',
+				description: 'Retrieve metrics',
+				action: 'Get metrics',
 			},
 		],
 		default: 'getReport',
 	},
 
 	...getReport.description,
+	...getMetrics.description,
 ];

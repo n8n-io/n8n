@@ -57,6 +57,7 @@ const properties: INodeProperties[] = [
 						name: 'sort_key',
 						description: 'Key name to use for sorting',
 						type: 'string',
+						placeholder: 'e.g. diskUsage',
 						default: '',
 					},
 					{
