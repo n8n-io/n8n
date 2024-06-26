@@ -9,7 +9,7 @@ export class SeaTable extends VersionedNodeType {
 		const baseDescription: INodeTypeBaseDescription = {
 			displayName: 'SeaTable',
 			name: 'seaTable',
-			icon: 'file:seatable.svg',
+			icon: 'file:seaTable.svg',
 			group: ['output'],
 			subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
 			description: 'Read, update, write and delete data from SeaTable',

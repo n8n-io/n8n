@@ -27,7 +27,7 @@ export class SeaTableTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'SeaTable Trigger',
 		name: 'seaTableTrigger',
-		icon: 'file:seatable.svg',
+		icon: 'file:seaTable.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Starts the workflow when SeaTable events occur',

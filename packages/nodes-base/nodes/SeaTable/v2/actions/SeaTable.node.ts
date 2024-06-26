@@ -7,7 +7,7 @@ import * as asset from './asset';
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'SeaTable',
 	name: 'seaTable',
-	icon: 'file:seatable.svg',
+	icon: 'file:seaTable.svg',
 	group: ['output'],
 	version: 2,
 	subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
