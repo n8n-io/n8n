@@ -14,6 +14,7 @@ import type {
 	NodeParameterValueType,
 } from '@/Interfaces';
 import { Workflow, type WorkflowParameters } from '@/Workflow';
+import * as NodeHelpers from '@/NodeHelpers';
 
 process.env.TEST_VARIABLE_1 = 'valueEnvVariable1';
 
@@ -65,6 +66,84 @@ describe('Workflow', () => {
 			params.nodes = [node];
 			const workflow = new Workflow(params);
 			expect(workflow.checkIfWorkflowCanBeActivated(['ignoredNode'])).toBe(expected);
+		});
+	});
+
+	describe('checkReadyForExecution', () => {
+		const disabledNode = mock<INode>({ name: 'Disabled Node', disabled: true });
+		const startNode = mock<INode>({ name: 'Start Node' });
+		const unknownNode = mock<INode>({ name: 'Unknown Node', type: 'unknownNode' });
+
+		const nodeParamIssuesSpy = jest.spyOn(NodeHelpers, 'getNodeParametersIssues');
+
+		const nodeTypes = mock<INodeTypes>();
+		nodeTypes.getByNameAndVersion.mockImplementation((type) => {
+			// TODO: getByNameAndVersion signature needs to be updated to allow returning undefined
+			if (type === 'unknownNode') return undefined as unknown as INodeType;
+			return mock<INodeType>({
+				description: {
+					properties: [],
+				},
+			});
+		});
+
+		beforeEach(() => jest.clearAllMocks());
+
+		it('should return null if there are no nodes', () => {
+			const workflow = new Workflow({
+				nodes: [],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const issues = workflow.checkReadyForExecution();
+			expect(issues).toBe(null);
+			expect(nodeTypes.getByNameAndVersion).not.toHaveBeenCalled();
+			expect(nodeParamIssuesSpy).not.toHaveBeenCalled();
+		});
+
+		it('should return null if there are no enabled nodes', () => {
+			const workflow = new Workflow({
+				nodes: [disabledNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const issues = workflow.checkReadyForExecution({ startNode: disabledNode.name });
+			expect(issues).toBe(null);
+			expect(nodeTypes.getByNameAndVersion).toHaveBeenCalledTimes(1);
+			expect(nodeParamIssuesSpy).not.toHaveBeenCalled();
+		});
+
+		it('should return typeUnknown for unknown nodes', () => {
+			const workflow = new Workflow({
+				nodes: [unknownNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const issues = workflow.checkReadyForExecution({ startNode: unknownNode.name });
+			expect(issues).toEqual({ [unknownNode.name]: { typeUnknown: true } });
+			expect(nodeTypes.getByNameAndVersion).toHaveBeenCalledTimes(2);
+			expect(nodeParamIssuesSpy).not.toHaveBeenCalled();
+		});
+
+		it('should return issues for regular nodes', () => {
+			const workflow = new Workflow({
+				nodes: [startNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+			nodeParamIssuesSpy.mockReturnValue({ execution: false });
+
+			const issues = workflow.checkReadyForExecution({ startNode: startNode.name });
+			expect(issues).toEqual({ [startNode.name]: { execution: false } });
+			expect(nodeTypes.getByNameAndVersion).toHaveBeenCalledTimes(2);
+			expect(nodeParamIssuesSpy).toHaveBeenCalled();
 		});
 	});
 

@@ -252,16 +252,14 @@ export class Workflow {
 	 * is fine. If there are issues it returns the issues
 	 * which have been found for the different nodes.
 	 * TODO: Does currently not check for credential issues!
-	 *
 	 */
-	checkReadyForExecution(inputData: {
-		startNode?: string;
-		destinationNode?: string;
-		pinDataNodeNames?: string[];
-	}): IWorkflowIssues | null {
-		let node: INode;
-		let nodeType: INodeType | undefined;
-		let nodeIssues: INodeIssues | null = null;
+	checkReadyForExecution(
+		inputData: {
+			startNode?: string;
+			destinationNode?: string;
+			pinDataNodeNames?: string[];
+		} = {},
+	): IWorkflowIssues | null {
 		const workflowIssues: IWorkflowIssues = {};
 
 		let checkNodes: string[] = [];
@@ -278,14 +276,14 @@ export class Workflow {
 		}
 
 		for (const nodeName of checkNodes) {
-			nodeIssues = null;
-			node = this.nodes[nodeName];
+			let nodeIssues: INodeIssues | null = null;
+			const node = this.nodes[nodeName];
 
 			if (node.disabled === true) {
 				continue;
 			}
 
-			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 			if (nodeType === undefined) {
 				// Node type is not known
