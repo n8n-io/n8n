@@ -48,7 +48,7 @@ const renderComponent = createComponentRenderer(PersonalizationModal, {
 	global: {
 		mocks: {
 			$route: {
-				name: VIEWS.NEW_WORKFLOW,
+				name: VIEWS.HOMEPAGE,
 			},
 		},
 	},
