@@ -8,7 +8,7 @@ export async function list(this: IExecuteFunctions, index: number): Promise<INod
 	const rowId = this.getNodeParameter('rowId', index) as string;
 
 	// get rows
-	let responseData = await seaTableApiRequest.call(
+	const responseData = await seaTableApiRequest.call(
 		this,
 		{},
 		'POST',

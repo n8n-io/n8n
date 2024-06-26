@@ -1,11 +1,11 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
-import type { IRow } from './../../Interfaces';
 import {
 	seaTableApiRequest,
 	enrichColumns,
 	simplify_new,
 	getBaseCollaborators,
 } from '../../../GenericFunctions';
+import type { IRow } from './../../Interfaces';
 
 export async function list(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
 	// get parameters
@@ -17,14 +17,14 @@ export async function list(this: IExecuteFunctions, index: number): Promise<INod
 	const collaborators = await getBaseCollaborators.call(this);
 
 	// get rows
-	let requestMeta = await seaTableApiRequest.call(
+	const requestMeta = await seaTableApiRequest.call(
 		this,
 		{},
 		'GET',
 		'/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata/',
 	);
 
-	let requestRows = await seaTableApiRequest.call(
+	const requestRows = await seaTableApiRequest.call(
 		this,
 		{},
 		'GET',
@@ -37,10 +37,10 @@ export async function list(this: IExecuteFunctions, index: number): Promise<INod
 		},
 	);
 
-	let metadata =
+	const metadata =
 		requestMeta.metadata.tables.find((table: { name: string }) => table.name === tableName)
 			?.columns ?? [];
-	let rows = requestRows.rows as IRow[];
+	const rows = requestRows.rows as IRow[];
 
 	// hide columns like button
 	rows.map((row) => enrichColumns(row, metadata, collaborators));

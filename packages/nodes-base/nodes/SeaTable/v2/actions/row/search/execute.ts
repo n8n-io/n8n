@@ -5,7 +5,7 @@ import {
 	simplify_new,
 	getBaseCollaborators,
 } from '../../../GenericFunctions';
-import { IDtableMetadataColumn, IRow, IRowResponse } from '../../Interfaces';
+import type { IDtableMetadataColumn, IRowResponse } from '../../Interfaces';
 
 export async function search(
 	this: IExecuteFunctions,
@@ -14,7 +14,7 @@ export async function search(
 	const tableName = this.getNodeParameter('tableName', index) as string;
 	const searchColumn = this.getNodeParameter('searchColumn', index) as string;
 	const searchTerm = this.getNodeParameter('searchTerm', index) as string | number;
-	let searchTermString = String(searchTerm) as string;
+	let searchTermString = String(searchTerm);
 	const insensitive = this.getNodeParameter('insensitive', index) as boolean;
 	const wildcard = this.getNodeParameter('wildcard', index) as boolean;
 	const simple = this.getNodeParameter('simple', index) as boolean;
@@ -44,7 +44,7 @@ export async function search(
 		},
 	)) as IRowResponse;
 	const metadata = sqlResult.metadata as IDtableMetadataColumn[];
-	let rows = sqlResult.results as IRow[];
+	const rows = sqlResult.results;
 
 	// hide columns like button
 	rows.map((row) => enrichColumns(row, metadata, collaborators));

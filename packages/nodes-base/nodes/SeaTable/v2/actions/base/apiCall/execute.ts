@@ -1,6 +1,6 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { seaTableApiRequest } from '../../../GenericFunctions';
-import { APITypes } from '../../../types';
+import type { APITypes } from '../../../types';
 
 export async function apiCall(
 	this: IExecuteFunctions,

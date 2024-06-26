@@ -37,7 +37,7 @@ export async function getTableNameAndId(
 	for (const table of tables) {
 		returnData.push({
 			name: table.name,
-			value: table.name + ':::' + table['_id'],
+			value: table.name + ':::' + table._id,
 		});
 	}
 	return returnData;
@@ -232,7 +232,7 @@ export async function getRowIds(this: ILoadOptionsFunctions): Promise<INodePrope
 				convert_keys: false,
 			},
 		);
-		let rows = sqlResult.results as IRow[];
+		const rows = sqlResult.results as IRow[];
 
 		for (const row of rows) {
 			returnData.push({

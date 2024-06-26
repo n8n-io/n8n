@@ -56,7 +56,8 @@ export const baseApiCallDescription: BaseProperties = [
 		required: true,
 		default: '',
 		placeholder: '/dtable-server/...',
-		description: 'The URL has to start with /dtable-server/ or /dtable-db/. All possible requests can be found at the SeaTable API Reference at https://api.seatable.io Please be aware that only request from the section Base Operations that use an Base-Token for the authentication are allowed to use.',
+		description:
+			'The URL has to start with /dtable-server/ or /dtable-db/. All possible requests can be found at the SeaTable API Reference at https://api.seatable.io Please be aware that only request from the section Base Operations that use an Base-Token for the authentication are allowed to use.',
 	},
 	{
 		displayName: 'Query String Parameters',

@@ -9,7 +9,7 @@ export async function upload(
 	const uploadColumn = this.getNodeParameter('uploadColumn', index) as any;
 	const uploadColumnType = uploadColumn.split(':::')[1];
 	const uploadColumnName = uploadColumn.split(':::')[0];
-	const dataPropertyName = this.getNodeParameter('dataPropertyName', index) as string;
+	const dataPropertyName = this.getNodeParameter('dataPropertyName', index);
 	const tableName = this.getNodeParameter('tableName', index) as string;
 	const rowId = this.getNodeParameter('rowId', index) as string;
 	const uploadLink = (await seaTableApiRequest.call(
@@ -43,7 +43,7 @@ export async function upload(
 	// if there are already assets attached to the column
 	let existingAssetArray = [];
 	if (append) {
-		let rowToUpdate = await seaTableApiRequest.call(
+		const rowToUpdate = await seaTableApiRequest.call(
 			this,
 			{},
 			'GET',
@@ -75,7 +75,7 @@ export async function upload(
 	};
 
 	// Send the upload request
-	let uploadAsset = await seaTableApiRequest.call(
+	const uploadAsset = await seaTableApiRequest.call(
 		this,
 		{},
 		'POST',
@@ -93,7 +93,7 @@ export async function upload(
 			row_id: rowId,
 			row: {},
 		} as IDataObject;
-		let rowInput = {} as IRowObject;
+		const rowInput = {} as IRowObject;
 
 		const filePath = `${serverURL}/workspace/${workspaceId}${uploadLink.parent_path}/${relativePath}/${uploadAsset[c].name}`;
 
@@ -127,7 +127,7 @@ export async function upload(
 			body,
 		);
 
-		uploadAsset[c]['upload_successful'] = responseData.success;
+		uploadAsset[c].upload_successful = responseData.success;
 	}
 
 	return this.helpers.returnJsonArray(uploadAsset as IDataObject[]);

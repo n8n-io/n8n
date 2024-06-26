@@ -1,7 +1,7 @@
+import type { INodeProperties } from 'n8n-workflow';
 import * as add from './add';
 import * as list from './list';
 import * as remove from './remove';
-import type { INodeProperties } from 'n8n-workflow';
 
 export { add, list, remove };
 

@@ -17,5 +17,5 @@ export async function getPublicURL(
 		);
 	}
 
-	return this.helpers.returnJsonArray(responseData as IDataObject[]);
+	return this.helpers.returnJsonArray(responseData);
 }

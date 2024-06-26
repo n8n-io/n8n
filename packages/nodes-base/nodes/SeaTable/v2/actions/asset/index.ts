@@ -1,6 +1,6 @@
+import type { INodeProperties } from 'n8n-workflow';
 import * as upload from './upload';
 import * as getPublicURL from './getPublicURL';
-import type { INodeProperties } from 'n8n-workflow';
 
 export { upload, getPublicURL };
 

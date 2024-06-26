@@ -1,6 +1,6 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { seaTableApiRequest } from '../../../GenericFunctions';
-import { ICollaborator } from '../../Interfaces';
+import type { ICollaborator } from '../../Interfaces';
 
 export async function collaborator(
 	this: IExecuteFunctions,
@@ -16,10 +16,10 @@ export async function collaborator(
 	);
 	const collaborators = collaboratorsResult.user_list || [];
 
-	const collaborator = collaborators.filter(
+	const data = collaborators.filter(
 		(col: ICollaborator) =>
 			col.contact_email.includes(searchString) || col.name.includes(searchString),
 	);
 
-	return this.helpers.returnJsonArray(collaborator as IDataObject[]);
+	return this.helpers.returnJsonArray(data as IDataObject[]);
 }

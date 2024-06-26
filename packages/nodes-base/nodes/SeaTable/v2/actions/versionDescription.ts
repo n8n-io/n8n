@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type { INodeTypeDescription } from 'n8n-workflow';
 import * as row from './row';
 import * as base from './base';

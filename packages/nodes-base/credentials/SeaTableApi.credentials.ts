@@ -2,9 +2,12 @@ import type { ICredentialTestRequest, ICredentialType, INodeProperties } from 'n
 
 export class SeaTableApi implements ICredentialType {
 	name = 'seaTableApi';
+
 	displayName = 'SeaTable API';
+
 	documentationUrl =
 		'https://seatable.io/docs/n8n-integration/erstellen-eines-api-tokens-fuer-n8n/?lang=auto';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Environment',
