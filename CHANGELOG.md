@@ -1,3 +1,14 @@
+## [1.47.1](https://github.com/n8n-io/n8n/compare/n8n@1.47.0...n8n@1.47.1) (2024-06-26)
+
+
+### Bug Fixes
+
+* **core:** Fix init for `AuditEventRelay` ([#9839](https://github.com/n8n-io/n8n/issues/9839)) ([e9703cc](https://github.com/n8n-io/n8n/commit/e9703ccfb7e40fd555feb0424f1c2ee6b52bf83d))
+* **editor:** Fix initialize authenticated features ([#9867](https://github.com/n8n-io/n8n/issues/9867)) ([4b88f65](https://github.com/n8n-io/n8n/commit/4b88f65e2500bc7d82bd7ac9acd9b99f978b7600))
+* **editor:** Properly update workflow info in main header ([#9789](https://github.com/n8n-io/n8n/issues/9789)) ([9a4260e](https://github.com/n8n-io/n8n/commit/9a4260e3fce568470ea3b7315c514bad456c720f))
+
+
+
 # [1.47.0](https://github.com/n8n-io/n8n/compare/n8n@1.46.0...n8n@1.47.0) (2024-06-20)
 
 
