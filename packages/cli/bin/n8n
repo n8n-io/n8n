@@ -47,7 +47,12 @@ if (process.env.NODEJS_PREFER_IPV4 === 'true') {
 	require('dns').setDefaultResultOrder('ipv4first');
 }
 
-// set Socket `autoSelectFamily` defaults to pre v20 behavior
+// Node.js 20 enabled a Happy Eyeballs algorithm which enables support
+// for both IPv6 and IPv4 at the same time, favoring IPv6 when possible.
+// However there are some issues in the algorithm implementation that is causing
+// issues to our users with services like Telegram or Airtable. This restores the
+// behavior to pre v20
+// More details: https://github.com/nodejs/node/issues/48145
 require('net').setDefaultAutoSelectFamily?.(false);
 
 (async () => {
