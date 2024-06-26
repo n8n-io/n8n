@@ -15,6 +15,7 @@ const emit = defineEmits<{
 	'update:modelValue': [elements: CanvasElement[]];
 	'update:node:position': [id: string, position: XYPosition];
 	'update:node:active': [id: string];
+	'update:node:enabled': [id: string];
 	'update:node:selected': [id?: string];
 	'delete:node': [id: string];
 	'delete:connection': [connection: Connection];
@@ -64,6 +65,10 @@ function onSetNodeActive(id: string) {
 function onSelectNode() {
 	const selectedNodeId = getSelectedNodes.value[getSelectedNodes.value.length - 1]?.id;
 	emit('update:node:selected', selectedNodeId);
+}
+
+function onToggleNodeEnabled(id: string) {
+	emit('update:node:enabled', id);
 }
 
 function onDeleteNode(id: string) {
@@ -126,6 +131,7 @@ function onClickPane(event: MouseEvent) {
 				v-bind="canvasNodeProps"
 				@delete="onDeleteNode"
 				@select="onSelectNode"
+				@toggle="onToggleNodeEnabled"
 				@activate="onSetNodeActive"
 			/>
 		</template>
