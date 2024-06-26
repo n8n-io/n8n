@@ -334,6 +334,7 @@
       "dist/credentials/SurveyMonkeyApi.credentials.js",
       "dist/credentials/SurveyMonkeyOAuth2Api.credentials.js",
       "dist/credentials/SyncroMspApi.credentials.js",
+      "dist/credentials/SysdigApi.credentials.js",
       "dist/credentials/TaigaApi.credentials.js",
       "dist/credentials/TapfiliateApi.credentials.js",
       "dist/credentials/TelegramApi.credentials.js",
