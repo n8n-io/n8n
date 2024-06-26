@@ -1,3 +1,5 @@
+import { mock } from 'jest-mock-extended';
+import { NodeConnectionType } from '@/Interfaces';
 import type {
 	IBinaryKeyData,
 	IConnections,
@@ -5,10 +7,13 @@ import type {
 	INode,
 	INodeExecutionData,
 	INodeParameters,
+	INodeType,
+	INodeTypeDescription,
+	INodeTypes,
 	IRunExecutionData,
 	NodeParameterValueType,
 } from '@/Interfaces';
-import { Workflow } from '@/Workflow';
+import { Workflow, type WorkflowParameters } from '@/Workflow';
 
 process.env.TEST_VARIABLE_1 = 'valueEnvVariable1';
 
@@ -20,6 +25,49 @@ interface StubNode {
 }
 
 describe('Workflow', () => {
+	describe('checkIfWorkflowCanBeActivated', () => {
+		const disabledNode = mock<INode>({ disabled: true });
+		const ignoredNode = mock<INode>({ type: 'ignoredNode' });
+		const unknownNode = mock<INode>({ type: 'unknownNode' });
+		const noTriggersNode = mock<INode>({ type: 'noTriggersNode' });
+		const pollNode = mock<INode>({ type: 'pollNode' });
+		const triggerNode = mock<INode>({ type: 'triggerNode' });
+		const webhookNode = mock<INode>({ type: 'webhookNode' });
+
+		const nodeTypes = mock<INodeTypes>();
+		nodeTypes.getByNameAndVersion.mockImplementation((type) => {
+			// TODO: getByNameAndVersion signature needs to be updated to allow returning undefined
+			if (type === 'unknownNode') return undefined as unknown as INodeType;
+			const partial: Partial<INodeType> = {
+				poll: undefined,
+				trigger: undefined,
+				webhook: undefined,
+				description: mock<INodeTypeDescription>({
+					properties: [],
+				}),
+			};
+			if (type === 'pollNode') partial.poll = jest.fn();
+			if (type === 'triggerNode') partial.trigger = jest.fn();
+			if (type === 'webhookNode') partial.webhook = jest.fn();
+			return mock(partial);
+		});
+
+		test.each([
+			['should skip disabled nodes', disabledNode, false],
+			['should skip nodes marked as ignored', ignoredNode, false],
+			['should skip unknown nodes', unknownNode, false],
+			['should skip nodes with no trigger method', noTriggersNode, false],
+			['should activate if poll method exists', pollNode, true],
+			['should activate if trigger method exists', triggerNode, true],
+			['should activate if webhook method exists', webhookNode, true],
+		])('%s', async (_, node, expected) => {
+			const params = mock<WorkflowParameters>({ nodeTypes });
+			params.nodes = [node];
+			const workflow = new Workflow(params);
+			expect(workflow.checkIfWorkflowCanBeActivated(['ignoredNode'])).toBe(expected);
+		});
+	});
+
 	describe('renameNodeInParameterValue', () => {
 		describe('for expressions', () => {
 			const tests = [
@@ -380,7 +428,7 @@ describe('Workflow', () => {
 								[
 									{
 										node: 'Node2',
-										type: 'main',
+										type: NodeConnectionType.Main,
 										index: 0,
 									},
 								],
@@ -411,7 +459,7 @@ describe('Workflow', () => {
 								[
 									{
 										node: 'Node2',
-										type: 'main',
+										type: NodeConnectionType.Main,
 										index: 0,
 									},
 								],
@@ -447,7 +495,7 @@ describe('Workflow', () => {
 								[
 									{
 										node: 'Node2',
-										type: 'main',
+										type: NodeConnectionType.Main,
 										index: 0,
 									},
 								],
@@ -478,7 +526,7 @@ describe('Workflow', () => {
 								[
 									{
 										node: 'Node2New',
-										type: 'main',
+										type: NodeConnectionType.Main,
 										index: 0,
 									},
 								],
@@ -535,7 +583,7 @@ describe('Workflow', () => {
 								[
 									{
 										node: 'Node3',
-										type: 'main',
+										type: NodeConnectionType.Main,
 										index: 0,
 									},
 								],
@@ -546,12 +594,12 @@ describe('Workflow', () => {
 								[
 									{
 										node: 'Node3',
-										type: 'main',
+										type: NodeConnectionType.Main,
 										index: 0,
 									},
 									{
 										node: 'Node5',
-										type: 'main',
+										type: NodeConnectionType.Main,
 										index: 0,
 									},
 								],
@@ -562,12 +610,12 @@ describe('Workflow', () => {
 								[
 									{
 										node: 'Node4',
-										type: 'main',
+										type: NodeConnectionType.Main,
 										index: 0,
 									},
 									{
 										node: 'Node5',
-										type: 'main',
+										type: NodeConnectionType.Main,
 										index: 0,
 									},
 								],
@@ -619,7 +667,7 @@ describe('Workflow', () => {
 								[
 									{
 										node: 'Node3New',
-										type: 'main',
+										type: NodeConnectionType.Main,
 										index: 0,
 									},
 								],
@@ -630,12 +678,12 @@ describe('Workflow', () => {
 								[
 									{
 										node: 'Node3New',
-										type: 'main',
+										type: NodeConnectionType.Main,
 										index: 0,
 									},
 									{
 										node: 'Node5',
-										type: 'main',
+										type: NodeConnectionType.Main,
 										index: 0,
 									},
 								],
@@ -646,12 +694,12 @@ describe('Workflow', () => {
 								[
 									{
 										node: 'Node4',
-										type: 'main',
+										type: NodeConnectionType.Main,
 										index: 0,
 									},
 									{
 										node: 'Node5',
-										type: 'main',
+										type: NodeConnectionType.Main,
 										index: 0,
 									},
 								],
@@ -1232,7 +1280,7 @@ describe('Workflow', () => {
 							[
 								{
 									node: 'Node2',
-									type: 'main',
+									type: NodeConnectionType.Main,
 									index: 0,
 								},
 							],
@@ -1243,7 +1291,7 @@ describe('Workflow', () => {
 							[
 								{
 									node: 'Node3',
-									type: 'main',
+									type: NodeConnectionType.Main,
 									index: 0,
 								},
 							],
@@ -1254,7 +1302,7 @@ describe('Workflow', () => {
 							[
 								{
 									node: 'Node2',
-									type: 'main',
+									type: NodeConnectionType.Main,
 									index: 0,
 								},
 							],
@@ -1524,7 +1572,7 @@ describe('Workflow', () => {
 						[
 							{
 								node: 'Set',
-								type: 'main',
+								type: NodeConnectionType.Main,
 								index: 0,
 							},
 						],
@@ -1535,7 +1583,7 @@ describe('Workflow', () => {
 						[
 							{
 								node: 'Set1',
-								type: 'main',
+								type: NodeConnectionType.Main,
 								index: 0,
 							},
 						],
@@ -1594,21 +1642,21 @@ describe('Workflow', () => {
 						[
 							{
 								node: 'Set1',
-								type: 'main',
+								type: NodeConnectionType.Main,
 								index: 0,
 							},
 						],
 						[
 							{
 								node: 'Set',
-								type: 'main',
+								type: NodeConnectionType.Main,
 								index: 0,
 							},
 						],
 						[
 							{
 								node: 'Set',
-								type: 'main',
+								type: NodeConnectionType.Main,
 								index: 0,
 							},
 						],
@@ -1619,7 +1667,7 @@ describe('Workflow', () => {
 						[
 							{
 								node: 'Set2',
-								type: 'main',
+								type: NodeConnectionType.Main,
 								index: 0,
 							},
 						],
@@ -1630,7 +1678,7 @@ describe('Workflow', () => {
 						[
 							{
 								node: 'Set2',
-								type: 'main',
+								type: NodeConnectionType.Main,
 								index: 0,
 							},
 						],
@@ -1694,7 +1742,7 @@ describe('Workflow', () => {
 						[
 							{
 								node: 'Set',
-								type: 'main',
+								type: NodeConnectionType.Main,
 								index: 0,
 							},
 						],
@@ -1702,7 +1750,7 @@ describe('Workflow', () => {
 						[
 							{
 								node: 'Switch',
-								type: 'main',
+								type: NodeConnectionType.Main,
 								index: 0,
 							},
 						],
@@ -1713,7 +1761,7 @@ describe('Workflow', () => {
 						[
 							{
 								node: 'Set1',
-								type: 'main',
+								type: NodeConnectionType.Main,
 								index: 0,
 							},
 						],
@@ -1724,12 +1772,12 @@ describe('Workflow', () => {
 						[
 							{
 								node: 'Set1',
-								type: 'main',
+								type: NodeConnectionType.Main,
 								index: 0,
 							},
 							{
 								node: 'Switch',
-								type: 'main',
+								type: NodeConnectionType.Main,
 								index: 0,
 							},
 						],
@@ -1740,7 +1788,7 @@ describe('Workflow', () => {
 						[
 							{
 								node: 'Set1',
-								type: 'main',
+								type: NodeConnectionType.Main,
 								index: 0,
 							},
 						],
