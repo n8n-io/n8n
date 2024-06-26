@@ -27,64 +27,68 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Option',
+		displayName: 'Sort',
+		name: 'sort',
+		type: 'fixedCollection',
 		default: {},
-
 		options: [
 			{
-				displayName: 'Sort Direction',
-				name: 'sort_dir',
-				type: 'options',
-				options: [
+				displayName: 'Values',
+				name: 'values',
+				values: [
 					{
-						name: 'Ascending',
-						value: 'asc',
+						displayName: 'Sort Direction',
+						name: 'sort_dir',
+						type: 'options',
+						options: [
+							{
+								name: 'Ascending',
+								value: 'asc',
+							},
+							{
+								name: 'Descending',
+								value: 'desc',
+							},
+						],
+						default: 'asc',
 					},
 					{
-						name: 'Descending',
-						value: 'desc',
+						displayName: 'Sort Key',
+						name: 'sort_key',
+						description: 'Key name to use for sorting',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Sort Mode',
+						name: 'sort_mode',
+						type: 'options',
+						options: [
+							{
+								name: 'Automatic',
+								value: 'auto',
+								description:
+									'If all field values are numeric, collate numerically. Otherwise, collate alphabetically.',
+							},
+							{
+								name: 'Alphabetic',
+								value: 'alpha',
+								description: 'Collate alphabetically, case-insensitive',
+							},
+							{
+								name: 'Alphabetic and Case-Sensitive',
+								value: 'alpha_case',
+								description: 'Collate alphabetically, case-sensitive',
+							},
+							{
+								name: 'Numeric',
+								value: 'num',
+								description: 'Collate numerically',
+							},
+						],
+						default: 'auto',
 					},
 				],
-				default: 'asc',
-			},
-			{
-				displayName: 'Sort Key',
-				name: 'sort_key',
-				description: 'Key name to use for sorting',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Sort Mode',
-				name: 'sort_mode',
-				type: 'options',
-				options: [
-					{
-						name: 'Automatic',
-						value: 'auto',
-						description:
-							'If all field values are numeric, collate numerically. Otherwise, collate alphabetically.',
-					},
-					{
-						name: 'Alphabetic',
-						value: 'alpha',
-						description: 'Collate alphabetically, case-insensitive',
-					},
-					{
-						name: 'Alphabetic and Case-Sensitive',
-						value: 'alpha_case',
-						description: 'Collate alphabetically, case-sensitive',
-					},
-					{
-						name: 'Numeric',
-						value: 'num',
-						description: 'Collate numerically',
-					},
-				],
-				default: 'auto',
 			},
 		],
 	},
@@ -106,9 +110,9 @@ export async function execute(
 	// https://docs.splunk.com/Documentation/Splunk/8.2.2/RESTREF/RESTsearch#search.2Fjobs
 
 	const qs = {} as IDataObject;
-	const options = this.getNodeParameter('options', i);
+	const sort = this.getNodeParameter('sort.values', i, {}) as IDataObject;
 
-	populate(options, qs);
+	populate(sort, qs);
 	setCount.call(this, qs);
 
 	const endpoint = '/services/search/jobs';
