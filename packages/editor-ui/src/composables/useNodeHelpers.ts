@@ -1226,7 +1226,6 @@ export function useNodeHelpers() {
 		getParameterValue,
 		displayParameter,
 		getNodeIssues,
-		refreshNodeIssues,
 		updateNodesInputIssues,
 		updateNodesExecutionIssues,
 		updateNodeCredentialIssuesByName,

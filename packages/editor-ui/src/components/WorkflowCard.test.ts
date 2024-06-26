@@ -5,10 +5,6 @@ import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { VIEWS } from '@/constants';
 import WorkflowCard from '@/components/WorkflowCard.vue';
-import { useUIStore } from '@/stores/ui.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IWorkflowDb } from '@/Interface';
 import { useRouter } from 'vue-router';
 
@@ -42,19 +38,11 @@ const createWorkflow = (overrides = {}): IWorkflowDb => ({
 describe('WorkflowCard', () => {
 	let pinia: ReturnType<typeof createPinia>;
 	let windowOpenSpy: MockInstance;
-	let uiStore: ReturnType<typeof useUIStore>;
-	let settingsStore: ReturnType<typeof useSettingsStore>;
-	let usersStore: ReturnType<typeof useUsersStore>;
-	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let router: ReturnType<typeof useRouter>;
 
 	beforeEach(async () => {
 		pinia = createPinia();
 		setActivePinia(pinia);
-		uiStore = useUIStore();
-		settingsStore = useSettingsStore();
-		usersStore = useUsersStore();
-		workflowsStore = useWorkflowsStore();
 		router = useRouter();
 		windowOpenSpy = vi.spyOn(window, 'open');
 	});
