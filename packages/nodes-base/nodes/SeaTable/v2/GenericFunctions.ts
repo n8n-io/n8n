@@ -67,7 +67,7 @@ function endpointCtxExpr(ctx: ICtx, endpoint: string): string {
 
 	return endpoint.replace(
 		/({{ *(access_token|dtable_uuid|server) *}})/g,
-		(match: string, expr: string, name: TEndpointVariableName) => {
+		(match: string, name: TEndpointVariableName) => {
 			// I need expr. Why?
 			return (endpointVariables[name] as string) || match;
 		},
@@ -193,7 +193,7 @@ export const split = (subject: string): string[] =>
 	normalize(subject)
 		.split(/\s*((?:[^\\,]*?(?:\\[\s\S])*)*?)\s*(?:,|$)/)
 		.filter((s) => s.length)
-		.map((s) => s.replace(/\\([\s\S])/gm, ($0, $1) => $1));
+		.map((s) => s.replace(/\\([\s\S])/gm, (_, $1) => $1));
 
 // INTERNAL: get collaborator info from @auth.local address
 function getCollaboratorInfo(

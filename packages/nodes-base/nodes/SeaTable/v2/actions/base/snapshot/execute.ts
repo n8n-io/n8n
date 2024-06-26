@@ -1,10 +1,7 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { seaTableApiRequest } from '../../../GenericFunctions';
 
-export async function snapshot(
-	this: IExecuteFunctions,
-	index: number,
-): Promise<INodeExecutionData[]> {
+export async function snapshot(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
 	const responseData = await seaTableApiRequest.call(
 		this,
 		{},
