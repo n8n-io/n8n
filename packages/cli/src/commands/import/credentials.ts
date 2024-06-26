@@ -3,6 +3,7 @@ import { Flags } from '@oclif/core';
 import { Cipher } from 'n8n-core';
 import fs from 'fs';
 import glob from 'fast-glob';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
 
 import * as Db from '@/Db';

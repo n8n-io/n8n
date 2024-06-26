@@ -10,7 +10,9 @@ export class AuditEventRelay {
 	constructor(
 		private readonly eventRelay: EventRelay,
 		private readonly eventBus: MessageEventBus,
-	) {
+	) {}
+
+	init() {
 		this.setupHandlers();
 	}
 

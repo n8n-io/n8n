@@ -31,6 +31,7 @@ import type {
 	WorkflowMetadata,
 	IExecutionFlattedResponse,
 	IWorkflowTemplateNode,
+	ITag,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import type {
@@ -73,8 +74,7 @@ import { i18n } from '@/plugins/i18n';
 
 import { computed, ref } from 'vue';
 import { useProjectsStore } from '@/stores/projects.store';
-import { useSettingsStore } from './settings.store';
-import { useUsersStore } from './users.store';
+import { useTagsStore } from '@/stores/tags.store';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -101,6 +101,8 @@ let cachedWorkflowKey: string | null = '';
 let cachedWorkflow: Workflow | null = null;
 
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
+	const uiStore = useUIStore();
+
 	const workflow = ref<IWorkflowDb>(createEmptyWorkflow());
 	const usedCredentials = ref<Record<string, IUsedCredential>>({});
 
@@ -436,8 +438,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function resetWorkflow() {
-		const usersStore = useUsersStore();
-		const settingsStore = useSettingsStore();
 		workflow.value = createEmptyWorkflow();
 	}
 
@@ -481,7 +481,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function setWorkflowName(data: { newName: string; setStateDirty: boolean }) {
 		if (data.setStateDirty) {
-			const uiStore = useUIStore();
 			uiStore.stateIsDirty = true;
 		}
 		workflow.value.name = data.newName;
@@ -560,7 +559,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function setWorkflowActive(targetWorkflowId: string) {
-		const uiStore = useUIStore();
 		uiStore.stateIsDirty = false;
 		const index = activeWorkflows.value.indexOf(targetWorkflowId);
 		if (index === -1) {
@@ -648,10 +646,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function setWorkflowTagIds(tags: string[]) {
-		workflow.value = {
-			...workflow.value,
-			tags,
-		};
+		workflow.value.tags = tags;
 	}
 
 	function addWorkflowTagIds(tags: string[]) {
@@ -715,7 +710,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			},
 		};
 
-		const uiStore = useUIStore();
 		uiStore.stateIsDirty = true;
 
 		dataPinningEventBus.emit('pin-data', { [payload.node.name]: storedPinData });
@@ -732,7 +726,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			pinData,
 		};
 
-		const uiStore = useUIStore();
 		uiStore.stateIsDirty = true;
 
 		dataPinningEventBus.emit('unpin-data', { [payload.node.name]: undefined });
@@ -829,7 +822,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			return;
 		}
 
-		const uiStore = useUIStore();
 		uiStore.stateIsDirty = true;
 
 		const connections =
@@ -847,8 +839,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function removeAllConnections(data: { setStateDirty: boolean }): void {
-		if (data && data.setStateDirty) {
-			const uiStore = useUIStore();
+		if (data?.setStateDirty) {
 			uiStore.stateIsDirty = true;
 		}
 
@@ -859,7 +850,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		node: INodeUi,
 		{ preserveInputConnections = false, preserveOutputConnections = false } = {},
 	): void {
-		const uiStore = useUIStore();
 		uiStore.stateIsDirty = true;
 
 		// Remove all source connections
@@ -904,7 +894,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function renameNodeSelectedAndExecution(nameData: { old: string; new: string }): void {
-		const uiStore = useUIStore();
 		uiStore.stateIsDirty = true;
 
 		// If node has any WorkflowResultData rename also that one that the data
@@ -1024,7 +1013,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function removeNode(node: INodeUi): void {
-		const uiStore = useUIStore();
 		const { [node.name]: removedNodeMetadata, ...remainingNodeMetadata } = nodeMetadata.value;
 		nodeMetadata.value = remainingNodeMetadata;
 
@@ -1051,7 +1039,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function removeAllNodes(data: { setStateDirty: boolean; removePinData: boolean }): void {
 		if (data.setStateDirty) {
-			const uiStore = useUIStore();
 			uiStore.stateIsDirty = true;
 		}
 
@@ -1074,7 +1061,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		if (nodeIndex !== -1) {
 			for (const key of Object.keys(updateInformation.properties)) {
-				const uiStore = useUIStore();
 				uiStore.stateIsDirty = true;
 
 				updateNodeAtIndex(nodeIndex, {
@@ -1096,7 +1082,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			);
 		}
 
-		const uiStore = useUIStore();
 		uiStore.stateIsDirty = true;
 
 		updateNodeAtIndex(nodeIndex, {
@@ -1118,7 +1103,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		const node = workflow.value.nodes[nodeIndex];
 
-		const uiStore = useUIStore();
 		uiStore.stateIsDirty = true;
 		const newParameters =
 			!!append && isObject(updateInformation.value)
@@ -1520,6 +1504,31 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		clearNodeExecutionData(node.name);
 	}
 
+	function initializeEditableWorkflow(id: string) {
+		const targetWorkflow = workflowsById.value[id];
+		const tags = (targetWorkflow?.tags ?? []) as ITag[];
+		const tagIds = tags.map((tag) => tag.id);
+
+		addWorkflow(targetWorkflow);
+		setWorkflow(targetWorkflow);
+		setActive(targetWorkflow.active || false);
+		setWorkflowId(targetWorkflow.id);
+		setWorkflowName({ newName: targetWorkflow.name, setStateDirty: false });
+		setWorkflowSettings(targetWorkflow.settings ?? {});
+		setWorkflowPinData(targetWorkflow.pinData ?? {});
+		setWorkflowVersionId(targetWorkflow.versionId);
+		setWorkflowMetadata(targetWorkflow.meta);
+		if (targetWorkflow.usedCredentials) {
+			setUsedCredentials(targetWorkflow.usedCredentials);
+		}
+		setWorkflowTagIds(tagIds || []);
+
+		if (tags.length > 0) {
+			const tagsStore = useTagsStore();
+			tagsStore.upsertTags(tags);
+		}
+	}
+
 	//
 	// End Canvas V2 Functions
 	//
@@ -1660,5 +1669,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		removeNodeExecutionDataById,
 		setNodes,
 		setConnections,
+		initializeEditableWorkflow,
 	};
 });
