@@ -81,7 +81,6 @@ export class ActiveCampaign implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'ActiveCampaign',
 		name: 'activeCampaign',
-
 		icon: { light: 'file:activeCampaign.svg', dark: 'file:activeCampaign.dark.svg' },
 		group: ['transform'],
 		version: 1,
