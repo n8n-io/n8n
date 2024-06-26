@@ -6,9 +6,11 @@ import { NodeConnectionType } from 'n8n-workflow';
 export function useNodeConnections({
 	inputs,
 	outputs,
+	connections,
 }: {
 	inputs: MaybeRef<CanvasElementData['inputs']>;
 	outputs: MaybeRef<CanvasElementData['outputs']>;
+	connections: MaybeRef<CanvasElementData['connections']>;
 }) {
 	/**
 	 * Inputs
@@ -26,6 +28,10 @@ export function useNodeConnections({
 		nonMainInputs.value.filter((input) => input.required),
 	);
 
+	const mainInputConnections = computed(
+		() => unref(connections).input[NodeConnectionType.Main] ?? [],
+	);
+
 	/**
 	 * Outputs
 	 */
@@ -33,15 +39,22 @@ export function useNodeConnections({
 	const mainOutputs = computed(() =>
 		unref(outputs).filter((output) => output.type === NodeConnectionType.Main),
 	);
+
 	const nonMainOutputs = computed(() =>
 		unref(outputs).filter((output) => output.type !== NodeConnectionType.Main),
+	);
+
+	const mainOutputConnections = computed(
+		() => unref(connections).output[NodeConnectionType.Main] ?? [],
 	);
 
 	return {
 		mainInputs,
 		nonMainInputs,
 		requiredNonMainInputs,
+		mainInputConnections,
 		mainOutputs,
 		nonMainOutputs,
+		mainOutputConnections,
 	};
 }
