@@ -60,7 +60,6 @@ import { useUsageStore } from '@/stores/usage.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { useRoute } from 'vue-router';
-import { initializeAuthenticatedFeatures } from '@/init';
 import { useAIStore } from './stores/ai.store';
 import AIAssistantChat from './components/AIAssistantChat/AIAssistantChat.vue';
 
@@ -103,26 +102,16 @@ export default defineComponent({
 	},
 	data() {
 		return {
-			onAfterAuthenticateInitialized: false,
 			loading: true,
 		};
 	},
 	watch: {
-		// eslint-disable-next-line @typescript-eslint/naming-convention
-		async 'usersStore.currentUser'(currentValue, previousValue) {
-			if (currentValue && !previousValue) {
-				await initializeAuthenticatedFeatures();
-			}
-		},
 		defaultLocale(newLocale) {
 			void loadLanguage(newLocale);
 		},
 	},
 	async mounted() {
 		this.logHiringBanner();
-
-		void initializeAuthenticatedFeatures();
-
 		void useExternalHooks().run('app.mount');
 		this.loading = false;
 	},
