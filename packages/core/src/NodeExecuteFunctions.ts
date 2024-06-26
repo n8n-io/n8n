@@ -3678,7 +3678,7 @@ export function getExecuteFunctions(
 				}
 
 				// TODO: Check if nodeType has input with that index defined
-				if (inputData[inputName].length <= inputIndex) {
+				if (inputData[inputName].length < inputIndex) {
 					throw new ApplicationError('Could not get input with given index', {
 						extra: { inputIndex, inputName },
 					});
