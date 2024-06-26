@@ -6,7 +6,7 @@
 				<th :class="$style.tableRightMargin"></th>
 			</tr>
 			<tr
-				v-for="(row, index1) in tableData.data"
+				v-for="(_, index1) in tableData.data"
 				:key="index1"
 				:class="{ [$style.hoveringRow]: isHoveringRow(index1) }"
 			>
