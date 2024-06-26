@@ -2317,6 +2317,7 @@ export interface INodeGraphItem {
 	agent?: string; //@n8n/n8n-nodes-langchain.agent
 	prompts?: IDataObject[] | IDataObject; //ai node's prompts, cloud only
 	toolSettings?: IDataObject; //various langchain tool's settings
+	sql?: string; //merge node combineBySql, cloud only
 }
 
 export interface INodeNameIndex {

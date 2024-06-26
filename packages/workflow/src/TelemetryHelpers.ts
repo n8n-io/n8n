@@ -18,6 +18,7 @@ import {
 	HTTP_REQUEST_NODE_TYPE,
 	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
 	LANGCHAIN_CUSTOM_TOOLS,
+	MERGE_NODE_TYPE,
 	OPENAI_LANGCHAIN_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
@@ -397,6 +398,10 @@ export function generateNodesGraph(
 			if (node.type === CHAIN_LLM_LANGCHAIN_NODE_TYPE) {
 				nodeItem.prompts =
 					(((node.parameters?.messages as IDataObject) ?? {}).messageValues as IDataObject[]) ?? [];
+			}
+
+			if (node.type === MERGE_NODE_TYPE && node.parameters?.operation === 'combineBySql') {
+				nodeItem.sql = node.parameters?.query as string;
 			}
 		}
 
