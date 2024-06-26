@@ -7,6 +7,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useRBACStore } from '@/stores/rbac.store';
 import type { Scope } from '@n8n/permissions';
 import type { RouteRecordName } from 'vue-router';
+import * as init from '@/init';
 
 const App = {
 	template: '<div />',
@@ -15,6 +16,7 @@ const renderComponent = createComponentRenderer(App);
 
 describe('router', () => {
 	let server: ReturnType<typeof setupServer>;
+	const initializeAuthenticatedFeaturesSpy = vi.spyOn(init, 'initializeAuthenticatedFeatures');
 
 	beforeAll(async () => {
 		server = setupServer();
@@ -25,8 +27,13 @@ describe('router', () => {
 		renderComponent({ pinia });
 	});
 
+	beforeEach(() => {
+		initializeAuthenticatedFeaturesSpy.mockImplementation(async () => await Promise.resolve());
+	});
+
 	afterAll(() => {
 		server.shutdown();
+		vi.restoreAllMocks();
 	});
 
 	test.each([
@@ -42,6 +49,7 @@ describe('router', () => {
 		'should resolve %s to %s',
 		async (path, name) => {
 			await router.push(path);
+			expect(initializeAuthenticatedFeaturesSpy).toHaveBeenCalled();
 			expect(router.currentRoute.value.name).toBe(name);
 		},
 		10000,
@@ -55,6 +63,7 @@ describe('router', () => {
 		'should redirect %s to %s if user does not have permissions',
 		async (path, name) => {
 			await router.push(path);
+			expect(initializeAuthenticatedFeaturesSpy).toHaveBeenCalled();
 			expect(router.currentRoute.value.name).toBe(name);
 		},
 		10000,
@@ -73,6 +82,7 @@ describe('router', () => {
 			settingsStore.settings.enterprise.workflowHistory = true;
 
 			await router.push(path);
+			expect(initializeAuthenticatedFeaturesSpy).toHaveBeenCalled();
 			expect(router.currentRoute.value.name).toBe(name);
 		},
 		10000,
@@ -111,6 +121,7 @@ describe('router', () => {
 			rbacStore.setGlobalScopes(scopes);
 
 			await router.push(path);
+			expect(initializeAuthenticatedFeaturesSpy).toHaveBeenCalled();
 			expect(router.currentRoute.value.name).toBe(name);
 		},
 		10000,
