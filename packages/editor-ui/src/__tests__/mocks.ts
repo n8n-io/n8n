@@ -29,12 +29,14 @@ export const mockNode = ({
 	name,
 	type,
 	position = [0, 0],
+	disabled = false,
 }: {
 	id?: INode['id'];
 	name: INode['name'];
 	type: INode['type'];
 	position?: INode['position'];
-}) => mock<INode>({ id, name, type, position });
+	disabled?: INode['disabled'];
+}) => mock<INode>({ id, name, type, position, disabled });
 
 export const mockNodeTypeDescription = ({
 	name,

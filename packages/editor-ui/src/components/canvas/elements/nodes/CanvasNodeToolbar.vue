@@ -3,12 +3,14 @@ import { computed, inject, useCssModule } from 'vue';
 import { CanvasNodeKey } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
 
-const emit = defineEmits(['delete']);
+const emit = defineEmits<{
+	delete: [];
+	toggle: [];
+}>();
+
 const $style = useCssModule();
-
-const node = inject(CanvasNodeKey);
-
 const i18n = useI18n();
+const node = inject(CanvasNodeKey);
 
 const data = computed(() => node?.data.value);
 
@@ -21,10 +23,11 @@ const nodeDisabledTitle = 'Test';
 // @TODO
 function executeNode() {}
 
-// @TODO
-function toggleDisableNode() {}
+function onToggleNode() {
+	emit('toggle');
+}
 
-function deleteNode() {
+function onDeleteNode() {
 	emit('delete');
 }
 
@@ -53,7 +56,7 @@ function openContextMenu(_e: MouseEvent, _type: string) {}
 				size="small"
 				icon="power-off"
 				:title="nodeDisabledTitle"
-				@click="toggleDisableNode"
+				@click="onToggleNode"
 			/>
 			<N8nIconButton
 				data-test-id="delete-node-button"
@@ -62,7 +65,7 @@ function openContextMenu(_e: MouseEvent, _type: string) {}
 				text
 				icon="trash"
 				:title="i18n.baseText('node.delete')"
-				@click="deleteNode"
+				@click="onDeleteNode"
 			/>
 			<N8nIconButton
 				data-test-id="overflow-node-button"
