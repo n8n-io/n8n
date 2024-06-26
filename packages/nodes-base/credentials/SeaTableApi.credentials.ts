@@ -5,8 +5,7 @@ export class SeaTableApi implements ICredentialType {
 
 	displayName = 'SeaTable API';
 
-	documentationUrl =
-		'https://seatable.io/docs/n8n-integration/erstellen-eines-api-tokens-fuer-n8n/?lang=auto';
+	documentationUrl = 'seaTable';
 
 	properties: INodeProperties[] = [
 		{
@@ -42,7 +41,7 @@ export class SeaTableApi implements ICredentialType {
 			name: 'token',
 			type: 'string',
 			description:
-				'The API-Token of the SeaTable base you would like to use with n8n. n8n can only connect to one base a at a time.',
+				'The API-Token of the SeaTable base you would like to use with n8n. n8n can only connect to one base at a time.',
 			typeOptions: { password: true },
 			default: '',
 		},
