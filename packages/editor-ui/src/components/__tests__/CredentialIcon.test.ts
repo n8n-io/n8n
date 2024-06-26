@@ -1,20 +1,33 @@
-import { createComponentRenderer } from '@/__tests__/render';
+import { createTestingPinia } from '@pinia/testing';
+import { mock } from 'vitest-mock-extended';
+import type { INodeTypeDescription } from 'n8n-workflow';
+
 import CredentialIcon from '@/components/CredentialIcon.vue';
 import { STORES } from '@/constants';
-import { createTestingPinia } from '@pinia/testing';
-import * as testNodeTypes from './testData/nodeTypesTestData';
-import merge from 'lodash-es/merge';
 import { groupNodeTypesByNameAndType } from '@/utils/nodeTypes/nodeTypeTransforms';
 
-const defaultState = {
+import { createComponentRenderer } from '@/__tests__/render';
+
+const twitterV1 = mock<INodeTypeDescription>({
+	version: 1,
+	credentials: [{ name: 'twitterOAuth1Api', required: true }],
+	iconUrl: 'icons/n8n-nodes-base/dist/nodes/Twitter/x.svg',
+});
+
+const twitterV2 = mock<INodeTypeDescription>({
+	version: 2,
+	credentials: [{ name: 'twitterOAuth2Api', required: true }],
+	iconUrl: 'icons/n8n-nodes-base/dist/nodes/Twitter/x.svg',
+});
+
+const nodeTypes = groupNodeTypesByNameAndType([twitterV1, twitterV2]);
+const initialState = {
 	[STORES.CREDENTIALS]: {},
-	[STORES.NODE_TYPES]: {},
+	[STORES.NODE_TYPES]: { nodeTypes },
 };
 
 const renderComponent = createComponentRenderer(CredentialIcon, {
-	pinia: createTestingPinia({
-		initialState: defaultState,
-	}),
+	pinia: createTestingPinia({ initialState }),
 	global: {
 		stubs: ['n8n-tooltip'],
 	},
@@ -25,17 +38,7 @@ describe('CredentialIcon', () => {
 
 	it('shows correct icon for credential type that is for the latest node type version', () => {
 		const { baseElement } = renderComponent({
-			pinia: createTestingPinia({
-				initialState: merge(defaultState, {
-					[STORES.CREDENTIALS]: {},
-					[STORES.NODE_TYPES]: {
-						nodeTypes: groupNodeTypesByNameAndType([
-							testNodeTypes.twitterV1,
-							testNodeTypes.twitterV2,
-						]),
-					},
-				}),
-			}),
+			pinia: createTestingPinia({ initialState }),
 			props: {
 				credentialTypeName: 'twitterOAuth2Api',
 			},
@@ -49,17 +52,7 @@ describe('CredentialIcon', () => {
 
 	it('shows correct icon for credential type that is for an older node type version', () => {
 		const { baseElement } = renderComponent({
-			pinia: createTestingPinia({
-				initialState: merge(defaultState, {
-					[STORES.CREDENTIALS]: {},
-					[STORES.NODE_TYPES]: {
-						nodeTypes: groupNodeTypesByNameAndType([
-							testNodeTypes.twitterV1,
-							testNodeTypes.twitterV2,
-						]),
-					},
-				}),
-			}),
+			pinia: createTestingPinia({ initialState }),
 			props: {
 				credentialTypeName: 'twitterOAuth1Api',
 			},

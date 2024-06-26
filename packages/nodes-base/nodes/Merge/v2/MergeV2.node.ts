@@ -1,5 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
-
 import merge from 'lodash/merge';
 
 import type {
@@ -41,7 +39,7 @@ export class MergeV2 implements INodeType {
 			defaults: {
 				name: 'Merge',
 			},
-			// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 			inputs: ['main', 'main'],
 			outputs: ['main'],
 			inputNames: ['Input 1', 'Input 2'],

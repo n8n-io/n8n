@@ -1,4 +1,11 @@
+import type { Router } from 'vue-router';
+import { setActivePinia } from 'pinia';
+import { createTestingPinia } from '@pinia/testing';
+import { vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+
 import { VIEWS } from '@/constants';
+import type { ITemplatesWorkflowFull } from '@/Interface';
 import { Telemetry } from '@/plugins/telemetry';
 import type { NodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -7,23 +14,33 @@ import { usePostHog } from '@/stores/posthog.store';
 import type { TemplatesStore } from '@/stores/templates.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useTemplateWorkflow } from '@/utils/templates/templateActions';
-import {
-	nodeTypeRespondToWebhookV1,
-	nodeTypeShopifyTriggerV1,
-	nodeTypeTelegramV1,
-	nodeTypeTwitterV1,
-	nodeTypeWebhookV1,
-	nodeTypeWebhookV1_1,
-	nodeTypesSet,
-} from '@/utils/testData/nodeTypeTestData';
-import {
-	fullCreateApiEndpointTemplate,
-	fullShopifyTelegramTwitterTemplate,
-} from '@/utils/testData/templateTestData';
-import { createTestingPinia } from '@pinia/testing';
-import { setActivePinia } from 'pinia';
-import { vi } from 'vitest';
-import type { Router } from 'vue-router';
+import { nodeTypeTelegram } from '@/utils/testData/nodeTypeTestData';
+
+const testTemplate1 = mock<ITemplatesWorkflowFull>({
+	id: 1,
+	workflow: {
+		nodes: [],
+	},
+	full: true,
+});
+
+export const testTemplate2 = mock<ITemplatesWorkflowFull>({
+	id: 2,
+	workflow: {
+		nodes: [
+			{
+				name: 'Telegram',
+				type: 'n8n-nodes-base.telegram',
+				typeVersion: 1,
+				position: [0, 0],
+				credentials: {
+					telegramApi: 'telegram_habot',
+				},
+			},
+		],
+	},
+	full: true,
+});
 
 describe('templateActions', () => {
 	describe('useTemplateWorkflow', () => {
@@ -80,16 +97,12 @@ describe('templateActions', () => {
 		});
 
 		describe('When feature flag is enabled and template has nodes requiring credentials', () => {
-			const templateId = fullShopifyTelegramTwitterTemplate.id.toString();
+			const templateId = testTemplate2.id.toString();
 
 			beforeEach(async () => {
 				posthogStore.isFeatureEnabled = vi.fn().mockReturnValue(true);
-				templatesStore.addWorkflows([fullShopifyTelegramTwitterTemplate]);
-				nodeTypesStore.setNodeTypes([
-					nodeTypeTelegramV1,
-					nodeTypeTwitterV1,
-					nodeTypeShopifyTriggerV1,
-				]);
+				templatesStore.addWorkflows([testTemplate2]);
+				nodeTypesStore.setNodeTypes([nodeTypeTelegram]);
 				vi.spyOn(nodeTypesStore, 'loadNodeTypesIfNotLoaded').mockResolvedValue();
 
 				await useTemplateWorkflow({
@@ -113,17 +126,11 @@ describe('templateActions', () => {
 		});
 
 		describe("When feature flag is enabled and template doesn't have nodes requiring credentials", () => {
-			const templateId = fullCreateApiEndpointTemplate.id.toString();
+			const templateId = testTemplate1.id.toString();
 
 			beforeEach(async () => {
 				posthogStore.isFeatureEnabled = vi.fn().mockReturnValue(true);
-				templatesStore.addWorkflows([fullCreateApiEndpointTemplate]);
-				nodeTypesStore.setNodeTypes([
-					nodeTypeWebhookV1,
-					nodeTypeWebhookV1_1,
-					nodeTypeRespondToWebhookV1,
-					...Object.values(nodeTypesSet),
-				]);
+				templatesStore.addWorkflows([testTemplate1]);
 				vi.spyOn(nodeTypesStore, 'loadNodeTypesIfNotLoaded').mockResolvedValue();
 
 				await useTemplateWorkflow({

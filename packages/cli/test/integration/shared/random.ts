@@ -1,39 +1,19 @@
-import { randomBytes } from 'crypto';
+import { v4 as uuid } from 'uuid';
+import { randomInt, randomString, UPPERCASE_LETTERS } from 'n8n-workflow';
+
 import { MIN_PASSWORD_CHAR_LENGTH, MAX_PASSWORD_CHAR_LENGTH } from '@/constants';
 import type { CredentialPayload } from './types';
-import { v4 as uuid } from 'uuid';
 
-/**
- * Create a random alphanumeric string of random length between two limits, both inclusive.
- * Limits should be even numbers (round down otherwise).
- */
-export function randomString(min: number, max: number) {
-	const randomInteger = Math.floor(Math.random() * (max - min) + min) + 1;
-	return randomBytes(randomInteger / 2).toString('hex');
-}
+export const randomApiKey = () => `n8n_api_${randomString(40)}`;
 
-export function randomApiKey() {
-	return `n8n_api_${randomBytes(20).toString('hex')}`;
-}
+export const chooseRandomly = <T>(array: T[]) => array[randomInt(array.length)];
 
-export const chooseRandomly = <T>(array: T[]) => array[Math.floor(Math.random() * array.length)];
-
-export const randomInteger = (max = 1000) => Math.floor(Math.random() * max);
-
-export const randomDigit = () => Math.floor(Math.random() * 10);
-
-export const randomPositiveDigit = (): number => {
-	const digit = randomDigit();
-
-	return digit === 0 ? randomPositiveDigit() : digit;
-};
-
-const randomUppercaseLetter = () => chooseRandomly('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''));
+const randomUppercaseLetter = () => chooseRandomly(UPPERCASE_LETTERS.split(''));
 
 export const randomValidPassword = () =>
 	randomString(MIN_PASSWORD_CHAR_LENGTH, MAX_PASSWORD_CHAR_LENGTH - 2) +
 	randomUppercaseLetter() +
-	randomDigit();
+	randomInt(10);
 
 export const randomInvalidPassword = () =>
 	chooseRandomly([
@@ -54,7 +34,7 @@ const POPULAR_TOP_LEVEL_DOMAINS = ['com', 'org', 'net', 'io', 'edu'];
 
 const randomTopLevelDomain = () => chooseRandomly(POPULAR_TOP_LEVEL_DOMAINS);
 
-export const randomName = () => randomString(4, 8);
+export const randomName = () => randomString(4, 8).toLowerCase();
 
 export const randomCredentialPayload = (): CredentialPayload => ({
 	name: randomName(),

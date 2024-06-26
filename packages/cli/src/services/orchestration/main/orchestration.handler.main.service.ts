@@ -1,8 +1,5 @@
 import { Service } from 'typedi';
-import {
-	COMMAND_REDIS_CHANNEL,
-	WORKER_RESPONSE_REDIS_CHANNEL,
-} from '../../redis/RedisServiceHelper';
+import { COMMAND_REDIS_CHANNEL, WORKER_RESPONSE_REDIS_CHANNEL } from '../../redis/RedisConstants';
 import { handleWorkerResponseMessageMain } from './handleWorkerResponseMessageMain';
 import { handleCommandMessageMain } from './handleCommandMessageMain';
 import { OrchestrationHandlerService } from '../../orchestration.handler.base.service';

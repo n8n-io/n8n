@@ -1,43 +1,39 @@
-import { useNodeBase } from '@/composables/useNodeBase';
-import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
-import { createTestNode, createTestWorkflowObject } from '@/__tests__/mocks';
 import { createPinia, setActivePinia } from 'pinia';
+import { mock, mockClear } from 'vitest-mock-extended';
+import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
+import type { INode, INodeTypeDescription, Workflow } from 'n8n-workflow';
+
+import { useNodeBase } from '@/composables/useNodeBase';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { findNodeTypeDescriptionByName } from '@/__tests__/defaults';
-import { SET_NODE_TYPE } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
-import type { INodeTypeDescription, Workflow } from 'n8n-workflow';
-import type { INodeUi } from '@/Interface';
-import type { Mock } from '@vitest/spy';
 
 describe('useNodeBase', () => {
 	let pinia: ReturnType<typeof createPinia>;
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let uiStore: ReturnType<typeof useUIStore>;
-	let instance: Record<string, Mock>;
-	let workflowObject: Workflow;
 	let emit: (event: string, ...args: unknown[]) => void;
-	let node: INodeUi;
-	let nodeTypeDescription: INodeTypeDescription;
 	let nodeBase: ReturnType<typeof useNodeBase>;
 
+	const jsPlumbInstance = mock<BrowserJsPlumbInstance>();
+	const nodeTypeDescription = mock<INodeTypeDescription>({
+		inputs: ['main'],
+		outputs: ['main'],
+	});
+	const workflowObject = mock<Workflow>();
+	const node = mock<INode>();
+
 	beforeEach(() => {
+		mockClear(jsPlumbInstance);
+
 		pinia = createPinia();
 		setActivePinia(pinia);
 
 		workflowsStore = useWorkflowsStore();
 		uiStore = useUIStore();
-
-		instance = {
-			addEndpoint: vi.fn().mockReturnValue({}),
-		};
-		workflowObject = createTestWorkflowObject({ nodes: [], connections: {} });
-		node = createTestNode();
-		nodeTypeDescription = findNodeTypeDescriptionByName(SET_NODE_TYPE);
 		emit = vi.fn();
 
 		nodeBase = useNodeBase({
-			instance: instance as unknown as BrowserJsPlumbInstance,
+			instance: jsPlumbInstance,
 			name: node.name,
 			workflowObject,
 			isReadOnly: false,
@@ -54,83 +50,89 @@ describe('useNodeBase', () => {
 
 	describe('addInputEndpoints', () => {
 		it('should add input endpoints correctly', () => {
-			const { addInputEndpoints } = nodeBase;
-
+			jsPlumbInstance.addEndpoint.mockReturnValue(mock());
 			vi.spyOn(workflowsStore, 'getNodeByName').mockReturnValue(node);
 
-			addInputEndpoints(node, nodeTypeDescription);
-
-			const addEndpointCall = instance.addEndpoint.mock.calls[0][1];
+			nodeBase.addInputEndpoints(node, nodeTypeDescription);
 
 			expect(workflowsStore.getNodeByName).toHaveBeenCalledWith(node.name);
-			expect(addEndpointCall.anchor).toEqual([0.01, 0.5, -1, 0]);
-			expect(addEndpointCall.cssClass).toEqual('rect-input-endpoint');
-			expect(addEndpointCall.dragAllowedWhenFull).toEqual(true);
-			expect(addEndpointCall.enabled).toEqual(true);
-			expect(addEndpointCall.endpoint).toEqual('Rectangle');
-			expect(addEndpointCall.hoverClass).toEqual('rect-input-endpoint-hover');
-			expect(addEndpointCall.hoverPaintStyle).toMatchObject({
-				fill: 'var(--color-primary)',
-				height: 20,
-				lineWidth: 0,
-				stroke: 'var(--color-primary)',
-				width: 8,
+			expect(jsPlumbInstance.addEndpoint).toHaveBeenCalledWith(undefined, {
+				anchor: [0.01, 0.5, -1, 0],
+				maxConnections: -1,
+				endpoint: 'Rectangle',
+				paintStyle: {
+					width: 8,
+					height: 20,
+					fill: 'var(--node-type-main-color)',
+					stroke: 'var(--node-type-main-color)',
+					lineWidth: 0,
+				},
+				hoverPaintStyle: {
+					width: 8,
+					height: 20,
+					fill: 'var(--color-primary)',
+					stroke: 'var(--color-primary)',
+					lineWidth: 0,
+				},
+				source: false,
+				target: false,
+				parameters: {
+					connection: 'target',
+					nodeId: node.id,
+					type: 'main',
+					index: 0,
+				},
+				enabled: true,
+				cssClass: 'rect-input-endpoint',
+				dragAllowedWhenFull: true,
+				hoverClass: 'rect-input-endpoint-hover',
+				uuid: `${node.id}-input0`,
 			});
-			expect(addEndpointCall.maxConnections).toEqual(-1);
-			expect(addEndpointCall.paintStyle).toMatchObject({
-				fill: 'var(--node-type-main-color)',
-				height: 20,
-				lineWidth: 0,
-				stroke: 'var(--node-type-main-color)',
-				width: 8,
-			});
-			expect(addEndpointCall.parameters).toMatchObject({
-				connection: 'target',
-				index: 0,
-				type: 'main',
-			});
-			expect(addEndpointCall.scope).toBeUndefined();
-			expect(addEndpointCall.source).toBeFalsy();
-			expect(addEndpointCall.target).toBeFalsy();
 		});
 	});
 
 	describe('addOutputEndpoints', () => {
 		it('should add output endpoints correctly', () => {
-			const { addOutputEndpoints } = nodeBase;
 			const getNodeByNameSpy = vi.spyOn(workflowsStore, 'getNodeByName').mockReturnValue(node);
 
-			addOutputEndpoints(node, nodeTypeDescription);
-
-			const addEndpointCall = instance.addEndpoint.mock.calls[0][1];
+			nodeBase.addOutputEndpoints(node, nodeTypeDescription);
 
 			expect(getNodeByNameSpy).toHaveBeenCalledWith(node.name);
-			expect(addEndpointCall.anchor).toEqual([0.99, 0.5, 1, 0]);
-			expect(addEndpointCall.cssClass).toEqual('dot-output-endpoint');
-			expect(addEndpointCall.dragAllowedWhenFull).toEqual(false);
-			expect(addEndpointCall.enabled).toEqual(true);
-			expect(addEndpointCall.endpoint).toEqual({
-				options: {
-					radius: 9,
+			expect(jsPlumbInstance.addEndpoint).toHaveBeenCalledWith(undefined, {
+				anchor: [0.99, 0.5, 1, 0],
+				connectionsDirected: true,
+				cssClass: 'dot-output-endpoint',
+				dragAllowedWhenFull: false,
+				enabled: true,
+				endpoint: {
+					options: {
+						radius: 9,
+					},
+					type: 'Dot',
 				},
-				type: 'Dot',
+				hoverClass: 'dot-output-endpoint-hover',
+				hoverPaintStyle: {
+					fill: 'var(--color-primary)',
+					outlineStroke: 'none',
+					strokeWidth: 9,
+				},
+				maxConnections: -1,
+				paintStyle: {
+					fill: 'var(--node-type-main-color)',
+					outlineStroke: 'none',
+					strokeWidth: 9,
+				},
+				parameters: {
+					connection: 'source',
+					index: 0,
+					nodeId: node.id,
+					type: 'main',
+				},
+				scope: undefined,
+				source: true,
+				target: false,
+				uuid: `${node.id}-output0`,
 			});
-			expect(addEndpointCall.hoverClass).toEqual('dot-output-endpoint-hover');
-			expect(addEndpointCall.hoverPaintStyle).toMatchObject({
-				fill: 'var(--color-primary)',
-			});
-			expect(addEndpointCall.maxConnections).toEqual(-1);
-			expect(addEndpointCall.paintStyle).toMatchObject({
-				fill: 'var(--node-type-main-color)',
-			});
-			expect(addEndpointCall.parameters).toMatchObject({
-				connection: 'source',
-				index: 0,
-				type: 'main',
-			});
-			expect(addEndpointCall.scope).toBeUndefined();
-			expect(addEndpointCall.source).toBeTruthy();
-			expect(addEndpointCall.target).toBeFalsy();
 		});
 	});
 

@@ -1,7 +1,18 @@
-import type { INode, INodeParameters, INodeProperties, INodeTypeDescription } from '@/Interfaces';
-import type { Workflow } from '../src';
-
-import { getNodeParameters, getNodeHints, isSingleExecution } from '@/NodeHelpers';
+import type {
+	INode,
+	INodeParameters,
+	INodeProperties,
+	INodeType,
+	INodeTypeDescription,
+} from '@/Interfaces';
+import type { Workflow } from '@/Workflow';
+import {
+	getNodeParameters,
+	getNodeHints,
+	isSingleExecution,
+	isSubNodeType,
+	applyDeclarativeNodeOptionParameters,
+} from '@/NodeHelpers';
 
 describe('NodeHelpers', () => {
 	describe('getNodeParameters', () => {
@@ -3528,6 +3539,7 @@ describe('NodeHelpers', () => {
 			expect(hints).toHaveLength(1);
 		});
 	});
+
 	describe('isSingleExecution', () => {
 		test('should determine based on node parameters if it would be executed once', () => {
 			expect(isSingleExecution('n8n-nodes-base.code', {})).toEqual(true);
@@ -3553,6 +3565,74 @@ describe('NodeHelpers', () => {
 			expect(isSingleExecution('n8n-nodes-base.mongoDb', { operation: 'insert' })).toEqual(true);
 			expect(isSingleExecution('n8n-nodes-base.mongoDb', { operation: 'update' })).toEqual(true);
 			expect(isSingleExecution('n8n-nodes-base.redis', {})).toEqual(true);
+		});
+	});
+
+	describe('isSubNodeType', () => {
+		const tests: Array<[boolean, Pick<INodeTypeDescription, 'outputs'> | null]> = [
+			[false, null],
+			[false, { outputs: '={{random_expression}}' }],
+			[false, { outputs: [] }],
+			[false, { outputs: ['main'] }],
+			[true, { outputs: ['ai_agent'] }],
+			[true, { outputs: ['main', 'ai_agent'] }],
+		];
+		test.each(tests)('should return %p for %o', (expected, nodeType) => {
+			expect(isSubNodeType(nodeType)).toBe(expected);
+		});
+	});
+
+	describe('applyDeclarativeNodeOptionParameters', () => {
+		test.each([
+			[
+				'node with execute method',
+				{
+					execute: jest.fn(),
+					description: {
+						properties: [],
+					},
+				},
+			],
+			[
+				'node with trigger method',
+				{
+					trigger: jest.fn(),
+					description: {
+						properties: [],
+					},
+				},
+			],
+			[
+				'node with webhook method',
+				{
+					webhook: jest.fn(),
+					description: {
+						properties: [],
+					},
+				},
+			],
+			[
+				'a polling node-type',
+				{
+					description: {
+						polling: true,
+						properties: [],
+					},
+				},
+			],
+			[
+				'a node-type with a non-main output',
+				{
+					description: {
+						outputs: ['main', 'ai_agent'],
+						properties: [],
+					},
+				},
+			],
+		])('should not modify properties on node with %s method', (_, nodeTypeName) => {
+			const nodeType = nodeTypeName as unknown as INodeType;
+			applyDeclarativeNodeOptionParameters(nodeType);
+			expect(nodeType.description.properties).toEqual([]);
 		});
 	});
 });

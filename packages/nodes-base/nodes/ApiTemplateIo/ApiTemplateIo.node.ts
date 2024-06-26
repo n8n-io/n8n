@@ -385,7 +385,7 @@ export class ApiTemplateIo implements INodeType {
 
 						returnData.push(responseData as IDataObject);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							returnData.push({ json: { error: error.message } });
 							continue;
 						}
@@ -471,7 +471,7 @@ export class ApiTemplateIo implements INodeType {
 						}
 						returnData.push(responseData as IDataObject);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							returnData.push({ json: { error: error.message } });
 							continue;
 						}
@@ -561,7 +561,7 @@ export class ApiTemplateIo implements INodeType {
 						}
 						returnData.push(responseData as IDataObject);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							returnData.push({ json: { error: error.message } });
 							continue;
 						}

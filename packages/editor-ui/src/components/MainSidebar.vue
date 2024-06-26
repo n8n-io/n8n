@@ -28,10 +28,7 @@
 
 			<template #beforeLowerMenu>
 				<BecomeTemplateCreatorCta v-if="fullyExpanded && !userIsTrialing" />
-				<ExecutionsUsage
-					v-if="fullyExpanded && userIsTrialing"
-					:cloud-plan-data="currentPlanAndUsageData"
-			/></template>
+			</template>
 			<template #menuSuffix>
 				<div>
 					<div
@@ -106,7 +103,7 @@
 </template>
 
 <script lang="ts">
-import type { CloudPlanAndUsageData, IExecutionResponse, IMenuItem, IVersion } from '@/Interface';
+import type { IExecutionResponse, IMenuItem, IVersion } from '@/Interface';
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
 
 import { useMessage } from '@/composables/useMessage';
@@ -123,7 +120,6 @@ import { useUsersStore } from '@/stores/users.store';
 import { useVersionsStore } from '@/stores/versions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useTemplatesStore } from '@/stores/templates.store';
-import ExecutionsUsage from '@/components/executions/ExecutionsUsage.vue';
 import BecomeTemplateCreatorCta from '@/components/BecomeTemplateCreatorCta/BecomeTemplateCreatorCta.vue';
 import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
 import { hasPermission } from '@/utils/rbac/permissions';
@@ -137,7 +133,6 @@ export default defineComponent({
 	name: 'MainSidebar',
 	components: {
 		GiftNotificationIcon,
-		ExecutionsUsage,
 		MainSidebarSourceControl,
 		BecomeTemplateCreatorCta,
 		ProjectNavigation,
@@ -189,10 +184,6 @@ export default defineComponent({
 		isCollapsed(): boolean {
 			return this.uiStore.sidebarMenuCollapsed;
 		},
-		canUserAccessSettings(): boolean {
-			const accessibleRoute = this.findFirstAccessibleSettingsRoute();
-			return accessibleRoute !== null;
-		},
 		showUserArea(): boolean {
 			return hasPermission(['authenticated']);
 		},
@@ -212,10 +203,7 @@ export default defineComponent({
 			];
 		},
 		mainMenuItems(): IMenuItem[] {
-			const items: IMenuItem[] = [];
-
-			const defaultSettingsRoute = this.findFirstAccessibleSettingsRoute();
-			const regularItems: IMenuItem[] = [
+			const items: IMenuItem[] = [
 				{
 					id: 'cloud-admin',
 					position: 'bottom',
@@ -262,18 +250,9 @@ export default defineComponent({
 					route: { to: { name: VIEWS.EXECUTIONS } },
 				},
 				{
-					id: 'settings',
-					icon: 'cog',
-					label: this.$locale.baseText('settings'),
-					position: 'bottom',
-					available: this.canUserAccessSettings && this.usersStore.currentUser !== null,
-					activateOnRouteNames: [VIEWS.USERS_SETTINGS, VIEWS.API_SETTINGS, VIEWS.PERSONAL_SETTINGS],
-					route: { to: defaultSettingsRoute },
-				},
-				{
 					id: 'help',
 					icon: 'question',
-					label: 'Help',
+					label: this.$locale.baseText('mainSidebar.help'),
 					position: 'bottom',
 					children: [
 						{
@@ -321,19 +300,10 @@ export default defineComponent({
 					],
 				},
 			];
-			return [...items, ...regularItems];
+			return items;
 		},
 		userIsTrialing(): boolean {
 			return this.cloudPlanStore.userIsTrialing;
-		},
-		currentPlanAndUsageData(): CloudPlanAndUsageData | null {
-			const planData = this.cloudPlanStore.currentPlanData;
-			const usage = this.cloudPlanStore.currentUsageData;
-			if (!planData || !usage) return null;
-			return {
-				...planData,
-				usage,
-			};
 		},
 	},
 	async mounted() {
@@ -345,12 +315,7 @@ export default defineComponent({
 		}
 
 		void this.$nextTick(() => {
-			if (window.innerWidth < 900 || this.uiStore.isNodeView) {
-				this.uiStore.sidebarMenuCollapsed = true;
-			} else {
-				this.uiStore.sidebarMenuCollapsed = false;
-			}
-
+			this.uiStore.sidebarMenuCollapsed = window.innerWidth < 900;
 			this.fullyExpanded = !this.isCollapsed;
 		});
 
@@ -434,24 +399,6 @@ export default defineComponent({
 				default:
 					break;
 			}
-		},
-		findFirstAccessibleSettingsRoute() {
-			const settingsRoutes = this.$router
-				.getRoutes()
-				.find((route) => route.path === '/settings')
-				?.children.map((route) => route.name ?? '');
-
-			let defaultSettingsRoute = { name: VIEWS.USERS_SETTINGS };
-			for (const route of settingsRoutes ?? []) {
-				if (this.canUserAccessRouteByName(route.toString())) {
-					defaultSettingsRoute = {
-						name: route.toString() as VIEWS,
-					};
-					break;
-				}
-			}
-
-			return defaultSettingsRoute;
 		},
 		onResize(event: UIEvent) {
 			void this.callDebounced(this.onResizeEnd, { debounceTime: 100 }, event);

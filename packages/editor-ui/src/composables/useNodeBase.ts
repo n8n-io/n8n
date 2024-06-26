@@ -231,7 +231,7 @@ export function useNodeBase({
 			const endpoint = instance?.addEndpoint(
 				refs.value[data.value?.name ?? ''] as Element,
 				newEndpointData,
-			) as Endpoint;
+			);
 			addEndpointTestingData(endpoint, 'input', typeIndex);
 			if (inputConfiguration.displayName ?? nodeTypeData.inputNames?.[i]) {
 				// Apply input names if they got set

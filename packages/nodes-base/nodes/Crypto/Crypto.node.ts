@@ -532,7 +532,7 @@ export class Crypto implements INodeType {
 
 				returnData.push(newItem);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({
 						json: {
 							error: (error as JsonObject).message,

@@ -283,7 +283,7 @@ export class Mocean implements INodeType {
 					});
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ error: (error as JsonObject).message });
 					continue;
 				}

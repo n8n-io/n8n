@@ -18,6 +18,7 @@ import { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { WorkflowTagMapping } from '@db/entities/WorkflowTagMapping';
 import type { TagEntity } from '@db/entities/TagEntity';
 import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { isUniqueConstraintError } from '@/ResponseHelper';
 import type { SourceControlWorkflowVersionId } from './types/sourceControlWorkflowVersionId';
@@ -83,8 +84,8 @@ export class SourceControlImportService {
 			}),
 		);
 		return remoteWorkflowFilesParsed.filter(
-			(e) => e !== undefined,
-		) as SourceControlWorkflowVersionId[];
+			(e): e is SourceControlWorkflowVersionId => e !== undefined,
+		);
 	}
 
 	public async getLocalVersionIdsFromDb(): Promise<SourceControlWorkflowVersionId[]> {

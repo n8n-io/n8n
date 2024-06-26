@@ -107,7 +107,7 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 
 			returnData.push(newItem);
 		} catch (error) {
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(error)) {
 				returnData.push({
 					json: {
 						error: error.message,

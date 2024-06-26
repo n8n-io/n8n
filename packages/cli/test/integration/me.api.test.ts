@@ -1,6 +1,7 @@
 import { Container } from 'typedi';
 import { IsNull } from '@n8n/typeorm';
 import validator from 'validator';
+import { randomString } from 'n8n-workflow';
 
 import config from '@/config';
 import type { User } from '@db/entities/User';
@@ -8,13 +9,7 @@ import { UserRepository } from '@db/repositories/user.repository';
 import { ProjectRepository } from '@db/repositories/project.repository';
 
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
-import {
-	randomApiKey,
-	randomEmail,
-	randomName,
-	randomString,
-	randomValidPassword,
-} from './shared/random';
+import { randomApiKey, randomEmail, randomName, randomValidPassword } from './shared/random';
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
 import { addApiKey, createOwner, createUser, createUserShell } from './shared/db/users';

@@ -227,7 +227,7 @@ export async function execute(
 
 			returnData.push(...executionData);
 		} catch (error) {
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(error)) {
 				returnData.push({ json: { message: error.message, error }, pairedItem: { item: i } });
 				continue;
 			} else {

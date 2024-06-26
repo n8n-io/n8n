@@ -103,7 +103,7 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 				filePath: fileName,
 				operation: 'write',
 			});
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(error)) {
 				returnData.push({
 					json: {
 						error: nodeOperatioinError.message,
