@@ -266,22 +266,28 @@ export class LoadNodesAndCredentials {
 
 		for (const loader of Object.values(this.loaders)) {
 			// list of node & credential types that will be sent to the frontend
-			const { known, types, directory } = loader;
-			this.types.nodes = this.types.nodes.concat(types.nodes);
+			const { known, types, directory, packageName } = loader;
+			this.types.nodes = this.types.nodes.concat(
+				types.nodes.map(({ name, ...rest }) => ({
+					...rest,
+					// TODO: check if CUSTOM nodes should also be prefixed or not
+					name: `${packageName}.${name}`,
+				})),
+			);
 			this.types.credentials = this.types.credentials.concat(types.credentials);
 
 			// Nodes and credentials that have been loaded immediately
-			for (const nodeTypeName in loader.nodeTypes) {
-				this.loaded.nodes[nodeTypeName] = loader.nodeTypes[nodeTypeName];
+			for (const type in loader.nodeTypes) {
+				this.loaded.nodes[`${packageName}.${type}`] = loader.nodeTypes[type];
 			}
 
-			for (const credentialTypeName in loader.credentialTypes) {
-				this.loaded.credentials[credentialTypeName] = loader.credentialTypes[credentialTypeName];
+			for (const type in loader.credentialTypes) {
+				this.loaded.credentials[type] = loader.credentialTypes[type];
 			}
 
 			for (const type in known.nodes) {
 				const { className, sourcePath } = known.nodes[type];
-				this.known.nodes[type] = {
+				this.known.nodes[`${packageName}.${type}`] = {
 					className,
 					sourcePath: path.join(directory, sourcePath),
 				};
@@ -297,11 +303,8 @@ export class LoadNodesAndCredentials {
 				this.known.credentials[type] = {
 					className,
 					sourcePath: path.join(directory, sourcePath),
-					supportedNodes:
-						loader instanceof PackageDirectoryLoader
-							? supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
-							: undefined,
 					extends: extendsArr,
+					supportedNodes: supportedNodes?.map((nodeType) => `${packageName}.${nodeType}`),
 				};
 			}
 		}
