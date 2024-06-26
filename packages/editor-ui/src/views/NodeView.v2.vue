@@ -95,6 +95,7 @@ const {
 	revertRenameNode,
 	setNodeActive,
 	setNodeSelected,
+	toggleNodeEnabled,
 	deleteNode,
 	revertDeleteNode,
 	addNodes,
@@ -371,6 +372,14 @@ function onDeleteNode(id: string) {
 
 function onRevertDeleteNode({ node }: { node: INodeUi }) {
 	revertDeleteNode(node);
+}
+
+function onToggleNodeEnabled(id: string) {
+	if (!checkIfEditingIsAllowed()) {
+		return;
+	}
+
+	toggleNodeEnabled(id);
 }
 
 function onSetNodeActive(id: string) {
@@ -690,6 +699,7 @@ onBeforeUnmount(() => {
 		@update:node:position="onUpdateNodePosition"
 		@update:node:active="onSetNodeActive"
 		@update:node:selected="onSetNodeSelected"
+		@update:node:enabled="onToggleNodeEnabled"
 		@delete:node="onDeleteNode"
 		@create:connection="onCreateConnection"
 		@delete:connection="onDeleteConnection"

@@ -12,9 +12,10 @@ import {
 	mapLegacyConnectionsToCanvasConnections,
 	mapLegacyEndpointsToCanvasConnectionPort,
 } from '@/utils/canvasUtilsV2';
-import type { Workflow } from 'n8n-workflow';
+import { getNodeInputs, Workflow } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
+import { useNodeBase } from '@/composables/useNodeBase';
 
 export function useCanvasMapping({
 	workflow,
@@ -89,12 +90,20 @@ export function useCanvasMapping({
 
 	const elements = computed<CanvasElement[]>(() => [
 		...workflow.value.nodes.map<CanvasElement>((node) => {
+			const inputConnections = workflowObject.value.connectionsByDestinationNode[node.name] ?? {};
+			const outputConnections = workflowObject.value.connectionsBySourceNode[node.name] ?? {};
+
 			const data: CanvasElementData = {
 				id: node.id,
 				type: node.type,
 				typeVersion: node.typeVersion,
+				enabled: !node.disabled,
 				inputs: nodeInputsById.value[node.id] ?? [],
 				outputs: nodeOutputsById.value[node.id] ?? [],
+				connections: {
+					input: inputConnections,
+					output: outputConnections,
+				},
 				renderType: renderTypeByNodeType.value[node.type] ?? 'default',
 			};
 
