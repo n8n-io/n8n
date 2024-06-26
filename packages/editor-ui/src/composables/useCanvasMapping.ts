@@ -12,7 +12,7 @@ import {
 	mapLegacyConnectionsToCanvasConnections,
 	mapLegacyEndpointsToCanvasConnectionPort,
 } from '@/utils/canvasUtilsV2';
-import { Workflow } from 'n8n-workflow';
+import type { Workflow } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
 
