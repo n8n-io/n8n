@@ -138,15 +138,15 @@ export const webhookRequestHandler =
 			return ResponseHelper.sendSuccessResponse(res, {}, true, 204);
 		}
 
-		if (cspSandbox) {
-			res.header('Content-Security-Policy', 'sandbox');
-		}
-
 		let response;
 		try {
 			response = await webhookManager.executeWebhook(req, res);
 		} catch (error) {
 			return ResponseHelper.sendErrorResponse(res, error as Error);
+		}
+
+		if (cspSandbox) {
+			res.header('Content-Security-Policy', 'sandbox');
 		}
 
 		// Don't respond, if already responded
