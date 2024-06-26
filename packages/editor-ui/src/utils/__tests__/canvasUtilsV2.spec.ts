@@ -530,13 +530,13 @@ describe('mapCanvasConnectionToLegacyConnection', () => {
 describe('mapLegacyEndpointsToCanvasConnectionPort', () => {
 	it('should return an empty array and log a warning when inputs is a string', () => {
 		const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-		const endpoints: INodeTypeDescription['inputs'] = 'some code';
+		const endpoints: INodeTypeDescription['inputs'] = '={{some code}}';
 		const result = mapLegacyEndpointsToCanvasConnectionPort(endpoints);
 
 		expect(result).toEqual([]);
 		expect(consoleWarnSpy).toHaveBeenCalledWith(
 			'Node endpoints have not been evaluated',
-			'some code',
+			'={{some code}}',
 		);
 
 		consoleWarnSpy.mockRestore();

@@ -1,5 +1,9 @@
 <template>
-	<div class="fixed-collection-parameter" @keydown.stop>
+	<div
+		class="fixed-collection-parameter"
+		:data-test-id="`fixed-collection-${parameter.name}`"
+		@keydown.stop
+	>
 		<div v-if="getProperties.length === 0" class="no-items-exist">
 			<n8n-text size="small">{{
 				$locale.baseText('fixedCollectionParameter.currentlyNoItemsExist')
@@ -20,7 +24,7 @@
 			/>
 			<div v-if="multipleValues">
 				<div
-					v-for="(value, index) in mutableValues[property.name]"
+					v-for="(_, index) in mutableValues[property.name]"
 					:key="property.name + index"
 					class="parameter-item"
 				>
@@ -98,6 +102,7 @@
 				v-if="parameter.options && parameter.options.length === 1"
 				type="tertiary"
 				block
+				data-test-id="fixed-collection-add"
 				:label="getPlaceholderText"
 				@click="optionSelected(parameter.options[0].name)"
 			/>

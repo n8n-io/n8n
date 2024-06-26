@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { onBeforeMount, onBeforeUnmount, onMounted, ref } from 'vue';
+import { onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
 import GlobalExecutionsList from '@/components/executions/global/GlobalExecutionsList.vue';
 import { setPageTitle } from '@/utils/htmlUtils';
 import { useI18n } from '@/composables/useI18n';
@@ -18,8 +18,6 @@ const workflowsStore = useWorkflowsStore();
 const executionsStore = useExecutionsStore();
 
 const toast = useToast();
-
-const animationsEnabled = ref(false);
 
 const { executionsCount, executionsCountEstimated, filters, allExecutions } =
 	storeToRefs(executionsStore);

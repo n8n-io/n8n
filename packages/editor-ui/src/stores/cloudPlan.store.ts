@@ -24,14 +24,6 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 
 	const state = reactive<CloudPlanState>(DEFAULT_STATE);
 
-	const setData = (data: CloudPlanState['data']) => {
-		state.data = data;
-	};
-
-	const setUsage = (data: CloudPlanState['usage']) => {
-		state.usage = data;
-	};
-
 	const reset = () => {
 		state.data = null;
 		state.usage = null;

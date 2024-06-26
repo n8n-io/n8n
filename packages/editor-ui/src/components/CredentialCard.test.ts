@@ -2,9 +2,6 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import CredentialCard from '@/components/CredentialCard.vue';
-import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/stores/users.store';
-import { useCredentialsStore } from '@/stores/credentials.store';
 import type { ICredentialsResponse } from '@/Interface';
 import type { ProjectSharingData } from '@/types/projects.types';
 
@@ -22,16 +19,9 @@ const createCredential = (overrides = {}): ICredentialsResponse => ({
 });
 
 describe('CredentialCard', () => {
-	let uiStore: ReturnType<typeof useUIStore>;
-	let usersStore: ReturnType<typeof useUsersStore>;
-	let credentialsStore: ReturnType<typeof useCredentialsStore>;
-
 	beforeEach(() => {
 		const pinia = createTestingPinia();
 		setActivePinia(pinia);
-		uiStore = useUIStore();
-		usersStore = useUsersStore();
-		credentialsStore = useCredentialsStore();
 	});
 
 	it('should render name and home project name', () => {
