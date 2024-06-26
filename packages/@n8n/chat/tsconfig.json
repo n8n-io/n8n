@@ -18,10 +18,7 @@
 		},
 		"lib": ["esnext", "dom", "dom.iterable", "scripthost"],
 		// TODO: remove all options below this line
-		"noUnusedLocals": false,
 		"useUnknownInCatchVariables": false
 	},
 	"include": ["src/**/*.ts", "src/**/*.vue", "**/*.d.ts"]
 }
-
-

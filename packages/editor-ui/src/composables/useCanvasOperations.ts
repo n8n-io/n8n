@@ -880,9 +880,7 @@ export function useCanvasOperations({
 		editableWorkflow,
 		editableWorkflowObject,
 		triggerNodes,
-		lastClickPosition,
 		initializeNodeDataWithDefaultCredentials,
-		createNode,
 		addNodes,
 		updateNodePosition,
 		setNodeActive,
@@ -892,11 +890,9 @@ export function useCanvasOperations({
 		revertRenameNode,
 		deleteNode,
 		revertDeleteNode,
-		trackDeleteNode,
 		addConnections,
 		createConnection,
 		deleteConnection,
 		revertDeleteConnection,
-		isConnectionAllowed,
 	};
 }

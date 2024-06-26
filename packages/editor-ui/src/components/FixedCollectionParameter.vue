@@ -20,7 +20,7 @@
 			/>
 			<div v-if="multipleValues">
 				<div
-					v-for="(value, index) in mutableValues[property.name]"
+					v-for="(_, index) in mutableValues[property.name]"
 					:key="property.name + index"
 					class="parameter-item"
 				>

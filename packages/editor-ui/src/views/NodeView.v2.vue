@@ -105,7 +105,6 @@ const {
 	addConnections,
 	editableWorkflow,
 	editableWorkflowObject,
-	triggerNodes,
 } = useCanvasOperations({ router, lastClickPosition });
 
 const isLoading = ref(true);
@@ -126,15 +125,6 @@ const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
 const isReadOnlyRoute = computed(() => route?.meta?.readOnlyCanvas === true);
 const isReadOnlyEnvironment = computed(() => {
 	return sourceControlStore.preferences.branchReadOnly;
-});
-
-const isCanvasAddButtonVisible = computed(() => {
-	return (
-		triggerNodes.value.length > 0 &&
-		!isLoading.value &&
-		!isDemoRoute.value &&
-		!isReadOnlyEnvironment.value
-	);
 });
 
 /**
