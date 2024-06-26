@@ -48,7 +48,7 @@ describe('CanvasNodeConfiguration', () => {
 					provide: {
 						...createCanvasNodeProvide({
 							data: {
-								enabled: false,
+								disabled: true,
 							},
 						}),
 					},

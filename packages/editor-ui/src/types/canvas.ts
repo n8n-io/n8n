@@ -25,7 +25,7 @@ export interface CanvasElementData {
 	id: INodeUi['id'];
 	type: INodeUi['type'];
 	typeVersion: INodeUi['typeVersion'];
-	enabled: INodeUi['disabled'];
+	disabled: INodeUi['disabled'];
 	inputs: CanvasConnectionPort[];
 	outputs: CanvasConnectionPort[];
 	connections: {

@@ -89,7 +89,7 @@ describe('CanvasNodeDefault', () => {
 					provide: {
 						...createCanvasNodeProvide({
 							data: {
-								enabled: false,
+								disabled: true,
 							},
 						}),
 					},

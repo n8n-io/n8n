@@ -26,7 +26,6 @@ import {
 import type {
 	ConnectionTypes,
 	IConnection,
-	INode,
 	INodeInputConfiguration,
 	INodeOutputConfiguration,
 	INodeTypeDescription,
@@ -238,7 +237,10 @@ export function useCanvasOperations({
 		uiStore.lastSelectedNode = node.name;
 	}
 
-	function toggleNodeEnabled(id: string, { trackHistory = true }: { trackHistory?: boolean } = {}) {
+	function toggleNodeDisabled(
+		id: string,
+		{ trackHistory = true }: { trackHistory?: boolean } = {},
+	) {
 		const node = workflowsStore.getNodeById(id);
 		if (!node) {
 			return;
@@ -900,7 +902,7 @@ export function useCanvasOperations({
 		setNodeActive,
 		setNodeActiveByName,
 		setNodeSelected,
-		toggleNodeEnabled,
+		toggleNodeDisabled,
 		renameNode,
 		revertRenameNode,
 		deleteNode,

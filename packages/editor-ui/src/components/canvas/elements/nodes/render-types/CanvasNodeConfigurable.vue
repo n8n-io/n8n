@@ -21,13 +21,13 @@ const { nonMainInputs, requiredNonMainInputs } = useNodeConnections({
 	connections,
 });
 
-const isEnabled = computed(() => node?.data.value.enabled ?? true);
+const isDisabled = computed(() => node?.data.value.disabled ?? false);
 
 const classes = computed(() => {
 	return {
 		[$style.node]: true,
 		[$style.selected]: node?.selected.value,
-		[$style.disabled]: !isEnabled.value,
+		[$style.disabled]: isDisabled.value,
 	};
 });
 
@@ -54,10 +54,10 @@ const styles = computed(() => {
 <template>
 	<div :class="classes" :style="styles" data-test-id="canvas-node-configurable">
 		<slot />
-		<CanvasNodeDisabledStrikeThrough v-if="!isEnabled" />
+		<CanvasNodeDisabledStrikeThrough v-if="isDisabled" />
 		<div :class="$style.label">
 			{{ label }}
-			<div v-if="!isEnabled">({{ i18n.baseText('node.disabled') }})</div>
+			<div v-if="isDisabled">({{ i18n.baseText('node.disabled') }})</div>
 		</div>
 	</div>
 </template>

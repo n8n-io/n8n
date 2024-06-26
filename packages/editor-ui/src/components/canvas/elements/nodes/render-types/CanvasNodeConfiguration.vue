@@ -10,13 +10,13 @@ const i18n = useI18n();
 
 const label = computed(() => node?.label.value ?? '');
 
-const isEnabled = computed(() => node?.data.value.enabled ?? true);
+const isDisabled = computed(() => node?.data.value.disabled ?? false);
 
 const classes = computed(() => {
 	return {
 		[$style.node]: true,
 		[$style.selected]: node?.selected.value,
-		[$style.disabled]: !isEnabled.value,
+		[$style.disabled]: isDisabled.value,
 	};
 });
 </script>
@@ -26,7 +26,7 @@ const classes = computed(() => {
 		<slot />
 		<div v-if="label" :class="$style.label">
 			{{ label }}
-			<div v-if="!isEnabled">({{ i18n.baseText('node.disabled') }})</div>
+			<div v-if="isDisabled">({{ i18n.baseText('node.disabled') }})</div>
 		</div>
 	</div>
 </template>

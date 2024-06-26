@@ -34,7 +34,7 @@ const { mainInputs, nonMainInputs, mainOutputs, nonMainOutputs } = useNodeConnec
 	connections,
 });
 
-const isEnabled = computed(() => props.data.enabled);
+const isDisabled = computed(() => props.data.disabled);
 
 const nodeType = computed(() => {
 	return nodeTypesStore.getNodeType(props.data.type, props.data.typeVersion);
@@ -110,7 +110,7 @@ function onDelete() {
 	emit('delete', props.id);
 }
 
-function onEnabledToggle() {
+function onDisabledToggle() {
 	emit('toggle', props.id);
 }
 
@@ -150,11 +150,11 @@ function onActivate() {
 			data-test-id="canvas-node-toolbar"
 			:class="$style.canvasNodeToolbar"
 			@delete="onDelete"
-			@toggle="onEnabledToggle"
+			@toggle="onDisabledToggle"
 		/>
 
 		<CanvasNodeRenderer v-if="nodeType" @dblclick="onActivate">
-			<NodeIcon :node-type="nodeType" :size="40" :shrink="false" :disabled="!isEnabled" />
+			<NodeIcon :node-type="nodeType" :size="40" :shrink="false" :disabled="isDisabled" />
 			<!--			:color-default="iconColorDefault"-->
 		</CanvasNodeRenderer>
 	</div>

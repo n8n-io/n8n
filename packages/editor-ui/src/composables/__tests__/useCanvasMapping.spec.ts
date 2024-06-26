@@ -74,7 +74,7 @@ describe('useCanvasMapping', () => {
 						id: manualTriggerNode.id,
 						type: manualTriggerNode.type,
 						typeVersion: expect.anything(),
-						enabled: true,
+						disabled: false,
 						inputs: [],
 						outputs: [],
 						connections: {
@@ -103,7 +103,7 @@ describe('useCanvasMapping', () => {
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
 			});
 
-			expect(elements.value[0]?.data?.enabled).toEqual(false);
+			expect(elements.value[0]?.data?.disabled).toEqual(true);
 		});
 
 		it('should handle input and output connections', () => {
