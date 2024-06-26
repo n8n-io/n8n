@@ -7,6 +7,9 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useRBACStore } from '@/stores/rbac.store';
 import type { Scope } from '@n8n/permissions';
 import type { RouteRecordName } from 'vue-router';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useProjectsStore } from '@/stores/projects.store';
+import { useRolesStore } from '@/stores/roles.store';
 
 const App = {
 	template: '<div />',
@@ -21,6 +24,17 @@ describe('router', () => {
 
 		const pinia = createPinia();
 		setActivePinia(pinia);
+
+		const nodeTypesStore = useNodeTypesStore();
+		vi.spyOn(nodeTypesStore, 'getNodeTranslationHeaders').mockResolvedValue();
+
+		const projectsStore = useProjectsStore();
+		vi.spyOn(projectsStore, 'getMyProjects').mockResolvedValue();
+		vi.spyOn(projectsStore, 'getPersonalProject').mockResolvedValue();
+		vi.spyOn(projectsStore, 'getProjectsCount').mockResolvedValue();
+
+		const rolesStore = useRolesStore();
+		vi.spyOn(rolesStore, 'fetchRoles').mockResolvedValue();
 
 		renderComponent({ pinia });
 	});
