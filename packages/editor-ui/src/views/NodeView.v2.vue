@@ -96,6 +96,7 @@ const {
 	setNodeActive,
 	setNodeSelected,
 	toggleNodeDisabled,
+	revertToggleNodeDisabled,
 	deleteNode,
 	revertDeleteNode,
 	addNodes,
@@ -382,6 +383,10 @@ function onToggleNodeDisabled(id: string) {
 	toggleNodeDisabled(id);
 }
 
+function onRevertEnableToggle({ nodeName }: { nodeName: string }) {
+	revertToggleNodeDisabled(nodeName);
+}
+
 function onSetNodeActive(id: string) {
 	setNodeActive(id);
 }
@@ -538,7 +543,7 @@ function addUndoRedoEventBindings() {
 	// historyBus.on('revertAddConnection', onRevertAddConnection);
 	historyBus.on('revertRemoveConnection', onRevertDeleteConnection);
 	historyBus.on('revertRenameNode', onRevertRenameNode);
-	// historyBus.on('enableNodeToggle', onRevertEnableToggle);
+	historyBus.on('enableNodeToggle', onRevertEnableToggle);
 }
 
 function removeUndoRedoEventBindings() {
@@ -548,7 +553,7 @@ function removeUndoRedoEventBindings() {
 	// historyBus.off('revertAddConnection', onRevertAddConnection);
 	historyBus.off('revertRemoveConnection', onRevertDeleteConnection);
 	historyBus.off('revertRenameNode', onRevertRenameNode);
-	// historyBus.off('enableNodeToggle', onRevertEnableToggle);
+	historyBus.off('enableNodeToggle', onRevertEnableToggle);
 }
 
 /**

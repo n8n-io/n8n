@@ -385,6 +385,80 @@ describe('useCanvasOperations', () => {
 		});
 	});
 
+	describe('toggleNodeDisabled', () => {
+		it('should set enabled node as disabled', () => {
+			const id = 'node1';
+			const node = createTestNode({
+				id,
+				type: 'node',
+				position: [10, 20],
+				name: 'Node 1',
+				parameters: {},
+			});
+
+			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(node);
+			const updateNodePropertiesSpy = vi.spyOn(workflowsStore, 'updateNodeProperties');
+
+			canvasOperations.toggleNodeDisabled(id);
+
+			expect(updateNodePropertiesSpy).toHaveBeenCalledWith({
+				name: node.name,
+				properties: {
+					disabled: true,
+				},
+			});
+		});
+
+		it('should set disabled node as enabled', () => {
+			const id = 'node1';
+			const node = createTestNode({
+				id,
+				type: 'node',
+				position: [10, 20],
+				name: 'Node 1',
+				disabled: true,
+			});
+
+			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(node);
+			const updateNodePropertiesSpy = vi.spyOn(workflowsStore, 'updateNodeProperties');
+
+			canvasOperations.toggleNodeDisabled(id);
+
+			expect(updateNodePropertiesSpy).toHaveBeenCalledWith({
+				name: node.name,
+				properties: {
+					disabled: false,
+				},
+			});
+		});
+	});
+
+	describe('revertToggleNodeDisabled', () => {
+		it('should revert toggle node disabled', () => {
+			const id = 'node1';
+			const name = 'Node 1';
+			const node = createTestNode({
+				id,
+				type: 'node',
+				position: [10, 20],
+				name,
+				disabled: true,
+			});
+
+			vi.spyOn(workflowsStore, 'getNodeByName').mockReturnValue(node);
+			const updateNodePropertiesSpy = vi.spyOn(workflowsStore, 'updateNodeProperties');
+
+			canvasOperations.revertToggleNodeDisabled(name);
+
+			expect(updateNodePropertiesSpy).toHaveBeenCalledWith({
+				name: node.name,
+				properties: {
+					disabled: false,
+				},
+			});
+		});
+	});
+
 	describe('renameNode', () => {
 		it('should rename node', async () => {
 			const oldName = 'Old Node';

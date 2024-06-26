@@ -249,6 +249,15 @@ export function useCanvasOperations({
 		nodeHelpers.disableNodes([node], trackHistory);
 	}
 
+	function revertToggleNodeDisabled(name: string) {
+		const node = workflowsStore.getNodeByName(name);
+		if (!node) {
+			return;
+		}
+
+		nodeHelpers.disableNodes([node], true);
+	}
+
 	async function addNodes(
 		nodes: AddedNodesAndConnections['nodes'],
 		{
@@ -903,6 +912,7 @@ export function useCanvasOperations({
 		setNodeActiveByName,
 		setNodeSelected,
 		toggleNodeDisabled,
+		revertToggleNodeDisabled,
 		renameNode,
 		revertRenameNode,
 		deleteNode,
