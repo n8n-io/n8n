@@ -23,7 +23,10 @@ export const properties: INodeProperties[] = [
 		placeholder: 'Add Option',
 		default: {},
 		options: [
-			clashHandlingProperties,
+			{
+				...clashHandlingProperties,
+				default: { values: { resolveClash: 'addSuffix' } },
+			},
 			{
 				displayName: 'Include Any Unpaired Items',
 				name: 'includeUnpaired',
@@ -38,7 +41,8 @@ export const properties: INodeProperties[] = [
 
 const displayOptions = {
 	show: {
-		operation: ['combineByPosition'],
+		operation: ['combine'],
+		combineBy: ['combineByPosition'],
 	},
 };
 

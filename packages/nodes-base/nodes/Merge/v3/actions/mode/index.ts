@@ -24,28 +24,16 @@ export const description: INodeProperties[] = [
 				action: 'Output items of each input, one after the other',
 			},
 			{
+				name: 'Combine',
+				value: 'combine',
+				description: 'Merge matching items together',
+				action: 'Merge matching items together',
+			},
+			{
 				name: 'SQL Query',
 				value: 'combineBySql',
 				description: 'Write a query to do the merge',
 				action: 'Write a query to do the merge',
-			},
-			{
-				name: 'Combine by Matching Fields',
-				value: 'combineByFields',
-				description: 'Combine items with the same field values',
-				action: 'Combine items with the same field values',
-			},
-			{
-				name: 'Combine by Position',
-				value: 'combineByPosition',
-				description: 'Combine items based on their order',
-				action: 'Combine items based on their order',
-			},
-			{
-				name: 'Combine by All Possible Combinations',
-				value: 'combineAll',
-				description: 'All possible item combinations (cross join)',
-				action: 'Combine all possible item combinations',
 			},
 			{
 				name: 'Choose Branch',
@@ -56,6 +44,39 @@ export const description: INodeProperties[] = [
 		],
 		default: 'append',
 		description: 'How input data should be merged',
+	},
+	{
+		displayName: 'Combine By',
+		name: 'combineBy',
+		type: 'options',
+		noDataExpression: true,
+		options: [
+			{
+				name: 'Matching Fields',
+				value: 'combineByFields',
+				description: 'Combine items with the same field values',
+				action: 'Combine items with the same field values',
+			},
+			{
+				name: 'Position',
+				value: 'combineByPosition',
+				description: 'Combine items based on their order',
+				action: 'Combine items based on their order',
+			},
+			{
+				name: 'All Possible Combinations',
+				value: 'combineAll',
+				description: 'Every pairing of every two items (cross join)',
+				action: 'Every pairing of every two items (cross join)',
+			},
+		],
+		default: 'combineByFields',
+		description: 'How input data should be merged',
+		displayOptions: {
+			show: {
+				operation: ['combine'],
+			},
+		},
 	},
 	...append.description,
 	...combineAll.description,

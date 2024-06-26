@@ -16,30 +16,18 @@ import type { Database } from 'alasql';
 export const properties: INodeProperties[] = [
 	numberInputsProperty,
 	{
-		displayName:
-			'Input data available as tables with coresponding number(e.g. input1, input2), example:<br> <code>SELECT * FROM input1 LEFT JOIN input2 ON input1.name = input2.ID;</code>',
-		name: 'queryTooltip',
-		type: 'notice',
-		default: '',
-	},
-	{
 		displayName: 'Query',
 		name: 'query',
 		type: 'string',
-		default: '',
+		default: 'SELECT * FROM input1 LEFT JOIN input2 ON input1.name = input2.id',
 		noDataExpression: true,
+		description: 'Input data available as tables with coresponding number, e.g. input1, input2',
+		hint: 'Supports <a href="https://github.com/alasql/alasql/wiki/Supported-SQL-statements" target="_blank">most</a> of the SQL-99 language',
 		required: true,
 		typeOptions: {
 			rows: 5,
 			editor: 'sqlEditor',
 		},
-	},
-	{
-		displayName: 'Simplify Output',
-		name: 'simplify',
-		type: 'boolean',
-		default: true,
-		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 ];
 
@@ -108,7 +96,6 @@ export async function execute(
 	}
 
 	try {
-		const simplify = this.getNodeParameter('simplify', 0);
 		let query = this.getNodeParameter('query', 0) as string;
 
 		for (const resolvable of getResolvables(query)) {
@@ -117,38 +104,16 @@ export async function execute(
 
 		const result: IDataObject[] = db.exec(query);
 
-		if (!simplify) {
-			const isSingleStatment =
-				query
-					.replace(/\n/g, '')
-					.split(';')
-					.filter((q) => q).length === 1;
+		for (const item of result) {
+			if (Array.isArray(item)) {
+				returnData.push(...item.map((json) => ({ json, pairedItem })));
+			} else if (typeof item === 'object') {
+				returnData.push({ json: item, pairedItem });
+			}
+		}
 
-			if (isSingleStatment) {
-				returnData.push({
-					json: { statementIndex: 0, data: result },
-					pairedItem,
-				});
-			} else {
-				returnData.push(
-					...result.map((item, index) => ({
-						json: { statementIndex: index, data: item },
-						pairedItem,
-					})),
-				);
-			}
-		} else {
-			for (const item of result) {
-				if (Array.isArray(item)) {
-					returnData.push(...item.map((json) => ({ json, pairedItem })));
-				} else if (typeof item === 'object') {
-					returnData.push({ json: item, pairedItem });
-				}
-			}
-
-			if (!returnData.length) {
-				returnData.push({ json: { success: true }, pairedItem });
-			}
+		if (!returnData.length) {
+			returnData.push({ json: { success: true }, pairedItem });
 		}
 	} catch (error) {
 		let message = '';

@@ -20,25 +20,16 @@ export async function getResolveClashOptions(
 				value: 'preferLast',
 			},
 		];
+	} else {
+		return [
+			{
+				name: 'Always Add Input Number to Field Names',
+				value: 'addSuffix',
+			},
+			{
+				name: 'Use Earliest Version',
+				value: 'preferInput1',
+			},
+		];
 	}
-
-	const outputOptions: INodePropertyOptions[] = [
-		{
-			name: 'Always Add Input Number to Field Names',
-			value: 'addSuffix',
-		},
-		{
-			name: `Prefer Last Input(${numberOfInputs}) Version`,
-			value: 'preferLast',
-		},
-	];
-
-	for (let i = 0; i < numberOfInputs - 1; i++) {
-		outputOptions.push({
-			name: `Prefer Input ${i + 1} Version`,
-			value: `preferInput${i + 1}`,
-		});
-	}
-
-	return outputOptions;
 }

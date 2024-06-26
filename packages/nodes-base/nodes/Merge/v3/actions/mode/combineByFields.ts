@@ -253,7 +253,8 @@ export const properties: INodeProperties[] = [
 
 const displayOptions = {
 	show: {
-		operation: ['combineByFields'],
+		operation: ['combine'],
+		combineBy: ['combineByFields'],
 	},
 };
 

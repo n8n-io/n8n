@@ -4,10 +4,15 @@ import * as mode from './mode';
 import { getNodeInputsData } from '../helpers/utils';
 
 export async function router(this: IExecuteFunctions) {
-	const operation = this.getNodeParameter('operation', 0) as MergeType;
 	const inputsData = getNodeInputsData.call(this);
+	let operation = this.getNodeParameter('operation', 0) as string;
 
-	const returnData = await mode[operation].execute.call(this, inputsData);
+	if (operation === 'combine') {
+		const combineBy = this.getNodeParameter('combineBy', 0) as string;
+		operation = combineBy;
+	}
+
+	const returnData = await mode[operation as MergeType].execute.call(this, inputsData);
 
 	if (returnData instanceof NodeExecutionOutput) {
 		return returnData;
