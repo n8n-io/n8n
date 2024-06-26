@@ -1,6 +1,5 @@
 import type { IDataObject, ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
-import { splunkApiRequest } from '../transport';
-import { formatFeed } from '../helpers/utils';
+import { splunkApiJsonRequest } from '../transport';
 
 export async function searchReports(
 	this: ILoadOptionsFunctions,
@@ -13,14 +12,12 @@ export async function searchReports(
 	}
 
 	const endpoint = '/services/saved/searches';
-	const response = await splunkApiRequest
-		.call(this, 'GET', endpoint, undefined, qs)
-		.then(formatFeed);
+	const response = await splunkApiJsonRequest.call(this, 'GET', endpoint, undefined, qs);
 
 	return {
 		results: (response as IDataObject[]).map((entry: IDataObject) => {
 			return {
-				name: entry.title as string,
+				name: entry.name as string,
 				value: entry.id as string,
 				url: entry.entryUrl as string,
 			};
@@ -39,14 +36,12 @@ export async function searchJobs(
 	}
 
 	const endpoint = '/services/search/jobs';
-	const response = await splunkApiRequest
-		.call(this, 'GET', endpoint, undefined, qs)
-		.then(formatFeed);
+	const response = await splunkApiJsonRequest.call(this, 'GET', endpoint, undefined, qs);
 
 	return {
 		results: (response as IDataObject[]).map((entry: IDataObject) => {
 			return {
-				name: (entry.title as string).replace(/^\|\s*/, ''),
+				name: (entry.name as string).replace(/^\|\s*/, ''),
 				value: entry.id as string,
 				url: entry.entryUrl as string,
 			};
@@ -65,14 +60,12 @@ export async function searchUsers(
 	}
 
 	const endpoint = '/services/authentication/users';
-	const response = await splunkApiRequest
-		.call(this, 'GET', endpoint, undefined, qs)
-		.then(formatFeed);
+	const response = await splunkApiJsonRequest.call(this, 'GET', endpoint, undefined, qs);
 
 	return {
 		results: (response as IDataObject[]).map((entry: IDataObject) => {
 			return {
-				name: entry.title as string,
+				name: entry.name as string,
 				value: entry.id as string,
 				url: entry.entryUrl as string,
 			};

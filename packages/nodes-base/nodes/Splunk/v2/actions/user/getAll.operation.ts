@@ -1,7 +1,7 @@
 import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
-import { splunkApiRequest } from '../../transport';
-import { formatFeed, setCount } from '../../helpers/utils';
+import { splunkApiJsonRequest } from '../../transport';
+import { setCount } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	{
@@ -47,7 +47,7 @@ export async function execute(
 	setCount.call(this, qs);
 
 	const endpoint = '/services/authentication/users';
-	const returnData = await splunkApiRequest.call(this, 'GET', endpoint, {}, qs).then(formatFeed);
+	const returnData = await splunkApiJsonRequest.call(this, 'GET', endpoint, {}, qs);
 
 	return returnData;
 }

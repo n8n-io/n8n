@@ -1,7 +1,6 @@
 import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
-import { splunkApiRequest } from '../../transport';
-import { formatFeed } from '../../helpers/utils';
+import { splunkApiJsonRequest } from '../../transport';
 import { userRLC } from '../../helpers/descriptions';
 
 const properties: INodeProperties[] = [userRLC];
@@ -24,7 +23,7 @@ export async function execute(
 	const userId = this.getNodeParameter('userId', i, '', { extractValue: true }) as string;
 	const endpoint = `/services/authentication/users/${userId}`;
 
-	const returnData = await splunkApiRequest.call(this, 'GET', endpoint).then(formatFeed);
+	const returnData = await splunkApiJsonRequest.call(this, 'GET', endpoint);
 
 	return returnData;
 }

@@ -49,9 +49,10 @@ function formatEntryContent(content: any): any {
 	}, {});
 }
 
-function formatEntry(entry: any): any {
+export function formatEntry(entry: any, doNotFormatContent = false): any {
 	const { content, link, ...rest } = entry;
-	const formattedEntry = { ...rest, ...formatEntryContent(content) };
+	const formatedContent = doNotFormatContent ? content : formatEntryContent(content);
+	const formattedEntry = { ...rest, ...formatedContent };
 
 	if (formattedEntry.id) {
 		formattedEntry.entryUrl = formattedEntry.id;
@@ -66,7 +67,9 @@ export function formatSearch(responseData: SplunkSearchResponse) {
 
 	if (!entries) return [];
 
-	return Array.isArray(entries) ? entries.map(formatEntry) : [formatEntry(entries)];
+	return Array.isArray(entries)
+		? entries.map((entry) => formatEntry(entry))
+		: [formatEntry(entries)];
 }
 
 export async function parseXml(xml: string) {
@@ -91,7 +94,9 @@ export function formatFeed(responseData: SplunkFeedResponse) {
 
 	if (!entries) return [];
 
-	return Array.isArray(entries) ? entries.map(formatEntry) : [formatEntry(entries)];
+	return Array.isArray(entries)
+		? entries.map((entry) => formatEntry(entry))
+		: [formatEntry(entries)];
 }
 
 function compactResult(splunkObject: any): any {
