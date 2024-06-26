@@ -78,7 +78,7 @@ describe('CanvasNode', () => {
 
 	describe('toolbar', () => {
 		it('should render toolbar when node is hovered', async () => {
-			const { getByTestId, container } = renderComponent({
+			const { getByTestId } = renderComponent({
 				props: {
 					...createCanvasNodeProps(),
 				},

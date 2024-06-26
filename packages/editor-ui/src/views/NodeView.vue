@@ -839,8 +839,10 @@ export default defineComponent({
 	async mounted() {
 		// To be refactored (unref) when migrating to composition API
 		this.onMouseMoveEnd = this.mouseUp;
+		this.initializeCanvasMouseSelect();
 
 		this.resetWorkspace();
+
 		if (!this.nodeViewRef) {
 			this.showError(
 				new Error('NodeView reference not found'),
@@ -4787,12 +4789,6 @@ export default defineComponent({
 			}
 
 			try {
-				await Promise.all([
-					this.loadVariables(),
-					this.tagsStore.fetchAll(),
-					this.loadCredentials(),
-				]);
-
 				if (workflowId !== null && !this.uiStore.stateIsDirty) {
 					const workflow: IWorkflowDb | undefined =
 						await this.workflowsStore.fetchWorkflow(workflowId);
@@ -4801,6 +4797,12 @@ export default defineComponent({
 						await this.openWorkflow(workflow);
 					}
 				}
+
+				await Promise.all([
+					this.loadVariables(),
+					this.tagsStore.fetchAll(),
+					this.loadCredentials(),
+				]);
 			} catch (error) {
 				console.error(error);
 			}

@@ -1766,21 +1766,24 @@ export interface INodeInputConfiguration {
 }
 
 export interface INodeOutputConfiguration {
-	category?: string;
+	category?: 'error';
 	displayName?: string;
+	maxConnections?: number;
 	required?: boolean;
 	type: ConnectionTypes;
 }
+
+export type ExpressionString = `={{${string}}}`;
 
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number | number[];
 	defaults: INodeParameters;
 	eventTriggerDescription?: string;
 	activationMessage?: string;
-	inputs: Array<ConnectionTypes | INodeInputConfiguration> | string;
+	inputs: Array<ConnectionTypes | INodeInputConfiguration> | ExpressionString;
 	requiredInputs?: string | number[] | number; // Ony available with executionOrder => "v1"
 	inputNames?: string[];
-	outputs: Array<ConnectionTypes | INodeInputConfiguration> | string;
+	outputs: Array<ConnectionTypes | INodeOutputConfiguration> | ExpressionString;
 	outputNames?: string[];
 	properties: INodeProperties[];
 	credentials?: INodeCredentialDescription[];
