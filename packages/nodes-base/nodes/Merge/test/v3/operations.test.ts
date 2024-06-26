@@ -88,12 +88,11 @@ const inputsData = [
 	],
 ];
 describe('Test MergeV3, combineBySql operation', () => {
-	it('LEFT JOIN, simplify off', async () => {
+	it('LEFT JOIN', async () => {
 		const nodeParameters: IDataObject = {
 			operation: 'combineBySql',
 			query:
 				'SELECT *, input1.data as data_1\nFROM input1\nLEFT JOIN input2\nON input1.id = input2.id\n',
-			simplify: false,
 		};
 
 		const returnData = await mode.combineBySql.execute.call(
@@ -101,7 +100,7 @@ describe('Test MergeV3, combineBySql operation', () => {
 			inputsData,
 		);
 
-		expect(((returnData[0].json.data as IDataObject[]) ?? [])[0]).toEqual({
+		expect(returnData[0].json).toEqual({
 			data_1: 'a',
 			id: 1,
 			data: 'aa',
@@ -110,11 +109,10 @@ describe('Test MergeV3, combineBySql operation', () => {
 		});
 	});
 
-	it('RIGHT JOIN, simplify on', async () => {
+	it('RIGHT JOIN', async () => {
 		const nodeParameters: IDataObject = {
 			operation: 'combineBySql',
 			query: 'SELECT *\nFROM input1\nRIGHT JOIN input2\nON input1.id = input2.id;\n',
-			simplify: true,
 		};
 
 		const returnData = await mode.combineBySql.execute.call(
@@ -135,11 +133,10 @@ describe('Test MergeV3, combineBySql operation', () => {
 		});
 	});
 
-	it('INNER JOIN, simplify on', async () => {
+	it('INNER JOIN', async () => {
 		const nodeParameters: IDataObject = {
 			operation: 'combineBySql',
 			query: 'SELECT *\nFROM input1\nINNER JOIN input2\nON input1.id = input2.id;\n',
-			simplify: true,
 		};
 
 		const returnData = await mode.combineBySql.execute.call(
@@ -156,11 +153,10 @@ describe('Test MergeV3, combineBySql operation', () => {
 		});
 	});
 
-	it('FULL OUTER JOIN, simplify on', async () => {
+	it('FULL OUTER JOIN', async () => {
 		const nodeParameters: IDataObject = {
 			operation: 'combineBySql',
 			query: 'SELECT *\nFROM input1\nFULL OUTER JOIN input2\nON input1.id = input2.id;\n',
-			simplify: true,
 		};
 
 		const returnData = await mode.combineBySql.execute.call(
@@ -176,11 +172,10 @@ describe('Test MergeV3, combineBySql operation', () => {
 			country: 'UA',
 		});
 	});
-	it('CROSS JOIN, simplify on', async () => {
+	it('CROSS JOIN', async () => {
 		const nodeParameters: IDataObject = {
 			operation: 'combineBySql',
 			query: 'SELECT *, input1.data AS data_1\nFROM input1\nCROSS JOIN input2;\n',
-			simplify: true,
 		};
 
 		const returnData = await mode.combineBySql.execute.call(
@@ -219,7 +214,6 @@ describe('Test MergeV3, append operation', () => {
 describe('Test MergeV3, combineByFields operation', () => {
 	it('merge inputs', async () => {
 		const nodeParameters: IDataObject = {
-			operation: 'combineByFields',
 			joinMode: 'keepMatches',
 			fieldsToMatchString: 'id',
 			options: {},
@@ -242,9 +236,7 @@ describe('Test MergeV3, combineByFields operation', () => {
 
 describe('Test MergeV3, combineByPosition operation', () => {
 	it('combine inputs', async () => {
-		const nodeParameters: IDataObject = {
-			operation: 'combineByPosition',
-		};
+		const nodeParameters: IDataObject = {};
 
 		const returnData = await mode.combineByPosition.execute.call(
 			createMockExecuteFunction(nodeParameters, node),
@@ -264,7 +256,6 @@ describe('Test MergeV3, combineByPosition operation', () => {
 describe('Test MergeV3, chooseBranch operation', () => {
 	it('choose input', async () => {
 		const nodeParameters: IDataObject = {
-			operation: 'chooseBranch',
 			useDataOfInput: 2,
 			chooseBranchMode: 'waitForAll',
 			output: 'specifiedInput',
@@ -287,7 +278,6 @@ describe('Test MergeV3, chooseBranch operation', () => {
 describe('Test MergeV3, combineAll operation', () => {
 	it('combine inputs', async () => {
 		const nodeParameters: IDataObject = {
-			operation: 'combineAll',
 			options: {},
 		};
 
