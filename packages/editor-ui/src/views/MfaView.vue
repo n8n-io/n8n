@@ -7,8 +7,8 @@
 			<div :class="$style.headerContainer">
 				<n8n-heading size="xlarge" color="text-dark">{{
 					showRecoveryCodeForm
-						? $locale.baseText('mfa.recovery.modal.title')
-						: $locale.baseText('mfa.code.modal.title')
+						? i18.baseText('mfa.recovery.modal.title')
+						: i18.baseText('mfa.code.modal.title')
 				}}</n8n-heading>
 			</div>
 			<div :class="[$style.formContainer, reportError ? $style.formError : '']">
@@ -26,9 +26,9 @@
 						size="small"
 						color="text-base"
 						:bold="false"
-						>{{ $locale.baseText('mfa.code.input.info') }}
+						>{{ i18.baseText('mfa.code.input.info') }}
 						<a data-test-id="mfa-enter-recovery-code-button" @click="onRecoveryCodeClick">{{
-							$locale.baseText('mfa.code.input.info.action')
+							i18.baseText('mfa.code.input.info.action')
 						}}</a></n8n-text
 					>
 					<n8n-text v-if="reportError" color="danger" size="small"
@@ -38,7 +38,7 @@
 							:class="$style.recoveryCodeLink"
 							@click="onRecoveryCodeClick"
 						>
-							{{ $locale.baseText('mfa.recovery.input.info.action') }}</a
+							{{ i18.baseText('mfa.recovery.input.info.action') }}</a
 						>
 					</n8n-text>
 				</div>
@@ -49,8 +49,8 @@
 					:loading="verifyingMfaToken"
 					:label="
 						showRecoveryCodeForm
-							? $locale.baseText('mfa.recovery.button.verify')
-							: $locale.baseText('mfa.code.button.continue')
+							? i18.baseText('mfa.recovery.button.verify')
+							: i18.baseText('mfa.code.button.continue')
 					"
 					size="large"
 					:disabled="!hasAnyChanges"
@@ -58,7 +58,7 @@
 				/>
 				<n8n-button
 					float="left"
-					:label="$locale.baseText('mfa.button.back')"
+					:label="i18.baseText('mfa.button.back')"
 					size="large"
 					type="tertiary"
 					@click="onBackClick"
@@ -68,135 +68,165 @@
 	</div>
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
 import type { IFormInputs } from '@/Interface';
 import Logo from '../components/Logo.vue';
 import {
 	MFA_AUTHENTICATION_RECOVERY_CODE_INPUT_MAX_LENGTH,
 	MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH,
+	MFA_FORM,
 } from '@/constants';
-import { useUsersStore } from '@/stores/users.store';
-import { mapStores } from 'pinia';
 import { mfaEventBus } from '@/event-bus';
-import { defineComponent } from 'vue';
-import { useToast } from '@/composables/useToast';
+import { onMounted, ref } from 'vue';
+import { useI18n } from '@/composables/useI18n';
+import { toRefs } from '@vueuse/core';
 
-export const FORM = {
-	MFA_TOKEN: 'MFA_TOKEN',
-	MFA_RECOVERY_CODE: 'MFA_RECOVERY_CODE',
-} as const;
+// ---------------------------------------------------------------------------
+// #region Props
+// ---------------------------------------------------------------------------
 
-export default defineComponent({
-	name: 'MfaView',
-	components: {
-		Logo,
-	},
-	props: {
-		reportError: Boolean,
-	},
-	setup() {
-		return {
-			...useToast(),
-		};
-	},
-	data() {
-		return {
-			hasAnyChanges: false,
-			formBus: mfaEventBus,
-			formInputs: null as null | IFormInputs,
-			showRecoveryCodeForm: false,
-			verifyingMfaToken: false,
-			formError: '',
-		};
-	},
-	async mounted() {
-		this.formInputs = [this.mfaTokenFieldWithDefaults()];
-	},
-	computed: {
-		...mapStores(useUsersStore),
-	},
-	methods: {
-		onRecoveryCodeClick() {
-			this.formError = '';
-			this.showRecoveryCodeForm = true;
-			this.hasAnyChanges = false;
-			this.formInputs = [this.mfaRecoveryCodeFieldWithDefaults()];
-			this.$emit('onFormChanged', FORM.MFA_RECOVERY_CODE);
-		},
-		onBackClick() {
-			if (!this.showRecoveryCodeForm) {
-				this.$emit('onBackClick', FORM.MFA_TOKEN);
-				return;
-			}
+const props = defineProps<{
+	reportError: boolean;
+}>();
 
-			this.showRecoveryCodeForm = false;
-			this.hasAnyChanges = true;
-			this.formInputs = [this.mfaTokenFieldWithDefaults()];
-			this.$emit('onBackClick', FORM.MFA_RECOVERY_CODE);
-		},
-		onInput({ target: { value, name } }: { target: { value: string; name: string } }) {
-			const isSubmittingMfaToken = name === 'token';
-			const inputValidLength = isSubmittingMfaToken
-				? MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH
-				: MFA_AUTHENTICATION_RECOVERY_CODE_INPUT_MAX_LENGTH;
+// #endregion
 
-			if (value.length !== inputValidLength) {
-				this.hasAnyChanges = false;
-				return;
-			}
+// ---------------------------------------------------------------------------
+// #region Reactive properties
+// ---------------------------------------------------------------------------
 
-			this.verifyingMfaToken = true;
-			this.hasAnyChanges = true;
+const hasAnyChanges = ref(false);
+const formBus = ref(mfaEventBus);
+const formInputs = ref<null | IFormInputs>(null);
+const showRecoveryCodeForm = ref(false);
+const verifyingMfaToken = ref(false);
+const formError = ref('');
+const { reportError } = toRefs(props);
 
-			const dataToSubmit = isSubmittingMfaToken
-				? { token: value, recoveryCode: '' }
-				: { token: '', recoveryCode: value };
+// ---------------------------------------------------------------------------
+// #region Composable
+// ---------------------------------------------------------------------------
 
-			this.onSubmit(dataToSubmit)
-				.catch(() => {})
-				.finally(() => (this.verifyingMfaToken = false));
+const i18 = useI18n();
+
+// #endregion
+
+// ---------------------------------------------------------------------------
+// #region Emit
+// ---------------------------------------------------------------------------
+
+const emit = defineEmits(['onFormChanged', 'onBackClick', 'submit']);
+
+// #endregion
+
+// ---------------------------------------------------------------------------
+// #region Methods
+// ---------------------------------------------------------------------------
+
+const formField = (
+	name: string,
+	label: string,
+	placeholder: string,
+	maxlength: number,
+	focus = true,
+) => {
+	return {
+		name,
+		initialValue: '',
+		properties: {
+			label,
+			placeholder,
+			maxlength,
+			capitalize: true,
+			validateOnBlur: false,
+			focusInitially: focus,
 		},
-		async onSubmit(form: { token: string; recoveryCode: string }) {
-			this.formError = !this.showRecoveryCodeForm
-				? this.$locale.baseText('mfa.code.invalid')
-				: this.$locale.baseText('mfa.recovery.invalid');
-			this.$emit('submit', form);
-		},
-		onSaveClick() {
-			this.formBus.emit('submit');
-		},
-		mfaTokenFieldWithDefaults() {
-			return this.formField(
-				'token',
-				this.$locale.baseText('mfa.code.input.label'),
-				this.$locale.baseText('mfa.code.input.placeholder'),
-				MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH,
-			);
-		},
-		mfaRecoveryCodeFieldWithDefaults() {
-			return this.formField(
-				'recoveryCode',
-				this.$locale.baseText('mfa.recovery.input.label'),
-				this.$locale.baseText('mfa.recovery.input.placeholder'),
-				MFA_AUTHENTICATION_RECOVERY_CODE_INPUT_MAX_LENGTH,
-			);
-		},
-		formField(name: string, label: string, placeholder: string, maxlength: number, focus = true) {
-			return {
-				name,
-				initialValue: '',
-				properties: {
-					label,
-					placeholder,
-					maxlength,
-					capitalize: true,
-					validateOnBlur: false,
-					focusInitially: focus,
-				},
-			};
-		},
-	},
+	};
+};
+
+const onRecoveryCodeClick = () => {
+	formError.value = '';
+	showRecoveryCodeForm.value = true;
+	hasAnyChanges.value = false;
+	formInputs.value = [mfaRecoveryCodeFieldWithDefaults()];
+	emit('onFormChanged', MFA_FORM.MFA_RECOVERY_CODE);
+};
+
+const onBackClick = () => {
+	if (!showRecoveryCodeForm.value) {
+		emit('onBackClick', MFA_FORM.MFA_TOKEN);
+		return;
+	}
+
+	showRecoveryCodeForm.value = false;
+	hasAnyChanges.value = true;
+	formInputs.value = [mfaTokenFieldWithDefaults()];
+	emit('onBackClick', MFA_FORM.MFA_RECOVERY_CODE);
+};
+
+const onSubmit = async (form: { token: string; recoveryCode: string }) => {
+	formError.value = !showRecoveryCodeForm.value
+		? i18.baseText('mfa.code.invalid')
+		: i18.baseText('mfa.recovery.invalid');
+	emit('submit', form);
+};
+
+const onInput = ({ target: { value, name } }: { target: { value: string; name: string } }) => {
+	const isSubmittingMfaToken = name === 'token';
+	const inputValidLength = isSubmittingMfaToken
+		? MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH
+		: MFA_AUTHENTICATION_RECOVERY_CODE_INPUT_MAX_LENGTH;
+
+	if (value.length !== inputValidLength) {
+		hasAnyChanges.value = false;
+		return;
+	}
+
+	verifyingMfaToken.value = true;
+	hasAnyChanges.value = true;
+
+	const dataToSubmit = isSubmittingMfaToken
+		? { token: value, recoveryCode: '' }
+		: { token: '', recoveryCode: value };
+
+	onSubmit(dataToSubmit)
+		.catch(() => {})
+		.finally(() => (verifyingMfaToken.value = false));
+};
+
+const mfaRecoveryCodeFieldWithDefaults = () => {
+	return formField(
+		'recoveryCode',
+		i18.baseText('mfa.recovery.input.label'),
+		i18.baseText('mfa.recovery.input.placeholder'),
+		MFA_AUTHENTICATION_RECOVERY_CODE_INPUT_MAX_LENGTH,
+	);
+};
+
+const mfaTokenFieldWithDefaults = () => {
+	return formField(
+		'token',
+		i18.baseText('mfa.code.input.label'),
+		i18.baseText('mfa.code.input.placeholder'),
+		MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH,
+	);
+};
+
+const onSaveClick = () => {
+	formBus.value.emit('submit');
+};
+
+// #endregion
+
+// ---------------------------------------------------------------------------
+// #region Lifecycle hooks
+// ---------------------------------------------------------------------------
+
+onMounted(() => {
+	formInputs.value = [mfaTokenFieldWithDefaults()];
 });
+
+// #endregion
 </script>
 
 <style lang="scss" module>

@@ -4,7 +4,7 @@ import { useDeviceSupport } from 'n8n-design-system';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getMousePosition, getRelativePosition } from '@/utils/nodeViewUtils';
-import { ref, onMounted, computed } from 'vue';
+import { ref, computed } from 'vue';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useContextMenu } from './useContextMenu';
 
@@ -210,9 +210,9 @@ export default function useCanvasMouseSelect() {
 
 	const instance = computed(() => canvasStore.jsPlumbInstance);
 
-	onMounted(() => {
+	function initializeCanvasMouseSelect() {
 		_createSelectBox();
-	});
+	}
 
 	return {
 		selectActive,
@@ -222,5 +222,6 @@ export default function useCanvasMouseSelect() {
 		nodeDeselected,
 		nodeSelected,
 		deselectAllNodes,
+		initializeCanvasMouseSelect,
 	};
 }

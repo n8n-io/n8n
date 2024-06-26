@@ -1,57 +1,37 @@
-import { Reset } from '@/commands/ldap/reset';
-import { Config } from '@oclif/core';
+import { Container } from 'typedi';
+import { v4 as uuid } from 'uuid';
+import { EntityNotFoundError } from '@n8n/typeorm';
 
-import * as testDb from '../../shared/testDb';
+import { Reset } from '@/commands/ldap/reset';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { mockInstance } from '../../../shared/mocking';
 import { InternalHooks } from '@/InternalHooks';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { getLdapSynchronizations, saveLdapSynchronization } from '@/Ldap/helpers';
+import { LdapService } from '@/Ldap/ldap.service';
+import { Push } from '@/push';
+import { Telemetry } from '@/telemetry';
+
+import { setupTestCommand } from '@test-integration/utils/testCommand';
+import { mockInstance } from '../../../shared/mocking';
 import { createLdapUser, createMember, getUserById } from '../../shared/db/users';
 import { createWorkflow } from '../../shared/db/workflows';
 import { randomCredentialPayload } from '../../shared/random';
 import { saveCredential } from '../../shared/db/credentials';
-import Container from 'typedi';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { EntityNotFoundError } from '@n8n/typeorm';
-import { Push } from '@/push';
-import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
-import { createTeamProject, findProject, getPersonalProject } from '../../shared/db/projects';
-import { getLdapSynchronizations, saveLdapSynchronization } from '@/Ldap/helpers';
 import { createLdapConfig } from '../../shared/ldap';
-import { LdapService } from '@/Ldap/ldap.service';
-import { v4 as uuid } from 'uuid';
-import { Telemetry } from '@/telemetry';
+import { createTeamProject, findProject, getPersonalProject } from '../../shared/db/projects';
 
 mockInstance(Telemetry);
 
-const oclifConfig = new Config({ root: __dirname });
-
-async function resetLDAP(argv: string[]) {
-	const cmd = new Reset(argv, oclifConfig);
-	try {
-		await cmd.init();
-	} catch (error) {
-		console.error(error);
-		throw error;
-	}
-	await cmd.run();
-}
-
-beforeAll(async () => {
-	mockInstance(Push);
-	mockInstance(InternalHooks);
-	mockInstance(LoadNodesAndCredentials);
-	await testDb.init();
-	await oclifConfig.load();
-});
-
-afterAll(async () => {
-	await testDb.terminate();
-});
+mockInstance(Push);
+mockInstance(InternalHooks);
+mockInstance(LoadNodesAndCredentials);
+const command = setupTestCommand(Reset);
 
 test('fails if neither `--userId` nor `--projectId` nor `--deleteWorkflowsAndCredentials` is passed', async () => {
-	await expect(resetLDAP([])).rejects.toThrowError(
+	await expect(command.run()).rejects.toThrowError(
 		'You must use exactly one of `--userId`, `--projectId` or `--deleteWorkflowsAndCredentials`.',
 	);
 });
@@ -66,7 +46,7 @@ test.each([
 ])(
 	'fails if more than one of `--userId`, `--projectId`, `--deleteWorkflowsAndCredentials` are passed',
 	async (...argv) => {
-		await expect(resetLDAP(argv)).rejects.toThrowError(
+		await expect(command.run(argv)).rejects.toThrowError(
 			'You must use exactly one of `--userId`, `--projectId` or `--deleteWorkflowsAndCredentials`.',
 		);
 	},
@@ -95,7 +75,7 @@ describe('--deleteWorkflowsAndCredentials', () => {
 		//
 		// ACT
 		//
-		await resetLDAP(['--deleteWorkflowsAndCredentials']);
+		await command.run(['--deleteWorkflowsAndCredentials']);
 
 		//
 		// ASSERT
@@ -139,7 +119,7 @@ describe('--deleteWorkflowsAndCredentials', () => {
 		//
 		// ACT
 		//
-		await resetLDAP(['--deleteWorkflowsAndCredentials']);
+		await command.run(['--deleteWorkflowsAndCredentials']);
 
 		//
 		// ASSERT
@@ -159,7 +139,7 @@ describe('--deleteWorkflowsAndCredentials', () => {
 		//
 		// ACT
 		//
-		await resetLDAP(['--deleteWorkflowsAndCredentials']);
+		await command.run(['--deleteWorkflowsAndCredentials']);
 
 		//
 		// ASSERT
@@ -173,7 +153,7 @@ describe('--deleteWorkflowsAndCredentials', () => {
 describe('--userId', () => {
 	test('fails if the user does not exist', async () => {
 		const userId = uuid();
-		await expect(resetLDAP([`--userId=${userId}`])).rejects.toThrowError(
+		await expect(command.run([`--userId=${userId}`])).rejects.toThrowError(
 			`Could not find the user with the ID ${userId} or their personalProject.`,
 		);
 	});
@@ -184,7 +164,7 @@ describe('--userId', () => {
 		//
 		const member = await createLdapUser({ role: 'global:member' }, uuid());
 
-		await expect(resetLDAP([`--userId=${member.id}`])).rejects.toThrowError(
+		await expect(command.run([`--userId=${member.id}`])).rejects.toThrowError(
 			`Can't migrate workflows and credentials to the user with the ID ${member.id}. That user was created via LDAP and will be deleted as well.`,
 		);
 	});
@@ -212,7 +192,7 @@ describe('--userId', () => {
 		//
 		// ACT
 		//
-		await resetLDAP([`--userId=${normalMember.id}`]);
+		await command.run([`--userId=${normalMember.id}`]);
 
 		//
 		// ASSERT
@@ -249,7 +229,7 @@ describe('--userId', () => {
 describe('--projectId', () => {
 	test('fails if the project does not exist', async () => {
 		const projectId = uuid();
-		await expect(resetLDAP([`--projectId=${projectId}`])).rejects.toThrowError(
+		await expect(command.run([`--projectId=${projectId}`])).rejects.toThrowError(
 			`Could not find the project with the ID ${projectId}.`,
 		);
 	});
@@ -261,7 +241,7 @@ describe('--projectId', () => {
 		const member = await createLdapUser({ role: 'global:member' }, uuid());
 		const memberProject = await getPersonalProject(member);
 
-		await expect(resetLDAP([`--projectId=${memberProject.id}`])).rejects.toThrowError(
+		await expect(command.run([`--projectId=${memberProject.id}`])).rejects.toThrowError(
 			`Can't migrate workflows and credentials to the project with the ID ${memberProject.id}. That project is a personal project belonging to a user that was created via LDAP and will be deleted as well.`,
 		);
 	});
@@ -289,7 +269,7 @@ describe('--projectId', () => {
 		//
 		// ACT
 		//
-		await resetLDAP([`--projectId=${normalMemberProject.id}`]);
+		await command.run([`--projectId=${normalMemberProject.id}`]);
 
 		//
 		// ASSERT
@@ -346,7 +326,7 @@ describe('--projectId', () => {
 		//
 		// ACT
 		//
-		await resetLDAP([`--projectId=${teamProject.id}`]);
+		await command.run([`--projectId=${teamProject.id}`]);
 
 		//
 		// ASSERT

@@ -38,6 +38,7 @@
 			:message="$locale.baseText('credentialEdit.credentialConfig.accountConnected')"
 			:button-label="$locale.baseText('credentialEdit.credentialConfig.reconnect')"
 			:button-title="$locale.baseText('credentialEdit.credentialConfig.reconnectOAuth2Credential')"
+			data-test-id="oauth-connect-success-banner"
 			@click="$emit('oauth')"
 		>
 			<template v-if="isGoogleOAuthType" #button>
@@ -117,6 +118,7 @@
 				isOAuthType && requiredPropertiesFilled && !isOAuthConnected && credentialPermissions.update
 			"
 			:is-google-o-auth-type="isGoogleOAuthType"
+			data-test-id="oauth-connect-button"
 			@click="$emit('oauth')"
 		/>
 
@@ -142,7 +144,12 @@ import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 
-import type { ICredentialType, INodeProperties, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	ICredentialDataDecryptedObject,
+	ICredentialType,
+	INodeProperties,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 import { getAppNameFromCredType, isCommunityPackageName } from '@/utils/nodeTypesUtils';
 
 import Banner from '../Banner.vue';
@@ -155,11 +162,11 @@ import type { PermissionsMap } from '@/permissions';
 import type { CredentialScope } from '@n8n/permissions';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import type { ICredentialsResponse } from '@/Interface';
+import type { ICredentialsResponse, IUpdateInformation } from '@/Interface';
 import AuthTypeSelector from '@/components/CredentialEdit/AuthTypeSelector.vue';
 import GoogleAuthButton from './GoogleAuthButton.vue';
 import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
@@ -188,7 +195,10 @@ export default defineComponent({
 			type: Array as PropType<string[]>,
 			default: () => [],
 		},
-		credentialData: {},
+		credentialData: {
+			type: Object as PropType<ICredentialDataDecryptedObject>,
+			required: true,
+		},
 		credentialId: {
 			type: String,
 			default: '',
@@ -328,7 +338,7 @@ export default defineComponent({
 				this.credentialTypeName === 'oAuth2Api' || this.parentTypes.includes('oAuth2Api')
 					? 'oauth2'
 					: 'oauth1';
-			return this.rootStore.oauthCallbackUrls[oauthType as keyof {}];
+			return this.rootStore.OAuthCallbackUrls[oauthType as keyof {}];
 		},
 		showOAuthSuccessBanner(): boolean {
 			return (
@@ -349,7 +359,7 @@ export default defineComponent({
 		getCredentialOptions(type: string): ICredentialsResponse[] {
 			return this.credentialsStore.allUsableCredentialsByType[type];
 		},
-		onDataChange(event: { name: string; value: string | number | boolean | Date | null }): void {
+		onDataChange(event: IUpdateInformation): void {
 			this.$emit('update', event);
 		},
 		onDocumentationUrlClick(): void {

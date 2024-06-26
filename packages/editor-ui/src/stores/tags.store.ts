@@ -2,7 +2,7 @@ import { createTag, deleteTag, getTags, updateTag } from '@/api/tags';
 import { STORES } from '@/constants';
 import type { ITag, ITagsState } from '@/Interface';
 import { defineStore } from 'pinia';
-import { useRootStore } from './n8nRoot.store';
+import { useRootStore } from './root.store';
 import { useWorkflowsStore } from './workflows.store';
 
 export const useTagsStore = defineStore(STORES.TAGS, {
@@ -69,7 +69,7 @@ export const useTagsStore = defineStore(STORES.TAGS, {
 
 			this.loading = true;
 			const rootStore = useRootStore();
-			const tags = await getTags(rootStore.getRestApiContext, Boolean(withUsageCount));
+			const tags = await getTags(rootStore.restApiContext, Boolean(withUsageCount));
 			this.setAllTags(tags);
 			this.loading = false;
 
@@ -77,21 +77,21 @@ export const useTagsStore = defineStore(STORES.TAGS, {
 		},
 		async create(name: string): Promise<ITag> {
 			const rootStore = useRootStore();
-			const tag = await createTag(rootStore.getRestApiContext, { name });
+			const tag = await createTag(rootStore.restApiContext, { name });
 			this.upsertTags([tag]);
 
 			return tag;
 		},
 		async rename({ id, name }: { id: string; name: string }) {
 			const rootStore = useRootStore();
-			const tag = await updateTag(rootStore.getRestApiContext, id, { name });
+			const tag = await updateTag(rootStore.restApiContext, id, { name });
 			this.upsertTags([tag]);
 
 			return tag;
 		},
 		async delete(id: string) {
 			const rootStore = useRootStore();
-			const deleted = await deleteTag(rootStore.getRestApiContext, id);
+			const deleted = await deleteTag(rootStore.restApiContext, id);
 
 			if (deleted) {
 				this.deleteTag(id);

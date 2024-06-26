@@ -45,14 +45,13 @@ import LoadingView from '@/views/LoadingView.vue';
 import Telemetry from '@/components/Telemetry.vue';
 import { HIRING_BANNER, VIEWS } from '@/constants';
 
-import { userHelpers } from '@/mixins/userHelpers';
 import { loadLanguage } from '@/plugins/i18n';
 import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useToast } from '@/composables/useToast';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useTemplatesStore } from '@/stores/templates.store';
@@ -61,7 +60,6 @@ import { useUsageStore } from '@/stores/usage.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { useRoute } from 'vue-router';
-import { initializeAuthenticatedFeatures } from '@/init';
 import { useAIStore } from './stores/ai.store';
 import AIAssistantChat from './components/AIAssistantChat/AIAssistantChat.vue';
 
@@ -74,7 +72,6 @@ export default defineComponent({
 		Modals,
 		AIAssistantChat,
 	},
-	mixins: [userHelpers],
 	setup() {
 		return {
 			...useGlobalLinkActions(),
@@ -105,26 +102,16 @@ export default defineComponent({
 	},
 	data() {
 		return {
-			onAfterAuthenticateInitialized: false,
 			loading: true,
 		};
 	},
 	watch: {
-		// eslint-disable-next-line @typescript-eslint/naming-convention
-		async 'usersStore.currentUser'(currentValue, previousValue) {
-			if (currentValue && !previousValue) {
-				await initializeAuthenticatedFeatures();
-			}
-		},
 		defaultLocale(newLocale) {
 			void loadLanguage(newLocale);
 		},
 	},
 	async mounted() {
 		this.logHiringBanner();
-
-		void initializeAuthenticatedFeatures();
-
 		void useExternalHooks().run('app.mount');
 		this.loading = false;
 	},

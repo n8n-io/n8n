@@ -8,6 +8,7 @@ import { nodeConnectionTypes } from 'n8n-workflow';
 import type { IExecutionResponse, ICredentialsResponse, NewCredentialsModal } from '@/Interface';
 import type { jsPlumbDOMElement } from '@jsplumb/browser-ui';
 import type { Connection } from '@jsplumb/core';
+import type { RouteLocationRaw } from 'vue-router';
 
 /*
 	Type guards used in editor-ui project
@@ -78,4 +79,11 @@ export function isFullExecutionResponse(
 	execution: IExecutionResponse | null,
 ): execution is IExecutionResponse {
 	return !!execution && 'status' in execution;
+}
+
+export function isRouteLocationRaw(value: unknown): value is RouteLocationRaw {
+	return (
+		typeof value === 'string' ||
+		(typeof value === 'object' && value !== null && ('name' in value || 'path' in value))
+	);
 }

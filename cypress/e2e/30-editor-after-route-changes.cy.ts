@@ -102,7 +102,7 @@ const switchBetweenEditorAndHistory = () => {
 
 const switchBetweenEditorAndWorkflowlist = () => {
 	cy.getByTestId('menu-item').first().click();
-	cy.wait(['@getUsers', '@getWorkflows', '@getActiveWorkflows', '@getCredentials']);
+	cy.wait(['@getUsers', '@getWorkflows', '@getActiveWorkflows', '@getProjects']);
 
 	cy.getByTestId('resources-list-item').first().click();
 
@@ -197,7 +197,7 @@ describe('Editor zoom should work after route changes', () => {
 		cy.intercept('GET', '/rest/users').as('getUsers');
 		cy.intercept('GET', '/rest/workflows?*').as('getWorkflows');
 		cy.intercept('GET', '/rest/active-workflows').as('getActiveWorkflows');
-		cy.intercept('GET', '/rest/credentials?*').as('getCredentials');
+		cy.intercept('GET', '/rest/projects').as('getProjects');
 
 		switchBetweenEditorAndHistory();
 		zoomInAndCheckNodes();

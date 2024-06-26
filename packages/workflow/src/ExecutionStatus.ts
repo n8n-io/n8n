@@ -7,7 +7,6 @@ export const ExecutionStatusList = [
 	'success',
 	'unknown',
 	'waiting',
-	'warning',
 ] as const;
 
 export type ExecutionStatus = (typeof ExecutionStatusList)[number];

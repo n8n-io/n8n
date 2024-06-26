@@ -36,7 +36,7 @@ const WORKFLOW_LIST_ITEM_ACTIONS = {
 const props = withDefaults(
 	defineProps<{
 		data: IWorkflowDb;
-		readOnly: boolean;
+		readOnly?: boolean;
 	}>(),
 	{
 		data: () => ({

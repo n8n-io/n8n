@@ -7,6 +7,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import Modal from '@/components/Modal.vue';
 import { N8nCheckbox, N8nText } from 'n8n-design-system';
 import { useToast } from '@/composables/useToast';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 const props = defineProps<{
 	modalName: string;
@@ -21,6 +22,7 @@ const i18n = useI18n();
 const toast = useToast();
 const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
+const telemetry = useTelemetry();
 
 const checks = ref([false, false]);
 const allChecked = computed(() => checks.value.every(Boolean));
@@ -43,6 +45,10 @@ const confirm = async () => {
 			props.data.projectId,
 		);
 		closeModal();
+		telemetry.track(`User successfully moved ${props.data.resourceType}`, {
+			[`${props.data.resourceType}_id`]: props.data.resource.id,
+			project_from_type: projectsStore.currentProject?.type ?? projectsStore.personalProject?.type,
+		});
 	} catch (error) {
 		toast.showError(
 			error.message,

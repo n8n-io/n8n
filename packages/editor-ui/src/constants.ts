@@ -24,6 +24,7 @@ export const CUSTOM_API_CALL_NAME = 'Custom API Call';
 
 // workflows
 export const PLACEHOLDER_EMPTY_WORKFLOW_ID = '__EMPTY__';
+export const NEW_WORKFLOW_ID = 'new';
 export const DEFAULT_NODETYPE_VERSION = 1;
 export const DEFAULT_NEW_WORKFLOW_NAME = 'My workflow';
 export const MIN_WORKFLOW_NAME_LENGTH = 1;
@@ -689,6 +690,11 @@ export const EXPERIMENTS_TO_TRACK = [
 	AI_ASSISTANT_EXPERIMENT.name,
 	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT.name,
 ];
+
+export const MFA_FORM = {
+	MFA_TOKEN: 'MFA_TOKEN',
+	MFA_RECOVERY_CODE: 'MFA_RECOVERY_CODE',
+} as const;
 
 export const MFA_AUTHENTICATION_REQUIRED_ERROR_CODE = 998;
 

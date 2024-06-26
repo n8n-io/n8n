@@ -54,124 +54,114 @@
 	</n8n-input-label>
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
 import type { IUpdateInformation } from '@/Interface';
-import ParameterOptions from './ParameterOptions.vue';
-import { defineComponent } from 'vue';
-import type { PropType } from 'vue';
-import ParameterInputWrapper from './ParameterInputWrapper.vue';
-import { isValueExpression } from '@/utils/nodeTypesUtils';
+import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { isValueExpression as isValueExpressionUtil } from '@/utils/nodeTypesUtils';
+import { createEventBus } from 'n8n-design-system/utils';
 import type {
 	INodeParameterResourceLocator,
 	INodeProperties,
 	IParameterLabel,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { createEventBus } from 'n8n-design-system/utils';
+import { computed, ref } from 'vue';
+import ParameterInputWrapper from './ParameterInputWrapper.vue';
+import ParameterOptions from './ParameterOptions.vue';
 
-export default defineComponent({
-	name: 'ParameterInputExpanded',
-	components: {
-		ParameterOptions,
-		ParameterInputWrapper,
-	},
-	props: {
-		parameter: {
-			type: Object as PropType<INodeProperties>,
-			required: true,
-		},
-		value: {
-			type: Object as PropType<NodeParameterValueType>,
-		},
-		showValidationWarnings: {
-			type: Boolean,
-		},
-		documentationUrl: {
-			type: String,
-		},
-		eventSource: {
-			type: String,
-		},
-		label: {
-			type: Object as PropType<IParameterLabel>,
-			default: () => ({
-				size: 'small',
-			}),
-		},
-	},
-	data() {
-		return {
-			focused: false,
-			blurredEver: false,
-			menuExpanded: false,
-			eventBus: createEventBus(),
-		};
-	},
-	computed: {
-		...mapStores(useWorkflowsStore),
-		showRequiredErrors(): boolean {
-			if (!this.parameter.required) {
+type Props = {
+	parameter: INodeProperties;
+	value: NodeParameterValueType;
+	showValidationWarnings?: boolean;
+	documentationUrl?: string;
+	eventSource?: string;
+	label?: IParameterLabel;
+};
+
+const props = withDefaults(defineProps<Props>(), {
+	label: () => ({ size: 'small' }),
+});
+const emit = defineEmits<{
+	(event: 'update', value: IUpdateInformation): void;
+}>();
+
+const focused = ref(false);
+const blurredEver = ref(false);
+const menuExpanded = ref(false);
+const eventBus = ref(createEventBus());
+
+const workflowsStore = useWorkflowsStore();
+
+const i18n = useI18n();
+const telemetry = useTelemetry();
+
+const showRequiredErrors = computed(() => {
+	if (!props.parameter.required) {
+		return false;
+	}
+
+	if (blurredEver.value || props.showValidationWarnings) {
+		if (props.parameter.type === 'string') {
+			return !props.value;
+		}
+
+		if (props.parameter.type === 'number') {
+			if (typeof props.value === 'string' && props.value.startsWith('=')) {
 				return false;
 			}
 
-			if (this.blurredEver || this.showValidationWarnings) {
-				if (this.parameter.type === 'string') {
-					return !this.value;
-				}
+			return typeof props.value !== 'number';
+		}
+	}
 
-				if (this.parameter.type === 'number') {
-					if (typeof this.value === 'string' && this.value.startsWith('=')) {
-						return false;
-					}
-
-					return typeof this.value !== 'number';
-				}
-			}
-
-			return false;
-		},
-		hint(): string | null {
-			if (this.isValueExpression) {
-				return null;
-			}
-
-			return this.$locale.credText().hint(this.parameter);
-		},
-		isValueExpression(): boolean {
-			return isValueExpression(
-				this.parameter,
-				this.value as string | INodeParameterResourceLocator,
-			);
-		},
-	},
-	methods: {
-		onFocus() {
-			this.focused = true;
-		},
-		onBlur() {
-			this.blurredEver = true;
-			this.focused = false;
-		},
-		onMenuExpanded(expanded: boolean) {
-			this.menuExpanded = expanded;
-		},
-		optionSelected(command: string) {
-			this.eventBus.emit('optionSelected', command);
-		},
-		valueChanged(parameterData: IUpdateInformation) {
-			this.$emit('update', parameterData);
-		},
-		onDocumentationUrlClick(): void {
-			this.$telemetry.track('User clicked credential modal docs link', {
-				docs_link: this.documentationUrl,
-				source: 'field',
-				workflow_id: this.workflowsStore.workflowId,
-			});
-		},
-	},
+	return false;
 });
+
+const hint = computed(() => {
+	if (isValueExpression.value) {
+		return null;
+	}
+
+	return i18n.credText().hint(props.parameter);
+});
+
+const isValueExpression = computed(() => {
+	return isValueExpressionUtil(
+		props.parameter,
+		props.value as string | INodeParameterResourceLocator,
+	);
+});
+
+function onFocus() {
+	focused.value = true;
+}
+
+function onBlur() {
+	blurredEver.value = true;
+	focused.value = false;
+}
+
+function onMenuExpanded(expanded: boolean) {
+	menuExpanded.value = expanded;
+}
+
+function optionSelected(command: string) {
+	eventBus.value.emit('optionSelected', command);
+}
+
+function valueChanged(parameterData: IUpdateInformation) {
+	emit('update', parameterData);
+}
+
+function onDocumentationUrlClick(): void {
+	telemetry.track('User clicked credential modal docs link', {
+		docs_link: props.documentationUrl,
+		source: 'field',
+		workflow_id: workflowsStore.workflowId,
+	});
+}
 </script>
 
 <style lang="scss" module>

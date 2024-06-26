@@ -1,8 +1,9 @@
+import { mock } from 'vitest-mock-extended';
+import type { IWorkflowTemplateNode } from '@/Interface';
 import {
 	keyFromCredentialTypeAndName,
 	replaceAllTemplateNodeCredentials,
 } from '@/utils/templates/templateTransforms';
-import { newWorkflowTemplateNode } from '@/utils/testData/templateTestData';
 
 describe('templateTransforms', () => {
 	describe('replaceAllTemplateNodeCredentials', () => {
@@ -10,7 +11,7 @@ describe('templateTransforms', () => {
 			const nodeTypeProvider = {
 				getNodeType: vitest.fn(),
 			};
-			const node = newWorkflowTemplateNode({
+			const node = mock<IWorkflowTemplateNode>({
 				id: 'twitter',
 				type: 'n8n-nodes-base.twitter',
 				credentials: {
@@ -40,7 +41,7 @@ describe('templateTransforms', () => {
 			const nodeTypeProvider = {
 				getNodeType: vitest.fn(),
 			};
-			const node = newWorkflowTemplateNode({
+			const node = mock<IWorkflowTemplateNode>({
 				id: 'twitter',
 				type: 'n8n-nodes-base.twitter',
 			});

@@ -317,7 +317,6 @@ export class SourceControlGitService {
 		await this.setGitSshCommand();
 		const params = {};
 		if (options.ffOnly) {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
 			Object.assign(params, { '--ff-only': true });
 		}
 		return await this.git.pull(params);

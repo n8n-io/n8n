@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { Position } from '@vue-flow/core';
-import { computed, provide, toRef } from 'vue';
+import { computed, provide, toRef, watch } from 'vue';
 import type {
 	CanvasElementData,
 	CanvasConnectionPort,
@@ -17,6 +17,8 @@ import type { NodeProps } from '@vue-flow/core';
 
 const emit = defineEmits<{
 	delete: [id: string];
+	select: [id: string, selected: boolean];
+	activate: [id: string];
 }>();
 
 const props = defineProps<NodeProps<CanvasElementData>>();
@@ -34,6 +36,13 @@ const { mainInputs, nonMainInputs, mainOutputs, nonMainOutputs } = useNodeConnec
 const nodeType = computed(() => {
 	return nodeTypesStore.getNodeType(props.data.type, props.data.typeVersion);
 });
+
+watch(
+	() => props.selected,
+	(selected) => {
+		emit('select', props.id, selected);
+	},
+);
 
 /**
  * Inputs
@@ -97,6 +106,10 @@ provide(CanvasNodeKey, {
 function onDelete() {
 	emit('delete', props.id);
 }
+
+function onActivate() {
+	emit('activate', props.id);
+}
 </script>
 
 <template>
@@ -132,7 +145,7 @@ function onDelete() {
 			@delete="onDelete"
 		/>
 
-		<CanvasNodeRenderer v-if="nodeType">
+		<CanvasNodeRenderer v-if="nodeType" @dblclick="onActivate">
 			<NodeIcon :node-type="nodeType" :size="40" :shrink="false" />
 			<!--			:color-default="iconColorDefault"-->
 			<!--			:disabled="data.disabled"-->

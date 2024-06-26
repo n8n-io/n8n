@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import * as aiApi from '@/api/ai';
 import type { GenerateCurlPayload } from '@/api/ai';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { computed, reactive, ref } from 'vue';
 import type { Ref } from 'vue';
@@ -51,7 +51,7 @@ export const useAIStore = defineStore('ai', () => {
 	}
 
 	async function generateCurl(payload: GenerateCurlPayload) {
-		return await aiApi.generateCurl(rootStore.getRestApiContext, payload);
+		return await aiApi.generateCurl(rootStore.restApiContext, payload);
 	}
 
 	return {

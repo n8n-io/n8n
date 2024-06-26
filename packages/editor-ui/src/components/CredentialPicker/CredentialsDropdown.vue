@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { PropType } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 
 export type CredentialOption = {
@@ -8,16 +7,10 @@ export type CredentialOption = {
 	typeDisplayName: string | undefined;
 };
 
-const props = defineProps({
-	credentialOptions: {
-		type: Array as PropType<CredentialOption[]>,
-		required: true,
-	},
-	selectedCredentialId: {
-		type: String,
-		required: false,
-	},
-});
+const props = defineProps<{
+	credentialOptions: CredentialOption[];
+	selectedCredentialId: string | null;
+}>();
 
 const $emit = defineEmits({
 	credentialSelected: (_credentialId: string) => true,

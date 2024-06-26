@@ -21,7 +21,7 @@ import {
 	getWorkflowTemplate,
 } from '@/api/templates';
 import { getFixedNodesList } from '@/utils/nodeViewUtils';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useUsersStore } from './users.store';
 import { useWorkflowsStore } from './workflows.store';
 

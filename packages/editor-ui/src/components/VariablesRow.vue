@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { ComponentPublicInstance, PropType } from 'vue';
+import type { ComponentPublicInstance } from 'vue';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import type { Rule, RuleGroup } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
@@ -19,16 +19,15 @@ const usersStore = useUsersStore();
 
 const emit = defineEmits(['save', 'cancel', 'edit', 'delete']);
 
-const props = defineProps({
-	data: {
-		type: Object as PropType<IResource>,
-		default: () => ({}),
+const props = withDefaults(
+	defineProps<{
+		data: IResource;
+		editing: boolean;
+	}>(),
+	{
+		editing: false,
 	},
-	editing: {
-		type: Boolean,
-		default: false,
-	},
-});
+);
 
 const permissions = computed(() => getVariablesPermissions(usersStore.currentUser));
 const modelValue = ref<IResource>({ ...props.data });

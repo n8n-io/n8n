@@ -8,7 +8,7 @@
 
 <script lang="ts" setup>
 import { useUIStore } from '@/stores/ui.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 
 const { baseUrl } = useRootStore();
 const type = useUIStore().appliedTheme === 'dark' ? '.dark.png' : '.png';

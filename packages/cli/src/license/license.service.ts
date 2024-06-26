@@ -1,9 +1,13 @@
 import { Service } from 'typedi';
+import axios from 'axios';
+
 import { Logger } from '@/Logger';
 import { License } from '@/License';
 import { InternalHooks } from '@/InternalHooks';
+import type { User } from '@db/entities/User';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { UrlService } from '@/services/url.service';
 
 type LicenseError = Error & { errorId?: keyof typeof LicenseErrors };
 
@@ -24,6 +28,7 @@ export class LicenseService {
 		private readonly license: License,
 		private readonly internalHooks: InternalHooks,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly urlService: UrlService,
 	) {}
 
 	async getLicenseData() {
@@ -43,6 +48,16 @@ export class LicenseService {
 				planName: this.license.getPlanName(),
 			},
 		};
+	}
+
+	async requestEnterpriseTrial(user: User) {
+		await axios.post('https://enterprise.n8n.io/enterprise-trial', {
+			licenseType: 'enterprise',
+			firstName: user.firstName,
+			lastName: user.lastName,
+			email: user.email,
+			instanceUrl: this.urlService.getWebhookBaseUrl(),
+		});
 	}
 
 	getManagementJwt(): string {

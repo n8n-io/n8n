@@ -8,7 +8,7 @@ import {
 	NPS_SURVEY_MODAL_KEY,
 	CONTACT_PROMPT_MODAL_KEY,
 } from '@/constants';
-import { useRootStore } from './n8nRoot.store';
+import { useRootStore } from './root.store';
 import type { IUserSettings, NpsSurveyState } from 'n8n-workflow';
 import { useSettingsStore } from './settings.store';
 import { updateNpsSurveyState } from '@/api/npsSurvey';
@@ -96,7 +96,7 @@ export const useNpsSurveyStore = defineStore('npsSurvey', () => {
 					? currentSurveyState.value.ignoredCount
 					: 0,
 		};
-		await updateNpsSurveyState(rootStore.getRestApiContext, updatedState);
+		await updateNpsSurveyState(rootStore.restApiContext, updatedState);
 		currentSurveyState.value = updatedState;
 	}
 
@@ -107,7 +107,7 @@ export const useNpsSurveyStore = defineStore('npsSurvey', () => {
 			responded: true,
 			lastShownAt: currentSurveyState.value.lastShownAt,
 		};
-		await updateNpsSurveyState(rootStore.getRestApiContext, updatedState);
+		await updateNpsSurveyState(rootStore.restApiContext, updatedState);
 		currentSurveyState.value = updatedState;
 	}
 
@@ -128,7 +128,7 @@ export const useNpsSurveyStore = defineStore('npsSurvey', () => {
 			lastShownAt: currentSurveyState.value.lastShownAt,
 			ignoredCount: ignoredCount + 1,
 		};
-		await updateNpsSurveyState(rootStore.getRestApiContext, updatedState);
+		await updateNpsSurveyState(rootStore.restApiContext, updatedState);
 		currentSurveyState.value = updatedState;
 	}
 

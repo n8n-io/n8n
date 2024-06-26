@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 /* eslint-disable @typescript-eslint/naming-convention */
-import type { PropType } from 'vue';
 import { computed, toRefs } from 'vue';
 import VueMarkdown from 'vue-markdown-render';
 import hljs from 'highlight.js/lib/core';
@@ -9,12 +8,9 @@ import type MarkdownIt from 'markdown-it';
 import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
 import { useOptions } from '@n8n/chat/composables';
 
-const props = defineProps({
-	message: {
-		type: Object as PropType<ChatMessage>,
-		required: true,
-	},
-});
+const props = defineProps<{
+	message: ChatMessage;
+}>();
 
 const { message } = toRefs(props);
 const { options } = useOptions();

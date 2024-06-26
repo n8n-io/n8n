@@ -1,31 +1,22 @@
 <script lang="ts" setup>
+import { computed } from 'vue';
 import type { IUser, UserStackGroups } from 'n8n-design-system/types';
 import N8nAvatar from '../N8nAvatar';
 import N8nUserInfo from '../N8nUserInfo';
-import type { PropType } from 'vue';
-import { computed } from 'vue';
 
-const props = defineProps({
-	users: {
-		type: Object as PropType<UserStackGroups>,
-		required: true,
+const props = withDefaults(
+	defineProps<{
+		users: UserStackGroups;
+		currentUserEmail?: string;
+		maxAvatars?: number;
+		dropdownTrigger?: 'hover' | 'click';
+	}>(),
+	{
+		currentUserEmail: '',
+		maxAvatars: 2,
+		dropdownTrigger: 'hover',
 	},
-	currentUserEmail: {
-		type: String,
-		required: false,
-		default: '',
-	},
-	maxAvatars: {
-		type: Number,
-		default: 2,
-		validator: (value: number) => value > 0,
-	},
-	dropdownTrigger: {
-		type: String,
-		default: 'hover',
-		validator: (value: string) => ['hover', 'click'].includes(value),
-	},
-});
+);
 
 const nonEmptyGroups = computed(() => {
 	const users: UserStackGroups = {};

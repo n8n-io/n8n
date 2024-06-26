@@ -1,3 +1,4 @@
+import nock from 'nock';
 import config from '@/config';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import type { User } from '@db/entities/User';
@@ -44,6 +45,20 @@ describe('GET /license', () => {
 	test('should return license information to a regular user', async () => {
 		// No license defined so we just expect the result to be the defaults
 		await authMemberAgent.get('/license').expect(200, DEFAULT_LICENSE_RESPONSE);
+	});
+});
+
+describe('POST /license/enterprise/request_trial', () => {
+	nock('https://enterprise.n8n.io').post('/enterprise-trial').reply(200);
+
+	test('should work for instance owner', async () => {
+		await authOwnerAgent.post('/license/enterprise/request_trial').expect(200);
+	});
+
+	test('does not work for regular users', async () => {
+		await authMemberAgent
+			.post('/license/enterprise/request_trial')
+			.expect(403, { status: 'error', message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE });
 	});
 });
 

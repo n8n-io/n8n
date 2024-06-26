@@ -2,7 +2,6 @@
 import Modal from './Modal.vue';
 import { CREDENTIAL_EDIT_MODAL_KEY, SOURCE_CONTROL_PUSH_MODAL_KEY } from '@/constants';
 import { computed, onMounted, ref } from 'vue';
-import type { PropType } from 'vue';
 import type { EventBus } from 'n8n-design-system/utils';
 import type { SourceControlAggregatedFile } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
@@ -13,12 +12,9 @@ import { useUIStore } from '@/stores/ui.store';
 import { useRoute } from 'vue-router';
 import dateformat from 'dateformat';
 
-const props = defineProps({
-	data: {
-		type: Object as PropType<{ eventBus: EventBus; status: SourceControlAggregatedFile[] }>,
-		default: () => ({}),
-	},
-});
+const props = defineProps<{
+	data: { eventBus: EventBus; status: SourceControlAggregatedFile[] };
+}>();
 
 const defaultStagedFileTypes = ['tags', 'variables', 'credential'];
 

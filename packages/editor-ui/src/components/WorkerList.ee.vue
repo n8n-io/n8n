@@ -33,7 +33,7 @@ import WorkerCard from './Workers/WorkerCard.ee.vue';
 import { usePushConnection } from '@/composables/usePushConnection';
 import { useRouter } from 'vue-router';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 
 // eslint-disable-next-line import/no-default-export
 export default defineComponent({

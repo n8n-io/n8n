@@ -25,18 +25,6 @@ describe('useNodeType()', () => {
 		});
 	});
 
-	describe('isSubNodeType', () => {
-		it('identifies sub node type correctly', () => {
-			const nodeTypeOption = {
-				name: 'testNodeType',
-				outputs: ['Main', 'Other'],
-			} as unknown as SimplifiedNodeType;
-			const { isSubNodeType } = useNodeType({ nodeType: nodeTypeOption });
-
-			expect(isSubNodeType.value).toBe(true);
-		});
-	});
-
 	describe('isMultipleOutputsNodeType', () => {
 		it('identifies multiple outputs node type correctly', () => {
 			const nodeTypeOption = {

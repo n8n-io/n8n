@@ -7,20 +7,11 @@ import CredentialsDropdown from './CredentialsDropdown.vue';
 import { useI18n } from '@/composables/useI18n';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/constants';
 
-const props = defineProps({
-	appName: {
-		type: String,
-		required: true,
-	},
-	credentialType: {
-		type: String,
-		required: true,
-	},
-	selectedCredentialId: {
-		type: String,
-		required: false,
-	},
-});
+const props = defineProps<{
+	appName: string;
+	credentialType: string;
+	selectedCredentialId: string | null;
+}>();
 
 const $emit = defineEmits({
 	credentialSelected: (_credentialId: string) => true,

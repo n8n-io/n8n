@@ -14,7 +14,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useTelemetry } from './useTelemetry';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { isFullExecutionResponse } from '@/utils/typeGuards';
 
 export const useExecutionDebugging = () => {

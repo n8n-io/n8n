@@ -78,6 +78,8 @@ export class NDV extends BasePage {
 		resourceLocatorErrorMessage: () => cy.getByTestId('rlc-error-container'),
 		resourceLocatorModeSelector: (paramName: string) =>
 			this.getters.resourceLocator(paramName).find('[data-test-id="rlc-mode-selector"]'),
+		resourceLocatorSearch: (paramName: string) =>
+			this.getters.resourceLocator(paramName).findChildByTestId('rlc-search'),
 		resourceMapperFieldsContainer: () => cy.getByTestId('mapping-fields-container'),
 		resourceMapperSelectColumn: () => cy.getByTestId('matching-column-select'),
 		resourceMapperRemoveFieldButton: (fieldName: string) =>
@@ -129,6 +131,10 @@ export class NDV extends BasePage {
 		nodeRunErrorIndicator: () => cy.getByTestId('node-run-info-danger'),
 		nodeRunErrorMessage: () => cy.getByTestId('node-error-message'),
 		nodeRunErrorDescription: () => cy.getByTestId('node-error-description'),
+		fixedCollectionParameter: (paramName: string) =>
+			cy.getByTestId(`fixed-collection-${paramName}`),
+		schemaViewNode: () => cy.getByTestId('run-data-schema-node'),
+		schemaViewNodeName: () => cy.getByTestId('run-data-schema-node-name'),
 	};
 
 	actions = {
@@ -209,6 +215,9 @@ export class NDV extends BasePage {
 		selectInputNode: (nodeName: string) => {
 			this.getters.inputSelect().find('.el-select').click();
 			this.getters.inputOption().contains(nodeName).click();
+		},
+		expandSchemaViewNode: (nodeName: string) => {
+			this.getters.schemaViewNodeName().contains(nodeName).click();
 		},
 		addDefaultPinnedData: () => {
 			this.actions.editPinnedData();
@@ -299,6 +308,9 @@ export class NDV extends BasePage {
 		},
 		expressionSelectPrevItem: () => {
 			this.getters.inlineExpressionEditorItemPrevButton().click();
+		},
+		addItemToFixedCollection: (paramName: string) => {
+			this.getters.fixedCollectionParameter(paramName).getByTestId('fixed-collection-add').click();
 		},
 	};
 }

@@ -1,12 +1,18 @@
 import { Service } from 'typedi';
 import { DataSource, In, Repository, Like } from '@n8n/typeorm';
-import type { FindManyOptions } from '@n8n/typeorm';
+import type { FindManyOptions, FindOptionsWhere } from '@n8n/typeorm';
 import { CredentialsEntity } from '../entities/CredentialsEntity';
 import type { ListQuery } from '@/requests';
+import type { User } from '../entities/User';
+import type { Scope } from '@n8n/permissions';
+import { RoleService } from '@/services/role.service';
 
 @Service()
 export class CredentialsRepository extends Repository<CredentialsEntity> {
-	constructor(dataSource: DataSource) {
+	constructor(
+		dataSource: DataSource,
+		readonly roleService: RoleService,
+	) {
 		super(CredentialsEntity, dataSource.manager);
 	}
 
@@ -81,5 +87,65 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		}
 
 		return await this.find(findManyOptions);
+	}
+
+	/**
+	 * Find all credentials that are owned by a personal project.
+	 */
+	async findAllPersonalCredentials(): Promise<CredentialsEntity[]> {
+		return await this.findBy({ shared: { project: { type: 'personal' } } });
+	}
+
+	/**
+	 * Find all credentials that are part of any project that the workflow is
+	 * part of.
+	 *
+	 * This is useful to for finding credentials that can be used in the
+	 * workflow.
+	 */
+	async findAllCredentialsForWorkflow(workflowId: string): Promise<CredentialsEntity[]> {
+		return await this.findBy({
+			shared: { project: { sharedWorkflows: { workflowId } } },
+		});
+	}
+
+	/**
+	 * Find all credentials that are part of that project.
+	 *
+	 * This is useful for finding credentials that can be used in workflows that
+	 * are part of this project.
+	 */
+	async findAllCredentialsForProject(projectId: string): Promise<CredentialsEntity[]> {
+		return await this.findBy({ shared: { projectId } });
+	}
+
+	/**
+	 * Find all credentials that the user has access to taking the scopes into
+	 * account.
+	 *
+	 * This also returns `credentials.shared` which is useful for constructing
+	 * all scopes the user has for the credential using `RoleService.addScopes`.
+	 **/
+	async findCredentialsForUser(user: User, scopes: Scope[]) {
+		let where: FindOptionsWhere<CredentialsEntity> = {};
+
+		if (!user.hasGlobalScope(scopes, { mode: 'allOf' })) {
+			const projectRoles = this.roleService.rolesWithScope('project', scopes);
+			const credentialRoles = this.roleService.rolesWithScope('credential', scopes);
+			where = {
+				...where,
+				shared: {
+					role: In(credentialRoles),
+					project: {
+						projectRelations: {
+							role: In(projectRoles),
+							userId: user.id,
+						},
+					},
+				},
+			};
+		}
+
+		return await this.find({ where, relations: { shared: true } });
 	}
 }

@@ -23,7 +23,6 @@ export class Cockpit implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Cockpit',
 		name: 'cockpit',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: { light: 'file:cockpit.svg', dark: 'file:cockpit.dark.svg' },
 		group: ['output'],
 		version: 1,
@@ -153,7 +152,7 @@ export class Cockpit implements INodeType {
 					returnData.push(responseData as IDataObject);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ error: error.message });
 					continue;
 				}

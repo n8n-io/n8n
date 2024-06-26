@@ -12,10 +12,10 @@
 			<ParameterInputExpanded
 				v-else
 				:parameter="parameter"
-				:value="credentialData[parameter.name]"
+				:value="credentialDataValues[parameter.name]"
 				:documentation-url="documentationUrl"
 				:show-validation-warnings="showValidationWarnings"
-				:label="label"
+				:label="{ size: 'medium' }"
 				event-source="credentials"
 				@update="valueChanged"
 			/>
@@ -23,41 +23,41 @@
 	</div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-import type { IParameterLabel } from 'n8n-workflow';
+<script setup lang="ts">
+import type {
+	ICredentialDataDecryptedObject,
+	INodeProperties,
+	NodeParameterValueType,
+} from 'n8n-workflow';
 import type { IUpdateInformation } from '@/Interface';
 import ParameterInputExpanded from '../ParameterInputExpanded.vue';
+import { computed } from 'vue';
 
-export default defineComponent({
-	name: 'CredentialsInput',
-	components: {
-		ParameterInputExpanded,
-	},
-	props: [
-		'credentialProperties',
-		'credentialData', // ICredentialsDecryptedResponse
-		'documentationUrl',
-		'showValidationWarnings',
-	],
-	data(): { label: IParameterLabel } {
-		return {
-			label: {
-				size: 'medium',
-			},
-		};
-	},
-	methods: {
-		valueChanged(parameterData: IUpdateInformation) {
-			const name = parameterData.name.split('.').pop();
+type Props = {
+	credentialProperties: INodeProperties[];
+	credentialData: ICredentialDataDecryptedObject;
+	documentationUrl: string;
+	showValidationWarnings?: boolean;
+};
 
-			this.$emit('update', {
-				name,
-				value: parameterData.value,
-			});
-		},
-	},
-});
+const props = defineProps<Props>();
+
+const credentialDataValues = computed(
+	() => props.credentialData as Record<string, NodeParameterValueType>,
+);
+
+const emit = defineEmits<{
+	(event: 'update', value: IUpdateInformation): void;
+}>();
+
+function valueChanged(parameterData: IUpdateInformation) {
+	const name = parameterData.name.split('.').pop() ?? parameterData.name;
+
+	emit('update', {
+		name,
+		value: parameterData.value,
+	});
+}
 </script>
 
 <style lang="scss" module>

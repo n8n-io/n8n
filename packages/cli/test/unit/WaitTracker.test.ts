@@ -34,12 +34,21 @@ describe('WaitTracker', () => {
 	});
 
 	describe('init()', () => {
-		it('should query DB for waiting executions', async () => {
+		it('should query DB for waiting executions if leader', async () => {
+			jest.spyOn(orchestrationService, 'isLeader', 'get').mockReturnValue(true);
 			executionRepository.getWaitingExecutions.mockResolvedValue([execution]);
 
 			waitTracker.init();
 
 			expect(executionRepository.getWaitingExecutions).toHaveBeenCalledTimes(1);
+		});
+
+		it('if follower, should do nothing', () => {
+			executionRepository.getWaitingExecutions.mockResolvedValue([]);
+
+			waitTracker.init();
+
+			expect(executionRepository.findSingleExecution).not.toHaveBeenCalled();
 		});
 
 		it('if no executions to start, should do nothing', () => {

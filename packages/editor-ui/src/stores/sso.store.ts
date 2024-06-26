@@ -1,7 +1,7 @@
 import { computed, reactive } from 'vue';
 import { defineStore } from 'pinia';
 import { EnterpriseEditionFeature } from '@/constants';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import * as ssoApi from '@/api/sso';
 import type { SamlPreferences, SamlPreferencesExtractedData } from '@/Interface';
@@ -53,23 +53,23 @@ export const useSSOStore = defineStore('sso', () => {
 			isDefaultAuthenticationSaml.value,
 	);
 
-	const getSSORedirectUrl = async () => await ssoApi.initSSO(rootStore.getRestApiContext);
+	const getSSORedirectUrl = async () => await ssoApi.initSSO(rootStore.restApiContext);
 
 	const toggleLoginEnabled = async (enabled: boolean) =>
-		await ssoApi.toggleSamlConfig(rootStore.getRestApiContext, { loginEnabled: enabled });
+		await ssoApi.toggleSamlConfig(rootStore.restApiContext, { loginEnabled: enabled });
 
-	const getSamlMetadata = async () => await ssoApi.getSamlMetadata(rootStore.getRestApiContext);
+	const getSamlMetadata = async () => await ssoApi.getSamlMetadata(rootStore.restApiContext);
 	const getSamlConfig = async () => {
-		const samlConfig = await ssoApi.getSamlConfig(rootStore.getRestApiContext);
+		const samlConfig = await ssoApi.getSamlConfig(rootStore.restApiContext);
 		state.samlConfig = samlConfig;
 		return samlConfig;
 	};
 	const saveSamlConfig = async (config: SamlPreferences) =>
-		await ssoApi.saveSamlConfig(rootStore.getRestApiContext, config);
-	const testSamlConfig = async () => await ssoApi.testSamlConfig(rootStore.getRestApiContext);
+		await ssoApi.saveSamlConfig(rootStore.restApiContext, config);
+	const testSamlConfig = async () => await ssoApi.testSamlConfig(rootStore.restApiContext);
 
 	const updateUser = async (params: { firstName: string; lastName: string }) =>
-		await updateCurrentUser(rootStore.getRestApiContext, {
+		await updateCurrentUser(rootStore.restApiContext, {
 			id: usersStore.currentUser!.id,
 			email: usersStore.currentUser!.email!,
 			...params,

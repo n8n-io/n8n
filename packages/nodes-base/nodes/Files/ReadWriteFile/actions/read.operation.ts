@@ -125,7 +125,7 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 				filePath: fileSelector,
 				operation: 'read',
 			});
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(error)) {
 				returnData.push({
 					json: {
 						error: nodeOperatioinError.message,

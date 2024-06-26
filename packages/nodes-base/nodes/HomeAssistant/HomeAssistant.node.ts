@@ -437,7 +437,7 @@ export class HomeAssistant implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					if (resource === 'cameraProxy' && operation === 'get') {
 						items[i].json = { error: error.message };
 					} else {

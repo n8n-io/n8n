@@ -1,3 +1,50 @@
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue';
+import { getHex, resolveHSLCalc } from './ColorCircles.utils';
+
+const props = defineProps<{ colors: string[] }>();
+
+const getColors = () => {
+	const style = getComputedStyle(document.body);
+
+	const hslColors: Record<string, string> = {};
+	for (const color of props.colors) {
+		const colorValue = style.getPropertyValue(color);
+		if (colorValue) {
+			hslColors[color] = colorValue;
+		}
+	}
+
+	return hslColors;
+};
+
+const hsl = ref<{ [color: string]: string }>(getColors());
+const observer = ref<MutationObserver | null>(null);
+
+onMounted(() => {
+	observer.value = new MutationObserver((mutationsList) => {
+		for (const mutation of mutationsList) {
+			if (mutation.type === 'attributes') {
+				hsl.value = getColors();
+			}
+		}
+	});
+
+	const body = document.querySelector('body');
+	if (body) {
+		observer.value.observe(body, { attributes: true });
+	}
+});
+
+onUnmounted(() => {
+	observer.value?.disconnect();
+});
+
+// Expose functions for template usage
+const getHexValue = (color: string) => getHex(hsl.value[color]);
+const getHSLValue = (color: string) => resolveHSLCalc(hsl.value[color]);
+</script>
+
 <template>
 	<div :class="$style.section">
 		<div v-for="color in colors" :key="color" :class="$style.container">
@@ -8,106 +55,6 @@
 		</div>
 	</div>
 </template>
-
-<script lang="ts">
-import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
-
-function hslToHex(h: number, s: number, l: number): string {
-	l /= 100;
-	const a = (s * Math.min(l, 1 - l)) / 100;
-	const f = (n: number) => {
-		const k = (n + h / 30) % 12;
-		const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-		return Math.round(255 * color)
-			.toString(16)
-			.padStart(2, '0'); // convert to Hex and prefix "0" if needed
-	};
-	return `#${f(0)}${f(8)}${f(4)}`;
-}
-
-function resolveHSLCalc(hslString: string): string {
-	const calcRegex = /calc\(([^)]+)\)/;
-	const matchCalc = hslString.match(calcRegex);
-	if (!matchCalc) {
-		return hslString;
-	}
-	const expression = matchCalc[1];
-	const noPercentageExpression = expression.replace(/%/g, '');
-	const evaluation: number = eval(noPercentageExpression);
-	const finalPercentage = evaluation.toString() + '%';
-	const resolvedHslString = hslString.replace(calcRegex, finalPercentage);
-	return resolvedHslString;
-}
-
-function getHex(hsl: string): string {
-	hsl = resolveHSLCalc(hsl);
-	const colors = hsl
-		.replace('hsl(', '')
-		.replace(')', '')
-		.replace(/%/g, '')
-		.split(',')
-		.map((n: string) => parseFloat(n));
-
-	return hslToHex(colors[0], colors[1], colors[2]);
-}
-
-export default defineComponent({
-	name: 'ColorCircles',
-	props: {
-		colors: {
-			type: Array as PropType<string[]>,
-			required: true,
-		},
-	},
-	data() {
-		return {
-			observer: null as null | MutationObserver,
-			hsl: {} as { [color: string]: string },
-		};
-	},
-	created() {
-		const setColors = () => {
-			this.colors.forEach((color) => {
-				const style = getComputedStyle(document.body);
-
-				this.hsl = {
-					...this.hsl,
-					[color]: style.getPropertyValue(color),
-				};
-			});
-		};
-
-		setColors();
-
-		// when theme class is added or removed, reset color values
-		this.observer = new MutationObserver((mutationsList) => {
-			for (const mutation of mutationsList) {
-				if (mutation.type === 'attributes') {
-					setColors();
-				}
-			}
-		});
-		const body = document.querySelector('body');
-		if (body) {
-			this.observer.observe(body, { attributes: true });
-		}
-	},
-	unmounted() {
-		if (this.observer) {
-			this.observer.disconnect();
-		}
-	},
-	methods: {
-		getHexValue(color: string) {
-			return getHex(this.hsl[color]);
-		},
-		getHSLValue(color: string) {
-			return resolveHSLCalc(this.hsl[color]);
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .section {

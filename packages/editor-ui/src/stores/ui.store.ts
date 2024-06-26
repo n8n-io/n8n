@@ -60,7 +60,7 @@ import type {
 	ModalKey,
 } from '@/Interface';
 import { defineStore } from 'pinia';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { getCurlToJson } from '@/api/curlHelper';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -552,7 +552,7 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		async getCurlToJson(curlCommand: string): Promise<CurlToJSONResponse> {
 			const rootStore = useRootStore();
-			const parameters = await getCurlToJson(rootStore.getRestApiContext, curlCommand);
+			const parameters = await getCurlToJson(rootStore.restApiContext, curlCommand);
 
 			// Normalize placeholder values
 			if (parameters['parameters.url']) {
@@ -594,7 +594,7 @@ export const useUIStore = defineStore(STORES.UI, {
 			type: 'temporary' | 'permanent' = 'temporary',
 		): Promise<void> {
 			if (type === 'permanent') {
-				await dismissBannerPermanently(useRootStore().getRestApiContext, {
+				await dismissBannerPermanently(useRootStore().restApiContext, {
 					bannerName: name,
 					dismissedBanners: useSettingsStore().permanentlyDismissedBanners,
 				});

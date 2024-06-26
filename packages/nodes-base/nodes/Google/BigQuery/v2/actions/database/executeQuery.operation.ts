@@ -241,7 +241,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				jobs.push({ jobId, projectId, i, raw, includeSchema, location });
 			}
 		} catch (error) {
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(error)) {
 				const executionErrorData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray({ error: error.message }),
 					{ itemData: { item: i } },
@@ -297,7 +297,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: job.i } },

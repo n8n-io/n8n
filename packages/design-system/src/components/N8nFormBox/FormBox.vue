@@ -56,6 +56,8 @@ interface FormBoxProps {
 	redirectLink?: string;
 }
 
+type Value = string | number | boolean | null | undefined;
+
 defineOptions({ name: 'N8nFormBox' });
 withDefaults(defineProps<FormBoxProps>(), {
 	title: '',
@@ -68,8 +70,8 @@ withDefaults(defineProps<FormBoxProps>(), {
 const formBus = createEventBus();
 const $emit = defineEmits(['submit', 'update', 'secondaryClick']);
 
-const onUpdateModelValue = (e: { name: string; value: string }) => $emit('update', e);
-const onSubmit = (e: { [key: string]: string }) => $emit('submit', e);
+const onUpdateModelValue = (e: { name: string; value: Value }) => $emit('update', e);
+const onSubmit = (e: { [key: string]: Value }) => $emit('submit', e);
 const onButtonClick = () => formBus.emit('submit');
 const onSecondaryButtonClick = (event: Event) => $emit('secondaryClick', event);
 </script>

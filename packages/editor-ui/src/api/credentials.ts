@@ -36,6 +36,15 @@ export async function getAllCredentials(
 	});
 }
 
+export async function getAllCredentialsForWorkflow(
+	context: IRestApiContext,
+	options: { workflowId: string } | { projectId: string },
+): Promise<ICredentialsResponse[]> {
+	return await makeRestApiRequest(context, 'GET', '/credentials/for-workflow', {
+		...options,
+	});
+}
+
 export async function createNewCredential(
 	context: IRestApiContext,
 	data: ICredentialsDecrypted,

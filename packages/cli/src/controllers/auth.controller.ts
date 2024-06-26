@@ -24,6 +24,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { ApplicationError } from 'n8n-workflow';
 import { UserRepository } from '@/databases/repositories/user.repository';
+import { EventRelay } from '@/eventbus/event-relay.service';
 
 @RestController()
 export class AuthController {
@@ -35,11 +36,12 @@ export class AuthController {
 		private readonly userService: UserService,
 		private readonly license: License,
 		private readonly userRepository: UserRepository,
+		private readonly eventRelay: EventRelay,
 		private readonly postHog?: PostHogClient,
 	) {}
 
 	/** Log in a user */
-	@Post('/login', { skipAuth: true, rateLimit: {} })
+	@Post('/login', { skipAuth: true, rateLimit: true })
 	async login(req: LoginRequest, res: Response): Promise<PublicUser | undefined> {
 		const { email, password, mfaToken, mfaRecoveryCode } = req.body;
 		if (!email) throw new ApplicationError('Email is required to log in');
@@ -90,16 +92,17 @@ export class AuthController {
 			}
 
 			this.authService.issueCookie(res, user, req.browserId);
-			void this.internalHooks.onUserLoginSuccess({
+
+			this.eventRelay.emit('user-logged-in', {
 				user,
 				authenticationMethod: usedAuthenticationMethod,
 			});
 
 			return await this.userService.toPublic(user, { posthog: this.postHog, withScopes: true });
 		}
-		void this.internalHooks.onUserLoginFailed({
-			user: email,
+		this.eventRelay.emit('user-login-failed', {
 			authenticationMethod: usedAuthenticationMethod,
+			userEmail: email,
 			reason: 'wrong credentials',
 		});
 		throw new AuthError('Wrong username or password. Do you have caps lock on?');
@@ -177,6 +180,7 @@ export class AuthController {
 		}
 
 		void this.internalHooks.onUserInviteEmailClick({ inviter, invitee });
+		this.eventRelay.emit('user-invite-email-click', { inviter, invitee });
 
 		const { firstName, lastName } = inviter;
 		return { inviter: { firstName, lastName } };

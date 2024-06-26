@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import type { PropType } from 'vue';
 import type { ExternalSecretsProvider } from '@/Interface';
 import ExternalSecretsProviderImage from '@/components/ExternalSecretsProviderImage.ee.vue';
 import ExternalSecretsProviderConnectionSwitch from '@/components/ExternalSecretsProviderConnectionSwitch.ee.vue';
@@ -13,12 +12,9 @@ import { DateTime } from 'luxon';
 import { computed, nextTick, onMounted, toRef } from 'vue';
 import { isDateObject } from '@/utils/typeGuards';
 
-const props = defineProps({
-	provider: {
-		type: Object as PropType<ExternalSecretsProvider>,
-		required: true,
-	},
-});
+const props = defineProps<{
+	provider: ExternalSecretsProvider;
+}>();
 
 const externalSecretsStore = useExternalSecretsStore();
 const i18n = useI18n();
