@@ -183,7 +183,7 @@ export abstract class AbstractServer {
 			const activeWebhooks = Container.get(ActiveWebhooks);
 
 			// Register a handler for active forms
-			this.app.all(`/${this.endpointForm}/:path(*)`, webhookRequestHandler(activeWebhooks));
+			this.app.all(`/${this.endpointForm}/:path(*)`, webhookRequestHandler(activeWebhooks, false));
 
 			// Register a handler for active webhooks
 			this.app.all(`/${this.endpointWebhook}/:path(*)`, webhookRequestHandler(activeWebhooks));
@@ -205,7 +205,10 @@ export abstract class AbstractServer {
 			const testWebhooks = Container.get(TestWebhooks);
 
 			// Register a handler
-			this.app.all(`/${this.endpointFormTest}/:path(*)`, webhookRequestHandler(testWebhooks));
+			this.app.all(
+				`/${this.endpointFormTest}/:path(*)`,
+				webhookRequestHandler(testWebhooks, false),
+			);
 			this.app.all(`/${this.endpointWebhookTest}/:path(*)`, webhookRequestHandler(testWebhooks));
 		}
 

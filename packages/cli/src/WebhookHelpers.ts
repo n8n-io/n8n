@@ -75,7 +75,8 @@ export const WEBHOOK_METHODS: IHttpRequestMethods[] = [
 ];
 
 export const webhookRequestHandler =
-	(webhookManager: IWebhookManager) =>
+	(webhookManager: IWebhookManager, cspSandbox = true) =>
+	// eslint-disable-next-line complexity
 	async (req: WebhookRequest | WebhookCORSRequest, res: express.Response) => {
 		const { path } = req.params;
 		const method = req.method;
@@ -135,6 +136,10 @@ export const webhookRequestHandler =
 
 		if (method === 'OPTIONS') {
 			return ResponseHelper.sendSuccessResponse(res, {}, true, 204);
+		}
+
+		if (cspSandbox) {
+			res.header('Content-Security-Policy', 'sandbox');
 		}
 
 		let response;
