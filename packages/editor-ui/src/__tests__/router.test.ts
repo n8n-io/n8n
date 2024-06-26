@@ -41,6 +41,7 @@ describe('router', () => {
 
 	afterAll(() => {
 		server.shutdown();
+		vi.restoreAllMocks();
 	});
 
 	test.each([
