@@ -1,5 +1,6 @@
 import { Service } from 'typedi';
 import { EventEmitter } from 'node:events';
+import debounce from 'lodash/debounce';
 
 @Service()
 export class ConcurrencyQueue extends EventEmitter {
@@ -15,7 +16,7 @@ export class ConcurrencyQueue extends EventEmitter {
 	async enqueue(executionId: string) {
 		this.capacity--;
 
-		this.emit('concurrency-check', { capacity: this.capacity });
+		this.debouncedEmit('concurrency-check', { capacity: this.capacity });
 
 		if (this.capacity < 0) {
 			this.emit('execution-throttled', { executionId });
@@ -58,4 +59,9 @@ export class ConcurrencyQueue extends EventEmitter {
 
 		resolve();
 	}
+
+	private debouncedEmit = debounce(
+		(event: string, payload: object) => this.emit(event, payload),
+		300,
+	);
 }
