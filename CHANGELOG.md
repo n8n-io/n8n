@@ -1,3 +1,28 @@
+# [1.48.0](https://github.com/n8n-io/n8n/compare/n8n@1.47.0...n8n@1.48.0) (2024-06-27)
+
+
+### Bug Fixes
+
+* **core:** Fix init for `AuditEventRelay` ([#9839](https://github.com/n8n-io/n8n/issues/9839)) ([16d3083](https://github.com/n8n-io/n8n/commit/16d3083af7465d0788f25d843e497b4c7d69de92))
+* **core:** Fix telemetry for concurrency control ([#9845](https://github.com/n8n-io/n8n/issues/9845)) ([e25682d](https://github.com/n8n-io/n8n/commit/e25682ddad6ee961a1afe5365d7bbad871a20a4c))
+* **editor:** Fix initialize authenticated features ([#9867](https://github.com/n8n-io/n8n/issues/9867)) ([4de58dc](https://github.com/n8n-io/n8n/commit/4de58dcbf5f29bf5414414aa4703356f69a29356))
+* **editor:** Load credentials for workflow before determining credentials errors ([#9876](https://github.com/n8n-io/n8n/issues/9876)) ([4008c14](https://github.com/n8n-io/n8n/commit/4008c147d76daa6ff6d43f30c9a18bf1cef7e5d5))
+* **editor:** Optimizing main sidebar to have more space for Projects ([#9686](https://github.com/n8n-io/n8n/issues/9686)) ([5cdcb61](https://github.com/n8n-io/n8n/commit/5cdcb61f668a6e00829bee25f40cc869376a9cd7))
+* **editor:** Properly update workflow info in main header ([#9789](https://github.com/n8n-io/n8n/issues/9789)) ([1ba656e](https://github.com/n8n-io/n8n/commit/1ba656ef4aae97c78162114ad8de533b275db280))
+* **editor:** Show error state correctly in options parameter with remote options ([#9836](https://github.com/n8n-io/n8n/issues/9836)) ([5bc58ef](https://github.com/n8n-io/n8n/commit/5bc58efde9c127eef8082b23cf5d8dcd91162cf4))
+* **editor:** Use pinned data to resolve expressions in unexecuted nodes ([#9693](https://github.com/n8n-io/n8n/issues/9693)) ([6cb3072](https://github.com/n8n-io/n8n/commit/6cb3072a5db366404f3d16323498371d28582c06))
+* Fix missing node logos ([#9844](https://github.com/n8n-io/n8n/issues/9844)) ([1eeaf32](https://github.com/n8n-io/n8n/commit/1eeaf32523c30f000a1bb8f362c478a086ca7928))
+* **Zulip Node:** Fix a typo preventing some messages from updating ([#7078](https://github.com/n8n-io/n8n/issues/7078)) ([553b135](https://github.com/n8n-io/n8n/commit/553b135b0b73fa29062d2b6ef28f98c47bcd186b))
+
+
+### Features
+
+* Add RS client to hooks service ([#9834](https://github.com/n8n-io/n8n/issues/9834)) ([b807e67](https://github.com/n8n-io/n8n/commit/b807e6726f6ac86df9078c25275b6360a4fcee42))
+* **Anthropic Chat Model Node:** Add support for Claude 3.5 Sonnet ([#9832](https://github.com/n8n-io/n8n/issues/9832)) ([2ce97be](https://github.com/n8n-io/n8n/commit/2ce97be33e8aa4f3023d486441ccc4860a0e07ca))
+* **editor:** Show multiple nodes in input pane schema view ([#9816](https://github.com/n8n-io/n8n/issues/9816)) ([e51de9d](https://github.com/n8n-io/n8n/commit/e51de9d3916e3fcaa05e92dfb8b9b5c722bff33c))
+
+
+
 # [1.47.0](https://github.com/n8n-io/n8n/compare/n8n@1.46.0...n8n@1.47.0) (2024-06-20)
 
 
