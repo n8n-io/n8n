@@ -8,18 +8,6 @@ import type {
 } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
 import type {
-	AuthenticationModalEventData,
-	ExecutionFinishedEventData,
-	ExecutionStartedEventData,
-	ExpressionEditorEventsData,
-	InsertedItemFromExpEditorEventData,
-	NodeRemovedEventData,
-	NodeTypeChangedEventData,
-	OutputModeChangedEventData,
-	UpdatedWorkflowSettingsEventData,
-	UserSavedCredentialsEventData,
-} from '@/hooks/segment';
-import type {
 	INodeCreateElement,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
