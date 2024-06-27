@@ -337,6 +337,23 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		};
 	}
 
+	function updateCachedWorkflow() {
+		const nodeTypes = getNodeTypes();
+		const nodes = getNodes();
+		const connections = allConnections.value;
+
+		cachedWorkflow = new Workflow({
+			id: workflowId.value,
+			name: workflowName.value,
+			nodes,
+			connections,
+			active: false,
+			nodeTypes,
+			settings: workflowSettings.value,
+			pinData: pinnedWorkflowData.value,
+		});
+	}
+
 	function getWorkflow(nodes: INodeUi[], connections: IConnections, copyData?: boolean): Workflow {
 		const nodeTypes = getNodeTypes();
 		let cachedWorkflowId: string | undefined = workflowId.value;
@@ -362,7 +379,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	function getCurrentWorkflow(copyData?: boolean): Workflow {
 		const nodes = getNodes();
 		const connections = allConnections.value;
-		const cacheKey = JSON.stringify({ nodes, connections, pinData: pinnedWorkflowData.value });
+		const cacheKey = JSON.stringify({ nodes, connections });
 		if (!copyData && cachedWorkflow && cacheKey === cachedWorkflowKey) {
 			return cachedWorkflow;
 		}
@@ -641,6 +658,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			...workflow.value,
 			pinData: pinData || {},
 		};
+		updateCachedWorkflow();
 
 		dataPinningEventBus.emit('pin-data', pinData || {});
 	}
@@ -711,6 +729,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		};
 
 		uiStore.stateIsDirty = true;
+		updateCachedWorkflow();
 
 		dataPinningEventBus.emit('pin-data', { [payload.node.name]: storedPinData });
 	}
@@ -727,6 +746,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		};
 
 		uiStore.stateIsDirty = true;
+		updateCachedWorkflow();
 
 		dataPinningEventBus.emit('unpin-data', { [payload.node.name]: undefined });
 	}
