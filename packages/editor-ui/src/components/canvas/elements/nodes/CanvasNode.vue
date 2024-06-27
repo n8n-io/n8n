@@ -18,20 +18,23 @@ import type { NodeProps } from '@vue-flow/core';
 const emit = defineEmits<{
 	delete: [id: string];
 	select: [id: string, selected: boolean];
+	toggle: [id: string];
 	activate: [id: string];
 }>();
-
 const props = defineProps<NodeProps<CanvasElementData>>();
-
-const inputs = computed(() => props.data.inputs);
-const outputs = computed(() => props.data.outputs);
 
 const nodeTypesStore = useNodeTypesStore();
 
+const inputs = computed(() => props.data.inputs);
+const outputs = computed(() => props.data.outputs);
+const connections = computed(() => props.data.connections);
 const { mainInputs, nonMainInputs, mainOutputs, nonMainOutputs } = useNodeConnections({
 	inputs,
 	outputs,
+	connections,
 });
+
+const isDisabled = computed(() => props.data.disabled);
 
 const nodeType = computed(() => {
 	return nodeTypesStore.getNodeType(props.data.type, props.data.typeVersion);
@@ -107,6 +110,10 @@ function onDelete() {
 	emit('delete', props.id);
 }
 
+function onDisabledToggle() {
+	emit('toggle', props.id);
+}
+
 function onActivate() {
 	emit('activate', props.id);
 }
@@ -143,12 +150,12 @@ function onActivate() {
 			data-test-id="canvas-node-toolbar"
 			:class="$style.canvasNodeToolbar"
 			@delete="onDelete"
+			@toggle="onDisabledToggle"
 		/>
 
 		<CanvasNodeRenderer v-if="nodeType" @dblclick="onActivate">
-			<NodeIcon :node-type="nodeType" :size="40" :shrink="false" />
+			<NodeIcon :node-type="nodeType" :size="40" :shrink="false" :disabled="isDisabled" />
 			<!--			:color-default="iconColorDefault"-->
-			<!--			:disabled="data.disabled"-->
 		</CanvasNodeRenderer>
 	</div>
 </template>

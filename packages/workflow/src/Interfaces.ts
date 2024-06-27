@@ -310,7 +310,7 @@ type ICredentialHttpRequestNode = {
 export interface ICredentialType {
 	name: string;
 	displayName: string;
-	icon?: Themed<Icon>;
+	icon?: Icon;
 	iconUrl?: Themed<string>;
 	extends?: string[];
 	properties: INodeProperties[];
@@ -1571,13 +1571,15 @@ export type NodeIconColor =
 	| 'azure'
 	| 'purple'
 	| 'crimson';
-export type Icon = `fa:${string}` | `file:${string}` | `node:${string}`;
 export type Themed<T> = T | { light: T; dark: T };
+export type IconRef = `fa:${string}` | `node:${string}.${string}`;
+export type IconFile = `file:${string}.png` | `file:${string}.svg`;
+export type Icon = IconRef | Themed<IconFile>;
 
 export interface INodeTypeBaseDescription {
 	displayName: string;
 	name: string;
-	icon?: Themed<Icon>;
+	icon?: Icon;
 	iconColor?: NodeIconColor;
 	iconUrl?: Themed<string>;
 	badgeIconUrl?: Themed<string>;
