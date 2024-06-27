@@ -10,7 +10,6 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useHistoryStore } from '@/stores/history.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useExternalHooks } from '@/composables/useExternalHooks';
 import {
 	MoveNodeCommand,
 	RemoveConnectionCommand,
@@ -81,7 +80,6 @@ export function useCanvasOperations({
 	const workflowHelpers = useWorkflowHelpers({ router });
 	const nodeHelpers = useNodeHelpers();
 	const telemetry = useTelemetry();
-	const externalHooks = useExternalHooks();
 
 	const editableWorkflow = computed(() => workflowsStore.workflow);
 	const editableWorkflowObject = computed(() => workflowsStore.getCurrentWorkflow());
@@ -202,7 +200,6 @@ export function useCanvasOperations({
 				is_welcome_note: node.name === QUICKSTART_NOTE_NAME,
 			});
 		} else {
-			void externalHooks.run('node.deleteNode', { node });
 			telemetry.track('User deleted node', {
 				node_type: node.type,
 				workflow_id: workflowsStore.workflowId,
@@ -649,7 +646,6 @@ export function useCanvasOperations({
 				workflow_id: workflowsStore.workflowId,
 			});
 		} else {
-			void externalHooks.run('nodeView.addNodeButton', { nodeTypeName: node.type });
 			useSegment().trackAddedTrigger(node.type);
 			const trackProperties: ITelemetryTrackProperties = {
 				node_type: node.type,

@@ -31,7 +31,6 @@ import { useRootStore } from '@/stores/root.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { openPopUpWindow } from '@/utils/executionUtils';
-import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import type { useRouter } from 'vue-router';
 import { isEmpty } from '@/utils/typesUtils';
@@ -314,11 +313,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					if (testUrl) openPopUpWindow(testUrl);
 				}
 			}
-
-			await useExternalHooks().run('workflowRun.runWorkflow', {
-				nodeName: options.destinationNode,
-				source: options.source,
-			});
 
 			return runWorkflowApiResponse;
 		} catch (error) {

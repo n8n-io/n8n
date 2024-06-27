@@ -4,7 +4,6 @@ import GlobalExecutionsList from '@/components/executions/global/GlobalExecution
 import { setPageTitle } from '@/utils/htmlUtils';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useToast } from '@/composables/useToast';
@@ -13,7 +12,6 @@ import type { ExecutionFilterType } from '@/Interface';
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
-const externalHooks = useExternalHooks();
 const workflowsStore = useWorkflowsStore();
 const executionsStore = useExecutionsStore();
 
@@ -25,7 +23,6 @@ const { executionsCount, executionsCountEstimated, filters, allExecutions } =
 onBeforeMount(async () => {
 	await loadWorkflows();
 
-	void externalHooks.run('executionsList.openDialog');
 	telemetry.track('User opened Executions log', {
 		workflow_id: workflowsStore.workflowId,
 	});

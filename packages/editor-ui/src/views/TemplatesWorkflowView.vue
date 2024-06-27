@@ -68,7 +68,6 @@ import { setPageTitle } from '@/utils/htmlUtils';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { useTemplateWorkflow } from '@/utils/templates/templateActions';
-import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 export default defineComponent({
@@ -77,13 +76,6 @@ export default defineComponent({
 		TemplateDetails,
 		TemplatesView,
 		WorkflowPreview,
-	},
-	setup() {
-		const externalHooks = useExternalHooks();
-
-		return {
-			externalHooks,
-		};
 	},
 	computed: {
 		...mapStores(useTemplatesStore, usePostHog),
@@ -135,7 +127,6 @@ export default defineComponent({
 				router: this.$router,
 				templateId: id,
 				inNewBrowserTab: e.metaKey || e.ctrlKey,
-				externalHooks: this.externalHooks,
 				nodeTypesStore: useNodeTypesStore(),
 				telemetry: this.$telemetry,
 				templatesStore: useTemplatesStore(),

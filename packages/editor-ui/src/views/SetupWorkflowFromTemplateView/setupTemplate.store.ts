@@ -10,7 +10,6 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { createWorkflowFromTemplate } from '@/utils/templates/templateActions';
-import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useCredentialSetupState } from '@/views/SetupWorkflowFromTemplateView/useCredentialSetupState';
 import { tryToParseNumber } from '@/utils/typesUtils';
@@ -145,14 +144,7 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 	 * Skips the setup and goes directly to the workflow view.
 	 */
 	const skipSetup = async ({ router }: { router: Router }) => {
-		const externalHooks = useExternalHooks();
 		const telemetry = useTelemetry();
-
-		await externalHooks.run('templatesWorkflowView.openWorkflow', {
-			source: 'workflow',
-			template_id: templateId.value,
-			wf_template_repo_session_id: templatesStore.currentSessionId,
-		});
 
 		telemetry.track('User closed cred setup', {
 			completed: false,

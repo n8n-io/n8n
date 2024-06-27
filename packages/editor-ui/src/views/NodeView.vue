@@ -378,7 +378,6 @@ import {
 	getEndpointScope,
 } from '@/utils/nodeViewUtils';
 import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
-import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useClipboard } from '@/composables/useClipboard';
 import { usePinnedData } from '@/composables/usePinnedData';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
@@ -493,7 +492,6 @@ export default defineComponent({
 		const router = useRouter();
 
 		const ndvStore = useNDVStore();
-		const externalHooks = useExternalHooks();
 		const locale = useI18n();
 		const contextMenu = useContextMenu();
 		const dataSchema = useDataSchema();
@@ -512,7 +510,6 @@ export default defineComponent({
 			contextMenu,
 			dataSchema,
 			nodeHelpers,
-			externalHooks,
 			clipboard,
 			pinnedData,
 			deviceSupport,
@@ -914,9 +911,6 @@ export default defineComponent({
 			}, 0);
 		});
 
-		// TODO: This currently breaks since front-end hooks are still not updated to work with pinia store
-		void this.externalHooks.run('nodeView.mount').catch(() => {});
-
 		if (
 			this.currentUser?.personalizationAnswers !== null &&
 			this.settingsStore.onboardingCallPromptEnabled &&
@@ -1137,7 +1131,6 @@ export default defineComponent({
 				push_ref: this.ndvStore.pushRef,
 			};
 			this.$telemetry.track('User clicked execute node button', telemetryPayload);
-			void this.externalHooks.run('nodeView.onRunNode', telemetryPayload);
 			void this.runWorkflow({ destinationNode: nodeName, source });
 		},
 		async onOpenChat() {
@@ -1145,7 +1138,6 @@ export default defineComponent({
 				workflow_id: this.workflowsStore.workflowId,
 			};
 			this.$telemetry.track('User clicked chat open button', telemetryPayload);
-			void this.externalHooks.run('nodeView.onOpenChat', telemetryPayload);
 			this.uiStore.openModal(WORKFLOW_LM_CHAT_MODAL_KEY);
 		},
 		async onRunWorkflow() {
@@ -1161,7 +1153,6 @@ export default defineComponent({
 					),
 				};
 				this.$telemetry.track('User clicked execute workflow button', telemetryPayload);
-				void this.externalHooks.run('nodeView.onRunWorkflow', telemetryPayload);
 			});
 
 			await this.runWorkflow({});
@@ -1335,11 +1326,7 @@ export default defineComponent({
 			await this.$nextTick();
 			this.canvasStore.zoomToFit();
 			this.uiStore.stateIsDirty = false;
-			void this.externalHooks.run('execution.open', {
-				workflowId: data.workflowData.id,
-				workflowName: data.workflowData.name,
-				executionId,
-			});
+
 			this.$telemetry.track('User opened read-only execution', {
 				workflow_id: data.workflowData.id,
 				execution_mode: data.mode,
@@ -1417,7 +1404,6 @@ export default defineComponent({
 
 			let data: IWorkflowTemplate | undefined;
 			try {
-				void this.externalHooks.run('template.requested', { templateId });
 				data = await this.templatesStore.getFixedWorkflowTemplate(templateId);
 
 				if (!data) {
@@ -1462,11 +1448,6 @@ export default defineComponent({
 			this.canvasStore.zoomToFit();
 			this.uiStore.stateIsDirty = true;
 
-			void this.externalHooks.run('template.open', {
-				templateId,
-				templateName: data.name,
-				workflow: data.workflow,
-			});
 			this.canvasStore.stopLoading();
 		},
 		async openWorkflow(workflow: IWorkflowDb) {
@@ -1495,10 +1476,6 @@ export default defineComponent({
 				this.uiStore.stateIsDirty = false;
 			}
 			this.canvasStore.zoomToFit();
-			void this.externalHooks.run('workflow.open', {
-				workflowId: workflow.id,
-				workflowName: workflow.name,
-			});
 			if (selectedExecution?.workflowId !== workflow.id) {
 				this.executionsStore.activeExecution = null;
 				this.workflowsStore.currentWorkflowExecutions = [];
@@ -1589,7 +1566,6 @@ export default defineComponent({
 			if (e.key === 'Escape' && noModifierKeys) {
 				this.createNodeActive = false;
 				if (this.activeNode) {
-					void this.externalHooks.run('dataDisplay.nodeEditingFinished');
 					this.ndvStore.activeNodeName = null;
 				}
 
@@ -2695,7 +2671,6 @@ export default defineComponent({
 					workflow_id: this.workflowsStore.workflowId,
 				});
 			} else {
-				void this.externalHooks.run('nodeView.addNodeButton', { nodeTypeName });
 				useSegment().trackAddedTrigger(nodeTypeName);
 				const trackProperties: ITelemetryTrackProperties = {
 					node_type: nodeTypeName,
@@ -3976,7 +3951,6 @@ export default defineComponent({
 					is_welcome_note: node.name === QUICKSTART_NOTE_NAME,
 				});
 			} else {
-				void this.externalHooks.run('node.deleteNode', { node });
 				this.$telemetry.track('User deleted node', {
 					node_type: node.type,
 					workflow_id: this.workflowsStore.workflowId,
@@ -4594,11 +4568,6 @@ export default defineComponent({
 			}
 
 			if (createNodeActive && source) this.nodeCreatorStore.setOpenSource(source);
-			void this.externalHooks.run('nodeView.createNodeActiveChanged', {
-				source,
-				mode,
-				createNodeActive,
-			});
 			this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', {
 				source,
 				mode,

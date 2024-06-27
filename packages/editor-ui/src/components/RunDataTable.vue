@@ -174,7 +174,6 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import MappingPill from './MappingPill.vue';
 import { getMappedExpression } from '@/utils/mappingUtils';
-import { useExternalHooks } from '@/composables/useExternalHooks';
 import TextWithHighlights from './TextWithHighlights.vue';
 
 const MAX_COLUMNS_LIMIT = 40;
@@ -219,12 +218,6 @@ export default defineComponent({
 		search: {
 			type: String,
 		},
-	},
-	setup() {
-		const externalHooks = useExternalHooks();
-		return {
-			externalHooks,
-		};
 	},
 	data() {
 		return {
@@ -442,8 +435,6 @@ export default defineComponent({
 					success: false,
 					...mappingTelemetry,
 				};
-
-				void this.externalHooks.run('runDataTable.onDragEnd', telemetryPayload);
 
 				this.$telemetry.track('User dragged data for mapping', telemetryPayload, {
 					withPostHog: true,

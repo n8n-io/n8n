@@ -7,7 +7,6 @@ import {
 } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -59,7 +58,6 @@ export function useWorkflowActivate() {
 			ndv_input: telemetrySource === 'ndv',
 		};
 		telemetry.track('User set workflow active status', telemetryPayload);
-		void useExternalHooks().run('workflowActivate.updateWorkflowActivation', telemetryPayload);
 
 		try {
 			if (isWorkflowActive && newActiveState) {
@@ -102,14 +100,6 @@ export function useWorkflowActivate() {
 			updatingWorkflowActivation.value = false;
 			return;
 		}
-
-		const activationEventName = isCurrentWorkflow
-			? 'workflow.activeChangeCurrent'
-			: 'workflow.activeChange';
-		void useExternalHooks().run(activationEventName, {
-			workflowId: currWorkflowId,
-			active: newActiveState,
-		});
 
 		updatingWorkflowActivation.value = false;
 

@@ -28,7 +28,6 @@ import {
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
-import { useExternalHooks } from '@/composables/useExternalHooks';
 import type { NodeConnectionType, ExecutionSummary, IConnection } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -63,7 +62,6 @@ const router = useRouter();
 const route = useRoute();
 const i18n = useI18n();
 const telemetry = useTelemetry();
-const externalHooks = useExternalHooks();
 const toast = useToast();
 const message = useMessage();
 const titleChange = useTitleChange();
@@ -169,10 +167,6 @@ async function initializeData() {
 		);
 	}
 
-	void externalHooks.run('workflow.open', {
-		workflowId: workflowsStore.workflow.id,
-		workflowName: workflowsStore.workflow.name,
-	});
 	collaborationStore.notifyWorkflowOpened(workflowsStore.workflow.id);
 
 	const selectedExecution = executionsStore.activeExecution;

@@ -66,18 +66,11 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { createEventBus } from 'n8n-design-system/utils';
-import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export default defineComponent({
 	name: 'CredentialsSelectModal',
 	components: {
 		Modal,
-	},
-	setup() {
-		const externalHooks = useExternalHooks();
-		return {
-			externalHooks,
-		};
 	},
 	data() {
 		return {
@@ -119,7 +112,6 @@ export default defineComponent({
 			};
 
 			this.$telemetry.track('User opened Credential modal', telemetryPayload);
-			void this.externalHooks.run('credentialsSelectModal.openCredentialType', telemetryPayload);
 		},
 	},
 });

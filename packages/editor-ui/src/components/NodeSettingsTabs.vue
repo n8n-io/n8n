@@ -20,7 +20,6 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 import { computed } from 'vue';
 
-import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
@@ -41,7 +40,6 @@ const emit = defineEmits<{
 	(event: 'update:model-value', tab: Tab): void;
 }>();
 
-const externalHooks = useExternalHooks();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const i18n = useI18n();
@@ -130,11 +128,6 @@ const options = computed<ITab[]>(() => {
 
 function onTabSelect(tab: string) {
 	if (tab === 'docs' && props.nodeType) {
-		void externalHooks.run('dataDisplay.onDocumentationUrlClick', {
-			nodeType: props.nodeType,
-			documentationUrl: documentationUrl.value,
-		});
-
 		telemetry.track('User clicked ndv link', {
 			node_type: activeNode.value?.type,
 			workflow_id: workflowsStore.workflowId,

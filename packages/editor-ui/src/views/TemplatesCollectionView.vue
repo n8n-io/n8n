@@ -68,7 +68,6 @@ import { VIEWS } from '@/constants';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { useTemplateWorkflow } from '@/utils/templates/templateActions';
-import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { isFullTemplatesCollection } from '@/utils/templates/typeGuards';
 
@@ -78,13 +77,6 @@ export default defineComponent({
 		TemplateDetails,
 		TemplateList,
 		TemplatesView,
-	},
-	setup() {
-		const externalHooks = useExternalHooks();
-
-		return {
-			externalHooks,
-		};
 	},
 	computed: {
 		...mapStores(useTemplatesStore, usePostHog),
@@ -157,7 +149,6 @@ export default defineComponent({
 				templateId: id,
 				inNewBrowserTab: event.metaKey || event.ctrlKey,
 				templatesStore: useTemplatesStore(),
-				externalHooks: this.externalHooks,
 				nodeTypesStore: useNodeTypesStore(),
 				telemetry: this.$telemetry,
 				source: 'template_list',

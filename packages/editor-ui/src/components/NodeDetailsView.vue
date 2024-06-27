@@ -169,7 +169,6 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useDeviceSupport } from 'n8n-design-system';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useMessage } from '@/composables/useMessage';
-import { useExternalHooks } from '@/composables/useExternalHooks';
 import { usePinnedData } from '@/composables/usePinnedData';
 import { useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
@@ -198,7 +197,6 @@ const props = withDefaults(
 );
 
 const ndvStore = useNDVStore();
-const externalHooks = useExternalHooks();
 const nodeHelpers = useNodeHelpers();
 const { activeNode } = storeToRefs(ndvStore);
 const pinnedData = usePinnedData(activeNode);
@@ -639,7 +637,6 @@ const close = async () => {
 		ndvStore.setOutputPanelEditModeEnabled(false);
 	}
 
-	await externalHooks.run('dataDisplay.nodeEditingFinished');
 	telemetry.track('User closed node modal', {
 		node_type: activeNodeType.value ? activeNodeType.value?.name : '',
 		push_ref: pushRef.value,
@@ -727,14 +724,6 @@ watch(
 			if (!activeNodeType.value) {
 				return;
 			}
-
-			void externalHooks.run('dataDisplay.nodeTypeChanged', {
-				nodeSubtitle: nodeHelpers.getNodeSubtitle(
-					node,
-					activeNodeType.value,
-					workflowHelpers.getCurrentWorkflow(),
-				),
-			});
 
 			setTimeout(() => {
 				if (activeNode.value) {

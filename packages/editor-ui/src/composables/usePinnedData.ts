@@ -11,7 +11,6 @@ import {
 import { stringSizeInBytes, toMegaBytes } from '@/utils/typesUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { INodeUi, IRunDataDisplayMode } from '@/Interface';
-import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { MaybeRef } from 'vue';
 import { computed, unref } from 'vue';
@@ -48,7 +47,6 @@ export function usePinnedData(
 	const toast = useToast();
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
-	const externalHooks = useExternalHooks();
 	const { getInputDataWithPinned } = useDataSchema();
 
 	const { isSubNodeType, isMultipleOutputsNodeType } = useNodeType({
@@ -201,7 +199,6 @@ export function usePinnedData(
 			run_index: runIndex,
 		};
 
-		void externalHooks.run('runData.onDataPinningSuccess', telemetryPayload);
 		telemetry.track('Ndv data pinning success', telemetryPayload);
 	}
 

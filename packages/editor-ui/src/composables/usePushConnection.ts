@@ -32,12 +32,10 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { parse } from 'flatted';
-import { useSegment } from '@/stores/segment.store';
 import { ref } from 'vue';
 import { useOrchestrationStore } from '@/stores/orchestration.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useCollaborationStore } from '@/stores/collaboration.store';
-import { useExternalHooks } from '@/composables/useExternalHooks';
 import type { useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useI18n } from '@/composables/useI18n';
@@ -512,14 +510,6 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				itemsCount =
 					runDataExecuted.data.resultData.runData[lastNodeExecuted][0].data!.main[0]!.length;
 			}
-
-			void useExternalHooks().run('pushConnection.executionFinished', {
-				itemsCount,
-				nodeName: runDataExecuted.data.resultData.lastNodeExecuted,
-				errorMessage: runDataExecutedErrorMessage,
-				runDataExecutedStartData: runDataExecuted.data.startData,
-				resultDataError: runDataExecuted.data.resultData.error,
-			});
 		} else if (receivedData.type === 'executionStarted') {
 			const pushData = receivedData.data;
 

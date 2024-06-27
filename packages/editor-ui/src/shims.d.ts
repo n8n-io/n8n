@@ -1,6 +1,4 @@
 import type { VNode, ComponentPublicInstance } from 'vue';
-import type { PartialDeep } from 'type-fest';
-import type { ExternalHooks } from '@/types/externalHooks';
 
 export {};
 
@@ -18,7 +16,6 @@ declare global {
 	interface Window {
 		BASE_PATH: string;
 		REST_ENDPOINT: string;
-		n8nExternalHooks?: PartialDeep<ExternalHooks>;
 		preventNodeViewBeforeUnload?: boolean;
 	}
 

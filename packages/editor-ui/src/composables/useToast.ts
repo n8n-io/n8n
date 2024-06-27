@@ -6,7 +6,6 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useI18n } from './useI18n';
-import { useExternalHooks } from './useExternalHooks';
 import { VIEWS } from '@/constants';
 
 export interface NotificationErrorWithNodeAndDescription extends Error {
@@ -27,7 +26,6 @@ export function useToast() {
 	const telemetry = useTelemetry();
 	const workflowsStore = useWorkflowsStore();
 	const uiStore = useUIStore();
-	const externalHooks = useExternalHooks();
 	const i18n = useI18n();
 
 	function showMessage(messageData: Partial<NotificationOptions>, track = true) {
@@ -135,12 +133,6 @@ export function useToast() {
 			},
 			false,
 		);
-
-		void externalHooks.run('showMessage.showError', {
-			title,
-			message,
-			errorMessage: error.message,
-		});
 
 		telemetry.track('Instance FE emitted error', {
 			error_title: title,

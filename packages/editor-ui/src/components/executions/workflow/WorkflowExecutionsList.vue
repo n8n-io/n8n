@@ -47,7 +47,6 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { executionFilterToQueryFilter } from '@/utils/executionUtils';
-import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useDebounce } from '@/composables/useDebounce';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 
@@ -128,13 +127,11 @@ export default defineComponent({
 		'reload',
 	],
 	setup() {
-		const externalHooks = useExternalHooks();
 		const router = useRouter();
 		const workflowHelpers = useWorkflowHelpers({ router });
 		const { callDebounced } = useDebounce();
 
 		return {
-			externalHooks,
 			workflowHelpers,
 			callDebounced,
 			...useToast(),

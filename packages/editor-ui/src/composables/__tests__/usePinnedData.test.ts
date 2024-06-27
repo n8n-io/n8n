@@ -11,11 +11,6 @@ vi.mock('@/composables/useToast', () => ({ useToast: vi.fn(() => ({ showError: v
 vi.mock('@/composables/useI18n', () => ({
 	useI18n: vi.fn(() => ({ baseText: vi.fn((key) => key) })),
 }));
-vi.mock('@/composables/useExternalHooks', () => ({
-	useExternalHooks: vi.fn(() => ({
-		run: vi.fn(),
-	})),
-}));
 
 describe('usePinnedData', () => {
 	beforeEach(() => {

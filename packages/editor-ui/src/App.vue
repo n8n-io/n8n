@@ -47,7 +47,6 @@ import { HIRING_BANNER, VIEWS } from '@/constants';
 
 import { loadLanguage } from '@/plugins/i18n';
 import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
-import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useToast } from '@/composables/useToast';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -77,7 +76,6 @@ export default defineComponent({
 			...useGlobalLinkActions(),
 			...useHistoryHelper(useRoute()),
 			...useToast(),
-			externalHooks: useExternalHooks(),
 		};
 	},
 	computed: {
@@ -112,7 +110,8 @@ export default defineComponent({
 	},
 	async mounted() {
 		this.logHiringBanner();
-		void useExternalHooks().run('app.mount');
+		// todo
+		// hooksAddFakeDoorFeatures();
 		this.loading = false;
 	},
 	methods: {

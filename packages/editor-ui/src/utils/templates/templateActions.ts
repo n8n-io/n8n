@@ -18,12 +18,8 @@ import type { RouteLocationRaw, Router } from 'vue-router';
 import type { TemplatesStore } from '@/stores/templates.store';
 import type { NodeTypesStore } from '@/stores/nodeTypes.store';
 import type { Telemetry } from '@/plugins/telemetry';
-import type { useExternalHooks } from '@/composables/useExternalHooks';
 import { assert } from '@/utils/assert';
 import { doesNodeHaveCredentialsToFill } from '@/utils/nodes/nodeTransforms';
-import { tryToParseNumber } from '@/utils/typesUtils';
-
-type ExternalHooks = ReturnType<typeof useExternalHooks>;
 
 /**
  * Creates a new workflow from a template
@@ -94,24 +90,15 @@ async function openTemplateCredentialSetup(opts: {
  * telemetry events.
  */
 async function openTemplateWorkflowOnNodeView(opts: {
-	externalHooks: ExternalHooks;
 	templateId: string;
-	templatesStore: TemplatesStore;
 	router: Router;
 	inNewBrowserTab?: boolean;
 }) {
-	const { externalHooks, templateId, templatesStore, inNewBrowserTab, router } = opts;
+	const { templateId, inNewBrowserTab, router } = opts;
 	const routeLocation: RouteLocationRaw = {
 		name: VIEWS.TEMPLATE_IMPORT,
 		params: { id: templateId },
 	};
-	const telemetryPayload = {
-		source: 'workflow',
-		template_id: tryToParseNumber(templateId),
-		wf_template_repo_session_id: templatesStore.currentSessionId,
-	};
-
-	await externalHooks.run('templatesWorkflowView.openWorkflow', telemetryPayload);
 
 	if (inNewBrowserTab) {
 		const route = router.resolve(routeLocation);
@@ -145,7 +132,6 @@ async function getFullTemplate(templatesStore: TemplatesStore, templateId: strin
  * or the template credential setup view. Fires necessary telemetry events.
  */
 export async function useTemplateWorkflow(opts: {
-	externalHooks: ExternalHooks;
 	nodeTypesStore: NodeTypesStore;
 	posthogStore: PosthogStore;
 	templateId: string;

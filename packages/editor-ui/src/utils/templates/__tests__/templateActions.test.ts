@@ -45,9 +45,6 @@ export const testTemplate2 = mock<ITemplatesWorkflowFull>({
 describe('templateActions', () => {
 	describe('useTemplateWorkflow', () => {
 		const telemetry = new Telemetry();
-		const externalHooks = {
-			run: vi.fn(),
-		};
 		const router: Router = {
 			push: vi.fn(),
 			resolve: vi.fn(),
@@ -77,7 +74,6 @@ describe('templateActions', () => {
 				posthogStore.isFeatureEnabled = vi.fn().mockReturnValue(false);
 
 				await useTemplateWorkflow({
-					externalHooks,
 					posthogStore,
 					nodeTypesStore,
 					telemetry,
@@ -106,7 +102,6 @@ describe('templateActions', () => {
 				vi.spyOn(nodeTypesStore, 'loadNodeTypesIfNotLoaded').mockResolvedValue();
 
 				await useTemplateWorkflow({
-					externalHooks,
 					posthogStore,
 					nodeTypesStore,
 					telemetry,
@@ -134,7 +129,6 @@ describe('templateActions', () => {
 				vi.spyOn(nodeTypesStore, 'loadNodeTypesIfNotLoaded').mockResolvedValue();
 
 				await useTemplateWorkflow({
-					externalHooks,
 					posthogStore,
 					nodeTypesStore,
 					telemetry,

@@ -91,7 +91,6 @@ import { EXPRESSIONS_DOCS_URL } from '@/constants';
 
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useExternalHooks } from '@/composables/useExternalHooks';
 import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 import { useDebounce } from '@/composables/useDebounce';
 
@@ -138,12 +137,10 @@ export default defineComponent({
 		},
 	},
 	setup() {
-		const externalHooks = useExternalHooks();
 		const { callDebounced } = useDebounce();
 
 		return {
 			callDebounced,
-			externalHooks,
 		};
 	},
 	data() {
@@ -163,15 +160,6 @@ export default defineComponent({
 			this.displayValue = this.modelValue;
 			this.latestValue = this.modelValue;
 
-			const resolvedExpressionValue =
-				(this.$refs.expressionResult as InstanceType<typeof ExpressionOutput>)?.getValue() || '';
-			void this.externalHooks.run('expressionEdit.dialogVisibleChanged', {
-				dialogVisible: newValue,
-				parameter: this.parameter,
-				value: this.modelValue,
-				resolvedExpressionValue,
-			});
-
 			if (!newValue) {
 				const telemetryPayload = createExpressionTelemetryPayload(
 					this.segments,
@@ -182,7 +170,6 @@ export default defineComponent({
 				);
 
 				this.$telemetry.track('User closed Expression Editor', telemetryPayload);
-				void this.externalHooks.run('expressionEdit.closeDialog', telemetryPayload);
 			}
 		},
 	},
@@ -221,11 +208,6 @@ export default defineComponent({
 					itemSelected: (variable: IVariableItemSelected) => void;
 				}
 			).itemSelected(eventData);
-			void this.externalHooks.run('expressionEdit.itemSelected', {
-				parameter: this.parameter,
-				value: this.modelValue,
-				selectedItem: eventData,
-			});
 
 			const trackProperties: {
 				event_version: string;

@@ -219,7 +219,6 @@ import { EnableNodeToggleCommand } from '@/models/history';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { type ContextMenuTarget, useContextMenu } from '@/composables/useContextMenu';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useExternalHooks } from '@/composables/useExternalHooks';
 import { usePinnedData } from '@/composables/usePinnedData';
 import { useDeviceSupport } from 'n8n-design-system';
 import { useDebounce } from '@/composables/useDebounce';
@@ -285,7 +284,6 @@ export default defineComponent({
 	setup(props, { emit }) {
 		const workflowsStore = useWorkflowsStore();
 		const contextMenu = useContextMenu();
-		const externalHooks = useExternalHooks();
 		const nodeHelpers = useNodeHelpers();
 		const node = workflowsStore.getNodeByName(props.name);
 		const pinnedData = usePinnedData(node);
@@ -302,7 +300,6 @@ export default defineComponent({
 
 		return {
 			contextMenu,
-			externalHooks,
 			nodeHelpers,
 			pinnedData,
 			deviceSupport,
