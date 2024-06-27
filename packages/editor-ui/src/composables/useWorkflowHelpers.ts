@@ -218,7 +218,6 @@ export function resolveParameter<T = IDataObject>(
 	ExpressionEvaluatorProxy.setEvaluator(
 		useSettingsStore().settings.expressions?.evaluator ?? 'tmpl',
 	);
-
 	return workflow.expression.getParameterValue(
 		parameter,
 		runExecutionData,
@@ -338,39 +337,6 @@ function connectionInputData(
 						},
 					};
 				});
-			}
-		}
-	}
-
-	const workflowsStore = useWorkflowsStore();
-
-	if (workflowsStore.shouldReplaceInputDataWithPinData) {
-		const parentPinData = parentNode.reduce<INodeExecutionData[]>((acc, parentNodeName, index) => {
-			const pinData = workflowsStore.pinDataByNodeName(parentNodeName);
-
-			if (pinData) {
-				acc.push({
-					json: pinData[0],
-					pairedItem: {
-						item: index,
-						input: 1,
-					},
-				});
-			}
-
-			return acc;
-		}, []);
-
-		if (parentPinData.length > 0) {
-			if (connectionInputData && connectionInputData.length > 0) {
-				parentPinData.forEach((parentPinDataEntry) => {
-					connectionInputData![0].json = {
-						...connectionInputData![0].json,
-						...parentPinDataEntry.json,
-					};
-				});
-			} else {
-				connectionInputData = parentPinData;
 			}
 		}
 	}

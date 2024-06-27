@@ -27,6 +27,7 @@ export class NDV extends BasePage {
 		nodeOutputHint: () => cy.getByTestId('ndv-output-run-node-hint'),
 		savePinnedDataButton: () =>
 			this.getters.runDataPaneHeader().find('button').filter(':visible').contains('Save'),
+		inputLabel: () => cy.getByTestId('input-label'),
 		outputTableRows: () => this.getters.outputDataContainer().find('table tr'),
 		outputTableHeaders: () => this.getters.outputDataContainer().find('table thead th'),
 		outputTableHeaderByText: (text: string) => this.getters.outputTableHeaders().contains(text),
