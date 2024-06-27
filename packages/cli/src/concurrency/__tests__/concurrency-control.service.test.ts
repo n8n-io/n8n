@@ -1,6 +1,10 @@
 import { mock } from 'jest-mock-extended';
 import config from '@/config';
-import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import {
+	CLOUD_TEMP_PRODUCTION_LIMIT,
+	CLOUD_TEMP_REPORTABLE_THRESHOLDS,
+	ConcurrencyControlService,
+} from '@/concurrency/concurrency-control.service';
 import type { Logger } from '@/Logger';
 import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit.error';
 import { ConcurrencyQueue } from '../concurrency-queue';
@@ -364,6 +368,93 @@ describe('ConcurrencyControlService', () => {
 				 */
 				expect(removeSpy).not.toHaveBeenCalled();
 			});
+		});
+	});
+
+	// ----------------------------------
+	//            telemetry
+	// ----------------------------------
+
+	describe('telemetry', () => {
+		describe('on cloud', () => {
+			test.each(CLOUD_TEMP_REPORTABLE_THRESHOLDS)(
+				'for capacity %d, should report temp cloud threshold if reached',
+				(threshold) => {
+					/**
+					 * Arrange
+					 */
+					config.set('executions.concurrency.productionLimit', CLOUD_TEMP_PRODUCTION_LIMIT);
+					config.set('deployment.type', 'cloud');
+					const service = new ConcurrencyControlService(logger, executionRepository, telemetry);
+
+					/**
+					 * Act
+					 */
+					// @ts-expect-error Private property
+					service.productionQueue.emit('concurrency-check', {
+						capacity: CLOUD_TEMP_PRODUCTION_LIMIT - threshold,
+					});
+
+					/**
+					 * Assert
+					 */
+					expect(telemetry.track).toHaveBeenCalledWith('User hit concurrency limit', { threshold });
+				},
+			);
+
+			test.each(CLOUD_TEMP_REPORTABLE_THRESHOLDS.map((t) => t - 1))(
+				'for capacity %d, should not report temp cloud threshold if not reached',
+				(threshold) => {
+					/**
+					 * Arrange
+					 */
+					config.set('executions.concurrency.productionLimit', CLOUD_TEMP_PRODUCTION_LIMIT);
+					config.set('deployment.type', 'cloud');
+					const service = new ConcurrencyControlService(logger, executionRepository, telemetry);
+
+					/**
+					 * Act
+					 */
+					// @ts-expect-error Private property
+					service.productionQueue.emit('concurrency-check', {
+						capacity: CLOUD_TEMP_PRODUCTION_LIMIT - threshold,
+					});
+
+					/**
+					 * Assert
+					 */
+					expect(telemetry.track).not.toHaveBeenCalledWith('User hit concurrency limit', {
+						threshold,
+					});
+				},
+			);
+
+			test.each(CLOUD_TEMP_REPORTABLE_THRESHOLDS.map((t) => t + 1))(
+				'for capacity %d, should not report temp cloud threshold if exceeded',
+				(threshold) => {
+					/**
+					 * Arrange
+					 */
+					config.set('executions.concurrency.productionLimit', CLOUD_TEMP_PRODUCTION_LIMIT);
+					config.set('deployment.type', 'cloud');
+					const service = new ConcurrencyControlService(logger, executionRepository, telemetry);
+
+					/**
+					 * Act
+					 */
+					// @ts-expect-error Private property
+					service.productionQueue.emit('concurrency-check', {
+						capacity: CLOUD_TEMP_PRODUCTION_LIMIT - threshold,
+					});
+
+					/**
+					 * Assert
+					 */
+					expect(telemetry.track).not.toHaveBeenCalledWith('User hit concurrency limit', {
+						threshold,
+					});
+				},
+			);
 		});
 	});
 });
