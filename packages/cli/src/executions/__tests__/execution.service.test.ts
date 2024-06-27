@@ -81,14 +81,13 @@ describe('ExecutionService', () => {
 			/**
 			 * Arrange
 			 */
-			executionRepository.findSingleExecution.mockResolvedValue(
-				mock<IExecutionResponse>({ status: 'success' }),
-			);
+			const execution = mock<IExecutionResponse>({ id: '123', status: 'success' });
+			executionRepository.findSingleExecution.mockResolvedValue(execution);
 
 			/**
 			 * Act
 			 */
-			const stop = executionService.stop('123');
+			const stop = executionService.stop(execution.id);
 
 			/**
 			 * Assert
@@ -111,13 +110,13 @@ describe('ExecutionService', () => {
 				/**
 				 * Act
 				 */
-				await executionService.stop('123');
+				await executionService.stop(execution.id);
 
 				/**
 				 * Assert
 				 */
 				expect(concurrencyControl.remove).not.toHaveBeenCalled();
-				expect(activeExecutions.stopExecution).toHaveBeenCalledWith('123');
+				expect(activeExecutions.stopExecution).toHaveBeenCalledWith(execution.id);
 				expect(waitTracker.stopExecution).not.toHaveBeenCalled();
 				expect(executionRepository.stopDuringRun).toHaveBeenCalledWith(execution);
 			});
@@ -136,14 +135,14 @@ describe('ExecutionService', () => {
 				/**
 				 * Act
 				 */
-				await executionService.stop('123');
+				await executionService.stop(execution.id);
 
 				/**
 				 * Assert
 				 */
 				expect(concurrencyControl.remove).not.toHaveBeenCalled();
-				expect(activeExecutions.stopExecution).toHaveBeenCalledWith('123');
-				expect(waitTracker.stopExecution).toHaveBeenCalledWith('123');
+				expect(activeExecutions.stopExecution).toHaveBeenCalledWith(execution.id);
+				expect(waitTracker.stopExecution).toHaveBeenCalledWith(execution.id);
 				expect(executionRepository.stopDuringRun).toHaveBeenCalledWith(execution);
 			});
 
@@ -161,14 +160,14 @@ describe('ExecutionService', () => {
 				/**
 				 * Act
 				 */
-				await executionService.stop('123');
+				await executionService.stop(execution.id);
 
 				/**
 				 * Assert
 				 */
 				expect(concurrencyControl.remove).toHaveBeenCalledWith({
-					executionId: '123',
-					mode: 'trigger',
+					mode: execution.mode,
+					executionId: execution.id,
 				});
 				expect(activeExecutions.stopExecution).not.toHaveBeenCalled();
 				expect(waitTracker.stopExecution).not.toHaveBeenCalled();
@@ -220,9 +219,8 @@ describe('ExecutionService', () => {
 					 * Arrange
 					 */
 					config.set('executions.mode', 'queue');
-					executionRepository.findSingleExecution.mockResolvedValue(
-						mock<IExecutionResponse>({ id: '123', status: 'running' }),
-					);
+					const execution = mock<IExecutionResponse>({ id: '123', status: 'running' });
+					executionRepository.findSingleExecution.mockResolvedValue(execution);
 					waitTracker.has.mockReturnValue(false);
 					queue.findRunningJobBy.mockResolvedValue(mock<Job>());
 					executionRepository.stopDuringRun.mockResolvedValue(mock<IExecutionResponse>());
@@ -230,13 +228,13 @@ describe('ExecutionService', () => {
 					/**
 					 * Act
 					 */
-					await executionService.stop('123');
+					await executionService.stop(execution.id);
 
 					/**
 					 * Assert
 					 */
 					expect(waitTracker.stopExecution).not.toHaveBeenCalled();
-					expect(queue.findRunningJobBy).toBeCalledWith({ executionId: '123' });
+					expect(queue.findRunningJobBy).toBeCalledWith({ executionId: execution.id });
 					expect(queue.stopJob).toHaveBeenCalled();
 					expect(executionRepository.stopDuringRun).toHaveBeenCalled();
 				});
@@ -246,9 +244,8 @@ describe('ExecutionService', () => {
 					 * Arrange
 					 */
 					config.set('executions.mode', 'queue');
-					executionRepository.findSingleExecution.mockResolvedValue(
-						mock<IExecutionResponse>({ id: '123', status: 'waiting' }),
-					);
+					const execution = mock<IExecutionResponse>({ id: '123', status: 'waiting' });
+					executionRepository.findSingleExecution.mockResolvedValue(execution);
 					waitTracker.has.mockReturnValue(true);
 					queue.findRunningJobBy.mockResolvedValue(mock<Job>());
 					executionRepository.stopDuringRun.mockResolvedValue(mock<IExecutionResponse>());
@@ -256,13 +253,13 @@ describe('ExecutionService', () => {
 					/**
 					 * Act
 					 */
-					await executionService.stop('123');
+					await executionService.stop(execution.id);
 
 					/**
 					 * Assert
 					 */
-					expect(waitTracker.stopExecution).toHaveBeenCalledWith('123');
-					expect(queue.findRunningJobBy).toBeCalledWith({ executionId: '123' });
+					expect(waitTracker.stopExecution).toHaveBeenCalledWith(execution.id);
+					expect(queue.findRunningJobBy).toBeCalledWith({ executionId: execution.id });
 					expect(queue.stopJob).toHaveBeenCalled();
 					expect(executionRepository.stopDuringRun).toHaveBeenCalled();
 				});
