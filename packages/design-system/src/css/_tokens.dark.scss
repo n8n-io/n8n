@@ -79,16 +79,19 @@
 	--color-sticky-border-7: var(--prim-gray-670);
 
 	// NodeIcon
-	--color-node-icon-gray: var(--prim-gray-200);
-	--color-node-icon-black: var(--prim-gray-70);
-	--color-node-icon-blue: #766dfb;
-	--color-node-icon-dark-blue: #6275ad;
+	--color-node-icon-gray: var(--prim-gray-120);
+	--color-node-icon-black: var(--prim-gray-10);
+	--color-node-icon-blue: #898fff;
+	--color-node-icon-light-blue: #58abff;
+	--color-node-icon-dark-blue: #7ba7ff;
 	--color-node-icon-orange-red: var(--prim-color-primary);
+	--color-node-icon-pink-red: #f85d82;
 	--color-node-icon-red: var(--prim-color-alt-k);
 	--color-node-icon-light-green: #20b69e;
+	--color-node-icon-green: #38cb7a;
 	--color-node-icon-dark-green: #86decc;
 	--color-node-icon-purple: #9b6dd5;
-	--color-node-icon-crimson: #d05876;
+	--color-node-icon-crimson: #f188a2;
 
 	// Expressions, autocomplete, infobox
 	--color-valid-resolvable-foreground: var(--prim-color-alt-a-tint-300);
