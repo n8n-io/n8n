@@ -1,5 +1,6 @@
 import { useI18n } from '@/composables/useI18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { Ref } from 'vue';
 import { computed } from 'vue';
 import type {
@@ -12,9 +13,10 @@ import {
 	mapLegacyConnectionsToCanvasConnections,
 	mapLegacyEndpointsToCanvasConnectionPort,
 } from '@/utils/canvasUtilsV2';
-import type { Workflow } from 'n8n-workflow';
+import type { ExecutionStatus, INodeExecutionData, Workflow } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
+import xss from 'xss';
 
 export function useCanvasMapping({
 	workflow,
@@ -24,6 +26,7 @@ export function useCanvasMapping({
 	workflowObject: Ref<Workflow>;
 }) {
 	const locale = useI18n();
+	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 
 	const renderTypeByNodeType = computed(
@@ -87,6 +90,63 @@ export function useCanvasMapping({
 		}, {}),
 	);
 
+	const nodePinnedDataById = computed(() =>
+		workflow.value.nodes.reduce<Record<string, INodeExecutionData[] | undefined>>((acc, node) => {
+			acc[node.id] = workflowsStore.pinDataByNodeName(node.name);
+			return acc;
+		}, {}),
+	);
+
+	const nodeExecutionStatusById = computed(() =>
+		workflow.value.nodes.reduce<Record<string, ExecutionStatus>>((acc, node) => {
+			acc[node.id] =
+				workflowsStore.getWorkflowRunData?.[node.name]?.filter(Boolean)[0].executionStatus ?? 'new';
+			return acc;
+		}, {}),
+	);
+
+	const nodeIssuesById = computed(() =>
+		workflow.value.nodes.reduce<Record<string, string[]>>((acc, node) => {
+			const issues: string[] = [];
+			const nodeExecutionRunData = workflowsStore.getWorkflowRunData?.[node.name];
+			if (nodeExecutionRunData) {
+				nodeExecutionRunData.forEach((executionRunData) => {
+					if (executionRunData?.error) {
+						const { message, description } = executionRunData.error;
+						const issue = `${message}${description ? ` (${description})` : ''}`;
+						issues.push(xss(issue));
+					}
+				});
+			}
+
+			if (node?.issues !== undefined) {
+				issues.push(...NodeHelpers.nodeIssuesToString(node.issues, node));
+			}
+
+			console.log(node.name, issues);
+
+			acc[node.id] = issues;
+
+			return acc;
+		}, {}),
+	);
+
+	const nodeHasIssuesById = computed(() =>
+		workflow.value.nodes.reduce<Record<string, boolean>>((acc, node) => {
+			if (['crashed', 'error'].includes(nodeExecutionStatusById.value[node.id])) {
+				acc[node.id] = true;
+			} else if (nodePinnedDataById.value[node.id]) {
+				acc[node.id] = false;
+			} else if (node?.issues !== undefined && Object.keys(node.issues).length) {
+				acc[node.id] = true;
+			} else {
+				acc[node.id] = false;
+			}
+
+			return acc;
+		}, {}),
+	);
+
 	const elements = computed<CanvasElement[]>(() => [
 		...workflow.value.nodes.map<CanvasElement>((node) => {
 			const inputConnections = workflowObject.value.connectionsByDestinationNode[node.name] ?? {};
@@ -103,8 +163,14 @@ export function useCanvasMapping({
 					input: inputConnections,
 					output: outputConnections,
 				},
+				issues: nodeIssuesById.value[node.id],
+				hasIssues: nodeHasIssuesById.value[node.id],
+				pinnedData: nodePinnedDataById.value[node.id],
+				executionStatus: nodeExecutionStatusById.value[node.id],
 				renderType: renderTypeByNodeType.value[node.type] ?? 'default',
 			};
+
+			console.log(data);
 
 			return {
 				id: node.id,

@@ -786,6 +786,10 @@ export function useCanvasOperations({
 			connection: mappedConnection,
 		});
 
+		// @TODO CHECK
+		nodeHelpers.updateNodeInputIssues(sourceNode);
+		nodeHelpers.updateNodeInputIssues(targetNode);
+
 		uiStore.stateIsDirty = true;
 	}
 
