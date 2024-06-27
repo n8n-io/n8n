@@ -11,12 +11,14 @@ const i18n = useI18n();
 const label = computed(() => node?.label.value ?? '');
 
 const isDisabled = computed(() => node?.data.value.disabled ?? false);
+const hasIssues = computed(() => node?.data.value.hasIssues);
 
 const classes = computed(() => {
 	return {
 		[$style.node]: true,
 		[$style.selected]: node?.selected.value,
 		[$style.disabled]: isDisabled.value,
+		[$style.error]: hasIssues.value,
 	};
 });
 </script>
@@ -44,6 +46,23 @@ const classes = computed(() => {
 	background: var(--canvas-node--background, var(--node-type-supplemental-background));
 	border: 2px solid var(--canvas-node--border-color, var(--color-foreground-dark));
 	border-radius: 50%;
+
+	/**
+	 * State classes
+	 * The reverse order defines the priority in case multiple states are active
+	 */
+
+	&.selected {
+		box-shadow: 0 0 0 4px var(--color-canvas-selected);
+	}
+
+	&.error {
+		border-color: var(--color-canvas-node-error-border-color, var(--color-danger));
+	}
+
+	&.disabled {
+		border-color: var(--color-canvas-node-disabled-border, var(--color-foreground-base));
+	}
 }
 
 .label {
@@ -54,13 +73,5 @@ const classes = computed(() => {
 	width: 100%;
 	min-width: 200px;
 	margin-top: var(--spacing-2xs);
-}
-
-.selected {
-	box-shadow: 0 0 0 4px var(--color-canvas-selected);
-}
-
-.disabled {
-	border-color: var(--color-canvas-node-disabled-border, var(--color-foreground-base));
 }
 </style>

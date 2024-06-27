@@ -22,12 +22,16 @@ const { nonMainInputs, requiredNonMainInputs } = useNodeConnections({
 });
 
 const isDisabled = computed(() => node?.data.value.disabled ?? false);
+const hasPinnedData = computed(() => !!node?.data.value.pinnedData);
+const hasIssues = computed(() => node?.data.value.hasIssues);
 
 const classes = computed(() => {
 	return {
 		[$style.node]: true,
 		[$style.selected]: node?.selected.value,
 		[$style.disabled]: isDisabled.value,
+		[$style.error]: hasIssues.value,
+		[$style.pinned]: hasPinnedData.value,
 	};
 });
 
@@ -56,7 +60,7 @@ const styles = computed(() => {
 		<slot />
 		<CanvasNodeDisabledStrikeThrough v-if="isDisabled" />
 		<div :class="$style.label">
-			{{ label }}
+			{{ label }} {{ hasIssues }}
 			<div v-if="isDisabled">({{ i18n.baseText('node.disabled') }})</div>
 		</div>
 	</div>
@@ -80,6 +84,27 @@ const styles = computed(() => {
 	background: var(--canvas-node--background, var(--color-node-background));
 	border: 2px solid var(--canvas-node--border-color, var(--color-foreground-xdark));
 	border-radius: var(--border-radius-large);
+
+	&.selected {
+		box-shadow: 0 0 0 4px var(--color-canvas-selected);
+	}
+
+	/**
+	 * State classes
+	 * The reverse order defines the priority in case multiple states are active
+	 */
+
+	&.pinned {
+		border-color: var(--color-canvas-node-pinned-border, var(--color-node-pinned-border));
+	}
+
+	&.error {
+		border-color: var(--color-canvas-node-error-border-color, var(--color-danger));
+	}
+
+	&.disabled {
+		border-color: var(--color-canvas-node-disabled-border, var(--color-foreground-base));
+	}
 }
 
 .label {
@@ -91,13 +116,5 @@ const styles = computed(() => {
 		var(--node-width) - var(--configurable-node-icon-offset) - var(--configurable-node-icon-size) -
 			2 * var(--spacing-s)
 	);
-}
-
-.selected {
-	box-shadow: 0 0 0 4px var(--color-canvas-selected);
-}
-
-.disabled {
-	border-color: var(--color-canvas-node-disabled-border, var(--color-foreground-base));
 }
 </style>
