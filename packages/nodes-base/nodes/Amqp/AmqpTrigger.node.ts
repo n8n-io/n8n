@@ -16,8 +16,7 @@ export class AmqpTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AMQP Trigger',
 		name: 'amqpTrigger',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:amqp.png',
+		icon: 'file:amqp.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Listens to AMQP 1.0 Messages',

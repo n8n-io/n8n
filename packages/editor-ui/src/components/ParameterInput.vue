@@ -504,7 +504,12 @@ import TextEdit from '@/components/TextEdit.vue';
 import { hasExpressionMapping, isValueExpression } from '@/utils/nodeTypesUtils';
 import { isResourceLocatorValue } from '@/utils/typeGuards';
 
-import { CUSTOM_API_CALL_KEY, HTML_NODE_TYPE, NODES_USING_CODE_NODE_EDITOR } from '@/constants';
+import {
+	CORE_NODES_CATEGORY,
+	CUSTOM_API_CALL_KEY,
+	HTML_NODE_TYPE,
+	NODES_USING_CODE_NODE_EDITOR,
+} from '@/constants';
 
 import { useDebounce } from '@/composables/useDebounce';
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -632,6 +637,15 @@ const dateTimePickerOptions = ref({
 const isFocused = ref(false);
 
 const displayValue = computed<string | number | boolean | null>(() => {
+	if (remoteParameterOptionsLoadingIssues.value) {
+		if (!nodeType.value || nodeType.value?.codex?.categories?.includes(CORE_NODES_CATEGORY)) {
+			return i18n.baseText('parameterInput.loadOptionsError');
+		}
+		return i18n.baseText('parameterInput.loadOptionsErrorService', {
+			interpolate: { service: nodeType.value.displayName },
+		});
+	}
+
 	if (remoteParameterOptionsLoading.value) {
 		// If it is loading options from server display
 		// to user that the data is loading. If not it would
@@ -731,6 +745,9 @@ const dependentParametersValues = computed<string | null>(() => {
 });
 
 const node = computed(() => ndvStore.activeNode ?? undefined);
+const nodeType = computed(
+	() => node.value && nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion),
+);
 
 const displayTitle = computed<string>(() => {
 	const interpolation = { interpolate: { shortPath: shortPath.value } };
@@ -1380,6 +1397,10 @@ watch(
 		tempValue.value = displayValue.value as string;
 	},
 );
+
+watch(remoteParameterOptionsLoading, () => {
+	tempValue.value = displayValue.value as string;
+});
 
 onUpdated(async () => {
 	await nextTick();

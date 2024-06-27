@@ -109,6 +109,8 @@ describe('Data pinning', () => {
 			.parent()
 			.should('have.class', 'is-disabled');
 
+		cy.get('body').type('{esc}');
+
 		// Unpin using context menu
 		workflowPage.actions.openNode(EDIT_FIELDS_SET_NODE_NAME);
 		ndv.actions.setPinnedData([{ test: 1 }]);
@@ -165,7 +167,7 @@ describe('Data pinning', () => {
 		ndv.actions.close();
 
 		workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, true, true);
-		// eslint-disable-next-line @typescript-eslint/no-use-before-define
+
 		setExpressionOnStringValueInSet(`{{ $('${HTTP_REQUEST_NODE_NAME}').item`);
 
 		const output = '[Object: {"json": {"http": 123}, "pairedItem": {"item": 0}}]';

@@ -4,7 +4,6 @@ import {
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 	VIEWS,
-	WEBHOOK_NODE_TYPE,
 } from '@/constants';
 
 import type {
@@ -15,15 +14,12 @@ import type {
 	INodeConnection,
 	INodeCredentials,
 	INodeExecutionData,
-	INodeIssues,
 	INodeParameters,
 	INodeProperties,
-	INodeType,
 	INodeTypes,
 	IRunExecutionData,
 	IWebhookDescription,
 	IWorkflowDataProxyAdditionalKeys,
-	IWorkflowIssues,
 	IWorkflowSettings,
 	NodeParameterValue,
 	Workflow,
@@ -47,7 +43,7 @@ import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
-import { get, isEqual } from 'lodash-es';
+import { get } from 'lodash-es';
 
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useRootStore } from '@/stores/root.store';
@@ -68,6 +64,7 @@ import { useI18n } from '@/composables/useI18n';
 import type { useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useProjectsStore } from '@/stores/projects.store';
+import { useTagsStore } from '@/stores/tags.store';
 
 export function resolveParameter<T = IDataObject>(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
@@ -302,10 +299,6 @@ function getConnectedNodes(
 	return [...new Set(connectedNodes)];
 }
 
-function getNodes(): INodeUi[] {
-	return useWorkflowsStore().getNodes();
-}
-
 // Returns a workflow instance.
 function getWorkflow(nodes: INodeUi[], connections: IConnections, copyData?: boolean): Workflow {
 	return useWorkflowsStore().getWorkflow(nodes, connections, copyData);
@@ -483,6 +476,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 	const uiStore = useUIStore();
 	const nodeHelpers = useNodeHelpers();
 	const projectsStore = useProjectsStore();
+	const tagsStore = useTagsStore();
 
 	const toast = useToast();
 	const message = useMessage();
@@ -527,81 +521,6 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		}
 
 		return count;
-	}
-
-	/** Checks if everything in the workflow is complete and ready to be executed */
-	function checkReadyForExecution(workflow: Workflow, lastNodeName?: string) {
-		let node: INode;
-		let nodeType: INodeType | undefined;
-		let nodeIssues: INodeIssues | null = null;
-		const workflowIssues: IWorkflowIssues = {};
-
-		let checkNodes = Object.keys(workflow.nodes);
-		if (lastNodeName) {
-			checkNodes = workflow.getParentNodes(lastNodeName);
-			checkNodes.push(lastNodeName);
-		} else {
-			// As webhook nodes always take precedence check first
-			// if there are any
-			let checkWebhook: string[] = [];
-			for (const nodeName of Object.keys(workflow.nodes)) {
-				if (
-					workflow.nodes[nodeName].disabled !== true &&
-					workflow.nodes[nodeName].type === WEBHOOK_NODE_TYPE
-				) {
-					const childNodes = workflow.getChildNodes(nodeName);
-					checkWebhook = [nodeName, ...checkWebhook, ...childNodes];
-				}
-			}
-
-			if (checkWebhook.length) {
-				checkNodes = checkWebhook;
-			} else {
-				// If no webhook nodes got found try to find another trigger node
-				const startNode = workflow.getStartNode();
-				if (startNode !== undefined) {
-					checkNodes = [...workflow.getChildNodes(startNode.name), startNode.name];
-
-					// For the short-listed checkNodes, we also need to check them for any
-					// connected sub-nodes
-					for (const nodeName of checkNodes) {
-						const childNodes = workflow.getParentNodes(nodeName, 'ALL_NON_MAIN');
-						checkNodes.push(...childNodes);
-					}
-				}
-			}
-		}
-
-		for (const nodeName of checkNodes) {
-			nodeIssues = null;
-			node = workflow.nodes[nodeName];
-
-			if (node.disabled === true) {
-				// Ignore issues on disabled nodes
-				continue;
-			}
-
-			nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-
-			if (nodeType === undefined) {
-				// Node type is not known
-				nodeIssues = {
-					typeUnknown: true,
-				};
-			} else {
-				nodeIssues = nodeHelpers.getNodeIssues(nodeType.description, node, workflow, ['execution']);
-			}
-
-			if (nodeIssues !== null) {
-				workflowIssues[node.name] = nodeIssues;
-			}
-		}
-
-		if (Object.keys(workflowIssues).length === 0) {
-			return null;
-		}
-
-		return workflowIssues;
 	}
 
 	async function getWorkflowDataToSave() {
@@ -1121,30 +1040,6 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		}
 	}
 
-	async function dataHasChanged(id: string) {
-		const currentData = await getWorkflowDataToSave();
-
-		const data: IWorkflowDb = await workflowsStore.fetchWorkflow(id);
-
-		if (data !== undefined) {
-			const x = {
-				nodes: data.nodes,
-				connections: data.connections,
-				settings: data.settings,
-				name: data.name,
-			};
-			const y = {
-				nodes: currentData.nodes,
-				connections: currentData.connections,
-				settings: currentData.settings,
-				name: currentData.name,
-			};
-			return !isEqual(x, y);
-		}
-
-		return true;
-	}
-
 	function removeForeignCredentialsFromWorkflow(
 		workflow: IWorkflowData | IWorkflowDataUpdate,
 		usableCredentials: ICredentialsResponse[],
@@ -1189,19 +1084,36 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		}
 	}
 
+	async function initState(workflowData: IWorkflowDb): Promise<void> {
+		workflowsStore.addWorkflow(workflowData);
+		workflowsStore.setActive(workflowData.active || false);
+		workflowsStore.setWorkflowId(workflowData.id);
+		workflowsStore.setWorkflowName({
+			newName: workflowData.name,
+			setStateDirty: uiStore.stateIsDirty,
+		});
+		workflowsStore.setWorkflowSettings(workflowData.settings ?? {});
+		workflowsStore.setWorkflowPinData(workflowData.pinData ?? {});
+		workflowsStore.setWorkflowVersionId(workflowData.versionId);
+		workflowsStore.setWorkflowMetadata(workflowData.meta);
+
+		const tags = (workflowData.tags ?? []) as ITag[];
+		const tagIds = tags.map((tag) => tag.id);
+		workflowsStore.setWorkflowTagIds(tagIds || []);
+		tagsStore.upsertTags(tags);
+	}
+
 	return {
 		resolveParameter,
 		resolveRequiredParameters,
 		getCurrentWorkflow,
 		getConnectedNodes,
-		getNodes,
 		getWorkflow,
 		getNodeTypes,
 		connectionInputData,
 		executeData,
 		getNodeTypesMaxCount,
 		getNodeTypeCount,
-		checkReadyForExecution,
 		getWorkflowDataToSave,
 		getNodeDataToSave,
 		getWebhookExpressionValue,
@@ -1211,8 +1123,8 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		saveCurrentWorkflow,
 		saveAsNewWorkflow,
 		updateNodePositions,
-		dataHasChanged,
 		removeForeignCredentialsFromWorkflow,
 		getWorkflowProjectRole,
+		initState,
 	};
 }

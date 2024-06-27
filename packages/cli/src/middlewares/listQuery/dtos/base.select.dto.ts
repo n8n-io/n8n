@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
-
 import { isStringArray } from '@/utils';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
 

@@ -181,6 +181,16 @@ export class Start extends BaseCommand {
 
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
+
+		if (
+			!config.getEnv('license.autoRenewEnabled') &&
+			config.getEnv('multiMainSetup.instanceType') === 'leader'
+		) {
+			this.logger.warn(
+				'Automatic license renewal is disabled. The license will not renew automatically, and access to licensed features may be lost!',
+			);
+		}
+
 		Container.get(WaitTracker).init();
 		this.logger.debug('Wait tracker init complete');
 		await this.initBinaryDataService();
