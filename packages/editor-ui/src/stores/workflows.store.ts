@@ -362,7 +362,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	function getCurrentWorkflow(copyData?: boolean): Workflow {
 		const nodes = getNodes();
 		const connections = allConnections.value;
-		const cacheKey = JSON.stringify({ nodes, connections });
+		const cacheKey = JSON.stringify({ nodes, connections, pinData: pinnedWorkflowData.value });
 		if (!copyData && cachedWorkflow && cacheKey === cachedWorkflowKey) {
 			return cachedWorkflow;
 		}

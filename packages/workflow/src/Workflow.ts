@@ -415,7 +415,7 @@ export class Workflow {
 	 *
 	 * @param {string} nodeName Name of the node to return the pinData of
 	 */
-	getPinDataOfNode(nodeName: string): IDataObject[] | undefined {
+	getPinDataOfNode(nodeName: string): INodeExecutionData[] | undefined {
 		return this.pinData ? this.pinData[nodeName] : undefined;
 	}
 
