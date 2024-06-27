@@ -95,6 +95,7 @@ const {
 	revertRenameNode,
 	setNodeActive,
 	setNodeSelected,
+	toggleNodeDisabled,
 	deleteNode,
 	revertDeleteNode,
 	addNodes,
@@ -105,7 +106,6 @@ const {
 	addConnections,
 	editableWorkflow,
 	editableWorkflowObject,
-	triggerNodes,
 } = useCanvasOperations({ router, lastClickPosition });
 
 const isLoading = ref(true);
@@ -126,15 +126,6 @@ const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
 const isReadOnlyRoute = computed(() => route?.meta?.readOnlyCanvas === true);
 const isReadOnlyEnvironment = computed(() => {
 	return sourceControlStore.preferences.branchReadOnly;
-});
-
-const isCanvasAddButtonVisible = computed(() => {
-	return (
-		triggerNodes.value.length > 0 &&
-		!isLoading.value &&
-		!isDemoRoute.value &&
-		!isReadOnlyEnvironment.value
-	);
 });
 
 /**
@@ -371,6 +362,14 @@ function onDeleteNode(id: string) {
 
 function onRevertDeleteNode({ node }: { node: INodeUi }) {
 	revertDeleteNode(node);
+}
+
+function onToggleNodeDisabled(id: string) {
+	if (!checkIfEditingIsAllowed()) {
+		return;
+	}
+
+	toggleNodeDisabled(id);
 }
 
 function onSetNodeActive(id: string) {
@@ -690,6 +689,7 @@ onBeforeUnmount(() => {
 		@update:node:position="onUpdateNodePosition"
 		@update:node:active="onSetNodeActive"
 		@update:node:selected="onSetNodeSelected"
+		@update:node:enabled="onToggleNodeDisabled"
 		@delete:node="onDeleteNode"
 		@create:connection="onCreateConnection"
 		@delete:connection="onDeleteConnection"
