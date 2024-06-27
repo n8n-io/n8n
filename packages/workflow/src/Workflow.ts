@@ -63,6 +63,18 @@ function dedupe<T>(arr: T[]): T[] {
 	return [...new Set(arr)];
 }
 
+export interface WorkflowParameters {
+	id?: string;
+	name?: string;
+	nodes: INode[];
+	connections: IConnections;
+	active: boolean;
+	nodeTypes: INodeTypes;
+	staticData?: IDataObject;
+	settings?: IWorkflowSettings;
+	pinData?: IPinData;
+}
+
 export class Workflow {
 	id: string;
 
@@ -90,18 +102,7 @@ export class Workflow {
 
 	pinData?: IPinData;
 
-	// constructor(id: string | undefined, nodes: INode[], connections: IConnections, active: boolean, nodeTypes: INodeTypes, staticData?: IDataObject, settings?: IWorkflowSettings) {
-	constructor(parameters: {
-		id?: string;
-		name?: string;
-		nodes: INode[];
-		connections: IConnections;
-		active: boolean;
-		nodeTypes: INodeTypes;
-		staticData?: IDataObject;
-		settings?: IWorkflowSettings;
-		pinData?: IPinData;
-	}) {
+	constructor(parameters: WorkflowParameters) {
 		this.id = parameters.id as string; // @tech_debt Ensure this is not optional
 		this.name = parameters.name;
 		this.nodeTypes = parameters.nodeTypes;
@@ -251,16 +252,14 @@ export class Workflow {
 	 * is fine. If there are issues it returns the issues
 	 * which have been found for the different nodes.
 	 * TODO: Does currently not check for credential issues!
-	 *
 	 */
-	checkReadyForExecution(inputData: {
-		startNode?: string;
-		destinationNode?: string;
-		pinDataNodeNames?: string[];
-	}): IWorkflowIssues | null {
-		let node: INode;
-		let nodeType: INodeType | undefined;
-		let nodeIssues: INodeIssues | null = null;
+	checkReadyForExecution(
+		inputData: {
+			startNode?: string;
+			destinationNode?: string;
+			pinDataNodeNames?: string[];
+		} = {},
+	): IWorkflowIssues | null {
 		const workflowIssues: IWorkflowIssues = {};
 
 		let checkNodes: string[] = [];
@@ -277,14 +276,14 @@ export class Workflow {
 		}
 
 		for (const nodeName of checkNodes) {
-			nodeIssues = null;
-			node = this.nodes[nodeName];
+			let nodeIssues: INodeIssues | null = null;
+			const node = this.nodes[nodeName];
 
 			if (node.disabled === true) {
 				continue;
 			}
 
-			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 			if (nodeType === undefined) {
 				// Node type is not known
@@ -415,7 +414,7 @@ export class Workflow {
 	 *
 	 * @param {string} nodeName Name of the node to return the pinData of
 	 */
-	getPinDataOfNode(nodeName: string): IDataObject[] | undefined {
+	getPinDataOfNode(nodeName: string): INodeExecutionData[] | undefined {
 		return this.pinData ? this.pinData[nodeName] : undefined;
 	}
 

@@ -562,7 +562,7 @@ export class HttpRequestV3 implements INodeType {
 									type: 'string',
 									default: '',
 									description:
-										'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+										'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 								},
 								{
 									displayName: 'Value',
@@ -649,7 +649,7 @@ export class HttpRequestV3 implements INodeType {
 									type: 'string',
 									default: '',
 									description:
-										'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+										'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 								},
 								{
 									displayName: 'Value',
@@ -1011,7 +1011,7 @@ export class HttpRequestV3 implements INodeType {
 										},
 										{
 											displayName:
-												'Use the $response variables to access the data of the previous response. <a href="https://docs.n8n.io/code/builtin/http-node-variables/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.httpRequest" target="_blank">More info</a>',
+												'Use the $response variables to access the data of the previous response. Refer to the <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/#pagination/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.httpRequest" target="_blank">docs</a> for more info about pagination/',
 											name: 'webhookNotice',
 											displayOptions: {
 												hide: {
@@ -1869,8 +1869,20 @@ export class HttpRequestV3 implements INodeType {
 					if (autoDetectResponseFormat && responseData.reason.error instanceof Buffer) {
 						responseData.reason.error = Buffer.from(responseData.reason.error as Buffer).toString();
 					}
-					const error = new NodeApiError(this.getNode(), responseData as JsonObject, { itemIndex });
+
+					let error;
+					if (responseData?.reason instanceof NodeApiError) {
+						error = responseData.reason;
+						set(error, 'context.itemIndex', itemIndex);
+					} else {
+						const errorData = (
+							responseData.reason ? responseData.reason : responseData
+						) as JsonObject;
+						error = new NodeApiError(this.getNode(), errorData, { itemIndex });
+					}
+
 					set(error, 'context.request', sanitizedRequests[itemIndex]);
+
 					throw error;
 				} else {
 					removeCircularRefs(responseData.reason as JsonObject);

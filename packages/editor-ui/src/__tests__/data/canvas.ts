@@ -6,16 +6,20 @@ export function createCanvasNodeData({
 	id = 'node',
 	type = 'test',
 	typeVersion = 1,
+	disabled = false,
 	inputs = [],
 	outputs = [],
+	connections = { input: {}, output: {} },
 	renderType = 'default',
 }: Partial<CanvasElementData> = {}): CanvasElementData {
 	return {
 		id,
 		type,
 		typeVersion,
+		disabled,
 		inputs,
 		outputs,
+		connections,
 		renderType,
 	};
 }

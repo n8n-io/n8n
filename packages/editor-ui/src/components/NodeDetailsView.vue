@@ -180,7 +180,6 @@ import { storeToRefs } from 'pinia';
 const emit = defineEmits([
 	'saveKeyboardShortcut',
 	'valueChanged',
-	'nodeTypeSelected',
 	'switchSelectedNode',
 	'openConnectionNodeCreator',
 	'redrawNode',
@@ -419,8 +418,6 @@ const canLinkRuns = computed(
 
 const linked = computed(() => isLinkingEnabled.value && canLinkRuns.value);
 
-const inputPanelMargin = computed(() => (isTriggerNode.value ? 0 : 80));
-
 const featureRequestUrl = computed(() => {
 	if (!activeNodeType.value) {
 		return '';
@@ -593,10 +590,6 @@ const onLinkRunToInput = () => {
 
 const valueChanged = (parameterData: IUpdateInformation) => {
 	emit('valueChanged', parameterData);
-};
-
-const nodeTypeSelected = (nodeTypeName: string) => {
-	emit('nodeTypeSelected', nodeTypeName);
 };
 
 const onSwitchSelectedNode = (nodeTypeName: string) => {

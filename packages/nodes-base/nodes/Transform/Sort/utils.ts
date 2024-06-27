@@ -1,13 +1,6 @@
 import { NodeVM } from '@n8n/vm2';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { NodeOperationError, randomInt } from 'n8n-workflow';
-
-export const shuffleArray = (array: any[]) => {
-	for (let i = array.length - 1; i > 0; i--) {
-		const j = randomInt(i + 1);
-		[array[i], array[j]] = [array[j], array[i]];
-	}
-};
+import { NodeOperationError } from 'n8n-workflow';
 
 const returnRegExp = /\breturn\b/g;
 export function sortByCode(

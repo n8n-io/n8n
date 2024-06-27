@@ -3515,6 +3515,14 @@ export class Pipedrive implements INodeType {
 						description:
 							'If supplied, only persons whose name starts with the specified letter will be returned',
 					},
+					{
+						displayName: 'Sort',
+						name: 'sort',
+						type: 'string',
+						default: '',
+						description:
+							'The field names and sorting mode separated by a comma (field_name_1 ASC, field_name_2 DESC). Only first-level field keys are supported (no nested keys).',
+					},
 				],
 			},
 
@@ -4799,6 +4807,10 @@ export class Pipedrive implements INodeType {
 
 						if (additionalFields.firstChar) {
 							qs.first_char = additionalFields.firstChar as string;
+						}
+
+						if (additionalFields.sort) {
+							qs.sort = additionalFields.sort as string;
 						}
 
 						endpoint = '/persons';

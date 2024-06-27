@@ -627,7 +627,6 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 		queuePushMessage,
 		processWaitingPushMessages,
 		pushMessageQueue,
-		removeEventListener,
 		retryTimeout,
 	};
 }

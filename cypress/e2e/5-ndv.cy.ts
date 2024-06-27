@@ -1,5 +1,5 @@
 import { getVisibleSelect } from '../utils';
-import { MANUAL_TRIGGER_NODE_DISPLAY_NAME } from '../constants';
+import { MANUAL_TRIGGER_NODE_DISPLAY_NAME, NOTION_NODE_NAME } from '../constants';
 import { NDV, WorkflowPage } from '../pages';
 import { NodeCreator } from '../pages/features/node-creator';
 import { clickCreateNewCredential } from '../composables/ndv';
@@ -57,9 +57,10 @@ describe('NDV', () => {
 		cy.createFixtureWorkflow('NDV-test-select-input.json', 'NDV test select input');
 		workflowPage.actions.zoomToFit();
 		workflowPage.getters.canvasNodes().last().dblclick();
+		ndv.actions.switchInputMode('Table');
 		ndv.getters.inputSelect().click();
 		ndv.getters.inputOption().last().click();
-		ndv.getters.inputDataContainer().find('[class*=schema_]').should('exist');
+		ndv.getters.inputDataContainer().should('be.visible');
 		ndv.getters.inputDataContainer().should('contain', 'start');
 		ndv.getters.backToCanvas().click();
 		ndv.getters.container().should('not.be.visible');
@@ -252,6 +253,9 @@ describe('NDV', () => {
 		workflowPage.actions.executeWorkflow();
 		workflowPage.actions.openNode('Set3');
 
+		ndv.actions.switchInputMode('Table');
+		ndv.actions.switchOutputMode('Table');
+
 		ndv.getters
 			.inputRunSelector()
 			.should('exist')
@@ -262,9 +266,6 @@ describe('NDV', () => {
 			.should('exist')
 			.find('input')
 			.should('include.value', '2 of 2 (6 items)');
-
-		ndv.actions.switchInputMode('Table');
-		ndv.actions.switchOutputMode('Table');
 
 		ndv.actions.changeOutputRunSelector('1 of 2 (6 items)');
 		ndv.getters.inputRunSelector().find('input').should('include.value', '1 of 2 (6 items)');
@@ -696,6 +697,23 @@ describe('NDV', () => {
 
 		ndv.getters.parameterInput('resource').find('input').should('have.value', 'Message');
 		ndv.getters.parameterInput('operation').find('input').should('have.value', 'Delete');
+	});
+
+	it('Should show error state when remote options cannot be fetched', () => {
+		cy.intercept('POST', '/rest/dynamic-node-parameters/options', { statusCode: 500 }).as(
+			'parameterOptions',
+		);
+
+		workflowPage.actions.addInitialNodeToCanvas(NOTION_NODE_NAME, {
+			keepNdvOpen: true,
+			action: 'Update a database page',
+		});
+
+		ndv.actions.addItemToFixedCollection('propertiesUi');
+		ndv.getters
+			.parameterInput('key')
+			.find('input')
+			.should('have.value', 'Error fetching options from Notion');
 	});
 
 	it('Should open appropriate node creator after clicking on connection hint link', () => {

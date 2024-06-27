@@ -1,5 +1,5 @@
 import { Service } from 'typedi';
-import { COMMAND_REDIS_CHANNEL, WORKER_RESPONSE_REDIS_CHANNEL } from './RedisServiceHelper';
+import { COMMAND_REDIS_CHANNEL, WORKER_RESPONSE_REDIS_CHANNEL } from './RedisConstants';
 import type {
 	RedisServiceCommandObject,
 	RedisServiceWorkerResponseObject,

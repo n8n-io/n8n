@@ -436,7 +436,7 @@ export const schema = {
 					env: 'QUEUE_BULL_REDIS_PORT',
 				},
 				timeoutThreshold: {
-					doc: 'Redis timeout threshold',
+					doc: 'Max cumulative timeout (in milliseconds) of connection retries before process exit',
 					format: Number,
 					default: 10000,
 					env: 'QUEUE_BULL_REDIS_TIMEOUT_THRESHOLD',

@@ -56,7 +56,6 @@ export class FrontendService {
 		this.initSettings();
 
 		if (config.getEnv('nodes.communityPackages.enabled')) {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
 			void import('@/services/communityPackages.service').then(({ CommunityPackagesService }) => {
 				this.communityPackagesService = Container.get(CommunityPackagesService);
 			});

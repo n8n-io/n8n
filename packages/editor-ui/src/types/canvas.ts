@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-redundant-type-constituents */
-import type { ConnectionTypes, INodeTypeDescription } from 'n8n-workflow';
+import type { ConnectionTypes, INodeConnections, INodeTypeDescription } from 'n8n-workflow';
 import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 import type { DefaultEdge, Node, NodeProps, Position } from '@vue-flow/core';
 import type { INodeUi } from '@/Interface';
@@ -25,8 +25,13 @@ export interface CanvasElementData {
 	id: INodeUi['id'];
 	type: INodeUi['type'];
 	typeVersion: INodeUi['typeVersion'];
+	disabled: INodeUi['disabled'];
 	inputs: CanvasConnectionPort[];
 	outputs: CanvasConnectionPort[];
+	connections: {
+		input: INodeConnections;
+		output: INodeConnections;
+	};
 	renderType: 'default' | 'trigger' | 'configuration' | 'configurable';
 }
 

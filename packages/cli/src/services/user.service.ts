@@ -12,6 +12,7 @@ import { InternalHooks } from '@/InternalHooks';
 import { UrlService } from '@/services/url.service';
 import type { UserRequest } from '@/requests';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { EventRelay } from '@/eventbus/event-relay.service';
 
 @Service()
 export class UserService {
@@ -20,6 +21,7 @@ export class UserService {
 		private readonly userRepository: UserRepository,
 		private readonly mailer: UserManagementMailer,
 		private readonly urlService: UrlService,
+		private readonly eventRelay: EventRelay,
 	) {}
 
 	async update(userId: string, data: Partial<User>) {
@@ -156,6 +158,10 @@ export class UserService {
 						email_sent: result.emailSent,
 						invitee_role: role, // same role for all invited users
 					});
+					this.eventRelay.emit('user-invited', {
+						user: owner,
+						targetUserId: Object.values(toInviteUsers),
+					});
 				} catch (e) {
 					if (e instanceof Error) {
 						void Container.get(InternalHooks).onEmailFailed({
@@ -163,6 +169,7 @@ export class UserService {
 							message_type: 'New user invite',
 							public_api: false,
 						});
+						this.eventRelay.emit('email-failed', { user: owner, messageType: 'New user invite' });
 						this.logger.error('Failed to send email', {
 							userId: owner.id,
 							inviteAcceptUrl,

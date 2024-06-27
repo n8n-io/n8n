@@ -12,6 +12,9 @@ import { HooksService } from '@/services/hooks.service';
 import type { Invitation } from '@/Interfaces';
 import type { AuthenticatedRequest } from '@/requests';
 import type { AuthUserRepository } from '@/databases/repositories/authUser.repository';
+import RudderStack from '@rudderstack/rudder-sdk-node';
+
+jest.mock('@rudderstack/rudder-sdk-node');
 
 describe('HooksService', () => {
 	const mockedUser = mock<AuthUser>();
@@ -147,5 +150,15 @@ describe('HooksService', () => {
 		expect(collections).toHaveProperty('Settings');
 		expect(collections).toHaveProperty('Credentials');
 		expect(collections).toHaveProperty('Workflow');
+	});
+
+	it('hooksService.getRudderStackClient', async () => {
+		// ACT
+		const key = 'TEST';
+		const opts = { dataPlaneUrl: 'test.com' };
+		const client = hooksService.getRudderStackClient(key, opts);
+
+		expect(client instanceof RudderStack).toBeTruthy();
+		expect(RudderStack).toHaveBeenCalledWith(key, opts);
 	});
 });

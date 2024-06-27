@@ -1,12 +1,6 @@
-import { Container } from 'typedi';
-import type { AuthenticationMethod } from 'n8n-workflow';
-
 import type { User } from '@db/entities/User';
 import { setSamlLoginEnabled } from '@/sso/saml/samlHelpers';
 import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
-import { InternalHooks } from '@/InternalHooks';
-import { SamlService } from '@/sso/saml/saml.service.ee';
-import type { SamlUserAttributes } from '@/sso/saml/types/samlUserAttributes';
 
 import { randomEmail, randomName, randomValidPassword } from '../shared/random';
 import * as utils from '../shared/utils/';
@@ -264,91 +258,5 @@ describe('Check endpoint permissions', () => {
 		test('should NOT be able to access GET /sso/saml/config/test', async () => {
 			await testServer.authlessAgent.get('/sso/saml/config/test').expect(401);
 		});
-	});
-});
-
-describe('SAML login flow', () => {
-	beforeEach(async () => {
-		await enableSaml(true);
-	});
-
-	test('should trigger onUserLoginSuccess hook', async () => {
-		const mockedHandleSamlLogin = jest.spyOn(Container.get(SamlService), 'handleSamlLogin');
-
-		mockedHandleSamlLogin.mockImplementation(
-			async (): Promise<{
-				authenticatedUser: User;
-				attributes: SamlUserAttributes;
-				onboardingRequired: false;
-			}> => {
-				return {
-					authenticatedUser: someUser,
-					attributes: {
-						email: someUser.email,
-						firstName: someUser.firstName,
-						lastName: someUser.lastName,
-						userPrincipalName: someUser.email,
-					},
-					onboardingRequired: false,
-				};
-			},
-		);
-
-		const mockedHookOnUserLoginSuccess = jest.spyOn(
-			Container.get(InternalHooks),
-			'onUserLoginSuccess',
-		);
-		mockedHookOnUserLoginSuccess.mockImplementation(
-			async (userLoginData: { user: User; authenticationMethod: AuthenticationMethod }) => {
-				expect(userLoginData.authenticationMethod).toEqual('saml');
-				return;
-			},
-		);
-		await authOwnerAgent.post('/sso/saml/acs').expect(302);
-		expect(mockedHookOnUserLoginSuccess).toBeCalled();
-		mockedHookOnUserLoginSuccess.mockRestore();
-		mockedHandleSamlLogin.mockRestore();
-	});
-
-	test('should trigger onUserLoginFailed hook', async () => {
-		const mockedHandleSamlLogin = jest.spyOn(Container.get(SamlService), 'handleSamlLogin');
-
-		mockedHandleSamlLogin.mockImplementation(
-			async (): Promise<{
-				authenticatedUser: User | undefined;
-				attributes: SamlUserAttributes;
-				onboardingRequired: false;
-			}> => {
-				return {
-					authenticatedUser: undefined,
-					attributes: {
-						email: someUser.email,
-						firstName: someUser.firstName,
-						lastName: someUser.lastName,
-						userPrincipalName: someUser.email,
-					},
-					onboardingRequired: false,
-				};
-			},
-		);
-
-		const mockedHookOnUserLoginFailed = jest.spyOn(
-			Container.get(InternalHooks),
-			'onUserLoginFailed',
-		);
-		mockedHookOnUserLoginFailed.mockImplementation(
-			async (userLoginData: {
-				user: string;
-				authenticationMethod: AuthenticationMethod;
-				reason?: string;
-			}) => {
-				expect(userLoginData.authenticationMethod).toEqual('saml');
-				return;
-			},
-		);
-		await authOwnerAgent.post('/sso/saml/acs').expect(401);
-		expect(mockedHookOnUserLoginFailed).toBeCalled();
-		mockedHookOnUserLoginFailed.mockRestore();
-		mockedHandleSamlLogin.mockRestore();
 	});
 });
