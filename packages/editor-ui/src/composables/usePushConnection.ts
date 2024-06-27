@@ -58,7 +58,6 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 	const orchestrationManagerStore = useOrchestrationStore();
 	const pushStore = usePushConnectionStore();
 	const settingsStore = useSettingsStore();
-	const segmentStore = useSegment();
 	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
 
@@ -521,9 +520,6 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				runDataExecutedStartData: runDataExecuted.data.startData,
 				resultDataError: runDataExecuted.data.resultData.error,
 			});
-			if (!runDataExecuted.data.resultData.error) {
-				segmentStore.trackSuccessfulWorkflowExecution(runDataExecuted);
-			}
 		} else if (receivedData.type === 'executionStarted') {
 			const pushData = receivedData.data;
 
