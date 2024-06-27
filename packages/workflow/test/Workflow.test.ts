@@ -27,8 +27,7 @@ interface StubNode {
 
 describe('Workflow', () => {
 	describe('checkIfWorkflowCanBeActivated', () => {
-		const disabledNode = mock<INode>({ disabled: true });
-		const ignoredNode = mock<INode>({ type: 'ignoredNode' });
+		const disabledNode = mock<INode>({ type: 'triggerNode', disabled: true });
 		const unknownNode = mock<INode>({ type: 'unknownNode' });
 		const noTriggersNode = mock<INode>({ type: 'noTriggersNode' });
 		const pollNode = mock<INode>({ type: 'pollNode' });
@@ -54,18 +53,18 @@ describe('Workflow', () => {
 		});
 
 		test.each([
-			['should skip disabled nodes', disabledNode, false],
-			['should skip nodes marked as ignored', ignoredNode, false],
-			['should skip unknown nodes', unknownNode, false],
-			['should skip nodes with no trigger method', noTriggersNode, false],
-			['should activate if poll method exists', pollNode, true],
-			['should activate if trigger method exists', triggerNode, true],
-			['should activate if webhook method exists', webhookNode, true],
-		])('%s', async (_, node, expected) => {
+			['should skip disabled nodes', disabledNode, [], false],
+			['should skip nodes marked as ignored', triggerNode, ['triggerNode'], false],
+			['should skip unknown nodes', unknownNode, [], false],
+			['should skip nodes with no trigger method', noTriggersNode, [], false],
+			['should activate if poll method exists', pollNode, [], true],
+			['should activate if trigger method exists', triggerNode, [], true],
+			['should activate if webhook method exists', webhookNode, [], true],
+		])('%s', async (_, node, ignoredNodes, expected) => {
 			const params = mock<WorkflowParameters>({ nodeTypes });
 			params.nodes = [node];
 			const workflow = new Workflow(params);
-			expect(workflow.checkIfWorkflowCanBeActivated(['ignoredNode'])).toBe(expected);
+			expect(workflow.checkIfWorkflowCanBeActivated(ignoredNodes)).toBe(expected);
 		});
 	});
 
