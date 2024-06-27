@@ -453,6 +453,11 @@ export class ExecutionService {
 	}
 
 	private async stopInScalingMode(execution: IExecutionResponse) {
+		if (execution.mode === 'manual') {
+			// manual executions in scaling mode are processed by main
+			return await this.stopInRegularMode(execution);
+		}
+
 		if (this.waitTracker.has(execution.id)) {
 			await this.waitTracker.stopExecution(execution.id);
 		}

@@ -177,56 +177,95 @@ describe('ExecutionService', () => {
 		});
 
 		describe('scaling mode', () => {
-			it('should stop a `running` execution in scaling mode', async () => {
-				/**
-				 * Arrange
-				 */
-				config.set('executions.mode', 'queue');
-				executionRepository.findSingleExecution.mockResolvedValue(
-					mock<IExecutionResponse>({ id: '123', status: 'running' }),
-				);
-				waitTracker.has.mockReturnValue(false);
-				queue.findRunningJobBy.mockResolvedValue(mock<Job>());
-				executionRepository.stopDuringRun.mockResolvedValue(mock<IExecutionResponse>());
+			describe('manual execution', () => {
+				it('should delegate to regular mode in scaling mode', async () => {
+					/**
+					 * Arrange
+					 */
+					config.set('executions.mode', 'queue');
+					const execution = mock<IExecutionResponse>({
+						id: '123',
+						mode: 'manual',
+						status: 'running',
+					});
+					executionRepository.findSingleExecution.mockResolvedValue(execution);
+					concurrencyControl.has.mockReturnValue(false);
+					activeExecutions.has.mockReturnValue(true);
+					waitTracker.has.mockReturnValue(false);
+					executionRepository.stopDuringRun.mockResolvedValue(mock<IExecutionResponse>());
+					// @ts-expect-error Private method
+					const stopInRegularModeSpy = jest.spyOn(executionService, 'stopInRegularMode');
 
-				/**
-				 * Act
-				 */
-				await executionService.stop('123');
+					/**
+					 * Act
+					 */
+					await executionService.stop(execution.id);
 
-				/**
-				 * Assert
-				 */
-				expect(waitTracker.stopExecution).not.toHaveBeenCalled();
-				expect(queue.findRunningJobBy).toBeCalledWith({ executionId: '123' });
-				expect(queue.stopJob).toHaveBeenCalled();
-				expect(executionRepository.stopDuringRun).toHaveBeenCalled();
+					/**
+					 * Assert
+					 */
+					expect(stopInRegularModeSpy).toHaveBeenCalledWith(execution);
+					expect(activeExecutions.stopExecution).toHaveBeenCalledWith(execution.id);
+					expect(executionRepository.stopDuringRun).toHaveBeenCalledWith(execution);
+
+					expect(concurrencyControl.remove).not.toHaveBeenCalled();
+					expect(waitTracker.stopExecution).not.toHaveBeenCalled();
+					expect(queue.stopJob).not.toHaveBeenCalled();
+				});
 			});
 
-			it('should stop a `waiting` execution in scaling mode', async () => {
-				/**
-				 * Arrange
-				 */
-				config.set('executions.mode', 'queue');
-				executionRepository.findSingleExecution.mockResolvedValue(
-					mock<IExecutionResponse>({ id: '123', status: 'waiting' }),
-				);
-				waitTracker.has.mockReturnValue(true);
-				queue.findRunningJobBy.mockResolvedValue(mock<Job>());
-				executionRepository.stopDuringRun.mockResolvedValue(mock<IExecutionResponse>());
+			describe('production execution', () => {
+				it('should stop a `running` execution in scaling mode', async () => {
+					/**
+					 * Arrange
+					 */
+					config.set('executions.mode', 'queue');
+					executionRepository.findSingleExecution.mockResolvedValue(
+						mock<IExecutionResponse>({ id: '123', status: 'running' }),
+					);
+					waitTracker.has.mockReturnValue(false);
+					queue.findRunningJobBy.mockResolvedValue(mock<Job>());
+					executionRepository.stopDuringRun.mockResolvedValue(mock<IExecutionResponse>());
 
-				/**
-				 * Act
-				 */
-				await executionService.stop('123');
+					/**
+					 * Act
+					 */
+					await executionService.stop('123');
 
-				/**
-				 * Assert
-				 */
-				expect(waitTracker.stopExecution).toHaveBeenCalledWith('123');
-				expect(queue.findRunningJobBy).toBeCalledWith({ executionId: '123' });
-				expect(queue.stopJob).toHaveBeenCalled();
-				expect(executionRepository.stopDuringRun).toHaveBeenCalled();
+					/**
+					 * Assert
+					 */
+					expect(waitTracker.stopExecution).not.toHaveBeenCalled();
+					expect(queue.findRunningJobBy).toBeCalledWith({ executionId: '123' });
+					expect(queue.stopJob).toHaveBeenCalled();
+					expect(executionRepository.stopDuringRun).toHaveBeenCalled();
+				});
+
+				it('should stop a `waiting` execution in scaling mode', async () => {
+					/**
+					 * Arrange
+					 */
+					config.set('executions.mode', 'queue');
+					executionRepository.findSingleExecution.mockResolvedValue(
+						mock<IExecutionResponse>({ id: '123', status: 'waiting' }),
+					);
+					waitTracker.has.mockReturnValue(true);
+					queue.findRunningJobBy.mockResolvedValue(mock<Job>());
+					executionRepository.stopDuringRun.mockResolvedValue(mock<IExecutionResponse>());
+
+					/**
+					 * Act
+					 */
+					await executionService.stop('123');
+
+					/**
+					 * Assert
+					 */
+					expect(waitTracker.stopExecution).toHaveBeenCalledWith('123');
+					expect(queue.findRunningJobBy).toBeCalledWith({ executionId: '123' });
+					expect(queue.stopJob).toHaveBeenCalled();
+					expect(executionRepository.stopDuringRun).toHaveBeenCalled();
+				});
 			});
 		});
 	});
