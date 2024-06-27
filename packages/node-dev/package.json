@@ -48,7 +48,7 @@
     "@types/inquirer": "^6.5.0"
   },
   "dependencies": {
-    "@oclif/core": "3.26.6",
+    "@oclif/core": "4.0.7",
     "change-case": "^4.1.1",
     "fast-glob": "^3.2.5",
     "inquirer": "^7.0.1",
