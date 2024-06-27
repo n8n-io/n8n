@@ -19,7 +19,7 @@ import type { IWorkspaceDto } from './WorkpaceInterfaces';
 export class ClockifyTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Clockify Trigger',
-		icon: 'file:clockify.svg',
+		icon: { light: 'file:clockify.svg', dark: 'file:clockify.dark.svg' },
 		name: 'clockifyTrigger',
 		group: ['trigger'],
 		version: 1,

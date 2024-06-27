@@ -109,6 +109,8 @@ describe('Data pinning', () => {
 			.parent()
 			.should('have.class', 'is-disabled');
 
+		cy.get('body').type('{esc}');
+
 		// Unpin using context menu
 		workflowPage.actions.openNode(EDIT_FIELDS_SET_NODE_NAME);
 		ndv.actions.setPinnedData([{ test: 1 }]);

@@ -9,21 +9,9 @@ import type { CompletionSource, CompletionResult } from '@codemirror/autocomplet
 import { CompletionContext } from '@codemirror/autocomplete';
 import { EditorState } from '@codemirror/state';
 import { n8nLang } from '@/plugins/codemirror/n8nLang';
-import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
-import { useUIStore } from '@/stores/ui.store';
-import { useSettingsStore } from '@/stores/settings.store';
-
-let externalSecretsStore: ReturnType<typeof useExternalSecretsStore>;
-let uiStore: ReturnType<typeof useUIStore>;
-let settingsStore: ReturnType<typeof useSettingsStore>;
 
 beforeEach(async () => {
 	setActivePinia(createTestingPinia());
-
-	externalSecretsStore = useExternalSecretsStore();
-	uiStore = useUIStore();
-	settingsStore = useSettingsStore();
-
 	vi.spyOn(utils, 'receivesNoBinaryData').mockReturnValue(true); // hide $binary
 	vi.spyOn(utils, 'isSplitInBatchesAbsent').mockReturnValue(false); // show context
 	vi.spyOn(utils, 'hasActiveNode').mockReturnValue(true);

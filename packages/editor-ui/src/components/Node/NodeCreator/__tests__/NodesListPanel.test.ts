@@ -104,7 +104,7 @@ describe('NodesListPanel', () => {
 					},
 				},
 				setup(props) {
-					const { setActions, setMergeNodes, setSelectedView } = useNodeCreatorStore();
+					const { setMergeNodes, setSelectedView } = useNodeCreatorStore();
 
 					watch(
 						() => props.nodeTypes,
