@@ -147,6 +147,7 @@ import { createEventBus } from 'n8n-design-system/utils';
 import type { IDataObject, INodeType, INode, ITaskData } from 'n8n-workflow';
 import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 import type { INodeUi, IUser } from '@/Interface';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 // eslint-disable-next-line import/no-unresolved
 import MessageTyping from '@n8n/chat/components/MessageTyping.vue';
@@ -191,11 +192,13 @@ export default defineComponent({
 	},
 	setup() {
 		const router = useRouter();
+		const externalHooks = useExternalHooks();
 		const workflowHelpers = useWorkflowHelpers({ router });
 		const { runWorkflow } = useRunWorkflow({ router });
 
 		return {
 			runWorkflow,
+			externalHooks,
 			workflowHelpers,
 			...useToast(),
 			...useMessage(),
@@ -557,6 +560,9 @@ export default defineComponent({
 		},
 		closeDialog() {
 			this.modalBus.emit('close');
+			void this.externalHooks.run('workflowSettings.dialogVisibleChanged', {
+				dialogVisible: false,
+			});
 		},
 		openChatEmbedModal() {
 			this.uiStore.openModal(CHAT_EMBED_MODAL_KEY);

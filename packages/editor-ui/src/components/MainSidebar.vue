@@ -123,6 +123,7 @@ import { useTemplatesStore } from '@/stores/templates.store';
 import BecomeTemplateCreatorCta from '@/components/BecomeTemplateCreatorCta/BecomeTemplateCreatorCta.vue';
 import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
 import { hasPermission } from '@/utils/rbac/permissions';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useDebounce } from '@/composables/useDebounce';
 import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
 import ProjectNavigation from '@/components/Projects/ProjectNavigation.vue';
@@ -137,11 +138,13 @@ export default defineComponent({
 		ProjectNavigation,
 	},
 	setup() {
+		const externalHooks = useExternalHooks();
 		const { callDebounced } = useDebounce();
 		const router = useRouter();
 		const route = useRoute();
 
 		return {
+			externalHooks,
 			callDebounced,
 			...useMessage(),
 			...useUserHelpers(router, route),
@@ -305,6 +308,11 @@ export default defineComponent({
 	},
 	async mounted() {
 		this.basePath = this.rootStore.baseUrl;
+		if (this.$refs.user) {
+			void this.externalHooks.run('mainSidebar.mounted', {
+				userRef: this.$refs.user as Element,
+			});
+		}
 
 		void this.$nextTick(() => {
 			this.uiStore.sidebarMenuCollapsed = window.innerWidth < 900;

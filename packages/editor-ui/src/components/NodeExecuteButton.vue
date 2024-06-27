@@ -44,6 +44,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 import { nodeViewEventBus } from '@/event-bus';
 import { usePinnedData } from '@/composables/usePinnedData';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
@@ -94,9 +95,11 @@ export default defineComponent({
 		const workflowsStore = useWorkflowsStore();
 		const node = workflowsStore.getNodeByName(props.nodeName);
 		const pinnedData = usePinnedData(node);
+		const externalHooks = useExternalHooks();
 		const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
 
 		return {
+			externalHooks,
 			pinnedData,
 			runWorkflow,
 			stopCurrentExecution,
@@ -303,6 +306,7 @@ export default defineComponent({
 						push_ref: this.ndvStore.pushRef,
 					};
 					this.$telemetry.track('User clicked execute node button', telemetryPayload);
+					await this.externalHooks.run('nodeExecuteButton.onClick', telemetryPayload);
 
 					await this.runWorkflow({
 						destinationNode: this.nodeName,

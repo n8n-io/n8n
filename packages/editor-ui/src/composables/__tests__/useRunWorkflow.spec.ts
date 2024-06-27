@@ -41,6 +41,12 @@ vi.mock('@/composables/useI18n', () => ({
 	useI18n: vi.fn().mockReturnValue({ baseText: vi.fn().mockImplementation((key) => key) }),
 }));
 
+vi.mock('@/composables/useExternalHooks', () => ({
+	useExternalHooks: vi.fn().mockReturnValue({
+		run: vi.fn(),
+	}),
+}));
+
 vi.mock('@/composables/useToast', () => ({
 	useToast: vi.fn().mockReturnValue({
 		clearAllStickyNotifications: vi.fn(),

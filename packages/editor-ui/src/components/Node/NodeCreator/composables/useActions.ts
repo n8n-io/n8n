@@ -33,6 +33,7 @@ import type { Telemetry } from '@/plugins/telemetry';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 import { sortNodeCreateElements, transformNodeType } from '../utils';
 import { useI18n } from '@/composables/useI18n';
@@ -311,6 +312,7 @@ export const useActions = () => {
 			source_mode: rootView.toLowerCase(),
 			resource: (action.value as INodeParameters).resource || '',
 		};
+		void useExternalHooks().run('nodeCreateList.addAction', payload);
 		telemetry?.trackNodesPanel('nodeCreateList.addAction', payload);
 	}
 

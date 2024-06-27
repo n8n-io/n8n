@@ -167,6 +167,7 @@ import {
 } from '@/utils/nodeTypesUtils';
 import { isValidCredentialResponse, isCredentialModalState } from '@/utils/typeGuards';
 import { isExpression, isTestableExpression } from '@/utils/expressions';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { CredentialScope } from '@n8n/permissions';
 
@@ -201,6 +202,7 @@ export default defineComponent({
 		const nodeHelpers = useNodeHelpers();
 
 		return {
+			externalHooks: useExternalHooks(),
 			...useToast(),
 			...useMessage(),
 			nodeHelpers,
@@ -511,6 +513,12 @@ export default defineComponent({
 				}
 			}
 		}
+
+		await this.externalHooks.run('credentialsEdit.credentialModalOpened', {
+			credentialType: this.credentialTypeName,
+			isEditingCredential: this.mode === 'edit',
+			activeNode: this.ndvStore.activeNode,
+		});
 
 		setTimeout(async () => {
 			if (this.credentialId) {
@@ -908,6 +916,7 @@ export default defineComponent({
 				}
 
 				this.$telemetry.track('User saved credentials', trackProperties);
+				await this.externalHooks.run('credentialEdit.saveCredential', trackProperties);
 			}
 
 			return credential;
@@ -930,6 +939,12 @@ export default defineComponent({
 
 				return null;
 			}
+
+			await this.externalHooks.run('credential.saved', {
+				credential_type: credentialDetails.type,
+				credential_id: credential.id,
+				is_new: true,
+			});
 
 			this.$telemetry.track('User created credentials', {
 				credential_type: credentialDetails.type,
@@ -963,6 +978,14 @@ export default defineComponent({
 					this.isSharedWithChanged = false;
 				}
 				this.hasUnsavedChanges = false;
+
+				if (credential) {
+					await this.externalHooks.run('credential.saved', {
+						credential_type: credentialDetails.type,
+						credential_id: credential.id,
+						is_new: false,
+					});
+				}
 			} catch (error) {
 				this.showError(
 					error,

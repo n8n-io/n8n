@@ -620,6 +620,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';
 import { isEqual, isObject } from 'lodash-es';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useRootStore } from '@/stores/root.store';
 import RunDataPinButton from '@/components/RunDataPinButton.vue';
@@ -721,6 +722,7 @@ export default defineComponent({
 	setup(props) {
 		const ndvStore = useNDVStore();
 		const nodeHelpers = useNodeHelpers();
+		const externalHooks = useExternalHooks();
 		const node = toRef(props, 'node');
 		const pinnedData = usePinnedData(node, {
 			runIndex: props.runIndex,
@@ -729,6 +731,7 @@ export default defineComponent({
 
 		return {
 			...useToast(),
+			externalHooks,
 			nodeHelpers,
 			pinnedData,
 		};
@@ -1336,6 +1339,7 @@ export default defineComponent({
 					view: !this.hasNodeRun && !this.pinnedData.hasData.value ? 'none' : this.displayMode,
 				};
 
+				void this.externalHooks.run('runData.onTogglePinData', telemetryPayload);
 				this.$telemetry.track('User clicked pin data icon', telemetryPayload);
 			}
 
@@ -1452,6 +1456,10 @@ export default defineComponent({
 			}
 
 			this.closeBinaryDataDisplay();
+			void this.externalHooks.run('runData.displayModeChanged', {
+				newValue: displayMode,
+				oldValue: previous,
+			});
 			if (this.activeNode) {
 				this.$telemetry.track('User changed ndv item view', {
 					previous_view: previous,

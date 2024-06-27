@@ -90,6 +90,7 @@ import MappingPill from './MappingPill.vue';
 import { getMappedExpression } from '@/utils/mappingUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { nonExistingJsonPath } from '@/constants';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 import TextWithHighlights from './TextWithHighlights.vue';
 
 const RunDataJsonActions = defineAsyncComponent(
@@ -142,11 +143,14 @@ export default defineComponent({
 		},
 	},
 	setup() {
+		const externalHooks = useExternalHooks();
+
 		const selectedJsonPath = ref(nonExistingJsonPath);
 		const draggingPath = ref<null | string>(null);
 		const displayMode = ref('json');
 
 		return {
+			externalHooks,
 			selectedJsonPath,
 			draggingPath,
 			displayMode,
@@ -202,6 +206,7 @@ export default defineComponent({
 			};
 
 			setTimeout(() => {
+				void this.externalHooks.run('runDataJson.onDragEnd', telemetryPayload);
 				this.$telemetry.track('User dragged data for mapping', telemetryPayload, {
 					withPostHog: true,
 				});

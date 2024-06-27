@@ -22,6 +22,7 @@ import { NodeConnectionType, nodeConnectionTypes, NodeHelpers } from 'n8n-workfl
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useNDVStore } from '@/stores/ndv.store';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -33,6 +34,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	const uiStore = useUIStore();
 	const nodeTypesStore = useNodeTypesStore();
 
+	const externalHooks = useExternalHooks();
 	const telemetry = useTelemetry();
 
 	const selectedView = ref<NodeFilterType>(TRIGGER_NODE_CREATOR_VIEW);
@@ -136,6 +138,12 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		if (createNodeActive && source) {
 			setOpenSource(source);
 		}
+
+		void externalHooks.run('nodeView.createNodeActiveChanged', {
+			source,
+			mode,
+			createNodeActive,
+		});
 
 		trackNodesPanelActiveChanged({
 			source,

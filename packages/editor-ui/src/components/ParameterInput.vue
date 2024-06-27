@@ -512,6 +512,7 @@ import {
 } from '@/constants';
 
 import { useDebounce } from '@/composables/useDebounce';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useI18n } from '@/composables/useI18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -575,6 +576,7 @@ const emit = defineEmits<{
 	(event: 'update', update: IUpdateInformation): void;
 }>();
 
+const externalHooks = useExternalHooks();
 const i18n = useI18n();
 const nodeHelpers = useNodeHelpers();
 const { callDebounced } = useDebounce();
@@ -983,6 +985,8 @@ function credentialSelected(updateInformation: INodeUpdatePropertiesInformation)
 		// Update the issues
 		nodeHelpers.updateNodeCredentialIssues(updateNode);
 	}
+
+	void externalHooks.run('nodeSettings.credentialSelected', { updateInformation });
 }
 
 /**
@@ -1328,6 +1332,7 @@ async function optionSelected(command: string) {
 			had_parameter: typeof prevValue === 'string' && prevValue.includes('$parameter'),
 		};
 		telemetry.track('User switched parameter mode', telemetryPayload);
+		void externalHooks.run('parameterInput.modeSwitch', telemetryPayload);
 	}
 }
 
@@ -1355,6 +1360,11 @@ onMounted(() => {
 			tempValue.value = newValue;
 		}
 	}
+
+	void externalHooks.run('parameterInput.mount', {
+		parameter: props.parameter,
+		inputFieldRef: inputField.value as InstanceType<typeof N8nInput>,
+	});
 });
 
 onBeforeUnmount(() => {
@@ -1390,6 +1400,20 @@ watch(
 
 watch(remoteParameterOptionsLoading, () => {
 	tempValue.value = displayValue.value as string;
+});
+
+onUpdated(async () => {
+	await nextTick();
+
+	if (wrapper.value) {
+		const remoteParamOptions = wrapper.value.querySelectorAll('.remote-parameter-option') ?? [];
+
+		if (remoteParamOptions.length > 0) {
+			void externalHooks.run('parameterInput.updated', {
+				remoteParameterOptions: remoteParamOptions,
+			});
+		}
+	}
 });
 </script>
 

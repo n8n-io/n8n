@@ -56,6 +56,7 @@ import { getSourceItems } from '@/utils/pairedItemUtils';
 import { v4 as uuid } from 'uuid';
 import { useSettingsStore } from '@/stores/settings.store';
 import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { tryToParseNumber } from '@/utils/typesUtils';
@@ -833,6 +834,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 
 			uiStore.stateIsDirty = false;
 			uiStore.removeActiveAction('workflowSaving');
+			void useExternalHooks().run('workflow.afterUpdate', { workflowData });
 
 			return true;
 		} catch (error) {
@@ -988,6 +990,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 
 			uiStore.removeActiveAction('workflowSaving');
 			uiStore.stateIsDirty = false;
+			void useExternalHooks().run('workflow.afterUpdate', { workflowData });
 
 			getCurrentWorkflow(true); // refresh cache
 			return true;

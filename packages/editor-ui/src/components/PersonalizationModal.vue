@@ -150,6 +150,7 @@ import { useRootStore } from '@/stores/root.store';
 import { useUsersStore } from '@/stores/users.store';
 import { createEventBus } from 'n8n-design-system/utils';
 import { usePostHog } from '@/stores/posthog.store';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useUsageStore } from '@/stores/usage.store';
 import { useMessage } from '@/composables/useMessage';
 
@@ -165,7 +166,10 @@ export default defineComponent({
 		},
 	},
 	setup() {
+		const externalHooks = useExternalHooks();
+
 		return {
+			externalHooks,
 			...useToast(),
 			...useMessage(),
 		};
@@ -698,6 +702,11 @@ export default defineComponent({
 					personalization_survey_submitted_at: new Date().toISOString(),
 					personalization_survey_n8n_version: this.rootStore.versionCli,
 				};
+
+				await this.externalHooks.run(
+					'personalizationModal.onSubmit',
+					survey as IPersonalizationLatestVersion,
+				);
 
 				await this.usersStore.submitPersonalizationSurvey(survey as IPersonalizationLatestVersion);
 

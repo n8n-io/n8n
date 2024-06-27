@@ -13,6 +13,7 @@ import type {
 	IDataObject,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 import { i18n } from '@/plugins/i18n';
 import MappingPill from './MappingPill.vue';
 import { useDataSchema } from '@/composables/useDataSchema';
@@ -177,6 +178,8 @@ const onDragEnd = (el: HTMLElement, node: INodeUi, depth: number) => {
 			success: false,
 			...mappingTelemetry,
 		};
+
+		void useExternalHooks().run('runDataJson.onDragEnd', telemetryPayload);
 
 		telemetry.track('User dragged data for mapping', telemetryPayload, { withPostHog: true });
 	}, 1000); // ensure dest data gets set if drop

@@ -233,6 +233,7 @@ import { RenameNodeCommand } from '@/models/history';
 import useWorkflowsEEStore from '@/stores/workflows.ee.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import type { EventBus } from 'n8n-design-system';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { importCurlEventBus } from '@/event-bus';
 import { useToast } from '@/composables/useToast';
@@ -250,9 +251,11 @@ export default defineComponent({
 	},
 	setup() {
 		const nodeHelpers = useNodeHelpers();
+		const externalHooks = useExternalHooks();
 		const { showMessage } = useToast();
 
 		return {
+			externalHooks,
 			nodeHelpers,
 			showMessage,
 		};
@@ -731,6 +734,8 @@ export default defineComponent({
 				// Update the issues
 				this.nodeHelpers.updateNodeCredentialIssues(node);
 			}
+
+			void this.externalHooks.run('nodeSettings.credentialSelected', { updateInformation });
 		},
 		nameChanged(name: string) {
 			if (this.node) {
@@ -834,6 +839,13 @@ export default defineComponent({
 								set(nodeParameters as object, parameterPath, newValue);
 							}
 						}
+
+						void this.externalHooks.run('nodeSettings.valueChanged', {
+							parameterPath,
+							newValue,
+							parameters: this.parameters,
+							oldNodeParameters,
+						});
 					}
 				}
 
@@ -956,6 +968,13 @@ export default defineComponent({
 				};
 
 				this.workflowsStore.setNodeParameters(updateInformation);
+
+				void this.externalHooks.run('nodeSettings.valueChanged', {
+					parameterPath,
+					newValue,
+					parameters: this.parameters,
+					oldNodeParameters,
+				});
 
 				this.nodeHelpers.updateNodeParameterIssuesByName(node.name);
 				this.nodeHelpers.updateNodeCredentialIssuesByName(node.name);

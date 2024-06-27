@@ -67,6 +67,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
 import { defineComponent } from 'vue';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useRouter } from 'vue-router';
 import { usePushConnection } from '@/composables/usePushConnection';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
@@ -81,8 +82,10 @@ export default defineComponent({
 	setup() {
 		const router = useRouter();
 		const pushConnection = usePushConnection({ router });
+		const externalHooks = useExternalHooks();
 
 		return {
+			externalHooks,
 			...useToast(),
 			pushConnection,
 		};
@@ -228,6 +231,7 @@ export default defineComponent({
 			};
 			this.$telemetry.track('user clicked cnr install button', telemetryPayload);
 
+			void this.externalHooks.run('settingsCommunityNodesView.openInstallModal', telemetryPayload);
 			this.uiStore.openModal(COMMUNITY_PACKAGE_INSTALL_MODAL_KEY);
 		},
 	},

@@ -382,6 +382,7 @@ import { createEventBus } from 'n8n-design-system/utils';
 import type { PermissionsMap } from '@/permissions';
 import type { WorkflowScope } from '@n8n/permissions';
 import { getWorkflowPermissions } from '@/permissions';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { ProjectTypes } from '@/types/projects.types';
 
@@ -391,7 +392,10 @@ export default defineComponent({
 		Modal,
 	},
 	setup() {
+		const externalHooks = useExternalHooks();
+
 		return {
+			externalHooks,
 			...useToast(),
 		};
 	},
@@ -565,6 +569,9 @@ export default defineComponent({
 		this.timeoutHMS = this.convertToHMS(workflowSettings.executionTimeout);
 		this.isLoading = false;
 
+		void this.externalHooks.run('workflowSettings.dialogVisibleChanged', {
+			dialogVisible: true,
+		});
 		this.$telemetry.track('User opened workflow settings', {
 			workflow_id: this.workflowsStore.workflowId,
 		});
@@ -577,6 +584,9 @@ export default defineComponent({
 		},
 		closeDialog() {
 			this.modalBus.emit('close');
+			void this.externalHooks.run('workflowSettings.dialogVisibleChanged', {
+				dialogVisible: false,
+			});
 		},
 		setTimeout(key: string, value: string) {
 			const time = value ? parseInt(value, 10) : 0;
@@ -850,6 +860,7 @@ export default defineComponent({
 
 			this.closeDialog();
 
+			void this.externalHooks.run('workflowSettings.saveSettings', { oldSettings });
 			this.$telemetry.track('User updated workflow settings', {
 				workflow_id: this.workflowsStore.workflowId,
 			});
