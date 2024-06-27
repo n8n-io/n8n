@@ -53,7 +53,7 @@ const extensions = computed(() => [
 	),
 	n8nLang(),
 	n8nAutocompletion(),
-	inputTheme({ rows: props.rows }),
+	inputTheme({ isReadOnly: props.isReadOnly, rows: props.rows }),
 	history(),
 	expressionInputHandler(),
 	EditorView.lineWrapping,
