@@ -48,8 +48,7 @@ export const properties: INodeProperties[] = [
 		name: 'advanced',
 		type: 'boolean',
 		default: false,
-		description:
-			'Whether name(s) of field to match are different in input 1 and input 2 enable this option',
+		description: 'Whether name(s) of field to match are different in input 1 and input 2',
 	},
 	{
 		displayName: 'Fields to Match',
@@ -77,7 +76,6 @@ export const properties: INodeProperties[] = [
 			multipleValues: true,
 		},
 		description: 'Specify the fields to use for matching input items',
-		hint: 'Drag or type the input field name',
 		displayOptions: {
 			show: {
 				advanced: [true],
@@ -95,7 +93,7 @@ export const properties: INodeProperties[] = [
 						default: '',
 						// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 						placeholder: 'e.g. id',
-						hint: ' Enter the field name as text',
+						hint: 'Drag or type the input field name',
 						requiresDataPath: 'single',
 					},
 					{
@@ -105,7 +103,7 @@ export const properties: INodeProperties[] = [
 						default: '',
 						// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 						placeholder: 'e.g. id',
-						hint: ' Enter the field name as text',
+						hint: 'Drag or type the input field name',
 						requiresDataPath: 'single',
 					},
 				],

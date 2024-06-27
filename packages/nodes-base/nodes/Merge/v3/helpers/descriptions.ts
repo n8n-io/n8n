@@ -16,10 +16,6 @@ export const numberInputsProperty: INodeProperties = {
 	default: 2,
 	options: [
 		{
-			name: '1',
-			value: 1,
-		},
-		{
 			name: '2',
 			value: 2,
 		},
