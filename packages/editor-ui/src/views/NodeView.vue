@@ -4472,10 +4472,11 @@ export default defineComponent({
 		},
 		async loadCredentialsForWorkflow(): Promise<void> {
 			const workflow = this.workflowsStore.getWorkflowById(this.currentWorkflow);
+			const workflowId = workflow?.id ?? this.$route.params.name;
 			let options: { workflowId: string } | { projectId: string };
 
-			if (workflow) {
-				options = { workflowId: workflow.id };
+			if (workflowId) {
+				options = { workflowId };
 			} else {
 				const queryParam =
 					typeof this.$route.query?.projectId === 'string'
