@@ -1,3 +1,12 @@
+## [1.48.1](https://github.com/n8n-io/n8n/compare/n8n@1.48.0...n8n@1.48.1) (2024-06-27)
+
+
+### Bug Fixes
+
+* **editor:** Fix performance issues related to expressions and pinned data ([#9882](https://github.com/n8n-io/n8n/issues/9882)) ([e1df21d](https://github.com/n8n-io/n8n/commit/e1df21db9cde62d9ba09a8ed49b17070fa5af808))
+
+
+
 # [1.48.0](https://github.com/n8n-io/n8n/compare/n8n@1.47.0...n8n@1.48.0) (2024-06-27)
 
 
