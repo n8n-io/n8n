@@ -709,6 +709,7 @@ onBeforeUnmount(() => {
 		</Suspense>
 		<Suspense>
 			<NodeDetailsView
+				:workflow-object="editableWorkflowObject"
 				:read-only="isReadOnlyRoute || isReadOnlyEnvironment"
 				:is-production-execution-preview="isProductionExecutionPreview"
 				:renaming="false"
