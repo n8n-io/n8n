@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import { Container } from 'typedi';
 import type { ServiceProviderInstance } from 'samlify';
 import { UrlService } from '@/services/url.service';

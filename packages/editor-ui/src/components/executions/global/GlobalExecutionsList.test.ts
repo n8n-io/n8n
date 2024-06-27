@@ -5,7 +5,6 @@ import userEvent from '@testing-library/user-event';
 import { faker } from '@faker-js/faker';
 import { STORES, VIEWS } from '@/constants';
 import ExecutionsList from '@/components/executions/global/GlobalExecutionsList.vue';
-import type { IWorkflowDb } from '@/Interface';
 import { randomInt, type ExecutionSummary } from 'n8n-workflow';
 import { retry, SETTINGS_STORE_DEFAULT_STATE, waitAllPromises } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -36,18 +35,6 @@ const generateUndefinedNullOrString = () => {
 	}
 };
 
-const workflowDataFactory = (): IWorkflowDb => ({
-	createdAt: faker.date.past().toDateString(),
-	updatedAt: faker.date.past().toDateString(),
-	id: faker.string.uuid(),
-	name: faker.string.sample(),
-	active: faker.datatype.boolean(),
-	tags: [],
-	nodes: [],
-	connections: {},
-	versionId: faker.number.int().toString(),
-});
-
 const executionDataFactory = (): ExecutionSummary => ({
 	id: faker.string.uuid(),
 	finished: faker.datatype.boolean(),
@@ -61,8 +48,6 @@ const executionDataFactory = (): ExecutionSummary => ({
 	retryOf: generateUndefinedNullOrString(),
 	retrySuccessId: generateUndefinedNullOrString(),
 });
-
-const generateWorkflowsData = () => Array.from({ length: 10 }, workflowDataFactory);
 
 const generateExecutionsData = () =>
 	Array.from({ length: 2 }, () => ({

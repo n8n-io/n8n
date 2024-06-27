@@ -15,7 +15,7 @@ import { EnterpriseEditionFeature, VIEWS, EDITABLE_CANVAS_VIEWS } from '@/consta
 import { useTelemetry } from '@/composables/useTelemetry';
 import { middleware } from '@/utils/rbac/middleware';
 import type { RouterMiddleware } from '@/types/router';
-import { initializeCore } from '@/init';
+import { initializeAuthenticatedFeatures, initializeCore } from '@/init';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { projectsRoutes } from '@/routes/projects.routes';
 
@@ -777,6 +777,7 @@ router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 		 */
 
 		await initializeCore();
+		await initializeAuthenticatedFeatures();
 
 		/**
 		 * Redirect to setup page. User should be redirected to this only once

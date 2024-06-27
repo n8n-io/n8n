@@ -9,6 +9,9 @@ import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
 import type { IExecutingWorkflowData } from '@/Interfaces';
 import { Telemetry } from '@/telemetry';
 
+export const CLOUD_TEMP_PRODUCTION_LIMIT = 999;
+export const CLOUD_TEMP_REPORTABLE_THRESHOLDS = [5, 10, 20, 50, 100, 200];
+
 @Service()
 export class ConcurrencyControlService {
 	private readonly isEnabled: boolean;
@@ -17,7 +20,9 @@ export class ConcurrencyControlService {
 
 	private readonly productionQueue: ConcurrencyQueue;
 
-	private readonly limitsToReport = [5, 10, 20, 50, 100, 200];
+	private readonly limitsToReport = CLOUD_TEMP_REPORTABLE_THRESHOLDS.map(
+		(t) => CLOUD_TEMP_PRODUCTION_LIMIT - t,
+	);
 
 	constructor(
 		private readonly logger: Logger,
@@ -46,19 +51,17 @@ export class ConcurrencyControlService {
 
 		this.isEnabled = true;
 
-		this.productionQueue.on(
-			'execution-throttled',
-			async ({ executionId, capacity }: { executionId: string; capacity: number }) => {
-				this.log('Execution throttled', { executionId });
+		this.productionQueue.on('concurrency-check', ({ capacity }: { capacity: number }) => {
+			if (this.shouldReport(capacity)) {
+				void this.telemetry.track('User hit concurrency limit', {
+					threshold: CLOUD_TEMP_PRODUCTION_LIMIT - capacity,
+				});
+			}
+		});
 
-				/**
-				 * Temporary until base data for cloud plans is collected.
-				 */
-				if (this.shouldReport(capacity)) {
-					await this.telemetry.track('User hit concurrency limit', { threshold: capacity });
-				}
-			},
-		);
+		this.productionQueue.on('execution-throttled', ({ executionId }: { executionId: string }) => {
+			this.log('Execution throttled', { executionId });
+		});
 
 		this.productionQueue.on('execution-released', async (executionId: string) => {
 			this.log('Execution released', { executionId });

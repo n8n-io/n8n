@@ -3,7 +3,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { getDropdownItems } from '@/__tests__/utils';
-import { useRoute, useRouter } from 'vue-router';
+import { useRouter } from 'vue-router';
 import ProjectSettings from '@/components/Projects/ProjectSettings.vue';
 import { useProjectsStore } from '@/stores/projects.store';
 import { VIEWS } from '@/constants';
@@ -31,7 +31,6 @@ const renderComponent = createComponentRenderer(ProjectSettings);
 const teamProjects = Array.from({ length: 3 }, () => createProjectListItem('team'));
 
 let router: ReturnType<typeof useRouter>;
-let route: ReturnType<typeof useRoute>;
 let projectsStore: ReturnType<typeof useProjectsStore>;
 let usersStore: ReturnType<typeof useUsersStore>;
 let settingsStore: ReturnType<typeof useSettingsStore>;
@@ -40,7 +39,6 @@ describe('ProjectSettings', () => {
 	beforeEach(() => {
 		const pinia = createPinia();
 		setActivePinia(pinia);
-		route = useRoute();
 		router = useRouter();
 		projectsStore = useProjectsStore();
 		usersStore = useUsersStore();
