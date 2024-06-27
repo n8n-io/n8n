@@ -89,6 +89,7 @@
 				</div>
 			</div>
 			<NodeDetailsView
+				:workflow-object="currentWorkflowObject"
 				:read-only="isReadOnlyRoute || readOnlyEnv"
 				:renaming="renamingActive"
 				:is-production-execution-preview="isProductionExecutionPreview"
