@@ -85,7 +85,7 @@ export class ScalingMode {
 
 		const redisClientService = Container.get(RedisClientService);
 		const prefix = redisClientService.toValidPrefix(config.getEnv('queue.bull.prefix'));
-		this.store = redisClientService.createClient({ type: 'bull' });
+		this.store = await redisClientService.createClient({ type: 'bull' });
 
 		this.storeOptions = { prefix, connection: this.store };
 	}

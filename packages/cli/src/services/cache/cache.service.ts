@@ -35,7 +35,7 @@ export class CacheService extends EventEmitter {
 			const cachePrefix = config.getEnv('cache.redis.prefix');
 			const prefix = redisClientService.toValidPrefix(`${prefixBase}:${cachePrefix}:`);
 
-			const redisClient = redisClientService.createClient({
+			const redisClient = await redisClientService.createClient({
 				type: 'client(cache)',
 				extraOptions: { keyPrefix: prefix },
 			});

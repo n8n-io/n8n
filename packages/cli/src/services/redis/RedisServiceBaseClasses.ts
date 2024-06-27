@@ -36,7 +36,7 @@ class RedisServiceBase {
 		if (this.redisClient && this.isInitialized) {
 			return;
 		}
-		this.redisClient = this.redisClientService.createClient({ type });
+		this.redisClient = await this.redisClientService.createClient({ type });
 
 		this.redisClient.on('close', () => {
 			this.logger.warn('Redis unavailable - trying to reconnect...');
