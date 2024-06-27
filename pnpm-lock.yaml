@@ -6,8 +6,11 @@ settings:
 
 catalogs:
   default:
+    uuid:
+      specifier: 8.3.2
+      version: 8.3.2
     vue:
-      specifier: ^3.4.21
+      specifier: 3.4.21
       version: 3.4.21
 
 overrides:
@@ -173,7 +176,7 @@ importers:
         specifier: ^4.0.1
         version: 4.0.1
       uuid:
-        specifier: ^8.3.2
+        specifier: 'catalog:'
         version: 8.3.2
       vue:
         specifier: 'catalog:'
@@ -791,7 +794,7 @@ importers:
         specifier: 0.10.0
         version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
       uuid:
-        specifier: 8.3.2
+        specifier: 'catalog:'
         version: 8.3.2
       validator:
         specifier: 13.7.0
@@ -960,7 +963,7 @@ importers:
         specifier: 0.10.0
         version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
       uuid:
-        specifier: 8.3.2
+        specifier: 'catalog:'
         version: 8.3.2
       xml2js:
         specifier: 0.6.2
@@ -1235,7 +1238,7 @@ importers:
         specifier: ^4.0.2
         version: 4.0.2
       uuid:
-        specifier: ^8.3.2
+        specifier: 'catalog:'
         version: 8.3.2
       v3-infinite-loading:
         specifier: ^1.2.2
@@ -1531,7 +1534,7 @@ importers:
         specifier: 0.10.0
         version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
       uuid:
-        specifier: 8.3.2
+        specifier: 'catalog:'
         version: 8.3.2
       xlsx:
         specifier: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
@@ -19290,7 +19293,7 @@ snapshots:
 
   '@vue/compiler-core@3.4.21':
     dependencies:
-      '@babel/parser': 7.24.6
+      '@babel/parser': 7.24.0
       '@vue/shared': 3.4.21
       entities: 4.5.0
       estree-walker: 2.0.2
@@ -23459,7 +23462,7 @@ snapshots:
   jscodeshift@0.15.2(@babel/preset-env@7.24.6(@babel/core@7.24.6)):
     dependencies:
       '@babel/core': 7.24.6
-      '@babel/parser': 7.24.6
+      '@babel/parser': 7.24.0
       '@babel/plugin-transform-class-properties': 7.23.3(@babel/core@7.24.6)
       '@babel/plugin-transform-modules-commonjs': 7.23.3(@babel/core@7.24.6)
       '@babel/plugin-transform-nullish-coalescing-operator': 7.23.4(@babel/core@7.24.6)
@@ -25316,7 +25319,7 @@ snapshots:
     dependencies:
       nanoid: 3.3.6
       picocolors: 1.0.0
-      source-map-js: 1.2.0
+      source-map-js: 1.0.2
 
   postcss@8.4.38:
     dependencies:

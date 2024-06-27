@@ -38,7 +38,7 @@
     "@vueuse/core": "^10.11.0",
     "highlight.js": "^11.8.0",
     "markdown-it-link-attributes": "^4.0.1",
-    "uuid": "^8.3.2",
+    "uuid": "catalog:",
     "vue": "catalog:",
     "vue-markdown-render": "^2.1.1"
   },

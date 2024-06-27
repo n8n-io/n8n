@@ -163,7 +163,7 @@
     "swagger-ui-express": "5.0.0",
     "syslog-client": "1.1.1",
     "typedi": "0.10.0",
-    "uuid": "8.3.2",
+    "uuid": "catalog:",
     "validator": "13.7.0",
     "winston": "3.8.2",
     "ws": "8.17.1",

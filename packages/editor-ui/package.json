@@ -63,7 +63,7 @@
     "qrcode.vue": "^3.3.4",
     "stream-browserify": "^3.0.0",
     "timeago.js": "^4.0.2",
-    "uuid": "^8.3.2",
+    "uuid": "catalog:",
     "v3-infinite-loading": "^1.2.2",
     "vue": "catalog:",
     "vue-agile": "^2.0.0",

@@ -5,4 +5,5 @@ packages:
   - cypress
 
 catalog:
-  vue: ^3.4.21
+  uuid: 8.3.2
+  vue: 3.4.21
