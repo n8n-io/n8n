@@ -59,4 +59,17 @@ describe('ConcurrencyQueue', () => {
 		expect(sleepSpy).toHaveBeenCalledTimes(4);
 		expect(state).toEqual({ 1: 'finished', 2: 'finished', 3: 'finished', 5: 'finished' });
 	});
+
+	it('should debounce emitting of the `concurrency-check` event', async () => {
+		const queue = new ConcurrencyQueue(10);
+		const emitSpy = jest.fn();
+		queue.on('concurrency-check', emitSpy);
+
+		// eslint-disable-next-line @typescript-eslint/promise-function-async
+		Array.from({ length: 10 }, (_, i) => i).forEach(() => queue.enqueue('1'));
+
+		expect(queue.currentCapacity).toBe(0);
+		await jest.advanceTimersByTimeAsync(1000);
+		expect(emitSpy).toHaveBeenCalledTimes(1);
+	});
 });

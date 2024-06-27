@@ -26,6 +26,10 @@ export class ConcurrencyQueue extends EventEmitter {
 		}
 	}
 
+	get currentCapacity() {
+		return this.capacity;
+	}
+
 	dequeue() {
 		this.capacity++;
 
