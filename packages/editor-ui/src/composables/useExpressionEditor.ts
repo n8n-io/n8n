@@ -185,10 +185,7 @@ export const useExpressionEditor = ({
 			doc: toValue(editorValue),
 			extensions: [
 				customExtensions.value.of(toValue(extensions)),
-				readOnlyExtensions.value.of([
-					EditorState.readOnly.of(toValue(isReadOnly)),
-					EditorView.editable.of(!toValue(isReadOnly)),
-				]),
+				readOnlyExtensions.value.of([EditorState.readOnly.of(toValue(isReadOnly))]),
 				telemetryExtensions.value.of([]),
 				EditorView.updateListener.of(onEditorUpdate),
 				EditorView.focusChangeEffect.of((_, newHasFocus) => {
@@ -229,7 +226,6 @@ export const useExpressionEditor = ({
 			editor.value.dispatch({
 				effects: readOnlyExtensions.value.reconfigure([
 					EditorState.readOnly.of(toValue(isReadOnly)),
-					EditorView.editable.of(!toValue(isReadOnly)),
 				]),
 			});
 		}
