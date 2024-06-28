@@ -418,6 +418,7 @@ watch(
 
 .schema {
 	display: grid;
+	padding-right: var(--spacing-s);
 	grid-template-rows: 1fr;
 
 	&.animated {
