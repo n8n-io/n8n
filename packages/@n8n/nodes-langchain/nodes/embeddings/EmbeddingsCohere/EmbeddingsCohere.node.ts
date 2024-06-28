@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
 	NodeConnectionType,
 	type IExecuteFunctions,
@@ -43,7 +44,9 @@ export class EmbeddingsCohere implements INodeType {
 				],
 			},
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: [NodeConnectionType.AiEmbedding],
 		outputNames: ['Embeddings'],
 		properties: [
@@ -97,12 +100,9 @@ export class EmbeddingsCohere implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		const logger = this.logger as unknown as { verbose: (message: string) => void };
-		logger.verbose('Supply data for embeddings Cohere');
-
+		this.logger.verbose('Supply data for embeddings Cohere');
 		const modelName = this.getNodeParameter('modelName', itemIndex, 'embed-english-v2.0') as string;
 		const credentials = (await this.getCredentials('cohereApi')) as { apiKey: string };
-
 		const embeddings = new CohereEmbeddings({
 			apiKey: credentials.apiKey,
 			model: modelName,
