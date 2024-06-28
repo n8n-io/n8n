@@ -12,7 +12,7 @@ export const properties: INodeProperties[] = [numberInputsProperty];
 
 const displayOptions = {
 	show: {
-		operation: ['append'],
+		mode: ['append'],
 	},
 };
 

@@ -12,34 +12,29 @@ export { append, chooseBranch, combineAll, combineByFields, combineBySql, combin
 export const description: INodeProperties[] = [
 	{
 		displayName: 'Mode',
-		name: 'operation',
+		name: 'mode',
 		type: 'options',
 		noDataExpression: true,
-		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 		options: [
 			{
 				name: 'Append',
 				value: 'append',
 				description: 'Output items of each input, one after the other',
-				action: 'Append items',
 			},
 			{
 				name: 'Combine',
 				value: 'combine',
 				description: 'Merge matching items together',
-				action: 'Combine items',
 			},
 			{
 				name: 'SQL Query',
 				value: 'combineBySql',
 				description: 'Write a query to do the merge',
-				action: 'Use SQL query',
 			},
 			{
 				name: 'Choose Branch',
 				value: 'chooseBranch',
 				description: 'Output data from a specific branch, without modifying it',
-				action: 'Choose branch',
 			},
 		],
 		default: 'append',
@@ -73,9 +68,7 @@ export const description: INodeProperties[] = [
 		default: 'combineByFields',
 		description: 'How input data should be merged',
 		displayOptions: {
-			show: {
-				operation: ['combine'],
-			},
+			show: { mode: ['combine'] },
 		},
 	},
 	...append.description,

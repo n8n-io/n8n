@@ -33,7 +33,7 @@ export const properties: INodeProperties[] = [
 
 const displayOptions = {
 	show: {
-		operation: ['combineBySql'],
+		mode: ['combineBySql'],
 	},
 };
 

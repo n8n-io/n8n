@@ -26,7 +26,7 @@ export const properties: INodeProperties[] = [
 
 const displayOptions = {
 	show: {
-		operation: ['combine'],
+		mode: ['combine'],
 		combineBy: ['combineAll'],
 	},
 };

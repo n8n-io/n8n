@@ -18,6 +18,6 @@ export const versionDescription: INodeTypeDescription = {
 	outputs: ['main'],
 	// If mode is chooseBranch data from both branches is required
 	// to continue, else data from any input suffices
-	requiredInputs: '={{ $parameter["operation"] === "chooseBranch" ? [0, 1] : 1 }}',
+	requiredInputs: '={{ $parameter["mode"] === "chooseBranch" ? [0, 1] : 1 }}',
 	properties: [...mode.description],
 };
