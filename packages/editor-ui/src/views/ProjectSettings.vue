@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, watch, onBeforeMount, nextTick } from 'vue';
+import { computed, ref, watch, onBeforeMount, onMounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { deepCopy } from 'n8n-workflow';
 import { N8nFormInput } from 'n8n-design-system';
@@ -223,10 +223,7 @@ const onConfirmDelete = async (transferId?: string) => {
 };
 
 const selectProjectNameIfMatchesDefault = () => {
-	if (
-		nameInput.value?.name &&
-		formData.value.name === locale.baseText('projects.settings.newProjectName')
-	) {
+	if (formData.value.name === locale.baseText('projects.settings.newProjectName')) {
 		nameInput.value?.inputRef?.focus();
 		nameInput.value?.inputRef?.select();
 	}
@@ -247,6 +244,10 @@ watch(
 
 onBeforeMount(async () => {
 	await usersStore.fetchUsers();
+});
+
+onMounted(() => {
+	selectProjectNameIfMatchesDefault();
 });
 </script>
 
