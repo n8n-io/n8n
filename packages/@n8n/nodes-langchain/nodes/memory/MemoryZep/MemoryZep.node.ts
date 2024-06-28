@@ -9,12 +9,25 @@ import {
 } from 'n8n-workflow';
 import { ZepMemory } from '@langchain/community/memory/zep';
 import { ZepCloudMemory } from '@langchain/community/memory/zep_cloud';
-import { ZepCloudChatMessageHistory } from '@langchain/community/stores/message/zep_cloud';
 
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { sessionIdOption, sessionKeyProperty } from '../descriptions';
 import { getSessionId } from '../../../utils/helpers';
+import type { BaseChatMemory } from '@langchain/community/dist/memory/chat_memory';
+import type { InputValues, MemoryVariables } from '@langchain/core/memory';
+import type { BaseMessage } from '@langchain/core/messages';
+
+// Extend ZepCloudMemory to trim white space in messages.
+class WhiteSpaceTrimmedZepCloudMemory extends ZepCloudMemory {
+	override async loadMemoryVariables(values: InputValues): Promise<MemoryVariables> {
+		const memoryVariables = await super.loadMemoryVariables(values);
+		memoryVariables.chat_history = memoryVariables.chat_history.filter((m: BaseMessage) =>
+			m.content.toString().trim(),
+		);
+		return memoryVariables;
+	}
+}
 
 export class MemoryZep implements INodeType {
 	description: INodeTypeDescription = {
@@ -107,13 +120,13 @@ export class MemoryZep implements INodeType {
 			sessionId = this.getNodeParameter('sessionId', itemIndex) as string;
 		}
 
-		let memory;
+		let memory: BaseChatMemory;
 
 		if (credentials.cloud) {
 			if (!credentials.apiKey) {
 				throw new NodeOperationError(this.getNode(), 'API key is required to use Zep Cloud');
 			}
-			memory = new ZepCloudMemory({
+			memory = new WhiteSpaceTrimmedZepCloudMemory({
 				sessionId,
 				apiKey: credentials.apiKey,
 				memoryType: 'perpetual',
@@ -121,15 +134,7 @@ export class MemoryZep implements INodeType {
 				returnMessages: true,
 				inputKey: 'input',
 				outputKey: 'output',
-				separateMessages: true,
-			});
-
-			// Need to add ZepCloudChatMessageHistory to memory because MemoryManager expects it
-			memory.chatHistory = new ZepCloudChatMessageHistory({
-				client: memory.zepClient,
-				sessionId: memory.sessionId,
-				memoryType: memory.memoryType,
-				separateMessages: true,
+				separateMessages: false,
 			});
 		} else {
 			if (!credentials.apiUrl) {
