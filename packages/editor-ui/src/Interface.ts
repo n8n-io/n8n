@@ -6,7 +6,6 @@ import type {
 	TRIGGER_NODE_CREATOR_VIEW,
 	REGULAR_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
-	VIEWS,
 	ROLE,
 } from '@/constants';
 import type { IMenuItem, NodeCreatorTag } from 'n8n-design-system';

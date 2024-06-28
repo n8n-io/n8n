@@ -94,7 +94,7 @@ type Draggable = {
 export const useUIStore = defineStore(STORES.UI, () => {
 	const activeActions = ref<string[]>([]);
 	const activeCredentialType = ref<string | null>(null);
-	const theme = ref<string>(savedTheme);
+	const theme = ref<ThemeOption>(savedTheme);
 	const modals = ref<{ [key: string]: ModalState }>({
 		...Object.fromEntries(
 			[
@@ -321,14 +321,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		return ![VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG].includes(
 			currentView.value as VIEWS,
 		);
-	});
-
-	const isNodeView = computed(() => {
-		return [
-			VIEWS.NEW_WORKFLOW.toString(),
-			VIEWS.WORKFLOW.toString(),
-			VIEWS.WORKFLOW_EXECUTIONS.toString(),
-		].includes(currentView.value);
 	});
 
 	const isActionActive = computed(() => {
@@ -688,7 +680,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		getFakeDoorByLocation,
 		getFakeDoorById,
 		isReadOnlyView,
-		isNodeView,
 		isActionActive,
 		getSelectedNodes,
 		isNodeSelected,
