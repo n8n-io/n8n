@@ -231,7 +231,11 @@ export class ExecuteWorkflow implements INodeType {
 					}
 				} catch (error) {
 					if (this.continueOnFail(error)) {
-						return [[{ json: { error: error.message }, pairedItem: { item: i } }]];
+						if (returnData[i] === undefined) {
+							returnData[i] = [];
+						}
+						returnData[i].push({ json: { error: error.message }, pairedItem: { item: i } });
+						continue;
 					}
 					throw new NodeOperationError(this.getNode(), error, {
 						message: `Error executing workflow with item at index ${i}`,
