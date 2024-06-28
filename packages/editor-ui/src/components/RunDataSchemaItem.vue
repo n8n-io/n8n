@@ -110,7 +110,7 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 				</span>
 			</div>
 
-			<span v-if="text" :class="$style.text">
+			<span v-if="text" :class="$style.text" data-test-id="run-data-schema-item-value">
 				<template v-for="(line, index) in text.split('\n')" :key="`line-${index}`">
 					<span v-if="index > 0" :class="$style.newLine">\n</span>
 					<TextWithHighlights :content="line" :search="props.search" />
