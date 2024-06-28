@@ -245,7 +245,7 @@ export default defineComponent({
 		loading: {
 			type: Boolean,
 			required: false,
-			default: false,
+			default: true,
 		},
 	},
 	emits: ['update:filters', 'click:add', 'sort'],
@@ -470,6 +470,7 @@ export default defineComponent({
 		);
 
 		onMounted(async () => {
+			console.log('ResourcesListLayout mounted')
 			await props.initialize();
 			await nextTick();
 

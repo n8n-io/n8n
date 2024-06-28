@@ -79,7 +79,7 @@ const formattedCreatedAtDate = computed(() => {
 
 	return dateformat(
 		props.data.createdAt,
-		`d mmmm${props.data.createdAt.startsWith(currentYear) ? '' : ', yyyy'}`,
+		`d mmmm${String(props.data.createdAt).startsWith(currentYear) ? '' : ', yyyy'}`,
 	);
 });
 
