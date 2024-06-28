@@ -70,6 +70,15 @@ export class ConcurrencyControlService {
 	}
 
 	/**
+	 * Check whether an execution is in the production queue.
+	 */
+	has(executionId: string) {
+		if (!this.isEnabled) return false;
+
+		return this.productionQueue.getAll().has(executionId);
+	}
+
+	/**
 	 * Block or let through an execution based on concurrency capacity.
 	 */
 	async throttle({ mode, executionId }: { mode: ExecutionMode; executionId: string }) {

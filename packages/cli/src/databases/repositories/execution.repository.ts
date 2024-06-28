@@ -22,6 +22,7 @@ import type {
 import { parse, stringify } from 'flatted';
 import {
 	ApplicationError,
+	WorkflowOperationError,
 	type ExecutionStatus,
 	type ExecutionSummary,
 	type IRunExecutionData,
@@ -609,8 +610,34 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		});
 	}
 
-	async cancel(executionId: string) {
-		await this.update({ id: executionId }, { status: 'canceled', stoppedAt: new Date() });
+	async stopBeforeRun(execution: IExecutionResponse) {
+		execution.status = 'canceled';
+		execution.stoppedAt = new Date();
+
+		await this.update(
+			{ id: execution.id },
+			{ status: execution.status, stoppedAt: execution.stoppedAt },
+		);
+
+		return execution;
+	}
+
+	async stopDuringRun(execution: IExecutionResponse) {
+		const error = new WorkflowOperationError('Workflow-Execution has been canceled!');
+
+		execution.data.resultData.error = {
+			...error,
+			message: error.message,
+			stack: error.stack,
+		};
+
+		execution.stoppedAt = new Date();
+		execution.waitTill = null;
+		execution.status = 'canceled';
+
+		await this.updateExistingExecution(execution.id, execution);
+
+		return execution;
 	}
 
 	async cancelMany(executionIds: string[]) {
