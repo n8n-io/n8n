@@ -470,7 +470,6 @@ export default defineComponent({
 		);
 
 		onMounted(async () => {
-			console.log('ResourcesListLayout mounted')
 			await props.initialize();
 			await nextTick();
 
