@@ -108,6 +108,7 @@ export const useTagsStore = defineStore(STORES.TAGS, () => {
 		isLoading,
 		hasTags,
 		getTagById,
+		tags,
 		fetchAll,
 		create,
 		rename,
