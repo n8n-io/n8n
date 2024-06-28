@@ -148,7 +148,7 @@ export default defineComponent({
 			const name = tag.name;
 
 			try {
-				const deleted = await this.tagsStore.delete(id);
+				const deleted = await this.tagsStore.deleteTagById(id);
 				if (!deleted) {
 					throw new Error(this.$locale.baseText('tagsManager.couldNotDeleteTag'));
 				}
