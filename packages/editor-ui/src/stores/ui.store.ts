@@ -162,9 +162,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const modalStack = ref<string[]>([]);
 	const sidebarMenuCollapsed = ref<boolean>(true);
-	const isPageLoading = ref<boolean>(true);
 	const currentView = ref<string>('');
-	const mainPanelPosition = ref<number>(0.5);
 	const fakeDoorFeatures = ref<IFakeDoor[]>([
 		{
 			id: FAKE_DOOR_FEATURES.SSO,
@@ -699,8 +697,9 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		stateIsDirty,
 		lastSelectedNodeOutputIndex,
 		activeCredentialType,
-		isPageLoading,
-		mainPanelPosition,
+		lastSelectedNode,
+		selectedNodes,
+		bannersHeight,
 		lastSelectedNodeEndpointUuid,
 		nodeViewOffsetPosition,
 		nodeViewMoveInProgress,
@@ -708,9 +707,11 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		addFirstStepOnLoad,
 		isCreateNodeActive,
 		sidebarMenuCollapsed,
-		modals,
+		fakeDoorFeatures,
 		bannerStack,
 		theme,
+		modals,
+		currentView,
 		setTheme,
 		setMode,
 		setActiveId,
