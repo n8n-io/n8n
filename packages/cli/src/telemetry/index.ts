@@ -148,13 +148,15 @@ export class Telemetry {
 				properties.success ? 'success' : 'error'
 			}`;
 
-			if (!this.executionCountsBuffer[workflowId][key]) {
+			const executionTrackDataKey = this.executionCountsBuffer[workflowId][key];
+
+			if (!executionTrackDataKey) {
 				this.executionCountsBuffer[workflowId][key] = {
 					count: 1,
 					first: execTime,
 				};
 			} else {
-				this.executionCountsBuffer[workflowId][key]!.count++;
+				executionTrackDataKey.count++;
 			}
 
 			if (

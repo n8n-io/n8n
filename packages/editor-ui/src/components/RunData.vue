@@ -50,12 +50,22 @@
 				data-test-id="run-data-pane-header"
 				@click.stop
 			>
+				<RunDataSearch
+					v-if="showIOSearch"
+					v-model="search"
+					:class="$style.search"
+					:pane-type="paneType"
+					:display-mode="displayMode"
+					:is-area-active="isPaneActive"
+					@focus="activatePane"
+				/>
+
 				<n8n-radio-buttons
 					v-show="
 						hasNodeRun && (inputData.length || binaryData.length || search) && !editMode.enabled
 					"
 					:model-value="displayMode"
-					:options="buttons"
+					:options="displayModes"
 					data-test-id="ndv-run-data-display-mode"
 					@update:model-value="onDisplayModeChange"
 				/>
@@ -66,7 +76,6 @@
 					:title="$locale.baseText('runData.editOutput')"
 					:circle="false"
 					:disabled="node?.disabled"
-					class="ml-2xs"
 					icon="pencil-alt"
 					type="tertiary"
 					data-test-id="ndv-edit-pinned-data"
@@ -107,12 +116,16 @@
 			</div>
 		</div>
 
-		<div v-if="extraControlsLocation === 'header'" :class="$style.inputSelect">
+		<div v-if="inputSelectLocation === 'header'" :class="$style.inputSelect">
 			<slot name="input-select"></slot>
 		</div>
 
-		<div v-if="maxRunIndex > 0" v-show="!editMode.enabled" :class="$style.runSelector">
-			<slot v-if="extraControlsLocation === 'runs'" name="input-select"></slot>
+		<div
+			v-if="maxRunIndex > 0 && !isInputSchemaView"
+			v-show="!editMode.enabled"
+			:class="$style.runSelector"
+		>
+			<slot v-if="inputSelectLocation === 'runs'" name="input-select"></slot>
 
 			<n8n-select
 				:model-value="runIndex"
@@ -148,18 +161,9 @@
 			</n8n-tooltip>
 
 			<slot name="run-info"></slot>
-
-			<RunDataSearch
-				v-if="showIOSearch && extraControlsLocation === 'runs'"
-				v-model="search"
-				:class="$style.search"
-				:pane-type="paneType"
-				:is-area-active="isPaneActive"
-				@focus="activatePane"
-			/>
 		</div>
 
-		<slot name="before-data" />
+		<slot v-if="!isInputSchemaView" name="before-data" />
 
 		<n8n-callout
 			v-for="hint in getNodeHints()"
@@ -171,25 +175,17 @@
 		</n8n-callout>
 
 		<div
-			v-if="maxOutputIndex > 0 && branches.length > 1"
+			v-if="maxOutputIndex > 0 && branches.length > 1 && !isInputSchemaView"
 			:class="$style.outputs"
 			data-test-id="branches"
 		>
-			<slot v-if="extraControlsLocation === 'outputs'" name="input-select"></slot>
+			<slot v-if="inputSelectLocation === 'outputs'" name="input-select"></slot>
 
 			<div :class="$style.tabs">
 				<n8n-tabs
 					:model-value="currentOutputIndex"
 					:options="branches"
 					@update:model-value="onBranchChange"
-				/>
-
-				<RunDataSearch
-					v-if="showIOSearch && extraControlsLocation === 'outputs'"
-					v-model="search"
-					:pane-type="paneType"
-					:is-area-active="isPaneActive"
-					@focus="activatePane"
 				/>
 			</div>
 		</div>
@@ -199,13 +195,14 @@
 				!hasRunError &&
 				hasNodeRun &&
 				((dataCount > 0 && maxRunIndex === 0) || search) &&
-				!isArtificialRecoveredEventItem
+				!isArtificialRecoveredEventItem &&
+				!isSchemaView
 			"
 			v-show="!editMode.enabled && !hasRunError"
 			:class="[$style.itemsCount, { [$style.muted]: paneType === 'input' && maxRunIndex === 0 }]"
 			data-test-id="ndv-items-count"
 		>
-			<slot v-if="extraControlsLocation === 'items'" name="input-select"></slot>
+			<slot v-if="inputSelectLocation === 'items'" name="input-select"></slot>
 
 			<n8n-text v-if="search" :class="$style.itemsText">
 				{{
@@ -223,15 +220,6 @@
 					})
 				}}
 			</n8n-text>
-
-			<RunDataSearch
-				v-if="showIOSearch && extraControlsLocation === 'items'"
-				v-model="search"
-				:class="$style.search"
-				:pane-type="paneType"
-				:is-area-active="isPaneActive"
-				@focus="activatePane"
-			/>
 		</div>
 
 		<div ref="dataContainer" :class="$style.dataContainer" data-test-id="ndv-data-container">
@@ -426,14 +414,17 @@
 
 			<Suspense v-else-if="hasNodeRun && isSchemaView">
 				<RunDataSchema
-					:data="jsonData"
+					:nodes="nodes"
 					:mapping-enabled="mappingEnabled"
-					:distance-from-active="distanceFromActive"
 					:node="node"
+					:data="jsonData"
 					:pane-type="paneType"
+					:connection-type="connectionType"
 					:run-index="runIndex"
+					:output-index="currentOutputIndex"
 					:total-runs="maxRunIndex"
 					:search="search"
+					@clear:search="onSearchClear"
 				/>
 			</Suspense>
 
@@ -587,6 +578,7 @@ import type {
 	NodeHint,
 	NodeError,
 	Workflow,
+	IConnectedNode,
 } from 'n8n-workflow';
 import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 
@@ -666,6 +658,10 @@ export default defineComponent({
 		node: {
 			type: Object as PropType<INodeUi | null>,
 			default: null,
+		},
+		nodes: {
+			type: Array as PropType<IConnectedNode[]>,
+			default: () => [],
 		},
 		workflow: {
 			type: Object as PropType<Workflow>,
@@ -795,6 +791,9 @@ export default defineComponent({
 		isSchemaView(): boolean {
 			return this.displayMode === 'schema';
 		},
+		isInputSchemaView(): boolean {
+			return this.isSchemaView && this.paneType === 'input';
+		},
 		isTriggerNode(): boolean {
 			if (this.node === null) {
 				return false;
@@ -815,7 +814,7 @@ export default defineComponent({
 				!(this.binaryData && this.binaryData.length > 0)
 			);
 		},
-		buttons(): Array<{ label: string; value: string }> {
+		displayModes(): Array<{ label: string; value: string }> {
 			const defaults = [
 				{ label: this.$locale.baseText('runData.table'), value: 'table' },
 				{ label: this.$locale.baseText('runData.json'), value: 'json' },
@@ -1046,7 +1045,8 @@ export default defineComponent({
 		showIOSearch(): boolean {
 			return this.hasNodeRun && !this.hasRunError && this.unfilteredInputData.length > 0;
 		},
-		extraControlsLocation() {
+		inputSelectLocation() {
+			if (this.isSchemaView) return 'none';
 			if (!this.hasNodeRun) return 'header';
 			if (this.maxRunIndex > 0) return 'runs';
 			if (this.maxOutputIndex > 0 && this.branches.length > 1) {
@@ -1521,7 +1521,7 @@ export default defineComponent({
 			return inputData;
 		},
 		getFilteredData(inputData: INodeExecutionData[]): INodeExecutionData[] {
-			if (!this.search) {
+			if (!this.search || this.isSchemaView) {
 				return inputData;
 			}
 
@@ -1795,7 +1795,7 @@ export default defineComponent({
 
 	.itemsText {
 		flex-shrink: 0;
-		overflow-x: hidden;
+		overflow: hidden;
 		white-space: nowrap;
 		text-overflow: ellipsis;
 	}
@@ -1914,7 +1914,9 @@ export default defineComponent({
 	display: flex;
 	justify-content: flex-end;
 	flex-grow: 1;
+	gap: var(--spacing-2xs);
 }
+
 .tooltipContain {
 	max-width: 240px;
 }

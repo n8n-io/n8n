@@ -84,8 +84,8 @@ export class SourceControlImportService {
 			}),
 		);
 		return remoteWorkflowFilesParsed.filter(
-			(e) => e !== undefined,
-		) as SourceControlWorkflowVersionId[];
+			(e): e is SourceControlWorkflowVersionId => e !== undefined,
+		);
 	}
 
 	public async getLocalVersionIdsFromDb(): Promise<SourceControlWorkflowVersionId[]> {

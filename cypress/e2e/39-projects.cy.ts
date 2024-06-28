@@ -329,7 +329,15 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			// Go to the first project and create a workflow
 			projects.getMenuItems().first().click();
 			workflowsPage.getters.workflowCards().should('not.have.length');
+
+			cy.intercept('GET', '/rest/credentials/for-workflow*').as('getCredentialsForWorkflow');
 			workflowsPage.getters.newWorkflowButtonCard().click();
+
+			cy.wait('@getCredentialsForWorkflow').then((interception) => {
+				expect(interception.request.query).to.have.property('projectId');
+				expect(interception.request.query).not.to.have.property('workflowId');
+			});
+
 			workflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 			workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
 			workflowPage.getters.nodeCredentialsSelect().first().click();
@@ -342,6 +350,10 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowPage.actions.saveWorkflowOnButtonClick();
 
 			cy.reload();
+			cy.wait('@getCredentialsForWorkflow').then((interception) => {
+				expect(interception.request.query).not.to.have.property('projectId');
+				expect(interception.request.query).to.have.property('workflowId');
+			});
 			workflowPage.getters.canvasNodeByName(NOTION_NODE_NAME).should('be.visible').dblclick();
 			workflowPage.getters.nodeCredentialsSelect().first().click();
 			getVisibleSelect()
