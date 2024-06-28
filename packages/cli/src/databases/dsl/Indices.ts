@@ -25,7 +25,7 @@ abstract class IndexOperation extends LazyPromise<void> {
 			void this.execute(queryRunner)
 				.then(resolve)
 				.catch((error) => {
-					if (this.skipIfMissing) {
+					if (error instanceof Error && error.message.includes('not found') && this.skipIfMissing) {
 						resolve();
 					} else {
 						reject(error);
