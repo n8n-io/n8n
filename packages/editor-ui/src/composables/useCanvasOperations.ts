@@ -39,7 +39,6 @@ import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { v4 as uuid } from 'uuid';
-import { useSegment } from '@/stores/segment.store';
 import type { Ref } from 'vue';
 import { computed } from 'vue';
 import { useCredentialsStore } from '@/stores/credentials.store';
@@ -650,7 +649,6 @@ export function useCanvasOperations({
 			});
 		} else {
 			void externalHooks.run('nodeView.addNodeButton', { nodeTypeName: node.type });
-			useSegment().trackAddedTrigger(node.type);
 			const trackProperties: ITelemetryTrackProperties = {
 				node_type: node.type,
 				node_version: newNodeData.typeVersion,
