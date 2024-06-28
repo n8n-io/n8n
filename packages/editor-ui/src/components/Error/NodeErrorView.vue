@@ -613,6 +613,7 @@ function copySuccess() {
 	}
 
 	&__header-description {
+		overflow: hidden;
 		padding: 0 var(--spacing-s) var(--spacing-3xs) var(--spacing-s);
 		font-size: var(--font-size-xs);
 
