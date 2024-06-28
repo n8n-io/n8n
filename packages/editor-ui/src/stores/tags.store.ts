@@ -104,7 +104,6 @@ export const useTagsStore = defineStore(STORES.TAGS, () => {
 	};
 
 	return {
-		tags,
 		allTags,
 		isLoading,
 		hasTags,
@@ -113,5 +112,7 @@ export const useTagsStore = defineStore(STORES.TAGS, () => {
 		create,
 		rename,
 		deleteTagById,
+		upsertTags,
+		deleteTag,
 	};
 });
