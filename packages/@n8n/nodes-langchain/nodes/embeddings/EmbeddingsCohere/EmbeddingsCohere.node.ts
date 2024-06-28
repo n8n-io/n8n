@@ -38,7 +38,7 @@ export class EmbeddingsCohere implements INodeType {
 			resources: {
 				primaryDocumentation: [
 					{
-						url: 'https://docs.cohere.com/reference/embed',
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.embeddingscohere/',
 					},
 				],
 			},
@@ -49,7 +49,8 @@ export class EmbeddingsCohere implements INodeType {
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiVectorStore]),
 			{
-				displayName: 'Each model is using different dimensional density for embeddings. Please make sure to use the same dimensionality for your vector store. The default model is using 768-dimensional embeddings.',
+				displayName:
+					'Each model is using different dimensional density for embeddings. Please make sure to use the same dimensionality for your vector store. The default model is using 768-dimensional embeddings.',
 				name: 'notice',
 				type: 'notice',
 				default: '',
@@ -58,24 +59,37 @@ export class EmbeddingsCohere implements INodeType {
 				displayName: 'Model',
 				name: 'modelName',
 				type: 'options',
-				description: 'The model which will generate the embeddings. <a href="https://docs.cohere.com/docs/models">Learn more</a>.',
-				default: 'embed-english-v3.0',
+				description:
+					'The model which will generate the embeddings. <a href="https://docs.cohere.com/docs/models">Learn more</a>.',
+				default: 'embed-english-v2.0',
 				options: [
 					{
-						name: 'Embed-English-v3.0 (1024 Dimensions)',
-						value: 'embed-english-v3.0',
+						name: 'Embed-English-Light-v2.0 (1024 Dimensions)',
+						value: 'embed-english-light-v2.0',
 					},
 					{
 						name: 'Embed-English-Light-v3.0 (384 Dimensions)',
 						value: 'embed-english-light-v3.0',
 					},
 					{
-						name: 'Embed-Multilingual-v3.0 (1024 Dimensions)',
-						value: 'embed-multilingual-v3.0',
+						name: 'Embed-English-v2.0 (4096 Dimensions)',
+						value: 'embed-english-v2.0',
+					},
+					{
+						name: 'Embed-English-v3.0 (1024 Dimensions)',
+						value: 'embed-english-v3.0',
 					},
 					{
 						name: 'Embed-Multilingual-Light-v3.0 (384 Dimensions)',
 						value: 'embed-multilingual-light-v3.0',
+					},
+					{
+						name: 'Embed-Multilingual-v2.0 (768 Dimensions)',
+						value: 'embed-multilingual-v2.0',
+					},
+					{
+						name: 'Embed-Multilingual-v3.0 (1024 Dimensions)',
+						value: 'embed-multilingual-v3.0',
 					},
 				],
 			},
@@ -83,11 +97,14 @@ export class EmbeddingsCohere implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		this.logger.verbose('Supply data for embeddings Cohere');
-		const modelName = this.getNodeParameter('modelName', itemIndex, 'embed-english-v3.0') as string;
-		const credentials = await this.getCredentials('cohereApi');
+		const logger = this.logger as unknown as { verbose: (message: string) => void };
+		logger.verbose('Supply data for embeddings Cohere');
+
+		const modelName = this.getNodeParameter('modelName', itemIndex, 'embed-english-v2.0') as string;
+		const credentials = (await this.getCredentials('cohereApi')) as { apiKey: string };
+
 		const embeddings = new CohereEmbeddings({
-			apiKey: credentials.apiKey as string,
+			apiKey: credentials.apiKey,
 			model: modelName,
 		});
 
