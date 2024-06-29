@@ -435,6 +435,68 @@ export const invoiceFields: INodeProperties[] = [
 				],
 				default: 'client',
 			},
+			{
+				displayName: 'Status',
+				name: 'status',
+				type: 'options',
+				options: [
+					{
+						name: 'Active',
+						value: 'active',
+					},
+					{
+						name: 'Archived',
+						value: 'archived',
+					},
+					{
+						name: 'Deleted',
+						value: 'deleted',
+					},
+				],
+				default: 'active',
+			},
+			{
+				displayName: 'Created At',
+				name: 'createdAt',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Updated At',
+				name: 'updatedAt',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Is Deleted',
+				name: 'isDeleted',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Client Status',
+				name: 'clientStatus',
+				type: 'options',
+				options: [
+					{
+						name: 'All',
+						value: 'all',
+					},
+					{
+						name: 'Paid',
+						value: 'paid',
+					},
+					{
+						name: 'Unpaid',
+						value: 'unpaid',
+					},
+					{
+						name: 'Overdue',
+						value: 'overdue',
+					},
+				],
+				default: 'all',
+			},
 		],
 	},
 ];

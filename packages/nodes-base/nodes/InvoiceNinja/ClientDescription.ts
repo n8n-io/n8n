@@ -393,6 +393,44 @@ export const clientFields: INodeProperties[] = [
 				],
 				default: 'invoices',
 			},
+			{
+				displayName: 'Status',
+				name: 'status',
+				type: 'options',
+				options: [
+					{
+						name: 'Active',
+						value: 'active',
+					},
+					{
+						name: 'Archived',
+						value: 'archived',
+					},
+					{
+						name: 'Deleted',
+						value: 'deleted',
+					},
+				],
+				default: 'active',
+			},
+			{
+				displayName: 'Created At',
+				name: 'createdAt',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Updated At',
+				name: 'updatedAt',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Is Deleted',
+				name: 'isDeleted',
+				type: 'boolean',
+				default: false,
+			},
 		],
 	},
 ];
