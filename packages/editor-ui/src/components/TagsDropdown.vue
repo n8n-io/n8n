@@ -22,8 +22,19 @@
 			@visible-change="onVisibleChange"
 			@remove-tag="onRemoveTag"
 		>
+			<!-- key is id+index for keyboard navigation to work well with filter -->
 			<n8n-option
-				v-if="options.length === 0 && filter && createEnabled"
+				v-for="(tag, i) in options"
+				:key="tag.id + '_' + i"
+				ref="tagRefs"
+				:value="tag.id"
+				:label="tag.name"
+				class="tag"
+				data-test-id="tag"
+			/>
+
+			<n8n-option
+				v-if="showCreateTagOption"
 				:key="CREATE_KEY"
 				ref="createRef"
 				:value="CREATE_KEY"
@@ -41,17 +52,6 @@
 				}}</span>
 				<span v-else>{{ i18n.baseText('tagsDropdown.noTagsExist') }}</span>
 			</n8n-option>
-
-			<!-- key is id+index for keyboard navigation to work well with filter -->
-			<n8n-option
-				v-for="(tag, i) in options"
-				:key="tag.id + '_' + i"
-				ref="tagRefs"
-				:value="tag.id"
-				:label="tag.name"
-				class="tag"
-				data-test-id="tag"
-			/>
 
 			<n8n-option :key="MANAGE_KEY" :value="MANAGE_KEY" class="ops manage-tags">
 				<font-awesome-icon icon="cog" />
@@ -133,6 +133,12 @@ export default defineComponent({
 			return props.modelValue.filter((id: string) => tagsStore.getTagById(id));
 		});
 
+		const showCreateTagOption = computed<boolean>(() => {
+			return options.value.filter((tag: ITag) => tag && tag.name === filter.value).length === 0 &&
+				!!filter.value &&
+				!!props.createEnabled;
+		});
+
 		watch(
 			() => allTags.value,
 			() => {
@@ -206,7 +212,14 @@ export default defineComponent({
 
 		function onTagsUpdated(selected: string[]) {
 			const manage = selected.find((value) => value === MANAGE_KEY);
-			const create = selected.find((value) => value === CREATE_KEY);
+			// create action item clicked
+			const createSelected = selected.find((value) => value === CREATE_KEY);
+			// The select component shows the filter value as first entry.
+			// This entry has been clicked. It needs to be created.
+			const newItemSelected =
+				selected.find((value) => value === filter.value) &&
+				!options.value.find((value) => value?.name === filter.value);
+			const create = createSelected ?? newItemSelected;
 
 			if (manage) {
 				filter.value = '';
@@ -282,6 +295,7 @@ export default defineComponent({
 			allTags,
 			appliedTags,
 			options,
+			showCreateTagOption,
 			isLoading,
 			MANAGE_KEY,
 			CREATE_KEY,
