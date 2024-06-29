@@ -280,10 +280,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		return null;
 	});
 
-	const areExpressionsDisabled = computed(() => {
-		return currentView.value === VIEWS.DEMO;
-	});
-
 	const isVersionsOpen = computed(() => {
 		return modals.value[VERSIONS_MODAL_KEY].open;
 	});
@@ -318,9 +314,11 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	});
 
 	const isReadOnlyView = computed(() => {
-		return ![VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG].includes(
-			currentView.value as VIEWS,
-		);
+		return ![
+			VIEWS.WORKFLOW.toString(),
+			VIEWS.NEW_WORKFLOW.toString(),
+			VIEWS.EXECUTION_DEBUG.toString(),
+		].includes(currentView.value);
 	});
 
 	const isActionActive = computed(() => {
@@ -341,8 +339,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const isNodeSelected = computed(() => {
 		return (nodeName: string): boolean => {
-			let index;
-			for (index in selectedNodes.value) {
+			for (const [index] of selectedNodes.value.entries()) {
 				if (selectedNodes.value[index].name === nodeName) {
 					return true;
 				}
@@ -411,7 +408,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		} as NewCredentialsModal;
 	};
 
-	const setModalData = (payload: { name: keyof Modals; data: any }) => {
+	const setModalData = (payload: { name: keyof Modals; data: Record<string, unknown> }) => {
 		modals.value[payload.name] = {
 			...modals.value[payload.name],
 			data: payload.data,
@@ -559,8 +556,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	};
 
 	const removeNodeFromSelection = (node: INodeUi) => {
-		let index;
-		for (index in selectedNodes.value) {
+		for (const [index] of selectedNodes.value.entries()) {
 			if (selectedNodes.value[index].name === node.name) {
 				selectedNodes.value.splice(Number(index), 1);
 				break;
@@ -654,7 +650,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	};
 
 	const getNotificationsForView = (view: VIEWS) => {
-		return pendingNotificationsForViews.value[view] || [];
+		return pendingNotificationsForViews.value[view] ?? [];
 	};
 
 	const setNotificationsForView = (view: VIEWS, notifications: NotificationOptions[]) => {
@@ -670,7 +666,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		logo,
 		contextBasedTranslationKeys,
 		getLastSelectedNode,
-		areExpressionsDisabled,
 		isVersionsOpen,
 		isModalActive,
 		isModalOpen,
