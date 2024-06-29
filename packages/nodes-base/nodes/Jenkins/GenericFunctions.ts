@@ -36,6 +36,7 @@ export async function jenkinsApiRequest(
 		json: true,
 		qs,
 		body,
+		rejectUnauthorized: !credentials.ignoreSSLIssues as boolean,
 	};
 	options = Object.assign({}, options, option);
 	try {

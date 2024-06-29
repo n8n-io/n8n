@@ -19,6 +19,7 @@ export type JenkinsApiCredentials = {
 	username: string;
 	apiKey: string;
 	baseUrl: string;
+	ignoreSSLIssues: boolean;
 };
 
 export class Jenkins implements INodeType {
@@ -394,7 +395,8 @@ export class Jenkins implements INodeType {
 				this: ICredentialTestFunctions,
 				credential: ICredentialsDecrypted,
 			): Promise<INodeCredentialTestResult> {
-				const { baseUrl, username, apiKey } = credential.data as JenkinsApiCredentials;
+				const { baseUrl, username, apiKey, ignoreSSLIssues } =
+					credential.data as JenkinsApiCredentials;
 
 				const url = tolerateTrailingSlash(baseUrl);
 				const endpoint = '/api/json';
@@ -409,6 +411,7 @@ export class Jenkins implements INodeType {
 					qs: {},
 					uri: `${url}${endpoint}`,
 					json: true,
+					rejectUnauthorized: !ignoreSSLIssues,
 				};
 
 				try {
