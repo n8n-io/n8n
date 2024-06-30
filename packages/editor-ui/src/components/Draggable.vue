@@ -45,10 +45,12 @@ const ndvStore = useNDVStore();
 const draggableStyle = computed<StyleValue>(() => ({
 	transform: `translate(${draggablePosition.value[0]}px, ${draggablePosition.value[1]}px)`,
 }));
+
 const canDrop = computed(() => ndvStore.canDraggableDrop);
+
 const stickyPosition = computed(() => ndvStore.draggableStickyPos);
 
-function onDragStart(event: MouseEvent) {
+const onDragStart = (event: MouseEvent) => {
 	if (props.disabled) {
 		return;
 	}
@@ -78,9 +80,9 @@ function onDragStart(event: MouseEvent) {
 	if (activeElement) {
 		activeElement.blur();
 	}
-}
+};
 
-function onDrag(event: MouseEvent) {
+const onDrag = (event: MouseEvent) => {
 	event.preventDefault();
 	event.stopPropagation();
 
@@ -111,9 +113,9 @@ function onDrag(event: MouseEvent) {
 		}
 		emit('drag', draggablePosition.value);
 	});
-}
+};
 
-function onDragEnd() {
+const onDragEnd = () => {
 	if (props.disabled) {
 		return;
 	}
@@ -131,7 +133,7 @@ function onDragEnd() {
 		draggingElement.value = undefined;
 		ndvStore.draggableStopDragging();
 	}, 0);
-}
+};
 </script>
 
 <style lang="scss" module>
