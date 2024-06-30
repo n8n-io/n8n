@@ -479,7 +479,7 @@ export class WorkflowExecute {
 			// Check if all data exists now
 			let thisExecutionData: INodeExecutionData[] | null;
 			let allDataFound = true;
-			for (
+			outer: for (
 				let i = 0;
 				i <
 				this.runExecutionData.executionData!.waitingExecution[connectionData.node][waitingNodeIndex]
@@ -490,7 +490,43 @@ export class WorkflowExecute {
 					this.runExecutionData.executionData!.waitingExecution[connectionData.node][
 						waitingNodeIndex
 					].main[i];
+
 				if (thisExecutionData === null) {
+					// If this is a manual execution it may be a partial execution and we
+					// may find the data in the runData that was passed in.
+					if (this.mode === 'manual') {
+						const connections = workflow.connectionsByDestinationNode[connectionData.node].main[i];
+
+						for (const connection of connections) {
+							const runData = this.runExecutionData.resultData.runData[connection.node];
+
+							if (runData) {
+								const executionData = runData[runIndex].data?.main[connection.index];
+
+								if (executionData) {
+									// We found a node that is connected to the input i that
+									// already has executionData in the runData.
+									// Let's use this.
+									this.runExecutionData.executionData!.waitingExecution[connectionData.node][
+										waitingNodeIndex
+									].main[i] = executionData;
+
+									this.runExecutionData.executionData!.waitingExecutionSource[connectionData.node][
+										waitingNodeIndex
+									].main[i] = {
+										previousNode: connection.node,
+										previousNodeOutput: connection.index,
+										previousNodeRun: runIndex,
+									};
+
+									continue outer;
+								}
+							}
+						}
+					}
+
+					// If we end up here then the node is still missing input data.
+					// Let's move on.
 					allDataFound = false;
 					break;
 				}
@@ -690,6 +726,7 @@ export class WorkflowExecute {
 						if (addEmptyItem) {
 							// Add only node if it does not have any inputs because else it will
 							// be added by its input node later anyway.
+							// so now we add the `Merge` node to the execution stack
 							this.runExecutionData.executionData!.nodeExecutionStack[enqueueFn]({
 								node: workflow.getNode(nodeToAdd) as INode,
 								data: {
@@ -720,6 +757,7 @@ export class WorkflowExecute {
 		// Make sure the array has all the values
 		const connectionDataArray: Array<INodeExecutionData[] | null> = [];
 		for (let i: number = connectionData.index; i >= 0; i--) {
+			// TODO: merge run data in here?
 			connectionDataArray[i] = null;
 		}
 
