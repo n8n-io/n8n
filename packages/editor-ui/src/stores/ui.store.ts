@@ -81,7 +81,7 @@ try {
 	}
 } catch (e) {}
 
-export type UiStore = ReturnType<typeof useUIStore>;
+type UiStore = ReturnType<typeof useUIStore>;
 
 type Draggable = {
 	isDragging: boolean;
@@ -197,14 +197,19 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const pendingNotificationsForViews = ref<{ [key in VIEWS]?: NotificationOptions[] }>({});
 	const isCreateNodeActive = ref<boolean>(false);
 
-	// Computed
+	const settingsStore = useSettingsStore();
+	const workflowsStore = useWorkflowsStore();
+	const rootStore = useRootStore();
+	const telemetryStore = useTelemetryStore();
+	const cloudPlanStore = useCloudPlanStore();
+	const userStore = useUsersStore();
 
 	const appliedTheme = computed(() => {
 		return theme.value === 'system' ? getPreferredTheme() : theme.value;
 	});
 
 	const logo = computed(() => {
-		const { releaseChannel } = useSettingsStore().settings;
+		const { releaseChannel } = settingsStore.settings;
 		const suffix = appliedTheme.value === 'dark' ? '-dark.svg' : '.svg';
 		return `static/logo/${
 			releaseChannel === 'stable' ? 'expanded' : `channel/${releaseChannel}`
@@ -212,7 +217,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	});
 
 	const contextBasedTranslationKeys = computed(() => {
-		const settingsStore = useSettingsStore();
 		const deploymentType = settingsStore.deploymentType;
 
 		let contextKey: '' | '.cloud' | '.desktop' = '';
@@ -273,7 +277,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	});
 
 	const getLastSelectedNode = computed(() => {
-		const workflowsStore = useWorkflowsStore();
 		if (lastSelectedNode.value) {
 			return workflowsStore.getNodeByName(lastSelectedNode.value);
 		}
@@ -356,7 +359,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 			if (deploymentType === 'cloud' && hasPermission(['instanceOwner'])) {
 				const adminPanelHost = new URL(window.location.href).host.split('.').slice(1).join('.');
-				const { code } = await useCloudPlanStore().getAutoLoginCode();
+				const { code } = await cloudPlanStore.getAutoLoginCode();
 				linkUrl = `https://${adminPanelHost}/login`;
 				searchParams.set('code', code);
 				searchParams.set('returnPath', '/account/change-plan');
@@ -489,9 +492,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	};
 
 	const getNextOnboardingPrompt = async () => {
-		const rootStore = useRootStore();
 		const instanceId = rootStore.instanceId;
-		const { currentUser } = useUsersStore();
+		const { currentUser } = userStore;
 		if (currentUser) {
 			return await onboardingApi.fetchNextOnboardingPrompt(instanceId, currentUser);
 		}
@@ -499,9 +501,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	};
 
 	const applyForOnboardingCall = async (email: string) => {
-		const rootStore = useRootStore();
 		const instanceId = rootStore.instanceId;
-		const { currentUser } = useUsersStore();
+		const { currentUser } = userStore;
 		if (currentUser) {
 			return await onboardingApi.applyForOnboardingCall(instanceId, currentUser, email);
 		}
@@ -509,9 +510,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	};
 
 	const submitContactEmail = async (email: string, agree: boolean) => {
-		const rootStore = useRootStore();
 		const instanceId = rootStore.instanceId;
-		const { currentUser } = useUsersStore();
+		const { currentUser } = userStore;
 		if (currentUser) {
 			return await onboardingApi.submitEmailOnSignup(
 				instanceId,
@@ -580,7 +580,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	};
 
 	const getCurlToJson = async (curlCommand: string) => {
-		const rootStore = useRootStore();
 		const parameters = await curlParserApi.getCurlToJson(rootStore.restApiContext, curlCommand);
 
 		// Normalize placeholder values
@@ -598,11 +597,11 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		utm_campaign: UTMCampaign,
 		mode: 'open' | 'redirect' = 'open',
 	) => {
-		const { usageLeft, trialDaysLeft, userIsTrialing } = useCloudPlanStore();
+		const { usageLeft, trialDaysLeft, userIsTrialing } = cloudPlanStore;
 		const { executionsLeft, workflowsLeft } = usageLeft;
-		const deploymentType = useSettingsStore().deploymentType;
+		const deploymentType = settingsStore.deploymentType;
 
-		useTelemetryStore().track('User clicked upgrade CTA', {
+		telemetryStore.track('User clicked upgrade CTA', {
 			source,
 			isTrial: userIsTrialing,
 			deploymentType,
@@ -626,9 +625,9 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const dismissBanner = async (name: BannerName, type: 'temporary' | 'permanent' = 'temporary') => {
 		if (type === 'permanent') {
-			await dismissBannerPermanently(useRootStore().restApiContext, {
+			await dismissBannerPermanently(rootStore.restApiContext, {
 				bannerName: name,
-				dismissedBanners: useSettingsStore().permanentlyDismissedBanners,
+				dismissedBanners: settingsStore.permanentlyDismissedBanners,
 			});
 			removeBannerFromStack(name);
 			return;
