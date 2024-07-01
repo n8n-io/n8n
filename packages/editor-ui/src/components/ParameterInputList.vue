@@ -492,10 +492,6 @@ function onButtonAction(parameter: INodeProperties) {
 	}
 }
 
-function isNodeAuthField(name: string): boolean {
-	return nodeAuthFields.value.find((field) => field.name === name) !== undefined;
-}
-
 function shouldHideAuthRelatedParameter(parameter: INodeProperties): boolean {
 	// TODO: For now, hide all fields that are used in authentication fields displayOptions
 	// Ideally, we should check if any non-auth field depends on it before hiding it but

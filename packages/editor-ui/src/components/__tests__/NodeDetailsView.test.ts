@@ -37,22 +37,8 @@ async function createPiniaWithActiveNode() {
 	await useSettingsStore().getSettings();
 	await useUsersStore().loginWithCookie();
 
-	return pinia;
+	return { pinia, currentWorkflow: workflowsStore.getCurrentWorkflow() };
 }
-
-const renderComponent = createComponentRenderer(NodeDetailsView, {
-	props: {
-		teleported: false,
-		appendToBody: false,
-	},
-	global: {
-		mocks: {
-			$route: {
-				name: VIEWS.WORKFLOW,
-			},
-		},
-	},
-});
 
 describe('NodeDetailsView', () => {
 	let server: ReturnType<typeof setupServer>;
@@ -70,8 +56,25 @@ describe('NodeDetailsView', () => {
 	});
 
 	it('should render correctly', async () => {
+		const { pinia, currentWorkflow } = await createPiniaWithActiveNode();
+
+		const renderComponent = createComponentRenderer(NodeDetailsView, {
+			props: {
+				teleported: false,
+				appendToBody: false,
+				workflowObject: currentWorkflow,
+			},
+			global: {
+				mocks: {
+					$route: {
+						name: VIEWS.WORKFLOW,
+					},
+				},
+			},
+		});
+
 		const wrapper = renderComponent({
-			pinia: await createPiniaWithActiveNode(),
+			pinia,
 		});
 
 		await waitFor(() =>

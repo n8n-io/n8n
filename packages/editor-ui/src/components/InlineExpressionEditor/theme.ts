@@ -1,24 +1,24 @@
 import { EditorView } from '@codemirror/view';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 
-const commonThemeProps = {
+const commonThemeProps = (isReadOnly = false) => ({
 	'&.cm-focused': {
 		outline: '0 !important',
 	},
 	'.cm-content': {
 		fontFamily: 'var(--font-family-monospace)',
 		color: 'var(--input-font-color, var(--color-text-dark))',
-		caretColor: 'var(--color-code-caret)',
+		caretColor: isReadOnly ? 'transparent' : 'var(--color-code-caret)',
 	},
 	'.cm-line': {
 		padding: '0',
 	},
-};
+});
 
-export const inputTheme = ({ rows } = { rows: 5 }) => {
+export const inputTheme = ({ rows, isReadOnly } = { rows: 5, isReadOnly: false }) => {
 	const maxHeight = Math.max(rows * 22 + 8);
 	const theme = EditorView.theme({
-		...commonThemeProps,
+		...commonThemeProps(isReadOnly),
 		'&': {
 			maxHeight: `${maxHeight}px`,
 			minHeight: '30px',
@@ -54,7 +54,7 @@ export const inputTheme = ({ rows } = { rows: 5 }) => {
 
 export const outputTheme = () => {
 	const theme = EditorView.theme({
-		...commonThemeProps,
+		...commonThemeProps(true),
 		'&': {
 			maxHeight: '95px',
 			width: '100%',

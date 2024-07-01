@@ -23,7 +23,6 @@ export class Cockpit implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Cockpit',
 		name: 'cockpit',
-
 		icon: { light: 'file:cockpit.svg', dark: 'file:cockpit.dark.svg' },
 		group: ['output'],
 		version: 1,

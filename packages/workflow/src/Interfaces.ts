@@ -310,7 +310,7 @@ type ICredentialHttpRequestNode = {
 export interface ICredentialType {
 	name: string;
 	displayName: string;
-	icon?: Themed<Icon>;
+	icon?: Icon;
 	iconUrl?: Themed<string>;
 	extends?: string[];
 	properties: INodeProperties[];
@@ -1571,13 +1571,15 @@ export type NodeIconColor =
 	| 'azure'
 	| 'purple'
 	| 'crimson';
-export type Icon = `fa:${string}` | `file:${string}` | `node:${string}`;
 export type Themed<T> = T | { light: T; dark: T };
+export type IconRef = `fa:${string}` | `node:${string}.${string}`;
+export type IconFile = `file:${string}.png` | `file:${string}.svg`;
+export type Icon = IconRef | Themed<IconFile>;
 
 export interface INodeTypeBaseDescription {
 	displayName: string;
 	name: string;
-	icon?: Themed<Icon>;
+	icon?: Icon;
 	iconColor?: NodeIconColor;
 	iconUrl?: Themed<string>;
 	badgeIconUrl?: Themed<string>;
@@ -1766,21 +1768,24 @@ export interface INodeInputConfiguration {
 }
 
 export interface INodeOutputConfiguration {
-	category?: string;
+	category?: 'error';
 	displayName?: string;
+	maxConnections?: number;
 	required?: boolean;
 	type: ConnectionTypes;
 }
+
+export type ExpressionString = `={{${string}}}`;
 
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number | number[];
 	defaults: INodeParameters;
 	eventTriggerDescription?: string;
 	activationMessage?: string;
-	inputs: Array<ConnectionTypes | INodeInputConfiguration> | string;
+	inputs: Array<ConnectionTypes | INodeInputConfiguration> | ExpressionString;
 	requiredInputs?: string | number[] | number; // Ony available with executionOrder => "v1"
 	inputNames?: string[];
-	outputs: Array<ConnectionTypes | INodeInputConfiguration> | string;
+	outputs: Array<ConnectionTypes | INodeOutputConfiguration> | ExpressionString;
 	outputNames?: string[];
 	properties: INodeProperties[];
 	credentials?: INodeCredentialDescription[];

@@ -8,7 +8,6 @@ import { useI18n } from '@/composables/useI18n';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
-import { useUIStore } from '@/stores/ui.store';
 import ParameterInputExpanded from '@/components/ParameterInputExpanded.vue';
 import type {
 	IUpdateInformation,
@@ -31,7 +30,6 @@ const defaultProviderData: Record<string, Partial<ExternalSecretsProviderData>> 
 };
 
 const externalSecretsStore = useExternalSecretsStore();
-const uiStore = useUIStore();
 const toast = useToast();
 const i18n = useI18n();
 const { confirm } = useMessage();
@@ -98,10 +96,6 @@ onMounted(async () => {
 		toast.showError(error, 'Error');
 	}
 });
-
-function close() {
-	uiStore.closeModal(EXTERNAL_SECRETS_PROVIDER_MODAL_KEY);
-}
 
 function onValueChange(updateInformation: IUpdateInformation) {
 	providerData.value = {
