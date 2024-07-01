@@ -299,12 +299,6 @@ export default defineComponent({
 							icon: 'info',
 							label: this.$locale.baseText('mainSidebar.aboutN8n'),
 						},
-						{
-							id: 'debugInfo',
-							icon: 'bug',
-							label: this.$locale.baseText('mainSidebar.debugInfo.buttonLabel'),
-							position: 'bottom',
-						},
 					],
 				},
 			];
