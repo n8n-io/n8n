@@ -156,8 +156,6 @@ function onClickPane(event: MouseEvent) {
 	</VueFlow>
 </template>
 
-<style lang="scss" module></style>
-
 <style lang="scss">
 .vue-flow__controls {
 	display: flex;

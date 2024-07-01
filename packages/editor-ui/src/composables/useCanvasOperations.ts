@@ -170,9 +170,9 @@ export function useCanvasOperations({
 			historyStore.startRecordingUndo();
 		}
 
-		workflowsStore.removeNodeById(id);
 		workflowsStore.removeNodeConnectionsById(id);
 		workflowsStore.removeNodeExecutionDataById(id);
+		workflowsStore.removeNodeById(id);
 
 		if (trackHistory) {
 			historyStore.pushCommandToUndo(new RemoveNodeCommand(node));

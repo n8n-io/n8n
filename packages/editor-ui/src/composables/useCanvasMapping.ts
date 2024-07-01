@@ -5,6 +5,7 @@ import type { Ref } from 'vue';
 import { computed } from 'vue';
 import type {
 	CanvasConnection,
+	CanvasConnectionData,
 	CanvasConnectionPort,
 	CanvasElement,
 	CanvasElementData,
@@ -225,8 +226,6 @@ export function useCanvasMapping({
 				renderType: renderTypeByNodeType.value[node.type] ?? 'default',
 			};
 
-			console.log(data);
-
 			return {
 				id: node.id,
 				label: node.name,
@@ -246,26 +245,63 @@ export function useCanvasMapping({
 		return mappedConnections.map((connection) => {
 			const type = getConnectionType(connection);
 			const label = getConnectionLabel(connection);
+			const data = getConnectionData(connection);
 
 			return {
 				...connection,
+				data,
 				type,
 				label,
 			};
 		});
 	});
 
+	function getConnectionData(connection: CanvasConnection): CanvasConnectionData {
+		const fromNode = workflow.value.nodes.find(
+			(node) => node.name === connection.data?.fromNodeName,
+		);
+
+		let status: CanvasConnectionData['status'];
+		if (fromNode) {
+			if (nodePinnedDataById.value[fromNode.id] && nodeExecutionRunDataById.value[fromNode.id]) {
+				status = 'pinned';
+			} else if (nodeHasIssuesById.value[fromNode.id]) {
+				status = 'error';
+			} else if (nodeExecutionRunDataById.value[fromNode.id]) {
+				status = 'success';
+			}
+		}
+
+		return {
+			...(connection.data as CanvasConnectionData),
+			status,
+		};
+	}
+
 	function getConnectionType(_: CanvasConnection): string {
 		return 'canvas-edge';
 	}
 
 	function getConnectionLabel(connection: CanvasConnection): string {
-		const pinData = workflow.value.pinData?.[connection.data?.fromNodeName ?? ''];
+		const fromNode = workflow.value.nodes.find(
+			(node) => node.name === connection.data?.fromNodeName,
+		);
 
-		if (pinData?.length) {
+		if (!fromNode) {
+			return '';
+		}
+
+		if (nodePinnedDataById.value[fromNode.id]) {
+			const pinnedDataCount = nodePinnedDataById.value[fromNode.id]?.length ?? 0;
 			return i18n.baseText('ndv.output.items', {
-				adjustToNumber: pinData.length,
-				interpolate: { count: String(pinData.length) },
+				adjustToNumber: pinnedDataCount,
+				interpolate: { count: String(pinnedDataCount) },
+			});
+		} else if (nodeExecutionRunDataById.value[fromNode.id]) {
+			const runDataCount = nodeExecutionRunDataById.value[fromNode.id]?.length ?? 0;
+			return i18n.baseText('ndv.output.items', {
+				adjustToNumber: runDataCount,
+				interpolate: { count: String(runDataCount) },
 			});
 		}
 

@@ -62,6 +62,7 @@ export interface CanvasConnectionData {
 	source: CanvasConnectionPort;
 	target: CanvasConnectionPort;
 	fromNodeName?: string;
+	status?: 'success' | 'error' | 'pinned';
 }
 
 export type CanvasConnection = DefaultEdge<CanvasConnectionData>;

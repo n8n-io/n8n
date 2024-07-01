@@ -9,8 +9,17 @@ import { useCanvasNode } from '@/composables/useCanvasNode';
 const $style = useCssModule();
 const i18n = useI18n();
 
-const { label, inputs, outputs, connections, isDisabled, isSelected, hasPinnedData, hasIssues } =
-	useCanvasNode();
+const {
+	label,
+	inputs,
+	outputs,
+	connections,
+	isDisabled,
+	isSelected,
+	hasPinnedData,
+	hasRunData,
+	hasIssues,
+} = useCanvasNode();
 const { mainOutputs } = useNodeConnections({
 	inputs,
 	outputs,
@@ -22,6 +31,7 @@ const classes = computed(() => {
 		[$style.node]: true,
 		[$style.selected]: isSelected.value,
 		[$style.disabled]: isDisabled.value,
+		[$style.success]: hasRunData.value,
 		[$style.error]: hasIssues.value,
 		[$style.pinned]: hasPinnedData.value,
 	};
@@ -69,12 +79,16 @@ const styles = computed(() => {
 		box-shadow: 0 0 0 4px var(--color-canvas-selected);
 	}
 
-	&.pinned {
-		border-color: var(--color-canvas-node-pinned-border-color, var(--color-node-pinned-border));
+	&.success {
+		border-color: var(--color-canvas-node-success-border-color, var(--color-success));
 	}
 
 	&.error {
 		border-color: var(--color-canvas-node-error-border-color, var(--color-danger));
+	}
+
+	&.pinned {
+		border-color: var(--color-canvas-node-pinned-border-color, var(--color-node-pinned-border));
 	}
 
 	&.disabled {

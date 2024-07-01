@@ -24,13 +24,13 @@ export function useCanvasNode() {
 
 	const label = computed(() => node?.label.value ?? '');
 
-	const inputs = computed(() => data.value.inputs ?? []);
-	const outputs = computed(() => data.value.outputs ?? []);
-	const connections = computed(() => data.value.connections ?? { input: {}, output: {} });
+	const inputs = computed(() => data.value.inputs);
+	const outputs = computed(() => data.value.outputs);
+	const connections = computed(() => data.value.connections);
 
-	const isDisabled = computed(() => data.value.disabled ?? false);
+	const isDisabled = computed(() => data.value.disabled);
 
-	const isSelected = computed(() => node?.selected.value ?? false);
+	const isSelected = computed(() => node?.selected.value);
 
 	const pinnedDataCount = computed(() => data.value.pinnedData.count);
 	const hasPinnedData = computed(() => data.value.pinnedData.count > 0);

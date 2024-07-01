@@ -10,8 +10,17 @@ import { useCanvasNode } from '@/composables/useCanvasNode';
 const $style = useCssModule();
 const i18n = useI18n();
 
-const { label, inputs, outputs, connections, isDisabled, isSelected, hasPinnedData, hasIssues } =
-	useCanvasNode();
+const {
+	label,
+	inputs,
+	outputs,
+	connections,
+	isDisabled,
+	isSelected,
+	hasPinnedData,
+	hasRunData,
+	hasIssues,
+} = useCanvasNode();
 const { nonMainInputs, requiredNonMainInputs } = useNodeConnections({
 	inputs,
 	outputs,
@@ -23,6 +32,7 @@ const classes = computed(() => {
 		[$style.node]: true,
 		[$style.selected]: isSelected.value,
 		[$style.disabled]: isDisabled.value,
+		[$style.success]: hasRunData.value,
 		[$style.error]: hasIssues.value,
 		[$style.pinned]: hasPinnedData.value,
 	};
@@ -88,12 +98,16 @@ const styles = computed(() => {
 	 * The reverse order defines the priority in case multiple states are active
 	 */
 
-	&.pinned {
-		border-color: var(--color-canvas-node-pinned-border, var(--color-node-pinned-border));
-	}
-
 	&.error {
 		border-color: var(--color-canvas-node-error-border-color, var(--color-danger));
+	}
+
+	&.success {
+		border-color: var(--color-canvas-node-success-border-color, var(--color-success));
+	}
+
+	&.pinned {
+		border-color: var(--color-canvas-node-pinned-border, var(--color-node-pinned-border));
 	}
 
 	&.disabled {
