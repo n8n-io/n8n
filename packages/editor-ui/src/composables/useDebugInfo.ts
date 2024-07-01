@@ -9,6 +9,7 @@ type DebugInfo = {
 		database: 'sqlite' | 'mysql' | 'mariadb' | 'postgres';
 		executionMode: 'regular' | 'scaling';
 		license: 'community' | 'enterprise (production)' | 'enterprise (sandbox)';
+		consumerId: string;
 		concurrency: number;
 	};
 	storage: {
@@ -63,6 +64,7 @@ export function useDebugInfo() {
 					: store.settings.license.environment === 'production'
 						? 'enterprise (production)'
 						: 'enterprise (sandbox)',
+			consumerId: store.consumerId,
 		} as const;
 	};
 

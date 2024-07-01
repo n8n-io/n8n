@@ -2661,6 +2661,7 @@ export interface IN8nUISettings {
 	hideUsagePage: boolean;
 	license: {
 		planName?: string;
+		consumerId: string;
 		environment: 'development' | 'production' | 'staging';
 	};
 	variables: {

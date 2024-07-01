@@ -47,7 +47,7 @@ export const defaultSettings: IN8nUISettings = {
 	hiringBannerEnabled: false,
 	instanceId: '',
 	isNpmAvailable: false,
-	license: { environment: 'development' },
+	license: { environment: 'development', consumerId: 'unknown' },
 	logLevel: 'info',
 	maxExecutionTimeout: 0,
 	oauthCallbackUrls: { oauth1: '', oauth2: '' },

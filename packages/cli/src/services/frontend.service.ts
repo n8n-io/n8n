@@ -202,6 +202,7 @@ export class FrontendService {
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
 			license: {
+				consumerId: 'unknown',
 				environment: config.getEnv('license.tenantId') === 1 ? 'production' : 'staging',
 			},
 			variables: {
@@ -284,6 +285,7 @@ export class FrontendService {
 		const isS3Licensed = this.license.isBinaryDataS3Licensed();
 
 		this.settings.license.planName = this.license.getPlanName();
+		this.settings.license.consumerId = this.license.getConsumerId();
 
 		// refresh enterprise status
 		Object.assign(this.settings.enterprise, {

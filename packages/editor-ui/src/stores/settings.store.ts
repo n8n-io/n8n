@@ -80,6 +80,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		planName(): string {
 			return this.settings.license.planName ?? 'Community';
 		},
+		consumerId(): string {
+			return this.settings.license.consumerId;
+		},
 		binaryDataMode(): 'default' | 'filesystem' | 's3' {
 			return this.settings.binaryDataMode;
 		},
