@@ -44,7 +44,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import Draggable from './Draggable.vue';
-import { XYPosition } from '@/Interface';
+import type { XYPosition } from '@/Interface';
 
 export default defineComponent({
 	components: {
