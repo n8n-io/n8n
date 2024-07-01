@@ -16,7 +16,7 @@ type DebugInfo = {
 		error: WorkflowSettings.SaveDataExecution;
 		progress: boolean;
 		manual: boolean;
-		binary: 'memory' | 'filesystem' | 's3';
+		binaryMode: 'memory' | 'filesystem' | 's3';
 	};
 	pruning:
 		| {
@@ -72,7 +72,7 @@ export function useDebugInfo() {
 			error: store.saveDataErrorExecution,
 			progress: store.saveDataProgressExecution,
 			manual: store.saveManualExecutions,
-			binary: store.binaryDataMode === 'default' ? 'memory' : store.binaryDataMode,
+			binaryMode: store.binaryDataMode === 'default' ? 'memory' : store.binaryDataMode,
 		};
 	};
 
