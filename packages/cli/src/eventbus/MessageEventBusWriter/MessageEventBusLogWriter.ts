@@ -222,6 +222,7 @@ export class MessageEventBusLogWriter {
 									case 'n8n.workflow.success':
 									case 'n8n.workflow.failed':
 									case 'n8n.workflow.crashed':
+									case 'n8n.execution.throttled':
 										delete results.unfinishedExecutions[executionId];
 										break;
 									case 'n8n.node.started':
