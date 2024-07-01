@@ -1188,7 +1188,7 @@ importers:
         version: 10.5.0(vue@3.4.21(typescript@5.5.2))
       axios:
         specifier: 1.6.7
-        version: 1.6.7(debug@3.2.7)
+        version: 1.6.7
       chart.js:
         specifier: ^4.4.0
         version: 4.4.0
@@ -1283,9 +1283,6 @@ importers:
       '@faker-js/faker':
         specifier: ^8.0.2
         version: 8.0.2
-      '@iconify-json/fa6-solid':
-        specifier: ^1.1.21
-        version: 1.1.21
       '@pinia/testing':
         specifier: ^0.1.3
         version: 0.1.3(pinia@2.1.6(typescript@5.5.2)(vue@3.4.21(typescript@5.5.2)))(vue@3.4.21(typescript@5.5.2))
@@ -3364,9 +3361,6 @@ packages:
   '@icetee/ftp@0.3.15':
     resolution: {integrity: sha512-RxSa9VjcDWgWCYsaLdZItdCnJj7p4LxggaEk+Y3MP0dHKoxez8ioG07DVekVbZZqccsrL+oPB/N9AzVPxj4blg==}
     engines: {node: '>=0.8.0'}
-
-  '@iconify-json/fa6-solid@1.1.21':
-    resolution: {integrity: sha512-+C6F3dFjNdqj8S83ggIXZFsX2CwecFErJKk9dVEZNd0XpNx2iNCNS+K/fl1HLFhYRhS4lb2Rgfi8yVV4MQU7yA==}
 
   '@iconify-json/mdi@1.1.63':
     resolution: {integrity: sha512-b07dRM5LYdwJqd/lm+1+JDNDNSWHvpZ7ujb73oJxx3lmK1J0giDS0BSc4yia0hixNV0Z2q/4GyxAu/A8XqDnbg==}
@@ -16402,10 +16396,6 @@ snapshots:
       readable-stream: 1.1.14
       xregexp: 2.0.0
 
-  '@iconify-json/fa6-solid@1.1.21':
-    dependencies:
-      '@iconify/types': 2.0.0
-
   '@iconify-json/mdi@1.1.63':
     dependencies:
       '@iconify/types': 2.0.0
@@ -16417,7 +16407,7 @@ snapshots:
       '@antfu/install-pkg': 0.1.1
       '@antfu/utils': 0.7.6
       '@iconify/types': 2.0.0
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
       kolorist: 1.8.0
       local-pkg: 0.4.3
     transitivePeerDependencies:
@@ -20212,7 +20202,7 @@ snapshots:
 
   agent-base@6.0.2:
     dependencies:
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
     transitivePeerDependencies:
       - supports-color
 
@@ -20508,6 +20498,14 @@ snapshots:
     dependencies:
       '@babel/runtime': 7.23.6
       is-retry-allowed: 2.2.0
+
+  axios@1.6.7:
+    dependencies:
+      follow-redirects: 1.15.6
+      form-data: 4.0.0
+      proxy-from-env: 1.1.0
+    transitivePeerDependencies:
+      - debug
 
   axios@1.6.7(debug@3.2.7):
     dependencies:
@@ -21610,6 +21608,10 @@ snapshots:
       ms: 2.1.3
     optionalDependencies:
       supports-color: 8.1.1
+
+  debug@4.3.4:
+    dependencies:
+      ms: 2.1.2
 
   debug@4.3.4(supports-color@8.1.1):
     dependencies:
@@ -22787,6 +22789,8 @@ snapshots:
 
   fn.name@1.1.0: {}
 
+  follow-redirects@1.15.6: {}
+
   follow-redirects@1.15.6(debug@3.2.7):
     optionalDependencies:
       debug: 3.2.7(supports-color@8.1.1)
@@ -23411,7 +23415,7 @@ snapshots:
   https-proxy-agent@5.0.1:
     dependencies:
       agent-base: 6.0.2
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
     transitivePeerDependencies:
       - supports-color
 
@@ -28282,7 +28286,7 @@ snapshots:
       '@antfu/install-pkg': 0.1.1
       '@antfu/utils': 0.7.6
       '@iconify/utils': 2.1.11
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
       kolorist: 1.8.0
       local-pkg: 0.5.0
       unplugin: 1.5.1
