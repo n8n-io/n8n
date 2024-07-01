@@ -63,7 +63,7 @@ if (!globalThis.crypto?.getRandomValues) {
 Please upgrade to the latest version of Node.js ${major(nodeVersion)}.`),
 	);
 	const { webcrypto } = require('node:crypto');
-	globalThis.crypto = { ...webcrypto };
+	globalThis.crypto = webcrypto;
 }
 
 (async () => {
