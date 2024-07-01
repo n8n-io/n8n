@@ -153,7 +153,12 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { getAppNameFromNodeName, getMainAuthField, hasOnlyListMode } from '@/utils/nodeTypesUtils';
+import {
+	getAppNameFromNodeName,
+	getMainAuthField,
+	getNodeCredentialForSelectedAuthType,
+	hasOnlyListMode,
+} from '@/utils/nodeTypesUtils';
 import { isResourceLocatorValue } from '@/utils/typeGuards';
 import stringify from 'fast-json-stable-stringify';
 import type { EventBus } from 'n8n-design-system/utils';
@@ -175,6 +180,7 @@ import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
 import { useDebounce } from '@/composables/useDebounce';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRouter } from 'vue-router';
+import { ndvEventBus } from '@/event-bus';
 
 interface IResourceLocatorQuery {
 	results: INodeListSearchItems[];
@@ -566,12 +572,18 @@ export default defineComponent({
 			if (!nodeType) {
 				return;
 			}
+
+			const defaultCredentialType = nodeType.credentials?.[0].name ?? '';
 			const mainAuthType = getMainAuthField(nodeType);
-			const showAuthSelector =
+			const showAuthOptions =
 				mainAuthType !== null &&
 				Array.isArray(mainAuthType.options) &&
 				mainAuthType.options?.length > 0;
-			this.uiStore.openNewCredential('', showAuthSelector);
+
+			ndvEventBus.emit('credential.createNew', {
+				type: defaultCredentialType,
+				showAuthOptions,
+			});
 		},
 		findModeByName(name: string): INodePropertyMode | null {
 			if (this.parameter.modes) {
