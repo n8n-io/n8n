@@ -1,3 +1,12 @@
+## [1.48.2](https://github.com/n8n-io/n8n/compare/n8n@1.48.1...n8n@1.48.2) (2024-07-01)
+
+
+### Bug Fixes
+
+* **core:** Add a WebCrypto Polyfill for older versions of Node.js 18 ([#9894](https://github.com/n8n-io/n8n/issues/9894)) ([fba56d4](https://github.com/n8n-io/n8n/commit/fba56d44eaeaf9565bb7f8425dd801639a3a53f7))
+
+
+
 ## [1.48.1](https://github.com/n8n-io/n8n/compare/n8n@1.48.0...n8n@1.48.1) (2024-06-27)
 
 

@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.48.1",
+  "version": "1.48.2",
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
