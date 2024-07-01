@@ -153,12 +153,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import {
-	getAppNameFromNodeName,
-	getMainAuthField,
-	getNodeCredentialForSelectedAuthType,
-	hasOnlyListMode,
-} from '@/utils/nodeTypesUtils';
+import { getAppNameFromNodeName, getMainAuthField, hasOnlyListMode } from '@/utils/nodeTypesUtils';
 import { isResourceLocatorValue } from '@/utils/typeGuards';
 import stringify from 'fast-json-stable-stringify';
 import type { EventBus } from 'n8n-design-system/utils';
