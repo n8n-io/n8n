@@ -278,8 +278,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 				useRootStore().setVersionCli(settings.versionCli);
 			}
 
-			console.log('this.settings', this.settings);
-
 			if (
 				settings.authCookie.secure &&
 				location.protocol === 'http:' &&
