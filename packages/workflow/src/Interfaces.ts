@@ -2557,6 +2557,8 @@ export type ExpressionEvaluatorType = 'tmpl' | 'tournament';
 export type N8nAIProviderType = 'openai' | 'unknown';
 
 export interface IN8nUISettings {
+	isDocker: boolean;
+	databaseType: 'sqlite' | 'mariadb' | 'mysqldb' | 'postgresdb';
 	endpointForm: string;
 	endpointFormTest: string;
 	endpointFormWaiting: string;
@@ -2565,6 +2567,7 @@ export interface IN8nUISettings {
 	saveDataErrorExecution: WorkflowSettings.SaveDataExecution;
 	saveDataSuccessExecution: WorkflowSettings.SaveDataExecution;
 	saveManualExecutions: boolean;
+	saveExecutionProgress: boolean;
 	executionTimeout: number;
 	maxExecutionTimeout: number;
 	workflowCallerPolicyDefaultOption: WorkflowSettings.CallerPolicy;
@@ -2579,7 +2582,7 @@ export interface IN8nUISettings {
 	authCookie: {
 		secure: boolean;
 	};
-	binaryDataMode: string;
+	binaryDataMode: 'default' | 'filesystem' | 's3';
 	releaseChannel: 'stable' | 'beta' | 'nightly' | 'dev';
 	n8nMetadata?: {
 		userId?: string;
@@ -2655,6 +2658,7 @@ export interface IN8nUISettings {
 	};
 	hideUsagePage: boolean;
 	license: {
+		planName?: string;
 		environment: 'development' | 'production' | 'staging';
 	};
 	variables: {
@@ -2679,6 +2683,15 @@ export interface IN8nUISettings {
 	workflowHistory: {
 		pruneTime: number;
 		licensePruneTime: number;
+	};
+	pruning: {
+		isEnabled: boolean;
+		maxAge: number;
+		maxCount: number;
+	};
+	security?: {
+		protocol: 'http' | 'https';
+		blockFileAccessToN8nFiles: boolean;
 	};
 }
 

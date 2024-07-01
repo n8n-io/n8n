@@ -128,6 +128,9 @@ import { useDebounce } from '@/composables/useDebounce';
 import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
 import ProjectNavigation from '@/components/Projects/ProjectNavigation.vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useClipboard } from '@/composables/useClipboard';
+import { useToast } from '@/composables/useToast';
+import { useDebugInfo } from '@/composables/useDebugInfo';
 
 export default defineComponent({
 	name: 'MainSidebar',
@@ -295,6 +298,11 @@ export default defineComponent({
 							id: 'about',
 							icon: 'info',
 							label: this.$locale.baseText('mainSidebar.aboutN8n'),
+						},
+						{
+							id: 'debugInfo',
+							icon: 'bug',
+							label: this.$locale.baseText('mainSidebar.debugInfo.buttonLabel'),
 							position: 'bottom',
 						},
 					],
@@ -387,6 +395,16 @@ export default defineComponent({
 				}
 				case 'cloud-admin': {
 					void this.cloudPlanStore.redirectToDashboard();
+					break;
+				}
+				case 'debugInfo': {
+					useToast().showToast({
+						title: this.$locale.baseText('mainSidebar.debugInfo.toast.title'),
+						message: this.$locale.baseText('mainSidebar.debugInfo.toast.message'),
+						type: 'info',
+						duration: 5000,
+					});
+					await useClipboard().copy(useDebugInfo().generateDebugInfo());
 					break;
 				}
 				case 'quickstart':
