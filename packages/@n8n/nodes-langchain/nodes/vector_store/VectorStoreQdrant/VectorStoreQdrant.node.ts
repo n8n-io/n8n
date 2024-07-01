@@ -28,6 +28,31 @@ const insertFields: INodeProperties[] = [
 	},
 ];
 
+const retrieveFields: INodeProperties[] = [
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [
+			{
+				displayName: 'Search Filter',
+				name: 'searchFilter',
+				type: 'json',
+				typeOptions: {
+					rows: 5,
+				},
+				default:
+					'{\n  "should": [\n    {\n      "key": "metadata.batch",\n      "match": {\n        "value": 12345\n      }\n    }\n  ]\n}',
+				validateType: 'object',
+				description:
+					'Filter pageContent or metadata using this <a href="https://qdrant.tech/documentation/concepts/filtering/" target="_blank">filtering syntax</a>',
+			},
+		],
+	},
+];
+
 export const VectorStoreQdrant = createVectorStoreNode({
 	meta: {
 		displayName: 'Qdrant Vector Store',
@@ -44,8 +69,10 @@ export const VectorStoreQdrant = createVectorStoreNode({
 		],
 	},
 	methods: { listSearch: { qdrantCollectionsSearch } },
+	loadFields: retrieveFields,
 	insertFields,
 	sharedFields,
+	retrieveFields,
 	async getVectorStoreClient(context, _, embeddings, itemIndex) {
 		const collection = context.getNodeParameter('qdrantCollection', itemIndex, '', {
 			extractValue: true,

@@ -1,5 +1,10 @@
 import { NodeOperationError, NodeConnectionType } from 'n8n-workflow';
-import type { ConnectionTypes, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import type {
+	ConnectionTypes,
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+} from 'n8n-workflow';
 
 import { Tool } from '@langchain/core/tools';
 import type { BaseMessage } from '@langchain/core/messages';
@@ -439,12 +444,21 @@ export function logWrapper(
 							[{ json: { query, k, filter } }],
 						]);
 
+						let searchFilter;
+						try {
+							searchFilter = executeFunctions.getNodeParameter('options.searchFilter', index, '', {
+								ensureType: 'object',
+							}) as IDataObject;
+						} catch (error) {
+							searchFilter = filter;
+						}
+
 						const response = (await callMethodAsync.call(target, {
 							executeFunctions,
 							connectionType,
 							currentNodeRunIndex: index,
 							method: target[prop],
-							arguments: [query, k, filter, _callbacks],
+							arguments: [query, k, searchFilter, _callbacks],
 						})) as Array<Document<Record<string, any>>>;
 
 						void logAiEvent(executeFunctions, 'n8n.ai.vector.store.searched', { query });
