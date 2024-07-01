@@ -4,7 +4,6 @@ import type {
 	ExecutionStatus,
 	INodeConnections,
 	INodeTypeDescription,
-	IPinData,
 } from 'n8n-workflow';
 import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 import type { DefaultEdge, Node, NodeProps, Position } from '@vue-flow/core';
@@ -38,10 +37,22 @@ export interface CanvasElementData {
 		input: INodeConnections;
 		output: INodeConnections;
 	};
-	issues: string[];
-	hasIssues: boolean;
-	pinnedData?: IPinData[string];
-	executionStatus?: ExecutionStatus;
+	issues: {
+		items: string[];
+		visible: boolean;
+	};
+	pinnedData: {
+		count: number;
+		visible: boolean;
+	};
+	execution: {
+		status?: ExecutionStatus;
+		waiting?: string;
+	};
+	runData: {
+		count: number;
+		visible: boolean;
+	};
 	renderType: 'default' | 'trigger' | 'configuration' | 'configurable';
 }
 

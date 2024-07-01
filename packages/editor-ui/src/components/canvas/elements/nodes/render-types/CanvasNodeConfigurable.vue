@@ -1,34 +1,27 @@
 <script lang="ts" setup>
-import { computed, inject, useCssModule } from 'vue';
-import { CanvasNodeKey, NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS } from '@/constants';
+import { computed, useCssModule } from 'vue';
+import { NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS } from '@/constants';
 import { useNodeConnections } from '@/composables/useNodeConnections';
 import { useI18n } from '@/composables/useI18n';
 import CanvasNodeDisabledStrikeThrough from './parts/CanvasNodeDisabledStrikeThrough.vue';
-
-const node = inject(CanvasNodeKey);
+import CanvasNodeStatusIcons from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeStatusIcons.vue';
+import { useCanvasNode } from '@/composables/useCanvasNode';
 
 const $style = useCssModule();
 const i18n = useI18n();
 
-const label = computed(() => node?.label.value ?? '');
-
-const inputs = computed(() => node?.data.value.inputs ?? []);
-const outputs = computed(() => node?.data.value.outputs ?? []);
-const connections = computed(() => node?.data.value.connections ?? { input: {}, output: {} });
+const { label, inputs, outputs, connections, isDisabled, isSelected, hasPinnedData, hasIssues } =
+	useCanvasNode();
 const { nonMainInputs, requiredNonMainInputs } = useNodeConnections({
 	inputs,
 	outputs,
 	connections,
 });
 
-const isDisabled = computed(() => node?.data.value.disabled ?? false);
-const hasPinnedData = computed(() => !!node?.data.value.pinnedData);
-const hasIssues = computed(() => node?.data.value.hasIssues);
-
 const classes = computed(() => {
 	return {
 		[$style.node]: true,
-		[$style.selected]: node?.selected.value,
+		[$style.selected]: isSelected.value,
 		[$style.disabled]: isDisabled.value,
 		[$style.error]: hasIssues.value,
 		[$style.pinned]: hasPinnedData.value,
@@ -58,9 +51,10 @@ const styles = computed(() => {
 <template>
 	<div :class="classes" :style="styles" data-test-id="canvas-node-configurable">
 		<slot />
+		<CanvasNodeStatusIcons :class="$style.statusIcons" />
 		<CanvasNodeDisabledStrikeThrough v-if="isDisabled" />
 		<div :class="$style.label">
-			{{ label }} {{ hasIssues }}
+			{{ label }}
 			<div v-if="isDisabled">({{ i18n.baseText('node.disabled') }})</div>
 		</div>
 	</div>
@@ -116,5 +110,11 @@ const styles = computed(() => {
 		var(--node-width) - var(--configurable-node-icon-offset) - var(--configurable-node-icon-size) -
 			2 * var(--spacing-s)
 	);
+}
+
+.statusIcons {
+	position: absolute;
+	top: calc(var(--canvas-node--height) - 24px);
+	right: var(--spacing-xs);
 }
 </style>

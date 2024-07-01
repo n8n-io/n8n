@@ -13,10 +13,17 @@ import {
 	mapLegacyConnectionsToCanvasConnections,
 	mapLegacyEndpointsToCanvasConnectionPort,
 } from '@/utils/canvasUtilsV2';
-import type { ExecutionStatus, INodeExecutionData, Workflow } from 'n8n-workflow';
+import type {
+	ExecutionStatus,
+	ExecutionSummary,
+	INodeExecutionData,
+	ITaskData,
+	Workflow,
+} from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
 import xss from 'xss';
+import { WAIT_TIME_UNLIMITED } from '@/constants';
 
 export function useCanvasMapping({
 	workflow,
@@ -25,7 +32,7 @@ export function useCanvasMapping({
 	workflow: Ref<IWorkflowDb>;
 	workflowObject: Ref<Workflow>;
 }) {
-	const locale = useI18n();
+	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 
@@ -105,6 +112,13 @@ export function useCanvasMapping({
 		}, {}),
 	);
 
+	const nodeExecutionRunDataById = computed(() =>
+		workflow.value.nodes.reduce<Record<string, ITaskData[] | null>>((acc, node) => {
+			acc[node.id] = workflowsStore.getWorkflowResultDataByNodeName(node.name);
+			return acc;
+		}, {}),
+	);
+
 	const nodeIssuesById = computed(() =>
 		workflow.value.nodes.reduce<Record<string, string[]>>((acc, node) => {
 			const issues: string[] = [];
@@ -137,10 +151,39 @@ export function useCanvasMapping({
 				acc[node.id] = true;
 			} else if (nodePinnedDataById.value[node.id]) {
 				acc[node.id] = false;
-			} else if (node?.issues !== undefined && Object.keys(node.issues).length) {
-				acc[node.id] = true;
 			} else {
-				acc[node.id] = false;
+				acc[node.id] = Object.keys(node?.issues ?? {}).length > 0;
+			}
+
+			return acc;
+		}, {}),
+	);
+
+	const nodeExecutionWaitingById = computed(() =>
+		workflow.value.nodes.reduce<Record<string, string | undefined>>((acc, node) => {
+			const isExecutionSummary = (execution: object): execution is ExecutionSummary =>
+				'waitTill' in execution;
+
+			const workflowExecution = workflowsStore.getWorkflowExecution;
+			const lastNodeExecuted = workflowExecution?.data?.resultData?.lastNodeExecuted;
+
+			if (workflowExecution && lastNodeExecuted && isExecutionSummary(workflowExecution)) {
+				if (node.name === workflowExecution.data?.resultData?.lastNodeExecuted) {
+					const waitDate = new Date(workflowExecution.waitTill as Date);
+
+					if (waitDate.toISOString() === WAIT_TIME_UNLIMITED) {
+						acc[node.id] = i18n.baseText(
+							'node.theNodeIsWaitingIndefinitelyForAnIncomingWebhookCall',
+						);
+					}
+
+					acc[node.id] = i18n.baseText('node.nodeIsWaitingTill', {
+						interpolate: {
+							date: waitDate.toLocaleDateString(),
+							time: waitDate.toLocaleTimeString(),
+						},
+					});
+				}
 			}
 
 			return acc;
@@ -163,10 +206,22 @@ export function useCanvasMapping({
 					input: inputConnections,
 					output: outputConnections,
 				},
-				issues: nodeIssuesById.value[node.id],
-				hasIssues: nodeHasIssuesById.value[node.id],
-				pinnedData: nodePinnedDataById.value[node.id],
-				executionStatus: nodeExecutionStatusById.value[node.id],
+				issues: {
+					items: nodeIssuesById.value[node.id],
+					visible: nodeHasIssuesById.value[node.id],
+				},
+				pinnedData: {
+					count: nodePinnedDataById.value[node.id]?.length ?? 0,
+					visible: !!nodePinnedDataById.value[node.id],
+				},
+				execution: {
+					status: nodeExecutionStatusById.value[node.id],
+					waiting: nodeExecutionWaitingById.value[node.id],
+				},
+				runData: {
+					count: nodeExecutionRunDataById.value[node.id]?.length ?? 0,
+					visible: !!nodeExecutionRunDataById.value[node.id],
+				},
 				renderType: renderTypeByNodeType.value[node.type] ?? 'default',
 			};
 
@@ -208,7 +263,7 @@ export function useCanvasMapping({
 		const pinData = workflow.value.pinData?.[connection.data?.fromNodeName ?? ''];
 
 		if (pinData?.length) {
-			return locale.baseText('ndv.output.items', {
+			return i18n.baseText('ndv.output.items', {
 				adjustToNumber: pinData.length,
 				interpolate: { count: String(pinData.length) },
 			});
