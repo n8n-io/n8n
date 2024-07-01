@@ -444,22 +444,33 @@ export function logWrapper(
 							[{ json: { query, k, filter } }],
 						]);
 
-						let searchFilter;
-						try {
-							searchFilter = executeFunctions.getNodeParameter('options.searchFilter', index, '', {
+						let f;
+						const { searchFilter } = executeFunctions.getNodeParameter(
+							'options',
+							index,
+							'',
+							{},
+						) as IDataObject;
+
+						if (searchFilter) {
+							f = executeFunctions.getNodeParameter('options.searchFilter', index, '', {
 								ensureType: 'object',
-							}) as IDataObject;
-						} catch (error) {
-							searchFilter = filter;
+							});
+						} else {
+							f = filter;
 						}
 
-						const response = (await callMethodAsync.call(target, {
+						const parameters = {
 							executeFunctions,
 							connectionType,
 							currentNodeRunIndex: index,
 							method: target[prop],
-							arguments: [query, k, searchFilter, _callbacks],
-						})) as Array<Document<Record<string, any>>>;
+							arguments: [query, k, f, _callbacks],
+						};
+
+						const response = (await callMethodAsync.call(target, parameters)) as Array<
+							Document<Record<string, any>>
+						>;
 
 						void logAiEvent(executeFunctions, 'n8n.ai.vector.store.searched', { query });
 						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
