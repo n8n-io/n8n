@@ -1,9 +1,9 @@
 <script lang="ts" setup>
-import { ref, watch, computed } from 'vue';
+import { ref, watch } from 'vue';
 import Message from '@n8n/chat/components/Message.vue';
 import type { ChatMessage } from '@n8n/chat/types';
 import MessageTyping from '@n8n/chat/components/MessageTyping.vue';
-import { useChat, useOptions } from '@n8n/chat/composables';
+import { useChat } from '@n8n/chat/composables';
 
 defineProps<{
 	messages: ChatMessage[];
@@ -14,9 +14,9 @@ defineSlots<{
 }>();
 
 const chatStore = useChat();
-const { options } = useOptions();
 const messageComponents = ref<Array<InstanceType<typeof Message>>>([]);
 const { initialMessages, waitingForResponse } = chatStore;
+
 watch(
 	() => messageComponents.value.length,
 	() => {
@@ -24,9 +24,6 @@ watch(
 		if (lastMessageComponent) {
 			lastMessageComponent.scrollToView();
 		}
-		// if (messageComponent.value) {
-		// 	// messageComponent.value.scrollToBottom();
-		// }
 	},
 );
 </script>
