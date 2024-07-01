@@ -38,6 +38,14 @@ const edgeStyle = computed(() => ({
 	stroke: statusColor.value,
 }));
 
+const edgeLabel = computed(() => {
+	if (isFocused.value) {
+		return '';
+	}
+
+	return props.label;
+});
+
 const edgeLabelStyle = computed(() => ({
 	fill: statusColor.value,
 	transform: 'translateY(calc(var(--spacing-xs) * -1))',
@@ -87,7 +95,7 @@ function onDelete() {
 		:style="edgeStyle"
 		:path="path[0]"
 		:marker-end="markerEnd"
-		:label="isFocused ? '' : label"
+		:label="edgeLabel"
 		:label-x="path[1]"
 		:label-y="path[2]"
 		:label-style="edgeLabelStyle"
