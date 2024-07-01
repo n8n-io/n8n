@@ -59,7 +59,7 @@ const scrollToView = () => {
 	if (messageContainer.value?.scrollIntoView) {
 		messageContainer.value.scrollIntoView({
 			behavior: 'smooth',
-			block: 'start',
+			block: 'end',
 		});
 	}
 };

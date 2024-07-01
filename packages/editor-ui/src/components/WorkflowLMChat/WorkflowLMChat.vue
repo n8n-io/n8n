@@ -49,7 +49,7 @@
 						/>
 					</template>
 				</MessagesList>
-				<div v-if="node && messages.length" :class="$style.logsWrapper" data-test-id="lm-chat-logs">
+				<div v-if="node" :class="$style.logsWrapper" data-test-id="lm-chat-logs">
 					<n8n-text :class="$style.logsTitle" tag="p" size="large">{{
 						locale.baseText('chat.window.logs')
 					}}</n8n-text>
@@ -319,7 +319,7 @@ async function convertFileToBinaryData(file: File): Promise<IBinaryData> {
 	return await new Promise((resolve, reject) => {
 		reader.onload = () => {
 			const binaryData: IBinaryData = {
-				data: (reader.result as string).split('base64')?.[1] ?? '',
+				data: (reader.result as string).split('base64,')?.[1] ?? '',
 				mimeType: file.type,
 				fileName: file.name,
 				fileSize: `${file.size} bytes`,
@@ -470,7 +470,7 @@ function extractResponseMessage(responseData?: IDataObject) {
 }
 
 async function sendMessage(message: string, files?: File[]) {
-	if (message.trim() === '') {
+	if (message.trim() === '' && (!files || files.length === 0)) {
 		showError(
 			new Error(locale.baseText('chat.window.chat.provideMessage')),
 			locale.baseText('chat.window.chat.emptyChatMessage'),
@@ -586,9 +586,16 @@ onMounted(() => {
 	setConnectedNode();
 	messages.value = getChatMessages();
 	setNode();
+
+	setTimeout(() => chatEventBus.emit('focusInput'), 0);
 });
 </script>
 
+<style lang="scss">
+.chat-message-markdown ul {
+	padding: 0 0 0 1em;
+}
+</style>
 <style module lang="scss">
 .no-node-connected {
 	width: 100%;
@@ -607,7 +614,7 @@ onMounted(() => {
 	z-index: 9999;
 
 	& ::-webkit-scrollbar {
-		width: 6px;
+		width: 4px;
 	}
 
 	& ::-webkit-scrollbar-thumb {
@@ -626,7 +633,7 @@ onMounted(() => {
 	border: 1px solid var(--color-foreground-base);
 	border-radius: var(--border-radius-base);
 	height: 100%;
-	overflow-y: auto;
+	overflow: auto;
 	width: 100%;
 	padding: var(--spacing-xs) 0;
 }
@@ -641,7 +648,7 @@ onMounted(() => {
 	border-radius: var(--border-radius-base);
 	height: 100%;
 	width: 100%;
-	overflow: hidden auto;
+	overflow: auto;
 	padding-top: 1.5em;
 	margin-right: 1em;
 
@@ -680,4 +687,5 @@ onMounted(() => {
 	border-top-right-radius: var(--border-radius-base);
 	overflow: hidden;
 }
+
 </style>

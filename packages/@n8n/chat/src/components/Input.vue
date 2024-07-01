@@ -26,11 +26,7 @@ const input = ref('');
 const isSubmitting = ref(false);
 
 const isSubmitDisabled = computed(() => {
-	return (
-		(input.value === '' && !files.value?.length) ||
-		waitingForResponse.value ||
-		options.disabled?.value === true
-	);
+	return input.value === '' || waitingForResponse.value || options.disabled?.value === true;
 });
 
 const isInputDisabled = computed(() => options.disabled?.value === true);
@@ -52,7 +48,18 @@ const {
 
 onChange((newFiles) => {
 	if (!newFiles) return;
-	files.value = newFiles;
+	const newFilesDT = new DataTransfer();
+	// Add current files
+	if (files.value) {
+		for (let i = 0; i < files.value.length; i++) {
+			newFilesDT.items.add(files.value[i]);
+		}
+	}
+
+	for (let i = 0; i < newFiles.length; i++) {
+		newFilesDT.items.add(newFiles[i]);
+	}
+	files.value = newFilesDT.files;
 });
 
 onMounted(() => {
