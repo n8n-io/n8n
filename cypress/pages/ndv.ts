@@ -77,6 +77,7 @@ export class NDV extends BasePage {
 		resourceLocatorDropdown: (paramName: string) =>
 			this.getters.resourceLocator(paramName).find('[data-test-id="resource-locator-dropdown"]'),
 		resourceLocatorErrorMessage: () => cy.getByTestId('rlc-error-container'),
+		resourceLocatorAddCredentials: () => this.getters.resourceLocatorErrorMessage().find('a'),
 		resourceLocatorModeSelector: (paramName: string) =>
 			this.getters.resourceLocator(paramName).find('[data-test-id="rlc-mode-selector"]'),
 		resourceLocatorSearch: (paramName: string) =>
