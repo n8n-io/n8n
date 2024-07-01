@@ -6,7 +6,7 @@ type DebugInfo = {
 		version: string;
 		platform: 'docker (cloud)' | 'docker (self-hosted)' | 'npm';
 		database: 'sqlite' | 'mysql' | 'mariadb' | 'postgres';
-		engine: 'regular' | 'scaling';
+		executionMode: 'regular' | 'scaling';
 		license: 'community' | 'enterprise (production)' | 'enterprise (sandbox)';
 	};
 	storage: {
@@ -52,7 +52,7 @@ export function useDebugInfo() {
 					: store.databaseType === 'mysqldb'
 						? 'mysql'
 						: store.databaseType,
-			engine: store.isQueueModeEnabled ? 'scaling' : 'regular',
+			executionMode: store.isQueueModeEnabled ? 'scaling' : 'regular',
 			license:
 				store.planName === 'Community'
 					? (store.planName.toLowerCase() as 'community')
@@ -128,8 +128,12 @@ export function useDebugInfo() {
 		return markdown;
 	};
 
+	const appendTimestamp = (markdown: string) => {
+		return `${markdown}Generated at: ${new Date().toISOString()}`;
+	};
+
 	const generateDebugInfo = () => {
-		return toMarkdown(gatherDebugInfo());
+		return appendTimestamp(toMarkdown(gatherDebugInfo()));
 	};
 
 	return {
