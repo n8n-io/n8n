@@ -57,13 +57,7 @@ require('net').setDefaultAutoSelectFamily?.(false);
 
 // WebCrypto Polyfill for older versions of Node.js 18
 if (!globalThis.crypto?.getRandomValues) {
-	const picocolors = require('picocolors');
-	console.warn(
-		picocolors.red(`Your Node.js version does not support WebCrypto.
-Please upgrade to the latest version of Node.js.`),
-	);
-	const { webcrypto } = require('node:crypto');
-	globalThis.crypto = webcrypto;
+	globalThis.crypto = require('node:crypto').webcrypto;
 }
 
 (async () => {
