@@ -631,8 +631,7 @@ describe('NDV', () => {
 		ndv.getters.outputDisplayMode().find('label').eq(2).click({ force: true });
 		ndv.getters
 			.outputDataContainer()
-			.findChildByTestId('run-data-schema-item')
-			.find('> span')
+			.findChildByTestId('run-data-schema-item-value')
 			.should('include.text', '<?xml version="1.0" encoding="UTF-8"?>');
 	});
 
