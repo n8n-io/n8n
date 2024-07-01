@@ -106,6 +106,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		nodeJsVersion(): string {
 			return this.settings.nodeJsVersion;
 		},
+		concurrency(): number {
+			return this.settings.concurrency;
+		},
 		isPublicApiEnabled(): boolean {
 			return this.api.enabled;
 		},

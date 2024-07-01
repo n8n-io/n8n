@@ -105,6 +105,7 @@ export class FrontendService {
 			binaryDataMode: config.getEnv('binaryDataManager.mode'),
 			nodeJsVersion: process.version.replace(/^v/, ''),
 			versionCli: '',
+			concurrency: config.getEnv('executions.concurrency.productionLimit'),
 			authCookie: {
 				secure: config.getEnv('secure_cookie'),
 			},
@@ -232,8 +233,6 @@ export class FrontendService {
 				blockFileAccessToN8nFiles: config.getEnv('security.blockFileAccessToN8nFiles'),
 			},
 		};
-
-		console.log('process.version', this.settings.nodeJsVersion);
 	}
 
 	async generateTypes() {

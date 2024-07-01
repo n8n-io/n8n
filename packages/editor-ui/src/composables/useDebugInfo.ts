@@ -9,6 +9,7 @@ type DebugInfo = {
 		database: 'sqlite' | 'mysql' | 'mariadb' | 'postgres';
 		executionMode: 'regular' | 'scaling';
 		license: 'community' | 'enterprise (production)' | 'enterprise (sandbox)';
+		concurrency: number;
 	};
 	storage: {
 		success: WorkflowSettings.SaveDataExecution;
@@ -55,6 +56,7 @@ export function useDebugInfo() {
 						? 'mysql'
 						: store.databaseType,
 			executionMode: store.isQueueModeEnabled ? 'scaling' : 'regular',
+			concurrency: store.settings.concurrency,
 			license:
 				store.planName === 'Community'
 					? (store.planName.toLowerCase() as 'community')

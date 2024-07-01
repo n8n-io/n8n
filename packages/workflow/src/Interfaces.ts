@@ -2580,6 +2580,7 @@ export interface IN8nUISettings {
 	urlBaseEditor: string;
 	versionCli: string;
 	nodeJsVersion: string;
+	concurrency: number;
 	authCookie: {
 		secure: boolean;
 	};
