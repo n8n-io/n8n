@@ -77,44 +77,47 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 
 <template>
 	<div :class="$style.item" data-test-id="run-data-schema-item">
-		<div
-			v-if="level > 0 || (level === 0 && !isSchemaValueArray)"
-			:title="schema.type"
-			:class="{
-				[$style.pill]: true,
-				[$style.mappable]: mappingEnabled,
-				[$style.highlight]: dragged,
-			}"
-		>
-			<span
-				:class="$style.label"
-				:data-value="getJsonParameterPath(schema.path)"
-				:data-name="schemaName"
-				:data-path="schema.path"
-				:data-depth="level"
-				data-target="mappable"
+		<div :class="$style.itemContent">
+			<div
+				v-if="level > 0 || (level === 0 && !isSchemaValueArray)"
+				:title="schema.type"
+				:class="{
+					[$style.pill]: true,
+					[$style.mappable]: mappingEnabled,
+					[$style.highlight]: dragged,
+				}"
 			>
-				<font-awesome-icon :icon="getIconBySchemaType(schema.type)" size="sm" />
-				<TextWithHighlights
-					v-if="isSchemaParentTypeArray"
-					:content="props.parent?.key"
-					:search="props.search"
-				/>
-				<TextWithHighlights
-					v-if="key"
-					:class="{ [$style.arrayIndex]: isSchemaParentTypeArray }"
-					:content="key"
-					:search="props.search"
-				/>
+				<span
+					:class="$style.label"
+					:data-value="getJsonParameterPath(schema.path)"
+					:data-name="schemaName"
+					:data-path="schema.path"
+					:data-depth="level"
+					data-target="mappable"
+				>
+					<font-awesome-icon :icon="getIconBySchemaType(schema.type)" size="sm" />
+					<TextWithHighlights
+						v-if="isSchemaParentTypeArray"
+						:content="props.parent?.key"
+						:search="props.search"
+					/>
+					<TextWithHighlights
+						v-if="key"
+						:class="{ [$style.arrayIndex]: isSchemaParentTypeArray }"
+						:content="key"
+						:search="props.search"
+					/>
+				</span>
+			</div>
+
+			<span v-if="text" :class="$style.text" data-test-id="run-data-schema-item-value">
+				<template v-for="(line, index) in text.split('\n')" :key="`line-${index}`">
+					<span v-if="index > 0" :class="$style.newLine">\n</span>
+					<TextWithHighlights :content="line" :search="props.search" />
+				</template>
 			</span>
 		</div>
 
-		<span v-if="text" :class="$style.text">
-			<template v-for="(line, index) in text.split('\n')" :key="`line-${index}`">
-				<span v-if="index > 0" :class="$style.newLine">\n</span>
-				<TextWithHighlights :content="line" :search="props.search" />
-			</template>
-		</span>
 		<input v-if="level > 0 && isSchemaValueArray" :id="subKey" type="checkbox" inert checked />
 		<label v-if="level > 0 && isSchemaValueArray" :class="$style.toggle" :for="subKey">
 			<font-awesome-icon icon="angle-right" />
@@ -189,6 +192,12 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 			}
 		}
 	}
+}
+
+.itemContent {
+	display: flex;
+	gap: var(--spacing-2xs);
+	align-items: baseline;
 }
 
 .sub {
