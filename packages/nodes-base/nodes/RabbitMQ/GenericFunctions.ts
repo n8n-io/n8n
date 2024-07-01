@@ -75,7 +75,7 @@ export async function rabbitmqConnectQueue(
 
 	return await new Promise(async (resolve, reject) => {
 		try {
-			if (options.assertQueue) {
+			if (options.assertQueue === true || options.assertQueue === undefined) {
 				await channel.assertQueue(queue, options);
 			} else {
 				await channel.checkQueue(queue);
@@ -110,7 +110,7 @@ export async function rabbitmqConnectExchange(
 
 	return await new Promise(async (resolve, reject) => {
 		try {
-			if (options.assertExchange) {
+			if (options.assertExchange === true || options.assertExchange === undefined) {
 				await channel.assertExchange(exchange, type, options);
 			} else {
 				await channel.checkExchange(exchange);
