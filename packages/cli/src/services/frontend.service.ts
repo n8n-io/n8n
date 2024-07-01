@@ -103,6 +103,7 @@ export class FrontendService {
 			urlBaseWebhook: this.urlService.getWebhookBaseUrl(),
 			urlBaseEditor: instanceBaseUrl,
 			binaryDataMode: config.getEnv('binaryDataManager.mode'),
+			nodeJsVersion: process.version.replace(/^v/, ''),
 			versionCli: '',
 			authCookie: {
 				secure: config.getEnv('secure_cookie'),
@@ -231,6 +232,8 @@ export class FrontendService {
 				blockFileAccessToN8nFiles: config.getEnv('security.blockFileAccessToN8nFiles'),
 			},
 		};
+
+		console.log('process.version', this.settings.nodeJsVersion);
 	}
 
 	async generateTypes() {

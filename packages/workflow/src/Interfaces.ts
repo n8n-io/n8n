@@ -2579,6 +2579,7 @@ export interface IN8nUISettings {
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
 	versionCli: string;
+	nodeJsVersion: string;
 	authCookie: {
 		secure: boolean;
 	};

@@ -103,6 +103,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		versionCli(): string {
 			return this.settings.versionCli;
 		},
+		nodeJsVersion(): string {
+			return this.settings.nodeJsVersion;
+		},
 		isPublicApiEnabled(): boolean {
 			return this.api.enabled;
 		},
@@ -271,6 +274,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			if (settings.versionCli) {
 				useRootStore().setVersionCli(settings.versionCli);
 			}
+
+			console.log('this.settings', this.settings);
 
 			if (
 				settings.authCookie.secure &&

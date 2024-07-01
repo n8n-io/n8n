@@ -3,8 +3,9 @@ import type { WorkflowSettings } from 'n8n-workflow';
 
 type DebugInfo = {
 	core: {
-		version: string;
+		n8nVersion: string;
 		platform: 'docker (cloud)' | 'docker (self-hosted)' | 'npm';
+		nodeJsVersion: string;
 		database: 'sqlite' | 'mysql' | 'mariadb' | 'postgres';
 		executionMode: 'regular' | 'scaling';
 		license: 'community' | 'enterprise (production)' | 'enterprise (sandbox)';
@@ -39,13 +40,14 @@ export function useDebugInfo() {
 
 	const coreInfo = () => {
 		return {
-			version: store.versionCli,
+			n8nVersion: store.versionCli,
 			platform:
 				store.isDocker && store.deploymentType === 'cloud'
 					? 'docker (cloud)'
 					: store.isDocker
 						? 'docker (self-hosted)'
 						: 'npm',
+			nodeJsVersion: store.nodeJsVersion,
 			database:
 				store.databaseType === 'postgresdb'
 					? 'postgres'
