@@ -89,6 +89,8 @@ export const defaultSettings: IN8nUISettings = {
 		quota: 10,
 	},
 	versionCli: '',
+	nodeJsVersion: '',
+	concurrency: -1,
 	versionNotifications: {
 		enabled: true,
 		endpoint: '',
@@ -122,7 +124,6 @@ export const defaultSettings: IN8nUISettings = {
 		licensePruneTime: 0,
 	},
 	security: {
-		protocol: 'https',
 		blockFileAccessToN8nFiles: false,
 	},
 };
