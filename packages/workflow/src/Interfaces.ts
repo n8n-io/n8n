@@ -2690,7 +2690,6 @@ export interface IN8nUISettings {
 		maxCount: number;
 	};
 	security: {
-		protocol: 'http' | 'https';
 		blockFileAccessToN8nFiles: boolean;
 	};
 }

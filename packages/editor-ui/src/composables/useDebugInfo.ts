@@ -29,7 +29,6 @@ type DebugInfo = {
 	 * Reported only if insecure settings are found.
 	 */
 	security?: {
-		protocol?: 'http' | 'https';
 		secureCookie?: boolean;
 		blockFileAccessToN8nFiles?: boolean;
 	};
@@ -86,7 +85,6 @@ export function useDebugInfo() {
 	const securityInfo = () => {
 		const info: DebugInfo['security'] = {};
 
-		if (store.security.protocol === 'http') info.protocol = 'http';
 		if (!store.security.blockFileAccessToN8nFiles) info.blockFileAccessToN8nFiles = false;
 		if (!store.security.secureCookie) info.secureCookie = false;
 

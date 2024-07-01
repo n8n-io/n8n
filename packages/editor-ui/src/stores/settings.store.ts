@@ -87,12 +87,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			return this.settings.pruning;
 		},
 		security(): {
-			protocol: 'http' | 'https';
 			blockFileAccessToN8nFiles: boolean;
 			secureCookie: boolean;
 		} {
 			return {
-				protocol: this.settings.security.protocol,
 				blockFileAccessToN8nFiles: this.settings.security.blockFileAccessToN8nFiles,
 				secureCookie: this.settings.authCookie.secure,
 			};

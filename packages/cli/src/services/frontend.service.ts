@@ -228,7 +228,6 @@ export class FrontendService {
 				maxCount: config.getEnv('executions.pruneDataMaxCount'),
 			},
 			security: {
-				protocol: config.getEnv('protocol'),
 				blockFileAccessToN8nFiles: config.getEnv('security.blockFileAccessToN8nFiles'),
 			},
 		};
