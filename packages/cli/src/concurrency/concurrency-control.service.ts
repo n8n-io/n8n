@@ -15,7 +15,7 @@ export const CLOUD_TEMP_REPORTABLE_THRESHOLDS = [5, 10, 20, 50, 100, 200];
 
 @Service()
 export class ConcurrencyControlService {
-	private readonly isEnabled: boolean;
+	private isEnabled: boolean;
 
 	private readonly productionLimit: number;
 
@@ -131,6 +131,10 @@ export class ConcurrencyControlService {
 		await this.executionRepository.cancelMany(executionIds);
 
 		this.logger.info('Canceled enqueued executions with response promises', { executionIds });
+	}
+
+	disable() {
+		this.isEnabled = false;
 	}
 
 	// ----------------------------------
