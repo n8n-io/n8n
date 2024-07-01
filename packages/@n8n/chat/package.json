@@ -42,8 +42,8 @@
     "highlight.js": "^11.8.0",
     "markdown-it-link-attributes": "^4.0.1",
     "uuid": "^8.3.2",
-    "vue": "^3.4.21",
-    "vue-markdown-render": "^2.1.1"
+    "vue": "^3.4.31",
+    "vue-markdown-render": "^2.2.1"
   },
   "devDependencies": {
     "@iconify-json/mdi": "^1.1.54",
@@ -52,7 +52,7 @@
     "shelljs": "^0.8.5",
     "unbuild": "^2.0.0",
     "unplugin-icons": "^0.17.0",
-    "vite-plugin-dts": "^3.7.3"
+    "vite-plugin-dts": "^3.9.1"
   },
   "repository": {
     "type": "git",

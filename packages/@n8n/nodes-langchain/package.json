@@ -165,7 +165,7 @@
     "form-data": "4.0.0",
     "generate-schema": "2.6.0",
     "html-to-text": "9.0.5",
-    "jsdom": "^23.0.1",
+    "jsdom": "24.1.0",
     "json-schema-to-zod": "2.1.0",
     "langchain": "0.2.2",
     "lodash": "4.17.21",
