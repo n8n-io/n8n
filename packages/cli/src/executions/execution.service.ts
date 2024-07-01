@@ -390,6 +390,17 @@ export class ExecutionService {
 		};
 	}
 
+	async findAllEnqueuedExecutions() {
+		return await this.executionRepository.findMultipleExecutions(
+			{
+				select: ['id', 'mode'],
+				where: { status: 'new' },
+				order: { id: 'ASC' },
+			},
+			{ includeData: true, unflattenData: true },
+		);
+	}
+
 	async stop(executionId: string): Promise<StopResult> {
 		const execution = await this.executionRepository.findSingleExecution(executionId, {
 			includeData: true,
