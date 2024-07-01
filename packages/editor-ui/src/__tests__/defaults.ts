@@ -121,4 +121,8 @@ export const defaultSettings: IN8nUISettings = {
 		pruneTime: 0,
 		licensePruneTime: 0,
 	},
+	security: {
+		protocol: 'https',
+		blockFileAccessToN8nFiles: false,
+	},
 };

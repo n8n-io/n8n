@@ -2689,7 +2689,7 @@ export interface IN8nUISettings {
 		maxAge: number;
 		maxCount: number;
 	};
-	security?: {
+	security: {
 		protocol: 'http' | 'https';
 		blockFileAccessToN8nFiles: boolean;
 	};
