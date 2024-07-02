@@ -21,7 +21,7 @@ export const properties: INodeProperties[] = [
 		type: 'string',
 		default: 'SELECT * FROM input1 LEFT JOIN input2 ON input1.name = input2.id',
 		noDataExpression: true,
-		description: 'Input data available as tables with coresponding number, e.g. input1, input2',
+		description: 'Input data available as tables with corresponding number, e.g. input1, input2',
 		hint: 'Supports <a href="https://github.com/alasql/alasql/wiki/Supported-SQL-statements" target="_blank">most</a> of the SQL-99 language',
 		required: true,
 		typeOptions: {
