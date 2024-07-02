@@ -9,6 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
+import { v4 as uuid } from 'uuid';
 import {
 	CHART_TYPE_OPTIONS,
 	Fill_CHARTS,
@@ -413,13 +414,15 @@ export class QuickChart implements INodeType {
 		let mimeType = response.headers['content-type'] as string | undefined;
 		mimeType = mimeType ? mimeType.split(';').find((value) => value.includes('/')) : undefined;
 
+		const filePath = `${uuid()}.${this.getNodeParameter('chartOptions.format', 0) as string}`;
+
 		return [
 			[
 				{
 					binary: {
 						[output]: await this.helpers.prepareBinaryData(
 							response.body as Buffer,
-							undefined,
+							filePath,
 							mimeType,
 						),
 					},
