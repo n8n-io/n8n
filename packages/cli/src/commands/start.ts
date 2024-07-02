@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Container } from 'typedi';
-import { Flags, type Config } from '@oclif/core';
+import { type Config, Flags } from '@oclif/core';
 import path from 'path';
 import { mkdir } from 'fs/promises';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
@@ -47,7 +47,7 @@ export class Start extends BaseCommand {
 	];
 
 	static flags = {
-		help: Flags.help({char: 'h'}),
+		help: Flags.help({ char: 'h' }),
 		open: Flags.boolean({
 			char: 'o',
 			description: 'opens the UI automatically in browser',
@@ -70,19 +70,6 @@ export class Start extends BaseCommand {
 		super(argv, cmdConfig);
 		this.setInstanceType('main');
 		this.setInstanceQueueModeId();
-	}
-
-	/**
-	 * Opens the UI in browser
-	 */
-	private openBrowser() {
-		const editorUrl = Container.get(UrlService).baseUrl;
-
-		open(editorUrl, {wait: true}).catch(() => {
-			this.logger.info(
-				`\nWas not able to open URL in browser. Please open manually by visiting:\n${editorUrl}\n`,
-			);
-		});
 	}
 
 	/**
@@ -118,51 +105,6 @@ export class Start extends BaseCommand {
 		}
 
 		await this.exitSuccessFully();
-	}
-
-	private async generateStaticAssets() {
-		// Read the index file and replace the path placeholder
-		const n8nPath = config.getEnv('path');
-		const restEndpoint = config.getEnv('endpoints.rest');
-		const hooksUrls = config.getEnv('externalFrontendHooksUrls');
-
-		let scriptsString = '';
-		if (hooksUrls) {
-			scriptsString = hooksUrls.split(';').reduce((acc, curr) => {
-				return `${acc}<script src="${curr}"></script>`;
-			}, '');
-		}
-
-		const closingTitleTag = '</title>';
-		const {staticCacheDir} = this.instanceSettings;
-		const compileFile = async (fileName: string) => {
-			const filePath = path.join(EDITOR_UI_DIST_DIR, fileName);
-			if (/(index\.html)|.*\.(js|css)/.test(filePath) && existsSync(filePath)) {
-				const destFile = path.join(staticCacheDir, fileName);
-				await mkdir(path.dirname(destFile), {recursive: true});
-				const streams = [
-					createReadStream(filePath, 'utf-8'),
-					replaceStream('/{{BASE_PATH}}/', n8nPath, {ignoreCase: false}),
-					replaceStream('/%7B%7BBASE_PATH%7D%7D/', n8nPath, {ignoreCase: false}),
-					replaceStream('/%257B%257BBASE_PATH%257D%257D/', n8nPath, {ignoreCase: false}),
-					replaceStream('/static/', n8nPath + 'static/', {ignoreCase: false}),
-				];
-				if (filePath.endsWith('index.html')) {
-					streams.push(
-						replaceStream('{{REST_ENDPOINT}}', restEndpoint, {ignoreCase: false}),
-						replaceStream(closingTitleTag, closingTitleTag + scriptsString, {
-							ignoreCase: false,
-						}),
-					);
-				}
-				streams.push(createWriteStream(destFile, 'utf-8'));
-				return await pipeline(streams);
-			}
-		};
-
-		await compileFile('index.html');
-		const files = await glob('**/*.{css,js}', {cwd: EDITOR_UI_DIST_DIR});
-		await Promise.all(files.map(compileFile));
 	}
 
 	async init() {
@@ -240,20 +182,20 @@ export class Start extends BaseCommand {
 	}
 
 	async run() {
-		const {flags} = await this.parse(Start);
+		const { flags } = await this.parse(Start);
 
 		// Load settings from database and set them to config.
 		const databaseSettings = await Container.get(SettingsRepository).findBy({
 			loadOnStartup: true,
 		});
 		databaseSettings.forEach((setting) => {
-			config.set(setting.key, jsonParse(setting.value, {fallbackValue: setting.value}));
+			config.set(setting.key, jsonParse(setting.value, { fallbackValue: setting.value }));
 		});
 
 		const areCommunityPackagesEnabled = config.getEnv('nodes.communityPackages.enabled');
 
 		if (areCommunityPackagesEnabled) {
-			const {CommunityPackagesService} = await import('@/services/communityPackages.service');
+			const { CommunityPackagesService } = await import('@/services/communityPackages.service');
 			await Container.get(CommunityPackagesService).setMissingPackages({
 				reinstallMissingPackages: flags.reinstallMissingPackages,
 			});
@@ -277,10 +219,10 @@ export class Start extends BaseCommand {
 				// When no tunnel subdomain did exist yet create a new random one
 				tunnelSubdomain = randomString(24).toLowerCase();
 
-				this.instanceSettings.update({tunnelSubdomain});
+				this.instanceSettings.update({ tunnelSubdomain });
 			}
 
-			const {default: localtunnel} = await import('@n8n/localtunnel');
+			const { default: localtunnel } = await import('@n8n/localtunnel');
 			const port = config.getEnv('port');
 
 			const webhookTunnel = await localtunnel(port, {
@@ -347,17 +289,75 @@ export class Start extends BaseCommand {
 	}
 
 	/**
+	 * Opens the UI in browser
+	 */
+	private openBrowser() {
+		const editorUrl = Container.get(UrlService).baseUrl;
+
+		open(editorUrl, { wait: true }).catch(() => {
+			this.logger.info(
+				`\nWas not able to open URL in browser. Please open manually by visiting:\n${editorUrl}\n`,
+			);
+		});
+	}
+
+	private async generateStaticAssets() {
+		// Read the index file and replace the path placeholder
+		const n8nPath = config.getEnv('path');
+		const restEndpoint = config.getEnv('endpoints.rest');
+		const hooksUrls = config.getEnv('externalFrontendHooksUrls');
+
+		let scriptsString = '';
+		if (hooksUrls) {
+			scriptsString = hooksUrls.split(';').reduce((acc, curr) => {
+				return `${acc}<script src="${curr}"></script>`;
+			}, '');
+		}
+
+		const closingTitleTag = '</title>';
+		const { staticCacheDir } = this.instanceSettings;
+		const compileFile = async (fileName: string) => {
+			const filePath = path.join(EDITOR_UI_DIST_DIR, fileName);
+			if (/(index\.html)|.*\.(js|css)/.test(filePath) && existsSync(filePath)) {
+				const destFile = path.join(staticCacheDir, fileName);
+				await mkdir(path.dirname(destFile), { recursive: true });
+				const streams = [
+					createReadStream(filePath, 'utf-8'),
+					replaceStream('/{{BASE_PATH}}/', n8nPath, { ignoreCase: false }),
+					replaceStream('/%7B%7BBASE_PATH%7D%7D/', n8nPath, { ignoreCase: false }),
+					replaceStream('/%257B%257BBASE_PATH%257D%257D/', n8nPath, { ignoreCase: false }),
+					replaceStream('/static/', n8nPath + 'static/', { ignoreCase: false }),
+				];
+				if (filePath.endsWith('index.html')) {
+					streams.push(
+						replaceStream('{{REST_ENDPOINT}}', restEndpoint, { ignoreCase: false }),
+						replaceStream(closingTitleTag, closingTitleTag + scriptsString, {
+							ignoreCase: false,
+						}),
+					);
+				}
+				streams.push(createWriteStream(destFile, 'utf-8'));
+				return await pipeline(streams);
+			}
+		};
+
+		await compileFile('index.html');
+		const files = await glob('**/*.{css,js}', { cwd: EDITOR_UI_DIST_DIR });
+		await Promise.all(files.map(compileFile));
+	}
+
+	/**
 	 * During startup, we may find executions that had been enqueued at the time of shutdown.
 	 *
 	 * If so, start running any such executions concurrently up to the concurrency limit, and
 	 * enqueue any remaining ones until we have spare concurrency capacity again.
 	 */
 	private async runEnqueuedExecutions() {
-		let executions = []
+		let executions: any[] = [];
 		try {
 			executions = await Container.get(ExecutionService).findAllEnqueuedExecutions();
 		} catch (e) {
-			console.log(e)
+			console.log(e);
 		}
 
 		if (executions.length === 0) return;
