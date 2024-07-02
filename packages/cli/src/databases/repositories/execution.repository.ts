@@ -778,8 +778,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			if (firstId) qb.andWhere('execution.id > :firstId', { firstId });
 			if (lastId) qb.andWhere('execution.id < :lastId', { lastId });
 
-			if (query.order?.stoppedAt === 'DESC') {
-				qb.orderBy({ 'execution.stoppedAt': 'DESC' });
+			if (query.order?.startedAt === 'DESC') {
+				qb.orderBy({ 'execution.startedAt': 'DESC' });
 			} else if (query.order?.top) {
 				qb.orderBy(`(CASE WHEN execution.status = '${query.order.top}' THEN 0 ELSE 1 END)`);
 			} else {

@@ -358,7 +358,7 @@ export class ExecutionService {
 	/**
 	 * Return:
 	 *
-	 * - the latest summaries of current and completed executions that satisfy a query,
+	 * - the summaries of latest current and completed executions that satisfy a query,
 	 * - the total count of all completed executions that satisfy the query, and
 	 * - whether the total of completed executions is an estimate.
 	 *
@@ -379,7 +379,7 @@ export class ExecutionService {
 			this.findRangeWithCount({
 				...query,
 				status: completedStatuses,
-				order: { stoppedAt: 'DESC' },
+				order: { startedAt: 'DESC' },
 			}),
 		]);
 

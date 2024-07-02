@@ -19,9 +19,18 @@ abstract class IndexOperation extends LazyPromise<void> {
 		protected tablePrefix: string,
 		queryRunner: QueryRunner,
 		protected customIndexName?: string,
+		protected skipIfMissing = false,
 	) {
-		super((resolve) => {
-			void this.execute(queryRunner).then(resolve);
+		super((resolve, reject) => {
+			void this.execute(queryRunner)
+				.then(resolve)
+				.catch((error) => {
+					if (error instanceof Error && error.message.includes('not found') && this.skipIfMissing) {
+						resolve();
+					} else {
+						reject(error);
+					}
+				});
 		});
 	}
 }
