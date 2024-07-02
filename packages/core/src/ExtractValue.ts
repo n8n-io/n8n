@@ -105,6 +105,11 @@ function extractValueRLC(
 		} else if (typeName === undefined) {
 			typeName = 'undefined';
 		}
+
+		if (property.required === false && (typeName === 'undefined' || typeName === 'null')) {
+			return value.value;
+		}
+
 		LoggerProxy.error(
 			`Only strings can be passed to extractValue. Parameter "${parameterName}" passed "${typeName}"`,
 		);

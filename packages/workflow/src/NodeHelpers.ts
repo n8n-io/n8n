@@ -1477,6 +1477,10 @@ export const validateResourceLocatorParameter = (
 		return [];
 	}
 
+	if (parameterMode.required === false && valueToValidate === '') {
+		return [];
+	}
+
 	const validationErrors: string[] = [];
 	// Each mode can have multiple validations specified
 	if (parameterMode.validation) {
@@ -1647,6 +1651,14 @@ export function getParameterIssues(
 			} else {
 				// Only one can be set so will be a single value
 				addToIssuesIfMissing(foundIssues, nodeProperties, value as NodeParameterValue);
+			}
+		}
+	} else if (nodeProperties.required === false) {
+		if (nodeProperties.modes) {
+			for (const mode of nodeProperties.modes) {
+				if (mode.required === undefined) {
+					mode.required = false;
+				}
 			}
 		}
 	}
