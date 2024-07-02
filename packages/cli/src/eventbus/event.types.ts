@@ -182,4 +182,12 @@ export type Event = {
 		packageAuthor?: string;
 		packageAuthorEmail?: string;
 	};
+
+	'execution-throttled': {
+		executionId: string;
+	};
+
+	'execution-started-during-bootup': {
+		executionId: string;
+	};
 };
