@@ -353,35 +353,34 @@ export class Start extends BaseCommand {
 	 * enqueue any remaining ones until we have spare concurrency capacity again.
 	 */
 	private async runEnqueuedExecutions() {
-		let executions: any[] = [];
 		try {
-			executions = await Container.get(ExecutionService).findAllEnqueuedExecutions();
+			const executions = await Container.get(ExecutionService).findAllEnqueuedExecutions();
+
+			if (executions.length === 0) return;
+
+			this.logger.debug(
+				'[Startup] Found enqueued executions to run',
+				executions.map((e) => e.id),
+			);
+
+			const ownershipService = Container.get(OwnershipService);
+			const workflowRunner = Container.get(WorkflowRunner);
+
+			for (const execution of executions) {
+				const project = await ownershipService.getWorkflowProjectCached(execution.workflowId);
+
+				const data: IWorkflowExecutionDataProcess = {
+					executionMode: execution.mode,
+					executionData: execution.data,
+					workflowData: execution.workflowData,
+					projectId: project.id,
+				};
+
+				// do not block - each execution either runs concurrently or is queued
+				void workflowRunner.run(data, undefined, false, execution.id);
+			}
 		} catch (e) {
-			console.log(e);
-		}
-
-		if (executions.length === 0) return;
-
-		this.logger.debug(
-			'[Startup] Found enqueued executions to run',
-			executions.map((e) => e.id),
-		);
-
-		const ownershipService = Container.get(OwnershipService);
-		const workflowRunner = Container.get(WorkflowRunner);
-
-		for (const execution of executions) {
-			const project = await ownershipService.getWorkflowProjectCached(execution.workflowId);
-
-			const data: IWorkflowExecutionDataProcess = {
-				executionMode: execution.mode,
-				executionData: execution.data,
-				workflowData: execution.workflowData,
-				projectId: project.id,
-			};
-
-			// do not block - each execution either runs concurrently or is queued
-			void workflowRunner.run(data, undefined, false, execution.id);
+			this.logger.error('[Startup] Error running enqueued executions', e);
 		}
 	}
 }
