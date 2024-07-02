@@ -338,6 +338,10 @@ export class License {
 		);
 	}
 
+	getConsumerId() {
+		return this.manager?.getConsumerId() ?? 'unknown';
+	}
+
 	// Helper functions for computed data
 	getUsersLimit() {
 		return this.getFeatureValue(LICENSE_QUOTAS.USERS_LIMIT) ?? UNLIMITED_LICENSE_QUOTA;

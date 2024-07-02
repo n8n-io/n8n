@@ -1,6 +1,13 @@
 import type { IN8nUISettings } from 'n8n-workflow';
 
 export const defaultSettings: IN8nUISettings = {
+	databaseType: 'sqlite',
+	isDocker: false,
+	pruning: {
+		isEnabled: false,
+		maxAge: 0,
+		maxCount: 0,
+	},
 	allowedModules: {},
 	communityNodesEnabled: false,
 	defaultLocale: '',
@@ -40,7 +47,7 @@ export const defaultSettings: IN8nUISettings = {
 	hiringBannerEnabled: false,
 	instanceId: '',
 	isNpmAvailable: false,
-	license: { environment: 'development' },
+	license: { environment: 'development', consumerId: 'unknown' },
 	logLevel: 'info',
 	maxExecutionTimeout: 0,
 	oauthCallbackUrls: { oauth1: '', oauth2: '' },
@@ -60,6 +67,7 @@ export const defaultSettings: IN8nUISettings = {
 	saveDataErrorExecution: 'DEFAULT',
 	saveDataSuccessExecution: 'DEFAULT',
 	saveManualExecutions: false,
+	saveExecutionProgress: false,
 	sso: {
 		ldap: { loginEnabled: false, loginLabel: '' },
 		saml: { loginEnabled: false, loginLabel: '' },
@@ -81,6 +89,8 @@ export const defaultSettings: IN8nUISettings = {
 		quota: 10,
 	},
 	versionCli: '',
+	nodeJsVersion: '',
+	concurrency: -1,
 	versionNotifications: {
 		enabled: true,
 		endpoint: '',
@@ -112,5 +122,8 @@ export const defaultSettings: IN8nUISettings = {
 	workflowHistory: {
 		pruneTime: 0,
 		licensePruneTime: 0,
+	},
+	security: {
+		blockFileAccessToN8nFiles: false,
 	},
 };

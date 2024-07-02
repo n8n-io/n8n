@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import { Container, Service } from 'typedi';
 import uniq from 'lodash/uniq';
 import { createWriteStream } from 'fs';
@@ -83,6 +84,8 @@ export class FrontendService {
 		}
 
 		this.settings = {
+			isDocker: this.isDocker(),
+			databaseType: config.getEnv('database.type'),
 			previewMode: process.env.N8N_PREVIEW_MODE === 'true',
 			endpointForm: config.getEnv('endpoints.form'),
 			endpointFormTest: config.getEnv('endpoints.formTest'),
@@ -92,6 +95,7 @@ export class FrontendService {
 			saveDataErrorExecution: config.getEnv('executions.saveDataOnError'),
 			saveDataSuccessExecution: config.getEnv('executions.saveDataOnSuccess'),
 			saveManualExecutions: config.getEnv('executions.saveDataManualExecutions'),
+			saveExecutionProgress: config.getEnv('executions.saveExecutionProgress'),
 			executionTimeout: config.getEnv('executions.timeout'),
 			maxExecutionTimeout: config.getEnv('executions.maxTimeout'),
 			workflowCallerPolicyDefaultOption: config.getEnv('workflows.callerPolicyDefaultOption'),
@@ -99,7 +103,9 @@ export class FrontendService {
 			urlBaseWebhook: this.urlService.getWebhookBaseUrl(),
 			urlBaseEditor: instanceBaseUrl,
 			binaryDataMode: config.getEnv('binaryDataManager.mode'),
+			nodeJsVersion: process.version.replace(/^v/, ''),
 			versionCli: '',
+			concurrency: config.getEnv('executions.concurrency.productionLimit'),
 			authCookie: {
 				secure: config.getEnv('secure_cookie'),
 			},
@@ -196,6 +202,7 @@ export class FrontendService {
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
 			license: {
+				consumerId: 'unknown',
 				environment: config.getEnv('license.tenantId') === 1 ? 'production' : 'staging',
 			},
 			variables: {
@@ -217,6 +224,14 @@ export class FrontendService {
 			workflowHistory: {
 				pruneTime: -1,
 				licensePruneTime: -1,
+			},
+			pruning: {
+				isEnabled: config.getEnv('executions.pruneData'),
+				maxAge: config.getEnv('executions.pruneDataMaxAge'),
+				maxCount: config.getEnv('executions.pruneDataMaxCount'),
+			},
+			security: {
+				blockFileAccessToN8nFiles: config.getEnv('security.blockFileAccessToN8nFiles'),
 			},
 		};
 	}
@@ -268,6 +283,9 @@ export class FrontendService {
 		const isS3Selected = config.getEnv('binaryDataManager.mode') === 's3';
 		const isS3Available = config.getEnv('binaryDataManager.availableModes').includes('s3');
 		const isS3Licensed = this.license.isBinaryDataS3Licensed();
+
+		this.settings.license.planName = this.license.getPlanName();
+		this.settings.license.consumerId = this.license.getConsumerId();
 
 		// refresh enterprise status
 		Object.assign(this.settings.enterprise, {
@@ -366,6 +384,22 @@ export class FrontendService {
 			if (overwrittenProperties.length) {
 				credential.__overwrittenProperties = uniq(overwrittenProperties);
 			}
+		}
+	}
+
+	/**
+	 * Whether this instance is running inside a Docker container.
+	 *
+	 * Based on: https://github.com/sindresorhus/is-docker
+	 */
+	private isDocker() {
+		try {
+			return (
+				fs.existsSync('/.dockerenv') ||
+				fs.readFileSync('/proc/self/cgroup', 'utf8').includes('docker')
+			);
+		} catch {
+			return false;
 		}
 	}
 }

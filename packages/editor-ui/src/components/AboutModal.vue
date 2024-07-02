@@ -42,6 +42,16 @@
 						<n8n-text>{{ rootStore.instanceId }}</n8n-text>
 					</el-col>
 				</el-row>
+				<el-row>
+					<el-col :span="8" class="info-name">
+						<n8n-text>{{ $locale.baseText('about.debug.title') }}</n8n-text>
+					</el-col>
+					<el-col :span="16">
+						<div :class="$style.debugInfo" @click="copyDebugInfoToClipboard">
+							<n8n-link>{{ $locale.baseText('about.debug.message') }}</n8n-link>
+						</div>
+					</el-col>
+				</el-row>
 			</div>
 		</template>
 
@@ -66,6 +76,9 @@ import Modal from './Modal.vue';
 import { ABOUT_MODAL_KEY } from '../constants';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/root.store';
+import { useToast } from '@/composables/useToast';
+import { useClipboard } from '@/composables/useClipboard';
+import { useDebugInfo } from '@/composables/useDebugInfo';
 
 export default defineComponent({
 	name: 'About',
@@ -84,6 +97,15 @@ export default defineComponent({
 	methods: {
 		closeDialog() {
 			this.modalBus.emit('close');
+		},
+		async copyDebugInfoToClipboard() {
+			useToast().showToast({
+				title: this.$locale.baseText('about.debug.toast.title'),
+				message: this.$locale.baseText('about.debug.toast.message'),
+				type: 'info',
+				duration: 5000,
+			});
+			await useClipboard().copy(useDebugInfo().generateDebugInfo());
 		},
 	},
 });
