@@ -108,6 +108,65 @@ describe('Test MergeV3, combineBySql operation', () => {
 			country: 'PL',
 		});
 	});
+	it('LEFT JOIN, missing input 2(empty array)', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'combineBySql',
+			query:
+				'SELECT *, input1.data as data_1\nFROM input1\nLEFT JOIN input2\nON input1.id = input2.id\n',
+		};
+
+		const returnData = await mode.combineBySql.execute.call(
+			createMockExecuteFunction(nodeParameters, node),
+			[inputsData[0], []],
+		);
+
+		expect(returnData[0].json).toEqual({
+			data: 'a',
+			data_1: 'a',
+			id: 1,
+			name: 'Sam',
+		});
+	});
+
+	it('LEFT JOIN, missing data in input 2', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'combineBySql',
+			query:
+				'SELECT *, input1.data as data_1\nFROM input1\nLEFT JOIN input2\nON input1.id = input2.id\n',
+		};
+
+		try {
+			await mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), [
+				inputsData[0],
+			]);
+
+			expect(true).toBe(false);
+		} catch (error) {
+			expect(error.message).toBe('Issue while executing query');
+			expect(error.description).toBe('Table does not exist: input2');
+		}
+	});
+
+	it('LEFT JOIN, invalid syntax', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'combineBySql',
+			query:
+				'SELECTTT *, input1.data as data_1\nFROM input1\nLEFT JOIN input2\nON input1.id = input2.id\n',
+		};
+
+		try {
+			await mode.combineBySql.execute.call(
+				createMockExecuteFunction(nodeParameters, node),
+				inputsData,
+			);
+
+			expect(true).toBe(false);
+		} catch (error) {
+			expect(error.message).toBe('Issue while executing query');
+			expect(error.description.includes('Parse error')).toBe(true);
+			expect(error.description.includes('SELECTTT')).toBe(true);
+		}
+	});
 
 	it('RIGHT JOIN', async () => {
 		const nodeParameters: IDataObject = {

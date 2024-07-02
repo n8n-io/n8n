@@ -379,7 +379,7 @@ export function getNodeInputsData(this: IExecuteFunctions) {
 
 	for (let i = 0; i < inputs.length; i++) {
 		try {
-			returnData.push(this.getInputData(i));
+			returnData.push(this.getInputData(i) ?? []);
 		} catch (error) {
 			returnData.push([]);
 		}

@@ -51,7 +51,9 @@ export async function execute(
 
 	try {
 		for (let i = 0; i < inputsData.length; i++) {
-			inputsData[i].forEach((item, index) => {
+			const inputData = inputsData[i];
+
+			inputData.forEach((item, index) => {
 				if (item.pairedItem === undefined) {
 					item.pairedItem = index;
 				}
@@ -85,7 +87,7 @@ export async function execute(
 			});
 
 			db.exec(`CREATE TABLE input${i + 1}`);
-			db.tables[`input${i + 1}`].data = inputsData[i].map((entry) => entry.json);
+			db.tables[`input${i + 1}`].data = inputData.map((entry) => entry.json);
 		}
 	} catch (error) {
 		throw new NodeOperationError(this.getNode(), error, {
