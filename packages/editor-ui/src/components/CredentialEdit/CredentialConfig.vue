@@ -1,6 +1,6 @@
 <template>
 	<div>
-		<div :class="$style.container" data-test-id="node-credentials-config-container">
+		<div :class="$style.config" data-test-id="node-credentials-config-container">
 			<Banner
 				v-show="showValidationWarning"
 				theme="danger"
@@ -66,7 +66,10 @@
 			/>
 
 			<template v-if="credentialPermissions.update">
-				<n8n-notice v-if="documentationUrl && credentialProperties.length" theme="warning">
+				<n8n-notice
+					v-if="documentationUrl && credentialProperties.length && !hasInlineDocs"
+					theme="warning"
+				>
 					{{ $locale.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
 					<span class="ml-4xs">
 						<n8n-link :to="documentationUrl" size="small" bold @click="onDocumentationUrlClick">
@@ -145,7 +148,12 @@
 				</template>
 			</EnterpriseEdition>
 		</div>
-		<CredentialDocs :credential-type="credentialType" :class="$style.docs"></CredentialDocs>
+		<CredentialDocs
+			:credential-type="credentialType"
+			:documentation-url="documentationUrl"
+			:class="$style.docs"
+		>
+		</CredentialDocs>
 	</div>
 </template>
 
@@ -179,6 +187,7 @@ import CredentialInputs from './CredentialInputs.vue';
 import GoogleAuthButton from './GoogleAuthButton.vue';
 import OauthButton from './OauthButton.vue';
 import CredentialDocs from './CredentialDocs.vue';
+import { CREDENTIAL_MARKDOWN_DOCS } from './docs';
 
 type Props = {
 	mode: string;
@@ -312,6 +321,8 @@ const isMissingCredentials = computed(() => props.credentialType === null);
 
 const isNewCredential = computed(() => props.mode === 'new' && !props.credentialId);
 
+const hasInlineDocs = computed(() => !!CREDENTIAL_MARKDOWN_DOCS[props.credentialType.name]);
+
 function onDataChange(event: IUpdateInformation): void {
 	emit('update', event);
 }
@@ -337,12 +348,27 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 </script>
 
 <style lang="scss" module>
-.container {
+.config {
 	--notice-margin: 0;
+	flex-grow: 1;
+
 	> * {
 		margin-bottom: var(--spacing-l);
 	}
+
+	&:has(+ .docs) {
+		padding-right: 320px;
+	}
 }
+
+.docs {
+	position: absolute;
+	right: 0;
+	bottom: 0;
+	top: 0;
+	max-width: 320px;
+}
+
 .googleReconnectLabel {
 	margin-right: var(--spacing-3xs);
 }

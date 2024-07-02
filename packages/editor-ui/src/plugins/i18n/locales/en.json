@@ -539,6 +539,8 @@
 	"credentialEdit.credentialInfo.created": "Created",
 	"credentialEdit.credentialInfo.id": "ID",
 	"credentialEdit.credentialInfo.lastModified": "Last modified",
+	"credentialEdit.credentialEdit.setupGuide": "Setup guide",
+	"credentialEdit.credentialEdit.docs": "Docs",
 	"credentialEdit.oAuthButton.connectMyAccount": "Connect my account",
 	"credentialEdit.oAuthButton.signInWithGoogle": "Sign in with Google",
 	"credentialEdit.credentialSharing.info.owner": "Sharing a credential allows people to use it in their workflows. They cannot access credential details.",

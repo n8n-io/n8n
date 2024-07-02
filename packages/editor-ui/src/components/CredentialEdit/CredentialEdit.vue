@@ -48,7 +48,6 @@
 					/>
 				</div>
 			</div>
-			<hr />
 		</template>
 		<template #content>
 			<div :class="$style.container" data-test-id="credential-edit-dialog">
@@ -1117,8 +1116,18 @@ function resetCredentialData(): void {
 
 <style module lang="scss">
 .credentialModal {
-	--dialog-max-width: 900px;
+	--dialog-max-width: 1200px;
 	--dialog-close-top: 31px;
+
+	:global(.el-dialog__header) {
+		padding-bottom: 0;
+		border-bottom: var(--border-base);
+	}
+
+	:global(.el-dialog__body) {
+		padding-top: var(--spacing-l);
+		position: relative;
+	}
 }
 
 .mainContent {
