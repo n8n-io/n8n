@@ -47,7 +47,7 @@ export class Start extends BaseCommand {
 	];
 
 	static flags = {
-		help: Flags.help({ char: 'h' }),
+		help: Flags.help({char: 'h'}),
 		open: Flags.boolean({
 			char: 'o',
 			description: 'opens the UI automatically in browser',
@@ -78,7 +78,7 @@ export class Start extends BaseCommand {
 	private openBrowser() {
 		const editorUrl = Container.get(UrlService).baseUrl;
 
-		open(editorUrl, { wait: true }).catch(() => {
+		open(editorUrl, {wait: true}).catch(() => {
 			this.logger.info(
 				`\nWas not able to open URL in browser. Please open manually by visiting:\n${editorUrl}\n`,
 			);
@@ -134,22 +134,22 @@ export class Start extends BaseCommand {
 		}
 
 		const closingTitleTag = '</title>';
-		const { staticCacheDir } = this.instanceSettings;
+		const {staticCacheDir} = this.instanceSettings;
 		const compileFile = async (fileName: string) => {
 			const filePath = path.join(EDITOR_UI_DIST_DIR, fileName);
 			if (/(index\.html)|.*\.(js|css)/.test(filePath) && existsSync(filePath)) {
 				const destFile = path.join(staticCacheDir, fileName);
-				await mkdir(path.dirname(destFile), { recursive: true });
+				await mkdir(path.dirname(destFile), {recursive: true});
 				const streams = [
 					createReadStream(filePath, 'utf-8'),
-					replaceStream('/{{BASE_PATH}}/', n8nPath, { ignoreCase: false }),
-					replaceStream('/%7B%7BBASE_PATH%7D%7D/', n8nPath, { ignoreCase: false }),
-					replaceStream('/%257B%257BBASE_PATH%257D%257D/', n8nPath, { ignoreCase: false }),
-					replaceStream('/static/', n8nPath + 'static/', { ignoreCase: false }),
+					replaceStream('/{{BASE_PATH}}/', n8nPath, {ignoreCase: false}),
+					replaceStream('/%7B%7BBASE_PATH%7D%7D/', n8nPath, {ignoreCase: false}),
+					replaceStream('/%257B%257BBASE_PATH%257D%257D/', n8nPath, {ignoreCase: false}),
+					replaceStream('/static/', n8nPath + 'static/', {ignoreCase: false}),
 				];
 				if (filePath.endsWith('index.html')) {
 					streams.push(
-						replaceStream('{{REST_ENDPOINT}}', restEndpoint, { ignoreCase: false }),
+						replaceStream('{{REST_ENDPOINT}}', restEndpoint, {ignoreCase: false}),
 						replaceStream(closingTitleTag, closingTitleTag + scriptsString, {
 							ignoreCase: false,
 						}),
@@ -161,7 +161,7 @@ export class Start extends BaseCommand {
 		};
 
 		await compileFile('index.html');
-		const files = await glob('**/*.{css,js}', { cwd: EDITOR_UI_DIST_DIR });
+		const files = await glob('**/*.{css,js}', {cwd: EDITOR_UI_DIST_DIR});
 		await Promise.all(files.map(compileFile));
 	}
 
@@ -240,20 +240,20 @@ export class Start extends BaseCommand {
 	}
 
 	async run() {
-		const { flags } = await this.parse(Start);
+		const {flags} = await this.parse(Start);
 
 		// Load settings from database and set them to config.
 		const databaseSettings = await Container.get(SettingsRepository).findBy({
 			loadOnStartup: true,
 		});
 		databaseSettings.forEach((setting) => {
-			config.set(setting.key, jsonParse(setting.value, { fallbackValue: setting.value }));
+			config.set(setting.key, jsonParse(setting.value, {fallbackValue: setting.value}));
 		});
 
 		const areCommunityPackagesEnabled = config.getEnv('nodes.communityPackages.enabled');
 
 		if (areCommunityPackagesEnabled) {
-			const { CommunityPackagesService } = await import('@/services/communityPackages.service');
+			const {CommunityPackagesService} = await import('@/services/communityPackages.service');
 			await Container.get(CommunityPackagesService).setMissingPackages({
 				reinstallMissingPackages: flags.reinstallMissingPackages,
 			});
@@ -277,10 +277,10 @@ export class Start extends BaseCommand {
 				// When no tunnel subdomain did exist yet create a new random one
 				tunnelSubdomain = randomString(24).toLowerCase();
 
-				this.instanceSettings.update({ tunnelSubdomain });
+				this.instanceSettings.update({tunnelSubdomain});
 			}
 
-			const { default: localtunnel } = await import('@n8n/localtunnel');
+			const {default: localtunnel} = await import('@n8n/localtunnel');
 			const port = config.getEnv('port');
 
 			const webhookTunnel = await localtunnel(port, {
@@ -353,7 +353,12 @@ export class Start extends BaseCommand {
 	 * enqueue any remaining ones until we have spare concurrency capacity again.
 	 */
 	private async runEnqueuedExecutions() {
-		const executions = await Container.get(ExecutionService).findAllEnqueuedExecutions();
+		let executions = []
+		try {
+			executions = await Container.get(ExecutionService).findAllEnqueuedExecutions();
+		} catch (e) {
+			console.log(e)
+		}
 
 		if (executions.length === 0) return;
 
