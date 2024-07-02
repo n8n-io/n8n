@@ -130,7 +130,7 @@ export default defineComponent({
 		});
 
 		const appliedTags = computed<string[]>(() => {
-			return props.modelValue.filter((id: string) => tagsStore.getTagById(id));
+			return props.modelValue.filter((id: string) => tagsStore.tagsById[id]);
 		});
 
 		watch(
