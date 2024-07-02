@@ -110,6 +110,30 @@ export class DocumentDefaultDataLoader implements INodeType {
 				],
 			},
 			{
+				displayName: 'Mode',
+				name: 'binaryMode',
+				type: 'options',
+				default: 'allInputData',
+				required: true,
+				displayOptions: {
+					show: {
+						dataType: ['binary'],
+					},
+				},
+				options: [
+					{
+						name: 'Load All Input Data',
+						value: 'allInputData',
+						description: 'Use all Binary data that flows into the parent agent or chain',
+					},
+					{
+						name: 'Load Specific Data',
+						value: 'specificField',
+						description: 'Load data from a specific field in the parent agent or chain',
+					},
+				],
+			},
+			{
 				displayName: 'Data Format',
 				name: 'loader',
 				type: 'options',
@@ -186,6 +210,9 @@ export class DocumentDefaultDataLoader implements INodeType {
 				displayOptions: {
 					show: {
 						dataType: ['binary'],
+					},
+					hide: {
+						binaryMode: ['allInputData'],
 					},
 				},
 			},

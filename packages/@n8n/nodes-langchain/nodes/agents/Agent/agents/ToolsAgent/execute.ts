@@ -1,4 +1,4 @@
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import type { AgentAction, AgentFinish, AgentStep } from 'langchain/agents';
@@ -13,6 +13,7 @@ import type { ZodObject } from 'zod';
 import { z } from 'zod';
 import type { BaseOutputParser, StructuredOutputParser } from '@langchain/core/output_parsers';
 import { OutputFixingParser } from 'langchain/output_parsers';
+import { HumanMessage } from '@langchain/core/messages';
 import {
 	isChatInstance,
 	getPromptInputByType,
@@ -113,10 +114,44 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 		returnIntermediateSteps?: boolean;
 	};
 
+	const binaryData = this.getInputData(0, 'main')?.[0]?.binary ?? {};
+	const binaryMessages = await Promise.all(
+		Object.values(binaryData)
+			.filter((data) => data.mimeType.startsWith('image/'))
+			.map(async (data) => {
+				let binaryUrlString;
+
+				// In filesystem mode we need to get binary stream by id before converting it to buffer
+				if (data.id) {
+					const binaryBuffer = await this.helpers.binaryToBuffer(
+						await this.helpers.getBinaryStream(data.id),
+					);
+
+					binaryUrlString = `data:${data.mimeType};base64,${Buffer.from(binaryBuffer).toString(BINARY_ENCODING)}`;
+				} else {
+					binaryUrlString = data.data.includes('base64')
+						? data.data
+						: `data:${data.mimeType};base64,${data.data}`;
+				}
+
+				return {
+					type: 'image_url',
+					image_url: {
+						url: binaryUrlString,
+					},
+				};
+			}),
+	);
+	const binaryMessage = new HumanMessage({
+		content: [...binaryMessages],
+	});
+	const convertedBinaryMessage = binaryMessage;
+
 	const prompt = ChatPromptTemplate.fromMessages([
 		['system', `{system_message}${outputParser ? '\n\n{formatting_instructions}' : ''}`],
 		['placeholder', '{chat_history}'],
 		['human', '{input}'],
+		convertedBinaryMessage,
 		['placeholder', '{agent_scratchpad}'],
 	]);
 

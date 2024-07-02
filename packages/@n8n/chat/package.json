@@ -39,8 +39,11 @@
     }
   },
   "dependencies": {
+    "@vueuse/core": "^10.5.0",
+    "floating-vue": "^5.2.2",
     "highlight.js": "^11.8.0",
     "markdown-it-link-attributes": "^4.0.1",
+    "pretty-bytes": "5.6.0",
     "uuid": "^8.3.2",
     "vue": "^3.4.21",
     "vue-markdown-render": "^2.1.1"

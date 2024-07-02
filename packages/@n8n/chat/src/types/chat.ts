@@ -8,5 +8,5 @@ export interface Chat {
 	waitingForResponse: Ref<boolean>;
 	loadPreviousSession?: () => Promise<string | undefined>;
 	startNewSession?: () => Promise<void>;
-	sendMessage: (text: string) => Promise<void>;
+	sendMessage: (text: string, files: File[]) => Promise<void>;
 }

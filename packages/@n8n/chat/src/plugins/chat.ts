@@ -24,11 +24,12 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 			})),
 		);
 
-		async function sendMessage(text: string) {
+		async function sendMessage(text: string, files: File[] = []) {
 			const sentMessage: ChatMessage = {
 				id: uuidv4(),
 				text,
 				sender: 'user',
+				files,
 				createdAt: new Date().toISOString(),
 			};
 
@@ -41,6 +42,7 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 
 			const sendMessageResponse = await api.sendMessage(
 				text,
+				files,
 				currentSessionId.value as string,
 				options,
 			);

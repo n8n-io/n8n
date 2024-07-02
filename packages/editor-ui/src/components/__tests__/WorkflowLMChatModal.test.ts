@@ -4,7 +4,7 @@ import { mock } from 'vitest-mock-extended';
 import { NodeConnectionType } from 'n8n-workflow';
 import type { IConnections, INode } from 'n8n-workflow';
 
-import WorkflowLMChatModal from '@/components/WorkflowLMChat.vue';
+import WorkflowLMChatModal from '@/components/WorkflowLMChat/WorkflowLMChat.vue';
 import { WORKFLOW_LM_CHAT_MODAL_KEY } from '@/constants';
 import type { IWorkflowDb } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -137,14 +137,17 @@ describe('WorkflowLMChatModal', () => {
 		);
 
 		const chatDialog = wrapper.getByTestId('workflow-lm-chat-dialog');
-		const chatSendButton = wrapper.getByTestId('workflow-chat-send-button');
-		const chatInput = wrapper.getByTestId('workflow-chat-input');
+		const chatInputsContainer = wrapper.getByTestId('lm-chat-inputs');
+		const chatSendButton = chatInputsContainer.querySelector('.chat-input-send-button');
+		const chatInput = chatInputsContainer.querySelector('textarea');
 
-		await fireEvent.update(chatInput, 'Hello!');
-		await fireEvent.click(chatSendButton);
+		if (chatInput && chatSendButton) {
+			await fireEvent.update(chatInput, 'Hello!');
+			await fireEvent.click(chatSendButton);
+		}
 
-		await waitFor(() => expect(chatDialog.querySelectorAll('.message')).toHaveLength(1));
+		await waitFor(() => expect(chatDialog.querySelectorAll('.chat-message')).toHaveLength(1));
 
-		expect(chatDialog.querySelector('.message')).toHaveTextContent('Hello!');
+		expect(chatDialog.querySelector('.chat-message')).toHaveTextContent('Hello!');
 	});
 });

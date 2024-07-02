@@ -41,3 +41,15 @@ export const Windowed: Story = {
 		mode: 'window',
 	} satisfies Partial<ChatOptions>,
 };
+
+export const WorkflowChat: Story = {
+	name: 'Workflow Chat',
+	args: {
+		webhookUrl: 'http://localhost:5678/webhook/ad324b56-3e40-4b27-874f-58d150504edc/chat',
+		mode: 'fullscreen',
+		allowedFilesMimeTypes: 'image/*,text/*,audio/*, application/pdf',
+		allowFileUploads: true,
+		showWelcomeScreen: false,
+		initialMessages: [],
+	} satisfies Partial<ChatOptions>,
+};
