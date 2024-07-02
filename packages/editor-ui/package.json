@@ -82,7 +82,7 @@
     "vue-json-pretty": "^2.4.0",
     "vue-markdown-render": "^2.2.1",
     "vue-router": "^4.4.0",
-    "vue3-touch-events": "^4.1.8",
+    "vue3-touch-events": "^4.1.3",
     "xss": "^1.0.15"
   },
   "devDependencies": {
