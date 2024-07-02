@@ -82,7 +82,7 @@ function findFirstMatch(
 		if (entry2 === undefined) return false;
 
 		for (const key of Object.keys(lookup)) {
-			const excpectedValue = lookup[key];
+			const expectedValue = lookup[key];
 			let entry2FieldValue;
 
 			if (disableDotNotation) {
