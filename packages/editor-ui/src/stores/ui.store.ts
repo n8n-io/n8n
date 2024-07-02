@@ -95,7 +95,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const activeActions = ref<string[]>([]);
 	const activeCredentialType = ref<string | null>(null);
 	const theme = ref<ThemeOption>(savedTheme);
-	const modals = ref<{ [key: string]: ModalState }>({
+	const modals = ref<Record<string, ModalState>>({
 		...Object.fromEntries(
 			[
 				ABOUT_MODAL_KEY,
