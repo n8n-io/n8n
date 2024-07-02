@@ -1,5 +1,6 @@
 import { deepCopy } from 'n8n-workflow';
 import { GlobalConfig } from '@n8n/config';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 
 import { CredentialsService } from './credentials.service';

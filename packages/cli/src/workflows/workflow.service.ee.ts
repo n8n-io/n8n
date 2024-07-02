@@ -17,6 +17,7 @@ import type {
 	WorkflowWithSharingsMetaDataAndCredentials,
 } from './workflows.types';
 import { OwnershipService } from '@/services/ownership.service';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type EntityManager } from '@n8n/typeorm';
 import { Project } from '@/databases/entities/Project';
 import { ProjectService } from '@/services/project.service';

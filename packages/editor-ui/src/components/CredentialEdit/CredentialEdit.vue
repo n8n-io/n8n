@@ -665,7 +665,7 @@ export default defineComponent({
 					};
 				}
 
-				this.credentialName = currentCredentials.name as string;
+				this.credentialName = currentCredentials.name;
 			} catch (error) {
 				this.showError(
 					error,

@@ -9,7 +9,7 @@ export class MigrateIntegerKeysToString1690000000001 implements IrreversibleMigr
 		if (dbType === 'mariadb') {
 			collation = COLLATION_57;
 		} else {
-			const dbVersionQuery = (await queryRunner.query('SELECT @@version')) as  // eslint-disable-next-line @typescript-eslint/naming-convention
+			const dbVersionQuery = (await queryRunner.query('SELECT @@version')) as
 				| Array<{ '@@version': string }>
 				| undefined;
 			collation = COLLATION_80;

@@ -310,7 +310,7 @@ type ICredentialHttpRequestNode = {
 export interface ICredentialType {
 	name: string;
 	displayName: string;
-	icon?: Themed<Icon>;
+	icon?: Icon;
 	iconUrl?: Themed<string>;
 	extends?: string[];
 	properties: INodeProperties[];
@@ -876,6 +876,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			inputIndex?: number,
 		): Promise<unknown>;
 		getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
+		getNodeInputs(): INodeInputConfiguration[];
 		getNodeOutputs(): INodeOutputConfiguration[];
 		putExecutionToWait(waitTill: Date): Promise<void>;
 		sendMessageToUI(message: any): void;
@@ -1275,7 +1276,6 @@ export interface ICredentialsDisplayOptions {
 		[key: string]: NodeParameterValue[] | undefined;
 	};
 	show?: {
-		// eslint-disable-next-line @typescript-eslint/naming-convention
 		'@version'?: number[];
 		[key: string]: NodeParameterValue[] | undefined;
 	};
@@ -1572,13 +1572,15 @@ export type NodeIconColor =
 	| 'azure'
 	| 'purple'
 	| 'crimson';
-export type Icon = `fa:${string}` | `file:${string}` | `node:${string}`;
 export type Themed<T> = T | { light: T; dark: T };
+export type IconRef = `fa:${string}` | `node:${string}.${string}`;
+export type IconFile = `file:${string}.png` | `file:${string}.svg`;
+export type Icon = IconRef | Themed<IconFile>;
 
 export interface INodeTypeBaseDescription {
 	displayName: string;
 	name: string;
-	icon?: Themed<Icon>;
+	icon?: Icon;
 	iconColor?: NodeIconColor;
 	iconUrl?: Themed<string>;
 	badgeIconUrl?: Themed<string>;
@@ -1711,29 +1713,28 @@ export type ConnectionTypes =
 	| 'main';
 
 export const enum NodeConnectionType {
-	// eslint-disable-next-line @typescript-eslint/naming-convention
 	AiAgent = 'ai_agent',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiChain = 'ai_chain',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiDocument = 'ai_document',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiEmbedding = 'ai_embedding',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiLanguageModel = 'ai_languageModel',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiMemory = 'ai_memory',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiOutputParser = 'ai_outputParser',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiRetriever = 'ai_retriever',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiTextSplitter = 'ai_textSplitter',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiTool = 'ai_tool',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiVectorStore = 'ai_vectorStore',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	Main = 'main',
 }
 
@@ -1760,29 +1761,33 @@ export interface INodeInputFilter {
 }
 
 export interface INodeInputConfiguration {
-	displayName?: string;
-	maxConnections?: number;
-	required?: boolean;
-	filter?: INodeInputFilter;
-	type: ConnectionTypes;
-}
-
-export interface INodeOutputConfiguration {
 	category?: string;
 	displayName?: string;
 	required?: boolean;
 	type: ConnectionTypes;
+	filter?: INodeInputFilter;
+	maxConnections?: number;
 }
+
+export interface INodeOutputConfiguration {
+	category?: 'error';
+	displayName?: string;
+	maxConnections?: number;
+	required?: boolean;
+	type: ConnectionTypes;
+}
+
+export type ExpressionString = `={{${string}}}`;
 
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number | number[];
 	defaults: INodeParameters;
 	eventTriggerDescription?: string;
 	activationMessage?: string;
-	inputs: Array<ConnectionTypes | INodeInputConfiguration> | string;
+	inputs: Array<ConnectionTypes | INodeInputConfiguration> | ExpressionString;
 	requiredInputs?: string | number[] | number; // Ony available with executionOrder => "v1"
 	inputNames?: string[];
-	outputs: Array<ConnectionTypes | INodeInputConfiguration> | string;
+	outputs: Array<ConnectionTypes | INodeOutputConfiguration> | ExpressionString;
 	outputNames?: string[];
 	properties: INodeProperties[];
 	credentials?: INodeCredentialDescription[];
@@ -2317,6 +2322,7 @@ export interface INodeGraphItem {
 	agent?: string; //@n8n/n8n-nodes-langchain.agent
 	prompts?: IDataObject[] | IDataObject; //ai node's prompts, cloud only
 	toolSettings?: IDataObject; //various langchain tool's settings
+	sql?: string; //merge node combineBySql, cloud only
 }
 
 export interface INodeNameIndex {

@@ -85,6 +85,7 @@ export class ActiveWorkflows {
 				if (triggerResponse !== undefined) {
 					// If a response was given save it
 
+					// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
 					this.activeWorkflows[workflowId].triggerResponses!.push(triggerResponse);
 				}
 			} catch (e) {
@@ -105,6 +106,7 @@ export class ActiveWorkflows {
 
 		for (const pollNode of pollingNodes) {
 			try {
+				// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
 				this.activeWorkflows[workflowId].pollResponses!.push(
 					await this.activatePolling(
 						pollNode,

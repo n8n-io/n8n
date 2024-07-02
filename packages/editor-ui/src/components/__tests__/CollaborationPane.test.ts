@@ -2,7 +2,6 @@ import { merge } from 'lodash-es';
 import { SETTINGS_STORE_DEFAULT_STATE, waitAllPromises } from '@/__tests__/utils';
 import { ROLE, STORES } from '@/constants';
 import { createTestingPinia } from '@pinia/testing';
-import { useUIStore } from '@/stores/ui.store';
 import CollaborationPane from '@/components//MainHeader/CollaborationPane.vue';
 import type { RenderOptions } from '@/__tests__/render';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -43,8 +42,6 @@ const MEMBER_USER_2 = {
 	fullName: 'Another Member User',
 };
 
-let uiStore: ReturnType<typeof useUIStore>;
-
 const initialState = {
 	[STORES.SETTINGS]: {
 		settings: merge({}, SETTINGS_STORE_DEFAULT_STATE.settings),
@@ -80,10 +77,6 @@ const defaultRenderOptions: RenderOptions = {
 const renderComponent = createComponentRenderer(CollaborationPane, defaultRenderOptions);
 
 describe('CollaborationPane', () => {
-	beforeEach(() => {
-		uiStore = useUIStore();
-	});
-
 	afterEach(() => {
 		vi.clearAllMocks();
 	});

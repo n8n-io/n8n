@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
-
 import type { BinaryData } from 'n8n-core';
 import type { schema } from './schema';
 import type { RedisOptions } from 'ioredis';

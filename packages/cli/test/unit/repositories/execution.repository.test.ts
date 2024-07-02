@@ -26,7 +26,7 @@ describe('ExecutionRepository', () => {
 	afterAll(() => jest.useRealTimers());
 
 	describe('getWaitingExecutions()', () => {
-		test.each(['sqlite', 'postgres'])(
+		test.each(['sqlite', 'postgresdb'] as const)(
 			'on %s, should be called with expected args',
 			async (dbType) => {
 				globalConfig.database.type = dbType;

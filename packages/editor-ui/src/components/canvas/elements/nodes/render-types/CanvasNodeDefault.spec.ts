@@ -81,4 +81,34 @@ describe('CanvasNodeDefault', () => {
 			expect(getByText('Test Node').closest('.node')).not.toHaveClass('selected');
 		});
 	});
+
+	describe('disabled', () => {
+		it('should apply disabled class when node is disabled', () => {
+			const { getByText } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								disabled: true,
+							},
+						}),
+					},
+				},
+			});
+
+			expect(getByText('Test Node').closest('.node')).toHaveClass('disabled');
+			expect(getByText('(Deactivated)')).toBeVisible();
+		});
+
+		it('should not apply disabled class when node is enabled', () => {
+			const { getByText } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasNodeProvide(),
+					},
+				},
+			});
+			expect(getByText('Test Node').closest('.node')).not.toHaveClass('disabled');
+		});
+	});
 });
