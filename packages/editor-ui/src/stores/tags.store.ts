@@ -7,7 +7,7 @@ import { computed, ref } from 'vue';
 import { useWorkflowsStore } from './workflows.store';
 
 export const useTagsStore = defineStore(STORES.TAGS, () => {
-	const tags = ref<{ [id: string]: ITag }>({});
+	const tagsById = ref<Record<string, ITag>>({});
 	const loading = ref(false);
 	const fetchedAll = ref(false);
 	const fetchedUsageCount = ref(false);
@@ -18,21 +18,17 @@ export const useTagsStore = defineStore(STORES.TAGS, () => {
 	// Computed
 
 	const allTags = computed(() => {
-		return Object.values(tags.value).sort((a, b) => a.name.localeCompare(b.name));
+		return Object.values(tagsById.value).sort((a, b) => a.name.localeCompare(b.name));
 	});
 
 	const isLoading = computed(() => loading.value);
 
-	const hasTags = computed(() => Object.keys(tags.value).length > 0);
-
-	const getTagById = computed(() => {
-		return (id: string) => tags.value[id];
-	});
+	const hasTags = computed(() => Object.keys(tagsById.value).length > 0);
 
 	// Methods
 
 	const setAllTags = (loadedTags: ITag[]) => {
-		tags.value = loadedTags.reduce((accu: { [id: string]: ITag }, tag: ITag) => {
+		tagsById.value = loadedTags.reduce((accu: { [id: string]: ITag }, tag: ITag) => {
 			accu[tag.id] = tag;
 
 			return accu;
@@ -43,19 +39,19 @@ export const useTagsStore = defineStore(STORES.TAGS, () => {
 	const upsertTags = (toUpsertTags: ITag[]) => {
 		toUpsertTags.forEach((toUpsertTag) => {
 			const tagId = toUpsertTag.id;
-			const currentTag = tags.value[tagId];
+			const currentTag = tagsById.value[tagId];
 			if (currentTag) {
 				const newTag = {
 					...currentTag,
 					...toUpsertTag,
 				};
-				tags.value = {
-					...tags.value,
+				tagsById.value = {
+					...tagsById.value,
 					[tagId]: newTag,
 				};
 			} else {
-				tags.value = {
-					...tags.value,
+				tagsById.value = {
+					...tagsById.value,
 					[tagId]: toUpsertTag,
 				};
 			}
@@ -63,14 +59,14 @@ export const useTagsStore = defineStore(STORES.TAGS, () => {
 	};
 
 	const deleteTag = (id: string) => {
-		const { [id]: deleted, ...rest } = tags.value;
-		tags.value = rest;
+		const { [id]: deleted, ...rest } = tagsById.value;
+		tagsById.value = rest;
 	};
 
 	const fetchAll = async (params?: { force?: boolean; withUsageCount?: boolean }) => {
 		const { force = false, withUsageCount = false } = params || {};
 		if (!force && fetchedAll.value && fetchedUsageCount.value === withUsageCount) {
-			return Object.values(tags.value);
+			return Object.values(tagsById.value);
 		}
 
 		loading.value = true;
@@ -107,8 +103,7 @@ export const useTagsStore = defineStore(STORES.TAGS, () => {
 		allTags,
 		isLoading,
 		hasTags,
-		getTagById,
-		tags,
+		tagsById,
 		fetchAll,
 		create,
 		rename,
