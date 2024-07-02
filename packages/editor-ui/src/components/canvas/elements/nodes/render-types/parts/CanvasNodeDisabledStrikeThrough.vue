@@ -1,14 +1,11 @@
 <script setup lang="ts">
-import { computed, inject, useCssModule } from 'vue';
-import { CanvasNodeKey } from '@/constants';
+import { computed, useCssModule } from 'vue';
 import { useNodeConnections } from '@/composables/useNodeConnections';
+import { useCanvasNode } from '@/composables/useCanvasNode';
 
 const $style = useCssModule();
-const node = inject(CanvasNodeKey);
 
-const inputs = computed(() => node?.data.value.inputs ?? []);
-const outputs = computed(() => node?.data.value.outputs ?? []);
-const connections = computed(() => node?.data.value.connections ?? { input: {}, output: {} });
+const { inputs, outputs, connections } = useCanvasNode();
 const { mainInputConnections, mainOutputConnections } = useNodeConnections({
 	inputs,
 	outputs,

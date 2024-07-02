@@ -455,6 +455,7 @@ export const enum VIEWS {
 	CREDENTIALS = 'CredentialsView',
 	VARIABLES = 'VariablesView',
 	NEW_WORKFLOW = 'NodeViewNew',
+	NEW_WORKFLOW_V2 = 'NodeViewNewV2',
 	WORKFLOW = 'NodeViewExisting',
 	WORKFLOW_V2 = 'NodeViewV2',
 	DEMO = 'WorkflowDemo',

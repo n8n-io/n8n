@@ -1,5 +1,10 @@
 /* eslint-disable @typescript-eslint/no-redundant-type-constituents */
-import type { ConnectionTypes, INodeConnections, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	ConnectionTypes,
+	ExecutionStatus,
+	INodeConnections,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 import type { DefaultEdge, Node, NodeProps, Position } from '@vue-flow/core';
 import type { INodeUi } from '@/Interface';
@@ -32,6 +37,22 @@ export interface CanvasElementData {
 		input: INodeConnections;
 		output: INodeConnections;
 	};
+	issues: {
+		items: string[];
+		visible: boolean;
+	};
+	pinnedData: {
+		count: number;
+		visible: boolean;
+	};
+	execution: {
+		status?: ExecutionStatus;
+		waiting?: string;
+	};
+	runData: {
+		count: number;
+		visible: boolean;
+	};
 	renderType: 'default' | 'trigger' | 'configuration' | 'configurable';
 }
 
@@ -41,6 +62,7 @@ export interface CanvasConnectionData {
 	source: CanvasConnectionPort;
 	target: CanvasConnectionPort;
 	fromNodeName?: string;
+	status?: 'success' | 'error' | 'pinned';
 }
 
 export type CanvasConnection = DefaultEdge<CanvasConnectionData>;

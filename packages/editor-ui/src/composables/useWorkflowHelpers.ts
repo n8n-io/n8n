@@ -1050,8 +1050,12 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		}
 	}
 
-	async function initState(workflowData: IWorkflowDb): Promise<void> {
+	async function initState(workflowData: IWorkflowDb, set = false): Promise<void> {
 		workflowsStore.addWorkflow(workflowData);
+		if (set) {
+			workflowsStore.setWorkflow(workflowData);
+		}
+
 		workflowsStore.setActive(workflowData.active || false);
 		workflowsStore.setWorkflowId(workflowData.id);
 		workflowsStore.setWorkflowName({

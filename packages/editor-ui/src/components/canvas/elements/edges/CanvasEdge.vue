@@ -17,12 +17,40 @@ const props = defineProps<
 
 const $style = useCssModule();
 
+const isFocused = computed(() => props.selected || props.hovered);
+
+const status = computed(() => props.data.status);
+const statusColor = computed(() => {
+	if (props.selected) {
+		return 'var(--color-background-dark)';
+	} else if (status.value === 'success') {
+		return 'var(--color-success)';
+	} else if (status.value === 'pinned') {
+		return 'var(--color-secondary)';
+	} else {
+		return 'var(--color-foreground-xdark)';
+	}
+});
+
 const edgeStyle = computed(() => ({
-	strokeWidth: 2,
 	...props.style,
+	strokeWidth: 2,
+	stroke: statusColor.value,
 }));
 
-const isEdgeToolbarVisible = computed(() => props.selected || props.hovered);
+const edgeLabel = computed(() => {
+	if (isFocused.value) {
+		return '';
+	}
+
+	return props.label;
+});
+
+const edgeLabelStyle = computed(() => ({
+	fill: statusColor.value,
+	transform: 'translateY(calc(var(--spacing-xs) * -1))',
+	fontSize: 'var(--font-size-xs)',
+}));
 
 const edgeToolbarStyle = computed(() => {
 	return {
@@ -32,7 +60,7 @@ const edgeToolbarStyle = computed(() => {
 
 const edgeToolbarClasses = computed(() => ({
 	[$style.edgeToolbar]: true,
-	[$style.edgeToolbarVisible]: isEdgeToolbarVisible.value,
+	[$style.edgeToolbarVisible]: isFocused.value,
 	nodrag: true,
 	nopan: true,
 }));
@@ -63,18 +91,15 @@ function onDelete() {
 <template>
 	<BaseEdge
 		:id="id"
+		:class="$style.edge"
 		:style="edgeStyle"
 		:path="path[0]"
 		:marker-end="markerEnd"
-		:label="data?.label"
+		:label="edgeLabel"
 		:label-x="path[1]"
 		:label-y="path[2]"
-		:label-style="{ fill: 'white' }"
-		:label-show-bg="true"
-		:label-bg-style="{ fill: 'red' }"
-		:label-bg-padding="[2, 4]"
-		:label-bg-border-radius="2"
-		:class="$style.edge"
+		:label-style="edgeLabelStyle"
+		:label-show-bg="false"
 	/>
 	<EdgeLabelRenderer>
 		<CanvasEdgeToolbar :class="edgeToolbarClasses" :style="edgeToolbarStyle" @delete="onDelete" />
@@ -82,6 +107,10 @@ function onDelete() {
 </template>
 
 <style lang="scss" module>
+.edge {
+	transition: stroke 0.3s ease;
+}
+
 .edgeToolbar {
 	position: absolute;
 	opacity: 0;

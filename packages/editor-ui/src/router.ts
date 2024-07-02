@@ -70,6 +70,10 @@ function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: stri
 	return false;
 }
 
+function nodeViewV2CustomMiddleware() {
+	return !!localStorage.getItem('features.NodeViewV2');
+}
+
 export const routes: RouteRecordRaw[] = [
 	{
 		path: '/',
@@ -367,13 +371,29 @@ export const routes: RouteRecordRaw[] = [
 			sidebar: MainSidebar,
 		},
 		meta: {
+			nodeView: true,
+			keepWorkflowAlive: true,
 			middleware: ['authenticated', 'custom'],
 			middlewareOptions: {
-				custom: () => {
-					return !!localStorage.getItem('features.NodeViewV2');
-				},
+				custom: nodeViewV2CustomMiddleware,
 			},
+		},
+	},
+	{
+		path: '/workflow-v2/new',
+		name: VIEWS.NEW_WORKFLOW_V2,
+		components: {
+			default: NodeViewV2,
+			header: MainHeader,
+			sidebar: MainSidebar,
+		},
+		meta: {
 			nodeView: true,
+			keepWorkflowAlive: true,
+			middleware: ['authenticated', 'custom'],
+			middlewareOptions: {
+				custom: nodeViewV2CustomMiddleware,
+			},
 		},
 	},
 	{
