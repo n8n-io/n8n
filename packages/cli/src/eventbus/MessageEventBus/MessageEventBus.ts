@@ -35,6 +35,8 @@ import {
 	type EventMessageAiNodeOptions,
 } from '../EventMessageClasses/EventMessageAiNode';
 import { License } from '@/License';
+import type { EventMessageExecutionOptions } from '../EventMessageClasses/EventMessageExecution';
+import { EventMessageExecution } from '../EventMessageClasses/EventMessageExecution';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all' | 'unfinished';
 
@@ -396,5 +398,9 @@ export class MessageEventBus extends EventEmitter {
 
 	async sendAiNodeEvent(options: EventMessageAiNodeOptions) {
 		await this.send(new EventMessageAiNode(options));
+	}
+
+	async sendExecutionEvent(options: EventMessageExecutionOptions) {
+		await this.send(new EventMessageExecution(options));
 	}
 }
