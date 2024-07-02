@@ -60,7 +60,7 @@ function findAllMatches(
 				entry2FieldValue = get(entry2.json, key);
 			}
 
-			if (!isEntriesEqual(excpectedValue, entry2FieldValue)) {
+			if (!isEntriesEqual(expectedValue, entry2FieldValue)) {
 				return acc;
 			}
 		}
