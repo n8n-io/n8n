@@ -562,7 +562,9 @@ function onArrowKeyDown({ currentInputValue, key }: ArrowKeyDownPayload) {
 	if (isCurrentInputEmptyOrMatch && (key === 'ArrowUp' || key === 'ArrowDown')) {
 		chatEventBus.emit('blurInput');
 
-		if (key === 'ArrowUp') {
+		if (pastMessages.length === 1) {
+			previousMessageIndex.value = 0;
+		} else if (key === 'ArrowUp') {
 			previousMessageIndex.value = (previousMessageIndex.value + 1) % pastMessages.length;
 		} else if (key === 'ArrowDown') {
 			previousMessageIndex.value =
@@ -571,7 +573,7 @@ function onArrowKeyDown({ currentInputValue, key }: ArrowKeyDownPayload) {
 
 		chatEventBus.emit(
 			'setInputValue',
-			pastMessages[pastMessages.length - previousMessageIndex.value] ?? '',
+			pastMessages[pastMessages.length - 1 - previousMessageIndex.value] ?? '',
 		);
 
 		// Refocus to move the cursor to the end of the input
