@@ -1,7 +1,8 @@
 <script lang="ts" setup>
-import { computed, ref, watch, onBeforeMount, nextTick } from 'vue';
+import { computed, ref, watch, onBeforeMount, onMounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { deepCopy } from 'n8n-workflow';
+import { N8nFormInput } from 'n8n-design-system';
 import { useUsersStore } from '@/stores/users.store';
 import type { IUser } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
@@ -36,6 +37,7 @@ const dialogVisible = ref(false);
 const upgradeDialogVisible = ref(false);
 
 const isDirty = ref(false);
+const isValid = ref(false);
 const formData = ref<Pick<Project, 'name' | 'relations'>>({
 	name: '',
 	relations: [],
@@ -44,7 +46,7 @@ const projectRoleTranslations = ref<{ [key: string]: string }>({
 	'project:editor': locale.baseText('projects.settings.role.editor'),
 	'project:admin': locale.baseText('projects.settings.role.admin'),
 });
-const nameInput = ref<HTMLInputElement | null>(null);
+const nameInput = ref<InstanceType<typeof N8nFormInput> | null>(null);
 
 const usersList = computed(() =>
 	usersStore.allUsers.filter((user: IUser) => {
@@ -221,12 +223,9 @@ const onConfirmDelete = async (transferId?: string) => {
 };
 
 const selectProjectNameIfMatchesDefault = () => {
-	if (
-		nameInput.value &&
-		formData.value.name === locale.baseText('projects.settings.newProjectName')
-	) {
-		nameInput.value.focus();
-		nameInput.value.select();
+	if (formData.value.name === locale.baseText('projects.settings.newProjectName')) {
+		nameInput.value?.inputRef?.focus();
+		nameInput.value?.inputRef?.select();
 	}
 };
 
@@ -246,6 +245,10 @@ watch(
 onBeforeMount(async () => {
 	await usersStore.fetchUsers();
 });
+
+onMounted(() => {
+	selectProjectNameIfMatchesDefault();
+});
 </script>
 
 <template>
@@ -256,14 +259,17 @@ onBeforeMount(async () => {
 		<form @submit.prevent="onSubmit">
 			<fieldset>
 				<label for="projectName">{{ locale.baseText('projects.settings.name') }}</label>
-				<N8nInput
+				<N8nFormInput
 					id="projectName"
 					ref="nameInput"
 					v-model="formData.name"
+					label=""
 					type="text"
 					name="name"
+					required
 					data-test-id="project-settings-name-input"
 					@input="onNameInput"
+					@validate="isValid = $event"
 				/>
 			</fieldset>
 			<fieldset>
@@ -343,7 +349,7 @@ onBeforeMount(async () => {
 					>
 				</div>
 				<N8nButton
-					:disabled="!isDirty"
+					:disabled="!isDirty || !isValid"
 					type="primary"
 					data-test-id="project-settings-save-button"
 					>{{ locale.baseText('projects.settings.button.save') }}</N8nButton

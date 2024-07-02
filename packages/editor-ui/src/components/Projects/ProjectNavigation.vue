@@ -124,6 +124,9 @@ onMounted(async () => {
 			<N8nMenuItem
 				v-for="project in displayProjects"
 				:key="project.id"
+				:class="{
+					[$style.collapsed]: props.collapsed,
+				}"
 				:item="getProjectMenuItem(project)"
 				:compact="props.collapsed"
 				:handle-select="projectClicked"
@@ -193,6 +196,10 @@ onMounted(async () => {
 .upgradeLink {
 	color: var(--color-primary);
 	cursor: pointer;
+}
+
+.collapsed {
+	text-transform: uppercase;
 }
 </style>
 

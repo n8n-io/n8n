@@ -21,7 +21,7 @@ export const addProjectMember = (email: string) => {
 	getProjectMembersSelect().click();
 	getProjectMembersSelect().get('.el-select-dropdown__item').contains(email.toLowerCase()).click();
 };
-export const getProjectNameInput = () => cy.get('#projectName');
+export const getProjectNameInput = () => cy.get('#projectName').find('input');
 export const getResourceMoveModal = () => cy.getByTestId('project-move-resource-modal');
 export const getResourceMoveConfirmModal = () =>
 	cy.getByTestId('project-move-resource-confirm-modal');

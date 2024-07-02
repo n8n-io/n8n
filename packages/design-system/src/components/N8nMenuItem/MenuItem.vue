@@ -97,7 +97,7 @@ import N8nIcon from '../N8nIcon';
 import ConditionalRouterLink from '../ConditionalRouterLink';
 import type { IMenuItem } from '../../types';
 import { doesMenuItemMatchCurrentRoute } from './routerUtil';
-import { getInitials } from './labelUtil';
+import { getInitials } from '../../utils/labelUtil';
 
 interface MenuItemProps {
 	item: IMenuItem;

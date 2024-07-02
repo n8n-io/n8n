@@ -73,15 +73,13 @@ describe('WorkflowsView', () => {
 	});
 
 	it('should filter workflows by tags', async () => {
-		const { container, getByTestId, getAllByTestId, queryByTestId } = renderComponent({
+		const { getByTestId, getAllByTestId, queryByTestId } = renderComponent({
 			pinia,
 		});
 
-		expect(container.querySelectorAll('.n8n-loading')).toHaveLength(3);
 		expect(queryByTestId('resources-list')).not.toBeInTheDocument();
 
 		await waitFor(() => {
-			expect(container.querySelectorAll('.n8n-loading')).toHaveLength(0);
 			// There are 5 workflows defined in server fixtures
 			expect(getAllByTestId('resources-list-item')).toHaveLength(5);
 		});

@@ -45,6 +45,9 @@ const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
 
+const resourceType = computed(
+	() => locale.baseText('generic.credential').toLocaleLowerCase() as 'credential',
+);
 const credentialType = computed(() => credentialsStore.getCredentialTypeByName(props.data.type));
 const credentialPermissions = computed(() => getCredentialPermissions(props.data));
 const actions = computed(() => {
@@ -76,7 +79,7 @@ const formattedCreatedAtDate = computed(() => {
 
 	return dateformat(
 		props.data.createdAt,
-		`d mmmm${props.data.createdAt.startsWith(currentYear) ? '' : ', yyyy'}`,
+		`d mmmm${String(props.data.createdAt).startsWith(currentYear) ? '' : ', yyyy'}`,
 	);
 });
 
@@ -121,7 +124,7 @@ function moveResource() {
 		name: PROJECT_MOVE_RESOURCE_MODAL,
 		data: {
 			resource: props.data,
-			resourceType: locale.baseText('generic.credential').toLocaleLowerCase(),
+			resourceType: resourceType.value,
 		},
 	});
 }
@@ -150,7 +153,11 @@ function moveResource() {
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
-				<ProjectCardBadge :resource="data" :personal-project="projectsStore.personalProject" />
+				<ProjectCardBadge
+					:resource="data"
+					:resource-type="resourceType"
+					:personal-project="projectsStore.personalProject"
+				/>
 				<n8n-action-toggle
 					data-test-id="credential-card-actions"
 					:actions="actions"

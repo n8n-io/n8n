@@ -9,6 +9,7 @@
 		:shareable="isShareable"
 		:initialize="initialize"
 		:disabled="readOnlyEnv"
+		:loading="loading"
 		@click:add="addWorkflow"
 		@update:filters="onFiltersUpdated"
 	>
@@ -162,8 +163,6 @@ import { useProjectsStore } from '@/stores/projects.store';
 import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import { useTemplatesStore } from '@/stores/templates.store';
 
-type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
-
 interface Filters {
 	search: string;
 	homeProject: string;
@@ -194,6 +193,7 @@ const WorkflowsView = defineComponent({
 				tags: [],
 			} as Filters,
 			sourceControlStoreUnsubscribe: () => {},
+			loading: false,
 		};
 	},
 	computed: {
@@ -275,9 +275,6 @@ const WorkflowsView = defineComponent({
 				this.saveFiltersOnQueryString();
 			},
 		},
-		'filters.tags'() {
-			this.sendFiltersTelemetry('tags');
-		},
 		'$route.params.projectId'() {
 			void this.initialize();
 		},
@@ -323,11 +320,13 @@ const WorkflowsView = defineComponent({
 			});
 		},
 		async initialize() {
+			this.loading = true;
 			await Promise.all([
 				this.usersStore.fetchUsers(),
 				this.workflowsStore.fetchAllWorkflows(this.$route?.params?.projectId as string | undefined),
 				this.workflowsStore.fetchActiveWorkflows(),
 			]);
+			this.loading = false;
 		},
 		onClickTag(tagId: string) {
 			if (!this.filters.tags.includes(tagId)) {
@@ -356,9 +355,6 @@ const WorkflowsView = defineComponent({
 			}
 
 			return matches;
-		},
-		sendFiltersTelemetry(source: string) {
-			(this.$refs.layout as IResourcesListLayoutInstance).sendFiltersTelemetry(source);
 		},
 		saveFiltersOnQueryString() {
 			const query: { [key: string]: string } = {};

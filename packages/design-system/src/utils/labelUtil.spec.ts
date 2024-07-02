@@ -1,4 +1,4 @@
-import { getInitials } from '../labelUtil';
+import { getInitials } from './labelUtil';
 
 describe('labelUtil.getInitials', () => {
 	it.each([

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, computed } from 'vue';
+import { ref, computed, h } from 'vue';
 import type { ICredentialsResponse, IWorkflowDb } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { useUIStore } from '@/stores/ui.store';
@@ -8,6 +8,8 @@ import Modal from '@/components/Modal.vue';
 import { N8nCheckbox, N8nText } from 'n8n-design-system';
 import { useToast } from '@/composables/useToast';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { VIEWS } from '@/constants';
+import ProjectMoveSuccessToastMessage from '@/components/Projects/ProjectMoveSuccessToastMessage.vue';
 
 const props = defineProps<{
 	modalName: string;
@@ -15,6 +17,7 @@ const props = defineProps<{
 		resource: IWorkflowDb | ICredentialsResponse;
 		resourceType: 'workflow' | 'credential';
 		projectId: string;
+		projectName: string;
 	};
 }>();
 
@@ -48,6 +51,21 @@ const confirm = async () => {
 		telemetry.track(`User successfully moved ${props.data.resourceType}`, {
 			[`${props.data.resourceType}_id`]: props.data.resource.id,
 			project_from_type: projectsStore.currentProject?.type ?? projectsStore.personalProject?.type,
+		});
+		toast.showToast({
+			title: i18n.baseText('projects.move.resource.success.title', {
+				interpolate: {
+					resourceType: props.data.resourceType,
+				},
+			}),
+			message: h(ProjectMoveSuccessToastMessage, {
+				routeName: VIEWS.PROJECTS_WORKFLOWS,
+				resource: props.data.resource,
+				resourceType: props.data.resourceType,
+				projectId: props.data.projectId,
+				projectName: props.data.projectName,
+			}),
+			type: 'success',
 		});
 	} catch (error) {
 		toast.showError(

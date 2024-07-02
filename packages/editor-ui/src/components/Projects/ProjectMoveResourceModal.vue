@@ -47,6 +47,7 @@ const next = () => {
 			resource: props.data.resource,
 			resourceType: props.data.resourceType,
 			projectId: projectId.value,
+			projectName: availableProjects.value.find((p) => p.id === projectId.value)?.name ?? '',
 		},
 	});
 };

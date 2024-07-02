@@ -72,6 +72,9 @@ const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 
+const resourceType = computed(
+	() => locale.baseText('generic.workflow').toLocaleLowerCase() as 'workflow',
+);
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const workflowPermissions = computed(() => getWorkflowPermissions(props.data));
 const actions = computed(() => {
@@ -222,7 +225,7 @@ function moveResource() {
 		name: PROJECT_MOVE_RESOURCE_MODAL,
 		data: {
 			resource: props.data,
-			resourceType: locale.baseText('generic.workflow').toLocaleLowerCase(),
+			resourceType: resourceType.value,
 		},
 	});
 }
@@ -261,7 +264,11 @@ function moveResource() {
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
-				<ProjectCardBadge :resource="data" :personal-project="projectsStore.personalProject" />
+				<ProjectCardBadge
+					:resource="data"
+					:resource-type="resourceType"
+					:personal-project="projectsStore.personalProject"
+				/>
 				<WorkflowActivator
 					class="mr-s"
 					:workflow-active="data.active"
