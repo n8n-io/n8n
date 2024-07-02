@@ -146,7 +146,7 @@ export class WorkflowRunner {
 			// frontend would not be possible
 			await this.enqueueExecution(executionId, data, loadStaticData, realtime);
 		} else {
-			await this.runMainProcess(executionId, data, loadStaticData, executionId);
+			await this.runMainProcess(executionId, data, loadStaticData, restartExecutionId);
 			this.eventRelay.emit('workflow-pre-execute', { executionId, data });
 		}
 
@@ -273,7 +273,6 @@ export class WorkflowRunner {
 				pushRef: data.pushRef,
 			});
 
-			await additionalData.hooks.executeHookFunctions('workflowExecuteBefore', []);
 			if (data.executionData !== undefined) {
 				this.logger.debug(`Execution ID ${executionId} had Execution data. Running with payload.`, {
 					executionId,
