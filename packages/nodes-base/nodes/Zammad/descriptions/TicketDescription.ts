@@ -99,6 +99,20 @@ export const ticketDescription: INodeProperties[] = [
 		},
 	},
 	{
+		displayName: 'Create Customer if They Do Not Exist',
+		name: 'createCustomerIfNotExists',
+		description:
+			'Whether you want Zammad to find out the user ID or, if there is no user for the email address, create the user for you during ticket creation',
+		type: 'boolean',
+		default: false,
+		displayOptions: {
+			show: {
+				resource: ['ticket'],
+				operation: ['create'],
+			},
+		},
+	},
+	{
 		displayName: 'Ticket ID',
 		name: 'id',
 		type: 'string',
