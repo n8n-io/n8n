@@ -36,6 +36,13 @@ const isFileUploadDisabled = computed(
 const isFileUploadAllowed = computed(() => unref(options.allowFileUploads) === true);
 const allowedFileTypes = computed(() => unref(options.allowedFilesMimeTypes));
 
+const styleVars = computed(() => {
+	const controlsCount = isFileUploadAllowed.value ? 2 : 1;
+	return {
+		'--controls-count': controlsCount,
+	};
+});
+
 const {
 	open: openFileDialog,
 	reset,
@@ -141,10 +148,7 @@ function onKeyDown(event: KeyboardEvent) {
 </script>
 
 <template>
-	<div class="chat-input" @keydown.stop="onKeyDown">
-		<div v-if="files?.length && !isSubmitting" class="chat-files">
-			<ChatFile v-for="file in files" :key="file.name" :file="file" @remove="onFileRemove" />
-		</div>
+	<div class="chat-input" :style="styleVars" @keydown.stop="onKeyDown">
 		<div class="chat-inputs">
 			<textarea
 				ref="chatTextArea"
@@ -153,17 +157,29 @@ function onKeyDown(event: KeyboardEvent) {
 				:placeholder="t('inputPlaceholder')"
 				@keydown.enter="onSubmitKeydown"
 			/>
-			<button
-				v-if="isFileUploadAllowed"
-				:disabled="isFileUploadDisabled"
-				class="chat-input-send-button"
-				@click="() => openFileDialog()"
-			>
-				<IconFilePlus height="32" width="32" />
-			</button>
-			<button :disabled="isSubmitDisabled" class="chat-input-send-button" @click="onSubmit">
-				<IconSend height="32" width="32" />
-			</button>
+
+			<div class="chat-inputs-controls">
+				<button
+					v-if="isFileUploadAllowed"
+					:disabled="isFileUploadDisabled"
+					class="chat-input-send-button"
+					@click="() => openFileDialog()"
+				>
+					<IconFilePlus height="24" width="24" />
+				</button>
+				<button :disabled="isSubmitDisabled" class="chat-input-send-button" @click="onSubmit">
+					<IconSend height="24" width="24" />
+				</button>
+			</div>
+		</div>
+		<div v-if="files?.length && !isSubmitting" class="chat-files">
+			<ChatFile
+				v-for="file in files"
+				:key="file.name"
+				:file="file"
+				:is-removable="true"
+				@remove="onFileRemove"
+			/>
 		</div>
 	</div>
 </template>
@@ -175,7 +191,7 @@ function onKeyDown(event: KeyboardEvent) {
 	align-items: center;
 	width: 100%;
 	flex-direction: column;
-	gap: 0.5rem;
+	position: relative;
 
 	* {
 		box-sizing: border-box;
@@ -194,6 +210,7 @@ function onKeyDown(event: KeyboardEvent) {
 		border: var(--chat--input--border, 0);
 		border-radius: var(--chat--input--border-radius, 0);
 		padding: 0.9rem;
+		padding-right: calc(0.9rem + (var(--controls-count, 1) * var(--chat--textarea--height)));
 		min-height: var(--chat--textarea--height);
 		max-height: var(--chat--textarea--max-height, var(--chat--textarea--height));
 		height: 100%;
@@ -208,7 +225,11 @@ function onKeyDown(event: KeyboardEvent) {
 		}
 	}
 }
-
+.chat-inputs-controls {
+	display: flex;
+	position: absolute;
+	right: 0;
+}
 .chat-input-send-button {
 	height: var(--chat--textarea--height);
 	width: var(--chat--textarea--height);
@@ -239,12 +260,12 @@ function onKeyDown(event: KeyboardEvent) {
 
 .chat-files {
 	display: flex;
-	max-width: calc(100% - (2 * (var(--chat--spacing))));
 	overflow-x: hidden;
 	overflow-y: auto;
 	width: 100%;
-	flex-direction: column;
-	max-height: 100px;
-	// margin-bottom: 0.5rem;
+	flex-direction: row;
+	flex-wrap: wrap;
+	gap: 0.25rem;
+	padding: var(--chat--files-spacing, 0.25rem);
 }
 </style>

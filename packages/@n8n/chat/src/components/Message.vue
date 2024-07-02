@@ -8,9 +8,9 @@ import typescript from 'highlight.js/lib/languages/typescript';
 import python from 'highlight.js/lib/languages/python';
 import xml from 'highlight.js/lib/languages/xml';
 import bash from 'highlight.js/lib/languages/bash';
-import MdiOpenInNew from 'virtual:icons/mdi/openInNew';
 import markdownLink from 'markdown-it-link-attributes';
 import type MarkdownIt from 'markdown-it';
+import ChatFile from './ChatFile.vue';
 import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
 import { useOptions } from '@n8n/chat/composables';
 
@@ -125,17 +125,9 @@ onMounted(async () => {
 				:options="markdownOptions"
 				:plugins="[linksNewTabPlugin]"
 			/>
-			<div class="chat-message-files">
+			<div v-if="(message.files ?? []).length > 0" class="chat-message-files">
 				<div v-for="file in message.files ?? []" :key="file.name" class="chat-message-file">
-					<div
-						v-if="file.type.startsWith('image/')"
-						class="chat-message-file-image"
-						@click="openImageInNewTab(file.name)"
-					>
-						<img :src="fileSources[file.name]" :alt="file.name" />
-						<MdiOpenInNew height="18" width="18" class="chat-message-file-image-open" />
-					</div>
-					<div v-else>{{ file.name }}</div>
+					<ChatFile :file="file" :is-removable="false" :is-previewable="true" />
 				</div>
 			</div>
 		</slot>
@@ -230,34 +222,11 @@ onMounted(async () => {
 			border-radius: var(--chat--border-radius);
 		}
 	}
-
-	.chat-message-file-image {
-		position: relative;
-		width: fit-content;
-
-		img {
-			max-width: 300px;
-			width: fit-content;
-			max-height: 200px;
-			cursor: pointer;
-			&:hover {
-				filter: brightness(0.4);
-			}
-		}
-
-		&:hover .chat-message-file-image-open {
-			opacity: 1;
-		}
-		.chat-message-file-image-open {
-			position: absolute;
-			bottom: 0;
-			top: 0;
-			left: 0;
-			right: 0;
-			margin: auto;
-			opacity: 0;
-			pointer-events: none;
-		}
+	.chat-message-files {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25rem;
+		padding-top: 0.5rem;
 	}
 }
 </style>
