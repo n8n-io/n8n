@@ -1,21 +1,16 @@
 import type { ClientOAuth2Options, OAuth2CredentialData } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
-import Csrf from 'csrf';
 import { Response } from 'express';
 import pkceChallenge from 'pkce-challenge';
 import * as qs from 'querystring';
 import omit from 'lodash/omit';
 import set from 'lodash/set';
 import split from 'lodash/split';
-import { ApplicationError, jsonParse, jsonStringify } from 'n8n-workflow';
 import { Get, RestController } from '@/decorators';
+import { jsonStringify } from 'n8n-workflow';
 import { OAuthRequest } from '@/requests';
-import { AbstractOAuthController } from './abstractOAuth.controller';
-
-interface CsrfStateParam {
-	cid: string;
-	token: string;
-}
+import { AbstractOAuthController, type CsrfStateParam } from './abstractOAuth.controller';
+import { GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE as GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE } from '../../constants';
 
 @RestController('/oauth2-credential')
 export class OAuth2CredentialController extends AbstractOAuthController {
@@ -31,11 +26,11 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 		// At some point in the past we saved hidden scopes to credentials (but shouldn't)
 		// Delete scope before applying defaults to make sure new scopes are present on reconnect
 		// Generic Oauth2 API is an exception because it needs to save the scope
-		const genericOAuth2 = ['oAuth2Api', 'googleOAuth2Api', 'microsoftOAuth2Api'];
+
 		if (
 			decryptedDataOriginal?.scope &&
 			credential.type.includes('OAuth2') &&
-			!genericOAuth2.includes(credential.type)
+			!GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE.includes(credential.type)
 		) {
 			delete decryptedDataOriginal.scope;
 		}
@@ -87,8 +82,8 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 	/** Verify and store app code. Generate access tokens and store for respective credential */
 	@Get('/callback', { usesTemplates: true })
 	async handleCallback(req: OAuthRequest.OAuth2Credential.Callback, res: Response) {
+		const userId = req.user?.id;
 		try {
-			// realmId it's currently just use for the quickbook OAuth2 flow
 			const { code, state: encodedState } = req.query;
 			if (!code || !encodedState) {
 				return this.renderCallbackError(
@@ -105,13 +100,11 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 				return this.renderCallbackError(res, (error as Error).message);
 			}
 
-			const credential = await this.getCredentialWithoutUser(state.cid);
+			const credentialId = state.cid;
+			const credential = await this.getCredentialWithoutUser(credentialId);
 			if (!credential) {
 				const errorMessage = 'OAuth2 callback failed because of insufficient permissions';
-				this.logger.error(errorMessage, {
-					userId: req.user?.id,
-					credentialId: state.cid,
-				});
+				this.logger.error(errorMessage, { userId, credentialId });
 				return this.renderCallbackError(res, errorMessage);
 			}
 
@@ -123,16 +116,9 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 				additionalData,
 			);
 
-			const token = new Csrf();
-			if (
-				decryptedDataOriginal.csrfSecret === undefined ||
-				!token.verify(decryptedDataOriginal.csrfSecret as string, state.token)
-			) {
+			if (this.verifyCsrfState(decryptedDataOriginal, state)) {
 				const errorMessage = 'The OAuth2 callback state is invalid!';
-				this.logger.debug(errorMessage, {
-					userId: req.user?.id,
-					credentialId: credential.id,
-				});
+				this.logger.debug(errorMessage, { userId, credentialId });
 				return this.renderCallbackError(res, errorMessage);
 			}
 
@@ -171,10 +157,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 
 			if (oauthToken === undefined) {
 				const errorMessage = 'Unable to get OAuth2 access tokens!';
-				this.logger.error(errorMessage, {
-					userId: req.user?.id,
-					credentialId: credential.id,
-				});
+				this.logger.error(errorMessage, { userId, credentialId });
 				return this.renderCallbackError(res, errorMessage);
 			}
 
@@ -191,8 +174,8 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 			await this.encryptAndSaveData(credential, decryptedDataOriginal);
 
 			this.logger.verbose('OAuth2 callback successful for credential', {
-				userId: req.user?.id,
-				credentialId: credential.id,
+				userId,
+				credentialId,
 			});
 
 			return res.render('oauth-callback');
@@ -218,30 +201,5 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 			scopesSeparator: credential.scope?.includes(',') ? ',' : ' ',
 			ignoreSSLIssues: credential.ignoreSSLIssues ?? false,
 		};
-	}
-
-	private renderCallbackError(res: Response, message: string, reason?: string) {
-		res.render('oauth-error-callback', { error: { message, reason } });
-	}
-
-	private createCsrfState(credentialsId: string): [string, string] {
-		const token = new Csrf();
-		const csrfSecret = token.secretSync();
-		const state: CsrfStateParam = {
-			token: token.create(csrfSecret),
-			cid: credentialsId,
-		};
-		return [csrfSecret, Buffer.from(JSON.stringify(state)).toString('base64')];
-	}
-
-	private decodeCsrfState(encodedState: string): CsrfStateParam {
-		const errorMessage = 'Invalid state format';
-		const decoded = jsonParse<CsrfStateParam>(Buffer.from(encodedState, 'base64').toString(), {
-			errorMessage,
-		});
-		if (typeof decoded.cid !== 'string' || typeof decoded.token !== 'string') {
-			throw new ApplicationError(errorMessage);
-		}
-		return decoded;
 	}
 }

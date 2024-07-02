@@ -14,8 +14,8 @@ export class CircleCi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'CircleCI',
 		name: 'circleCi',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:circleCi.png',
+
+		icon: { light: 'file:circleCi.svg', dark: 'file:circleCi.dark.svg' },
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -142,7 +142,7 @@ export class CircleCi implements INodeType {
 
 				returnData.push(...(responseData as INodeExecutionData[]));
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ error: error.message, json: {}, itemIndex: i });
 					continue;
 				}

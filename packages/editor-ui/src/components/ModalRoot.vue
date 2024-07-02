@@ -12,15 +12,17 @@
 </template>
 
 <script lang="ts">
+import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
 import { mapStores } from 'pinia';
+import type { ModalKey } from '@/Interface';
 
 export default defineComponent({
 	name: 'ModalRoot',
 	props: {
 		name: {
-			type: String,
+			type: String as PropType<ModalKey>,
 			required: true,
 		},
 		keepAlive: {

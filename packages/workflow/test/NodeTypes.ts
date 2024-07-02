@@ -1,11 +1,13 @@
-import {
-	NodeHelpers,
-	type INodeType,
-	type INodeTypeData,
-	type INodeTypes,
-	type IVersionedNodeType,
-	type LoadedClass,
-} from '@/index';
+import { mock } from 'jest-mock-extended';
+import type {
+	IDataObject,
+	INodeType,
+	INodeTypeData,
+	INodeTypes,
+	IVersionedNodeType,
+	LoadedClass,
+} from '@/Interfaces';
+import * as NodeHelpers from '@/NodeHelpers';
 
 const stickyNode: LoadedClass<INodeType> = {
 	type: {
@@ -569,6 +571,37 @@ const setNode: LoadedClass<INodeType> = {
 	},
 };
 
+const manualTriggerNode: LoadedClass<INodeType> = {
+	sourcePath: '',
+	type: {
+		description: {
+			displayName: 'Manual Trigger',
+			name: 'n8n-nodes-base.manualTrigger',
+			icon: 'fa:mouse-pointer',
+			group: ['trigger'],
+			version: 1,
+			description: 'Runs the flow on clicking a button in n8n',
+			eventTriggerDescription: '',
+			maxNodes: 1,
+			defaults: {
+				name: 'When clicking ‘Test workflow’',
+				color: '#909298',
+			},
+			inputs: [],
+			outputs: ['main'],
+			properties: [
+				{
+					displayName:
+						'This node is where the workflow execution starts (when you click the ‘test’ button on the canvas).<br><br> <a data-action="showNodeCreator">Explore other ways to trigger your workflow</a> (e.g on a schedule, or a webhook)',
+					name: 'notice',
+					type: 'notice',
+					default: '',
+				},
+			],
+		},
+	},
+};
+
 export class NodeTypes implements INodeTypes {
 	nodeTypes: INodeTypeData = {
 		'n8n-nodes-base.stickyNote': stickyNode,
@@ -626,39 +659,7 @@ export class NodeTypes implements INodeTypes {
 				},
 			},
 		},
-		'test.switch': {
-			sourcePath: '',
-			type: {
-				description: {
-					displayName: 'Set',
-					name: 'set',
-					group: ['input'],
-					version: 1,
-					description: 'Switches',
-					defaults: {
-						name: 'Switch',
-						color: '#0000FF',
-					},
-					inputs: ['main'],
-					outputs: ['main', 'main', 'main', 'main'],
-					outputNames: ['0', '1', '2', '3'],
-					properties: [
-						{
-							displayName: 'Value1',
-							name: 'value1',
-							type: 'string',
-							default: 'default-value1',
-						},
-						{
-							displayName: 'Value2',
-							name: 'value2',
-							type: 'string',
-							default: 'default-value2',
-						},
-					],
-				},
-			},
-		},
+		'n8n-nodes-base.manualTrigger': manualTriggerNode,
 	};
 
 	getByName(nodeType: string): INodeType | IVersionedNodeType {
@@ -669,5 +670,14 @@ export class NodeTypes implements INodeTypes {
 		if (this.nodeTypes[nodeType]?.type) {
 			return NodeHelpers.getVersionedNodeType(this.nodeTypes[nodeType]?.type, version);
 		}
+		return mock<INodeType>({
+			description: {
+				properties: [],
+			},
+		});
+	}
+
+	getKnownTypes(): IDataObject {
+		throw new Error('Method not implemented.');
 	}
 }

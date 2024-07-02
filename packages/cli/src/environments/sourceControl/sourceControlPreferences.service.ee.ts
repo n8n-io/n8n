@@ -1,15 +1,10 @@
-import os from 'node:os';
 import { writeFile, chmod, readFile } from 'node:fs/promises';
 import Container, { Service } from 'typedi';
 import { SourceControlPreferences } from './types/sourceControlPreferences';
 import type { ValidationError } from 'class-validator';
 import { validate } from 'class-validator';
-import { writeFile as fsWriteFile, rm as fsRm } from 'fs/promises';
-import {
-	generateSshKeyPair,
-	isSourceControlLicensed,
-	sourceControlFoldersExistCheck,
-} from './sourceControlHelper.ee';
+import { rm as fsRm } from 'fs/promises';
+import { generateSshKeyPair, isSourceControlLicensed } from './sourceControlHelper.ee';
 import { Cipher, InstanceSettings } from 'n8n-core';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
 import {
@@ -35,7 +30,7 @@ export class SourceControlPreferencesService {
 	readonly gitFolder: string;
 
 	constructor(
-		instanceSettings: InstanceSettings,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
 		private readonly cipher: Cipher,
 	) {
@@ -82,7 +77,7 @@ export class SourceControlPreferencesService {
 	private async getPrivateKeyFromDatabase() {
 		const dbKeyPair = await this.getKeyPairFromDatabase();
 
-		if (!dbKeyPair) return null;
+		if (!dbKeyPair) throw new ApplicationError('Failed to find key pair in database');
 
 		return this.cipher.decrypt(dbKeyPair.encryptedPrivateKey);
 	}
@@ -90,7 +85,7 @@ export class SourceControlPreferencesService {
 	private async getPublicKeyFromDatabase() {
 		const dbKeyPair = await this.getKeyPairFromDatabase();
 
-		if (!dbKeyPair) return null;
+		if (!dbKeyPair) throw new ApplicationError('Failed to find key pair in database');
 
 		return dbKeyPair.publicKey;
 	}
@@ -98,17 +93,13 @@ export class SourceControlPreferencesService {
 	async getPrivateKeyPath() {
 		const dbPrivateKey = await this.getPrivateKeyFromDatabase();
 
-		if (dbPrivateKey) {
-			const tempFilePath = path.join(os.tmpdir(), 'ssh_private_key_temp');
+		const tempFilePath = path.join(this.instanceSettings.n8nFolder, 'ssh_private_key_temp');
 
-			await writeFile(tempFilePath, dbPrivateKey);
+		await writeFile(tempFilePath, dbPrivateKey);
 
-			await chmod(tempFilePath, 0o600);
+		await chmod(tempFilePath, 0o600);
 
-			return tempFilePath;
-		}
-
-		return this.sshKeyName; // fall back to key in filesystem
+		return tempFilePath;
 	}
 
 	async getPublicKey() {
@@ -136,11 +127,9 @@ export class SourceControlPreferencesService {
 	}
 
 	/**
-	 * Will generate an ed25519 key pair and save it to the database and the file system
-	 * Note: this will overwrite any existing key pair
+	 * Generate an SSH key pair and write it to the database, overwriting any existing key pair.
 	 */
 	async generateAndSaveKeyPair(keyPairType?: KeyPairType): Promise<SourceControlPreferences> {
-		sourceControlFoldersExistCheck([this.gitFolder, this.sshFolder]);
 		if (!keyPairType) {
 			keyPairType =
 				this.getPreferences().keyGeneratorType ??
@@ -148,21 +137,6 @@ export class SourceControlPreferencesService {
 				'ed25519';
 		}
 		const keyPair = await generateSshKeyPair(keyPairType);
-		if (keyPair.publicKey && keyPair.privateKey) {
-			try {
-				await fsWriteFile(this.sshKeyName + '.pub', keyPair.publicKey, {
-					encoding: 'utf8',
-					mode: 0o666,
-				});
-				await fsWriteFile(this.sshKeyName, keyPair.privateKey, { encoding: 'utf8', mode: 0o600 });
-			} catch (error) {
-				throw new ApplicationError('Failed to save key pair to disk', { cause: error });
-			}
-		}
-		// update preferences only after generating key pair to prevent endless loop
-		if (keyPairType !== this.getPreferences().keyGeneratorType) {
-			await this.setPreferences({ keyGeneratorType: keyPairType });
-		}
 
 		try {
 			await Container.get(SettingsRepository).save({
@@ -175,6 +149,11 @@ export class SourceControlPreferencesService {
 			});
 		} catch (error) {
 			throw new ApplicationError('Failed to write key pair to database', { cause: error });
+		}
+
+		// update preferences only after generating key pair to prevent endless loop
+		if (keyPairType !== this.getPreferences().keyGeneratorType) {
+			await this.setPreferences({ keyGeneratorType: keyPairType });
 		}
 
 		return this.getPreferences();
@@ -223,6 +202,10 @@ export class SourceControlPreferencesService {
 		preferences: Partial<SourceControlPreferences>,
 		saveToDb = true,
 	): Promise<SourceControlPreferences> {
+		const noKeyPair = (await this.getKeyPairFromDatabase()) === null;
+
+		if (noKeyPair) await this.generateAndSaveKeyPair();
+
 		this.sourceControlPreferences = preferences;
 		if (saveToDb) {
 			const settingsValue = JSON.stringify(this._sourceControlPreferences);

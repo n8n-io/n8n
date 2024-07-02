@@ -178,6 +178,26 @@ export const fromFileOptions: INodeProperties = {
 			description: 'Set the field delimiter, usually a comma',
 		},
 		{
+			displayName: 'Encoding',
+			name: 'encoding',
+			type: 'options',
+			displayOptions: {
+				show: {
+					'/fileFormat': ['csv'],
+				},
+			},
+			options: [
+				{ name: 'ASCII', value: 'ascii' },
+				{ name: 'Latin1', value: 'latin1' },
+				{ name: 'UCS-2', value: 'ucs-2' },
+				{ name: 'UCS2', value: 'ucs2' },
+				{ name: 'UTF-8', value: 'utf-8' },
+				{ name: 'UTF16LE', value: 'utf16le' },
+				{ name: 'UTF8', value: 'utf8' },
+			],
+			default: 'utf-8',
+		},
+		{
 			displayName: 'Exclude Byte Order Mark (BOM)',
 			name: 'enableBOM',
 			type: 'boolean',

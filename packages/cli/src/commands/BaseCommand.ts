@@ -1,7 +1,6 @@
 import 'reflect-metadata';
 import { Container } from 'typedi';
-import { Command } from '@oclif/core';
-import { ExitError } from '@oclif/core/lib/errors';
+import { Command, Errors } from '@oclif/core';
 import { ApplicationError, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
 import { BinaryDataService, InstanceSettings, ObjectStoreService } from 'n8n-core';
 import type { AbstractServer } from '@/AbstractServer';
@@ -40,6 +39,8 @@ export abstract class BaseCommand extends Command {
 	protected server?: AbstractServer;
 
 	protected shutdownService: ShutdownService = Container.get(ShutdownService);
+
+	protected license: License;
 
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.
@@ -269,13 +270,13 @@ export abstract class BaseCommand extends Command {
 	}
 
 	async initLicense(): Promise<void> {
-		const license = Container.get(License);
-		await license.init(this.instanceType ?? 'main');
+		this.license = Container.get(License);
+		await this.license.init(this.instanceType ?? 'main');
 
 		const activationKey = config.getEnv('license.activationKey');
 
 		if (activationKey) {
-			const hasCert = (await license.loadCertStr()).length > 0;
+			const hasCert = (await this.license.loadCertStr()).length > 0;
 
 			if (hasCert) {
 				return this.logger.debug('Skipping license activation');
@@ -283,7 +284,7 @@ export abstract class BaseCommand extends Command {
 
 			try {
 				this.logger.debug('Attempting license activation');
-				await license.activate(activationKey);
+				await this.license.activate(activationKey);
 				this.logger.debug('License init complete');
 			} catch (e) {
 				this.logger.error('Could not activate license', e as Error);
@@ -306,7 +307,7 @@ export abstract class BaseCommand extends Command {
 			await sleep(100); // give any in-flight query some time to finish
 			await Db.close();
 		}
-		const exitCode = error instanceof ExitError ? error.oclif.exit : error ? 1 : 0;
+		const exitCode = error instanceof Errors.ExitError ? error.oclif.exit : error ? 1 : 0;
 		this.exit(exitCode);
 	}
 
@@ -320,7 +321,7 @@ export abstract class BaseCommand extends Command {
 			const forceShutdownTimer = setTimeout(async () => {
 				// In case that something goes wrong with shutdown we
 				// kill after timeout no matter what
-				console.log(`process exited after ${this.gracefulShutdownTimeoutInS}s`);
+				this.logger.info(`process exited after ${this.gracefulShutdownTimeoutInS}s`);
 				const errorMsg = `Shutdown timed out after ${this.gracefulShutdownTimeoutInS} seconds`;
 				await this.exitWithCrash(errorMsg, new Error(errorMsg));
 			}, this.gracefulShutdownTimeoutInS * 1000);

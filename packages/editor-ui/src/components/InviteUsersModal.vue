@@ -65,7 +65,7 @@ import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { useToast } from '@/composables/useToast';
 import Modal from './Modal.vue';
-import type { IFormInputs, IInviteResponse, IUser } from '@/Interface';
+import type { IFormInputs, IInviteResponse, IUser, InvitableRoleName } from '@/Interface';
 import {
 	EnterpriseEditionFeature,
 	VALID_EMAIL_REGEX,
@@ -113,7 +113,7 @@ export default defineComponent({
 			formBus: createEventBus(),
 			modalBus: createEventBus(),
 			emails: '',
-			role: ROLE.Member,
+			role: ROLE.Member as InvitableRoleName,
 			showInviteUrls: null as IInviteResponse[] | null,
 			loading: false,
 			INVITE_USER_MODAL_KEY,
@@ -216,7 +216,7 @@ export default defineComponent({
 
 			return false;
 		},
-		onInput(e: { name: string; value: string }) {
+		onInput(e: { name: string; value: InvitableRoleName }) {
 			if (e.name === 'emails') {
 				this.emails = e.value;
 			}
@@ -237,7 +237,7 @@ export default defineComponent({
 					throw new Error(this.$locale.baseText('settings.users.noUsersToInvite'));
 				}
 
-				const invited: IInviteResponse[] = await this.usersStore.inviteUsers(emails);
+				const invited = await this.usersStore.inviteUsers(emails);
 				const erroredInvites = invited.filter((invite) => invite.error);
 				const successfulEmailInvites = invited.filter(
 					(invite) => !invite.error && invite.user.emailSent,

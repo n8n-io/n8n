@@ -1,22 +1,6 @@
-import { CredentialsModal, MessageBox } from './modals';
 import * as formStep from '../composables/setup-template-form-step';
 import { overrideFeatureFlag } from '../composables/featureFlags';
-
-export type TemplateTestData = {
-	id: number;
-	fixture: string;
-};
-
-export const testData = {
-	simpleTemplate: {
-		id: 1205,
-		fixture: 'Test_Template_1.json',
-	},
-	templateWithoutCredentials: {
-		id: 1344,
-		fixture: 'Test_Template_2.json',
-	},
-};
+import { CredentialsModal, MessageBox } from './modals';
 
 const credentialsModal = new CredentialsModal();
 const messageBox = new MessageBox();

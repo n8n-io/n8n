@@ -20,19 +20,20 @@ import { removeExpressionPrefix } from '@/utils/expressions';
 import { createEventBus, type EventBus } from 'n8n-design-system/utils';
 import type { IDataObject } from 'n8n-workflow';
 import { inputTheme } from './theme';
+import { infoBoxTooltips } from '@/plugins/codemirror/tooltips/InfoBoxTooltip';
 
 type Props = {
 	modelValue: string;
 	path: string;
 	rows?: number;
-	isReadonly?: boolean;
+	isReadOnly?: boolean;
 	additionalData?: IDataObject;
 	eventBus?: EventBus;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	rows: 5,
-	isReadonly: false,
+	isReadOnly: false,
 	additionalData: () => ({}),
 	eventBus: () => createEventBus(),
 });
@@ -48,14 +49,15 @@ const ndvStore = useNDVStore();
 const root = ref<HTMLElement>();
 const extensions = computed(() => [
 	Prec.highest(
-		keymap.of([...tabKeyMap(true), ...enterKeyMap, ...autocompleteKeyMap, ...historyKeyMap]),
+		keymap.of([...tabKeyMap(false), ...enterKeyMap, ...autocompleteKeyMap, ...historyKeyMap]),
 	),
 	n8nLang(),
 	n8nAutocompletion(),
-	inputTheme({ rows: props.rows }),
+	inputTheme({ isReadOnly: props.isReadOnly, rows: props.rows }),
 	history(),
 	expressionInputHandler(),
 	EditorView.lineWrapping,
+	infoBoxTooltips(),
 ]);
 const editorValue = ref<string>(removeExpressionPrefix(props.modelValue));
 const {
@@ -70,7 +72,7 @@ const {
 	editorRef: root,
 	editorValue,
 	extensions,
-	isReadOnly: props.isReadonly,
+	isReadOnly: props.isReadOnly,
 	autocompleteTelemetry: { enabled: true, parameterPath: props.path },
 	additionalData: props.additionalData,
 });
@@ -138,7 +140,12 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<div ref="root" :class="$style.editor" data-test-id="inline-expression-editor-input"></div>
+	<div
+		ref="root"
+		title=""
+		:class="$style.editor"
+		data-test-id="inline-expression-editor-input"
+	></div>
 </template>
 
 <style lang="scss" module>

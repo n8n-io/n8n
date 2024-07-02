@@ -31,7 +31,7 @@ let pinia: ReturnType<typeof createPinia>;
 
 describe('WorkflowHistoryList', () => {
 	beforeAll(() => {
-		Element.prototype.scrollTo = vi.fn();
+		Element.prototype.scrollTo = vi.fn(() => {});
 	});
 
 	beforeEach(() => {

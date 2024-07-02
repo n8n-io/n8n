@@ -8,7 +8,7 @@ import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES, Time } from '@/constants';
 import type { User } from '@db/entities/User';
 import { UserRepository } from '@db/repositories/user.repository';
 import { AuthError } from '@/errors/response-errors/auth.error';
-import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { License } from '@/License';
 import { Logger } from '@/Logger';
 import type { AuthenticatedRequest } from '@/requests';
@@ -92,7 +92,7 @@ export class AuthService {
 			!user.isOwner &&
 			!isWithinUsersLimit
 		) {
-			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
 		const token = this.issueJWT(user, browserId);

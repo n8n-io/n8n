@@ -1,8 +1,9 @@
-/* eslint-disable @typescript-eslint/no-use-before-define */
 import type { Entry as LdapUser } from 'ldapts';
 import { Filter } from 'ldapts/filters/Filter';
 import { Container } from 'typedi';
 import { validate } from 'jsonschema';
+import { randomString } from 'n8n-workflow';
+
 import * as Db from '@/Db';
 import config from '@/config';
 import { User } from '@db/entities/User';
@@ -37,13 +38,6 @@ export const getLdapLoginLabel = (): string => config.getEnv(LDAP_LOGIN_LABEL);
  * Retrieve the LDAP login enabled from the configuration object
  */
 export const isLdapLoginEnabled = (): boolean => config.getEnv(LDAP_LOGIN_ENABLED);
-
-/**
- * Return a random password to be assigned to the LDAP users
- */
-export const randomPassword = (): string => {
-	return Math.random().toString(36).slice(-8);
-};
 
 /**
  * Validate the structure of the LDAP configuration schema
@@ -93,7 +87,7 @@ export const getAuthIdentityByLdapId = async (
 	idAttributeValue: string,
 ): Promise<AuthIdentity | null> => {
 	return await Container.get(AuthIdentityRepository).findOne({
-		relations: ['user'],
+		relations: { user: true },
 		where: {
 			providerId: idAttributeValue,
 			providerType: 'ldap',
@@ -140,7 +134,7 @@ export const getLdapIds = async (): Promise<string[]> => {
 
 export const getLdapUsers = async (): Promise<User[]> => {
 	const identities = await Container.get(AuthIdentityRepository).find({
-		relations: ['user'],
+		relations: { user: true },
 		where: {
 			providerType: 'ldap',
 		},
@@ -161,7 +155,7 @@ export const mapLdapUserToDbUser = (
 	Object.assign(user, data);
 	if (toCreate) {
 		user.role = 'global:member';
-		user.password = randomPassword();
+		user.password = randomString(8);
 		user.disabled = false;
 	} else {
 		user.disabled = true;
@@ -179,10 +173,15 @@ export const processUsers = async (
 	toUpdateUsers: Array<[string, User]>,
 	toDisableUsers: string[],
 ): Promise<void> => {
+	const userRepository = Container.get(UserRepository);
 	await Db.transaction(async (transactionManager) => {
 		return await Promise.all([
 			...toCreateUsers.map(async ([ldapId, user]) => {
-				const authIdentity = AuthIdentity.create(await transactionManager.save(user), ldapId);
+				const { user: savedUser } = await userRepository.createUserWithProject(
+					user,
+					transactionManager,
+				);
+				const authIdentity = AuthIdentity.create(savedUser, ldapId);
 				return await transactionManager.save(authIdentity);
 			}),
 			...toUpdateUsers.map(async ([ldapId, user]) => {
@@ -202,7 +201,13 @@ export const processUsers = async (
 					providerId: ldapId,
 				});
 				if (authIdentity?.userId) {
-					await transactionManager.update(User, { id: authIdentity?.userId }, { disabled: true });
+					const user = await transactionManager.findOneBy(User, { id: authIdentity.userId });
+
+					if (user) {
+						user.disabled = true;
+						await transactionManager.save(user);
+					}
+
 					await transactionManager.delete(AuthIdentity, { userId: authIdentity?.userId });
 				}
 			}),
@@ -266,14 +271,11 @@ export const createLdapAuthIdentity = async (user: User, ldapId: string) => {
 };
 
 export const createLdapUserOnLocalDb = async (data: Partial<User>, ldapId: string) => {
-	const user = await Container.get(UserRepository).save(
-		{
-			password: randomPassword(),
-			role: 'global:member',
-			...data,
-		},
-		{ transaction: false },
-	);
+	const { user } = await Container.get(UserRepository).createUserWithProject({
+		password: randomString(8),
+		role: 'global:member',
+		...data,
+	});
 	await createLdapAuthIdentity(user, ldapId);
 	return user;
 };
@@ -281,7 +283,11 @@ export const createLdapUserOnLocalDb = async (data: Partial<User>, ldapId: strin
 export const updateLdapUserOnLocalDb = async (identity: AuthIdentity, data: Partial<User>) => {
 	const userId = identity?.user?.id;
 	if (userId) {
-		await Container.get(UserRepository).update({ id: userId }, data);
+		const user = await Container.get(UserRepository).findOneBy({ id: userId });
+
+		if (user) {
+			await Container.get(UserRepository).save({ id: userId, ...data }, { transaction: true });
+		}
 	}
 };
 

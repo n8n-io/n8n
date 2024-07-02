@@ -22,7 +22,7 @@ export class IfV1 implements INodeType {
 				color: '#408000',
 			},
 			inputs: ['main'],
-			// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 			outputs: ['main', 'main'],
 			outputNames: ['true', 'false'],
 			properties: [
@@ -66,7 +66,7 @@ export class IfV1 implements INodeType {
 										},
 									],
 									default: 'equal',
-									description: 'Operation to decide where the the data should be mapped to',
+									description: 'Operation to decide where the data should be mapped to',
 								},
 								{
 									displayName: 'Value 2',
@@ -105,7 +105,7 @@ export class IfV1 implements INodeType {
 										},
 									],
 									default: 'after',
-									description: 'Operation to decide where the the data should be mapped to',
+									description: 'Operation to decide where the data should be mapped to',
 								},
 								{
 									displayName: 'Value 2',
@@ -168,7 +168,7 @@ export class IfV1 implements INodeType {
 										},
 									],
 									default: 'smaller',
-									description: 'Operation to decide where the the data should be mapped to',
+									description: 'Operation to decide where the data should be mapped to',
 								},
 								{
 									displayName: 'Value 2',
@@ -252,7 +252,7 @@ export class IfV1 implements INodeType {
 										},
 									],
 									default: 'equal',
-									description: 'Operation to decide where the the data should be mapped to',
+									description: 'Operation to decide where the data should be mapped to',
 								},
 								{
 									displayName: 'Value 2',

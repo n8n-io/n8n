@@ -19,3 +19,45 @@ Range.prototype.getClientRects = vi.fn(() => ({
 	length: 0,
 	[Symbol.iterator]: vi.fn(),
 }));
+
+export class IntersectionObserver {
+	root = null;
+
+	rootMargin = '';
+
+	thresholds = [];
+
+	disconnect() {
+		return null;
+	}
+
+	observe() {
+		return null;
+	}
+
+	takeRecords() {
+		return [];
+	}
+
+	unobserve() {
+		return null;
+	}
+}
+
+window.IntersectionObserver = IntersectionObserver;
+global.IntersectionObserver = IntersectionObserver;
+
+// Mocks for useDeviceSupport
+Object.defineProperty(window, 'matchMedia', {
+	writable: true,
+	value: vi.fn().mockImplementation((query) => ({
+		matches: true,
+		media: query,
+		onchange: null,
+		addListener: vi.fn(),
+		removeListener: vi.fn(),
+		addEventListener: vi.fn(),
+		removeEventListener: vi.fn(),
+		dispatchEvent: vi.fn(),
+	})),
+});

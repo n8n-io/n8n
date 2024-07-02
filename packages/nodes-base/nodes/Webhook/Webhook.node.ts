@@ -20,6 +20,7 @@ import isbot from 'isbot';
 import { file as tmpFile } from 'tmp-promise';
 import jwt from 'jsonwebtoken';
 
+import { formatPrivateKey } from '../../utils/utilities';
 import {
 	authenticationProperty,
 	credentialsProperty,
@@ -39,14 +40,13 @@ import {
 	isIpWhitelisted,
 	setupOutputConnection,
 } from './utils';
-import { formatPrivateKey } from '../../utils/utilities';
 
 export class Webhook extends Node {
 	authPropertyName = 'authentication';
 
 	description: INodeTypeDescription = {
 		displayName: 'Webhook',
-		icon: 'file:webhook.svg',
+		icon: { light: 'file:webhook.svg', dark: 'file:webhook.dark.svg' },
 		name: 'webhook',
 		group: ['trigger'],
 		version: [1, 1.1, 2],
@@ -330,7 +330,7 @@ export class Webhook extends Node {
 			}
 
 			const authHeader = req.headers.authorization;
-			const token = authHeader && authHeader.split(' ')[1];
+			const token = authHeader?.split(' ')[1];
 
 			if (!token) {
 				throw new WebhookAuthorizationError(401, 'No token provided');

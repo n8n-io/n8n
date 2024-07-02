@@ -1,15 +1,15 @@
-import type { SuperAgentTest } from 'supertest';
+import { Container } from 'typedi';
+import { Cipher } from 'n8n-core';
+import { jsonParse, type IDataObject } from 'n8n-workflow';
+import { mock } from 'jest-mock-extended';
+
 import { License } from '@/License';
 import type { ExternalSecretsSettings, SecretsProviderState } from '@/Interfaces';
-import { Cipher } from 'n8n-core';
 import { SettingsRepository } from '@db/repositories/settings.repository';
-import { Container } from 'typedi';
 import { ExternalSecretsProviders } from '@/ExternalSecrets/ExternalSecretsProviders.ee';
 import config from '@/config';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
-import { jsonParse, type IDataObject } from 'n8n-workflow';
-import { mock } from 'jest-mock-extended';
 
 import { mockInstance } from '../../shared/mocking';
 import { setupTestServer } from '../shared/utils';
@@ -20,6 +20,7 @@ import {
 	MockProviders,
 	TestFailProvider,
 } from '../../shared/ExternalSecrets/utils';
+import type { SuperAgentTest } from '../shared/types';
 
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
@@ -239,7 +240,7 @@ describe('POST /external-secrets/providers/:provider', () => {
 		const resp = await authOwnerAgent.post('/external-secrets/providers/dummy').send(testData);
 		expect(resp.status).toBe(200);
 
-		const confirmResp = await authOwnerAgent.get('/external-secrets/providers/dummy');
+		await authOwnerAgent.get('/external-secrets/providers/dummy');
 		expect((await getExternalSecretsSettings())?.dummy.settings).toEqual({
 			username: 'newuser',
 			password: 'testpass',

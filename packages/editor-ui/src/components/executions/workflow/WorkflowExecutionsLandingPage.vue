@@ -45,7 +45,7 @@ export default defineComponent({
 		},
 	},
 	methods: {
-		onSetupFirstStep(event: MouseEvent): void {
+		onSetupFirstStep(): void {
 			this.uiStore.addFirstStepOnLoad = true;
 			const workflowRoute = this.getWorkflowRoute();
 			void this.$router.push(workflowRoute);

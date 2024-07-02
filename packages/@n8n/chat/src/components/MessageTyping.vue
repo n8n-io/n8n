@@ -1,15 +1,16 @@
 <script lang="ts" setup>
-import type { PropType } from 'vue';
 import { computed } from 'vue';
 import { Message } from './index';
 import type { ChatMessage } from '@n8n/chat/types';
 
-const props = defineProps({
-	animation: {
-		type: String as PropType<'bouncing' | 'scaling'>,
-		default: 'bouncing',
+const props = withDefaults(
+	defineProps<{
+		animation?: 'bouncing' | 'scaling';
+	}>(),
+	{
+		animation: 'bouncing',
 	},
-});
+);
 
 const message: ChatMessage = {
 	id: 'typing',

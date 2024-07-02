@@ -16,6 +16,7 @@ import type { ExpressionKind } from 'ast-types/gen/kinds';
 import type { ExpressionChunk, ExpressionCode } from './ExpressionParser';
 import { joinExpression, splitExpression } from './ExpressionParser';
 import { booleanExtensions } from './BooleanExtensions';
+import type { ExtensionMap } from './Extensions';
 
 const EXPRESSION_EXTENDER = 'extend';
 const EXPRESSION_EXTENDER_OPTIONAL = 'extendOptional';
@@ -28,7 +29,7 @@ function isNotEmpty(value: unknown) {
 	return !isEmpty(value);
 }
 
-export const EXTENSION_OBJECTS = [
+export const EXTENSION_OBJECTS: ExtensionMap[] = [
 	arrayExtensions,
 	dateExtensions,
 	numberExtensions,

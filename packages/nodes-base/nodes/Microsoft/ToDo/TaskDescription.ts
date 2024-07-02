@@ -267,6 +267,13 @@ export const taskFields: INodeProperties[] = [
 				description: 'The date in the specified time zone that the task is to be finished',
 			},
 			{
+				displayName: 'Reminder',
+				name: 'reminderDateTime',
+				type: 'dateTime',
+				default: '',
+				description: 'The date in the specified time zone that the task is to be reminded',
+			},
+			{
 				displayName: 'Importance',
 				name: 'importance',
 				type: 'options',

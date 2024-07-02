@@ -97,12 +97,14 @@ onMounted(() => {
 			extensions: [
 				EditorState.readOnly.of(true),
 				EditorView.lineWrapping,
-				EditorView.editable.of(false),
 				EditorView.domEventHandlers({ scroll: forceParse }),
 				...props.extensions,
 			],
 		}),
 	});
+
+	highlighter.addColor(editor.value as EditorView, resolvedSegments.value);
+	highlighter.removeColor(editor.value as EditorView, plaintextSegments.value);
 });
 
 onBeforeUnmount(() => {

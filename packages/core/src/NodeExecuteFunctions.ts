@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-/* eslint-disable @typescript-eslint/naming-convention */
+
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
@@ -99,6 +99,8 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 	CallbackManager,
+	INodeParameters,
+	EnsureTypeOptions,
 } from 'n8n-workflow';
 import {
 	ExpressionError,
@@ -119,6 +121,7 @@ import {
 	jsonParse,
 	ApplicationError,
 	sleep,
+	OBFUSCATED_ERROR_MESSAGE,
 } from 'n8n-workflow';
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
@@ -134,6 +137,7 @@ import {
 	CONFIG_FILES,
 	CUSTOM_EXTENSION_ENV,
 	HTTP_REQUEST_NODE_TYPE,
+	HTTP_REQUEST_TOOL_NODE_TYPE,
 	PLACEHOLDER_EMPTY_EXECUTION_ID,
 	RESTRICT_FILE_ACCESS_TO,
 	UM_EMAIL_TEMPLATES_INVITE,
@@ -450,7 +454,6 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 		// Check support for sendImmediately
 		if (requestObject.auth.bearer !== undefined) {
 			axiosConfig.headers = Object.assign(axiosConfig.headers || {}, {
-				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				Authorization: `Bearer ${requestObject.auth.bearer}`,
 			});
 		} else {
@@ -1546,11 +1549,11 @@ export async function requestOAuth1(
 	const credentials = await this.getCredentials(credentialsType);
 
 	if (credentials === undefined) {
-		throw new ApplicationError('No credentials were returned!');
+		throw new ApplicationError('No credentials were returned');
 	}
 
 	if (credentials.oauthTokenData === undefined) {
-		throw new ApplicationError('OAuth credentials not connected!');
+		throw new ApplicationError('OAuth credentials not connected');
 	}
 
 	const oauth = new clientOAuth1({
@@ -1646,7 +1649,7 @@ export async function httpRequestWithAuthentication(
 		if (credentialsDecrypted === undefined) {
 			throw new NodeOperationError(
 				node,
-				`Node "${node.name}" does not have any credentials of type "${credentialsType}" set!`,
+				`Node "${node.name}" does not have any credentials of type "${credentialsType}" set`,
 				{ level: 'warning' },
 			);
 		}
@@ -1843,7 +1846,7 @@ export async function requestWithAuthentication(
 		if (credentialsDecrypted === undefined) {
 			throw new NodeOperationError(
 				node,
-				`Node "${node.name}" does not have any credentials of type "${credentialsType}" set!`,
+				`Node "${node.name}" does not have any credentials of type "${credentialsType}" set`,
 				{ level: 'warning' },
 			);
 		}
@@ -1989,20 +1992,20 @@ export async function getCredentials(
 	if (nodeType === undefined) {
 		throw new NodeOperationError(
 			node,
-			`Node type "${node.type}" is not known so can not get credentials!`,
+			`Node type "${node.type}" is not known so can not get credentials`,
 		);
 	}
 
 	// Hardcode for now for security reasons that only a single node can access
 	// all credentials
-	const fullAccess = [HTTP_REQUEST_NODE_TYPE].includes(node.type);
+	const fullAccess = [HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_NODE_TYPE].includes(node.type);
 
 	let nodeCredentialDescription: INodeCredentialDescription | undefined;
 	if (!fullAccess) {
 		if (nodeType.description.credentials === undefined) {
 			throw new NodeOperationError(
 				node,
-				`Node type "${node.type}" does not have any credentials defined!`,
+				`Node type "${node.type}" does not have any credentials defined`,
 				{ level: 'warning' },
 			);
 		}
@@ -2013,7 +2016,7 @@ export async function getCredentials(
 		if (nodeCredentialDescription === undefined) {
 			throw new NodeOperationError(
 				node,
-				`Node type "${node.type}" does not have any credentials of type "${type}" defined!`,
+				`Node type "${node.type}" does not have any credentials of type "${type}" defined`,
 				{ level: 'warning' },
 			);
 		}
@@ -2038,16 +2041,14 @@ export async function getCredentials(
 		if (nodeCredentialDescription?.required === true) {
 			// Credentials are required so error
 			if (!node.credentials) {
-				throw new NodeOperationError(node, 'Node does not have any credentials set!', {
+				throw new NodeOperationError(node, 'Node does not have any credentials set', {
 					level: 'warning',
 				});
 			}
 			if (!node.credentials[type]) {
-				throw new NodeOperationError(
-					node,
-					`Node does not have any credentials set for "${type}"!`,
-					{ level: 'warning' },
-				);
+				throw new NodeOperationError(node, `Node does not have any credentials set for "${type}"`, {
+					level: 'warning',
+				});
 			}
 		} else {
 			// Credentials are not required
@@ -2121,13 +2122,12 @@ export function cleanupParameterData(inputData: NodeParameterValueType): void {
 	}
 
 	if (typeof inputData === 'object') {
-		type Key = keyof typeof inputData;
-		(Object.keys(inputData) as Key[]).forEach((key) => {
-			const value = inputData[key];
+		Object.keys(inputData).forEach((key) => {
+			const value = (inputData as INodeParameters)[key];
 			if (typeof value === 'object') {
 				if (DateTime.isDateTime(value)) {
 					// Is a special luxon date so convert to string
-					inputData[key] = value.toString();
+					(inputData as INodeParameters)[key] = value.toString();
 				} else {
 					cleanupParameterData(value);
 				}
@@ -2230,28 +2230,30 @@ const validateCollection = (
 		return validationResult;
 	}
 
-	for (const value of Array.isArray(validationResult.newValue)
-		? (validationResult.newValue as IDataObject[])
-		: [validationResult.newValue as IDataObject]) {
-		for (const key of Object.keys(value)) {
-			if (!validationMap[key]) continue;
+	if (validationResult.valid) {
+		for (const value of Array.isArray(validationResult.newValue)
+			? (validationResult.newValue as IDataObject[])
+			: [validationResult.newValue as IDataObject]) {
+			for (const key of Object.keys(value)) {
+				if (!validationMap[key]) continue;
 
-			const fieldValidationResult = validateFieldType(key, value[key], validationMap[key].type, {
-				valueOptions: validationMap[key].options,
-			});
+				const fieldValidationResult = validateFieldType(key, value[key], validationMap[key].type, {
+					valueOptions: validationMap[key].options,
+				});
 
-			if (!fieldValidationResult.valid) {
-				throw new ExpressionError(
-					`Invalid input for field '${validationMap[key].displayName}' inside '${propertyDescription.displayName}' in [item ${itemIndex}]`,
-					{
-						description: fieldValidationResult.errorMessage,
-						runIndex,
-						itemIndex,
-						nodeCause: node.name,
-					},
-				);
+				if (!fieldValidationResult.valid) {
+					throw new ExpressionError(
+						`Invalid input for field '${validationMap[key].displayName}' inside '${propertyDescription.displayName}' in [item ${itemIndex}]`,
+						{
+							description: fieldValidationResult.errorMessage,
+							runIndex,
+							itemIndex,
+							nodeCause: node.name,
+						},
+					);
+				}
+				value[key] = fieldValidationResult.newValue;
 			}
-			value[key] = fieldValidationResult.newValue;
 		}
 	}
 
@@ -2329,6 +2331,99 @@ export const validateValueAgainstSchema = (
 	return validationResult.newValue;
 };
 
+export function ensureType(
+	toType: EnsureTypeOptions,
+	parameterValue: any,
+	parameterName: string,
+	errorOptions?: { itemIndex?: number; runIndex?: number; nodeCause?: string },
+): string | number | boolean | object {
+	let returnData = parameterValue;
+
+	if (returnData === null) {
+		throw new ExpressionError(`Parameter '${parameterName}' must not be null`, errorOptions);
+	}
+
+	if (returnData === undefined) {
+		throw new ExpressionError(
+			`Parameter '${parameterName}' could not be 'undefined'`,
+			errorOptions,
+		);
+	}
+
+	if (['object', 'array', 'json'].includes(toType)) {
+		if (typeof returnData !== 'object') {
+			// if value is not an object and is string try to parse it, else throw an error
+			if (typeof returnData === 'string' && returnData.length) {
+				try {
+					const parsedValue = JSON.parse(returnData);
+					returnData = parsedValue;
+				} catch (error) {
+					throw new ExpressionError(`Parameter '${parameterName}' could not be parsed`, {
+						...errorOptions,
+						description: error.message,
+					});
+				}
+			} else {
+				throw new ExpressionError(
+					`Parameter '${parameterName}' must be an ${toType}, but we got '${String(parameterValue)}'`,
+					errorOptions,
+				);
+			}
+		} else if (toType === 'json') {
+			// value is an object, make sure it is valid JSON
+			try {
+				JSON.stringify(returnData);
+			} catch (error) {
+				throw new ExpressionError(`Parameter '${parameterName}' is not valid JSON`, {
+					...errorOptions,
+					description: error.message,
+				});
+			}
+		}
+
+		if (toType === 'array' && !Array.isArray(returnData)) {
+			// value is not an array, but has to be
+			throw new ExpressionError(
+				`Parameter '${parameterName}' must be an array, but we got object`,
+				errorOptions,
+			);
+		}
+	}
+
+	try {
+		if (toType === 'string') {
+			if (typeof returnData === 'object') {
+				returnData = JSON.stringify(returnData);
+			} else {
+				returnData = String(returnData);
+			}
+		}
+
+		if (toType === 'number') {
+			returnData = Number(returnData);
+			if (Number.isNaN(returnData)) {
+				throw new ExpressionError(
+					`Parameter '${parameterName}' must be a number, but we got '${parameterValue}'`,
+					errorOptions,
+				);
+			}
+		}
+
+		if (toType === 'boolean') {
+			returnData = Boolean(returnData);
+		}
+	} catch (error) {
+		if (error instanceof ExpressionError) throw error;
+
+		throw new ExpressionError(`Parameter '${parameterName}' could not be converted to ${toType}`, {
+			...errorOptions,
+			description: error.message,
+		});
+	}
+
+	return returnData;
+}
+
 /**
  * Returns the requested resolved (all expressions replaced) node parameters.
  *
@@ -2397,6 +2492,15 @@ export function getNodeParameter(
 	// This is outside the try/catch because it throws errors with proper messages
 	if (options?.extractValue) {
 		returnData = extractValue(returnData, parameterName, node, nodeType, itemIndex);
+	}
+
+	// Make sure parameter value is the type specified in the ensureType option, if needed convert it
+	if (options?.ensureType) {
+		returnData = ensureType(options.ensureType, returnData, parameterName, {
+			itemIndex,
+			runIndex,
+			nodeCause: node.name,
+		});
 	}
 
 	// Validate parameter value if it has a schema defined(RMC) or validateType defined
@@ -2780,7 +2884,7 @@ async function getInputConnectionData(
 	const nodes = await Promise.all(constParentNodes);
 
 	if (inputConfiguration.required && nodes.length === 0) {
-		throw new NodeOperationError(node, `A ${inputName} processor node must be connected!`);
+		throw new NodeOperationError(node, `A ${inputName} processor node must be connected`);
 	}
 	if (
 		inputConfiguration.maxConnections !== undefined &&
@@ -2788,7 +2892,7 @@ async function getInputConnectionData(
 	) {
 		throw new NodeOperationError(
 			node,
-			`Only ${inputConfiguration.maxConnections} ${inputName} processor nodes are/is allowed to be connected!`,
+			`Only ${inputConfiguration.maxConnections} ${inputName} processor nodes are/is allowed to be connected`,
 		);
 	}
 
@@ -2839,11 +2943,13 @@ const getCommonWorkflowFunctions = (
 		}
 		return output;
 	},
+	getKnownNodeTypes: () => workflow.nodeTypes.getKnownTypes(),
 	getRestApiUrl: () => additionalData.restApiUrl,
 	getInstanceBaseUrl: () => additionalData.instanceBaseUrl,
 	getInstanceId: () => Container.get(InstanceSettings).instanceId,
 	getTimezone: () => getTimezone(workflow),
-
+	getCredentialsProperties: (type: string) =>
+		additionalData.credentialsHelper.getCredentialsProperties(type),
 	prepareOutputData: async (outputData) => [outputData],
 });
 
@@ -3319,7 +3425,7 @@ export function copyInputItems(items: INodeExecutionData[], properties: string[]
 /**
  * Returns the execute functions the poll nodes have access to.
  */
-// TODO: Check if I can get rid of: additionalData, and so then maybe also at ActiveWorkflowRunner.add
+// TODO: Check if I can get rid of: additionalData, and so then maybe also at ActiveWorkflowManager.add
 export function getExecutePollFunctions(
 	workflow: Workflow,
 	node: INode,
@@ -3332,12 +3438,12 @@ export function getExecutePollFunctions(
 			...getCommonWorkflowFunctions(workflow, node, additionalData),
 			__emit: (): void => {
 				throw new ApplicationError(
-					'Overwrite NodeExecuteFunctions.getExecutePollFunctions.__emit function!',
+					'Overwrite NodeExecuteFunctions.getExecutePollFunctions.__emit function',
 				);
 			},
 			__emitError() {
 				throw new ApplicationError(
-					'Overwrite NodeExecuteFunctions.getExecutePollFunctions.__emitError function!',
+					'Overwrite NodeExecuteFunctions.getExecutePollFunctions.__emitError function',
 				);
 			},
 			getMode: () => mode,
@@ -3382,7 +3488,7 @@ export function getExecutePollFunctions(
 /**
  * Returns the execute functions the trigger nodes have access to.
  */
-// TODO: Check if I can get rid of: additionalData, and so then maybe also at ActiveWorkflowRunner.add
+// TODO: Check if I can get rid of: additionalData, and so then maybe also at ActiveWorkflowManager.add
 export function getExecuteTriggerFunctions(
 	workflow: Workflow,
 	node: INode,
@@ -3395,12 +3501,12 @@ export function getExecuteTriggerFunctions(
 			...getCommonWorkflowFunctions(workflow, node, additionalData),
 			emit: (): void => {
 				throw new ApplicationError(
-					'Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function!',
+					'Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function',
 				);
 			},
 			emitError: (): void => {
 				throw new ApplicationError(
-					'Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function!',
+					'Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function',
 				);
 			},
 			getMode: () => mode,
@@ -3477,7 +3583,13 @@ export function getExecuteFunctions(
 					itemIndex,
 				),
 			getExecuteData: () => executeData,
-			continueOnFail: () => continueOnFail(node),
+			continueOnFail: (error?: Error) => {
+				const shouldContinue = continueOnFail(node);
+				if (error && shouldContinue && !(error instanceof ApplicationError)) {
+					error.message = OBFUSCATED_ERROR_MESSAGE;
+				}
+				return shouldContinue;
+			},
 			evaluateExpression: (expression: string, itemIndex: number) => {
 				return workflow.expression.resolveSimpleParameterValue(
 					`=${expression}`,
@@ -3567,7 +3679,7 @@ export function getExecuteFunctions(
 					});
 				}
 
-				return inputData[inputName][inputIndex] as INodeExecutionData[];
+				return inputData[inputName][inputIndex];
 			},
 			getInputSourceData: (inputIndex = 0, inputName = 'main') => {
 				if (executeData?.source === null) {

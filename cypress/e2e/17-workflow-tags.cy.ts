@@ -79,6 +79,7 @@ describe('Workflow tags', () => {
 		wf.getters.nthTagPill(1).click();
 		wf.getters.tagsDropdown().find('.el-tag__close').first().click();
 		cy.get('body').click(0, 0);
+		wf.getters.workflowTags().click();
 		wf.getters.tagPills().should('have.length', TEST_TAGS.length - 1);
 	});
 
@@ -88,6 +89,7 @@ describe('Workflow tags', () => {
 		wf.getters.nthTagPill(1).click();
 		wf.getters.tagsInDropdown().filter('.selected').first().click();
 		cy.get('body').click(0, 0);
+		wf.getters.workflowTags().click();
 		wf.getters.tagPills().should('have.length', TEST_TAGS.length - 1);
 	});
 });

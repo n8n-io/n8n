@@ -47,6 +47,7 @@ export const fileFields: INodeProperties[] = [
 			show: {
 				operation: ['upload'],
 				resource: ['file'],
+				'@version': [2, 2.1],
 			},
 		},
 		description: 'Whether the data to upload should be taken from binary field',
@@ -61,6 +62,7 @@ export const fileFields: INodeProperties[] = [
 				operation: ['upload'],
 				resource: ['file'],
 				binaryData: [false],
+				'@version': [2, 2.1],
 			},
 		},
 		placeholder: '',
@@ -76,6 +78,23 @@ export const fileFields: INodeProperties[] = [
 				operation: ['upload'],
 				resource: ['file'],
 				binaryData: [true],
+				'@version': [2, 2.1],
+			},
+		},
+		placeholder: '',
+		description: 'Name of the binary property which contains the data for the file to be uploaded',
+	},
+	{
+		displayName: 'File Property',
+		name: 'binaryPropertyName',
+		type: 'string',
+		default: 'data',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: ['upload'],
+				resource: ['file'],
+				'@version': [2.2],
 			},
 		},
 		placeholder: '',
@@ -102,9 +121,30 @@ export const fileFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getChannels',
 				},
+				displayOptions: {
+					show: {
+						'@version': [2, 2.1],
+					},
+				},
 				default: [],
 				description:
 					'The channels to send the file to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			},
+			{
+				displayName: 'Channel Name or ID',
+				name: 'channelId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getChannels',
+				},
+				displayOptions: {
+					show: {
+						'@version': [2.2],
+					},
+				},
+				default: [],
+				description:
+					'The channel to send the file to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'File Name',

@@ -4,31 +4,16 @@ import type { EntityManager, FindManyOptions, FindOptionsWhere } from '@n8n/type
 import { SharedWorkflow, type WorkflowSharingRole } from '../entities/SharedWorkflow';
 import { type User } from '../entities/User';
 import type { Scope } from '@n8n/permissions';
-import type { WorkflowEntity } from '../entities/WorkflowEntity';
+import { RoleService } from '@/services/role.service';
+import type { Project } from '../entities/Project';
 
 @Service()
 export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
-	constructor(dataSource: DataSource) {
+	constructor(
+		dataSource: DataSource,
+		private roleService: RoleService,
+	) {
 		super(SharedWorkflow, dataSource.manager);
-	}
-
-	async hasAccess(workflowId: string, user: User) {
-		const where: FindOptionsWhere<SharedWorkflow> = {
-			workflowId,
-		};
-		if (!user.hasGlobalScope('workflow:read')) {
-			where.userId = user.id;
-		}
-		return await this.exist({ where });
-	}
-
-	/** Get the IDs of all users this workflow is shared with */
-	async getSharedUserIds(workflowId: string) {
-		const sharedWorkflows = await this.find({
-			select: ['userId'],
-			where: { workflowId },
-		});
-		return sharedWorkflows.map((sharing) => sharing.userId);
 	}
 
 	async getSharedWorkflowIds(workflowIds: string[]) {
@@ -43,11 +28,11 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 
 	async findByWorkflowIds(workflowIds: string[]) {
 		return await this.find({
-			relations: ['user'],
 			where: {
 				role: 'workflow:owner',
 				workflowId: In(workflowIds),
 			},
+			relations: { project: { projectRelations: { user: true } } },
 		});
 	}
 
@@ -55,90 +40,49 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		userId: string,
 		workflowId: string,
 	): Promise<WorkflowSharingRole | undefined> {
-		return await this.findOne({
-			select: ['role'],
-			where: { workflowId, userId },
-		}).then((shared) => shared?.role);
-	}
-
-	async findSharing(
-		workflowId: string,
-		user: User,
-		scope: Scope,
-		{ roles, extraRelations }: { roles?: WorkflowSharingRole[]; extraRelations?: string[] } = {},
-	) {
-		const where: FindOptionsWhere<SharedWorkflow> = {
-			workflow: { id: workflowId },
-		};
-
-		if (!user.hasGlobalScope(scope)) {
-			where.user = { id: user.id };
-		}
-
-		if (roles) {
-			where.role = In(roles);
-		}
-
-		const relations = ['workflow'];
-
-		if (extraRelations) relations.push(...extraRelations);
-
-		return await this.findOne({ relations, where });
-	}
-
-	async makeOwnerOfAllWorkflows(user: User) {
-		return await this.update({ userId: Not(user.id), role: 'workflow:owner' }, { user });
-	}
-
-	async getSharing(
-		user: User,
-		workflowId: string,
-		options: { allowGlobalScope: true; globalScope: Scope } | { allowGlobalScope: false },
-		relations: string[] = ['workflow'],
-	): Promise<SharedWorkflow | null> {
-		const where: FindOptionsWhere<SharedWorkflow> = { workflowId };
-
-		// Omit user from where if the requesting user has relevant
-		// global workflow permissions. This allows the user to
-		// access workflows they don't own.
-		if (!options.allowGlobalScope || !user.hasGlobalScope(options.globalScope)) {
-			where.userId = user.id;
-		}
-
-		return await this.findOne({ where, relations });
-	}
-
-	async getSharedWorkflows(
-		user: User,
-		options: {
-			relations?: string[];
-			workflowIds?: string[];
-		},
-	): Promise<SharedWorkflow[]> {
-		return await this.find({
-			where: {
-				...(!['global:owner', 'global:admin'].includes(user.role) && { userId: user.id }),
-				...(options.workflowIds && { workflowId: In(options.workflowIds) }),
+		const sharing = await this.findOne({
+			// NOTE: We have to select everything that is used in the `where` clause. Otherwise typeorm will create an invalid query and we get this error:
+			//       QueryFailedError: SQLITE_ERROR: no such column: distinctAlias.SharedWorkflow_...
+			select: {
+				role: true,
+				workflowId: true,
+				projectId: true,
 			},
-			...(options.relations && { relations: options.relations }),
+			where: {
+				workflowId,
+				project: { projectRelations: { role: 'project:personalOwner', userId } },
+			},
 		});
+
+		return sharing?.role;
 	}
 
-	async share(transaction: EntityManager, workflow: WorkflowEntity, users: User[]) {
-		const newSharedWorkflows = users.reduce<SharedWorkflow[]>((acc, user) => {
-			if (user.isPending) {
-				return acc;
-			}
-			const entity: Partial<SharedWorkflow> = {
-				workflowId: workflow.id,
-				userId: user.id,
-				role: 'workflow:editor',
-			};
-			acc.push(this.create(entity));
-			return acc;
-		}, []);
+	async makeOwnerOfAllWorkflows(project: Project) {
+		return await this.update(
+			{
+				projectId: Not(project.id),
+				role: 'workflow:owner',
+			},
+			{ project },
+		);
+	}
 
-		return await transaction.save(newSharedWorkflows);
+	async makeOwner(workflowIds: string[], projectId: string, trx?: EntityManager) {
+		trx = trx ?? this.manager;
+
+		return await trx.upsert(
+			SharedWorkflow,
+			workflowIds.map(
+				(workflowId) =>
+					({
+						workflowId,
+						projectId,
+						role: 'workflow:owner',
+					}) as const,
+			),
+
+			['projectId', 'workflowId'],
+		);
 	}
 
 	async findWithFields(
@@ -153,10 +97,107 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		});
 	}
 
-	async deleteByIds(transaction: EntityManager, sharedWorkflowIds: string[], user?: User) {
-		return await transaction.delete(SharedWorkflow, {
-			user,
+	async deleteByIds(sharedWorkflowIds: string[], projectId: string, trx?: EntityManager) {
+		trx = trx ?? this.manager;
+
+		return await trx.delete(SharedWorkflow, {
+			projectId,
 			workflowId: In(sharedWorkflowIds),
 		});
+	}
+
+	async findWorkflowForUser(
+		workflowId: string,
+		user: User,
+		scopes: Scope[],
+		{ includeTags = false, em = this.manager } = {},
+	) {
+		let where: FindOptionsWhere<SharedWorkflow> = { workflowId };
+
+		if (!user.hasGlobalScope(scopes, { mode: 'allOf' })) {
+			const projectRoles = this.roleService.rolesWithScope('project', scopes);
+			const workflowRoles = this.roleService.rolesWithScope('workflow', scopes);
+
+			where = {
+				...where,
+				role: In(workflowRoles),
+				project: {
+					projectRelations: {
+						role: In(projectRoles),
+						userId: user.id,
+					},
+				},
+			};
+		}
+
+		const sharedWorkflow = await em.findOne(SharedWorkflow, {
+			where,
+			relations: {
+				workflow: {
+					shared: { project: { projectRelations: { user: true } } },
+					tags: includeTags,
+				},
+			},
+		});
+
+		if (!sharedWorkflow) {
+			return null;
+		}
+
+		return sharedWorkflow.workflow;
+	}
+
+	async findAllWorkflowsForUser(user: User, scopes: Scope[]) {
+		let where: FindOptionsWhere<SharedWorkflow> = {};
+
+		if (!user.hasGlobalScope(scopes, { mode: 'allOf' })) {
+			const projectRoles = this.roleService.rolesWithScope('project', scopes);
+			const workflowRoles = this.roleService.rolesWithScope('workflow', scopes);
+
+			where = {
+				...where,
+				role: In(workflowRoles),
+				project: {
+					projectRelations: {
+						role: In(projectRoles),
+						userId: user.id,
+					},
+				},
+			};
+		}
+
+		const sharedWorkflows = await this.find({
+			where,
+			relations: {
+				workflow: {
+					shared: { project: { projectRelations: { user: true } } },
+				},
+			},
+		});
+
+		return sharedWorkflows.map((sw) => sw.workflow);
+	}
+
+	/**
+	 * Find the IDs of all the projects where a workflow is accessible.
+	 */
+	async findProjectIds(workflowId: string) {
+		const rows = await this.find({ where: { workflowId }, select: ['projectId'] });
+
+		const projectIds = rows.reduce<string[]>((acc, row) => {
+			if (row.projectId) acc.push(row.projectId);
+			return acc;
+		}, []);
+
+		return [...new Set(projectIds)];
+	}
+
+	async getWorkflowOwningProject(workflowId: string) {
+		return (
+			await this.findOne({
+				where: { workflowId, role: 'workflow:owner' },
+				relations: { project: true },
+			})
+		)?.project;
 	}
 }

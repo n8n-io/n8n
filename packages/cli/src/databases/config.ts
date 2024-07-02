@@ -11,6 +11,7 @@ import { ApplicationError } from 'n8n-workflow';
 
 import config from '@/config';
 import { entities } from './entities';
+import { subscribers } from './subscribers';
 import { mysqlMigrations } from './migrations/mysqldb';
 import { postgresMigrations } from './migrations/postgresdb';
 import { sqliteMigrations } from './migrations/sqlite';
@@ -32,6 +33,7 @@ const getCommonOptions = () => {
 	return {
 		entityPrefix,
 		entities: Object.values(entities),
+		subscribers: Object.values(subscribers),
 		migrationsTableName: `${entityPrefix}migrations`,
 		migrationsRun: false,
 		synchronize: false,
@@ -59,7 +61,14 @@ const getSqliteConnectionOptions = (): SqliteConnectionOptions | SqlitePooledCon
 		migrations: sqliteMigrations,
 	};
 	if (poolSize > 0) {
-		return { type: 'sqlite-pooled', poolSize, enableWAL: true, ...commonOptions };
+		return {
+			type: 'sqlite-pooled',
+			poolSize,
+			enableWAL: true,
+			acquireTimeout: 60_000,
+			destroyTimeout: 5_000,
+			...commonOptions,
+		};
 	} else {
 		return {
 			type: 'sqlite',

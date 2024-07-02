@@ -8,7 +8,9 @@
 		"baseUrl": "src",
 		"paths": {
 			"@/*": ["./*"],
-			"@db/*": ["./databases/*"]
+			"@db/*": ["./databases/*"],
+			"@test/*": ["../test/shared/*"],
+			"@test-integration/*": ["../test/integration/shared/*"]
 		},
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		// TODO: remove all options below this line

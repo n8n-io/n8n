@@ -7,6 +7,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
+import { randomString } from 'n8n-workflow';
 
 import { helpscoutApiRequest, helpscoutApiRequestAllItems } from './GenericFunctions';
 
@@ -140,7 +141,7 @@ export class HelpScoutTrigger implements INodeType {
 				const body = {
 					url: webhookUrl,
 					events,
-					secret: Math.random().toString(36).substring(2, 15),
+					secret: randomString(10).toLowerCase(),
 				};
 
 				const responseData = await helpscoutApiRequest.call(

@@ -7,7 +7,7 @@ export const versionDescription: INodeTypeDescription = {
 	name: 'googleBigQuery',
 	icon: 'file:googleBigQuery.svg',
 	group: ['input'],
-	version: 2,
+	version: [2, 2.1],
 	subtitle: '={{$parameter["operation"]}}',
 	description: 'Consume Google BigQuery API',
 	defaults: {

@@ -94,9 +94,11 @@ export class Column {
 			options.type = isPostgres ? 'timestamptz' : 'datetime';
 		} else if (type === 'json' && isSqlite) {
 			options.type = 'text';
-		} else if (type === 'uuid' && isMysql) {
+		} else if (type === 'uuid') {
 			// mysql does not support uuid type
-			options.type = 'varchar(36)';
+			if (isMysql) options.type = 'varchar(36)';
+			// we haven't been defining length on "uuid" varchar on sqlite
+			if (isSqlite) options.type = 'varchar';
 		}
 
 		if ((type === 'varchar' || type === 'timestamp') && length !== 'auto') {

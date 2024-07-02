@@ -1,7 +1,7 @@
 import { anyNumber, mock } from 'jest-mock-extended';
 import { NodeVM } from '@n8n/vm2';
 import type { IExecuteFunctions, IWorkflowDataProxyData } from 'n8n-workflow';
-import { ApplicationError, NodeHelpers } from 'n8n-workflow';
+import { ApplicationError } from 'n8n-workflow';
 import { normalizeItems } from 'n8n-core';
 import { Code } from '../Code.node';
 import { ValidationError } from '../ValidationError';
@@ -22,7 +22,6 @@ describe('Code Node unit test', () => {
 	const thisArg = mock<IExecuteFunctions>({
 		getNode: () => mock(),
 		helpers: { normalizeItems },
-		prepareOutputData: NodeHelpers.prepareOutputData,
 	});
 	const workflowDataProxy = mock<IWorkflowDataProxyData>({ $input: mock() });
 	thisArg.getWorkflowDataProxy.mockReturnValue(workflowDataProxy);

@@ -46,7 +46,7 @@ import VariableSelectorItem from '@/components/VariableSelectorItem.vue';
 import type { INodeUi, IVariableItemSelected, IVariableSelectorOption } from '@/Interface';
 
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
@@ -431,11 +431,11 @@ export default defineComponent({
 					: `$('${escapeMappingString(nodeName)}').item.binary`;
 
 				const binaryData = [];
-				let binaryPropertyData = [];
+				let binaryPropertyData: IVariableSelectorOption[] = [];
 
-				for (const dataPropertyName of Object.keys(outputData.binary!)) {
+				for (const dataPropertyName of Object.keys(outputData.binary ?? {})) {
 					binaryPropertyData = [];
-					for (const propertyName in outputData.binary![dataPropertyName]) {
+					for (const propertyName in outputData.binary?.[dataPropertyName]) {
 						if (propertyName === 'data') {
 							continue;
 						}
@@ -448,7 +448,7 @@ export default defineComponent({
 						binaryPropertyData.push({
 							name: propertyName,
 							key: `${binaryPropertyPrefix}.${dataPropertyName}.${propertyName}`,
-							value: outputData.binary![dataPropertyName][propertyName],
+							value: outputData.binary?.[dataPropertyName][propertyName]?.toString(),
 						});
 					}
 

@@ -37,7 +37,7 @@ export async function linkedInApiRequest(
 		headers: {
 			Accept: 'application/json',
 			'X-Restli-Protocol-Version': '2.0.0',
-			'LinkedIn-Version': '202304',
+			'LinkedIn-Version': '202404',
 		},
 		method,
 		body,
@@ -52,6 +52,9 @@ export async function linkedInApiRequest(
 	if (binary) {
 		delete options.json;
 		options.encoding = null;
+		if (Object.keys(_headers as object).length > 0) {
+			Object.assign(options.headers as object, _headers);
+		}
 	}
 
 	if (Object.keys(body as IDataObject).length === 0) {

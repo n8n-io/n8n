@@ -4,7 +4,7 @@
 			<n8n-heading size="2xlarge">{{
 				i18n.baseText('settings.personal.personalSettings')
 			}}</n8n-heading>
-			<div :class="$style.user">
+			<div v-if="currentUser" :class="$style.user">
 				<span :class="$style.username" data-test-id="current-user-name">
 					<n8n-text color="text-light">{{ currentUser.fullName }}</n8n-text>
 				</span>
@@ -32,7 +32,7 @@
 				/>
 			</div>
 		</div>
-		<div v-if="!signInWithLdap && !signInWithSaml">
+		<div v-if="isPersonalSecurityEnabled">
 			<div class="mb-s">
 				<n8n-heading size="large">{{ i18n.baseText('settings.personal.security') }}</n8n-heading>
 			</div>
@@ -43,7 +43,7 @@
 					}}</n8n-link>
 				</n8n-input-label>
 			</div>
-			<div v-if="isMfaFeatureEnabled">
+			<div v-if="isMfaFeatureEnabled" data-test-id="mfa-section">
 				<div class="mb-xs">
 					<n8n-input-label :label="$locale.baseText('settings.personal.mfa.section.title')" />
 					<n8n-text :bold="false" :class="$style.infoText">
@@ -84,12 +84,11 @@
 			<div>
 				<n8n-input-label :label="i18n.baseText('settings.personal.theme')">
 					<n8n-select
+						v-model="currentSelectedTheme"
 						:class="$style.themeSelect"
 						data-test-id="theme-select"
 						size="small"
-						:model-value="currentTheme"
 						filterable
-						@update:model-value="selectTheme"
 					>
 						<n8n-option
 							v-for="item in themeOptions"
@@ -139,11 +138,12 @@ export default defineComponent({
 	},
 	data() {
 		return {
-			hasAnyChanges: false,
+			hasAnyBasicInfoChanges: false,
 			formInputs: null as null | IFormInputs,
 			formBus: createEventBus(),
 			readyToSubmit: false,
 			mfaDocsUrl: MFA_DOCS_URL,
+			currentSelectedTheme: useUIStore().theme,
 			themeOptions: [
 				{
 					name: 'system',
@@ -160,6 +160,34 @@ export default defineComponent({
 			] as Array<{ name: ThemeOption; label: string }>,
 		};
 	},
+	computed: {
+		...mapStores(useUIStore, useUsersStore, useSettingsStore),
+		currentUser(): IUser | null {
+			return this.usersStore.currentUser;
+		},
+		isExternalAuthEnabled(): boolean {
+			const isLdapEnabled =
+				this.settingsStore.settings.enterprise.ldap && this.currentUser?.signInType === 'ldap';
+			const isSamlEnabled =
+				this.settingsStore.isSamlLoginEnabled && this.settingsStore.isDefaultAuthenticationSaml;
+			return isLdapEnabled || isSamlEnabled;
+		},
+		isPersonalSecurityEnabled(): boolean {
+			return this.usersStore.isInstanceOwner || !this.isExternalAuthEnabled;
+		},
+		mfaDisabled(): boolean {
+			return !this.usersStore.mfaEnabled;
+		},
+		isMfaFeatureEnabled(): boolean {
+			return this.settingsStore.isMfaFeatureEnabled;
+		},
+		hasAnyPersonalisationChanges(): boolean {
+			return this.currentSelectedTheme !== this.uiStore.theme;
+		},
+		hasAnyChanges() {
+			return this.hasAnyBasicInfoChanges || this.hasAnyPersonalisationChanges;
+		},
+	},
 	mounted() {
 		this.formInputs = [
 			{
@@ -171,7 +199,7 @@ export default defineComponent({
 					required: true,
 					autocomplete: 'given-name',
 					capitalize: true,
-					disabled: this.isLDAPFeatureEnabled && this.signInWithLdap,
+					disabled: this.isExternalAuthEnabled,
 				},
 			},
 			{
@@ -183,7 +211,7 @@ export default defineComponent({
 					required: true,
 					autocomplete: 'family-name',
 					capitalize: true,
-					disabled: this.isLDAPFeatureEnabled && this.signInWithLdap,
+					disabled: this.isExternalAuthEnabled,
 				},
 			},
 			{
@@ -196,67 +224,50 @@ export default defineComponent({
 					validationRules: [{ name: 'VALID_EMAIL' }],
 					autocomplete: 'email',
 					capitalize: true,
-					disabled: (this.isLDAPFeatureEnabled && this.signInWithLdap) || this.signInWithSaml,
+					disabled: !this.isPersonalSecurityEnabled,
 				},
 			},
 		];
 	},
-	computed: {
-		...mapStores(useUIStore, useUsersStore, useSettingsStore),
-		currentUser(): IUser | null {
-			return this.usersStore.currentUser;
-		},
-		signInWithLdap(): boolean {
-			return this.currentUser?.signInType === 'ldap';
-		},
-		isLDAPFeatureEnabled(): boolean {
-			return this.settingsStore.settings.enterprise.ldap;
-		},
-		signInWithSaml(): boolean {
-			return (
-				this.settingsStore.isSamlLoginEnabled && this.settingsStore.isDefaultAuthenticationSaml
-			);
-		},
-		mfaDisabled(): boolean {
-			return !this.usersStore.mfaEnabled;
-		},
-		isMfaFeatureEnabled(): boolean {
-			return this.settingsStore.isMfaFeatureEnabled;
-		},
-		currentTheme(): ThemeOption {
-			return this.uiStore.theme;
-		},
-	},
 	methods: {
-		selectTheme(theme: ThemeOption) {
-			this.uiStore.setTheme(theme);
-		},
 		onInput() {
-			this.hasAnyChanges = true;
+			this.hasAnyBasicInfoChanges = true;
 		},
 		onReadyToSubmit(ready: boolean) {
 			this.readyToSubmit = ready;
 		},
 		async onSubmit(form: { firstName: string; lastName: string; email: string }) {
-			if (!this.hasAnyChanges || !this.usersStore.currentUserId) {
-				return;
-			}
 			try {
-				await this.usersStore.updateUser({
-					id: this.usersStore.currentUserId,
-					firstName: form.firstName,
-					lastName: form.lastName,
-					email: form.email,
-				});
+				await Promise.all([this.updateUserBasicInfo(form), this.updatePersonalisationSettings()]);
+
 				this.showToast({
 					title: this.i18n.baseText('settings.personal.personalSettingsUpdated'),
 					message: '',
 					type: 'success',
 				});
-				this.hasAnyChanges = false;
 			} catch (e) {
 				this.showError(e, this.i18n.baseText('settings.personal.personalSettingsUpdatedError'));
 			}
+		},
+		async updateUserBasicInfo(form: { firstName: string; lastName: string; email: string }) {
+			if (!this.hasAnyBasicInfoChanges || !this.usersStore.currentUserId) {
+				return;
+			}
+
+			await this.usersStore.updateUser({
+				id: this.usersStore.currentUserId,
+				firstName: form.firstName,
+				lastName: form.lastName,
+				email: form.email,
+			});
+			this.hasAnyBasicInfoChanges = false;
+		},
+		async updatePersonalisationSettings() {
+			if (!this.hasAnyPersonalisationChanges) {
+				return;
+			}
+
+			this.uiStore.setTheme(this.currentSelectedTheme);
 		},
 		onSaveClick() {
 			this.formBus.emit('submit');

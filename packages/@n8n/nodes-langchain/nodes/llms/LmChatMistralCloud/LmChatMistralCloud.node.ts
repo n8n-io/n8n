@@ -9,8 +9,8 @@ import {
 
 import type { ChatMistralAIInput } from '@langchain/mistralai';
 import { ChatMistralAI } from '@langchain/mistralai';
-import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatMistralCloud implements INodeType {
 	description: INodeTypeDescription = {
@@ -188,10 +188,11 @@ export class LmChatMistralCloud implements INodeType {
 			apiKey: credentials.apiKey as string,
 			modelName,
 			...options,
+			callbacks: [new N8nLlmTracing(this)],
 		});
 
 		return {
-			response: logWrapper(model, this),
+			response: model,
 		};
 	}
 }

@@ -16,10 +16,8 @@ _START_PACKAGE
 nodelinter.config.json
 **/package-lock.json
 packages/**/.turbo
+.turbo
 *.tsbuildinfo
-cypress/videos/*
-cypress/screenshots/*
-cypress/downloads/*
 *.swp
 CHANGELOG-*.md
 *.mdx

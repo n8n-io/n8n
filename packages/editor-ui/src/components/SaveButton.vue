@@ -1,20 +1,30 @@
 <template>
 	<span :class="$style.container" data-test-id="save-button">
 		<span v-if="saved" :class="$style.saved">{{ $locale.baseText('saveButton.saved') }}</span>
-		<KeyboardShortcutTooltip
-			v-else
-			:label="$locale.baseText('saveButton.hint')"
-			:shortcut="{ keys: ['s'], metaKey: true }"
-			placement="bottom"
-		>
+		<template v-else>
+			<KeyboardShortcutTooltip
+				v-if="withShortcut"
+				:label="shortcutTooltipLabel"
+				:shortcut="{ keys: ['s'], metaKey: true }"
+				placement="bottom"
+			>
+				<n8n-button
+					:label="saveButtonLabel"
+					:loading="isSaving"
+					:disabled="disabled"
+					:class="$style.button"
+					:type="type"
+				/>
+			</KeyboardShortcutTooltip>
 			<n8n-button
+				v-else
 				:label="saveButtonLabel"
 				:loading="isSaving"
 				:disabled="disabled"
 				:class="$style.button"
 				:type="type"
 			/>
-		</KeyboardShortcutTooltip>
+		</template>
 	</span>
 </template>
 
@@ -50,12 +60,22 @@ export default defineComponent({
 			type: String,
 			default: 'primary',
 		},
+		withShortcut: {
+			type: Boolean,
+			default: false,
+		},
+		shortcutTooltip: {
+			type: String,
+		},
 	},
 	computed: {
 		saveButtonLabel() {
 			return this.isSaving
 				? this.$locale.baseText('saveButton.saving')
 				: this.$locale.baseText('saveButton.save');
+		},
+		shortcutTooltipLabel() {
+			return this.shortcutTooltip ?? this.$locale.baseText('saveButton.save');
 		},
 	},
 });

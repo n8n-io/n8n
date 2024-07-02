@@ -1,11 +1,14 @@
-import type { SuperAgentTest } from 'supertest';
+import nock from 'nock';
 import config from '@/config';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import type { User } from '@db/entities/User';
 import type { ILicensePostResponse, ILicenseReadResponse } from '@/Interfaces';
 import { License } from '@/License';
+
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
 import { createUserShell } from './shared/db/users';
+import type { SuperAgentTest } from './shared/types';
 
 const MOCK_SERVER_URL = 'https://server.com/v1';
 const MOCK_RENEW_OFFSET = 259200;
@@ -45,6 +48,20 @@ describe('GET /license', () => {
 	});
 });
 
+describe('POST /license/enterprise/request_trial', () => {
+	nock('https://enterprise.n8n.io').post('/enterprise-trial').reply(200);
+
+	test('should work for instance owner', async () => {
+		await authOwnerAgent.post('/license/enterprise/request_trial').expect(200);
+	});
+
+	test('does not work for regular users', async () => {
+		await authMemberAgent
+			.post('/license/enterprise/request_trial')
+			.expect(403, { status: 'error', message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE });
+	});
+});
+
 describe('POST /license/activate', () => {
 	test('should work for instance owner', async () => {
 		await authOwnerAgent
@@ -57,7 +74,7 @@ describe('POST /license/activate', () => {
 		await authMemberAgent
 			.post('/license/activate')
 			.send({ activationKey: 'abcde' })
-			.expect(403, UNAUTHORIZED_RESPONSE);
+			.expect(403, { status: 'error', message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE });
 	});
 
 	test('errors out properly', async () => {
@@ -79,7 +96,9 @@ describe('POST /license/renew', () => {
 	});
 
 	test('does not work for regular users', async () => {
-		await authMemberAgent.post('/license/renew').expect(403, UNAUTHORIZED_RESPONSE);
+		await authMemberAgent
+			.post('/license/renew')
+			.expect(403, { status: 'error', message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE });
 	});
 
 	test('errors out properly', async () => {
@@ -126,6 +145,5 @@ const DEFAULT_POST_RESPONSE: { data: ILicensePostResponse } = {
 	},
 };
 
-const UNAUTHORIZED_RESPONSE = { status: 'error', message: 'Unauthorized' };
 const ACTIVATION_FAILED_MESSAGE = 'Failed to activate license';
 const GENERIC_ERROR_MESSAGE = 'Something went wrong';

@@ -71,7 +71,7 @@ export class EmbeddingsOpenAi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Embeddings OpenAI',
 		name: 'embeddingsOpenAi',
-		icon: 'file:openAi.svg',
+		icon: { light: 'file:openAiLight.svg', dark: 'file:openAiLight.dark.svg' },
 		credentials: [
 			{
 				name: 'openAiApi',

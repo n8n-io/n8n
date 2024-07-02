@@ -361,7 +361,7 @@ const config = (module.exports = {
 		/**
 		 * https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/no-unresolved.md
 		 */
-		'import/no-unresolved': 'error',
+		'import/no-unresolved': ['error', { ignore: ['^virtual:'] }],
 
 		/**
 		 * https://github.com/import-js/eslint-plugin-import/blob/master/docs/rules/order.md
@@ -467,7 +467,7 @@ const config = (module.exports = {
 
 	overrides: [
 		{
-			files: ['test/**/*.ts', '**/__tests__/*.ts'],
+			files: ['test/**/*.ts', '**/__tests__/*.ts', '**/*.cy.ts'],
 			rules: {
 				'n8n-local-rules/no-plain-errors': 'off',
 				'n8n-local-rules/no-skipped-tests':

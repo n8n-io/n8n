@@ -20,14 +20,15 @@
 				<div :class="$style.logo">
 					<img :src="logoPath" data-test-id="n8n-logo" :class="$style.icon" alt="n8n" />
 				</div>
+				<ProjectNavigation
+					:collapsed="isCollapsed"
+					:plan-name="cloudPlanStore.currentPlanData?.displayName"
+				/>
 			</template>
 
 			<template #beforeLowerMenu>
 				<BecomeTemplateCreatorCta v-if="fullyExpanded && !userIsTrialing" />
-				<ExecutionsUsage
-					v-if="fullyExpanded && userIsTrialing"
-					:cloud-plan-data="currentPlanAndUsageData"
-			/></template>
+			</template>
 			<template #menuSuffix>
 				<div>
 					<div
@@ -63,8 +64,8 @@
 						>
 							<div :class="{ [$style.avatar]: true, ['clickable']: isCollapsed }">
 								<n8n-avatar
-									:first-name="usersStore.currentUser.firstName"
-									:last-name="usersStore.currentUser.lastName"
+									:first-name="usersStore.currentUser?.firstName"
+									:last-name="usersStore.currentUser?.lastName"
 									size="small"
 								/>
 							</div>
@@ -84,7 +85,7 @@
 						:class="{ ['ml-2xs']: true, [$style.userName]: true, [$style.expanded]: fullyExpanded }"
 					>
 						<n8n-text size="small" :bold="true" color="text-dark">{{
-							usersStore.currentUser.fullName
+							usersStore.currentUser?.fullName
 						}}</n8n-text>
 					</div>
 					<div :class="{ [$style.userActions]: true, [$style.expanded]: fullyExpanded }">
@@ -102,16 +103,16 @@
 </template>
 
 <script lang="ts">
-import type { CloudPlanAndUsageData, IExecutionResponse, IMenuItem, IVersion } from '@/Interface';
+import type { IExecutionResponse, IMenuItem, IVersion } from '@/Interface';
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
 
 import { useMessage } from '@/composables/useMessage';
 import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
-import { userHelpers } from '@/mixins/userHelpers';
+import { useUserHelpers } from '@/composables/useUserHelpers';
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -119,31 +120,34 @@ import { useUsersStore } from '@/stores/users.store';
 import { useVersionsStore } from '@/stores/versions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useTemplatesStore } from '@/stores/templates.store';
-import ExecutionsUsage from '@/components/executions/ExecutionsUsage.vue';
 import BecomeTemplateCreatorCta from '@/components/BecomeTemplateCreatorCta/BecomeTemplateCreatorCta.vue';
 import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
-import { hasPermission } from '@/rbac/permissions';
+import { hasPermission } from '@/utils/rbac/permissions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useDebounce } from '@/composables/useDebounce';
 import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
+import ProjectNavigation from '@/components/Projects/ProjectNavigation.vue';
+import { useRoute, useRouter } from 'vue-router';
 
 export default defineComponent({
 	name: 'MainSidebar',
 	components: {
 		GiftNotificationIcon,
-		ExecutionsUsage,
 		MainSidebarSourceControl,
 		BecomeTemplateCreatorCta,
+		ProjectNavigation,
 	},
-	mixins: [userHelpers],
-	setup(props, ctx) {
+	setup() {
 		const externalHooks = useExternalHooks();
 		const { callDebounced } = useDebounce();
+		const router = useRouter();
+		const route = useRoute();
 
 		return {
 			externalHooks,
 			callDebounced,
 			...useMessage(),
+			...useUserHelpers(router, route),
 		};
 	},
 	data() {
@@ -180,10 +184,6 @@ export default defineComponent({
 		isCollapsed(): boolean {
 			return this.uiStore.sidebarMenuCollapsed;
 		},
-		canUserAccessSettings(): boolean {
-			const accessibleRoute = this.findFirstAccessibleSettingsRoute();
-			return accessibleRoute !== null;
-		},
 		showUserArea(): boolean {
 			return hasPermission(['authenticated']);
 		},
@@ -203,33 +203,20 @@ export default defineComponent({
 			];
 		},
 		mainMenuItems(): IMenuItem[] {
-			const items: IMenuItem[] = [];
-
-			const workflows: IMenuItem = {
-				id: 'workflows',
-				icon: 'network-wired',
-				label: this.$locale.baseText('mainSidebar.workflows'),
-				position: 'top',
-				route: { to: { name: VIEWS.WORKFLOWS } },
-				secondaryIcon: this.sourceControlStore.preferences.branchReadOnly
-					? {
-							name: 'lock',
-							tooltip: {
-								content: this.$locale.baseText('mainSidebar.workflows.readOnlyEnv.tooltip'),
-							},
-						}
-					: undefined,
-			};
-
-			const defaultSettingsRoute = this.findFirstAccessibleSettingsRoute();
-			const regularItems: IMenuItem[] = [
-				workflows,
+			const items: IMenuItem[] = [
+				{
+					id: 'cloud-admin',
+					position: 'bottom',
+					label: 'Admin Panel',
+					icon: 'cloud',
+					available: this.settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
+				},
 				{
 					// Link to in-app templates, available if custom templates are enabled
 					id: 'templates',
 					icon: 'box-open',
 					label: this.$locale.baseText('mainSidebar.templates'),
-					position: 'top',
+					position: 'bottom',
 					available:
 						this.settingsStore.isTemplatesEnabled && this.templatesStore.hasCustomTemplatesHost,
 					route: { to: { name: VIEWS.TEMPLATES } },
@@ -239,7 +226,7 @@ export default defineComponent({
 					id: 'templates',
 					icon: 'box-open',
 					label: this.$locale.baseText('mainSidebar.templates'),
-					position: 'top',
+					position: 'bottom',
 					available:
 						this.settingsStore.isTemplatesEnabled && !this.templatesStore.hasCustomTemplatesHost,
 					link: {
@@ -248,48 +235,24 @@ export default defineComponent({
 					},
 				},
 				{
-					id: 'credentials',
-					icon: 'key',
-					label: this.$locale.baseText('mainSidebar.credentials'),
-					customIconSize: 'medium',
-					position: 'top',
-					route: { to: { name: VIEWS.CREDENTIALS } },
-				},
-				{
 					id: 'variables',
 					icon: 'variable',
 					label: this.$locale.baseText('mainSidebar.variables'),
 					customIconSize: 'medium',
-					position: 'top',
+					position: 'bottom',
 					route: { to: { name: VIEWS.VARIABLES } },
 				},
 				{
 					id: 'executions',
 					icon: 'tasks',
 					label: this.$locale.baseText('mainSidebar.executions'),
-					position: 'top',
+					position: 'bottom',
 					route: { to: { name: VIEWS.EXECUTIONS } },
-				},
-				{
-					id: 'cloud-admin',
-					position: 'bottom',
-					label: 'Admin Panel',
-					icon: 'home',
-					available: this.settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
-				},
-				{
-					id: 'settings',
-					icon: 'cog',
-					label: this.$locale.baseText('settings'),
-					position: 'bottom',
-					available: this.canUserAccessSettings && this.usersStore.currentUser !== null,
-					activateOnRouteNames: [VIEWS.USERS_SETTINGS, VIEWS.API_SETTINGS, VIEWS.PERSONAL_SETTINGS],
-					route: { to: defaultSettingsRoute },
 				},
 				{
 					id: 'help',
 					icon: 'question',
-					label: 'Help',
+					label: this.$locale.baseText('mainSidebar.help'),
 					position: 'bottom',
 					children: [
 						{
@@ -337,19 +300,10 @@ export default defineComponent({
 					],
 				},
 			];
-			return [...items, ...regularItems];
+			return items;
 		},
 		userIsTrialing(): boolean {
 			return this.cloudPlanStore.userIsTrialing;
-		},
-		currentPlanAndUsageData(): CloudPlanAndUsageData | null {
-			const planData = this.cloudPlanStore.currentPlanData;
-			const usage = this.cloudPlanStore.currentUsageData;
-			if (!planData || !usage) return null;
-			return {
-				...planData,
-				usage,
-			};
 		},
 	},
 	async mounted() {
@@ -361,12 +315,7 @@ export default defineComponent({
 		}
 
 		void this.$nextTick(() => {
-			if (window.innerWidth < 900 || this.uiStore.isNodeView) {
-				this.uiStore.sidebarMenuCollapsed = true;
-			} else {
-				this.uiStore.sidebarMenuCollapsed = false;
-			}
-
+			this.uiStore.sidebarMenuCollapsed = window.innerWidth < 900;
 			this.fullyExpanded = !this.isCollapsed;
 		});
 
@@ -450,24 +399,6 @@ export default defineComponent({
 				default:
 					break;
 			}
-		},
-		findFirstAccessibleSettingsRoute() {
-			const settingsRoutes = this.$router
-				.getRoutes()
-				.find((route) => route.path === '/settings')!
-				.children.map((route) => route.name ?? '');
-
-			let defaultSettingsRoute = { name: VIEWS.USERS_SETTINGS };
-			for (const route of settingsRoutes) {
-				if (this.canUserAccessRouteByName(route.toString())) {
-					defaultSettingsRoute = {
-						name: route.toString() as VIEWS,
-					};
-					break;
-				}
-			}
-
-			return defaultSettingsRoute;
 		},
 		onResize(event: UIEvent) {
 			void this.callDebounced(this.onResizeEnd, { debounceTime: 100 }, event);

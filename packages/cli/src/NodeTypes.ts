@@ -54,6 +54,10 @@ export class NodeTypes implements INodeTypes {
 		}
 	}
 
+	getKnownTypes() {
+		return this.loadNodesAndCredentials.knownNodes;
+	}
+
 	private getNode(type: string): LoadedClass<INodeType | IVersionedNodeType> {
 		const { loadedNodes, knownNodes } = this.loadNodesAndCredentials;
 		if (type in loadedNodes) {

@@ -88,7 +88,7 @@ export default defineComponent({
 			type: Number,
 		},
 		nodeType: {
-			type: Object as PropType<INodeTypeDescription>,
+			type: Object as PropType<INodeTypeDescription | null>,
 			default: () => ({}),
 		},
 	},

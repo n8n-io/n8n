@@ -132,15 +132,17 @@ export function prepareFields(fields: string) {
 		.filter((field) => !!field);
 }
 
-export function stringifyObjectIDs(items: IDataObject[]) {
+export function stringifyObjectIDs(items: INodeExecutionData[]) {
 	items.forEach((item) => {
 		if (item._id instanceof ObjectId) {
-			item._id = item._id.toString();
+			item.json._id = item._id.toString();
 		}
 		if (item.id instanceof ObjectId) {
-			item.id = item.id.toString();
+			item.json.id = item.id.toString();
 		}
 	});
+
+	return items;
 }
 
 export async function connectMongoClient(connectionString: string, credentials: IDataObject = {}) {

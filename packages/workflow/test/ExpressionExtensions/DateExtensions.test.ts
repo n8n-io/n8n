@@ -109,6 +109,22 @@ describe('Data Transformation Functions', () => {
 			).toThrow();
 		});
 
+		test('.diffTo() should work with a single unit', () => {
+			expect(
+				evaluate(
+					"={{ '2025-01-01'.toDateTime().diffTo('2024-03-30T18:49:07.234', 'days').floor() }}",
+				),
+			).toEqual(276);
+		});
+
+		test('.diffTo() should work with an array of units', () => {
+			expect(
+				evaluate(
+					"={{ '2025-01-01T00:00:00.000'.toDateTime().diffTo('2024-03-30T18:49:07.234', ['months', 'days']) }}",
+				),
+			).toEqual({ months: 9, days: 1.2158884953703704 });
+		});
+
 		describe('toDateTime', () => {
 			test('should return itself for DateTime', () => {
 				const result = evaluate(

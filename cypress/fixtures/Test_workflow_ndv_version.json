@@ -3,7 +3,7 @@
 	"nodes": [
 		{
 			"id": "2acca986-10a6-451e-b20a-86e95b50e627",
-			"name": "When clicking \"Test workflow\"",
+			"name": "When clicking ‘Test workflow’",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
 			"position": [460, 460]
@@ -32,7 +32,7 @@
 			"id": "273f60c9-08e7-457e-b01d-31e16c565171",
 			"name": "Edit Fields (latest)",
 			"type": "n8n-nodes-base.set",
-			"typeVersion": 3.3,
+			"typeVersion": 3.4,
 			"position": [640, 460]
 		}
 	],

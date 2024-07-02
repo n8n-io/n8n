@@ -1,6 +1,6 @@
 <template>
 	<div :class="$style.editor">
-		<div ref="htmlEditor"></div>
+		<div ref="htmlEditor" data-test-id="html-editor-container"></div>
 		<slot name="suffix" />
 	</div>
 </template>
@@ -244,7 +244,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
 	htmlEditorEventBus.off('format-html', formatHtml);
-	emit('update:model-value', readEditorValue());
 });
 </script>
 

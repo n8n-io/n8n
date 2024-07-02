@@ -63,7 +63,7 @@ export default defineComponent({
 	props: ['modalName'],
 	setup() {
 		return {
-			...useToast(),
+			toast: useToast(),
 		};
 	},
 	data() {
@@ -94,7 +94,7 @@ export default defineComponent({
 
 			try {
 				await this.uiStore.applyForOnboardingCall(this.email);
-				this.showMessage({
+				this.toast.showMessage({
 					type: 'success',
 					title: this.$locale.baseText('onboardingCallSignupSucess.title'),
 					message: this.$locale.baseText('onboardingCallSignupSucess.message'),
@@ -102,7 +102,7 @@ export default defineComponent({
 				this.okToClose = true;
 				this.modalBus.emit('close');
 			} catch (e) {
-				this.showError(
+				this.toast.showError(
 					e,
 					this.$locale.baseText('onboardingCallSignupFailed.title'),
 					this.$locale.baseText('onboardingCallSignupFailed.message'),
