@@ -17,26 +17,6 @@ export const reportRLC: INodeProperties = {
 				searchable: true,
 			},
 		},
-		// {
-		// 	displayName: 'Link',
-		// 	name: 'url',
-		// 	type: 'string',
-		// 	placeholder:
-		// 		'e.g. https://localhost:8089/servicesNS/nobody/search/saved/searches/Errors%20in%20the%20last%20hour',
-		// 	extractValue: {
-		// 		type: 'regex',
-		// 		regex: '\\/([^/]+?)\\/?$',
-		// 	},
-		// 	validation: [
-		// 		{
-		// 			type: 'regex',
-		// 			properties: {
-		// 				regex: '.+\\/search\\/saved\\/searches\\/([^/]+?)\\/?$',
-		// 				errorMessage: 'Not a valid report URL',
-		// 			},
-		// 		},
-		// 	],
-		// },
 		{
 			displayName: 'ID',
 			name: 'id',

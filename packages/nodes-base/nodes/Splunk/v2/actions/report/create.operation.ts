@@ -2,7 +2,7 @@ import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workfl
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { splunkApiRequest } from '../../transport';
 import { searchJobRLC } from '../../helpers/descriptions';
-import { formatSearch } from '../../helpers/utils';
+import { formatFeed, formatSearch } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	searchJobRLC,
@@ -48,7 +48,7 @@ export async function execute(
 
 	const returnData = await splunkApiRequest
 		.call(this, 'POST', '/services/saved/searches', body)
-		.then(formatSearch);
+		.then(formatFeed);
 
 	return returnData;
 }
