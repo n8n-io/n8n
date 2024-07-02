@@ -76,7 +76,7 @@ export const getVariablesPermissions = (user: IUser | null): PermissionsMap<Vari
 
 export const getResourcePermissions = (
 	resource: IUser | ICredentialsResponse | IWorkflowDb | Project,
-) => {
+): PermissionsRecord<Scope> => {
 	let scopes: Scope[] = [];
 	if ('scopes' in resource) {
 		scopes = resource.scopes ?? [];
