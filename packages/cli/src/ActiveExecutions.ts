@@ -47,19 +47,11 @@ export class ActiveExecutions {
 		let executionStatus: ExecutionStatus = executionId ? 'running' : 'new';
 		const mode = executionData.executionMode;
 
-		const runExecutionData = executionData.executionData;
-
-		if (!runExecutionData) {
-			throw new ApplicationError('Cannot add active execution without execution data', {
-				extra: { workflowId: executionData.workflowData.id },
-			});
-		}
-
 		if (executionId === undefined) {
 			// Is a new execution so save in DB
 
 			const fullExecutionData: ExecutionPayload = {
-				data: runExecutionData,
+				data: executionData.executionData!,
 				mode,
 				finished: false,
 				startedAt: new Date(),
@@ -91,7 +83,7 @@ export class ActiveExecutions {
 
 			const execution: Pick<IExecutionDb, 'id' | 'data' | 'waitTill' | 'status'> = {
 				id: executionId,
-				data: runExecutionData,
+				data: executionData.executionData!,
 				waitTill: null,
 				status: executionStatus,
 			};

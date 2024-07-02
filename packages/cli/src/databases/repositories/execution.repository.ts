@@ -43,6 +43,8 @@ import { ExecutionDataRepository } from './executionData.repository';
 import { Logger } from '@/Logger';
 import type { ExecutionSummaries } from '@/executions/execution.types';
 import { PostgresLiveRowsRetrievalError } from '@/errors/postgres-live-rows-retrieval.error';
+import { separate } from '@/utils';
+import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
 export interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;
@@ -156,7 +158,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const executions = await this.find(queryParams);
 
 		if (options?.includeData && options?.unflattenData) {
-			return executions.map((execution) => {
+			const [valid, invalid] = separate(executions, (e) => e.executionData !== null);
+			this.reportInvalidExecutions(invalid);
+			return valid.map((execution) => {
 				const { executionData, metadata, ...rest } = execution;
 				return {
 					...rest,
@@ -166,7 +170,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				} as IExecutionResponse;
 			});
 		} else if (options?.includeData) {
-			return executions.map((execution) => {
+			const [valid, invalid] = separate(executions, (e) => e.executionData !== null);
+			this.reportInvalidExecutions(invalid);
+			return valid.map((execution) => {
 				const { executionData, metadata, ...rest } = execution;
 				return {
 					...rest,
@@ -181,6 +187,16 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			const { executionData, ...rest } = execution;
 			return rest;
 		});
+	}
+
+	reportInvalidExecutions(executions: ExecutionEntity[]) {
+		if (executions.length === 0) return;
+
+		ErrorReporter.error(
+			new ApplicationError('Found executions without executionData', {
+				extra: { executionIds: executions.map(({ id }) => id) },
+			}),
+		);
 	}
 
 	async findSingleExecution(
