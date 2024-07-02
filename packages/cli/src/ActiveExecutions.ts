@@ -46,7 +46,6 @@ export class ActiveExecutions {
 	async add(executionData: IWorkflowExecutionDataProcess, executionId?: string): Promise<string> {
 		let executionStatus: ExecutionStatus = executionId ? 'running' : 'new';
 		const mode = executionData.executionMode;
-
 		if (executionId === undefined) {
 			// Is a new execution so save in DB
 
