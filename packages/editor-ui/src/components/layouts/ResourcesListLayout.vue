@@ -165,6 +165,7 @@ export type IResource = {
 	id: string;
 	name: string;
 	value: string;
+	key?: string;
 	updatedAt?: string;
 	createdAt?: string;
 	homeProject?: ProjectSharingData;

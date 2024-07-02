@@ -34,7 +34,7 @@ describe('environments.store', () => {
 		describe('createVariable()', () => {
 			it('should store a new variable', async () => {
 				const variable: Omit<EnvironmentVariable, 'id'> = {
-					key: 'ENV_VAR',
+					name: 'ENV_VAR',
 					value: 'SECRET',
 				};
 				const environmentsStore = useEnvironmentsStore();
@@ -54,7 +54,7 @@ describe('environments.store', () => {
 		describe('updateVariable()', () => {
 			it('should update an existing variable', async () => {
 				const updateValue: Partial<EnvironmentVariable> = {
-					key: 'ENV_VAR',
+					name: 'ENV_VAR',
 					value: 'SECRET',
 				};
 
@@ -89,7 +89,7 @@ describe('environments.store', () => {
 
 				expect(environmentsStore.variablesAsObject).toEqual(
 					environmentsStore.variables.reduce<Record<string, string>>((acc, variable) => {
-						acc[variable.key] = variable.value;
+						acc[variable.name] = variable.value;
 						return acc;
 					}, {}),
 				);

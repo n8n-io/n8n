@@ -48,9 +48,9 @@ interface ActionBoxProps {
 	buttonText: string;
 	buttonType: ButtonType;
 	description: string;
-	calloutText: string;
-	calloutTheme: CalloutTheme;
-	calloutIcon: string;
+	calloutText?: string;
+	calloutTheme?: CalloutTheme;
+	calloutIcon?: string;
 }
 
 defineOptions({ name: 'N8nActionBox' });

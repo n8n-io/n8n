@@ -6,7 +6,7 @@ export const variableFactory = Factory.extend<EnvironmentVariable>({
 	id(i: number) {
 		return `${i}`;
 	},
-	key() {
+	name() {
 		return `${faker.lorem.word()}`.toUpperCase();
 	},
 	value() {

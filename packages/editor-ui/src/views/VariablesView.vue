@@ -46,7 +46,7 @@ const isFeatureEnabled = computed(() =>
 );
 
 const variablesToResources = computed((): IResource[] =>
-	allVariables.value.map((v) => ({ id: v.id, name: v.key, value: v.value })),
+	allVariables.value.map((v) => ({ id: v.id, name: v.name, value: v.value })),
 );
 
 const canCreateVariables = computed(() => isFeatureEnabled.value && permissions.create);
@@ -118,14 +118,6 @@ function resetNewVariablesList() {
 	newlyAddedVariableIds.value = [];
 }
 
-const resourceToEnvironmentVariable = (data: IResource): EnvironmentVariable => {
-	return {
-		id: data.id,
-		key: data.name,
-		value: 'value' in data ? data.value : '',
-	};
-};
-
 async function initialize() {
 	if (!isFeatureEnabled.value) return;
 	await environmentsStore.fetchAllVariables();
@@ -136,7 +128,7 @@ async function initialize() {
 function addTemporaryVariable() {
 	const temporaryVariable: EnvironmentVariable = {
 		id: uid(TEMPORARY_VARIABLE_UID_BASE),
-		key: '',
+		name: '',
 		value: '',
 	};
 
@@ -159,18 +151,15 @@ function addTemporaryVariable() {
 }
 
 async function saveVariable(data: IResource) {
-	let updatedVariable: EnvironmentVariable;
-	const variable = resourceToEnvironmentVariable(data);
-
 	try {
 		if (typeof data.id === 'string' && data.id.startsWith(TEMPORARY_VARIABLE_UID_BASE)) {
-			const { id, ...rest } = variable;
-			updatedVariable = await environmentsStore.createVariable(rest);
+			const { id, ...rest } = data;
+			const updatedVariable = await environmentsStore.createVariable(rest);
 			allVariables.value.unshift(updatedVariable);
 			allVariables.value = allVariables.value.filter((variable) => variable.id !== data.id);
 			newlyAddedVariableIds.value.unshift(updatedVariable.id);
 		} else {
-			updatedVariable = await environmentsStore.updateVariable(variable);
+			const updatedVariable = await environmentsStore.updateVariable(data);
 			allVariables.value = allVariables.value.filter((variable) => variable.id !== data.id);
 			allVariables.value.push(updatedVariable);
 			toggleEditing(updatedVariable);
@@ -198,7 +187,7 @@ function cancelEditing(data: EnvironmentVariable) {
 async function deleteVariable(data: EnvironmentVariable) {
 	try {
 		const confirmed = await message.confirm(
-			i18n.baseText('variables.modals.deleteConfirm.message', { interpolate: { name: data.key } }),
+			i18n.baseText('variables.modals.deleteConfirm.message', { interpolate: { name: data.name } }),
 			i18n.baseText('variables.modals.deleteConfirm.title'),
 			{
 				confirmButtonText: i18n.baseText('variables.modals.deleteConfirm.confirmButton'),

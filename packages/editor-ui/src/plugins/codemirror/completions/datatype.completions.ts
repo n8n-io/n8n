@@ -677,9 +677,9 @@ export const variablesOptions = () => {
 
 	return variables.map((variable) =>
 		createCompletionOption({
-			name: variable.key,
+			name: variable.name,
 			doc: {
-				name: variable.key,
+				name: variable.name,
 				returnType: 'string',
 				description: i18n.baseText('codeNodeEditor.completer.$vars.varName'),
 				docURL: 'https://docs.n8n.io/environments/variables/',

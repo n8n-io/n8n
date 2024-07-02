@@ -47,7 +47,7 @@ export const useEnvironmentsStore = defineStore('environments', () => {
 	const variablesAsObject = computed(() => {
 		const asObject = variables.value.reduce<Record<string, string | boolean | number>>(
 			(acc, variable) => {
-				acc[variable.key] = variable.value;
+				acc[variable.name] = variable.value;
 				return acc;
 			},
 			{},

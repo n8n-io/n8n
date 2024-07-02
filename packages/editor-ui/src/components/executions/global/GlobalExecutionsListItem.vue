@@ -9,7 +9,13 @@ import { i18n as locale } from '@/plugins/i18n';
 import ExecutionsTime from '@/components/executions/ExecutionsTime.vue';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 
-const emit = defineEmits(['stop', 'select', 'retrySaved', 'retryOriginal', 'delete']);
+type Command = 'retrySaved' | 'retryOriginal' | 'delete';
+
+const emit = defineEmits<{
+	(event: 'stop', data: ExecutionSummary): void;
+	(event: 'select', data: ExecutionSummary): void;
+	(event: Command, data: ExecutionSummary): void;
+}>();
 
 const props = withDefaults(
 	defineProps<{
@@ -141,7 +147,7 @@ function onSelect() {
 	emit('select', props.execution);
 }
 
-async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal' | 'delete') {
+async function handleActionItemClick(commandData: Command) {
 	emit(commandData, props.execution);
 }
 </script>

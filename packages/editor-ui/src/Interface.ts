@@ -1632,7 +1632,7 @@ export declare namespace DynamicNodeParameters {
 
 export interface EnvironmentVariable {
 	id: string;
-	key: string;
+	name: string;
 	value: string;
 }
 
