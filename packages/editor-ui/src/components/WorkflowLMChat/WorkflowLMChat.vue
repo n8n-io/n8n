@@ -470,6 +470,7 @@ function extractResponseMessage(responseData?: IDataObject) {
 }
 
 async function sendMessage(message: string, files?: File[]) {
+	previousMessageIndex.value = 0;
 	if (message.trim() === '' && (!files || files.length === 0)) {
 		showError(
 			new Error(locale.baseText('chat.window.chat.provideMessage')),
@@ -503,7 +504,6 @@ async function sendMessage(message: string, files?: File[]) {
 	};
 	messages.value.push(newMessage);
 
-	previousMessageIndex.value = 0;
 	await startWorkflowWithMessage(newMessage.text, files);
 }
 
