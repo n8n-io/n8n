@@ -110,6 +110,7 @@ export default defineComponent({
 			default: false,
 		},
 	},
+	emits: ['retryExecution', 'mounted'],
 	setup() {
 		const executionHelpers = useExecutionHelpers();
 
@@ -146,6 +147,9 @@ export default defineComponent({
 		executionPreviewViewName() {
 			return VIEWS.EXECUTION_PREVIEW;
 		},
+	},
+	mounted() {
+		this.$emit('mounted', this.execution.id);
 	},
 	methods: {
 		onRetryMenuItemSelect(action: string): void {

@@ -1,14 +1,13 @@
 import type { Plugin } from 'vue';
 import axios from 'axios';
 import { createI18n } from 'vue-i18n';
-import type { I18nOptions } from 'vue-i18n';
-import { locale } from 'n8n-design-system';
+import { locale, type N8nLocaleTranslateFn } from 'n8n-design-system';
 import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
 
 import type { INodeTranslationHeaders } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import englishBaseText from './locales/en.json';
 import {
 	deriveMiddleKey,
@@ -22,6 +21,8 @@ export const i18nInstance = createI18n({
 	fallbackLocale: 'en',
 	messages: { en: englishBaseText },
 });
+
+type BaseTextOptions = { adjustToNumber?: number; interpolate?: Record<string, string | number> };
 
 export class I18nClass {
 	private baseTextCache = new Map<string, string>();
@@ -49,10 +50,7 @@ export class I18nClass {
 	/**
 	 * Render a string of base text, i.e. a string with a fixed path to the localized value. Optionally allows for [interpolation](https://kazupon.github.io/vue-i18n/guide/formatting.html#named-formatting) when the localized value contains a string between curly braces.
 	 */
-	baseText(
-		key: BaseTextKey,
-		options?: { adjustToNumber?: number; interpolate?: Record<string, string | number> },
-	): string {
+	baseText(key: BaseTextKey, options?: BaseTextOptions): string {
 		// Create a unique cache key
 		const cacheKey = `${key}-${JSON.stringify(options)}`;
 
@@ -205,7 +203,7 @@ export class I18nClass {
 			/**
 			 * Display name for an input label, whether top-level or nested.
 			 */
-			inputLabelDisplayName(parameter: INodeProperties, path: string) {
+			inputLabelDisplayName(parameter: INodeProperties | INodePropertyCollection, path: string) {
 				const middleKey = deriveMiddleKey(path, parameter);
 
 				return context.dynamicRender({
@@ -358,67 +356,6 @@ export class I18nClass {
 		});
 	}
 
-	rootVars = {
-		$binary: this.baseText('codeNodeEditor.completer.binary'),
-		$execution: this.baseText('codeNodeEditor.completer.$execution'),
-		$ifEmpty: this.baseText('codeNodeEditor.completer.$ifEmpty'),
-		$input: this.baseText('codeNodeEditor.completer.$input'),
-		$jmespath: this.baseText('codeNodeEditor.completer.$jmespath'),
-		$json: this.baseText('codeNodeEditor.completer.json'),
-		$itemIndex: this.baseText('codeNodeEditor.completer.$itemIndex'),
-		$now: this.baseText('codeNodeEditor.completer.$now'),
-		$parameter: this.baseText('codeNodeEditor.completer.$parameter'),
-		$prevNode: this.baseText('codeNodeEditor.completer.$prevNode'),
-		$if: this.baseText('codeNodeEditor.completer.$if'),
-		$max: this.baseText('codeNodeEditor.completer.$max'),
-		$min: this.baseText('codeNodeEditor.completer.$min'),
-		$runIndex: this.baseText('codeNodeEditor.completer.$runIndex'),
-		$today: this.baseText('codeNodeEditor.completer.$today'),
-		$vars: this.baseText('codeNodeEditor.completer.$vars'),
-		$workflow: this.baseText('codeNodeEditor.completer.$workflow'),
-		DateTime: this.baseText('codeNodeEditor.completer.dateTime'),
-		$request: this.baseText('codeNodeEditor.completer.$request'),
-		$response: this.baseText('codeNodeEditor.completer.$response'),
-		$pageCount: this.baseText('codeNodeEditor.completer.$pageCount'),
-		$nodeVersion: this.baseText('codeNodeEditor.completer.$nodeVersion'),
-	} as const satisfies Record<string, string | undefined>;
-
-	proxyVars: Record<string, string | undefined> = {
-		'$input.all': this.baseText('codeNodeEditor.completer.$input.all'),
-		'$input.first': this.baseText('codeNodeEditor.completer.$input.first'),
-		'$input.item': this.baseText('codeNodeEditor.completer.$input.item'),
-		'$input.last': this.baseText('codeNodeEditor.completer.$input.last'),
-
-		'$().all': this.baseText('codeNodeEditor.completer.selector.all'),
-		'$().context': this.baseText('codeNodeEditor.completer.selector.context'),
-		'$().first': this.baseText('codeNodeEditor.completer.selector.first'),
-		'$().item': this.baseText('codeNodeEditor.completer.selector.item'),
-		'$().itemMatching': this.baseText('codeNodeEditor.completer.selector.itemMatching'),
-		'$().last': this.baseText('codeNodeEditor.completer.selector.last'),
-		'$().params': this.baseText('codeNodeEditor.completer.selector.params'),
-		'$().isExecuted': this.baseText('codeNodeEditor.completer.selector.isExecuted'),
-
-		'$prevNode.name': this.baseText('codeNodeEditor.completer.$prevNode.name'),
-		'$prevNode.outputIndex': this.baseText('codeNodeEditor.completer.$prevNode.outputIndex'),
-		'$prevNode.runIndex': this.baseText('codeNodeEditor.completer.$prevNode.runIndex'),
-
-		'$execution.id': this.baseText('codeNodeEditor.completer.$workflow.id'),
-		'$execution.mode': this.baseText('codeNodeEditor.completer.$execution.mode'),
-		'$execution.resumeUrl': this.baseText('codeNodeEditor.completer.$execution.resumeUrl'),
-		'$execution.resumeFormUrl': this.baseText('codeNodeEditor.completer.$execution.resumeFormUrl'),
-
-		'$workflow.active': this.baseText('codeNodeEditor.completer.$workflow.active'),
-		'$workflow.id': this.baseText('codeNodeEditor.completer.$workflow.id'),
-		'$workflow.name': this.baseText('codeNodeEditor.completer.$workflow.name'),
-	};
-
-	globalObject: Record<string, string | undefined> = {
-		assign: this.baseText('codeNodeEditor.completer.globalObject.assign'),
-		entries: this.baseText('codeNodeEditor.completer.globalObject.entries'),
-		keys: this.baseText('codeNodeEditor.completer.globalObject.keys'),
-		values: this.baseText('codeNodeEditor.completer.globalObject.values'),
-	};
-
 	autocompleteUIValues: Record<string, string | undefined> = {
 		docLinkLabel: this.baseText('expressionEdit.learnMore'),
 	};
@@ -437,9 +374,7 @@ async function setLanguage(language: string) {
 	return language;
 }
 
-export async function loadLanguage(language?: string) {
-	if (!language) return;
-
+export async function loadLanguage(language: string) {
 	if (i18nInstance.global.locale === language) {
 		return await setLanguage(language);
 	}
@@ -466,25 +401,15 @@ export async function loadLanguage(language?: string) {
  */
 export function addNodeTranslation(
 	nodeTranslation: { [nodeType: string]: object },
-	language: keyof I18nOptions['messages'],
+	language: string,
 ) {
-	const oldNodesBase: { nodes: {} } = i18nInstance.global.messages[language]['n8n-nodes-base'] ?? {
-		nodes: {},
+	const newMessages = {
+		'n8n-nodes-base': {
+			nodes: nodeTranslation,
+		},
 	};
 
-	const updatedNodes = {
-		...oldNodesBase.nodes,
-		...nodeTranslation,
-	};
-
-	const newNodesBase = {
-		'n8n-nodes-base': Object.assign(oldNodesBase, { nodes: updatedNodes }),
-	};
-
-	i18nInstance.global.setLocaleMessage(
-		language,
-		Object.assign(i18nInstance.global.messages[language], newNodesBase),
-	);
+	i18nInstance.global.mergeLocaleMessage(language, newMessages);
 }
 
 /**
@@ -492,47 +417,30 @@ export function addNodeTranslation(
  */
 export function addCredentialTranslation(
 	nodeCredentialTranslation: { [credentialType: string]: object },
-	language: keyof I18nOptions['messages'],
+	language: string,
 ) {
-	const oldNodesBase: { credentials: {} } = i18nInstance.global.messages[language][
-		'n8n-nodes-base'
-	] || { credentials: {} };
-
-	const updatedCredentials = {
-		...oldNodesBase.credentials,
-		...nodeCredentialTranslation,
+	const newMessages = {
+		'n8n-nodes-base': {
+			credentials: nodeCredentialTranslation,
+		},
 	};
 
-	const newNodesBase = {
-		'n8n-nodes-base': Object.assign(oldNodesBase, { credentials: updatedCredentials }),
-	};
-
-	i18nInstance.global.setLocaleMessage(
-		language,
-		Object.assign(i18nInstance.global.messages[language], newNodesBase),
-	);
+	i18nInstance.global.mergeLocaleMessage(language, newMessages);
 }
 
 /**
  * Add a node's header strings to the i18n instance's `messages` object.
  */
-export function addHeaders(
-	headers: INodeTranslationHeaders,
-	language: keyof I18nOptions['messages'],
-) {
-	i18nInstance.global.setLocaleMessage(
-		language,
-		Object.assign(i18nInstance.global.messages[language], { headers }),
-	);
+export function addHeaders(headers: INodeTranslationHeaders, language: string) {
+	i18nInstance.global.mergeLocaleMessage(language, { headers });
 }
 
 export const i18n: I18nClass = new I18nClass();
 
-export const I18nPlugin: Plugin<{}> = {
+export const I18nPlugin: Plugin = {
 	async install(app) {
-		locale.i18n((key: string, options?: { interpolate: Record<string, unknown> }) =>
-			i18nInstance.global.t(key, options?.interpolate || {}),
-		);
+		locale.i18n(((key: string, options?: BaseTextOptions) =>
+			i18nInstance.global.t(key, options?.interpolate ?? {})) as N8nLocaleTranslateFn);
 
 		app.config.globalProperties.$locale = i18n;
 

@@ -3,7 +3,6 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { STORES, WORKFLOW_SHARE_MODAL_KEY } from '@/constants';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 
 vi.mock('vue-router', async () => {
@@ -48,12 +47,10 @@ const renderComponent = createComponentRenderer(WorkflowDetails, {
 	pinia: createTestingPinia({ initialState }),
 });
 
-let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 let uiStore: ReturnType<typeof useUIStore>;
 
 describe('WorkflowDetails', () => {
 	beforeEach(() => {
-		workflowsStore = useWorkflowsStore();
 		uiStore = useUIStore();
 	});
 	it('renders workflow name and tags', async () => {
@@ -101,8 +98,6 @@ describe('WorkflowDetails', () => {
 	});
 
 	it('opens share modal on share button click', async () => {
-		vi.spyOn(workflowsStore, 'getWorkflowById', 'get').mockReturnValue(() => ({}));
-
 		const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
 
 		const { getByTestId } = renderComponent({

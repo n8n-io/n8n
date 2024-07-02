@@ -3,13 +3,11 @@ import { snakeCase } from 'change-case';
 import os from 'node:os';
 import { get as pslGet } from 'psl';
 import type {
-	AuthenticationMethod,
 	ExecutionStatus,
 	INodesGraphResult,
 	IRun,
 	ITelemetryTrackProperties,
 	IWorkflowBase,
-	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { TelemetryHelpers } from 'n8n-workflow';
 import { InstanceSettings } from 'n8n-core';
@@ -18,17 +16,13 @@ import config from '@/config';
 import { N8N_VERSION } from '@/constants';
 import type { AuthProviderType } from '@db/entities/AuthIdentity';
 import type { GlobalRole, User } from '@db/entities/User';
-import type { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import type { EventPayloadWorkflow } from '@/eventbus';
-import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { determineFinalExecutionStatus } from '@/executionLifecycleHooks/shared/sharedHookFunctions';
 import type {
 	ITelemetryUserDeletionData,
 	IWorkflowDb,
 	IExecutionTrackProperties,
-	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
 import { License } from '@/License';
 import { EventsService } from '@/services/events.service';
@@ -38,22 +32,7 @@ import type { Project } from '@db/entities/Project';
 import type { ProjectRole } from '@db/entities/ProjectRelation';
 import { ProjectRelationRepository } from './databases/repositories/projectRelation.repository';
 import { SharedCredentialsRepository } from './databases/repositories/sharedCredentials.repository';
-
-function userToPayload(user: User): {
-	userId: string;
-	_email: string;
-	_firstName: string;
-	_lastName: string;
-	globalRole: GlobalRole;
-} {
-	return {
-		userId: user.id,
-		_email: user.email,
-		_firstName: user.firstName,
-		_lastName: user.lastName,
-		globalRole: user.role,
-	};
-}
+import { MessageEventBus } from './eventbus/MessageEventBus/MessageEventBus';
 
 @Service()
 export class InternalHooks {
@@ -64,10 +43,10 @@ export class InternalHooks {
 		private readonly workflowRepository: WorkflowRepository,
 		eventsService: EventsService,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly eventBus: MessageEventBus,
 		private readonly license: License,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
+		private readonly _eventBus: MessageEventBus, // needed until we decouple telemetry
 	) {
 		eventsService.on(
 			'telemetry.onFirstProductionWorkflowSuccess',
@@ -177,41 +156,23 @@ export class InternalHooks {
 		publicApi: boolean,
 	): Promise<void> {
 		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
-		void Promise.all([
-			this.eventBus.sendAuditEvent({
-				eventName: 'n8n.audit.workflow.created',
-				payload: {
-					...userToPayload(user),
-					workflowId: workflow.id,
-					workflowName: workflow.name,
-				},
-			}),
-			this.telemetry.track('User created workflow', {
-				user_id: user.id,
-				workflow_id: workflow.id,
-				node_graph_string: JSON.stringify(nodeGraph),
-				public_api: publicApi,
-				project_id: project.id,
-				project_type: project.type,
-			}),
-		]);
+
+		void this.telemetry.track('User created workflow', {
+			user_id: user.id,
+			workflow_id: workflow.id,
+			node_graph_string: JSON.stringify(nodeGraph),
+			public_api: publicApi,
+			project_id: project.id,
+			project_type: project.type,
+		});
 	}
 
 	async onWorkflowDeleted(user: User, workflowId: string, publicApi: boolean): Promise<void> {
-		void Promise.all([
-			this.eventBus.sendAuditEvent({
-				eventName: 'n8n.audit.workflow.deleted',
-				payload: {
-					...userToPayload(user),
-					workflowId,
-				},
-			}),
-			this.telemetry.track('User deleted workflow', {
-				user_id: user.id,
-				workflow_id: workflowId,
-				public_api: publicApi,
-			}),
-		]);
+		void this.telemetry.track('User deleted workflow', {
+			user_id: user.id,
+			workflow_id: workflowId,
+			public_api: publicApi,
+		});
 	}
 
 	async onWorkflowSaved(user: User, workflow: IWorkflowDb, publicApi: boolean): Promise<void> {
@@ -247,127 +208,22 @@ export class InternalHooks {
 			(note) => note.overlapping,
 		).length;
 
-		void Promise.all([
-			this.eventBus.sendAuditEvent({
-				eventName: 'n8n.audit.workflow.updated',
-				payload: {
-					...userToPayload(user),
-					workflowId: workflow.id,
-					workflowName: workflow.name,
-				},
-			}),
-			this.telemetry.track('User saved workflow', {
-				user_id: user.id,
-				workflow_id: workflow.id,
-				node_graph_string: JSON.stringify(nodeGraph),
-				notes_count_overlapping: overlappingCount,
-				notes_count_non_overlapping: notesCount - overlappingCount,
-				version_cli: N8N_VERSION,
-				num_tags: workflow.tags?.length ?? 0,
-				public_api: publicApi,
-				sharing_role: userRole,
-			}),
-		]);
-	}
-
-	async onNodeBeforeExecute(
-		executionId: string,
-		workflow: IWorkflowBase,
-		nodeName: string,
-	): Promise<void> {
-		const nodeInWorkflow = workflow.nodes.find((node) => node.name === nodeName);
-		void this.eventBus.sendNodeEvent({
-			eventName: 'n8n.node.started',
-			payload: {
-				executionId,
-				nodeName,
-				workflowId: workflow.id?.toString(),
-				workflowName: workflow.name,
-				nodeType: nodeInWorkflow?.type,
-			},
+		void this.telemetry.track('User saved workflow', {
+			user_id: user.id,
+			workflow_id: workflow.id,
+			node_graph_string: JSON.stringify(nodeGraph),
+			notes_count_overlapping: overlappingCount,
+			notes_count_non_overlapping: notesCount - overlappingCount,
+			version_cli: N8N_VERSION,
+			num_tags: workflow.tags?.length ?? 0,
+			public_api: publicApi,
+			sharing_role: userRole,
 		});
-	}
-
-	async onNodePostExecute(
-		executionId: string,
-		workflow: IWorkflowBase,
-		nodeName: string,
-	): Promise<void> {
-		const nodeInWorkflow = workflow.nodes.find((node) => node.name === nodeName);
-		void this.eventBus.sendNodeEvent({
-			eventName: 'n8n.node.finished',
-			payload: {
-				executionId,
-				nodeName,
-				workflowId: workflow.id?.toString(),
-				workflowName: workflow.name,
-				nodeType: nodeInWorkflow?.type,
-			},
-		});
-	}
-
-	async onWorkflowBeforeExecute(
-		executionId: string,
-		data: IWorkflowExecutionDataProcess | IWorkflowBase,
-	): Promise<void> {
-		let payload: EventPayloadWorkflow;
-		// this hook is called slightly differently depending on whether it's from a worker or the main instance
-		// in the worker context, meaning in queue mode, only IWorkflowBase is available
-		if ('executionData' in data) {
-			payload = {
-				executionId,
-				userId: data.userId ?? undefined,
-				workflowId: data.workflowData.id?.toString(),
-				isManual: data.executionMode === 'manual',
-				workflowName: data.workflowData.name,
-			};
-		} else {
-			payload = {
-				executionId,
-				userId: undefined,
-				workflowId: (data as IWorkflowBase).id?.toString(),
-				isManual: false,
-				workflowName: (data as IWorkflowBase).name,
-			};
-		}
-		void this.eventBus.sendWorkflowEvent({
-			eventName: 'n8n.workflow.started',
-			payload,
-		});
-	}
-
-	async onWorkflowCrashed(
-		executionId: string,
-		executionMode: WorkflowExecuteMode,
-		workflowData?: IWorkflowBase,
-		executionMetadata?: ExecutionMetadata[],
-	): Promise<void> {
-		let metaData;
-		try {
-			if (executionMetadata) {
-				metaData = executionMetadata.reduce((acc, meta) => {
-					return { ...acc, [meta.key]: meta.value };
-				}, {});
-			}
-		} catch {}
-
-		void Promise.all([
-			this.eventBus.sendWorkflowEvent({
-				eventName: 'n8n.workflow.crashed',
-				payload: {
-					executionId,
-					isManual: executionMode === 'manual',
-					workflowId: workflowData?.id?.toString(),
-					workflowName: workflowData?.name,
-					metaData,
-				},
-			}),
-		]);
 	}
 
 	// eslint-disable-next-line complexity
 	async onWorkflowPostExecute(
-		executionId: string,
+		_executionId: string,
 		workflow: IWorkflowBase,
 		runData?: IRun,
 		userId?: string,
@@ -505,36 +361,6 @@ export class InternalHooks {
 			}
 		}
 
-		const sharedEventPayload: EventPayloadWorkflow = {
-			executionId,
-			success: telemetryProperties.success,
-			userId: telemetryProperties.user_id,
-			workflowId: workflow.id,
-			isManual: telemetryProperties.is_manual,
-			workflowName: workflow.name,
-			metaData: runData?.data?.resultData?.metadata,
-		};
-		let event;
-		if (telemetryProperties.success) {
-			event = this.eventBus.sendWorkflowEvent({
-				eventName: 'n8n.workflow.success',
-				payload: sharedEventPayload,
-			});
-		} else {
-			event = this.eventBus.sendWorkflowEvent({
-				eventName: 'n8n.workflow.failed',
-				payload: {
-					...sharedEventPayload,
-					lastNodeExecuted: runData?.data.resultData.lastNodeExecuted,
-					errorNodeType: telemetryProperties.error_node_type,
-					errorNodeId: telemetryProperties.error_node_id?.toString(),
-					errorMessage: telemetryProperties.error_message?.toString(),
-				},
-			});
-		}
-
-		promises.push(event);
-
 		void Promise.all([...promises, this.telemetry.trackWorkflowExecution(telemetryProperties)]);
 	}
 
@@ -563,19 +389,11 @@ export class InternalHooks {
 		telemetryData: ITelemetryUserDeletionData;
 		publicApi: boolean;
 	}): Promise<void> {
-		void Promise.all([
-			this.eventBus.sendAuditEvent({
-				eventName: 'n8n.audit.user.deleted',
-				payload: {
-					...userToPayload(userDeletionData.user),
-				},
-			}),
-			this.telemetry.track('User deleted user', {
-				...userDeletionData.telemetryData,
-				user_id: userDeletionData.user.id,
-				public_api: userDeletionData.publicApi,
-			}),
-		]);
+		void this.telemetry.track('User deleted user', {
+			...userDeletionData.telemetryData,
+			user_id: userDeletionData.user.id,
+			public_api: userDeletionData.publicApi,
+		});
 	}
 
 	async onUserInvite(userInviteData: {
@@ -585,23 +403,13 @@ export class InternalHooks {
 		email_sent: boolean;
 		invitee_role: string;
 	}): Promise<void> {
-		void Promise.all([
-			this.eventBus.sendAuditEvent({
-				eventName: 'n8n.audit.user.invited',
-				payload: {
-					...userToPayload(userInviteData.user),
-					targetUserId: userInviteData.target_user_id,
-				},
-			}),
-
-			this.telemetry.track('User invited new user', {
-				user_id: userInviteData.user.id,
-				target_user_id: userInviteData.target_user_id,
-				public_api: userInviteData.public_api,
-				email_sent: userInviteData.email_sent,
-				invitee_role: userInviteData.invitee_role,
-			}),
-		]);
+		void this.telemetry.track('User invited new user', {
+			user_id: userInviteData.user.id,
+			target_user_id: userInviteData.target_user_id,
+			public_api: userInviteData.public_api,
+			email_sent: userInviteData.email_sent,
+			invitee_role: userInviteData.invitee_role,
+		});
 	}
 
 	async onUserRoleChange(userRoleChangeData: {
@@ -613,27 +421,6 @@ export class InternalHooks {
 		const { user, ...rest } = userRoleChangeData;
 
 		void this.telemetry.track('User changed role', { user_id: user.id, ...rest });
-	}
-
-	async onUserReinvite(userReinviteData: {
-		user: User;
-		target_user_id: string;
-		public_api: boolean;
-	}): Promise<void> {
-		void Promise.all([
-			this.eventBus.sendAuditEvent({
-				eventName: 'n8n.audit.user.reinvited',
-				payload: {
-					...userToPayload(userReinviteData.user),
-					targetUserId: userReinviteData.target_user_id,
-				},
-			}),
-			this.telemetry.track('User resent new user invite email', {
-				user_id: userReinviteData.user.id,
-				target_user_id: userReinviteData.target_user_id,
-				public_api: userReinviteData.public_api,
-			}),
-		]);
 	}
 
 	async onUserRetrievedUser(userRetrievedData: {
@@ -679,55 +466,25 @@ export class InternalHooks {
 	}
 
 	async onUserUpdate(userUpdateData: { user: User; fields_changed: string[] }): Promise<void> {
-		void Promise.all([
-			this.eventBus.sendAuditEvent({
-				eventName: 'n8n.audit.user.updated',
-				payload: {
-					...userToPayload(userUpdateData.user),
-					fieldsChanged: userUpdateData.fields_changed,
-				},
-			}),
-			this.telemetry.track('User changed personal settings', {
-				user_id: userUpdateData.user.id,
-				fields_changed: userUpdateData.fields_changed,
-			}),
-		]);
+		void this.telemetry.track('User changed personal settings', {
+			user_id: userUpdateData.user.id,
+			fields_changed: userUpdateData.fields_changed,
+		});
 	}
 
 	async onUserInviteEmailClick(userInviteClickData: {
 		inviter: User;
 		invitee: User;
 	}): Promise<void> {
-		void Promise.all([
-			this.eventBus.sendAuditEvent({
-				eventName: 'n8n.audit.user.invitation.accepted',
-				payload: {
-					invitee: {
-						...userToPayload(userInviteClickData.invitee),
-					},
-					inviter: {
-						...userToPayload(userInviteClickData.inviter),
-					},
-				},
-			}),
-			this.telemetry.track('User clicked invite link from email', {
-				user_id: userInviteClickData.invitee.id,
-			}),
-		]);
+		void this.telemetry.track('User clicked invite link from email', {
+			user_id: userInviteClickData.invitee.id,
+		});
 	}
 
 	async onUserPasswordResetEmailClick(userPasswordResetData: { user: User }): Promise<void> {
-		void Promise.all([
-			this.eventBus.sendAuditEvent({
-				eventName: 'n8n.audit.user.reset',
-				payload: {
-					...userToPayload(userPasswordResetData.user),
-				},
-			}),
-			this.telemetry.track('User clicked password reset link from email', {
-				user_id: userPasswordResetData.user.id,
-			}),
-		]);
+		void this.telemetry.track('User clicked password reset link from email', {
+			user_id: userPasswordResetData.user.id,
+		});
 	}
 
 	async onUserTransactionalEmail(userTransactionalEmailData: {
@@ -756,47 +513,23 @@ export class InternalHooks {
 	}
 
 	async onApiKeyDeleted(apiKeyDeletedData: { user: User; public_api: boolean }): Promise<void> {
-		void Promise.all([
-			this.eventBus.sendAuditEvent({
-				eventName: 'n8n.audit.user.api.deleted',
-				payload: {
-					...userToPayload(apiKeyDeletedData.user),
-				},
-			}),
-			this.telemetry.track('API key deleted', {
-				user_id: apiKeyDeletedData.user.id,
-				public_api: apiKeyDeletedData.public_api,
-			}),
-		]);
+		void this.telemetry.track('API key deleted', {
+			user_id: apiKeyDeletedData.user.id,
+			public_api: apiKeyDeletedData.public_api,
+		});
 	}
 
 	async onApiKeyCreated(apiKeyCreatedData: { user: User; public_api: boolean }): Promise<void> {
-		void Promise.all([
-			this.eventBus.sendAuditEvent({
-				eventName: 'n8n.audit.user.api.created',
-				payload: {
-					...userToPayload(apiKeyCreatedData.user),
-				},
-			}),
-			this.telemetry.track('API key created', {
-				user_id: apiKeyCreatedData.user.id,
-				public_api: apiKeyCreatedData.public_api,
-			}),
-		]);
+		void this.telemetry.track('API key created', {
+			user_id: apiKeyCreatedData.user.id,
+			public_api: apiKeyCreatedData.public_api,
+		});
 	}
 
 	async onUserPasswordResetRequestClick(userPasswordResetData: { user: User }): Promise<void> {
-		void Promise.all([
-			this.eventBus.sendAuditEvent({
-				eventName: 'n8n.audit.user.reset.requested',
-				payload: {
-					...userToPayload(userPasswordResetData.user),
-				},
-			}),
-			this.telemetry.track('User requested password reset while logged out', {
-				user_id: userPasswordResetData.user.id,
-			}),
-		]);
+		void this.telemetry.track('User requested password reset while logged out', {
+			user_id: userPasswordResetData.user.id,
+		});
 	}
 
 	async onInstanceOwnerSetup(instanceOwnerSetupData: { user_id: string }): Promise<void> {
@@ -810,18 +543,10 @@ export class InternalHooks {
 			was_disabled_ldap_user: boolean;
 		},
 	): Promise<void> {
-		void Promise.all([
-			this.eventBus.sendAuditEvent({
-				eventName: 'n8n.audit.user.signedup',
-				payload: {
-					...userToPayload(user),
-				},
-			}),
-			this.telemetry.track('User signed up', {
-				user_id: user.id,
-				...userSignupData,
-			}),
-		]);
+		void this.telemetry.track('User signed up', {
+			user_id: user.id,
+			...userSignupData,
+		});
 	}
 
 	async onEmailFailed(failedEmailData: {
@@ -834,50 +559,9 @@ export class InternalHooks {
 			| 'Credentials shared';
 		public_api: boolean;
 	}): Promise<void> {
-		void Promise.all([
-			this.eventBus.sendAuditEvent({
-				eventName: 'n8n.audit.user.email.failed',
-				payload: {
-					messageType: failedEmailData.message_type,
-					...userToPayload(failedEmailData.user),
-				},
-			}),
-			this.telemetry.track('Instance failed to send transactional email to user', {
-				user_id: failedEmailData.user.id,
-			}),
-		]);
-	}
-
-	async onUserLoginSuccess(userLoginData: {
-		user: User;
-		authenticationMethod: AuthenticationMethod;
-	}): Promise<void> {
-		void Promise.all([
-			this.eventBus.sendAuditEvent({
-				eventName: 'n8n.audit.user.login.success',
-				payload: {
-					authenticationMethod: userLoginData.authenticationMethod,
-					...userToPayload(userLoginData.user),
-				},
-			}),
-		]);
-	}
-
-	async onUserLoginFailed(userLoginData: {
-		user: string;
-		authenticationMethod: AuthenticationMethod;
-		reason?: string;
-	}): Promise<void> {
-		void Promise.all([
-			this.eventBus.sendAuditEvent({
-				eventName: 'n8n.audit.user.login.failed',
-				payload: {
-					authenticationMethod: userLoginData.authenticationMethod,
-					user: userLoginData.user,
-					reason: userLoginData.reason,
-				},
-			}),
-		]);
+		void this.telemetry.track('Instance failed to send transactional email to user', {
+			user_id: failedEmailData.user.id,
+		});
 	}
 
 	/**
@@ -894,25 +578,14 @@ export class InternalHooks {
 		const project = await this.sharedCredentialsRepository.findCredentialOwningProject(
 			userCreatedCredentialsData.credential_id,
 		);
-		void Promise.all([
-			this.eventBus.sendAuditEvent({
-				eventName: 'n8n.audit.user.credentials.created',
-				payload: {
-					...userToPayload(userCreatedCredentialsData.user),
-					credentialName: userCreatedCredentialsData.credential_name,
-					credentialType: userCreatedCredentialsData.credential_type,
-					credentialId: userCreatedCredentialsData.credential_id,
-				},
-			}),
-			this.telemetry.track('User created credentials', {
-				user_id: userCreatedCredentialsData.user.id,
-				credential_type: userCreatedCredentialsData.credential_type,
-				credential_id: userCreatedCredentialsData.credential_id,
-				instance_id: this.instanceSettings.instanceId,
-				project_id: project?.id,
-				project_type: project?.type,
-			}),
-		]);
+		void this.telemetry.track('User created credentials', {
+			user_id: userCreatedCredentialsData.user.id,
+			credential_type: userCreatedCredentialsData.credential_type,
+			credential_id: userCreatedCredentialsData.credential_id,
+			instance_id: this.instanceSettings.instanceId,
+			project_id: project?.id,
+			project_type: project?.type,
+		});
 	}
 
 	async onUserSharedCredentials(userSharedCredentialsData: {
@@ -924,29 +597,15 @@ export class InternalHooks {
 		user_ids_sharees_added: string[];
 		sharees_removed: number | null;
 	}): Promise<void> {
-		void Promise.all([
-			this.eventBus.sendAuditEvent({
-				eventName: 'n8n.audit.user.credentials.shared',
-				payload: {
-					...userToPayload(userSharedCredentialsData.user),
-					credentialName: userSharedCredentialsData.credential_name,
-					credentialType: userSharedCredentialsData.credential_type,
-					credentialId: userSharedCredentialsData.credential_id,
-					userIdSharer: userSharedCredentialsData.user_id_sharer,
-					userIdsShareesAdded: userSharedCredentialsData.user_ids_sharees_added,
-					shareesRemoved: userSharedCredentialsData.sharees_removed,
-				},
-			}),
-			this.telemetry.track('User updated cred sharing', {
-				user_id: userSharedCredentialsData.user.id,
-				credential_type: userSharedCredentialsData.credential_type,
-				credential_id: userSharedCredentialsData.credential_id,
-				user_id_sharer: userSharedCredentialsData.user_id_sharer,
-				user_ids_sharees_added: userSharedCredentialsData.user_ids_sharees_added,
-				sharees_removed: userSharedCredentialsData.sharees_removed,
-				instance_id: this.instanceSettings.instanceId,
-			}),
-		]);
+		void this.telemetry.track('User updated cred sharing', {
+			user_id: userSharedCredentialsData.user.id,
+			credential_type: userSharedCredentialsData.credential_type,
+			credential_id: userSharedCredentialsData.credential_id,
+			user_id_sharer: userSharedCredentialsData.user_id_sharer,
+			user_ids_sharees_added: userSharedCredentialsData.user_ids_sharees_added,
+			sharees_removed: userSharedCredentialsData.sharees_removed,
+			instance_id: this.instanceSettings.instanceId,
+		});
 	}
 
 	async onUserUpdatedCredentials(userUpdatedCredentialsData: {
@@ -955,22 +614,11 @@ export class InternalHooks {
 		credential_type: string;
 		credential_id: string;
 	}): Promise<void> {
-		void Promise.all([
-			this.eventBus.sendAuditEvent({
-				eventName: 'n8n.audit.user.credentials.updated',
-				payload: {
-					...userToPayload(userUpdatedCredentialsData.user),
-					credentialName: userUpdatedCredentialsData.credential_name,
-					credentialType: userUpdatedCredentialsData.credential_type,
-					credentialId: userUpdatedCredentialsData.credential_id,
-				},
-			}),
-			this.telemetry.track('User updated credentials', {
-				user_id: userUpdatedCredentialsData.user.id,
-				credential_type: userUpdatedCredentialsData.credential_type,
-				credential_id: userUpdatedCredentialsData.credential_id,
-			}),
-		]);
+		void this.telemetry.track('User updated credentials', {
+			user_id: userUpdatedCredentialsData.user.id,
+			credential_type: userUpdatedCredentialsData.credential_type,
+			credential_id: userUpdatedCredentialsData.credential_id,
+		});
 	}
 
 	async onUserDeletedCredentials(userUpdatedCredentialsData: {
@@ -979,23 +627,12 @@ export class InternalHooks {
 		credential_type: string;
 		credential_id: string;
 	}): Promise<void> {
-		void Promise.all([
-			this.eventBus.sendAuditEvent({
-				eventName: 'n8n.audit.user.credentials.deleted',
-				payload: {
-					...userToPayload(userUpdatedCredentialsData.user),
-					credentialName: userUpdatedCredentialsData.credential_name,
-					credentialType: userUpdatedCredentialsData.credential_type,
-					credentialId: userUpdatedCredentialsData.credential_id,
-				},
-			}),
-			this.telemetry.track('User deleted credentials', {
-				user_id: userUpdatedCredentialsData.user.id,
-				credential_type: userUpdatedCredentialsData.credential_type,
-				credential_id: userUpdatedCredentialsData.credential_id,
-				instance_id: this.instanceSettings.instanceId,
-			}),
-		]);
+		void this.telemetry.track('User deleted credentials', {
+			user_id: userUpdatedCredentialsData.user.id,
+			credential_type: userUpdatedCredentialsData.credential_type,
+			credential_id: userUpdatedCredentialsData.credential_id,
+			instance_id: this.instanceSettings.instanceId,
+		});
 	}
 
 	/**
@@ -1013,33 +650,17 @@ export class InternalHooks {
 		package_author_email?: string;
 		failure_reason?: string;
 	}): Promise<void> {
-		void Promise.all([
-			this.eventBus.sendAuditEvent({
-				eventName: 'n8n.audit.package.installed',
-				payload: {
-					...userToPayload(installationData.user),
-					inputString: installationData.input_string,
-					packageName: installationData.package_name,
-					success: installationData.success,
-					packageVersion: installationData.package_version,
-					packageNodeNames: installationData.package_node_names,
-					packageAuthor: installationData.package_author,
-					packageAuthorEmail: installationData.package_author_email,
-					failureReason: installationData.failure_reason,
-				},
-			}),
-			this.telemetry.track('cnr package install finished', {
-				user_id: installationData.user.id,
-				input_string: installationData.input_string,
-				package_name: installationData.package_name,
-				success: installationData.success,
-				package_version: installationData.package_version,
-				package_node_names: installationData.package_node_names,
-				package_author: installationData.package_author,
-				package_author_email: installationData.package_author_email,
-				failure_reason: installationData.failure_reason,
-			}),
-		]);
+		void this.telemetry.track('cnr package install finished', {
+			user_id: installationData.user.id,
+			input_string: installationData.input_string,
+			package_name: installationData.package_name,
+			success: installationData.success,
+			package_version: installationData.package_version,
+			package_node_names: installationData.package_node_names,
+			package_author: installationData.package_author,
+			package_author_email: installationData.package_author_email,
+			failure_reason: installationData.failure_reason,
+		});
 	}
 
 	async onCommunityPackageUpdateFinished(updateData: {
@@ -1051,29 +672,15 @@ export class InternalHooks {
 		package_author?: string;
 		package_author_email?: string;
 	}): Promise<void> {
-		void Promise.all([
-			this.eventBus.sendAuditEvent({
-				eventName: 'n8n.audit.package.updated',
-				payload: {
-					...userToPayload(updateData.user),
-					packageName: updateData.package_name,
-					packageVersionCurrent: updateData.package_version_current,
-					packageVersionNew: updateData.package_version_new,
-					packageNodeNames: updateData.package_node_names,
-					packageAuthor: updateData.package_author,
-					packageAuthorEmail: updateData.package_author_email,
-				},
-			}),
-			this.telemetry.track('cnr package updated', {
-				user_id: updateData.user.id,
-				package_name: updateData.package_name,
-				package_version_current: updateData.package_version_current,
-				package_version_new: updateData.package_version_new,
-				package_node_names: updateData.package_node_names,
-				package_author: updateData.package_author,
-				package_author_email: updateData.package_author_email,
-			}),
-		]);
+		void this.telemetry.track('cnr package updated', {
+			user_id: updateData.user.id,
+			package_name: updateData.package_name,
+			package_version_current: updateData.package_version_current,
+			package_version_new: updateData.package_version_new,
+			package_node_names: updateData.package_node_names,
+			package_author: updateData.package_author,
+			package_author_email: updateData.package_author_email,
+		});
 	}
 
 	async onCommunityPackageDeleteFinished(deleteData: {
@@ -1084,27 +691,14 @@ export class InternalHooks {
 		package_author?: string;
 		package_author_email?: string;
 	}): Promise<void> {
-		void Promise.all([
-			this.eventBus.sendAuditEvent({
-				eventName: 'n8n.audit.package.deleted',
-				payload: {
-					...userToPayload(deleteData.user),
-					packageName: deleteData.package_name,
-					packageVersion: deleteData.package_version,
-					packageNodeNames: deleteData.package_node_names,
-					packageAuthor: deleteData.package_author,
-					packageAuthorEmail: deleteData.package_author_email,
-				},
-			}),
-			this.telemetry.track('cnr package deleted', {
-				user_id: deleteData.user.id,
-				package_name: deleteData.package_name,
-				package_version: deleteData.package_version,
-				package_node_names: deleteData.package_node_names,
-				package_author: deleteData.package_author,
-				package_author_email: deleteData.package_author_email,
-			}),
-		]);
+		void this.telemetry.track('cnr package deleted', {
+			user_id: deleteData.user.id,
+			package_name: deleteData.package_name,
+			package_version: deleteData.package_version,
+			package_node_names: deleteData.package_node_names,
+			package_author: deleteData.package_author,
+			package_author_email: deleteData.package_author_email,
+		});
 	}
 
 	async onLdapSyncFinished(data: {
@@ -1260,5 +854,9 @@ export class InternalHooks {
 		members: Array<{ user_id: string; role: ProjectRole }>;
 	}) {
 		return await this.telemetry.track('Project settings updated', data);
+	}
+
+	async onConcurrencyLimitHit({ threshold }: { threshold: number }) {
+		await this.telemetry.track('User hit concurrency limit', { threshold });
 	}
 }

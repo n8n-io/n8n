@@ -35,7 +35,7 @@ import type PCancelable from 'p-cancelable';
 import type { AuthProviderType } from '@db/entities/AuthIdentity';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { TagEntity } from '@db/entities/TagEntity';
-import type { GlobalRole, User } from '@db/entities/User';
+import type { AssignableRole, GlobalRole, User } from '@db/entities/User';
 import type { CredentialsRepository } from '@db/repositories/credentials.repository';
 import type { SettingsRepository } from '@db/repositories/settings.repository';
 import type { UserRepository } from '@db/repositories/user.repository';
@@ -145,6 +145,7 @@ export interface IExecutionResponse extends IExecutionBase {
 	retryOf?: string;
 	retrySuccessId?: string;
 	workflowData: IWorkflowBase | WorkflowWithSharingsAndCredentials;
+	customData: Record<string, string>;
 }
 
 // Flatted data to save memory when saving in database or transferring
@@ -158,6 +159,7 @@ export interface IExecutionFlattedDb extends IExecutionBase {
 	id: string;
 	data: string;
 	workflowData: Omit<IWorkflowBase, 'pinData'>;
+	customData: Record<string, string>;
 }
 
 export interface IExecutionFlattedResponse extends IExecutionFlatted {
@@ -185,7 +187,7 @@ export interface IExecutionsCurrentSummary {
 	startedAt: Date;
 	mode: WorkflowExecuteMode;
 	workflowId: string;
-	status?: ExecutionStatus;
+	status: ExecutionStatus;
 }
 
 export interface IExecutingWorkflowData {
@@ -230,12 +232,10 @@ export interface IExternalHooksFileData {
 
 export interface IExternalHooksFunctions {
 	dbCollections: {
-		/* eslint-disable @typescript-eslint/naming-convention */
 		User: UserRepository;
 		Settings: SettingsRepository;
 		Credentials: CredentialsRepository;
 		Workflow: WorkflowRepository;
-		/* eslint-enable @typescript-eslint/naming-convention */
 	};
 }
 
@@ -624,7 +624,6 @@ export interface PublicUser {
 	passwordResetToken?: string;
 	createdAt: Date;
 	isPending: boolean;
-	hasRecoveryCodesLeft: boolean;
 	role?: GlobalRole;
 	globalScopes?: Scope[];
 	signInType: AuthProviderType;
@@ -633,6 +632,11 @@ export interface PublicUser {
 	inviteAcceptUrl?: string;
 	isOwner?: boolean;
 	featureFlags?: FeatureFlags;
+}
+
+export interface Invitation {
+	email: string;
+	role: AssignableRole;
 }
 
 export interface N8nApp {

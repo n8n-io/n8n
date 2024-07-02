@@ -54,8 +54,8 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 		section: RECOMMENDED_SECTION,
 		info: createInfoBoxRenderer({
 			name: '$json',
-			returnType: 'object',
-			description: i18n.rootVars.$json,
+			returnType: 'Object',
+			description: i18n.baseText('codeNodeEditor.completer.json'),
 			docURL: 'https://docs.n8n.io/data/data-structure/',
 		}),
 	},
@@ -64,8 +64,8 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 		section: RECOMMENDED_SECTION,
 		info: createInfoBoxRenderer({
 			name: '$binary',
-			returnType: 'object',
-			description: i18n.rootVars.$binary,
+			returnType: 'Object',
+			description: i18n.baseText('codeNodeEditor.completer.binary'),
 		}),
 	},
 	{
@@ -74,7 +74,7 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 		info: createInfoBoxRenderer({
 			name: '$now',
 			returnType: 'DateTime',
-			description: i18n.rootVars.$now,
+			description: i18n.baseText('codeNodeEditor.completer.$now'),
 		}),
 	},
 	{
@@ -83,23 +83,34 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 		info: createInfoBoxRenderer(
 			{
 				name: '$if',
-				returnType: 'boolean',
-				description: i18n.rootVars.$if,
+				returnType: 'any',
+				description: i18n.baseText('codeNodeEditor.completer.$if'),
 				args: [
 					{
 						name: 'condition',
-						optional: false,
+						description: i18n.baseText('codeNodeEditor.completer.$if.args.condition'),
 						type: 'boolean',
 					},
 					{
 						name: 'valueIfTrue',
-						optional: false,
+						description: i18n.baseText('codeNodeEditor.completer.$if.args.valueIfTrue'),
 						type: 'any',
 					},
 					{
 						name: 'valueIfFalse',
-						optional: false,
+						description: i18n.baseText('codeNodeEditor.completer.$if.args.valueIfFalse'),
 						type: 'any',
+					},
+				],
+				examples: [
+					{
+						example: '$if($now.hour < 17, "Good day", "Good evening")',
+						description: i18n.baseText('codeNodeEditor.completer.$if.examples.1'),
+					},
+					{
+						description: i18n.baseText('codeNodeEditor.completer.$if.examples.2'),
+						example:
+							'$if($now.hour < 10, "Good morning", $if($now.hour < 17, "Good day", "Good evening"))',
 					},
 				],
 			},
@@ -112,18 +123,24 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 		info: createInfoBoxRenderer(
 			{
 				name: '$ifEmpty',
-				returnType: 'boolean',
-				description: i18n.rootVars.$ifEmpty,
+				returnType: 'any',
+				description: i18n.baseText('codeNodeEditor.completer.$ifEmpty'),
 				args: [
 					{
 						name: 'value',
-						optional: false,
+						description: i18n.baseText('codeNodeEditor.completer.$ifEmpty.args.value'),
 						type: 'any',
 					},
 					{
 						name: 'valueIfEmpty',
-						optional: false,
+						description: i18n.baseText('codeNodeEditor.completer.$ifEmpty.args.valueIfEmpty'),
 						type: 'any',
+					},
+				],
+				examples: [
+					{
+						example: '"Hi " + $ifEmpty(name, "there")',
+						evaluated: 'e.g. "Hi Nathan" or "Hi there"',
 					},
 				],
 			},
@@ -135,8 +152,8 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 		section: METADATA_SECTION,
 		info: createInfoBoxRenderer({
 			name: '$execution',
-			returnType: 'object',
-			description: i18n.rootVars.$execution,
+			returnType: 'ExecData',
+			description: i18n.baseText('codeNodeEditor.completer.$execution'),
 		}),
 	},
 	{
@@ -145,7 +162,7 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 		info: createInfoBoxRenderer({
 			name: '$itemIndex',
 			returnType: 'number',
-			description: i18n.rootVars.$itemIndex,
+			description: i18n.baseText('codeNodeEditor.completer.$itemIndex'),
 		}),
 	},
 	{
@@ -153,8 +170,8 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 		section: METADATA_SECTION,
 		info: createInfoBoxRenderer({
 			name: '$input',
-			returnType: 'object',
-			description: i18n.rootVars.$input,
+			returnType: 'Object',
+			description: i18n.baseText('codeNodeEditor.completer.$input'),
 		}),
 	},
 	{
@@ -162,8 +179,8 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 		section: METADATA_SECTION,
 		info: createInfoBoxRenderer({
 			name: '$parameter',
-			returnType: 'object',
-			description: i18n.rootVars.$parameter,
+			returnType: 'Object',
+			description: i18n.baseText('codeNodeEditor.completer.$parameter'),
 		}),
 	},
 	{
@@ -171,8 +188,8 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 		section: METADATA_SECTION,
 		info: createInfoBoxRenderer({
 			name: '$prevNode',
-			returnType: 'object',
-			description: i18n.rootVars.$prevNode,
+			returnType: 'PrevNodeData',
+			description: i18n.baseText('codeNodeEditor.completer.$prevNode'),
 		}),
 	},
 	{
@@ -181,7 +198,7 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 		info: createInfoBoxRenderer({
 			name: '$runIndex',
 			returnType: 'number',
-			description: i18n.rootVars.$runIndex,
+			description: i18n.baseText('codeNodeEditor.completer.$runIndex'),
 		}),
 	},
 	{
@@ -190,7 +207,7 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 		info: createInfoBoxRenderer({
 			name: '$today',
 			returnType: 'DateTime',
-			description: i18n.rootVars.$today,
+			description: i18n.baseText('codeNodeEditor.completer.$today'),
 		}),
 	},
 	{
@@ -198,8 +215,8 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 		section: METADATA_SECTION,
 		info: createInfoBoxRenderer({
 			name: '$vars',
-			returnType: 'object',
-			description: i18n.rootVars.$vars,
+			returnType: 'Object',
+			description: i18n.baseText('codeNodeEditor.completer.$vars'),
 		}),
 	},
 	{
@@ -207,8 +224,8 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 		section: METADATA_SECTION,
 		info: createInfoBoxRenderer({
 			name: '$workflow',
-			returnType: 'object',
-			description: i18n.rootVars.$workflow,
+			returnType: 'WorkflowData',
+			description: i18n.baseText('codeNodeEditor.completer.$workflow'),
 		}),
 	},
 	{
@@ -217,8 +234,44 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 		info: createInfoBoxRenderer(
 			{
 				name: '$jmespath',
+				description: i18n.baseText('codeNodeEditor.completer.$jmespath'),
 				returnType: 'any',
-				description: i18n.rootVars.$jmespath,
+				args: [
+					{
+						name: 'obj',
+						description: i18n.baseText('codeNodeEditor.completer.$jmespath.args.obj'),
+						type: 'Object | Array',
+					},
+					{
+						name: 'expression',
+						description: i18n.baseText('codeNodeEditor.completer.$jmespath.args.expression'),
+						type: 'string',
+					},
+				],
+				examples: [
+					{
+						example:
+							'data = {\n  "people": [\n    {\n      "name": "Bob",\n      "age": 20,\n      "other": "foo"\n    },\n    {\n      "name": "Fred",\n      "age": 25,\n      "other": "bar"\n    },\n    {\n      "name": "George",\n      "age": 30,\n      "other": "baz"\n    }\n  ]\n}\n\n$jmespath(data.people, \'[*].name\')',
+						evaluated: "['Bob', 'Fred', 'George']",
+						description: i18n.baseText('codeNodeEditor.completer.$jmespath.examples.1'),
+					},
+					{
+						example: "$jmespath(data.people, '[?age > `20`].[name, age]')",
+						evaluated: "[['Fred', 25], ['George', 30]]",
+						description: i18n.baseText('codeNodeEditor.completer.$jmespath.examples.2'),
+					},
+					{
+						example: "$jmespath(data.people, '[?age > `20`].name | [0]')",
+						evaluated: 'Fred',
+						description: i18n.baseText('codeNodeEditor.completer.$jmespath.examples.3'),
+					},
+					{
+						example:
+							'data = {\n  "reservations": [\n    {\n      "id": 1,\n      "guests": [\n        {\n          "name": "Nathan",\n          "requirements": {\n            "room": "double",\n            "meal": "vegetarian"\n          }\n        },\n        {\n          "name": "Meg",\n          "requirements": {\n            "room": "single"\n          }\n        }\n      ]\n    },\n    {\n      "id": 2,\n      "guests": [\n        {\n          "name": "Lex",\n          "requirements": {\n            "room": "double"\n          }\n        }\n      ]\n    }\n  ]\n}\n\n$jmespath(data, "reservations[].guests[?requirements.room==\'double\'][].name")',
+						evaluated: "['Nathan', 'Lex']",
+						description: i18n.baseText('codeNodeEditor.completer.$jmespath.examples.4'),
+					},
+				],
 			},
 			true,
 		),
@@ -230,24 +283,16 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 			{
 				name: '$max',
 				returnType: 'number',
-				description: i18n.rootVars.$max,
+				description: i18n.baseText('codeNodeEditor.completer.$max'),
 				args: [
 					{
-						name: 'number1',
-						optional: false,
+						name: 'numbers',
+						description: i18n.baseText('codeNodeEditor.completer.$max.args.numbers'),
 						type: 'number',
-					},
-					{
-						name: 'number2',
-						optional: true,
-						type: 'number',
-					},
-					{
-						name: 'numberN',
-						optional: true,
-						type: 'number',
+						variadic: true,
 					},
 				],
+				examples: [{ example: '$max(1, 5, 42, 0.5)', evaluated: '42' }],
 			},
 			true,
 		),
@@ -259,24 +304,16 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 			{
 				name: '$min',
 				returnType: 'number',
-				description: i18n.rootVars.$min,
+				description: i18n.baseText('codeNodeEditor.completer.$min'),
 				args: [
 					{
-						name: 'number1',
-						optional: false,
-						type: 'number',
-					},
-					{
-						name: 'number2',
-						optional: true,
-						type: 'number',
-					},
-					{
-						name: 'numberN',
-						optional: true,
+						name: 'numbers',
+						description: i18n.baseText('codeNodeEditor.completer.$max.args.numbers'),
+						variadic: true,
 						type: 'number',
 					},
 				],
+				examples: [{ example: '$min(1, 5, 42, 0.5)', evaluated: '0.5' }],
 			},
 			true,
 		),
@@ -284,7 +321,11 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 	{
 		label: '$nodeVersion',
 		section: METADATA_SECTION,
-		info: i18n.rootVars.$nodeVersion,
+		info: createInfoBoxRenderer({
+			name: '$nodeVersion',
+			returnType: 'number',
+			description: i18n.baseText('codeNodeEditor.completer.$nodeVersion'),
+		}),
 	},
 ];
 

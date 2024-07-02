@@ -9,8 +9,8 @@ import {
 import type {
 	RecursiveCharacterTextSplitterParams,
 	SupportedTextSplitterLanguage,
-} from 'langchain/text_splitter';
-import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
+} from '@langchain/textsplitters';
+import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 

@@ -12,7 +12,7 @@ import get from 'lodash/get';
 import { placeholder } from './placeholder';
 import { getValue } from './utils';
 import type { IValueData } from './types';
-import { getResolvables, sanitazeDataPathKey } from '@utils/utilities';
+import { getResolvables, sanitizeDataPathKey } from '@utils/utilities';
 
 export const capitalizeHeader = (header: string, capitalize?: boolean) => {
 	if (!capitalize) return header;
@@ -125,7 +125,7 @@ export class Html implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'HTML',
 		name: 'html',
-		icon: 'file:html.svg',
+		icon: { light: 'file:html.svg', dark: 'file:html.dark.svg' },
 		group: ['transform'],
 		version: [1, 1.1, 1.2],
 		subtitle: '={{ $parameter["operation"] }}',
@@ -516,7 +516,7 @@ export class Html implements INodeType {
 					let htmlArray: string[] | string = [];
 					if (sourceData === 'json') {
 						if (nodeVersion === 1) {
-							const key = sanitazeDataPathKey(item.json, dataPropertyName);
+							const key = sanitizeDataPathKey(item.json, dataPropertyName);
 							if (item.json[key] === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
@@ -588,7 +588,7 @@ export class Html implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({
 						json: {
 							error: error.message,

@@ -62,13 +62,6 @@ $tag-text-color: var(--color-text-dark);
 $tag-close-background-color: var(--color-text-light);
 $tag-close-background-hover-color: var(--color-text-dark);
 
-// nodes
-$node-background-default: var(--color-background-xlight);
-$node-background-executing: var(--color-primary-tint-3);
-$node-background-executing-other: #ede9ff;
-// TODO: Define that differently
-$node-background-type-other: #ede9ff;
-
 // Node creator
 $node-creator-width: 385px;
 $node-creator-text-color: var(--color-text-dark);

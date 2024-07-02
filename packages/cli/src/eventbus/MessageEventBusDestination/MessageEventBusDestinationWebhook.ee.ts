@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
 import { MessageEventBusDestination } from './MessageEventBusDestination.ee';
@@ -14,7 +13,6 @@ import type {
 } from 'n8n-workflow';
 import { CredentialsHelper } from '@/CredentialsHelper';
 import { Agent as HTTPSAgent } from 'https';
-import { isLogStreamingEnabled } from '../MessageEventBus/MessageEventBusHelper';
 import { eventMessageGenericDestinationTestEvent } from '../EventMessageClasses/EventMessageGeneric';
 import type { MessageEventBus, MessageWithCallback } from '../MessageEventBus/MessageEventBus';
 import * as SecretsHelpers from '@/ExternalSecrets/externalSecretsHelper.ee';
@@ -255,7 +253,7 @@ export class MessageEventBusDestinationWebhook
 		const { msg, confirmCallback } = emitterPayload;
 		let sendResult = false;
 		if (msg.eventName !== eventMessageGenericDestinationTestEvent) {
-			if (!isLogStreamingEnabled()) return sendResult;
+			if (!this.license.isLogStreamingEnabled()) return sendResult;
 			if (!this.hasSubscribedToEvent(msg)) return sendResult;
 		}
 		// at first run, build this.requestOptions with the destination settings

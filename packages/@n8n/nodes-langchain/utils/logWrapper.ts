@@ -10,7 +10,7 @@ import type { BaseCallbackConfig, Callbacks } from '@langchain/core/callbacks/ma
 import { Embeddings } from '@langchain/core/embeddings';
 import { VectorStore } from '@langchain/core/vectorstores';
 import type { Document } from '@langchain/core/documents';
-import { TextSplitter } from 'langchain/text_splitter';
+import { TextSplitter } from '@langchain/textsplitters';
 import { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import { BaseRetriever } from '@langchain/core/retrievers';
 import { BaseOutputParser, OutputParserException } from '@langchain/core/output_parsers';

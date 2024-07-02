@@ -207,13 +207,6 @@ export abstract class AbstractServer {
 			// Register a handler
 			this.app.all(`/${this.endpointFormTest}/:path(*)`, webhookRequestHandler(testWebhooks));
 			this.app.all(`/${this.endpointWebhookTest}/:path(*)`, webhookRequestHandler(testWebhooks));
-
-			// Removes a test webhook
-			// TODO UM: check if this needs validation with user management.
-			this.app.delete(
-				`/${this.restEndpoint}/test-webhook/:id`,
-				send(async (req) => await testWebhooks.cancelWebhook(req.params.id)),
-			);
 		}
 
 		// Block bots from scanning the application
@@ -228,6 +221,16 @@ export abstract class AbstractServer {
 
 		if (inDevelopment) {
 			this.setupDevMiddlewares();
+		}
+
+		if (this.testWebhooksEnabled) {
+			const testWebhooks = Container.get(TestWebhooks);
+			// Removes a test webhook
+			// TODO UM: check if this needs validation with user management.
+			this.app.delete(
+				`/${this.restEndpoint}/test-webhook/:id`,
+				send(async (req) => await testWebhooks.cancelWebhook(req.params.id)),
+			);
 		}
 
 		// Setup body parsing middleware after the webhook handlers are setup

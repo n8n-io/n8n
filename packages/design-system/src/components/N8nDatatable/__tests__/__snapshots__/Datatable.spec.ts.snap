@@ -95,9 +95,41 @@ exports[`components > N8nDatatable > should render correctly 1`] = `
     </tbody>
   </table>
   <div class="pagination">
-    <n8n-pagination-stub pagesize="10" total="15" currentpage="1" pagercount="5" layout="prev, pager, next" pagesizes="10,20,30,40,50,100" popperclass="" prevtext="" previcon="[object Object]" nexttext="" nexticon="[object Object]" small="false" background="true" disabled="false" hideonsinglepage="false"></n8n-pagination-stub>
+    <div class="el-pagination is-background is-background"><button type="button" class="btn-prev is-first" disabled="" aria-label="Go to previous page" aria-disabled="true"><i class="el-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+            <path fill="currentColor" d="M609.408 149.376 277.76 489.6a32 32 0 0 0 0 44.672l331.648 340.352a29.12 29.12 0 0 0 41.728 0 30.592 30.592 0 0 0 0-42.752L339.264 511.936l311.872-319.872a30.592 30.592 0 0 0 0-42.688 29.12 29.12 0 0 0-41.728 0z"></path>
+          </svg></i></button>
+      <ul class="el-pager">
+        <li class="is-active number" aria-current="true" aria-label="page 1" tabindex="0"> 1 </li>
+        <!--v-if-->
+        <!--v-if-->
+        <li class="number" aria-current="false" aria-label="page 2" tabindex="0">2</li>
+      </ul><button type="button" class="btn-next is-last" aria-label="Go to next page" aria-disabled="false"><i class="el-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+            <path fill="currentColor" d="M340.864 149.312a30.592 30.592 0 0 0 0 42.752L652.736 512 340.864 831.872a30.592 30.592 0 0 0 0 42.752 29.12 29.12 0 0 0 41.728 0L714.24 534.336a32 32 0 0 0 0-44.672L382.592 149.376a29.12 29.12 0 0 0-41.728 0z"></path>
+          </svg></i></button>
+    </div>
     <div class="pageSizeSelector">
-      <n8n-select-stub modelvalue="10" autocomplete="off" automaticdropdown="false" size="mini" effect="light" disabled="false" clearable="false" filterable="false" allowcreate="false" loading="false" popperoptions="[object Object]" remote="false" multiple="false" multiplelimit="0" defaultfirstoption="false" reservekeyword="true" valuekey="value" collapsetags="false" collapsetagstooltip="false" maxcollapsetags="1" teleported="true" persistent="true" clearicon="[object Object]" fitinputwidth="false" suffixicon="[object Object]" tagtype="info" validateevent="true" remoteshowsuffix="false" suffixtransition="true" placement="bottom-start" popperappendtobody="false" limitpopperwidth="false"></n8n-select-stub>
+      <div class="n8n-select container withPrepend">
+        <div class="prepend">Page size</div>
+        <div class="el-select el-select--small" popperappendtobody="false" limitpopperwidth="false">
+          <div class="select-trigger el-tooltip__trigger el-tooltip__trigger">
+            <!--v-if-->
+            <!-- fix: https://github.com/element-plus/element-plus/issues/11415 -->
+            <!--v-if-->
+            <div class="el-input el-input--small el-input--suffix">
+              <!-- input -->
+              <!-- prepend slot -->
+              <!--v-if-->
+              <div class="el-input__wrapper">
+                <!-- prefix slot -->
+                <!--v-if--><input class="el-input__inner" type="text" readonly="" autocomplete="off" tabindex="0" placeholder="Select"><!-- suffix slot --><span class="el-input__suffix"><span class="el-input__suffix-inner"><i class="el-icon el-select__caret el-select__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" d="M831.872 340.864 512 652.672 192.128 340.864a30.592 30.592 0 0 0-42.752 0 29.12 29.12 0 0 0 0 41.6L489.664 714.24a32 32 0 0 0 44.672 0l340.288-331.712a29.12 29.12 0 0 0 0-41.728 30.592 30.592 0 0 0-42.752 0z"></path></svg></i><!--v-if--><!--v-if--><!--v-if--><!--v-if--><!--v-if--><!--v-if--></span></span>
+              </div><!-- append slot -->
+              <!--v-if-->
+            </div>
+          </div>
+          <!--teleport start-->
+          <!--teleport end-->
+        </div>
+      </div>
     </div>
   </div>
 </div>"

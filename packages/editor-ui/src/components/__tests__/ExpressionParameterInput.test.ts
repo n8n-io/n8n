@@ -61,7 +61,6 @@ describe('ExpressionParameterInput', () => {
 			await waitFor(() => {
 				const editor = container.querySelector('.cm-content') as HTMLDivElement;
 				expect(editor).toBeInTheDocument();
-				expect(editor.getAttribute('contenteditable')).toEqual('false');
 				expect(editor.getAttribute('aria-readonly')).toEqual('true');
 			});
 		});

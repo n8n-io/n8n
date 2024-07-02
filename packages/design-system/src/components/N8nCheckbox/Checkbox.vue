@@ -23,6 +23,7 @@
 <script lang="ts" setup>
 import { ref } from 'vue';
 import { ElCheckbox } from 'element-plus';
+import type { CheckboxValueType } from 'element-plus';
 import N8nInputLabel from '../N8nInputLabel';
 
 const LABEL_SIZE = ['small', 'medium'] as const;
@@ -44,8 +45,10 @@ withDefaults(defineProps<CheckboxProps>(), {
 	labelSize: 'medium',
 });
 
-const $emit = defineEmits(['update:modelValue']);
-const onUpdateModelValue = (value: boolean) => $emit('update:modelValue', value);
+const $emit = defineEmits<{
+	(event: 'update:modelValue', value: CheckboxValueType): void;
+}>();
+const onUpdateModelValue = (value: CheckboxValueType) => $emit('update:modelValue', value);
 
 const checkbox = ref<InstanceType<typeof ElCheckbox>>();
 const onLabelClick = () => {

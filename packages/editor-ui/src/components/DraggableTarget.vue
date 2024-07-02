@@ -114,7 +114,7 @@ export default defineComponent({
 					e.clientY <= dim.bottom;
 			}
 		},
-		onMouseUp(e: MouseEvent) {
+		onMouseUp() {
 			if (this.activeDrop) {
 				const data = this.ndvStore.draggableData;
 				this.$emit('drop', data);

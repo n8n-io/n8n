@@ -72,7 +72,7 @@ export interface Props {
 	nodeValues: INodeParameters;
 	parameter: INodeProperties;
 	path: string;
-	values: INodeProperties;
+	values: INodeParameters;
 	isReadOnly?: boolean;
 }
 const emit = defineEmits<{

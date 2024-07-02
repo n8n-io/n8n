@@ -454,6 +454,17 @@
 		var(--prim-color-alt-j-l),
 		0.75
 	);
+
+	// Color Alternate K - Used for errors in dark mode
+	--prim-color-alt-k-h: 355;
+	--prim-color-alt-k-s: 100%;
+	--prim-color-alt-k-l: 69%;
+
+	--prim-color-alt-k: hsl(
+		var(--prim-color-alt-k-h),
+		var(--prim-color-alt-k-s),
+		var(--prim-color-alt-k-l)
+	);
 }
 
 :root {

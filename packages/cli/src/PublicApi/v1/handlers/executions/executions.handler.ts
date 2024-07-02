@@ -9,6 +9,7 @@ import { getSharedWorkflowIds } from '../workflows/workflows.service';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import { InternalHooks } from '@/InternalHooks';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 
 export = {
 	deleteExecution: [
@@ -30,6 +31,19 @@ export = {
 
 			if (!execution) {
 				return res.status(404).json({ message: 'Not Found' });
+			}
+
+			if (execution.status === 'running') {
+				return res.status(400).json({
+					message: 'Cannot delete a running execution',
+				});
+			}
+
+			if (execution.status === 'new') {
+				Container.get(ConcurrencyControlService).remove({
+					executionId: execution.id,
+					mode: execution.mode,
+				});
 			}
 
 			await Container.get(ExecutionRepository).hardDelete({

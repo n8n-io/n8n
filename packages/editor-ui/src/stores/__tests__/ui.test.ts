@@ -4,7 +4,6 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { merge } from 'lodash-es';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
-import { useRootStore } from '@/stores/n8nRoot.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import * as cloudPlanApi from '@/api/cloudPlans';
 import {
@@ -18,7 +17,6 @@ import { ROLE } from '@/constants';
 
 let uiStore: ReturnType<typeof useUIStore>;
 let settingsStore: ReturnType<typeof useSettingsStore>;
-let rootStore: ReturnType<typeof useRootStore>;
 let cloudPlanStore: ReturnType<typeof useCloudPlanStore>;
 
 function setUser(role: IRole) {
@@ -52,7 +50,7 @@ describe('UI store', () => {
 		setActivePinia(createPinia());
 		uiStore = useUIStore();
 		settingsStore = useSettingsStore();
-		rootStore = useRootStore();
+
 		cloudPlanStore = useCloudPlanStore();
 
 		mockedCloudStore = vi.spyOn(cloudPlanStore, 'getAutoLoginCode');

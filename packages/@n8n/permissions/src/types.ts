@@ -6,7 +6,6 @@ export type Resource =
 	| 'credential'
 	| 'externalSecretsProvider'
 	| 'externalSecret'
-	| 'eventBusEvent'
 	| 'eventBusDestination'
 	| 'ldap'
 	| 'license'
@@ -35,7 +34,7 @@ export type CommunityPackageScope = ResourceScope<
 	'communityPackage',
 	'install' | 'uninstall' | 'update' | 'list' | 'manage'
 >;
-export type CredentialScope = ResourceScope<'credential', DefaultOperations | 'share'>;
+export type CredentialScope = ResourceScope<'credential', DefaultOperations | 'share' | 'move'>;
 export type ExternalSecretScope = ResourceScope<'externalSecret', 'list' | 'use'>;
 export type ExternalSecretProviderScope = ResourceScope<
 	'externalSecretsProvider',
@@ -45,7 +44,6 @@ export type EventBusDestinationScope = ResourceScope<
 	'eventBusDestination',
 	DefaultOperations | 'test'
 >;
-export type EventBusEventScope = ResourceScope<'eventBusEvent', DefaultOperations | 'query'>;
 export type LdapScope = ResourceScope<'ldap', 'manage' | 'sync'>;
 export type LicenseScope = ResourceScope<'license', 'manage'>;
 export type LogStreamingScope = ResourceScope<'logStreaming', 'manage'>;
@@ -58,7 +56,10 @@ export type TagScope = ResourceScope<'tag'>;
 export type UserScope = ResourceScope<'user', DefaultOperations | 'resetPassword' | 'changeRole'>;
 export type VariableScope = ResourceScope<'variable'>;
 export type WorkersViewScope = ResourceScope<'workersView', 'manage'>;
-export type WorkflowScope = ResourceScope<'workflow', DefaultOperations | 'share' | 'execute'>;
+export type WorkflowScope = ResourceScope<
+	'workflow',
+	DefaultOperations | 'share' | 'execute' | 'move'
+>;
 
 export type Scope =
 	| AuditLogsScope
@@ -67,7 +68,6 @@ export type Scope =
 	| CredentialScope
 	| ExternalSecretProviderScope
 	| ExternalSecretScope
-	| EventBusEventScope
 	| EventBusDestinationScope
 	| LdapScope
 	| LicenseScope

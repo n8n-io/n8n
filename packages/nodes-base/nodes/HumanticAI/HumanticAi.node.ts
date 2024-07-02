@@ -14,8 +14,8 @@ export class HumanticAi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Humantic AI',
 		name: 'humanticAi',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:humanticai.png',
+
+		icon: 'file:humanticai.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

@@ -20,8 +20,7 @@ export class RabbitMQ implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'RabbitMQ',
 		name: 'rabbitmq',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:rabbitmq.png',
+		icon: 'file:rabbitmq.svg',
 		group: ['transform'],
 		version: [1, 1.1],
 		description: 'Sends messages to a RabbitMQ topic',

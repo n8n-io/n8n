@@ -1,4 +1,9 @@
-import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	INodeExecutionData,
+	ResourceMapperField,
+} from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import type {
 	ISheetUpdateData,
@@ -7,7 +12,11 @@ import type {
 	ValueRenderOption,
 } from '../../helpers/GoogleSheets.types';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
-import { cellFormatDefault, untilSheetSelected } from '../../helpers/GoogleSheets.utils';
+import {
+	cellFormatDefault,
+	checkForSchemaChanges,
+	untilSheetSelected,
+} from '../../helpers/GoogleSheets.utils';
 import { cellFormat, handlingExtraData, locationDefine } from './commonDescription';
 
 export const description: SheetProperties = [
@@ -252,6 +261,12 @@ export async function execute(
 	}
 
 	columnNames = sheetData[headerRow];
+
+	if (nodeVersion >= 4.4) {
+		const schema = this.getNodeParameter('columns.schema', 0) as ResourceMapperField[];
+		checkForSchemaChanges(this.getNode(), columnNames, schema);
+	}
+
 	const newColumns = new Set<string>();
 
 	const columnsToMatchOn: string[] =

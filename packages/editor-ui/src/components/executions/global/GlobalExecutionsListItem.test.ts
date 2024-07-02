@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { fireEvent } from '@testing-library/vue';
 import GlobalExecutionsListItem from './GlobalExecutionsListItem.vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { DateTime } from 'luxon';
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
@@ -96,6 +97,8 @@ describe('GlobalExecutionsListItem', () => {
 			props: { execution: { status: 'success', id: 123, startedAt: testDate } },
 		});
 
-		expect(getByText(`1 Jan, 2022 at ${new Date(testDate).getHours()}:00:00`)).toBeInTheDocument();
+		expect(
+			getByText(`1 Jan, 2022 at ${DateTime.fromJSDate(new Date(testDate)).toFormat('HH')}:00:00`),
+		).toBeInTheDocument();
 	});
 });

@@ -46,7 +46,7 @@ function getInputs(
 			[NodeConnectionType.AiOutputParser]: 'Output Parser',
 		};
 
-		return inputs.map(({ type, filter, required }) => {
+		return inputs.map(({ type, filter }) => {
 			const input: INodeInputConfiguration = {
 				type,
 				displayName: type in displayNames ? displayNames[type] : undefined,
@@ -190,7 +190,14 @@ const agentTypeProperty: INodeProperties = {
 	name: 'agent',
 	type: 'options',
 	noDataExpression: true,
+	// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 	options: [
+		{
+			name: 'Tools Agent',
+			value: 'toolsAgent',
+			description:
+				'Utilized unified Tool calling interface to select the appropriate tools and argument for execution',
+		},
 		{
 			name: 'Conversational Agent',
 			value: 'conversationalAgent',
@@ -219,12 +226,6 @@ const agentTypeProperty: INodeProperties = {
 			value: 'sqlAgent',
 			description: 'Answers questions about data in an SQL database',
 		},
-		{
-			name: 'Tools Agent',
-			value: 'toolsAgent',
-			description:
-				'Utilized unified Tool calling interface to select the appropriate tools and argument for execution',
-		},
 	],
 	default: '',
 };
@@ -234,6 +235,7 @@ export class Agent implements INodeType {
 		displayName: 'AI Agent',
 		name: 'agent',
 		icon: 'fa:robot',
+		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
 		description: 'Generates an action plan and executes it. Can use external tools.',
@@ -247,7 +249,7 @@ export class Agent implements INodeType {
 			alias: ['LangChain'],
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Agents'],
+				AI: ['Agents', 'Root Nodes'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -300,6 +302,9 @@ export class Agent implements INodeType {
 			// Make Conversational Agent the default agent for versions 1.5 and below
 			{
 				...agentTypeProperty,
+				options: agentTypeProperty?.options?.filter(
+					(o) => 'value' in o && o.value !== 'toolsAgent',
+				),
 				displayOptions: { show: { '@version': [{ _cnd: { lte: 1.5 } }] } },
 				default: 'conversationalAgent',
 			},
@@ -370,13 +375,13 @@ export class Agent implements INodeType {
 		if (agentType === 'conversationalAgent') {
 			return await conversationalAgentExecute.call(this, nodeVersion);
 		} else if (agentType === 'toolsAgent') {
-			return await toolsAgentExecute.call(this, nodeVersion);
+			return await toolsAgentExecute.call(this);
 		} else if (agentType === 'openAiFunctionsAgent') {
 			return await openAiFunctionsAgentExecute.call(this, nodeVersion);
 		} else if (agentType === 'reActAgent') {
 			return await reActAgentAgentExecute.call(this, nodeVersion);
 		} else if (agentType === 'sqlAgent') {
-			return await sqlAgentAgentExecute.call(this, nodeVersion);
+			return await sqlAgentAgentExecute.call(this);
 		} else if (agentType === 'planAndExecuteAgent') {
 			return await planAndExecuteAgentExecute.call(this, nodeVersion);
 		}

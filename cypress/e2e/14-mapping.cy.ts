@@ -1,10 +1,10 @@
+import { WorkflowPage, NDV } from '../pages';
+import { getVisibleSelect } from '../utils';
 import {
 	MANUAL_TRIGGER_NODE_NAME,
 	MANUAL_TRIGGER_NODE_DISPLAY_NAME,
 	SCHEDULE_TRIGGER_NODE_NAME,
 } from './../constants';
-import { WorkflowPage, NDV } from '../pages';
-import { getVisibleSelect } from '../utils';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -18,6 +18,8 @@ describe('Data mapping', () => {
 		cy.fixture('Test_workflow-actions_paste-data.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
+		workflowPage.actions.zoomToFit();
+
 		workflowPage.actions.openNode('Set');
 		ndv.actions.executePrevious();
 		ndv.actions.switchInputMode('Table');
@@ -49,6 +51,7 @@ describe('Data mapping', () => {
 		cy.fixture('Test_workflow_3.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
+		workflowPage.actions.zoomToFit();
 
 		workflowPage.actions.openNode('Set');
 		ndv.actions.switchInputMode('Table');
@@ -111,6 +114,7 @@ describe('Data mapping', () => {
 		cy.fixture('Test_workflow_3.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
+		workflowPage.actions.zoomToFit();
 
 		workflowPage.actions.openNode('Set');
 		ndv.actions.switchInputMode('JSON');
@@ -149,6 +153,7 @@ describe('Data mapping', () => {
 		cy.fixture('Test_workflow_3.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
+		workflowPage.actions.zoomToFit();
 
 		workflowPage.actions.openNode('Set');
 		ndv.actions.clearParameterInput('value');
@@ -170,20 +175,26 @@ describe('Data mapping', () => {
 	});
 
 	it('maps expressions from previous nodes', () => {
-		cy.createFixtureWorkflow('Test_workflow_3.json', `My test workflow`);
+		cy.createFixtureWorkflow('Test_workflow_3.json', 'My test workflow');
 		workflowPage.actions.zoomToFit();
 		workflowPage.actions.openNode('Set1');
 
-		ndv.actions.selectInputNode(SCHEDULE_TRIGGER_NODE_NAME);
+		ndv.actions.executePrevious();
+		ndv.actions.expandSchemaViewNode(SCHEDULE_TRIGGER_NODE_NAME);
 
-		ndv.getters.inputDataContainer().find('span').contains('count').realMouseDown();
-
+		const dataPill = ndv.getters
+			.inputDataContainer()
+			.findChildByTestId('run-data-schema-item')
+			.contains('count')
+			.should('be.visible');
+		dataPill.realMouseDown();
 		ndv.actions.mapToParameter('value');
 		ndv.getters
 			.inlineExpressionEditorInput()
 			.should('have.text', `{{ $('${SCHEDULE_TRIGGER_NODE_NAME}').item.json.input[0].count }}`);
 
 		ndv.actions.switchInputMode('Table');
+		ndv.actions.selectInputNode(SCHEDULE_TRIGGER_NODE_NAME);
 		ndv.actions.mapDataFromHeader(1, 'value');
 		ndv.getters
 			.inlineExpressionEditorInput()
@@ -194,7 +205,6 @@ describe('Data mapping', () => {
 
 		ndv.actions.selectInputNode('Set');
 
-		ndv.actions.executePrevious();
 		ndv.getters.executingLoader().should('not.exist');
 		ndv.getters.inputDataContainer().should('exist');
 		ndv.actions.validateExpressionPreview('value', '0 [object Object]');
@@ -250,6 +260,7 @@ describe('Data mapping', () => {
 		cy.fixture('Test_workflow_3.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
+		workflowPage.actions.zoomToFit();
 
 		workflowPage.actions.openNode('Set');
 
@@ -281,6 +292,7 @@ describe('Data mapping', () => {
 		cy.fixture('Test_workflow_3.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
+		workflowPage.actions.zoomToFit();
 
 		workflowPage.actions.openNode('Set');
 		ndv.actions.typeIntoParameterInput('value', 'test_value');
@@ -291,14 +303,8 @@ describe('Data mapping', () => {
 		ndv.actions.executePrevious();
 		ndv.getters.executingLoader().should('not.exist');
 		ndv.getters.inputDataContainer().should('exist');
-		ndv.getters
-			.inputDataContainer()
-			.should('exist')
-			.find('span')
-			.contains('test_name')
-			.realMouseDown();
-		ndv.actions.mapToParameter('value');
-
+		ndv.actions.switchInputMode('Table');
+		ndv.actions.mapDataFromHeader(1, 'value');
 		ndv.actions.validateExpressionPreview('value', 'test_value');
 		ndv.actions.selectInputNode(SCHEDULE_TRIGGER_NODE_NAME);
 		ndv.actions.validateExpressionPreview('value', 'test_value');
@@ -308,6 +314,7 @@ describe('Data mapping', () => {
 		cy.fixture('Test_workflow_3.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
+		workflowPage.actions.zoomToFit();
 
 		workflowPage.actions.openNode('Set');
 		ndv.actions.clearParameterInput('value');

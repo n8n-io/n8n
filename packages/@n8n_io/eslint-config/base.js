@@ -467,7 +467,7 @@ const config = (module.exports = {
 
 	overrides: [
 		{
-			files: ['test/**/*.ts', '**/__tests__/*.ts'],
+			files: ['test/**/*.ts', '**/__tests__/*.ts', '**/*.cy.ts'],
 			rules: {
 				'n8n-local-rules/no-plain-errors': 'off',
 				'n8n-local-rules/no-skipped-tests':

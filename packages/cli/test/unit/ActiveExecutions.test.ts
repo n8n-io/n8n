@@ -6,6 +6,8 @@ import { createDeferredPromise } from 'n8n-workflow';
 import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
 import type { ExecutionRepository } from '@db/repositories/execution.repository';
 import { mock } from 'jest-mock-extended';
+import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import { mockInstance } from '@test/mocking';
 
 const FAKE_EXECUTION_ID = '15';
 const FAKE_SECOND_EXECUTION_ID = '20';
@@ -18,11 +20,13 @@ const executionRepository = mock<ExecutionRepository>({
 	createNewExecution,
 });
 
+const concurrencyControl = mockInstance(ConcurrencyControlService, { isEnabled: false });
+
 describe('ActiveExecutions', () => {
 	let activeExecutions: ActiveExecutions;
 
 	beforeEach(() => {
-		activeExecutions = new ActiveExecutions(mock(), executionRepository);
+		activeExecutions = new ActiveExecutions(mock(), executionRepository, concurrencyControl);
 	});
 
 	afterEach(() => {

@@ -1,0 +1,23 @@
+volumes:
+  postgres-data:
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=n8n
+      - POSTGRES_PASSWORD=password
+
+  n8n:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ..:/workspaces:cached
+    command: sleep infinity
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_PASSWORD: password

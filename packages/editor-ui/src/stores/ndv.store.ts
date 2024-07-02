@@ -233,6 +233,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 				isDragging: false,
 				type: '',
 				data: '',
+				dimensions: null,
 				activeTarget: null,
 			};
 		},

@@ -2,7 +2,7 @@
  * Getters
  */
 
-import { getVisibleSelect } from "../utils";
+import { getVisibleSelect } from '../utils';
 
 export function getCredentialSelect(eq = 0) {
 	return cy.getByTestId('node-credentials-select').eq(eq);
@@ -75,7 +75,7 @@ export function setParameterInputByName(name: string, value: string) {
 }
 
 export function toggleParameterCheckboxInputByName(name: string) {
-	getParameterInputByName(name).find('input[type="checkbox"]').realClick()
+	getParameterInputByName(name).find('input[type="checkbox"]').realClick();
 }
 
 export function setParameterSelectByContent(name: string, content: string) {

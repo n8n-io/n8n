@@ -143,13 +143,10 @@ import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { isNavigationFailure } from 'vue-router';
-import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
-import { useProjectsStore } from '@/features/projects/projects.store';
-import type {
-	ProjectListItem,
-	ProjectSharingData,
-	Project,
-} from '@/features/projects/projects.types';
+import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
+import { useProjectsStore } from '@/stores/projects.store';
+import type { ProjectListItem, ProjectSharingData, Project } from '@/types/projects.types';
+import { ProjectTypes } from '@/types/projects.types';
 import { useRolesStore } from '@/stores/roles.store';
 import type { RoleMap } from '@/types/roles.types';
 
@@ -238,7 +235,7 @@ export default defineComponent({
 			);
 		},
 		isHomeTeamProject(): boolean {
-			return this.workflow.homeProject?.type === 'team';
+			return this.workflow.homeProject?.type === ProjectTypes.Team;
 		},
 		numberOfMembersInHomeTeamProject(): number {
 			return this.teamProject?.relations.length ?? 0;

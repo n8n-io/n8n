@@ -31,6 +31,7 @@ import type { CommunityPackagesService } from '@/services/communityPackages.serv
 import { Logger } from '@/Logger';
 import { UrlService } from './url.service';
 import { InternalHooks } from '@/InternalHooks';
+import { isApiEnabled } from '@/PublicApi';
 
 @Service()
 export class FrontendService {
@@ -55,7 +56,6 @@ export class FrontendService {
 		this.initSettings();
 
 		if (config.getEnv('nodes.communityPackages.enabled')) {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
 			void import('@/services/communityPackages.service').then(({ CommunityPackagesService }) => {
 				this.communityPackagesService = Container.get(CommunityPackagesService);
 			});
@@ -143,7 +143,7 @@ export class FrontendService {
 				},
 			},
 			publicApi: {
-				enabled: !config.get('publicApi.disabled') && !this.license.isAPIDisabled(),
+				enabled: isApiEnabled(),
 				latestVersion: 1,
 				path: config.getEnv('publicApi.path'),
 				swaggerUi: {

@@ -14,8 +14,11 @@ jobs:
 
     permissions:
       contents: write
+      id-token: write
 
     timeout-minutes: 60
+    env:
+      NPM_CONFIG_PROVENANCE: true
 
     steps:
       - name: Checkout
@@ -24,9 +27,9 @@ jobs:
           fetch-depth: 0
 
       - run: corepack enable
-      - uses: actions/setup-node@v4.0.1
+      - uses: actions/setup-node@v4.0.2
         with:
-          node-version: 18.x
+          node-version: 20.x
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
 

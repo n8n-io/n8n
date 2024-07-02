@@ -61,8 +61,8 @@ export class License {
 		return autoRenewEnabled;
 	}
 
-	async init(instanceType: N8nInstanceType = 'main') {
-		if (this.manager) {
+	async init(instanceType: N8nInstanceType = 'main', forceRecreate = false) {
+		if (this.manager && !forceRecreate) {
 			this.logger.warn('License manager already initialized or shutting down');
 			return;
 		}
@@ -84,6 +84,9 @@ export class License {
 		const collectUsageMetrics = isMainInstance
 			? async () => await this.usageMetricsService.collectUsageMetrics()
 			: async () => [];
+		const collectPassthroughData = isMainInstance
+			? async () => await this.usageMetricsService.collectPassthroughData()
+			: async () => ({});
 
 		const renewalEnabled = this.renewalEnabled(instanceType);
 
@@ -101,6 +104,7 @@ export class License {
 				saveCertStr,
 				deviceFingerprint: () => this.instanceSettings.instanceId,
 				collectUsageMetrics,
+				collectPassthroughData,
 				onFeatureChange,
 			});
 
@@ -375,6 +379,6 @@ export class License {
 
 	async reinit() {
 		this.manager?.reset();
-		await this.init();
+		await this.init('main', true);
 	}
 }

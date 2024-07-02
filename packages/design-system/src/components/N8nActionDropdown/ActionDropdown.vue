@@ -62,7 +62,7 @@ import { ElDropdown, ElDropdownMenu, ElDropdownItem, type Placement } from 'elem
 import N8nIcon from '../N8nIcon';
 import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
 import type { ActionDropdownItem } from '../../types';
-import type { IconSize } from '@/types/icon';
+import type { IconSize } from 'n8n-design-system/types/icon';
 
 const TRIGGER = ['click', 'hover'] as const;
 

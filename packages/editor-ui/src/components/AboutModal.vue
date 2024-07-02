@@ -65,7 +65,7 @@ import { createEventBus } from 'n8n-design-system/utils';
 import Modal from './Modal.vue';
 import { ABOUT_MODAL_KEY } from '../constants';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 
 export default defineComponent({
 	name: 'About',

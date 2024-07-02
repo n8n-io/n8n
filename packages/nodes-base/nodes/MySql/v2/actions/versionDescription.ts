@@ -6,7 +6,7 @@ import * as database from './database/Database.resource';
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'MySQL',
 	name: 'mySql',
-	icon: 'file:mysql.svg',
+	icon: { light: 'file:mysql.svg', dark: 'file:mysql.dark.svg' },
 	group: ['input'],
 	version: [2, 2.1, 2.2, 2.3, 2.4],
 	subtitle: '={{ $parameter["operation"] }}',

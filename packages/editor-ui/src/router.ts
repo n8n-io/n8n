@@ -13,11 +13,11 @@ import { useUIStore } from '@/stores/ui.store';
 import { useSSOStore } from '@/stores/sso.store';
 import { EnterpriseEditionFeature, VIEWS, EDITABLE_CANVAS_VIEWS } from '@/constants';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { middleware } from '@/rbac/middleware';
-import type { RouteConfig, RouterMiddleware } from '@/types/router';
-import { initializeCore } from '@/init';
+import { middleware } from '@/utils/rbac/middleware';
+import type { RouterMiddleware } from '@/types/router';
+import { initializeAuthenticatedFeatures, initializeCore } from '@/init';
 import { tryToParseNumber } from '@/utils/typesUtils';
-import { projectsRoutes } from '@/features/projects/projects.routes';
+import { projectsRoutes } from '@/routes/projects.routes';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
 const ErrorView = async () => await import('./views/ErrorView.vue');
@@ -25,6 +25,7 @@ const ForgotMyPasswordView = async () => await import('./views/ForgotMyPasswordV
 const MainHeader = async () => await import('@/components/MainHeader/MainHeader.vue');
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
 const NodeView = async () => await import('@/views/NodeView.vue');
+const NodeViewV2 = async () => await import('@/views/NodeView.v2.vue');
 const WorkflowExecutionsView = async () => await import('@/views/WorkflowExecutionsView.vue');
 const WorkflowExecutionsLandingPage = async () =>
 	await import('@/components/executions/workflow/WorkflowExecutionsLandingPage.vue');
@@ -59,17 +60,17 @@ const WorkerView = async () => await import('./views/WorkerView.vue');
 const WorkflowHistory = async () => await import('@/views/WorkflowHistory.vue');
 const WorkflowOnboardingView = async () => await import('@/views/WorkflowOnboardingView.vue');
 
-function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]) {
+function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: string } | false {
 	const settingsStore = useSettingsStore();
 	const isTemplatesEnabled: boolean = settingsStore.isTemplatesEnabled;
 	if (!isTemplatesEnabled) {
-		return { name: defaultRedirect || VIEWS.NOT_FOUND };
+		return { name: `${defaultRedirect}` || VIEWS.NOT_FOUND };
 	}
 
 	return false;
 }
 
-export const routes = [
+export const routes: RouteRecordRaw[] = [
 	{
 		path: '/',
 		redirect: '/home/workflows',
@@ -164,7 +165,7 @@ export const routes = [
 			// Templates view remembers it's scroll position on back
 			scrollOffset: 0,
 			telemetry: {
-				getProperties(route: RouteLocation) {
+				getProperties() {
 					const templatesStore = useTemplatesStore();
 					return {
 						wf_template_repo_session_id: templatesStore.currentSessionId,
@@ -358,6 +359,24 @@ export const routes = [
 		redirect: '/workflow/new',
 	},
 	{
+		path: '/workflow-v2/:workflowId',
+		name: VIEWS.WORKFLOW_V2,
+		components: {
+			default: NodeViewV2,
+			header: MainHeader,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			middleware: ['authenticated', 'custom'],
+			middlewareOptions: {
+				custom: () => {
+					return !!localStorage.getItem('features.NodeViewV2');
+				},
+			},
+			nodeView: true,
+		},
+	},
+	{
 		path: '/signin',
 		name: VIEWS.SIGNIN,
 		components: {
@@ -456,7 +475,7 @@ export const routes = [
 					},
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: RouteLocation) {
+						getProperties() {
 							return {
 								feature: 'usage',
 							};
@@ -474,7 +493,7 @@ export const routes = [
 					middleware: ['authenticated'],
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: RouteLocation) {
+						getProperties() {
 							return {
 								feature: 'personal',
 							};
@@ -497,7 +516,7 @@ export const routes = [
 					},
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: RouteLocation) {
+						getProperties() {
 							return {
 								feature: 'users',
 							};
@@ -515,7 +534,7 @@ export const routes = [
 					middleware: ['authenticated'],
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: RouteLocation) {
+						getProperties() {
 							return {
 								feature: 'api',
 							};
@@ -538,7 +557,7 @@ export const routes = [
 					},
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: RouteLocation) {
+						getProperties() {
 							return {
 								feature: 'environments',
 							};
@@ -561,7 +580,7 @@ export const routes = [
 					},
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: RouteLocation) {
+						getProperties() {
 							return {
 								feature: 'external-secrets',
 							};
@@ -588,7 +607,7 @@ export const routes = [
 					},
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: RouteLocation) {
+						getProperties() {
 							return {
 								feature: 'sso',
 							};
@@ -723,7 +742,7 @@ export const routes = [
 			},
 		},
 	},
-] as Array<RouteRecordRaw & RouteConfig>;
+];
 
 function withCanvasReadOnlyMeta(route: RouteRecordRaw) {
 	if (!route.meta) {
@@ -740,7 +759,7 @@ function withCanvasReadOnlyMeta(route: RouteRecordRaw) {
 
 const router = createRouter({
 	history: createWebHistory(import.meta.env.DEV ? '/' : window.BASE_PATH ?? '/'),
-	scrollBehavior(to: RouteLocationNormalized & RouteConfig, from, savedPosition) {
+	scrollBehavior(to: RouteLocationNormalized, _, savedPosition) {
 		// saved position == null means the page is NOT visited from history (back button)
 		if (savedPosition === null && to.name === VIEWS.TEMPLATES && to.meta?.setScrollPosition) {
 			// for templates view, reset scroll position in this case
@@ -750,7 +769,7 @@ const router = createRouter({
 	routes: routes.map(withCanvasReadOnlyMeta),
 });
 
-router.beforeEach(async (to: RouteLocationNormalized & RouteConfig, from, next) => {
+router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 	try {
 		/**
 		 * Initialize application core
@@ -758,6 +777,7 @@ router.beforeEach(async (to: RouteLocationNormalized & RouteConfig, from, next) 
 		 */
 
 		await initializeCore();
+		await initializeAuthenticatedFeatures();
 
 		/**
 		 * Redirect to setup page. User should be redirected to this only once

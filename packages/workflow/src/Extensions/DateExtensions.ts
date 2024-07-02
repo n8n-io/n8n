@@ -278,6 +278,15 @@ function toBoolean() {
 	return undefined;
 }
 
+// Only null/undefined return true, this is handled in ExpressionExtension.ts
+function isEmpty(): boolean {
+	return false;
+}
+
+function isNotEmpty(): boolean {
+	return true;
+}
+
 endOfMonth.doc = {
 	name: 'endOfMonth',
 	returnType: 'DateTime',
@@ -547,7 +556,7 @@ diffToNow.doc = {
 			evaluated: '371.9',
 		},
 		{
-			example: "dt = '2023-03-30T18:49:07.234.toDateTime()\ndt.diffToNow(['months', 'days'])",
+			example: "dt = '2023-03-30T18:49:07.234'.toDateTime()\ndt.diffToNow(['months', 'days'])",
 			evaluated: '{ months: 12, days: 5.9 }',
 		},
 	],
@@ -563,6 +572,30 @@ diffToNow.doc = {
 		},
 	],
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-diffToNow',
+};
+
+isEmpty.doc = {
+	name: 'isEmpty',
+	description:
+		'Returns <code>false</code> for all DateTimes. Returns <code>true</code> for <code>null</code>.',
+	examples: [
+		{ example: "dt = '2023-03-30T18:49:07.234'.toDateTime()\ndt.isEmpty()", evaluated: 'false' },
+		{ example: 'dt = null\ndt.isEmpty()', evaluated: 'true' },
+	],
+	returnType: 'boolean',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-isEmpty',
+};
+
+isNotEmpty.doc = {
+	name: 'isNotEmpty',
+	description:
+		'Returns <code>true</code> for all DateTimes. Returns <code>false</code> for <code>null</code>.',
+	examples: [
+		{ example: "dt = '2023-03-30T18:49:07.234'.toDateTime()\ndt.isNotEmpty()", evaluated: 'true' },
+		{ example: 'dt = null\ndt.isNotEmpty()', evaluated: 'false' },
+	],
+	returnType: 'boolean',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-isNotEmpty',
 };
 
 export const dateExtensions: ExtensionMap = {
@@ -584,5 +617,7 @@ export const dateExtensions: ExtensionMap = {
 		toInt,
 		toFloat,
 		toBoolean,
+		isEmpty,
+		isNotEmpty,
 	},
 };

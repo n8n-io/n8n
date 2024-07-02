@@ -8,6 +8,7 @@
 		:show-action-arrow="showActionArrow"
 		:is-trigger="isTrigger"
 		:data-test-id="dataTestId"
+		:tag="nodeType.tag"
 		@dragstart="onDragStart"
 		@dragend="onDragEnd"
 	>

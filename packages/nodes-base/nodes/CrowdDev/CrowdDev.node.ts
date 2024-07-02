@@ -5,7 +5,7 @@ export class CrowdDev implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'crowd.dev',
 		name: 'crowdDev',
-		icon: 'file:crowdDev.svg',
+		icon: { light: 'file:crowdDev.svg', dark: 'file:crowdDev.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',

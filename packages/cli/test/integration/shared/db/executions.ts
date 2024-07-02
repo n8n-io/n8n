@@ -4,6 +4,7 @@ import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { ExecutionDataRepository } from '@db/repositories/executionData.repository';
+import { ExecutionMetadataRepository } from '@/databases/repositories/executionMetadata.repository';
 
 export async function createManyExecutions(
 	amount: number,
@@ -18,10 +19,14 @@ export async function createManyExecutions(
  * Store a execution in the DB and assign it to a workflow.
  */
 export async function createExecution(
-	attributes: Partial<ExecutionEntity & ExecutionData>,
+	attributes: Partial<
+		Omit<ExecutionEntity, 'metadata'> &
+			ExecutionData & { metadata: Array<{ key: string; value: string }> }
+	>,
 	workflow: WorkflowEntity,
 ) {
-	const { data, finished, mode, startedAt, stoppedAt, waitTill, status, deletedAt } = attributes;
+	const { data, finished, mode, startedAt, stoppedAt, waitTill, status, deletedAt, metadata } =
+		attributes;
 
 	const execution = await Container.get(ExecutionRepository).save({
 		finished: finished ?? true,
@@ -30,9 +35,19 @@ export async function createExecution(
 		...(workflow !== undefined && { workflowId: workflow.id }),
 		stoppedAt: stoppedAt ?? new Date(),
 		waitTill: waitTill ?? null,
-		status,
+		status: status ?? 'success',
 		deletedAt,
 	});
+
+	if (metadata?.length) {
+		const metadataToSave = metadata.map(({ key, value }) => ({
+			key,
+			value,
+			execution: { id: execution.id },
+		}));
+
+		await Container.get(ExecutionMetadataRepository).save(metadataToSave);
+	}
 
 	await Container.get(ExecutionDataRepository).save({
 		data: data ?? '[]',

@@ -6,7 +6,6 @@ import {
 	WORKFLOW_ACTIVE_MODAL_KEY,
 } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
-import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useRouter } from 'vue-router';
@@ -15,6 +14,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
 import { ref } from 'vue';
+import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 
 export function useWorkflowActivate() {
 	const updatingWorkflowActivation = ref(false);
@@ -22,11 +22,11 @@ export function useWorkflowActivate() {
 	const router = useRouter();
 	const workflowHelpers = useWorkflowHelpers({ router });
 	const workflowsStore = useWorkflowsStore();
-	const settingsStore = useSettingsStore();
 	const uiStore = useUIStore();
 	const telemetry = useTelemetry();
 	const toast = useToast();
 	const i18n = useI18n();
+	const npsSurveyStore = useNpsSurveyStore();
 
 	//methods
 
@@ -117,7 +117,7 @@ export function useWorkflowActivate() {
 			if (newActiveState && useStorage(LOCAL_STORAGE_ACTIVATION_FLAG).value !== 'true') {
 				uiStore.openModal(WORKFLOW_ACTIVE_MODAL_KEY);
 			} else {
-				await settingsStore.fetchPromptsData();
+				await npsSurveyStore.fetchPromptsData();
 			}
 		}
 	};

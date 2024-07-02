@@ -23,8 +23,8 @@ export class ProfitWell implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'ProfitWell',
 		name: 'profitWell',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:profitwell.png',
+
+		icon: { light: 'file:profitwell.svg', dark: 'file:profitwell.dark.svg' },
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -138,7 +138,7 @@ export class ProfitWell implements INodeType {
 					returnData.push(responseData as IDataObject);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ error: error.message });
 					continue;
 				}

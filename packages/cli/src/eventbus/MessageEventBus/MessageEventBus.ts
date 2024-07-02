@@ -1,9 +1,10 @@
 import { Service } from 'typedi';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { DeleteResult } from '@n8n/typeorm';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import EventEmitter from 'events';
 import uniqby from 'lodash/uniqBy';
-import { jsonParse } from 'n8n-workflow';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
 import config from '@/config';
@@ -13,11 +14,7 @@ import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { Logger } from '@/Logger';
 
-import type {
-	EventMessageTypes,
-	EventNamesTypes,
-	FailedEventSummary,
-} from '../EventMessageClasses/';
+import type { EventMessageTypes } from '../EventMessageClasses/';
 import type { MessageEventBusDestination } from '../MessageEventBusDestination/MessageEventBusDestination.ee';
 import { MessageEventBusLogWriter } from '../MessageEventBusWriter/MessageEventBusLogWriter';
 import { messageEventBusDestinationFromDb } from '../MessageEventBusDestination/MessageEventBusDestinationFromDb';
@@ -26,21 +23,18 @@ import type { EventMessageAuditOptions } from '../EventMessageClasses/EventMessa
 import { EventMessageAudit } from '../EventMessageClasses/EventMessageAudit';
 import type { EventMessageWorkflowOptions } from '../EventMessageClasses/EventMessageWorkflow';
 import { EventMessageWorkflow } from '../EventMessageClasses/EventMessageWorkflow';
-import { isLogStreamingEnabled } from './MessageEventBusHelper';
 import type { EventMessageNodeOptions } from '../EventMessageClasses/EventMessageNode';
 import { EventMessageNode } from '../EventMessageClasses/EventMessageNode';
 import {
 	EventMessageGeneric,
 	eventMessageGenericDestinationTestEvent,
 } from '../EventMessageClasses/EventMessageGeneric';
-import { METRICS_EVENT_NAME } from '../MessageEventBusDestination/Helpers.ee';
-import type { AbstractEventMessageOptions } from '../EventMessageClasses/AbstractEventMessageOptions';
-import { getEventMessageObjectByType } from '../EventMessageClasses/Helpers';
-import { ExecutionDataRecoveryService } from '../executionDataRecovery.service';
+import { ExecutionRecoveryService } from '../../executions/execution-recovery.service';
 import {
 	EventMessageAiNode,
 	type EventMessageAiNodeOptions,
 } from '../EventMessageClasses/EventMessageAiNode';
+import { License } from '@/License';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all' | 'unfinished';
 
@@ -72,7 +66,8 @@ export class MessageEventBus extends EventEmitter {
 		private readonly eventDestinationsRepository: EventDestinationsRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly orchestrationService: OrchestrationService,
-		private readonly recoveryService: ExecutionDataRecoveryService,
+		private readonly recoveryService: ExecutionRecoveryService,
+		private readonly license: License,
 	) {
 		super();
 	}
@@ -147,7 +142,7 @@ export class MessageEventBus extends EventEmitter {
 				const dbUnfinishedExecutionIds = (
 					await this.executionRepository.find({
 						where: {
-							status: In(['running', 'new', 'unknown']),
+							status: In(['running', 'unknown']),
 						},
 						select: ['id'],
 					})
@@ -182,19 +177,8 @@ export class MessageEventBus extends EventEmitter {
 					// start actual recovery process and write recovery process flag file
 					this.logWriter?.startRecoveryProcess();
 					for (const executionId of unfinishedExecutionIds) {
-						this.logger.warn(`Attempting to recover execution ${executionId}`);
-						if (!unsentAndUnfinished.unfinishedExecutions[executionId]?.length) {
-							this.logger.debug(
-								`No event messages found, marking execution ${executionId} as 'crashed'`,
-							);
-							await this.executionRepository.markAsCrashed([executionId]);
-						} else {
-							await this.recoveryService.recoverExecutionData(
-								executionId,
-								unsentAndUnfinished.unfinishedExecutions[executionId],
-								true,
-							);
-						}
+						const logMesssages = unsentAndUnfinished.unfinishedExecutions[executionId];
+						await this.recoveryService.recoverFromLogs(executionId, logMesssages ?? []);
 					}
 				}
 				// remove the recovery process flag file
@@ -249,17 +233,6 @@ export class MessageEventBus extends EventEmitter {
 			await this.orchestrationService.publish('restartEventBus');
 		}
 		return result;
-	}
-
-	async handleRedisEventBusMessage(messageString: string) {
-		const eventData = jsonParse<AbstractEventMessageOptions>(messageString);
-		if (eventData) {
-			const eventMessage = getEventMessageObjectByType(eventData);
-			if (eventMessage) {
-				await this.send(eventMessage);
-			}
-		}
-		return eventData;
 	}
 
 	private async trySendingUnsent(msgs?: EventMessageTypes[]) {
@@ -334,7 +307,7 @@ export class MessageEventBus extends EventEmitter {
 	}
 
 	private async emitMessage(msg: EventMessageTypes) {
-		this.emit(METRICS_EVENT_NAME, msg);
+		this.emit('metrics.messageEventBus.Event', msg);
 
 		// generic emit for external modules to capture events
 		// this is for internal use ONLY and not for use with custom destinations!
@@ -355,52 +328,10 @@ export class MessageEventBus extends EventEmitter {
 
 	shouldSendMsg(msg: EventMessageTypes): boolean {
 		return (
-			isLogStreamingEnabled() &&
+			this.license.isLogStreamingEnabled() &&
 			Object.keys(this.destinations).length > 0 &&
 			this.hasAnyDestinationSubscribedToEvent(msg)
 		);
-	}
-
-	async getEventsFailed(amount = 5): Promise<FailedEventSummary[]> {
-		const result: FailedEventSummary[] = [];
-		try {
-			const queryResult = await this.logWriter?.getMessagesAll();
-			const uniques = uniqby(queryResult, 'id');
-			const filteredExecutionIds = uniques
-				.filter((e) =>
-					(['n8n.workflow.crashed', 'n8n.workflow.failed'] as EventNamesTypes[]).includes(
-						e.eventName,
-					),
-				)
-				.map((e) => ({
-					executionId: e.payload.executionId as string,
-					name: e.payload.workflowName,
-					timestamp: e.ts,
-					event: e.eventName,
-				}))
-				.filter((e) => e)
-				.sort((a, b) => (a.timestamp > b.timestamp ? 1 : -1))
-				.slice(-amount);
-
-			for (const execution of filteredExecutionIds) {
-				const data = await this.recoveryService.recoverExecutionData(
-					execution.executionId,
-					queryResult,
-					false,
-				);
-				if (data) {
-					const lastNodeExecuted = data.resultData.lastNodeExecuted;
-					result.push({
-						lastNodeExecuted: lastNodeExecuted ?? '',
-						executionId: execution.executionId,
-						name: execution.name as string,
-						event: execution.event,
-						timestamp: execution.timestamp.toISO(),
-					});
-				}
-			}
-		} catch {}
-		return result;
 	}
 
 	async getEventsAll(): Promise<EventMessageTypes[]> {
@@ -428,7 +359,7 @@ export class MessageEventBus extends EventEmitter {
 
 	async getUnsentAndUnfinishedExecutions(): Promise<{
 		unsentMessages: EventMessageTypes[];
-		unfinishedExecutions: Record<string, EventMessageTypes[]>;
+		unfinishedExecutions: Record<string, EventMessageTypes[] | undefined>;
 	}> {
 		const queryResult = await this.logWriter?.getUnsentAndUnfinishedExecutions();
 		return queryResult;

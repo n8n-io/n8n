@@ -27,7 +27,7 @@ import {
 	WORKFLOW_LM_CHAT_MODAL_KEY,
 } from '@/constants';
 import { useTitleChange } from '@/composables/useTitleChange';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { openPopUpWindow } from '@/utils/executionUtils';
@@ -219,7 +219,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			const startRunData: IStartRunData = {
 				workflowData,
 				runData: newRunData,
-				pinData: workflowData.pinData,
 				startNodes,
 			};
 			if ('destinationNode' in options) {
@@ -280,12 +279,12 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 					if (node.type === FORM_TRIGGER_NODE_TYPE && node.typeVersion === 1) {
 						const webhookPath = (node.parameters.path as string) || node.webhookId;
-						testUrl = `${rootStore.getWebhookTestUrl}/${webhookPath}/${FORM_TRIGGER_PATH_IDENTIFIER}`;
+						testUrl = `${rootStore.webhookTestUrl}/${webhookPath}/${FORM_TRIGGER_PATH_IDENTIFIER}`;
 					}
 
 					if (node.type === FORM_TRIGGER_NODE_TYPE && node.typeVersion > 1) {
 						const webhookPath = (node.parameters.path as string) || node.webhookId;
-						testUrl = `${rootStore.getFormTestUrl}/${webhookPath}`;
+						testUrl = `${rootStore.formTestUrl}/${webhookPath}`;
 					}
 
 					if (
@@ -307,8 +306,9 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 						if (!showForm) continue;
 
 						const { webhookSuffix } = (node.parameters.options ?? {}) as IDataObject;
-						const suffix = webhookSuffix ? `/${webhookSuffix}` : '';
-						testUrl = `${rootStore.getFormWaitingUrl}/${runWorkflowApiResponse.executionId}${suffix}`;
+						const suffix =
+							webhookSuffix && typeof webhookSuffix !== 'object' ? `/${webhookSuffix}` : '';
+						testUrl = `${rootStore.formWaitingUrl}/${runWorkflowApiResponse.executionId}${suffix}`;
 					}
 
 					if (testUrl) openPopUpWindow(testUrl);

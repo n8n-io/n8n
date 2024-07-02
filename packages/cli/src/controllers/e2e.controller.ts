@@ -16,6 +16,7 @@ import { CacheService } from '@/services/cache/cache.service';
 import { PasswordUtility } from '@/services/password.utility';
 import Container from 'typedi';
 import { Logger } from '@/Logger';
+import { AuthUserRepository } from '@/databases/repositories/authUser.repository';
 
 if (!inE2ETests) {
 	Container.get(Logger).error('E2E endpoints only allowed during E2E tests');
@@ -106,6 +107,7 @@ export class E2EController {
 		private readonly passwordUtility: PasswordUtility,
 		private readonly eventBus: MessageEventBus,
 		private readonly userRepository: UserRepository,
+		private readonly authUserRepository: AuthUserRepository,
 	) {
 		license.isFeatureEnabled = (feature: BooleanLicenseFeature) =>
 			this.enabledFeatures[feature] ?? false;
@@ -185,13 +187,6 @@ export class E2EController {
 		members: UserSetupPayload[],
 		admin: UserSetupPayload,
 	) {
-		if (owner?.mfaSecret && owner.mfaRecoveryCodes?.length) {
-			const { encryptedRecoveryCodes, encryptedSecret } =
-				this.mfaService.encryptSecretAndRecoveryCodes(owner.mfaSecret, owner.mfaRecoveryCodes);
-			owner.mfaSecret = encryptedSecret;
-			owner.mfaRecoveryCodes = encryptedRecoveryCodes;
-		}
-
 		const userCreatePromises = [
 			this.userRepository.createUserWithProject({
 				id: uuid(),
@@ -221,7 +216,17 @@ export class E2EController {
 			);
 		}
 
-		await Promise.all(userCreatePromises);
+		const [newOwner] = await Promise.all(userCreatePromises);
+
+		if (owner?.mfaSecret && owner.mfaRecoveryCodes?.length) {
+			const { encryptedRecoveryCodes, encryptedSecret } =
+				this.mfaService.encryptSecretAndRecoveryCodes(owner.mfaSecret, owner.mfaRecoveryCodes);
+
+			await this.authUserRepository.update(newOwner.user.id, {
+				mfaSecret: encryptedSecret,
+				mfaRecoveryCodes: encryptedRecoveryCodes,
+			});
+		}
 
 		await this.settingsRepo.update(
 			{ key: 'userManagement.isInstanceOwnerSetUp' },

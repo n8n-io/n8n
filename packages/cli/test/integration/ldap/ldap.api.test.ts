@@ -1,11 +1,12 @@
-import Container from 'typedi';
-import type { SuperAgentTest } from 'supertest';
+import { Container } from 'typedi';
 import type { Entry as LdapUser } from 'ldapts';
 import { Not } from '@n8n/typeorm';
 import { Cipher } from 'n8n-core';
 
 import config from '@/config';
 import type { User } from '@db/entities/User';
+import { UserRepository } from '@db/repositories/user.repository';
+import { AuthProviderSyncHistoryRepository } from '@db/repositories/authProviderSyncHistory.repository';
 import { LDAP_DEFAULT_CONFIGURATION } from '@/Ldap/constants';
 import { LdapService } from '@/Ldap/ldap.service';
 import { saveLdapSynchronization } from '@/Ldap/helpers';
@@ -14,12 +15,10 @@ import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '
 import { randomEmail, randomName, uniqueId } from './../shared/random';
 import * as testDb from './../shared/testDb';
 import * as utils from '../shared/utils/';
-
 import { createLdapUser, createUser, getAllUsers, getLdapIdentities } from '../shared/db/users';
-import { UserRepository } from '@db/repositories/user.repository';
-import { AuthProviderSyncHistoryRepository } from '@db/repositories/authProviderSyncHistory.repository';
 import { getPersonalProject } from '../shared/db/projects';
 import { createLdapConfig, defaultLdapConfig } from '../shared/ldap';
+import type { SuperAgentTest } from '../shared/types';
 
 jest.mock('@/telemetry');
 

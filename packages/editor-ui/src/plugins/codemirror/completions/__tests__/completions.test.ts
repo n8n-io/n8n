@@ -12,7 +12,7 @@ import {
 	natives,
 } from '@/plugins/codemirror/completions/datatype.completions';
 
-import { mockNodes, mockProxy } from './mock';
+import { mockProxy } from './mock';
 import type { CompletionSource, CompletionResult } from '@codemirror/autocomplete';
 import { CompletionContext } from '@codemirror/autocomplete';
 import { EditorState } from '@codemirror/state';
@@ -30,6 +30,7 @@ import {
 	STRING_RECOMMENDED_OPTIONS,
 } from '../constants';
 import { set, uniqBy } from 'lodash-es';
+import { mockNodes } from '@/__tests__/mocks';
 
 let externalSecretsStore: ReturnType<typeof useExternalSecretsStore>;
 let uiStore: ReturnType<typeof useUIStore>;
@@ -735,8 +736,8 @@ describe('Resolution-based completions', () => {
 			const result = completions('{{ $json.obj.| }}');
 			expect(result).toContainEqual(expect.objectContaining({ label: 'str', detail: 'string' }));
 			expect(result).toContainEqual(expect.objectContaining({ label: 'empty', detail: 'null' }));
-			expect(result).toContainEqual(expect.objectContaining({ label: 'arr', detail: 'array' }));
-			expect(result).toContainEqual(expect.objectContaining({ label: 'obj', detail: 'object' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'arr', detail: 'Array' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'obj', detail: 'Object' }));
 		});
 
 		test('should display type information for: {{ $input.item.json.| }}', () => {
@@ -750,8 +751,8 @@ describe('Resolution-based completions', () => {
 			const result = completions('{{ $json.item.json.| }}');
 			expect(result).toContainEqual(expect.objectContaining({ label: 'str', detail: 'string' }));
 			expect(result).toContainEqual(expect.objectContaining({ label: 'empty', detail: 'null' }));
-			expect(result).toContainEqual(expect.objectContaining({ label: 'arr', detail: 'array' }));
-			expect(result).toContainEqual(expect.objectContaining({ label: 'obj', detail: 'object' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'arr', detail: 'Array' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'obj', detail: 'Object' }));
 		});
 
 		test('should display type information for: {{ $("My Node").item.json.| }}', () => {
@@ -765,18 +766,26 @@ describe('Resolution-based completions', () => {
 			const result = completions('{{ $("My Node").item.json.| }}');
 			expect(result).toContainEqual(expect.objectContaining({ label: 'str', detail: 'string' }));
 			expect(result).toContainEqual(expect.objectContaining({ label: 'empty', detail: 'null' }));
-			expect(result).toContainEqual(expect.objectContaining({ label: 'arr', detail: 'array' }));
-			expect(result).toContainEqual(expect.objectContaining({ label: 'obj', detail: 'object' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'arr', detail: 'Array' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'obj', detail: 'Object' }));
 		});
 
 		test('should not display type information for other completions', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue({
 				str: 'bar',
+				id: '123',
+				isExecuted: false,
 			});
 
-			expect(completions('{{ $execution.| }}')?.every((item) => !item.detail)).toBe(true);
-			expect(completions('{{ $input.params.| }}')?.every((item) => !item.detail)).toBe(true);
-			expect(completions('{{ $("My Node").| }}')?.every((item) => !item.detail)).toBe(true);
+			expect(completions('{{ $execution.| }}')).not.toContainEqual(
+				expect.objectContaining({ detail: expect.any(String) }),
+			);
+			expect(completions('{{ $input.params.| }}')).not.toContainEqual(
+				expect.objectContaining({ detail: expect.any(String) }),
+			);
+			expect(completions('{{ $("My Node").| }}')).not.toContainEqual(
+				expect.objectContaining({ detail: expect.any(String) }),
+			);
 		});
 	});
 });

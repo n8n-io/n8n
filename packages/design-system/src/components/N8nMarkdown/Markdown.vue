@@ -5,6 +5,8 @@
 			ref="editor"
 			:class="$style[theme]"
 			@click="onClick"
+			@mousedown="onMouseDown"
+			@change="onChange"
 			v-html="htmlContent"
 		/>
 		<div v-else :class="$style.markdown">
@@ -17,16 +19,16 @@
 </template>
 
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import type { Options as MarkdownOptions } from 'markdown-it';
 import Markdown from 'markdown-it';
 import markdownLink from 'markdown-it-link-attributes';
 import markdownEmoji from 'markdown-it-emoji';
 import markdownTaskLists from 'markdown-it-task-lists';
-import xss, { friendlyAttrValue } from 'xss';
+import xss, { friendlyAttrValue, whiteList } from 'xss';
 
 import N8nLoading from '../N8nLoading';
-import { escapeMarkdown } from '../../utils/markdown';
+import { escapeMarkdown, toggleCheckbox } from '../../utils/markdown';
 
 interface IImage {
 	id: string;
@@ -72,17 +74,25 @@ const props = withDefaults(defineProps<MarkdownProps>(), {
 			},
 		},
 		tasklists: {
+			enabled: true,
 			label: true,
 			labelAfter: true,
 		},
 	}),
 });
 
+const editor = ref<HTMLDivElement | undefined>(undefined);
+
 const { options } = props;
 const md = new Markdown(options.markdown)
 	.use(markdownLink, options.linkAttributes)
 	.use(markdownEmoji)
 	.use(markdownTaskLists, options.tasklists);
+
+const xssWhiteList = {
+	...whiteList,
+	label: ['class', 'for'],
+};
 
 const htmlContent = computed(() => {
 	if (!props.content) {
@@ -108,7 +118,7 @@ const htmlContent = computed(() => {
 	}
 	const html = md.render(escapeMarkdown(contentToRender));
 	const safeHtml = xss(html, {
-		onTagAttr: (tag, name, value) => {
+		onTagAttr(tag, name, value) {
 			if (tag === 'img' && name === 'src') {
 				if (value.match(fileIdRegex)) {
 					const id = value.split('fileId:')[1];
@@ -123,19 +133,29 @@ const htmlContent = computed(() => {
 				}
 			}
 			// Return nothing, means keep the default handling measure
+			return;
 		},
 		onTag(tag, code) {
 			if (tag === 'img' && code.includes('alt="workflow-screenshot"')) {
 				return '';
 			}
 			// return nothing, keep tag
+			return;
 		},
+		onIgnoreTag(tag, tagHTML) {
+			// Allow checkboxes
+			if (tag === 'input' && tagHTML.includes('type="checkbox"')) {
+				return tagHTML;
+			}
+			return;
+		},
+		whiteList: xssWhiteList,
 	});
 
 	return safeHtml;
 });
 
-const $emit = defineEmits(['markdown-click']);
+const $emit = defineEmits(['markdown-click', 'update-content']);
 const onClick = (event: MouseEvent) => {
 	let clickedLink: HTMLAnchorElement | null = null;
 
@@ -150,6 +170,40 @@ const onClick = (event: MouseEvent) => {
 		}
 	}
 	$emit('markdown-click', clickedLink, event);
+};
+
+// Handle checkbox changes
+const onChange = async (event: Event) => {
+	if (event.target instanceof HTMLInputElement && event.target.type === 'checkbox') {
+		const checkboxes = editor.value?.querySelectorAll('input[type="checkbox"]');
+		if (checkboxes) {
+			// Get the index of the checkbox that was clicked
+			const index = Array.from(checkboxes).indexOf(event.target);
+			if (index !== -1) {
+				onCheckboxChange(index);
+			}
+		}
+	}
+};
+
+const onMouseDown = (event: MouseEvent) => {
+	// Mouse down on input fields is caught by node view handlers
+	// which prevents checking them, this will prevent that
+	if (event.target instanceof HTMLInputElement) {
+		event.stopPropagation();
+	}
+};
+
+// Update markdown when checkbox state changes
+const onCheckboxChange = (index: number) => {
+	const currentContent = props.content;
+	if (!currentContent) {
+		return;
+	}
+
+	// We are using index to connect the checkbox with the corresponding line in the markdown
+	const newContent = toggleCheckbox(currentContent, index);
+	$emit('update-content', newContent);
 };
 </script>
 
@@ -227,6 +281,14 @@ const onClick = (event: MouseEvent) => {
 	}
 }
 
+input[type='checkbox'] {
+	accent-color: var(--color-primary);
+}
+
+input[type='checkbox'] + label {
+	cursor: pointer;
+}
+
 .sticky {
 	color: var(--color-sticky-font);
 
@@ -280,6 +342,11 @@ const onClick = (event: MouseEvent) => {
 			font-size: var(--font-size-s);
 			font-weight: var(--font-weight-regular);
 			line-height: var(--font-line-height-regular);
+		}
+
+		&:has(input[type='checkbox']) {
+			list-style-type: none;
+			padding-left: var(--spacing-5xs);
 		}
 	}
 

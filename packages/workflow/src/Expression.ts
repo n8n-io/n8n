@@ -77,6 +77,10 @@ export class Expression {
 			throw new ApplicationError('invalid DateTime');
 		}
 
+		if (value === null) {
+			return 'null';
+		}
+
 		let typeName = value.constructor.name ?? 'Object';
 		if (DateTime.isDateTime(value)) {
 			typeName = 'DateTime';

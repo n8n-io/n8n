@@ -1,4 +1,3 @@
-import type { SuperAgentTest } from 'supertest';
 import type { User } from '@db/entities/User';
 import type { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 
@@ -13,10 +12,14 @@ import {
 } from '../shared/db/workflows';
 import {
 	createErrorExecution,
+	createExecution,
 	createManyExecutions,
 	createSuccessfulExecution,
 	createWaitingExecution,
 } from '../shared/db/executions';
+import type { SuperAgentTest } from '../shared/types';
+import { mockInstance } from '@test/mocking';
+import { Telemetry } from '@/telemetry';
 
 let owner: User;
 let user1: User;
@@ -25,6 +28,8 @@ let authOwnerAgent: SuperAgentTest;
 let authUser1Agent: SuperAgentTest;
 let authUser2Agent: SuperAgentTest;
 let workflowRunner: ActiveWorkflowManager;
+
+mockInstance(Telemetry);
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
@@ -119,6 +124,49 @@ describe('GET /executions/:id', () => {
 		const response = await authUser1Agent.get(`/executions/${execution.id}`);
 
 		expect(response.statusCode).toBe(200);
+	});
+
+	test('member should not be able to fetch custom data when includeData is not set', async () => {
+		const workflow = await createWorkflow({}, user1);
+		const execution = await createExecution(
+			{
+				finished: true,
+				status: 'success',
+				metadata: [
+					{ key: 'test1', value: 'value1' },
+					{ key: 'test2', value: 'value2' },
+				],
+			},
+			workflow,
+		);
+
+		const response = await authUser1Agent.get(`/executions/${execution.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.customData).toBeUndefined();
+	});
+
+	test('member should be able to fetch custom data when includeData=true', async () => {
+		const workflow = await createWorkflow({}, user1);
+		const execution = await createExecution(
+			{
+				finished: true,
+				status: 'success',
+				metadata: [
+					{ key: 'test1', value: 'value1' },
+					{ key: 'test2', value: 'value2' },
+				],
+			},
+			workflow,
+		);
+
+		const response = await authUser1Agent.get(`/executions/${execution.id}?includeData=true`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.customData).toEqual({
+			test1: 'value1',
+			test2: 'value2',
+		});
 	});
 
 	test('member should not get an execution of another user without the workflow being shared', async () => {
@@ -227,13 +275,10 @@ describe('GET /executions', () => {
 		expect(waitTill).toBeNull();
 	});
 
-	// failing on Postgres and MySQL - ref: https://github.com/n8n-io/n8n/pull/3834
-	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
-	test.skip('should paginate two executions', async () => {
+	test('should paginate two executions', async () => {
 		const workflow = await createWorkflow({}, owner);
 
 		const firstSuccessfulExecution = await createSuccessfulExecution(workflow);
-
 		const secondSuccessfulExecution = await createSuccessfulExecution(workflow);
 
 		await createErrorExecution(workflow);

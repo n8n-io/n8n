@@ -1,4 +1,4 @@
-import Container, { Service } from 'typedi';
+import { Service } from 'typedi';
 import { v4 as uuid } from 'uuid';
 import { type INode, type INodeCredentialsDetails } from 'n8n-workflow';
 
@@ -8,11 +8,11 @@ import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { TagRepository } from '@db/repositories/tag.repository';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { replaceInvalidCredentials } from '@/WorkflowHelpers';
+import { Project } from '@db/entities/Project';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { WorkflowTagMapping } from '@db/entities/WorkflowTagMapping';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { ICredentialsDb } from '@/Interfaces';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
 
 @Service()
 export class ImportService {
@@ -59,9 +59,7 @@ export class ImportService {
 				const upsertResult = await tx.upsert(WorkflowEntity, workflow, ['id']);
 				const workflowId = upsertResult.identifiers.at(0)?.id as string;
 
-				const personalProject = await Container.get(ProjectRepository).findOneByOrFail({
-					id: projectId,
-				});
+				const personalProject = await tx.findOneByOrFail(Project, { id: projectId });
 
 				// Create relationship if the workflow was inserted instead of updated.
 				if (!exists) {

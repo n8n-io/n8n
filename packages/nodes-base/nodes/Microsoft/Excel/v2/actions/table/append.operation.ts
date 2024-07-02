@@ -271,7 +271,7 @@ export async function execute(
 			}),
 		);
 	} catch (error) {
-		if (this.continueOnFail()) {
+		if (this.continueOnFail(error)) {
 			const itemData = generatePairedItemData(this.getInputData().length);
 			const executionErrorData = this.helpers.constructExecutionMetaData(
 				this.helpers.returnJsonArray({ error: error.message }),

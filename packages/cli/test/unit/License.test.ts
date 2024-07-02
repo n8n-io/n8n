@@ -48,6 +48,7 @@ describe('License', () => {
 			saveCertStr: expect.any(Function),
 			onFeatureChange: expect.any(Function),
 			collectUsageMetrics: expect.any(Function),
+			collectPassthroughData: expect.any(Function),
 			server: MOCK_SERVER_URL,
 			tenantId: 1,
 		});
@@ -68,6 +69,7 @@ describe('License', () => {
 			saveCertStr: expect.any(Function),
 			onFeatureChange: expect.any(Function),
 			collectUsageMetrics: expect.any(Function),
+			collectPassthroughData: expect.any(Function),
 			server: MOCK_SERVER_URL,
 			tenantId: 1,
 		});
@@ -250,6 +252,22 @@ describe('License', () => {
 					);
 				});
 			});
+		});
+	});
+
+	describe('reinit', () => {
+		it('should reinitialize license manager', async () => {
+			const license = new License(mock(), mock(), mock(), mock(), mock());
+			await license.init();
+
+			const initSpy = jest.spyOn(license, 'init');
+
+			await license.reinit();
+
+			expect(initSpy).toHaveBeenCalledWith('main', true);
+
+			expect(LicenseManager.prototype.reset).toHaveBeenCalled();
+			expect(LicenseManager.prototype.initialize).toHaveBeenCalled();
 		});
 	});
 });

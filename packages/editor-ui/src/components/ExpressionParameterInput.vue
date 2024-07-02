@@ -23,16 +23,17 @@ const inlineInput = ref<InstanceType<typeof InlineExpressionEditorInput>>();
 type Props = {
 	path: string;
 	modelValue: string;
-	isReadOnly: boolean;
-	rows: number;
-	isAssignment: boolean;
-	additionalExpressionData: IDataObject;
-	eventBus: EventBus;
+	rows?: number;
+	additionalExpressionData?: IDataObject;
+	eventBus?: EventBus;
+	isReadOnly?: boolean;
+	isAssignment?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	rows: 5,
 	isAssignment: false,
+	isReadOnly: false,
 	additionalExpressionData: () => ({}),
 	eventBus: () => createEventBus(),
 });

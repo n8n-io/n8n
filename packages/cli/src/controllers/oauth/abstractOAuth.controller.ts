@@ -1,6 +1,10 @@
 import { Service } from 'typedi';
+import Csrf from 'csrf';
+import type { Response } from 'express';
 import { Credentials } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import { jsonParse, ApplicationError } from 'n8n-workflow';
+
 import config from '@/config';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { User } from '@db/entities/User';
@@ -16,6 +20,11 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { UrlService } from '@/services/url.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
+export interface CsrfStateParam {
+	cid: string;
+	token: string;
+}
 
 @Service()
 export abstract class AbstractOAuthController {
@@ -107,5 +116,38 @@ export abstract class AbstractOAuthController {
 	/** Get a credential without user check */
 	protected async getCredentialWithoutUser(credentialId: string): Promise<ICredentialsDb | null> {
 		return await this.credentialsRepository.findOneBy({ id: credentialId });
+	}
+
+	protected createCsrfState(credentialsId: string): [string, string] {
+		const token = new Csrf();
+		const csrfSecret = token.secretSync();
+		const state: CsrfStateParam = {
+			token: token.create(csrfSecret),
+			cid: credentialsId,
+		};
+		return [csrfSecret, Buffer.from(JSON.stringify(state)).toString('base64')];
+	}
+
+	protected decodeCsrfState(encodedState: string): CsrfStateParam {
+		const errorMessage = 'Invalid state format';
+		const decoded = jsonParse<CsrfStateParam>(Buffer.from(encodedState, 'base64').toString(), {
+			errorMessage,
+		});
+		if (typeof decoded.cid !== 'string' || typeof decoded.token !== 'string') {
+			throw new ApplicationError(errorMessage);
+		}
+		return decoded;
+	}
+
+	protected verifyCsrfState(decrypted: ICredentialDataDecryptedObject, state: CsrfStateParam) {
+		const token = new Csrf();
+		return (
+			decrypted.csrfSecret === undefined ||
+			!token.verify(decrypted.csrfSecret as string, state.token)
+		);
+	}
+
+	protected renderCallbackError(res: Response, message: string, reason?: string) {
+		res.render('oauth-error-callback', { error: { message, reason } });
 	}
 }

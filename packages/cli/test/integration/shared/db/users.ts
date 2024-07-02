@@ -8,6 +8,7 @@ import { TOTPService } from '@/Mfa/totp.service';
 import { MfaService } from '@/Mfa/mfa.service';
 
 import { randomApiKey, randomEmail, randomName, randomValidPassword } from '../random';
+import { AuthUserRepository } from '@/databases/repositories/authUser.repository';
 
 // pre-computed bcrypt hash for the string 'password', using `await hash('password', 10)`
 const passwordHash = '$2a$10$njedH7S6V5898mj6p0Jr..IGY9Ms.qNwR7RbSzzX9yubJocKfvGGK';
@@ -58,14 +59,19 @@ export async function createUserWithMfaEnabled(
 		recoveryCodes,
 	);
 
+	const user = await createUser({
+		mfaEnabled: true,
+		password,
+		email,
+	});
+
+	await Container.get(AuthUserRepository).update(user.id, {
+		mfaSecret: encryptedSecret,
+		mfaRecoveryCodes: encryptedRecoveryCodes,
+	});
+
 	return {
-		user: await createUser({
-			mfaEnabled: true,
-			password,
-			email,
-			mfaSecret: encryptedSecret,
-			mfaRecoveryCodes: encryptedRecoveryCodes,
-		}),
+		user,
 		rawPassword: password,
 		rawSecret: secret,
 		rawRecoveryCodes: recoveryCodes,

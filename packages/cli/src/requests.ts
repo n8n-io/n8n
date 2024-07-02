@@ -3,6 +3,7 @@ import type {
 	BannerName,
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	ILoadOptions,
 	INodeCredentialTestRequest,
 	INodeCredentials,
 	INodeParameters,
@@ -23,6 +24,7 @@ import type { WorkflowHistory } from '@db/entities/WorkflowHistory';
 import type { Project, ProjectType } from '@db/entities/Project';
 import type { ProjectRole } from './databases/entities/ProjectRelation';
 import type { Scope } from '@n8n/permissions';
+import type { ScopesField } from './services/role.service';
 
 export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'lastName'> {
 	@Expose()
@@ -46,7 +48,7 @@ export class UserSettingsUpdatePayload {
 	@Expose()
 	@IsBoolean({ message: 'userActivated should be a boolean' })
 	@IsOptional()
-	userActivated: boolean;
+	userActivated?: boolean;
 
 	@Expose()
 	@IsBoolean({ message: 'allowSSOManualLogin should be a boolean' })
@@ -124,8 +126,6 @@ export namespace ListQuery {
 
 		type OwnedByField = { ownedBy: SlimUser | null; homeProject: SlimProject | null };
 
-		type ScopesField = { scopes: Scope[] };
-
 		export type Plain = BaseFields;
 
 		export type WithSharing = BaseFields & SharedField;
@@ -148,8 +148,6 @@ export namespace ListQuery {
 		type SharedField = Partial<Pick<CredentialsEntity, 'shared'>>;
 
 		type SharedWithField = { sharedWithProjects: SlimProject[] };
-
-		type ScopesField = { scopes: Scope[] };
 
 		export type WithSharing = CredentialsEntity & SharedField;
 
@@ -216,6 +214,19 @@ export declare namespace CredentialRequest {
 	type Test = AuthenticatedRequest<{}, {}, INodeCredentialTestRequest>;
 
 	type Share = AuthenticatedRequest<{ credentialId: string }, {}, { shareWithIds: string[] }>;
+
+	type Transfer = AuthenticatedRequest<
+		{ credentialId: string },
+		{},
+		{ destinationProjectId: string }
+	>;
+
+	type ForWorkflow = AuthenticatedRequest<
+		{},
+		{},
+		{},
+		{ workflowId: string } | { projectId: string }
+	>;
 }
 
 // ----------------------------------
@@ -377,7 +388,7 @@ export declare namespace OAuthRequest {
 			{},
 			{},
 			{},
-			{ oauth_verifier: string; oauth_token: string; cid: string }
+			{ oauth_verifier: string; oauth_token: string; state: string }
 		> & {
 			user?: User;
 		};
@@ -393,36 +404,32 @@ export declare namespace OAuthRequest {
 //      /dynamic-node-parameters
 // ----------------------------------
 export declare namespace DynamicNodeParametersRequest {
-	type BaseRequest<QueryParams = {}> = AuthenticatedRequest<
-		{
-			nodeTypeAndVersion: INodeTypeNameVersion;
-			currentNodeParameters: INodeParameters;
-			credentials?: INodeCredentials;
-		},
+	type BaseRequest<RequestBody = {}> = AuthenticatedRequest<
 		{},
 		{},
 		{
 			path: string;
-			nodeTypeAndVersion: string;
-			currentNodeParameters: string;
+			nodeTypeAndVersion: INodeTypeNameVersion;
+			currentNodeParameters: INodeParameters;
 			methodName?: string;
-			credentials?: string;
-		} & QueryParams
+			credentials?: INodeCredentials;
+		} & RequestBody,
+		{}
 	>;
 
-	/** GET /dynamic-node-parameters/options */
+	/** POST /dynamic-node-parameters/options */
 	type Options = BaseRequest<{
-		loadOptions?: string;
+		loadOptions?: ILoadOptions;
 	}>;
 
-	/** GET /dynamic-node-parameters/resource-locator-results */
+	/** POST /dynamic-node-parameters/resource-locator-results */
 	type ResourceLocatorResults = BaseRequest<{
 		methodName: string;
 		filter?: string;
 		paginationToken?: string;
 	}>;
 
-	/** GET dynamic-node-parameters/resource-mapper-fields */
+	/** POST dynamic-node-parameters/resource-mapper-fields */
 	type ResourceMapperFields = BaseRequest<{
 		methodName: string;
 	}>;
@@ -451,14 +458,6 @@ export declare namespace NodeRequest {
 	type Delete = AuthenticatedRequest<{}, {}, {}, { name: string }>;
 
 	type Update = Post;
-}
-
-// ----------------------------------
-//           /curl-to-json
-// ----------------------------------
-
-export declare namespace CurlHelper {
-	type ToJson = AuthenticatedRequest<{}, {}, { curlCommand?: string }>;
 }
 
 // ----------------------------------
@@ -605,4 +604,14 @@ export declare namespace ProjectRequest {
 		{ name?: string; relations?: ProjectRelationPayload[] }
 	>;
 	type Delete = AuthenticatedRequest<{ projectId: string }, {}, {}, { transferId?: string }>;
+}
+
+// ----------------------------------
+//           /nps-survey
+// ----------------------------------
+export declare namespace NpsSurveyRequest {
+	// can be refactored to
+	// type NpsSurveyUpdate = AuthenticatedRequest<{}, {}, NpsSurveyState>;
+	// once some schema validation is added
+	type NpsSurveyUpdate = AuthenticatedRequest<{}, {}, unknown>;
 }

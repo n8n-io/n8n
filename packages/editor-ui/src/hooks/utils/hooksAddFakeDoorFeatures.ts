@@ -1,6 +1,7 @@
 import { useUIStore } from '@/stores/ui.store';
 import type { IFakeDoor } from '@/Interface';
 import { FAKE_DOOR_FEATURES } from '@/constants';
+import type { BaseTextKey } from '@/plugins/i18n';
 
 export function compileFakeDoorFeatures(): IFakeDoor[] {
 	const store = useUIStore();
@@ -20,7 +21,7 @@ export function compileFakeDoorFeatures(): IFakeDoor[] {
 	if (loggingFeature) {
 		loggingFeature.actionBoxTitle += '.cloud';
 		loggingFeature.linkURL += '&edition=cloud';
-		loggingFeature.infoText = '';
+		loggingFeature.infoText = '' as BaseTextKey;
 	}
 
 	return fakeDoorFeatures;

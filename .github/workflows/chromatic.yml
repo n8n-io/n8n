@@ -2,27 +2,58 @@ name: Chromatic
 
 on:
   workflow_dispatch:
-  pull_request:
+  pull_request_review:
+    types: [submitted]
+    branch:
+      - 'master'
     paths:
       - packages/design-system/**
       - .github/workflows/chromatic.yml
 
+concurrency:
+  group: chromatic-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   chromatic:
+    if: ${{ github.event.review.state == 'approved' && !contains(github.event.pull_request.labels.*.name, 'community') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4.1.1
         with:
           fetch-depth: 0
       - run: corepack enable
-      - uses: actions/setup-node@v4.0.1
+      - uses: actions/setup-node@v4.0.2
         with:
-          node-version: 18.x
+          node-version: 20.x
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
 
       - name: Publish to Chromatic
-        uses: chromaui/action@latest
+        uses: chromaui/action@v11
+        id: chromatic_tests
+        continue-on-error: true
         with:
           workingDir: packages/design-system
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+          exitZeroOnChanges: false
+
+      - name: Success comment
+        if: steps.chromatic_tests.outcome == 'success'
+        uses: peter-evans/create-or-update-comment@v4.0.0
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          edit-mode: replace
+          body: |
+            :white_check_mark: No visual regressions found.
+
+      - name: Fail comment
+        if: steps.chromatic_tests.outcome != 'success'
+        uses: peter-evans/create-or-update-comment@v4.0.0
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          edit-mode: replace
+          body: |
+            [:warning: Visual regressions found](${{steps.chromatic_tests.outputs.url}}): ${{steps.chromatic_tests.outputs.changeCount}}

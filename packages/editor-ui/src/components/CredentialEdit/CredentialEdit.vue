@@ -115,10 +115,10 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
+import { defineComponent, type PropType } from 'vue';
 
-import type { ICredentialsResponse, IUser } from '@/Interface';
+import type { ICredentialsDecryptedResponse, ICredentialsResponse, IUser } from '@/Interface';
 
 import type {
 	CredentialInformation,
@@ -157,7 +157,8 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import type { ProjectSharingData } from '@/features/projects/projects.types';
+import type { ProjectSharingData } from '@/types/projects.types';
+import { assert } from '@/utils/assert';
 
 import {
 	getNodeAuthOptions,
@@ -167,7 +168,7 @@ import {
 import { isValidCredentialResponse, isCredentialModalState } from '@/utils/typeGuards';
 import { isExpression, isTestableExpression } from '@/utils/expressions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useProjectsStore } from '@/stores/projects.store';
 import type { CredentialScope } from '@n8n/permissions';
 
 export default defineComponent({
@@ -190,9 +191,11 @@ export default defineComponent({
 		activeId: {
 			type: [String, Number],
 			required: false,
+			default: undefined,
 		},
 		mode: {
-			type: String,
+			type: String as PropType<'new' | 'edit'>,
+			default: 'new',
 		},
 	},
 	setup() {
@@ -212,6 +215,7 @@ export default defineComponent({
 			credentialId: '',
 			credentialName: '',
 			credentialData: {} as ICredentialDataDecryptedObject,
+			currentCredential: null as ICredentialsResponse | ICredentialsDecryptedResponse | null,
 			modalBus: createEventBus(),
 			isDeleting: false,
 			isSaving: false,
@@ -273,13 +277,6 @@ export default defineComponent({
 		},
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
-		},
-		currentCredential(): ICredentialsResponse | null {
-			if (!this.credentialId) {
-				return null;
-			}
-
-			return this.credentialsStore.getCredentialById(this.credentialId);
 		},
 		credentialTypeName(): string | null {
 			if (this.mode === 'edit') {
@@ -380,13 +377,14 @@ export default defineComponent({
 				return [];
 			}
 
-			const properties = this.credentialType.properties.filter((propertyData: INodeProperties) => {
+			const credentialType = this.credentialType;
+			const properties = credentialType.properties.filter((propertyData: INodeProperties) => {
 				if (!this.displayCredentialParameter(propertyData)) {
 					return false;
 				}
 				return (
-					!this.credentialType!.__overwrittenProperties ||
-					!this.credentialType!.__overwrittenProperties.includes(propertyData.name)
+					!credentialType.__overwrittenProperties ||
+					!credentialType.__overwrittenProperties.includes(propertyData.name)
 				);
 			});
 
@@ -407,16 +405,17 @@ export default defineComponent({
 					continue;
 				}
 
-				if (property.type === 'string' && !this.credentialData[property.name]) {
+				const credentialProperty = this.credentialData[property.name];
+
+				if (property.type === 'string' && !credentialProperty) {
 					return false;
 				}
 
 				if (property.type === 'number') {
-					const isExpression =
-						typeof this.credentialData[property.name] === 'string' &&
-						this.credentialData[property.name].startsWith('=');
+					const containsExpression =
+						typeof credentialProperty === 'string' && credentialProperty.startsWith('=');
 
-					if (typeof this.credentialData[property.name] !== 'number' && !isExpression) {
+					if (typeof credentialProperty !== 'number' && !containsExpression) {
 						return false;
 					}
 				}
@@ -463,7 +462,7 @@ export default defineComponent({
 					credentialTypeName = this.activeNodeType.credentials[0].name;
 				}
 			}
-			return credentialTypeName || '';
+			return credentialTypeName ?? '';
 		},
 		showSaveButton(): boolean {
 			return (
@@ -638,9 +637,9 @@ export default defineComponent({
 			this.credentialId = (this.activeId ?? '') as string;
 
 			try {
-				const currentCredentials = (await this.credentialsStore.getCredentialData({
+				const currentCredentials = await this.credentialsStore.getCredentialData({
 					id: this.credentialId,
-				})) as unknown as ICredentialDataDecryptedObject;
+				});
 
 				if (!currentCredentials) {
 					throw new Error(
@@ -649,6 +648,8 @@ export default defineComponent({
 							this.credentialId,
 					);
 				}
+
+				this.currentCredential = currentCredentials;
 
 				this.credentialData = (currentCredentials.data as ICredentialDataDecryptedObject) || {};
 				if (currentCredentials.sharedWithProjects) {
@@ -664,7 +665,7 @@ export default defineComponent({
 					};
 				}
 
-				this.credentialName = currentCredentials.name as string;
+				this.credentialName = currentCredentials.name;
 			} catch (error) {
 				this.showError(
 					error,
@@ -757,7 +758,7 @@ export default defineComponent({
 		},
 
 		async retestCredential() {
-			if (!this.isCredentialTestable) {
+			if (!this.isCredentialTestable || !this.credentialTypeName) {
 				this.authError = '';
 				this.testedSuccessfully = false;
 
@@ -768,7 +769,7 @@ export default defineComponent({
 			const details: ICredentialsDecrypted = {
 				id: this.credentialId,
 				name: this.credentialName,
-				type: this.credentialTypeName!,
+				type: this.credentialTypeName,
 				data: credentialData,
 			};
 
@@ -801,20 +802,21 @@ export default defineComponent({
 			this.isSaving = true;
 
 			// Save only the none default data
+			assert(this.credentialType);
 			const data = NodeHelpers.getNodeParameters(
-				this.credentialType!.properties,
+				this.credentialType.properties,
 				this.credentialData as INodeParameters,
 				false,
 				false,
 				null,
 			);
 
+			assert(this.credentialTypeName);
 			const credentialDetails: ICredentialsDecrypted = {
 				id: this.credentialId,
 				name: this.credentialName,
-				type: this.credentialTypeName!,
+				type: this.credentialTypeName,
 				data: data as unknown as ICredentialDataDecryptedObject,
-				nodesAccess: [],
 			};
 
 			if (
@@ -825,7 +827,7 @@ export default defineComponent({
 					.sharedWithProjects as ProjectSharingData[];
 			}
 
-			let credential;
+			let credential: ICredentialsResponse | null = null;
 
 			const isNewCredential = this.mode === 'new' && !this.credentialId;
 
@@ -869,6 +871,7 @@ export default defineComponent({
 			this.isSaving = false;
 			if (credential) {
 				this.credentialId = credential.id;
+				this.currentCredential = credential;
 
 				if (this.isCredentialTestable) {
 					this.isTesting = true;
@@ -884,8 +887,9 @@ export default defineComponent({
 					this.testedSuccessfully = false;
 				}
 
-				const usesExternalSecrets = Object.entries(credentialDetails.data || {}).some(([, value]) =>
-					/=.*\{\{[^}]*\$secrets\.[^}]+}}.*/.test(`${value}`),
+				const usesExternalSecrets = Object.entries(credentialDetails.data || {}).some(
+					([, value]) =>
+						typeof value !== 'object' && /=.*\{\{[^}]*\$secrets\.[^}]+}}.*/.test(`${value}`),
 				);
 
 				const trackProperties: ITelemetryTrackProperties = {
@@ -954,7 +958,7 @@ export default defineComponent({
 		async updateCredential(
 			credentialDetails: ICredentialsDecrypted,
 		): Promise<ICredentialsResponse | null> {
-			let credential;
+			let credential: ICredentialsResponse | null = null;
 			try {
 				if (this.credentialPermissions.update) {
 					credential = await this.credentialsStore.updateCredential({
@@ -974,6 +978,14 @@ export default defineComponent({
 					this.isSharedWithChanged = false;
 				}
 				this.hasUnsavedChanges = false;
+
+				if (credential) {
+					await this.externalHooks.run('credential.saved', {
+						credential_type: credentialDetails.type,
+						credential_id: credential.id,
+						is_new: false,
+					});
+				}
 			} catch (error) {
 				this.showError(
 					error,
@@ -982,12 +994,6 @@ export default defineComponent({
 
 				return null;
 			}
-
-			await this.externalHooks.run('credential.saved', {
-				credential_type: credentialDetails.type,
-				credential_id: credential.id,
-				is_new: false,
-			});
 
 			// Now that the credentials changed check if any nodes use credentials
 			// which have now a different name
@@ -1085,20 +1091,17 @@ export default defineComponent({
 
 			const params =
 				'scrollbars=no,resizable=yes,status=no,titlebar=noe,location=no,toolbar=no,menubar=no,width=500,height=700';
-			const oauthPopup = window.open(url, 'OAuth2 Authorization', params);
+			const oauthPopup = window.open(url, 'OAuth Authorization', params);
 
 			this.credentialData = {
 				...this.credentialData,
 				oauthTokenData: null as unknown as CredentialInformation,
 			};
 
+			const oauthChannel = new BroadcastChannel('oauth-callback');
 			const receiveMessage = (event: MessageEvent) => {
-				// // TODO: Add check that it came from n8n
-				// if (event.origin !== 'http://example.org:8080') {
-				// 	return;
-				// }
 				if (event.data === 'success') {
-					window.removeEventListener('message', receiveMessage, false);
+					oauthChannel.removeEventListener('message', receiveMessage);
 
 					// Set some kind of data that status changes.
 					// As data does not get displayed directly it does not matter what data.
@@ -1107,16 +1110,13 @@ export default defineComponent({
 						oauthTokenData: {} as CredentialInformation,
 					};
 
-					this.credentialsStore.enableOAuthCredential(credential);
-
 					// Close the window
 					if (oauthPopup) {
 						oauthPopup.close();
 					}
 				}
 			};
-
-			window.addEventListener('message', receiveMessage, false);
+			oauthChannel.addEventListener('message', receiveMessage);
 		},
 		async onAuthTypeChanged(type: string): Promise<void> {
 			if (!this.activeNodeType?.credentials) {
@@ -1156,7 +1156,7 @@ export default defineComponent({
 
 			this.credentialData = {
 				...this.credentialData,
-				scopes,
+				scopes: scopes as unknown as CredentialInformation,
 				homeProject,
 			};
 		},

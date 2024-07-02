@@ -1,4 +1,4 @@
-import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { IAuthenticateGeneric, ICredentialType, INodeProperties, Icon } from 'n8n-workflow';
 
 export class F5BigIpApi implements ICredentialType {
 	name = 'f5BigIpApi';
@@ -7,7 +7,7 @@ export class F5BigIpApi implements ICredentialType {
 
 	documentationUrl = 'f5bigip';
 
-	icon = 'file:icons/F5.svg';
+	icon: Icon = 'file:icons/F5.svg';
 
 	httpRequestNode = {
 		name: 'F5 Big-IP',

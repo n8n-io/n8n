@@ -2,14 +2,12 @@
 import Modal from './Modal.vue';
 import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY, MODAL_CONFIRM } from '@/constants';
 import { computed, onMounted, ref } from 'vue';
-import type { PropType } from 'vue';
 import type { EventBus } from 'n8n-design-system/utils';
 import { useExternalSecretsProvider } from '@/composables/useExternalSecretsProvider';
 import { useI18n } from '@/composables/useI18n';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
-import { useUIStore } from '@/stores/ui.store';
 import ParameterInputExpanded from '@/components/ParameterInputExpanded.vue';
 import type {
 	IUpdateInformation,
@@ -21,12 +19,9 @@ import ExternalSecretsProviderImage from '@/components/ExternalSecretsProviderIm
 import ExternalSecretsProviderConnectionSwitch from '@/components/ExternalSecretsProviderConnectionSwitch.ee.vue';
 import { createEventBus } from 'n8n-design-system/utils';
 
-const props = defineProps({
-	data: {
-		type: Object as PropType<{ eventBus: EventBus; name: string }>,
-		default: () => ({}),
-	},
-});
+const props = defineProps<{
+	data: { eventBus: EventBus; name: string };
+}>();
 
 const defaultProviderData: Record<string, Partial<ExternalSecretsProviderData>> = {
 	infisical: {
@@ -35,7 +30,6 @@ const defaultProviderData: Record<string, Partial<ExternalSecretsProviderData>> 
 };
 
 const externalSecretsStore = useExternalSecretsStore();
-const uiStore = useUIStore();
 const toast = useToast();
 const i18n = useI18n();
 const { confirm } = useMessage();
@@ -102,10 +96,6 @@ onMounted(async () => {
 		toast.showError(error, 'Error');
 	}
 });
-
-function close() {
-	uiStore.closeModal(EXTERNAL_SECRETS_PROVIDER_MODAL_KEY);
-}
 
 function onValueChange(updateInformation: IUpdateInformation) {
 	providerData.value = {

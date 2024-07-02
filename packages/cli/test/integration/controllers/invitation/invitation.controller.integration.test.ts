@@ -26,7 +26,6 @@ import {
 
 import type { User } from '@/databases/entities/User';
 import type { UserInvitationResult } from '../../shared/utils/users';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 
 describe('InvitationController', () => {
@@ -38,12 +37,10 @@ describe('InvitationController', () => {
 
 	let instanceOwner: User;
 	let userRepository: UserRepository;
-	let projectRepository: ProjectRepository;
 	let projectRelationRepository: ProjectRelationRepository;
 
 	beforeAll(async () => {
 		userRepository = Container.get(UserRepository);
-		projectRepository = Container.get(ProjectRepository);
 		projectRelationRepository = Container.get(ProjectRelationRepository);
 		instanceOwner = await createOwner();
 	});

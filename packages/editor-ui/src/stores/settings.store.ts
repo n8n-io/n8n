@@ -6,22 +6,15 @@ import {
 	testLdapConnection,
 	updateLdapConfig,
 } from '@/api/ldap';
-import { getPromptsData, getSettings, submitContactInfo, submitValueSurvey } from '@/api/settings';
+import { getSettings, submitContactInfo } from '@/api/settings';
 import { testHealthEndpoint } from '@/api/templates';
-import type { EnterpriseEditionFeatureValue } from '@/Interface';
-import {
-	CONTACT_PROMPT_MODAL_KEY,
-	STORES,
-	VALUE_SURVEY_MODAL_KEY,
-	INSECURE_CONNECTION_WARNING,
-} from '@/constants';
 import type {
+	EnterpriseEditionFeatureValue,
 	ILdapConfig,
 	IN8nPromptResponse,
-	IN8nPrompts,
-	IN8nValueSurveyData,
 	ISettingsState,
 } from '@/Interface';
+import { STORES, INSECURE_CONNECTION_WARNING } from '@/constants';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import type {
 	IDataObject,
@@ -32,7 +25,7 @@ import type {
 } from 'n8n-workflow';
 import { ExpressionEvaluatorProxy } from 'n8n-workflow';
 import { defineStore } from 'pinia';
-import { useRootStore } from './n8nRoot.store';
+import { useRootStore } from './root.store';
 import { useUIStore } from './ui.store';
 import { useUsersStore } from './users.store';
 import { useVersionsStore } from './versions.store';
@@ -45,7 +38,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 	state: (): ISettingsState => ({
 		initialized: false,
 		settings: {} as IN8nUISettings,
-		promptsData: {} as IN8nPrompts,
 		userManagement: {
 			quota: -1,
 			showSetupOnFirstLoad: false,
@@ -270,11 +262,11 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		async getSettings(): Promise<void> {
 			const rootStore = useRootStore();
-			const settings = await getSettings(rootStore.getRestApiContext);
+			const settings = await getSettings(rootStore.restApiContext);
 
 			this.setSettings(settings);
 			this.settings.communityNodesEnabled = settings.communityNodesEnabled;
-			this.setAllowedModules(settings.allowedModules as { builtIn?: string; external?: string });
+			this.setAllowedModules(settings.allowedModules);
 			this.setSaveDataErrorExecution(settings.saveDataErrorExecution);
 			this.setSaveDataSuccessExecution(settings.saveDataSuccessExecution);
 			this.setSaveManualExecutions(settings.saveManualExecutions);
@@ -311,31 +303,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 				},
 			};
 		},
-		setPromptsData(promptsData: IN8nPrompts): void {
-			this.promptsData = promptsData;
-		},
 		setAllowedModules(allowedModules: { builtIn?: string[]; external?: string[] }): void {
 			this.settings.allowedModules = allowedModules;
-		},
-		async fetchPromptsData(): Promise<void> {
-			if (!this.isTelemetryEnabled) {
-				return;
-			}
-
-			const uiStore = useUIStore();
-			const usersStore = useUsersStore();
-			const promptsData: IN8nPrompts = await getPromptsData(
-				this.settings.instanceId,
-				usersStore.currentUserId || '',
-			);
-
-			if (promptsData && promptsData.showContactPrompt) {
-				uiStore.openModal(CONTACT_PROMPT_MODAL_KEY);
-			} else if (promptsData && promptsData.showValueSurvey) {
-				uiStore.openModal(VALUE_SURVEY_MODAL_KEY);
-			}
-
-			this.setPromptsData(promptsData);
 		},
 		async submitContactInfo(email: string): Promise<IN8nPromptResponse | undefined> {
 			try {
@@ -349,18 +318,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 				return;
 			}
 		},
-		async submitValueSurvey(params: IN8nValueSurveyData): Promise<IN8nPromptResponse | undefined> {
-			try {
-				const usersStore = useUsersStore();
-				return await submitValueSurvey(
-					this.settings.instanceId,
-					usersStore.currentUserId || '',
-					params,
-				);
-			} catch (error) {
-				return;
-			}
-		},
 		async testTemplatesEndpoint(): Promise<void> {
 			const timeout = new Promise((_, reject) => setTimeout(() => reject(), 2000));
 			await Promise.race([testHealthEndpoint(this.templatesHost), timeout]);
@@ -368,37 +325,37 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		async getApiKey(): Promise<string | null> {
 			const rootStore = useRootStore();
-			const { apiKey } = await getApiKey(rootStore.getRestApiContext);
+			const { apiKey } = await getApiKey(rootStore.restApiContext);
 			return apiKey;
 		},
 		async createApiKey(): Promise<string | null> {
 			const rootStore = useRootStore();
-			const { apiKey } = await createApiKey(rootStore.getRestApiContext);
+			const { apiKey } = await createApiKey(rootStore.restApiContext);
 			return apiKey;
 		},
 		async deleteApiKey(): Promise<void> {
 			const rootStore = useRootStore();
-			await deleteApiKey(rootStore.getRestApiContext);
+			await deleteApiKey(rootStore.restApiContext);
 		},
 		async getLdapConfig() {
 			const rootStore = useRootStore();
-			return await getLdapConfig(rootStore.getRestApiContext);
+			return await getLdapConfig(rootStore.restApiContext);
 		},
 		async getLdapSynchronizations(pagination: { page: number }) {
 			const rootStore = useRootStore();
-			return await getLdapSynchronizations(rootStore.getRestApiContext, pagination);
+			return await getLdapSynchronizations(rootStore.restApiContext, pagination);
 		},
 		async testLdapConnection() {
 			const rootStore = useRootStore();
-			return await testLdapConnection(rootStore.getRestApiContext);
+			return await testLdapConnection(rootStore.restApiContext);
 		},
 		async updateLdapConfig(ldapConfig: ILdapConfig) {
 			const rootStore = useRootStore();
-			return await updateLdapConfig(rootStore.getRestApiContext, ldapConfig);
+			return await updateLdapConfig(rootStore.restApiContext, ldapConfig);
 		},
 		async runLdapSync(data: IDataObject) {
 			const rootStore = useRootStore();
-			return await runLdapSync(rootStore.getRestApiContext, data);
+			return await runLdapSync(rootStore.restApiContext, data);
 		},
 		setSaveDataErrorExecution(newValue: string) {
 			this.saveDataErrorExecution = newValue;
@@ -411,7 +368,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		async getTimezones(): Promise<IDataObject> {
 			const rootStore = useRootStore();
-			return await makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/options/timezones');
+			return await makeRestApiRequest(rootStore.restApiContext, 'GET', '/options/timezones');
 		},
 	},
 });

@@ -26,7 +26,7 @@ describe('test GoogleDriveV2: folder deleteFolder', () => {
 		jest.unmock('../../../../v2/transport');
 	});
 
-	it('shuold be called with PATCH', async () => {
+	it('should be called with PATCH', async () => {
 		const nodeParameters = {
 			resource: 'folder',
 			operation: 'deleteFolder',
@@ -52,7 +52,7 @@ describe('test GoogleDriveV2: folder deleteFolder', () => {
 		);
 	});
 
-	it('shuold be called with DELETE', async () => {
+	it('should be called with DELETE', async () => {
 		const nodeParameters = {
 			resource: 'folder',
 			operation: 'deleteFolder',

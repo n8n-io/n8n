@@ -39,10 +39,7 @@ function getOutputParserSchema(outputParser: BaseOutputParser): ZodObject<any, a
 	return schema;
 }
 
-export async function toolsAgentExecute(
-	this: IExecuteFunctions,
-	nodeVersion: number,
-): Promise<INodeExecutionData[][]> {
+export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	this.logger.verbose('Executing Tools Agent');
 	const model = await this.getInputConnectionData(NodeConnectionType.AiLanguageModel, 0);
 
@@ -158,11 +155,19 @@ export async function toolsAgentExecute(
 				throw new NodeOperationError(this.getNode(), 'The ‘text parameter is empty.');
 			}
 
+			// OpenAI doesn't allow empty tools array so we will provide a more user-friendly error message
+			if (model.lc_namespace.includes('openai') && tools.length === 0) {
+				throw new NodeOperationError(
+					this.getNode(),
+					"Please connect at least one tool. If you don't need any, try the conversational agent instead",
+				);
+			}
+
 			const response = await executor.invoke({
 				input,
 				system_message: options.systemMessage ?? SYSTEM_MESSAGE,
 				formatting_instructions:
-					'IMPORTANT: Always call `format_final_response` to format your final response!', //outputParser?.getFormatInstructions(),
+					'IMPORTANT: Always call `format_final_response` to format your final response!',
 			});
 
 			returnData.push({
@@ -176,7 +181,7 @@ export async function toolsAgentExecute(
 				),
 			});
 		} catch (error) {
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(error)) {
 				returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
 				continue;
 			}
@@ -185,5 +190,5 @@ export async function toolsAgentExecute(
 		}
 	}
 
-	return await this.prepareOutputData(returnData);
+	return [returnData];
 }

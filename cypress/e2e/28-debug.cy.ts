@@ -1,7 +1,6 @@
 import {
 	HTTP_REQUEST_NODE_NAME,
 	IF_NODE_NAME,
-	INSTANCE_OWNER,
 	MANUAL_TRIGGER_NODE_NAME,
 	EDIT_FIELDS_SET_NODE_NAME,
 } from '../constants';
@@ -21,7 +20,7 @@ describe('Debug', () => {
 		cy.intercept('GET', '/rest/executions/*').as('getExecution');
 		cy.intercept('POST', '/rest/workflows/**/run').as('postWorkflowRun');
 
-		cy.signin({ email: INSTANCE_OWNER.email, password: INSTANCE_OWNER.password });
+		cy.signinAsOwner();
 
 		workflowPage.actions.visit();
 

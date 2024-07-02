@@ -1,53 +1,58 @@
 import { addVarType } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
-import { defineComponent } from 'vue';
 
 const escape = (str: string) => str.replace('$', '\\$');
 
-export const secretsCompletions = defineComponent({
-	methods: {
-		/**
-		 * Complete `$secrets.` to `$secrets.providerName` and `$secrets.providerName.secretName`.
-		 */
-		secretsCompletions(context: CompletionContext, matcher = '$secrets'): CompletionResult | null {
-			const pattern = new RegExp(`${escape(matcher)}\..*`);
-			const preCursor = context.matchBefore(pattern);
+export function useSecretsCompletions() {
+	const externalSecretsStore = useExternalSecretsStore();
 
-			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
+	/**
+	 * Complete `$secrets.` to `$secrets.providerName` and `$secrets.providerName.secretName`.
+	 */
+	const secretsCompletions = (
+		context: CompletionContext,
+		matcher = '$secrets',
+	): CompletionResult | null => {
+		const pattern = new RegExp(`${escape(matcher)}\..*`);
+		const preCursor = context.matchBefore(pattern);
 
-			const provider = preCursor.text.split('.')[1];
-			const externalSecretsStore = useExternalSecretsStore();
-			let options: Completion[];
+		if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
 
-			const optionsForObject = (leftSide: string, object: object): Completion[] => {
-				return Object.entries(object).flatMap(([key, value]) => {
-					if (typeof value === 'object' && value !== null) {
-						return optionsForObject(`${leftSide}.${key}`, value);
-					}
-					return {
-						label: `${leftSide}.${key}`,
-						info: '*******',
-					};
-				});
-			};
+		const provider = preCursor.text.split('.')[1];
+		let options: Completion[];
 
-			if (provider) {
-				options = optionsForObject(
-					`${matcher}.${provider}`,
-					externalSecretsStore.secretsAsObject[provider],
-				);
-			} else {
-				options = Object.keys(externalSecretsStore.secretsAsObject).map((provider) => ({
-					label: `${matcher}.${provider}`,
-					info: JSON.stringify(externalSecretsStore.secretsAsObject[provider]),
-				}));
-			}
+		const optionsForObject = (leftSide: string, object: Record<string, unknown>): Completion[] => {
+			return Object.entries(object).flatMap(([key, value]) => {
+				if (typeof value === 'object' && value !== null) {
+					return optionsForObject(`${leftSide}.${key}`, value as Record<string, unknown>);
+				}
+				return {
+					label: `${leftSide}.${key}`,
+					info: '*******',
+				};
+			});
+		};
 
-			return {
-				from: preCursor.from,
-				options: options.map(addVarType),
-			};
-		},
-	},
-});
+		if (provider) {
+			options = optionsForObject(
+				`${matcher}.${provider}`,
+				externalSecretsStore.secretsAsObject[provider] as Record<string, unknown>,
+			);
+		} else {
+			options = Object.keys(externalSecretsStore.secretsAsObject).map((providerB) => ({
+				label: `${matcher}.${providerB}`,
+				info: JSON.stringify(externalSecretsStore.secretsAsObject[providerB]),
+			}));
+		}
+
+		return {
+			from: preCursor.from,
+			options: options.map(addVarType),
+		};
+	};
+
+	return {
+		secretsCompletions,
+	};
+}

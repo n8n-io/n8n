@@ -2,9 +2,7 @@ import type {
 	NavigationGuardNext,
 	NavigationGuardWithThis,
 	RouteLocationNormalized,
-	RouteLocation,
 } from 'vue-router';
-import type { IPermissions } from '@/Interface';
 import type {
 	AuthenticatedPermissionOptions,
 	CustomPermissionOptions,
@@ -31,24 +29,6 @@ export type MiddlewareOptions = {
 	rbac: RBACPermissionOptions;
 	role: RolePermissionOptions;
 };
-
-export interface RouteConfig {
-	meta: {
-		nodeView?: boolean;
-		templatesEnabled?: boolean;
-		getRedirect?: () => { name: string } | false;
-		permissions?: IPermissions;
-		middleware?: RouterMiddlewareType[];
-		middlewareOptions?: Partial<MiddlewareOptions>;
-		telemetry?: {
-			disabled?: true;
-			getProperties: (route: RouteLocation) => object;
-		};
-		scrollOffset?: number;
-		setScrollPosition?: (position: number) => void;
-		readOnlyCanvas?: boolean;
-	};
-}
 
 export type RouterMiddlewareReturnType = ReturnType<NavigationGuardWithThis<undefined>>;
 
