@@ -115,10 +115,11 @@ export function useHistoryHelper(activeRoute: RouteLocationNormalizedLoaded) {
 	function handleKeyDown(event: KeyboardEvent) {
 		const currentNodeViewTab = getNodeViewTab(activeRoute);
 		const isNDVOpen = ndvStore.isNDVOpen;
+		const isAnyModalOpen = uiStore.isAnyModalOpen || isMessageDialogOpen();
 		const undoKeysPressed = isCtrlKeyPressed(event) && event.key.toLowerCase() === 'z';
 
 		if (event.repeat || currentNodeViewTab !== MAIN_HEADER_TABS.WORKFLOW) return;
-		if (isNDVOpen || isMessageDialogOpen()) {
+		if (isNDVOpen || isAnyModalOpen) {
 			if (isNDVOpen && undoKeysPressed && !event.shiftKey) {
 				trackUndoAttempt();
 			}

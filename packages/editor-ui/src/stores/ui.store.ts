@@ -383,6 +383,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		return Number(style.getPropertyValue('--header-height'));
 	});
 
+	const isAnyModalOpen = computed(() => {
+		return modalStack.value.length > 0;
+	});
+
 	// Methods
 
 	const setTheme = (newTheme: ThemeOption): void => {
@@ -697,6 +701,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		theme,
 		modals,
 		currentView,
+		isAnyModalOpen,
 		setTheme,
 		setMode,
 		setActiveId,
