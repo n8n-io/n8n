@@ -7,6 +7,7 @@ import type {
 	VariableScope,
 } from '@n8n/permissions';
 import type { Project } from '@/types/projects.types';
+import { isObject } from '@/utils/objectUtils';
 
 type ExtractScopePrefixSuffix<T> = T extends `${infer Prefix}:${infer Suffix}`
 	? [Prefix, Suffix]
@@ -88,7 +89,7 @@ export const getResourcePermissions = (
 		return {
 			...permissions,
 			[prefix]: {
-				...(permissions[prefix] ?? {}),
+				...(prefix in permissions && isObject(permissions[prefix]) ? permissions[prefix] : {}),
 				[suffix]: true,
 			},
 		};
