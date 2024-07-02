@@ -139,7 +139,10 @@ const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const nodeHelpers = useNodeHelpers();
 const { debounce } = useDebounce();
-const emit = defineEmits(['switchSelectedNode', 'openConnectionNodeCreator']);
+const emit = defineEmits<{
+	(event: 'switchSelectedNode', nodeName: string): void;
+	(event: 'openConnectionNodeCreator', nodeName: string, connectionType: ConnectionTypes): void;
+}>();
 
 interface NodeConfig {
 	node: INodeUi;

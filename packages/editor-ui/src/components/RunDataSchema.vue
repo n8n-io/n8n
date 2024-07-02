@@ -66,7 +66,9 @@ const { getSchemaForExecutionData, filterSchema } = useDataSchema();
 const { getNodeInputData } = useNodeHelpers();
 const { debounce } = useDebounce();
 
-const emit = defineEmits<{ (event: 'clear:search'): void }>();
+const emit = defineEmits<{
+	(event: 'clear:search'): void;
+}>();
 
 const nodeSchema = computed(() =>
 	filterSchema(getSchemaForExecutionData(props.data ?? []), props.search),
@@ -315,7 +317,9 @@ watch(
 						v-if="currentNode.schema || search"
 						:class="[$style.schema, $style.animated]"
 						data-test-id="run-data-schema-node-schema"
-						@transitionstart="(event) => onTransitionStart(event, currentNode.node.name)"
+						@transitionstart="
+							(event: TransitionEvent) => onTransitionStart(event, currentNode.node.name)
+						"
 					>
 						<div :class="$style.innerSchema" @transitionstart.stop>
 							<div

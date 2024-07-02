@@ -61,8 +61,8 @@
 						@run-workflow="onRunNode"
 						@moved="onNodeMoved"
 						@run="onNodeRun"
-						@remove-node="(name) => removeNode(name, true)"
-						@toggle-disable-node="(node) => toggleActivationNodes([node])"
+						@remove-node="(name: string) => removeNode(name, true)"
+						@toggle-disable-node="(node: INode) => toggleActivationNodes([node])"
 					>
 						<template #custom-tooltip>
 							<span
@@ -84,7 +84,7 @@
 						@deselect-all-nodes="deselectAllNodes"
 						@deselect-node="nodeDeselectedByName"
 						@node-selected="nodeSelectedByName"
-						@remove-node="(name) => removeNode(name, true)"
+						@remove-node="(name: string) => removeNode(name, true)"
 					/>
 				</div>
 			</div>

@@ -11,7 +11,7 @@
 		:show-tooltip="showTooltip"
 		:tooltip-position="tooltipPosition"
 		:badge="badge"
-		@click="emit('click')"
+		@click="$emit('click')"
 	></n8n-node-icon>
 </template>
 
@@ -56,7 +56,7 @@ const props = withDefaults(defineProps<Props>(), {
 	nodeName: '',
 });
 
-const emit = defineEmits<{
+const $emit = defineEmits<{
 	(event: 'click'): void;
 }>();
 

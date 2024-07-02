@@ -144,7 +144,7 @@ function optionSelected(action: 'clearAll' | 'addAll') {
 						:issues="getIssues(index)"
 						:class="$style.assignment"
 						:is-read-only="isReadOnly"
-						@update:model-value="(value) => onAssignmentUpdate(index, value)"
+						@update:model-value="(value: AssignmentValue) => onAssignmentUpdate(index, value)"
 						@remove="() => onAssignmentRemove(index)"
 					>
 					</Assignment>
