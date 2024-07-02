@@ -15,7 +15,7 @@ export const vitestConfig = defineVitestConfig({
 					coverage: {
 						enabled: true,
 						provider: 'v8',
-						reporter: process.env.CI === 'true' ? 'cobertura' : 'text-summary',
+						reporter: process.env.CI === 'true' ? 'lcovonly' : 'text-summary',
 						all: true,
 					},
 				}
