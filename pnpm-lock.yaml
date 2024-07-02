@@ -217,6 +217,15 @@ importers:
         specifier: ^1.7.0
         version: 1.7.0
 
+  packages/@n8n/config:
+    dependencies:
+      reflect-metadata:
+        specifier: 0.2.2
+        version: 0.2.2
+      typedi:
+        specifier: 0.10.0
+        version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
+
   packages/@n8n/imap:
     dependencies:
       iconv-lite:
@@ -541,6 +550,9 @@ importers:
       '@n8n/client-oauth2':
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
+      '@n8n/config':
+        specifier: workspace:*
+        version: link:../@n8n/config
       '@n8n/localtunnel':
         specifier: 2.1.0
         version: 2.1.0

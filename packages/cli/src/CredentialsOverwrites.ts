@@ -1,7 +1,7 @@
 import { Service } from 'typedi';
+import { GlobalConfig } from '@n8n/config';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { deepCopy, jsonParse } from 'n8n-workflow';
-import config from '@/config';
 import type { ICredentialsOverwrite } from '@/Interfaces';
 import { CredentialTypes } from '@/CredentialTypes';
 import { Logger } from '@/Logger';
@@ -13,10 +13,11 @@ export class CredentialsOverwrites {
 	private resolvedTypes: string[] = [];
 
 	constructor(
+		globalConfig: GlobalConfig,
 		private readonly credentialTypes: CredentialTypes,
 		private readonly logger: Logger,
 	) {
-		const data = config.getEnv('credentials.overwrite.data');
+		const data = globalConfig.credentials.overwrite.data;
 		const overwriteData = jsonParse<ICredentialsOverwrite>(data, {
 			errorMessage: 'The credentials-overwrite is not valid JSON.',
 		});

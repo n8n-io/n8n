@@ -1,6 +1,6 @@
 import { Service } from 'typedi';
+import { GlobalConfig } from '@n8n/config';
 import { DataSource, MoreThanOrEqual, QueryFailedError, Repository } from '@n8n/typeorm';
-import config from '@/config';
 import { StatisticsNames, WorkflowStatistics } from '../entities/WorkflowStatistics';
 import type { User } from '@/databases/entities/User';
 
@@ -9,9 +9,10 @@ type StatisticsUpsertResult = StatisticsInsertResult | 'update';
 
 @Service()
 export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics> {
-	private readonly dbType = config.getEnv('database.type');
-
-	constructor(dataSource: DataSource) {
+	constructor(
+		dataSource: DataSource,
+		private readonly globalConfig: GlobalConfig,
+	) {
 		super(WorkflowStatistics, dataSource.manager);
 	}
 
@@ -49,9 +50,10 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 		eventName: StatisticsNames,
 		workflowId: string,
 	): Promise<StatisticsUpsertResult> {
+		const dbType = this.globalConfig.database.type;
 		const { tableName } = this.metadata;
 		try {
-			if (this.dbType === 'sqlite') {
+			if (dbType === 'sqlite') {
 				await this.query(
 					`INSERT INTO "${tableName}" ("count", "name", "workflowId", "latestEvent")
 					VALUES (1, "${eventName}", "${workflowId}", CURRENT_TIMESTAMP)
@@ -70,7 +72,7 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 				});
 
 				return counter?.count === 1 ? 'insert' : 'failed';
-			} else if (this.dbType === 'postgresdb') {
+			} else if (dbType === 'postgresdb') {
 				const queryResult = (await this.query(
 					`INSERT INTO "${tableName}" ("count", "name", "workflowId", "latestEvent")
 					VALUES (1, '${eventName}', '${workflowId}', CURRENT_TIMESTAMP)

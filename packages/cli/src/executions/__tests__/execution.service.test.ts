@@ -21,6 +21,7 @@ describe('ExecutionService', () => {
 
 	const executionService = new ExecutionService(
 		mock(),
+		mock(),
 		queue,
 		activeExecutions,
 		executionRepository,

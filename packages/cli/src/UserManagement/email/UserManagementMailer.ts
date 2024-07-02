@@ -3,9 +3,8 @@ import { existsSync } from 'fs';
 import { readFile } from 'fs/promises';
 import Handlebars from 'handlebars';
 import { join as pathJoin } from 'path';
-import { ApplicationError } from 'n8n-workflow';
+import { GlobalConfig } from '@n8n/config';
 
-import config from '@/config';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { UserRepository } from '@db/repositories/user.repository';
@@ -22,42 +21,25 @@ import { EventRelay } from '@/eventbus/event-relay.service';
 type Template = HandlebarsTemplateDelegate<unknown>;
 type TemplateName = 'invite' | 'passwordReset' | 'workflowShared' | 'credentialsShared';
 
-const templates: Partial<Record<TemplateName, Template>> = {};
-
-async function getTemplate(
-	templateName: TemplateName,
-	defaultFilename = `${templateName}.html`,
-): Promise<Template> {
-	let template = templates[templateName];
-	if (!template) {
-		const templateOverride = config.getEnv(`userManagement.emails.templates.${templateName}`);
-
-		let markup;
-		if (templateOverride && existsSync(templateOverride)) {
-			markup = await readFile(templateOverride, 'utf-8');
-		} else {
-			markup = await readFile(pathJoin(__dirname, `templates/${defaultFilename}`), 'utf-8');
-		}
-		template = Handlebars.compile(markup);
-		templates[templateName] = template;
-	}
-	return template;
-}
-
 @Service()
 export class UserManagementMailer {
 	readonly isEmailSetUp: boolean;
 
-	private mailer: NodeMailer | undefined;
+	readonly templateOverrides: GlobalConfig['userManagement']['emails']['template'];
+
+	readonly templatesCache: Partial<Record<TemplateName, Template>> = {};
+
+	readonly mailer: NodeMailer | undefined;
 
 	constructor(
-		private readonly userRepository: UserRepository,
+		globalConfig: GlobalConfig,
 		private readonly logger: Logger,
+		private readonly userRepository: UserRepository,
 		private readonly urlService: UrlService,
 	) {
-		this.isEmailSetUp =
-			config.getEnv('userManagement.emails.mode') === 'smtp' &&
-			config.getEnv('userManagement.emails.smtp.host') !== '';
+		const emailsConfig = globalConfig.userManagement.emails;
+		this.isEmailSetUp = emailsConfig.mode === 'smtp' && emailsConfig.smtp.host !== '';
+		this.templateOverrides = emailsConfig.template;
 
 		// Other implementations can be used in the future.
 		if (this.isEmailSetUp) {
@@ -65,15 +47,11 @@ export class UserManagementMailer {
 		}
 	}
 
-	async verifyConnection(): Promise<void> {
-		if (!this.mailer) throw new ApplicationError('No mailer configured.');
-
-		return await this.mailer.verifyConnection();
-	}
-
 	async invite(inviteEmailData: InviteEmailData): Promise<SendEmailResult> {
-		const template = await getTemplate('invite');
-		const result = await this.mailer?.sendMail({
+		if (!this.mailer) return { emailSent: false };
+
+		const template = await this.getTemplate('invite');
+		const result = await this.mailer.sendMail({
 			emailRecipients: inviteEmailData.email,
 			subject: 'You have been invited to n8n',
 			body: template(inviteEmailData),
@@ -85,8 +63,10 @@ export class UserManagementMailer {
 	}
 
 	async passwordReset(passwordResetData: PasswordResetData): Promise<SendEmailResult> {
-		const template = await getTemplate('passwordReset', 'passwordReset.html');
-		const result = await this.mailer?.sendMail({
+		if (!this.mailer) return { emailSent: false };
+
+		const template = await this.getTemplate('passwordReset', 'passwordReset.html');
+		const result = await this.mailer.sendMail({
 			emailRecipients: passwordResetData.email,
 			subject: 'n8n password reset',
 			body: template(passwordResetData),
@@ -105,16 +85,16 @@ export class UserManagementMailer {
 		sharer: User;
 		newShareeIds: string[];
 		workflow: WorkflowEntity;
-	}) {
-		if (!this.mailer) return;
+	}): Promise<SendEmailResult> {
+		if (!this.mailer) return { emailSent: false };
 
 		const recipients = await this.userRepository.getEmailsByIds(newShareeIds);
 
-		if (recipients.length === 0) return;
+		if (recipients.length === 0) return { emailSent: false };
 
 		const emailRecipients = recipients.map(({ email }) => email);
 
-		const populateTemplate = await getTemplate('workflowShared', 'workflowShared.html');
+		const populateTemplate = await this.getTemplate('workflowShared', 'workflowShared.html');
 
 		const baseUrl = this.urlService.getInstanceBaseUrl();
 
@@ -164,16 +144,16 @@ export class UserManagementMailer {
 		sharer: User;
 		newShareeIds: string[];
 		credentialsName: string;
-	}) {
-		if (!this.mailer) return;
+	}): Promise<SendEmailResult> {
+		if (!this.mailer) return { emailSent: false };
 
 		const recipients = await this.userRepository.getEmailsByIds(newShareeIds);
 
-		if (recipients.length === 0) return;
+		if (recipients.length === 0) return { emailSent: false };
 
 		const emailRecipients = recipients.map(({ email }) => email);
 
-		const populateTemplate = await getTemplate('credentialsShared', 'credentialsShared.html');
+		const populateTemplate = await this.getTemplate('credentialsShared', 'credentialsShared.html');
 
 		const baseUrl = this.urlService.getInstanceBaseUrl();
 
@@ -213,5 +193,23 @@ export class UserManagementMailer {
 
 			throw new InternalServerError(`Please contact your administrator: ${error.message}`);
 		}
+	}
+
+	async getTemplate(
+		templateName: TemplateName,
+		defaultFilename = `${templateName}.html`,
+	): Promise<Template> {
+		let template = this.templatesCache[templateName];
+		if (!template) {
+			const templateOverride = this.templateOverrides[templateName];
+			const templatePath =
+				templateOverride && existsSync(templateOverride)
+					? templateOverride
+					: pathJoin(__dirname, `templates/${defaultFilename}`);
+			const markup = await readFile(templatePath, 'utf-8');
+			template = Handlebars.compile(markup);
+			this.templatesCache[templateName] = template;
+		}
+		return template;
 	}
 }

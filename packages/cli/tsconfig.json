@@ -22,6 +22,7 @@
 		{ "path": "../workflow/tsconfig.build.json" },
 		{ "path": "../core/tsconfig.build.json" },
 		{ "path": "../@n8n/client-oauth2/tsconfig.build.json" },
+		{ "path": "../@n8n/config/tsconfig.build.json" },
 		{ "path": "../@n8n/permissions/tsconfig.build.json" }
 	]
 }

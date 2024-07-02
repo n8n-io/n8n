@@ -1,19 +1,19 @@
 import Container from 'typedi';
-
+import { GlobalConfig } from '@n8n/config';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { Not, LessThanOrEqual } from '@n8n/typeorm';
-
-import config from '@/config';
-import { ExecutionEntity } from '@db/entities/ExecutionEntity';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
-import { mockEntityManager } from '../../shared/mocking';
-import { mockInstance } from '../../shared/mocking';
 import { BinaryDataService } from 'n8n-core';
 import { nanoid } from 'nanoid';
 import { mock } from 'jest-mock-extended';
 
+import { ExecutionEntity } from '@db/entities/ExecutionEntity';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { mockEntityManager } from '../../shared/mocking';
+import { mockInstance } from '../../shared/mocking';
+
 describe('ExecutionRepository', () => {
 	const entityManager = mockEntityManager(ExecutionEntity);
+	const globalConfig = mockInstance(GlobalConfig);
 	const binaryDataService = mockInstance(BinaryDataService);
 	const executionRepository = Container.get(ExecutionRepository);
 	const mockDate = new Date('2023-12-28 12:34:56.789Z');
@@ -26,10 +26,10 @@ describe('ExecutionRepository', () => {
 	afterAll(() => jest.useRealTimers());
 
 	describe('getWaitingExecutions()', () => {
-		test.each(['sqlite', 'postgres'])(
+		test.each(['sqlite', 'postgresdb'] as const)(
 			'on %s, should be called with expected args',
 			async (dbType) => {
-				jest.spyOn(config, 'getEnv').mockReturnValueOnce(dbType);
+				globalConfig.database.type = dbType;
 				entityManager.find.mockResolvedValueOnce([]);
 
 				await executionRepository.getWaitingExecutions();

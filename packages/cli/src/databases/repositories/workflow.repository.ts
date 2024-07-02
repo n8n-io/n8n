@@ -1,4 +1,5 @@
 import { Service } from 'typedi';
+import { GlobalConfig } from '@n8n/config';
 import {
 	DataSource,
 	Repository,
@@ -18,7 +19,10 @@ import { WebhookEntity } from '../entities/WebhookEntity';
 
 @Service()
 export class WorkflowRepository extends Repository<WorkflowEntity> {
-	constructor(dataSource: DataSource) {
+	constructor(
+		dataSource: DataSource,
+		private readonly globalConfig: GlobalConfig,
+	) {
 		super(WorkflowEntity, dataSource.manager);
 	}
 
@@ -73,12 +77,13 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 	async updateWorkflowTriggerCount(id: string, triggerCount: number): Promise<UpdateResult> {
 		const qb = this.createQueryBuilder('workflow');
+		const dbType = this.globalConfig.database.type;
 		return await qb
 			.update()
 			.set({
 				triggerCount,
 				updatedAt: () => {
-					if (['mysqldb', 'mariadb'].includes(config.getEnv('database.type'))) {
+					if (['mysqldb', 'mariadb'].includes(dbType)) {
 						return 'updatedAt';
 					}
 					return '"updatedAt"';

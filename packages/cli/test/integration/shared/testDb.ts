@@ -1,10 +1,10 @@
+import { Container } from 'typedi';
 import type { DataSourceOptions, Repository } from '@n8n/typeorm';
 import { DataSource as Connection } from '@n8n/typeorm';
-import { Container } from 'typedi';
+import { GlobalConfig } from '@n8n/config';
 import type { Class } from 'n8n-core';
 import { randomString } from 'n8n-workflow';
 
-import config from '@/config';
 import * as Db from '@/Db';
 import { getOptionOverrides } from '@db/config';
 
@@ -14,7 +14,8 @@ export const testDbPrefix = 'n8n_test_';
  * Initialize one test DB per suite run, with bootstrap connection if needed.
  */
 export async function init() {
-	const dbType = config.getEnv('database.type');
+	const globalConfig = Container.get(GlobalConfig);
+	const dbType = globalConfig.database.type;
 	const testDbName = `${testDbPrefix}${randomString(6, 10).toLowerCase()}_${Date.now()}`;
 
 	if (dbType === 'postgresdb') {
@@ -24,13 +25,13 @@ export async function init() {
 		await bootstrapPostgres.query(`CREATE DATABASE ${testDbName}`);
 		await bootstrapPostgres.destroy();
 
-		config.set('database.postgresdb.database', testDbName);
+		globalConfig.database.postgresdb.database = testDbName;
 	} else if (dbType === 'mysqldb' || dbType === 'mariadb') {
 		const bootstrapMysql = await new Connection(getBootstrapDBOptions('mysqldb')).initialize();
 		await bootstrapMysql.query(`CREATE DATABASE ${testDbName} DEFAULT CHARACTER SET utf8mb4`);
 		await bootstrapMysql.destroy();
 
-		config.set('database.mysqldb.database', testDbName);
+		globalConfig.database.mysqldb.database = testDbName;
 	}
 
 	await Db.init();
@@ -89,12 +90,13 @@ export async function truncate(names: Array<(typeof repositories)[number]>) {
  * Generate options for a bootstrap DB connection, to create and drop test databases.
  */
 export const getBootstrapDBOptions = (dbType: 'postgresdb' | 'mysqldb'): DataSourceOptions => {
+	const globalConfig = Container.get(GlobalConfig);
 	const type = dbType === 'postgresdb' ? 'postgres' : 'mysql';
 	return {
 		type,
 		...getOptionOverrides(dbType),
 		database: type,
-		entityPrefix: config.getEnv('database.tablePrefix'),
-		schema: dbType === 'postgresdb' ? config.getEnv('database.postgresdb.schema') : undefined,
+		entityPrefix: globalConfig.database.tablePrefix,
+		schema: dbType === 'postgresdb' ? globalConfig.database.postgresdb.schema : undefined,
 	};
 };

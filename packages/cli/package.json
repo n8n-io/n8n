@@ -95,6 +95,7 @@
     "@langchain/openai": "0.0.33",
     "@langchain/pinecone": "0.0.6",
     "@n8n/client-oauth2": "workspace:*",
+    "@n8n/config": "workspace:*",
     "@n8n/localtunnel": "2.1.0",
     "@n8n/n8n-nodes-langchain": "workspace:*",
     "@n8n/permissions": "workspace:*",
