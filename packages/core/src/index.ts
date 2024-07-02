@@ -17,5 +17,5 @@ export { NodeExecuteFunctions };
 export * from './errors';
 export { ObjectStoreService } from './ObjectStore/ObjectStore.service.ee';
 export { BinaryData } from './BinaryData/types';
-export { isStoredMode as isValidNonDefaultMode } from './BinaryData/utils';
+export { STORED_MODES as BinaryDataStoredModes } from './BinaryData/utils';
 export * from './ExecutionMetadata';

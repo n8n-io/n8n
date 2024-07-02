@@ -11,12 +11,8 @@ import type {
 	IUser,
 } from 'n8n-workflow';
 
-import { Expose } from 'class-transformer';
-import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length } from 'class-validator';
-import { NoXss } from '@db/utils/customValidators';
 import type { PublicUser, SecretsProvider, SecretsProviderState } from '@/Interfaces';
-import { AssignableRole } from '@db/entities/User';
-import type { GlobalRole, User } from '@db/entities/User';
+import type { AssignableRole, GlobalRole, User } from '@db/entities/User';
 import type { Variables } from '@db/entities/Variables';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
@@ -25,42 +21,6 @@ import type { Project, ProjectType } from '@db/entities/Project';
 import type { ProjectRole } from './databases/entities/ProjectRelation';
 import type { Scope } from '@n8n/permissions';
 import type { ScopesField } from './services/role.service';
-
-export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'lastName'> {
-	@Expose()
-	@IsEmail()
-	email: string;
-
-	@Expose()
-	@NoXss()
-	@IsString({ message: 'First name must be of type string.' })
-	@Length(1, 32, { message: 'First name must be $constraint1 to $constraint2 characters long.' })
-	firstName: string;
-
-	@Expose()
-	@NoXss()
-	@IsString({ message: 'Last name must be of type string.' })
-	@Length(1, 32, { message: 'Last name must be $constraint1 to $constraint2 characters long.' })
-	lastName: string;
-}
-
-export class UserSettingsUpdatePayload {
-	@Expose()
-	@IsBoolean({ message: 'userActivated should be a boolean' })
-	@IsOptional()
-	userActivated?: boolean;
-
-	@Expose()
-	@IsBoolean({ message: 'allowSSOManualLogin should be a boolean' })
-	@IsOptional()
-	allowSSOManualLogin?: boolean;
-}
-
-export class UserRoleChangePayload {
-	@Expose()
-	@IsIn(['global:admin', 'global:member'])
-	newRoleName: AssignableRole;
-}
 
 export type APIRequest<
 	RouteParams = {},
@@ -234,13 +194,6 @@ export declare namespace CredentialRequest {
 // ----------------------------------
 
 export declare namespace MeRequest {
-	export type UserSettingsUpdate = AuthenticatedRequest<{}, {}, UserSettingsUpdatePayload>;
-	export type UserUpdate = AuthenticatedRequest<{}, {}, UserUpdatePayload>;
-	export type Password = AuthenticatedRequest<
-		{},
-		{},
-		{ currentPassword: string; newPassword: string; token?: string }
-	>;
 	export type SurveyAnswers = AuthenticatedRequest<{}, {}, Record<string, string> | {}>;
 }
 
@@ -315,8 +268,6 @@ export declare namespace UserRequest {
 		{ transferId?: string; includeRole: boolean }
 	>;
 
-	export type ChangeRole = AuthenticatedRequest<{ id: string }, {}, UserRoleChangePayload, {}>;
-
 	export type Get = AuthenticatedRequest<
 		{ id: string; email: string; identifier: string },
 		{},
@@ -325,12 +276,6 @@ export declare namespace UserRequest {
 	>;
 
 	export type PasswordResetLink = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
-
-	export type UserSettingsUpdate = AuthenticatedRequest<
-		{ id: string },
-		{},
-		UserSettingsUpdatePayload
-	>;
 
 	export type Reinvite = AuthenticatedRequest<{ id: string }>;
 

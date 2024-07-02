@@ -1,14 +1,17 @@
-import { plainToInstance } from 'class-transformer';
-
 import { AuthService } from '@/auth/auth.service';
 import { User } from '@db/entities/User';
-import { GlobalScope, Delete, Get, RestController, Patch, Licensed } from '@/decorators';
 import {
-	ListQuery,
-	UserRequest,
-	UserRoleChangePayload,
-	UserSettingsUpdatePayload,
-} from '@/requests';
+	GlobalScope,
+	Delete,
+	Get,
+	RestController,
+	Patch,
+	Licensed,
+	Body,
+	Param,
+	Req,
+} from '@/decorators';
+import { AuthenticatedRequest, ListQuery, UserRequest } from '@/requests';
 import type { PublicUser, ITelemetryUserDeletionData } from '@/Interfaces';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
@@ -22,13 +25,14 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooks } from '@/InternalHooks';
-import { validateEntity } from '@/GenericHelpers';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { Project } from '@/databases/entities/Project';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ProjectService } from '@/services/project.service';
 import { EventRelay } from '@/eventbus/event-relay.service';
+import { SettingsUpdateDTO } from '@/dtos/user/settings.update';
+import { RoleChangeDTO } from '@/dtos/user/role.change';
 
 @RestController('/users')
 export class UsersController {
@@ -126,13 +130,7 @@ export class UsersController {
 
 	@Patch('/:id/settings')
 	@GlobalScope('user:update')
-	async updateUserSettings(req: UserRequest.UserSettingsUpdate) {
-		const payload = plainToInstance(UserSettingsUpdatePayload, req.body, {
-			excludeExtraneousValues: true,
-		});
-
-		const id = req.params.id;
-
+	async updateUserSettings(@Body payload: SettingsUpdateDTO, @Param('id') id: string) {
 		await this.userService.updateSettings(id, payload);
 
 		const user = await this.userRepository.findOneOrFail({
@@ -268,18 +266,15 @@ export class UsersController {
 	@Patch('/:id/role')
 	@GlobalScope('user:changeRole')
 	@Licensed('feat:advancedPermissions')
-	async changeGlobalRole(req: UserRequest.ChangeRole) {
+	async changeGlobalRole(
+		@Req req: AuthenticatedRequest,
+		@Body payload: RoleChangeDTO,
+		@Param('id') id: string,
+	) {
 		const { NO_ADMIN_ON_OWNER, NO_USER, NO_OWNER_ON_OWNER } =
 			UsersController.ERROR_MESSAGES.CHANGE_ROLE;
 
-		const payload = plainToInstance(UserRoleChangePayload, req.body, {
-			excludeExtraneousValues: true,
-		});
-		await validateEntity(payload);
-
-		const targetUser = await this.userRepository.findOne({
-			where: { id: req.params.id },
-		});
+		const targetUser = await this.userRepository.findOneBy({ id });
 		if (targetUser === null) {
 			throw new NotFoundError(NO_USER);
 		}

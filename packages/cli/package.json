@@ -186,6 +186,7 @@
     "xmllint-wasm": "3.0.1",
     "yamljs": "0.3.0",
     "zod": "3.22.4",
+    "zod-class": "0.0.13",
     "zod-to-json-schema": "3.22.4"
   }
 }

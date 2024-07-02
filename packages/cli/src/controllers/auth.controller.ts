@@ -1,9 +1,9 @@
 import validator from 'validator';
 
 import { AuthService } from '@/auth/auth.service';
-import { Get, Post, RestController } from '@/decorators';
+import { Get, Post, Req, Res, RestController } from '@/decorators';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import type { User } from '@db/entities/User';
 import { AuthenticatedRequest, LoginRequest, UserRequest } from '@/requests';
 import type { PublicUser } from '@/Interfaces';
@@ -42,7 +42,7 @@ export class AuthController {
 
 	/** Log in a user */
 	@Post('/login', { skipAuth: true, rateLimit: true })
-	async login(req: LoginRequest, res: Response): Promise<PublicUser | undefined> {
+	async login(@Req req: LoginRequest, @Res res: Response): Promise<PublicUser | undefined> {
 		const { email, password, mfaToken, mfaRecoveryCode } = req.body;
 		if (!email) throw new ApplicationError('Email is required to log in');
 		if (!password) throw new ApplicationError('Password is required to log in');
@@ -110,7 +110,7 @@ export class AuthController {
 
 	/** Check if the user is already logged in */
 	@Get('/login')
-	async currentUser(req: AuthenticatedRequest): Promise<PublicUser> {
+	async currentUser(@Req req: AuthenticatedRequest): Promise<PublicUser> {
 		return await this.userService.toPublic(req.user, {
 			posthog: this.postHog,
 			withScopes: true,
@@ -119,7 +119,7 @@ export class AuthController {
 
 	/** Validate invite token to enable invitee to set up their account */
 	@Get('/resolve-signup-token', { skipAuth: true })
-	async resolveSignupToken(req: UserRequest.ResolveSignUp) {
+	async resolveSignupToken(@Req req: UserRequest.ResolveSignUp) {
 		const { inviterId, inviteeId } = req.query;
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
 
@@ -188,7 +188,7 @@ export class AuthController {
 
 	/** Log out a user */
 	@Post('/logout')
-	logout(_: Request, res: Response) {
+	logout(@Res res: Response) {
 		this.authService.clearCookie(res);
 		return { loggedOut: true };
 	}

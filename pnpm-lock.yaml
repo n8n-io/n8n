@@ -814,6 +814,9 @@ importers:
       zod:
         specifier: 3.22.4
         version: 3.22.4
+      zod-class:
+        specifier: 0.0.13
+        version: 0.0.13(zod@3.22.4)
       zod-to-json-schema:
         specifier: 3.22.4
         version: 3.22.4(zod@3.22.4)
@@ -13518,6 +13521,10 @@ packages:
     resolution: {integrity: sha512-RAH822pAdBgcNMAfWnCBU3CFZcfZ/i1eZjwFU/dsLKumyuuP3niueg2UAukXYF0E2AAoc82ZSSf9J0WQBinzHA==}
     engines: {node: '>=12.20'}
 
+  type-fest@4.20.0:
+    resolution: {integrity: sha512-MBh+PHUHHisjXf4tlx0CFWoMdjx8zCMLJHOjnV1prABYZFHqtFOyauCIK2/7w4oIfwkF8iNhLtnJEfVY2vn3iw==}
+    engines: {node: '>=16'}
+
   type-is@1.6.18:
     resolution: {integrity: sha512-TkRKr9sUTxEH8MdfuCSP7VizJyzRNMjj2J2do2Jr3Kym598JVdEksuzPQCnlFPW4ky9Q+iA+ma9BGm06XQBy8g==}
     engines: {node: '>= 0.6'}
@@ -14325,6 +14332,11 @@ packages:
     resolution: {integrity: sha512-D7eujBWkLa3p2sIpJA0d1pr7es+a7m0vFAnZLlCEKq/Ij2k0MLi9Br2UPxoxdYystm5K1yeBGzub0FlYUEWj2Q==}
     engines: {node: '>=8.0.0'}
     hasBin: true
+
+  zod-class@0.0.13:
+    resolution: {integrity: sha512-zHEQGBMQq62LNipf8zMYTgmsOZv6SFhI9+c1Ssq8u9lw43ooY/2JGTBR7ipoSDtrItqp+80QNob36ubcPmJ2vQ==}
+    peerDependencies:
+      zod: ^3
 
   zod-to-json-schema@3.22.4:
     resolution: {integrity: sha512-2Ed5dJ+n/O3cU383xSY28cuVi0BCQhF8nYqWU5paEpl7fVdqdAmiLdqLyfblbNdfOFwFfi/mqU4O1pwc60iBhQ==}
@@ -29077,6 +29089,8 @@ snapshots:
 
   type-fest@2.19.0: {}
 
+  type-fest@4.20.0: {}
+
   type-is@1.6.18:
     dependencies:
       media-typer: 0.3.0
@@ -29994,6 +30008,11 @@ snapshots:
       validator: 13.7.0
     optionalDependencies:
       commander: 9.4.1
+
+  zod-class@0.0.13(zod@3.22.4):
+    dependencies:
+      type-fest: 4.20.0
+      zod: 3.22.4
 
   zod-to-json-schema@3.22.4(zod@3.22.4):
     dependencies:
