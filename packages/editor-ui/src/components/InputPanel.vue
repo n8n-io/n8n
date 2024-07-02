@@ -148,6 +148,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import type {
 	ConnectionTypes,
 	IConnectedNode,
+	INodeInputConfiguration,
 	INodeOutputConfiguration,
 	INodeTypeDescription,
 	Workflow,
@@ -408,7 +409,7 @@ export default defineComponent({
 	},
 	methods: {
 		filterOutConnectionType(
-			item: ConnectionTypes | INodeOutputConfiguration,
+			item: ConnectionTypes | INodeOutputConfiguration | INodeInputConfiguration,
 			type: ConnectionTypes,
 		) {
 			if (!item) return false;
