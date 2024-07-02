@@ -56,6 +56,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { ndvEventBus } from '@/event-bus';
 import NDVFloatingNodes from '@/components/NDVFloatingNodes.vue';
 import { useDebounce } from '@/composables/useDebounce';
+import type { XYPosition } from '@/Interface';
 
 const SIDE_MARGIN = 24;
 const SIDE_PANELS_MARGIN = 80;
@@ -385,8 +386,9 @@ export default defineComponent({
 			this.isDragging = true;
 			this.$emit('dragstart', { position: this.mainPanelDimensions.relativeLeft });
 		},
-		onDrag(e: { x: number; y: number }) {
-			const relativeLeft = this.pxToRelativeWidth(e.x) - this.mainPanelDimensions.relativeWidth / 2;
+		onDrag(position: XYPosition) {
+			const relativeLeft =
+				this.pxToRelativeWidth(position[0]) - this.mainPanelDimensions.relativeWidth / 2;
 
 			this.setPositions(relativeLeft);
 		},

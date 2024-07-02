@@ -101,7 +101,7 @@ describe('AssignmentCollection.vue', () => {
 		setActivePinia(pinia);
 
 		const { getByTestId, findAllByTestId } = renderComponent({ pinia });
-		const dropArea = getByTestId('assignment-collection-drop-area');
+		const dropArea = getByTestId('drop-area');
 
 		await dropAssignment({ key: 'boolKey', value: true, dropArea });
 		await dropAssignment({ key: 'stringKey', value: 'stringValue', dropArea });
