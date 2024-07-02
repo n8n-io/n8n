@@ -16,7 +16,7 @@
 				:collection="collection"
 				:show-item-count="showItemCount"
 				:width="cardsWidth"
-				@click="(e: MouseEvent) => onCardClick(e, collection.id)"
+				@click="(e) => onCardClick(e, collection.id)"
 			/>
 		</agile>
 		<button

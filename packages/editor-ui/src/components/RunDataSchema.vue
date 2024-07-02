@@ -317,9 +317,7 @@ watch(
 						v-if="currentNode.schema || search"
 						:class="[$style.schema, $style.animated]"
 						data-test-id="run-data-schema-node-schema"
-						@transitionstart="
-							(event: TransitionEvent) => onTransitionStart(event, currentNode.node.name)
-						"
+						@transitionstart="(event) => onTransitionStart(event, currentNode.node.name)"
 					>
 						<div :class="$style.innerSchema" @transitionstart.stop>
 							<div

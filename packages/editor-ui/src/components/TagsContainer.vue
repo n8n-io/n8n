@@ -13,7 +13,7 @@
 				v-for="tag in tags"
 				:key="tag.id"
 				:class="{ clickable: !tag.hidden }"
-				@click="(e: MouseEvent) => onClick(e, tag)"
+				@click="(e) => onClick(e, tag)"
 			>
 				<el-tag
 					v-if="tag.isCount"

@@ -181,7 +181,7 @@ function getIssues(index: number): string[] {
 						:path="`${path}.${index}`"
 						:issues="getIssues(index)"
 						:class="$style.condition"
-						@update="(value: FilterConditionValue) => onConditionUpdate(index, value)"
+						@update="(value) => onConditionUpdate(index, value)"
 						@remove="() => onConditionRemove(index)"
 					></Condition>
 				</div>
