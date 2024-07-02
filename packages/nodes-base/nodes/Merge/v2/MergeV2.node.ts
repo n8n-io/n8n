@@ -15,7 +15,8 @@ import type {
 	MatchFieldsJoinMode,
 	MatchFieldsOptions,
 	MatchFieldsOutput,
-} from './GenericFunctions';
+} from './interfaces';
+
 import {
 	addSourceField,
 	addSuffixToEntriesKeys,
@@ -24,9 +25,9 @@ import {
 	findMatches,
 	mergeMatched,
 	selectMergeMethod,
-} from './GenericFunctions';
+} from './utils';
 
-import { optionsDescription } from './OptionsDescription';
+import { optionsDescription } from './descriptions';
 import { preparePairedItemDataArray } from '@utils/utilities';
 
 export class MergeV2 implements INodeType {
