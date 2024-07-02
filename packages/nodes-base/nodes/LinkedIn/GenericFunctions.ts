@@ -32,20 +32,12 @@ export async function linkedInApiRequest(
 			: 'linkedInCommunityManagementOAuth2Api';
 
 	const baseUrl = 'https://api.linkedin.com';
-	let version = '202404';
-
-	if (credentialType === 'linkedInOAuth2Api') {
-		const { legacy } = await this.getCredentials('linkedInOAuth2Api');
-		if (legacy) {
-			version = '202304';
-		}
-	}
 
 	let options: IRequestOptions = {
 		headers: {
 			Accept: 'application/json',
 			'X-Restli-Protocol-Version': '2.0.0',
-			'LinkedIn-Version': version,
+			'LinkedIn-Version': '202404',
 		},
 		method,
 		body,
