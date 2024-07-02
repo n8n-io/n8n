@@ -89,6 +89,7 @@
 				</div>
 			</div>
 			<NodeDetailsView
+				:workflow-object="currentWorkflowObject"
 				:read-only="isReadOnlyRoute || readOnlyEnv"
 				:renaming="renamingActive"
 				:is-production-execution-preview="isProductionExecutionPreview"
@@ -331,7 +332,6 @@ import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useRootStore } from '@/stores/root.store';
-import { useSegment } from '@/stores/segment.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useTemplatesStore } from '@/stores/templates.store';
@@ -2696,7 +2696,6 @@ export default defineComponent({
 				});
 			} else {
 				void this.externalHooks.run('nodeView.addNodeButton', { nodeTypeName });
-				useSegment().trackAddedTrigger(nodeTypeName);
 				const trackProperties: ITelemetryTrackProperties = {
 					node_type: nodeTypeName,
 					node_version: newNodeData.typeVersion,
@@ -3743,6 +3742,8 @@ export default defineComponent({
 			}
 		},
 		async initView(): Promise<void> {
+			await this.loadCredentialsForWorkflow();
+
 			if (this.$route.params.action === 'workflowSave') {
 				// In case the workflow got saved we do not have to run init
 				// as only the route changed but all the needed data is already loaded
@@ -3820,7 +3821,7 @@ export default defineComponent({
 					await this.newWorkflow();
 				}
 			}
-			await this.loadCredentials();
+
 			this.historyStore.reset();
 			this.uiStore.nodeViewInitialized = true;
 			document.addEventListener('keydown', this.keyDown);
@@ -4468,12 +4469,13 @@ export default defineComponent({
 		async loadCredentialTypes(): Promise<void> {
 			await this.credentialsStore.fetchCredentialTypes(true);
 		},
-		async loadCredentials(): Promise<void> {
+		async loadCredentialsForWorkflow(): Promise<void> {
 			const workflow = this.workflowsStore.getWorkflowById(this.currentWorkflow);
+			const workflowId = workflow?.id ?? this.$route.params.name;
 			let options: { workflowId: string } | { projectId: string };
 
-			if (workflow) {
-				options = { workflowId: workflow.id };
+			if (workflowId) {
+				options = { workflowId };
 			} else {
 				const queryParam =
 					typeof this.$route.query?.projectId === 'string'
@@ -4801,7 +4803,7 @@ export default defineComponent({
 				await Promise.all([
 					this.loadVariables(),
 					this.tagsStore.fetchAll(),
-					this.loadCredentials(),
+					this.loadCredentialsForWorkflow(),
 				]);
 			} catch (error) {
 				console.error(error);

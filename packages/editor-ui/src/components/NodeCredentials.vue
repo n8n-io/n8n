@@ -147,6 +147,7 @@ import {
 	isRequiredCredential,
 } from '@/utils/nodeTypesUtils';
 import { assert } from '@/utils/assert';
+import { ndvEventBus } from '@/event-bus';
 
 interface CredentialDropdownOption extends ICredentialsResponse {
 	typeDisplayName: string;
@@ -334,6 +335,11 @@ export default defineComponent({
 				}
 			});
 		});
+
+		ndvEventBus.on('credential.createNew', this.onCreateAndAssignNewCredential);
+	},
+	beforeUnmount() {
+		ndvEventBus.off('credential.createNew', this.onCreateAndAssignNewCredential);
 	},
 	methods: {
 		getAllRelatedCredentialTypes(credentialType: INodeCredentialDescription): string[] {
@@ -416,25 +422,45 @@ export default defineComponent({
 			this.$emit('credentialSelected', updateInformation);
 		},
 
-		onCredentialSelected(
+		createNewCredential(
 			credentialType: string,
-			credentialId: string | null | undefined,
-			requiredCredentials = false,
+			listenForAuthChange: boolean = false,
+			showAuthOptions = false,
 		) {
-			if (credentialId === this.NEW_CREDENTIALS_TEXT) {
+			if (listenForAuthChange) {
 				// If new credential dialog is open, start listening for auth type change which should happen in the modal
 				// this will be handled in this component's watcher which will set subscribed credential accordingly
 				this.listeningForAuthChange = true;
 				this.subscribedToCredentialType = credentialType;
 			}
-			if (!credentialId || credentialId === this.NEW_CREDENTIALS_TEXT) {
-				this.uiStore.openNewCredential(credentialType, requiredCredentials);
-				this.$telemetry.track('User opened Credential modal', {
-					credential_type: credentialType,
-					source: 'node',
-					new_credential: true,
-					workflow_id: this.workflowsStore.workflowId,
-				});
+
+			this.uiStore.openNewCredential(credentialType, showAuthOptions);
+			this.$telemetry.track('User opened Credential modal', {
+				credential_type: credentialType,
+				source: 'node',
+				new_credential: true,
+				workflow_id: this.workflowsStore.workflowId,
+			});
+		},
+
+		onCreateAndAssignNewCredential({
+			type,
+			showAuthOptions,
+		}: {
+			type: string;
+			showAuthOptions: boolean;
+		}) {
+			this.createNewCredential(type, true, showAuthOptions);
+		},
+
+		onCredentialSelected(
+			credentialType: string,
+			credentialId: string | null | undefined,
+			showAuthOptions = false,
+		) {
+			const newCredentialOptionSelected = credentialId === this.NEW_CREDENTIALS_TEXT;
+			if (!credentialId || newCredentialOptionSelected) {
+				this.createNewCredential(credentialType, newCredentialOptionSelected, showAuthOptions);
 				return;
 			}
 

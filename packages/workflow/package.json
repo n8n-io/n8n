@@ -1,6 +1,6 @@
 {
   "name": "n8n-workflow",
-  "version": "1.46.0",
+  "version": "1.47.0",
   "description": "Workflow base code of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -39,7 +39,7 @@
     "dist/**/*"
   ],
   "devDependencies": {
-    "@langchain/core": "^0.2.0",
+    "@langchain/core": "^0.2.9",
     "@types/deep-equal": "^1.0.1",
     "@types/express": "^4.17.21",
     "@types/jmespath": "^0.15.0",
