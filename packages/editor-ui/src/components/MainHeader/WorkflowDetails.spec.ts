@@ -30,7 +30,7 @@ const initialState = {
 		areTagsEnabled: true,
 	},
 	[STORES.TAGS]: {
-		tags: {
+		tagsById: {
 			1: {
 				id: '1',
 				name: 'tag1',

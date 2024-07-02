@@ -72,7 +72,7 @@ export default defineComponent({
 			return this.tagsStore.isLoading;
 		},
 		tags(): ITag[] {
-			return this.tagIds.map((tagId: string) => this.tagsStore.getTagById(tagId)).filter(Boolean); // if tag is deleted from store
+			return this.tagIds.map((tagId: string) => this.tagsStore.tagsById[tagId]).filter(Boolean); // if tag is deleted from store
 		},
 		hasTags(): boolean {
 			return this.tags.length > 0;
@@ -110,7 +110,7 @@ export default defineComponent({
 		},
 
 		async onUpdate(id: string, name: string, cb: (tag: boolean, error?: Error) => void) {
-			const tag = this.tagsStore.getTagById(id);
+			const tag = this.tagsStore.tagsById[id];
 			const oldName = tag.name;
 
 			try {
@@ -144,11 +144,11 @@ export default defineComponent({
 		},
 
 		async onDelete(id: string, cb: (deleted: boolean, error?: Error) => void) {
-			const tag = this.tagsStore.getTagById(id);
+			const tag = this.tagsStore.tagsById[id];
 			const name = tag.name;
 
 			try {
-				const deleted = await this.tagsStore.delete(id);
+				const deleted = await this.tagsStore.deleteTagById(id);
 				if (!deleted) {
 					throw new Error(this.$locale.baseText('tagsManager.couldNotDeleteTag'));
 				}

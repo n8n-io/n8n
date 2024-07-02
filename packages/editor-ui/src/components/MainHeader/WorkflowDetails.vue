@@ -413,7 +413,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 					instanceId: rootStore.instanceId,
 				},
 				tags: (tags ?? []).map((tagId) => {
-					const { usageCount, ...tag } = tagsStore.getTagById(tagId);
+					const { usageCount, ...tag } = tagsStore.tagsById[tagId];
 
 					return tag;
 				}),

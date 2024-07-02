@@ -103,7 +103,7 @@ export default defineComponent({
 		},
 		tags() {
 			const tags = this.tagIds
-				.map((tagId: string) => this.tagsStore.getTagById(tagId))
+				.map((tagId: string) => this.tagsStore.tagsById[tagId])
 				.filter(Boolean); // if tag has been deleted from store
 
 			let toDisplay: TagEl[] = this.limit ? tags.slice(0, this.limit) : tags;
