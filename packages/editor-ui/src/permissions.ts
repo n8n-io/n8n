@@ -8,10 +8,19 @@ import type {
 } from '@n8n/permissions';
 import type { Project } from '@/types/projects.types';
 
-type ExtractAfterColon<T> = T extends `${infer _Prefix}:${infer Suffix}` ? Suffix : never;
+type ExtractScopePrefixSuffix<T> = T extends `${infer Prefix}:${infer Suffix}`
+	? [Prefix, Suffix]
+	: never;
 export type PermissionsMap<T> = {
-	[K in ExtractAfterColon<T>]: boolean;
+	[K in ExtractScopePrefixSuffix<T>[1]]: boolean;
 };
+export type PermissionsRecord<T> = T extends string
+	? {
+			[K in ExtractScopePrefixSuffix<T>[0]]: {
+				[V in ExtractScopePrefixSuffix<T>[1]]: boolean;
+			};
+		}
+	: never;
 
 const mapScopesToPermissions = <T extends Scope>(scopes: T[], scopeSet: Set<T>) =>
 	scopes.reduce(
@@ -64,3 +73,24 @@ export const getVariablesPermissions = (user: IUser | null): PermissionsMap<Vari
 		['variable:create', 'variable:read', 'variable:update', 'variable:delete', 'variable:list'],
 		new Set(user?.globalScopes ?? []),
 	);
+
+export const getResourcePermissions = (
+	resource: IUser | ICredentialsResponse | IWorkflowDb | Project,
+) => {
+	let scopes: Scope[] = [];
+	if ('scopes' in resource) {
+		scopes = resource.scopes ?? [];
+	} else if ('globalScopes' in resource) {
+		scopes = resource.globalScopes ?? [];
+	}
+	return scopes.reduce((permissions, scope) => {
+		const [prefix, suffix] = scope.split(':') as ExtractScopePrefixSuffix<Scope>;
+		return {
+			...permissions,
+			[prefix]: {
+				...(permissions[prefix] ?? {}),
+				[suffix]: true,
+			},
+		};
+	}, {} as PermissionsRecord<Scope>);
+};
