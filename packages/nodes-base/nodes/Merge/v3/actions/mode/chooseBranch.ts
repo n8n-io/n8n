@@ -58,6 +58,7 @@ export const properties: INodeProperties[] = [
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'The number of the input to use data of',
+		validateType: 'number',
 	},
 ];
 
@@ -88,7 +89,7 @@ export async function execute(
 				});
 			}
 
-			const inputData = inputsData[parseInt(String(useDataOfInput)) - 1];
+			const inputData = inputsData[useDataOfInput - 1];
 
 			returnData.push.apply(returnData, inputData);
 		}

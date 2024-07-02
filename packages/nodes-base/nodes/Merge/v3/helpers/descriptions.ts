@@ -52,6 +52,7 @@ export const numberInputsProperty: INodeProperties = {
 			value: 10,
 		},
 	],
+	validateType: 'number',
 	description:
 		'The number of data inputs you want to merge. The node waits for all connected inputs to be executed.',
 };
