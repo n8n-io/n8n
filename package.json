@@ -38,6 +38,9 @@
   },
   "devDependencies": {
     "@n8n_io/eslint-config": "workspace:*",
+    "@rsbuild/core": "^0.7.10",
+    "@rsbuild/plugin-sass": "^0.7.10",
+    "@rsbuild/plugin-vue": "^0.7.10",
     "@types/jest": "^29.5.3",
     "@types/supertest": "^6.0.2",
     "@vitest/coverage-v8": "^1.6.0",
