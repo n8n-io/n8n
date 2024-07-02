@@ -1,10 +1,6 @@
-import {
-	ApplicationError,
-	ErrorReporterProxy as ErrorReporter,
-	WorkflowOperationError,
-} from 'n8n-workflow';
+import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import { Service } from 'typedi';
-import type { ExecutionStopResult, IWorkflowExecutionDataProcess } from '@/Interfaces';
+import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { OwnershipService } from '@/services/ownership.service';
@@ -29,6 +25,10 @@ export class WaitTracker {
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly orchestrationService: OrchestrationService,
 	) {}
+
+	has(executionId: string) {
+		return this.waitingExecutions[executionId] !== undefined;
+	}
 
 	/**
 	 * @important Requires `OrchestrationService` to be initialized.
@@ -101,53 +101,12 @@ export class WaitTracker {
 		}
 	}
 
-	async stopExecution(executionId: string): Promise<ExecutionStopResult> {
-		if (this.waitingExecutions[executionId] !== undefined) {
-			// The waiting execution was already scheduled to execute.
-			// So stop timer and remove.
-			clearTimeout(this.waitingExecutions[executionId].timer);
-			delete this.waitingExecutions[executionId];
-		}
+	async stopExecution(executionId: string) {
+		if (!this.waitingExecutions[executionId]) return;
 
-		// Also check in database
-		const fullExecutionData = await this.executionRepository.findSingleExecution(executionId, {
-			includeData: true,
-			unflattenData: true,
-		});
+		clearTimeout(this.waitingExecutions[executionId].timer);
 
-		if (!fullExecutionData) {
-			throw new ApplicationError('Execution not found.', {
-				extra: { executionId },
-			});
-		}
-
-		if (!['new', 'unknown', 'waiting', 'running'].includes(fullExecutionData.status)) {
-			throw new WorkflowOperationError(
-				`Only running or waiting executions can be stopped and ${executionId} is currently ${fullExecutionData.status}.`,
-			);
-		}
-		// Set in execution in DB as failed and remove waitTill time
-		const error = new WorkflowOperationError('Workflow-Execution has been canceled!');
-
-		fullExecutionData.data.resultData.error = {
-			...error,
-			message: error.message,
-			stack: error.stack,
-		};
-
-		fullExecutionData.stoppedAt = new Date();
-		fullExecutionData.waitTill = null;
-		fullExecutionData.status = 'canceled';
-
-		await this.executionRepository.updateExistingExecution(executionId, fullExecutionData);
-
-		return {
-			mode: fullExecutionData.mode,
-			startedAt: new Date(fullExecutionData.startedAt),
-			stoppedAt: fullExecutionData.stoppedAt ? new Date(fullExecutionData.stoppedAt) : undefined,
-			finished: fullExecutionData.finished,
-			status: fullExecutionData.status,
-		};
+		delete this.waitingExecutions[executionId];
 	}
 
 	startExecution(executionId: string) {
