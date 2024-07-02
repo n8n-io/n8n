@@ -5,6 +5,7 @@
 			:placement="placement"
 			:trigger="trigger"
 			:popper-class="popperClass"
+			:teleported="teleported"
 			@command="onSelect"
 			@visible-change="onVisibleChange"
 		>
@@ -74,6 +75,7 @@ interface ActionDropdownProps {
 	iconSize?: IconSize;
 	trigger?: (typeof TRIGGER)[number];
 	hideArrow?: boolean;
+	teleported?: boolean;
 }
 
 const props = withDefaults(defineProps<ActionDropdownProps>(), {
@@ -83,6 +85,7 @@ const props = withDefaults(defineProps<ActionDropdownProps>(), {
 	iconSize: 'medium',
 	trigger: 'click',
 	hideArrow: false,
+	teleported: true,
 });
 
 const $attrs = useAttrs();
