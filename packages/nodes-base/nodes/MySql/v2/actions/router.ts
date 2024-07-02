@@ -1,11 +1,8 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { Client } from 'ssh2';
-
-import type { QueryRunner } from '../helpers/interfaces';
-
 import { createPool } from '../transport';
+import type { MysqlNodeCredentials, QueryRunner } from '../helpers/interfaces';
 import { configureQueryRunner } from '../helpers/utils';
 import * as database from './database/Database.resource';
 import type { MySqlType } from './node.type';
@@ -19,14 +16,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 
 	nodeOptions.nodeVersion = this.getNode().typeVersion;
 
-	const credentials = await this.getCredentials('mySql');
+	const credentials = (await this.getCredentials('mySql')) as MysqlNodeCredentials;
 
-	let sshClient: Client | undefined = undefined;
-
-	if (credentials.sshTunnel) {
-		sshClient = new Client();
-	}
-	const pool = await createPool(credentials, nodeOptions, sshClient);
+	const pool = await createPool.call(this, credentials, nodeOptions);
 
 	const runQueries: QueryRunner = configureQueryRunner.call(this, nodeOptions, pool);
 
@@ -53,12 +45,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					`The operation "${operation}" is not supported!`,
 				);
 		}
-	} catch (error) {
-		throw error;
 	} finally {
-		if (sshClient) {
-			sshClient.end();
-		}
 		await pool.end();
 	}
 
