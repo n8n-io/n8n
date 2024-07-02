@@ -127,7 +127,13 @@
 					@update:model-value="expressionUpdated"
 				></TextEdit>
 
-				<CodeNodeEditor
+				<TypeScriptEditor
+					v-if="editorType === 'codeNodeEditor' && isCodeNode"
+					:code="modelValueString"
+					@update:value-changed="valueChangedDebounced"
+				/>
+
+				<!-- <CodeNodeEditor
 					v-if="editorType === 'codeNodeEditor' && isCodeNode"
 					:key="'code-' + codeEditDialogVisible.toString()"
 					:mode="codeEditorMode"
@@ -149,7 +155,7 @@
 							@click="displayEditDialog()"
 						/>
 					</template>
-				</CodeNodeEditor>
+				</CodeNodeEditor> -->
 
 				<HtmlEditor
 					v-else-if="editorType === 'htmlEditor'"
@@ -490,6 +496,7 @@ import type {
 import { CREDENTIAL_EMPTY_VALUE, NodeHelpers } from 'n8n-workflow';
 
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
+import TypeScriptEditor from './TypeScriptEditor/TypeScriptEditor.vue';
 import CredentialsSelect from '@/components/CredentialsSelect.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';

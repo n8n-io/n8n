@@ -32,6 +32,8 @@ import { Logger } from '@/Logger';
 import { UrlService } from './url.service';
 import { InternalHooks } from '@/InternalHooks';
 import { isApiEnabled } from '@/PublicApi';
+import glob from 'fast-glob';
+import { readFile, writeFile } from 'node:fs/promises';
 
 @Service()
 export class FrontendService {
@@ -52,6 +54,7 @@ export class FrontendService {
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
+		void this.generateTypedefs();
 
 		this.initSettings();
 
@@ -367,5 +370,33 @@ export class FrontendService {
 				credential.__overwrittenProperties = uniq(overwrittenProperties);
 			}
 		}
+	}
+
+	async generateTypedefs() {
+		const typedefsDir = path.join(this.instanceSettings.staticCacheDir, 'typedefs');
+
+		await mkdir(typedefsDir, { recursive: true });
+
+		// @TODO: Filter out irrelevant typedefs
+
+		const paths = await glob('../../../node_modules/typescript/lib/*.d.ts');
+		const names = paths.map((p) => path.basename(p));
+
+		await writeFile(path.resolve(typedefsDir, 'keys.json'), JSON.stringify(names));
+
+		const writeStream = createWriteStream(path.resolve(typedefsDir, 'map.json'));
+
+		writeStream.write('{');
+
+		const content = await Promise.all(
+			paths.map(
+				async (_path, i) => `"${names[i]}":${JSON.stringify(await readFile(_path, 'utf8'))}`,
+			),
+		);
+
+		writeStream.write(content.join(','));
+
+		writeStream.write('}');
+		writeStream.end();
 	}
 }
