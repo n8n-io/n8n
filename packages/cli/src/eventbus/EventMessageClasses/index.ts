@@ -14,7 +14,10 @@ export const eventNamesWorkflow = [
 ] as const;
 export const eventNamesGeneric = ['n8n.worker.started', 'n8n.worker.stopped'] as const;
 export const eventNamesNode = ['n8n.node.started', 'n8n.node.finished'] as const;
-export const eventNamesExecution = ['n8n.execution.throttled'] as const;
+export const eventNamesExecution = [
+	'n8n.execution.throttled',
+	'n8n.execution.started-during-bootup',
+] as const;
 export const eventNamesAudit = [
 	'n8n.audit.user.login.success',
 	'n8n.audit.user.login.failed',

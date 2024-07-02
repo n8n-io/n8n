@@ -186,4 +186,8 @@ export type Event = {
 	'execution-throttled': {
 		executionId: string;
 	};
+
+	'execution-started-during-bootup': {
+		executionId: string;
+	};
 };
