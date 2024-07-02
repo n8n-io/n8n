@@ -95,7 +95,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const activeActions = ref<string[]>([]);
 	const activeCredentialType = ref<string | null>(null);
 	const theme = ref<ThemeOption>(savedTheme);
-	const modals = ref<Record<string, ModalState>>({
+	const modalsById = ref<Record<string, ModalState>>({
 		...Object.fromEntries(
 			[
 				ABOUT_MODAL_KEY,
@@ -284,27 +284,27 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	});
 
 	const isVersionsOpen = computed(() => {
-		return modals.value[VERSIONS_MODAL_KEY].open;
+		return modalsById.value[VERSIONS_MODAL_KEY].open;
 	});
 
-	const isModalOpen = computed(() => {
-		return (name: ModalKey) => modals.value[name].open;
-	});
+	// const isModalOpen = computed(() => {
+	// 	return (name: ModalKey) => modalsById.value[name].open;
+	// });
 
 	const isModalActive = computed(() => {
 		return (name: ModalKey) => modalStack.value.length > 0 && name === modalStack.value[0];
 	});
 
 	const getModalActiveId = computed(() => {
-		return (name: ModalKey) => modals.value[name].activeId;
+		return (name: ModalKey) => modalsById.value[name].activeId;
 	});
 
 	const getModalMode = computed(() => {
-		return (name: ModalKey) => modals.value[name].mode;
+		return (name: ModalKey) => modalsById.value[name].mode;
 	});
 
 	const getModalData = computed(() => {
-		return (name: ModalKey) => modals.value[name].data;
+		return (name: ModalKey) => modalsById.value[name].data;
 	});
 
 	const getFakeDoorByLocation = computed(() => {
@@ -395,36 +395,36 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	};
 
 	const setMode = (name: keyof Modals, mode: string): void => {
-		modals.value[name] = {
-			...modals.value[name],
+		modalsById.value[name] = {
+			...modalsById.value[name],
 			mode,
 		};
 	};
 
 	const setActiveId = (name: keyof Modals, activeId: string | null): void => {
-		modals.value[name] = {
-			...modals.value[name],
+		modalsById.value[name] = {
+			...modalsById.value[name],
 			activeId,
 		};
 	};
 
 	const setShowAuthSelector = (name: keyof Modals, showAuthSelector: boolean): void => {
-		modals.value[name] = {
-			...modals.value[name],
+		modalsById.value[name] = {
+			...modalsById.value[name],
 			showAuthSelector,
 		} as NewCredentialsModal;
 	};
 
 	const setModalData = (payload: { name: keyof Modals; data: Record<string, unknown> }) => {
-		modals.value[payload.name] = {
-			...modals.value[payload.name],
+		modalsById.value[payload.name] = {
+			...modalsById.value[payload.name],
 			data: payload.data,
 		};
 	};
 
 	const openModal = (name: ModalKey) => {
-		modals.value[name] = {
-			...modals.value[name],
+		modalsById.value[name] = {
+			...modalsById.value[name],
 			open: true,
 		};
 		modalStack.value = [name].concat(modalStack.value) as string[];
@@ -436,8 +436,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	};
 
 	const closeModal = (name: ModalKey) => {
-		modals.value[name] = {
-			...modals.value[name],
+		modalsById.value[name] = {
+			...modalsById.value[name],
 			open: false,
 		};
 		modalStack.value = modalStack.value.filter((openModalName) => name !== openModalName);
@@ -573,8 +573,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	};
 
 	const setCurlCommand = (payload: { name: string; command: string }) => {
-		modals.value[payload.name] = {
-			...modals.value[payload.name],
+		modalsById.value[payload.name] = {
+			...modalsById.value[payload.name],
 			curlCommand: payload.command,
 		};
 	};
@@ -671,7 +671,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		getLastSelectedNode,
 		isVersionsOpen,
 		isModalActive,
-		isModalOpen,
 		getModalActiveId,
 		getModalMode,
 		getModalData,
@@ -699,7 +698,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		fakeDoorFeatures,
 		bannerStack,
 		theme,
-		modals,
+		modalsById,
 		currentView,
 		isAnyModalOpen,
 		setTheme,

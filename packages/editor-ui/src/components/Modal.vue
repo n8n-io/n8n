@@ -1,6 +1,6 @@
 <template>
 	<el-dialog
-		:model-value="uiStore.isModalOpen(name)"
+		:model-value="uiStore.modalsById[name].open"
 		:before-close="closeDialog"
 		:class="{
 			'dialog-wrapper': true,

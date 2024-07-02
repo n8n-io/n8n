@@ -1,7 +1,7 @@
 <template>
 	<ElDrawer
 		:direction="direction"
-		:model-value="uiStore.isModalOpen(name)"
+		:model-value="uiStore.modalsById[name].open"
 		:size="width"
 		:before-close="close"
 		:modal="modal"
