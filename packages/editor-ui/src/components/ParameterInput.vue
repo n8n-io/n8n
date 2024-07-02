@@ -127,7 +127,13 @@
 					@update:model-value="expressionUpdated"
 				></TextEdit>
 
-				<CodeNodeEditor
+				<TypeScriptEditor
+					v-if="editorType === 'codeNodeEditor' && isCodeNode"
+					:code="modelValueString"
+					@update:value-changed="valueChangedDebounced"
+				/>
+
+				<!-- <CodeNodeEditor
 					v-if="editorType === 'codeNodeEditor' && isCodeNode"
 					:key="'code-' + codeEditDialogVisible.toString()"
 					:mode="codeEditorMode"
@@ -149,7 +155,7 @@
 							@click="displayEditDialog()"
 						/>
 					</template>
-				</CodeNodeEditor>
+				</CodeNodeEditor> -->
 
 				<HtmlEditor
 					v-else-if="editorType === 'htmlEditor'"
@@ -490,6 +496,7 @@ import type {
 import { CREDENTIAL_EMPTY_VALUE, NodeHelpers } from 'n8n-workflow';
 
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
+import TypeScriptEditor from './TypeScriptEditor/TypeScriptEditor.vue';
 import CredentialsSelect from '@/components/CredentialsSelect.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
@@ -521,7 +528,6 @@ import { htmlEditorEventBus } from '@/event-bus';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 import { N8nInput, N8nSelect } from 'n8n-design-system';
@@ -587,7 +593,6 @@ const telemetry = useTelemetry();
 const credentialsStore = useCredentialsStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
-const settingsStore = useSettingsStore();
 const nodeTypesStore = useNodeTypesStore();
 
 // ESLint: false positive
