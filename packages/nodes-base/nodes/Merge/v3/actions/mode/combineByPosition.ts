@@ -61,15 +61,15 @@ export async function execute(
 	) as ClashResolveOptions;
 	const includeUnpaired = this.getNodeParameter('options.includeUnpaired', 0, false) as boolean;
 
-	let preferedInputIndex: number;
+	let preferredInputIndex: number;
 
 	if (clashHandling?.resolveClash?.includes('preferInput')) {
-		preferedInputIndex = Number(clashHandling.resolveClash.replace('preferInput', '')) - 1;
+		preferredInputIndex = Number(clashHandling.resolveClash.replace('preferInput', '')) - 1;
 	} else {
-		preferedInputIndex = inputsData.length - 1;
+		preferredInputIndex = inputsData.length - 1;
 	}
 
-	const prefered = inputsData[preferedInputIndex];
+	const preferred = inputsData[preferredInputIndex];
 
 	if (clashHandling.resolveClash === 'addSuffix') {
 		for (const [inputIndex, input] of inputsData.entries()) {
@@ -79,9 +79,9 @@ export async function execute(
 
 	let numEntries: number;
 	if (includeUnpaired) {
-		numEntries = Math.max(...inputsData.map((input) => input.length), prefered.length);
+		numEntries = Math.max(...inputsData.map((input) => input.length), preferred.length);
 	} else {
-		numEntries = Math.min(...inputsData.map((input) => input.length), prefered.length);
+		numEntries = Math.min(...inputsData.map((input) => input.length), preferred.length);
 		if (numEntries === 0) {
 			return new NodeExecutionOutput(
 				[returnData],
@@ -98,24 +98,24 @@ export async function execute(
 	const mergeIntoSingleObject = selectMergeMethod(clashHandling);
 
 	for (let i = 0; i < numEntries; i++) {
-		const preferedEntry = prefered[i] ?? {};
+		const preferredEntry = preferred[i] ?? {};
 		const restEntries = inputsData.map((input) => input[i] ?? {});
 
 		const json = {
 			...mergeIntoSingleObject(
 				{},
 				...restEntries.map((entry) => entry.json ?? {}),
-				preferedEntry.json ?? {},
+				preferredEntry.json ?? {},
 			),
 		};
 
 		const binary = {
-			...merge({}, ...restEntries.map((entry) => entry.binary ?? {}), preferedEntry.binary ?? {}),
+			...merge({}, ...restEntries.map((entry) => entry.binary ?? {}), preferredEntry.binary ?? {}),
 		};
 
 		const pairedItem = [
 			...restEntries.map((entry) => entry.pairedItem as IPairedItemData).flat(),
-			preferedEntry.pairedItem as IPairedItemData,
+			preferredEntry.pairedItem as IPairedItemData,
 		].filter((item) => item !== undefined);
 
 		returnData.push({ json, binary, pairedItem });
