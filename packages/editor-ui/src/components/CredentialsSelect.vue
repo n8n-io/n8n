@@ -42,7 +42,10 @@
 				:node="node"
 				:readonly="isReadOnly"
 				:override-cred-type="node.parameters[parameter.name]"
-				@credential-selected="(updateInformation: INodeUpdatePropertiesInformation) => $emit('credentialSelected', updateInformation)"
+				@credential-selected="
+					(updateInformation: INodeUpdatePropertiesInformation) =>
+						$emit('credentialSelected', updateInformation)
+				"
 			/>
 		</div>
 	</div>
