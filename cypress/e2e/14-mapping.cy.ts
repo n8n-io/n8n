@@ -317,19 +317,12 @@ describe('Data mapping', () => {
 		workflowPage.actions.zoomToFit();
 
 		workflowPage.actions.openNode('Set');
-		ndv.actions.clearParameterInput('value');
-		cy.get('body').type('{esc}');
-
 		ndv.getters.parameterInput('includeOtherFields').find('input[type="checkbox"]').should('exist');
 		ndv.getters.parameterInput('includeOtherFields').find('input[type="text"]').should('not.exist');
-		ndv.getters
-			.inputDataContainer()
-			.should('exist')
-			.find('span')
-			.contains('count')
-			.realMouseDown()
-			.realMouseMove(100, 100);
-		cy.wait(50);
+		const pill = ndv.getters.inputDataContainer().find('span').contains('count');
+		pill.should('be.visible');
+		pill.realMouseDown();
+		pill.realMouseMove(100, 100);
 
 		ndv.getters
 			.parameterInput('includeOtherFields')
@@ -340,13 +333,13 @@ describe('Data mapping', () => {
 			.find('input[type="text"]')
 			.should('exist')
 			.invoke('css', 'border')
-			.then((border) => expect(border).to.include('dashed rgb(90, 76, 194)'));
+			.should('include', 'dashed rgb(90, 76, 194)');
 
 		ndv.getters
 			.parameterInput('value')
 			.find('input[type="text"]')
 			.should('exist')
 			.invoke('css', 'border')
-			.then((border) => expect(border).to.include('dashed rgb(90, 76, 194)'));
+			.should('include', 'dashed rgb(90, 76, 194)');
 	});
 });
