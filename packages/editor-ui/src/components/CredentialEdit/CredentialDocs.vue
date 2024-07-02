@@ -132,6 +132,10 @@ const docs = computed(() => CREDENTIAL_MARKDOWN_DOCS[props.credentialType.name])
 		margin-left: var(--spacing-m);
 	}
 
+	ol ol {
+		list-style-type: lower-alpha;
+	}
+
 	li > ul,
 	li > ol {
 		margin: var(--spacing-4xs) 0;
