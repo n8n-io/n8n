@@ -528,7 +528,6 @@ import { htmlEditorEventBus } from '@/event-bus';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 import { N8nInput, N8nSelect } from 'n8n-design-system';
@@ -594,7 +593,6 @@ const telemetry = useTelemetry();
 const credentialsStore = useCredentialsStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
-const settingsStore = useSettingsStore();
 const nodeTypesStore = useNodeTypesStore();
 
 // ESLint: false positive
