@@ -42,7 +42,7 @@
 				:node="node"
 				:readonly="isReadOnly"
 				:override-cred-type="node.parameters[parameter.name]"
-				@credential-selected="(updateInformation) => $emit('credentialSelected', updateInformation)"
+				@credential-selected="(updateInformation: INodeUpdatePropertiesInformation) => $emit('credentialSelected', updateInformation)"
 			/>
 		</div>
 	</div>
@@ -55,6 +55,7 @@ import ScopesNotice from '@/components/ScopesNotice.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import { mapStores } from 'pinia';
 import { useCredentialsStore } from '@/stores/credentials.store';
+import type { INodeUpdatePropertiesInformation } from '@/Interface';
 
 export default defineComponent({
 	name: 'CredentialsSelect',

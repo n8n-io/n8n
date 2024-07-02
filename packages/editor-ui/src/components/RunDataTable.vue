@@ -37,7 +37,7 @@
 								:data="getExpression(column)"
 								:disabled="!mappingEnabled"
 								@dragstart="onDragStart"
-								@dragend="(column) => onDragEnd(column, 'column')"
+								@dragend="(column: string) => onDragEnd(column, 'column')"
 							>
 								<template #preview="{ canDrop }">
 									<MappingPill :html="shorten(column, 16, 2)" :can-drop="canDrop" />

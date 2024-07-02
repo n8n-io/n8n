@@ -159,7 +159,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const $emit = defineEmits<{
 	(event: 'validate', shouldValidate: boolean): void;
-	(event: 'update:modelValue', value: unknown): void;
+	(event: 'update:modelValue', value: Validatable): void;
 	(event: 'focus'): void;
 	(event: 'blur'): void;
 	(event: 'enter'): void;

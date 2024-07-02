@@ -101,7 +101,10 @@ const getItemClasses = (item: ActionDropdownItem): Record<string, boolean> => {
 	};
 };
 
-const $emit = defineEmits(['select', 'visibleChange']);
+const $emit = defineEmits<{
+	(event: 'select', action: string): void;
+	(event: 'visibleChange', open: boolean): void;
+}>();
 const elementDropdown = ref<InstanceType<typeof ElDropdown>>();
 
 const popperClass = computed(
