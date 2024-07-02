@@ -36,6 +36,10 @@ export class ActiveExecutions {
 		private readonly concurrencyControl: ConcurrencyControlService,
 	) {}
 
+	has(executionId: string) {
+		return this.activeExecutions[executionId] !== undefined;
+	}
+
 	/**
 	 * Add a new active execution
 	 */
