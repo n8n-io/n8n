@@ -51,6 +51,10 @@ export class AuditEventRelay {
 		);
 		this.eventRelay.on('community-package-updated', (event) => this.communityPackageUpdated(event));
 		this.eventRelay.on('community-package-deleted', (event) => this.communityPackageDeleted(event));
+		this.eventRelay.on('execution-throttled', (event) => this.executionThrottled(event));
+		this.eventRelay.on('execution-started-during-bootup', (event) =>
+			this.executionStartedDuringBootup(event),
+		);
 	}
 
 	/**
@@ -337,6 +341,24 @@ export class AuditEventRelay {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.package.deleted',
 			payload: { ...user, ...rest },
+		});
+	}
+
+	/**
+	 * Execution
+	 */
+
+	private executionThrottled({ executionId }: Event['execution-throttled']) {
+		void this.eventBus.sendExecutionEvent({
+			eventName: 'n8n.execution.throttled',
+			payload: { executionId },
+		});
+	}
+
+	private executionStartedDuringBootup({ executionId }: Event['execution-started-during-bootup']) {
+		void this.eventBus.sendExecutionEvent({
+			eventName: 'n8n.execution.started-during-bootup',
+			payload: { executionId },
 		});
 	}
 }
