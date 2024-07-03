@@ -14,7 +14,9 @@ type Command = 'retrySaved' | 'retryOriginal' | 'delete';
 const emit = defineEmits<{
 	stop: [data: ExecutionSummary];
 	select: [data: ExecutionSummary];
-	Command: [data: ExecutionSummary];
+	retrySaved: [data: ExecutionSummary];
+	retryOriginal: [data: ExecutionSummary];
+	delete: [data: ExecutionSummary];
 }>();
 
 const props = withDefaults(
@@ -148,6 +150,7 @@ function onSelect() {
 }
 
 async function handleActionItemClick(commandData: Command) {
+	//@ts-ignore todo: fix this type
 	emit(commandData, props.execution);
 }
 </script>

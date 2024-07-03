@@ -212,7 +212,7 @@ type Props = {
 
 const props = withDefaults(defineProps<Props>(), { path: '', hiddenIssuesInputs: () => [] });
 const emit = defineEmits<{
-	active: [];
+	activate: [];
 	valueChanged: [value: IUpdateInformation];
 	parameterBlur: [value: string];
 }>();

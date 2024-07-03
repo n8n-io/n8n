@@ -40,9 +40,9 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
 	'modal-opener-click': [];
-	'updated:model-value': [value: string];
+	'update:model-value': [value: string];
 	focus: [];
-	bluer: [];
+	blur: [];
 }>();
 
 const telemetry = useTelemetry();
