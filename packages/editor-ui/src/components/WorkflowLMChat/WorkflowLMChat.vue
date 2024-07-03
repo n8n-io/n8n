@@ -669,16 +669,12 @@ onMounted(() => {
 	--chat--input--border-radius: var(--border-radius-base) 0 0 var(--border-radius-base);
 	--chat--input--send--button--background: transparent;
 	--chat--input--send--button--color: var(--color-button-secondary-font);
-	--chat--input--send--button--color-hover: var(--color-button-secondary-hover-active-focus-font);
+	--chat--input--send--button--color-hover: var(--color-primary);
 	--chat--input--border-active: var(--input-focus-border-color, var(--color-secondary));
 	--chat--files-spacing: var(--spacing-2xs) 0;
 	--chat--input--background: transparent;
 	[data-theme='dark'] & {
 		--chat--input--text-color: var(--input-font-color, var(--color-text-dark));
-		--chat--input--send--button--color-hover: var(
-			--button-hover-font-color,
-			var(--color-button-primary-font)
-		);
 	}
 
 	border-bottom-right-radius: var(--border-radius-base);
