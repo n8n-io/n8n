@@ -8,13 +8,13 @@ jest.mock('../../../v2/transport', () => ({
 }));
 
 describe('Splunk, alert resource', () => {
-	const executeFunctions = mock<IExecuteFunctions>();
 	const response = [{ id: '123' }, { id: '345' }];
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 	});
 	test('getMetrics operation', async () => {
+		const executeFunctions = mock<IExecuteFunctions>();
 		(transport.splunkApiJsonRequest as jest.Mock).mockReturnValue(response);
 		const responseData = await alert.getMetrics.execute.call(executeFunctions, 0);
 		expect(transport.splunkApiJsonRequest).toHaveBeenCalledWith(
@@ -25,6 +25,7 @@ describe('Splunk, alert resource', () => {
 	});
 
 	test('getReport operation', async () => {
+		const executeFunctions = mock<IExecuteFunctions>();
 		(transport.splunkApiJsonRequest as jest.Mock).mockReturnValue(response);
 		const responseData = await alert.getReport.execute.call(executeFunctions, 0);
 		expect(transport.splunkApiJsonRequest).toHaveBeenCalledWith(
