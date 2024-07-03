@@ -1,5 +1,5 @@
 <template>
-	<div v-if="docs" :class="$style.docs">
+	<div :class="$style.docs">
 		<div :class="$style.header">
 			<p :class="$style.title">{{ i18n.baseText('credentialEdit.credentialEdit.setupGuide') }}</p>
 			<n8n-link
