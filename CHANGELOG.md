@@ -1,3 +1,16 @@
+## [1.48.3](https://github.com/n8n-io/n8n/compare/n8n@1.48.2...n8n@1.48.3) (2024-07-03)
+
+
+### Bug Fixes
+
+* **core:** Filter out certain executions from crash recovery ([#9904](https://github.com/n8n-io/n8n/issues/9904)) ([2661c24](https://github.com/n8n-io/n8n/commit/2661c24d5e0647da5444831f7d3feace198748c4))
+* **core:** Fix AddActivatedAtUserSetting migration on MariaDB ([#9910](https://github.com/n8n-io/n8n/issues/9910)) ([7095c6d](https://github.com/n8n-io/n8n/commit/7095c6d6bd03fc174eaf516b77175a2b5390f483))
+* **core:** Fix worker logs relay ([#9919](https://github.com/n8n-io/n8n/issues/9919)) ([aeb7e74](https://github.com/n8n-io/n8n/commit/aeb7e741b0010b979c182e60582b645c84c31fa5))
+* **core:** Throw on adding execution without execution data ([#9903](https://github.com/n8n-io/n8n/issues/9903)) ([536b29c](https://github.com/n8n-io/n8n/commit/536b29c03ce94f0c827bc6bd7bf333078d075ab7))
+* **editor:** Fix frontend project roles ([#9901](https://github.com/n8n-io/n8n/issues/9901)) ([44d13f1](https://github.com/n8n-io/n8n/commit/44d13f13cad6fd691b65e06730cd72056e372796))
+
+
+
 ## [1.48.2](https://github.com/n8n-io/n8n/compare/n8n@1.48.1...n8n@1.48.2) (2024-07-01)
 
 
