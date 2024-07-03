@@ -39,10 +39,10 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	(event: 'modal-opener-click'): void;
-	(event: 'update:model-value', value: string): void;
-	(event: 'focus'): void;
-	(event: 'blur'): void;
+	'modal-opener-click': [];
+	'updated:model-value': [value: string];
+	focus: [];
+	bluer: [];
 }>();
 
 const telemetry = useTelemetry();

@@ -12,9 +12,9 @@ import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 type Command = 'retrySaved' | 'retryOriginal' | 'delete';
 
 const emit = defineEmits<{
-	(event: 'stop', data: ExecutionSummary): void;
-	(event: 'select', data: ExecutionSummary): void;
-	(event: Command, data: ExecutionSummary): void;
+	stop: [data: ExecutionSummary];
+	select: [data: ExecutionSummary];
+	Command: [data: ExecutionSummary];
 }>();
 
 const props = withDefaults(

@@ -30,10 +30,11 @@ type Props = {
 };
 
 const props = withDefaults(defineProps<Props>(), { tag: 'div', disabled: false });
+
 const emit = defineEmits<{
-	(event: 'drag', value: XYPosition): void;
-	(event: 'dragstart', value: HTMLElement): void;
-	(event: 'dragend', value: HTMLElement): void;
+	drag: [value: XYPosition];
+	dragstart: [value: HTMLElement];
+	dragend: [value: HTMLElement];
 }>();
 
 const isDragging = ref(false);

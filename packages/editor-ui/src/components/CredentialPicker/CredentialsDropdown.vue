@@ -13,8 +13,8 @@ const props = defineProps<{
 }>();
 
 const $emit = defineEmits<{
-	(event: 'credentialSelected', credentialId: string): void;
-	(event: 'newCredential'): void;
+	credentialSelected: [credentialId: string];
+	newCredential: [];
 }>();
 
 const i18n = useI18n();

@@ -67,7 +67,7 @@ const { getNodeInputData } = useNodeHelpers();
 const { debounce } = useDebounce();
 
 const emit = defineEmits<{
-	(event: 'clear:search'): void;
+	'clear:search': [];
 }>();
 
 const nodeSchema = computed(() =>

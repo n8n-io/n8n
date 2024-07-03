@@ -8,7 +8,7 @@ const aiStore = useAIStore();
 const locale = useI18n();
 const telemetry = useTelemetry();
 
-const emit = defineEmits<{ (event: 'optionSelected', option: string): void }>();
+const emit = defineEmits<{ optionSelected: [option: string] }>();
 
 const aiAssistantChatOpen = computed(() => aiStore.assistantChatOpen);
 
