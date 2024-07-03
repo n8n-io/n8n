@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: n8n
+  namespace: namespace-workflow-1720031672327
+  labels:
+    kubernetes.azure.com/generator: devhub
+spec:
+  type: LoadBalancer
+  selector:
+    app: n8n
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000

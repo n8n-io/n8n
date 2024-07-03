@@ -1,0 +1,65 @@
+name: n8n
+"on":
+    push:
+        branches:
+            - aks-devhub-bhsay
+    workflow_dispatch: {}
+env:
+    ACR_RESOURCE_GROUP: n8nrgroup
+    AZURE_CONTAINER_REGISTRY: acrworkflow1720031672327
+    CLUSTER_NAME: n8nkucluster
+    CLUSTER_RESOURCE_GROUP: n8nrgroup
+    CONTAINER_NAME: image-workflow-1720031672327
+    DEPLOYMENT_MANIFEST_PATH: |
+        manifests/deployment.yaml
+        manifests/service.yaml
+jobs:
+    buildImage:
+        permissions:
+            contents: read
+            id-token: write
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v3
+            - uses: azure/login@92a5484dfaf04ca78a94597f4f19fea633851fa2
+              name: Azure login
+              with:
+                client-id: ${{ secrets.AZURE_CLIENT_ID }}
+                subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+                tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+            - name: Build and push image to ACR
+              run: az acr build --image ${{ env.CONTAINER_NAME }}:${{ github.sha }} --registry ${{ env.AZURE_CONTAINER_REGISTRY }} -g ${{ env.ACR_RESOURCE_GROUP }} -f Dockerfile ./
+    deploy:
+        permissions:
+            actions: read
+            contents: read
+            id-token: write
+        runs-on: ubuntu-latest
+        needs:
+            - buildImage
+        steps:
+            - uses: actions/checkout@v3
+            - uses: azure/login@92a5484dfaf04ca78a94597f4f19fea633851fa2
+              name: Azure login
+              with:
+                client-id: ${{ secrets.AZURE_CLIENT_ID }}
+                subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+                tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+            - uses: azure/use-kubelogin@v1
+              name: Set up kubelogin for non-interactive login
+              with:
+                kubelogin-version: v0.0.25
+            - uses: azure/aks-set-context@v3
+              name: Get K8s context
+              with:
+                admin: "false"
+                cluster-name: ${{ env.CLUSTER_NAME }}
+                resource-group: ${{ env.CLUSTER_RESOURCE_GROUP }}
+                use-kubelogin: "true"
+            - uses: Azure/k8s-deploy@v4
+              name: Deploys application
+              with:
+                action: deploy
+                images: ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.CONTAINER_NAME }}:${{ github.sha }}
+                manifests: ${{ env.DEPLOYMENT_MANIFEST_PATH }}
+                namespace: namespace-workflow-1720031672327
