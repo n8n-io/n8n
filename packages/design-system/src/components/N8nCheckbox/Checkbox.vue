@@ -45,10 +45,11 @@ withDefaults(defineProps<CheckboxProps>(), {
 	labelSize: 'medium',
 });
 
-const $emit = defineEmits<{
-	updateModelValue: [value: CheckboxValueType];
+const emit = defineEmits<{
+	'update:modelValue': [value: CheckboxValueType];
 }>();
-const onUpdateModelValue = (value: CheckboxValueType) => $emit('update:modelValue', value);
+
+const onUpdateModelValue = (value: CheckboxValueType) => emit('update:modelValue', value);
 
 const checkbox = ref<InstanceType<typeof ElCheckbox>>();
 const onLabelClick = () => {
