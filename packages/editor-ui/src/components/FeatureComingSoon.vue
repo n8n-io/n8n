@@ -56,7 +56,7 @@ export default defineComponent({
 			return this.rootStore.instanceId;
 		},
 		featureInfo(): IFakeDoor | undefined {
-			return this.uiStore.getFakeDoorById(this.featureId);
+			return this.uiStore.fakeDoorsById[this.featureId];
 		},
 	},
 	methods: {

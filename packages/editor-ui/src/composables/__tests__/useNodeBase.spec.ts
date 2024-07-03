@@ -140,21 +140,15 @@ describe('useNodeBase', () => {
 		it('should handle mouse left click correctly', () => {
 			const { mouseLeftClick } = nodeBase;
 
-			const isActionActiveFn = vi.fn().mockReturnValue(false);
-
-			// @ts-expect-error Pinia has a known issue when mocking getters, will be solved when migrating the uiStore to composition api
-			vi.spyOn(uiStore, 'isActionActive', 'get').mockReturnValue(isActionActiveFn);
-			// @ts-expect-error Pinia has a known issue when mocking getters, will be solved when migrating the uiStore to composition api
-			vi.spyOn(uiStore, 'isNodeSelected', 'get').mockReturnValue(() => false);
-
 			const event = new MouseEvent('click', {
 				bubbles: true,
 				cancelable: true,
 			});
 
+			uiStore.addActiveAction('notDragActive');
+
 			mouseLeftClick(event);
 
-			expect(isActionActiveFn).toHaveBeenCalledWith('dragActive');
 			expect(emit).toHaveBeenCalledWith('deselectAllNodes');
 			expect(emit).toHaveBeenCalledWith('nodeSelected', node.name);
 		});

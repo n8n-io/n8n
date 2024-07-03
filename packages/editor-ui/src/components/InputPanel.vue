@@ -304,7 +304,7 @@ export default defineComponent({
 			return false;
 		},
 		workflowRunning(): boolean {
-			return this.uiStore.isActionActive('workflowRunning');
+			return this.uiStore.isActionActive['workflowRunning'];
 		},
 
 		activeNode(): INodeUi | null {
