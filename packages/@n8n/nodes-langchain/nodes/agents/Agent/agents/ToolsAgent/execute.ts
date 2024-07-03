@@ -1,10 +1,11 @@
 import { BINARY_ENCODING, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-import type { IBinaryKeyData, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import type { AgentAction, AgentFinish, AgentStep } from 'langchain/agents';
 import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
-import { BaseMessagePromptTemplateLike, ChatPromptTemplate, ChatPromptTemplateInput } from '@langchain/core/prompts';
+import type { BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
+import { ChatPromptTemplate } from '@langchain/core/prompts';
 import { omit } from 'lodash';
 import type { Tool } from '@langchain/core/tools';
 import { DynamicStructuredTool } from '@langchain/core/tools';
@@ -21,7 +22,6 @@ import {
 	getConnectedTools,
 } from '../../../../../utils/helpers';
 import { SYSTEM_MESSAGE } from './prompt';
-import { InputValues } from 'langchain/memory';
 
 function getOutputParserSchema(outputParser: BaseOutputParser): ZodObject<any, any, any, any> {
 	const parserType = outputParser.lc_namespace[outputParser.lc_namespace.length - 1];

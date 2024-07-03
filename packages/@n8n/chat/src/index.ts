@@ -1,12 +1,9 @@
 import './main.scss';
 
 import { createApp } from 'vue';
-// import { Tooltip, vTooltip } from 'floating-vue';
 import {
-	// Directives
 	vTooltip,
 	vClosePopper,
-	// Components
 	Dropdown,
 	Tooltip,
 	Menu,
