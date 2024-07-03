@@ -12,10 +12,10 @@ const props = defineProps<{
 	selectedCredentialId: string | null;
 }>();
 
-const $emit = defineEmits({
-	credentialSelected: (_credentialId: string) => true,
-	newCredential: () => true,
-});
+const $emit = defineEmits<{
+	(event: 'credentialSelected', credentialId: string): void;
+	(event: 'newCredential'): void;
+}>();
 
 const i18n = useI18n();
 
