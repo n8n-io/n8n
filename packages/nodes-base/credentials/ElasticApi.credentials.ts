@@ -1,8 +1,7 @@
 import type {
-	ICredentialDataDecryptedObject,
+	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
-	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -35,15 +34,14 @@ export class ElasticApi implements ICredentialType {
 		},
 	];
 
-	async authenticate(
-		credentials: ICredentialDataDecryptedObject,
-		requestOptions: IHttpRequestOptions,
-	): Promise<IHttpRequestOptions> {
-		requestOptions.headers = {
-			Authorization: 'ApiKey ' + credentials.apiKey,
-		};
-		return requestOptions;
-	}
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			headers: {
+				Authorization: '=ApiKey {{$credentials.apiKey}}',
+			},
+		},
+	};
 
 	test: ICredentialTestRequest = {
 		request: {
