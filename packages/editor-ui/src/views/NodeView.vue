@@ -4470,6 +4470,13 @@ export default defineComponent({
 			await this.credentialsStore.fetchCredentialTypes(true);
 		},
 		async loadCredentialsForWorkflow(): Promise<void> {
+			// In preview mode, we don't have to load the credentials. We actually
+			// can't load them because they depend on the project the workflow is in,
+			// but in preview mode there is no project.
+			if (this.settingsStore.isPreviewMode) {
+				return;
+			}
+
 			const workflow = this.workflowsStore.getWorkflowById(this.currentWorkflow);
 			const workflowId = workflow?.id ?? this.$route.params.name;
 			let options: { workflowId: string } | { projectId: string };
