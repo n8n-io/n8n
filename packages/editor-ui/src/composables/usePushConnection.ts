@@ -35,7 +35,6 @@ import { parse } from 'flatted';
 import { ref } from 'vue';
 import { useOrchestrationStore } from '@/stores/orchestration.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
-import { useCollaborationStore } from '@/stores/collaboration.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import type { useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
@@ -51,7 +50,6 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
 
-	const collaborationStore = useCollaborationStore();
 	const credentialsStore = useCredentialsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const orchestrationManagerStore = useOrchestrationStore();
@@ -68,11 +66,9 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 		removeEventListener.value = pushStore.addEventListener((message) => {
 			void pushMessageReceived(message);
 		});
-		collaborationStore.initialize();
 	}
 
 	function terminate() {
-		collaborationStore.terminate();
 		if (typeof removeEventListener.value === 'function') {
 			removeEventListener.value();
 		}
