@@ -1,8 +1,7 @@
 import type {
-	ICredentialDataDecryptedObject,
+	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
-	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -15,6 +14,12 @@ export class FilescanApi implements ICredentialType {
 
 	icon = { light: 'file:icons/Filescan.svg', dark: 'file:icons/Filescan.svg' } as const;
 
+	httpRequestNode = {
+		name: 'Filescan',
+		docsUrl: 'https://www.filescan.io/api/docs',
+		apiBaseUrlPlaceholder: 'https://www.filescan.io/api/system/do-healthcheck',
+	};
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
@@ -26,15 +31,14 @@ export class FilescanApi implements ICredentialType {
 		},
 	];
 
-	async authenticate(
-		credentials: ICredentialDataDecryptedObject,
-		requestOptions: IHttpRequestOptions,
-	): Promise<IHttpRequestOptions> {
-		requestOptions.headers = {
-			'X-Api-Key': credentials.apiKey,
-		};
-		return requestOptions;
-	}
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			headers: {
+				'X-Api-Key': '={{$credentials.apiKey}}',
+			},
+		},
+	};
 
 	test: ICredentialTestRequest = {
 		request: {
