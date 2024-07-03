@@ -1044,29 +1044,26 @@ describe('FilterParameter', () => {
 				it.each([
 					{ left: ['foo', 'bar'], right: 'foo', expected: true },
 					{ left: ['foo', 'bar'], right: 'ba', expected: false },
-				] as unknown as Tests)(
-					'array:contains($left,$right) === $expected',
-					({ left, right, expected }) => {
-						const result = executeFilter(
-							filterFactory({
-								conditions: [
-									{
-										id: '1',
-										leftValue: left,
-										rightValue: right,
-										operator: { operation: 'contains', type: 'array', rightType: 'any' },
-									},
-								],
-							}),
-						);
-						expect(result).toBe(expected);
-					},
-				);
+				] as Tests)('array:contains($left,$right) === $expected', ({ left, right, expected }) => {
+					const result = executeFilter(
+						filterFactory({
+							conditions: [
+								{
+									id: '1',
+									leftValue: left,
+									rightValue: right,
+									operator: { operation: 'contains', type: 'array', rightType: 'any' },
+								},
+							],
+						}),
+					);
+					expect(result).toBe(expected);
+				});
 
 				it.each([
 					{ left: ['foo', 'bar'], right: 'foo', expected: false },
 					{ left: ['foo', 'bar'], right: 'ba', expected: true },
-				] as unknown as Tests)(
+				] as Tests)(
 					'array:notContains($left,$right) === $expected',
 					({ left, right, expected }) => {
 						const result = executeFilter(
@@ -1089,7 +1086,7 @@ describe('FilterParameter', () => {
 					{ left: ['foo', 'bar'], right: 2, expected: true },
 					{ left: [], right: 0, expected: true },
 					{ left: ['foo', 'bar'], right: 1, expected: false },
-				] as unknown as Tests)(
+				] as Tests)(
 					'array:lengthEquals($left,$right) === $expected',
 					({ left, right, expected }) => {
 						const result = executeFilter(
@@ -1112,7 +1109,7 @@ describe('FilterParameter', () => {
 					{ left: ['foo', 'bar'], right: 2, expected: false },
 					{ left: [], right: 0, expected: false },
 					{ left: ['foo', 'bar'], right: 1, expected: true },
-				] as unknown as Tests)(
+				] as Tests)(
 					'array:lengthNotEquals($left,$right) === $expected',
 					({ left, right, expected }) => {
 						const result = executeFilter(
@@ -1135,96 +1132,84 @@ describe('FilterParameter', () => {
 					{ left: ['foo', 'bar'], right: 2, expected: false },
 					{ left: [], right: 0, expected: false },
 					{ left: ['foo', 'bar'], right: 1, expected: true },
-				] as unknown as Tests)(
-					'array:lengthGt($left,$right) === $expected',
-					({ left, right, expected }) => {
-						const result = executeFilter(
-							filterFactory({
-								conditions: [
-									{
-										id: '1',
-										leftValue: left,
-										rightValue: right,
-										operator: { operation: 'lengthGt', type: 'array', rightType: 'number' },
-									},
-								],
-							}),
-						);
-						expect(result).toBe(expected);
-					},
-				);
+				] as Tests)('array:lengthGt($left,$right) === $expected', ({ left, right, expected }) => {
+					const result = executeFilter(
+						filterFactory({
+							conditions: [
+								{
+									id: '1',
+									leftValue: left,
+									rightValue: right,
+									operator: { operation: 'lengthGt', type: 'array', rightType: 'number' },
+								},
+							],
+						}),
+					);
+					expect(result).toBe(expected);
+				});
 
 				it.each([
 					{ left: ['foo', 'bar'], right: 2, expected: false },
 					{ left: [], right: 0, expected: false },
 					{ left: ['foo', 'bar'], right: 1, expected: false },
 					{ left: ['foo', 'bar'], right: 3, expected: true },
-				] as unknown as Tests)(
-					'array:lengthLt($left,$right) === $expected',
-					({ left, right, expected }) => {
-						const result = executeFilter(
-							filterFactory({
-								conditions: [
-									{
-										id: '1',
-										leftValue: left,
-										rightValue: right,
-										operator: { operation: 'lengthLt', type: 'array', rightType: 'number' },
-									},
-								],
-							}),
-						);
-						expect(result).toBe(expected);
-					},
-				);
+				] as Tests)('array:lengthLt($left,$right) === $expected', ({ left, right, expected }) => {
+					const result = executeFilter(
+						filterFactory({
+							conditions: [
+								{
+									id: '1',
+									leftValue: left,
+									rightValue: right,
+									operator: { operation: 'lengthLt', type: 'array', rightType: 'number' },
+								},
+							],
+						}),
+					);
+					expect(result).toBe(expected);
+				});
 
 				it.each([
 					{ left: ['foo', 'bar'], right: 2, expected: true },
 					{ left: [], right: 0, expected: true },
 					{ left: ['foo', 'bar'], right: 1, expected: true },
 					{ left: ['foo', 'bar'], right: 3, expected: false },
-				] as unknown as Tests)(
-					'array:lengthGte($left,$right) === $expected',
-					({ left, right, expected }) => {
-						const result = executeFilter(
-							filterFactory({
-								conditions: [
-									{
-										id: '1',
-										leftValue: left,
-										rightValue: right,
-										operator: { operation: 'lengthGte', type: 'array', rightType: 'number' },
-									},
-								],
-							}),
-						);
-						expect(result).toBe(expected);
-					},
-				);
+				] as Tests)('array:lengthGte($left,$right) === $expected', ({ left, right, expected }) => {
+					const result = executeFilter(
+						filterFactory({
+							conditions: [
+								{
+									id: '1',
+									leftValue: left,
+									rightValue: right,
+									operator: { operation: 'lengthGte', type: 'array', rightType: 'number' },
+								},
+							],
+						}),
+					);
+					expect(result).toBe(expected);
+				});
 
 				it.each([
 					{ left: ['foo', 'bar'], right: 2, expected: true },
 					{ left: [], right: 0, expected: true },
 					{ left: ['foo', 'bar'], right: 1, expected: false },
 					{ left: ['foo', 'bar'], right: 3, expected: true },
-				] as unknown as Tests)(
-					'array:lengthLte($left,$right) === $expected',
-					({ left, right, expected }) => {
-						const result = executeFilter(
-							filterFactory({
-								conditions: [
-									{
-										id: '1',
-										leftValue: left,
-										rightValue: right,
-										operator: { operation: 'lengthLte', type: 'array', rightType: 'number' },
-									},
-								],
-							}),
-						);
-						expect(result).toBe(expected);
-					},
-				);
+				] as Tests)('array:lengthLte($left,$right) === $expected', ({ left, right, expected }) => {
+					const result = executeFilter(
+						filterFactory({
+							conditions: [
+								{
+									id: '1',
+									leftValue: left,
+									rightValue: right,
+									operator: { operation: 'lengthLte', type: 'array', rightType: 'number' },
+								},
+							],
+						}),
+					);
+					expect(result).toBe(expected);
+				});
 			});
 
 			describe('object', () => {
