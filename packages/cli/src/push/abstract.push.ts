@@ -13,8 +13,12 @@ export abstract class AbstractPush<T> {
 
 	protected abstract close(connection: T): void;
 	protected abstract sendToOneConnection(connection: T, data: string): void;
+	protected abstract ping(connection: T): void;
 
-	constructor(protected readonly logger: Logger) {}
+	constructor(protected readonly logger: Logger) {
+		// Ping all connected clients every 60 seconds
+		setInterval(() => this.pingAll(), 60 * 1000);
+	}
 
 	protected add(pushRef: string, connection: T) {
 		const { connections } = this;
@@ -50,6 +54,12 @@ export abstract class AbstractPush<T> {
 			const connection = this.connections[pushRef];
 			assert(connection);
 			this.sendToOneConnection(connection, stringifiedPayload);
+		}
+	}
+
+	private pingAll() {
+		for (const pushRef in this.connections) {
+			this.ping(this.connections[pushRef]);
 		}
 	}
 
