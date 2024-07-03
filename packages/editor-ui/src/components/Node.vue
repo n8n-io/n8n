@@ -592,7 +592,7 @@ export default defineComponent({
 			return undefined;
 		},
 		workflowRunning(): boolean {
-			return this.uiStore.isActionActive('workflowRunning');
+			return this.uiStore.isActionActive['workflowRunning'];
 		},
 		nodeStyle() {
 			const returnStyles: {

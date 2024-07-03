@@ -1,7 +1,7 @@
 <template>
 	<ElDrawer
 		:direction="direction"
-		:model-value="uiStore.isModalOpen(name)"
+		:model-value="uiStore.modalsById[name].open"
 		:size="width"
 		:before-close="close"
 		:modal="modal"
@@ -74,7 +74,7 @@ export default defineComponent({
 	},
 	methods: {
 		onWindowKeydown(event: KeyboardEvent) {
-			if (!this.uiStore.isModalActive(this.name)) {
+			if (!this.uiStore.isModalActiveById[this.name]) {
 				return;
 			}
 
@@ -83,7 +83,7 @@ export default defineComponent({
 			}
 		},
 		handleEnter() {
-			if (this.uiStore.isModalActive(this.name)) {
+			if (this.uiStore.isModalActiveById[this.name]) {
 				this.$emit('enter');
 			}
 		},

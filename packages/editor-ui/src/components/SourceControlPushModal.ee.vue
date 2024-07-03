@@ -141,7 +141,7 @@ function getContext() {
 		return 'workflows';
 	} else if (
 		route.fullPath.startsWith('/credentials') ||
-		uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY].open
+		uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY].open
 	) {
 		return 'credentials';
 	} else if (route.fullPath.startsWith('/workflow/')) {
