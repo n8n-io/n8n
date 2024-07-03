@@ -30,6 +30,7 @@ import { ServiceUnavailableError } from '@/errors/response-errors/service-unavai
 import { BaseCommand } from './BaseCommand';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 import { AuditEventRelay } from '@/eventbus/audit-event-relay.service';
+import { RedisClientService } from '@/services/redis/redis-client.service';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -89,6 +90,8 @@ export class Worker extends BaseCommand {
 		} catch (error) {
 			await this.exitWithCrash('There was an error shutting down n8n.', error);
 		}
+
+		Container.get(RedisClientService).disconnectClients();
 
 		await this.exitSuccessFully();
 	}
