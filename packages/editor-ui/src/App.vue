@@ -26,9 +26,6 @@
 					<component :is="Component" v-else />
 				</router-view>
 			</div>
-			<div id="chat" :class="{ [$style.chat]: true, [$style.open]: aiStore.assistantChatOpen }">
-				<AIAssistantChat v-if="aiStore.assistantChatOpen" />
-			</div>
 			<Modals />
 			<Telemetry />
 		</div>
@@ -60,8 +57,6 @@ import { useUsageStore } from '@/stores/usage.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { useRoute } from 'vue-router';
-import { useAIStore } from './stores/ai.store';
-import AIAssistantChat from './components/AIAssistantChat/AIAssistantChat.vue';
 
 export default defineComponent({
 	name: 'App',
@@ -70,7 +65,6 @@ export default defineComponent({
 		LoadingView,
 		Telemetry,
 		Modals,
-		AIAssistantChat,
 	},
 	setup() {
 		return {
@@ -91,7 +85,6 @@ export default defineComponent({
 			useSourceControlStore,
 			useCloudPlanStore,
 			useUsageStore,
-			useAIStore,
 		),
 		defaultLocale(): string {
 			return this.rootStore.defaultLocale;
@@ -170,16 +163,5 @@ export default defineComponent({
 	grid-area: sidebar;
 	height: 100%;
 	z-index: 999;
-}
-.chat {
-	grid-area: chat;
-	z-index: 999;
-	height: 100%;
-	width: 0;
-	transition: all 0.2s ease-in-out;
-
-	&.open {
-		width: $chat-width;
-	}
 }
 </style>

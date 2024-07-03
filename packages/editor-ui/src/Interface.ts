@@ -1892,10 +1892,6 @@ export type NewConnectionInfo = {
 	endpointUuid?: string;
 };
 
-export type AIAssistantConnectionInfo = NewConnectionInfo & {
-	stepName?: string;
-};
-
 export type EnterpriseEditionFeatureKey =
 	| 'AdvancedExecutionFilters'
 	| 'Sharing'

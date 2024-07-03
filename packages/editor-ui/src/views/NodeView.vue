@@ -120,9 +120,6 @@
 			<Suspense>
 				<ContextMenu @action="onContextMenuAction" />
 			</Suspense>
-			<Suspense>
-				<NextStepPopup v-show="isNextStepPopupVisible" @option-selected="onNextStepSelected" />
-			</Suspense>
 			<div v-if="!isReadOnlyRoute && !readOnlyEnv" class="workflow-execute-wrapper">
 				<span
 					v-if="!isManualChatOnly"
@@ -246,7 +243,6 @@ import {
 	AI_NODE_CREATOR_VIEW,
 	DRAG_EVENT_DATA_KEY,
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
-	AI_ASSISTANT_LOCAL_STORAGE_KEY,
 	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT,
 } from '@/constants';
 
@@ -268,7 +264,6 @@ import Node from '@/components/Node.vue';
 import Sticky from '@/components/Sticky.vue';
 import CanvasAddButton from './CanvasAddButton.vue';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
-import NextStepPopup from '@/components/AIAssistantChat/NextStepPopup.vue';
 import { v4 as uuid } from 'uuid';
 import type {
 	IConnection,
@@ -314,7 +309,6 @@ import type {
 	AddedNodesAndConnections,
 	ToggleNodeCreatorOptions,
 	IPushDataExecutionFinished,
-	AIAssistantConnectionInfo,
 	NodeFilterType,
 } from '@/Interface';
 
@@ -389,8 +383,6 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectSharingData } from '@/types/projects.types';
-import { useAIStore } from '@/stores/ai.store';
-import { useStorage } from '@/composables/useStorage';
 import { isJSPlumbEndpointElement, isJSPlumbConnection } from '@/utils/typeGuards';
 import { usePostHog } from '@/stores/posthog.store';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
@@ -424,7 +416,6 @@ export default defineComponent({
 		CanvasControls,
 		ContextMenu,
 		SetupWorkflowCredentialsButton,
-		NextStepPopup,
 	},
 	async beforeRouteLeave(to, from, next) {
 		if (
@@ -587,7 +578,6 @@ export default defineComponent({
 			useSourceControlStore,
 			useExecutionsStore,
 			useProjectsStore,
-			useAIStore,
 			useNpsSurveyStore,
 		),
 		nativelyNumberSuffixedDefaults(): string[] {
@@ -751,16 +741,6 @@ export default defineComponent({
 		},
 		isReadOnlyRoute() {
 			return this.$route?.meta?.readOnlyCanvas === true;
-		},
-		isNextStepPopupVisible(): boolean {
-			return this.aiStore.nextStepPopupConfig.open;
-		},
-		shouldShowNextStepDialog(): boolean {
-			const userHasSeenAIAssistantExperiment =
-				useStorage(AI_ASSISTANT_LOCAL_STORAGE_KEY).value === 'true';
-			const experimentEnabled = this.aiStore.isAssistantExperimentEnabled;
-			const isCloudDeployment = this.settingsStore.isCloudDeployment;
-			return isCloudDeployment && experimentEnabled && !userHasSeenAIAssistantExperiment;
 		},
 		isProductionExecutionPreview(): boolean {
 			return this.nodeHelpers.isProductionExecutionPreview.value;
@@ -1249,29 +1229,13 @@ export default defineComponent({
 		},
 		async onCanvasAddButtonCLick(event: PointerEvent) {
 			if (event) {
-				if (this.shouldShowNextStepDialog) {
-					const newNodeButton = (event.target as HTMLElement).closest('button');
-					if (newNodeButton) {
-						this.aiStore.latestConnectionInfo = null;
-						this.aiStore.openNextStepPopup(
-							this.$locale.baseText('nextStepPopup.title.firstStep'),
-							newNodeButton,
-						);
-					}
-					return;
-				}
 				this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON);
 				return;
 			}
 		},
 		onNextStepSelected(action: string) {
 			if (action === 'choose') {
-				const lastConnectionInfo = this.aiStore.latestConnectionInfo as NewConnectionInfo;
-				if (lastConnectionInfo === null) {
-					this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON);
-				} else {
-					this.insertNodeAfterSelected(lastConnectionInfo);
-				}
+				this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON);
 			}
 		},
 		showTriggerCreator(source: NodeCreatorOpenSource) {
@@ -1508,7 +1472,6 @@ export default defineComponent({
 			// Save the location of the mouse click
 			this.lastClickPosition = this.getMousePositionWithinNodeView(e);
 			if (e instanceof MouseEvent && e.button === 1) {
-				this.aiStore.closeNextStepPopup();
 				this.moveCanvasKeyPressed = true;
 			}
 
@@ -1535,7 +1498,6 @@ export default defineComponent({
 		},
 		async keyDown(e: KeyboardEvent) {
 			this.contextMenu.close();
-			this.aiStore.closeNextStepPopup();
 
 			const ctrlModifier = this.deviceSupport.isCtrlKeyPressed(e) && !e.shiftKey && !e.altKey;
 			const shiftModifier = e.shiftKey && !e.altKey && !this.deviceSupport.isCtrlKeyPressed(e);
@@ -2904,7 +2866,7 @@ export default defineComponent({
 
 			return filter;
 		},
-		insertNodeAfterSelected(info: AIAssistantConnectionInfo) {
+		insertNodeAfterSelected(info: NewConnectionInfo) {
 			const type = info.outputType ?? NodeConnectionType.Main;
 			// Get the node and set it as active that new nodes
 			// which get created get automatically connected
@@ -2987,7 +2949,7 @@ export default defineComponent({
 				const endpoint = connection.instance.getEndpoint(endpointId);
 				// First, show node creator if endpoint is not a plus endpoint
 				// or if the AI Assistant experiment doesn't need to be shown to user
-				if (!endpoint?.endpoint?.canvas || !this.shouldShowNextStepDialog) {
+				if (!endpoint?.endpoint?.canvas) {
 					this.insertNodeAfterSelected({
 						sourceId: connection.parameters.nodeId,
 						index: connection.parameters.index,
@@ -2997,8 +2959,6 @@ export default defineComponent({
 					});
 					return;
 				}
-				// Else render the popup
-				const endpointElement: HTMLElement = endpoint.endpoint.canvas;
 				// Use observer to trigger the popup once the endpoint is rendered back again
 				// after connection drag is aborted (so we can get it's position and dimensions)
 				const observer = new MutationObserver((mutations) => {
@@ -3013,20 +2973,6 @@ export default defineComponent({
 						);
 					});
 					if (endpointMutation) {
-						// When found, display the popup
-						const newConnectionInfo: AIAssistantConnectionInfo = {
-							sourceId: connection.parameters.nodeId,
-							index: connection.parameters.index,
-							eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
-							outputType: connection.parameters.type,
-							endpointUuid: endpoint.uuid,
-							stepName: endpoint.__meta.nodeName,
-						};
-						this.aiStore.latestConnectionInfo = newConnectionInfo;
-						this.aiStore.openNextStepPopup(
-							this.$locale.baseText('nextStepPopup.title.nextStep'),
-							endpointElement,
-						);
 						observer.disconnect();
 						return;
 					}
@@ -3562,32 +3508,13 @@ export default defineComponent({
 				.forEach((endpoint) => setTimeout(() => endpoint.instance.revalidate(endpoint.element), 0));
 		},
 		onPlusEndpointClick(endpoint: Endpoint) {
-			if (this.shouldShowNextStepDialog) {
-				if (endpoint?.__meta) {
-					this.aiStore.latestConnectionInfo = {
-						sourceId: endpoint.__meta.nodeId,
-						index: endpoint.__meta.index,
-						eventSource: NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
-						outputType: getEndpointScope(endpoint.scope),
-						endpointUuid: endpoint.uuid,
-						stepName: endpoint.__meta.nodeName,
-					};
-					const endpointElement = endpoint.endpoint.canvas;
-					this.aiStore.openNextStepPopup(
-						this.$locale.baseText('nextStepPopup.title.nextStep'),
-						endpointElement,
-					);
-				}
-			} else {
-				this.insertNodeAfterSelected({
-					sourceId: endpoint.__meta.nodeId,
-					index: endpoint.__meta.index,
-					eventSource: NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
-					outputType: getEndpointScope(endpoint.scope),
-					endpointUuid: endpoint.uuid,
-					stepName: endpoint.__meta.nodeName,
-				});
-			}
+			this.insertNodeAfterSelected({
+				sourceId: endpoint.__meta.nodeId,
+				index: endpoint.__meta.index,
+				eventSource: NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
+				outputType: getEndpointScope(endpoint.scope),
+				endpointUuid: endpoint.uuid,
+			});
 		},
 		onAddInputEndpointClick(endpoint: Endpoint) {
 			if (endpoint?.__meta) {

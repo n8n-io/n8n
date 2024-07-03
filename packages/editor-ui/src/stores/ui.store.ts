@@ -38,7 +38,6 @@ import {
 	N8N_PRICING_PAGE_URL,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 	SETUP_CREDENTIALS_MODAL_KEY,
-	GENERATE_CURL_MODAL_KEY,
 	PROJECT_MOVE_RESOURCE_MODAL,
 	PROJECT_MOVE_RESOURCE_CONFIRM_MODAL,
 } from '@/constants';
@@ -138,13 +137,6 @@ export const useUIStore = defineStore(STORES.UI, {
 				open: false,
 				data: {
 					curlCommand: '',
-				},
-			},
-			[GENERATE_CURL_MODAL_KEY]: {
-				open: false,
-				data: {
-					service: '',
-					request: '',
 				},
 			},
 			[LOG_STREAM_MODAL_KEY]: {
