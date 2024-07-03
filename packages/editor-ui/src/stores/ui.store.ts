@@ -318,9 +318,12 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		].includes(currentView.value);
 	});
 
-	const isActionActive = computed(() => {
-		return (action: string) => activeActions.value.includes(action);
-	});
+	const isActionActive = computed(() =>
+		activeActions.value.reduce((acc: { [action: string]: boolean }, action) => {
+			acc[action] = true;
+			return acc;
+		}, {}),
+	);
 
 	const getSelectedNodes = computed(() => {
 		const seen = new Set();
@@ -668,6 +671,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		fakeDoorsByLocation,
 		isReadOnlyView,
 		isActionActive,
+		activeActions,
 		getSelectedNodes,
 		isNodeSelected,
 		upgradeLinkUrl,

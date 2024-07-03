@@ -238,7 +238,7 @@ const activeNodeType = computed(() => {
 	return null;
 });
 
-const workflowRunning = computed(() => uiStore.isActionActive('workflowRunning'));
+const workflowRunning = computed(() => uiStore.isActionActive['workflowRunning']);
 
 const showTriggerWaitingWarning = computed(
 	() =>
@@ -428,7 +428,7 @@ const featureRequestUrl = computed(() => {
 
 const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
 
-const isWorkflowRunning = computed(() => uiStore.isActionActive('workflowRunning'));
+const isWorkflowRunning = computed(() => uiStore.isActionActive['workflowRunning']);
 
 const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
 

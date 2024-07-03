@@ -153,7 +153,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 		}
 
 		if (receivedData.type === 'nodeExecuteAfter' || receivedData.type === 'nodeExecuteBefore') {
-			if (!uiStore.isActionActive('workflowRunning')) {
+			if (!uiStore.isActionActive['workflowRunning']) {
 				// No workflow is running so ignore the messages
 				return false;
 			}
@@ -173,7 +173,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 		let recoveredPushData: IPushDataExecutionFinished | undefined = undefined;
 		if (receivedData.type === 'executionRecovered') {
 			const recoveredExecutionId = receivedData.data?.executionId;
-			const isWorkflowRunning = uiStore.isActionActive('workflowRunning');
+			const isWorkflowRunning = uiStore.isActionActive['workflowRunning'];
 			if (isWorkflowRunning && workflowsStore.activeExecutionId === recoveredExecutionId) {
 				// pull execution data for the recovered execution from the server
 				const executionData = await workflowsStore.fetchExecutionDataById(
@@ -266,7 +266,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				workflowsStore.finishActiveExecution(pushData);
 			}
 
-			if (!uiStore.isActionActive('workflowRunning')) {
+			if (!uiStore.isActionActive['workflowRunning']) {
 				// No workflow is running so ignore the messages
 				return false;
 			}
