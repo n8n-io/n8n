@@ -1,3 +1,4 @@
+import type { PermissionsRecord } from '@/permissions';
 import {
 	getVariablesPermissions,
 	getProjectPermissions,
@@ -7,6 +8,7 @@ import {
 } from '@/permissions';
 import type { ICredentialsResponse, IUser, IWorkflowDb } from '@/Interface';
 import type { Project } from '@/types/projects.types';
+import type { Scope } from '@n8n/permissions';
 
 describe('permissions', () => {
 	it('getVariablesPermissions', () => {
@@ -120,36 +122,36 @@ describe('permissions', () => {
 	});
 
 	it('getResourcePermissions', () => {
-		expect(
-			getResourcePermissions([
-				'credential:create',
-				'credential:delete',
-				'credential:list',
-				'credential:move',
-				'credential:read',
-				'credential:share',
-				'credential:update',
-				'eventBusDestination:list',
-				'eventBusDestination:test',
-				'project:list',
-				'project:read',
-				'tag:create',
-				'tag:list',
-				'tag:read',
-				'tag:update',
-				'user:list',
-				'variable:list',
-				'variable:read',
-				'workflow:create',
-				'workflow:delete',
-				'workflow:execute',
-				'workflow:list',
-				'workflow:move',
-				'workflow:read',
-				'workflow:share',
-				'workflow:update',
-			]),
-		).toEqual({
+		const scopes: Scope[] = [
+			'credential:create',
+			'credential:delete',
+			'credential:list',
+			'credential:move',
+			'credential:read',
+			'credential:share',
+			'credential:update',
+			'eventBusDestination:list',
+			'eventBusDestination:test',
+			'project:list',
+			'project:read',
+			'tag:create',
+			'tag:list',
+			'tag:read',
+			'tag:update',
+			'user:list',
+			'variable:list',
+			'variable:read',
+			'workflow:create',
+			'workflow:delete',
+			'workflow:execute',
+			'workflow:list',
+			'workflow:move',
+			'workflow:read',
+			'workflow:share',
+			'workflow:update',
+		];
+
+		const permissionRecord: PermissionsRecord<Scope> = {
 			credential: {
 				create: true,
 				delete: true,
@@ -190,6 +192,8 @@ describe('permissions', () => {
 				share: true,
 				update: true,
 			},
-		});
+		};
+
+		expect(getResourcePermissions(scopes)).toEqual(permissionRecord);
 	});
 });
