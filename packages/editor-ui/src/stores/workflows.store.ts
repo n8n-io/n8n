@@ -31,7 +31,6 @@ import type {
 	WorkflowMetadata,
 	IExecutionFlattedResponse,
 	IWorkflowTemplateNode,
-	ITag,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import type {
@@ -74,7 +73,6 @@ import { i18n } from '@/plugins/i18n';
 
 import { computed, ref } from 'vue';
 import { useProjectsStore } from '@/stores/projects.store';
-import { useTagsStore } from '@/stores/tags.store';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',

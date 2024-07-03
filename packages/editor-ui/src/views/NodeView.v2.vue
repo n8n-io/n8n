@@ -32,7 +32,6 @@ import {
 	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT,
 	EnterpriseEditionFeature,
 	FIRST_ONBOARDING_PROMPT_TIMEOUT,
-	MODAL_CANCEL,
 	MODAL_CONFIRM,
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	ONBOARDING_PROMPT_TIMEBOX,
@@ -330,6 +329,7 @@ async function runAutoAddManualTriggerExperiment() {
 	}
 }
 
+// @ts-expect-error @TODO Add binding on route leave
 async function promptSaveOnBeforeRouteLeave() {
 	if (uiStore.stateIsDirty && !isReadOnlyEnvironment.value) {
 		const confirmModal = await message.confirm(

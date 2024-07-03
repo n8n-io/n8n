@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { computed, inject } from 'vue';
-import { CanvasNodeKey } from '@/constants';
+import { computed } from 'vue';
 import TitledList from '@/components/TitledList.vue';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useCanvasNode } from '@/composables/useCanvasNode';
