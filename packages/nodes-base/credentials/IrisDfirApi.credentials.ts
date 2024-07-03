@@ -1,8 +1,7 @@
 import type {
-	ICredentialDataDecryptedObject,
+	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
-	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -14,6 +13,12 @@ export class IrisDfirApi implements ICredentialType {
 	documentationUrl = 'irisdfir';
 
 	icon = { light: 'file:icons/IrisDfir.svg', dark: 'file:icons/IrisDfir.svg' } as const;
+
+	httpRequestNode = {
+		name: 'IRIS DFIR',
+		docsUrl: 'https://docs.dfir-iris.org/operations/api/',
+		apiBaseUrlPlaceholder: 'http://<yourserver_ip>/manage/cases/list',
+	};
 
 	properties: INodeProperties[] = [
 		{
@@ -42,15 +47,14 @@ export class IrisDfirApi implements ICredentialType {
 		},
 	];
 
-	async authenticate(
-		credentials: ICredentialDataDecryptedObject,
-		requestOptions: IHttpRequestOptions,
-	): Promise<IHttpRequestOptions> {
-		requestOptions.headers = {
-			Authorization: 'Bearer ' + credentials.apiKey,
-		};
-		return requestOptions;
-	}
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			headers: {
+				Authorization: '=Bearer {{$credentials.apiKey}}',
+			},
+		},
+	};
 
 	test: ICredentialTestRequest = {
 		request: {
