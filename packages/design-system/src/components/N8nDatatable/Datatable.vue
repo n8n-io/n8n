@@ -85,8 +85,8 @@ const props = withDefaults(defineProps<DatatableProps>(), {
 });
 
 const $emit = defineEmits<{
-	(event: 'update:currentPage', value: number): void;
-	(event: 'update:rowsPerPage', value: number): void;
+	'update:currentPage': [value: number];
+	'update:rowsPerPage': [value: number];
 }>();
 
 const { t } = useI18n();
