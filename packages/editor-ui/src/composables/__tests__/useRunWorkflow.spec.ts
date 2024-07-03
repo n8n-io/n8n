@@ -25,8 +25,6 @@ vi.mock('@/stores/workflows.store', () => ({
 	}),
 }));
 
-vi.mock('@/stores/ui.store');
-
 vi.mock('@/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn().mockReturnValue({ track: vi.fn() }),
 }));
@@ -97,6 +95,10 @@ describe('useRunWorkflow({ router })', () => {
 		workflowHelpers = useWorkflowHelpers({ router });
 	});
 
+	beforeEach(() => {
+		uiStore.activeActions = [];
+	});
+
 	describe('runWorkflowApi()', () => {
 		it('should throw an error if push connection is not active', async () => {
 			const { runWorkflowApi } = useRunWorkflow({ router });
@@ -149,9 +151,9 @@ describe('useRunWorkflow({ router })', () => {
 	});
 
 	describe('runWorkflow()', () => {
-		it.only('should return undefined if UI action "workflowRunning" is active', async () => {
+		it('should return undefined if UI action "workflowRunning" is active', async () => {
 			const { runWorkflow } = useRunWorkflow({ router });
-			uiStore.activeActions = ['workflowRunning'];
+			uiStore.addActiveAction('workflowRunning');
 			const result = await runWorkflow({});
 			expect(result).toBeUndefined();
 		});
