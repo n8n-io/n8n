@@ -6,7 +6,7 @@ import {
 	getId,
 	populate,
 	formatFeed,
-	setCount,
+	setReturnAllOrLimit,
 	parseXml,
 } from '../../v2/helpers/utils';
 
@@ -226,7 +226,7 @@ describe('Splunk, setCount', () => {
 		const qs: IDataObject = {};
 		executeFunctionsMock.getNodeParameter.calledWith('returnAll', 0).mockReturnValue(true);
 
-		setCount.call(executeFunctionsMock, qs);
+		setReturnAllOrLimit.call(executeFunctionsMock, qs);
 
 		expect(qs.count).toBe(0);
 	});
@@ -237,7 +237,7 @@ describe('Splunk, setCount', () => {
 		executeFunctionsMock.getNodeParameter.calledWith('returnAll', 0).mockReturnValue(false);
 		executeFunctionsMock.getNodeParameter.calledWith('limit', 0).mockReturnValue(10);
 
-		setCount.call(executeFunctionsMock, qs);
+		setReturnAllOrLimit.call(executeFunctionsMock, qs);
 
 		expect(qs.count).toBe(10);
 	});

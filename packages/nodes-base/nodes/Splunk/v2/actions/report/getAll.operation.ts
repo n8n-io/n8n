@@ -1,6 +1,6 @@
 import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
-import { populate, setCount } from '../../helpers/utils';
+import { populate, setReturnAllOrLimit } from '../../helpers/utils';
 import { splunkApiJsonRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
@@ -70,7 +70,7 @@ export async function execute(
 	const options = this.getNodeParameter('options', i);
 
 	populate(options, qs);
-	setCount.call(this, qs);
+	setReturnAllOrLimit.call(this, qs);
 
 	const endpoint = '/services/saved/searches';
 	const returnData = await splunkApiJsonRequest.call(this, 'GET', endpoint, {}, qs);

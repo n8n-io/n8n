@@ -1,7 +1,7 @@
 import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { splunkApiJsonRequest } from '../../transport';
-import { setCount } from '../../helpers/utils';
+import { setReturnAllOrLimit } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	{
@@ -44,7 +44,7 @@ export async function execute(
 	// https://docs.splunk.com/Documentation/Splunk/8.2.2/RESTREF/RESTaccess#authentication.2Fusers
 
 	const qs = {} as IDataObject;
-	setCount.call(this, qs);
+	setReturnAllOrLimit.call(this, qs);
 
 	const endpoint = '/services/authentication/users';
 	const returnData = await splunkApiJsonRequest.call(this, 'GET', endpoint, {}, qs);
