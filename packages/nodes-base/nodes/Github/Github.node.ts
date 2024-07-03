@@ -903,11 +903,23 @@ export class Github implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Title',
-						name: 'title',
-						type: 'string',
-						default: '',
-						description: 'The title of the issue',
+						displayName: 'Assignees',
+						name: 'assignees',
+						type: 'collection',
+						typeOptions: {
+							multipleValues: true,
+							multipleValueButtonText: 'Add Assignee',
+						},
+						default: { assignee: '' },
+						options: [
+							{
+								displayName: 'Assignees',
+								name: 'assignee',
+								type: 'string',
+								default: '',
+								description: 'User to assign issue to',
+							},
+						],
 					},
 					{
 						displayName: 'Body',
@@ -918,25 +930,6 @@ export class Github implements INodeType {
 						},
 						default: '',
 						description: 'The body of the issue',
-					},
-					{
-						displayName: 'State',
-						name: 'state',
-						type: 'options',
-						options: [
-							{
-								name: 'Closed',
-								value: 'closed',
-								description: 'Set the state to "closed"',
-							},
-							{
-								name: 'Open',
-								value: 'open',
-								description: 'Set the state to "open"',
-							},
-						],
-						default: 'open',
-						description: 'The state to set',
 					},
 					{
 						displayName: 'Labels',
@@ -958,27 +951,57 @@ export class Github implements INodeType {
 						],
 					},
 					{
-						displayName: 'Assignees',
-						name: 'assignees',
-						type: 'collection',
-						typeOptions: {
-							multipleValues: true,
-							multipleValueButtonText: 'Add Assignee',
-						},
-						default: { assignee: '' },
+						displayName: 'State',
+						name: 'state',
+						type: 'options',
 						options: [
 							{
-								displayName: 'Assignees',
-								name: 'assignee',
-								type: 'string',
-								default: '',
-								description: 'User to assign issue to',
+								name: 'Closed',
+								value: 'closed',
+								description: 'Set the state to "closed"',
+							},
+							{
+								name: 'Open',
+								value: 'open',
+								description: 'Set the state to "open"',
 							},
 						],
+						default: 'open',
+						description: 'The state to set',
+					},
+					{
+						displayName: 'State Reason',
+						name: 'state_reason',
+						type: 'options',
+						options: [
+							{
+								name: 'Completed',
+								value: 'completed',
+								description: 'Issue is completed',
+							},
+							{
+								name: 'Not Planned',
+								value: 'not_planned',
+								description: 'Issue is not planned',
+							},
+							{
+								name: 'Reopened',
+								value: 'reopened',
+								description: 'Issue is reopened',
+							},
+						],
+						default: 'completed',
+						description: 'The reason for the state change',
+					},
+					{
+						displayName: 'Title',
+						name: 'title',
+						type: 'string',
+						default: '',
+						description: 'The title of the issue',
 					},
 				],
 			},
-
 			// ----------------------------------
 			//         issue:get
 			// ----------------------------------

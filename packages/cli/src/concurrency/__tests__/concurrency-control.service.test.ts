@@ -12,11 +12,13 @@ import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
 import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { IExecutingWorkflowData } from '@/Interfaces';
 import type { Telemetry } from '@/telemetry';
+import type { EventRelay } from '@/eventbus/event-relay.service';
 
 describe('ConcurrencyControlService', () => {
 	const logger = mock<Logger>();
 	const executionRepository = mock<ExecutionRepository>();
 	const telemetry = mock<Telemetry>();
+	const eventRelay = mock<EventRelay>();
 
 	afterEach(() => {
 		config.set('executions.concurrency.productionLimit', -1);
@@ -35,7 +37,12 @@ describe('ConcurrencyControlService', () => {
 			/**
 			 * Act
 			 */
-			const service = new ConcurrencyControlService(logger, executionRepository, telemetry);
+			const service = new ConcurrencyControlService(
+				logger,
+				executionRepository,
+				telemetry,
+				eventRelay,
+			);
 
 			/**
 			 * Assert
@@ -56,7 +63,7 @@ describe('ConcurrencyControlService', () => {
 				/**
 				 * Act
 				 */
-				new ConcurrencyControlService(logger, executionRepository, telemetry);
+				new ConcurrencyControlService(logger, executionRepository, telemetry, eventRelay);
 			} catch (error) {
 				/**
 				 * Assert
@@ -74,7 +81,12 @@ describe('ConcurrencyControlService', () => {
 			/**
 			 * Act
 			 */
-			const service = new ConcurrencyControlService(logger, executionRepository, telemetry);
+			const service = new ConcurrencyControlService(
+				logger,
+				executionRepository,
+				telemetry,
+				eventRelay,
+			);
 
 			/**
 			 * Assert
@@ -92,7 +104,12 @@ describe('ConcurrencyControlService', () => {
 			/**
 			 * Act
 			 */
-			const service = new ConcurrencyControlService(logger, executionRepository, telemetry);
+			const service = new ConcurrencyControlService(
+				logger,
+				executionRepository,
+				telemetry,
+				eventRelay,
+			);
 
 			/**
 			 * Act
@@ -111,7 +128,12 @@ describe('ConcurrencyControlService', () => {
 			/**
 			 * Act
 			 */
-			const service = new ConcurrencyControlService(logger, executionRepository, telemetry);
+			const service = new ConcurrencyControlService(
+				logger,
+				executionRepository,
+				telemetry,
+				eventRelay,
+			);
 
 			/**
 			 * Assert
@@ -135,7 +157,12 @@ describe('ConcurrencyControlService', () => {
 					 */
 					config.set('executions.concurrency.productionLimit', 1);
 
-					const service = new ConcurrencyControlService(logger, executionRepository, telemetry);
+					const service = new ConcurrencyControlService(
+						logger,
+						executionRepository,
+						telemetry,
+						eventRelay,
+					);
 					const enqueueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
 					/**
@@ -156,7 +183,12 @@ describe('ConcurrencyControlService', () => {
 				 */
 				config.set('executions.concurrency.productionLimit', 1);
 
-				const service = new ConcurrencyControlService(logger, executionRepository, telemetry);
+				const service = new ConcurrencyControlService(
+					logger,
+					executionRepository,
+					telemetry,
+					eventRelay,
+				);
 				const enqueueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
 				/**
@@ -180,7 +212,12 @@ describe('ConcurrencyControlService', () => {
 					 */
 					config.set('executions.concurrency.productionLimit', 1);
 
-					const service = new ConcurrencyControlService(logger, executionRepository, telemetry);
+					const service = new ConcurrencyControlService(
+						logger,
+						executionRepository,
+						telemetry,
+						eventRelay,
+					);
 					const dequeueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
 					/**
@@ -201,7 +238,12 @@ describe('ConcurrencyControlService', () => {
 				 */
 				config.set('executions.concurrency.productionLimit', 1);
 
-				const service = new ConcurrencyControlService(logger, executionRepository, telemetry);
+				const service = new ConcurrencyControlService(
+					logger,
+					executionRepository,
+					telemetry,
+					eventRelay,
+				);
 				const dequeueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
 				/**
@@ -225,7 +267,12 @@ describe('ConcurrencyControlService', () => {
 					 */
 					config.set('executions.concurrency.productionLimit', 1);
 
-					const service = new ConcurrencyControlService(logger, executionRepository, telemetry);
+					const service = new ConcurrencyControlService(
+						logger,
+						executionRepository,
+						telemetry,
+						eventRelay,
+					);
 					const removeSpy = jest.spyOn(ConcurrencyQueue.prototype, 'remove');
 
 					/**
@@ -248,7 +295,12 @@ describe('ConcurrencyControlService', () => {
 					 */
 					config.set('executions.concurrency.productionLimit', 1);
 
-					const service = new ConcurrencyControlService(logger, executionRepository, telemetry);
+					const service = new ConcurrencyControlService(
+						logger,
+						executionRepository,
+						telemetry,
+						eventRelay,
+					);
 					const removeSpy = jest.spyOn(ConcurrencyQueue.prototype, 'remove');
 
 					/**
@@ -271,7 +323,12 @@ describe('ConcurrencyControlService', () => {
 				 */
 				config.set('executions.concurrency.productionLimit', 2);
 
-				const service = new ConcurrencyControlService(logger, executionRepository, telemetry);
+				const service = new ConcurrencyControlService(
+					logger,
+					executionRepository,
+					telemetry,
+					eventRelay,
+				);
 
 				jest
 					.spyOn(ConcurrencyQueue.prototype, 'getAll')
@@ -310,7 +367,12 @@ describe('ConcurrencyControlService', () => {
 				 */
 				config.set('executions.concurrency.productionLimit', -1);
 
-				const service = new ConcurrencyControlService(logger, executionRepository, telemetry);
+				const service = new ConcurrencyControlService(
+					logger,
+					executionRepository,
+					telemetry,
+					eventRelay,
+				);
 				const enqueueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
 				/**
@@ -333,7 +395,12 @@ describe('ConcurrencyControlService', () => {
 				 */
 				config.set('executions.concurrency.productionLimit', -1);
 
-				const service = new ConcurrencyControlService(logger, executionRepository, telemetry);
+				const service = new ConcurrencyControlService(
+					logger,
+					executionRepository,
+					telemetry,
+					eventRelay,
+				);
 				const dequeueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
 				/**
@@ -355,7 +422,12 @@ describe('ConcurrencyControlService', () => {
 				 */
 				config.set('executions.concurrency.productionLimit', -1);
 
-				const service = new ConcurrencyControlService(logger, executionRepository, telemetry);
+				const service = new ConcurrencyControlService(
+					logger,
+					executionRepository,
+					telemetry,
+					eventRelay,
+				);
 				const removeSpy = jest.spyOn(ConcurrencyQueue.prototype, 'remove');
 
 				/**
@@ -385,7 +457,12 @@ describe('ConcurrencyControlService', () => {
 					 */
 					config.set('executions.concurrency.productionLimit', CLOUD_TEMP_PRODUCTION_LIMIT);
 					config.set('deployment.type', 'cloud');
-					const service = new ConcurrencyControlService(logger, executionRepository, telemetry);
+					const service = new ConcurrencyControlService(
+						logger,
+						executionRepository,
+						telemetry,
+						eventRelay,
+					);
 
 					/**
 					 * Act
@@ -410,7 +487,12 @@ describe('ConcurrencyControlService', () => {
 					 */
 					config.set('executions.concurrency.productionLimit', CLOUD_TEMP_PRODUCTION_LIMIT);
 					config.set('deployment.type', 'cloud');
-					const service = new ConcurrencyControlService(logger, executionRepository, telemetry);
+					const service = new ConcurrencyControlService(
+						logger,
+						executionRepository,
+						telemetry,
+						eventRelay,
+					);
 
 					/**
 					 * Act
@@ -437,7 +519,12 @@ describe('ConcurrencyControlService', () => {
 					 */
 					config.set('executions.concurrency.productionLimit', CLOUD_TEMP_PRODUCTION_LIMIT);
 					config.set('deployment.type', 'cloud');
-					const service = new ConcurrencyControlService(logger, executionRepository, telemetry);
+					const service = new ConcurrencyControlService(
+						logger,
+						executionRepository,
+						telemetry,
+						eventRelay,
+					);
 
 					/**
 					 * Act
