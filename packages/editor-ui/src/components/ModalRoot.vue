@@ -4,7 +4,7 @@
 			:modal-name="name"
 			:active="uiStore.isModalActiveById[name]"
 			:open="uiStore.modalsById[name].open"
-			:active-id="uiStore.getModalActiveId(name)"
+			:active-id="uiStore.modalsById[name].activeId"
 			:mode="uiStore.getModalMode(name)"
 			:data="uiStore.getModalData(name)"
 		></slot>
