@@ -74,7 +74,7 @@ export default defineComponent({
 	},
 	methods: {
 		onWindowKeydown(event: KeyboardEvent) {
-			if (!this.uiStore.isModalActive(this.name)) {
+			if (!this.uiStore.isModalActiveById[this.name]) {
 				return;
 			}
 
@@ -83,7 +83,7 @@ export default defineComponent({
 			}
 		},
 		handleEnter() {
-			if (this.uiStore.isModalActive(this.name)) {
+			if (this.uiStore.isModalActiveById[this.name]) {
 				this.$emit('enter');
 			}
 		},

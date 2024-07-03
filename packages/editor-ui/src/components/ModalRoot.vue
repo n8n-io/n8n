@@ -2,7 +2,7 @@
 	<div v-if="uiStore.modalsById[name].open || keepAlive">
 		<slot
 			:modal-name="name"
-			:active="uiStore.isModalActive(name)"
+			:active="uiStore.isModalActiveById[name]"
 			:open="uiStore.modalsById[name].open"
 			:active-id="uiStore.getModalActiveId(name)"
 			:mode="uiStore.getModalMode(name)"

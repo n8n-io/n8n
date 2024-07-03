@@ -287,13 +287,12 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		return modalsById.value[VERSIONS_MODAL_KEY].open;
 	});
 
-	// const isModalOpen = computed(() => {
-	// 	return (name: ModalKey) => modalsById.value[name].open;
-	// });
-
-	const isModalActive = computed(() => {
-		return (name: ModalKey) => modalStack.value.length > 0 && name === modalStack.value[0];
-	});
+	const isModalActiveById = computed(() =>
+		Object.keys(modalsById.value).reduce((acc: { [key: string]: boolean }, name) => {
+			acc[name] = name === modalStack.value[0];
+			return acc;
+		}, {}),
+	);
 
 	const getModalActiveId = computed(() => {
 		return (name: ModalKey) => modalsById.value[name].activeId;
@@ -670,7 +669,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		contextBasedTranslationKeys,
 		getLastSelectedNode,
 		isVersionsOpen,
-		isModalActive,
+		isModalActiveById,
 		getModalActiveId,
 		getModalMode,
 		getModalData,
