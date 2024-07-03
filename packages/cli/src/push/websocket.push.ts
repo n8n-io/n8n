@@ -2,8 +2,6 @@ import type WebSocket from 'ws';
 import { Service } from 'typedi';
 import { Logger } from '@/Logger';
 import { AbstractPush } from './abstract.push';
-import type { User } from '@db/entities/User';
-import { OrchestrationService } from '@/services/orchestration.service';
 
 function heartbeat(this: WebSocket) {
 	this.isAlive = true;
@@ -11,41 +9,24 @@ function heartbeat(this: WebSocket) {
 
 @Service()
 export class WebSocketPush extends AbstractPush<WebSocket> {
-	constructor(logger: Logger, orchestrationService: OrchestrationService) {
-		super(logger, orchestrationService);
+	constructor(logger: Logger) {
+		super(logger);
 
 		// Ping all connected clients every 60 seconds
 		setInterval(() => this.pingAll(), 60 * 1000);
 	}
 
-	add(pushRef: string, userId: User['id'], connection: WebSocket) {
+	add(pushRef: string, connection: WebSocket) {
 		connection.isAlive = true;
 		connection.on('pong', heartbeat);
 
-		super.add(pushRef, userId, connection);
-
-		const onMessage = (data: WebSocket.RawData) => {
-			try {
-				const buffer = Array.isArray(data) ? Buffer.concat(data) : Buffer.from(data);
-
-				this.onMessageReceived(pushRef, JSON.parse(buffer.toString('utf8')));
-			} catch (error) {
-				this.logger.error("Couldn't parse message from editor-UI", {
-					error: error as unknown,
-					pushRef,
-					data,
-				});
-			}
-		};
+		super.add(pushRef, connection);
 
 		// Makes sure to remove the session if the connection is closed
 		connection.once('close', () => {
 			connection.off('pong', heartbeat);
-			connection.off('message', onMessage);
 			this.remove(pushRef);
 		});
-
-		connection.on('message', onMessage);
 	}
 
 	protected close(connection: WebSocket): void {
