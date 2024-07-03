@@ -68,6 +68,7 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 	onboardingCallPromptEnabled: false,
 	saveDataErrorExecution: 'all',
 	saveDataSuccessExecution: 'all',
+	saveDataProgressExecution: false,
 	saveManualExecutions: false,
 };
 
