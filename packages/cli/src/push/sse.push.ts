@@ -1,4 +1,5 @@
 import { Service } from 'typedi';
+import { type Readable } from 'stream';
 
 import { AbstractPush } from './abstract.push';
 import type { PushRequest, PushResponse } from './types';
@@ -7,8 +8,6 @@ type Connection = { req: PushRequest; res: PushResponse };
 
 @Service()
 export class SSEPush extends AbstractPush<Connection> {
-	readonly connections: Record<string, Connection> = {};
-
 	add(pushRef: string, connection: Connection) {
 		const { req, res } = connection;
 
@@ -37,10 +36,22 @@ export class SSEPush extends AbstractPush<Connection> {
 		res.end();
 	}
 
-	protected sendToOneConnection(connection: Connection, data: string) {
-		const { res } = connection;
-		res.write('data: ' + data + '\n\n');
-		res.flush();
+	protected async sendTo(connections: Connection[], stream: Readable) {
+		connections.forEach(({ res }) => res.write('data: '));
+		await new Promise<void>((resolve, reject) => {
+			stream
+				.once('error', reject)
+				.on('data', (chunk: Buffer) => {
+					connections.forEach(({ res }) => res.write(chunk));
+				})
+				.once('end', resolve);
+		});
+
+		connections.forEach(({ res }) => res.write('\n\n'));
+		// `flush()` is defined in the compression middleware.
+		// This is necessary because the compression middleware sometimes waits
+		// for a certain amount of data before sending the data to the client
+		connections.forEach(({ res }) => res.flush());
 	}
 
 	protected ping({ res }: Connection) {

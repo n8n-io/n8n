@@ -1,10 +1,14 @@
-import type WebSocket from 'ws';
 import { Service } from 'typedi';
+import type { Readable } from 'stream';
+import type WebSocket from 'ws';
+
 import { AbstractPush } from './abstract.push';
 
 function heartbeat(this: WebSocket) {
 	this.isAlive = true;
 }
+
+export const EMPTY_BUFFER = Buffer.alloc(0);
 
 @Service()
 export class WebSocketPush extends AbstractPush<WebSocket> {
@@ -25,8 +29,18 @@ export class WebSocketPush extends AbstractPush<WebSocket> {
 		connection.close();
 	}
 
-	protected sendToOneConnection(connection: WebSocket, data: string): void {
-		connection.send(data);
+	protected async sendTo(connections: WebSocket[], stream: Readable) {
+		await new Promise<void>((resolve, reject) => {
+			stream
+				.once('error', reject)
+				.on('data', (chunk: Buffer) => {
+					connections.forEach((connection) => connection.send(chunk, { fin: false }));
+				})
+				.once('end', () => {
+					connections.forEach((connection) => connection.send(EMPTY_BUFFER));
+					resolve();
+				});
+		});
 	}
 
 	protected ping(connection: WebSocket): void {

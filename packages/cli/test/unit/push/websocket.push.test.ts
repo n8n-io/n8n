@@ -1,8 +1,9 @@
-import { Container } from 'typedi';
 import { EventEmitter } from 'events';
 import type WebSocket from 'ws';
+import { sleep } from 'n8n-workflow';
+import { mock } from 'jest-mock-extended';
 
-import { WebSocketPush } from '@/push/websocket.push';
+import { EMPTY_BUFFER, WebSocketPush } from '@/push/websocket.push';
 import { Logger } from '@/Logger';
 import type { PushDataExecutionRecovered } from '@/Interfaces';
 
@@ -29,12 +30,13 @@ describe('WebSocketPush', () => {
 	const pushRef2 = 'test-session2';
 
 	mockInstance(Logger);
-	const webSocketPush = Container.get(WebSocketPush);
+	let webSocketPush: WebSocketPush;
 	const mockWebSocket1 = createMockWebSocket();
 	const mockWebSocket2 = createMockWebSocket();
 
 	beforeEach(() => {
 		jest.resetAllMocks();
+		webSocketPush = new WebSocketPush(mock());
 	});
 
 	it('can add a connection', () => {
@@ -53,7 +55,7 @@ describe('WebSocketPush', () => {
 		expect(mockWebSocket1.listenerCount('pong')).toBe(0);
 	});
 
-	it('sends data to one connection', () => {
+	it('sends data to one connection', async () => {
 		webSocketPush.add(pushRef1, mockWebSocket1);
 		webSocketPush.add(pushRef2, mockWebSocket2);
 		const data: PushDataExecutionRecovered = {
@@ -63,9 +65,14 @@ describe('WebSocketPush', () => {
 			},
 		};
 
+		// Use real timers to yield back to the event-loop, to finish streaming the data
+		jest.useRealTimers();
 		webSocketPush.sendToOne('executionRecovered', data, pushRef1);
+		await sleep(100);
+		jest.useFakeTimers();
 
-		expect(mockWebSocket1.send).toHaveBeenCalledWith(
+		expect(mockWebSocket1.send).toHaveBeenNthCalledWith(
+			1,
 			JSON.stringify({
 				type: 'executionRecovered',
 				data: {
@@ -75,11 +82,14 @@ describe('WebSocketPush', () => {
 					},
 				},
 			}),
+			{ fin: false },
 		);
+		expect(mockWebSocket1.send).toHaveBeenNthCalledWith(2, EMPTY_BUFFER);
+
 		expect(mockWebSocket2.send).not.toHaveBeenCalled();
 	});
 
-	it('sends data to all connections', () => {
+	it('sends data to all connections', async () => {
 		webSocketPush.add(pushRef1, mockWebSocket1);
 		webSocketPush.add(pushRef2, mockWebSocket2);
 		const data: PushDataExecutionRecovered = {
@@ -89,7 +99,10 @@ describe('WebSocketPush', () => {
 			},
 		};
 
+		jest.useRealTimers();
 		webSocketPush.sendToAll('executionRecovered', data);
+		await sleep(100);
+		jest.useFakeTimers();
 
 		const expectedMsg = JSON.stringify({
 			type: 'executionRecovered',
@@ -100,8 +113,10 @@ describe('WebSocketPush', () => {
 				},
 			},
 		});
-		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg);
-		expect(mockWebSocket2.send).toHaveBeenCalledWith(expectedMsg);
+		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg, { fin: false });
+		expect(mockWebSocket1.send).toHaveBeenCalledWith(EMPTY_BUFFER);
+		expect(mockWebSocket2.send).toHaveBeenCalledWith(expectedMsg, { fin: false });
+		expect(mockWebSocket2.send).toHaveBeenCalledWith(EMPTY_BUFFER);
 	});
 
 	it('pings all connections', () => {

@@ -66,11 +66,11 @@ export class Push extends TypedEmitter<PushEvents> {
 		this.emit('editorUiConnected', pushRef);
 	}
 
-	broadcast(type: IPushDataType, data?: unknown) {
+	broadcast<D>(type: IPushDataType, data?: D) {
 		this.backend.sendToAll(type, data);
 	}
 
-	send(type: IPushDataType, data: unknown, pushRef: string) {
+	send<D>(type: IPushDataType, data: D, pushRef: string) {
 		/**
 		 * Multi-main setup: In a manual webhook execution, the main process that
 		 * handles a webhook might not be the same as the main process that created
