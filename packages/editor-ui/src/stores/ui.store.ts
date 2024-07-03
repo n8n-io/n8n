@@ -294,10 +294,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		}, {}),
 	);
 
-	const getModalData = computed(() => {
-		return (name: ModalKey) => modalsById.value[name].data;
-	});
-
 	const getFakeDoorByLocation = computed(() => {
 		return (location: IFakeDoorLocation) =>
 			fakeDoorFeatures.value.filter((fakeDoor) => fakeDoor.uiLocations.includes(location));
@@ -662,7 +658,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		getLastSelectedNode,
 		isVersionsOpen,
 		isModalActiveById,
-		getModalData,
 		getFakeDoorByLocation,
 		getFakeDoorById,
 		isReadOnlyView,

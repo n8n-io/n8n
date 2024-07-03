@@ -6,7 +6,7 @@
 			:open="uiStore.modalsById[name].open"
 			:active-id="uiStore.modalsById[name].activeId"
 			:mode="uiStore.modalsById[name].mode"
-			:data="uiStore.getModalData(name)"
+			:data="uiStore.modalsById[name].data"
 		></slot>
 	</div>
 </template>
