@@ -82,4 +82,37 @@ describe('Splunk, user resource', () => {
 		);
 		expect(responseData).toEqual([{ test: 'test' }]);
 	});
+
+	test('update operation', async () => {
+		const executeFunctions = mock<IExecuteFunctions>();
+		executeFunctions.getNodeParameter
+			.calledWith('updateFields', 0)
+			.mockReturnValue({ roles: ['role1', 'role2'], email: 'testW@example.com' });
+		executeFunctions.getNodeParameter.calledWith('userId', 0).mockReturnValue('12345');
+
+		(transport.splunkApiRequest as jest.Mock).mockReturnValue(
+			Promise.resolve({
+				feed: {
+					entry: [
+						{ id: '1', content: { 's:dict': { 's:key': [{ $: { name: 'test' }, _: 'test1' }] } } },
+					],
+				},
+			}),
+		);
+
+		const responseData = await user.update.execute.call(executeFunctions, 0);
+		expect(transport.splunkApiRequest).toHaveBeenCalledWith(
+			'POST',
+			'/services/authentication/users/12345',
+			{ email: 'testW@example.com', roles: ['role1', 'role2'] },
+		);
+
+		expect(responseData).toEqual([
+			{
+				id: '1',
+				test: 'test1',
+				entryUrl: '1',
+			},
+		]);
+	});
 });
