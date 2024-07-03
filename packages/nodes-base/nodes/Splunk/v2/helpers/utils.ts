@@ -2,7 +2,7 @@ import type { IExecuteFunctions, IDataObject } from 'n8n-workflow';
 
 import { parseString } from 'xml2js';
 
-import type { SplunkError, SplunkFeedResponse, SplunkSearchResponse } from './interfaces';
+import type { SplunkError, SplunkFeedResponse } from './interfaces';
 
 function compactEntryContent(splunkObject: any): any {
 	if (typeof splunkObject !== 'object') {
@@ -55,16 +55,6 @@ export function formatEntry(entry: any, doNotFormatContent = false): any {
 	}
 
 	return formattedEntry;
-}
-
-export function formatSearch(responseData: SplunkSearchResponse) {
-	const { entry: entries } = responseData;
-
-	if (!entries) return [];
-
-	return Array.isArray(entries)
-		? entries.map((entry) => formatEntry(entry))
-		: [formatEntry(entries)];
 }
 
 export async function parseXml(xml: string) {

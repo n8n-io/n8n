@@ -1,8 +1,8 @@
 import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
-import { splunkApiRequest } from '../../transport';
+import { splunkApiJsonRequest, splunkApiRequest } from '../../transport';
 import { searchJobRLC } from '../../helpers/descriptions';
-import { formatFeed, formatSearch } from '../../helpers/utils';
+import { formatFeed } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	searchJobRLC,
@@ -32,9 +32,7 @@ export async function execute(
 	const searchJobId = this.getNodeParameter('searchJobId', i, '', { extractValue: true }) as string;
 	const endpoint = `/services/search/jobs/${searchJobId}`;
 
-	const searchJob = (
-		await splunkApiRequest.call(this, 'GET', endpoint).then(formatSearch)
-	)[0] as IDataObject;
+	const searchJob = ((await splunkApiJsonRequest.call(this, 'GET', endpoint)) ?? [])[0];
 
 	const body: IDataObject = {
 		name,

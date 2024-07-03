@@ -12,10 +12,6 @@ export type SplunkFeedResponse = {
 	};
 };
 
-export type SplunkSearchResponse = {
-	entry: IDataObject[] | IDataObject;
-};
-
 export type SplunkError = {
 	response?: {
 		messages?: {

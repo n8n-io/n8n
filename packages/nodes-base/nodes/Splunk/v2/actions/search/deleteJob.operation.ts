@@ -23,7 +23,7 @@ export async function execute(
 	const searchJobId = this.getNodeParameter('searchJobId', i, '', { extractValue: true }) as string;
 	const endpoint = `/services/search/jobs/${searchJobId}`;
 
-	const returnData = await splunkApiRequest.call(this, 'DELETE', endpoint);
+	await splunkApiRequest.call(this, 'DELETE', endpoint);
 
-	return returnData;
+	return { success: true };
 }

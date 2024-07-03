@@ -24,7 +24,6 @@ export async function execute(
 	const endpoint = `/services/authentication/users/${userId}`;
 
 	await splunkApiRequest.call(this, 'DELETE', endpoint);
-	const returnData = { success: true };
 
-	return returnData;
+	return { success: true };
 }
