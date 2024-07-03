@@ -102,6 +102,48 @@ describe('FilterParameter', () => {
 				);
 				expect(result).toBe(false);
 			});
+
+			it('should evaluate strings in arrays case insensitive', () => {
+				const result = executeFilter(
+					filterFactory({
+						combinator: 'and',
+						conditions: [
+							{
+								id: '1',
+								leftValue: ['foo'],
+								rightValue: 'FOO',
+								operator: { operation: 'contains', type: 'array', rightType: 'string' },
+							},
+							{
+								id: '2',
+								leftValue: ['BAR'],
+								rightValue: 'bar',
+								operator: { operation: 'contains', type: 'array', rightType: 'string' },
+							},
+							{
+								id: '3',
+								leftValue: ['FOO'],
+								rightValue: 'FOO',
+								operator: { operation: 'contains', type: 'array', rightType: 'string' },
+							},
+							{
+								id: '4',
+								leftValue: ['bar'],
+								rightValue: 'bar',
+								operator: { operation: 'contains', type: 'array', rightType: 'string' },
+							},
+							{
+								id: '5',
+								leftValue: ['Bar'],
+								rightValue: 'baR',
+								operator: { operation: 'contains', type: 'array', rightType: 'string' },
+							},
+						],
+						options: { caseSensitive: false },
+					}),
+				);
+				expect(result).toBe(true);
+			});
 		});
 
 		describe('options.typeValidation', () => {
