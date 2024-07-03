@@ -2474,9 +2474,9 @@ export interface FilterOperatorValue {
 
 export type FilterConditionValue = {
 	id: string;
-	leftValue: NodeParameterValue;
+	leftValue: NodeParameterValue | NodeParameterValue[];
 	operator: FilterOperatorValue;
-	rightValue: NodeParameterValue;
+	rightValue: NodeParameterValue | NodeParameterValue[];
 };
 
 export type FilterOptionsValue = {
@@ -2560,6 +2560,8 @@ export type ExpressionEvaluatorType = 'tmpl' | 'tournament';
 export type N8nAIProviderType = 'openai' | 'unknown';
 
 export interface IN8nUISettings {
+	isDocker: boolean;
+	databaseType: 'sqlite' | 'mariadb' | 'mysqldb' | 'postgresdb';
 	endpointForm: string;
 	endpointFormTest: string;
 	endpointFormWaiting: string;
@@ -2568,6 +2570,7 @@ export interface IN8nUISettings {
 	saveDataErrorExecution: WorkflowSettings.SaveDataExecution;
 	saveDataSuccessExecution: WorkflowSettings.SaveDataExecution;
 	saveManualExecutions: boolean;
+	saveExecutionProgress: boolean;
 	executionTimeout: number;
 	maxExecutionTimeout: number;
 	workflowCallerPolicyDefaultOption: WorkflowSettings.CallerPolicy;
@@ -2579,10 +2582,12 @@ export interface IN8nUISettings {
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
 	versionCli: string;
+	nodeJsVersion: string;
+	concurrency: number;
 	authCookie: {
 		secure: boolean;
 	};
-	binaryDataMode: string;
+	binaryDataMode: 'default' | 'filesystem' | 's3';
 	releaseChannel: 'stable' | 'beta' | 'nightly' | 'dev';
 	n8nMetadata?: {
 		userId?: string;
@@ -2658,6 +2663,8 @@ export interface IN8nUISettings {
 	};
 	hideUsagePage: boolean;
 	license: {
+		planName?: string;
+		consumerId: string;
 		environment: 'development' | 'production' | 'staging';
 	};
 	variables: {
@@ -2682,6 +2689,14 @@ export interface IN8nUISettings {
 	workflowHistory: {
 		pruneTime: number;
 		licensePruneTime: number;
+	};
+	pruning: {
+		isEnabled: boolean;
+		maxAge: number;
+		maxCount: number;
+	};
+	security: {
+		blockFileAccessToN8nFiles: boolean;
 	};
 }
 

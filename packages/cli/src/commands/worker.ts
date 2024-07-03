@@ -29,6 +29,7 @@ import type { WorkerJobStatusSummary } from '@/services/orchestration/worker/typ
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { BaseCommand } from './BaseCommand';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
+import { AuditEventRelay } from '@/eventbus/audit-event-relay.service';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -287,6 +288,7 @@ export class Worker extends BaseCommand {
 		await Container.get(MessageEventBus).initialize({
 			workerId: this.queueModeId,
 		});
+		Container.get(AuditEventRelay).init();
 	}
 
 	/**

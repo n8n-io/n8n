@@ -68,7 +68,10 @@ withDefaults(defineProps<ActionToggleProps>(), {
 	iconOrientation: 'vertical',
 });
 
-const $emit = defineEmits(['action', 'visible-change']);
+const $emit = defineEmits<{
+	(event: 'action', value: string): void;
+	(event: 'visible-change', value: boolean): void;
+}>();
 const onCommand = (value: string) => $emit('action', value);
 const onVisibleChange = (value: boolean) => $emit('visible-change', value);
 </script>
