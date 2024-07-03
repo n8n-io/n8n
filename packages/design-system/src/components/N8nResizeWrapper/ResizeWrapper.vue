@@ -80,9 +80,9 @@ export interface ResizeData {
 }
 
 const $emit = defineEmits<{
-	(event: 'resizestart'): void;
-	(event: 'resize', value: ResizeData): void;
-	(event: 'resizeend'): void;
+	resizestart: [];
+	resize: [value: ResizeData];
+	resizeend: [];
 }>();
 
 const enabledDirections = computed((): Direction[] => {

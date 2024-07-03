@@ -46,7 +46,7 @@ withDefaults(defineProps<CheckboxProps>(), {
 });
 
 const $emit = defineEmits<{
-	(event: 'update:modelValue', value: CheckboxValueType): void;
+	updateModelValue: [value: CheckboxValueType];
 }>();
 const onUpdateModelValue = (value: CheckboxValueType) => $emit('update:modelValue', value);
 
