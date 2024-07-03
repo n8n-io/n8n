@@ -2474,9 +2474,9 @@ export interface FilterOperatorValue {
 
 export type FilterConditionValue = {
 	id: string;
-	leftValue: NodeParameterValue;
+	leftValue: NodeParameterValue | NodeParameterValue[];
 	operator: FilterOperatorValue;
-	rightValue: NodeParameterValue;
+	rightValue: NodeParameterValue | NodeParameterValue[];
 };
 
 export type FilterOptionsValue = {
