@@ -645,10 +645,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		bannerStack.value = [];
 	};
 
-	const getNotificationsForView = (view: VIEWS) => {
-		return pendingNotificationsForViews.value[view] ?? [];
-	};
-
 	const setNotificationsForView = (view: VIEWS, notifications: NotificationOptions[]) => {
 		pendingNotificationsForViews.value[view] = notifications;
 	};
@@ -692,6 +688,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		currentView,
 		isAnyModalOpen,
 		fakeDoorsById,
+		pendingNotificationsForViews,
 		setTheme,
 		setMode,
 		setActiveId,
@@ -726,7 +723,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		updateBannersHeight,
 		pushBannerToStack,
 		clearBannerStack,
-		getNotificationsForView,
 		setNotificationsForView,
 		deleteNotificationsForView,
 	};
