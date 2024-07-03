@@ -141,7 +141,10 @@ export class EnterpriseWorkflowService {
 			throw new NotFoundError('Workflow not found');
 		}
 
-		const allCredentials = await this.credentialsService.getMany(user);
+		const allCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
+			user,
+			{ workflowId },
+		);
 
 		try {
 			return this.validateWorkflowCredentialUsage(workflow, previousVersion, allCredentials);
@@ -158,7 +161,7 @@ export class EnterpriseWorkflowService {
 	validateWorkflowCredentialUsage(
 		newWorkflowVersion: WorkflowEntity,
 		previousWorkflowVersion: WorkflowEntity,
-		credentialsUserHasAccessTo: CredentialsEntity[],
+		credentialsUserHasAccessTo: Array<{ id: string }>,
 	) {
 		/**
 		 * We only need to check nodes that use credentials the current user cannot access,
