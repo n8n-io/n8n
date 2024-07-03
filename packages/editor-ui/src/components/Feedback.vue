@@ -52,11 +52,13 @@ function onFeedback(feedback: 'positive' | 'negative') {
 .feedback {
 	display: flex;
 	align-items: center;
+	gap: var(--spacing-4xs);
 
 	.feedback-button {
 		cursor: pointer;
-		width: var(--spacing-2xl);
-		height: var(--spacing-2xl);
+		width: var(--spacing-l);
+		height: var(--spacing-l);
+		color: var(--color-text-light);
 		display: flex;
 		justify-content: center;
 		align-items: center;
