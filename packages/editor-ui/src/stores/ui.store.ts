@@ -337,16 +337,12 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		});
 	});
 
-	const isNodeSelected = computed(() => {
-		return (nodeName: string): boolean => {
-			for (const [index] of selectedNodes.value.entries()) {
-				if (selectedNodes.value[index].name === nodeName) {
-					return true;
-				}
-			}
-			return false;
-		};
-	});
+	const isNodeSelected = computed(() =>
+		selectedNodes.value.reduce((acc: { [nodeName: string]: true }, node) => {
+			acc[node.name] = true;
+			return acc;
+		}, {}),
+	);
 
 	const upgradeLinkUrl = computed(() => {
 		return async (source: string, utm_campaign: string, deploymentType: string) => {

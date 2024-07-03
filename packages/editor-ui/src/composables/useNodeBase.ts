@@ -647,7 +647,7 @@ export function useNodeBase({
 					emit('deselectAllNodes');
 				}
 
-				if (uiStore.isNodeSelected(data.value?.name ?? '')) {
+				if (uiStore.isNodeSelected[data.value?.name ?? '']) {
 					emit('deselectNode', name);
 				} else {
 					emit('nodeSelected', name);
