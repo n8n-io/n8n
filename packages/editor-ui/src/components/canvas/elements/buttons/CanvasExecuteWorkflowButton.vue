@@ -4,7 +4,9 @@ import { computed } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import { useUIStore } from '@/stores/ui.store';
 
-defineEmits(['click']);
+defineEmits<{
+	(key: 'click', event: MouseEvent): void;
+}>();
 
 const uiStore = useUIStore();
 const locale = useI18n();

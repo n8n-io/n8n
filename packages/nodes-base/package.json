@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.48.0",
+  "version": "1.49.0",
   "description": "Base nodes of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -844,6 +844,7 @@
     "@n8n/imap": "workspace:*",
     "@n8n/vm2": "3.9.20",
     "amqplib": "0.10.3",
+    "alasql": "^4.4.0",
     "aws4": "1.11.0",
     "basic-auth": "2.0.1",
     "change-case": "4.1.2",

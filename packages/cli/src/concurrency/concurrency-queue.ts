@@ -49,7 +49,7 @@ export class ConcurrencyQueue extends EventEmitter {
 	}
 
 	getAll() {
-		return new Set(...this.queue.map((item) => item.executionId));
+		return new Set(this.queue.map((item) => item.executionId));
 	}
 
 	private resolveNext() {

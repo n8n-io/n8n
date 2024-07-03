@@ -32,6 +32,7 @@ import { ExecutionService } from '@/executions/execution.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
+import { EventRelay } from '@/eventbus/event-relay.service';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -374,6 +375,10 @@ export class Start extends BaseCommand {
 				workflowData: execution.workflowData,
 				projectId: project.id,
 			};
+
+			Container.get(EventRelay).emit('execution-started-during-bootup', {
+				executionId: execution.id,
+			});
 
 			// do not block - each execution either runs concurrently or is queued
 			void workflowRunner.run(data, undefined, false, execution.id);

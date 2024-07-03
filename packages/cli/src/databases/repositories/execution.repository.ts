@@ -22,6 +22,7 @@ import type {
 import { parse, stringify } from 'flatted';
 import {
 	ApplicationError,
+	WorkflowOperationError,
 	type ExecutionStatus,
 	type ExecutionSummary,
 	type IRunExecutionData,
@@ -42,6 +43,8 @@ import { ExecutionDataRepository } from './executionData.repository';
 import { Logger } from '@/Logger';
 import type { ExecutionSummaries } from '@/executions/execution.types';
 import { PostgresLiveRowsRetrievalError } from '@/errors/postgres-live-rows-retrieval.error';
+import { separate } from '@/utils';
+import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
 export interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;
@@ -155,7 +158,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const executions = await this.find(queryParams);
 
 		if (options?.includeData && options?.unflattenData) {
-			return executions.map((execution) => {
+			const [valid, invalid] = separate(executions, (e) => e.executionData !== null);
+			this.reportInvalidExecutions(invalid);
+			return valid.map((execution) => {
 				const { executionData, metadata, ...rest } = execution;
 				return {
 					...rest,
@@ -165,7 +170,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				} as IExecutionResponse;
 			});
 		} else if (options?.includeData) {
-			return executions.map((execution) => {
+			const [valid, invalid] = separate(executions, (e) => e.executionData !== null);
+			this.reportInvalidExecutions(invalid);
+			return valid.map((execution) => {
 				const { executionData, metadata, ...rest } = execution;
 				return {
 					...rest,
@@ -180,6 +187,16 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			const { executionData, ...rest } = execution;
 			return rest;
 		});
+	}
+
+	reportInvalidExecutions(executions: ExecutionEntity[]) {
+		if (executions.length === 0) return;
+
+		ErrorReporter.error(
+			new ApplicationError('Found executions without executionData', {
+				extra: { executionIds: executions.map(({ id }) => id) },
+			}),
+		);
 	}
 
 	async findSingleExecution(
@@ -609,8 +626,34 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		});
 	}
 
-	async cancel(executionId: string) {
-		await this.update({ id: executionId }, { status: 'canceled', stoppedAt: new Date() });
+	async stopBeforeRun(execution: IExecutionResponse) {
+		execution.status = 'canceled';
+		execution.stoppedAt = new Date();
+
+		await this.update(
+			{ id: execution.id },
+			{ status: execution.status, stoppedAt: execution.stoppedAt },
+		);
+
+		return execution;
+	}
+
+	async stopDuringRun(execution: IExecutionResponse) {
+		const error = new WorkflowOperationError('Workflow-Execution has been canceled!');
+
+		execution.data.resultData.error = {
+			...error,
+			message: error.message,
+			stack: error.stack,
+		};
+
+		execution.stoppedAt = new Date();
+		execution.waitTill = null;
+		execution.status = 'canceled';
+
+		await this.updateExistingExecution(execution.id, execution);
+
+		return execution;
 	}
 
 	async cancelMany(executionIds: string[]) {

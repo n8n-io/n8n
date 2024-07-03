@@ -1,9 +1,11 @@
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError, NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import type {
 	GenericValue,
 	IBinaryKeyData,
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
+	INodeParameters,
 	IPairedItemData,
 } from 'n8n-workflow';
 
@@ -12,41 +14,15 @@ import assignWith from 'lodash/assignWith';
 import get from 'lodash/get';
 import merge from 'lodash/merge';
 import mergeWith from 'lodash/mergeWith';
+
 import { fuzzyCompare, preparePairedItemDataArray } from '@utils/utilities';
+
+import type { ClashResolveOptions, MatchFieldsJoinMode, MatchFieldsOptions } from './interfaces';
 
 type PairToMatch = {
 	field1: string;
 	field2: string;
 };
-
-export type MatchFieldsOptions = {
-	joinMode: MatchFieldsJoinMode;
-	outputDataFrom: MatchFieldsOutput;
-	multipleMatches: MultipleMatches;
-	disableDotNotation: boolean;
-	fuzzyCompare?: boolean;
-};
-
-export type ClashResolveOptions = {
-	resolveClash: ClashResolveMode;
-	mergeMode: ClashMergeMode;
-	overrideEmpty: boolean;
-};
-
-type ClashMergeMode = 'deepMerge' | 'shallowMerge';
-
-type ClashResolveMode = 'addSuffix' | 'preferInput1' | 'preferInput2';
-
-type MultipleMatches = 'all' | 'first';
-
-export type MatchFieldsOutput = 'both' | 'input1' | 'input2';
-
-export type MatchFieldsJoinMode =
-	| 'keepEverything'
-	| 'keepMatches'
-	| 'keepNonMatches'
-	| 'enrichInput2'
-	| 'enrichInput1';
 
 type EntryMatches = {
 	entry: INodeExecutionData;
@@ -75,7 +51,7 @@ function findAllMatches(
 		if (entry2 === undefined) return acc;
 
 		for (const key of Object.keys(lookup)) {
-			const excpectedValue = lookup[key];
+			const expectedValue = lookup[key];
 			let entry2FieldValue;
 
 			if (disableDotNotation) {
@@ -84,7 +60,7 @@ function findAllMatches(
 				entry2FieldValue = get(entry2.json, key);
 			}
 
-			if (!isEntriesEqual(excpectedValue, entry2FieldValue)) {
+			if (!isEntriesEqual(expectedValue, entry2FieldValue)) {
 				return acc;
 			}
 		}
@@ -106,7 +82,7 @@ function findFirstMatch(
 		if (entry2 === undefined) return false;
 
 		for (const key of Object.keys(lookup)) {
-			const excpectedValue = lookup[key];
+			const expectedValue = lookup[key];
 			let entry2FieldValue;
 
 			if (disableDotNotation) {
@@ -115,7 +91,7 @@ function findFirstMatch(
 				entry2FieldValue = get(entry2.json, key);
 			}
 
-			if (!isEntriesEqual(excpectedValue, entry2FieldValue)) {
+			if (!isEntriesEqual(expectedValue, entry2FieldValue)) {
 				return false;
 			}
 		}
@@ -278,11 +254,11 @@ export function mergeMatched(
 			];
 		} else {
 			const preferInput1 = 'preferInput1';
-			const preferInput2 = 'preferInput2';
+			const preferLast = 'preferLast';
 
 			if (resolveClash === undefined) {
 				if (joinMode !== 'enrichInput2') {
-					resolveClash = 'preferInput2';
+					resolveClash = 'preferLast';
 				} else {
 					resolveClash = 'preferInput1';
 				}
@@ -308,7 +284,7 @@ export function mergeMatched(
 				];
 			}
 
-			if (resolveClash === preferInput2) {
+			if (resolveClash === preferLast) {
 				json = mergeIntoSingleObject({ ...entry.json }, ...matches.map((item) => item.json));
 				binary = mergeIntoSingleObject(
 					{ ...entry.binary },
@@ -385,4 +361,29 @@ export function addSourceField(data: INodeExecutionData[], sourceField: string) 
 			json,
 		};
 	});
+}
+
+export const configuredInputs = (parameters: INodeParameters) => {
+	return Array.from({ length: (parameters.numberInputs as number) || 2 }, (_, i) => ({
+		type: `${NodeConnectionType.Main}`,
+		displayName: `Input ${(i + 1).toString()}`,
+	}));
+};
+
+export function getNodeInputsData(this: IExecuteFunctions) {
+	const returnData: INodeExecutionData[][] = [];
+
+	const inputs = NodeHelpers.getConnectionTypes(this.getNodeInputs()).filter(
+		(type) => type === NodeConnectionType.Main,
+	);
+
+	for (let i = 0; i < inputs.length; i++) {
+		try {
+			returnData.push(this.getInputData(i) ?? []);
+		} catch (error) {
+			returnData.push([]);
+		}
+	}
+
+	return returnData;
 }

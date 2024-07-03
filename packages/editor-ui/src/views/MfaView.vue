@@ -115,7 +115,11 @@ const i18 = useI18n();
 // #region Emit
 // ---------------------------------------------------------------------------
 
-const emit = defineEmits(['onFormChanged', 'onBackClick', 'submit']);
+const emit = defineEmits<{
+	(event: 'onFormChanged', formField: string): void;
+	(event: 'onBackClick', formField: string): void;
+	(event: 'submit', form: { token: string; recoveryCode: string }): void;
+}>();
 
 // #endregion
 
