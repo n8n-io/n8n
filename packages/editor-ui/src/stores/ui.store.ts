@@ -294,14 +294,21 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		}, {}),
 	);
 
-	const getFakeDoorByLocation = computed(() => {
-		return (location: IFakeDoorLocation) =>
-			fakeDoorFeatures.value.filter((fakeDoor) => fakeDoor.uiLocations.includes(location));
-	});
+	const fakeDoorsByLocation = computed(() =>
+		fakeDoorFeatures.value.reduce((acc: { [uiLocation: string]: IFakeDoor }, fakeDoor) => {
+			fakeDoor.uiLocations.forEach((uiLocation: IFakeDoorLocation) => {
+				acc[uiLocation] = fakeDoor;
+			});
+			return acc;
+		}, {}),
+	);
 
-	const getFakeDoorById = computed(() => {
-		return (id: string) => fakeDoorFeatures.value.find((fakeDoor) => fakeDoor.id.toString() === id);
-	});
+	const fakeDoorsById = computed(() =>
+		fakeDoorFeatures.value.reduce((acc: { [id: string]: IFakeDoor }, fakeDoor) => {
+			acc[fakeDoor.id.toString()] = fakeDoor;
+			return acc;
+		}, {}),
+	);
 
 	const isReadOnlyView = computed(() => {
 		return ![
@@ -658,8 +665,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		getLastSelectedNode,
 		isVersionsOpen,
 		isModalActiveById,
-		getFakeDoorByLocation,
-		getFakeDoorById,
+		fakeDoorsByLocation,
 		isReadOnlyView,
 		isActionActive,
 		getSelectedNodes,
@@ -685,6 +691,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		modalsById,
 		currentView,
 		isAnyModalOpen,
+		fakeDoorsById,
 		setTheme,
 		setMode,
 		setActiveId,

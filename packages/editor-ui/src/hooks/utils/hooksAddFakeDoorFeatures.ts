@@ -28,7 +28,7 @@ export function compileFakeDoorFeatures(): IFakeDoor[] {
 }
 
 export const hooksAddFakeDoorFeatures = () => {
-	const store = useUIStore();
+	const uiStore = useUIStore();
 
-	store.fakeDoorFeatures = compileFakeDoorFeatures();
+	uiStore.fakeDoorFeatures = compileFakeDoorFeatures();
 };
