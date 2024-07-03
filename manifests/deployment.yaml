@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: n8nautomation
+  labels:
+    app: n8nautomation
+    kubernetes.azure.com/generator: devhub
+  namespace: namespace-workflow-1720016274070
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: n8nautomation
+  template:
+    metadata:
+      labels:
+        app: n8nautomation
+    spec:
+      containers:
+        - name: n8nautomation
+          image: acrworkflow1720016274070.azurecr.io/image-workflow-1720016274070:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
