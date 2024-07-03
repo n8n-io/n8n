@@ -88,13 +88,6 @@ const readFileAsDataURL = async (file: File): Promise<string> =>
 		reader.readAsDataURL(file);
 	});
 
-const openImageInNewTab = (fileName: string) => {
-	const newWindow = window.open(fileSources.value[fileName]);
-	if (newWindow) {
-		newWindow.document.write(`<img src="${fileSources.value[fileName]}" />`);
-		newWindow.document.title = fileName;
-	}
-};
 onMounted(async () => {
 	if (message.value.files) {
 		for (const file of message.value.files) {
