@@ -1,8 +1,7 @@
 import type {
-	ICredentialDataDecryptedObject,
+	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
-	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -15,6 +14,12 @@ export class MalcoreApi implements ICredentialType {
 
 	icon = { light: 'file:icons/Malcore.svg', dark: 'file:icons/Malcore.svg' } as const;
 
+	httpRequestNode = {
+		name: 'Malcore',
+		docsUrl: 'https://malcore.readme.io/reference/upload',
+		apiBaseUrlPlaceholder: 'https://api.malcore.io/api/urlcheck',
+	};
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
@@ -23,25 +28,24 @@ export class MalcoreApi implements ICredentialType {
 			type: 'string',
 			typeOptions: { password: true },
 			default: '',
-		}
+		},
 	];
 
-	async authenticate(
-		credentials: ICredentialDataDecryptedObject,
-		requestOptions: IHttpRequestOptions,
-	): Promise<IHttpRequestOptions> {
-		requestOptions.headers = {
-			apiKey: credentials.apiKey,
-		};
-		return requestOptions;
-	}
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			headers: {
+				apiKey: '={{$credentials.apiKey}}',
+			},
+		},
+	};
 
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://api.malcore.io/api',
 			url: '/urlcheck',
 			method: 'POST',
-			body: {"url":"google.com"}
+			body: { url: 'google.com' },
 		},
 	};
 }
