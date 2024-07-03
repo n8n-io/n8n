@@ -127,10 +127,10 @@ export default defineComponent({
 .container {
 	display: grid;
 	grid-template-areas:
-		'banners banners banners'
-		'sidebar header chat'
-		'sidebar content chat';
-	grid-auto-columns: fit-content($sidebar-expanded-width) 1fr fit-content($chat-width);
+		'banners banners'
+		'sidebar header'
+		'sidebar content';
+	grid-auto-columns: fit-content($sidebar-expanded-width) 1fr;
 	grid-template-rows: auto fit-content($header-height) 1fr;
 	height: 100vh;
 }

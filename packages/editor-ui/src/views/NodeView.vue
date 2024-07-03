@@ -1227,16 +1227,8 @@ export default defineComponent({
 				}
 			}
 		},
-		async onCanvasAddButtonCLick(event: PointerEvent) {
-			if (event) {
-				this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON);
-				return;
-			}
-		},
-		onNextStepSelected(action: string) {
-			if (action === 'choose') {
-				this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON);
-			}
+		async onCanvasAddButtonCLick() {
+			this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON);
 		},
 		showTriggerCreator(source: NodeCreatorOpenSource) {
 			if (this.createNodeActive) return;
@@ -2944,43 +2936,12 @@ export default defineComponent({
 					}
 					return;
 				}
-				// When connection is aborted, we want to show the 'Next step' popup
-				const endpointId = `${connection.parameters.nodeId}-output${connection.parameters.index}`;
-				const endpoint = connection.instance.getEndpoint(endpointId);
-				// First, show node creator if endpoint is not a plus endpoint
-				// or if the AI Assistant experiment doesn't need to be shown to user
-				if (!endpoint?.endpoint?.canvas) {
-					this.insertNodeAfterSelected({
-						sourceId: connection.parameters.nodeId,
-						index: connection.parameters.index,
-						eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
-						connection,
-						outputType: connection.parameters.type,
-					});
-					return;
-				}
-				// Use observer to trigger the popup once the endpoint is rendered back again
-				// after connection drag is aborted (so we can get it's position and dimensions)
-				const observer = new MutationObserver((mutations) => {
-					// Find the mutation in which the current endpoint becomes visible again
-					const endpointMutation = mutations.find((mutation) => {
-						const target = mutation.target;
-
-						return (
-							isJSPlumbEndpointElement(target) &&
-							target.jtk?.endpoint?.uuid === endpoint.uuid &&
-							target.style.display === 'block'
-						);
-					});
-					if (endpointMutation) {
-						observer.disconnect();
-						return;
-					}
-				});
-				observer.observe(this.$refs.nodeViewRef as HTMLElement, {
-					attributes: true,
-					attributeFilter: ['style'],
-					subtree: true,
+				this.insertNodeAfterSelected({
+					sourceId: connection.parameters.nodeId,
+					index: connection.parameters.index,
+					eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
+					connection,
+					outputType: connection.parameters.type,
 				});
 			} catch (e) {
 				console.error(e);

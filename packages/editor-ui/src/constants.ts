@@ -670,12 +670,6 @@ export const ASK_AI_EXPERIMENT = {
 
 export const TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT = '017_template_credential_setup_v2';
 
-export const AI_ASSISTANT_EXPERIMENT = {
-	name: '19_ai_assistant_experiment',
-	control: 'control',
-	variant: 'variant',
-};
-
 export const CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT = {
 	name: '20_canvas_auto_add_manual_trigger',
 	control: 'control',
@@ -685,7 +679,6 @@ export const CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT = {
 export const EXPERIMENTS_TO_TRACK = [
 	ASK_AI_EXPERIMENT.name,
 	TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT,
-	AI_ASSISTANT_EXPERIMENT.name,
 	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT.name,
 ];
 
@@ -846,13 +839,6 @@ export const INSECURE_CONNECTION_WARNING = `
 	</ul>
 </div>
 </body>`;
-
-export const AI_ASSISTANT_EXPERIMENT_URLS = {
-	FEEDBACK_FORM: 'https://chat.arro.co/to4639rATEMV',
-	SIGN_UP: 'https://adore.app.n8n.cloud/form/4704cce3-4cef-4dc8-b67f-8a510c5d561a',
-};
-
-export const AI_ASSISTANT_LOCAL_STORAGE_KEY = 'N8N_AI_ASSISTANT_EXPERIMENT';
 
 /**
  * Injection Keys
