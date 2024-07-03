@@ -21,6 +21,7 @@ import { useRouter } from 'vue-router';
 import { mock } from 'vitest-mock-extended';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 vi.mock('vue-router', async () => {
 	const actual = await import('vue-router');
@@ -39,11 +40,12 @@ describe('useCanvasOperations', () => {
 	let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
 	let credentialsStore: ReturnType<typeof useCredentialsStore>;
 	let canvasOperations: ReturnType<typeof useCanvasOperations>;
+	let workflowHelpers: ReturnType<typeof useWorkflowHelpers>;
 
 	const lastClickPosition = ref<XYPosition>([450, 450]);
 	const router = useRouter();
 
-	beforeEach(() => {
+	beforeEach(async () => {
 		const pinia = createPinia();
 		setActivePinia(pinia);
 
@@ -53,15 +55,17 @@ describe('useCanvasOperations', () => {
 		historyStore = useHistoryStore();
 		nodeTypesStore = useNodeTypesStore();
 		credentialsStore = useCredentialsStore();
+		workflowHelpers = useWorkflowHelpers({ router });
 
 		const workflowId = 'test';
-		workflowsStore.workflowsById[workflowId] = mock<IWorkflowDb>({
+		const workflow = mock<IWorkflowDb>({
 			id: workflowId,
 			nodes: [],
 			tags: [],
 			usedCredentials: [],
 		});
-		workflowsStore.initializeEditableWorkflow(workflowId);
+		workflowsStore.workflowsById[workflowId] = workflow;
+		await workflowHelpers.initState(workflow, true);
 
 		canvasOperations = useCanvasOperations({ router, lastClickPosition });
 	});

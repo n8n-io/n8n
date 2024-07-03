@@ -1,3 +1,8 @@
+/**
+ * Canvas V2 Only
+ * @TODO Remove this notice when Canvas V2 is the only one in use
+ */
+
 import { useI18n } from '@/composables/useI18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -137,8 +142,6 @@ export function useCanvasMapping({
 			if (node?.issues !== undefined) {
 				issues.push(...NodeHelpers.nodeIssuesToString(node.issues, node));
 			}
-
-			console.log(node.name, issues);
 
 			acc[node.id] = issues;
 

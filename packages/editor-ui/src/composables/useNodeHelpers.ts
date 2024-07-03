@@ -229,20 +229,6 @@ export function useNodeHelpers() {
 		};
 	}
 
-	function updateNodeIssuesByName(name: string): void {
-		const node = workflowsStore.getNodeByName(name);
-		if (node) {
-			updateNodeInputIssues(node);
-		}
-	}
-
-	function updateNodeInputIssuesById(id: string): void {
-		const node = workflowsStore.getNodeById(id);
-		if (node) {
-			updateNodeInputIssues(node);
-		}
-	}
-
 	function updateNodeInputIssues(node: INodeUi): void {
 		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
 		if (!nodeType) {

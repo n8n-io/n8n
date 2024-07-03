@@ -1,3 +1,8 @@
+/**
+ * Canvas V2 Only
+ * @TODO Remove this notice when Canvas V2 is the only one in use
+ */
+
 import { CanvasNodeKey } from '@/constants';
 import { computed, inject } from 'vue';
 import type { CanvasElementData } from '@/types';

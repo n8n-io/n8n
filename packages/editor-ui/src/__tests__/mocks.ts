@@ -9,6 +9,7 @@ import type {
 	IWorkflowSettings,
 	LoadedClass,
 	INodeTypeDescription,
+	INodeIssues,
 } from 'n8n-workflow';
 import { NodeHelpers, Workflow } from 'n8n-workflow';
 import { uuid } from '@jsplumb/util';
@@ -23,6 +24,7 @@ import {
 	NO_OP_NODE_TYPE,
 	SET_NODE_TYPE,
 } from '@/constants';
+import type { INodeUi } from '@/Interface';
 
 export const mockNode = ({
 	id = uuid(),
@@ -30,13 +32,15 @@ export const mockNode = ({
 	type,
 	position = [0, 0],
 	disabled = false,
+	issues = undefined,
 }: {
-	id?: INode['id'];
-	name: INode['name'];
-	type: INode['type'];
-	position?: INode['position'];
-	disabled?: INode['disabled'];
-}) => mock<INode>({ id, name, type, position, disabled });
+	id?: INodeUi['id'];
+	name: INodeUi['name'];
+	type: INodeUi['type'];
+	position?: INodeUi['position'];
+	disabled?: INodeUi['disabled'];
+	issues?: INodeIssues;
+}) => mock<INodeUi>({ id, name, type, position, disabled, issues });
 
 export const mockNodeTypeDescription = ({
 	name,
