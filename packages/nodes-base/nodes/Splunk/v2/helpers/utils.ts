@@ -2,12 +2,7 @@ import type { IExecuteFunctions, IDataObject } from 'n8n-workflow';
 
 import { parseString } from 'xml2js';
 
-import type {
-	SplunkError,
-	SplunkFeedResponse,
-	SplunkResultResponse,
-	SplunkSearchResponse,
-} from '../types';
+import type { SplunkError, SplunkFeedResponse, SplunkSearchResponse } from './interfaces';
 
 function compactEntryContent(splunkObject: any): any {
 	if (typeof splunkObject !== 'object') {
@@ -51,8 +46,8 @@ function formatEntryContent(content: any): any {
 
 export function formatEntry(entry: any, doNotFormatContent = false): any {
 	const { content, link, ...rest } = entry;
-	const formatedContent = doNotFormatContent ? content : formatEntryContent(content);
-	const formattedEntry = { ...rest, ...formatedContent };
+	const formattedContent = doNotFormatContent ? content : formatEntryContent(content);
+	const formattedEntry = { ...rest, ...formattedContent };
 
 	if (formattedEntry.id) {
 		formattedEntry.entryUrl = formattedEntry.id;
@@ -97,42 +92,6 @@ export function formatFeed(responseData: SplunkFeedResponse) {
 	return Array.isArray(entries)
 		? entries.map((entry) => formatEntry(entry))
 		: [formatEntry(entries)];
-}
-
-function compactResult(splunkObject: any): any {
-	if (typeof splunkObject !== 'object') {
-		return {};
-	}
-
-	if (Array.isArray(splunkObject?.value) && splunkObject?.value[0]?.text) {
-		return {
-			[splunkObject.$.k]: splunkObject.value.map((v: { text: string }) => v.text).join(','),
-		};
-	}
-
-	if (!splunkObject?.$?.k || !splunkObject?.value?.text) {
-		return {};
-	}
-
-	return {
-		[splunkObject.$.k]: splunkObject.value.text,
-	};
-}
-
-function formatResult(field: any): any {
-	return field.reduce((acc: any, cur: any) => {
-		acc = { ...acc, ...compactResult(cur) };
-		return acc;
-	}, {});
-}
-
-export function formatResults(responseData: SplunkResultResponse) {
-	const results = responseData.results.result;
-	if (!results) return [];
-
-	return Array.isArray(results)
-		? results.map((r) => formatResult(r.field))
-		: [formatResult(results.field)];
 }
 
 export function setCount(this: IExecuteFunctions, qs: IDataObject) {

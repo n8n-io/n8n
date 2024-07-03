@@ -9,7 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 
-import type { SplunkCredentials, SplunkError } from '../types';
+import type { SplunkCredentials, SplunkError } from '../helpers/interfaces';
 import { extractErrorDescription, formatEntry, parseXml } from '../helpers/utils';
 
 export async function splunkApiRequest(
