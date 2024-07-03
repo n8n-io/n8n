@@ -65,7 +65,6 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 	mfa: {
 		enabled: false,
 	},
-	onboardingCallPromptEnabled: false,
 	saveDataErrorExecution: 'all',
 	saveDataSuccessExecution: 'all',
 	saveDataProgressExecution: false,

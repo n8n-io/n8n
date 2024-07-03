@@ -2626,7 +2626,6 @@ export interface IN8nUISettings {
 		enabled: boolean;
 		host: string;
 	};
-	onboardingCallPromptEnabled: boolean;
 	missingPackages?: boolean;
 	executionMode: 'regular' | 'queue';
 	pushBackend: 'sse' | 'websocket';

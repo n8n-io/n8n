@@ -1,8 +1,4 @@
-import {
-	applyForOnboardingCall,
-	fetchNextOnboardingPrompt,
-	submitEmailOnSignup,
-} from '@/api/workflow-webhooks';
+import { submitEmailOnSignup } from '@/api/workflow-webhooks';
 import {
 	ABOUT_MODAL_KEY,
 	CHAT_EMBED_MODAL_KEY,
@@ -20,7 +16,6 @@ import {
 	INVITE_USER_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
 	MFA_SETUP_MODAL_KEY,
-	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
 	STORES,
 	TAGS_MANAGER_MODAL_KEY,
@@ -47,7 +42,6 @@ import type {
 	CurlToJSONResponse,
 	IFakeDoorLocation,
 	INodeUi,
-	IOnboardingCallPrompt,
 	UIState,
 	UTMCampaign,
 	XYPosition,
@@ -103,7 +97,6 @@ export const useUIStore = defineStore(STORES.UI, {
 					CONTACT_PROMPT_MODAL_KEY,
 					CREDENTIAL_SELECT_MODAL_KEY,
 					DUPLICATE_MODAL_KEY,
-					ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 					PERSONALIZATION_MODAL_KEY,
 					INVITE_USER_MODAL_KEY,
 					TAGS_MANAGER_MODAL_KEY,
@@ -469,24 +462,6 @@ export const useUIStore = defineStore(STORES.UI, {
 			this.setShowAuthSelector(CREDENTIAL_EDIT_MODAL_KEY, showAuthOptions);
 			this.setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 			this.openModal(CREDENTIAL_EDIT_MODAL_KEY);
-		},
-		async getNextOnboardingPrompt(): Promise<IOnboardingCallPrompt | null> {
-			const rootStore = useRootStore();
-			const instanceId = rootStore.instanceId;
-			const { currentUser } = useUsersStore();
-			if (currentUser) {
-				return await fetchNextOnboardingPrompt(instanceId, currentUser);
-			}
-			return null;
-		},
-		async applyForOnboardingCall(email: string): Promise<string | null> {
-			const rootStore = useRootStore();
-			const instanceId = rootStore.instanceId;
-			const { currentUser } = useUsersStore();
-			if (currentUser) {
-				return await applyForOnboardingCall(instanceId, currentUser, email);
-			}
-			return null;
 		},
 		async submitContactEmail(email: string, agree: boolean): Promise<string | null> {
 			const rootStore = useRootStore();

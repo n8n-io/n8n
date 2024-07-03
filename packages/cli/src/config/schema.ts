@@ -1232,15 +1232,6 @@ export const schema = {
 		env: 'N8N_DEFAULT_LOCALE',
 	},
 
-	onboardingCallPrompt: {
-		enabled: {
-			doc: 'Whether onboarding call prompt feature is available',
-			format: Boolean,
-			default: true,
-			env: 'N8N_ONBOARDING_CALL_PROMPTS_ENABLED',
-		},
-	},
-
 	license: {
 		serverUrl: {
 			format: String,
