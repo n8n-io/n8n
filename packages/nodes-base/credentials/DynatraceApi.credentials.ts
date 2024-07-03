@@ -1,10 +1,4 @@
-import type {
-	ICredentialDataDecryptedObject,
-	ICredentialTestRequest,
-	ICredentialType,
-	IHttpRequestOptions,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class DynatraceApi implements ICredentialType {
 	name = 'dynatraceApi';
@@ -15,6 +9,12 @@ export class DynatraceApi implements ICredentialType {
 
 	icon = { light: 'file:icons/Dynatrace.svg', dark: 'file:icons/Dynatrace.svg' } as const;
 
+	httpRequestNode = {
+		name: 'Dynatrace',
+		docsUrl: 'https://docs.dynatrace.com/docs/dynatrace-api',
+		apiBaseUrlPlaceholder: 'https://{your-environment-id}.live.dynatrace.com/api/v2/events',
+	};
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
@@ -23,16 +23,15 @@ export class DynatraceApi implements ICredentialType {
 			type: 'string',
 			typeOptions: { password: true },
 			default: '',
-		}
+		},
 	];
 
-	async authenticate(
-		credentials: ICredentialDataDecryptedObject,
-		requestOptions: IHttpRequestOptions,
-	): Promise<IHttpRequestOptions> {
-		requestOptions.headers = {
-			Authorization: 'Api-Token ' + credentials.apiKey,
-		};
-		return requestOptions;
-	}
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			headers: {
+				Authorization: '=Api-Token {{$credentials.apiKey}}',
+			},
+		},
+	};
 }
