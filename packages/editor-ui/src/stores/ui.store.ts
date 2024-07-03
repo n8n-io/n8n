@@ -344,33 +344,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		}, {}),
 	);
 
-	const upgradeLinkUrl = computed(() => {
-		return async (source: string, utm_campaign: string, deploymentType: string) => {
-			let linkUrl = '';
-
-			const searchParams = new URLSearchParams();
-
-			if (deploymentType === 'cloud' && hasPermission(['instanceOwner'])) {
-				const adminPanelHost = new URL(window.location.href).host.split('.').slice(1).join('.');
-				const { code } = await cloudPlanStore.getAutoLoginCode();
-				linkUrl = `https://${adminPanelHost}/login`;
-				searchParams.set('code', code);
-				searchParams.set('returnPath', '/account/change-plan');
-			} else {
-				linkUrl = N8N_PRICING_PAGE_URL;
-			}
-
-			if (utm_campaign) {
-				searchParams.set('utm_campaign', utm_campaign);
-			}
-
-			if (source) {
-				searchParams.set('source', source);
-			}
-			return `${linkUrl}?${searchParams.toString()}`;
-		};
-	});
-
 	const headerHeight = computed(() => {
 		const style = getComputedStyle(document.body);
 		return Number(style.getPropertyValue('--header-height'));
@@ -607,7 +580,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			workflowsLeft,
 		});
 
-		const upgradeLink = await upgradeLinkUrl.value(source, utm_campaign, deploymentType);
+		const upgradeLink = await generateUpgradeLinkUrl(source, utm_campaign, deploymentType);
 
 		if (mode === 'open') {
 			window.open(upgradeLink, '_blank');
@@ -666,7 +639,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		activeActions,
 		getSelectedNodes,
 		isNodeSelected,
-		upgradeLinkUrl,
 		headerHeight,
 		stateIsDirty,
 		lastSelectedNodeOutputIndex,
@@ -767,4 +739,35 @@ export const listenForModalChanges = (opts: {
 			}
 		});
 	});
+};
+
+const generateUpgradeLinkUrl = async (
+	source: string,
+	utm_campaign: string,
+	deploymentType: string,
+) => {
+	let linkUrl = '';
+
+	const searchParams = new URLSearchParams();
+
+	const cloudPlanStore = useCloudPlanStore();
+
+	if (deploymentType === 'cloud' && hasPermission(['instanceOwner'])) {
+		const adminPanelHost = new URL(window.location.href).host.split('.').slice(1).join('.');
+		const { code } = await cloudPlanStore.getAutoLoginCode();
+		linkUrl = `https://${adminPanelHost}/login`;
+		searchParams.set('code', code);
+		searchParams.set('returnPath', '/account/change-plan');
+	} else {
+		linkUrl = N8N_PRICING_PAGE_URL;
+	}
+
+	if (utm_campaign) {
+		searchParams.set('utm_campaign', utm_campaign);
+	}
+
+	if (source) {
+		searchParams.set('source', source);
+	}
+	return `${linkUrl}?${searchParams.toString()}`;
 };
