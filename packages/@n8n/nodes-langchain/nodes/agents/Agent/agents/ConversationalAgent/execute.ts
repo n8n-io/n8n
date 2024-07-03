@@ -4,9 +4,8 @@ import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { initializeAgentExecutorWithOptions } from 'langchain/agents';
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import type { BaseOutputParser } from '@langchain/core/output_parsers';
-import { ChatPromptTemplate } from '@langchain/core/prompts';
+import { PromptTemplate } from '@langchain/core/prompts';
 import { CombiningOutputParser } from 'langchain/output_parsers';
-import { HumanMessage } from '@langchain/core/messages';
 import {
 	isChatInstance,
 	getPromptInputByType,
@@ -60,26 +59,7 @@ export async function conversationalAgentExecute(
 	const returnData: INodeExecutionData[] = [];
 
 	let outputParser: BaseOutputParser | undefined;
-	// let prompt: PromptTemplate | undefined;
-	const binaryData = this.getInputData(0, 'main')?.[0]?.binary ?? {};
-	const binaryMessages = Object.values(binaryData).map((data) => {
-		return {
-			type: 'image_url',
-			image_url: {
-				url: `data:image/jpeg;base64,${data.data}`,
-			},
-		};
-	});
-	const binaryMessage = new HumanMessage({
-		content: [...binaryMessages],
-	});
-	const prompt = ChatPromptTemplate.fromMessages([
-		// ['system', '{system_message}'],
-		// ['placeholder', '{chat_history}'],
-		binaryMessage,
-		['human', '{input}'],
-		// ['placeholder', '{agent_scratchpad}'],
-	]);
+	let prompt: PromptTemplate | undefined;
 	if (outputParsers.length) {
 		if (outputParsers.length === 1) {
 			outputParser = outputParsers[0];
@@ -87,15 +67,15 @@ export async function conversationalAgentExecute(
 			outputParser = new CombiningOutputParser(...outputParsers);
 		}
 
-		// if (outputParser) {
-		// 	const formatInstructions = outputParser.getFormatInstructions();
+		if (outputParser) {
+			const formatInstructions = outputParser.getFormatInstructions();
 
-		// 	prompt = new PromptTemplate({
-		// 		template: '{input}\n{formatInstructions}',
-		// 		inputVariables: ['input'],
-		// 		partialVariables: { formatInstructions },
-		// 	});
-		// }
+			prompt = new PromptTemplate({
+				template: '{input}\n{formatInstructions}',
+				inputVariables: ['input'],
+				partialVariables: { formatInstructions },
+			});
+		}
 	}
 
 	const items = this.getInputData();
@@ -119,7 +99,7 @@ export async function conversationalAgentExecute(
 			}
 
 			if (prompt) {
-				input = await prompt.invoke({ input });
+				input = (await prompt.invoke({ input })).value;
 			}
 
 			let response = await agentExecutor
