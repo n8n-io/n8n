@@ -25,7 +25,10 @@ const props = withDefaults(
 	},
 );
 
-const emit = defineEmits(['closeModal', 'execution:stop', 'update:autoRefresh', 'update:filters']);
+const emit = defineEmits<{
+	(event: 'update:filters', value: ExecutionFilterType): void;
+	(event: 'execution:stop'): void;
+}>();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();

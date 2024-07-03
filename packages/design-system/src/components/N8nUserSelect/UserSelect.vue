@@ -54,7 +54,10 @@ const props = withDefaults(defineProps<UserSelectProps>(), {
 	currentUserId: '',
 });
 
-const $emit = defineEmits(['blur', 'focus']);
+const $emit = defineEmits<{
+	(event: 'blur'): void;
+	(event: 'focus'): void;
+}>();
 
 const { t } = useI18n();
 

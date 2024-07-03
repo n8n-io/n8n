@@ -13,11 +13,11 @@ const props = defineProps<{
 	selectedCredentialId: string | null;
 }>();
 
-const $emit = defineEmits({
-	credentialSelected: (_credentialId: string) => true,
-	credentialDeselected: () => true,
-	credentialModalOpened: () => true,
-});
+const $emit = defineEmits<{
+	(event: 'credentialSelected', credentialId: string): void;
+	(event: 'credentialDeselected'): void;
+	(event: 'credentialModalOpened'): void;
+}>();
 
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
