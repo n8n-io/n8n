@@ -15,6 +15,12 @@ export class DatadogApi implements ICredentialType {
 
 	icon = { light: 'file:icons/Datadog.svg', dark: 'file:icons/Datadog.svg' } as const;
 
+	httpRequestNode = {
+		name: 'Datadog',
+		docsUrl: 'https://docs.datadoghq.com/api/latest/',
+		apiBaseUrlPlaceholder: 'https://api.datadoghq.com/api/v1/metrics',
+	};
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'URL',
