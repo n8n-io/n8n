@@ -66,10 +66,7 @@
 			/>
 
 			<template v-if="credentialPermissions.update">
-				<n8n-notice
-					v-if="documentationUrl && credentialProperties.length && !hasInlineDocs"
-					theme="warning"
-				>
+				<n8n-notice v-if="documentationUrl && credentialProperties.length && !docs" theme="warning">
 					{{ $locale.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
 					<span class="ml-4xs">
 						<n8n-link :to="documentationUrl" size="small" bold @click="onDocumentationUrlClick">
@@ -149,8 +146,10 @@
 			</EnterpriseEdition>
 		</div>
 		<CredentialDocs
+			v-if="docs"
 			:credential-type="credentialType"
 			:documentation-url="documentationUrl"
+			:docs="docs"
 			:class="$style.docs"
 		>
 		</CredentialDocs>
@@ -321,7 +320,7 @@ const isMissingCredentials = computed(() => props.credentialType === null);
 
 const isNewCredential = computed(() => props.mode === 'new' && !props.credentialId);
 
-const hasInlineDocs = computed(() => !!CREDENTIAL_MARKDOWN_DOCS[props.credentialType.name]);
+const docs = computed(() => CREDENTIAL_MARKDOWN_DOCS[props.credentialType.name]);
 
 function onDataChange(event: IUpdateInformation): void {
 	emit('update', event);

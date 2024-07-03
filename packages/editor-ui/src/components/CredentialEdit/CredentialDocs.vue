@@ -23,17 +23,17 @@
 </template>
 
 <script setup lang="ts">
-import type { ICredentialType } from 'n8n-workflow';
-import { computed, ref } from 'vue';
-import { CREDENTIAL_MARKDOWN_DOCS } from './docs';
-import VueMarkdown from 'vue-markdown-render';
-import { useI18n } from '@/composables/useI18n';
 import Feedback from '@/components/Feedback.vue';
+import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { ICredentialType } from 'n8n-workflow';
+import { ref } from 'vue';
+import VueMarkdown from 'vue-markdown-render';
 
 type Props = {
 	credentialType: ICredentialType;
+	docs: string;
 	documentationUrl: string;
 };
 
@@ -64,10 +64,6 @@ function onDocumentationUrlClick(): void {
 		workflow_id: workflowsStore.workflowId,
 	});
 }
-
-console.log(props.credentialType.name);
-
-const docs = computed(() => CREDENTIAL_MARKDOWN_DOCS[props.credentialType.name]);
 </script>
 
 <style lang="scss" module>
