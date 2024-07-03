@@ -302,12 +302,6 @@ function setConnectedNode() {
 	});
 
 	if (!chatNode) {
-		showError(
-			new Error(
-				'Chat only works when an AI agent or chain(except summarization chain) is connected to the chat trigger node',
-			),
-			'Missing AI node',
-		);
 		return;
 	}
 
