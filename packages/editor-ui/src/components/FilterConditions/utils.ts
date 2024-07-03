@@ -23,7 +23,10 @@ const getTargetType = (type: FilterOperatorType) => {
 	return 'string';
 };
 
-const convertToType = (value: NodeParameterValue, type: FilterOperatorType): NodeParameterValue => {
+const convertToType = (
+	value: NodeParameterValue | NodeParameterValue[],
+	type: FilterOperatorType,
+): NodeParameterValue | NodeParameterValue[] => {
 	if (type === 'any') return value;
 
 	const fallback = type === 'boolean' ? false : value;
