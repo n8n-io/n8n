@@ -26,6 +26,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
 
 export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	const workflowsStore = useWorkflowsStore();
@@ -65,6 +66,42 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 
 	function setOpenSource(view: NodeCreatorOpenSource) {
 		openSource.value = view;
+	}
+
+	function openSelectiveNodeCreator({
+		connectionType,
+		node,
+		creatorView,
+	}: {
+		connectionType: NodeConnectionType;
+		node: string;
+		creatorView?: NodeFilterType;
+	}) {
+		const nodeName = node ?? ndvStore.activeNodeName;
+		const nodeData = nodeName ? workflowsStore.getNodeByName(nodeName) : null;
+
+		ndvStore.activeNodeName = null;
+
+		setTimeout(() => {
+			if (creatorView) {
+				openNodeCreator({
+					createNodeActive: true,
+					nodeCreatorView: creatorView,
+				});
+			} else if (connectionType && nodeData) {
+				openNodeCreatorForConnectingNode({
+					index: 0,
+					endpointUuid: createCanvasConnectionHandleString({
+						mode: 'inputs',
+						type: connectionType,
+						index: 0,
+					}),
+					eventSource: NODE_CREATOR_OPEN_SOURCES.NOTICE_ERROR_MESSAGE,
+					outputType: connectionType,
+					sourceId: nodeData.id,
+				});
+			}
+		});
 	}
 
 	function openNodeCreator({
@@ -135,39 +172,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		});
 	}
 
-	function openSelectiveNodeCreator({
-		connectionType,
-		node,
-		creatorView,
-	}: {
-		connectionType: NodeConnectionType;
-		node: string;
-		creatorView?: NodeFilterType;
-	}) {
-		const nodeName = node ?? ndvStore.activeNodeName;
-		const nodeData = nodeName ? workflowsStore.getNodeByName(nodeName) : null;
-
-		ndvStore.activeNodeName = null;
-
-		setTimeout(() => {
-			if (creatorView) {
-				openNodeCreator({
-					createNodeActive: true,
-					nodeCreatorView: creatorView,
-				});
-			} else if (connectionType && nodeData) {
-				insertNodeAfterSelected({
-					index: 0,
-					endpointUuid: `${nodeData.id}-input${connectionType}0`,
-					eventSource: NODE_CREATOR_OPEN_SOURCES.NOTICE_ERROR_MESSAGE,
-					outputType: connectionType,
-					sourceId: nodeData.id,
-				});
-			}
-		});
-	}
-
-	function insertNodeAfterSelected(info: AIAssistantConnectionInfo) {
+	function openNodeCreatorForConnectingNode(info: AIAssistantConnectionInfo) {
 		const type = info.outputType ?? NodeConnectionType.Main;
 		// Get the node and set it as active that new nodes
 		// which get created get automatically connected
@@ -178,8 +183,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		}
 
 		uiStore.lastSelectedNode = sourceNode.name;
-		uiStore.lastSelectedNodeEndpointUuid =
-			info.endpointUuid ?? info.connection?.target.jtk?.endpoint.uuid;
+		uiStore.lastSelectedNodeEndpointUuid = info.endpointUuid ?? null;
 		uiStore.lastSelectedNodeOutputIndex = info.index;
 		// canvasStore.newNodeInsertPosition = null;
 
@@ -247,6 +251,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		setMergeNodes,
 		openNodeCreator,
 		openSelectiveNodeCreator,
+		openNodeCreatorForConnectingNode,
 		allNodeCreatorNodes,
 	};
 });

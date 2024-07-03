@@ -1,5 +1,6 @@
 import { Service } from 'typedi';
 import { EventEmitter } from 'node:events';
+import debounce from 'lodash/debounce';
 
 @Service()
 export class ConcurrencyQueue extends EventEmitter {
@@ -15,12 +16,18 @@ export class ConcurrencyQueue extends EventEmitter {
 	async enqueue(executionId: string) {
 		this.capacity--;
 
+		this.debouncedEmit('concurrency-check', { capacity: this.capacity });
+
 		if (this.capacity < 0) {
-			this.emit('execution-throttled', { executionId, capacity: this.capacity });
+			this.emit('execution-throttled', { executionId });
 
 			// eslint-disable-next-line @typescript-eslint/return-await
 			return new Promise<void>((resolve) => this.queue.push({ executionId, resolve }));
 		}
+	}
+
+	get currentCapacity() {
+		return this.capacity;
 	}
 
 	dequeue() {
@@ -42,7 +49,7 @@ export class ConcurrencyQueue extends EventEmitter {
 	}
 
 	getAll() {
-		return new Set(...this.queue.map((item) => item.executionId));
+		return new Set(this.queue.map((item) => item.executionId));
 	}
 
 	private resolveNext() {
@@ -56,4 +63,9 @@ export class ConcurrencyQueue extends EventEmitter {
 
 		resolve();
 	}
+
+	private debouncedEmit = debounce(
+		(event: string, payload: object) => this.emit(event, payload),
+		300,
+	);
 }

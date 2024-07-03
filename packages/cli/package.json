@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "1.47.0",
+  "version": "1.48.0",
   "description": "n8n Workflow Automation Tool",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -91,7 +91,7 @@
   },
   "dependencies": {
     "@langchain/community": "0.2.2",
-    "@langchain/core": "0.2.0",
+    "@langchain/core": "0.2.9",
     "@langchain/openai": "0.0.33",
     "@langchain/pinecone": "0.0.6",
     "@n8n/client-oauth2": "workspace:*",
@@ -100,7 +100,7 @@
     "@n8n/permissions": "workspace:*",
     "@n8n/typeorm": "0.3.20-10",
     "@n8n_io/license-sdk": "2.13.0",
-    "@oclif/core": "3.26.6",
+    "@oclif/core": "4.0.7",
     "@pinecone-database/pinecone": "2.1.0",
     "@rudderstack/rudder-sdk-node": "2.0.7",
     "@sentry/integrations": "7.87.0",

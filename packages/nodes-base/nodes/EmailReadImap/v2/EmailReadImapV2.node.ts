@@ -67,6 +67,7 @@ const versionDescription: INodeTypeDescription = {
 	displayName: 'Email Trigger (IMAP)',
 	name: 'emailReadImap',
 	icon: 'fa:inbox',
+	iconColor: 'green',
 	group: ['trigger'],
 	version: 2,
 	description: 'Triggers the workflow when a new email is received',

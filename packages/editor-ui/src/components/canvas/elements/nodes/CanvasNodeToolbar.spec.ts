@@ -53,39 +53,39 @@ describe('CanvasNodeToolbar', () => {
 	});
 
 	it('should call toggleDisableNode function when disable node button is clicked', async () => {
-		const toggleDisableNode = vi.fn();
+		const onToggleNode = vi.fn();
 		const { getByTestId } = renderComponent({
 			global: {
 				provide: {
 					...createCanvasNodeProvide(),
 				},
 				mocks: {
-					toggleDisableNode,
+					onToggleNode,
 				},
 			},
 		});
 
 		await fireEvent.click(getByTestId('disable-node-button'));
 
-		expect(toggleDisableNode).toHaveBeenCalled();
+		expect(onToggleNode).toHaveBeenCalled();
 	});
 
 	it('should call deleteNode function when delete node button is clicked', async () => {
-		const deleteNode = vi.fn();
+		const onDeleteNode = vi.fn();
 		const { getByTestId } = renderComponent({
 			global: {
 				provide: {
 					...createCanvasNodeProvide(),
 				},
 				mocks: {
-					deleteNode,
+					onDeleteNode,
 				},
 			},
 		});
 
 		await fireEvent.click(getByTestId('delete-node-button'));
 
-		expect(deleteNode).toHaveBeenCalled();
+		expect(onDeleteNode).toHaveBeenCalled();
 	});
 
 	it('should call openContextMenu function when overflow node button is clicked', async () => {

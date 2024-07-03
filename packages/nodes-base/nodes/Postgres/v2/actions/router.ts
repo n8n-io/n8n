@@ -3,10 +3,10 @@ import { NodeExecutionOutput, NodeOperationError } from 'n8n-workflow';
 
 import { configurePostgres } from '../transport';
 import { configureQueryRunner } from '../helpers/utils';
+import type { PostgresNodeCredentials, PostgresNodeOptions } from '../helpers/interfaces';
 import type { PostgresType } from './node.type';
 
 import * as database from './database/Database.resource';
-import type { PostgresNodeCredentials, PostgresNodeOptions } from '../helpers/interfaces';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	let returnData: INodeExecutionData[] = [];

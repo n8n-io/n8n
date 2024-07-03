@@ -36,6 +36,10 @@ export class ActiveExecutions {
 		private readonly concurrencyControl: ConcurrencyControlService,
 	) {}
 
+	has(executionId: string) {
+		return this.activeExecutions[executionId] !== undefined;
+	}
+
 	/**
 	 * Add a new active execution
 	 */
@@ -199,6 +203,12 @@ export class ActiveExecutions {
 	/** Wait for all active executions to finish */
 	async shutdown(cancelAll = false) {
 		let executionIds = Object.keys(this.activeExecutions);
+
+		if (config.getEnv('executions.mode') === 'regular') {
+			// removal of active executions will no longer release capacity back,
+			// so that throttled executions cannot resume during shutdown
+			this.concurrencyControl.disable();
+		}
 
 		if (cancelAll) {
 			if (config.getEnv('executions.mode') === 'regular') {
