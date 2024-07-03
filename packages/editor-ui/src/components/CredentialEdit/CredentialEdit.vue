@@ -479,8 +479,8 @@ export default defineComponent({
 	},
 	async mounted() {
 		this.requiredCredentials =
-			isCredentialModalState(this.uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY]) &&
-			this.uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY].showAuthSelector === true;
+			isCredentialModalState(this.uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY]) &&
+			this.uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY].showAuthSelector === true;
 
 		if (this.mode === 'new' && this.credentialTypeName) {
 			this.credentialName = await this.credentialsStore.getNewCredentialName({
