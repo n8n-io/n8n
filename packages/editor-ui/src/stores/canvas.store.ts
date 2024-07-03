@@ -236,7 +236,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 					if (!nodeName) return;
 					isDragging.value = true;
 
-					const isSelected = uiStore.isNodeSelected(nodeName);
+					const isSelected = uiStore.isNodeSelected[nodeName];
 
 					if (params.e && !isSelected) {
 						// Only the node which gets dragged directly gets an event, for all others it is
