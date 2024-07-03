@@ -91,7 +91,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	}): Promise<IExecutionPushResponse | undefined> {
 		const workflow = workflowHelpers.getCurrentWorkflow();
 
-		if (uiStore.isActionActive('workflowRunning')) {
+		if (uiStore.isActionActive['workflowRunning']) {
 			return;
 		}
 
