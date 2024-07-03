@@ -2,21 +2,21 @@ import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
+	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-
-import type { CustomField, GeneralAddress, Ref } from './descriptions/Shared.interface';
 
 import { capitalCase } from 'change-case';
 
 import omit from 'lodash/omit';
 import pickBy from 'lodash/pickBy';
 
-import type { OptionsWithUri } from 'request';
+import type { CustomField, GeneralAddress, Ref } from './descriptions/Shared.interface';
 
 import type { DateFieldsUi, Option, QuickBooksOAuth2Credentials, TransactionReport } from './types';
 
@@ -25,7 +25,7 @@ import type { DateFieldsUi, Option, QuickBooksOAuth2Credentials, TransactionRepo
  */
 export async function quickBooksApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	qs: IDataObject,
 	body: IDataObject,
@@ -47,7 +47,7 @@ export async function quickBooksApiRequest(
 		'quickBooksOAuth2Api',
 	)) as QuickBooksOAuth2Credentials;
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'user-agent': 'n8n',
 		},
@@ -94,7 +94,7 @@ export async function quickBooksApiRequest(
 
 async function getCount(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	qs: IDataObject,
 ): Promise<any> {
@@ -108,7 +108,7 @@ async function getCount(
  */
 export async function quickBooksApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	qs: IDataObject,
 	body: IDataObject,
@@ -170,7 +170,7 @@ export async function handleListing(
 	}
 
 	if (returnAll) {
-		return quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
+		return await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
 	} else {
 		const limit = this.getNodeParameter('limit', i);
 		qs.query += ` MAXRESULTS ${limit}`;
@@ -296,12 +296,7 @@ export async function loadResource(this: ILoadOptionsFunctions, resource: string
 /**
  * Populate the `Line` property in a request body.
  */
-export function processLines(
-	this: IExecuteFunctions,
-	body: IDataObject,
-	lines: IDataObject[],
-	resource: string,
-) {
+export function processLines(this: IExecuteFunctions, lines: IDataObject[], resource: string) {
 	lines.forEach((line) => {
 		if (resource === 'bill') {
 			if (line.DetailType === 'AccountBasedExpenseLineDetail') {

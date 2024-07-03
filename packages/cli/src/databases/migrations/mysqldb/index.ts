@@ -45,6 +45,19 @@ import { RemoveSkipOwnerSetup1681134145997 } from './1681134145997-RemoveSkipOwn
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
 import { CreateWorkflowNameIndex1691088862123 } from '../common/1691088862123-CreateWorkflowNameIndex';
 import { AddMfaColumns1690000000030 } from './../common/1690000000040-AddMfaColumns';
+import { CreateWorkflowHistoryTable1692967111175 } from '../common/1692967111175-CreateWorkflowHistoryTable';
+import { DisallowOrphanExecutions1693554410387 } from '../common/1693554410387-DisallowOrphanExecutions';
+import { ExecutionSoftDelete1693491613982 } from '../common/1693491613982-ExecutionSoftDelete';
+import { AddWorkflowMetadata1695128658538 } from '../common/1695128658538-AddWorkflowMetadata';
+import { ModifyWorkflowHistoryNodesAndConnections1695829275184 } from '../common/1695829275184-ModifyWorkflowHistoryNodesAndConnections';
+import { AddGlobalAdminRole1700571993961 } from '../common/1700571993961-AddGlobalAdminRole';
+import { CreateProject1714133768519 } from '../common/1714133768519-CreateProject';
+import { DropRoleMapping1705429061930 } from '../common/1705429061930-DropRoleMapping';
+import { RemoveFailedExecutionStatus1711018413374 } from '../common/1711018413374-RemoveFailedExecutionStatus';
+import { MoveSshKeysToDatabase1711390882123 } from '../common/1711390882123-MoveSshKeysToDatabase';
+import { RemoveNodesAccess1712044305787 } from '../common/1712044305787-RemoveNodesAccess';
+import { MakeExecutionStatusNonNullable1714133768521 } from '../common/1714133768521-MakeExecutionStatusNonNullable';
+import { AddActivatedAtUserSetting1717498465931 } from './1717498465931-AddActivatedAtUserSetting';
 
 export const mysqlMigrations: Migration[] = [
 	InitialMigration1588157391238,
@@ -93,4 +106,17 @@ export const mysqlMigrations: Migration[] = [
 	RemoveResetPasswordColumns1690000000030,
 	CreateWorkflowNameIndex1691088862123,
 	AddMfaColumns1690000000030,
+	CreateWorkflowHistoryTable1692967111175,
+	DisallowOrphanExecutions1693554410387,
+	ExecutionSoftDelete1693491613982,
+	AddWorkflowMetadata1695128658538,
+	ModifyWorkflowHistoryNodesAndConnections1695829275184,
+	AddGlobalAdminRole1700571993961,
+	DropRoleMapping1705429061930,
+	RemoveFailedExecutionStatus1711018413374,
+	MoveSshKeysToDatabase1711390882123,
+	RemoveNodesAccess1712044305787,
+	CreateProject1714133768519,
+	MakeExecutionStatusNonNullable1714133768521,
+	AddActivatedAtUserSetting1717498465931,
 ];

@@ -11,7 +11,7 @@ $custom-font-light: var(--color-text-light);
 $custom-font-very-light: var(--color-text-light);
 
 $custom-expression-text: var(--color-secondary);
-$custom-expression-background: var(--color-background-lighter);
+$custom-expression-background: var(--color-background-light);
 
 // Badge
 $badge-danger-color: var(--color-danger);
@@ -34,12 +34,9 @@ $badge-warning-color: var(--color-text-dark);
 // Warning tooltip
 $warning-tooltip-color: var(--color-danger);
 
-:root {
-	// Using native css variable enables us to use this value in JS
-	--header-height: 65;
-}
 // sass variable is used for scss files
 $header-height: calc(var(--header-height) * 1px);
+$chat-width: calc(var(--chat-width) * 1px);
 
 // sidebar
 $sidebar-width: 65px;
@@ -93,7 +90,7 @@ $drawer-background-color: var(--color-background-xlight);
 // updates-panel
 $updates-panel-info-url-color: $color-primary;
 $updates-panel-border: var(--border-base);
-$updates-panel-dark-background-color: var(--color-background-lighter);
+$updates-panel-dark-background-color: var(--color-background-light);
 $updates-panel-description-text-color: var(--color-text-base);
 $updates-panel-text-color: var(--color-text-dark);
 
@@ -109,3 +106,7 @@ $version-card-box-shadow-color: hsla(
 	var(--color-background-dark-l),
 	0.07
 );
+
+// supplemental node types
+$supplemental-node-types: ai_chain ai_document ai_embedding ai_languageModel ai_memory
+	ai_outputParser ai_tool ai_retriever ai_textSplitter ai_vectorRetriever ai_vectorStore;

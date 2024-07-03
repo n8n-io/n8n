@@ -8,6 +8,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -18,7 +19,7 @@ export class Mocean implements INodeType {
 		displayName: 'Mocean',
 		name: 'mocean',
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		icon: 'file:mocean.svg',
+		icon: { light: 'file:mocean.svg', dark: 'file:mocean.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		description: 'Send SMS and voice messages via Mocean',
@@ -220,7 +221,7 @@ export class Mocean implements INodeType {
 
 		let endpoint: string;
 		let operation: string;
-		let requestMethod: string;
+		let requestMethod: IHttpRequestMethods;
 		let resource: string;
 		let text: string;
 		let dlrUrl: string;
@@ -282,7 +283,7 @@ export class Mocean implements INodeType {
 					});
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ error: (error as JsonObject).message });
 					continue;
 				}

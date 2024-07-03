@@ -1,84 +1,81 @@
-import ChangePasswordView from './views/ChangePasswordView.vue';
-import ErrorView from './views/ErrorView.vue';
-import ForgotMyPasswordView from './views/ForgotMyPasswordView.vue';
-import MainHeader from '@/components/MainHeader/MainHeader.vue';
-import MainSidebar from '@/components/MainSidebar.vue';
-import NodeView from '@/views/NodeView.vue';
-import WorkflowExecutionsList from '@/components/ExecutionsView/ExecutionsList.vue';
-import ExecutionsLandingPage from '@/components/ExecutionsView/ExecutionsLandingPage.vue';
-import ExecutionPreview from '@/components/ExecutionsView/ExecutionPreview.vue';
-import SettingsView from './views/SettingsView.vue';
-import SettingsLdapView from './views/SettingsLdapView.vue';
-import SettingsPersonalView from './views/SettingsPersonalView.vue';
-import SettingsUsersView from './views/SettingsUsersView.vue';
-import SettingsCommunityNodesView from './views/SettingsCommunityNodesView.vue';
-import SettingsApiView from './views/SettingsApiView.vue';
-import SettingsLogStreamingView from './views/SettingsLogStreamingView.vue';
-import SettingsFakeDoorView from './views/SettingsFakeDoorView.vue';
-import SetupView from './views/SetupView.vue';
-import SigninView from './views/SigninView.vue';
-import SignupView from './views/SignupView.vue';
-import type { RouteLocation, RouteRecordRaw } from 'vue-router';
-import { createRouter, createWebHistory } from 'vue-router';
+import type {
+	NavigationGuardNext,
+	RouteLocation,
+	RouteRecordRaw,
+	RouteLocationRaw,
+	RouteLocationNormalized,
+} from 'vue-router';
+import { createRouter, createWebHistory, isNavigationFailure } from 'vue-router';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useTemplatesStore } from '@/stores/templates.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useSSOStore } from '@/stores/sso.store';
+import { EnterpriseEditionFeature, VIEWS, EDITABLE_CANVAS_VIEWS } from '@/constants';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { middleware } from '@/utils/rbac/middleware';
+import type { RouterMiddleware } from '@/types/router';
+import { initializeAuthenticatedFeatures, initializeCore } from '@/init';
+import { tryToParseNumber } from '@/utils/typesUtils';
+import { projectsRoutes } from '@/routes/projects.routes';
 
-import TemplatesCollectionView from '@/views/TemplatesCollectionView.vue';
-import TemplatesWorkflowView from '@/views/TemplatesWorkflowView.vue';
-import TemplatesSearchView from '@/views/TemplatesSearchView.vue';
-import CredentialsView from '@/views/CredentialsView.vue';
-import ExecutionsView from '@/views/ExecutionsView.vue';
-import WorkflowsView from '@/views/WorkflowsView.vue';
-import VariablesView from '@/views/VariablesView.vue';
-import type { IPermissions } from './Interface';
-import { LOGIN_STATUS, ROLE } from '@/utils';
-import { useSettingsStore } from './stores/settings.store';
-import { useTemplatesStore } from './stores/templates.store';
-import { useSSOStore } from './stores/sso.store';
-import SettingsUsageAndPlanVue from './views/SettingsUsageAndPlan.vue';
-import SettingsSso from './views/SettingsSso.vue';
-import SignoutView from '@/views/SignoutView.vue';
-import SamlOnboarding from '@/views/SamlOnboarding.vue';
-import SettingsSourceControl from './views/SettingsSourceControl.vue';
-import SettingsExternalSecrets from './views/SettingsExternalSecrets.vue';
-import SettingsAuditLogs from './views/SettingsAuditLogs.vue';
-import { EnterpriseEditionFeature, VIEWS } from '@/constants';
+const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
+const ErrorView = async () => await import('./views/ErrorView.vue');
+const ForgotMyPasswordView = async () => await import('./views/ForgotMyPasswordView.vue');
+const MainHeader = async () => await import('@/components/MainHeader/MainHeader.vue');
+const MainSidebar = async () => await import('@/components/MainSidebar.vue');
+const NodeView = async () => await import('@/views/NodeView.vue');
+const NodeViewV2 = async () => await import('@/views/NodeView.v2.vue');
+const WorkflowExecutionsView = async () => await import('@/views/WorkflowExecutionsView.vue');
+const WorkflowExecutionsLandingPage = async () =>
+	await import('@/components/executions/workflow/WorkflowExecutionsLandingPage.vue');
+const WorkflowExecutionsPreview = async () =>
+	await import('@/components/executions/workflow/WorkflowExecutionsPreview.vue');
+const SettingsView = async () => await import('./views/SettingsView.vue');
+const SettingsLdapView = async () => await import('./views/SettingsLdapView.vue');
+const SettingsPersonalView = async () => await import('./views/SettingsPersonalView.vue');
+const SettingsUsersView = async () => await import('./views/SettingsUsersView.vue');
+const SettingsCommunityNodesView = async () =>
+	await import('./views/SettingsCommunityNodesView.vue');
+const SettingsApiView = async () => await import('./views/SettingsApiView.vue');
+const SettingsLogStreamingView = async () => await import('./views/SettingsLogStreamingView.vue');
+const SettingsFakeDoorView = async () => await import('./views/SettingsFakeDoorView.vue');
+const SetupView = async () => await import('./views/SetupView.vue');
+const SigninView = async () => await import('./views/SigninView.vue');
+const SignupView = async () => await import('./views/SignupView.vue');
+const TemplatesCollectionView = async () => await import('@/views/TemplatesCollectionView.vue');
+const TemplatesWorkflowView = async () => await import('@/views/TemplatesWorkflowView.vue');
+const SetupWorkflowFromTemplateView = async () =>
+	await import('@/views/SetupWorkflowFromTemplateView/SetupWorkflowFromTemplateView.vue');
+const TemplatesSearchView = async () => await import('@/views/TemplatesSearchView.vue');
+const ExecutionsView = async () => await import('@/views/ExecutionsView.vue');
+const VariablesView = async () => await import('@/views/VariablesView.vue');
+const SettingsUsageAndPlan = async () => await import('./views/SettingsUsageAndPlan.vue');
+const SettingsSso = async () => await import('./views/SettingsSso.vue');
+const SignoutView = async () => await import('@/views/SignoutView.vue');
+const SamlOnboarding = async () => await import('@/views/SamlOnboarding.vue');
+const SettingsSourceControl = async () => await import('./views/SettingsSourceControl.vue');
+const SettingsExternalSecrets = async () => await import('./views/SettingsExternalSecrets.vue');
+const WorkerView = async () => await import('./views/WorkerView.vue');
+const WorkflowHistory = async () => await import('@/views/WorkflowHistory.vue');
+const WorkflowOnboardingView = async () => await import('@/views/WorkflowOnboardingView.vue');
 
-interface IRouteConfig {
-	meta: {
-		nodeView?: boolean;
-		templatesEnabled?: boolean;
-		getRedirect?: () => { name: string } | false;
-		permissions: IPermissions;
-		telemetry?: {
-			disabled?: true;
-			getProperties: (route: RouteLocation) => object;
-		};
-		scrollOffset?: number;
-	};
-}
-
-function getTemplatesRedirect() {
+function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: string } | false {
 	const settingsStore = useSettingsStore();
 	const isTemplatesEnabled: boolean = settingsStore.isTemplatesEnabled;
 	if (!isTemplatesEnabled) {
-		return { name: VIEWS.NOT_FOUND };
+		return { name: `${defaultRedirect}` || VIEWS.NOT_FOUND };
 	}
 
 	return false;
 }
 
-export const routes = [
+export const routes: RouteRecordRaw[] = [
 	{
 		path: '/',
-		name: VIEWS.HOMEPAGE,
-		redirect: (to) => {
-			return { name: VIEWS.WORKFLOWS };
-		},
+		redirect: '/home/workflows',
 		meta: {
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-			},
+			middleware: ['authenticated'],
 		},
 	},
 	{
@@ -100,13 +97,12 @@ export const routes = [
 				},
 			},
 			getRedirect: getTemplatesRedirect,
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-			},
+			middleware: ['authenticated'],
 		},
 	},
+	// Following two routes are kept in-app:
+	// Single workflow view, used when a custom template host is set
+	// Also, reachable directly from this URL
 	{
 		path: '/templates/:id',
 		name: VIEWS.TEMPLATE,
@@ -121,16 +117,39 @@ export const routes = [
 				getProperties(route: RouteLocation) {
 					const templatesStore = useTemplatesStore();
 					return {
-						template_id: route.params.id,
+						template_id: tryToParseNumber(
+							Array.isArray(route.params.id) ? route.params.id[0] : route.params.id,
+						),
 						wf_template_repo_session_id: templatesStore.currentSessionId,
 					};
 				},
 			},
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
+			middleware: ['authenticated'],
+		},
+	},
+	// Template setup view, this is the landing view for website users
+	{
+		path: '/templates/:id/setup',
+		name: VIEWS.TEMPLATE_SETUP,
+		components: {
+			default: SetupWorkflowFromTemplateView,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			templatesEnabled: true,
+			getRedirect: getTemplatesRedirect,
+			telemetry: {
+				getProperties(route: RouteLocation) {
+					const templatesStore = useTemplatesStore();
+					return {
+						template_id: tryToParseNumber(
+							Array.isArray(route.params.id) ? route.params.id[0] : route.params.id,
+						),
+						wf_template_repo_session_id: templatesStore.currentSessionId,
+					};
 				},
 			},
+			middleware: ['authenticated'],
 		},
 	},
 	{
@@ -146,7 +165,7 @@ export const routes = [
 			// Templates view remembers it's scroll position on back
 			scrollOffset: 0,
 			telemetry: {
-				getProperties(route: RouteLocation) {
+				getProperties() {
 					const templatesStore = useTemplatesStore();
 					return {
 						wf_template_repo_session_id: templatesStore.currentSessionId,
@@ -156,26 +175,15 @@ export const routes = [
 			setScrollPosition(pos: number) {
 				this.scrollOffset = pos;
 			},
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-			},
+			middleware: ['authenticated'],
 		},
-	},
-	{
-		path: '/credentials',
-		name: VIEWS.CREDENTIALS,
-		components: {
-			default: CredentialsView,
-			sidebar: MainSidebar,
-		},
-		meta: {
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-			},
+		beforeEnter: (_to, _from, next) => {
+			const templatesStore = useTemplatesStore();
+			if (!templatesStore.hasCustomTemplatesHost) {
+				window.location.href = templatesStore.websiteTemplateRepositoryURL;
+			} else {
+				next();
+			}
 		},
 	},
 	{
@@ -185,13 +193,7 @@ export const routes = [
 			default: VariablesView,
 			sidebar: MainSidebar,
 		},
-		meta: {
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-			},
-		},
+		meta: { middleware: ['authenticated'] },
 	},
 	{
 		path: '/executions',
@@ -201,26 +203,7 @@ export const routes = [
 			sidebar: MainSidebar,
 		},
 		meta: {
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-			},
-		},
-	},
-	{
-		path: '/workflows',
-		name: VIEWS.WORKFLOWS,
-		components: {
-			default: WorkflowsView,
-			sidebar: MainSidebar,
-		},
-		meta: {
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-			},
+			middleware: ['authenticated'],
 		},
 	},
 	{
@@ -233,13 +216,11 @@ export const routes = [
 		},
 		meta: {
 			nodeView: true,
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-				deny: {
-					shouldDeny: () =>
-						!useSettingsStore().isEnterpriseFeatureEnabled(EnterpriseEditionFeature.DebugInEditor),
+			keepWorkflowAlive: true,
+			middleware: ['authenticated', 'enterprise'],
+			middlewareOptions: {
+				enterprise: {
+					feature: [EnterpriseEditionFeature.DebugInEditor],
 				},
 			},
 		},
@@ -248,50 +229,54 @@ export const routes = [
 		path: '/workflow/:name/executions',
 		name: VIEWS.WORKFLOW_EXECUTIONS,
 		components: {
-			default: WorkflowExecutionsList,
+			default: WorkflowExecutionsView,
 			header: MainHeader,
 			sidebar: MainSidebar,
 		},
 		meta: {
 			keepWorkflowAlive: true,
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-			},
+			middleware: ['authenticated'],
 		},
 		children: [
 			{
 				path: '',
 				name: VIEWS.EXECUTION_HOME,
 				components: {
-					executionPreview: ExecutionsLandingPage,
+					executionPreview: WorkflowExecutionsLandingPage,
 				},
 				meta: {
 					keepWorkflowAlive: true,
-					permissions: {
-						allow: {
-							loginStatus: [LOGIN_STATUS.LoggedIn],
-						},
-					},
+					middleware: ['authenticated'],
 				},
 			},
 			{
 				path: ':executionId',
 				name: VIEWS.EXECUTION_PREVIEW,
 				components: {
-					executionPreview: ExecutionPreview,
+					executionPreview: WorkflowExecutionsPreview,
 				},
 				meta: {
 					keepWorkflowAlive: true,
-					permissions: {
-						allow: {
-							loginStatus: [LOGIN_STATUS.LoggedIn],
-						},
-					},
+					middleware: ['authenticated'],
 				},
 			},
 		],
+	},
+	{
+		path: '/workflow/:workflowId/history/:versionId?',
+		name: VIEWS.WORKFLOW_HISTORY,
+		components: {
+			default: WorkflowHistory,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			middleware: ['authenticated', 'enterprise'],
+			middlewareOptions: {
+				enterprise: {
+					feature: [EnterpriseEditionFeature.WorkflowHistory],
+				},
+			},
+		},
 	},
 	{
 		path: '/workflows/templates/:id',
@@ -303,12 +288,24 @@ export const routes = [
 		},
 		meta: {
 			templatesEnabled: true,
+			keepWorkflowAlive: true,
 			getRedirect: getTemplatesRedirect,
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-			},
+			middleware: ['authenticated'],
+		},
+	},
+	{
+		path: '/workflows/onboarding/:id',
+		name: VIEWS.WORKFLOW_ONBOARDING,
+		components: {
+			default: WorkflowOnboardingView,
+			header: MainHeader,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			templatesEnabled: true,
+			keepWorkflowAlive: true,
+			getRedirect: () => getTemplatesRedirect(VIEWS.NEW_WORKFLOW),
+			middleware: ['authenticated'],
 		},
 	},
 	{
@@ -321,11 +318,8 @@ export const routes = [
 		},
 		meta: {
 			nodeView: true,
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-			},
+			keepWorkflowAlive: true,
+			middleware: ['authenticated'],
 		},
 	},
 	{
@@ -335,9 +329,13 @@ export const routes = [
 			default: NodeView,
 		},
 		meta: {
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
+			middleware: ['authenticated'],
+			middlewareOptions: {
+				authenticated: {
+					bypass: () => {
+						const settingsStore = useSettingsStore();
+						return settingsStore.isPreviewMode;
+					},
 				},
 			},
 		},
@@ -352,16 +350,31 @@ export const routes = [
 		},
 		meta: {
 			nodeView: true,
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-			},
+			keepWorkflowAlive: true,
+			middleware: ['authenticated'],
 		},
 	},
 	{
 		path: '/workflow',
 		redirect: '/workflow/new',
+	},
+	{
+		path: '/workflow-v2/:workflowId',
+		name: VIEWS.WORKFLOW_V2,
+		components: {
+			default: NodeViewV2,
+			header: MainHeader,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			middleware: ['authenticated', 'custom'],
+			middlewareOptions: {
+				custom: () => {
+					return !!localStorage.getItem('features.NodeViewV2');
+				},
+			},
+			nodeView: true,
+		},
 	},
 	{
 		path: '/signin',
@@ -373,11 +386,7 @@ export const routes = [
 			telemetry: {
 				pageCategory: 'auth',
 			},
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedOut],
-				},
-			},
+			middleware: ['guest'],
 		},
 	},
 	{
@@ -390,11 +399,7 @@ export const routes = [
 			telemetry: {
 				pageCategory: 'auth',
 			},
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedOut],
-				},
-			},
+			middleware: ['guest'],
 		},
 	},
 	{
@@ -407,11 +412,7 @@ export const routes = [
 			telemetry: {
 				pageCategory: 'auth',
 			},
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-			},
+			middleware: ['authenticated'],
 		},
 	},
 	{
@@ -421,13 +422,9 @@ export const routes = [
 			default: SetupView,
 		},
 		meta: {
+			middleware: ['defaultUser'],
 			telemetry: {
 				pageCategory: 'auth',
-			},
-			permissions: {
-				allow: {
-					role: [ROLE.Default],
-				},
 			},
 		},
 	},
@@ -438,13 +435,9 @@ export const routes = [
 			default: ForgotMyPasswordView,
 		},
 		meta: {
+			middleware: ['guest'],
 			telemetry: {
 				pageCategory: 'auth',
-			},
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedOut],
-				},
 			},
 		},
 	},
@@ -455,13 +448,9 @@ export const routes = [
 			default: ChangePasswordView,
 		},
 		meta: {
+			middleware: ['guest'],
 			telemetry: {
 				pageCategory: 'auth',
-			},
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedOut],
-				},
 			},
 		},
 	},
@@ -474,29 +463,22 @@ export const routes = [
 				path: 'usage',
 				name: VIEWS.USAGE,
 				components: {
-					settingsView: SettingsUsageAndPlanVue,
+					settingsView: SettingsUsageAndPlan,
 				},
 				meta: {
+					middleware: ['authenticated', 'custom'],
+					middlewareOptions: {
+						custom: () => {
+							const settingsStore = useSettingsStore();
+							return !settingsStore.settings.hideUsagePage;
+						},
+					},
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: RouteLocation) {
+						getProperties() {
 							return {
 								feature: 'usage',
 							};
-						},
-					},
-					permissions: {
-						allow: {
-							loginStatus: [LOGIN_STATUS.LoggedIn],
-						},
-						deny: {
-							shouldDeny: () => {
-								const settingsStore = useSettingsStore();
-								return (
-									settingsStore.settings.hideUsagePage === true ||
-									settingsStore.settings.deployment?.type === 'cloud'
-								);
-							},
 						},
 					},
 				},
@@ -508,20 +490,13 @@ export const routes = [
 					settingsView: SettingsPersonalView,
 				},
 				meta: {
+					middleware: ['authenticated'],
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: RouteLocation) {
+						getProperties() {
 							return {
 								feature: 'personal',
 							};
-						},
-					},
-					permissions: {
-						allow: {
-							loginStatus: [LOGIN_STATUS.LoggedIn],
-						},
-						deny: {
-							role: [ROLE.Default],
 						},
 					},
 				},
@@ -533,17 +508,18 @@ export const routes = [
 					settingsView: SettingsUsersView,
 				},
 				meta: {
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: ['user:create', 'user:update'],
+						},
+					},
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: RouteLocation) {
+						getProperties() {
 							return {
 								feature: 'users',
 							};
-						},
-					},
-					permissions: {
-						allow: {
-							role: [ROLE.Owner],
 						},
 					},
 				},
@@ -555,23 +531,13 @@ export const routes = [
 					settingsView: SettingsApiView,
 				},
 				meta: {
+					middleware: ['authenticated'],
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: RouteLocation) {
+						getProperties() {
 							return {
 								feature: 'api',
 							};
-						},
-					},
-					permissions: {
-						allow: {
-							loginStatus: [LOGIN_STATUS.LoggedIn],
-						},
-						deny: {
-							shouldDeny: () => {
-								const settingsStore = useSettingsStore();
-								return settingsStore.isPublicApiEnabled === false;
-							},
 						},
 					},
 				},
@@ -583,17 +549,18 @@ export const routes = [
 					settingsView: SettingsSourceControl,
 				},
 				meta: {
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: 'sourceControl:manage',
+						},
+					},
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: RouteLocation) {
+						getProperties() {
 							return {
 								feature: 'environments',
 							};
-						},
-					},
-					permissions: {
-						allow: {
-							role: [ROLE.Owner],
 						},
 					},
 				},
@@ -605,17 +572,18 @@ export const routes = [
 					settingsView: SettingsExternalSecrets,
 				},
 				meta: {
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: ['externalSecretsProvider:list', 'externalSecretsProvider:update'],
+						},
+					},
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: Route) {
+						getProperties() {
 							return {
 								feature: 'external-secrets',
 							};
-						},
-					},
-					permissions: {
-						allow: {
-							role: [ROLE.Owner],
 						},
 					},
 				},
@@ -627,23 +595,22 @@ export const routes = [
 					settingsView: SettingsSso,
 				},
 				meta: {
+					middleware: ['authenticated', 'rbac', 'custom'],
+					middlewareOptions: {
+						custom: () => {
+							const settingsStore = useSettingsStore();
+							return !settingsStore.isDesktopDeployment;
+						},
+						rbac: {
+							scope: 'saml:manage',
+						},
+					},
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: RouteLocation) {
+						getProperties() {
 							return {
 								feature: 'sso',
 							};
-						},
-					},
-					permissions: {
-						allow: {
-							role: [ROLE.Owner],
-						},
-						deny: {
-							shouldDeny: () => {
-								const settingsStore = useSettingsStore();
-								return settingsStore.isDesktopDeployment;
-							},
 						},
 					},
 				},
@@ -655,17 +622,25 @@ export const routes = [
 					settingsView: SettingsLogStreamingView,
 				},
 				meta: {
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: 'logStreaming:manage',
+						},
+					},
 					telemetry: {
 						pageCategory: 'settings',
 					},
-					permissions: {
-						allow: {
-							role: [ROLE.Owner],
-						},
-						deny: {
-							role: [ROLE.Member],
-						},
-					},
+				},
+			},
+			{
+				path: 'workers',
+				name: VIEWS.WORKER_VIEW,
+				components: {
+					settingsView: WorkerView,
+				},
+				meta: {
+					middleware: ['authenticated'],
 				},
 			},
 			{
@@ -675,19 +650,18 @@ export const routes = [
 					settingsView: SettingsCommunityNodesView,
 				},
 				meta: {
+					middleware: ['authenticated', 'rbac', 'custom'],
+					middlewareOptions: {
+						rbac: {
+							scope: ['communityPackage:list', 'communityPackage:update'],
+						},
+						custom: () => {
+							const settingsStore = useSettingsStore();
+							return settingsStore.isCommunityNodesFeatureEnabled;
+						},
+					},
 					telemetry: {
 						pageCategory: 'settings',
-					},
-					permissions: {
-						allow: {
-							role: [ROLE.Owner],
-						},
-						deny: {
-							shouldDeny: () => {
-								const settingsStore = useSettingsStore();
-								return settingsStore.isCommunityNodesFeatureEnabled === false;
-							},
-						},
 					},
 				},
 			},
@@ -698,17 +672,13 @@ export const routes = [
 					settingsView: SettingsFakeDoorView,
 				},
 				meta: {
+					middleware: ['authenticated'],
 					telemetry: {
 						pageCategory: 'settings',
 						getProperties(route: RouteLocation) {
 							return {
-								feature: route.params['featureId'],
+								feature: route.params.featureId,
 							};
-						},
-					},
-					permissions: {
-						allow: {
-							loginStatus: [LOGIN_STATUS.LoggedIn],
 						},
 					},
 				},
@@ -720,37 +690,10 @@ export const routes = [
 					settingsView: SettingsLdapView,
 				},
 				meta: {
-					permissions: {
-						allow: {
-							role: [ROLE.Owner],
-						},
-						deny: {
-							role: [ROLE.Member],
-						},
-					},
-				},
-			},
-			{
-				path: 'audit-logs',
-				name: VIEWS.AUDIT_LOGS,
-				components: {
-					settingsView: SettingsAuditLogs,
-				},
-				meta: {
-					telemetry: {
-						pageCategory: 'settings',
-						getProperties(route: RouteLocation) {
-							return {
-								feature: 'audit-logs',
-							};
-						},
-					},
-					permissions: {
-						allow: {
-							role: [ROLE.Owner],
-						},
-						deny: {
-							shouldDeny: () => !window.localStorage.getItem('audit-logs'),
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: 'ldap:manage',
 						},
 					},
 				},
@@ -764,27 +707,24 @@ export const routes = [
 			default: SamlOnboarding,
 		},
 		meta: {
+			middleware: ['authenticated', 'custom'],
+			middlewareOptions: {
+				custom: () => {
+					const settingsStore = useSettingsStore();
+					const ssoStore = useSSOStore();
+					return (
+						ssoStore.isEnterpriseSamlEnabled &&
+						!settingsStore.isCloudDeployment &&
+						!settingsStore.isDesktopDeployment
+					);
+				},
+			},
 			telemetry: {
 				pageCategory: 'auth',
 			},
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-				deny: {
-					shouldDeny: () => {
-						const settingsStore = useSettingsStore();
-						const ssoStore = useSSOStore();
-						return (
-							!ssoStore.isEnterpriseSamlEnabled ||
-							settingsStore.isCloudDeployment ||
-							settingsStore.isDesktopDeployment
-						);
-					},
-				},
-			},
 		},
 	},
+	...projectsRoutes,
 	{
 		path: '/:pathMatch(.*)*',
 		name: VIEWS.NOT_FOUND,
@@ -800,26 +740,120 @@ export const routes = [
 			telemetry: {
 				disabled: true,
 			},
-			permissions: {
-				allow: {
-					// TODO: Once custom permissions are merged, this needs to be updated with index validation
-					loginStatus: [LOGIN_STATUS.LoggedIn, LOGIN_STATUS.LoggedOut],
-				},
-			},
 		},
 	},
-] as Array<RouteRecordRaw & IRouteConfig>;
+];
+
+function withCanvasReadOnlyMeta(route: RouteRecordRaw) {
+	if (!route.meta) {
+		route.meta = {};
+	}
+	route.meta.readOnlyCanvas = !EDITABLE_CANVAS_VIEWS.includes((route?.name ?? '') as VIEWS);
+
+	if (route.children) {
+		route.children = route.children.map(withCanvasReadOnlyMeta);
+	}
+
+	return route;
+}
 
 const router = createRouter({
 	history: createWebHistory(import.meta.env.DEV ? '/' : window.BASE_PATH ?? '/'),
-	scrollBehavior(to, from, savedPosition) {
+	scrollBehavior(to: RouteLocationNormalized, _, savedPosition) {
 		// saved position == null means the page is NOT visited from history (back button)
-		if (savedPosition === null && to.name === VIEWS.TEMPLATES && to.meta) {
+		if (savedPosition === null && to.name === VIEWS.TEMPLATES && to.meta?.setScrollPosition) {
 			// for templates view, reset scroll position in this case
 			to.meta.setScrollPosition(0);
 		}
 	},
-	routes,
+	routes: routes.map(withCanvasReadOnlyMeta),
+});
+
+router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
+	try {
+		/**
+		 * Initialize application core
+		 * This step executes before first route is loaded and is required for permission checks
+		 */
+
+		await initializeCore();
+		await initializeAuthenticatedFeatures();
+
+		/**
+		 * Redirect to setup page. User should be redirected to this only once
+		 */
+
+		const settingsStore = useSettingsStore();
+		if (settingsStore.showSetupPage) {
+			if (to.name === VIEWS.SETUP) {
+				return next();
+			}
+
+			return next({ name: VIEWS.SETUP });
+		}
+
+		/**
+		 * Verify user permissions for current route
+		 */
+
+		const routeMiddleware = to.meta?.middleware ?? [];
+		const routeMiddlewareOptions = to.meta?.middlewareOptions ?? {};
+		for (const middlewareName of routeMiddleware) {
+			let nextCalled = false;
+			const middlewareNext = ((location: RouteLocationRaw): void => {
+				next(location);
+				nextCalled = true;
+			}) as NavigationGuardNext;
+
+			const middlewareOptions = routeMiddlewareOptions[middlewareName];
+			const middlewareFn = middleware[middlewareName] as RouterMiddleware<unknown>;
+			await middlewareFn(to, from, middlewareNext, middlewareOptions);
+
+			if (nextCalled) {
+				return;
+			}
+		}
+
+		return next();
+	} catch (failure) {
+		if (isNavigationFailure(failure)) {
+			console.log(failure);
+		} else {
+			console.error(failure);
+		}
+	}
+});
+
+router.afterEach((to, from) => {
+	try {
+		const telemetry = useTelemetry();
+		const uiStore = useUIStore();
+		const templatesStore = useTemplatesStore();
+
+		/**
+		 * Run external hooks
+		 */
+
+		void useExternalHooks().run('main.routeChange', { from, to });
+
+		/**
+		 * Track current view for telemetry
+		 */
+
+		uiStore.currentView = (to.name as string) ?? '';
+		if (to.meta?.templatesEnabled) {
+			templatesStore.setSessionId();
+		} else {
+			templatesStore.resetSessionId(); // reset telemetry session id when user leaves template pages
+		}
+		telemetry.page(to);
+	} catch (failure) {
+		if (isNavigationFailure(failure)) {
+			console.log(failure);
+		} else {
+			console.error(failure);
+		}
+	}
 });
 
 export default router;

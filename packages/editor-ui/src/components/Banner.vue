@@ -16,7 +16,7 @@
 				</div>
 			</div>
 
-			<slot name="button" v-if="$slots.button" />
+			<slot v-if="$slots.button" name="button" />
 			<n8n-button
 				v-else-if="buttonLabel"
 				:label="buttonLoading && buttonLoadingLabel ? buttonLoadingLabel : buttonLabel"
@@ -40,11 +40,6 @@ import { defineComponent } from 'vue';
 
 export default defineComponent({
 	name: 'Banner',
-	data() {
-		return {
-			expanded: false,
-		};
-	},
 	props: {
 		theme: {
 			type: String,
@@ -69,6 +64,11 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
+	},
+	data() {
+		return {
+			expanded: false,
+		};
 	},
 	methods: {
 		expand() {
@@ -112,7 +112,7 @@ export default defineComponent({
 
 .dangerMessage {
 	composes: message;
-	color: var(--color-danger);
+	color: var(--color-callout-danger-font);
 }
 
 .banner {

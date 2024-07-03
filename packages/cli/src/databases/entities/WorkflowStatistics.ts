@@ -1,4 +1,4 @@
-import { Column, Entity, ManyToOne, PrimaryColumn } from 'typeorm';
+import { Column, Entity, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 import { datetimeColumnType } from './AbstractEntity';
 import { WorkflowEntity } from './WorkflowEntity';
 

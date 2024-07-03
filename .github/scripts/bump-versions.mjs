@@ -43,7 +43,7 @@ for (const packageName in packageMap) {
 
 	packageJson.version = packageMap[packageName].nextVersion =
 		isDirty ||
-		Object.keys(packageJson.dependencies).some(
+		Object.keys(packageJson.dependencies || {}).some(
 			(dependencyName) => packageMap[dependencyName]?.isDirty,
 		)
 			? semver.inc(version, releaseType)

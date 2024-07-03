@@ -1,6 +1,7 @@
 import type {
 	IDataObject,
 	IExecuteFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -38,7 +39,7 @@ function addAdditionalFields(body: IDataObject, additionalFields: IDataObject) {
 			key === 'customProperties' &&
 			(additionalFields.customProperties as IDataObject).property !== undefined
 		) {
-			for (const customProperty of (additionalFields.customProperties as IDataObject)!
+			for (const customProperty of (additionalFields.customProperties as IDataObject)
 				.property! as CustomProperty[]) {
 				body[customProperty.name] = customProperty.value;
 			}
@@ -818,6 +819,13 @@ export class Pipedrive implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Busy Flag',
+						name: 'busy_flag',
+						type: 'boolean',
+						default: false,
+						description: 'Whether the user is set to busy during the activity',
+					},
+					{
 						displayName: 'Deal ID',
 						name: 'deal_id',
 						type: 'number',
@@ -848,7 +856,6 @@ export class Pipedrive implements INodeType {
 						default: '0',
 						description: 'Whether the activity is done or not',
 					},
-
 					{
 						displayName: 'Note',
 						name: 'note',
@@ -876,6 +883,14 @@ export class Pipedrive implements INodeType {
 						type: 'number',
 						default: 0,
 						description: 'ID of the person this activity will be associated with',
+					},
+					{
+						displayName: 'Public Description',
+						name: 'public_description',
+						type: 'string',
+						default: '',
+						description:
+							'Additional details about the activity that is synced to your external calendar',
 					},
 					{
 						displayName: 'Subject',
@@ -1890,7 +1905,7 @@ export class Pipedrive implements INodeType {
 			//         file:create
 			// ----------------------------------
 			{
-				displayName: 'Binary Property',
+				displayName: 'Input Binary Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -1902,8 +1917,7 @@ export class Pipedrive implements INodeType {
 					},
 				},
 				placeholder: '',
-				description:
-					'Name of the binary property which contains the data for the file to be created',
+				hint: 'The name of the input binary field containing the file to be written',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -1996,7 +2010,7 @@ export class Pipedrive implements INodeType {
 				description: 'ID of the file to download',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Put Output File in Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				required: true,
@@ -2007,8 +2021,7 @@ export class Pipedrive implements INodeType {
 						resource: ['file'],
 					},
 				},
-				description:
-					'Name of the binary property to which to write the data of the downloaded file',
+				hint: 'The name of the output binary field to put the file in',
 			},
 
 			// ----------------------------------
@@ -3502,6 +3515,14 @@ export class Pipedrive implements INodeType {
 						description:
 							'If supplied, only persons whose name starts with the specified letter will be returned',
 					},
+					{
+						displayName: 'Sort',
+						name: 'sort',
+						type: 'string',
+						default: '',
+						description:
+							'The field names and sorting mode separated by a comma (field_name_1 ASC, field_name_2 DESC). Only first-level field keys are supported (no nested keys).',
+					},
 				],
 			},
 
@@ -4086,7 +4107,7 @@ export class Pipedrive implements INodeType {
 
 		let downloadFile: boolean;
 
-		let requestMethod: string;
+		let requestMethod: IHttpRequestMethods;
 		let endpoint: string;
 		let returnAll = false;
 
@@ -4788,6 +4809,10 @@ export class Pipedrive implements INodeType {
 							qs.first_char = additionalFields.firstChar as string;
 						}
 
+						if (additionalFields.sort) {
+							qs.sort = additionalFields.sort as string;
+						}
+
 						endpoint = '/persons';
 					} else if (operation === 'search') {
 						// ----------------------------------
@@ -4887,6 +4912,7 @@ export class Pipedrive implements INodeType {
 				if (resource === 'file' && operation === 'download') {
 					const newItem: INodeExecutionData = {
 						json: items[i].json,
+						pairedItem: { item: i },
 						binary: {},
 					};
 
@@ -4936,11 +4962,11 @@ export class Pipedrive implements INodeType {
 					returnData.push(...executionData);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					if (resource === 'file' && operation === 'download') {
 						items[i].json = { error: error.message };
 					} else {
-						returnData.push({ json: { error: error.message } });
+						returnData.push({ json: { error: error.message }, pairedItem: { item: i } });
 					}
 					continue;
 				}
@@ -4956,10 +4982,10 @@ export class Pipedrive implements INodeType {
 
 		if (resource === 'file' && operation === 'download') {
 			// For file downloads the files get attached to the existing items
-			return this.prepareOutputData(items);
+			return [items];
 		} else {
 			// For all other ones does the output items get replaced
-			return this.prepareOutputData(returnData);
+			return [returnData];
 		}
 	}
 }

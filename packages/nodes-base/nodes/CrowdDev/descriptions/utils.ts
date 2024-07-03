@@ -11,14 +11,14 @@ export const showFor =
 							operation: operations,
 						},
 					},
-			  }
+				}
 			: {
 					displayOptions: {
 						show: {
 							resource: resources,
 						},
 					},
-			  };
+				};
 	};
 
 export const mapWith =

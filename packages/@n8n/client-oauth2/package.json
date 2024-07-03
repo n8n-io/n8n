@@ -1,10 +1,14 @@
 {
   "name": "@n8n/client-oauth2",
-  "version": "0.7.0",
+  "version": "0.18.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/n8n-io/n8n.git"
+  },
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
-    "typecheck": "tsc",
+    "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
     "format": "prettier --write . --ignore-path ../../../.prettierignore",
     "lint": "eslint . --quiet",
@@ -20,6 +24,6 @@
     "dist/**/*"
   ],
   "dependencies": {
-    "axios": "^0.21.1"
+    "axios": "1.6.7"
   }
 }

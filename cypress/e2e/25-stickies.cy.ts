@@ -1,4 +1,7 @@
+import type { Interception } from 'cypress/types/net-stubbing';
+import { META_KEY } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
+import { getPopper } from '../utils';
 
 const workflowPage = new WorkflowPageClass();
 
@@ -23,12 +26,25 @@ function checkStickiesStyle(
 describe('Canvas Actions', () => {
 	beforeEach(() => {
 		workflowPage.actions.visit();
+		cy.get('#collapse-change-button').should('be.visible').click();
+		cy.get('#side-menu[class*=collapsed i]').should('be.visible');
+		workflowPage.actions.zoomToFit();
 	});
 
 	it('adds sticky to canvas with default text and position', () => {
 		workflowPage.getters.addStickyButton().should('not.be.visible');
 
 		addDefaultSticky();
+		workflowPage.actions.deselectAll();
+		workflowPage.actions.addStickyFromContextMenu();
+		workflowPage.actions.hitAddSticky();
+
+		workflowPage.getters.stickies().should('have.length', 3);
+
+		// Should not add a sticky for ctrl+shift+s
+		cy.get('body').type(`{${META_KEY}+shift+s}`);
+
+		workflowPage.getters.stickies().should('have.length', 3);
 		workflowPage.getters
 			.stickies()
 			.eq(0)
@@ -66,6 +82,32 @@ describe('Canvas Actions', () => {
 		workflowPage.getters.stickies().should('have.length', 0);
 	});
 
+	it('change sticky color', () => {
+		workflowPage.actions.addSticky();
+
+		workflowPage.getters.stickies().should('have.length', 1);
+
+		workflowPage.actions.toggleColorPalette();
+
+		getPopper().should('be.visible');
+
+		workflowPage.actions.pickColor();
+
+		workflowPage.actions.toggleColorPalette();
+
+		getPopper().should('not.be.visible');
+
+		workflowPage.actions.saveWorkflowOnButtonClick();
+
+		cy.wait('@createWorkflow').then((interception: Interception) => {
+			const { request } = interception;
+			const color = request.body?.nodes[0]?.parameters?.color;
+			expect(color).to.equal(2);
+		});
+
+		workflowPage.getters.stickies().should('have.length', 1);
+	});
+
 	it('edits sticky and updates content as markdown', () => {
 		workflowPage.actions.addSticky();
 
@@ -84,8 +126,11 @@ describe('Canvas Actions', () => {
 
 		moveSticky({ top: 200, left: 200 });
 
-		dragRightEdge({ left: 200, top: 200, height: 160, width: 240 }, 100);
-		dragRightEdge({ left: 200, top: 200, height: 160, width: 240 }, -50);
+		cy.drag('[data-test-id="sticky"] [data-dir="right"]', [100, 100]);
+		checkStickiesStyle(100, 20, 160, 346);
+
+		cy.drag('[data-test-id="sticky"] [data-dir="right"]', [-50, -50]);
+		checkStickiesStyle(100, 20, 160, 302);
 	});
 
 	it('expands/shrinks sticky from the left edge', () => {
@@ -198,33 +243,26 @@ describe('Canvas Actions', () => {
 				expect($el).to.have.css('z-index', '-158');
 			});
 	});
+
+	it('Empty sticky should not error when activating workflow', () => {
+		workflowPage.actions.addSticky();
+
+		workflowPage.getters.stickies().should('have.length', 1);
+
+		workflowPage.getters.stickies().dblclick();
+
+		workflowPage.actions.clearSticky();
+
+		workflowPage.actions.addNodeToCanvas('Schedule Trigger');
+
+		workflowPage.actions.activateWorkflow();
+	});
 });
 
 type Position = {
 	top: number;
 	left: number;
 };
-
-type BoundingBox = {
-	height: number;
-	width: number;
-	top: number;
-	left: number;
-};
-
-function dragRightEdge(curr: BoundingBox, move: number) {
-	workflowPage.getters
-		.stickies()
-		.first()
-		.then(($el) => {
-			const { left, top, height, width } = curr;
-			cy.drag(`[data-test-id="sticky"] [data-dir="right"]`, [left + width + move, 0], {
-				abs: true,
-			});
-			stickyShouldBePositionedCorrectly({ top, left });
-			stickyShouldHaveCorrectSize([height, width * 1.5 + move]);
-		});
-}
 
 function shouldHaveOneSticky() {
 	workflowPage.getters.stickies().should('have.length', 1);
@@ -260,15 +298,6 @@ function stickyShouldBePositionedCorrectly(position: Position) {
 	workflowPage.getters.stickies().should(($el) => {
 		expect($el).to.have.css('top', `${yOffset + position.top}px`);
 		expect($el).to.have.css('left', `${xOffset + position.left}px`);
-	});
-}
-
-function stickyShouldHaveCorrectSize(size: [number, number]) {
-	const yOffset = 0;
-	const xOffset = 0;
-	workflowPage.getters.stickies().should(($el) => {
-		expect($el).to.have.css('height', `${yOffset + size[0]}px`);
-		expect($el).to.have.css('width', `${xOffset + size[1]}px`);
 	});
 }
 

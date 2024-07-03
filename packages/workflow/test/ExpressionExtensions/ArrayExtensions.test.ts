@@ -2,6 +2,7 @@
  * @jest-environment jsdom
  */
 
+import { arrayExtensions } from '../../src/Extensions/ArrayExtensions';
 import { evaluate } from './Helpers';
 
 describe('Data Transformation Functions', () => {
@@ -89,6 +90,17 @@ describe('Data Transformation Functions', () => {
 			expect(
 				evaluate('={{ [1, 2, 3, "as", {}, {}, 1, 2, [1,2], "[sad]", "[sad]", null].unique() }}'),
 			).toEqual([1, 2, 3, 'as', {}, [1, 2], '[sad]', null]);
+		});
+
+		test('.unique() should work on an arrays of objects', () => {
+			expect(
+				evaluate(
+					"={{ [{'name':'Nathan', age:42}, {'name':'Jan', age:16}, {'name':'Nathan', age:21}].unique('name') }}",
+				),
+			).toEqual([
+				{ name: 'Nathan', age: 42 },
+				{ name: 'Jan', age: 16 },
+			]);
 		});
 
 		test('.isEmpty() should work correctly on an array', () => {
@@ -233,6 +245,32 @@ describe('Data Transformation Functions', () => {
 				[11, 12, 13, 14, 15],
 				[16, 17, 18, 19, 20],
 			]);
+		});
+
+		test('.toJsonString() should work on an array', () => {
+			expect(evaluate('={{ [true, 1, "one", {foo: "bar"}].toJsonString() }}')).toEqual(
+				'[true,1,"one",{"foo":"bar"}]',
+			);
+		});
+
+		test('.append() should work on an array', () => {
+			expect(evaluate('={{ [1,2,3].append(4,5,"done") }}')).toEqual([1, 2, 3, 4, 5, 'done']);
+		});
+
+		describe('Conversion methods', () => {
+			test('should exist but return undefined (to not break expressions with mixed data)', () => {
+				expect(evaluate('={{ numberList(1, 20).toInt() }}')).toBeUndefined();
+				expect(evaluate('={{ numberList(1, 20).toFloat() }}')).toBeUndefined();
+				expect(evaluate('={{ numberList(1, 20).toBoolean() }}')).toBeUndefined();
+				expect(evaluate('={{ numberList(1, 20).toDateTime() }}')).toBeUndefined();
+			});
+
+			test('should not have a doc (hidden from autocomplete)', () => {
+				expect(arrayExtensions.functions.toInt.doc).toBeUndefined();
+				expect(arrayExtensions.functions.toFloat.doc).toBeUndefined();
+				expect(arrayExtensions.functions.toBoolean.doc).toBeUndefined();
+				expect(arrayExtensions.functions.toDateTime.doc).toBeUndefined();
+			});
 		});
 	});
 });

@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+import { includeInputFields } from './common.descriptions';
 
 export const FormatDateDescription: INodeProperties[] = [
 	{
@@ -117,6 +118,17 @@ export const FormatDateDescription: INodeProperties[] = [
 		},
 		default: {},
 		options: [
+			includeInputFields,
+			{
+				displayName: 'From Date Format',
+				name: 'fromFormat',
+				type: 'string',
+				default: 'e.g yyyyMMdd',
+				hint: 'Tokens are case sensitive',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
+				description:
+					'Format in which the input \'Date\' is, it\'s helpful when the format is not recognized automatically. Use those <a href="https://moment.github.io/luxon/#/formatting?id=table-of-tokens&id=table-of-tokens" target="_blank">tokens</a> to define the format.',
+			},
 			{
 				displayName: 'Use Workflow Timezone',
 				name: 'timezone',

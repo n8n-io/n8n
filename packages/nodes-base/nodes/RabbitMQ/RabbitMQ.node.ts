@@ -20,8 +20,7 @@ export class RabbitMQ implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'RabbitMQ',
 		name: 'rabbitmq',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:rabbitmq.png',
+		icon: 'file:rabbitmq.svg',
 		group: ['transform'],
 		version: [1, 1.1],
 		description: 'Sends messages to a RabbitMQ topic',
@@ -223,7 +222,7 @@ export class RabbitMQ implements INodeType {
 					},
 				},
 				default: true,
-				description: 'Whether to send the the data the node receives as JSON',
+				description: 'Whether to send the data the node receives as JSON',
 			},
 			{
 				displayName: 'Message',
@@ -416,7 +415,7 @@ export class RabbitMQ implements INodeType {
 			const operation = this.getNodeParameter('operation', 0);
 			if (operation === 'deleteMessage') {
 				this.sendResponse(items[0].json);
-				return await this.prepareOutputData(items);
+				return [items];
 			}
 			const mode = (this.getNodeParameter('mode', 0) as string) || 'queue';
 			const returnItems: INodeExecutionData[] = [];
@@ -556,7 +555,7 @@ export class RabbitMQ implements INodeType {
 				throw new NodeOperationError(this.getNode(), `The operation "${mode}" is not known!`);
 			}
 
-			return await this.prepareOutputData(returnItems);
+			return [returnItems];
 		} catch (error) {
 			if (channel) {
 				await channel.close();

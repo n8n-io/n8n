@@ -1,12 +1,12 @@
 import type { IRestApiContext, ITag } from '@/Interface';
-import { makeRestApiRequest } from '@/utils';
+import { makeRestApiRequest } from '@/utils/apiUtils';
 
 export async function getTags(context: IRestApiContext, withUsageCount = false): Promise<ITag[]> {
-	return makeRestApiRequest(context, 'GET', '/tags', { withUsageCount });
+	return await makeRestApiRequest(context, 'GET', '/tags', { withUsageCount });
 }
 
 export async function createTag(context: IRestApiContext, params: { name: string }): Promise<ITag> {
-	return makeRestApiRequest(context, 'POST', '/tags', params);
+	return await makeRestApiRequest(context, 'POST', '/tags', params);
 }
 
 export async function updateTag(
@@ -14,9 +14,9 @@ export async function updateTag(
 	id: string,
 	params: { name: string },
 ): Promise<ITag> {
-	return makeRestApiRequest(context, 'PATCH', `/tags/${id}`, params);
+	return await makeRestApiRequest(context, 'PATCH', `/tags/${id}`, params);
 }
 
 export async function deleteTag(context: IRestApiContext, id: string): Promise<boolean> {
-	return makeRestApiRequest(context, 'DELETE', `/tags/${id}`);
+	return await makeRestApiRequest(context, 'DELETE', `/tags/${id}`);
 }

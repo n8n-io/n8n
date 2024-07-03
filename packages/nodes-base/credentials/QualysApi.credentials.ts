@@ -5,9 +5,15 @@ export class QualysApi implements ICredentialType {
 
 	displayName = 'Qualys API';
 
-	icon = 'file:icons/Qualys.svg';
+	icon = 'file:icons/Qualys.svg' as const;
 
 	documentationUrl = 'qualys';
+
+	httpRequestNode = {
+		name: 'Qualys',
+		docsUrl: 'https://qualysguard.qg2.apps.qualys.com/qwebhelp/fo_portal/api_doc/index.htm',
+		apiBaseUrl: 'https://qualysapi.qualys.com/api/',
+	};
 
 	properties: INodeProperties[] = [
 		{

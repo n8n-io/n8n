@@ -1,371 +1,240 @@
-import Container from 'typedi';
-import { CacheService } from '@/services/cache.service';
-import type { MemoryCache } from 'cache-manager';
-import type { RedisCache } from 'cache-manager-ioredis-yet';
+import { CacheService } from '@/services/cache/cache.service';
 import config from '@/config';
-import { LoggerProxy } from 'n8n-workflow';
-import { getLogger } from '@/Logger';
+import { sleep } from 'n8n-workflow';
 
-const cacheService = Container.get(CacheService);
+jest.mock('ioredis', () => {
+	const Redis = require('ioredis-mock');
 
-function setDefaultConfig() {
-	config.set('executions.mode', 'regular');
-	config.set('cache.enabled', true);
-	config.set('cache.backend', 'memory');
-	config.set('cache.memory.maxSize', 1 * 1024 * 1024);
-}
+	return function (...args: unknown[]) {
+		return new Redis(args);
+	};
+});
 
-interface TestObject {
-	test: string;
-	test2: number;
-	test3?: TestObject & { test4: TestObject };
-}
+for (const backend of ['memory', 'redis'] as const) {
+	describe(backend, () => {
+		let cacheService: CacheService;
 
-const testObject: TestObject = {
-	test: 'test',
-	test2: 123,
-	test3: {
-		test: 'test3',
-		test2: 123,
-		test4: {
-			test: 'test4',
-			test2: 123,
-		},
-	},
-};
+		beforeAll(async () => {
+			config.set('cache.backend', backend);
+			cacheService = new CacheService();
+			await cacheService.init();
+		});
 
-describe('cacheService', () => {
-	beforeAll(async () => {
-		LoggerProxy.init(getLogger());
-		jest.mock('ioredis', () => {
-			const Redis = require('ioredis-mock');
-			if (typeof Redis === 'object') {
-				// the first mock is an ioredis shim because ioredis-mock depends on it
-				// https://github.com/stipsan/ioredis-mock/blob/master/src/index.js#L101-L111
-				return {
-					Command: { _transformer: { argument: {}, reply: {} } },
-				};
+		afterEach(async () => {
+			await cacheService.reset();
+			config.load(config.default);
+		});
+
+		describe('init', () => {
+			test('should select backend based on config', () => {
+				expect(cacheService.isMemory()).toBe(backend === 'memory');
+				expect(cacheService.isRedis()).toBe(backend === 'redis');
+			});
+
+			if (backend === 'redis') {
+				test('with auto backend and queue mode, should select redis', async () => {
+					config.set('executions.mode', 'queue');
+
+					await cacheService.init();
+
+					expect(cacheService.isRedis()).toBe(true);
+				});
 			}
-			// second mock for our code
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			return function (...args: any) {
-				return new Redis(args);
-			};
+
+			if (backend === 'memory') {
+				test('should honor max size when enough', async () => {
+					config.set('cache.memory.maxSize', 16); // enough bytes for "withoutUnicode"
+
+					await cacheService.init();
+					await cacheService.set('key', 'withoutUnicode');
+
+					await expect(cacheService.get('key')).resolves.toBe('withoutUnicode');
+
+					// restore
+					config.set('cache.memory.maxSize', 3 * 1024 * 1024);
+					await cacheService.init();
+				});
+
+				test('should honor max size when not enough', async () => {
+					config.set('cache.memory.maxSize', 16); // not enough bytes for "withUnicodeԱԲԳ"
+
+					await cacheService.init();
+					await cacheService.set('key', 'withUnicodeԱԲԳ');
+
+					await expect(cacheService.get('key')).resolves.toBeUndefined();
+
+					// restore
+					config.set('cache.memory.maxSize', 3 * 1024 * 1024);
+					await cacheService.init();
+				});
+			}
+		});
+
+		describe('set', () => {
+			test('should set a string value', async () => {
+				await cacheService.set('key', 'value');
+
+				await expect(cacheService.get('key')).resolves.toBe('value');
+			});
+
+			test('should set a number value', async () => {
+				await cacheService.set('key', 123);
+
+				await expect(cacheService.get('key')).resolves.toBe(123);
+			});
+
+			test('should set an object value', async () => {
+				const object = { a: { b: { c: { d: 1 } } } };
+
+				await cacheService.set('key', object);
+
+				await expect(cacheService.get('key')).resolves.toMatchObject(object);
+			});
+
+			test('should not cache `null` or `undefined` values', async () => {
+				await cacheService.set('key1', null);
+				await cacheService.set('key2', undefined);
+				await cacheService.set('key3', 'value');
+
+				await expect(cacheService.get('key1')).resolves.toBeUndefined();
+				await expect(cacheService.get('key2')).resolves.toBeUndefined();
+				await expect(cacheService.get('key3')).resolves.toBe('value');
+			});
+
+			test('should disregard zero-length keys', async () => {
+				await cacheService.set('', 'value');
+
+				await expect(cacheService.get('')).resolves.toBeUndefined();
+			});
+
+			test('should honor ttl', async () => {
+				await cacheService.set('key', 'value', 100);
+
+				await expect(cacheService.get('key')).resolves.toBe('value');
+
+				await sleep(200);
+
+				await expect(cacheService.get('key')).resolves.toBeUndefined();
+			});
+		});
+
+		describe('get', () => {
+			test('should fall back to fallback value', async () => {
+				const promise = cacheService.get('key', { fallbackValue: 'fallback' });
+				await expect(promise).resolves.toBe('fallback');
+			});
+
+			test('should refresh value', async () => {
+				const promise = cacheService.get('testString', {
+					refreshFn: async () => 'refreshValue',
+				});
+
+				await expect(promise).resolves.toBe('refreshValue');
+			});
+
+			test('should handle non-ASCII key', async () => {
+				const nonAsciiKey = 'ԱԲԳ';
+				await cacheService.set(nonAsciiKey, 'value');
+
+				await expect(cacheService.get(nonAsciiKey)).resolves.toBe('value');
+			});
+		});
+
+		describe('delete', () => {
+			test('should delete a key', async () => {
+				await cacheService.set('key', 'value');
+
+				await cacheService.delete('key');
+
+				await expect(cacheService.get('key')).resolves.toBeUndefined();
+			});
+		});
+
+		describe('setMany', () => {
+			test('should set multiple string values', async () => {
+				await cacheService.setMany([
+					['key1', 'value1'],
+					['key2', 'value2'],
+				]);
+
+				const promise = cacheService.getMany(['key1', 'key2']);
+				await expect(promise).resolves.toStrictEqual(['value1', 'value2']);
+			});
+
+			test('should set multiple number values', async () => {
+				await cacheService.setMany([
+					['key1', 123],
+					['key2', 456],
+				]);
+
+				const promise = cacheService.getMany(['key1', 'key2']);
+				await expect(promise).resolves.toStrictEqual([123, 456]);
+			});
+
+			test('should disregard zero-length keys', async () => {
+				await cacheService.setMany([['', 'value1']]);
+
+				await expect(cacheService.get('')).resolves.toBeUndefined();
+			});
+		});
+
+		describe('getMany', () => {
+			test('should return undefined on missing result', async () => {
+				await cacheService.setMany([
+					['key1', 123],
+					['key2', 456],
+				]);
+
+				const promise = cacheService.getMany(['key2', 'key3']);
+				await expect(promise).resolves.toStrictEqual([456, undefined]);
+			});
+		});
+
+		describe('delete', () => {
+			test('should handle non-ASCII key', async () => {
+				const nonAsciiKey = 'ԱԲԳ';
+				await cacheService.set(nonAsciiKey, 'value');
+				await expect(cacheService.get(nonAsciiKey)).resolves.toBe('value');
+
+				await cacheService.delete(nonAsciiKey);
+
+				await expect(cacheService.get(nonAsciiKey)).resolves.toBeUndefined();
+			});
+		});
+
+		describe('setHash', () => {
+			test('should set a hash if non-existing', async () => {
+				await cacheService.setHash('keyW', { field: 'value' });
+
+				await expect(cacheService.getHash('keyW')).resolves.toStrictEqual({ field: 'value' });
+			});
+
+			test('should add to a hash value if existing', async () => {
+				await cacheService.setHash('key', { field1: 'value1' });
+				await cacheService.setHash('key', { field2: 'value2' });
+
+				await expect(cacheService.getHash('key')).resolves.toStrictEqual({
+					field1: 'value1',
+					field2: 'value2',
+				});
+			});
+		});
+
+		describe('deleteFromHash', () => {
+			test('should delete a hash field', async () => {
+				await cacheService.setHash('key', { field1: 'value1', field2: 'value2' });
+				await cacheService.deleteFromHash('key', 'field1');
+
+				await expect(cacheService.getHash('key')).resolves.toStrictEqual({ field2: 'value2' });
+			});
+		});
+
+		describe('getHashValue', () => {
+			test('should return a hash field value', async () => {
+				await cacheService.setHash('key', { field1: 'value1', field2: 'value2' });
+
+				await expect(cacheService.getHashValue('key', 'field1')).resolves.toBe('value1');
+			});
 		});
 	});
-
-	beforeEach(async () => {
-		setDefaultConfig();
-		await Container.get(CacheService).destroy();
-	});
-
-	test('should create a memory cache by default', async () => {
-		await cacheService.init();
-		await expect(cacheService.getCache()).resolves.toBeDefined();
-		const candidate = (await cacheService.getCache()) as MemoryCache;
-		// type guard to check that a MemoryCache is returned and not a RedisCache (which does not have a size property)
-		expect(candidate.store.size).toBeDefined();
-	});
-
-	test('should cache and retrieve a value', async () => {
-		await cacheService.init();
-		await expect(cacheService.getCache()).resolves.toBeDefined();
-		await cacheService.set('testString', 'test');
-		await cacheService.set('testNumber1', 123);
-
-		await expect(cacheService.get('testString')).resolves.toBe('test');
-		expect(typeof (await cacheService.get('testString'))).toBe('string');
-		await expect(cacheService.get('testNumber1')).resolves.toBe(123);
-		expect(typeof (await cacheService.get('testNumber1'))).toBe('number');
-	});
-
-	test('should honour ttl values', async () => {
-		// set default TTL to 10ms
-		config.set('cache.memory.ttl', 10);
-
-		await cacheService.set('testString', 'test');
-		await cacheService.set('testNumber1', 123, 1000);
-
-		const store = (await cacheService.getCache())?.store;
-
-		expect(store).toBeDefined();
-
-		await expect(store!.ttl('testString')).resolves.toBeLessThanOrEqual(100);
-		await expect(store!.ttl('testNumber1')).resolves.toBeLessThanOrEqual(1000);
-
-		// commented out because it fails on CI sporadically
-		// await expect(cacheService.get('testString')).resolves.toBe('test');
-		// await expect(cacheService.get('testNumber1')).resolves.toBe(123);
-
-		// await new Promise((resolve) => setTimeout(resolve, 20));
-
-		// await expect(cacheService.get('testString')).resolves.toBeUndefined();
-		// await expect(cacheService.get('testNumber1')).resolves.toBe(123);
-	});
-
-	test('should set and remove values', async () => {
-		await cacheService.set('testString', 'test');
-		await expect(cacheService.get('testString')).resolves.toBe('test');
-		await cacheService.delete('testString');
-		await expect(cacheService.get('testString')).resolves.toBeUndefined();
-	});
-
-	test('should calculate maxSize', async () => {
-		config.set('cache.memory.maxSize', 16);
-		await cacheService.destroy();
-
-		// 16 bytes because stringify wraps the string in quotes, so 2 bytes for the quotes
-		await cacheService.set('testString', 'withoutUnicode');
-		await expect(cacheService.get('testString')).resolves.toBe('withoutUnicode');
-
-		await cacheService.destroy();
-
-		// should not fit!
-		await cacheService.set('testString', 'withUnicodeԱԲԳ');
-		await expect(cacheService.get('testString')).resolves.toBeUndefined();
-	});
-
-	test('should set and get complex objects', async () => {
-		await cacheService.set('testObject', testObject);
-		await expect(cacheService.get('testObject')).resolves.toMatchObject(testObject);
-	});
-
-	test('should set and get multiple values', async () => {
-		await cacheService.destroy();
-		expect(cacheService.isRedisCache()).toBe(false);
-
-		await cacheService.setMany([
-			['testString', 'test'],
-			['testString2', 'test2'],
-		]);
-		await cacheService.setMany([
-			['testNumber1', 123],
-			['testNumber2', 456],
-		]);
-		await expect(cacheService.getMany(['testString', 'testString2'])).resolves.toStrictEqual([
-			'test',
-			'test2',
-		]);
-		await expect(cacheService.getMany(['testNumber1', 'testNumber2'])).resolves.toStrictEqual([
-			123, 456,
-		]);
-	});
-
-	test('should create a redis in queue mode', async () => {
-		config.set('cache.backend', 'auto');
-		config.set('executions.mode', 'queue');
-		await cacheService.destroy();
-		await cacheService.init();
-
-		const cache = await cacheService.getCache();
-		await expect(cacheService.getCache()).resolves.toBeDefined();
-		const candidate = (await cacheService.getCache()) as RedisCache;
-		expect(candidate.store.client).toBeDefined();
-	});
-
-	test('should create a redis cache if asked', async () => {
-		config.set('cache.backend', 'redis');
-		config.set('executions.mode', 'queue');
-		await cacheService.destroy();
-		await cacheService.init();
-
-		const cache = await cacheService.getCache();
-		await expect(cacheService.getCache()).resolves.toBeDefined();
-		const candidate = (await cacheService.getCache()) as RedisCache;
-		expect(candidate.store.client).toBeDefined();
-	});
-
-	test('should get/set/delete redis cache', async () => {
-		config.set('cache.backend', 'redis');
-		config.set('executions.mode', 'queue');
-		await cacheService.destroy();
-		await cacheService.init();
-
-		await cacheService.set('testObject', testObject);
-		await expect(cacheService.get('testObject')).resolves.toMatchObject(testObject);
-		await cacheService.delete('testObject');
-		await expect(cacheService.get('testObject')).resolves.toBeUndefined();
-	});
-
-	// NOTE: mset and mget are not supported by ioredis-mock
-	// test('should set and get multiple values with redis', async () => {
-	// });
-
-	test('should return fallback value if key is not set', async () => {
-		await cacheService.reset();
-		await expect(cacheService.get('testString')).resolves.toBeUndefined();
-		await expect(
-			cacheService.get('testString', {
-				fallbackValue: 'fallback',
-			}),
-		).resolves.toBe('fallback');
-	});
-
-	test('should call refreshFunction if key is not set', async () => {
-		await cacheService.reset();
-		await expect(cacheService.get('testString')).resolves.toBeUndefined();
-		await expect(
-			cacheService.get('testString', {
-				refreshFunction: async () => 'refreshed',
-				fallbackValue: 'this should not be returned',
-			}),
-		).resolves.toBe('refreshed');
-	});
-
-	test('should transparently handle disabled cache', async () => {
-		await cacheService.disable();
-		await expect(cacheService.get('testString')).resolves.toBeUndefined();
-		await cacheService.set('testString', 'whatever');
-		await expect(cacheService.get('testString')).resolves.toBeUndefined();
-		await expect(
-			cacheService.get('testString', {
-				fallbackValue: 'fallback',
-			}),
-		).resolves.toBe('fallback');
-		await expect(
-			cacheService.get('testString', {
-				refreshFunction: async () => 'refreshed',
-				fallbackValue: 'this should not be returned',
-			}),
-		).resolves.toBe('refreshed');
-	});
-
-	test('should set and get partial results', async () => {
-		await cacheService.setMany([
-			['testNumber1', 123],
-			['testNumber2', 456],
-		]);
-		await expect(cacheService.getMany(['testNumber1', 'testNumber2'])).resolves.toStrictEqual([
-			123, 456,
-		]);
-		await expect(cacheService.getMany(['testNumber3', 'testNumber2'])).resolves.toStrictEqual([
-			undefined,
-			456,
-		]);
-	});
-
-	test('should getMany and fix partial results and set single key', async () => {
-		await cacheService.setMany([
-			['testNumber1', 123],
-			['testNumber2', 456],
-		]);
-		await expect(
-			cacheService.getMany(['testNumber1', 'testNumber2', 'testNumber3']),
-		).resolves.toStrictEqual([123, 456, undefined]);
-		await expect(cacheService.get('testNumber3')).resolves.toBeUndefined();
-		await expect(
-			cacheService.getMany(['testNumber1', 'testNumber2', 'testNumber3'], {
-				async refreshFunctionEach(key) {
-					return key === 'testNumber3' ? 789 : undefined;
-				},
-			}),
-		).resolves.toStrictEqual([123, 456, 789]);
-		await expect(cacheService.get('testNumber3')).resolves.toBe(789);
-	});
-
-	test('should getMany and set all keys', async () => {
-		await cacheService.setMany([
-			['testNumber1', 123],
-			['testNumber2', 456],
-		]);
-		await expect(
-			cacheService.getMany(['testNumber1', 'testNumber2', 'testNumber3']),
-		).resolves.toStrictEqual([123, 456, undefined]);
-		await expect(cacheService.get('testNumber3')).resolves.toBeUndefined();
-		await expect(
-			cacheService.getMany(['testNumber1', 'testNumber2', 'testNumber3'], {
-				async refreshFunctionMany(keys) {
-					return [111, 222, 333];
-				},
-			}),
-		).resolves.toStrictEqual([111, 222, 333]);
-		await expect(cacheService.get('testNumber1')).resolves.toBe(111);
-		await expect(cacheService.get('testNumber2')).resolves.toBe(222);
-		await expect(cacheService.get('testNumber3')).resolves.toBe(333);
-	});
-
-	test('should set and get multiple values with fallbackValue', async () => {
-		await cacheService.disable();
-		await cacheService.setMany([
-			['testNumber1', 123],
-			['testNumber2', 456],
-		]);
-		await expect(cacheService.getMany(['testNumber1', 'testNumber2'])).resolves.toStrictEqual([
-			undefined,
-			undefined,
-		]);
-		await expect(
-			cacheService.getMany(['testNumber1', 'testNumber2'], {
-				fallbackValues: [123, 456],
-			}),
-		).resolves.toStrictEqual([123, 456]);
-		await expect(
-			cacheService.getMany(['testNumber1', 'testNumber2'], {
-				refreshFunctionMany: async () => [123, 456],
-				fallbackValues: [0, 1],
-			}),
-		).resolves.toStrictEqual([123, 456]);
-	});
-
-	test('should deal with unicode keys', async () => {
-		const key = '? > ":< ! withUnicodeԱԲԳ';
-		await cacheService.set(key, 'test');
-		await expect(cacheService.get(key)).resolves.toBe('test');
-		await cacheService.delete(key);
-		await expect(cacheService.get(key)).resolves.toBeUndefined();
-	});
-
-	test('should deal with unicode keys in redis', async () => {
-		config.set('cache.backend', 'redis');
-		config.set('executions.mode', 'queue');
-		await cacheService.destroy();
-		await cacheService.init();
-		const key = '? > ":< ! withUnicodeԱԲԳ';
-
-		expect(((await cacheService.getCache()) as RedisCache).store.client).toBeDefined();
-
-		await cacheService.set(key, 'test');
-		await expect(cacheService.get(key)).resolves.toBe('test');
-		await cacheService.delete(key);
-		await expect(cacheService.get(key)).resolves.toBeUndefined();
-	});
-
-	test('should not cache null or undefined values', async () => {
-		await cacheService.set('nullValue', null);
-		await cacheService.set('undefValue', undefined);
-		await cacheService.set('normalValue', 'test');
-
-		await expect(cacheService.get('normalValue')).resolves.toBe('test');
-		await expect(cacheService.get('undefValue')).resolves.toBeUndefined();
-		await expect(cacheService.get('nullValue')).resolves.toBeUndefined();
-	});
-
-	test('should handle setting empty keys', async () => {
-		await cacheService.set('', null);
-		await expect(cacheService.get('')).resolves.toBeUndefined();
-		await cacheService.setMany([
-			['', 'something'],
-			['', 'something'],
-		]);
-		await expect(cacheService.getMany([''])).resolves.toStrictEqual([undefined]);
-		await cacheService.setMany([]);
-		await expect(cacheService.getMany([])).resolves.toStrictEqual([]);
-	});
-
-	test('should handle setting empty keys (redis)', async () => {
-		config.set('cache.backend', 'redis');
-		config.set('executions.mode', 'queue');
-		await cacheService.destroy();
-		await cacheService.init();
-
-		await cacheService.set('', null);
-		await expect(cacheService.get('')).resolves.toBeUndefined();
-		await cacheService.setMany([
-			['', 'something'],
-			['', 'something'],
-		]);
-		await expect(cacheService.getMany([''])).resolves.toStrictEqual([undefined]);
-		await cacheService.setMany([]);
-		await expect(cacheService.getMany([])).resolves.toStrictEqual([]);
-	});
-});
+}

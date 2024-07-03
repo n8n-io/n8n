@@ -1,8 +1,9 @@
+import { DateTime } from 'luxon';
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import type { SchemaField, TableRawData, TableSchema } from './interfaces';
 
-function getFieldValue(schemaField: SchemaField, field: IDataObject) {
+function getFieldValue(schemaField: SchemaField, field: IDataObject, parseTimestamps = false) {
 	if (schemaField.type === 'RECORD') {
 		// eslint-disable-next-line @typescript-eslint/no-use-before-define
 		return simplify([field.v as TableRawData], schemaField.fields as unknown as SchemaField[]);
@@ -12,6 +13,9 @@ function getFieldValue(schemaField: SchemaField, field: IDataObject) {
 			try {
 				value = jsonParse(value as string);
 			} catch (error) {}
+		} else if (schemaField.type === 'TIMESTAMP' && parseTimestamps) {
+			const dt = DateTime.fromSeconds(Number(value));
+			value = dt.isValid ? dt.toISO() : value;
 		}
 		return value;
 	}
@@ -26,18 +30,27 @@ export function wrapData(data: IDataObject | IDataObject[]): INodeExecutionData[
 	}));
 }
 
-export function simplify(data: TableRawData[], schema: SchemaField[], includeSchema = false) {
+export function simplify(
+	data: TableRawData[],
+	schema: SchemaField[],
+	includeSchema = false,
+	parseTimestamps = false,
+) {
 	const returnData: IDataObject[] = [];
 	for (const entry of data) {
 		const record: IDataObject = {};
 
 		for (const [index, field] of entry.f.entries()) {
 			if (schema[index].mode !== 'REPEATED') {
-				record[schema[index].name] = getFieldValue(schema[index], field);
+				record[schema[index].name] = getFieldValue(schema[index], field, parseTimestamps);
 			} else {
 				record[schema[index].name] = (field.v as unknown as IDataObject[]).flatMap(
 					(repeatedField) => {
-						return getFieldValue(schema[index], repeatedField as unknown as IDataObject);
+						return getFieldValue(
+							schema[index],
+							repeatedField as unknown as IDataObject,
+							parseTimestamps,
+						);
 					},
 				);
 			}
@@ -68,12 +81,18 @@ export function prepareOutput(
 		responseData = response;
 	} else {
 		const { rows, schema } = response;
+		const parseTimestamps = this.getNode().typeVersion >= 2.1;
 
 		if (rows !== undefined && schema !== undefined) {
 			const fields = (schema as TableSchema).fields;
 			responseData = rows;
 
-			responseData = simplify(responseData as TableRawData[], fields, includeSchema);
+			responseData = simplify(
+				responseData as TableRawData[],
+				fields,
+				includeSchema,
+				parseTimestamps,
+			);
 		} else if (schema && includeSchema) {
 			responseData = { success: true, _schema: schema };
 		} else {

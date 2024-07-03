@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -7,11 +8,8 @@ import type {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import { figmaApiRequest } from './GenericFunctions';
-
 import { snakeCase } from 'change-case';
-
-import { randomBytes } from 'crypto';
+import { figmaApiRequest } from './GenericFunctions';
 
 export class FigmaTrigger implements INodeType {
 	description: INodeTypeDescription = {

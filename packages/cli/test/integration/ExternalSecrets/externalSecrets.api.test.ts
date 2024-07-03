@@ -1,56 +1,52 @@
-import type { SuperAgentTest } from 'supertest';
+import { Container } from 'typedi';
+import { Cipher } from 'n8n-core';
+import { jsonParse, type IDataObject } from 'n8n-workflow';
+import { mock } from 'jest-mock-extended';
+
 import { License } from '@/License';
-import * as testDb from '../shared/testDb';
-import * as utils from '../shared/utils/';
 import type { ExternalSecretsSettings, SecretsProviderState } from '@/Interfaces';
-import { UserSettings } from 'n8n-core';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
-import Container from 'typedi';
-import { AES, enc } from 'crypto-js';
+import { SettingsRepository } from '@db/repositories/settings.repository';
 import { ExternalSecretsProviders } from '@/ExternalSecrets/ExternalSecretsProviders.ee';
+import config from '@/config';
+import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
+import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
+
+import { mockInstance } from '../../shared/mocking';
+import { setupTestServer } from '../shared/utils';
+import { createOwner, createUser } from '../shared/db/users';
 import {
 	DummyProvider,
 	FailedProvider,
 	MockProviders,
 	TestFailProvider,
 } from '../../shared/ExternalSecrets/utils';
-import config from '@/config';
-import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
-import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
-import type { IDataObject } from 'n8n-workflow';
+import type { SuperAgentTest } from '../shared/types';
 
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 
-const licenseLike = utils.mockInstance(License, {
-	isExternalSecretsEnabled: jest.fn().mockReturnValue(true),
-	isWithinUsersLimit: jest.fn().mockReturnValue(true),
-});
-
 const mockProvidersInstance = new MockProviders();
-let providersMock: ExternalSecretsProviders = utils.mockInstance(
-	ExternalSecretsProviders,
-	mockProvidersInstance,
-);
+mockInstance(ExternalSecretsProviders, mockProvidersInstance);
 
-const testServer = utils.setupTestServer({ endpointGroups: ['externalSecrets'] });
+const testServer = setupTestServer({
+	endpointGroups: ['externalSecrets'],
+	enabledFeatures: ['feat:externalSecrets'],
+});
 
 const connectedDate = '2023-08-01T12:32:29.000Z';
 
 async function setExternalSecretsSettings(settings: ExternalSecretsSettings) {
-	const encryptionKey = await UserSettings.getEncryptionKey();
-	return Container.get(SettingsRepository).saveEncryptedSecretsProviderSettings(
-		AES.encrypt(JSON.stringify(settings), encryptionKey).toString(),
+	return await Container.get(SettingsRepository).saveEncryptedSecretsProviderSettings(
+		Container.get(Cipher).encrypt(settings),
 	);
 }
 
 async function getExternalSecretsSettings(): Promise<ExternalSecretsSettings | null> {
-	const encryptionKey = await UserSettings.getEncryptionKey();
 	const encSettings = await Container.get(SettingsRepository).getEncryptedSecretsProviderSettings();
 	if (encSettings === null) {
 		return null;
 	}
-	return JSON.parse(AES.decrypt(encSettings, encryptionKey).toString(enc.Utf8));
+	return await jsonParse(Container.get(Cipher).decrypt(encSettings));
 }
 
 const resetManager = async () => {
@@ -58,9 +54,11 @@ const resetManager = async () => {
 	Container.set(
 		ExternalSecretsManager,
 		new ExternalSecretsManager(
+			mock(),
 			Container.get(SettingsRepository),
-			licenseLike,
+			Container.get(License),
 			mockProvidersInstance,
+			Container.get(Cipher),
 		),
 	);
 
@@ -100,18 +98,14 @@ const getDummyProviderData = ({
 };
 
 beforeAll(async () => {
-	await utils.initEncryptionKey();
-
-	const owner = await testDb.createOwner();
+	const owner = await createOwner();
 	authOwnerAgent = testServer.authAgentFor(owner);
-	const member = await testDb.createUser();
+	const member = await createUser();
 	authMemberAgent = testServer.authAgentFor(member);
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 });
 
 beforeEach(async () => {
-	licenseLike.isExternalSecretsEnabled.mockReturnValue(true);
-
 	mockProvidersInstance.setProviders({
 		dummy: DummyProvider,
 	});
@@ -246,7 +240,7 @@ describe('POST /external-secrets/providers/:provider', () => {
 		const resp = await authOwnerAgent.post('/external-secrets/providers/dummy').send(testData);
 		expect(resp.status).toBe(200);
 
-		const confirmResp = await authOwnerAgent.get('/external-secrets/providers/dummy');
+		await authOwnerAgent.get('/external-secrets/providers/dummy');
 		expect((await getExternalSecretsSettings())?.dummy.settings).toEqual({
 			username: 'newuser',
 			password: 'testpass',
@@ -342,7 +336,7 @@ describe('POST /external-secrets/providers/:provider/update', () => {
 			'update',
 		);
 
-		licenseLike.isExternalSecretsEnabled.mockReturnValue(false);
+		testServer.license.disable('feat:externalSecrets');
 
 		const resp = await authOwnerAgent.post('/external-secrets/providers/dummy/update');
 		expect(resp.status).toBe(400);

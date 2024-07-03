@@ -1,5 +1,9 @@
 <template>
-	<div @keydown.stop class="fixed-collection-parameter">
+	<div
+		class="fixed-collection-parameter"
+		:data-test-id="`fixed-collection-${parameter.name}`"
+		@keydown.stop
+	>
 		<div v-if="getProperties.length === 0" class="no-items-exist">
 			<n8n-text size="small">{{
 				$locale.baseText('fixedCollectionParameter.currentlyNoItemsExist')
@@ -20,43 +24,49 @@
 			/>
 			<div v-if="multipleValues">
 				<div
-					v-for="(value, index) in mutableValues[property.name]"
+					v-for="(_, index) in mutableValues[property.name]"
 					:key="property.name + index"
 					class="parameter-item"
 				>
-					<div class="parameter-item-wrapper">
-						<div class="delete-option" v-if="!isReadOnly">
-							<font-awesome-icon
+					<div
+						:class="index ? 'border-top-dashed parameter-item-wrapper ' : 'parameter-item-wrapper'"
+					>
+						<div v-if="!isReadOnly" class="delete-option">
+							<n8n-icon-button
+								type="tertiary"
+								text
+								size="mini"
 								icon="trash"
-								class="reset-icon clickable"
 								:title="$locale.baseText('fixedCollectionParameter.deleteItem')"
 								@click="deleteOption(property.name, index)"
-							/>
-							<div v-if="sortable" class="sort-icon">
-								<font-awesome-icon
-									v-if="index !== 0"
-									icon="angle-up"
-									class="clickable"
-									:title="$locale.baseText('fixedCollectionParameter.moveUp')"
-									@click="moveOptionUp(property.name, index)"
-								/>
-								<font-awesome-icon
-									v-if="index !== mutableValues[property.name].length - 1"
-									icon="angle-down"
-									class="clickable"
-									:title="$locale.baseText('fixedCollectionParameter.moveDown')"
-									@click="moveOptionDown(property.name, index)"
-								/>
-							</div>
+							></n8n-icon-button>
+							<n8n-icon-button
+								v-if="sortable && index !== 0"
+								type="tertiary"
+								text
+								size="mini"
+								icon="angle-up"
+								:title="$locale.baseText('fixedCollectionParameter.moveUp')"
+								@click="moveOptionUp(property.name, index)"
+							></n8n-icon-button>
+							<n8n-icon-button
+								v-if="sortable && index !== mutableValues[property.name].length - 1"
+								type="tertiary"
+								text
+								size="mini"
+								icon="angle-down"
+								:title="$locale.baseText('fixedCollectionParameter.moveDown')"
+								@click="moveOptionDown(property.name, index)"
+							></n8n-icon-button>
 						</div>
 						<Suspense>
-							<parameter-input-list
+							<ParameterInputList
 								:parameters="property.values"
-								:nodeValues="nodeValues"
+								:node-values="nodeValues"
 								:path="getPropertyPath(property.name, index)"
-								:hideDelete="true"
-								:isReadOnly="isReadOnly"
-								@valueChanged="valueChanged"
+								:hide-delete="true"
+								:is-read-only="isReadOnly"
+								@value-changed="valueChanged"
 							/>
 						</Suspense>
 					</div>
@@ -64,42 +74,45 @@
 			</div>
 			<div v-else class="parameter-item">
 				<div class="parameter-item-wrapper">
-					<div class="delete-option" v-if="!isReadOnly">
-						<font-awesome-icon
+					<div v-if="!isReadOnly" class="delete-option">
+						<n8n-icon-button
+							type="tertiary"
+							text
+							size="mini"
 							icon="trash"
-							class="reset-icon clickable"
 							:title="$locale.baseText('fixedCollectionParameter.deleteItem')"
 							@click="deleteOption(property.name)"
-						/>
+						></n8n-icon-button>
 					</div>
-					<parameter-input-list
+					<ParameterInputList
 						:parameters="property.values"
-						:nodeValues="nodeValues"
+						:node-values="nodeValues"
 						:path="getPropertyPath(property.name)"
-						:isReadOnly="isReadOnly"
+						:is-read-only="isReadOnly"
 						class="parameter-item"
-						@valueChanged="valueChanged"
-						:hideDelete="true"
+						:hide-delete="true"
+						@value-changed="valueChanged"
 					/>
 				</div>
 			</div>
 		</div>
 
-		<div v-if="parameterOptions.length > 0 && !isReadOnly">
+		<div v-if="parameterOptions.length > 0 && !isReadOnly" class="controls">
 			<n8n-button
-				v-if="parameter.options.length === 1"
+				v-if="parameter.options && parameter.options.length === 1"
 				type="tertiary"
 				block
-				@click="optionSelected(parameter.options[0].name)"
+				data-test-id="fixed-collection-add"
 				:label="getPlaceholderText"
+				@click="optionSelected(parameter.options[0].name)"
 			/>
 			<div v-else class="add-option">
 				<n8n-select
 					v-model="selectedOption"
 					:placeholder="getPlaceholderText"
 					size="small"
-					@update:modelValue="optionSelected"
 					filterable
+					@update:model-value="optionSelected"
 				>
 					<n8n-option
 						v-for="item in parameterOptions"
@@ -114,27 +127,20 @@
 </template>
 
 <script lang="ts">
-import { defineAsyncComponent, defineComponent } from 'vue';
+import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import type { IUpdateInformation } from '@/Interface';
 
-import type {
-	INodeParameters,
-	INodeProperties,
-	INodePropertyCollection,
-	NodeParameterValue,
-} from 'n8n-workflow';
+import type { INodeParameters, INodeProperties, INodePropertyCollection } from 'n8n-workflow';
 import { deepCopy, isINodePropertyCollectionList } from 'n8n-workflow';
 
 import { get } from 'lodash-es';
-
-const ParameterInputList = defineAsyncComponent(async () => import('./ParameterInputList.vue'));
 
 export default defineComponent({
 	name: 'FixedCollectionParameter',
 	props: {
 		nodeValues: {
-			type: Object as PropType<Record<string, INodeParameters[]>>,
+			type: Object as PropType<INodeParameters>,
 			required: true,
 		},
 		parameter: {
@@ -154,25 +160,11 @@ export default defineComponent({
 			default: false,
 		},
 	},
-	components: {
-		ParameterInputList,
-	},
 	data() {
 		return {
 			selectedOption: undefined,
 			mutableValues: {} as Record<string, INodeParameters[]>,
 		};
-	},
-	watch: {
-		values: {
-			handler(newValues: Record<string, INodeParameters[]>) {
-				this.mutableValues = deepCopy(newValues);
-			},
-			deep: true,
-		},
-	},
-	created() {
-		this.mutableValues = deepCopy(this.values);
 	},
 	computed: {
 		getPlaceholderText(): string {
@@ -193,7 +185,6 @@ export default defineComponent({
 		multipleValues(): boolean {
 			return !!this.parameter.typeOptions?.multipleValues;
 		},
-
 		parameterOptions(): INodePropertyCollection[] {
 			if (this.multipleValues && isINodePropertyCollectionList(this.parameter.options)) {
 				return this.parameter.options;
@@ -209,6 +200,17 @@ export default defineComponent({
 		sortable(): boolean {
 			return !!this.parameter.typeOptions?.sortable;
 		},
+	},
+	watch: {
+		values: {
+			handler(newValues: Record<string, INodeParameters[]>) {
+				this.mutableValues = deepCopy(newValues);
+			},
+			deep: true,
+		},
+	},
+	created() {
+		this.mutableValues = deepCopy(this.values);
 	},
 	methods: {
 		deleteOption(optionName: string, index?: number) {
@@ -252,6 +254,7 @@ export default defineComponent({
 			const parameterData = {
 				name: this.getPropertyPath(optionName),
 				value: this.mutableValues[optionName],
+				type: 'optionsOrderChanged',
 			};
 
 			this.$emit('valueChanged', parameterData);
@@ -268,6 +271,7 @@ export default defineComponent({
 			const parameterData = {
 				name: this.getPropertyPath(optionName),
 				value: this.mutableValues[optionName],
+				type: 'optionsOrderChanged',
 			};
 
 			this.$emit('valueChanged', parameterData);
@@ -293,23 +297,18 @@ export default defineComponent({
 					optionParameter.typeOptions.multipleValues === true
 				) {
 					// Multiple values are allowed so append option to array
-					newParameterValue[optionParameter.name] = get(
-						this.nodeValues,
-						`${this.path}.${optionParameter.name}`,
-						[],
-					);
+					const multiValue = get(this.nodeValues, [this.path, optionParameter.name], []);
+
 					if (Array.isArray(optionParameter.default)) {
-						(newParameterValue[optionParameter.name] as INodeParameters[]).push(
-							...deepCopy(optionParameter.default as INodeParameters[]),
-						);
+						multiValue.push(...deepCopy(optionParameter.default));
 					} else if (
 						optionParameter.default !== '' &&
 						typeof optionParameter.default !== 'object'
 					) {
-						(newParameterValue[optionParameter.name] as NodeParameterValue[]).push(
-							deepCopy(optionParameter.default),
-						);
+						multiValue.push(deepCopy(optionParameter.default));
 					}
+
+					newParameterValue[optionParameter.name] = multiValue;
 				} else {
 					// Add a new option
 					newParameterValue[optionParameter.name] = deepCopy(optionParameter.default);
@@ -318,7 +317,7 @@ export default defineComponent({
 
 			let newValue;
 			if (this.multipleValues) {
-				newValue = get(this.nodeValues, name, [] as INodeParameters[]);
+				newValue = get(this.nodeValues, name, []) as INodeParameters[];
 
 				newValue.push(newParameterValue);
 			} else {
@@ -344,9 +343,36 @@ export default defineComponent({
 .fixed-collection-parameter {
 	padding-left: var(--spacing-s);
 
-	:deep(.button) {
-		--button-background-color: var(--color-background-base);
-		--button-border-color: var(--color-foreground-base);
+	.delete-option {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.controls {
+		:deep(.button) {
+			font-weight: var(--font-weight-normal);
+			--button-font-color: var(--color-text-dark);
+			--button-border-color: var(--color-foreground-base);
+			--button-background-color: var(--color-background-base);
+
+			--button-hover-font-color: var(--color-text-dark);
+			--button-hover-border-color: var(--color-foreground-base);
+			--button-hover-background-color: var(--color-background-base);
+
+			--button-active-font-color: var(--color-text-dark);
+			--button-active-border-color: var(--color-foreground-base);
+			--button-active-background-color: var(--color-background-base);
+
+			--button-focus-font-color: var(--color-text-dark);
+			--button-focus-border-color: var(--color-foreground-base);
+			--button-focus-background-color: var(--color-background-base);
+
+			&:active,
+			&.active,
+			&:focus {
+				outline: none;
+			}
+		}
 	}
 }
 
@@ -354,19 +380,8 @@ export default defineComponent({
 	margin: var(--spacing-xs) 0;
 }
 
-.delete-option {
-	display: none;
-	position: absolute;
-	z-index: 999;
-	color: #f56c6c;
-	left: 0;
-	top: 0.5em;
-	width: 15px;
-	height: 100%;
-}
-
 .parameter-item:hover > .parameter-item-wrapper > .delete-option {
-	display: block;
+	opacity: 1;
 }
 
 .parameter-item {
@@ -375,8 +390,6 @@ export default defineComponent({
 
 	+ .parameter-item {
 		.parameter-item-wrapper {
-			border-top: 1px dashed #999;
-
 			.delete-option {
 				top: 14px;
 			}
@@ -384,14 +397,11 @@ export default defineComponent({
 	}
 }
 
-.no-items-exist {
-	margin: var(--spacing-xs) 0;
+.border-top-dashed {
+	border-top: 1px dashed #999;
 }
 
-.sort-icon {
-	display: flex;
-	flex-direction: column;
-	margin-left: 1px;
-	margin-top: 0.5em;
+.no-items-exist {
+	margin: var(--spacing-xs) 0;
 }
 </style>

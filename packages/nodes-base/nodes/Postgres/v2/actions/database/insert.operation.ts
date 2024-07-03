@@ -5,10 +5,9 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { updateDisplayOptions } from '@utils/utilities';
-
 import type {
 	PgpDatabase,
+	PostgresNodeOptions,
 	QueriesRunner,
 	QueryValues,
 	QueryWithValues,
@@ -17,12 +16,15 @@ import type {
 import {
 	addReturning,
 	checkItemAgainstSchema,
+	configureTableSchemaUpdater,
 	getTableSchema,
 	prepareItem,
+	convertArraysToPostgresFormat,
 	replaceEmptyStringsByNulls,
 } from '../../helpers/utils';
 
 import { optionsCollection } from '../common.descriptions';
+import { updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
@@ -52,7 +54,7 @@ const properties: INodeProperties[] = [
 	},
 	{
 		displayName: `
-		In this mode, make sure incoming data fields are named the same as the columns in your table. If needed, use a 'Set' node before this node to change the field names.
+		In this mode, make sure incoming data fields are named the same as the columns in your table. If needed, use an 'Edit Fields' node before this node to change the field names.
 		`,
 		name: 'notice',
 		type: 'notice',
@@ -134,7 +136,7 @@ const properties: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				'@version': [2.2],
+				'@version': [{ _cnd: { gte: 2.2 } }],
 			},
 		},
 	},
@@ -157,19 +159,32 @@ export async function execute(
 	this: IExecuteFunctions,
 	runQueries: QueriesRunner,
 	items: INodeExecutionData[],
-	nodeOptions: IDataObject,
+	nodeOptions: PostgresNodeOptions,
 	db: PgpDatabase,
 ): Promise<INodeExecutionData[]> {
 	items = replaceEmptyStringsByNulls(items, nodeOptions.replaceEmptyStrings as boolean);
+	const nodeVersion = nodeOptions.nodeVersion as number;
+
+	let schema = this.getNodeParameter('schema', 0, undefined, {
+		extractValue: true,
+	}) as string;
+
+	let table = this.getNodeParameter('table', 0, undefined, {
+		extractValue: true,
+	}) as string;
+
+	const updateTableSchema = configureTableSchemaUpdater(schema, table);
+
+	let tableSchema = await getTableSchema(db, schema, table);
 
 	const queries: QueryWithValues[] = [];
 
 	for (let i = 0; i < items.length; i++) {
-		const schema = this.getNodeParameter('schema', i, undefined, {
+		schema = this.getNodeParameter('schema', i, undefined, {
 			extractValue: true,
 		}) as string;
 
-		const table = this.getNodeParameter('table', i, undefined, {
+		table = this.getNodeParameter('table', i, undefined, {
 			extractValue: true,
 		}) as string;
 
@@ -183,7 +198,6 @@ export async function execute(
 		let query = `INSERT INTO $1:name.$2:name($3:name) VALUES($3:csv)${onConflict}`;
 		let values: QueryValues = [schema, table];
 
-		const nodeVersion = this.getNode().typeVersion;
 		const dataMode =
 			nodeVersion < 2.2
 				? (this.getNodeParameter('dataMode', i) as string)
@@ -209,7 +223,11 @@ export async function execute(
 			}
 		}
 
-		const tableSchema = await getTableSchema(db, schema, table);
+		tableSchema = await updateTableSchema(db, tableSchema, schema, table);
+
+		if (nodeVersion >= 2.4) {
+			convertArraysToPostgresFormat(item, tableSchema, this.getNode(), i);
+		}
 
 		values.push(checkItemAgainstSchema(this.getNode(), item, tableSchema, i));
 
@@ -220,5 +238,5 @@ export async function execute(
 		queries.push({ query, values });
 	}
 
-	return runQueries(queries, items, nodeOptions);
+	return await runQueries(queries, items, nodeOptions);
 }

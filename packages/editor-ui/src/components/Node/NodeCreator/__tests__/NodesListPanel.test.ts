@@ -12,14 +12,14 @@ import { createComponentRenderer } from '@/__tests__/render';
 
 function getWrapperComponent(setup: () => void) {
 	const wrapperComponent = defineComponent({
+		components: {
+			NodesListPanel,
+		},
 		props: {
 			nodeTypes: {
 				type: Array as PropType<INodeTypeDescription[]>,
 				required: false,
 			},
-		},
-		components: {
-			NodesListPanel,
 		},
 		setup,
 		template: '<NodesListPanel @nodeTypeSelected="e => $emit(\'nodeTypeSelected\', e)" />',
@@ -58,7 +58,7 @@ describe('NodesListPanel', () => {
 			});
 
 			await nextTick();
-			expect(screen.getByText('Select a trigger')).toBeInTheDocument();
+			expect(screen.getByText('What triggers this workflow?')).toBeInTheDocument();
 			expect(screen.queryByTestId('node-creator-search-bar')).toBeInTheDocument();
 			screen.getByText('On app event').click();
 			await nextTick();
@@ -76,7 +76,7 @@ describe('NodesListPanel', () => {
 			await fireEvent.click(container.querySelector('.backButton')!);
 			await nextTick();
 
-			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(6);
+			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(8);
 		});
 
 		it('should render regular nodes', async () => {
@@ -89,6 +89,9 @@ describe('NodesListPanel', () => {
 			);
 
 			const wrapperComponent = defineComponent({
+				components: {
+					NodesListPanel,
+				},
 				props: {
 					nodeTypes: {
 						type: Array as PropType<INodeTypeDescription[]>,
@@ -100,11 +103,8 @@ describe('NodesListPanel', () => {
 						required: false,
 					},
 				},
-				components: {
-					NodesListPanel,
-				},
 				setup(props) {
-					const { setActions, setMergeNodes, setSelectedView } = useNodeCreatorStore();
+					const { setMergeNodes, setSelectedView } = useNodeCreatorStore();
 
 					watch(
 						() => props.nodeTypes,
@@ -136,7 +136,7 @@ describe('NodesListPanel', () => {
 
 			await nextTick();
 			expect(screen.getByText('What happens next?')).toBeInTheDocument();
-			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(6);
+			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(5);
 
 			screen.getByText('Action in an app').click();
 			await nextTick();
@@ -156,14 +156,14 @@ describe('NodesListPanel', () => {
 		);
 
 		const wrapperComponent = defineComponent({
+			components: {
+				NodesListPanel,
+			},
 			props: {
 				nodeTypes: {
 					type: Array as PropType<INodeTypeDescription[]>,
 					required: true,
 				},
-			},
-			components: {
-				NodesListPanel,
 			},
 			setup(props) {
 				const { setMergeNodes } = useNodeCreatorStore();

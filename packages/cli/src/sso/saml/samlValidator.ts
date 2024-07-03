@@ -1,5 +1,6 @@
-import { LoggerProxy } from 'n8n-workflow';
+import { Container } from 'typedi';
 import type { XMLFileInfo } from 'xmllint-wasm';
+import { Logger } from '@/Logger';
 
 let xml: XMLFileInfo;
 let xmldsigCore: XMLFileInfo;
@@ -14,7 +15,7 @@ let xmllintWasm: typeof import('xmllint-wasm') | undefined;
 // dynamically load schema files
 async function loadSchemas(): Promise<void> {
 	if (!xml || xml.contents === '') {
-		LoggerProxy.debug('Loading XML schema files for SAML validation into memory');
+		Container.get(Logger).debug('Loading XML schema files for SAML validation into memory');
 		const f = await import('./schema/xml.xsd');
 		xml = {
 			fileName: 'xml.xsd',
@@ -61,12 +62,13 @@ async function loadSchemas(): Promise<void> {
 // dynamically load xmllint-wasm
 async function loadXmllintWasm(): Promise<void> {
 	if (xmllintWasm === undefined) {
-		LoggerProxy.debug('Loading xmllint-wasm library into memory');
+		Container.get(Logger).debug('Loading xmllint-wasm library into memory');
 		xmllintWasm = await import('xmllint-wasm');
 	}
 }
 
 export async function validateMetadata(metadata: string): Promise<boolean> {
+	const logger = Container.get(Logger);
 	try {
 		await loadXmllintWasm();
 		await loadSchemas();
@@ -82,20 +84,27 @@ export async function validateMetadata(metadata: string): Promise<boolean> {
 			preload: [xmlProtocol, xmlAssertion, xmldsigCore, xmlXenc, xml],
 		});
 		if (validationResult?.valid) {
-			LoggerProxy.debug('SAML Metadata is valid');
+			logger.debug('SAML Metadata is valid');
 			return true;
 		} else {
-			LoggerProxy.warn('SAML Validate Metadata: Invalid metadata');
-			LoggerProxy.warn(validationResult ? validationResult.errors.join('\n') : '');
+			logger.warn('SAML Validate Metadata: Invalid metadata');
+			logger.warn(
+				validationResult
+					? validationResult.errors
+							.map((error) => `${error.message} - ${error.rawMessage}`)
+							.join('\n')
+					: '',
+			);
 		}
 	} catch (error) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-		LoggerProxy.warn(error);
+		logger.warn(error);
 	}
 	return false;
 }
 
 export async function validateResponse(response: string): Promise<boolean> {
+	const logger = Container.get(Logger);
 	try {
 		await loadXmllintWasm();
 		await loadSchemas();
@@ -111,15 +120,21 @@ export async function validateResponse(response: string): Promise<boolean> {
 			preload: [xmlMetadata, xmlAssertion, xmldsigCore, xmlXenc, xml],
 		});
 		if (validationResult?.valid) {
-			LoggerProxy.debug('SAML Response is valid');
+			logger.debug('SAML Response is valid');
 			return true;
 		} else {
-			LoggerProxy.warn('SAML Validate Response: Failed');
-			LoggerProxy.warn(validationResult ? validationResult.errors.join('\n') : '');
+			logger.warn('SAML Validate Response: Failed');
+			logger.warn(
+				validationResult
+					? validationResult.errors
+							.map((error) => `${error.message} - ${error.rawMessage}`)
+							.join('\n')
+					: '',
+			);
 		}
 	} catch (error) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-		LoggerProxy.warn(error);
+		logger.warn(error);
 	}
 	return false;
 }

@@ -6,16 +6,16 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { notionApiRequest, simplifyObjects } from './GenericFunctions';
+import moment from 'moment-timezone';
+import { notionApiRequest, simplifyObjects } from './shared/GenericFunctions';
 
-import moment from 'moment';
-import { getDatabases } from './SearchFunctions';
+import { listSearch } from './shared/methods';
 
 export class NotionTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Notion Trigger',
 		name: 'notionTrigger',
-		icon: 'file:notion.svg',
+		icon: { light: 'file:notion.svg', dark: 'file:notion.dark.svg' },
 		group: ['trigger'],
 		version: 1,
 		description: 'Starts the workflow when Notion events occur',
@@ -142,9 +142,7 @@ export class NotionTrigger implements INodeType {
 	};
 
 	methods = {
-		listSearch: {
-			getDatabases,
-		},
+		listSearch,
 	};
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {

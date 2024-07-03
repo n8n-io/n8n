@@ -3,21 +3,21 @@
 		<TagsTableHeader
 			:search="search"
 			:disabled="isHeaderDisabled()"
-			@searchChange="onSearchChange"
-			@createEnable="onCreateEnable"
+			@search-change="onSearchChange"
+			@create-enable="onCreateEnable"
 		/>
 		<TagsTable
-			:rows="rows"
-			:isLoading="isLoading"
-			:isSaving="isSaving"
-			:newName="newName"
-			@newNameChange="onNewNameChange"
-			@updateEnable="onUpdateEnable"
-			@deleteEnable="onDeleteEnable"
-			@cancelOperation="cancelOperation"
-			@applyOperation="applyOperation"
 			ref="tagsTable"
+			:rows="rows"
+			:is-loading="isLoading"
+			:is-saving="isSaving"
+			:new-name="newName"
 			data-test-id="tags-table"
+			@new-name-change="onNewNameChange"
+			@update-enable="onUpdateEnable"
+			@delete-enable="onDeleteEnable"
+			@cancel-operation="cancelOperation"
+			@apply-operation="applyOperation"
 		/>
 	</div>
 </template>
@@ -30,6 +30,7 @@ import TagsTableHeader from '@/components/TagsManager/TagsView/TagsTableHeader.v
 import TagsTable from '@/components/TagsManager/TagsView/TagsTable.vue';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
+import { useRBACStore } from '@/stores/rbac.store';
 
 const matches = (name: string, filter: string) =>
 	name.toLowerCase().trim().includes(filter.toLowerCase().trim());
@@ -37,7 +38,22 @@ const matches = (name: string, filter: string) =>
 export default defineComponent({
 	name: 'TagsView',
 	components: { TagsTableHeader, TagsTable },
-	props: ['tags', 'isLoading'],
+	props: {
+		tags: {
+			type: Array as () => ITag[],
+			required: true,
+		},
+		isLoading: {
+			type: Boolean,
+			required: true,
+		},
+	},
+	emits: {
+		update: null,
+		delete: null,
+		create: null,
+		disableCreate: null,
+	},
 	data() {
 		return {
 			createEnabled: false,
@@ -50,7 +66,7 @@ export default defineComponent({
 		};
 	},
 	computed: {
-		...mapStores(useUsersStore),
+		...mapStores(useUsersStore, useRBACStore),
 		isCreateEnabled(): boolean {
 			return (this.tags || []).length === 0 || this.createEnabled;
 		},
@@ -60,17 +76,17 @@ export default defineComponent({
 					? this.$locale.baseText('tagsView.inUse', { adjustToNumber: count })
 					: this.$locale.baseText('tagsView.notBeingUsed');
 
-			const disabled = this.isCreateEnabled || this.updateId || this.deleteId;
-			const tagRows = (this.tags || [])
-				.filter((tag: ITag) => this.stickyIds.has(tag.id) || matches(tag.name, this.search))
+			const disabled = this.isCreateEnabled || !!this.updateId || !!this.deleteId;
+			const tagRows = (this.tags ?? [])
+				.filter((tag) => this.stickyIds.has(tag.id) || matches(tag.name, this.search))
 				.map(
-					(tag: ITag): ITagRow => ({
+					(tag): ITagRow => ({
 						tag,
 						usage: getUsage(tag.usageCount),
 						disable: disabled && tag.id !== this.deleteId && tag.id !== this.updateId,
 						update: disabled && tag.id === this.updateId,
 						delete: disabled && tag.id === this.deleteId,
-						canDelete: this.usersStore.canUserDeleteTags,
+						canDelete: this.rbacStore.hasScope('tag:delete'),
 					}),
 				);
 
@@ -139,7 +155,7 @@ export default defineComponent({
 		createTag(): void {
 			this.isSaving = true;
 			const name = this.newName.trim();
-			const onCreate = (created: ITag | null, error?: Error) => {
+			const onCreate = (created: ITag | null) => {
 				if (created) {
 					this.stickyIds.add(created.id);
 					this.disableCreate();

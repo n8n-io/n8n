@@ -1,7 +1,7 @@
 <template>
-	<div class="expression-edit" v-if="dialogVisible" @keydown.stop>
+	<div v-if="dialogVisible" class="expression-edit" @keydown.stop>
 		<el-dialog
-			:modelValue="dialogVisible"
+			:model-value="dialogVisible"
 			class="expression-dialog classic"
 			width="80%"
 			:title="$locale.baseText('expressionEdit.editExpression')"
@@ -19,11 +19,11 @@
 					</div>
 
 					<div class="variable-selector">
-						<variable-selector
+						<VariableSelector
 							:path="path"
-							:redactValues="redactValues"
-							@itemSelected="itemSelected"
-						></variable-selector>
+							:redact-values="redactValues"
+							@item-selected="itemSelected"
+						></VariableSelector>
 					</div>
 				</el-col>
 				<el-col :span="16" class="right-side">
@@ -48,14 +48,14 @@
 						</div>
 						<div class="expression-editor">
 							<ExpressionEditorModalInput
-								:modelValue="modelValue"
-								:isReadOnly="isReadOnlyRoute"
+								ref="inputFieldExpression"
+								:model-value="modelValue"
+								:is-read-only="isReadOnly"
 								:path="path"
 								:class="{ 'ph-no-capture': redactValues }"
+								data-test-id="expression-modal-input"
 								@change="valueChanged"
 								@close="closeDialog"
-								ref="inputFieldExpression"
-								data-test-id="expression-modal-input"
 							/>
 						</div>
 					</div>
@@ -65,9 +65,10 @@
 							{{ $locale.baseText('expressionEdit.resultOfItem1') }}
 						</div>
 						<div :class="{ 'ph-no-capture': redactValues }">
-							<ExpressionEditorModalOutput
-								:segments="segments"
+							<ExpressionOutput
 								ref="expressionResult"
+								:segments="segments"
+								:extensions="theme"
 								data-test-id="expression-modal-output"
 							/>
 						</div>
@@ -79,34 +80,71 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { type PropType, defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import ExpressionEditorModalInput from '@/components/ExpressionEditorModal/ExpressionEditorModalInput.vue';
-import ExpressionEditorModalOutput from '@/components/ExpressionEditorModal/ExpressionEditorModalOutput.vue';
 import VariableSelector from '@/components/VariableSelector.vue';
 
 import type { IVariableItemSelected } from '@/Interface';
 
-import { externalHooks } from '@/mixins/externalHooks';
-import { genericHelpers } from '@/mixins/genericHelpers';
-
 import { EXPRESSIONS_DOCS_URL } from '@/constants';
 
-import { debounceHelper } from '@/mixins/debounce';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
+import { useDebounce } from '@/composables/useDebounce';
 
 import type { Segment } from '@/types/expressions';
+import ExpressionOutput from './InlineExpressionEditor/ExpressionOutput.vue';
+import { outputTheme } from './ExpressionEditorModal/theme';
+import type { INodeProperties } from 'n8n-workflow';
 
 export default defineComponent({
 	name: 'ExpressionEdit',
-	mixins: [externalHooks, genericHelpers, debounceHelper],
-	props: ['dialogVisible', 'parameter', 'path', 'modelValue', 'eventSource', 'redactValues'],
 	components: {
 		ExpressionEditorModalInput,
-		ExpressionEditorModalOutput,
+		ExpressionOutput,
 		VariableSelector,
+	},
+	props: {
+		dialogVisible: {
+			type: Boolean,
+			default: false,
+		},
+		parameter: {
+			type: Object as PropType<INodeProperties>,
+			default: () => ({}),
+		},
+		path: {
+			type: String,
+			default: '',
+		},
+		modelValue: {
+			type: String,
+			default: '',
+		},
+		eventSource: {
+			type: String,
+			default: '',
+		},
+		redactValues: {
+			type: Boolean,
+			default: false,
+		},
+		isReadOnly: {
+			type: Boolean,
+			default: false,
+		},
+	},
+	setup() {
+		const externalHooks = useExternalHooks();
+		const { callDebounced } = useDebounce();
+
+		return {
+			callDebounced,
+			externalHooks,
+		};
 	},
 	data() {
 		return {
@@ -114,21 +152,52 @@ export default defineComponent({
 			latestValue: '',
 			segments: [] as Segment[],
 			expressionsDocsUrl: EXPRESSIONS_DOCS_URL,
+			theme: outputTheme(),
 		};
 	},
 	computed: {
 		...mapStores(useNDVStore, useWorkflowsStore),
+	},
+	watch: {
+		dialogVisible(newValue) {
+			this.displayValue = this.modelValue;
+			this.latestValue = this.modelValue;
+
+			const resolvedExpressionValue =
+				(this.$refs.expressionResult as InstanceType<typeof ExpressionOutput>)?.getValue() || '';
+			void this.externalHooks.run('expressionEdit.dialogVisibleChanged', {
+				dialogVisible: newValue,
+				parameter: this.parameter,
+				value: this.modelValue,
+				resolvedExpressionValue,
+			});
+
+			if (!newValue) {
+				const telemetryPayload = createExpressionTelemetryPayload(
+					this.segments,
+					this.modelValue,
+					this.workflowsStore.workflowId,
+					this.ndvStore.pushRef,
+					this.ndvStore.activeNode?.type ?? '',
+				);
+
+				this.$telemetry.track('User closed Expression Editor', telemetryPayload);
+				void this.externalHooks.run('expressionEdit.closeDialog', telemetryPayload);
+			}
+		},
 	},
 	methods: {
 		valueChanged({ value, segments }: { value: string; segments: Segment[] }, forceUpdate = false) {
 			this.latestValue = value;
 			this.segments = segments;
 
-			if (forceUpdate === true) {
+			if (forceUpdate) {
 				this.updateDisplayValue();
 				this.$emit('update:modelValue', this.latestValue);
 			} else {
-				void this.callDebounced('updateDisplayValue', { debounceTime: 500 });
+				void this.callDebounced(this.updateDisplayValue, {
+					debounceTime: 500,
+				});
 			}
 		},
 
@@ -147,8 +216,12 @@ export default defineComponent({
 		},
 
 		itemSelected(eventData: IVariableItemSelected) {
-			(this.$refs.inputFieldExpression as any).itemSelected(eventData);
-			void this.$externalHooks().run('expressionEdit.itemSelected', {
+			(
+				this.$refs.inputFieldExpression as {
+					itemSelected: (variable: IVariableItemSelected) => void;
+				}
+			).itemSelected(eventData);
+			void this.externalHooks.run('expressionEdit.itemSelected', {
 				parameter: this.parameter,
 				value: this.modelValue,
 				selectedItem: eventData,
@@ -216,35 +289,6 @@ export default defineComponent({
 				'User inserted item from Expression Editor variable selector',
 				trackProperties,
 			);
-		},
-	},
-	watch: {
-		dialogVisible(newValue) {
-			this.displayValue = this.modelValue;
-			this.latestValue = this.modelValue;
-
-			const resolvedExpressionValue =
-				(this.$refs.expressionResult && (this.$refs.expressionResult as any).getValue()) ||
-				undefined;
-			void this.$externalHooks().run('expressionEdit.dialogVisibleChanged', {
-				dialogVisible: newValue,
-				parameter: this.parameter,
-				value: this.modelValue,
-				resolvedExpressionValue,
-			});
-
-			if (!newValue) {
-				const telemetryPayload = createExpressionTelemetryPayload(
-					this.segments,
-					this.modelValue,
-					this.workflowsStore.workflowId,
-					this.ndvStore.sessionId,
-					this.ndvStore.activeNode?.type ?? '',
-				);
-
-				this.$telemetry.track('User closed Expression Editor', telemetryPayload);
-				void this.$externalHooks().run('expressionEdit.closeDialog', telemetryPayload);
-			}
 		},
 	},
 });

@@ -8,13 +8,12 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { coinFields, coinOperations } from './CoinDescription';
 
 import { eventFields, eventOperations } from './EventDescription';
 
 import { coinGeckoApiRequest, coinGeckoRequestAllItems } from './GenericFunctions';
-
-import moment from 'moment-timezone';
 
 export class CoinGecko implements INodeType {
 	description: INodeTypeDescription = {
@@ -477,7 +476,7 @@ export class CoinGecko implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ error: error.message, json: {} });
 					continue;
 				}
@@ -485,6 +484,6 @@ export class CoinGecko implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

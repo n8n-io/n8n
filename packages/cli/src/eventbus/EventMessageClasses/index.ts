@@ -1,7 +1,10 @@
+import type { EventMessageAiNode } from './EventMessageAiNode';
 import type { EventMessageAudit } from './EventMessageAudit';
+import type { EventMessageExecution } from './EventMessageExecution';
 import type { EventMessageGeneric } from './EventMessageGeneric';
 import type { EventMessageNode } from './EventMessageNode';
 import type { EventMessageWorkflow } from './EventMessageWorkflow';
+import { eventNamesAiNodes, type EventNamesAiNodesType } from 'n8n-workflow';
 
 export const eventNamesWorkflow = [
 	'n8n.workflow.started',
@@ -9,7 +12,12 @@ export const eventNamesWorkflow = [
 	'n8n.workflow.failed',
 	'n8n.workflow.crashed',
 ] as const;
+export const eventNamesGeneric = ['n8n.worker.started', 'n8n.worker.stopped'] as const;
 export const eventNamesNode = ['n8n.node.started', 'n8n.node.finished'] as const;
+export const eventNamesExecution = [
+	'n8n.execution.throttled',
+	'n8n.execution.started-during-bootup',
+] as const;
 export const eventNamesAudit = [
 	'n8n.audit.user.login.success',
 	'n8n.audit.user.login.failed',
@@ -24,6 +32,8 @@ export const eventNamesAudit = [
 	'n8n.audit.user.reset',
 	'n8n.audit.user.credentials.created',
 	'n8n.audit.user.credentials.shared',
+	'n8n.audit.user.credentials.updated',
+	'n8n.audit.user.credentials.deleted',
 	'n8n.audit.user.api.created',
 	'n8n.audit.user.api.deleted',
 	'n8n.audit.package.installed',
@@ -37,25 +47,30 @@ export const eventNamesAudit = [
 export type EventNamesWorkflowType = (typeof eventNamesWorkflow)[number];
 export type EventNamesAuditType = (typeof eventNamesAudit)[number];
 export type EventNamesNodeType = (typeof eventNamesNode)[number];
+export type EventNamesExecutionType = (typeof eventNamesExecution)[number];
+export type EventNamesGenericType = (typeof eventNamesGeneric)[number];
 
 export type EventNamesTypes =
 	| EventNamesAuditType
 	| EventNamesWorkflowType
 	| EventNamesNodeType
+	| EventNamesExecutionType
+	| EventNamesGenericType
+	| EventNamesAiNodesType
 	| 'n8n.destination.test';
 
-export const eventNamesAll = [...eventNamesAudit, ...eventNamesWorkflow, ...eventNamesNode];
+export const eventNamesAll = [
+	...eventNamesAudit,
+	...eventNamesWorkflow,
+	...eventNamesNode,
+	...eventNamesGeneric,
+	...eventNamesAiNodes,
+];
 
 export type EventMessageTypes =
 	| EventMessageGeneric
 	| EventMessageWorkflow
 	| EventMessageAudit
-	| EventMessageNode;
-
-export interface FailedEventSummary {
-	lastNodeExecuted: string;
-	executionId: string;
-	name: string;
-	event: string;
-	timestamp: string;
-}
+	| EventMessageNode
+	| EventMessageExecution
+	| EventMessageAiNode;

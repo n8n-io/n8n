@@ -1,7 +1,9 @@
 import type Redis from 'ioredis';
 import type { Cluster } from 'ioredis';
-import { getDefaultRedisClient } from './RedisServiceHelper';
-import { LoggerProxy } from 'n8n-workflow';
+import { Service } from 'typedi';
+import config from '@/config';
+import { Logger } from '@/Logger';
+import { RedisClientService } from './redis-client.service';
 
 export type RedisClientType =
 	| 'subscriber'
@@ -21,25 +23,30 @@ export type RedisServiceMessageHandler =
 	| ((channel: string, message: string) => void)
 	| ((stream: string, id: string, message: string[]) => void);
 
+@Service()
 class RedisServiceBase {
 	redisClient: Redis | Cluster | undefined;
 
 	isInitialized = false;
 
+	constructor(
+		protected readonly logger: Logger,
+		private readonly redisClientService: RedisClientService,
+	) {}
+
 	async init(type: RedisClientType = 'client'): Promise<void> {
 		if (this.redisClient && this.isInitialized) {
 			return;
 		}
-		this.redisClient = await getDefaultRedisClient(undefined, type);
+		this.redisClient = this.redisClientService.createClient({ type });
 
 		this.redisClient.on('close', () => {
-			LoggerProxy.warn('Redis unavailable - trying to reconnect...');
+			this.logger.warn('Redis unavailable - trying to reconnect...');
 		});
 
 		this.redisClient.on('error', (error) => {
 			if (!String(error).includes('ECONNREFUSED')) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-				LoggerProxy.warn('Error with Redis: ', error);
+				this.logger.warn('Error with Redis: ', error);
 			}
 		});
 	}
@@ -49,6 +56,7 @@ class RedisServiceBase {
 			return;
 		}
 		await this.redisClient.quit();
+		this.isInitialized = false;
 		this.redisClient = undefined;
 	}
 }
@@ -56,8 +64,9 @@ class RedisServiceBase {
 export abstract class RedisServiceBaseSender extends RedisServiceBase {
 	senderId: string;
 
-	setSenderId(senderId?: string): void {
-		this.senderId = senderId ?? '';
+	async init(type: RedisClientType = 'client'): Promise<void> {
+		await super.init(type);
+		this.senderId = config.get('redis.queueModeId');
 	}
 }
 

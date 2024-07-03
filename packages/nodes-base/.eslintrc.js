@@ -33,10 +33,10 @@ module.exports = {
 		'@typescript-eslint/prefer-nullish-coalescing': 'warn',
 		'@typescript-eslint/no-base-to-string': 'warn',
 		'@typescript-eslint/no-redundant-type-constituents': 'warn',
-		'@typescript-eslint/no-unused-vars': 'warn',
 		'@typescript-eslint/no-unsafe-argument': 'warn',
 		'@typescript-eslint/prefer-optional-chain': 'warn',
 		'@typescript-eslint/restrict-plus-operands': 'warn',
+		'@typescript-eslint/no-unnecessary-type-assertion': 'warn',
 	},
 
 	overrides: [
@@ -149,6 +149,12 @@ module.exports = {
 				'n8n-nodes-base/node-param-resource-without-no-data-expression': 'error',
 				'n8n-nodes-base/node-param-type-options-missing-from-limit': 'error',
 				'n8n-nodes-base/node-param-type-options-password-missing': 'error',
+			},
+		},
+		{
+			files: ['**/*.test.ts', '**/test/**/*.ts'],
+			rules: {
+				'import/no-extraneous-dependencies': 'off',
 			},
 		},
 	],

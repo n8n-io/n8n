@@ -1,6 +1,8 @@
 import { setup } from '@storybook/vue3';
+import { withThemeByDataAttribute } from '@storybook/addon-themes';
 
 import './storybook.scss';
+// import '../src/css/tailwind/index.css';
 
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { fas } from '@fortawesome/free-solid-svg-icons';
@@ -21,9 +23,6 @@ setup((app) => {
 });
 
 export const parameters = {
-	actions: {
-		argTypesRegex: '^on[A-Z].*',
-	},
 	controls: {
 		matchers: {
 			color: /(background|color)$/i,
@@ -46,10 +45,6 @@ export const parameters = {
 				value: 'var(--color-background-light)',
 			},
 			{
-				name: '--color-background-lighter',
-				value: 'var(--color-background-lighter)',
-			},
-			{
 				name: '--color-background-xlight',
 				value: 'var(--color-background-xlight)',
 			},
@@ -66,7 +61,25 @@ export const parameters = {
 	},
 	options: {
 		storySort: {
-			order: ['Docs', 'Styleguide', 'Atoms', 'Modules'],
+			order: [
+				'Docs',
+				'Styleguide',
+				['Colors Primitives', 'Colors Tokens', 'Font', 'Spacing', 'Border'],
+				'Atoms',
+				'Modules',
+			],
 		},
 	},
 };
+
+export const decorators = [
+	withThemeByDataAttribute({
+		themes: {
+			light: 'light',
+			dark: 'dark',
+		},
+		defaultTheme: 'light',
+		attributeName: 'data-theme',
+		parentSelector: 'body',
+	}),
+];

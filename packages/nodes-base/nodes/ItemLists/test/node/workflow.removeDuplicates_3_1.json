@@ -1,0 +1,292 @@
+{
+	"name": "My workflow 63",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "5f174c07-00e5-49fc-854f-b1571d35c5a3",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [
+				960,
+				520
+			]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  { mixed: \"1\", match: \"foo\" },\n  { mixed: 1, match: \"foo\" },\n  { mixed: true, match: \"foo\" },\n  { mixed: false, match: \"foo\" },\n  { mixed: {}, match: \"foo\" },\n  { mixed: [], match: \"foo\" },\n  //duplicates\n  { mixed: \"1\", match: \"foo\" },\n  { mixed: 1, match: \"foo\" },\n  { mixed: true, match: \"foo\" },\n  { mixed: false, match: \"foo\" },\n  { mixed: {}, match: \"foo\" },\n  { mixed: [], match: \"foo\" },\n];"
+			},
+			"id": "2aa52759-f7a5-4a60-bf2e-9c1e3d2821dc",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				1160,
+				520
+			]
+		},
+		{
+			"parameters": {
+				"operation": "removeDuplicates"
+			},
+			"id": "90acc956-989f-4008-a3df-fe0162762b24",
+			"name": "Remove duplicates",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 3.1,
+			"position": [
+				1440,
+				160
+			]
+		},
+		{
+			"parameters": {
+				"operation": "removeDuplicates",
+				"compare": "selectedFields",
+				"fieldsToCompare": "mixed",
+				"options": {}
+			},
+			"id": "6c39a6bb-b042-4d4c-828c-52699f178828",
+			"name": "Remove duplicates by mixed",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 3.1,
+			"position": [
+				1440,
+				340
+			]
+		},
+		{
+			"parameters": {
+				"operation": "removeDuplicates",
+				"compare": "selectedFields",
+				"fieldsToCompare": "match",
+				"options": {}
+			},
+			"id": "d3783be2-6705-44d3-b481-72e7a9dba458",
+			"name": "Remove duplicates by match",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 3.1,
+			"position": [
+				1440,
+				520
+			]
+		},
+		{
+			"parameters": {
+				"operation": "removeDuplicates",
+				"compare": "allFieldsExcept",
+				"fieldsToExclude": "mixed",
+				"options": {}
+			},
+			"id": "e634e39d-0ce6-477f-97cc-69eec2dd981b",
+			"name": "Remove duplicates except by mixed",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 3.1,
+			"position": [
+				1440,
+				720
+			]
+		},
+		{
+			"parameters": {
+				"operation": "removeDuplicates",
+				"compare": "allFieldsExcept",
+				"fieldsToExclude": "match",
+				"options": {}
+			},
+			"id": "0a1bbc9a-3505-413c-ae86-c60dc60b5909",
+			"name": "Remove duplicates except by match",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 3.1,
+			"position": [
+				1440,
+				940
+			]
+		}
+	],
+	"pinData": {
+		"Remove duplicates": [
+			{
+				"json": {
+					"mixed": "1",
+					"match": "foo"
+				}
+			},
+			{
+				"json": {
+					"mixed": 1,
+					"match": "foo"
+				}
+			},
+			{
+				"json": {
+					"mixed": true,
+					"match": "foo"
+				}
+			},
+			{
+				"json": {
+					"mixed": false,
+					"match": "foo"
+				}
+			},
+			{
+				"json": {
+					"mixed": {},
+					"match": "foo"
+				}
+			},
+			{
+				"json": {
+					"mixed": [],
+					"match": "foo"
+				}
+			}
+		],
+		"Remove duplicates by mixed": [
+			{
+				"json": {
+					"mixed": "1",
+					"match": "foo"
+				}
+			},
+			{
+				"json": {
+					"mixed": 1,
+					"match": "foo"
+				}
+			},
+			{
+				"json": {
+					"mixed": true,
+					"match": "foo"
+				}
+			},
+			{
+				"json": {
+					"mixed": false,
+					"match": "foo"
+				}
+			},
+			{
+				"json": {
+					"mixed": {},
+					"match": "foo"
+				}
+			},
+			{
+				"json": {
+					"mixed": [],
+					"match": "foo"
+				}
+			}
+		],
+		"Remove duplicates by match": [
+			{
+				"json": {
+					"mixed": "1",
+					"match": "foo"
+				}
+			}
+		],
+		"Remove duplicates except by mixed": [
+			{
+				"json": {
+					"mixed": "1",
+					"match": "foo"
+				}
+			}
+		],
+		"Remove duplicates except by match": [
+			{
+				"json": {
+					"mixed": "1",
+					"match": "foo"
+				}
+			},
+			{
+				"json": {
+					"mixed": 1,
+					"match": "foo"
+				}
+			},
+			{
+				"json": {
+					"mixed": true,
+					"match": "foo"
+				}
+			},
+			{
+				"json": {
+					"mixed": false,
+					"match": "foo"
+				}
+			},
+			{
+				"json": {
+					"mixed": {},
+					"match": "foo"
+				}
+			},
+			{
+				"json": {
+					"mixed": [],
+					"match": "foo"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Remove duplicates",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Remove duplicates by mixed",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Remove duplicates by match",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Remove duplicates except by mixed",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Remove duplicates except by match",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "c657bc6f-02bc-4e1b-b49a-d1dca8b13256",
+	"id": "cHSnZsTtYIJj3gL2",
+	"meta": {
+		"instanceId": "104a4d08d8897b8bdeb38aaca515021075e0bd8544c983c2bb8c86e6a8e6081c"
+	},
+	"tags": []
+}

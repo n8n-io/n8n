@@ -1,8 +1,8 @@
 import { BasePage } from '../base';
-import { INodeTypeDescription } from 'n8n-workflow';
 
 export class NodeCreator extends BasePage {
 	url = '/workflow/new';
+
 	getters = {
 		plusButton: () => cy.getByTestId('node-creator-plus-button'),
 		canvasAddButton: () => cy.getByTestId('canvas-add-button'),
@@ -20,10 +20,12 @@ export class NodeCreator extends BasePage {
 		communityNodeTooltip: () => cy.getByTestId('node-item-community-tooltip'),
 		noResults: () => cy.getByTestId('node-creator-no-results'),
 		nodeItemName: () => cy.getByTestId('node-creator-item-name'),
+		nodeItemDescription: () => cy.getByTestId('node-creator-item-description'),
 		activeSubcategory: () => cy.getByTestId('nodes-list-header'),
 		expandedCategories: () =>
 			this.getters.creatorItem().find('>div').filter('.active').invoke('text'),
 	};
+
 	actions = {
 		openNodeCreator: () => {
 			this.getters.plusButton().click();
@@ -31,32 +33,6 @@ export class NodeCreator extends BasePage {
 		},
 		selectNode: (displayName: string) => {
 			this.getters.getCreatorItem(displayName).click();
-		},
-		toggleCategory: (category: string) => {
-			this.getters.getCreatorItem(category).click();
-		},
-		categorizeNodes: (nodes: INodeTypeDescription[]) => {
-			const categorizedNodes = nodes.reduce((acc, node) => {
-				const categories = (node?.codex?.categories || []).map((category: string) =>
-					category.trim(),
-				);
-
-				categories.forEach((category: { [key: string]: INodeTypeDescription[] }) => {
-					// Node creator should show only the latest version of a node
-					const newerVersion = nodes.find(
-						(n: INodeTypeDescription) =>
-							n.name === node.name && (n.version > node.version || Array.isArray(n.version)),
-					);
-
-					if (acc[category] === undefined) {
-						acc[category] = [];
-					}
-					acc[category].push(newerVersion ?? node);
-				});
-				return acc;
-			}, {});
-
-			return categorizedNodes;
 		},
 	};
 }

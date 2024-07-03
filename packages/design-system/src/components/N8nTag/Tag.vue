@@ -4,17 +4,12 @@
 	</span>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-
-export default defineComponent({
-	name: 'n8n-tag',
-	props: {
-		text: {
-			type: String,
-		},
-	},
-});
+<script lang="ts" setup>
+interface TagProps {
+	text: string;
+}
+defineOptions({ name: 'N8nTag' });
+defineProps<TagProps>();
 </script>
 
 <style lang="scss" module>
@@ -29,11 +24,7 @@ export default defineComponent({
 	transition: background-color 0.3s ease;
 
 	&:hover {
-		background-color: hsl(
-			var(--color-background-base-h),
-			var(--color-background-base-s),
-			calc(var(--color-background-base-l) - 4%)
-		);
+		background-color: var(--color-background-medium);
 	}
 }
 </style>

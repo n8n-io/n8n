@@ -2,26 +2,23 @@ import { computed, reactive } from 'vue';
 import { defineStore } from 'pinia';
 import { EnterpriseEditionFeature } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
-import { useUsersStore } from '@/stores/users.store';
+import { useRootStore } from '@/stores/root.store';
 import * as vcApi from '@/api/sourceControl';
-import type { SourceControlPreferences } from '@/Interface';
+import type { SourceControlPreferences, SshKeyTypes } from '@/Interface';
+import type { TupleToUnion } from '@/utils/typeHelpers';
 
 export const useSourceControlStore = defineStore('sourceControl', () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
-	const usersStore = useUsersStore();
 
 	const isEnterpriseSourceControlEnabled = computed(() =>
 		settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.SourceControl),
 	);
-	const defaultAuthor = computed(() => {
-		const user = usersStore.currentUser;
-		return {
-			name: user?.fullName ?? `${user?.firstName} ${user?.lastName}`.trim(),
-			email: user?.email ?? '',
-		};
-	});
+
+	const sshKeyTypes: SshKeyTypes = ['ed25519', 'rsa'];
+	const sshKeyTypesWithLabel = reactive(
+		sshKeyTypes.map((value) => ({ value, label: value.toUpperCase() })),
+	);
 
 	const preferences = reactive<SourceControlPreferences>({
 		branchName: '',
@@ -31,6 +28,7 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		branchColor: '#5296D6',
 		connected: false,
 		publicKey: '',
+		keyGeneratorType: 'ed25519',
 	});
 
 	const state = reactive<{
@@ -54,7 +52,7 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		force: boolean;
 	}) => {
 		state.commitMessage = data.commitMessage;
-		await vcApi.pushWorkfolder(rootStore.getRestApiContext, {
+		await vcApi.pushWorkfolder(rootStore.restApiContext, {
 			force: data.force,
 			message: data.commitMessage,
 			...(data.fileNames ? { fileNames: data.fileNames } : {}),
@@ -62,7 +60,7 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 	};
 
 	const pullWorkfolder = async (force: boolean) => {
-		return vcApi.pullWorkfolder(rootStore.getRestApiContext, { force });
+		return await vcApi.pullWorkfolder(rootStore.restApiContext, { force });
 	};
 
 	const setPreferences = (data: Partial<SourceControlPreferences>) => {
@@ -72,17 +70,17 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 	const makePreferencesAction =
 		(action: typeof vcApi.savePreferences) =>
 		async (preferences: Partial<SourceControlPreferences>) => {
-			const data = await action(rootStore.getRestApiContext, preferences);
+			const data = await action(rootStore.restApiContext, preferences);
 			setPreferences(data);
 		};
 
 	const getBranches = async () => {
-		const data = await vcApi.getBranches(rootStore.getRestApiContext);
+		const data = await vcApi.getBranches(rootStore.restApiContext);
 		setPreferences(data);
 	};
 
 	const getPreferences = async () => {
-		const data = await vcApi.getPreferences(rootStore.getRestApiContext);
+		const data = await vcApi.getPreferences(rootStore.restApiContext);
 		setPreferences(data);
 	};
 
@@ -91,13 +89,13 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 	const updatePreferences = makePreferencesAction(vcApi.updatePreferences);
 
 	const disconnect = async (keepKeyPair: boolean) => {
-		await vcApi.disconnect(rootStore.getRestApiContext, keepKeyPair);
+		await vcApi.disconnect(rootStore.restApiContext, keepKeyPair);
 		setPreferences({ connected: false, branches: [] });
 	};
 
-	const generateKeyPair = async () => {
-		await vcApi.generateKeyPair(rootStore.getRestApiContext);
-		const data = await vcApi.getPreferences(rootStore.getRestApiContext); // To be removed once the API is updated
+	const generateKeyPair = async (keyGeneratorType?: TupleToUnion<SshKeyTypes>) => {
+		await vcApi.generateKeyPair(rootStore.restApiContext, keyGeneratorType);
+		const data = await vcApi.getPreferences(rootStore.restApiContext); // To be removed once the API is updated
 
 		preferences.publicKey = data.publicKey;
 
@@ -105,11 +103,11 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 	};
 
 	const getStatus = async () => {
-		return vcApi.getStatus(rootStore.getRestApiContext);
+		return await vcApi.getStatus(rootStore.restApiContext);
 	};
 
 	const getAggregatedStatus = async () => {
-		return vcApi.getAggregatedStatus(rootStore.getRestApiContext);
+		return await vcApi.getAggregatedStatus(rootStore.restApiContext);
 	};
 
 	return {
@@ -127,5 +125,6 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		disconnect,
 		getStatus,
 		getAggregatedStatus,
+		sshKeyTypesWithLabel,
 	};
 });

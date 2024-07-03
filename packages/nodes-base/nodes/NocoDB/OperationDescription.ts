@@ -5,6 +5,40 @@ export const operationFields: INodeProperties[] = [
 	//         Shared
 	// ----------------------------------
 	{
+		displayName: 'Workspace Name or ID',
+		name: 'workspaceId',
+		type: 'options',
+		default: 'none',
+		displayOptions: {
+			show: {
+				version: [3],
+			},
+		},
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		typeOptions: {
+			loadOptionsMethod: 'getWorkspaces',
+		},
+	},
+	{
+		displayName: 'Base Name or ID',
+		name: 'projectId',
+		type: 'options',
+		default: '',
+		displayOptions: {
+			show: {
+				version: [3],
+			},
+		},
+		required: true,
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		typeOptions: {
+			loadOptionsDependsOn: ['workspaceId'],
+			loadOptionsMethod: 'getBases',
+		},
+	},
+	{
 		displayName: 'Project ID',
 		name: 'projectId',
 		type: 'string',
@@ -31,7 +65,7 @@ export const operationFields: INodeProperties[] = [
 		description:
 			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
-			loadOptionsMethod: 'getProjects',
+			loadOptionsMethod: 'getBases',
 		},
 	},
 	{
@@ -41,7 +75,7 @@ export const operationFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				version: [2],
+				version: [2, 3],
 			},
 		},
 		required: true,
@@ -91,7 +125,39 @@ export const operationFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
+				version: [1, 2],
 				operation: ['delete', 'update'],
+			},
+		},
+	},
+	{
+		displayName: 'Primary Key Type',
+		name: 'primaryKey',
+		type: 'options',
+		default: 'id',
+		options: [
+			{
+				name: 'Default',
+				value: 'id',
+				description:
+					'Default, added when table was created from UI by those options: Create new table / Import from Excel / Import from CSV',
+			},
+			{
+				name: 'Imported From Airtable',
+				value: 'ncRecordId',
+				description: 'Select if table was imported from Airtable',
+			},
+			{
+				name: 'Custom',
+				value: 'custom',
+				description:
+					'When connecting to existing external database as existing primary key field is retained as is, enter the name of the primary key field below',
+			},
+		],
+		displayOptions: {
+			show: {
+				version: [3],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -102,7 +168,21 @@ export const operationFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
+				version: [1, 2],
 				operation: ['delete', 'update'],
+				primaryKey: ['custom'],
+			},
+		},
+	},
+	{
+		displayName: 'Field Name',
+		name: 'customPrimaryKey',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				version: [3],
+				operation: ['delete'],
 				primaryKey: ['custom'],
 			},
 		},
@@ -116,7 +196,22 @@ export const operationFields: INodeProperties[] = [
 		description: 'The value of the ID field',
 		displayOptions: {
 			show: {
+				version: [1, 2],
 				operation: ['delete', 'get', 'update'],
+			},
+		},
+	},
+	{
+		displayName: 'Row ID Value',
+		name: 'id',
+		type: 'string',
+		default: '',
+		required: true,
+		description: 'The value of the ID field',
+		displayOptions: {
+			show: {
+				version: [3],
+				operation: ['delete', 'get'],
 			},
 		},
 	},
@@ -196,6 +291,17 @@ export const operationFields: INodeProperties[] = [
 		placeholder: 'Add Option',
 		options: [
 			{
+				displayName: 'View ID',
+				name: 'viewId',
+				type: 'string',
+				typeOptions: {
+					multipleValues: false,
+				},
+				default: '',
+				placeholder: 'View ID',
+				description: 'The select fields of the returned rows',
+			},
+			{
 				displayName: 'Fields',
 				name: 'fields',
 				type: 'string',
@@ -206,14 +312,6 @@ export const operationFields: INodeProperties[] = [
 				default: [],
 				placeholder: 'Name',
 				description: 'The select fields of the returned rows',
-			},
-			{
-				displayName: 'Filter By Formula',
-				name: 'where',
-				type: 'string',
-				default: '',
-				placeholder: '(name,like,example%)~or(name,eq,test)',
-				description: 'A formula used to filter rows',
 			},
 			{
 				displayName: 'Sort',
@@ -259,6 +357,14 @@ export const operationFields: INodeProperties[] = [
 						],
 					},
 				],
+			},
+			{
+				displayName: 'Filter By Formula',
+				name: 'where',
+				type: 'string',
+				default: '',
+				placeholder: '(name,like,example%)~or(name,eq,test)',
+				description: 'A formula used to filter rows',
 			},
 		],
 	},
@@ -323,6 +429,30 @@ export const operationFields: INodeProperties[] = [
 		description: 'Whether to insert the input data this node receives in the new row',
 	},
 	{
+		displayName:
+			"In this mode, make sure the incoming data fields are named the same as the columns in NocoDB. (Use an 'Edit Fields' node before this node to change them if required.)",
+		name: 'info',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				dataToSend: ['autoMapInputData'],
+			},
+		},
+	},
+	{
+		displayName: 'This operation requires the primary key to be included for each row.',
+		name: 'info',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: ['update'],
+				version: [3],
+			},
+		},
+	},
+	{
 		displayName: 'Inputs to Ignore',
 		name: 'inputsToIgnore',
 		type: 'string',
@@ -365,7 +495,7 @@ export const operationFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Is Binary Data',
+						displayName: 'Is Binary File',
 						name: 'binaryData',
 						type: 'boolean',
 						default: false,

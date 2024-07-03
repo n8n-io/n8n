@@ -1,14 +1,13 @@
-import { Service } from 'typedi';
 import { Response, NextFunction } from 'express';
-import { ILogger } from 'n8n-workflow';
 import { Get, Middleware, RestController } from '@/decorators';
 import type { WorkflowStatistics } from '@db/entities/WorkflowStatistics';
 import { StatisticsNames } from '@db/entities/WorkflowStatistics';
-import { SharedWorkflowRepository, WorkflowStatisticsRepository } from '@db/repositories';
-import { ExecutionRequest } from '@/requests';
-import { whereClause } from '@/UserManagement/UserManagementHelper';
-import { NotFoundError } from '@/ResponseHelper';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { WorkflowStatisticsRepository } from '@db/repositories/workflowStatistics.repository';
 import type { IWorkflowStatisticsDataLoaded } from '@/Interfaces';
+import { Logger } from '@/Logger';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { StatisticsRequest } from './workflow-statistics.types';
 
 interface WorkflowStatisticsData<T> {
 	productionSuccess: T;
@@ -17,13 +16,12 @@ interface WorkflowStatisticsData<T> {
 	manualError: T;
 }
 
-@Service()
 @RestController('/workflow-stats')
 export class WorkflowStatisticsController {
 	constructor(
-		private sharedWorkflowRepository: SharedWorkflowRepository,
-		private workflowStatisticsRepository: WorkflowStatisticsRepository,
-		private readonly logger: ILogger,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly workflowStatisticsRepository: WorkflowStatisticsRepository,
+		private readonly logger: Logger,
 	) {}
 
 	/**
@@ -31,19 +29,15 @@ export class WorkflowStatisticsController {
 	 */
 	// TODO: move this into a new decorator `@ValidateWorkflowPermission`
 	@Middleware()
-	async hasWorkflowAccess(req: ExecutionRequest.Get, res: Response, next: NextFunction) {
+	async hasWorkflowAccess(req: StatisticsRequest.GetOne, _res: Response, next: NextFunction) {
 		const { user } = req;
 		const workflowId = req.params.id;
-		const allowed = await this.sharedWorkflowRepository.exist({
-			relations: ['workflow'],
-			where: whereClause({
-				user,
-				entityType: 'workflow',
-				entityId: workflowId,
-			}),
-		});
 
-		if (allowed) {
+		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, user, [
+			'workflow:read',
+		]);
+
+		if (workflow) {
 			next();
 		} else {
 			this.logger.verbose('User attempted to read a workflow without permissions', {
@@ -56,17 +50,17 @@ export class WorkflowStatisticsController {
 	}
 
 	@Get('/:id/counts/')
-	async getCounts(req: ExecutionRequest.Get): Promise<WorkflowStatisticsData<number>> {
-		return this.getData(req.params.id, 'count', 0);
+	async getCounts(req: StatisticsRequest.GetOne): Promise<WorkflowStatisticsData<number>> {
+		return await this.getData(req.params.id, 'count', 0);
 	}
 
 	@Get('/:id/times/')
-	async getTimes(req: ExecutionRequest.Get): Promise<WorkflowStatisticsData<Date | null>> {
-		return this.getData(req.params.id, 'latestEvent', null);
+	async getTimes(req: StatisticsRequest.GetOne): Promise<WorkflowStatisticsData<Date | null>> {
+		return await this.getData(req.params.id, 'latestEvent', null);
 	}
 
 	@Get('/:id/data-loaded/')
-	async getDataLoaded(req: ExecutionRequest.Get): Promise<IWorkflowStatisticsDataLoaded> {
+	async getDataLoaded(req: StatisticsRequest.GetOne): Promise<IWorkflowStatisticsDataLoaded> {
 		// Get flag
 		const workflowId = req.params.id;
 

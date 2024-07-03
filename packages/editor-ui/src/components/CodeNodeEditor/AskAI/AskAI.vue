@@ -4,14 +4,22 @@ import { snakeCase } from 'lodash-es';
 import { useSessionStorage } from '@vueuse/core';
 
 import { N8nButton, N8nInput, N8nTooltip } from 'n8n-design-system/components';
+import { randomInt } from 'n8n-workflow';
 import type { CodeExecutionMode, INodeExecutionData } from 'n8n-workflow';
 
 import type { BaseTextKey } from '@/plugins/i18n';
 import type { INodeUi, Schema } from '@/Interface';
 import { generateCodeForPrompt } from '@/api/ai';
-import { useDataSchema, useI18n, useMessage, useToast, useTelemetry } from '@/composables';
-import { useNDVStore, usePostHog, useRootStore, useWorkflowsStore } from '@/stores';
-import { executionDataToJson } from '@/utils';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useDataSchema } from '@/composables/useDataSchema';
+import { useI18n } from '@/composables/useI18n';
+import { useMessage } from '@/composables/useMessage';
+import { useToast } from '@/composables/useToast';
+import { useNDVStore } from '@/stores/ndv.store';
+import { usePostHog } from '@/stores/posthog.store';
+import { useRootStore } from '@/stores/root.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import {
 	ASK_AI_EXPERIMENT,
 	ASK_AI_MAX_PROMPT_LENGTH,
@@ -124,16 +132,12 @@ function stopLoading() {
 }
 
 async function onSubmit() {
-	const { getRestApiContext } = useRootStore();
+	const { restApiContext } = useRootStore();
 	const { activeNode } = useNDVStore();
 	const { showMessage } = useToast();
 	const { alert } = useMessage();
 	if (!activeNode) return;
 	const schemas = getSchemas();
-
-	useTelemetry().trackAskAI('ask.generationClicked', {
-		prompt: prompt.value,
-	});
 
 	if (props.hasChanges) {
 		const confirmModal = await alert(i18n.baseText('codeNodeEditor.askAi.areYouSureToReplace'), {
@@ -150,16 +154,23 @@ async function onSubmit() {
 
 	startLoading();
 
+	const rootStore = useRootStore();
+
 	try {
-		const version = useRootStore().versionCli;
+		const version = rootStore.versionCli;
 		const model =
 			usePostHog().getVariant(ASK_AI_EXPERIMENT.name) === ASK_AI_EXPERIMENT.gpt4
 				? 'gpt-4'
 				: 'gpt-3.5-turbo-16k';
 
-		const { code, usage } = await generateCodeForPrompt(getRestApiContext, {
+		const { code } = await generateCodeForPrompt(restApiContext, {
 			question: prompt.value,
-			context: { schema: schemas.parentNodesSchemas, inputSchema: schemas.inputSchema! },
+			context: {
+				schema: schemas.parentNodesSchemas,
+				inputSchema: schemas.inputSchema!,
+				ndvPushRef: useNDVStore().pushRef,
+				pushRef: rootStore.pushRef,
+			},
 			model,
 			n8nVersion: version,
 		});
@@ -170,6 +181,10 @@ async function onSubmit() {
 			type: 'success',
 			title: i18n.baseText('codeNodeEditor.askAi.generationCompleted'),
 		});
+		useTelemetry().trackAskAI('askAi.generationFinished', {
+			prompt: prompt.value,
+			code,
+		});
 	} catch (error) {
 		showMessage({
 			type: 'error',
@@ -177,6 +192,11 @@ async function onSubmit() {
 			message: getErrorMessageByStatusCode(error.httpStatusCode || error?.response.status),
 		});
 		stopLoading();
+		useTelemetry().trackAskAI('askAi.generationFinished', {
+			prompt: prompt.value,
+			code: '',
+			hasError: true,
+		});
 	}
 }
 function triggerLoadingChange() {
@@ -189,7 +209,7 @@ function triggerLoadingChange() {
 
 		// Loading phrase change
 		if (!lastPhraseChange || timestamp - lastPhraseChange >= loadingPhraseUpdateMs) {
-			loadingPhraseIndex.value = Math.floor(Math.random() * loadingPhrasesCount);
+			loadingPhraseIndex.value = randomInt(loadingPhrasesCount);
 			lastPhraseChange = timestamp;
 		}
 
@@ -232,8 +252,8 @@ onMounted(() => {
 				<span
 					v-show="prompt.length > 1"
 					:class="$style.counter"
-					v-text="`${prompt.length} / ${ASK_AI_MAX_PROMPT_LENGTH}`"
 					data-test-id="ask-ai-prompt-counter"
+					v-text="`${prompt.length} / ${ASK_AI_MAX_PROMPT_LENGTH}`"
 				/>
 				<a href="https://docs.n8n.io/code-examples/ai-code" target="_blank" :class="$style.help">
 					<n8n-icon icon="question-circle" color="text-light" size="large" />{{
@@ -243,29 +263,29 @@ onMounted(() => {
 			</div>
 			<N8nInput
 				v-model="prompt"
-				@input="onPromptInput"
 				:class="$style.input"
 				type="textarea"
 				:rows="6"
 				:maxlength="ASK_AI_MAX_PROMPT_LENGTH"
 				:placeholder="i18n.baseText('codeNodeEditor.askAi.placeholder')"
 				data-test-id="ask-ai-prompt-input"
+				@input="onPromptInput"
 			/>
 		</div>
 		<div :class="$style.controls">
-			<div :class="$style.loader" v-if="isLoading">
+			<div v-if="isLoading" :class="$style.loader">
 				<transition name="text-fade-in-out" mode="out-in">
-					<div v-text="loadingString" :key="loadingPhraseIndex" />
+					<div :key="loadingPhraseIndex" v-text="loadingString" />
 				</transition>
 				<n8n-circle-loader :radius="8" :progress="loaderProgress" :stroke-width="3" />
 			</div>
-			<n8n-tooltip :disabled="isSubmitEnabled" v-else>
+			<N8nTooltip v-else :disabled="isSubmitEnabled">
 				<div>
 					<N8nButton
 						:disabled="!isSubmitEnabled"
-						@click="onSubmit"
 						size="small"
 						data-test-id="ask-ai-cta"
+						@click="onSubmit"
 					>
 						{{ i18n.baseText('codeNodeEditor.askAi.generateCode') }}
 					</N8nButton>
@@ -273,18 +293,18 @@ onMounted(() => {
 				<template #content>
 					<span
 						v-if="!hasExecutionData"
-						v-text="i18n.baseText('codeNodeEditor.askAi.noInputData')"
 						data-test-id="ask-ai-cta-tooltip-no-input-data"
+						v-text="i18n.baseText('codeNodeEditor.askAi.noInputData')"
 					/>
 					<span
 						v-else-if="prompt.length === 0"
-						v-text="i18n.baseText('codeNodeEditor.askAi.noPrompt')"
 						data-test-id="ask-ai-cta-tooltip-no-prompt"
+						v-text="i18n.baseText('codeNodeEditor.askAi.noPrompt')"
 					/>
 					<span
 						v-else-if="isEachItemMode"
-						v-text="i18n.baseText('codeNodeEditor.askAi.onlyAllItemsMode')"
 						data-test-id="ask-ai-cta-tooltip-only-all-items-mode"
+						v-text="i18n.baseText('codeNodeEditor.askAi.onlyAllItemsMode')"
 					/>
 					<span
 						v-else-if="prompt.length < ASK_AI_MIN_PROMPT_LENGTH"
@@ -296,7 +316,7 @@ onMounted(() => {
 						"
 					/>
 				</template>
-			</n8n-tooltip>
+			</N8nTooltip>
 		</div>
 	</div>
 </template>

@@ -1,12 +1,12 @@
 <template>
-	<div :class="$style.dataDisplay">
-		<table :class="$style.table" v-if="tableData.columns && tableData.columns.length === 0">
+	<div :class="[$style.dataDisplay, { [$style.highlight]: highlight }]">
+		<table v-if="tableData.columns && tableData.columns.length === 0" :class="$style.table">
 			<tr>
 				<th :class="$style.emptyCell"></th>
 				<th :class="$style.tableRightMargin"></th>
 			</tr>
 			<tr
-				v-for="(row, index1) in tableData.data"
+				v-for="(_, index1) in tableData.data"
 				:key="index1"
 				:class="{ [$style.hoveringRow]: isHoveringRow(index1) }"
 			>
@@ -21,7 +21,7 @@
 				<td :class="$style.tableRightMargin"></td>
 			</tr>
 		</table>
-		<table :class="$style.table" v-else>
+		<table v-else :class="$style.table">
 			<thead>
 				<tr>
 					<th v-for="(column, i) in tableData.columns || []" :key="column">
@@ -32,12 +32,12 @@
 									{{ $locale.baseText('dataMapping.dragColumnToFieldHint') }}
 								</div>
 							</template>
-							<draggable
+							<Draggable
 								type="mapping"
 								:data="getExpression(column)"
 								:disabled="!mappingEnabled"
 								@dragstart="onDragStart"
-								@dragend="(column) => onDragEnd(column, 'column')"
+								@dragend="(column) => onDragEnd(column?.textContent ?? '', 'column')"
 							>
 								<template #preview="{ canDrop }">
 									<MappingPill :html="shorten(column, 16, 2)" :can-drop="canDrop" />
@@ -52,13 +52,16 @@
 											[$style.draggingHeader]: isDragging,
 										}"
 									>
-										<span>{{ column || '&nbsp;' }}</span>
+										<TextWithHighlights
+											:content="getValueToRender(column || '')"
+											:search="search"
+										/>
 										<div :class="$style.dragButton">
 											<font-awesome-icon icon="grip-vertical" />
 										</div>
 									</div>
 								</template>
-							</draggable>
+							</Draggable>
 						</n8n-tooltip>
 					</th>
 					<th v-if="columnLimitExceeded" :class="$style.header">
@@ -87,14 +90,14 @@
 					<th :class="$style.tableRightMargin"></th>
 				</tr>
 			</thead>
-			<draggable
+			<Draggable
+				ref="draggable"
 				tag="tbody"
 				type="mapping"
-				targetDataKey="mappable"
+				target-data-key="mappable"
 				:disabled="!mappingEnabled"
 				@dragstart="onCellDragStart"
 				@dragend="onCellDragEnd"
-				ref="draggable"
 			>
 				<template #preview="{ canDrop, el }">
 					<MappingPill
@@ -113,20 +116,19 @@
 						:key="index2"
 						:data-row="index1"
 						:data-col="index2"
+						:class="hasJsonInColumn(index2) ? $style.minColWidth : $style.limitColWidth"
 						@mouseenter="onMouseEnterCell"
 						@mouseleave="onMouseLeaveCell"
-						:class="hasJsonInColumn(index2) ? $style.minColWidth : $style.limitColWidth"
 					>
-						<span
+						<TextWithHighlights
 							v-if="isSimple(data)"
+							:content="getValueToRender(data)"
+							:search="search"
 							:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
-							>{{ getValueToRender(data) }}</span
-						>
-						<n8n-tree :nodeClass="$style.nodeClass" v-else :value="data">
+						/>
+						<n8n-tree v-else :node-class="$style.nodeClass" :value="data">
 							<template #label="{ label, path }">
 								<span
-									@mouseenter="() => onMouseEnterKey(path, index2)"
-									@mouseleave="onMouseLeaveKey"
 									:class="{
 										[$style.hoveringKey]: mappingEnabled && isHovering(path, index2),
 										[$style.draggingKey]: isDraggingKey(path, index2),
@@ -137,20 +139,24 @@
 									:data-name="getCellPathName(path, index2)"
 									:data-value="getCellExpression(path, index2)"
 									:data-depth="path.length"
+									@mouseenter="() => onMouseEnterKey(path, index2)"
+									@mouseleave="onMouseLeaveKey"
 									>{{ label || $locale.baseText('runData.unnamedField') }}</span
 								>
 							</template>
 							<template #value="{ value }">
-								<span :class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }">
-									{{ getValueToRender(value) }}
-								</span>
+								<TextWithHighlights
+									:content="getValueToRender(value)"
+									:search="search"
+									:class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }"
+								/>
 							</template>
 						</n8n-tree>
 					</td>
 					<td v-if="columnLimitExceeded"></td>
 					<td :class="$style.tableRightMargin"></td>
 				</tr>
-			</draggable>
+			</Draggable>
 		</table>
 	</div>
 </template>
@@ -160,36 +166,39 @@ import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import type { INodeUi, ITableData, NDVState } from '@/Interface';
-import { getPairedItemId } from '@/utils';
+import { shorten } from '@/utils/typesUtils';
+import { getPairedItemId } from '@/utils/pairedItemUtils';
 import type { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from './Draggable.vue';
-import { shorten } from '@/utils';
-import { externalHooks } from '@/mixins/externalHooks';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import MappingPill from './MappingPill.vue';
 import { getMappedExpression } from '@/utils/mappingUtils';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import TextWithHighlights from './TextWithHighlights.vue';
 
 const MAX_COLUMNS_LIMIT = 40;
 
 type DraggableRef = InstanceType<typeof Draggable>;
 
 export default defineComponent({
-	name: 'run-data-table',
-	mixins: [externalHooks],
-	components: { Draggable, MappingPill },
+	name: 'RunDataTable',
+	components: { Draggable, MappingPill, TextWithHighlights },
 	props: {
 		node: {
 			type: Object as PropType<INodeUi>,
+			required: true,
 		},
 		inputData: {
 			type: Array as PropType<INodeExecutionData[]>,
+			required: true,
 		},
 		mappingEnabled: {
 			type: Boolean,
 		},
 		distanceFromActive: {
 			type: Number,
+			required: true,
 		},
 		runIndex: {
 			type: Number,
@@ -202,10 +211,20 @@ export default defineComponent({
 		},
 		pageOffset: {
 			type: Number,
+			required: true,
 		},
 		hasDefaultHoverState: {
 			type: Boolean,
 		},
+		search: {
+			type: String,
+		},
+	},
+	setup() {
+		const externalHooks = useExternalHooks();
+		return {
+			externalHooks,
+		};
 	},
 	data() {
 		return {
@@ -222,7 +241,7 @@ export default defineComponent({
 	},
 	mounted() {
 		if (this.tableData && this.tableData.columns && this.$refs.draggable) {
-			const tbody = (this.$refs.draggable as DraggableRef).$refs.wrapper;
+			const tbody = (this.$refs.draggable as DraggableRef).$refs.wrapper as HTMLElement;
 			if (tbody) {
 				this.$emit('mounted', {
 					avgRowHeight: tbody.offsetHeight / this.tableData.data.length,
@@ -244,6 +263,9 @@ export default defineComponent({
 		focusedMappableInput(): string {
 			return this.ndvStore.focusedMappableInput;
 		},
+		highlight(): boolean {
+			return this.ndvStore.highlightDraggables;
+		},
 	},
 	methods: {
 		shorten,
@@ -262,7 +284,7 @@ export default defineComponent({
 				return true;
 			}
 			const itemNodeId = getPairedItemId(
-				this.node.name,
+				this.node?.name ?? '',
 				this.runIndex || 0,
 				this.outputIndex || 0,
 				itemIndex,
@@ -323,7 +345,7 @@ export default defineComponent({
 				path: [column],
 			});
 		},
-		getPathNameFromTarget(el: HTMLElement) {
+		getPathNameFromTarget(el?: HTMLElement) {
 			if (!el) {
 				return '';
 			}
@@ -361,12 +383,12 @@ export default defineComponent({
 				value === undefined
 			);
 		},
-		getValueToRender(value: unknown) {
+		getValueToRender(value: unknown): string {
 			if (value === '') {
 				return this.$locale.baseText('runData.emptyString');
 			}
 			if (typeof value === 'string') {
-				return value.replaceAll('\n', '\\n');
+				return value;
 			}
 			if (Array.isArray(value) && value.length === 0) {
 				return this.$locale.baseText('runData.emptyArray');
@@ -377,14 +399,17 @@ export default defineComponent({
 			if (value === null || value === undefined) {
 				return `[${value}]`;
 			}
-			return value;
+			if (value === true || value === false || typeof value === 'number') {
+				return value.toString();
+			}
+			return JSON.stringify(value);
 		},
 		onDragStart() {
 			this.draggedColumn = true;
 			this.ndvStore.resetMappingTelemetry();
 		},
 		onCellDragStart(el: HTMLElement) {
-			if (el && el.dataset.value) {
+			if (el?.dataset.value) {
 				this.draggingPath = el.dataset.value;
 			}
 
@@ -418,9 +443,11 @@ export default defineComponent({
 					...mappingTelemetry,
 				};
 
-				void this.$externalHooks().run('runDataTable.onDragEnd', telemetryPayload);
+				void this.externalHooks.run('runDataTable.onDragEnd', telemetryPayload);
 
-				this.$telemetry.track('User dragged data for mapping', telemetryPayload);
+				this.$telemetry.track('User dragged data for mapping', telemetryPayload, {
+					withPostHog: true,
+				});
 			}, 1000); // ensure dest data gets set if drop
 		},
 		isSimple(data: unknown): boolean {
@@ -561,6 +588,7 @@ export default defineComponent({
 		border-left: var(--border-base);
 		overflow-wrap: break-word;
 		white-space: pre-wrap;
+		vertical-align: top;
 	}
 
 	td:first-child,
@@ -624,7 +652,12 @@ export default defineComponent({
 	}
 }
 
+.highlight .draggableHeader {
+	color: var(--color-primary);
+}
+
 .draggingHeader {
+	color: var(--color-primary);
 	background-color: var(--color-primary-tint-2);
 }
 

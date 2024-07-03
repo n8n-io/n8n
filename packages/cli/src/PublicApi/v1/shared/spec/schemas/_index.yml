@@ -7,7 +7,7 @@ Execution:
 Node:
   $ref: './../../../handlers/workflows/spec/schemas/node.yml'
 Tag:
-  $ref: './../../../handlers/workflows/spec/schemas/tag.yml'
+  $ref: './../../../handlers/tags/spec/schemas/tag.yml'
 Workflow:
   $ref: './../../../handlers/workflows/spec/schemas/workflow.yml'
 WorkflowSettings:

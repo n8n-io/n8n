@@ -1,68 +1,28 @@
 import { Container } from 'typedi';
 import cookieParser from 'cookie-parser';
 import express from 'express';
-import { LoggerProxy } from 'n8n-workflow';
 import type superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
 
 import config from '@/config';
-import * as Db from '@/Db';
-import { ExternalHooks } from '@/ExternalHooks';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-import { workflowsController } from '@/workflows/workflows.controller';
 import { AUTH_COOKIE_NAME } from '@/constants';
-import { credentialsController } from '@/credentials/credentials.controller';
 import type { User } from '@db/entities/User';
-import { getLogger } from '@/Logger';
-import { loadPublicApiVersions } from '@/PublicApi/';
-import { issueJWT } from '@/auth/jwt';
-import { UserManagementMailer } from '@/UserManagement/email/UserManagementMailer';
-import { licenseController } from '@/license/license.controller';
-import { registerController } from '@/decorators';
-import {
-	AuthController,
-	LdapController,
-	MFAController,
-	MeController,
-	NodesController,
-	OwnerController,
-	PasswordResetController,
-	TagsController,
-	UsersController,
-} from '@/controllers';
-import { rawBodyReader, bodyParser, setupAuthMiddlewares } from '@/middlewares';
-
-import { InternalHooks } from '@/InternalHooks';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { ControllerRegistry } from '@/decorators';
+import { rawBodyReader, bodyParser } from '@/middlewares';
 import { PostHogClient } from '@/posthog';
-import { variablesController } from '@/environments/variables/variables.controller';
-import { LdapManager } from '@/Ldap/LdapManager.ee';
-import { handleLdapInit } from '@/Ldap/helpers';
 import { Push } from '@/push';
-import { setSamlLoginEnabled } from '@/sso/saml/samlHelpers';
-import { SamlController } from '@/sso/saml/routes/saml.controller.ee';
-import { EventBusController } from '@/eventbus/eventBus.controller';
 import { License } from '@/License';
-import { SourceControlController } from '@/environments/sourceControl/sourceControl.controller.ee';
+import { Logger } from '@/Logger';
+import { InternalHooks } from '@/InternalHooks';
+import { AuthService } from '@/auth/auth.service';
+import type { APIRequest } from '@/requests';
 
+import { mockInstance } from '../../../shared/mocking';
 import * as testDb from '../../shared/testDb';
-import { AUTHLESS_ENDPOINTS, PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
-import type { EndpointGroup, SetupProps, TestServer } from '../types';
-import { mockInstance } from './mocking';
-import { ExternalSecretsController } from '@/ExternalSecrets/ExternalSecrets.controller.ee';
-import { MfaService } from '@/Mfa/mfa.service';
-import { TOTPService } from '@/Mfa/totp.service';
-import { UserSettings } from 'n8n-core';
-import { MetricsService } from '@/services/metrics.service';
-import {
-	SettingsRepository,
-	SharedCredentialsRepository,
-	SharedWorkflowRepository,
-} from '@/databases/repositories';
-import { JwtService } from '@/services/jwt.service';
-import { RoleService } from '@/services/role.service';
-import { UserService } from '@/services/user.service';
+import { PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
+import type { SetupProps, TestServer } from '../types';
+import { LicenseMocker } from '../license';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -80,32 +40,16 @@ function prefix(pathSegment: string) {
 
 		url.pathname = pathSegment + url.pathname;
 		request.url = url.toString();
-		return request;
+		return await request;
 	};
 }
 
-/**
- * Classify endpoint groups into `routerEndpoints` (newest, using `express.Router`),
- * and `functionEndpoints` (legacy, namespaced inside a function).
- */
-const classifyEndpointGroups = (endpointGroups: EndpointGroup[]) => {
-	const routerEndpoints: EndpointGroup[] = [];
-	const functionEndpoints: EndpointGroup[] = [];
-
-	const ROUTER_GROUP = ['credentials', 'workflows', 'publicApi', 'license', 'variables'];
-
-	endpointGroups.forEach((group) =>
-		(ROUTER_GROUP.includes(group) ? routerEndpoints : functionEndpoints).push(group),
-	);
-
-	return [routerEndpoints, functionEndpoints];
-};
-
+const browserId = 'test-browser-id';
 function createAgent(app: express.Application, options?: { auth: boolean; user: User }) {
 	const agent = request.agent(app);
 	void agent.use(prefix(REST_PATH_SEGMENT));
 	if (options?.auth && options?.user) {
-		const { token } = issueJWT(options.user);
+		const token = Container.get(AuthService).issueJWT(options.user, browserId);
 		agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
 	}
 	return agent;
@@ -125,12 +69,22 @@ function publicApiAgent(
 
 export const setupTestServer = ({
 	endpointGroups,
-	applyAuth = true,
 	enabledFeatures,
+	quotas,
 }: SetupProps): TestServer => {
 	const app = express();
 	app.use(rawBodyReader);
 	app.use(cookieParser());
+	app.use((req: APIRequest, _, next) => {
+		req.browserId = browserId;
+		next();
+	});
+
+	// Mock all telemetry and logging
+	mockInstance(Logger);
+	mockInstance(InternalHooks);
+	mockInstance(PostHogClient);
+	mockInstance(Push);
 
 	const testServer: TestServer = {
 		app,
@@ -138,177 +92,161 @@ export const setupTestServer = ({
 		authAgentFor: (user: User) => createAgent(app, { auth: true, user }),
 		authlessAgent: createAgent(app),
 		publicApiAgentFor: (user) => publicApiAgent(app, { user }),
+		license: new LicenseMocker(),
 	};
 
+	// eslint-disable-next-line complexity
 	beforeAll(async () => {
 		await testDb.init();
-
-		const logger = getLogger();
-		LoggerProxy.init(logger);
-
-		// Mock all telemetry.
-		mockInstance(InternalHooks);
-		mockInstance(PostHogClient);
 
 		config.set('userManagement.jwtSecret', 'My JWT secret');
 		config.set('userManagement.isInstanceOwnerSetUp', true);
 
+		testServer.license.mock(Container.get(License));
 		if (enabledFeatures) {
-			Container.get(License).isFeatureEnabled = (feature) => enabledFeatures.includes(feature);
-		}
-
-		const enablePublicAPI = endpointGroups?.includes('publicApi');
-		if (applyAuth && !enablePublicAPI) {
-			setupAuthMiddlewares(app, AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT);
+			testServer.license.setDefaults({
+				features: enabledFeatures,
+				quotas,
+			});
 		}
 
 		if (!endpointGroups) return;
 
 		app.use(bodyParser);
 
-		const [routerEndpoints, functionEndpoints] = classifyEndpointGroups(endpointGroups);
-
-		if (routerEndpoints.length) {
-			const map: Record<string, express.Router | express.Router[] | any> = {
-				credentials: { controller: credentialsController, path: 'credentials' },
-				workflows: { controller: workflowsController, path: 'workflows' },
-				license: { controller: licenseController, path: 'license' },
-				variables: { controller: variablesController, path: 'variables' },
-			};
-
-			if (enablePublicAPI) {
-				const { apiRouters } = await loadPublicApiVersions(PUBLIC_API_REST_PATH_SEGMENT);
-				map.publicApi = apiRouters;
-			}
-
-			for (const group of routerEndpoints) {
-				if (group === 'publicApi') {
-					app.use(...(map[group] as express.Router[]));
-				} else {
-					app.use(`/${REST_PATH_SEGMENT}/${map[group].path}`, map[group].controller);
-				}
-			}
+		const enablePublicAPI = endpointGroups?.includes('publicApi');
+		if (enablePublicAPI) {
+			const { loadPublicApiVersions } = await import('@/PublicApi');
+			const { apiRouters } = await loadPublicApiVersions(PUBLIC_API_REST_PATH_SEGMENT);
+			app.use(...apiRouters);
 		}
 
-		if (functionEndpoints.length) {
-			const encryptionKey = await UserSettings.getEncryptionKey();
-			const repositories = Db.collections;
-			const externalHooks = Container.get(ExternalHooks);
-			const internalHooks = Container.get(InternalHooks);
-			const mailer = Container.get(UserManagementMailer);
-			const mfaService = new MfaService(repositories.User, new TOTPService(), encryptionKey);
-			const userService = Container.get(UserService);
-
-			for (const group of functionEndpoints) {
+		if (endpointGroups.length) {
+			for (const group of endpointGroups) {
 				switch (group) {
+					case 'credentials':
+						await import('@/credentials/credentials.controller');
+						break;
+
+					case 'workflows':
+						await import('@/workflows/workflows.controller');
+						break;
+
+					case 'executions':
+						await import('@/executions/executions.controller');
+						break;
+
+					case 'variables':
+						await import('@/environments/variables/variables.controller.ee');
+						break;
+
+					case 'license':
+						await import('@/license/license.controller');
+						break;
+
 					case 'metrics':
+						const { MetricsService } = await import('@/services/metrics.service');
 						await Container.get(MetricsService).configureMetrics(app);
 						break;
+
 					case 'eventBus':
-						registerController(app, config, new EventBusController());
+						await import('@/eventbus/eventBus.controller');
 						break;
+
 					case 'auth':
-						registerController(
-							app,
-							config,
-							new AuthController(config, logger, internalHooks, mfaService, userService),
-						);
+						await import('@/controllers/auth.controller');
 						break;
+
 					case 'mfa':
-						registerController(app, config, new MFAController(mfaService));
+						await import('@/controllers/mfa.controller');
+						break;
+
 					case 'ldap':
-						Container.get(License).isLdapEnabled = () => true;
-						await handleLdapInit();
-						const { service, sync } = LdapManager.getInstance();
-						registerController(app, config, new LdapController(service, sync, internalHooks));
+						const { LdapService } = await import('@/Ldap/ldap.service');
+						await import('@/Ldap/ldap.controller');
+						testServer.license.enable('feat:ldap');
+						await Container.get(LdapService).init();
 						break;
+
 					case 'saml':
+						const { setSamlLoginEnabled } = await import('@/sso/saml/samlHelpers');
+						await import('@/sso/saml/routes/saml.controller.ee');
 						await setSamlLoginEnabled(true);
-						registerController(app, config, Container.get(SamlController));
 						break;
+
 					case 'sourceControl':
-						registerController(app, config, Container.get(SourceControlController));
+						await import('@/environments/sourceControl/sourceControl.controller.ee');
 						break;
-					case 'nodes':
-						registerController(
-							app,
-							config,
-							new NodesController(
-								config,
-								Container.get(LoadNodesAndCredentials),
-								Container.get(Push),
-								internalHooks,
-							),
-						);
+
+					case 'community-packages':
+						await import('@/controllers/communityPackages.controller');
+						break;
+
 					case 'me':
-						registerController(
-							app,
-							config,
-							new MeController(logger, externalHooks, internalHooks, userService),
-						);
+						await import('@/controllers/me.controller');
 						break;
+
 					case 'passwordReset':
-						registerController(
-							app,
-							config,
-							new PasswordResetController(
-								config,
-								logger,
-								externalHooks,
-								internalHooks,
-								mailer,
-								userService,
-								Container.get(JwtService),
-								mfaService,
-							),
-						);
+						await import('@/controllers/passwordReset.controller');
 						break;
+
 					case 'owner':
-						registerController(
-							app,
-							config,
-							new OwnerController(
-								config,
-								logger,
-								internalHooks,
-								Container.get(SettingsRepository),
-								userService,
-							),
-						);
+						await import('@/controllers/owner.controller');
 						break;
+
 					case 'users':
-						registerController(
-							app,
-							config,
-							new UsersController(
-								config,
-								logger,
-								externalHooks,
-								internalHooks,
-								Container.get(SharedCredentialsRepository),
-								Container.get(SharedWorkflowRepository),
-								Container.get(ActiveWorkflowRunner),
-								mailer,
-								Container.get(JwtService),
-								Container.get(RoleService),
-								userService,
-							),
-						);
+						await import('@/controllers/users.controller');
 						break;
+
+					case 'invitations':
+						await import('@/controllers/invitation.controller');
+						break;
+
 					case 'tags':
-						registerController(app, config, Container.get(TagsController));
+						await import('@/controllers/tags.controller');
 						break;
+
 					case 'externalSecrets':
-						registerController(app, config, Container.get(ExternalSecretsController));
+						await import('@/ExternalSecrets/ExternalSecrets.controller.ee');
+						break;
+
+					case 'workflowHistory':
+						await import('@/workflows/workflowHistory/workflowHistory.controller.ee');
+						break;
+
+					case 'binaryData':
+						await import('@/controllers/binaryData.controller');
+						break;
+
+					case 'debug':
+						await import('@/controllers/debug.controller');
+						break;
+
+					case 'project':
+						await import('@/controllers/project.controller');
+						break;
+
+					case 'role':
+						await import('@/controllers/role.controller');
+						break;
+
+					case 'dynamic-node-parameters':
+						await import('@/controllers/dynamicNodeParameters.controller');
 						break;
 				}
 			}
+
+			Container.get(ControllerRegistry).activate(app);
 		}
 	});
 
 	afterAll(async () => {
 		await testDb.terminate();
 		testServer.httpServer.close();
+	});
+
+	beforeEach(() => {
+		testServer.license.reset();
 	});
 
 	return testServer;

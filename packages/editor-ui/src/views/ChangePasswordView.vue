@@ -2,7 +2,7 @@
 	<AuthView
 		v-if="config"
 		:form="config"
-		:formLoading="loading"
+		:form-loading="loading"
 		@submit="onSubmit"
 		@update="onInput"
 	/>
@@ -10,7 +10,7 @@
 
 <script lang="ts">
 import AuthView from '@/views/AuthView.vue';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 
 import { defineComponent } from 'vue';
 import type { IFormBoxConfig } from '@/Interface';
@@ -103,10 +103,8 @@ export default defineComponent({
 
 			await this.usersStore.validatePasswordToken({ token });
 		} catch (e) {
-			this.showMessage({
-				title: this.$locale.baseText('auth.changePassword.tokenValidationError'),
-				type: 'error',
-			});
+			this.showError(e, this.$locale.baseText('auth.changePassword.tokenValidationError'));
+			void this.$router.replace({ name: VIEWS.SIGNIN });
 		}
 	},
 	methods: {

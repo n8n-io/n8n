@@ -1,12 +1,12 @@
 <template>
 	<div :class="classes" role="alert">
 		<div :class="$style.messageSection">
-			<div :class="$style.icon" v-if="!iconless">
-				<n8n-icon :icon="getIcon" :size="getIconSize" />
+			<div v-if="!iconless" :class="$style.icon">
+				<N8nIcon :icon="getIcon" :size="getIconSize" />
 			</div>
-			<n8n-text size="small">
+			<N8nText size="small">
 				<slot />
-			</n8n-text>
+			</N8nText>
 			&nbsp;
 			<slot name="actions" />
 		</div>
@@ -15,72 +15,58 @@
 	</div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script lang="ts" setup>
+import { computed, useCssModule } from 'vue';
 import N8nText from '../N8nText';
 import N8nIcon from '../N8nIcon';
+import type { IconSize } from 'n8n-design-system/types/icon';
 
-const CALLOUT_DEFAULT_ICONS: { [key: string]: string } = {
+const THEMES = ['info', 'success', 'secondary', 'warning', 'danger', 'custom'] as const;
+export type CalloutTheme = (typeof THEMES)[number];
+
+const CALLOUT_DEFAULT_ICONS: Record<string, string> = {
 	info: 'info-circle',
 	success: 'check-circle',
 	warning: 'exclamation-triangle',
 	danger: 'exclamation-triangle',
 };
 
-export default defineComponent({
-	name: 'n8n-callout',
-	components: {
-		N8nText,
-		N8nIcon,
-	},
-	props: {
-		theme: {
-			type: String,
-			required: true,
-			validator: (value: string): boolean =>
-				['info', 'success', 'secondary', 'warning', 'danger', 'custom'].includes(value),
-		},
-		icon: {
-			type: String,
-		},
-		iconSize: {
-			type: String,
-			default: 'medium',
-		},
-		iconless: {
-			type: Boolean,
-		},
-		slim: {
-			type: Boolean,
-		},
-		roundCorners: {
-			type: Boolean,
-			default: true,
-		},
-	},
-	computed: {
-		classes(): string[] {
-			return [
-				'n8n-callout',
-				this.$style.callout,
-				this.$style[this.theme],
-				this.slim ? this.$style.slim : '',
-				this.roundCorners ? this.$style.round : '',
-			];
-		},
-		getIcon(): string {
-			return this.icon ?? CALLOUT_DEFAULT_ICONS?.[this.theme] ?? CALLOUT_DEFAULT_ICONS.info;
-		},
-		getIconSize(): string {
-			if (this.iconSize) {
-				return this.iconSize;
-			}
-			if (this.theme === 'secondary') {
-				return 'medium';
-			}
-			return 'large';
-		},
-	},
+interface CalloutProps {
+	theme: CalloutTheme;
+	icon?: string;
+	iconSize?: IconSize;
+	iconless?: boolean;
+	slim?: boolean;
+	roundCorners?: boolean;
+}
+
+defineOptions({ name: 'N8nCallout' });
+const props = withDefaults(defineProps<CalloutProps>(), {
+	iconSize: 'medium',
+	roundCorners: true,
+});
+
+const $style = useCssModule();
+const classes = computed(() => [
+	'n8n-callout',
+	$style.callout,
+	$style[props.theme],
+	props.slim ? $style.slim : '',
+	props.roundCorners ? $style.round : '',
+]);
+
+const getIcon = computed(
+	() => props.icon ?? CALLOUT_DEFAULT_ICONS?.[props.theme] ?? CALLOUT_DEFAULT_ICONS.info,
+);
+
+const getIconSize = computed<IconSize>(() => {
+	if (props.iconSize) {
+		return props.iconSize;
+	}
+	if (props.theme === 'secondary') {
+		return 'medium';
+	}
+	return 'large';
 });
 </script>
 
@@ -93,6 +79,9 @@ export default defineComponent({
 	border: var(--border-width-base) var(--border-style-base);
 	align-items: center;
 	line-height: var(--font-line-height-loose);
+	border-color: var(--color-callout-info-border);
+	background-color: var(--color-callout-info-background);
+	color: var(--color-callout-info-font);
 
 	&.slim {
 		line-height: var(--font-line-height-loose);
@@ -111,27 +100,43 @@ export default defineComponent({
 
 .info,
 .custom {
-	border-color: var(--color-foreground-base);
-	background-color: var(--color-foreground-xlight);
-	color: var(--color-info);
-}
+	border-color: var(--color-callout-info-border);
+	background-color: var(--color-callout-info-background);
+	color: var(--color-callout-info-font);
 
-.warning {
-	border-color: var(--color-warning-tint-1);
-	background-color: var(--color-warning-tint-2);
-	color: var(--color-warning);
+	.icon {
+		color: var(--color-callout-info-icon);
+	}
 }
 
 .success {
-	border-color: var(--color-success-tint-1);
-	background-color: var(--color-success-tint-2);
-	color: var(--color-success);
+	border-color: var(--color-callout-success-border);
+	background-color: var(--color-callout-success-background);
+	color: var(--color-callout-success-font);
+
+	.icon {
+		color: var(--color-callout-success-icon);
+	}
+}
+
+.warning {
+	border-color: var(--color-callout-warning-border);
+	background-color: var(--color-callout-warning-background);
+	color: var(--color-callout-warning-font);
+
+	.icon {
+		color: var(--color-callout-warning-icon);
+	}
 }
 
 .danger {
-	border-color: var(--color-danger-tint-1);
-	background-color: var(--color-danger-tint-2);
-	color: var(--color-danger);
+	border-color: var(--color-callout-danger-border);
+	background-color: var(--color-callout-danger-background);
+	color: var(--color-callout-danger-font);
+
+	.icon {
+		color: var(--color-callout-danger-icon);
+	}
 }
 
 .icon {
@@ -142,8 +147,12 @@ export default defineComponent({
 .secondary {
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
-	color: var(--color-secondary);
-	background-color: var(--color-secondary-tint-3);
-	border-color: var(--color-secondary-tint-1);
+	border-color: var(--color-callout-secondary-border);
+	background-color: var(--color-callout-secondary-background);
+	color: var(--color-callout-secondary-font);
+
+	.icon {
+		color: var(--color-callout-secondary-icon);
+	}
 }
 </style>

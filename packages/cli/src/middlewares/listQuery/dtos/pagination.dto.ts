@@ -1,13 +1,14 @@
 import { isIntegerString } from '@/utils';
+import { ApplicationError } from 'n8n-workflow';
 
 export class Pagination {
 	static fromString(rawTake: string, rawSkip: string) {
 		if (!isIntegerString(rawTake)) {
-			throw new Error('Parameter take is not an integer string');
+			throw new ApplicationError('Parameter take is not an integer string');
 		}
 
 		if (!isIntegerString(rawSkip)) {
-			throw new Error('Parameter skip is not an integer string');
+			throw new ApplicationError('Parameter skip is not an integer string');
 		}
 
 		const [take, skip] = [rawTake, rawSkip].map((o) => parseInt(o, 10));

@@ -5,12 +5,7 @@ import type { IDataObject } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import Container, { Service } from 'typedi';
 import { ExternalSecretsManager } from './ExternalSecretsManager.ee';
-
-export class ProviderNotFoundError extends Error {
-	constructor(public providerName: string) {
-		super(undefined);
-	}
-}
+import { ExternalSecretsProviderNotFoundError } from '@/errors/external-secrets-provider-not-found.error';
 
 @Service()
 export class ExternalSecretsService {
@@ -18,7 +13,7 @@ export class ExternalSecretsService {
 		const providerAndSettings =
 			Container.get(ExternalSecretsManager).getProviderWithSettings(providerName);
 		if (!providerAndSettings) {
-			throw new ProviderNotFoundError(providerName);
+			throw new ExternalSecretsProviderNotFoundError(providerName);
 		}
 		const { provider, settings } = providerAndSettings;
 		return {
@@ -76,7 +71,6 @@ export class ExternalSecretsService {
 		return copiedData;
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	private unredactRestoreValues(unmerged: any, replacement: any) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		for (const [key, value] of Object.entries(unmerged)) {
@@ -111,7 +105,7 @@ export class ExternalSecretsService {
 		const providerAndSettings =
 			Container.get(ExternalSecretsManager).getProviderWithSettings(providerName);
 		if (!providerAndSettings) {
-			throw new ProviderNotFoundError(providerName);
+			throw new ExternalSecretsProviderNotFoundError(providerName);
 		}
 		const { settings } = providerAndSettings;
 		const newData = this.unredact(data, settings.settings);
@@ -122,7 +116,7 @@ export class ExternalSecretsService {
 		const providerAndSettings =
 			Container.get(ExternalSecretsManager).getProviderWithSettings(providerName);
 		if (!providerAndSettings) {
-			throw new ProviderNotFoundError(providerName);
+			throw new ExternalSecretsProviderNotFoundError(providerName);
 		}
 		await Container.get(ExternalSecretsManager).setProviderConnected(providerName, connected);
 		return this.getProvider(providerName);
@@ -136,19 +130,19 @@ export class ExternalSecretsService {
 		const providerAndSettings =
 			Container.get(ExternalSecretsManager).getProviderWithSettings(providerName);
 		if (!providerAndSettings) {
-			throw new ProviderNotFoundError(providerName);
+			throw new ExternalSecretsProviderNotFoundError(providerName);
 		}
 		const { settings } = providerAndSettings;
 		const newData = this.unredact(data, settings.settings);
-		return Container.get(ExternalSecretsManager).testProviderSettings(providerName, newData);
+		return await Container.get(ExternalSecretsManager).testProviderSettings(providerName, newData);
 	}
 
 	async updateProvider(providerName: string) {
 		const providerAndSettings =
 			Container.get(ExternalSecretsManager).getProviderWithSettings(providerName);
 		if (!providerAndSettings) {
-			throw new ProviderNotFoundError(providerName);
+			throw new ExternalSecretsProviderNotFoundError(providerName);
 		}
-		return Container.get(ExternalSecretsManager).updateProvider(providerName);
+		return await Container.get(ExternalSecretsManager).updateProvider(providerName);
 	}
 }

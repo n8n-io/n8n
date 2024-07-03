@@ -1,3 +1,99 @@
+<script setup lang="ts">
+import { computed, onMounted, reactive, ref, watch } from 'vue';
+import N8nFormInput from '../N8nFormInput';
+import type { IFormInput } from '../../types';
+import ResizeObserver from '../ResizeObserver';
+import type { EventBus } from '../../utils';
+import { createEventBus } from '../../utils';
+
+export type FormInputsProps = {
+	inputs?: IFormInput[];
+	eventBus?: EventBus;
+	columnView?: boolean;
+	verticalSpacing?: '' | 'xs' | 's' | 'm' | 'l' | 'xl';
+	teleported?: boolean;
+	tagSize?: 'small' | 'medium';
+};
+
+type Value = string | number | boolean | null | undefined;
+
+const props = withDefaults(defineProps<FormInputsProps>(), {
+	inputs: () => [],
+	eventBus: createEventBus,
+	columnView: false,
+	verticalSpacing: '',
+	teleported: true,
+	tagSize: 'small',
+});
+
+const emit = defineEmits<{
+	(name: 'update', _: { name: string; value: Value }): boolean;
+	(name: 'update:modelValue', value: Record<string, Value>): boolean;
+	(name: 'submit', value: Record<string, Value>): boolean;
+	(name: 'ready', value: boolean): boolean;
+}>();
+
+const showValidationWarnings = ref(false);
+const values = reactive<Record<string, Value>>({});
+const validity = ref<Record<string, boolean>>({});
+
+const filteredInputs = computed(() => {
+	return props.inputs.filter((input) =>
+		typeof input.shouldDisplay === 'function' ? input.shouldDisplay(values) : true,
+	);
+});
+
+const isReadyToSubmit = computed(() => {
+	return Object.values(validity.value).every((valid) => !!valid);
+});
+
+watch(isReadyToSubmit, (ready) => {
+	emit('ready', ready);
+});
+
+function onUpdateModelValue(name: string, value: Value) {
+	values[name] = value;
+	emit('update', { name, value });
+	emit('update:modelValue', values);
+}
+
+function onValidate(name: string, isValid: boolean) {
+	validity.value = {
+		...validity.value,
+		[name]: isValid,
+	};
+}
+
+function onSubmit() {
+	showValidationWarnings.value = true;
+
+	if (!isReadyToSubmit.value) {
+		return;
+	}
+
+	const toSubmit = filteredInputs.value.reduce<Record<string, Value>>((valuesToSubmit, input) => {
+		if (values[input.name]) {
+			valuesToSubmit[input.name] = values[input.name];
+		}
+		return valuesToSubmit;
+	}, {});
+
+	emit('submit', toSubmit);
+}
+
+onMounted(() => {
+	for (const input of props.inputs) {
+		if ('initialValue' in input) {
+			values[input.name] = input.initialValue;
+		}
+	}
+
+	if (props.eventBus) {
+		props.eventBus.on('submit', onSubmit);
+	}
+});
+</script>
+
 <template>
 	<ResizeObserver :breakpoints="[{ bp: 'md', width: 500 }]">
 		<template #default="{ bp }">
@@ -8,8 +104,8 @@
 					:class="{ [`mt-${verticalSpacing}`]: verticalSpacing && index > 0 }"
 				>
 					<n8n-text
-						color="text-base"
 						v-if="input.properties.type === 'info'"
+						color="text-base"
 						tag="div"
 						:size="input.properties.labelSize"
 						:align="input.properties.labelAlignment"
@@ -17,18 +113,18 @@
 					>
 						{{ input.properties.label }}
 					</n8n-text>
-					<n8n-form-input
+					<N8nFormInput
 						v-else
 						v-bind="input.properties"
 						:name="input.name"
 						:label="input.properties.label || ''"
-						:modelValue="values[input.name]"
+						:model-value="values[input.name]"
 						:data-test-id="input.name"
-						:showValidationWarnings="showValidationWarnings"
+						:show-validation-warnings="showValidationWarnings"
 						:teleported="teleported"
-						:tagSize="tagSize"
-						@update:modelValue="(value) => onUpdateModelValue(input.name, value)"
-						@validate="(value) => onValidate(input.name, value)"
+						:tag-size="tagSize"
+						@update:model-value="(value: Value) => onUpdateModelValue(input.name, value)"
+						@validate="(value: boolean) => onValidate(input.name, value)"
 						@enter="onSubmit"
 					/>
 				</div>
@@ -36,122 +132,6 @@
 		</template>
 	</ResizeObserver>
 </template>
-
-<script lang="ts">
-import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
-import N8nFormInput from '../N8nFormInput';
-import type { IFormInput } from '../../types';
-import ResizeObserver from '../ResizeObserver';
-import type { EventBus } from '../../utils';
-import { createEventBus } from '../../utils';
-
-export default defineComponent({
-	name: 'n8n-form-inputs',
-	components: {
-		N8nFormInput,
-		ResizeObserver,
-	},
-	props: {
-		inputs: {
-			type: Array as PropType<IFormInput[]>,
-			default: (): IFormInput[] => [],
-		},
-		eventBus: {
-			type: Object as PropType<EventBus>,
-			default: (): EventBus => createEventBus(),
-		},
-		columnView: {
-			type: Boolean,
-			default: false,
-		},
-		verticalSpacing: {
-			type: String,
-			default: '',
-			validator: (value: string): boolean => ['', 'xs', 's', 'm', 'm', 'l', 'xl'].includes(value),
-		},
-		teleported: {
-			type: Boolean,
-			default: true,
-		},
-		tagSize: {
-			type: String,
-			default: 'small',
-			validator: (value: string): boolean => ['small', 'medium'].includes(value),
-		},
-	},
-	data() {
-		return {
-			showValidationWarnings: false,
-			values: {} as { [key: string]: unknown },
-			validity: {} as { [key: string]: boolean },
-		};
-	},
-	mounted() {
-		this.inputs.forEach((input) => {
-			if (input.hasOwnProperty('initialValue')) {
-				this.values = {
-					...this.values,
-					[input.name]: input.initialValue,
-				};
-			}
-		});
-
-		if (this.eventBus) {
-			this.eventBus.on('submit', () => this.onSubmit());
-		}
-	},
-	computed: {
-		filteredInputs(): IFormInput[] {
-			return this.inputs.filter((input) =>
-				typeof input.shouldDisplay === 'function' ? input.shouldDisplay(this.values) : true,
-			);
-		},
-		isReadyToSubmit(): boolean {
-			for (const key in this.validity) {
-				if (!this.validity[key]) {
-					return false;
-				}
-			}
-
-			return true;
-		},
-	},
-	methods: {
-		onUpdateModelValue(name: string, value: unknown) {
-			this.values = {
-				...this.values,
-				[name]: value,
-			};
-			this.$emit('update', { name, value });
-		},
-		onValidate(name: string, valid: boolean) {
-			this.validity = {
-				...this.validity,
-				[name]: valid,
-			};
-		},
-		onSubmit() {
-			this.showValidationWarnings = true;
-
-			if (this.isReadyToSubmit) {
-				const toSubmit = this.filteredInputs.reduce<{ [key: string]: unknown }>((accu, input) => {
-					if (this.values[input.name]) {
-						accu[input.name] = this.values[input.name];
-					}
-					return accu;
-				}, {});
-				this.$emit('submit', toSubmit);
-			}
-		},
-	},
-	watch: {
-		isReadyToSubmit(ready: boolean) {
-			this.$emit('ready', ready);
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .grid {

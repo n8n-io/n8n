@@ -1,7 +1,8 @@
 import { BasePage } from './base';
 
 export class WorkflowsPage extends BasePage {
-	url = '/workflows';
+	url = '/home/workflows';
+
 	getters = {
 		newWorkflowButtonCard: () => cy.getByTestId('new-workflow-card'),
 		newWorkflowTemplateCard: () => cy.getByTestId('new-workflow-template-card'),
@@ -23,6 +24,16 @@ export class WorkflowsPage extends BasePage {
 			this.getters.workflowCard(workflowName).findChildByTestId('workflow-card-actions'),
 		workflowDeleteButton: () =>
 			cy.getByTestId('action-toggle-dropdown').filter(':visible').contains('Delete'),
+		workflowMoveButton: () =>
+			cy.getByTestId('action-toggle-dropdown').filter(':visible').contains('Move'),
+		workflowFilterButton: () => cy.getByTestId('resources-list-filters-trigger').filter(':visible'),
+		workflowTagsDropdown: () => cy.getByTestId('tags-dropdown'),
+		workflowTagItem: (tag: string) => cy.getByTestId('tag').contains(tag),
+		workflowStatusDropdown: () => cy.getByTestId('status-dropdown'),
+		workflowStatusItem: (status: string) => cy.getByTestId('status').contains(status),
+		workflowOwnershipDropdown: () => cy.getByTestId('user-select-trigger'),
+		workflowOwner: (email: string) => cy.getByTestId('user-email').contains(email),
+		workflowResetFilters: () => cy.getByTestId('workflows-filter-reset'),
 		// Not yet implemented
 		// myWorkflows: () => cy.getByTestId('my-workflows'),
 		// allWorkflows: () => cy.getByTestId('all-workflows'),

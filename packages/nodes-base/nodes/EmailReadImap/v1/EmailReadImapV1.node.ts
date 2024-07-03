@@ -16,8 +16,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import type { ImapSimple, ImapSimpleOptions, Message } from 'imap-simple';
-import { connect as imapConnect, getParts } from 'imap-simple';
+import type { ImapSimple, ImapSimpleOptions, Message } from '@n8n/imap';
+import { connect as imapConnect, getParts } from '@n8n/imap';
 import type { Source as ParserSource } from 'mailparser';
 import { simpleParser } from 'mailparser';
 
@@ -255,12 +255,9 @@ export class EmailReadImapV1 implements INodeType {
 					if (!isEmpty(tlsOptions)) {
 						config.imap.tlsOptions = tlsOptions;
 					}
-					const conn = imapConnect(config).then(async (entry) => {
-						return entry;
-					});
-					(await conn).getBoxes((_err, _boxes) => {});
+					const connection = await imapConnect(config);
+					await connection.getBoxes();
 				} catch (error) {
-					console.log(error);
 					return {
 						status: 'Error',
 						message: error.message,
@@ -288,7 +285,7 @@ export class EmailReadImapV1 implements INodeType {
 
 		// Returns the email text
 
-		const getText = async (parts: any[], message: Message, subtype: string) => {
+		const getText = async (parts: any[], message: Message, subtype: string): Promise<string> => {
 			if (!message.attributes.struct) {
 				return '';
 			}
@@ -299,12 +296,14 @@ export class EmailReadImapV1 implements INodeType {
 				);
 			});
 
-			if (textParts.length === 0) {
+			const part = textParts[0];
+			if (!part) {
 				return '';
 			}
 
 			try {
-				return await connection.getPartData(message, textParts[0]);
+				const partData = await connection.getPartData(message, part);
+				return partData.toString();
 			} catch {
 				return '';
 			}
@@ -332,8 +331,8 @@ export class EmailReadImapV1 implements INodeType {
 					.getPartData(message, attachmentPart)
 					.then(async (partData) => {
 						// Return it in the format n8n expects
-						return this.helpers.prepareBinaryData(
-							partData as Buffer,
+						return await this.helpers.prepareBinaryData(
+							partData.buffer,
 							attachmentPart.disposition.params.filename as string,
 						);
 					});
@@ -341,7 +340,7 @@ export class EmailReadImapV1 implements INodeType {
 				attachmentPromises.push(attachmentPromise);
 			}
 
-			return Promise.all(attachmentPromises);
+			return await Promise.all(attachmentPromises);
 		};
 
 		// Returns all the new unseen messages
@@ -370,7 +369,7 @@ export class EmailReadImapV1 implements INodeType {
 			const results = await imapConnection.search(searchCriteria, fetchOptions);
 
 			const newEmails: INodeExecutionData[] = [];
-			let newEmail: INodeExecutionData, messageHeader, messageBody;
+			let newEmail: INodeExecutionData;
 			let attachments: IBinaryData[];
 			let propertyName: string;
 
@@ -442,11 +441,9 @@ export class EmailReadImapV1 implements INodeType {
 						},
 					};
 
-					messageHeader = message.parts.filter((part) => {
-						return part.which === 'HEADER';
-					});
+					const messageHeader = message.parts.filter((part) => part.which === 'HEADER');
 
-					messageBody = messageHeader[0].body;
+					const messageBody = messageHeader[0].body as Record<string, string[]>;
 					for (propertyName of Object.keys(messageBody as IDataObject)) {
 						if (messageBody[propertyName].length) {
 							if (topLevelProperties.includes(propertyName)) {
@@ -532,7 +529,7 @@ export class EmailReadImapV1 implements INodeType {
 					tls: credentials.secure as boolean,
 					authTimeout: 20000,
 				},
-				onmail: async () => {
+				onMail: async () => {
 					if (connection) {
 						if (staticData.lastMessageUid !== undefined) {
 							searchCriteria.push(['UID', `${staticData.lastMessageUid as number}:*`]);
@@ -588,7 +585,7 @@ export class EmailReadImapV1 implements INodeType {
 
 			// Connect to the IMAP server and open the mailbox
 			// that we get informed whenever a new email arrives
-			return imapConnect(config).then(async (conn) => {
+			return await imapConnect(config).then(async (conn) => {
 				conn.on('error', async (error) => {
 					const errorCode = error.code.toUpperCase();
 					if (['ECONNRESET', 'EPIPE'].includes(errorCode as string)) {

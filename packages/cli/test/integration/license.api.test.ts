@@ -1,10 +1,14 @@
-import type { SuperAgentTest } from 'supertest';
+import nock from 'nock';
 import config from '@/config';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import type { User } from '@db/entities/User';
 import type { ILicensePostResponse, ILicenseReadResponse } from '@/Interfaces';
 import { License } from '@/License';
+
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
+import { createUserShell } from './shared/db/users';
+import type { SuperAgentTest } from './shared/types';
 
 const MOCK_SERVER_URL = 'https://server.com/v1';
 const MOCK_RENEW_OFFSET = 259200;
@@ -17,10 +21,8 @@ let authMemberAgent: SuperAgentTest;
 const testServer = utils.setupTestServer({ endpointGroups: ['license'] });
 
 beforeAll(async () => {
-	const globalOwnerRole = await testDb.getGlobalOwnerRole();
-	const globalMemberRole = await testDb.getGlobalMemberRole();
-	owner = await testDb.createUserShell(globalOwnerRole);
-	member = await testDb.createUserShell(globalMemberRole);
+	owner = await createUserShell('global:owner');
+	member = await createUserShell('global:member');
 
 	authOwnerAgent = testServer.authAgentFor(owner);
 	authMemberAgent = testServer.authAgentFor(member);
@@ -46,6 +48,20 @@ describe('GET /license', () => {
 	});
 });
 
+describe('POST /license/enterprise/request_trial', () => {
+	nock('https://enterprise.n8n.io').post('/enterprise-trial').reply(200);
+
+	test('should work for instance owner', async () => {
+		await authOwnerAgent.post('/license/enterprise/request_trial').expect(200);
+	});
+
+	test('does not work for regular users', async () => {
+		await authMemberAgent
+			.post('/license/enterprise/request_trial')
+			.expect(403, { status: 'error', message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE });
+	});
+});
+
 describe('POST /license/activate', () => {
 	test('should work for instance owner', async () => {
 		await authOwnerAgent
@@ -58,18 +74,18 @@ describe('POST /license/activate', () => {
 		await authMemberAgent
 			.post('/license/activate')
 			.send({ activationKey: 'abcde' })
-			.expect(403, { code: 403, message: NON_OWNER_ACTIVATE_RENEW_MESSAGE });
+			.expect(403, { status: 'error', message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE });
 	});
 
 	test('errors out properly', async () => {
 		License.prototype.activate = jest.fn().mockImplementation(() => {
-			throw new Error(ACTIVATION_FAILED_MESSAGE);
+			throw new Error('some fake error');
 		});
 
 		await authOwnerAgent
 			.post('/license/activate')
 			.send({ activationKey: 'abcde' })
-			.expect(400, { code: 400, message: ACTIVATION_FAILED_MESSAGE });
+			.expect(400, { code: 400, message: `${ACTIVATION_FAILED_MESSAGE}: some fake error` });
 	});
 });
 
@@ -82,17 +98,17 @@ describe('POST /license/renew', () => {
 	test('does not work for regular users', async () => {
 		await authMemberAgent
 			.post('/license/renew')
-			.expect(403, { code: 403, message: NON_OWNER_ACTIVATE_RENEW_MESSAGE });
+			.expect(403, { status: 'error', message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE });
 	});
 
 	test('errors out properly', async () => {
 		License.prototype.renew = jest.fn().mockImplementation(() => {
-			throw new Error(RENEW_ERROR_MESSAGE);
+			throw new Error(GENERIC_ERROR_MESSAGE);
 		});
 
 		await authOwnerAgent
 			.post('/license/renew')
-			.expect(400, { code: 400, message: RENEW_ERROR_MESSAGE });
+			.expect(400, { code: 400, message: `Failed to renew license: ${GENERIC_ERROR_MESSAGE}` });
 	});
 });
 
@@ -129,6 +145,5 @@ const DEFAULT_POST_RESPONSE: { data: ILicensePostResponse } = {
 	},
 };
 
-const NON_OWNER_ACTIVATE_RENEW_MESSAGE = 'Only an instance owner may activate or renew a license';
 const ACTIVATION_FAILED_MESSAGE = 'Failed to activate license';
-const RENEW_ERROR_MESSAGE = 'Something went wrong when trying to renew license';
+const GENERIC_ERROR_MESSAGE = 'Something went wrong';

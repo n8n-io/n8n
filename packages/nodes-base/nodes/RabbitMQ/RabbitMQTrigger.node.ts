@@ -21,8 +21,7 @@ export class RabbitMQTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'RabbitMQ Trigger',
 		name: 'rabbitmqTrigger',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:rabbitmq.png',
+		icon: 'file:rabbitmq.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Listens to RabbitMQ messages',
@@ -138,6 +137,39 @@ export class RabbitMQTrigger implements INodeType {
 							},
 						},
 						description: 'Max number of executions at a time. Use -1 for no limit.',
+					},
+					{
+						displayName: 'Binding',
+						name: 'binding',
+						placeholder: 'Add Binding',
+						description: 'Add binding to queu',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: {},
+						options: [
+							{
+								name: 'bindings',
+								displayName: 'Binding',
+								values: [
+									{
+										displayName: 'Exchange',
+										name: 'exchange',
+										type: 'string',
+										default: '',
+										placeholder: 'exchange',
+									},
+									{
+										displayName: 'RoutingKey',
+										name: 'routingKey',
+										type: 'string',
+										default: '',
+										placeholder: 'routing-key',
+									},
+								],
+							},
+						],
 					},
 					...rabbitDefaultOptions,
 				].sort((a, b) => {

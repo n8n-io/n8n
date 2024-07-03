@@ -8,18 +8,17 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { egoiApiRequest, egoiApiRequestAllItems, simplify } from './GenericFunctions';
 
 import type { ICreateMemberBody } from './Interfaces';
-
-import moment from 'moment-timezone';
 
 export class Egoi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'E-goi',
 		name: 'egoi',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:egoi.png',
+
+		icon: 'file:egoi.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -734,7 +733,7 @@ export class Egoi implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (!this.continueOnFail()) {
+				if (!this.continueOnFail(error)) {
 					throw error;
 				} else {
 					// Return the actual reason as error
@@ -753,6 +752,6 @@ export class Egoi implements INodeType {
 			);
 			returnData.push(...executionData);
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

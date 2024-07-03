@@ -521,7 +521,7 @@ export class DateTimeV1 implements INodeType {
 						newItem.binary = item.binary;
 					}
 
-					set(newItem, `json.${dataPropertyName}`, newDate);
+					set(newItem, ['json', dataPropertyName], newDate);
 
 					returnData.push(newItem);
 				}
@@ -565,12 +565,12 @@ export class DateTimeV1 implements INodeType {
 						newItem.binary = item.binary;
 					}
 
-					set(newItem, `json.${dataPropertyName}`, newDate.toISOString());
+					set(newItem, ['json', dataPropertyName], newDate.toISOString());
 
 					returnData.push(newItem);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({
 						json: {
 							error: error.message,
@@ -585,6 +585,6 @@ export class DateTimeV1 implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

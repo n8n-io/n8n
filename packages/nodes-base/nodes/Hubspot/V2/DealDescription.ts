@@ -590,6 +590,40 @@ export const dealFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Deal Properties to Include',
+				name: 'properties',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getDealProperties',
+				},
+				default: [],
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
+				description:
+					'Include specific deal properties in the results. By default, the results will only include Deal ID and will not include the values for any properties for your Deals.',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gt: 2 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Deal Properties with History to Include',
+				name: 'propertiesWithHistory',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getDealProperties',
+				},
+				default: [],
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
+				description:
+					'Works similarly to properties, but this parameter will include the history for the specified property',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gt: 2 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Deal Properties to Include',
 				name: 'propertiesCollection',
 				type: 'fixedCollection',
 				default: {},
@@ -603,7 +637,7 @@ export const dealFields: INodeProperties[] = [
 								name: 'properties',
 								type: 'multiOptions',
 								typeOptions: {
-									loadOptionsMethod: 'getDealPropertiesWithType',
+									loadOptionsMethod: 'getDealProperties',
 								},
 								default: [],
 								description:
@@ -632,6 +666,11 @@ export const dealFields: INodeProperties[] = [
 				],
 				description:
 					'<p>Used to include specific deal properties in the results. By default, the results will only include Deal ID and will not include the values for any properties for your Deals.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				displayOptions: {
+					show: {
+						'@version': [2],
+					},
+				},
 			},
 		],
 	},

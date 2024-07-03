@@ -1,9 +1,9 @@
 import VariablesRow from '../VariablesRow.vue';
-import type { EnvironmentVariable } from '@/Interface';
 import { fireEvent } from '@testing-library/vue';
 import { setupServer } from '@/__tests__/server';
 import { afterAll, beforeAll } from 'vitest';
-import { useSettingsStore, useUsersStore } from '@/stores';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { STORES } from '@/constants';
@@ -41,9 +41,9 @@ describe('VariablesRow', () => {
 		server.shutdown();
 	});
 
-	const environmentVariable: EnvironmentVariable = {
-		id: 1,
-		key: 'key',
+	const environmentVariable = {
+		id: '1',
+		name: 'key',
 		value: 'value',
 	};
 
@@ -82,7 +82,7 @@ describe('VariablesRow', () => {
 
 		expect(wrapper.getByTestId('variable-row-key-input')).toBeVisible();
 		expect(wrapper.getByTestId('variable-row-key-input').querySelector('input')).toHaveValue(
-			environmentVariable.key,
+			environmentVariable.name,
 		);
 		expect(wrapper.getByTestId('variable-row-value-input')).toBeVisible();
 		expect(wrapper.getByTestId('variable-row-value-input').querySelector('input')).toHaveValue(

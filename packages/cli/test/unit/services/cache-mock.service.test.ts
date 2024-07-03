@@ -1,6 +1,6 @@
 import Container from 'typedi';
 import { mock } from 'jest-mock-extended';
-import { CacheService } from '@/services/cache.service';
+import { CacheService } from '@/services/cache/cache.service';
 
 const cacheService = Container.get(CacheService);
 const store = mock<NonNullable<CacheService['cache']>['store']>({ isCacheable: () => true });

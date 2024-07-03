@@ -1,24 +1,29 @@
 import { EventEmitter } from 'events';
-import Container, { Service } from 'typedi';
+import { Container, Service } from 'typedi';
 import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
-import { LoggerProxy } from 'n8n-workflow';
 import { StatisticsNames } from '@db/entities/WorkflowStatistics';
-import { WorkflowStatisticsRepository } from '@db/repositories';
+import { WorkflowStatisticsRepository } from '@db/repositories/workflowStatistics.repository';
 import { UserService } from '@/services/user.service';
+import { Logger } from '@/Logger';
 import { OwnershipService } from './ownership.service';
 
 @Service()
 export class EventsService extends EventEmitter {
 	constructor(
-		private repository: WorkflowStatisticsRepository,
-		private ownershipService: OwnershipService,
+		private readonly logger: Logger,
+		private readonly repository: WorkflowStatisticsRepository,
+		private readonly ownershipService: OwnershipService,
 	) {
 		super({ captureRejections: true });
 		if ('SKIP_STATISTICS_EVENTS' in process.env) return;
 
-		this.on('nodeFetchedData', async (workflowId, node) => this.nodeFetchedData(workflowId, node));
-		this.on('workflowExecutionCompleted', async (workflowData, runData) =>
-			this.workflowExecutionCompleted(workflowData, runData),
+		this.on(
+			'nodeFetchedData',
+			async (workflowId, node) => await this.nodeFetchedData(workflowId, node),
+		);
+		this.on(
+			'workflowExecutionCompleted',
+			async (workflowData, runData) => await this.workflowExecutionCompleted(workflowData, runData),
 		);
 	}
 
@@ -43,25 +48,31 @@ export class EventsService extends EventEmitter {
 		try {
 			const upsertResult = await this.repository.upsertWorkflowStatistics(name, workflowId);
 
-			if (name === 'production_success' && upsertResult === 'insert') {
-				const owner = await Container.get(OwnershipService).getWorkflowOwnerCached(workflowId);
-				const metrics = {
-					user_id: owner.id,
-					workflow_id: workflowId,
-				};
+			if (name === StatisticsNames.productionSuccess && upsertResult === 'insert') {
+				const project = await Container.get(OwnershipService).getWorkflowProjectCached(workflowId);
+				if (project.type === 'personal') {
+					const owner = await Container.get(OwnershipService).getProjectOwnerCached(project.id);
 
-				if (!owner.settings?.userActivated) {
-					await Container.get(UserService).updateSettings(owner.id, {
-						firstSuccessfulWorkflowId: workflowId,
-						userActivated: true,
-					});
+					const metrics = {
+						project_id: project.id,
+						workflow_id: workflowId,
+						user_id: owner?.id,
+					};
+
+					if (owner && !owner.settings?.userActivated) {
+						await Container.get(UserService).updateSettings(owner.id, {
+							firstSuccessfulWorkflowId: workflowId,
+							userActivated: true,
+							userActivatedAt: runData.startedAt.getTime(),
+						});
+					}
+
+					// Send the metrics
+					this.emit('telemetry.onFirstProductionWorkflowSuccess', metrics);
 				}
-
-				// Send the metrics
-				this.emit('telemetry.onFirstProductionWorkflowSuccess', metrics);
 			}
 		} catch (error) {
-			LoggerProxy.verbose('Unable to fire first workflow success telemetry event');
+			this.logger.verbose('Unable to fire first workflow success telemetry event');
 		}
 	}
 
@@ -72,13 +83,15 @@ export class EventsService extends EventEmitter {
 			StatisticsNames.dataLoaded,
 			workflowId,
 		);
-		if (insertResult === 'failed') return;
+		if (insertResult === 'failed' || insertResult === 'alreadyExists') return;
 
 		// Compile the metrics since this was a new data loaded event
-		const owner = await this.ownershipService.getWorkflowOwnerCached(workflowId);
+		const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
+		const owner = await this.ownershipService.getProjectOwnerCached(project.id);
 
 		let metrics = {
-			user_id: owner.id,
+			user_id: owner?.id,
+			project_id: project.id,
 			workflow_id: workflowId,
 			node_type: node.type,
 			node_id: node.id,

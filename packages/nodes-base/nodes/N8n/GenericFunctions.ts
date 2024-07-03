@@ -5,21 +5,22 @@ import type {
 	IExecutePaginationFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
+	IRequestOptions,
 	JsonObject,
 	PreSendAction,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-import type { OptionsWithUri } from 'request';
 
 /**
  * A custom API request function to be used with the resourceLocator lookup queries.
  */
 export async function apiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: object,
 	query?: IDataObject,
@@ -34,7 +35,7 @@ export async function apiRequest(
 	const credentials = (await this.getCredentials('n8nApi')) as N8nApiCredentials;
 	const baseUrl = credentials.baseUrl;
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		method,
 		body,
 		qs: query,
@@ -54,7 +55,7 @@ export async function apiRequest(
 
 export async function apiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: object,
 	query?: IDataObject,

@@ -18,3 +18,5 @@ export interface UserAction {
 	type?: 'external-link';
 	guard?: (user: IUser) => boolean;
 }
+
+export type UserStackGroups = { [groupName: string]: IUser[] };

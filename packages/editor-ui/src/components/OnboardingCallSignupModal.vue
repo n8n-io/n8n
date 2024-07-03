@@ -2,10 +2,10 @@
 	<Modal
 		:name="ONBOARDING_CALL_SIGNUP_MODAL_KEY"
 		:title="$locale.baseText('onboardingCallSignupModal.title')"
-		:eventBus="modalBus"
+		:event-bus="modalBus"
 		:center="true"
-		:showClose="false"
-		:beforeClose="onModalClose"
+		:show-close="false"
+		:before-close="onModalClose"
 		width="460px"
 	>
 		<template #content>
@@ -50,7 +50,7 @@ import { ONBOARDING_CALL_SIGNUP_MODAL_KEY, VALID_EMAIL_REGEX } from '@/constants
 import Modal from './Modal.vue';
 
 import { defineComponent } from 'vue';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { createEventBus } from 'n8n-design-system/utils';
@@ -63,7 +63,7 @@ export default defineComponent({
 	props: ['modalName'],
 	setup() {
 		return {
-			...useToast(),
+			toast: useToast(),
 		};
 	},
 	data() {
@@ -94,7 +94,7 @@ export default defineComponent({
 
 			try {
 				await this.uiStore.applyForOnboardingCall(this.email);
-				this.showMessage({
+				this.toast.showMessage({
 					type: 'success',
 					title: this.$locale.baseText('onboardingCallSignupSucess.title'),
 					message: this.$locale.baseText('onboardingCallSignupSucess.message'),
@@ -102,7 +102,7 @@ export default defineComponent({
 				this.okToClose = true;
 				this.modalBus.emit('close');
 			} catch (e) {
-				this.showError(
+				this.toast.showError(
 					e,
 					this.$locale.baseText('onboardingCallSignupFailed.title'),
 					this.$locale.baseText('onboardingCallSignupFailed.message'),

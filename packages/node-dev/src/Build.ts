@@ -4,10 +4,11 @@ import glob from 'fast-glob';
 import { spawn } from 'child_process';
 import { copyFile, mkdir, readFile, writeFile } from 'fs/promises';
 import { join, dirname, resolve as resolvePath } from 'path';
+import { Container } from 'typedi';
 import { file as tmpFile } from 'tmp-promise';
 
 import { jsonParse } from 'n8n-workflow';
-import { UserSettings } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 import type { IBuildOptions } from './Interfaces';
 
 /**
@@ -49,7 +50,7 @@ export async function createCustomTsconfig() {
  * @param {IBuildOptions} [options] Options to overwrite default behavior
  */
 export async function buildFiles({
-	destinationFolder = UserSettings.getUserN8nFolderCustomExtensionPath(),
+	destinationFolder = Container.get(InstanceSettings).customExtensionDir,
 	watch,
 }: IBuildOptions): Promise<string> {
 	const tscPath = join(dirname(require.resolve('typescript')), 'tsc');

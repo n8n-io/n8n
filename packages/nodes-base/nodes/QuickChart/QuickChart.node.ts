@@ -413,17 +413,19 @@ export class QuickChart implements INodeType {
 		let mimeType = response.headers['content-type'] as string | undefined;
 		mimeType = mimeType ? mimeType.split(';').find((value) => value.includes('/')) : undefined;
 
-		return this.prepareOutputData([
-			{
-				binary: {
-					[output]: await this.helpers.prepareBinaryData(
-						response.body as Buffer,
-						undefined,
-						mimeType,
-					),
+		return [
+			[
+				{
+					binary: {
+						[output]: await this.helpers.prepareBinaryData(
+							response.body as Buffer,
+							undefined,
+							mimeType,
+						),
+					},
+					json: { chart },
 				},
-				json: { chart },
-			},
-		]);
+			],
+		];
 	}
 }

@@ -2,6 +2,7 @@
 import type {
 	IDataObject,
 	IExecuteFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeParameters,
@@ -10,6 +11,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import set from 'lodash/set';
 import { alertFields, alertOperations } from './descriptions/AlertDescription';
 
 import { observableFields, observableOperations } from './descriptions/ObservableDescription';
@@ -33,8 +35,6 @@ import {
 	splitTags,
 	theHiveApiRequest,
 } from './GenericFunctions';
-
-import set from 'lodash/set';
 
 export class TheHive implements INodeType {
 	description: INodeTypeDescription = {
@@ -544,7 +544,7 @@ export class TheHive implements INodeType {
 
 						let endpoint;
 
-						let method;
+						let method: IHttpRequestMethods;
 
 						let body: IDataObject = {};
 
@@ -904,7 +904,7 @@ export class TheHive implements INodeType {
 
 						let endpoint;
 
-						let method;
+						let method: IHttpRequestMethods;
 
 						let body: IDataObject = {};
 
@@ -945,7 +945,7 @@ export class TheHive implements INodeType {
 
 						let endpoint;
 
-						let method;
+						let method: IHttpRequestMethods;
 
 						let body: IDataObject = {};
 
@@ -1043,7 +1043,7 @@ export class TheHive implements INodeType {
 
 						let endpoint;
 
-						let method;
+						let method: IHttpRequestMethods;
 
 						let body: IDataObject = {};
 
@@ -1251,7 +1251,7 @@ export class TheHive implements INodeType {
 
 						let endpoint;
 
-						let method;
+						let method: IHttpRequestMethods;
 
 						let body: IDataObject = {};
 
@@ -1317,7 +1317,7 @@ export class TheHive implements INodeType {
 
 						let endpoint;
 
-						let method;
+						let method: IHttpRequestMethods;
 
 						let body: IDataObject = {};
 
@@ -1500,7 +1500,7 @@ export class TheHive implements INodeType {
 
 						let endpoint;
 
-						let method;
+						let method: IHttpRequestMethods;
 
 						let body: IDataObject = {};
 
@@ -1542,7 +1542,7 @@ export class TheHive implements INodeType {
 
 						let endpoint;
 
-						let method;
+						let method: IHttpRequestMethods;
 
 						let body: IDataObject = {};
 
@@ -1624,7 +1624,7 @@ export class TheHive implements INodeType {
 
 						let endpoint;
 
-						let method;
+						let method: IHttpRequestMethods;
 
 						let body: IDataObject = {};
 
@@ -1796,7 +1796,7 @@ export class TheHive implements INodeType {
 
 						let endpoint;
 
-						let method;
+						let method: IHttpRequestMethods;
 
 						let body: IDataObject = {};
 
@@ -1837,7 +1837,7 @@ export class TheHive implements INodeType {
 
 						let endpoint;
 
-						let method;
+						let method: IHttpRequestMethods;
 
 						let body: IDataObject = {};
 
@@ -1892,7 +1892,7 @@ export class TheHive implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
@@ -1903,6 +1903,6 @@ export class TheHive implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

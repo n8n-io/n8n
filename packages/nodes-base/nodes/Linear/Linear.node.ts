@@ -46,9 +46,39 @@ export class Linear implements INodeType {
 				name: 'linearApi',
 				required: true,
 				testedBy: 'linearApiTest',
+				displayOptions: {
+					show: {
+						authentication: ['apiToken'],
+					},
+				},
+			},
+			{
+				name: 'linearOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['oAuth2'],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'API Token',
+						value: 'apiToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'apiToken',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -242,9 +272,7 @@ export class Linear implements INodeType {
 							responseData = await linearApiRequestAllItems.call(this, 'data.issues', body);
 						} else {
 							const limit = this.getNodeParameter('limit', 0);
-							body.variables.first = limit;
-							responseData = await linearApiRequest.call(this, body);
-							responseData = responseData.data.issues.nodes;
+							responseData = await linearApiRequestAllItems.call(this, 'data.issues', body, limit);
 						}
 					}
 					if (operation === 'update') {
@@ -270,7 +298,7 @@ export class Linear implements INodeType {
 
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
@@ -281,6 +309,6 @@ export class Linear implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

@@ -9,6 +9,7 @@ import type {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -38,8 +39,6 @@ import type {
 	ConnectorType,
 	ElasticSecurityApiCredentials,
 } from './types';
-
-import type { OptionsWithUri } from 'request';
 
 export class ElasticSecurity implements INodeType {
 	description: INodeTypeDescription = {
@@ -133,7 +132,7 @@ export class ElasticSecurity implements INodeType {
 
 				const endpoint = '/cases/status';
 
-				const options: OptionsWithUri = {
+				const options: IRequestOptions = {
 					headers: {
 						Authorization: `Basic ${token}`,
 						'kbn-xsrf': true,
@@ -578,7 +577,7 @@ export class ElasticSecurity implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
@@ -590,6 +589,6 @@ export class ElasticSecurity implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

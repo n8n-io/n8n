@@ -8,6 +8,10 @@ module.exports = {
 
 	...sharedOptions(__dirname),
 
+	parserOptions: {
+		project: './tsconfig.json',
+	},
+
 	ignorePatterns: [
 		'jest.config.js',
 		// TODO: Remove these
@@ -15,6 +19,10 @@ module.exports = {
 	],
 
 	rules: {
+		'n8n-local-rules/no-dynamic-import-template': 'error',
+		'n8n-local-rules/misplaced-n8n-typeorm-import': 'error',
+		complexity: 'error',
+
 		// TODO: Remove this
 		'import/no-cycle': 'warn',
 		'import/order': 'off',
@@ -28,4 +36,26 @@ module.exports = {
 		'@typescript-eslint/no-unsafe-enum-comparison': 'warn',
 		'@typescript-eslint/no-unsafe-declaration-merging': 'warn',
 	},
+
+	overrides: [
+		{
+			files: ['./src/databases/**/*.ts', './test/**/*.ts'],
+			rules: {
+				'n8n-local-rules/misplaced-n8n-typeorm-import': 'off',
+			},
+		},
+		{
+			files: ['./src/decorators/**/*.ts'],
+			rules: {
+				'@typescript-eslint/ban-types': [
+					'warn',
+					{
+						types: {
+							Function: false,
+						},
+					},
+				],
+			},
+		},
+	],
 };

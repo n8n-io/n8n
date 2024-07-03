@@ -3,6 +3,7 @@ import type {
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
+	Icon,
 } from 'n8n-workflow';
 
 export class MistApi implements ICredentialType {
@@ -10,9 +11,15 @@ export class MistApi implements ICredentialType {
 
 	displayName = 'Mist API';
 
-	icon = 'file:icons/Mist.svg';
+	icon: Icon = 'file:icons/Mist.svg';
 
 	documentationUrl = 'mist';
+
+	httpRequestNode = {
+		name: 'Mist',
+		docsUrl: 'https://www.mist.com/documentation/mist-api-introduction/',
+		apiBaseUrl: '',
+	};
 
 	properties: INodeProperties[] = [
 		{

@@ -1,10 +1,9 @@
 import { computed, reactive } from 'vue';
 import { defineStore } from 'pinia';
 import type { UsageState } from '@/Interface';
-import { activateLicenseKey, getLicense, renewLicense } from '@/api/usage';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { activateLicenseKey, getLicense, renewLicense, requestLicenseTrial } from '@/api/usage';
+import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
 
 export type UsageTelemetry = {
 	instance_id: string;
@@ -35,7 +34,6 @@ const DEFAULT_STATE: UsageState = {
 export const useUsageStore = defineStore('usage', () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
-	const usersStore = useUsersStore();
 
 	const state = reactive<UsageState>(DEFAULT_STATE);
 
@@ -65,23 +63,27 @@ export const useUsageStore = defineStore('usage', () => {
 	};
 
 	const getLicenseInfo = async () => {
-		const data = await getLicense(rootStore.getRestApiContext);
+		const data = await getLicense(rootStore.restApiContext);
 		setData(data);
 	};
 
 	const activateLicense = async (activationKey: string) => {
-		const data = await activateLicenseKey(rootStore.getRestApiContext, { activationKey });
+		const data = await activateLicenseKey(rootStore.restApiContext, { activationKey });
 		setData(data);
 		await settingsStore.getSettings();
 	};
 
 	const refreshLicenseManagementToken = async () => {
 		try {
-			const data = await renewLicense(rootStore.getRestApiContext);
+			const data = await renewLicense(rootStore.restApiContext);
 			setData(data);
 		} catch (error) {
 			await getLicenseInfo();
 		}
+	};
+
+	const requestEnterpriseLicenseTrial = async () => {
+		await requestLicenseTrial(rootStore.restApiContext);
 	};
 
 	return {
@@ -90,6 +92,7 @@ export const useUsageStore = defineStore('usage', () => {
 		setData,
 		activateLicense,
 		refreshLicenseManagementToken,
+		requestEnterpriseLicenseTrial,
 		planName,
 		planId,
 		executionLimit,
@@ -102,7 +105,7 @@ export const useUsageStore = defineStore('usage', () => {
 			state.data.usage.executions.limit < 0
 				? false
 				: executionCount.value / executionLimit.value >=
-				  state.data.usage.executions.warningThreshold,
+					state.data.usage.executions.warningThreshold,
 		),
 		viewPlansUrl: computed(
 			() => `${subscriptionAppUrl.value}?${commonSubscriptionAppUrlQueryParams.value}`,
@@ -111,7 +114,6 @@ export const useUsageStore = defineStore('usage', () => {
 			() =>
 				`${subscriptionAppUrl.value}/manage?token=${managementToken.value}&${commonSubscriptionAppUrlQueryParams.value}`,
 		),
-		canUserActivateLicense: computed(() => usersStore.canUserActivateLicense),
 		isLoading: computed(() => state.loading),
 		telemetryPayload: computed<UsageTelemetry>(() => ({
 			instance_id: instanceId.value,

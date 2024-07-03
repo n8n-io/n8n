@@ -7,7 +7,13 @@ export class ImpervaWafApi implements ICredentialType {
 
 	documentationUrl = 'impervawaf';
 
-	icon = 'file:icons/Imperva.svg';
+	icon = { light: 'file:icons/Imperva.svg', dark: 'file:icons/Imperva.dark.svg' } as const;
+
+	httpRequestNode = {
+		name: 'Imperva WAF',
+		docsUrl: 'https://docs.imperva.com/bundle/api-docs',
+		apiBaseUrl: 'https://api.imperva.com/',
+	};
 
 	properties: INodeProperties[] = [
 		{

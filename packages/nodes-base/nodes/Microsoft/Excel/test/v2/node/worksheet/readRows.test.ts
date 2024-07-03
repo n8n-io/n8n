@@ -1,12 +1,12 @@
-import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
-
 import nock from 'nock';
+import type { IHttpRequestMethods } from 'n8n-workflow';
+import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
 
 jest.mock('../../../../v2/transport', () => {
 	const originalModule = jest.requireActual('../../../../v2/transport');
 	return {
 		...originalModule,
-		microsoftApiRequest: jest.fn(async function (method: string, resource: string) {
+		microsoftApiRequest: jest.fn(async function (method: IHttpRequestMethods, resource: string) {
 			{
 				if (method === 'GET' && resource.includes('usedRange')) {
 					return {
@@ -47,6 +47,6 @@ describe('Test MicrosoftExcelV2, worksheet => readRows', () => {
 	const nodeTypes = setup(tests);
 
 	for (const testData of tests) {
-		test(testData.description, async () => equalityTest(testData, nodeTypes));
+		test(testData.description, async () => await equalityTest(testData, nodeTypes));
 	}
 });

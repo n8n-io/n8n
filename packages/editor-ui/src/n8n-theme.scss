@@ -1,3 +1,39 @@
+@import '@n8n/chat/css';
+@import 'styles';
+
+:root {
+	// Using native css variable enables us to use this value in JS
+	--header-height: 65;
+	--chat-width: 350;
+
+	// n8n-chat customizations
+	--chat--spacing: var(--spacing-2xs);
+
+	--chat--header-height: calc(var(--header-height) * 1px);
+	--chat--header--padding: 0 var(--spacing-xs);
+	--chat--heading--font-size: var(--font-size-m);
+	--chat--subtitle--font-size: var(--font-size-s);
+	--chat--subtitle--line-height: var(--font-line-height-base);
+	--chat--header--background: var(--color-background-xlight);
+	--chat--header--color: var(--color-text-dark);
+	--chat--header--border-bottom: var(--border-base);
+	--chat--close--button--color-hover: var(--color-primary);
+
+	// Message styles
+	--chat--message--padding: var(--spacing-3xs);
+	--chat--message--font-size: 14px;
+	--chat--message-line-height: 1.5;
+	--chat--message--bot--border: 1px solid var(--color-foreground-light);
+	--chat--message--bot--color: var(--color-text-dark);
+	--chat--message--user--color: var(--color-text-dark);
+	--chat--message--user--background: var(--color-success-tint-1);
+	--chat--message--user--border: 1px solid var(--color-success-light-2);
+
+	// Chat input
+	--chat--input--font-size: var(--font-size-s);
+	--chat--input--send--button--color: var(--color-success);
+}
+
 .clickable {
 	cursor: pointer !important;
 }
@@ -9,19 +45,16 @@
 	font-weight: 400;
 }
 
+// Dialog
+.el-overlay {
+	background-color: var(--color-dialog-overlay-background-dark);
+}
+
 .el-dialog {
 	border: var(--border-base);
 	box-shadow: 0px 6px 16px rgb(68 28 23 / 6%);
 	border-radius: 8px;
-	margin-top: 15vh;
 
-	@media (max-height: 1050px) {
-		margin: 4em auto !important;
-	}
-
-	@media (max-height: 930px) {
-		margin: 1em auto !important;
-	}
 	&.classic {
 		.el-dialog__header {
 			padding: 15px 20px;
@@ -101,20 +134,6 @@
 		color: var(--color-text-dark);
 	}
 }
-.el-table--striped {
-	.el-table__body {
-		tr.el-table__row--striped {
-			background-color: var(--color-background-light);
-			td {
-				background: none;
-			}
-		}
-		tr.el-table__row:hover,
-		tr.el-table__row:hover > td {
-			background-color: var(--color-primary-tint-3);
-		}
-	}
-}
 
 // Tabs
 .type-selector:focus,
@@ -192,7 +211,7 @@
 		font-size: 12px;
 		font-weight: 400;
 		display: flex;
-		align-items: flex-end;
+		align-items: center;
 
 		&.is-closable {
 			overflow-y: hidden;
@@ -201,7 +220,7 @@
 		.el-tag__close {
 			max-height: 15px;
 			max-width: 15px;
-			margin-right: 6px;
+			margin-left: var(--spacing-4xs);
 
 			&:hover {
 				background-color: $tag-close-background-hover-color !important;
@@ -237,6 +256,7 @@
 		&,
 		&:hover,
 		&:focus {
+			padding-left: 35px;
 			border-radius: var(--border-radius-base);
 			color: var(--color-text-dark);
 			background-color: var(--color-background-base);

@@ -1,15 +1,23 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
 import { isEventMessageOptions } from '../EventMessageClasses/AbstractEventMessage';
-import { UserSettings } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 import path, { parse } from 'path';
 import { Worker } from 'worker_threads';
 import { createReadStream, existsSync, rmSync } from 'fs';
 import readline from 'readline';
-import { jsonParse, LoggerProxy } from 'n8n-workflow';
 import remove from 'lodash/remove';
 import config from '@/config';
-import { getEventMessageObjectByType } from '../EventMessageClasses/Helpers';
+import type { EventMessageGenericOptions } from '../EventMessageClasses/EventMessageGeneric';
+import { EventMessageGeneric } from '../EventMessageClasses/EventMessageGeneric';
+import type { AbstractEventMessageOptions } from '../EventMessageClasses/AbstractEventMessageOptions';
+import type { EventMessageWorkflowOptions } from '../EventMessageClasses/EventMessageWorkflow';
+import { EventMessageWorkflow } from '../EventMessageClasses/EventMessageWorkflow';
+import { EventMessageTypeNames, jsonParse } from 'n8n-workflow';
+import type { EventMessageAuditOptions } from '../EventMessageClasses/EventMessageAudit';
+import { EventMessageAudit } from '../EventMessageClasses/EventMessageAudit';
+import type { EventMessageNodeOptions } from '../EventMessageClasses/EventMessageNode';
+import { EventMessageNode } from '../EventMessageClasses/EventMessageNode';
 import type { EventMessageReturnMode } from '../MessageEventBus/MessageEventBus';
 import type { EventMessageTypes } from '../EventMessageClasses';
 import type { EventMessageConfirmSource } from '../EventMessageClasses/EventMessageConfirm';
@@ -18,7 +26,9 @@ import {
 	isEventMessageConfirm,
 } from '../EventMessageClasses/EventMessageConfirm';
 import { once as eventOnce } from 'events';
-import { inTest } from '../../constants';
+import { inTest } from '@/constants';
+import { Logger } from '@/Logger';
+import Container from 'typedi';
 
 interface MessageEventBusLogWriterConstructorOptions {
 	logBaseName?: string;
@@ -47,7 +57,13 @@ export class MessageEventBusLogWriter {
 
 	static options: Required<MessageEventBusLogWriterOptions>;
 
+	private readonly logger: Logger;
+
 	private _worker: Worker | undefined;
+
+	constructor() {
+		this.logger = Container.get(Logger);
+	}
 
 	public get worker(): Worker | undefined {
 		return this._worker;
@@ -66,7 +82,7 @@ export class MessageEventBusLogWriter {
 			MessageEventBusLogWriter.instance = new MessageEventBusLogWriter();
 			MessageEventBusLogWriter.options = {
 				logFullBasePath: path.join(
-					options?.logBasePath ?? UserSettings.getUserN8nFolderPath(),
+					options?.logBasePath ?? Container.get(InstanceSettings).n8nFolder,
 					options?.logBaseName ?? config.getEnv('eventBus.logWriter.logBaseName'),
 				),
 				keepNumberOfFiles:
@@ -86,15 +102,6 @@ export class MessageEventBusLogWriter {
 	startLogging() {
 		if (this.worker) {
 			this.worker.postMessage({ command: 'startLogging', data: {} });
-		}
-	}
-
-	/**
-	 *  Pauses all logging. Events are still received by the worker, they just are not logged any more
-	 */
-	async pauseLogging() {
-		if (this.worker) {
-			this.worker.postMessage({ command: 'pauseLogging', data: {} });
 		}
 	}
 
@@ -135,7 +142,7 @@ export class MessageEventBusLogWriter {
 		this._worker = new Worker(workerFileName);
 		if (this.worker) {
 			this.worker.on('messageerror', async (error) => {
-				LoggerProxy.error('Event Bus Log Writer thread error, attempting to restart...', error);
+				this.logger.error('Event Bus Log Writer thread error, attempting to restart...', error);
 				await MessageEventBusLogWriter.instance.startThread();
 			});
 			return true;
@@ -201,7 +208,7 @@ export class MessageEventBusLogWriter {
 					try {
 						const json = jsonParse(line);
 						if (isEventMessageOptions(json) && json.__type !== undefined) {
-							const msg = getEventMessageObjectByType(json);
+							const msg = this.getEventMessageObjectByType(json);
 							if (msg !== null) results.loggedMessages.push(msg);
 							if (msg?.eventName && msg.payload?.executionId) {
 								const executionId = msg.payload.executionId as string;
@@ -215,6 +222,8 @@ export class MessageEventBusLogWriter {
 									case 'n8n.workflow.success':
 									case 'n8n.workflow.failed':
 									case 'n8n.workflow.crashed':
+									case 'n8n.execution.throttled':
+									case 'n8n.execution.started-during-bootup':
 										delete results.unfinishedExecutions[executionId];
 										break;
 									case 'n8n.node.started':
@@ -234,7 +243,7 @@ export class MessageEventBusLogWriter {
 							}
 						}
 					} catch (error) {
-						LoggerProxy.error(
+						this.logger.error(
 							`Error reading line messages from file: ${logFileName}, line: ${line}, ${error.message}}`,
 						);
 					}
@@ -242,7 +251,7 @@ export class MessageEventBusLogWriter {
 				// wait for stream to finish before continue
 				await eventOnce(rl, 'close');
 			} catch {
-				LoggerProxy.error(`Error reading logged messages from file: ${logFileName}`);
+				this.logger.error(`Error reading logged messages from file: ${logFileName}`);
 			}
 		}
 		return results;
@@ -303,11 +312,11 @@ export class MessageEventBusLogWriter {
 							json.__type !== undefined &&
 							json.payload?.executionId === executionId
 						) {
-							const msg = getEventMessageObjectByType(json);
+							const msg = this.getEventMessageObjectByType(json);
 							if (msg !== null) messages.push(msg);
 						}
 					} catch {
-						LoggerProxy.error(
+						this.logger.error(
 							`Error reading line messages from file: ${logFileName}, line: ${line}`,
 						);
 					}
@@ -315,7 +324,7 @@ export class MessageEventBusLogWriter {
 				// wait for stream to finish before continue
 				await eventOnce(rl, 'close');
 			} catch {
-				LoggerProxy.error(`Error reading logged messages from file: ${logFileName}`);
+				this.logger.error(`Error reading logged messages from file: ${logFileName}`);
 			}
 		}
 		return messages;
@@ -346,5 +355,20 @@ export class MessageEventBusLogWriter {
 			unsentMessages: result.loggedMessages,
 			unfinishedExecutions: result.unfinishedExecutions,
 		};
+	}
+
+	getEventMessageObjectByType(message: AbstractEventMessageOptions): EventMessageTypes | null {
+		switch (message.__type as EventMessageTypeNames) {
+			case EventMessageTypeNames.generic:
+				return new EventMessageGeneric(message as EventMessageGenericOptions);
+			case EventMessageTypeNames.workflow:
+				return new EventMessageWorkflow(message as EventMessageWorkflowOptions);
+			case EventMessageTypeNames.audit:
+				return new EventMessageAudit(message as EventMessageAuditOptions);
+			case EventMessageTypeNames.node:
+				return new EventMessageNode(message as EventMessageNodeOptions);
+			default:
+				return null;
+		}
 	}
 }

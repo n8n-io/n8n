@@ -2,38 +2,36 @@
 import Modal from './Modal.vue';
 import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY, MODAL_CONFIRM } from '@/constants';
 import { computed, onMounted, ref } from 'vue';
-import type { PropType, Ref } from 'vue';
 import type { EventBus } from 'n8n-design-system/utils';
-import { useExternalSecretsProvider, useI18n, useMessage, useToast } from '@/composables';
+import { useExternalSecretsProvider } from '@/composables/useExternalSecretsProvider';
+import { useI18n } from '@/composables/useI18n';
+import { useMessage } from '@/composables/useMessage';
+import { useToast } from '@/composables/useToast';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
-import { useUIStore } from '@/stores';
-import { useRoute } from 'vue-router';
 import ParameterInputExpanded from '@/components/ParameterInputExpanded.vue';
-import type { IUpdateInformation, ExternalSecretsProviderData } from '@/Interface';
+import type {
+	IUpdateInformation,
+	ExternalSecretsProviderData,
+	ExternalSecretsProvider,
+} from '@/Interface';
 import type { IParameterLabel } from 'n8n-workflow';
 import ExternalSecretsProviderImage from '@/components/ExternalSecretsProviderImage.ee.vue';
 import ExternalSecretsProviderConnectionSwitch from '@/components/ExternalSecretsProviderConnectionSwitch.ee.vue';
 import { createEventBus } from 'n8n-design-system/utils';
-import type { ExternalSecretsProvider } from '@/Interface';
 
-const props = defineProps({
-	data: {
-		type: Object as PropType<{ eventBus: EventBus; name: string }>,
-		default: () => ({}),
-	},
-});
+const props = defineProps<{
+	data: { eventBus: EventBus; name: string };
+}>();
 
-const defaultProviderData = {
+const defaultProviderData: Record<string, Partial<ExternalSecretsProviderData>> = {
 	infisical: {
 		siteURL: 'https://app.infisical.com',
 	},
 };
 
 const externalSecretsStore = useExternalSecretsStore();
-const uiStore = useUIStore();
 const toast = useToast();
 const i18n = useI18n();
-const route = useRoute();
 const { confirm } = useMessage();
 
 const saving = ref(false);
@@ -44,7 +42,7 @@ const labelSize: IParameterLabel = { size: 'medium' };
 
 const provider = computed<ExternalSecretsProvider | undefined>(() =>
 	externalSecretsStore.providers.find((p) => p.name === props.data.name),
-) as Ref<ExternalSecretsProvider>;
+);
 const providerData = ref<ExternalSecretsProviderData>({});
 const {
 	connectionState,
@@ -58,7 +56,7 @@ const {
 const providerDataUpdated = computed(() => {
 	return Object.keys(providerData.value).find((key) => {
 		const value = providerData.value[key];
-		const originalValue = provider.value.data[key];
+		const originalValue = provider.value?.data?.[key];
 
 		return value !== originalValue;
 	});
@@ -66,7 +64,7 @@ const providerDataUpdated = computed(() => {
 
 const canSave = computed(
 	() =>
-		provider.value.properties
+		provider.value?.properties
 			?.filter((property) => property.required && shouldDisplayProperty(property))
 			.every((property) => {
 				const value = providerData.value[property.name];
@@ -76,31 +74,28 @@ const canSave = computed(
 
 onMounted(async () => {
 	try {
-		const provider = await externalSecretsStore.getProvider(props.data.name);
+		const fetchedProvider = await externalSecretsStore.getProvider(props.data.name);
+
 		providerData.value = {
 			...(defaultProviderData[props.data.name] || {}),
-			...provider.data,
+			...fetchedProvider.data,
 		};
 
-		setConnectionState(provider.state);
+		setConnectionState(fetchedProvider.state);
 
-		if (provider.connected) {
-			initialConnectionState.value = provider.state;
-		} else if (Object.keys(provider.data).length) {
+		if (fetchedProvider.connected) {
+			initialConnectionState.value = fetchedProvider.state;
+		} else if (Object.keys(fetchedProvider.data ?? {}).length) {
 			await testConnection();
 		}
 
-		if (provider.state === 'connected') {
+		if (fetchedProvider.state === 'connected') {
 			void externalSecretsStore.reloadProvider(props.data.name);
 		}
 	} catch (error) {
 		toast.showError(error, 'Error');
 	}
 });
-
-function close() {
-	uiStore.closeModal(EXTERNAL_SECRETS_PROVIDER_MODAL_KEY);
-}
 
 function onValueChange(updateInformation: IUpdateInformation) {
 	providerData.value = {
@@ -110,6 +105,10 @@ function onValueChange(updateInformation: IUpdateInformation) {
 }
 
 async function save() {
+	if (!provider.value) {
+		return;
+	}
+
 	try {
 		saving.value = true;
 		await externalSecretsStore.updateProvider(provider.value.name, {
@@ -137,7 +136,7 @@ async function onBeforeClose() {
 		const confirmModal = await confirm(
 			i18n.baseText('settings.externalSecrets.provider.closeWithoutSaving.description', {
 				interpolate: {
-					provider: provider.value.displayName,
+					provider: provider.value?.displayName ?? '',
 				},
 			}),
 			{
@@ -156,19 +155,23 @@ async function onBeforeClose() {
 
 	return true;
 }
+
+async function onConnectionStateChange() {
+	await testConnection();
+}
 </script>
 
 <template>
 	<Modal
 		id="external-secrets-provider-modal"
 		width="812px"
-		:title="provider.displayName"
-		:eventBus="data.eventBus"
+		:title="provider?.displayName"
+		:event-bus="data.eventBus"
 		:name="EXTERNAL_SECRETS_PROVIDER_MODAL_KEY"
 		:before-close="onBeforeClose"
 	>
 		<template #header>
-			<div :class="$style.header">
+			<div v-if="provider" :class="$style.header">
 				<div :class="$style.providerTitle">
 					<ExternalSecretsProviderImage :provider="provider" class="mr-xs" />
 					<span>{{ provider.displayName }}</span>
@@ -182,7 +185,7 @@ async function onBeforeClose() {
 						"
 						:event-bus="eventBus"
 						:provider="provider"
-						@change="testConnection"
+						@change="onConnectionStateChange"
 					/>
 					<n8n-button
 						type="primary"
@@ -201,9 +204,9 @@ async function onBeforeClose() {
 		</template>
 
 		<template #content>
-			<div :class="$style.container">
+			<div v-if="provider" :class="$style.container">
 				<hr class="mb-l" />
-				<div class="mb-l" v-if="connectionState !== 'initializing'">
+				<div v-if="connectionState !== 'initializing'" class="mb-l">
 					<n8n-callout
 						v-if="connectionState === 'connected' || connectionState === 'tested'"
 						theme="success"
@@ -262,13 +265,13 @@ async function onBeforeClose() {
 					@submit.prevent
 				>
 					<n8n-notice v-if="property.type === 'notice'" :content="property.displayName" />
-					<parameter-input-expanded
+					<ParameterInputExpanded
 						v-else
 						class="mb-l"
 						:parameter="property"
 						:value="providerData[property.name]"
 						:label="labelSize"
-						eventSource="external-secrets-provider"
+						event-source="external-secrets-provider"
 						@update="onValueChange"
 					/>
 				</form>

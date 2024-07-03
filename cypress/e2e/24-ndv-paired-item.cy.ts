@@ -1,5 +1,4 @@
 import { WorkflowPage, NDV } from '../pages';
-import { v4 as uuid } from 'uuid';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -7,7 +6,7 @@ const ndv = new NDV();
 describe('NDV', () => {
 	beforeEach(() => {
 		workflowPage.actions.visit();
-		workflowPage.actions.renameWorkflow(uuid());
+		workflowPage.actions.renameWithUniqueName();
 		workflowPage.actions.saveWorkflowOnButtonClick();
 	});
 
@@ -19,7 +18,7 @@ describe('NDV', () => {
 
 		workflowPage.actions.executeWorkflow();
 
-		workflowPage.actions.openNode('Item Lists');
+		workflowPage.actions.openNode('Sort');
 
 		ndv.getters.inputPanel().contains('6 items').should('exist');
 		ndv.getters.outputPanel().contains('6 items').should('exist');
@@ -92,7 +91,7 @@ describe('NDV', () => {
 		ndv.getters.outputHoveringItem().should('have.text', '1000');
 		ndv.getters.parameterExpressionPreview('value').should('include.text', '1000');
 
-		ndv.actions.selectInputNode('Item Lists');
+		ndv.actions.selectInputNode('Sort');
 		ndv.actions.changeOutputRunSelector('1 of 2 (6 items)');
 		ndv.getters.backToCanvas().realHover(); // reset to default hover
 
@@ -113,6 +112,9 @@ describe('NDV', () => {
 		workflowPage.actions.executeWorkflow();
 		workflowPage.actions.openNode('Set3');
 
+		ndv.actions.switchInputMode('Table');
+		ndv.actions.switchOutputMode('Table');
+
 		ndv.getters
 			.inputRunSelector()
 			.should('exist')
@@ -123,9 +125,6 @@ describe('NDV', () => {
 			.should('exist')
 			.find('input')
 			.should('include.value', '2 of 2 (6 items)');
-
-		ndv.actions.switchInputMode('Table');
-		ndv.actions.switchOutputMode('Table');
 
 		ndv.actions.changeOutputRunSelector('1 of 2 (6 items)');
 		ndv.getters.inputRunSelector().find('input').should('include.value', '1 of 2 (6 items)');
@@ -186,6 +185,7 @@ describe('NDV', () => {
 
 		ndv.getters.inputTableRow(1).invoke('attr', 'data-test-id').should('equal', 'hovering-item');
 		ndv.getters.inputTableRow(1).realHover();
+		cy.wait(100);
 		ndv.getters.outputHoveringItem().should('not.exist');
 		ndv.getters.parameterExpressionPreview('value').should('include.text', '1111');
 
@@ -200,6 +200,7 @@ describe('NDV', () => {
 		ndv.actions.selectInputNode('Code');
 
 		ndv.getters.inputTableRow(1).realHover();
+		cy.wait(100);
 		ndv.getters.inputTableRow(1).should('have.text', '6666');
 
 		ndv.getters.inputTableRow(1).invoke('attr', 'data-test-id').should('equal', 'hovering-item');
@@ -275,5 +276,60 @@ describe('NDV', () => {
 		ndv.getters.outputHoveringItem().should('have.text', '8888');
 		// todo there's a bug here need to fix ADO-534
 		// ndv.getters.outputHoveringItem().should('not.exist');
+	});
+
+	it('can resolve expression with paired item in multi-input node', () => {
+		cy.fixture('expression_with_paired_item_in_multi_input_node.json').then((data) => {
+			cy.get('body').paste(JSON.stringify(data));
+		});
+
+		workflowPage.actions.zoomToFit();
+
+		/* prettier-ignore */
+		const PINNED_DATA = [
+			{
+				"id": "abc",
+				"historyId": "def",
+				"messages": [
+					{
+						"id": "abc"
+					}
+				]
+			},
+			{
+				"id": "abc",
+				"historyId": "def",
+				"messages": [
+					{
+						"id": "abc"
+					},
+					{
+						"id": "abc"
+					},
+					{
+						"id": "abc"
+					}
+				]
+			},
+			{
+				"id": "abc",
+				"historyId": "def",
+				"messages": [
+					{
+						"id": "abc"
+					}
+				]
+			}
+		];
+		/* prettier-ignore */
+		workflowPage.actions.openNode('Get thread details1');
+		ndv.actions.pastePinnedData(PINNED_DATA);
+		ndv.actions.close();
+
+		workflowPage.actions.executeWorkflow();
+		workflowPage.actions.openNode('Switch1');
+		ndv.actions.execute();
+
+		ndv.getters.parameterExpressionPreview('output').should('include.text', '1');
 	});
 });

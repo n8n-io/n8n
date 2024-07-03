@@ -1,8 +1,9 @@
-import { BasePage } from './base';
 import { getVisibleSelect } from '../utils';
+import { BasePage } from './base';
 
 export class SettingsLogStreamingPage extends BasePage {
 	url = '/settings/log-streaming';
+
 	getters = {
 		getActionBoxUnlicensed: () => cy.getByTestId('action-box-unlicensed'),
 		getActionBoxLicensed: () => cy.getByTestId('action-box-licensed'),
@@ -17,6 +18,7 @@ export class SettingsLogStreamingPage extends BasePage {
 		getDestinationDeleteButton: () => cy.getByTestId('destination-delete-button'),
 		getDestinationCards: () => cy.getByTestId('destination-card'),
 	};
+
 	actions = {
 		clickContactUs: () => this.getters.getContactUsButton().click(),
 		clickAddFirstDestination: () => this.getters.getAddFirstDestinationButton().click(),

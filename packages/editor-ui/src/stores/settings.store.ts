@@ -6,37 +6,38 @@ import {
 	testLdapConnection,
 	updateLdapConfig,
 } from '@/api/ldap';
-import { getPromptsData, getSettings, submitContactInfo, submitValueSurvey } from '@/api/settings';
+import { getSettings, submitContactInfo } from '@/api/settings';
 import { testHealthEndpoint } from '@/api/templates';
-import type { EnterpriseEditionFeature } from '@/constants';
-import { CONTACT_PROMPT_MODAL_KEY, STORES, VALUE_SURVEY_MODAL_KEY } from '@/constants';
 import type {
+	EnterpriseEditionFeatureValue,
 	ILdapConfig,
 	IN8nPromptResponse,
-	IN8nPrompts,
-	IN8nValueSurveyData,
 	ISettingsState,
 } from '@/Interface';
+import { STORES, INSECURE_CONNECTION_WARNING } from '@/constants';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import type {
 	IDataObject,
-	ILogLevel,
+	LogLevel,
 	IN8nUISettings,
 	ITelemetrySettings,
 	WorkflowSettings,
 } from 'n8n-workflow';
+import { ExpressionEvaluatorProxy } from 'n8n-workflow';
 import { defineStore } from 'pinia';
-import { useRootStore } from './n8nRoot.store';
+import { useRootStore } from './root.store';
 import { useUIStore } from './ui.store';
 import { useUsersStore } from './users.store';
 import { useVersionsStore } from './versions.store';
-import { makeRestApiRequest } from '@/utils';
-import { useCloudPlanStore } from './cloudPlan.store';
+import { makeRestApiRequest } from '@/utils/apiUtils';
+import { useTitleChange } from '@/composables/useTitleChange';
+import { useToast } from '@/composables/useToast';
+import { i18n } from '@/plugins/i18n';
 
 export const useSettingsStore = defineStore(STORES.SETTINGS, {
 	state: (): ISettingsState => ({
+		initialized: false,
 		settings: {} as IN8nUISettings,
-		promptsData: {} as IN8nPrompts,
 		userManagement: {
 			quota: -1,
 			showSetupOnFirstLoad: false,
@@ -67,19 +68,58 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		saveDataErrorExecution: 'all',
 		saveDataSuccessExecution: 'all',
 		saveManualExecutions: false,
+		saveDataProgressExecution: false,
 	}),
 	getters: {
-		isEnterpriseFeatureEnabled() {
-			return (feature: EnterpriseEditionFeature): boolean => this.settings.enterprise[feature];
+		isDocker(): boolean {
+			return this.settings.isDocker;
 		},
+		databaseType(): 'sqlite' | 'mariadb' | 'mysqldb' | 'postgresdb' {
+			return this.settings.databaseType;
+		},
+		planName(): string {
+			return this.settings.license.planName ?? 'Community';
+		},
+		consumerId(): string {
+			return this.settings.license.consumerId;
+		},
+		binaryDataMode(): 'default' | 'filesystem' | 's3' {
+			return this.settings.binaryDataMode;
+		},
+		pruning(): { isEnabled: boolean; maxAge: number; maxCount: number } {
+			return this.settings.pruning;
+		},
+		security(): {
+			blockFileAccessToN8nFiles: boolean;
+			secureCookie: boolean;
+		} {
+			return {
+				blockFileAccessToN8nFiles: this.settings.security.blockFileAccessToN8nFiles,
+				secureCookie: this.settings.authCookie.secure,
+			};
+		},
+		isEnterpriseFeatureEnabled() {
+			return (feature: EnterpriseEditionFeatureValue): boolean =>
+				Boolean(this.settings.enterprise?.[feature]);
+		},
+
 		versionCli(): string {
 			return this.settings.versionCli;
+		},
+		nodeJsVersion(): string {
+			return this.settings.nodeJsVersion;
+		},
+		concurrency(): number {
+			return this.settings.concurrency;
 		},
 		isPublicApiEnabled(): boolean {
 			return this.api.enabled;
 		},
 		isSwaggerUIEnabled(): boolean {
 			return this.api.swaggerUi.enabled;
+		},
+		isPreviewMode(): boolean {
+			return this.settings.previewMode;
 		},
 		publicApiLatestVersion(): number {
 			return this.api.latestVersion;
@@ -112,10 +152,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			return this.settings.deployment?.type.startsWith('desktop_');
 		},
 		isCloudDeployment(): boolean {
-			if (!this.settings.deployment) {
-				return false;
-			}
-			return this.settings.deployment.type === 'cloud';
+			return this.settings.deployment?.type === 'cloud';
 		},
 		isSmtpSetup(): boolean {
 			return this.userManagement.smtpSetup;
@@ -130,7 +167,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		telemetry(): ITelemetrySettings {
 			return this.settings.telemetry;
 		},
-		logLevel(): ILogLevel {
+		logLevel(): LogLevel {
 			return this.settings.logLevel;
 		},
 		isTelemetryEnabled(): boolean {
@@ -171,6 +208,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		isQueueModeEnabled(): boolean {
 			return this.settings.executionMode === 'queue';
 		},
+		isWorkerViewAvailable(): boolean {
+			return !!this.settings.enterprise?.workerView;
+		},
 		workflowCallerPolicyDefaultOption(): WorkflowSettings.CallerPolicy {
 			return this.settings.workflowCallerPolicyDefaultOption;
 		},
@@ -186,8 +226,38 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 				this.userManagement.quota === -1 || this.userManagement.quota > userStore.allUsers.length
 			);
 		},
+		isDevRelease(): boolean {
+			return this.settings.releaseChannel === 'dev';
+		},
 	},
 	actions: {
+		async initialize() {
+			if (this.initialized) {
+				return;
+			}
+
+			const { showToast } = useToast();
+			try {
+				await this.getSettings();
+
+				ExpressionEvaluatorProxy.setEvaluator(this.settings.expressions.evaluator);
+
+				// Re-compute title since settings are now available
+				useTitleChange().titleReset();
+
+				this.initialized = true;
+			} catch (e) {
+				showToast({
+					title: i18n.baseText('startupError'),
+					message: i18n.baseText('startupError.message'),
+					type: 'error',
+					duration: 0,
+					dangerouslyUseHTMLString: true,
+				});
+
+				throw e;
+			}
+		},
 		setSettings(settings: IN8nUISettings): void {
 			this.settings = settings;
 			this.userManagement = settings.userManagement;
@@ -205,22 +275,43 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 				this.saml.loginLabel = settings.sso.saml.loginLabel;
 			}
 			if (settings.enterprise?.showNonProdBanner) {
-				useUIStore().banners.NON_PRODUCTION_LICENSE.dismissed = false;
+				useUIStore().pushBannerToStack('NON_PRODUCTION_LICENSE');
+			}
+			if (settings.versionCli) {
+				useRootStore().setVersionCli(settings.versionCli);
+			}
+
+			if (
+				settings.authCookie.secure &&
+				location.protocol === 'http:' &&
+				!['localhost', '127.0.0.1'].includes(location.hostname)
+			) {
+				document.write(INSECURE_CONNECTION_WARNING);
+				return;
+			}
+
+			const isV1BannerDismissedPermanently = (settings.banners?.dismissed || []).includes('V1');
+			if (!isV1BannerDismissedPermanently && useRootStore().versionCli.startsWith('1.')) {
+				useUIStore().pushBannerToStack('V1');
 			}
 		},
 		async getSettings(): Promise<void> {
 			const rootStore = useRootStore();
-			const settings = await getSettings(rootStore.getRestApiContext);
+			const settings = await getSettings(rootStore.restApiContext);
 
 			this.setSettings(settings);
 			this.settings.communityNodesEnabled = settings.communityNodesEnabled;
-			this.setAllowedModules(settings.allowedModules as { builtIn?: string; external?: string });
+			this.setAllowedModules(settings.allowedModules);
 			this.setSaveDataErrorExecution(settings.saveDataErrorExecution);
 			this.setSaveDataSuccessExecution(settings.saveDataSuccessExecution);
+			this.setSaveDataProgressExecution(settings.saveExecutionProgress);
 			this.setSaveManualExecutions(settings.saveManualExecutions);
 
 			rootStore.setUrlBaseWebhook(settings.urlBaseWebhook);
 			rootStore.setUrlBaseEditor(settings.urlBaseEditor);
+			rootStore.setEndpointForm(settings.endpointForm);
+			rootStore.setEndpointFormTest(settings.endpointFormTest);
+			rootStore.setEndpointFormWaiting(settings.endpointFormWaiting);
 			rootStore.setEndpointWebhook(settings.endpointWebhook);
 			rootStore.setEndpointWebhookTest(settings.endpointWebhookTest);
 			rootStore.setTimezone(settings.timezone);
@@ -232,15 +323,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			rootStore.setN8nMetadata(settings.n8nMetadata || {});
 			rootStore.setDefaultLocale(settings.defaultLocale);
 			rootStore.setIsNpmAvailable(settings.isNpmAvailable);
-
-			const isV1BannerDismissedPermanently = settings.banners.dismissed.includes('V1');
-			if (
-				!isV1BannerDismissedPermanently &&
-				useRootStore().versionCli.startsWith('1.') &&
-				!useCloudPlanStore().userIsTrialing
-			) {
-				useUIStore().showBanner('V1');
-			}
+			rootStore.setBinaryDataMode(settings.binaryDataMode);
 
 			useVersionsStore().setVersionNotificationSettings(settings.versionNotifications);
 		},
@@ -256,31 +339,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 				},
 			};
 		},
-		setPromptsData(promptsData: IN8nPrompts): void {
-			this.promptsData = promptsData;
-		},
 		setAllowedModules(allowedModules: { builtIn?: string[]; external?: string[] }): void {
 			this.settings.allowedModules = allowedModules;
-		},
-		async fetchPromptsData(): Promise<void> {
-			if (!this.isTelemetryEnabled) {
-				return;
-			}
-
-			const uiStore = useUIStore();
-			const usersStore = useUsersStore();
-			const promptsData: IN8nPrompts = await getPromptsData(
-				this.settings.instanceId,
-				usersStore.currentUserId || '',
-			);
-
-			if (promptsData && promptsData.showContactPrompt) {
-				uiStore.openModal(CONTACT_PROMPT_MODAL_KEY);
-			} else if (promptsData && promptsData.showValueSurvey) {
-				uiStore.openModal(VALUE_SURVEY_MODAL_KEY);
-			}
-
-			this.setPromptsData(promptsData);
 		},
 		async submitContactInfo(email: string): Promise<IN8nPromptResponse | undefined> {
 			try {
@@ -294,18 +354,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 				return;
 			}
 		},
-		async submitValueSurvey(params: IN8nValueSurveyData): Promise<IN8nPromptResponse | undefined> {
-			try {
-				const usersStore = useUsersStore();
-				return await submitValueSurvey(
-					this.settings.instanceId,
-					usersStore.currentUserId || '',
-					params,
-				);
-			} catch (error) {
-				return;
-			}
-		},
 		async testTemplatesEndpoint(): Promise<void> {
 			const timeout = new Promise((_, reject) => setTimeout(() => reject(), 2000));
 			await Promise.race([testHealthEndpoint(this.templatesHost), timeout]);
@@ -313,52 +361,53 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		async getApiKey(): Promise<string | null> {
 			const rootStore = useRootStore();
-			const { apiKey } = await getApiKey(rootStore.getRestApiContext);
+			const { apiKey } = await getApiKey(rootStore.restApiContext);
 			return apiKey;
 		},
 		async createApiKey(): Promise<string | null> {
 			const rootStore = useRootStore();
-			const { apiKey } = await createApiKey(rootStore.getRestApiContext);
+			const { apiKey } = await createApiKey(rootStore.restApiContext);
 			return apiKey;
 		},
 		async deleteApiKey(): Promise<void> {
 			const rootStore = useRootStore();
-			await deleteApiKey(rootStore.getRestApiContext);
+			await deleteApiKey(rootStore.restApiContext);
 		},
 		async getLdapConfig() {
 			const rootStore = useRootStore();
-			return getLdapConfig(rootStore.getRestApiContext);
+			return await getLdapConfig(rootStore.restApiContext);
 		},
 		async getLdapSynchronizations(pagination: { page: number }) {
 			const rootStore = useRootStore();
-			return getLdapSynchronizations(rootStore.getRestApiContext, pagination);
+			return await getLdapSynchronizations(rootStore.restApiContext, pagination);
 		},
 		async testLdapConnection() {
 			const rootStore = useRootStore();
-			return testLdapConnection(rootStore.getRestApiContext);
+			return await testLdapConnection(rootStore.restApiContext);
 		},
 		async updateLdapConfig(ldapConfig: ILdapConfig) {
 			const rootStore = useRootStore();
-			return updateLdapConfig(rootStore.getRestApiContext, ldapConfig);
+			return await updateLdapConfig(rootStore.restApiContext, ldapConfig);
 		},
 		async runLdapSync(data: IDataObject) {
 			const rootStore = useRootStore();
-			return runLdapSync(rootStore.getRestApiContext, data);
+			return await runLdapSync(rootStore.restApiContext, data);
 		},
-		setSaveDataErrorExecution(newValue: string) {
+		setSaveDataErrorExecution(newValue: WorkflowSettings.SaveDataExecution) {
 			this.saveDataErrorExecution = newValue;
 		},
-		setSaveDataSuccessExecution(newValue: string) {
+		setSaveDataSuccessExecution(newValue: WorkflowSettings.SaveDataExecution) {
 			this.saveDataSuccessExecution = newValue;
 		},
 		setSaveManualExecutions(saveManualExecutions: boolean) {
 			this.saveManualExecutions = saveManualExecutions;
 		},
+		setSaveDataProgressExecution(newValue: boolean) {
+			this.saveDataProgressExecution = newValue;
+		},
 		async getTimezones(): Promise<IDataObject> {
 			const rootStore = useRootStore();
-			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/options/timezones');
+			return await makeRestApiRequest(rootStore.restApiContext, 'GET', '/options/timezones');
 		},
 	},
 });
-
-export { useUsersStore };

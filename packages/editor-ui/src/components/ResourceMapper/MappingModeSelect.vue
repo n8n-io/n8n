@@ -2,7 +2,7 @@
 import type { INodePropertyTypeOptions, ResourceMapperFields } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
-import { useNodeSpecificationValues } from '@/composables';
+import { useNodeSpecificationValues } from '@/composables/useNodeSpecificationValues';
 
 interface Props {
 	initialValue: string;
@@ -112,10 +112,10 @@ defineExpose({
 		>
 			<div class="mt-5xs">
 				<n8n-select
-					:modelValue="selected"
+					:model-value="selected"
 					:teleported="teleported"
 					:size="props.inputSize"
-					@update:modelValue="onModeChanged"
+					@update:model-value="onModeChanged"
 				>
 					<n8n-option
 						v-for="option in mappingModeOptions"

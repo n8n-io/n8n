@@ -1,9 +1,11 @@
-import { afterAll, beforeAll, vi } from 'vitest';
+import { afterAll, beforeAll } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { waitFor } from '@testing-library/vue';
 import { setupServer } from '@/__tests__/server';
 import VariablesView from '@/views/VariablesView.vue';
-import { useSettingsStore, useUsersStore } from '@/stores';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useRBACStore } from '@/stores/rbac.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { EnterpriseEditionFeature } from '@/constants';
 
@@ -12,6 +14,7 @@ describe('VariablesView', () => {
 	let pinia: ReturnType<typeof createPinia>;
 	let settingsStore: ReturnType<typeof useSettingsStore>;
 	let usersStore: ReturnType<typeof useUsersStore>;
+	let rbacStore: ReturnType<typeof useRBACStore>;
 
 	const renderComponent = createComponentRenderer(VariablesView);
 
@@ -25,6 +28,7 @@ describe('VariablesView', () => {
 
 		settingsStore = useSettingsStore();
 		usersStore = useUsersStore();
+		rbacStore = useRBACStore();
 		await settingsStore.getSettings();
 		await usersStore.fetchUsers();
 		await usersStore.loginWithCookie();
@@ -41,28 +45,11 @@ describe('VariablesView', () => {
 	});
 
 	describe('should render empty state', () => {
-		it('when feature is enabled and logged in user is owner', async () => {
-			settingsStore.settings.enterprise[EnterpriseEditionFeature.Variables] = true;
-			vi.spyOn(usersStore, 'currentUser', 'get').mockReturnValue({
-				isOwner: true,
-			});
+		it('when feature is disabled and logged in user is not owner', async () => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Variables] = false;
+			rbacStore.setGlobalScopes(['variable:read', 'variable:list']);
 
 			const { queryByTestId } = renderComponent({ pinia });
-
-			await waitFor(() => {
-				expect(queryByTestId('empty-resources-list')).toBeVisible();
-				expect(queryByTestId('unavailable-resources-list')).not.toBeInTheDocument();
-				expect(queryByTestId('cannot-create-variables')).not.toBeInTheDocument();
-			});
-		});
-
-		it('when feature is disabled and logged in user is owner', async () => {
-			settingsStore.settings.enterprise[EnterpriseEditionFeature.Variables] = false;
-			vi.spyOn(usersStore, 'currentUser', 'get').mockReturnValue({
-				isOwner: true,
-			});
-
-			const { queryByTestId } = renderComponent(VariablesView, { pinia });
 
 			await waitFor(() => {
 				expect(queryByTestId('empty-resources-list')).not.toBeInTheDocument();
@@ -71,13 +58,49 @@ describe('VariablesView', () => {
 			});
 		});
 
-		it('when feature is eanbled and logged in user is not owner', async () => {
-			settingsStore.settings.enterprise[EnterpriseEditionFeature.Variables] = true;
-			vi.spyOn(usersStore, 'currentUser', 'get').mockReturnValue({
-				isDefaultUser: true,
-			});
+		it('when feature is disabled and logged in user is owner', async () => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Variables] = false;
+			rbacStore.setGlobalScopes([
+				'variable:create',
+				'variable:read',
+				'variable:update',
+				'variable:delete',
+				'variable:list',
+			]);
 
-			const { queryByTestId } = renderComponent(VariablesView, { pinia });
+			const { queryByTestId } = renderComponent({ pinia });
+
+			await waitFor(() => {
+				expect(queryByTestId('empty-resources-list')).not.toBeInTheDocument();
+				expect(queryByTestId('unavailable-resources-list')).toBeVisible();
+				expect(queryByTestId('cannot-create-variables')).not.toBeInTheDocument();
+			});
+		});
+
+		it('when feature is enabled and logged in user is owner', async () => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Variables] = true;
+			rbacStore.setGlobalScopes([
+				'variable:create',
+				'variable:read',
+				'variable:update',
+				'variable:delete',
+				'variable:list',
+			]);
+
+			const { queryByTestId } = renderComponent({ pinia });
+
+			await waitFor(() => {
+				expect(queryByTestId('empty-resources-list')).not.toBeInTheDocument();
+				expect(queryByTestId('unavailable-resources-list')).not.toBeInTheDocument();
+				expect(queryByTestId('cannot-create-variables')).not.toBeInTheDocument();
+			});
+		});
+
+		it('when feature is enabled and logged in user is not owner', async () => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Variables] = true;
+			rbacStore.setGlobalScopes(['variable:read', 'variable:list']);
+
+			const { queryByTestId } = renderComponent({ pinia });
 
 			await waitFor(() => {
 				expect(queryByTestId('empty-resources-list')).not.toBeInTheDocument();

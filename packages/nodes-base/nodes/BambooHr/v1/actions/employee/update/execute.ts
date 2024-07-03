@@ -1,11 +1,10 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { apiRequest } from '../../../transport';
-
-import moment from 'moment';
+import moment from 'moment-timezone';
 
 import { capitalCase } from 'change-case';
+import { apiRequest } from '../../../transport';
 
 export async function update(
 	this: IExecuteFunctions,

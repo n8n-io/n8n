@@ -6,6 +6,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import {
 	convertNETDates,
 	unleashedApiRequest,
@@ -15,8 +16,6 @@ import {
 import { salesOrderFields, salesOrderOperations } from './SalesOrderDescription';
 
 import { stockOnHandFields, stockOnHandOperations } from './StockOnHandDescription';
-
-import moment from 'moment';
 
 export class UnleashedSoftware implements INodeType {
 	description: INodeTypeDescription = {
@@ -194,6 +193,6 @@ export class UnleashedSoftware implements INodeType {
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

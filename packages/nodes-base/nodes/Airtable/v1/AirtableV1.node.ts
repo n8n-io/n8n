@@ -6,13 +6,14 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	INodeTypeBaseDescription,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { oldVersionNotice } from '../../../utils/descriptions';
+import { generatePairedItemData } from '../../../utils/utilities';
 import type { IRecord } from './GenericFunctions';
 import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
-
-import { oldVersionNotice } from '../../../utils/descriptions';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Airtable',
@@ -62,10 +63,6 @@ const versionDescription: INodeTypeDescription = {
 			type: 'options',
 			options: [
 				{
-					name: 'API Key',
-					value: 'airtableApi',
-				},
-				{
 					name: 'Access Token',
 					value: 'airtableTokenApi',
 				},
@@ -73,10 +70,26 @@ const versionDescription: INodeTypeDescription = {
 					name: 'OAuth2',
 					value: 'airtableOAuth2Api',
 				},
+				{
+					name: 'API Key (Deprecated)',
+					value: 'airtableApi',
+				},
 			],
 			default: 'airtableApi',
 		},
 		oldVersionNotice,
+		{
+			displayName:
+				"This type of connection (API Key) was deprecated and can't be used anymore. Please create a new credential of type 'Access Token' instead.",
+			name: 'deprecated',
+			type: 'notice',
+			default: '',
+			displayOptions: {
+				show: {
+					authentication: ['airtableApi'],
+				},
+			},
+		},
 		{
 			displayName: 'Operation',
 			name: 'operation',
@@ -551,6 +564,13 @@ export class AirtableV1 implements INodeType {
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const authentication = this.getNodeParameter('authentication', 0);
+		if (authentication === 'airtableApi') {
+			throw new NodeOperationError(
+				this.getNode(),
+				'The API Key connection was deprecated by Airtable, please use Access Token or OAuth2 instead.',
+			);
+		}
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 		let responseData;
@@ -569,7 +589,7 @@ export class AirtableV1 implements INodeType {
 
 		let returnAll = false;
 		let endpoint = '';
-		let requestMethod = '';
+		let requestMethod: IHttpRequestMethods;
 
 		const body: IDataObject = {};
 		const qs: IDataObject = {};
@@ -633,7 +653,7 @@ export class AirtableV1 implements INodeType {
 						rows.length = 0;
 					}
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						returnData.push({ json: { error: error.message } });
 						continue;
 					}
@@ -676,7 +696,7 @@ export class AirtableV1 implements INodeType {
 						rows.length = 0;
 					}
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						returnData.push({ json: { error: error.message } });
 						continue;
 					}
@@ -718,22 +738,26 @@ export class AirtableV1 implements INodeType {
 					const downloadFieldNames = (
 						this.getNodeParameter('downloadFieldNames', 0) as string
 					).split(',');
+					const pairedItem = generatePairedItemData(items.length);
 					const data = await downloadRecordAttachments.call(
 						this,
 						responseData.records as IRecord[],
 						downloadFieldNames,
+						pairedItem,
 					);
 					return [data];
 				}
 
 				// We can return from here
+				const itemData = generatePairedItemData(items.length);
+
 				return [
 					this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(returnData), {
-						itemData: { item: 0 },
+						itemData,
 					}),
 				];
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ json: { error: error.message } });
 				} else {
 					throw error;
@@ -768,7 +792,7 @@ export class AirtableV1 implements INodeType {
 
 					returnData.push(...executionData);
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						returnData.push({ json: { error: error.message } });
 						continue;
 					}
@@ -856,7 +880,7 @@ export class AirtableV1 implements INodeType {
 						rows.length = 0;
 					}
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						returnData.push({ json: { error: error.message } });
 						continue;
 					}
@@ -867,6 +891,6 @@ export class AirtableV1 implements INodeType {
 			throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

@@ -1,77 +1,58 @@
-<template>
-	<div ref="root">
-		<slot :bp="bp"></slot>
-	</div>
-</template>
+<script setup lang="ts">
+import { ref, onMounted, onBeforeUnmount, computed } from 'vue';
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+export type BreakpointDefinition = { bp: string; width: number };
 
-export default defineComponent({
-	name: 'ResizeObserver',
-	props: {
-		enabled: {
-			type: Boolean,
-			default: true,
-		},
-		breakpoints: {
-			type: Array,
-			validator: (bps: Array<{ bp: string; width: number }>) => {
-				return (
-					Array.isArray(bps) &&
-					bps.reduce(
-						(accu, { width, bp }) => accu && typeof width === 'number' && typeof bp === 'string',
-						true,
-					)
-				);
-			},
-		},
+const props = withDefaults(
+	defineProps<{
+		enabled?: boolean;
+		breakpoints?: BreakpointDefinition[];
+	}>(),
+	{
+		enabled: true,
+		breakpoints: () => [],
 	},
-	data(): { observer: ResizeObserver | null; bp: string } {
-		return {
-			observer: null,
-			bp: '',
-		};
-	},
-	mounted() {
-		if (!this.enabled) {
-			return;
-		}
+);
 
-		const unsortedBreakpoints = [...(this.breakpoints || [])] as Array<{
-			width: number;
-			bp: string;
-		}>;
+const observer = ref<ResizeObserver | null>(null);
+const breakpoint = ref('');
+const root = ref<HTMLDivElement | null>(null);
 
-		const bps = unsortedBreakpoints.sort((a, b) => a.width - b.width);
+const sortedBreakpoints = computed(() => [...props.breakpoints].sort((a, b) => a.width - b.width));
 
-		const observer = new ResizeObserver((entries) => {
-			entries.forEach((entry) => {
-				// We wrap it in requestAnimationFrame to avoid this error - ResizeObserver loop limit exceeded
-				requestAnimationFrame(() => {
-					const newWidth = entry.contentRect.width;
-					let newBP = 'default';
-					for (let i = 0; i < bps.length; i++) {
-						if (newWidth < bps[i].width) {
-							newBP = bps[i].bp;
-							break;
-						}
-					}
-					this.bp = newBP;
-				});
+const getBreakpointFromWidth = (width: number): string => {
+	return (
+		sortedBreakpoints.value.find((sortedBreakpoint) => width < sortedBreakpoint.width)?.bp ??
+		'default'
+	);
+};
+
+onMounted(() => {
+	if (!props.enabled) return;
+	if (!root.value) return;
+
+	breakpoint.value = getBreakpointFromWidth(root.value.offsetWidth);
+
+	observer.value = new ResizeObserver((entries) => {
+		entries.forEach((entry) => {
+			requestAnimationFrame(() => {
+				breakpoint.value = getBreakpointFromWidth(entry.contentRect.width);
 			});
 		});
+	});
 
-		this.observer = observer;
+	observer.value.observe(root.value);
+});
 
-		if (this.$refs.root) {
-			observer.observe(this.$refs.root as HTMLDivElement);
-		}
-	},
-	beforeUnmount() {
-		if (this.enabled) {
-			this.observer?.disconnect();
-		}
-	},
+onBeforeUnmount(() => {
+	if (observer.value) {
+		observer.value.disconnect();
+	}
 });
 </script>
+
+<template>
+	<div ref="root">
+		<slot :bp="breakpoint"></slot>
+	</div>
+</template>

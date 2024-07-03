@@ -1,5 +1,5 @@
 <template>
-	<n8n-notice :content="scopesShortContent" :fullContent="scopesFullContent" />
+	<n8n-notice :content="scopesShortContent" :full-content="scopesFullContent" />
 </template>
 
 <script lang="ts">

@@ -1,8 +1,7 @@
 import { EventEmitter } from 'events';
+import type { IExecuteFunctions, INodeExecutionData, IWorkflowDataProxyData } from 'n8n-workflow';
 import { ValidationError } from './ValidationError';
 import { isObject } from './utils';
-
-import type { IExecuteFunctions, INodeExecutionData, IWorkflowDataProxyData } from 'n8n-workflow';
 
 interface SandboxTextKeys {
 	object: {
@@ -17,14 +16,19 @@ export interface SandboxContext extends IWorkflowDataProxyData {
 	helpers: IExecuteFunctions['helpers'];
 }
 
-export const REQUIRED_N8N_ITEM_KEYS = new Set(['json', 'binary', 'pairedItem']);
+export const REQUIRED_N8N_ITEM_KEYS = new Set(['json', 'binary', 'pairedItem', 'error']);
 
 export function getSandboxContext(this: IExecuteFunctions, index: number): SandboxContext {
+	const helpers = {
+		...this.helpers,
+		httpRequestWithAuthentication: this.helpers.httpRequestWithAuthentication.bind(this),
+		requestWithAuthenticationPaginated: this.helpers.requestWithAuthenticationPaginated.bind(this),
+	};
 	return {
 		// from NodeExecuteFunctions
 		$getNodeParameter: this.getNodeParameter,
 		$getWorkflowStaticData: this.getWorkflowStaticData,
-		helpers: this.helpers,
+		helpers,
 
 		// to bring in all $-prefixed vars and methods from WorkflowDataProxy
 		// $node, $items(), $parameter, $json, $env, etc.
@@ -41,7 +45,9 @@ export abstract class Sandbox extends EventEmitter {
 		super();
 	}
 
-	abstract runCodeAllItems(): Promise<INodeExecutionData[]>;
+	abstract runCode(): Promise<unknown>;
+
+	abstract runCodeAllItems(): Promise<INodeExecutionData[] | INodeExecutionData[][]>;
 
 	abstract runCodeEachItem(): Promise<INodeExecutionData | undefined>;
 

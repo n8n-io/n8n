@@ -9,6 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import ISO6391 from 'iso-639-1';
 import type {
 	AttributesValuesUi,
 	CommentAnalyzeBody,
@@ -18,13 +19,11 @@ import type {
 
 import { googleApiRequest } from './GenericFunctions';
 
-import ISO6391 from 'iso-639-1';
-
 export class GooglePerspective implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Perspective',
 		name: 'googlePerspective',
-		icon: 'file:perspective.svg',
+		icon: { light: 'file:googlePerspective.svg', dark: 'file:googlePerspective.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		description: 'Consume Google Perspective API',
@@ -263,7 +262,7 @@ export class GooglePerspective implements INodeType {
 					);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
@@ -282,6 +281,6 @@ export class GooglePerspective implements INodeType {
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

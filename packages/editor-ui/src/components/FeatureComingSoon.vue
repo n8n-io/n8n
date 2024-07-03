@@ -13,7 +13,7 @@
 		<div :class="$style.actionBoxContainer">
 			<n8n-action-box
 				:description="$locale.baseText(featureInfo.actionBoxDescription)"
-				:buttonText="
+				:button-text="
 					$locale.baseText(featureInfo.actionBoxButtonLabel || 'fakeDoor.actionBox.button.label')
 				"
 				@click:button="openLinkPage"
@@ -30,7 +30,7 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import type { IFakeDoor } from '@/Interface';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';

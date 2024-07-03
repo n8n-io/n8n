@@ -1,3 +1,4 @@
+import { createSecureContext } from 'tls';
 import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
@@ -6,14 +7,15 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import get from 'lodash/get';
+import set from 'lodash/set';
+import { MongoClient, ObjectId } from 'mongodb';
+import { formatPrivateKey } from '../../utils/utilities';
 import type {
 	IMongoCredentials,
 	IMongoCredentialsType,
 	IMongoParametricCredentials,
 } from './mongoDb.types';
-
-import get from 'lodash/get';
-import set from 'lodash/set';
 
 /**
  * Standard way of building the MongoDB connection string, unless overridden with a provided string
@@ -128,4 +130,44 @@ export function prepareFields(fields: string) {
 		.split(',')
 		.map((field) => field.trim())
 		.filter((field) => !!field);
+}
+
+export function stringifyObjectIDs(items: INodeExecutionData[]) {
+	items.forEach((item) => {
+		if (item._id instanceof ObjectId) {
+			item.json._id = item._id.toString();
+		}
+		if (item.id instanceof ObjectId) {
+			item.json.id = item.id.toString();
+		}
+	});
+
+	return items;
+}
+
+export async function connectMongoClient(connectionString: string, credentials: IDataObject = {}) {
+	let client: MongoClient;
+
+	if (credentials.tls) {
+		const ca = credentials.ca ? formatPrivateKey(credentials.ca as string) : undefined;
+		const cert = credentials.cert ? formatPrivateKey(credentials.cert as string) : undefined;
+		const key = credentials.key ? formatPrivateKey(credentials.key as string) : undefined;
+		const passphrase = (credentials.passphrase as string) || undefined;
+
+		const secureContext = createSecureContext({
+			ca,
+			cert,
+			key,
+			passphrase,
+		});
+
+		client = await MongoClient.connect(connectionString, {
+			tls: true,
+			secureContext,
+		});
+	} else {
+		client = await MongoClient.connect(connectionString);
+	}
+
+	return client;
 }

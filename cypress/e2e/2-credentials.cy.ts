@@ -1,16 +1,18 @@
+import type { ICredentialType } from 'n8n-workflow';
 import {
+	GMAIL_NODE_NAME,
+	HTTP_REQUEST_NODE_NAME,
+	NEW_GOOGLE_ACCOUNT_NAME,
 	NEW_NOTION_ACCOUNT_NAME,
+	NEW_QUERY_AUTH_ACCOUNT_NAME,
+	NEW_TRELLO_ACCOUNT_NAME,
 	NOTION_NODE_NAME,
 	PIPEDRIVE_NODE_NAME,
-	HTTP_REQUEST_NODE_NAME,
-	NEW_QUERY_AUTH_ACCOUNT_NAME,
-	GMAIL_NODE_NAME,
-	NEW_GOOGLE_ACCOUNT_NAME,
-	NEW_TRELLO_ACCOUNT_NAME,
 	SCHEDULE_TRIGGER_NODE_NAME,
 	TRELLO_NODE_NAME,
 } from '../constants';
-import { CredentialsPage, CredentialsModal, WorkflowPage, NDV } from '../pages';
+import { CredentialsModal, CredentialsPage, NDV, WorkflowPage } from '../pages';
+import { successToast } from '../pages/notifications';
 import { getVisibleSelect } from '../utils';
 
 const credentialsPage = new CredentialsPage();
@@ -19,6 +21,7 @@ const workflowPage = new WorkflowPage();
 const nodeDetailsView = new NDV();
 
 const NEW_CREDENTIAL_NAME = 'Something else';
+const NEW_CREDENTIAL_NAME2 = 'Something else entirely';
 
 describe('Credentials', () => {
 	beforeEach(() => {
@@ -33,46 +36,13 @@ describe('Credentials', () => {
 		credentialsModal.getters.newCredentialTypeOption('Notion API').click();
 
 		credentialsModal.getters.newCredentialTypeButton().click();
-		credentialsModal.getters.connectionParameter('API Key').type('1234567890');
+		credentialsModal.getters.connectionParameter('Internal Integration Secret').type('1234567890');
 
 		credentialsModal.actions.setName('My awesome Notion account');
 		credentialsModal.actions.save();
 		credentialsModal.actions.close();
 
 		credentialsPage.getters.credentialCards().should('have.length', 1);
-	});
-
-	it('should create a new credential using Add Credential button', () => {
-		credentialsPage.getters.createCredentialButton().click();
-
-		credentialsModal.getters.newCredentialModal().should('be.visible');
-		credentialsModal.getters.newCredentialTypeSelect().should('be.visible');
-		credentialsModal.getters.newCredentialTypeOption('Airtable API').click();
-
-		credentialsModal.getters.newCredentialTypeButton().click();
-		credentialsModal.getters.editCredentialModal().should('be.visible');
-		credentialsModal.getters.connectionParameter('API Key').type('1234567890');
-
-		credentialsModal.actions.setName('Airtable Account');
-		credentialsModal.actions.save();
-		credentialsModal.actions.close();
-
-		credentialsPage.getters.credentialCards().should('have.length', 2);
-	});
-
-	it('should search credentials', () => {
-		// Search by name
-		credentialsPage.actions.search('Notion');
-		credentialsPage.getters.credentialCards().should('have.length', 1);
-
-		// Search by Credential type
-		credentialsPage.actions.search('Airtable API');
-		credentialsPage.getters.credentialCards().should('have.length', 1);
-
-		// No results
-		credentialsPage.actions.search('Google');
-		credentialsPage.getters.credentialCards().should('have.length', 0);
-		credentialsPage.getters.emptyList().should('be.visible');
 	});
 
 	it('should sort credentials', () => {
@@ -185,7 +155,7 @@ describe('Credentials', () => {
 		credentialsModal.getters.credentialsEditModal().should('be.visible');
 		credentialsModal.getters.deleteButton().click();
 		cy.get('.el-message-box').find('button').contains('Yes').click();
-		workflowPage.getters.successToast().contains('Credential deleted');
+		successToast().contains('Credential deleted');
 		workflowPage.getters
 			.nodeCredentialsSelect()
 			.find('input')
@@ -211,6 +181,24 @@ describe('Credentials', () => {
 			.nodeCredentialsSelect()
 			.find('input')
 			.should('have.value', NEW_CREDENTIAL_NAME);
+
+		// Reload page to make sure this also works when the credential hasn't been
+		// just created.
+		nodeDetailsView.actions.close();
+		workflowPage.actions.saveWorkflowOnButtonClick();
+		cy.reload();
+		workflowPage.getters.canvasNodes().last().click();
+		cy.get('body').type('{enter}');
+		workflowPage.getters.nodeCredentialsEditButton().click();
+		credentialsModal.getters.credentialsEditModal().should('be.visible');
+		credentialsModal.getters.name().click();
+		credentialsModal.actions.renameCredential(NEW_CREDENTIAL_NAME2);
+		credentialsModal.getters.saveButton().click();
+		credentialsModal.getters.closeButton().click();
+		workflowPage.getters
+			.nodeCredentialsSelect()
+			.find('input')
+			.should('have.value', NEW_CREDENTIAL_NAME2);
 	});
 
 	it('should setup generic authentication for HTTP node', () => {
@@ -235,5 +223,31 @@ describe('Credentials', () => {
 			.nodeCredentialsSelect()
 			.find('input')
 			.should('have.value', NEW_QUERY_AUTH_ACCOUNT_NAME);
+	});
+
+	it('should not show OAuth redirect URL section when OAuth2 credentials are overridden', () => {
+		cy.intercept('/types/credentials.json', { middleware: true }, (req) => {
+			req.headers['cache-control'] = 'no-cache, no-store';
+
+			req.on('response', (res) => {
+				const credentials: ICredentialType[] = res.body || [];
+
+				const index = credentials.findIndex((c) => c.name === 'slackOAuth2Api');
+
+				credentials[index] = {
+					...credentials[index],
+					__overwrittenProperties: ['clientId', 'clientSecret'],
+				};
+			});
+		});
+
+		workflowPage.actions.visit(true);
+		workflowPage.actions.addNodeToCanvas('Manual');
+		workflowPage.actions.addNodeToCanvas('Slack', true, true, 'Get a channel');
+		workflowPage.getters.nodeCredentialsSelect().should('exist');
+		workflowPage.getters.nodeCredentialsSelect().click();
+		getVisibleSelect().find('li').last().click();
+		credentialsModal.getters.credentialAuthTypeRadioButtons().first().click();
+		nodeDetailsView.getters.copyInput().should('not.exist');
 	});
 });

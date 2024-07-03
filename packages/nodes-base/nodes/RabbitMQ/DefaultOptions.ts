@@ -73,6 +73,20 @@ export const rabbitDefaultOptions: Array<
 		description: 'Whether the queue will be deleted when the number of consumers drops to zero',
 	},
 	{
+		displayName: 'Assert Exchange',
+		name: 'assertExchange',
+		type: 'boolean',
+		default: true,
+		description: 'Whether to assert the exchange exists before sending',
+	},
+	{
+		displayName: 'Assert Queue',
+		name: 'assertQueue',
+		type: 'boolean',
+		default: true,
+		description: 'Whether to assert the queue exists before sending',
+	},
+	{
 		displayName: 'Durable',
 		name: 'durable',
 		type: 'boolean',

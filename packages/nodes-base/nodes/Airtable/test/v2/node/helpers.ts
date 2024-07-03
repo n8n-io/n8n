@@ -16,6 +16,9 @@ export const node: INode = {
 
 export const createMockExecuteFunction = (nodeParameters: IDataObject) => {
 	const fakeExecuteFunction = {
+		getInputData() {
+			return [{ json: {} }];
+		},
 		getNodeParameter(
 			parameterName: string,
 			_itemIndex: number,

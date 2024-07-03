@@ -1,7 +1,7 @@
 import type { RequestHandler } from 'express';
 import { isSamlLicensed, isSamlLicensedAndEnabled } from '../samlHelpers';
 
-export const samlLicensedAndEnabledMiddleware: RequestHandler = (req, res, next) => {
+export const samlLicensedAndEnabledMiddleware: RequestHandler = (_, res, next) => {
 	if (isSamlLicensedAndEnabled()) {
 		next();
 	} else {
@@ -9,7 +9,7 @@ export const samlLicensedAndEnabledMiddleware: RequestHandler = (req, res, next)
 	}
 };
 
-export const samlLicensedMiddleware: RequestHandler = (req, res, next) => {
+export const samlLicensedMiddleware: RequestHandler = (_, res, next) => {
 	if (isSamlLicensed()) {
 		next();
 	} else {

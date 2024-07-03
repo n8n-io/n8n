@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { appendFileSync, existsSync, rmSync, renameSync, openSync, closeSync } from 'fs';
 import { stat } from 'fs/promises';
 import { isMainThread, parentPort } from 'worker_threads';
@@ -103,10 +102,6 @@ if (!isMainThread) {
 				case 'confirmMessageSent':
 					appendMessageSync(data);
 					parentPort?.postMessage({ command, data: true });
-					break;
-				case 'pauseLogging':
-					loggingPaused = true;
-					clearInterval(fileStatTimer);
 					break;
 				case 'initialize':
 					const settings: MessageEventBusLogWriterOptions = {

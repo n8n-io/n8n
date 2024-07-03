@@ -1,16 +1,20 @@
 import { Container } from 'typedi';
-import { Not } from 'typeorm';
-import * as Db from '@/Db';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { User } from '@db/entities/User';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { SettingsRepository } from '@db/repositories/settings.repository';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { UserRepository } from '@db/repositories/user.repository';
 import { BaseCommand } from '../BaseCommand';
-import { RoleService } from '@/services/role.service';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 
 const defaultUserProps = {
 	firstName: null,
 	lastName: null,
 	email: null,
 	password: null,
+	role: 'global:owner',
 };
 
 export class Reset extends BaseCommand {
@@ -20,38 +24,31 @@ export class Reset extends BaseCommand {
 
 	async run(): Promise<void> {
 		const owner = await this.getInstanceOwner();
-
-		const ownerWorkflowRole = await Container.get(RoleService).findWorkflowOwnerRole();
-		const ownerCredentialRole = await Container.get(RoleService).findCredentialOwnerRole();
-
-		await Db.collections.SharedWorkflow.update(
-			{ userId: Not(owner.id), roleId: ownerWorkflowRole.id },
-			{ user: owner },
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
 		);
 
-		await Db.collections.SharedCredentials.update(
-			{ userId: Not(owner.id), roleId: ownerCredentialRole.id },
-			{ user: owner },
-		);
+		await Container.get(SharedWorkflowRepository).makeOwnerOfAllWorkflows(personalProject);
+		await Container.get(SharedCredentialsRepository).makeOwnerOfAllCredentials(personalProject);
 
-		await Db.collections.User.delete({ id: Not(owner.id) });
-		await Db.collections.User.save(Object.assign(owner, defaultUserProps));
+		await Container.get(UserRepository).deleteAllExcept(owner);
+		await Container.get(UserRepository).save(Object.assign(owner, defaultUserProps));
 
-		const danglingCredentials: CredentialsEntity[] =
-			await Db.collections.Credentials.createQueryBuilder('credentials')
-				.leftJoinAndSelect('credentials.shared', 'shared')
-				.where('shared.credentialsId is null')
-				.getMany();
+		const danglingCredentials: CredentialsEntity[] = await Container.get(CredentialsRepository)
+			.createQueryBuilder('credentials')
+			.leftJoinAndSelect('credentials.shared', 'shared')
+			.where('shared.credentialsId is null')
+			.getMany();
 		const newSharedCredentials = danglingCredentials.map((credentials) =>
-			Db.collections.SharedCredentials.create({
+			Container.get(SharedCredentialsRepository).create({
 				credentials,
-				user: owner,
-				role: ownerCredentialRole,
+				projectId: personalProject.id,
+				role: 'credential:owner',
 			}),
 		);
-		await Db.collections.SharedCredentials.save(newSharedCredentials);
+		await Container.get(SharedCredentialsRepository).save(newSharedCredentials);
 
-		await Db.collections.Settings.update(
+		await Container.get(SettingsRepository).update(
 			{ key: 'userManagement.isInstanceOwnerSetUp' },
 			{ value: 'false' },
 		);
@@ -60,19 +57,17 @@ export class Reset extends BaseCommand {
 	}
 
 	async getInstanceOwner(): Promise<User> {
-		const globalRole = await Container.get(RoleService).findGlobalOwnerRole();
-
-		const owner = await Db.collections.User.findOneBy({ globalRoleId: globalRole.id });
+		const owner = await Container.get(UserRepository).findOneBy({ role: 'global:owner' });
 
 		if (owner) return owner;
 
 		const user = new User();
 
-		Object.assign(user, { ...defaultUserProps, globalRole });
+		Object.assign(user, defaultUserProps);
 
-		await Db.collections.User.save(user);
+		await Container.get(UserRepository).save(user);
 
-		return Db.collections.User.findOneByOrFail({ globalRoleId: globalRole.id });
+		return await Container.get(UserRepository).findOneByOrFail({ role: 'global:owner' });
 	}
 
 	async catch(error: Error): Promise<void> {

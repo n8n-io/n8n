@@ -1,4 +1,4 @@
-import type { Driver, TableColumnOptions } from 'typeorm';
+import type { Driver, TableColumnOptions } from '@n8n/typeorm';
 
 export class Column {
 	private type: 'int' | 'boolean' | 'varchar' | 'text' | 'json' | 'timestamp' | 'uuid';
@@ -41,7 +41,7 @@ export class Column {
 		return this;
 	}
 
-	timestamp(msPrecision?: number) {
+	timestamp(msPrecision = 3) {
 		this.type = 'timestamp';
 		this.length = msPrecision ?? 'auto';
 		return this;
@@ -72,6 +72,7 @@ export class Column {
 		return this;
 	}
 
+	// eslint-disable-next-line complexity
 	toOptions(driver: Driver): TableColumnOptions {
 		const { name, type, isNullable, isPrimary, isGenerated, length } = this;
 		const isMysql = 'mysql' in driver;
@@ -93,6 +94,11 @@ export class Column {
 			options.type = isPostgres ? 'timestamptz' : 'datetime';
 		} else if (type === 'json' && isSqlite) {
 			options.type = 'text';
+		} else if (type === 'uuid') {
+			// mysql does not support uuid type
+			if (isMysql) options.type = 'varchar(36)';
+			// we haven't been defining length on "uuid" varchar on sqlite
+			if (isSqlite) options.type = 'varchar';
 		}
 
 		if ((type === 'varchar' || type === 'timestamp') && length !== 'auto') {

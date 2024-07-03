@@ -28,7 +28,7 @@ export class SentryIo implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Sentry.io',
 		name: 'sentryIo',
-		icon: 'file:sentryio.svg',
+		icon: { light: 'file:sentryio.svg', dark: 'file:sentryio.dark.svg' },
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -732,7 +732,7 @@ export class SentryIo implements INodeType {
 
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
@@ -743,6 +743,6 @@ export class SentryIo implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

@@ -228,5 +228,18 @@ describe('tmpl Expression Parser', () => {
 			expect(evaluate('={{ $not("") }}')).toEqual(true);
 			expect(evaluate('={{ $not("a") }}')).toEqual(false);
 		});
+		test('$ifEmpty', () => {
+			expect(evaluate('={{ $ifEmpty(1, "default") }}')).toEqual(1);
+			expect(evaluate('={{ $ifEmpty(0, "default") }}')).toEqual(0);
+			expect(evaluate('={{ $ifEmpty(false, "default") }}')).toEqual(false);
+			expect(evaluate('={{ $ifEmpty(true, "default") }}')).toEqual(true);
+			expect(evaluate('={{ $ifEmpty("", "default") }}')).toEqual('default');
+			expect(evaluate('={{ $ifEmpty(null, "default") }}')).toEqual('default');
+			expect(evaluate('={{ $ifEmpty(undefined, "default") }}')).toEqual('default');
+			expect(evaluate('={{ $ifEmpty([], "default") }}')).toEqual('default');
+			expect(evaluate('={{ $ifEmpty({}, "default") }}')).toEqual('default');
+			expect(evaluate('={{ $ifEmpty([1], "default") }}')).toEqual([1]);
+			expect(evaluate('={{ $ifEmpty({a: 1}, "default") }}')).toEqual({ a: 1 });
+		});
 	});
 });

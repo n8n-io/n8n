@@ -42,7 +42,7 @@ export class LinkedInOAuth2Api implements ICredentialType {
 			name: 'scope',
 			type: 'hidden',
 			default:
-				'=w_member_social{{$self["organizationSupport"] === true ? ",w_organization_social":",r_liteprofile,r_emailaddress"}}',
+				'=w_member_social{{$self["organizationSupport"] === true ? ",w_organization_social": $self["legacy"] === true ? ",r_liteprofile,r_emailaddress" : ",profile,email,openid"}}',
 			description:
 				'Standard scopes for posting on behalf of a user or organization. See <a href="https://docs.microsoft.com/en-us/linkedin/marketing/getting-started#available-permissions"> this resource </a>.',
 		},
@@ -57,6 +57,13 @@ export class LinkedInOAuth2Api implements ICredentialType {
 			name: 'authentication',
 			type: 'hidden',
 			default: 'body',
+		},
+		{
+			displayName: 'Legacy',
+			name: 'legacy',
+			type: 'boolean',
+			default: true,
+			description: 'Whether to use the legacy API',
 		},
 	];
 }

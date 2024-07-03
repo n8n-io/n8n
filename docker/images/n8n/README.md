@@ -2,33 +2,32 @@
 
 # n8n - Workflow automation tool
 
-n8n is an extendable workflow automation tool. With a [fair-code](http://faircode.io) distribution model, n8n will always have visible source code, be available to self-host, and allow you to add your own custom functions, logic and apps. n8n's node-based approach makes it highly versatile, enabling you to connect anything to everything.
+n8n is an extendable workflow automation tool. With a [fair-code](https://faircode.io) distribution model, n8n will always have visible source code, be available to self-host, and allow you to add your own custom functions, logic and apps. n8n's node-based approach makes it highly versatile, enabling you to connect anything to everything.
 
 <a href="https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot.png"><img src="https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot.png" alt="n8n.io - Screenshot"></a>
 
 ## Contents
 
 - [n8n - Workflow automation tool](#n8n---workflow-automation-tool)
-  - [Contents](#contents)
-  - [Demo](#demo)
-  - [Available integrations](#available-integrations)
-  - [Documentation](#documentation)
-  - [Start n8n in Docker](#start-n8n-in-docker)
-  - [Start with tunnel](#start-with-tunnel)
-  - [Persist data](#persist-data)
-    - [Start with other Database](#start-with-other-database)
-      - [Use with PostgresDB](#use-with-postgresdb)
-      - [Use with MySQL](#use-with-mysql)
-  - [Passing Sensitive Data via File](#passing-sensitive-data-via-file)
-  - [Example Setup with Lets Encrypt](#example-setup-with-lets-encrypt)
-  - [Updating a running docker-compose instance](#updating-a-running-docker-compose-instance)
-  - [Setting Timezone](#setting-timezone)
-  - [Build Docker-Image](#build-docker-image)
-  - [What does n8n mean and how do you pronounce it?](#what-does-n8n-mean-and-how-do-you-pronounce-it)
-  - [Support](#support)
-  - [Jobs](#jobs)
-  - [Upgrading](#upgrading)
-  - [License](#license)
+	- [Contents](#contents)
+	- [Demo](#demo)
+	- [Available integrations](#available-integrations)
+	- [Documentation](#documentation)
+	- [Start n8n in Docker](#start-n8n-in-docker)
+	- [Start with tunnel](#start-with-tunnel)
+	- [Persist data](#persist-data)
+		- [Start with other Database](#start-with-other-database)
+			- [Use with PostgresDB](#use-with-postgresdb)
+	- [Passing Sensitive Data via File](#passing-sensitive-data-via-file)
+	- [Example Setup with Lets Encrypt](#example-setup-with-lets-encrypt)
+	- [Updating a running docker-compose instance](#updating-a-running-docker-compose-instance)
+	- [Setting Timezone](#setting-timezone)
+	- [Build Docker-Image](#build-docker-image)
+	- [What does n8n mean and how do you pronounce it?](#what-does-n8n-mean-and-how-do-you-pronounce-it)
+	- [Support](#support)
+	- [Jobs](#jobs)
+	- [Upgrading](#upgrading)
+	- [License](#license)
 
 ## Demo
 
@@ -63,7 +62,7 @@ You can then access n8n by opening:
 
 To be able to use webhooks which all triggers of external services like Github
 rely on n8n has to be reachable from the web. To make that easy n8n has a
-special tunnel service (uses this code: [https://github.com/localtunnel/localtunnel](https://github.com/localtunnel/localtunnel)) which redirects requests from our servers to your local
+special tunnel service (uses this code: [https://github.com/n8n-io/localtunnel](https://github.com/n8n-io/localtunnel)) which redirects requests from our servers to your local
 n8n instance.
 
 To use it simply start n8n with `--tunnel`
@@ -82,6 +81,7 @@ docker run -it --rm \
 The workflow data gets by default saved in an SQLite database in the user
 folder (`/home/node/.n8n`). That folder also additionally contains the
 settings like webhook URL and encryption key.
+Note that the folder needs to be writable by user with UID/GID 1000.
 
 ```bash
 docker run -it --rm \
@@ -94,10 +94,9 @@ docker run -it --rm \
 ### Start with other Database
 
 By default n8n uses SQLite to save credentials, past executions and workflows.
-n8n however also supports PostgresDB, MySQL and MariaDB. To use them simply a few
-environment variables have to be set.
+n8n however also supports PostgresDB.
 
-It is important to still persist the data in the `/root/.n8n` folder. The reason
+It is important to still persist the data in the `/home/node/.n8n` folder. The reason
 is that it contains n8n user data. That is the name of the webhook
 (in case) the n8n tunnel gets used and even more important the encryption key
 for the credentials. If none gets found n8n creates automatically one on
@@ -127,36 +126,10 @@ docker run -it --rm \
  -e DB_POSTGRESDB_SCHEMA=<POSTGRES_SCHEMA> \
  -e DB_POSTGRESDB_PASSWORD=<POSTGRES_PASSWORD> \
  -v ~/.n8n:/home/node/.n8n \
- docker.n8n.io/n8nio/n8n \
- n8n start
+ docker.n8n.io/n8nio/n8n
 ```
 
-A full working setup with docker-compose can be found [here](https://github.com/n8n-io/n8n/blob/master/docker/compose/withPostgres/README.md)
-
-#### Use with MySQL
-
-Replace the following placeholders with the actual data:
-
-- MYSQLDB_DATABASE
-- MYSQLDB_HOST
-- MYSQLDB_PASSWORD
-- MYSQLDB_PORT
-- MYSQLDB_USER
-
-```bash
-docker run -it --rm \
- --name n8n \
- -p 5678:5678 \
- -e DB_TYPE=mysqldb \
- -e DB_MYSQLDB_DATABASE=<MYSQLDB_DATABASE> \
- -e DB_MYSQLDB_HOST=<MYSQLDB_HOST> \
- -e DB_MYSQLDB_PORT=<MYSQLDB_PORT> \
- -e DB_MYSQLDB_USER=<MYSQLDB_USER> \
- -e DB_MYSQLDB_PASSWORD=<MYSQLDB_PASSWORD> \
- -v ~/.n8n:/home/node/.n8n \
- docker.n8n.io/n8nio/n8n \
- n8n start
-```
+A full working setup with docker-compose can be found [here](https://github.com/n8n-io/n8n-hosting/blob/main/docker-compose/withPostgres/README.md)
 
 ## Passing Sensitive Data via File
 
@@ -218,10 +191,10 @@ docker run -it --rm \
 ## Build Docker-Image
 
 ```bash
-docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 --build-arg N8N_VERSION=<VERSION> -t n8n:<VERSION> .
+docker buildx build --platform linux/amd64,linux/arm64 --build-arg N8N_VERSION=<VERSION> -t n8n:<VERSION> .
 
 # For example:
-docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 --build-arg N8N_VERSION=0.114.0 -t n8n:0.114.0 .
+docker buildx build --platform linux/amd64,linux/arm64 --build-arg N8N_VERSION=1.30.1 -t n8n:1.30.1 .
 ```
 
 ## What does n8n mean and how do you pronounce it?
@@ -257,6 +230,6 @@ Before you upgrade to the latest version make sure to check here if there are an
 
 ## License
 
-n8n is [fair-code](http://faircode.io) distributed under the [**Sustainable Use License**](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md).
+n8n is [fair-code](https://faircode.io) distributed under the [**Sustainable Use License**](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md).
 
 Additional information about the license can be found in the [docs](https://docs.n8n.io/reference/license/).

@@ -1,6 +1,8 @@
 <template>
 	<span :class="$style.container" data-test-id="node-title-container" @click="onEdit">
-		<span :class="$style.iconWrapper"><NodeIcon :nodeType="nodeType" :size="18" /></span>
+		<span :class="$style.iconWrapper">
+			<NodeIcon :node-type="nodeType" :size="18" />
+		</span>
 		<n8n-popover placement="right" width="200" :visible="editName" :disabled="!editable">
 			<div
 				:class="$style.editContainer"
@@ -11,19 +13,19 @@
 				<n8n-text :bold="true" color="text-base" tag="div">{{
 					$locale.baseText('ndv.title.renameNode')
 				}}</n8n-text>
-				<n8n-input ref="input" size="small" v-model="newName" data-test-id="node-rename-input" />
+				<n8n-input ref="input" v-model="newName" size="small" data-test-id="node-rename-input" />
 				<div :class="$style.editButtons">
 					<n8n-button
 						type="secondary"
 						size="small"
-						@click="editName = false"
 						:label="$locale.baseText('ndv.title.cancel')"
+						@click="editName = false"
 					/>
 					<n8n-button
 						type="primary"
 						size="small"
-						@click="onRename"
 						:label="$locale.baseText('ndv.title.rename')"
+						@click="onRename"
 					/>
 				</div>
 			</div>
@@ -31,7 +33,7 @@
 				<div :class="{ [$style.title]: true, [$style.hoverable]: editable }">
 					{{ modelValue }}
 					<div :class="$style.editIconContainer">
-						<font-awesome-icon :class="$style.editIcon" icon="pencil-alt" v-if="editable" />
+						<font-awesome-icon v-if="editable" :class="$style.editIcon" icon="pencil-alt" />
 					</div>
 				</div>
 			</template>
@@ -39,56 +41,47 @@
 	</span>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script setup lang="ts">
 import NodeIcon from '@/components/NodeIcon.vue';
+import type { INodeTypeDescription } from 'n8n-workflow';
+import { computed, nextTick, ref } from 'vue';
 
-export default defineComponent({
-	name: 'NodeTitle',
-	components: {
-		NodeIcon,
-	},
-	props: {
-		modelValue: {
-			type: String,
-			default: '',
-		},
-		nodeType: {},
-		readOnly: {
-			type: Boolean,
-			default: false,
-		},
-	},
-	data() {
-		return {
-			editName: false,
-			newName: '',
-		};
-	},
-	computed: {
-		editable(): boolean {
-			return !this.readOnly && window === window.parent;
-		},
-	},
-	methods: {
-		async onEdit() {
-			this.newName = this.modelValue;
-			this.editName = true;
-			await this.$nextTick();
-			const inputRef = this.$refs.input as HTMLInputElement | undefined;
-			if (inputRef) {
-				inputRef.focus();
-			}
-		},
-		onRename() {
-			if (this.newName.trim() !== '') {
-				this.$emit('update:modelValue', this.newName.trim());
-			}
+type Props = {
+	modelValue: string;
+	nodeType?: INodeTypeDescription | null;
+	readOnly?: boolean;
+};
 
-			this.editName = false;
-		},
-	},
+const props = withDefaults(defineProps<Props>(), {
+	modelValue: '',
+	nodeType: undefined,
+	readOnly: false,
 });
+const emit = defineEmits<{
+	(event: 'update:model-value', value: string): void;
+}>();
+const editName = ref(false);
+const newName = ref('');
+const input = ref<HTMLInputElement>();
+
+const editable = computed(() => !props.readOnly && window === window.parent);
+
+async function onEdit() {
+	newName.value = props.modelValue;
+	editName.value = true;
+	await nextTick();
+	if (input.value) {
+		input.value.focus();
+	}
+}
+
+function onRename() {
+	if (newName.value.trim() !== '') {
+		emit('update:model-value', newName.value.trim());
+	}
+
+	editName.value = false;
+}
 </script>
 
 <style lang="scss" module>

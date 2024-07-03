@@ -5,24 +5,28 @@ Great that you are here and you want to contribute to n8n
 ## Contents
 
 - [Contributing to n8n](#contributing-to-n8n)
-  - [Contents](#contents)
-  - [Code of conduct](#code-of-conduct)
-  - [Directory structure](#directory-structure)
-  - [Development setup](#development-setup)
-    - [Requirements](#requirements)
-      - [Node.js](#nodejs)
-      - [pnpm](#pnpm)
-        - [pnpm workspaces](#pnpm-workspaces)
-      - [corepack](#corepack)
-      - [Build tools](#build-tools)
-    - [Actual n8n setup](#actual-n8n-setup)
-    - [Start](#start)
-  - [Development cycle](#development-cycle)
-    - [Test suite](#test-suite)
-  - [Releasing](#releasing)
-  - [Create custom nodes](#create-custom-nodes)
-  - [Extend documentation](#extend-documentation)
-  - [Contributor License Agreement](#contributor-license-agreement)
+	- [Contents](#contents)
+	- [Code of conduct](#code-of-conduct)
+	- [Directory structure](#directory-structure)
+	- [Development setup](#development-setup)
+		- [Dev Container](#dev-container)
+		- [Requirements](#requirements)
+			- [Node.js](#nodejs)
+			- [pnpm](#pnpm)
+				- [pnpm workspaces](#pnpm-workspaces)
+			- [corepack](#corepack)
+			- [Build tools](#build-tools)
+		- [Actual n8n setup](#actual-n8n-setup)
+		- [Start](#start)
+	- [Development cycle](#development-cycle)
+		- [Test suite](#test-suite)
+			- [Unit tests](#unit-tests)
+			- [E2E tests](#e2e-tests)
+	- [Releasing](#releasing)
+	- [Create custom nodes](#create-custom-nodes)
+	- [Extend documentation](#extend-documentation)
+	- [Contribute workflow templates](#contribute-workflow-templates)
+	- [Contributor License Agreement](#contributor-license-agreement)
 
 ## Code of conduct
 
@@ -38,7 +42,6 @@ n8n is split up in different modules which are all in a single mono repository.
 The most important directories:
 
 - [/docker/image](/docker/images) - Dockerfiles to create n8n containers
-- [/docker/compose](/docker/compose) - Examples Docker Setups
 - [/packages](/packages) - The different n8n modules
 - [/packages/cli](/packages/cli) - CLI code to run front- & backend
 - [/packages/core](/packages/core) - Core code which handles workflow
@@ -57,15 +60,19 @@ The most important directories:
 If you want to change or extend n8n you have to make sure that all the needed
 dependencies are installed and the packages get linked correctly. Here's a short guide on how that can be done:
 
+### Dev Container
+
+If you already have VS Code and Docker installed, you can click [here](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://github.com/n8n-io/n8n) to get started. Clicking these links will cause VS Code to automatically install the Dev Containers extension if needed, clone the source code into a container volume, and spin up a dev container for use.
+
 ### Requirements
 
 #### Node.js
 
-[Node.js](https://nodejs.org/en/) version 16.9 or newer is required for development purposes.
+[Node.js](https://nodejs.org/en/) version 18.10 or newer is required for development purposes.
 
 #### pnpm
 
-[pnpm](https://pnpm.io/) version 8.7 or newer is required for development purposes. We recommend installing it with [corepack](#corepack).
+[pnpm](https://pnpm.io/) version 9.1 or newer is required for development purposes. We recommend installing it with [corepack](#corepack).
 
 ##### pnpm workspaces
 
@@ -186,7 +193,9 @@ automatically build your code, restart the backend and refresh the frontend
 
 ### Test suite
 
-The tests can be started via:
+#### Unit tests
+
+Unit tests can be started via:
 
 ```
 pnpm test
@@ -195,6 +204,18 @@ pnpm test
 If that gets executed in one of the package folders it will only run the tests
 of this package. If it gets executed in the n8n-root folder it will run all
 tests of all packages.
+
+#### E2E tests
+
+⚠️ You have to run `pnpm cypress:install` to install cypress before running the tests for the first time and to update cypress.
+
+E2E tests can be started via one of the following commands:
+
+- `pnpm test:e2e:ui`: Start n8n and run e2e tests interactively using built UI code. Does not react to code changes (i.e. runs `pnpm start` and `cypress open`)
+- `pnpm test:e2e:dev`: Start n8n in development mode and run e2e tests interactively. Reacts to code changes (i.e. runs `pnpm dev` and `cypress open`)
+- `pnpm test:e2e:all`: Start n8n and run e2e tests headless (i.e. runs `pnpm start` and `cypress run --headless`)
+
+⚠️ Remember to stop your dev server before. Otherwise port binding will fail.
 
 ## Releasing
 
@@ -219,6 +240,14 @@ Learn about [building nodes](https://docs.n8n.io/integrations/creating-nodes/) t
 ## Extend documentation
 
 The repository for the n8n documentation on [docs.n8n.io](https://docs.n8n.io) can be found [here](https://github.com/n8n-io/n8n-docs).
+
+## Contribute workflow templates
+
+You can submit your workflows to n8n's template library.
+
+n8n is working on a creator program, and developing a marketplace of templates. This is an ongoing project, and details are likely to change.
+
+Refer to [n8n Creator hub](https://www.notion.so/n8n/n8n-Creator-hub-7bd2cbe0fce0449198ecb23ff4a2f76f) for information on how to submit templates and become a creator.
 
 ## Contributor License Agreement
 

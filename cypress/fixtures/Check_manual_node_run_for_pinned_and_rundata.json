@@ -1,0 +1,318 @@
+{
+  "name": "Webhook PairedItem error test",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "86f05bcc-44a4-44f7-b774-7002fc2eddfc",
+        "options": {}
+      },
+      "id": "143572ab-f85b-4a6f-8ca7-4a5cea00a9fe",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        860,
+        140
+      ],
+      "webhookId": "86f05bcc-44a4-44f7-b774-7002fc2eddfc"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "e9605092-a127-46ad-9fb3-e671f955f856",
+              "leftValue": "={{ $json.headers.host }}",
+              "rightValue": "asdf",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "50542b55-4237-4c18-9e3a-5d146372c270",
+      "name": "If",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1080,
+        140
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "c6365289-0383-4d73-bd5f-a52b6a6e1eeb",
+      "name": "No Operation, do nothing",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1420,
+        20
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1d65053c-31de-43e8-a870-e7e79d34ca67",
+              "name": "asdf",
+              "value": "={{ $('Webhook').item.json.headers['accept-encoding'] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8fd60b5e-19eb-47f4-a3e2-3822c722a68a",
+      "name": "Edit Fields1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        1860,
+        220
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "96ac4860-81eb-4d47-9a6e-7c717d910fcd",
+      "name": "NoOp1",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1420,
+        220
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "5b550207-3f4f-4519-b272-ff02d9d28ffc",
+      "name": "NoOp3",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2040,
+        220
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "9f450e47-902e-413e-99ce-ea93f6bc375e",
+      "name": "NoOp2",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1640,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1d65053c-31de-43e8-a870-e7e79d34ca67",
+              "name": "asdf",
+              "value": "={{ $('Webhook').item.json.headers['accept-encoding'] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7acd1642-a6ef-4c33-a562-95b19fedbded",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        2220,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1d65053c-31de-43e8-a870-e7e79d34ca67",
+              "name": "asdf",
+              "value": "={{ $('Webhook').item.json.headers['accept-encoding'] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "adc93a3b-2825-4ddf-9a17-fe61b5861d43",
+      "name": "Edit Fields2",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        1460,
+        440
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "1cd5d8dc-cd08-4596-9435-d48a6e20996d",
+      "name": "NoOp",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1700,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "content": "For Error:\n1. Execute \"If\"\n2. Execute \"NoOp2\"\n"
+      },
+      "id": "658c3a31-b640-4338-8b22-6d0a17ab5b80",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        940,
+        480
+      ]
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "localhost:5678",
+            "user-agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:122.0) Gecko/20100101 Firefox/122.0",
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "accept-language": "en-US,en;q=0.5",
+            "accept-encoding": "gzip, deflate, br",
+            "connection": "keep-alive",
+            "cookie": "n8n-auth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImQ1YWQzODQ1LWFmMTAtNDc2OC04ZDU4LTBmNDE3YTVlNDkxNSIsImVtYWlsIjoiamFuQG44bi5pbyIsInBhc3N3b3JkIjoiMzhjMTFiMDEwMjRlMDhiZTE0ZGExZjhmOWVjNGFmOTQxZmQwOGUyMzJmNWEzYmMyNjBmOTI1ZjIxNTBhNTZlYSIsImlhdCI6MTcwNzA3ODgxMSwiZXhwIjoxNzA3NjgzNjExfQ.bhbh8gCbLYAY87kPqZSGZeMBq7_4d9IgKnsrJ0UV4Iw",
+            "upgrade-insecure-requests": "1",
+            "sec-fetch-dest": "document",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-site": "none",
+            "sec-fetch-user": "?1",
+            "if-none-match": "W/\"22-6OS7cK0FzqnV2NeDHdOSGS1bVUs\""
+          },
+          "params": {},
+          "query": {},
+          "body": {}
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "NoOp1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "NoOp1": {
+      "main": [
+        [
+          {
+            "node": "NoOp2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "NoOp3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "NoOp2": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "NoOp3": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields2": {
+      "main": [
+        [
+          {
+            "node": "NoOp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "631547ec-c580-4b5f-9220-7fd3d801029b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "021d3c82ba2d3bc090cbf4fc81c9312668bcc34297e022bb3438c5c88a43a5ff"
+  },
+  "id": "fjCAcetjbaYM1vy6",
+  "tags": []
+}

@@ -1,0 +1,10 @@
+<html>
+	<script>
+		(function messageParent() {
+			const broadcastChannel = new BroadcastChannel('oauth-callback');
+			broadcastChannel.postMessage('success');
+		})();
+	</script>
+
+	Got connected. The window can be closed now.
+</html>

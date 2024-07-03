@@ -1,7 +1,7 @@
 import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
-import { createPool } from '../transport';
-
 import { Client } from 'ssh2';
+import { createPool } from '../transport';
+import { escapeSqlIdentifier } from '../helpers/utils';
 
 export async function getColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const credentials = await this.getCredentials('mySql');
@@ -23,7 +23,9 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<INodeProp
 
 		const columns = (
 			await connection.query(
-				`SHOW COLUMNS FROM \`${table}\` FROM \`${credentials.database as string}\``,
+				`SHOW COLUMNS FROM ${escapeSqlIdentifier(table)} FROM ${escapeSqlIdentifier(
+					credentials.database as string,
+				)}`,
 			)
 		)[0] as IDataObject[];
 

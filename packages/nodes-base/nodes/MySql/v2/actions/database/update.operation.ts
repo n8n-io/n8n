@@ -8,11 +8,10 @@ import type {
 import type { QueryRunner, QueryValues, QueryWithValues } from '../../helpers/interfaces';
 import { AUTO_MAP, DATA_MODE } from '../../helpers/interfaces';
 
-import { updateDisplayOptions } from '@utils/utilities';
-
-import { replaceEmptyStringsByNulls } from '../../helpers/utils';
+import { escapeSqlIdentifier, replaceEmptyStringsByNulls } from '../../helpers/utils';
 
 import { optionsCollection } from '../common.descriptions';
+import { updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
@@ -37,7 +36,7 @@ const properties: INodeProperties[] = [
 	},
 	{
 		displayName: `
-		In this mode, make sure incoming data fields are named the same as the columns in your table. If needed, use a 'Set' node before this node to change the field names.
+		In this mode, make sure incoming data fields are named the same as the columns in your table. If needed, use an 'Edit Fields' node before this node to change the field names.
 		`,
 		name: 'notice',
 		type: 'notice',
@@ -183,14 +182,16 @@ export async function execute(
 		const updates: string[] = [];
 
 		for (const column of updateColumns) {
-			updates.push(`\`${column}\` = ?`);
+			updates.push(`${escapeSqlIdentifier(column)} = ?`);
 			values.push(item[column] as string);
 		}
 
-		const condition = `\`${columnToMatchOn}\` = ?`;
+		const condition = `${escapeSqlIdentifier(columnToMatchOn)} = ?`;
 		values.push(valueToMatchOn);
 
-		const query = `UPDATE \`${table}\` SET ${updates.join(', ')} WHERE ${condition}`;
+		const query = `UPDATE ${escapeSqlIdentifier(table)} SET ${updates.join(
+			', ',
+		)} WHERE ${condition}`;
 
 		queries.push({ query, values });
 	}

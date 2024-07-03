@@ -1,11 +1,11 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
@@ -15,13 +15,13 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
  */
 export async function githubApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: object,
-	query?: object,
+	query?: IDataObject,
 	option: IDataObject = {},
 ): Promise<any> {
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		method,
 		headers: {
 			'User-Agent': 'n8n',
@@ -76,12 +76,13 @@ export async function getFileSha(
 	filePath: string,
 	branch?: string,
 ): Promise<any> {
-	const getBody: IDataObject = {};
+	const query: IDataObject = {};
 	if (branch !== undefined) {
-		getBody.branch = branch;
+		query.ref = branch;
 	}
+
 	const getEndpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
-	const responseData = await githubApiRequest.call(this, 'GET', getEndpoint, getBody, {});
+	const responseData = await githubApiRequest.call(this, 'GET', getEndpoint, {}, query);
 
 	if (responseData.sha === undefined) {
 		throw new NodeOperationError(this.getNode(), 'Could not get the SHA of the file.');
@@ -91,7 +92,7 @@ export async function getFileSha(
 
 export async function githubApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 
 	body: any = {},

@@ -1,9 +1,12 @@
-import type { ClientOAuth2, ClientOAuth2Options } from './ClientOAuth2';
+import type { ClientOAuth2 } from './ClientOAuth2';
 import type { ClientOAuth2Token, ClientOAuth2TokenData } from './ClientOAuth2Token';
 import { DEFAULT_HEADERS } from './constants';
+import type { Headers } from './types';
 import { auth, expects, getRequestOptions } from './utils';
 
 interface CredentialsFlowBody {
+	client_id?: string;
+	client_secret?: string;
 	grant_type: 'client_credentials';
 	scope?: string;
 }
@@ -19,10 +22,11 @@ export class CredentialsFlow {
 	/**
 	 * Request an access token using the client credentials.
 	 */
-	async getToken(opts?: Partial<ClientOAuth2Options>): Promise<ClientOAuth2Token> {
-		const options = { ...this.client.options, ...opts };
+	async getToken(): Promise<ClientOAuth2Token> {
+		const options = { ...this.client.options };
 		expects(options, 'clientId', 'clientSecret', 'accessTokenUri');
 
+		const headers: Headers = { ...DEFAULT_HEADERS };
 		const body: CredentialsFlowBody = {
 			grant_type: 'client_credentials',
 		};
@@ -31,15 +35,21 @@ export class CredentialsFlow {
 			body.scope = options.scopes.join(options.scopesSeparator ?? ' ');
 		}
 
+		const clientId = options.clientId;
+		const clientSecret = options.clientSecret;
+
+		if (options.authentication === 'body') {
+			body.client_id = clientId;
+			body.client_secret = clientSecret;
+		} else {
+			headers.Authorization = auth(clientId, clientSecret);
+		}
+
 		const requestOptions = getRequestOptions(
 			{
 				url: options.accessTokenUri,
 				method: 'POST',
-				headers: {
-					...DEFAULT_HEADERS,
-					// eslint-disable-next-line @typescript-eslint/naming-convention
-					Authorization: auth(options.clientId, options.clientSecret),
-				},
+				headers,
 				body,
 			},
 			options,

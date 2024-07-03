@@ -1,6 +1,11 @@
-import type { OptionsWithUri } from 'request';
-
-import type { IExecuteFunctions, IHookFunctions, IDataObject, JsonObject } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IHookFunctions,
+	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import get from 'lodash/get';
@@ -11,13 +16,13 @@ import get from 'lodash/get';
  */
 export async function spotifyApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: object,
-	query?: object,
+	query?: IDataObject,
 	uri?: string,
 ): Promise<any> {
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		method,
 		headers: {
 			'User-Agent': 'n8n',
@@ -42,10 +47,10 @@ export async function spotifyApiRequest(
 export async function spotifyApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: object,
-	query?: object,
+	query?: IDataObject,
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

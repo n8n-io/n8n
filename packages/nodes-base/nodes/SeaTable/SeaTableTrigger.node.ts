@@ -7,11 +7,10 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { getColumns, rowFormatColumns, seaTableApiRequest, simplify } from './GenericFunctions';
 
 import type { ICtx, IRow, IRowResponse } from './Interfaces';
-
-import moment from 'moment';
 
 export class SeaTableTrigger implements INodeType {
 	description: INodeTypeDescription = {

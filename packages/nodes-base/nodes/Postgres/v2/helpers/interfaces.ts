@@ -15,8 +15,10 @@ export type ColumnInfo = {
 	column_name: string;
 	data_type: string;
 	is_nullable: string;
-	udt_name: string;
-	column_default?: string;
+	udt_name?: string;
+	column_default?: string | null;
+	is_generated?: 'ALWAYS' | 'NEVER';
+	identity_generation?: 'ALWAYS' | 'NEVER';
 };
 export type EnumInfo = {
 	typname: string;
@@ -33,3 +35,36 @@ export type QueriesRunner = (
 	items: INodeExecutionData[],
 	options: IDataObject,
 ) => Promise<INodeExecutionData[]>;
+
+export type PostgresNodeOptions = {
+	nodeVersion?: number;
+	operation?: string;
+	cascade?: boolean;
+	connectionTimeout?: number;
+	delayClosingIdleConnection?: number;
+	queryBatching?: QueryMode;
+	queryReplacement?: string;
+	outputColumns?: string[];
+	largeNumbersOutput?: 'numbers' | 'text';
+	skipOnConflict?: boolean;
+	replaceEmptyStrings?: boolean;
+};
+
+export type PostgresNodeCredentials = {
+	sshAuthenticateWith: 'password' | 'privateKey';
+	host: string;
+	port: number;
+	database: string;
+	user: string;
+	password: string;
+	allowUnauthorizedCerts?: boolean;
+	ssl?: 'disable' | 'allow' | 'require' | 'verify' | 'verify-full';
+	sshTunnel?: boolean;
+	sshHost?: string;
+	sshPort?: number;
+	sshPostgresPort?: number;
+	sshUser?: string;
+	sshPassword?: string;
+	privateKey?: string;
+	passphrase?: string;
+};

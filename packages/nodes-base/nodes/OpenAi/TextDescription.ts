@@ -88,7 +88,7 @@ const completeOperations: INodeProperties[] = [
 							{
 								type: 'filter',
 								properties: {
-									pass: "={{ !$responseItem.id.startsWith('audio-') && !$responseItem.id.startsWith('gpt-') && !$responseItem.id.startsWith('whisper-') && !['cushman:2020-05-03', 'davinci-if:3.0.0', 'davinci-instruct-beta:2.0.0', 'if'].includes($responseItem.id) && !$responseItem.id.includes('-edit-') && !$responseItem.id.endsWith(':001') }}",
+									pass: "={{ !$responseItem.id.startsWith('audio-') && ($responseItem.id === 'gpt-3.5-turbo-instruct' || !$responseItem.id.startsWith('gpt-') ) && !$responseItem.id.startsWith('dall-') && !$responseItem.id.startsWith('tts-') && !$responseItem.id.startsWith('whisper-') && !['cushman:2020-05-03', 'davinci-if:3.0.0', 'davinci-instruct-beta:2.0.0', 'if'].includes($responseItem.id) && !$responseItem.id.includes('-edit-') && !$responseItem.id.endsWith(':001') }}",
 								},
 							},
 							{
@@ -115,7 +115,7 @@ const completeOperations: INodeProperties[] = [
 				property: 'model',
 			},
 		},
-		default: 'text-davinci-003',
+		default: 'gpt-3.5-turbo-instruct',
 	},
 	{
 		displayName: 'Prompt',

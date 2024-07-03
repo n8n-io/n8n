@@ -1,25 +1,7 @@
-<template>
-	<div>
-		<div :class="{ 'main-header': true, expanded: !this.uiStore.sidebarMenuCollapsed }">
-			<div v-show="!hideMenuBar" class="top-menu">
-				<WorkflowDetails :readOnly="readOnly" />
-				<tab-bar
-					v-if="onWorkflowPage"
-					:items="tabBarItems"
-					:activeTab="activeHeaderTab"
-					@select="onTabSelected"
-				/>
-			</div>
-		</div>
-	</div>
-</template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-import type { Route } from 'vue-router';
-import { mapStores } from 'pinia';
-import type { IExecutionsSummary } from 'n8n-workflow';
-import { pushConnection } from '@/mixins/pushConnection';
+<script setup lang="ts">
+import { ref, computed, watch, onBeforeMount, onMounted } from 'vue';
+import type { RouteLocation, RouteLocationRaw } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
 import TabBar from '@/components/MainHeader/TabBar.vue';
 import {
@@ -28,145 +10,167 @@ import {
 	STICKY_NODE_TYPE,
 	VIEWS,
 } from '@/constants';
-import type { INodeUi, ITabBarItem } from '@/Interface';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { useUIStore, useNDVStore, useSourceControlStore } from '@/stores';
+import { useI18n } from '@/composables/useI18n';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useExecutionsStore } from '@/stores/executions.store';
+import { usePushConnection } from '@/composables/usePushConnection';
 
-export default defineComponent({
-	name: 'MainHeader',
-	components: {
-		WorkflowDetails,
-		TabBar,
-	},
-	mixins: [pushConnection, workflowHelpers],
-	setup(props) {
-		return {
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...pushConnection.setup?.(props),
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowHelpers.setup?.(props),
-		};
-	},
-	data() {
-		return {
-			activeHeaderTab: MAIN_HEADER_TABS.WORKFLOW,
-			workflowToReturnTo: '',
-			dirtyState: false,
-		};
-	},
-	computed: {
-		...mapStores(useNDVStore, useUIStore, useSourceControlStore),
-		tabBarItems(): ITabBarItem[] {
-			return [
-				{ value: MAIN_HEADER_TABS.WORKFLOW, label: this.$locale.baseText('generic.editor') },
-				{ value: MAIN_HEADER_TABS.EXECUTIONS, label: this.$locale.baseText('generic.executions') },
-			];
-		},
-		activeNode(): INodeUi | null {
-			return this.ndvStore.activeNode;
-		},
-		hideMenuBar(): boolean {
-			return Boolean(this.activeNode && this.activeNode.type !== STICKY_NODE_TYPE);
-		},
-		workflowName(): string {
-			return this.workflowsStore.workflowName;
-		},
-		currentWorkflow(): string {
-			return this.$route.params.name || this.workflowsStore.workflowId;
-		},
-		onWorkflowPage(): boolean {
-			return (
-				this.$route.meta &&
-				(this.$route.meta.nodeView || this.$route.meta.keepWorkflowAlive === true)
-			);
-		},
-		activeExecution(): IExecutionsSummary {
-			return this.workflowsStore.activeWorkflowExecution as IExecutionsSummary;
-		},
-		readOnly(): boolean {
-			return this.sourceControlStore.preferences.branchReadOnly;
-		},
-	},
-	mounted() {
-		this.dirtyState = this.uiStore.stateIsDirty;
-		this.syncTabsWithRoute(this.$route);
-		// Initialize the push connection
-		this.pushConnect();
-	},
-	beforeUnmount() {
-		this.pushDisconnect();
-	},
-	watch: {
-		$route(to, from) {
-			this.syncTabsWithRoute(to);
-		},
-	},
-	methods: {
-		syncTabsWithRoute(route: Route): void {
-			if (
-				route.name === VIEWS.EXECUTION_HOME ||
-				route.name === VIEWS.WORKFLOW_EXECUTIONS ||
-				route.name === VIEWS.EXECUTION_PREVIEW
-			) {
-				this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;
-			} else if (
-				route.name === VIEWS.WORKFLOW ||
-				route.name === VIEWS.NEW_WORKFLOW ||
-				route.name === VIEWS.EXECUTION_DEBUG
-			) {
-				this.activeHeaderTab = MAIN_HEADER_TABS.WORKFLOW;
-			}
-			const workflowName = route.params.name;
-			if (workflowName !== 'new') {
-				this.workflowToReturnTo = workflowName;
-			}
-		},
-		onTabSelected(tab: string, event: MouseEvent) {
-			switch (tab) {
-				case MAIN_HEADER_TABS.WORKFLOW:
-					if (!['', 'new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(this.workflowToReturnTo)) {
-						if (this.$route.name !== VIEWS.WORKFLOW) {
-							void this.$router.push({
-								name: VIEWS.WORKFLOW,
-								params: { name: this.workflowToReturnTo },
-							});
-						}
-					} else {
-						if (this.$route.name !== VIEWS.NEW_WORKFLOW) {
-							void this.$router.push({ name: VIEWS.NEW_WORKFLOW });
-							this.uiStore.stateIsDirty = this.dirtyState;
-						}
-					}
-					this.activeHeaderTab = MAIN_HEADER_TABS.WORKFLOW;
-					break;
-				case MAIN_HEADER_TABS.EXECUTIONS:
-					this.dirtyState = this.uiStore.stateIsDirty;
-					this.workflowToReturnTo = this.currentWorkflow;
-					const routeWorkflowId =
-						this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID ? 'new' : this.currentWorkflow;
-					if (this.activeExecution) {
-						this.$router
-							.push({
-								name: VIEWS.EXECUTION_PREVIEW,
-								params: { name: routeWorkflowId, executionId: this.activeExecution.id },
-							})
-							.catch(() => {});
-					} else {
-						void this.$router.push({
-							name: VIEWS.EXECUTION_HOME,
-							params: { name: routeWorkflowId },
-						});
-					}
-					// this.modalBus.emit('closeAll');
-					this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;
-					break;
-				default:
-					break;
-			}
-		},
-	},
+const router = useRouter();
+const route = useRoute();
+const locale = useI18n();
+const pushConnection = usePushConnection({ router });
+const ndvStore = useNDVStore();
+const uiStore = useUIStore();
+const sourceControlStore = useSourceControlStore();
+const workflowsStore = useWorkflowsStore();
+const executionsStore = useExecutionsStore();
+
+const activeHeaderTab = ref(MAIN_HEADER_TABS.WORKFLOW);
+const workflowToReturnTo = ref('');
+const executionToReturnTo = ref('');
+const dirtyState = ref(false);
+
+const tabBarItems = computed(() => [
+	{ value: MAIN_HEADER_TABS.WORKFLOW, label: locale.baseText('generic.editor') },
+	{ value: MAIN_HEADER_TABS.EXECUTIONS, label: locale.baseText('generic.executions') },
+]);
+
+const activeNode = computed(() => ndvStore.activeNode);
+const hideMenuBar = computed(() =>
+	Boolean(activeNode.value && activeNode.value.type !== STICKY_NODE_TYPE),
+);
+const workflow = computed(() => workflowsStore.workflow);
+const workflowId = computed(() =>
+	String(router.currentRoute.value.params.name || workflowsStore.workflowId),
+);
+const onWorkflowPage = computed(() => !!(route.meta.nodeView || route.meta.keepWorkflowAlive));
+const readOnly = computed(() => sourceControlStore.preferences.branchReadOnly);
+
+watch(route, (to, from) => {
+	syncTabsWithRoute(to, from);
 });
+
+onBeforeMount(() => {
+	pushConnection.initialize();
+});
+
+onMounted(async () => {
+	dirtyState.value = uiStore.stateIsDirty;
+	syncTabsWithRoute(route);
+});
+
+function syncTabsWithRoute(to: RouteLocation, from?: RouteLocation): void {
+	if (
+		to.name === VIEWS.EXECUTION_HOME ||
+		to.name === VIEWS.WORKFLOW_EXECUTIONS ||
+		to.name === VIEWS.EXECUTION_PREVIEW
+	) {
+		activeHeaderTab.value = MAIN_HEADER_TABS.EXECUTIONS;
+	} else if (
+		to.name === VIEWS.WORKFLOW ||
+		to.name === VIEWS.NEW_WORKFLOW ||
+		to.name === VIEWS.EXECUTION_DEBUG
+	) {
+		activeHeaderTab.value = MAIN_HEADER_TABS.WORKFLOW;
+	}
+
+	if (to.params.name !== 'new' && typeof to.params.name === 'string') {
+		workflowToReturnTo.value = to.params.name;
+	}
+
+	if (
+		from?.name === VIEWS.EXECUTION_PREVIEW &&
+		to.params.name === from.params.name &&
+		typeof from.params.executionId === 'string'
+	) {
+		executionToReturnTo.value = from.params.executionId;
+	}
+}
+
+function onTabSelected(tab: MAIN_HEADER_TABS, event: MouseEvent) {
+	const openInNewTab = event.ctrlKey || event.metaKey;
+
+	switch (tab) {
+		case MAIN_HEADER_TABS.WORKFLOW:
+			void navigateToWorkflowView(openInNewTab);
+			break;
+
+		case MAIN_HEADER_TABS.EXECUTIONS:
+			void navigateToExecutionsView(openInNewTab);
+			break;
+
+		default:
+			break;
+	}
+}
+
+async function navigateToWorkflowView(openInNewTab: boolean) {
+	let routeToNavigateTo: RouteLocationRaw;
+	if (!['', 'new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(workflowToReturnTo.value)) {
+		routeToNavigateTo = {
+			name: VIEWS.WORKFLOW,
+			params: { name: workflowToReturnTo.value },
+		};
+	} else {
+		routeToNavigateTo = { name: VIEWS.NEW_WORKFLOW };
+	}
+
+	if (openInNewTab) {
+		const { href } = router.resolve(routeToNavigateTo);
+		window.open(href, '_blank');
+	} else if (route.name !== routeToNavigateTo.name) {
+		if (route.name === VIEWS.NEW_WORKFLOW) {
+			uiStore.stateIsDirty = dirtyState.value;
+		}
+		activeHeaderTab.value = MAIN_HEADER_TABS.WORKFLOW;
+		await router.push(routeToNavigateTo);
+	}
+}
+
+async function navigateToExecutionsView(openInNewTab: boolean) {
+	const routeWorkflowId =
+		workflowId.value === PLACEHOLDER_EMPTY_WORKFLOW_ID ? 'new' : workflowId.value;
+	const executionToReturnToValue = executionsStore.activeExecution?.id || executionToReturnTo.value;
+	const routeToNavigateTo: RouteLocationRaw = executionToReturnToValue
+		? {
+				name: VIEWS.EXECUTION_PREVIEW,
+				params: { name: routeWorkflowId, executionId: executionToReturnToValue },
+			}
+		: {
+				name: VIEWS.EXECUTION_HOME,
+				params: { name: routeWorkflowId },
+			};
+
+	if (openInNewTab) {
+		const { href } = router.resolve(routeToNavigateTo);
+		window.open(href, '_blank');
+	} else if (route.name !== routeToNavigateTo.name) {
+		dirtyState.value = uiStore.stateIsDirty;
+		workflowToReturnTo.value = workflowId.value;
+		activeHeaderTab.value = MAIN_HEADER_TABS.EXECUTIONS;
+		await router.push(routeToNavigateTo);
+	}
+}
 </script>
+
+<template>
+	<div>
+		<div :class="{ 'main-header': true, expanded: !uiStore.sidebarMenuCollapsed }">
+			<div v-show="!hideMenuBar" class="top-menu">
+				<WorkflowDetails v-if="workflow?.name" :workflow="workflow" :read-only="readOnly" />
+				<TabBar
+					v-if="onWorkflowPage"
+					:items="tabBarItems"
+					:model-value="activeHeaderTab"
+					@update:model-value="onTabSelected"
+				/>
+			</div>
+		</div>
+	</div>
+</template>
 
 <style lang="scss">
 .main-header {

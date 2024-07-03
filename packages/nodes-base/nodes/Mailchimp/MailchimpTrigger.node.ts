@@ -16,7 +16,7 @@ export class MailchimpTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mailchimp Trigger',
 		name: 'mailchimpTrigger',
-		icon: 'file:mailchimp.svg',
+		icon: { light: 'file:mailchimp.svg', dark: 'file:mailchimp.dark.svg' },
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle Mailchimp events via webhooks',
@@ -196,7 +196,12 @@ export class MailchimpTrigger implements INodeType {
 				try {
 					await mailchimpApiRequest.call(this, endpoint, 'GET');
 				} catch (error) {
-					if (error instanceof NodeApiError && error.cause && 'isAxiosError' in error.cause) {
+					if (
+						error instanceof NodeApiError &&
+						error.cause &&
+						'isAxiosError' in error.cause &&
+						'statusCode' in error.cause
+					) {
 						if (error.cause.statusCode === 404) {
 							return false;
 						}

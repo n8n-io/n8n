@@ -1,197 +1,195 @@
 <template>
 	<div
-		:class="{ 'n8n-sticky': true, [$style.sticky]: true, [$style.clickable]: !isResizing }"
+		:class="{
+			'n8n-sticky': true,
+			[$style.sticky]: true,
+			[$style.clickable]: !isResizing,
+			[$style[`color-${backgroundColor}`]]: true,
+		}"
 		:style="styles"
 		@keydown.prevent
 	>
-		<n8n-resize-wrapper
-			:isResizingEnabled="!readOnly"
+		<N8nResizeWrapper
+			:is-resizing-enabled="!readOnly"
 			:height="height"
 			:width="width"
-			:minHeight="minHeight"
-			:minWidth="minWidth"
+			:min-height="minHeight"
+			:min-width="minWidth"
 			:scale="scale"
-			:gridSize="gridSize"
+			:grid-size="gridSize"
 			@resizeend="onResizeEnd"
 			@resize="onResize"
 			@resizestart="onResizeStart"
 		>
 			<div v-show="!editMode" :class="$style.wrapper" @dblclick.stop="onDoubleClick">
-				<n8n-markdown
+				<N8nMarkdown
 					theme="sticky"
 					:content="modelValue"
-					:withMultiBreaks="true"
+					:with-multi-breaks="true"
 					@markdown-click="onMarkdownClick"
+					@update-content="onUpdateModelValue"
 				/>
 			</div>
 			<div
 				v-show="editMode"
+				:class="{ 'full-height': !shouldShowFooter, 'sticky-textarea': true }"
 				@click.stop
 				@mousedown.stop
 				@mouseup.stop
 				@keydown.esc="onInputBlur"
 				@keydown.stop
-				@wheel.stop
-				:class="{ 'full-height': !shouldShowFooter, 'sticky-textarea': true }"
 			>
-				<n8n-input
-					:modelValue="modelValue"
+				<N8nInput
+					ref="input"
+					:model-value="modelValue"
 					type="textarea"
 					:rows="5"
 					@blur="onInputBlur"
-					@update:modelValue="onUpdateModelValue"
-					ref="input"
+					@update:model-value="onUpdateModelValue"
+					@wheel="onInputScroll"
 				/>
 			</div>
 			<div v-if="editMode && shouldShowFooter" :class="$style.footer">
-				<n8n-text size="xsmall" aligh="right">
+				<N8nText size="xsmall" align="right">
 					<span v-html="t('sticky.markdownHint')"></span>
-				</n8n-text>
+				</N8nText>
 			</div>
-		</n8n-resize-wrapper>
+		</N8nResizeWrapper>
 	</div>
 </template>
 
-<script lang="ts">
+<script lang="ts" setup>
+import { computed, ref, watch } from 'vue';
 import N8nInput from '../N8nInput';
 import N8nMarkdown from '../N8nMarkdown';
-import N8nResizeWrapper from '../N8nResizeWrapper';
+import N8nResizeWrapper, { type ResizeData } from '../N8nResizeWrapper/ResizeWrapper.vue';
 import N8nText from '../N8nText';
-import Locale from '../../mixins/locale';
-import { defineComponent } from 'vue';
+import { useI18n } from '../../composables/useI18n';
 
-export default defineComponent({
-	name: 'n8n-sticky',
-	mixins: [Locale],
-	props: {
-		modelValue: {
-			type: String,
-		},
-		height: {
-			type: Number,
-			default: 180,
-		},
-		width: {
-			type: Number,
-			default: 240,
-		},
-		minHeight: {
-			type: Number,
-			default: 80,
-		},
-		minWidth: {
-			type: Number,
-			default: 150,
-		},
-		scale: {
-			type: Number,
-			default: 1,
-		},
-		gridSize: {
-			type: Number,
-			default: 20,
-		},
-		id: {
-			type: String,
-			default: '0',
-		},
-		defaultText: {
-			type: String,
-		},
-		editMode: {
-			type: Boolean,
-			default: false,
-		},
-		readOnly: {
-			type: Boolean,
-			default: false,
-		},
-	},
-	components: {
-		N8nInput,
-		N8nMarkdown,
-		N8nResizeWrapper,
-		N8nText,
-	},
-	data() {
-		return {
-			isResizing: false,
-		};
-	},
-	computed: {
-		resHeight(): number {
-			if (this.height < this.minHeight) {
-				return this.minHeight;
-			}
-			return this.height;
-		},
-		resWidth(): number {
-			if (this.width < this.minWidth) {
-				return this.minWidth;
-			}
-			return this.width;
-		},
-		styles(): { height: string; width: string } {
-			return {
-				height: `${this.resHeight}px`,
-				width: `${this.resWidth}px`,
-			};
-		},
-		shouldShowFooter(): boolean {
-			return this.resHeight > 100 && this.resWidth > 155;
-		},
-	},
-	methods: {
-		onDoubleClick() {
-			if (!this.readOnly) {
-				this.$emit('edit', true);
-			}
-		},
-		onInputBlur() {
-			if (!this.isResizing) {
-				this.$emit('edit', false);
-			}
-		},
-		onUpdateModelValue(value: string) {
-			this.$emit('update:modelValue', value);
-		},
-		onMarkdownClick(link: string, event: Event) {
-			this.$emit('markdown-click', link, event);
-		},
-		onResize(values: unknown[]) {
-			this.$emit('resize', values);
-		},
-		onResizeEnd(resizeEnd: unknown) {
-			this.isResizing = false;
-			this.$emit('resizeend', resizeEnd);
-		},
-		onResizeStart() {
-			this.isResizing = true;
-			this.$emit('resizestart');
-		},
-	},
-	watch: {
-		editMode(newMode, prevMode) {
-			setTimeout(() => {
-				if (newMode && !prevMode && this.$refs.input) {
-					const textarea = this.$refs.input as HTMLTextAreaElement;
-					if (this.defaultText === this.modelValue) {
-						textarea.select();
-					}
-					textarea.focus();
-				}
-			}, 100);
-		},
-	},
+interface StickyProps {
+	modelValue?: string;
+	height?: number;
+	width?: number;
+	minHeight?: number;
+	minWidth?: number;
+	scale?: number;
+	gridSize?: number;
+	id?: string;
+	defaultText?: string;
+	editMode?: boolean;
+	readOnly?: boolean;
+	backgroundColor?: number | string;
+}
+
+const props = withDefaults(defineProps<StickyProps>(), {
+	height: 180,
+	width: 240,
+	minHeight: 80,
+	minWidth: 150,
+	scale: 1,
+	gridSize: 20,
+	id: '0',
+	editMode: false,
+	readOnly: false,
+	backgroundColor: 1,
 });
+
+const $emit = defineEmits<{
+	(event: 'edit', editing: boolean): void;
+	(event: 'update:modelValue', value: string): void;
+	(event: 'markdown-click', link: string, e: Event): void;
+	(event: 'resize', values: ResizeData): void;
+	(event: 'resizestart'): void;
+	(event: 'resizeend'): void;
+}>();
+
+const { t } = useI18n();
+const isResizing = ref(false);
+const input = ref<HTMLTextAreaElement | undefined>(undefined);
+
+const resHeight = computed((): number => {
+	return props.height < props.minHeight ? props.minHeight : props.height;
+});
+
+const resWidth = computed((): number => {
+	return props.width < props.minWidth ? props.minWidth : props.width;
+});
+
+const styles = computed((): { height: string; width: string } => ({
+	height: `${resHeight.value}px`,
+	width: `${resWidth.value}px`,
+}));
+
+const shouldShowFooter = computed((): boolean => resHeight.value > 100 && resWidth.value > 155);
+
+watch(
+	() => props.editMode,
+	(newMode, prevMode) => {
+		setTimeout(() => {
+			if (newMode && !prevMode && input.value) {
+				if (props.defaultText === props.modelValue) {
+					input.value.select();
+				}
+				input.value.focus();
+			}
+		}, 100);
+	},
+);
+
+const onDoubleClick = () => {
+	if (!props.readOnly) $emit('edit', true);
+};
+
+const onInputBlur = () => {
+	if (!isResizing.value) $emit('edit', false);
+};
+
+const onUpdateModelValue = (value: string) => {
+	$emit('update:modelValue', value);
+};
+
+const onMarkdownClick = (link: string, event: Event) => {
+	$emit('markdown-click', link, event);
+};
+
+const onResize = (values: ResizeData) => {
+	$emit('resize', values);
+};
+
+const onResizeStart = () => {
+	isResizing.value = true;
+	$emit('resizestart');
+};
+
+const onResizeEnd = () => {
+	isResizing.value = false;
+	$emit('resizeend');
+};
+
+const onInputScroll = (event: WheelEvent) => {
+	// Pass through zoom events but hold regular scrolling
+	if (!event.ctrlKey && !event.metaKey) {
+		event.stopPropagation();
+	}
+};
 </script>
 
 <style lang="scss" module>
 .sticky {
 	position: absolute;
-	background-color: var(--color-sticky-default-background);
-	border: 1px solid var(--color-sticky-default-border);
 	border-radius: var(--border-radius-base);
+
+	background-color: var(--color-sticky-background);
+	border: 1px solid var(--color-sticky-border);
+
+	.wrapper::after {
+		opacity: 0.15;
+		background: linear-gradient(
+			180deg,
+			var(--color-sticky-background) 0.01%,
+			var(--color-sticky-border)
+		);
+	}
 }
 
 .clickable {
@@ -212,12 +210,6 @@ export default defineComponent({
 		left: 0;
 		bottom: 0;
 		position: absolute;
-		background: linear-gradient(
-			180deg,
-			var(--color-sticky-default-background),
-			#fff5d600 0.01%,
-			var(--color-sticky-default-background)
-		);
 		border-radius: var(--border-radius-base);
 	}
 }
@@ -226,6 +218,36 @@ export default defineComponent({
 	padding: var(--spacing-5xs) var(--spacing-2xs) 0 var(--spacing-2xs);
 	display: flex;
 	justify-content: flex-end;
+}
+
+.color-2 {
+	--color-sticky-background: var(--color-sticky-background-2);
+	--color-sticky-border: var(--color-sticky-border-2);
+}
+
+.color-3 {
+	--color-sticky-background: var(--color-sticky-background-3);
+	--color-sticky-border: var(--color-sticky-border-3);
+}
+
+.color-4 {
+	--color-sticky-background: var(--color-sticky-background-4);
+	--color-sticky-border: var(--color-sticky-border-4);
+}
+
+.color-5 {
+	--color-sticky-background: var(--color-sticky-background-5);
+	--color-sticky-border: var(--color-sticky-border-5);
+}
+
+.color-6 {
+	--color-sticky-background: var(--color-sticky-background-6);
+	--color-sticky-border: var(--color-sticky-border-6);
+}
+
+.color-7 {
+	--color-sticky-background: var(--color-sticky-background-7);
+	--color-sticky-border: var(--color-sticky-border-7);
 }
 </style>
 

@@ -1,5 +1,6 @@
-import { flags } from '@oclif/command';
-import * as Db from '@/Db';
+import Container from 'typedi';
+import { Flags } from '@oclif/core';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
 import { BaseCommand } from '../BaseCommand';
 
 export class DisableMFACommand extends BaseCommand {
@@ -8,8 +9,8 @@ export class DisableMFACommand extends BaseCommand {
 	static examples = ['$ n8n mfa:disable --email=johndoe@example.com'];
 
 	static flags = {
-		help: flags.help({ char: 'h' }),
-		email: flags.string({
+		help: Flags.help({ char: 'h' }),
+		email: Flags.string({
 			description: 'The email of the user to disable the MFA authentication',
 		}),
 	};
@@ -19,23 +20,34 @@ export class DisableMFACommand extends BaseCommand {
 	}
 
 	async run(): Promise<void> {
-		// eslint-disable-next-line @typescript-eslint/no-shadow
-		const { flags } = this.parse(DisableMFACommand);
+		const { flags } = await this.parse(DisableMFACommand);
 
 		if (!flags.email) {
 			this.logger.info('An email with --email must be provided');
 			return;
 		}
 
-		const updateOperationResult = await Db.collections.User.update(
-			{ email: flags.email },
-			{ mfaSecret: null, mfaRecoveryCodes: [], mfaEnabled: false },
-		);
+		const repository = Container.get(AuthUserRepository);
+		const user = await repository.findOneBy({ email: flags.email });
 
-		if (!updateOperationResult.affected) {
+		if (!user) {
 			this.reportUserDoesNotExistError(flags.email);
 			return;
 		}
+
+		if (
+			user.mfaSecret === null &&
+			Array.isArray(user.mfaRecoveryCodes) &&
+			user.mfaRecoveryCodes.length === 0 &&
+			!user.mfaEnabled
+		) {
+			this.reportUserDoesNotExistError(flags.email);
+			return;
+		}
+
+		Object.assign(user, { mfaSecret: null, mfaRecoveryCodes: [], mfaEnabled: false });
+
+		await repository.save(user);
 
 		this.reportSuccess(flags.email);
 	}

@@ -10,6 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
+import { snakeCase } from 'change-case';
 import { mauticApiRequest, mauticApiRequestAllItems, validateJSON } from './GenericFunctions';
 
 import { contactFields, contactOperations } from './ContactDescription';
@@ -23,8 +24,6 @@ import { companyContactFields, companyContactOperations } from './CompanyContact
 import { contactSegmentFields, contactSegmentOperations } from './ContactSegmentDescription';
 
 import { campaignContactFields, campaignContactOperations } from './CampaignContactDescription';
-
-import { snakeCase } from 'change-case';
 
 export class Mautic implements INodeType {
 	description: INodeTypeDescription = {
@@ -1021,7 +1020,7 @@ export class Mautic implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ json: { error: (error as JsonObject).message } });
 					continue;
 				}
@@ -1029,6 +1028,6 @@ export class Mautic implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

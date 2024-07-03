@@ -1,8 +1,8 @@
 import {
-	HTTP_REQUEST_NODE_NAME, IF_NODE_NAME,
-	INSTANCE_OWNER,
+	HTTP_REQUEST_NODE_NAME,
+	IF_NODE_NAME,
 	MANUAL_TRIGGER_NODE_NAME,
-	SET_NODE_NAME,
+	EDIT_FIELDS_SET_NODE_NAME,
 } from '../constants';
 import { WorkflowPage, NDV, WorkflowExecutionsTab } from '../pages';
 
@@ -11,119 +11,128 @@ const ndv = new NDV();
 const executionsTab = new WorkflowExecutionsTab();
 
 describe('Debug', () => {
-		it('should be able to debug executions', () => {
-				cy.intercept('GET', '/rest/settings', (req) => {
-					req.on('response', (res) => {
-						res.send({
-							data: { ...res.body.data, enterprise: { debugInEditor: true } },
-						});
-					});
-				}).as('loadSettings');
-				cy.intercept('GET', '/rest/executions?filter=*').as('getExecutions');
-				cy.intercept('GET', '/rest/executions/*').as('getExecution');
-				cy.intercept('GET', '/rest/executions-current?filter=*').as('getCurrentExecutions');
-				cy.intercept('POST', '/rest/workflows/run').as('postWorkflowRun');
+	beforeEach(() => {
+		cy.enableFeature('debugInEditor');
+	});
 
-				cy.signin({ email: INSTANCE_OWNER.email, password: INSTANCE_OWNER.password });
+	it('should be able to debug executions', () => {
+		cy.intercept('GET', '/rest/executions?filter=*').as('getExecutions');
+		cy.intercept('GET', '/rest/executions/*').as('getExecution');
+		cy.intercept('POST', '/rest/workflows/**/run').as('postWorkflowRun');
 
-				workflowPage.actions.visit();
+		cy.signinAsOwner();
 
-        workflowPage.actions.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
-        workflowPage.actions.addNodeToCanvas(HTTP_REQUEST_NODE_NAME);
-        workflowPage.actions.openNode(HTTP_REQUEST_NODE_NAME);
-        ndv.actions.typeIntoParameterInput('url', 'https://foo.bar');
-        ndv.actions.close();
+		workflowPage.actions.visit();
 
-        workflowPage.actions.addNodeToCanvas(SET_NODE_NAME, true);
+		workflowPage.actions.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		workflowPage.actions.addNodeToCanvas(HTTP_REQUEST_NODE_NAME);
+		workflowPage.actions.openNode(HTTP_REQUEST_NODE_NAME);
+		ndv.actions.typeIntoParameterInput('url', 'https://foo.bar');
+		ndv.actions.close();
 
-        workflowPage.actions.saveWorkflowUsingKeyboardShortcut();
-        workflowPage.actions.executeWorkflow();
+		workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, true);
 
-        cy.wait(['@postWorkflowRun']);
+		workflowPage.actions.saveWorkflowUsingKeyboardShortcut();
+		workflowPage.actions.executeWorkflow();
 
-        executionsTab.actions.switchToExecutionsTab();
+		cy.wait(['@postWorkflowRun']);
 
-        cy.wait(['@getExecutions', '@getCurrentExecutions']);
+		executionsTab.actions.switchToExecutionsTab();
 
-        executionsTab.getters.executionDebugButton().should('have.text', 'Debug in editor').click();
-			  cy.get('.el-notification').contains('Execution data imported').should('be.visible');
-			  cy.get('.matching-pinned-nodes-confirmation').should('not.exist');
+		cy.wait(['@getExecutions']);
 
+		executionsTab.getters.executionDebugButton().should('have.text', 'Debug in editor').click();
+		cy.url().should('include', '/debug');
+		cy.get('.el-notification').contains('Execution data imported').should('be.visible');
+		cy.get('.matching-pinned-nodes-confirmation').should('not.exist');
 
-        workflowPage.actions.openNode(HTTP_REQUEST_NODE_NAME);
-        ndv.actions.clearParameterInput('url');
-        ndv.actions.typeIntoParameterInput('url', 'https://postman-echo.com/get?foo1=bar1&foo2=bar2');
-        ndv.actions.close();
+		workflowPage.actions.openNode(HTTP_REQUEST_NODE_NAME);
+		ndv.actions.clearParameterInput('url');
+		ndv.actions.typeIntoParameterInput('url', 'https://postman-echo.com/get?foo1=bar1&foo2=bar2');
+		ndv.actions.close();
 
-        workflowPage.actions.saveWorkflowUsingKeyboardShortcut();
-        workflowPage.actions.executeWorkflow();
+		workflowPage.actions.saveWorkflowUsingKeyboardShortcut();
+		cy.url().should('not.include', '/debug');
 
-        cy.wait(['@postWorkflowRun']);
+		workflowPage.actions.executeWorkflow();
 
-			  workflowPage.actions.openNode(HTTP_REQUEST_NODE_NAME);
-			  ndv.actions.pinData();
-			  ndv.actions.close();
+		cy.wait(['@postWorkflowRun']);
 
-        executionsTab.actions.switchToExecutionsTab();
+		workflowPage.actions.openNode(HTTP_REQUEST_NODE_NAME);
+		ndv.actions.pinData();
+		ndv.actions.close();
 
-        cy.wait(['@getExecutions', '@getCurrentExecutions']);
+		executionsTab.actions.switchToExecutionsTab();
 
-        executionsTab.getters.executionListItems().should('have.length', 2).first().click();
-        cy.wait(['@getExecution']);
+		cy.wait(['@getExecutions']);
 
-        executionsTab.getters.executionDebugButton().should('have.text', 'Copy to editor').click();
+		executionsTab.getters.executionListItems().should('have.length', 2).first().click();
+		cy.wait(['@getExecution']);
 
-			  let confirmDialog = cy.get('.matching-pinned-nodes-confirmation').filter(':visible');
-			  confirmDialog.find('li').should('have.length', 2);
-			  confirmDialog.get('.btn--cancel').click();
+		executionsTab.getters.executionDebugButton().should('have.text', 'Copy to editor').click();
 
-				cy.wait(['@getExecutions', '@getCurrentExecutions']);
+		let confirmDialog = cy.get('.matching-pinned-nodes-confirmation').filter(':visible');
+		confirmDialog.find('li').should('have.length', 2);
+		confirmDialog.get('.btn--cancel').click();
 
-				executionsTab.getters.executionListItems().should('have.length', 2).first().click();
-				cy.wait(['@getExecution']);
+		cy.wait(['@getExecutions']);
 
-			  executionsTab.getters.executionDebugButton().should('have.text', 'Copy to editor').click();
+		executionsTab.getters.executionListItems().should('have.length', 2).first().click();
+		cy.wait(['@getExecution']);
 
-				confirmDialog = cy.get('.matching-pinned-nodes-confirmation').filter(':visible');
-				confirmDialog.find('li').should('have.length', 2);
-			  confirmDialog.get('.btn--confirm').click();
+		executionsTab.getters.executionDebugButton().should('have.text', 'Copy to editor').click();
 
-				workflowPage.getters.canvasNodes().first().should('have.descendants', '.node-pin-data-icon');
-			  workflowPage.getters.canvasNodes().not(':first').should('not.have.descendants', '.node-pin-data-icon');
+		confirmDialog = cy.get('.matching-pinned-nodes-confirmation').filter(':visible');
+		confirmDialog.find('li').should('have.length', 2);
+		confirmDialog.get('.btn--confirm').click();
+		cy.url().should('include', '/debug');
 
-			  cy.reload(true);
-			  cy.wait(['@getExecution']);
+		workflowPage.getters.canvasNodes().first().should('have.descendants', '.node-pin-data-icon');
+		workflowPage.getters
+			.canvasNodes()
+			.not(':first')
+			.should('not.have.descendants', '.node-pin-data-icon');
 
-				confirmDialog = cy.get('.matching-pinned-nodes-confirmation').filter(':visible');
-				confirmDialog.find('li').should('have.length', 1);
-				confirmDialog.get('.btn--confirm').click();
+		cy.reload(true);
+		cy.wait(['@getExecution']);
 
-			  workflowPage.getters.canvasNodePlusEndpointByName(SET_NODE_NAME).click();
-			  workflowPage.actions.addNodeToCanvas(IF_NODE_NAME, false);
-			  workflowPage.actions.saveWorkflowUsingKeyboardShortcut();
+		confirmDialog = cy.get('.matching-pinned-nodes-confirmation').filter(':visible');
+		confirmDialog.find('li').should('have.length', 1);
+		confirmDialog.get('.btn--confirm').click();
 
-			  executionsTab.actions.switchToExecutionsTab();
-			  cy.wait(['@getExecutions', '@getCurrentExecutions']);
-			  executionsTab.getters.executionDebugButton().should('have.text', 'Copy to editor').click();
+		workflowPage.getters.canvasNodePlusEndpointByName(EDIT_FIELDS_SET_NODE_NAME).click();
+		workflowPage.actions.addNodeToCanvas(IF_NODE_NAME, false);
+		workflowPage.actions.saveWorkflowUsingKeyboardShortcut();
+		cy.url().should('not.include', '/debug');
 
-				confirmDialog = cy.get('.matching-pinned-nodes-confirmation').filter(':visible');
-				confirmDialog.find('li').should('have.length', 1);
-				confirmDialog.get('.btn--confirm').click();
-			  workflowPage.getters.canvasNodes().last().find('.node-info-icon').should('be.empty');
+		executionsTab.actions.switchToExecutionsTab();
+		cy.wait(['@getExecutions']);
+		executionsTab.getters.executionDebugButton().should('have.text', 'Copy to editor').click();
 
-			  workflowPage.getters.canvasNodes().first().dblclick();
-			  ndv.getters.pinDataButton().click();
-			  ndv.actions.close();
+		confirmDialog = cy.get('.matching-pinned-nodes-confirmation').filter(':visible');
+		confirmDialog.find('li').should('have.length', 1);
+		confirmDialog.get('.btn--confirm').click();
+		cy.url().should('include', '/debug');
 
-			  workflowPage.actions.saveWorkflowUsingKeyboardShortcut();
-			  workflowPage.actions.executeWorkflow();
-				workflowPage.actions.deleteNode(IF_NODE_NAME);
+		workflowPage.getters.canvasNodes().last().find('.node-info-icon').should('be.empty');
 
-			  executionsTab.actions.switchToExecutionsTab();
-				cy.wait(['@getExecutions', '@getCurrentExecutions']);
-				executionsTab.getters.executionListItems().should('have.length', 3).first().click();
-				cy.wait(['@getExecution']);
-			  executionsTab.getters.executionDebugButton().should('have.text', 'Copy to editor').click();
-			  cy.get('.el-notification').contains('Some execution data wasn\'t imported').should('be.visible');
-		});
+		workflowPage.getters.canvasNodes().first().dblclick();
+		ndv.getters.pinDataButton().click();
+		ndv.actions.close();
+
+		workflowPage.actions.saveWorkflowUsingKeyboardShortcut();
+		cy.url().should('not.include', '/debug');
+
+		workflowPage.actions.executeWorkflow();
+		workflowPage.actions.zoomToFit();
+		workflowPage.actions.deleteNode(IF_NODE_NAME);
+
+		executionsTab.actions.switchToExecutionsTab();
+		cy.wait(['@getExecutions']);
+		executionsTab.getters.executionListItems().should('have.length', 3).first().click();
+		cy.wait(['@getExecution']);
+		executionsTab.getters.executionDebugButton().should('have.text', 'Copy to editor').click();
+		cy.get('.el-notification').contains("Some execution data wasn't imported").should('be.visible');
+		cy.url().should('include', '/debug');
+	});
 });

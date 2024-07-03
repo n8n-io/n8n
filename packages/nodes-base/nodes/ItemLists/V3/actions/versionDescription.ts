@@ -10,7 +10,7 @@ export const versionDescription: INodeTypeDescription = {
 	group: ['input'],
 	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 	description: 'Helper for working with lists of items and transforming arrays',
-	version: 3,
+	version: [3, 3.1],
 	defaults: {
 		name: 'Item Lists',
 	},

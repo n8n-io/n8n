@@ -1,16 +1,19 @@
-import type { IDataObject } from 'n8n-workflow';
-import { formatPrivateKey } from '@utils/utilities';
-
+import type { Server } from 'net';
+import { createServer } from 'net';
 import { Client } from 'ssh2';
 import type { ConnectConfig } from 'ssh2';
 
-import type { Server } from 'net';
-import { createServer } from 'net';
+import type { IDataObject } from 'n8n-workflow';
 
 import pgPromise from 'pg-promise';
-import type { PgpDatabase } from '../helpers/interfaces';
+import type {
+	PgpDatabase,
+	PostgresNodeCredentials,
+	PostgresNodeOptions,
+} from '../helpers/interfaces';
+import { formatPrivateKey } from '@utils/utilities';
 
-async function createSshConnectConfig(credentials: IDataObject) {
+async function createSshConnectConfig(credentials: PostgresNodeCredentials) {
 	if (credentials.sshAuthenticateWith === 'password') {
 		return {
 			host: credentials.sshHost as string,
@@ -27,7 +30,7 @@ async function createSshConnectConfig(credentials: IDataObject) {
 		};
 
 		if (credentials.passphrase) {
-			options.passphrase = credentials.passphrase as string;
+			options.passphrase = credentials.passphrase;
 		}
 
 		return options;
@@ -35,8 +38,8 @@ async function createSshConnectConfig(credentials: IDataObject) {
 }
 
 export async function configurePostgres(
-	credentials: IDataObject,
-	options: IDataObject = {},
+	credentials: PostgresNodeCredentials,
+	options: PostgresNodeOptions = {},
 	createdSshClient?: Client,
 ) {
 	const pgp = pgPromise({
@@ -45,7 +48,7 @@ export async function configurePostgres(
 		noWarnings: true,
 	});
 
-	if (typeof options.nodeVersion == 'number' && options.nodeVersion >= 2.1) {
+	if (typeof options.nodeVersion === 'number' && options.nodeVersion >= 2.1) {
 		// Always return dates as ISO strings
 		[pgp.pg.types.builtins.TIMESTAMP, pgp.pg.types.builtins.TIMESTAMPTZ].forEach((type) => {
 			pgp.pg.types.setTypeParser(type, (value: string) => {
@@ -64,15 +67,20 @@ export async function configurePostgres(
 	}
 
 	const dbConfig: IDataObject = {
-		host: credentials.host as string,
-		port: credentials.port as number,
-		database: credentials.database as string,
-		user: credentials.user as string,
-		password: credentials.password as string,
+		host: credentials.host,
+		port: credentials.port,
+		database: credentials.database,
+		user: credentials.user,
+		password: credentials.password,
+		keepAlive: true,
 	};
 
 	if (options.connectionTimeout) {
-		dbConfig.connectionTimeoutMillis = (options.connectionTimeout as number) * 1000;
+		dbConfig.connectionTimeoutMillis = options.connectionTimeout * 1000;
+	}
+
+	if (options.delayClosingIdleConnection) {
+		dbConfig.keepAliveInitialDelayMillis = options.delayClosingIdleConnection * 1000;
 	}
 
 	if (credentials.allowUnauthorizedCerts === true) {
@@ -81,7 +89,7 @@ export async function configurePostgres(
 		};
 	} else {
 		dbConfig.ssl = !['disable', undefined].includes(credentials.ssl as string | undefined);
-		dbConfig.sslmode = (credentials.ssl as string) || 'disable';
+		dbConfig.sslmode = credentials.ssl || 'disable';
 	}
 
 	if (!credentials.sshTunnel) {
@@ -106,8 +114,8 @@ export async function configurePostgres(
 				sshClient.forwardOut(
 					socket.remoteAddress as string,
 					socket.remotePort as number,
-					credentials.host as string,
-					credentials.port as number,
+					credentials.host,
+					credentials.port,
 					(err, stream) => {
 						if (err) reject(err);
 

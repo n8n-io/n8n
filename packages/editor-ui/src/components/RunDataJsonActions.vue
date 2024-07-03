@@ -37,19 +37,22 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
-import { mapStores } from 'pinia';
+import { mapStores, storeToRefs } from 'pinia';
 import jp from 'jsonpath';
 import type { INodeUi } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
-import { copyPaste } from '@/mixins/copyPaste';
-import { pinData } from '@/mixins/pinData';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
-import { genericHelpers } from '@/mixins/genericHelpers';
-import { clearJsonKey, convertPath, executionDataToJson } from '@/utils';
+import { clearJsonKey, convertPath } from '@/utils/typesUtils';
+import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useI18n, useToast } from '@/composables';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useToast } from '@/composables/useToast';
+import { useI18n } from '@/composables/useI18n';
 import { nonExistingJsonPath } from '@/constants';
+import { useClipboard } from '@/composables/useClipboard';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { usePinnedData } from '@/composables/usePinnedData';
 
 type JsonPathData = {
 	path: string;
@@ -57,17 +60,16 @@ type JsonPathData = {
 };
 
 export default defineComponent({
-	name: 'run-data-json-actions',
-	mixins: [genericHelpers, nodeHelpers, pinData, copyPaste],
-
+	name: 'RunDataJsonActions',
 	props: {
 		node: {
 			type: Object as PropType<INodeUi>,
+			required: true,
 		},
 		paneType: {
 			type: String,
 		},
-		sessionId: {
+		pushRef: {
 			type: String,
 		},
 		currentOutputIndex: {
@@ -92,15 +94,26 @@ export default defineComponent({
 		},
 	},
 	setup() {
+		const ndvStore = useNDVStore();
 		const i18n = useI18n();
+		const nodeHelpers = useNodeHelpers();
+		const clipboard = useClipboard();
+		const { activeNode } = storeToRefs(ndvStore);
+		const pinnedData = usePinnedData(activeNode);
 
 		return {
 			i18n,
+			nodeHelpers,
+			clipboard,
+			pinnedData,
 			...useToast(),
 		};
 	},
 	computed: {
-		...mapStores(useNDVStore, useWorkflowsStore),
+		...mapStores(useNodeTypesStore, useNDVStore, useWorkflowsStore, useSourceControlStore),
+		isReadOnlyRoute() {
+			return this.$route?.meta?.readOnlyCanvas === true;
+		},
 		activeNode(): INodeUi | null {
 			return this.ndvStore.activeNode;
 		},
@@ -115,11 +128,14 @@ export default defineComponent({
 		getJsonValue(): string {
 			let selectedValue = jp.query(this.jsonData, `$${this.normalisedJsonPath}`)[0];
 			if (this.noSelection) {
-				if (this.hasPinData) {
-					selectedValue = clearJsonKey(this.pinData as object);
+				const inExecutionsFrame =
+					window !== window.parent && window.parent.location.pathname.includes('/executions');
+
+				if (this.pinnedData.hasData.value && !inExecutionsFrame) {
+					selectedValue = clearJsonKey(this.pinnedData.data.value as object);
 				} else {
 					selectedValue = executionDataToJson(
-						this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex),
+						this.nodeHelpers.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex),
 					);
 				}
 			}
@@ -141,14 +157,14 @@ export default defineComponent({
 			const pathParts = newPath.split(']');
 			const index = pathParts[0].slice(1);
 			path = pathParts.slice(1).join(']');
-			startPath = `$item(${index}).$node["${this.node!.name}"].json`;
+			startPath = `$item(${index}).$node["${this.node.name}"].json`;
 
 			return { path, startPath };
 		},
 		getJsonParameterPath(): JsonPathData {
 			const newPath = convertPath(this.normalisedJsonPath);
 			const path = newPath.split(']').slice(1).join(']');
-			let startPath = `$node["${this.node!.name}"].json`;
+			let startPath = `$node["${this.node.name}"].json`;
 
 			if (this.distanceFromActive === 1) {
 				startPath = '$json';
@@ -206,8 +222,8 @@ export default defineComponent({
 			}[commandData.command];
 
 			this.$telemetry.track('User copied ndv data', {
-				node_type: this.activeNode.type,
-				session_id: this.sessionId,
+				node_type: this.activeNode?.type,
+				push_ref: this.pushRef,
 				run_index: this.runIndex,
 				view: 'json',
 				copy_type: copyType,
@@ -216,7 +232,7 @@ export default defineComponent({
 				in_execution_log: this.isReadOnlyRoute,
 			});
 
-			this.copyToClipboard(value);
+			void this.clipboard.copy(value);
 		},
 	},
 });

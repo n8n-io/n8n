@@ -4,11 +4,11 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { processJsonInput, updateDisplayOptions } from '@utils/utilities';
 import type { ExcelResponse } from '../../helpers/interfaces';
 import { prepareOutput } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 import { tableRLC, workbookRLC, worksheetRLC } from '../common.descriptions';
+import { generatePairedItemData, processJsonInput, updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	workbookRLC,
@@ -271,10 +271,11 @@ export async function execute(
 			}),
 		);
 	} catch (error) {
-		if (this.continueOnFail()) {
+		if (this.continueOnFail(error)) {
+			const itemData = generatePairedItemData(this.getInputData().length);
 			const executionErrorData = this.helpers.constructExecutionMetaData(
 				this.helpers.returnJsonArray({ error: error.message }),
-				{ itemData: { item: 0 } },
+				{ itemData },
 			);
 			returnData.push(...executionErrorData);
 		} else {

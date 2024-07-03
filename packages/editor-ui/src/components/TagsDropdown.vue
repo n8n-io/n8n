@@ -1,32 +1,33 @@
 <template>
 	<div
+		v-on-click-outside="onClickOutside"
 		:class="{ 'tags-container': true, focused }"
 		@keydown.stop
-		v-on-click-outside="onClickOutside"
 	>
 		<n8n-select
+			ref="selectRef"
 			:teleported="true"
-			:modelValue="appliedTags"
+			:model-value="appliedTags"
 			:loading="isLoading"
 			:placeholder="placeholder"
 			:filter-method="filterOptions"
 			filterable
 			multiple
-			:allowCreate="createEnabled"
+			:allow-create="createEnabled"
 			:reserve-keyword="false"
-			ref="selectRef"
 			loading-text="..."
 			popper-class="tags-dropdown"
-			@update:modelValue="onTagsUpdated"
+			data-test-id="tags-dropdown"
+			@update:model-value="onTagsUpdated"
 			@visible-change="onVisibleChange"
 			@remove-tag="onRemoveTag"
 		>
 			<n8n-option
 				v-if="options.length === 0 && filter && createEnabled"
 				:key="CREATE_KEY"
+				ref="createRef"
 				:value="CREATE_KEY"
 				class="ops"
-				ref="createRef"
 			>
 				<font-awesome-icon icon="plus-circle" />
 				<span>
@@ -44,11 +45,12 @@
 			<!-- key is id+index for keyboard navigation to work well with filter -->
 			<n8n-option
 				v-for="(tag, i) in options"
-				:value="tag.id"
 				:key="tag.id + '_' + i"
+				ref="tagRefs"
+				:value="tag.id"
 				:label="tag.name"
 				class="tag"
-				ref="tagRefs"
+				data-test-id="tag"
 			/>
 
 			<n8n-option :key="MANAGE_KEY" :value="MANAGE_KEY" class="ops manage-tags">
@@ -65,12 +67,12 @@ import { computed, defineComponent, nextTick, onBeforeUnmount, onMounted, ref, w
 import type { ITag } from '@/Interface';
 import { MAX_TAG_NAME_LENGTH, TAGS_MANAGER_MODAL_KEY } from '@/constants';
 
-import { useI18n, useToast } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
+import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { useTagsStore } from '@/stores/tags.store';
-import type { EventBus } from 'n8n-design-system';
+import type { EventBus, N8nOption, N8nSelect } from 'n8n-design-system';
 import type { PropType } from 'vue';
-import type { N8nOption, N8nSelect } from 'n8n-design-system';
 import { storeToRefs } from 'pinia';
 
 type SelectRef = InstanceType<typeof N8nSelect>;
@@ -94,7 +96,13 @@ export default defineComponent({
 		},
 		eventBus: {
 			type: Object as PropType<EventBus>,
+			default: null,
 		},
+	},
+	emits: {
+		'update:modelValue': null,
+		esc: null,
+		blur: null,
 	},
 	setup(props, { emit }) {
 		const i18n = useI18n();
@@ -117,18 +125,12 @@ export default defineComponent({
 			return tagsStore.allTags;
 		});
 
-		const hasTags = computed<boolean>(() => {
-			return tagsStore.hasTags;
-		});
-
 		const options = computed<ITag[]>(() => {
-			return allTags.value.filter(
-				(tag: ITag) => tag && tag.name.toLowerCase().includes(filter.value.toLowerCase()),
-			);
+			return allTags.value.filter((tag: ITag) => tag && tag.name.includes(filter.value));
 		});
 
 		const appliedTags = computed<string[]>(() => {
-			return props.modelValue.filter((id: string) => tagsStore.getTagById(id));
+			return props.modelValue.filter((id: string) => tagsStore.tagsById[id]);
 		});
 
 		watch(
@@ -142,7 +144,9 @@ export default defineComponent({
 		);
 
 		onMounted(() => {
-			const select = selectRef.value?.$refs?.innerSelect;
+			const select = selectRef.value?.$refs?.innerSelect as
+				| { $refs: { input: Element } }
+				| undefined;
 			if (select) {
 				const input = select.$refs.input as Element | undefined;
 				if (input) {
@@ -180,7 +184,7 @@ export default defineComponent({
 		}
 
 		function filterOptions(value = '') {
-			filter.value = value.trim();
+			filter.value = value;
 			void nextTick(() => focusFirstOption());
 		}
 
@@ -189,8 +193,6 @@ export default defineComponent({
 			try {
 				const newTag = await tagsStore.create(name);
 				emit('update:modelValue', [...props.modelValue, newTag.id]);
-
-				void nextTick(() => focusOnTag(newTag.id));
 
 				filter.value = '';
 			} catch (error) {
@@ -233,13 +235,6 @@ export default defineComponent({
 			}
 		}
 
-		function focusOnTag(tagId: string) {
-			const tagOptions = tagRefs.value || [];
-			if (tagOptions && tagOptions.length) {
-				const added = tagOptions.find((ref) => ref.value === tagId);
-			}
-		}
-
 		function focusOnInput() {
 			if (selectRef.value) {
 				selectRef.value.focusOnInput();
@@ -267,8 +262,8 @@ export default defineComponent({
 			const tagsModal = document.querySelector('#tags-manager-modal');
 
 			const clickInsideTagsDropdowns =
-				tagsDropdown?.contains(e.target as Node) || tagsDropdown === e.target;
-			const clickInsideTagsModal = tagsModal?.contains(e.target as Node) || tagsModal === e.target;
+				tagsDropdown?.contains(e.target as Node) ?? tagsDropdown === e.target;
+			const clickInsideTagsModal = tagsModal?.contains(e.target as Node) ?? tagsModal === e.target;
 
 			if (!clickInsideTagsDropdowns && !clickInsideTagsModal && e.type === 'click') {
 				emit('blur');
@@ -318,7 +313,7 @@ export default defineComponent({
 	}
 
 	.el-tag {
-		padding: 1px var(--spacing-4xs);
+		padding: var(--spacing-5xs) var(--spacing-4xs);
 		color: var(--color-text-dark);
 		background-color: var(--color-background-base);
 		border-radius: var(--border-radius-base);

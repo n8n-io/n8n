@@ -2,7 +2,7 @@
 	"node": "n8n-nodes-base.microsoftDynamicsCrm",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": ["Marketing & Content", "Sales"],
+	"categories": ["Marketing", "Sales"],
 	"resources": {
 		"credentialDocumentation": [
 			{

@@ -6,19 +6,20 @@ import promClient, { type Counter } from 'prom-client';
 import semverParse from 'semver/functions/parse';
 import { Service } from 'typedi';
 import EventEmitter from 'events';
-import { LoggerProxy } from 'n8n-workflow';
 
-import { CacheService } from '@/services/cache.service';
-import type { EventMessageTypes } from '@/eventbus/EventMessageClasses';
-import {
-	METRICS_EVENT_NAME,
-	getLabelsForEvent,
-} from '@/eventbus/MessageEventBusDestination/Helpers.ee';
-import { eventBus } from '@/eventbus';
+import { CacheService } from '@/services/cache/cache.service';
+import { type EventMessageTypes } from '@/eventbus';
+import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
+import { Logger } from '@/Logger';
+import { EventMessageTypeNames } from 'n8n-workflow';
 
 @Service()
 export class MetricsService extends EventEmitter {
-	constructor(private readonly cacheService: CacheService) {
+	constructor(
+		private readonly logger: Logger,
+		private readonly cacheService: CacheService,
+		private readonly eventBus: MessageEventBus,
+	) {
 		super();
 	}
 
@@ -77,7 +78,7 @@ export class MetricsService extends EventEmitter {
 	}
 
 	mountMetricsEndpoint(app: express.Application) {
-		app.get('/metrics', async (req: express.Request, res: express.Response) => {
+		app.get('/metrics', async (_req: express.Request, res: express.Response) => {
 			const metrics = await promClient.register.metrics();
 			res.setHeader('Content-Type', promClient.register.contentType);
 			res.send(metrics).end();
@@ -94,7 +95,7 @@ export class MetricsService extends EventEmitter {
 			labelNames: ['cache'],
 		});
 		this.counters.cacheHitsTotal.inc(0);
-		this.cacheService.on(this.cacheService.metricsCounterEvents.cacheHit, (amount: number = 1) => {
+		this.cacheService.on('metrics.cache.hit', (amount: number = 1) => {
 			this.counters.cacheHitsTotal?.inc(amount);
 		});
 
@@ -104,7 +105,7 @@ export class MetricsService extends EventEmitter {
 			labelNames: ['cache'],
 		});
 		this.counters.cacheMissesTotal.inc(0);
-		this.cacheService.on(this.cacheService.metricsCounterEvents.cacheMiss, (amount: number = 1) => {
+		this.cacheService.on('metrics.cache.miss', (amount: number = 1) => {
 			this.counters.cacheMissesTotal?.inc(amount);
 		});
 
@@ -114,12 +115,9 @@ export class MetricsService extends EventEmitter {
 			labelNames: ['cache'],
 		});
 		this.counters.cacheUpdatesTotal.inc(0);
-		this.cacheService.on(
-			this.cacheService.metricsCounterEvents.cacheUpdate,
-			(amount: number = 1) => {
-				this.counters.cacheUpdatesTotal?.inc(amount);
-			},
-		);
+		this.cacheService.on('metrics.cache.update', (amount: number = 1) => {
+			this.counters.cacheUpdatesTotal?.inc(amount);
+		});
 	}
 
 	private getCounterForEvent(event: EventMessageTypes): Counter<string> | null {
@@ -130,7 +128,7 @@ export class MetricsService extends EventEmitter {
 				prefix + event.eventName.replace('n8n.', '').replace(/\./g, '_') + '_total';
 
 			if (!promClient.validateMetricName(metricName)) {
-				LoggerProxy.debug(`Invalid metric name: ${metricName}. Ignoring it!`);
+				this.logger.debug(`Invalid metric name: ${metricName}. Ignoring it!`);
 				this.counters[event.eventName] = null;
 				return null;
 			}
@@ -138,7 +136,7 @@ export class MetricsService extends EventEmitter {
 			const counter = new promClient.Counter({
 				name: metricName,
 				help: `Total number of ${event.eventName} events.`,
-				labelNames: Object.keys(getLabelsForEvent(event)),
+				labelNames: Object.keys(this.getLabelsForEvent(event)),
 			});
 			counter.inc(0);
 			this.counters[event.eventName] = counter;
@@ -151,10 +149,52 @@ export class MetricsService extends EventEmitter {
 		if (!config.getEnv('endpoints.metrics.includeMessageEventBusMetrics')) {
 			return;
 		}
-		eventBus.on(METRICS_EVENT_NAME, (event: EventMessageTypes) => {
+		this.eventBus.on('metrics.messageEventBus.Event', (event: EventMessageTypes) => {
 			const counter = this.getCounterForEvent(event);
 			if (!counter) return;
 			counter.inc(1);
 		});
+	}
+
+	getLabelsForEvent(event: EventMessageTypes): Record<string, string> {
+		switch (event.__type) {
+			case EventMessageTypeNames.audit:
+				if (event.eventName.startsWith('n8n.audit.user.credentials')) {
+					return config.getEnv('endpoints.metrics.includeCredentialTypeLabel')
+						? {
+								credential_type: this.getLabelValueForCredential(
+									event.payload.credentialType ?? 'unknown',
+								),
+							}
+						: {};
+				}
+
+				if (event.eventName.startsWith('n8n.audit.workflow')) {
+					return config.getEnv('endpoints.metrics.includeWorkflowIdLabel')
+						? { workflow_id: event.payload.workflowId?.toString() ?? 'unknown' }
+						: {};
+				}
+				break;
+
+			case EventMessageTypeNames.node:
+				return config.getEnv('endpoints.metrics.includeNodeTypeLabel')
+					? { node_type: this.getLabelValueForNode(event.payload.nodeType ?? 'unknown') }
+					: {};
+
+			case EventMessageTypeNames.workflow:
+				return config.getEnv('endpoints.metrics.includeWorkflowIdLabel')
+					? { workflow_id: event.payload.workflowId?.toString() ?? 'unknown' }
+					: {};
+		}
+
+		return {};
+	}
+
+	getLabelValueForNode(nodeType: string) {
+		return nodeType.replace('n8n-nodes-', '').replace(/\./g, '_');
+	}
+
+	getLabelValueForCredential(credentialType: string) {
+		return credentialType.replace(/\./g, '_');
 	}
 }

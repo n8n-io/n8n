@@ -1,5 +1,5 @@
-import type { NodeVMOptions } from 'vm2';
-import { NodeVM } from 'vm2';
+import type { NodeVMOptions } from '@n8n/vm2';
+import { NodeVM } from '@n8n/vm2';
 import type {
 	IExecuteFunctions,
 	IBinaryKeyData,
@@ -40,7 +40,7 @@ export class Function implements INodeType {
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 					codeAutocomplete: 'function',
-					editor: 'code',
+					editor: 'jsEditor',
 					rows: 10,
 				},
 				type: 'string',
@@ -204,7 +204,7 @@ return items;`,
 				}
 			}
 		} catch (error) {
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(error)) {
 				items = [{ json: { error: error.message } }];
 			} else {
 				// Try to find the line number which contains the error and attach to error message
@@ -224,6 +224,6 @@ return items;`,
 			}
 		}
 
-		return this.prepareOutputData(items);
+		return [items];
 	}
 }

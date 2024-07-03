@@ -1,11 +1,11 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	IPollFunctions,
+	IRequestOptions,
 	ITriggerFunctions,
 	JsonObject,
 } from 'n8n-workflow';
@@ -18,7 +18,7 @@ export async function togglApiRequest(
 		| IHookFunctions
 		| IExecuteFunctions
 		| ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject = {},
 	query?: IDataObject,
@@ -34,7 +34,7 @@ export async function togglApiRequest(
 		},
 	);
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: headerWithAuthentication,
 		method,
 		qs: query,

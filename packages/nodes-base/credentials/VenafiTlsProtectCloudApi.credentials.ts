@@ -14,6 +14,22 @@ export class VenafiTlsProtectCloudApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Region',
+			name: 'region',
+			type: 'options',
+			options: [
+				{
+					name: 'US',
+					value: 'cloud',
+				},
+				{
+					name: 'EU',
+					value: 'eu',
+				},
+			],
+			default: 'cloud',
+		},
+		{
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
@@ -33,7 +49,7 @@ export class VenafiTlsProtectCloudApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: 'https://api.venafi.cloud',
+			baseURL: '=https://api.venafi.{{$credentials.region ?? "cloud"}}',
 			url: '/v1/preferences',
 		},
 	};

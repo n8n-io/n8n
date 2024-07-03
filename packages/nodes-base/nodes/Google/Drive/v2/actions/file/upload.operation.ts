@@ -5,7 +5,6 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { updateDisplayOptions } from '@utils/utilities';
 import { googleApiRequest } from '../../transport';
 import { driveRLC, folderRLC, updateCommonOptions } from '../common.descriptions';
 import {
@@ -14,6 +13,7 @@ import {
 	setUpdateCommonParams,
 	setParentFolder,
 } from '../../helpers/utils';
+import { updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
@@ -123,9 +123,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			{ uploadType: 'resumable' },
 			undefined,
 			{
-				resolveWithFullResponse: true,
+				returnFullResponse: true,
 			},
 		);
+
 		const uploadUrl = resumableUpload.headers.location;
 
 		let offset = 0;

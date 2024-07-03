@@ -1,0 +1,76 @@
+{
+  "name": "My workflow 21",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "e524f588-b6a3-4849-8777-b32a8a755ae5",
+      "name": "When clicking \"Execute Workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        820,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "operation": "send",
+        "draftId": {
+          "__rl": true,
+          "value": "AAMkADlhOTA0MTc5LWUwOTMtNDRkZS05NzE0LTNlYmI0ZWM5OWI5OABGAAAAAABPLqzvT6b9RLP0CKzHiJrRBwBZf4De-LkrSqpPI8eyjUmAAAAAAAEPAABZf4De-LkrSqpPI8eyjUmAAAFXBDupAAA=",
+          "mode": "list",
+          "cachedResultName": "New Draft",
+          "cachedResultUrl": "https://outlook.office365.com/owa/?ItemID=AAMkADlhOTA0MTc5LWUwOTMtNDRkZS05NzE0LTNlYmI0ZWM5OWI5OABGAAAAAABPLqzvT6b9RLP0CKzHiJrRBwBZf4De%2FLkrSqpPI8eyjUmAAAAAAAEPAABZf4De%2FLkrSqpPI8eyjUmAAAFXBDupAAA%3D&exvsurl=1&viewmodel=ReadMessageItem"
+        },
+        "to": "michael.k@radency.com"
+      },
+      "id": "baff6798-0304-4255-bdb0-dd3f2659373b",
+      "name": "Microsoft Outlook",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        360
+      ],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "iXJCki7i5Vz0bdks",
+          "name": "Microsoft Outlook account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Microsoft Outlook": [
+      {
+        "json": {
+          "success": true
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking \"Execute Workflow\"": {
+      "main": [
+        [
+          {
+            "node": "Microsoft Outlook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "4bbe3403-3da7-4e6e-8341-7da5e8433330",
+  "id": "1CYHzBXQw1nfPGtB",
+  "meta": {
+    "instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+  },
+  "tags": []
+}

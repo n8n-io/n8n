@@ -1,7 +1,12 @@
 import { LicenseManager } from '@n8n_io/license-sdk';
+import { InstanceSettings } from 'n8n-core';
+import { mock } from 'jest-mock-extended';
 import config from '@/config';
 import { License } from '@/License';
+import { Logger } from '@/Logger';
 import { N8N_VERSION } from '@/constants';
+import { mockInstance } from '../shared/mocking';
+import { OrchestrationService } from '@/services/orchestration.service';
 
 jest.mock('@n8n_io/license-sdk');
 
@@ -21,21 +26,50 @@ describe('License', () => {
 	});
 
 	let license: License;
+	const logger = mockInstance(Logger);
+	const instanceSettings = mockInstance(InstanceSettings, { instanceId: MOCK_INSTANCE_ID });
+	mockInstance(OrchestrationService);
 
 	beforeEach(async () => {
-		license = new License();
-		await license.init(MOCK_INSTANCE_ID);
+		license = new License(logger, instanceSettings, mock(), mock(), mock());
+		await license.init();
 	});
 
 	test('initializes license manager', async () => {
 		expect(LicenseManager).toHaveBeenCalledWith({
 			autoRenewEnabled: true,
 			autoRenewOffset: MOCK_RENEW_OFFSET,
+			offlineMode: false,
+			renewOnInit: true,
 			deviceFingerprint: expect.any(Function),
 			productIdentifier: `n8n-${N8N_VERSION}`,
-			logger: expect.anything(),
+			logger,
 			loadCertStr: expect.any(Function),
 			saveCertStr: expect.any(Function),
+			onFeatureChange: expect.any(Function),
+			collectUsageMetrics: expect.any(Function),
+			collectPassthroughData: expect.any(Function),
+			server: MOCK_SERVER_URL,
+			tenantId: 1,
+		});
+	});
+
+	test('initializes license manager for worker', async () => {
+		license = new License(logger, instanceSettings, mock(), mock(), mock());
+		await license.init('worker');
+		expect(LicenseManager).toHaveBeenCalledWith({
+			autoRenewEnabled: false,
+			autoRenewOffset: MOCK_RENEW_OFFSET,
+			offlineMode: true,
+			renewOnInit: false,
+			deviceFingerprint: expect.any(Function),
+			productIdentifier: `n8n-${N8N_VERSION}`,
+			logger,
+			loadCertStr: expect.any(Function),
+			saveCertStr: expect.any(Function),
+			onFeatureChange: expect.any(Function),
+			collectUsageMetrics: expect.any(Function),
+			collectPassthroughData: expect.any(Function),
 			server: MOCK_SERVER_URL,
 			tenantId: 1,
 		});
@@ -53,20 +87,20 @@ describe('License', () => {
 		expect(LicenseManager.prototype.renew).toHaveBeenCalled();
 	});
 
-	test('check if feature is enabled', async () => {
-		await license.isFeatureEnabled(MOCK_FEATURE_FLAG);
+	test('check if feature is enabled', () => {
+		license.isFeatureEnabled(MOCK_FEATURE_FLAG);
 
 		expect(LicenseManager.prototype.hasFeatureEnabled).toHaveBeenCalledWith(MOCK_FEATURE_FLAG);
 	});
 
-	test('check if sharing feature is enabled', async () => {
-		await license.isFeatureEnabled(MOCK_FEATURE_FLAG);
+	test('check if sharing feature is enabled', () => {
+		license.isFeatureEnabled(MOCK_FEATURE_FLAG);
 
 		expect(LicenseManager.prototype.hasFeatureEnabled).toHaveBeenCalledWith(MOCK_FEATURE_FLAG);
 	});
 
-	test('check fetching entitlements', async () => {
-		await license.getCurrentEntitlements();
+	test('check fetching entitlements', () => {
+		license.getCurrentEntitlements();
 
 		expect(LicenseManager.prototype.getCurrentEntitlements).toHaveBeenCalled();
 	});
@@ -78,7 +112,7 @@ describe('License', () => {
 	});
 
 	test('check management jwt', async () => {
-		await license.getManagementJwt();
+		license.getManagementJwt();
 
 		expect(LicenseManager.prototype.getManagementJwt).toHaveBeenCalled();
 	});
@@ -141,5 +175,99 @@ describe('License', () => {
 
 		const mainPlan = license.getMainPlan();
 		expect(mainPlan).toBeUndefined();
+	});
+});
+
+describe('License', () => {
+	beforeEach(() => {
+		config.load(config.default);
+	});
+
+	describe('init', () => {
+		describe('in single-main setup', () => {
+			describe('with `license.autoRenewEnabled` enabled', () => {
+				it('should enable renewal', async () => {
+					config.set('multiMainSetup.enabled', false);
+
+					await new License(mock(), mock(), mock(), mock(), mock()).init();
+
+					expect(LicenseManager).toHaveBeenCalledWith(
+						expect.objectContaining({ autoRenewEnabled: true, renewOnInit: true }),
+					);
+				});
+			});
+
+			describe('with `license.autoRenewEnabled` disabled', () => {
+				it('should disable renewal', async () => {
+					config.set('license.autoRenewEnabled', false);
+
+					await new License(mock(), mock(), mock(), mock(), mock()).init();
+
+					expect(LicenseManager).toHaveBeenCalledWith(
+						expect.objectContaining({ autoRenewEnabled: false, renewOnInit: false }),
+					);
+				});
+			});
+		});
+
+		describe('in multi-main setup', () => {
+			describe('with `license.autoRenewEnabled` disabled', () => {
+				test.each(['unset', 'leader', 'follower'])(
+					'if %s status, should disable removal',
+					async (status) => {
+						config.set('multiMainSetup.enabled', true);
+						config.set('multiMainSetup.instanceType', status);
+						config.set('license.autoRenewEnabled', false);
+
+						await new License(mock(), mock(), mock(), mock(), mock()).init();
+
+						expect(LicenseManager).toHaveBeenCalledWith(
+							expect.objectContaining({ autoRenewEnabled: false, renewOnInit: false }),
+						);
+					},
+				);
+			});
+
+			describe('with `license.autoRenewEnabled` enabled', () => {
+				test.each(['unset', 'follower'])('if %s status, should disable removal', async (status) => {
+					config.set('multiMainSetup.enabled', true);
+					config.set('multiMainSetup.instanceType', status);
+					config.set('license.autoRenewEnabled', false);
+
+					await new License(mock(), mock(), mock(), mock(), mock()).init();
+
+					expect(LicenseManager).toHaveBeenCalledWith(
+						expect.objectContaining({ autoRenewEnabled: false, renewOnInit: false }),
+					);
+				});
+
+				it('if leader status, should enable renewal', async () => {
+					config.set('multiMainSetup.enabled', true);
+					config.set('multiMainSetup.instanceType', 'leader');
+
+					await new License(mock(), mock(), mock(), mock(), mock()).init();
+
+					expect(LicenseManager).toHaveBeenCalledWith(
+						expect.objectContaining({ autoRenewEnabled: true, renewOnInit: true }),
+					);
+				});
+			});
+		});
+	});
+
+	describe('reinit', () => {
+		it('should reinitialize license manager', async () => {
+			const license = new License(mock(), mock(), mock(), mock(), mock());
+			await license.init();
+
+			const initSpy = jest.spyOn(license, 'init');
+
+			await license.reinit();
+
+			expect(initSpy).toHaveBeenCalledWith('main', true);
+
+			expect(LicenseManager.prototype.reset).toHaveBeenCalled();
+			expect(LicenseManager.prototype.initialize).toHaveBeenCalled();
+		});
 	});
 });

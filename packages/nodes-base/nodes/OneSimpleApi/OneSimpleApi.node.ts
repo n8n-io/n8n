@@ -864,7 +864,7 @@ export class OneSimpleApi implements INodeType {
 					returnData.push(responseData as IDataObject);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ error: error.message });
 					continue;
 				}
@@ -873,7 +873,7 @@ export class OneSimpleApi implements INodeType {
 		}
 
 		if (download) {
-			return this.prepareOutputData(returnData as unknown as INodeExecutionData[]);
+			return [returnData as unknown as INodeExecutionData[]];
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];

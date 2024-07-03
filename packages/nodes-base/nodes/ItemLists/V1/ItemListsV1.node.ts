@@ -1,7 +1,6 @@
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	INode,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeBaseDescription,
@@ -12,53 +11,14 @@ import { NodeOperationError } from 'n8n-workflow';
 import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';
 import isEqual from 'lodash/isEqual';
-import isObject from 'lodash/isObject';
 import lt from 'lodash/lt';
-import merge from 'lodash/merge';
 import pick from 'lodash/pick';
-import reduce from 'lodash/reduce';
 import set from 'lodash/set';
 import unset from 'lodash/unset';
 
-const compareItems = (
-	obj: INodeExecutionData,
-	obj2: INodeExecutionData,
-	keys: string[],
-	disableDotNotation: boolean,
-	_node: INode,
-) => {
-	let result = true;
-	for (const key of keys) {
-		if (!disableDotNotation) {
-			if (!isEqual(get(obj.json, key), get(obj2.json, key))) {
-				result = false;
-				break;
-			}
-		} else {
-			if (!isEqual(obj.json[key], obj2.json[key])) {
-				result = false;
-				break;
-			}
-		}
-	}
-	return result;
-};
-
-const flattenKeys = (obj: IDataObject, path: string[] = []): IDataObject => {
-	return !isObject(obj)
-		? { [path.join('.')]: obj }
-		: reduce(obj, (cum, next, key) => merge(cum, flattenKeys(next as IDataObject, [...path, key])), {}); //prettier-ignore
-};
-
-const shuffleArray = (array: any[]) => {
-	for (let i = array.length - 1; i > 0; i--) {
-		const j = Math.floor(Math.random() * (i + 1));
-		[array[i], array[j]] = [array[j], array[i]];
-	}
-};
-
-import * as summarize from './summarize.operation';
 import { sortByCode } from '../V3/helpers/utils';
+import * as summarize from './summarize.operation';
+import { flattenKeys, shuffleArray, compareItems } from '@utils/utilities';
 
 export class ItemListsV1 implements INodeType {
 	description: INodeTypeDescription;
@@ -596,7 +556,7 @@ export class ItemListsV1 implements INodeType {
 					type: 'string',
 					typeOptions: {
 						alwaysOpenEditWindow: true,
-						editor: 'code',
+						editor: 'jsEditor',
 						rows: 10,
 					},
 					default: `// The two items to compare are in the variables a and b
@@ -920,7 +880,7 @@ return 0;`,
 					}
 				}
 
-				return this.prepareOutputData(returnData);
+				return [returnData];
 			} else if (operation === 'aggregateItems') {
 				const aggregate = this.getNodeParameter('aggregate', 0, '') as string;
 
@@ -1060,7 +1020,7 @@ return 0;`,
 
 					returnData.push(newItem);
 
-					return this.prepareOutputData(returnData);
+					return [returnData];
 				} else {
 					let newItems: IDataObject[] = items.map((item) => item.json);
 					const destinationFieldName = this.getNodeParameter('destinationFieldName', 0) as string;
@@ -1096,9 +1056,7 @@ return 0;`,
 						}, [] as IDataObject[]);
 					}
 
-					const output: INodeExecutionData = { json: { [destinationFieldName]: newItems } };
-
-					return this.prepareOutputData([output]);
+					return [[{ json: { [destinationFieldName]: newItems } }]];
 				}
 			} else if (operation === 'removeDuplicates') {
 				const compare = this.getNodeParameter('compare', 0) as string;
@@ -1228,7 +1186,7 @@ return 0;`,
 				const removedIndexes: number[] = [];
 				let temp = newItems[0];
 				for (let index = 1; index < newItems.length; index++) {
-					if (compareItems(newItems[index], temp, keys, disableDotNotation, this.getNode())) {
+					if (compareItems(newItems[index], temp, keys, disableDotNotation)) {
 						removedIndexes.push(newItems[index].json.__INDEX as unknown as number);
 					} else {
 						temp = newItems[index];
@@ -1245,7 +1203,7 @@ return 0;`,
 				}
 
 				// return the filtered items
-				return this.prepareOutputData(data);
+				return [data];
 			} else if (operation === 'sort') {
 				let newItems = [...items];
 				const type = this.getNodeParameter('type', 0) as string;
@@ -1257,7 +1215,7 @@ return 0;`,
 
 				if (type === 'random') {
 					shuffleArray(newItems);
-					return this.prepareOutputData(newItems);
+					return [newItems];
 				}
 
 				if (type === 'simple') {
@@ -1369,14 +1327,14 @@ return 0;`,
 				} else {
 					newItems = sortByCode.call(this, newItems);
 				}
-				return this.prepareOutputData(newItems);
+				return [newItems];
 			} else if (operation === 'limit') {
 				let newItems = items;
 				const maxItems = this.getNodeParameter('maxItems', 0) as number;
 				const keep = this.getNodeParameter('keep', 0) as string;
 
 				if (maxItems > items.length) {
-					return this.prepareOutputData(newItems);
+					return [newItems];
 				}
 
 				if (keep === 'firstItems') {
@@ -1384,9 +1342,9 @@ return 0;`,
 				} else {
 					newItems = items.slice(items.length - maxItems, items.length);
 				}
-				return this.prepareOutputData(newItems);
+				return [newItems];
 			} else if (operation === 'summarize') {
-				return summarize.execute.call(this, items);
+				return await summarize.execute.call(this, items);
 			} else {
 				throw new NodeOperationError(this.getNode(), `Operation '${operation}' is not recognized`);
 			}
