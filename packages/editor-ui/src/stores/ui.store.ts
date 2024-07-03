@@ -741,7 +741,7 @@ export const listenForModalChanges = (opts: {
 	});
 };
 
-const generateUpgradeLinkUrl = async (
+export const generateUpgradeLinkUrl = async (
 	source: string,
 	utm_campaign: string,
 	deploymentType: string,
