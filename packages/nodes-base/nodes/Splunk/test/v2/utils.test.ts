@@ -9,14 +9,15 @@ import {
 	setReturnAllOrLimit,
 	parseXml,
 } from '../../v2/helpers/utils';
+import { SPLUNK } from '../../v1/types';
 
 describe('Splunk, formatEntry', () => {
 	test('should format the entry correctly when doNotFormatContent is false', () => {
 		const entry = {
 			id: 'http://example.com/id/123',
 			content: {
-				's:dict': {
-					's:key': [
+				[SPLUNK.DICT]: {
+					[SPLUNK.KEY]: [
 						{ $: { name: 'key1' }, _: 'value1' },
 						{ $: { name: 'key2' }, _: 'value2' },
 					],
@@ -59,8 +60,8 @@ describe('Splunk, formatEntry', () => {
 	test('should handle entries without id correctly', () => {
 		const entry = {
 			content: {
-				's:dict': {
-					's:key': [
+				[SPLUNK.DICT]: {
+					[SPLUNK.KEY]: [
 						{ $: { name: 'key1' }, _: 'value1' },
 						{ $: { name: 'key2' }, _: 'value2' },
 					],
@@ -188,8 +189,14 @@ describe('Splunk, formatFeed', () => {
 		const responseData = {
 			feed: {
 				entry: [
-					{ id: '1', content: { 's:dict': { 's:key': [{ $: { name: 'key1' }, _: 'value1' }] } } },
-					{ id: '2', content: { 's:dict': { 's:key': [{ $: { name: 'key2' }, _: 'value2' }] } } },
+					{
+						id: '1',
+						content: { [SPLUNK.DICT]: { [SPLUNK.KEY]: [{ $: { name: 'key1' }, _: 'value1' }] } },
+					},
+					{
+						id: '2',
+						content: { [SPLUNK.DICT]: { [SPLUNK.KEY]: [{ $: { name: 'key2' }, _: 'value2' }] } },
+					},
 				],
 			},
 		};
@@ -208,7 +215,7 @@ describe('Splunk, formatFeed', () => {
 			feed: {
 				entry: {
 					id: '1',
-					content: { 's:dict': { 's:key': [{ $: { name: 'key1' }, _: 'value1' }] } },
+					content: { [SPLUNK.DICT]: { [SPLUNK.KEY]: [{ $: { name: 'key1' }, _: 'value1' }] } },
 				},
 			},
 		};

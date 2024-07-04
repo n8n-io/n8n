@@ -3,6 +3,7 @@ import type { IExecuteFunctions, IDataObject } from 'n8n-workflow';
 import { parseString } from 'xml2js';
 
 import type { SplunkError, SplunkFeedResponse } from './interfaces';
+import { SPLUNK } from '../../v1/types';
 
 function compactEntryContent(splunkObject: any): any {
 	if (typeof splunkObject !== 'object') {
@@ -16,13 +17,13 @@ function compactEntryContent(splunkObject: any): any {
 		}, {});
 	}
 
-	if (splunkObject['s:dict']) {
-		const obj = splunkObject['s:dict']['s:key'];
+	if (splunkObject[SPLUNK.DICT]) {
+		const obj = splunkObject[SPLUNK.DICT][SPLUNK.KEY];
 		return { [splunkObject.$.name]: compactEntryContent(obj) };
 	}
 
-	if (splunkObject['s:list']) {
-		const items = splunkObject['s:list']['s:item'];
+	if (splunkObject[SPLUNK.LIST]) {
+		const items = splunkObject[SPLUNK.LIST][SPLUNK.ITEM];
 		return { [splunkObject.$.name]: items };
 	}
 
@@ -38,7 +39,7 @@ function compactEntryContent(splunkObject: any): any {
 }
 
 function formatEntryContent(content: any): any {
-	return content['s:dict']['s:key'].reduce((acc: any, cur: any) => {
+	return content[SPLUNK.DICT][SPLUNK.KEY].reduce((acc: any, cur: any) => {
 		acc = { ...acc, ...compactEntryContent(cur) };
 		return acc;
 	}, {});
@@ -102,5 +103,5 @@ export function getId(
 ) {
 	const id = this.getNodeParameter(idType, i) as string;
 
-	return id.includes(endpoint) ? id.split(endpoint).pop()! : id;
+	return id.includes(endpoint) ? id.split(endpoint).pop() : id;
 }

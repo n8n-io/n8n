@@ -2,6 +2,7 @@ import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import * as report from '../../../v2/actions/report';
 import * as transport from '../../../v2/transport';
+import { SPLUNK } from '../../../v1/types';
 
 jest.mock('../../../v2/transport', () => ({
 	splunkApiJsonRequest: jest.fn(),
@@ -32,7 +33,10 @@ describe('Splunk, report resource', () => {
 		const response = {
 			feed: {
 				entry: [
-					{ id: '1', content: { 's:dict': { 's:key': [{ $: { name: 'key1' }, _: 'value1' }] } } },
+					{
+						id: '1',
+						content: { [SPLUNK.DICT]: { [SPLUNK.KEY]: [{ $: { name: 'key1' }, _: 'value1' }] } },
+					},
 				],
 			},
 		};
