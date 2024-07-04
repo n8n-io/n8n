@@ -164,7 +164,6 @@ export class FrontendService {
 				enabled: config.getEnv('templates.enabled'),
 				host: config.getEnv('templates.host'),
 			},
-			onboardingCallPromptEnabled: config.getEnv('onboardingCallPrompt.enabled'),
 			executionMode: config.getEnv('executions.mode'),
 			pushBackend: config.getEnv('push.backend'),
 			communityNodesEnabled: config.getEnv('nodes.communityPackages.enabled'),

@@ -222,12 +222,9 @@ import {
 import type { NotificationHandle } from 'element-plus';
 
 import {
-	FIRST_ONBOARDING_PROMPT_TIMEOUT,
 	MAIN_HEADER_TABS,
 	MODAL_CANCEL,
 	MODAL_CONFIRM,
-	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
-	ONBOARDING_PROMPT_TIMEBOX,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	QUICKSTART_NOTE_NAME,
 	START_NODE_TYPE,
@@ -332,7 +329,6 @@ import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
-import { getAccountAge } from '@/utils/userUtils';
 import { getConnectionInfo, getNodeViewTab } from '@/utils/canvasUtils';
 import {
 	AddConnectionCommand,
@@ -890,38 +886,6 @@ export default defineComponent({
 
 		// TODO: This currently breaks since front-end hooks are still not updated to work with pinia store
 		void this.externalHooks.run('nodeView.mount').catch(() => {});
-
-		if (
-			this.currentUser?.personalizationAnswers !== null &&
-			this.settingsStore.onboardingCallPromptEnabled &&
-			this.currentUser &&
-			getAccountAge(this.currentUser) <= ONBOARDING_PROMPT_TIMEBOX
-		) {
-			const onboardingResponse = await this.uiStore.getNextOnboardingPrompt();
-			const promptTimeout =
-				onboardingResponse?.toast_sequence_number === 1 ? FIRST_ONBOARDING_PROMPT_TIMEOUT : 1000;
-
-			if (onboardingResponse?.title && onboardingResponse?.description) {
-				setTimeout(async () => {
-					this.showToast({
-						type: 'info',
-						title: onboardingResponse.title,
-						message: onboardingResponse.description,
-						duration: 0,
-						customClass: 'clickable',
-						closeOnClick: true,
-						onClick: () => {
-							this.$telemetry.track('user clicked onboarding toast', {
-								seq_num: onboardingResponse.toast_sequence_number,
-								title: onboardingResponse.title,
-								description: onboardingResponse.description,
-							});
-							this.uiStore.openModal(ONBOARDING_CALL_SIGNUP_MODAL_KEY);
-						},
-					});
-				}, promptTimeout);
-			}
-		}
 
 		sourceControlEventBus.on('pull', this.onSourceControlPull);
 
