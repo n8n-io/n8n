@@ -20,7 +20,7 @@
 			</div>
 			<div v-else :class="$style.container">
 				<n8n-info-tip
-					v-if="!workflowPermissions.share && !isHomeTeamProject"
+					v-if="!workflowPermissions?.share && !isHomeTeamProject"
 					:bold="false"
 					class="mb-s"
 				>
@@ -37,8 +37,8 @@
 							:home-project="workflow.homeProject"
 							:projects="projects"
 							:roles="workflowRoles"
-							:readonly="!workflowPermissions.share"
-							:static="isHomeTeamProject || !workflowPermissions.share"
+							:readonly="!workflowPermissions?.share"
+							:static="isHomeTeamProject || !workflowPermissions?.share"
 							:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
 							@project-added="onProjectAdded"
 							@project-removed="onProjectRemoved"
@@ -102,7 +102,7 @@
 				</n8n-button>
 				<n8n-button
 					v-else
-					v-show="workflowPermissions.share"
+					v-show="workflowPermissions?.share"
 					:loading="loading"
 					:disabled="!isDirty"
 					data-test-id="workflow-sharing-modal-save-button"
@@ -129,9 +129,7 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/constants';
 import type { IUser, IWorkflowDb } from '@/Interface';
-import type { PermissionsMap } from '@/permissions';
-import type { WorkflowScope } from '@n8n/permissions';
-import { getWorkflowPermissions } from '@/permissions';
+import { getResourcePermissions } from '@/permissions';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { nodeViewEventBus } from '@/event-bus';
@@ -223,8 +221,8 @@ export default defineComponent({
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
 		},
-		workflowPermissions(): PermissionsMap<WorkflowScope> {
-			return getWorkflowPermissions(this.workflow);
+		workflowPermissions() {
+			return getResourcePermissions(this.workflow.scopes).workflow;
 		},
 		workflowOwnerName(): string {
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflow.id}`);

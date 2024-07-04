@@ -10,7 +10,7 @@ import {
 } from '@/constants';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
-import { getWorkflowPermissions } from '@/permissions';
+import { getResourcePermissions } from '@/permissions';
 import dateformat from 'dateformat';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import { useUIStore } from '@/stores/ui.store';
@@ -73,7 +73,7 @@ const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
-const workflowPermissions = computed(() => getWorkflowPermissions(props.data));
+const workflowPermissions = computed(() => getResourcePermissions(props.data.scopes).workflow);
 const actions = computed(() => {
 	const items = [
 		{
@@ -93,14 +93,14 @@ const actions = computed(() => {
 		});
 	}
 
-	if (workflowPermissions.value.move) {
+	if (workflowPermissions.value?.move) {
 		items.push({
 			label: locale.baseText('workflows.item.move'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.MOVE,
 		});
 	}
 
-	if (workflowPermissions.value.delete && !props.readOnly) {
+	if (workflowPermissions.value?.delete && !props.readOnly) {
 		items.push({
 			label: locale.baseText('workflows.item.delete'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.DELETE,

@@ -17,7 +17,7 @@
 					<InlineNameEdit
 						:model-value="credentialName"
 						:subtitle="credentialType ? credentialType.displayName : ''"
-						:readonly="!credentialPermissions.update || !credentialType"
+						:readonly="!credentialPermissions?.update || !credentialType"
 						type="Credential"
 						data-test-id="credential-name"
 						@update:model-value="onNameEdit"
@@ -25,7 +25,7 @@
 				</div>
 				<div :class="$style.credActions">
 					<n8n-icon-button
-						v-if="currentCredential && credentialPermissions.delete"
+						v-if="currentCredential && credentialPermissions?.delete"
 						:title="$locale.baseText('credentialEdit.credentialEdit.delete')"
 						icon="trash"
 						type="tertiary"
@@ -146,8 +146,7 @@ import Modal from '@/components/Modal.vue';
 import InlineNameEdit from '@/components/InlineNameEdit.vue';
 import { CREDENTIAL_EDIT_MODAL_KEY, EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
 import FeatureComingSoon from '@/components/FeatureComingSoon.vue';
-import type { PermissionsMap } from '@/permissions';
-import { getCredentialPermissions } from '@/permissions';
+import { getResourcePermissions } from '@/permissions';
 import type { IMenuItem } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useUIStore } from '@/stores/ui.store';
@@ -169,7 +168,6 @@ import { isValidCredentialResponse, isCredentialModalState } from '@/utils/typeG
 import { isExpression, isTestableExpression } from '@/utils/expressions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useProjectsStore } from '@/stores/projects.store';
-import type { CredentialScope } from '@n8n/permissions';
 
 export default defineComponent({
 	name: 'CredentialEdit',
@@ -422,14 +420,15 @@ export default defineComponent({
 			}
 			return true;
 		},
-		credentialPermissions(): PermissionsMap<CredentialScope> {
+		credentialPermissions() {
 			if (this.loading) {
-				return {} as PermissionsMap<CredentialScope>;
+				return;
 			}
 
-			return getCredentialPermissions(
-				(this.credentialId ? this.currentCredential : this.credentialData) as ICredentialsResponse,
-			);
+			return getResourcePermissions(
+				((this.credentialId ? this.currentCredential : this.credentialData) as ICredentialsResponse)
+					.scopes,
+			).credential;
 		},
 		sidebarItems(): IMenuItem[] {
 			const menuItems: IMenuItem[] = [
@@ -467,7 +466,7 @@ export default defineComponent({
 		showSaveButton(): boolean {
 			return (
 				(this.hasUnsavedChanges || !!this.credentialId) &&
-				(this.credentialPermissions.create || this.credentialPermissions.update)
+				(this.credentialPermissions?.create || this.credentialPermissions?.update)
 			);
 		},
 		showSharingMenu(): boolean {
@@ -522,7 +521,7 @@ export default defineComponent({
 
 		setTimeout(async () => {
 			if (this.credentialId) {
-				if (!this.requiredPropertiesFilled && this.credentialPermissions.update) {
+				if (!this.requiredPropertiesFilled && this.credentialPermissions?.update) {
 					// sharees can't see properties, so this check would always fail for them
 					// if the credential contains required fields.
 					this.showValidationWarning = true;
@@ -960,14 +959,14 @@ export default defineComponent({
 		): Promise<ICredentialsResponse | null> {
 			let credential: ICredentialsResponse | null = null;
 			try {
-				if (this.credentialPermissions.update) {
+				if (this.credentialPermissions?.update) {
 					credential = await this.credentialsStore.updateCredential({
 						id: this.credentialId,
 						data: credentialDetails,
 					});
 				}
 				if (
-					this.credentialPermissions.share &&
+					this.credentialPermissions?.share &&
 					this.isSharedWithChanged &&
 					credentialDetails.sharedWithProjects
 				) {

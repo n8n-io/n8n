@@ -22,7 +22,7 @@
 		</div>
 		<div v-else>
 			<n8n-info-tip
-				v-if="!credentialPermissions.share && !isHomeTeamProject"
+				v-if="!credentialPermissions?.share && !isHomeTeamProject"
 				:bold="false"
 				class="mb-s"
 			>
@@ -33,7 +33,7 @@
 				}}
 			</n8n-info-tip>
 			<n8n-info-tip
-				v-if="credentialPermissions.share && !isHomeTeamProject"
+				v-if="credentialPermissions?.share && !isHomeTeamProject"
 				:bold="false"
 				class="mb-s"
 			>
@@ -44,8 +44,8 @@
 				:projects="projects"
 				:roles="credentialRoles"
 				:home-project="homeProject"
-				:readonly="!credentialPermissions.share"
-				:static="isHomeTeamProject || !credentialPermissions.share"
+				:readonly="!credentialPermissions?.share"
+				:static="isHomeTeamProject || !credentialPermissions?.share"
 				:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
 			/>
 			<n8n-info-tip v-if="isHomeTeamProject" :bold="false" class="mt-s">
@@ -92,8 +92,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectListItem, ProjectSharingData, Project } from '@/types/projects.types';
 import { ProjectTypes } from '@/types/projects.types';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
-import type { PermissionsMap } from '@/permissions';
-import type { CredentialScope } from '@n8n/permissions';
+import type { PermissionsRecord } from '@/permissions';
 import type { EventBus } from 'n8n-design-system/utils';
 import { useRolesStore } from '@/stores/roles.store';
 import type { RoleMap } from '@/types/roles.types';
@@ -117,7 +116,7 @@ export default defineComponent({
 			required: true,
 		},
 		credentialPermissions: {
-			type: Object as PropType<PermissionsMap<CredentialScope>>,
+			type: Object as PropType<PermissionsRecord['credential']>,
 			required: true,
 		},
 		modalBus: {

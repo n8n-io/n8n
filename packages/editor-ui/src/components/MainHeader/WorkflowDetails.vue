@@ -11,9 +11,6 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/constants';
-import type { PermissionsMap } from '@/permissions';
-import type { WorkflowScope } from '@n8n/permissions';
-
 import ShortenName from '@/components/ShortenName.vue';
 import TagsContainer from '@/components/TagsContainer.vue';
 import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
@@ -37,8 +34,7 @@ import { saveAs } from 'file-saver';
 import { useTitleChange } from '@/composables/useTitleChange';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
-
-import { getWorkflowPermissions } from '@/permissions';
+import { getResourcePermissions } from '@/permissions';
 import { createEventBus } from 'n8n-design-system/utils';
 import { nodeViewEventBus } from '@/event-bus';
 import { hasPermission } from '@/utils/rbac/permissions';
@@ -127,9 +123,9 @@ const onExecutionsTab = computed(() => {
 	].includes((route.name as string) || '');
 });
 
-const workflowPermissions = computed<PermissionsMap<WorkflowScope>>(() => {
-	return getWorkflowPermissions(workflowsStore.getWorkflowById(props.workflow.id));
-});
+const workflowPermissions = computed(
+	() => getResourcePermissions(workflowsStore.getWorkflowById(props.workflow.id).scopes).workflow,
+);
 
 const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 	const actions: ActionDropdownItem[] = [
@@ -179,7 +175,7 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 		disabled: !onWorkflowPage.value || isNewWorkflow.value,
 	});
 
-	if ((workflowPermissions.value.delete && !props.readOnly) || isNewWorkflow.value) {
+	if ((workflowPermissions.value?.delete && !props.readOnly) || isNewWorkflow.value) {
 		actions.push({
 			id: WORKFLOW_MENU_ACTIONS.DELETE,
 			label: locale.baseText('menuActions.delete'),

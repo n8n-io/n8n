@@ -6,7 +6,7 @@
 			:message="
 				$locale.baseText(
 					`credentialEdit.credentialConfig.pleaseCheckTheErrorsBelow${
-						credentialPermissions.update ? '' : '.sharee'
+						credentialPermissions?.update ? '' : '.sharee'
 					}`,
 					{ interpolate: { owner: credentialOwnerName } },
 				)
@@ -19,7 +19,7 @@
 			:message="
 				$locale.baseText(
 					`credentialEdit.credentialConfig.couldntConnectWithTheseSettings${
-						credentialPermissions.update ? '' : '.sharee'
+						credentialPermissions?.update ? '' : '.sharee'
 					}`,
 					{ interpolate: { owner: credentialOwnerName } },
 				)
@@ -62,7 +62,7 @@
 			@click="$emit('retest')"
 		/>
 
-		<template v-if="credentialPermissions.update">
+		<template v-if="credentialPermissions?.update">
 			<n8n-notice v-if="documentationUrl && credentialProperties.length" theme="warning">
 				{{ $locale.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
 				<span class="ml-4xs">
@@ -105,7 +105,7 @@
 		</EnterpriseEdition>
 
 		<CredentialInputs
-			v-if="credentialType && credentialPermissions.update"
+			v-if="credentialType && credentialPermissions?.update"
 			:credential-data="credentialData"
 			:credential-properties="credentialProperties"
 			:documentation-url="documentationUrl"
@@ -115,7 +115,10 @@
 
 		<OauthButton
 			v-if="
-				isOAuthType && requiredPropertiesFilled && !isOAuthConnected && credentialPermissions.update
+				isOAuthType &&
+				requiredPropertiesFilled &&
+				!isOAuthConnected &&
+				credentialPermissions?.update
 			"
 			:is-google-o-auth-type="isGoogleOAuthType"
 			data-test-id="oauth-connect-button"
@@ -158,8 +161,7 @@ import CredentialInputs from './CredentialInputs.vue';
 import OauthButton from './OauthButton.vue';
 import { addCredentialTranslation } from '@/plugins/i18n';
 import { BUILTIN_CREDENTIALS_DOCS_URL, DOCS_DOMAIN, EnterpriseEditionFeature } from '@/constants';
-import type { PermissionsMap } from '@/permissions';
-import type { CredentialScope } from '@n8n/permissions';
+import type { PermissionsRecord } from '@/permissions';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@/stores/root.store';
@@ -226,8 +228,8 @@ export default defineComponent({
 			type: Boolean,
 		},
 		credentialPermissions: {
-			type: Object as PropType<PermissionsMap<CredentialScope>>,
-			default: () => ({}) as PermissionsMap<CredentialScope>,
+			type: Object as PropType<PermissionsRecord['credential']>,
+			default: () => ({}) as PermissionsRecord['credential'],
 		},
 		requiredPropertiesFilled: {
 			type: Boolean,
