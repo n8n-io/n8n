@@ -2,6 +2,7 @@ import { Container, Service } from 'typedi';
 import { ApplicationError, ErrorReporterProxy, assert } from 'n8n-workflow';
 import type { Class } from 'n8n-core';
 import { Logger } from '@/Logger';
+import { LOWEST_SHUTDOWN_PRIORITY, HIGHEST_SHUTDOWN_PRIORITY } from '@/constants';
 
 type HandlerFn = () => Promise<void> | void;
 export type ServiceClass = Class<Record<string, HandlerFn>>;
@@ -33,6 +34,13 @@ export class ShutdownService {
 
 	/** Registers given listener to be notified when the application is shutting down */
 	register(priority: number, handler: ShutdownHandler) {
+		if (priority < LOWEST_SHUTDOWN_PRIORITY || priority > HIGHEST_SHUTDOWN_PRIORITY) {
+			throw new ApplicationError(
+				`Invalid shutdown priority. Please set it between ${LOWEST_SHUTDOWN_PRIORITY} and ${HIGHEST_SHUTDOWN_PRIORITY}.`,
+				{ extra: { priority } },
+			);
+		}
+
 		if (!this.handlersByPriority[priority]) {
 			this.handlersByPriority[priority] = [];
 		}
