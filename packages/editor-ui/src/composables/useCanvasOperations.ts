@@ -781,6 +781,12 @@ export function useCanvasOperations({
 			connection,
 		);
 
+		console.log(isConnectionAllowed(sourceNode, targetNode, mappedConnection[1].type), {
+			sourceNode,
+			targetNode,
+			mappedConnection,
+		});
+
 		if (!isConnectionAllowed(sourceNode, targetNode, mappedConnection[1].type)) {
 			return;
 		}
@@ -839,6 +845,10 @@ export function useCanvasOperations({
 		targetNode: INodeUi,
 		targetNodeConnectionType: NodeConnectionType,
 	): boolean {
+		if (sourceNode.id === targetNode.id) {
+			return false;
+		}
+
 		const targetNodeType = nodeTypesStore.getNodeType(targetNode.type, targetNode.typeVersion);
 
 		if (targetNodeType?.inputs?.length) {
@@ -876,7 +886,7 @@ export function useCanvasOperations({
 			}
 		}
 
-		return sourceNode.id !== targetNode.id;
+		return false;
 	}
 
 	async function addConnections(
