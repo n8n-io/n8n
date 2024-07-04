@@ -54,7 +54,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 						authentication: ['serviceAccount'],
 					},
 				},
-			}
+			},
 		],
 		properties: [
 			{

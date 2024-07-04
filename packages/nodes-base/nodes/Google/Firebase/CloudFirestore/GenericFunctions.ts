@@ -9,7 +9,7 @@ import type {
 import { NodeApiError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
-import { getGoogleAccessToken } from "../../GenericFunctions";
+import { getGoogleAccessToken } from '../../GenericFunctions';
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -50,11 +50,7 @@ export async function googleApiRequest(
 		}
 
 		//@ts-ignore
-		return await this.helpers.requestWithAuthentication.call(
-			this,
-			credentialType,
-			options,
-		);
+		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}

@@ -120,7 +120,6 @@ export const documentFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		required: false,
 	},
 	{
 		displayName: 'Columns / Attributes',

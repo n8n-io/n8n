@@ -55,7 +55,7 @@ const googleServiceAccountScopes = {
 	firestore: [
 		'https://www.googleapis.com/auth/datastore',
 		'https://www.googleapis.com/auth/firebase',
-	]
+	],
 };
 
 type GoogleServiceAccount = keyof typeof googleServiceAccountScopes;
