@@ -36,7 +36,7 @@ const props = withDefaults(defineProps<NoticeProps>(), {
 });
 
 const $emit = defineEmits<{
-	(event: 'action', key: string): void;
+	action: [key: string];
 }>();
 
 const $style = useCssModule();

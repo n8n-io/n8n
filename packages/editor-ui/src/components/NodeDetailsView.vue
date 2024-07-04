@@ -141,7 +141,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import { createEventBus } from 'n8n-design-system/utils';
-import type { IRunData, ConnectionTypes, Workflow } from 'n8n-workflow';
+import type { IRunData, Workflow } from 'n8n-workflow';
 import { jsonParse, NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 import type { IUpdateInformation, TargetItem } from '@/Interface';
 
@@ -175,14 +175,14 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@/composables/useI18n';
 import { storeToRefs } from 'pinia';
 
-const emit = defineEmits([
-	'saveKeyboardShortcut',
-	'valueChanged',
-	'switchSelectedNode',
-	'openConnectionNodeCreator',
-	'redrawNode',
-	'stopExecution',
-]);
+const emit = defineEmits<{
+	saveKeyboardShortcut: [event: KeyboardEvent];
+	valueChanged: [parameterData: IUpdateInformation];
+	switchSelectedNode: [nodeTypeName: string];
+	openConnectionNodeCreator: [nodeTypeName: string, connectionType: NodeConnectionType];
+	redrawNode: [nodeName: string];
+	stopExecution: [];
+}>();
 
 const props = withDefaults(
 	defineProps<{
@@ -238,7 +238,7 @@ const activeNodeType = computed(() => {
 	return null;
 });
 
-const workflowRunning = computed(() => uiStore.isActionActive('workflowRunning'));
+const workflowRunning = computed(() => uiStore.isActionActive['workflowRunning']);
 
 const showTriggerWaitingWarning = computed(
 	() =>
@@ -428,7 +428,7 @@ const featureRequestUrl = computed(() => {
 
 const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
 
-const isWorkflowRunning = computed(() => uiStore.isActionActive('workflowRunning'));
+const isWorkflowRunning = computed(() => uiStore.isActionActive['workflowRunning']);
 
 const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
 
@@ -597,7 +597,7 @@ const onSwitchSelectedNode = (nodeTypeName: string) => {
 	emit('switchSelectedNode', nodeTypeName);
 };
 
-const onOpenConnectionNodeCreator = (nodeTypeName: string, connectionType: ConnectionTypes) => {
+const onOpenConnectionNodeCreator = (nodeTypeName: string, connectionType: NodeConnectionType) => {
 	emit('openConnectionNodeCreator', nodeTypeName, connectionType);
 };
 

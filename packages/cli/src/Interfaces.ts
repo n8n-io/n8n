@@ -312,7 +312,6 @@ export type IPushData =
 	| PushDataTestWebhook
 	| PushDataNodeDescriptionUpdated
 	| PushDataExecutionRecovered
-	| PushDataActiveWorkflowUsersChanged
 	| PushDataWorkerStatusMessage
 	| PushDataWorkflowActivated
 	| PushDataWorkflowDeactivated
@@ -331,11 +330,6 @@ type PushDataWorkflowActivated = {
 type PushDataWorkflowDeactivated = {
 	data: IActiveWorkflowChanged;
 	type: 'workflowDeactivated';
-};
-
-type PushDataActiveWorkflowUsersChanged = {
-	data: IActiveWorkflowUsersChanged;
-	type: 'activeWorkflowUsersChanged';
 };
 
 export type PushDataExecutionRecovered = {
@@ -393,18 +387,8 @@ export type PushDataNodeDescriptionUpdated = {
 	type: 'nodeDescriptionUpdated';
 };
 
-export interface IActiveWorkflowUser {
-	user: User;
-	lastSeen: Date;
-}
-
 export interface IActiveWorkflowAdded {
 	workflowId: Workflow['id'];
-}
-
-export interface IActiveWorkflowUsersChanged {
-	workflowId: Workflow['id'];
-	activeUsers: IActiveWorkflowUser[];
 }
 
 interface IActiveWorkflowChanged {

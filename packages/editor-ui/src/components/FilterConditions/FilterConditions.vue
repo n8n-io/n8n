@@ -35,7 +35,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), { readOnly: false });
 
 const emit = defineEmits<{
-	(event: 'valueChanged', value: { name: string; node: string; value: FilterValue }): void;
+	valueChanged: [value: { name: string; node: string; value: FilterValue }];
 }>();
 
 const i18n = useI18n();

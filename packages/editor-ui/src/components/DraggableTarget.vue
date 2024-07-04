@@ -24,8 +24,9 @@ const props = withDefaults(defineProps<Props>(), {
 	stickyOffset: () => [0, 0],
 	stickyOrigin: 'top-left',
 });
+
 const emit = defineEmits<{
-	(event: 'drop', value: string): void;
+	drop: [value: string];
 }>();
 
 const hovering = ref(false);

@@ -17,7 +17,7 @@ type Props = {
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
-	(event: 'update:model-value', value: string): void;
+	'update:model-value': [value: string];
 }>();
 
 const i18n = useI18n();

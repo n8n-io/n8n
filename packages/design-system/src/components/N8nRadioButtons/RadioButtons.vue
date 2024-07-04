@@ -39,7 +39,7 @@ const props = withDefaults(defineProps<RadioButtonsProps>(), {
 });
 
 const $emit = defineEmits<{
-	(event: 'update:modelValue', value: string, e: MouseEvent): void;
+	'update:modelValue': [value: string, e: MouseEvent];
 }>();
 
 const onClick = (

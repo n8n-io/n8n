@@ -172,7 +172,7 @@ const modalBus = createEventBus();
 const node = ref<INode | null>(null);
 const previousMessageIndex = ref(0);
 
-const isLoading = computed(() => uiStore.isActionActive('workflowRunning'));
+const isLoading = computed(() => uiStore.isActionActive.workflowRunning);
 const allowFileUploads = computed(() => {
 	return (chatTrigger.value?.parameters?.options as INodeParameters)?.allowFileUploads === true;
 });

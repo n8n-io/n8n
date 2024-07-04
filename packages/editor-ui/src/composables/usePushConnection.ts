@@ -35,7 +35,6 @@ import { parse } from 'flatted';
 import { ref } from 'vue';
 import { useOrchestrationStore } from '@/stores/orchestration.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
-import { useCollaborationStore } from '@/stores/collaboration.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import type { useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
@@ -51,7 +50,6 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
 
-	const collaborationStore = useCollaborationStore();
 	const credentialsStore = useCredentialsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const orchestrationManagerStore = useOrchestrationStore();
@@ -68,11 +66,9 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 		removeEventListener.value = pushStore.addEventListener((message) => {
 			void pushMessageReceived(message);
 		});
-		collaborationStore.initialize();
 	}
 
 	function terminate() {
-		collaborationStore.terminate();
 		if (typeof removeEventListener.value === 'function') {
 			removeEventListener.value();
 		}
@@ -153,7 +149,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 		}
 
 		if (receivedData.type === 'nodeExecuteAfter' || receivedData.type === 'nodeExecuteBefore') {
-			if (!uiStore.isActionActive('workflowRunning')) {
+			if (!uiStore.isActionActive['workflowRunning']) {
 				// No workflow is running so ignore the messages
 				return false;
 			}
@@ -173,7 +169,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 		let recoveredPushData: IPushDataExecutionFinished | undefined = undefined;
 		if (receivedData.type === 'executionRecovered') {
 			const recoveredExecutionId = receivedData.data?.executionId;
-			const isWorkflowRunning = uiStore.isActionActive('workflowRunning');
+			const isWorkflowRunning = uiStore.isActionActive['workflowRunning'];
 			if (isWorkflowRunning && workflowsStore.activeExecutionId === recoveredExecutionId) {
 				// pull execution data for the recovered execution from the server
 				const executionData = await workflowsStore.fetchExecutionDataById(
@@ -266,7 +262,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				workflowsStore.finishActiveExecution(pushData);
 			}
 
-			if (!uiStore.isActionActive('workflowRunning')) {
+			if (!uiStore.isActionActive['workflowRunning']) {
 				// No workflow is running so ignore the messages
 				return false;
 			}
