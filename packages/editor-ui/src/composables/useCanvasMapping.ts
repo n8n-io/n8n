@@ -28,8 +28,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
-import xss from 'xss';
 import { WAIT_TIME_UNLIMITED } from '@/constants';
+import { sanitizeHtml } from '@/utils/htmlUtils';
 
 export function useCanvasMapping({
 	workflow,
@@ -134,7 +134,7 @@ export function useCanvasMapping({
 					if (executionRunData?.error) {
 						const { message, description } = executionRunData.error;
 						const issue = `${message}${description ? ` (${description})` : ''}`;
-						issues.push(xss(issue));
+						issues.push(sanitizeHtml(issue));
 					}
 				});
 			}
