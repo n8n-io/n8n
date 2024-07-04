@@ -2,7 +2,7 @@
 import { useI18n } from '@/composables/useI18n';
 
 const emit = defineEmits<{
-	(e: 'update:modelValue', feedback: 'positive' | 'negative'): void;
+	'update:modelValue': [feedback: 'positive' | 'negative'];
 }>();
 
 defineProps<{

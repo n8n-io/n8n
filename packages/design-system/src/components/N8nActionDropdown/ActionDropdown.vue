@@ -102,8 +102,8 @@ const getItemClasses = (item: ActionDropdownItem): Record<string, boolean> => {
 };
 
 const $emit = defineEmits<{
-	(event: 'select', action: string): void;
-	(event: 'visibleChange', open: boolean): void;
+	select: [action: string];
+	visibleChange: [open: boolean];
 }>();
 const elementDropdown = ref<InstanceType<typeof ElDropdown>>();
 

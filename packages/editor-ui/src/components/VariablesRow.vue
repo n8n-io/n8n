@@ -18,10 +18,10 @@ const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 
 const emit = defineEmits<{
-	(event: 'save', data: IResource): void;
-	(event: 'cancel', data: IResource): void;
-	(event: 'edit', data: IResource): void;
-	(event: 'delete', data: IResource): void;
+	save: [data: IResource];
+	cancel: [data: IResource];
+	edit: [data: IResource];
+	delete: [data: IResource];
 }>();
 
 const props = withDefaults(

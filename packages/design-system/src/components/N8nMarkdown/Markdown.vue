@@ -156,8 +156,8 @@ const htmlContent = computed(() => {
 });
 
 const $emit = defineEmits<{
-	(event: 'markdown-click', link: string, e: MouseEvent): void;
-	(event: 'update-content', content: string): void;
+	'markdown-click': [link: string, e: MouseEvent];
+	'update-content': [content: string];
 }>();
 
 const onClick = (event: MouseEvent) => {

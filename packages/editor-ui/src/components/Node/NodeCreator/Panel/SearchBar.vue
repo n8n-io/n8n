@@ -38,7 +38,7 @@ withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	(event: 'update:modelValue', value: string): void;
+	'update:modelValue': [value: string];
 }>();
 
 const state = reactive({

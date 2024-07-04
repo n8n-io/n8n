@@ -57,7 +57,7 @@ const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflow = workflowsStore.getCurrentWorkflow();
 const emit = defineEmits<{
-	(key: 'switchSelectedNode', nodeName: string): void;
+	switchSelectedNode: [nodeName: string];
 }>();
 
 interface NodeConfig {

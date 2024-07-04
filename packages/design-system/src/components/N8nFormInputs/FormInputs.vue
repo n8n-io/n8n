@@ -27,10 +27,10 @@ const props = withDefaults(defineProps<FormInputsProps>(), {
 });
 
 const emit = defineEmits<{
-	(name: 'update', _: { name: string; value: Value }): boolean;
-	(name: 'update:modelValue', value: Record<string, Value>): boolean;
-	(name: 'submit', value: Record<string, Value>): boolean;
-	(name: 'ready', value: boolean): boolean;
+	update: [value: { name: string; value: Value }];
+	'update:modelValue': [value: Record<string, Value>];
+	submit: [value: Record<string, Value>];
+	ready: [value: boolean];
 }>();
 
 const showValidationWarnings = ref(false);

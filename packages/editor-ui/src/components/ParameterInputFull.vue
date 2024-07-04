@@ -121,8 +121,8 @@ const props = withDefaults(defineProps<Props>(), {
 	label: () => ({ size: 'small' }),
 });
 const emit = defineEmits<{
-	(event: 'blur'): void;
-	(event: 'update', value: IUpdateInformation): void;
+	blur: [];
+	update: [value: IUpdateInformation];
 }>();
 
 const i18n = useI18n();
