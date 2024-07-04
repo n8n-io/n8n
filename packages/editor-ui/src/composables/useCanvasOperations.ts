@@ -781,6 +781,12 @@ export function useCanvasOperations({
 			connection,
 		);
 
+		console.log(isConnectionAllowed(sourceNode, targetNode, mappedConnection[1].type), {
+			sourceNode,
+			targetNode,
+			mappedConnection,
+		});
+
 		if (!isConnectionAllowed(sourceNode, targetNode, mappedConnection[1].type)) {
 			return;
 		}
@@ -845,6 +851,8 @@ export function useCanvasOperations({
 
 		const targetNodeType = nodeTypesStore.getNodeType(targetNode.type, targetNode.typeVersion);
 
+		console.log({ targetNodeType });
+
 		if (targetNodeType?.inputs?.length) {
 			const workflow = workflowsStore.getCurrentWorkflow();
 			const workflowNode = workflow.getNode(targetNode.name);
@@ -855,6 +863,10 @@ export function useCanvasOperations({
 			let inputs: Array<ConnectionTypes | INodeInputConfiguration> = [];
 			if (targetNodeType) {
 				inputs = NodeHelpers.getNodeInputs(workflow, workflowNode, targetNodeType) || [];
+			}
+
+			if (inputs.length === 0) {
+				return false;
 			}
 
 			for (const input of inputs) {
@@ -874,13 +886,14 @@ export function useCanvasOperations({
 							type: 'error',
 							duration: 5000,
 						});
+
 						return false;
 					}
 				}
 			}
 		}
 
-		return false;
+		return true;
 	}
 
 	async function addConnections(
