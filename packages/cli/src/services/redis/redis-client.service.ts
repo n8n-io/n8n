@@ -4,7 +4,7 @@ import { Logger } from '@/Logger';
 import ioRedis from 'ioredis';
 import type { Cluster, RedisOptions } from 'ioredis';
 import type { RedisClientType } from './RedisServiceBaseClasses';
-import { OnShutdown } from '@/decorators/OnShutdown';
+import { LOWEST_PRIORITY, OnShutdown } from '@/decorators/OnShutdown';
 
 @Service()
 export class RedisClientService {
@@ -23,7 +23,7 @@ export class RedisClientService {
 		return client;
 	}
 
-	@OnShutdown()
+	@OnShutdown(LOWEST_PRIORITY)
 	disconnectClients() {
 		for (const client of this.clients) {
 			client.disconnect();
@@ -143,6 +143,8 @@ export class RedisClientService {
 					process.exit(1);
 				}
 			}
+
+			this.logger.warn('Redis unavailable - trying to reconnect...');
 
 			return RETRY_INTERVAL;
 		};
