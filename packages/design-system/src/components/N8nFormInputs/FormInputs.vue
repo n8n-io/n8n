@@ -26,12 +26,12 @@ const props = withDefaults(defineProps<FormInputsProps>(), {
 	tagSize: 'small',
 });
 
-const emit = defineEmits({
-	update: (_: { name: string; value: Value }) => true,
-	'update:modelValue': (_: Record<string, Value>) => true,
-	submit: (_: Record<string, Value>) => true,
-	ready: (_: boolean) => true,
-});
+const emit = defineEmits<{
+	update: [value: { name: string; value: Value }];
+	'update:modelValue': [value: Record<string, Value>];
+	submit: [value: Record<string, Value>];
+	ready: [value: boolean];
+}>();
 
 const showValidationWarnings = ref(false);
 const values = reactive<Record<string, Value>>({});
@@ -123,8 +123,8 @@ onMounted(() => {
 						:show-validation-warnings="showValidationWarnings"
 						:teleported="teleported"
 						:tag-size="tagSize"
-						@update:model-value="(value) => onUpdateModelValue(input.name, value as Value)"
-						@validate="(value) => onValidate(input.name, value)"
+						@update:model-value="(value: Value) => onUpdateModelValue(input.name, value)"
+						@validate="(value: boolean) => onValidate(input.name, value)"
 						@enter="onSubmit"
 					/>
 				</div>

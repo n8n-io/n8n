@@ -68,6 +68,7 @@
 							<i18n-t
 								:keypath="
 									uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description
+										.tooltip
 								"
 								tag="span"
 							>

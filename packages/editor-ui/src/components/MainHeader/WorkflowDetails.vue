@@ -19,7 +19,6 @@ import SaveButton from '@/components/SaveButton.vue';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import InlineTextEdit from '@/components/InlineTextEdit.vue';
 import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
-import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
 
 import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -108,7 +107,7 @@ const isNewWorkflow = computed(() => {
 });
 
 const isWorkflowSaving = computed(() => {
-	return uiStore.isActionActive('workflowSaving');
+	return uiStore.isActionActive['workflowSaving'];
 });
 
 const onWorkflowPage = computed(() => {
@@ -409,7 +408,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 					instanceId: rootStore.instanceId,
 				},
 				tags: (tags ?? []).map((tagId) => {
-					const { usageCount, ...tag } = tagsStore.getTagById(tagId);
+					const { usageCount, ...tag } = tagsStore.tagsById[tagId];
 
 					return tag;
 				}),
@@ -618,7 +617,6 @@ function showCreateWorkflowSuccessToast(id?: string) {
 			</span>
 			<EnterpriseEdition :features="[EnterpriseEditionFeature.Sharing]">
 				<div :class="$style.group">
-					<CollaborationPane />
 					<N8nButton
 						type="secondary"
 						data-test-id="workflow-share-button"

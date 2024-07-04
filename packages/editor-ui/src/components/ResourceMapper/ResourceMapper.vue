@@ -41,7 +41,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	(event: 'valueChanged', value: IUpdateInformation): void;
+	valueChanged: [value: IUpdateInformation];
 }>();
 
 const state = reactive({

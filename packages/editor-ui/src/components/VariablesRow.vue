@@ -17,7 +17,12 @@ const { showMessage } = useToast();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 
-const emit = defineEmits(['save', 'cancel', 'edit', 'delete']);
+const emit = defineEmits<{
+	save: [data: IResource];
+	cancel: [data: IResource];
+	edit: [data: IResource];
+	delete: [data: IResource];
+}>();
 
 const props = withDefaults(
 	defineProps<{

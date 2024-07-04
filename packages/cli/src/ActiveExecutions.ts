@@ -204,6 +204,12 @@ export class ActiveExecutions {
 	async shutdown(cancelAll = false) {
 		let executionIds = Object.keys(this.activeExecutions);
 
+		if (config.getEnv('executions.mode') === 'regular') {
+			// removal of active executions will no longer release capacity back,
+			// so that throttled executions cannot resume during shutdown
+			this.concurrencyControl.disable();
+		}
+
 		if (cancelAll) {
 			if (config.getEnv('executions.mode') === 'regular') {
 				await this.concurrencyControl.removeAll(this.activeExecutions);

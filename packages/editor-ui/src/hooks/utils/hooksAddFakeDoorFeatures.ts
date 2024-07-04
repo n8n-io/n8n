@@ -4,8 +4,8 @@ import { FAKE_DOOR_FEATURES } from '@/constants';
 import type { BaseTextKey } from '@/plugins/i18n';
 
 export function compileFakeDoorFeatures(): IFakeDoor[] {
-	const store = useUIStore();
-	const fakeDoorFeatures: IFakeDoor[] = store.fakeDoorFeatures.map((feature) => ({ ...feature }));
+	const uiStore = useUIStore();
+	const fakeDoorFeatures: IFakeDoor[] = uiStore.fakeDoorFeatures.map((feature) => ({ ...feature }));
 
 	const environmentsFeature = fakeDoorFeatures.find(
 		(feature) => feature.id === FAKE_DOOR_FEATURES.ENVIRONMENTS,
@@ -28,7 +28,7 @@ export function compileFakeDoorFeatures(): IFakeDoor[] {
 }
 
 export const hooksAddFakeDoorFeatures = () => {
-	const store = useUIStore();
+	const uiStore = useUIStore();
 
-	store.fakeDoorFeatures = compileFakeDoorFeatures();
+	uiStore.fakeDoorFeatures = compileFakeDoorFeatures();
 };

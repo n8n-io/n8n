@@ -9,154 +9,132 @@
 
 		<Teleport to="body">
 			<div v-show="isDragging" ref="draggable" :class="$style.draggable" :style="draggableStyle">
-				<slot name="preview" :can-drop="canDrop" :el="draggingEl"></slot>
+				<slot name="preview" :can-drop="canDrop" :el="draggingElement"></slot>
 			</div>
 		</Teleport>
 	</component>
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
 import type { XYPosition } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
-import { mapStores } from 'pinia';
-import { defineComponent } from 'vue';
+import { isPresent } from '@/utils/typesUtils';
+import { type StyleValue, computed, ref } from 'vue';
 
-export default defineComponent({
-	name: 'Draggable',
-	props: {
-		disabled: {
-			type: Boolean,
-		},
-		type: {
-			type: String,
-			required: true,
-		},
-		data: {
-			type: String,
-		},
-		tag: {
-			type: String,
-			default: 'div',
-		},
-		targetDataKey: {
-			type: String,
-		},
-	},
-	data() {
-		const draggablePosition = {
-			x: -100,
-			y: -100,
-		};
+type Props = {
+	type: string;
+	data?: string;
+	tag?: string;
+	targetDataKey?: string;
+	disabled?: boolean;
+};
 
-		return {
-			isDragging: false,
-			draggablePosition,
-			draggingEl: null as null | HTMLElement,
-			draggableStyle: {
-				transform: `translate(${draggablePosition.x}px, ${draggablePosition.y}px)`,
-			},
-			animationFrameId: 0,
-		};
-	},
-	computed: {
-		...mapStores(useNDVStore),
-		canDrop(): boolean {
-			return this.ndvStore.canDraggableDrop;
-		},
-		stickyPosition(): XYPosition | null {
-			return this.ndvStore.draggableStickyPos;
-		},
-	},
-	methods: {
-		setDraggableStyle() {
-			this.draggableStyle = {
-				transform: `translate(${this.draggablePosition.x}px, ${this.draggablePosition.y}px)`,
-			};
-		},
-		onDragStart(e: MouseEvent) {
-			if (this.disabled) {
-				return;
-			}
+const props = withDefaults(defineProps<Props>(), { tag: 'div', disabled: false });
 
-			this.draggingEl = e.target as HTMLElement;
-			if (this.targetDataKey && this.draggingEl.dataset?.target !== this.targetDataKey) {
-				this.draggingEl = this.draggingEl.closest(
-					`[data-target="${this.targetDataKey}"]`,
-				) as HTMLElement;
-			}
+const emit = defineEmits<{
+	drag: [value: XYPosition];
+	dragstart: [value: HTMLElement];
+	dragend: [value: HTMLElement];
+}>();
 
-			if (this.targetDataKey && this.draggingEl?.dataset?.target !== this.targetDataKey) {
-				return;
-			}
+const isDragging = ref(false);
+const draggingElement = ref<HTMLElement>();
+const draggablePosition = ref<XYPosition>([0, 0]);
+const animationFrameId = ref<number>();
+const ndvStore = useNDVStore();
 
-			e.preventDefault();
-			e.stopPropagation();
+const draggableStyle = computed<StyleValue>(() => ({
+	transform: `translate(${draggablePosition.value[0]}px, ${draggablePosition.value[1]}px)`,
+}));
 
-			this.isDragging = false;
-			this.draggablePosition = { x: e.pageX, y: e.pageY };
-			this.setDraggableStyle();
+const canDrop = computed(() => ndvStore.canDraggableDrop);
 
-			window.addEventListener('mousemove', this.onDrag);
-			window.addEventListener('mouseup', this.onDragEnd);
+const stickyPosition = computed(() => ndvStore.draggableStickyPos);
 
-			// blur so that any focused inputs update value
-			const activeElement = document.activeElement as HTMLElement;
-			if (activeElement) {
-				activeElement.blur();
-			}
-		},
-		onDrag(e: MouseEvent) {
-			e.preventDefault();
-			e.stopPropagation();
+const onDragStart = (event: MouseEvent) => {
+	if (props.disabled) {
+		return;
+	}
 
-			if (this.disabled) {
-				return;
-			}
+	draggingElement.value = event.target as HTMLElement;
+	if (props.targetDataKey && draggingElement.value.dataset?.target !== props.targetDataKey) {
+		draggingElement.value = draggingElement.value.closest(
+			`[data-target="${props.targetDataKey}"]`,
+		) as HTMLElement;
+	}
 
-			if (!this.isDragging) {
-				this.isDragging = true;
+	if (props.targetDataKey && draggingElement.value?.dataset?.target !== props.targetDataKey) {
+		return;
+	}
 
-				const data =
-					this.targetDataKey && this.draggingEl ? this.draggingEl.dataset.value : this.data || '';
-				this.ndvStore.draggableStartDragging({
-					type: this.type,
-					data: data || '',
-					dimensions: this.draggingEl?.getBoundingClientRect() ?? null,
-				});
+	event.preventDefault();
+	event.stopPropagation();
 
-				this.$emit('dragstart', this.draggingEl);
-				document.body.style.cursor = 'grabbing';
-			}
+	isDragging.value = false;
+	draggablePosition.value = [event.pageX, event.pageY];
 
-			this.animationFrameId = window.requestAnimationFrame(() => {
-				if (this.canDrop && this.stickyPosition) {
-					this.draggablePosition = { x: this.stickyPosition[0], y: this.stickyPosition[1] };
-				} else {
-					this.draggablePosition = { x: e.pageX, y: e.pageY };
-				}
-				this.setDraggableStyle();
-				this.$emit('drag', this.draggablePosition);
-			});
-		},
-		onDragEnd() {
-			if (this.disabled) {
-				return;
-			}
+	window.addEventListener('mousemove', onDrag);
+	window.addEventListener('mouseup', onDragEnd);
 
-			document.body.style.cursor = 'unset';
-			window.removeEventListener('mousemove', this.onDrag);
-			window.removeEventListener('mouseup', this.onDragEnd);
-			window.cancelAnimationFrame(this.animationFrameId);
+	// blur so that any focused inputs update value
+	const activeElement = document.activeElement as HTMLElement;
+	if (activeElement) {
+		activeElement.blur();
+	}
+};
 
-			setTimeout(() => {
-				this.$emit('dragend', this.draggingEl);
-				this.isDragging = false;
-				this.draggingEl = null;
-				this.ndvStore.draggableStopDragging();
-			}, 0);
-		},
-	},
-});
+const onDrag = (event: MouseEvent) => {
+	event.preventDefault();
+	event.stopPropagation();
+
+	if (props.disabled) {
+		return;
+	}
+
+	if (!isDragging.value && draggingElement.value) {
+		isDragging.value = true;
+
+		const data = props.targetDataKey ? draggingElement.value.dataset.value : props.data ?? '';
+
+		ndvStore.draggableStartDragging({
+			type: props.type,
+			data: data ?? '',
+			dimensions: draggingElement.value?.getBoundingClientRect() ?? null,
+		});
+
+		emit('dragstart', draggingElement.value);
+		document.body.style.cursor = 'grabbing';
+	}
+
+	animationFrameId.value = window.requestAnimationFrame(() => {
+		if (canDrop.value && stickyPosition.value) {
+			draggablePosition.value = stickyPosition.value;
+		} else {
+			draggablePosition.value = [event.pageX, event.pageY];
+		}
+		emit('drag', draggablePosition.value);
+	});
+};
+
+const onDragEnd = () => {
+	if (props.disabled) {
+		return;
+	}
+
+	document.body.style.cursor = 'unset';
+	window.removeEventListener('mousemove', onDrag);
+	window.removeEventListener('mouseup', onDragEnd);
+	if (isPresent(animationFrameId.value)) {
+		window.cancelAnimationFrame(animationFrameId.value);
+	}
+
+	setTimeout(() => {
+		if (draggingElement.value) emit('dragend', draggingElement.value);
+		isDragging.value = false;
+		draggingElement.value = undefined;
+		ndvStore.draggableStopDragging();
+	}, 0);
+};
 </script>
 
 <style lang="scss" module>
@@ -166,6 +144,7 @@ export default defineComponent({
 }
 
 .draggable {
+	pointer-events: none;
 	position: fixed;
 	z-index: 9999999;
 	top: 0;

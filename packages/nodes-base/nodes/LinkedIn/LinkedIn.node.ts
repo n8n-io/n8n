@@ -86,7 +86,7 @@ export class LinkedIn implements INodeType {
 			// https://docs.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/sign-in-with-linkedin
 			async getPersonUrn(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const authentication = this.getNodeParameter('authentication', 0);
-				let endpoint = '/me';
+				let endpoint = '/v2/me';
 				if (authentication === 'standard') {
 					const { legacy } = await this.getCredentials('linkedInOAuth2Api');
 					if (!legacy) {

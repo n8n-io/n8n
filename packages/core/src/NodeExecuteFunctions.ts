@@ -101,6 +101,7 @@ import type {
 	CallbackManager,
 	INodeParameters,
 	EnsureTypeOptions,
+	SSHTunnelFunctions,
 } from 'n8n-workflow';
 import {
 	ExpressionError,
@@ -156,6 +157,7 @@ import Container from 'typedi';
 import type { BinaryData } from './BinaryData/types';
 import merge from 'lodash/merge';
 import { InstanceSettings } from './InstanceSettings';
+import { SSHClientsManager } from './SSHClientsManager';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -3276,6 +3278,11 @@ const getRequestHelperFunctions = (
 	};
 };
 
+const getSSHTunnelFunctions = (): SSHTunnelFunctions => ({
+	getSSHClient: async (credentials) =>
+		await Container.get(SSHClientsManager).getClient(credentials),
+});
+
 const getAllowedPaths = () => {
 	const restrictFileAccessTo = process.env[RESTRICT_FILE_ACCESS_TO];
 	if (!restrictFileAccessTo) {
@@ -3540,6 +3547,7 @@ export function getExecuteTriggerFunctions(
 			},
 			helpers: {
 				createDeferredPromise,
+				...getSSHTunnelFunctions(),
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getBinaryHelperFunctions(additionalData, workflow.id),
 				returnJsonArray,
@@ -3649,6 +3657,17 @@ export function getExecuteFunctions(
 				);
 			},
 
+			getNodeInputs(): INodeInputConfiguration[] {
+				const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+				return NodeHelpers.getNodeInputs(workflow, node, nodeType.description).map((output) => {
+					if (typeof output === 'string') {
+						return {
+							type: output,
+						};
+					}
+					return output;
+				});
+			},
 			getNodeOutputs(): INodeOutputConfiguration[] {
 				const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 				return NodeHelpers.getNodeOutputs(workflow, node, nodeType.description).map((output) => {
@@ -3819,6 +3838,7 @@ export function getExecuteFunctions(
 				createDeferredPromise,
 				copyInputItems,
 				...getRequestHelperFunctions(workflow, node, additionalData),
+				...getSSHTunnelFunctions(),
 				...getFileSystemHelperFunctions(node),
 				...getBinaryHelperFunctions(additionalData, workflow.id),
 				assertBinaryData: (itemIndex, propertyName) =>
@@ -3999,6 +4019,7 @@ export function getExecuteSingleFunctions(
 export function getCredentialTestFunctions(): ICredentialTestFunctions {
 	return {
 		helpers: {
+			...getSSHTunnelFunctions(),
 			request: async (uriOrObject: string | object, options?: object) => {
 				return await proxyRequestToAxios(undefined, undefined, undefined, uriOrObject, options);
 			},
@@ -4077,7 +4098,10 @@ export function getLoadOptionsFunctions(
 					options,
 				);
 			},
-			helpers: getRequestHelperFunctions(workflow, node, additionalData),
+			helpers: {
+				...getSSHTunnelFunctions(),
+				...getRequestHelperFunctions(workflow, node, additionalData),
+			},
 		};
 	})(workflow, node, path);
 }

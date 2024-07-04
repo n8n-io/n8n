@@ -1,7 +1,6 @@
-import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData, SSHCredentials } from 'n8n-workflow';
 import type pgPromise from 'pg-promise';
 import type pg from 'pg-promise/typescript/pg-subset';
-import type { Client } from 'ssh2';
 
 export type QueryMode = 'single' | 'transaction' | 'independently';
 
@@ -28,7 +27,7 @@ export type EnumInfo = {
 export type PgpClient = pgPromise.IMain<{}, pg.IClient>;
 export type PgpDatabase = pgPromise.IDatabase<{}, pg.IClient>;
 export type PgpConnectionParameters = pg.IConnectionParameters<pg.IClient>;
-export type ConnectionsData = { db: PgpDatabase; pgp: PgpClient; sshClient?: Client };
+export type ConnectionsData = { db: PgpDatabase; pgp: PgpClient };
 
 export type QueriesRunner = (
 	queries: QueryWithValues[],
@@ -51,7 +50,6 @@ export type PostgresNodeOptions = {
 };
 
 export type PostgresNodeCredentials = {
-	sshAuthenticateWith: 'password' | 'privateKey';
 	host: string;
 	port: number;
 	database: string;
@@ -59,12 +57,9 @@ export type PostgresNodeCredentials = {
 	password: string;
 	allowUnauthorizedCerts?: boolean;
 	ssl?: 'disable' | 'allow' | 'require' | 'verify' | 'verify-full';
-	sshTunnel?: boolean;
-	sshHost?: string;
-	sshPort?: number;
-	sshPostgresPort?: number;
-	sshUser?: string;
-	sshPassword?: string;
-	privateKey?: string;
-	passphrase?: string;
-};
+} & (
+	| { sshTunnel: false }
+	| ({
+			sshTunnel: true;
+	  } & SSHCredentials)
+);

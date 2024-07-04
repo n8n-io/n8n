@@ -110,16 +110,6 @@ export function getPersonalizedNodeTypes(
 	return getPersonalizationSurveyV1(answers);
 }
 
-export function getAccountAge(currentUser: IUser): number {
-	if (currentUser.createdAt) {
-		const accountCreatedAt = new Date(currentUser.createdAt);
-		const today = new Date();
-
-		return Math.ceil((today.getTime() - accountCreatedAt.getTime()) / (1000 * 3600 * 24));
-	}
-	return -1;
-}
-
 function getPersonalizationSurveyV2OrLater(
 	answers:
 		| IPersonalizationSurveyAnswersV2

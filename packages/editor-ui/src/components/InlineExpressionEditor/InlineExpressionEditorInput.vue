@@ -39,9 +39,9 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	(event: 'update:model-value', value: { value: string; segments: Segment[] }): void;
-	(event: 'update:selection', value: { state: EditorState; selection: SelectionRange }): void;
-	(event: 'focus'): void;
+	'update:model-value': [value: { value: string; segments: Segment[] }];
+	'update:selection': [value: { state: EditorState; selection: SelectionRange }];
+	focus: [];
 }>();
 
 const ndvStore = useNDVStore();
