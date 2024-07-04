@@ -1,6 +1,6 @@
 import type { IDataObject, INodeProperties } from 'n8n-workflow';
-import type { QdrantLibArgs } from '@langchain/community/vectorstores/qdrant';
-import { QdrantVectorStore } from '@langchain/community/vectorstores/qdrant';
+import type { QdrantLibArgs } from '@langchain/qdrant';
+import { QdrantVectorStore } from '@langchain/qdrant';
 import type { Schemas as QdrantSchemas } from '@qdrant/js-client-rest';
 import { createVectorStoreNode } from '../shared/createVectorStoreNode';
 import { qdrantCollectionRLC } from '../shared/descriptions';

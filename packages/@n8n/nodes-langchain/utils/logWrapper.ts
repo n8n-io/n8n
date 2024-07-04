@@ -19,7 +19,6 @@ import type { BaseDocumentLoader } from 'langchain/dist/document_loaders/base';
 import { N8nJsonLoader } from './N8nJsonLoader';
 import { N8nBinaryLoader } from './N8nBinaryLoader';
 import { logAiEvent } from './helpers';
-import { QdrantVectorStore } from '@langchain/community/vectorstores/qdrant';
 
 const errorsMap: { [key: string]: { message: string; description: string } } = {
 	'You exceeded your current quota, please check your plan and billing details.': {
@@ -426,10 +425,7 @@ export function logWrapper(
 			}
 
 			// ========== VectorStore ==========
-			if (
-				originalInstance instanceof VectorStore ||
-				originalInstance instanceof QdrantVectorStore
-			) {
+			if (originalInstance instanceof VectorStore) {
 				if (prop === 'similaritySearch' && 'similaritySearch' in target) {
 					return async (
 						query: string,
