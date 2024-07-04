@@ -9,7 +9,8 @@ import {
 } from 'n8n-workflow';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
-import { HIGHEST_PRIORITY, OnShutdown } from './decorators/OnShutdown';
+import { OnShutdown } from './decorators/OnShutdown';
+import { HIGHEST_SHUTDOWN_PRIORITY } from './constants';
 
 export type JobId = Bull.JobId;
 export type Job = Bull.Job<JobData>;
@@ -109,7 +110,7 @@ export class Queue {
 		return await this.jobQueue.client.ping();
 	}
 
-	@OnShutdown(HIGHEST_PRIORITY)
+	@OnShutdown(HIGHEST_SHUTDOWN_PRIORITY)
 	// Stop accepting new jobs, `doNotWaitActive` allows reporting progress
 	async pause(): Promise<void> {
 		return await this.jobQueue?.pause(true, true);
