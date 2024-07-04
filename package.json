@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.48.0",
+  "version": "1.49.0",
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
@@ -13,7 +13,7 @@
     "build": "turbo run build",
     "build:backend": "pnpm --filter=!@n8n/chat --filter=!@n8n/codemirror-lang --filter=!n8n-design-system --filter=!n8n-editor-ui build",
     "build:frontend": "pnpm --filter=@n8n/chat --filter=@n8n/codemirror-lang --filter=n8n-design-system --filter=n8n-editor-ui build",
-    "typecheck": "pnpm --filter=!@n8n/storybook --filter=!n8n-core --filter=!n8n-workflow --filter=!n8n typecheck",
+    "typecheck": "pnpm --filter=!n8n typecheck",
     "dev": "turbo run dev --parallel --filter=!n8n-design-system --filter=!@n8n/chat",
     "dev:ai": "turbo run dev --parallel --filter=@n8n/nodes-langchain --filter=n8n --filter=n8n-core",
     "clean": "turbo run clean --parallel",
