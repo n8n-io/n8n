@@ -19,7 +19,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	(event: 'close'): void;
+	close: [];
 }>();
 
 const hasTrailingContent = computed(() => {

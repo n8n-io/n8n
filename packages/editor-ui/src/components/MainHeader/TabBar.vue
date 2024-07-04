@@ -29,7 +29,7 @@ withDefaults(
 );
 
 const emit = defineEmits<{
-	(key: 'update:modelValue', tab: MAIN_HEADER_TABS, event: MouseEvent): void;
+	'update:modelValue': [tab: MAIN_HEADER_TABS, event: MouseEvent];
 }>();
 
 function onUpdateModelValue(tab: MAIN_HEADER_TABS, event: MouseEvent): void {

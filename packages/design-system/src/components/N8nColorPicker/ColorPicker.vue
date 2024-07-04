@@ -36,9 +36,9 @@ const colorPickerProps = computed(() => {
 });
 
 const emit = defineEmits<{
-	(event: 'update:modelValue', value: string | null): void;
-	(event: 'change', value: string | null): void;
-	(event: 'active-change', value: string | null): void;
+	'update:modelValue': [value: string | null];
+	change: [value: string | null];
+	'active-change': [value: string | null];
 }>();
 
 const onChange = (value: string | null) => {

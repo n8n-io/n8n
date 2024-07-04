@@ -46,8 +46,8 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-	(event: 'toggle'): void;
-	(event: 'submit', payload: { name: string; onSubmit: (updated: boolean) => void }): void;
+	toggle: [];
+	submit: [payload: { name: string; onSubmit: (updated: boolean) => void }];
 }>();
 
 const isDisabled = ref(props.disabled);

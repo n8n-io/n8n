@@ -140,8 +140,8 @@ const nodeTypesStore = useNodeTypesStore();
 const nodeHelpers = useNodeHelpers();
 const { debounce } = useDebounce();
 const emit = defineEmits<{
-	(event: 'switchSelectedNode', nodeName: string): void;
-	(event: 'openConnectionNodeCreator', nodeName: string, connectionType: ConnectionTypes): void;
+	switchSelectedNode: [nodeName: string];
+	openConnectionNodeCreator: [nodeName: string, connectionType: ConnectionTypes];
 }>();
 
 interface NodeConfig {
