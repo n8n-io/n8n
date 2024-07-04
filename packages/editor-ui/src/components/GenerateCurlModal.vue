@@ -61,8 +61,8 @@ const ndvStore = useNDVStore();
 const modalBus = createEventBus();
 const formBus = createEventBus();
 
-const initialServiceValue = uiStore.getModalData(GENERATE_CURL_MODAL_KEY)?.service as string;
-const initialRequestValue = uiStore.getModalData(GENERATE_CURL_MODAL_KEY)?.request as string;
+const initialServiceValue = uiStore.modalsById[GENERATE_CURL_MODAL_KEY].data?.service as string;
+const initialRequestValue = uiStore.modalsById[GENERATE_CURL_MODAL_KEY].data?.request as string;
 
 const formInputs: IFormInput[] = [
 	{

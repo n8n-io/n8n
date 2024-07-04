@@ -494,6 +494,9 @@ export default defineComponent({
 					styles['--configurable-node-input-count'] = nonMainInputs.length + spacerCount;
 				}
 
+				const mainInputs = inputTypes.filter((output) => output === NodeConnectionType.Main);
+				styles['--node-main-input-count'] = mainInputs.length;
+
 				let outputs = [] as Array<ConnectionTypes | INodeOutputConfiguration>;
 				if (this.workflow.nodes[this.node.name]) {
 					outputs = NodeHelpers.getNodeOutputs(this.workflow, this.node, this.nodeType);
@@ -589,7 +592,7 @@ export default defineComponent({
 			return undefined;
 		},
 		workflowRunning(): boolean {
-			return this.uiStore.isActionActive('workflowRunning');
+			return this.uiStore.isActionActive['workflowRunning'];
 		},
 		nodeStyle() {
 			const returnStyles: {
@@ -879,7 +882,10 @@ export default defineComponent({
 		Increase height by 20px for each output beyond the 4th one.
 		max(0, var(--node-main-output-count, 1) - 4) ensures that we only start counting after the 4th output.
 	*/
-	--node-height: calc(100px + max(0, var(--node-main-output-count, 1) - 4) * 20px);
+	--node-height: max(
+		calc(100px + max(0, var(--node-main-input-count, 1) - 3) * 30px),
+		calc(100px + max(0, var(--node-main-output-count, 1) - 4) * 20px)
+	);
 
 	--configurable-node-min-input-count: 4;
 	--configurable-node-input-width: 65px;

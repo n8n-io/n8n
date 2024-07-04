@@ -27,8 +27,8 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	(event: 'addNodes', value: AddedNodesAndConnections): void;
-	(event: 'toggleNodeCreator', value: ToggleNodeCreatorOptions): void;
+	addNodes: [value: AddedNodesAndConnections];
+	toggleNodeCreator: [value: ToggleNodeCreatorOptions];
 }>();
 
 const state = reactive({

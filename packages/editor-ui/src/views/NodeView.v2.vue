@@ -54,7 +54,6 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import useEnvironmentsStore from '@/stores/environments.ee.store';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useRootStore } from '@/stores/root.store';
-import { useCollaborationStore } from '@/stores/collaboration.store';
 import { historyBus } from '@/models/history';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useExecutionsStore } from '@/stores/executions.store';
@@ -109,7 +108,6 @@ const credentialsStore = useCredentialsStore();
 const environmentsStore = useEnvironmentsStore();
 const externalSecretsStore = useExternalSecretsStore();
 const rootStore = useRootStore();
-const collaborationStore = useCollaborationStore();
 const executionsStore = useExecutionsStore();
 const canvasStore = useCanvasStore();
 const npsSurveyStore = useNpsSurveyStore();
@@ -120,8 +118,6 @@ const tagsStore = useTagsStore();
 const pushConnectionStore = usePushConnectionStore();
 
 const lastClickPosition = ref<XYPosition>([450, 450]);
-
-const unloadTimeout = ref<NodeJS.Timeout | undefined>();
 
 const { runWorkflow } = useRunWorkflow({ router });
 const {
@@ -410,8 +406,6 @@ async function openWorkflow(data: IWorkflowDb) {
 		executionsStore.activeExecution = selectedExecution;
 	}
 
-	collaborationStore.notifyWorkflowOpened(data.id);
-
 	await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(workflow.value.homeProject);
 }
 
@@ -596,46 +590,6 @@ function trackRunWorkflow() {
 
 async function openExecution(_executionId: string) {
 	// @TODO
-}
-
-/**
- * Unload
- */
-
-function addUnloadEventBindings() {
-	window.addEventListener('beforeunload', onBeforeUnload);
-	window.addEventListener('unload', onUnload);
-}
-
-function removeUnloadEventBindings() {
-	window.removeEventListener('beforeunload', onBeforeUnload);
-	window.removeEventListener('unload', onUnload);
-}
-
-function onBeforeUnload(e: BeforeUnloadEvent) {
-	if (isDemoRoute.value || window.preventNodeViewBeforeUnload) {
-		return;
-	} else if (uiStore.stateIsDirty) {
-		// A bit hacky solution to detecting users leaving the page after prompt:
-		// 1. Notify that workflow is closed straight away
-		collaborationStore.notifyWorkflowClosed(workflowsStore.workflowId);
-		// 2. If user decided to stay on the page we notify that the workflow is opened again
-		unloadTimeout.value = setTimeout(() => {
-			collaborationStore.notifyWorkflowOpened(workflowsStore.workflowId);
-		}, 5 * TIME.SECOND);
-		e.returnValue = true; //Gecko + IE
-		return true; //Gecko + Webkit, Safari, Chrome etc.
-	} else {
-		canvasStore.startLoading(i18n.baseText('nodeView.redirecting'));
-		collaborationStore.notifyWorkflowClosed(workflowsStore.workflowId);
-		return;
-	}
-}
-
-function onUnload() {
-	// This will fire if users decides to leave the page after prompted
-	// Clear the interval to prevent the notification from being sent
-	clearTimeout(unloadTimeout.value);
 }
 
 /**
@@ -930,8 +884,6 @@ onBeforeMount(() => {
 	if (!isDemoRoute.value) {
 		pushConnectionStore.pushConnect();
 	}
-
-	collaborationStore.initialize();
 });
 
 onMounted(async () => {
@@ -944,14 +896,12 @@ onMounted(async () => {
 	addUndoRedoEventBindings();
 	addPostMessageEventBindings();
 	addKeyboardEventBindings();
-	addUnloadEventBindings();
 	addSourceControlEventBindings();
 
 	registerCustomActions();
 });
 
 onBeforeUnmount(() => {
-	removeUnloadEventBindings();
 	removeKeyboardEventBindings();
 	removePostMessageEventBindings();
 	removeUndoRedoEventBindings();

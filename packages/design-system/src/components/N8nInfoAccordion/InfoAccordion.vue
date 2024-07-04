@@ -68,7 +68,10 @@ const props = withDefaults(defineProps<InfoAccordionProps>(), {
 	initiallyExpanded: false,
 	eventBus: () => createEventBus(),
 });
-const $emit = defineEmits(['click:body', 'tooltipClick']);
+const $emit = defineEmits<{
+	'click:body': [e: MouseEvent];
+	tooltipClick: [item: string, e: MouseEvent];
+}>();
 
 const expanded = ref(false);
 onMounted(() => {

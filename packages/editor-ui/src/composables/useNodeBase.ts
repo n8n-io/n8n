@@ -621,7 +621,7 @@ export function useNodeBase({
 	}
 
 	function touchEnd(_e: MouseEvent) {
-		if (deviceSupport.isTouchDevice && uiStore.isActionActive('dragActive')) {
+		if (deviceSupport.isTouchDevice && uiStore.isActionActive['dragActive']) {
 			uiStore.removeActiveAction('dragActive');
 		}
 	}
@@ -640,14 +640,14 @@ export function useNodeBase({
 		}
 
 		if (!deviceSupport.isTouchDevice) {
-			if (uiStore.isActionActive('dragActive')) {
+			if (uiStore.isActionActive['dragActive']) {
 				uiStore.removeActiveAction('dragActive');
 			} else {
 				if (!deviceSupport.isCtrlKeyPressed(e)) {
 					emit('deselectAllNodes');
 				}
 
-				if (uiStore.isNodeSelected(data.value?.name ?? '')) {
+				if (uiStore.isNodeSelected[data.value?.name ?? '']) {
 					emit('deselectNode', name);
 				} else {
 					emit('nodeSelected', name);

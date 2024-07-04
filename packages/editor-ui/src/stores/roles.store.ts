@@ -20,12 +20,12 @@ export const useRolesStore = defineStore('roles', () => {
 
 	const processedProjectRoles = computed<RoleMap['project']>(() =>
 		roles.value.project
+			.filter((role) => projectRoleOrderMap.value.has(role.role))
 			.sort(
 				(a, b) =>
 					(projectRoleOrderMap.value.get(a.role) ?? 0) -
 					(projectRoleOrderMap.value.get(b.role) ?? 0),
-			)
-			.filter((role) => role.role !== 'project:personalOwner'),
+			),
 	);
 
 	const processedCredentialRoles = computed<RoleMap['credential']>(() =>

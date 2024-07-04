@@ -49,8 +49,8 @@ const props = defineProps<Props>();
 const { resetViewStacks } = useViewStacks();
 const { registerKeyHook } = useKeyboardNavigation();
 const emit = defineEmits<{
-	(event: 'closeNodeCreator'): void;
-	(event: 'nodeTypeSelected', value: string[]): void;
+	closeNodeCreator: [];
+	nodeTypeSelected: [value: string[]];
 }>();
 const uiStore = useUIStore();
 const aiStore = useAIStore();

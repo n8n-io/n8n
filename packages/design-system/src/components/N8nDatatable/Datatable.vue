@@ -84,7 +84,10 @@ const props = withDefaults(defineProps<DatatableProps>(), {
 	rowsPerPage: 10,
 });
 
-const $emit = defineEmits(['update:currentPage', 'update:rowsPerPage']);
+const $emit = defineEmits<{
+	'update:currentPage': [value: number];
+	'update:rowsPerPage': [value: number];
+}>();
 
 const { t } = useI18n();
 const rowsPerPageOptions = ref([10, 25, 50, 100]);
