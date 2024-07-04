@@ -31,6 +31,7 @@ export const WEBHOOK_NODE_TYPE = 'n8n-nodes-base.webhook';
 export const MANUAL_TRIGGER_NODE_TYPE = 'n8n-nodes-base.manualTrigger';
 export const ERROR_TRIGGER_NODE_TYPE = 'n8n-nodes-base.errorTrigger';
 export const START_NODE_TYPE = 'n8n-nodes-base.start';
+export const EXECUTE_WORKFLOW_NODE_TYPE = 'n8n-nodes-base.executeWorkflow';
 export const EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE = 'n8n-nodes-base.executeWorkflowTrigger';
 export const CODE_NODE_TYPE = 'n8n-nodes-base.code';
 export const FUNCTION_NODE_TYPE = 'n8n-nodes-base.function';
