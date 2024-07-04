@@ -929,6 +929,9 @@ importers:
       qs:
         specifier: 6.11.0
         version: 6.11.0
+      ssh2:
+        specifier: 1.15.0
+        version: 1.15.0
       typedi:
         specifier: 0.10.0
         version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
@@ -1456,8 +1459,8 @@ importers:
         specifier: 1.2.0
         version: 1.2.0
       node-ssh:
-        specifier: 12.0.5
-        version: 12.0.5
+        specifier: 13.2.0
+        version: 13.2.0
       nodemailer:
         specifier: 6.9.9
         version: 6.9.9
@@ -1579,9 +1582,6 @@ importers:
       '@types/mssql':
         specifier: ^9.1.5
         version: 9.1.5
-      '@types/node-ssh':
-        specifier: ^7.0.1
-        version: 7.0.1
       '@types/nodemailer':
         specifier: ^6.4.14
         version: 6.4.14
@@ -5629,9 +5629,6 @@ packages:
   '@types/node-fetch@2.6.4':
     resolution: {integrity: sha512-1ZX9fcN4Rvkvgv4E6PAY5WXUFWFcRWxZa3EW83UjycOB9ljJCedb2CupIP4RZMEwF/M3eTcCihbBRgwtGbg5Rg==}
 
-  '@types/node-ssh@7.0.1':
-    resolution: {integrity: sha512-98EuH7UQl/WWwwDxpbANQ76HwBdzcSnC9zLSdrtVW7jjYeOTQ6TxBygbGwzZR4ho1agbd941UnHCdrXz2sS8JQ==}
-
   '@types/node@18.16.16':
     resolution: {integrity: sha512-NpaM49IGQQAUlBhHMF82QH80J08os4ZmyF9MkpCzWAGuOHqE4gTEbhzd7L3l5LmWuZ6E0OiC1FweQ4tsiW35+g==}
 
@@ -5724,9 +5721,6 @@ packages:
 
   '@types/ssh2-sftp-client@5.3.2':
     resolution: {integrity: sha512-s5R3hsnI3/7Ar57LG++gm2kxgONHtOZY2A3AgGzEwiJlHR8j7MRPDw1n/hG6oMnOUJ4zuoLNtDXgDfmmxV4lDA==}
-
-  '@types/ssh2-streams@0.1.9':
-    resolution: {integrity: sha512-I2J9jKqfmvXLR5GomDiCoHrEJ58hAOmFrekfFqmCFd+A6gaEStvWnPykoWUwld1PNg4G5ag1LwdA+Lz1doRJqg==}
 
   '@types/ssh2@1.11.6':
     resolution: {integrity: sha512-8Mf6bhzYYBLEB/G6COux7DS/F5bCWwojv/qFo2yH/e4cLzAavJnxvFXrYW59iKfXdhG6OmzJcXDasgOb/s0rxw==}
@@ -6707,8 +6701,8 @@ packages:
   buffer@6.0.3:
     resolution: {integrity: sha512-FTiCpNxtwiZZHEZbcbTIcZjERVICn9yq/pDFkTl95/AxzD1naBctN7YO68riM/gLSDY7sdrMby8hofADYuuqOA==}
 
-  buildcheck@0.0.3:
-    resolution: {integrity: sha512-pziaA+p/wdVImfcbsZLNF32EiWyujlQLwolMqUQE8xpKNOH7KmZQaY8sXN7DGOEzPAElo9QTaeNRfGnf3iOJbA==}
+  buildcheck@0.0.6:
+    resolution: {integrity: sha512-8f9ZJCUXyT1M35Jx7MkBgmBMo3oHTTBIPLiY9xyL0pl3T5RwcPEY8cUHr5LBNfu/fk6c2T4DJZuVM/8ZZT2D2A==}
     engines: {node: '>=10.0.0'}
 
   builtin-modules@3.3.0:
@@ -7178,8 +7172,8 @@ packages:
   core-util-is@1.0.3:
     resolution: {integrity: sha512-ZQBvi1DcpJ4GDqanjucZ2Hj3wEO5pZDS89BWbkcrvdxksJorwUDDZamX9ldFkp9aw2lmBDLgkObEA4DWNJ9FYQ==}
 
-  cpu-features@0.0.4:
-    resolution: {integrity: sha512-fKiZ/zp1mUwQbnzb9IghXtHtDoTMtNeb8oYGx6kX2SYfhnG0HNdBEBIzB9b5KlXu5DQPhfy3mInbBxFcgwAr3A==}
+  cpu-features@0.0.10:
+    resolution: {integrity: sha512-9IkYqtX3YHPCzoVg1Py+o9057a3i0fp7S530UWokCSaFVTc7CwXPRiOjRjBQQ18ZCNafx78YfnG+HALxtVmOGA==}
     engines: {node: '>=10.0.0'}
 
   crelt@1.0.5:
@@ -10649,8 +10643,8 @@ packages:
     resolution: {integrity: sha512-eLoBxg6wE/rZkJPhU/xRX1WTpkFEwDJEN96oxFrTsqBdbT5ec295Q+CoHrL9IT0DipqKhmGcaZmwOt8OON5x1w==}
     engines: {node: '>=12.0.0'}
 
-  nan@2.17.0:
-    resolution: {integrity: sha512-2ZTgtl0nJsO0KQCjEpxcIr5D+Yv90plTitZt9JBfQvVJDS5seMl3FOvsh3+9CoYWXf/1l5OaZzzF6nDm4cagaQ==}
+  nan@2.20.0:
+    resolution: {integrity: sha512-bk3gXBZDGILuuo/6sKtr0DQmSThYHLtNCdSdXk9YkxD/jK6X2vmCyyXBBxyqZ4XcnzTyYEAThfX3DCEnLf6igw==}
 
   nanoclone@0.2.1:
     resolution: {integrity: sha512-wynEP02LmIbLpcYw8uBKpcfF6dmg2vcpKqxeH5UcoKEYdExslsdUA4ugFauuaeYdTB76ez6gJW8XAZ6CgkXYxA==}
@@ -10773,8 +10767,8 @@ packages:
   node-rsa@1.1.1:
     resolution: {integrity: sha512-Jd4cvbJMryN21r5HgxQOpMEqv+ooke/korixNNK3mGqfGJmy0M77WDDzo/05969+OkMy3XW1UuZsSmW9KQm7Fw==}
 
-  node-ssh@12.0.5:
-    resolution: {integrity: sha512-uN2GTGdBRUUKkZmcNBr9OM+xKL6zq74emnkSyb1TshBdVWegj3boue6QallQeqZzo7YGVheP5gAovUL+8hZSig==}
+  node-ssh@13.2.0:
+    resolution: {integrity: sha512-7vsKR2Bbs66th6IWCy/7SN4MSwlVt+G6QrHB631BjRUM8/LmvDugtYhi0uAmgvHS/+PVurfNBOmELf30rm0MZg==}
     engines: {node: '>= 10'}
 
   nodemailer@6.9.9:
@@ -12491,8 +12485,8 @@ packages:
     resolution: {integrity: sha512-Bmq4Uewu3e0XOwu5bnPbiS5KRQYv+dff5H6+85V4GZrPrt0Fkt1nUH+uXanyAkoNxUpzjnAPEEoLdOaBO9c3xw==}
     engines: {node: '>=10.24.1'}
 
-  ssh2@1.11.0:
-    resolution: {integrity: sha512-nfg0wZWGSsfUe/IBJkXVll3PEZ//YH2guww+mP88gTpuSU4FtZN7zu9JoeTGOyCNx2dTDtT9fOpWwlzyj4uOOw==}
+  ssh2@1.15.0:
+    resolution: {integrity: sha512-C0PHgX4h6lBxYx7hcXwu3QWdh4tg6tZZsTfXcdvc5caW/EMxaB4H9dWsl7qk+F7LAW762hp8VbXOX7x4xUYvEw==}
     engines: {node: '>=10.16.0'}
 
   sshpk@1.17.0:
@@ -19715,12 +19709,6 @@ snapshots:
       '@types/node': 18.16.16
       form-data: 3.0.1
 
-  '@types/node-ssh@7.0.1':
-    dependencies:
-      '@types/node': 18.16.16
-      '@types/ssh2': 1.11.6
-      '@types/ssh2-streams': 0.1.9
-
   '@types/node@18.16.16': {}
 
   '@types/nodemailer@6.4.14':
@@ -19817,10 +19805,6 @@ snapshots:
   '@types/ssh2-sftp-client@5.3.2':
     dependencies:
       '@types/ssh2': 1.11.6
-
-  '@types/ssh2-streams@0.1.9':
-    dependencies:
-      '@types/node': 18.16.16
 
   '@types/ssh2@1.11.6':
     dependencies:
@@ -21037,7 +21021,7 @@ snapshots:
       base64-js: 1.5.1
       ieee754: 1.2.1
 
-  buildcheck@0.0.3:
+  buildcheck@0.0.6:
     optional: true
 
   builtin-modules@3.3.0: {}
@@ -21566,10 +21550,10 @@ snapshots:
 
   core-util-is@1.0.3: {}
 
-  cpu-features@0.0.4:
+  cpu-features@0.0.10:
     dependencies:
-      buildcheck: 0.0.3
-      nan: 2.17.0
+      buildcheck: 0.0.6
+      nan: 2.20.0
     optional: true
 
   crelt@1.0.5: {}
@@ -25671,7 +25655,7 @@ snapshots:
     dependencies:
       lru-cache: 7.18.3
 
-  nan@2.17.0:
+  nan@2.20.0:
     optional: true
 
   nanoclone@0.2.1: {}
@@ -25785,14 +25769,14 @@ snapshots:
     dependencies:
       asn1: 0.2.6
 
-  node-ssh@12.0.5:
+  node-ssh@13.2.0:
     dependencies:
       is-stream: 2.0.1
       make-dir: 3.1.0
       sb-promise-queue: 2.1.0
       sb-scandir: 3.1.0
       shell-escape: 0.2.0
-      ssh2: 1.11.0
+      ssh2: 1.15.0
 
   nodemailer@6.9.9: {}
 
@@ -27775,15 +27759,15 @@ snapshots:
     dependencies:
       concat-stream: 2.0.0
       promise-retry: 2.0.1
-      ssh2: 1.11.0
+      ssh2: 1.15.0
 
-  ssh2@1.11.0:
+  ssh2@1.15.0:
     dependencies:
       asn1: 0.2.6
       bcrypt-pbkdf: 1.0.2
     optionalDependencies:
-      cpu-features: 0.0.4
-      nan: 2.17.0
+      cpu-features: 0.0.10
+      nan: 2.20.0
 
   sshpk@1.17.0:
     dependencies:
