@@ -16,7 +16,7 @@ import { invoiceFields, invoiceOperations } from './InvoiceDescription';
 
 import type { IClient, IContact } from './ClientInterface';
 
-import { countryCodes } from './ISOCountryCodes';
+import { isoCountryCodes } from '@utils/ISOCountryCodes';
 
 import type { IInvoice, IItem } from './invoiceInterface';
 
@@ -210,9 +210,9 @@ export class InvoiceNinja implements INodeType {
 			// select them easily
 			async getCountryCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				for (let i = 0; i < countryCodes.length; i++) {
-					const countryName = countryCodes[i].name as string;
-					const countryId = countryCodes[i].numeric as string;
+				for (let i = 0; i < isoCountryCodes.length; i++) {
+					const countryName = isoCountryCodes[i].name;
+					const countryId = isoCountryCodes[i].numeric;
 					returnData.push({
 						name: countryName,
 						value: countryId,
