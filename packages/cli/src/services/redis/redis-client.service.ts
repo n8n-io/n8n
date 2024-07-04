@@ -4,7 +4,8 @@ import { Logger } from '@/Logger';
 import ioRedis from 'ioredis';
 import type { Cluster, RedisOptions } from 'ioredis';
 import type { RedisClientType } from './RedisServiceBaseClasses';
-import { LOWEST_PRIORITY, OnShutdown } from '@/decorators/OnShutdown';
+import { OnShutdown } from '@/decorators/OnShutdown';
+import { LOWEST_SHUTDOWN_PRIORITY } from '@/constants';
 
 @Service()
 export class RedisClientService {
@@ -23,7 +24,7 @@ export class RedisClientService {
 		return client;
 	}
 
-	@OnShutdown(LOWEST_PRIORITY)
+	@OnShutdown(LOWEST_SHUTDOWN_PRIORITY)
 	disconnectClients() {
 		for (const client of this.clients) {
 			client.disconnect();
