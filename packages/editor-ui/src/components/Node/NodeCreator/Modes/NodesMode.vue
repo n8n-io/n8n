@@ -31,9 +31,9 @@ export interface Props {
 	rootView: 'trigger' | 'action';
 }
 
-const emit = defineEmits({
-	nodeTypeSelected: (_nodeTypes: string[]) => true,
-});
+const emit = defineEmits<{
+	nodeTypeSelected: [nodeTypes: string[]];
+}>();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();

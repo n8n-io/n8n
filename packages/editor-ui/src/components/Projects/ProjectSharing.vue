@@ -22,8 +22,8 @@ const model = defineModel<(ProjectSharingData | null) | ProjectSharingData[]>({
 	required: true,
 });
 const emit = defineEmits<{
-	(event: 'projectAdded', value: ProjectSharingData): void;
-	(event: 'projectRemoved', value: ProjectSharingData): void;
+	projectAdded: [value: ProjectSharingData];
+	projectRemoved: [value: ProjectSharingData];
 }>();
 
 const selectedProject = ref(Array.isArray(model.value) ? '' : model.value?.id ?? '');

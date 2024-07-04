@@ -1,10 +1,10 @@
 import SSEChannel from 'sse-channel';
 import { Service } from 'typedi';
+
 import { Logger } from '@/Logger';
+
 import { AbstractPush } from './abstract.push';
 import type { PushRequest, PushResponse } from './types';
-import type { User } from '@db/entities/User';
-import { OrchestrationService } from '@/services/orchestration.service';
 
 type Connection = { req: PushRequest; res: PushResponse };
 
@@ -14,16 +14,16 @@ export class SSEPush extends AbstractPush<Connection> {
 
 	readonly connections: Record<string, Connection> = {};
 
-	constructor(logger: Logger, orchestrationService: OrchestrationService) {
-		super(logger, orchestrationService);
+	constructor(logger: Logger) {
+		super(logger);
 
 		this.channel.on('disconnect', (_, { req }) => {
 			this.remove(req?.query?.pushRef);
 		});
 	}
 
-	add(pushRef: string, userId: User['id'], connection: Connection) {
-		super.add(pushRef, userId, connection);
+	add(pushRef: string, connection: Connection) {
+		super.add(pushRef, connection);
 		this.channel.addClient(connection.req, connection.res);
 	}
 

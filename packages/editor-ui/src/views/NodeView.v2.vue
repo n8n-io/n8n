@@ -36,7 +36,6 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import useEnvironmentsStore from '@/stores/environments.ee.store';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useRootStore } from '@/stores/root.store';
-import { useCollaborationStore } from '@/stores/collaboration.store';
 import { historyBus } from '@/models/history';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useExecutionsStore } from '@/stores/executions.store';
@@ -79,7 +78,6 @@ const credentialsStore = useCredentialsStore();
 const environmentsStore = useEnvironmentsStore();
 const externalSecretsStore = useExternalSecretsStore();
 const rootStore = useRootStore();
-const collaborationStore = useCollaborationStore();
 const executionsStore = useExecutionsStore();
 const canvasStore = useCanvasStore();
 const npsSurveyStore = useNpsSurveyStore();
@@ -173,7 +171,6 @@ async function initializeData() {
 		workflowId: workflowsStore.workflow.id,
 		workflowName: workflowsStore.workflow.name,
 	});
-	collaborationStore.notifyWorkflowOpened(workflowsStore.workflow.id);
 
 	const selectedExecution = executionsStore.activeExecution;
 	if (selectedExecution?.workflowId !== workflowsStore.workflow.id) {
