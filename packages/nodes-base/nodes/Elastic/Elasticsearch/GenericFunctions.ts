@@ -2,12 +2,39 @@ import type {
 	IExecuteFunctions,
 	IDataObject,
 	JsonObject,
-	IRequestOptions,
+	IHttpRequestOptions,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import type { ElasticsearchApiCredentials } from './types';
+
+export async function elasticsearchBulkApiRequest(this: IExecuteFunctions, body: IDataObject) {
+	const { baseUrl, ignoreSSLIssues } = (await this.getCredentials(
+		'elasticsearchApi',
+	)) as ElasticsearchApiCredentials;
+
+	const bulkBody = Object.values(body).flat().join('\n') + '\n';
+
+	const options: IHttpRequestOptions = {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/x-ndjson' },
+		body: bulkBody,
+		url: `${baseUrl}/_bulk`,
+		skipSslCertificateValidation: ignoreSSLIssues,
+		returnFullResponse: true,
+	};
+	try {
+		const response = await this.helpers.requestWithAuthentication.call(
+			this,
+			'elasticsearchApi',
+			options,
+		);
+		return JSON.parse(response).items;
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error as JsonObject);
+	}
+}
 
 export async function elasticsearchApiRequest(
 	this: IExecuteFunctions,
@@ -20,13 +47,13 @@ export async function elasticsearchApiRequest(
 		'elasticsearchApi',
 	)) as ElasticsearchApiCredentials;
 
-	const options: IRequestOptions = {
+	const options: IHttpRequestOptions = {
 		method,
 		body,
 		qs,
-		uri: `${baseUrl}${endpoint}`,
+		url: `${baseUrl}${endpoint}`,
 		json: true,
-		rejectUnauthorized: !ignoreSSLIssues,
+		skipSslCertificateValidation: ignoreSSLIssues,
 	};
 
 	if (!Object.keys(body).length) {
