@@ -215,11 +215,11 @@ const props = withDefaults(defineProps<Props>(), {
 	credentialPermissions: () => ({}) as PermissionsMap<CredentialScope>,
 });
 const emit = defineEmits<{
-	(event: 'update', value: IUpdateInformation): void;
-	(event: 'authTypeChanged', value: string): void;
-	(event: 'scrollToTop'): void;
-	(event: 'retest'): void;
-	(event: 'oauth'): void;
+	update: [value: IUpdateInformation];
+	authTypeChanged: [value: string];
+	scrollToTop: [];
+	retest: [];
+	oauth: [];
 }>();
 
 const credentialsStore = useCredentialsStore();

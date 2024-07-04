@@ -83,8 +83,8 @@ const props = withDefaults(defineProps<MenuProps>(), {
 const $route = useRoute();
 
 const $emit = defineEmits<{
-	(event: 'select', itemId: string): void;
-	(event: 'update:modelValue', itemId: string): void;
+	select: [itemId: string];
+	'update:modelValue': [itemId: string];
 }>();
 
 const activeTab = ref(props.modelValue);

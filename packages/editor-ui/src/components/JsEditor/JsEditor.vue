@@ -41,7 +41,7 @@ type Props = {
 
 const props = withDefaults(defineProps<Props>(), { fillParent: false, isReadOnly: false, rows: 4 });
 const emit = defineEmits<{
-	(event: 'update:modelValue', value: string): void;
+	'update:modelValue': [value: string];
 }>();
 
 onMounted(() => {

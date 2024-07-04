@@ -69,8 +69,8 @@ withDefaults(defineProps<ActionToggleProps>(), {
 });
 
 const $emit = defineEmits<{
-	(event: 'action', value: string): void;
-	(event: 'visible-change', value: boolean): void;
+	action: [value: string];
+	'visible-change': [value: boolean];
 }>();
 const onCommand = (value: string) => $emit('action', value);
 const onVisibleChange = (value: boolean) => $emit('visible-change', value);

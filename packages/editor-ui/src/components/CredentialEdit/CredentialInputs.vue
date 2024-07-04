@@ -47,7 +47,7 @@ const credentialDataValues = computed(
 );
 
 const emit = defineEmits<{
-	(event: 'update', value: IUpdateInformation): void;
+	update: [value: IUpdateInformation];
 }>();
 
 function valueChanged(parameterData: IUpdateInformation) {

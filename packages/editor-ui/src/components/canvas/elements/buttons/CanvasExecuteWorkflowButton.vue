@@ -5,7 +5,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useUIStore } from '@/stores/ui.store';
 
 defineEmits<{
-	(key: 'click', event: MouseEvent): void;
+	click: [event: MouseEvent];
 }>();
 
 const uiStore = useUIStore();
