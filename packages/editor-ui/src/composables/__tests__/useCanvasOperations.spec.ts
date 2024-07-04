@@ -678,33 +678,110 @@ describe('useCanvasOperations', () => {
 			).toBe(false);
 		});
 
-		// it('should return false if source node type is not allowed by target node input filter', () => {
-		// 	const sourceNode = { id: '1', type: 'sourceType', name: 'Source Node', typeVersion: 1 };
-		// 	const targetNode = { id: '2', type: 'targetType', name: 'Target Node', typeVersion: 1 };
-		// 	nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
-		// 		inputs: [{ type: NodeConnectionType.Main, filter: { nodes: ['allowedType'] } }],
-		// 	});
-		// 	workflowsStore.getCurrentWorkflow = vi.fn().mockReturnValue({
-		// 		getNode: vi.fn().mockReturnValue({}),
-		// 	});
-		// 	expect(
-		// 		canvasOperations.isConnectionAllowed(sourceNode, targetNode, NodeConnectionType.Main),
-		// 	).toBe(false);
-		// });
-		//
-		// it('should return true if all conditions for connection are met', () => {
-		// 	const sourceNode = { id: '1', type: 'allowedType', name: 'Source Node', typeVersion: 1 };
-		// 	const targetNode = { id: '2', type: 'targetType', name: 'Target Node', typeVersion: 1 };
-		// 	nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
-		// 		inputs: [{ type: NodeConnectionType.Main, filter: { nodes: ['allowedType'] } }],
-		// 	});
-		// 	workflowsStore.getCurrentWorkflow = vi.fn().mockReturnValue({
-		// 		getNode: vi.fn().mockReturnValue({}),
-		// 	});
-		// 	expect(
-		// 		canvasOperations.isConnectionAllowed(sourceNode, targetNode, NodeConnectionType.Main),
-		// 	).toBe(true);
-		// });
+		it('should return false if source node type is not allowed by target node input filter', () => {
+			const sourceNode = mockNode({
+				id: '1',
+				type: 'sourceType',
+				name: 'Source Node',
+				typeVersion: 1,
+			});
+
+			const targetNode = mockNode({
+				id: '2',
+				type: 'targetType',
+				name: 'Target Node',
+				typeVersion: 1,
+			});
+
+			const nodeTypeDescription = mockNodeTypeDescription({
+				name: 'targetType',
+				inputs: [
+					{
+						type: NodeConnectionType.Main,
+						filter: {
+							nodes: ['allowedType'],
+						},
+					},
+				],
+			});
+
+			nodeTypesStore.setNodeTypes([nodeTypeDescription]);
+			canvasOperations.editableWorkflowObject.value.nodes[sourceNode.name] = sourceNode;
+			canvasOperations.editableWorkflowObject.value.nodes[targetNode.name] = targetNode;
+
+			expect(
+				canvasOperations.isConnectionAllowed(sourceNode, targetNode, NodeConnectionType.Main),
+			).toBe(false);
+		});
+
+		it('should return true if all conditions including filter are met', () => {
+			const sourceNode = mockNode({
+				id: '1',
+				type: 'sourceType',
+				name: 'Source Node',
+				typeVersion: 1,
+			});
+
+			const targetNode = mockNode({
+				id: '2',
+				type: 'targetType',
+				name: 'Target Node',
+				typeVersion: 1,
+			});
+
+			const nodeTypeDescription = mockNodeTypeDescription({
+				name: 'targetType',
+				inputs: [
+					{
+						type: NodeConnectionType.Main,
+						filter: {
+							nodes: ['sourceType'],
+						},
+					},
+				],
+			});
+
+			nodeTypesStore.setNodeTypes([nodeTypeDescription]);
+			canvasOperations.editableWorkflowObject.value.nodes[sourceNode.name] = sourceNode;
+			canvasOperations.editableWorkflowObject.value.nodes[targetNode.name] = targetNode;
+
+			expect(
+				canvasOperations.isConnectionAllowed(sourceNode, targetNode, NodeConnectionType.Main),
+			).toBe(true);
+		});
+
+		it('should return true if all conditions are met and no filter is set', () => {
+			const sourceNode = mockNode({
+				id: '1',
+				type: 'sourceType',
+				name: 'Source Node',
+				typeVersion: 1,
+			});
+
+			const targetNode = mockNode({
+				id: '2',
+				type: 'targetType',
+				name: 'Target Node',
+				typeVersion: 1,
+			});
+
+			const nodeTypeDescription = mockNodeTypeDescription({
+				name: 'targetType',
+				inputs: [
+					{
+						type: NodeConnectionType.Main,
+					},
+				],
+			});
+
+			nodeTypesStore.setNodeTypes([nodeTypeDescription]);
+			canvasOperations.editableWorkflowObject.value.nodes[sourceNode.name] = sourceNode;
+			canvasOperations.editableWorkflowObject.value.nodes[targetNode.name] = targetNode;
+
+			expect(
+				canvasOperations.isConnectionAllowed(sourceNode, targetNode, NodeConnectionType.Main),
+			).toBe(true);
+		});
 	});
 
 	describe('deleteConnection', () => {
