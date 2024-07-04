@@ -2,6 +2,10 @@ import { Container } from 'typedi';
 import { ApplicationError } from 'n8n-workflow';
 import { type ServiceClass, ShutdownService } from '@/shutdown/Shutdown.service';
 
+export const LOWEST_PRIORITY = 0;
+export const DEFAULT_PRIORITY = 100;
+export const HIGHEST_PRIORITY = 200;
+
 /**
  * Decorator that registers a method as a shutdown hook. The method will
  * be called when the application is shutting down.
@@ -22,7 +26,7 @@ import { type ServiceClass, ShutdownService } from '@/shutdown/Shutdown.service'
  * ```
  */
 export const OnShutdown =
-	(priority = 100): MethodDecorator =>
+	(priority = DEFAULT_PRIORITY): MethodDecorator =>
 	(prototype, propertyKey, descriptor) => {
 		const serviceClass = prototype.constructor as ServiceClass;
 		const methodName = String(propertyKey);
