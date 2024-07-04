@@ -8,7 +8,7 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<INodeProp
 	const credentials = (await this.getCredentials('postgres')) as PostgresNodeCredentials;
 	const options = { nodeVersion: this.getNode().typeVersion };
 
-	const { db, sshClient } = await configurePostgres(credentials, options);
+	const { db } = await configurePostgres.call(this, credentials, options);
 
 	const schema = this.getNodeParameter('schema', 0, {
 		extractValue: true,
@@ -26,12 +26,7 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<INodeProp
 			value: column.column_name,
 			description: `Type: ${column.data_type.toUpperCase()}, Nullable: ${column.is_nullable}`,
 		}));
-	} catch (error) {
-		throw error;
 	} finally {
-		if (sshClient) {
-			sshClient.end();
-		}
 		if (!db.$pool.ending) await db.$pool.end();
 	}
 }
