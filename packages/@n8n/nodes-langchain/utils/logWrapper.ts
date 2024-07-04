@@ -1,10 +1,5 @@
 import { NodeOperationError, NodeConnectionType } from 'n8n-workflow';
-import type {
-	ConnectionTypes,
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-} from 'n8n-workflow';
+import type { ConnectionTypes, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import { Tool } from '@langchain/core/tools';
 import type { BaseMessage } from '@langchain/core/messages';
@@ -24,6 +19,7 @@ import type { BaseDocumentLoader } from 'langchain/dist/document_loaders/base';
 import { N8nJsonLoader } from './N8nJsonLoader';
 import { N8nBinaryLoader } from './N8nBinaryLoader';
 import { logAiEvent } from './helpers';
+import { QdrantVectorStore } from '@langchain/community/vectorstores/qdrant';
 
 const errorsMap: { [key: string]: { message: string; description: string } } = {
 	'You exceeded your current quota, please check your plan and billing details.': {
@@ -430,7 +426,10 @@ export function logWrapper(
 			}
 
 			// ========== VectorStore ==========
-			if (originalInstance instanceof VectorStore) {
+			if (
+				originalInstance instanceof VectorStore ||
+				originalInstance instanceof QdrantVectorStore
+			) {
 				if (prop === 'similaritySearch' && 'similaritySearch' in target) {
 					return async (
 						query: string,
@@ -444,33 +443,13 @@ export function logWrapper(
 							[{ json: { query, k, filter } }],
 						]);
 
-						let f;
-						const { searchFilter } = executeFunctions.getNodeParameter(
-							'options',
-							index,
-							'',
-							{},
-						) as IDataObject;
-
-						if (searchFilter) {
-							f = executeFunctions.getNodeParameter('options.searchFilter', index, '', {
-								ensureType: 'object',
-							});
-						} else {
-							f = filter;
-						}
-
-						const parameters = {
+						const response = (await callMethodAsync.call(target, {
 							executeFunctions,
 							connectionType,
 							currentNodeRunIndex: index,
 							method: target[prop],
-							arguments: [query, k, f, _callbacks],
-						};
-
-						const response = (await callMethodAsync.call(target, parameters)) as Array<
-							Document<Record<string, any>>
-						>;
+							arguments: [query, k, filter, _callbacks],
+						})) as Array<Document<Record<string, any>>>;
 
 						void logAiEvent(executeFunctions, 'n8n.ai.vector.store.searched', { query });
 						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
