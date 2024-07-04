@@ -12,7 +12,7 @@ import type {
 	SimplifiedNodeType,
 	ActionsRecord,
 	ToggleNodeCreatorOptions,
-	AIAssistantConnectionInfo,
+	NewConnectionInfo,
 } from '@/Interface';
 
 import { computed, ref } from 'vue';
@@ -172,7 +172,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		});
 	}
 
-	function openNodeCreatorForConnectingNode(info: AIAssistantConnectionInfo) {
+	function openNodeCreatorForConnectingNode(info: NewConnectionInfo) {
 		const type = info.outputType ?? NodeConnectionType.Main;
 		// Get the node and set it as active that new nodes
 		// which get created get automatically connected
