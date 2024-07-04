@@ -12,13 +12,7 @@ import type { Scope } from '@n8n/permissions';
 
 describe('permissions', () => {
 	it('getVariablesPermissions', () => {
-		expect(getVariablesPermissions(null)).toEqual({
-			create: false,
-			read: false,
-			update: false,
-			delete: false,
-			list: false,
-		});
+		expect(getVariablesPermissions(null)).toEqual(null);
 
 		expect(
 			getVariablesPermissions({
@@ -43,10 +37,7 @@ describe('permissions', () => {
 				globalScopes: ['variable:read', 'variable:list'],
 			} as IUser),
 		).toEqual({
-			create: false,
 			read: true,
-			update: false,
-			delete: false,
 			list: true,
 		});
 	});
@@ -151,7 +142,7 @@ describe('permissions', () => {
 			'workflow:update',
 		];
 
-		const permissionRecord: PermissionsRecord<Scope> = {
+		const permissionRecord: PermissionsRecord = {
 			credential: {
 				create: true,
 				delete: true,
