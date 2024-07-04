@@ -110,11 +110,9 @@ export class Queue {
 	}
 
 	@OnShutdown(HIGHEST_PRIORITY)
-	async pause({
-		isLocal,
-		doNotWaitActive,
-	}: { isLocal?: boolean; doNotWaitActive?: boolean } = {}): Promise<void> {
-		return await this.jobQueue.pause(isLocal, doNotWaitActive);
+	// Stop accepting new jobs, `doNotWaitActive` allows reporting progress
+	async pause(): Promise<void> {
+		return await this.jobQueue?.pause(true, true);
 	}
 
 	getBullObjectInstance(): JobQueue {
