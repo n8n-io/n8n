@@ -64,9 +64,6 @@ export class Worker extends BaseCommand {
 	async stopProcess() {
 		this.logger.info('Stopping n8n...');
 
-		// Stop accepting new jobs, `doNotWaitActive` allows reporting progress
-		await Worker.jobQueue.pause({ isLocal: true, doNotWaitActive: true });
-
 		try {
 			await this.externalHooks?.run('n8n.stop', []);
 
