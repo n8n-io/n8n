@@ -421,7 +421,6 @@ export class InvoiceNinja implements INodeType {
 							if (apiVersion === 'v4') {
 								body.invoice_number = additionalFields.invoiceNumber as string;
 							} else if (apiVersion === 'v5') {
-								// eslint-disable-next-line id-denylist
 								body.number = additionalFields.invoiceNumber as string;
 							}
 						}
@@ -465,7 +464,6 @@ export class InvoiceNinja implements INodeType {
 							if (apiVersion === 'v4') {
 								body.paid = additionalFields.paid as number;
 							} else if (apiVersion === 'v5') {
-								// eslint-disable-next-line id-denylist
 								qs.amount_paid = additionalFields.paid as number;
 							}
 						}
@@ -473,7 +471,6 @@ export class InvoiceNinja implements INodeType {
 							if (apiVersion === 'v4') {
 								body.email_invoice = additionalFields.emailInvoice as boolean;
 							} else if (apiVersion === 'v5') {
-								// eslint-disable-next-line id-denylist
 								qs.send_email = additionalFields.emailInvoice as boolean;
 							}
 						}
@@ -893,7 +890,6 @@ export class InvoiceNinja implements INodeType {
 							if (apiVersion === 'v4') {
 								body.invoice_number = additionalFields.quoteNumber as string;
 							} else if (apiVersion === 'v5') {
-								// eslint-disable-next-line id-denylist
 								body.number = additionalFields.quoteNumber as string;
 							}
 						}
