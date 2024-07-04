@@ -64,7 +64,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		mfa: {
 			enabled: false,
 		},
-		onboardingCallPromptEnabled: false,
 		saveDataErrorExecution: 'all',
 		saveDataSuccessExecution: 'all',
 		saveManualExecutions: false,
@@ -265,7 +264,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 				this.userManagement.showSetupOnFirstLoad = !!settings.userManagement.showSetupOnFirstLoad;
 			}
 			this.api = settings.publicApi;
-			this.onboardingCallPromptEnabled = settings.onboardingCallPromptEnabled;
 			if (settings.sso?.ldap) {
 				this.ldap.loginEnabled = settings.sso.ldap.loginEnabled;
 				this.ldap.loginLabel = settings.sso.ldap.loginLabel;
