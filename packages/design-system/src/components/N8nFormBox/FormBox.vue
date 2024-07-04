@@ -69,9 +69,9 @@ withDefaults(defineProps<FormBoxProps>(), {
 
 const formBus = createEventBus();
 const $emit = defineEmits<{
-	(event: 'submit', value: { [key: string]: Value }): void;
-	(event: 'update', value: { name: string; value: Value }): void;
-	(event: 'secondaryClick', value: Event): void;
+	submit: [value: { [key: string]: Value }];
+	update: [value: { name: string; value: Value }];
+	secondaryClick: [value: Event];
 }>();
 
 const onUpdateModelValue = (e: { name: string; value: Value }) => $emit('update', e);

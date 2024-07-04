@@ -176,16 +176,12 @@ import { useI18n } from '@/composables/useI18n';
 import { storeToRefs } from 'pinia';
 
 const emit = defineEmits<{
-	(value: 'saveKeyboardShortcut', event: KeyboardEvent): void;
-	(value: 'valueChanged', parameterData: IUpdateInformation): void;
-	(value: 'switchSelectedNode', nodeTypeName: string): void;
-	(
-		value: 'openConnectionNodeCreator',
-		nodeTypeName: string,
-		connectionType: NodeConnectionType,
-	): void;
-	(value: 'redrawNode', nodeName: string): void;
-	(value: 'stopExecution'): void;
+	saveKeyboardShortcut: [event: KeyboardEvent];
+	valueChanged: [parameterData: IUpdateInformation];
+	switchSelectedNode: [nodeTypeName: string];
+	openConnectionNodeCreator: [nodeTypeName: string, connectionType: NodeConnectionType];
+	redrawNode: [nodeName: string];
+	stopExecution: [];
 }>();
 
 const props = withDefaults(

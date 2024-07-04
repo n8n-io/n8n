@@ -101,11 +101,11 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	(event: 'focus'): void;
-	(event: 'blur'): void;
-	(event: 'drop', value: string): void;
-	(event: 'update', value: IUpdateInformation): void;
-	(event: 'textInput', value: IUpdateInformation): void;
+	focus: [];
+	blur: [];
+	drop: [value: string];
+	update: [value: IUpdateInformation];
+	textInput: [value: IUpdateInformation];
 }>();
 
 const router = useRouter();

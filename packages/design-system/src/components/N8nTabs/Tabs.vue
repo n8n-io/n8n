@@ -111,8 +111,8 @@ onUnmounted(() => {
 });
 
 const $emit = defineEmits<{
-	(event: 'tooltipClick', tab: string, e: MouseEvent): void;
-	(event: 'update:modelValue', tab: string): void;
+	tooltipClick: [tab: string, e: MouseEvent];
+	'update:modelValue': [tab: string];
 }>();
 
 const handleTooltipClick = (tab: string, event: MouseEvent) => $emit('tooltipClick', tab, event);

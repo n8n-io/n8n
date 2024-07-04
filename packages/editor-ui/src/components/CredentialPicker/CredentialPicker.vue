@@ -14,9 +14,9 @@ const props = defineProps<{
 }>();
 
 const $emit = defineEmits<{
-	(event: 'credentialSelected', credentialId: string): void;
-	(event: 'credentialDeselected'): void;
-	(event: 'credentialModalOpened'): void;
+	credentialSelected: [credentialId: string];
+	credentialDeselected: [];
+	credentialModalOpened: [];
 }>();
 
 const uiStore = useUIStore();
