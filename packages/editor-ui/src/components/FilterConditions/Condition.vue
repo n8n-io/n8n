@@ -43,8 +43,8 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	(event: 'update', value: FilterConditionValue): void;
-	(event: 'remove'): void;
+	update: [value: FilterConditionValue];
+	remove: [];
 }>();
 
 const i18n = useI18n();

@@ -41,7 +41,7 @@ type Props = {
 
 const props = withDefaults(defineProps<Props>(), { fillParent: false, isReadOnly: false, rows: 4 });
 const emit = defineEmits<{
-	(event: 'update:modelValue', value: string): void;
+	'update:modelValue': [value: string];
 }>();
 
 onMounted(() => {
@@ -61,7 +61,6 @@ const extensions = computed(() => {
 		lineNumbers(),
 		EditorView.lineWrapping,
 		EditorState.readOnly.of(props.isReadOnly),
-		EditorView.editable.of(!props.isReadOnly),
 		codeNodeEditorTheme({
 			isReadOnly: props.isReadOnly,
 			maxHeight: props.fillParent ? '100%' : '40vh',

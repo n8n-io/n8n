@@ -10,7 +10,7 @@
 			<div
 				v-if="active"
 				ref="nodeCreator"
-				:class="{ [$style.nodeCreator]: true, [$style.chatOpened]: chatSidebarOpen }"
+				:class="{ [$style.nodeCreator]: true }"
 				:style="nodeCreatorInlineStyle"
 				data-test-id="node-creator"
 				@dragover="onDragOver"
@@ -37,7 +37,6 @@ import { useActionsGenerator } from './composables/useActionsGeneration';
 import NodesListPanel from './Panel/NodesListPanel.vue';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useAIStore } from '@/stores/ai.store';
 import { DRAG_EVENT_DATA_KEY } from '@/constants';
 
 export interface Props {
@@ -49,11 +48,10 @@ const props = defineProps<Props>();
 const { resetViewStacks } = useViewStacks();
 const { registerKeyHook } = useKeyboardNavigation();
 const emit = defineEmits<{
-	(event: 'closeNodeCreator'): void;
-	(event: 'nodeTypeSelected', value: string[]): void;
+	closeNodeCreator: [];
+	nodeTypeSelected: [value: string[]];
 }>();
 const uiStore = useUIStore();
-const aiStore = useAIStore();
 
 const { setShowScrim, setActions, setMergeNodes } = useNodeCreatorStore();
 const { generateMergedNodesAndActions } = useActionsGenerator();
@@ -66,8 +64,6 @@ const state = reactive({
 const showScrim = computed(() => useNodeCreatorStore().showScrim);
 
 const viewStacksLength = computed(() => useViewStacks().viewStacks.length);
-
-const chatSidebarOpen = computed(() => aiStore.assistantChatOpen);
 
 const nodeCreatorInlineStyle = computed(() => {
 	return { top: `${uiStore.bannersHeight + uiStore.headerHeight}px` };
@@ -177,10 +173,6 @@ onBeforeUnmount(() => {
 	z-index: 200;
 	width: $node-creator-width;
 	color: $node-creator-text-color;
-
-	&.chatOpened {
-		right: $chat-width;
-	}
 }
 
 .nodeCreatorScrim {

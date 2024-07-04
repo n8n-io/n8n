@@ -29,9 +29,9 @@ import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue'
 import type { IDataObject } from 'n8n-workflow';
 import { useTelemetry } from '@/composables/useTelemetry';
 
-const emit = defineEmits({
-	nodeTypeSelected: (_nodeTypes: string[]) => true,
-});
+const emit = defineEmits<{
+	nodeTypeSelected: [value: [actionKey: string, nodeName: string] | [nodeName: string]];
+}>();
 const telemetry = useTelemetry();
 
 const { userActivated } = useUsersStore();

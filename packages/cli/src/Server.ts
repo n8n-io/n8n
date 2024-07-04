@@ -37,9 +37,9 @@ import { InternalHooks } from '@/InternalHooks';
 import { handleMfaDisable, isMfaFeatureEnabled } from '@/Mfa/helpers';
 import type { FrontendService } from '@/services/frontend.service';
 import { OrchestrationService } from '@/services/orchestration.service';
+import { AuditEventRelay } from './eventbus/audit-event-relay.service';
 
 import '@/controllers/activeWorkflows.controller';
-import '@/controllers/ai.controller';
 import '@/controllers/auth.controller';
 import '@/controllers/binaryData.controller';
 import '@/controllers/curl.controller';
@@ -252,6 +252,7 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 		const eventBus = Container.get(MessageEventBus);
 		await eventBus.initialize();
+		Container.get(AuditEventRelay).init();
 
 		if (this.endpointPresetCredentials !== '') {
 			// POST endpoint to set preset credentials

@@ -37,9 +37,9 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	(event: 'change', value: { value: string; segments: Segment[] }): void;
-	(event: 'focus'): void;
-	(event: 'close'): void;
+	change: [value: { value: string; segments: Segment[] }];
+	focus: [];
+	close: [];
 }>();
 
 const root = ref<HTMLElement>();

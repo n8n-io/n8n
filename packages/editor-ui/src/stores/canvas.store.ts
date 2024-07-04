@@ -236,7 +236,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 					if (!nodeName) return;
 					isDragging.value = true;
 
-					const isSelected = uiStore.isNodeSelected(nodeName);
+					const isSelected = uiStore.isNodeSelected[nodeName];
 
 					if (params.e && !isSelected) {
 						// Only the node which gets dragged directly gets an event, for all others it is
@@ -255,7 +255,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 					if (!nodeName) return;
 					const nodeData = workflowStore.getNodeByName(nodeName);
 					isDragging.value = false;
-					if (uiStore.isActionActive('dragActive') && nodeData) {
+					if (uiStore.isActionActive['dragActive'] && nodeData) {
 						const moveNodes = uiStore.getSelectedNodes.slice();
 						const selectedNodeNames = moveNodes.map((node: INodeUi) => node.name);
 						if (!selectedNodeNames.includes(nodeData.name)) {
@@ -300,7 +300,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 						if (moveNodes.length > 1) {
 							historyStore.stopRecordingUndo();
 						}
-						if (uiStore.isActionActive('dragActive')) {
+						if (uiStore.isActionActive['dragActive']) {
 							uiStore.removeActiveAction('dragActive');
 						}
 					}

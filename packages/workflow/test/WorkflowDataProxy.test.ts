@@ -1,4 +1,11 @@
-import type { IExecuteData, INode, IRun, IWorkflowBase } from '@/Interfaces';
+import type {
+	IExecuteData,
+	INode,
+	IPinData,
+	IRun,
+	IWorkflowBase,
+	WorkflowExecuteMode,
+} from '@/Interfaces';
 import { Workflow } from '@/Workflow';
 import { WorkflowDataProxy } from '@/WorkflowDataProxy';
 import { ExpressionError } from '@/errors/expression.error';
@@ -13,7 +20,12 @@ const loadFixture = (fixture: string) => {
 	return { workflow, run };
 };
 
-const getProxyFromFixture = (workflow: IWorkflowBase, run: IRun | null, activeNode: string) => {
+const getProxyFromFixture = (
+	workflow: IWorkflowBase,
+	run: IRun | null,
+	activeNode: string,
+	mode?: WorkflowExecuteMode,
+) => {
 	const taskData = run?.data.resultData.runData[activeNode]?.[0];
 	const lastNodeConnectionInputData = taskData?.data?.main[0];
 
@@ -29,6 +41,16 @@ const getProxyFromFixture = (workflow: IWorkflowBase, run: IRun | null, activeNo
 		};
 	}
 
+	let pinData: IPinData = {};
+	if (workflow.pinData) {
+		// json key is stored as part of workflow
+		// but dropped when copy/pasting
+		// so adding here to keep updating tests simple
+		for (let nodeName in workflow.pinData) {
+			pinData[nodeName] = workflow.pinData[nodeName].map((item) => ({ json: item }));
+		}
+	}
+
 	const dataProxy = new WorkflowDataProxy(
 		new Workflow({
 			id: '123',
@@ -37,6 +59,7 @@ const getProxyFromFixture = (workflow: IWorkflowBase, run: IRun | null, activeNo
 			connections: workflow.connections,
 			active: false,
 			nodeTypes: Helpers.NodeTypes(),
+			pinData,
 		}),
 		run?.data ?? null,
 		0,
@@ -44,7 +67,7 @@ const getProxyFromFixture = (workflow: IWorkflowBase, run: IRun | null, activeNo
 		activeNode,
 		lastNodeConnectionInputData ?? [],
 		{},
-		'manual',
+		mode ?? 'integrated',
 		{},
 		executeData,
 	);
@@ -321,6 +344,63 @@ describe('WorkflowDataProxy', () => {
 				expect(exprError.context.type).toEqual('paired_item_invalid_info');
 				done();
 			}
+		});
+	});
+
+	describe('Pinned data with manual execution', () => {
+		const fixture = loadFixture('pindata');
+		const proxy = getProxyFromFixture(fixture.workflow, null, 'NotPinnedSet1', 'manual');
+
+		test('$(PinnedSet).item.json', () => {
+			expect(proxy.$('PinnedSet').item.json).toEqual({ firstName: 'Joe', lastName: 'Smith' });
+		});
+
+		test('$(PinnedSet).item.json.firstName', () => {
+			expect(proxy.$('PinnedSet').item.json.firstName).toBe('Joe');
+		});
+
+		test('$(PinnedSet).pairedItem().json.firstName', () => {
+			expect(proxy.$('PinnedSet').pairedItem().json.firstName).toBe('Joe');
+		});
+
+		test('$(PinnedSet).first().json.firstName', () => {
+			expect(proxy.$('PinnedSet').first().json.firstName).toBe('Joe');
+		});
+
+		test('$(PinnedSet).first().json.firstName', () => {
+			expect(proxy.$('PinnedSet').first().json.firstName).toBe('Joe');
+		});
+
+		test('$(PinnedSet).last().json.firstName', () => {
+			expect(proxy.$('PinnedSet').last().json.firstName).toBe('Joan');
+		});
+
+		test('$(PinnedSet).all()[0].json.firstName', () => {
+			expect(proxy.$('PinnedSet').all()[0].json.firstName).toBe('Joe');
+		});
+
+		test('$(PinnedSet).all()[1].json.firstName', () => {
+			expect(proxy.$('PinnedSet').all()[1].json.firstName).toBe('Joan');
+		});
+
+		test('$(PinnedSet).all()[2]', () => {
+			expect(proxy.$('PinnedSet').all()[2]).toBeUndefined();
+		});
+
+		test('$(PinnedSet).itemMatching(0).json.firstName', () => {
+			expect(proxy.$('PinnedSet').itemMatching(0).json.firstName).toBe('Joe');
+		});
+
+		test('$(PinnedSet).itemMatching(1).json.firstName', () => {
+			expect(proxy.$('PinnedSet').itemMatching(1).json.firstName).toBe('Joan');
+		});
+
+		test('$(PinnedSet).itemMatching(2)', () => {
+			expect(proxy.$('PinnedSet').itemMatching(2)).toBeUndefined();
+		});
+
+		test('$node[PinnedSet].json.firstName', () => {
+			expect(proxy.$node.PinnedSet.json.firstName).toBe('Joe');
 		});
 	});
 });

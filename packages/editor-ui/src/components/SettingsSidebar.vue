@@ -46,7 +46,9 @@ export default defineComponent({
 	computed: {
 		...mapStores(useRootStore, useSettingsStore, useUIStore),
 		settingsFakeDoorFeatures(): IFakeDoor[] {
-			return this.uiStore.getFakeDoorByLocation('settings');
+			return Object.keys(this.uiStore.fakeDoorsByLocation)
+				.filter((location: string) => location.includes('settings'))
+				.map((location) => this.uiStore.fakeDoorsByLocation[location]);
 		},
 		sidebarMenuItems(): IMenuItem[] {
 			const menuItems: IMenuItem[] = [

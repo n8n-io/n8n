@@ -120,6 +120,7 @@ export class Code implements INodeType {
 		displayName: 'LangChain Code',
 		name: 'code',
 		icon: 'fa:code',
+		iconColor: 'black',
 		group: ['transform'],
 		version: 1,
 		description: 'LangChain Code Node',

@@ -7,6 +7,12 @@ type DeepPartial<T> = {
 	[P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
 };
 
+type Tests = Array<{
+	left: FilterConditionValue['leftValue'];
+	right: FilterConditionValue['rightValue'];
+	expected: boolean;
+}>;
+
 const filterFactory = (data: DeepPartial<FilterValue> = {}): FilterValue =>
 	merge(
 		{
@@ -832,21 +838,24 @@ describe('FilterParameter', () => {
 						right: '1-Feb-2024',
 						expected: false,
 					},
-				])('dateTime:after("$left", "$right") === $expected', ({ left, right, expected }) => {
-					const result = executeFilter(
-						filterFactory({
-							conditions: [
-								{
-									id: '1',
-									leftValue: left,
-									rightValue: right,
-									operator: { operation: 'after', type: 'dateTime' },
-								},
-							],
-						}),
-					);
-					expect(result).toBe(expected);
-				});
+				] as Tests)(
+					'dateTime:after("$left", "$right") === $expected',
+					({ left, right, expected }) => {
+						const result = executeFilter(
+							filterFactory({
+								conditions: [
+									{
+										id: '1',
+										leftValue: left,
+										rightValue: right,
+										operator: { operation: 'after', type: 'dateTime' },
+									},
+								],
+							}),
+						);
+						expect(result).toBe(expected);
+					},
+				);
 
 				it.each([
 					{ left: '2023-11-15T17:10:49.113Z', right: '2023-11-15T17:10:49.113Z', expected: false },
@@ -1035,7 +1044,7 @@ describe('FilterParameter', () => {
 				it.each([
 					{ left: ['foo', 'bar'], right: 'foo', expected: true },
 					{ left: ['foo', 'bar'], right: 'ba', expected: false },
-				])('array:contains($left,$right) === $expected', ({ left, right, expected }) => {
+				] as Tests)('array:contains($left,$right) === $expected', ({ left, right, expected }) => {
 					const result = executeFilter(
 						filterFactory({
 							conditions: [
@@ -1054,67 +1063,76 @@ describe('FilterParameter', () => {
 				it.each([
 					{ left: ['foo', 'bar'], right: 'foo', expected: false },
 					{ left: ['foo', 'bar'], right: 'ba', expected: true },
-				])('array:notContains($left,$right) === $expected', ({ left, right, expected }) => {
-					const result = executeFilter(
-						filterFactory({
-							conditions: [
-								{
-									id: '1',
-									leftValue: left,
-									rightValue: right,
-									operator: { operation: 'notContains', type: 'array', rightType: 'any' },
-								},
-							],
-						}),
-					);
-					expect(result).toBe(expected);
-				});
+				] as Tests)(
+					'array:notContains($left,$right) === $expected',
+					({ left, right, expected }) => {
+						const result = executeFilter(
+							filterFactory({
+								conditions: [
+									{
+										id: '1',
+										leftValue: left,
+										rightValue: right,
+										operator: { operation: 'notContains', type: 'array', rightType: 'any' },
+									},
+								],
+							}),
+						);
+						expect(result).toBe(expected);
+					},
+				);
 
 				it.each([
 					{ left: ['foo', 'bar'], right: 2, expected: true },
 					{ left: [], right: 0, expected: true },
 					{ left: ['foo', 'bar'], right: 1, expected: false },
-				])('array:lengthEquals($left,$right) === $expected', ({ left, right, expected }) => {
-					const result = executeFilter(
-						filterFactory({
-							conditions: [
-								{
-									id: '1',
-									leftValue: left,
-									rightValue: right,
-									operator: { operation: 'lengthEquals', type: 'array', rightType: 'number' },
-								},
-							],
-						}),
-					);
-					expect(result).toBe(expected);
-				});
+				] as Tests)(
+					'array:lengthEquals($left,$right) === $expected',
+					({ left, right, expected }) => {
+						const result = executeFilter(
+							filterFactory({
+								conditions: [
+									{
+										id: '1',
+										leftValue: left,
+										rightValue: right,
+										operator: { operation: 'lengthEquals', type: 'array', rightType: 'number' },
+									},
+								],
+							}),
+						);
+						expect(result).toBe(expected);
+					},
+				);
 
 				it.each([
 					{ left: ['foo', 'bar'], right: 2, expected: false },
 					{ left: [], right: 0, expected: false },
 					{ left: ['foo', 'bar'], right: 1, expected: true },
-				])('array:lengthNotEquals($left,$right) === $expected', ({ left, right, expected }) => {
-					const result = executeFilter(
-						filterFactory({
-							conditions: [
-								{
-									id: '1',
-									leftValue: left,
-									rightValue: right,
-									operator: { operation: 'lengthNotEquals', type: 'array', rightType: 'number' },
-								},
-							],
-						}),
-					);
-					expect(result).toBe(expected);
-				});
+				] as Tests)(
+					'array:lengthNotEquals($left,$right) === $expected',
+					({ left, right, expected }) => {
+						const result = executeFilter(
+							filterFactory({
+								conditions: [
+									{
+										id: '1',
+										leftValue: left,
+										rightValue: right,
+										operator: { operation: 'lengthNotEquals', type: 'array', rightType: 'number' },
+									},
+								],
+							}),
+						);
+						expect(result).toBe(expected);
+					},
+				);
 
 				it.each([
 					{ left: ['foo', 'bar'], right: 2, expected: false },
 					{ left: [], right: 0, expected: false },
 					{ left: ['foo', 'bar'], right: 1, expected: true },
-				])('array:lengthGt($left,$right) === $expected', ({ left, right, expected }) => {
+				] as Tests)('array:lengthGt($left,$right) === $expected', ({ left, right, expected }) => {
 					const result = executeFilter(
 						filterFactory({
 							conditions: [
@@ -1135,7 +1153,7 @@ describe('FilterParameter', () => {
 					{ left: [], right: 0, expected: false },
 					{ left: ['foo', 'bar'], right: 1, expected: false },
 					{ left: ['foo', 'bar'], right: 3, expected: true },
-				])('array:lengthLt($left,$right) === $expected', ({ left, right, expected }) => {
+				] as Tests)('array:lengthLt($left,$right) === $expected', ({ left, right, expected }) => {
 					const result = executeFilter(
 						filterFactory({
 							conditions: [
@@ -1156,7 +1174,7 @@ describe('FilterParameter', () => {
 					{ left: [], right: 0, expected: true },
 					{ left: ['foo', 'bar'], right: 1, expected: true },
 					{ left: ['foo', 'bar'], right: 3, expected: false },
-				])('array:lengthGte($left,$right) === $expected', ({ left, right, expected }) => {
+				] as Tests)('array:lengthGte($left,$right) === $expected', ({ left, right, expected }) => {
 					const result = executeFilter(
 						filterFactory({
 							conditions: [
@@ -1177,7 +1195,7 @@ describe('FilterParameter', () => {
 					{ left: [], right: 0, expected: true },
 					{ left: ['foo', 'bar'], right: 1, expected: false },
 					{ left: ['foo', 'bar'], right: 3, expected: true },
-				])('array:lengthLte($left,$right) === $expected', ({ left, right, expected }) => {
+				] as Tests)('array:lengthLte($left,$right) === $expected', ({ left, right, expected }) => {
 					const result = executeFilter(
 						filterFactory({
 							conditions: [

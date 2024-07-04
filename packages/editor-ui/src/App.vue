@@ -26,9 +26,6 @@
 					<component :is="Component" v-else />
 				</router-view>
 			</div>
-			<div id="chat" :class="{ [$style.chat]: true, [$style.open]: aiStore.assistantChatOpen }">
-				<AIAssistantChat v-if="aiStore.assistantChatOpen" />
-			</div>
 			<Modals />
 			<Telemetry />
 		</div>
@@ -60,9 +57,6 @@ import { useUsageStore } from '@/stores/usage.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { useRoute } from 'vue-router';
-import { initializeAuthenticatedFeatures } from '@/init';
-import { useAIStore } from './stores/ai.store';
-import AIAssistantChat from './components/AIAssistantChat/AIAssistantChat.vue';
 
 export default defineComponent({
 	name: 'App',
@@ -71,7 +65,6 @@ export default defineComponent({
 		LoadingView,
 		Telemetry,
 		Modals,
-		AIAssistantChat,
 	},
 	setup() {
 		return {
@@ -92,7 +85,6 @@ export default defineComponent({
 			useSourceControlStore,
 			useCloudPlanStore,
 			useUsageStore,
-			useAIStore,
 		),
 		defaultLocale(): string {
 			return this.rootStore.defaultLocale;
@@ -103,26 +95,16 @@ export default defineComponent({
 	},
 	data() {
 		return {
-			onAfterAuthenticateInitialized: false,
 			loading: true,
 		};
 	},
 	watch: {
-		// eslint-disable-next-line @typescript-eslint/naming-convention
-		async 'usersStore.currentUser'(currentValue, previousValue) {
-			if (currentValue && !previousValue) {
-				await initializeAuthenticatedFeatures();
-			}
-		},
 		defaultLocale(newLocale) {
 			void loadLanguage(newLocale);
 		},
 	},
 	async mounted() {
 		this.logHiringBanner();
-
-		void initializeAuthenticatedFeatures();
-
 		void useExternalHooks().run('app.mount');
 		this.loading = false;
 	},
@@ -145,10 +127,10 @@ export default defineComponent({
 .container {
 	display: grid;
 	grid-template-areas:
-		'banners banners banners'
-		'sidebar header chat'
-		'sidebar content chat';
-	grid-auto-columns: fit-content($sidebar-expanded-width) 1fr fit-content($chat-width);
+		'banners banners'
+		'sidebar header'
+		'sidebar content';
+	grid-auto-columns: fit-content($sidebar-expanded-width) 1fr;
 	grid-template-rows: auto fit-content($header-height) 1fr;
 	height: 100vh;
 }
@@ -181,16 +163,5 @@ export default defineComponent({
 	grid-area: sidebar;
 	height: 100%;
 	z-index: 999;
-}
-.chat {
-	grid-area: chat;
-	z-index: 999;
-	height: 100%;
-	width: 0;
-	transition: all 0.2s ease-in-out;
-
-	&.open {
-		width: $chat-width;
-	}
 }
 </style>

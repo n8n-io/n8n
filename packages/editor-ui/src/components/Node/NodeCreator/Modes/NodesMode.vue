@@ -31,9 +31,9 @@ export interface Props {
 	rootView: 'trigger' | 'action';
 }
 
-const emit = defineEmits({
-	nodeTypeSelected: (_nodeTypes: string[]) => true,
-});
+const emit = defineEmits<{
+	nodeTypeSelected: [nodeTypes: string[]];
+}>();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -41,7 +41,6 @@ const uiStore = useUIStore();
 const rootStore = useRootStore();
 
 const { mergedNodes, actions } = useNodeCreatorStore();
-const { baseUrl } = useRootStore();
 const { pushViewStack, popViewStack } = useViewStacks();
 
 const { registerKeyHook } = useKeyboardNavigation();
