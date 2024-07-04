@@ -54,7 +54,6 @@ export const PERSONALIZATION_MODAL_KEY = 'personalization';
 export const CONTACT_PROMPT_MODAL_KEY = 'contactPrompt';
 export const NPS_SURVEY_MODAL_KEY = 'npsSurvey';
 export const WORKFLOW_ACTIVE_MODAL_KEY = 'activation';
-export const ONBOARDING_CALL_SIGNUP_MODAL_KEY = 'onboardingCallSignup';
 export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
 export const COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY = 'communityPackageManageConfirm';
 export const IMPORT_CURL_MODAL_KEY = 'importCurl';
@@ -501,9 +500,6 @@ export const enum FAKE_DOOR_FEATURES {
 	LOGGING = 'logging',
 	SSO = 'sso',
 }
-
-export const ONBOARDING_PROMPT_TIMEBOX = 14;
-export const FIRST_ONBOARDING_PROMPT_TIMEOUT = 300000;
 
 export const TEST_PIN_DATA = [
 	{
