@@ -41,6 +41,7 @@ const formData = ref<Pick<Project, 'name' | 'relations'>>({
 	relations: [],
 });
 const projectRoleTranslations = ref<{ [key: string]: string }>({
+	'project:viewer': locale.baseText('projects.settings.role.viewer'),
 	'project:editor': locale.baseText('projects.settings.role.editor'),
 	'project:admin': locale.baseText('projects.settings.role.admin'),
 });

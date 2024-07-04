@@ -8,7 +8,7 @@
 		:type-props="{ itemSize: 80 }"
 		:shareable="isShareable"
 		:initialize="initialize"
-		:disabled="readOnlyEnv"
+		:disabled="readOnlyEnv || !projectPermissions?.workflow?.create"
 		@click:add="addWorkflow"
 		@update:filters="onFiltersUpdated"
 	>
@@ -161,6 +161,7 @@ import { useTagsStore } from '@/stores/tags.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import { useTemplatesStore } from '@/stores/templates.store';
+import { getResourcePermissions } from '@/permissions';
 
 type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
 
@@ -266,6 +267,9 @@ const WorkflowsView = defineComponent({
 			return this.projectsStore.currentProject
 				? this.$locale.baseText('workflows.project.add')
 				: this.$locale.baseText('workflows.add');
+		},
+		projectPermissions() {
+			return getResourcePermissions(this.projectsStore.currentProject?.scopes);
 		},
 	},
 	watch: {

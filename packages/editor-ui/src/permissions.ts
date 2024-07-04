@@ -5,6 +5,7 @@ import type {
 	Scope,
 	WorkflowScope,
 	VariableScope,
+	RESOURCES,
 } from '@n8n/permissions';
 import type { Project } from '@/types/projects.types';
 import { isObject } from '@/utils/objectUtils';
@@ -15,13 +16,14 @@ type ExtractScopePrefixSuffix<T> = T extends `${infer Prefix}:${infer Suffix}`
 export type PermissionsMap<T> = {
 	[K in ExtractScopePrefixSuffix<T>[1]]: boolean;
 };
-export type PermissionsRecord<T> = T extends string
-	? {
-			[K in ExtractScopePrefixSuffix<T>[0]]: {
-				[V in ExtractScopePrefixSuffix<T>[1]]: boolean;
-			};
-		}
-	: never;
+
+type ActionBooleans<T extends readonly string[]> = {
+	[K in T[number]]: boolean;
+};
+
+export type PermissionsRecord = {
+	[K in keyof typeof RESOURCES]?: ActionBooleans<(typeof RESOURCES)[K]>;
+};
 
 const mapScopesToPermissions = <T extends Scope>(scopes: T[], scopeSet: Set<T>) =>
 	scopes.reduce(
@@ -75,7 +77,7 @@ export const getVariablesPermissions = (user: IUser | null): PermissionsMap<Vari
 		new Set(user?.globalScopes ?? []),
 	);
 
-export const getResourcePermissions = (resourceScopes: Scope[] = []): PermissionsRecord<Scope> => {
+export const getResourcePermissions = (resourceScopes: Scope[] = []): PermissionsRecord => {
 	return resourceScopes.reduce((permissions, scope) => {
 		const [prefix, suffix] = scope.split(':') as ExtractScopePrefixSuffix<Scope>;
 
@@ -88,5 +90,5 @@ export const getResourcePermissions = (resourceScopes: Scope[] = []): Permission
 				[suffix]: true,
 			},
 		};
-	}, {} as PermissionsRecord<Scope>);
+	}, {});
 };
