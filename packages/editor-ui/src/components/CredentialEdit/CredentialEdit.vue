@@ -400,7 +400,7 @@ const credentialPermissions = computed(() => {
 
 	return getResourcePermissions(
 		((credentialId.value ? currentCredential.value : credentialData.value) as ICredentialsResponse)
-			.scopes,
+			?.scopes,
 	).credential;
 });
 
