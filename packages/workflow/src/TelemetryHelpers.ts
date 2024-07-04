@@ -15,6 +15,7 @@ import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	CHAIN_LLM_LANGCHAIN_NODE_TYPE,
 	CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE,
+	EXECUTE_WORKFLOW_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
 	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
 	LANGCHAIN_CUSTOM_TOOLS,
@@ -22,6 +23,7 @@ import {
 	OPENAI_LANGCHAIN_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
+	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 } from './Constants';
 
 export function getNodeTypeForName(workflow: IWorkflowBase, nodeName: string): INode | undefined {
@@ -314,6 +316,13 @@ export function generateNodesGraph(
 			}
 		} else if (node.type === WEBHOOK_NODE_TYPE) {
 			webhookNodeNames.push(node.name);
+		} else if (
+			node.type === EXECUTE_WORKFLOW_NODE_TYPE ||
+			node.type === WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE
+		) {
+			if (node.parameters?.workflowId) {
+				nodeItem.workflow_id = node.parameters?.workflowId as string;
+			}
 		} else {
 			try {
 				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);

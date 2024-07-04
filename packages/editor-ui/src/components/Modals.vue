@@ -11,7 +11,6 @@ import {
 	DELETE_USER_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
 	INVITE_USER_MODAL_KEY,
-	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
 	TAGS_MANAGER_MODAL_KEY,
 	NPS_SURVEY_MODAL_KEY,
@@ -44,7 +43,6 @@ import InviteUsersModal from '@/components/InviteUsersModal.vue';
 import CredentialsSelectModal from '@/components/CredentialsSelectModal.vue';
 import DuplicateWorkflowDialog from '@/components/DuplicateWorkflowDialog.vue';
 import ModalRoot from '@/components/ModalRoot.vue';
-import OnboardingCallSignupModal from '@/components/OnboardingCallSignupModal.vue';
 import PersonalizationModal from '@/components/PersonalizationModal.vue';
 import TagsManager from '@/components/TagsManager/TagsManager.vue';
 import UpdatesPanel from '@/components/UpdatesPanel.vue';
@@ -150,10 +148,6 @@ import ProjectMoveResourceConfirmModal from '@/components/Projects/ProjectMoveRe
 			<template #default="{ modalName, active, data }">
 				<WorkflowShareModal :data="data" :is-active="active" :modal-name="modalName" />
 			</template>
-		</ModalRoot>
-
-		<ModalRoot :name="ONBOARDING_CALL_SIGNUP_MODAL_KEY">
-			<OnboardingCallSignupModal />
 		</ModalRoot>
 
 		<ModalRoot :name="COMMUNITY_PACKAGE_INSTALL_MODAL_KEY">
