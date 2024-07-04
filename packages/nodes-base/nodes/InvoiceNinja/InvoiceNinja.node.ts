@@ -421,7 +421,6 @@ export class InvoiceNinja implements INodeType {
 							if (apiVersion === 'v4') {
 								body.invoice_number = additionalFields.invoiceNumber as string;
 							} else if (apiVersion === 'v5') {
-								// eslint-disable-next-line id-denylist
 								body.number = additionalFields.invoiceNumber as string;
 							}
 						}
@@ -462,10 +461,21 @@ export class InvoiceNinja implements INodeType {
 							body.discount = additionalFields.discount as number;
 						}
 						if (additionalFields.paid) {
-							body.paid = additionalFields.paid as number;
+							if (apiVersion === 'v4') {
+								body.paid = additionalFields.paid as number;
+							} else if (apiVersion === 'v5') {
+								qs.amount_paid = additionalFields.paid as number;
+							}
 						}
 						if (additionalFields.emailInvoice) {
-							body.email_invoice = additionalFields.emailInvoice as boolean;
+							if (apiVersion === 'v4') {
+								body.email_invoice = additionalFields.emailInvoice as boolean;
+							} else if (apiVersion === 'v5') {
+								qs.send_email = additionalFields.emailInvoice as boolean;
+							}
+						}
+						if (additionalFields.markSent) {
+							qs.mark_sent = additionalFields.markSent as boolean;
 						}
 						const invoceItemsValues = (this.getNodeParameter('invoiceItemsUi', i) as IDataObject)
 							.invoiceItemsValues as IDataObject[];
@@ -501,6 +511,7 @@ export class InvoiceNinja implements INodeType {
 							'POST',
 							'/invoices',
 							body as IDataObject,
+							qs,
 						);
 						responseData = responseData.data;
 					}
@@ -879,7 +890,6 @@ export class InvoiceNinja implements INodeType {
 							if (apiVersion === 'v4') {
 								body.invoice_number = additionalFields.quoteNumber as string;
 							} else if (apiVersion === 'v5') {
-								// eslint-disable-next-line id-denylist
 								body.number = additionalFields.quoteNumber as string;
 							}
 						}
