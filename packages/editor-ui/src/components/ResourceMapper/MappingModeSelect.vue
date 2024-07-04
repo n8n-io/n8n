@@ -44,8 +44,8 @@ const mappingModeOptions = [
 ];
 
 const emit = defineEmits<{
-	(event: 'modeChanged', value: string): void;
-	(event: 'retryFetch'): void;
+	modeChanged: [value: string];
+	retryFetch: [];
 }>();
 
 const selected = ref(props.initialValue);

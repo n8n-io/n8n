@@ -212,9 +212,9 @@ type Props = {
 
 const props = withDefaults(defineProps<Props>(), { path: '', hiddenIssuesInputs: () => [] });
 const emit = defineEmits<{
-	(event: 'activate'): void;
-	(event: 'valueChanged', value: IUpdateInformation): void;
-	(event: 'parameterBlur', value: string): void;
+	activate: [];
+	valueChanged: [value: IUpdateInformation];
+	parameterBlur: [value: string];
 }>();
 
 const nodeTypesStore = useNodeTypesStore();

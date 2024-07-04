@@ -569,11 +569,11 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	(event: 'focus'): void;
-	(event: 'blur'): void;
-	(event: 'drop', expression: string): void;
-	(event: 'textInput', update: IUpdateInformation): void;
-	(event: 'update', update: IUpdateInformation): void;
+	focus: [];
+	blur: [];
+	drop: [expression: string];
+	textInput: [update: IUpdateInformation];
+	update: [update: IUpdateInformation];
 }>();
 
 const externalHooks = useExternalHooks();

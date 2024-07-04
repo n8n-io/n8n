@@ -6,7 +6,6 @@ import type {
 	TRIGGER_NODE_CREATOR_VIEW,
 	REGULAR_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
-	VIEWS,
 	ROLE,
 } from '@/constants';
 import type { IMenuItem, NodeCreatorTag } from 'n8n-design-system';
@@ -1262,41 +1261,6 @@ export interface NDVState {
 
 export interface NotificationOptions extends Partial<ElementNotificationOptions> {
 	message: string | ElementNotificationOptions['message'];
-}
-
-export interface UIState {
-	activeActions: string[];
-	activeCredentialType: string | null;
-	sidebarMenuCollapsed: boolean;
-	modalStack: string[];
-	modals: Modals;
-	isPageLoading: boolean;
-	currentView: string;
-	mainPanelPosition: number;
-	fakeDoorFeatures: IFakeDoor[];
-	draggable: {
-		isDragging: boolean;
-		type: string;
-		data: string;
-		canDrop: boolean;
-		stickyPosition: null | XYPosition;
-	};
-	stateIsDirty: boolean;
-	lastSelectedNode: string | null;
-	lastSelectedNodeOutputIndex: number | null;
-	lastSelectedNodeEndpointUuid: string | null;
-	nodeViewOffsetPosition: XYPosition;
-	nodeViewMoveInProgress: boolean;
-	selectedNodes: INodeUi[];
-	nodeViewInitialized: boolean;
-	addFirstStepOnLoad: boolean;
-	bannersHeight: number;
-	bannerStack: BannerName[];
-	theme: ThemeOption;
-	pendingNotificationsForViews: {
-		[key in VIEWS]?: NotificationOptions[];
-	};
-	isCreateNodeActive: boolean;
 }
 
 export type IFakeDoor = {

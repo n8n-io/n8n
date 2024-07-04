@@ -28,11 +28,8 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-	(
-		e: 'credentialSelected',
-		event: { credentialUsageKey: TemplateCredentialKey; credentialId: string },
-	): void;
-	(e: 'credentialDeselected', event: { credentialUsageKey: TemplateCredentialKey }): void;
+	credentialSelected: [event: { credentialUsageKey: TemplateCredentialKey; credentialId: string }];
+	credentialDeselected: [event: { credentialUsageKey: TemplateCredentialKey }];
 }>();
 
 // Stores

@@ -111,7 +111,7 @@ const isNewWorkflow = computed(() => {
 });
 
 const isWorkflowSaving = computed(() => {
-	return uiStore.isActionActive('workflowSaving');
+	return uiStore.isActionActive['workflowSaving'];
 });
 
 const onWorkflowPage = computed(() => {

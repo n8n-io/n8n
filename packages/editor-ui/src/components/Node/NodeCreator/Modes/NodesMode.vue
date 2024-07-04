@@ -32,7 +32,7 @@ export interface Props {
 }
 
 const emit = defineEmits<{
-	(event: 'nodeTypeSelected', nodeTypes: string[]): void;
+	nodeTypeSelected: [nodeTypes: string[]];
 }>();
 
 const i18n = useI18n();

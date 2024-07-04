@@ -176,16 +176,12 @@ import { useI18n } from '@/composables/useI18n';
 import { storeToRefs } from 'pinia';
 
 const emit = defineEmits<{
-	(value: 'saveKeyboardShortcut', event: KeyboardEvent): void;
-	(value: 'valueChanged', parameterData: IUpdateInformation): void;
-	(value: 'switchSelectedNode', nodeTypeName: string): void;
-	(
-		value: 'openConnectionNodeCreator',
-		nodeTypeName: string,
-		connectionType: NodeConnectionType,
-	): void;
-	(value: 'redrawNode', nodeName: string): void;
-	(value: 'stopExecution'): void;
+	saveKeyboardShortcut: [event: KeyboardEvent];
+	valueChanged: [parameterData: IUpdateInformation];
+	switchSelectedNode: [nodeTypeName: string];
+	openConnectionNodeCreator: [nodeTypeName: string, connectionType: NodeConnectionType];
+	redrawNode: [nodeName: string];
+	stopExecution: [];
 }>();
 
 const props = withDefaults(
@@ -242,7 +238,7 @@ const activeNodeType = computed(() => {
 	return null;
 });
 
-const workflowRunning = computed(() => uiStore.isActionActive('workflowRunning'));
+const workflowRunning = computed(() => uiStore.isActionActive['workflowRunning']);
 
 const showTriggerWaitingWarning = computed(
 	() =>
@@ -432,7 +428,7 @@ const featureRequestUrl = computed(() => {
 
 const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
 
-const isWorkflowRunning = computed(() => uiStore.isActionActive('workflowRunning'));
+const isWorkflowRunning = computed(() => uiStore.isActionActive['workflowRunning']);
 
 const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
 

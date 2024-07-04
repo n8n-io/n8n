@@ -105,11 +105,11 @@ const getActions = (user: IUser): UserAction[] => {
 	return props.actions.filter((action) => (action.guard ?? defaultGuard)(user));
 };
 
-const $emit = defineEmits<{
-	(event: 'action', _: { action: string; userId: string }): void;
+const emit = defineEmits<{
+	action: [value: { action: string; userId: string }];
 }>();
 const onUserAction = (user: IUser, action: string) =>
-	$emit('action', {
+	emit('action', {
 		action,
 		userId: user.id,
 	});
