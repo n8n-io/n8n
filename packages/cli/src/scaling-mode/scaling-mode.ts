@@ -7,7 +7,9 @@ import config from '@/config';
 import { Logger } from '@/Logger';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 
-import { SCALING_MODE_JOB_NAME, SCALING_MODE_QUEUE_NAME } from './constants';
+import { HIGHEST_SHUTDOWN_PRIORITY } from '@/constants';
+import { OnShutdown } from '@/decorators/OnShutdown';
+import { SCALING_MODE_JOB_TYPE, SCALING_MODE_QUEUE_NAME } from './constants';
 import { decodeWebhookResponse } from './webhook-response';
 import { RunningJobs } from './running-jobs';
 import type {
@@ -28,7 +30,7 @@ import type {
 export class ScalingMode {
 	private queue: Queue;
 
-	private readonly jobName = SCALING_MODE_JOB_NAME;
+	private readonly jobType = SCALING_MODE_JOB_TYPE;
 
 	private readonly queueName = SCALING_MODE_QUEUE_NAME;
 
@@ -43,8 +45,6 @@ export class ScalingMode {
 	 */
 
 	async init() {
-		this.logger.debug('[ScalingMode] Setting up queue...');
-
 		const { default: BullQueue } = await import('bull');
 		const { RedisClientService } = await import('@/services/redis/redis-client.service');
 		const service = Container.get(RedisClientService);
@@ -60,19 +60,16 @@ export class ScalingMode {
 
 		this.registerListeners();
 
-		this.logger.debug('[ScalingMode] Queue setup completed');
+		this.logger.debug('[ScalingMode] Init completed');
 	}
 
 	defineProcessor(processorFn: JobProcessorFn, concurrency: number) {
-		void this.queue.process(this.jobName, concurrency, processorFn);
+		void this.queue.process(this.jobType, concurrency, processorFn);
 	}
 
-	async closeQueue() {
-		this.logger.debug('[ScalingMode] Closing queue...');
-
-		await this.queue.close();
-
-		this.logger.debug('[ScalingMode] Closed queue');
+	@OnShutdown(HIGHEST_SHUTDOWN_PRIORITY)
+	async shutdown() {
+		await this.queue.pause(true, true);
 	}
 
 	async pingStore() {
@@ -86,7 +83,7 @@ export class ScalingMode {
 	async enqueueJob(jobData: JobData, jobOptions: JobOptions) {
 		const { executionId } = jobData;
 
-		const job = await this.queue.add(this.jobName, jobData, jobOptions);
+		const job = await this.queue.add(this.jobType, jobData, jobOptions);
 
 		this.logger.info('[ScalingMode] Enqueued job', { jobId: job.id, executionId });
 
