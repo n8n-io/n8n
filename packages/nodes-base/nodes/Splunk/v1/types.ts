@@ -28,3 +28,10 @@ export type SplunkError = {
 		};
 	};
 };
+
+export const SPLUNK = {
+	DICT: 's:dict',
+	LIST: 's:list',
+	ITEM: 's:item',
+	KEY: 's:key',
+};
