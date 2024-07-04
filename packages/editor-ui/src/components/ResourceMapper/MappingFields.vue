@@ -50,10 +50,10 @@ const {
 } = useNodeSpecificationValues(props.parameter.typeOptions);
 
 const emit = defineEmits<{
-	(event: 'fieldValueChanged', value: IUpdateInformation): void;
-	(event: 'removeField', field: string): void;
-	(event: 'addField', field: string): void;
-	(event: 'refreshFieldList'): void;
+	fieldValueChanged: [value: IUpdateInformation];
+	removeField: [field: string];
+	addField: [field: string];
+	refreshFieldList: [];
 }>();
 
 const ndvStore = useNDVStore();

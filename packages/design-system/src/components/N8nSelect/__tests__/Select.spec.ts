@@ -26,6 +26,9 @@ describe('components', () => {
 
 		it('should select an option', async () => {
 			const n8nSelectTestComponent = defineComponent({
+				props: {
+					teleported: Boolean,
+				},
 				setup() {
 					const options = ref(['1', '2', '3']);
 					const selected = ref('');
@@ -36,7 +39,7 @@ describe('components', () => {
 					};
 				},
 				template: `
-					<n8n-select v-model="selected">
+					<n8n-select v-model="selected" :teleported="teleported">
 						<n8n-option v-for="o in options" :key="o" :value="o" :label="o" />
 					</n8n-select>
 				`,

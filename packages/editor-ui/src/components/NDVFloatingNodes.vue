@@ -20,7 +20,7 @@
 						data-test-id="floating-node"
 						:data-node-name="node.name"
 						:data-node-placement="connectionGroup"
-						@click="$emit('switchSelectedNode', node.name)"
+						@click="emit('switchSelectedNode', node.name)"
 					>
 						<NodeIcon
 							:node-type="nodeType"
@@ -56,7 +56,9 @@ const props = defineProps<Props>();
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflow = workflowsStore.getCurrentWorkflow();
-const emit = defineEmits(['switchSelectedNode']);
+const emit = defineEmits<{
+	switchSelectedNode: [nodeName: string];
+}>();
 
 interface NodeConfig {
 	node: INodeUi;
