@@ -357,7 +357,7 @@ describe('Resolution-based completions', () => {
 
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input);
 
-			uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY].open = true;
+			uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY].open = true;
 			set(settingsStore.settings, ['enterprise', EnterpriseEditionFeature.ExternalSecrets], true);
 			externalSecretsStore.state.secrets = {
 				[provider]: secrets,
@@ -380,7 +380,7 @@ describe('Resolution-based completions', () => {
 
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input);
 
-			uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY].open = true;
+			uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY].open = true;
 			set(settingsStore.settings, ['enterprise', EnterpriseEditionFeature.ExternalSecrets], true);
 			externalSecretsStore.state.secrets = {
 				[provider]: secrets,

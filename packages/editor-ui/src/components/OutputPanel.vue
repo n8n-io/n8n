@@ -230,7 +230,7 @@ export default defineComponent({
 			return !!this.node && this.workflowsStore.isNodeExecuting(this.node.name);
 		},
 		workflowRunning(): boolean {
-			return this.uiStore.isActionActive('workflowRunning');
+			return this.uiStore.isActionActive['workflowRunning'];
 		},
 		workflowExecution(): IExecutionResponse | null {
 			return this.workflowsStore.getWorkflowExecution;

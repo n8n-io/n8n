@@ -26,8 +26,8 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-	(event: 'update:filters', value: ExecutionFilterType): void;
-	(event: 'execution:stop'): void;
+	'update:filters': [value: ExecutionFilterType];
+	'execution:stop': [];
 }>();
 
 const i18n = useI18n();

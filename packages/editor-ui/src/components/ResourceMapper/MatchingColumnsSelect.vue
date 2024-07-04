@@ -53,8 +53,8 @@ watch(
 );
 
 const emit = defineEmits<{
-	(event: 'matchingColumnsChanged', value: string[]): void;
-	(event: 'refreshFieldList'): void;
+	matchingColumnsChanged: [value: string[]];
+	refreshFieldList: [];
 }>();
 
 const availableMatchingFields = computed<ResourceMapperField[]>(() => {
