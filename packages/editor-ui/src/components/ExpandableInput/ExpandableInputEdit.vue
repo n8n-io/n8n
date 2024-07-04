@@ -30,10 +30,10 @@ type Props = {
 
 const props = defineProps<Props>();
 const emit = defineEmits<{
-	(event: 'update:model-value', value: string): void;
-	(event: 'enter', value: string): void;
-	(event: 'blur', value: string): void;
-	(event: 'esc'): void;
+	'update:model-value': [value: string];
+	enter: [value: string];
+	blur: [value: string];
+	esc: [];
 }>();
 
 const inputRef = ref<HTMLInputElement>();

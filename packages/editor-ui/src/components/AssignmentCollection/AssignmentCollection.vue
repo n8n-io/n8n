@@ -27,10 +27,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), { isReadOnly: false });
 
 const emit = defineEmits<{
-	(
-		event: 'valueChanged',
-		value: { name: string; node: string; value: AssignmentCollectionValue },
-	): void;
+	valueChanged: [value: { name: string; node: string; value: AssignmentCollectionValue }];
 }>();
 
 const i18n = useI18n();

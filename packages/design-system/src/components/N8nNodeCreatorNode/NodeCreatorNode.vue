@@ -18,7 +18,7 @@ export interface Props {
 defineProps<Props>();
 
 defineEmits<{
-	(event: 'tooltipClick', $e: MouseEvent): void;
+	tooltipClick: [e: MouseEvent];
 }>();
 
 const { t } = useI18n();

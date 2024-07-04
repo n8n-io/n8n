@@ -219,7 +219,7 @@ export default defineComponent({
 	computed: {
 		...mapStores(useWorkflowsStore, useUIStore, useNodeTypesStore),
 		isLoading(): boolean {
-			return this.uiStore.isActionActive('workflowRunning');
+			return this.uiStore.isActionActive['workflowRunning'];
 		},
 	},
 	async mounted() {

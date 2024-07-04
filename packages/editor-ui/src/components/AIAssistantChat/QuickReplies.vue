@@ -10,7 +10,7 @@ type QuickReply = {
 const locale = useI18n();
 
 const emit = defineEmits<{
-	(event: 'replySelected', value: QuickReply): void;
+	replySelected: [value: QuickReply];
 }>();
 
 defineProps<{
