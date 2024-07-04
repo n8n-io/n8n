@@ -7,7 +7,7 @@
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
     "format": "prettier --write . --ignore-path ../../../.prettierignore",
-    "lint": "eslint . --quiet",
+    "lint": "eslint .",
     "lintfix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "jest",

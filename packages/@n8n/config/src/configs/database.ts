@@ -2,22 +2,18 @@ import { Config, Env, Nested } from '../decorators';
 
 @Config
 class LoggingConfig {
-	/** Typeorm logging enabled flag */
+	/** Whether database logging is enabled. */
 	@Env('DB_LOGGING_ENABLED')
 	readonly enabled: boolean = false;
 
 	/**
-	 * Logging level options.
-	 * Possible values: query,error,schema,warn,info,log.
-	 * To enable all logging, specify "all"
+	 * Database logging level. Requires `DB_LOGGING_MAX_EXECUTION_TIME` to be higher than `0`.
 	 */
 	@Env('DB_LOGGING_OPTIONS')
 	readonly options: 'query' | 'error' | 'schema' | 'warn' | 'info' | 'log' | 'all' = 'error';
 
 	/**
-	 * Maximum number of milliseconds query should be executed before logger logs a warning.
-	 *
-	 * Set 0 to disable long running query warning
+	 * Only queries that exceed this time (ms) will be logged. Set `0` to disable.
 	 */
 	@Env('DB_LOGGING_MAX_EXECUTION_TIME')
 	readonly maxQueryExecutionTime: number = 0;
@@ -26,8 +22,8 @@ class LoggingConfig {
 @Config
 class PostgresSSLConfig {
 	/**
-	 * If SSL should be enabled.
-	 * If `ca`, `cert`, or `key` are defined, this will automatically default to true
+	 * Whether to enable SSL.
+	 * If `DB_POSTGRESDB_SSL_CA`, `DB_POSTGRESDB_SSL_CERT`, or `DB_POSTGRESDB_SSL_KEY` are defined, `DB_POSTGRESDB_SSL_ENABLED` defaults to `true`.
 	 */
 	@Env('DB_POSTGRESDB_SSL_ENABLED')
 	readonly enabled: boolean = false;
@@ -51,31 +47,31 @@ class PostgresSSLConfig {
 
 @Config
 class PostgresConfig {
-	/** PostgresDB Database */
+	/** Postgres database name */
 	@Env('DB_POSTGRESDB_DATABASE')
 	database: string = 'n8n';
 
-	/** PostgresDB Host */
+	/** Postgres database host */
 	@Env('DB_POSTGRESDB_HOST')
 	readonly host: string = 'localhost';
 
-	/** PostgresDB Password */
+	/** Postgres database password */
 	@Env('DB_POSTGRESDB_PASSWORD')
 	readonly password: string = '';
 
-	/** PostgresDB Port */
+	/** Postgres database port */
 	@Env('DB_POSTGRESDB_PORT')
 	readonly port: number = 5432;
 
-	/** PostgresDB User */
+	/** Postgres database user */
 	@Env('DB_POSTGRESDB_USER')
 	readonly user: string = 'postgres';
 
-	/** PostgresDB Schema */
+	/** Postgres database schema */
 	@Env('DB_POSTGRESDB_SCHEMA')
 	readonly schema: string = 'public';
 
-	/** PostgresDB Pool Size */
+	/** Postgres database pool size */
 	@Env('DB_POSTGRESDB_POOL_SIZE')
 	readonly poolSize = 2;
 
@@ -85,34 +81,34 @@ class PostgresConfig {
 
 @Config
 class MysqlConfig {
-	/** @deprecated MySQL Database */
+	/** @deprecated MySQL database name */
 	@Env('DB_MYSQLDB_DATABASE')
 	database: string = 'n8n';
 
-	/** MySQL Host */
+	/** MySQL database host */
 	@Env('DB_MYSQLDB_HOST')
 	readonly host: string = 'localhost';
 
-	/** MySQL Password */
+	/** MySQL database password */
 	@Env('DB_MYSQLDB_PASSWORD')
 	readonly password: string = '';
 
-	/** MySQL Port */
+	/** MySQL database port */
 	@Env('DB_MYSQLDB_PORT')
 	readonly port: number = 3306;
 
-	/** MySQL User */
+	/** MySQL database user */
 	@Env('DB_MYSQLDB_USER')
 	readonly user: string = 'root';
 }
 
 @Config
 class SqliteConfig {
-	/** SQLite Database file name */
+	/** SQLite database file name */
 	@Env('DB_SQLITE_DATABASE')
 	readonly database: string = 'database.sqlite';
 
-	/** SQLite Pool Size (Setting this to 0 disables pooling) */
+	/** SQLite database pool size. Set to `0` to disable pooling. */
 	@Env('DB_SQLITE_POOL_SIZE')
 	readonly poolSize: number = 0;
 
@@ -123,10 +119,9 @@ class SqliteConfig {
 	readonly enableWAL: boolean = this.poolSize > 1;
 
 	/**
-	 * Runs VACUUM operation on startup to rebuild the database.
-	 * Reduces file=size and optimizes indexes.
+	 * Run `VACUUM` on startup to rebuild the database, reducing file size and optimizing indexes.
 	 *
-	 * **WARNING**: This is a long running blocking operation. Will increase start-up time.
+	 * @warning Long-running blocking operation that will increase startup time.
 	 */
 	@Env('DB_SQLITE_VACUUM_ON_STARTUP')
 	readonly executeVacuumOnStartup: boolean = false;

@@ -29,11 +29,11 @@ export class SmtpConfig {
 	@Env('N8N_SMTP_PORT')
 	readonly port: number = 465;
 
-	/** Whether or not to use SSL for SMTP */
+	/** Whether to use SSL for SMTP */
 	@Env('N8N_SMTP_SSL')
 	readonly secure: boolean = true;
 
-	/** Whether or not to use STARTTLS for SMTP when SSL is disabled */
+	/** Whether to use STARTTLS for SMTP when SSL is disabled */
 	@Env('N8N_SMTP_STARTTLS')
 	readonly startTLS: boolean = true;
 

@@ -3,13 +3,13 @@ import { Config, Env, Nested } from '../decorators';
 @Config
 class CredentialsOverwrite {
 	/**
-	 * Allows to set default values for credentials which get automatically prefilled and the user does not get displayed and can not change.
+	 * Prefilled data ("overwrite") in credential types. End users cannot view or change this data.
 	 * Format: { CREDENTIAL_NAME: { PARAMETER: VALUE }}
 	 */
 	@Env('CREDENTIALS_OVERWRITE_DATA')
 	readonly data: string = '{}';
 
-	/** Fetch credentials from API */
+	/** Internal API endpoint to fetch overwritten credential types from. */
 	@Env('CREDENTIALS_OVERWRITE_ENDPOINT')
 	readonly endpoint: string = '';
 }
