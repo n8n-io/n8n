@@ -42,14 +42,18 @@ if (!inE2ETests && !inTest) {
 		const configFiles = N8N_CONFIG_FILES.split(',');
 		for (const configFile of configFiles) {
 			if (!configFile) continue;
+			// NOTE: This is "temporary" code until we have migrated all config to the new package
 			try {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				const data = JSON.parse(readFileSync(configFile, 'utf8'));
 				for (const prefix in data) {
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+					const innerData = data[prefix];
 					if (prefix in globalConfig) {
 						// @ts-ignore
-						merge(globalConfig[prefix], data[prefix]);
+						merge(globalConfig[prefix], innerData);
 					} else {
-						const flattenedData: Record<string, string> = flatten(data[prefix]);
+						const flattenedData: Record<string, string> = flatten(innerData);
 						for (const key in flattenedData) {
 							config.set(`${prefix}.${key}`, flattenedData[key]);
 						}
