@@ -1332,7 +1332,6 @@ export interface ISettingsState {
 	mfa: {
 		enabled: boolean;
 	};
-	onboardingCallPromptEnabled: boolean;
 	saveDataErrorExecution: WorkflowSettings.SaveDataExecution;
 	saveDataSuccessExecution: WorkflowSettings.SaveDataExecution;
 	saveManualExecutions: boolean;
@@ -1426,16 +1425,6 @@ export interface IInviteResponse {
 		inviteAcceptUrl: string;
 	};
 	error?: string;
-}
-
-export interface IOnboardingCallPromptResponse {
-	nextPrompt: IOnboardingCallPrompt;
-}
-
-export interface IOnboardingCallPrompt {
-	title: string;
-	description: string;
-	toast_sequence_number: number;
 }
 
 export interface ITab {
@@ -1854,10 +1843,6 @@ export type NewConnectionInfo = {
 	nodeCreatorView?: NodeFilterType;
 	outputType?: NodeConnectionType;
 	endpointUuid?: string;
-};
-
-export type AIAssistantConnectionInfo = NewConnectionInfo & {
-	stepName?: string;
 };
 
 export type EnterpriseEditionFeatureKey =

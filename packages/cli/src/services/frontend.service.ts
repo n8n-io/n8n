@@ -163,7 +163,6 @@ export class FrontendService {
 				enabled: config.getEnv('templates.enabled'),
 				host: config.getEnv('templates.host'),
 			},
-			onboardingCallPromptEnabled: config.getEnv('onboardingCallPrompt.enabled'),
 			executionMode: config.getEnv('executions.mode'),
 			pushBackend: config.getEnv('push.backend'),
 			communityNodesEnabled: config.getEnv('nodes.communityPackages.enabled'),
@@ -216,10 +215,6 @@ export class FrontendService {
 			},
 			ai: {
 				enabled: config.getEnv('ai.enabled'),
-				provider: config.getEnv('ai.provider'),
-				features: {
-					generateCurl: !!config.getEnv('ai.openAI.apiKey'),
-				},
 			},
 			workflowHistory: {
 				pruneTime: -1,

@@ -1,81 +1,43 @@
-import { ApplicationError } from 'n8n-workflow';
-import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
-
+import { createServer, type AddressInfo } from 'node:net';
 import mysql2 from 'mysql2/promise';
-import type { Client, ConnectConfig } from 'ssh2';
+import type {
+	ICredentialTestFunctions,
+	IDataObject,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+} from 'n8n-workflow';
 
-import type { Mysql2Pool } from '../helpers/interfaces';
 import { formatPrivateKey } from '@utils/utilities';
-
-async function createSshConnectConfig(credentials: IDataObject) {
-	if (credentials.sshAuthenticateWith === 'password') {
-		return {
-			host: credentials.sshHost as string,
-			port: credentials.sshPort as number,
-			username: credentials.sshUser as string,
-			password: credentials.sshPassword as string,
-		} as ConnectConfig;
-	} else {
-		const options: ConnectConfig = {
-			host: credentials.sshHost as string,
-			username: credentials.sshUser as string,
-			port: credentials.sshPort as number,
-			privateKey: formatPrivateKey(credentials.privateKey as string),
-		};
-
-		if (credentials.passphrase) {
-			options.passphrase = credentials.passphrase as string;
-		}
-
-		return options;
-	}
-}
+import type { Mysql2Pool, MysqlNodeCredentials } from '../helpers/interfaces';
+import { LOCALHOST } from '@utils/constants';
 
 export async function createPool(
-	credentials: ICredentialDataDecryptedObject,
+	this: IExecuteFunctions | ICredentialTestFunctions | ILoadOptionsFunctions,
+	credentials: MysqlNodeCredentials,
 	options?: IDataObject,
-	sshClient?: Client,
 ): Promise<Mysql2Pool> {
-	if (credentials === undefined) {
-		throw new ApplicationError('Credentials not selected, select or add new credentials', {
-			level: 'warning',
-		});
-	}
-	const {
-		ssl,
-		caCertificate,
-		clientCertificate,
-		clientPrivateKey,
-		sshTunnel,
-		sshHost,
-		sshUser,
-		sshPassword,
-		sshPort,
-		sshMysqlPort,
-		privateKey,
-		passphrase,
-		sshAuthenticateWith,
-		...baseCredentials
-	} = credentials;
-
-	if (ssl) {
-		baseCredentials.ssl = {};
-
-		if (caCertificate) {
-			baseCredentials.ssl.ca = formatPrivateKey(caCertificate as string);
-		}
-
-		if (clientCertificate || clientPrivateKey) {
-			baseCredentials.ssl.cert = formatPrivateKey(clientCertificate as string);
-			baseCredentials.ssl.key = formatPrivateKey(clientPrivateKey as string);
-		}
-	}
-
 	const connectionOptions: mysql2.ConnectionOptions = {
-		...baseCredentials,
+		host: credentials.host,
+		port: credentials.port,
+		database: credentials.database,
+		user: credentials.user,
+		password: credentials.password,
 		multipleStatements: true,
 		supportBigNumbers: true,
 	};
+
+	if (credentials.ssl) {
+		connectionOptions.ssl = {};
+
+		if (credentials.caCertificate) {
+			connectionOptions.ssl.ca = formatPrivateKey(credentials.caCertificate);
+		}
+
+		if (credentials.clientCertificate || credentials.clientPrivateKey) {
+			connectionOptions.ssl.cert = formatPrivateKey(credentials.clientCertificate);
+			connectionOptions.ssl.key = formatPrivateKey(credentials.clientPrivateKey);
+		}
+	}
 
 	if (options?.nodeVersion && (options.nodeVersion as number) >= 2.1) {
 		connectionOptions.dateStrings = true;
@@ -93,46 +55,39 @@ export async function createPool(
 		connectionOptions.bigNumberStrings = true;
 	}
 
-	if (!sshTunnel) {
+	if (!credentials.sshTunnel) {
 		return mysql2.createPool(connectionOptions);
 	} else {
-		if (!sshClient) {
-			throw new ApplicationError('SSH Tunnel is enabled but no SSH Client was provided', {
-				level: 'warning',
-			});
+		if (credentials.sshAuthenticateWith === 'privateKey' && credentials.privateKey) {
+			credentials.privateKey = formatPrivateKey(credentials.privateKey as string);
 		}
+		const sshClient = await this.helpers.getSSHClient(credentials);
 
-		const tunnelConfig = await createSshConnectConfig(credentials);
-
-		const forwardConfig = {
-			srcHost: '127.0.0.1',
-			srcPort: sshMysqlPort as number,
-			dstHost: credentials.host as string,
-			dstPort: credentials.port as number,
-		};
-
-		const poolSetup = new Promise<mysql2.Pool>((resolve, reject) => {
-			sshClient
-				.on('ready', () => {
-					sshClient.forwardOut(
-						forwardConfig.srcHost,
-						forwardConfig.srcPort,
-						forwardConfig.dstHost,
-						forwardConfig.dstPort,
-						(err, stream) => {
-							if (err) reject(err);
-							const updatedDbServer = {
-								...connectionOptions,
-								stream,
-							};
-							const connection = mysql2.createPool(updatedDbServer);
-							resolve(connection);
-						},
-					);
-				})
-				.connect(tunnelConfig);
+		// Find a free TCP port
+		const localPort = await new Promise<number>((resolve) => {
+			const tempServer = createServer();
+			tempServer.listen(0, LOCALHOST, () => {
+				resolve((tempServer.address() as AddressInfo).port);
+				tempServer.close();
+			});
 		});
 
-		return await poolSetup;
+		const stream = await new Promise((resolve, reject) => {
+			sshClient.forwardOut(
+				LOCALHOST,
+				localPort,
+				credentials.host,
+				credentials.port,
+				(err, clientChannel) => {
+					if (err) return reject(err);
+					resolve(clientChannel);
+				},
+			);
+		});
+
+		return mysql2.createPool({
+			...connectionOptions,
+			stream,
+		});
 	}
 }

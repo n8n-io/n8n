@@ -21,7 +21,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	options.nodeVersion = node.typeVersion;
 	options.operation = operation;
 
-	const { db, pgp, sshClient } = await configurePostgres(credentials, options);
+	const { db, pgp } = await configurePostgres.call(this, credentials, options);
 
 	const runQueries = configureQueryRunner.call(
 		this,
@@ -53,13 +53,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					`The operation "${operation}" is not supported!`,
 				);
 		}
-	} catch (error) {
-		throw error;
 	} finally {
-		if (sshClient) {
-			sshClient.end();
-		}
-
 		if (!db.$pool.ending) await db.$pool.end();
 	}
 

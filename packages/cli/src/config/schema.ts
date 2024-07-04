@@ -1232,15 +1232,6 @@ export const schema = {
 		env: 'N8N_DEFAULT_LOCALE',
 	},
 
-	onboardingCallPrompt: {
-		enabled: {
-			doc: 'Whether onboarding call prompt feature is available',
-			format: Boolean,
-			default: true,
-			env: 'N8N_ONBOARDING_CALL_PROMPTS_ENABLED',
-		},
-	},
-
 	license: {
 		serverUrl: {
 			format: String,
@@ -1379,34 +1370,6 @@ export const schema = {
 			format: Boolean,
 			default: false,
 			env: 'N8N_AI_ENABLED',
-		},
-		provider: {
-			doc: 'AI provider to use. Currently only "openai" is supported.',
-			format: String,
-			default: 'openai',
-			env: 'N8N_AI_PROVIDER',
-		},
-		openAI: {
-			apiKey: {
-				doc: 'Enable AI features using OpenAI API key',
-				format: String,
-				default: '',
-				env: 'N8N_AI_OPENAI_API_KEY',
-			},
-			model: {
-				doc: 'OpenAI model to use',
-				format: String,
-				default: 'gpt-4-turbo',
-				env: 'N8N_AI_OPENAI_MODEL',
-			},
-		},
-		pinecone: {
-			apiKey: {
-				doc: 'Enable AI features using Pinecone API key',
-				format: String,
-				default: '',
-				env: 'N8N_AI_PINECONE_API_KEY',
-			},
 		},
 	},
 

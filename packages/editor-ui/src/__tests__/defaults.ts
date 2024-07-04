@@ -51,7 +51,6 @@ export const defaultSettings: IN8nUISettings = {
 	logLevel: 'info',
 	maxExecutionTimeout: 0,
 	oauthCallbackUrls: { oauth1: '', oauth2: '' },
-	onboardingCallPromptEnabled: false,
 	personalizationSurveyEnabled: false,
 	releaseChannel: 'stable',
 	posthog: {
@@ -114,10 +113,6 @@ export const defaultSettings: IN8nUISettings = {
 	},
 	ai: {
 		enabled: false,
-		provider: '',
-		features: {
-			generateCurl: false,
-		},
 	},
 	workflowHistory: {
 		pruneTime: 0,
