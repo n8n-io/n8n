@@ -7,6 +7,7 @@
 		:filters="filters"
 		:additional-filters-handler="onFilter"
 		:type-props="{ itemSize: 77 }"
+		:disabled="readOnlyEnv || !projectPermissions?.credential?.create"
 		@click:add="addCredential"
 		@update:filters="filters = $event"
 	>
@@ -78,6 +79,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import useEnvironmentsStore from '@/stores/environments.ee.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import { getResourcePermissions } from '@/permissions';
 
 type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
 
@@ -130,6 +132,12 @@ export default defineComponent({
 			return this.projectsStore.currentProject
 				? this.$locale.baseText('credentials.project.add')
 				: this.$locale.baseText('credentials.add');
+		},
+		readOnlyEnv(): boolean {
+			return this.sourceControlStore.preferences.branchReadOnly;
+		},
+		projectPermissions() {
+			return getResourcePermissions(this.projectsStore.currentProject?.scopes);
 		},
 	},
 	watch: {
