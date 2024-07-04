@@ -22,7 +22,7 @@ import { videoFields, videoOperations } from './VideoDescription';
 
 import { videoCategoryFields, videoCategoryOperations } from './VideoCategoryDescription';
 
-import { countriesCodes } from './CountryCodes';
+import { isoCountryCodes } from '@utils/ISOCountryCodes';
 
 const UPLOAD_CHUNK_SIZE = 1024 * 1024;
 
@@ -120,7 +120,7 @@ export class YouTube implements INodeType {
 			// select them easily
 			async getCountriesCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				for (const countryCode of countriesCodes) {
+				for (const countryCode of isoCountryCodes) {
 					const countryCodeName = `${countryCode.name} - ${countryCode.alpha2}`;
 					const countryCodeId = countryCode.alpha2;
 					returnData.push({
