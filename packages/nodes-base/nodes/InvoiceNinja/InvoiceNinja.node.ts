@@ -451,11 +451,11 @@ export class InvoiceNinja implements INodeType {
 						if (additionalFields.taxName2) {
 							body.tax_name2 = additionalFields.taxName2 as string;
 						}
-						if (additionalFields.taxtRate1) {
-							body.tax_rate1 = additionalFields.taxtRate1 as number;
+						if (additionalFields.taxRate1) {
+							body.tax_rate1 = additionalFields.taxRate1 as number;
 						}
-						if (additionalFields.taxtRate2) {
-							body.tax_rate2 = additionalFields.taxtRate2 as number;
+						if (additionalFields.taxRate2) {
+							body.tax_rate2 = additionalFields.taxRate2 as number;
 						}
 						if (additionalFields.discount) {
 							body.discount = additionalFields.discount as number;
@@ -477,11 +477,11 @@ export class InvoiceNinja implements INodeType {
 						if (additionalFields.markSent) {
 							qs.mark_sent = additionalFields.markSent as boolean;
 						}
-						const invoceItemsValues = (this.getNodeParameter('invoiceItemsUi', i) as IDataObject)
+						const invoiceItemsValues = (this.getNodeParameter('invoiceItemsUi', i) as IDataObject)
 							.invoiceItemsValues as IDataObject[];
-						if (invoceItemsValues) {
+						if (invoiceItemsValues) {
 							const invoiceItems: IItem[] = [];
-							for (const itemValue of invoceItemsValues) {
+							for (const itemValue of invoiceItemsValues) {
 								const item: IItem = {
 									cost: itemValue.cost as number,
 									notes: itemValue.description as string,
@@ -883,8 +883,8 @@ export class InvoiceNinja implements INodeType {
 						if (additionalFields.dueDate) {
 							body.due_date = additionalFields.dueDate as string;
 						}
-						if (additionalFields.quouteDate) {
-							body.invoice_date = additionalFields.quouteDate as string;
+						if (additionalFields.quoteDate) {
+							body.invoice_date = additionalFields.quoteDate as string;
 						}
 						if (additionalFields.quoteNumber) {
 							if (apiVersion === 'v4') {
@@ -920,11 +920,11 @@ export class InvoiceNinja implements INodeType {
 						if (additionalFields.taxName2) {
 							body.tax_name2 = additionalFields.taxName2 as string;
 						}
-						if (additionalFields.taxtRate1) {
-							body.tax_rate1 = additionalFields.taxtRate1 as number;
+						if (additionalFields.taxRate1) {
+							body.tax_rate1 = additionalFields.taxRate1 as number;
 						}
-						if (additionalFields.taxtRate2) {
-							body.tax_rate2 = additionalFields.taxtRate2 as number;
+						if (additionalFields.taxRate2) {
+							body.tax_rate2 = additionalFields.taxRate2 as number;
 						}
 						if (additionalFields.discount) {
 							body.discount = additionalFields.discount as number;
@@ -935,11 +935,11 @@ export class InvoiceNinja implements INodeType {
 						if (additionalFields.emailQuote) {
 							body.email_invoice = additionalFields.emailQuote as boolean;
 						}
-						const invoceItemsValues = (this.getNodeParameter('invoiceItemsUi', i) as IDataObject)
+						const invoiceItemsValues = (this.getNodeParameter('invoiceItemsUi', i) as IDataObject)
 							.invoiceItemsValues as IDataObject[];
-						if (invoceItemsValues) {
+						if (invoiceItemsValues) {
 							const invoiceItems: IItem[] = [];
-							for (const itemValue of invoceItemsValues) {
+							for (const itemValue of invoiceItemsValues) {
 								const item: IItem = {
 									cost: itemValue.cost as number,
 									notes: itemValue.description as string,
