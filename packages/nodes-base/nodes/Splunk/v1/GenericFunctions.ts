@@ -10,17 +10,19 @@ import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 
 import { parseString } from 'xml2js';
 
-import type {
-	SplunkCredentials,
-	SplunkError,
-	SplunkFeedResponse,
-	SplunkResultResponse,
-	SplunkSearchResponse,
+import {
+	SPLUNK,
+	type SplunkCredentials,
+	type SplunkError,
+	type SplunkFeedResponse,
+	type SplunkResultResponse,
+	type SplunkSearchResponse,
 } from './types';
 
 // ----------------------------------------
 //            entry formatting
 // ----------------------------------------
+
 function compactEntryContent(splunkObject: any): any {
 	if (typeof splunkObject !== 'object') {
 		return {};
@@ -33,13 +35,13 @@ function compactEntryContent(splunkObject: any): any {
 		}, {});
 	}
 
-	if (splunkObject['s:dict']) {
-		const obj = splunkObject['s:dict']['s:key'];
+	if (splunkObject[SPLUNK.DICT]) {
+		const obj = splunkObject[SPLUNK.DICT][SPLUNK.KEY];
 		return { [splunkObject.$.name]: compactEntryContent(obj) };
 	}
 
-	if (splunkObject['s:list']) {
-		const items = splunkObject['s:list']['s:item'];
+	if (splunkObject[SPLUNK.LIST]) {
+		const items = splunkObject[SPLUNK.LIST][SPLUNK.ITEM];
 		return { [splunkObject.$.name]: items };
 	}
 
@@ -55,7 +57,7 @@ function compactEntryContent(splunkObject: any): any {
 }
 
 function formatEntryContent(content: any): any {
-	return content['s:dict']['s:key'].reduce((acc: any, cur: any) => {
+	return content[SPLUNK.DICT][SPLUNK.KEY].reduce((acc: any, cur: any) => {
 		acc = { ...acc, ...compactEntryContent(cur) };
 		return acc;
 	}, {});
@@ -113,13 +115,12 @@ export async function splunkApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ): Promise<any> {
-	const { authToken, baseUrl, allowUnauthorizedCerts } = (await this.getCredentials(
+	const { baseUrl, allowUnauthorizedCerts } = (await this.getCredentials(
 		'splunkApi',
 	)) as SplunkCredentials;
 
 	const options: IRequestOptions = {
 		headers: {
-			Authorization: `Bearer ${authToken}`,
 			'Content-Type': 'application/x-www-form-urlencoded',
 		},
 		method,
@@ -145,7 +146,11 @@ export async function splunkApiRequest(
 
 		do {
 			try {
-				const response = await this.helpers.request(options);
+				const response = await this.helpers.requestWithAuthentication.call(
+					this,
+					'splunkApi',
+					options,
+				);
 				result = await parseXml(response);
 				return result;
 			} catch (error) {
@@ -257,5 +262,5 @@ export function getId(
 ) {
 	const id = this.getNodeParameter(idType, i) as string;
 
-	return id.includes(endpoint) ? id.split(endpoint).pop()! : id;
+	return id.includes(endpoint) ? id.split(endpoint).pop() : id;
 }
