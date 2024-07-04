@@ -170,19 +170,6 @@ export function hasSharing(
 }
 
 // ----------------------------------
-//          /ai
-// ----------------------------------
-
-export declare namespace AIRequest {
-	export type GenerateCurl = AuthenticatedRequest<{}, {}, AIGenerateCurlPayload>;
-}
-
-export interface AIGenerateCurlPayload {
-	service: string;
-	request: string;
-}
-
-// ----------------------------------
 //          /credentials
 // ----------------------------------
 

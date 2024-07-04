@@ -37,9 +37,9 @@ import { InternalHooks } from '@/InternalHooks';
 import { handleMfaDisable, isMfaFeatureEnabled } from '@/Mfa/helpers';
 import type { FrontendService } from '@/services/frontend.service';
 import { OrchestrationService } from '@/services/orchestration.service';
+import { AuditEventRelay } from './eventbus/audit-event-relay.service';
 
 import '@/controllers/activeWorkflows.controller';
-import '@/controllers/ai.controller';
 import '@/controllers/auth.controller';
 import '@/controllers/binaryData.controller';
 import '@/controllers/curl.controller';
@@ -66,7 +66,6 @@ import '@/ExternalSecrets/ExternalSecrets.controller.ee';
 import '@/license/license.controller';
 import '@/workflows/workflowHistory/workflowHistory.controller.ee';
 import '@/workflows/workflows.controller';
-import { AuditEventRelay } from './eventbus/audit-event-relay.service';
 
 const exec = promisify(callbackExec);
 

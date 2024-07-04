@@ -29,7 +29,6 @@ import {
 	MFA_SETUP_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 	SETUP_CREDENTIALS_MODAL_KEY,
-	GENERATE_CURL_MODAL_KEY,
 	PROJECT_MOVE_RESOURCE_MODAL,
 	PROJECT_MOVE_RESOURCE_CONFIRM_MODAL,
 } from '@/constants';
@@ -55,7 +54,6 @@ import WorkflowSettings from '@/components/WorkflowSettings.vue';
 import DeleteUserModal from '@/components/DeleteUserModal.vue';
 import ActivationModal from '@/components/ActivationModal.vue';
 import ImportCurlModal from '@/components/ImportCurlModal.vue';
-import GenerateCurlModal from '@/components/GenerateCurlModal.vue';
 import MfaSetupModal from '@/components/MfaSetupModal.vue';
 import WorkflowShareModal from '@/components/WorkflowShareModal.ee.vue';
 import EventDestinationSettingsModal from '@/components/SettingsLogStreaming/EventDestinationSettingsModal.ee.vue';
@@ -164,10 +162,6 @@ import ProjectMoveResourceConfirmModal from '@/components/Projects/ProjectMoveRe
 
 		<ModalRoot :name="IMPORT_CURL_MODAL_KEY">
 			<ImportCurlModal />
-		</ModalRoot>
-
-		<ModalRoot :name="GENERATE_CURL_MODAL_KEY">
-			<GenerateCurlModal />
 		</ModalRoot>
 
 		<ModalRoot :name="COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY">
