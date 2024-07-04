@@ -103,6 +103,8 @@ export function useCanvasOperations({
 		position: CanvasElement['position'],
 		{ trackHistory = false, trackBulk = true } = {},
 	) {
+		console.log('updateNodePosition', id, position);
+
 		const node = workflowsStore.getNodeById(id);
 		if (!node) {
 			return;
@@ -780,12 +782,6 @@ export function useCanvasOperations({
 			targetNode,
 			connection,
 		);
-
-		console.log(isConnectionAllowed(sourceNode, targetNode, mappedConnection[1].type), {
-			sourceNode,
-			targetNode,
-			mappedConnection,
-		});
 
 		if (!isConnectionAllowed(sourceNode, targetNode, mappedConnection[1].type)) {
 			return;
