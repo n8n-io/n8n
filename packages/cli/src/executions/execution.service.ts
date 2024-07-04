@@ -462,10 +462,10 @@ export class ExecutionService {
 			await this.waitTracker.stopExecution(execution.id);
 		}
 
-		const job = await this.queue.findRunningJobBy({ executionId: execution.id });
+		const job = await this.scalingMode.findRunningJobBy({ executionId: execution.id });
 
 		if (job) {
-			await this.queue.stopJob(job);
+			await this.scalingMode.stopJob(job);
 		} else {
 			this.logger.debug('Job to stop not in queue', { executionId: execution.id });
 		}

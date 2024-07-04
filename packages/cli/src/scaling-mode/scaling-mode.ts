@@ -101,6 +101,12 @@ export class ScalingMode {
 		return await this.queue.getJobs(statuses);
 	}
 
+	async findRunningJobBy({ executionId }: { executionId: string }) {
+		const activeOrWaitingJobs = await this.findJobsByState(['active', 'waiting']);
+
+		return activeOrWaitingJobs.find(({ data }) => data.executionId === executionId) ?? null;
+	}
+
 	async stopJob(job: Job) {
 		const {
 			id: jobId,
