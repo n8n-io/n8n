@@ -1,9 +1,16 @@
-import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import {
+	type IExecuteFunctions,
+	type IDataObject,
+	type INodeExecutionData,
+	NodeOperationError,
+	type ResourceMapperField,
+} from 'n8n-workflow';
 import type { SheetProperties, ValueInputOption } from '../../helpers/GoogleSheets.types';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
 import {
 	autoMapInputData,
 	cellFormatDefault,
+	checkForSchemaChanges,
 	mapFields,
 	untilSheetSelected,
 } from '../../helpers/GoogleSheets.utils';
@@ -224,6 +231,21 @@ export async function execute(
 	let headerRow = 1;
 	if (locationDefine?.headerRow) {
 		headerRow = locationDefine.headerRow as number;
+	}
+
+	if (nodeVersion >= 4.4 && dataMode !== 'autoMapInputData') {
+		//not possible to refresh columns when mode is autoMapInputData
+		const sheetData = await sheet.getData(sheetName, 'FORMATTED_VALUE');
+
+		if (sheetData?.[headerRow - 1] === undefined) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`Could not retrieve the column names from row ${headerRow}`,
+			);
+		}
+
+		const schema = this.getNodeParameter('columns.schema', 0) as ResourceMapperField[];
+		checkForSchemaChanges(this.getNode(), sheetData[headerRow - 1], schema);
 	}
 
 	let setData: IDataObject[] = [];

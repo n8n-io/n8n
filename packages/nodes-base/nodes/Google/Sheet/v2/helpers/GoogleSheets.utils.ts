@@ -5,6 +5,7 @@ import type {
 	INodeListSearchItems,
 	INodePropertyOptions,
 	INode,
+	ResourceMapperField,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import type { GoogleSheet } from './GoogleSheet';
@@ -333,4 +334,26 @@ export function cellFormatDefault(nodeVersion: number) {
 		return 'RAW';
 	}
 	return 'USER_ENTERED';
+}
+
+export function checkForSchemaChanges(
+	node: INode,
+	columnNames: string[],
+	schema: ResourceMapperField[],
+) {
+	const updatedColumnNames: Array<{ oldName: string; newName: string }> = [];
+
+	for (const [columnIndex, columnName] of columnNames.entries()) {
+		const schemaEntry = schema[columnIndex];
+		if (schemaEntry === undefined) break;
+		if (columnName !== schema[columnIndex].id) {
+			updatedColumnNames.push({ oldName: schema[columnIndex].id, newName: columnName });
+		}
+	}
+
+	if (updatedColumnNames.length) {
+		throw new NodeOperationError(node, "Column names were updated after the node's setup", {
+			description: `Refresh the columns list in the 'Column to Match On' parameter. Updated columns: ${updatedColumnNames.map((c) => `${c.oldName} -> ${c.newName}`).join(', ')}`,
+		});
+	}
 }

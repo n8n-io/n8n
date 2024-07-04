@@ -1,12 +1,18 @@
 <script setup lang="ts">
 import { computed, inject, useCssModule } from 'vue';
 import { CanvasNodeKey } from '@/constants';
+import { useI18n } from '@/composables/useI18n';
 
+const emit = defineEmits<{
+	delete: [];
+	toggle: [];
+}>();
+
+const $style = useCssModule();
+const i18n = useI18n();
 const node = inject(CanvasNodeKey);
 
 const data = computed(() => node?.data.value);
-
-const $style = useCssModule();
 
 // @TODO
 const workflowRunning = false;
@@ -17,11 +23,13 @@ const nodeDisabledTitle = 'Test';
 // @TODO
 function executeNode() {}
 
-// @TODO
-function toggleDisableNode() {}
+function onToggleNode() {
+	emit('toggle');
+}
 
-// @TODO
-function deleteNode() {}
+function onDeleteNode() {
+	emit('delete');
+}
 
 // @TODO
 function openContextMenu(_e: MouseEvent, _type: string) {}
@@ -38,7 +46,7 @@ function openContextMenu(_e: MouseEvent, _type: string) {}
 				size="small"
 				icon="play"
 				:disabled="workflowRunning"
-				:title="$locale.baseText('node.testStep')"
+				:title="i18n.baseText('node.testStep')"
 				@click="executeNode"
 			/>
 			<N8nIconButton
@@ -48,7 +56,7 @@ function openContextMenu(_e: MouseEvent, _type: string) {}
 				size="small"
 				icon="power-off"
 				:title="nodeDisabledTitle"
-				@click="toggleDisableNode"
+				@click="onToggleNode"
 			/>
 			<N8nIconButton
 				data-test-id="delete-node-button"
@@ -56,8 +64,8 @@ function openContextMenu(_e: MouseEvent, _type: string) {}
 				size="small"
 				text
 				icon="trash"
-				:title="$locale.baseText('node.delete')"
-				@click="deleteNode"
+				:title="i18n.baseText('node.delete')"
+				@click="onDeleteNode"
 			/>
 			<N8nIconButton
 				data-test-id="overflow-node-button"

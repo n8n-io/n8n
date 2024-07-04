@@ -674,18 +674,31 @@ export class InvoiceNinja implements INodeType {
 				if (resource === 'payment') {
 					if (operation === 'create') {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const invoice = this.getNodeParameter('invoice', i) as number;
+						const invoice = this.getNodeParameter('invoice', i) as number | string;
 						const client = (
 							await invoiceNinjaApiRequest.call(this, 'GET', `/invoices/${invoice}`, {}, qs)
 						).data?.client_id as string;
 						const amount = this.getNodeParameter('amount', i) as number;
 						const body: IPayment = {
-							invoice_id: invoice,
 							amount,
 							client_id: client,
 						};
+						if (apiVersion === 'v4') {
+							body.invoice_id = invoice as number;
+						} else if (apiVersion === 'v5') {
+							body.invoices = [
+								{
+									invoice_id: invoice as string,
+									amount,
+								},
+							];
+						}
 						if (additionalFields.paymentType) {
-							body.payment_type_id = additionalFields.paymentType as number;
+							if (apiVersion === 'v4') {
+								body.payment_type_id = additionalFields.paymentType as number;
+							} else if (apiVersion == 'v5') {
+								body.type_id = additionalFields.paymentType as number;
+							}
 						}
 						if (additionalFields.transferReference) {
 							body.transaction_reference = additionalFields.transferReference as string;
@@ -1035,7 +1048,7 @@ export class InvoiceNinja implements INodeType {
 
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

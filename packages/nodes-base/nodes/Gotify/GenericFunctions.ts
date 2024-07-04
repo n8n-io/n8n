@@ -30,7 +30,7 @@ export async function gotifyApiRequest(
 		qs,
 		uri: uri || `${credentials.url}${path}`,
 		json: true,
-		rejectUnauthorized: credentials.ignoreSSLIssues as boolean,
+		rejectUnauthorized: !credentials.ignoreSSLIssues as boolean,
 	};
 	try {
 		if (Object.keys(body as IDataObject).length === 0) {

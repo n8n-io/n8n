@@ -19,6 +19,7 @@ import { MANUAL_TRIGGER_NODE_TYPE, START_NODE_TYPE } from '@/constants';
 import type {
 	BeforeStartEventParams,
 	BrowserJsPlumbInstance,
+	ConstrainFunction,
 	DragStopEventParams,
 } from '@jsplumb/browser-ui';
 import { newInstance } from '@jsplumb/browser-ui';
@@ -52,7 +53,8 @@ export const useCanvasStore = defineStore('canvas', () => {
 
 	const jsPlumbInstanceRef = ref<BrowserJsPlumbInstance>();
 	const isDragging = ref<boolean>(false);
-	const lastSelectedConnection = ref<Connection | null>(null);
+	const lastSelectedConnection = ref<Connection>();
+
 	const newNodeInsertPosition = ref<XYPosition | null>(null);
 
 	const nodes = computed<INodeUi[]>(() => workflowStore.allNodes);
@@ -68,12 +70,19 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const nodeViewScale = ref<number>(1);
 	const canvasAddButtonPosition = ref<XYPosition>([1, 1]);
 	const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
+	const lastSelectedConnectionComputed = computed<Connection | undefined>(
+		() => lastSelectedConnection.value,
+	);
 
 	watch(readOnlyEnv, (readOnly) => {
 		if (jsPlumbInstanceRef.value) {
 			jsPlumbInstanceRef.value.elementsDraggable = !readOnly;
 		}
 	});
+
+	const setLastSelectedConnection = (connection: Connection | undefined) => {
+		lastSelectedConnection.value = connection;
+	};
 
 	const setRecenteredCanvasAddButtonPosition = (offset?: XYPosition) => {
 		const position = getMidCanvasPosition(nodeViewScale.value, offset ?? [0, 0]);
@@ -227,7 +236,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 					if (!nodeName) return;
 					isDragging.value = true;
 
-					const isSelected = uiStore.isNodeSelected(nodeName);
+					const isSelected = uiStore.isNodeSelected[nodeName];
 
 					if (params.e && !isSelected) {
 						// Only the node which gets dragged directly gets an event, for all others it is
@@ -246,7 +255,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 					if (!nodeName) return;
 					const nodeData = workflowStore.getNodeByName(nodeName);
 					isDragging.value = false;
-					if (uiStore.isActionActive('dragActive') && nodeData) {
+					if (uiStore.isActionActive['dragActive'] && nodeData) {
 						const moveNodes = uiStore.getSelectedNodes.slice();
 						const selectedNodeNames = moveNodes.map((node: INodeUi) => node.name);
 						if (!selectedNodeNames.includes(nodeData.name)) {
@@ -291,7 +300,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 						if (moveNodes.length > 1) {
 							historyStore.stopRecordingUndo();
 						}
-						if (uiStore.isActionActive('dragActive')) {
+						if (uiStore.isActionActive['dragActive']) {
 							uiStore.removeActiveAction('dragActive');
 						}
 					}
@@ -299,14 +308,14 @@ export const useCanvasStore = defineStore('canvas', () => {
 				filter: '.node-description, .node-description .node-name, .node-description .node-subtitle',
 			},
 		});
-		jsPlumbInstanceRef.value?.setDragConstrainFunction((pos: PointXY) => {
+		jsPlumbInstanceRef.value?.setDragConstrainFunction(((pos: PointXY) => {
 			const isReadOnly = uiStore.isReadOnlyView;
 			if (isReadOnly) {
 				// Do not allow to move nodes in readOnly mode
 				return null;
 			}
 			return pos;
-		});
+		}) as ConstrainFunction);
 	}
 
 	const jsPlumbInstance = computed(() => jsPlumbInstanceRef.value as BrowserJsPlumbInstance);
@@ -314,11 +323,12 @@ export const useCanvasStore = defineStore('canvas', () => {
 		isDemo,
 		nodeViewScale,
 		canvasAddButtonPosition,
-		lastSelectedConnection,
 		newNodeInsertPosition,
 		jsPlumbInstance,
 		isLoading: loadingService.isLoading,
 		aiNodes,
+		lastSelectedConnection: lastSelectedConnectionComputed,
+		setLastSelectedConnection,
 		startLoading: loadingService.startLoading,
 		setLoadingText: loadingService.setLoadingText,
 		stopLoading: loadingService.stopLoading,

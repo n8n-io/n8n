@@ -18,8 +18,7 @@ export class Amqp implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AMQP Sender',
 		name: 'amqp',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:amqp.png',
+		icon: 'file:amqp.svg',
 		group: ['transform'],
 		version: 1,
 		description: 'Sends a raw-message via AMQP 1.0, executed once per item',
@@ -227,7 +226,7 @@ export class Amqp implements INodeType {
 
 			return [this.helpers.returnJsonArray(responseData)];
 		} catch (error) {
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(error)) {
 				return [this.helpers.returnJsonArray({ error: error.message })];
 			} else {
 				throw error;

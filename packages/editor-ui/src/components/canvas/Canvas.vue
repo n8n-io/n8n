@@ -1,23 +1,29 @@
 <script lang="ts" setup>
 import type { CanvasConnection, CanvasElement } from '@/types';
-import type { NodeDragEvent, Connection } from '@vue-flow/core';
-import { VueFlow, PanelPosition } from '@vue-flow/core';
+import type { EdgeMouseEvent, NodeDragEvent, Connection, XYPosition } from '@vue-flow/core';
+import { useVueFlow, VueFlow, PanelPosition } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
 import { MiniMap } from '@vue-flow/minimap';
 import CanvasNode from './elements/nodes/CanvasNode.vue';
 import CanvasEdge from './elements/edges/CanvasEdge.vue';
-import { useCssModule } from 'vue';
+import { onMounted, onUnmounted, ref, useCssModule } from 'vue';
 
 const $style = useCssModule();
 
 const emit = defineEmits<{
 	'update:modelValue': [elements: CanvasElement[]];
-	'update:node:position': [id: string, position: { x: number; y: number }];
+	'update:node:position': [id: string, position: XYPosition];
+	'update:node:active': [id: string];
+	'update:node:enabled': [id: string];
+	'update:node:selected': [id?: string];
+	'delete:node': [id: string];
+	'delete:connection': [connection: Connection];
 	'create:connection': [connection: Connection];
+	'click:pane': [position: XYPosition];
 }>();
 
-withDefaults(
+const props = withDefaults(
 	defineProps<{
 		id?: string;
 		elements: CanvasElement[];
@@ -32,14 +38,74 @@ withDefaults(
 	},
 );
 
+const { getSelectedEdges, getSelectedNodes, viewportRef, project } = useVueFlow({
+	id: props.id,
+});
+
+const hoveredEdges = ref<Record<string, boolean>>({});
+
+onMounted(() => {
+	document.addEventListener('keydown', onKeyDown);
+});
+
+onUnmounted(() => {
+	document.removeEventListener('keydown', onKeyDown);
+});
+
 function onNodeDragStop(e: NodeDragEvent) {
 	e.nodes.forEach((node) => {
 		emit('update:node:position', node.id, node.position);
 	});
 }
 
+function onSetNodeActive(id: string) {
+	emit('update:node:active', id);
+}
+
+function onSelectNode() {
+	const selectedNodeId = getSelectedNodes.value[getSelectedNodes.value.length - 1]?.id;
+	emit('update:node:selected', selectedNodeId);
+}
+
+function onToggleNodeEnabled(id: string) {
+	emit('update:node:enabled', id);
+}
+
+function onDeleteNode(id: string) {
+	emit('delete:node', id);
+}
+
+function onDeleteConnection(connection: Connection) {
+	emit('delete:connection', connection);
+}
+
 function onConnect(...args: unknown[]) {
 	emit('create:connection', args[0] as Connection);
+}
+
+function onKeyDown(e: KeyboardEvent) {
+	if (e.key === 'Delete') {
+		getSelectedEdges.value.forEach(onDeleteConnection);
+		getSelectedNodes.value.forEach(({ id }) => onDeleteNode(id));
+	}
+}
+
+function onMouseEnterEdge(event: EdgeMouseEvent) {
+	hoveredEdges.value[event.edge.id] = true;
+}
+
+function onMouseLeaveEdge(event: EdgeMouseEvent) {
+	hoveredEdges.value[event.edge.id] = false;
+}
+
+function onClickPane(event: MouseEvent) {
+	const bounds = viewportRef.value?.getBoundingClientRect() ?? { left: 0, top: 0 };
+	const position = project({
+		x: event.offsetX - bounds.left,
+		y: event.offsetY - bounds.top,
+	});
+
+	emit('click:pane', position);
 }
 </script>
 
@@ -55,14 +121,27 @@ function onConnect(...args: unknown[]) {
 		:max-zoom="2"
 		data-test-id="canvas"
 		@node-drag-stop="onNodeDragStop"
+		@edge-mouse-enter="onMouseEnterEdge"
+		@edge-mouse-leave="onMouseLeaveEdge"
+		@pane-click="onClickPane"
 		@connect="onConnect"
 	>
 		<template #node-canvas-node="canvasNodeProps">
-			<CanvasNode v-bind="canvasNodeProps" />
+			<CanvasNode
+				v-bind="canvasNodeProps"
+				@delete="onDeleteNode"
+				@select="onSelectNode"
+				@toggle="onToggleNodeEnabled"
+				@activate="onSetNodeActive"
+			/>
 		</template>
 
 		<template #edge-canvas-edge="canvasEdgeProps">
-			<CanvasEdge v-bind="canvasEdgeProps" />
+			<CanvasEdge
+				v-bind="canvasEdgeProps"
+				:hovered="hoveredEdges[canvasEdgeProps.id]"
+				@delete="onDeleteConnection"
+			/>
 		</template>
 
 		<Background data-test-id="canvas-background" pattern-color="#aaa" :gap="16" />

@@ -24,7 +24,7 @@ export class MicrosoftDynamicsCrm implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Microsoft Dynamics CRM',
 		name: 'microsoftDynamicsCrm',
-		icon: 'file:dynamicsCrm.svg',
+		icon: { light: 'file:microsoftDynamicsCrm.svg', dark: 'file:microsoftDynamicsCrm.dark.svg' },
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -281,7 +281,7 @@ export class MicrosoftDynamicsCrm implements INodeType {
 
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

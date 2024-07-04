@@ -26,7 +26,7 @@
 import { useCssModule, computed, useAttrs, watchEffect } from 'vue';
 import N8nIcon from '../N8nIcon';
 import N8nSpinner from '../N8nSpinner';
-import type { ButtonProps } from '@/types/button';
+import type { ButtonProps } from 'n8n-design-system/types/button';
 
 const $style = useCssModule();
 const $attrs = useAttrs();

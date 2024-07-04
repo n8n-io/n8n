@@ -226,6 +226,7 @@ export class Wait extends Webhook {
 		displayName: 'Wait',
 		name: 'wait',
 		icon: 'fa:pause-circle',
+		iconColor: 'crimson',
 		group: ['organization'],
 		version: [1, 1.1],
 		description: 'Wait before continue with execution',
@@ -285,7 +286,7 @@ export class Wait extends Webhook {
 						description: 'Waits for a webhook call before continuing',
 					},
 					{
-						name: 'On Form Submited',
+						name: 'On Form Submitted',
 						value: 'form',
 						description: 'Waits for a form submission before continuing',
 					},

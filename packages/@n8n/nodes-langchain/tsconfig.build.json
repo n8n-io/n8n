@@ -1,9 +1,6 @@
 {
-	"extends": ["./tsconfig.json"],
+	"extends": ["./tsconfig.json", "../../../tsconfig.build.json"],
 	"compilerOptions": {
-		"types": ["node"],
-		"noEmit": false,
-		"declaration": true,
 		"outDir": "dist",
 		"tsBuildInfoFile": "dist/build.tsbuildinfo"
 	},

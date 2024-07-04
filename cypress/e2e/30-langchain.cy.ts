@@ -1,17 +1,4 @@
-import {
-	AGENT_NODE_NAME,
-	MANUAL_CHAT_TRIGGER_NODE_NAME,
-	AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
-	MANUAL_TRIGGER_NODE_NAME,
-	AI_MEMORY_WINDOW_BUFFER_MEMORY_NODE_NAME,
-	AI_TOOL_CALCULATOR_NODE_NAME,
-	AI_OUTPUT_PARSER_AUTO_FIXING_NODE_NAME,
-	AI_TOOL_CODE_NODE_NAME,
-	AI_TOOL_WIKIPEDIA_NODE_NAME,
-	BASIC_LLM_CHAIN_NODE_NAME,
-	EDIT_FIELDS_SET_NODE_NAME,
-} from './../constants';
-import { createMockNodeExecutionData, runMockWorkflowExcution } from '../utils';
+import { createMockNodeExecutionData, runMockWorkflowExecution } from '../utils';
 import {
 	addLanguageModelNodeToParent,
 	addMemoryNodeToParent,
@@ -42,6 +29,19 @@ import {
 	getManualChatModalLogsTree,
 	sendManualChatMessage,
 } from '../composables/modals/chat-modal';
+import {
+	AGENT_NODE_NAME,
+	MANUAL_CHAT_TRIGGER_NODE_NAME,
+	AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
+	MANUAL_TRIGGER_NODE_NAME,
+	AI_MEMORY_WINDOW_BUFFER_MEMORY_NODE_NAME,
+	AI_TOOL_CALCULATOR_NODE_NAME,
+	AI_OUTPUT_PARSER_AUTO_FIXING_NODE_NAME,
+	AI_TOOL_CODE_NODE_NAME,
+	AI_TOOL_WIKIPEDIA_NODE_NAME,
+	BASIC_LLM_CHAIN_NODE_NAME,
+	EDIT_FIELDS_SET_NODE_NAME,
+} from './../constants';
 
 describe('Langchain Integration', () => {
 	beforeEach(() => {
@@ -149,7 +149,7 @@ describe('Langchain Integration', () => {
 		const outputMessage = 'Hi there! How can I assist you today?';
 
 		clickExecuteNode();
-		runMockWorkflowExcution({
+		runMockWorkflowExecution({
 			trigger: () => sendManualChatMessage(inputMessage),
 			runData: [
 				createMockNodeExecutionData(BASIC_LLM_CHAIN_NODE_NAME, {
@@ -189,7 +189,7 @@ describe('Langchain Integration', () => {
 		const outputMessage = 'Hi there! How can I assist you today?';
 
 		clickExecuteNode();
-		runMockWorkflowExcution({
+		runMockWorkflowExecution({
 			trigger: () => sendManualChatMessage(inputMessage),
 			runData: [
 				createMockNodeExecutionData(AGENT_NODE_NAME, {
@@ -230,7 +230,7 @@ describe('Langchain Integration', () => {
 		const inputMessage = 'Hello!';
 		const outputMessage = 'Hi there! How can I assist you today?';
 
-		runMockWorkflowExcution({
+		runMockWorkflowExecution({
 			trigger: () => {
 				sendManualChatMessage(inputMessage);
 			},

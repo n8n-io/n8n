@@ -40,7 +40,7 @@ import N8nButton from '../N8nButton';
 import N8nHeading from '../N8nHeading';
 import N8nText from '../N8nText';
 import N8nCallout, { type CalloutTheme } from '../N8nCallout';
-import type { ButtonType } from '@/types/button';
+import type { ButtonType } from 'n8n-design-system/types/button';
 
 interface ActionBoxProps {
 	emoji: string;
@@ -48,9 +48,9 @@ interface ActionBoxProps {
 	buttonText: string;
 	buttonType: ButtonType;
 	description: string;
-	calloutText: string;
-	calloutTheme: CalloutTheme;
-	calloutIcon: string;
+	calloutText?: string;
+	calloutTheme?: CalloutTheme;
+	calloutIcon?: string;
 }
 
 defineOptions({ name: 'N8nActionBox' });

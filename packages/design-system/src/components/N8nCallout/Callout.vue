@@ -19,12 +19,12 @@
 import { computed, useCssModule } from 'vue';
 import N8nText from '../N8nText';
 import N8nIcon from '../N8nIcon';
-import type { IconSize } from '@/types/icon';
+import type { IconSize } from 'n8n-design-system/types/icon';
 
 const THEMES = ['info', 'success', 'secondary', 'warning', 'danger', 'custom'] as const;
 export type CalloutTheme = (typeof THEMES)[number];
 
-const CALLOUT_DEFAULT_ICONS = {
+const CALLOUT_DEFAULT_ICONS: Record<string, string> = {
 	info: 'info-circle',
 	success: 'check-circle',
 	warning: 'exclamation-triangle',

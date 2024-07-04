@@ -95,6 +95,10 @@ class CredentialType implements ICredentialTypes {
 const credentialTypes = new CredentialType();
 
 class CredentialsHelper extends ICredentialsHelper {
+	getCredentialsProperties() {
+		return [];
+	}
+
 	async authenticate(
 		credentials: ICredentialDataDecryptedObject,
 		typeName: string,

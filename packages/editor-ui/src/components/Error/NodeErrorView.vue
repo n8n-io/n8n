@@ -5,7 +5,7 @@ import { useClipboard } from '@/composables/useClipboard';
 import { useToast } from '@/composables/useToast';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import type {
 	IDataObject,
 	INodeProperties,
@@ -613,6 +613,7 @@ function copySuccess() {
 	}
 
 	&__header-description {
+		overflow: hidden;
 		padding: 0 var(--spacing-s) var(--spacing-3xs) var(--spacing-s);
 		font-size: var(--font-size-xs);
 

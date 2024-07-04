@@ -50,7 +50,8 @@ app.mount('#app');
 if (!import.meta.env.PROD) {
 	// Make sure that we get all error messages properly displayed
 	// as long as we are not in production mode
-	window.onerror = (message, source, lineno, colno, error) => {
+	window.onerror = (message, _source, _lineno, _colno, error) => {
+		// eslint-disable-next-line @typescript-eslint/no-base-to-string
 		if (message.toString().includes('ResizeObserver')) {
 			// That error can apparently be ignored and can probably
 			// not do anything about it anyway

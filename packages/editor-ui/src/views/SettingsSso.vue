@@ -7,7 +7,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 
 const IdentityProviderSettingsType = {
 	URL: 'url',

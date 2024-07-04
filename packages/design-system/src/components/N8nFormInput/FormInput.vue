@@ -158,11 +158,11 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const $emit = defineEmits<{
-	(event: 'validate', shouldValidate: boolean): void;
-	(event: 'update:modelValue', value: unknown): void;
-	(event: 'focus'): void;
-	(event: 'blur'): void;
-	(event: 'enter'): void;
+	validate: [shouldValidate: boolean];
+	'update:modelValue': [value: Validatable];
+	focus: [];
+	blur: [];
+	enter: [];
 }>();
 
 const state = reactive({
@@ -240,7 +240,7 @@ const validationError = computed<string | null>(() => {
 
 	if (error) {
 		if ('messageKey' in error) {
-			return t(error.messageKey, error.options as object);
+			return t(error.messageKey, error.options);
 		} else if ('message' in error) {
 			return error.message;
 		}

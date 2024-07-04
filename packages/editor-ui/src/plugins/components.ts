@@ -9,7 +9,7 @@ import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
 import RBAC from '@/components/RBAC.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 
-export const GlobalComponentsPlugin: Plugin<{}> = {
+export const GlobalComponentsPlugin: Plugin = {
 	install(app) {
 		const messageService = useMessage();
 
@@ -18,7 +18,7 @@ export const GlobalComponentsPlugin: Plugin<{}> = {
 		app.component('ParameterInputList', ParameterInputList);
 
 		app.use(ElementPlus);
-		app.use(N8nPlugin);
+		app.use(N8nPlugin, {});
 
 		// app.use(ElLoading);
 		// app.use(ElNotification);

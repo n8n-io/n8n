@@ -31,8 +31,8 @@ export class Wekan implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Wekan',
 		name: 'wekan',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:wekan.png',
+
+		icon: 'file:wekan.svg',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -668,7 +668,7 @@ export class Wekan implements INodeType {
 
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ json: { error: error.message }, pairedItem: { item: i } });
 					continue;
 				}

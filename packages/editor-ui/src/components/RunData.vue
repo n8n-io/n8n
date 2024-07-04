@@ -35,6 +35,7 @@
 		</n8n-callout>
 
 		<BinaryDataDisplay
+			v-if="binaryDataDisplayData"
 			:window-visible="binaryDataDisplayVisible"
 			:display-data="binaryDataDisplayData"
 			@close="closeBinaryDataDisplay"
@@ -49,12 +50,22 @@
 				data-test-id="run-data-pane-header"
 				@click.stop
 			>
+				<RunDataSearch
+					v-if="showIOSearch"
+					v-model="search"
+					:class="$style.search"
+					:pane-type="paneType"
+					:display-mode="displayMode"
+					:is-area-active="isPaneActive"
+					@focus="activatePane"
+				/>
+
 				<n8n-radio-buttons
 					v-show="
 						hasNodeRun && (inputData.length || binaryData.length || search) && !editMode.enabled
 					"
 					:model-value="displayMode"
-					:options="buttons"
+					:options="displayModes"
 					data-test-id="ndv-run-data-display-mode"
 					@update:model-value="onDisplayModeChange"
 				/>
@@ -65,7 +76,6 @@
 					:title="$locale.baseText('runData.editOutput')"
 					:circle="false"
 					:disabled="node?.disabled"
-					class="ml-2xs"
 					icon="pencil-alt"
 					type="tertiary"
 					data-test-id="ndv-edit-pinned-data"
@@ -106,12 +116,16 @@
 			</div>
 		</div>
 
-		<div v-if="extraControlsLocation === 'header'" :class="$style.inputSelect">
+		<div v-if="inputSelectLocation === 'header'" :class="$style.inputSelect">
 			<slot name="input-select"></slot>
 		</div>
 
-		<div v-if="maxRunIndex > 0" v-show="!editMode.enabled" :class="$style.runSelector">
-			<slot v-if="extraControlsLocation === 'runs'" name="input-select"></slot>
+		<div
+			v-if="maxRunIndex > 0 && !isInputSchemaView"
+			v-show="!editMode.enabled"
+			:class="$style.runSelector"
+		>
+			<slot v-if="inputSelectLocation === 'runs'" name="input-select"></slot>
 
 			<n8n-select
 				:model-value="runIndex"
@@ -147,18 +161,9 @@
 			</n8n-tooltip>
 
 			<slot name="run-info"></slot>
-
-			<RunDataSearch
-				v-if="showIOSearch && extraControlsLocation === 'runs'"
-				v-model="search"
-				:class="$style.search"
-				:pane-type="paneType"
-				:is-area-active="isPaneActive"
-				@focus="activatePane"
-			/>
 		</div>
 
-		<slot name="before-data" />
+		<slot v-if="!isInputSchemaView" name="before-data" />
 
 		<n8n-callout
 			v-for="hint in getNodeHints()"
@@ -170,25 +175,17 @@
 		</n8n-callout>
 
 		<div
-			v-if="maxOutputIndex > 0 && branches.length > 1"
+			v-if="maxOutputIndex > 0 && branches.length > 1 && !isInputSchemaView"
 			:class="$style.outputs"
 			data-test-id="branches"
 		>
-			<slot v-if="extraControlsLocation === 'outputs'" name="input-select"></slot>
+			<slot v-if="inputSelectLocation === 'outputs'" name="input-select"></slot>
 
 			<div :class="$style.tabs">
 				<n8n-tabs
 					:model-value="currentOutputIndex"
 					:options="branches"
 					@update:model-value="onBranchChange"
-				/>
-
-				<RunDataSearch
-					v-if="showIOSearch && extraControlsLocation === 'outputs'"
-					v-model="search"
-					:pane-type="paneType"
-					:is-area-active="isPaneActive"
-					@focus="activatePane"
 				/>
 			</div>
 		</div>
@@ -198,13 +195,14 @@
 				!hasRunError &&
 				hasNodeRun &&
 				((dataCount > 0 && maxRunIndex === 0) || search) &&
-				!isArtificialRecoveredEventItem
+				!isArtificialRecoveredEventItem &&
+				!isSchemaView
 			"
 			v-show="!editMode.enabled && !hasRunError"
 			:class="[$style.itemsCount, { [$style.muted]: paneType === 'input' && maxRunIndex === 0 }]"
 			data-test-id="ndv-items-count"
 		>
-			<slot v-if="extraControlsLocation === 'items'" name="input-select"></slot>
+			<slot v-if="inputSelectLocation === 'items'" name="input-select"></slot>
 
 			<n8n-text v-if="search" :class="$style.itemsText">
 				{{
@@ -222,15 +220,6 @@
 					})
 				}}
 			</n8n-text>
-
-			<RunDataSearch
-				v-if="showIOSearch && extraControlsLocation === 'items'"
-				v-model="search"
-				:class="$style.search"
-				:pane-type="paneType"
-				:is-area-active="isPaneActive"
-				@focus="activatePane"
-			/>
 		</div>
 
 		<div ref="dataContainer" :class="$style.dataContainer" data-test-id="ndv-data-container">
@@ -425,14 +414,17 @@
 
 			<Suspense v-else-if="hasNodeRun && isSchemaView">
 				<RunDataSchema
-					:data="jsonData"
+					:nodes="nodes"
 					:mapping-enabled="mappingEnabled"
-					:distance-from-active="distanceFromActive"
 					:node="node"
+					:data="jsonData"
 					:pane-type="paneType"
+					:connection-type="connectionType"
 					:run-index="runIndex"
+					:output-index="currentOutputIndex"
 					:total-runs="maxRunIndex"
 					:search="search"
+					@clear:search="onSearchClear"
 				/>
 			</Suspense>
 
@@ -586,6 +578,7 @@ import type {
 	NodeHint,
 	NodeError,
 	Workflow,
+	IConnectedNode,
 } from 'n8n-workflow';
 import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 
@@ -605,6 +598,7 @@ import {
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
 	MAX_DISPLAY_DATA_SIZE,
+	MAX_DISPLAY_DATA_SIZE_SCHEMA_VIEW,
 	MAX_DISPLAY_ITEMS_AUTO_ALL,
 	TEST_PIN_DATA,
 	HTML_NODE_TYPE,
@@ -628,7 +622,7 @@ import { useToast } from '@/composables/useToast';
 import { isEqual, isObject } from 'lodash-es';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import RunDataPinButton from '@/components/RunDataPinButton.vue';
 
 const RunDataTable = defineAsyncComponent(
@@ -664,6 +658,10 @@ export default defineComponent({
 		node: {
 			type: Object as PropType<INodeUi | null>,
 			default: null,
+		},
+		nodes: {
+			type: Array as PropType<IConnectedNode[]>,
+			default: () => [],
 		},
 		workflow: {
 			type: Object as PropType<Workflow>,
@@ -744,11 +742,13 @@ export default defineComponent({
 			binaryDataPreviewActive: false,
 			dataSize: 0,
 			showData: false,
+			userEnabledShowData: false,
 			outputIndex: 0,
 			binaryDataDisplayVisible: false,
 			binaryDataDisplayData: null as IBinaryData | null,
 
 			MAX_DISPLAY_DATA_SIZE,
+			MAX_DISPLAY_DATA_SIZE_SCHEMA_VIEW,
 			MAX_DISPLAY_ITEMS_AUTO_ALL,
 			currentPage: 1,
 			pageSize: 10,
@@ -791,6 +791,9 @@ export default defineComponent({
 		isSchemaView(): boolean {
 			return this.displayMode === 'schema';
 		},
+		isInputSchemaView(): boolean {
+			return this.isSchemaView && this.paneType === 'input';
+		},
 		isTriggerNode(): boolean {
 			if (this.node === null) {
 				return false;
@@ -811,7 +814,7 @@ export default defineComponent({
 				!(this.binaryData && this.binaryData.length > 0)
 			);
 		},
-		buttons(): Array<{ label: string; value: string }> {
+		displayModes(): Array<{ label: string; value: string }> {
 			const defaults = [
 				{ label: this.$locale.baseText('runData.table'), value: 'table' },
 				{ label: this.$locale.baseText('runData.json'), value: 'json' },
@@ -898,7 +901,7 @@ export default defineComponent({
 				: this.rawInputData.length;
 		},
 		dataSizeInMB(): string {
-			return (this.dataSize / 1024 / 1000).toLocaleString();
+			return (this.dataSize / (1024 * 1024)).toFixed(1);
 		},
 		maxOutputIndex(): number {
 			if (this.node === null || this.runIndex === undefined) {
@@ -1042,7 +1045,8 @@ export default defineComponent({
 		showIOSearch(): boolean {
 			return this.hasNodeRun && !this.hasRunError && this.unfilteredInputData.length > 0;
 		},
-		extraControlsLocation() {
+		inputSelectLocation() {
+			if (this.isSchemaView) return 'none';
 			if (!this.hasNodeRun) return 'header';
 			if (this.maxRunIndex > 0) return 'runs';
 			if (this.maxOutputIndex > 0 && this.branches.length > 1) {
@@ -1094,6 +1098,9 @@ export default defineComponent({
 		jsonData(data: IDataObject[], prevData: IDataObject[]) {
 			if (isEqual(data, prevData)) return;
 			this.refreshDataSize();
+			if (this.dataCount) {
+				this.resetCurrentPageIfTooFar();
+			}
 			this.showPinDataDiscoveryTooltip(data);
 		},
 		binaryData(newData: IBinaryKeyData[], prevData: IBinaryKeyData[]) {
@@ -1294,9 +1301,15 @@ export default defineComponent({
 			this.clearAllStickyNotifications();
 
 			try {
-				this.pinnedData.setData(clearJsonKey(value) as INodeExecutionData[], 'save-edit');
+				const clearedValue = clearJsonKey(value) as INodeExecutionData[];
+				try {
+					this.pinnedData.setData(clearedValue, 'save-edit');
+				} catch (error) {
+					// setData function already shows toasts on error, so just return here
+					return;
+				}
 			} catch (error) {
-				console.error(error);
+				this.showError(error, this.$locale.baseText('ndv.pinData.error.syntaxError.title'));
 				return;
 			}
 
@@ -1376,6 +1389,7 @@ export default defineComponent({
 		},
 		showTooMuchData() {
 			this.showData = true;
+			this.userEnabledShowData = true;
 			this.$telemetry.track('User clicked ndv button', {
 				node_type: this.activeNode?.type,
 				workflow_id: this.workflowsStore.workflowId,
@@ -1405,12 +1419,16 @@ export default defineComponent({
 				items_total: this.dataCount,
 			});
 		},
-		onPageSizeChange(pageSize: number) {
-			this.pageSize = pageSize;
+		resetCurrentPageIfTooFar() {
 			const maxPage = Math.ceil(this.dataCount / this.pageSize);
 			if (maxPage < this.currentPage) {
 				this.currentPage = maxPage;
 			}
+		},
+		onPageSizeChange(pageSize: number) {
+			this.pageSize = pageSize;
+
+			this.resetCurrentPageIfTooFar();
 
 			this.$telemetry.track('User changed ndv page size', {
 				node_type: this.activeNode?.type,
@@ -1425,6 +1443,8 @@ export default defineComponent({
 		onDisplayModeChange(displayMode: IRunDataDisplayMode) {
 			const previous = this.displayMode;
 			this.ndvStore.setPanelDisplayMode({ pane: this.paneType, mode: displayMode });
+
+			if (!this.userEnabledShowData) this.updateShowData();
 
 			const dataContainerRef = this.$refs.dataContainer as Element | undefined;
 			if (dataContainerRef) {
@@ -1501,7 +1521,7 @@ export default defineComponent({
 			return inputData;
 		},
 		getFilteredData(inputData: INodeExecutionData[]): INodeExecutionData[] {
-			if (!this.search) {
+			if (!this.search || this.isSchemaView) {
 				return inputData;
 			}
 
@@ -1623,11 +1643,15 @@ export default defineComponent({
 			// Hide by default the data from being displayed
 			this.showData = false;
 			const jsonItems = this.inputDataPage.map((item) => item.json);
-			this.dataSize = JSON.stringify(jsonItems).length;
-			if (this.dataSize < this.MAX_DISPLAY_DATA_SIZE) {
-				// Data is reasonable small (< 200kb) so display it directly
-				this.showData = true;
-			}
+			const byteSize = new Blob([JSON.stringify(jsonItems)]).size;
+			this.dataSize = byteSize;
+			this.updateShowData();
+		},
+		updateShowData() {
+			// Display data if it is reasonably small (< 1MB)
+			this.showData =
+				(this.isSchemaView && this.dataSize < this.MAX_DISPLAY_DATA_SIZE_SCHEMA_VIEW) ||
+				this.dataSize < this.MAX_DISPLAY_DATA_SIZE;
 		},
 		onRunIndexChange(run: number) {
 			this.$emit('runChange', run);
@@ -1771,7 +1795,7 @@ export default defineComponent({
 
 	.itemsText {
 		flex-shrink: 0;
-		overflow-x: hidden;
+		overflow: hidden;
 		white-space: nowrap;
 		text-overflow: ellipsis;
 	}
@@ -1890,7 +1914,9 @@ export default defineComponent({
 	display: flex;
 	justify-content: flex-end;
 	flex-grow: 1;
+	gap: var(--spacing-2xs);
 }
+
 .tooltipContain {
 	max-width: 240px;
 }

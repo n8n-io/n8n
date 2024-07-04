@@ -2,3 +2,4 @@ packages:
   - packages/*
   - packages/@n8n/*
   - packages/@n8n_io/*
+  - cypress

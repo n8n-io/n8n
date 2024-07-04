@@ -27,6 +27,7 @@ describe('ExecutionService', () => {
 			mock(),
 			mock(),
 			mock(),
+			mock(),
 		);
 	});
 
@@ -344,17 +345,17 @@ describe('ExecutionService', () => {
 		});
 	});
 
-	describe('findAllActiveAndLatestFinished', () => {
-		test('should return all active and latest 20 finished executions', async () => {
+	describe('findLatestCurrentAndCompleted', () => {
+		test('should return latest current and completed executions', async () => {
 			const workflow = await createWorkflow();
 
-			const totalFinished = 21;
+			const totalCompleted = 21;
 
 			await Promise.all([
 				createExecution({ status: 'running' }, workflow),
 				createExecution({ status: 'running' }, workflow),
 				createExecution({ status: 'running' }, workflow),
-				...new Array(totalFinished)
+				...new Array(totalCompleted)
 					.fill(null)
 					.map(async () => await createExecution({ status: 'success' }, workflow)),
 			]);
@@ -365,14 +366,14 @@ describe('ExecutionService', () => {
 				accessibleWorkflowIds: [workflow.id],
 			};
 
-			const output = await executionService.findAllRunningAndLatest(query);
+			const output = await executionService.findLatestCurrentAndCompleted(query);
 
-			expect(output.results).toHaveLength(23); // 3 active + 20 finished (excludes 21st)
-			expect(output.count).toBe(totalFinished); // 21 finished, excludes active
+			expect(output.results).toHaveLength(23); // 3 current + 20 completed (excludes 21st)
+			expect(output.count).toBe(totalCompleted); // 21 finished, excludes current
 			expect(output.estimated).toBe(false);
 		});
 
-		test('should handle zero active executions', async () => {
+		test('should handle zero current executions', async () => {
 			const workflow = await createWorkflow();
 
 			const totalFinished = 5;
@@ -389,14 +390,14 @@ describe('ExecutionService', () => {
 				accessibleWorkflowIds: [workflow.id],
 			};
 
-			const output = await executionService.findAllRunningAndLatest(query);
+			const output = await executionService.findLatestCurrentAndCompleted(query);
 
 			expect(output.results).toHaveLength(totalFinished); // 5 finished
 			expect(output.count).toBe(totalFinished); // 5 finished, excludes active
 			expect(output.estimated).toBe(false);
 		});
 
-		test('should handle zero finished executions', async () => {
+		test('should handle zero completed executions', async () => {
 			const workflow = await createWorkflow();
 
 			await Promise.all([
@@ -411,7 +412,7 @@ describe('ExecutionService', () => {
 				accessibleWorkflowIds: [workflow.id],
 			};
 
-			const output = await executionService.findAllRunningAndLatest(query);
+			const output = await executionService.findLatestCurrentAndCompleted(query);
 
 			expect(output.results).toHaveLength(3); // 3 finished
 			expect(output.count).toBe(0); // 0 finished, excludes active
@@ -427,11 +428,36 @@ describe('ExecutionService', () => {
 				accessibleWorkflowIds: [workflow.id],
 			};
 
-			const output = await executionService.findAllRunningAndLatest(query);
+			const output = await executionService.findLatestCurrentAndCompleted(query);
 
 			expect(output.results).toHaveLength(0);
 			expect(output.count).toBe(0);
 			expect(output.estimated).toBe(false);
+		});
+
+		test('should prioritize `running` over `new` executions', async () => {
+			const workflow = await createWorkflow();
+
+			await Promise.all([
+				createExecution({ status: 'new' }, workflow),
+				createExecution({ status: 'new' }, workflow),
+				createExecution({ status: 'running' }, workflow),
+				createExecution({ status: 'running' }, workflow),
+				createExecution({ status: 'new' }, workflow),
+				createExecution({ status: 'new' }, workflow),
+			]);
+
+			const query: ExecutionSummaries.RangeQuery = {
+				kind: 'range',
+				range: { limit: 2 },
+				accessibleWorkflowIds: [workflow.id],
+			};
+
+			const { results } = await executionService.findLatestCurrentAndCompleted(query);
+
+			expect(results).toHaveLength(2);
+			expect(results[0].status).toBe('running');
+			expect(results[1].status).toBe('running');
 		});
 	});
 });

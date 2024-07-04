@@ -6,7 +6,7 @@
 				<th :class="$style.tableRightMargin"></th>
 			</tr>
 			<tr
-				v-for="(row, index1) in tableData.data"
+				v-for="(_, index1) in tableData.data"
 				:key="index1"
 				:class="{ [$style.hoveringRow]: isHoveringRow(index1) }"
 			>
@@ -37,7 +37,7 @@
 								:data="getExpression(column)"
 								:disabled="!mappingEnabled"
 								@dragstart="onDragStart"
-								@dragend="(column) => onDragEnd(column, 'column')"
+								@dragend="(column) => onDragEnd(column?.textContent ?? '', 'column')"
 							>
 								<template #preview="{ canDrop }">
 									<MappingPill :html="shorten(column, 16, 2)" :can-drop="canDrop" />
@@ -345,7 +345,7 @@ export default defineComponent({
 				path: [column],
 			});
 		},
-		getPathNameFromTarget(el: HTMLElement) {
+		getPathNameFromTarget(el?: HTMLElement) {
 			if (!el) {
 				return '';
 			}
@@ -388,7 +388,7 @@ export default defineComponent({
 				return this.$locale.baseText('runData.emptyString');
 			}
 			if (typeof value === 'string') {
-				return value.replaceAll('\n', '\\n');
+				return value;
 			}
 			if (Array.isArray(value) && value.length === 0) {
 				return this.$locale.baseText('runData.emptyArray');
@@ -588,6 +588,7 @@ export default defineComponent({
 		border-left: var(--border-base);
 		overflow-wrap: break-word;
 		white-space: pre-wrap;
+		vertical-align: top;
 	}
 
 	td:first-child,

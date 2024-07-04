@@ -120,6 +120,7 @@ export class Code implements INodeType {
 		displayName: 'LangChain Code',
 		name: 'code',
 		icon: 'fa:code',
+		iconColor: 'black',
 		group: ['transform'],
 		version: 1,
 		description: 'LangChain Code Node',
@@ -317,7 +318,7 @@ export class Code implements INodeType {
 		try {
 			items = await sandbox.runCodeAllItems(options);
 		} catch (error) {
-			if (!this.continueOnFail()) throw error;
+			if (!this.continueOnFail(error)) throw error;
 			items = [{ json: { error: (error as Error).message } }];
 			if (options.multiOutput) {
 				items = [items];

@@ -27,7 +27,9 @@ import * as testDb from './shared/testDb';
 import { mockInstance } from '../shared/mocking';
 import type { SuperAgentTest } from './shared/types';
 import { createTeamProject, getPersonalProject, linkUserToProject } from './shared/db/projects';
+import { Telemetry } from '@/telemetry';
 
+mockInstance(Telemetry);
 mockInstance(ExecutionService);
 
 const testServer = utils.setupTestServer({

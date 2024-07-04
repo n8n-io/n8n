@@ -53,7 +53,7 @@ describe('WorkflowSettingsVue', () => {
 			versionId: '123',
 		} as IWorkflowDb);
 
-		uiStore.modals[WORKFLOW_SETTINGS_MODAL_KEY] = {
+		uiStore.modalsById[WORKFLOW_SETTINGS_MODAL_KEY] = {
 			open: true,
 		};
 	});

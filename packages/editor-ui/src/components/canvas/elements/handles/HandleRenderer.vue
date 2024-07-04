@@ -23,11 +23,11 @@ const $style = useCssModule();
 const handleType = computed(() => (props.mode === 'input' ? 'target' : 'source'));
 
 const isConnectableStart = computed(() => {
-	return props.mode === 'output';
+	return props.mode === 'output' || props.type !== NodeConnectionType.Main;
 });
 
 const isConnectableEnd = computed(() => {
-	return props.mode === 'input';
+	return props.mode === 'input' || props.type !== NodeConnectionType.Main;
 });
 
 const Render = (renderProps: { label?: string }) => {

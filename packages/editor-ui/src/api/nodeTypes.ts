@@ -5,9 +5,9 @@ import type {
 	INodePropertyOptions,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
+	ResourceMapperFields,
 } from 'n8n-workflow';
 import axios from 'axios';
-import type { ResourceMapperFields } from 'n8n-workflow/src/Interfaces';
 
 export async function getNodeTypes(baseUrl: string) {
 	const { data } = await axios.get(baseUrl + 'types/nodes.json', { withCredentials: true });

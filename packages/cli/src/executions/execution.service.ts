@@ -9,7 +9,6 @@ import type {
 	ExecutionStatus,
 } from 'n8n-workflow';
 import {
-	ErrorReporterProxy as EventReporter,
 	ApplicationError,
 	ExecutionStatusList,
 	Workflow,
@@ -25,9 +24,8 @@ import type {
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { Queue } from '@/Queue';
-import type { ExecutionRequest, ExecutionSummaries } from './execution.types';
+import type { ExecutionRequest, ExecutionSummaries, StopResult } from './execution.types';
 import { WorkflowRunner } from '@/WorkflowRunner';
-import { getStatusUsingPreviousExecutionStatusMethod } from './executionHelpers';
 import type { IGetExecutionsQueryFilter } from '@db/repositories/execution.repository';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
@@ -36,8 +34,11 @@ import { InternalServerError } from '@/errors/response-errors/internal-server.er
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import config from '@/config';
 import { WaitTracker } from '@/WaitTracker';
-import type { ExecutionEntity } from '@/databases/entities/ExecutionEntity';
+import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
+import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
+import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
+import { License } from '@/License';
 
 export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
@@ -87,6 +88,8 @@ export class ExecutionService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly waitTracker: WaitTracker,
 		private readonly workflowRunner: WorkflowRunner,
+		private readonly concurrencyControl: ConcurrencyControlService,
+		private readonly license: License,
 	) {}
 
 	async findOne(
@@ -104,12 +107,6 @@ export class ExecutionService {
 				executionId,
 			});
 			return undefined;
-		}
-
-		if (!execution.status) {
-			const { data, workflowData, ...rest } = execution;
-			EventReporter.info('Detected `null` execution status', { extra: { execution: rest } });
-			execution.status = getStatusUsingPreviousExecutionStatusMethod(execution);
 		}
 
 		return execution;
@@ -132,6 +129,8 @@ export class ExecutionService {
 			);
 			throw new NotFoundError(`The execution with the ID "${executionId}" does not exist.`);
 		}
+
+		if (execution.status === 'new') throw new QueuedExecutionRetryError();
 
 		if (!execution.data.executionData) throw new AbortedExecutionRetryError();
 
@@ -244,14 +243,14 @@ export class ExecutionService {
 			}
 		}
 
-		return await this.executionRepository.deleteExecutionsByFilter(
-			requestFilters,
-			sharedWorkflowIds,
-			{
-				deleteBefore,
-				ids,
-			},
-		);
+		if (requestFilters?.metadata && !this.license.isAdvancedExecutionFiltersEnabled()) {
+			delete requestFilters.metadata;
+		}
+
+		await this.executionRepository.deleteExecutionsByFilter(requestFilters, sharedWorkflowIds, {
+			deleteBefore,
+			ids,
+		});
 	}
 
 	async createErrorExecution(
@@ -329,8 +328,6 @@ export class ExecutionService {
 	//             new API
 	// ----------------------------------
 
-	private readonly isRegularMode = config.getEnv('executions.mode') === 'regular';
-
 	/**
 	 * Find summaries of executions that satisfy a query.
 	 *
@@ -359,77 +356,120 @@ export class ExecutionService {
 	}
 
 	/**
-	 * Find summaries of active and finished executions that satisfy a query.
+	 * Return:
 	 *
-	 * Return also the total count of all finished executions that satisfy the query,
-	 * and whether the total is an estimate or not. Active executions are excluded
-	 * from the total and count for pagination purposes.
+	 * - the latest summaries of current and completed executions that satisfy a query,
+	 * - the total count of all completed executions that satisfy the query, and
+	 * - whether the total of completed executions is an estimate.
+	 *
+	 * By default, "current" means executions starting and running. With concurrency
+	 * control, "current" means executions enqueued to start and running.
 	 */
-	async findAllRunningAndLatest(query: ExecutionSummaries.RangeQuery) {
-		const currentlyRunningStatuses: ExecutionStatus[] = ['new', 'running'];
-		const allStatuses = new Set(ExecutionStatusList);
-		currentlyRunningStatuses.forEach((status) => allStatuses.delete(status));
-		const notRunningStatuses: ExecutionStatus[] = Array.from(allStatuses);
+	async findLatestCurrentAndCompleted(query: ExecutionSummaries.RangeQuery) {
+		const currentStatuses: ExecutionStatus[] = ['new', 'running'];
 
-		const [activeResult, finishedResult] = await Promise.all([
-			this.findRangeWithCount({ ...query, status: currentlyRunningStatuses }),
+		const completedStatuses = ExecutionStatusList.filter((s) => !currentStatuses.includes(s));
+
+		const [current, completed] = await Promise.all([
 			this.findRangeWithCount({
 				...query,
-				status: notRunningStatuses,
+				status: currentStatuses,
+				order: { top: 'running' }, // ensure limit cannot exclude running
+			}),
+			this.findRangeWithCount({
+				...query,
+				status: completedStatuses,
 				order: { stoppedAt: 'DESC' },
 			}),
 		]);
 
 		return {
-			results: activeResult.results.concat(finishedResult.results),
-			count: finishedResult.count,
-			estimated: finishedResult.estimated,
+			results: current.results.concat(completed.results),
+			count: completed.count, // exclude current from count for pagination
+			estimated: completed.estimated,
 		};
 	}
 
-	/**
-	 * Stop an active execution.
-	 */
-	async stop(executionId: string) {
-		const execution = await this.executionRepository.findOneBy({ id: executionId });
+	async findAllEnqueuedExecutions() {
+		return await this.executionRepository.findMultipleExecutions(
+			{
+				select: ['id', 'mode'],
+				where: { status: 'new' },
+				order: { id: 'ASC' },
+			},
+			{ includeData: true, unflattenData: true },
+		);
+	}
 
-		if (!execution) throw new NotFoundError('Execution not found');
+	async stop(executionId: string): Promise<StopResult> {
+		const execution = await this.executionRepository.findSingleExecution(executionId, {
+			includeData: true,
+			unflattenData: true,
+		});
 
-		const stopResult = await this.activeExecutions.stopExecution(execution.id);
+		if (!execution) throw new MissingExecutionStopError(executionId);
 
-		if (stopResult) return this.toExecutionStopResult(execution);
+		this.assertStoppable(execution);
 
-		if (this.isRegularMode) {
-			return await this.waitTracker.stopExecution(execution.id);
+		const { mode, startedAt, stoppedAt, finished, status } =
+			config.getEnv('executions.mode') === 'regular'
+				? await this.stopInRegularMode(execution)
+				: await this.stopInScalingMode(execution);
+
+		return {
+			mode,
+			startedAt: new Date(startedAt),
+			stoppedAt: stoppedAt ? new Date(stoppedAt) : undefined,
+			finished,
+			status,
+		};
+	}
+
+	private assertStoppable(execution: IExecutionResponse) {
+		const STOPPABLE_STATUSES: ExecutionStatus[] = ['new', 'unknown', 'waiting', 'running'];
+
+		if (!STOPPABLE_STATUSES.includes(execution.status)) {
+			throw new WorkflowOperationError(
+				`Only running or waiting executions can be stopped and ${execution.id} is currently ${execution.status}`,
+			);
+		}
+	}
+
+	private async stopInRegularMode(execution: IExecutionResponse) {
+		if (this.concurrencyControl.has(execution.id)) {
+			this.concurrencyControl.remove({ mode: execution.mode, executionId: execution.id });
+			return await this.executionRepository.stopBeforeRun(execution);
 		}
 
-		// queue mode
-
-		try {
-			return await this.waitTracker.stopExecution(execution.id);
-		} catch {
-			// @TODO: Why are we swallowing this error in queue mode?
+		if (this.activeExecutions.has(execution.id)) {
+			await this.activeExecutions.stopExecution(execution.id);
 		}
 
-		const activeJobs = await this.queue.getJobs(['active', 'waiting']);
-		const job = activeJobs.find(({ data }) => data.executionId === execution.id);
+		if (this.waitTracker.has(execution.id)) {
+			await this.waitTracker.stopExecution(execution.id);
+		}
+
+		return await this.executionRepository.stopDuringRun(execution);
+	}
+
+	private async stopInScalingMode(execution: IExecutionResponse) {
+		if (execution.mode === 'manual') {
+			// manual executions in scaling mode are processed by main
+			return await this.stopInRegularMode(execution);
+		}
+
+		if (this.waitTracker.has(execution.id)) {
+			await this.waitTracker.stopExecution(execution.id);
+		}
+
+		const job = await this.queue.findRunningJobBy({ executionId: execution.id });
 
 		if (job) {
 			await this.queue.stopJob(job);
 		} else {
-			this.logger.debug('Job to stop no longer in queue', { jobId: execution.id });
+			this.logger.debug('Job to stop not in queue', { executionId: execution.id });
 		}
 
-		return this.toExecutionStopResult(execution);
-	}
-
-	private toExecutionStopResult(execution: ExecutionEntity) {
-		return {
-			mode: execution.mode,
-			startedAt: new Date(execution.startedAt),
-			stoppedAt: execution.stoppedAt ? new Date(execution.stoppedAt) : undefined,
-			finished: execution.finished,
-			status: execution.status,
-		};
+		return await this.executionRepository.stopDuringRun(execution);
 	}
 }

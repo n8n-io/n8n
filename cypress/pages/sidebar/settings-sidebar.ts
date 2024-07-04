@@ -6,6 +6,7 @@ export class SettingsSidebar extends BasePage {
 		users: () => this.getters.menuItem('settings-users'),
 		back: () => cy.getByTestId('settings-back'),
 	};
+
 	actions = {
 		goToUsers: () => {
 			this.getters.users().should('be.visible');

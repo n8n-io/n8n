@@ -12,7 +12,6 @@ describe('Editors', () => {
 	});
 
 	describe('SQL Editor', () => {
-
 		it('should preserve changes when opening-closing Postgres node', () => {
 			workflowPage.actions.addInitialNodeToCanvas('Postgres', {
 				action: 'Execute a SQL query',
@@ -26,7 +25,11 @@ describe('Editors', () => {
 				.type('{esc}');
 			ndv.actions.close();
 			workflowPage.actions.openNode('Postgres');
-			ndv.getters.sqlEditorContainer().find('.cm-content').type('{end} LIMIT 10', { delay: TYPING_DELAY }).type('{esc}');
+			ndv.getters
+				.sqlEditorContainer()
+				.find('.cm-content')
+				.type('{end} LIMIT 10', { delay: TYPING_DELAY })
+				.type('{esc}');
 			ndv.actions.close();
 			workflowPage.actions.openNode('Postgres');
 			ndv.getters.sqlEditorContainer().should('contain', 'SELECT * FROM `testTable` LIMIT 10');
@@ -126,7 +129,11 @@ describe('Editors', () => {
 				.type('{esc}');
 			ndv.actions.close();
 			workflowPage.actions.openNode('HTML');
-			ndv.getters.htmlEditorContainer().find('.cm-content').type(`{end}${TEST_ELEMENT_P}`, { delay: TYPING_DELAY, force: true }).type('{esc}');
+			ndv.getters
+				.htmlEditorContainer()
+				.find('.cm-content')
+				.type(`{end}${TEST_ELEMENT_P}`, { delay: TYPING_DELAY, force: true })
+				.type('{esc}');
 			ndv.actions.close();
 			workflowPage.actions.openNode('HTML');
 			ndv.getters.htmlEditorContainer().should('contain', TEST_ELEMENT_H1);

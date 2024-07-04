@@ -276,6 +276,11 @@ export class GetResponse implements INodeType {
 						if (updateFields.customFieldsUi) {
 							const customFieldValues = (updateFields.customFieldsUi as IDataObject)
 								.customFieldValues as IDataObject[];
+							customFieldValues.forEach((entry) => {
+								if (typeof entry.value === 'string') {
+									entry.value = entry.value.split(',').map((value) => value.trim());
+								}
+							});
 							if (customFieldValues) {
 								body.customFieldValues = customFieldValues;
 								delete body.customFieldsUi;
@@ -296,7 +301,7 @@ export class GetResponse implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

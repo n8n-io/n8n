@@ -1,8 +1,6 @@
 import { BasePage } from '../base';
 import { WorkflowsPage } from '../workflows';
 
-const workflowsPage = new WorkflowsPage();
-
 export class MainSidebar extends BasePage {
 	getters = {
 		menuItem: (id: string) => cy.getByTestId('menu-item').get('#' + id),
@@ -13,15 +11,14 @@ export class MainSidebar extends BasePage {
 		credentials: () => this.getters.menuItem('credentials'),
 		executions: () => this.getters.menuItem('executions'),
 		adminPanel: () => this.getters.menuItem('cloud-admin'),
-		userMenu: () => cy.get('div[class="action-dropdown-container"]'),
+		userMenu: () => cy.getByTestId('user-menu'),
 		logo: () => cy.getByTestId('n8n-logo'),
 	};
+
 	actions = {
 		goToSettings: () => {
-			this.getters.settings().should('be.visible');
-			// We must wait before ElementUI menu is done with its animations
-			cy.get('[data-old-overflow]').should('not.exist');
-			this.getters.settings().click();
+			this.getters.userMenu().click();
+			cy.getByTestId('user-menu-item-settings').should('be.visible').click();
 		},
 		goToCredentials: () => {
 			this.getters.credentials().should('be.visible');

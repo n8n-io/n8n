@@ -1,7 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
@@ -12,6 +10,7 @@ import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 import uniqBy from 'lodash/uniqBy';
 
+import { NodeConnectionType } from './Interfaces';
 import type {
 	FieldType,
 	IContextObject,
@@ -56,6 +55,7 @@ import type { Workflow } from './Workflow';
 import { validateFilterParameter } from './NodeParameters/FilterParameter';
 import { validateFieldType } from './TypeValidation';
 import { ApplicationError } from './errors/application.error';
+import { SINGLE_EXECUTION_NODES } from './Constants';
 
 export const cronNodeOptions: INodePropertyCollection[] = [
 	{
@@ -271,6 +271,159 @@ const commonCORSParameters: INodeProperties[] = [
 	},
 ];
 
+const declarativeNodeOptionParameters: INodeProperties = {
+	displayName: 'Request Options',
+	name: 'requestOptions',
+	type: 'collection',
+	isNodeSetting: true,
+	placeholder: 'Add Option',
+	default: {},
+	options: [
+		{
+			displayName: 'Batching',
+			name: 'batching',
+			placeholder: 'Add Batching',
+			type: 'fixedCollection',
+			typeOptions: {
+				multipleValues: false,
+			},
+			default: {
+				batch: {},
+			},
+			options: [
+				{
+					displayName: 'Batching',
+					name: 'batch',
+					values: [
+						{
+							displayName: 'Items per Batch',
+							name: 'batchSize',
+							type: 'number',
+							typeOptions: {
+								minValue: -1,
+							},
+							default: 50,
+							description:
+								'Input will be split in batches to throttle requests. -1 for disabled. 0 will be treated as 1.',
+						},
+						{
+							displayName: 'Batch Interval (ms)',
+							name: 'batchInterval',
+							type: 'number',
+							typeOptions: {
+								minValue: 0,
+							},
+							default: 1000,
+							description: 'Time (in milliseconds) between each batch of requests. 0 for disabled.',
+						},
+					],
+				},
+			],
+		},
+		{
+			displayName: 'Ignore SSL Issues',
+			name: 'allowUnauthorizedCerts',
+			type: 'boolean',
+			noDataExpression: true,
+			default: false,
+			description:
+				'Whether to accept the response even if SSL certificate validation is not possible',
+		},
+		{
+			displayName: 'Proxy',
+			name: 'proxy',
+			type: 'string',
+			default: '',
+			placeholder: 'e.g. http://myproxy:3128',
+			description:
+				'HTTP proxy to use. If authentication is required it can be defined as follow: http://username:password@myproxy:3128',
+		},
+		{
+			displayName: 'Timeout',
+			name: 'timeout',
+			type: 'number',
+			typeOptions: {
+				minValue: 1,
+			},
+			default: 10000,
+			description:
+				'Time in ms to wait for the server to send response headers (and start the response body) before aborting the request',
+		},
+	],
+};
+
+/**
+ * Determines if the provided node type has any output types other than the main connection type.
+ * @param typeDescription The node's type description to check.
+ */
+export function isSubNodeType(
+	typeDescription: Pick<INodeTypeDescription, 'outputs'> | null,
+): boolean {
+	if (!typeDescription || !typeDescription.outputs || typeof typeDescription.outputs === 'string') {
+		return false;
+	}
+	const outputTypes = getConnectionTypes(typeDescription.outputs);
+	return outputTypes
+		? outputTypes.filter((output) => output !== NodeConnectionType.Main).length > 0
+		: false;
+}
+
+/** Augments additional `Request Options` property on declarative node-type */
+export function applyDeclarativeNodeOptionParameters(nodeType: INodeType): void {
+	if (
+		nodeType.execute ||
+		nodeType.trigger ||
+		nodeType.webhook ||
+		nodeType.description.polling ||
+		isSubNodeType(nodeType.description)
+	) {
+		return;
+	}
+
+	const parameters = nodeType.description.properties;
+
+	if (!parameters) {
+		return;
+	}
+
+	// Was originally under "options" instead of "requestOptions" so the chance
+	// that that existed was quite high. With this name the chance is actually
+	// very low that it already exists but lets leave it in anyway to be sure.
+	const existingRequestOptionsIndex = parameters.findIndex(
+		(parameter) => parameter.name === 'requestOptions',
+	);
+	if (existingRequestOptionsIndex !== -1) {
+		parameters[existingRequestOptionsIndex] = {
+			...declarativeNodeOptionParameters,
+			options: [
+				...(declarativeNodeOptionParameters.options || []),
+				...(parameters[existingRequestOptionsIndex]?.options || []),
+			],
+		};
+
+		const options = parameters[existingRequestOptionsIndex]?.options;
+
+		if (options) {
+			options.sort((a, b) => {
+				if ('displayName' in a && 'displayName' in b) {
+					if (a.displayName < b.displayName) {
+						return -1;
+					}
+					if (a.displayName > b.displayName) {
+						return 1;
+					}
+				}
+
+				return 0;
+			});
+		}
+	} else {
+		parameters.push(declarativeNodeOptionParameters);
+	}
+
+	return;
+}
+
 /**
  * Apply special parameters which should be added to nodeTypes depending on their type or configuration
  */
@@ -288,6 +441,8 @@ export function applySpecialNodeParameters(nodeType: INodeType): void {
 			];
 		else properties.push(...commonCORSParameters);
 	}
+
+	applyDeclarativeNodeOptionParameters(nodeType);
 }
 
 const getPropertyValues = (
@@ -1747,4 +1902,20 @@ export function getCredentialsForNode(
 	}
 
 	return object.description.credentials ?? [];
+}
+
+export function isSingleExecution(type: string, parameters: INodeParameters): boolean {
+	const singleExecutionCase = SINGLE_EXECUTION_NODES[type];
+
+	if (singleExecutionCase) {
+		for (const parameter of Object.keys(singleExecutionCase)) {
+			if (!singleExecutionCase[parameter].includes(parameters[parameter] as NodeParameterValue)) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	return false;
 }

@@ -1,6 +1,7 @@
 <template>
 	<RunData
 		:node="currentNode"
+		:nodes="isMappingMode ? rootNodesParents : parentNodes"
 		:workflow="workflow"
 		:run-index="runIndex"
 		:linked-runs="linkedRuns"
@@ -147,6 +148,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import type {
 	ConnectionTypes,
 	IConnectedNode,
+	INodeInputConfiguration,
 	INodeOutputConfiguration,
 	INodeTypeDescription,
 	Workflow,
@@ -302,7 +304,7 @@ export default defineComponent({
 			return false;
 		},
 		workflowRunning(): boolean {
-			return this.uiStore.isActionActive('workflowRunning');
+			return this.uiStore.isActionActive['workflowRunning'];
 		},
 
 		activeNode(): INodeUi | null {
@@ -407,7 +409,7 @@ export default defineComponent({
 	},
 	methods: {
 		filterOutConnectionType(
-			item: ConnectionTypes | INodeOutputConfiguration,
+			item: ConnectionTypes | INodeOutputConfiguration | INodeInputConfiguration,
 			type: ConnectionTypes,
 		) {
 			if (!item) return false;

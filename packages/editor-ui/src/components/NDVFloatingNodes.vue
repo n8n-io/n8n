@@ -20,7 +20,7 @@
 						data-test-id="floating-node"
 						:data-node-name="node.name"
 						:data-node-placement="connectionGroup"
-						@click="$emit('switchSelectedNode', node.name)"
+						@click="emit('switchSelectedNode', node.name)"
 					>
 						<NodeIcon
 							:node-type="nodeType"
@@ -56,7 +56,9 @@ const props = defineProps<Props>();
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflow = workflowsStore.getCurrentWorkflow();
-const emit = defineEmits(['switchSelectedNode']);
+const emit = defineEmits<{
+	switchSelectedNode: [nodeName: string];
+}>();
 
 interface NodeConfig {
 	node: INodeUi;
@@ -121,7 +123,7 @@ const tooltipPositionMapper = {
 	[FloatingNodePosition.top]: 'bottom',
 	[FloatingNodePosition.right]: 'left',
 	[FloatingNodePosition.left]: 'right',
-};
+} as const;
 
 onMounted(() => {
 	document.addEventListener('keydown', onKeyDown, true);
@@ -202,7 +204,7 @@ defineExpose({
 }
 .connectedNode {
 	border: var(--border-base);
-	background-color: var(--color-canvas-node-background);
+	background-color: var(--color-node-background);
 	border-radius: 100%;
 	padding: var(--spacing-s);
 	cursor: pointer;
@@ -218,9 +220,9 @@ defineExpose({
 		content: '';
 		position: absolute;
 		top: -35%;
-		right: -30%;
+		right: -15%;
 		bottom: -35%;
-		left: -30%;
+		left: -15%;
 		z-index: -1;
 	}
 	.outputMain &,

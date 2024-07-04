@@ -63,6 +63,7 @@
 import type { ICredentialsResponse, ICredentialTypeMap } from '@/Interface';
 import { defineComponent } from 'vue';
 
+import type { IResource } from '@/components/layouts/ResourcesListLayout.vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import CredentialCard from '@/components/CredentialCard.vue';
 import type { ICredentialType } from 'n8n-workflow';
@@ -73,8 +74,8 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useProjectsStore } from '@/features/projects/projects.store';
-import ProjectTabs from '@/features/projects/components/ProjectTabs.vue';
+import { useProjectsStore } from '@/stores/projects.store';
+import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import useEnvironmentsStore from '@/stores/environments.ee.store';
 import { useSettingsStore } from '@/stores/settings.store';
 
@@ -106,8 +107,18 @@ export default defineComponent({
 			useExternalSecretsStore,
 			useProjectsStore,
 		),
-		allCredentials(): ICredentialsResponse[] {
-			return this.credentialsStore.allCredentials;
+		allCredentials(): IResource[] {
+			return this.credentialsStore.allCredentials.map((credential) => ({
+				id: credential.id,
+				name: credential.name,
+				value: '',
+				updatedAt: credential.updatedAt,
+				createdAt: credential.createdAt,
+				homeProject: credential.homeProject,
+				scopes: credential.scopes,
+				type: credential.type,
+				sharedWithProjects: credential.sharedWithProjects,
+			}));
 		},
 		allCredentialTypes(): ICredentialType[] {
 			return this.credentialsStore.allCredentialTypes;

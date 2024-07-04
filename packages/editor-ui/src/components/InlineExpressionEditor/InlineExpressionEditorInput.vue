@@ -39,9 +39,9 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	(event: 'update:model-value', value: { value: string; segments: Segment[] }): void;
-	(event: 'update:selection', value: { state: EditorState; selection: SelectionRange }): void;
-	(event: 'focus'): void;
+	'update:model-value': [value: { value: string; segments: Segment[] }];
+	'update:selection': [value: { state: EditorState; selection: SelectionRange }];
+	focus: [];
 }>();
 
 const ndvStore = useNDVStore();
@@ -49,11 +49,11 @@ const ndvStore = useNDVStore();
 const root = ref<HTMLElement>();
 const extensions = computed(() => [
 	Prec.highest(
-		keymap.of([...tabKeyMap(true), ...enterKeyMap, ...autocompleteKeyMap, ...historyKeyMap]),
+		keymap.of([...tabKeyMap(false), ...enterKeyMap, ...autocompleteKeyMap, ...historyKeyMap]),
 	),
 	n8nLang(),
 	n8nAutocompletion(),
-	inputTheme({ rows: props.rows }),
+	inputTheme({ isReadOnly: props.isReadOnly, rows: props.rows }),
 	history(),
 	expressionInputHandler(),
 	EditorView.lineWrapping,

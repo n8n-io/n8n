@@ -11,7 +11,7 @@ import type {
 } from '@/Interface';
 import { get } from '@/utils/apiUtils';
 
-function stringifyArray(arr: number[]) {
+function stringifyArray(arr: string[]) {
 	return arr.join(',');
 }
 
@@ -41,7 +41,7 @@ export async function getCollections(
 
 export async function getWorkflows(
 	apiEndpoint: string,
-	query: { page: number; limit: number; categories: number[]; search: string },
+	query: { page: number; limit: number; categories: string[]; search: string },
 	headers?: RawAxiosRequestHeaders,
 ): Promise<{
 	totalWorkflows: number;

@@ -264,6 +264,7 @@ export default defineComponent({
 <style lang="scss">
 .vjs-tree {
 	color: var(--color-json-default);
+	--color-line-break: var(--color-code-line-break);
 }
 
 .vjs-tree-node {

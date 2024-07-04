@@ -1,6 +1,7 @@
 import { Container } from 'typedi';
 import type { Scope } from '@sentry/node';
 import { Credentials } from 'n8n-core';
+import { randomString } from 'n8n-workflow';
 
 import type { ListQuery } from '@/requests';
 import type { User } from '@db/entities/User';
@@ -16,7 +17,6 @@ import {
 	randomCredentialPayload as payload,
 	randomCredentialPayload,
 	randomName,
-	randomString,
 } from '../shared/random';
 import {
 	saveCredential,
@@ -142,7 +142,7 @@ describe('GET /credentials', () => {
 			// Team cred
 			expect(cred1.id).toBe(savedCredential1.id);
 			expect(cred1.scopes).toEqual(
-				['credential:read', 'credential:update', 'credential:delete'].sort(),
+				['credential:move', 'credential:read', 'credential:update', 'credential:delete'].sort(),
 			);
 
 			// Shared cred
@@ -169,7 +169,13 @@ describe('GET /credentials', () => {
 			// Shared cred
 			expect(cred2.id).toBe(savedCredential2.id);
 			expect(cred2.scopes).toEqual(
-				['credential:read', 'credential:update', 'credential:delete', 'credential:share'].sort(),
+				[
+					'credential:delete',
+					'credential:move',
+					'credential:read',
+					'credential:share',
+					'credential:update',
+				].sort(),
 			);
 		}
 
@@ -188,11 +194,12 @@ describe('GET /credentials', () => {
 			expect(cred1.scopes).toEqual(
 				[
 					'credential:create',
-					'credential:read',
-					'credential:update',
 					'credential:delete',
 					'credential:list',
+					'credential:move',
+					'credential:read',
 					'credential:share',
+					'credential:update',
 				].sort(),
 			);
 
@@ -201,11 +208,12 @@ describe('GET /credentials', () => {
 			expect(cred2.scopes).toEqual(
 				[
 					'credential:create',
-					'credential:read',
-					'credential:update',
 					'credential:delete',
 					'credential:list',
+					'credential:move',
+					'credential:read',
 					'credential:share',
+					'credential:update',
 				].sort(),
 			);
 		}
@@ -573,7 +581,13 @@ describe('POST /credentials', () => {
 		expect(encryptedData).not.toBe(payload.data);
 
 		expect(scopes).toEqual(
-			['credential:read', 'credential:update', 'credential:delete', 'credential:share'].sort(),
+			[
+				'credential:delete',
+				'credential:move',
+				'credential:read',
+				'credential:share',
+				'credential:update',
+			].sort(),
 		);
 
 		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
@@ -671,7 +685,7 @@ describe('POST /credentials', () => {
 			//
 			.expect(400, {
 				code: 400,
-				message: "You don't have the permissions to save the workflow in this project.",
+				message: "You don't have the permissions to save the credential in this project.",
 			});
 	});
 });
@@ -816,11 +830,12 @@ describe('PATCH /credentials/:id', () => {
 		expect(scopes).toEqual(
 			[
 				'credential:create',
-				'credential:read',
-				'credential:update',
 				'credential:delete',
 				'credential:list',
+				'credential:move',
+				'credential:read',
 				'credential:share',
+				'credential:update',
 			].sort(),
 		);
 

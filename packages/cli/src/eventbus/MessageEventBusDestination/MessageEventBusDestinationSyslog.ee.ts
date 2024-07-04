@@ -7,7 +7,6 @@ import type {
 } from 'n8n-workflow';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import { MessageEventBusDestination } from './MessageEventBusDestination.ee';
-import { isLogStreamingEnabled } from '../MessageEventBus/MessageEventBusHelper';
 import { eventMessageGenericDestinationTestEvent } from '../EventMessageClasses/EventMessageGeneric';
 import type { MessageEventBus, MessageWithCallback } from '../MessageEventBus/MessageEventBus';
 import Container from 'typedi';
@@ -73,7 +72,7 @@ export class MessageEventBusDestinationSyslog
 		const { msg, confirmCallback } = emitterPayload;
 		let sendResult = false;
 		if (msg.eventName !== eventMessageGenericDestinationTestEvent) {
-			if (!isLogStreamingEnabled()) return sendResult;
+			if (!this.license.isLogStreamingEnabled()) return sendResult;
 			if (!this.hasSubscribedToEvent(msg)) return sendResult;
 		}
 		try {

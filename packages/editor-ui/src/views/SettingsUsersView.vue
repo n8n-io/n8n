@@ -91,7 +91,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { useSSOStore } from '@/stores/sso.store';
-import { hasPermission } from '@/rbac/permissions';
+import { hasPermission } from '@/utils/rbac/permissions';
 import { useClipboard } from '@/composables/useClipboard';
 import type { UpdateGlobalRolePayload } from '@/api/users';
 

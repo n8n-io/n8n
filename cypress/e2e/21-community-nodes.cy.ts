@@ -1,3 +1,4 @@
+import type { ICredentialType } from 'n8n-workflow';
 import { NodeCreator } from '../pages/features/node-creator';
 import CustomNodeFixture from '../fixtures/Custom_node.json';
 import { CredentialsModal, WorkflowPage } from '../pages';
@@ -33,9 +34,9 @@ describe('Community Nodes', () => {
 			req.headers['cache-control'] = 'no-cache, no-store';
 
 			req.on('response', (res) => {
-				const credentials = res.body || [];
+				const credentials: ICredentialType[] = res.body || [];
 
-				credentials.push(CustomCredential);
+				credentials.push(CustomCredential as ICredentialType);
 			});
 		});
 

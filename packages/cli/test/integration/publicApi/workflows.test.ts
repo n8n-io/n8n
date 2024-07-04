@@ -20,6 +20,9 @@ import { createWorkflow, createWorkflowWithTrigger } from '../shared/db/workflow
 import { createTag } from '../shared/db/tags';
 import { mockInstance } from '../../shared/mocking';
 import type { SuperAgentTest } from '../shared/types';
+import { Telemetry } from '@/telemetry';
+
+mockInstance(Telemetry);
 
 let owner: User;
 let ownerPersonalProject: Project;

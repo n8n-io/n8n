@@ -72,7 +72,7 @@ import WorkflowExecutionsInfoAccordion from '@/components/executions/workflow/Wo
 import ExecutionsFilter from '@/components/executions/ExecutionsFilter.vue';
 import { VIEWS } from '@/constants';
 import type { ExecutionSummary } from 'n8n-workflow';
-import type { Route } from 'vue-router';
+import type { RouteRecord } from 'vue-router';
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
@@ -131,7 +131,7 @@ export default defineComponent({
 		...mapStores(useExecutionsStore, useWorkflowsStore),
 	},
 	watch: {
-		$route(to: Route, from: Route) {
+		$route(to: RouteRecord, from: RouteRecord) {
 			if (from.name === VIEWS.EXECUTION_PREVIEW && to.name === VIEWS.EXECUTION_HOME) {
 				// Skip parent route when navigating through executions with back button
 				this.$router.go(-1);

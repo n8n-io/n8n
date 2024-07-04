@@ -110,7 +110,7 @@ export async function execute(
 
 		returnData = [newItem];
 	} catch (error) {
-		if (this.continueOnFail()) {
+		if (this.continueOnFail(error)) {
 			returnData.push({
 				json: {
 					error: error.message,

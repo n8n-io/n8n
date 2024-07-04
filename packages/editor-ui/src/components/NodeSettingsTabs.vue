@@ -28,7 +28,7 @@ import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 type Tab = 'settings' | 'params';
 type Props = {
 	modelValue?: Tab;
-	nodeType?: INodeTypeDescription;
+	nodeType?: INodeTypeDescription | null;
 	pushRef?: string;
 };
 
@@ -38,7 +38,7 @@ const props = withDefaults(defineProps<Props>(), {
 	pushRef: '',
 });
 const emit = defineEmits<{
-	(event: 'update:model-value', tab: Tab): void;
+	'update:model-value': [tab: Tab];
 }>();
 
 const externalHooks = useExternalHooks();

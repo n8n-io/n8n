@@ -1,4 +1,4 @@
-import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties, Icon } from 'n8n-workflow';
 
 export class HighLevelOAuth2Api implements ICredentialType {
 	name = 'highLevelOAuth2Api';
@@ -9,7 +9,7 @@ export class HighLevelOAuth2Api implements ICredentialType {
 
 	documentationUrl = 'highLevel';
 
-	icon = 'file:icons/highLevel.svg';
+	icon: Icon = 'file:icons/highLevel.svg';
 
 	properties: INodeProperties[] = [
 		{
@@ -39,7 +39,7 @@ export class HighLevelOAuth2Api implements ICredentialType {
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'string',
-			hint: 'Separate scopes by space',
+			hint: "Separate scopes by space, scopes needed for node: 'locations.readonly contacts.readonly contacts.write opportunities.readonly opportunities.write users.readonly'",
 			default: '',
 			required: true,
 		},

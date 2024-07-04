@@ -59,7 +59,7 @@ export const AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME = 'OpenAI Chat Model'
 export const AI_OUTPUT_PARSER_AUTO_FIXING_NODE_NAME = 'Auto-fixing Output Parser';
 export const WEBHOOK_NODE_NAME = 'Webhook';
 
-export const META_KEY = Cypress.platform === 'darwin' ? '{meta}' : '{ctrl}';
+export const META_KEY = Cypress.platform === 'darwin' ? 'meta' : 'ctrl';
 
 export const NEW_GOOGLE_ACCOUNT_NAME = 'Gmail account';
 export const NEW_TRELLO_ACCOUNT_NAME = 'Trello account';

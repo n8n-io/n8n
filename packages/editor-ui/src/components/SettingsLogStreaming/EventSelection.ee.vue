@@ -69,7 +69,7 @@
 </template>
 
 <script lang="ts">
-import { ElCheckbox as Checkbox } from 'element-plus';
+import { ElCheckbox as Checkbox, type CheckboxValueType } from 'element-plus';
 import { mapStores } from 'pinia';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { useLogStreamingStore } from '@/stores/logStreaming.store';
@@ -101,12 +101,13 @@ export default {
 		onInput() {
 			this.$emit('input');
 		},
-		onCheckboxChecked(eventName: string, checked: boolean) {
-			this.logStreamingStore.setSelectedInGroup(this.destinationId, eventName, checked);
+		onCheckboxChecked(eventName: string, checked: CheckboxValueType) {
+			this.logStreamingStore.setSelectedInGroup(this.destinationId, eventName, Boolean(checked));
 			this.$forceUpdate();
 		},
-		anonymizeAuditMessagesChanged(value: boolean) {
-			this.logStreamingStore.items[this.destinationId].destination.anonymizeAuditMessages = value;
+		anonymizeAuditMessagesChanged(value: CheckboxValueType) {
+			this.logStreamingStore.items[this.destinationId].destination.anonymizeAuditMessages =
+				Boolean(value);
 			this.$emit('change', { name: 'anonymizeAuditMessages', node: this.destinationId, value });
 			this.$forceUpdate();
 		},

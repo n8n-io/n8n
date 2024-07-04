@@ -58,7 +58,7 @@ import {
 import { useI18n } from '@/composables/useI18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { SimplifiedNodeType } from '@/Interface';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription, Themed } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 import { useTemplatesStore } from '@/stores/templates.store';
 
@@ -74,7 +74,7 @@ export interface NodeViewItem {
 	properties: {
 		name?: string;
 		title?: string;
-		icon?: string;
+		icon?: Themed<string>;
 		iconProps?: {
 			color?: string;
 		};
@@ -123,13 +123,7 @@ function getAiNodesBySubcategory(nodes: INodeTypeDescription[], subcategory: str
 				description: node.description,
 				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				icon: node.icon!,
-				iconData: node.name.toLowerCase().includes('openai')
-					? {
-							type: 'file',
-							icon: 'openai',
-							fileBuffer: '/static/open-ai.svg',
-						}
-					: undefined,
+				iconUrl: node.iconUrl,
 			},
 		}))
 		.sort((a, b) => a.properties.displayName.localeCompare(b.properties.displayName));

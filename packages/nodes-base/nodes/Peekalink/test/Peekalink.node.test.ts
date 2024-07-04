@@ -1,3 +1,4 @@
+import { NodeConnectionType } from 'n8n-workflow';
 import { apiUrl } from '../Peekalink.node';
 import type { WorkflowTestData } from '@test/nodes/types';
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
@@ -57,7 +58,7 @@ describe('Peekalink Node', () => {
 								[
 									{
 										node: 'Peekalink',
-										type: 'main',
+										type: NodeConnectionType.Main,
 										index: 0,
 									},
 								],
@@ -129,7 +130,7 @@ describe('Peekalink Node', () => {
 								[
 									{
 										node: 'Peekalink',
-										type: 'main',
+										type: NodeConnectionType.Main,
 										index: 0,
 									},
 								],

@@ -7,6 +7,8 @@ import type { IncomingHttpHeaders } from 'http';
 import type { SecureContextOptions } from 'tls';
 import type { Readable } from 'stream';
 import type { URLSearchParams } from 'url';
+import type { RequestBodyMatcher } from 'nock';
+import type { Client as SSHClient } from 'ssh2';
 
 import type { AuthenticationMethod } from './Authentication';
 import type { CODE_EXECUTION_MODES, CODE_LANGUAGES, LOG_LEVELS } from './Constants';
@@ -68,7 +70,7 @@ export interface IConnection {
 	node: string;
 
 	// The type of the input on destination node (for example "main")
-	type: string;
+	type: NodeConnectionType;
 
 	// The output/input-index of destination node (if node has multiple inputs/outputs of the same type)
 	index: number;
@@ -116,21 +118,21 @@ export interface IUser {
 	lastName: string;
 }
 
+export type ProjectSharingData = {
+	id: string;
+	name: string | null;
+	type: 'personal' | 'team' | 'public';
+	createdAt: string;
+	updatedAt: string;
+};
+
 export interface ICredentialsDecrypted {
 	id: string;
 	name: string;
 	type: string;
 	data?: ICredentialDataDecryptedObject;
-	homeProject?: {
-		id: string;
-		name: string | null;
-		type: 'personal' | 'team' | 'public';
-	};
-	sharedWithProjects?: Array<{
-		id: string;
-		name: string | null;
-		type: 'personal' | 'team' | 'public';
-	}>;
+	homeProject?: ProjectSharingData;
+	sharedWithProjects?: ProjectSharingData[];
 }
 
 export interface ICredentialsEncrypted {
@@ -216,6 +218,8 @@ export abstract class ICredentialsHelper {
 		type: string,
 		data: ICredentialDataDecryptedObject,
 	): Promise<void>;
+
+	abstract getCredentialsProperties(type: string): INodeProperties[];
 }
 
 export interface IAuthenticateBase {
@@ -307,8 +311,8 @@ type ICredentialHttpRequestNode = {
 export interface ICredentialType {
 	name: string;
 	displayName: string;
-	icon?: string;
-	iconUrl?: string;
+	icon?: Icon;
+	iconUrl?: Themed<string>;
 	extends?: string[];
 	properties: INodeProperties[];
 	documentationUrl?: string;
@@ -338,7 +342,13 @@ export interface ICredentialData {
 }
 
 // The encrypted credentials which the nodes can access
-export type CredentialInformation = string | number | boolean | IDataObject | IDataObject[];
+export type CredentialInformation =
+	| string
+	| string[]
+	| number
+	| boolean
+	| IDataObject
+	| IDataObject[];
 
 // The encrypted credentials which the nodes can access
 export interface ICredentialDataDecryptedObject {
@@ -614,8 +624,11 @@ export interface IN8nRequestOperationPaginationOffset extends IN8nRequestOperati
 	};
 }
 
+export type EnsureTypeOptions = 'string' | 'number' | 'boolean' | 'object' | 'array' | 'json';
 export interface IGetNodeParameterOptions {
 	contextNode?: INode;
+	// make sure that returned value would be of specified type, converts it if needed
+	ensureType?: EnsureTypeOptions;
 	// extract value from regex, works only when parameter type is resourceLocator
 	extractValue?: boolean;
 	// get raw value of parameter with unresolved expressions
@@ -705,7 +718,7 @@ export type ICredentialTestFunction = (
 ) => Promise<INodeCredentialTestResult>;
 
 export interface ICredentialTestFunctions {
-	helpers: {
+	helpers: SSHTunnelFunctions & {
 		request: (uriOrObject: string | object, options?: object) => Promise<any>;
 	};
 }
@@ -804,6 +817,28 @@ export interface RequestHelperFunctions {
 	): Promise<any>;
 }
 
+export type SSHCredentials = {
+	sshHost: string;
+	sshPort: number;
+	sshUser: string;
+} & (
+	| {
+			sshAuthenticateWith: 'password';
+			sshPassword: string;
+	  }
+	| {
+			sshAuthenticateWith: 'privateKey';
+			// TODO: rename this to `sshPrivateKey`
+			privateKey: string;
+			// TODO: rename this to `sshPassphrase`
+			passphrase?: string;
+	  }
+);
+
+export interface SSHTunnelFunctions {
+	getSSHClient(credentials: SSHCredentials): Promise<SSHClient>;
+}
+
 export type NodeTypeAndVersion = {
 	name: string;
 	type: string;
@@ -813,6 +848,7 @@ export type NodeTypeAndVersion = {
 export interface FunctionsBase {
 	logger: Logger;
 	getCredentials(type: string, itemIndex?: number): Promise<ICredentialDataDecryptedObject>;
+	getCredentialsProperties(type: string): INodeProperties[];
 	getExecutionId(): string;
 	getNode(): INode;
 	getWorkflow(): IWorkflowMetadata;
@@ -838,7 +874,7 @@ type FunctionsBaseWithRequiredKeys<Keys extends keyof FunctionsBase> = Functions
 export type ContextType = 'flow' | 'node';
 
 type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
-	continueOnFail(): boolean;
+	continueOnFail(error?: Error): boolean;
 	evaluateExpression(expression: string, itemIndex: number): NodeParameterValueType;
 	getContext(type: ContextType): IContextObject;
 	getExecuteData(): IExecuteData;
@@ -863,6 +899,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			inputIndex?: number,
 		): Promise<unknown>;
 		getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
+		getNodeInputs(): INodeInputConfiguration[];
 		getNodeOutputs(): INodeOutputConfiguration[];
 		putExecutionToWait(waitTill: Date): Promise<void>;
 		sendMessageToUI(message: any): void;
@@ -885,6 +922,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			BaseHelperFunctions &
 			BinaryHelperFunctions &
 			FileSystemHelperFunctions &
+			SSHTunnelFunctions &
 			JsonHelperFunctions & {
 				normalizeItems(items: INodeExecutionData | INodeExecutionData[]): INodeExecutionData[];
 				constructExecutionMetaData(
@@ -934,7 +972,7 @@ export interface ILoadOptionsFunctions extends FunctionsBase {
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object | undefined;
 	getCurrentNodeParameters(): INodeParameters | undefined;
-	helpers: RequestHelperFunctions;
+	helpers: RequestHelperFunctions & SSHTunnelFunctions;
 }
 
 export interface IPollFunctions
@@ -972,6 +1010,7 @@ export interface ITriggerFunctions
 	helpers: RequestHelperFunctions &
 		BaseHelperFunctions &
 		BinaryHelperFunctions &
+		SSHTunnelFunctions &
 		JsonHelperFunctions;
 }
 
@@ -1262,7 +1301,6 @@ export interface ICredentialsDisplayOptions {
 		[key: string]: NodeParameterValue[] | undefined;
 	};
 	show?: {
-		// eslint-disable-next-line @typescript-eslint/naming-convention
 		'@version'?: number[];
 		[key: string]: NodeParameterValue[] | undefined;
 	};
@@ -1527,7 +1565,7 @@ export interface INodeIssueObjectProperty {
 export interface INodeIssueData {
 	node: string;
 	type: INodeIssueTypes;
-	value: boolean | string | string[] | INodeIssueObjectProperty;
+	value: null | boolean | string | string[] | INodeIssueObjectProperty;
 }
 
 export interface INodeIssues {
@@ -1543,12 +1581,34 @@ export interface IWorkflowIssues {
 	[key: string]: INodeIssues;
 }
 
+export type NodeIconColor =
+	| 'gray'
+	| 'black'
+	| 'blue'
+	| 'light-blue'
+	| 'dark-blue'
+	| 'orange'
+	| 'orange-red'
+	| 'pink-red'
+	| 'red'
+	| 'light-green'
+	| 'green'
+	| 'dark-green'
+	| 'azure'
+	| 'purple'
+	| 'crimson';
+export type Themed<T> = T | { light: T; dark: T };
+export type IconRef = `fa:${string}` | `node:${string}.${string}`;
+export type IconFile = `file:${string}.png` | `file:${string}.svg`;
+export type Icon = IconRef | Themed<IconFile>;
+
 export interface INodeTypeBaseDescription {
 	displayName: string;
 	name: string;
-	icon?: string;
-	iconUrl?: string;
-	badgeIconUrl?: string;
+	icon?: Icon;
+	iconColor?: NodeIconColor;
+	iconUrl?: Themed<string>;
+	badgeIconUrl?: Themed<string>;
 	group: string[];
 	description: string;
 	documentationUrl?: string;
@@ -1678,29 +1738,28 @@ export type ConnectionTypes =
 	| 'main';
 
 export const enum NodeConnectionType {
-	// eslint-disable-next-line @typescript-eslint/naming-convention
 	AiAgent = 'ai_agent',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiChain = 'ai_chain',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiDocument = 'ai_document',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiEmbedding = 'ai_embedding',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiLanguageModel = 'ai_languageModel',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiMemory = 'ai_memory',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiOutputParser = 'ai_outputParser',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiRetriever = 'ai_retriever',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiTextSplitter = 'ai_textSplitter',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiTool = 'ai_tool',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiVectorStore = 'ai_vectorStore',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	Main = 'main',
 }
 
@@ -1727,29 +1786,33 @@ export interface INodeInputFilter {
 }
 
 export interface INodeInputConfiguration {
-	displayName?: string;
-	maxConnections?: number;
-	required?: boolean;
-	filter?: INodeInputFilter;
-	type: ConnectionTypes;
-}
-
-export interface INodeOutputConfiguration {
 	category?: string;
 	displayName?: string;
 	required?: boolean;
 	type: ConnectionTypes;
+	filter?: INodeInputFilter;
+	maxConnections?: number;
 }
+
+export interface INodeOutputConfiguration {
+	category?: 'error';
+	displayName?: string;
+	maxConnections?: number;
+	required?: boolean;
+	type: ConnectionTypes;
+}
+
+export type ExpressionString = `={{${string}}}`;
 
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number | number[];
 	defaults: INodeParameters;
 	eventTriggerDescription?: string;
 	activationMessage?: string;
-	inputs: Array<ConnectionTypes | INodeInputConfiguration> | string;
+	inputs: Array<ConnectionTypes | INodeInputConfiguration> | ExpressionString;
 	requiredInputs?: string | number[] | number; // Ony available with executionOrder => "v1"
 	inputNames?: string[];
-	outputs: Array<ConnectionTypes | INodeInputConfiguration> | string;
+	outputs: Array<ConnectionTypes | INodeOutputConfiguration> | ExpressionString;
 	outputNames?: string[];
 	properties: INodeProperties[];
 	credentials?: INodeCredentialDescription[];
@@ -2181,10 +2244,11 @@ export interface WorkflowTestData {
 	nock?: {
 		baseUrl: string;
 		mocks: Array<{
-			method: string;
+			method: 'get' | 'post';
 			path: string;
+			requestBody?: RequestBodyMatcher;
 			statusCode: number;
-			responseBody: any;
+			responseBody: string | object;
 		}>;
 	};
 	trigger?: {
@@ -2282,6 +2346,9 @@ export interface INodeGraphItem {
 	src_instance_id?: string;
 	agent?: string; //@n8n/n8n-nodes-langchain.agent
 	prompts?: IDataObject[] | IDataObject; //ai node's prompts, cloud only
+	toolSettings?: IDataObject; //various langchain tool's settings
+	sql?: string; //merge node combineBySql, cloud only
+	workflow_id?: string; //@n8n/n8n-nodes-langchain.toolWorkflow and n8n-nodes-base.executeWorkflow
 }
 
 export interface INodeNameIndex {
@@ -2348,7 +2415,7 @@ export interface ExecutionSummary {
 	stoppedAt?: Date;
 	workflowId: string;
 	workflowName?: string;
-	status?: ExecutionStatus;
+	status: ExecutionStatus;
 	lastNodeExecuted?: string;
 	executionError?: ExecutionError;
 	nodeExecutionStatus?: {
@@ -2433,9 +2500,9 @@ export interface FilterOperatorValue {
 
 export type FilterConditionValue = {
 	id: string;
-	leftValue: NodeParameterValue;
+	leftValue: NodeParameterValue | NodeParameterValue[];
 	operator: FilterOperatorValue;
-	rightValue: NodeParameterValue;
+	rightValue: NodeParameterValue | NodeParameterValue[];
 };
 
 export type FilterOptionsValue = {
@@ -2488,11 +2555,21 @@ export interface IUserManagementSettings {
 	authenticationMethod: AuthenticationMethod;
 }
 
+export type NpsSurveyRespondedState = { lastShownAt: number; responded: true };
+export type NpsSurveyWaitingState = {
+	lastShownAt: number;
+	waitingForResponse: true;
+	ignoredCount: number;
+};
+export type NpsSurveyState = NpsSurveyRespondedState | NpsSurveyWaitingState;
+
 export interface IUserSettings {
 	isOnboarded?: boolean;
 	firstSuccessfulWorkflowId?: string;
 	userActivated?: boolean;
+	userActivatedAt?: number;
 	allowSSOManualLogin?: boolean;
+	npsSurvey?: NpsSurveyState;
 }
 
 export interface IPublicApiSettings {
@@ -2509,6 +2586,8 @@ export type ExpressionEvaluatorType = 'tmpl' | 'tournament';
 export type N8nAIProviderType = 'openai' | 'unknown';
 
 export interface IN8nUISettings {
+	isDocker: boolean;
+	databaseType: 'sqlite' | 'mariadb' | 'mysqldb' | 'postgresdb';
 	endpointForm: string;
 	endpointFormTest: string;
 	endpointFormWaiting: string;
@@ -2517,6 +2596,7 @@ export interface IN8nUISettings {
 	saveDataErrorExecution: WorkflowSettings.SaveDataExecution;
 	saveDataSuccessExecution: WorkflowSettings.SaveDataExecution;
 	saveManualExecutions: boolean;
+	saveExecutionProgress: boolean;
 	executionTimeout: number;
 	maxExecutionTimeout: number;
 	workflowCallerPolicyDefaultOption: WorkflowSettings.CallerPolicy;
@@ -2528,10 +2608,12 @@ export interface IN8nUISettings {
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
 	versionCli: string;
+	nodeJsVersion: string;
+	concurrency: number;
 	authCookie: {
 		secure: boolean;
 	};
-	binaryDataMode: string;
+	binaryDataMode: 'default' | 'filesystem' | 's3';
 	releaseChannel: 'stable' | 'beta' | 'nightly' | 'dev';
 	n8nMetadata?: {
 		userId?: string;
@@ -2570,7 +2652,6 @@ export interface IN8nUISettings {
 		enabled: boolean;
 		host: string;
 	};
-	onboardingCallPromptEnabled: boolean;
 	missingPackages?: boolean;
 	executionMode: 'regular' | 'queue';
 	pushBackend: 'sse' | 'websocket';
@@ -2607,6 +2688,8 @@ export interface IN8nUISettings {
 	};
 	hideUsagePage: boolean;
 	license: {
+		planName?: string;
+		consumerId: string;
 		environment: 'development' | 'production' | 'staging';
 	};
 	variables: {
@@ -2623,14 +2706,18 @@ export interface IN8nUISettings {
 	};
 	ai: {
 		enabled: boolean;
-		provider: string;
-		features: {
-			generateCurl: boolean;
-		};
 	};
 	workflowHistory: {
 		pruneTime: number;
 		licensePruneTime: number;
+	};
+	pruning: {
+		isEnabled: boolean;
+		maxAge: number;
+		maxCount: number;
+	};
+	security: {
+		blockFileAccessToN8nFiles: boolean;
 	};
 }
 

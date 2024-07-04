@@ -5,11 +5,11 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import type { ITelemetrySettings } from 'n8n-workflow';
-import { useProjectsStore } from '@/features/projects/projects.store';
+import { useProjectsStore } from '@/stores/projects.store';
 
 export default defineComponent({
 	name: 'Telemetry',
@@ -21,10 +21,11 @@ export default defineComponent({
 	computed: {
 		...mapStores(useRootStore, useSettingsStore, useUsersStore, useProjectsStore),
 		currentUserId(): string {
-			return this.usersStore.currentUserId || '';
+			return this.usersStore.currentUserId ?? '';
 		},
 		isTelemetryEnabledOnRoute(): boolean {
-			return this.$route.meta?.telemetry ? !this.$route.meta.telemetry.disabled : true;
+			const routeMeta = this.$route.meta as { telemetry?: { disabled?: boolean } } | undefined;
+			return routeMeta?.telemetry ? !routeMeta.telemetry.disabled : true;
 		},
 		telemetry(): ITelemetrySettings {
 			return this.settingsStore.telemetry;

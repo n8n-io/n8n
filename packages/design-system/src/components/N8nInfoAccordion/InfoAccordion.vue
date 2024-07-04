@@ -42,7 +42,7 @@
 import { onMounted, ref } from 'vue';
 import N8nText from '../N8nText';
 import N8nIcon from '../N8nIcon';
-import type { IconColor } from '@/types/icon';
+import type { IconColor } from 'n8n-design-system/types/icon';
 import { createEventBus, type EventBus } from '../../utils';
 
 interface IAccordionItem {
@@ -68,7 +68,10 @@ const props = withDefaults(defineProps<InfoAccordionProps>(), {
 	initiallyExpanded: false,
 	eventBus: () => createEventBus(),
 });
-const $emit = defineEmits(['click:body', 'tooltipClick']);
+const $emit = defineEmits<{
+	'click:body': [e: MouseEvent];
+	tooltipClick: [item: string, e: MouseEvent];
+}>();
 
 const expanded = ref(false);
 onMounted(() => {

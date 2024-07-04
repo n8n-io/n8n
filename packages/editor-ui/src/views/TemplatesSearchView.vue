@@ -122,6 +122,16 @@ export default defineComponent({
 		TemplateList,
 		TemplatesView,
 	},
+	beforeRouteLeave(_to, _from, next) {
+		const contentArea = document.getElementById('content');
+		if (contentArea) {
+			// When leaving this page, store current scroll position in route data
+			this.$route.meta?.setScrollPosition?.(contentArea.scrollTop);
+		}
+
+		this.trackSearch();
+		next();
+	},
 	setup() {
 		const { callDebounced } = useDebounce();
 
@@ -405,21 +415,6 @@ export default defineComponent({
 				}
 			}, 0);
 		},
-	},
-	beforeRouteLeave(to, from, next) {
-		const contentArea = document.getElementById('content');
-		if (contentArea) {
-			// When leaving this page, store current scroll position in route data
-			if (
-				this.$route.meta?.setScrollPosition &&
-				typeof this.$route.meta.setScrollPosition === 'function'
-			) {
-				this.$route.meta.setScrollPosition(contentArea.scrollTop);
-			}
-		}
-
-		this.trackSearch();
-		next();
 	},
 });
 </script>

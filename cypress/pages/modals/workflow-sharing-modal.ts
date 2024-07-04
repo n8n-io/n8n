@@ -7,6 +7,7 @@ export class WorkflowSharingModal extends BasePage {
 		saveButton: () => cy.getByTestId('workflow-sharing-modal-save-button'),
 		closeButton: () => this.getters.modal().find('.el-dialog__close').first(),
 	};
+
 	actions = {
 		addUser: (email: string) => {
 			this.getters.usersSelect().click();

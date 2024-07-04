@@ -181,7 +181,7 @@ export class ChainRetrievalQa implements INodeType {
 				const response = await chain.withConfig(getTracingConfig(this)).invoke({ query });
 				returnData.push({ json: { response } });
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
 					continue;
 				}

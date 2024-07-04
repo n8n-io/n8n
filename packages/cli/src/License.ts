@@ -84,6 +84,9 @@ export class License {
 		const collectUsageMetrics = isMainInstance
 			? async () => await this.usageMetricsService.collectUsageMetrics()
 			: async () => [];
+		const collectPassthroughData = isMainInstance
+			? async () => await this.usageMetricsService.collectPassthroughData()
+			: async () => ({});
 
 		const renewalEnabled = this.renewalEnabled(instanceType);
 
@@ -101,6 +104,7 @@ export class License {
 				saveCertStr,
 				deviceFingerprint: () => this.instanceSettings.instanceId,
 				collectUsageMetrics,
+				collectPassthroughData,
 				onFeatureChange,
 			});
 
@@ -332,6 +336,10 @@ export class License {
 		return entitlements.find(
 			(entitlement) => (entitlement.productMetadata?.terms as { isMainPlan?: boolean })?.isMainPlan,
 		);
+	}
+
+	getConsumerId() {
+		return this.manager?.getConsumerId() ?? 'unknown';
 	}
 
 	// Helper functions for computed data

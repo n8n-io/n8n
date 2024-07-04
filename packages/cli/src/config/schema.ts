@@ -254,6 +254,15 @@ export const schema = {
 			env: 'EXECUTIONS_MODE',
 		},
 
+		concurrency: {
+			productionLimit: {
+				doc: "Max production executions allowed to run concurrently, in main process for regular mode and in worker for queue mode. Default for main mode is `-1` (disabled). Default for queue mode is taken from the worker's `--concurrency` flag.",
+				format: Number,
+				default: -1,
+				env: 'N8N_CONCURRENCY_PRODUCTION_LIMIT',
+			},
+		},
+
 		// A Workflow times out and gets canceled after this time (seconds).
 		// If the workflow is executed in the main process a soft timeout
 		// is executed (takes effect after the current node finishes).
@@ -362,6 +371,21 @@ export const schema = {
 			default: 10000,
 			env: 'EXECUTIONS_DATA_PRUNE_MAX_COUNT',
 		},
+
+		queueRecovery: {
+			interval: {
+				doc: 'How often (minutes) to check for queue recovery',
+				format: Number,
+				default: 180,
+				env: 'N8N_EXECUTIONS_QUEUE_RECOVERY_INTERVAL',
+			},
+			batchSize: {
+				doc: 'Size of batch of executions to check for queue recovery',
+				format: Number,
+				default: 100,
+				env: 'N8N_EXECUTIONS_QUEUE_RECOVERY_BATCH',
+			},
+		},
 	},
 
 	queue: {
@@ -412,7 +436,7 @@ export const schema = {
 					env: 'QUEUE_BULL_REDIS_PORT',
 				},
 				timeoutThreshold: {
-					doc: 'Redis timeout threshold',
+					doc: 'Max cumulative timeout (in milliseconds) of connection retries before process exit',
 					format: Number,
 					default: 10000,
 					env: 'QUEUE_BULL_REDIS_TIMEOUT_THRESHOLD',
@@ -1208,15 +1232,6 @@ export const schema = {
 		env: 'N8N_DEFAULT_LOCALE',
 	},
 
-	onboardingCallPrompt: {
-		enabled: {
-			doc: 'Whether onboarding call prompt feature is available',
-			format: Boolean,
-			default: true,
-			env: 'N8N_ONBOARDING_CALL_PROMPTS_ENABLED',
-		},
-	},
-
 	license: {
 		serverUrl: {
 			format: String,
@@ -1355,34 +1370,6 @@ export const schema = {
 			format: Boolean,
 			default: false,
 			env: 'N8N_AI_ENABLED',
-		},
-		provider: {
-			doc: 'AI provider to use. Currently only "openai" is supported.',
-			format: String,
-			default: 'openai',
-			env: 'N8N_AI_PROVIDER',
-		},
-		openAI: {
-			apiKey: {
-				doc: 'Enable AI features using OpenAI API key',
-				format: String,
-				default: '',
-				env: 'N8N_AI_OPENAI_API_KEY',
-			},
-			model: {
-				doc: 'OpenAI model to use',
-				format: String,
-				default: 'gpt-4-turbo',
-				env: 'N8N_AI_OPENAI_MODEL',
-			},
-		},
-		pinecone: {
-			apiKey: {
-				doc: 'Enable AI features using Pinecone API key',
-				format: String,
-				default: '',
-				env: 'N8N_AI_PINECONE_API_KEY',
-			},
 		},
 	},
 

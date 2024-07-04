@@ -31,7 +31,7 @@ export async function deleteDestinationFromDb(context: IRestApiContext, destinat
 export async function sendTestMessageToDestination(
 	context: IRestApiContext,
 	destination: ApiMessageEventBusDestinationOptions,
-) {
+): Promise<boolean> {
 	const data: IDataObject = {
 		...destination,
 	};
@@ -46,8 +46,4 @@ export async function getDestinationsFromBackend(
 	context: IRestApiContext,
 ): Promise<MessageEventBusDestinationOptions[]> {
 	return await makeRestApiRequest(context, 'GET', '/eventbus/destination');
-}
-
-export async function getExecutionEvents(context: IRestApiContext, executionId: string) {
-	return await makeRestApiRequest(context, 'GET', `/eventbus/execution/${executionId}`);
 }

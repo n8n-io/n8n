@@ -43,7 +43,7 @@ import N8nFormInputs from '../N8nFormInputs';
 import N8nHeading from '../N8nHeading';
 import N8nLink from '../N8nLink';
 import N8nButton from '../N8nButton';
-import type { IFormInput } from '@/types';
+import type { IFormInput } from 'n8n-design-system/types';
 import { createEventBus } from '../../utils';
 
 interface FormBoxProps {
@@ -56,6 +56,8 @@ interface FormBoxProps {
 	redirectLink?: string;
 }
 
+type Value = string | number | boolean | null | undefined;
+
 defineOptions({ name: 'N8nFormBox' });
 withDefaults(defineProps<FormBoxProps>(), {
 	title: '',
@@ -66,10 +68,14 @@ withDefaults(defineProps<FormBoxProps>(), {
 });
 
 const formBus = createEventBus();
-const $emit = defineEmits(['submit', 'update', 'secondaryClick']);
+const $emit = defineEmits<{
+	submit: [value: { [key: string]: Value }];
+	update: [value: { name: string; value: Value }];
+	secondaryClick: [value: Event];
+}>();
 
-const onUpdateModelValue = (e: { name: string; value: string }) => $emit('update', e);
-const onSubmit = (e: { [key: string]: string }) => $emit('submit', e);
+const onUpdateModelValue = (e: { name: string; value: Value }) => $emit('update', e);
+const onSubmit = (e: { [key: string]: Value }) => $emit('submit', e);
 const onButtonClick = () => formBus.emit('submit');
 const onSecondaryButtonClick = (event: Event) => $emit('secondaryClick', event);
 </script>

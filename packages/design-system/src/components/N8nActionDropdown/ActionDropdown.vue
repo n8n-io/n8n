@@ -5,6 +5,7 @@
 			:placement="placement"
 			:trigger="trigger"
 			:popper-class="popperClass"
+			:teleported="teleported"
 			@command="onSelect"
 			@visible-change="onVisibleChange"
 		>
@@ -62,7 +63,7 @@ import { ElDropdown, ElDropdownMenu, ElDropdownItem, type Placement } from 'elem
 import N8nIcon from '../N8nIcon';
 import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
 import type { ActionDropdownItem } from '../../types';
-import type { IconSize } from '@/types/icon';
+import type { IconSize } from 'n8n-design-system/types/icon';
 
 const TRIGGER = ['click', 'hover'] as const;
 
@@ -74,6 +75,7 @@ interface ActionDropdownProps {
 	iconSize?: IconSize;
 	trigger?: (typeof TRIGGER)[number];
 	hideArrow?: boolean;
+	teleported?: boolean;
 }
 
 const props = withDefaults(defineProps<ActionDropdownProps>(), {
@@ -83,6 +85,7 @@ const props = withDefaults(defineProps<ActionDropdownProps>(), {
 	iconSize: 'medium',
 	trigger: 'click',
 	hideArrow: false,
+	teleported: true,
 });
 
 const $attrs = useAttrs();
@@ -98,7 +101,10 @@ const getItemClasses = (item: ActionDropdownItem): Record<string, boolean> => {
 	};
 };
 
-const $emit = defineEmits(['select', 'visibleChange']);
+const $emit = defineEmits<{
+	select: [action: string];
+	visibleChange: [open: boolean];
+}>();
 const elementDropdown = ref<InstanceType<typeof ElDropdown>>();
 
 const popperClass = computed(

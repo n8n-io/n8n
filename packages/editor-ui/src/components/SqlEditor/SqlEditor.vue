@@ -77,7 +77,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	(event: 'update:model-value', value: string): void;
+	'update:model-value': [value: string];
 }>();
 
 const sqlEditor = ref<HTMLElement>();

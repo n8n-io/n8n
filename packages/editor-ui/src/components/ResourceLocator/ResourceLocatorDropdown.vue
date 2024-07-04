@@ -4,7 +4,7 @@
 		:width="width"
 		:popper-class="$style.popover"
 		:visible="show"
-		trigger="manual"
+		:teleported="false"
 		data-test-id="resource-locator-dropdown"
 	>
 		<div v-if="errorView" :class="$style.messageContainer">

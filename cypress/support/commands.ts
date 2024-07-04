@@ -1,4 +1,6 @@
 import 'cypress-real-events';
+import FakeTimers from '@sinonjs/fake-timers';
+import type { IN8nUISettings } from 'n8n-workflow';
 import { WorkflowPage } from '../pages';
 import {
 	BACKEND_BASE_URL,
@@ -7,32 +9,42 @@ import {
 	INSTANCE_OWNER,
 	N8N_AUTH_COOKIE,
 } from '../constants';
+import { getUniqueWorkflowName } from '../utils/workflowUtils';
+
+Cypress.Commands.add('setAppDate', (targetDate: number | Date) => {
+	cy.window().then((win) => {
+		FakeTimers.withGlobal(win).install({
+			now: targetDate,
+			toFake: ['Date'],
+			shouldAdvanceTime: true,
+		});
+	});
+});
 
 Cypress.Commands.add('getByTestId', (selector, ...args) => {
 	return cy.get(`[data-test-id="${selector}"]`, ...args);
 });
 
-Cypress.Commands.add('createFixtureWorkflow', (fixtureKey, workflowName) => {
-	const workflowPage = new WorkflowPage();
-
-	// We need to force the click because the input is hidden
-	workflowPage.getters
-		.workflowImportInput()
-		.selectFile(`cypress/fixtures/${fixtureKey}`, { force: true });
-
-	cy.waitForLoad(false);
-	workflowPage.actions.setWorkflowName(workflowName);
-	workflowPage.getters.saveButton().should('contain', 'Saved');
-	workflowPage.actions.zoomToFit();
-});
-
 Cypress.Commands.add(
-	'findChildByTestId',
-	{ prevSubject: true },
-	(subject: Cypress.Chainable<JQuery<HTMLElement>>, childTestId) => {
-		return subject.find(`[data-test-id="${childTestId}"]`);
+	'createFixtureWorkflow',
+	(fixtureKey: string, workflowName = getUniqueWorkflowName()) => {
+		const workflowPage = new WorkflowPage();
+
+		// We need to force the click because the input is hidden
+		workflowPage.getters
+			.workflowImportInput()
+			.selectFile(`fixtures/${fixtureKey}`, { force: true });
+
+		cy.waitForLoad(false);
+		workflowPage.actions.setWorkflowName(workflowName);
+		workflowPage.getters.saveButton().should('contain', 'Saved');
+		workflowPage.actions.zoomToFit();
 	},
 );
+
+Cypress.Commands.addQuery('findChildByTestId', function (testId: string) {
+	return (subject: Cypress.Chainable) => subject.find(`[data-test-id="${testId}"]`);
+});
 
 Cypress.Commands.add('waitForLoad', (waitForIntercepts = true) => {
 	// These aliases are set-up before each test in cypress/support/e2e.ts
@@ -46,7 +58,7 @@ Cypress.Commands.add('waitForLoad', (waitForIntercepts = true) => {
 });
 
 Cypress.Commands.add('signin', ({ email, password }) => {
-	Cypress.session.clearAllSavedSessions();
+	void Cypress.session.clearAllSavedSessions();
 	cy.session([email, password], () =>
 		cy.request({
 			method: 'POST',
@@ -57,9 +69,9 @@ Cypress.Commands.add('signin', ({ email, password }) => {
 	);
 });
 
-Cypress.Commands.add('signinAsOwner', () => {
-	cy.signin({ email: INSTANCE_OWNER.email, password: INSTANCE_OWNER.password });
-});
+Cypress.Commands.add('signinAsOwner', () => cy.signin(INSTANCE_OWNER));
+Cypress.Commands.add('signinAsAdmin', () => cy.signin(INSTANCE_ADMIN));
+Cypress.Commands.add('signinAsMember', (index = 0) => cy.signin(INSTANCE_MEMBERS[index]));
 
 Cypress.Commands.add('signout', () => {
 	cy.request({
@@ -70,8 +82,9 @@ Cypress.Commands.add('signout', () => {
 	cy.getCookie(N8N_AUTH_COOKIE).should('not.exist');
 });
 
-Cypress.Commands.add('interceptREST', (method, url) => {
-	cy.intercept(method, `${BACKEND_BASE_URL}/rest${url}`);
+export let settings: Partial<IN8nUISettings>;
+Cypress.Commands.add('overrideSettings', (value: Partial<IN8nUISettings>) => {
+	settings = value;
 });
 
 const setFeature = (feature: string, enabled: boolean) =>
@@ -128,7 +141,7 @@ Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) =>
 });
 
 Cypress.Commands.add('drag', (selector, pos, options) => {
-	const index = options?.index || 0;
+	const index = options?.index ?? 0;
 	const [xDiff, yDiff] = pos;
 	const element = typeof selector === 'string' ? cy.get(selector).eq(index) : selector;
 	element.should('exist');

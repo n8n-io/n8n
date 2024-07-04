@@ -27,6 +27,7 @@ export class RssFeedRead implements INodeType {
 		displayName: 'RSS Read',
 		name: 'rssFeedRead',
 		icon: 'fa:rss',
+		iconColor: 'orange-red',
 		group: ['input'],
 		version: [1, 1.1],
 		description: 'Reads data from an RSS Feed',
@@ -136,7 +137,7 @@ export class RssFeedRead implements INodeType {
 					returnData.push(...executionData);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({
 						json: { error: error.message },
 						pairedItem: fallbackPairedItems || [{ item: i }],

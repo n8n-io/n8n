@@ -14,6 +14,7 @@ export class ExecuteWorkflow implements INodeType {
 		displayName: 'Execute Workflow',
 		name: 'executeWorkflow',
 		icon: 'fa:sign-in-alt',
+		iconColor: 'orange-red',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{"Workflow: " + $parameter["workflowId"]}}',
@@ -229,8 +230,12 @@ export class ExecuteWorkflow implements INodeType {
 						returnData = [items];
 					}
 				} catch (error) {
-					if (this.continueOnFail()) {
-						return [[{ json: { error: error.message }, pairedItem: { item: i } }]];
+					if (this.continueOnFail(error)) {
+						if (returnData[i] === undefined) {
+							returnData[i] = [];
+						}
+						returnData[i].push({ json: { error: error.message }, pairedItem: { item: i } });
+						continue;
 					}
 					throw new NodeOperationError(this.getNode(), error, {
 						message: `Error executing workflow with item at index ${i}`,
@@ -279,7 +284,7 @@ export class ExecuteWorkflow implements INodeType {
 				return workflowResult;
 			} catch (error) {
 				const pairedItem = generatePairedItemData(items.length);
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					return [[{ json: { error: error.message }, pairedItem }]];
 				}
 				throw error;

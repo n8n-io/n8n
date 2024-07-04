@@ -148,7 +148,7 @@ import type { DynamicNodeParameters, IResourceLocatorResultExpanded } from '@/In
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -175,6 +175,7 @@ import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
 import { useDebounce } from '@/composables/useDebounce';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRouter } from 'vue-router';
+import { ndvEventBus } from '@/event-bus';
 
 interface IResourceLocatorQuery {
 	results: INodeListSearchItems[];
@@ -410,7 +411,7 @@ export default defineComponent({
 			return this.cachedResponses[this.currentRequestKey] || null;
 		},
 		currentQueryResults(): IResourceLocatorResultExpanded[] {
-			const results = this.currentResponse ? this.currentResponse.results : [];
+			const results = this.currentResponse?.results ?? [];
 
 			return results.map(
 				(result: INodeListSearchItems): IResourceLocatorResultExpanded => ({
@@ -486,7 +487,7 @@ export default defineComponent({
 		this.eventBus.on('refreshList', this.refreshList);
 		window.addEventListener('resize', this.setWidth);
 
-		useNDVStore().$subscribe((mutation, state) => {
+		useNDVStore().$subscribe((_mutation, _state) => {
 			// Update the width when main panel dimension change
 			this.setWidth();
 		});
@@ -566,12 +567,18 @@ export default defineComponent({
 			if (!nodeType) {
 				return;
 			}
+
+			const defaultCredentialType = nodeType.credentials?.[0].name ?? '';
 			const mainAuthType = getMainAuthField(nodeType);
-			const showAuthSelector =
+			const showAuthOptions =
 				mainAuthType !== null &&
 				Array.isArray(mainAuthType.options) &&
 				mainAuthType.options?.length > 0;
-			this.uiStore.openNewCredential('', showAuthSelector);
+
+			ndvEventBus.emit('credential.createNew', {
+				type: defaultCredentialType,
+				showAuthOptions,
+			});
 		},
 		findModeByName(name: string): INodePropertyMode | null {
 			if (this.parameter.modes) {
@@ -648,6 +655,11 @@ export default defineComponent({
 			}
 		},
 		loadResourcesDebounced() {
+			if (this.currentResponse?.error) {
+				// Clear error response immediately when retrying to show loading state
+				delete this.cachedResponses[this.currentRequestKey];
+			}
+
 			void this.callDebounced(this.loadResources, {
 				debounceTime: 1000,
 				trailing: true,
@@ -663,6 +675,11 @@ export default defineComponent({
 			const params = this.currentRequestParams;
 			const paramsKey = this.currentRequestKey;
 			const cachedResponse = this.cachedResponses[paramsKey];
+
+			if (this.credentialsNotSet) {
+				this.setResponse(paramsKey, { error: true });
+				return;
+			}
 
 			if (this.requiresSearchFilter && !params.filter) {
 				return;

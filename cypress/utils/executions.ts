@@ -1,5 +1,5 @@
-import { ITaskData } from '../../packages/workflow/src';
-import { IPinData } from '../../packages/workflow';
+import { nanoid } from 'nanoid';
+import type { IDataObject, IPinData, ITaskData, ITaskDataConnections } from 'n8n-workflow';
 import { clickExecuteWorkflowButton } from '../composables/workflow';
 
 export function createMockNodeExecutionData(
@@ -10,7 +10,7 @@ export function createMockNodeExecutionData(
 		executionStatus = 'success',
 		jsonData,
 		...rest
-	}: Partial<ITaskData> & { jsonData?: Record<string, object> },
+	}: Partial<ITaskData> & { jsonData?: Record<string, IDataObject> },
 ): Record<string, ITaskData> {
 	return {
 		[name]: {
@@ -29,7 +29,7 @@ export function createMockNodeExecutionData(
 						];
 
 						return acc;
-					}, {})
+					}, {} as ITaskDataConnections)
 				: data,
 			source: [null],
 			...rest,
@@ -75,7 +75,7 @@ export function createMockWorkflowExecutionData({
 	};
 }
 
-export function runMockWorkflowExcution({
+export function runMockWorkflowExecution({
 	trigger,
 	lastNodeExecuted,
 	runData,
@@ -86,7 +86,7 @@ export function runMockWorkflowExcution({
 	runData: Array<ReturnType<typeof createMockNodeExecutionData>>;
 	workflowExecutionData?: ReturnType<typeof createMockWorkflowExecutionData>;
 }) {
-	const executionId = Math.random().toString(36).substring(4);
+	const executionId = nanoid(8);
 
 	cy.intercept('POST', '/rest/workflows/**/run', {
 		statusCode: 201,
@@ -105,7 +105,7 @@ export function runMockWorkflowExcution({
 
 	cy.wait('@runWorkflow');
 
-	const resolvedRunData = {};
+	const resolvedRunData: Record<string, ITaskData> = {};
 	runData.forEach((nodeExecution) => {
 		const nodeName = Object.keys(nodeExecution)[0];
 		const nodeRunData = nodeExecution[nodeName];

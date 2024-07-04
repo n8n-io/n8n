@@ -24,7 +24,7 @@ export class SecurityAudit extends BaseCommand {
 			default: RISK_CATEGORIES.join(','),
 			description: 'Comma-separated list of categories to include in the audit',
 		}),
-		// eslint-disable-next-line @typescript-eslint/naming-convention
+
 		'days-abandoned-workflow': Flags.integer({
 			default: config.getEnv('security.audit.daysAbandonedWorkflow'),
 			description: 'Days for a workflow to be considered abandoned if not executed',

@@ -44,6 +44,7 @@ import {
 	ApplicationError,
 	NodeExecutionOutput,
 	sleep,
+	OBFUSCATED_ERROR_MESSAGE,
 } from 'n8n-workflow';
 import get from 'lodash/get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
@@ -716,10 +717,23 @@ export class WorkflowExecute {
 			}
 		}
 
-		// Make sure the array has all the values
-		const connectionDataArray: Array<INodeExecutionData[] | null> = [];
-		for (let i: number = connectionData.index; i >= 0; i--) {
-			connectionDataArray[i] = null;
+		let connectionDataArray: Array<INodeExecutionData[] | null> = get(
+			this.runExecutionData,
+			[
+				'executionData',
+				'waitingExecution',
+				connectionData.node,
+				waitingNodeIndex!,
+				NodeConnectionType.Main,
+			],
+			null,
+		);
+
+		if (connectionDataArray === null) {
+			connectionDataArray = [];
+			for (let i: number = connectionData.index; i >= 0; i--) {
+				connectionDataArray[i] = null;
+			}
 		}
 
 		// Add the data of the current execution
@@ -1067,7 +1081,7 @@ export class WorkflowExecute {
 
 								nodeSuccessData = runNodeData.data;
 
-								const didContinueOnFail = nodeSuccessData?.at(0)?.at(0)?.json.error !== undefined;
+								const didContinueOnFail = nodeSuccessData?.at(0)?.at(0)?.json?.error !== undefined;
 
 								while (didContinueOnFail && tryIndex !== maxTries - 1) {
 									await sleep(waitBetweenTries);
@@ -1086,9 +1100,8 @@ export class WorkflowExecute {
 								}
 
 								if (nodeSuccessData instanceof NodeExecutionOutput) {
-									// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 									const hints: NodeExecutionHint[] = nodeSuccessData.getHints();
-									// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+
 									executionHints.push(...hints);
 								}
 
@@ -1304,13 +1317,12 @@ export class WorkflowExecute {
 						} catch (error) {
 							this.runExecutionData.resultData.lastNodeExecuted = executionData.node.name;
 
+							const message =
+								error instanceof ApplicationError ? error.message : OBFUSCATED_ERROR_MESSAGE;
+
 							const e = error as unknown as ExecutionBaseError;
 
-							executionError = {
-								...e,
-								message: e.message,
-								stack: e.stack,
-							};
+							executionError = { ...e, message, stack: e.stack };
 
 							Logger.debug(`Running node "${executionNode.name}" finished with error`, {
 								node: executionNode.name,
@@ -1707,7 +1719,7 @@ export class WorkflowExecute {
 						return await this.processSuccessExecution(
 							startedAt,
 							workflow,
-							new WorkflowOperationError('Workflow has been canceled or timed out!'),
+							new WorkflowOperationError('Workflow has been canceled or timed out'),
 							closeFunction,
 						);
 					}

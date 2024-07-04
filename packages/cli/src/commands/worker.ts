@@ -14,7 +14,7 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import config from '@/config';
 import type { Job, JobId, JobResponse, WebhookResponse } from '@/Queue';
 import { Queue } from '@/Queue';
-import { N8N_VERSION } from '@/constants';
+import { N8N_VERSION, inTest } from '@/constants';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { ICredentialsOverwrite } from '@/Interfaces';
@@ -29,6 +29,7 @@ import type { WorkerJobStatusSummary } from '@/services/orchestration/worker/typ
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { BaseCommand } from './BaseCommand';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
+import { AuditEventRelay } from '@/eventbus/audit-event-relay.service';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -62,9 +63,6 @@ export class Worker extends BaseCommand {
 	 */
 	async stopProcess() {
 		this.logger.info('Stopping n8n...');
-
-		// Stop accepting new jobs, `doNotWaitActive` allows reporting progress
-		await Worker.jobQueue.pause({ isLocal: true, doNotWaitActive: true });
 
 		try {
 			await this.externalHooks?.run('n8n.stop', []);
@@ -273,7 +271,7 @@ export class Worker extends BaseCommand {
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
 
-		await Container.get(OrchestrationWorkerService).publishToEventLog(
+		await Container.get(MessageEventBus).send(
 			new EventMessageGeneric({
 				eventName: 'n8n.worker.started',
 				payload: {
@@ -287,6 +285,7 @@ export class Worker extends BaseCommand {
 		await Container.get(MessageEventBus).initialize({
 			workerId: this.queueModeId,
 		});
+		Container.get(AuditEventRelay).init();
 	}
 
 	/**
@@ -317,8 +316,12 @@ export class Worker extends BaseCommand {
 		Worker.jobQueue = Container.get(Queue);
 		await Worker.jobQueue.init();
 		this.logger.debug('Queue singleton ready');
+
+		const envConcurrency = config.getEnv('executions.concurrency.productionLimit');
+		const concurrency = envConcurrency !== -1 ? envConcurrency : flags.concurrency;
+
 		void Worker.jobQueue.process(
-			flags.concurrency,
+			concurrency,
 			async (job) => await this.runJob(job, this.nodeTypes),
 		);
 
@@ -494,7 +497,7 @@ export class Worker extends BaseCommand {
 		}
 
 		// Make sure that the process does not close
-		await new Promise(() => {});
+		if (!inTest) await new Promise(() => {});
 	}
 
 	async catch(error: Error) {

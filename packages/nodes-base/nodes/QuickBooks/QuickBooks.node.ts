@@ -1119,7 +1119,7 @@ export class QuickBooks implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const download = this.getNodeParameter('download', 0, false);
 					if (
 						['invoice', 'estimate', 'payment'].includes(resource) &&

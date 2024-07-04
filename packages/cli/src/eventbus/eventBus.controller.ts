@@ -1,112 +1,132 @@
+import { eventNamesAll } from './EventMessageClasses';
 import express from 'express';
-import { EventMessageTypeNames } from 'n8n-workflow';
+import type {
+	MessageEventBusDestinationWebhookOptions,
+	MessageEventBusDestinationOptions,
+} from 'n8n-workflow';
+import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 
-import { RestController, Get, Post, GlobalScope } from '@/decorators';
+import { RestController, Get, Post, Delete, GlobalScope, Licensed } from '@/decorators';
+import { AuthenticatedRequest } from '@/requests';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
-import { isEventMessageOptions } from './EventMessageClasses/AbstractEventMessage';
-import { EventMessageGeneric } from './EventMessageClasses/EventMessageGeneric';
-import type { EventMessageWorkflowOptions } from './EventMessageClasses/EventMessageWorkflow';
-import { EventMessageWorkflow } from './EventMessageClasses/EventMessageWorkflow';
-import type { EventMessageReturnMode } from './MessageEventBus/MessageEventBus';
 import { MessageEventBus } from './MessageEventBus/MessageEventBus';
-import type { EventMessageTypes } from './EventMessageClasses';
-import { eventNamesAll } from './EventMessageClasses';
-import type { EventMessageAuditOptions } from './EventMessageClasses/EventMessageAudit';
-import { EventMessageAudit } from './EventMessageClasses/EventMessageAudit';
-import type { EventMessageNodeOptions } from './EventMessageClasses/EventMessageNode';
-import { EventMessageNode } from './EventMessageClasses/EventMessageNode';
+import {
+	isMessageEventBusDestinationSentryOptions,
+	MessageEventBusDestinationSentry,
+} from './MessageEventBusDestination/MessageEventBusDestinationSentry.ee';
+import {
+	isMessageEventBusDestinationSyslogOptions,
+	MessageEventBusDestinationSyslog,
+} from './MessageEventBusDestination/MessageEventBusDestinationSyslog.ee';
+import { MessageEventBusDestinationWebhook } from './MessageEventBusDestination/MessageEventBusDestinationWebhook.ee';
+import type { MessageEventBusDestination } from './MessageEventBusDestination/MessageEventBusDestination.ee';
 
-// ----------------------------------------
-// TypeGuards
-// ----------------------------------------
-
-const isWithQueryString = (candidate: unknown): candidate is { query: string } => {
-	const o = candidate as { query: string };
+const isWithIdString = (candidate: unknown): candidate is { id: string } => {
+	const o = candidate as { id: string };
 	if (!o) return false;
-	return o.query !== undefined;
+	return o.id !== undefined;
 };
 
-// ----------------------------------------
-// Controller
-// ----------------------------------------
+const isMessageEventBusDestinationWebhookOptions = (
+	candidate: unknown,
+): candidate is MessageEventBusDestinationWebhookOptions => {
+	const o = candidate as MessageEventBusDestinationWebhookOptions;
+	if (!o) return false;
+	return o.url !== undefined;
+};
+
+const isMessageEventBusDestinationOptions = (
+	candidate: unknown,
+): candidate is MessageEventBusDestinationOptions => {
+	const o = candidate as MessageEventBusDestinationOptions;
+	if (!o) return false;
+	return o.__type !== undefined;
+};
 
 @RestController('/eventbus')
 export class EventBusController {
 	constructor(private readonly eventBus: MessageEventBus) {}
 
-	// ----------------------------------------
-	// Events
-	// ----------------------------------------
-	@Get('/event')
-	@GlobalScope('eventBusEvent:query')
-	async getEvents(
-		req: express.Request,
-	): Promise<EventMessageTypes[] | Record<string, EventMessageTypes[]>> {
-		if (isWithQueryString(req.query)) {
-			switch (req.query.query as EventMessageReturnMode) {
-				case 'sent':
-					return await this.eventBus.getEventsSent();
-				case 'unsent':
-					return await this.eventBus.getEventsUnsent();
-				case 'unfinished':
-					return await this.eventBus.getUnfinishedExecutions();
-				case 'all':
-				default:
-					return await this.eventBus.getEventsAll();
-			}
-		} else {
-			return await this.eventBus.getEventsAll();
-		}
-	}
-
-	@Get('/execution/:id')
-	@GlobalScope('eventBusEvent:read')
-	async getEventForExecutionId(req: express.Request): Promise<EventMessageTypes[] | undefined> {
-		if (req.params?.id) {
-			let logHistory;
-			if (req.query?.logHistory) {
-				logHistory = parseInt(req.query.logHistory as string, 10);
-			}
-			return await this.eventBus.getEventsByExecutionId(req.params.id, logHistory);
-		}
-		return;
-	}
-
-	@Post('/event')
-	@GlobalScope('eventBusEvent:create')
-	async postEvent(req: express.Request): Promise<EventMessageTypes | undefined> {
-		let msg: EventMessageTypes | undefined;
-		if (isEventMessageOptions(req.body)) {
-			switch (req.body.__type) {
-				case EventMessageTypeNames.workflow:
-					msg = new EventMessageWorkflow(req.body as EventMessageWorkflowOptions);
-					break;
-				case EventMessageTypeNames.audit:
-					msg = new EventMessageAudit(req.body as EventMessageAuditOptions);
-					break;
-				case EventMessageTypeNames.node:
-					msg = new EventMessageNode(req.body as EventMessageNodeOptions);
-					break;
-				case EventMessageTypeNames.generic:
-				default:
-					msg = new EventMessageGeneric(req.body);
-			}
-			await this.eventBus.send(msg);
-		} else {
-			throw new BadRequestError(
-				'Body is not a serialized EventMessage or eventName does not match format {namespace}.{domain}.{event}',
-			);
-		}
-		return msg;
-	}
-
-	// ----------------------------------------
-	// Utilities
-	// ----------------------------------------
-
 	@Get('/eventnames')
 	async getEventNames(): Promise<string[]> {
 		return eventNamesAll;
+	}
+
+	@Licensed('feat:logStreaming')
+	@Get('/destination')
+	@GlobalScope('eventBusDestination:list')
+	async getDestination(req: express.Request): Promise<MessageEventBusDestinationOptions[]> {
+		if (isWithIdString(req.query)) {
+			return await this.eventBus.findDestination(req.query.id);
+		} else {
+			return await this.eventBus.findDestination();
+		}
+	}
+
+	@Licensed('feat:logStreaming')
+	@Post('/destination')
+	@GlobalScope('eventBusDestination:create')
+	async postDestination(req: AuthenticatedRequest): Promise<any> {
+		let result: MessageEventBusDestination | undefined;
+		if (isMessageEventBusDestinationOptions(req.body)) {
+			switch (req.body.__type) {
+				case MessageEventBusDestinationTypeNames.sentry:
+					if (isMessageEventBusDestinationSentryOptions(req.body)) {
+						result = await this.eventBus.addDestination(
+							new MessageEventBusDestinationSentry(this.eventBus, req.body),
+						);
+					}
+					break;
+				case MessageEventBusDestinationTypeNames.webhook:
+					if (isMessageEventBusDestinationWebhookOptions(req.body)) {
+						result = await this.eventBus.addDestination(
+							new MessageEventBusDestinationWebhook(this.eventBus, req.body),
+						);
+					}
+					break;
+				case MessageEventBusDestinationTypeNames.syslog:
+					if (isMessageEventBusDestinationSyslogOptions(req.body)) {
+						result = await this.eventBus.addDestination(
+							new MessageEventBusDestinationSyslog(this.eventBus, req.body),
+						);
+					}
+					break;
+				default:
+					throw new BadRequestError(
+						`Body is missing ${req.body.__type} options or type ${req.body.__type} is unknown`,
+					);
+			}
+			if (result) {
+				await result.saveToDb();
+				return {
+					...result.serialize(),
+					eventBusInstance: undefined,
+				};
+			}
+			throw new BadRequestError('There was an error adding the destination');
+		}
+		throw new BadRequestError('Body is not configuring MessageEventBusDestinationOptions');
+	}
+
+	@Licensed('feat:logStreaming')
+	@Get('/testmessage')
+	@GlobalScope('eventBusDestination:test')
+	async sendTestMessage(req: express.Request): Promise<boolean> {
+		if (isWithIdString(req.query)) {
+			return await this.eventBus.testDestination(req.query.id);
+		}
+		return false;
+	}
+
+	@Licensed('feat:logStreaming')
+	@Delete('/destination')
+	@GlobalScope('eventBusDestination:delete')
+	async deleteDestination(req: AuthenticatedRequest) {
+		if (isWithIdString(req.query)) {
+			return await this.eventBus.removeDestination(req.query.id);
+		} else {
+			throw new BadRequestError('Query is missing id');
+		}
 	}
 }
