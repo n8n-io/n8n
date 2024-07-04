@@ -16,7 +16,6 @@ import {
 	INVITE_USER_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
 	MFA_SETUP_MODAL_KEY,
-	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
 	STORES,
 	TAGS_MANAGER_MODAL_KEY,
@@ -103,7 +102,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				CONTACT_PROMPT_MODAL_KEY,
 				CREDENTIAL_SELECT_MODAL_KEY,
 				DUPLICATE_MODAL_KEY,
-				ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 				PERSONALIZATION_MODAL_KEY,
 				INVITE_USER_MODAL_KEY,
 				TAGS_MANAGER_MODAL_KEY,
@@ -453,24 +451,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
 	};
 
-	const getNextOnboardingPrompt = async () => {
-		const instanceId = rootStore.instanceId;
-		const { currentUser } = userStore;
-		if (currentUser) {
-			return await onboardingApi.fetchNextOnboardingPrompt(instanceId, currentUser);
-		}
-		return null;
-	};
-
-	const applyForOnboardingCall = async (email: string) => {
-		const instanceId = rootStore.instanceId;
-		const { currentUser } = userStore;
-		if (currentUser) {
-			return await onboardingApi.applyForOnboardingCall(instanceId, currentUser, email);
-		}
-		return null;
-	};
-
 	const submitContactEmail = async (email: string, agree: boolean) => {
 		const instanceId = rootStore.instanceId;
 		const { currentUser } = userStore;
@@ -668,8 +648,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		openDeleteUserModal,
 		openExistingCredential,
 		openNewCredential,
-		getNextOnboardingPrompt,
-		applyForOnboardingCall,
 		submitContactEmail,
 		openCommunityPackageUninstallConfirmModal,
 		openCommunityPackageUpdateConfirmModal,
