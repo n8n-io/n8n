@@ -215,10 +215,11 @@ const chatConfig: Chat = {
 const messageVars = {
 	'--chat--message--bot--background': 'var(--color-lm-chat-bot-background)',
 	'--chat--message--user--background': 'var(--color-lm-chat-user-background)',
-	'--chat--message--bot--color': 'var(--color-lm-chat-bot-color)',
+	'--chat--message--bot--color': 'var(--color-text-dark)',
 	'--chat--message--user--color': 'var(--color-lm-chat-user-color)',
 	'--chat--message--bot--border': 'none',
 	'--chat--message--user--border': 'none',
+	'--chat--color-typing': 'var(--color-text-dark)',
 };
 
 function getTriggerNode() {
@@ -668,7 +669,8 @@ onMounted(() => {
 	--chat--input--send--button--color-hover: var(--color-primary);
 	--chat--input--border-active: var(--input-focus-border-color, var(--color-secondary));
 	--chat--files-spacing: var(--spacing-2xs) 0;
-	--chat--input--background: transparent;
+	--chat--input--background: var(--color-lm-chat-bot-background);
+
 	[data-theme='dark'] & {
 		--chat--input--text-color: var(--input-font-color, var(--color-text-dark));
 	}
