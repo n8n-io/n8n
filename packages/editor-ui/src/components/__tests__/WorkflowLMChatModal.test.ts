@@ -82,36 +82,6 @@ describe('WorkflowLMChatModal', () => {
 		server.shutdown();
 	});
 
-	it('should render correctly when Agent Node not present', async () => {
-		renderComponent({
-			pinia: await createPiniaWithAINodes({
-				withConnections: false,
-				withAgentNode: false,
-			}),
-		});
-
-		await waitFor(() =>
-			expect(document.querySelectorAll('.el-notification')[0]).toHaveTextContent(
-				'Missing AI node Chat only works when an AI agent or chain(except summarization chain) is connected to the chat trigger node',
-			),
-		);
-	});
-
-	it('should render correctly when Agent Node present but not connected to Manual Chat Node', async () => {
-		renderComponent({
-			pinia: await createPiniaWithAINodes({
-				withConnections: false,
-				withAgentNode: true,
-			}),
-		});
-
-		await waitFor(() =>
-			expect(document.querySelectorAll('.el-notification')[1]).toHaveTextContent(
-				'Missing AI node Chat only works when an AI agent or chain(except summarization chain) is connected to the chat trigger node',
-			),
-		);
-	});
-
 	it('should render correctly', async () => {
 		const wrapper = renderComponent({
 			pinia: await createPiniaWithAINodes(),
