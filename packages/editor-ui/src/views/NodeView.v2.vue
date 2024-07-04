@@ -31,10 +31,7 @@ import type { CanvasElement } from '@/types';
 import {
 	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT,
 	EnterpriseEditionFeature,
-	FIRST_ONBOARDING_PROMPT_TIMEOUT,
 	MODAL_CONFIRM,
-	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
-	ONBOARDING_PROMPT_TIMEBOX,
 	VIEWS,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
@@ -70,7 +67,6 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
 import type { ProjectSharingData } from '@/types/projects.types';
 import { useUsersStore } from '@/stores/users.store';
-import { getAccountAge } from '@/utils/userUtils';
 import { sourceControlEventBus } from '@/event-bus/source-control';
 import { useTagsStore } from '@/stores/tags.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
@@ -214,7 +210,6 @@ async function initializeData() {
 
 	setTimeout(() => {
 		void usersStore.showPersonalizationSurvey();
-		void showOnboardingPrompt();
 	}, 0);
 
 	// @TODO: This currently breaks since front-end hooks are still not updated to work with pinia store
@@ -736,44 +731,6 @@ async function onPostMessageReceived(message: MessageEvent) {
 			)) as ExecutionSummary;
 		}
 	} catch (e) {}
-}
-
-/**
- * Onboarding
- */
-
-async function showOnboardingPrompt() {
-	if (
-		usersStore.currentUser &&
-		usersStore.currentUser?.personalizationAnswers !== null &&
-		settingsStore.onboardingCallPromptEnabled &&
-		getAccountAge(usersStore.currentUser) <= ONBOARDING_PROMPT_TIMEBOX
-	) {
-		const onboardingResponse = await uiStore.getNextOnboardingPrompt();
-		const promptTimeout =
-			onboardingResponse?.toast_sequence_number === 1 ? FIRST_ONBOARDING_PROMPT_TIMEOUT : 1000;
-
-		if (onboardingResponse?.title && onboardingResponse?.description) {
-			setTimeout(async () => {
-				toast.showToast({
-					type: 'info',
-					title: onboardingResponse.title,
-					message: onboardingResponse.description,
-					duration: 0,
-					customClass: 'clickable',
-					closeOnClick: true,
-					onClick: () => {
-						telemetry.track('user clicked onboarding toast', {
-							seq_num: onboardingResponse.toast_sequence_number,
-							title: onboardingResponse.title,
-							description: onboardingResponse.description,
-						});
-						uiStore.openModal(ONBOARDING_CALL_SIGNUP_MODAL_KEY);
-					},
-				});
-			}, promptTimeout);
-		}
-	}
 }
 
 /**
