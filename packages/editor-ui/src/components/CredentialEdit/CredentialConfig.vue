@@ -7,7 +7,7 @@
 				:message="
 					$locale.baseText(
 						`credentialEdit.credentialConfig.pleaseCheckTheErrorsBelow${
-							credentialPermissions.update ? '' : '.sharee'
+							credentialPermissions?.update ? '' : '.sharee'
 						}`,
 						{ interpolate: { owner: credentialOwnerName } },
 					)
@@ -20,7 +20,7 @@
 				:message="
 					$locale.baseText(
 						`credentialEdit.credentialConfig.couldntConnectWithTheseSettings${
-							credentialPermissions.update ? '' : '.sharee'
+							credentialPermissions?.update ? '' : '.sharee'
 						}`,
 						{ interpolate: { owner: credentialOwnerName } },
 					)
@@ -65,7 +65,7 @@
 				@click="$emit('retest')"
 			/>
 
-			<template v-if="credentialPermissions.update">
+			<template v-if="credentialPermissions?.update">
 				<n8n-notice v-if="documentationUrl && credentialProperties.length && !docs" theme="warning">
 					{{ $locale.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
 					<span class="ml-4xs">
@@ -110,7 +110,7 @@
 			</EnterpriseEdition>
 
 			<CredentialInputs
-				v-if="credentialType && credentialPermissions.update"
+				v-if="credentialType && credentialPermissions?.update"
 				:credential-data="credentialData"
 				:credential-properties="credentialProperties"
 				:documentation-url="documentationUrl"
@@ -123,7 +123,7 @@
 					isOAuthType &&
 					requiredPropertiesFilled &&
 					!isOAuthConnected &&
-					credentialPermissions.update
+					credentialPermissions?.update
 				"
 				:is-google-o-auth-type="isGoogleOAuthType"
 				data-test-id="oauth-connect-button"
@@ -172,14 +172,13 @@ import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { BUILTIN_CREDENTIALS_DOCS_URL, DOCS_DOMAIN, EnterpriseEditionFeature } from '@/constants';
-import type { PermissionsMap } from '@/permissions';
+import type { PermissionsRecord } from '@/permissions';
 import { addCredentialTranslation } from '@/plugins/i18n';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useRootStore } from '@/stores/root.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { CredentialScope } from '@n8n/permissions';
 import Banner from '../Banner.vue';
 import CopyInput from '../CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
@@ -194,7 +193,7 @@ type Props = {
 	credentialProperties: INodeProperties[];
 	credentialData: ICredentialDataDecryptedObject;
 	credentialId?: string;
-	credentialPermissions?: PermissionsMap<CredentialScope>;
+	credentialPermissions?: PermissionsRecord['credential'];
 	parentTypes?: string[];
 	showValidationWarning?: boolean;
 	authError?: string;
@@ -212,7 +211,7 @@ const props = withDefaults(defineProps<Props>(), {
 	credentialId: '',
 	authError: '',
 	showValidationWarning: false,
-	credentialPermissions: () => ({}) as PermissionsMap<CredentialScope>,
+	credentialPermissions: () => ({}),
 });
 const emit = defineEmits<{
 	update: [value: IUpdateInformation];
