@@ -7,6 +7,7 @@ import type {
 	VariableScope,
 } from '@n8n/permissions';
 import type { Project } from '@/types/projects.types';
+import { isObject } from '@/utils/objectUtils';
 
 type ExtractScopePrefixSuffix<T> = T extends `${infer Prefix}:${infer Suffix}`
 	? [Prefix, Suffix]
@@ -74,15 +75,16 @@ export const getVariablesPermissions = (user: IUser | null): PermissionsMap<Vari
 		new Set(user?.globalScopes ?? []),
 	);
 
-export const getResourcePermissions = (resourceScopes: Scope[]): PermissionsRecord<Scope> => {
+export const getResourcePermissions = (resourceScopes: Scope[] = []): PermissionsRecord<Scope> => {
 	return resourceScopes.reduce((permissions, scope) => {
 		const [prefix, suffix] = scope.split(':') as ExtractScopePrefixSuffix<Scope>;
 
 		return {
 			...permissions,
 			[prefix]: {
-				...(permissions[prefix as keyof typeof permissions] ??
-					({} as PermissionsRecord<Scope>[typeof prefix])),
+				...(isObject(permissions[prefix as keyof typeof permissions])
+					? permissions[prefix as keyof typeof permissions]
+					: {}),
 				[suffix]: true,
 			},
 		};
