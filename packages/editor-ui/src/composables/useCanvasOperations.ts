@@ -103,8 +103,6 @@ export function useCanvasOperations({
 		position: CanvasElement['position'],
 		{ trackHistory = false, trackBulk = true } = {},
 	) {
-		console.log('updateNodePosition', id, position);
-
 		const node = workflowsStore.getNodeById(id);
 		if (!node) {
 			return;
