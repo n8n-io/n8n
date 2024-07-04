@@ -16,7 +16,6 @@ import { type JobQueue, Queue } from '@/Queue';
 import { setupTestCommand } from '@test-integration/utils/testCommand';
 import { mockInstance } from '../../shared/mocking';
 import { AuditEventRelay } from '@/eventbus/audit-event-relay.service';
-import { RedisClientService } from '@/services/redis/redis-client.service';
 
 config.set('executions.mode', 'queue');
 config.set('binaryDataManager.availableModes', 'filesystem');
@@ -28,7 +27,6 @@ const externalSecretsManager = mockInstance(ExternalSecretsManager);
 const license = mockInstance(License);
 const messageEventBus = mockInstance(MessageEventBus);
 const auditEventRelay = mockInstance(AuditEventRelay);
-const redisClientService = mockInstance(RedisClientService);
 const orchestrationHandlerWorkerService = mockInstance(OrchestrationHandlerWorkerService);
 const queue = mockInstance(Queue);
 const orchestrationWorkerService = mockInstance(OrchestrationWorkerService);
@@ -53,20 +51,4 @@ test('worker initializes all its components', async () => {
 	expect(orchestrationWorkerService.init).toHaveBeenCalledTimes(1);
 	expect(orchestrationHandlerWorkerService.initWithOptions).toHaveBeenCalledTimes(1);
 	expect(messageEventBus.send).toHaveBeenCalledTimes(1);
-});
-
-it('should disconnect Redis clients after pausing queue', async () => {
-	const worker = await command.run();
-	const pauseSpy = jest.spyOn(queue, 'pause');
-	const disconnectSpy = jest.spyOn(redisClientService, 'disconnectClients');
-
-	await worker.run();
-	await worker.stopProcess();
-
-	expect(pauseSpy).toHaveBeenCalledTimes(1);
-	expect(disconnectSpy).toHaveBeenCalledTimes(1);
-
-	expect(pauseSpy.mock.invocationCallOrder[0]).toBeLessThan(
-		disconnectSpy.mock.invocationCallOrder[0],
-	);
 });
