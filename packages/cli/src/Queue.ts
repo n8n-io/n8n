@@ -9,6 +9,7 @@ import {
 } from 'n8n-workflow';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
+import { HIGHEST_PRIORITY, OnShutdown } from './decorators/OnShutdown';
 
 export type JobId = Bull.JobId;
 export type Job = Bull.Job<JobData>;
@@ -108,6 +109,7 @@ export class Queue {
 		return await this.jobQueue.client.ping();
 	}
 
+	@OnShutdown(HIGHEST_PRIORITY)
 	async pause({
 		isLocal,
 		doNotWaitActive,
