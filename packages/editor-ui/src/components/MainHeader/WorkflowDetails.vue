@@ -123,7 +123,7 @@ const onExecutionsTab = computed(() => {
 });
 
 const workflowPermissions = computed(
-	() => getResourcePermissions(workflowsStore.getWorkflowById(props.workflow.id).scopes).workflow,
+	() => getResourcePermissions(workflowsStore.getWorkflowById(props.workflow.id)?.scopes).workflow,
 );
 
 const workflowMenuItems = computed<ActionDropdownItem[]>(() => {

@@ -223,7 +223,7 @@ export default defineComponent({
 			return this.usersStore.currentUser;
 		},
 		workflowPermissions() {
-			return getResourcePermissions(this.workflow.scopes).workflow;
+			return getResourcePermissions(this.workflow?.scopes).workflow;
 		},
 		workflowOwnerName(): string {
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflow.id}`);
