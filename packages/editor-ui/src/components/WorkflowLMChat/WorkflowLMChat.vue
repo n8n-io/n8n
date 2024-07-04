@@ -16,7 +16,7 @@
 	>
 		<template #content>
 			<div
-				:class="$style.workflowLmChat"
+				:class="[$style.workflowLmChat, messages.length === 0 && $style.isEmpty]"
 				data-test-id="workflow-lm-chat-dialog"
 				:style="messageVars"
 			>
@@ -588,7 +588,7 @@ onMounted(() => {
 </script>
 
 <style lang="scss">
-.chat-message-markdown ul {
+.chat-message-markdown ul, .chat-message-markdown ol {
 	padding: 0 0 0 1em;
 }
 </style>
@@ -606,9 +606,11 @@ onMounted(() => {
 
 	display: flex;
 	height: 100%;
-	min-height: 400px;
 	z-index: 9999;
 
+	&.isEmpty {
+		min-height: 400px;
+	}
 	& ::-webkit-scrollbar {
 		width: 4px;
 	}
@@ -675,5 +677,4 @@ onMounted(() => {
 	border-top-right-radius: var(--border-radius-base);
 	overflow: hidden;
 }
-
 </style>

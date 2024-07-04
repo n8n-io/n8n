@@ -157,7 +157,8 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 		['placeholder', '{agent_scratchpad}'],
 	];
 
-	if (passthroughBinaryImages) {
+	const hasBinaryData = this.getInputData(0, 'main')?.[0]?.binary !== undefined;
+	if (hasBinaryData && passthroughBinaryImages) {
 		const binaryMessage = await extractBinaryMessages(this);
 		messages.push(binaryMessage);
 	}

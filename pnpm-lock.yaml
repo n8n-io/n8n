@@ -160,18 +160,12 @@ importers:
       '@vueuse/core':
         specifier: ^10.5.0
         version: 10.5.0(vue@3.4.21(typescript@5.5.2))
-      floating-vue:
-        specifier: ^5.2.2
-        version: 5.2.2(vue@3.4.21(typescript@5.5.2))
       highlight.js:
         specifier: ^11.8.0
         version: 11.9.0
       markdown-it-link-attributes:
         specifier: ^4.0.1
         version: 4.0.1
-      pretty-bytes:
-        specifier: 5.6.0
-        version: 5.6.0
       uuid:
         specifier: ^8.3.2
         version: 8.3.2
@@ -196,13 +190,13 @@ importers:
         version: 0.8.5
       unbuild:
         specifier: ^2.0.0
-        version: 2.0.0(sass@1.64.1)(typescript@5.5.2)
+        version: 2.0.0(typescript@5.5.2)
       unplugin-icons:
         specifier: ^0.17.0
         version: 0.17.4(@vue/compiler-sfc@3.4.21)(vue-template-compiler@2.7.14)
       vite-plugin-dts:
         specifier: ^3.7.3
-        version: 3.7.3(@types/node@18.16.16)(rollup@3.29.4)(typescript@5.5.2)(vite@5.2.12(@types/node@18.16.16)(sass@1.64.1)(terser@5.16.1))
+        version: 3.7.3(@types/node@18.16.16)(rollup@3.29.4)(typescript@5.5.2)(vite@5.2.12(@types/node@18.16.16))
 
   packages/@n8n/client-oauth2:
     dependencies:
@@ -3259,9 +3253,6 @@ packages:
 
   '@floating-ui/core@1.3.1':
     resolution: {integrity: sha512-Bu+AMaXNjrpjh41znzHqaz3r2Nr8hHuHZT6V2LBKMhyMl0FgKA62PNYbqnfgmzOhoWZj70Zecisbo4H1rotP5g==}
-
-  '@floating-ui/dom@1.1.1':
-    resolution: {integrity: sha512-TpIO93+DIujg3g7SykEAGZMDtbJRrmnYRCNYSjJlvIbGhBjRSNTLVbNeDQBrzy9qDgUbiWdc7KA0uZHZ2tJmiw==}
 
   '@floating-ui/dom@1.4.5':
     resolution: {integrity: sha512-96KnRWkRnuBSSFbj0sFGwwOUd8EkiecINVl0O9wiZlZ64EkpyAOG3Xc2vKKNJmru0Z7RqWNymA+6b8OZqjgyyw==}
@@ -8396,15 +8387,6 @@ packages:
 
   flatted@3.3.1:
     resolution: {integrity: sha512-X8cqMLLie7KsNUDSdzeN8FYK9rEt4Dt67OsG/DNGnYTSDBG4uFAJFBnUeiV+zCVAvwFy56IjM9sH51jVaEhNxw==}
-
-  floating-vue@5.2.2:
-    resolution: {integrity: sha512-afW+h2CFafo+7Y9Lvw/xsqjaQlKLdJV7h1fCHfcYQ1C4SVMlu7OAekqWgu5d4SgvkBVU0pVpLlVsrSTBURFRkg==}
-    peerDependencies:
-      '@nuxt/kit': ^3.2.0
-      vue: ^3.2.0
-    peerDependenciesMeta:
-      '@nuxt/kit':
-        optional: true
 
   flow-parser@0.197.0:
     resolution: {integrity: sha512-yhwkJPxH1JBg0aJunk/jVRy5p3UhVZBGkzL1hq/GK+GaBh6bKr2YKkv6gDuiufaw+i3pKWQgOLtD++1cvrgXLA==}
@@ -13675,11 +13657,6 @@ packages:
     peerDependencies:
       vue: ^3.3.4
 
-  vue-resize@2.0.0-alpha.1:
-    resolution: {integrity: sha512-7+iqOueLU7uc9NrMfrzbG8hwMqchfVfSzpVlCMeJQe4pyibqyoifDNbKTZvwxZKDvGkB+PdFeKvnGZMoEb8esg==}
-    peerDependencies:
-      vue: ^3.0.0
-
   vue-router@4.2.2:
     resolution: {integrity: sha512-cChBPPmAflgBGmy3tBsjeoe3f3VOSG6naKyY5pjtrqLGbNEXdzCigFUHgBvp9e3ysAtFtEx7OLqcSDh/1Cq2TQ==}
     peerDependencies:
@@ -15121,7 +15098,7 @@ snapshots:
       '@babel/traverse': 7.22.8
       '@babel/types': 7.23.6
       convert-source-map: 1.9.0
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
       gensync: 1.0.0-beta.2
       json5: 2.2.3
       semver: 7.6.0
@@ -16204,7 +16181,7 @@ snapshots:
       '@babel/helper-split-export-declaration': 7.22.6
       '@babel/parser': 7.24.0
       '@babel/types': 7.24.0
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
       globals: 11.12.0
     transitivePeerDependencies:
       - supports-color
@@ -16574,10 +16551,6 @@ snapshots:
 
   '@floating-ui/core@1.3.1': {}
 
-  '@floating-ui/dom@1.1.1':
-    dependencies:
-      '@floating-ui/core': 1.3.1
-
   '@floating-ui/dom@1.4.5':
     dependencies:
       '@floating-ui/core': 1.3.1
@@ -16731,7 +16704,7 @@ snapshots:
       '@antfu/install-pkg': 0.1.1
       '@antfu/utils': 0.7.6
       '@iconify/types': 2.0.0
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
       kolorist: 1.8.0
       local-pkg: 0.4.3
     transitivePeerDependencies:
@@ -22030,6 +22003,10 @@ snapshots:
     optionalDependencies:
       supports-color: 8.1.1
 
+  debug@4.3.4:
+    dependencies:
+      ms: 2.1.2
+
   debug@4.3.4(supports-color@8.1.1):
     dependencies:
       ms: 2.1.2
@@ -23265,12 +23242,6 @@ snapshots:
   flatted@3.2.7: {}
 
   flatted@3.3.1: {}
-
-  floating-vue@5.2.2(vue@3.4.21(typescript@5.5.2)):
-    dependencies:
-      '@floating-ui/dom': 1.1.1
-      vue: 3.4.21(typescript@5.5.2)
-      vue-resize: 2.0.0-alpha.1(vue@3.4.21(typescript@5.5.2))
 
   flow-parser@0.197.0: {}
 
@@ -25693,7 +25664,7 @@ snapshots:
 
   mkdirp@2.1.3: {}
 
-  mkdist@1.4.0(sass@1.64.1)(typescript@5.5.2):
+  mkdist@1.4.0(typescript@5.5.2):
     dependencies:
       autoprefixer: 10.4.19(postcss@8.4.38)
       citty: 0.1.5
@@ -25709,7 +25680,6 @@ snapshots:
       postcss: 8.4.38
       postcss-nested: 6.0.1(postcss@8.4.38)
     optionalDependencies:
-      sass: 1.64.1
       typescript: 5.5.2
 
   ml-array-mean@1.1.6:
@@ -28789,7 +28759,7 @@ snapshots:
       has-symbols: 1.0.3
       which-boxed-primitive: 1.0.2
 
-  unbuild@2.0.0(sass@1.64.1)(typescript@5.5.2):
+  unbuild@2.0.0(typescript@5.5.2):
     dependencies:
       '@rollup/plugin-alias': 5.1.0(rollup@3.29.4)
       '@rollup/plugin-commonjs': 25.0.7(rollup@3.29.4)
@@ -28806,7 +28776,7 @@ snapshots:
       hookable: 5.5.3
       jiti: 1.21.0
       magic-string: 0.30.5
-      mkdist: 1.4.0(sass@1.64.1)(typescript@5.5.2)
+      mkdist: 1.4.0(typescript@5.5.2)
       mlly: 1.4.2
       pathe: 1.1.1
       pkg-types: 1.0.3
@@ -28888,7 +28858,7 @@ snapshots:
       '@antfu/install-pkg': 0.1.1
       '@antfu/utils': 0.7.6
       '@iconify/utils': 2.1.11
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
       kolorist: 1.8.0
       local-pkg: 0.5.0
       unplugin: 1.5.1
@@ -29036,21 +29006,31 @@ snapshots:
       - supports-color
       - terser
 
-  vite-plugin-dts@3.7.3(@types/node@18.16.16)(rollup@3.29.4)(typescript@5.5.2)(vite@5.2.12(@types/node@18.16.16)(sass@1.64.1)(terser@5.16.1)):
+  vite-plugin-dts@3.7.3(@types/node@18.16.16)(rollup@3.29.4)(typescript@5.5.2)(vite@5.2.12(@types/node@18.16.16)):
     dependencies:
       '@microsoft/api-extractor': 7.39.0(@types/node@18.16.16)
       '@rollup/pluginutils': 5.1.0(rollup@3.29.4)
       '@vue/language-core': 1.8.27(typescript@5.5.2)
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
       kolorist: 1.8.0
       typescript: 5.5.2
       vue-tsc: 1.8.27(typescript@5.5.2)
     optionalDependencies:
-      vite: 5.2.12(@types/node@18.16.16)(sass@1.64.1)(terser@5.16.1)
+      vite: 5.2.12(@types/node@18.16.16)
     transitivePeerDependencies:
       - '@types/node'
       - rollup
       - supports-color
+
+  vite@5.2.12(@types/node@18.16.16):
+    dependencies:
+      esbuild: 0.20.2
+      postcss: 8.4.38
+      rollup: 4.18.0
+    optionalDependencies:
+      '@types/node': 18.16.16
+      fsevents: 2.3.3
+    optional: true
 
   vite@5.2.12(@types/node@18.16.16)(sass@1.64.1)(terser@5.16.1):
     dependencies:
@@ -29197,10 +29177,6 @@ snapshots:
   vue-markdown-render@2.1.1(vue@3.4.21(typescript@5.5.2)):
     dependencies:
       markdown-it: 12.3.2
-      vue: 3.4.21(typescript@5.5.2)
-
-  vue-resize@2.0.0-alpha.1(vue@3.4.21(typescript@5.5.2)):
-    dependencies:
       vue: 3.4.21(typescript@5.5.2)
 
   vue-router@4.2.2(vue@3.4.21(typescript@5.5.2)):

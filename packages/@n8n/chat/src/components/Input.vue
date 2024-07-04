@@ -12,7 +12,7 @@ export interface ArrowKeyDownPayload {
 	currentInputValue: string;
 }
 const emit = defineEmits<{
-	(event: 'arrowKeyDown', value: ArrowKeyDownPayload): void;
+	arrowKeyDown: [value: ArrowKeyDownPayload];
 }>();
 
 const { options } = useOptions();
@@ -45,10 +45,9 @@ const styleVars = computed(() => {
 
 const {
 	open: openFileDialog,
-	reset,
+	reset: resetFileDialog,
 	onChange,
 } = useFileDialog({
-	accept: unref(allowedFileTypes),
 	multiple: true,
 	reset: false,
 });
@@ -110,7 +109,7 @@ async function onSubmit(event: MouseEvent | KeyboardEvent) {
 	isSubmitting.value = true;
 	await chatStore.sendMessage(messageText, Array.from(files.value ?? []));
 	isSubmitting.value = false;
-	reset();
+	resetFileDialog();
 	files.value = null;
 }
 
@@ -123,15 +122,15 @@ async function onSubmitKeydown(event: KeyboardEvent) {
 }
 
 function onFileRemove(file: File) {
-	const dt = new DataTransfer();
 	if (!files.value) return;
 
+	const dt = new DataTransfer();
 	for (let i = 0; i < files.value.length; i++) {
 		const currentFile = files.value[i];
 		if (file.name !== currentFile.name) dt.items.add(currentFile);
 	}
 
-	reset();
+	resetFileDialog();
 	files.value = dt.files;
 }
 
@@ -163,7 +162,7 @@ function onKeyDown(event: KeyboardEvent) {
 					v-if="isFileUploadAllowed"
 					:disabled="isFileUploadDisabled"
 					class="chat-input-send-button"
-					@click="() => openFileDialog()"
+					@click="() => openFileDialog({ accept: unref(allowedFileTypes) })"
 				>
 					<IconFilePlus height="24" width="24" />
 				</button>
@@ -209,8 +208,8 @@ function onKeyDown(event: KeyboardEvent) {
 		width: 100%;
 		border: var(--chat--input--border, 0);
 		border-radius: var(--chat--input--border-radius, 0);
-		padding: 0.9rem;
-		padding-right: calc(0.9rem + (var(--controls-count, 1) * var(--chat--textarea--height)));
+		padding: 0.8rem;
+		padding-right: calc(0.8rem + (var(--controls-count, 1) * var(--chat--textarea--height)));
 		min-height: var(--chat--textarea--height);
 		max-height: var(--chat--textarea--max-height, var(--chat--textarea--height));
 		height: 100%;
@@ -228,7 +227,7 @@ function onKeyDown(event: KeyboardEvent) {
 .chat-inputs-controls {
 	display: flex;
 	position: absolute;
-	right: 0;
+	right: 0.5rem;
 }
 .chat-input-send-button {
 	height: var(--chat--textarea--height);

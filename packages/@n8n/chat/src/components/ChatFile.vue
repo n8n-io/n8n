@@ -7,9 +7,6 @@ import IconDelete from 'virtual:icons/mdi/closeThick';
 import IconPreview from 'virtual:icons/mdi/openInNew';
 
 import { computed, type FunctionalComponent } from 'vue';
-import prettyBytes from 'pretty-bytes';
-import { Tooltip } from 'floating-vue';
-import 'floating-vue/dist/style.css';
 
 const props = defineProps<{
 	file: File;
@@ -18,7 +15,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	(event: 'remove', value: File): void;
+	remove: [value: File];
 }>();
 
 const iconMapper: Record<string, FunctionalComponent> = {
@@ -47,10 +44,6 @@ function onClick() {
 <template>
 	<div class="chat-file" @click="onClick">
 		<TypeIcon />
-		<Tooltip class="chat-file-name-tooltip">
-			<p class="chat-file-name">{{ file.name }}</p>
-			<template #popper>[{{ prettyBytes(file.size) }}] {{ file.name }}</template>
-		</Tooltip>
 		<IconDelete v-if="isRemovable" class="chat-file-delete" />
 		<IconPreview v-if="isPreviewable" class="chat-file-preview" />
 	</div>
@@ -62,12 +55,14 @@ function onClick() {
 	align-items: center;
 	flex-wrap: nowrap;
 	width: fit-content;
+	max-width: 15rem;
 	padding: 0.5rem;
 	border-radius: 0.25rem;
 	gap: 0.25rem;
 	font-size: 0.75rem;
-	background: var(--chat--color-secondary);
-	color: var(--chat--color-light);
+	background: white;
+	color: var(--chat--color-dark);
+	border: 1px solid var(--chat--color-dark);
 	cursor: pointer;
 }
 
@@ -87,6 +82,7 @@ function onClick() {
 	border: none;
 	display: none;
 	cursor: pointer;
+	flex-shrink: 0;
 
 	.chat-file:hover & {
 		display: block;
