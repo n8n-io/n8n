@@ -19,6 +19,7 @@
 			v-if="buttonText"
 			:label="buttonText"
 			:type="buttonType"
+			:disabled="buttonDisabled"
 			size="large"
 			@click="$emit('click:button', $event)"
 		/>
@@ -47,6 +48,7 @@ interface ActionBoxProps {
 	heading: string;
 	buttonText: string;
 	buttonType: ButtonType;
+	buttonDisabled: boolean;
 	description: string;
 	calloutText?: string;
 	calloutTheme?: CalloutTheme;

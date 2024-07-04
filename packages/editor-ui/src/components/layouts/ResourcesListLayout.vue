@@ -25,6 +25,7 @@
 						:description="i18n.baseText(`${resourceKey}.empty.description` as BaseTextKey)"
 						:button-text="i18n.baseText(`${resourceKey}.empty.button` as BaseTextKey)"
 						button-type="secondary"
+						:button-disabled="disabled"
 						@click:button="onAddButtonClick"
 					/>
 				</slot>

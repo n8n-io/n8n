@@ -60,17 +60,12 @@
 							: $locale.baseText('workflows.empty.heading.userNotSetup')
 					}}
 				</n8n-heading>
-				<n8n-text size="large" color="text-base">
-					{{
-						$locale.baseText(
-							readOnlyEnv
-								? 'workflows.empty.description.readOnlyEnv'
-								: 'workflows.empty.description',
-						)
-					}}
-				</n8n-text>
+				<n8n-text size="large" color="text-base">{{ emptyListDescription }}</n8n-text>
 			</div>
-			<div v-if="!readOnlyEnv" :class="['text-center', 'mt-2xl', $style.actionsContainer]">
+			<div
+				v-if="!readOnlyEnv && projectPermissions?.workflow?.create"
+				:class="['text-center', 'mt-2xl', $style.actionsContainer]"
+			>
 				<a
 					v-if="isSalesUser"
 					:href="getTemplateRepositoryURL()"
@@ -270,6 +265,15 @@ const WorkflowsView = defineComponent({
 		},
 		projectPermissions() {
 			return getResourcePermissions(this.projectsStore.currentProject?.scopes);
+		},
+		emptyListDescription() {
+			if (this.readOnlyEnv) {
+				return this.$locale.baseText('workflows.empty.description.readOnlyEnv');
+			} else if (!this.projectPermissions?.workflow?.create) {
+				return this.$locale.baseText('workflows.empty.description.noPermission');
+			} else {
+				return this.$locale.baseText('workflows.empty.description');
+			}
 		},
 	},
 	watch: {
