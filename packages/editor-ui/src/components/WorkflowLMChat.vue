@@ -631,7 +631,6 @@ export default defineComponent({
 
 				&.bot {
 					background-color: var(--color-lm-chat-bot-background);
-					color: var(--color-lm-chat-bot-color);
 					float: left;
 					border-bottom-left-radius: 0;
 
