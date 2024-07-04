@@ -9,7 +9,9 @@ export type RedisClientType =
 	| 'subscriber'
 	| 'client'
 	| 'bclient'
-	| 'bull'
+	| 'subscriber(bull)'
+	| 'client(bull)'
+	| 'bclient(bull)'
 	| 'client(cache)'
 	| 'publisher'
 	| 'consumer'
@@ -36,7 +38,7 @@ class RedisServiceBase {
 		if (this.redisClient && this.isInitialized) {
 			return;
 		}
-		this.redisClient = await this.redisClientService.createClient({ type });
+		this.redisClient = this.redisClientService.createClient({ type });
 
 		this.redisClient.on('close', () => {
 			this.logger.warn('Redis unavailable - trying to reconnect...');

@@ -51,8 +51,6 @@ export class Worker extends BaseCommand {
 	 *
 	 * Taken from env var `N8N_CONCURRENCY_PRODUCTION_LIMIT` if set to a value
 	 * other than -1, else taken from `--concurrency` flag.
-	 *
-	 * @docs https://docs.bullmq.io/guide/workers/concurrency#concurrency-factor
 	 */
 	concurrency: number;
 
@@ -67,8 +65,6 @@ export class Worker extends BaseCommand {
 	 */
 	async stopProcess() {
 		this.logger.info('Stopping n8n...');
-
-		await this.scalingMode.closeWorker();
 
 		try {
 			await this.externalHooks?.run('n8n.stop', []);
@@ -176,7 +172,7 @@ export class Worker extends BaseCommand {
 
 		additionalData.hooks.hookFunctions.sendResponse = [
 			async (response: IExecuteResponsePromiseData): Promise<void> => {
-				await job.updateProgress({
+				await job.progress({
 					kind: 'webhook-response',
 					executionId,
 					response: encodeWebhookResponse(response),
@@ -305,7 +301,7 @@ export class Worker extends BaseCommand {
 		await Container.get(OrchestrationHandlerWorkerService).initWithOptions({
 			queueModeId: this.queueModeId,
 			redisPublisher: Container.get(OrchestrationWorkerService).redisPublisher,
-			getRunningJobIds: () => this.scalingMode.getRunningJobIds(),
+			getRunningJobIds: () => this.scalingMode.getRunningJobIds() as string[],
 			getRunningJobsSummary: () => Object.values(Worker.runningJobsSummary),
 		});
 	}
@@ -321,18 +317,12 @@ export class Worker extends BaseCommand {
 	async initScalingMode() {
 		this.scalingMode = Container.get(ScalingMode);
 
-		await this.scalingMode.setupQueue();
+		await this.scalingMode.init();
 
-		const processorFn = async (job: Job) => await this.runJob(job, this.nodeTypes);
-
-		await this.scalingMode.setupWorker(processorFn, { concurrency: this.concurrency });
-
-		/**
-		 * @TODO Do we want to have the worker auto-remove jobs? Or make this configurable?
-		 *
-		 * https://docs.bullmq.io/guide/going-to-production#auto-job-removal
-		 * https://docs.bullmq.io/guide/workers/auto-removal-of-jobs
-		 */
+		this.scalingMode.defineProcessor(
+			async (job: Job) => await this.runJob(job, this.nodeTypes),
+			this.concurrency,
+		);
 	}
 
 	async setupHealthMonitor() {

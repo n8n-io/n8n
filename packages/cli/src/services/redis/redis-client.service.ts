@@ -1,13 +1,10 @@
 import { Service } from 'typedi';
-import { gte } from 'semver';
 import config from '@/config';
 import { Logger } from '@/Logger';
 import ioRedis from 'ioredis';
 import type { Cluster, RedisOptions } from 'ioredis';
 import type { RedisClientType } from './RedisServiceBaseClasses';
 import { OnShutdown } from '@/decorators/OnShutdown';
-import { ApplicationError } from 'n8n-workflow';
-import { UnsupportedRedisVersionError } from '@/errors/unsupported-redis-version.error';
 
 @Service()
 export class RedisClientService {
@@ -15,13 +12,11 @@ export class RedisClientService {
 
 	constructor(private readonly logger: Logger) {}
 
-	async createClient(arg: { type: RedisClientType; extraOptions?: RedisOptions }) {
+	createClient(arg: { type: RedisClientType; extraOptions?: RedisOptions }) {
 		const client =
 			this.clusterNodes().length > 0
 				? this.createClusterClient(arg)
 				: this.createRegularClient(arg);
-
-		await this.assertRedisVersion(client);
 
 		this.clients.add(client);
 
@@ -162,19 +157,5 @@ export class RedisClientService {
 				const [host, port] = pair.split(':');
 				return { host, port: parseInt(port) };
 			});
-	}
-
-	private async assertRedisVersion(client: ioRedis | Cluster) {
-		const serverInfo = await client.info('server');
-
-		const match = serverInfo.match(/redis_version:(?<version>\d+\.\d+.\d+)/);
-
-		if (!match?.groups) throw new ApplicationError('Failed to retrieve Redis version');
-
-		const { version } = match.groups;
-
-		if (gte(version, '5.0.0')) return;
-
-		throw new UnsupportedRedisVersionError(version);
 	}
 }

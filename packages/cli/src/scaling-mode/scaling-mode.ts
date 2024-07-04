@@ -6,39 +6,31 @@ import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
 import { Logger } from '@/Logger';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
+
 import { SCALING_MODE_JOB_NAME, SCALING_MODE_QUEUE_NAME } from './constants';
 import { decodeWebhookResponse } from './webhook-response';
 import { RunningJobs } from './running-jobs';
 import type {
+	Queue,
 	Job,
 	JobData,
-	JobName,
 	JobOptions,
-	WorkerProcessorFn,
 	JobProgressReport,
-	JobResult,
-	JobState,
-	Queue,
-	StoreOptions,
-	Store,
-	WorkerOptions,
-	Worker,
+	JobStatus,
+	JobId,
+	JobProcessorFn,
 } from './types';
 
 /**
- * Responsible for running executions in a distributed system using BullMQ.
- *
- * @docs https://docs.bullmq.io/
+ * @docs https://optimalbits.github.io/bull
  */
 @Service()
 export class ScalingMode {
 	private queue: Queue;
 
-	private worker: Worker;
+	private readonly jobName = SCALING_MODE_JOB_NAME;
 
-	private store: Store;
-
-	private storeOptions: StoreOptions;
+	private readonly queueName = SCALING_MODE_QUEUE_NAME;
 
 	constructor(
 		private readonly logger: Logger,
@@ -50,48 +42,29 @@ export class ScalingMode {
 	 * Lifecycle
 	 */
 
-	async setupQueue() {
+	async init() {
 		this.logger.debug('[ScalingMode] Setting up queue...');
 
-		await this.setStoreOptions();
+		const { default: BullQueue } = await import('bull');
+		const { RedisClientService } = await import('@/services/redis/redis-client.service');
+		const service = Container.get(RedisClientService);
 
-		const { Queue } = await import('bullmq');
+		const bullPrefix = config.getEnv('queue.bull.prefix');
+		const prefix = service.toValidPrefix(bullPrefix);
 
-		this.queue = new Queue<JobData, JobResult, JobName>(SCALING_MODE_QUEUE_NAME, this.storeOptions);
+		this.queue = new BullQueue(this.queueName, {
+			prefix,
+			settings: config.get('queue.bull.settings'),
+			createClient: (type) => service.createClient({ type: `${type}(bull)` }),
+		});
 
-		this.registerQueueListeners();
+		this.registerListeners();
 
 		this.logger.debug('[ScalingMode] Queue setup completed');
 	}
 
-	async setupWorker(fn: WorkerProcessorFn, extraOptions: Partial<WorkerOptions> = {}) {
-		this.logger.debug('[ScalingMode] Setting up worker...');
-
-		const { Worker } = await import('bullmq');
-
-		const configOptions = config.get('queue.bull.settings');
-
-		const options = { ...this.storeOptions, ...configOptions, ...extraOptions };
-
-		this.worker = new Worker(SCALING_MODE_QUEUE_NAME, fn, options);
-
-		this.registerWorkerListeners();
-
-		this.logger.debug('[ScalingMode] Worker setup completed');
-	}
-
-	private async setStoreOptions() {
-		const { RedisClientService } = await import('@/services/redis/redis-client.service');
-
-		const redisClientService = Container.get(RedisClientService);
-		const prefix = redisClientService.toValidPrefix(config.getEnv('queue.bull.prefix'));
-		this.store = await redisClientService.createClient({ type: 'bull' });
-
-		this.storeOptions = { prefix, connection: this.store };
-	}
-
-	async pingStore() {
-		return await this.store.ping();
+	defineProcessor(processorFn: JobProcessorFn, concurrency: number) {
+		void this.queue.process(this.jobName, concurrency, processorFn);
 	}
 
 	async closeQueue() {
@@ -102,34 +75,30 @@ export class ScalingMode {
 		this.logger.debug('[ScalingMode] Closed queue');
 	}
 
-	async closeWorker({ immediately } = { immediately: true }) {
-		this.logger.debug('[ScalingMode] Closing worker...');
-
-		await this.worker.close(immediately);
-
-		this.logger.debug('[ScalingMode] Closed worker');
+	async pingStore() {
+		await this.queue.client.ping();
 	}
 
 	/**
 	 * Jobs
 	 */
 
-	async addJob(jobData: JobData, jobOptions: JobOptions) {
+	async enqueueJob(jobData: JobData, jobOptions: JobOptions) {
 		const { executionId } = jobData;
 
-		const job = (await this.queue.add(SCALING_MODE_JOB_NAME, jobData, jobOptions)) as Job;
+		const job = await this.queue.add(this.jobName, jobData, jobOptions);
 
-		this.logger.info('[ScalingMode] Added job to queue', { jobId: job.id, executionId });
+		this.logger.info('[ScalingMode] Enqueued job', { jobId: job.id, executionId });
 
 		return job;
 	}
 
-	async getJob(jobId: string) {
-		return ((await this.queue.getJob(jobId)) ?? null) as Job | null;
+	async getJob(jobId: JobId) {
+		return await this.queue.getJob(jobId);
 	}
 
-	async findJobsByState(states: JobState[]) {
-		return (await this.queue.getJobs(states)) as Job[];
+	async findJobsByState(statuses: JobStatus[]) {
+		return await this.queue.getJobs(statuses);
 	}
 
 	async stopJob(job: Job) {
@@ -138,21 +107,21 @@ export class ScalingMode {
 			data: { executionId },
 		} = job;
 
-		this.logger.debug('[ScalingMode] Aborting job...', { jobId, executionId });
+		this.logger.debug('[ScalingMode] Stopping job...', { jobId, executionId });
 
 		try {
 			if (await job.isActive()) {
 				this.runningJobs.cancel(jobId);
 				this.runningJobs.remove(jobId);
-				this.logger.debug('[ScalingMode] Aborted active job', { jobId, executionId });
+				this.logger.debug('[ScalingMode] Stopped active job', { jobId, executionId });
 				return true;
 			}
 
 			await job.remove();
-			this.logger.debug('[ScalingMode] Aborted inactive job', { jobId, executionId });
+			this.logger.debug('[ScalingMode] Stopped inactive job', { jobId, executionId });
 			return true;
 		} catch (error: unknown) {
-			this.logger.error('[ScalingMode] Failed to abort job', { jobId, executionId, error });
+			this.logger.error('[ScalingMode] Failed to stop job', { jobId, executionId, error });
 			return false;
 		}
 	}
@@ -161,15 +130,15 @@ export class ScalingMode {
 	 * Running jobs
 	 */
 
-	registerRunningJob(jobId: string, run: PCancelable<IRun>) {
+	registerRunningJob(jobId: JobId, run: PCancelable<IRun>) {
 		this.runningJobs.add(jobId, run);
 	}
 
-	deregisterRunningJob(jobId: string) {
+	deregisterRunningJob(jobId: JobId) {
 		this.runningJobs.remove(jobId);
 	}
 
-	cancelRunningJob(jobId: string) {
+	cancelRunningJob(jobId: JobId) {
 		this.runningJobs.cancel(jobId);
 	}
 
@@ -181,7 +150,7 @@ export class ScalingMode {
 	 * Listeners
 	 */
 
-	private registerQueueListeners() {
+	private registerListeners() {
 		this.queue.on('progress', (job: Job, report: JobProgressReport) => {
 			this.logger.error('[ScalingMode] Received job progress report', { jobId: job.id });
 
@@ -224,9 +193,6 @@ export class ScalingMode {
 				return;
 			}
 
-			/**
-			 * @TODO Still relevant for `bullmq`?
-			 */
 			if (error.message.includes('job stalled more than maxStalledCount')) {
 				throw new MaxStalledCountError(error);
 			}
@@ -234,8 +200,6 @@ export class ScalingMode {
 			/**
 			 * Non-recoverable error on worker start with Redis unavailable.
 			 * Even if Redis recovers, worker will remain unable to process jobs.
-			 *
-			 * @TODO Still relevant for `bullmq`?
 			 */
 			if (error.message.includes('Error initializing Lua scripts')) {
 				this.logger.error('[ScalingMode] Fatal error initializing worker', { error });
@@ -244,35 +208,6 @@ export class ScalingMode {
 			}
 
 			throw error;
-		});
-	}
-
-	private registerWorkerListeners() {
-		this.worker.on('completed', async (job: Job) => {
-			this.logger.info('[ScalingMode] Job completed', {
-				jobId: job.id,
-				executionId: job.data.executionId,
-			});
-		});
-
-		this.worker.on('stalled', async (jobId: string) => {
-			const job = await this.queue.getJob(jobId);
-			this.logger.warn('[ScalingMode] Job stalled', {
-				jobId,
-				executionId: job?.data.executionId ?? 'unknown',
-			});
-		});
-
-		this.worker.on('failed', async (job: Job, error: Error) => {
-			this.logger.error('[ScalingMode] Job failed', {
-				jobId: job.id,
-				executionId: job.data.executionId,
-				error,
-			});
-		});
-
-		this.worker.on('error', (error: Error) => {
-			this.logger.error('[ScalingMode] Worker errored', { error });
 		});
 	}
 }

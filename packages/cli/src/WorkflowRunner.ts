@@ -384,7 +384,7 @@ export class WorkflowRunner {
 		let job: Job;
 		let hooks: WorkflowHooks;
 		try {
-			job = await this.scalingMode.addJob(jobData, jobOptions);
+			job = await this.scalingMode.enqueueJob(jobData, jobOptions);
 
 			hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerMain(
 				data.executionMode,
@@ -430,17 +430,11 @@ export class WorkflowRunner {
 					reject(error);
 				});
 
-				/**
-				 * @TODO: Replacing `job.finished()` with `job.waitUntilFinished()` will require `QueueEvents`,
-				 * which might be avoidable complexity. Do we need to preserve `watchDogInterval` in `bullmq`?
-				 */
-				// const jobData: Promise<JobResult> = job.finished();
-				// const jobData = job.waitUntilFinished(this.scalingMode.queueEvents);
+				const jobData: Promise<JobResult> = job.finished();
 
 				const queueRecoveryInterval = config.getEnv('queue.bull.queueRecoveryInterval');
 
-				// const racingPromises: Array<Promise<JobResult>> = [jobData];
-				const racingPromises: Array<Promise<JobResult>> = [];
+				const racingPromises: Array<Promise<JobResult>> = [jobData];
 
 				let clearWatchdogInterval;
 				if (queueRecoveryInterval > 0) {
@@ -480,7 +474,7 @@ export class WorkflowRunner {
 				}
 
 				try {
-					// await Promise.race(racingPromises);
+					await Promise.race(racingPromises);
 					if (clearWatchdogInterval !== undefined) {
 						clearWatchdogInterval();
 					}

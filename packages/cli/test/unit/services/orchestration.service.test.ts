@@ -19,7 +19,7 @@ import type Redis from 'ioredis';
 import { mock } from 'jest-mock-extended';
 
 const redisClientService = mockInstance(RedisClientService);
-const mockRedisClient = mock<Promise<Redis>>();
+const mockRedisClient = mock<Redis>();
 redisClientService.createClient.mockReturnValue(mockRedisClient);
 
 const os = Container.get(OrchestrationService);

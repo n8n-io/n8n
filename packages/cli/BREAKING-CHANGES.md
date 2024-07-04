@@ -2,35 +2,6 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
-## 1.??.0 @TODO: Update version
-
-### What changed?
-
-n8n upgraded its scaling mode from `bull@4.12.1` to `bullmq@5.8.2`.
-
-### When is action necessary?
-
-If you are using scaling mode:
-
-1. Stop the main instance.
-2. Wait until there are zero pending jobs in the queue.
-
-To check for pending jobs in the queue, access your Redis server and run:
-
-```sh
-LRANGE bull:jobs:waiting 0 -1
-LRANGE bull:jobs:active 0 -1
-```
-
-Both commands should return empty arrays. Depending on your workload, this may take some time.
-
-3. Once there are zero pending jobs in the queue, stop all workers.
-4. Upgrade your Redis server to 5.0.0 or higher.
-5. Upgrade the main instance to the new n8n version and start it.
-6. Upgrade all workers to the new n8n version and start them.
-
-If you are running a multi-main setup, the same procedure applies.
-
 ## 1.47.0
 
 ### What changed?

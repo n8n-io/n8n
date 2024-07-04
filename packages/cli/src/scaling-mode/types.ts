@@ -1,37 +1,14 @@
 import type { Redis, Cluster } from 'ioredis';
 import type { ExecutionError, IExecuteResponsePromiseData } from 'n8n-workflow';
-import type {
-	Job as BullJob,
-	Queue as BullQueue,
-	JobState as BullJobState,
-	JobsOptions as BullJobOptions,
-	QueueOptions as BullQueueOptions,
-	WorkerOptions as BullWorkerOptions,
-	Worker as BullWorker,
-	Processor as BullProcessorFn,
-} from 'bullmq';
+import type Bull from 'bull';
 
-/**
- * Queue
- */
+export type Queue = Bull.Queue<JobData>;
 
-export type Queue = BullQueue<JobData, JobResult, JobName>;
+export type Job = Bull.Job<JobData>;
 
-/**
- * Worker
- */
+export type JobId = Job['id'];
 
-export type Worker = BullWorker<JobData, JobResult, JobName>;
-
-export type WorkerProcessorFn = BullProcessorFn<JobData, JobResult, JobName>;
-
-export type WorkerOptions = BullWorkerOptions;
-
-/**
- * Job
- */
-
-export type Job = BullJob<JobData, JobResult, JobName> & { id: string };
+export type JobProcessorFn = Bull.ProcessCallbackFunction<JobData>;
 
 export type JobData = {
 	executionId: string;
@@ -45,9 +22,9 @@ export type JobResult = {
 
 export type JobName = 'job';
 
-export type JobState = BullJobState;
+export type JobStatus = Bull.JobStatus;
 
-export type JobOptions = BullJobOptions;
+export type JobOptions = Bull.JobOptions;
 
 export type JobProgressReport = WebhookResponse; // in future, possibly more
 
@@ -62,5 +39,3 @@ type WebhookResponse = {
  */
 
 export type Store = Redis | Cluster;
-
-export type StoreOptions = BullQueueOptions;
