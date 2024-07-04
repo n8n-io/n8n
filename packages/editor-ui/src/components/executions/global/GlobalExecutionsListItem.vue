@@ -12,9 +12,11 @@ import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 type Command = 'retrySaved' | 'retryOriginal' | 'delete';
 
 const emit = defineEmits<{
-	(event: 'stop', data: ExecutionSummary): void;
-	(event: 'select', data: ExecutionSummary): void;
-	(event: Command, data: ExecutionSummary): void;
+	stop: [data: ExecutionSummary];
+	select: [data: ExecutionSummary];
+	retrySaved: [data: ExecutionSummary];
+	retryOriginal: [data: ExecutionSummary];
+	delete: [data: ExecutionSummary];
 }>();
 
 const props = withDefaults(
@@ -148,6 +150,7 @@ function onSelect() {
 }
 
 async function handleActionItemClick(commandData: Command) {
+	//@ts-ignore todo: fix this type
 	emit(commandData, props.execution);
 }
 </script>

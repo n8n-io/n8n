@@ -18,7 +18,7 @@ const shouldRenderItems = ref(false);
 const submenu = ref('none');
 
 const emit = defineEmits<{
-	(event: 'operatorChange', value: string): void;
+	operatorChange: [value: string];
 }>();
 
 const i18n = useI18n();

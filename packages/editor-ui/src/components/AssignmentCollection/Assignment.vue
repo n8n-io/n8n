@@ -26,8 +26,8 @@ const props = defineProps<Props>();
 const assignment = ref<AssignmentValue>(props.modelValue);
 
 const emit = defineEmits<{
-	(event: 'update:model-value', value: AssignmentValue): void;
-	(event: 'remove'): void;
+	'update:model-value': [value: AssignmentValue];
+	remove: [];
 }>();
 
 const ndvStore = useNDVStore();
