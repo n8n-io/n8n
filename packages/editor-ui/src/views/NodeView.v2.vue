@@ -35,7 +35,6 @@ import {
 	MODAL_CONFIRM,
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	ONBOARDING_PROMPT_TIMEBOX,
-	TIME,
 	VIEWS,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';

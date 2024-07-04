@@ -33,6 +33,7 @@ export const mockNode = ({
 	position = [0, 0],
 	disabled = false,
 	issues = undefined,
+	typeVersion = 1,
 }: {
 	id?: INodeUi['id'];
 	name: INodeUi['name'];
@@ -40,16 +41,21 @@ export const mockNode = ({
 	position?: INodeUi['position'];
 	disabled?: INodeUi['disabled'];
 	issues?: INodeIssues;
-}) => mock<INodeUi>({ id, name, type, position, disabled, issues });
+	typeVersion?: INodeUi['typeVersion'];
+}) => mock<INodeUi>({ id, name, type, position, disabled, issues, typeVersion });
 
 export const mockNodeTypeDescription = ({
 	name,
 	version = 1,
 	credentials = [],
+	inputs = ['main'],
+	outputs = ['main'],
 }: {
 	name: INodeTypeDescription['name'];
 	version?: INodeTypeDescription['version'];
 	credentials?: INodeTypeDescription['credentials'];
+	inputs?: INodeTypeDescription['inputs'];
+	outputs?: INodeTypeDescription['outputs'];
 }) =>
 	mock<INodeTypeDescription>({
 		name,
@@ -62,8 +68,8 @@ export const mockNodeTypeDescription = ({
 		properties: [],
 		maxNodes: Infinity,
 		group: EXECUTABLE_TRIGGER_NODE_TYPES.includes(name) ? ['trigger'] : [],
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs,
+		outputs,
 		credentials,
 		documentationUrl: 'https://docs',
 		webhooks: undefined,

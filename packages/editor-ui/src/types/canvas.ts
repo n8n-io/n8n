@@ -14,6 +14,16 @@ export type CanvasElementType = 'node' | 'note';
 
 export type CanvasConnectionPortType = ConnectionTypes;
 
+export const enum CanvasConnectionMode {
+	Input = 'inputs',
+	Output = 'outputs',
+}
+
+export const canvasConnectionModes = [
+	CanvasConnectionMode.Input,
+	CanvasConnectionMode.Output,
+] as const;
+
 export type CanvasConnectionPort = {
 	type: CanvasConnectionPortType;
 	required?: boolean;

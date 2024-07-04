@@ -3,7 +3,7 @@
  * @TODO Remove this notice when Canvas V2 is the only one in use
  */
 
-import type { CanvasElement } from '@/types';
+import { CanvasConnectionMode, CanvasElement } from '@/types';
 import type {
 	AddedNodesAndConnections,
 	INodeUi,
@@ -220,7 +220,7 @@ export function useCanvasOperations({
 			return;
 		}
 
-		ndvStore.activeNodeName = node.name;
+		setNodeActiveByName(node.name);
 	}
 
 	function setNodeActiveByName(name: string) {
@@ -339,18 +339,32 @@ export function useCanvasOperations({
 		const outputIndex = lastSelectedNodeOutputIndex ?? 0;
 		const targetEndpoint = lastSelectedNodeEndpointUuid ?? '';
 
-		// Handle connection of scoped_endpoint types
+		// Create a connection between the last selected node and the new one
 		if (lastSelectedNode && !options.isAutoAdd) {
+			// If we have a specific endpoint to connect to
 			if (lastSelectedNodeEndpointUuid) {
-				const { type: connectionType } = parseCanvasConnectionHandleString(
+				const { type: connectionType, mode } = parseCanvasConnectionHandleString(
 					lastSelectedNodeEndpointUuid,
 				);
-				if (isConnectionAllowed(lastSelectedNode, newNodeData, connectionType)) {
+
+				const newNodeId = newNodeData.id;
+				const newNodeHandle = `${CanvasConnectionMode.Input}/${connectionType}/0`;
+				const lasSelectedNodeId = lastSelectedNode.id;
+				const lastSelectedNodeHandle = targetEndpoint;
+
+				if (mode === CanvasConnectionMode.Input) {
 					createConnection({
-						source: lastSelectedNode.id,
-						sourceHandle: targetEndpoint,
-						target: newNodeData.id,
-						targetHandle: `inputs/${connectionType}/0`,
+						source: newNodeId,
+						sourceHandle: newNodeHandle,
+						target: lasSelectedNodeId,
+						targetHandle: lastSelectedNodeHandle,
+					});
+				} else {
+					createConnection({
+						source: lasSelectedNodeId,
+						sourceHandle: lastSelectedNodeHandle,
+						target: newNodeId,
+						targetHandle: newNodeHandle,
 					});
 				}
 			} else {
@@ -515,8 +529,6 @@ export function useCanvasOperations({
 				canvasStore.newNodeInsertPosition = null;
 			} else {
 				let yOffset = 0;
-				const workflow = workflowsStore.getCurrentWorkflow();
-
 				if (lastSelectedConnection) {
 					const sourceNodeType = nodeTypesStore.getNodeType(
 						lastSelectedNode.type,
@@ -531,7 +543,7 @@ export function useCanvasOperations({
 						];
 
 						const sourceNodeOutputs = NodeHelpers.getNodeOutputs(
-							workflow,
+							editableWorkflowObject.value,
 							lastSelectedNode,
 							sourceNodeType,
 						);
@@ -558,7 +570,11 @@ export function useCanvasOperations({
 					// outputs here is to calculate the position, it is fine to assume
 					// that they have no outputs and are so treated as a regular node
 					// with only "main" outputs.
-					outputs = NodeHelpers.getNodeOutputs(workflow, newNodeData, nodeTypeDescription);
+					outputs = NodeHelpers.getNodeOutputs(
+						editableWorkflowObject.value,
+						newNodeData,
+						nodeTypeDescription,
+					);
 				} catch (e) {}
 				const outputTypes = NodeHelpers.getConnectionTypes(outputs);
 				const lastSelectedNodeType = nodeTypesStore.getNodeType(
@@ -571,13 +587,15 @@ export function useCanvasOperations({
 					outputTypes.length > 0 &&
 					outputTypes.every((outputName) => outputName !== NodeConnectionType.Main)
 				) {
-					const lastSelectedNodeWorkflow = workflow.getNode(lastSelectedNode.name);
+					const lastSelectedNodeWorkflow = editableWorkflowObject.value.getNode(
+						lastSelectedNode.name,
+					);
 					if (!lastSelectedNodeWorkflow || !lastSelectedNodeType) {
 						return;
 					}
 
 					const lastSelectedInputs = NodeHelpers.getNodeInputs(
-						workflow,
+						editableWorkflowObject.value,
 						lastSelectedNodeWorkflow,
 						lastSelectedNodeType,
 					);
@@ -605,7 +623,7 @@ export function useCanvasOperations({
 
 					// Has only main outputs or no outputs at all
 					const inputs = NodeHelpers.getNodeInputs(
-						workflow,
+						editableWorkflowObject.value,
 						lastSelectedNode,
 						lastSelectedNodeType,
 					);
@@ -688,10 +706,11 @@ export function useCanvasOperations({
 		{ trackHistory = false }: { trackHistory?: boolean },
 	) {
 		const sourceNode = workflowsStore.nodesByName[sourceNodeName];
-
-		const workflow = workflowHelpers.getCurrentWorkflow();
-
-		const checkNodes = workflowHelpers.getConnectedNodes('downstream', workflow, sourceNodeName);
+		const checkNodes = workflowHelpers.getConnectedNodes(
+			'downstream',
+			editableWorkflowObject.value,
+			sourceNodeName,
+		);
 		for (const nodeName of checkNodes) {
 			const node = workflowsStore.nodesByName[nodeName];
 			const oldPosition = node.position;
@@ -781,12 +800,6 @@ export function useCanvasOperations({
 			connection,
 		);
 
-		console.log(isConnectionAllowed(sourceNode, targetNode, mappedConnection[1].type), {
-			sourceNode,
-			targetNode,
-			mappedConnection,
-		});
-
 		if (!isConnectionAllowed(sourceNode, targetNode, mappedConnection[1].type)) {
 			return;
 		}
@@ -843,57 +856,54 @@ export function useCanvasOperations({
 	function isConnectionAllowed(
 		sourceNode: INodeUi,
 		targetNode: INodeUi,
-		targetNodeConnectionType: NodeConnectionType,
+		connectionType: NodeConnectionType,
 	): boolean {
 		if (sourceNode.id === targetNode.id) {
 			return false;
 		}
 
 		const targetNodeType = nodeTypesStore.getNodeType(targetNode.type, targetNode.typeVersion);
-
-		console.log({ targetNodeType });
-
 		if (targetNodeType?.inputs?.length) {
-			const workflow = workflowsStore.getCurrentWorkflow();
-			const workflowNode = workflow.getNode(targetNode.name);
+			const workflowNode = editableWorkflowObject.value.getNode(targetNode.name);
 			if (!workflowNode) {
 				return false;
 			}
 
 			let inputs: Array<ConnectionTypes | INodeInputConfiguration> = [];
 			if (targetNodeType) {
-				inputs = NodeHelpers.getNodeInputs(workflow, workflowNode, targetNodeType) || [];
+				inputs =
+					NodeHelpers.getNodeInputs(editableWorkflowObject.value, workflowNode, targetNodeType) ||
+					[];
 			}
 
-			if (inputs.length === 0) {
-				return false;
-			}
-
+			let targetHasConnectionTypeAsInput = false;
 			for (const input of inputs) {
-				if (typeof input === 'string' || input.type !== targetNodeConnectionType || !input.filter) {
-					// No filters defined or wrong connection type
-					continue;
-				}
+				const inputType = typeof input === 'string' ? input : input.type;
+				if (inputType === connectionType) {
+					if (typeof input === 'object' && 'filter' in input && input.filter?.nodes.length) {
+						if (!input.filter.nodes.includes(sourceNode.type)) {
+							// this.dropPrevented = true;
+							toast.showToast({
+								title: i18n.baseText('nodeView.showError.nodeNodeCompatible.title'),
+								message: i18n.baseText('nodeView.showError.nodeNodeCompatible.message', {
+									interpolate: { sourceNodeName: sourceNode.name, targetNodeName: targetNode.name },
+								}),
+								type: 'error',
+								duration: 5000,
+							});
 
-				if (input.filter.nodes.length) {
-					if (!input.filter.nodes.includes(sourceNode.type)) {
-						// this.dropPrevented = true;
-						toast.showToast({
-							title: i18n.baseText('nodeView.showError.nodeNodeCompatible.title'),
-							message: i18n.baseText('nodeView.showError.nodeNodeCompatible.message', {
-								interpolate: { sourceNodeName: sourceNode.name, targetNodeName: targetNode.name },
-							}),
-							type: 'error',
-							duration: 5000,
-						});
-
-						return false;
+							return false;
+						}
 					}
+
+					targetHasConnectionTypeAsInput = true;
 				}
 			}
+
+			return targetHasConnectionTypeAsInput;
 		}
 
-		return true;
+		return false;
 	}
 
 	async function addConnections(
@@ -932,5 +942,6 @@ export function useCanvasOperations({
 		createConnection,
 		deleteConnection,
 		revertDeleteConnection,
+		isConnectionAllowed,
 	};
 }

@@ -1,9 +1,14 @@
 import type { IConnection, IConnections, INodeTypeDescription } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
-import type { CanvasConnection, CanvasConnectionPortType, CanvasConnectionPort } from '@/types';
+import {
+	CanvasConnection,
+	CanvasConnectionPortType,
+	CanvasConnectionPort,
+	CanvasConnectionMode,
+} from '@/types';
 import type { Connection } from '@vue-flow/core';
 import { v4 as uuid } from 'uuid';
-import { isValidNodeConnectionType } from '@/utils/typeGuards';
+import { isValidCanvasConnectionMode, isValidNodeConnectionType } from '@/utils/typeGuards';
 import { NodeConnectionType } from 'n8n-workflow';
 
 export function mapLegacyConnectionsToCanvasConnections(
@@ -29,8 +34,8 @@ export function mapLegacyConnectionsToCanvasConnections(
 							id: `[${fromId}/${fromConnectionType}/${fromIndex}][${toId}/${toConnectionType}/${toIndex}]`,
 							source: fromId,
 							target: toId,
-							sourceHandle: `outputs/${fromConnectionType}/${fromIndex}`,
-							targetHandle: `inputs/${toConnectionType}/${toIndex}`,
+							sourceHandle: `${CanvasConnectionMode.Output}/${fromConnectionType}/${fromIndex}`,
+							targetHandle: `${CanvasConnectionMode.Input}/${toConnectionType}/${toIndex}`,
 							data: {
 								fromNodeName,
 								source: {
@@ -53,9 +58,10 @@ export function mapLegacyConnectionsToCanvasConnections(
 }
 
 export function parseCanvasConnectionHandleString(handle: string | null | undefined) {
-	const [, type, index] = (handle ?? '').split('/');
+	const [mode, type, index] = (handle ?? '').split('/');
 
 	const resolvedType = isValidNodeConnectionType(type) ? type : NodeConnectionType.Main;
+	const resolvedMode = isValidCanvasConnectionMode(mode) ? mode : CanvasConnectionMode.Output;
 
 	let resolvedIndex = parseInt(index, 10);
 	if (isNaN(resolvedIndex)) {
@@ -63,6 +69,7 @@ export function parseCanvasConnectionHandleString(handle: string | null | undefi
 	}
 
 	return {
+		mode: resolvedMode,
 		type: resolvedType,
 		index: resolvedIndex,
 	};
