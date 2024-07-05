@@ -8,7 +8,7 @@
     "build:bundle": "INCLUDE_VUE=true vite build",
     "preview": "vite preview",
     "test:dev": "vitest",
-    "test": "vitest run --coverage",
+    "test": "vitest run",
     "typecheck": "vue-tsc --noEmit",
     "lint": "eslint . --ext .js,.ts,.vue --quiet",
     "lintfix": "eslint . --ext .js,.ts,.vue --fix",
