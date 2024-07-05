@@ -233,10 +233,10 @@ export async function execute(
 		headerRow = locationDefine.headerRow as number;
 	}
 
+	const sheetData = await sheet.getData(sheetName, 'FORMATTED_VALUE');
+
 	if (nodeVersion >= 4.4 && dataMode !== 'autoMapInputData') {
 		//not possible to refresh columns when mode is autoMapInputData
-		const sheetData = await sheet.getData(sheetName, 'FORMATTED_VALUE');
-
 		if (sheetData?.[headerRow - 1] === undefined) {
 			throw new NodeOperationError(
 				this.getNode(),
@@ -270,6 +270,7 @@ export async function execute(
 			options.useAppend as boolean,
 		);
 	} else {
+		//if no trailing empty row exists in the sheet update operation will fail
 		await sheet.appendEmptyRowsOrColumns(sheetId, 1, 0);
 
 		await sheet.appendSheetData(
@@ -278,6 +279,8 @@ export async function execute(
 			headerRow,
 			(options.cellFormat as ValueInputOption) || cellFormatDefault(nodeVersion),
 			false,
+			undefined,
+			(sheetData ?? []).length + 1, //target appended row for update
 		);
 	}
 
