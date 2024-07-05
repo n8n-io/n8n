@@ -328,7 +328,7 @@ export class Start extends BaseCommand {
 					this.openBrowser();
 				} else if (key.charCodeAt(0) === 3) {
 					// Ctrl + c got pressed
-					void this.stopProcess();
+					void this.onTerminationSignal('SIGINT')();
 				} else {
 					// When anything else got pressed, record it and send it on enter into the child process
 

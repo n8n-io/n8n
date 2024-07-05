@@ -313,7 +313,7 @@ export abstract class BaseCommand extends Command {
 		this.exit(exitCode);
 	}
 
-	private onTerminationSignal(signal: string) {
+	protected onTerminationSignal(signal: string) {
 		return async () => {
 			if (this.shutdownService.isShuttingDown()) {
 				this.logger.info(`Received ${signal}. Already shutting down...`);
