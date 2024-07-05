@@ -488,8 +488,7 @@ export default defineComponent({
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflowId}`, fallback);
 		},
 		workflowPermissions() {
-			return getResourcePermissions(this.workflowsStore.getWorkflowById(this.workflowId)?.scopes)
-				.workflow;
+			return getResourcePermissions(this.workflow?.scopes).workflow;
 		},
 	},
 	async mounted() {
@@ -514,17 +513,17 @@ export default defineComponent({
 		this.defaultValues.workflowCallerPolicy = this.settingsStore.workflowCallerPolicyDefaultOption;
 
 		this.isLoading = true;
-		const promises = [];
-		promises.push(this.loadWorkflows());
-		promises.push(this.loadSaveDataErrorExecutionOptions());
-		promises.push(this.loadSaveDataSuccessExecutionOptions());
-		promises.push(this.loadSaveExecutionProgressOptions());
-		promises.push(this.loadSaveManualOptions());
-		promises.push(this.loadTimezones());
-		promises.push(this.loadWorkflowCallerPolicyOptions());
 
 		try {
-			await Promise.all(promises);
+			await Promise.all([
+				this.loadWorkflows(),
+				this.loadSaveDataErrorExecutionOptions(),
+				this.loadSaveDataSuccessExecutionOptions(),
+				this.loadSaveExecutionProgressOptions(),
+				this.loadSaveManualOptions(),
+				this.loadTimezones(),
+				this.loadWorkflowCallerPolicyOptions(),
+			]);
 		} catch (error) {
 			this.showError(
 				error,

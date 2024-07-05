@@ -570,7 +570,7 @@ function showCreateWorkflowSuccessToast(id?: string) {
 							:preview-value="shortenedName"
 							:is-edit-enabled="isNameEditEnabled"
 							:max-length="MAX_WORKFLOW_NAME_LENGTH"
-							:disabled="readOnly || !workflowPermissions.update"
+							:disabled="readOnly || (!isNewWorkflow && !workflowPermissions.update)"
 							placeholder="Enter workflow name"
 							class="name"
 							@toggle="onNameToggle"
@@ -583,7 +583,7 @@ function showCreateWorkflowSuccessToast(id?: string) {
 
 		<span v-if="settingsStore.areTagsEnabled" class="tags" data-test-id="workflow-tags-container">
 			<TagsDropdown
-				v-if="isTagsEditEnabled && !readOnly && workflowPermissions.update"
+				v-if="isTagsEditEnabled && !readOnly && (isNewWorkflow || workflowPermissions.update)"
 				ref="dropdown"
 				v-model="appliedTagIds"
 				:create-enabled="true"
@@ -595,7 +595,11 @@ function showCreateWorkflowSuccessToast(id?: string) {
 				@esc="onTagsEditEsc"
 			/>
 			<div
-				v-else-if="(workflow.tags ?? []).length === 0 && !readOnly && workflowPermissions.update"
+				v-else-if="
+					(workflow.tags ?? []).length === 0 &&
+					!readOnly &&
+					(isNewWorkflow || workflowPermissions.update)
+				"
 			>
 				<span class="add-tag clickable" data-test-id="new-tag-link" @click="onTagsEditEnable">
 					+ {{ $locale.baseText('workflowDetails.addTag') }}
@@ -659,7 +663,9 @@ function showCreateWorkflowSuccessToast(id?: string) {
 				<SaveButton
 					type="primary"
 					:saved="!uiStore.stateIsDirty && !isNewWorkflow"
-					:disabled="isWorkflowSaving || readOnly || !workflowPermissions.update"
+					:disabled="
+						isWorkflowSaving || readOnly || (!isNewWorkflow && !workflowPermissions.update)
+					"
 					:with-shortcut="!readOnly && workflowPermissions.update"
 					:shortcut-tooltip="$locale.baseText('saveWorkflowButton.hint')"
 					data-test-id="workflow-save-button"

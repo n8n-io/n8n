@@ -16,6 +16,8 @@ import { EnterpriseEditionFeature, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constan
 
 import { nextTick } from 'vue';
 import type { IWorkflowDb } from '@/Interface';
+import * as permissions from '@/permissions';
+import type { PermissionsRecord } from '@/permissions';
 
 let pinia: ReturnType<typeof createPinia>;
 let workflowsStore: ReturnType<typeof useWorkflowsStore>;
@@ -52,6 +54,11 @@ describe('WorkflowSettingsVue', () => {
 			updatedAt: 1,
 			versionId: '123',
 		} as IWorkflowDb);
+		vi.spyOn(permissions, 'getResourcePermissions').mockReturnValue({
+			workflow: {
+				update: true,
+			},
+		} as PermissionsRecord);
 
 		uiStore.modalsById[WORKFLOW_SETTINGS_MODAL_KEY] = {
 			open: true,
