@@ -120,8 +120,10 @@ export const hasOnlyListMode = (parameter: INodeProperties): boolean => {
 	);
 };
 
-// A credential type is considered required if it has no dependencies
-// or if it's only dependency is the main authentication fields
+/**
+ * A credential type is considered required if it has no dependencies
+ * or if it's only dependency is the main authentication fields
+ */
 export const isRequiredCredential = (
 	nodeType: INodeTypeDescription | null,
 	credential: INodeCredentialDescription,
@@ -129,19 +131,24 @@ export const isRequiredCredential = (
 	if (!credential.displayOptions?.show) {
 		return true;
 	}
+
 	const mainAuthField = getMainAuthField(nodeType);
 	if (mainAuthField) {
 		return mainAuthField.name in credential.displayOptions.show;
 	}
+
 	return false;
 };
 
-// Finds the main authentication filed for the node type
-// It's the field that node's required credential depend on
+/**
+ * Find the main authentication field for the node type.
+ * It's the field that node's required credential depend on
+ */
 export const getMainAuthField = (nodeType: INodeTypeDescription | null): INodeProperties | null => {
 	if (!nodeType) {
 		return null;
 	}
+
 	const credentialDependencies = getNodeAuthFields(nodeType);
 	const authenticationField =
 		credentialDependencies.find(
@@ -149,18 +156,21 @@ export const getMainAuthField = (nodeType: INodeTypeDescription | null): INodePr
 				prop.name === MAIN_AUTH_FIELD_NAME &&
 				!prop.options?.find((option) => 'value' in option && option.value === 'none'),
 		) ?? null;
+
 	// If there is a field name `authentication`, use it
 	// Otherwise, try to find alternative main auth field
 	const mainAuthFiled =
-		authenticationField || findAlternativeAuthField(nodeType, credentialDependencies);
+		authenticationField ?? findAlternativeAuthField(nodeType, credentialDependencies);
 	// Main authentication field has to be required
 	const isFieldRequired = mainAuthFiled ? isNodeParameterRequired(nodeType, mainAuthFiled) : false;
 	return mainAuthFiled && isFieldRequired ? mainAuthFiled : null;
 };
 
-// A field is considered main auth filed if:
-// 1. It is a credential dependency
-// 2. If all of it's possible values are used in credential's display options
+/**
+ * A field is considered main auth filed if:
+ * 1. It is a credential dependency
+ * 2. If all of it's possible values are used in credential's display options
+ */
 const findAlternativeAuthField = (
 	nodeType: INodeTypeDescription,
 	fields: INodeProperties[],
@@ -191,7 +201,9 @@ const findAlternativeAuthField = (
 	return alternativeAuthField || null;
 };
 
-// Gets all authentication types that a given node type supports
+/**
+ * Gets all authentication types that a given node type supports
+ */
 export const getNodeAuthOptions = (
 	nodeType: INodeTypeDescription | null,
 	nodeVersion?: number,
@@ -257,9 +269,10 @@ export const getAllNodeCredentialForAuthType = (
 		return (
 			nodeType.credentials?.filter(
 				(cred) => cred.displayOptions?.show && authType in (cred.displayOptions.show || {}),
-			) || []
+			) ?? []
 		);
 	}
+
 	return [];
 };
 
@@ -310,6 +323,9 @@ export const isAuthRelatedParameter = (
 	return isRelated;
 };
 
+/**
+ * Get all node type properties needed for determining whether to show authentication fields
+ */
 export const getNodeAuthFields = (
 	nodeType: INodeTypeDescription | null,
 	nodeVersion?: number,

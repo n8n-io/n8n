@@ -39,13 +39,13 @@ import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { v4 as uuid } from 'uuid';
-import { useSegment } from '@/stores/segment.store';
 import type { Ref } from 'vue';
 import { computed } from 'vue';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import type { useRouter } from 'vue-router';
 import { useCanvasStore } from '@/stores/canvas.store';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 type AddNodeData = {
 	name?: string;
@@ -78,6 +78,7 @@ export function useCanvasOperations({
 	const i18n = useI18n();
 	const toast = useToast();
 	const workflowHelpers = useWorkflowHelpers({ router });
+	const nodeHelpers = useNodeHelpers();
 	const telemetry = useTelemetry();
 	const externalHooks = useExternalHooks();
 
@@ -233,6 +234,18 @@ export function useCanvasOperations({
 		}
 
 		uiStore.lastSelectedNode = node.name;
+	}
+
+	function toggleNodeDisabled(
+		id: string,
+		{ trackHistory = true }: { trackHistory?: boolean } = {},
+	) {
+		const node = workflowsStore.getNodeById(id);
+		if (!node) {
+			return;
+		}
+
+		nodeHelpers.disableNodes([node], trackHistory);
 	}
 
 	async function addNodes(
@@ -636,7 +649,6 @@ export function useCanvasOperations({
 			});
 		} else {
 			void externalHooks.run('nodeView.addNodeButton', { nodeTypeName: node.type });
-			useSegment().trackAddedTrigger(node.type);
 			const trackProperties: ITelemetryTrackProperties = {
 				node_type: node.type,
 				node_version: newNodeData.typeVersion,
@@ -886,6 +898,7 @@ export function useCanvasOperations({
 		setNodeActive,
 		setNodeActiveByName,
 		setNodeSelected,
+		toggleNodeDisabled,
 		renameNode,
 		revertRenameNode,
 		deleteNode,

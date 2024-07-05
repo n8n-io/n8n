@@ -1,5 +1,5 @@
-import config from '@/config';
 import { Service } from 'typedi';
+import { GlobalConfig } from '@n8n/config';
 import { DataSource, Repository, Entity } from '@n8n/typeorm';
 
 @Entity()
@@ -7,19 +7,22 @@ export class UsageMetrics {}
 
 @Service()
 export class UsageMetricsRepository extends Repository<UsageMetrics> {
-	constructor(dataSource: DataSource) {
+	constructor(
+		dataSource: DataSource,
+		private readonly globalConfig: GlobalConfig,
+	) {
 		super(UsageMetrics, dataSource.manager);
 	}
 
 	toTableName(name: string) {
-		const tablePrefix = config.getEnv('database.tablePrefix');
+		const tablePrefix = this.globalConfig.database.tablePrefix;
 
 		let tableName =
-			config.getEnv('database.type') === 'mysqldb'
+			this.globalConfig.database.type === 'mysqldb'
 				? `\`${tablePrefix}${name}\``
 				: `"${tablePrefix}${name}"`;
 
-		const pgSchema = config.getEnv('database.postgresdb.schema');
+		const pgSchema = this.globalConfig.database.postgresdb.schema;
 
 		if (pgSchema !== 'public') tableName = [pgSchema, tablePrefix + name].join('.');
 

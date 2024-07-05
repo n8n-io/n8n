@@ -66,7 +66,7 @@ const { importCurlCommand } = useImportCurlCommand({
 });
 
 onMounted(() => {
-	curlCommand.value = (uiStore.getModalData(IMPORT_CURL_MODAL_KEY)?.curlCommand as string) ?? '';
+	curlCommand.value = (uiStore.modalsById[IMPORT_CURL_MODAL_KEY].data?.curlCommand as string) ?? '';
 
 	setTimeout(() => {
 		inputRef.value?.focus();

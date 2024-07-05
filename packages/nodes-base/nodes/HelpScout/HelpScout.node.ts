@@ -10,7 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { countriesCodes } from './CountriesCodes';
+import { isoCountryCodes } from '@utils/ISOCountryCodes';
 
 import { conversationFields, conversationOperations } from './ConversationDescription';
 
@@ -91,7 +91,7 @@ export class HelpScout implements INodeType {
 			// select them easily
 			async getCountriesCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				for (const countryCode of countriesCodes) {
+				for (const countryCode of isoCountryCodes) {
 					const countryCodeName = `${countryCode.name} - ${countryCode.alpha2}`;
 					const countryCodeId = countryCode.alpha2;
 					returnData.push({

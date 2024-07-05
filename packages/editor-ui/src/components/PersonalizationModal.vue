@@ -90,9 +90,6 @@ import {
 	PERSONAL_COMPANY_TYPE,
 	COMPANY_INDUSTRY_EXTENDED_KEY,
 	OTHER_COMPANY_INDUSTRY_EXTENDED_KEY,
-	ONBOARDING_PROMPT_TIMEBOX,
-	FIRST_ONBOARDING_PROMPT_TIMEOUT,
-	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	MARKETING_AUTOMATION_GOAL_KEY,
 	MARKETING_AUTOMATION_LEAD_GENERATION_GOAL,
 	MARKETING_AUTOMATION_CUSTOMER_COMMUNICATION,
@@ -141,8 +138,7 @@ import {
 } from '@/constants';
 import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
-import type { IFormInputs, IPersonalizationLatestVersion, IUser } from '@/Interface';
-import { getAccountAge } from '@/utils/userUtils';
+import type { IFormInputs, IPersonalizationLatestVersion } from '@/Interface';
 import type { GenericValue } from 'n8n-workflow';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -715,8 +711,6 @@ export default defineComponent({
 				if (Object.keys(values).length === 0) {
 					this.closeDialog();
 				}
-
-				await this.fetchOnboardingPrompt();
 			} catch (e) {
 				this.showError(e, 'Error while submitting results');
 			}
@@ -753,40 +747,6 @@ export default defineComponent({
 						),
 					},
 				);
-			}
-		},
-		async fetchOnboardingPrompt() {
-			if (
-				this.settingsStore.onboardingCallPromptEnabled &&
-				getAccountAge(this.usersStore.currentUser || ({} as IUser)) <= ONBOARDING_PROMPT_TIMEBOX
-			) {
-				const onboardingResponse = await this.uiStore.getNextOnboardingPrompt();
-
-				if (!onboardingResponse) {
-					return;
-				}
-
-				const promptTimeout =
-					onboardingResponse.toast_sequence_number === 1 ? FIRST_ONBOARDING_PROMPT_TIMEOUT : 1000;
-
-				setTimeout(async () => {
-					this.showToast({
-						type: 'info',
-						title: onboardingResponse.title,
-						message: onboardingResponse.description,
-						duration: 0,
-						customClass: 'clickable',
-						closeOnClick: true,
-						onClick: () => {
-							this.$telemetry.track('user clicked onboarding toast', {
-								seq_num: onboardingResponse.toast_sequence_number,
-								title: onboardingResponse.title,
-								description: onboardingResponse.description,
-							});
-							this.uiStore.openModal(ONBOARDING_CALL_SIGNUP_MODAL_KEY);
-						},
-					});
-				}, promptTimeout);
 			}
 		},
 	},

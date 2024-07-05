@@ -61,7 +61,7 @@
 					/>
 					<InputPanel
 						v-else-if="!isTriggerNode"
-						:workflow="workflow"
+						:workflow="workflowObject"
 						:can-link-runs="canLinkRuns"
 						:run-index="inputRun"
 						:linked-runs="linked"
@@ -85,7 +85,7 @@
 				<template #output>
 					<OutputPanel
 						data-test-id="output-panel"
-						:workflow="workflow"
+						:workflow="workflowObject"
 						:can-link-runs="canLinkRuns"
 						:run-index="outputRun"
 						:linked-runs="linked"
@@ -141,7 +141,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import { createEventBus } from 'n8n-design-system/utils';
-import type { IRunData, ConnectionTypes } from 'n8n-workflow';
+import type { IRunData, Workflow } from 'n8n-workflow';
 import { jsonParse, NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 import type { IUpdateInformation, TargetItem } from '@/Interface';
 
@@ -171,23 +171,22 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useMessage } from '@/composables/useMessage';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { usePinnedData } from '@/composables/usePinnedData';
-import { useRouter } from 'vue-router';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@/composables/useI18n';
 import { storeToRefs } from 'pinia';
 
-const emit = defineEmits([
-	'saveKeyboardShortcut',
-	'valueChanged',
-	'switchSelectedNode',
-	'openConnectionNodeCreator',
-	'redrawNode',
-	'stopExecution',
-]);
+const emit = defineEmits<{
+	saveKeyboardShortcut: [event: KeyboardEvent];
+	valueChanged: [parameterData: IUpdateInformation];
+	switchSelectedNode: [nodeTypeName: string];
+	openConnectionNodeCreator: [nodeTypeName: string, connectionType: NodeConnectionType];
+	redrawNode: [nodeName: string];
+	stopExecution: [];
+}>();
 
 const props = withDefaults(
 	defineProps<{
+		workflowObject: Workflow;
 		readOnly?: boolean;
 		renaming?: boolean;
 		isProductionExecutionPreview?: boolean;
@@ -202,8 +201,6 @@ const externalHooks = useExternalHooks();
 const nodeHelpers = useNodeHelpers();
 const { activeNode } = storeToRefs(ndvStore);
 const pinnedData = usePinnedData(activeNode);
-const router = useRouter();
-const workflowHelpers = useWorkflowHelpers({ router });
 const workflowActivate = useWorkflowActivate();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
@@ -241,7 +238,7 @@ const activeNodeType = computed(() => {
 	return null;
 });
 
-const workflowRunning = computed(() => uiStore.isActionActive('workflowRunning'));
+const workflowRunning = computed(() => uiStore.isActionActive['workflowRunning']);
 
 const showTriggerWaitingWarning = computed(
 	() =>
@@ -266,12 +263,12 @@ const workflowRunData = computed(() => {
 	return null;
 });
 
-const workflow = computed(() => workflowHelpers.getCurrentWorkflow());
-
 const parentNodes = computed(() => {
 	if (activeNode.value) {
 		return (
-			workflow.value.getParentNodesByDepth(activeNode.value.name, 1).map(({ name }) => name) || []
+			props.workflowObject
+				.getParentNodesByDepth(activeNode.value.name, 1)
+				.map(({ name }) => name) || []
 		);
 	} else {
 		return [];
@@ -374,13 +371,17 @@ const maxInputRun = computed(() => {
 		return 0;
 	}
 
-	const workflowNode = workflow.value.getNode(activeNode.value.name);
+	const workflowNode = props.workflowObject.getNode(activeNode.value.name);
 
 	if (!workflowNode || !activeNodeType.value) {
 		return 0;
 	}
 
-	const outputs = NodeHelpers.getNodeOutputs(workflow.value, workflowNode, activeNodeType.value);
+	const outputs = NodeHelpers.getNodeOutputs(
+		props.workflowObject,
+		workflowNode,
+		activeNodeType.value,
+	);
 
 	let node = inputNode.value;
 
@@ -427,7 +428,7 @@ const featureRequestUrl = computed(() => {
 
 const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
 
-const isWorkflowRunning = computed(() => uiStore.isActionActive('workflowRunning'));
+const isWorkflowRunning = computed(() => uiStore.isActionActive['workflowRunning']);
 
 const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
 
@@ -596,7 +597,7 @@ const onSwitchSelectedNode = (nodeTypeName: string) => {
 	emit('switchSelectedNode', nodeTypeName);
 };
 
-const onOpenConnectionNodeCreator = (nodeTypeName: string, connectionType: ConnectionTypes) => {
+const onOpenConnectionNodeCreator = (nodeTypeName: string, connectionType: NodeConnectionType) => {
 	emit('openConnectionNodeCreator', nodeTypeName, connectionType);
 };
 
@@ -729,11 +730,7 @@ watch(
 			}
 
 			void externalHooks.run('dataDisplay.nodeTypeChanged', {
-				nodeSubtitle: nodeHelpers.getNodeSubtitle(
-					node,
-					activeNodeType.value,
-					workflowHelpers.getCurrentWorkflow(),
-				),
+				nodeSubtitle: nodeHelpers.getNodeSubtitle(node, activeNodeType.value, props.workflowObject),
 			});
 
 			setTimeout(() => {

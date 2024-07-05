@@ -29,6 +29,7 @@ import { deepCopy } from './utils';
 import { getGlobalState } from './GlobalState';
 import { ApplicationError } from './errors/application.error';
 import { SCRIPTING_NODE_TYPES } from './Constants';
+import { getPinDataIfManualExecution } from './WorkflowDataProxyHelpers';
 
 export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
 	return Boolean(
@@ -241,6 +242,29 @@ export class WorkflowDataProxy {
 		});
 	}
 
+	private getNodeExecutionOrPinnedData({
+		nodeName,
+		branchIndex,
+		runIndex,
+		shortSyntax = false,
+	}: {
+		nodeName: string;
+		branchIndex?: number;
+		runIndex?: number;
+		shortSyntax?: boolean;
+	}) {
+		try {
+			return this.getNodeExecutionData(nodeName, shortSyntax, branchIndex, runIndex);
+		} catch (e) {
+			const pinData = getPinDataIfManualExecution(this.workflow, nodeName, this.mode);
+			if (pinData) {
+				return pinData;
+			}
+
+			throw e;
+		}
+	}
+
 	/**
 	 * Returns the node ExecutionData
 	 *
@@ -283,7 +307,7 @@ export class WorkflowDataProxy {
 
 			if (
 				!that.runExecutionData.resultData.runData.hasOwnProperty(nodeName) &&
-				!that.workflow.getPinDataOfNode(nodeName)
+				!getPinDataIfManualExecution(that.workflow, nodeName, that.mode)
 			) {
 				throw new ExpressionError('Referenced node is unexecuted', {
 					runIndex: that.runIndex,
@@ -383,7 +407,10 @@ export class WorkflowDataProxy {
 					}
 
 					if (['binary', 'data', 'json'].includes(name)) {
-						const executionData = that.getNodeExecutionData(nodeName, shortSyntax, undefined);
+						const executionData = that.getNodeExecutionOrPinnedData({
+							nodeName,
+							shortSyntax,
+						});
 
 						if (executionData.length === 0) {
 							if (that.workflow.getParentNodes(nodeName).length === 0) {
@@ -619,11 +646,6 @@ export class WorkflowDataProxy {
 	getDataProxy(): IWorkflowDataProxyData {
 		const that = this;
 
-		const getNodeOutput = (nodeName: string, branchIndex: number, runIndex?: number) => {
-			runIndex = runIndex === undefined ? -1 : runIndex;
-			return that.getNodeExecutionData(nodeName, false, branchIndex, runIndex);
-		};
-
 		// replacing proxies with the actual data.
 		const jmespathWrapper = (data: IDataObject | IDataObject[], query: string) => {
 			if (typeof data !== 'object' || typeof query !== 'string') {
@@ -662,7 +684,7 @@ export class WorkflowDataProxy {
 
 			if (context?.nodeCause) {
 				const nodeName = context.nodeCause;
-				const pinData = this.workflow.getPinDataOfNode(nodeName);
+				const pinData = getPinDataIfManualExecution(that.workflow, nodeName, that.mode);
 
 				if (pinData) {
 					if (!context) {
@@ -776,7 +798,8 @@ export class WorkflowDataProxy {
 
 				const previousNodeOutputData =
 					taskData?.data?.main?.[previousNodeOutput] ??
-					(that.workflow.getPinDataOfNode(sourceData.previousNode) as INodeExecutionData[]);
+					getPinDataIfManualExecution(that.workflow, sourceData.previousNode, that.mode) ??
+					[];
 				const source = taskData?.source ?? [];
 
 				if (pairedItem.item >= previousNodeOutputData.length) {
@@ -897,9 +920,21 @@ export class WorkflowDataProxy {
 			}
 
 			taskData =
-				that.runExecutionData!.resultData.runData[sourceData.previousNode][
+				that.runExecutionData!.resultData.runData[sourceData.previousNode]?.[
 					sourceData?.previousNodeRun || 0
 				];
+
+			if (!taskData) {
+				const pinData = getPinDataIfManualExecution(
+					that.workflow,
+					sourceData.previousNode,
+					that.mode,
+				);
+
+				if (pinData) {
+					taskData = { data: { main: [pinData] }, startTime: 0, executionTime: 0, source: [] };
+				}
+			}
 
 			const previousNodeOutput = sourceData.previousNodeOutput || 0;
 			if (previousNodeOutput >= taskData.data!.main.length) {
@@ -944,7 +979,7 @@ export class WorkflowDataProxy {
 				const ensureNodeExecutionData = () => {
 					if (
 						!that?.runExecutionData?.resultData?.runData.hasOwnProperty(nodeName) &&
-						!that.workflow.getPinDataOfNode(nodeName)
+						!getPinDataIfManualExecution(that.workflow, nodeName, that.mode)
 					) {
 						throw createExpressionError('Referenced node is unexecuted', {
 							runIndex: that.runIndex,
@@ -1009,8 +1044,20 @@ export class WorkflowDataProxy {
 										itemIndex = that.itemIndex;
 									}
 
+									if (!that.connectionInputData.length) {
+										const pinnedData = getPinDataIfManualExecution(
+											that.workflow,
+											nodeName,
+											that.mode,
+										);
+
+										if (pinnedData) {
+											return pinnedData[itemIndex];
+										}
+									}
+
 									const executionData = that.connectionInputData;
-									const input = executionData[itemIndex];
+									const input = executionData?.[itemIndex];
 									if (!input) {
 										throw createExpressionError('Can’t get data for expression', {
 											messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
@@ -1061,6 +1108,7 @@ export class WorkflowDataProxy {
 								}
 								return pairedItemMethod;
 							}
+
 							if (property === 'first') {
 								ensureNodeExecutionData();
 								return (branchIndex?: number, runIndex?: number) => {
@@ -1070,7 +1118,11 @@ export class WorkflowDataProxy {
 										that.workflow.getNodeConnectionIndexes(that.activeNodeName, nodeName)
 											?.sourceIndex ??
 										0;
-									const executionData = getNodeOutput(nodeName, branchIndex, runIndex);
+									const executionData = that.getNodeExecutionOrPinnedData({
+										nodeName,
+										branchIndex,
+										runIndex,
+									});
 									if (executionData[0]) return executionData[0];
 									return undefined;
 								};
@@ -1084,7 +1136,11 @@ export class WorkflowDataProxy {
 										that.workflow.getNodeConnectionIndexes(that.activeNodeName, nodeName)
 											?.sourceIndex ??
 										0;
-									const executionData = getNodeOutput(nodeName, branchIndex, runIndex);
+									const executionData = that.getNodeExecutionOrPinnedData({
+										nodeName,
+										branchIndex,
+										runIndex,
+									});
 									if (!executionData.length) return undefined;
 									if (executionData[executionData.length - 1]) {
 										return executionData[executionData.length - 1];
@@ -1101,7 +1157,7 @@ export class WorkflowDataProxy {
 										that.workflow.getNodeConnectionIndexes(that.activeNodeName, nodeName)
 											?.sourceIndex ??
 										0;
-									return getNodeOutput(nodeName, branchIndex, runIndex);
+									return that.getNodeExecutionOrPinnedData({ nodeName, branchIndex, runIndex });
 								};
 							}
 							if (property === 'context') {

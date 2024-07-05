@@ -18,7 +18,9 @@ const props = withDefaults(defineProps<Props>(), {
 	dismissible: true,
 });
 
-const emit = defineEmits(['close']);
+const emit = defineEmits<{
+	close: [];
+}>();
 
 const hasTrailingContent = computed(() => {
 	return !!slots.trailingContent;

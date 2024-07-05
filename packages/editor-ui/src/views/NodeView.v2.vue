@@ -36,7 +36,6 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import useEnvironmentsStore from '@/stores/environments.ee.store';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useRootStore } from '@/stores/root.store';
-import { useCollaborationStore } from '@/stores/collaboration.store';
 import { historyBus } from '@/models/history';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useExecutionsStore } from '@/stores/executions.store';
@@ -79,7 +78,6 @@ const credentialsStore = useCredentialsStore();
 const environmentsStore = useEnvironmentsStore();
 const externalSecretsStore = useExternalSecretsStore();
 const rootStore = useRootStore();
-const collaborationStore = useCollaborationStore();
 const executionsStore = useExecutionsStore();
 const canvasStore = useCanvasStore();
 const npsSurveyStore = useNpsSurveyStore();
@@ -95,6 +93,7 @@ const {
 	revertRenameNode,
 	setNodeActive,
 	setNodeSelected,
+	toggleNodeDisabled,
 	deleteNode,
 	revertDeleteNode,
 	addNodes,
@@ -172,7 +171,6 @@ async function initializeData() {
 		workflowId: workflowsStore.workflow.id,
 		workflowName: workflowsStore.workflow.name,
 	});
-	collaborationStore.notifyWorkflowOpened(workflowsStore.workflow.id);
 
 	const selectedExecution = executionsStore.activeExecution;
 	if (selectedExecution?.workflowId !== workflowsStore.workflow.id) {
@@ -361,6 +359,14 @@ function onDeleteNode(id: string) {
 
 function onRevertDeleteNode({ node }: { node: INodeUi }) {
 	revertDeleteNode(node);
+}
+
+function onToggleNodeDisabled(id: string) {
+	if (!checkIfEditingIsAllowed()) {
+		return;
+	}
+
+	toggleNodeDisabled(id);
 }
 
 function onSetNodeActive(id: string) {
@@ -680,6 +686,7 @@ onBeforeUnmount(() => {
 		@update:node:position="onUpdateNodePosition"
 		@update:node:active="onSetNodeActive"
 		@update:node:selected="onSetNodeSelected"
+		@update:node:enabled="onToggleNodeDisabled"
 		@delete:node="onDeleteNode"
 		@create:connection="onCreateConnection"
 		@delete:connection="onDeleteConnection"
@@ -699,6 +706,7 @@ onBeforeUnmount(() => {
 		</Suspense>
 		<Suspense>
 			<NodeDetailsView
+				:workflow-object="editableWorkflowObject"
 				:read-only="isReadOnlyRoute || isReadOnlyEnvironment"
 				:is-production-execution-preview="isProductionExecutionPreview"
 				:renaming="false"

@@ -88,7 +88,6 @@ import ParameterOptions from '@/components/ParameterOptions.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useSegment } from '@/stores/segment.store';
 import { getMappedResult } from '@/utils/mappingUtils';
 import { hasExpressionMapping, hasOnlyListMode, isValueExpression } from '@/utils/nodeTypesUtils';
 import { isResourceLocatorValue } from '@/utils/typeGuards';
@@ -122,8 +121,8 @@ const props = withDefaults(defineProps<Props>(), {
 	label: () => ({ size: 'small' }),
 });
 const emit = defineEmits<{
-	(event: 'blur'): void;
-	(event: 'update', value: IUpdateInformation): void;
+	blur: [];
+	update: [value: IUpdateInformation];
 }>();
 
 const i18n = useI18n();
@@ -272,9 +271,6 @@ function onDrop(newParamValue: string) {
 					hasExpressionMapping(prevValue),
 				success: true,
 			});
-
-			const segment = useSegment();
-			segment.track(segment.EVENTS.MAPPED_DATA);
 		}
 		forceShowExpression.value = false;
 	}, 200);
