@@ -23,17 +23,32 @@ export async function elasticsearchBulkApiRequest(this: IExecuteFunctions, body:
 		url: `${baseUrl}/_bulk`,
 		skipSslCertificateValidation: ignoreSSLIssues,
 		returnFullResponse: true,
+		ignoreHttpStatusErrors: true,
 	};
-	try {
-		const response = await this.helpers.requestWithAuthentication.call(
-			this,
-			'elasticsearchApi',
-			options,
-		);
-		return JSON.parse(response).items;
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
+
+	const response = await this.helpers.httpRequestWithAuthentication.call(
+		this,
+		'elasticsearchApi',
+		options,
+	);
+
+	if (response.statusCode > 299) {
+		if (this.continueOnFail()) {
+			return Object.values(body).map((_) => ({ error: response.body.error }));
+		} else {
+			throw new NodeApiError(this.getNode(), { error: response.body.error } as JsonObject);
+		}
 	}
+
+	return response.body.items.map((item: IDataObject) => {
+		return {
+			...(item.index as IDataObject),
+			...(item.update as IDataObject),
+			...(item.create as IDataObject),
+			...(item.delete as IDataObject),
+			...(item.error as IDataObject),
+		};
+	});
 }
 
 export async function elasticsearchApiRequest(

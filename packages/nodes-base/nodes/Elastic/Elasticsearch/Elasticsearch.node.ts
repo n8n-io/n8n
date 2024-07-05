@@ -246,7 +246,7 @@ export class Elasticsearch implements INodeType {
 								_id: documentId,
 							},
 						});
-						bulkBody[i] += '\n' + JSON.stringify(body);
+						bulkBody[i] += `\n${JSON.stringify(body)}`;
 					} else {
 						if (documentId) {
 							const endpoint = `/${indexId}/_doc/${documentId}`;
@@ -294,7 +294,7 @@ export class Elasticsearch implements INodeType {
 								_id: documentId,
 							},
 						});
-						bulkBody[i] += '\n' + JSON.stringify(body);
+						bulkBody[i] += `\n${JSON.stringify(body)}`;
 					} else {
 						responseData = await elasticsearchApiRequest.call(this, 'POST', endpoint, body);
 					}
@@ -387,20 +387,13 @@ export class Elasticsearch implements INodeType {
 			}
 			if (Object.keys(bulkBody).length >= 50) {
 				responseData = (await elasticsearchBulkApiRequest.call(this, bulkBody)) as IDataObject[];
-				// Enumerate the response data items and pair to the key of the bulkBody
-				for (let j = 0; j < Object.keys(responseData).length; j++) {
-					const itemData = {
-						...(responseData[j].index as IDataObject),
-						...(responseData[j].update as IDataObject),
-						...(responseData[j].create as IDataObject),
-						...(responseData[j].delete as IDataObject),
-					};
+				for (let j = 0; j < responseData.length; j++) {
+					const itemData = responseData[j];
 					if (itemData.error) {
 						const errorData = itemData.error as IDataObject;
 						const message = errorData.type as string;
 						const description = errorData.reason as string;
 						const itemIndex = parseInt(Object.keys(bulkBody)[j]);
-
 						if (this.continueOnFail()) {
 							returnData.push(
 								...this.helpers.constructExecutionMetaData(
@@ -428,20 +421,13 @@ export class Elasticsearch implements INodeType {
 		}
 		if (Object.keys(bulkBody).length) {
 			responseData = (await elasticsearchBulkApiRequest.call(this, bulkBody)) as IDataObject[];
-			// Enumerate the response data items and pair to the key of the bulkBody
-			for (let j = 0; j < Object.keys(responseData).length; j++) {
-				const itemData = {
-					...(responseData[j].index as IDataObject),
-					...(responseData[j].update as IDataObject),
-					...(responseData[j].create as IDataObject),
-					...(responseData[j].delete as IDataObject),
-				};
+			for (let j = 0; j < responseData.length; j++) {
+				const itemData = responseData[j];
 				if (itemData.error) {
 					const errorData = itemData.error as IDataObject;
 					const message = errorData.type as string;
 					const description = errorData.reason as string;
 					const itemIndex = parseInt(Object.keys(bulkBody)[j]);
-
 					if (this.continueOnFail()) {
 						returnData.push(
 							...this.helpers.constructExecutionMetaData(
