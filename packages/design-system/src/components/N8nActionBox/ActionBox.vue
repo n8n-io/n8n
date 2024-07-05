@@ -54,7 +54,7 @@ interface ActionBoxProps {
 	heading: string;
 	buttonText: string;
 	buttonType: ButtonType;
-	buttonDisabled: boolean;
+	buttonDisabled?: boolean;
 	description: string;
 	calloutText?: string;
 	calloutTheme?: CalloutTheme;
