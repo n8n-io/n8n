@@ -304,20 +304,23 @@ describe('Test Google Sheets, lookupValues', () => {
 
 		const googleSheet = new GoogleSheet('spreadsheetId', fakeExecuteFunction);
 
-		const result = await googleSheet.lookupValues(
-			{
-				inputData, keyRowIndex: 0, dataStartRowIndex: 1, lookupValues: [
-					{
-						lookupColumn: 'num',
-						lookupValue: '1',
-					},
-					{
-						lookupColumn: 'text',
-						lookupValue: 'foo',
-					},
-				], returnAllMatches: true, combineFilters: 'OR'
-			},
-		);
+		const result = await googleSheet.lookupValues({
+			inputData,
+			keyRowIndex: 0,
+			dataStartRowIndex: 1,
+			lookupValues: [
+				{
+					lookupColumn: 'num',
+					lookupValue: '1',
+				},
+				{
+					lookupColumn: 'text',
+					lookupValue: 'foo',
+				},
+			],
+			returnAllMatches: true,
+			combineFilters: 'OR',
+		});
 
 		expect(result).toBeDefined();
 		expect(result).toEqual([
@@ -363,20 +366,23 @@ describe('Test Google Sheets, lookupValues', () => {
 
 		const googleSheet = new GoogleSheet('spreadsheetId', fakeExecuteFunction);
 
-		const result = await googleSheet.lookupValues(
-			{
-				inputData, keyRowIndex: 0, dataStartRowIndex: 1, lookupValues: [
-					{
-						lookupColumn: 'num',
-						lookupValue: '1',
-					},
-					{
-						lookupColumn: 'text',
-						lookupValue: 'baz',
-					},
-				], returnAllMatches: true, combineFilters: 'AND'
-			},
-		);
+		const result = await googleSheet.lookupValues({
+			inputData,
+			keyRowIndex: 0,
+			dataStartRowIndex: 1,
+			lookupValues: [
+				{
+					lookupColumn: 'num',
+					lookupValue: '1',
+				},
+				{
+					lookupColumn: 'text',
+					lookupValue: 'baz',
+				},
+			],
+			returnAllMatches: true,
+			combineFilters: 'AND',
+		});
 
 		expect(result).toBeDefined();
 		expect(result).toEqual([
