@@ -202,10 +202,11 @@ export async function execute(
 			return [];
 		}
 
-		const { data, headerRow, firstDataRow } = prepareSheetData(
-			sheetData,
-			dataLocationOnSheetOptions,
-		);
+		const {
+			data,
+			headerRow: keyRowIndex,
+			firstDataRow: dataStartRowIndex,
+		} = prepareSheetData(sheetData, dataLocationOnSheetOptions);
 
 		let responseData = [];
 
@@ -214,6 +215,8 @@ export async function execute(
 			itemIndex,
 			[],
 		) as ILookupValues[];
+
+		const inputData = data as string[][];
 
 		if (lookupValues.length) {
 			const returnAllMatches = options.returnAllMatches === 'returnAllMatches' ? true : false;
@@ -235,16 +238,16 @@ export async function execute(
 				| 'AND'
 				| 'OR';
 
-			responseData = await sheet.lookupValues(
-				data as string[][],
-				headerRow,
-				firstDataRow,
+			responseData = await sheet.lookupValues({
+				inputData,
+				keyRowIndex,
+				dataStartRowIndex,
 				lookupValues,
 				returnAllMatches,
 				combineFilters,
-			);
+			});
 		} else {
-			responseData = sheet.structureArrayDataByColumn(data as string[][], headerRow, firstDataRow);
+			responseData = sheet.structureArrayDataByColumn(inputData, keyRowIndex, dataStartRowIndex);
 		}
 
 		returnData.push(
