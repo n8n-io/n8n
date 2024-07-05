@@ -19,12 +19,12 @@
   },
   "main": "./dist/chat.umd.js",
   "module": "./dist/chat.es.js",
-  "types": "./dist/src/index.d.ts",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "import": "./dist/chat.es.js",
       "require": "./dist/chat.umd.js",
-      "types": "./dist/src/index.d.ts"
+      "types": "./dist/index.d.ts"
     },
     "./style.css": {
       "import": "./dist/style.css",
